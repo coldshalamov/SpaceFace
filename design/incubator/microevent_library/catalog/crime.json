@@ -57,7 +57,8 @@
       "systems": ["wrecks.spawn", "salvage.strip", "pickups.spawn", "signatureVfx", "traffic.spawnRole"],
       "fallback": "Wreck despawns: scavengers scatter immediately (their reason left)",
       "tier": "first15",
-      "blockedOn": null
+      "blockedOn": null,
+      "notes": "INFERENCE U8: LIVE as the scavengers_fresh_wreck encounter (derelict_field zones, ambush script, proximity spring at 900wu; reaver_pirate anchor + wasp cutters, faction_reach scavenger doctrine). The catalog's patrol-responder leg (law arriving on the scavengers) stays UNWIRED - no patrol-responder seam exists in the ambush script yet; the player is the responder today."
     },
     {
       "id": "ev_smuggler_dumps_cache",

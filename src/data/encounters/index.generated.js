@@ -22,33 +22,34 @@ import * as encounter018 from './180-k1-fulfillment-fixed-route.js';
 import * as encounter019 from './190-k1-archive-reading-room.js';
 import * as encounter020 from './200-k1-pitborn-yard.js';
 import * as encounter021 from './210-k1-verge-observer-prism.js';
-import * as encounter022 from './220-depth-h1-distress-from-inside.js';
-import * as encounter023 from './230-depth-h2-drifting-bloom.js';
-import * as encounter024 from './240-depth-h3-wreck-that-knows-you.js';
-import * as encounter025 from './250-depth-h4-love-letter-buoy.js';
-import * as encounter026 from './260-depth-h5-corridor-massacre.js';
-import * as encounter027 from './270-depth-h6-patrol-ambush.js';
-import * as encounter028 from './280-depth-h7-spared-return.js';
-import * as encounter029 from './290-depth-h8-echo-of-player.js';
-import * as encounter030 from './300-depth-h6-vael-enforcement-follow-on.js';
-import * as encounter031 from './310-depth-h8-mass-migration-follow-on.js';
-import * as encounter032 from './320-the-botched-procedure.js';
-import * as encounter033 from './321-the-customs-logic-puzzle.js';
-import * as encounter034 from './322-the-backwater-escort.js';
-import * as encounter035 from './323-the-wrong-laugh.js';
-import * as encounter036 from './324-the-literalized-drawer.js';
-import * as encounter037 from './325-minefield-wake.js';
-import * as encounter038 from './326-customs-logic-net.js';
-import * as encounter039 from './327-ghost-on-the-bearing.js';
-import * as encounter040 from './328-pattern-refrain.js';
-import * as encounter041 from './329-curtain-convoy.js';
-import * as encounter042 from './330-unique-wreck-nestbreaker-admirers.js';
-import * as encounter043 from './331-pd-screen-wall.js';
-import * as encounter044 from './332-resonance-obelisk-patrol.js';
-import * as encounter045 from './333-field-anchor-controller.js';
-import * as encounter046 from './334-tether-control-raider-ambush.js';
-import * as encounter047 from './335-tether-control-raider-wake.js';
-import * as encounter048 from './336-tether-control-raider-hunter.js';
+import * as encounter022 from './215-scavengers-at-fresh-wreck.js';
+import * as encounter023 from './220-depth-h1-distress-from-inside.js';
+import * as encounter024 from './230-depth-h2-drifting-bloom.js';
+import * as encounter025 from './240-depth-h3-wreck-that-knows-you.js';
+import * as encounter026 from './250-depth-h4-love-letter-buoy.js';
+import * as encounter027 from './260-depth-h5-corridor-massacre.js';
+import * as encounter028 from './270-depth-h6-patrol-ambush.js';
+import * as encounter029 from './280-depth-h7-spared-return.js';
+import * as encounter030 from './290-depth-h8-echo-of-player.js';
+import * as encounter031 from './300-depth-h6-vael-enforcement-follow-on.js';
+import * as encounter032 from './310-depth-h8-mass-migration-follow-on.js';
+import * as encounter033 from './320-the-botched-procedure.js';
+import * as encounter034 from './321-the-customs-logic-puzzle.js';
+import * as encounter035 from './322-the-backwater-escort.js';
+import * as encounter036 from './323-the-wrong-laugh.js';
+import * as encounter037 from './324-the-literalized-drawer.js';
+import * as encounter038 from './325-minefield-wake.js';
+import * as encounter039 from './326-customs-logic-net.js';
+import * as encounter040 from './327-ghost-on-the-bearing.js';
+import * as encounter041 from './328-pattern-refrain.js';
+import * as encounter042 from './329-curtain-convoy.js';
+import * as encounter043 from './330-unique-wreck-nestbreaker-admirers.js';
+import * as encounter044 from './331-pd-screen-wall.js';
+import * as encounter045 from './332-resonance-obelisk-patrol.js';
+import * as encounter046 from './333-field-anchor-controller.js';
+import * as encounter047 from './334-tether-control-raider-ambush.js';
+import * as encounter048 from './335-tether-control-raider-wake.js';
+import * as encounter049 from './336-tether-control-raider-hunter.js';
 
 export const ENCOUNTER_MODULES = Object.freeze([
   encounter001,
@@ -99,5 +100,6 @@ export const ENCOUNTER_MODULES = Object.freeze([
   encounter046,
   encounter047,
   encounter048,
+  encounter049,
 ]);
 export const ENCOUNTERS = buildEncounterCatalog(ENCOUNTER_MODULES);
