@@ -351,18 +351,23 @@ function updateFieldAnchor(record, tick, self, target, distance) {
 function updateEscort(record, tick, perception, self, target, distance) {
   const age = tick - record.phaseStartedTick;
   const ward = escortWard(perception, self);
-  // The screen point floats: between the ward and the pressed threat. No ward → hold on the
-  // target's ring (fail-closed to a defensive orbit instead of inventing a post).
-  record.flightPoint = escortScreenPoint(self, ward, target);
+  // The screen point floats between ward and threat while a ward exists. Without one the warden
+  // holds a defensive orbit of the threat itself (no flightPoint, guns live in the hold) — the
+  // honest fail-closed end state, not a chase/flee pendulum.
+  if (record.phase !== 'shield_dart') {
+    record.flightPoint = escortScreenPoint(self, ward, target);
+  }
   if (record.phase === 'screen_approach') {
     // The maneuver planner flies the hull to the screen point; a hull that cannot reach it in
     // time (boxed in, spawn geometry) still deploys on the clock so the hold is never skipped.
-    const inPosition = pointWithin(self, record.flightPoint, ESCORT_APPROACH_RANGE_WU);
+    const inPosition = record.flightPoint
+      ? pointWithin(self, record.flightPoint, ESCORT_APPROACH_RANGE_WU)
+      : distance <= 420;
     if (inPosition || age >= ESCORT_APPROACH_TICKS) enter(record, 'screen_deploy', tick, 'engine_flare');
   } else if (record.phase === 'screen_deploy' && age >= DOCTRINE_TELEGRAPH_TICKS) {
     enter(record, 'screen_hold', tick, null);
   } else if (record.phase === 'screen_hold') {
-    if (escortBreached(ward, target)) enter(record, 'shield_dart', tick, null);
+    if (escortBreached(perception, ward)) enter(record, 'shield_dart', tick, null);
     else if (age >= ESCORT_HOLD_TICKS) advanceCycle(record, tick, 'screen_approach');
   } else if (record.phase === 'shield_dart') {
     record.closestDistance = Math.min(record.closestDistance, distance);
@@ -372,10 +377,23 @@ function updateEscort(record, tick, perception, self, target, distance) {
   } else if (record.phase === 'regroup' && age >= ESCORT_REGROUP_TICKS) {
     advanceCycle(record, tick, 'screen_approach');
   }
-  // A ward that dies mid-hold ends the doctrine's reason to hold: regroup and re-cycle.
-  if (!ward && (record.phase === 'screen_hold' || record.phase === 'shield_dart')) {
-    beginEgress(record, 'regroup', tick, self, target, 'ward_lost');
-  }
+}
+
+/**
+ * Any hostile inside the breach ring counts — the dart answers the PRESSURE on the ward, not one
+ * specifically-selected hull (a capital at 261wu must not suppress the dart an armed light at
+ * 200wu deserves). The dart still flies at the doctrine target; selection already favors
+ * ward-pressers, so target and breacher agree in the common case.
+ */
+function escortBreached(perception, ward) {
+  if (!ward || !ward.pos || !perception || !Array.isArray(perception.contacts)) return false;
+  return perception.contacts.some((contact) => contact
+    && contact.kind === ContactKind.SHIP
+    && contact.hostile === true
+    && contact.alive === true
+    && contact.visible === true
+    && contact.pos
+    && Math.hypot(contact.pos.x - ward.pos.x, contact.pos.z - ward.pos.z) <= ESCORT_BREACH_WU);
 }
 
 /** Point on the ward→threat line, ESCORT_APPROACH_RANGE_WU from the ward — the hull the threat must pass. */
@@ -394,11 +412,6 @@ function escortScreenPoint(self, ward, target) {
 function pointWithin(self, point, rangeWu) {
   if (!self || !self.pos || !point) return false;
   return Math.hypot(self.pos.x - point.x, self.pos.z - point.z) <= rangeWu;
-}
-
-function escortBreached(ward, target) {
-  if (!ward || !ward.pos || !target || !target.pos) return false;
-  return Math.hypot(target.pos.x - ward.pos.x, target.pos.z - ward.pos.z) <= ESCORT_BREACH_WU;
 }
 
 function updateRanged(record, tick, self, target, distance) {

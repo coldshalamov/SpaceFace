@@ -474,6 +474,10 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   'presentation.combat.ranged_disengager.setup': 'sfx_doctrine_ranged_charge',
   'presentation.combat.ranged_disengager.break': 'sfx_doctrine_ranged_break',
   'presentation.combat.ranged_disengager.withdraw': 'sfx_doctrine_ranged_withdraw',
+  // The warden shares the house break/withdraw voices; its own setup phrase is the guard cadence.
+  'presentation.combat.escort_screen.setup': 'sfx_doctrine_escort_screen',
+  'presentation.combat.escort_screen.break': 'sfx_doctrine_break',
+  'presentation.combat.escort_screen.withdraw': 'sfx_doctrine_withdraw',
   'presentation.combat.damage_applied': 'sfx.hullHit',
   'presentation.combat.near_miss': 'sfx_combat_near_miss',
   'presentation.combat.player_hit': 'sfx.playerDamage',

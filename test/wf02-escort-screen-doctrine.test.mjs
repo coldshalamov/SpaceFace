@@ -14,6 +14,7 @@ import {
 } from '../src/ai/combatDoctrine.js';
 import { ENEMY_TYPES } from '../src/data/enemies.js';
 import { SECTOR_ZONES } from '../src/data/sectorZones.js';
+import { resolveAudioCueRecipeId } from '../src/audio/audioSystem.js';
 
 const SEED = 4702;
 const ESCORT = CombatDoctrineId.ESCORT_SCREEN;
@@ -160,25 +161,18 @@ test('the screen machine deploys, holds with live guns, and darts on a ward brea
   assert.equal(holdSnapshot.allowedActionId, 'action_burst');
 });
 
-test('screen_hold fires through the doctrine gate and maps to ENGAGE; approach stays SCREEN', () => {
+test('screen_hold is a real gun window through the objective gate; approach is area denial', () => {
+  // Layer note: canFireByDoctrine owns the OBJECTIVE half of the gate (SCREEN objectives can never
+  // fire); the PHASE half lives in engagementAuthority's DOCTRINE_FIRE_PHASES live map, which
+  // contains escort_screen: {screen_hold, shield_dart} and is exercised by doctrine-fire-phases.
   const base = {
     activity: ActivityKind.SCREEN,
     roe: RulesOfEngagement.WEAPONS_FREE,
     target: { id: 1, alive: true },
     self: { id: 2 },
   };
-  assert.equal(canFireByDoctrine({
-    ...base,
-    objectiveKind: ObjectiveKind.ENGAGE,
-    doctrinePhase: 'screen_hold',
-    doctrineId: ESCORT,
-  }), true, 'the hold is a real gun window');
-  assert.equal(canFireByDoctrine({
-    ...base,
-    objectiveKind: ObjectiveKind.SCREEN,
-    doctrinePhase: 'screen_approach',
-    doctrineId: ESCORT,
-  }), false, 'the approach leg is area denial, not fire');
+  assert.equal(canFireByDoctrine({ ...base, objectiveKind: ObjectiveKind.ENGAGE }), true);
+  assert.equal(canFireByDoctrine({ ...base, objectiveKind: ObjectiveKind.SCREEN }), false);
 
   const engaged = overrideDirectiveForCombatDoctrine(directive(), {
     doctrineId: ESCORT,
@@ -186,7 +180,7 @@ test('screen_hold fires through the doctrine gate and maps to ENGAGE; approach s
     targetId: 1,
     actionTargetId: 1,
   });
-  assert.equal(engaged.objective.kind, ObjectiveKind.ENGAGE);
+  assert.equal(engaged.objective.kind, ObjectiveKind.ENGAGE, 'the hold must read ENGAGE to fire');
   const screening = overrideDirectiveForCombatDoctrine(directive(), {
     doctrineId: ESCORT,
     phase: 'screen_approach',
@@ -194,6 +188,52 @@ test('screen_hold fires through the doctrine gate and maps to ENGAGE; approach s
     actionTargetId: 1,
   });
   assert.equal(screening.objective.kind, ObjectiveKind.SCREEN);
+  const darting = overrideDirectiveForCombatDoctrine(directive(), {
+    doctrineId: ESCORT,
+    phase: 'shield_dart',
+    targetId: 1,
+    actionTargetId: 1,
+  });
+  assert.equal(darting.objective.kind, ObjectiveKind.ENGAGE);
+});
+
+test('wardless escort settles into a firing defensive orbit instead of a chase/flee pendulum', () => {
+  const runtime = new CombatDoctrineRuntime({ seed: SEED });
+  let holdTicks = 0;
+  let holdFired = false;
+  let regroupSeen = false;
+  let lastPhase = null;
+  for (let tick = 0; tick <= 600; tick++) {
+    const snap = runtime.update({
+      tick,
+      entityId: 2,
+      doctrineId: ESCORT,
+      perception: perception(
+        { x: 0, z: 0 },
+        [contact(1, { x: 400, threat: 0.8 })],
+      ),
+      directive: directive(),
+    });
+    if (snap.phase === 'screen_hold') {
+      holdTicks += 1;
+      if (snap.fireWindow) holdFired = true;
+    }
+    if (snap.phase === 'regroup' && lastPhase !== 'regroup') regroupSeen = true;
+    lastPhase = snap.phase;
+  }
+  assert.ok(holdTicks >= ESCORT_HOLD_TICKS_FOR_TEST, `hold must persist, got ${holdTicks} ticks`);
+  assert.ok(holdFired, 'the wardless hold keeps its guns live');
+  assert.equal(regroupSeen, false, 'a wardless warden never cycles through ward-lost egress');
+});
+
+const ESCORT_HOLD_TICKS_FOR_TEST = 100;
+
+test('the doctrine phase-cue keys resolve to real recipes, not the UI-click fallback', () => {
+  for (const stage of ['setup', 'break', 'withdraw']) {
+    const recipeId = resolveAudioCueRecipeId(`presentation.combat.escort_screen.${stage}`);
+    assert.notEqual(recipeId, 'sfx_ui_click', `escort_screen.${stage} must not fall through to a click`);
+  }
+  assert.equal(resolveAudioCueRecipeId('presentation.combat.escort_screen.setup'), 'sfx_doctrine_escort_screen');
 });
 
 test('the warden ships as a live def and rides the ordinary-route vael spawn pool', () => {

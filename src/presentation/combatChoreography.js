@@ -15,6 +15,7 @@ export const DOCTRINE_IDS = Object.freeze([
   'brawler_commit',
   'tether_control_raider',
   'ranged_disengager',
+  'escort_screen',
 ]);
 
 export const DAMAGE_LAYERS = Object.freeze(['shield', 'armor', 'hull']);
@@ -25,6 +26,8 @@ const DOCTRINE_GRAMMARS = Object.freeze({
   brawler_commit: grammar('brawler_commit', 'ring', '#ff6a2a', 'engine_flare', 'commit', 'breakaway'),
   tether_control_raider: grammar('tether_control_raider', 'arc', '#8d66ff', 'attach_spool', 'action_attach', 'control'),
   ranged_disengager: grammar('ranged_disengager', 'bracket', '#ff5c5c', 'weapon_charge', 'fire_window', 'reset'),
+  // Warden screen: a line held between ward and threat; cold blue (guarding, not hunting).
+  escort_screen: grammar('escort_screen', 'line', '#5cc8ff', 'engine_flare', 'screen_hold', 'regroup'),
 });
 
 const BREAK_PHASES = Object.freeze({
@@ -32,6 +35,7 @@ const BREAK_PHASES = Object.freeze({
   brawler_commit: new Set(['breakaway']),
   tether_control_raider: new Set(['escape']),
   ranged_disengager: new Set(['reset', 'retreat']),
+  escort_screen: new Set(['regroup']),
 });
 
 const WITHDRAW_PHASES = Object.freeze({
@@ -39,6 +43,7 @@ const WITHDRAW_PHASES = Object.freeze({
   brawler_commit: new Set(['reform']),
   tether_control_raider: new Set(['reform']),
   ranged_disengager: new Set(['outer_standoff']),
+  escort_screen: new Set(['screen_approach']),
 });
 
 export function isLiveDoctrineId(id) {
