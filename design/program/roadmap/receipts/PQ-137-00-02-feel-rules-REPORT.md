@@ -62,6 +62,15 @@
   damage 17). No NPC motion field moved, so the given-momentum and terrain rules are not
   exercised by this replay. Causal note appended to `test/47a.telemetry.v3.expected.json`.
 
+- `npm run check:all:smoke`: 4 of 8 red on the first pass, all attributed and none to these rules.
+  `flight-clean` failed a 2 ms/tick timing budget while eight commands ran in parallel and passes
+  alone at 0.73–0.91 ms/tick (both budgets). `first-15-runtime`, `market-first-loop` and
+  `47a-live-cold-open` timed out waiting for the game to boot (their 30 s / 15 s headless
+  allowance; the script comment records ~12 s on a quiet machine and that any load tips it). A
+  150 s headless probe on this tree booted with ZERO page errors at 39 s while another agent held
+  port 8123 and ~29 node processes; the real-GPU in-app browser booted to the main menu with no
+  console errors. Environment allowance under load, not a boot regression.
+
 ## What this does NOT claim
 
 The route-level bars (B1, B4 clamp half, B6 helm half in `design/FEEL_CONTRACT.md` §B) are met at
