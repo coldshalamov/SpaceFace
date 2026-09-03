@@ -50,6 +50,7 @@ import {
 import {
   collectAsteroidInstancePoolRoots,
   createAsteroidInstancePool,
+  disposeAsteroidInstancePool,
   invalidateAsteroidInstancePool,
   isBorrowedAsteroidInstanceResource,
   registerAsteroidBaseLeaf,
@@ -1239,7 +1240,7 @@ function activateNavAuxReplacement(pool, replacement, dynamicBufferOwner) {
 }
 
 function queueShipAuxPoolGrowth(pool, shieldCapacity, navCapacity) {
-  if (!pool || pool.deferGrowth !== true) return null;
+  if (!pool || pool._destroyed === true || pool.deferGrowth !== true) return null;
   if (pool.shouldDeferGrowth() !== true) return null;
   pool.requestedShieldCapacity = Math.max(pool.requestedShieldCapacity || 0, shieldCapacity || 0);
   pool.requestedNavCapacity = Math.max(pool.requestedNavCapacity || 0, navCapacity || 0);
@@ -1250,7 +1251,7 @@ function queueShipAuxPoolGrowth(pool, shieldCapacity, navCapacity) {
 
   const growth = Promise.resolve().then(async () => {
     await yieldToPostPaint();
-    if (pool.shouldDeferGrowth() !== true) return false;
+    if (pool._destroyed === true || pool.shouldDeferGrowth() !== true) return false;
     const replacements = createDetachedShipAuxReplacements(
       pool,
       pool.requestedShieldCapacity,
@@ -1259,6 +1260,10 @@ function queueShipAuxPoolGrowth(pool, shieldCapacity, navCapacity) {
     const roots = [replacements.shield && replacements.shield.mesh, replacements.nav && replacements.nav.mesh]
       .filter(Boolean);
     if (roots.length === 0) return false;
+    if (pool._destroyed === true) {
+      disposeDetachedShipAuxReplacements(replacements);
+      return false;
+    }
     const residencyCounts = roots.map((root) => root.count);
     let shieldOwner = null;
     let navOwner = null;
@@ -1271,6 +1276,10 @@ function queueShipAuxPoolGrowth(pool, shieldCapacity, navCapacity) {
         await prepareGpuResidency(roots);
       } finally {
         for (let index = 0; index < roots.length; index++) roots[index].count = residencyCounts[index];
+      }
+      if (pool._destroyed === true) {
+        disposeDetachedShipAuxReplacements(replacements);
+        return false;
       }
       if (replacements.shield) {
         shieldOwner = registerShieldAuxDynamicOwner(pool.scene, replacements.shield.mesh);
@@ -1298,6 +1307,7 @@ function queueShipAuxPoolGrowth(pool, shieldCapacity, navCapacity) {
     }
   }).finally(() => {
     if (pool.pendingGrowth === growth) pool.pendingGrowth = null;
+    if (pool._destroyed === true) return;
     if (pool.requestedShieldCapacity > pool.shield.capacity
         || pool.requestedNavCapacity > pool.nav.capacity) {
       queueShipAuxPoolGrowth(
@@ -2607,10 +2617,424 @@ export function publishFirstPresentGpuReady(owner, lifecycle) {
   return true;
 }
 
+const RENDER_STATE_REFERENCE_KEYS = Object.freeze([
+  'scene', 'renderer', 'camera', 'meshes', 'cameraCtrl', 'vf', 'viewport', 'spaceBg', 'envMap',
+  'gpuTimers', 'diagnostics', 'resetPostTelemetrySample', 'warmPostProcess',
+  'compileObjectPipelines', 'prepareAuthoredGpuResidency', 'pendingAuthoredGpuResidency',
+  'yieldToNextPresent', 'openingAdmission', 'prepareOpeningFirstPicture',
+  'captureOpeningSubmissionPlan', 'drainOpeningSubmissionPlan', 'captureOpeningPipelinePlan',
+  'drainOpeningPipelinePlan', 'captureOpeningGpuResidencyPlan', 'drainOpeningGpuResidencyPlan',
+  'resumeDeferredPipelineAdmissions', 'compileCurrentPipelines', 'pendingPipelineAdmissions',
+  'preparePostOpeningPipelines', 'prepareOpeningGpuResources', 'retryAuthoredPartLibrary',
+  'startupGpuResidency', 'rockSurfaceLibraryReady', 'authoredPartLibraryReady',
+  'dynamicBufferRanges', 'presentationWorld', 'presentationPublisher', 'presentationQueries',
+  'presentationFrame', 'snapshotFence', 'activityFrame', 'entityFrame', 'hlod', 'entityViewSync',
+  'asteroidInstancePool', 'renderGraph', 'contextRecovery', 'sectorBoundaryPrewarm',
+  'perfEntityIsolation', 'perfMaterialIsolation', 'debug', 'openingSubmissionPlan',
+  'openingSubmissionReceipt', 'openingAdmissionCohort', 'openingAuthoredBoundaryCohort',
+  'openingFirstVisibleGpuCounts', 'openingSubmissionFirstDrawSubmittedAt',
+  'openingSubmissionLateInstancedPbr', 'openingSubmissionPreSubmitValidation',
+  'openingSubmissionReady', 'openingSubmissionValidation', 'pipelinePrecompileReady',
+  'firstPlayableContentHashes', 'firstPlayableContentHashesVerified',
+  'firstPlayableGlobalProgramKeys', 'firstPlayableOpeningProgramKeys',
+  'firstPlayableResourceIdentitySets', 'openingGraphPublicationFrozen',
+  'waitForOpeningGraphPublicationRelease', 'resetPostTelemetrySample',
+]);
+
+function invokeRendererDisposer(resource, label, allow = true) {
+  if (!allow || !resource || typeof resource.dispose !== 'function') return false;
+  try {
+    resource.dispose();
+  } catch (error) {
+    // Teardown is best effort per resource. Continue retiring independent renderer resources even
+    // when an optional subsystem has already been invalidated by a driver reset.
+    if (typeof console !== 'undefined') console.warn(`[render] ${label} dispose failed`, error);
+  }
+  return true;
+}
+
+function disposeRendererObject(object, label, allow = true) {
+  if (!allow || !object) return false;
+  try {
+    disposeObject(object);
+  } catch (error) {
+    if (typeof console !== 'undefined') console.warn(`[render] ${label} teardown failed`, error);
+    return false;
+  }
+  return true;
+}
+
+function removeRendererRoot(scene, root) {
+  if (!root || !scene || typeof scene.remove !== 'function') return false;
+  try {
+    scene.remove(root);
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+function unregisterRendererDynamicOwner(dynamicOwner) {
+  if (!dynamicOwner) return false;
+  try {
+    return unregisterDynamicBufferOwner(dynamicOwner);
+  } catch (error) {
+    if (typeof console !== 'undefined') console.warn('[render] dynamic buffer owner teardown failed', error);
+    return false;
+  }
+}
+
+function disposeContactShadowPool(pool, scene, disposeGpu) {
+  if (!pool || pool._rendererDisposed === true) return false;
+  pool._rendererDisposed = true;
+  unregisterRendererDynamicOwner(pool.dynamicBufferOwner);
+  removeRendererRoot(scene, pool.mesh);
+  invokeRendererDisposer(pool.mesh, 'contact shadow pool', disposeGpu);
+  pool.dynamicBufferOwner = null;
+  pool.mesh = null;
+  pool.capacity = 0;
+  pool.records?.clear?.();
+  pool.seen?.clear?.();
+  pool.scene = null;
+  return true;
+}
+
+function disposeShipAuxPool(pool, scene, disposeGpu) {
+  if (!pool || pool._rendererDisposed === true) return false;
+  pool._rendererDisposed = true;
+  pool._destroyed = true;
+  pool.requestedShieldCapacity = 0;
+  pool.requestedNavCapacity = 0;
+  const materials = new Set([pool.shield?.material, pool.nav?.material].filter(Boolean));
+  for (const branch of [pool.shield, pool.nav]) {
+    if (!branch) continue;
+    unregisterRendererDynamicOwner(branch.dynamicBufferOwner);
+    removeRendererRoot(scene, branch.mesh);
+    if (disposeGpu) {
+      const geometry = branch.geometry || branch.mesh?.geometry;
+      if (geometry && geometry !== SHIP_AUX_NAV_GEOMETRY && typeof geometry.dispose === 'function') {
+        try { geometry.dispose(); } catch (_) { /* best effort */ }
+      }
+      invokeRendererDisposer(branch.mesh, 'ship auxiliary pool mesh', true);
+    }
+    branch.material = null;
+    branch.dynamicBufferOwner = null;
+    branch.mesh = null;
+    branch.capacity = 0;
+  }
+  if (disposeGpu) {
+    for (const material of materials) invokeRendererDisposer(material, 'ship auxiliary pool material', true);
+  }
+  pool.scene = null;
+  return true;
+}
+
+function abandonAsteroidInstancePool(pool, scene) {
+  if (!pool || pool._rendererDisposed === true) return false;
+  pool._rendererDisposed = true;
+  for (const entityId of [...(pool.byEntity?.keys?.() || [])]) {
+    try { releaseAsteroidInstancesForEntity(pool, entityId); } catch (_) { /* best effort */ }
+  }
+  for (const bucket of pool.variants || []) {
+    unregisterRendererDynamicOwner(bucket && bucket.dynamicBufferOwner);
+    removeRendererRoot(scene, bucket && bucket.mesh);
+    if (bucket) {
+      bucket.dynamicBufferOwner = null;
+      bucket.mesh = null;
+      bucket.geometry = null;
+      bucket.material = null;
+      bucket.capacity = 0;
+      bucket.records?.splice?.(0);
+      bucket.entityIds?.splice?.(0);
+    }
+  }
+  pool.byEntity?.clear?.();
+  pool.scene = null;
+  return true;
+}
+
+function disposeRendererMeshRoots(owner, scene, disposeGpu) {
+  const meshes = owner && owner._meshes;
+  if (!meshes || typeof meshes[Symbol.iterator] !== 'function') return;
+  const state = owner.state;
+  for (const [id, mesh] of [...meshes]) {
+    if (!mesh) {
+      meshes.delete?.(id);
+      continue;
+    }
+    try { owner._unbindPresentationMesh?.(id, mesh); } catch (_) { /* best effort */ }
+    try { releaseAsteroidInstancesForEntity(owner._asteroidInstancePool, id); } catch (_) { /* best effort */ }
+    removeRendererRoot(scene, mesh);
+    if (disposeGpu) disposeRendererObject(mesh, `entity mesh ${id}`);
+    const entity = state?.entities?.get?.(id);
+    clearEntityMeshReference(entity, mesh);
+    meshes.delete?.(id);
+  }
+  meshes.clear?.();
+}
+
+function clearRendererStateReferences(owner) {
+  const state = owner && owner.state;
+  const renderState = state && state.render;
+  if (renderState && typeof renderState === 'object') {
+    for (const key of RENDER_STATE_REFERENCE_KEYS) {
+      if (Object.prototype.hasOwnProperty.call(renderState, key)) renderState[key] = null;
+    }
+    renderState.deferNoncriticalMeshStreaming = false;
+    renderState.firstPlayablePaintAt = null;
+    renderState.firstPlayableFrameAt = null;
+    renderState.gpu = null;
+    renderState.softwareRenderer = false;
+    renderState.dynResScale = 1;
+  }
+  if (state && state.camera && state.camera.obj === owner.cam?.obj) state.camera.obj = null;
+  const helperBindings = owner && owner._helperBindings;
+  if (helperBindings?.target && helperBindings.values) {
+    for (const [key, value] of Object.entries(helperBindings.values)) {
+      if (helperBindings.target[key] === value) helperBindings.target[key] = null;
+    }
+  }
+  if (owner) owner._helperBindings = null;
+}
+
+/**
+ * Retire all resources owned by one renderer generation.
+ *
+ * The helper is intentionally dependency-injected only at the subsystem boundary (the owner
+ * fields); it does not reach into VFX, registry, loader, pool, or global-cache ownership. A lost
+ * WebGL context takes the abandon path: roots and references are detached, but old-context GPU
+ * resource disposers are not invoked.
+ */
+export function disposeRendererOwnedResources(owner, options = {}) {
+  if (!owner || owner._rendererResourcesDisposed === true) return false;
+  owner._rendererResourcesDisposed = true;
+  const contextLost = options.contextLost === true || owner._contextLost === true;
+  const disposeGpu = !contextLost;
+  const scene = owner.scene || null;
+  const state = owner.state || null;
+
+  // Generation/cancellation work must be retired before any owned root is removed. Async manager
+  // cleanup remains responsible for boundaries still in preparation; generation guards prevent it
+  // from publishing or disposing through this renderer after lifecycle.destroy().
+  try { owner._rendererLifecycle?.destroy?.(); } catch (_) { /* best effort */ }
+  try { owner._contextRestoreReceipt?.cancel?.(); } catch (_) { /* best effort */ }
+  try { releaseOpeningGraphPublication(owner); } catch (_) { /* best effort */ }
+  owner._contextRestoreReceipt = null;
+  const boundaryManager = owner._sectorBoundaryPreparations;
+  try {
+    boundaryManager?.abortAll?.('renderer-destroyed');
+  } catch (error) {
+    if (typeof console !== 'undefined') console.warn('[render] sector boundary abort failed', error);
+  }
+  for (const record of [owner._incomingSectorPrewarm, owner._currentSectorPrewarm, owner._authoredSectorPrewarmPending]) {
+    if (record) record.active = false;
+  }
+  const residency = owner._assetResidency;
+  if (contextLost) {
+    try { residency?.handleContextLost?.(); } catch (_) { /* best effort */ }
+  }
+  const releasedResidencyOwners = new Set();
+  if (residency && typeof residency.releaseOwner === 'function') {
+    for (const record of [owner._incomingSectorPrewarm, owner._currentSectorPrewarm, owner._authoredSectorPrewarmPending]) {
+      const residencyOwner = record && record.owner;
+      if (!residencyOwner || releasedResidencyOwners.has(residencyOwner)) continue;
+      releasedResidencyOwners.add(residencyOwner);
+      try { residency.releaseOwner(residencyOwner, 'renderer-destroyed'); } catch (_) { /* best effort */ }
+    }
+  }
+  if (owner._adaptive?.setEnabled) {
+    try { owner._adaptive.setEnabled(false); } catch (_) { /* best effort */ }
+  }
+
+  // Restore temporary diagnostic overrides before disposing the scene they reference.
+  try { state?.render?.perfEntityIsolation?.restore?.(); } catch (_) { /* best effort */ }
+  try { state?.render?.perfMaterialIsolation?.restore?.(); } catch (_) { /* best effort */ }
+
+  // Detach presentation/lifecycle roots first, then unregister dynamic upload ownership before
+  // retiring the instance meshes those callbacks reference.
+  try { owner._dynamicBuffers?.disarm?.(owner._dynamicBuffers.epoch); } catch (_) { /* best effort */ }
+  if (disposeGpu) {
+    try { owner._livingHullPresentation?.dispose?.(); } catch (_) { /* best effort */ }
+  } else {
+    // Detach only: the controller's meshes/materials belong to the lost context and must not emit
+    // dispose events through a context that may later be restored or replaced.
+    try { owner._livingHullPresentation?.detach?.(); } catch (_) { /* best effort */ }
+  }
+  disposeRendererMeshRoots(owner, scene, disposeGpu);
+  disposeContactShadowPool(owner._contactShadowPool, scene, disposeGpu);
+  disposeShipAuxPool(owner._shipAuxPool, scene, disposeGpu);
+  if (disposeGpu) {
+    try { disposeAsteroidInstancePool(owner._asteroidInstancePool); } catch (error) {
+      if (typeof console !== 'undefined') console.warn('[render] asteroid instance pool dispose failed', error);
+    }
+  } else {
+    abandonAsteroidInstancePool(owner._asteroidInstancePool, scene);
+  }
+  if (owner._hazardVisuals && Array.isArray(owner._hazardVisuals)) {
+    for (const root of owner._hazardVisuals) {
+      removeRendererRoot(scene, root);
+      if (disposeGpu) disposeRendererObject(root, 'hazard visual');
+    }
+    owner._hazardVisuals.length = 0;
+  }
+  try { owner._presentationWorld?.dispose?.(); } catch (_) { /* best effort */ }
+
+  // Scene/background and post subsystems own independent GPU graphs. Retire them before their
+  // renderer and leave the shared module caches alone.
+  const background = owner.spaceBg;
+  const parallax = options.parallaxLayers || parallaxLayers;
+  const collision = owner.collisionDebug;
+  if (disposeGpu) {
+    invokeRendererDisposer(background, 'space background', true);
+    invokeRendererDisposer(parallax, 'parallax layers', true);
+    invokeRendererDisposer(collision, 'collision debug', true);
+    invokeRendererDisposer(owner.bloom, 'bloom', true);
+    invokeRendererDisposer(owner._renderGraph, 'render graph', true);
+    if (owner._envMap && typeof owner._envMap.dispose === 'function') {
+      invokeRendererDisposer(owner._envMap, 'environment map', true);
+    }
+    invokeRendererDisposer(owner._gpuTimers, 'GPU timers', true);
+  }
+  // The coordinator's scene hook and owner registry are shared by renderer-created pools and
+  // dependent scene producers. Retire it after those producers have released their own roots.
+  try { owner._dynamicBuffers?.dispose?.(); } catch (_) { /* best effort */ }
+  try { setEnvMapForShips(null); } catch (_) { /* best effort */ }
+  if (scene) {
+    scene.environment = null;
+    scene.background = null;
+  }
+
+  invokeRendererDisposer(owner.diag, 'diagnostics', true);
+  try { owner._glInstrumentation?.uninstall?.(); } catch (_) { /* best effort */ }
+  try { owner._domInstrumentation?.uninstall?.(); } catch (_) { /* best effort */ }
+
+  // WebGLRenderer is deliberately last: every renderer-dependent subsystem and owned root has
+  // released its resources or been abandoned before the context/cache owner is retired.
+  invokeRendererDisposer(owner.renderer, 'WebGLRenderer', true);
+  clearRendererStateReferences(owner);
+
+  owner._rendererLifecycle = null;
+  owner._contextRestoreReceipt = null;
+  owner._resizeHandler = null;
+  owner._videoSettingsOff = null;
+  owner._firstPresentGpuAdmission = null;
+  owner._firstPresentGpuReady = false;
+  owner._rebuildRestoredGpuResources = null;
+  owner._envMap = null;
+  owner._lostEnvMap = null;
+  owner._contextRecovery = null;
+  owner._adaptive = null;
+  owner._sectorPaletteRig = null;
+  owner._sectorPaletteTarget = null;
+  owner._sectorLightingTarget = null;
+  owner._sectorPost = null;
+  owner._sectorPostTarget = null;
+  owner._sectorPostTransition = null;
+  owner._keyLight = null;
+  owner._activeShadowCamera = null;
+  owner._shadowReceiverTally = null;
+  owner._shadowReceiverCount = 0;
+  owner._shadowReceiversDirty = false;
+  owner._shadowMapDirty = false;
+  owner._shadowRefreshScheduled = false;
+  owner._shadowFollowKey = null;
+  owner._keyLightOffset = null;
+  owner._w2sCamCache = null;
+  owner._gpuFrameOrigin = null;
+  owner._perfFrameOrigin = null;
+  owner._presentationFrame = null;
+  owner._snapshotSourceTick = null;
+  owner._activityFrame = null;
+  owner._activityFrameTick = null;
+  owner._frameMembrane = null;
+  owner.authoredPartLibraryReady = null;
+  owner.rockSurfaceLibraryReady = null;
+  owner.viewport = null;
+  owner._postFrameOptions = null;
+  owner._postOptionsSig = null;
+  owner._postNativeFallbackReason = null;
+  owner._renderGraphFallbackReason = null;
+  owner._renderGraphUnavailable = false;
+  owner._meshBuildQueueHead = 0;
+  owner._meshResidencyShipCandidates = [];
+  owner._meshResidencyOtherCandidates = [];
+  owner._meshResidencySweep = null;
+  owner._entityViewBounds = null;
+  owner._entityViewDiagnostics = null;
+  owner._hlodDiagnostics = null;
+  owner._authoredInstanceSyncOptions = null;
+  owner._asteroidInstanceSyncOptions = null;
+  owner._presentationHandleScratch = null;
+  owner._presentationQueryOptions = null;
+  owner._deferNoncriticalMeshStreaming = false;
+  owner._postOpeningPipelineAdmissionReleased = false;
+  owner._pendingPostOpeningSector = null;
+  owner._openingEnvFrozen = false;
+  owner._openingFirstPicturePrepared = false;
+  owner._openingPictureHoldSinceMs = null;
+  owner._firstPlayablePaintScheduled = false;
+  owner._meshReconcileDirty = false;
+  owner._initialMeshReconcileComplete = false;
+  owner._renderResidencyPollS = 0;
+  owner._sectorHandoffStreamHoldS = 0;
+  owner._sectorHandoffSectorId = null;
+  owner._openingGraphPublicationGate = null;
+  owner._presentationWorld = null;
+  owner._presentationPublisher = null;
+  owner._presentationQueries = null;
+  owner._snapshotFence = null;
+  owner._persistentSubmitLanes = null;
+  owner._entityFrame = null;
+  owner._sectorPrewarmGeneration = 0;
+  owner._dynamicBuffers = null;
+  owner._contactShadowPool = null;
+  owner._shipAuxPool = null;
+  owner._asteroidInstancePool = null;
+  owner._livingHullPresentation = null;
+  owner._assetResidency = null;
+  owner._sectorBoundaryPreparations = null;
+  owner._incomingSectorPrewarm = null;
+  owner._currentSectorPrewarm = null;
+  owner._authoredSectorPrewarmPending = null;
+  owner._authoredSectorPrewarmPendingId = null;
+  owner._hazardVisuals = [];
+  owner._meshBuildQueue = [];
+  owner._meshBuildQueuedIds = null;
+  owner._meshes = null;
+  owner.renderer = null;
+  owner.scene = null;
+  owner.cam = null;
+  owner.spaceBg = null;
+  owner.vf = null;
+  owner.bloom = null;
+  owner._renderGraph = null;
+  owner._gpuTimers = null;
+  owner.diag = null;
+  owner._glInstrumentation = null;
+  owner._domInstrumentation = null;
+  owner.state = null;
+  owner.bus = null;
+  return true;
+}
+
 export const render = {
   name: 'render',
   init(ctx) {
-    if (this._rendererLifecycle) this.destroy();
+    if (this._rendererLifecycle) {
+      this.destroy();
+      // A caller may have already flipped the lifecycle inactive (for example while handling a
+      // host shutdown) without invoking the renderer's public destroy method. Do not let init then
+      // overwrite a still-referenced dead generation.
+      if (this._rendererLifecycle) {
+        disposeRendererOwnedResources(this, { contextLost: this._contextLost === true });
+      }
+    }
+    this._rendererResourcesDisposed = false;
+    this._rendererGeneration = (this._rendererGeneration || 0) + 1;
+    const rendererGeneration = this._rendererGeneration;
+    const rendererGenerationIsActive = () => (
+      this._rendererGeneration === rendererGeneration && this._rendererResourcesDisposed !== true
+    );
     const lifecycle = createRendererLifecycleBindings({ bus: ctx.bus });
     this._rendererLifecycle = lifecycle;
     const onBus = (event, callback) => lifecycle.onBus(event, callback);
@@ -2678,6 +3102,8 @@ export const render = {
     // shader ramp and a seam armed later would miss it. Install-on-enable: with the opt-in absent
     // nothing is wrapped at all, so the hottest GL calls in the frame carry no wrapper and not even
     // a boolean read. Counting only — see src/core/perfCounters.js for why no timing lives here.
+    this._glInstrumentation = null;
+    this._domInstrumentation = null;
     if (perfCountersRequested()) {
       const perfCounters = ensurePerfRuntime(state).tier1;
       // Publish the exact GameState-owned sink before any authored asset runtime can be created.
@@ -2686,10 +3112,10 @@ export const render = {
       bindAuthoredAssetPerfCounters(renderer, perfCounters);
       perfCounters.setEnabled(true);
       const instrumentedGl = renderer.getContext();
-      if (instrumentedGl) installGlInstrumentation(instrumentedGl, perfCounters);
+      if (instrumentedGl) this._glInstrumentation = installGlInstrumentation(instrumentedGl, perfCounters);
       // Family H (DOM mutations / layout reads / longtasks): same install-on-enable contract —
       // with the opt-in absent no observer is constructed and no prototype is patched.
-      installDomInstrumentation(perfCounters);
+      this._domInstrumentation = installDomInstrumentation(perfCounters);
     }
 
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -3155,6 +3581,7 @@ export const render = {
         const delayCompleted = await lifecycle.wait(140);
         if (!delayCompleted || !lifecycle.isActive()) return;
         if (typeof this._bakeEnv === 'function') this._bakeEnv();
+        if (!lifecycle.isActive()) return;
         syncVisiblePointLightBudget(scene, state.settings && state.settings.video);
         compileShadowDepthPipelines({
           renderer,
@@ -3172,13 +3599,22 @@ export const render = {
         await admitOpeningUnitsAcrossSlices({
           units: uniqueAdmissionUnits(leaves),
           beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
-          compileOne: (subject) => Promise.resolve(this._compilePostRoute(route, subject, cam.obj, scene)),
+          compileOne: (subject) => {
+            if (!lifecycle.isActive()) return Promise.reject(new Error('renderer lifecycle destroyed during opening admission'));
+            return Promise.resolve(this._compilePostRoute(route, subject, cam.obj, scene));
+          },
           touchOne: (subject) => (
-            this.bloom && typeof this.bloom.touchScenePipelines === 'function'
+            !lifecycle.isActive()
+              ? Promise.reject(new Error('renderer lifecycle destroyed during opening touch'))
+              : this.bloom && typeof this.bloom.touchScenePipelines === 'function'
               ? this.bloom.touchScenePipelines(subject, cam.obj, scene)
               : touchSubjectOnExactTarget(renderer, null, subject, cam.obj, scene)
           ),
-          yieldToMain: yieldToBrowser,
+          yieldToMain: async () => {
+            if (!lifecycle.isActive()) throw new Error('renderer lifecycle destroyed during opening yield');
+            await yieldToBrowser();
+            if (!lifecycle.isActive()) throw new Error('renderer lifecycle destroyed during opening yield');
+          },
         });
       } catch (error) {
         console.warn('[render] first-present GPU admission failed', error);
@@ -3298,10 +3734,14 @@ export const render = {
       startBudgetPerTurn: RUNTIME_MESH_BUILD_BUDGET,
       scheduleNextStartTurn: scheduleSectorBoundaryBuildTurn,
       captureBeforeStart: (record) => {
+        if (!rendererGenerationIsActive()) return;
         record.presentationAdmissionBefore = record.entity?.presentationAdmission;
       },
-      buildBoundary: (record) => this.vf.build(record.entity),
+      buildBoundary: (record) => (
+        rendererGenerationIsActive() && this.vf ? this.vf.build(record.entity) : null
+      ),
       mountBoundary: (record) => {
+        if (!rendererGenerationIsActive()) return;
         const boundary = record.boundary;
         const entity = record.entity;
         const local = this._frameMembrane.toLocal(entity.pos, _meshLocalXZ);
@@ -3316,22 +3756,28 @@ export const render = {
         boundary.visible = false;
         scene.add(boundary);
       },
-      requestPreparation: (record) => requestAuthoredUpgrade(record.boundary, renderer, scene, {
-        deferPackagePoolActivation: true,
-        deferBoundaryPublication: true,
-        overlapAuthoredPipelineCompile: false,
-        residencyRole: 'sector-prepared-boundary',
-        sectorId: record.sectorId,
-        isResidencyOwnerActive: () => record.active === true
-          && record.boundary && record.boundary.parent === scene
-          && record.entity && record.entity.alive !== false,
-      }),
+      requestPreparation: (record) => {
+        if (!rendererGenerationIsActive()) return Promise.resolve({ cancelled: true });
+        return requestAuthoredUpgrade(record.boundary, renderer, scene, {
+          deferPackagePoolActivation: true,
+          deferBoundaryPublication: true,
+          overlapAuthoredPipelineCompile: false,
+          residencyRole: 'sector-prepared-boundary',
+          sectorId: record.sectorId,
+          isResidencyOwnerActive: () => rendererGenerationIsActive()
+            && record.active === true
+            && record.boundary && record.boundary.parent === scene
+            && record.entity && record.entity.alive !== false,
+        });
+      },
       isPrepared: (record) => {
+        if (!rendererGenerationIsActive()) return false;
         const authoredState = record.boundary?.userData?.authoredAssetState;
         return authoredState === 'authored-prepared'
           || authoredState === 'same-semantic-fallback-prepared';
       },
-      validate: (record) => record.prewarm?.active === true
+      validate: (record) => rendererGenerationIsActive()
+        && record.prewarm?.active === true
         && record.generation === record.prewarm.generation
         && record.entity?.alive !== false
         && state.entities.get(record.id) === record.entity
@@ -3348,6 +3794,7 @@ export const render = {
         && !this._meshes.has(record.id)
         && !record.entity.mesh,
       publishBoundary: (record) => {
+        if (!rendererGenerationIsActive()) return false;
         return publishPreparedSectorBoundary(record, {
           publishAuthoredBoundary: publishPreparedAuthoredBoundary,
           seatBoundary: ({ entity, boundary }) => {
@@ -3365,16 +3812,35 @@ export const render = {
           markShadowReceiversDirty: () => { this._markShadowReceiversDirty(); },
         });
       },
-      disposeBoundary: (record) => disposePreparedSectorBoundary(record, {
-        unbindPresentationMesh: (id, boundary) => this._unbindPresentationMesh(id, boundary),
-        releaseAsteroid: (id) => releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id),
-        meshes: this._meshes,
-        removeBoundary: (boundary) => { if (boundary.parent === scene) scene.remove(boundary); },
-        disposePreparedBoundary: disposePreparedAuthoredBoundary,
-        disposeBoundaryObject: disposeObject,
-        markShadowReceiversDirty: () => { this._markShadowReceiversDirty(); },
-      }),
+      disposeBoundary: (record) => {
+        const recordContextGeneration = record && record.contextGeneration;
+        const currentContextGeneration = () => this._contextRecovery?.generation;
+        return disposePreparedSectorBoundary(record, {
+          unbindPresentationMesh: (id, boundary) => rendererGenerationIsActive()
+            ? this._unbindPresentationMesh(id, boundary) : false,
+          releaseAsteroid: (id) => rendererGenerationIsActive()
+            ? releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id) : false,
+          meshes: this._meshes,
+          removeBoundary: (boundary) => { if (boundary.parent === scene) scene.remove(boundary); },
+          disposePreparedBoundary: (boundary) => (
+            rendererGenerationIsActive() && this._contextLost !== true
+              && recordContextGeneration === currentContextGeneration()
+              ? disposePreparedAuthoredBoundary(boundary) : false
+          ),
+          disposeBoundaryObject: (boundary) => {
+            // A renderer destroy after context loss must abandon old-context resources; the generic
+            // Object3D walk is reserved for a live-context teardown.
+            if (!rendererGenerationIsActive() || this._contextLost === true
+                || recordContextGeneration !== currentContextGeneration()) return false;
+            return disposeObject(boundary);
+          },
+          markShadowReceiversDirty: () => {
+            if (rendererGenerationIsActive()) this._markShadowReceiversDirty();
+          },
+        });
+      },
       restoreEntity: (record) => {
+        if (!rendererGenerationIsActive()) return;
         const entity = record.entity;
         if (!record.beforeStartCaptured
             || !entity
@@ -4161,15 +4627,19 @@ export const render = {
     // `out` is forwarded so HUD-side hot callers can opt into the no-allocation form; every existing
     // single-argument call site is unaffected. Passing the helper as a bare function reference stays
     // safe regardless — worldToScreen ignores a non-object second argument (a .map() index, say).
-    ctx.helpers.worldToScreen = (v, out) => this.worldToScreen(v, out);
-    ctx.helpers.raycastToPlane = (ndc) => this.raycastToPlane(ndc);
-    ctx.helpers.addTrauma = (a) => cam.addTrauma(a);
-    ctx.helpers.socketWorldPose = (id, name) => this.socketWorldPose(id, name);
-    ctx.helpers.socketWorldPos = (id, name) => this.socketWorldPos(id, name);
-    ctx.helpers.entityMeshMeta = (id) => this.entityMeshMeta(id);
-    ctx.helpers.resolveAsteroidInstanceEntityId = (object, instanceId) => (
-      resolveAsteroidInstanceEntityId(this._asteroidInstancePool, object, instanceId)
-    );
+    const helperBindings = {
+      worldToScreen: (v, out) => this.worldToScreen(v, out),
+      raycastToPlane: (ndc) => this.raycastToPlane(ndc),
+      addTrauma: (a) => cam.addTrauma(a),
+      socketWorldPose: (id, name) => this.socketWorldPose(id, name),
+      socketWorldPos: (id, name) => this.socketWorldPos(id, name),
+      entityMeshMeta: (id) => this.entityMeshMeta(id),
+      resolveAsteroidInstanceEntityId: (object, instanceId) => (
+        resolveAsteroidInstanceEntityId(this._asteroidInstancePool, object, instanceId)
+      ),
+    };
+    Object.assign(ctx.helpers, helperBindings);
+    this._helperBindings = { target: ctx.helpers, values: helperBindings };
 
     onBus('entity:spawned', () => { this._meshReconcileDirty = true; });
     onBus('world:residency', () => { this._meshReconcileDirty = true; });
@@ -4852,6 +5322,7 @@ export const render = {
         if (this._incomingSectorPrewarm === prewarm) this._incomingSectorPrewarm = null;
         return prepared;
       }).catch(async (error) => {
+        if (!rendererGenerationIsActive()) return null;
         const abortingRecords = new Set(prewarm.boundaryRecords || []);
         const abortOutcomes = await this._sectorBoundaryPreparations.abortRecords(
           abortingRecords,
@@ -4883,6 +5354,7 @@ export const render = {
         console.warn('[render] sector authored prewarm failed; retaining procedural boundaries', error);
         return null;
       }).finally(() => {
+        if (!rendererGenerationIsActive()) return;
         if (this._authoredSectorPrewarmPending === prewarm) {
           this._authoredSectorPrewarmPendingId = null;
           this._authoredSectorPrewarmPending = null;
@@ -4951,11 +5423,13 @@ export const render = {
   },
 
   destroy() {
-    this._contextRestoreReceipt?.cancel?.();
+    try { this._contextRestoreReceipt?.cancel?.(); } catch (_) { /* best effort */ }
     this._contextRestoreReceipt = null;
     const lifecycle = this._rendererLifecycle;
     if (!lifecycle) return false;
     const destroyed = lifecycle.destroy();
+    if (!destroyed && this._rendererResourcesDisposed === true) return false;
+    disposeRendererOwnedResources(this, { contextLost: this._contextLost === true });
     this._resizeHandler = null;
     this._videoSettingsOff = null;
     return destroyed;
