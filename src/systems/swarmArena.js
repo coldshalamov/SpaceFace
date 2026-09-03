@@ -60,8 +60,19 @@ export const SWARM_DEBRIS_TARGET = 14;
  */
 export const SWARM_DEBRIS_MAX = 20;
 
-export const SWARM_DEBRIS_INNER = 130;
-export const SWARM_DEBRIS_OUTER = 480;
+/**
+ * The band the monoliths sit in.
+ *
+ * Sized to the camera, and re-sized when the camera changed. The original 130-480 band was drawn
+ * for the shipped chase distance; once the swarm camera stood further off to make the fight
+ * visible, a screenshot showed the opposite problem — the rocks were now spread so wide that only
+ * one or two were in frame at a time, and a wall you cannot see is a wall you will not use.
+ *
+ * A tighter band puts the same fourteen monoliths where the fight is: inside the framing, dense
+ * enough that a Throw always has a target, still clear of the player by SAFE_RADIUS.
+ */
+export const SWARM_DEBRIS_INNER = 115;
+export const SWARM_DEBRIS_OUTER = 340;
 export const SWARM_DEBRIS_SIZE_MIN = 16;
 export const SWARM_DEBRIS_SIZE_MAX = 44;
 
@@ -79,8 +90,14 @@ export const SWARM_DEBRIS_KEEP_RADIUS = 900;
  * the wider keep radius stops rocks being churned every time they fall a little behind.
  */
 export const SWARM_DEBRIS_FIGHT_RADIUS = SWARM_DEBRIS_OUTER + 60;
-/** Minimum gap between two rock SURFACES, so the field never fuses into a wall. */
-export const SWARM_DEBRIS_SEPARATION = 46;
+/**
+ * Minimum gap between two rock SURFACES, so the field never fuses into one wall.
+ *
+ * Tightened with the band. It is a SURFACE gap, so 34 units is still a clear lane between two
+ * monoliths — comfortably wider than the hull that has to fly through it — while letting the same
+ * fourteen rocks fit the smaller area the new camera framing wants them in.
+ */
+export const SWARM_DEBRIS_SEPARATION = 34;
 /** Nothing spawns closer than this to the player, whatever the roll says. */
 export const SWARM_DEBRIS_SAFE_RADIUS = 120;
 
@@ -102,7 +119,10 @@ const SWARM_WRECK_RELEASE_S = 6;
 
 const SWARM_DEBRIS_TTL_S = 900;
 const SWARM_DEBRIS_RELEASE_S = 20;
-const PLACEMENT_TRIES = 12;
+// Attempts per rock before giving up on a spot. Raised with the tighter band: at twelve, a crowded
+// annulus left the field one or two monoliths short of its target on some seeds, which is a
+// silently thinner arena rather than an error anybody would notice.
+const PLACEMENT_TRIES = 40;
 const TYPE_ID = 'ast_common_rock';
 const SOLID_TYPES = new Set(['asteroid', 'station', 'wreck']);
 
