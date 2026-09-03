@@ -40,6 +40,13 @@ import { isSwarmRuleset, swarmWaveEndsInMenu } from '../src/systems/survivalSwar
 import { ENEMY_TYPES } from '../src/data/enemies.js';
 import { SPAWN_BUDGET_DEFAULT_MAX } from '../src/data/survivalActs.js';
 import { mulberry32 } from '../src/core/rng.js';
+import { COMBAT_LAB_STARTER_PACKAGES } from '../src/data/combatLabSetups.js';
+import { SHIPS } from '../src/data/ships.js';
+import { WEAPONS } from '../src/data/weapons.js';
+import { MODULES } from '../src/data/modules.js';
+import { buildSlotList, fits, outfitBudgetForFittings } from '../src/systems/ships.js';
+import { SURVIVAL_DRAFT_OFFERS, offerDraft } from '../src/data/survivalDraft.js';
+import { SWARM_DRAFT_OFFERS } from '../src/data/swarmDraft.js';
 
 const DT = 1 / 60;
 const ARENA = 'helios_core';
@@ -395,6 +402,127 @@ test('a swarm run does not stop for a draft on a fight wave — it rolls straigh
   // resolved on arrival.
   const transitions = named(h.emitted, 'run:transitioned').map((e) => e.payload.phase);
   assert.ok(transitions.includes('draft'), 'the phase machine still used the legal edge');
+});
+
+// ---------------------------------------------------------------------------
+// the upgrade path
+// ---------------------------------------------------------------------------
+
+test('the swarm draft is a real upgrade path, not three ways to swap a gun', () => {
+  // The arc's pool is fourteen weapons and the starter hull holds three, so after three picks an
+  // endless run would offer nothing but sideways trades forever. Walk the actual drafts of a run.
+  for (const starter of COMBAT_LAB_STARTER_PACKAGES) {
+    const ship = SHIPS.find((s) => s.id === starter.hullId);
+    const slots = buildSlotList(ship);
+    const fittings = slots.map(() => null);
+    for (const entry of starter.loadout) fittings[entry.slotIndex] = entry.defId;
+
+    const arc = offerDraft({
+      seed: SEED, hullId: starter.hullId, wave: 5, fittings: fittings.slice(), pickCount: 0, count: 3,
+    });
+    const swarm = offerDraft({
+      seed: SEED,
+      hullId: starter.hullId,
+      wave: 5,
+      fittings: fittings.slice(),
+      pickCount: 0,
+      count: 3,
+      ruleset: SWARM_RULESET,
+    });
+    assert.ok(
+      swarm.eligibleCount > arc.eligibleCount,
+      `${starter.id}: the swarm pool is deeper (${swarm.eligibleCount} vs ${arc.eligibleCount})`,
+    );
+    // While the hull has room, every card should be something the player does not have yet.
+    for (const offer of swarm.offers) {
+      assert.equal(offer.replaces, null, `${starter.id}: first draft adds rather than swaps`);
+    }
+  }
+});
+
+test('a swarm run keeps filling slots for several drafts before it runs out of room', () => {
+  const starter = COMBAT_LAB_STARTER_PACKAGES.find((p) => p.id === 'physics_toolkit');
+  const ship = SHIPS.find((s) => s.id === starter.hullId);
+  const fittings = buildSlotList(ship).map(() => null);
+  for (const entry of starter.loadout) fittings[entry.slotIndex] = entry.defId;
+
+  let additions = 0;
+  for (let pick = 0; pick < 4; pick++) {
+    const wave = (pick + 1) * SWARM_DRAFT_EVERY;
+    const result = offerDraft({
+      seed: SEED, hullId: starter.hullId, wave, fittings, pickCount: pick, count: 3,
+      ruleset: SWARM_RULESET,
+    });
+    assert.ok(result.offers.length === 3, `wave ${wave} still offers three cards`);
+    const taken = result.offers[0];
+    if (taken.replaces == null) additions++;
+    fittings[taken.slotIndex] = taken.defId;
+  }
+  assert.equal(additions, 4, 'the first four drafts of a run were all straight additions');
+  // And the hull ends up carrying more than the three weapons it started with.
+  assert.ok(fittings.filter(Boolean).length >= starter.loadout.length + 4);
+});
+
+test('the Massline Rig exists and can actually carry the rope', () => {
+  // Every other starter can hold the physics WEAPONS but not the physics ROPE: the massline heads
+  // are M-size utility and only the Drifter has M utility slots among the ungated hulls.
+  const rig = COMBAT_LAB_STARTER_PACKAGES.find((p) => p.id === 'massline_rig');
+  assert.ok(rig, 'the swarm has a hull built for the rope');
+  const ship = SHIPS.find((s) => s.id === rig.hullId);
+  const slots = buildSlotList(ship);
+  const fittings = slots.map(() => null);
+  for (const entry of rig.loadout) {
+    assert.ok(slots[entry.slotIndex], `slot ${entry.slotIndex} exists`);
+    fittings[entry.slotIndex] = entry.defId;
+  }
+  const budget = outfitBudgetForFittings(rig.hullId, fittings);
+  assert.ok(budget.fits, 'and the authored loadout is inside its outfit budget');
+
+  const offers = offerDraft({
+    seed: SEED, hullId: rig.hullId, wave: 5, fittings, pickCount: 0, count: 3,
+    ruleset: SWARM_RULESET,
+  });
+  const ids = offers.offers.map((o) => o.defId);
+  assert.ok(offers.eligibleCount > 0);
+  // At least one massline head is reachable from this hull's draft pool.
+  const heads = ['mod_transverse_snare_m', 'mod_monofilament_sweep_m', 'mod_tractor_beam_m', 'mod_massline_spool_m'];
+  const reachable = SWARM_DRAFT_OFFERS.filter((o) => heads.includes(o.defId));
+  assert.ok(reachable.length >= 3, 'the rope heads are in the pool');
+  assert.ok(Array.isArray(ids));
+});
+
+test('every swarm draft card is a live fitting that lands somewhere on a live starter hull', () => {
+  const defs = new Map([
+    ...WEAPONS.map((d) => [d.id, d]),
+    ...MODULES.map((d) => [d.id, d]),
+  ]);
+  for (const offer of SWARM_DRAFT_OFFERS) {
+    const def = defs.get(offer.defId);
+    assert.ok(def, `${offer.defId} is a live fitting`);
+    assert.ok(typeof offer.verb === 'string' && offer.verb.length > 0);
+    assert.ok(typeof offer.blurb === 'string' && offer.blurb.length > 0);
+    // No percentages in the copy — same rule the weapon pool follows.
+    assert.ok(!/%|\+\d|\d+x/.test(offer.blurb), `${offer.id} blurb names an effect, not a number`);
+    const landsSomewhere = COMBAT_LAB_STARTER_PACKAGES.some((starter) => {
+      const ship = SHIPS.find((s) => s.id === starter.hullId);
+      return buildSlotList(ship).some((slot) => fits(slot, def));
+    });
+    assert.ok(landsSomewhere, `${offer.defId} fits at least one starter hull — no dead cards`);
+  }
+});
+
+test('the Gauntlet draft pool is exactly what it always was', () => {
+  const starter = COMBAT_LAB_STARTER_PACKAGES.find((p) => p.id === 'physics_toolkit');
+  const ship = SHIPS.find((s) => s.id === starter.hullId);
+  const fittings = buildSlotList(ship).map(() => null);
+  for (const entry of starter.loadout) fittings[entry.slotIndex] = entry.defId;
+  const arc = offerDraft({ seed: SEED, hullId: starter.hullId, wave: 1, fittings, pickCount: 0, count: 3 });
+  for (const offer of arc.offers) {
+    assert.ok(
+      SURVIVAL_DRAFT_OFFERS.some((o) => o.id === offer.id),
+      `${offer.id} came from the arc's own pool`,
+    );
+  }
 });
 
 test('survivalWave is still a strict no-op for the arc: the pinned waves are untouched', () => {

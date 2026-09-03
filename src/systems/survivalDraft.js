@@ -170,6 +170,9 @@ export const survivalDraft = {
       fittings: loadout.fittings,
       pickCount: Array.isArray(run.draftHistory) ? run.draftHistory.length : 0,
       count: SURVIVAL_DRAFT_CHOICES,
+      // The ruleset selects the POOL. A swarm run also draws attack traits and support modules,
+      // because a three-slot weapon pool has nothing left to say after three picks.
+      ruleset: run.ruleset,
     };
     this._rerolls = 0;
     this._pendingReroll = null;

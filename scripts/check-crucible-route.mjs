@@ -416,10 +416,14 @@ async function main() {
         if (alive < t.minAlive) t.minAlive = alive;
         if (alive > t.maxAlive) t.maxAlive = alive;
         if (!t.waveSeen.includes(st.run.wave)) t.waveSeen.push(st.run.wave);
-        return { phase: st.run.phase, wave: st.run.wave, alive };
+        return { phase: st.run.phase, wave: st.run.wave, alive, drafts: t.drafts };
       });
+      const t0 = step;
       phase = step.phase;
-      if (phase === 'draft' || phase === 'refit' || phase === 'ended') break;
+      // Stop when a SURFACE actually opens, not when the phase reads `draft`. A swarm run passes
+      // through `draft` between every wave and resolves it on arrival, so polling the phase caught
+      // that transient pass-through and reported a menu the player never saw.
+      if (t0.drafts > 0 || phase === 'refit' || phase === 'ended') break;
       // Two kills every 300ms is about 6-7 a second — already far faster than a person plays,
       // and deliberately not "vaporise the room", which would out-pace any spawner and then blame
       // the emptiness on the game.

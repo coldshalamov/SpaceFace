@@ -23,7 +23,10 @@
 // card exists, and the owner can peek at the next round to refuse a re-roll that would not.
 
 import { mulberry32 } from '../core/rng.js';
+import { MODULES } from './modules.js';
 import { SHIPS } from './ships.js';
+import { SWARM_DRAFT_OFFERS } from './swarmDraft.js';
+import { SWARM_RULESET } from './swarmMode.js';
 import { WEAPONS } from './weapons.js';
 import { buildSlotList, fits, outfitBudgetForFittings } from '../systems/ships.js';
 
@@ -31,6 +34,13 @@ export const SURVIVAL_DRAFT_SCHEMA_VERSION = 1;
 export const SURVIVAL_DRAFT_CHOICES = 3;
 
 const WEAPON_BY_ID = new Map(WEAPONS.map((def) => [def.id, def]));
+// Weapons AND modules, because the swarm pool offers attack traits — a Piercing Core is a fitting
+// like any other. The arc's pool is weapons only and reads the same map; a module id it never
+// names simply never comes out of it.
+const FITTING_BY_ID = new Map([
+  ...WEAPONS.map((def) => [def.id, def]),
+  ...MODULES.map((def) => [def.id, def]),
+]);
 const SHIP_BY_ID = new Map(SHIPS.map((def) => [def.id, def]));
 
 function freezeDeep(value) {
@@ -188,7 +198,7 @@ function withinCapacity(hullId, fittings, slotIndex, defId) {
  * the seen ones fill the tail — the surface always carries three choices rather than shrinking to
  * nothing, and the owner refuses to charge for a round that would change none of them.
  */
-function drawRound(eligible, seen, seed, wave, pickCount, round, count) {
+function drawRound(eligible, seen, seed, wave, pickCount, round, count, additionsFirst = false) {
   const pool = eligible.slice();
   const rng = mulberry32(draftStreamSeed(seed, wave, pickCount, round));
   for (let i = pool.length - 1; i > 0; i--) {
@@ -197,10 +207,22 @@ function drawRound(eligible, seen, seed, wave, pickCount, round, count) {
     pool[i] = pool[j];
     pool[j] = tmp;
   }
-  if (seen.size === 0) return pool.slice(0, count);
+  // AN UPGRADE ADDS BEFORE IT SWAPS.
+  //
+  // A card that fills an EMPTY slot is a straight gain; a card that replaces something is a
+  // sideways trade. The arc mixes them freely, which is right when a draft comes after every wave
+  // and the run is thirty waves long. In a swarm run there are only a handful of drafts and the
+  // hull starts with empty utility, shield and engine slots, so an unbiased shuffle would spend
+  // the early ones offering three ways to trade away a gun the player just chose. While anything
+  // is still empty, the empties lead — the swap cards are still there behind them when there is
+  // nothing left to fill.
+  const ordered = additionsFirst
+    ? pool.filter((e) => e.replaces == null).concat(pool.filter((e) => e.replaces != null))
+    : pool;
+  if (seen.size === 0) return ordered.slice(0, count);
   const fresh = [];
   const repeats = [];
-  for (const entry of pool) (seen.has(entry.id) ? repeats : fresh).push(entry);
+  for (const entry of ordered) (seen.has(entry.id) ? repeats : fresh).push(entry);
   return fresh.concat(repeats).slice(0, count);
 }
 
@@ -241,9 +263,18 @@ function offerDraftInner(input) {
   while (fittings.length < slots.length) fittings.push(null);
   const owned = currentDefIds(fittings);
 
+  // THE SWARM POOL IS DEEPER ON PURPOSE. The arc's fourteen weapons fill a three-slot hull in three
+  // picks; an endless run needs somewhere to keep growing, so it also draws from the attack-trait
+  // and support modules that land in the utility, shield and engine slots the weapon pool can
+  // never reach. `fits` still decides where a card can land, so a hull without those slots simply
+  // never sees those cards.
+  const pool = src.ruleset === SWARM_RULESET
+    ? SURVIVAL_DRAFT_OFFERS.concat(SWARM_DRAFT_OFFERS)
+    : SURVIVAL_DRAFT_OFFERS;
+
   const eligible = [];
-  for (const offer of SURVIVAL_DRAFT_OFFERS) {
-    const def = WEAPON_BY_ID.get(offer.defId);
+  for (const offer of pool) {
+    const def = FITTING_BY_ID.get(offer.defId);
     if (!def) continue;
     // Never offer a verb the player already has — a duplicate is a stat bump wearing a name.
     if (owned.has(offer.defId)) continue;
@@ -265,9 +296,10 @@ function offerDraftInner(input) {
   // ORDER (catalog order), not in iteration accidents. Round 0 is the free draw; each paid round
   // re-shuffles the same pool and pushes everything already shown to the back.
   const seen = new Set();
+  const additionsFirst = src.ruleset === SWARM_RULESET;
   let offers = [];
   for (let round = 0; round <= rerollCount; round++) {
-    offers = drawRound(eligible, seen, seed, wave, pickCount, round, count);
+    offers = drawRound(eligible, seen, seed, wave, pickCount, round, count, additionsFirst);
     for (const entry of offers) seen.add(entry.id);
   }
   return { ok: true, reason: null, offers, rerollCount, eligibleCount: eligible.length };

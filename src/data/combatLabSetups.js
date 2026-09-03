@@ -39,6 +39,25 @@ export const COMBAT_LAB_STARTER_PACKAGES = freezeDeep([
       { slotIndex: 2, defId: 'wpn_momentum_sink_s' },
     ],
   },
+  // THE MASSLINE RIG (PQ-135). The Drifter is the only ungated hull with TWO M-size utility slots,
+  // which is the only place the massline heads — Elastic Whip, Monofilament Sweep, Transverse
+  // Snare, Tractor — can actually be fitted. Every other starter can carry the physics WEAPONS but
+  // not the physics ROPE, so the whole "latch it and sling it into a rock" half of the game had no
+  // door into the Crucible at all. It also mounts a rear gun, which is a different flying problem
+  // in a room where the swarm is behind you as often as in front.
+  {
+    id: 'massline_rig',
+    label: 'Massline Rig',
+    hullId: 'ship_drifter',
+    // The Drifter's weapon capacity is 16 and two M guns cost 18, so the rear mount takes the S
+    // marker rather than a second heavy — which is also the better rig: the thing you want pointing
+    // backwards in a swarm is a tag on whatever is chasing you, not a slower gun.
+    loadout: [
+      { slotIndex: 0, defId: 'wpn_concussion_cannon_m' },
+      { slotIndex: 1, defId: 'wpn_gravity_marker_s' },
+      { slotIndex: 7, defId: 'mod_elastic_whip_m' },
+    ],
+  },
 ]);
 
 export const COMBAT_LAB_ENEMY_PACKAGES = freezeDeep([
