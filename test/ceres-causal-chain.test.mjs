@@ -46,6 +46,7 @@ const EXPECTED_CHAIN = Object.freeze([
   'ev_disabled_hauler_recovery',
   'ev_tender_services_miner',
   'ev_cutter_strips_wreck',
+  'ev_rock_calving',
 ]);
 
 function slotWorldRecordId(slot) {
@@ -361,7 +362,7 @@ function runUntil(traffic, state, predicate, { start = state.simTime, maxS = 900
   return null;
 }
 
-test('catalog order is the six admitted microevents', () => {
+test('catalog order is the seven admitted microevents', () => {
   assert.deepEqual(CHAIN_EVENT_IDS, [...EXPECTED_CHAIN]);
   assert.equal(CERES_CAUSAL_CHAIN_MAX_CONCURRENT, 2);
   assert.equal(CERES_CAUSAL_CHAIN_SCHEMA, 'spaceface.ceresCausalChain.v1');
@@ -473,7 +474,7 @@ test('full chain reaches a believable terminal outcome after authored miner work
   const seedKinds = receipts.filter((r) => r.kind === 'seed');
   for (const key of [
     'rich_seam', 'miner_loaded', 'scan_complete',
-    'miner_wear', 'miner_serviced',
+    'miner_wear', 'miner_serviced', 'rock_calved',
   ]) {
     assert.ok(
       seedKinds.some((r) => r.seeds && r.seeds[key] === true),
@@ -482,6 +483,20 @@ test('full chain reaches a believable terminal outcome after authored miner work
   }
   assert.equal(seedKinds.some((r) => r.seeds && r.seeds.aftermath_open === true), false,
     'the repaired miner does not open aftermath');
+
+  // The calving coda ran its authored environmental phases on the shared cue vocabulary.
+  for (const [phase, cue] of [
+    ['groan', 'blind_cone'],
+    ['calve', 'breaking_the_pattern'],
+    ['drift', 'home_under_rock'],
+  ]) {
+    assert.ok(
+      receipts.some((r) => r.eventId === 'ev_rock_calving'
+        && (r.kind === 'phase' || r.kind === 'event_start')
+        && r.phase === phase && r.cue === cue),
+      `missing calving phase receipt ${phase}/${cue}`,
+    );
+  }
 });
 
 test('real miner work opens the hauler-call link while rich seam may still be active', () => {
@@ -1037,6 +1052,12 @@ test('terminal cast destruction skips the dead link and still completes a cycle'
   assert.ok(
     receipts.some((r) => r.outcome === 'skip_terminal_cast' && r.eventId === 'ev_miner_calls_hauler'),
     'hauler-call link should skip on terminal miner loss',
+  );
+  assert.ok(
+    receipts.some((r) => r.outcome === 'skip_terminal_cast' && r.eventId === 'ev_rock_calving')
+      && receipts.some((r) => r.eventId === 'ev_rock_calving' && Array.isArray(r.seeded)
+        && r.seeded.includes('rock_calved')),
+    'calving coda should skip on terminal miner loss and still plant rock_calved',
   );
   assert.ok(receipts.some((r) => r.kind === 'cycle_complete' && (r.cycle | 0) >= 1));
 });

@@ -115,7 +115,7 @@ function attachCausalServiceLink(ctx, incident) {
   trafficSystem._resetCeresCausalChain('test_attach_service_link');
   const chain = trafficSystem._ensureCeresCausalChain('test_attach_service_link');
   assert.ok(chain);
-  chain.nextIndex = CERES_CAUSAL_CHAIN.length - 1;
+  chain.nextIndex = CERES_CAUSAL_CHAIN.findIndex((entry) => entry.id === 'ev_cutter_strips_wreck');
   chain.seeds.miner_wear = true;
   const live = trafficSystem._startCeresCausalEvent(TENDER_EVENT, state.simTime);
   assert.ok(live);

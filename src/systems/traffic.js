@@ -355,7 +355,8 @@ const CERES_ORE_BARGE_UNLOAD_ACTION = Object.freeze({
 });
 
 // ── PQ-045.causal-chain ──────────────────────────────────────────────────────────────────────────
-// Six catalog microevents form ONE authored causal story in the Ceres reference sector. This is a
+// Seven catalog microevents form ONE authored causal story in the Ceres reference sector (the
+// seventh, ev_rock_calving, is the environmental coda that closes every cycle). This is a
 // choreography timer bound to the cast that already flies — not a generic ambient-event policy
 // layer. Concurrency is hard-capped at two active links; later links wait on seeds, not on a
 // cooldown/draw policy. Ledger lives on the traffic instance only (transient; out of the save
@@ -545,6 +546,37 @@ const CERES_CAUSAL_CHAIN = Object.freeze([
       Object.freeze({ name: 'sever', durationS: 20, cue: 'picking_the_bones' }),
       Object.freeze({ name: 'wrangle', durationS: 20, cue: 'picking_the_bones' }),
       Object.freeze({ name: 'stack', durationS: 12, cue: 'spilling_the_count' }),
+    ]),
+  }),
+  Object.freeze({
+    // ev_rock_calving (catalog environmental, standard tier) closes every cycle as the field's
+    // environmental coda: the worked seam rock calves under its own stress regardless of which
+    // service story resolved. Choreography-only like the other timer links — cue stamps + job
+    // reaffirm + receipts; the catalog's persistent body-split stays unwired (no runtime
+    // asteroid-body swap seam yet) and is recorded in the catalog notes.
+    id: 'ev_rock_calving',
+    actorSlots: Object.freeze([CERES_SEAM_MINER_SLOT_ID]),
+    // rich_seam plants on every strike outcome (complete and interrupt), so the coda is always
+    // reachable; the miner is the catalog's optional participant and the only bound actor.
+    requires: Object.freeze(['rich_seam']),
+    seedAtPhase: 'calve',
+    seeds: Object.freeze(['rock_calved']),
+    // Environmental fallback: an interrupted calving still happened for nobody — the story does
+    // not diverge, so both outcomes plant the same seed (anti-softlock guarantee intact).
+    interruptSeeds: Object.freeze(['rock_calved']),
+    // The miner keeps its authored extraction cycle; the drift phase re-approach rides the
+    // authored loop's own back-off motions — no redirect, reaffirm only.
+    jobHints: Object.freeze([
+      Object.freeze({
+        actorSlotId: CERES_SEAM_MINER_SLOT_ID,
+        reaffirm: true,
+        phases: Object.freeze(['groan', 'calve', 'drift']),
+      }),
+    ]),
+    phases: Object.freeze([
+      Object.freeze({ name: 'groan', durationS: 12, cue: 'blind_cone' }),
+      Object.freeze({ name: 'calve', durationS: 8, cue: 'breaking_the_pattern' }),
+      Object.freeze({ name: 'drift', durationS: 20, cue: 'home_under_rock' }),
     ]),
   }),
 ]);

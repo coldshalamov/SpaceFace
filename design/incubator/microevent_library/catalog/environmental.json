@@ -131,7 +131,7 @@
       "fallback": "No miner present: the calving happens for nobody - and a player who stumbles on the doubled rock later reads the fresh faces anyway",
       "tier": "standard",
       "blockedOn": null,
-      "notes": "Split = swap one asteroid entity for two smaller + pickup spray; the visualFactory's seeded rock variants already make the halves look related."
+      "notes": "Split = swap one asteroid entity for two smaller + pickup spray; the visualFactory's seeded rock variants already make the halves look related. PQ-045.causal-chain + INFERENCE U1: LIVE on Ceres as link 7 (environmental coda closing every cycle); actor ceres_seam_miner (catalog-optional participant, reaffirm-only); requires rich_seam (planted on every strike outcome); seeds rock_calved at calve (same seed on interrupt - the calving happens for nobody); phases groan/calve/drift on the blind_cone/breaking_the_pattern/home_under_rock cue vocabulary. Persistent body-split + fresh-face yield flag stay UNWIRED until a runtime asteroid-body swap seam exists."
     },
     {
       "id": "ev_debris_stream_crossing",
