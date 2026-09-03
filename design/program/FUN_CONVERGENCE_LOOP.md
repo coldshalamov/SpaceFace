@@ -36,7 +36,7 @@ MAKE IT BETTER adventure       (the 60-second proof scenario at the reference si
 MAKE IT BETTER <verb>          (rope | shove | wells | draw-path | terrain | cargo | sound | first-ten-minutes)
 ```
 
-The agent reads `FUN_CONVERGENCE_GOAL.txt` and runs §3. It does not ask the owner to adjudicate
+The agent reads `FUN_CONVERGENCE_GOAL.txt` and runs §3. **If the bench does not exist yet (`PQ-173` not done), the first cycle builds it — `--next` hands that unit out first — and the loop starts on the next cycle.** It does not ask the owner to adjudicate
 technical risk, does not add content, and does not stop after one leaf. It stops when §6 says stop.
 
 ## 2. Two laws that order everything
@@ -65,6 +65,8 @@ PLAY ──> MEASURE ──> JUDGE ──> NAME THE FUNDAMENTAL ──> FIX THE 
 ```
 
 ### 3.1 PLAY — run the bench, headless and headed
+
+Until `PQ-173` lands, "run the bench" means: run the scenarios and captures named below by hand (they exist), print the numbers you can, and record the gaps as `PQ-173` leaves. Do not fake a bench that is not there.
 
 The bench is fixed and small so results compare across days:
 

@@ -153,6 +153,33 @@ procedure:
 
 Do not sweep `design/`, `.campaign/`, assets, transcripts, or screenshots for an ordinary unit.
 
+## 1A. Central Brain quality-convergence layer
+
+For the full architecture behind broad autonomous development, read
+[`docs/agentic-development/AGENTIC_GAME_DEVELOPMENT_OS.md`](./docs/agentic-development/AGENTIC_GAME_DEVELOPMENT_OS.md)
+and its focused plans for
+[observability/replay](./docs/agentic-development/OBSERVABILITY_REPLAY_AND_PLAYTEST_ARCHITECTURE.md),
+[quality scorecard](./docs/agentic-development/QUALITY_SCORECARD.md),
+[plan convergence](./docs/agentic-development/PLAN_CONVERGENCE_PROTOCOL.md),
+[content factory](./docs/agentic-development/CONTENT_FACTORY_AND_COMPLETENESS.md),
+[bounded INFERENCE](./docs/agentic-development/INFERENCE_PROTOCOL.md),
+[visual/VFX direction](./docs/agentic-development/VISUAL_DIRECTION_AND_VFX_SYSTEM.md),
+[performance governance](./docs/agentic-development/PERFORMANCE_GOVERNANCE.md), and the
+[implementation roadmap](./docs/agentic-development/IMPLEMENTATION_ROADMAP.md).
+
+The manager loop is `observe -> reduce -> rank -> assign -> implement -> replay -> compare -> keep/revert`.
+It consumes the **existing** PQ graph. It never replaces `program-queue.json`, active packets, receipts,
+or user priority. Use screenshots for appearance, deterministic/lifecycle telemetry for temporal truth,
+and one cold reviewer only where subjective judgment adds information. Unknown evidence is not a green
+quality claim. Fixed pass/reviewer counts are not universal quality gates.
+
+For broad unnamed development, start at
+[`design/program/CENTRAL_BRAIN.md`](./design/program/CENTRAL_BRAIN.md); the ranked selector over the
+existing dependency-ready PQ graph is
+`python tools/agentic/select_next_work.py --format prompt` (one unit) or
+`python tools/agentic/manager_cycle.py --refresh --limit 3` (a campaign slate). It ranks; it does not
+admit, mutate queue truth, or replace the routing doors in this map.
+
 ## 1B. Named campaigns and their laws (reference; not the default door)
 
 These campaigns are live or resumable and keep their own laws. `--next` already interleaves their
@@ -173,9 +200,13 @@ units; open the door below only when the owner names the campaign.
 - **Crucible / swarm / combat lab / arenas / attack modifiers** → §12 (`PQ-133`, engineering complete),
   §16 (`PQ-174`, `PQ-175`, fun and content), §13 (`PQ-134` VFX pool).
 - **`INFERENCE <N> [scope]`** → [`design/vision/INFERENCE_CONVERGENCE_METHOD.md`](./design/vision/INFERENCE_CONVERGENCE_METHOD.md)
-  and [`INFERENCE_LANES.md`](./design/program/INFERENCE_LANES.md); production units only.
+  and [`INFERENCE_LANES.md`](./design/program/INFERENCE_LANES.md); production units only. That door does
+  not run the fleet remaster and does not replace §1.1.
 - **Jules / cloud agents** → [`design/program/jules/README.md`](./design/program/jules/README.md);
-  a directed candidate bank, not the live queue; one task per cloud branch; a local integrator merges.
+  a directed candidate bank, not the live queue. Validate with `node scripts/jules-dispatch.mjs --validate`;
+  select or render exact work with `node scripts/jules-dispatch.mjs --next` or `--id JULES-XXXX --format prompt`.
+  One task per cloud branch or PR; a stronger local integrator reviews, rebases, proves and merges. Jules tasks
+  never edit the bank, the queue, the NOW board, root authority, or expected telemetry envelopes.
 - **Campaign / overnight / "do all of it"** → the procedure in §1.1 with no stop after one unit; the
   order in §1.2; acceptance leaves that need a headed machine you do not have are recorded `unproven`
   and skipped, never stalled on.
@@ -474,33 +505,6 @@ executable route. `GFX-MASSLINE-EXPRESS-LINER` is now admitted as `PQ-049`; its 
    G1/G2/G4. Any missing gate leaves the mapped asset unproven and non-accepted.
 
 Do not begin from an old handoff, screenshot directory, review transcript, archived plan, raw whole-queue dump, or broad repository grep—**except** the place remaster handoff linked above when that is the explicit task, the massline presentation UVP packet when that is the explicit task, or the tracked worktree-recovery playbook when leftover agent work is the explicit task.
-
-## 1A. Central Brain quality-convergence layer
-
-For the full architecture behind broad autonomous development, read
-[`docs/agentic-development/AGENTIC_GAME_DEVELOPMENT_OS.md`](./docs/agentic-development/AGENTIC_GAME_DEVELOPMENT_OS.md)
-and its focused plans for
-[observability/replay](./docs/agentic-development/OBSERVABILITY_REPLAY_AND_PLAYTEST_ARCHITECTURE.md),
-[quality scorecard](./docs/agentic-development/QUALITY_SCORECARD.md),
-[plan convergence](./docs/agentic-development/PLAN_CONVERGENCE_PROTOCOL.md),
-[content factory](./docs/agentic-development/CONTENT_FACTORY_AND_COMPLETENESS.md),
-[bounded INFERENCE](./docs/agentic-development/INFERENCE_PROTOCOL.md),
-[visual/VFX direction](./docs/agentic-development/VISUAL_DIRECTION_AND_VFX_SYSTEM.md),
-[performance governance](./docs/agentic-development/PERFORMANCE_GOVERNANCE.md), and the
-[implementation roadmap](./docs/agentic-development/IMPLEMENTATION_ROADMAP.md).
-
-The manager loop is `observe -> reduce -> rank -> assign -> implement -> replay -> compare -> keep/revert`.
-It consumes the **existing** PQ graph. It never replaces `program-queue.json`, active packets, receipts,
-or user priority. Use screenshots for appearance, deterministic/lifecycle telemetry for temporal truth,
-and one cold reviewer only where subjective judgment adds information. Unknown evidence is not a green
-quality claim. Fixed pass/reviewer counts are not universal quality gates.
-
-For broad unnamed development, start at
-[`design/program/CENTRAL_BRAIN.md`](./design/program/CENTRAL_BRAIN.md); the ranked selector over the
-existing dependency-ready PQ graph is
-`python tools/agentic/select_next_work.py --format prompt` (one unit) or
-`python tools/agentic/manager_cycle.py --refresh --limit 3` (a campaign slate). It ranks; it does not
-admit, mutate queue truth, or replace the routing doors in this map.
 
 ## 2. Product north star
 
