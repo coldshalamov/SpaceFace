@@ -258,6 +258,18 @@ export function createSimulationRunner(state, registry, deps = {}) {
       }
     } catch (error) {
       if (commandSnapshots.cancel(nextInputSequence)) inputSnapshotCancelCount++;
+      // registry.step may have mutated authoritative state before throwing. The accumulator is
+      // intentionally not committed on this path, so close the runner before rethrowing to make
+      // that uncommitted phase permanently non-retryable. The original error remains the caller's
+      // diagnostic; close() retains the existing queue/cancellation diagnostics.
+      if (!closed) {
+        try {
+          close();
+        } catch (_) {
+          // close() quarantines the runner before reporting residual cleanup work. Preserve the
+          // authoritative failure above; getDiagnostics() retains the close failure counters.
+        }
+      }
       throw error;
     }
   }
