@@ -3,7 +3,7 @@ packetId: PQ-173
 leafId: PQ-173.00
 acceptance: focused_green
 disposition: PASS
-candidateCommit: 5da21918461940f0a69962d04533bf4b649ca249
+candidateCommit: 688990012c7c6891934dc4ebc31aadcdd3f15a0d
 -->
 
 # PQ-173.00 — The bench: Fun Convergence Loop feel & determinism bench
@@ -11,7 +11,7 @@ candidateCommit: 5da21918461940f0a69962d04533bf4b649ca249
 ```yaml
 packet: PQ-173
 dispatchUnit: PQ-173.00
-candidateCommit: 5da21918461940f0a69962d04533bf4b649ca249
+candidateCommit: 688990012c7c6891934dc4ebc31aadcdd3f15a0d
 lifecycleClaim: implemented
 acceptanceClaim: focused_green
 disposition: PASS
