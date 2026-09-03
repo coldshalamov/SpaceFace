@@ -405,6 +405,118 @@ test('a swarm run does not stop for a draft on a fight wave — it rolls straigh
 });
 
 // ---------------------------------------------------------------------------
+// the boss wave
+// ---------------------------------------------------------------------------
+
+/** Drive survivalWave onto an arbitrary wave's plan without walking there in real time. */
+function forceWave(h, wave) {
+  const plan = planWave({ seed: SEED, arenaId: ARENA, wave, ruleset: SWARM_RULESET });
+  h.bus.emit('run:wavePlanned', { wave, plan });
+  h.bus.emit('run:waveStarted', { wave });
+  return plan;
+}
+
+function liveBosses(h) {
+  return liveHostiles(h).filter((e) => e.data && e.data.lootTableId === 'dreadnought_boss');
+}
+
+test('a boss wave fields a Dreadnought and says it owes one', () => {
+  const plan = planWave({ seed: SEED, arenaId: ARENA, wave: 10, ruleset: SWARM_RULESET });
+  assert.equal(plan.swarm.boss, true);
+  assert.equal(plan.swarm.requireBoss, true);
+  assert.equal(plan.objective.kind, 'boss');
+  assert.ok(
+    plan.packages.some((p) => p.enemyId === 'dreadnought_boss'),
+    'the boss is in the opening burst, not something the stream might roll',
+  );
+  // The chaff around it is thinner so the capital hull is legible instead of buried.
+  assert.ok(plan.swarm.concurrent <= 12);
+});
+
+test('meeting the quota does NOT clear a boss wave while the Dreadnought is alive', () => {
+  const h = boot();
+  beginSwarm(h);
+  const plan = forceWave(h, 10);
+  const quota = plan.swarm.quota;
+  tick(h, 30);
+  assert.ok(liveBosses(h).length > 0, 'the Dreadnought is on the board');
+
+  // Kill only chaff, well past the quota.
+  let chaffKilled = 0;
+  for (let i = 0; i < 4000 && chaffKilled < quota + 12; i++) {
+    if (i % 5 === 0) {
+      const chaff = liveHostiles(h).find((e) => !(e.data && e.data.lootTableId === 'dreadnought_boss'));
+      if (chaff) {
+        chaff.alive = false;
+        h.state.entities.delete(chaff.id);
+        h.bus.emit('entity:destroyed', { id: chaff.id });
+        chaffKilled++;
+      }
+    }
+    tick(h, 1);
+  }
+  assert.ok(chaffKilled > quota, `killed ${chaffKilled} chaff, past the quota of ${quota}`);
+  assert.equal(
+    named(h.emitted, 'run:waveCleared').length,
+    0,
+    'the wave is still running — the boss is the work, not one more body in the count',
+  );
+  // And the room did not go quiet while the duel was owed.
+  assert.ok(liveHostiles(h).length > 1, 'a screen is still coming during the duel');
+
+  // Now kill the boss.
+  const boss = liveBosses(h)[0];
+  assert.ok(boss, 'the Dreadnought is still flying');
+  boss.alive = false;
+  h.state.entities.delete(boss.id);
+  h.bus.emit('entity:destroyed', { id: boss.id });
+  tick(h, 2);
+
+  const cleared = named(h.emitted, 'run:waveCleared');
+  assert.equal(cleared.length, 1, 'killing the Dreadnought ends the wave');
+  assert.equal(cleared[0].payload.wave, 10);
+});
+
+test('a boss wave still ends normally when the boss dies first', () => {
+  const h = boot();
+  beginSwarm(h);
+  const plan = forceWave(h, 10);
+  tick(h, 30);
+  const boss = liveBosses(h)[0];
+  assert.ok(boss);
+  boss.alive = false;
+  h.state.entities.delete(boss.id);
+  h.bus.emit('entity:destroyed', { id: boss.id });
+
+  // The quota is still owed after the boss goes down — the wave does not end early either.
+  tick(h, 5);
+  assert.equal(named(h.emitted, 'run:waveCleared').length, 0, 'the quota is still owed');
+
+  let killed = 1;
+  for (let i = 0; i < 6000 && named(h.emitted, 'run:waveCleared').length === 0; i++) {
+    if (i % 5 === 0 && killOne(h)) killed++;
+    tick(h, 1);
+  }
+  const cleared = named(h.emitted, 'run:waveCleared');
+  assert.equal(cleared.length, 1);
+  assert.ok(cleared[0].payload.killed >= plan.swarm.quota);
+});
+
+test('every tenth wave is a boss wave, and no other wave owes one', () => {
+  for (let wave = 1; wave <= 60; wave++) {
+    const plan = planWave({ seed: SEED, arenaId: ARENA, wave, ruleset: SWARM_RULESET });
+    const expected = wave % 10 === 0;
+    assert.equal(plan.swarm.boss, expected, `wave ${wave} boss flag`);
+    assert.equal(plan.swarm.requireBoss, expected);
+    assert.equal(
+      plan.packages.some((p) => p.enemyId === 'dreadnought_boss'),
+      expected,
+      `wave ${wave} Dreadnought presence`,
+    );
+  }
+});
+
+// ---------------------------------------------------------------------------
 // the upgrade path
 // ---------------------------------------------------------------------------
 

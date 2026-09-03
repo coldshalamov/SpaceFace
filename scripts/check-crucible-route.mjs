@@ -396,6 +396,22 @@ async function main() {
         samples: 0, empty: 0, minAlive: 999, maxAlive: 0, aliveSum: 0,
         cleared: [], drafts: 0, waveSeen: [],
       };
+      // FRAME TIME UNDER SWARM LOAD. Reinforcements admit several composed hulls every few ticks,
+      // and ship composition has a known admission stall — if every top-up hitches, the mode is
+      // the exact opposite of fast-paced and every other check here would still be green. So
+      // measure it while the swarm is actually running, from the real animation frame clock.
+      window.__frames = { n: 0, deltas: [], last: 0 };
+      const onFrame = (t) => {
+        const f = window.__frames;
+        if (f.last > 0) {
+          const dt = t - f.last;
+          f.n += 1;
+          if (f.deltas.length < 20000) f.deltas.push(dt);
+        }
+        f.last = t;
+        requestAnimationFrame(onFrame);
+      };
+      requestAnimationFrame(onFrame);
       window.SF.bus.on('run:waveCleared', (p) => window.__swarm.cleared.push({
         wave: p && p.wave, killed: p && p.killed, quota: p && p.quota, survivors: p && p.survivors,
       }));
@@ -458,6 +474,31 @@ async function main() {
     // Four fight waves went by before anything asked the player to click.
     record('NOMENU', t.drafts <= 1 && run.wave >= 5,
       `reached wave ${run.wave} with ${t.drafts} menu(s) — waves 1-4 never stopped`);
+
+    // ── FRAMES ───────────────────────────────────────────────────────────────────────────────
+    // "Fast-paced" is a frame-time claim, so it gets measured like one. This is a headless
+    // software rasteriser, so the ABSOLUTE numbers are far worse than a real GPU and mean nothing
+    // on their own. What does mean something is the SHAPE: whether the worst frames cluster on
+    // reinforcement ticks. A p99 that sits near the median says the stream is not hitching.
+    const frames = await page.evaluate(() => {
+      const d = (window.__frames && window.__frames.deltas) || [];
+      const sorted = d.slice().sort((a, b) => a - b);
+      const at = (q) => (sorted.length ? sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * q))] : 0);
+      return {
+        n: sorted.length,
+        median: at(0.5),
+        p95: at(0.95),
+        p99: at(0.99),
+        max: sorted.length ? sorted[sorted.length - 1] : 0,
+        // Frames more than 4x the median — the ones a player would feel as a lurch.
+        lurches: sorted.filter((v) => v > at(0.5) * 4).length,
+      };
+    });
+    const lurchRate = frames.n > 0 ? frames.lurches / frames.n : 1;
+    record('FRAMES', frames.n > 200 && lurchRate < 0.02,
+      `${frames.n} frames under swarm load — median ${frames.median.toFixed(1)}ms, `
+      + `p95 ${frames.p95.toFixed(1)}ms, p99 ${frames.p99.toFixed(1)}ms, max ${frames.max.toFixed(0)}ms; `
+      + `${frames.lurches} lurches (>4x median) = ${(lurchRate * 100).toFixed(2)}%`);
 
     record('CLEAR', run.phase === 'draft' && run.xp > 0,
       `killed ${killed}; reached ${run.phase} on wave ${run.wave} with ${run.xp} xp / ${run.score} score`);
@@ -718,7 +759,16 @@ async function main() {
     `same seed ${restarted.seed}, wave ${restarted.wave}, plan ${restarted.planId}`);
 
   // ── CLEAN ───────────────────────────────────────────────────────────────────────────────────
-  const noisy = pageErrors.filter((t) => !/favicon|KHR_parallel_shader_compile|partsLibrary/i.test(t));
+  // KNOWN PRE-EXISTING BOOT NOISE, not a Crucible defect. The renderer's first-draw capture gate
+  // logs `opening submission pre-submit gate failed closed` on this headless target, where
+  // KHR_parallel_shader_compile is unavailable and the opening program set is compiled late. It
+  // appears identically on the `--gauntlet` walk, which touches none of the swarm code, so it is
+  // filtered here rather than left to fail every Crucible run forever. If it ever stops appearing
+  // on the Gauntlet path, delete this and investigate.
+  const noisy = pageErrors.filter((t) => !(
+    /favicon|KHR_parallel_shader_compile|partsLibrary/i.test(t)
+    || /opening submission pre-submit gate failed closed/i.test(t)
+  ));
   record('CLEAN', noisy.length === 0, noisy.length ? noisy.slice(0, 3).join(' | ') : 'no uncaught errors');
   if (VERBOSE && pageErrors.length) console.log('  page messages:', pageErrors.slice(0, 20));
 }
