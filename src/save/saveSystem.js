@@ -60,6 +60,23 @@ const INDEX_KEY = LS_PREFIX + 'index';
 const RECOVERY_PREFIX = 'sf.recovery.';
 const FMT = 'spaceface-save';
 const AUTOSAVE_SLOT = 'auto';
+// Import limits are deliberately generous relative to current saves (which are normally well
+// below 1 MiB) while bounding parser, migration, and restore work before any recursive operation.
+// The byte ceiling matches the loopback store's request ceiling, and the entity ceiling leaves
+// ample room for player-owned persistent actors without allowing a save to manufacture an
+// unbounded live entity population during restore.
+export const SAVE_IMPORT_MAX_BYTES = 12 * 1024 * 1024;
+export const SAVE_IMPORT_MAX_DEPTH = 64;
+export const SAVE_IMPORT_MAX_NODES = 200_000;
+export const SAVE_IMPORT_MAX_COLLECTION_ITEMS = 50_000;
+export const SAVE_IMPORT_MAX_PERSISTENT_ENTITIES = 2_048;
+export const SAVE_IMPORT_LIMITS = Object.freeze({
+  maxBytes: SAVE_IMPORT_MAX_BYTES,
+  maxDepth: SAVE_IMPORT_MAX_DEPTH,
+  maxNodes: SAVE_IMPORT_MAX_NODES,
+  maxCollectionItems: SAVE_IMPORT_MAX_COLLECTION_ITEMS,
+  maxPersistentEntities: SAVE_IMPORT_MAX_PERSISTENT_ENTITIES,
+});
 const AUTOSAVE_DEBOUNCE_MS = 10000; // ≤1 autosave write per 10s (§4.5)
 // Calm-window deferral (diagnosis §3): non-forced saves may wait out a recent player hit instead
 // of stacking capture work on a hot combat frame. Hard cap keeps a starved deferral bounded.
@@ -2413,7 +2430,12 @@ export const save = {
   loadEnvelopeFromString(raw, slot) {
     const prepared = this._prepareEnvelopeString(raw);
     if (!prepared.ok) {
-      this.bus.emit('save:error', { slot, reason: prepared.reason });
+      this.bus.emit('save:error', {
+        slot,
+        reason: prepared.reason,
+        ...(prepared.limit != null ? { limit: prepared.limit } : {}),
+        ...(prepared.actual != null ? { actual: prepared.actual } : {}),
+      });
       return false;
     }
     return this._restorePreparedEnvelope(prepared, slot);
@@ -2424,7 +2446,12 @@ export const save = {
     slot = slot || (env && env.slot) || 'quick';
     const prepared = this._prepareEnvelope(env);
     if (!prepared.ok) {
-      this.bus.emit('save:error', { slot, reason: prepared.reason });
+      this.bus.emit('save:error', {
+        slot,
+        reason: prepared.reason,
+        ...(prepared.limit != null ? { limit: prepared.limit } : {}),
+        ...(prepared.actual != null ? { actual: prepared.actual } : {}),
+      });
       return false;
     }
     return this._restorePreparedEnvelope(prepared, slot);
@@ -2433,6 +2460,11 @@ export const save = {
   /** Pure validation/migration preparation shared by normal load, recovery, and write verification. */
   _prepareEnvelopeString(raw) {
     if (!raw) return { ok: false, reason: 'no_save' };
+    if (typeof raw !== 'string') return { ok: false, reason: 'parse_failed' };
+    const bytes = saveImportByteLength(raw);
+    if (bytes > SAVE_IMPORT_MAX_BYTES) {
+      return importLimitFailure('import_too_large', SAVE_IMPORT_MAX_BYTES, bytes);
+    }
     let env;
     try { env = JSON.parse(raw); }
     catch (err) { return { ok: false, reason: 'parse_failed' }; }
@@ -2446,6 +2478,12 @@ export const save = {
       if (!versionRead.ok) return versionRead;
       const ver = versionRead.version;
       if (!env.data || typeof env.data !== 'object') return { ok: false, reason: 'no_data' };
+
+      // Bound the complete parsed graph before checksum serialization, migrations, or clonePlain
+      // recursion. No restore has started at this point, so a rejected envelope leaves live state
+      // untouched even when it contains an oversized persistent-entity list.
+      const preflight = preflightSaveImport(env);
+      if (!preflight.ok) return preflight;
 
       // Checksum is over the stored (pre-migration) data shape; verify before migrating.
       if (env.checksum) {
@@ -2967,6 +3005,9 @@ export const save = {
 
   _spawnPersistentEntities(savedList, entityIdRemap = null) {
     if (!Array.isArray(savedList)) return;
+    if (savedList.length > SAVE_IMPORT_MAX_PERSISTENT_ENTITIES) {
+      throw new Error('persistent_entity_limit');
+    }
     const state = this.state;
     for (const saved of savedList) {
       if (!saved || typeof saved !== 'object') continue;
@@ -3112,7 +3153,21 @@ export const save = {
 
   /** Import from a File (FileReader → importString). Calls cb(ok) when done. */
   importFile(file, cb) {
-    if (typeof FileReader === 'undefined' || !file) { if (cb) cb(false); return; }
+    if (!file) { if (cb) cb(false); return; }
+    const bytes = Number(file.size);
+    if (Number.isFinite(bytes) && bytes > SAVE_IMPORT_MAX_BYTES) {
+      if (this.bus && typeof this.bus.emit === 'function') {
+        this.bus.emit('save:error', {
+          slot: 'import',
+          reason: 'import_too_large',
+          limit: SAVE_IMPORT_MAX_BYTES,
+          actual: bytes,
+        });
+      }
+      if (cb) cb(false);
+      return;
+    }
+    if (typeof FileReader === 'undefined') { if (cb) cb(false); return; }
     const reader = new FileReader();
     reader.onload = () => { const ok = this.importString(String(reader.result || ''), 'quick'); if (cb) cb(ok); };
     reader.onerror = () => { this.bus.emit('save:error', { slot: 'import', reason: 'read_failed' }); if (cb) cb(false); };
@@ -3123,6 +3178,97 @@ export const save = {
 const CANONICAL_SAVE_SERIALIZE = save.serialize;
 
 // ── module helpers ────────────────────────────────────────────────────────────────────────────
+
+/** Return the UTF-8 size of a raw import string without coercing or parsing it. */
+export function saveImportByteLength(value) {
+  if (typeof value !== 'string') return Infinity;
+  let bytes = 0;
+  for (let i = 0; i < value.length; i++) {
+    const code = value.charCodeAt(i);
+    if (code <= 0x7f) bytes += 1;
+    else if (code <= 0x7ff) bytes += 2;
+    else if (code >= 0xd800 && code <= 0xdbff
+      && i + 1 < value.length
+      && value.charCodeAt(i + 1) >= 0xdc00 && value.charCodeAt(i + 1) <= 0xdfff) {
+      bytes += 4;
+      i++;
+    } else bytes += 3;
+    // Callers only need to know whether the import crossed the configured ceiling. Returning a
+    // lower-bound sentinel avoids allocating a second buffer for a hostile multi-gigabyte string.
+    if (bytes > SAVE_IMPORT_MAX_BYTES) return SAVE_IMPORT_MAX_BYTES + 1;
+  }
+  return bytes;
+}
+
+function importLimitFailure(reason, limit, actual) {
+  return { ok: false, reason, limit, actual };
+}
+
+/**
+ * Bound the object graph before checksum work, migrations, or clonePlain recursion. JSON.parse
+ * creates acyclic data, but loadEnvelope() also accepts an already-parsed envelope, so active
+ * ancestry is tracked to reject a cycle rather than letting the clone recurse forever.
+ */
+export function preflightSaveImport(value, options = SAVE_IMPORT_LIMITS) {
+  const source = options && typeof options === 'object' ? options : SAVE_IMPORT_LIMITS;
+  const maxDepth = Number.isSafeInteger(source.maxDepth) && source.maxDepth >= 0
+    ? source.maxDepth : SAVE_IMPORT_MAX_DEPTH;
+  const maxNodes = Number.isSafeInteger(source.maxNodes) && source.maxNodes >= 1
+    ? source.maxNodes : SAVE_IMPORT_MAX_NODES;
+  const maxCollectionItems = Number.isSafeInteger(source.maxCollectionItems)
+    && source.maxCollectionItems >= 0
+    ? source.maxCollectionItems : SAVE_IMPORT_MAX_COLLECTION_ITEMS;
+  const maxPersistentEntities = Number.isSafeInteger(source.maxPersistentEntities)
+    && source.maxPersistentEntities >= 0
+    ? source.maxPersistentEntities : SAVE_IMPORT_MAX_PERSISTENT_ENTITIES;
+
+  const persistent = value && typeof value === 'object'
+    && value.data && typeof value.data === 'object'
+    && value.data.entities && typeof value.data.entities === 'object'
+    ? value.data.entities.persistent
+    : null;
+  if (Array.isArray(persistent) && persistent.length > maxPersistentEntities) {
+    return importLimitFailure('import_persistent_entity_limit', maxPersistentEntities, persistent.length);
+  }
+
+  const active = new WeakSet();
+  const stack = [{ value, depth: 0, exit: false }];
+  let nodes = 0;
+  while (stack.length) {
+    const frame = stack.pop();
+    const current = frame.value;
+    if (frame.exit) {
+      active.delete(current);
+      continue;
+    }
+    if (frame.depth > maxDepth) return importLimitFailure('import_depth_limit', maxDepth, frame.depth);
+    nodes++;
+    if (nodes > maxNodes) return importLimitFailure('import_node_limit', maxNodes, nodes);
+    if (current === null || typeof current !== 'object') continue;
+    if (active.has(current)) return importLimitFailure('import_cycle', maxDepth, frame.depth);
+    active.add(current);
+    stack.push({ value: current, depth: frame.depth, exit: true });
+
+    if (Array.isArray(current)) {
+      if (current.length > maxCollectionItems) {
+        return importLimitFailure('import_collection_limit', maxCollectionItems, current.length);
+      }
+      for (let i = current.length - 1; i >= 0; i--) {
+        stack.push({ value: current[i], depth: frame.depth + 1, exit: false });
+      }
+      continue;
+    }
+
+    const keys = Object.keys(current);
+    if (keys.length > maxCollectionItems) {
+      return importLimitFailure('import_collection_limit', maxCollectionItems, keys.length);
+    }
+    for (let i = keys.length - 1; i >= 0; i--) {
+      stack.push({ value: current[keys[i]], depth: frame.depth + 1, exit: false });
+    }
+  }
+  return { ok: true, nodes };
+}
 
 function nowMs() {
   return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();

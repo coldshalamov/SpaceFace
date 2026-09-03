@@ -4,6 +4,7 @@
 // public API if present, else from localStorage (manifest: SaveLoadScreen reads sf.save.index).
 
 import { confirm } from '../confirm.js';
+import { SAVE_IMPORT_MAX_BYTES, saveImportByteLength } from '../../save/saveSystem.js';
 
 const STYLE_ID = 'sf-save-load-style';
 const SLOT_COUNT = 5;        // quick + 4 manual slots shown
@@ -478,6 +479,21 @@ export const saveLoadScreen = {
   async _import(ctx, fileIn) {
     const f = fileIn.files && fileIn.files[0];
     if (!f) return;
+    const rejectOversize = (actual) => {
+      ctx.bus.emit('save:error', {
+        slot: 'import', reason: 'import_too_large', limit: SAVE_IMPORT_MAX_BYTES, actual,
+      });
+      ctx.bus.emit('toast', { text: 'Import failed: file is too large', kind: 'warn', ttl: 3000 });
+      fileIn.value = '';
+      this._render(ctx);
+    };
+    const fileBytes = Number(f.size);
+    // File.size is available before FileReader starts; reject here so the fallback path never
+    // allocates a reader for a known-over-limit import.
+    if (Number.isFinite(fileBytes) && fileBytes > SAVE_IMPORT_MAX_BYTES) {
+      rejectOversize(fileBytes);
+      return;
+    }
     const confirmed = await confirm({
       title: 'Import save file?',
       body: importConfirmBody(f),
@@ -496,6 +512,13 @@ export const saveLoadScreen = {
     const reader = new FileReader();
     reader.onload = () => {
       const text = String(reader.result || '');
+      // A synthetic/legacy File may not expose a trustworthy size. Keep the raw-text check before
+      // any fallback JSON.parse or save-system import call in that case.
+      const textBytes = saveImportByteLength(text);
+      if (textBytes > SAVE_IMPORT_MAX_BYTES) {
+        rejectOversize(textBytes);
+        return;
+      }
       let ok = false;
       if (sys && typeof sys.importString === 'function') { try { ok = !!sys.importString(text, 'quick'); } catch (e) {} }
       else if (sys && typeof sys.importSave === 'function') { try { ok = !!sys.importSave(text); } catch (e) {} }
