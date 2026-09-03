@@ -113,7 +113,9 @@ export const FEEL_BARS = [
     title: "The world reacts",
     statement:
       "Within 10 s of a kill in a patrol's sight, the patrol makes a visible stay-with-wreck / chase choice. Spilled cargo attracts an NPC within 30 s. Civilians within 300 WU of gunfire change course within 3 s.",
-    target: "patrol chooses within 10 s; salvor arrives ≤ 30 s; civilians turn within 3 s",
+    // First clause must speak for the headline value (salvor arrival seconds, lower is
+    // better) so the diff direction parses; the other clauses stay for the reader.
+    target: "salvor arrives ≤ 30 s; patrol chooses within 10 s; civilians turn within 3 s",
     benchReachable: true,
     scenarioIds: ["world.cargo_spill"],
   },
@@ -224,7 +226,7 @@ function scenarioRuns(list, scenarioId) {
   });
 }
 
-function fedByOf(run) {
+export function fedByOf(run) {
   if (run.bench === "crucible") return `crucible/${run.arenaId}/${run.loadoutId}/s${run.seed}`;
   return `${run.bench}/${run.scenarioId}/s${run.seed}`;
 }
@@ -323,8 +325,18 @@ function evaluateB2(bar, list) {
 
 function evaluateB3(bar, list) {
   const runs = scenarioRuns(list, "feel.stroke_speed");
-  if (!runs.length) {
-    return finish(bar, { notes: [unfedNote(bar)] });
+  // A real-path feel.screen_crossing run measures this bar directly through the generic seam
+  // (mergeRunProvidedBars); the stroke-derived estimate below is a stand-in (SCREEN_DEPTH_WU is a
+  // constant and the inline stroke scenario's cruise is synthetic) and must never veto it.
+  const measured = list.some((run) => run && run.scenarioId === "feel.screen_crossing");
+  if (!runs.length || measured) {
+    return finish(bar, {
+      notes: [
+        measured
+          ? "superseded by the real-path feel.screen_crossing run; the stroke-derived estimate is not applied."
+          : unfedNote(bar),
+      ],
+    });
   }
   const fedBy = runs.map(fedByOf);
   // Worst case for the ≥ 1.2 s clause is the fastest measured cruise, hence mode "max".
@@ -397,7 +409,7 @@ function evaluateB6(bar, list) {
   if (lethalRuns.length) {
     const allDead = lethalRuns.every((run) => run.metrics.isLethal === true);
     const closing = worstMetric(lethalRuns, (run) => run.metrics.closingRatio, "min").value;
-    values.push(entry(`light hostile dies at ≥ 75 % of cruise closing (ran at ${Number(closing.toFixed(3))}, ${lethalRuns.length} run(s))`, allDead ? 1 : 0, "bool", allDead));
+    values.push(entry(`light hostile dies at ≥ 75 % of cruise closing (ran at ${Number((closing * 100).toFixed(1))} % of cruise, ${lethalRuns.length} run(s))`, allDead ? 1 : 0, "bool", allDead));
   } else {
     notes.push("no slam run reached the ≥ 75 % closing band, so the lethality clause was not exercised.");
   }
@@ -412,6 +424,9 @@ function evaluateB6(bar, list) {
     notes.push("no slam run reached the ≥ 50 % closing band, so the damage and helm clauses were not exercised.");
   }
   notes.push("the heavy-side clause (≤ 15 % hull lost, helm kept at the same speed) is unbenched.");
+  if (damageRuns.length && lethalRuns.length) {
+    notes.push("the ≥ 50 % band damage and helm clauses were exercised by the same slam run(s) as the lethality clause, not by a separate slower run.");
+  }
   return finish(bar, { values, coverage: values.length ? "partial" : "none", fedBy: runs.map(fedByOf), notes });
 }
 

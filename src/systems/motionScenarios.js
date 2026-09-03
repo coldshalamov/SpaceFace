@@ -17,6 +17,11 @@ import {
   forceSharedEnemyMotionEnvelope,
 } from '../data/flightFeelEnvelopes.js';
 import { createAuthoritativeRuntime } from '../runtime/createAuthoritativeRuntime.js';
+import {
+  applyFeatureConfigToMaps,
+  restoreFeatureMaps,
+  snapshotFeatureMaps,
+} from '../data/featureFlags.js';
 import { actions } from './actions.js';
 import { aiPorts } from './aiPorts.js';
 import { makeEnemySpawnSpec } from './combat.js';
@@ -1219,7 +1224,21 @@ async function bootMotionLab({ seed, kind }) {
       if (!physicsSys || typeof physicsSys.prepareBackend !== 'function') {
         throw new Error('physics prepareBackend missing');
       }
-      const ok = await physicsSys.prepareBackend(state, { reset: true });
+      // createAuthoritativeRuntime applies the profile's feature config to the process-global flag
+      // MAPS only during init and each step (restore-on-step). prepareBackend runs OUTSIDE that
+      // window and is where SG-02 reads combatFlag('weaponImpulseConsequences') to decide contact
+      // capture — read there it returned the process default (false), so every Motion Lab run had
+      // real contact physics but ZERO physics:impact receipts (found by the CONTACT lane, 2026-09-03,
+      // on the fun-loop real-path helper; same defect here). Apply the runtime's own feature config
+      // across the prepare call and restore the maps exactly as the runtime does.
+      const previousFlags = snapshotFeatureMaps();
+      applyFeatureConfigToMaps(runtime.config.features);
+      let ok = false;
+      try {
+        ok = await physicsSys.prepareBackend(state, { reset: true });
+      } finally {
+        restoreFeatureMaps(previousFlags);
+      }
       if (ok !== true) throw new Error('SG-02 dynamic authority failed to become ready');
     },
     dispose() {
