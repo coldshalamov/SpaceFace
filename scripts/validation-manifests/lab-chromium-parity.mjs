@@ -42,6 +42,7 @@ export function createLabChromiumParityManifest(overrides = {}) {
       'src/testing/lab/checkpointCompare.js',
       'src/testing/lab/liveRouteBridge.js',
       'src/testing/lab/browserScenarioHost.js',
+      'src/testing/lab/oracleKernel.js',
       'src/testing/lab/checkpoint.js',
       'src/testing/lab/deterministicSurface.js',
       'src/runtime/createAuthoritativeRuntime.js',

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -378,6 +378,42 @@ test('eligible Browser manifests require a candidate-bound lab scenario', () => 
       broker.manifest.requiresScenario.command,
     );
   }
+});
+
+test('Chromium parity candidate identity binds the shared browser oracle kernel', async (t) => {
+  const kernelPath = 'src/testing/lab/oracleKernel.js';
+  const manifest = createLabChromiumParityManifest();
+  assert.ok(
+    manifest.productionSourcePaths.includes(kernelPath),
+    `${kernelPath} must be candidate-bound by the Chromium manifest`,
+  );
+
+  const root = await tempRoot(t);
+  const outputRoot = path.join(root, 'out');
+  await mkdir(path.join(root, 'src/testing/lab'), { recursive: true });
+  await writeFile(path.join(root, kernelPath), 'export const KERNEL_VERSION = 1;\n', 'utf8');
+
+  // Keep this fixture limited to the manifest's production source set so the assertion observes
+  // the same production/candidate digest path without launching the browser acceptance probe.
+  const fixtureManifest = createLabChromiumParityManifest({
+    fastGateCommands: [],
+    scenarioPaths: [],
+    regressionSourcePaths: [],
+    productionSourcePaths: [kernelPath],
+    harnessSourcePaths: [],
+    requiresScenario: null,
+    artifactRoot: 'out',
+    requireBrokerClaim: false,
+  });
+  const before = await createValidationBroker(fixtureManifest, { root, outputRoot })
+    .computeGateDigests();
+
+  await writeFile(path.join(root, kernelPath), 'export const KERNEL_VERSION = 2;\n', 'utf8');
+  const after = await createValidationBroker(fixtureManifest, { root, outputRoot })
+    .computeGateDigests();
+
+  assert.notEqual(before.productionDigest, after.productionDigest);
+  assert.notEqual(before.candidateDigest, after.candidateDigest);
 });
 
 // ---------------------------------------------------------------------------

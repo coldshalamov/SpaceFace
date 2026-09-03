@@ -166,6 +166,21 @@ test('the live check and check:ci aggregates run the same gates', () => {
   }
 });
 
+test('Chromium parity gate is a single pinned member of the real CI matrix', () => {
+  const scripts = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).scripts;
+  const baseline = JSON.parse(readFileSync(new URL('./gate-reachability.baseline.json', import.meta.url), 'utf8'));
+  const gate = 'check:lab-chromium-parity';
+
+  assert.equal(
+    scripts[gate],
+    'node --test test/lab-chromium-parity.test.mjs test/lab-browser-input-grammar.test.mjs',
+  );
+  assert.equal(directNpmDependencies(scripts.check).filter((name) => name === gate).length, 1);
+  assert.equal(countGateInvocations(scripts, 'check', gate), 1);
+  assert.equal(countGateInvocations(scripts, 'check:ci', gate), 1);
+  assert.ok(baseline.mustGate.includes(gate), `${gate} must remain pinned in the baseline`);
+});
+
 test('the atlas program suite is pinned and reachable, not merely green', () => {
   const scripts = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).scripts;
   const baseline = JSON.parse(readFileSync(new URL('./gate-reachability.baseline.json', import.meta.url), 'utf8'));
