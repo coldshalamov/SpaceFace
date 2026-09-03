@@ -47,6 +47,13 @@ export function assertChromiumParitySupported(canonical) {
   if (!canonical || typeof canonical !== 'object') {
     return { ok: false, status: 'unsupported', reason: 'canonical required' };
   }
+  if (canonical.evidenceClass === 'production-fixture') {
+    return {
+      ok: false,
+      status: 'unsupported',
+      reason: 'production-fixture is Node-only; Chromium host supports the focused flight bundle, not the production manifest',
+    };
+  }
   const fixture = canonical.world?.fixtureProfile;
   if (fixture && fixture !== 'flight' && fixture !== 'empty-flight') {
     return {

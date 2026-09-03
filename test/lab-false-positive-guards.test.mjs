@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
 import { runLabScenario, runLabScenarioInternal, validateLabScenario } from '../src/testing/lab/runScenario.js';
+import { assertChromiumParitySupported } from '../src/testing/lab/browserScenarioHost.js';
 import { compareSaveLoad } from '../src/testing/lab/saveLoadCompare.js';
 import { evaluateOracles } from '../src/testing/lab/oracleEngine.js';
 import {
@@ -35,6 +36,10 @@ const saveLoadDoc = JSON.parse(readFileSync(
 ));
 const orbitDoc = JSON.parse(readFileSync(
   join(ROOT, '../src/testing/scenarios/massline-orbit-assist.scenario.json'),
+  'utf8',
+));
+const productionCanaryDoc = JSON.parse(readFileSync(
+  join(ROOT, '../src/testing/scenarios/production-fixture-canary.scenario.json'),
   'utf8',
 ));
 
@@ -963,4 +968,52 @@ test('FIX17: precompiled canonical with orphan lab.anchorMass is rejected via op
     (handBuilt.validation && handBuilt.validation.issues) || [],
     'hand-built options.canonical',
   );
+});
+
+// ── G1: production-fixture admission is opt-in and fail-closed ──────────────
+
+test('G1: authored production-fixture with explicit scenario systems is demoted', async () => {
+  const result = await runLabScenarioInternal({
+    ...productionCanaryDoc,
+    id: 'production.fixture.explicit-systems-demotion',
+    systems: ['actions', 'flightV3', 'weapons', 'physics'],
+  }, { verbosity: 1 });
+  assert.notEqual(result.exitClass, 3, result.error);
+  assert.equal(result.executionEvidenceClass, 'focused-fixture');
+  assert.equal(result.authoredEvidenceClass, 'production-fixture');
+  assert.equal(result.evidenceDemoted, true);
+  assert.equal(result.live.systems.length, 4);
+});
+
+test('G1: internal options.systems injection cannot claim production-fixture', async () => {
+  const result = await runLabScenarioInternal(productionCanaryDoc, {
+    verbosity: 1,
+    systems: [...FOCUSED_FLIGHT_SYSTEMS],
+  });
+  assert.notEqual(result.exitClass, 3, result.error);
+  assert.equal(result.executionEvidenceClass, 'focused-fixture');
+  assert.equal(result.authoredEvidenceClass, 'production-fixture');
+  assert.equal(result.evidenceDemoted, true);
+  assert.equal(result.live.systems.length, FOCUSED_FLIGHT_SYSTEMS.length);
+});
+
+test('G1: non-production runtime profile remains focused when production-fixture is authored', async () => {
+  const result = await runLabScenarioInternal({
+    ...productionCanaryDoc,
+    id: 'production.fixture.profile-demotion',
+    runtimeProfile: 'focused-lab',
+  }, { verbosity: 1 });
+  assert.notEqual(result.exitClass, 3, result.error);
+  assert.equal(result.executionEvidenceClass, 'focused-fixture');
+  assert.equal(result.authoredEvidenceClass, 'production-fixture');
+  assert.equal(result.evidenceDemoted, true);
+});
+
+test('G1: Chromium host rejects production-fixture instead of claiming parity', () => {
+  const compiled = compileSimScenario(productionCanaryDoc);
+  assert.equal(compiled.ok, true, JSON.stringify(compiled.validation));
+  const support = assertChromiumParitySupported(compiled.canonical);
+  assert.equal(support.ok, false);
+  assert.equal(support.status, 'unsupported');
+  assert.match(support.reason, /Node-only|production manifest/i);
 });

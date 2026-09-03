@@ -9,22 +9,26 @@ update this file in the same reviewed slice that closes or materially changes th
 - **Expires:** any change to the authoritative runtime manifest, lab CLI/runtime/evidence code,
   committed scenarios, Chromium host, checkpoint surface, or relevant lab/broker tests.
 
-## G1 — `sf lab` cannot yet produce `production-fixture`
+## G1 — `sf lab` production-fixture admission (closed for Node-safe detached execution)
 
-`src/runtime/authoritativeSystemManifest.js` can identify the Node-safe production manifest, but
-`runScenario.js` always supplies an explicit focused system list resolved by `systemBundles.js`.
-Evidence is therefore derived as `focused-fixture` (or a narrower honest class).
+`runScenario.js` now opts into the Node-safe production manifest only when the authored scenario
+uses `evidenceClass: "production-fixture"`, `runtimeProfile: "production"`, omits
+`systems` (canonical `null`), and the internal runner receives no `options.systems` injection. The
+runner calls `createAuthoritativeRuntime({ nodeSafeOnly: true })` without an explicit systems list,
+requires manifest materialization, and derives the result class from the resolved execution.
 
-Do not claim whole-game or full-production behavior from the current CLI.
+`src/testing/scenarios/production-fixture-canary.scenario.json` is the minimal public canary. It
+proves the full Node-safe init/update manifest with rendering detached; it is not whole-game
+rendered, UI, audio, VFX, or public-route evidence. Focused, injected, and profile-mismatched arms
+remain `focused-fixture` (with authored production claims demoted). The detached Chromium host
+rejects authored `production-fixture` scenarios because it only implements the focused flight
+bundle; it cannot claim production-manifest parity.
 
 Relevant proof:
 
 ```powershell
-node --test test/authoritative-manifest.test.mjs test/lab-runner.test.mjs
+node --test test/lab-production-fixture.test.mjs test/lab-false-positive-guards.test.mjs test/lab-scenarios-cli.test.mjs
 ```
-
-Closure requires a public lab/profile path that materializes the Node-safe production manifest,
-preserves scenario/fixture control, derives `production-fixture`, and has fail-closed coverage.
 
 ## G2 — flight save/load continuation diverges at tick 43
 

@@ -193,17 +193,50 @@ async function runLabScenarioInternalBody(scenarioDoc, options = {}) {
 
   let runtime = null;
   try {
-    const systems = options.systems || resolveSystemsForScenario(canonical);
+    // G1: production-fixture is an opt-in claim for the Node-safe production manifest only.
+    // Keep every focused/DI arm on its explicit focused list so author intent cannot upgrade it.
+    const productionManifestRequested = canonical.evidenceClass === 'production-fixture'
+      && canonical.runtimeProfile === 'production'
+      && canonical.systems == null
+      && !Object.prototype.hasOwnProperty.call(options, 'systems');
+    const systems = productionManifestRequested
+      ? null
+      : (options.systems || resolveSystemsForScenario(canonical));
     const profileId = canonical.runtimeProfile === 'focused-lab'
       ? 'production'
       : (canonical.runtimeProfile || 'production');
-    runtime = createAuthoritativeRuntime({
+    const runtimeOptions = {
       profileId,
       seed: canonical.seed,
-      systems,
       // H1: default seed production MAPS for non-legacy profiles (explicit false opts out).
       seedProcessMaps: options.seedProcessMaps,
-    });
+    };
+    if (productionManifestRequested) {
+      // No explicit systems list: createAuthoritativeRuntime materializes the Node-safe
+      // production init/update manifest from its canonical factory table.
+      runtimeOptions.nodeSafeOnly = true;
+    } else {
+      runtimeOptions.systems = systems;
+    }
+    runtime = createAuthoritativeRuntime(runtimeOptions);
+
+    const manifestMaterialized = runtime.manifest
+      && runtime.manifest.evidenceClass === 'production-manifest'
+      && runtime.manifest.nodeSafeOnly === true
+      && Array.isArray(runtime.manifest.authoritativeSystems)
+      && Array.isArray(runtime.manifest.authoritativeUpdateOrder);
+    if (productionManifestRequested && !manifestMaterialized) {
+      runtime.dispose();
+      runtime = null;
+      return {
+        schema: 'spaceface.labRunResult.v1',
+        ok: false,
+        exitClass: 3,
+        status: 'infra',
+        runId,
+        error: 'production-fixture requires a materialized Node-safe production manifest',
+      };
+    }
 
     let state = runtime.state;
     state.mode = canonical.world.mode || 'flight';
@@ -615,12 +648,14 @@ async function runLabScenarioInternalBody(scenarioDoc, options = {}) {
     const traceHash = sha256(canonicalStringify(oracleTrace));
 
     // H2: evidence class from execution reality, never author intent alone.
-    const systemNames = systems.map((s) => s.name);
+    const systemNames = productionManifestRequested
+      ? runtime.manifest.authoritativeSystemIds.filter((name) => name !== 'core')
+      : systems.map((s) => s.name);
     const evidence = deriveEvidenceClass({
       authored: canonical.evidenceClass,
       manifestEvidenceClass: runtime.manifest && runtime.manifest.evidenceClass,
       systemNames,
-      focusedSystems: true, // lab path always passes an explicit systems list
+      focusedSystems: !productionManifestRequested,
       renderingDetached: true,
       host: options.host || 'node',
       exclusions: (runtime.manifest && runtime.manifest.exclusions) || [],

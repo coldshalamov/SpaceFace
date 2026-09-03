@@ -12,6 +12,7 @@ const SCENARIOS = [
   'massline-latch-reel',
   'massline-orbit-assist',
   'flight-save-load',
+  'production-fixture-canary',
 ];
 
 for (const scenario of SCENARIOS) {
@@ -51,6 +52,13 @@ for (const scenario of SCENARIOS) {
       `exitClass=${parsed.exitClass} status=${child.status}\n${JSON.stringify(parsed).slice(0, 500)}`,
     );
     if (parsed.exitClass === 0) assert.equal(parsed.ok, true);
+    if (scenario === 'production-fixture-canary') {
+      assert.equal(parsed.exitClass, 0, JSON.stringify(parsed));
+      assert.equal(parsed.result.evidenceClass, 'production-fixture');
+      assert.equal(parsed.result.rendering.detached, true);
+      assert.ok(parsed.result.live.systems.includes('economy'));
+      assert.ok(!parsed.result.live.systems.includes('render'));
+    }
     if (parsed.exitClass === 4) {
       assert.equal(parsed.ok, false);
       assert.ok(
