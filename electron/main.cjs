@@ -8,13 +8,13 @@
 // window creation, fixed-port-for-saves, packaged→bundle root selection.
 // `npm run check:launch-policy` enforces that both launchers share that module.
 const { app, BrowserWindow, ipcMain, powerMonitor } = require('electron');
-const http = require('http');
 const path = require('path');
 const { createGameServer } = require('../scripts/lib/gameServer.cjs');
 const {
   appendLaunchReceipt,
   isAllowedElectronListenerPort,
   isAssetPreloadFailureMessage,
+  probeSpaceFacePort,
   resolveElectronLaunchConfig,
   resolveWebRoot,
 } = require('../scripts/lib/electronLaunchProtocol.cjs');
@@ -161,25 +161,6 @@ function listenGameServer(root, requestedPort) {
 function closeListeningServer(server) {
   return new Promise((resolve, reject) => {
     server.close((error) => error ? reject(error) : resolve());
-  });
-}
-
-function probeSpaceFacePort(port) {
-  return new Promise((resolve) => {
-    const request = http.get({ host: '127.0.0.1', port, path: '/__spaceface_health', timeout: 1000 }, (response) => {
-      let body = '';
-      response.setEncoding('utf8');
-      response.on('data', (chunk) => { body += chunk; });
-      response.on('end', () => {
-        try {
-          const health = JSON.parse(body);
-          resolve(response.statusCode === 200 && health.app === 'SpaceFace' && health.route === '/');
-        }
-        catch { resolve(false); }
-      });
-    });
-    request.on('timeout', () => { request.destroy(); resolve(false); });
-    request.on('error', () => resolve(false));
   });
 }
 

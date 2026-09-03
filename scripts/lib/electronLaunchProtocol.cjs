@@ -1,8 +1,11 @@
 const fs = require('fs');
+const http = require('http');
 const os = require('os');
 const path = require('path');
 
 const PLAYER_ELECTRON_PORT = 41788;
+const SPACEFACE_HEALTH_MAX_BYTES = 4096;
+const SPACEFACE_HEALTH_TIMEOUT_MS = 1000;
 const ELECTRON_ISOLATED_EVIDENCE_MODE = 'isolated-evidence';
 const ELECTRON_EVIDENCE_PROFILE_DIR = 'spaceface-electron-evidence';
 const EVIDENCE_PROFILE_NAME = /^probe-[a-z0-9][a-z0-9_-]{0,63}-[a-z0-9]{6}$/i;
@@ -51,6 +54,77 @@ function isAllowedElectronListenerPort({ isolatedEvidence = false, port } = {}) 
   const value = Number(port);
   if (!Number.isSafeInteger(value) || value <= 0 || value > 65_535) return false;
   return isolatedEvidence ? value !== PLAYER_ELECTRON_PORT : value === PLAYER_ELECTRON_PORT;
+}
+
+/**
+ * Classify an occupied loopback port without allowing an unrelated server to hold Electron
+ * startup open. The deadline is absolute (not socket-idle based) and the response body is bounded.
+ */
+function probeSpaceFacePort(port, options = {}) {
+  const requestImpl = typeof options.requestImpl === 'function' ? options.requestImpl : http.get;
+  const timeoutMs = Number.isFinite(options.timeoutMs) && options.timeoutMs > 0
+    ? options.timeoutMs
+    : SPACEFACE_HEALTH_TIMEOUT_MS;
+  const maxBytes = Number.isFinite(options.maxBytes) && options.maxBytes > 0
+    ? options.maxBytes
+    : SPACEFACE_HEALTH_MAX_BYTES;
+
+  return new Promise((resolve) => {
+    let settled = false;
+    let request = null;
+    let response = null;
+    let deadline = null;
+    const finish = (value) => {
+      if (settled) return;
+      settled = true;
+      if (deadline) clearTimeout(deadline);
+      resolve(value);
+    };
+    const abortFalse = () => {
+      if (settled) return;
+      if (response && typeof response.destroy === 'function') response.destroy();
+      if (request && typeof request.destroy === 'function') request.destroy();
+      finish(false);
+    };
+
+    try {
+      deadline = setTimeout(abortFalse, timeoutMs);
+      request = requestImpl({
+        host: '127.0.0.1',
+        port,
+        path: '/__spaceface_health',
+        timeout: timeoutMs,
+      }, (incoming) => {
+        response = incoming;
+        let body = '';
+        let bytes = 0;
+        response.setEncoding('utf8');
+        response.on('data', (chunk) => {
+          bytes += Buffer.byteLength(chunk, 'utf8');
+          if (bytes > maxBytes) {
+            abortFalse();
+            return;
+          }
+          body += chunk;
+        });
+        response.on('end', () => {
+          if (settled) return;
+          try {
+            const health = JSON.parse(body);
+            finish(response.statusCode === 200 && health.app === 'SpaceFace' && health.route === '/');
+          } catch {
+            finish(false);
+          }
+        });
+        response.on('aborted', () => finish(false));
+        response.on('error', () => finish(false));
+      });
+      request.on('timeout', abortFalse);
+      request.on('error', () => finish(false));
+    } catch {
+      abortFalse();
+    }
+  });
 }
 
 function resolveElectronLaunchConfig(env = process.env) {
@@ -240,6 +314,7 @@ module.exports = {
   isAllowedElectronListenerPort,
   isAssetPreloadFailureMessage,
   parseLaunchReceipts,
+  probeSpaceFacePort,
   resolveElectronLaunchConfig,
   resolveWebRoot,
   tailDiagnosticText,
