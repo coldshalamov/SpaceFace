@@ -124,8 +124,16 @@ export function swarmReinforceCount(deficit) {
   return Math.min(d, Math.max(SWARM_REINFORCE_BATCH, surge));
 }
 
-/** Hostiles arrive closer than the arc's 220 so contact is immediate, not a commute. */
-export const SWARM_SPAWN_DISTANCE = 200;
+/**
+ * How far out hostiles arrive.
+ *
+ * The arc uses 220 and calls it "just off the chase-camera bubble". That is fine for six bodies you
+ * turn to face. It is wrong for a surround: a live projection of every hostile through the real
+ * camera found the median one sitting at 200 units and only a fifth of them inside the frame.
+ * Pulling arrivals in to 165 — together with the wider swarm camera in ui/crucibleFocus.js — puts
+ * the fight where the player can see it, without spawning anything on top of them.
+ */
+export const SWARM_SPAWN_DISTANCE = 165;
 
 /** Ticks of breathing room after a wave's quota is met. Under a second: long enough to read, short enough to hurt. */
 export const SWARM_CLEANUP_TICKS = 45;

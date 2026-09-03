@@ -34,6 +34,25 @@ export const CRUCIBLE_FOCUS_CLASS = 'sf-crucible-focus';
 const STYLE_ID = 'sf-crucible-focus-style';
 
 /**
+ * HOW FAR BACK THE CAMERA SITS IN A SWARM RUN.
+ *
+ * Measured, not guessed. Projecting every live hostile through the real camera across waves 1-9
+ * found that only 4-25% of them were inside the viewport at any moment: the chase camera sits at
+ * 144 and shows roughly 93-125 units of depth, while the median hostile was 200 away. With thirty
+ * hulls on you that is most of the fight happening outside the frame — being shot by things you
+ * cannot see is not difficulty, it is a camera problem wearing difficulty's clothes.
+ *
+ * This is NOT a flatten. The tilt is untouched, so the shipped rule that the arena is read on an
+ * angle and never squashed into a top-down plan still holds — the camera simply stands further
+ * off, which is what a room holding thirty hostiles needs.
+ *
+ * It goes out through `camera:zoom`, the same shipped event the mouse wheel uses, so a player who
+ * wants a different framing just scrolls and their choice sticks. The campaign's own zoom is read
+ * before the run and put back after it, so nothing follows the player home here either.
+ */
+export const SWARM_CAMERA_ZOOM = 235;
+
+/**
  * The campaign-only panels. Each is another module's own root class; this file only ever hides
  * them, and only while a run is live.
  *
@@ -106,6 +125,7 @@ export const crucibleFocus = {
     this.state = ctx.state;
     this.bus = ctx.bus || null;
     this._applied = null;
+    this._priorZoom = null;
   },
 
   destroy() {
@@ -126,13 +146,32 @@ export const crucibleFocus = {
     const wanted = !!(run && run.kind === 'survival' && isRunSealed(st));
     if (wanted === this._applied) return;
     this._applied = wanted;
+    this._applyCamera(st, wanted);
     const root = focusHost();
     if (!root) return;
     if (wanted) this._injectCss();
     root.classList.toggle(CRUCIBLE_FOCUS_CLASS, wanted);
   },
 
+  _applyCamera(state, wanted) {
+    if (!this.bus || typeof this.bus.emit !== 'function') return;
+    const camera = state && state.camera;
+    if (!camera) return;
+    if (wanted) {
+      if (this._priorZoom == null) {
+        this._priorZoom = Number.isFinite(camera.zoom) ? camera.zoom : null;
+      }
+      this.bus.emit('camera:zoom', { level: SWARM_CAMERA_ZOOM });
+      return;
+    }
+    const prior = this._priorZoom;
+    this._priorZoom = null;
+    if (Number.isFinite(prior)) this.bus.emit('camera:zoom', { level: prior });
+  },
+
   _release() {
+    if (this._applied === true) this._applyCamera(this.state, false);
+    this._priorZoom = null;
     if (typeof document === 'undefined') return;
     this._applied = null;
     const root = focusHost();

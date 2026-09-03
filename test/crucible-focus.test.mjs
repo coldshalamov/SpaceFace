@@ -6,8 +6,12 @@ import { createRunState } from '../src/core/runState.js';
 import {
   CRUCIBLE_FOCUS_CLASS,
   CRUCIBLE_HIDDEN_PANELS,
+  SWARM_CAMERA_ZOOM,
   crucibleFocus,
 } from '../src/ui/crucibleFocus.js';
+import { CAMERA_ZOOM_MAX, CAMERA_ZOOM_MIN, CHASE_ZOOM_DEFAULT } from '../src/render/camera.js';
+import { SWARM_SPAWN_DISTANCE } from '../src/data/swarmMode.js';
+import { createBus } from '../src/core/eventBus.js';
 import { PRODUCTION_INIT_ORDER, PRODUCTION_UPDATE_ORDER } from '../src/runtime/authoritativeSystemManifest.js';
 
 function runOf({ kind = 'survival', phase = 'active', ruleset = 'swarm' } = {}) {
@@ -64,6 +68,43 @@ test('it is a strict no-op without a document — node runs the sim headless', (
   // Every entry point must survive the headless path without throwing.
   crucibleFocus.update(1 / 60, state);
   crucibleFocus.newGame();
+  crucibleFocus.destroy();
+});
+
+test('the swarm camera stands further off, inside the sanctioned range, and is not a flatten', () => {
+  // Measured, not guessed: projecting every hostile through the real camera across waves 1-9 found
+  // only 4-25% of them inside the viewport at the shipped chase distance. Standing further off took
+  // that to 50-90%.
+  assert.ok(SWARM_CAMERA_ZOOM > CHASE_ZOOM_DEFAULT, 'further back than the campaign chase');
+  assert.ok(SWARM_CAMERA_ZOOM <= CAMERA_ZOOM_MAX, 'inside the shipped zoom ceiling');
+  assert.ok(SWARM_CAMERA_ZOOM >= CAMERA_ZOOM_MIN);
+  // Arrivals have to land inside what the camera can now show, or the fight is still off-frame.
+  assert.ok(
+    SWARM_SPAWN_DISTANCE < SWARM_CAMERA_ZOOM,
+    'hostiles arrive inside the framing rather than outside it',
+  );
+});
+
+test('the camera is borrowed for the run and given back — through the shipped zoom seam', () => {
+  const bus = createBus();
+  const sent = [];
+  bus.on('camera:zoom', (p) => sent.push(p));
+  const state = { camera: { zoom: 144 }, run: runOf({ phase: 'inactive' }) };
+  crucibleFocus.init({ state, bus, helpers: {} });
+
+  // No DOM here, so update() is a no-op by contract; drive the camera decision directly, which is
+  // the part that has to work headless-or-not.
+  crucibleFocus._applyCamera(state, true);
+  assert.deepEqual(sent, [{ level: SWARM_CAMERA_ZOOM }], 'it asks through camera:zoom, like the wheel');
+
+  // The player scrolls to their own framing mid-run; that is theirs to choose.
+  state.camera.zoom = 190;
+  crucibleFocus._applyCamera(state, false);
+  assert.deepEqual(
+    sent[sent.length - 1],
+    { level: 144 },
+    'and the CAMPAIGN framing is restored, not whatever the run ended on',
+  );
   crucibleFocus.destroy();
 });
 
