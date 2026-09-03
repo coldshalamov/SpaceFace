@@ -488,7 +488,7 @@ test('full chain reaches a believable terminal outcome after authored miner work
   for (const [phase, cue] of [
     ['groan', 'blind_cone'],
     ['calve', 'breaking_the_pattern'],
-    ['drift', 'home_under_rock'],
+    ['drift', 'stacking'],
   ]) {
     assert.ok(
       receipts.some((r) => r.eventId === 'ev_rock_calving'

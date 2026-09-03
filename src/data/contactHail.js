@@ -84,6 +84,9 @@ const CAUSAL_PHASE_LABEL = Object.freeze({
   sever: 'SEVERING HULL',
   wrangle: 'WRANGLING MASS',
   stack: 'STACKING SALVAGE',
+  groan: 'SEAM GROANING',
+  calve: 'ROCK CALVING',
+  drift: 'DRIFTING CLEAR',
 });
 const CAUSAL_CUE_LABEL = Object.freeze({
   blind_cone: 'BLIND CONE',
@@ -97,6 +100,7 @@ const CAUSAL_CUE_LABEL = Object.freeze({
   hull_open: 'HULL OPEN',
   picking_the_bones: 'PICKING BONES',
   spilling_the_count: 'SPILLING COUNT',
+  stacking: 'STACKING',
 });
 
 function entityById(state, id) {
@@ -767,6 +771,7 @@ const CAUSAL_MEANS = Object.freeze({
   hull_open: 'HULL OPEN · SERVICE IN PROGRESS',
   picking_the_bones: 'SALVAGE CUT HOT · STAND OFF',
   spilling_the_count: 'STACKING LOOT · HOLD FAT',
+  stacking: 'FIELD APPROACH · GIVE WAY',
 });
 
 function workerStatusText(target, state = null) {

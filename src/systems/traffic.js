@@ -574,9 +574,9 @@ const CERES_CAUSAL_CHAIN = Object.freeze([
       }),
     ]),
     phases: Object.freeze([
-      Object.freeze({ name: 'groan', durationS: 12, cue: 'blind_cone' }),
-      Object.freeze({ name: 'calve', durationS: 8, cue: 'breaking_the_pattern' }),
-      Object.freeze({ name: 'drift', durationS: 20, cue: 'home_under_rock' }),
+      Object.freeze({ name: 'groan', durationS: 15, cue: 'blind_cone' }),
+      Object.freeze({ name: 'calve', durationS: 10, cue: 'breaking_the_pattern' }),
+      Object.freeze({ name: 'drift', durationS: 40, cue: 'stacking' }),
     ]),
   }),
 ]);
