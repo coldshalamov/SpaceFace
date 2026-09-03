@@ -18,6 +18,10 @@
    NPC's velocity to 1.15× its top speed every tick, impulses included — a pirate at cruise that
    took a concussion hit had the hit deleted one tick later. Now: the cap bounds only the speed the
    body's own thrust added this tick; shoves, throws, flings and contacts survive it.
+   Side effect, by design: a gravimetric hull (the one drive family with a finite solver speed
+   limit) also keeps externally given momentum above that limit; its own drive still cannot
+   exceed it. The live concurrent thread editing traffic.js / survivorPod.js / lootShards.js /
+   weapons.js is on PQ-138's seams; this receipt claims nothing there.
 3. **Hard terrain and structure slams take the helm** (`.02`). Before: rock and station contact was
    defined as never staggering or tumbling a ship, regardless of how hard. Now: a slam with ΔV at or
    above the tumble threshold (18 WU/s) tumbles the ship whoever caused it; scrapes below it stay
