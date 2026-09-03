@@ -10,6 +10,7 @@ const COMBAT_DOCTRINES = new Set([
   'ranged_disengager',
   'field_anchor_controller',
   'capital_broadside',
+  'escort_screen',
 ]);
 const NORMALIZED_PROFILES = new WeakSet();
 const FROZEN_INPUT_CACHE = new WeakMap();

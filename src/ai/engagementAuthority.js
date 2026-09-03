@@ -41,6 +41,10 @@ const DOCTRINE_FIRE_PHASES = Object.freeze({
   field_anchor_controller: new Set(['anchor_hold']),
   // Iron Maw / capital hulls telegraph on broadside_charge, then fire on broadside_fire.
   capital_broadside: new Set(['broadside_fire']),
+  // The warden's hold is a real gun window (defensive burst while planted on the ward→threat
+  // line) and the breach dart is its committed lunge. Same fail-closed rule as the brawler: a
+  // missing key silences a live doctrine.
+  escort_screen: new Set(['screen_hold', 'shield_dart']),
 });
 const ROBBERY_ESCALATION_TRIGGERS = new Set(['explicit_refusal', 'ignored_demand', 'player_attack']);
 const SCENARIO_47A_SCAVENGERS = new Map([

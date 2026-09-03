@@ -157,6 +157,16 @@ export const RECIPES = [
     gainEnvelope: { attack: 0.015, sustain: 0.03, release: 0.3 },
     filterType: 'lowpass', filterFreq: 220, filterQ: 0.9,
   },
+  // Escort screen: an even, unhurried defensive phrase — a guarding cadence, not a hunter's.
+  {
+    id: 'sfx_doctrine_escort_screen',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 220, freqSweep: [220, 300], sweepTimeS: 0.22,
+    gainEnvelope: { attack: 0.02, sustain: 0.03, release: 0.3 },
+    filterType: 'bandpass', filterFreq: 520, filterQ: 1.1,
+  },
   // Capital broadside: two immense, separated battery reports. The low sawtooth sweep stays
   // distinct from the brawler's continuous square growl and from ordinary projectile fire.
   {

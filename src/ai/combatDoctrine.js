@@ -18,6 +18,7 @@ export const CombatDoctrineId = Object.freeze({
   FIELD_ANCHOR_CONTROLLER: 'field_anchor_controller',
   RANGED_DISENGAGER: 'ranged_disengager',
   CAPITAL_BROADSIDE: 'capital_broadside',
+  ESCORT_SCREEN: 'escort_screen',
 });
 
 export const DOCTRINE_TELEGRAPH_TICKS = 30;
@@ -43,6 +44,15 @@ const RANGED_FIRE_TICKS = 18;
 const RANGED_RESET_TICKS = 18;
 const CAPITAL_BROADSIDE_FIRE_TICKS = 60;
 const CAPITAL_BROADSIDE_SHIFT_TICKS = 90;
+// Escort screen: the warden's job is the WARD, not the kill. It holds a point between its nearest
+// friendly and the pressed threat, and darts only when the threat actually breaches the ward.
+const ESCORT_APPROACH_RANGE_WU = 160;
+const ESCORT_APPROACH_TICKS = 60;
+const ESCORT_HOLD_TICKS = 150;
+const ESCORT_DART_TICKS = 36;
+const ESCORT_REGROUP_TICKS = 45;
+const ESCORT_BREACH_WU = 260;
+const ESCORT_THREAT_RING_WU = 900;
 const RUN_EGRESS_DISTANCE = 960;
 // A contact already on the end of a line is anchored, slowed, and predictable. That reads as a free
 // kill, so it should DRAW the swarm rather than repel it. See targetScore() for why this replaced a
@@ -55,19 +65,45 @@ export function normalizeCombatDoctrineId(value, fallback = null) {
   return fallback && IDS.has(String(fallback)) ? String(fallback) : null;
 }
 
-export function selectDoctrineTarget(doctrineValue, perception) {
-  const doctrineId = normalizeCombatDoctrineId(doctrineValue);
-  if (!doctrineId || !perception || !Array.isArray(perception.contacts)) return null;
+export function selectDoctrineTarget(doctrineId, perception) {
+  const doctrine = normalizeCombatDoctrineId(doctrineId);
+  if (!doctrine || !perception || !Array.isArray(perception.contacts)) return null;
+  // The escort scores hostiles by how hard they press its WARD, so resolve the ward (nearest
+  // visible friendly) once per selection. Fail-closed: no ward, standard threat scoring.
+  const ward = doctrine === CombatDoctrineId.ESCORT_SCREEN ? escortWard(perception, null) : null;
   let best = null;
   let bestScore = -Infinity;
   for (const contact of perception.contacts) {
     if (!contact || contact.kind !== ContactKind.SHIP || contact.hostile !== true) continue;
     if (contact.alive !== true || contact.valid !== true || contact.visible !== true) continue;
     if (finite(contact.confidence, 0) < 0.55) continue;
-    const score = targetScore(doctrineId, contact);
+    const score = targetScore(doctrine, contact, ward);
     if (score > bestScore || (score === bestScore && stableId(contact.id) < stableId(best && best.id))) {
       best = contact;
       bestScore = score;
+    }
+  }
+  return best;
+}
+
+/**
+ * The escort's ward: the nearest visible friendly hull. Hostile-only target streams never produce
+ * one, so every escort branch must tolerate `null` (fail-closed to ordinary threat behavior).
+ */
+function escortWard(perception, self) {
+  if (!perception || !Array.isArray(perception.contacts)) return null;
+  const selfPos = self && self.pos ? self.pos : perception.self && perception.self.pos;
+  let best = null;
+  let bestDist = Infinity;
+  for (const contact of perception.contacts) {
+    if (!contact || contact.kind !== ContactKind.SHIP || contact.hostile === true) continue;
+    if (contact.alive !== true || contact.visible !== true || !contact.pos) continue;
+    const d = selfPos
+      ? Math.hypot(contact.pos.x - selfPos.x, contact.pos.z - selfPos.z)
+      : 0;
+    if (d < bestDist || (d === bestDist && best && stableId(contact.id) < stableId(best.id))) {
+      best = contact;
+      bestDist = d;
     }
   }
   return best;
@@ -129,6 +165,7 @@ export class CombatDoctrineRuntime {
       const egressPhase = doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY ? 'breakaway'
         : doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER ? 'escape'
           : doctrineId === CombatDoctrineId.FIELD_ANCHOR_CONTROLLER ? 'recover'
+          : doctrineId === CombatDoctrineId.ESCORT_SCREEN ? 'regroup'
           : 'retreat';
       if (record.phase !== egressPhase) beginEgress(record, egressPhase, tick, self, target, 'target_disabled');
       return snapshot(record, target, directive, factionBehavior);
@@ -143,6 +180,8 @@ export class CombatDoctrineRuntime {
       updateFieldAnchor(record, tick, self, target, distance);
     } else if (doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE) {
       updateCapitalBroadside(record, tick, distance);
+    } else if (doctrineId === CombatDoctrineId.ESCORT_SCREEN) {
+      updateEscort(record, tick, perception, self, target, distance);
     } else {
       updateRanged(record, tick, self, target, distance);
     }
@@ -178,6 +217,12 @@ export function overrideDirectiveForCombatDoctrine(directive, doctrine) {
     // window this doctrine advertises. Approach/field_spool/reform stay SCREEN so the anchor
     // reads as area control until its telegraph completes.
     kind = doctrine.phase === 'recover' || doctrine.phase === 'anchor_hold'
+      ? ObjectiveKind.ENGAGE
+      : ObjectiveKind.SCREEN;
+  } else if (doctrine.doctrineId === CombatDoctrineId.ESCORT_SCREEN) {
+    // Same gate as the anchor: screen_hold's guns are real, so it and the breach dart read ENGAGE;
+    // approach/deploy/regroup stay SCREEN (area denial around the ward).
+    kind = doctrine.phase === 'screen_hold' || doctrine.phase === 'shield_dart'
       ? ObjectiveKind.ENGAGE
       : ObjectiveKind.SCREEN;
   }
@@ -303,6 +348,59 @@ function updateFieldAnchor(record, tick, self, target, distance) {
   }
 }
 
+function updateEscort(record, tick, perception, self, target, distance) {
+  const age = tick - record.phaseStartedTick;
+  const ward = escortWard(perception, self);
+  // The screen point floats: between the ward and the pressed threat. No ward → hold on the
+  // target's ring (fail-closed to a defensive orbit instead of inventing a post).
+  record.flightPoint = escortScreenPoint(self, ward, target);
+  if (record.phase === 'screen_approach') {
+    // The maneuver planner flies the hull to the screen point; a hull that cannot reach it in
+    // time (boxed in, spawn geometry) still deploys on the clock so the hold is never skipped.
+    const inPosition = pointWithin(self, record.flightPoint, ESCORT_APPROACH_RANGE_WU);
+    if (inPosition || age >= ESCORT_APPROACH_TICKS) enter(record, 'screen_deploy', tick, 'engine_flare');
+  } else if (record.phase === 'screen_deploy' && age >= DOCTRINE_TELEGRAPH_TICKS) {
+    enter(record, 'screen_hold', tick, null);
+  } else if (record.phase === 'screen_hold') {
+    if (escortBreached(ward, target)) enter(record, 'shield_dart', tick, null);
+    else if (age >= ESCORT_HOLD_TICKS) advanceCycle(record, tick, 'screen_approach');
+  } else if (record.phase === 'shield_dart') {
+    record.closestDistance = Math.min(record.closestDistance, distance);
+    if (age >= ESCORT_DART_TICKS || runHasPassed(record, self, target, distance)) {
+      enter(record, 'screen_hold', tick, null);
+    }
+  } else if (record.phase === 'regroup' && age >= ESCORT_REGROUP_TICKS) {
+    advanceCycle(record, tick, 'screen_approach');
+  }
+  // A ward that dies mid-hold ends the doctrine's reason to hold: regroup and re-cycle.
+  if (!ward && (record.phase === 'screen_hold' || record.phase === 'shield_dart')) {
+    beginEgress(record, 'regroup', tick, self, target, 'ward_lost');
+  }
+}
+
+/** Point on the ward→threat line, ESCORT_APPROACH_RANGE_WU from the ward — the hull the threat must pass. */
+function escortScreenPoint(self, ward, target) {
+  if (!ward || !ward.pos || !target || !target.pos || !self || !self.pos) return null;
+  const dx = target.pos.x - ward.pos.x;
+  const dz = target.pos.z - ward.pos.z;
+  const length = Math.hypot(dx, dz);
+  if (length <= 1e-6) return null;
+  return Object.freeze({
+    x: ward.pos.x + (dx / length) * ESCORT_APPROACH_RANGE_WU,
+    z: ward.pos.z + (dz / length) * ESCORT_APPROACH_RANGE_WU,
+  });
+}
+
+function pointWithin(self, point, rangeWu) {
+  if (!self || !self.pos || !point) return false;
+  return Math.hypot(self.pos.x - point.x, self.pos.z - point.z) <= rangeWu;
+}
+
+function escortBreached(ward, target) {
+  if (!ward || !ward.pos || !target || !target.pos) return false;
+  return Math.hypot(target.pos.x - ward.pos.x, target.pos.z - ward.pos.z) <= ESCORT_BREACH_WU;
+}
+
 function updateRanged(record, tick, self, target, distance) {
   const age = tick - record.phaseStartedTick;
   const closing = closingSpeed(self, target);
@@ -379,7 +477,8 @@ function enter(record, phase, tick, telegraphKind) {
     : null;
   record.telegraphStartedTick = telegraphKind ? tick : null;
   record.fireWindow = phase === 'strike' || phase === 'commit' || phase === 'fire_window'
-    || phase === 'anchor_hold' || phase === 'broadside_fire';
+    || phase === 'anchor_hold' || phase === 'broadside_fire'
+    || phase === 'screen_hold' || phase === 'shield_dart';
 }
 
 function advanceCycle(record, tick, phase) {
@@ -472,6 +571,24 @@ function snapshot(record, target, directive, factionBehavior = null) {
     faceTarget = true;
     formationLocked = true;
     if (phase === 'broadside_fire') allowedActionId = 'action_burst';
+  } else if (doctrineId === CombatDoctrineId.ESCORT_SCREEN) {
+    // The screen point in record.flightPoint owns positioning; the nose stays on the threat so
+    // the hold's guns bear without re-aiming. The dart is a short committed lunge.
+    faceTarget = true;
+    formationLocked = phase !== 'shield_dart';
+    if (phase === 'shield_dart') {
+      maneuverKind = ManeuverKind.ORBIT;
+      preferredRange = 150;
+      lateralSign = record.side;
+    } else if (phase === 'regroup') {
+      maneuverKind = ManeuverKind.FORMATION;
+      maneuverTargetId = null;
+      preferredRange = 500;
+    } else {
+      maneuverKind = phase === 'screen_approach' ? ManeuverKind.INTERCEPT : ManeuverKind.HOLD;
+      preferredRange = 120;
+    }
+    if (phase === 'screen_hold' || phase === 'shield_dart') allowedActionId = 'action_burst';
   } else {
     maneuverKind = phase === 'retreat' ? ManeuverKind.RETREAT
       : (phase === 'outer_standoff' || phase === 'reset' ? ManeuverKind.ORBIT : ManeuverKind.HOLD);
@@ -513,10 +630,18 @@ function snapshot(record, target, directive, factionBehavior = null) {
   });
 }
 
-function targetScore(doctrineId, contact) {
+function targetScore(doctrineId, contact, ward = null) {
   const threat = finite(contact.threat, 0);
   if (doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY) {
     return threat * 5 + bandScore(contact.mobilityBand, ['low', 'medium', 'high']) * 2;
+  }
+  if (doctrineId === CombatDoctrineId.ESCORT_SCREEN) {
+    // Rate hostiles by how hard they press the ward, not by what they are worth to me: a light
+    // scout sitting on the ward outranks a rich freighter far from it. No ward → plain threat.
+    const base = threat * 4;
+    if (!ward || !ward.pos || !contact.pos) return base;
+    const d = Math.hypot(contact.pos.x - ward.pos.x, contact.pos.z - ward.pos.z);
+    return base + Math.max(0, 1 - d / ESCORT_THREAT_RING_WU) * 6;
   }
   if (doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER) {
     // WAS: `if (contact.tethered) return -100;` — a flat veto, no comment, introduced by c875aa40
@@ -573,12 +698,14 @@ function initialPhase(doctrineId) {
   if (doctrineId === CombatDoctrineId.RANGED_DISENGAGER) return 'outer_standoff';
   if (doctrineId === CombatDoctrineId.FIELD_ANCHOR_CONTROLLER) return 'approach';
   if (doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE) return 'broadside_approach';
+  if (doctrineId === CombatDoctrineId.ESCORT_SCREEN) return 'screen_approach';
   return 'ingress';
 }
 
 function flightProfileFor(doctrineId, self) {
   if (doctrineId === CombatDoctrineId.BRAWLER_COMMIT) return 'brawler_commit';
   if (doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE) return 'capital_broadside';
+  if (doctrineId === CombatDoctrineId.ESCORT_SCREEN) return 'escort_screen';
   if (doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY &&
     (self && (self.operationalMassBand === 'heavy' || self.operationalMassBand === 'capital'))) {
     return 'brawler_commit';

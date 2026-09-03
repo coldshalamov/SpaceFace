@@ -57,6 +57,8 @@ const ARCHETYPE_TACTICAL_CAPABILITIES = Object.freeze({
   fleeing_trader: Object.freeze(['ranged', 'screen']),
   pirate: Object.freeze(['counter_tether_overload', 'ranged', 'screen']),
   miniboss_capital: Object.freeze(['disable', 'ranged', 'screen']),
+  // Warden Escort: area-denial gunnery around its ward, no disable/tether verbs.
+  guardian: Object.freeze(['ranged', 'screen']),
 });
 
 function factionBehaviorForCombatSpawn(factionId, opts = {}) {

@@ -110,6 +110,10 @@ export const DOCTRINE_AUDIO_SIGNATURES = Object.freeze({
   [CombatDoctrineId.CAPITAL_BROADSIDE]: Object.freeze({
     recipeId: 'sfx_doctrine_capital_broadside', fireRate: 0.62, fireGain: 1.08, fireDetune: -30,
   }),
+  [CombatDoctrineId.ESCORT_SCREEN]: Object.freeze({
+    // Even, unhurried defensive fire — a guard's cadence, not a hunter's.
+    recipeId: 'sfx_doctrine_escort_screen', fireRate: 0.88, fireGain: 0.86, fireDetune: -4,
+  }),
 });
 
 // The first-hour ear-training contract. These five foreground receipts deliberately occupy

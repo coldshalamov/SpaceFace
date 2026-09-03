@@ -62,8 +62,11 @@ const P = {
     context: 'patrol', hostile: false, factionId: 'faction_scn',
   }),
   vael: (size = [1, 3]) => ({
-    role: 'vael', archetypes: ['lancer_sniper', 'bruiser_brawler'], size, doctrine: 'balanced',
-    formation: 'ring', context: 'zone_hostile', hostile: true, factionId: 'faction_vael',
+    // The warden rides vael packs so the screen doctrine is reachable on the ordinary route:
+    // attack a pressed pack and the warden plants itself between you and its ward.
+    role: 'vael', archetypes: ['lancer_sniper', 'bruiser_brawler', 'warden_escort'], size,
+    doctrine: 'balanced', formation: 'ring', context: 'zone_hostile', hostile: true,
+    factionId: 'faction_vael',
   }),
 };
 

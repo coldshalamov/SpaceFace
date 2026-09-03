@@ -35,6 +35,7 @@ assert(Object.isFrozen(CombatDoctrineId), 'combat doctrine ids are an immutable 
 assert.deepEqual(Object.values(CombatDoctrineId).sort(), [
   'brawler_commit',
   'capital_broadside',
+  'escort_screen',
   'field_anchor_controller',
   'interceptor_flyby',
   'ranged_disengager',

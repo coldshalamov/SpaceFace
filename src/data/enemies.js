@@ -328,6 +328,28 @@ export const ENEMY_TYPES = [
     },
   },
   {
+    id: 'warden_escort', name: 'Warden Escort', shipId: 'ship_bastion',
+    silhouette: 'bruiser_armor', factionId: 'faction_vael',
+    aiArchetype: 'guardian', levelRange: [4, 9],
+    combatDoctrineId: 'escort_screen',
+    hull: 300, armor: 90, armorFlat: 3, shield: 110, shieldRegen: 13, shieldRegenCapable: true,
+    cap: 190, capRegen: 26,
+    maxSpeed: 96, accel: 78, turnRate: 1.4, collisionRadius: 21, mass: 96,
+    weapons: [{ id: 'wpn_autocannon_m' }, { id: 'wpn_pulse_laser_s' }],
+    aiDoctrine: { defaultActivity: 'screen', roe: 'weapons_free', preferredRange: 150, leashRadius: 2600 },
+    telegraph: { bark: 'warn', line: 'Enemy screen deploying. The warden is guarding the pack, not hunting you.', cue: 'engine_flare' },
+    counterHint: 'outrange_or_ignore_until_pack_commits',
+    behavior: 'plants a screen between the nearest packmate and the pressing threat; darts only when the ward is breached',
+    bountyCr: 560, shipClass: 'guardian',
+    loot: {
+      creditsRange: [140, 340],
+      drops: [
+        { id: 'cmdty_scrap_metal', chance: 0.6, qtyRange: [3, 7] },
+        { id: 'cmdty_electronics', chance: 0.3, qtyRange: [1, 3] },
+      ],
+    },
+  },
+  {
     id: 'field_anchor_controller', name: 'Anchor Controller', shipId: 'ship_bastion',
     silhouette: 'bruiser_armor', factionId: 'faction_reach',
     aiArchetype: 'brawler', levelRange: [5, 11],
