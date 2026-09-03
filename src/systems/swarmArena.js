@@ -84,6 +84,22 @@ export const SWARM_DEBRIS_SEPARATION = 46;
 /** Nothing spawns closer than this to the player, whatever the roll says. */
 export const SWARM_DEBRIS_SAFE_RADIUS = 120;
 
+/**
+ * WRECK HOUSEKEEPING.
+ *
+ * Every kill leaves a salvage wreck, and a swarm run kills a lot: a walk to wave 13 finished with
+ * 414 wrecks and 798 live entities, climbing about 35 a wave with nothing ever removing them. Frame
+ * time was still flat at that point, but the curve has no top — by wave 40 it is well over a
+ * thousand bodies, and this engine's known worst hitch is garbage collection on a bloated heap.
+ *
+ * Nobody salvages in a swarm run either. There is no beam time in a room holding thirty hostiles,
+ * so a wreck is scenery that costs memory. The arena keeps a recent-battlefield's worth and lets
+ * the rest go through the engine's ordinary despawn sweep — the FURTHEST ones first, so what is
+ * released is always off-camera and the wreckage around the player's actual fight is what stays.
+ */
+export const SWARM_WRECK_KEEP = 40;
+const SWARM_WRECK_RELEASE_S = 6;
+
 const SWARM_DEBRIS_TTL_S = 900;
 const SWARM_DEBRIS_RELEASE_S = 20;
 const PLACEMENT_TRIES = 12;
@@ -215,7 +231,45 @@ export const swarmArena = {
     if (!run) return;
     const wave = payload && Number.isInteger(payload.wave) ? payload.wave : run.wave;
     this._raiseCapacity();
+    this._cullWrecks();
     this._topUp(run, wave);
+  },
+
+  /**
+   * Let go of the battlefield the fight has moved on from. Never deletes an entity by hand — it
+   * sets the same `despawnAt` deadline the engine's own sweep reads (coreSystem.js), so a wreck
+   * somebody is mid-salvage on in some other mode is never yanked out from under them.
+   */
+  _cullWrecks() {
+    const state = this.state;
+    if (!state || !Array.isArray(state.entityList)) return;
+    const anchor = playerAnchor(state);
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const wrecks = [];
+    for (const entity of state.entityList) {
+      if (!entity || entity.alive === false || entity.type !== 'wreck' || !entity.pos) continue;
+      // Only ones already on a release clock this system set, or with no clock at all. A wreck that
+      // some other owner gave a deadline to keeps the deadline it was given.
+      const dx = entity.pos.x - anchor.x;
+      const dz = entity.pos.z - anchor.z;
+      wrecks.push({ entity, distSq: dx * dx + dz * dz });
+    }
+    if (wrecks.length <= SWARM_WRECK_KEEP) return;
+    // Furthest first: what is released is always the wreckage nobody can see.
+    wrecks.sort((a, b) => b.distSq - a.distSq);
+    const excess = wrecks.length - SWARM_WRECK_KEEP;
+    let released = 0;
+    for (let i = 0; i < excess; i++) {
+      const entity = wrecks[i].entity;
+      if (!entity.data) entity.data = {};
+      const deadline = now + SWARM_WRECK_RELEASE_S;
+      if (Number.isFinite(entity.data.despawnAt) && entity.data.despawnAt <= deadline) continue;
+      entity.data.despawnAt = deadline;
+      released++;
+    }
+    if (released > 0) {
+      this._emit('swarmArena:wrecksReleased', { released, kept: SWARM_WRECK_KEEP, total: wrecks.length });
+    }
   },
 
   /**

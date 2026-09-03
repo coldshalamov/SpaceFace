@@ -17,6 +17,7 @@ import {
   SWARM_DEBRIS_SEPARATION,
   SWARM_DEBRIS_TAG,
   SWARM_DEBRIS_TARGET,
+  SWARM_WRECK_KEEP,
   planSwarmDebris,
   swarmArena,
 } from '../src/systems/swarmArena.js';
@@ -193,6 +194,61 @@ test('wobbling back to a rock cancels its release — it does not vanish under y
   h.player.pos.x -= SWARM_DEBRIS_FIGHT_RADIUS + 200;
   h.bus.emit('run:wavePlanned', { wave: 3, plan: planFor(3) });
   assert.ok(rock.data.despawnAt > releasedAt, 'and the release was cancelled when the fight returned');
+});
+
+test('the battlefield is let go of — wrecks do not pile up forever in an endless mode', () => {
+  // A walk to wave 13 finished with 414 wrecks and 798 live entities, climbing ~35 a wave with
+  // nothing removing them. Nobody salvages in a swarm run — there is no beam time in a room holding
+  // thirty hostiles — so a wreck is scenery that costs memory, and the curve has no top.
+  const h = boot();
+  h.state.simTime = 500;
+  // Scatter far more wrecks than the arena keeps, at increasing distance.
+  const made = [];
+  for (let i = 0; i < SWARM_WRECK_KEEP * 3; i++) {
+    const id = h.state.nextEntityId++;
+    const entity = {
+      id, alive: true, type: 'wreck',
+      pos: { x: h.player.pos.x + (i + 1) * 25, z: h.player.pos.z },
+      data: {},
+    };
+    h.state.entities.set(id, entity);
+    h.state.entityList.push(entity);
+    made.push(entity);
+  }
+  h.bus.emit('run:wavePlanned', { wave: 1, plan: planFor(1) });
+
+  const doomed = made.filter((w) => Number.isFinite(w.data.despawnAt));
+  const spared = made.filter((w) => !Number.isFinite(w.data.despawnAt));
+  assert.equal(spared.length, SWARM_WRECK_KEEP, 'a recent battlefield is kept');
+  assert.equal(doomed.length, made.length - SWARM_WRECK_KEEP);
+  for (const w of doomed) assert.ok(w.alive !== false, 'released to the sweep, never deleted by hand');
+
+  // The FURTHEST go: what is released is always off-camera.
+  const near = (w) => Math.hypot(w.pos.x - h.player.pos.x, w.pos.z - h.player.pos.z);
+  const furthestSpared = Math.max(...spared.map(near));
+  const nearestDoomed = Math.min(...doomed.map(near));
+  assert.ok(nearestDoomed > furthestSpared, 'everything kept is closer than everything released');
+});
+
+test('a wreck someone else already put a shorter clock on keeps its own deadline', () => {
+  const h = boot();
+  h.state.simTime = 500;
+  const id = h.state.nextEntityId++;
+  const owned = {
+    id, alive: true, type: 'wreck',
+    pos: { x: h.player.pos.x + 9000, z: h.player.pos.z },
+    data: { despawnAt: 501 },
+  };
+  h.state.entities.set(id, owned);
+  h.state.entityList.push(owned);
+  for (let i = 0; i < SWARM_WRECK_KEEP + 5; i++) {
+    const wid = h.state.nextEntityId++;
+    const e = { id: wid, alive: true, type: 'wreck', pos: { x: h.player.pos.x + i, z: 0 }, data: {} };
+    h.state.entities.set(wid, e);
+    h.state.entityList.push(e);
+  }
+  h.bus.emit('run:wavePlanned', { wave: 1, plan: planFor(1) });
+  assert.equal(owned.data.despawnAt, 501, 'another owner’s sooner deadline is left alone');
 });
 
 test('the Gauntlet is untouched — no debris, exactly as it shipped', () => {
