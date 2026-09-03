@@ -17,7 +17,7 @@ import {
 } from '../src/systems/survivalRun.js';
 import { survivalWave } from '../src/systems/survivalWave.js';
 import { planWave } from '../src/systems/survivalWavePlanner.js';
-import { SURVIVAL_COHORT_TAG } from '../src/systems/waveMaterialization.js';
+import { SURVIVAL_COHORT_TAG, levelForWave } from '../src/systems/waveMaterialization.js';
 import {
   SWARM_CONCURRENT_MAX,
   SWARM_CONCURRENT_MIN,
@@ -29,10 +29,14 @@ import {
   pickSwarmArchetype,
   swarmArenaPhase,
   SWARM_BOSS_ROTATION,
+  SWARM_LEVEL_CAP,
   SWARM_QUOTA_CAP,
+  SWARM_ROSTER,
   swarmBossFor,
   swarmConcurrent,
   swarmCurveIsSane,
+  swarmFullIntensityWave,
+  swarmLevel,
   swarmGateFor,
   swarmOpeningCount,
   swarmOpeningPackages,
@@ -545,6 +549,33 @@ test('the live stream honours the crescendo, and never breaches the raised cap',
 function this_cleared(h) {
   return named(h.emitted, 'run:waveCleared').length > 0;
 }
+
+test('the stat curve stops, so a deep run ends on execution rather than arithmetic', () => {
+  // This module's first rule is "pressure is concurrency, not HP", and it originally used the arc's
+  // unbounded level curve anyway. Charted, incoming pressure hit 5.9x wave one by wave 25 and kept
+  // climbing on level alone while the player's build finishes at seven fitted slots.
+  assert.equal(swarmLevel(1), 1);
+  assert.equal(swarmLevel(swarmFullIntensityWave()), SWARM_LEVEL_CAP);
+  for (const wave of [30, 60, 100, 500, 999]) {
+    assert.equal(swarmLevel(wave), SWARM_LEVEL_CAP, `wave ${wave} does not out-scale the player`);
+  }
+  // Below the cap it is the SAME curve the arc uses — a swarm hostile is never a different animal.
+  for (let wave = 1; wave <= swarmFullIntensityWave(); wave++) {
+    assert.equal(swarmLevel(wave), levelForWave(wave), `wave ${wave} matches the shared curve`);
+  }
+  // And the arc keeps its own unbounded curve.
+  assert.ok(levelForWave(60) > SWARM_LEVEL_CAP, 'the authored arc is untouched');
+});
+
+test('everything the mode has is on the table by the full-intensity wave', () => {
+  // The claim the cap is priced on: by then concurrency, roster, quota and level are all maxed, so
+  // the only thing left to test is whether the player can keep doing it.
+  const full = swarmFullIntensityWave();
+  assert.equal(swarmConcurrent(full), SWARM_CONCURRENT_MAX, 'concurrency is at its ceiling');
+  assert.equal(swarmQuota(full), SWARM_QUOTA_CAP, 'the quota is at its cap');
+  assert.equal(swarmRosterFor(full).length, SWARM_ROSTER.length, 'every archetype has arrived');
+  assert.equal(swarmLevel(full), SWARM_LEVEL_CAP);
+});
 
 // ---------------------------------------------------------------------------
 // the boss wave

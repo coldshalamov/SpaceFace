@@ -316,10 +316,31 @@ export function swarmQuota(wave) {
   return Math.min(SWARM_QUOTA_CAP, Math.max(floor, 20 + w * 2));
 }
 
-/** Enemy level. Same curve the arc uses, so a swarm hostile is never a different animal. */
+/**
+ * WHERE THE STAT CURVE STOPS.
+ *
+ * This module's first rule is "pressure is concurrency, not HP" — and then it used the arc's level
+ * curve, which raises both damage and health by 12% a level forever. Charted against the roster,
+ * incoming pressure reached 5.9x wave one by wave 25 and kept climbing on level alone, while the
+ * player's build finishes at seven fitted slots around the same point. Past there the run does not
+ * end because the player made mistakes; it ends because the numbers walked away from them.
+ *
+ * So the level curve stops at SWARM_LEVEL_CAP, which lands on wave 22 — the same wave the roster
+ * completes, with concurrency already at its ceiling since wave 16 and the kill quota capped since
+ * wave 14. Everything the mode has arrives by wave 22, and from then on it is asking one question:
+ * can you keep doing this? That is a skill wall rather than an arithmetic one, and it is the wall
+ * an endless mode is supposed to have.
+ */
+export const SWARM_LEVEL_CAP = 8;
+
 export function swarmLevel(wave) {
   const w = swarmWaveOf(wave);
-  return 1 + Math.floor((w - 1) / 3);
+  return Math.min(SWARM_LEVEL_CAP, 1 + Math.floor((w - 1) / 3));
+}
+
+/** The wave at which every dial this mode has is at its maximum. */
+export function swarmFullIntensityWave() {
+  return 1 + (SWARM_LEVEL_CAP - 1) * 3;
 }
 
 /** The archetypes legal at this wave, in roster order. */

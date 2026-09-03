@@ -18,6 +18,7 @@ import {
   SWARM_BOSS_ENEMY_ID,
   pickSwarmArchetype,
   swarmGateFor,
+  swarmLevel,
   swarmPressureAt,
   swarmReinforceCount,
 } from '../data/swarmMode.js';
@@ -232,7 +233,10 @@ export const survivalWave = {
     if (!plan) return;
     const run = liveSurvivalRun(this.state);
     const seed = run && Number.isInteger(run.seed) ? run.seed : 1;
-    const level = levelForWave(this._wave);
+    // The swarm's own level curve stops (swarmMode.js SWARM_LEVEL_CAP); the arc's does not. Both
+    // are the same formula below the cap, so a swarm hostile is never a different animal from the
+    // arc's — it just stops growing once every other dial has also reached its maximum.
+    const level = this._swarm ? swarmLevel(this._wave) : levelForWave(this._wave);
     const ownerId = waveOwnerId(this._wave);
     if (!this._owners.includes(ownerId)) this._owners.push(ownerId);
 
@@ -370,7 +374,7 @@ export const survivalWave = {
     const receipt = materializeWaveBatch(this.ctx, {
       ownerId,
       enemyId: archetype.enemyId,
-      level: levelForWave(this._wave),
+      level: swarmLevel(this._wave),
       count: want,
       gateGroup,
       distance: this._spawnDistance,
