@@ -58,7 +58,11 @@ const server = createGameServer({
   // DIFFERENT SAVE SETS and nothing said so. The env var still overrides for isolated harnesses.
   playerStoreDir: resolveMountedPlayerStoreDir(process.env) || undefined,
   extraRoutes: [
-    { test: (method, url) => method === 'POST' && url.startsWith('/__shot'), handle: handleShot },
+    {
+      test: (method, url) => method === 'POST' && url.startsWith('/__shot'),
+      stateChanging: true,
+      handle: handleShot,
+    },
   ],
 });
 

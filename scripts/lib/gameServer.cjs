@@ -145,13 +145,41 @@ function resolveContainedFile(root, decodedPath) {
   return file;
 }
 
+function isAllowedStateChangingRequest(req) {
+  const headers = req && req.headers ? req.headers : {};
+  const fetchSite = String(headers['sec-fetch-site'] || '')
+    .split(',')
+    .some((value) => value.trim().toLowerCase() === 'cross-site');
+  if (fetchSite) return false;
+
+  // Non-browser capture clients do not send Origin. A present Origin must be an
+  // exact HTTP origin for the request's loopback Host; `null` is never trusted.
+  if (headers.origin == null) return true;
+  if (Array.isArray(headers.origin)) return false;
+  const origin = String(headers.origin).trim();
+  if (!origin || origin.toLowerCase() === 'null') return false;
+
+  const host = String(headers.host || '').trim();
+  if (!isAllowedLoopbackHost(host)) return false;
+  try {
+    const originUrl = new URL(origin);
+    if (originUrl.protocol !== 'http:' || originUrl.username || originUrl.password ||
+        originUrl.pathname !== '/' || originUrl.search || originUrl.hash) return false;
+    const requestOrigin = new URL(`http://${host}`).origin;
+    return originUrl.origin === requestOrigin;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Create the canonical SpaceFace static game server.
  *
  * @param {object} opts
  * @param {string} opts.root            Absolute filesystem root to serve.
  * @param {boolean} [opts.async=true]   Use async filesystem metadata reads (required by Electron).
- * @param {Array}  [opts.extraRoutes]   Extra route handlers: [{ test(req), handle(req, res, ctx) }].
+ * @param {Array}  [opts.extraRoutes]   Extra route handlers: [{ test(req), stateChanging?, handle(req, res, ctx) }].
+ *                                      State-changing routes opt into the request-origin policy.
  *                                      Used by the browser server for /__shot, etc.
  * @param {string} [opts.playerStoreDir] Shared Browser/Electron save directory. Omitted in tests
  *                                      and isolated evidence so player slots stay untouched.
@@ -191,6 +219,12 @@ function createGameServer(opts) {
       // Extra routes first (e.g. browser /__shot screenshot sink).
       for (const route of extraRoutes) {
         if (route.test && route.test(method, url)) {
+          if (route.stateChanging && !isAllowedStateChangingRequest(req)) {
+            req.resume();
+            res.writeHead(403, { 'Content-Type': 'text/plain' });
+            res.end('Forbidden');
+            return;
+          }
           return await route.handle(req, res, { root });
         }
       }
@@ -267,6 +301,7 @@ module.exports = {
   createGameServer,
   isInsideRoot,
   isAllowedLoopbackHost,
+  isAllowedStateChangingRequest,
   decodeRequestPath,
   resolveContainedFile,
   maxMtimeMsSync,

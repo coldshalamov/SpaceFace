@@ -90,6 +90,51 @@ test('foreign Host headers cannot read the loopback tree or save store', async (
   assert.match(allowed.body, /"keys"/);
 });
 
+test('state-changing extra routes enforce Origin and Sec-Fetch-Site before the handler', async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), 'spaceface-gs-origin-'));
+  await writeFile(path.join(root, 'index.html'), '<!doctype html><title>SpaceFace</title>');
+  t.after(() => rm(root, { recursive: true, force: true }));
+  let calls = 0;
+  const port = await listenServer(t, {
+    root,
+    async: true,
+    devDiagnostics: false,
+    extraRoutes: [{
+      stateChanging: true,
+      test: (method, url) => method === 'POST' && url.startsWith('/__mutate'),
+      handle: (_req, res) => {
+        calls += 1;
+        res.writeHead(204);
+        res.end();
+      },
+    }],
+  });
+  const sameOrigin = `http://127.0.0.1:${port}`;
+
+  for (const headers of [
+    { Origin: 'https://evil.example' },
+    { Origin: 'null' },
+    { Origin: sameOrigin, 'Sec-Fetch-Site': 'cross-site' },
+  ]) {
+    const response = await request(port, { urlPath: '/__mutate', method: 'POST', headers });
+    assert.equal(response.status, 403);
+    assert.equal(response.body, 'Forbidden');
+    assert.equal(calls, 0);
+  }
+
+  const browser = await request(port, {
+    urlPath: '/__mutate',
+    method: 'POST',
+    headers: { Origin: sameOrigin, 'Sec-Fetch-Site': 'same-origin' },
+  });
+  assert.equal(browser.status, 204);
+  assert.equal(calls, 1);
+
+  const localCapture = await request(port, { urlPath: '/__mutate', method: 'POST' });
+  assert.equal(localCapture.status, 204);
+  assert.equal(calls, 2);
+});
+
 test('Windows drive-shaped and parent URL paths stay contained', async (t) => {
   const root = await mkdtemp(path.join(tmpdir(), 'spaceface-gs-path-'));
   await writeFile(path.join(root, 'index.html'), '<!doctype html><title>SpaceFace</title>');
