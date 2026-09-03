@@ -1,9 +1,9 @@
 // Survival arena participation (CRU / PQ-133 follow-on).
 //
 // The ten-wave Survival ruleset authors an `arenaPhase` per wave, validates it, carries it into the
-// pure plan and hashes it — and then nothing consumed it. Ten waves therefore played identically:
+// pure plan and hashes it — and previously nothing consumed it. Ten waves therefore played identically:
 // hostiles arrive from a compass gate and you kill them, in a room that never does anything. This
-// system is the missing consumer. It reads `plan.arenaPhase` off `run:wavePlanned` and installs a
+// system is the consumer that closed that gap. It reads `plan.arenaPhase` off `run:wavePlanned` and installs a
 // ROOM for that wave, so the player can tell wave 5 from wave 8 by what the space is doing to them.
 //
 // Six rules shape the whole file:
@@ -60,6 +60,7 @@
 
 import { mulberry32 } from '../core/rng.js';
 import { validateRunState } from '../core/runState.js';
+import { SURVIVAL_ARENA_PHASES as CANONICAL_ARENA_PHASES } from '../data/survivalWaves.js';
 import { gateBearing } from './waveMaterialization.js';
 import { CINDER_ARENA_ID, planCinderInstall, stepCinderMachinery } from './cinderSluiceArena.js';
 import {
@@ -95,16 +96,7 @@ const CINDER_CYCLE_PHASES = new Set([
 ]);
 
 /** The eight authored values in src/data/survivalWaves.js. Helios idle installs nothing; law arenas keep their law on idle. */
-export const SURVIVAL_ARENA_PHASES = Object.freeze([
-  'idle',
-  'shutter_slow',
-  'furnace_active',
-  'loose_plate',
-  'shutter_alternating',
-  'shutter_lane_close',
-  'absorbent_screen',
-  'boss',
-]);
+export const SURVIVAL_ARENA_PHASES = CANONICAL_ARENA_PHASES;
 
 /**
  * The room's two kernel slots. FIXED ids, so the arena can occupy at most two entries of

@@ -9623,15 +9623,21 @@
         "src/data/survivalWaves.js",
         "src/data/runModifiers.js",
         "src/systems/survivalWavePlanner.js",
+        "src/systems/survivalArena.js",
+        "src/systems/survivalResults.js",
         "src/ui/screens/crucibleResults.js",
         "src/ui/screens/crucibleDraft.js",
-        "scripts/check-crucible-run.mjs"
+        "src/ui/screens/crucible.js",
+        "src/ui/uiRoot.js",
+        "scripts/check-crucible-run.mjs",
+        "test/crucible-ten-wave-shell.test.mjs"
       ],
       "checks": [
         "npm run check:sim",
         "npm run check:save-schema",
         "npm run check:combat",
-        "npm run check:playable"
+        "npm run check:playable",
+        "npm run check:crucible:run"
       ],
       "receiptRefs": [
         "design/program/roadmap/receipts/PQ-133.02.md"

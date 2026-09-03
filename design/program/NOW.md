@@ -42,7 +42,7 @@ working. Product status and remaining tasks live in
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
 | HARDENING: async render asset teardown | codex-root/render-async-disposal | MUTATING 2026-09-03 | `src/render/pipelineReadiness.js`, `src/render/partsLibrary.js`, `src/render/assetLoader.js`, `src/render/assetResidency.js`, `test/render-async-disposal.test.mjs` | cancellation/re-init lifecycle tests green → controller review → commit → delete row |
-| PQ-133.02 ten-wave shell completion | pq133-02-shell | MUTATING 2026-09-03 | `src/data/survivalWaves.js`, `src/systems/survivalArena.js`, `src/systems/survivalResults.js`, `src/data/survivalArenas.js`, `src/data/runModifiers.js`, `src/ui/screens/crucibleResults.js`, `src/ui/screens/crucible.js`, `src/ui/uiRoot.js`, `scripts/check-crucible-run.mjs`, `test/crucible-ten-wave-shell.test.mjs`, `design/program/roadmap/receipts/PQ-133.02.md`, `design/program/roadmap/program-queue.json`, `package.json` | focused tests + save-schema/combat/playable green → commit → delete row |
+| PUBLISHING: PQ-133.02 ten-wave shell completion | pq133-02-shell | PUBLISHING 2026-09-03 | commit + push, then delete this row |
 These paths are protected from overwrite until a task explicitly adopts and finishes them. They are
 not active leases and do not prevent other tasks from proceeding.
 

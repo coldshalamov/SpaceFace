@@ -539,7 +539,7 @@ export function reachedRow(result) {
 export function resultRows(result) {
   if (!result) return [];
   return [
-    ['Outcome', result.outcome === 'victory' ? 'Survived' : (result.outcome === 'aborted' ? 'Abandoned' : 'Lost')],
+    ['Outcome', result.outcome === 'victory' ? 'Survived' : (result.outcome === 'extracted' ? 'Extracted' : (result.outcome === 'aborted' ? 'Abandoned' : 'Lost'))],
     ['Reached', reachedRow(result)],
     ['Kills', String(result.kills || 0)],
     // The chain only exists in a swarm run, so the row only exists there — an arc plate must not
@@ -621,12 +621,23 @@ export function damageBreakdown(trail) {
   let hits = 0;
   for (const entry of entries) {
     if (!entry || typeof entry !== 'object') continue;
-    const name = weaponDisplayName(entry.weaponId);
-    const raw = Number(entry.amount);
-    const amount = Number.isFinite(raw) && raw > 0 ? raw : 0;
-    const bucket = byWeapon.get(name) || { weapon: name, hits: 0, raw: 0 };
+    // Strings only: a null-prototype object would throw String(), and Number(Symbol)
+    // throws — both degrade to the unattributed bucket instead of breaking the plate.
+    const rawId = typeof entry.weaponId === 'string' ? entry.weaponId : null;
+    const name = weaponDisplayName(rawId);
+    const rawAmount = typeof entry.amount === 'number' || typeof entry.amount === 'string'
+      ? Number(entry.amount)
+      : NaN;
+    const amount = Number.isFinite(rawAmount) && rawAmount > 0 ? rawAmount : 0;
+    const bucket = byWeapon.get(name) || { weapon: name, hits: 0, raw: 0, attackers: [] };
     bucket.hits += 1;
     bucket.raw += amount;
+    // Who was holding the weapon, when the trail knows. Augments the weapon row; never
+    // replaces it — a missile is still a missile whoever racked it.
+    const label = typeof entry.attackerLabel === 'string' && entry.attackerLabel.length > 0
+      ? entry.attackerLabel
+      : null;
+    if (label && !bucket.attackers.includes(label)) bucket.attackers.push(label);
     byWeapon.set(name, bucket);
     rawTotal += amount;
     hits += 1;
@@ -638,6 +649,7 @@ export function damageBreakdown(trail) {
       hits: bucket.hits,
       amount: Math.round(bucket.raw),
       share: rawTotal > 0 ? bucket.raw / rawTotal : 0,
+      attackers: bucket.attackers.slice(),
     }));
   return { hits, total: Math.round(rawTotal), rows };
 }
@@ -711,15 +723,15 @@ export function vitalsFigures(defeat) {
 /**
  * The screen's identity word, and the stamp above it. A clear and a death are not one plate.
  *
- * `aborted` is deliberately NEUTRAL — "Run Ended", not "Run Abandoned". The outcome conflates two
- * unrelated events: the player leaving the arena, and the arena failing to build a wave
- * (survivalResults._onPlanFailed publishes 'aborted' under the headline "The arena could not build
- * wave N"). Nothing published tells them apart, so any title that blames the player would sit in
- * the largest text on the screen contradicting the sentence directly beneath it. The results grid's
- * 'Abandoned' row predates this and is pinned by its own test; the fix belongs at the source.
+ * `aborted` is deliberately NEUTRAL — "Run Ended", not "Run Abandoned". A plain abort is the
+ * player leaving the arena, but the arena failing to build a wave publishes 'aborted' too with
+ * stopReason 'wave_plan_failed' — and that one failed LOUDLY on purpose, so its title says so.
+ * The results grid's 'Abandoned' row predates this and is pinned by its own test.
  */
 export function resultTitle(result) {
   if (result && result.outcome === 'victory') return 'Arena Cleared';
+  if (result && result.stopReason === 'wave_plan_failed') return 'Arena Failed';
+  if (result && result.outcome === 'extracted') return 'Extracted';
   if (result && result.outcome === 'aborted') return 'Run Ended';
   return 'Run Over';
 }

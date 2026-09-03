@@ -37,12 +37,37 @@ export const SURVIVAL_GATE_GROUPS = Object.freeze([
   'diagonal_b',
 ]);
 
+// Canonical room phases a wave recipe may name (PQ-133.02 shared-change #2).
+// Owned HERE (data), not in src/systems/survivalArena.js: the validator below pins
+// recipe bodies against this list, and the arena consumer imports it rather than
+// carrying its own copy that can drift. Helios `idle` installs nothing; law arenas
+// keep their law on idle.
+export const SURVIVAL_ARENA_PHASES = Object.freeze([
+  'idle',
+  'shutter_slow',
+  'furnace_active',
+  'loose_plate',
+  'shutter_alternating',
+  'shutter_lane_close',
+  'absorbent_screen',
+  'boss',
+]);
+
 // DEFAULT_MAX at src/systems/spawnBudget.js:26 — do not import the private constant.
 const SPAWN_BUDGET_DEFAULT_MAX = 24;
 
 const ENEMY_IDS = new Set(ENEMY_TYPES.map((enemy) => enemy.id));
 const ROLE_SET = new Set(SURVIVAL_WAVE_ROLES);
 const GATE_SET = new Set(SURVIVAL_GATE_GROUPS);
+/** Set view of SURVIVAL_ARENA_PHASES for the validator below. Kept private on purpose:
+ * an exported mutable Set would let any importer silently change validation repo-wide.
+ * Consumers ask `hasArenaPhase(phase)` instead. */
+const ARENA_PHASE_SET = new Set(SURVIVAL_ARENA_PHASES);
+
+/** Whether `phase` is one of the eight authored room phases. */
+export function hasArenaPhase(phase) {
+  return typeof phase === 'string' && ARENA_PHASE_SET.has(phase);
+}
 const ARENA_IDS = new Set(COMBAT_LAB_ARENAS.map((arena) => arena.id));
 
 function freezeDeep(value) {
@@ -123,8 +148,8 @@ function validateWaveRecipeInner(recipe) {
     issues.push(issue('threatBudget', 'threatBudget must be a non-negative finite number'));
   }
 
-  if (typeof recipe.arenaPhase !== 'string' || recipe.arenaPhase.length === 0) {
-    issues.push(issue('arenaPhase', 'arenaPhase must be a non-empty string'));
+  if (!hasArenaPhase(recipe.arenaPhase)) {
+    issues.push(issue('arenaPhase', 'unknown arenaPhase'));
   }
 
   const packages = recipe.packages;

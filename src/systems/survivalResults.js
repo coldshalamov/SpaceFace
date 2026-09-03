@@ -7,6 +7,7 @@
 // It never writes state.run (runSession owns that), never spawns, and never ticks.
 
 import { runOwnsReward } from '../combat/rewardEligibility.js';
+import { attackerLabel } from '../combat/playerDefeat.js';
 import { validateRunState } from '../core/runState.js';
 import { SWARM_RULESET } from '../data/swarmMode.js';
 import { SURVIVAL_ARC_LENGTH } from '../data/survivalActs.js';
@@ -40,6 +41,33 @@ export function deathSentence(receipt, context = {}) {
     : `through your ${receipt.dominantLayer || 'hull'}`;
   const wave = Number.isInteger(context.wave) && context.wave > 0 ? ` on wave ${context.wave}` : '';
   return `${attacker} killed you${wave}${direction}${weapon}, ${layer}.`;
+}
+
+/** Structured stop reason (PQ-133.02 shared-change #6): `aborted` alone cannot tell a
+ * player quitting from the arena failing to build a wave. Resolved in two places: from
+ * the `run:ended` payload in `_onRunEnded`, then again from `run.result.reason` in
+ * `_publish` with the owner's latch as fallback — the publish-time resolution is what
+ * survives a stale latch, and its tests pin the precedence.
+ *
+ * Returns null only when nothing recorded any cause (an ended run with no reason and no
+ * prior latch). Null is legal: consumers must treat it as "ended, cause unrecorded",
+ * never as a specific exit. A known specific cause (`wave_plan_failed`, `player_death`)
+ * always wins over the generic 'player_exit' default, whether it arrives as `reason` or
+ * as `fallback` — but a stale terminal latch (`victory`, `extracted`) never overrides a
+ * contradictory outcome, and an unknown fallback string degrades to 'player_exit' rather
+ * than leaking into the closed union. */
+export function stopReasonFor(outcome, reason, fallback = null) {
+  if (outcome === 'victory') return 'victory';
+  if (outcome === 'extracted') return 'extracted';
+  const specific = reason === 'wave_plan_failed' || reason === 'player_death' ? reason
+    : (fallback === 'wave_plan_failed' || fallback === 'player_death' ? fallback : null);
+  if (specific) return specific;
+  // An 'extracted' reason on a defeat is a contradictory payload, not an extraction —
+  // the outcome wins and the reason degrades to a generic exit.
+  if (reason === 'extracted' && outcome !== 'defeat') return 'extracted';
+  if (typeof reason === 'string' && reason.length > 0) return 'player_exit';
+  if (typeof fallback === 'string' && fallback.length > 0) return 'player_exit';
+  return null;
 }
 
 /** The one-line reason a run ended when nothing killed the player. */
@@ -99,6 +127,8 @@ export const survivalResults = {
 
   _reset() {
     this._planFailure = null;
+    this._stopReason = null;
+    this._result = null;
     this._kills = 0;
     this._bestChain = 0;
     this._wavesCleared = 0;
@@ -128,8 +158,18 @@ export const survivalResults = {
   _onDamage(payload) {
     if (!payload || payload.targetId !== this.state.playerId) return;
     if (!liveSurvivalRun(this.state)) return;
+    // Best-effort annotation: attackerLabel is a pure function of the inputs it is
+    // handed, but this is a bus handler and must never throw mid-dispatch — a label
+    // failure must not cost the damage entry it annotates.
+    let label = null;
+    try {
+      label = attackerLabel(this.state, payload.attackerId);
+    } catch {
+      label = null;
+    }
     this._damageTrail.push({
       attackerId: payload.attackerId == null ? null : payload.attackerId,
+      attackerLabel: typeof label === 'string' && label.length > 0 ? label : null,
       weaponId: payload.weaponId || null,
       amount: Number.isFinite(payload.applied) ? payload.applied : (Number(payload.amount) || 0),
       type: payload.type || null,
@@ -141,6 +181,7 @@ export const survivalResults = {
     const run = liveSurvivalRun(this.state);
     if (!run) return;
     this._defeatReceipt = payload || null;
+    this._stopReason = 'player_death';
     // A Crucible death is the end of the run — there is no recovery berth in an arena.
     this._emit('run:endRequested', {
       outcome: 'defeat',
@@ -165,6 +206,7 @@ export const survivalResults = {
       wave: payload && Number.isInteger(payload.wave) ? payload.wave : run.wave,
       error: (payload && payload.error) || 'invalid_input',
     };
+    this._stopReason = 'wave_plan_failed';
     this._emit('run:endRequested', {
       outcome: 'aborted',
       reason: 'wave_plan_failed',
@@ -174,7 +216,10 @@ export const survivalResults = {
 
   _onTransitioned(payload) {
     // `victory` is a terminal phase reached by transition, so no run:ended follows it.
-    if (payload && payload.phase === 'victory') this._publish('victory');
+    if (payload && payload.phase === 'victory') {
+      this._stopReason = 'victory';
+      this._publish('victory');
+    }
   },
 
   _onRunEnded(payload) {
@@ -182,6 +227,7 @@ export const survivalResults = {
     const outcome = reason === 'extracted'
       ? 'extracted'
       : ((payload && payload.outcome) || 'defeat');
+    this._stopReason = stopReasonFor(outcome, reason, this._stopReason);
     this._publish(outcome);
   },
 
@@ -241,6 +287,11 @@ export const survivalResults = {
     result.ruleset = challenge.ruleset;
     result.trialId = challenge.trialId;
     result.mutators = challenge.mutators.slice();
+    result.stopReason = stopReasonFor(
+      outcome,
+      run.result && run.result.reason,
+      this._stopReason,
+    );
     result.extracted = outcome === 'extracted';
     result.mode = challenge.ruleset === 'endless'
       || challenge.ruleset === 'boss_circuit'
