@@ -79,6 +79,9 @@ const CASES = [
   [CombatDoctrineId.RANGED_DISENGAGER, 'fire_window', true],
   [CombatDoctrineId.FIELD_ANCHOR_CONTROLLER, 'anchor_hold', true],
   [CombatDoctrineId.TETHER_CONTROL_RAIDER, 'control', false],
+  [CombatDoctrineId.ESCORT_SCREEN, 'screen_hold', true],
+  [CombatDoctrineId.ESCORT_SCREEN, 'shield_dart', true],
+  [CombatDoctrineId.ESCORT_SCREEN, 'screen_approach', false],
 ];
 
 test('doctrine fire phases: advertised gun windows authorize; telegraph/egress do not', () => {

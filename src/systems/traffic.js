@@ -6846,7 +6846,7 @@ export const traffic = {
   _applyCeresCausalPhaseEffects(def, live, phaseName) {
     if (!def || !live) return;
     // Choreography-only for every link except one authored exception: the salvor's stack phase is
-    // the wreck-stripping aftermath made physical (catalog: "scattered pickups persist briefly").
+    // the wreck-stripping aftermath made physical (catalog: "scrap pickups persist").
     // The spill rides the standard pickup pipeline — the collecting player owns the cargo write,
     // exactly like the disabled-hauler spill — so traffic mints no cargo onto any hull.
     if (def.id === 'ev_cutter_strips_wreck' && phaseName === 'stack') {

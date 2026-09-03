@@ -173,8 +173,8 @@ test('the screen machine deploys, holds with live guns, and darts on a ward brea
 
 test('screen_hold is a real gun window through the objective gate; approach is area denial', () => {
   // Layer note: canFireByDoctrine owns the OBJECTIVE half of the gate (SCREEN objectives can never
-  // fire); the PHASE half lives in engagementAuthority's DOCTRINE_FIRE_PHASES live map, which
-  // contains escort_screen: {screen_hold, shield_dart} and is exercised by doctrine-fire-phases.
+  // fire); the PHASE half lives in engagementAuthority's DOCTRINE_FIRE_PHASES live map and is
+  // pinned directly by test/doctrine-fire-phases.test.mjs's escort_screen rows.
   const base = {
     activity: ActivityKind.SCREEN,
     roe: RulesOfEngagement.WEAPONS_FREE,

@@ -947,7 +947,8 @@ export const scanner = {
     const own = ensureSignalState(state);
     const raw = collectSignalCandidates(state, sectorId, origin, candidates, profile);
     // A fitted Triangulation Suite tightens the bearing solver: the default three-pulse anomaly fix
-    // closes in two. Authored per-candidate configs always win — the suite only relaxes the default.
+    // closes in two. Authored counts that differ from the default win untouched; the default
+    // (authored 3 or omitted) is what the suite tightens — see effectiveAnomalyRequiredPings.
     const pingReduction = sumFittedModuleMod(state, 'anomalyPingReduction');
     const rows = [];
     for (const candidate of raw) {
