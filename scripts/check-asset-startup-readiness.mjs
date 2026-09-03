@@ -17,151 +17,291 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { createServer as createNetServer } from 'node:net';
+import { resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { collectPageIssues, summarizeIssues } from './lib/browser-issues.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
-const START_TIMEOUT_MS = Number(process.env.SF_ASSET_STARTUP_TIMEOUT_MS) || 180000;
 const SCHEMA = 'spaceface.assetStartupReadiness.v1';
-const { chromium } = await loadPlaywright();
+const DEFAULT_PLAYABLE_ASSET_TIMEOUT_MS = 180000;
 
-let server = null;
-let browser = null;
-
-try {
-  server = await startFreshServer();
-  browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
-  const issues = collectPageIssues(page);
-  const assetHttp = createAssetHttpTracker(page);
-  const busEvents = [];
-
-  await page.addInitScript(() => {
-    try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {}
-  });
-
-  // Canonical player root only — no alternate probe routes / debug game paths / quality flags.
-  const navResponse = await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded' });
-  assert.ok(navResponse, 'canonical root navigation must return an HTTP response');
-  assertCanonicalRoot(page.url(), server.baseUrl, 'post-navigation page URL');
-  assert.equal(new URL(page.url()).search, '', 'canonical root must have empty query string');
-
-  await page.waitForFunction(
-    () => window.SF && window.SF.state && window.SF.bus && window.SF.ctx,
-    null,
-    { timeout: 15000 },
-  );
-  await waitForVisible(page, '[data-screen="mainMenu"]', 15000, 'main menu');
-  await waitForBootOverlayGone(page);
-
-  // Instrument start-failure + mode transitions without changing game behavior.
-  await page.evaluate(() => {
-    const sf = window.SF;
-    const bag = (window.__SF_ASSET_STARTUP_EVIDENCE__ = {
-      startFailed: [],
-      modeChanges: [],
-      gameStarted: 0,
-    });
-    if (!sf || !sf.bus || typeof sf.bus.on !== 'function') return;
-    sf.bus.on('game:startFailed', (payload) => {
-      bag.startFailed.push({
-        at: Date.now(),
-        error: payload && payload.error ? String(payload.error) : String(payload || ''),
-      });
-    });
-    sf.bus.on('mode:changed', (payload) => {
-      bag.modeChanges.push({
-        at: Date.now(),
-        mode: payload && payload.mode,
-        previousMode: payload && payload.previousMode,
-      });
-    });
-    sf.bus.on('game:started', () => { bag.gameStarted += 1; });
-  });
-
-  const opened = await clickButton(page, 'New Game');
-  assert.equal(opened, true, 'main menu should expose New Game');
-  await waitForVisible(page, '[data-screen="newGame"]', 10000, 'new-game screen');
-  assertCanonicalRoot(page.url(), server.baseUrl, 'New Game screen URL');
-
-  const preLaunch = await collectBoundaryEvidence(page, assetHttp, 'pre-launch');
-
-  const launched = await clickButton(page, 'Launch');
-  assert.equal(launched, true, 'New Game should expose Launch');
-
-  let flightOk = false;
-  let flightError = null;
-  try {
-    await page.waitForFunction(() => {
-      const sf = window.SF;
-      const state = sf && sf.state;
-      const player = state && state.entities && state.entities.get(state.playerId);
-      return !!(state && state.mode === 'flight' && player && player.alive !== false && player.hull > 0);
-    }, null, { timeout: START_TIMEOUT_MS });
-    flightOk = true;
-  } catch (err) {
-    flightError = err && err.message ? err.message : String(err);
-  }
-
-  const evidence = await collectBoundaryEvidence(page, assetHttp, flightOk ? 'post-flight' : 'post-timeout');
-  const busBag = await page.evaluate(() => window.__SF_ASSET_STARTUP_EVIDENCE__ || null).catch(() => null);
-  if (busBag) {
-    busEvents.push(busBag);
-  }
-
-  const report = {
-    schema: SCHEMA,
-    generatedAt: new Date().toISOString(),
-    route: server.baseUrl,
-    canonicalRoot: true,
-    query: new URL(page.url()).search,
-    flightOk,
-    flightError,
-    preLaunch: summarizeEvidence(preLaunch),
-    evidence: summarizeEvidence(evidence),
-    bus: busBag,
-    pageIssues: summarizeIssues(issues.errorIssues()),
-  };
-
-  console.log(JSON.stringify(report, null, 2));
-
-  // Fail closed: New Game / Launch must not leave the player on menu.
-  if (!flightOk) {
-    const mode = evidence && evidence.state && evidence.state.mode;
-    const boundary = classifyFailingBoundary(evidence, busBag, assetHttp.snapshot());
-    console.error(
-      `FAIL-CLOSED: Launch did not reach playable flight (mode=${mode || 'unknown'}).\n`
-      + `failingBoundary=${boundary}\n`
-      + 'Do not weaken main.js authored gates. Capture above is the component-boundary evidence package.',
-    );
-    process.exitCode = 1;
-    throw new Error(
-      `asset startup readiness fail-closed at boundary=${boundary}; mode=${mode}; `
-      + `preload=${JSON.stringify(evidence && evidence.preload)}; `
-      + `cause=${flightError || 'timeout'}`,
-    );
-  }
-
-  assert.equal(evidence.state.mode, 'flight', 'Launch must enter flight mode');
-  assert.ok(evidence.state.player && evidence.state.player.alive !== false,
-    'Launch must leave an alive player in flight');
-  assert.equal(new URL(page.url()).search, '', 'flight must remain on canonical root with no query flags');
-  // Authored gate preservation: if flight is live, library preload must have completed (not failed).
-  assert.equal(evidence.preload.requested, true, 'flight path must request authored part library preload');
-  assert.equal(evidence.preload.completed, true, 'flight path must complete authored part library preload');
-  assert.equal(evidence.preload.failed, false, 'flight path must not mark authored part library preload failed');
-
-  console.log(
-    `Asset startup readiness OK: Launch → flight (player=${evidence.state.player.id}) `
-    + `preload=${evidence.preload.status} requiredUrls=${evidence.requiredUrls.length} `
-    + `httpOk=${evidence.http.okCount}/${evidence.http.trackedCount}`,
-  );
-} finally {
-  if (browser) await browser.close().catch(() => {});
-  if (server && server.kill) server.kill();
+function positiveTimeout(value, fallback) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : fallback;
 }
+
+// These budgets are deliberately phase-specific. Document parsing, app/debug publication, menu
+// presentation, and Launch→flight authored readiness have different failure meanings and must not
+// collapse into one opaque wait. The app budget covers software-WebGL shader compilation seen in
+// headless Chromium; the Launch budget remains independently configurable for asset decode.
+export const STARTUP_PHASE_BUDGETS_MS = Object.freeze({
+  documentLoad: 60000,
+  appSurfaceReady: 90000,
+  // The main menu may publish before the boot overlay finishes its cold shader/asset work.
+  // This phase also owns the public New Game transition, so keep one measured cold-start budget
+  // for the whole visible interaction instead of reintroducing a hidden click timeout.
+  menuReady: 60000,
+  playableAssetReady: positiveTimeout(
+    process.env.SF_ASSET_STARTUP_TIMEOUT_MS,
+    DEFAULT_PLAYABLE_ASSET_TIMEOUT_MS,
+  ),
+});
+
+export const STARTUP_PHASE_LABELS = Object.freeze({
+  documentLoad: 'document load',
+  appSurfaceReady: 'app/debug surface readiness',
+  menuReady: 'menu readiness',
+  playableAssetReady: 'playable/asset readiness',
+});
+
+export function createStartupPhaseTracker({ now = () => Date.now() } = {}) {
+  if (typeof now !== 'function') throw new TypeError('startup phase tracker clock must be a function');
+  return { now, phases: [], current: null };
+}
+
+export function remainingStartupPhaseMs(tracker) {
+  const current = tracker && tracker.current;
+  if (!current) return 1;
+  const elapsed = Math.max(0, Number(tracker.now()) - current.startedAt);
+  return Math.max(1, current.budgetMs - elapsed);
+}
+
+export function snapshotStartupPhases(tracker) {
+  return (tracker && Array.isArray(tracker.phases) ? tracker.phases : []).map((phase) => ({
+    name: phase.name,
+    label: phase.label,
+    status: phase.status,
+    budgetMs: phase.budgetMs,
+    elapsedMs: phase.elapsedMs,
+    ...(phase.error ? { error: phase.error } : {}),
+  }));
+}
+
+export async function runStartupPhase(tracker, name, operation) {
+  const budgetMs = STARTUP_PHASE_BUDGETS_MS[name];
+  const label = STARTUP_PHASE_LABELS[name];
+  if (!tracker || !Array.isArray(tracker.phases)) throw new TypeError('invalid startup phase tracker');
+  if (!budgetMs || !label) throw new RangeError(`unknown startup phase: ${name}`);
+  if (typeof operation !== 'function') throw new TypeError(`startup phase ${name} requires an operation`);
+
+  const startedAt = tracker.now();
+  const phase = {
+    name,
+    label,
+    status: 'running',
+    budgetMs,
+    startedAt,
+    elapsedMs: 0,
+  };
+  tracker.phases.push(phase);
+  tracker.current = phase;
+  try {
+    const result = await operation({
+      name,
+      label,
+      timeoutMs: budgetMs,
+      remainingMs: () => remainingStartupPhaseMs(tracker),
+    });
+    phase.status = 'passed';
+    return result;
+  } catch (error) {
+    phase.status = 'failed';
+    phase.error = error && error.message ? error.message : String(error);
+    const wrapped = new Error(`${label} failed: ${phase.error}`);
+    wrapped.phase = name;
+    wrapped.cause = error;
+    wrapped.phaseRecord = phase;
+    throw wrapped;
+  } finally {
+    phase.elapsedMs = Math.max(0, Number(tracker.now()) - startedAt);
+    if (tracker.current === phase) tracker.current = null;
+  }
+}
+
+function isEntrypoint() {
+  if (!process.argv[1]) return false;
+  try {
+    return resolvePath(process.argv[1]) === resolvePath(fileURLToPath(import.meta.url));
+  } catch (_) {
+    return false;
+  }
+}
+
+async function runAssetStartupReadiness() {
+  const { chromium } = await loadPlaywright();
+  let server = null;
+  let browser = null;
+  let page = null;
+  let issues = null;
+  let assetHttp = null;
+  let canonicalRoot = false;
+  const phases = createStartupPhaseTracker();
+
+  try {
+    server = await startFreshServer();
+    browser = await chromium.launch({ headless: true });
+    page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
+    issues = collectPageIssues(page);
+    assetHttp = createAssetHttpTracker(page);
+
+    await page.addInitScript(() => {
+      try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {}
+    });
+
+    // Canonical player root only — no alternate probe routes / debug game paths / quality flags.
+    const navResponse = await runStartupPhase(phases, 'documentLoad', async ({ timeoutMs }) => {
+      const response = await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded', timeout: timeoutMs });
+      assert.ok(response, 'canonical root navigation must return an HTTP response');
+      assertCanonicalRoot(page.url(), server.baseUrl, 'post-navigation page URL');
+      assert.equal(new URL(page.url()).search, '', 'canonical root must have empty query string');
+      canonicalRoot = true;
+      return response;
+    });
+    assert.ok(navResponse, 'canonical root navigation must return an HTTP response');
+
+    await runStartupPhase(phases, 'appSurfaceReady', ({ timeoutMs }) => page.waitForFunction(
+      () => window.SF && window.SF.state && window.SF.bus && window.SF.ctx,
+      null,
+      { timeout: timeoutMs },
+    ));
+
+    await runStartupPhase(phases, 'menuReady', async ({ remainingMs }) => {
+      await waitForVisible(page, '[data-screen="mainMenu"]', remainingMs(), 'main menu');
+      await waitForBootOverlayGone(page, remainingMs());
+      const opened = await clickButton(page, 'New Game', remainingMs());
+      assert.equal(opened, true, 'main menu should expose New Game');
+      await waitForVisible(page, '[data-screen="newGame"]', remainingMs(), 'new-game screen');
+      assertCanonicalRoot(page.url(), server.baseUrl, 'New Game screen URL');
+    });
+
+    // Instrument start-failure + mode transitions without changing game behavior.
+    await page.evaluate(() => {
+      const sf = window.SF;
+      const bag = (window.__SF_ASSET_STARTUP_EVIDENCE__ = {
+        startFailed: [],
+        modeChanges: [],
+        gameStarted: 0,
+      });
+      if (!sf || !sf.bus || typeof sf.bus.on !== 'function') return;
+      sf.bus.on('game:startFailed', (payload) => {
+        bag.startFailed.push({
+          at: Date.now(),
+          error: payload && payload.error ? String(payload.error) : String(payload || ''),
+        });
+      });
+      sf.bus.on('mode:changed', (payload) => {
+        bag.modeChanges.push({
+          at: Date.now(),
+          mode: payload && payload.mode,
+          previousMode: payload && payload.previousMode,
+        });
+      });
+      sf.bus.on('game:started', () => { bag.gameStarted += 1; });
+    });
+
+    const preLaunch = await collectBoundaryEvidence(page, assetHttp, 'pre-launch');
+
+    let flightOk = false;
+    let flightError = null;
+    try {
+      await runStartupPhase(phases, 'playableAssetReady', async ({ remainingMs }) => {
+        const launched = await clickButton(page, 'Launch', remainingMs());
+        assert.equal(launched, true, 'New Game should expose Launch');
+        await page.waitForFunction(() => {
+          const sf = window.SF;
+          const state = sf && sf.state;
+          const player = state && state.entities && state.entities.get(state.playerId);
+          return !!(state && state.mode === 'flight' && player && player.alive !== false && player.hull > 0);
+        }, null, { timeout: remainingMs() });
+      });
+      flightOk = true;
+    } catch (err) {
+      flightError = err && err.cause && err.cause.message
+        ? err.cause.message
+        : (err && err.message ? err.message : String(err));
+    }
+
+    const evidence = await collectBoundaryEvidence(page, assetHttp, flightOk ? 'post-flight' : 'post-timeout');
+    const busBag = await page.evaluate(() => window.__SF_ASSET_STARTUP_EVIDENCE__ || null).catch(() => null);
+
+    const report = {
+      schema: SCHEMA,
+      generatedAt: new Date().toISOString(),
+      route: server.baseUrl,
+      canonicalRoot: true,
+      query: new URL(page.url()).search,
+      flightOk,
+      flightError,
+      phases: snapshotStartupPhases(phases),
+      preLaunch: summarizeEvidence(preLaunch),
+      evidence: summarizeEvidence(evidence),
+      bus: busBag,
+      pageIssues: summarizeIssues(issues.errorIssues()),
+    };
+
+    console.log(JSON.stringify(report, null, 2));
+
+    // Fail closed: New Game / Launch must not leave the player on menu.
+    if (!flightOk) {
+      const mode = evidence && evidence.state && evidence.state.mode;
+      const boundary = classifyFailingBoundary(evidence, busBag, assetHttp.snapshot());
+      console.error(
+        `FAIL-CLOSED: Launch did not reach playable flight (mode=${mode || 'unknown'}).\n`
+        + `failingBoundary=${boundary}\n`
+        + 'Do not weaken main.js authored gates. Capture above is the component-boundary evidence package.',
+      );
+      process.exitCode = 1;
+      return;
+    }
+
+    assert.equal(evidence.state.mode, 'flight', 'Launch must enter flight mode');
+    assert.ok(evidence.state.player && evidence.state.player.alive !== false,
+      'Launch must leave an alive player in flight');
+    assert.equal(new URL(page.url()).search, '', 'flight must remain on canonical root with no query flags');
+    // Authored gate preservation: if flight is live, library preload must have completed (not failed).
+    assert.equal(evidence.preload.requested, true, 'flight path must request authored part library preload');
+    assert.equal(evidence.preload.completed, true, 'flight path must complete authored part library preload');
+    assert.equal(evidence.preload.failed, false, 'flight path must not mark authored part library preload failed');
+
+    console.log(
+      `Asset startup readiness OK: Launch → flight (player=${evidence.state.player.id}) `
+      + `preload=${evidence.preload.status} requiredUrls=${evidence.requiredUrls.length} `
+      + `httpOk=${evidence.http.okCount}/${evidence.http.trackedCount}`,
+    );
+  } catch (error) {
+    const phase = error && error.phase ? error.phase : (phases.current && phases.current.name) || 'startup';
+    let pageUrl = null;
+    try { pageUrl = page && page.url ? page.url() : null; } catch (_) {}
+    let pageIssueSummary = null;
+    try { pageIssueSummary = issues ? summarizeIssues(issues.errorIssues()) : null; } catch (_) {}
+    console.log(JSON.stringify({
+      schema: SCHEMA,
+      generatedAt: new Date().toISOString(),
+      route: server && server.baseUrl || null,
+      canonicalRoot,
+      query: pageUrl ? new URL(pageUrl).search : null,
+      flightOk: false,
+      flightError: error && error.message ? error.message : String(error),
+      phases: snapshotStartupPhases(phases),
+      failure: {
+        phase,
+        boundary: phase,
+        name: error && error.name || 'Error',
+        message: error && error.message ? error.message : String(error),
+      },
+      pageIssues: pageIssueSummary,
+    }, null, 2));
+    process.exitCode = 1;
+    throw error;
+  } finally {
+    if (browser) await browser.close().catch(() => {});
+    if (server && server.kill) server.kill();
+  }
+}
+
+if (isEntrypoint()) await runAssetStartupReadiness();
 
 // ── Evidence collection ───────────────────────────────────────────────────────
 
@@ -526,10 +666,14 @@ async function waitForVisible(page, selector, timeoutMs, label) {
   });
 }
 
-async function clickButton(page, label) {
+export async function clickButton(page, label, timeoutMs) {
+  const timeout = Number(timeoutMs);
+  if (!Number.isFinite(timeout) || timeout <= 0) {
+    throw new TypeError(`clickButton(${label}) requires a positive phase timeout`);
+  }
   const button = page.getByRole('button', { name: label, exact: true }).first();
   if (await button.count() <= 0) return false;
-  await button.click({ timeout: 10000 });
+  await button.click({ timeout: Math.max(1, Math.floor(timeout)) });
   return true;
 }
 
