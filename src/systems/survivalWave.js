@@ -248,8 +248,17 @@ export const survivalWave = {
       // A swarm wave's opening burst is bounded by the SAME concurrency target the stream uses.
       // Without this, a wave inheriting a full room from the last one would stack its own burst on
       // top and hand the whole overflow to the spawn cap to sort out.
+      //
+      // A CHAMPION IS NEVER CLAMPED. Note what the clamp does when it bites: `continue` without
+      // re-queueing, so the batch is DROPPED, not deferred. That is right for chaff — the room is
+      // already full and the stream will bring more when it thins. It is catastrophic for a boss.
+      // Waves now run at concurrency 20 with no taper and clear with that many survivors, while a
+      // boss wave's own ceiling is 18 — so the Dreadnought's batch computed min(1, 18 - 20) = 0 and
+      // was thrown away. `requireBoss` then had nothing to require and the boss wave cleared on
+      // chaff, with no boss ever fielded. The spawn budget (raised to 38 for the run) is the real
+      // authority on whether there is room, and it has plenty.
       let count = entry.count;
-      if (this._swarm) {
+      if (this._swarm && entry.champion !== true) {
         count = Math.min(count, Math.max(0, this._concurrent - this._cohort.size));
         if (count <= 0) continue;
       }

@@ -659,6 +659,42 @@ test('a boss wave still ends normally when the boss dies first', () => {
   assert.ok(cleared[0].payload.killed >= plan.swarm.quota);
 });
 
+test('a boss wave fields its champion even when it inherits a FULL room', () => {
+  // The real sequence this guards: wave 9 runs at concurrency 20 with no taper, so it can clear
+  // with twenty survivors. Wave 10's boss concurrency is 18. The opening-burst headroom clamp then
+  // computes min(1, 18 - 20) = 0 for the champion batch — and the dispatch loop DROPS a clamped
+  // batch rather than deferring it, so the Dreadnought would never be fielded, `requireBoss` would
+  // have nothing to require, and the boss wave would clear on chaff alone with no boss in it.
+  const h = boot();
+  beginSwarm(h);
+  const plan = planWave({ seed: SEED, arenaId: ARENA, wave: 10, ruleset: SWARM_RULESET });
+  const bossCeiling = plan.swarm.concurrent;
+
+  // Stuff the room past the boss wave's own ceiling, exactly as an inherited wave 9 would. Wave 9
+  // has to be PLAYED to get there: the crescendo means its room only reaches its own ceiling of 20
+  // as its quota burns down, which is precisely the moment a boss wave inherits from it.
+  const nine = planWave({ seed: SEED, arenaId: ARENA, wave: 9, ruleset: SWARM_RULESET });
+  h.bus.emit('run:wavePlanned', { wave: 9, plan: nine });
+  h.bus.emit('run:waveStarted', { wave: 9 });
+  for (let i = 0; i < 4000 && liveHostiles(h).length <= bossCeiling; i++) {
+    if (i % 30 === 0) killOne(h);
+    tick(h, 1);
+  }
+  assert.ok(
+    liveHostiles(h).length > bossCeiling,
+    `the room is fuller (${liveHostiles(h).length}) than the boss wave's ceiling (${bossCeiling})`,
+  );
+
+  // Now the boss wave arrives on top of it.
+  h.bus.emit('run:wavePlanned', { wave: 10, plan });
+  h.bus.emit('run:waveStarted', { wave: 10 });
+  tick(h, 60);
+  assert.ok(
+    liveBosses(h, 10).length > 0,
+    'the champion was fielded despite the room already being over strength',
+  );
+});
+
 test('the champion changes: four different shapes of boss wave, in step with the roster', () => {
   const seen = [];
   for (let step = 1; step <= SWARM_BOSS_ROTATION.length; step++) {
