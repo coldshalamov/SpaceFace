@@ -21,7 +21,9 @@ export async function discoverScenarioModules() {
   const found = new Map();
   let names = [];
   try {
-    names = readdirSync(SCENARIOS_DIR).filter((name) => name.endsWith('.mjs')).sort();
+    names = readdirSync(SCENARIOS_DIR)
+      .filter((name) => name.endsWith('.mjs') && !name.startsWith('_'))
+      .sort();
   } catch {
     names = [];
   }
