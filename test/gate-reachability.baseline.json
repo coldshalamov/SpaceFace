@@ -28,6 +28,7 @@
     "check:rcs-sign-truth",
     "check:route-engage",
     "check:route-follower",
+    "check:save-import-safety",
     "check:shader-compile",
     "check:sim:compare",
     "check:sim:v3:compare",
