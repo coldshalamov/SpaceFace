@@ -385,7 +385,7 @@ const CERES_TENDER_SERVICE_HOLD_S = 3;
 const CERES_TENDER_SERVICE_REPAIR_AMOUNT = 999;
 // The calved fresh face out-pays the strike's default seam bonus (fieldDepletion default 8u):
 // the catalog aftermath is "fresh faces are visibly brighter ore", so the re-armed window is the
-// richer one. Surfaced by every existing bonusU readout — no new presentation.
+// richer one. The target panel names it FRESH SEAM and the Hold's lot row shows the bonus size.
 const CERES_CALVED_SEAM_BONUS_U = 12;
 // Exact current combat-drive arithmetic: a targeted ion packet pays the component's flat armor,
 // then lands exactly on its remaining health. Keeping this here means the incident never spills
@@ -7040,17 +7040,20 @@ export const traffic = {
       && chain.active.length === 0
       && chain.completed.length >= CERES_CAUSAL_CHAIN.length) {
       // Full cycle resolved with no player input. Gap, then re-arm from the seam strike again.
-      // The pocket's story reaches the station news feed: which cycle resolved decides the line
+      // The pocket's story rides the flight news channel: which cycle resolved decides the line
       // (aftermath branch opened = loss story; clean service = clean shift). aftermath_open is the
       // honest discriminator — the cutter is in `completed` on both paths (skipped on success).
+      // The loss line leads with the casualty, not the strip: the cutter can be killed mid-strip
+      // and the cycle still resolve, so "strips" would sometimes claim work that never happened.
       const aftermathRan = chain.seeds.aftermath_open === true;
       this.bus.emit('news:publish', {
         text: aftermathRan
-          ? 'Salvors strip the Ceres cathedral wreck as the refinery writes off another seam casualty.'
+          ? 'Ceres refinery writes off another seam casualty at the cathedral wreck.'
           : 'Ceres refinery logs another clean seam shift; the seam rock calved and held.',
         kind: 'ceres_seam_story',
         sourceRef: 'traffic:ceres-causal-chain',
         channelId: 'news',
+        stationId: 'station_ceres',
         sectorId: CERES_ACTIVITY_SECTOR_ID,
         cycle: (chain.cycle | 0) + 1,
       });
