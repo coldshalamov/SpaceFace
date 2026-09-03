@@ -53,6 +53,9 @@ disjoint files. No coordinator, task-long reservation, or worktree is required.
   fixing the feel"** → §13C, [`design/FEEL_CONTRACT.md`](./design/FEEL_CONTRACT.md), then
   `node scripts/program-dispatch.mjs --id PQ-137`. Answer with a bar from the contract and the
   number that moved — not more enemies, ships, stations, or camera shake.
+- **"Make it better" / it sucks / it's not fun** → [`design/program/FUN_CONVERGENCE_LOOP.md`](./design/program/FUN_CONVERGENCE_LOOP.md);
+  copy [`design/program/FUN_CONVERGENCE_GOAL.txt`](./design/program/FUN_CONVERGENCE_GOAL.txt) to any agent. Play the
+  bench on fixed seeds, name the ONE fundamental, fix the guts, show the number and the frames. Crucible first.
 - **Finish the game / what is next for release / the professional bar / plan the finish** → §15,
   the three release milestones and their gates, then `node scripts/program-dispatch.mjs --id PQ-146`
   (or any ID in §15.2). Feel before content; surface before invent; collide before add.
@@ -2182,7 +2185,7 @@ abandoned. Implementers and reviewers are always different models. Every lane pa
 **file**; two agents never hold the same file. Every leaf commits immediately after review, scoped to
 its exact paths. `npm run check:playable` is run before any "done".
 
-## 15. Finishing SpaceFace — the A-list program (`PQ-146` … `PQ-172`, plus eight reactivated packets) — ADMITTED 2026-09-03
+## 15. Finishing SpaceFace — the A-list program (`PQ-146` … `PQ-173`, plus eight reactivated packets) — ADMITTED 2026-09-03
 
 **Source:** the owner's direction of 2026-09-03 (*"plan out the finish of this game … creative,
 fun, fast-paced, nuanced, and performant"*), [`design/VISION.md`](./design/VISION.md) Parts I and II,
@@ -2252,14 +2255,14 @@ RELEASE PQ-158 audio ─┐
 POST    PQ-172 mods; Crucible seasons; PQ-170 territory wars
 ```
 
-Two rules of order. **Feel before content**: nothing in BETA starts a sector, a set piece, or a toy
+Three rules of order. **Crucible first**: combat and flight feel converge in the Crucible bench and adventure inherits the numbers (the owner: *"if you get the crucible mode to be optimally fun, then it would make the goals for adventure combat more obvious"*); the operational loop is [`design/program/FUN_CONVERGENCE_LOOP.md`](./design/program/FUN_CONVERGENCE_LOOP.md) and its prompt is `MAKE IT BETTER`. **Feel before content**: nothing in BETA starts a sector, a set piece, or a toy
 until `PQ-137.03–.05` are met, because content built on a ship that cannot turn is content that will
 be rebuilt. **Surface before invent**: every BETA packet first lists what already computes the thing
 it needs (the audit tables in each packet) and connects it before writing a new system.
 
-### 15.3 The packets (twenty-six new, eight reactivated)
+### 15.3 The packets (twenty-seven new, eight reactivated)
 
-Every row is a queue task with dispatch units; `node scripts/program-dispatch.mjs --id <ID>` returns it. Reactivated packets (`PQ-026`–`PQ-033`) were deferred one-line briefs; they now carry leaves and packet files. Wave = the milestone whose gate the packet moves; the queue rows AND their dispatch units carry the dependencies of §15.2 (a BETA unit names the guts units `PQ-137.03–.05` it waits for, a RELEASE unit names the proof units `PQ-141.00–.01`), so `--ready` cannot hand out content before the ship handles; only the telemetry/playtest packet (`PQ-167`) is claimable today.
+Every row is a queue task with dispatch units; `node scripts/program-dispatch.mjs --id <ID>` returns it. Reactivated packets (`PQ-026`–`PQ-033`) were deferred one-line briefs; they now carry leaves and packet files. Wave = the milestone whose gate the packet moves; the queue rows AND their dispatch units carry the dependencies of §15.2 (a BETA unit names the guts units `PQ-137.03–.05` it waits for, a RELEASE unit names the proof units `PQ-141.00–.01`), so `--ready` cannot hand out content before the ship handles; only the telemetry/playtest packet (`PQ-167`) and the fun-loop instrument (`PQ-173`) are claimable today.
 
 | Packet | Pillar | One line | Wave |
 |---|---|---|---|
@@ -2275,9 +2278,9 @@ Every row is a queue task with dispatch units; `node scripts/program-dispatch.mj
 | **`PQ-149`** The storyteller: a session-rhythm director over the directors that exist — [`active/PQ-149.md`](./design/program/roadmap/active/PQ-149.md) | B · The world and its people | One pacing owner sustains work→travel→curiosity→tension→violence→aftermath→quiet and seeds 'so then' escalations on a budget. | BETA |
 | **`PQ-150`** People who remember: aces, rivals, the mechanic, the radio — [`active/PQ-150.md`](./design/program/roadmap/active/PQ-150.md) | B · The world and its people | Named aces hunt you with counter-loadouts and taunts, rivals escalate, a mechanic narrates your scars, and the radio talks about what you did. | BETA |
 | **`PQ-151`** Crime is a game: the WANTED loop with a physical escape at every tier — [`active/PQ-151.md`](./design/program/roadmap/active/PQ-151.md) | B · The world and its people | Four tiers (fine → bounty → hunters → impound), patrol nets and checkpoints, corrupt ports, laundering, insurance and restitution, impound recovery as play. | BETA |
-| **`PQ-032`** Campaign spine with an ending the player built toward — [`active/PQ-032.md`](./design/program/roadmap/active/PQ-032.md) | B · The world and its people | Reactivated. The eight-beat spine becomes a 20–25 hour arc: beats 1–3 stop being errands, the ending gate moves to where the toys are, NG+ carries a legacy. | BETA |
+| **`PQ-032`** Campaign spine: one linear story that builds to an ending you earned with the toys — [`active/PQ-032.md`](./design/program/roadmap/active/PQ-032.md) | B · The world and its people | Reactivated. One building story, no branch investment: beats 1–3 stop being errands, the ending gate moves to where the toys are, NG+ carries a legacy. | BETA |
 | **`PQ-152`** Set pieces built from verbs: ten missions whose headline is physical — [`active/PQ-152.md`](./design/program/roadmap/active/PQ-152.md) | B · The world and its people | Tow, sling, demolish, rescue, jam, siege: mission TYPES, not contract clauses. The Massline becomes a job. | BETA |
-| **`PQ-153`** Six sectors with a way of life (the authored core, then the frontier as texture) — [`active/PQ-153.md`](./design/program/roadmap/active/PQ-153.md) | B · The world and its people | Six of the ten authored core sectors get a verb, a rhythm, a law, a hazard geometry, a landmark and a signature toy; the fourteen frontier sectors stay texture. | BETA |
+| **`PQ-153`** Six sectors with a way of life: Helios Prime, Ceres Belt, Tethys Junction, Vesta Forge, Pallas Drift, Sker Haven — [`active/PQ-153.md`](./design/program/roadmap/active/PQ-153.md) | B · The world and its people | Six of the ten authored core sectors get a verb, a rhythm, a law, a hazard geometry, a landmark and a signature toy (the owner named the first three; the next three are proposed by tier spread and existing content); the frontier stays texture. | BETA |
 | **`PQ-154`** Wrecks as terrain and the death economy — [`active/PQ-154.md`](./design/program/roadmap/active/PQ-154.md) | B · The world and its people | Dead capital hulls become arenas with ambush ecology; hulls fracture along authored seams on extreme impact; dying seeds your wreck, pod and reputation. | BETA |
 | **`PQ-155`** Money means toys: the economy tuned as a verb curve — [`active/PQ-155.md`](./design/program/roadmap/active/PQ-155.md) | C · Economy, progression, identity | First upgrade in 15 minutes, a new verb every hour for ten hours, the ending at the heavy-verb tier, sinks and faucets balanced by a deterministic ten-hour economy simulation. | BETA |
 | **`PQ-156`** Three starters, three verbs, and a save-file identity — [`active/PQ-156.md`](./design/program/roadmap/active/PQ-156.md) | C · Economy, progression, identity | Brawler, skater, tug as starting hulls that are three ways to play, and a load screen that shows your ship, scars, rap sheet and grudges. | BETA |
@@ -2289,24 +2292,25 @@ Every row is a queue task with dispatch units; `node scripts/program-dispatch.mj
 | **`PQ-160`** Replay, clips and sharing — [`active/PQ-160.md`](./design/program/roadmap/active/PQ-160.md) | D · Presentation | The deterministic sim replays the last thirty seconds in-game; rated moments become clips; GIF/MP4 export; Crucible seeds and ghosts share. | RELEASE |
 | **`PQ-163`** The first ten minutes: the power fantasy, honest — [`active/PQ-163.md`](./design/program/roadmap/active/PQ-163.md) | E · First hour, UX, platform | A stranger performs a swing-release, a shove and a grab-and-run in minute five without reading a wall; boost, draw-to-fly and wells are taught by doing; the 47-A opener stays the climax. | ALPHA |
 | **`PQ-167`** Telemetry funnels and the weekly playtest loop — [`active/PQ-167.md`](./design/program/roadmap/active/PQ-167.md) | E · First hour, UX, platform | Designer-readable funnels from the telemetry that already exists, a weekly owner playtest with captured sessions, and the numbers that gate ALPHA and BETA. | ALPHA |
+| **`PQ-173`** The fun-loop instrument: bench, measure, critic, report, translator — [`active/PQ-173.md`](./design/program/roadmap/active/PQ-173.md) | E · First hour, UX, platform | The tooling that makes "MAKE IT BETTER" executable: a fixed-seed Crucible and verb bench, a bar-and-fun-metrics printer, frame strips for a vision critic with the ten-question rubric, the one-page owner report, and the verdict-to-bar translator protocol. | ALPHA |
 | **`PQ-164`** Input truth: controller, Deck, trackpad, haptics — [`active/PQ-164.md`](./design/program/roadmap/active/PQ-164.md) | E · First hour, UX, platform | Full gamepad in every screen with device-aware glyphs and remapping, Steam Deck verified, trackpad gestures honest, haptics by line tension. | RELEASE |
 | **`PQ-165`** Accessibility and options depth — [`active/PQ-165.md`](./design/program/roadmap/active/PQ-165.md) | E · First hour, UX, platform | Graphics presets and a frame cap, subtitles for every voice line, audio cues for visual events, assist options, and the accessibility checklist green. | RELEASE |
 | **`PQ-166`** Localization at launch: five languages and the growth test — [`active/PQ-166.md`](./design/program/roadmap/active/PQ-166.md) | E · First hour, UX, platform | The existing 9,530-key runtime carries five launch languages; every screen survives +40 % growth; fonts fall back. | RELEASE |
 | **`PQ-033`** Final platform, save, performance, accessibility, legal and store closeout — [`active/PQ-033.md`](./design/program/roadmap/active/PQ-033.md) | E · First hour, UX, platform | Reactivated. The release matrix: legal and credits (the only hard blocker today), crash reporting, auto-update, version string, min-spec floors, soaks, Browser/Electron parity, store readiness. | RELEASE |
-| **`PQ-169`** Crucible as the replay surface: daily seed, ghosts, mutators, cosmetics home — [`active/PQ-169.md`](./design/program/roadmap/active/PQ-169.md) | F · Modes and replayability | A daily seed with a leaderboard and ghosts, weekly mutators (gravity slalom), stunt scoring, and drafts that feed the hangar with possibility, never stats. | BETA |
+| **`PQ-169`** Crucible as the replay surface: daily seed, ghosts, mutators, cosmetics home — [`active/PQ-169.md`](./design/program/roadmap/active/PQ-169.md) | F · Modes and replayability | A daily seed with a leaderboard and ghosts, weekly mutators (gravity slalom), stunt scoring; the Crucible is the combat lab that adventure inherits from. | BETA |
 | **`PQ-171`** Content grammar and the anti-repetition budget — [`active/PQ-171.md`](./design/program/roadmap/active/PQ-171.md) | F · Modes and replayability | A written grammar for encounters, microevents and contracts so twenty-five hours do not repeat, and a check that measures repetition. | BETA |
 | **`PQ-170`** Endgame pulls: territory, mega-heists, capital bosses, legendary lines, station growth — [`active/PQ-170.md`](./design/program/roadmap/active/PQ-170.md) | F · Modes and replayability | After the ending: territory wars you tilt, two mega-heists, capital boss set-pieces, the Ace's trophy line, a station that expands and a faction that depends on you. | POST |
 | **`PQ-172`** Mods and data-driven content — [`active/PQ-172.md`](./design/program/roadmap/active/PQ-172.md) | F · Modes and replayability | Content directories loadable as JSON (weapons, ships, encounters, sectors) with validation; Workshop later. | POST |
 
 ### 15.4 The plans, in detail
 
-Each block is the packet file in brief: the gap it closes (pattern-matched against the reference games), what the audit found already exists, the write surfaces, and the leaves with their done-when bars. The packet files under `design/program/roadmap/active/` carry the same text plus entry conditions, non-goals and checks.
+Each block is the packet file in brief: the gap it closes (pattern-matched against the reference games), what the audit found already exists, the write surfaces, and the leaves with their done-when bars. The packet files under `design/program/roadmap/active/` carry the same text plus entry conditions, work breakdown, budgets, review questions, stop conditions and checkoff.
 
 #### Pillar A · The toys
 
 **`PQ-146` — Stunt grammar and the trick economy** · *ALPHA* · after `PQ-137`
 
-The game names what the player just did. A rope release already grades itself razor/clean/good/messy; the same receipt stream can recognise a bolas, a wrecking-ball kill, a clothesline, a collateral chain, a near-miss, a tow-kill and a rock discovery. A combo meter scores them in the Crucible, the ledger and titles record them in adventure, and a moment detector fires the slow-mo and the clip. This is the missing DEMAND for physics play: nothing in the build today asks the player to compose a chain.
+The game names what the player just did. A rope release already grades itself razor/clean/good/messy; the same receipt stream can recognise a bolas, a wrecking-ball kill, a clothesline, a collateral chain, a near-miss, a tow-kill and a rock discovery. A combo meter scores them in the Crucible, the ledger and titles record them in adventure, and a moment detector fires the slow-mo and the clip. This is the missing DEMAND for physics play: nothing in the build today asks the player to compose a chain. Per the Crucible-first law, the scoring lands in the Crucible bench before adventure inherits the ledger and titles.
 
 - **Gap:** Tony Hawk, Rocket League and Bulletstorm made a physics toy legible by naming the tricks; the audit found every link of the 60-second chain exists and nothing rewards composing them. **Reference:** Tony Hawk's Pro Skater, Rocket League, Bulletstorm skillshots, Just Cause.
 - **Exists:** `tether:releaseRated` (razor/clean/good/messy) in `src/systems/tetherGameplay.js`; `combat:collisionConsequence` receipts with exchangedMomentum/deltaV; `massline:throw`, `tether:whipImpact`, `combat:collisionDebris`; `src/systems/titles.js`, `shipLedger.js` (240 entries), `survivalRecords.js`, `bulletTime.js`; `src/combat/impulseKernel.js` provenance history per entity.
@@ -2518,9 +2522,9 @@ Being wanted is a game with verbs, not a number. Tier one is a fine and a scan c
 
 - **Not:** No instant-teleport police; every responder flies from somewhere.
 
-**`PQ-032` — Campaign spine with an ending the player built toward** · *BETA* · after `PQ-137`, `PQ-143`, `PQ-152`
+**`PQ-032` — Campaign spine: one linear story that builds to an ending you earned with the toys** · *BETA* · after `PQ-137`, `PQ-143`, `PQ-152`
 
-The 47-A opener is the best twelve minutes in the game; the next three beats are inventory errands and the ending fires at ~4 % of the money curve behind an empire-stake paywall. This packet re-cuts the spine: each beat is a set piece built from verbs (PQ-152), the ending gate sits at the point where the player has heavy-class verbs, the empire stake accepts a combat stake, and NG+ carries the ship's history. Five endings and five post-ending chains already exist and stay.
+The 47-A opener is the best twelve minutes in the game; the next three beats are inventory errands and the ending fires at ~4 % of the money curve behind an empire-stake paywall. The owner ruled: no dialogue trees, one linear story that builds, and replay value is not a goal. This packet re-cuts the spine as ONE through-line: each beat is a set piece built from verbs (PQ-152), the ending gate sits where the player has heavy-class verbs, the empire stake accepts a combat stake, and NG+ carries the ship's history. The five endings and five post-ending chains that already exist stay as they are; no new branching work is admitted.
 
 - **Gap:** Authored content ~10–14 h; sharpest cliff at minute 12; ending at 100k cr vs 4.5M hulls. **Reference:** Freelancer campaign gating, Hades run narrative, Outer Wilds discovery.
 - **Exists:** 8 beats `src/data/missions.js:1001-1016`; `src/story/campaign47a/`; 5 endings `src/story/endings/endingDefs.js`; `postEndingReplayChains.js`; `newGamePlus.js`; eligibility gates `eligibility.js:152-168`.
@@ -2530,11 +2534,11 @@ The 47-A opener is the best twelve minutes in the game; the next three beats are
 | Leaf | Outcome | Done when |
 |---|---|---|
 | `.00` | **Beats 1–3 become set pieces.** honest_work → the wrecking-ball contract; first_blood → pod rescue under fire; bigger_boat → the long tow. | Each beat is a PQ-152 set piece with a physical headline verb. |
-| `.01` | **The gate moves and widens.** Ending eligibility at the heavy-verb tier (tow class ≥ medium, one field, one ace beaten) with a combat stake alternative to the empire stake. | A combat-only run reaches an ending; a builder run reaches one; both in ≤ 25 h by telemetry. |
+| `.01` | **The gate moves and widens.** Ending eligibility at the heavy-verb tier (tow class ≥ medium, one field, one ace beaten) with a combat stake alternative to the empire stake; the linear spine reaches it without a branch choice. | A combat-only run reaches an ending; a builder run reaches one; both in ≤ 25 h by telemetry. |
 | `.02` | **The climax is a toy.** Each ending's final set piece requires the verbs of the branch (siege by wrecking ball, evidence tow, blockade run). | Owner plays each ending's climax; verdict recorded. |
 | `.03` | **NG+ carries a legacy.** Ship scars, titles, ace grudges, one head, and the ending's world facts carry; everything else resets. | Save migration test; the mechanic names the carried history. |
 
-- **Not:** No new endings; no dialogue trees.
+- **Not:** No new endings, no new branches, no dialogue trees; existing endings stay untouched.
 
 **`PQ-152` — Set pieces built from verbs: ten missions whose headline is physical** · *BETA* · after `PQ-137`, `PQ-138`
 
@@ -2554,7 +2558,7 @@ Ten authored set pieces and three new procedural mission types whose headline ve
 
 - **Not:** No mission that is 'fly there and hold fire'.
 
-**`PQ-153` — Six sectors with a way of life (the authored core, then the frontier as texture)** · *BETA* · after `PQ-137`, `PQ-143`
+**`PQ-153` — Six sectors with a way of life: Helios Prime, Ceres Belt, Tethys Junction, Vesta Forge, Pallas Drift, Sker Haven** · *BETA* · after `PQ-137`, `PQ-143`
 
 A player recognises each of six sectors from thirty seconds of unlabeled activity: Helios (the tutorial harbour), Ceres (the working belt), Tethys, plus three chosen from the ten by what they can physically offer — an ice-shear field, a debris reef, a foundry. Each has hazard geometry that changes fights, a landmark you screenshot, and one toy that is best there. The frontier fourteen carry stations and rumours, not story.
 
@@ -2565,7 +2569,7 @@ A player recognises each of six sectors from thirty seconds of unlabeled activit
 
 | Leaf | Outcome | Done when |
 |---|---|---|
-| `.00` | **Choose the six.** A table: verb, rhythm, law, crime, ships, structures, hazard geometry, landmark, signature toy; owner approves. | Table committed; owner verdict recorded. |
+| `.00` | **Confirm the six and their sentences.** Proposed: Helios Prime (the harbour: law, tutorial, calm), Ceres Belt (the working belt: mining, haulers, the Cathedral), Tethys Junction (the trade hub: traffic, customs, the black market), Vesta Forge (the foundry: furnace hazards, industry), Pallas Drift (the debris reef: wrecks, scavengers, reef pinball), Sker Haven (the outlaw port: the wanted loop's home, corrupt docks). A table per sector: verb, rhythm, law, crime, ships, structures, hazard geometry, landmark, signature toy. | Table committed; the owner may swap any of the last three by name. |
 | `.01` | **Hazard geometry per sector.** Ice shear, debris reef, foundry heat, storm lane, gravity knot, wreck field: each an authored physical situation (PQ-027 hazards). | Blind reviewer names the sector from a 30 s capture with labels hidden, 5 of 6. |
 | `.02` | **Landmarks fielded.** The depth program's hero landmarks placed where the six need them; screenshot composition checked at the shipping camera. | Six landmarks reachable; still review passes. |
 | `.03` | **The frontier as texture.** Fourteen frontier sectors get rumours, one texture one-off each, and no story promise; the stale 'not wired' comment corrected. | Atlas integrity green; each frontier sector has one memorable object. |
@@ -2611,7 +2615,7 @@ The curve is designed, not accreted: start-to-first-upgrade ≤ 15 min; hour by 
 
 **`PQ-156` — Three starters, three verbs, and a save-file identity** · *BETA* · after `PQ-137`, `PQ-142`
 
-New Game offers three starters that are verbs: the brawler (ram plate, shove gun), the skater (light, fast, the best swinger), the tug (heavy line, tow class, slow). Each has a distinct first ten minutes. The load screen is a portrait of the save: hull with scars, titles, rap sheet, the ace who hates you.
+Confirmed by the owner 2026-09-03. New Game offers three starters that are verbs: the brawler (ram plate, shove gun), the skater (light, fast, the best swinger), the tug (heavy line, tow class, slow). Each has a distinct first ten minutes. The load screen is a portrait of the save: hull with scars, titles, rap sheet, the ace who hates you.
 
 - **Gap:** One starter; the load screen is a list. **Reference:** Slay the Spire characters, Mount & Blade save cards.
 - **Exists:** `src/data/newGameDefaults.js`, `ships.js` (Hitch/Wasp/Pelican), `src/ui/screens/newGame.js`, `saveLoad.js`, `livingHull.js`, `titles.js`.
@@ -2680,7 +2684,7 @@ The Chart already answers routes, risk, prices, pressure, dossiers and route com
 
 **`PQ-158` — Audio direction: the game that sounds heavy** · *RELEASE* · after `PQ-141`, `PQ-139`
 
-The game currently ships muted by default because every sound is synthesised and the team knew it. The bus topology, adaptive-music matrix, ducking, voice cap and determinism isolation are already A-list; this packet supplies the content: a recorded/designed sample library for every cue family, an impact ladder (hull/rock/station × light/medium/heavy), the Massline as an instrument (tension to pitch, release snap, reel whine), boost stop, composed themes for the four states plus per-sector and per-faction identity through the Band, voice for the barks (eight faction registers), a convolver reverb bus so a hangar and a void differ, and a mix that ducks music under weight.
+The game currently ships muted by default because every sound is synthesised and the team knew it. The bus topology, adaptive-music matrix, ducking, voice cap and determinism isolation are already A-list; this packet supplies the content: a recorded/designed sample library for every cue family, an impact ladder (hull/rock/station × light/medium/heavy), the Massline as an instrument (tension to pitch, release snap, reel whine), boost stop, composed themes for the four states plus per-sector and per-faction identity through the Band, directed synthetic voice for the barks (eight faction registers; agents produce it, no recorded actors), a convolver reverb bus so a hangar and a void differ, and a mix that ducks music under weight.
 
 - **Gap:** Zero authored audio files; 167 synth recipes share one timbre; no reverb; one collision sound; boostStop empty; Massline reel/release silent; barks are text. **Reference:** Hades, Deep Rock Galactic, Everspace 2, Rebel Galaxy Outlaw, Sea of Thieves mix.
 - **Exists:** `src/audio/audioSystem.js` (8 buses, limiter, 68 subscriptions, 4-state stem matrix), `cuePriorityBus.js`, `audioActiveSet.js`, `bandBeds.js`, `src/data/audioRecipes.js` (171), `barks.js` (271 lines), settings 8 sliders; dead `reverbMix` params.
@@ -2693,7 +2697,7 @@ The game currently ships muted by default because every sound is synthesised and
 | `.01` (after PQ-139.01) | **The impact ladder, sample-backed.** Extends PQ-139.01 (which chooses pitch and gain from dp and mass on the synth path): the same 3×3 ladder (hull/rock/station × light/medium/heavy) gets layered transient/body/tail samples; scout-on-rock vs freighter-on-station stays ≥ 1 octave and ≥ 12 dB apart. | B9b table test; A/B capture. |
 | `.02` | **The Massline as an instrument.** Tension to pitch, strain to grit, reel whine, release snap distinct from break, bridle chord. | All massline events audible and distinct; captions name them. |
 | `.03` | **Composed themes.** Four state themes with motifs, per-sector beds, faction stings via the Band; the adaptive matrix drives authored stems. | A stranger hums the travel theme; per-sector bed identified blind. |
-| `.04` | **Voice for the barks.** Eight faction registers recorded or synthesised-with-direction, radio-processed; captions; the mechanic's voice. | All 271 lines delivered; subtitles; determinism untouched. |
+| `.04` | **Voice for the barks (directed synthetic voice; no recorded actors).** Eight faction registers produced by a directed text-to-speech pipeline agents can run (design/production/09 generated-media rules), radio-processed, with captions; the mechanic's voice the same way. No recorded actors are assumed anywhere in the plan. | All 271 lines delivered through the agentic pipeline; subtitles; determinism untouched; a stranger identifies the eight registers blind. |
 | `.05` | **Space and mix.** Convolver reverb bus per environment class; weight-first ducking; audio cues for visual events (accessibility). | Hangar vs void audibly different; ducking table test. |
 
 - **Not:** No audio in the sim; no cue without a cause.
@@ -2771,6 +2775,24 @@ Telemetry already captures onboarding milestones, kills, deaths by cause, trade 
 
 - **Not:** No PII, no network without opt-in.
 
+**`PQ-173` — The fun-loop instrument: bench, measure, critic, report, translator** · *ALPHA* · after nothing
+
+Agents can run the Fun Convergence Loop end to end without a human: one command plays the bench on fixed seeds (headless for numbers, headed for frames), prints every FEEL_CONTRACT bar plus the fun metrics (verbs per minute, consequences per action, time to first consequence, moments per minute, nothing-happened seconds, deaths by cause, knock budget on the player), writes frame strips at the shipping camera, feeds a vision critic the ten-question rubric, and renders the one-page plain-words report. The translator protocol turns the owner's weekly verdict into a scenario, a fundamental and a bar. This packet is the answer to "I don't know what else to prompt but make it better."
+
+- **Gap:** Nineteen deterministic scenarios, a sixty-second capture script, a fixed-seed Crucible route check and a manager loop exist; nothing chains them into play → measure → judge → fix → compare → report, and no fun metric is printed anywhere. **Reference:** Supergiant's weekly plays, Rocket League telemetry, RimWorld storyteller tuning.
+- **Exists:** tools/agentic/scenarios.json (flight-slalom, flight-reversal, flight-accel-brake, collision-recovery, duel-1v1, mixed-wing, swarm-12, vfx-*), scripts/capture-gameplay-60s.mjs, scripts/check-crucible-route.mjs (fixed seed, real browser), scripts/check-crucible-run.mjs, Motion Lab src/testing/lab/ (runScenario, inputTape, replay, metricRegistry), src/systems/motionTelemetry.js, src/systems/telemetry.js, tools/agentic/manager_cycle.py, design/production/04_GAMEPLAY_OBSERVATORY.md capture contract.
+- **Routes through:** design/program/FUN_CONVERGENCE_LOOP.md (the law); CENTRAL_BRAIN.md; PQ-167 telemetry; PQ-146 moment detector; PROD-OBS-CAP.
+- **Writes:** `scripts/`, `tools/agentic/`, `src/testing/lab/`, `src/systems/motionTelemetry.js`, `design/program/roadmap/receipts/fun-loop/`
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **The bench.** One command runs the Crucible feel bench (swarm ruleset, three arenas × three loadouts incl. the shove weapon and the rope kit, first three waves, three fixed seeds each), the flight bench and the verb benches, headless; a --headed flag records frame strips at the shipping camera with HUD text off. | Two runs of the same seed hash identical; strips land under receipts/fun-loop/. |
+| `.01` | **The measurer.** Prints every reachable FEEL_CONTRACT bar and the fun metrics per run as JSON + Markdown; a before/after diff mode compares two runs on the same seeds. | Every §B bar the bench can reach appears with a number; the knock budget on the player is measured. |
+| `.02` | **The critic.** A prompt + harness that hands frame strips and metrics to a vision-capable model with the ten-question rubric and returns yes/no with frame indices and the ONE fundamental in the §A audit format; runs with a model that did not make the change. | The critic reproduces the 2026-09-03 audit findings on a pre-fix build (governor brake, NPC clamp, terrain helm) from frames alone. |
+| `.03` | **The report and the translator.** Render the one-page owner report (found / changed / what you will feel / numbers / frames / next) and encode the verdict-to-bar translator protocol as a checklist the agent must fill before touching code. | One real cycle run end to end and committed with its report; the owner reads it without asking what a term means. |
+
+- **Not:** No new game systems; no detector promoted to a hard gate without the observatory calibration rule; the critic never proposes content.
+
 **`PQ-164` — Input truth: controller, Deck, trackpad, haptics** · *RELEASE* · after `PQ-141`
 
 Every player verb and every screen works on gamepad with glyphs that follow the active device; remapping persists; Steam Deck is verified at its resolution; the trackpad (the owner's stated hand) has honest gestures for the Massline and draw-to-fly; haptics carry line tension and slams.
@@ -2845,7 +2867,7 @@ The game ships. There is a LICENSE, third-party notices and a credits screen (th
 
 **`PQ-169` — Crucible as the replay surface: daily seed, ghosts, mutators, cosmetics home** · *BETA* · after `PQ-133`, `PQ-146`
 
-The Crucible becomes the one-more-run surface: a daily seed everyone plays, local and Steam leaderboards, ghost replays of shared runs, weekly mutators (three wells bend the arena; heavy-only; no guns), stunt scoring from PQ-146, and draft unlocks that carry cosmetics and toys home under §12.2's rule.
+The Crucible becomes the one-more-run surface: a daily seed everyone plays, local and Steam leaderboards, ghost replays of shared runs, weekly mutators (three wells bend the arena; heavy-only; no guns), stunt scoring from PQ-146, and, only if it earns its place, cosmetics that carry home under §12.2's rule (crossover is optional, not a goal).
 
 - **Gap:** Records and build codes exist; no daily, no board, no ghosts, no stunt score. **Reference:** Spelunky daily, Slay the Spire, Vampire Survivors, Trackmania.
 - **Exists:** `survivalRecords.js`, `survivalMutators.js`, `survivalDraft.js`, `survivalSwarm.js`, `survivalUnlocks.js`, build codes.
@@ -2857,7 +2879,7 @@ The Crucible becomes the one-more-run surface: a daily seed everyone plays, loca
 | `.00` | **Daily seed and board.** Date-seeded run; local board; Steam board when PQ-033 lands. | Two machines get the same daily; board persists. |
 | `.01` | **Ghosts.** A shared run's input tape renders as a translucent ghost hull in your run. | Ghost matches the shared hash. |
 | `.02` | **Weekly mutators.** Gravity slalom, heavies only, weapons cold, reef arena; rotate by week. | Four mutators live; each changes the top strategy (telemetry). |
-| `.03` | **The hangar feed (cosmetics only unless the owner overrides §12.2).** Draft unlocks carry cosmetics into adventure; adventure titles show in the Crucible. Carrying toy AVAILABILITY into adventure is a §12.2 override (no campaign material reward in v1) and ships only on the owner's explicit decision. | One cosmetic round-trips; §12.2 respected; the override, if any, is recorded as the owner's. |
+| `.03` | **The hangar feed (optional; cosmetics only).** If it earns its place: draft unlocks carry cosmetics into adventure and adventure titles show in the Crucible. The owner ruled crossover optional, not a goal; §12.2 stands (unlocks carry no power). | Either one cosmetic round-trips, or the leaf is closed as not needed with the owner's word. |
 
 - **Not:** No online multiplayer; asynchronous only.
 
@@ -2955,27 +2977,28 @@ listener and a rule, never a new system. The trigger and the consequence are the
 | C11 | Heat × contracts | WANTED → the board offers double-pay deniable jobs with ambush clauses. | `PQ-151`, `PQ-138.04` |
 | C12 | Mining × pirates | A depleted seam's output drops → ambush frequency on that route rises with scarcity. | `PQ-149`, `PQ-155` |
 
-### 15.7 What this game will NOT build (PROPOSED refusals — binding once the owner ratifies)
+### 15.7 What this game will NOT build (ruled by the owner, 2026-09-03; binding on every packet)
 
-Both outside designers and the audit converged on these; the owner has not yet ruled. Until a veto
-arrives, no packet in this section may spend work on any of them. Each is tempting and each would
-spend the studio on a second game.
+The owner answered the proposed list in plain words. The rulings, in the owner's terms:
 
-- **Multiplayer or netcode of any kind.** Coupled-mass physics over a network is a year of pain for a
-  fantasy local chaos already delivers. Async only: daily seeds, ghosts, clips.
-- **Walking, interiors, or planetary landing.** The ship is the character.
-- **Full 3D / six-degree flight.** Top-down keeps trajectories, tethers, and billiards readable on a
-  trackpad; the 3D tumble is presentation, the sim stays on the plane.
-- **Infinite procedural sectors.** Six dense, mean, authored sectors beat sixty empty ones.
-- **RTS fleet or wingman command layers.** Wingmen stay companions with one order verb, not a unit
-  roster.
-- **HP sponges, level-scaled damage, or knockback scaled by victim HP.** Mass and impulse decide;
-  positioning is the scarce resource.
-- **Crafting-material treadmills and rarity loot.** Progression is verbs.
-- **Dialogue trees and RPG companions.** The universe talks through comms, contracts, and
-  consequences.
-- **Camera shake or particle showcases as a substitute for a real event.**
-- **A second architecture for any mode.** Crucible, Sandbox, campaign: one game path.
+- **No multiplayer.** Asynchronous sharing only: daily seeds, ghosts, clips.
+- **No walking around and no ship interiors.** The ship is the character.
+- **The view stays top-down.** The ships already tumble in 3D on screen; the flying stays on the plane.
+- **Random or procedural content is neither wanted nor banned.** What is banned is anything agents
+  cannot test: every bench and every scenario uses fixed seeds (`FUN_CONVERGENCE_LOOP.md` §2).
+- **Wingmen stay small.** The Z wheel that exists is enough; no bigger fleet layer. The "fleet
+  command" wording the owner sees on the regular UI is a candidate for the surface passes (`PQ-162`,
+  `PQ-168`).
+- **The owner's own ship is never knocked around.** Bumps and scrapes must not shove or spin the
+  player's hull; only a deliberate big event may, and it must be legible (`FEEL_CONTRACT.md` B13,
+  `PQ-137.11`).
+- **Enemies do not become damage sponges,** and hits never scale with a level. Mass and momentum decide.
+- **Loot rarity is allowed** if it ever earns its place; a crafting grind is not a goal either way.
+- **No dialogue trees. One linear story that builds.** Branching and "replay value" are not goals; the
+  endings that exist stay, and no new branch work is admitted (`PQ-032`).
+- **Camera shake is not a fix** and never was the point; the problems are fundamental. Spectacle is
+  never a substitute for the event underneath.
+- **One architecture for every mode.** Crucible, sandbox, campaign: one game path.
 
 ### 15.8 Session shape (what pulls the player forward, by hour)
 
@@ -3018,6 +3041,7 @@ this build lacks, the funnest toys, the collisions, the session shape, and what 
 ### 15.10 Dispatch
 
 - **Numbering:** `PQ-157` is deliberately unassigned (its draft, player bases and territory, folded into `PQ-170` and the existing `S3-F6-BASES` / `RV-BASES` rows). Do not fill it.
+- **Door, feel:** "make it better" / "it sucks" / "it's not fun" → [`design/program/FUN_CONVERGENCE_LOOP.md`](./design/program/FUN_CONVERGENCE_LOOP.md) → copy [`FUN_CONVERGENCE_GOAL.txt`](./design/program/FUN_CONVERGENCE_GOAL.txt) → `PQ-173` builds the instrument; the loop answers with a bar and a number, never with content.
 - **Door:** "finish the game / what's next for release / professional bar" → this section →
   `node scripts/program-dispatch.mjs --id PQ-146` (or any ID in §15.2). The eight reactivated packets
   (`PQ-026`–`PQ-033`) are `ready` with fresh leaves; their old one-line briefs are superseded by their

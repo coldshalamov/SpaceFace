@@ -18,6 +18,7 @@ the named outcome of the job you were given, then stop — the full working agre
 | Every same-picture performance option, investigation, or large port later | **`CANONICAL_BUILD_MAP.md` §8.2** → [`design/PERF_OPTION_SPACE.md`](./design/PERF_OPTION_SPACE.md) |
 | The game is hitching / stuttering / not playing smoothly | **`CANONICAL_BUILD_MAP.md` §8.4** → [`design/program/PERF_HITCH_CAMPAIGN.md`](./design/program/PERF_HITCH_CAMPAIGN.md) → `PQ-129` (`--id PQ-129`). Measure first; do not cut quality |
 | The game is not fun / combat and flight feel wonky / "agents keep adding content instead of fixing the feel" | **`CANONICAL_BUILD_MAP.md` §13C** → [`design/FEEL_CONTRACT.md`](./design/FEEL_CONTRACT.md) → `PQ-137` (`--id PQ-137`). Answer with a bar and the number that moved, never with more content |
+| "Make it better" / it sucks / it's not fun | **`design/program/FUN_CONVERGENCE_LOOP.md`** → copy `design/program/FUN_CONVERGENCE_GOAL.txt`. Play the bench on fixed seeds, name the ONE fundamental, fix the guts, show the number and the frames. Crucible first; never answer with content |
 | Finish the game / what is next for release / the professional bar | **`CANONICAL_BUILD_MAP.md` §15** (three release milestones with gates) → `--id PQ-146` or any §15.2 ID; the eight reactivated packets `PQ-026`–`PQ-033` are ready again |
 | What is active or occupied now? | `design/program/NOW.md` → `design/program/README.md` |
 | Claim a multi-week roadmap packet | `design/program/roadmap/README.md` → `design/program/roadmap/00_EXECUTION_PROTOCOL.md` |

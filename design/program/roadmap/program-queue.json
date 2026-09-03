@@ -1661,7 +1661,7 @@
     {
       "id": "PQ-032",
       "priority": 32,
-      "title": "Campaign spine with an ending the player built toward",
+      "title": "Campaign spine: one linear story that builds to an ending you earned with the toys",
       "state": "ready",
       "canonical": [
         "W12",
@@ -1702,7 +1702,7 @@
         "public-route",
         "five-endings"
       ],
-      "brief": "Reactivated. The eight-beat spine becomes a 20–25 hour arc: beats 1–3 stop being errands, the ending gate moves to where the toys are, NG+ carries a legacy. Gap: Authored content ~10–14 h; sharpest cliff at minute 12; ending at 100k cr vs 4.5M hulls. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-032.md."
+      "brief": "Reactivated. One building story, no branch investment: beats 1–3 stop being errands, the ending gate moves to where the toys are, NG+ carries a legacy. Gap: Authored content ~10–14 h; sharpest cliff at minute 12; ending at 100k cr vs 4.5M hulls. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-032.md."
     },
     {
       "id": "PQ-033",
@@ -3047,7 +3047,7 @@
     {
       "id": "PQ-153",
       "priority": 75,
-      "title": "Six sectors with a way of life (the authored core, then the frontier as texture)",
+      "title": "Six sectors with a way of life: Helios Prime, Ceres Belt, Tethys Junction, Vesta Forge, Pallas Drift, Sker Haven",
       "state": "ready",
       "canonical": [
         "SIX-SECTORS"
@@ -3067,7 +3067,7 @@
       ],
       "checks": [],
       "evidence": [],
-      "brief": "Six of the ten authored core sectors get a verb, a rhythm, a law, a hazard geometry, a landmark and a signature toy; the fourteen frontier sectors stay texture. Gap: 24 sectors exist (10 authored + 14 frontier); identity is palette; the frontier has no beats. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-153.md."
+      "brief": "Six of the ten authored core sectors get a verb, a rhythm, a law, a hazard geometry, a landmark and a signature toy (the owner named the first three; the next three are proposed by tier spread and existing content); the frontier stays texture. Gap: 24 sectors exist (10 authored + 14 frontier); identity is palette; the frontier has no beats. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-153.md."
     },
     {
       "id": "PQ-154",
@@ -3384,7 +3384,7 @@
       ],
       "checks": [],
       "evidence": [],
-      "brief": "A daily seed with a leaderboard and ghosts, weekly mutators (gravity slalom), stunt scoring, and drafts that feed the hangar with possibility, never stats. Gap: Records and build codes exist; no daily, no board, no ghosts, no stunt score. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-169.md."
+      "brief": "A daily seed with a leaderboard and ghosts, weekly mutators (gravity slalom), stunt scoring; the Crucible is the combat lab that adventure inherits from. Gap: Records and build codes exist; no daily, no board, no ghosts, no stunt score. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-169.md."
     },
     {
       "id": "PQ-170",
@@ -3506,6 +3506,28 @@
       "checks": [],
       "evidence": [],
       "brief": "The strategic centrepiece stops reading as an admin screen: the deferred traffic layer lands, duplicated navigation answers merge, tabs get a hierarchy, heat and contracts pin. Gap: J12b traffic layer deferred; duplication; single tab size; sub-12 px nodes; the strategic reviewer called it cheap admin. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-168.md."
+    },
+    {
+      "id": "PQ-173",
+      "priority": 94,
+      "title": "The fun-loop instrument: bench, measure, critic, report, translator",
+      "state": "ready",
+      "canonical": [
+        "FUN-LOOP-INSTRUMENT"
+      ],
+      "aliases": [],
+      "dependsOn": [],
+      "mutexes": [
+        "fun-loop"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "The tooling that makes \"MAKE IT BETTER\" executable: a fixed-seed Crucible and verb bench, a bar-and-fun-metrics printer, frame strips for a vision critic with the ten-question rubric, the one-page owner report, and the verdict-to-bar translator protocol. Gap: Nineteen deterministic scenarios, a sixty-second capture script, a fixed-seed Crucible route check and a manager loop exist; nothing chains them into play → measure → judge → fix → compare → report, and no fun metric is printed anywhere. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-173.md."
     }
   ],
   "dispatchUnits": [
@@ -12277,7 +12299,7 @@
         "npm run check:save-schema"
       ],
       "receiptRefs": [],
-      "brief": "Ending eligibility at the heavy-verb tier (tow class ≥ medium, one field, one ace beaten) with a combat stake alternative to the empire stake. DONE WHEN: A combat-only run reaches an ending; a builder run reaches one; both in ≤ 25 h by telemetry."
+      "brief": "Ending eligibility at the heavy-verb tier (tow class ≥ medium, one field, one ace beaten) with a combat stake alternative to the empire stake; the linear spine reaches it without a branch choice. DONE WHEN: A combat-only run reaches an ending; a builder run reaches one; both in ≤ 25 h by telemetry."
     },
     {
       "id": "PQ-032.02",
@@ -12995,7 +13017,7 @@
       "id": "PQ-158.04",
       "parentId": "PQ-158",
       "priority": 501,
-      "title": "Voice for the barks",
+      "title": "Voice for the barks (directed synthetic voice; no recorded actors)",
       "kind": "implementation",
       "state": "ready",
       "dependsOn": [
@@ -13018,7 +13040,7 @@
         "npm run check:presentation"
       ],
       "receiptRefs": [],
-      "brief": "Eight faction registers recorded or synthesised-with-direction, radio-processed; captions; the mechanic's voice. DONE WHEN: All 271 lines delivered; subtitles; determinism untouched."
+      "brief": "Eight faction registers produced by a directed text-to-speech pipeline agents can run (design/production/09 generated-media rules), radio-processed, with captions; the mechanic's voice the same way. No recorded actors are assumed anywhere in the plan. DONE WHEN: All 271 lines delivered through the agentic pipeline; subtitles; determinism untouched; a stranger identifies the eight registers blind."
     },
     {
       "id": "PQ-158.05",
@@ -14092,7 +14114,7 @@
       "id": "PQ-169.03",
       "parentId": "PQ-169",
       "priority": 539,
-      "title": "The hangar feed (cosmetics only unless the owner overrides §12.2)",
+      "title": "The hangar feed (optional; cosmetics only)",
       "kind": "implementation",
       "state": "ready",
       "dependsOn": [
@@ -14114,7 +14136,7 @@
         "npm run check:crucible:meta"
       ],
       "receiptRefs": [],
-      "brief": "Draft unlocks carry cosmetics into adventure; adventure titles show in the Crucible. Carrying toy AVAILABILITY into adventure is a §12.2 override (no campaign material reward in v1) and ships only on the owner's explicit decision. DONE WHEN: One cosmetic round-trips; §12.2 respected; the override, if any, is recorded as the owner's."
+      "brief": "If it earns its place: draft unlocks carry cosmetics into adventure and adventure titles show in the Crucible. The owner ruled crossover optional, not a goal; §12.2 stands (unlocks carry no power). DONE WHEN: Either one cosmetic round-trips, or the leaf is closed as not needed with the owner's word."
     },
     {
       "id": "PQ-170.00",
@@ -14478,6 +14500,130 @@
       ],
       "receiptRefs": [],
       "brief": "Merge mapNavContext and the Overview inspector; nine tabs get primary/secondary tiers; sub-12 px nodes to the floor by layout. DONE WHEN: Zero duplicated answers; smallest text 12 px; cold review verdict."
+    },
+    {
+      "id": "PQ-137.11",
+      "parentId": "PQ-137",
+      "priority": 553,
+      "title": "The player is never knocked around (knock budget, bar B13)",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "flight-physics-feel"
+      ],
+      "paths": [
+        "src/core/sg02DynamicBodyOwner.js",
+        "src/systems/collisionConsequences.js",
+        "src/systems/motionTelemetry.js",
+        "src/testing/lab/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:massline"
+      ],
+      "receiptRefs": [],
+      "brief": "Measure contact-sourced velocity and heading changes on the player hull (the knock budget, bar B13); bound ordinary bumps and scrapes on the player to <= 10% of cruise per event with no heading change and no jitter, while deliberate big events stay legible. Owner 2026-09-03: my own ship must never get knocked around. DONE WHEN: B13 met on the flight and Crucible benches; a ten-minute ordinary-flight scenario prints the knock budget."
+    },
+    {
+      "id": "PQ-173.00",
+      "parentId": "PQ-173",
+      "priority": 554,
+      "title": "The bench",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "fun-loop"
+      ],
+      "paths": [
+        "scripts/",
+        "tools/agentic/",
+        "src/testing/lab/",
+        "src/systems/motionTelemetry.js",
+        "design/program/roadmap/receipts/fun-loop/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:crucible:route"
+      ],
+      "receiptRefs": [],
+      "brief": "One command runs the Crucible feel bench (swarm ruleset, three arenas × three loadouts incl. the shove weapon and the rope kit, first three waves, three fixed seeds each), the flight bench and the verb benches, headless; a --headed flag records frame strips at the shipping camera with HUD text off. DONE WHEN: Two runs of the same seed hash identical; strips land under receipts/fun-loop/."
+    },
+    {
+      "id": "PQ-173.01",
+      "parentId": "PQ-173",
+      "priority": 555,
+      "title": "The measurer",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "fun-loop"
+      ],
+      "paths": [
+        "scripts/",
+        "tools/agentic/",
+        "src/testing/lab/",
+        "src/systems/motionTelemetry.js",
+        "design/program/roadmap/receipts/fun-loop/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:crucible:route"
+      ],
+      "receiptRefs": [],
+      "brief": "Prints every reachable FEEL_CONTRACT bar and the fun metrics per run as JSON + Markdown; a before/after diff mode compares two runs on the same seeds. DONE WHEN: Every §B bar the bench can reach appears with a number; the knock budget on the player is measured."
+    },
+    {
+      "id": "PQ-173.02",
+      "parentId": "PQ-173",
+      "priority": 556,
+      "title": "The critic",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "fun-loop"
+      ],
+      "paths": [
+        "scripts/",
+        "tools/agentic/",
+        "src/testing/lab/",
+        "src/systems/motionTelemetry.js",
+        "design/program/roadmap/receipts/fun-loop/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:crucible:route"
+      ],
+      "receiptRefs": [],
+      "brief": "A prompt + harness that hands frame strips and metrics to a vision-capable model with the ten-question rubric and returns yes/no with frame indices and the ONE fundamental in the §A audit format; runs with a model that did not make the change. DONE WHEN: The critic reproduces the 2026-09-03 audit findings on a pre-fix build (governor brake, NPC clamp, terrain helm) from frames alone."
+    },
+    {
+      "id": "PQ-173.03",
+      "parentId": "PQ-173",
+      "priority": 557,
+      "title": "The report and the translator",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "fun-loop"
+      ],
+      "paths": [
+        "scripts/",
+        "tools/agentic/",
+        "src/testing/lab/",
+        "src/systems/motionTelemetry.js",
+        "design/program/roadmap/receipts/fun-loop/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:crucible:route"
+      ],
+      "receiptRefs": [],
+      "brief": "Render the one-page owner report (found / changed / what you will feel / numbers / frames / next) and encode the verdict-to-bar translator protocol as a checklist the agent must fill before touching code. DONE WHEN: One real cycle run end to end and committed with its report; the owner reads it without asking what a term means."
     }
   ]
 }

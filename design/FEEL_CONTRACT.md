@@ -35,6 +35,7 @@ locally sane reason, stack into "nothing I do sticks." None of them is a missing
 | A10 | The draw-to-fly follower's corner speed is `sqrt(a_lateral × R_stroke)` with the ship's real strafe authority (19 WU/s²), so a 30 WU hand radius forces ~24 WU/s. It tracks the ink; it does not reinterpret it. | The tram. PQ-135.00 fixed jitter-as-hairpin; the physics floor remained. | "It flies like a skilled pilot would fly my sketch — cutting where it should." | **OPEN** → `PQ-137.08` (depends on A7). |
 | A11 | Physical impacts get **zero** hitstop and zero camera trauma (`feel.js` subscribes to damage/kill/fire, never to collisions); collision audio is one sample with a clamped gain and no mass term; the Massline release is hard-coded `hsDur: 0`. | Impacts don't answer; a scout and a freighter make the same noise; the signature verb never snaps. | "Impacts should answer instantly." "Sound tells weight." "A Massline release should feel like something snapped loose." | **OPEN** → `PQ-139`. |
 | A12 | Three world-reaction events have **zero listeners**: `aftermathWreck:spawned` / `survivorPod:ejected` (the patrol never has to choose), `freight:cargoSpilled` (NPCs never notice spilled cargo), and nothing in traffic reacts to `combat:damage` or `law:incidentOpened` (civilians fly through firefights). | The world does not react to violence. | "Maybe the patrol that was protecting it has to choose." "The civilian hauler panics." | **OPEN** → `PQ-138`. |
+| A13 | The owner reports the player's own hull being "knocked around all the time" by bumps (their words, 2026-09-03: "buggy as shit and it made it impossible to fly"). Today the player never tumbles and craft contact yaw is stripped, but contact may still change the player's velocity by up to 40 WU/s per tick, and no instrument measures how often. | Flying near anything feels like being shoved by a ghost. | "Turn NOW when I twitch." "A controllable mass, not a cursor." | **OPEN** → `PQ-137.11`; bar B13. |
 
 **The pattern.** PQ-135.00's own done-when admits its tracking test never measured speed. PQ-135.01's
 done-when has no numbers at all. `test/flightV3.spec.mjs` §12c asserted *"overspeed under held
@@ -64,6 +65,7 @@ Motion Lab (`src/testing/lab/`, PQ-135.02) or `tools/agentic/scenarios.json`; ea
 | **B10 The world reacts** | Within 10 s of a kill in a patrol's sight, the patrol makes a visible stay-with-wreck / chase choice. Spilled cargo attracts an NPC within 30 s. Civilians within 300 WU of gunfire change course within 3 s. | Never / never / never (zero listeners) | `world.reaction_trio` | OPEN `PQ-138` |
 | **B11 Hitstun law is universal** | Helm-loss duration is one function of (ΔV ÷ cruise) and (attacker mass ÷ victim mass) for guns, throws, flings and collisions alike; lights at ≥ 30 % ΔV lose the helm ≥ 1 s; heavies at gun-scale ΔV never do. NPCs recover with real thruster torque, never a hidden gyro. | Massline-only tumble; 0.5 s beat for one weapon | `feel.hitstun_curve` | OPEN `PQ-137.04` |
 | **B12 The 60-second proof** | At the reference site, the VISION.md sequence (op working → hauler leaves → pirates intercept → shove spins one → rope-swing-release makes a projectile → collateral → cargo spills → hauler flees → patrol arrives → grab pod → run WANTED) occurs in a deterministic scenario with ≥ 9 of the 11 beats, and in a headed capture at the shipping camera. | Not attempted | `proof.sixty_seconds` | OPEN `PQ-141` — the program's acceptance gate |
+| **B13 The player is never knocked around** | In ten minutes of ordinary flight (no rope, no fields, no deliberate ram), contact changes the player's velocity ≤ 2 times per minute and never by more than 10 % of cruise in one event, never changes the player's heading, and never produces visible jitter; a deliberate big event (a slam the player chose, a well the player flew into) may, and it must be legible. | Unmeasured; the owner reports constant knocking | `feel.knock_budget` | OPEN `PQ-137.11` |
 
 ## C. Experiment bands (candidate numbers, never law)
 
@@ -105,6 +107,13 @@ before/after evidence.
    exist (`docs/AGENT_LESSONS.md`).
 8. **Make existing features collide before adding one.** Part A's A12 is three missing listeners,
    not three missing systems.
+9. **Crucible first.** Combat and flight feel converge in the Crucible bench (bounded, seeded, known
+   loadout) and adventure inherits the numbers. Feel work that has not passed the bench is out of order.
+10. **Everything is made by agents.** Voice is directed synthetic voice, art is Blender and imagegen through
+    the generated-media rules, tuning is the Fun Convergence Loop; no step assumes a recorded actor or a
+    human tuner. The owner's weekly 45-minute play is the only human step (`design/program/FUN_CONVERGENCE_LOOP.md`).
+11. **Fixed seeds or it did not happen.** Every feel claim is a deterministic scenario with a seed and a tape;
+    randomness in a bench once stalled development because nothing could be reproduced.
 
 ## E. Tests rewritten on 2026-09-03 and goldens to watch
 
