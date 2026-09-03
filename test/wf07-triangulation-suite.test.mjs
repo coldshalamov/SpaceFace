@@ -6,7 +6,7 @@ import test from 'node:test';
 
 import { MODULES } from '../src/data/modules.js';
 import { sumFittedModuleMod } from '../src/core/fittedModules.js';
-import { recordAnomalyBearing } from '../src/systems/scanner.js';
+import { effectiveAnomalyRequiredPings, recordAnomalyBearing } from '../src/systems/scanner.js';
 
 const SUITE_ID = 'mod_triangulation_suite_s';
 const ORIGIN_A = { x: 0, z: 0 };
@@ -49,4 +49,14 @@ test('without the suite the default three-pulse fix still needs three accepted b
   assert.equal(second.record.requiredPings, 3);
   const third = ping(second.record, { x: 0, z: 400 }, 3);
   assert.equal(third.record.revealed, true, 'the third distinct bearing completes the default fix');
+});
+
+test('precedence: the suite reduces the default count, genuinely custom counts win untouched', () => {
+  // The live Resonance Obelisk authors requiredPings: 3 explicitly — the same as the default —
+  // so the suite must still reduce it. A deliberately different authored count wins.
+  assert.equal(effectiveAnomalyRequiredPings(3, 1), 2, 'authored default-3 is reducible');
+  assert.equal(effectiveAnomalyRequiredPings(undefined, 1), 2, 'omitted count is reducible');
+  assert.equal(effectiveAnomalyRequiredPings(3, 0), 3, 'no suite, no change');
+  assert.equal(effectiveAnomalyRequiredPings(5, 1), 5, 'an authored non-default count wins');
+  assert.equal(effectiveAnomalyRequiredPings(2, 1), 2, 'the floor holds');
 });

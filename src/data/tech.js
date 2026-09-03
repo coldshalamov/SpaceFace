@@ -144,7 +144,7 @@ export const TECH_NODES = [
     // jumpCooldownMult -0.15) merged here — a node that unlocks nothing but numbers is the
     // "170 -> 212" failure VISION.md names. Saves that already researched the old node keep their
     // persisted efficiencyMods; saves that stopped at Survey gain the bonus going forward.
-    unlocks: { ships: ['ship_ranger'], modules: ['mod_sensor_array_l', 'mod_sensor_post'], flags: ['wormhole_access'], efficiency: { jumpRangeMult: 0.20, jumpCooldownMult: -0.15 } },
+    unlocks: { ships: ['ship_ranger'], modules: ['mod_sensor_array_l', 'mod_sensor_post', 'mod_triangulation_suite_s'], flags: ['wormhole_access'], efficiency: { jumpRangeMult: 0.20, jumpCooldownMult: -0.15 } },
   },
 
   // ---------------- LOGISTICS branch (6 nodes) ----------------

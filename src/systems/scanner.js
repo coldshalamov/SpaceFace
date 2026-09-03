@@ -221,6 +221,20 @@ function bearingDeg(from, to) {
   return (Math.atan2(dx, -dz) * 180 / Math.PI + 360) % 360;
 }
 
+/**
+ * Effective anomaly fix length: authored configs that deliberately differ from the default win
+ * untouched; the default count (authored as 3 or omitted) is what a fitted Triangulation Suite
+ * tightens (one pulse per reduction point, floored at 2). Exported for focused characterization.
+ */
+export function effectiveAnomalyRequiredPings(configRequiredPings, pingReduction) {
+  const authored = Number(configRequiredPings);
+  if (Number.isFinite(authored) && authored !== ANOMALY_TRIANGULATION_REQUIRED) {
+    return Math.max(2, Math.min(6, Math.trunc(authored)));
+  }
+  const reduction = Math.max(0, Math.trunc(Number(pingReduction) || 0));
+  return Math.max(2, ANOMALY_TRIANGULATION_REQUIRED - reduction);
+}
+
 function bearingDeltaDeg(a, b) {
   const raw = Math.abs((Number(a) || 0) - (Number(b) || 0)) % 360;
   return Math.min(raw, 360 - raw);
@@ -948,8 +962,8 @@ export const scanner = {
           : {};
         const previousTriangulation = own.triangulations[candidate.sourceId] || null;
         const options = { ...config, sectorId, poiId: candidate.sourceId };
-        if (config.requiredPings == null && pingReduction > 0) {
-          options.requiredPings = Math.max(2, ANOMALY_TRIANGULATION_REQUIRED - pingReduction);
+        if (pingReduction > 0) {
+          options.requiredPings = effectiveAnomalyRequiredPings(config.requiredPings, pingReduction);
         }
         const result = recordAnomalyBearing(previousTriangulation, origin, candidate.pos, options, now);
         own.triangulations[candidate.sourceId] = result.record;
