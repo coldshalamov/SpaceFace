@@ -2259,7 +2259,7 @@ it needs (the audit tables in each packet) and connects it before writing a new 
 
 ### 15.3 The packets (twenty-six new, eight reactivated)
 
-Every row is a queue task with dispatch units; `node scripts/program-dispatch.mjs --id <ID>` returns it. Reactivated packets (`PQ-026`–`PQ-033`) were deferred one-line briefs; they now carry leaves and packet files. Wave = the milestone whose gate the packet moves; the queue rows carry the dependencies of §15.2, so `--ready` cannot hand out BETA content before the guts are met.
+Every row is a queue task with dispatch units; `node scripts/program-dispatch.mjs --id <ID>` returns it. Reactivated packets (`PQ-026`–`PQ-033`) were deferred one-line briefs; they now carry leaves and packet files. Wave = the milestone whose gate the packet moves; the queue rows AND their dispatch units carry the dependencies of §15.2 (a BETA unit names the guts units `PQ-137.03–.05` it waits for, a RELEASE unit names the proof units `PQ-141.00–.01`), so `--ready` cannot hand out content before the ship handles; only the telemetry/playtest packet (`PQ-167`) is claimable today.
 
 | Packet | Pillar | One line | Wave |
 |---|---|---|---|

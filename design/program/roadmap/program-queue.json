@@ -10896,7 +10896,11 @@
       "title": "Trick taxonomy and detectors",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05"
+      ],
       "mutexes": [
         "stunt-grammar"
       ],
@@ -10918,7 +10922,11 @@
       "title": "Combo meter and scoring in the Crucible",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05"
+      ],
       "mutexes": [
         "stunt-grammar"
       ],
@@ -10941,7 +10949,11 @@
       "title": "Titles and ledger entries in adventure",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05"
+      ],
       "mutexes": [
         "stunt-grammar"
       ],
@@ -10965,7 +10977,10 @@
       "kind": "implementation",
       "state": "ready",
       "dependsOn": [
-        "PQ-139.00"
+        "PQ-139.00",
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05"
       ],
       "mutexes": [
         "stunt-grammar"
@@ -10987,7 +11002,11 @@
       "title": "Tractor head as a throw toy",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05"
+      ],
       "mutexes": [
         "massline-heads"
       ],
@@ -11012,7 +11031,11 @@
       "title": "Elastic whip as stored energy",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05"
+      ],
       "mutexes": [
         "massline-heads"
       ],
@@ -11037,7 +11060,11 @@
       "title": "Frame coupler as the tow you can trust",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05"
+      ],
       "mutexes": [
         "massline-heads"
       ],
@@ -11062,7 +11089,11 @@
       "title": "NPCs use the heads",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05"
+      ],
       "mutexes": [
         "massline-heads"
       ],
@@ -11087,7 +11118,12 @@
       "title": "Monofilament sweep",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-140.02"
+      ],
       "mutexes": [
         "massline-heads"
       ],
@@ -11113,7 +11149,12 @@
       "title": "Transverse snare",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-140.02"
+      ],
       "mutexes": [
         "massline-heads"
       ],
@@ -11139,7 +11180,12 @@
       "title": "The counter arrives first",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-140.02"
+      ],
       "mutexes": [
         "massline-heads"
       ],
@@ -11165,7 +11211,11 @@
       "title": "Bolas throw in one input",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05"
+      ],
       "mutexes": [
         "massline-heads"
       ],
@@ -11188,7 +11238,11 @@
       "title": "Coupled-pair physics",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05"
+      ],
       "mutexes": [
         "massline-heads"
       ],
@@ -11211,7 +11265,11 @@
       "title": "NPC counterplay",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05"
+      ],
       "mutexes": [
         "massline-heads"
       ],
@@ -11234,7 +11292,11 @@
       "title": "Momentum sink as the bungee",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05"
+      ],
       "mutexes": [
         "field-toys"
       ],
@@ -11258,7 +11320,11 @@
       "title": "Gravity mark as a field multiplier",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05"
+      ],
       "mutexes": [
         "field-toys"
       ],
@@ -11282,7 +11348,11 @@
       "title": "Inertial shunt",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05"
+      ],
       "mutexes": [
         "field-toys"
       ],
@@ -11306,7 +11376,13 @@
       "title": "Five powers, five sentences, five drills",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-139.00",
+        "PQ-139.01"
+      ],
       "mutexes": [
         "field-toys"
       ],
@@ -11333,7 +11409,13 @@
       "title": "Fields participate in physics for everyone",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-139.00",
+        "PQ-139.01"
+      ],
       "mutexes": [
         "field-toys"
       ],
@@ -11360,7 +11442,13 @@
       "title": "Counterplay",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-139.00",
+        "PQ-139.01"
+      ],
       "mutexes": [
         "field-toys"
       ],
@@ -11388,7 +11476,12 @@
       "kind": "implementation",
       "state": "ready",
       "dependsOn": [
-        "PQ-137.09"
+        "PQ-137.09",
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-139.00",
+        "PQ-139.01"
       ],
       "mutexes": [
         "field-toys"
@@ -11416,7 +11509,12 @@
       "title": "Three machines that kill",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-147.00"
+      ],
       "mutexes": [
         "world-machinery"
       ],
@@ -11441,7 +11539,12 @@
       "title": "Debris currents and reefs",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-147.00"
+      ],
       "mutexes": [
         "world-machinery"
       ],
@@ -11466,7 +11569,12 @@
       "title": "Weather that shapes fights",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-147.00"
+      ],
       "mutexes": [
         "world-machinery"
       ],
@@ -11491,7 +11599,12 @@
       "title": "Timed access",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-147.00"
+      ],
       "mutexes": [
         "world-machinery"
       ],
@@ -11516,7 +11629,12 @@
       "title": "One authored sling ring",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-145.00"
+      ],
       "mutexes": [
         "world-machinery"
       ],
@@ -11540,7 +11658,12 @@
       "title": "Throw something into it",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-145.00"
+      ],
       "mutexes": [
         "world-machinery"
       ],
@@ -11564,7 +11687,12 @@
       "title": "The player-built sling",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-145.00"
+      ],
       "mutexes": [
         "world-machinery"
       ],
@@ -11588,7 +11716,14 @@
       "title": "Pods are bodies",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-138.00",
+        "PQ-138.01",
+        "PQ-138.02"
+      ],
       "mutexes": [
         "cargo-physics"
       ],
@@ -11614,7 +11749,14 @@
       "title": "Volatile classes",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-138.00",
+        "PQ-138.01",
+        "PQ-138.02"
+      ],
       "mutexes": [
         "cargo-physics"
       ],
@@ -11640,7 +11782,14 @@
       "title": "Smuggling physics",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-138.00",
+        "PQ-138.01",
+        "PQ-138.02"
+      ],
       "mutexes": [
         "cargo-physics"
       ],
@@ -11666,7 +11815,14 @@
       "title": "Cargo with a name",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-138.00",
+        "PQ-138.01",
+        "PQ-138.02"
+      ],
       "mutexes": [
         "cargo-physics"
       ],
@@ -11692,7 +11848,11 @@
       "title": "The rhythm model",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-138.00",
+        "PQ-138.01",
+        "PQ-138.02"
+      ],
       "mutexes": [
         "director"
       ],
@@ -11718,7 +11878,11 @@
       "title": "Escalation seeds",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-138.00",
+        "PQ-138.01",
+        "PQ-138.02"
+      ],
       "mutexes": [
         "director"
       ],
@@ -11744,7 +11908,11 @@
       "title": "Guaranteed ordinary life",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-138.00",
+        "PQ-138.01",
+        "PQ-138.02"
+      ],
       "mutexes": [
         "director"
       ],
@@ -11770,7 +11938,11 @@
       "title": "Story so far",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-138.00",
+        "PQ-138.01",
+        "PQ-138.02"
+      ],
       "mutexes": [
         "director"
       ],
@@ -11796,7 +11968,12 @@
       "title": "Aces escalate against your style",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-138.00",
+        "PQ-138.01",
+        "PQ-138.02",
+        "PQ-149.00"
+      ],
       "mutexes": [
         "people"
       ],
@@ -11822,7 +11999,12 @@
       "title": "The mechanic",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-138.00",
+        "PQ-138.01",
+        "PQ-138.02",
+        "PQ-149.00"
+      ],
       "mutexes": [
         "people"
       ],
@@ -11848,7 +12030,12 @@
       "title": "Radio that reacts",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-138.00",
+        "PQ-138.01",
+        "PQ-138.02",
+        "PQ-149.00"
+      ],
       "mutexes": [
         "people"
       ],
@@ -11874,7 +12061,12 @@
       "title": "Fifteen people, placed",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-138.00",
+        "PQ-138.01",
+        "PQ-138.02",
+        "PQ-149.00"
+      ],
       "mutexes": [
         "people"
       ],
@@ -11900,7 +12092,12 @@
       "title": "Four tiers with a verb each",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-138.00",
+        "PQ-138.01",
+        "PQ-138.02",
+        "PQ-149.00"
+      ],
       "mutexes": [
         "law"
       ],
@@ -11928,7 +12125,12 @@
       "title": "Patrol nets and checkpoints",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-138.00",
+        "PQ-138.01",
+        "PQ-138.02",
+        "PQ-149.00"
+      ],
       "mutexes": [
         "law"
       ],
@@ -11956,7 +12158,12 @@
       "title": "Corrupt ports and laundering",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-138.00",
+        "PQ-138.01",
+        "PQ-138.02",
+        "PQ-149.00"
+      ],
       "mutexes": [
         "law"
       ],
@@ -11984,7 +12191,12 @@
       "title": "Insurance, restitution, impound recovery",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-138.00",
+        "PQ-138.01",
+        "PQ-138.02",
+        "PQ-149.00"
+      ],
       "mutexes": [
         "law"
       ],
@@ -12012,7 +12224,13 @@
       "title": "Beats 1–3 become set pieces",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-143.00",
+        "PQ-152.00"
+      ],
       "mutexes": [
         "story"
       ],
@@ -12037,7 +12255,13 @@
       "title": "The gate moves and widens",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-143.00",
+        "PQ-152.00"
+      ],
       "mutexes": [
         "story"
       ],
@@ -12062,7 +12286,13 @@
       "title": "The climax is a toy",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-143.00",
+        "PQ-152.00"
+      ],
       "mutexes": [
         "story"
       ],
@@ -12087,7 +12317,13 @@
       "title": "NG+ carries a legacy",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-143.00",
+        "PQ-152.00"
+      ],
       "mutexes": [
         "story"
       ],
@@ -12112,7 +12348,14 @@
       "title": "Three physical procedural types",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-138.00",
+        "PQ-138.01",
+        "PQ-138.02"
+      ],
       "mutexes": [
         "story"
       ],
@@ -12138,7 +12381,14 @@
       "title": "Ten authored set pieces",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-138.00",
+        "PQ-138.01",
+        "PQ-138.02"
+      ],
       "mutexes": [
         "story"
       ],
@@ -12164,7 +12414,14 @@
       "title": "The capital boss",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-138.00",
+        "PQ-138.01",
+        "PQ-138.02"
+      ],
       "mutexes": [
         "story"
       ],
@@ -12190,7 +12447,14 @@
       "title": "Clauses that twist",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-138.00",
+        "PQ-138.01",
+        "PQ-138.02"
+      ],
       "mutexes": [
         "story"
       ],
@@ -12216,7 +12480,12 @@
       "title": "Choose the six",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-143.00"
+      ],
       "mutexes": [
         "places"
       ],
@@ -12242,7 +12511,12 @@
       "title": "Hazard geometry per sector",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-143.00"
+      ],
       "mutexes": [
         "places"
       ],
@@ -12268,7 +12542,12 @@
       "title": "Landmarks fielded",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-143.00"
+      ],
       "mutexes": [
         "places"
       ],
@@ -12294,7 +12573,12 @@
       "title": "The frontier as texture",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-143.00"
+      ],
       "mutexes": [
         "places"
       ],
@@ -12320,7 +12604,11 @@
       "title": "Authored fracture seams",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-138.00",
+        "PQ-138.01",
+        "PQ-138.02"
+      ],
       "mutexes": [
         "wrecks"
       ],
@@ -12346,7 +12634,11 @@
       "title": "Wreck ecology",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-138.00",
+        "PQ-138.01",
+        "PQ-138.02"
+      ],
       "mutexes": [
         "wrecks"
       ],
@@ -12372,7 +12664,11 @@
       "title": "Your own wreck",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-138.00",
+        "PQ-138.01",
+        "PQ-138.02"
+      ],
       "mutexes": [
         "wrecks"
       ],
@@ -12398,7 +12694,12 @@
       "title": "The verb ladder",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-142.00"
+      ],
       "mutexes": [
         "economy-curve"
       ],
@@ -12425,7 +12726,12 @@
       "title": "The ten-hour simulation",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-142.00"
+      ],
       "mutexes": [
         "economy-curve"
       ],
@@ -12452,7 +12758,12 @@
       "title": "Sinks that tell stories",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-142.00"
+      ],
       "mutexes": [
         "economy-curve"
       ],
@@ -12479,7 +12790,12 @@
       "title": "Stunts pay",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-142.00"
+      ],
       "mutexes": [
         "economy-curve"
       ],
@@ -12506,7 +12822,12 @@
       "title": "Three starters",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-142.00"
+      ],
       "mutexes": [
         "progression-verbs"
       ],
@@ -12531,7 +12852,12 @@
       "title": "The save portrait",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-142.00"
+      ],
       "mutexes": [
         "progression-verbs"
       ],
@@ -12556,7 +12882,12 @@
       "title": "The sample library pipeline",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-141.00",
+        "PQ-141.01",
+        "PQ-139.00",
+        "PQ-139.01"
+      ],
       "mutexes": [
         "audio"
       ],
@@ -12581,7 +12912,10 @@
       "kind": "implementation",
       "state": "ready",
       "dependsOn": [
-        "PQ-139.01"
+        "PQ-139.01",
+        "PQ-141.00",
+        "PQ-141.01",
+        "PQ-139.00"
       ],
       "mutexes": [
         "audio"
@@ -12606,7 +12940,12 @@
       "title": "The Massline as an instrument",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-141.00",
+        "PQ-141.01",
+        "PQ-139.00",
+        "PQ-139.01"
+      ],
       "mutexes": [
         "audio"
       ],
@@ -12630,7 +12969,12 @@
       "title": "Composed themes",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-141.00",
+        "PQ-141.01",
+        "PQ-139.00",
+        "PQ-139.01"
+      ],
       "mutexes": [
         "audio"
       ],
@@ -12654,7 +12998,12 @@
       "title": "Voice for the barks",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-141.00",
+        "PQ-141.01",
+        "PQ-139.00",
+        "PQ-139.01"
+      ],
       "mutexes": [
         "audio"
       ],
@@ -12678,7 +13027,12 @@
       "title": "Space and mix",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-141.00",
+        "PQ-141.01",
+        "PQ-139.00",
+        "PQ-139.01"
+      ],
       "mutexes": [
         "audio"
       ],
@@ -12703,7 +13057,11 @@
       "kind": "implementation",
       "state": "ready",
       "dependsOn": [
-        "PQ-137.03"
+        "PQ-137.03",
+        "PQ-141.00",
+        "PQ-141.01",
+        "PQ-139.00",
+        "PQ-139.01"
       ],
       "mutexes": [
         "camera"
@@ -12728,7 +13086,12 @@
       "title": "Two-body framing",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-141.00",
+        "PQ-141.01",
+        "PQ-139.00",
+        "PQ-139.01"
+      ],
       "mutexes": [
         "camera"
       ],
@@ -12752,7 +13115,12 @@
       "title": "The beat",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-141.00",
+        "PQ-141.01",
+        "PQ-139.00",
+        "PQ-139.01"
+      ],
       "mutexes": [
         "camera"
       ],
@@ -12776,7 +13144,12 @@
       "title": "Photo mode",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-141.00",
+        "PQ-141.01",
+        "PQ-139.00",
+        "PQ-139.01"
+      ],
       "mutexes": [
         "camera"
       ],
@@ -12800,7 +13173,11 @@
       "title": "Ring buffer and replay",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-141.00",
+        "PQ-141.01",
+        "PQ-146.00"
+      ],
       "mutexes": [
         "replay"
       ],
@@ -12825,7 +13202,11 @@
       "title": "Auto-clip",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-141.00",
+        "PQ-141.01",
+        "PQ-146.00"
+      ],
       "mutexes": [
         "replay"
       ],
@@ -12850,7 +13231,11 @@
       "title": "Seeds and ghosts",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-141.00",
+        "PQ-141.01",
+        "PQ-146.00"
+      ],
       "mutexes": [
         "replay"
       ],
@@ -12875,7 +13260,12 @@
       "title": "Role silhouettes",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-140.02"
+      ],
       "mutexes": [
         "readability"
       ],
@@ -12901,7 +13291,12 @@
       "title": "Telegraphs",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-140.02"
+      ],
       "mutexes": [
         "readability"
       ],
@@ -12927,7 +13322,12 @@
       "title": "Force palette",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-140.02"
+      ],
       "mutexes": [
         "readability"
       ],
@@ -12953,7 +13353,12 @@
       "title": "Teaching overlay",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-140.02"
+      ],
       "mutexes": [
         "readability"
       ],
@@ -12980,7 +13385,9 @@
       "kind": "implementation",
       "state": "ready",
       "dependsOn": [
-        "PQ-137.05"
+        "PQ-137.05",
+        "PQ-137.03",
+        "PQ-137.04"
       ],
       "mutexes": [
         "onboarding"
@@ -13007,7 +13414,11 @@
       "title": "The Range is the door",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05"
+      ],
       "mutexes": [
         "onboarding"
       ],
@@ -13033,7 +13444,11 @@
       "title": "Teach the missing three",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05"
+      ],
       "mutexes": [
         "onboarding"
       ],
@@ -13059,7 +13474,11 @@
       "title": "The sentence, proven",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05"
+      ],
       "mutexes": [
         "onboarding"
       ],
@@ -13085,7 +13504,11 @@
       "title": "The cliff",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05"
+      ],
       "mutexes": [
         "onboarding"
       ],
@@ -13111,7 +13534,10 @@
       "title": "Every screen on a pad",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-141.00",
+        "PQ-141.01"
+      ],
       "mutexes": [
         "input"
       ],
@@ -13137,7 +13563,10 @@
       "title": "Glyphs and remap",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-141.00",
+        "PQ-141.01"
+      ],
       "mutexes": [
         "input"
       ],
@@ -13163,7 +13592,10 @@
       "title": "Deck and trackpad",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-141.00",
+        "PQ-141.01"
+      ],
       "mutexes": [
         "input"
       ],
@@ -13189,7 +13621,10 @@
       "title": "Haptics",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-141.00",
+        "PQ-141.01"
+      ],
       "mutexes": [
         "input"
       ],
@@ -13215,7 +13650,10 @@
       "title": "Presets and frame cap",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-141.00",
+        "PQ-141.01"
+      ],
       "mutexes": [
         "options"
       ],
@@ -13238,7 +13676,10 @@
       "title": "Captions and audio cues",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-141.00",
+        "PQ-141.01"
+      ],
       "mutexes": [
         "options"
       ],
@@ -13261,7 +13702,10 @@
       "title": "The checklist",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-141.00",
+        "PQ-141.01"
+      ],
       "mutexes": [
         "options"
       ],
@@ -13284,7 +13728,10 @@
       "title": "Language setting and default-route bridge",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-141.00",
+        "PQ-141.01"
+      ],
       "mutexes": [
         "localization"
       ],
@@ -13307,7 +13754,10 @@
       "title": "Growth pass",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-141.00",
+        "PQ-141.01"
+      ],
       "mutexes": [
         "localization"
       ],
@@ -13330,7 +13780,10 @@
       "title": "Five languages",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-141.00",
+        "PQ-141.01"
+      ],
       "mutexes": [
         "localization"
       ],
@@ -13353,7 +13806,14 @@
       "title": "Legal and credits",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-141.00",
+        "PQ-141.01",
+        "PQ-158.00",
+        "PQ-164.00",
+        "PQ-165.00",
+        "PQ-166.00"
+      ],
       "mutexes": [
         "release"
       ],
@@ -13380,7 +13840,14 @@
       "title": "Crash reporting, auto-update, version",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-141.00",
+        "PQ-141.01",
+        "PQ-158.00",
+        "PQ-164.00",
+        "PQ-165.00",
+        "PQ-166.00"
+      ],
       "mutexes": [
         "release"
       ],
@@ -13407,7 +13874,14 @@
       "title": "Min-spec floors and soak",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-141.00",
+        "PQ-141.01",
+        "PQ-158.00",
+        "PQ-164.00",
+        "PQ-165.00",
+        "PQ-166.00"
+      ],
       "mutexes": [
         "release"
       ],
@@ -13434,7 +13908,14 @@
       "title": "Store readiness",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-141.00",
+        "PQ-141.01",
+        "PQ-158.00",
+        "PQ-164.00",
+        "PQ-165.00",
+        "PQ-166.00"
+      ],
       "mutexes": [
         "release"
       ],
@@ -13530,7 +14011,9 @@
       "title": "Daily seed and board",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-146.00"
+      ],
       "mutexes": [
         "crucible-meta"
       ],
@@ -13556,7 +14039,9 @@
       "title": "Ghosts",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-146.00"
+      ],
       "mutexes": [
         "crucible-meta"
       ],
@@ -13582,7 +14067,9 @@
       "title": "Weekly mutators",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-146.00"
+      ],
       "mutexes": [
         "crucible-meta"
       ],
@@ -13608,7 +14095,9 @@
       "title": "The hangar feed (cosmetics only unless the owner overrides §12.2)",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-146.00"
+      ],
       "mutexes": [
         "crucible-meta"
       ],
@@ -13634,7 +14123,9 @@
       "title": "Fronts you can tilt",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-033.03"
+      ],
       "mutexes": [
         "endgame"
       ],
@@ -13660,7 +14151,9 @@
       "title": "Station growth and dependency",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-033.03"
+      ],
       "mutexes": [
         "endgame"
       ],
@@ -13686,7 +14179,9 @@
       "title": "Two mega-heists and two capital bosses",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-033.03"
+      ],
       "mutexes": [
         "endgame"
       ],
@@ -13712,7 +14207,9 @@
       "title": "Legendary lines",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-033.03"
+      ],
       "mutexes": [
         "endgame"
       ],
@@ -13738,7 +14235,11 @@
       "title": "The grammar",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-138.00",
+        "PQ-138.01",
+        "PQ-138.02"
+      ],
       "mutexes": [
         "content-grammar"
       ],
@@ -13762,7 +14263,11 @@
       "title": "The repetition meter",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-138.00",
+        "PQ-138.01",
+        "PQ-138.02"
+      ],
       "mutexes": [
         "content-grammar"
       ],
@@ -13786,7 +14291,9 @@
       "title": "JSON content loader",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-033.03"
+      ],
       "mutexes": [
         "mods"
       ],
@@ -13809,7 +14316,9 @@
       "title": "Workshop",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-033.03"
+      ],
       "mutexes": [
         "mods"
       ],
@@ -13832,7 +14341,11 @@
       "title": "Skeleton and data states adopted",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05"
+      ],
       "mutexes": [
         "station-ui"
       ],
@@ -13857,7 +14370,11 @@
       "title": "Hierarchy and colour discipline",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05"
+      ],
       "mutexes": [
         "station-ui"
       ],
@@ -13882,7 +14399,11 @@
       "title": "Arriving somewhere",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05"
+      ],
       "mutexes": [
         "station-ui"
       ],
@@ -13907,7 +14428,12 @@
       "title": "Traffic and heat layers",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-151.00"
+      ],
       "mutexes": [
         "chart"
       ],
@@ -13931,7 +14457,12 @@
       "title": "One answer per question",
       "kind": "implementation",
       "state": "ready",
-      "dependsOn": [],
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-151.00"
+      ],
       "mutexes": [
         "chart"
       ],
