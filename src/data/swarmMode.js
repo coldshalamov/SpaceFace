@@ -63,8 +63,24 @@ export const SWARM_CONCURRENT_MAX = 20;
  * fast rather than by outrunning a slow spawner. Four at a time also reads as a group arriving on
  * a bearing rather than as hulls popping into existence one by one.
  */
-export const SWARM_REINFORCE_GAP_TICKS = 20;
-export const SWARM_REINFORCE_BATCH = 4;
+export const SWARM_REINFORCE_GAP_TICKS = 12;
+export const SWARM_REINFORCE_BATCH = 3;
+/**
+ * The stream is ADAPTIVE. A small hole is patched with `SWARM_REINFORCE_BATCH`; a big one is
+ * patched with half of itself, up to this ceiling. That asymmetry is the whole point: a player who
+ * clears fast should feel the room close back in, not out-run the spawner and end the wave alone
+ * in an empty arena. A fixed batch could always be beaten by a fast enough clear, and being beaten
+ * looks exactly like the dead air this ruleset exists to delete.
+ */
+export const SWARM_REINFORCE_SURGE_MAX = 7;
+
+/** How many bodies one top-up brings, given how far under strength the room is. */
+export function swarmReinforceCount(deficit) {
+  const d = Math.max(0, Math.trunc(Number(deficit) || 0));
+  if (d <= 0) return 0;
+  const surge = Math.min(SWARM_REINFORCE_SURGE_MAX, Math.ceil(d / 2));
+  return Math.min(d, Math.max(SWARM_REINFORCE_BATCH, surge));
+}
 
 /** Hostiles arrive closer than the arc's 220 so contact is immediate, not a commute. */
 export const SWARM_SPAWN_DISTANCE = 200;
@@ -341,6 +357,7 @@ export function swarmPlanBlock(wave) {
     refitAfter: isSwarmRefitWave(w),
     reinforceGapTicks: SWARM_REINFORCE_GAP_TICKS,
     reinforceBatch: SWARM_REINFORCE_BATCH,
+    reinforceSurgeMax: SWARM_REINFORCE_SURGE_MAX,
     spawnDistance: SWARM_SPAWN_DISTANCE,
     roster: roster.map((entry) => ({ enemyId: entry.enemyId, role: entry.role, weight: entry.weight })),
     newcomer: newcomer ? { enemyId: newcomer.enemyId, name: newcomer.name } : null,

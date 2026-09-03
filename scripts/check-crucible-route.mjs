@@ -10,8 +10,13 @@
 // So this boots the REAL game in a real browser, clicks the REAL buttons, and asserts the route
 // the player was promised:
 //
+// The Crucible has TWO rulesets behind one door, so this checks both:
+//
+//   node scripts/check-crucible-route.mjs              the Swarm ruleset (the default the button plays)
+//   node scripts/check-crucible-route.mjs --gauntlet   the authored thirty-wave arc
+//
 //   MENU     the Crucible door is on the main menu
-//   DOOR     it offers hulls and a seed
+//   DOOR     it offers both modes, hulls and a seed
 //   LAUNCH   entering starts a survival run in flight mode
 //   ARSENAL  the chosen loadout is actually ON the hull (the research gate silently ate it before)
 //   WAVE     live hostiles arrive, stamped as the run's, inside the spawn budget
@@ -39,6 +44,10 @@ const VERBOSE = process.argv.includes('--verbose');
 const SEED = 4242;
 // --full walks all ten waves to a victory instead of stopping at wave 2 and dying.
 const FULL = process.argv.includes('--full');
+// Which ruleset to walk. Swarm is the default because it is what the main-menu button plays.
+const GAUNTLET = process.argv.includes('--gauntlet');
+const MODE = GAUNTLET ? 'scored' : 'swarm';
+const MODE_VERB = GAUNTLET ? 'Enter the Gauntlet' : 'Hold the line';
 const pw = await loadPlaywright();
 const { chromium } = pw;
 
@@ -120,6 +129,34 @@ async function killWaveCohort(page) {
   });
 }
 
+/**
+ * Kill N live cohort bodies through the same real damage route, so the check clears at a rate a
+ * player could plausibly manage. Vaporising the whole room at once would out-pace the swarm
+ * reinforcement stream and then report the emptiness it caused as a defect.
+ */
+async function killSome(page, n) {
+  return page.evaluate((want) => {
+    const st = window.SF.state;
+    const targets = st.entityList
+      .filter((e) => e.alive && e.data && e.data.runCohort === 'survival')
+      .slice(0, want);
+    for (const target of targets) {
+      const lethal = (target.hull || 0) + (target.shield || 0) + (target.armorHp || 0) + 9999;
+      window.SF.bus.emit('projectile:hit', {
+        targetId: target.id,
+        ownerId: st.playerId,
+        damage: lethal,
+        damageType: 'kinetic',
+        pos: { x: target.pos.x, z: target.pos.z },
+        approach: { x: 1, z: 0 },
+        normal: { x: -1, z: 0 },
+        weaponId: 'wpn_concussion_cannon_m',
+      });
+    }
+    return targets.length;
+  }, n);
+}
+
 async function waitForPhase(page, phase, timeout = 30000) {
   await page.waitForFunction(
     (want) => window.SF.state.run && window.SF.state.run.phase === want,
@@ -163,10 +200,28 @@ async function main() {
   const door = await page.evaluate(() => ({
     top: window.SF.ctx.screenManager.top(),
     hulls: [...document.querySelectorAll('#screens .sf-crd-hull')].map((b) => b.textContent.replace(/\s+/g, ' ').trim()),
+    modes: [...document.querySelectorAll('#screens .sf-crd-mode')].map((b) => ({
+      ruleset: b.dataset.ruleset,
+      pressed: b.getAttribute('aria-pressed') === 'true',
+    })),
     seed: (document.querySelector('#screens .sf-crd-seed input') || {}).value,
   }));
-  record('DOOR', door.top === 'crucible' && door.hulls.length >= 2 && !!door.seed,
-    `${door.hulls.length} hulls, seed field present`);
+  // Swarm must be the DEFAULT selection: the owner judges the Crucible from the main menu, and a
+  // swarm game hidden behind a second click is a swarm game nobody plays.
+  const defaultMode = (door.modes.find((m) => m.pressed) || {}).ruleset;
+  record('DOOR',
+    door.top === 'crucible' && door.hulls.length >= 2 && !!door.seed
+      && door.modes.length === 2 && defaultMode === 'swarm',
+    `${door.hulls.length} hulls, modes ${door.modes.map((m) => m.ruleset).join('/')} `
+    + `(default ${defaultMode}), seed field present`);
+
+  // Select the ruleset under test.
+  await page.evaluate((want) => {
+    const card = [...document.querySelectorAll('#screens .sf-crd-mode')]
+      .find((b) => b.dataset.ruleset === want);
+    if (card) card.click();
+  }, MODE);
+  await page.waitForTimeout(150);
 
   // ── LAUNCH ──────────────────────────────────────────────────────────────────────────────────
   await page.evaluate((seed) => {
@@ -176,7 +231,7 @@ async function main() {
     hull.click();
     document.querySelector('#screens .sf-crd-seed input').value = String(seed);
   }, SEED);
-  if (!(await clickButton(page, 'Enter the Crucible'))) throw new Error('Enter the Crucible did not click');
+  if (!(await clickButton(page, MODE_VERB))) throw new Error(`"${MODE_VERB}" did not click`);
 
   await page.waitForFunction(() => window.SF.state.mode === 'flight', null, { timeout: 90000 });
   await waitForPhase(page, 'active', 60000);
@@ -184,13 +239,15 @@ async function main() {
     const st = window.SF.state;
     return {
       mode: st.mode, kind: st.run.kind, phase: st.run.phase, wave: st.run.wave,
-      seed: st.run.seed, arenaId: st.run.arenaId, sector: st.world && st.world.currentSectorId,
+      seed: st.run.seed, arenaId: st.run.arenaId, ruleset: st.run.ruleset,
+      sector: st.world && st.world.currentSectorId,
     };
   });
   record('LAUNCH',
     launched.mode === 'flight' && launched.kind === 'survival' && launched.wave === 1
-      && launched.seed === SEED,
-    `${launched.arenaId} · wave ${launched.wave} · seed ${launched.seed} · mode ${launched.mode}`);
+      && launched.seed === SEED && launched.ruleset === MODE,
+    `${launched.arenaId} · ${launched.ruleset} · wave ${launched.wave} · seed ${launched.seed} `
+    + `· mode ${launched.mode}`);
 
   // ── ARSENAL ─────────────────────────────────────────────────────────────────────────────────
   const arsenal = await page.evaluate(() => {
@@ -246,8 +303,11 @@ async function main() {
         .filter((v) => v < 99)),
     };
   });
+  const waveTextOk = MODE === 'swarm'
+    ? hud.wave === 'WAVE 1'
+    : String(hud.wave).indexOf('WAVE 1 / 30') === 0;
   record('HUD',
-    hud.present && hud.visible && String(hud.wave).indexOf('WAVE 1 / 30') === 0
+    hud.present && hud.visible && waveTextOk
       && hud.phase === 'FIGHT' && hud.role === 'status' && hud.minFontPx >= 12,
     hud.present
       ? `"${hud.label}" · ${hud.wave} · ${hud.phase} · figures ${hud.figs.join(' ')} · `
@@ -259,9 +319,20 @@ async function main() {
   // Trace the chip economy for this wave so a shortfall is a reported number, not a mystery.
   await page.evaluate(() => {
     window.__chipTrace = { dropped: 0, droppedCredits: 0, killed: 0, spawned: 0 };
+    // Remember cohort ids as they arrive. Asking `entities.get(id)` at kill time under-counts:
+    // a body can already be out of the map by the time the receipt is delivered, and on a long
+    // swarm walk that shortfall reads as "more chips dropped than kills happened" — a phantom
+    // defect in the check, not in the economy.
+    window.__cohortIds = new Set();
+    window.SF.bus.on('entity:spawned', (p) => {
+      const e = p && p.entity;
+      if (e && e.data && e.data.runCohort === 'survival') window.__cohortIds.add(e.id);
+    });
+    for (const e of window.SF.state.entityList) {
+      if (e && e.data && e.data.runCohort === 'survival') window.__cohortIds.add(e.id);
+    }
     window.SF.bus.on('entity:killed', (p) => {
-      const victim = window.SF.state.entities.get(p && p.id);
-      if (victim && victim.data && victim.data.runCohort === 'survival') window.__chipTrace.killed += 1;
+      if (p && window.__cohortIds.has(p.id)) window.__chipTrace.killed += 1;
     });
     window.SF.bus.on('loot:drop', (p) => {
       for (const item of (p && p.items) || []) {
@@ -296,17 +367,97 @@ async function main() {
       if (p && p.credits > 0) window.__chipTrace.awards.push(p.credits + ':' + p.reason);
     });
   });
-  const killed = await killWaveCohort(page);
-  await waitForPhase(page, 'cleanup', 30000);
-  await waitForPhase(page, 'draft', 30000);
-  const cleared = await page.evaluate(() => ({
-    phase: window.SF.state.run.phase,
-    wave: window.SF.state.run.wave,
-    xp: window.SF.state.run.xp,
-    score: window.SF.state.run.score,
-  }));
-  record('CLEAR', cleared.phase === 'draft' && cleared.xp > 0,
-    `killed ${killed}; reached ${cleared.phase} with ${cleared.xp} xp / ${cleared.score} score`);
+  let killed = 0;
+  if (GAUNTLET) {
+    killed = await killWaveCohort(page);
+    await waitForPhase(page, 'cleanup', 30000);
+    await waitForPhase(page, 'draft', 30000);
+    const cleared = await page.evaluate(() => ({
+      phase: window.SF.state.run.phase,
+      wave: window.SF.state.run.wave,
+      xp: window.SF.state.run.xp,
+      score: window.SF.state.run.score,
+    }));
+    record('CLEAR', cleared.phase === 'draft' && cleared.xp > 0,
+      `killed ${killed}; reached ${cleared.phase} with ${cleared.xp} xp / ${cleared.score} score`);
+  } else {
+    // ── SWARM: PRESSURE / QUOTA / NOMENU ──────────────────────────────────────────────────────
+    //
+    // The four claims that make this a swarm game rather than a wave menu, measured while the
+    // real game plays rather than asserted from the data tables:
+    //
+    //   PRESSURE  the room is never empty, at any sampled moment, including across wave seams
+    //   QUOTA     a wave ends on a kill count, with hostiles still flying
+    //   NOMENU    waves 1-4 open no menu at all; the run just keeps going
+    //   UPGRADE   wave 5 is where it finally stops, and offers three cards
+    //
+    await page.evaluate(() => {
+      window.__swarm = {
+        samples: 0, empty: 0, minAlive: 999, maxAlive: 0, aliveSum: 0,
+        cleared: [], drafts: 0, waveSeen: [],
+      };
+      window.SF.bus.on('run:waveCleared', (p) => window.__swarm.cleared.push({
+        wave: p && p.wave, killed: p && p.killed, quota: p && p.quota, survivors: p && p.survivors,
+      }));
+      window.SF.bus.on('run:draftOffered', () => { window.__swarm.drafts += 1; });
+    });
+
+    let guard = 0;
+    let phase = 'active';
+    while (guard++ < 900) {
+      const step = await page.evaluate(() => {
+        const st = window.SF.state;
+        const alive = st.entityList
+          .filter((e) => e.alive && e.data && e.data.runCohort === 'survival').length;
+        const t = window.__swarm;
+        t.samples += 1;
+        t.aliveSum += alive;
+        if (alive === 0) t.empty += 1;
+        if (alive < t.minAlive) t.minAlive = alive;
+        if (alive > t.maxAlive) t.maxAlive = alive;
+        if (!t.waveSeen.includes(st.run.wave)) t.waveSeen.push(st.run.wave);
+        return { phase: st.run.phase, wave: st.run.wave, alive };
+      });
+      phase = step.phase;
+      if (phase === 'draft' || phase === 'refit' || phase === 'ended') break;
+      // Two kills every 300ms is about 6-7 a second — already far faster than a person plays,
+      // and deliberately not "vaporise the room", which would out-pace any spawner and then blame
+      // the emptiness on the game.
+      if (phase === 'active') killed += await killSome(page, 2);
+      await page.waitForTimeout(300);
+    }
+
+    const t = await page.evaluate(() => window.__swarm);
+    const meanAlive = t.samples > 0 ? t.aliveSum / t.samples : 0;
+    const run = await page.evaluate(() => ({
+      wave: window.SF.state.run.wave,
+      phase: window.SF.state.run.phase,
+      xp: window.SF.state.run.xp,
+      score: window.SF.state.run.score,
+    }));
+
+    record('PRESSURE', t.empty === 0 && meanAlive >= 4,
+      `room never emptied over ${t.samples} samples across waves ${t.waveSeen.join(',')} `
+      + `(alive ${t.minAlive}-${t.maxAlive}, mean ${meanAlive.toFixed(1)}); `
+      + `${t.empty} empty moments`);
+
+    // Both halves of the rule: a wave ENDS on a kill count, and it ends with the room still
+    // occupied. Survivors are what the next wave opens on top of, so a wave that ends empty is the
+    // dead air this ruleset exists to delete.
+    const quotaWaves = t.cleared.filter((c) => Number.isInteger(c.quota));
+    const allMetQuota = quotaWaves.length > 0 && quotaWaves.every((c) => c.killed >= c.quota);
+    const survivorsCarried = quotaWaves.filter((c) => c.survivors > 0).length;
+    record('QUOTA', allMetQuota && survivorsCarried === quotaWaves.length,
+      `${quotaWaves.length} waves cleared on kills: `
+      + quotaWaves.map((c) => `w${c.wave} ${c.killed}/${c.quota} (+${c.survivors} left flying)`).join(', '));
+
+    // Four fight waves went by before anything asked the player to click.
+    record('NOMENU', t.drafts <= 1 && run.wave >= 5,
+      `reached wave ${run.wave} with ${t.drafts} menu(s) — waves 1-4 never stopped`);
+
+    record('CLEAR', run.phase === 'draft' && run.xp > 0,
+      `killed ${killed}; reached ${run.phase} on wave ${run.wave} with ${run.xp} xp / ${run.score} score`);
+  }
 
   // ── WALLET ──────────────────────────────────────────────────────────────────────────────────
   const wallet = await page.evaluate((before) => ({
@@ -318,9 +469,13 @@ async function main() {
   const t = wallet.trace || {};
   // Every cohort kill must drop a chip, every chip must become a body, and every body must be
   // paid. A shortfall here is earnings the player never receives.
+  // The invariant is the same in both rulesets — every cohort kill drops a chip, every chip becomes
+  // a body, campaign money never moves. The EQUALITY of wallet and chips only holds on the arc's
+  // single-wave walk; a swarm walk crosses four wave-clear payouts, so the wallet is legitimately
+  // larger than the chips alone and the check asks for `at least` instead of `exactly`.
   const walletOk = wallet.runCredits > 0 && !wallet.campaignMoved
     && t.dropped === t.killed && t.spawned === t.dropped
-    && wallet.runCredits === t.droppedCredits;
+    && (GAUNTLET ? wallet.runCredits === t.droppedCredits : wallet.runCredits >= t.droppedCredits);
   record('WALLET', walletOk,
     `run wallet ${wallet.runCredits} cr from ${t.dropped}/${t.killed} chips (${t.spawned} bodies, ${t.droppedCredits} cr dropped); campaign unchanged at ${wallet.campaignCredits}`);
   if (!walletOk || VERBOSE) {

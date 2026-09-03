@@ -14,7 +14,12 @@
 
 import { mulberry32 } from '../core/rng.js';
 import { validateRunState } from '../core/runState.js';
-import { SWARM_BOSS_ENEMY_ID, pickSwarmArchetype, swarmGateFor } from '../data/swarmMode.js';
+import {
+  SWARM_BOSS_ENEMY_ID,
+  pickSwarmArchetype,
+  swarmGateFor,
+  swarmReinforceCount,
+} from '../data/swarmMode.js';
 import { WAVE_CLEARED_SEAM } from './survivalRun.js';
 import {
   SURVIVAL_SPAWN_DISTANCE,
@@ -317,7 +322,10 @@ export const survivalWave = {
     const alive = this._cohort.size;
     if (alive >= target) return;
 
-    const want = Math.min(this._reinforceBatch, target - alive);
+    // Adaptive: a small hole gets the ordinary batch, a big one gets a surge. See
+    // swarmReinforceCount — a fixed batch can always be out-cleared by a fast player, and being
+    // out-cleared looks exactly like the dead air this ruleset exists to delete.
+    const want = swarmReinforceCount(target - alive);
     if (want <= 0) return;
 
     this._lastReinforceTick = this._cursor;

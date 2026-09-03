@@ -350,6 +350,26 @@ test('the room is never empty across a wave boundary', () => {
   assert.equal(emptyTicks, 0, `the room was empty on ${emptyTicks} of ${sampled} ticks`);
 });
 
+test('a fast clear cannot out-run the stream — the room closes back in', () => {
+  // The browser walk found this: a fixed reinforcement batch is beatable by a quick enough player,
+  // and once it is beaten the wave finishes in an empty room. Kill at 15 a second (far above any
+  // real clear rate) and the room must still never be empty.
+  const h = boot();
+  beginSwarm(h);
+  let empty = 0;
+  let samples = 0;
+  let survivorsAtClear = null;
+  h.bus.on('run:waveCleared', (p) => { if (survivorsAtClear == null) survivorsAtClear = p.survivors; });
+  for (let i = 0; i < 3000 && h.state.run.wave < 3; i++) {
+    if (i % 4 === 0 && h.state.run.phase === 'active') killOne(h);
+    tick(h, 1);
+    samples++;
+    if (liveHostiles(h).length === 0) empty++;
+  }
+  assert.equal(empty, 0, `room empty on ${empty} of ${samples} ticks under a 15/s clear`);
+  assert.ok(survivorsAtClear > 0, `wave 1 ended with ${survivorsAtClear} hostiles still flying`);
+});
+
 test('four waves in five open no menu at all', () => {
   for (let wave = 1; wave <= 40; wave++) {
     const expected = wave % SWARM_DRAFT_EVERY === 0 || wave % SWARM_REFIT_EVERY === 0;
