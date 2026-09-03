@@ -44,3 +44,6 @@ _recovery/
 
 # Cursor editor hook state — per-machine mutable bookkeeping (session ids, timestamps).
 .cursor/
+
+# Fun-loop frame strips are capture evidence (hundreds of MB of PNG); they live in .devshots/fun-loop/ like every other capture.
+design/program/roadmap/receipts/fun-loop/strips/
