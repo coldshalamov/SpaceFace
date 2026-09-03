@@ -135,6 +135,7 @@ test('the screen machine deploys, holds with live guns, and darts on a ward brea
   let holdSeen = false;
   let dartSeen = false;
   let holdSnapshot = null;
+  let dartSnapshot = null;
   for (let tick = 0; tick <= 260; tick++) {
     // Threat drives straight at the ward: breach condition becomes true mid-hold.
     const threatX = Math.max(320 - tick * 0.4, 200);
@@ -150,7 +151,10 @@ test('the screen machine deploys, holds with live guns, and darts on a ward brea
       holdSeen = true;
       holdSnapshot = snap;
     }
-    if (snap.phase === 'shield_dart') dartSeen = true;
+    if (snap.phase === 'shield_dart') {
+      dartSeen = true;
+      dartSnapshot = snap;
+    }
   }
   assert.ok(phaseTrace.includes('screen_approach'), `approach ran (${phaseTrace.join(' → ')})`);
   assert.ok(phaseTrace.includes('screen_deploy'), `deploy telegraph ran (${phaseTrace.join(' → ')})`);
@@ -159,6 +163,12 @@ test('the screen machine deploys, holds with live guns, and darts on a ward brea
   assert.ok(holdSnapshot, 'hold snapshot captured');
   assert.equal(holdSnapshot.fireWindow, true, 'screen_hold is a live gun window');
   assert.equal(holdSnapshot.allowedActionId, 'action_burst');
+  // The lunge must actually be a lunge: entering the dart drops the floating screen point so the
+  // planner honors the ORBIT-150 maneuver instead of committing to the spot we already hold.
+  assert.ok(dartSnapshot, 'dart snapshot captured');
+  assert.equal(dartSnapshot.flightPoint, null, 'the dart is not pinned to the held screen point');
+  assert.equal(dartSnapshot.maneuverKind, ManeuverKind.ORBIT);
+  assert.equal(dartSnapshot.preferredRange, 150);
 });
 
 test('screen_hold is a real gun window through the objective gate; approach is area denial', () => {

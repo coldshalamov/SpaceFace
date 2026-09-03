@@ -367,8 +367,12 @@ function updateEscort(record, tick, perception, self, target, distance) {
   } else if (record.phase === 'screen_deploy' && age >= DOCTRINE_TELEGRAPH_TICKS) {
     enter(record, 'screen_hold', tick, null);
   } else if (record.phase === 'screen_hold') {
-    if (escortBreached(perception, ward)) enter(record, 'shield_dart', tick, null);
-    else if (age >= ESCORT_HOLD_TICKS) advanceCycle(record, tick, 'screen_approach');
+    if (escortBreached(perception, ward)) {
+      enter(record, 'shield_dart', tick, null);
+      // The lunge closes on the breacher: drop the floating screen point so the planner honors
+      // the dart's ORBIT-150 maneuver instead of committing to the spot we already hold.
+      record.flightPoint = null;
+    } else if (age >= ESCORT_HOLD_TICKS) advanceCycle(record, tick, 'screen_approach');
   } else if (record.phase === 'shield_dart') {
     record.closestDistance = Math.min(record.closestDistance, distance);
     if (age >= ESCORT_DART_TICKS || runHasPassed(record, self, target, distance)) {
