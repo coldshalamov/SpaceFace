@@ -72,6 +72,12 @@ export const survivalResults = {
     this._unsubs.push(this.bus.on('combat:damage', (p) => this._onDamage(p)));
     this._unsubs.push(this.bus.on('player:death', (p) => this._onPlayerDeath(p)));
     this._unsubs.push(this.bus.on('run:wavePlanFailed', (p) => this._onPlanFailed(p)));
+    // The chain publishes its peak as it goes. Tracked live rather than read at the end, because
+    // swarmChain drops its own state on run:ended and the two receipts race.
+    this._unsubs.push(this.bus.on('swarm:chain', (p) => {
+      const best = p && Number.isFinite(p.best) ? p.best : 0;
+      if (best > this._bestChain) this._bestChain = best;
+    }));
     this._unsubs.push(this.bus.on('run:transitioned', (p) => this._onTransitioned(p)));
     this._unsubs.push(this.bus.on('run:ended', (p) => this._onRunEnded(p)));
   },
@@ -94,6 +100,7 @@ export const survivalResults = {
   _reset() {
     this._planFailure = null;
     this._kills = 0;
+    this._bestChain = 0;
     this._wavesCleared = 0;
     this._deepestWave = 0;
     this._damageTrail = [];
@@ -191,6 +198,9 @@ export const survivalResults = {
       deepestWave: Math.max(this._deepestWave, wave),
       wavesCleared: this._wavesCleared,
       kills: this._kills,
+      // The longest kill chain the run held. In a swarm run this is the figure the player was
+      // actually playing for, so the plate has to carry it out.
+      bestChain: this._bestChain,
       score: Number.isInteger(run.score) ? run.score : 0,
       credits: Number.isInteger(run.credits) ? run.credits : 0,
       xp: Number.isInteger(run.xp) ? run.xp : 0,

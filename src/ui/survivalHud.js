@@ -118,12 +118,16 @@ export const survivalHud = {
     this._earn = null;
     this._earnUntil = -1;
     this._objective = null;
+    this._chain = 0;
+    this._chainBest = 0;
     this._unsubs = [];
     if (!this.bus || typeof this.bus.on !== 'function') return;
     this._unsubs.push(this.bus.on('run:awarded', (p) => this._onAwarded(p)));
     this._unsubs.push(this.bus.on('run:levelUp', (p) => this._onLevelUp(p)));
     this._unsubs.push(this.bus.on('run:started', () => this._clearEarn()));
     this._unsubs.push(this.bus.on('run:wavePlanned', (p) => this._onWavePlanned(p)));
+    this._unsubs.push(this.bus.on('swarm:chain', (p) => this._onChain(p)));
+    this._unsubs.push(this.bus.on('swarm:chainBroken', () => this._onChainBroken()));
   },
 
   destroy() {
@@ -199,10 +203,24 @@ export const survivalHud = {
       dom.threat.setAttribute('aria-valuemax', String(Math.max(census.total, census.remaining)));
     }
 
+    // The chain, if the ruleset has one. A swarm run shows the chain and hides the style
+    // multiplier: they measure the same instinct — vary how you kill — and the chain is the one
+    // that says so in a number the player is already watching.
+    const chain = swarm ? this._chain : 0;
+    const showChain = swarm && chain > 0;
+    dom.chainRow.hidden = !showChain;
+    if (showChain) {
+      this._setText(dom.chainFig, `${chain}`);
+      this._setText(dom.chainBest, this._chainBest > chain ? `best ${this._chainBest}` : '');
+      const tier = chain >= 50 ? 'peak' : (chain >= 15 ? 'hot' : 'warm');
+      if (dom.chainRow.dataset.tier !== tier) dom.chainRow.dataset.tier = tier;
+      dom.chainRow.setAttribute('aria-label', `Kill chain ${chain}`);
+    }
+
     // Style is a live figure, not a phase readout: it decays as you repeat yourself and climbs as
     // you vary the cause, so it belongs beside the score it is multiplying.
     const styleMult = run.style && Number.isFinite(run.style.multiplier) ? run.style.multiplier : 1;
-    const showStyle = styleMult > 1.05;
+    const showStyle = !swarm && styleMult > 1.05;
     dom.styleWord.hidden = !showStyle;
     dom.styleFig.hidden = !showStyle;
     if (showStyle) this._setText(dom.styleFig, `${styleMult.toFixed(1)}x`);
@@ -223,6 +241,17 @@ export const survivalHud = {
   },
 
   // ---- receipts -------------------------------------------------------------
+
+  _onChain(payload) {
+    this._chain = payload && Number.isFinite(payload.chain) ? payload.chain : 0;
+    if (payload && Number.isFinite(payload.best) && payload.best > this._chainBest) {
+      this._chainBest = payload.best;
+    }
+  },
+
+  _onChainBroken() {
+    this._chain = 0;
+  },
 
   _onWavePlanned(payload) {
     const plan = payload && payload.plan;
@@ -252,6 +281,8 @@ export const survivalHud = {
     this._earn = null;
     this._earnUntil = -1;
     this._objective = null;
+    this._chain = 0;
+    this._chainBest = 0;
   },
 
   // ---- DOM ------------------------------------------------------------------
@@ -326,6 +357,18 @@ export const survivalHud = {
     const threatFill = make('span', 'sf-crun__fill sf-crun__fill--foe', threatTrack);
     const threatFig = make('span', 'sf-crun__fig', threat);
 
+    // THE CHAIN GETS ITS OWN LINE, and it is the biggest thing here.
+    //
+    // Everything else in this readout is a status you glance at between fights. The chain is the
+    // one figure a player is watching WHILE they fly, and it is the thing that makes them take the
+    // risk that makes the mode fun. It is not going in the small-figures row with the credits.
+    const chainRow = make('div', 'sf-crun__chain', root);
+    const chainWord = make('span', 'sf-crun__word', chainRow);
+    chainWord.textContent = 'CHAIN';
+    const chainFig = make('span', 'sf-crun__chainfig', chainRow);
+    const chainBest = make('span', 'sf-crun__chainbest', chainRow);
+    chainRow.hidden = true;
+
     const figures = make('div', 'sf-crun__row sf-crun__row--figs', root);
     const scoreWord = make('span', 'sf-crun__word', figures);
     scoreWord.textContent = 'SCORE';
@@ -358,6 +401,7 @@ export const survivalHud = {
     host.appendChild(root);
     this._dom = {
       root, label, waveN, phase, threat, threatWord, threatFill, threatFig,
+      chainRow, chainFig, chainBest,
       score, credits, level, styleWord, styleFig, xpFill, earn,
     };
     return this._dom;
@@ -394,6 +438,15 @@ export const survivalHud = {
     font-variant-numeric:tabular-nums; color:var(--sf-paper); }
   .sf-crun__fig--you { color:var(--sf-you); }
   .sf-crun__fig--goal { color:var(--sf-goal, #e3a13d); }
+  /* The chain. Three channels as always — the word, the figure and its colour — so a forced-colors
+     or colour-blind reader loses nothing. No animation, so reduced-motion needs no variant. */
+  .sf-crun__chain { display:flex; align-items:baseline; gap:8px; }
+  .sf-crun__chainfig { font-family:var(--sf-data-face); font-weight:600; font-size:22px; line-height:1.1;
+    font-variant-numeric:tabular-nums; color:var(--sf-you); }
+  .sf-crun__chain[data-tier="hot"] .sf-crun__chainfig { color:var(--sf-goal, #e3a13d); }
+  .sf-crun__chain[data-tier="peak"] .sf-crun__chainfig { color:var(--sf-foe); }
+  .sf-crun__chainbest { font-family:var(--sf-data-face); font-weight:500; font-size:12px;
+    font-variant-numeric:tabular-nums; color:var(--sf-calm); }
   .sf-crun__earn { font-family:var(--sf-data-face); font-weight:500; font-size:12px;
     font-variant-numeric:tabular-nums; color:var(--sf-you); }
   /* forced-colors strips the fills; the figure beside each bar is the surviving channel. */

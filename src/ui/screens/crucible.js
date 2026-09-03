@@ -542,6 +542,9 @@ export function resultRows(result) {
     ['Outcome', result.outcome === 'victory' ? 'Survived' : (result.outcome === 'aborted' ? 'Abandoned' : 'Lost')],
     ['Reached', reachedRow(result)],
     ['Kills', String(result.kills || 0)],
+    // The chain only exists in a swarm run, so the row only exists there — an arc plate must not
+    // carry a figure that is always zero.
+    ...(result.ruleset === SWARM_RULESET ? [['Best chain', String(result.bestChain || 0)]] : []),
     ['Score', String(result.score || 0)],
     ['Salvage', `${result.credits || 0} cr`],
     ['Level', `${result.level || 1} · ${result.xp || 0} xp`],

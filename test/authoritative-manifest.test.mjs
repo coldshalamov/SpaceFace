@@ -26,11 +26,12 @@ test('production init + update order lengths match the live browser baseline', (
   // 135 -> 142 and 101 -> 103: the Crucible (PQ-133) adds seven systems. Six are event-driven
   // owners that never tick (runSession-adjacent: survivalWave and survivalHud are the only two
   // that joined the update order), so the two figures move by different amounts on purpose.
-  // 142 -> 145: swarmArena maintains the Crucible's debris field and swarmSupply drops its repair
-  // cells (PQ-135); both are event-driven and never tick. crucibleFocus DOES tick — it watches the
-  // run phase to hide campaign chrome — so it is the only one of the three in the update order.
-  assert.equal(PRODUCTION_INIT_ORDER.length, 145);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 104);
+  // 142 -> 146 (PQ-135). swarmArena maintains the debris field and swarmSupply drops repair cells;
+  // both are event-driven and never tick. crucibleFocus watches the run phase to hide campaign
+  // chrome, and swarmChain ticks only to notice a kill chain lapsing — so those two are the ones
+  // in the update order, and the two figures move by different amounts on purpose.
+  assert.equal(PRODUCTION_INIT_ORDER.length, 146);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 105);
   assert.equal(PRODUCTION_INIT_ORDER[0], 'core');
   assert.ok(PRODUCTION_INIT_ORDER.includes('render'));
   assert.ok(PRODUCTION_INIT_ORDER.includes('save'));
@@ -142,9 +143,10 @@ test('browser production system set is unchanged vs production manifest constant
   const state = createGameState(13);
   const registry = createRegistry({ state, bus: createBus(), helpers: {} });
 
-  // Full init list length and terminal platform systems preserved. 145 since PQ-135 added
-  // swarmArena (the debris field), swarmSupply (repair cells) and crucibleFocus (the chrome gate).
-  assert.equal(registry.systems.length, 145);
+  // Full init list length and terminal platform systems preserved. 146 since PQ-135 added
+  // swarmArena (the debris field), swarmSupply (repair cells), crucibleFocus (the chrome gate) and
+  // swarmChain (the kill chain).
+  assert.equal(registry.systems.length, 146);
   const names = registry.systems.map((s) => s.name);
   assert.ok(names.includes('render') || registry.runtimeManifest.authoritativeSystemIds.includes('render'));
   assert.ok(registry.runtimeManifest.authoritativeSystemIds.includes('ui'));

@@ -304,7 +304,16 @@ export const survivalWave = {
   _reinforceSwarm(run) {
     if (!this._swarm || this._cleared || !this._active) return;
     if (this._cursor < 0) return;
-    if (this._cursor - this._lastReinforceTick < this._reinforceGap) return;
+    // AN EMPTY ROOM IS AN EMERGENCY, NOT A WAIT.
+    //
+    // The gap timer paces an ordinary top-up so bodies arrive as groups rather than a dribble. It
+    // must not apply when there is nothing on the board at all: once the wave opens below its
+    // ceiling (the crescendo) a fast player can clear the last survivor of the previous wave in the
+    // one beat before the new wave's burst lands, and a live walk caught exactly that — one empty
+    // moment in eighty-six. "The room is never empty" is the promise this whole ruleset is built
+    // on, so the first body back is never made to queue.
+    const roomIsEmpty = this._cohort.size === 0 && this._pendingBodies() === 0;
+    if (!roomIsEmpty && this._cursor - this._lastReinforceTick < this._reinforceGap) return;
 
     // NO TAPER. An earlier version shrank the spawn target toward the end of a wave so the next
     // wave would not inherit a crowd — and that produced exactly the dead air this whole ruleset

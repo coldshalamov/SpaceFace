@@ -370,6 +370,24 @@ test('the room is never empty across a wave boundary', () => {
   assert.equal(emptyTicks, 0, `the room was empty on ${emptyTicks} of ${sampled} ticks`);
 });
 
+test('an empty room refills on the very next tick, not on the next gap', () => {
+  // The gap timer paces ordinary top-ups. A live walk found one empty moment in eighty-six: a fast
+  // player clears the last survivor in the beat before the next wave's burst lands, and the timer
+  // made the room wait. Nothing is allowed to make an empty room wait.
+  const h = boot();
+  beginSwarm(h);
+  tick(h, 40);
+  assert.ok(liveHostiles(h).length > 0);
+  // Empty the board outright, mid-wave.
+  while (killOne(h)) { /* clear it */ }
+  assert.equal(liveHostiles(h).length, 0);
+  tick(h, 1);
+  assert.ok(
+    liveHostiles(h).length > 0,
+    'the room came straight back rather than waiting out the reinforcement gap',
+  );
+});
+
 test('a fast clear cannot out-run the stream — the room closes back in', () => {
   // The browser walk found this: a fixed reinforcement batch is beatable by a quick enough player,
   // and once it is beaten the wave finishes in an empty room. Kill at 15 a second (far above any

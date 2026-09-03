@@ -26,7 +26,7 @@ const PRESENTATION_SET = new Set(PRESENTATION_PLATFORM_IDS);
  */
 export const PRODUCTION_INIT_ORDER = Object.freeze([
   'core', 'runSession', 'survivalWave', 'survivalRewards', 'survivalDraft', 'survivalResults',
-  'survivalAnnounce', 'survivalArena', 'swarmArena', 'swarmSupply', 'survivalRun', 'voiceArbiter', 'input', 'autoTargetAssist', 'flybyFocus', 'bulletTime', 'cloak',
+  'survivalAnnounce', 'survivalArena', 'swarmArena', 'swarmSupply', 'swarmChain', 'survivalRun', 'voiceArbiter', 'input', 'autoTargetAssist', 'flybyFocus', 'bulletTime', 'cloak',
   'scanner', 'scanReveal', 'buildIdentity', 'lawSecurity', 'pirateDisguise', 'pirateParley',
   'pirateDisengage', 'aceMemory', 'barkDirector', 'aiSlot', 'dockingCorridor', 'physics',
   'aiPorts', 'tumbleStates', 'collisionConsequences', 'aiEncounter', 'actions', 'flightSlot',
@@ -79,7 +79,11 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   // receipt. Immediately before survivalRun so a wave cleared this tick advances the phase this tick.
   // survivalRun: Survival phase machine. After combat/world/spawn/scenario receipts this tick
   // (wave-cleared arrives as an explicit event, never an entity count); before heat/HUD/presentation.
-  'survivalWave', 'survivalRun', 'heat', 'traffic', 'drill', 'claims',
+  'survivalWave', 'survivalRun',
+  // swarmChain: the kill chain. It ticks only to notice a lapse, and it reads the phase
+  // survivalRun has already settled this tick.
+  'swarmChain',
+  'heat', 'traffic', 'drill', 'claims',
   'bandRadio', 'onboarding', 'masslineHud', 'massSeedHud', 'fieldHud', 'planetHud',
   // survivalHud: the Crucible run readout. After survivalRun/survivalWave so it reads the phase
   // and census this tick advanced to; DOM-guarded so Node no-ops.
@@ -109,6 +113,7 @@ export const SYSTEM_CAPABILITIES = Object.freeze({
   masslineHud: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'hud', domGuarded: true }),
   survivalHud: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'hud', domGuarded: true }),
   crucibleFocus: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'hud', domGuarded: true }),
+  swarmChain: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'run' }),
   massSeedHud: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'hud', domGuarded: true }),
   fieldHud: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'hud', domGuarded: true }),
   planetHud: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'hud', domGuarded: true }),

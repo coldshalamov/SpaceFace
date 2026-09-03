@@ -8,6 +8,7 @@ import { survivalAnnounce } from '../systems/survivalAnnounce.js';
 import { survivalArena } from '../systems/survivalArena.js';
 import { swarmArena } from '../systems/swarmArena.js';
 import { swarmSupply } from '../systems/swarmSupply.js';
+import { swarmChain } from '../systems/swarmChain.js';
 import { survivalRewards } from '../systems/survivalRewards.js';
 import { survivalHud } from '../ui/survivalHud.js';                 // Crucible run readout (DOM-guarded)
 import { crucibleFocus } from '../ui/crucibleFocus.js';             // hides campaign chrome in a run (DOM-guarded)
@@ -187,6 +188,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['survivalArena', survivalArena],
     ['swarmArena', swarmArena],
     ['swarmSupply', swarmSupply],
+    ['swarmChain', swarmChain],
     ['survivalRun', survivalRun],
     ['voiceArbiter', voiceArbiter],
     ['input', input],
