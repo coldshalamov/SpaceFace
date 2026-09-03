@@ -150,6 +150,8 @@ export const save = {
     this._activeSaveWorkers = new Set();
     this._saveWorkerRequestId = 0;
     this._restoreSequence = 0;         // unique transient freeze owner for overlapping visual gates
+    this._rollbackCaptureActive = false; // strict serializer mode for the pre-load rollback copy
+    this._rollbackInProgress = false;  // prevents a failed rollback from recursively retrying itself
     this._sharedStoreReady = !sharedPlayerStoreAvailable();
     this._sharedStorePatch = null;
     this._sharedStoreFlushTimer = null;
@@ -706,7 +708,10 @@ export const save = {
         // Opt-in serializers prove that every returned branch is newly allocated or explicitly
         // copied from live state. Preserve the defensive clone for every unmarked subsystem.
         return sys.saveSnapshotOwned === true ? snapshot : clonePlain(snapshot);
-      } catch (err) { console.error('[save] serialize ' + name, err); }
+      } catch (err) {
+        if (this._rollbackCaptureActive) throw err;
+        console.error('[save] serialize ' + name, err);
+      }
     }
     return null;
   },
@@ -2380,8 +2385,8 @@ export const save = {
 
   // ── load (read a slot) ──────────────────────────────────────────────────────────────────────
 
-  /** Load a slot (or 'latest'). Validates fully before any destructive restore; aborts on failure
-   *  with save:error and leaves the live game untouched. Returns true on success. */
+  /** Load a slot (or 'latest'). Validates fully before any destructive restore; a live run is
+   *  snapshotted for one rollback attempt if restore fails. Returns true only for an accepted load. */
   load(slot) {
     slot = slot || 'quick';
     if (slot === 'latest') {
@@ -2503,14 +2508,105 @@ export const save = {
   },
 
   _restorePreparedEnvelope(prepared, slot, options = {}) {
+    const rollbackAttempt = options.rollback === true;
+    if (this._rollbackInProgress && !rollbackAttempt) return false;
+
+    let rollbackSnapshot = null;
+    if (!rollbackAttempt && this._hasPlayerEntity()) {
+      try {
+        rollbackSnapshot = this._captureRollbackSnapshot();
+      } catch (err) {
+        console.error('[save] rollback snapshot failed', err);
+        if (options.emitError !== false) {
+          this.bus.emit('save:error', {
+            slot,
+            reason: 'restore_prepare_failed',
+            rollback: 'unavailable',
+            error: restoreErrorMessage(err),
+          });
+        }
+        return false;
+      }
+    } else if (!rollbackAttempt) {
+      // Loading from the title/menu has no live player run to preserve. The target restore remains
+      // allowed, but a later failure is reported as having no rollback target rather than trying to
+      // manufacture a synthetic player save for an otherwise empty state.
+      rollbackSnapshot = { notNeeded: true };
+    }
+
     try {
-      this._restore(prepared.data, slot, options);
+      const result = this._restore(prepared.data, slot, {
+        ...options,
+        rollbackSnapshot,
+      });
+      // A nested restore may be intentionally queued by the active route. It has not failed and
+      // the existing deferral contract still reports the outer request as accepted.
+      if (result && result.queued) return true;
+      if (result && result.restored === false) return false;
       return true;
     } catch (err) {
       console.error('[save] load failed', err);
-      if (options.emitError !== false) this.bus.emit('save:error', { slot, reason: 'load_failed' });
+      if (rollbackAttempt || !rollbackSnapshot || rollbackSnapshot.notNeeded) {
+        if (options.emitError !== false) {
+          this.bus.emit('save:error', {
+            slot,
+            reason: 'load_failed',
+            rollback: rollbackAttempt ? 'failed' : 'not_needed',
+            error: restoreErrorMessage(err),
+          });
+        }
+        return false;
+      }
+
+      let rollbackError = null;
+      this._rollbackInProgress = true;
+      try {
+        const rollbackResult = this._restore(rollbackSnapshot.data, rollbackSnapshot.slot, {
+          rollback: true,
+          emitError: false,
+          rollbackSnapshot: null,
+        });
+        if (!rollbackResult || rollbackResult.restored !== true) {
+          throw new Error('rollback_restore_incomplete');
+        }
+      } catch (rollbackErr) {
+        rollbackError = rollbackErr;
+      } finally {
+        this._rollbackInProgress = false;
+      }
+
+      if (options.emitError !== false) {
+        const payload = {
+          slot,
+          reason: 'load_failed',
+          rollback: rollbackError ? 'failed' : 'restored',
+          error: restoreErrorMessage(err),
+        };
+        if (rollbackError) payload.rollbackError = restoreErrorMessage(rollbackError);
+        this.bus.emit('save:error', payload);
+      }
       return false;
     }
+  },
+
+  /** Capture a fully prepared, independent envelope before the first destructive restore step. */
+  _captureRollbackSnapshot() {
+    const state = this.state;
+    const slot = state && state.save && state.save.currentSlot
+      ? state.save.currentSlot
+      : 'quick';
+    const previousStrict = this._rollbackCaptureActive;
+    this._rollbackCaptureActive = true;
+    let envelope;
+    try {
+      envelope = this.serialize(slot);
+    } finally {
+      this._rollbackCaptureActive = previousStrict;
+    }
+    if (!envelope || typeof envelope !== 'object') throw new Error('rollback_snapshot_empty');
+    const prepared = this._prepareEnvelope(envelope);
+    if (!prepared.ok) throw new Error('rollback_snapshot_invalid:' + prepared.reason);
+    return { data: prepared.data, slot, envelope };
   },
 
   // Destructive restore. Pre-conditions: data validated + migrated. Order = deps-first (§4.5):
@@ -2597,7 +2693,7 @@ export const save = {
       // 6. re-derive ship stats from restored fittings/research (sets caps, weapons, cargo cap).
       const shipsSys = this.registry.get('ships');
       if (shipsSys && typeof shipsSys.recomputeActiveShip === 'function') {
-        try { shipsSys.recomputeActiveShip(); } catch (err) { console.error('[save] recomputeActiveShip', err); }
+        shipsSys.recomputeActiveShip();
       }
       // 7. re-apply saved ABSOLUTE hull/shield/cap (recompute preserves fractions → would drift).
       this._applySavedVitals(savedPlayer);
@@ -2605,7 +2701,7 @@ export const save = {
       // 8. recompute cargo caches from restored items.
       const cargoSys = this.registry.get('cargo');
       if (cargoSys && typeof cargoSys.recompute === 'function') {
-        try { cargoSys.recompute(); } catch (err) { console.error('[save] cargo.recompute', err); }
+        cargoSys.recompute();
       }
 
       // 9. regenerate the saved sector's contents around the player.
@@ -2626,9 +2722,7 @@ export const save = {
         }
       }
       if (worldSys && typeof worldSys.enterSector === 'function' && sectorId) {
-        try {
-          worldSys.enterSector(sectorId, { restoreDurableRecords: true });
-        } catch (err) { console.error('[save] enterSector', err); }
+        worldSys.enterSector(sectorId, { restoreDurableRecords: true });
       }
       // enterSector's _placePlayer clobbers position → re-apply the saved pose now.
       this._applySavedPose(savedPlayer);
@@ -2658,7 +2752,7 @@ export const save = {
       this._restoreScenario(data.scenario);
       const missionsSys = this.registry && this.registry.get && this.registry.get('missions');
       if (missionsSys && typeof missionsSys.spawnTargetsForSector === 'function' && sectorId) {
-        try { missionsSys.spawnTargetsForSector(sectorId); } catch (err) { console.error('[save] spawn mission targets', err); }
+        missionsSys.spawnTargetsForSector(sectorId);
       }
       this._restoreAutomation(data.automation);
       this._restoreCrafting(data.crafting);
@@ -2850,7 +2944,8 @@ export const save = {
     const payload = normalizeMissionSavePayload(d);
     const sys = this.registry && this.registry.get && this.registry.get('missions');
     if (sys && typeof sys.deserialize === 'function') {
-      try { sys.deserialize(payload); return; } catch (err) { console.error('[save] deserialize missions', err); }
+      sys.deserialize(payload);
+      return;
     }
     if (payload.boards || payload.active || payload.completedLog || payload.receipts) {
       this.state.missions.boards = payload.boards || {};
@@ -2866,7 +2961,8 @@ export const save = {
   _restoreScenario(d) {
     const sys = this.registry && this.registry.get && this.registry.get('scenarioRuntime');
     if (sys && typeof sys.deserialize === 'function') {
-      try { sys.deserialize(d); return; } catch (err) { console.error('[save] deserialize scenarioRuntime', err); }
+      sys.deserialize(d);
+      return;
     }
     if (d && typeof d === 'object') this.state.scenario = clonePlain(d);
   },
@@ -2875,7 +2971,8 @@ export const save = {
     if (!d) return;
     const sys = this.registry && this.registry.get && this.registry.get('automation');
     if (sys && typeof sys.deserialize === 'function') {
-      try { sys.deserialize(d); return; } catch (err) { console.error('[save] deserialize automation', err); }
+      sys.deserialize(d);
+      return;
     }
     this.state.automation = d;
   },
@@ -2884,7 +2981,8 @@ export const save = {
     const payload = d || { queues: {} };
     const sys = this.registry && this.registry.get && this.registry.get('crafting');
     if (sys && typeof sys.deserialize === 'function') {
-      try { sys.deserialize(payload); return; } catch (err) { console.error('[save] deserialize crafting', err); }
+      sys.deserialize(payload);
+      return;
     }
     this.state.crafting = clonePlain(payload);
   },
@@ -2900,12 +2998,7 @@ export const save = {
       }
       return null;
     };
-    try {
-      restoreCombatState(state, d, resolveEntityRef);
-    } catch (err) {
-      console.error('[save] restore combat', err);
-      restoreCombatState(state, null, () => null);
-    }
+    restoreCombatState(state, d, resolveEntityRef);
   },
 
   _restoreSettings(d) {
@@ -2949,7 +3042,7 @@ export const save = {
   _callDeserialize(name, data) {
     const sys = this.registry && this.registry.get && this.registry.get(name);
     if (sys && typeof sys.deserialize === 'function') {
-      try { sys.deserialize(data); } catch (err) { console.error('[save] deserialize ' + name, err); }
+      sys.deserialize(data);
     }
   },
 
@@ -3272,6 +3365,11 @@ export function preflightSaveImport(value, options = SAVE_IMPORT_LIMITS) {
 
 function nowMs() {
   return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+}
+
+function restoreErrorMessage(error) {
+  if (error && typeof error.message === 'string' && error.message) return error.message;
+  return String(error || 'unknown_restore_error');
 }
 
 // Named separately from end-to-end elapsed measurement so every synchronous autosave phase uses one
