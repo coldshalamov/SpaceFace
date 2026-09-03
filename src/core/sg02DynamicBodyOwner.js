@@ -162,6 +162,10 @@ export class Sg02DynamicBodyOwner {
     this._liveEntityIds = new Set();
     this._liveStaticEntityIds = new Set();
     this._liveDynamicEntityIds = new Set();
+    // The normal player-route save/load replaces the simulation entity object while the
+    // authoritative Rapier body remains alive. These ids skip one forced scalar pose write after
+    // a verified rebind, preserving the body's private numerical continuity across that swap.
+    this._reboundEntityIds = new Set();
     this._staticLayerVersion = null;
     this._frameOrigin = {
       x: finite(options.frameOrigin && options.frameOrigin.x),
@@ -227,6 +231,23 @@ export class Sg02DynamicBodyOwner {
     }
     this._staticLayerVersion = null;
     this._writeSyncDiagnostics('full', count, 0, 0, -1);
+  }
+
+  /**
+   * Rebind a restored entity to its existing authoritative body when its saved scalar kinematics
+   * still describe that body. A materially different save remains authoritative: the ordinary
+   * sync path will resync the body from the restored scalars on the next pass.
+   */
+  rebindEntity(entity) {
+    if (!entity || entity.alive === false) return false;
+    const rec = this.records.get(entity.id);
+    if (!rec || !rec.spec || !rec.spec.dynamic || !bodyStateMatchesEntity(rec, entity, this._frameOrigin, this._frameScratch)) {
+      return false;
+    }
+    rec.entity = entity;
+    this._reboundEntityIds.add(entity.id);
+    if (entity.flags) entity.flags.noInterp = false;
+    return true;
   }
 
   syncFromEntityLayers(staticEntities = [], dynamicEntities = [], staticVersion = 0, orderedEntities = null) {
@@ -359,6 +380,7 @@ export class Sg02DynamicBodyOwner {
     this._eventQueue = null;
     this._colliderOwners.clear();
     this._contactImpacts.length = 0;
+    this._reboundEntityIds.clear();
   }
 
   applyImpulse(input = {}) {
@@ -762,6 +784,7 @@ export class Sg02DynamicBodyOwner {
   }
 
   _removeRecord(id, rec) {
+    this._reboundEntityIds.delete(id);
     const live = rec && rec.entity && rec.entity.alive !== false;
     if (live) {
       for (const attachment of this.attachments.values()) {
@@ -802,16 +825,20 @@ export class Sg02DynamicBodyOwner {
 
   _syncRecord(entity, spec) {
     const rec = this.records.get(entity.id);
+    const preserveRebound = !!(rec && rec.spec && rec.spec.dynamic
+      && rec.entity === entity && this._reboundEntityIds.has(entity.id));
     // Compound-proxy membership is part of the collider identity: a station gaining/losing its
     // manifest (or switching manifests) rebuilds the static body, same as any other spec change.
     const proxyId = proxyIdForEntity(entity);
     if (!recordMatchesSpec(rec, spec) || (rec && rec.proxyId !== proxyId)) {
       if (rec && rec.proxyId === proxyId && massPropertiesOnlyChanged(rec, spec) && this._updateMassPropertiesInPlace(rec, spec)) {
         rec.entity = entity;
-        this._maybeResyncBodyPose(rec, entity);
+        if (preserveRebound) this._reboundEntityIds.delete(entity.id);
+        else this._maybeResyncBodyPose(rec, entity);
         this._applyCcdGate(rec, entity);
         return rec;
       }
+      this._reboundEntityIds.delete(entity.id);
       if (rec) this._removeRecord(entity.id, rec);
       const next = this._createRecord(entity, spec);
       this.records.set(entity.id, next);
@@ -820,7 +847,8 @@ export class Sg02DynamicBodyOwner {
       return next;
     }
     rec.entity = entity;
-    this._maybeResyncBodyPose(rec, entity);
+    if (preserveRebound) this._reboundEntityIds.delete(entity.id);
+    else this._maybeResyncBodyPose(rec, entity);
     this._applyCcdGate(rec, entity);
     return rec;
   }
@@ -1977,6 +2005,26 @@ function massPropertiesOnlyChanged(rec, spec) {
     current.radius === spec.radius &&
     current.shape === spec.shape &&
     current.material === spec.material;
+}
+
+function bodyStateMatchesEntity(rec, entity, frameOrigin, frameScratch) {
+  if (!rec || !rec.body || !entity) return false;
+  const p = rec.body.translation();
+  const v = rec.body.linvel();
+  const q = rec.body.rotation();
+  const w = rec.body.angvel();
+  const local = globalToFrame(entity.pos, frameOrigin, frameScratch);
+  const dx = local.x - finite(p && p.x);
+  const dz = local.z - finite(p && p.z);
+  if (dx * dx + dz * dz > POSE_RESYNC_EPS2) return false;
+  const savedVx = finite(entity.vel && entity.vel.x);
+  const savedVz = finite(entity.vel && entity.vel.z);
+  const savedYaw = wrapAngle(entity.rot);
+  const bodyYaw = wrapAngle(yawFromQuat(q));
+  return savedVx === finite(v && v.x)
+    && savedVz === finite(v && v.z)
+    && savedYaw === bodyYaw
+    && finite(entity.angVel) === finite(w && w.y);
 }
 
 function wrapAngle(value) {

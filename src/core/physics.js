@@ -424,7 +424,21 @@ export const physics = {
   },
 
   _resetSg02AfterLoad() {
-    this._disableSg02DynamicAuthority();
+    const state = this.state;
+    if (!usesSg02DynamicAuthority(state)) {
+      this._disableSg02DynamicAuthority();
+    } else if (this._sg02) {
+      // The player-route restore replaces entity objects but serializes the same authoritative
+      // pose. Rebind that fresh player object to the existing Rapier record before prepareBackend
+      // syncs it; rebuilding the body from scalars introduces a tiny solver/quaternion drift.
+      this._syncSg02FrameOrigin(state);
+      const player = state.entities && state.entities.get
+        ? state.entities.get(state.playerId)
+        : null;
+      if (player && typeof this._sg02.rebindEntity === 'function') {
+        this._sg02.rebindEntity(player);
+      }
+    }
     // Entity restore rebuilds station/gate objects while UI docking alerts were cleared by the
     // previous dock. Reset edge caches so the first post-load physics step re-emits range=true
     // even when the rematerialized structural entity keeps the same stable station/gate id.
@@ -433,7 +447,8 @@ export const physics = {
     // The respawn also swapped every persistent entity object for a fresh one at the same tick.
     // Drop the cached activity classification so the next sync layers read live entities instead
     // of scratch arrays holding retired (alive=false) references — same ids and counts would
-    // otherwise never bump physicsStaticVersion and the statics would never reconcile.
+    // otherwise never bump physicsStaticVersion and the statics would never reconcile. The
+    // retained player body is handled above; other changed records reconcile normally.
     resetActivityRuntimeForRestore(this.state);
     if (this.state) this._publishRuntime(this.state);
   },

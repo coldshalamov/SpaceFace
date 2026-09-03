@@ -30,21 +30,21 @@ Relevant proof:
 node --test test/lab-production-fixture.test.mjs test/lab-false-positive-guards.test.mjs test/lab-scenarios-cli.test.mjs
 ```
 
-## G2 — flight save/load continuation diverges at tick 43
+## G2 — flight save/load continuation (closed)
 
-The committed `flight-save-load.scenario.json` currently restores at tick 39 and first diverges at
-tick 43 on `playerVelX`. Final deterministic-covered hashes match, but the trace-tick-by-tick
-contract correctly returns `parity-fail` / exit class `5`.
+The in-place player-route restore now rebinds the restored player entity to its existing SG-02
+Rapier body when the serialized scalars still match. This preserves the body's private numerical
+continuity without weakening the exact trace-tick-by-tick contract; material save changes still
+resync from the restored scalars.
 
-Reproduce:
+Proof:
 
 ```powershell
 npm run sf -- lab compare src/testing/scenarios/flight-save-load.scenario.json --verbosity 2
 ```
 
-Do not report save/load continuation green for this scenario until the owning state restoration
-defect is understood, a focused regression observes fail then pass, and the comparison command is
-green without weakening its intermediate contract.
+Result: `ok=true`, `exitClass=0`, `status=pass`, `saveLoadAt=39`,
+`firstDivergentTick=null`, and `firstDivergentField=null`.
 
 ## G3 — Chromium parity V1 supports focused flight only
 
