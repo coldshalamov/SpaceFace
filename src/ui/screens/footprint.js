@@ -201,6 +201,30 @@ export function nodeWhy(node) {
   return '';
 }
 
+/** Build the selected-chain readout with every state-derived fragment encoded for innerHTML. */
+export function footprintReadoutHtml(chain, node, state) {
+  if (!chain) {
+    return `
+      <h3 class="fp-readout-head">Trace a chain</h3>
+      <p class="fp-readout-line">Select an ACT, INCIDENT, STANDING, or CONSEQUENCE node to light its path.</p>
+      <button type="button" class="fp-readout-verb" data-fp-verb="chart-empty">Show on chart</button>`;
+  }
+  const why = nodeWhy(node);
+  const faction = findChainStandingFaction(chain) || asString(node && node.factionId);
+  const rootKind = escapeHtml(asString(chain.rootKind) || 'chain');
+  const outcome = escapeHtml(outcomeWord(chain.outcome) || 'witnessed');
+  const reason = escapeHtml(why || 'No additional receipt text for this node.');
+  const openState = escapeHtml(chainOpenReason(chain, state));
+  const factionLine = faction
+    ? `Faction focus: ${escapeHtml(shortFactionName(faction))}.`
+    : 'Faction focus unresolved.';
+  return `
+      <h3 class="fp-readout-head">${rootKind} · ${outcome}</h3>
+      <p class="fp-readout-line">${reason}</p>
+      <p class="fp-readout-line">Open state: ${openState}.</p>
+      <p class="fp-readout-line">${factionLine}</p>`;
+}
+
 function collectChainColumns(chain) {
   const columns = [[], [], [], []];
   const nodes = Array.isArray(chain && chain.nodes) ? chain.nodes : [];
@@ -745,20 +769,7 @@ export const footprintScreen = {
     const state = this._ctx && this._ctx.state;
     const chain = this._selectedChain();
     const node = this._selectedNode();
-    if (!chain) {
-      this._readout.innerHTML = `
-        <h3 class="fp-readout-head">Trace a chain</h3>
-        <p class="fp-readout-line">Select an ACT, INCIDENT, STANDING, or CONSEQUENCE node to light its path.</p>
-        <button type="button" class="fp-readout-verb" data-fp-verb="chart-empty">Show on chart</button>`;
-      return;
-    }
-    const why = nodeWhy(node);
-    const faction = findChainStandingFaction(chain) || asString(node && node.factionId);
-    this._readout.innerHTML = `
-      <h3 class="fp-readout-head">${asString(chain.rootKind) || 'chain'} · ${outcomeWord(chain.outcome) || 'witnessed'}</h3>
-      <p class="fp-readout-line">${why || 'No additional receipt text for this node.'}</p>
-      <p class="fp-readout-line">Open state: ${chainOpenReason(chain, state)}.</p>
-      <p class="fp-readout-line">${faction ? `Faction focus: ${shortFactionName(faction)}.` : 'Faction focus unresolved.'}</p>`;
+    this._readout.innerHTML = footprintReadoutHtml(chain, node, state);
   },
 
   _verbState() {
@@ -1199,4 +1210,3 @@ function escapeHtml(value) {
 function escapeAttr(value) {
   return escapeHtml(value).replace(/'/g, '&#39;');
 }
-

@@ -26,6 +26,11 @@ export function cargoQty(state, cmdtyId) {
   return Math.max(0, Math.floor(Number(items && items[cmdtyId]) || 0));
 }
 
+/** Render the event label for the chart log as text, never as markup. */
+export function marketEventTypeHtml(value) {
+  return escapeHtml(String(value == null ? 'EVENT' : value).toUpperCase());
+}
+
 /** Look up the live MarketEntry for a station+commodity, or null. */
 function marketEntry(state, stationId, cmdtyId) {
   const markets = state.economy && state.economy.markets;
@@ -901,7 +906,7 @@ export function createMarketPanel(ctx) {
       affected.forEach(e => {
         const item = document.createElement('div');
         item.className = 'st-modal-event-item mono';
-        item.innerHTML = `<span class="st-ev-name" style="color:var(--warn)">${e.type.toUpperCase()}</span> duration remaining: ${Math.round(e.durationRemainingS)}s`;
+        item.innerHTML = `<span class="st-ev-name" style="color:var(--warn)">${marketEventTypeHtml(e.type)}</span> duration remaining: ${Math.round(e.durationRemainingS)}s`;
         logEl.appendChild(item);
       });
     } else {

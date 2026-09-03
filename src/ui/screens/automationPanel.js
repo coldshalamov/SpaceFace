@@ -9,7 +9,7 @@
 import { DRONES, TRADERS, OUTPOSTS, AUTO_BALANCE } from '../../data/automation.js';
 import { COMMODITIES } from '../../data/commodities.js';
 import { TECH_NODES } from '../../data/tech.js';
-import { droneBayCapacityForState } from '../../systems/automation.js';
+import { droneBayCapacityForState, normalizeAutomationRecordId } from '../../systems/automation.js';
 import { shipworksStationAccess } from '../../systems/ships.js';
 import { escapeHtml } from '../comms.js';
 import { enhanceSelects } from '../uiPrimitives.js';
@@ -19,6 +19,11 @@ const DRONE_DISPLAY_ORE_ID = 'cmdty_ore_iron';
 const DRONE_DISPLAY_ORE_VALUE = (COMMODITIES.find((c) => c.id === DRONE_DISPLAY_ORE_ID) || {}).basePrice || 28;
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((commodity) => [commodity.id, commodity]));
 const TECH_BY_ID = new Map(TECH_NODES.map((t) => [t.id, t]));
+
+/** Escape a restored automation identity before placing it in an HTML data-ref attribute. */
+export function automationRecordRefAttr(value, fallback = '') {
+  return escapeHtml(normalizeAutomationRecordId(value, fallback) || '');
+}
 
 const PROGRAM_OPTIONS = Object.freeze([
   { value: '', label: 'Manual (mine -> bank)', meta: 'Banks ore in the drone buffer; recall to cash out.' },
@@ -712,11 +717,11 @@ export const automationScreen = {
             </div>
             <div class="au-program-row">
               <span class="au-program-label">Program:</span>
-              <select class="au-program" data-act="assignProgram" data-ref="${d.id != null ? d.id : def.id}" data-kind="drone">${programOpts}</select>
+              <select class="au-program" data-act="assignProgram" data-ref="${automationRecordRefAttr(d.id, def.id)}" data-kind="drone">${programOpts}</select>
             </div>
             <div class="au-note">${escapeHtml(programMeta)}</div>
           </div>
-          <button class="au-order" data-act="recall" data-ref="${d.id != null ? d.id : def.id}" data-kind="drone">Recall</button>`;
+          <button class="au-order" data-act="recall" data-ref="${automationRecordRefAttr(d.id, def.id)}" data-kind="drone">Recall</button>`;
         frag.appendChild(card);
       }
     }
@@ -739,7 +744,7 @@ export const automationScreen = {
           </div>
           ${locked ? `<div class="au-note">Research logistics upgrades to unlock this heavier drone tier.</div>` : `<div class="au-note">Best first passive asset: low upkeep, visible in the field, and reversible on recall.</div>`}
         </div>
-        <button class="au-buy" data-act="buyDrone" data-ref="${def.id}" data-why="${escapeHtml(purchase.title)}" aria-label="${escapeHtml(purchase.title)}"${purchase.disabled ? ' disabled' : ''}>${escapeHtml(purchase.label)}</button>`;
+        <button class="au-buy" data-act="buyDrone" data-ref="${automationRecordRefAttr(def.id)}" data-why="${escapeHtml(purchase.title)}" aria-label="${escapeHtml(purchase.title)}"${purchase.disabled ? ' disabled' : ''}>${escapeHtml(purchase.label)}</button>`;
       frag.appendChild(card);
     }
   },
@@ -774,8 +779,8 @@ export const automationScreen = {
             </div>
             <div class="au-note">${t.route ? 'Reroute when heat rises or spreads collapse; escorts lower loss risk on dangerous lanes.' : 'Use Route to assign a profitable two-station lane.'}</div>
           </div>
-          <button class="au-order" data-act="assignRoute" data-ref="${t.id != null ? t.id : def.id}" data-kind="trader">Route</button>
-          <button class="au-recall" data-act="dismiss" data-ref="${t.id != null ? t.id : def.id}" data-kind="trader">Dismiss</button>`;
+          <button class="au-order" data-act="assignRoute" data-ref="${automationRecordRefAttr(t.id, def.id)}" data-kind="trader">Route</button>
+          <button class="au-recall" data-act="dismiss" data-ref="${automationRecordRefAttr(t.id, def.id)}" data-kind="trader">Dismiss</button>`;
         frag.appendChild(card);
       }
     }
@@ -800,7 +805,7 @@ export const automationScreen = {
           </div>
           <div class="au-note">${hireUnlocked ? 'Auto-picks a profitable route now; use Route later to reset heat and find a fresh spread.' : 'Unlocks after Drone Swarm, when the player has seen enough logistics to manage risk.'}</div>
         </div>
-        <button class="au-buy" data-act="hireTrader" data-ref="${def.id}" data-why="${escapeHtml(purchase.title)}" aria-label="${escapeHtml(purchase.title)}"${purchase.disabled ? ' disabled' : ''}>${escapeHtml(purchase.label)}</button>`;
+        <button class="au-buy" data-act="hireTrader" data-ref="${automationRecordRefAttr(def.id)}" data-why="${escapeHtml(purchase.title)}" aria-label="${escapeHtml(purchase.title)}"${purchase.disabled ? ' disabled' : ''}>${escapeHtml(purchase.label)}</button>`;
       frag.appendChild(card);
     }
   },
@@ -854,7 +859,7 @@ export const automationScreen = {
               </div>
             </div>
             <div class="au-operation-reason">${escapeHtml(operation.detail)}</div>
-            <details class="au-outpost-detail" data-outpost-detail="${escapeHtml(o.id != null ? o.id : def.id)}">
+            <details class="au-outpost-detail" data-outpost-detail="${automationRecordRefAttr(o.id, def.id)}">
               <summary>Facility details</summary>
               <div class="au-detail-row">
                 <span>${escapeHtml(recipeText(def.recipe))}</span>
@@ -864,7 +869,7 @@ export const automationScreen = {
               </div>
             </details>
           </div>
-          <button class="au-recall" data-act="decommission" data-ref="${o.id != null ? o.id : def.id}" data-kind="outpost" aria-label="Decommission ${prettyId(def.id)}">Decommission</button>`;
+          <button class="au-recall" data-act="decommission" data-ref="${automationRecordRefAttr(o.id, def.id)}" data-kind="outpost" aria-label="Decommission ${prettyId(def.id)}">Decommission</button>`;
         frag.appendChild(card);
       }
     }
@@ -889,7 +894,7 @@ export const automationScreen = {
           </div>
           <div class="au-note">${buildUnlocked ? 'High upkeep, high commitment: best after you can protect the sector or fund losses.' : 'This is the empire layer; reach it after traders prove the route economy.'}</div>
         </div>
-        <button class="au-buy" data-act="buildOutpost" data-ref="${def.id}" data-why="${escapeHtml(purchase.title)}" aria-label="${escapeHtml(purchase.title)}"${purchase.disabled ? ' disabled' : ''}>${escapeHtml(purchase.label)}</button>`;
+        <button class="au-buy" data-act="buildOutpost" data-ref="${automationRecordRefAttr(def.id)}" data-why="${escapeHtml(purchase.title)}" aria-label="${escapeHtml(purchase.title)}"${purchase.disabled ? ' disabled' : ''}>${escapeHtml(purchase.label)}</button>`;
       frag.appendChild(card);
     }
   },
@@ -920,9 +925,9 @@ export const automationScreen = {
             </div>
             <div class="au-note">${escapeHtml(deployment.detail)} Escort protects you now and can guard automation assets as the fleet layer expands.</div>
           </div>
-          <button class="au-order" data-act="orderEscort" data-ref="${fs.id != null ? fs.id : fs.defId}" data-kind="fleet">Escort</button>
-          <button class="au-order" data-act="orderMine" data-ref="${fs.id != null ? fs.id : fs.defId}" data-kind="fleet">Mine</button>
-          <button class="au-recall" data-act="orderRecall" data-ref="${fs.id != null ? fs.id : fs.defId}" data-kind="fleet">Recall</button>`;
+          <button class="au-order" data-act="orderEscort" data-ref="${automationRecordRefAttr(fs.id, fs.defId)}" data-kind="fleet">Escort</button>
+          <button class="au-order" data-act="orderMine" data-ref="${automationRecordRefAttr(fs.id, fs.defId)}" data-kind="fleet">Mine</button>
+          <button class="au-recall" data-act="orderRecall" data-ref="${automationRecordRefAttr(fs.id, fs.defId)}" data-kind="fleet">Recall</button>`;
         frag.appendChild(card);
       }
     }

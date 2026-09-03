@@ -44,6 +44,11 @@ function asString(value) {
   return clean ? clean : null;
 }
 
+/** Preserve imported provenance copy as text data; the UI owns HTML escaping at its sinks. */
+export function normalizeProvenanceText(value) {
+  return asString(value);
+}
+
 function nowTick(state) {
   return asInteger(state && state.tick, 0);
 }
@@ -152,7 +157,7 @@ function serializeNode(node) {
     bodyId: asString(node.bodyId),
     lossId: asString(node.lossId),
     outcome: sanitizeOutcome(node.outcome),
-    text: asString(node.text),
+    text: normalizeProvenanceText(node.text),
     sectorId: asString(node.sectorId),
     incidentId: asString(node.incidentId),
     cause: asString(node.cause),

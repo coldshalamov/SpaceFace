@@ -205,6 +205,34 @@ for (const sec of SECTORS) {
   for (const stn of sec.stations || []) STATION_BY_ID.set(stn.id, stn);
 }
 
+const CARGO_ITEM_KEY_MAX_LENGTH = 128;
+
+/** Normalize a persisted cargo key without discarding legacy unknown cargo from the manifest. */
+export function normalizeCargoItemKey(value) {
+  if (typeof value !== 'string') return null;
+  const key = value.trim();
+  return key && key.length <= CARGO_ITEM_KEY_MAX_LENGTH ? key : null;
+}
+
+/** Resolve only catalog-backed cargo to an actionable commodity id. */
+export function canonicalCargoItemId(value) {
+  const key = normalizeCargoItemKey(value);
+  return key && COMMODITY_BY_ID.has(key) ? key : null;
+}
+
+/** Escaped cargo label used by the Hold panel's HTML renderer. */
+export function cargoItemLabelHtml(value) {
+  const key = normalizeCargoItemKey(value);
+  const commodity = key && COMMODITY_BY_ID.get(key);
+  return escapeHtml(commodity && commodity.name ? commodity.name : (key ? prettyId(key) : 'Unknown cargo'));
+}
+
+/** Escaped data value; unknown/legacy cargo deliberately has no sell action. */
+export function cargoItemRefAttr(value) {
+  const canonical = canonicalCargoItemId(value);
+  return canonical ? escapeHtml(canonical) : '';
+}
+
 const TABS = [
   { id: 'market', label: 'Market', icon: '⚖', help: 'Buy cargo, sell cargo, and set profitable trade nav routes.' },
   { id: 'shipyard', label: 'Shipyard', icon: '⛴', help: 'Buy whole ships (new chassis). Changes base cargo, toughness, and what module sizes fit.' },
@@ -1487,7 +1515,9 @@ export const stationHub = {
       `;
 
       const items = cargo.items || {};
-      const list = Object.entries(items).filter(([id, qty]) => Number(qty) > 0);
+      const list = Object.entries(items)
+        .map(([rawId, qty]) => [normalizeCargoItemKey(rawId), qty])
+        .filter(([id, qty]) => id && Number(qty) > 0);
       const richLots = Array.isArray(cargo.richLots)
         ? cargo.richLots.filter((lot) => lot && lot.qty > 0)
         : [];
@@ -1511,33 +1541,36 @@ export const stationHub = {
         `;
 
         for (const [id, qty] of list) {
-          const com = COMMODITY_BY_ID.get(id) || { name: prettyId(id), volume: 1 };
+          const canonicalId = canonicalCargoItemId(id);
+          const com = (canonicalId && COMMODITY_BY_ID.get(canonicalId)) || { name: prettyId(id), volume: 1 };
           const vol = (com.volume || 1) * qty;
 
           const stn = this._stationDef();
-          const unitPay = stn ? holdUnitSellPrice(state, stn.id, id) : null;
+          const unitPay = canonicalId && stn ? holdUnitSellPrice(state, stn.id, canonicalId) : null;
           const priceText = unitPay != null ? unitPay.toLocaleString('en-US') + ' cr' : 'no quote';
 
           // Sealed contract freight (preloaded-mission cargo) cannot be sold mid-run — selling it
           // bricks the delivery with no recovery. Mirror the jettison lock: disable + relabel.
-          const locked = isUnsellableCargo(state, id);
+          const locked = canonicalId ? isUnsellableCargo(state, canonicalId) : false;
           let sellButtons;
-          if (locked) {
+          if (!canonicalId) {
+            sellButtons = '<span class="c-num text-dim">No market listing</span>';
+          } else if (locked) {
             const lockTitle = 'Contract cargo cannot be sold — it is required for an active mission';
             sellButtons = `
                 <button type="button" class="st-sell-btn" disabled
                   title="${lockTitle}" aria-label="${lockTitle}">LOCK: CONTRACT</button>`;
           } else {
             sellButtons = `
-                <button type="button" class="st-sell-btn" data-sell-cmdty="${id}" data-sell-qty="1"
+                <button type="button" class="st-sell-btn" data-sell-cmdty="${cargoItemRefAttr(canonicalId)}" data-sell-qty="1"
                   title="Sell one unit at the station's live price">Sell 1</button>
-                <button type="button" class="st-sell-btn st-sell-btn--all" data-sell-cmdty="${id}" data-sell-qty="${qty}"
+                <button type="button" class="st-sell-btn st-sell-btn--all" data-sell-cmdty="${cargoItemRefAttr(canonicalId)}" data-sell-qty="${qty}"
                   title="Sell every unit${unitPay != null ? ' · about ' + (unitPay * qty).toLocaleString('en-US') + ' cr' : ''}">Sell all</button>`;
           }
 
           html += `
             <div class="st-row">
-              <span class="c-name">${com.name}</span>
+              <span class="c-name">${cargoItemLabelHtml(id)}</span>
               <span class="c-num">${qty}</span>
               <span class="c-num">${vol}</span>
               <span class="c-num">${priceText}</span>

@@ -57,6 +57,7 @@ const OUTPOST_BY_ID = new Map(OUTPOSTS.map((o) => [o.id, o]));
 const TECH_BY_ID = new Map(TECH_NODES.map((node) => [node.id, node]));
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 const ASTEROID_BY_ID = new Map(ASTEROIDS.map((a) => [a.id, a]));
+const AUTOMATION_RECORD_ID_RE = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,95}$/;
 const COMMON_ORES = ['cmdty_ore_iron', 'cmdty_ore_copper', 'cmdty_ore_titanium', 'cmdty_ore_platinoid'];
 const TRADER_SHIP_DEF = Object.freeze({
   trader_hauler_l: 'ship_mule',
@@ -77,6 +78,35 @@ const OUTPOST_VISUAL_BY_DEF = Object.freeze({
     claimSpecId: 'spec_relay',
   }),
 });
+
+/** Keep persisted automation identities stable when valid, and replace malformed identities with
+ * a caller-supplied canonical fallback before UI/data-ref consumers can observe them. */
+export function normalizeAutomationRecordId(value, fallback = null) {
+  const candidate = typeof value === 'string'
+    ? value.trim()
+    : (Number.isSafeInteger(value) ? String(value) : '');
+  if (candidate && AUTOMATION_RECORD_ID_RE.test(candidate)) return candidate;
+  const safeFallback = typeof fallback === 'string' ? fallback.trim() : '';
+  return safeFallback && AUTOMATION_RECORD_ID_RE.test(safeFallback) ? safeFallback : null;
+}
+
+function normalizeAutomationRecordList(value, prefix) {
+  const list = Array.isArray(value) ? value : [];
+  const used = new Set();
+  const out = [];
+  for (let index = 0; index < list.length; index += 1) {
+    const record = list[index];
+    if (!record || typeof record !== 'object' || Array.isArray(record)) continue;
+    const baseFallback = `${prefix}_${index + 1}`;
+    let id = normalizeAutomationRecordId(record.id, baseFallback) || baseFallback;
+    let suffix = 2;
+    while (used.has(id)) id = `${baseFallback}_${suffix++}`;
+    record.id = id;
+    used.add(id);
+    out.push(record);
+  }
+  return out;
+}
 
 /**
  * Resolve the active hull's durable drone capacity.
@@ -2464,13 +2494,13 @@ export const automation = {
 
   // Heal a deserialized / partial automation tree to the full schema (§3.9).
   _normalizeAutomation(a) {
-    a.drones = a.drones || [];
+    a.drones = normalizeAutomationRecordList(a.drones, 'drone');
     // entityIds are runtime-only; a fresh load/normalize starts with none so they re-spawn in-sector.
     for (const g of a.drones) g.entityIds = [];
-    a.traders = a.traders || [];
-    a.outposts = a.outposts || [];
+    a.traders = normalizeAutomationRecordList(a.traders, 'trader');
+    a.outposts = normalizeAutomationRecordList(a.outposts, 'outpost');
     for (const o of a.outposts) delete o.entityId;
-    a.fleet = a.fleet || [];
+    a.fleet = normalizeAutomationRecordList(a.fleet, 'fleet');
     const sectorId = this.state && this.state.world && this.state.world.currentSectorId || null;
     for (const fs of a.fleet) {
       fs.wingOrder = normalizePersistedWingOrder(fs.wingOrder, sectorId, fs.order);

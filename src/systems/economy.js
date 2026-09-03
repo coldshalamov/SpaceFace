@@ -61,6 +61,14 @@ const ECON_TICK_S = 5;             // economy ticks every 5s of sim time
 const EVENT_INTERVAL_S = 90;       // average seconds between spontaneous economic events (game-wide)
 const EQ_MULT_CLAMP = [0.25, 4.0]; // clamp net event/propagation eq multiplier per (station,cmdty)
 const MAX_EVENTS_PER_STATION = 3;
+// Event types are persisted in saves and later rendered by the market chart. Keep this list in
+// the economy owner so a crafted save cannot introduce a new display/control value by merely
+// surviving deserialization. `piracy_spike` is retained for older authored receipts even though
+// spontaneous generation currently chooses the four primary types below.
+export const ECONOMY_EVENT_TYPES = Object.freeze([
+  'shortage', 'boom', 'blockade', 'piracy', 'piracy_spike',
+]);
+const ECONOMY_EVENT_TYPE_SET = new Set(ECONOMY_EVENT_TYPES);
 // The chart samples every 15 seconds and keeps roughly sixteen minutes. A new campaign is
 // pre-seeded from the live formula, so the first dock reads like a market with a past rather than
 // a blank instrument waiting for the player to stand around.
@@ -80,6 +88,20 @@ const NPC_SALVAGE_INTAKE_STATION_TYPES = new Set(['refinery', 'fab']);
 const REGIONAL_PRESSURE_RECIPES = Object.freeze(
   Object.values(allRegionalPressureRecipes()).flat(),
 );
+
+/** Return the canonical persisted event type, or null for an unrecognized save value. */
+export function normalizeEconomyEventType(value) {
+  if (typeof value !== 'string') return null;
+  const type = value.trim().toLowerCase();
+  return ECONOMY_EVENT_TYPE_SET.has(type) ? type : null;
+}
+
+export function normalizeRestoredEconomyEvent(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const type = normalizeEconomyEventType(value.type);
+  if (!type) return null;
+  return { ...value, type };
+}
 
 export const ECONOMY_PRICE_TUNING = Object.freeze({
   baseEqDefault: BASE_EQ_DEFAULT,
@@ -2111,7 +2133,9 @@ export const economy = {
       }
       econ.markets[sid] = out;
     }
-    econ.econEvents = (data.econEvents || []).map((e) => ({ ...e }));
+    econ.econEvents = Array.isArray(data.econEvents)
+      ? data.econEvents.map(normalizeRestoredEconomyEvent).filter(Boolean)
+      : [];
     econ.econClock = data.econClock || { accumulator: 0, lastTickT: 0, ticksElapsed: 0 };
     econ.marketIntel = data.marketIntel || {};
     if (Array.isArray(data.appliedSalvageIntakeReceipts)) {
