@@ -74,6 +74,14 @@ test('sandboxed preload remains a one-way lifecycle subscription', () => {
   const preload = read('electron/preload.cjs');
   assert.match(preload, /contextBridge\.exposeInMainWorld\('spacefaceLifecycle'/);
   assert.match(preload, /ipcRenderer\.on\(SHELL_LIFECYCLE_CHANNEL/);
-  assert.doesNotMatch(preload, /ipcRenderer\.(?:send|sendSync|invoke|postMessage)\s*\(/);
+  assert.match(preload, /const SHELL_QUIT_CHANNEL\s*=\s*['"]spaceface:quit['"]/);
+  const outboundIpcCalls = [...preload.matchAll(
+    /ipcRenderer\.(send|sendSync|invoke|postMessage)\s*\(\s*([^,)]+?)\s*\)/g,
+  )].map(([, method, argument]) => [method, argument.trim()]);
+  assert.deepEqual(outboundIpcCalls, [
+    ['send', 'SHELL_QUIT_CHANNEL'],
+    ['send', 'SHELL_QUIT_CHANNEL'],
+    ['send', 'SHELL_QUIT_CHANNEL'],
+  ], 'preload may send only the documented quit channel');
   assert.doesNotMatch(preload, /contextBridge\.exposeInMainWorld\([^)]*(?:ipcRenderer|require|process)/s);
 });

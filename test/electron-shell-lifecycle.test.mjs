@@ -56,6 +56,7 @@ async function loadMain({
     permissionRequestHandler: null,
   };
   const powerMonitor = emitter();
+  const ipcMain = emitter();
   const app = emitter({
     isPackaged: false,
     commandLine: { appendSwitch() {} },
@@ -179,7 +180,7 @@ async function loadMain({
       },
     },
     require(specifier) {
-      if (specifier === 'electron') return { app, BrowserWindow: FakeBrowserWindow, powerMonitor };
+      if (specifier === 'electron') return { app, BrowserWindow: FakeBrowserWindow, powerMonitor, ipcMain };
       if (specifier === 'http') return { get() { throw new Error('unexpected HTTP probe'); } };
       if (specifier === 'path') return path;
       if (specifier === '../scripts/lib/gameServer.cjs') return { createGameServer };
@@ -220,13 +221,14 @@ async function loadMain({
   }
   await settle();
   assert.equal(windows.length, 1);
-  return { app, powerMonitor, win: windows[0], windows, commands, receipts, security, serverStats };
+  return { app, powerMonitor, ipcMain, win: windows[0], windows, commands, receipts, security, serverStats };
 }
 
 function loadPreload() {
   const ipcListeners = new Map();
   const exposed = new Map();
   let outboundCalls = 0;
+  const outboundChannels = [];
   const contextBridge = {
     exposeInMainWorld(name, value) { exposed.set(name, value); },
   };
@@ -235,7 +237,10 @@ function loadPreload() {
       if (!ipcListeners.has(channel)) ipcListeners.set(channel, new Set());
       ipcListeners.get(channel).add(listener);
     },
-    send() { outboundCalls++; },
+    send(channel) {
+      outboundCalls++;
+      outboundChannels.push(channel);
+    },
     invoke() { outboundCalls++; },
   };
   vm.runInNewContext(readFileSync(PRELOAD_PATH, 'utf8'), {
@@ -251,6 +256,7 @@ function loadPreload() {
     exposed,
     ipcListeners,
     outboundCalls: () => outboundCalls,
+    outboundChannels: () => [...outboundChannels],
     emit(command) {
       for (const listener of [...(ipcListeners.get(CHANNEL) || [])]) listener({}, command);
     },
@@ -557,12 +563,27 @@ test('power suspend and screen lock publish system suspension through one listen
   );
 });
 
+test('main accepts only the documented quit IPC channel', async () => {
+  const h = await loadMain();
+  assert.equal(h.ipcMain.listenerCount('spaceface:quit'), 1);
+  assert.equal(h.ipcMain.listenerCount('spaceface:shell-lifecycle'), 0);
+
+  h.ipcMain.emit('spaceface:shell-lifecycle');
+  assert.equal(h.serverStats.quits, 0);
+  h.ipcMain.emit('spaceface:quit');
+  assert.equal(h.serverStats.quits, 1);
+  h.ipcMain.emit('spaceface:quit-extra');
+  assert.equal(h.serverStats.quits, 1);
+});
+
 test('preload exposes one monotonic one-way subscription and replays the latest command', () => {
   const h = loadPreload();
-  assert.deepEqual([...h.exposed.keys()], ['spacefaceLifecycle']);
+  assert.deepEqual([...h.exposed.keys()], ['spacefaceLifecycle', 'spacefaceShell', 'spacefaceQuit']);
   assert.deepEqual([...h.ipcListeners.keys()], [CHANNEL]);
   const lifecycle = h.exposed.get('spacefaceLifecycle');
-  assert.deepEqual(Object.keys(lifecycle), ['subscribe']);
+  assert.deepEqual(Object.keys(lifecycle), ['subscribe', 'quit']);
+  assert.deepEqual(Object.keys(h.exposed.get('spacefaceShell')), ['quit']);
+  assert.equal(typeof h.exposed.get('spacefaceQuit'), 'function');
 
   h.emit({ state: 'hidden-or-minimized', sequence: 4, reason: 'hide' });
   h.emit({ state: 'foreground-visible', sequence: 3, reason: 'focus' });
@@ -581,4 +602,9 @@ test('preload exposes one monotonic one-way subscription and replays the latest 
   h.emit({ state: 'foreground-occluded', sequence: 6, reason: 'blur' });
   assert.equal(received.length, 2);
   assert.equal(h.outboundCalls(), 0);
+
+  lifecycle.quit();
+  h.exposed.get('spacefaceShell').quit();
+  h.exposed.get('spacefaceQuit')();
+  assert.deepEqual(h.outboundChannels(), ['spaceface:quit', 'spaceface:quit', 'spaceface:quit']);
 });
