@@ -158,6 +158,63 @@ export const SWARM_ROSTER = Object.freeze([
 export const SWARM_BOSS_ENEMY_ID = 'dreadnought_boss';
 
 /**
+ * WHAT SHOWS UP ON A TENTH WAVE.
+ *
+ * It was the same Dreadnought, forever. Wave 10 and wave 90 were the same fight with bigger
+ * numbers, which is the exact failure the authored arc was careful to avoid inside its own ten.
+ *
+ * There is only one hull in the game built as a boss, so the other three entries are not weaker
+ * bosses — they are a different SHAPE of problem made from archetypes the roster already has. A
+ * wing of three raiders is a target-priority fight. The Anvil is two brawlers you cannot shake
+ * behind a screen that eats your missiles. The Choir is three snipers you have to close on while
+ * something holds you in place. Each one is beaten by a different half of your build.
+ *
+ * ORDER MATTERS: the rotation is walked in step with the roster clock, so every archetype a boss
+ * wave fields is one the player has already met as ordinary chaff. Nothing here introduces a
+ * silhouette for the first time as a champion.
+ */
+export const SWARM_BOSS_ROTATION = Object.freeze([
+  {
+    id: 'iron_maw',
+    label: "Dreadnought 'Iron Maw'",
+    line: 'A capital hull is on the field.',
+    packages: [{ enemyId: 'dreadnought_boss', count: 1, role: 'elite' }],
+  },
+  {
+    id: 'corsair_wing',
+    label: 'Corsair Wing',
+    line: 'Three raider aces, flying as one.',
+    packages: [{ enemyId: 'corsair_raider', count: 3, role: 'elite' }],
+  },
+  {
+    id: 'the_anvil',
+    label: 'The Anvil',
+    line: 'Two brawlers behind a screen that eats ordnance.',
+    packages: [
+      { enemyId: 'bruiser_brawler', count: 2, role: 'anchor' },
+      { enemyId: 'pd_screen_escort', count: 2, role: 'support' },
+    ],
+  },
+  {
+    id: 'quiet_choir',
+    label: 'The Quiet Choir',
+    line: 'Three ghosts at range, and something holding you still.',
+    packages: [
+      { enemyId: 'quiet_ghost', count: 3, role: 'reach' },
+      { enemyId: 'field_anchor_controller', count: 1, role: 'anchor' },
+    ],
+  },
+]);
+
+/** Which champion a boss wave fields. Non-boss waves have none. */
+export function swarmBossFor(wave) {
+  const w = swarmWaveOf(wave);
+  if (!isSwarmBossWave(w)) return null;
+  const step = Math.max(0, Math.floor(w / SWARM_BOSS_EVERY) - 1);
+  return SWARM_BOSS_ROTATION[step % SWARM_BOSS_ROTATION.length];
+}
+
+/**
  * The room rotation. Never `idle` — see rule 3. Ordered so the first four waves teach the four
  * things a room can do (drag you, shove you, give you geometry, rake you) before repeating.
  * Boss waves override this with the arc's own `boss` room.
@@ -351,22 +408,30 @@ export function swarmOpeningPackages(wave, rng) {
   const opening = swarmPressureAt(w, 0);
   const packages = [];
 
-  if (isSwarmBossWave(w)) {
-    packages.push({
-      atTick: 0,
-      gateGroup: swarmGateFor(w, 0),
-      role: 'elite',
-      enemyId: SWARM_BOSS_ENEMY_ID,
-      count: 1,
-      batchSize: 1,
-      batchGapTicks: 0,
+  const boss = swarmBossFor(w);
+  if (boss) {
+    // Every champion body carries `champion: true` all the way into the schedule, so the wave owner
+    // can owe a WING as easily as it owes one Dreadnought without knowing any enemy ids.
+    boss.packages.forEach((pkg, index) => {
+      packages.push({
+        atTick: 0,
+        gateGroup: swarmGateFor(w, index),
+        role: pkg.role,
+        enemyId: pkg.enemyId,
+        count: pkg.count,
+        batchSize: pkg.count,
+        batchGapTicks: 0,
+        champion: true,
+      });
     });
   }
 
   // Two or three arrival groups from different bearings: a swarm wave is surrounded from tick 0.
   // More bearings as the wave count climbs: at ten on you it is two doors, at thirty it is four.
   const groups = w <= 2 ? 2 : (w < 8 ? 3 : 4);
-  const bossBodies = isSwarmBossWave(w) ? 1 : 0;
+  const bossBodies = boss
+    ? boss.packages.reduce((sum, pkg) => sum + pkg.count, 0)
+    : 0;
   let left = Math.max(2, opening - bossBodies);
   for (let g = 0; g < groups && left > 0; g++) {
     const share = g === groups - 1 ? left : Math.max(1, Math.round(left / (groups - g)));
@@ -406,6 +471,7 @@ export function swarmPlanBlock(wave) {
   const w = swarmWaveOf(wave);
   const roster = swarmRosterFor(w);
   const newcomer = swarmNewcomerFor(w);
+  const boss = swarmBossFor(w);
   return {
     schemaVersion: SWARM_SCHEMA_VERSION,
     wave: w,
@@ -415,9 +481,12 @@ export function swarmPlanBlock(wave) {
     spawnCap: SWARM_SPAWN_CAP,
     level: swarmLevel(w),
     boss: isSwarmBossWave(w),
-    // A boss wave is not clearable by killing chaff around a live Dreadnought. The quota AND the
-    // boss are both owed.
+    // A boss wave is not clearable by killing chaff around a live champion. The quota AND every
+    // champion body are both owed.
     requireBoss: isSwarmBossWave(w),
+    bossId: boss ? boss.id : null,
+    bossLabel: boss ? boss.label : null,
+    bossLine: boss ? boss.line : null,
     draftAfter: isSwarmDraftWave(w),
     refitAfter: isSwarmRefitWave(w),
     reinforceGapTicks: SWARM_REINFORCE_GAP_TICKS,

@@ -260,6 +260,10 @@ export const survivalHud = {
   },
 
   _onAwarded(payload) {
+    // The chain pays on every kill and has its own large readout two lines up. Letting it also
+    // drive the earn receipt would mean the receipt said "+14 SCORE" continuously and never got a
+    // chance to say the thing it exists for — that something NEW was earned.
+    if (payload && payload.reason === 'chain') return;
     const line = earnLine(payload);
     if (!line) return;
     this._pushEarn(line);

@@ -183,9 +183,11 @@ export function waveOpeningLine(wave, plan) {
     const arrival = where ? `Contact ${where}.` : 'Contact on every bearing.';
     const newcomer = swarm.newcomer && swarm.newcomer.name ? swarm.newcomer.name : null;
     if (swarm.boss) {
-      const lead = leadPackage(packages);
-      const bossName = lead ? displayName(lead.enemyId) : 'A capital hull';
-      return `Wave ${wave}. ${arrival} ${bossName} leads. Kill it and put down ${swarm.quota}.`;
+      // The champion NAMES ITSELF. A boss wave can be one Dreadnought or a wing of three raiders,
+      // and "Corsair Raider leads" would describe the second one as if it were the first.
+      const label = swarm.bossLabel || 'A capital signature';
+      const line = swarm.bossLine ? ` ${swarm.bossLine}` : '';
+      return `Wave ${wave}. ${arrival} ${label}.${line} Put them down, and ${swarm.quota} with them.`;
     }
     const namecheck = newcomer ? ` ${newcomer} is new.` : '';
     return `Wave ${wave}. ${arrival}${namecheck} Put down ${swarm.quota}.`;

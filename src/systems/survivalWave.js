@@ -270,9 +270,11 @@ export const survivalWave = {
       this._admittedTotal += receipt.admitted;
       for (const id of receipt.spawnedIds) {
         this._cohort.set(id, entry.role);
-        // The boss is the wave's WORK, not one more body in the count. Remember which hulls it is
-        // so a kill quota met on chaff cannot end a boss wave with the Dreadnought still flying.
-        if (entry.enemyId === SWARM_BOSS_ENEMY_ID) this._bossIds.add(id);
+        // The champion is the wave's WORK, not one more body in the count. Remembering which hulls
+        // they are means a kill quota met on chaff cannot end a boss wave with the boss still
+        // flying — and because the marker is a FLAG rather than an enemy id, a wave can owe a wing
+        // of three raiders exactly as easily as it owes one Dreadnought.
+        if (entry.champion === true || entry.enemyId === SWARM_BOSS_ENEMY_ID) this._bossIds.add(id);
       }
       // A batch the cap refused lowers the wave's real body count, so the readout never asks the
       // player to kill bodies that were never admitted. A SWARM wave's denominator is its kill

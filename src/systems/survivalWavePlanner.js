@@ -120,14 +120,18 @@ function expandSchedule(packages) {
     const gap = pkg.batchGapTicks;
     while (remaining > 0) {
       const n = Math.min(batchSize, remaining);
-      entries.push({
+      const entry = {
         atTick: tick,
         gateGroup: pkg.gateGroup,
         role: pkg.role,
         enemyId: pkg.enemyId,
         count: n,
         packageIndex,
-      });
+      };
+      // Champion marker, carried only when a package sets it. Authored arc packages never do, so
+      // an arc schedule is byte-identical to what it always was.
+      if (pkg.champion === true) entry.champion = true;
+      entries.push(entry);
       remaining -= n;
       if (remaining > 0) tick += gap;
     }
