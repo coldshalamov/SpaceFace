@@ -49,6 +49,10 @@ disjoint files. No coordinator, task-long reservation, or worktree is required.
   Dispatch `node scripts/program-dispatch.mjs --id PQ-129` only for hitch leaves that do not
   collide with persistence Phase 1. Do not skip to Worker/WebGPU/quality cuts. Do not
   delete off-screen actors.
+- **The game isn't fun / combat and flight feel wonky / "agents keep adding content instead of
+  fixing the feel"** → §13C, [`design/FEEL_CONTRACT.md`](./design/FEEL_CONTRACT.md), then
+  `node scripts/program-dispatch.mjs --id PQ-137`. Answer with a bar from the contract and the
+  number that moved — not more enemies, ships, stations, or camera shake.
 - **3D objects look like toys next to real ships** (tube+ring beacons, cargo pods, 47-A
   spindle, uneven quality) → [`design/program/GRAPHICS_3D_CAMPAIGN.md`](./design/program/GRAPHICS_3D_CAMPAIGN.md)
   and the operator [`GRAPHICS_3D_GOAL.txt`](./design/program/GRAPHICS_3D_GOAL.txt). Same
@@ -2061,6 +2065,99 @@ were LODs, source files, and third-party kits. `check:asset-reachability` is the
 - The asset pipeline contract and reachability checks stay green — this adds routing, not exceptions.
 - **Preserve valuable future work** (`PLAN_REGISTRY.md` rule 6): mark `FUTURE` or `PARTIAL` rather
   than deleting because no implementation exists yet.
+
+## 13C. The box of dangerous toys — feel and consequence convergence (`PQ-137` … `PQ-145`) — ADMITTED 2026-09-03
+
+**Source:** [`design/VISION.md`](./design/VISION.md) Part II (the owner's full statement of what
+the game is supposed to feel like, 2026-09-03) and
+[`design/FEEL_CONTRACT.md`](./design/FEEL_CONTRACT.md) (the same-day audit of the live route plus
+the measurable bars). **Admitted by the owner on 2026-09-03** after playtest.
+
+### Why it is admitted: the owner played it, again
+
+> "the gameplay is wonky, it's not fun to play, the physics weapons blast things really slow and
+> cumbersome, when I blast enemies away it makes stupid vfx and just barely does anything, I don't
+> feel like I'm in control of anything that's going on in this game really … agents always just
+> keep expanding the turd instead of fixing the turd"
+
+The audit agreed with the owner's own guess ("a bad configuration or something … not enough
+attention on the guts of the physics"). **Seven rules, each added by a different agent for a locally
+sane reason, stacked into "nothing I do sticks"**: the default flight mode braked every speed the
+pilot earned (pressing *forward* after a slingshot slowed the ship); the physics layer deleted every
+shove that pushed an NPC past its own top speed; terrain was defined as never taking the helm; the
+per-contact momentum bound made a 150 WU/s rock slam a 40 WU/s scratch; thrust authority against
+fighting speed against screen depth gave the ship a 7–20-screen turn radius while it crossed the
+screen in under a second; the starter gun's shove was 0.5 momentum and the one real shove weapon was
+tech-gated; and the tests pinned all of it green. Full table: `FEEL_CONTRACT.md` §A.
+
+**Three of the seven were fixed the same day** (earned speed kept in the default mode; given
+momentum survives the NPC cap; hard slams take the helm). The rest, and everything the vision asks
+of the world around the physics, is this program.
+
+### The door
+
+**"The game isn't fun / combat and flight feel wonky / agents keep adding content instead of fixing
+the feel"** → this section → `design/FEEL_CONTRACT.md` → `node scripts/program-dispatch.mjs --id
+PQ-137`. Do not answer that complaint with more enemies, more ships, more stations, or camera
+shake. Answer it with a bar from the contract and the number that moved.
+
+### The rule that makes this program different
+
+Every packet below closes on **numbers in units an agent cannot tune away** — screen depths,
+seconds, hull lengths, fraction of hull lost, fraction of speed kept — measured on the default route
+at the shipping camera, before and after. "It follows the path" is not a number; PQ-135.00's own
+done-when admits its tracking test never measured speed, and that is the pattern this program ends.
+A test that pins behaviour `VISION.md` forbids is a defect: rewrite it with the vision's sentence in
+the assertion message (`FEEL_CONTRACT.md` §D).
+
+### Order
+
+```text
+PQ-137 the guts (feel contract)  ──┬─> PQ-139 impacts answer (weight you hear and feel)
+                                   ├─> PQ-138 the world reacts (three missing listeners first)
+                                   └─> PQ-140 roster as physical problems
+PQ-138 + PQ-139 + PQ-140 ─────────────> PQ-141 THE 60-SECOND PROOF (program acceptance gate)
+second wave, in parallel after PQ-137: PQ-142 progression + my ship · PQ-143 places + ordinary life
+                                        PQ-144 density layers + perf guard · PQ-145 industry → authorship
+```
+
+### The packets
+
+| Packet | Outcome | The bar it moves |
+|---|---|---|
+| **`PQ-137`** **The guts** — [`active/PQ-137.md`](./design/program/roadmap/active/PQ-137.md) | Two speeds in one default mode; shoves throw; hitstun is one law for guns, throws, flings and collisions; terrain is lethal; the rope is a rope; draw-to-fly rips; chains go off; every bar measured on the route. `.00`–`.02` **[DONE 2026-09-03]**. | B1–B8, B11 |
+| **`PQ-138`** **The world reacts** — [`active/PQ-138.md`](./design/program/roadmap/active/PQ-138.md) | The patrol chooses stay-or-chase; spilled cargo attracts NPCs; civilians flee gunfire; wrecks drift and tumble; failure mutates the mission; one site keeps evidence. Audit: all nine consequence beats are registered systems already — three events have zero listeners. Connection, not construction. | B10 |
+| **`PQ-139`** **Impacts answer** — [`active/PQ-139.md`](./design/program/roadmap/active/PQ-139.md) | Collisions get hitstop and trauma by momentum; collision audio by mass; the Massline release snaps; deaths sized to mass; impulse hits are cones not spheres; tumbling trails corkscrew; wells bend space. Audit: the feel layer never subscribed to collisions; audio ignores the momentum physics hands it; release is hard-coded to never snap. | B9 |
+| **`PQ-140`** **Roster as physical problems** — [`active/PQ-140.md`](./design/program/roadmap/active/PQ-140.md) | Interceptor = positioning problem; heavy = moving terrain; four specialists that each break a plan; fodder is ammunition. | B5/B6/B11 in the Crucible |
+| **`PQ-141`** **The 60-second proof** — [`active/PQ-141.md`](./design/program/roadmap/active/PQ-141.md) | The VISION sequence happens naturally and repeatedly at the reference site: deterministic scenario (≥ 9 of 11 beats) + headed capture + "every actor has a sentence." **The acceptance gate for the whole program.** | B12 |
+| `PQ-142` Progression = "what can I do now" + my ship — [`active/PQ-142.md`](./design/program/roadmap/active/PQ-142.md) | Capabilities as verbs (tow class, slam survival, line load, field deploy); scars, repairs, recognition by hull. | — |
+| `PQ-143` Places with a way of life + ordinary life — [`active/PQ-143.md`](./design/program/roadmap/active/PQ-143.md) | Helios/Ceres recognisable from 30 s of activity; routine work visible between incidents; six texture one-offs. | — |
+| `PQ-144` Density layers + perf guard — [`active/PQ-144.md`](./design/program/roadmap/active/PQ-144.md) | Foreground real / midground coherent / background implied, as a budget table; runtime witness before and after every packet here. | §8 |
+| `PQ-145` Industry becomes authorship — [`active/PQ-145.md`](./design/program/roadmap/active/PQ-145.md) | A player-built depot creates persistent NPC traffic and the crime that follows it. | — |
+
+### Binding constraints (in addition to §13A's)
+
+- **Never add drag.** Control comes from thrust authority, assist that lets go above the cap, and
+  camera — never from velocity decay.
+- **Never clamp given momentum.** A speed cap bounds a body's own drive; shoves, throws, flings and
+  contacts survive every cap.
+- **NPCs obey the player's physics.** No gyros, no transform writes, no instant counter-thrust.
+- **Do not scale knockback with victim HP.** It would reintroduce the HP grind by the back door.
+- **Make existing features collide before adding one.** `PQ-138` is three listeners, not three
+  systems.
+- Proof is a normal-speed capture at the shipping camera plus the deterministic scenario — never a
+  clip at a flattering angle, never "the check is green."
+
+### Outside opinions, graded (2026-09-03)
+
+Gemini 3.8 Flash (`agy`) and Kimi K3 (`opencode`, clinepass) were asked the flight and combat
+questions with the live numbers. They agreed with the audit on the load-bearing points — delete the
+NPC velocity clamp, never add drag, blend the auto-brake to zero above the cap, hitstun as one law of
+ΔV/cruise and mass ratio, terrain damage from pre-solve closing speed, corridor-based corner cutting
+for draw-to-fly — and each contributed one guard worth keeping: Kimi's *"keep a 1–3 s intent-to-
+velocity lag or 'drift when I choose to' stops meaning anything"* and *"do not scale knockback with
+HP %"*; Gemini's *"no cheating gyros."* Their numbers are recorded as experiment bands in
+`FEEL_CONTRACT.md` §C, not as law.
 
 ## 14. Fleet orchestration law for the 2026-08-21 final run
 

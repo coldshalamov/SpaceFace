@@ -17,6 +17,7 @@ the named outcome of the job you were given, then stop — the full working agre
 | Program map, "what next" / multi-plan work, check-off, plan routing | **`CANONICAL_BUILD_MAP.md`** (then `design/program/NOW.md` + queue) |
 | Every same-picture performance option, investigation, or large port later | **`CANONICAL_BUILD_MAP.md` §8.2** → [`design/PERF_OPTION_SPACE.md`](./design/PERF_OPTION_SPACE.md) |
 | The game is hitching / stuttering / not playing smoothly | **`CANONICAL_BUILD_MAP.md` §8.4** → [`design/program/PERF_HITCH_CAMPAIGN.md`](./design/program/PERF_HITCH_CAMPAIGN.md) → `PQ-129` (`--id PQ-129`). Measure first; do not cut quality |
+| The game is not fun / combat and flight feel wonky / "agents keep adding content instead of fixing the feel" | **`CANONICAL_BUILD_MAP.md` §13C** → [`design/FEEL_CONTRACT.md`](./design/FEEL_CONTRACT.md) → `PQ-137` (`--id PQ-137`). Answer with a bar and the number that moved, never with more content |
 | What is active or occupied now? | `design/program/NOW.md` → `design/program/README.md` |
 | Claim a multi-week roadmap packet | `design/program/roadmap/README.md` → `design/program/roadmap/00_EXECUTION_PROTOCOL.md` |
 | Implement a feature/fix | Activated plan/spec → `docs/MODULE_MAP.md` → owning nested `AGENTS.md` |

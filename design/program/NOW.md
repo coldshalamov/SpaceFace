@@ -41,6 +41,10 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
+| Chromium lab parity harness reliability | codex-luna-test-architecture | MUTATING 2026-09-03 | `src/testing/lab/chromiumHost.js`, `src/testing/lab/browserScenarioHost.js`, `src/testing/lab/differentialReplay.js`, `test/lab-chromium-parity.test.mjs`, `test/lab-browser-input-grammar.test.mjs` | focused lab tests green → controller review → commit → delete row |
+| Industrial payload canonical entity lifecycle | codex-luna-simulation | MUTATING 2026-09-03 | `src/combat/industrialBeam.js`, `src/systems/lootShards.js`, `src/systems/mining.js`, `src/systems/survivorPod.js`, `src/systems/weapons.js`, `test/industrial-beam-lifecycle.test.mjs` | lifecycle regression red→green → controller review → commit → delete row |
+| Asset startup readiness phase diagnosis | codex-luna-runtime | MUTATING 2026-09-03 | `scripts/check-asset-startup-readiness.mjs`, `test/asset-startup-readiness.test.mjs` | phase regression green → controller review → commit → delete row |
+| INFERENCE U1: 7th Ceres causal link `ev_rock_calving` (catalog wiring) | zcode-inference-10 | MUTATING 2026-09-03 | `src/systems/traffic.js`, `test/ceres-causal-chain.test.mjs`, `design/incubator/microevent_library/catalog/environmental.json` | focused chain test green → commit → record → delete row |
 These paths are protected from overwrite until a task explicitly adopts and finishes them. They are
 not active leases and do not prevent other tasks from proceeding.
 

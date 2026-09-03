@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-24",
+  "updatedAt": "2026-09-03",
   "purpose": "Canonical cross-plan priority and dispatch queue. Product completion remains authoritative in design/program/03_LIVE_ACCEPTANCE_MATRIX.md.",
   "stateContract": {
     "allowed": [
@@ -2637,6 +2637,217 @@
       "checks": [],
       "evidence": [],
       "brief": "Field the authored assets we already own: 80 unused authored models (wreck_aftermath_pack 44/44 unused, everyday_space_kit 30 unused, npc_activity_pack 6 unused) plus triage of half-finished hulls. Reuse before authoring; a variant counts as fielding; check:asset-reachability is the instrument, never a filename grep. See CANONICAL_BUILD_MAP.md section 13B."
+    },
+    {
+      "id": "PQ-137",
+      "priority": 59,
+      "title": "The guts: the physics feel contract",
+      "state": "ready",
+      "canonical": [
+        "FEEL-CONTRACT-GUTS"
+      ],
+      "aliases": [],
+      "dependsOn": [],
+      "mutexes": [
+        "flight-physics-feel"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "Two speeds in one default mode (nimble in a fight, earned speed kept across the galaxy); shoves throw; one hitstun law for guns, throws, flings and collisions; terrain lethal; the rope is a rope; draw-to-fly rips; chains go off; every bar measured on the default route. Bars B1-B8, B11 in design/FEEL_CONTRACT.md. See CANONICAL_BUILD_MAP.md section 13C."
+    },
+    {
+      "id": "PQ-138",
+      "priority": 60,
+      "title": "The world reacts: make existing systems collide",
+      "state": "ready",
+      "canonical": [
+        "WORLD-REACTS"
+      ],
+      "aliases": [],
+      "dependsOn": [],
+      "mutexes": [
+        "world-reaction"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "Patrol chooses stay-or-chase; spilled cargo attracts NPCs; civilians flee gunfire; wrecks drift and tumble; failure mutates the mission; one site keeps evidence. Audit 2026-09-03: all nine consequence beats are registered production systems and three events have zero listeners. Bar B10. Section 13C."
+    },
+    {
+      "id": "PQ-139",
+      "priority": 61,
+      "title": "Impacts answer: weight you can hear and feel",
+      "state": "ready",
+      "canonical": [
+        "IMPACTS-ANSWER"
+      ],
+      "aliases": [],
+      "dependsOn": [],
+      "mutexes": [
+        "impact-spectacle"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "Collisions get hitstop and trauma by exchanged momentum; collision audio by mass; the Massline release snaps; deaths sized to mass; impulse hits are cones not spheres; tumbling trails corkscrew; wells bend space. Bar B9. Section 13C."
+    },
+    {
+      "id": "PQ-140",
+      "priority": 62,
+      "title": "The roster is a set of physical problems",
+      "state": "ready",
+      "canonical": [
+        "ROSTER-PHYSICAL"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-137"
+      ],
+      "mutexes": [
+        "roster-physical"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "Interceptor = positioning problem; heavy = moving terrain; four specialists that each break a plan (tether-cutter, field-disruptor, anchor, cargo-protector); fodder is ammunition. Verified in the Crucible. Section 13C."
+    },
+    {
+      "id": "PQ-141",
+      "priority": 63,
+      "title": "The 60-second proof (program acceptance gate)",
+      "state": "ready",
+      "canonical": [
+        "SIXTY-SECOND-PROOF"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-137",
+        "PQ-138",
+        "PQ-139"
+      ],
+      "mutexes": [
+        "sixty-second-proof"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "The VISION.md sequence happens naturally and repeatedly at the reference site: deterministic scenario with >= 9 of 11 beats across 5 seeds, headed capture at the shipping camera, every actor has a sentence. Bar B12. The acceptance gate for section 13C."
+    },
+    {
+      "id": "PQ-142",
+      "priority": 64,
+      "title": "Progression means what can I do now, and the ship becomes mine",
+      "state": "ready",
+      "canonical": [
+        "PROGRESSION-VERBS"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-137"
+      ],
+      "mutexes": [
+        "progression-verbs"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "Four unlocks expressed as physical verbs (tow class, slam survival, line load, field deploy); scars, repairs and recognition by hull. Section 13C."
+    },
+    {
+      "id": "PQ-143",
+      "priority": 65,
+      "title": "Places with a way of life, and ordinary life between incidents",
+      "state": "ready",
+      "canonical": [
+        "PLACES-ORDINARY-LIFE"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-138"
+      ],
+      "mutexes": [
+        "places-ordinary-life"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "Helios/Ceres recognisable from 30 s of activity; routine work visible between incidents; six texture one-offs. Section 13C."
+    },
+    {
+      "id": "PQ-144",
+      "priority": 66,
+      "title": "Density layers and the performance guard for the toys program",
+      "state": "ready",
+      "canonical": [
+        "DENSITY-PERF-GUARD"
+      ],
+      "aliases": [],
+      "dependsOn": [],
+      "mutexes": [
+        "density-perf-guard"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "Foreground real / midground coherent / background implied as a budget table in PERF_BUDGET.md; runtime witness before and after every section 13C packet; no quality cuts."
+    },
+    {
+      "id": "PQ-145",
+      "priority": 67,
+      "title": "Industry becomes authorship",
+      "state": "ready",
+      "canonical": [
+        "INDUSTRY-AUTHORSHIP"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-138",
+        "PQ-143"
+      ],
+      "mutexes": [
+        "industry-authorship"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FEEL_CONTRACT.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "A player-built depot creates persistent NPC traffic and the crime that follows it; a region shows the player history. Section 13C."
     }
   ],
   "dispatchUnits": [
@@ -9137,6 +9348,886 @@
         "design/program/roadmap/receipts/PQ-129-20-cohort-prediction-REPORT.md"
       ],
       "brief": "Measured 2026-08-24 on five clean New Game witness runs after the FIX-K donor-pass unification: the first-visible identity gate fires every run because ~7 geometries and ~8 programs are still admitted AFTER the first visible pass (opening scene delta 40->47 geometries, 46->54 programs, consistent across runs). Presented cost on the measured machine is zero (1 hitch per ~1210 frames, p95 ~3 ms) - this is contract completion for slower GPUs, not a live hitch fix. The gap is the section 8.4 prediction-miss class: enumerate WHICH roots those late admissions belong to (the witness first-visible-pass-residency log and the identity gate name them), then either add them to the opening cohort census or consciously exempt them with a reason on the gate. Promotion law applies: no hitch rise, clean matched five-start A/B."
+    },
+    {
+      "id": "PQ-137.00",
+      "parentId": "PQ-137",
+      "priority": 395,
+      "title": "Earned speed is kept in the default mode",
+      "kind": "implementation",
+      "state": "done",
+      "dependsOn": [],
+      "mutexes": [
+        "flight-physics-feel"
+      ],
+      "paths": [
+        "src/core/flight/propulsionKernel.js",
+        "test/flightV3.spec.mjs",
+        "test/travel-drive.test.mjs"
+      ],
+      "checks": [
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-137-00-02-feel-rules-REPORT.md"
+      ],
+      "brief": "DONE 2026-09-03: governor floors at coast above the cap; hands-off assist blends to zero over 15 WU/s above it; pilot brake keeps full authority. Bar B1 at kernel level."
+    },
+    {
+      "id": "PQ-137.01",
+      "parentId": "PQ-137",
+      "priority": 396,
+      "title": "Given momentum survives the NPC speed cap",
+      "kind": "implementation",
+      "state": "done",
+      "dependsOn": [],
+      "mutexes": [
+        "flight-physics-feel"
+      ],
+      "paths": [
+        "src/core/sg02DynamicBodyOwner.js"
+      ],
+      "checks": [
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-137-00-02-feel-rules-REPORT.md"
+      ],
+      "brief": "DONE 2026-09-03: _clampSpeed bounds thrust-added speed only; shoves, throws, flings and contacts survive the cap. Bar B4 clamp half."
+    },
+    {
+      "id": "PQ-137.02",
+      "parentId": "PQ-137",
+      "priority": 397,
+      "title": "Hard terrain and structure slams take the helm",
+      "kind": "implementation",
+      "state": "done",
+      "dependsOn": [],
+      "mutexes": [
+        "flight-physics-feel"
+      ],
+      "paths": [
+        "src/combat/impulseKernel.js",
+        "test/weapon-impulse-consequence.test.mjs",
+        "scripts/check-impulse-authority.mjs"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:massline"
+      ],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-137-00-02-feel-rules-REPORT.md"
+      ],
+      "brief": "DONE 2026-09-03: deltaV >= tumbleDeltaV on terrain/structure tumbles regardless of provenance; scrapes stay helm-neutral. Bar B6 helm half."
+    },
+    {
+      "id": "PQ-137.03",
+      "parentId": "PQ-137",
+      "priority": 398,
+      "title": "The nimble regime: thrust vs fighting speed vs camera",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-137.10"
+      ],
+      "mutexes": [
+        "flight-physics-feel"
+      ],
+      "paths": [
+        "src/core/flight/propulsionKernel.js",
+        "src/core/flight/propulsionCatalog.js",
+        "src/render/camera.js",
+        "src/render/velocityLanguage.js",
+        "src/systems/flightV3.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:sim:v3"
+      ],
+      "receiptRefs": [],
+      "brief": "Rest->cruise <= 1.5 s, reversal <= 3.0 s, turn radius at cruise <= 1 screen depth, >= 1.2 s to cross the screen at cruise, camera opens toward 3x above the cap. Try velocity-vectoring assist below the cap (zero above) before touching yaw; keep a 1-3 s intent-to-velocity lag. Motion Lab before/after; Hitch vs Wasp distinct. Bars B2, B3."
+    },
+    {
+      "id": "PQ-137.04",
+      "parentId": "PQ-137",
+      "priority": 399,
+      "title": "One hitstun law for every impulse source",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-137.10"
+      ],
+      "mutexes": [
+        "flight-physics-feel"
+      ],
+      "paths": [
+        "src/combat/impulseKernel.js",
+        "src/combat/damage.js",
+        "src/systems/tumbleStates.js",
+        "src/systems/collisionConsequences.js",
+        "src/systems/weapons.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:combat"
+      ],
+      "receiptRefs": [],
+      "brief": "Helm-loss duration and entry spin = one function of (deltaV / cruise) and (attacker mass / victim mass) for gun impulses, rope throws, well flings and collisions; lights at >= 30% deltaV lose helm >= 1 s; heavies at gun-scale never; recovery by real thruster torque; retire the one-weapon 0.5 s beat. Bars B5, B11. Goldens per docs/COMMON_BUGS.md section 8."
+    },
+    {
+      "id": "PQ-137.05",
+      "parentId": "PQ-137",
+      "priority": 400,
+      "title": "Weapons have force, including the starter; the Crucible starts with a shove",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-137.04"
+      ],
+      "mutexes": [
+        "flight-physics-feel"
+      ],
+      "paths": [
+        "src/data/weapons.js",
+        "src/systems/survivalDraft.js",
+        "src/systems/survivalRun.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:crucible:route"
+      ],
+      "receiptRefs": [],
+      "brief": "Force table per FEEL_CONTRACT section C: starter >= 5% of light cruise per hit, shove weapon >= 30%, mine >= 45% at centre; the Crucible run starts with a shove weapon (record the kit decision; the owner may veto the weapon, not the requirement). Bar B4 magnitudes; re-verify the PQ-133 balance receipt."
+    },
+    {
+      "id": "PQ-137.06",
+      "parentId": "PQ-137",
+      "priority": 401,
+      "title": "Terrain is lethal: damage from pre-solve closing speed",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "flight-physics-feel"
+      ],
+      "paths": [
+        "src/combat/impulseKernel.js",
+        "src/core/sg02DynamicBodyOwner.js",
+        "src/systems/collisionConsequences.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:massline"
+      ],
+      "receiptRefs": [],
+      "brief": "Consequence damage from pre-solve closing speed and mass (quadratic above ~30 WU/s, inverse in mass); the solver bound stays a rate limit and never the damage input; a light dies at >= 75% of cruise and loses >= 60% at >= 50%; a heavy loses <= 15%. Bar B6 damage half."
+    },
+    {
+      "id": "PQ-137.07",
+      "parentId": "PQ-137",
+      "priority": 402,
+      "title": "The rope is a rope",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "flight-physics-feel"
+      ],
+      "paths": [
+        "src/core/sg02DynamicBodyOwner.js",
+        "src/systems/tetherGameplay.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:massline"
+      ],
+      "receiptRefs": [],
+      "brief": "Line stiffness scaled to the coupled load (mass*v^2/r) or a distance constraint: a 1.5x cruise swing on a 100 WU line stretches < 10% and holds; break by load rating, not stretch ratio; release keeps >= 95% tangential speed 5 s later. Bar B7."
+    },
+    {
+      "id": "PQ-137.08",
+      "parentId": "PQ-137",
+      "priority": 403,
+      "title": "Draw-to-fly rips: a pilot reinterpretation of the ink",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-137.03"
+      ],
+      "mutexes": [
+        "flight-physics-feel"
+      ],
+      "paths": [
+        "src/combat/autoTargetMode.js",
+        "src/systems/autoTargetAssist.js"
+      ],
+      "checks": [
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "Curvature-clamped centerline (r_min ~ 1.3 x turn radius), speed profile solved backward along the path, corridor half-width ~ 0.35 x turn radius, leave the ink only when it demands < 0.8 x turn radius or an obstacle intrudes, rejoin tangentially. Speed is the pass criterion, track is the constraint: mean stroke speed >= 70% cruise, slowest >= 35%, ordered coverage >= 90%. Add the speed bar to the tracking test. Bar B8."
+    },
+    {
+      "id": "PQ-137.09",
+      "parentId": "PQ-137",
+      "priority": 404,
+      "title": "Chains go off: tether-two, primed ships, wells",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-137.04"
+      ],
+      "mutexes": [
+        "flight-physics-feel"
+      ],
+      "paths": [
+        "src/systems/tetherGameplay.js",
+        "src/systems/fields.js",
+        "src/systems/swarmChain.js",
+        "src/systems/impulseCharges.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:combat"
+      ],
+      "receiptRefs": [],
+      "brief": "Tethered pairs share helm loss and inertia; a primed ship detonates on slam and primes what it knocks past the stun threshold for ~0.8 s; wells converge ships to 30-60 WU/s relative and prime on grind. One deterministic prime-sling-chain scenario producing >= 3 secondary consequences from one action."
+    },
+    {
+      "id": "PQ-137.10",
+      "parentId": "PQ-137",
+      "priority": 405,
+      "title": "The bars are measured on the route (Motion Lab scenarios)",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "flight-physics-feel"
+      ],
+      "paths": [
+        "src/testing/lab/",
+        "src/systems/motionScenarios.js",
+        "src/systems/motionTelemetry.js",
+        "tools/agentic/scenarios.json"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:all:smoke"
+      ],
+      "receiptRefs": [],
+      "brief": "Add feel.earned_speed_kept, feel.reversal_course, feel.screen_crossing, feel.shove_magnitude, feel.shove_displacement, feel.terrain_slam, feel.rope_swing_release, feel.stroke_speed, feel.hitstun_curve; each prints its bar number and runs in check:all:smoke. Do first or alongside .03."
+    },
+    {
+      "id": "PQ-138.00",
+      "parentId": "PQ-138",
+      "priority": 406,
+      "title": "The witness has a choice",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "world-reaction"
+      ],
+      "paths": [
+        "src/systems/lawSecurity.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:sim"
+      ],
+      "receiptRefs": [],
+      "brief": "lawSecurity consumes aftermathWreck:spawned and survivorPod:ejected, writes a victimAnchor onto the incident, and _dispatchIncident splits responders (one holds at the anchor, the rest pursue); the holder visibly decelerates and circles. Bar B10a: within 10 s of a witnessed kill."
+    },
+    {
+      "id": "PQ-138.01",
+      "parentId": "PQ-138",
+      "priority": 407,
+      "title": "Spilled cargo is noticed",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "world-reaction"
+      ],
+      "paths": [
+        "src/systems/traffic.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:sim"
+      ],
+      "receiptRefs": [],
+      "brief": "traffic consumes freight:cargoSpilled (and salvage:fieldVulture) and dispatches a salvor job to the spill; _isSalvageableBody accepts freight pickups; pirates near the route may take the job. Bar B10b: an NPC reaches spilled cargo within 30 s."
+    },
+    {
+      "id": "PQ-138.02",
+      "parentId": "PQ-138",
+      "priority": 408,
+      "title": "Civilians react to nearby violence",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "world-reaction"
+      ],
+      "paths": [
+        "src/systems/traffic.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:sim"
+      ],
+      "receiptRefs": [],
+      "brief": "traffic consumes combat:damage / law:incidentOpened with a radius test; haulers within 300 WU flee or re-route, workers hold, a tug keeps its tow, via the existing ai:flee / job-suspend paths. Bar B10c: course change within 3 s."
+    },
+    {
+      "id": "PQ-138.03",
+      "parentId": "PQ-138",
+      "priority": 409,
+      "title": "Wrecks drift and tumble",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "world-reaction"
+      ],
+      "paths": [
+        "src/systems/aftermathWrecks.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:save-schema"
+      ],
+      "receiptRefs": [],
+      "brief": "The wreck spec inherits the dying ship velocity and spin (bounded), carries an off-plane pose, still saves per sector; tumble bleeds off with the shipped angular damping."
+    },
+    {
+      "id": "PQ-138.04",
+      "parentId": "PQ-138",
+      "priority": 410,
+      "title": "Failure mutates the mission",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "world-reaction"
+      ],
+      "paths": [
+        "src/systems/missions.js",
+        "src/systems/contractClauses.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:sim"
+      ],
+      "receiptRefs": [],
+      "brief": "A broken contract clause mutates the mission (escape, restitution, salvage, recovery) instead of _failMission; one authored mutation per clause type; the log reads So then."
+    },
+    {
+      "id": "PQ-138.05",
+      "parentId": "PQ-138",
+      "priority": 411,
+      "title": "The evidence ledger at one site",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-138.00",
+        "PQ-138.01",
+        "PQ-138.02"
+      ],
+      "mutexes": [
+        "world-reaction"
+      ],
+      "paths": [
+        "src/systems/",
+        "tools/agentic/scenarios.json"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "Within one session at the reference site: a wreck persists, traffic thins on a disrupted route, a price moves, a rumor appears, a structure shows a patch; a checklist scenario detects all five from one player-caused incident."
+    },
+    {
+      "id": "PQ-139.00",
+      "parentId": "PQ-139",
+      "priority": 412,
+      "title": "Collisions answer: hitstop and trauma by momentum; the release snaps",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "impact-spectacle"
+      ],
+      "paths": [
+        "src/render/feel.js",
+        "src/render/masslinePresentation.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:vfx-techniques"
+      ],
+      "receiptRefs": [],
+      "brief": "feel.js subscribes to combat:collisionConsequence; hitstop and trauma scale with exchanged momentum; the Massline release gets hsDur > 0 behind the headless-safe guard. Bar B9a."
+    },
+    {
+      "id": "PQ-139.01",
+      "parentId": "PQ-139",
+      "priority": 413,
+      "title": "Sound tells weight",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "impact-spectacle"
+      ],
+      "paths": [
+        "src/audio/audioSystem.js",
+        "src/audio/cueRecipesSignatures.js"
+      ],
+      "checks": [
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "Collision audio picks pitch and gain from dp and the two masses (>= one octave and >= 12 dB between a scout on rock and a freighter on station); release and break use different samples. Bar B9b."
+    },
+    {
+      "id": "PQ-139.02",
+      "parentId": "PQ-139",
+      "priority": 414,
+      "title": "Death is sized to mass and cause",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "impact-spectacle"
+      ],
+      "paths": [
+        "src/render/vfx.js",
+        "src/audio/audioSystem.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:vfx-techniques"
+      ],
+      "receiptRefs": [],
+      "brief": "Explosion and audio scale with mass and cause (>= 4 tiers or continuous), directional when caused; the wreck inherits motion (with PQ-138.03)."
+    },
+    {
+      "id": "PQ-139.03",
+      "parentId": "PQ-139",
+      "priority": 415,
+      "title": "Impulse hits are cones, not spheres",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "impact-spectacle"
+      ],
+      "paths": [
+        "src/render/vfx.js",
+        "src/vfxnext/",
+        "src/systems/impulseCharges.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:vfx-techniques"
+      ],
+      "receiptRefs": [],
+      "brief": "Concussion, mine and rail impacts use directional families (wire the vfxnext cone/sheet/ribbon references into vfx.js handlers; retire the generic combat.explosion.small on impulse charges)."
+    },
+    {
+      "id": "PQ-139.04",
+      "parentId": "PQ-139",
+      "priority": 416,
+      "title": "Tumbling ships corkscrew their trail",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "impact-spectacle"
+      ],
+      "paths": [
+        "src/render/vfx.js",
+        "src/render/shipPitchPresentation.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:vfx-techniques"
+      ],
+      "receiptRefs": [],
+      "brief": "The plume/contrail reacts to angVel (helix with spin, brightness with thrust); frame-sleep counters stay 0 when idle."
+    },
+    {
+      "id": "PQ-139.05",
+      "parentId": "PQ-139",
+      "priority": 417,
+      "title": "Wells bend space",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "impact-spectacle"
+      ],
+      "paths": [
+        "src/systems/fields.js",
+        "src/render/post/spaceRenderGraph.js",
+        "src/render/weapons/presenter.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:vfx-techniques"
+      ],
+      "receiptRefs": [],
+      "brief": "fields.js wells produce DistortionField records; the distortion pass accepts more than one producer; strength tracks field strength and radius."
+    },
+    {
+      "id": "PQ-140.00",
+      "parentId": "PQ-140",
+      "priority": 418,
+      "title": "Interceptor is a positioning problem",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-137.03"
+      ],
+      "mutexes": [
+        "roster-physical"
+      ],
+      "paths": [
+        "src/systems/tacticalAI.js",
+        "src/ai/maneuver.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:combat"
+      ],
+      "receiptRefs": [],
+      "brief": "Crossing lanes, extend-and-return, never a stationary target; metric: time the player spends off its attack line."
+    },
+    {
+      "id": "PQ-140.01",
+      "parentId": "PQ-140",
+      "priority": 419,
+      "title": "Heavy is moving terrain",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-137.04",
+        "PQ-137.06"
+      ],
+      "mutexes": [
+        "roster-physical"
+      ],
+      "paths": [
+        "src/systems/tacticalAI.js",
+        "src/data/ships.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:combat"
+      ],
+      "receiptRefs": [],
+      "brief": "Mass >= 150; gun-scale impulses do nothing; the player can swing around it, hide behind it, throw lights into it; a light thrown into it dies."
+    },
+    {
+      "id": "PQ-140.02",
+      "parentId": "PQ-140",
+      "priority": 420,
+      "title": "Four specialists, one plan each",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-137.04"
+      ],
+      "mutexes": [
+        "roster-physical"
+      ],
+      "paths": [
+        "src/systems/tacticalAI.js",
+        "src/ai/",
+        "src/systems/masslineThreats.js",
+        "src/systems/masslineSnares.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:combat"
+      ],
+      "receiptRefs": [],
+      "brief": "Tether-cutter, field-disruptor, anchor, cargo-protector; each breaks one specific player plan and is readable by silhouette and behaviour before any label; four scenarios."
+    },
+    {
+      "id": "PQ-140.03",
+      "parentId": "PQ-140",
+      "priority": 421,
+      "title": "Fodder is ammunition",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-137.04",
+        "PQ-137.05"
+      ],
+      "mutexes": [
+        "roster-physical"
+      ],
+      "paths": [
+        "src/ai/fodderCohort.js",
+        "src/systems/survivalSwarm.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:crucible:route"
+      ],
+      "receiptRefs": [],
+      "brief": "With the hitstun law and force table in, the twelve-body cohort resolves quickly under physics play; the free gun no longer out-performs the physics kit; median time-to-resolve a light under physics <= under guns."
+    },
+    {
+      "id": "PQ-141.00",
+      "parentId": "PQ-141",
+      "priority": 422,
+      "title": "Deterministic scenario proof.sixty_seconds",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-137.03",
+        "PQ-137.04",
+        "PQ-137.05",
+        "PQ-137.06",
+        "PQ-138.00",
+        "PQ-138.01",
+        "PQ-138.02",
+        "PQ-139.00",
+        "PQ-139.01"
+      ],
+      "mutexes": [
+        "sixty-second-proof"
+      ],
+      "paths": [
+        "tools/agentic/scenarios.json",
+        "src/testing/lab/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "Seeded scenario at the reference site with the op running, a hauler on schedule, a pirate intercept, a patrol in range, and a scripted player input tape of a few simple verbs; receipts detect the 11 beats; >= 9 of 11 across 5 seeds; never exceeds 90 s."
+    },
+    {
+      "id": "PQ-141.01",
+      "parentId": "PQ-141",
+      "priority": 423,
+      "title": "Headed capture at the shipping camera and owner review",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-141.00"
+      ],
+      "mutexes": [
+        "sixty-second-proof"
+      ],
+      "paths": [
+        "design/program/roadmap/receipts/"
+      ],
+      "checks": [
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "Normal speed, no debug overlays, default quality; owner verdict recorded; missing beats routed back to their packet."
+    },
+    {
+      "id": "PQ-141.02",
+      "parentId": "PQ-141",
+      "priority": 424,
+      "title": "Every actor has a sentence (blind legibility review)",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-141.00"
+      ],
+      "mutexes": [
+        "sixty-second-proof"
+      ],
+      "paths": [
+        "src/systems/npcJobsRuntime.js",
+        "src/render/"
+      ],
+      "checks": [
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "With HUD text hidden, a reviewer who has not read the scenario names what the miner, hauler, tender, survey ship, patrol, pirate and scavenger are doing from motion and light alone; >= 6 of 7."
+    },
+    {
+      "id": "PQ-142.00",
+      "parentId": "PQ-142",
+      "priority": 425,
+      "title": "Capabilities, not percentages",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-137.06",
+        "PQ-137.07"
+      ],
+      "mutexes": [
+        "progression-verbs"
+      ],
+      "paths": [
+        "src/systems/ships.js",
+        "src/data/modules.js",
+        "src/ui/screens/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:save-schema"
+      ],
+      "receiptRefs": [],
+      "brief": "Four unlocks expressed as physical verbs (tow class, slam survival, line load, field deploy), each shown in the fitting UI as a sentence and each with a before/after scenario where the verb was impossible."
+    },
+    {
+      "id": "PQ-142.01",
+      "parentId": "PQ-142",
+      "priority": 426,
+      "title": "Ship history: scars, repairs, recognition",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "progression-verbs"
+      ],
+      "paths": [
+        "src/core/livingHull.js",
+        "src/systems/shipLedger.js",
+        "src/systems/barkDirector.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:save-schema"
+      ],
+      "receiptRefs": [],
+      "brief": "Scars from real impacts persist on the hull, repairs leave patches, NPCs recognise the hull by reputation; save round-trip; one bark that names the ship after a witnessed act."
+    },
+    {
+      "id": "PQ-143.00",
+      "parentId": "PQ-143",
+      "priority": 427,
+      "title": "Sector identity table, made true on the route",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "places-ordinary-life"
+      ],
+      "paths": [
+        "design/",
+        "src/data/",
+        "src/systems/sectorSim.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:atlas-integrity"
+      ],
+      "receiptRefs": [],
+      "brief": "For Helios and Ceres: verb, rhythm, law, crime, ships, structures, what the player can physically do here, what remains when damaged; a blind reviewer names the sector from a 30 s capture with labels hidden."
+    },
+    {
+      "id": "PQ-143.01",
+      "parentId": "PQ-143",
+      "priority": 428,
+      "title": "Ordinary-life rhythm",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-138.02"
+      ],
+      "mutexes": [
+        "places-ordinary-life"
+      ],
+      "paths": [
+        "src/systems/npcJobsRuntime.js",
+        "src/systems/traffic.js",
+        "src/systems/livingPoiBehaviors.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "Routine traffic, inspections, cargo transfers, repair, waiting, a slow tug, visible at the shipping camera without HUD text; a 5-minute capture at the reference site shows all of them; activity telemetry shows the rhythm."
+    },
+    {
+      "id": "PQ-143.02",
+      "parentId": "PQ-143",
+      "priority": 429,
+      "title": "Six texture one-offs",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "places-ordinary-life"
+      ],
+      "paths": [
+        "src/data/",
+        "src/systems/world.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:atlas-integrity"
+      ],
+      "receiptRefs": [],
+      "brief": "An abandoned tug spinning beside a refinery, a courier far too fast, a shrine on a strut, a pirate with a ridiculous ram, a decades-old pod field, a very large tanker; placed and reachable on the default route."
+    },
+    {
+      "id": "PQ-144.00",
+      "parentId": "PQ-144",
+      "priority": 430,
+      "title": "The three density layers as a budget table",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "density-perf-guard"
+      ],
+      "paths": [
+        "design/PERF_BUDGET.md",
+        "src/systems/",
+        "src/render/"
+      ],
+      "checks": [
+        "npm run probe:runtime-witness",
+        "npm run check:perf"
+      ],
+      "receiptRefs": [],
+      "brief": "Foreground real / midground coherent / background implied; which systems already do each; the honest boundary; a runtime witness report before and after every section 13C packet with no new top frame-time bucket."
+    },
+    {
+      "id": "PQ-145.00",
+      "parentId": "PQ-145",
+      "priority": 431,
+      "title": "A player-built depot creates persistent traffic",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-138.01",
+        "PQ-143.01"
+      ],
+      "mutexes": [
+        "industry-authorship"
+      ],
+      "paths": [
+        "src/systems/claims.js",
+        "src/systems/siteLogistics.js",
+        "src/systems/traffic.js",
+        "src/systems/travelLanes.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:save-schema",
+        "npm run check:atlas-integrity"
+      ],
+      "receiptRefs": [],
+      "brief": "Placing a depot/claim spawns real hauler jobs to and from it; the route shows on the map; pirates begin to watch it; traffic persists across sessions."
     }
   ]
 }
