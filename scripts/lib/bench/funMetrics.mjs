@@ -233,7 +233,12 @@ function measureNothingHappenedSeconds(trace, gaps) {
 // Crucible source: the run metrics (playerKnockEventsPerMin / maxPlayerKnockFraction).
 function deriveKnockBudget(run, { bench, metrics, trace, simMinutes, gaps }) {
   if (bench === 'verbs') {
-    if (run.scenarioId !== 'feel.knock_budget') {
+    // `feel.knock_budget_10min` delegates to the same `runKnockBudget` with the contract's own
+    // ten-minute window, so it publishes the identical metric shape. Matching only the 120 s id
+    // made the ONE run long enough to answer B13 invisible to this rollup, which reported it as a
+    // scenario that "does not measure the knock budget" while it was measuring exactly that.
+    // This does not relax the verdict: jitterMeasured is still required below.
+    if (run.scenarioId !== 'feel.knock_budget' && run.scenarioId !== 'feel.knock_budget_10min') {
       gaps.push('knockBudget: verb scenario does not measure the knock budget');
       return null;
     }

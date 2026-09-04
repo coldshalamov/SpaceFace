@@ -20,18 +20,36 @@ both present in the `check` chain. Losing either would have silently dropped a g
 
 ## The numbers
 
-The contract window is ten minutes, so that is the run that decides the bar.
+The contract window is ten minutes, so that is the run that decides the bar. It was **re-run on
+master after integration**, not carried over from the worktree:
 
-| Run | Knocks/min (≤ 2) | Largest knock (≤ 10 % cruise) | Heading changes (0) | Jitter | Verdict |
-|---|---|---|---|---|---|
-| 10 min ordinary flight, real path | **1** | **6.6 %** | **0** | 0 events, measured | **bar met** |
-| 120 s, seed 4242 | 2 | 5.6 % | 0 | 0 events | met |
-| 120 s, seed 8008 | 1.5 | 4.5 % | 0 | 0 events | met |
-| verbs `feel.knock_budget` re-measured on master after integration | 2 | 5.6 % | 0 | unmeasured (headless) | 3 clauses met, bar `null` |
+| Run | Knocks/min (≤ 2) | Largest knock (≤ 10 % cruise) | Heading changes (0) | Sign-flip jitter events |
+|---|---|---|---|---|
+| **10 min, real path, re-measured on master** | **1** | **6.61 %** | **0** | **0** |
+| 10 min, measured pre-integration at `8198c0ed` | 1 | 6.61 % | 0 | 0 |
+| 120 s, seed 4242 | 2 | 5.6 % | 0 | 0 |
+| 120 s, seed 8008 | 1.5 | 4.5 % | 0 | 0 |
 
-Cruise 95 WU/s; knock source is `physics:impact(playerInvolved).appliedPlayerDeltaV`, receipts
-coalesced into events. The receipt-vs-independently-measured velocity discontinuity agreed to
-1.4e-7 of cruise, so the receipts describe what the hull actually did.
+The master re-run reproduces the pre-integration numbers **bit for bit**
+(`0.06607713790601516` in both), which is the useful result: the contact change altered sim
+trajectories elsewhere — it moved the 47-A hash — without changing what ambient contact does to the
+player hull. 600 s, 36 000 ticks, cruise 95 WU/s, 139 receipts coalescing into 10 knock events.
+Knock source is `physics:impact(playerInvolved).appliedPlayerDeltaV`. The receipt-vs-independently-
+measured velocity discontinuity agreed to 1.4e-7 of cruise, so the receipts describe what the hull
+actually did.
+
+**What `barMet: true` does and does not say.** The scenario computes it as
+`knocks/min ≤ 2 && maxFraction ≤ 0.10 && headingChanges === 0` — the three countable clauses only.
+Jitter is measured separately (lateral-velocity sign flips inside 0.25 s of each bump: 0 events,
+max flips 0) and deliberately **not** folded in. So the honest reading is: the three counting
+clauses pass on the contract window, and the rollup still reports B13 as `met: null` because it
+requires `jitterMeasured`. That withholding is correct and was left alone — a bar that reads met
+because a field was renamed is exactly the pinned-green failure this program is trying to end.
+
+One instrument repair: the rollup matched only the 120-second `feel.knock_budget` id, so
+`feel.knock_budget_10min` — the single run long enough to answer B13 — was reported as a scenario
+that "does not measure the knock budget" while it was measuring precisely that. It is now accepted;
+the `jitterMeasured` requirement below it is untouched, so the verdict is still `null`.
 
 ## The `causalActorId` finding — not a defect
 
@@ -72,10 +90,12 @@ change — and whoever re-records it must account for both, not one.
 
 ## What is still open
 
-Nothing on the three measurable clauses. The remaining gap is the same one the instrument states
-itself: **visible jitter is unmeasured on any headless path**, so a full B13 verdict cannot read
-`true` from the bench alone. The ten-minute real-path scenario does measure jitter (0 events) and
-reports `barMet: true`; the Crucible and verb paths do not, and honestly say so rather than
-inferring it.
+Nothing on the three measurable clauses; they pass on the contract's own ten-minute window.
+
+The remaining gap is the one the instrument states itself: **visible jitter is unproven**. The
+scenario measures a physical proxy — lateral-velocity sign flips after each bump, 0 events — but
+"never produces visible jitter" is a claim about what the player sees, and no headless path can
+close it. A headed capture at the shipping camera is what would set `jitterMeasured` and let B13
+read `true`. Until then the bar stays `null`, which is the honest verdict, not a failure.
 
 `check:player-knock` 5/5 green; `check:sg02` exit 0.
