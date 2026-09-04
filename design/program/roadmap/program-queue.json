@@ -10594,7 +10594,8 @@
         "npm run check:all:smoke"
       ],
       "receiptRefs": [
-        "design/program/roadmap/receipts/PQ-137.10-stroke-speed-REPORT.md"
+        "design/program/roadmap/receipts/PQ-137.10-stroke-speed-REPORT.md",
+        "design/program/roadmap/receipts/PQ-137.10-terrain-rope-REPORT.md"
       ],
       "brief": "Add feel.earned_speed_kept, feel.reversal_course, feel.screen_crossing, feel.shove_magnitude, feel.shove_displacement, feel.terrain_slam, feel.rope_swing_release, feel.stroke_speed, feel.hitstun_curve; each prints its bar number and runs in check:all:smoke. Do first or alongside .03."
     },
