@@ -18,7 +18,7 @@ import { SIM_DT } from '../src/core/sim.js';
 import { impulseCharges } from '../src/systems/impulseCharges.js';
 import { IMPULSE_CHARGES } from '../src/data/impulseCharges.js';
 import { WEAPONS } from '../src/data/weapons.js';
-import { resolveCollisionConsequence } from '../src/combat/impulseKernel.js';
+import { resolveCollisionConsequence, TERRAIN_CRUMPLE_LAW } from '../src/combat/impulseKernel.js';
 import { auditPhysicsMembraneSources } from './lib/physicsMembraneAudit.mjs';
 
 const DEF = IMPULSE_CHARGES.charge_standard;
@@ -198,13 +198,55 @@ function assertCollisionConsequenceContract() {
   assert.equal(scrape.control, 'none',
     'a terrain scrape must not stagger or tumble, even when the victim was just shot');
   assert.equal(scrape.staggerTicks, 0);
-  assert.ok(scrape.impactDamage > 0, 'a scrape keeps its terrain damage payoff');
   assert.ok(['stagger', 'tumble'].includes(craft.control),
     'combat-attributed craft contact still takes the helm at the Δv floors');
   assert.ok(craft.impactDamage > 0,
     'high-momentum craft contact must produce the authored baseline hull damage');
   assert.ok(craft.impactDamage < terrain.impactDamage,
     'the 0.6 craft baseline stays subordinate to a comparable terrain impact');
+
+  const wasp = { id: 12, type: 'ship', mass: 16, radius: 6 };
+  const atlas = { id: 13, type: 'ship', mass: 200, radius: 20 };
+  const rock = { id: 30, type: 'asteroid' };
+  const boundedWasp = {
+    target: wasp,
+    other: rock,
+    exchangedMomentum: 16 * 40,
+    tick: 120,
+    pos: { x: 6, z: 0 },
+    normal: { x: -1, z: 0 },
+  };
+  const wasp50 = resolveCollisionConsequence({ ...boundedWasp, preSolveClosingSpeed: 52.5 });
+  assert.equal(wasp50.deltaV, 40, 'crumple damage must not rewrite bounded contact Δv');
+  assert.equal(wasp50.impactDamage, 291.09375, 'Wasp 52.5 WU/s close is 291.09375 terrain crumple');
+  const wasp76 = resolveCollisionConsequence({ ...boundedWasp, preSolveClosingSpeed: 79.8 });
+  assert.equal(wasp76.deltaV, 40);
+  assert.equal(wasp76.impactDamage, TERRAIN_CRUMPLE_LAW.maxDamage, 'Wasp 79.8 WU/s close caps at 400');
+  const atlasHit = resolveCollisionConsequence({
+    target: atlas,
+    other: rock,
+    exchangedMomentum: 200 * 40,
+    tick: 120,
+    pos: { x: 6, z: 0 },
+    normal: { x: -1, z: 0 },
+    preSolveClosingSpeed: 79.8,
+  });
+  assert.equal(atlasHit.deltaV, 40);
+  assert.ok(atlasHit.impactDamage <= 108, `Atlas crumple cap is 108; got ${atlasHit.impactDamage}`);
+  const subThreshold = resolveCollisionConsequence({ ...boundedWasp, preSolveClosingSpeed: 30 });
+  assert.equal(subThreshold.impactDamage, 0,
+    'an explicit sub-threshold close is real data and produces zero crumple damage');
+  const craftHot = resolveCollisionConsequence({
+    ...boundedWasp,
+    other: { id: 31, type: 'ship', mass: 16, radius: 6 },
+    preSolveClosingSpeed: 79.8,
+  });
+  const craftLegacy = resolveCollisionConsequence({
+    ...boundedWasp,
+    other: { id: 31, type: 'ship', mass: 16, radius: 6 },
+  });
+  assert.equal(craftHot.impactDamage, craftLegacy.impactDamage,
+    'craft contact ignores preSolveClosingSpeed and stays on exchanged-momentum damage');
 }
 
 // 8. New weapon/impulse/consequence paths are gameplay requesters, never motion owners. The

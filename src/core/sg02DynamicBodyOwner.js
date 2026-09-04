@@ -123,6 +123,17 @@ export function directContactCausalActorId(aId, bId, aVx, aVz, bVx, bVz, nx, nz)
   return aContribution > bContribution ? aId : bId;
 }
 
+// Radial pre-solve closing speed along A-to-B center separation. Static bodies pass 0 velocity.
+// Separating and tangential pairs are 0; this is not total relative speed and never abs().
+export function preSolveRadialClosingSpeed(aVx, aVz, bVx, bVz, nABx, nABz) {
+  const normalLength = Math.hypot(finite(nABx), finite(nABz));
+  if (!(normalLength > DIRECT_CONTACT_CAUSAL_EPSILON)) return 0;
+  const normalX = finite(nABx) / normalLength;
+  const normalZ = finite(nABz) / normalLength;
+  const closing = (finite(aVx) - finite(bVx)) * normalX + (finite(aVz) - finite(bVz)) * normalZ;
+  return closing > 0 ? closing : 0;
+}
+
 
 export async function createSg02DynamicBodyOwner(options = {}) {
   const RAPIER = options.RAPIER || await loadRapierCompat();
@@ -914,16 +925,23 @@ export class Sg02DynamicBodyOwner {
       const bExpected = b.expected;
       const aKinematics = a.kinematics;
       const bKinematics = b.kinematics;
+      const aVx = a.spec.dynamic ? finite(aExpected && aExpected.vx) : 0;
+      const aVz = a.spec.dynamic ? finite(aExpected && aExpected.vz) : 0;
+      const bVx = b.spec.dynamic ? finite(bExpected && bExpected.vx) : 0;
+      const bVz = b.spec.dynamic ? finite(bExpected && bExpected.vz) : 0;
+      const nABx = finite(bKinematics && bKinematics.x) - finite(aKinematics && aKinematics.x);
+      const nABz = finite(bKinematics && bKinematics.z) - finite(aKinematics && aKinematics.z);
       const causalActorId = directContactCausalActorId(
         a.entity.id,
         b.entity.id,
-        a.spec.dynamic ? aExpected && aExpected.vx : 0,
-        a.spec.dynamic ? aExpected && aExpected.vz : 0,
-        b.spec.dynamic ? bExpected && bExpected.vx : 0,
-        b.spec.dynamic ? bExpected && bExpected.vz : 0,
-        finite(bKinematics && bKinematics.x) - finite(aKinematics && aKinematics.x),
-        finite(bKinematics && bKinematics.z) - finite(aKinematics && aKinematics.z),
+        aVx,
+        aVz,
+        bVx,
+        bVz,
+        nABx,
+        nABz,
       );
+      const closingSpeed = preSolveRadialClosingSpeed(aVx, aVz, bVx, bVz, nABx, nABz);
       const key = `${String(a.entity.id)}\u0000${String(b.entity.id)}`;
       const existing = merged.get(key);
       const impulse = Math.min((existing && existing.impulse || 0) + boundedImpulse, Math.min(...dynamicCaps));
@@ -937,6 +955,9 @@ export class Sg02DynamicBodyOwner {
         pos: { x: finite(global.x), z: finite(global.z) },
         normal,
         causalActorId,
+        preSolveClosingSpeed: existing
+          ? Math.max(existing.preSolveClosingSpeed, closingSpeed)
+          : closingSpeed,
       };
       merged.set(key, receipt);
     });

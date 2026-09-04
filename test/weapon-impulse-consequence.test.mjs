@@ -664,6 +664,8 @@ test('SG-02 reports deterministic bounded contact momentum for default-route con
     assert.ok(Math.abs(Math.hypot(contacts[0].normal.x, contacts[0].normal.z) - 1) < 1e-9);
     assert.equal(contacts[0].causalActorId, ship.id,
       'SG-02 retains the moving hull as the pre-solver direct-contact initiator');
+    assert.ok(contacts[0].preSolveClosingSpeed > 40,
+      'SG-02 reports pre-solve closure above the 40 WU/s structural-give limit');
     assert.deepEqual(owner.drainContactImpacts(), [], 'contact drain is atomic');
   } finally {
     owner.dispose();
@@ -698,6 +700,7 @@ test('default physics adapter forwards angular impulse and publishes consequence
         pos: { x: -2, z: 1 },
         normal: { x: -1, z: 0 },
         causalActorId: ship.id,
+        preSolveClosingSpeed: 52.5,
       }];
     },
     dispose() {},
@@ -720,10 +723,160 @@ test('default physics adapter forwards angular impulse and publishes consequence
     assert.deepEqual(impacts[0].normal, { x: -1, z: 0 });
     assert.equal(impacts[0].causalActorId, ship.id,
       'the adapter does not discard SG-02 direct-contact attribution');
+    assert.equal(impacts[0].preSolveClosingSpeed, 52.5,
+      'the adapter forwards pre-solve closing speed unchanged');
     assert.ok(impacts[0].dp > 0);
   } finally {
     physics._disableSg02DynamicAuthority();
     bus.clear();
+  }
+});
+
+test('pre-solve closing speed is radial, adapters preserve it, and crumple damage uses it not bounded dV', async () => {
+  const [
+    kernel,
+    { physics },
+    { preSolveRadialClosingSpeed },
+  ] = await Promise.all([
+    impulseKernel(),
+    import('../src/core/physics.js'),
+    import('../src/core/sg02DynamicBodyOwner.js'),
+  ]);
+  assert.equal(preSolveRadialClosingSpeed(52.5, 0, 0, 0, 1, 0), 52.5);
+  assert.equal(preSolveRadialClosingSpeed(-52.5, 0, 0, 0, 1, 0), 0,
+    'separating pairs report zero radial closure, never abs(relative speed)');
+  assert.equal(preSolveRadialClosingSpeed(0, 80, 0, 0, 1, 0), 0,
+    'tangential motion reports zero radial closure');
+  assert.equal(preSolveRadialClosingSpeed(0, 0, -52.5, 0, 1, 0), 52.5,
+    'B closing on A is the same radial close as A closing on B');
+
+  const wasp = { id: 2, type: 'ship', mass: 16, radius: 6 };
+  const atlas = { id: 3, type: 'ship', mass: 200, radius: 20 };
+  const rock = { id: 9, type: 'asteroid', mass: 1_000_000, radius: 40 };
+  const bounded = {
+    exchangedMomentum: 16 * 40,
+    tick: 40,
+    pos: { x: 0, z: 0 },
+    normal: { x: -1, z: 0 },
+  };
+  const wasp50 = kernel.resolveCollisionConsequence({
+    ...bounded, target: wasp, other: rock, preSolveClosingSpeed: 52.5,
+  });
+  const wasp76 = kernel.resolveCollisionConsequence({
+    ...bounded, target: wasp, other: rock, preSolveClosingSpeed: 79.8,
+  });
+  assert.equal(wasp50.deltaV, 40);
+  assert.equal(wasp76.deltaV, 40);
+  assert.equal(wasp50.impactDamage, 291.09375);
+  assert.equal(wasp76.impactDamage, 400);
+  const atlasHit = kernel.resolveCollisionConsequence({
+    target: atlas,
+    other: rock,
+    exchangedMomentum: 200 * 40,
+    tick: 40,
+    pos: { x: 0, z: 0 },
+    normal: { x: -1, z: 0 },
+    preSolveClosingSpeed: 79.8,
+  });
+  assert.equal(atlasHit.deltaV, 40);
+  assert.ok(atlasHit.impactDamage <= 108, `Atlas crumple must be <=108, got ${atlasHit.impactDamage}`);
+  assert.equal(kernel.resolveCollisionConsequence({
+    ...bounded, target: wasp, other: rock, preSolveClosingSpeed: 30,
+  }).impactDamage, 0, 'explicit <=30 closing is real data and crumples nothing');
+  assert.equal(kernel.resolveCollisionConsequence({
+    ...bounded, target: wasp, other: rock, preSolveClosingSpeed: 0,
+  }).impactDamage, 0, 'finite zero closing is real data, not a missing legacy value');
+  const craftHot = kernel.resolveCollisionConsequence({
+    ...bounded, target: wasp, other: { id: 8, type: 'ship', mass: 16, radius: 6 }, preSolveClosingSpeed: 79.8,
+  });
+  const craftLegacy = kernel.resolveCollisionConsequence({
+    ...bounded, target: wasp, other: { id: 8, type: 'ship', mass: 16, radius: 6 },
+  });
+  assert.equal(craftHot.impactDamage, craftLegacy.impactDamage,
+    'craft contact ignores preSolveClosingSpeed');
+  const structure = kernel.resolveCollisionConsequence({
+    ...bounded, target: wasp, other: { id: 10, type: 'station' }, preSolveClosingSpeed: 52.5,
+  });
+  assert.equal(structure.impactDamage, 253.125, 'structure uses multiplier 1.0 on the same close');
+
+  const customA = physicsEntity(1, 'ship', -8, 120, 10, 20);
+  const customB = physicsEntity(2, 'asteroid', 8, 0, 10, 1_000_000);
+  const customState = {
+    tick: 12,
+    playerId: 99,
+    entities: new Map([[customA.id, customA], [customB.id, customB]]),
+    entityList: [customA, customB],
+  };
+  const customBus = createBus();
+  const customImpacts = [];
+  customBus.on('physics:impact', (payload) => customImpacts.push(payload));
+  physics.init({ state: customState, bus: customBus, helpers: {} });
+  try {
+    physics.resolvePair(customA, customB, 16, 16, 0, customBus, customState);
+    assert.equal(customImpacts.length, 1);
+    assert.equal(customImpacts[0].preSolveClosingSpeed, 120);
+    assert.equal(physics._impactOptionsScratch.preSolveClosingSpeed, 120);
+
+    const awayA = physicsEntity(1, 'ship', -8, -80, 10, 20);
+    const awayB = physicsEntity(2, 'asteroid', 8, 0, 10, 1_000_000);
+    physics.resolvePair(awayA, awayB, 16, 16, 0, customBus, customState);
+    assert.equal(physics._impactOptionsScratch.preSolveClosingSpeed, 0,
+      'custom path resets scratch closing speed; separating reports zero not a leftover close');
+
+    const tanA = physicsEntity(1, 'ship', -8, 0, 10, 20);
+    tanA.vel.z = 80;
+    const tanB = physicsEntity(2, 'asteroid', 8, 0, 10, 1_000_000);
+    physics.resolvePair(tanA, tanB, 16, 16, 0, customBus, customState);
+    assert.equal(physics._impactOptionsScratch.preSolveClosingSpeed, 0,
+      'tangential custom contact reports zero radial closure');
+  } finally {
+    physics._disableSg02DynamicAuthority();
+    customBus.clear();
+  }
+
+  const signedBus = createBus();
+  const signedImpacts = [];
+  signedBus.on('physics:impact', (payload) => signedImpacts.push(payload));
+  const signedShip = physicsEntity(21, 'ship', -8, 0, 5, 20);
+  const signedRock = physicsEntity(22, 'asteroid', 0, 0, 10, 1_000_000);
+  physics.init({
+    state: {
+      tick: 9,
+      playerId: 99,
+      entities: new Map([[signedShip.id, signedShip], [signedRock.id, signedRock]]),
+      entityList: [signedShip, signedRock],
+    },
+    bus: signedBus,
+    helpers: {},
+  });
+  physics._sg02 = {
+    drainContactImpacts() {
+      return [{
+        schemaVersion: 1,
+        tick: 2,
+        aId: signedShip.id,
+        bId: signedRock.id,
+        impulse: 640,
+        pos: { x: -2, z: 1 },
+        normal: { x: -1, z: 0 },
+        causalActorId: signedShip.id,
+        preSolveClosingSpeed: -7.5,
+      }];
+    },
+    dispose() {},
+  };
+  try {
+    physics._emitSg02ContactImpacts({
+      tick: 9,
+      playerId: 99,
+      entities: new Map([[signedShip.id, signedShip], [signedRock.id, signedRock]]),
+    });
+    assert.equal(signedImpacts.length, 1);
+    assert.equal(signedImpacts[0].preSolveClosingSpeed, -7.5,
+      'adapters preserve sign/value; they do not abs or re-clamp producer closing speed');
+  } finally {
+    physics._disableSg02DynamicAuthority();
+    signedBus.clear();
   }
 });
 

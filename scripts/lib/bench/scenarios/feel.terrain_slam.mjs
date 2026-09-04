@@ -155,6 +155,21 @@ export const scenario = {
         contactDeltaV: light75.contactImpulseOverMass,
         light50ContactDeltaV: light50.contactImpulseOverMass,
         heavy75ContactDeltaV: heavy75.contactImpulseOverMass,
+        // PRE-SOLVE CLOSE. Damage reads this; bounded dV stays the solver rate limit.
+        preSolveClosingSpeed: light75.preSolveClosingSpeed,
+        independentClosingSpeed: light75.independentClosingSpeed,
+        closingAgreement: light75.closingAgreement === true,
+        closingProof: light75.closingProof === true,
+        light50PreSolveClosingSpeed: light50.preSolveClosingSpeed,
+        light50IndependentClosingSpeed: light50.independentClosingSpeed,
+        light50ClosingAgreement: light50.closingAgreement === true,
+        light50ClosingProof: light50.closingProof === true,
+        light50ClosingSpeed: light50.closingSpeed,
+        heavy75PreSolveClosingSpeed: heavy75.preSolveClosingSpeed,
+        heavy75IndependentClosingSpeed: heavy75.independentClosingSpeed,
+        heavy75ClosingAgreement: heavy75.closingAgreement === true,
+        heavy75ClosingProof: heavy75.closingProof === true,
+        heavy75ClosingSpeed: heavy75.closingSpeed,
         // FLOWN vs COMMANDED. The hostile is flown by its own drive; these two agreeing is what
         // entitles the case labels to say "50 % of cruise" and "76 % of cruise".
         flownSpeed: light75.flownSpeed,
@@ -197,6 +212,8 @@ export const scenario = {
         light50HelmProof: light50.helmProof === true,
         light75DamageProof: light75.damageProof === true,
         light75HelmProof: light75.helmProof === true,
+        light75LostHelm: light75.lostHelm,
+        light75TumbleMeasurable: light75.helmProof === true && light75.lostHelm === true,
         ticks: light50.ticks + light75.ticks + heavy75.ticks,
         dt: REAL_PATH_DT,
         realPath: light75.realPath,
@@ -322,6 +339,9 @@ async function runSlam(seed, { caseId, hullId, cruiseFrac = null, matchAbsoluteS
         impulse: finite(payload.impulse),
         dp: finite(payload.dp),
         playerInvolved: payload.playerInvolved === true,
+        preSolveClosingSpeed: Number.isFinite(payload.preSolveClosingSpeed)
+          ? payload.preSolveClosingSpeed
+          : null,
       });
     });
 
@@ -436,6 +456,9 @@ async function runSlam(seed, { caseId, hullId, cruiseFrac = null, matchAbsoluteS
         data: {
           case: caseId,
           closingSpeed,
+          preSolveClosingSpeed: firstImpact && Number.isFinite(firstImpact.preSolveClosingSpeed)
+            ? firstImpact.preSolveClosingSpeed
+            : null,
           impulse: contactImpulse,
           dp: firstImpact.dp,
           receipts: namedImpacts.length,
@@ -456,6 +479,15 @@ async function runSlam(seed, { caseId, hullId, cruiseFrac = null, matchAbsoluteS
         },
       });
     }
+
+    const producerClosing = firstImpact && Number.isFinite(firstImpact.preSolveClosingSpeed)
+      ? firstImpact.preSolveClosingSpeed
+      : null;
+    const independentClosing = Math.max(0, closingSpeed);
+    const closingAgreement = producerClosing != null
+      && Number.isFinite(independentClosing)
+      && Math.abs(producerClosing - independentClosing) <= 0.5;
+    const closingProof = producerClosing != null;
 
     const still = host.state.entities && typeof host.state.entities.get === 'function'
       ? host.state.entities.get(hostile.id)
@@ -514,6 +546,12 @@ async function runSlam(seed, { caseId, hullId, cruiseFrac = null, matchAbsoluteS
       mass,
       hullMax,
       closingSpeed,
+      // Producer (physics:impact.preSolveClosingSpeed) vs the independent before-step sample.
+      // Agreement within 0.5 WU/s is the proof that damage is reading the real pre-solve close.
+      preSolveClosingSpeed: producerClosing,
+      independentClosingSpeed: independentClosing,
+      closingAgreement,
+      closingProof,
       // What the ship actually flew, and what its throttle commanded. If these disagree the
       // "50 % of cruise" and "76 % of cruise" labels are fiction and the reader can see it.
       flownSpeed,

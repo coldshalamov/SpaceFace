@@ -163,6 +163,7 @@ export const collisionConsequences = {
       suppressCraftDamage,
       pos: payload.pos,
       normal: payload.normal,
+      preSolveClosingSpeed: payload.preSolveClosingSpeed,
     });
     if (!receipt) return;
 
@@ -346,7 +347,7 @@ function craftContactKey(tick, aId, bId) {
 }
 
 function snapshotContactPayload(payload, tick) {
-  return Object.freeze({
+  const snap = {
     tick,
     pos: Object.freeze({
       x: finite(payload && payload.pos && payload.pos.x),
@@ -356,7 +357,11 @@ function snapshotContactPayload(payload, tick) {
       x: finite(payload && payload.normal && payload.normal.x),
       z: finite(payload && payload.normal && payload.normal.z),
     }),
-  });
+  };
+  if (Number.isFinite(payload && payload.preSolveClosingSpeed)) {
+    snap.preSolveClosingSpeed = payload.preSolveClosingSpeed;
+  }
+  return Object.freeze(snap);
 }
 
 function explicitContactProvenance(payload, tick) {

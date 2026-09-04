@@ -149,6 +149,16 @@ export const COLLISION_CONSEQUENCE_LIMITS = Object.freeze({
   maxDebris: 18,
 });
 
+// PQ-137.06 — terrain/structure damage from pre-solve closing speed. The solver bound stays a
+// rate limit; this law is the story. Finite 0 is real (a sub-threshold scrape). Missing values
+// keep the exchanged-dV energy path below so legacy/manual receipts stay bit-stable.
+export const TERRAIN_CRUMPLE_LAW = Object.freeze({
+  threshold: 30,
+  refMass: 16,
+  maxDamage: 400,
+  massFloor: 0.27,
+});
+
 const SURFACE_DAMAGE_MULTIPLIER = Object.freeze({
   terrain: 1.15,
   structure: 1,
@@ -253,8 +263,6 @@ export function resolveCollisionConsequence(input = {}) {
     ? 0
     : Math.max(1, Math.round(stagger01 * COLLISION_CONSEQUENCE_LIMITS.maxStaggerTicks));
 
-  const overDamageSpeed = Math.max(0, deltaV - COLLISION_CONSEQUENCE_LIMITS.damageDeltaV);
-  const energyProxy = 0.5 * mass * overDamageSpeed * overDamageSpeed;
   // Craft contact has a real baseline; equipment such as the Ram Plate scales that baseline once
   // rather than replacing it or adding a second collision-damage packet.
   const surfaceDamageMultiplier = surface === 'craft'
@@ -270,13 +278,27 @@ export function resolveCollisionConsequence(input = {}) {
     COLLISION_CONSEQUENCE_LIMITS.maxDamageMassFloor,
     COLLISION_CONSEQUENCE_LIMITS.maxDamageMassBoost,
   );
-  const impactDamage = clamp(
-    energyProxy * COLLISION_CONSEQUENCE_LIMITS.energyDamageScale * surfaceDamageMultiplier,
-    0,
-    massRelativeCap,
-  );
-  const damage01 = massRelativeCap > 0
-    ? impactDamage / massRelativeCap : 0;
+  const worldSurface = surface === 'terrain' || surface === 'structure';
+  const useCrumple = worldSurface && Number.isFinite(input.preSolveClosingSpeed);
+  let impactDamage;
+  let damageCap = massRelativeCap;
+  if (useCrumple) {
+    const crumple = Math.max(0, input.preSolveClosingSpeed - TERRAIN_CRUMPLE_LAW.threshold);
+    const massScale = TERRAIN_CRUMPLE_LAW.refMass / mass;
+    const uncapped = 0.5 * crumple * crumple * massScale * surfaceDamageMultiplier;
+    damageCap = TERRAIN_CRUMPLE_LAW.maxDamage * clamp(massScale, TERRAIN_CRUMPLE_LAW.massFloor, 1);
+    impactDamage = Math.min(uncapped, damageCap);
+  } else {
+    const overDamageSpeed = Math.max(0, deltaV - COLLISION_CONSEQUENCE_LIMITS.damageDeltaV);
+    const energyProxy = 0.5 * mass * overDamageSpeed * overDamageSpeed;
+    impactDamage = clamp(
+      energyProxy * COLLISION_CONSEQUENCE_LIMITS.energyDamageScale * surfaceDamageMultiplier,
+      0,
+      massRelativeCap,
+    );
+  }
+  const damage01 = damageCap > 0
+    ? impactDamage / damageCap : 0;
   const debrisCount = impactDamage > 0
     ? clamp(Math.ceil(3 + damage01 * (COLLISION_CONSEQUENCE_LIMITS.maxDebris - 3)), 0, COLLISION_CONSEQUENCE_LIMITS.maxDebris)
     : 0;

@@ -5,6 +5,7 @@ import { Masks } from './entity.js';
 import {
   createSg02DynamicBodyOwner,
   directContactCausalActorId,
+  preSolveRadialClosingSpeed,
 } from './sg02DynamicBodyOwner.js';
 import { hasActiveSpatialHash } from './spatialQuery.js';
 import {
@@ -65,7 +66,7 @@ export const physics = {
     this._nearMissClosestScratch = { x: 0, z: 0, distance: 0 };
     this._nearMissEmitted = new WeakSet();
     this._pairMaterialScratch = createPairMaterialRecord();
-    this._impactOptionsScratch = { backend: 'custom', tick: 0, normal: { x: 0, z: 0 }, causalActorId: null };
+    this._impactOptionsScratch = { backend: 'custom', tick: 0, normal: { x: 0, z: 0 }, causalActorId: null, preSolveClosingSpeed: 0 };
     this._pairMarks = new Map(); // low id -> Map<high id, stamp>; avoids per-frame string pair keys
     this._pairStamp = 1;
     this._dockStationId = null;
@@ -412,6 +413,7 @@ export const physics = {
         tick: state.tick,
         normal: receipt.normal,
         causalActorId: receipt.causalActorId,
+        preSolveClosingSpeed: receipt.preSolveClosingSpeed,
       });
       if (dp > 0) emitted++;
     }
@@ -1228,7 +1230,7 @@ function emitPhysicsImpact(bus, state, a, b, impulseMag, material, pos, options 
     const player = a.id === playerId ? a : b;
     playerDeltaV = dp / Math.max(0.1, finiteOrZero(player && player.mass) || 1);
   }
-  bus.emit('physics:impact', {
+  const payload = {
     consequenceKernelVersion: 1,
     backend: String(options.backend || 'custom'),
     tick: Number.isFinite(options.tick) ? Math.max(0, Math.trunc(options.tick)) : Math.max(0, Math.trunc(state && state.tick || 0)),
@@ -1242,7 +1244,11 @@ function emitPhysicsImpact(bus, state, a, b, impulseMag, material, pos, options 
     causalActorId: options.causalActorId == null ? null : options.causalActorId,
     pos: { x: finiteOrZero(pos && pos.x), z: finiteOrZero(pos && pos.z) },
     normal: normalizedPlanar(options.normal),
-  });
+  };
+  if (Number.isFinite(options.preSolveClosingSpeed)) {
+    payload.preSolveClosingSpeed = options.preSolveClosingSpeed;
+  }
+  bus.emit('physics:impact', payload);
   return dp;
 }
 
@@ -1259,6 +1265,15 @@ function directContactImpactOptions(out, state, a, b, nx, nz) {
     b.vel && b.vel.z,
     nx,
     nz,
+  );
+  // Always rewrite the scratch field so a prior pair cannot leak into this emit.
+  out.preSolveClosingSpeed = preSolveRadialClosingSpeed(
+    a.vel && a.vel.x,
+    a.vel && a.vel.z,
+    b.vel && b.vel.x,
+    b.vel && b.vel.z,
+    finiteOrZero(b.pos && b.pos.x) - finiteOrZero(a.pos && a.pos.x),
+    finiteOrZero(b.pos && b.pos.z) - finiteOrZero(a.pos && a.pos.z),
   );
   return out;
 }
