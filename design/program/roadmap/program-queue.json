@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-04T04:19:20.237Z",
+  "updatedAt": "2026-09-04T04:23:25.056Z",
   "purpose": "Canonical cross-plan priority and dispatch queue. Product completion remains authoritative in design/program/03_LIVE_ACCEPTANCE_MATRIX.md.",
   "stateContract": {
     "allowed": [
@@ -10663,7 +10663,7 @@
       "priority": 69,
       "title": "Wrecks drift and tumble",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "world-reaction"
@@ -10675,7 +10675,9 @@
         "npm run check:baseline",
         "npm run check:save-schema"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-138.03-REPORT.md"
+      ],
       "brief": "The wreck spec inherits the dying ship velocity and spin (bounded), carries an off-plane pose, still saves per sector; tumble bleeds off with the shipped angular damping."
     },
     {
@@ -10684,7 +10686,7 @@
       "priority": 70,
       "title": "Failure mutates the mission",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "world-reaction"
@@ -10697,7 +10699,9 @@
         "npm run check:baseline",
         "npm run check:sim"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-138.04-REPORT.md"
+      ],
       "brief": "A broken contract clause mutates the mission (escape, restitution, salvage, recovery) instead of _failMission; one authored mutation per clause type; the log reads So then."
     },
     {
