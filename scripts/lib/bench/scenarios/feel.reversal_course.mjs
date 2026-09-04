@@ -51,7 +51,8 @@ export const scenario = {
 
 async function measureHull(seed, hull, eventTrace) {
   const rest = await measureRestToCruise(seed, hull, eventTrace);
-  const velocity180TimeS = await measureVelocity180(seed, hull, eventTrace);
+  const reversal = await measureVelocity180(seed, hull, eventTrace);
+  const velocity180TimeS = reversal.velocity180TimeS;
   const turn = await measureTurnRadius(seed, hull, eventTrace);
 
   const restMet = Number.isFinite(rest.restToCruiseS) && rest.restToCruiseS <= 1.5;
@@ -62,8 +63,8 @@ async function measureHull(seed, hull, eventTrace) {
     ? undefined
     : 'cruise asymptote had not converged: speed still rising by more than 0.5 WU/s over the last 60 ticks';
   const reversalNote = Number.isFinite(velocity180TimeS)
-    ? undefined
-    : 'the M3 tape never completed the reversal';
+    ? `flip-and-burn from steady cruise on the real path; velocity heading rotated >= 0.88 pi. Motion Lab M3 reports ${reversal.m3Velocity180TimeS} for the same hull (its clock cannot start below 2.2 WU/s, so a ship that kills its speed during the yaw reads null there).`
+    : 'the reversal tape never rotated the velocity heading by 0.88 pi within 30 s';
   const radiusNote = turn.sweepIncomplete
     ? '90 deg velocity sweep incomplete in 1800 ticks; turn radius unmeasured'
     : `r = ${turn.turnRadiusWu} WU at cruise ${turn.cruiseSpeed} WU/s; screen depth ${turn.screenDepthAtCruiseWu} WU read from the live chase camera`;
@@ -104,6 +105,7 @@ async function measureHull(seed, hull, eventTrace) {
       restToCruiseS: rest.restToCruiseS,
       cruiseAsymptoteConverged: rest.cruiseAsymptoteConverged,
       velocity180TimeS,
+      m3Velocity180TimeS: reversal.m3Velocity180TimeS,
       turnRadiusWu: turn.turnRadiusWu,
       turnRadiusScreenDepths: turn.turnRadiusScreenDepths,
       turnRateRadPerS: turn.turnRateRadPerS,
@@ -167,18 +169,83 @@ async function measureRestToCruise(seed, hull, eventTrace) {
   }
 }
 
+/**
+ * Full 180-degree velocity reversal, measured on our own real-path tape.
+ *
+ * WHY NOT `runM3` ANY MORE. The Motion Lab's M3 number is produced by
+ * `motionTelemetry.velocityHeadingChangeTime`, which starts its clock at the first sample whose
+ * speed is at least `minSpeed` (2.2 WU/s) AFTER the turnBurn mark, and M3's turnBurn phase yaws with
+ * `moveZ = 0`. On the pre-PQ-137.03 ship that was harmless: the hull was still coasting well above
+ * 2.2 WU/s all the way round. The rescaled drive kills its own speed during the yaw, so every sample
+ * in the turn is skipped, the clock only starts once the ship is already accelerating the OTHER way,
+ * and the metric returns `null` — it reports "no reversal" for a ship that reverses in under a
+ * second. That is a stale instrument, not a regression: `runM3` is still called below and its number
+ * is reported alongside as `m3Velocity180TimeS` so the two can be compared.
+ *
+ * The measurement here is M3's own definition, kept deliberately: from steady cruise, flip and burn
+ * (yaw toward heading + pi with M3's `err / 0.32` control law, thrust once inside 0.06 rad), and stop
+ * the clock when the VELOCITY heading has rotated at least 0.88 * pi from the cruise heading. The
+ * only change is that the clock starts when the reversal is COMMANDED, and the speed floor cannot
+ * swallow the event.
+ */
+const REVERSAL_TARGET_RAD = Math.PI * 0.88;
+const REVERSAL_TICKS = 1800;
+
 async function measureVelocity180(seed, hull, eventTrace) {
-  const m3 = await runM3({ seed, hullId: hull.hullId });
+  const m3Promise = runM3({ seed, hullId: hull.hullId });
+  const host = await bootPlayer(seed, hull.hullId);
+  let measured = null;
+  try {
+    const player = host.player;
+    settle(host);
+    host.step(CRUISE_HOLD_TICKS, {
+      before: ({ state }) => { writeRealPathInput(state, { moveZ: 1 }); },
+    });
+    const cruiseSpeed = planarSpeed(player);
+    const startHeading = Math.atan2(player.vel.z, player.vel.x);
+    const startRot = player.rot || 0;
+    let startSimTime = null;
+
+    host.step(REVERSAL_TICKS, {
+      before: ({ state, host: h }) => {
+        const err = wrapAngle((startRot + Math.PI) - (h.player.rot || 0));
+        const aligned = Math.abs(err) < 0.06;
+        writeRealPathInput(state, {
+          moveZ: aligned ? 1 : 0,
+          turnIntent: aligned ? 0 : Math.max(-1, Math.min(1, err / 0.32)),
+        });
+        if (startSimTime == null) startSimTime = state.simTime;
+      },
+      after: ({ state, host: h }) => {
+        const speed = planarSpeed(h.player);
+        if (speed < 2.2) return;
+        const heading = Math.atan2(h.player.vel.z, h.player.vel.x);
+        if (Math.abs(wrapAngle(heading - startHeading)) >= REVERSAL_TARGET_RAD) {
+          measured = state.simTime - startSimTime;
+          return false;
+        }
+      },
+    });
+
+    pushTrace(eventTrace, host, `${hull.key}:reversal:measured`, {
+      cruiseSpeed,
+      velocity180TimeS: measured,
+    });
+  } finally {
+    host.dispose();
+  }
+
+  const m3 = await m3Promise;
   const row = m3 && m3.metrics && m3.metrics.hulls && m3.metrics.hulls[hull.hullId];
-  const velocity180TimeS = row && Number.isFinite(row.velocity180TimeS) ? row.velocity180TimeS : null;
+  const m3Velocity180TimeS = row && Number.isFinite(row.velocity180TimeS) ? row.velocity180TimeS : null;
   eventTrace.push({
     tick: null,
     simTime: null,
     type: `${hull.key}:m3:velocity180`,
     hullId: hull.hullId,
-    velocity180TimeS,
+    m3Velocity180TimeS,
   });
-  return velocity180TimeS;
+  return { velocity180TimeS: measured, m3Velocity180TimeS };
 }
 
 async function measureTurnRadius(seed, hull, eventTrace) {

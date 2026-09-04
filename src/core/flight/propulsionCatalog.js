@@ -62,17 +62,18 @@ export const PROPULSION_PROFILES = Object.freeze({
     id: 'drive_reaction_s',
     family: DRIVE_FAMILIES.REACTION,
     label: 'Vector Reaction Drive S',
-    mainAccel: 48,
-    reverseAccel: 30,
-    strafeAccel: 24,
+    mainAccel: 124,
+    reverseAccel: 96,
+    strafeAccel: 86,
     yawAccel: 12,
     yawBrake: 18,
     maxYawRate: 3.1,
     boostAccelMult: 2.15,
     boostSpeedMult: 1.6,
     solverSpeedLimit: INF,
-    precisionSpeed: 125,
-    combatSpeed: 210,
+    precisionSpeed: 62,
+    combatSpeed: 105,
+    travelCeiling: 472.5,
     assist: {
       neutralBrakeFraction: 0.48,
       lateralKillFraction: 0.36,
@@ -81,7 +82,7 @@ export const PROPULSION_PROFILES = Object.freeze({
       driftStopHorizonS: 7.5,
       deadSpeed: 0.18,
       deadInput: 0.025,
-      governorResponseS: 0.85,
+      governorResponseS: 0.26,
       overspeedBrakeFraction: 0.28,
     },
     resources: {
@@ -96,17 +97,18 @@ export const PROPULSION_PROFILES = Object.freeze({
     id: 'drive_reaction_m',
     family: DRIVE_FAMILIES.REACTION,
     label: 'Vector Reaction Drive M',
-    mainAccel: 38,
-    reverseAccel: 26,
-    strafeAccel: 19,
+    mainAccel: 100,
+    reverseAccel: 78,
+    strafeAccel: 68,
     yawAccel: 8.8,
     yawBrake: 14,
     maxYawRate: 2.45,
     boostAccelMult: 2.05,
     boostSpeedMult: 1.55,
     solverSpeedLimit: INF,
-    precisionSpeed: 115,
-    combatSpeed: 195,
+    precisionSpeed: 57,
+    combatSpeed: 95,
+    travelCeiling: 438.75,
     assist: {
       neutralBrakeFraction: 0.44,
       lateralKillFraction: 0.32,
@@ -115,7 +117,7 @@ export const PROPULSION_PROFILES = Object.freeze({
       driftStopHorizonS: 8.5,
       deadSpeed: 0.20,
       deadInput: 0.025,
-      governorResponseS: 0.95,
+      governorResponseS: 0.30,
       overspeedBrakeFraction: 0.24,
     },
     resources: {
@@ -130,17 +132,18 @@ export const PROPULSION_PROFILES = Object.freeze({
     id: 'drive_reaction_l',
     family: DRIVE_FAMILIES.REACTION,
     label: 'Vector Reaction Drive L',
-    mainAccel: 23,
-    reverseAccel: 15,
-    strafeAccel: 8,
+    mainAccel: 60,
+    reverseAccel: 40,
+    strafeAccel: 28,
     yawAccel: 4.3,
     yawBrake: 7.0,
     maxYawRate: 1.38,
     boostAccelMult: 1.85,
     boostSpeedMult: 1.45,
     solverSpeedLimit: INF,
-    precisionSpeed: 92,
-    combatSpeed: 170,
+    precisionSpeed: 45,
+    combatSpeed: 85,
+    travelCeiling: 382.5,
     assist: {
       neutralBrakeFraction: 0.40,
       lateralKillFraction: 0.27,
@@ -149,7 +152,7 @@ export const PROPULSION_PROFILES = Object.freeze({
       driftStopHorizonS: 10.0,
       deadSpeed: 0.24,
       deadInput: 0.025,
-      governorResponseS: 1.3,
+      governorResponseS: 0.42,
       overspeedBrakeFraction: 0.16,
     },
     resources: {
@@ -164,15 +167,16 @@ export const PROPULSION_PROFILES = Object.freeze({
     id: 'drive_gravimetric_s',
     family: DRIVE_FAMILIES.GRAVIMETRIC,
     label: 'Gravimetric Vector Drive S',
-    maxSpeed: 168,
-    boostMaxSpeed: 245,
-    maxAccel: 105,
-    maxBrakeAccel: 125,
+    maxSpeed: 84,
+    boostMaxSpeed: 122,
+    maxAccel: 160,
+    maxBrakeAccel: 190,
     responseHz: 4.8,
     yawAccel: 18,
     yawBrake: 24,
     maxYawRate: 3.6,
     solverSpeedLimit: 275,
+    travelCeiling: 252,
     resources: {
       idleEnergyPerS: 0.35,
       energyPerAccel: 0.026,
@@ -185,15 +189,16 @@ export const PROPULSION_PROFILES = Object.freeze({
     id: 'drive_gravimetric_m',
     family: DRIVE_FAMILIES.GRAVIMETRIC,
     label: 'Gravimetric Vector Drive M',
-    maxSpeed: 150,
-    boostMaxSpeed: 215,
-    maxAccel: 78,
-    maxBrakeAccel: 92,
+    maxSpeed: 75,
+    boostMaxSpeed: 108,
+    maxAccel: 120,
+    maxBrakeAccel: 142,
     responseHz: 4.1,
     yawAccel: 12,
     yawBrake: 18,
     maxYawRate: 2.8,
     solverSpeedLimit: 240,
+    travelCeiling: 225,
     resources: {
       idleEnergyPerS: 0.55,
       energyPerAccel: 0.024,
@@ -206,9 +211,9 @@ export const PROPULSION_PROFILES = Object.freeze({
     id: 'drive_pulse_plate_m',
     family: DRIVE_FAMILIES.PULSE_PLATE,
     label: 'Medusa Pulse Plate M',
-    rcsForwardAccel: 12,
-    rcsReverseAccel: 9,
-    rcsStrafeAccel: 7,
+    rcsForwardAccel: 31,
+    rcsReverseAccel: 23,
+    rcsStrafeAccel: 18,
     yawAccel: 7.5,
     yawBrake: 9.5,
     maxYawRate: 1.95,
@@ -221,8 +226,9 @@ export const PROPULSION_PROFILES = Object.freeze({
     flipBurnLeadS: 0.15,
     pulseCooldownS: 0.34,
     solverSpeedLimit: INF,
-    precisionSpeed: 78,
-    combatSpeed: 260,
+    precisionSpeed: 39,
+    combatSpeed: 130,
+    travelCeiling: 715,
     resources: {
       energyPerChargeS: 2.0,
       heatPerChargeS: 8.5,
@@ -235,9 +241,9 @@ export const PROPULSION_PROFILES = Object.freeze({
     id: 'drive_torch_l',
     family: DRIVE_FAMILIES.TORCH,
     label: 'Open-Cycle Torch Drive L',
-    mainAccel: 70,
-    reverseAccel: 12,
-    strafeAccel: 5.5,
+    mainAccel: 182,
+    reverseAccel: 31,
+    strafeAccel: 14,
     yawAccel: 3.6,
     yawBrake: 5.0,
     maxYawRate: 1.0,
@@ -247,8 +253,9 @@ export const PROPULSION_PROFILES = Object.freeze({
     boostAccelMult: 1.55,
     boostSpeedMult: 1.4,
     solverSpeedLimit: INF,
-    precisionSpeed: 85,
-    combatSpeed: 320,
+    precisionSpeed: 42,
+    combatSpeed: 160,
+    travelCeiling: 1120,
     resources: {
       idleFuelPerS: 0.02,
       fuelPerAccel: 0.018,
@@ -261,16 +268,17 @@ export const PROPULSION_PROFILES = Object.freeze({
     id: 'drive_field_sail_m',
     family: DRIVE_FAMILIES.SAIL,
     label: 'Magnetoplasma Field Sail M',
-    fieldAccel: 9.5,
-    trimAccel: 2.5,
+    fieldAccel: 25,
+    trimAccel: 6.5,
     yawAccel: 5.2,
     yawBrake: 8.0,
     maxYawRate: 1.6,
     deploymentS: 2.5,
     collapseS: 0.9,
     solverSpeedLimit: INF,
-    precisionSpeed: 50,
-    combatSpeed: 95,
+    precisionSpeed: 25,
+    combatSpeed: 48,
+    travelCeiling: 190,
     resources: {
       idleEnergyPerS: 0.08,
       heatPerAccel: 0.004,
@@ -381,6 +389,25 @@ export function resolvePropulsionProfile(entity, state = null) {
     }
   }
   return profile;
+}
+
+/**
+ * The hull's governed combat speed — the speed the assisted governor actually holds the ship at
+ * (`applySpeedGovernor`'s `baseCap` at full throttle), independent of how far the throttle is open.
+ *
+ * This is the reference PRESENTATION must key to. `entity.maxSpeed` is the LEGACY derived stat
+ * (`src/systems/ships.js`: engine topSpeed x SPEED_SCALE x handling x speedMass); it does not move
+ * with this catalog. It reads ~172 for the starter, whose governed cruise is 95, so a camera keyed
+ * to it saturates its frame far above the speed the ship actually fights at, and the frame closes
+ * exactly where the fight happens (FEEL_CONTRACT B3).
+ */
+export function resolveGovernedCombatSpeed(entity, state = null, fallback = 0) {
+  const profile = resolvePropulsionProfile(entity, state);
+  const combat = profile && profile.combatSpeed;
+  if (Number.isFinite(combat) && combat > 0) return combat;
+  const top = profile && profile.maxSpeed;
+  if (Number.isFinite(top) && top > 0) return top;
+  return Number.isFinite(fallback) && fallback > 0 ? fallback : 0;
 }
 
 export function getPropulsionProfile(id) {

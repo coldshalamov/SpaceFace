@@ -314,10 +314,15 @@ function simulate({ profile, b, input, ticks, runtime }) {
   simulate({ profile, b: braked, input: { throttle: 0, brake: true, assistMode: 'assisted' }, ticks: 60 });
   assert.ok(braked.vel.x < 390,
     `the pilot brake still spends earned speed with real reverse authority (got ${braked.vel.x.toFixed(1)})`);
-  const nimble = body({ vel: { x: 120, z: 0 } });
+  // Must sit under the post-rescale Wasp combatSpeed (105). At 120 this would be
+  // overspeed and would coast — the earned-speed rule, not the nimble settle.
+  // The bar is the same one this case always asserted: one second hands-off below the cap sheds a
+  // clear fraction of speed (it was 120 -> under 110, an 8 % settle; the rescaled drive sheds ~20 %,
+  // and 63 keeps the assertion at "at least 10 %" rather than pinning today's exact number).
+  const nimble = body({ vel: { x: 70, z: 0 } });
   simulate({ profile, b: nimble, input: { throttle: 0, assistMode: 'assisted' }, ticks: 60 });
-  assert.ok(nimble.vel.x < 110,
-    `below the cap the hands-off settle is untouched (got ${nimble.vel.x.toFixed(1)})`);
+  assert.ok(nimble.vel.x < 63,
+    `"Nimble in a fight. Zip around, stay in control of the combat area, turn NOW when I twitch, stop when I brake, drift when I choose to. Response starts instantly. The ship feels like a controllable mass, not a cursor." — below the cap the hands-off settle is untouched (got ${nimble.vel.x.toFixed(1)})`);
 }
 
 // 12d. The physics-earned tag is telemetry: it cannot raise thrust's cap, and it is no longer

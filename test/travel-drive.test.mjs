@@ -90,19 +90,20 @@ test('flags off: every swept case is byte-identical to the pre-Travel-Burn kerne
 
 test('flags off: an engaged travel drive on the input is ignored completely', () => {
   // Proves the gate is the FLAG and not merely the absence of travel input — a caller that always
-  // populates `input.travelDrive` (which the latch owner will) must not perturb the golden.
-  const plain = BASELINE.find((entry) => entry.name === 'reaction/throttle-below-cap');
-  assert.ok(plain, 'baseline case missing');
-
+  // populates `input.travelDrive` (which the latch owner will) must not perturb the kernel.
+  // Compared against the live no-drive result (not the frozen golden) so a combat-speed rescale
+  // cannot masquerade as a travel-drive leak.
   withFlags({ travelBurn: false, boostNeverBrakes: false }, () => {
+    const bodyBelowCap = { vel: { x: 80, z: 0 } };
+    const plain = step('drive_reaction_m', { throttle: 1 }, bodyBelowCap);
     const withDrive = step(
       'drive_reaction_m',
       { throttle: 1, travelDrive: { state: 'engaged', cap: 900, ceiling: 1200 } },
-      { vel: { x: 120, z: 0 } }
+      bodyBelowCap
     );
     assert.deepEqual(
       normalizeResult(withDrive),
-      plain.result,
+      normalizeResult(plain),
       'travelDrive input leaked into the result while travelBurn was off'
     );
   });
@@ -112,7 +113,7 @@ test('flags off: an engaged travel drive on the input is ignored completely', ()
 
 test('RC-4: boost above the cap commands forward >= 0 with the flag on', () => {
   withFlags({ boostNeverBrakes: true }, () => {
-    // combatSpeed 195 x boostSpeedMult 1.55 = 302.25 WU/s; 420 is well above it.
+    // combatSpeed 95 x boostSpeedMult 1.55 = 147.25 WU/s; 420 is well above it.
     const result = step('drive_reaction_m', { throttle: 1, boost: true }, { vel: { x: 420, z: 0 } });
     const forward = result.telemetry.manualLocal.forward;
     assert.ok(
@@ -249,6 +250,28 @@ test('a TORCH ship reaches a higher travel ceiling than a REACTION ship', () => 
     assert.ok(
       torch > resolveTravelCeiling(PROPULSION_PROFILES[id]),
       `TORCH should out-travel ${id}`
+    );
+  }
+});
+
+test('authored travelCeiling keeps cross-map travel unchanged after the nimble-regime combat rescale', () => {
+  // Combat got tighter; travel is UNCHANGED. "If I swing well, slingshot well, fly well, I EARN
+  // speed and I KEEP it. Thrusters have a cap; physics-earned speed does not get eaten by the brakes."
+  const beforeRescale = {
+    drive_reaction_s: 472.5,
+    drive_reaction_m: 438.75,
+    drive_reaction_l: 382.5,
+    drive_gravimetric_s: 252,
+    drive_gravimetric_m: 225,
+    drive_pulse_plate_m: 715,
+    drive_torch_l: 1120,
+    drive_field_sail_m: 190,
+  };
+  for (const [id, ceiling] of Object.entries(beforeRescale)) {
+    assert.equal(
+      resolveTravelCeiling(PROPULSION_PROFILES[id]),
+      ceiling,
+      `${id}: travelCeiling must stay ${ceiling} so cross-map travel is unchanged`,
     );
   }
 });

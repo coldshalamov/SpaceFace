@@ -14,6 +14,7 @@ import {
   resolveExceptionalSpeed,
   VL_EXCEPTIONAL_SPEED_RATIO_MAX,
 } from './velocityLanguage.js';
+import { resolveGovernedCombatSpeed } from '../core/flight/propulsionCatalog.js';
 
 // M2 floating origin: chase focus / camera pose are frame-local. Entity.pos stays galactic-global.
 const _frameOriginScratch = { x: 0, z: 0 };
@@ -67,8 +68,8 @@ export const CAMERA_ZOOM_MIN = 45;
 export const CAMERA_ZOOM_MAX = 330; // 50% more manual zoom-out than the previous 220 wu ceiling.
 export const SPEED_ZOOM_SAMPLE_INTERVAL = 0.125; // seconds — 8 Hz target updates, smoothed per-frame.
 export const SPEED_ZOOM_MIN = 0.88;  // slowest / idle factor (spec2/02 §2)
-export const SPEED_ZOOM_MAX = 1.18;  // ordinary hull-max factor
-export const PHYSICS_EARNED_SPEED_ZOOM_MAX = 1.55;
+export const SPEED_ZOOM_MAX = 1.35;               // was 1.18 — the at-cruise frame widens ~14 %
+export const PHYSICS_EARNED_SPEED_ZOOM_MAX = 3.5; // was 1.55 — "max ~3x at ~550" (FEEL_CONTRACT §C)
 export const PHYSICS_EARNED_SPEED_RATIO_MAX = VL_EXCEPTIONAL_SPEED_RATIO_MAX;
 const ZOOM_LERP = 1.4;              // /s — speed-zoom ease (spec2/02 §2)
 // Boost framing is a sustained state cue, not an ignition impulse. A short Shift tap should barely
@@ -984,7 +985,18 @@ export function createChaseCamera(state) {
         if (_speedZoomSampleT <= 0) {
           // Reduced motion keeps the ordinary 0.88..1.18 speed framing but suppresses the larger
           // physics-earned pullback, matching the existing Massline release-camera contract.
-          const ordinarySpeedZoom = resolveSpeedZoomFactor(playerSpeed, p.maxSpeed || 120, false);
+          // PQ-137.03: the ordinary frame is keyed to the hull's GOVERNED combat speed, not to the
+          // legacy derived `maxSpeed`. `p.maxSpeed` is ships.js's derived stat (engine topSpeed x
+          // SPEED_SCALE x handling x speedMass) and does not move with the drive catalog; for the
+          // starter it reads 172 against a governed cruise of 95, so a frame keyed to it would be
+          // saturated everywhere the fight actually happens.
+          const governedCap = resolveGovernedCombatSpeed(p, state, p.maxSpeed || 120);
+          const ordinarySpeedZoom = resolveSpeedZoomFactor(playerSpeed, governedCap, false);
+          // The above-cap opening is NOT computed here. `velocityLanguage`'s owner-bound record is
+          // the single writer (check-chase-camera-juice cycle 15 pins that), and it is still keyed to
+          // `player.maxSpeed` in src/render/feel.js:421 — which is why FEEL_CONTRACT B3's "visible
+          // depth reaches 1.5x at 2x cruise" cannot pass yet. Re-keying that one line is filed as a
+          // cross-lane request; when it lands, this reads the right number with no change here.
           const exceptionalSpeed = isMotionReduced(state) ? 0 : readOwnedExceptionalSpeed(state);
           _speedZoomFactor = resolveExceptionalSpeedZoomFactor(
             exceptionalSpeed,
