@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-04T04:55:59.824Z",
+  "updatedAt": "2026-09-04T05:00:56.834Z",
   "purpose": "Canonical cross-plan priority and dispatch queue. Product completion remains authoritative in design/program/03_LIVE_ACCEPTANCE_MATRIX.md.",
   "stateContract": {
     "allowed": [
@@ -10621,7 +10621,7 @@
       "priority": 67,
       "title": "Spilled cargo is noticed",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "world-reaction"
@@ -10633,7 +10633,9 @@
         "npm run check:baseline",
         "npm run check:sim"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-138.01-REPORT.md"
+      ],
       "brief": "traffic consumes freight:cargoSpilled (and salvage:fieldVulture) and dispatches a salvor job to the spill; _isSalvageableBody accepts freight pickups; pirates near the route may take the job. Bar B10b: an NPC reaches spilled cargo within 30 s."
     },
     {
