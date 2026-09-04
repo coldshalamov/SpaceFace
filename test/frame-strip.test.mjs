@@ -8,6 +8,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { mkdirSync, writeFileSync, existsSync, symlinkSync, mkdtempSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 
 import {
   retentionMask,
@@ -20,6 +23,10 @@ import {
   CHROME_ARGS,
   DEFAULT_STRIP_DIR,
   DEFAULT_MANIFEST_DIR,
+  assertSafeLeafToken,
+  assertStrictDescendant,
+  assertRealpathChainContained,
+  cleanTargetDirectory,
 } from '../scripts/lib/bench/frameStripCapture.mjs';
 
 const at = (simTime) => ({ simTime });
@@ -140,4 +147,87 @@ test('the capture proves the ships were DRAWN, not merely inside the frustum', a
     'the manifest names the GPU that drew the pictures');
   assert.match(src, /hudTextVerifiedAtEnd/,
     'HUD text is verified again at the end, because a caption can arrive at second nine');
+});
+
+test('the capture binds sourceIdentity, harnessDigest, sourceTag path isolation, and stale frame cleanup', async () => {
+  const src = await readFile(new URL('../scripts/lib/bench/frameStripCapture.mjs', import.meta.url), 'utf8');
+
+  assert.match(src, /computeProductionSourceIdentity/,
+    'the capture imports and computes production source identity');
+  assert.match(src, /computeFunLoopHarnessDigest/,
+    'the capture imports and computes fun loop harness digest');
+  assert.match(src, /rawTag = candidateId \|\|/,
+    'the capture paths are partitioned by candidateId / sourceTag');
+  assert.match(src, /cleanTargetDirectory/,
+    'stale image files are wiped before new frames are written');
+  assert.match(src, /realpathSync/,
+    'cleanup compares realpath results so a junction cannot escape the authorized root');
+  assert.match(src, /receiptDir/,
+    'new manifests record the capture-owned receipt directory for the PNG contact sheet');
+  assert.match(src, /frameFormat:\s*(FRAME_FORMAT|'jpeg')/,
+    'the manifest declares jpeg format for critic consumption');
+  assert.match(src, /\.jpg/,
+    'retained frames are written with .jpg extension');
+});
+
+test('unsafe candidate tags and path segments are refused rather than normalized', () => {
+  for (const bad of ['..\\..\\..\\assets\\ships', '..\\crucible\\victim-hash', '../outside', 'a/b', 'C:foo', '..', '.', '']) {
+    assert.throws(() => assertSafeLeafToken(bad, 'candidateId'), /unsafe/);
+  }
+  assert.equal(assertSafeLeafToken('abc_1.2-3', 'candidateId'), 'abc_1.2-3');
+});
+
+test('cleanup unlinks only inside the authorized target and cannot remove a sibling candidate', () => {
+  const root = mkdtempSync(join(tmpdir(), 'sf-strip-clean-'));
+  try {
+    const aDir = join(root, 'crucible', 'candidate-a', 'strip');
+    const bDir = join(root, 'crucible', 'candidate-b', 'strip');
+    mkdirSync(aDir, { recursive: true });
+    mkdirSync(bDir, { recursive: true });
+    const victim = join(bDir, 'victim.jpg');
+    writeFileSync(join(aDir, 'frame_000.jpg'), 'old');
+    writeFileSync(join(aDir, 'strip-manifest.json'), '{}');
+    writeFileSync(victim, 'keep');
+    cleanTargetDirectory(aDir, root);
+    assert.equal(existsSync(join(aDir, 'frame_000.jpg')), false);
+    assert.equal(existsSync(victim), true);
+
+    const outsideRoot = mkdtempSync(join(tmpdir(), 'sf-strip-outside-'));
+    try {
+      const sentinel = join(outsideRoot, 'keep.jpg');
+      writeFileSync(sentinel, 'keep');
+      assert.throws(() => assertStrictDescendant(join(outsideRoot, 'keep.jpg'), root, 'targetDir'), /not a strict descendant/);
+      assert.equal(existsSync(sentinel), true);
+    } finally {
+      rmSync(outsideRoot, { recursive: true, force: true });
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('cleanup refuses a junction or symlink that escapes the authorized root', (t) => {
+  const root = mkdtempSync(join(tmpdir(), 'sf-strip-junc-'));
+  const outside = mkdtempSync(join(tmpdir(), 'sf-strip-junc-out-'));
+  try {
+    mkdirSync(join(root, 'crucible'), { recursive: true });
+    const sentinel = join(outside, 'victim.jpg');
+    writeFileSync(sentinel, 'keep');
+    const junctionPath = join(root, 'crucible', 'evil-tag');
+    try {
+      symlinkSync(outside, junctionPath, process.platform === 'win32' ? 'junction' : 'dir');
+    } catch (err) {
+      t.skip(`platform cannot create a directory symlink/junction: ${err.message}`);
+      return;
+    }
+    assert.throws(
+      () => assertRealpathChainContained(join(junctionPath, 'strip'), root, 'targetDir'),
+      /reparse|symlink|realpath|escape/,
+    );
+    assert.throws(() => cleanTargetDirectory(junctionPath, root), /reparse|symlink|realpath|escape|not a/);
+    assert.equal(existsSync(sentinel), true);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+    rmSync(outside, { recursive: true, force: true });
+  }
 });

@@ -43,10 +43,11 @@
 
 import { spawn } from 'node:child_process';
 import { createServer as createNetServer } from 'node:net';
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { mkdirSync, writeFileSync, readdirSync, unlinkSync, existsSync, realpathSync } from 'node:fs';
+import { join, resolve, relative, isAbsolute, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadPlaywright } from '../load-playwright.mjs';
+import { computeProductionSourceIdentity, computeFunLoopHarnessDigest } from '../../measure-fun-loop.mjs';
 
 const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 
@@ -641,11 +642,134 @@ export async function sweepHudText(page) {
  * @param {number} [options.durationS] seconds of gameplay to photograph
  * @param {boolean} [options.verbose]
  */
+export const SAFE_LEAF_TOKEN_RE = /^[a-zA-Z0-9._-]+$/;
+
+function containmentRel(rootPath, childPath) {
+  const rel = relative(rootPath, childPath);
+  if (!rel || rel.startsWith('..') || isAbsolute(rel) || /^[A-Za-z]:/.test(rel)) return null;
+  return rel;
+}
+
+/**
+ * Require a nonempty safe leaf token (letters, digits, dot, underscore, hyphen;
+ * reject '.', '..', separators, drive/absolute forms, and traversal).
+ */
+export function assertSafeLeafToken(val, label = 'path segment') {
+  if (typeof val !== 'string' || !val || !SAFE_LEAF_TOKEN_RE.test(val) || val === '.' || val === '..') {
+    throw new Error(`unsafe ${label}: "${val}" (must be a nonempty leaf token matching ${SAFE_LEAF_TOKEN_RE} and not '.' or '..')`);
+  }
+  if (val.includes('/') || val.includes('\\') || val.includes(':')) {
+    throw new Error(`unsafe ${label}: "${val}" contains path separators or drive specifier`);
+  }
+  return val;
+}
+
+/**
+ * Prove childPath is a lexical strict descendant of rootDir.
+ */
+export function assertStrictDescendant(childPath, rootDir, label = 'directory') {
+  const resolvedRoot = resolve(rootDir);
+  const resolvedChild = resolve(childPath);
+  const rel = containmentRel(resolvedRoot, resolvedChild);
+  if (!rel) {
+    throw new Error(`${label} "${resolvedChild}" is not a strict descendant of authorized root "${resolvedRoot}"`);
+  }
+  if (resolve(resolvedRoot, rel) !== resolvedChild) {
+    throw new Error(`${label} "${resolvedChild}" failed resolution containment against root "${resolvedRoot}"`);
+  }
+  return resolvedChild;
+}
+
+/**
+ * Prove every existing prefix of childPath, after realpath, stays inside the real authorized root.
+ * Catches a junction/symlink on an ancestor before mkdir would follow it outside.
+ */
+export function assertRealpathChainContained(childPath, rootDir, label = 'directory') {
+  const resolvedRoot = resolve(rootDir);
+  const resolvedChild = assertStrictDescendant(childPath, resolvedRoot, label);
+  if (!existsSync(resolvedRoot)) return { realRoot: resolvedRoot, realChild: resolvedChild };
+  let realRoot;
+  try {
+    realRoot = realpathSync(resolvedRoot);
+  } catch (err) {
+    throw new Error(`${label} authorized root realpath failed (${resolvedRoot}): ${err.message}`);
+  }
+  const rel = containmentRel(resolvedRoot, resolvedChild);
+  const parts = rel.split(/[/\\]/).filter(Boolean);
+  let acc = resolvedRoot;
+  for (const part of parts) {
+    acc = resolve(acc, part);
+    if (!existsSync(acc)) break;
+    let realAcc;
+    try {
+      realAcc = realpathSync(acc);
+    } catch (err) {
+      throw new Error(`${label} realpath failed at "${acc}": ${err.message}`);
+    }
+    if (!containmentRel(realRoot, realAcc)) {
+      throw new Error(`${label} "${acc}" is a reparse/symlink escape from "${realRoot}" to "${realAcc}"`);
+    }
+  }
+  return { realRoot, realChild: resolvedChild };
+}
+
+/**
+ * After the directory exists, prove its realpath remains a strict descendant of the real root.
+ */
+export function assertRealpathDescendant(childPath, rootDir, label = 'directory') {
+  const resolvedRoot = resolve(rootDir);
+  const resolvedChild = assertStrictDescendant(childPath, resolvedRoot, label);
+  let realRoot;
+  let realChild;
+  try {
+    realRoot = realpathSync(resolvedRoot);
+    realChild = realpathSync(resolvedChild);
+  } catch (err) {
+    throw new Error(`${label} realpath failed (${resolvedChild} under ${resolvedRoot}): ${err.message}`);
+  }
+  if (!containmentRel(realRoot, realChild)) {
+    throw new Error(`${label} "${realChild}" is not a realpath descendant of authorized root "${realRoot}"`);
+  }
+  return { realRoot, realChild };
+}
+
+/**
+ * Safely clean stale frames and manifest in targetDir.
+ * Unlinks only basename entries returned from the already-contained, realpath-verified
+ * target directory. Each joined deletion target must independently remain inside that directory.
+ */
+export function cleanTargetDirectory(targetDir, authorizedRoot) {
+  const resolvedTarget = assertStrictDescendant(targetDir, authorizedRoot, 'targetDir');
+  if (!existsSync(resolvedTarget)) return;
+  const { realChild } = assertRealpathDescendant(resolvedTarget, authorizedRoot, 'targetDir');
+  let existing;
+  try {
+    existing = readdirSync(realChild);
+  } catch (err) {
+    throw new Error(`failed to read target directory for cleanup (${realChild}): ${err.message}`);
+  }
+  for (const entry of existing) {
+    if (typeof entry !== 'string' || !entry || basename(entry) !== entry || entry === '.' || entry === '..') {
+      throw new Error(`unsafe directory entry returned from target directory: "${entry}"`);
+    }
+    const filePath = resolve(realChild, entry);
+    const rel = containmentRel(realChild, filePath);
+    if (!rel || rel !== entry) {
+      throw new Error(`deletion target "${filePath}" escaped target directory "${realChild}"`);
+    }
+    const lower = entry.toLowerCase();
+    if (lower.endsWith('.png') || lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower === 'strip-manifest.json') {
+      unlinkSync(filePath);
+    }
+  }
+}
+
 export async function captureFrameStrip({
   bench = 'crucible',
   scenarioId = 'swarm_idle',
   loadoutId = null,
   seed = 4242,
+  candidateId = null,
   outDir = DEFAULT_STRIP_DIR,
   manifestDir = DEFAULT_MANIFEST_DIR,
   headed = false,
@@ -653,17 +777,42 @@ export async function captureFrameStrip({
   verbose = false,
   serverPort = 8520,
 } = {}) {
-  const scenario = STRIP_SCENARIOS[scenarioId];
+  const safeBench = assertSafeLeafToken(bench, 'bench');
+  const safeScenarioId = assertSafeLeafToken(scenarioId, 'scenarioId');
+  const scenario = STRIP_SCENARIOS[safeScenarioId];
   if (!scenario) {
-    throw new Error(`unknown strip scenario '${scenarioId}'; known: ${Object.keys(STRIP_SCENARIOS).join(', ')}`);
+    throw new Error(`unknown strip scenario '${safeScenarioId}'; known: ${Object.keys(STRIP_SCENARIOS).join(', ')}`);
   }
-  const hullId = loadoutId || scenario.loadoutId;
+  const sourceIdentity = computeProductionSourceIdentity(ROOT);
+  const harnessDigest = computeFunLoopHarnessDigest(ROOT);
+  const rawTag = candidateId || `${(sourceIdentity.gitHead || 'head').slice(0, 8)}${sourceIdentity.productionDirty ? `-dirty-${sourceIdentity.productionDiffHash.slice(0, 8)}` : ''}`;
+  const safeSourceTag = assertSafeLeafToken(rawTag, 'candidateId/sourceTag');
+  const hullId = assertSafeLeafToken(loadoutId || scenario.loadoutId, 'loadoutId');
+  const safeSeed = assertSafeLeafToken(String(seed), 'seed');
   const seconds = durationS || scenario.durationS;
-  const stripName = `${scenarioId}-${hullId}-s${seed}`;
-  const targetDir = join(outDir, bench, stripName);
-  const receiptDir = join(manifestDir, bench, stripName);
+  const stripName = `${safeScenarioId}-${hullId}-s${safeSeed}`;
+  assertSafeLeafToken(stripName, 'stripName');
+
+  const resolvedOutDir = resolve(outDir);
+  const resolvedManifestDir = resolve(manifestDir);
+
+  const targetDir = resolve(resolvedOutDir, safeBench, safeSourceTag, stripName);
+  const receiptDir = resolve(resolvedManifestDir, safeBench, safeSourceTag, stripName);
+
+  assertStrictDescendant(targetDir, resolvedOutDir, 'targetDir');
+  assertStrictDescendant(receiptDir, resolvedManifestDir, 'receiptDir');
+  assertRealpathChainContained(targetDir, resolvedOutDir, 'targetDir');
+  assertRealpathChainContained(receiptDir, resolvedManifestDir, 'receiptDir');
+
+  mkdirSync(resolvedOutDir, { recursive: true });
+  mkdirSync(resolvedManifestDir, { recursive: true });
   mkdirSync(targetDir, { recursive: true });
   mkdirSync(receiptDir, { recursive: true });
+
+  assertRealpathDescendant(targetDir, resolvedOutDir, 'targetDir');
+  assertRealpathDescendant(receiptDir, resolvedManifestDir, 'receiptDir');
+
+  cleanTargetDirectory(targetDir, resolvedOutDir);
 
   const log = (...a) => { if (verbose) console.log('   [strip]', ...a); };
 
@@ -1108,6 +1257,8 @@ export async function captureFrameStrip({
       scenarioId,
       scenarioLabel: scenario.label,
       loadoutId: hullId,
+      sourceIdentity,
+      harnessDigest,
       arenaId: origin.arenaId,
       ruleset: origin.ruleset,
       seed: origin.seed,
@@ -1185,6 +1336,7 @@ export async function captureFrameStrip({
       pageErrors,
       capturedAt: new Date().toISOString(),
       stripDir: targetDir,
+      receiptDir,
       contactSheet,
       moments,
       momentsInSpan,

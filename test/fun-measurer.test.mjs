@@ -744,7 +744,16 @@ test('integration: knock scenario through evaluateBars + deriveFunMetrics once t
   }
 
   const { evaluateBars } = await import('../scripts/lib/bench/feelBars.mjs');
-  const result = await verbBench.runVerbBench({ seeds: [4242], scenarioIds: ['feel.knock_budget'] });
+  let result;
+  try {
+    result = await verbBench.runVerbBench({ seeds: [4242], scenarioIds: ['feel.knock_budget'] });
+  } catch (err) {
+    if (err.code === 'ERR_MODULE_NOT_FOUND' && /three/i.test(err.message)) {
+      t.skip(`sparse worktree missing optional renderer dependency 'three': ${err.message}`);
+      return;
+    }
+    throw err;
+  }
   assert.equal(result.runs.length, 1);
   const run = result.runs[0];
 

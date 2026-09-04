@@ -19,10 +19,12 @@ import {
   executeModelRoute,
   extractBalancedJson,
   validateVerdict,
+  validateStripAdmission,
   compareCritics,
   selectCriticFrames,
   DEFAULT_MAX_FRAMES,
 } from './lib/critic/index.mjs';
+import { computeFunLoopHarnessDigest } from './measure-fun-loop.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -173,13 +175,18 @@ export async function main(argv = process.argv) {
 
     log(`Loaded strip manifest for '${stripName}' with ${manifest.frames?.length ?? 0} frames`);
 
-    // A strip that photographed an empty arena must never be graded: the critic would answer
-    // nine questions about a planet and a star field, and the verdict would look like a verdict.
-    const hullDrawn = manifest.hullDrawn;
-    if (hullDrawn && hullDrawn.framesTotal > 0 && (hullDrawn.medianPartsPerFrame || 0) <= 0) {
-      console.error(`Error: strip '${stripName}' has no ship in it `
-        + `(${hullDrawn.framesWithHull} of ${hullDrawn.framesTotal} frames drew the hull). `
-        + 'Recapture before grading.');
+    // A strip must pass strict admission (schema, shipping camera, verified HUD, drawn hull,
+    // normalSpeed, sourceIdentity, harnessDigest matching live digest, existent frame files, and no stale frames)
+    // before any model is invoked. Missing proof is a hard refusal.
+    const liveHarnessDigest = computeFunLoopHarnessDigest(ROOT);
+    const admission = validateStripAdmission(manifest, {
+      manifestPath,
+      stripDir,
+      receiptDir: manifest.receiptDir,
+      expectedHarnessDigest: liveHarnessDigest,
+    });
+    if (!admission.ok) {
+      console.error(`Error: strip '${stripName}' failed critic admission: ${admission.reason}. Recapture before grading.`);
       hadHarnessError = true;
       continue;
     }

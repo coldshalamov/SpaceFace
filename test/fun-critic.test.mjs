@@ -6,7 +6,9 @@
 // Prose without a frame is not a verdict."
 
 import test from 'node:test';
-import { resolve } from 'node:path';
+import { resolve, join } from 'node:path';
+import { mkdtemp, writeFile, rm, mkdir } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import assert from 'node:assert/strict';
 
 import {
@@ -25,6 +27,8 @@ import {
   CONTENT_ANSWER_PATTERNS,
   matchesContentPatterns,
   validateVerdict,
+  validateStripAdmission,
+  CANONICAL_NORMAL_SPEED_FLOOR,
 } from '../scripts/lib/critic/validation.mjs';
 
 import {
@@ -46,7 +50,7 @@ import {
 /**
  * Creates a valid fake manifest with non-consecutive frame indices.
  */
-function createFakeManifest(indices = [0, 2, 4, 6, 8, 10, 12, 14, 16, 18]) {
+function createFakeManifest(indices = [0, 2, 4, 6, 8, 10, 12, 14, 16, 18], overrides = {}) {
   return {
     schema: 'spaceface.frameStripManifest.v2',
     bench: 'crucible',
@@ -59,6 +63,7 @@ function createFakeManifest(indices = [0, 2, 4, 6, 8, 10, 12, 14, 16, 18]) {
     runKind: 'survival',
     camera: 'shipping_chase',
     cameraMeasured: {
+      available: true,
       heightWU: 199.57,
       fovDeg: 50,
       aspect: 1.7778,
@@ -67,6 +72,26 @@ function createFakeManifest(indices = [0, 2, 4, 6, 8, 10, 12, 14, 16, 18]) {
     },
     hudText: 'off',
     hudTextVerified: true,
+    hullDrawn: {
+      medianPartsPerFrame: 3,
+      framesWithHull: indices.length,
+      framesTotal: indices.length,
+      sampleCount: indices.length,
+      inspectedSampleCount: indices.length,
+    },
+    normalSpeed: true,
+    realtimeFraction: 0.85,
+    normalSpeedFloor: 0.60,
+    contactSheet: 'C:/fake/strip/dir/contact-sheet.png',
+    receiptDir: 'C:/fake/strip/dir',
+    sourceIdentity: {
+      gitHead: '4691400baf96ffa5abb7f3df9ab9e1c83c55221a',
+      gitTree: 'tree12345',
+      productionDirty: false,
+      productionDiffHash: '0'.repeat(64),
+    },
+    harnessDigest: 'sha256-critic-harness-digest-test-0123456789abcdef',
+    frameFormat: 'jpeg',
     sampleHz: 8,
     baselineFps: 4,
     momentFps: 8,
@@ -89,7 +114,7 @@ function createFakeManifest(indices = [0, 2, 4, 6, 8, 10, 12, 14, 16, 18]) {
     ],
     frames: indices.map((idx, i) => ({
       index: idx,
-      file: `frame_${String(idx).padStart(3, '0')}.png`,
+      file: `frame_${String(idx).padStart(3, '0')}.jpg`,
       tick: i * 10,
       simTime: Number((i * 0.25).toFixed(3)),
       phase: 'active',
@@ -98,6 +123,7 @@ function createFakeManifest(indices = [0, 2, 4, 6, 8, 10, 12, 14, 16, 18]) {
       playerSpeed: 110.5,
       nearMoment: i === 6,
     })),
+    ...overrides,
   };
 }
 
@@ -358,7 +384,7 @@ test('prompt generator includes frames, manifest facts, hard content instruction
   // Check frame paths and marker
   // The prompt resolves each frame to an absolute path, so on Windows the separators are
   // backslashes. Assert on the resolved form, not on the literal we happened to type.
-  assert.ok(prompt.includes(resolve('C:/fake/strip/dir', 'frame_000.png')), 'Strip directory path must be present');
+  assert.ok(prompt.includes(resolve('C:/fake/strip/dir', manifest.frames[0].file)), 'Strip directory path must be present');
   assert.ok(prompt.includes('[NEAR MOMENT]'), 'Near moment marker must be attached to frame near moment');
 
   // Check hard instruction
@@ -528,4 +554,306 @@ test('naming a lazy answer is the critic\'s job; proposing one is not', () => {
   }, manifest, { shownFrames: shown });
   assert.equal(proposal.rejected, true, 'the critic proposes a rule change, never more stuff');
   assert.ok(proposal.rejectReasons.some((r) => r.includes('names content')));
+});
+
+test('validateStripAdmission fails closed on bad schema, slow-motion, missing camera, unverified HUD, and missing hull', () => {
+  const base = createFakeManifest([0, 2, 4]);
+
+  const check = (patch, reasonPattern) => {
+    const res = validateStripAdmission({ ...base, ...patch }, { checkFiles: false });
+    assert.equal(res.ok, false, `Expected failure for patch ${JSON.stringify(patch)}`);
+    assert.match(res.reason, reasonPattern);
+  };
+
+  // Schema mismatch
+  check({ schema: 'spaceface.frameStripManifest.v1' }, /expected 'spaceface\.frameStripManifest\.v2'/);
+
+  // Slow motion (normalSpeed false or missing)
+  check({ normalSpeed: false }, /normalSpeed|slow-motion/i);
+  check({ normalSpeed: undefined }, /normalSpeed|slow-motion/i);
+
+  // Missing shipping camera
+  check({ camera: 'chase_orbit' }, /shipping-camera/i);
+  check({ cameraMeasured: { available: false, heightWU: 0 } }, /shipping-camera/i);
+
+  // Unverified HUD text
+  check({ hudText: 'on' }, /HUD/i);
+  check({ hudTextVerified: false }, /HUD/i);
+
+  // Missing or empty drawn hull
+  check({ hullDrawn: null }, /drawn-hull/i);
+  check({ hullDrawn: { framesTotal: 3, medianPartsPerFrame: 0, framesWithHull: 0 } }, /drawn-hull/i);
+
+  // Missing sourceIdentity or harnessDigest
+  check({ sourceIdentity: null }, /sourceIdentity/i);
+  check({ harnessDigest: '' }, /harnessDigest/i);
+
+  // Valid manifest passes with checkFiles: false
+  const validRes = validateStripAdmission(base, { checkFiles: false });
+  assert.equal(validRes.ok, true);
+});
+
+test('validateStripAdmission checks exact disk frames, rejecting missing frames, stale unlisted frames, or format mismatch', async () => {
+  const tmp = await mkdtemp(join(tmpdir(), 'sf-strip-test-'));
+  try {
+    const indices = [0, 2, 4];
+    const contactSheetPath = join(tmp, 'contact-sheet.png');
+    await writeFile(contactSheetPath, 'fake-contact-png-bytes', 'utf8');
+    const manifest = createFakeManifest(indices, {
+      stripDir: tmp,
+      receiptDir: tmp,
+      frameFormat: 'jpeg',
+      contactSheet: contactSheetPath,
+      frames: indices.map((idx) => ({
+        index: idx,
+        file: `frame_${String(idx).padStart(3, '0')}.jpg`,
+      })),
+    });
+
+    // Case 1: missing listed frames
+    const res1 = validateStripAdmission(manifest, { stripDir: tmp, checkFiles: true });
+    assert.equal(res1.ok, false);
+    assert.match(res1.reason, /Nonexistent manifest-listed frame file/);
+
+    // Create the expected frames
+    for (const f of manifest.frames) {
+      await writeFile(join(tmp, f.file), 'fake-jpg-data', 'utf8');
+    }
+
+    // Now all listed frames exist -> passes
+    const resOk = validateStripAdmission(manifest, { stripDir: tmp, checkFiles: true });
+    assert.equal(resOk.ok, true);
+
+    // Case 2: stale unlisted frame in directory
+    const staleFile = join(tmp, 'frame_001.jpg');
+    await writeFile(staleFile, 'stale-data', 'utf8');
+    const res2 = validateStripAdmission(manifest, { stripDir: tmp, checkFiles: true });
+    assert.equal(res2.ok, false);
+    assert.match(res2.reason, /Stale or unlisted frame file/);
+    await rm(staleFile);
+
+    // Case 3: format mismatch (e.g. stale .png in a jpeg strip)
+    const pngFile = join(tmp, 'frame_000.png');
+    await writeFile(pngFile, 'png-data', 'utf8');
+    const res3 = validateStripAdmission(manifest, { stripDir: tmp, checkFiles: true });
+    assert.equal(res3.ok, false);
+    assert.match(res3.reason, /Stale or unlisted frame file|format mismatch/);
+    await rm(pngFile);
+  } finally {
+    await rm(tmp, { recursive: true, force: true });
+  }
+});
+
+test('validateVerdict carries sourceIdentity, harnessDigest, frameFormat, contactSheet, and exact frames', () => {
+  const manifest = createFakeManifest([0, 2, 4]);
+  manifest.contactSheet = 'C:/fake/strip/dir/contact_sheet.jpg';
+
+  const candidate = {
+    answers: createValidAnswers(2),
+    fundamental: createValidFundamental(2),
+  };
+
+  const verdict = validateVerdict(candidate, manifest);
+  assert.equal(verdict.rejected, false);
+  assert.equal(verdict.strip.frameFormat, 'jpeg');
+  assert.equal(verdict.strip.contactSheet, 'C:/fake/strip/dir/contact_sheet.jpg');
+  assert.deepEqual(verdict.strip.sourceIdentity, manifest.sourceIdentity);
+  assert.equal(verdict.strip.harnessDigest, manifest.harnessDigest);
+  assert.equal(verdict.strip.frames.length, 3);
+  assert.equal(verdict.strip.frames[0].file, 'frame_000.jpg');
+  assert.equal(verdict.strip.receiptDir, manifest.receiptDir);
+});
+
+test('validateStripAdmission refuses slow-but-true, lowered floor, dirty alias, and incomplete camera', () => {
+  const base = createFakeManifest([0, 2, 4]);
+  assert.equal(CANONICAL_NORMAL_SPEED_FLOOR, 0.6);
+  assert.equal(validateStripAdmission({
+    ...base,
+    normalSpeed: true,
+    realtimeFraction: 0.26,
+  }, { checkFiles: false }).ok, false);
+
+  assert.equal(validateStripAdmission({
+    ...base,
+    normalSpeed: true,
+    normalSpeedFloor: 0.20,
+    realtimeFraction: 0.26,
+  }, { checkFiles: false }).ok, false);
+
+  const dirtyOnly = createFakeManifest([0, 2, 4], {
+    sourceIdentity: {
+      gitHead: '4691400baf96ffa5abb7f3df9ab9e1c83c55221a',
+      gitTree: 'tree12345',
+      dirty: false,
+      productionDiffHash: '0'.repeat(64),
+    },
+  });
+  delete dirtyOnly.sourceIdentity.productionDirty;
+  dirtyOnly.sourceIdentity.dirty = false;
+  assert.match(validateStripAdmission(dirtyOnly, { checkFiles: false }).reason, /sourceIdentity/);
+
+  assert.match(validateStripAdmission({
+    ...base,
+    cameraMeasured: { available: true, heightWU: 180, fovDeg: 50, aspect: 1.78 },
+  }, { checkFiles: false }).reason, /shipping-camera/);
+
+  assert.match(validateStripAdmission({
+    ...base,
+    hudTextLeftovers: [{ text: 'CREDITS 12' }],
+  }, { checkFiles: false }).reason, /leftover/i);
+
+  assert.match(validateStripAdmission({
+    ...base,
+    framesCount: 99,
+  }, { checkFiles: false }).reason, /Frame count mismatch/);
+
+  const dup = createFakeManifest([0, 2, 4]);
+  dup.frames[1].index = 0;
+  assert.match(validateStripAdmission(dup, { checkFiles: false }).reason, /Duplicate frame index/);
+
+  assert.match(validateStripAdmission({
+    ...base,
+    harnessDigest: 'stale-digest',
+  }, { checkFiles: false, expectedHarnessDigest: 'live-digest' }).reason, /Mismatched harnessDigest/);
+});
+
+test('validateStripAdmission refuses empty, wrong-format, duplicate, and path-escaped frames', async () => {
+  const tmp = await mkdtemp(join(tmpdir(), 'sf-strip-adv-'));
+  try {
+    const indices = [0, 1];
+    await writeFile(join(tmp, 'contact-sheet.png'), 'png-bytes', 'utf8');
+    const manifest = createFakeManifest(indices, {
+      stripDir: tmp,
+      receiptDir: tmp,
+      contactSheet: join(tmp, 'contact-sheet.png'),
+    });
+
+    await writeFile(join(tmp, 'frame_000.jpg'), '', 'utf8');
+    await writeFile(join(tmp, 'frame_001.jpg'), 'bytes', 'utf8');
+    assert.match(validateStripAdmission(manifest, { stripDir: tmp }).reason, /empty \(0 bytes\)/);
+
+    await writeFile(join(tmp, 'frame_000.jpg'), 'bytes', 'utf8');
+    const pngDecl = createFakeManifest(indices, {
+      stripDir: tmp,
+      receiptDir: tmp,
+      contactSheet: join(tmp, 'contact-sheet.png'),
+      frameFormat: 'png',
+      frames: indices.map((idx) => ({ index: idx, file: `frame_${String(idx).padStart(3, '0')}.png` })),
+    });
+    assert.match(validateStripAdmission(pngDecl, { stripDir: tmp, checkFiles: false }).reason, /frameFormat/);
+
+    const escaped = createFakeManifest(indices, {
+      stripDir: tmp,
+      receiptDir: tmp,
+      contactSheet: join(tmp, 'contact-sheet.png'),
+      frames: [
+        { index: 0, file: 'frame_000.jpg' },
+        { index: 1, file: '../outside.jpg' },
+      ],
+    });
+    escaped.framesCount = 2;
+    escaped.hullDrawn.framesTotal = 2;
+    assert.match(validateStripAdmission(escaped, { stripDir: tmp, checkFiles: false }).reason, /unsafe|path-escaping/);
+
+    const dupFile = createFakeManifest(indices, {
+      stripDir: tmp,
+      receiptDir: tmp,
+      contactSheet: join(tmp, 'contact-sheet.png'),
+      frames: [
+        { index: 0, file: 'frame_000.jpg' },
+        { index: 1, file: 'frame_000.jpg' },
+      ],
+    });
+    assert.match(validateStripAdmission(dupFile, { stripDir: tmp, checkFiles: false }).reason, /Duplicate frame filename/);
+  } finally {
+    await rm(tmp, { recursive: true, force: true });
+  }
+});
+
+test('validateStripAdmission keeps JPEG frames in stripDir and PNG contact sheet in receiptDir', async () => {
+  const tmp = await mkdtemp(join(tmpdir(), 'sf-strip-split-'));
+  try {
+    const targetDir = join(tmp, 'target');
+    const receiptDir = join(tmp, 'receipt');
+    await mkdir(targetDir);
+    await mkdir(receiptDir);
+    const indices = [0, 1];
+    await writeFile(join(targetDir, 'frame_000.jpg'), 'jpeg-bytes', 'utf8');
+    await writeFile(join(targetDir, 'frame_001.jpg'), 'jpeg-bytes', 'utf8');
+    await writeFile(join(receiptDir, 'contact-sheet.png'), 'png-bytes', 'utf8');
+    const manifest = createFakeManifest(indices, {
+      stripDir: targetDir,
+      receiptDir,
+      contactSheet: join(receiptDir, 'contact-sheet.png'),
+    });
+    const ok = validateStripAdmission(manifest, { stripDir: targetDir, receiptDir });
+    assert.equal(ok.ok, true, ok.reason);
+
+    const escapedSheet = createFakeManifest(indices, {
+      stripDir: targetDir,
+      receiptDir,
+      contactSheet: join(tmp, 'outside.png'),
+    });
+    await writeFile(join(tmp, 'outside.png'), 'png-bytes', 'utf8');
+    assert.match(validateStripAdmission(escapedSheet, { stripDir: targetDir, receiptDir }).reason, /escaped receipt/);
+
+    const missingSheet = createFakeManifest(indices, {
+      stripDir: targetDir,
+      receiptDir,
+      contactSheet: join(receiptDir, 'contact-sheet.png'),
+    });
+    delete missingSheet.contactSheet;
+    assert.match(validateStripAdmission(missingSheet, { stripDir: targetDir, receiptDir, checkFiles: false }).reason, /contactSheet/);
+
+    await writeFile(join(receiptDir, 'contact-sheet.png'), '', 'utf8');
+    assert.match(validateStripAdmission(manifest, { stripDir: targetDir, receiptDir }).reason, /empty \(0 bytes\)/);
+  } finally {
+    await rm(tmp, { recursive: true, force: true });
+  }
+});
+
+test('validateStripAdmission fails closed when the strip directory cannot be read', async () => {
+  const tmp = await mkdtemp(join(tmpdir(), 'sf-strip-nodir-'));
+  try {
+    const notDir = join(tmp, 'not-a-dir');
+    await writeFile(notDir, 'i-am-a-file', 'utf8');
+    await writeFile(join(tmp, 'contact-sheet.png'), 'png', 'utf8');
+    const manifest = createFakeManifest([0], {
+      stripDir: notDir,
+      receiptDir: tmp,
+      contactSheet: join(tmp, 'contact-sheet.png'),
+      frames: [{ index: 0, file: 'frame_000.jpg' }],
+    });
+    const res = validateStripAdmission(manifest, { stripDir: notDir, receiptDir: tmp });
+    assert.equal(res.ok, false);
+    assert.match(res.reason, /Failed to read strip directory|not a regular file|Nonexistent|escapes/);
+  } finally {
+    await rm(tmp, { recursive: true, force: true });
+  }
+});
+
+test('critic CLI refuses a stale harness digest before launching a model', async () => {
+  const tmp = await mkdtemp(join(tmpdir(), 'sf-critic-cli-'));
+  try {
+    await writeFile(join(tmp, 'frame_000.jpg'), 'jpeg', 'utf8');
+    await writeFile(join(tmp, 'frame_001.jpg'), 'jpeg', 'utf8');
+    await writeFile(join(tmp, 'contact-sheet.png'), 'png', 'utf8');
+    const manifest = createFakeManifest([0, 1], {
+      stripDir: tmp,
+      receiptDir: tmp,
+      contactSheet: join(tmp, 'contact-sheet.png'),
+      harnessDigest: 'stale-not-the-live-digest',
+    });
+    const manifestPath = join(tmp, 'strip-manifest.json');
+    await writeFile(manifestPath, JSON.stringify(manifest), 'utf8');
+    const { spawnSync } = await import('node:child_process');
+    const res = spawnSync(process.execPath, ['scripts/critic-fun-loop.mjs', '--strip', manifestPath], {
+      encoding: 'utf8',
+      cwd: resolve('.'),
+    });
+    assert.notEqual(res.status, 0);
+    assert.match(res.stderr, /failed critic admission|Mismatched harnessDigest|harnessDigest/);
+  } finally {
+    await rm(tmp, { recursive: true, force: true });
+  }
 });

@@ -9,7 +9,266 @@
 // 3. Fewer than nine yes/no answers, or duplicate q, or answer not 'yes' or 'no'.
 // 4. Extractable balanced JSON.
 
+import { existsSync, readdirSync, statSync } from 'node:fs';
+import { dirname, resolve, relative, isAbsolute, basename } from 'node:path';
 import { RUBRIC_QUESTIONS, computePassCount, isPass } from './rubric.mjs';
+
+/** Capture's NORMAL_SPEED_FLOOR. Never trust a lower manifest-supplied floor. */
+export const CANONICAL_NORMAL_SPEED_FLOOR = 0.60;
+const SAFE_BASENAME_RE = /^[a-zA-Z0-9._-]+$/;
+
+function containmentRel(rootPath, childPath) {
+  const rel = relative(rootPath, childPath);
+  if (!rel || rel.startsWith('..') || isAbsolute(rel) || /^[A-Za-z]:/.test(rel)) return null;
+  return rel;
+}
+
+function isSafeBasename(name) {
+  return typeof name === 'string'
+    && name
+    && basename(name) === name
+    && SAFE_BASENAME_RE.test(name)
+    && name !== '.'
+    && name !== '..'
+    && !name.includes('/')
+    && !name.includes('\\')
+    && !name.includes(':');
+}
+
+/**
+ * Strict critic admission gate for strip manifests.
+ *
+ * Missing proof is a hard refusal before model launch:
+ * - Expected schema ('spaceface.frameStripManifest.v2')
+ * - Shipping camera ('shipping_chase' with finite positive cameraMeasured numbers)
+ * - Verified hidden HUD (hudText === 'off' and hudTextVerified === true, no visible leftovers)
+ * - Positive drawn-hull proof (medianPartsPerFrame > 0, framesWithHull > 0, framesTotal > 0)
+ * - Normal speed (normalSpeed === true and finite realtimeFraction >= 0.60)
+ * - Format (frameFormat === 'jpeg', every frame .jpg, contactSheet .png)
+ * - Source identity proof (gitHead, gitTree, productionDirty, productionDiffHash)
+ * - Harness digest proof (non-empty string matching expectedHarnessDigest if supplied)
+ * - Every exact manifest-listed frame exists on disk as a nonzero regular file
+ * - Contact sheet exists inside receiptDir as a nonzero regular file
+ * - No stale frame filenames, format mismatch, or unlisted frame files in stripDir
+ *
+ * @param {object} manifest Manifest to validate
+ * @param {object} [options]
+ * @param {string} [options.manifestPath]
+ * @param {string} [options.stripDir]
+ * @param {string} [options.receiptDir]
+ * @param {string} [options.expectedHarnessDigest]
+ * @param {boolean} [options.checkFiles=true] Whether to check files on disk
+ * @returns {{ ok: boolean, reason?: string }}
+ */
+export function validateStripAdmission(manifest, options = {}) {
+  if (!manifest || typeof manifest !== 'object') {
+    return { ok: false, reason: 'Manifest is missing or not an object' };
+  }
+  if (manifest.schema !== 'spaceface.frameStripManifest.v2') {
+    return { ok: false, reason: `Invalid or missing manifest schema: expected 'spaceface.frameStripManifest.v2', got '${manifest.schema}'` };
+  }
+
+  const cam = manifest.cameraMeasured;
+  if (
+    manifest.camera !== 'shipping_chase' ||
+    !cam ||
+    cam.available !== true ||
+    typeof cam.heightWU !== 'number' || !Number.isFinite(cam.heightWU) || cam.heightWU <= 0 ||
+    typeof cam.fovDeg !== 'number' || !Number.isFinite(cam.fovDeg) || cam.fovDeg <= 0 ||
+    typeof cam.aspect !== 'number' || !Number.isFinite(cam.aspect) || cam.aspect <= 0 ||
+    typeof cam.visibleDepthWU !== 'number' || !Number.isFinite(cam.visibleDepthWU) || cam.visibleDepthWU <= 0
+  ) {
+    return {
+      ok: false,
+      reason: 'Missing shipping-camera proof: camera must be "shipping_chase" with finite positive numeric cameraMeasured measurements (heightWU, fovDeg, aspect, visibleDepthWU)',
+    };
+  }
+
+  if (manifest.hudText !== 'off' || manifest.hudTextVerified !== true) {
+    return { ok: false, reason: 'Missing verified hidden HUD proof: hudText must be "off" and hudTextVerified must be true' };
+  }
+  if (Array.isArray(manifest.hudTextLeftovers)) {
+    const hasLeftoverText = manifest.hudTextLeftovers.some((l) => {
+      if (!l) return false;
+      const t = typeof l === 'string' ? l : (l.text || '');
+      return typeof t === 'string' && t.trim().length > 0;
+    });
+    if (hasLeftoverText) {
+      return { ok: false, reason: 'HUD verification failed: leftover visible HUD text present in manifest' };
+    }
+  }
+
+  if (manifest.normalSpeed !== true) {
+    return { ok: false, reason: `Slow-motion capture refused: normalSpeed must be true (got ${manifest.normalSpeed})` };
+  }
+  if (typeof manifest.realtimeFraction !== 'number' || !Number.isFinite(manifest.realtimeFraction)
+    || manifest.realtimeFraction < CANONICAL_NORMAL_SPEED_FLOOR) {
+    return {
+      ok: false,
+      reason: `Slow-motion capture refused: realtimeFraction must be a finite number >= ${CANONICAL_NORMAL_SPEED_FLOOR} (got ${manifest.realtimeFraction})`,
+    };
+  }
+
+  if (manifest.frameFormat !== 'jpeg') {
+    return { ok: false, reason: `Unsupported frameFormat: expected 'jpeg', got '${manifest.frameFormat}'` };
+  }
+
+  const hullDrawn = manifest.hullDrawn;
+  if (!hullDrawn || hullDrawn.framesTotal <= 0 || (hullDrawn.medianPartsPerFrame || 0) <= 0 || (hullDrawn.framesWithHull || 0) <= 0) {
+    return {
+      ok: false,
+      reason: `Missing positive drawn-hull proof: ${hullDrawn?.framesWithHull || 0} of ${hullDrawn?.framesTotal || 0} frames drew the hull (median ${hullDrawn?.medianPartsPerFrame || 0})`,
+    };
+  }
+
+  const sourceIdentity = manifest.sourceIdentity;
+  if (
+    !sourceIdentity ||
+    typeof sourceIdentity !== 'object' ||
+    typeof sourceIdentity.gitHead !== 'string' ||
+    !sourceIdentity.gitHead ||
+    typeof sourceIdentity.gitTree !== 'string' ||
+    !sourceIdentity.gitTree ||
+    typeof sourceIdentity.productionDirty !== 'boolean' ||
+    typeof sourceIdentity.productionDiffHash !== 'string' ||
+    !sourceIdentity.productionDiffHash
+  ) {
+    return { ok: false, reason: 'Missing complete sourceIdentity proof in strip manifest' };
+  }
+
+  if (typeof manifest.harnessDigest !== 'string' || !manifest.harnessDigest) {
+    return { ok: false, reason: 'Missing harnessDigest proof in strip manifest' };
+  }
+  if (options.expectedHarnessDigest && manifest.harnessDigest !== options.expectedHarnessDigest) {
+    return {
+      ok: false,
+      reason: `Mismatched harnessDigest in manifest (${manifest.harnessDigest} !== ${options.expectedHarnessDigest})`,
+    };
+  }
+
+  if (!Array.isArray(manifest.frames) || manifest.frames.length === 0) {
+    return { ok: false, reason: 'Strip manifest contains zero frames' };
+  }
+  if (!Number.isInteger(manifest.framesCount) || manifest.framesCount !== manifest.frames.length) {
+    return { ok: false, reason: `Frame count mismatch: frames array length (${manifest.frames.length}) !== framesCount (${manifest.framesCount})` };
+  }
+  if (!Number.isInteger(hullDrawn.framesTotal) || manifest.frames.length !== hullDrawn.framesTotal) {
+    return { ok: false, reason: `Frame count mismatch: frames array length (${manifest.frames.length}) !== hullDrawn.framesTotal (${hullDrawn.framesTotal})` };
+  }
+
+  const seenIndices = new Set();
+  const manifestFiles = new Set();
+
+  for (let i = 0; i < manifest.frames.length; i++) {
+    const f = manifest.frames[i];
+    if (!f || typeof f !== 'object') {
+      return { ok: false, reason: `Frame item at index ${i} is not an object` };
+    }
+    if (typeof f.index !== 'number' || !Number.isInteger(f.index)) {
+      return { ok: false, reason: `Frame item at position ${i} has non-integer index: ${JSON.stringify(f.index)}` };
+    }
+    if (seenIndices.has(f.index)) {
+      return { ok: false, reason: `Duplicate frame index in manifest: ${f.index}` };
+    }
+    seenIndices.add(f.index);
+
+    if (!isSafeBasename(f.file)) {
+      return { ok: false, reason: `Frame entry index ${f.index} has unsafe or path-escaping filename: "${f.file}"` };
+    }
+    if (!f.file.endsWith('.jpg')) {
+      return { ok: false, reason: `Frame entry index ${f.index} filename "${f.file}" does not match required .jpg extension for jpeg frameFormat` };
+    }
+    if (manifestFiles.has(f.file)) {
+      return { ok: false, reason: `Duplicate frame filename in manifest: "${f.file}"` };
+    }
+    manifestFiles.add(f.file);
+  }
+
+  if (!manifest.contactSheet || typeof manifest.contactSheet !== 'string' || !manifest.contactSheet.trim()) {
+    return { ok: false, reason: 'Missing or empty contactSheet path in manifest' };
+  }
+  const contactBase = basename(manifest.contactSheet);
+  if (!contactBase.toLowerCase().endsWith('.png') || !isSafeBasename(contactBase)) {
+    return { ok: false, reason: `Invalid contactSheet format: expected a safe .png basename, got '${manifest.contactSheet}'` };
+  }
+
+  const rawReceiptDir = options.receiptDir || manifest.receiptDir;
+  if (!rawReceiptDir || typeof rawReceiptDir !== 'string' || !rawReceiptDir.trim()) {
+    return { ok: false, reason: 'Missing capture-owned receiptDir for contact-sheet containment' };
+  }
+  const receiptDir = resolve(rawReceiptDir);
+  const resolvedContactSheet = isAbsolute(manifest.contactSheet)
+    ? resolve(manifest.contactSheet)
+    : resolve(receiptDir, manifest.contactSheet);
+  if (!containmentRel(receiptDir, resolvedContactSheet)) {
+    return { ok: false, reason: `contactSheet "${resolvedContactSheet}" escaped receipt directory "${receiptDir}"` };
+  }
+  if (basename(resolvedContactSheet) !== contactBase) {
+    return { ok: false, reason: `contactSheet "${resolvedContactSheet}" basename mismatch` };
+  }
+
+  const rawStripDir = options.stripDir || manifest.stripDir || (options.manifestPath ? dirname(options.manifestPath) : '');
+  if (options.checkFiles !== false) {
+    if (!rawStripDir || !existsSync(rawStripDir)) {
+      return { ok: false, reason: `Strip directory not found on disk: ${rawStripDir}` };
+    }
+    const resolvedStripDir = resolve(rawStripDir);
+
+    for (const f of manifest.frames) {
+      const framePath = resolve(resolvedStripDir, f.file);
+      const rel = containmentRel(resolvedStripDir, framePath);
+      if (!rel || rel !== f.file) {
+        return { ok: false, reason: `Frame file "${f.file}" escapes strip directory "${resolvedStripDir}"` };
+      }
+      try {
+        const st = statSync(framePath);
+        if (!st.isFile()) {
+          return { ok: false, reason: `Manifest-listed frame file is not a regular file: ${framePath}` };
+        }
+        if (st.size <= 0) {
+          return { ok: false, reason: `Manifest-listed frame file is empty (0 bytes): ${framePath}` };
+        }
+      } catch (err) {
+        return { ok: false, reason: `Nonexistent manifest-listed frame file: ${framePath}` };
+      }
+    }
+
+    try {
+      const st = statSync(resolvedContactSheet);
+      if (!st.isFile()) {
+        return { ok: false, reason: `contactSheet is not a regular file: ${resolvedContactSheet}` };
+      }
+      if (st.size <= 0) {
+        return { ok: false, reason: `contactSheet file is empty (0 bytes): ${resolvedContactSheet}` };
+      }
+    } catch (err) {
+      return { ok: false, reason: `Nonexistent contactSheet file: ${resolvedContactSheet}` };
+    }
+
+    let dirEntries;
+    try {
+      dirEntries = readdirSync(resolvedStripDir);
+    } catch (err) {
+      return { ok: false, reason: `Failed to read strip directory "${resolvedStripDir}": ${err.message}` };
+    }
+
+    for (const name of dirEntries) {
+      if (name === 'strip-manifest.json') continue;
+      if (resolvedContactSheet && resolve(resolvedStripDir, name) === resolvedContactSheet) continue;
+      const lower = name.toLowerCase();
+      if (lower.endsWith('.png') || lower.endsWith('.jpg') || lower.endsWith('.jpeg')) {
+        if (!lower.endsWith('.jpg')) {
+          return { ok: false, reason: `Stale frame filename format mismatch: ${name} does not match expected format jpeg (.jpg)` };
+        }
+        if (!manifestFiles.has(name)) {
+          return { ok: false, reason: `Stale or unlisted frame file found in strip directory: ${name}` };
+        }
+      }
+    }
+  }
+
+  return { ok: true };
+}
 
 /**
  * Forbidden phrases for Question 10 / the fundamental.
@@ -221,6 +480,17 @@ export function validateVerdict(candidate, manifest, options = {}) {
       hullDrawn: manifest?.hullDrawn ?? null,
       normalSpeed: manifest?.normalSpeed ?? null,
       webglRenderer: manifest?.webglRenderer ?? null,
+      frameFormat: manifest?.frameFormat || (manifest?.frames?.[0]?.file?.endsWith('.jpg') ? 'jpeg' : 'png') || 'jpeg',
+      contactSheet: manifest?.contactSheet || options.contactSheet || null,
+      receiptDir: manifest?.receiptDir || options.receiptDir || '',
+      sourceIdentity: manifest?.sourceIdentity || null,
+      harnessDigest: manifest?.harnessDigest || null,
+      frames: (Array.isArray(manifest?.frames) ? manifest.frames : []).map((f) => ({
+        index: f.index,
+        file: f.file,
+        tick: f.tick,
+        simTime: f.simTime,
+      })),
       stripDir: manifest?.stripDir || '',
       manifestPath: options.manifestPath || '',
     },

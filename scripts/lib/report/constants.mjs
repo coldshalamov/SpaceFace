@@ -25,6 +25,7 @@ export const JARGON_WORDS = [
   'scenario',
   'regression',
   'deterministic',
+  'PQ-',
 ];
 
 export const SECTION_HEADINGS = [
