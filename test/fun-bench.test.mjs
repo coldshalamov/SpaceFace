@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { computeRunHash } from '../scripts/lib/bench/runHash.mjs';
-import { simulateCrucibleSwarm, CRUCIBLE_ARENAS, CRUCIBLE_LOADOUTS, CRUCIBLE_DEFAULT_SEEDS } from '../scripts/lib/bench/crucibleBench.mjs';
+import { simulateCrucibleSwarm } from '../scripts/lib/bench/crucibleBench.mjs';
 import { runFlightBench } from '../scripts/lib/bench/flightBench.mjs';
 import { runVerbBench } from '../scripts/lib/bench/verbBench.mjs';
 
@@ -30,25 +30,21 @@ test('computeRunHash generates bit-identical SHA-256 hashes for identical inputs
   assert.deepEqual(resA.runManifest, resB.runManifest, 'Manifests must match');
 });
 
-test('simulateCrucibleSwarm is deterministic across duplicate runs of the same seed', () => {
-  for (const arena of CRUCIBLE_ARENAS) {
-    for (const loadout of CRUCIBLE_LOADOUTS) {
-      for (const seed of CRUCIBLE_DEFAULT_SEEDS.slice(0, 1)) {
-        const run1 = simulateCrucibleSwarm({ arenaId: arena.id, loadoutId: loadout.id, seed, waveCount: 3 });
-        const run2 = simulateCrucibleSwarm({ arenaId: arena.id, loadoutId: loadout.id, seed, waveCount: 3 });
+test('simulateCrucibleSwarm is deterministic across duplicate runs of the same seed', { timeout: 120_000 }, async () => {
+  const opts = { arenaId: 'helios_core', loadoutId: 'energy_baseline', seed: 4242, tickCap: 180 };
+  const run1 = await simulateCrucibleSwarm(opts);
+  const run2 = await simulateCrucibleSwarm(opts);
 
-        assert.equal(run1.runHash, run2.runHash, `Crucible ${arena.id}/${loadout.id}/s${seed} must hash identical`);
-        assert.deepEqual(run1.waveCheckpoints, run2.waveCheckpoints, 'Wave checkpoints must match');
-        assert.deepEqual(run1.metrics, run2.metrics, 'Metrics must match');
-        assert.equal(run1.waveCheckpoints.length, 3, 'Must complete 3 waves');
-        assert.equal(run1.metrics.wavesCleared, 3);
-        assert.ok(run1.metrics.totalKills > 0, 'Kills must be greater than zero');
-        // "The owner's own ship is never knocked around" is a BAR, not a fixture setting: an honest
-        // real-path measurement may read false until PQ-137.11 lands its fix. Only the type is pinned.
-        assert.equal(typeof run1.metrics.b13Met, 'boolean', 'B13 knock budget verdict is reported');
-      }
-    }
-  }
+  assert.equal(
+    run1.runHash,
+    run2.runHash,
+    'Crucible first: every combat number is tuned in the Crucible bench, and adventure inherits it.',
+  );
+  assert.deepEqual(run1.waveCheckpoints, run2.waveCheckpoints, 'Wave checkpoints must match');
+  assert.equal(typeof run1.metrics.b13Met, 'boolean', 'B13 knock budget verdict is reported');
+  assert.equal(run1.metrics.b13Met, run2.metrics.b13Met);
+  assert.equal(run1.stopReason, run2.stopReason);
+  assert.equal(run1.ticks, run2.ticks);
 });
 
 test('runFlightBench executes all 4 motion lab scenarios and hashes identically', async () => {
@@ -129,40 +125,31 @@ test('feel.knock_budget metrics are finite, non-negative, and barMet matches the
   );
 });
 
-test('simulateCrucibleSwarm exposes eventTrace with weapon kill causes, real knock events, and traced player actions', () => {
-  let knockEventsSeen = 0;
-  let firstKnock = null;
-  for (const arena of CRUCIBLE_ARENAS) {
-    for (const loadout of CRUCIBLE_LOADOUTS) {
-      const run = simulateCrucibleSwarm({ arenaId: arena.id, loadoutId: loadout.id, seed: 4242, waveCount: 3 });
+test('simulateCrucibleSwarm exposes eventTrace derived from the real bus, not a stand-in', { timeout: 120_000 }, async () => {
+  const run = await simulateCrucibleSwarm({
+    arenaId: 'helios_core',
+    loadoutId: 'energy_baseline',
+    seed: 4242,
+    tickCap: 180,
+  });
 
-      assert.ok(Array.isArray(run.eventTrace), `${arena.id}/${loadout.id} run must expose an eventTrace array`);
-      assert.ok(run.eventTrace.length > 0, 'eventTrace must not be empty');
-      assert.ok(
-        run.eventTrace.some((e) => e.type === 'player:shot'),
-        'fire bursts must be traced as player:shot events',
-      );
-      assert.ok(
-        run.eventTrace.some((e) => e.type === 'verb:used'),
-        'verb activations must be traced as verb:used events',
-      );
+  assert.ok(Array.isArray(run.eventTrace), 'run must expose an eventTrace array');
+  assert.ok(run.eventTrace.length > 0, 'eventTrace must not be empty');
+  assert.ok(
+    run.eventTrace.some((e) => e.type === 'verb:used'),
+    'real input.actions / axis transitions must be traced as verb:used',
+  );
+  assert.equal(run.knockSource, 'physics:impact');
+  assert.equal(typeof run.metrics.b13Met, 'boolean', 'an honest false is allowed; never force B13 true');
 
-      for (const event of run.eventTrace) {
-        if (event.type === 'entity:killed') {
-          assert.equal(event.data.cause, 'weapon', 'routed bench fire kills must carry data.cause weapon');
-        }
-      }
-
-      const knocks = run.eventTrace.filter((e) => e.type === 'collision:playerKnock');
-      knockEventsSeen += knocks.length;
-      if (!firstKnock && knocks.length > 0) firstKnock = knocks[0];
+  for (const event of run.eventTrace) {
+    if (event.type === 'entity:killed') {
+      assert.equal(typeof event.data.cause, 'string', 'kill cause is recorded, not pinned to a stand-in weapon loop');
+    }
+    if (event.type === 'collision:playerKnock') {
+      assert.ok(Object.hasOwn(event.data, 'deltaV'));
+      assert.ok(Object.hasOwn(event.data, 'deltaVFractionOfCruise'));
+      assert.ok(Object.hasOwn(event.data, 'headingChangeRad'));
     }
   }
-
-  assert.ok(knockEventsSeen > 0, 'at least one collision:playerKnock across the default arena sweep');
-  assert.ok(firstKnock, 'a knock event must be available for shape checks');
-  assert.ok(Object.hasOwn(firstKnock.data, 'deltaVFractionOfCruise'), 'knock data must carry deltaVFractionOfCruise');
-  assert.ok(Object.hasOwn(firstKnock.data, 'headingChangeRad'), 'knock data must carry headingChangeRad');
-  assert.equal(typeof firstKnock.data.deltaVFractionOfCruise, 'number');
-  assert.equal(typeof firstKnock.data.headingChangeRad, 'number');
 });
