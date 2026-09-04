@@ -1,0 +1,125 @@
+{
+  "realPathProof": {
+    "backend": "rapier-dynamic",
+    "sg02Ready": true,
+    "sg02Bodies": 1,
+    "sg02DynamicBodies": 1,
+    "rapierContacts": 0,
+    "contactCaptureEnabled": true,
+    "physicsBackend": "rapier-dynamic",
+    "flightBackend": "v3",
+    "aiBackend": "sg06-tactical",
+    "profileId": "production"
+  },
+  "closingSpeeds": [
+    20,
+    60,
+    150,
+    400
+  ],
+  "cases": [
+    {
+      "closingSpeed": 20,
+      "ticksToContact": 240,
+      "impactCount": 0,
+      "dp": 0,
+      "deltaV": 0,
+      "hitstopMs": 0,
+      "fovDeg": 0,
+      "trauma": 0,
+      "tier": null
+    },
+    {
+      "closingSpeed": 60,
+      "ticksToContact": 227,
+      "impactCount": 1,
+      "dp": 304.349,
+      "deltaV": 16.9083,
+      "hitstopMs": 40.84,
+      "fovDeg": 1.175,
+      "trauma": 0.1175,
+      "tier": "impact.scrape"
+    },
+    {
+      "closingSpeed": 150,
+      "ticksToContact": 164,
+      "impactCount": 1,
+      "dp": 720,
+      "deltaV": 40,
+      "hitstopMs": 54.21,
+      "fovDeg": 1.807,
+      "trauma": 0.1807,
+      "tier": "impact.knock"
+    },
+    {
+      "closingSpeed": 400,
+      "ticksToContact": 123,
+      "impactCount": 1,
+      "dp": 720,
+      "deltaV": 40,
+      "hitstopMs": 54.21,
+      "fovDeg": 1.807,
+      "trauma": 0.1807,
+      "tier": "impact.knock"
+    }
+  ],
+  "audio": {
+    "kiss": {
+      "recipeId": "sfx_dock_clunk",
+      "rate": 1.0565,
+      "gain": 0.1136,
+      "tier": "kiss"
+    },
+    "broadside": {
+      "recipeId": "sfx_explosion_large",
+      "rate": 0.5,
+      "gain": 0.95,
+      "tier": "broadside"
+    },
+    "octaves": 1.079,
+    "decibels": 18.44
+  },
+  "releaseSnapMs": 55,
+  "hitstopMonotone": true,
+  "hitstopSpread": 1.327,
+  "bars": [
+    {
+      "bar": "B9",
+      "label": "hitstop at the shipping camera, real contact at 20/60/150 WU/s closing (ms)",
+      "value": "20closing/dV0=0ms | 60closing/dV16.9083=40.84ms | 150closing/dV40=54.21ms | 400closing/dV40=54.21ms",
+      "unit": "ms",
+      "met": true,
+      "note": "zero at every speed before PQ-139.00 — feel.js had no collision subscription at all"
+    },
+    {
+      "bar": "B9",
+      "label": "camera trauma, same three contacts",
+      "value": "dV0=0 | dV16.9083=0.1175 | dV40=0.1807 | dV40=0.1807",
+      "unit": "trauma",
+      "met": true,
+      "note": "zero at every speed before PQ-139.00"
+    },
+    {
+      "bar": "B9",
+      "label": "collision audio pitch, scout-on-rock vs freighter-on-station",
+      "value": 1.08,
+      "unit": "octaves",
+      "met": true
+    },
+    {
+      "bar": "B9",
+      "label": "collision audio loudness, same two cases",
+      "value": 18.4,
+      "unit": "dB",
+      "met": true
+    },
+    {
+      "bar": "B9",
+      "label": "Massline razor release time-domain snap",
+      "value": 55,
+      "unit": "ms",
+      "met": true,
+      "note": "hard-coded 0 on all nine branches before PQ-139.00"
+    }
+  ]
+}

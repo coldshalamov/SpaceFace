@@ -340,6 +340,90 @@ const recipeById = {};
 for (const r of RECIPES) recipeById[r.id] = r;
 export const AUDIO_RECIPE_BY_ID = Object.freeze(recipeById);
 
+// --- collision cues: sound tells weight ---
+// A scout kissing a rock and a freighter broadsiding a station are not the same event. Pitch is a
+// decreasing function of the heavier participant's acoustic mass (immovable stations/asteroids map
+// to nominal masses so they read as heavy, not weightless); loudness is an increasing function of
+// the exchanged momentum (dp, falling back to impulse); the recipe ladder picks an existing recipe
+// per tier. Pure and node-testable: no Math.random, no Date.now, no DOM, no `this`.
+export const COLLISION_CUE = Object.freeze({
+  ACOUSTIC_MASS_STATION: 400,
+  ACOUSTIC_MASS_ASTEROID: 120,
+  ACOUSTIC_MASS_UNKNOWN: 48,
+  MASS_LIGHT: 16,
+  MASS_HEAVY: 400,
+  RATE_LIGHT: 1.6,
+  RATE_HEAVY: 0.5,
+  RATE_CURVE: 2.2,
+  RATE_MIN: 0.45,
+  RATE_MAX: 1.8,
+  GAIN_MIN: 0.05,
+  GAIN_MAX: 0.95,
+  DP_FULL: 24000,
+  TIER_KISS_DP: 400,
+  TIER_SLAM_DP: 4000,
+  TIER_HEAVY_MASS: 200,
+});
+
+const COLLISION_TIER_RECIPES = Object.freeze({
+  kiss: 'sfx_dock_clunk',
+  knock: 'sfx_mining_impact',
+  slam: 'sfx_explosion_small',
+  broadside: 'sfx_explosion_large',
+});
+
+function collisionAcousticMass(mass, type) {
+  if (type === 'station') return COLLISION_CUE.ACOUSTIC_MASS_STATION;
+  if (type === 'asteroid') return COLLISION_CUE.ACOUSTIC_MASS_ASTEROID;
+  return Number.isFinite(mass) && mass > 0 ? mass : COLLISION_CUE.ACOUSTIC_MASS_UNKNOWN;
+}
+
+export function resolveCollisionCue(input) {
+  const src = input || {};
+  const acousticMass = Math.max(
+    collisionAcousticMass(src.massA, src.typeA),
+    collisionAcousticMass(src.massB, src.typeB),
+  );
+  const massNorm = clamp(
+    Math.log(Math.max(acousticMass, COLLISION_CUE.MASS_LIGHT) / COLLISION_CUE.MASS_LIGHT)
+      / Math.log(COLLISION_CUE.MASS_HEAVY / COLLISION_CUE.MASS_LIGHT),
+    0,
+    1,
+  );
+  const rate = clamp(
+    COLLISION_CUE.RATE_LIGHT
+      * Math.pow(
+        COLLISION_CUE.RATE_HEAVY / COLLISION_CUE.RATE_LIGHT,
+        Math.pow(massNorm, COLLISION_CUE.RATE_CURVE),
+      ),
+    COLLISION_CUE.RATE_MIN,
+    COLLISION_CUE.RATE_MAX,
+  );
+  const dp = Number.isFinite(src.dp) ? src.dp : Number.isFinite(src.impulse) ? src.impulse : 0;
+  const loudNorm = Math.sqrt(clamp(dp / COLLISION_CUE.DP_FULL, 0, 1));
+  const gain = clamp(
+    COLLISION_CUE.GAIN_MIN + (COLLISION_CUE.GAIN_MAX - COLLISION_CUE.GAIN_MIN) * loudNorm,
+    COLLISION_CUE.GAIN_MIN,
+    COLLISION_CUE.GAIN_MAX,
+  );
+  const heavy = acousticMass >= COLLISION_CUE.TIER_HEAVY_MASS;
+  const slammed = dp >= COLLISION_CUE.TIER_SLAM_DP;
+  const tier = slammed && heavy
+    ? 'broadside'
+    : slammed || heavy
+      ? 'slam'
+      : dp <= COLLISION_CUE.TIER_KISS_DP
+        ? 'kiss'
+        : 'knock';
+  return Object.freeze({
+    recipeId: COLLISION_TIER_RECIPES[tier],
+    rate,
+    gain,
+    acousticMass,
+    tier,
+  });
+}
+
 export function audioNearbyHostileCount(state, player, range = 1200, scratch = [], maxCount = Infinity) {
   if (!state || !player || !player.pos) return 0;
   const fallback = (state.entityIndex && state.entityIndex.__spacefaceEntityIndexV1 && state.entityIndex.ships) || state.entityList || [];
@@ -1947,7 +2031,23 @@ export const audio = {
 
   _onCollision(p) {
     if (!p) return;
-    this.play('sfx_explosion_small', { position: p.pos, gain: clamp((p.impulse || 1) * 0.3, 0.15, 0.7), rate: 0.8 });
+    const entities = this.state && this.state.entities;
+    const pick = (id) => {
+      if (!entities) return null;
+      const e = typeof entities.get === 'function' ? entities.get(id) : entities[id];
+      return e || null;
+    };
+    const a = pick(p.aId);
+    const b = pick(p.bId);
+    const cue = resolveCollisionCue({
+      dp: p.dp,
+      impulse: p.impulse,
+      massA: a && Number.isFinite(a.mass) ? a.mass : null,
+      massB: b && Number.isFinite(b.mass) ? b.mass : null,
+      typeA: a ? a.type : undefined,
+      typeB: b ? b.type : undefined,
+    });
+    this.play(cue.recipeId, { position: p.pos, gain: cue.gain, rate: cue.rate });
   },
 
   _onKilled(p) {
