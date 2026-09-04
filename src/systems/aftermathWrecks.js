@@ -16,10 +16,12 @@ import {
   normalizeCausalAftermath,
 } from '../world/encounterCausality.js';
 
-const STATE_VERSION = 2;
+const STATE_VERSION = 3;
 const MAX_PER_SECTOR = 8;
 const MAX_SPAWNED_PER_SECTOR = 6;
 const MAX_CAUSES = 24;
+const MAX_WRECK_DRIFT_SPEED = 400;
+const MAX_WRECK_TUMBLE = 3.0;
 const WRECK_RADIUS = 9;
 const WRECK_SALVAGE_TIME = 8;
 const FREIGHT_IDENTITY_TEXT_MAX = 160;
@@ -75,6 +77,32 @@ function posFrom(payload, entity) {
   const z = Number(pos.z);
   if (!Number.isFinite(x) || !Number.isFinite(z)) return null;
   return { x, z };
+}
+
+// Bounds on momentum the wreck ALREADY inherited. Not drag, not damping: the vector is scaled
+// whole (never per-axis, which would rotate the direction) and the spin by magnitude, sign kept.
+function boundedDriftVel(vel) {
+  const x = Number(vel && vel.x);
+  const z = Number(vel && vel.z);
+  if (!Number.isFinite(x) || !Number.isFinite(z)) return { x: 0, z: 0 };
+  const speed = Math.hypot(x, z);
+  if (!(speed > 0)) return { x: 0, z: 0 };
+  if (speed <= MAX_WRECK_DRIFT_SPEED) return { x, z };
+  const scale = MAX_WRECK_DRIFT_SPEED / speed;
+  return { x: x * scale, z: z * scale };
+}
+
+function boundedTumble(angVel) {
+  const w = Number(angVel);
+  if (!Number.isFinite(w)) return 0;
+  if (w > MAX_WRECK_TUMBLE) return MAX_WRECK_TUMBLE;
+  if (w < -MAX_WRECK_TUMBLE) return -MAX_WRECK_TUMBLE;
+  return w;
+}
+
+function boundedVictimMass(mass) {
+  const m = Number(mass);
+  return Number.isFinite(m) && m > 0 ? m : null;
 }
 
 function sectorIdFrom(state, payload) {
@@ -202,6 +230,9 @@ function makeMarker(state, payload, entity) {
     pos,
     victimId,
     victimClass,
+    victimVel: boundedDriftVel(entity && entity.vel),
+    victimAngVel: boundedTumble(entity && entity.angVel),
+    victimMass: boundedVictimMass(entity && entity.mass),
     victimLabel: victimLabelFor(entity, payload),
     victimFactionId: entity && entity.factionId || payload && payload.factionId || null,
     killerId: payload && payload.killerId != null ? payload.killerId : null,
@@ -309,6 +340,9 @@ function normalizeMarker(input) {
     pos: { x, z },
     victimId: input.victimId == null ? null : input.victimId,
     victimClass: input.victimClass || 'ship',
+    victimVel: boundedDriftVel(input.victimVel),
+    victimAngVel: boundedTumble(input.victimAngVel),
+    victimMass: boundedVictimMass(input.victimMass),
     victimLabel: input.victimLabel || input.victimClass || 'ship',
     victimFactionId: input.victimFactionId || null,
     killerId: input.killerId == null ? null : input.killerId,
@@ -436,6 +470,15 @@ export const aftermathWrecks = {
     const identity = this._specForMarker(marker);
     entity.data = Object.assign(entity.data || {}, identity.data);
     entity.data.salvagePool = poolForMarker(marker);
+    // Adopt dead-man's motion only onto a wreck that is not already moving. A wreck mining spawned
+    // from this same spec already carries the inherited momentum and must never be overwritten.
+    const vx = Number(entity.vel && entity.vel.x) || 0;
+    const vz = Number(entity.vel && entity.vel.z) || 0;
+    if (!(Math.hypot(vx, vz) > 1e-6)) {
+      entity.vel = { x: identity.vel.x, z: identity.vel.z };
+      entity.angVel = identity.angVel;
+      entity.mass = identity.mass;
+    }
     return this._bindLiveMarker(marker, entity) ? entity : null;
   },
 
@@ -591,11 +634,18 @@ export const aftermathWrecks = {
   _specForMarker(marker) {
     const cls = wreckClassById(marker.wreckClass) || wreckClassById('battlefield');
     const line = aftermathLine(marker);
+    const vel = boundedDriftVel(marker.victimVel);
+    const angVel = boundedTumble(marker.victimAngVel);
+    const mass = boundedVictimMass(marker.victimMass);
     return {
       type: 'wreck',
       pos: { x: marker.pos.x, z: marker.pos.z },
+      vel: { x: vel.x, z: vel.z },
+      angVel,
       radius: WRECK_RADIUS,
-      mass: 1e6,
+      // Dead man's mass: the victim's real mass so the wreck is shoveable. 1e6 only when no mass
+      // was ever recorded (legacy markers).
+      mass: mass != null ? mass : 1e6,
       hull: 1,
       hullMax: 1,
       data: {
@@ -636,11 +686,46 @@ export const aftermathWrecks = {
 
   _clearLiveRefs(sectorId) {
     if (!sectorId || !this._spawned) {
-      if (this._spawned) this._spawned.clear();
+      if (this._spawned) {
+        this._writeBackAllBound();
+        this._spawned.clear();
+      }
       return;
     }
     const markers = aftermathForSector(this.state, sectorId);
-    for (const marker of markers) this._spawned.delete(marker.markerId);
+    for (const marker of markers) {
+      // Once-per-unbind receipt of where the body actually is. Without this a drifted wreck would
+      // teleport back to its kill point on sector re-entry / Continue.
+      if (marker && this._spawned.has(marker.markerId)) this._writeBackBoundWreck(marker);
+      this._spawned.delete(marker.markerId);
+    }
+  },
+
+  // Unbind/save-time marker refresh (never per-tick): the marker remembers the live body's current
+  // global position and momentum so rematerialization continues the drift instead of restarting it.
+  // vel/angVel are frame-independent translations and are never offset by a sector origin.
+  _writeBackBoundWreck(marker) {
+    if (!marker || !marker.markerId) return false;
+    const entity = this._resolveBoundWreck(marker.markerId);
+    if (!entity) return false;
+    if (entity.pos && Number.isFinite(entity.pos.x) && Number.isFinite(entity.pos.z)) {
+      marker.pos = { x: entity.pos.x, z: entity.pos.z };
+    }
+    marker.victimVel = boundedDriftVel(entity.vel);
+    marker.victimAngVel = boundedTumble(entity.angVel);
+    return true;
+  },
+
+  _writeBackAllBound() {
+    if (!this._spawned || !this._spawned.size || !this.state) return;
+    const own = ensureAftermathState(this.state);
+    if (!own) return;
+    for (const markers of Object.values(own.bySector)) {
+      if (!Array.isArray(markers)) continue;
+      for (const marker of markers) {
+        if (marker && this._spawned.has(marker.markerId)) this._writeBackBoundWreck(marker);
+      }
+    }
   },
 
   _completeByEntity(payload) {
@@ -672,6 +757,7 @@ export const aftermathWrecks = {
 
   serialize() {
     const own = ensureAftermathState(this.state);
+    this._writeBackAllBound();
     const bySector = {};
     for (const sectorId of Object.keys(own.bySector)) {
       const markers = trimAndSort(Array.isArray(own.bySector[sectorId]) ? own.bySector[sectorId] : []);
