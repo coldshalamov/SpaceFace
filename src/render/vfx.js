@@ -758,6 +758,109 @@ function emptyVfxSubsystemDiag() {
   };
 }
 
+// Death presentation — mass + cause already on the kill receipt / live body, mapped onto the
+// three explosion-pool class ids. A light dies small and fast, a heavy dies large and slow.
+// Seams from src/data/ships.js (scout 16 … capital 600): light <30, medium 30–79, heavy 80–199,
+// capital ≥200. Existing capital deaths (flag / radius≥55 / class name) never downgrade.
+export const DEATH_MASS_TIER_THRESHOLDS = Object.freeze({
+  lightMaxExclusive: 30,
+  mediumMaxExclusive: 80,
+  heavyMaxExclusive: 200,
+});
+
+export const DEATH_TIER_RADIUS_SCALE = Object.freeze({
+  light: 0.85,
+  medium: 1,
+  heavy: 1.45,
+  capital: 1.9,
+});
+
+export const DEATH_TIER_CLASS_ID = Object.freeze({
+  light: 'small',
+  medium: 'ordinary',
+  heavy: 'ordinary',
+  capital: 'capital',
+});
+
+const DEATH_EXPLOSION_CLASS_IDS = Object.freeze(['small', 'ordinary', 'capital']);
+const DEATH_CAPITAL_CLASS_RE = /capital|flagship|cruiser|gunship|battleship|dread/i;
+const DEATH_DIRECTION_EPS = 1e-8;
+const DEATH_DEFAULT_MASS = 48;
+const DEATH_DEFAULT_RADIUS = 6;
+const DEATH_RADIUS_FLOOR = 2;
+// ships.js scout (Wasp) is mass 16 on collisionRadius 14. Entity radius tracks that footprint,
+// so missing mass estimates as radius * (16/14). Capital never comes from this estimate alone.
+const DEATH_MASS_PER_RADIUS = 16 / 14;
+
+function finiteDeathNumber(value) {
+  return typeof value === 'number' && Number.isFinite(value) ? value : NaN;
+}
+
+function isCapitalDeathVictim(victim) {
+  if (!victim) return false;
+  if (victim.capital) return true;
+  if ((Number(victim.radius) || 0) >= 55) return true;
+  const cls = String(victim.victimClass || victim.type || '').toLowerCase();
+  return DEATH_CAPITAL_CLASS_RE.test(cls);
+}
+
+function deathTierFromMass(mass) {
+  if (mass < DEATH_MASS_TIER_THRESHOLDS.lightMaxExclusive) return 'light';
+  if (mass < DEATH_MASS_TIER_THRESHOLDS.mediumMaxExclusive) return 'medium';
+  if (mass < DEATH_MASS_TIER_THRESHOLDS.heavyMaxExclusive) return 'heavy';
+  return 'capital';
+}
+
+function estimateDeathMassFromRadius(radius) {
+  const r = finiteDeathNumber(radius);
+  if (!(r > 0)) return DEATH_DEFAULT_MASS;
+  return r * DEATH_MASS_PER_RADIUS;
+}
+
+function presentationCause(presentation) {
+  const cause = presentation && presentation.cause;
+  return typeof cause === 'string' && cause ? cause : 'generic';
+}
+
+function isUsableDeathVector(value) {
+  if (!value || typeof value !== 'object') return false;
+  const x = value.x;
+  const z = value.z;
+  return Number.isFinite(x) && Number.isFinite(z) && Math.hypot(x, z) > DEATH_DIRECTION_EPS;
+}
+
+function deathPresentationIsDirectional(presentation) {
+  if (!presentation || typeof presentation !== 'object') return false;
+  return isUsableDeathVector(presentation.direction) || isUsableDeathVector(presentation.normal);
+}
+
+export function resolveDeathPresentationClass(victim) {
+  const src = victim && typeof victim === 'object' ? victim : {};
+  const massValue = finiteDeathNumber(src.mass);
+  const radiusValue = finiteDeathNumber(src.radius);
+  const mass = Number.isFinite(massValue) ? massValue : estimateDeathMassFromRadius(radiusValue);
+  let tier = deathTierFromMass(mass);
+  if (isCapitalDeathVictim(src)) tier = 'capital';
+  const classId = DEATH_TIER_CLASS_ID[tier];
+  const presentation = src.presentation && typeof src.presentation === 'object'
+    ? src.presentation
+    : null;
+  return Object.freeze({
+    classId: DEATH_EXPLOSION_CLASS_IDS.includes(classId) ? classId : 'ordinary',
+    tier,
+    mass,
+    cause: presentationCause(presentation),
+    directional: deathPresentationIsDirectional(presentation),
+  });
+}
+
+export function scaleDeathExplosionRadius(radius, tier) {
+  const scale = DEATH_TIER_RADIUS_SCALE[tier] || DEATH_TIER_RADIUS_SCALE.medium;
+  const base = finiteDeathNumber(radius);
+  const raw = Number.isFinite(base) && base > 0 ? base : DEATH_DEFAULT_RADIUS;
+  return Math.max(DEATH_RADIUS_FLOOR, raw * scale);
+}
+
 export const vfx = {
   name: 'vfx',
 
@@ -3975,15 +4078,31 @@ export const vfx = {
 
   _onKilled(p) {
     this._emitJuiceCue('combat.damage.kill', p, 2);
-    this._queueExplosion(p, this._isCapitalKill(p) ? 'capital' : 'ordinary');
+    const entities = this.state && this.state.entities;
+    const live = entities && typeof entities.get === 'function' && p && p.id != null
+      ? entities.get(p.id)
+      : null;
+    const victim = {
+      mass: Number.isFinite(live && live.mass) ? live.mass : p && p.mass,
+      radius: Number.isFinite(live && live.radius) ? live.radius : p && p.radius,
+      capital: !!(live && live.capital) || !!(p && p.capital),
+      victimClass: (p && p.victimClass)
+        || (live && live.victimClass)
+        || (live && live.data && live.data.shipClass)
+        || null,
+      type: (p && p.type) || (live && live.type) || null,
+      presentation: p && p.presentation,
+    };
+    const death = resolveDeathPresentationClass(victim);
+    const scaledRadius = scaleDeathExplosionRadius(victim.radius, death.tier);
+    // The resolved record is the ONE decision point for how this death presents: mass picks the
+    // class and the radius, cause picks the cadence. Passing death.cause down instead of letting
+    // _queueExplosion re-derive it keeps a single answer rather than two that can drift apart.
+    this._queueExplosion(p, death.classId, scaledRadius, death.cause);
   },
 
   _isCapitalKill(p) {
-    if (!p) return false;
-    if (p.capital) return true;
-    if ((p.radius || 0) >= 55) return true;
-    const cls = String(p.victimClass || p.type || '').toLowerCase();
-    return /capital|flagship|cruiser|gunship|battleship|dread/i.test(cls);
+    return isCapitalDeathVictim(p);
   },
   _onDestroyed(p) {
     // entity:destroyed fires for ALL entities (incl. projectiles/pickups). Only blow up things with
@@ -4001,7 +4120,7 @@ export const vfx = {
     this._explode(p, false);
   },
 
-  _queueExplosion(p, classId) {
+  _queueExplosion(p, classId, radiusOverride, causeOverride) {
     if (!this._scene || !this._explosions) return false;
     const presentation = p && p.presentation && typeof p.presentation === 'object'
       ? p.presentation
@@ -4020,7 +4139,9 @@ export const vfx = {
       ? presentation.targetVelocity
       : p && (p.targetVelocity || p.vel) || null;
     const admission = deriveVfxAdmissionMetadata(p || {}, this.state);
-    const radius = Math.max(2, Number(p && p.radius) || 6);
+    const radius = Number.isFinite(radiusOverride)
+      ? Math.max(2, radiusOverride)
+      : Math.max(2, Number(p && p.radius) || 6);
     const entry = this._explosions.start({
       classId,
       x: pos.x,
@@ -4029,7 +4150,8 @@ export const vfx = {
       direction,
       normal,
       targetVelocity,
-      cause: presentation && presentation.cause || p && p.cause || 'generic',
+      cause: (typeof causeOverride === 'string' && causeOverride)
+        || presentation && presentation.cause || p && p.cause || 'generic',
       sourceType: p && (p.type || p.victimClass) || null,
       priority: admission.admissionPriority,
     });
