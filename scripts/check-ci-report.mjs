@@ -11,6 +11,7 @@ const LONG_TIMEOUT_MS = 420000;
 const TAIL_LIMIT = 1600;
 
 const SMOKE_COMMANDS = [
+  cmd('vision-assertions', 'npm run check:vision:assertions'),
   cmd('ui-screen-imports', 'node scripts/check-ui-screen-imports.mjs'),
   cmd('47a-compare', 'npm run check:sim:compare'),
   cmd('47a-live-cold-open', 'npm run check:47a:live-cold-open', LONG_TIMEOUT_MS),

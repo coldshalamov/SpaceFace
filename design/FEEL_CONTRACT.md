@@ -1,6 +1,19 @@
 <!-- LIFETIME: STABLE -->
 # SpaceFace — The Feel Contract
 
+## Retired assertion wording (PQ-186)
+
+The text guard reads this list. It rejects the old unconditional earned-speed brake and
+hard-impact immunity wording; it does not reject the valid rule that a small scrape keeps
+the helm. These exact phrases are a regression warning, not a substitute for runtime bars.
+
+<!-- assertion-guard:start -->
+- `should decay toward the cap`
+- `the unboosted overspeed brake survives`
+- `hard collision must not stagger`
+- `terrain slam must not stagger`
+<!-- assertion-guard:end -->
+
 **Status: ACCEPTANCE AUTHORITY for every packet in the "box of dangerous toys" program
 (`CANONICAL_BUILD_MAP.md` §13C, `PQ-137` … `PQ-145`).** Written 2026-09-03 from a code audit of the
 live default route, after the owner's verdict that the combat and flight "just suck" and that agents

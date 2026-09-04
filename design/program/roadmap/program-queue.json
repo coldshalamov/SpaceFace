@@ -16543,7 +16543,7 @@
       "priority": 82,
       "title": "Anti-vision assertion lint",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "regression"
@@ -16557,7 +16557,9 @@
         "npm run check:baseline",
         "npm run check:all:smoke"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-186-02-REPORT.md"
+      ],
       "brief": "A lint over test assertion messages against a banned-phrase list ('should decay toward the cap', 'must not stagger', 'brake survives'), maintained in the feel contract. DONE WHEN: Lint green; the 2026-09-02 phrases would have been caught."
     }
   ]

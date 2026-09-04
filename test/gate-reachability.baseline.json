@@ -36,6 +36,7 @@
     "check:speed-lines",
     "check:travel-drive",
     "check:travel-lanes",
-    "check:visual-stability"
+    "check:visual-stability",
+    "check:vision:assertions"
   ]
 }
