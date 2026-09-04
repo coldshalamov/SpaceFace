@@ -14,10 +14,11 @@ export const WEAPONS = [
     // Starter reliability: a long, readable engagement burst rather than five-shot lockout or
     // infinite fire. At 5.5 rps the authored dissipation yields roughly seven seconds / 35+ shots
     // before a short forced vent; releasing the trigger for two seconds sheds meaningful heat.
+    // Impulse is 5 % of Wasp cruise (mass 16, governed 105 WU/s) per full hit: 84 momentum.
     dmg: 8, rof: 5.5, dps: 44, damageType: 'energy', energyCost: 2,
     projSpeed: 320, range: 600, tracking: 'fixed', spreadDeg: 0.6,
     heatPerShot: 5, heatMax: 100, heatDissip: 12,
-    impulsePerHit: 0.5, tumbleTorque: 0.05, impulseProvenance: 'starter_pulse_plink',
+    impulsePerHit: 84, tumbleTorque: 0.05, impulseProvenance: 'starter_pulse_plink',
   },
   {
     id: 'wpn_autocannon_s', name: 'Autocannon S', slotType: 'weapon', size: 'S', tier: 1, mass: 4, price: 5200,
@@ -77,7 +78,7 @@ export const WEAPONS = [
     id: 'wpn_railgun_m', name: 'Railgun M', slotType: 'weapon', size: 'M', tier: 2, mass: 9, price: 21000, requiresTech: 'tech_kinetic_drivers',
     dmg: 60, rof: 0.8, dps: 48, damageType: 'kinetic', energyCost: 14,
     projSpeed: 700, range: 1100, tracking: 'fixed', armorPierce: 0.5,
-    impulsePerHit: 120, tumbleTorque: 16, impulseProvenance: 'railgun_penetrator',
+    impulsePerHit: 168, tumbleTorque: 16, impulseProvenance: 'railgun_penetrator',
   },
   {
     id: 'wpn_plasma_cannon_m', name: 'Plasma Cannon M', slotType: 'weapon', size: 'M', tier: 3, mass: 8, price: 42000, requiresTech: 'tech_plasma_dynamics',
@@ -176,19 +177,15 @@ export const WEAPONS = [
   // distinct impulseProvenance so its receipt and its VFX identity never collapse onto another family.
   {
     // CONCUSSION CANNON — a heavy, slow, low-damage slug whose payload is MOMENTUM, not damage. A hit
-    // shoves the target along the slug line (impulsePerHit ÷ target mass): 420 ÷ 16 ≈ 26.25 wu/s on a
-    // Wasp clears the kernel tumbleDeltaV (18), so the ship is thrown and TUMBLES the instant it meets
-    // terrain — the wall impact is its own receipted terrain-damage event. 420 ÷ 150 = 2.8 wu/s on a
-    // gunship stays below staggerDeltaV (3), so heavies are unmoved. Caps at the siege-lance budget so
-    // a mid slot never out-shoves capital ordnance. The kill comes from the environment, not the gun
-    // (STEP 9 forbidden shortcut #1). U11 WF-15: 400→420 after 520 overshot medium TTK / heavy shrug.
-    // NPCs take one short authored recovery beat before counterthrust resumes; player control is never delayed.
+    // shoves the target along the slug line (impulsePerHit ÷ target mass): 920 ÷ 16 = 57.5 wu/s on a
+    // Wasp (~54.76 % of governed cruise 105), enough to clear one visible depth in 2 s. 920 ÷ 150
+    // ≈ 6.13 wu/s on a gunship stays below tumbleDeltaV (18). The kill comes from the environment,
+    // not the gun (STEP 9 forbidden shortcut #1). Helm-loss duration is the universal hitstun law.
     id: 'wpn_concussion_cannon_m', name: 'Concussion Cannon M', slotType: 'weapon', size: 'M', tier: 2, mass: 9, price: 26000, requiresTech: 'tech_kinetic_drivers',
     dmg: 12, rof: 1.0, dps: 12, damageType: 'kinetic', energyCost: 6,
     projSpeed: 340, range: 560, tracking: 'fixed', spreadDeg: 1.2,
     heatPerShot: 16, heatMax: 100, heatDissip: 26,
-    impulsePerHit: 420, tumbleTorque: 60, impulseProvenance: 'concussion_slug',
-    npcCounterthrustDelayS: 0.5,
+    impulsePerHit: 920, tumbleTorque: 60, impulseProvenance: 'concussion_slug',
   },
   {
     // VECTOR MINE — deployable ordnance whose payload is a RADIAL IMPULSE, not a burn: zero hull
@@ -198,13 +195,14 @@ export const WEAPONS = [
     // scatter; a pilot who drops one and dives back through it gets blast-yourself mobility (STEP 9
     // forbidden shortcut #3: a mine that does not move the player). Fired via the weapons DEPLOY verb,
     // never as a projectile — impulsePerHit is the blast momentum the detonation imparts through the
-    // physics authority. dmg 0 is honest: the mine throws, it does not damage.
+    // physics authority (756 at centre = 45 % of Wasp cruise). dmg 0 is honest: the mine throws,
+    // it does not damage.
     id: 'wpn_vector_mine_m', name: 'Vector Mine M', slotType: 'weapon', size: 'M', tier: 2, mass: 7, price: 22000, requiresTech: 'tech_guided_ordnance',
     dmg: 0, rof: 0.5, dps: 0, damageType: 'kinetic', energyCost: 22,
     projSpeed: 90, range: 260, tracking: 'deploy',
     heatPerShot: 34, heatMax: 100, heatDissip: 22,
     deployKind: 'vector_mine', mineArmS: 1.4, mineTriggerRadius: 60, mineBlastRadius: 150, mineLifeS: 30, mineMaxActive: 3,
-    impulsePerHit: 620, tumbleTorque: 24, impulseProvenance: 'vector_mine_pulse',
+    impulsePerHit: 756, tumbleTorque: 24, impulseProvenance: 'vector_mine_pulse',
   },
   {
     // RCS DISRUPTOR — a subsystem-coupling spike that couples through shields like the EMP disruptor
@@ -228,7 +226,7 @@ export const WEAPONS = [
     dmg: 8, rof: 5.5, dps: 44, damageType: 'energy', energyCost: 2,
     projSpeed: 320, range: 600, tracking: 'fixed', spreadDeg: 0.6,
     heatPerShot: 5, heatMax: 100, heatDissip: 12,
-    impulsePerHit: 0.5, tumbleTorque: 0.05, impulseProvenance: 'starter_pulse_plink',
+    impulsePerHit: 84, tumbleTorque: 0.05, impulseProvenance: 'starter_pulse_plink',
     purchasable: false, salvageOnly: true,
     attackTraits: ['mod_bank_shot', 'mod_bank_relay'],
   },

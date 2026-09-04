@@ -10,16 +10,13 @@
 //
 // WHY delta-V IS DIFFERENCED AGAINST A CONTROL ARM (FORCE lane, 2026-09-04, measured):
 // the raw one-tick velocity change of the victim is NOT the shove. A wasp under thrust changes its
-// own velocity by 3.05 WU/s in the tick of the hit. The concussion cannon is the ONE weapon that
-// authors `npcCounterthrustDelayS`, so its hit silences that thrust and its raw tick delta happens
-// to equal the pure impulse (26.25 = 420/16); the starter pulse authors no beat, so its raw tick
-// delta reads 3.053 WU/s — 1.5 % of cruise for a gun that imparts 0.015 %, a 100x lie that would
-// have gone into the BEFORE table and that PQ-137.05 would then have tuned against. Proof, seed
-// 4242: same 0.5 impulse tagged `concussion_slug` reads 0.03125; tagged `starter_pulse_plink`
-// reads 3.0527. So every delta-V a bar consumes here is (velocity WITH the hit) minus (velocity
-// WITHOUT it) at the same tick of an otherwise identical control run: the change the hit caused.
-// NOTE FOR PQ-137.04: when the one hitstun law retires the one-weapon beat, the raw tick delta of
-// EVERY source picks up that same thrust term. A shift there is the instrument, not the law.
+// own velocity by ~3 WU/s in the tick of the hit. The old concussion-only recovery beat made that
+// weapon's raw tick delta accidentally equal the impulse; every other gun's raw tick included the
+// victim's own thrust. PQ-137.04 retired the beat into the universal law, so the raw tick of every
+// source now includes thrust. Every delta-V a bar consumes here is (velocity WITH the hit) minus
+// (velocity WITHOUT it) at the same tick of an otherwise identical control run: the change the hit
+// caused. The Vector Mine centre-hit and the two-second held-Pulse arms use the same subtraction.
+// Held-Pulse accuracy counts only shipped fire/projectile/damage hits — never a scripted impulse.
 //
 // REVIEWER'S OBJECTION (agy Gemini 3.8, 2026-09-04) AND WHY THE DIFFERENCE STANDS. The objection:
 // for the concussion cannon the beat already zeroed the victim's thrust, so its raw tick delta was
@@ -37,7 +34,8 @@ import { resolveWeaponImpulseForHit } from '../../../../src/combat/impulseKernel
 import { readPhysicsTelemetry } from '../../../../src/core/physicsAuthority.js';
 import { WEAPONS } from '../../../../src/data/weapons.js';
 import { makeEnemySpawnSpec } from '../../../../src/systems/combat.js';
-import { bootRealPath } from '../realPath.mjs';
+import { fittingsFromDefaultModules } from '../../../../src/systems/ships.js';
+import { bootRealPath, writeRealPathInput } from '../realPath.mjs';
 import {
   CURVE_SYSTEMS,
   GUN_PROVENANCE_TAG,
@@ -66,6 +64,12 @@ const AT_CRUISE_FRACTION = 0.9;
 const SPIN_WINDOW_TICKS = 10;
 const HOSTILE_POS = Object.freeze({ x: -400, z: 0 });
 const PULSE_WEAPON_ID = 'wpn_pulse_laser_s';
+const MINE_WEAPON_ID = 'wpn_vector_mine_m';
+const PULSE_HOLD_TICKS = 120;
+const PULSE_FLIGHT_TICKS = 36;
+const PULSE_STANDOFF = 150;
+// Rapier velocity integration is Float32; retain raw numbers and tolerate only its boundary noise.
+const IMPULSE_FRACTION_EPSILON = 1e-7;
 
 export const scenario = {
   id: 'feel.shove_magnitude',
@@ -103,17 +107,28 @@ export const scenario = {
       eventTrace,
     });
 
+    const mine = await runMineArm(seed, { fire: true, tag: 'mine', eventTrace });
+    const mineControl = await runMineArm(seed, { fire: false, tag: 'mineControl', eventTrace, sampleTick: mine.eventTick });
+    const pulse = await runPulseArm(seed, { fire: true, tag: 'pulseHeld', eventTrace });
+    const pulseControl = await runPulseArm(seed, { fire: false, tag: 'pulseControl', eventTrace });
+
     // The change the HIT caused: (velocity with the hit) - (velocity without it), same tick, same
     // seed, otherwise identical run. See the header note - the raw tick delta is the victim's own
-    // thrust plus the shove, and only the concussion cannon's authored beat silences that thrust.
+    // thrust plus the shove, and the universal law no longer silences that thrust for one weapon.
     const mainHit = causalDeltaV(main, control, notes, 'shove weapon');
     const starterHit = causalDeltaV(starter, control, notes, 'starter gun');
+    const mineHit = causalDeltaV(mine, mineControl, notes, 'vector mine');
+    const pulseHit = causalDeltaV(pulse, pulseControl, notes, 'held pulse');
     const cruiseSpeed = main && Number.isFinite(main.cruiseSpeed) ? main.cruiseSpeed : 0;
-    const mainFraction = cruiseSpeed > 0 && Number.isFinite(mainHit) ? mainHit / cruiseSpeed : 0;
+    const mainFraction = cruiseSpeed > 0 && Number.isFinite(mainHit) ? mainHit / cruiseSpeed : null;
     const starterFraction = starter && Number.isFinite(starter.cruiseSpeed) && starter.cruiseSpeed > 0
       && Number.isFinite(starterHit)
       ? starterHit / starter.cruiseSpeed
-      : 0;
+      : null;
+    const mineCruise = mine && Number.isFinite(mine.cruiseSpeed) ? mine.cruiseSpeed : 0;
+    const mineFraction = mineCruise > 0 && Number.isFinite(mineHit) ? mineHit / mineCruise : null;
+    const pulseCruise = pulse && Number.isFinite(pulse.cruiseSpeed) ? pulse.cruiseSpeed : 0;
+    const pulseFraction = pulseCruise > 0 && Number.isFinite(pulseHit) ? pulseHit / pulseCruise : null;
 
     const bars = [];
     if (starter && starter.measured && Number.isFinite(starterHit)) {
@@ -122,7 +137,7 @@ export const scenario = {
         label: 'starter gun delta-V, fraction of light-hostile cruise',
         value: starterFraction,
         unit: 'fraction',
-        met: starterFraction >= 0.05,
+        met: starterFraction >= 0.05 - IMPULSE_FRACTION_EPSILON,
         note: `caused by the hit; raw one-tick delta was ${round6(starter.rawTickDeltaV)} WU/s, of which ${round6(control && control.rawTickDeltaV)} WU/s is the victim's own thrust`,
       });
     }
@@ -143,6 +158,32 @@ export const scenario = {
       });
     }
 
+    if (main && main.measured && Number.isFinite(mainHit) && Number.isFinite(main.screenDepths)) {
+      bars.push({
+        bar: 'B4',
+        label: 'shove weapon delta-V, fraction of light-hostile cruise',
+        value: mainFraction,
+        unit: 'fraction',
+        met: mainFraction >= 0.30 - IMPULSE_FRACTION_EPSILON,
+      });
+      bars.push({
+        bar: 'B5',
+        label: 'displacement 2 s after the shove-weapon hit, screen depths',
+        value: main.screenDepths,
+        unit: 'screen depths',
+        met: main.screenDepths >= 1.0,
+      });
+    }
+    if (mine && mine.measured && Number.isFinite(mineHit) && Number.isFinite(mineFraction)) {
+      bars.push({
+        bar: 'B4',
+        label: 'vector mine centre-hit delta-V, fraction of light-hostile cruise',
+        value: mineFraction,
+        unit: 'fraction',
+        met: mineFraction >= 0.45 - IMPULSE_FRACTION_EPSILON,
+      });
+    }
+
     const controlShots = control && Number.isFinite(control.victimShots) ? control.victimShots : 0;
     if (controlShots < 1) {
       notes.push('the has-not-fired clause is uninstrumented: the hostile does not fire in the control arm either.');
@@ -159,6 +200,19 @@ export const scenario = {
 
     if (main && main.flagsOff) notes.push(main.flagsOff);
     if (main && main.unmeasuredReason) notes.push(main.unmeasuredReason);
+    if (mine && mine.unmeasuredReason) notes.push(`vector mine: ${mine.unmeasuredReason}`);
+    if (pulse && pulse.unmeasuredReason) notes.push(`held pulse: ${pulse.unmeasuredReason}`);
+    if (pulse && pulse.measured) {
+      notes.push(
+        `held pulse 2 s: attempted ${pulse.attemptedShots} shots, landed ${pulse.landedHits} hits`
+        + ` (${round6(pulse.hitFraction)}), causal ΔV ${round6(pulseHit)} WU/s`
+        + ` (${round6(pulseFraction)} of cruise), firing solution viable=${pulse.firingSolutionViable === true}`,
+      );
+    }
+
+    const pulseHitFraction = pulse && pulse.measured && Number.isFinite(pulse.hitFraction)
+      ? pulse.hitFraction
+      : null;
 
     return {
       eventTrace,
@@ -168,9 +222,23 @@ export const scenario = {
         cruiseField: main && main.cruiseField,
         cruiseSpeed: main ? main.cruiseSpeed : 0,
         deltaV: Number.isFinite(mainHit) ? mainHit : 0,
-        deltaVFractionOfCruise: mainFraction,
+        deltaVFractionOfCruise: Number.isFinite(mainFraction) ? mainFraction : null,
         starterDeltaV: Number.isFinite(starterHit) ? starterHit : 0,
-        starterDeltaVFractionOfCruise: starterFraction,
+        starterDeltaVFractionOfCruise: Number.isFinite(starterFraction) ? starterFraction : null,
+        mineDeltaV: Number.isFinite(mineHit) ? mineHit : null,
+        mineDeltaVFractionOfCruise: Number.isFinite(mineFraction) ? mineFraction : null,
+        mineDeltaVRawTick: mine ? mine.rawTickDeltaV : null,
+        mineDetonationDistance: mine.measured ? mine.detonationDist : null,
+        mineHasSolverBody: mine.measured ? mine.hasSolverBody : null,
+        alongSpeedBeforeFractionOfCruise: along && along.measured ? along.speedBeforeFractionOfCruise : null,
+        alongSpeedRatio: along && along.measured ? along.speedRatio : null,
+        pulseDeltaV: Number.isFinite(pulseHit) ? pulseHit : null,
+        pulseDeltaVFractionOfCruise: Number.isFinite(pulseFraction) ? pulseFraction : null,
+        pulseAttemptedShots: pulse && pulse.measured ? pulse.attemptedShots : null,
+        pulseLandedHits: pulse && pulse.measured ? pulse.landedHits : null,
+        pulseHitFraction,
+        pulseFiringSolutionViable: pulse && pulse.measured ? pulse.firingSolutionViable === true : null,
+        pulseDeltaVRawTick: pulse ? pulse.rawTickDeltaV : null,
         // The momentum the slug carries, divided by the victim's mass: the other honest reading of
         // B4, published beside the causal one so the two can never be confused for each other.
         impulseDeltaV: main && main.victimMass > 0 ? main.impulseMagnitude / main.victimMass : 0,
@@ -437,6 +505,265 @@ async function runShoveArm(seed, { weaponId, direction, tag, eventTrace, straigh
   }
 }
 
+async function runMineArm(seed, { fire, tag, eventTrace, sampleTick = null }) {
+  const host = await bootRealPath({
+    seed, systems: CURVE_SYSTEMS.filter((entry) => entry !== 'aiPorts'),
+    hulls: [{ hullId: 'ship_hornet', pos: { x: 0, z: 80 }, rot: 0, isPlayer: true,
+      fittings: fittingsFromDefaultModules('ship_hornet', [MINE_WEAPON_ID]) }],
+  });
+  try {
+    const flagsOff = readFeelFlagsOff(host);
+    if (flagsOff) return unmeasuredArm(host.proof(), flagsOff);
+    host.step(1);
+    const player = host.player;
+    const dropSpot = predictedMinePos(player);
+    let mineId = null;
+    let receipt = null;
+    let victim = null;
+    let detonationDist = null;
+    host.bus.on('weapons:mineDeployed', (e) => { if (e.ownerId === player.id) mineId = e.mineId; });
+    host.bus.on('weapons:mineDetonated', (e) => {
+      if (e.mineId !== mineId) return;
+      receipt = e;
+      if (victim) detonationDist = Math.hypot(victim.pos.x - e.pos.x, victim.pos.z - e.pos.z);
+    });
+    host.step(1, { before: ({ state }) => writeRealPathInput(state, { fire }) });
+    if (fire && mineId == null) return unmeasuredArm(host.proof(), 'shipped fire did not deploy a mine');
+    // The mine drops inside the combined radii of Hornet and Wasp. Spawn the stationary target
+    // only after the owner has flown clear; never let collision separation launch the fixture.
+    host.step(60, { before: ({ state }) => writeRealPathInput(state, { moveZ: 1 }) });
+    const mine = mineId == null ? null : host.state.entities.get(mineId);
+    const hasSolverBody = fire && host.runtime.getSystem('physics')._sg02.records.has(mineId);
+    if (hasSolverBody) return unmeasuredArm(host.proof(), 'proximity mine incorrectly entered the Rapier solver');
+    const center = mine ? { x: mine.pos.x, z: mine.pos.z } : dropSpot;
+    victim = spawnSittingWasp(host, center);
+    const cruise = readCruiseSpeed(victim);
+    let vBefore = null;
+    let vAfter = null;
+    let eventTick = null;
+    host.step(100, {
+      before: ({ state }) => {
+        writeRealPathInput(state, { moveZ: 1 });
+        writeNpcIntent(victim, emptyIntent());
+        if (eventTick == null) vBefore = { x: victim.vel.x, z: victim.vel.z };
+      },
+      after: ({ state }) => {
+        if (fire ? !!receipt : state.tick === sampleTick) {
+          eventTick = state.tick;
+          vAfter = { x: victim.vel.x, z: victim.vel.z };
+          return false;
+        }
+      },
+    });
+    host.assertBodies([victim, player], 'feel.shove_magnitude.mine');
+    const proof = host.proof();
+    if (!vAfter || (fire && (!receipt.hits.includes(victim.id) || !(detonationDist <= 1e-4)))) {
+      return unmeasuredArm(proof, `mine centre-hit not observed (tick=${eventTick}, distance=${detonationDist}, victimX=${victim.pos.x}, centerX=${center.x})`, cruise);
+    }
+    eventTrace.push({ tick: eventTick, type: fire ? 'mine:hit' : 'mine:control', tag, weaponId: MINE_WEAPON_ID, detonationDist });
+    return { measured: true, realPathProof: proof, ...cruise, vBefore, vAfter, eventTick,
+      rawTickDeltaV: Math.hypot(vAfter.x - vBefore.x, vAfter.z - vBefore.z),
+      victimMass: victim.mass, detonationDist, hasSolverBody, deployed: fire && mineId != null, detonated: !!receipt };
+  } finally { host.dispose(); }
+}
+async function runPulseArm(seed, { fire, tag, eventTrace }) {
+  const host = await bootRealPath({
+    seed,
+    systems: [...CURVE_SYSTEMS],
+    hulls: [{
+      hullId: 'ship_kestrel',
+      pos: { x: 0, z: 0 },
+      rot: 0,
+      isPlayer: true,
+      fittings: fittingsFromDefaultModules('ship_kestrel', [PULSE_WEAPON_ID]),
+    }],
+  });
+
+  try {
+    const flagsOff = readFeelFlagsOff(host);
+    if (flagsOff) {
+      host.step(1);
+      return { measured: false, flagsOff, realPathProof: host.proof() };
+    }
+
+    const player = host.player;
+    const victim = spawnSittingWasp(host, { x: PULSE_STANDOFF, z: 0 });
+    host.step(1);
+    const proof = host.proof();
+    try {
+      host.assertBodies([victim, player], 'feel.shove_magnitude.pulse');
+    } catch (err) {
+      return unmeasuredArm(proof, String((err && err.message) || err));
+    }
+
+    const cruise = readCruiseSpeed(victim);
+    writeNpcIntent(victim, emptyIntent());
+    victim.vel = victim.vel || { x: 0, z: 0 };
+    victim.vel.x = 0;
+    victim.vel.z = 0;
+
+    const pulseDef = WEAPONS.find((w) => w.id === PULSE_WEAPON_ID);
+    const pulseRange = pulseDef && Number.isFinite(pulseDef.range) ? pulseDef.range : 600;
+    const energyCost = pulseDef && Number.isFinite(pulseDef.energyCost) ? pulseDef.energyCost : 2;
+
+    let attemptedShots = 0;
+    let landedHits = 0;
+    host.bus.on('combat:fire', (payload) => {
+      if (payload && payload.ownerId === player.id && payload.weaponId === PULSE_WEAPON_ID) {
+        attemptedShots += 1;
+      }
+    });
+    host.bus.on('combat:damage', (payload) => {
+      if (
+        payload
+        && payload.targetId === victim.id
+        && payload.attackerId === player.id
+        && payload.weaponId === PULSE_WEAPON_ID
+      ) {
+        landedHits += 1;
+      }
+    });
+
+    let pendingEvent = false;
+    let eventTick = null;
+    let vBefore = { x: 0, z: 0 };
+    let vAfter = null;
+    let firingSolutionViable = true;
+    const holdEnd = PULSE_HOLD_TICKS;
+    const totalTicks = PULSE_HOLD_TICKS + PULSE_FLIGHT_TICKS;
+
+    host.step(totalTicks, {
+      before: ({ index, state }) => {
+        writeNpcIntent(victim, emptyIntent());
+        const holding = fire && index < holdEnd;
+        const aimAngle = Math.atan2(
+          finite(victim.pos && victim.pos.z) - finite(player.pos && player.pos.z),
+          finite(victim.pos && victim.pos.x) - finite(player.pos && player.pos.x),
+        );
+        writeRealPathInput(state, { fire: holding, moveZ: 0 });
+        state.input.aimAngle = aimAngle;
+        if (holding) {
+          const dist = Math.hypot(
+            finite(victim.pos && victim.pos.x) - finite(player.pos && player.pos.x),
+            finite(victim.pos && victim.pos.z) - finite(player.pos && player.pos.z),
+          );
+          const venting = (state.simTime || 0) < ((player.data && player.data.weaponVentUntil) || 0);
+          const cap = typeof player.cap === 'number' ? player.cap : 0;
+          if (!victim.alive || dist > pulseRange || venting || cap < energyCost) {
+            firingSolutionViable = false;
+          }
+        }
+        if (pendingEvent || eventTick != null) return;
+        if (index !== 0) return;
+        vBefore = { x: finite(victim.vel && victim.vel.x), z: finite(victim.vel && victim.vel.z) };
+        pendingEvent = true;
+      },
+      after: ({ index, state }) => {
+        const tick = state.tick | 0;
+        if (pendingEvent && eventTick == null && index === 0) {
+          eventTick = tick;
+        }
+        if (index === totalTicks - 1) {
+          vAfter = { x: finite(victim.vel && victim.vel.x), z: finite(victim.vel && victim.vel.z) };
+          if (eventTrace.length < 400) {
+            eventTrace.push({
+              tick,
+              simTime: tick / 60,
+              type: fire ? 'pulse:held' : 'pulse:control',
+              tag,
+              weaponId: PULSE_WEAPON_ID,
+              attemptedShots,
+              landedHits,
+            });
+          }
+        }
+      },
+    });
+
+    if (readPhysicsTelemetry(victim) == null) {
+      return unmeasuredArm(proof, 'bodyless at end of pulse run', cruise);
+    }
+    if (!vAfter) vAfter = { x: finite(victim.vel && victim.vel.x), z: finite(victim.vel && victim.vel.z) };
+    const hitFraction = attemptedShots > 0 ? landedHits / attemptedShots : null;
+
+    return {
+      measured: true,
+      realPathProof: proof,
+      cruiseField: cruise.cruiseField,
+      cruiseSpeed: cruise.cruiseSpeed,
+      vBefore,
+      vAfter,
+      rawTickDeltaV: Math.hypot(vAfter.x - vBefore.x, vAfter.z - vBefore.z),
+      victimMass: finite(victim.mass, 0),
+      attemptedShots: fire ? attemptedShots : 0,
+      landedHits: fire ? landedHits : 0,
+      hitFraction: fire ? hitFraction : null,
+      firingSolutionViable: fire ? firingSolutionViable : null,
+    };
+  } finally {
+    host.dispose();
+  }
+}
+
+function spawnSittingWasp(host, pos) {
+  const spec = makeEnemySpawnSpec('wasp_swarmer', 1, { x: finite(pos.x), z: finite(pos.z) }, {
+    motive: 'motion_lab',
+    engagementTrigger: 'authorized_hostile_spawn',
+    zoneId: 'motion_lab',
+  });
+  spec.rot = 0;
+  spec.data = spec.data || {};
+  spec.data.ai = spec.data.ai || {};
+  spec.data.ai.activity = {
+    ...(spec.data.ai.activity || {}),
+    kind: 'hold',
+    reason: 'motion_lab',
+    anchor: { x: finite(pos.x), z: finite(pos.z) },
+    leashRadius: 4000,
+  };
+  spec.data.ai.roe = 'hold_fire';
+  spec.data.ai.passive = true;
+  spec.data.ai.huntPlayer = false;
+  spec.data.intent = emptyIntent();
+  spec.data.combat = spec.data.combat || {};
+  return host.runtime.spawn(spec);
+}
+
+function predictedMinePos(player) {
+  const dir = finite(player && player.rot) + Math.PI;
+  const standoff = finite(player && player.radius, 6) + 6;
+  return {
+    x: finite(player && player.pos && player.pos.x) + Math.cos(dir) * standoff,
+    z: finite(player && player.pos && player.pos.z) + Math.sin(dir) * standoff,
+  };
+}
+
+function findVectorMine(state) {
+  const list = (state && state.entityList) || [];
+  for (const entity of list) {
+    if (entity && entity.alive && entity.type === 'vectormine') return entity;
+  }
+  return null;
+}
+
+function readFeelFlagsOff(host) {
+  const features = host.runtime && host.runtime.config && host.runtime.config.features;
+  const impulseOn = !!(features && features.combat && features.combat.weaponImpulseConsequences);
+  const tumbleOn = !!(features && features.massline2 && features.massline2.enabled && features.massline2.tumble);
+  if (impulseOn && tumbleOn) return null;
+  return `STOP: production feel flags off (${[!impulseOn && 'weaponImpulseConsequences', !tumbleOn && 'massline2.tumble'].filter(Boolean).join(', ')})`;
+}
+
+function unmeasuredArm(proof, reason, cruise) {
+  return {
+    measured: false,
+    unmeasuredReason: reason,
+    realPathProof: proof,
+    cruiseField: cruise && cruise.cruiseField,
+    cruiseSpeed: cruise && cruise.cruiseSpeed,
+  };
+}
+
 /**
  * The delta-V the hit CAUSED: |v_after(arm) - v_after(control)| at the same tick of an otherwise
  * identical run. Returns null (and notes it) if the two arms did not share a pre-event state, which
@@ -445,16 +772,16 @@ async function runShoveArm(seed, { weaponId, direction, tag, eventTrace, straigh
 function causalDeltaV(arm, control, notes, label) {
   if (!arm || arm.measured !== true || !arm.vAfter) return null;
   if (!control || control.measured !== true || !control.vAfter) {
-    notes.push(`${label} delta-V is the raw one-tick change: the no-weapon control arm did not measure, so the victim's own thrust could not be subtracted.`);
-    return arm.rawTickDeltaV;
+    notes.push(`${label} causal delta-V fail-closed: the matched no-weapon control arm did not measure.`);
+    return null;
   }
   const driftBefore = Math.hypot(
     finite(arm.vBefore && arm.vBefore.x) - finite(control.vBefore && control.vBefore.x),
     finite(arm.vBefore && arm.vBefore.z) - finite(control.vBefore && control.vBefore.z),
   );
   if (!(driftBefore <= 1e-6)) {
-    notes.push(`${label} delta-V is the raw one-tick change: the control arm's pre-hit velocity drifted by ${round6(driftBefore)} WU/s, so the runs are not comparable.`);
-    return arm.rawTickDeltaV;
+    notes.push(`${label} causal delta-V fail-closed: control pre-event velocity drifted by ${round6(driftBefore)} WU/s.`);
+    return null;
   }
   return Math.hypot(arm.vAfter.x - control.vAfter.x, arm.vAfter.z - control.vAfter.z);
 }

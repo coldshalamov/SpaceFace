@@ -43,8 +43,8 @@ test('every canonical weapon declares a finite provenance-bearing impulse identi
 test('weapon impulse identities preserve the starter exemption and distinct combat families', () => {
   const byId = new Map(WEAPONS.map((weapon) => [weapon.id, weapon]));
   const starter = byId.get('wpn_pulse_laser_s');
-  assert.ok(starter.impulsePerHit > 0 && starter.impulsePerHit <= 1,
-    'starter pulse must plink with near-zero, not absent, impulse');
+  assert.equal(starter.impulsePerHit, 84,
+    'starter pulse must declare 84 momentum (5% of light-hostile cruise)');
 
   const representatives = [
     'wpn_pulse_laser_s',

@@ -1016,7 +1016,9 @@ export const weapons = {
     const mine = this.helpers.spawnEntity({
       type: 'vectormine',
       pos, vel: { x: 0, z: 0 }, rot: dir,
-      radius: 1.6, mass: 0.6, collides: false,
+      // This stationary proximity sensor must not enter Rapier as a solid ball. collides:false
+      // alone only disables the legacy collision path; an overlapping hull would be ejected.
+      radius: 1.6, mass: 0.6, collides: false, physicsBody: false,
       team: e.team, ownerId: e.id, factionId: e.factionId,
       data: {
         kind: 'vector_mine', weaponId: w.defId, ownerId: e.id,

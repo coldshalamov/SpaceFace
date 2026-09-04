@@ -434,19 +434,30 @@ function evaluateB4(bar, list) {
   if (!runs.length) {
     return finish(bar, { notes: [unfedNote(bar)] });
   }
-  const dv = worstMetric(runs, (run) => run.metrics && run.metrics.deltaVFractionOfCruise, "min");
   const values = [
-    entry(`shove ΔV, fraction of light-hostile cruise (worst of ${dv.n} run(s))`, dv.value, "fraction", dv.value >= 0.3),
-  ].filter(Boolean);
+    requiredShoveMetric(runs, "deltaVFractionOfCruise", "shove ΔV, fraction of light-hostile cruise", "fraction", "min", (v) => v >= 0.30 - 1e-7),
+    requiredShoveMetric(runs, "starterDeltaVFractionOfCruise", "starter ΔV, fraction of light-hostile cruise", "fraction", "min", (v) => v >= 0.05 - 1e-7),
+    requiredShoveMetric(runs, "mineDeltaVFractionOfCruise", "Vector Mine centre-hit ΔV, fraction of light-hostile cruise", "fraction", "min", (v) => v >= 0.45 - 1e-7),
+    requiredShoveMetric(runs, "alongSpeedBeforeFractionOfCruise", "along-motion victim speed before hit, fraction of cruise", "fraction", "min", (v) => v >= 0.90),
+    requiredShoveMetric(runs, "alongSpeedRatio", "along-motion speed after / before hit", "ratio", "min", (v) => v > 1.0),
+  ];
   return finish(bar, {
     values,
-    coverage: "partial",
+    coverage: values.some((value) => value.unmeasured) ? "partial" : "full",
     fedBy: runs.map(fedByOf),
     notes: [
-      "the verdict applies the contract's 0.30 threshold; the bench-internal barB4Met boolean uses a looser 0.15 and is ignored here.",
-      "The starter-gun ≥ 5 % clause and the faster-along-its-motion clause are unbenched.",
+      "Verdicts use measured fractions: shove ≥ 0.30, starter ≥ 0.05, centre mine ≥ 0.45; along-motion acceleration requires the victim already at cruise. Missing metrics in any run keep the bar unmeasured.",
+      "Impulse fractions allow 1e-7 absolute error from Rapier Float32 velocity integration; raw measurements and authored thresholds remain unchanged.",
     ],
   });
+}
+
+function requiredShoveMetric(runs, key, label, unit, mode, passes) {
+  const result = worstMetric(runs, (run) => run.metrics && run.metrics[key], mode);
+  if (result.n !== runs.length) {
+    return { label, value: null, unit, met: false, unmeasured: true, note: `${key} missing in ${runs.length - result.n} run(s)` };
+  }
+  return entry(`${label} (worst of ${result.n} run(s))`, result.value, unit, passes(result.value));
 }
 
 function evaluateB5(bar, list) {
@@ -454,15 +465,16 @@ function evaluateB5(bar, list) {
   if (!runs.length) {
     return finish(bar, { notes: [unfedNote(bar)] });
   }
-  const depths = worstMetric(runs, (run) => run.metrics && run.metrics.screenDepths, "min");
   const values = [
-    entry(`displacement 2 s after the shove, screen depths (worst of ${depths.n} run(s))`, depths.value, "screen depths", depths.value >= 1.0),
-  ].filter(Boolean);
+    requiredShoveMetric(runs, "screenDepths", "displacement 2 s after the shove, screen depths", "screen depths", "min", (v) => v >= 1.0),
+    requiredShoveMetric(runs, "victimShots", "hostile shots during the 2 s after hit", "shots", "max", (v) => v === 0),
+    requiredShoveMetric(runs, "controlArmShots", "matched unhit hostile shots in the same window", "shots", "min", (v) => v > 0),
+  ];
   return finish(bar, {
     values,
-    coverage: "partial",
+    coverage: values.some((value) => value.unmeasured) ? "partial" : "full",
     fedBy: runs.map(fedByOf),
-    notes: ["the \"has not fired\" clause is not instrumented by the verb bench."],
+    notes: ["The has-not-fired clause requires zero hit-arm shots and a firing matched control; a silent control cannot establish suppression."],
   });
 }
 

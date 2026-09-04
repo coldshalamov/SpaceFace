@@ -145,11 +145,9 @@ test("the shove bars report the delta-V the HIT caused, not the victim's own thr
   assert.ok(starterDef, 'the starter pulse must exist in the weapon table');
   const expected = starterDef.impulsePerHit / m.victimMass / m.cruiseSpeed;
 
-  // The trap this pins (FORCE lane, 2026-09-04): the raw one-tick velocity change of an AI hostile
-  // is dominated by its OWN thrust (3.05 WU/s on a wasp). Only the concussion cannon authors
-  // npcCounterthrustDelayS, so only its raw delta happens to equal its impulse; measured raw, the
-  // starter pulse read 1.5 % of cruise for a gun that imparts 0.015 % - a 100x lie that PQ-137.05
-  // would then have tuned against.
+  // The raw tick includes the hostile's own thrust. The approved force table raises Pulse to
+  // 84 momentum, so that contamination no longer dominates by 10x. The authored impulse check
+  // below still rejects substituting the raw tick for the causal result; retain both observations.
   assert.ok(
     Math.abs(m.starterDeltaVFractionOfCruise - expected) <= 1e-3,
     `"Light ships are ammunition." The starter gun's shove must be the impulse it carries `
@@ -157,9 +155,8 @@ test("the shove bars report the delta-V the HIT caused, not the victim's own thr
     + `raw one-tick delta reads ${m.starterDeltaVRawTick / m.cruiseSpeed}`,
   );
   assert.ok(
-    m.starterDeltaVRawTick > 10 * m.starterDeltaV,
-    'the raw one-tick delta must still be reported and must still be the contaminated number, '
-    + 'so the correction stays auditable',
+    Number.isFinite(m.starterDeltaVRawTick) && m.starterDeltaVRawTick >= 0,
+    'the raw one-tick delta must remain a finite observation alongside the causal result',
   );
   assert.ok(
     m.controlTickDeltaV > 0,

@@ -41,6 +41,12 @@ function verbRun(scenarioId, metrics, seed = 4242) {
   return { bench: "verbs", scenarioId, seed, metrics };
 }
 
+function forceMetrics(overrides = {}) {
+  return { deltaVFractionOfCruise: 0.31, starterDeltaVFractionOfCruise: 0.05,
+    mineDeltaVFractionOfCruise: 0.45, alongSpeedBeforeFractionOfCruise: 0.95,
+    alongSpeedRatio: 1.2, screenDepths: 1.04, victimShots: 0, controlArmShots: 2, ...overrides };
+}
+
 function barById(evaluation, id) {
   const bar = evaluation.bars.find((entry) => entry.id === id);
   assert.ok(bar, `bar ${id} must be present in the evaluation`);
@@ -152,7 +158,7 @@ test("verdicts are recomputed from raw numbers against contract thresholds", () 
   assert.equal(barById(b4Low, "B4").met, false, "0.154 of cruise is under the contract's 30 % shove bar");
 
   const b4High = evaluateBars([
-    verbRun("feel.shove_magnitude", { deltaVFractionOfCruise: 0.31, barB4Met: false }),
+    verbRun("feel.shove_magnitude", forceMetrics({ barB4Met: false })),
   ]);
   assert.equal(barById(b4High, "B4").met, true);
 
@@ -445,7 +451,7 @@ test("worstMetric treats null as missing, not zero, through the public evaluator
   const withNull = barById(evaluateBars([
     verbRun("feel.shove_magnitude", { deltaVFractionOfCruise: null, screenDepths: 1.2 }),
   ]), "B4");
-  assert.equal(withNull.values.length, 0, "a null metric must not become a 0 row");
+  assert.ok(withNull.values.every((row) => row.unmeasured && row.value === null), "null metrics stay named missing rows, never zero");
   assert.equal(withNull.met, null);
   assert.notEqual(withNull.met, false, "unmeasured is not a measured fail at zero");
 
@@ -458,6 +464,28 @@ test("worstMetric treats null as missing, not zero, through the public evaluator
   const withString = barById(evaluateBars([
     verbRun("feel.shove_magnitude", { deltaVFractionOfCruise: "0.31" }),
   ]), "B4");
-  assert.equal(withString.values.length, 0, "string metrics are not Number()-coerced");
+  assert.ok(withString.values.every((row) => row.unmeasured && row.value === null), "string metrics are not Number()-coerced");
   assert.equal(withString.met, null);
+});
+
+test("B4 and B5 consume every force metric and fail closed across seeds", () => {
+  const run = (metrics, seed = 4242) => verbRun("feel.shove_magnitude", metrics, seed);
+  const complete = evaluateBars([run(forceMetrics())]);
+  assert.equal(barById(complete, "B4").met, true);
+  assert.equal(barById(complete, "B5").met, true);
+  for (const key of ["deltaVFractionOfCruise", "starterDeltaVFractionOfCruise", "mineDeltaVFractionOfCruise", "alongSpeedBeforeFractionOfCruise", "alongSpeedRatio"]) {
+    const incomplete = forceMetrics({ [key]: null });
+    incomplete.bars = [{ bar: "B4", label: "passing subset", value: 1, unit: "fraction", met: true }];
+    assert.notEqual(barById(evaluateBars([run(forceMetrics()), run(incomplete, 8008)]), "B4").met, true, `${key} cannot be hidden by another seed or provided row`);
+  }
+  assert.equal(barById(evaluateBars([run(forceMetrics({ starterDeltaVFractionOfCruise: 0.049999995989695144 }))]), "B4").met, true, "Float32 integration noise at exactly 5% is within the explicit 1e-7 fraction tolerance");
+  for (const [key, value] of [["starterDeltaVFractionOfCruise", 0.0499], ["mineDeltaVFractionOfCruise", 0.449], ["deltaVFractionOfCruise", 0.299], ["alongSpeedBeforeFractionOfCruise", 0.89], ["alongSpeedRatio", 1]]) {
+    assert.equal(barById(evaluateBars([run(forceMetrics({ [key]: value }))]), "B4").met, false, `${key} obeys its unchanged threshold`);
+  }
+  for (const key of ["screenDepths", "victimShots", "controlArmShots"]) {
+    assert.notEqual(barById(evaluateBars([run(forceMetrics({ [key]: null }))]), "B5").met, true);
+  }
+  for (const delta of [{ screenDepths: 0.999 }, { victimShots: 1 }, { controlArmShots: 0 }]) {
+    assert.equal(barById(evaluateBars([run(forceMetrics(delta))]), "B5").met, false);
+  }
 });

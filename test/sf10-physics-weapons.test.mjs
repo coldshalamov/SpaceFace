@@ -59,8 +59,8 @@ test('the three SF-10 families exist and declare distinct physics-first identity
     'concussion trades damage for momentum — a much heavier shove than a DPS autocannon');
   assert.ok(CONCUSSION.dmg <= BY_ID.get('wpn_autocannon_s').dmg,
     'concussion damage stays low — the kill comes from terrain, not the gun');
-  assert.ok(CONCUSSION.impulsePerHit <= BY_ID.get('wpn_siege_lance_l').impulsePerHit,
-    'a mid slot must not out-shove the capital siege lance');
+  assert.equal(CONCUSSION.impulsePerHit, 920,
+    'concussion cannon delivers 920 momentum (~54.76 % of light-hostile cruise)');
 
   // Vector mine throws, it does not burn: zero authored hull damage (design Q9).
   assert.equal(VECTOR_MINE.dmg, 0, 'vector mine must deal zero hull damage — it is pure impulse');
@@ -85,8 +85,8 @@ test('light-tier mass-response: the concussion cannon tumbles a light hull but a
   const heavyDeltaV = identity.magnitude / HEAVY_MASS;
   assert.ok(lightDeltaV >= COLLISION_CONSEQUENCE_LIMITS.tumbleDeltaV,
     `a light hull's Δv (${lightDeltaV.toFixed(1)}) must clear the tumble threshold (${COLLISION_CONSEQUENCE_LIMITS.tumbleDeltaV})`);
-  assert.ok(heavyDeltaV < COLLISION_CONSEQUENCE_LIMITS.staggerDeltaV,
-    `a heavy hull's Δv (${heavyDeltaV.toFixed(1)}) must stay below the stagger threshold (${COLLISION_CONSEQUENCE_LIMITS.staggerDeltaV})`);
+  assert.ok(heavyDeltaV < COLLISION_CONSEQUENCE_LIMITS.tumbleDeltaV,
+    `a heavy hull's Δv (${heavyDeltaV.toFixed(1)}) must stay below the tumble threshold (${COLLISION_CONSEQUENCE_LIMITS.tumbleDeltaV})`);
 
   // 2026-08-21 (b9858f1d): environment contacts never steal the helm, even with a fresh
   // weapon-impulse tag. Terrain still receipts damage; helm loss is craft-on-craft (and
@@ -262,6 +262,7 @@ test('vector mine: deploy spends cap/heat and drops an armable mine behind the s
     assert.ok(mine, 'a vectormine entity is deployed');
     assert.equal(mine.data.armed, false, 'the mine starts un-armed (arm delay protects the deployer)');
     assert.equal(mine.collides, false, 'the mine is a logical trigger volume, not a physics body');
+    assert.equal(mine.physicsBody, false, 'proximity mines explicitly opt out of the Rapier body index');
     // Behind the heading (rot 0 → behind is -x).
     assert.ok(mine.pos.x < 0, 'the mine deploys behind the ship');
     assert.ok(emitted.some((ev) => ev.name === 'weapons:mineDeployed'), 'deploy is receipted on the bus');

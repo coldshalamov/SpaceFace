@@ -156,8 +156,8 @@ function assertUniversalWeaponIdentities() {
   }
   const byId = new Map(WEAPONS.map((weapon) => [weapon.id, weapon]));
   const starter = byId.get('wpn_pulse_laser_s');
-  assert.ok(starter && starter.impulsePerHit > 0 && starter.impulsePerHit <= 1,
-    'starter pulse must keep its near-zero impulse exemption');
+  assert.equal(starter && starter.impulsePerHit, 84,
+    'starter pulse must declare 84 momentum (5% of light-hostile cruise)');
   const familyIds = [
     'wpn_pulse_laser_s',
     'wpn_autocannon_s',
