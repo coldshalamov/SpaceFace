@@ -276,6 +276,13 @@ test('real lethal terrain and Ram-Plate contacts survive synchronous damage rout
       impulse: 5000,
       pos: { x: 12, z: -3 },
       normal: { x: 0, z: 1 },
+      // c3857c52 ("preserve causality for direct rams") made Ram-Plate attribution require a
+      // signed actor: collisionConsequences.js:452 declines the credit unless the impact names the
+      // actor who drove the contact. The REAL path supplies it — physics.js:1253 and
+      // sg02DynamicBodyOwner.js:917/939 both compute `causalActorId` via
+      // directContactCausalActorId. This hand-built payload predates that contract (written
+      // 2026-08-08) and omitted the field, so the assertion below has been red on master since.
+      causalActorId: ramPlayer.id,
     });
     assert.equal(ramKills.length, 1);
     assert.equal(ramKills[0].presentation.cause, 'ship_collision');
