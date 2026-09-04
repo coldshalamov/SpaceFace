@@ -62,7 +62,7 @@ already in here once.
 |---|---|---|---|---|---|
 | B4 | shove weapon changes a light hostile's velocity by | 15.4 % of cruise | **12.5 %** | ≥ 30 % | no |
 | B4 | the **starter** gun changes it by | never measured | **0.015 %** | ≥ 5 % | no |
-| B4 | shoved along its own motion, it gets faster | never measured | **1.53×** | faster | **yes** |
+| B4 | shoved along its own motion, it gets faster | never measured | **see correction below** | faster | **not yet honestly tested** |
 | B5 | 2 s later it is off the line it was flying by | 0.52 screens (of total travel) | **0.46 screens** (measured properly) | ≥ 1 screen | no |
 | B5 | …and has not fired | never measured | **it fired** | silent | no |
 | B11 | light hull loses the helm for — **gun** | 1.5 s (a constant, not a measurement) | **0.48 s** | ≥ 1 s | no |
@@ -161,6 +161,24 @@ without touching CONTACT's `collisionConsequences.js`.
   straight, is the authoritative entry-spin number.
 - B11's mass-ratio clause and its "NPCs recover with real thruster torque, never a hidden gyro"
   clause are not yet bars.
+
+**CORRECTION, same night, before anything was built on it.** The first version of this receipt scored
+B4's third clause — *"a light hostile **already at cruise** gets faster when shoved along its motion"*
+— as MET at 1.53x. That green was unearned. The instrument spawned the victim at cruise and then let
+an AI hostile fly an attack run for a second before the hit; measured, it was down to **49.6 WU/s,
+24 % of a wasp's cruise**, by the time the shove landed. The clause exists to interrogate the speed
+governor above cruise, and at a quarter of cruise the governor is not in play at all — so the number
+was real but it answered a different question. The along-motion arm now flies STRAIGHT under its own
+thrust with no AI, and does not take the hit until it has actually reached 90 % of cruise; the arm
+records `speedBeforeFractionOfCruise` and the clause **cannot be marked met** unless that premise
+holds. This is the same class of defect as the 100x starter-gun number above: a deterministic,
+repeatable, test-passing measurement of the wrong thing.
+
+**A note on which tree these numbers belong to.** They were measured before FLIGHT's PQ-137.03 (the
+nimble regime) landed. That change halves governed cruise catalog-wide (wasp 210 → 105), so every
+number here that is expressed as a *fraction of cruise* roughly doubles for the same absolute shove,
+with no change in this lane. The absolute values (26.25 WU/s of delta-V, 0.483 s of helm-loss,
+4.13 s of tumble) are the ones to carry forward; the fractions must be re-measured after .03.
 
 **Checks run.**
 - `node --test test/hitstun-curve.test.mjs` — 3/3 pass.

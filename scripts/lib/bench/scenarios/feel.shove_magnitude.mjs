@@ -39,6 +39,7 @@ import { WEAPONS } from '../../../../src/data/weapons.js';
 import { makeEnemySpawnSpec } from '../../../../src/systems/combat.js';
 import { bootRealPath } from '../realPath.mjs';
 import {
+  CURVE_SYSTEMS,
   GUN_PROVENANCE_TAG,
   GUN_WEAPON_ID,
   SCREEN_DEPTH_WU,
@@ -48,10 +49,20 @@ import {
   emptyIntent,
   readCruiseSpeed,
   subscribeHelmEvents,
+  writeNpcIntent,
 } from './feel.hitstun_curve.mjs';
 
 const FLY_TICKS = 60;
 const POST_TICKS = 120;
+// B4's third clause is about a hostile ALREADY AT CRUISE. Spawning one at cruise does not establish
+// that premise: measured 2026-09-04, an AI hostile flying an attack run is down to 49.6 WU/s - 24 %
+// of a wasp's 210 - by the time the hit lands 60 ticks later, and the governor that the clause
+// exists to interrogate is nowhere near being in play. The along-motion arm therefore flies STRAIGHT
+// (no tacticalAI) under its own thrust and does not take the hit until it has actually reached
+// cruise. If it never does, the clause reports unmet with the fraction it reached, rather than
+// scoring a pass on a premise it never set up.
+const SPINUP_TICK_CAP = 900;
+const AT_CRUISE_FRACTION = 0.9;
 const SPIN_WINDOW_TICKS = 10;
 const HOSTILE_POS = Object.freeze({ x: -400, z: 0 });
 const PULSE_WEAPON_ID = 'wpn_pulse_laser_s';
@@ -82,6 +93,7 @@ export const scenario = {
       direction: 'along',
       tag: 'along',
       eventTrace,
+      straightFlight: true,
     });
 
     const control = await runShoveArm(seed, {
@@ -115,12 +127,19 @@ export const scenario = {
       });
     }
     if (along && along.measured && Number.isFinite(along.speedRatio)) {
+      // The premise is half the clause: a ratio above 1 proves nothing about the governor if the
+      // victim was not at cruise when it was hit.
+      const atCruise = along.speedBeforeFractionOfCruise >= AT_CRUISE_FRACTION;
+      if (!atCruise) {
+        notes.push(`the at-cruise clause of B4 is NOT tested: the victim was at ${round6(along.speedBeforeFractionOfCruise)} of cruise (${round6(along.speedBefore)} WU/s) when the shove landed.`);
+      }
       bars.push({
         bar: 'B4',
-        label: 'light hostile at cruise shoved ALONG its motion gets faster (speed after / speed before)',
+        label: 'light hostile AT CRUISE shoved ALONG its motion gets faster (speed after / speed before)',
         value: along.speedRatio,
         unit: 'ratio',
-        met: along.speedRatio > 1.0,
+        met: atCruise && along.speedRatio > 1.0,
+        note: `victim was at ${round6(along.speedBeforeFractionOfCruise)} of cruise when hit${atCruise ? '' : ' - premise not established, so this clause cannot pass'}`,
       });
     }
 
@@ -184,10 +203,10 @@ export const scenario = {
   },
 };
 
-async function runShoveArm(seed, { weaponId, direction, tag, eventTrace }) {
+async function runShoveArm(seed, { weaponId, direction, tag, eventTrace, straightFlight = false }) {
   const host = await bootRealPath({
     seed,
-    systems: [...SHOVE_SYSTEMS],
+    systems: straightFlight ? [...CURVE_SYSTEMS] : [...SHOVE_SYSTEMS],
     hulls: [{ hullId: 'ship_kestrel', pos: { x: 0, z: 0 }, rot: 0, isPlayer: true }],
   });
 
@@ -232,8 +251,15 @@ async function runShoveArm(seed, { weaponId, direction, tag, eventTrace }) {
 
     const cruise = readCruiseSpeed(victim);
     victim.vel = victim.vel || { x: 0, z: 0 };
-    victim.vel.x = cruise.cruiseSpeed;
-    victim.vel.z = 0;
+    if (straightFlight) {
+      // Earn the speed on the real path instead of asserting it.
+      victim.vel.x = 0;
+      victim.vel.z = 0;
+      writeNpcIntent(victim, { moveZ: 1 });
+    } else {
+      victim.vel.x = cruise.cruiseSpeed;
+      victim.vel.z = 0;
+    }
 
     const helmEvents = [];
     subscribeHelmEvents(host.bus, victim.id, helmEvents, () => host.state.tick | 0);
@@ -275,10 +301,15 @@ async function runShoveArm(seed, { weaponId, direction, tag, eventTrace }) {
     let shotsAtEvent = 0;
     let endPos = { x: finite(victim.pos && victim.pos.x), z: finite(victim.pos && victim.pos.z) };
 
-    host.step(FLY_TICKS + POST_TICKS, {
+    host.step((straightFlight ? SPINUP_TICK_CAP : FLY_TICKS) + POST_TICKS, {
       before: ({ state }) => {
+        if (straightFlight) writeNpcIntent(victim, { moveZ: 1 });
         if (pendingEvent || eventTick != null) return;
-        if (state.tick < FLY_TICKS) return;
+        if (straightFlight) {
+          const speedNow = Math.hypot(finite(victim.vel && victim.vel.x), finite(victim.vel && victim.vel.z));
+          const atCruise = cruise.cruiseSpeed > 0 && speedNow >= AT_CRUISE_FRACTION * cruise.cruiseSpeed;
+          if (!atCruise && state.tick < SPINUP_TICK_CAP) return;
+        } else if (state.tick < FLY_TICKS) return;
         vBefore = { x: finite(victim.vel && victim.vel.x), z: finite(victim.vel && victim.vel.z) };
         speedBefore = Math.hypot(vBefore.x, vBefore.z);
         linePoint = { x: finite(victim.pos && victim.pos.x), z: finite(victim.pos && victim.pos.z) };
@@ -384,6 +415,8 @@ async function runShoveArm(seed, { weaponId, direction, tag, eventTrace }) {
       entrySpinRadPerS: peakSpin,
       victimShots: windowShots,
       speedRatio: speedBefore > 1e-6 ? speedAfter / speedBefore : NaN,
+      speedBefore,
+      speedBeforeFractionOfCruise: cruise.cruiseSpeed > 0 ? speedBefore / cruise.cruiseSpeed : 0,
     };
   } finally {
     host.dispose();
