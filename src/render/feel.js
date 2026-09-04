@@ -60,6 +60,10 @@ export const COLLISION_DELTA_V_REF = 150;     // WU/s — reference slam; curve 
 export const HS_IMPACT_MIN = 0.016;           // s — ~one rendered frame at the deltaV floor
 export const HS_IMPACT_MAX = 0.09;            // s — slam ceiling; well under HS_CAPITAL_KILL
 export const COLLISION_HITSTOP_COOLDOWN = 0.18; // s of real frame time between armed collision beats
+// While cooling, only a MEANINGFULLY harder hit interrupts the armed beat. A bare `>` let a grind
+// whose deltaV crept up frame over frame (10 -> 12 -> 15 ...) re-arm every single frame and
+// machine-gun the effect; the ratio makes the escalation have to be real, not incidental.
+export const COLLISION_UPGRADE_RATIO = 1.5;
 const FOV_IMPACT_MAX = 3.5;                   // deg additive ceiling
 const TRAUMA_IMPACT_MAX = 0.35;               // camera trauma ceiling
 const COLLISION_TRAUMA_RANGE = 400;           // WU — inverse-square falloff starts past this
@@ -976,7 +980,7 @@ export const feel = {
 
     const cooling = this._collisionHitstopCooldown > 0;
     const armed = this._armedCollisionDeltaV || 0;
-    if (cooling && !(pending.deltaV > armed)) return;
+    if (cooling && !(pending.deltaV > armed * COLLISION_UPGRADE_RATIO)) return;
 
     if (this.state.mode !== 'flight' || !this._modalClear()) return;
     const mr = this.state.settings && this.state.settings.video && this.state.settings.video.motionReduce;

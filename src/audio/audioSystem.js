@@ -408,12 +408,15 @@ export function resolveCollisionCue(input) {
   );
   const heavy = acousticMass >= COLLISION_CUE.TIER_HEAVY_MASS;
   const slammed = dp >= COLLISION_CUE.TIER_SLAM_DP;
-  const tier = slammed && heavy
-    ? 'broadside'
-    : slammed || heavy
-      ? 'slam'
-      : dp <= COLLISION_CUE.TIER_KISS_DP
-        ? 'kiss'
+  // The kiss test comes FIRST and outranks mass. Touching a station is a clunk, not a whisper-quiet
+  // explosion: how HARD it was picks the recipe, how HEAVY it was picks the pitch. Letting `heavy`
+  // reach 'slam' at dp 40 gave a docking nudge an explosion sample played at gain 0.087.
+  const tier = dp <= COLLISION_CUE.TIER_KISS_DP
+    ? 'kiss'
+    : slammed && heavy
+      ? 'broadside'
+      : slammed || heavy
+        ? 'slam'
         : 'knock';
   return Object.freeze({
     recipeId: COLLISION_TIER_RECIPES[tier],

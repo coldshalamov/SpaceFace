@@ -6,6 +6,8 @@ import {
   COLLISION_HITSTOP_COOLDOWN,
   HS_IMPACT_MAX,
   HS_IMPACT_MIN,
+  COLLISION_UPGRADE_RATIO,
+  feel,
   resolveCollisionFeel,
 } from '../src/render/feel.js';
 
@@ -81,4 +83,46 @@ test('collision feel ramps hitstop and trauma with exchanged momentum', () => {
   assert.equal(first.fov, second.fov, `${VISION}: pure — fov is deterministic`);
   assert.equal(first.trauma, second.trauma, `${VISION}: pure — trauma is deterministic`);
   assert.equal(first.id, second.id, `${VISION}: pure — tier id is deterministic`);
+});
+
+// PQ-139.00 hardening (adversarial review finding c): the cooldown's "upgrade gate" used a bare
+// `>`, so a grind whose deltaV crept up frame over frame re-armed every single frame and
+// machine-gunned the beat. Only a MEANINGFULLY harder hit may interrupt an armed beat.
+test('a grind that creeps up cannot machine-gun the hitstop; a real slam still interrupts', () => {
+  const triggers = [];
+  const traumas = [];
+  const host = Object.create(feel);
+  host.state = {
+    mode: 'flight',
+    settings: { video: { motionReduce: false } },
+    render: { cameraCtrl: { addTrauma: (a) => traumas.push(a) } },
+  };
+  host._modalClear = () => true;
+  host._trigger = (hsDur) => triggers.push(hsDur);
+  host._collisionHitstopCooldown = 0;
+  host._armedCollisionDeltaV = 0;
+  host._pendingCollisionFeel = null;
+
+  const flush = (deltaV) => {
+    host._pendingCollisionFeel = resolveCollisionFeel(impactPayload(deltaV), flightCtx(deltaV));
+    host._flushPendingCollision();
+  };
+
+  // A sliding contact whose exchanged momentum creeps upward, one rendered frame apart.
+  for (const dv of [10, 11, 12, 11, 13, 12, 14, 13]) flush(dv);
+  assert.equal(triggers.length, 1,
+    `${VISION}: a grind is ONE beat, not one per frame (fired ${triggers.length} times for a creeping deltaV)`);
+  assert.equal(traumas.length, 1,
+    `${VISION}: a grind adds camera trauma once, not once per frame`);
+
+  // A genuinely harder hit during the same cooldown still gets through.
+  flush(10 * COLLISION_UPGRADE_RATIO + 1);   // 16 WU/s after a 10 WU/s beat — a real escalation
+  assert.equal(triggers.length, 2,
+    `${VISION}: a real escalation still interrupts the armed beat`);
+
+  // Once the cooldown has run out, the next impact answers normally.
+  host._collisionHitstopCooldown = 0;
+  flush(9);
+  assert.equal(triggers.length, 3,
+    `${VISION}: after the cooldown, the next impact answers again`);
 });

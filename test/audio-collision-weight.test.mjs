@@ -136,3 +136,25 @@ test('Sound tells weight: _onCollision plays the resolved cue and never crashes 
   host._onCollision(null);
   assert.equal(played.length, 0, 'Sound tells weight: a null payload stays silent');
 });
+
+// PQ-139.01 hardening (adversarial review finding d): the tier ladder tested `slammed || heavy`
+// BEFORE the kiss threshold, so ANY contact with a station or a heavy hull took the explosion
+// recipe — a docking nudge played sfx_explosion_small at gain 0.087. How hard it was picks the
+// recipe; how heavy it was picks the pitch.
+test('Sound tells weight: touching a station is a LOW clunk, not a whisper-quiet explosion', () => {
+  const nudge = resolveCollisionCue({ massA: 16, typeA: 'ship', massB: null, typeB: 'station', dp: 40, impulse: 40 });
+  assert.equal(nudge.tier, 'kiss',
+    'Sound tells weight: a light contact is a kiss whatever it touched');
+  assert.equal(nudge.recipeId, 'sfx_dock_clunk',
+    'Sound tells weight: how HARD it was picks the recipe');
+
+  const kissRock = resolveCollisionCue({ massA: 16, typeA: 'ship', massB: null, typeB: 'asteroid', dp: 40, impulse: 40 });
+  assert.ok(nudge.rate < kissRock.rate,
+    `Sound tells weight: how HEAVY it was picks the pitch — the station clunk (${nudge.rate.toFixed(3)}) is lower than the rock clunk (${kissRock.rate.toFixed(3)})`);
+
+  // The heavy tiers are untouched: a real slam into a station is still a broadside.
+  const broadside = resolveCollisionCue({ massA: 200, typeA: 'ship', massB: null, typeB: 'station', dp: 24000, impulse: 24000 });
+  assert.equal(broadside.tier, 'broadside', 'Sound tells weight: a real slam is still a broadside');
+  const heavyMid = resolveCollisionCue({ massA: 400, typeA: 'ship', massB: 400, typeB: 'ship', dp: 1000, impulse: 1000 });
+  assert.equal(heavyMid.tier, 'slam', 'Sound tells weight: a mid-momentum heavy contact is still a slam');
+});
