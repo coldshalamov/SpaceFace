@@ -10605,7 +10605,7 @@
       "priority": 66,
       "title": "The witness has a choice",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [],
       "mutexes": [
         "world-reaction"
@@ -10617,8 +10617,10 @@
         "npm run check:baseline",
         "npm run check:sim"
       ],
-      "receiptRefs": [],
-      "brief": "lawSecurity consumes aftermathWreck:spawned and survivorPod:ejected, writes a victimAnchor onto the incident, and _dispatchIncident splits responders (one holds at the anchor, the rest pursue); the holder visibly decelerates and circles. Bar B10a: within 10 s of a witnessed kill."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-138.00-REPORT.md"
+      ],
+      "brief": "IMPLEMENTED 2026-09-04: lawSecurity consumes the live wreck and survivor-pod events, then deterministically assigns one responder to LOITER defensively at the victim anchor while the others pursue. Real-path seeds 4242 and 8008 split in 1.2 s with one material choice event; headed shipping capture remains open. See receipt."
     },
     {
       "id": "PQ-138.01",
