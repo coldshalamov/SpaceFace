@@ -118,6 +118,12 @@ export function realPathProof(runtime) {
 /**
  * Boots the real authoritative runtime on the `rapier-dynamic` physics authority.
  *
+ * HOSTS ARE STRICTLY SEQUENTIAL. The named systems are the game's imported singletons; `init`
+ * rebinds their state/bus per host, but their per-entity maps are id-keyed and ids are only unique
+ * within one runtime. Create, step and `dispose()` one host before booting the next, and never
+ * read a system's map after `dispose()` — overlapping hosts would silently read another run's
+ * state (Kimi K3 review for FORCE, 2026-09-04).
+ *
  * @param {object} options
  * @param {number} options.seed Fixed seed. Required — an unseeded run is an anecdote.
  * @param {Array<string|object>} options.systems System names (see REAL_PATH_SYSTEM_NAMES) or objects,

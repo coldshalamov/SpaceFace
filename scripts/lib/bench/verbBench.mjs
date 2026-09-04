@@ -83,9 +83,30 @@ export async function runVerbBench({
     for (const scenario of scenariosToRun) {
       if (verbose) console.log(`[verb-bench] running ${scenario.id} (seed ${seed})...`);
       const t0 = Date.now();
-      const runResult = typeof scenario.run === 'function'
-        ? await scenario.run(seed)
-        : await executeVerbScenario(scenario.id, seed);
+      // Per-scenario error boundary: one lane's broken module costs one row, never the measurer
+      // for all six lanes (FORCE, 2026-09-04: an in-progress feel.knock_budget threw and no receipt
+      // was written for anyone). A failed scenario is recorded as a run with runError and no metrics.
+      let runResult;
+      try {
+        runResult = typeof scenario.run === 'function'
+          ? await scenario.run(seed)
+          : await executeVerbScenario(scenario.id, seed);
+      } catch (error) {
+        const message = error && error.message ? String(error.message) : String(error);
+        console.error(`[verb-bench] ${scenario.id} (seed ${seed}) FAILED: ${message}`);
+        results.push({
+          bench: 'verbs',
+          scenarioId: scenario.id,
+          label: scenario.label,
+          seed,
+          durationMs: Date.now() - t0,
+          runHash: null,
+          runManifest: null,
+          metrics: {},
+          runError: message,
+        });
+        continue;
+      }
       const durationMs = Date.now() - t0;
 
       const { runHash, runManifest } = computeRunHash({

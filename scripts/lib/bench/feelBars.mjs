@@ -187,6 +187,11 @@ function mergeRunProvidedBars(bar, list) {
     }
   }
   if (!provided.length) return;
+  // The static notes on a bar describe the inline STAND-IN scenarios ("unbenched", "scenario
+  // constant", "not instrumented"). Once a real-path module feeds rows for this bar, those notes
+  // would read to the owner as "still unmeasured" beside a measured number — drop them and keep
+  // only what the feeding runs said (FORCE, 2026-09-04).
+  bar.notes = "";
   bar.values = [...(bar.values || []), ...provided];
   const existingFed = bar.fedBy || [];
   bar.fedBy = [...existingFed, ...fedBy.filter((ref) => !existingFed.includes(ref))];
