@@ -24,6 +24,15 @@ export const CRUCIBLE_ARENA_ID = 'helios_core';
  * different, slower ruleset and it is not what "Crucible" means from the main menu.
  */
 export const CRUCIBLE_DEFAULT_RULESET = SWARM_RULESET;
+// The fresh Crucible route teaches shove physics immediately; benchmark package IDs stay stable.
+export const CRUCIBLE_DEFAULT_STARTER_ID = 'physics_toolkit';
+export function crucibleStarterIdForSetup(setup) {
+  const loadout = Array.isArray(setup?.loadout) ? setup.loadout : [];
+  const match = COMBAT_LAB_STARTER_PACKAGES.find(entry => entry.hullId === setup?.hullId
+    && entry.loadout.length === loadout.length
+    && entry.loadout.every(slot => loadout.some(actual => actual?.slotIndex === slot.slotIndex && actual?.defId === slot.defId)));
+  return match?.id || CRUCIBLE_DEFAULT_STARTER_ID;
+}
 export const CRUCIBLE_RULESETS = Object.freeze([SWARM_RULESET, 'scored']);
 
 export function normalizeCrucibleRuleset(ruleset) {
@@ -39,7 +48,8 @@ export function crucibleSetupFor({
   starterId, seed, arenaId = CRUCIBLE_ARENA_ID, ruleset = CRUCIBLE_DEFAULT_RULESET,
 } = {}) {
   const starter = COMBAT_LAB_STARTER_PACKAGES.find((entry) => entry.id === starterId)
-    || COMBAT_LAB_STARTER_PACKAGES[0];
+    || COMBAT_LAB_STARTER_PACKAGES.find(entry => entry.id === CRUCIBLE_DEFAULT_STARTER_ID);
+  if (!starter) return { ok: false, issues: [{ path: 'starterId', message: 'Default Crucible starter is missing' }] };
   const result = validateCombatLabSetup({
     schema: 'spaceface.combatLabSetup.v1',
     hullId: starter.hullId,

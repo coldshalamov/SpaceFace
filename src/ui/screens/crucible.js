@@ -10,6 +10,7 @@ import {
   CRUCIBLE_ARENA_ID,
   CRUCIBLE_DEFAULT_RULESET,
   crucibleSetupFor,
+  crucibleStarterIdForSetup,
   lastCrucibleRuleset,
   lastCrucibleSetup,
   normalizeSeed,
@@ -389,11 +390,7 @@ export const crucibleScreen = {
     rootEl.setAttribute('aria-labelledby', 'sf-crucible-title');
 
     const previous = lastCrucibleSetup();
-    let starterId = COMBAT_LAB_STARTER_PACKAGES[0].id;
-    if (previous) {
-      const match = COMBAT_LAB_STARTER_PACKAGES.find((s) => s.hullId === previous.hullId);
-      if (match) starterId = match.id;
-    }
+    let starterId = crucibleStarterIdForSetup(previous);
     let ruleset = previous ? lastCrucibleRuleset() : CRUCIBLE_DEFAULT_RULESET;
 
     const h = el('h1', null, 'Crucible');

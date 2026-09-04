@@ -15,6 +15,7 @@ import {
   clearCrucibleSetup,
   crucibleLaunchConfig,
   crucibleSetupFor,
+  crucibleStarterIdForSetup,
   lastCrucibleSetup,
   normalizeSeed,
   requestCrucibleRun,
@@ -694,4 +695,19 @@ test('the results plate is presentation only and the three actions are untouched
     'game:over:dismissed', 'game:exitToMenu', 'ui:closeAll', 'ui:pushScreen',
   ]);
   assert.deepEqual(menu.emitted[3].payload, { id: 'mainMenu' });
+});
+
+
+test('the fresh Crucible route starts with a shove and preserves deliberate kit choices', () => {
+  const fresh = crucibleSetupFor({ seed: 4242 });
+  assert.equal(fresh.ok, true);
+  assert.ok(fresh.value.loadout.some(slot => slot.defId === 'wpn_concussion_cannon_m'), 'The Crucible starts with a shove (PQ-137.05)');
+  assert.equal(crucibleStarterIdForSetup(null), 'physics_toolkit');
+  for (const starterId of ['energy_baseline', 'kinetic_baseline', 'physics_toolkit', 'massline_rig']) {
+    const choice = crucibleSetupFor({ seed: 4242, starterId });
+    assert.equal(choice.ok, true);
+    assert.equal(crucibleStarterIdForSetup(choice.value), starterId, 'Remember the kit, not merely the shared hull');
+  }
+  const energy = crucibleSetupFor({ seed: 4242, starterId: 'energy_baseline' });
+  assert.equal(energy.value.loadout[0].defId, 'wpn_pulse_laser_s');
 });
