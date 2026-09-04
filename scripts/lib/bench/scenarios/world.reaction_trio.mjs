@@ -253,6 +253,9 @@ export async function clausePatrolChoice(seed, { stimulus = true } = {}) {
   // The real damage route. `lawSecurity._handleDamage` gates on `payload.applied > 0` — an `amount`
   // alone is silently ignored, and the incident never opens. This is the production payload shape.
   const killT = finite(state.simTime);
+  let deathSimT = killT;
+  let witnessPresentAtDeath = false;
+  let witnessDistanceAtDeath = null;
   if (stimulus) {
     withFeatures(runtime, () => {
       bus.emit('combat:damage', {
@@ -263,6 +266,13 @@ export async function clausePatrolChoice(seed, { stimulus = true } = {}) {
     runtime.runTicks(6, DT);
     victim.hull = 0;
     victim.alive = false;
+    deathSimT = finite(state.simTime);
+
+    const lawfulWitnesses = live(state).filter((e) => e && e.data && e.data.ai && e.data.ai.lawful);
+    const distances = lawfulWitnesses.map((w) => dist(w.pos, victim.pos));
+    witnessDistanceAtDeath = distances.length ? Math.min(...distances) : null;
+    witnessPresentAtDeath = witnessDistanceAtDeath != null && witnessDistanceAtDeath <= 450;
+
     withFeatures(runtime, () => {
       bus.emit('entity:killed', {
         id: victim.id, killerId: attacker.id, type: victim.type,
@@ -280,24 +290,52 @@ export async function clausePatrolChoice(seed, { stimulus = true } = {}) {
   const split = { holdT: null, chaseT: null, holderId: null, chaserId: null };
   const observed = watch(runtime, B10A_DEADLINE_S * 60, () => {
     const t = finite(state.simTime);
-    for (const e of live(state)) {
+    const latestDispatch = events.filter((e) => e.name === 'law:dispatchStarted').pop();
+    const dispatchedIds = new Set((latestDispatch && latestDispatch.p && latestDispatch.p.responderIds) || []);
+    if (!dispatchedIds.size) return false;
+
+    const incident = events.find((e) => e.name === 'law:incidentOpened')?.p;
+    const incidentId = incident?.id;
+
+    const liveWreck = live(state).find((e) => e.type === 'wreck' && e.data && e.data.markerId);
+    const liveAnchorPos = liveWreck ? liveWreck.pos : wreckPos;
+
+    for (const id of dispatchedIds) {
+      const e = state.entities.get(id);
+      if (!e || e.alive === false) continue;
       const ai = e.data && e.data.ai;
       if (!ai || !ai.lawful) continue;
       const act = ai.activity || {};
       const anchor = act.anchor || null;
-      const chasing = act.kind === 'attack_run' && (act.targetId === attacker.id || ai.securityTargetId === attacker.id);
-      const holding = !!anchor && dist(anchor, wreckPos) < 400
-        && (act.kind === 'loiter' || act.kind === 'return_to_anchor' || act.kind === 'hail_hold'
-          || act.kind === 'scan_approach' || ai.witnessRole === 'hold');
-      if (chasing && split.chaseT == null) { split.chaseT = t - killT; split.chaserId = e.id; }
-      if (holding && split.holdT == null) { split.holdT = t - killT; split.holderId = e.id; }
+      const chasing = act.kind === 'attack_run'
+        && (act.targetId === attacker.id || ai.securityTargetId === attacker.id)
+        && ai.witnessRole === 'chase'
+        && (!incidentId || ai.witnessIncidentId === incidentId);
+      const holding = !!anchor
+        && dist(anchor, liveAnchorPos) < 400
+        && (act.kind === 'loiter' || act.kind === 'return_to_anchor' || act.kind === 'hail_hold' || act.kind === 'scan_approach')
+        && ai.witnessRole === 'hold'
+        && (!incidentId || ai.witnessIncidentId === incidentId);
+      if (chasing && split.chaseT == null) { split.chaseT = t - deathSimT; split.chaserId = e.id; }
+      if (holding && split.holdT == null) { split.holdT = t - deathSimT; split.holderId = e.id; }
     }
     return split.holdT != null && split.chaseT != null;
   });
 
+  const latestDispatch = events.filter((e) => e.name === 'law:dispatchStarted').pop();
+  const dispatchedIds = new Set((latestDispatch && latestDispatch.p && latestDispatch.p.responderIds) || []);
   const wreck = live(state).find((e) => e.type === 'wreck' && e.data && e.data.markerId);
-  const responders = live(state).filter((e) => e.data && e.data.ai && e.data.ai.lawful);
+  const responders = live(state).filter((e) => dispatchedIds.has(e.id));
   const unmeasured = missingBodies.length > 0;
+
+  const incidentOpened = events.some((e) => e.name === 'law:incidentOpened');
+  const dispatchStarted = events.some((e) => e.name === 'law:dispatchStarted');
+  const wreckSpawned = events.some((e) => e.name === 'aftermathWreck:spawned');
+  const hasSplitProof = split.holderId != null && split.chaserId != null && split.holderId !== split.chaserId;
+  const met = stimulus
+    ? (!unmeasured && incidentOpened && dispatchStarted && witnessPresentAtDeath && wreckSpawned && hasSplitProof && observed != null)
+    : false;
+
   const result = {
     clause: 'B10a',
     label: 'patrol makes a visible stay-with-wreck / chase choice after a witnessed kill',
@@ -309,15 +347,17 @@ export async function clausePatrolChoice(seed, { stimulus = true } = {}) {
     chaseAtS: split.chaseT == null ? null : Number(split.chaseT.toFixed(3)),
     holderId: split.holderId,
     chaserId: split.chaserId,
+    witnessPresentAtDeath,
+    witnessDistanceAtDeathWU: witnessDistanceAtDeath != null ? Number(witnessDistanceAtDeath.toFixed(1)) : null,
     // Preconditions. If any of these is false the clause is UNMEASURED, not unmet — say so loudly.
-    incidentOpened: events.some((e) => e.name === 'law:incidentOpened'),
-    dispatchStarted: events.some((e) => e.name === 'law:dispatchStarted'),
+    incidentOpened,
+    dispatchStarted,
     wreckRecorded: events.some((e) => e.name === 'aftermathWreck:recorded'),
-    wreckSpawned: events.some((e) => e.name === 'aftermathWreck:spawned'),
+    wreckSpawned,
     podEjected: events.some((e) => e.name === 'survivorPod:ejected'),
     witnessChoiceEvents: events.filter((e) => e.name === 'law:witnessChoice').length,
     responderCount: responders.length,
-    respondersChasing: responders.filter((e) => (e.data.ai.activity || {}).kind === 'attack_run').length,
+    respondersChasing: responders.filter((e) => (e.data && e.data.ai && (e.data.ai.activity || {}).kind === 'attack_run')).length,
     // PQ-138.03 reads through the same run: the wreck's drift as a fraction of the victim's speed
     // at the moment of death, and whether the wreck is a body a player could shove.
     victimSpeed: Number(victimSpeed.toFixed(2)),
@@ -327,7 +367,7 @@ export async function clausePatrolChoice(seed, { stimulus = true } = {}) {
       ? Number(((speedOf(wreck) / victimSpeed) * 100).toFixed(1)) : null,
     wreckMass: wreck ? wreck.mass : null,
     wreckHasBody: wreck ? !!(bodyIds(runtime) && bodyIds(runtime).has(wreck.id)) : null,
-    met: !unmeasured && observed != null,
+    met,
   };
   runtime.dispose();
   return result;

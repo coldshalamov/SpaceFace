@@ -62,6 +62,8 @@ const LAW_RESPONSE_AI_FIELDS = Object.freeze([
   'noFireResponseWindowS',
   'roe',
   'activity',
+  'witnessRole',
+  'witnessIncidentId',
 ]);
 const LAW_RESPONSE_COMBAT_FIELDS = Object.freeze(['targetId', 'lockTarget']);
 const LAW_RESPONSE_INTENT_FIELDS = Object.freeze(['fire', 'fireGroup']);
@@ -114,11 +116,15 @@ export const lawSecurity = {
     this._onInspectionChoice = (payload) => this._chooseInspection(payload);
     this._onInspectionScanned = (payload) => this._observeInspectionScan(payload);
     this._onPlayerDeath = () => this._interruptInspection('interrupted_player_death');
+    this._onAftermathWreckSpawned = (payload) => this._handleAftermathWreckSpawned(payload);
+    this._onSurvivorPodEjected = (payload) => this._handleSurvivorPodEjected(payload);
     if (this.bus && typeof this.bus.on === 'function') {
       this.bus.on('combat:damage', this._onDamage);
       this.bus.on('entity:spawned', this._onSpawned);
       this.bus.on('entity:killed', this._onResponderGone);
       this.bus.on('entity:destroyed', this._onResponderGone);
+      this.bus.on('aftermathWreck:spawned', this._onAftermathWreckSpawned);
+      this.bus.on('survivorPod:ejected', this._onSurvivorPodEjected);
       this.bus.on('sector:exit', this._onSectorExit);
       this.bus.on('save:restoring', this._onSaveRestoring);
       this.bus.on('save:loaded', this._onSaveLoaded);
@@ -611,6 +617,7 @@ export const lawSecurity = {
       responderIds: [],
       nextReserveOrdinal: 0,
       status: 'distress',
+      victimAnchor: null,
     };
     const policy = authorityResponsePolicy(effectiveLawSecurity(state));
     incident.security = policy.security;
@@ -808,11 +815,18 @@ export const lawSecurity = {
     return true;
   },
 
+  _claimRecordForEntity(entityId) {
+    if (entityId == null) return null;
+    for (const record of this._jobResponseClaims?.values() || []) {
+      if (record.entityId === entityId) return record;
+    }
+    return null;
+  },
+
   _releaseJobResponseFor(incidentId, entityId, reason) {
     for (const record of this._jobResponseClaims?.values() || []) {
       if (record.incidentId === incidentId && record.entityId === entityId) {
-        this._releaseJobResponse(record, reason);
-        return true;
+        return this._releaseJobResponse(record, reason);
       }
     }
     return false;
@@ -956,15 +970,20 @@ export const lawSecurity = {
       if (!dispatched.length) {
         incident.dispatchedAt = hasLiveResponse ? incident.dispatchedAt : null;
         incident.status = hasLiveResponse ? 'responding' : 'distress';
+        if (hasLiveResponse) this._reconcileWitnessChoice(incident);
         return;
       }
     } else if (!dispatched.length && hasLiveResponse) {
       incident.status = 'responding';
+      this._reconcileWitnessChoice(incident);
       return;
     }
     incident.status = dispatched.length ? 'responding' : 'monitoring';
     const payload = publicIncident(incident);
     this._emit('law:dispatchStarted', payload);
+    if (hasLiveResponse) {
+      this._reconcileWitnessChoice(incident);
+    }
     if (dispatched.length) {
       this._say('alert', `CONTROL: ${dispatched.length} patrol unit${dispatched.length === 1 ? '' : 's'} intercepting the aggressor.`, `law:dispatch:${incident.id}`, incident.factionId);
       this._recordReceipt({
@@ -990,6 +1009,8 @@ export const lawSecurity = {
     ai.lawful = true;
     ai.passive = false;
     ai.securityTargetId = attacker.id;
+    ai.witnessRole = 'chase';
+    if (incident) ai.witnessIncidentId = incident.id;
     ai.motive = motive === 'self_defense' ? 'self_defense' : 'jurisdiction_enforcement';
     ai.engagementTrigger = motive === 'self_defense' ? 'player_attack' : 'security_response';
     ai.zoneId = incident ? `jurisdiction:${incident.stationId}` : String(ai.zoneId || 'patrol_route');
@@ -1033,7 +1054,10 @@ export const lawSecurity = {
       && !(attacker.id === state.playerId && isPlayerWanted(state))) {
       outcome = 'disengaged';
     }
-    if (!outcome) return;
+    if (!outcome) {
+      this._reconcileWitnessChoice(incident);
+      return;
+    }
     incident.status = 'resolved';
     incident.outcome = outcome;
     incident.resolvedAt = now;
@@ -1059,21 +1083,366 @@ export const lawSecurity = {
     if (!responder || !isLawful(responder)) return;
     const state = this.state;
     const data = responder.data || (responder.data = {});
-    const ai = data.ai || (data.ai = {});
-    if (ai.securityTargetId !== targetId) return;
-    ai.securityTargetId = null;
-    ai.passive = false;
-    ai.engagementTrigger = 'wanted_status';
-    ai.motive = 'law_enforcement';
-    ai.roe = RulesOfEngagement.LAWFUL_WANTED_ONLY;
-    ai.activity = normalizeActivity({
-      kind: ActivityKind.RETURN_TO_ANCHOR,
-      reason: 'security_response:clear',
-      anchor: ai.activity && ai.activity.anchor || responder.pos,
-      leashRadius: ai.activity && ai.activity.leashRadius || 2600,
-      startedTick: state.tick | 0,
-    });
-    clearTarget(responder, targetId);
+    const record = this._claimRecordForEntity(responderId);
+    const exactAi = !record || responseSuccessorMatches(record, data, 'ai');
+    const exactCombat = !record || responseSuccessorMatches(record, data, 'combat');
+    const exactIntent = !record || responseSuccessorMatches(record, data, 'intent');
+
+    if (exactAi) {
+      const ai = data.ai || (data.ai = {});
+      const matchesWitnessIncident = incidentId != null && ai.witnessIncidentId === incidentId;
+      if (matchesWitnessIncident || ai.securityTargetId === targetId) {
+        const isHolder = matchesWitnessIncident && ai.witnessRole === 'hold';
+        ai.securityTargetId = null;
+        ai.witnessRole = null;
+        ai.witnessIncidentId = null;
+        ai.passive = false;
+        ai.engagementTrigger = 'wanted_status';
+        ai.motive = 'law_enforcement';
+        ai.roe = RulesOfEngagement.LAWFUL_WANTED_ONLY;
+        let stationPos = null;
+        if (incidentId) {
+          const inc = ensureState(state).incidents[incidentId]
+            || Object.values(ensureState(state).incidents || {}).find((i) => i && i.id === incidentId);
+          const station = inc && (entityById(state, inc.stationEntityId) || stationByPublicId(state, inc.stationId));
+          if (station && station.pos) stationPos = station.pos;
+        }
+        if (!stationPos && ai.zoneId && ai.zoneId.startsWith('jurisdiction:')) {
+          const st = stationByPublicId(state, ai.zoneId.slice('jurisdiction:'.length));
+          if (st && st.pos) stationPos = st.pos;
+        }
+        const returnAnchor = (isHolder && stationPos)
+          ? { x: stationPos.x, z: stationPos.z }
+          : (ai.activity && ai.activity.anchor || stationPos || responder.pos);
+        ai.activity = normalizeActivity({
+          kind: ActivityKind.RETURN_TO_ANCHOR,
+          reason: isHolder ? 'security_witness:return' : 'security_response:clear',
+          anchor: returnAnchor,
+          leashRadius: ai.activity && ai.activity.leashRadius || 2600,
+          startedTick: state.tick | 0,
+        });
+      }
+    }
+
+    if (exactCombat && data.combat) clearCombatTarget(data.combat, targetId);
+    if (exactIntent && data.intent) clearFiringIntent(data.intent);
+  },
+
+  _handleAftermathWreckSpawned(payload) {
+    const state = this.state;
+    if (!state) return;
+    const own = ensureState(state);
+    const incidents = Object.values(own.incidents || {});
+    if (!incidents.length) return;
+
+    const wreckEntity = entityById(state, payload && payload.entityId);
+    if (!wreckEntity || wreckEntity.alive === false) return;
+    if (wreckEntity.data && wreckEntity.data.runCohort === 'survival') return;
+
+    const data = wreckEntity.data || {};
+    const aftermath = data.aftermath || {};
+    const victimId = aftermath.victimId != null ? aftermath.victimId : data.victimId;
+    const killerId = aftermath.killerId != null ? aftermath.killerId : data.killerId;
+    const markerId = aftermath.markerId != null ? aftermath.markerId : (payload && payload.markerId) || data.markerId || null;
+    const salvagePool = aftermath.salvagePool || data.salvagePool || null;
+
+    if (victimId != null) {
+      const victim = entityById(state, victimId);
+      if (victim && victim.data && victim.data.runCohort === 'survival') return;
+    }
+
+    const pos = wreckEntity.pos;
+    if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return;
+
+    const sectorId = (payload && payload.sectorId) || aftermath.sectorId || (state.world && state.world.currentSectorId);
+    const at = Number.isFinite(state.simTime) ? state.simTime : 0;
+
+    const incident = this._findMatchingIncident({ victimId, killerId, sectorId, at });
+    if (!incident) return;
+
+    let valuable = false;
+    if (salvagePool && typeof salvagePool === 'object') {
+      valuable = Object.values(salvagePool).some((q) => Number(q) > 0);
+    }
+    if (!valuable && Array.isArray(data.loot) && data.loot.length > 0) {
+      valuable = true;
+    }
+
+    const existingAnchor = incident.victimAnchor;
+    if (existingAnchor) {
+      existingAnchor.wreckEntityId = wreckEntity.id;
+      if (markerId != null) existingAnchor.markerId = String(markerId);
+      if (valuable) existingAnchor.valuable = true;
+      existingAnchor.x = Number(pos.x);
+      existingAnchor.z = Number(pos.z);
+    } else {
+      incident.victimAnchor = {
+        x: Number(pos.x),
+        z: Number(pos.z),
+        markerId: markerId != null ? String(markerId) : null,
+        wreckEntityId: wreckEntity.id,
+        podEntityId: null,
+        valuable: Boolean(valuable),
+        at,
+      };
+    }
+
+    this._reconcileWitnessChoice(incident);
+  },
+
+  _handleSurvivorPodEjected(payload) {
+    const state = this.state;
+    if (!state) return;
+    const own = ensureState(state);
+    const incidents = Object.values(own.incidents || {});
+    if (!incidents.length) return;
+
+    const podEntity = entityById(state, payload && (payload.entityId ?? payload.entity?.id)) || (payload && payload.entity);
+    if (!podEntity || podEntity.alive === false) return;
+    if (podEntity.data && podEntity.data.runCohort === 'survival') return;
+
+    const victimId = payload && payload.victimId != null ? payload.victimId : (podEntity.data && podEntity.data.sourceVictimId);
+    if (victimId != null) {
+      const victim = entityById(state, victimId);
+      if (victim && victim.data && victim.data.runCohort === 'survival') return;
+    }
+
+    const pos = podEntity.pos;
+    if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return;
+
+    const sectorId = (payload && payload.sectorId) || (state.world && state.world.currentSectorId);
+    const at = Number.isFinite(state.simTime) ? state.simTime : 0;
+
+    const incident = this._findMatchingIncident({ victimId, killerId: null, sectorId, at });
+    if (!incident) return;
+
+    const existingAnchor = incident.victimAnchor;
+    if (existingAnchor) {
+      existingAnchor.podEntityId = podEntity.id;
+      existingAnchor.valuable = true;
+      existingAnchor.x = Number(pos.x);
+      existingAnchor.z = Number(pos.z);
+    } else {
+      incident.victimAnchor = {
+        x: Number(pos.x),
+        z: Number(pos.z),
+        markerId: null,
+        wreckEntityId: null,
+        podEntityId: podEntity.id,
+        valuable: true,
+        at,
+      };
+    }
+
+    this._reconcileWitnessChoice(incident);
+  },
+
+  _findMatchingIncident({ victimId, killerId, sectorId, at }) {
+    const state = this.state;
+    const own = ensureState(state);
+    const incidents = Object.values(own.incidents || {});
+    if (!incidents.length) return null;
+
+    if (victimId != null) {
+      const direct = incidents.find((inc) => inc && inc.victimId === victimId && inc.status !== 'resolved');
+      if (direct) return direct;
+    }
+
+    if (killerId != null) {
+      const candidates = incidents.filter((inc) => {
+        if (!inc || inc.status === 'resolved') return false;
+        if (inc.victimAnchor) return false;
+        if (inc.attackerId !== killerId) return false;
+        const station = entityById(state, inc.stationEntityId) || stationByPublicId(state, inc.stationId);
+        const incSectorId = station?.data?.sectorId || station?.sectorId || (state.world && state.world.currentSectorId);
+        if (sectorId && incSectorId && incSectorId !== sectorId) return false;
+        const dt = Math.abs(((inc.lastDamageAt != null ? inc.lastDamageAt : inc.startedAt) || 0) - at);
+        return dt <= RESPONSE_GRACE_S;
+      });
+      if (candidates.length === 1) return candidates[0];
+      return null;
+    }
+
+    return null;
+  },
+
+  _reconcileWitnessChoice(incident) {
+    if (!incident || incident.status === 'resolved') return;
+    const state = this.state;
+    const attacker = entityById(state, incident.attackerId);
+
+    const liveResponders = [];
+    for (const id of incident.responderIds) {
+      const responder = entityById(state, id);
+      if (responder && responder.alive !== false && isLawful(responder)) {
+        liveResponders.push(responder);
+      }
+    }
+
+    const anchor = incident.victimAnchor;
+    const hasValidAnchor = !!(anchor && Number.isFinite(anchor.x) && Number.isFinite(anchor.z));
+
+    if (liveResponders.length < 2 || !hasValidAnchor) {
+      incident._lastWitnessChoice = null;
+      for (const responder of liveResponders) {
+        const data = responder.data || (responder.data = {});
+        const ai = data.ai || (data.ai = {});
+        ai.witnessRole = 'chase';
+        ai.witnessIncidentId = incident.id;
+        if (ai.securityTargetId !== incident.attackerId && attacker && attacker.alive !== false) {
+          this._authorizeResponder(responder, attacker, incident, 'security_response');
+          ai.witnessRole = 'chase';
+          ai.witnessIncidentId = incident.id;
+        }
+      }
+      return;
+    }
+
+    let anchorPos = { x: anchor.x, z: anchor.z };
+    if (anchor.podEntityId != null) {
+      const livePod = entityById(state, anchor.podEntityId);
+      if (livePod && livePod.alive !== false && livePod.pos && Number.isFinite(livePod.pos.x) && Number.isFinite(livePod.pos.z)) {
+        anchorPos = { x: livePod.pos.x, z: livePod.pos.z };
+        anchor.x = livePod.pos.x;
+        anchor.z = livePod.pos.z;
+      }
+    } else if (anchor.wreckEntityId != null) {
+      const liveWreck = entityById(state, anchor.wreckEntityId);
+      if (liveWreck && liveWreck.alive !== false && liveWreck.pos && Number.isFinite(liveWreck.pos.x) && Number.isFinite(liveWreck.pos.z)) {
+        anchorPos = { x: liveWreck.pos.x, z: liveWreck.pos.z };
+        anchor.x = liveWreck.pos.x;
+        anchor.z = liveWreck.pos.z;
+      }
+    }
+
+    const lastChoice = incident._lastWitnessChoice;
+    const prevHolderId = lastChoice?.decision === 'split' ? lastChoice.holderId : null;
+    const prevChaserIds = lastChoice?.decision === 'split' ? lastChoice.chaserIds : null;
+
+    let holder = null;
+    let chasers = null;
+
+    const prevCandidateIds = (prevHolderId != null && prevChaserIds != null)
+      ? new Set([prevHolderId, ...prevChaserIds])
+      : null;
+    const candidateSetUnchanged = prevCandidateIds != null
+      && prevCandidateIds.size === liveResponders.length
+      && liveResponders.every((r) => prevCandidateIds.has(r.id));
+    const existingHolderLive = candidateSetUnchanged && liveResponders.some((r) => r.id === prevHolderId);
+
+    if (existingHolderLive) {
+      holder = liveResponders.find((r) => r.id === prevHolderId);
+      chasers = prevChaserIds.map((id) => liveResponders.find((r) => r.id === id)).filter(Boolean);
+    } else {
+      const sorted = liveResponders.slice().sort((a, b) => {
+        const da = distance2(a.pos, anchorPos);
+        const db = distance2(b.pos, anchorPos);
+        if (Math.abs(da - db) > 1e-4) {
+          return da - db;
+        }
+        return a.id - b.id;
+      });
+      holder = sorted[0];
+      chasers = sorted.slice(1);
+    }
+
+    const holderId = holder.id;
+    const chaserIds = chasers.map((c) => c.id);
+
+    const isMateriallyUnchanged = lastChoice
+      && lastChoice.decision === 'split'
+      && lastChoice.holderId === holderId
+      && lastChoice.chaserIds.length === chaserIds.length
+      && lastChoice.chaserIds.every((id, idx) => id === chaserIds[idx]);
+
+    const holderData = holder.data || (holder.data = {});
+    const holderAi = holderData.ai || (holderData.ai = {});
+
+    if (!isMateriallyUnchanged) {
+      const priorRole = holderAi.witnessRole;
+      const priorActivity = holderAi.activity;
+      const existingStartedTick = (priorRole === 'hold'
+        && priorActivity?.kind === ActivityKind.LOITER
+        && Number.isInteger(priorActivity.startedTick))
+        ? priorActivity.startedTick
+        : (state.tick | 0);
+
+      holderAi.lawful = true;
+      holderAi.passive = false;
+      holderAi.securityTargetId = null;
+      holderAi.witnessRole = 'hold';
+      holderAi.witnessIncidentId = incident.id;
+      holderAi.motive = 'jurisdiction_enforcement';
+      holderAi.roe = RulesOfEngagement.DEFENSIVE;
+      holderAi.activity = normalizeActivity({
+        kind: ActivityKind.LOITER,
+        reason: `security_witness:hold:${incident.id}`,
+        anchor: { x: anchorPos.x, z: anchorPos.z },
+        leashRadius: 400,
+        startedTick: existingStartedTick,
+        targetId: null,
+        encounterId: incident.id,
+      });
+      clearTarget(holder, null);
+
+      for (const chaser of chasers) {
+        const chaserData = chaser.data || (chaser.data = {});
+        const chaserAi = chaserData.ai || (chaserData.ai = {});
+        const roleChanged = chaserAi.witnessRole !== 'chase' || chaserAi.witnessIncidentId !== incident.id;
+        if (roleChanged || (chaserAi.securityTargetId !== incident.attackerId && attacker && attacker.alive !== false)) {
+          this._authorizeResponder(chaser, attacker, incident, 'security_response');
+        }
+        chaserAi.witnessRole = 'chase';
+        chaserAi.witnessIncidentId = incident.id;
+      }
+
+      incident._lastWitnessChoice = {
+        decision: 'split',
+        holderId,
+        chaserIds: chaserIds.slice(),
+      };
+      const choicePayload = {
+        incidentId: incident.id,
+        decision: 'split',
+        holderId,
+        chaserIds,
+        anchor: { x: anchorPos.x, z: anchorPos.z },
+        reason: 'wreck_hold_and_pursuit',
+        simTime: state.simTime || 0,
+        t: state.simTime || 0,
+      };
+      this._emit('law:witnessChoice', choicePayload);
+    } else {
+      if (holderAi.securityTargetId != null) {
+        holderAi.securityTargetId = null;
+      }
+      if (holderData.combat && (holderData.combat.targetId === incident.attackerId || holderData.combat.lockTarget === incident.attackerId)) {
+        clearCombatTarget(holderData.combat, incident.attackerId);
+      }
+      if (holderData.intent && holderData.intent.fire && holderData.combat?.targetId == null) {
+        clearFiringIntent(holderData.intent);
+      }
+      if (holderAi.activity) {
+        const currentAnchor = holderAi.activity.anchor;
+        if (!currentAnchor || currentAnchor.x !== anchorPos.x || currentAnchor.z !== anchorPos.z) {
+          holderAi.activity = normalizeActivity({
+            ...holderAi.activity,
+            anchor: { x: anchorPos.x, z: anchorPos.z },
+          });
+        }
+      }
+      for (const chaser of chasers) {
+        const chaserData = chaser.data || (chaser.data = {});
+        const chaserAi = chaserData.ai || (chaserData.ai = {});
+        if (chaserAi.witnessRole !== 'chase') chaserAi.witnessRole = 'chase';
+        if (chaserAi.witnessIncidentId !== incident.id) chaserAi.witnessIncidentId = incident.id;
+        if (chaserAi.securityTargetId !== incident.attackerId && attacker && attacker.alive !== false) {
+          this._authorizeResponder(chaser, attacker, incident, 'security_response');
+          chaserAi.witnessRole = 'chase';
+          chaserAi.witnessIncidentId = incident.id;
+        }
+      }
+    }
   },
 
   _recordReceipt(receipt) {
@@ -1237,12 +1606,16 @@ export const lawSecurity = {
         this.bus.off('entity:killed', this._onResponderGone);
         this.bus.off('entity:destroyed', this._onResponderGone);
       }
+      if (this._onAftermathWreckSpawned) this.bus.off('aftermathWreck:spawned', this._onAftermathWreckSpawned);
+      if (this._onSurvivorPodEjected) this.bus.off('survivorPod:ejected', this._onSurvivorPodEjected);
       if (this._onSectorExit) this.bus.off('sector:exit', this._onSectorExit);
       if (this._onSaveRestoring) this.bus.off('save:restoring', this._onSaveRestoring);
     }
     this._onDamage = null;
     this._onSpawned = null;
     this._onResponderGone = null;
+    this._onAftermathWreckSpawned = null;
+    this._onSurvivorPodEjected = null;
     this._onSectorExit = null;
     this._onSaveRestoring = null;
   },
@@ -1691,6 +2064,7 @@ function publicIncident(incident) {
     factionId: incident.factionId,
     attackerId: incident.attackerId,
     victimId: incident.victimId,
+    victimAnchor: incident.victimAnchor ? { ...incident.victimAnchor } : null,
     cause: incident.cause,
     status: incident.status,
     outcome: incident.outcome || null,

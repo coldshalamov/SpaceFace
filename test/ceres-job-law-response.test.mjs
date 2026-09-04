@@ -53,6 +53,8 @@ const AI_RESPONSE_FIELDS = Object.freeze([
   'noFireResponseWindowS',
   'roe',
   'activity',
+  'witnessRole',
+  'witnessIncidentId',
 ]);
 
 const SLOT_ROW = (() => {
@@ -986,6 +988,33 @@ test('a failed owner release retains the private record and retries after incide
   harness.law.update(SIM_DT, harness.state);
   assert.equal(harness.runtime.controlClaim(harness.jobId), null);
   assert.equal(harness.law._jobResponseClaims.size, 0, 'the terminal retry clears the verified record');
+});
+
+test('a failed owner release reports false and ordinary cleanup never overwrites foreign successors', () => {
+  const harness = boot();
+  dispatch(harness);
+  const incident = Object.values(harness.state.lawSecurity.incidents)[0];
+  assert.ok(incident);
+
+  const api = harness.sim.helpers.npcJobs;
+  const releaseControl = api.releaseControl;
+  api.releaseControl = () => ({ released: false, reason: 'test_residual_claim', restored: false });
+
+  // Replace intent with a foreign successor
+  const foreignIntent = { moveX: 0.5, moveZ: -0.5, foreignClaim: true };
+  const foreignIntentSnapshot = { ...foreignIntent };
+  harness.patrol.data.intent = foreignIntent;
+
+  // Attempting release returns false because release was unverified
+  const releaseResult = harness.law._releaseJobResponseFor(incident.id, harness.patrol.id, 'test_failed_release');
+  assert.equal(releaseResult, false, '_releaseJobResponseFor must report false when release fails');
+
+  // Ordinary clear must not overwrite the foreign successor
+  harness.law._clearResponder(harness.patrol, incident.attackerId, incident.id, harness.patrol.id);
+  assert.equal(harness.patrol.data.intent, foreignIntent, 'foreign intent successor identity preserved');
+  assert.deepEqual(harness.patrol.data.intent, foreignIntentSnapshot, 'foreign intent content not overwritten');
+
+  api.releaseControl = releaseControl;
 });
 
 test('a Continue-style replacement with the same numeric id is never restored from the old hull', () => {
