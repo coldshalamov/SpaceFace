@@ -52,6 +52,49 @@ function recoilWeight(weaponId) {
   return Math.min(0.2, weight);
 }
 
+// Collision impact feel (PQ-139.00). Physics already emits `physics:impact` with exchanged
+// momentum `dp`; this maps deltaV onto a monotone hitstop + FOV + trauma ramp so a scrape is a
+// tick and a slam is a beat. Pure: no DOM, no state, no wall-clock, no RNG.
+export const COLLISION_DELTA_V_FLOOR = 8;     // WU/s — bar B9's own floor; below this is touching
+export const COLLISION_DELTA_V_REF = 150;     // WU/s — reference slam; curve reaches its ceiling here
+export const HS_IMPACT_MIN = 0.016;           // s — ~one rendered frame at the deltaV floor
+export const HS_IMPACT_MAX = 0.09;            // s — slam ceiling; well under HS_CAPITAL_KILL
+export const COLLISION_HITSTOP_COOLDOWN = 0.18; // s of real frame time between armed collision beats
+const FOV_IMPACT_MAX = 3.5;                   // deg additive ceiling
+const TRAUMA_IMPACT_MAX = 0.35;               // camera trauma ceiling
+const COLLISION_TRAUMA_RANGE = 400;           // WU — inverse-square falloff starts past this
+const IMPACT_KNOCK_DV = 40;                   // WU/s — scrape → knock
+const IMPACT_SLAM_DV = 100;                   // WU/s — knock → slam
+
+export function resolveCollisionFeel(impact, context = {}) {
+  if (!impact) return null;
+  if (context.motionReduce) return null;
+  if (context.mode !== 'flight') return null;
+  const deltaV = context.deltaV;
+  if (!Number.isFinite(deltaV) || deltaV < COLLISION_DELTA_V_FLOOR) return null;
+
+  // Normalise against the reference slam. sqrt so a scrape is a tick and a slam is a beat.
+  const u = Math.min(1, Math.max(0, deltaV / COLLISION_DELTA_V_REF));
+  const t = Math.sqrt(u);
+
+  const hsDur = Math.min(
+    HS_IMPACT_MAX,
+    Math.max(HS_IMPACT_MIN, HS_IMPACT_MIN + (HS_IMPACT_MAX - HS_IMPACT_MIN) * t),
+  );
+  const fov = Math.min(FOV_IMPACT_MAX, FOV_IMPACT_MAX * t);
+  const dist = Number.isFinite(context.playerDistance) ? Math.max(0, context.playerDistance) : 0;
+  const d2 = dist * dist;
+  const range2 = COLLISION_TRAUMA_RANGE * COLLISION_TRAUMA_RANGE;
+  const falloff = d2 <= range2 ? 1 : range2 / d2;
+  const trauma = Math.min(TRAUMA_IMPACT_MAX, TRAUMA_IMPACT_MAX * t * falloff);
+
+  let id = 'impact.slam';
+  if (deltaV < IMPACT_KNOCK_DV) id = 'impact.scrape';
+  else if (deltaV < IMPACT_SLAM_DV) id = 'impact.knock';
+
+  return Object.freeze({ id, deltaV, hsDur, fov, trauma });
+}
+
 const STYLE_ID = 'sf-feel-style';
 
 // Tunables — spec2/02 §3 exact numbers. Hit-stop is short so it reads as "weight," not "lag.
@@ -285,6 +328,9 @@ export const feel = {
     this._hsRampIn = 0;       // >0 = cinematic ease-in window (death); timeScale ramps 1 -> floor
     this._hsFreezeTimer = 0;  // kill-cam hard-freeze window (timeScale = 0)
     this._hsRequest = { scale: HS_DEPTH }; // reused: frame() performs no request allocation
+    this._collisionHitstopCooldown = 0; // remaining real-time seconds before another collision beat
+    this._armedCollisionDeltaV = 0;     // deltaV that armed the current cooldown (upgrade gate)
+    this._pendingCollisionFeel = null;  // best physics:impact this frame; applied once in frame()
     this._velocityDriveScratch = {};
     this._legacyDriveScratch = {};
     this._regionCrossfadeScratch = {};
@@ -821,6 +867,10 @@ export const feel = {
       if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(trauma);
     });
 
+    // Collision momentum → hitstop / FOV / trauma. Physics already publishes physics:impact;
+    // this is the missing feel subscriber. Rate-limited in frame() so a grind cannot stack.
+    bus.on('physics:impact', (p) => this._onPhysicsImpact(p));
+
     // Massline UVP fling feel — pure resolveMasslineFeelPunch; motionReduce suppresses vestibular.
     bus.on('tether:releaseRated', (p) => {
       const classification = p && (p.classification || p.tier || p.rating);
@@ -854,6 +904,89 @@ export const feel = {
         severity: p && p.severity,
       }, p);
     });
+  },
+
+  _onPhysicsImpact(p) {
+    if (!p) return;
+    const state = this.state;
+    if (!state) return;
+    const ents = state.entities;
+    if (!ents || typeof ents.get !== 'function') return;
+
+    const a = ents.get(p.aId);
+    const b = ents.get(p.bId);
+    const playerId = state.playerId;
+    const dp = Number.isFinite(p.dp) ? p.dp : 0;
+
+    const bodyDeltaV = (ent) => {
+      if (!ent) return null;
+      if (ent.type === 'station' || ent.type === 'asteroid') return null;
+      const mass = ent.mass;
+      if (!Number.isFinite(mass) || mass <= 0) return null;
+      if (
+        p.playerInvolved
+        && ent.id === playerId
+        && Number.isFinite(p.playerDeltaV)
+        && p.playerDeltaV > 0
+      ) {
+        return p.playerDeltaV;
+      }
+      return dp / mass;
+    };
+
+    const dvA = bodyDeltaV(a);
+    const dvB = bodyDeltaV(b);
+    if (dvA == null && dvB == null) return;
+    let deltaV = 0;
+    if (dvA != null) deltaV = dvA;
+    if (dvB != null && dvB > deltaV) deltaV = dvB;
+
+    let playerDistance = 0;
+    if (!p.playerInvolved) {
+      const player = playerId != null ? ents.get(playerId) : null;
+      if (player && player.pos && p.pos) {
+        playerDistance = Math.hypot(
+          (player.pos.x || 0) - (p.pos.x || 0),
+          (player.pos.z || 0) - (p.pos.z || 0),
+        );
+      } else {
+        playerDistance = 1e9;
+      }
+    }
+
+    const mr = !!(state.settings && state.settings.video && state.settings.video.motionReduce);
+    const result = resolveCollisionFeel(p, {
+      deltaV,
+      playerDistance,
+      motionReduce: mr,
+      mode: this.state.mode,
+    });
+    if (!result) return;
+
+    const pending = this._pendingCollisionFeel;
+    if (!pending || result.deltaV > pending.deltaV) {
+      this._pendingCollisionFeel = result;
+    }
+  },
+
+  _flushPendingCollision() {
+    const pending = this._pendingCollisionFeel;
+    if (!pending) return;
+    this._pendingCollisionFeel = null;
+
+    const cooling = this._collisionHitstopCooldown > 0;
+    const armed = this._armedCollisionDeltaV || 0;
+    if (cooling && !(pending.deltaV > armed)) return;
+
+    if (this.state.mode !== 'flight' || !this._modalClear()) return;
+    const mr = this.state.settings && this.state.settings.video && this.state.settings.video.motionReduce;
+    if (mr) return;
+
+    this._trigger(pending.hsDur, pending.fov, 0, null);
+    const ctrl = this.state.render && this.state.render.cameraCtrl;
+    if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(pending.trauma);
+    this._collisionHitstopCooldown = COLLISION_HITSTOP_COOLDOWN;
+    this._armedCollisionDeltaV = pending.deltaV;
   },
 
   _applyMasslineFeelPunch(event, raw) {
@@ -940,6 +1073,9 @@ export const feel = {
     this._hsRampIn = 0;
     this._hsFreezeTimer = 0;
     this.timeEffects.clear('feel:hit-stop');
+    this._collisionHitstopCooldown = 0;
+    this._armedCollisionDeltaV = 0;
+    this._pendingCollisionFeel = null;
   },
 
   frame(frameDt, state) {
@@ -947,11 +1083,19 @@ export const feel = {
     void state;
 
     // ---- hit-stop timer updates only its time-effects request ----
+    if (this._collisionHitstopCooldown > 0) {
+      this._collisionHitstopCooldown = Math.max(0, this._collisionHitstopCooldown - frameDt);
+    }
     if (this._hsTimer > 0) {
       this._hsTimer -= frameDt;
       if (this._hsFreezeTimer > 0) this._hsFreezeTimer -= frameDt;
       if (this._hsTimer <= 0) {
-        this._resetHitStop();
+        // Clear the dip without resetting the collision cooldown. A scrape's ~16 ms beat must
+        // not unlock the next grind tick — stacking hitstop on a sliding contact is worse than silence.
+        this._hsTimer = 0;
+        this._hsRampIn = 0;
+        this._hsFreezeTimer = 0;
+        this.timeEffects.clear('feel:hit-stop');
       } else if (this.state.mode === 'flight' && this._modalClear()) {
         if (this._hsFreezeTimer > 0) {
           // Kill-cam hard freeze: the world stops completely.
@@ -970,6 +1114,7 @@ export const feel = {
         this.timeEffects.set('feel:hit-stop', this._hsRequest);
       }
     }
+    this._flushPendingCollision();
 
     // ---- FOV punch integration ----
     // Envelope holds the authored impulse energy; applied is what the camera carries. Rise is

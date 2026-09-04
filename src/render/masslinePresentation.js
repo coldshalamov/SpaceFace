@@ -367,17 +367,18 @@ export function resolveMasslineFeelPunch(event, context = {}) {
     || context.important || context.named || context.ace);
 
   // Clean / razor release (tether:releaseRated tiers).
-  // hsDur is always 0: massline feel must not request timeScale hit-stop (keeps 47-A / headless
-  // sims byte-stable; camera FOV + trauma carry the "I did that" beat on the render path only).
+  // Release snap is a render-phase hitstop. feel.js is nodeSafe:false and is absent from
+  // scripts/sf-sim.mjs, so the 47-A tapes cannot see it. motionReduce still returns null
+  // before any of these branches.
   if (type === 'tether.release.razor' || rating === 'razor' || event.tier === 'razor') {
-    return punch('release.razor', { hsDur: 0, fov: 2.4, trauma: 0.16, vig: 0 });
+    return punch('release.razor', { hsDur: 0.055, fov: 2.4, trauma: 0.16, vig: 0 });
   }
   if (type === 'tether.release.clean' || rating === 'clean' || event.tier === 'clean') {
-    return punch('release.clean', { hsDur: 0, fov: 1.6, trauma: 0.09, vig: 0 });
+    return punch('release.clean', { hsDur: 0.038, fov: 1.6, trauma: 0.09, vig: 0 });
   }
   if (type === 'tether.release.good' || rating === 'good' || event.tier === 'good') {
     // Good is intentional but light — still "I did that," below clean.
-    return punch('release.good', { hsDur: 0, fov: 0.9, trauma: 0.04, vig: 0 });
+    return punch('release.good', { hsDur: 0.020, fov: 0.9, trauma: 0.04, vig: 0 });
   }
   if (type === 'tether.release.messy' || rating === 'messy') {
     return null;
@@ -386,7 +387,7 @@ export function resolveMasslineFeelPunch(event, context = {}) {
   // Tumble start — full punch only for named/important targets; ordinary hosts get a lighter nudge.
   if (type === 'massline.tumbled' || type === 'massline:tumbled' || type === 'ship.tumble.start') {
     if (important) {
-      return punch('tumble.important', { hsDur: 0, fov: 2.0, trauma: 0.14, vig: 0 });
+      return punch('tumble.important', { hsDur: 0.028, fov: 2.0, trauma: 0.14, vig: 0 });
     }
     return punch('tumble.ordinary', { hsDur: 0, fov: 0.7, trauma: 0.05, vig: 0 });
   }
@@ -394,10 +395,10 @@ export function resolveMasslineFeelPunch(event, context = {}) {
   // Whip impact severity tiers.
   if (type === 'tether.whip_impact' || type === 'tether:whipImpact' || type === 'massline.whip') {
     if (rating === 'crushing' || severity >= 0.85) {
-      return punch('whip.crushing', { hsDur: 0, fov: 2.8, trauma: 0.2, vig: 0.06 });
+      return punch('whip.crushing', { hsDur: 0.050, fov: 2.8, trauma: 0.2, vig: 0.06 });
     }
     if (rating === 'solid' || severity >= 0.55) {
-      return punch('whip.solid', { hsDur: 0, fov: 1.8, trauma: 0.12, vig: 0 });
+      return punch('whip.solid', { hsDur: 0.030, fov: 1.8, trauma: 0.12, vig: 0 });
     }
     // glance / light / default
     return punch('whip.glance', { hsDur: 0, fov: 0.8, trauma: 0.05, vig: 0 });

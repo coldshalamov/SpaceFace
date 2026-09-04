@@ -127,7 +127,8 @@ test('feel punches select clean/razor, important tumble, and whip tiers; motionR
 
   const named = resolveMasslineFeelPunch({ type: 'massline.tumbled', important: true }, { mode: 'flight' });
   const ordinary = resolveMasslineFeelPunch({ type: 'massline.tumbled' }, { mode: 'flight' });
-  assert.equal(named.hsDur, 0, 'massline feel never requests sim timeScale hit-stop');
+  assert.ok(named.hsDur > 0 && named.hsDur <= 0.06,
+    'A Massline release should feel like something snapped loose.');
   assert.ok(named.fov > ordinary.fov && named.trauma > ordinary.trauma,
     'important tumble punches harder than ordinary');
 
@@ -136,10 +137,17 @@ test('feel punches select clean/razor, important tumble, and whip tiers; motionR
   const glance = resolveMasslineFeelPunch({ type: 'tether.whip_impact', rating: 'glance' }, { mode: 'flight' });
   assert.ok(crush.trauma > solid.trauma && solid.trauma > glance.trauma);
   assert.ok(crush.fov > solid.fov);
-  assert.equal(crush.hsDur, 0);
+  assert.ok(crush.hsDur > 0 && crush.hsDur <= 0.06,
+    'A Massline release should feel like something snapped loose.');
 
   const recover = resolveMasslineFeelPunch({ type: 'massline.tumbleEnd' }, { mode: 'flight' });
-  assert.ok(recover && recover.hsDur === 0 && recover.fov > 0);
+  assert.ok(recover && recover.hsDur === 0 && recover.fov > 0,
+    'a settle is not a snap');
+  assert.equal(
+    resolveMasslineFeelPunch({ type: 'tether.release.razor' }, { motionReduce: true }),
+    null,
+    'motionReduce still returns null for the razor release',
+  );
 });
 
 test('readControlLossPresentation never tumbles the player; ships get status/drifting', () => {
