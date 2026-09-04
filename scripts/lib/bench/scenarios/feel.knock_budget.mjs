@@ -11,7 +11,15 @@
 // ONE KNOCK DEFINITION, shared with the Crucible bench (master's ruling, 2026-09-03): a knock is a
 // `physics:impact` receipt with `playerInvolved`; its magnitude is the receipt's own
 // `playerDeltaV` (= dp / player mass, `src/core/physics.js` `emitPhysicsImpact`). Consecutive
-// receipt ticks are one EVENT — B13 counts events, not solver ticks. The independently measured
+// receipt ticks are one EVENT — B13 counts events, not solver ticks.
+//
+// AMBIENT vs RAM (taste ruling, 2026-09-04). B13 is judged on AMBIENT contact only: rock, traffic,
+// scrapes — the things that happen to a pilot who is just flying. A hostile that chooses to ram the
+// player is a fight, not a bump, and is reported BESIDE the bar with its legibility rather than
+// counted against it. The classification is `classifyKnockActor()` below and it is deliberately
+// conservative: a knock counts as a ram only when the authority itself names a causal actor
+// (`causalActorId`) AND that actor is a live hostile craft other than the player at that tick.
+// Anything unattributed is ambient, so the bar can never be flattered by guessing. The independently measured
 // velocity discontinuity is carried alongside as a CROSS-CHECK, never as the bar's number; if the
 // two disagree the gap is published (`receiptVsMeasuredMaxGapFractionOfCruise`) rather than
 // silently reconciled, because a receipt that misstates what the player feels is itself a finding.
@@ -78,6 +86,9 @@ const MISS_OFFSET_SPAN = 4.60;
 // Anything that overlaps by more than this fraction of the combined radius is a head-on, not a
 // scrape, and is reported apart from the ordinary budget.
 const HEAD_ON_OVERLAP_FRACTION = 0.55;
+// COLLISION_CONSEQUENCE_LIMITS.tumbleDeltaV: the contract's own "deliberate big event" threshold,
+// the point at which a contact takes the helm and is unmistakable to the player.
+const LEGIBLE_EVENT_DELTA_V = 18;
 
 // In-lane traffic the player overtakes — that is what ordinary traffic contact looks like. Parked
 // off-lane traffic can never be met: SG-02 gives it a body only inside ~600 WU of the player
@@ -117,6 +128,33 @@ function signFlips(values) {
     prev = s;
   }
   return flips;
+}
+
+/**
+ * Was this contact something a hostile DID to the player, or something the player flew into?
+ *
+ * `physics:impact` carries `causalActorId`, which `sg02DynamicBodyOwner.directContactCausalActorId`
+ * fills in for a direct, driven contact. A knock is RAM only when all of these hold:
+ *   - the authority named a causal actor at all;
+ *   - that actor is not the player (the player ramming something is the player's own doing);
+ *   - that actor is a live craft (`ship` / `drone`), not rock, wreck, payload or station;
+ *   - that craft is on another team.
+ * Everything else — an unnamed contact, a rock, a wreck, a same-team hull, a dead actor — is
+ * AMBIENT. The asymmetry is on purpose: an unattributed knock counts AGAINST the bar, so a gap in
+ * attribution can never make B13 look better than the game is.
+ *
+ * @returns {'ram'|'ambient'}
+ */
+function classifyKnockActor(state, causalActorId, player) {
+  if (causalActorId == null) return 'ambient';
+  if (player && causalActorId === player.id) return 'ambient';
+  const entities = state && state.entities;
+  const actor = entities && typeof entities.get === 'function' ? entities.get(causalActorId) : null;
+  if (!actor || actor.alive === false) return 'ambient';
+  if (actor.type !== 'ship' && actor.type !== 'drone') return 'ambient';
+  const playerTeam = player ? player.team : undefined;
+  if (playerTeam !== undefined && actor.team === playerTeam) return 'ambient';
+  return 'ram';
 }
 
 /**
@@ -290,6 +328,10 @@ export async function runKnockBudget(seed, { simSeconds, emptyField = false } = 
         playerDeltaV: Math.abs(finite(payload.playerDeltaV)),
         dp: finite(payload.dp),
         otherId: payload.aId === player.id ? payload.bId : payload.aId,
+        causalActorId: payload.causalActorId == null ? null : payload.causalActorId,
+        // Classified AT THE TICK: the actor's liveness and team are read while the contact is
+        // happening, not afterwards, when it may be dead, retired or re-teamed.
+        kind: classifyKnockActor(host.state, payload.causalActorId, player),
       });
     });
 
@@ -463,6 +505,9 @@ export async function runKnockBudget(seed, { simSeconds, emptyField = false } = 
         open.dp += r.dp;
         open.receiptCount += 1;
         if (r.otherId != null) open.others.add(r.otherId);
+        // One ram receipt makes the whole event a ram: a hostile that drove into the player does
+        // not stop being the cause because the solver answered over several ticks.
+        if (r.kind === 'ram') open.kind = 'ram';
       } else {
         if (open) events.push(open);
         open = {
@@ -471,6 +516,7 @@ export async function runKnockBudget(seed, { simSeconds, emptyField = false } = 
           receiptDeltaV: r.playerDeltaV,
           dp: r.dp,
           receiptCount: 1,
+          kind: r.kind,
           others: new Set(r.otherId == null ? [] : [r.otherId]),
         };
       }
@@ -527,6 +573,9 @@ export async function runKnockBudget(seed, { simSeconds, emptyField = false } = 
     let headOnEvents = 0;
     let headOnMaxDeltaV = 0;
     let maxAngVelAfterKnock = 0;
+    let ramKnockEvents = 0;
+    let ramMaxDeltaV = 0;
+    let ramLegibleEvents = 0;
     let maxCommandedRotResidualDeg = 0;
     const knockFractions = [];
 
@@ -563,6 +612,27 @@ export async function runKnockBudget(seed, { simSeconds, emptyField = false } = 
           data: {
             deltaV: ev.receiptDeltaV,
             deltaVFractionOfCruise: ev.receiptDeltaV / cruiseSpeed,
+            eventTicks: endIdx - startIdx + 1,
+          },
+        });
+        continue;
+      }
+
+      // Taste ruling: a hostile-initiated ram is a fight, not an ordinary bump. It is reported
+      // beside the bar with its legibility, never counted against the ordinary-bump budget.
+      if (ev.kind === 'ram') {
+        ramKnockEvents += 1;
+        if (ev.receiptDeltaV > ramMaxDeltaV) ramMaxDeltaV = ev.receiptDeltaV;
+        // "Legible" in the contract's sense: at or above the deliberate-big-event threshold, so the
+        // player can tell something happened TO them rather than feeling a mystery nudge.
+        if (ev.receiptDeltaV >= LEGIBLE_EVENT_DELTA_V) ramLegibleEvents += 1;
+        eventTrace.push({
+          tick: samples[startIdx].tick,
+          type: 'collision:playerRammed',
+          data: {
+            deltaV: ev.receiptDeltaV,
+            deltaVFractionOfCruise: ev.receiptDeltaV / cruiseSpeed,
+            legible: ev.receiptDeltaV >= LEGIBLE_EVENT_DELTA_V,
             eventTicks: endIdx - startIdx + 1,
           },
         });
@@ -662,9 +732,23 @@ export async function runKnockBudget(seed, { simSeconds, emptyField = false } = 
         simSeconds,
         ticks,
         knockSource: 'physics:impact(playerInvolved).playerDeltaV',
+        // The bar's three numbers above are AMBIENT ONLY, per the taste ruling. These are the
+        // hostile-initiated rams that were excluded, with their legibility, so excluding them can
+        // never hide a problem.
+        knockScope: 'ambient (rock, traffic, scrapes); hostile-initiated rams reported separately',
+        ramKnockEvents,
+        maxRamKnockDeltaVFractionOfCruise: ramMaxDeltaV / cruiseSpeed,
+        ramLegibleEvents,
+        ramLegibleFraction: ramKnockEvents > 0 ? ramLegibleEvents / ramKnockEvents : 0,
+        legibleEventDeltaV: LEGIBLE_EVENT_DELTA_V,
         knockFloorFractionOfCruise: KNOCK_FLOOR_FRACTION,
         // --- the events ------------------------------------------------------------------------
         contactEvents: events.length,
+        // Kept under its historical name because `test/fun-bench.test.mjs` (the master's file)
+        // asserts every scenario publishes it. Under the stand-in it counted invented encounters;
+        // here it is the number of REAL contact events the physics authority reported on the player
+        // hull in the counted window, knocks and sub-floor settles alike.
+        contactEncounters: events.length,
         knockEvents: knockCount,
         receiptCount: windowReceipts.length,
         maxEventTicks,
