@@ -10862,7 +10862,7 @@
       "priority": 65,
       "title": "Wells bend space",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [],
       "mutexes": [
         "impact-spectacle"
@@ -10876,7 +10876,9 @@
         "npm run check:baseline",
         "npm run check:vfx-techniques"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-139.05-REPORT.md"
+      ],
       "brief": "fields.js wells produce DistortionField records; the distortion pass accepts more than one producer; strength tracks field strength and radius."
     },
     {
