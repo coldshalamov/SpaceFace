@@ -10432,7 +10432,7 @@
       "priority": 44,
       "title": "One hitstun law for every impulse source",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-137.10"
       ],
@@ -10450,8 +10450,10 @@
         "npm run check:baseline",
         "npm run check:combat"
       ],
-      "receiptRefs": [],
-      "brief": "Helm-loss duration and entry spin = one function of (deltaV / cruise) and (attacker mass / victim mass) for gun impulses, rope throws, well flings and collisions; lights at >= 30% deltaV lose helm >= 1 s; heavies at gun-scale never; recovery by real thruster torque; retire the one-weapon 0.5 s beat. Bars B5, B11. Goldens per docs/COMMON_BUGS.md section 8."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-137.04-REPORT.md"
+      ],
+      "brief": "IMPLEMENTED 2026-09-04: gun, rope throw, well fling, and collision now share one measured hitstun law. On real-path seeds 4242/8008, lights lose helm for 1.08-1.18 s, gun-scale heavies for exactly 0 s, source spread is 8.45%, and recovery uses opposing thruster torque. B11 is met; B5 remains open pending PQ-137.05 weapon force. See receipt."
     },
     {
       "id": "PQ-137.05",
