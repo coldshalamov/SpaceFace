@@ -1,0 +1,1240 @@
+{
+ "schema": "spaceface.swarmPacing.beforeAfter.v1",
+ "note": "PQ-174.00/.01 nine-cell pacing sweep. BEFORE recorded at quota 22; AFTER re-run in-repo at quota 15. Fields the old trace could not measure stay null, never zero.",
+ "before": {
+  "wave1Quota": 22,
+  "runs": [
+   {
+    "loadoutId": "energy_baseline",
+    "seed": 4242,
+    "arenaId": "helios_core",
+    "stopReason": "player_dead",
+    "simSeconds": 16.72,
+    "waveDurations": [
+     {
+      "wave": 1,
+      "status": "censored",
+      "startSeconds": 0.033333,
+      "endSeconds": 16.72,
+      "durationSeconds": 16.686667,
+      "startTick": 2,
+      "endTick": 1003,
+      "censorReason": "player died before this wave completed (right-censored at death)"
+     }
+    ],
+    "quotaFromTrace": {
+     "available": false,
+     "wave": null,
+     "quota": null,
+     "reason": "quota was not on wave:planned payload in this trace"
+    },
+    "firstHostile": {
+     "available": false,
+     "seconds": null,
+     "tick": null,
+     "reason": "raw first-hostile spawn was not captured on this trace; wave:planned is not a spawn"
+    },
+    "firstKill": {
+     "available": true,
+     "seconds": 12.133333,
+     "tick": 728,
+     "reason": null,
+     "source": "entity:killed hostile"
+    },
+    "menus": {
+     "available": false,
+     "count": null,
+     "perWave": null,
+     "reason": "menu / draft / refit openings were not captured on this historical trace"
+    },
+    "firstDeath": {
+     "available": true,
+     "censored": false,
+     "seconds": 16.733333,
+     "tick": 1004,
+     "reason": null
+    },
+    "killsHostile": 3,
+    "verbs": {
+     "used": [
+      "brake"
+     ],
+     "diversity": 1,
+     "uses": 4,
+     "useRatePerMinute": 14.354067
+    }
+   },
+   {
+    "loadoutId": "energy_baseline",
+    "seed": 8008,
+    "arenaId": "helios_core",
+    "stopReason": "tick_cap",
+    "simSeconds": 90,
+    "waveDurations": [
+     {
+      "wave": 1,
+      "status": "censored",
+      "startSeconds": 0.033333,
+      "endSeconds": 90,
+      "durationSeconds": 89.966667,
+      "startTick": 2,
+      "endTick": 5400,
+      "censorReason": "run reached the tick cap with this wave still open (right-censored)"
+     }
+    ],
+    "quotaFromTrace": {
+     "available": false,
+     "wave": null,
+     "quota": null,
+     "reason": "quota was not on wave:planned payload in this trace"
+    },
+    "firstHostile": {
+     "available": false,
+     "seconds": null,
+     "tick": null,
+     "reason": "raw first-hostile spawn was not captured on this trace; wave:planned is not a spawn"
+    },
+    "firstKill": {
+     "available": true,
+     "seconds": 9.35,
+     "tick": 561,
+     "reason": null,
+     "source": "entity:killed hostile"
+    },
+    "menus": {
+     "available": false,
+     "count": null,
+     "perWave": null,
+     "reason": "menu / draft / refit openings were not captured on this historical trace"
+    },
+    "firstDeath": {
+     "available": false,
+     "censored": true,
+     "seconds": null,
+     "tick": null,
+     "reason": "survived to 90s (right-censored; not a run-length-to-death)"
+    },
+    "killsHostile": 19,
+    "verbs": {
+     "used": [
+      "brake",
+      "thrust",
+      "boost"
+     ],
+     "diversity": 3,
+     "uses": 24,
+     "useRatePerMinute": 16
+    }
+   },
+   {
+    "loadoutId": "energy_baseline",
+    "seed": 13502,
+    "arenaId": "helios_core",
+    "stopReason": "player_dead",
+    "simSeconds": 15.22,
+    "waveDurations": [
+     {
+      "wave": 1,
+      "status": "censored",
+      "startSeconds": 0.033333,
+      "endSeconds": 15.22,
+      "durationSeconds": 15.186667,
+      "startTick": 2,
+      "endTick": 913,
+      "censorReason": "player died before this wave completed (right-censored at death)"
+     }
+    ],
+    "quotaFromTrace": {
+     "available": false,
+     "wave": null,
+     "quota": null,
+     "reason": "quota was not on wave:planned payload in this trace"
+    },
+    "firstHostile": {
+     "available": false,
+     "seconds": null,
+     "tick": null,
+     "reason": "raw first-hostile spawn was not captured on this trace; wave:planned is not a spawn"
+    },
+    "firstKill": {
+     "available": true,
+     "seconds": 14.15,
+     "tick": 849,
+     "reason": null,
+     "source": "entity:killed hostile"
+    },
+    "menus": {
+     "available": false,
+     "count": null,
+     "perWave": null,
+     "reason": "menu / draft / refit openings were not captured on this historical trace"
+    },
+    "firstDeath": {
+     "available": true,
+     "censored": false,
+     "seconds": 15.233333,
+     "tick": 914,
+     "reason": null
+    },
+    "killsHostile": 3,
+    "verbs": {
+     "used": [
+      "brake"
+     ],
+     "diversity": 1,
+     "uses": 1,
+     "useRatePerMinute": 3.942181
+    }
+   },
+   {
+    "loadoutId": "physics_toolkit",
+    "seed": 4242,
+    "arenaId": "helios_core",
+    "stopReason": "tick_cap",
+    "simSeconds": 90,
+    "waveDurations": [
+     {
+      "wave": 1,
+      "status": "completed",
+      "startSeconds": 0.033333,
+      "endSeconds": 68.7,
+      "durationSeconds": 68.666667,
+      "startTick": 2,
+      "endTick": 4122
+     },
+     {
+      "wave": 2,
+      "status": "censored",
+      "startSeconds": 69.466667,
+      "endSeconds": 90,
+      "durationSeconds": 20.533333,
+      "startTick": 4168,
+      "endTick": 5400,
+      "censorReason": "run reached the tick cap with this wave still open (right-censored)"
+     }
+    ],
+    "quotaFromTrace": {
+     "available": false,
+     "wave": null,
+     "quota": null,
+     "reason": "quota was not on wave:planned payload in this trace"
+    },
+    "firstHostile": {
+     "available": false,
+     "seconds": null,
+     "tick": null,
+     "reason": "raw first-hostile spawn was not captured on this trace; wave:planned is not a spawn"
+    },
+    "firstKill": {
+     "available": true,
+     "seconds": 11.05,
+     "tick": 663,
+     "reason": null,
+     "source": "entity:killed hostile"
+    },
+    "menus": {
+     "available": false,
+     "count": null,
+     "perWave": null,
+     "reason": "menu / draft / refit openings were not captured on this historical trace"
+    },
+    "firstDeath": {
+     "available": false,
+     "censored": true,
+     "seconds": null,
+     "tick": null,
+     "reason": "survived to 90s (right-censored; not a run-length-to-death)"
+    },
+    "killsHostile": 23,
+    "verbs": {
+     "used": [
+      "well",
+      "shove",
+      "brake",
+      "thrust"
+     ],
+     "diversity": 4,
+     "uses": 91,
+     "useRatePerMinute": 60.666667
+    }
+   },
+   {
+    "loadoutId": "physics_toolkit",
+    "seed": 8008,
+    "arenaId": "helios_core",
+    "stopReason": "tick_cap",
+    "simSeconds": 90,
+    "waveDurations": [
+     {
+      "wave": 1,
+      "status": "censored",
+      "startSeconds": 0.033333,
+      "endSeconds": 90,
+      "durationSeconds": 89.966667,
+      "startTick": 2,
+      "endTick": 5400,
+      "censorReason": "run reached the tick cap with this wave still open (right-censored)"
+     }
+    ],
+    "quotaFromTrace": {
+     "available": false,
+     "wave": null,
+     "quota": null,
+     "reason": "quota was not on wave:planned payload in this trace"
+    },
+    "firstHostile": {
+     "available": false,
+     "seconds": null,
+     "tick": null,
+     "reason": "raw first-hostile spawn was not captured on this trace; wave:planned is not a spawn"
+    },
+    "firstKill": {
+     "available": true,
+     "seconds": 8.483333,
+     "tick": 509,
+     "reason": null,
+     "source": "entity:killed hostile"
+    },
+    "menus": {
+     "available": false,
+     "count": null,
+     "perWave": null,
+     "reason": "menu / draft / refit openings were not captured on this historical trace"
+    },
+    "firstDeath": {
+     "available": false,
+     "censored": true,
+     "seconds": null,
+     "tick": null,
+     "reason": "survived to 90s (right-censored; not a run-length-to-death)"
+    },
+    "killsHostile": 15,
+    "verbs": {
+     "used": [
+      "well",
+      "shove",
+      "brake",
+      "thrust",
+      "boost"
+     ],
+     "diversity": 5,
+     "uses": 102,
+     "useRatePerMinute": 68
+    }
+   },
+   {
+    "loadoutId": "physics_toolkit",
+    "seed": 13502,
+    "arenaId": "helios_core",
+    "stopReason": "tick_cap",
+    "simSeconds": 90,
+    "waveDurations": [
+     {
+      "wave": 1,
+      "status": "censored",
+      "startSeconds": 0.033333,
+      "endSeconds": 90,
+      "durationSeconds": 89.966667,
+      "startTick": 2,
+      "endTick": 5400,
+      "censorReason": "run reached the tick cap with this wave still open (right-censored)"
+     }
+    ],
+    "quotaFromTrace": {
+     "available": false,
+     "wave": null,
+     "quota": null,
+     "reason": "quota was not on wave:planned payload in this trace"
+    },
+    "firstHostile": {
+     "available": false,
+     "seconds": null,
+     "tick": null,
+     "reason": "raw first-hostile spawn was not captured on this trace; wave:planned is not a spawn"
+    },
+    "firstKill": {
+     "available": true,
+     "seconds": 6.283333,
+     "tick": 377,
+     "reason": null,
+     "source": "entity:killed hostile"
+    },
+    "menus": {
+     "available": false,
+     "count": null,
+     "perWave": null,
+     "reason": "menu / draft / refit openings were not captured on this historical trace"
+    },
+    "firstDeath": {
+     "available": false,
+     "censored": true,
+     "seconds": null,
+     "tick": null,
+     "reason": "survived to 90s (right-censored; not a run-length-to-death)"
+    },
+    "killsHostile": 19,
+    "verbs": {
+     "used": [
+      "well",
+      "shove",
+      "brake",
+      "thrust",
+      "boost"
+     ],
+     "diversity": 5,
+     "uses": 96,
+     "useRatePerMinute": 64
+    }
+   },
+   {
+    "loadoutId": "massline_rig",
+    "seed": 4242,
+    "arenaId": "helios_core",
+    "stopReason": "tick_cap",
+    "simSeconds": 90,
+    "waveDurations": [
+     {
+      "wave": 1,
+      "status": "censored",
+      "startSeconds": 0.033333,
+      "endSeconds": 90,
+      "durationSeconds": 89.966667,
+      "startTick": 2,
+      "endTick": 5400,
+      "censorReason": "run reached the tick cap with this wave still open (right-censored)"
+     }
+    ],
+    "quotaFromTrace": {
+     "available": false,
+     "wave": null,
+     "quota": null,
+     "reason": "quota was not on wave:planned payload in this trace"
+    },
+    "firstHostile": {
+     "available": false,
+     "seconds": null,
+     "tick": null,
+     "reason": "raw first-hostile spawn was not captured on this trace; wave:planned is not a spawn"
+    },
+    "firstKill": {
+     "available": true,
+     "seconds": 6.2,
+     "tick": 372,
+     "reason": null,
+     "source": "entity:killed hostile"
+    },
+    "menus": {
+     "available": false,
+     "count": null,
+     "perWave": null,
+     "reason": "menu / draft / refit openings were not captured on this historical trace"
+    },
+    "firstDeath": {
+     "available": false,
+     "censored": true,
+     "seconds": null,
+     "tick": null,
+     "reason": "survived to 90s (right-censored; not a run-length-to-death)"
+    },
+    "killsHostile": 18,
+    "verbs": {
+     "used": [
+      "latch",
+      "brake",
+      "thrust",
+      "reel"
+     ],
+     "diversity": 4,
+     "uses": 18,
+     "useRatePerMinute": 12
+    }
+   },
+   {
+    "loadoutId": "massline_rig",
+    "seed": 8008,
+    "arenaId": "helios_core",
+    "stopReason": "tick_cap",
+    "simSeconds": 90,
+    "waveDurations": [
+     {
+      "wave": 1,
+      "status": "censored",
+      "startSeconds": 0.033333,
+      "endSeconds": 90,
+      "durationSeconds": 89.966667,
+      "startTick": 2,
+      "endTick": 5400,
+      "censorReason": "run reached the tick cap with this wave still open (right-censored)"
+     }
+    ],
+    "quotaFromTrace": {
+     "available": false,
+     "wave": null,
+     "quota": null,
+     "reason": "quota was not on wave:planned payload in this trace"
+    },
+    "firstHostile": {
+     "available": false,
+     "seconds": null,
+     "tick": null,
+     "reason": "raw first-hostile spawn was not captured on this trace; wave:planned is not a spawn"
+    },
+    "firstKill": {
+     "available": true,
+     "seconds": 7.583333,
+     "tick": 455,
+     "reason": null,
+     "source": "entity:killed hostile"
+    },
+    "menus": {
+     "available": false,
+     "count": null,
+     "perWave": null,
+     "reason": "menu / draft / refit openings were not captured on this historical trace"
+    },
+    "firstDeath": {
+     "available": false,
+     "censored": true,
+     "seconds": null,
+     "tick": null,
+     "reason": "survived to 90s (right-censored; not a run-length-to-death)"
+    },
+    "killsHostile": 19,
+    "verbs": {
+     "used": [
+      "latch",
+      "brake",
+      "thrust",
+      "reel"
+     ],
+     "diversity": 4,
+     "uses": 25,
+     "useRatePerMinute": 16.666667
+    }
+   },
+   {
+    "loadoutId": "massline_rig",
+    "seed": 13502,
+    "arenaId": "helios_core",
+    "stopReason": "tick_cap",
+    "simSeconds": 90,
+    "waveDurations": [
+     {
+      "wave": 1,
+      "status": "completed",
+      "startSeconds": 0.033333,
+      "endSeconds": 89.216667,
+      "durationSeconds": 89.183333,
+      "startTick": 2,
+      "endTick": 5353
+     },
+     {
+      "wave": 2,
+      "status": "censored",
+      "startSeconds": 89.983333,
+      "endSeconds": 90,
+      "durationSeconds": 0.016667,
+      "startTick": 5399,
+      "endTick": 5400,
+      "censorReason": "run reached the tick cap with this wave still open (right-censored)"
+     }
+    ],
+    "quotaFromTrace": {
+     "available": false,
+     "wave": null,
+     "quota": null,
+     "reason": "quota was not on wave:planned payload in this trace"
+    },
+    "firstHostile": {
+     "available": false,
+     "seconds": null,
+     "tick": null,
+     "reason": "raw first-hostile spawn was not captured on this trace; wave:planned is not a spawn"
+    },
+    "firstKill": {
+     "available": true,
+     "seconds": 8.166667,
+     "tick": 490,
+     "reason": null,
+     "source": "entity:killed hostile"
+    },
+    "menus": {
+     "available": false,
+     "count": null,
+     "perWave": null,
+     "reason": "menu / draft / refit openings were not captured on this historical trace"
+    },
+    "firstDeath": {
+     "available": false,
+     "censored": true,
+     "seconds": null,
+     "tick": null,
+     "reason": "survived to 90s (right-censored; not a run-length-to-death)"
+    },
+    "killsHostile": 22,
+    "verbs": {
+     "used": [
+      "latch",
+      "brake",
+      "thrust",
+      "reel"
+     ],
+     "diversity": 4,
+     "uses": 41,
+     "useRatePerMinute": 27.333333
+    }
+   }
+  ]
+ },
+ "after": {
+  "wave1Quota": 15,
+  "runs": [
+   {
+    "loadoutId": "energy_baseline",
+    "seed": 4242,
+    "arenaId": "helios_core",
+    "stopReason": "player_dead",
+    "simSeconds": 31.52,
+    "waveDurations": [
+     {
+      "wave": 1,
+      "status": "censored",
+      "startSeconds": 0.033333,
+      "endSeconds": 31.52,
+      "durationSeconds": 31.486667,
+      "startTick": 2,
+      "endTick": 1891,
+      "censorReason": "player died before this wave completed (right-censored at death)"
+     }
+    ],
+    "quotaFromTrace": {
+     "available": true,
+     "wave": 1,
+     "quota": 15,
+     "reason": null
+    },
+    "firstHostile": {
+     "available": true,
+     "seconds": 0.05,
+     "tick": 3,
+     "reason": null,
+     "source": "hostile:spawned"
+    },
+    "firstKill": {
+     "available": true,
+     "seconds": 9.283333,
+     "tick": 557,
+     "reason": null,
+     "source": "entity:killed hostile"
+    },
+    "menus": {
+     "available": true,
+     "count": 0,
+     "perWave": 0,
+     "reason": null,
+     "events": []
+    },
+    "firstDeath": {
+     "available": true,
+     "censored": false,
+     "seconds": 31.533333,
+     "tick": 1892,
+     "reason": null
+    },
+    "killsHostile": 14,
+    "verbs": {
+     "used": [
+      "brake"
+     ],
+     "diversity": 1,
+     "uses": 4,
+     "useRatePerMinute": 7.614213,
+     "diversityPerMinute": 1.903553
+    }
+   },
+   {
+    "loadoutId": "energy_baseline",
+    "seed": 8008,
+    "arenaId": "helios_core",
+    "stopReason": "tick_cap",
+    "simSeconds": 90,
+    "waveDurations": [
+     {
+      "wave": 1,
+      "status": "completed",
+      "startSeconds": 0.033333,
+      "endSeconds": 64.583333,
+      "durationSeconds": 64.55,
+      "startTick": 2,
+      "endTick": 3875
+     },
+     {
+      "wave": 2,
+      "status": "censored",
+      "startSeconds": 65.35,
+      "endSeconds": 90,
+      "durationSeconds": 24.65,
+      "startTick": 3921,
+      "endTick": 5400,
+      "censorReason": "run reached the tick cap with this wave still open (right-censored)"
+     }
+    ],
+    "quotaFromTrace": {
+     "available": true,
+     "wave": 1,
+     "quota": 15,
+     "reason": null
+    },
+    "firstHostile": {
+     "available": true,
+     "seconds": 0.05,
+     "tick": 3,
+     "reason": null,
+     "source": "hostile:spawned"
+    },
+    "firstKill": {
+     "available": true,
+     "seconds": 8.566667,
+     "tick": 514,
+     "reason": null,
+     "source": "entity:killed hostile"
+    },
+    "menus": {
+     "available": true,
+     "count": 0,
+     "perWave": 0,
+     "reason": null,
+     "events": []
+    },
+    "firstDeath": {
+     "available": false,
+     "censored": true,
+     "seconds": null,
+     "tick": null,
+     "reason": "survived to 90s (right-censored; not a run-length-to-death)"
+    },
+    "killsHostile": 17,
+    "verbs": {
+     "used": [
+      "brake",
+      "thrust",
+      "boost"
+     ],
+     "diversity": 3,
+     "uses": 29,
+     "useRatePerMinute": 19.333333,
+     "diversityPerMinute": 2
+    }
+   },
+   {
+    "loadoutId": "energy_baseline",
+    "seed": 13502,
+    "arenaId": "helios_core",
+    "stopReason": "tick_cap",
+    "simSeconds": 90,
+    "waveDurations": [
+     {
+      "wave": 1,
+      "status": "censored",
+      "startSeconds": 0.033333,
+      "endSeconds": 90,
+      "durationSeconds": 89.966667,
+      "startTick": 2,
+      "endTick": 5400,
+      "censorReason": "run reached the tick cap with this wave still open (right-censored)"
+     }
+    ],
+    "quotaFromTrace": {
+     "available": true,
+     "wave": 1,
+     "quota": 15,
+     "reason": null
+    },
+    "firstHostile": {
+     "available": true,
+     "seconds": 0.05,
+     "tick": 3,
+     "reason": null,
+     "source": "hostile:spawned"
+    },
+    "firstKill": {
+     "available": true,
+     "seconds": 13.183333,
+     "tick": 791,
+     "reason": null,
+     "source": "entity:killed hostile"
+    },
+    "menus": {
+     "available": true,
+     "count": 0,
+     "perWave": 0,
+     "reason": null,
+     "events": []
+    },
+    "firstDeath": {
+     "available": false,
+     "censored": true,
+     "seconds": null,
+     "tick": null,
+     "reason": "survived to 90s (right-censored; not a run-length-to-death)"
+    },
+    "killsHostile": 11,
+    "verbs": {
+     "used": [
+      "brake",
+      "thrust",
+      "boost"
+     ],
+     "diversity": 3,
+     "uses": 17,
+     "useRatePerMinute": 11.333333,
+     "diversityPerMinute": 2
+    }
+   },
+   {
+    "loadoutId": "physics_toolkit",
+    "seed": 4242,
+    "arenaId": "helios_core",
+    "stopReason": "tick_cap",
+    "simSeconds": 90,
+    "waveDurations": [
+     {
+      "wave": 1,
+      "status": "completed",
+      "startSeconds": 0.033333,
+      "endSeconds": 55.65,
+      "durationSeconds": 55.616667,
+      "startTick": 2,
+      "endTick": 3339
+     },
+     {
+      "wave": 2,
+      "status": "censored",
+      "startSeconds": 56.416667,
+      "endSeconds": 90,
+      "durationSeconds": 33.583333,
+      "startTick": 3385,
+      "endTick": 5400,
+      "censorReason": "run reached the tick cap with this wave still open (right-censored)"
+     }
+    ],
+    "quotaFromTrace": {
+     "available": true,
+     "wave": 1,
+     "quota": 15,
+     "reason": null
+    },
+    "firstHostile": {
+     "available": true,
+     "seconds": 0.05,
+     "tick": 3,
+     "reason": null,
+     "source": "hostile:spawned"
+    },
+    "firstKill": {
+     "available": true,
+     "seconds": 9.933333,
+     "tick": 596,
+     "reason": null,
+     "source": "entity:killed hostile"
+    },
+    "menus": {
+     "available": true,
+     "count": 0,
+     "perWave": 0,
+     "reason": null,
+     "events": []
+    },
+    "firstDeath": {
+     "available": false,
+     "censored": true,
+     "seconds": null,
+     "tick": null,
+     "reason": "survived to 90s (right-censored; not a run-length-to-death)"
+    },
+    "killsHostile": 26,
+    "verbs": {
+     "used": [
+      "well",
+      "shove",
+      "brake",
+      "thrust"
+     ],
+     "diversity": 4,
+     "uses": 103,
+     "useRatePerMinute": 68.666667,
+     "diversityPerMinute": 2.666667
+    }
+   },
+   {
+    "loadoutId": "physics_toolkit",
+    "seed": 8008,
+    "arenaId": "helios_core",
+    "stopReason": "tick_cap",
+    "simSeconds": 90,
+    "waveDurations": [
+     {
+      "wave": 1,
+      "status": "censored",
+      "startSeconds": 0.033333,
+      "endSeconds": 90,
+      "durationSeconds": 89.966667,
+      "startTick": 2,
+      "endTick": 5400,
+      "censorReason": "run reached the tick cap with this wave still open (right-censored)"
+     }
+    ],
+    "quotaFromTrace": {
+     "available": true,
+     "wave": 1,
+     "quota": 15,
+     "reason": null
+    },
+    "firstHostile": {
+     "available": true,
+     "seconds": 0.05,
+     "tick": 3,
+     "reason": null,
+     "source": "hostile:spawned"
+    },
+    "firstKill": {
+     "available": true,
+     "seconds": 14.216667,
+     "tick": 853,
+     "reason": null,
+     "source": "entity:killed hostile"
+    },
+    "menus": {
+     "available": true,
+     "count": 0,
+     "perWave": 0,
+     "reason": null,
+     "events": []
+    },
+    "firstDeath": {
+     "available": false,
+     "censored": true,
+     "seconds": null,
+     "tick": null,
+     "reason": "survived to 90s (right-censored; not a run-length-to-death)"
+    },
+    "killsHostile": 6,
+    "verbs": {
+     "used": [
+      "well",
+      "shove",
+      "brake",
+      "thrust",
+      "boost"
+     ],
+     "diversity": 5,
+     "uses": 107,
+     "useRatePerMinute": 71.333333,
+     "diversityPerMinute": 3.333333
+    }
+   },
+   {
+    "loadoutId": "physics_toolkit",
+    "seed": 13502,
+    "arenaId": "helios_core",
+    "stopReason": "tick_cap",
+    "simSeconds": 90,
+    "waveDurations": [
+     {
+      "wave": 1,
+      "status": "completed",
+      "startSeconds": 0.033333,
+      "endSeconds": 48.966667,
+      "durationSeconds": 48.933333,
+      "startTick": 2,
+      "endTick": 2938
+     },
+     {
+      "wave": 2,
+      "status": "censored",
+      "startSeconds": 49.733333,
+      "endSeconds": 90,
+      "durationSeconds": 40.266667,
+      "startTick": 2984,
+      "endTick": 5400,
+      "censorReason": "run reached the tick cap with this wave still open (right-censored)"
+     }
+    ],
+    "quotaFromTrace": {
+     "available": true,
+     "wave": 1,
+     "quota": 15,
+     "reason": null
+    },
+    "firstHostile": {
+     "available": true,
+     "seconds": 0.05,
+     "tick": 3,
+     "reason": null,
+     "source": "hostile:spawned"
+    },
+    "firstKill": {
+     "available": true,
+     "seconds": 9.633333,
+     "tick": 578,
+     "reason": null,
+     "source": "entity:killed hostile"
+    },
+    "menus": {
+     "available": true,
+     "count": 0,
+     "perWave": 0,
+     "reason": null,
+     "events": []
+    },
+    "firstDeath": {
+     "available": false,
+     "censored": true,
+     "seconds": null,
+     "tick": null,
+     "reason": "survived to 90s (right-censored; not a run-length-to-death)"
+    },
+    "killsHostile": 24,
+    "verbs": {
+     "used": [
+      "well",
+      "shove",
+      "brake",
+      "thrust"
+     ],
+     "diversity": 4,
+     "uses": 85,
+     "useRatePerMinute": 56.666667,
+     "diversityPerMinute": 2.666667
+    }
+   },
+   {
+    "loadoutId": "massline_rig",
+    "seed": 4242,
+    "arenaId": "helios_core",
+    "stopReason": "tick_cap",
+    "simSeconds": 90,
+    "waveDurations": [
+     {
+      "wave": 1,
+      "status": "completed",
+      "startSeconds": 0.033333,
+      "endSeconds": 50.033333,
+      "durationSeconds": 50,
+      "startTick": 2,
+      "endTick": 3002
+     },
+     {
+      "wave": 2,
+      "status": "censored",
+      "startSeconds": 50.8,
+      "endSeconds": 90,
+      "durationSeconds": 39.2,
+      "startTick": 3048,
+      "endTick": 5400,
+      "censorReason": "run reached the tick cap with this wave still open (right-censored)"
+     }
+    ],
+    "quotaFromTrace": {
+     "available": true,
+     "wave": 1,
+     "quota": 15,
+     "reason": null
+    },
+    "firstHostile": {
+     "available": true,
+     "seconds": 0.05,
+     "tick": 3,
+     "reason": null,
+     "source": "hostile:spawned"
+    },
+    "firstKill": {
+     "available": true,
+     "seconds": 5.95,
+     "tick": 357,
+     "reason": null,
+     "source": "entity:killed hostile"
+    },
+    "menus": {
+     "available": true,
+     "count": 0,
+     "perWave": 0,
+     "reason": null,
+     "events": []
+    },
+    "firstDeath": {
+     "available": false,
+     "censored": true,
+     "seconds": null,
+     "tick": null,
+     "reason": "survived to 90s (right-censored; not a run-length-to-death)"
+    },
+    "killsHostile": 21,
+    "verbs": {
+     "used": [
+      "latch",
+      "brake",
+      "thrust",
+      "reel"
+     ],
+     "diversity": 4,
+     "uses": 38,
+     "useRatePerMinute": 25.333333,
+     "diversityPerMinute": 2.666667
+    }
+   },
+   {
+    "loadoutId": "massline_rig",
+    "seed": 8008,
+    "arenaId": "helios_core",
+    "stopReason": "tick_cap",
+    "simSeconds": 90,
+    "waveDurations": [
+     {
+      "wave": 1,
+      "status": "completed",
+      "startSeconds": 0.033333,
+      "endSeconds": 77.85,
+      "durationSeconds": 77.816667,
+      "startTick": 2,
+      "endTick": 4671
+     },
+     {
+      "wave": 2,
+      "status": "censored",
+      "startSeconds": 78.616667,
+      "endSeconds": 90,
+      "durationSeconds": 11.383333,
+      "startTick": 4717,
+      "endTick": 5400,
+      "censorReason": "run reached the tick cap with this wave still open (right-censored)"
+     }
+    ],
+    "quotaFromTrace": {
+     "available": true,
+     "wave": 1,
+     "quota": 15,
+     "reason": null
+    },
+    "firstHostile": {
+     "available": true,
+     "seconds": 0.05,
+     "tick": 3,
+     "reason": null,
+     "source": "hostile:spawned"
+    },
+    "firstKill": {
+     "available": true,
+     "seconds": 15.083333,
+     "tick": 905,
+     "reason": null,
+     "source": "entity:killed hostile"
+    },
+    "menus": {
+     "available": true,
+     "count": 0,
+     "perWave": 0,
+     "reason": null,
+     "events": []
+    },
+    "firstDeath": {
+     "available": false,
+     "censored": true,
+     "seconds": null,
+     "tick": null,
+     "reason": "survived to 90s (right-censored; not a run-length-to-death)"
+    },
+    "killsHostile": 16,
+    "verbs": {
+     "used": [
+      "latch",
+      "brake",
+      "thrust",
+      "reel",
+      "release"
+     ],
+     "diversity": 5,
+     "uses": 26,
+     "useRatePerMinute": 17.333333,
+     "diversityPerMinute": 3.333333
+    }
+   },
+   {
+    "loadoutId": "massline_rig",
+    "seed": 13502,
+    "arenaId": "helios_core",
+    "stopReason": "tick_cap",
+    "simSeconds": 90,
+    "waveDurations": [
+     {
+      "wave": 1,
+      "status": "completed",
+      "startSeconds": 0.033333,
+      "endSeconds": 55.816667,
+      "durationSeconds": 55.783333,
+      "startTick": 2,
+      "endTick": 3349
+     },
+     {
+      "wave": 2,
+      "status": "censored",
+      "startSeconds": 56.583333,
+      "endSeconds": 90,
+      "durationSeconds": 33.416667,
+      "startTick": 3395,
+      "endTick": 5400,
+      "censorReason": "run reached the tick cap with this wave still open (right-censored)"
+     }
+    ],
+    "quotaFromTrace": {
+     "available": true,
+     "wave": 1,
+     "quota": 15,
+     "reason": null
+    },
+    "firstHostile": {
+     "available": true,
+     "seconds": 0.05,
+     "tick": 3,
+     "reason": null,
+     "source": "hostile:spawned"
+    },
+    "firstKill": {
+     "available": true,
+     "seconds": 8.1,
+     "tick": 486,
+     "reason": null,
+     "source": "entity:killed hostile"
+    },
+    "menus": {
+     "available": true,
+     "count": 0,
+     "perWave": 0,
+     "reason": null,
+     "events": []
+    },
+    "firstDeath": {
+     "available": false,
+     "censored": true,
+     "seconds": null,
+     "tick": null,
+     "reason": "survived to 90s (right-censored; not a run-length-to-death)"
+    },
+    "killsHostile": 17,
+    "verbs": {
+     "used": [
+      "latch",
+      "brake",
+      "thrust",
+      "reel",
+      "boost"
+     ],
+     "diversity": 5,
+     "uses": 38,
+     "useRatePerMinute": 25.333333,
+     "diversityPerMinute": 3.333333
+    }
+   }
+  ]
+ }
+}
