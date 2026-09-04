@@ -179,6 +179,9 @@ const MAX_GENERAL_SALVORS_PER_SECTOR = 2;
 // so two seeds with the same aftermath produce the same response time without a scheduler queue.
 const SALVOR_NOTICE_DELAY_MIN_S = 18;
 const SALVOR_NOTICE_DELAY_SPAN_S = 27; // inclusive span → 18..45 s
+// Announced freight spills skip the 18-45 s stumble delay: the distress channel already named them.
+const SPILL_ANNOUNCE_NOTICE_S = 2;
+const SPILL_POD_CARRIER_RADIUS = 240;
 const SALVOR_WORK_LEDGER_CAP = 256;
 const CIVILIAN_MANIFEST_PAYLOAD_TYPE = 'civilian_manifest';
 const NPC_MINER_WORK_LEDGER_CAP = 512;
@@ -1052,6 +1055,7 @@ export const traffic = {
     this.bus.on('freight:recovery', (p) => this._onCeresDisabledHaulerRecovery(p || {}));
     this.bus.on('freight:recoveryAbandoned', (p) => this._onCeresDisabledHaulerAbandoned(p || {}));
     this.bus.on('pickup:collected', (p) => this._onCeresDisabledHaulerPickup(p || {}));
+    this.bus.on('freight:cargoSpilled', (p) => this._onFreightCargoSpilled(p || {}));
     this.bus.on('save:restoring', () => {
       // Invalidate before the save owner starts destructive restore. Old synchronous owner stacks
       // may still unwind afterward, but their private reservation tokens no longer own this run.
@@ -3667,6 +3671,67 @@ export const traffic = {
     return this._pocketStation(stations, sectorId) || (stations && stations[0]) || null;
   },
 
+  _onFreightCargoSpilled(payload) {
+    const state = this.state;
+    if (!state) return;
+    if (state.mode !== 'flight') return;
+    const sectorId = state.world && state.world.currentSectorId;
+    if (!sectorId) return;
+
+    const encounterId = payload && payload.encounterId;
+    const matchByEncounter = encounterId != null && encounterId !== '';
+    const carrierId = payload && payload.carrierId;
+    const carrier = (carrierId != null && state.entities && typeof state.entities.get === 'function')
+      ? state.entities.get(carrierId)
+      : null;
+    const carrierLive = !!(carrier && carrier.alive !== false && carrier.pos);
+    const r2 = SPILL_POD_CARRIER_RADIUS * SPILL_POD_CARRIER_RADIUS;
+
+    const encounterPods = [];
+    const nearbyPods = [];
+    for (const entity of state.entityList || []) {
+      if (!entity || entity.alive === false || entity.type !== 'pickup' || !entity.pos) continue;
+      const data = entity.data || {};
+      if (!data.freightCustodyPod || typeof data.freightCustodyPod !== 'object') continue;
+      if (matchByEncounter && data.encounterId === encounterId) {
+        encounterPods.push(entity);
+        continue;
+      }
+      if (!carrierLive) continue;
+      const dx = entity.pos.x - carrier.pos.x;
+      const dz = entity.pos.z - carrier.pos.z;
+      if (dx * dx + dz * dz <= r2) nearbyPods.push(entity);
+    }
+    const pods = encounterPods.length ? encounterPods : nearbyPods;
+    if (!pods.length) return;
+
+    const isSurvival = (entity) => !!(entity && entity.data && entity.data.runCohort === 'survival');
+    if (isSurvival(carrier) || pods.some(isSurvival)) return;
+
+    const t = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const podIds = [];
+    for (const pod of pods) {
+      const data = pod.data || (pod.data = {});
+      data.spillNoticed = true;
+      // Announced on the distress channel, so yards do not wait the 18-45 s stumble used for hulks.
+      data.salvorNoticeAt = t + SPILL_ANNOUNCE_NOTICE_S;
+      podIds.push(pod.id);
+    }
+
+    this._salvageTargetCache = null;
+    this._salvageTargetCacheTick = null;
+    this._dispatchGeneralSalvors(sectorId);
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('traffic:spillNoticed', {
+        encounterId,
+        custodyId: payload && payload.custodyId,
+        podIds,
+        sectorId,
+        t,
+      });
+    }
+  },
+
   _isSalvageableBody(entity) {
     if (!entity || entity.alive === false || !entity.pos) return false;
     const data = entity.data || {};
@@ -3678,6 +3743,14 @@ export const traffic = {
     if (entity.type === 'payload') {
       if (data.payloadType !== CIVILIAN_MANIFEST_PAYLOAD_TYPE) return false;
       return this._salvagePoolTotal(data.salvagePool) > 0;
+    }
+    if (entity.type === 'pickup'
+        && data.spillNoticed === true
+        && data.freightCustodyPod
+        && typeof data.freightCustodyPod === 'object'
+        && Number.isFinite(data.amount)
+        && data.amount > 0) {
+      return true;
     }
     return false;
   },

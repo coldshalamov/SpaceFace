@@ -1,0 +1,86 @@
+{
+  "realPathProof": {
+    "backend": "rapier-dynamic",
+    "sg02Ready": true,
+    "sg02Bodies": 98,
+    "sg02DynamicBodies": 10,
+    "rapierContacts": 0,
+    "physicsBackend": "rapier-dynamic",
+    "flightBackend": "v3",
+    "aiBackend": "sg06-tactical",
+    "profileId": "production"
+  },
+  "sectorId": "sector_helios_prime",
+  "patrolChoice": {
+    "clause": "B10a",
+    "label": "patrol makes a visible stay-with-wreck / chase choice after a witnessed kill",
+    "decidedAtS": null,
+    "holdAtS": null,
+    "chaseAtS": 1.3,
+    "holderId": null,
+    "chaserId": 307,
+    "incidentOpened": true,
+    "dispatchStarted": true,
+    "wreckRecorded": true,
+    "wreckSpawned": true,
+    "podEjected": true,
+    "witnessChoiceEvents": 0,
+    "responderCount": 3,
+    "respondersChasing": 3,
+    "victimSpeed": 120,
+    "wreckDriftSpeed": 0,
+    "wreckSpeedRetainedPct": 0,
+    "wreckMass": 1000000,
+    "met": false
+  },
+  "spilledCargo": {
+    "clause": "B10b",
+    "label": "spilled cargo attracts a live NPC",
+    "arrivedAtS": null,
+    "arriverId": null,
+    "arriverRole": null,
+    "arriverHadJob": false,
+    "salvorsInSector": 2,
+    "podsAlive": 3,
+    "jobEvents": 0,
+    "met": false
+  },
+  "civiliansReact": {
+    "clause": "B10c",
+    "label": "a civilian within 300 WU of gunfire changes course",
+    "changedAtS": null,
+    "subjectId": 308,
+    "subjectRole": "miner",
+    "subjectDistanceToGunfireWU": 161.6,
+    "controlId": 311,
+    "controlUnaffected": true,
+    "violenceAtS": 4.1,
+    "met": false
+  },
+  "bars": [
+    {
+      "bar": "B10",
+      "label": "patrol decides stay-or-chase after a witnessed kill",
+      "value": 10,
+      "unit": "s",
+      "met": false,
+      "note": "NEVER — no responder ever held with the wreck while another pursued"
+    },
+    {
+      "bar": "B10",
+      "label": "a live NPC reaches spilled cargo",
+      "value": 30,
+      "unit": "s",
+      "met": false,
+      "note": "NEVER — nothing in the live world came for the spill"
+    },
+    {
+      "bar": "B10",
+      "label": "a civilian within 300 WU of gunfire changes course",
+      "value": 3,
+      "unit": "s",
+      "met": false,
+      "note": "NEVER — the civilian flew straight through the firefight"
+    }
+  ]
+}
