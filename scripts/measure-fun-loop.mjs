@@ -15,9 +15,11 @@
 // Law: design/program/FUN_CONVERGENCE_LOOP.md §3.2 MEASURE, §3.6 COMPARE, §3.7 REPORT.
 // Bars: design/FEEL_CONTRACT.md §B.
 
-import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync, readdirSync, lstatSync } from 'node:fs';
 import { join, basename } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { createHash } from 'node:crypto';
+import { spawnSync } from 'node:child_process';
 
 import { deriveFunMetrics, FUN_THRESHOLDS, KNOCK_BUDGET_LIMITS } from './lib/bench/funMetrics.mjs';
 import {
@@ -27,10 +29,208 @@ import {
   CRUCIBLE_DEFAULT_SEEDS,
 } from './lib/bench/crucibleBench.mjs';
 import { runFlightBench } from './lib/bench/flightBench.mjs';
-import { runVerbBench, VERB_BENCH_SCENARIOS } from './lib/bench/verbBench.mjs';
+import { runVerbBench } from './lib/bench/verbBench.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const DEFAULT_RECEIPTS_DIR = join(ROOT, 'design/program/roadmap/receipts/fun-loop');
+
+/**
+ * Deterministic sorted list of every scenario module and every direct bench/measurer helper
+ * that can change a measurement. Receipt output files are never included.
+ */
+export function listFunLoopHarnessFiles(root = ROOT) {
+  const rels = ['scripts/measure-fun-loop.mjs'];
+  const benchDir = join(root, 'scripts/lib/bench');
+  for (const name of readdirSync(benchDir).sort((a, b) => a.localeCompare(b))) {
+    if (name.endsWith('.mjs')) rels.push(`scripts/lib/bench/${name}`);
+  }
+  try {
+    const scenarioDir = join(benchDir, 'scenarios');
+    for (const name of readdirSync(scenarioDir).sort((a, b) => a.localeCompare(b))) {
+      if (name.endsWith('.mjs')) rels.push(`scripts/lib/bench/scenarios/${name}`);
+    }
+  } catch {
+    // scenarios/ may be absent in a truncated fixture root
+  }
+  return [...new Set(rels)].sort((a, b) => a.localeCompare(b));
+}
+
+/** Snapshot at import time for callers that want a frozen list; digest uses listFunLoopHarnessFiles(). */
+export const FUN_LOOP_HARNESS_FILES = Object.freeze(listFunLoopHarnessFiles());
+
+export function computeFunLoopHarnessDigest(root = ROOT) {
+  const hash = createHash('sha256');
+  for (const rel of listFunLoopHarnessFiles(root)) {
+    hash.update(rel);
+    hash.update('\0');
+    hash.update(readFileSync(join(root, rel)));
+    hash.update('\0');
+  }
+  return hash.digest('hex');
+}
+
+function gitText(root, args) {
+  const result = spawnSync('git', args, {
+    cwd: root,
+    encoding: 'utf8',
+    windowsHide: true,
+  });
+  if (!result || result.status !== 0) return '';
+  return String(result.stdout || '');
+}
+
+/**
+ * Production-runtime identity. Two sweeps are not comparable across different gameplay source,
+ * even when the harness files themselves match. Receipt dirt does not enter this identity.
+ */
+export function computeProductionSourceIdentity(root = ROOT) {
+  const gitHead = gitText(root, ['rev-parse', 'HEAD']).trim();
+  const gitTree = gitText(root, ['log', '-1', '--format=%T']).trim() || gitHead;
+  const porcelain = gitText(root, ['status', '--porcelain', '--untracked-files=normal', '--', 'src']);
+  const diff = gitText(root, ['diff', 'HEAD', '--', 'src']);
+  const untrackedText = gitText(root, ['ls-files', '-z', '--others', '--exclude-standard', '--', 'src']);
+  const untrackedPaths = String(untrackedText || '')
+    .split('\0')
+    .map((rel) => rel.replace(/\\/g, '/'))
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b));
+  const productionDirty = porcelain.trim().length > 0 || untrackedPaths.length > 0;
+  const productionDiffHash = createHash('sha256');
+  productionDiffHash.update(diff);
+  productionDiffHash.update('\0');
+  for (const rel of untrackedPaths) {
+    productionDiffHash.update(rel);
+    productionDiffHash.update('\0');
+    try {
+      const st = lstatSync(join(root, rel));
+      if (st.isSymbolicLink() || !st.isFile()) {
+        productionDiffHash.update('UNREADABLE');
+      } else {
+        productionDiffHash.update(readFileSync(join(root, rel)));
+      }
+    } catch {
+      productionDiffHash.update('UNREADABLE');
+    }
+    productionDiffHash.update('\0');
+  }
+  return {
+    gitHead: gitHead || null,
+    gitTree: gitTree || null,
+    productionDirty,
+    productionDiffHash: productionDiffHash.digest('hex'),
+  };
+}
+
+function sourceIdentityKey(identity) {
+  if (!identity || typeof identity !== 'object') return null;
+  if (typeof identity.gitHead !== 'string' || !identity.gitHead) return null;
+  if (typeof identity.gitTree !== 'string' || !identity.gitTree) return null;
+  if (typeof identity.productionDiffHash !== 'string' || !identity.productionDiffHash) return null;
+  return `${identity.gitHead}\0${identity.gitTree}\0${identity.productionDirty ? '1' : '0'}\0${identity.productionDiffHash}`;
+}
+
+function sweepCellKey(run) {
+  if (!run) return '';
+  if (run.fedByRef) return run.fedByRef;
+  if (run.bench === 'crucible') return `crucible/${run.arenaId}/${run.loadoutId}/s${run.seed}`;
+  return `${run.bench}/${run.scenarioId}/s${run.seed}`;
+}
+
+function sweepCells(summary) {
+  const cells = [];
+  const benches = summary && summary.benches && typeof summary.benches === 'object' ? summary.benches : {};
+  for (const [benchName, bench] of Object.entries(benches)) {
+    const runs = bench && Array.isArray(bench.runs) ? bench.runs : [];
+    for (const run of runs) {
+      cells.push({
+        key: sweepCellKey({ ...run, bench: run.bench || benchName }),
+        runHash: typeof run.runHash === 'string' && run.runHash ? run.runHash : null,
+      });
+    }
+  }
+  cells.sort((a, b) => a.key.localeCompare(b.key));
+  return cells;
+}
+
+function rejectSweep(reason, cells = []) {
+  return { compatible: false, identical: false, reason, cells };
+}
+
+function indexUniqueCells(cells, side) {
+  if (!Array.isArray(cells) || cells.length === 0) {
+    return { error: `empty ${side} sweep — refuse to claim a match` };
+  }
+  const byKey = new Map();
+  for (const cell of cells) {
+    if (!cell || typeof cell.key !== 'string' || !cell.key) {
+      return { error: `empty cell key in ${side} sweep` };
+    }
+    if (byKey.has(cell.key)) {
+      return { error: `duplicate cell key "${cell.key}" in ${side} sweep` };
+    }
+    if (typeof cell.runHash !== 'string' || !cell.runHash) {
+      return { error: `missing runHash for ${cell.key} in ${side} sweep` };
+    }
+    byKey.set(cell.key, cell);
+  }
+  return { byKey };
+}
+
+/**
+ * Two sweep summaries match only when they share a harness digest, the same production
+ * source identity, nonempty unique cell keys, and a one-to-one runHash match.
+ * Empty sweeps, duplicate keys, missing hashes, and different key sets are incompatible.
+ */
+export function compareCompatibleSweeps(before, after) {
+  const digestA = before && typeof before.harnessDigest === 'string' ? before.harnessDigest : null;
+  const digestB = after && typeof after.harnessDigest === 'string' ? after.harnessDigest : null;
+  if (!digestA || !digestB) {
+    return rejectSweep('missing harnessDigest — refuse to claim two sweeps match');
+  }
+  if (digestA !== digestB) {
+    return rejectSweep('harnessDigest mismatch — sweeps were not produced by the same source/harness');
+  }
+  const sourceA = sourceIdentityKey(before && before.sourceIdentity);
+  const sourceB = sourceIdentityKey(after && after.sourceIdentity);
+  if (!sourceA || !sourceB) {
+    return rejectSweep('missing production source identity — refuse to claim two sweeps match');
+  }
+  if (sourceA !== sourceB) {
+    return rejectSweep('production source identity mismatch — sweeps are not the same gameplay source');
+  }
+  const cellsA = sweepCells(before);
+  const cellsB = sweepCells(after);
+  const indexedA = indexUniqueCells(cellsA, 'before');
+  if (indexedA.error) return rejectSweep(indexedA.error);
+  const indexedB = indexUniqueCells(cellsB, 'after');
+  if (indexedB.error) return rejectSweep(indexedB.error);
+  const keysA = [...indexedA.byKey.keys()].sort((a, b) => a.localeCompare(b));
+  const keysB = [...indexedB.byKey.keys()].sort((a, b) => a.localeCompare(b));
+  if (keysA.length !== keysB.length || keysA.some((key, i) => key !== keysB[i])) {
+    return rejectSweep('cell key sets differ — refuse one-to-one comparison');
+  }
+  const cells = [];
+  let identical = true;
+  for (const key of keysA) {
+    const cell = indexedA.byKey.get(key);
+    const other = indexedB.byKey.get(key);
+    const hashOk = cell.runHash === other.runHash;
+    if (!hashOk) identical = false;
+    cells.push({
+      key,
+      match: hashOk,
+      reason: hashOk ? null : 'runHash mismatch',
+      hashA: cell.runHash,
+      hashB: other.runHash,
+    });
+  }
+  return {
+    compatible: true,
+    identical,
+    reason: identical ? null : 'corresponding cell hashes do not all match',
+    cells,
+  };
+}
 
 const FLIGHT_DEFAULT_SEED = 13502;
 const VERB_DEFAULT_SEED = 4242;
@@ -49,6 +249,12 @@ Options:
   --flight              Measure only the Flight bench
   --verbs               Measure only the Verb benches
   --seeds=4242,8008     Fixed seeds (default: bench defaults — crucible 4242,8008,13502; flight 13502; verbs 4242)
+  --scenarios=a,b       Run only these verb scenario ids (comma-separated). The bench discovers
+                        drop-in modules under scripts/lib/bench/scenarios/, several of which boot
+                        the real runtime and take minutes, so a lane iterating on ONE bar should
+                        name it rather than pay for the whole sweep. Unknown-only selections fail
+                        nonzero. A mixed known+unknown request runs the known subset and keeps
+                        unknown ids explicit in the rollup.
   --quick               Seconds-scale smoke: 1 crucible arena x 1 loadout x 1 seed, verbs full, flight 1 seed
   --json                Print the rollup JSON to stdout (files are still written)
   --out <dir>           Write receipts to <dir> instead of the default receipts folder
@@ -63,7 +269,7 @@ Options:
 // ── argument parsing ─────────────────────────────────────────────────────────────
 
 function parseArgs(list) {
-  const args = { bench: null, seeds: null, quick: false, json: false, out: null, diff: null };
+  const args = { bench: null, seeds: null, quick: false, json: false, out: null, diff: null, scenarioIds: null };
   for (let i = 0; i < list.length; i++) {
     const a = list[i];
     if (a === '--crucible' || a === '--flight' || a === '--verbs') {
@@ -72,6 +278,10 @@ function parseArgs(list) {
       args.seeds = parseSeedList(a.slice('--seeds='.length));
     } else if (a === '--seeds') {
       args.seeds = parseSeedList(list[++i]);
+    } else if (a.startsWith('--scenarios=')) {
+      args.scenarioIds = parseIdList(a.slice('--scenarios='.length));
+    } else if (a === '--scenarios') {
+      args.scenarioIds = parseIdList(list[++i]);
     } else if (a === '--quick') {
       args.quick = true;
     } else if (a === '--json') {
@@ -91,6 +301,15 @@ function parseArgs(list) {
   if (args.seeds === null) return args;
   if (args.seeds.length === 0) fail('--seeds needs at least one seed, e.g. --seeds=4242');
   return args;
+}
+
+// Scenario ids are free-form strings (`feel.knock_budget`, `world.reaction_trio`); trim and drop
+// blanks so `--scenarios=a, b,` behaves like `--scenarios=a,b`.
+function parseIdList(text) {
+  return String(text || '')
+    .split(',')
+    .map((id) => id.trim())
+    .filter(Boolean);
 }
 
 function parseSeedList(raw) {
@@ -127,7 +346,7 @@ async function main() {
 // ── measure mode ─────────────────────────────────────────────────────────────────
 
 async function runMeasureMode(args, outDir, isoDate) {
-  const evaluateBars = await loadEvaluateBars();
+  const { evaluateBars, fedByOf } = await loadFeelBarsModule();
   const startedAt = Date.now();
 
   if (!args.json) {
@@ -154,9 +373,24 @@ async function runMeasureMode(args, outDir, isoDate) {
   }
   if (!args.bench || args.bench === 'verbs') {
     const seeds = pickSeeds(args, [VERB_DEFAULT_SEED]);
-    if (!args.json) console.log(`► Verb Benches (${VERB_BENCH_SCENARIOS.length} scenarios x ${seeds.length} seed)...`);
-    const result = await runVerbBench({ seeds });
-    benchRuns.push({ name: 'verbs', runs: result.runs });
+    const only = args.scenarioIds;
+    const label = only
+      ? `${only.length} named scenario${only.length === 1 ? '' : 's'}`
+      : 'discovered scenarios';
+    if (!args.json) console.log(`► Verb Benches (${label} x ${seeds.length} seed)...`);
+    const result = only ? await runVerbBench({ seeds, scenarioIds: only }) : await runVerbBench({ seeds });
+    let unknownScenarioIds = [];
+    if (only) {
+      const ran = new Set(result.runs.map((r) => r.scenarioId));
+      unknownScenarioIds = only.filter((id) => !ran.has(id));
+      if (result.runs.length === 0) {
+        fail(`explicit --scenarios matched nothing: ${only.join(', ')}`);
+      }
+      if (!args.json && unknownScenarioIds.length) {
+        console.log(`  (no such scenario: ${unknownScenarioIds.join(', ')})`);
+      }
+    }
+    benchRuns.push({ name: 'verbs', runs: result.runs, unknownScenarioIds });
   }
 
   // The §B bars are a property of the whole measurement set, never of one run: evaluate them ONCE
@@ -177,10 +411,12 @@ async function runMeasureMode(args, outDir, isoDate) {
   }
 
   const benches = {};
-  for (const { name, runs } of benchRuns) {
+  const unknownScenarioIds = [];
+  for (const { name, runs, unknownScenarioIds: missing } of benchRuns) {
     benches[name] = {
-      runs: runs.map((run) => buildRunBlock(run, (pooledByGroup.get(`${name}-${run.seed}`) || { bars: [] }).bars)),
+      runs: runs.map((run) => buildRunBlock(run, (pooledByGroup.get(`${name}-${run.seed}`) || { bars: [] }).bars, fedByOf)),
     };
+    if (Array.isArray(missing) && missing.length) unknownScenarioIds.push(...missing);
   }
 
   const rollup = {
@@ -188,11 +424,14 @@ async function runMeasureMode(args, outDir, isoDate) {
     timestamp: new Date().toISOString(),
     date: isoDate,
     quick: args.quick === true,
+    harnessDigest: computeFunLoopHarnessDigest(),
+    sourceIdentity: computeProductionSourceIdentity(),
     seeds: [...new Set(allRuns.map((r) => r.seed))].sort((a, b) => a - b),
     benches,
     summary: evaluateBars(allRuns).summary,
     wallMs: Date.now() - startedAt,
   };
+  if (unknownScenarioIds.length) rollup.unknownScenarioIds = unknownScenarioIds;
 
   // ── write receipts ───────────────────────────────────────────────────────────
   mkdirSync(outDir, { recursive: true });
@@ -230,7 +469,8 @@ function buildRunRef(run) {
   return `${run.bench} ${run.scenarioId} seed ${run.seed}`;
 }
 
-// Mirrors feelBars.mjs fedByOf: the pooled bar results name their feeding runs with these refs.
+// Fixture fallback only: production runs get their ref from the registry's own fedByOf
+// (baked in at buildRunBlock time as fedByRef), so the two can never drift apart.
 function fedByRefOf(run) {
   if (!run) return '';
   if (run.bench === 'crucible') return `crucible/${run.arenaId}/${run.loadoutId}/s${run.seed}`;
@@ -238,14 +478,15 @@ function fedByRefOf(run) {
 }
 
 function fedBarsForRun(runBlock, pooledBars) {
-  const ref = fedByRefOf(runBlock);
+  const ref = runBlock.fedByRef || fedByRefOf(runBlock);
   return (pooledBars || []).filter((bar) => Array.isArray(bar.fedBy) && bar.fedBy.includes(ref));
 }
 
 // One per-run block for the summaries/receipts: the run's identity, only the pooled §B rows this
-// run feeds (never a re-evaluation per run), and its own fun metrics.
-export function buildRunBlock(run, pooledBars) {
-  return {
+// run feeds (never a re-evaluation per run), and its own fun metrics. fedByOfImpl is the bars
+// registry's own fedByOf — the single source of the run refs the pooled fed-by column names.
+export function buildRunBlock(run, pooledBars, fedByOfImpl = fedByRefOf) {
+  const block = {
     runRef: buildRunRef(run),
     bench: run.bench,
     scenarioId: run.scenarioId,
@@ -253,9 +494,11 @@ export function buildRunBlock(run, pooledBars) {
     loadoutId: run.loadoutId,
     seed: run.seed,
     runHash: run.runHash,
-    bars: fedBarsForRun(run, pooledBars),
+    fedByRef: fedByOfImpl(run),
     funMetrics: deriveFunMetrics(run),
   };
+  block.bars = fedBarsForRun(block, pooledBars);
+  return block;
 }
 
 function groupByBenchSeed(rollup, pooledByGroup) {
@@ -287,11 +530,11 @@ function groupByBenchSeed(rollup, pooledByGroup) {
 
 // ── bars registry loading ────────────────────────────────────────────────────────
 
-async function loadEvaluateBars() {
+async function loadFeelBarsModule() {
   try {
     const mod = await import('./lib/bench/feelBars.mjs');
     if (typeof mod.evaluateBars !== 'function') throw new Error('evaluateBars export not found');
-    return mod.evaluateBars;
+    return mod;
   } catch (err) {
     console.error(
       'Fun measurer error: the bars registry scripts/lib/bench/feelBars.mjs (the parallel PQ-173.01 leaf) '
@@ -343,13 +586,20 @@ export function renderRunMarkdown(runBlock, pooledBars) {
   const gaps = (runBlock.funMetrics && runBlock.funMetrics.gaps) || [];
   lines.push(gaps.length === 0
     ? 'Gaps: none — every law metric was measurable for this run.'
-    : `Gaps: ${gaps.map((g) => sanitizeCell(g)).join('; ')}`);
+    : `Gaps: ${[...new Set(gaps)].map((g) => sanitizeCell(g)).join('; ')}`);
   return lines.join('\n');
 }
 
 // One shared bar-table renderer: pooled receipts table (with fed by) and per-run fed tables use the
 // same row format. Long text never goes into a cell and is never truncated — it becomes a full-text
 // note bullet under the table.
+// A value cell in the owner's words: a clause that is a yes/no fact reads yes/no,
+// never "1 bool"; everything else is its number with its unit.
+function valueWord(v) {
+  if (v && v.unit === 'bool') return v.value === 1 ? 'yes' : 'no';
+  return `${fmt(v.value)}${v && v.unit ? ` ${v.unit}` : ''}`;
+}
+
 function renderBarTable(bars, { withFedBy }) {
   const lines = [];
   const notes = [];
@@ -373,8 +623,9 @@ function renderBarRow(bar, withFedBy, notes) {
   const target = cell((bar && bar.target) != null ? String(bar.target) : '—');
   const met = barVerdict(bar);
   const fedByRefs = (bar && Array.isArray(bar.fedBy) ? bar.fedBy : []).map((ref) => cell(String(ref)));
-  const values = (bar && Array.isArray(bar.values) ? bar.values : [])
-    .filter((v) => v && typeof v.value === 'number' && Number.isFinite(v.value));
+  const allRows = (bar && Array.isArray(bar.values) ? bar.values : []).filter(Boolean);
+  const values = allRows.filter((v) => typeof v.value === 'number' && Number.isFinite(v.value));
+  const gaps = allRows.filter((v) => v.unmeasured === true || typeof v.value !== 'number' || !Number.isFinite(v.value));
 
   let valueCell;
   let noteText = '';
@@ -383,13 +634,17 @@ function renderBarRow(bar, withFedBy, notes) {
     noteText = barNotesIfAny(bar, 'this bench cannot measure this bar.');
   } else if (fedByRefs.length === 0) {
     valueCell = 'no feeding run in this measurement';
-  } else if (values.length === 0) {
+  } else if (values.length === 0 && gaps.length === 0) {
     valueCell = 'no finite value in this measurement';
     noteText = barNotesIfAny(bar, 'the feeding run(s) carried no finite value for this bar.');
+  } else if (values.length === 0) {
+    valueCell = gaps.map((v) => `${cell(String(v.label))}: unmeasured`).join('<br>');
+    noteText = barNotesIfAny(bar, 'the feeding run(s) carried no finite value for this bar.');
   } else {
-    valueCell = values
-      .map((v) => `${cell(String(v.label))}: ${fmt(v.value)}${v.unit ? ` ${v.unit}` : ''}`)
-      .join('<br>');
+    valueCell = [
+      ...values.map((v) => `${cell(String(v.label))}: ${valueWord(v)}`),
+      ...gaps.map((v) => `${cell(String(v.label))}: unmeasured`),
+    ].join('<br>');
     noteText = barNotesIfAny(bar, '');
   }
 
@@ -424,18 +679,35 @@ function barVerdict(bar) {
   return '—';
 }
 
-function firstValue(bar) {
-  const v = bar && bar.values && bar.values[0] && bar.values[0].value;
-  return typeof v === 'number' && Number.isFinite(v) ? v : null;
+// Finite numeric value rows of a bar, paired across before/after by a run-count-normalized
+// label key: labels embed "(worst of N run(s))" facts that differ between two measurements
+// of the same seeds, so the pairing key strips the trailing parenthetical.
+function finiteRows(bar) {
+  return (bar && Array.isArray(bar.values) ? bar.values : [])
+    .map((v, i) => ({
+      rawLabel: v && typeof v.label === 'string' ? v.label : `row ${i + 1}`,
+      value: v && typeof v.value === 'number' && Number.isFinite(v.value) ? v.value : null,
+      unit: v && typeof v.unit === 'string' ? v.unit : '',
+      met: v && v.met === true ? true : v && v.met === false ? false : undefined,
+    }))
+    .filter((r) => r.value !== null)
+    .map((r) => ({
+      label: r.rawLabel,
+      key: r.rawLabel.replace(/\s*\([^)]*run\(s?\)[^)]*\)\s*$/, '').trim() || r.rawLabel,
+      value: r.value,
+      unit: r.unit,
+      met: r.met,
+    }));
 }
 
+// Bar-level verdict, strict: the registry's met is the only authority. A bar whose clauses
+// cannot decide (met null) renders '—' everywhere — the same verdict its receipt shows.
+// Value rows keep their own per-clause met for row-level diffing, but they can never
+// promote the bar. (Same rule as barVerdict; kept separate for the different null text.)
 function metState(bar) {
   if (!bar) return '—';
   if (bar.met === true) return 'yes';
   if (bar.met === false) return 'no';
-  const v = Array.isArray(bar.values) && bar.values[0] ? bar.values[0].met : undefined;
-  if (v === true) return 'yes';
-  if (v === false) return 'no';
   return '—';
 }
 
@@ -633,31 +905,54 @@ export function buildMeasureDiff(beforeSummary, afterSummary, { timestamp } = {}
         notes.push(`bar ${afterBar.id} present only in after for ${afterRun.runRef}`);
         continue;
       }
-      const bv = firstValue(beforeBar);
-      const av = firstValue(afterBar);
-      if (bv === null || av === null) {
-        notes.push(`bar ${afterBar.id} on ${afterRun.runRef} has no numeric value (${bv === null ? 'before' : 'after'} side); skipped`);
+      const target = afterBar.target != null ? afterBar.target : beforeBar.target;
+      // Pair EVERY value row by label: a multi-clause bar (B6, B13, B7/B8/B11, and any row the
+      // bar-feed seam adds) regresses in any row, not just its headline. A diff that read only
+      // row 1 could call a real regression KEEP.
+      const afterRows = finiteRows(afterBar);
+      const beforeRows = finiteRows(beforeBar);
+      const rows = [];
+      for (const ar of afterRows) {
+        const br = beforeRows.find((r) => r.key === ar.key);
+        if (!br) {
+          notes.push(`bar ${afterBar.id} row "${ar.label}" present only in after for ${afterRun.runRef}`);
+          continue;
+        }
+        const rowMetBefore = br.met === true ? 'yes' : br.met === false ? 'no' : '—';
+        const rowMetAfter = ar.met === true ? 'yes' : ar.met === false ? 'no' : '—';
+        const { delta, direction } = diffDirection(br.value, ar.value, target, rowMetBefore, rowMetAfter);
+        rows.push({ label: ar.label, unit: ar.unit, before: br.value, after: ar.value, delta, direction });
+      }
+      for (const br of beforeRows) {
+        if (!afterRows.some((r) => r.key === br.key)) {
+          notes.push(`bar ${afterBar.id} row "${br.label}" present only in before for ${afterRun.runRef}`);
+        }
+      }
+      if (rows.length === 0) {
+        notes.push(`bar ${afterBar.id} on ${afterRun.runRef} has no numeric value row on both sides; skipped`);
         continue;
       }
       // Tri-state: the registry's bar-level met is the authority; a bar whose clauses
       // cannot decide (met null) must render as '—', never collapse to 'no'.
       const metBefore = metState(beforeBar);
       const metAfter = metState(afterBar);
-      const { delta, direction } = diffDirection(
-        bv, av,
-        afterBar.target != null ? afterBar.target : beforeBar.target,
-        metBefore, metAfter,
-      );
+      const headline = rows[0];
+      // §3.6, worst row wins: any away row is a regression; an undecidable row reverts; ties revert.
+      let direction = 'unchanged';
+      for (const rank of ['away', 'unknown', 'toward']) {
+        if (rows.some((r) => r.direction === rank)) { direction = rank; break; }
+      }
       bars.push({
         id: afterBar.id,
         title: afterBar.title || beforeBar.title || '',
-        before: bv,
-        after: av,
-        delta,
-        target: afterBar.target != null ? afterBar.target : beforeBar.target,
+        before: headline.before,
+        after: headline.after,
+        delta: headline.delta,
+        target,
         direction,
         metBefore,
         metAfter,
+        rows,
       });
     }
     for (const beforeBar of beforeRun.bars || []) {
@@ -744,6 +1039,16 @@ export function renderDiffMarkdown(diff) {
         lines.push(`| ${sanitizeCell(String(bar.id))}${bar.title ? ` ${sanitizeCell(String(bar.title))}` : ''} | ${fmt(bar.before)} | ${fmt(bar.after)} | ${signed(bar.delta)} | ${sanitizeCell(String(bar.target ?? '—'))} | ${bar.direction} | ${bar.metBefore} → ${bar.metAfter} |`);
       }
       lines.push('');
+      const multiRow = run.bars.filter((bar) => Array.isArray(bar.rows) && bar.rows.length > 1);
+      if (multiRow.length > 0) {
+        lines.push('Row detail — every value row of the multi-clause bars above, each with its own direction:');
+        for (const bar of multiRow) {
+          for (const row of bar.rows) {
+            lines.push(`- ${bar.id} ${sanitizeCell(String(row.label))}: ${fmt(row.before)} → ${fmt(row.after)} (${signed(row.delta)}, ${row.direction})`);
+          }
+        }
+        lines.push('');
+      }
     }
     if (run.funMetrics.length === 0) {
       lines.push('Fun metrics: none numerically measurable on both sides for this run.');

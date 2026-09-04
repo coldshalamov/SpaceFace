@@ -178,27 +178,49 @@ function mergeRunProvidedBars(bar, list) {
     const entries = run && run.metrics && Array.isArray(run.metrics.bars) ? run.metrics.bars : [];
     for (const item of entries) {
       if (!item || (item.bar !== bar.id && item.bar !== bar.key)) continue;
-      const value = entry(item.label || bar.id, Number(item.value), item.unit || "", item.met === true);
-      if (!value) continue;
-      provided.push(value);
+      const row = providedBarRow(item, bar);
+      if (!row) continue;
+      provided.push(row);
       const ref = fedByOf(run);
       if (!fedBy.includes(ref)) fedBy.push(ref);
-      if (item.note) notes.push(String(item.note));
+      if (row.unmeasured) {
+        notes.push(row.note || `${row.label} unmeasured`);
+      } else if (item.note) {
+        notes.push(String(item.note));
+      }
     }
   }
   if (!provided.length) return;
-  // The static notes on a bar describe the inline STAND-IN scenarios ("unbenched", "scenario
-  // constant", "not instrumented"). Once a real-path module feeds rows for this bar, those notes
-  // would read to the owner as "still unmeasured" beside a measured number — drop them and keep
-  // only what the feeding runs said (FORCE, 2026-09-04).
-  bar.notes = "";
+  const priorMet = bar.met;
+  const priorHadValues = Array.isArray(bar.values) && bar.values.length > 0;
+  const priorNotes = bar.notes || "";
+  const providedHasGap = provided.some((row) => row.unmeasured === true);
   bar.values = [...(bar.values || []), ...provided];
   const existingFed = bar.fedBy || [];
   bar.fedBy = [...existingFed, ...fedBy.filter((ref) => !existingFed.includes(ref))];
   bar.reachable = true;
   if (bar.coverage !== "full") bar.coverage = "partial";
-  bar.met = verdictFromValues(bar.values);
-  if (notes.length) bar.notes = [bar.notes, ...notes].filter(Boolean).join(" ");
+  const fromValues = verdictFromValues(bar.values);
+  // Completeness is explicit: an unmeasured/null provided row is a named gap, never a
+  // Number() zero, and a numeric subset must not promote a false/null evaluator status.
+  // An empty evaluator (B9, superseded stand-in) may still be established by a complete
+  // finite provided set.
+  let nextMet;
+  if (priorMet === false || fromValues === false) {
+    nextMet = false;
+  } else if (providedHasGap) {
+    nextMet = null;
+  } else if (priorMet === true) {
+    nextMet = true;
+  } else if (priorHadValues) {
+    nextMet = null;
+  } else {
+    nextMet = fromValues;
+  }
+  bar.met = nextMet;
+  // Stand-in "still unmeasured" notes would lie beside a fully established bar; keep them
+  // whenever the merge cannot claim a pass.
+  bar.notes = nextMet === true ? notes.join(" ") : [priorNotes, ...notes].filter(Boolean).join(" ");
 }
 
 function finish(bar, { values = [], coverage = "none", notes = [], fedBy = [], met } = {}) {
@@ -218,8 +240,50 @@ function finish(bar, { values = [], coverage = "none", notes = [], fedBy = [], m
 }
 
 function verdictFromValues(values) {
-  if (!values.length) return null;
-  return values.every((value) => value.met === true);
+  const rows = Array.isArray(values) ? values : [];
+  if (!rows.length) return null;
+  let hasMeasured = false;
+  let hasGap = false;
+  let hasMeasuredFail = false;
+  for (const value of rows) {
+    if (!value) continue;
+    if (value.unmeasured === true || !Number.isFinite(value.value) || typeof value.value !== "number") {
+      hasGap = true;
+      continue;
+    }
+    hasMeasured = true;
+    if (value.met !== true) hasMeasuredFail = true;
+  }
+  if (hasMeasuredFail) return false;
+  if (hasGap || !hasMeasured) return null;
+  return true;
+}
+
+function finiteNumber(value) {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+/** Scenario-provided bar row: never Number()-coerce null/undefined/string/unmeasured into a zero. */
+function providedBarRow(item, bar) {
+  const label = item.label || bar.id;
+  const unit = typeof item.unit === "string" ? item.unit : "";
+  const note = item.note != null && String(item.note).trim() ? String(item.note) : "";
+  const missing = item.unmeasured === true || item.value === null || item.value === undefined;
+  if (missing) {
+    return {
+      label,
+      value: null,
+      unit,
+      met: false,
+      unmeasured: true,
+      ...(note ? { note } : {}),
+    };
+  }
+  const value = finiteNumber(item.value);
+  if (value == null) return null;
+  const row = { label, value, unit, met: item.met === true };
+  if (note) row.note = note;
+  return row;
 }
 
 function scenarioRuns(list, scenarioId) {
@@ -251,8 +315,8 @@ function worstMetric(runs, read, mode) {
   let worst = null;
   let n = 0;
   for (const run of runs) {
-    const value = Number(read(run));
-    if (!Number.isFinite(value)) continue;
+    const value = finiteNumber(read(run));
+    if (value == null) continue;
     n += 1;
     if (worst == null || (mode === "min" ? value < worst : value > worst)) worst = value;
   }
@@ -260,8 +324,9 @@ function worstMetric(runs, read, mode) {
 }
 
 function entry(label, value, unit, met) {
-  if (!Number.isFinite(value)) return null;
-  return { label, value, unit, met: met === true };
+  const n = finiteNumber(value);
+  if (n == null) return null;
+  return { label, value: n, unit, met: met === true };
 }
 
 function evaluateUnreachable(bar) {
@@ -544,13 +609,7 @@ function evaluateB11(bar, list) {
 }
 
 function evaluateB13(bar, list) {
-  const crucibleRuns = list.filter(
-    (run) =>
-      run.bench === "crucible"
-      && run.metrics
-      && Number.isFinite(run.metrics.playerKnockEventsPerMin)
-      && Number.isFinite(run.metrics.maxPlayerKnockFraction),
-  );
+  const crucibleRuns = list.filter((run) => run.bench === "crucible");
   const verbRuns = scenarioRuns(list, "feel.knock_budget");
   if (!crucibleRuns.length && !verbRuns.length) {
     return finish(bar, {
@@ -562,29 +621,99 @@ function evaluateB13(bar, list) {
   const notes = [];
   const values = [];
   const fedBy = [...crucibleRuns, ...verbRuns].map(fedByOf);
+  let missingRequired = false;
+  let measuredFail = false;
+
+  function pushWorst(runs, read, label, unit, pass) {
+    let worst = null;
+    let n = 0;
+    let holes = false;
+    for (const run of runs) {
+      const value = read(run);
+      if (typeof value !== "number" || !Number.isFinite(value)) {
+        holes = true;
+        continue;
+      }
+      n += 1;
+      if (worst == null || value > worst) worst = value;
+    }
+    if (worst != null) {
+      const ok = pass(worst);
+      values.push(entry(`${label} (worst of ${n} run(s))`, worst, unit, ok));
+      if (!ok) measuredFail = true;
+    } else {
+      missingRequired = true;
+    }
+    if (holes) missingRequired = true;
+    return holes;
+  }
+
   if (crucibleRuns.length) {
-    const rate = worstMetric(crucibleRuns, (run) => run.metrics.playerKnockEventsPerMin, "max");
-    const max = worstMetric(crucibleRuns, (run) => run.metrics.maxPlayerKnockFraction, "max");
-    values.push(entry(`contact knocks per minute on the player, crucible (worst of ${rate.n} run(s))`, rate.value, "events/min", rate.value <= 2));
-    values.push(entry(`largest single knock, fraction of cruise, crucible (worst of ${max.n} run(s))`, max.value, "fraction", max.value <= 0.1));
+    const rateHoles = pushWorst(
+      crucibleRuns,
+      (run) => run.metrics && run.metrics.playerKnockEventsPerMin,
+      "contact knocks per minute on the player, crucible",
+      "events/min",
+      (value) => value <= 2,
+    );
+    const fracHoles = pushWorst(
+      crucibleRuns,
+      (run) => run.metrics && run.metrics.maxPlayerKnockFraction,
+      "largest single knock, fraction of cruise, crucible",
+      "fraction",
+      (value) => value <= 0.1,
+    );
+    const headingHoles = pushWorst(
+      crucibleRuns,
+      (run) => run.metrics && run.metrics.headingChangeEvents,
+      "knock events that changed the player's heading, crucible",
+      "events",
+      (value) => value === 0,
+    );
+    const jitterMeasuredOnAll = crucibleRuns.every((run) => run.metrics && run.metrics.jitterMeasured === true);
+    if (!jitterMeasuredOnAll) {
+      missingRequired = true;
+      notes.push("visible jitter is unmeasured on this headless Crucible path; a full B13 pass is impossible.");
+    }
+    if (rateHoles) notes.push("at least one Crucible run has no finite knock rate; it is retained, not filtered away.");
+    if (fracHoles) notes.push("at least one Crucible run has no finite knock fraction of cruise; it is retained, not filtered away.");
+    if (headingHoles) notes.push("at least one Crucible run has no measured heading-change count.");
     notes.push("crucible knock counts come from short wave runs (~25 s of flight), not the contract's ten minutes of ordinary flight.");
   }
   if (verbRuns.length) {
-    const rate = worstMetric(verbRuns, (run) => run.metrics && run.metrics.knockEventsPerMinute, "max");
-    const max = worstMetric(verbRuns, (run) => run.metrics && run.metrics.maxKnockDeltaVFractionOfCruise, "max");
-    const heading = worstMetric(verbRuns, (run) => run.metrics && run.metrics.headingChangeEvents, "max");
-    if (rate.value != null) {
-      values.push(entry(`contact knocks per minute on the player, verbs feel.knock_budget (worst of ${rate.n} run(s))`, rate.value, "events/min", rate.value <= 2));
+    const rateHoles = pushWorst(
+      verbRuns,
+      (run) => run.metrics && run.metrics.knockEventsPerMinute,
+      "contact knocks per minute on the player, verbs feel.knock_budget",
+      "events/min",
+      (value) => value <= 2,
+    );
+    const fracHoles = pushWorst(
+      verbRuns,
+      (run) => run.metrics && run.metrics.maxKnockDeltaVFractionOfCruise,
+      "largest single knock, fraction of cruise, verbs feel.knock_budget",
+      "fraction",
+      (value) => value <= 0.1,
+    );
+    const headingHoles = pushWorst(
+      verbRuns,
+      (run) => run.metrics && run.metrics.headingChangeEvents,
+      "knock events that changed the player's heading",
+      "events",
+      (value) => value === 0,
+    );
+    const jitterMeasuredOnAll = verbRuns.every((run) => run.metrics && run.metrics.jitterMeasured === true);
+    if (!jitterMeasuredOnAll) {
+      missingRequired = true;
+      notes.push("visible jitter is unmeasured on the headless verb knock-budget path; a full B13 pass is impossible.");
     }
-    if (max.value != null) {
-      values.push(entry(`largest single knock, fraction of cruise, verbs feel.knock_budget (worst of ${max.n} run(s))`, max.value, "fraction", max.value <= 0.1));
-    }
-    if (heading.value != null) {
-      values.push(entry(`knock events that changed the player's heading (worst of ${heading.n} run(s); contract target zero)`, heading.value, "events", heading.value === 0));
+    if (rateHoles || fracHoles || headingHoles) {
+      notes.push("a feel.knock_budget run is missing a required component and cannot hide behind a complete sibling.");
     }
   }
-  notes.push("the visible-jitter clause and the legible-deliberate-event clause are unbenched.");
-  return finish(bar, { values, coverage: "partial", fedBy, notes });
+  notes.push("the visible-jitter clause and the legible-deliberate-event clause are unbenched unless a headed capture sets jitterMeasured.");
+  const met = measuredFail ? false : (missingRequired ? null : verdictFromValues(values));
+  return finish(bar, { values, coverage: "partial", fedBy, notes, met });
 }
 
 const BAR_EVALUATORS = {

@@ -16,7 +16,19 @@ import {
   buildMeasureDiff,
   renderDiffMarkdown,
   parseTargetDirection,
+  compareCompatibleSweeps,
+  listFunLoopHarnessFiles,
+  computeFunLoopHarnessDigest,
+  computeProductionSourceIdentity,
 } from '../scripts/measure-fun-loop.mjs';
+import { spawnSync, execFile } from 'node:child_process';
+import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { promisify } from 'node:util';
+import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
+
+const execFileAsync = promisify(execFile);
 
 const HASH64 = (c) => c.repeat(64);
 
@@ -46,7 +58,9 @@ function crucibleRunWithTrace() {
       nothingHappenedSeconds: 0,
       playerKnockEventsPerMin: 1.2,
       maxPlayerKnockFraction: 0.06,
-      b13Met: true,
+      headingChangeEvents: 0,
+      jitterMeasured: false,
+      b13Met: null,
       wavesCleared: 3,
     },
     eventTrace: [
@@ -93,10 +107,12 @@ test('deriveFunMetrics derives consequences, first consequence, moments, deaths 
     eventsPerMinute: 1.2,
     maxDeltaVFractionOfCruise: 0.06,
     headingChangeEvents: 0,
-    met: true,
+    jitterMeasured: false,
+    met: null,
     source: 'run',
   });
-  assert.deepEqual(fm.gaps, [], `no metric should be null for a dense crucible trace, got gaps: ${fm.gaps.join('; ')}`);
+  assert.ok(fm.gaps.some((g) => /jitter/.test(g)), `headless jitter must be named, got gaps: ${fm.gaps.join('; ')}`);
+  assert.ok(fm.gaps.every((g) => /jitter/.test(g)), 'dense trace should only gap on unmeasured jitter');
 });
 
 test('honesty: a flight run (sample-only trace) degrades to nulls, each with a gap string — nothing fabricated', () => {
@@ -157,9 +173,11 @@ test('knock budget mapping: feel.knock_budget verb run (source scenario) and cru
     eventsPerMinute: 1.0,
     maxDeltaVFractionOfCruise: 0.08,
     headingChangeEvents: 0,
-    met: true,
+    jitterMeasured: false,
+    met: null,
     source: 'scenario',
   });
+  assert.ok(verbRun.gaps.some((g) => /jitter/.test(g)));
 
   // Crucible run at 20% of cruise — over the 10% ceiling → met false, source 'run'.
   const crucibleRun = deriveFunMetrics({
@@ -196,7 +214,8 @@ function barFixture(id, target, value, met, overrides = {}) {
     target,
     reachable: overrides.reachable !== false,
     coverage: overrides.coverage || 'full',
-    values: value === null ? [] : [{ label: 'x', value, unit: overrides.unit || '', met }],
+    values: overrides.values
+      || (value === null ? [] : [{ label: 'x', value, unit: overrides.unit || '', met }]),
     met,
     notes: overrides.notes || '',
     fedBy: overrides.fedBy !== undefined ? overrides.fedBy : ['crucible/helios_core/physics_toolkit/s4242'],
@@ -321,6 +340,248 @@ test('diff mode: B7 stretch regression (0.09 met → 0.12 unmet) is away + REVER
   assert.ok(renderDiffMarkdown(diff).includes('Verdict: REVERT'));
 });
 
+test('diff mode: a regression in ANY value row of a multi-clause bar reverts, never just the headline row', () => {
+  // Optimizer-sweep defect: the diff used to read only each bar's first value row, so B6's
+  // hull-loss clause could collapse 0.9 → 0.2 while the diff said "unchanged" and kept the change.
+  const b6Rows = (dies, hull, helm, hullMet) => ([
+    { label: `light hostile dies at ≥ 75 % of cruise closing (ran at 76 % of cruise, 1 run(s))`, value: dies, unit: 'bool', met: dies === 1 },
+    { label: 'hull lost at ≥ 50 % of cruise closing (worst of 1 run(s))', value: hull, unit: 'fraction', met: hullMet },
+    { label: 'helm lost at ≥ 50 % of cruise closing (1 run(s))', value: helm, unit: 'bool', met: helm === 1 },
+  ]);
+  const before = measureSummaryFixture(
+    [
+      barFixture('B4', 'shove ΔV ≥ 30 % of light-hostile cruise per hit (starter gun ≥ 5 %)', 0.15, false),
+      { ...barFixture('B6', 'dies at ≥ 75 % cruise closing; ≥ 60 % hull + helm lost at ≥ 50 %; heavy ≤ 15 %', null, null), values: b6Rows(1, 0.9, 1, true) },
+    ],
+    funMetricsFixture(1),
+    '2026-09-03T10:00:00.000Z',
+  );
+  const after = measureSummaryFixture(
+    [
+      barFixture('B4', 'shove ΔV ≥ 30 % of light-hostile cruise per hit (starter gun ≥ 5 %)', 0.31, false),
+      { ...barFixture('B6', 'dies at ≥ 75 % cruise closing; ≥ 60 % hull + helm lost at ≥ 50 %; heavy ≤ 15 %', null, null), values: b6Rows(1, 0.2, 1, false) },
+    ],
+    funMetricsFixture(3),
+    '2026-09-03T12:00:00.000Z',
+  );
+
+  const diff = buildMeasureDiff(before, after, { timestamp: '2026-09-03T14:00:00.000Z' });
+  const b6 = diff.runs[0].bars.find((b) => b.id === 'B6');
+  assert.ok(Array.isArray(b6.rows) && b6.rows.length === 3, 'every paired value row is carried in the diff');
+  const hullRow = b6.rows.find((r) => /hull lost/.test(r.label));
+  assert.equal(hullRow.direction, 'away', 'the hull-loss clause regressed 0.9 → 0.2');
+  assert.equal(b6.direction, 'away', 'the bar inherits its worst row (§3.6: no bar may regress)');
+  assert.equal(diff.verdict, 'REVERT', 'a non-headline regression must revert, not KEEP');
+  const md = renderDiffMarkdown(diff);
+  assert.ok(md.includes('Verdict: REVERT'));
+  assert.ok(md.includes('Row detail'), 'multi-row bars explain themselves in the diff');
+});
+
+test('diff met columns are strictly bar-level: a met-null bar reads "—" in the diff, same as its receipt', async () => {
+  const { evaluateBars, fedByOf } = await import('../scripts/lib/bench/feelBars.mjs');
+  const ropeRun = {
+    bench: 'verbs',
+    scenarioId: 'feel.rope_swing_release',
+    seed: 4242,
+    metrics: { speedRetainedFraction: 0.958, maxStretchRatio: 0.103 },
+    eventTrace: [],
+  };
+  const pooled = evaluateBars([ropeRun]).bars;
+  const before = measureSummaryFixture(pooled, funMetricsFixture(1), '2026-09-03T10:00:00.000Z');
+  const ropeAfter = { ...ropeRun, metrics: { speedRetainedFraction: 0.97, maxStretchRatio: 0.09 } };
+  const after = measureSummaryFixture(evaluateBars([ropeAfter]).bars, funMetricsFixture(1), '2026-09-03T12:00:00.000Z');
+
+  const diff = buildMeasureDiff(before, after, { timestamp: '2026-09-03T14:00:00.000Z' });
+  const b1 = diff.runs[0].bars.find((b) => b.id === 'B1');
+  assert.equal(b1.metBefore, '—', 'B1 met null must render "—" in the diff, exactly like its receipt');
+  assert.equal(b1.metAfter, '—');
+  assert.equal(fedByOf(ropeRun), 'verbs/feel.rope_swing_release/s4242');
+});
+
+test('consequencesPerAction is null with a gap when the trace records no player action', () => {
+  const noShots = deriveFunMetrics({
+    bench: 'crucible',
+    arenaId: 'helios_core',
+    loadoutId: 'energy_baseline',
+    seed: 4242,
+    metrics: { totalShots: 0 },
+    eventTrace: [
+      { tick: 60, type: 'entity:killed', data: { cause: 'weapon' } },
+      { tick: 120, type: 'entity:killed', data: { cause: 'weapon' } },
+    ],
+  });
+  assert.equal(noShots.consequencesPerAction, null, 'consequences with zero actions are not a rate');
+  assert.ok(noShots.gaps.some((g) => /no player action/.test(g)), 'the gap names the missing actions');
+
+  const noTraceNoShots = deriveFunMetrics({
+    bench: 'crucible',
+    arenaId: 'helios_core',
+    loadoutId: 'energy_baseline',
+    seed: 4242,
+    metrics: { totalKills: 5, totalShots: 0 },
+  });
+  assert.equal(noTraceNoShots.consequencesPerAction, null);
+  assert.ok(noTraceNoShots.gaps.some((g) => /no shot total/.test(g)));
+});
+
+test('buildRunBlock threads the registry fedByOf as fedByRef; local fallback only for fixtures', async () => {
+  const { fedByOf } = await import('../scripts/lib/bench/feelBars.mjs');
+  const crucibleRun = { bench: 'crucible', arenaId: 'helios_core', loadoutId: 'physics_toolkit', seed: 4242, metrics: {}, eventTrace: [] };
+  const verbRun = { bench: 'verbs', scenarioId: 'feel.knock_budget', seed: 4242, metrics: {}, eventTrace: [] };
+
+  const threaded = buildRunBlock(crucibleRun, [], fedByOf);
+  assert.equal(threaded.fedByRef, 'crucible/helios_core/physics_toolkit/s4242', 'production blocks carry the registry ref');
+
+  const fallbackVerb = buildRunBlock(verbRun, []);
+  assert.equal(fallbackVerb.fedByRef, 'verbs/feel.knock_budget/s4242', 'fixture fallback matches the registry format');
+  assert.equal(fallbackVerb.fedByRef, fedByOf(verbRun), 'fallback and registry agree today');
+});
+
+test('crucible knockBudget cannot pass when heading is unmeasured even if rate and magnitude look calm', () => {
+  const calmButBlind = deriveFunMetrics({
+    bench: 'crucible',
+    arenaId: 'helios_core',
+    loadoutId: 'energy_baseline',
+    seed: 4242,
+    metrics: {
+      playerKnockEventsPerMin: 0.4,
+      maxPlayerKnockFraction: 0.02,
+    },
+  });
+  assert.notEqual(calmButBlind.knockBudget.met, true, 'missing heading is not a pass');
+  assert.ok(calmButBlind.gaps.some((g) => /heading/.test(g)));
+  assert.ok(calmButBlind.gaps.some((g) => /jitter/.test(g)));
+
+  const withHeading = deriveFunMetrics({
+    bench: 'crucible',
+    arenaId: 'helios_core',
+    loadoutId: 'energy_baseline',
+    seed: 4242,
+    metrics: {
+      playerKnockEventsPerMin: 0.4,
+      maxPlayerKnockFraction: 0.02,
+      headingChangeEvents: 0,
+      jitterMeasured: false,
+    },
+  });
+  assert.notEqual(withHeading.knockBudget.met, true, 'headless jitter never full-passes B13');
+  assert.equal(withHeading.knockBudget.met, null);
+  assert.equal(withHeading.knockBudget.headingChangeEvents, 0);
+  assert.equal(withHeading.knockBudget.jitterMeasured, false);
+});
+
+test('compareCompatibleSweeps matches only the same harness digest, source identity, and unique cell hashes', () => {
+  const digest = 'a'.repeat(64);
+  const otherDigest = 'b'.repeat(64);
+  const source = {
+    gitHead: '1'.repeat(40),
+    gitTree: '2'.repeat(40),
+    productionDirty: false,
+    productionDiffHash: '3'.repeat(64),
+  };
+  const otherSource = { ...source, gitHead: '9'.repeat(40) };
+  const sweep = (harnessDigest, hashA, hashB, extra = {}) => ({
+    harnessDigest,
+    sourceIdentity: extra.sourceIdentity || source,
+    benches: extra.benches || {
+      crucible: {
+        runs: [
+          { bench: 'crucible', arenaId: 'helios_core', loadoutId: 'energy_baseline', seed: 4242, runHash: hashA },
+          { bench: 'crucible', arenaId: 'helios_core', loadoutId: 'physics_toolkit', seed: 4242, runHash: hashB },
+        ],
+      },
+    },
+  });
+
+  const noDigest = compareCompatibleSweeps(sweep(null, HASH64('1'), HASH64('2')), sweep(digest, HASH64('1'), HASH64('2')));
+  assert.equal(noDigest.compatible, false);
+  assert.equal(noDigest.identical, false);
+
+  const mismatchHarness = compareCompatibleSweeps(
+    sweep(digest, HASH64('1'), HASH64('2')),
+    sweep(otherDigest, HASH64('1'), HASH64('2')),
+  );
+  assert.equal(mismatchHarness.compatible, false);
+  assert.equal(mismatchHarness.identical, false);
+
+  const mismatchSource = compareCompatibleSweeps(
+    sweep(digest, HASH64('1'), HASH64('2')),
+    sweep(digest, HASH64('1'), HASH64('2'), { sourceIdentity: otherSource }),
+  );
+  assert.equal(mismatchSource.compatible, false);
+  assert.equal(mismatchSource.identical, false);
+
+  const mismatchCell = compareCompatibleSweeps(
+    sweep(digest, HASH64('1'), HASH64('2')),
+    sweep(digest, HASH64('1'), HASH64('9')),
+  );
+  assert.equal(mismatchCell.compatible, true);
+  assert.equal(mismatchCell.identical, false);
+
+  const match = compareCompatibleSweeps(
+    sweep(digest, HASH64('1'), HASH64('2')),
+    sweep(digest, HASH64('1'), HASH64('2')),
+  );
+  assert.equal(match.compatible, true);
+  assert.equal(match.identical, true);
+
+  const empty = compareCompatibleSweeps(
+    { harnessDigest: digest, sourceIdentity: source, benches: { crucible: { runs: [] } } },
+    { harnessDigest: digest, sourceIdentity: source, benches: { crucible: { runs: [] } } },
+  );
+  assert.equal(empty.compatible, false, 'two empty sweeps must not match');
+  assert.equal(empty.identical, false);
+
+  const missingHash = compareCompatibleSweeps(
+    sweep(digest, HASH64('1'), HASH64('2')),
+    sweep(digest, HASH64('1'), HASH64('2'), {
+      benches: {
+        crucible: {
+          runs: [
+            { bench: 'crucible', arenaId: 'helios_core', loadoutId: 'energy_baseline', seed: 4242, runHash: HASH64('1') },
+            { bench: 'crucible', arenaId: 'helios_core', loadoutId: 'physics_toolkit', seed: 4242, runHash: null },
+          ],
+        },
+      },
+    }),
+  );
+  assert.equal(missingHash.compatible, false);
+
+  const duplicates = compareCompatibleSweeps(
+    {
+      harnessDigest: digest,
+      sourceIdentity: source,
+      benches: {
+        crucible: {
+          runs: [
+            { bench: 'crucible', arenaId: 'helios_core', loadoutId: 'energy_baseline', seed: 4242, runHash: HASH64('1') },
+            { bench: 'crucible', arenaId: 'helios_core', loadoutId: 'energy_baseline', seed: 4242, runHash: HASH64('9') },
+          ],
+        },
+      },
+    },
+    sweep(digest, HASH64('1'), HASH64('2')),
+  );
+  assert.equal(duplicates.compatible, false);
+
+  const differentKeys = compareCompatibleSweeps(
+    sweep(digest, HASH64('1'), HASH64('2')),
+    {
+      harnessDigest: digest,
+      sourceIdentity: source,
+      benches: {
+        crucible: {
+          runs: [
+            { bench: 'crucible', arenaId: 'lagrange_crucible', loadoutId: 'energy_baseline', seed: 4242, runHash: HASH64('1') },
+            { bench: 'crucible', arenaId: 'helios_core', loadoutId: 'physics_toolkit', seed: 4242, runHash: HASH64('2') },
+          ],
+        },
+      },
+    },
+  );
+  assert.equal(differentKeys.compatible, false);
+});
+
 // ── receipt rendering (PQ-173.01 defects 1-3): pooled §B table once per receipt ──
 
 test('markdown hygiene: pooled table carries all 13 bar rows, full untruncated notes, no repo paths, no ellipsis, no "not part of this measurement"', () => {
@@ -442,7 +703,9 @@ test('pooled B13 on a crucible receipt: fed-by names the crucible run and the ru
   assert.ok(b13, 'the pooled table must carry a B13 row');
   assert.ok(b13.includes('1.2') && b13.includes('events/min'), `B13 must show 1.2 events/min, got: ${b13}`);
   assert.ok(b13.includes('crucible/helios_core/physics_toolkit/s4242'), `B13 fed-by must name the crucible run, got: ${b13}`);
-  assert.ok(/\| yes \| crucible\//.test(b13), `in-budget crucible knocks must be met=yes, got: ${b13}`);
+  assert.equal(/\| yes \| crucible\//.test(b13), false, `incomplete headless Crucible evidence must not pin met=yes, got: ${b13}`);
+  assert.ok(/\| — \| crucible\//.test(b13), `unmeasured jitter keeps the full B13 verdict undecidable, got: ${b13}`);
+  assert.ok(md.toLowerCase().includes('jitter'), 'receipt must name visible jitter as unmeasured');
 
   const runSection = md.slice(md.indexOf('Bars this run feeds'), md.indexOf('Fun metrics'));
   const fedIds = [...runSection.matchAll(/^\| (B\d+) /gm)].map((m) => m[1]);
@@ -488,10 +751,125 @@ test('integration: knock scenario through evaluateBars + deriveFunMetrics once t
   const fm = deriveFunMetrics(run);
   assert.ok(fm.knockBudget, 'the knock scenario run must yield a knock budget');
   assert.equal(fm.knockBudget.source, 'scenario');
+  assert.notEqual(fm.knockBudget.met, true, 'headless knock scenario cannot full-pass B13');
 
   const evaluated = evaluateBars([run]);
   const b13 = (evaluated.bars || []).find((b) => /13|knock/i.test(`${b.id ?? ''} ${b.key ?? ''} ${b.title ?? ''}`));
   assert.ok(b13, 'evaluateBars must expose the B13 knock-budget bar');
   const value = b13.values && b13.values[0] ? b13.values[0].value : undefined;
   assert.equal(typeof value, 'number', `B13 must carry a numeric value for the knock scenario run (values: ${JSON.stringify(b13.values)})`);
+  assert.notEqual(b13.met, true, 'pooled B13 cannot full-pass without measured jitter');
+});
+
+test('harness digest lists scenario modules and realPath, sorted, without receipt files', () => {
+  const files = listFunLoopHarnessFiles();
+  assert.ok(files.includes('scripts/lib/bench/realPath.mjs'));
+  assert.ok(files.includes('scripts/lib/bench/knockModel.mjs'));
+  assert.ok(files.some((f) => f.startsWith('scripts/lib/bench/scenarios/') && f.endsWith('.mjs')));
+  assert.ok(!files.some((f) => /receipts|contact-sheet|strip-manifest/.test(f)));
+  assert.deepEqual(files, [...files].sort((a, b) => a.localeCompare(b)));
+  const again = listFunLoopHarnessFiles();
+  assert.deepEqual(again, files, 'listing is deterministic');
+  const digest = computeFunLoopHarnessDigest();
+  assert.equal(typeof digest, 'string');
+  assert.equal(digest.length, 64);
+  const identity = computeProductionSourceIdentity();
+  assert.equal(typeof identity.gitHead, 'string');
+  assert.equal(identity.gitHead.length, 40);
+  assert.equal(typeof identity.gitTree, 'string');
+  assert.equal(typeof identity.productionDiffHash, 'string');
+  assert.equal(identity.productionDiffHash.length, 64);
+});
+
+test('owner output: provided unmeasured null never renders as numeric zero and keeps fed-by/note', () => {
+  const run = {
+    bench: 'verbs',
+    scenarioId: 'world.reaction_trio',
+    seed: 4242,
+    runHash: HASH64('u'),
+    metrics: {
+      bars: [{
+        bar: 'B10',
+        label: 'patrol decides stay-or-chase after a witnessed kill',
+        value: null,
+        unit: 's',
+        met: false,
+        unmeasured: true,
+        note: 'UNMEASURED — player had no body. This is not a reading of the world.',
+      }],
+    },
+    eventTrace: [],
+  };
+  const pooled = evaluateBars([run]);
+  const b10 = pooled.bars.find((bar) => bar.id === 'B10');
+  assert.equal(b10.met, null);
+  assert.equal(b10.values[0].value, null);
+  assert.equal(b10.values[0].unmeasured, true);
+  const runBlocks = [buildRunBlock(run, pooled.bars)];
+  const md = renderBenchSeedMarkdown('verbs', 4242, runBlocks, pooled.bars, '2026-09-04T10:00:00.000Z');
+  const row = md.split('\n').find((line) => line.startsWith('| B10 '));
+  assert.ok(row, 'pooled table must carry B10');
+  assert.ok(row.includes('unmeasured'), `named gap must appear, got: ${row}`);
+  assert.equal(/: 0(\s|s|<|$)/.test(row), false, `unmeasured null must not render as 0, got: ${row}`);
+  assert.ok(row.includes('verbs/world.reaction_trio/s4242'), `fed-by retained, got: ${row}`);
+  assert.ok(row.includes('| — |'), `tri-state stays —, not yes, got: ${row}`);
+  assert.ok(md.includes('UNMEASURED — player had no body'));
+});
+
+test('production source identity hashes untracked src bytes and ignores receipt dirt', async () => {
+  const mini = await mkdtemp(join(tmpdir(), 'fun-src-identity-'));
+  try {
+    await mkdir(join(mini, 'src'), { recursive: true });
+    await writeFile(join(mini, 'src', 'tracked.js'), 'export const t = 1;\n', 'utf8');
+    await execFileAsync('git', ['init'], { cwd: mini, windowsHide: true });
+    await execFileAsync('git', ['config', 'user.email', 'bench@test.local'], { cwd: mini, windowsHide: true });
+    await execFileAsync('git', ['config', 'user.name', 'bench'], { cwd: mini, windowsHide: true });
+    await execFileAsync('git', ['add', 'src/tracked.js'], { cwd: mini, windowsHide: true });
+    await execFileAsync('git', ['commit', '-m', 'seed'], { cwd: mini, windowsHide: true });
+
+    const clean = computeProductionSourceIdentity(mini);
+    await mkdir(join(mini, 'design', 'program', 'roadmap', 'receipts', 'fun-loop'), { recursive: true });
+    await writeFile(
+      join(mini, 'design', 'program', 'roadmap', 'receipts', 'fun-loop', 'receipt.md'),
+      'receipt dirt\n',
+      'utf8',
+    );
+    const withReceipt = computeProductionSourceIdentity(mini);
+    assert.equal(withReceipt.productionDiffHash, clean.productionDiffHash, 'receipt-only dirt does not differ');
+    assert.equal(withReceipt.productionDirty, clean.productionDirty);
+    assert.equal(withReceipt.gitHead, clean.gitHead);
+
+    await writeFile(join(mini, 'src', 'untracked.js'), 'alpha\n', 'utf8');
+    const firstBytes = computeProductionSourceIdentity(mini);
+    await writeFile(join(mini, 'src', 'untracked.js'), 'beta\n', 'utf8');
+    const secondBytes = computeProductionSourceIdentity(mini);
+    assert.notEqual(
+      firstBytes.productionDiffHash,
+      secondBytes.productionDiffHash,
+      'same untracked path with different bytes must differ',
+    );
+    assert.equal(firstBytes.productionDirty, true);
+    assert.notEqual(firstBytes.productionDiffHash, clean.productionDiffHash);
+  } finally {
+    await rm(mini, { recursive: true, force: true });
+  }
+});
+
+test('unknown-only explicit --scenarios fails nonzero', () => {
+  const root = fileURLToPath(new URL('..', import.meta.url));
+  const measurer = join(root, 'scripts', 'measure-fun-loop.mjs');
+  const result = spawnSync(process.execPath, [
+    measurer,
+    '--verbs',
+    '--scenarios', 'does-not-exist-xyz',
+    '--seeds=4242',
+    '--json',
+    '--out', join(root, '.devshots', 'fun-loop-unknown-only-probe'),
+  ], {
+    encoding: 'utf8',
+    cwd: root,
+    windowsHide: true,
+  });
+  assert.notEqual(result.status, 0, `unknown-only must fail, stdout=${result.stdout} stderr=${result.stderr}`);
+  assert.match(String(result.stderr || ''), /matched nothing|Fun measurer error/);
 });

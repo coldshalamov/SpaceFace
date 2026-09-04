@@ -125,10 +125,14 @@ function deriveCrucibleMetrics(out, { metrics, trace, simMinutes, gaps }) {
     // No trace: only whole-run totals are honest. Consequences fall back to kills/shots.
     const kills = finiteNumber(metrics.totalKills);
     const shots = finiteNumber(metrics.totalShots);
-    if (kills !== null && shots !== null) {
-      out.consequencesPerAction = kills / Math.max(1, shots);
-    } else {
+    if (kills === null || shots === null) {
       gaps.push('consequencesPerAction: no event trace and no kill/shot totals');
+    } else if (shots <= 0) {
+      gaps.push(kills > 0
+        ? 'consequencesPerAction: kills reported but no shot total to divide them by'
+        : 'consequencesPerAction: no event trace and no action or kill totals');
+    } else {
+      out.consequencesPerAction = kills / shots;
     }
     gaps.push('timeToFirstConsequenceS: no event trace, first-consequence tick unknown');
     const moments = finiteNumber(metrics.momentsPerMinute);
@@ -148,10 +152,13 @@ function deriveCrucibleMetrics(out, { metrics, trace, simMinutes, gaps }) {
   const shots = shotEvents > 0 ? shotEvents : (finiteNumber(metrics.totalShots) ?? 0);
 
   const consequences = kills.length + collateral.length + knocks.length;
-  if (consequences > 0 || shots > 0) {
-    out.consequencesPerAction = consequences / Math.max(1, shots);
+  if (shots <= 0) {
+    // Per-action against zero actions is undefined — a number here would be fabricated.
+    gaps.push(consequences > 0
+      ? 'consequencesPerAction: consequences occurred but the trace records no player action to divide them by'
+      : 'consequencesPerAction: trace records no action or consequence events');
   } else {
-    gaps.push('consequencesPerAction: trace records no action or consequence events');
+    out.consequencesPerAction = consequences / shots;
   }
 
   const consequenceTicks = [...kills, ...collateral, ...knocks]
@@ -233,23 +240,34 @@ function deriveKnockBudget(run, { bench, metrics, trace, simMinutes, gaps }) {
     const eventsPerMinute = finiteNumber(metrics.knockEventsPerMinute);
     const maxFraction = finiteNumber(metrics.maxKnockDeltaVFractionOfCruise);
     const headingChanges = finiteNumber(metrics.headingChangeEvents);
+    const jitterMeasured = metrics.jitterMeasured === true;
     if (eventsPerMinute === null && maxFraction === null && headingChanges === null) {
       gaps.push('knockBudget: feel.knock_budget run exposes no knock metrics');
       return null;
     }
+    const overBudget = (eventsPerMinute !== null && eventsPerMinute > KNOCK_BUDGET_LIMITS.eventsPerMinute)
+      || (maxFraction !== null && maxFraction > KNOCK_BUDGET_LIMITS.maxDeltaVFractionOfCruise)
+      || (headingChanges !== null && headingChanges > KNOCK_BUDGET_LIMITS.headingChanges)
+      || metrics.barMet === false;
     let met;
-    if (typeof metrics.barMet === 'boolean') {
-      met = metrics.barMet;
-    } else if (eventsPerMinute !== null && maxFraction !== null && headingChanges !== null) {
-      met = withinKnockBudget(eventsPerMinute, maxFraction, headingChanges);
-    } else {
+    if (overBudget) {
+      met = false;
+    } else if (!jitterMeasured || eventsPerMinute === null || maxFraction === null || headingChanges === null) {
       met = null;
-      gaps.push('knockBudget: knock budget components unavailable, met undecidable');
+      if (!jitterMeasured) {
+        gaps.push('knockBudget: visible jitter is unmeasured; full B13 cannot pass');
+      }
+      if (eventsPerMinute === null || maxFraction === null || headingChanges === null) {
+        gaps.push('knockBudget: knock budget components unavailable, met undecidable');
+      }
+    } else {
+      met = withinKnockBudget(eventsPerMinute, maxFraction, headingChanges);
     }
     return {
       eventsPerMinute,
       maxDeltaVFractionOfCruise: maxFraction,
       headingChangeEvents: headingChanges,
+      jitterMeasured,
       met,
       source: 'scenario',
     };
@@ -258,34 +276,66 @@ function deriveKnockBudget(run, { bench, metrics, trace, simMinutes, gaps }) {
   if (bench === 'crucible') {
     const metricEvents = finiteNumber(metrics.playerKnockEventsPerMin);
     const maxFraction = finiteNumber(metrics.maxPlayerKnockFraction);
+    const metricHeading = finiteNumber(metrics.headingChangeEvents);
+    const missingDeltaV = finiteNumber(metrics.knocksMissingDeltaV);
+    const jitterMeasured = metrics.jitterMeasured === true;
     let eventsPerMinute = metricEvents;
-    let headingChanges = null;
-    if (trace) {
+    let headingChanges = metricHeading;
+
+    if (Array.isArray(run.knockEvents)) {
+      const ambient = run.knockEvents.filter((e) => !e.hostileInitiated);
+      if (headingChanges === null) {
+        const headingHoles = ambient.some((e) => e.missingHeading === true || e.headingChanged == null);
+        headingChanges = headingHoles
+          ? null
+          : ambient.filter((e) => e.headingChanged === true).length;
+      }
+    } else if (headingChanges === null && trace) {
       const knocks = trace.filter((e) => e.type === PLAYER_KNOCK_EVENT);
-      headingChanges = knocks.filter((e) => {
-        const rad = finiteNumber(e.data ? e.data.headingChangeRad : null);
-        return rad !== null && Math.abs(rad) > 0;
-      }).length;
+      const headingHoles = knocks.some((e) => finiteNumber(e.data ? e.data.headingChangeRad : null) === null);
+      headingChanges = headingHoles
+        ? null
+        : knocks.filter((e) => {
+          const rad = finiteNumber(e.data ? e.data.headingChangeRad : null);
+          return rad !== null && Math.abs(rad) > 0;
+        }).length;
       if (eventsPerMinute === null && simMinutes !== null && simMinutes > 0) {
         eventsPerMinute = knocks.length / simMinutes;
       }
     }
+
     if (eventsPerMinute === null && maxFraction === null) {
       gaps.push('knockBudget: no knock budget source for this run');
       return null;
     }
+    if (missingDeltaV !== null && missingDeltaV > 0) {
+      gaps.push(`knockBudget: ${missingDeltaV} player knock(s) carried no playerDeltaV`);
+    }
+    if (headingChanges === null) {
+      gaps.push('knockBudget: heading change is unmeasured, so the heading clause cannot pass');
+    }
+    if (!jitterMeasured) {
+      gaps.push('knockBudget: visible jitter is unmeasured (headless); full B13 cannot pass');
+    }
     let met;
-    if (eventsPerMinute !== null && maxFraction !== null) {
-      met = eventsPerMinute <= KNOCK_BUDGET_LIMITS.eventsPerMinute
-        && maxFraction <= KNOCK_BUDGET_LIMITS.maxDeltaVFractionOfCruise;
+    const overBudget = (eventsPerMinute !== null && eventsPerMinute > KNOCK_BUDGET_LIMITS.eventsPerMinute)
+      || (maxFraction !== null && maxFraction > KNOCK_BUDGET_LIMITS.maxDeltaVFractionOfCruise)
+      || (headingChanges !== null && headingChanges > KNOCK_BUDGET_LIMITS.headingChanges);
+    if (overBudget || (missingDeltaV !== null && missingDeltaV > 0)) {
+      met = false;
+    } else if (eventsPerMinute !== null && maxFraction !== null && headingChanges !== null && jitterMeasured) {
+      met = withinKnockBudget(eventsPerMinute, maxFraction, headingChanges);
     } else {
       met = null;
-      gaps.push('knockBudget: knock budget components unavailable, met undecidable');
+      if (eventsPerMinute === null || maxFraction === null || headingChanges === null) {
+        gaps.push('knockBudget: knock budget components unavailable, met undecidable');
+      }
     }
     return {
       eventsPerMinute,
       maxDeltaVFractionOfCruise: maxFraction,
       headingChangeEvents: headingChanges,
+      jitterMeasured,
       met,
       source: 'run',
     };

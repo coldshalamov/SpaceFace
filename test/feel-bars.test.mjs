@@ -48,12 +48,22 @@ function barById(evaluation, id) {
 }
 
 function assertValueShape(bar) {
-  assert.ok(bar.values.length >= 1, `${bar.id} must carry at least one measured value`);
-  for (const value of bar.values) {
+  const measured = bar.values.filter((value) => value && value.unmeasured !== true);
+  const gaps = bar.values.filter((value) => value && value.unmeasured === true);
+  assert.ok(
+    measured.length >= 1 || gaps.length >= 1,
+    `${bar.id} must carry at least one measured value or a named unmeasured gap`,
+  );
+  for (const value of measured) {
     assert.equal(typeof value.value, "number", `${bar.id} value must be a number`);
     assert.ok(Number.isFinite(value.value), `${bar.id} value must be finite`);
     assert.equal(typeof value.met, "boolean", `${bar.id} value must carry a boolean met flag`);
     assert.ok(value.label.length > 0 && value.unit.length > 0, `${bar.id} value needs label and unit`);
+  }
+  for (const gap of gaps) {
+    assert.equal(gap.value, null, `${bar.id} unmeasured gap must keep value null, never 0`);
+    assert.equal(gap.met, false);
+    assert.ok(gap.label.length > 0);
   }
 }
 
@@ -153,7 +163,10 @@ test("verdicts are recomputed from raw numbers against contract thresholds", () 
     }),
   ]);
   const b13PassBar = barById(b13Pass, "B13");
-  assert.equal(b13PassBar.met, true);
+  assert.notEqual(b13PassBar.met, true, "headless verb knock budget cannot full-pass B13 without measured jitter");
+  assert.equal(b13PassBar.coverage, "partial");
+  assert.ok(b13PassBar.notes.includes("jitter"), "full-contract notes must name visible jitter as unmeasured");
+  assert.ok(b13PassBar.values.every((value) => value.met === true), "measured rate/magnitude/heading components still pass");
   assert.deepEqual(b13PassBar.fedBy, ["verbs/feel.knock_budget/s4242"]);
 
   const b13Fail = evaluateBars([
@@ -248,4 +261,203 @@ test("B11 stays null below the ≥ 30 % ΔV regime and evaluates the clause only
     verbRun("feel.shove_magnitude", { deltaVFractionOfCruise: 0.4, helmLossDurationS: 0.4 }),
   ]);
   assert.equal(barById(inRegimeFail, "B11").met, false, "an in-regime helm duration under 1 s fails the clause");
+});
+
+test("every reachable bar's target parses to a diff direction, except the B11 universality claim", async () => {
+  // Drift guard: parseTargetDirection reads a bar target's FIRST clause to decide whether a
+  // numeric change moved toward the target. A registry edit that makes a headline target
+  // sign-less (or buries the signed clause behind an unsigned one) silently turns that bar's
+  // diff into "unknown", which the §3.6 verdict counts as a regression. B11 is the one
+  // intentional exception: "one universal curve …" has no headline sign, so any change on it
+  // reverts — conservative by design.
+  const { parseTargetDirection } = await import("../scripts/measure-fun-loop.mjs");
+
+  for (const bar of FEEL_BARS) {
+    const direction = parseTargetDirection(bar.target);
+    if (!bar.benchReachable) continue; // unreachable bars carry no numeric headline
+    if (bar.id === "B11") {
+      assert.equal(direction, null, "B11 stays intentionally undecidable — changes on it revert");
+      continue;
+    }
+    assert.notEqual(direction, null, `${bar.id} target must lead with a signed first clause: "${bar.target}"`);
+  }
+  assert.equal(parseTargetDirection(FEEL_BARS.find((b) => b.id === "B10").target), "lower",
+    "B10's headline is salvor arrival seconds — lower is better");
+});
+
+test("B13 retains a Crucible run with a missing fraction/heading and cannot pass behind a calm sibling", () => {
+  const evaluation = evaluateBars([
+    {
+      bench: "crucible",
+      arenaId: "helios_core",
+      loadoutId: "energy_baseline",
+      seed: 4242,
+      metrics: {
+        playerKnockEventsPerMin: 0.4,
+        maxPlayerKnockFraction: 0.02,
+        headingChangeEvents: 0,
+        jitterMeasured: false,
+      },
+    },
+    {
+      bench: "crucible",
+      arenaId: "cinder_sluice",
+      loadoutId: "energy_baseline",
+      seed: 4242,
+      metrics: {
+        playerKnockEventsPerMin: 0.5,
+        maxPlayerKnockFraction: null,
+        headingChangeEvents: null,
+        jitterMeasured: false,
+      },
+    },
+  ]);
+  const bar = barById(evaluation, "B13");
+  assert.ok(
+    bar.fedBy.includes("crucible/helios_core/energy_baseline/s4242"),
+    "the complete run is retained",
+  );
+  assert.ok(
+    bar.fedBy.includes("crucible/cinder_sluice/energy_baseline/s4242"),
+    "the incomplete run must not be filtered away",
+  );
+  assert.notEqual(bar.met, true, "missing fraction/heading/jitter cannot hide behind a calm sibling");
+  assert.equal(bar.met, null, "missing required components make B13 undecidable, not a pass");
+  assert.ok(bar.notes.includes("jitter"));
+  assert.ok(bar.notes.includes("fraction") || bar.notes.includes("heading"));
+});
+
+test("B13 full-contract verdict is never yes while visible jitter is unmeasured", () => {
+  const evaluation = evaluateBars([
+    {
+      bench: "crucible",
+      arenaId: "helios_core",
+      loadoutId: "energy_baseline",
+      seed: 4242,
+      metrics: {
+        playerKnockEventsPerMin: 0.2,
+        maxPlayerKnockFraction: 0.01,
+        headingChangeEvents: 0,
+        jitterMeasured: false,
+        b13Met: true,
+      },
+    },
+  ]);
+  const bar = barById(evaluation, "B13");
+  assert.notEqual(bar.met, true);
+  assert.ok(bar.values.some((value) => value.met === true), "component rows are preserved");
+  assert.ok(bar.notes.toLowerCase().includes("jitter"));
+});
+
+test("provided unmeasured null stays a named gap: never numeric zero, keeps fed-by and note", () => {
+  const run = verbRun("world.reaction_trio", {
+    bars: [
+      {
+        bar: "B10",
+        label: "patrol decides stay-or-chase after a witnessed kill",
+        value: null,
+        unit: "s",
+        met: false,
+        unmeasured: true,
+        note: "UNMEASURED — player had no body. This is not a reading of the world.",
+      },
+      {
+        bar: "B10",
+        label: "a live NPC reaches spilled cargo",
+        value: 12,
+        unit: "s",
+        met: true,
+      },
+    ],
+  });
+  const bar = barById(evaluateBars([run]), "B10");
+  const gap = bar.values.find((value) => value.unmeasured === true);
+  assert.ok(gap, "the unmeasured provided row is retained");
+  assert.equal(gap.value, null, "null must not be Number()-coerced to 0");
+  assert.notEqual(gap.value, 0);
+  assert.equal(gap.met, false);
+  assert.deepEqual(bar.fedBy, ["verbs/world.reaction_trio/s4242"]);
+  assert.ok(bar.notes.includes("UNMEASURED — player had no body"));
+  assert.equal(bar.met, null, "an unmeasured hole cannot promote the bar to true");
+  assert.notEqual(bar.met, true);
+  const numeric = bar.values.filter((value) => typeof value.value === "number" && Number.isFinite(value.value));
+  assert.equal(numeric.length, 1);
+  assert.equal(numeric[0].value, 12);
+});
+
+test("generic provided numeric subset cannot promote an evaluator-null or evaluator-false bar", () => {
+  const b13 = barById(evaluateBars([{
+    bench: "crucible",
+    arenaId: "helios_core",
+    loadoutId: "energy_baseline",
+    seed: 4242,
+    metrics: {
+      playerKnockEventsPerMin: 0.2,
+      maxPlayerKnockFraction: 0.01,
+      headingChangeEvents: 0,
+      jitterMeasured: false,
+      bars: [
+        { bar: "B13", label: "extra calm knock row", value: 0.1, unit: "events/min", met: true },
+      ],
+    },
+  }]), "B13");
+  assert.equal(b13.met, null, "passing provided numbers must not erase B13's missing-jitter null");
+  assert.notEqual(b13.met, true);
+  assert.ok(b13.notes.toLowerCase().includes("jitter"));
+
+  const b4Fail = barById(evaluateBars([
+    verbRun("feel.shove_magnitude", {
+      deltaVFractionOfCruise: 0.1,
+      bars: [{ bar: "B4", label: "provided shove that looks like a pass", value: 0.4, unit: "fraction", met: true }],
+    }),
+  ]), "B4");
+  assert.equal(b4Fail.met, false, "a measured evaluator fail stays false when a provided subset passes");
+});
+
+test("a complete scenario-provided numeric set can establish B9", () => {
+  const passing = verbRun("feel.impact_feedback", {
+    bars: [
+      { bar: "B9", label: "hitstop", value: 12, unit: "ms", met: true },
+      { bar: "B9", label: "trauma", value: 0.4, unit: "trauma", met: true },
+      { bar: "B9", label: "octaves", value: 1.2, unit: "octaves", met: true },
+      { bar: "B9", label: "loudness", value: 14, unit: "dB", met: true },
+      { bar: "B9", label: "snap", value: 8, unit: "ms", met: true },
+    ],
+  });
+  const established = barById(evaluateBars([passing]), "B9");
+  assert.equal(established.reachable, true);
+  assert.equal(established.met, true, "a complete finite provided set may establish the unreachable bar");
+  assert.equal(established.values.length, 5);
+
+  const mixed = verbRun("feel.impact_feedback", {
+    bars: [
+      { bar: "B9", label: "hitstop", value: 12, unit: "ms", met: true },
+      { bar: "B9", label: "trauma", value: null, unit: "trauma", met: false, unmeasured: true, note: "UNMEASURED — no camera" },
+    ],
+  });
+  const incomplete = barById(evaluateBars([mixed]), "B9");
+  assert.equal(incomplete.met, null);
+  assert.notEqual(incomplete.met, true);
+  assert.equal(incomplete.values.find((value) => value.unmeasured).value, null);
+});
+
+test("worstMetric treats null as missing, not zero, through the public evaluator", () => {
+  const withNull = barById(evaluateBars([
+    verbRun("feel.shove_magnitude", { deltaVFractionOfCruise: null, screenDepths: 1.2 }),
+  ]), "B4");
+  assert.equal(withNull.values.length, 0, "a null metric must not become a 0 row");
+  assert.equal(withNull.met, null);
+  assert.notEqual(withNull.met, false, "unmeasured is not a measured fail at zero");
+
+  const withZero = barById(evaluateBars([
+    verbRun("feel.shove_magnitude", { deltaVFractionOfCruise: 0 }),
+  ]), "B4");
+  assert.equal(withZero.values[0].value, 0, "a genuinely measured 0 is kept");
+  assert.equal(withZero.met, false);
+
+  const withString = barById(evaluateBars([
+    verbRun("feel.shove_magnitude", { deltaVFractionOfCruise: "0.31" }),
+  ]), "B4");
+  assert.equal(withString.values.length, 0, "string metrics are not Number()-coerced");
+  assert.equal(withString.met, null);
 });

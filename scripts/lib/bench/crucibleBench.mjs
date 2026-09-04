@@ -62,6 +62,18 @@ const VERB_PERIOD = 150;
 const CRUISE_FRAC = 0.72;
 const KNOCK_EVENTS_PER_MIN_LIMIT = 2.0;
 const KNOCK_MAX_FRACTION_LIMIT = 0.10;
+// ONE knock definition, owned by CONTACT in scripts/lib/bench/scenarios/feel.knock_budget.mjs.
+// Rapier answers a single graze with a RUN of consecutive receipt ticks, so receipts within this
+// many ticks are ONE event and the event's magnitude is the SUM of their playerDeltaV. B13 counts
+// EVENTS, not solver ticks. Counting ticks reported 907 "knocks/min" on one Crucible cell.
+const EVENT_BRIDGE_TICKS = 6;
+// Master ruling 2026-09-04 01:45: B13's sentence is about ORDINARY flight. A hostile that rams the
+// player is a deliberate big event BY THE HOSTILE and belongs to the legibility clause, not the
+// <= 2/min budget. So the rate and magnitude clauses are judged on AMBIENT events only, and
+// hostile-initiated events are reported beside them with their telegraph lead.
+const TELEGRAPH_LEGIBLE_S = 0.5;
+// Matches verbBench: a measured heading of ~0 is not a heading change. Missing heading is not 0.
+const HEADING_CHANGE_EPS = 1e-9;
 
 /**
  * Runs the Crucible Feel Bench across the specified arenas, loadouts, and seeds.
@@ -318,6 +330,9 @@ export async function simulateCrucibleSwarm({
     const collisionVictims = new Set();
     const lastActionOn = new Map();
     const cohortSeen = new Set();
+    // Latest AI intent per actor at ingest time. Classification snapshots this onto each knock
+    // receipt as it happens so a later map.set cannot rewrite an earlier collision.
+    const aiIntent = { phase: new Map(), telegraph: new Map() };
     let lastAction = null;
 
     // MASTER TRAP (1), the ~750 WU admission ring: SG-02 gives a Rapier body only to entities
@@ -336,7 +351,7 @@ export async function simulateCrucibleSwarm({
     for (; t < cap; t++) {
       const player = playerEntity(state) || spawned;
       rememberCohortIds(state, cohortSeen);
-      const headingBefore = player && Number.isFinite(player.rot) ? player.rot : 0;
+      const headingBefore = player && Number.isFinite(player.rot) ? player.rot : null;
       drivePilot({
         tick: t,
         state,
@@ -354,7 +369,7 @@ export async function simulateCrucibleSwarm({
       lastAction = sampleIssuedVerbs(state, prevVerbs, tick, eventTrace, lastAction);
 
       const playerAfter = playerEntity(state) || player;
-      const headingAfter = playerAfter && Number.isFinite(playerAfter.rot) ? playerAfter.rot : headingBefore;
+      const headingAfter = playerAfter && Number.isFinite(playerAfter.rot) ? playerAfter.rot : null;
 
       const newEvents = log.slice(logCursor);
       logCursor = log.length;
@@ -370,6 +385,7 @@ export async function simulateCrucibleSwarm({
           collisionVictims,
           cohortSeen,
           eventTrace,
+          aiIntent,
         });
         if (ev.ev === 'physics:impact' && ev.payload && ev.payload.playerInvolved === true) {
           sawPlayerKnock = true;
@@ -380,11 +396,16 @@ export async function simulateCrucibleSwarm({
           clearedWave = (ev.payload && ev.payload.wave) || (state.run && state.run.wave) || wavesCleared;
         }
       }
+      // Record heading ONCE per unique tick. Rapier emits a run of receipts for one contact;
+      // stamping the whole tick rotation onto every receipt (then summing) invented heading.
       if (sawPlayerKnock) {
-        knockHeadingByTick.set(tick, wrapAngle(headingAfter - headingBefore));
-        const lastKnock = lastTraceOfType(eventTrace, 'collision:playerKnock');
-        if (lastKnock && lastKnock.tick === tick) {
-          lastKnock.data.headingChangeRad = knockHeadingByTick.get(tick);
+        if (!knockHeadingByTick.has(tick)) {
+          knockHeadingByTick.set(
+            tick,
+            headingBefore !== null && headingAfter !== null
+              ? wrapAngle(headingAfter - headingBefore)
+              : null,
+          );
         }
       }
       if (sawWaveCleared) {
@@ -432,8 +453,12 @@ export async function simulateCrucibleSwarm({
 
     const player = playerEntity(state) || spawned;
     const cruiseSpeed = cruiseSpeedOf(player);
+    const knockEvents = buildKnockEvents(eventTrace, {
+      playerId: state.playerId, cruiseSpeed,
+    });
     const metrics = summarizeMetrics({
       eventTrace,
+      knockEvents,
       ticks: t,
       wavesCleared,
       cruiseSpeed,
@@ -479,6 +504,7 @@ export async function simulateCrucibleSwarm({
       msPerTick: t > 0 && wallMs != null ? round2(wallMs / t) : 0,
       wavesReached: (state.run && state.run.wave) || 0,
       knockSource: 'physics:impact',
+      knockEvents,
       bodyAdmission,
       harnessBusEmits: harnessBusEmits.slice(),
       rawBusEventTypes,
@@ -675,9 +701,36 @@ function rememberCohortIds(state, cohortSeen) {
 }
 
 function ingestLiveEvent(ev, ctx) {
-  const { state, playerId, lastAction, lastActionOn, collisionVictims, cohortSeen, eventTrace } = ctx;
+  const { state, playerId, lastAction, lastActionOn, collisionVictims, cohortSeen, eventTrace, aiIntent } = ctx;
   const tick = ev.tick | 0;
   const p = ev.payload || {};
+
+  // The actor's activity kind at the tick — the other half of the master's classification rule.
+  // Snapshot every field the production bus actually emits so classification can require an
+  // event-time target + an in-force telegraph, not a later map rewrite.
+  if (ev.ev === 'ai:doctrinePhase' && p.entityId != null) {
+    aiIntent.phase.set(p.entityId, {
+      tick,
+      phase: p.phase || null,
+      maneuverKind: p.maneuverKind || null,
+      targetId: p.targetId != null ? p.targetId : null,
+      doctrineId: p.doctrineId || null,
+      flightProfile: p.flightProfile || null,
+      fireWindow: p.fireWindow || null,
+    });
+    return;
+  }
+  if (ev.ev === 'ai:telegraph' && p.entityId != null) {
+    aiIntent.telegraph.set(p.entityId, {
+      tick,
+      kind: p.kind || null,
+      durationTicks: p.durationTicks | 0,
+      targetId: p.targetId != null ? p.targetId : null,
+      phase: p.phase || null,
+      doctrineId: p.doctrineId || null,
+    });
+    return;
+  }
 
   if (ev.ev === 'combat:fire' && p.ownerId === playerId) {
     eventTrace.push({ tick, type: 'player:shot', data: { ownerId: p.ownerId, weaponId: p.weaponId || null } });
@@ -698,13 +751,23 @@ function ingestLiveEvent(ev, ctx) {
     const aId = p.aId;
     const bId = p.bId;
     if (p.playerInvolved === true) {
+      const causalActorId = p.causalActorId != null ? p.causalActorId : null;
+      const intent = snapshotIntent(aiIntent, causalActorId);
+      const liveHostile = isLiveCohortHostile(state, causalActorId, playerId);
       eventTrace.push({
         tick,
         type: 'collision:playerKnock',
         data: {
-          deltaV: finiteOrZero(p.playerDeltaV),
-          deltaVFractionOfCruise: 0,
-          headingChangeRad: 0,
+          // Missing playerDeltaV stays missing — finiteOrZero here would turn a hole into a gentle 0.
+          deltaV: finiteOrNull(p.playerDeltaV),
+          deltaVFractionOfCruise: null,
+          headingChangeRad: null,
+          causalActorId,
+          // Live-at-ingest, from state — not "was ever in the cohort" (dead/wreck/stale).
+          actorLiveCohortHostile: liveHostile,
+          actorInCohort: liveHostile,
+          aiPhase: intent.aiPhase,
+          aiTelegraph: intent.aiTelegraph,
         },
       });
     } else if (p.causalActorId === playerId && aId !== playerId && bId !== playerId) {
@@ -800,14 +863,169 @@ function recordBodyAdmission(acc, state, physicsSys, tick) {
   return sample;
 }
 
+function snapshotIntent(aiIntent, actorId) {
+  if (actorId == null || !aiIntent) return { aiPhase: null, aiTelegraph: null };
+  const phase = aiIntent.phase && aiIntent.phase.get(actorId);
+  const telegraph = aiIntent.telegraph && aiIntent.telegraph.get(actorId);
+  return {
+    aiPhase: phase ? { ...phase } : null,
+    aiTelegraph: telegraph ? { ...telegraph } : null,
+  };
+}
+
+function telegraphInForce(tg, atTick) {
+  if (!tg || !Number.isFinite(tg.tick) || tg.tick > atTick) return false;
+  const duration = Number(tg.durationTicks) | 0;
+  if (duration > 0 && atTick > tg.tick + duration) return false;
+  return true;
+}
+
+function copyPhase(phase) {
+  return phase ? { ...phase } : null;
+}
+
+function copyTelegraph(tg) {
+  return tg ? { ...tg } : null;
+}
+
+function receiptAttribution(data) {
+  const d = data && typeof data === 'object' ? data : {};
+  return {
+    causalActorId: d.causalActorId != null ? d.causalActorId : null,
+    actorLiveCohortHostile: d.actorLiveCohortHostile === true,
+    aiPhase: copyPhase(d.aiPhase),
+    aiTelegraph: copyTelegraph(d.aiTelegraph),
+  };
+}
+
+function recordUniqueTickHeading(event, tick, heading) {
+  if (!event.headingByTick) event.headingByTick = new Map();
+  if (event.headingByTick.has(tick)) return;
+  event.headingByTick.set(tick, heading);
+}
+
+function finalizeEventHeading(ev) {
+  const byTick = ev.headingByTick instanceof Map ? ev.headingByTick : new Map();
+  delete ev.headingByTick;
+  let missing = ev.missingHeading === true;
+  let net = 0;
+  let changed = false;
+  let anyFinite = false;
+  for (const heading of byTick.values()) {
+    if (!Number.isFinite(heading)) {
+      missing = true;
+      continue;
+    }
+    anyFinite = true;
+    net = wrapAngle(net + heading);
+    if (Math.abs(heading) > HEADING_CHANGE_EPS) changed = true;
+  }
+  if (byTick.size === 0) missing = true;
+  ev.missingHeading = missing;
+  // Net wrapped rotation is informational. The no-heading-change clause uses per-tick abs.
+  ev.headingChangeRad = missing ? null : (anyFinite ? net : null);
+  ev.headingChanged = missing ? null : changed;
+}
+
+/**
+ * Hostile only when EVERY constituent receipt names the same known live cohort hostile
+ * AND that actor had player-targeted intent plus an in-force telegraph at its own event
+ * time. Unknown, stale, dead/wreck, mixed-actor, or partially unattributed → ambient.
+ * A later receipt never rewrites an earlier snapshot.
+ */
+function classifyHostileInitiated(ev, playerId) {
+  const parts = Array.isArray(ev.constituents) ? ev.constituents : [];
+  if (!parts.length) return false;
+  const actorId = parts[0].causalActorId;
+  if (actorId == null || actorId === playerId) return false;
+  for (const part of parts) {
+    if (part.causalActorId == null || part.causalActorId !== actorId) return false;
+    if (part.actorLiveCohortHostile !== true) return false;
+    const intent = part.aiPhase;
+    if (!intent || intent.targetId !== playerId) return false;
+    const tg = part.aiTelegraph;
+    if (!telegraphInForce(tg, part.tick)) return false;
+    if (tg.targetId != null && tg.targetId !== playerId) return false;
+  }
+  return true;
+}
+
+/**
+ * Receipts -> EVENTS -> {ambient, hostileInitiated}. Coalescing follows CONTACT's
+ * EVENT_BRIDGE_TICKS rule. Attribution uses the actor/intent snapshot stamped on each receipt
+ * at ingest time — a later map.set or cohort join must not rewrite an earlier collision.
+ */
+export function buildKnockEvents(eventTrace, { playerId, cruiseSpeed } = {}) {
+  const receipts = (Array.isArray(eventTrace) ? eventTrace : [])
+    .filter((e) => e && e.type === 'collision:playerKnock')
+    .sort((a, b) => a.tick - b.tick);
+  const events = [];
+  let open = null;
+  for (const r of receipts) {
+    const dv = r.data && Number.isFinite(r.data.deltaV) ? r.data.deltaV : null;
+    const heading = r.data && Number.isFinite(r.data.headingChangeRad) ? r.data.headingChangeRad : null;
+    const headingMissing = !(r.data && Number.isFinite(r.data.headingChangeRad));
+    const attr = receiptAttribution(r.data);
+    if (open && r.tick - open.lastTick <= EVENT_BRIDGE_TICKS) {
+      open.lastTick = r.tick;
+      open.receipts += 1;
+      if (dv === null) open.missingDeltaV = true;
+      else open.deltaV += dv;
+      if (headingMissing) open.missingHeading = true;
+      recordUniqueTickHeading(open, r.tick, headingMissing ? null : heading);
+      open.constituents.push({ tick: r.tick, ...attr });
+      continue;
+    }
+    open = {
+      startTick: r.tick,
+      lastTick: r.tick,
+      deltaV: dv === null ? 0 : dv,
+      missingDeltaV: dv === null,
+      missingHeading: headingMissing,
+      receipts: 1,
+      constituents: [{ tick: r.tick, ...attr }],
+      headingByTick: new Map(),
+      // First-receipt identity only — later receipts must not fill a hole.
+      causalActorId: attr.causalActorId,
+      actorLiveCohortHostile: attr.actorLiveCohortHostile,
+      actorInCohort: attr.actorLiveCohortHostile,
+      aiPhase: copyPhase(attr.aiPhase),
+      aiTelegraph: copyTelegraph(attr.aiTelegraph),
+    };
+    recordUniqueTickHeading(open, r.tick, headingMissing ? null : heading);
+    events.push(open);
+  }
+
+  for (const ev of events) {
+    finalizeEventHeading(ev);
+    if (ev.missingDeltaV) ev.deltaVFractionOfCruise = null;
+    else if (cruiseSpeed !== null && cruiseSpeed > 0) ev.deltaVFractionOfCruise = ev.deltaV / cruiseSpeed;
+    else ev.deltaVFractionOfCruise = null;
+
+    ev.hostileInitiated = classifyHostileInitiated(ev, playerId);
+    const intent = ev.aiPhase;
+    ev.phase = intent ? intent.phase : null;
+    ev.maneuverKind = intent ? intent.maneuverKind : null;
+    const tg = ev.aiTelegraph;
+    ev.telegraphLeadS = telegraphInForce(tg, ev.startTick) ? (ev.startTick - tg.tick) / 60 : null;
+    ev.telegraphKind = tg ? tg.kind : null;
+    ev.legible = ev.hostileInitiated
+      ? (ev.telegraphLeadS !== null && ev.telegraphLeadS >= TELEGRAPH_LEGIBLE_S)
+      : null;
+  }
+  return events;
+}
+
 function applyKnockHeadings(eventTrace, knockHeadingByTick) {
   for (const ev of eventTrace) {
     if (ev.type !== 'collision:playerKnock') continue;
-    if (knockHeadingByTick.has(ev.tick)) ev.data.headingChangeRad = knockHeadingByTick.get(ev.tick);
+    if (!knockHeadingByTick.has(ev.tick)) continue;
+    const heading = knockHeadingByTick.get(ev.tick);
+    ev.data.headingChangeRad = Number.isFinite(heading) ? heading : null;
   }
 }
 
-function summarizeMetrics({ eventTrace, ticks, wavesCleared, cruiseSpeed }) {
+function summarizeMetrics({ eventTrace, knockEvents, ticks, wavesCleared, cruiseSpeed }) {
   const simSeconds = ticks / 60;
   const simMinutes = Math.max(1 / 60, simSeconds / 60);
   let totalKills = 0;
@@ -818,6 +1036,7 @@ function summarizeMetrics({ eventTrace, ticks, wavesCleared, cruiseSpeed }) {
   let playerKnockEvents = 0;
   let maxPlayerKnockFraction = 0;
   let knocksMissingDeltaV = 0;
+  let knocksMissingActor = 0;
   let collateralMoments = 0;
   const verbs = new Set();
 
@@ -827,25 +1046,77 @@ function summarizeMetrics({ eventTrace, ticks, wavesCleared, cruiseSpeed }) {
     else if (ev.type === 'entity:killed' && ev.data && ev.data.cause !== 'player') totalKills += 1;
     else if (ev.type === 'combat:collateral') collateralMoments += 1;
     else if (ev.type === 'collision:playerKnock') {
-      playerKnockEvents += 1;
       // A knock the physics authority reported without a deltaV is a HOLE, not a zero.
-      // Counted so a run of silent zeros cannot pass as a run of gentle contacts.
-      const raw = ev.data ? Number(ev.data.deltaV) : NaN;
+      const raw = ev.data && ev.data.deltaV != null ? Number(ev.data.deltaV) : NaN;
       if (!Number.isFinite(raw)) knocksMissingDeltaV += 1;
-      const deltaV = Number.isFinite(raw) ? raw : 0;
-      const fraction = cruiseSpeed !== null && cruiseSpeed > 0 ? deltaV / cruiseSpeed : null;
-      ev.data.deltaVFractionOfCruise = fraction;
-      if (fraction !== null && fraction > maxPlayerKnockFraction) maxPlayerKnockFraction = fraction;
+      if (!ev.data || ev.data.causalActorId == null) knocksMissingActor += 1;
+      if (ev.data) {
+        ev.data.deltaVFractionOfCruise = cruiseSpeed !== null && cruiseSpeed > 0 && Number.isFinite(raw)
+          ? raw / cruiseSpeed
+          : null;
+      }
     }
   }
 
+  // EVENTS, not receipts, and AMBIENT events for the budget clauses (master ruling 01:45).
+  const events = Array.isArray(knockEvents) ? knockEvents : [];
+  const ambient = events.filter((e) => !e.hostileInitiated);
+  const hostile = events.filter((e) => e.hostileInitiated);
+  playerKnockEvents = ambient.length;
+  let headingChangeEvents = 0;
+  let headingKnown = true;
+  let ambientFractionKnown = true;
+  for (const e of ambient) {
+    if (e.deltaVFractionOfCruise !== null && e.deltaVFractionOfCruise > maxPlayerKnockFraction) {
+      maxPlayerKnockFraction = e.deltaVFractionOfCruise;
+    }
+    if (e.deltaVFractionOfCruise === null) ambientFractionKnown = false;
+    if (e.missingHeading === true || e.headingChanged == null) headingKnown = false;
+    else if (e.headingChanged === true) headingChangeEvents += 1;
+  }
+  let maxHostileFraction = 0;
+  let hostileLegible = 0;
+  let hostileFractionKnown = true;
+  for (const e of hostile) {
+    if (e.deltaVFractionOfCruise !== null && e.deltaVFractionOfCruise > maxHostileFraction) {
+      maxHostileFraction = e.deltaVFractionOfCruise;
+    }
+    if (e.deltaVFractionOfCruise === null) hostileFractionKnown = false;
+    if (e.legible === true) hostileLegible += 1;
+  }
   const knockRate = playerKnockEvents / simMinutes;
-  // B13 must stay a boolean and is allowed — expected — to read false. What it may never do
-  // is read TRUE because the instrument could not measure. Unknown cruise fails closed.
-  const fractionKnown = cruiseSpeed !== null && cruiseSpeed > 0;
-  const b13Met = fractionKnown
+  // Component clauses (rate / magnitude / heading) may be true or false. The full B13
+  // contract also requires no visible jitter. This harness is headless, so jitter is
+  // unmeasured and the full-contract verdict must never read true.
+  const cruiseKnown = cruiseSpeed !== null && cruiseSpeed > 0;
+  const fractionKnown = cruiseKnown && ambientFractionKnown && knocksMissingDeltaV === 0;
+  const jitterMeasured = false;
+  const overBudget = (headingKnown && headingChangeEvents > 0)
+    || (fractionKnown && maxPlayerKnockFraction > KNOCK_MAX_FRACTION_LIMIT)
+    || knockRate > KNOCK_EVENTS_PER_MIN_LIMIT;
+  const b13ComponentsMet = fractionKnown
+    && headingKnown
+    && headingChangeEvents === 0
     && maxPlayerKnockFraction <= KNOCK_MAX_FRACTION_LIMIT
     && knockRate <= KNOCK_EVENTS_PER_MIN_LIMIT;
+  let b13Met;
+  if (overBudget) b13Met = false;
+  else if (!b13ComponentsMet || !jitterMeasured) b13Met = null;
+  else b13Met = true;
+  const gapParts = [];
+  if (!cruiseKnown) {
+    gapParts.push('maxPlayerKnockFraction: the player hull reported no maxSpeed, so a fraction of cruise is unmeasurable');
+  }
+  if (knocksMissingDeltaV > 0) {
+    gapParts.push(`${knocksMissingDeltaV} physics:impact event(s) named the player but carried no playerDeltaV`);
+  }
+  if (knocksMissingActor > 0) {
+    gapParts.push(`${knocksMissingActor} player knock receipt(s) named no causalActorId`);
+  }
+  if (!headingKnown) {
+    gapParts.push('headingChange: at least one ambient contact has no measured heading change');
+  }
+  gapParts.push('visible jitter is unmeasured on this headless path; full B13 cannot pass');
   return {
     totalKills,
     totalShots,
@@ -858,17 +1129,26 @@ function summarizeMetrics({ eventTrace, ticks, wavesCleared, cruiseSpeed }) {
     momentsPerMinute: collateralMoments / simMinutes,
     nothingHappenedSeconds: measureQuietSeconds(eventTrace),
     playerKnockEventsPerMin: knockRate,
-    maxPlayerKnockFraction: fractionKnown ? maxPlayerKnockFraction : null,
+    maxPlayerKnockFraction: cruiseKnown && ambientFractionKnown ? maxPlayerKnockFraction : null,
+    headingChangeEvents: headingKnown ? headingChangeEvents : null,
+    jitterMeasured,
+    // Reported beside B13, never folded into it (master ruling 2026-09-04 01:45).
+    knockReceipts: events.reduce((n, e) => n + (e.receipts || 0), 0),
+    knockEventsTotal: events.length,
+    ambientKnockEvents: ambient.length,
+    hostileKnockEvents: hostile.length,
+    hostileKnockEventsPerMin: hostile.length / simMinutes,
+    maxHostileKnockFraction: cruiseKnown && hostileFractionKnown ? maxHostileFraction : null,
+    hostileKnocksLegible: hostileLegible,
+    hostileKnocksIllegible: hostile.length - hostileLegible,
+    b13ComponentsMet,
     b13Met,
-    knockGap: fractionKnown
-      ? (knocksMissingDeltaV > 0
-        ? `${knocksMissingDeltaV} physics:impact event(s) named the player but carried no playerDeltaV`
-        : null)
-      : 'maxPlayerKnockFraction: the player hull reported no maxSpeed, so a fraction of cruise is unmeasurable',
+    knockGap: gapParts.length ? gapParts.join('; ') : null,
     knocksMissingDeltaV,
+    knocksMissingActor,
     wavesCleared,
     simSeconds: round2(simSeconds),
-    knockSource: 'physics:impact',
+    knockSource: 'physics:impact(playerInvolved).playerDeltaV, receipts coalesced into events',
   };
 }
 
@@ -926,8 +1206,17 @@ function hashableMetrics(metrics, extra) {
     nothingHappenedSeconds: metrics.nothingHappenedSeconds,
     playerKnockEventsPerMin: metrics.playerKnockEventsPerMin,
     maxPlayerKnockFraction: metrics.maxPlayerKnockFraction,
+    headingChangeEvents: metrics.headingChangeEvents,
     knocksMissingDeltaV: metrics.knocksMissingDeltaV,
+    knocksMissingActor: metrics.knocksMissingActor,
+    knockReceipts: metrics.knockReceipts,
+    knockEventsTotal: metrics.knockEventsTotal,
+    ambientKnockEvents: metrics.ambientKnockEvents,
+    hostileKnockEvents: metrics.hostileKnockEvents,
+    hostileKnocksLegible: metrics.hostileKnocksLegible,
+    b13ComponentsMet: metrics.b13ComponentsMet,
     b13Met: metrics.b13Met,
+    jitterMeasured: metrics.jitterMeasured === true,
     wavesCleared: metrics.wavesCleared,
     stopReason: extra.stopReason,
     ticks: extra.ticks,
@@ -962,6 +1251,7 @@ function toRunRecord(runData, ids) {
     msPerTick: runData.msPerTick,
     wavesReached: runData.wavesReached,
     knockSource: 'physics:impact',
+    knockEvents: runData.knockEvents,
     bodyAdmission: runData.bodyAdmission,
   };
 }
@@ -1041,19 +1331,20 @@ function cruiseSpeedOf(player) {
   return maxSpeed > 0 ? maxSpeed * CRUISE_FRAC : null;
 }
 
+function isLiveCohortHostile(state, actorId, playerId) {
+  if (actorId == null || actorId === playerId) return false;
+  if (!state || !state.entities || typeof state.entities.get !== 'function') return false;
+  const entity = state.entities.get(actorId);
+  if (!entity || entity.alive === false) return false;
+  return !!(entity.data && entity.data.runCohort === SURVIVAL_COHORT_TAG);
+}
+
 function countKills(eventTrace) {
   let n = 0;
   for (const ev of eventTrace) {
     if (ev.type === 'entity:killed' && ev.data && ev.data.cause !== 'player') n += 1;
   }
   return n;
-}
-
-function lastTraceOfType(eventTrace, type) {
-  for (let i = eventTrace.length - 1; i >= 0; i--) {
-    if (eventTrace[i].type === type) return eventTrace[i];
-  }
-  return null;
 }
 
 function countBusEvents(log, name) {
@@ -1083,6 +1374,11 @@ function freezeCopy(value) {
 function finiteOrZero(value) {
   const n = Number(value);
   return Number.isFinite(n) ? n : 0;
+}
+
+function finiteOrNull(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
 }
 
 function round2(value) {

@@ -87,7 +87,9 @@ test('the same seed hashes identically', { timeout: TIMEOUT }, async () => {
   assert.equal(run1.runHash.length, 64);
   assert.deepEqual(run1.waveCheckpoints, run2.waveCheckpoints);
   assert.equal(run1.metrics.b13Met, run2.metrics.b13Met);
-  assert.equal(typeof run1.metrics.b13Met, 'boolean');
+  assert.ok(run1.metrics.b13Met === false || run1.metrics.b13Met === null);
+  assert.notEqual(run1.metrics.b13Met, true);
+  assert.equal(run1.metrics.jitterMeasured, false);
 });
 
 test('a run executes with Math.random, Date.now and performance.now replaced by throwing stubs', { timeout: TIMEOUT }, async () => {
@@ -174,11 +176,12 @@ test('B13 fails closed and names its gap when the knock fraction is unmeasurable
     seed: SEED,
     tickCap: FIT_TICKS,
   });
-  assert.equal(
-    typeof run.metrics.b13Met,
-    'boolean',
-    'the player loses certainty in ship handling standards if the B13 stability verdict is not a strict boolean',
+  assert.ok(
+    run.metrics.b13Met === false || run.metrics.b13Met === null,
+    'the player loses certainty in ship handling standards if the B13 stability verdict is a missing-evidence pass',
   );
+  assert.notEqual(run.metrics.b13Met, true, 'headless B13 cannot full-pass while jitter is unmeasured');
+  assert.equal(run.metrics.jitterMeasured, false);
   assert.ok(
     run.metrics.b13Met !== true || run.metrics.maxPlayerKnockFraction !== null,
     'a knock budget that reads met against a blank gauge tells the owner his ship is calm when it is being thrown around',
