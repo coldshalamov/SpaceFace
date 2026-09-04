@@ -557,13 +557,18 @@ async function civilianWindow(seed, stimulus) {
   const { runtime, state, bus } = h;
   runtime.runTicks(240, DT); // let ambient traffic get under way and pick a heading
 
+  const fleeRoles = new Set(['hauler', 'courier', 'ore_carrier', 'shuttle']);
   const civilians = live(state)
     .filter((e) => e.type === 'ship' && e.data && ['hauler', 'courier', 'ore_carrier', 'miner', 'shuttle', 'surveyor']
       .includes(String(e.data.trafficRole || '')))
     .sort((a, b) => a.id - b.id);
   if (!civilians.length) throw new Error('world.reaction_trio: the real sector produced no civilian traffic');
 
-  const subject = civilians[0];
+  // The vision sentence is a hauler panic. Workers holding is the sanctioned reaction, but it is
+  // indistinguishable from ordinary mining in a 3 s A/B, and a job hull would also flee the
+  // team-1 staging ship in silence. Prefer an ambient flee-role hull.
+  const panicSubjects = civilians.filter((e) => fleeRoles.has(String(e.data.trafficRole || '')) && !e.data.jobId);
+  const subject = panicSubjects[0] || civilians.filter((e) => !e.data.jobId)[0] || civilians[0];
   // TRAP 1 + baseline hygiene. Stand the player off the subject so both the subject and the gunfire
   // sit inside the physics reach, settle, and only THEN record the baseline course — so the
   // perturbation of the player's own arrival is inside the baseline and never reads as the signal.
@@ -581,6 +586,7 @@ async function civilianWindow(seed, stimulus) {
       jobId: (e.data && e.data.jobId) || null,
       waitT: rec ? finite(rec.waitT) : 0,
       speed: speedOf(e),
+      boost: !!(intent && intent.boost),
     };
   };
   const before = courseOf(subject);
@@ -589,7 +595,9 @@ async function civilianWindow(seed, stimulus) {
   const changed = (now, was) => Math.abs(wrap(now.aim - was.aim)) > COURSE_CHANGE_RAD
     || now.targetId !== was.targetId
     || (now.jobId !== was.jobId)
-    || (now.waitT > was.waitT + 0.5);
+    || (now.waitT > was.waitT + 0.5)
+    || now.boost !== was.boost
+    || (was.speed > 10 && now.speed < was.speed * 0.4);
 
   // Two real hostiles trading real fire, placed so the subject stays inside the B10c radius for the
   // whole window even as it flies its own route.
@@ -604,6 +612,7 @@ async function civilianWindow(seed, stimulus) {
   const missingBodies = bodilessActors(runtime, { subject, shooter, shot });
 
   let observed = null;
+  const samples = [];
   // The bar says "a civilian WITHIN 300 WU of gunfire". The reading that matters is how close the
   // subject was when the shooting started — an NPC that flies its own route out to 303 WU during the
   // three-second window was still shot at from 109 WU, and calling that unmeasured would throw away a
@@ -614,19 +623,25 @@ async function civilianWindow(seed, stimulus) {
     // Sustained gunfire for the whole window: the real events, with the real payload shapes.
     if (stimulus) {
       withFeatures(runtime, () => {
-        bus.emit('combat:fire', {
-          id: shooter.id, shooterId: shooter.id, attackerId: shooter.id, targetId: shot.id,
-          pos: { x: shooter.pos.x, z: shooter.pos.z }, weaponId: 'wpn_pulse',
-        });
         bus.emit('combat:damage', {
-          id: shot.id, targetId: shot.id, attackerId: shooter.id, sourceId: shooter.id,
-          applied: 12, amount: 12, pos: { x: shot.pos.x, z: shot.pos.z },
+          targetId: shot.id, attackerId: shooter.id, sourceId: shooter.id,
+          applied: 12, amount: 12, rawTotal: 12,
+          pos: { x: shot.pos.x, z: shot.pos.z },
         });
       });
     }
     runtime.runTicks(SAMPLE_STRIDE, DT);
     maxDistance = Math.max(maxDistance, dist(subject.pos, gunfireAt));
-    if (observed == null && changed(courseOf(subject), before)) observed = i;
+    const now = courseOf(subject);
+    samples.push({
+      tick: i,
+      aim: now.aim,
+      targetId: now.targetId,
+      jobId: now.jobId,
+      boost: now.boost,
+      speed: now.speed,
+    });
+    if (observed == null && changed(now, before)) observed = i;
   }
 
   const out = {
@@ -639,6 +654,7 @@ async function civilianWindow(seed, stimulus) {
     subjectInsideRadius: distanceAtFirstShot <= VIOLENCE_RADIUS_WU,
     subjectHasBody: !!(records && records.has(subject.id)),
     bodilessActors: missingBodies,
+    samples,
   };
   runtime.dispose();
   return out;
@@ -652,20 +668,37 @@ export async function clauseCiviliansReact(seed, { stimulus = true } = {}) {
     fired.subjectInsideRadius
       ? []
       : [`the nearest civilian was ${fired.subjectDistanceAtFirstShotWU} WU from the gunfire when it started, outside the ${VIOLENCE_RADIUS_WU} WU radius the bar asks about`],
+    fired.subjectId === silent.subjectId
+      ? []
+      : [`A/B subject mismatch: gunfire ${fired.subjectId} vs silence ${silent.subjectId}`],
   );
   const unmeasured = stagingFaults.length > 0;
-  const attributable = fired.changedAtS != null && silent.changedAtS == null;
+  const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+  let divergeTick = null;
+  const n = Math.min((fired.samples || []).length, (silent.samples || []).length);
+  for (let i = 0; i < n; i++) {
+    const a = fired.samples[i];
+    const b = silent.samples[i];
+    if (Math.abs(wrap(a.aim - b.aim)) > COURSE_CHANGE_RAD
+      || a.targetId !== b.targetId
+      || a.boost !== b.boost
+      || (b.speed > 10 && a.speed < b.speed * 0.4)) {
+      divergeTick = a.tick;
+      break;
+    }
+  }
+  // Pair the traces. A self-change in both runs is ordinary steering; only a course that
+  // diverges from its silent twin is a reaction to the gunfire.
+  const attributable = divergeTick != null;
   return {
     clause: 'B10c',
     label: 'a civilian within 300 WU of gunfire changes course',
     stimulus,
     unmeasured,
     bodilessActors: stagingFaults,
-    changedAtS: attributable ? fired.changedAtS : null,
+    changedAtS: attributable ? Number((divergeTick / 60).toFixed(3)) : null,
     changedWithGunfireAtS: fired.changedAtS,
     changedInSilenceAtS: silent.changedAtS,
-    // The whole point of the pair. Measured 2026-09-04 with no listener in the game: the subject
-    // turned at 2.4 s in BOTH runs, so "it turned" was ambient traffic steering, not a reaction.
     attributableToGunfire: attributable,
     subjectId: fired.subjectId,
     subjectRole: fired.subjectRole,

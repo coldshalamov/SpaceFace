@@ -191,6 +191,14 @@ const CERES_JOB_ACTION_RECEIPT_EVENT = 'traffic:jobActionReceipt';
 export const TRAFFIC_HEAVE_TO_DURATION_S = 5;
 export const TRAFFIC_HEAVE_TO_COOLDOWN_S = 12;
 export const TRAFFIC_LAW_LOSS_CAUSE = 'lawful_patrol_loss';
+// Ambient civilians notice nearby gunfire. The listener only stamps a point; the role stepper
+// decides whether that hull runs, holds, or keeps its tow. Radius and fade are in player units.
+const CIVILIAN_VIOLENCE_RADIUS_WU = 300;
+const CIVILIAN_VIOLENCE_RADIUS_SQ = CIVILIAN_VIOLENCE_RADIUS_WU * CIVILIAN_VIOLENCE_RADIUS_WU;
+const CIVILIAN_ALARM_TTL_S = 5;
+const CIVILIAN_VIOLENCE_RING_CAP = 8;
+const CIVILIAN_ALARM_FLEE_ROLES = new Set(['hauler', 'courier', 'ore_carrier', 'shuttle']);
+const CIVILIAN_ALARM_HOLD_ROLES = new Set(['miner', 'surveyor']);
 const CERES_LAW_RESPONSE_SLOT_IDS = new Set([
   'ceres_ambush_escort',
   'ceres_cathedral_patrol',
@@ -1017,6 +1025,7 @@ export const traffic = {
     this._causalRunEpoch = 0;
     this._restoreEpochPending = false;
     this._heaveToHold = null;
+    this._ensureCivilianViolenceRing();
     // PQ-045.causal-chain: instance-only ledger (never written into state.traffic / save).
     this._ceresCausal = null;
     // Entity references are deliberately transient. A Continue can reuse neither numeric ids nor
@@ -1056,6 +1065,9 @@ export const traffic = {
     this.bus.on('freight:recoveryAbandoned', (p) => this._onCeresDisabledHaulerAbandoned(p || {}));
     this.bus.on('pickup:collected', (p) => this._onCeresDisabledHaulerPickup(p || {}));
     this.bus.on('freight:cargoSpilled', (p) => this._onFreightCargoSpilled(p || {}));
+    // Nearby violence: production hits and opened incidents, never permissive combat:fire.
+    this.bus.on('combat:damage', (p) => this._onCombatDamage(p || {}));
+    this.bus.on('law:incidentOpened', (p) => this._onLawIncidentOpened(p || {}));
     this.bus.on('save:restoring', () => {
       // Invalidate before the save owner starts destructive restore. Old synchronous owner stacks
       // may still unwind afterward, but their private reservation tokens no longer own this run.
@@ -1085,6 +1097,7 @@ export const traffic = {
       // be able to surface that legitimate action again.
       this._resetTransientCausalLedgers(false);
       this._heaveToHold = null;
+      this._clearCivilianViolenceMemory();
       this._resetCeresCausalChain('save_loaded');
       this._adoptLegacyCeresActivityTargetRefs();
       const sectorId = this.state.world && this.state.world.currentSectorId;
@@ -3143,6 +3156,7 @@ export const traffic = {
     // still names persistent bodies that need stamp cleanup.
     this._resetTransientCausalLedgers(true);
     this._resetCeresCausalChain('cleanup');
+    this._clearCivilianViolenceMemory();
     // The core system exposes helpers.removeEntity (marks alive=false; the renderer/physics GC it).
     // Fall back to a direct alive=false if the helper shape differs across builds.
     const helper = this.helpers && (this.helpers.removeEntity || this.helpers.despawnEntity);
@@ -3248,9 +3262,13 @@ export const traffic = {
         && CERES_ACTIVITY_CAST_BY_SLOT_ID.get(e.data.activityActorSlotId);
       if (activityEntry && !activityEntry.service) {
         if (!e.data.jobId) this._assignCeresActivityJob(e, activityEntry);
+        this._reactCivilianViolence(e, rec, stations, state);
         continue;
       }
       if (hasLivePlayer && entityNeedsAiThink(e, state) === false) continue;
+      // Nearby gunfire: civilians change course before ordinary / world-site / job branches.
+      // Job hulls are interrupted through npcJobsRuntime; traffic never writes their intent.
+      if (this._reactCivilianViolence(e, rec, stations, state)) continue;
       // One authored recurring passenger liner owns the existing express hull and V3 boost route.
       // Its passenger itinerary must consume the tick before the generic express/freight branch.
       if (this._stepPassengerLinerService(e, rec, stations, dt)) continue;
@@ -3437,6 +3455,233 @@ export const traffic = {
   },
 
   // ── Role behaviors (spec §12.1) ────────────────────────────────────────────────────────────
+  _ensureCivilianViolenceRing() {
+    if (!this._violenceRing || this._violenceRing.length !== CIVILIAN_VIOLENCE_RING_CAP) {
+      this._violenceRing = new Array(CIVILIAN_VIOLENCE_RING_CAP);
+      for (let i = 0; i < CIVILIAN_VIOLENCE_RING_CAP; i++) {
+        this._violenceRing[i] = { x: 0, z: 0, t: -Infinity, attackerId: null, victimId: null };
+      }
+    }
+    if (this._violenceWrite == null) this._violenceWrite = 0;
+    if (!this._violenceThreatScratch) {
+      this._violenceThreatScratch = {
+        entityId: null, x: 0, z: 0, untilSimT: 0, hold: false, slow: false,
+      };
+    }
+  },
+
+  _clearCivilianViolenceMemory() {
+    this._ensureCivilianViolenceRing();
+    for (let i = 0; i < this._violenceRing.length; i++) {
+      const slot = this._violenceRing[i];
+      slot.x = 0;
+      slot.z = 0;
+      slot.t = -Infinity;
+      slot.attackerId = null;
+      slot.victimId = null;
+    }
+    this._violenceWrite = 0;
+    const list = this.state && this.state.traffic && this.state.traffic.freighters;
+    if (Array.isArray(list)) {
+      for (let i = 0; i < list.length; i++) {
+        const rec = list[i];
+        if (!rec) continue;
+        rec.violenceAlarmed = false;
+        rec.violenceResumeTargetId = null;
+      }
+    }
+  },
+
+  _recordViolence(x, z, attackerId, victimId, t) {
+    if (!Number.isFinite(x) || !Number.isFinite(z)) return;
+    this._ensureCivilianViolenceRing();
+    const slot = this._violenceRing[this._violenceWrite];
+    slot.x = x;
+    slot.z = z;
+    slot.t = Number.isFinite(t) ? t : 0;
+    slot.attackerId = attackerId == null ? null : attackerId;
+    slot.victimId = victimId == null ? null : victimId;
+    this._violenceWrite = (this._violenceWrite + 1) % CIVILIAN_VIOLENCE_RING_CAP;
+  },
+
+  _onCombatDamage(payload) {
+    const p = payload || {};
+    if (!(Number(p.applied) > 0)) return;
+    const attackerId = p.attackerId != null ? p.attackerId
+      : p.sourceId != null ? p.sourceId
+        : null;
+    const victimId = p.targetId != null ? p.targetId : p.id;
+    const state = this.state;
+    const victim = state && state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(victimId)
+      : null;
+    if (victim && victim.type && victim.type !== 'ship') return;
+    const attacker = attackerId != null && state && state.entities
+      ? state.entities.get(attackerId)
+      : null;
+    if (isSurvivalCohort(attacker) || isSurvivalCohort(victim)) return;
+    let x = Number(p.pos && p.pos.x);
+    let z = Number(p.pos && p.pos.z);
+    if (!Number.isFinite(x) || !Number.isFinite(z)) {
+      const from = entityPos(attacker) || entityPos(victim);
+      if (!from) return;
+      x = from.x;
+      z = from.z;
+    }
+    this._recordViolence(x, z, attackerId, victimId, Number.isFinite(state && state.simTime) ? state.simTime : 0);
+  },
+
+  _onLawIncidentOpened(payload) {
+    const p = payload || {};
+    const attackerId = p.attackerId != null ? p.attackerId : null;
+    const victimId = p.victimId != null ? p.victimId : p.targetId;
+    const state = this.state;
+    const attacker = attackerId != null && state && state.entities
+      ? state.entities.get(attackerId)
+      : null;
+    const victim = victimId != null && state && state.entities
+      ? state.entities.get(victimId)
+      : null;
+    if (isSurvivalCohort(attacker) || isSurvivalCohort(victim)) return;
+    const from = entityPos(attacker) || entityPos(victim);
+    if (!from) return;
+    this._recordViolence(
+      from.x,
+      from.z,
+      attackerId,
+      victimId,
+      Number.isFinite(state && state.simTime) ? state.simTime : 0,
+    );
+  },
+
+  _nearbyViolence(entity, now) {
+    const pos = entity && entity.pos;
+    const ring = this._violenceRing;
+    if (!pos || !ring) return null;
+    const id = entity.id;
+    let best = null;
+    let bestD2 = CIVILIAN_VIOLENCE_RADIUS_SQ;
+    for (let i = 0; i < ring.length; i++) {
+      const row = ring[i];
+      if (!row || now - row.t > CIVILIAN_ALARM_TTL_S) continue;
+      if (id === row.attackerId || id === row.victimId) continue;
+      const dx = pos.x - row.x;
+      const dz = pos.z - row.z;
+      const d2 = dx * dx + dz * dz;
+      if (d2 <= bestD2) {
+        bestD2 = d2;
+        best = row;
+      }
+    }
+    return best;
+  },
+
+  _pickFleeStation(entity, stations, fleeAim, currentTargetId) {
+    if (!entity || !entity.pos || !stations || stations.length === 0) return null;
+    const fx = Math.cos(fleeAim);
+    const fz = Math.sin(fleeAim);
+    let best = null;
+    let bestScore = -Infinity;
+    let bestOther = null;
+    let bestOtherScore = -Infinity;
+    for (let i = 0; i < stations.length; i++) {
+      const station = stations[i];
+      if (!station || !station.pos || station.alive === false) continue;
+      const dx = station.pos.x - entity.pos.x;
+      const dz = station.pos.z - entity.pos.z;
+      const dist = Math.hypot(dx, dz);
+      if (!(dist > 1)) continue;
+      const score = (dx * fx + dz * fz) / dist;
+      if (score > bestScore) {
+        bestScore = score;
+        best = station;
+      }
+      if (station.id !== currentTargetId && score > bestOtherScore) {
+        bestOtherScore = score;
+        bestOther = station;
+      }
+    }
+    return bestOther || best;
+  },
+
+  /**
+   * Civilians inside 300 WU of a recorded hit/incident. Haulers run; workers hold; a towing hull
+   * keeps the load and leaves slowly. Live jobs go through npcJobs interrupt/resume — never setIntent.
+   * Returns true only when this owner wrote ambient intent for the tick.
+   */
+  _reactCivilianViolence(e, rec, stations, state) {
+    const roleName = rec.role || (e.data && (e.data.trafficRole || e.data.role)) || '';
+    const doesFlee = CIVILIAN_ALARM_FLEE_ROLES.has(roleName);
+    const doesHold = CIVILIAN_ALARM_HOLD_ROLES.has(roleName);
+    if (!doesFlee && !doesHold) return false;
+    if (isSurvivalCohort(e)) return false;
+
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const hit = this._nearbyViolence(e, now);
+    const jobId = e.data && e.data.jobId;
+    const jobs = this.helpers && this.helpers.npcJobs;
+    const carrying = !!(rec && rec.carrying);
+
+    if (!hit) {
+      if (rec.violenceAlarmed) {
+        rec.violenceAlarmed = false;
+        if (jobId && jobs && typeof jobs.resume === 'function') jobs.resume(jobId);
+        const resumeId = rec.violenceResumeTargetId;
+        rec.violenceResumeTargetId = null;
+        if (!jobId && resumeId != null) {
+          const prev = state.entities && typeof state.entities.get === 'function'
+            ? state.entities.get(resumeId)
+            : null;
+          if (prev && prev.alive !== false) rec.targetId = resumeId;
+        }
+        if (!jobId && e.data && e.data.intent) e.data.intent.brake = false;
+      }
+      return false;
+    }
+
+    const hold = doesHold && !carrying;
+    const untilSimT = now + CIVILIAN_ALARM_TTL_S;
+    if (jobId) {
+      if (jobs && typeof jobs.interrupt === 'function') {
+        const threat = this._violenceThreatScratch;
+        threat.entityId = hit.attackerId != null ? hit.attackerId : hit.victimId;
+        threat.x = hit.x;
+        threat.z = hit.z;
+        threat.untilSimT = untilSimT;
+        threat.hold = hold;
+        threat.slow = carrying;
+        jobs.interrupt(jobId, threat);
+      }
+      rec.violenceAlarmed = true;
+      return false;
+    }
+
+    rec.violenceAlarmed = true;
+    if (hold) {
+      const aim = (e.data && e.data.intent && Number.isFinite(e.data.intent.aimAngle))
+        ? e.data.intent.aimAngle
+        : (e.rot || 0);
+      setIntent(e, 0, 0, false, false, null, aim);
+      e.data.intent.brake = true;
+      return true;
+    }
+
+    const dx = (e.pos && e.pos.x || 0) - hit.x;
+    const dz = (e.pos && e.pos.z || 0) - hit.z;
+    let aim = Math.atan2(dz, dx);
+    if (!Number.isFinite(aim) || (dx === 0 && dz === 0)) {
+      aim = ((hash32(e.id, 'civilian-alarm') >>> 0) / 4294967296) * Math.PI * 2;
+    }
+    if (doesFlee && stations && stations.length > 1 && !rec.worldSiteRoute && !rec.claimTravelRoute) {
+      if (rec.violenceResumeTargetId == null) rec.violenceResumeTargetId = rec.targetId;
+      const dest = this._pickFleeStation(e, stations, aim, rec.targetId);
+      if (dest && dest.id !== rec.targetId) rec.targetId = dest.id;
+    }
+    setIntent(e, 0, 1, !carrying, false, null, aim);
+    if (e.data.intent) e.data.intent.brake = false;
+    return true;
+  },
+
   // Patrols orbit a station on a slow circular track — a readable "on duty" presence.
   _stepOrbit(e, rec, stations, dt) {
     const station = stations[0];
@@ -7853,6 +8098,18 @@ function entityWithWorldRecord(state, worldRecordId) {
 function liveEntity(state, id) {
   const entity = state && state.entities && state.entities.get && state.entities.get(id);
   return entity && entity.alive !== false ? entity : null;
+}
+
+function entityPos(entity) {
+  const pos = entity && entity.pos;
+  const x = Number(pos && pos.x);
+  const z = Number(pos && pos.z);
+  if (!Number.isFinite(x) || !Number.isFinite(z)) return null;
+  return pos;
+}
+
+function isSurvivalCohort(entity) {
+  return !!(entity && entity.data && entity.data.runCohort === 'survival');
 }
 
 function stableTrafficKey(entity) {

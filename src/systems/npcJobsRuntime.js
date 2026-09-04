@@ -449,6 +449,10 @@ export const npcJobsRuntime = {
         controlClaim: (jobId) => this.controlClaim(jobId),
         activeControlClaimCount: () => this.activeControlClaimCount(),
         heaveToEntity: (entityId, opts) => this.heaveToEntity(entityId, opts),
+        // PQ-138.02: traffic notices nearby violence, then this owner suspends/resumes the job.
+        // Traffic must not write intent for a job hull.
+        interrupt: (jobId, threat) => this.interruptJob(jobId, threat),
+        resume: (jobId) => this.resumeJob(jobId),
         // Read-on-demand performance evidence. The returned object is a detached scalar snapshot;
         // callers cannot mutate the retained hot-path counters or request scratch.
         threatQueryDiagnostics: () => this.threatQueryDiagnostics(),
@@ -1478,6 +1482,7 @@ export const npcJobsRuntime = {
     clearRouteBrake(entity);
     // Any flee state belongs to the job's own reflex, which is suspended for the duration.
     entry.threatId = null;
+    this._clearViolenceStamp(entry);
     return { granted: true, claim: entry.control };
   },
 
@@ -2312,11 +2317,24 @@ export const npcJobsRuntime = {
     }
 
     if (phase === NPC_JOB_PHASE.FLEE) {
-      // Boost directly away from the remembered threat (civilian bolt, like traffic _stepFlee).
-      const threat = entry.threatId != null && this.state.entities ? this.state.entities.get(entry.threatId) : null;
-      if (threat && threat.pos) {
-        const aim = Math.atan2(entity.pos.z - threat.pos.z, entity.pos.x - threat.pos.x);
-        this._writeIntent(entity, 0, 1, true, aim);
+      // Nearby gunfire can suspend a job without a team-1 spatial threat. Workers hold;
+      // a loaded hull keeps its tow and leaves without boost; everyone else bolts.
+      if (entry.violenceHold === true) {
+        this._writeIntent(entity, 0, 0, false, entity.rot || 0, true);
+        return;
+      }
+      let ax = entry.violenceX;
+      let az = entry.violenceZ;
+      const threat = entry.threatId != null && this.state.entities
+        ? this.state.entities.get(entry.threatId)
+        : null;
+      if (!(Number.isFinite(ax) && Number.isFinite(az)) && threat && threat.pos) {
+        ax = threat.pos.x;
+        az = threat.pos.z;
+      }
+      if (Number.isFinite(ax) && Number.isFinite(az)) {
+        const aim = Math.atan2(entity.pos.z - az, entity.pos.x - ax);
+        this._writeIntent(entity, 0, 1, entry.violenceSlow !== true, aim, false);
       } else {
         this._writeIntent(entity, 0, 0, false, entity.rot || 0);
       }
@@ -2408,6 +2426,61 @@ export const npcJobsRuntime = {
   },
 
   // ── threat / flee ─────────────────────────────────────────────────────────────────────────────
+  _clearViolenceStamp(entry) {
+    if (!entry) return;
+    entry.violenceUntilSimT = null;
+    entry.violenceHold = false;
+    entry.violenceSlow = false;
+    entry.violenceX = null;
+    entry.violenceZ = null;
+  },
+
+  _stampViolence(entry, threat) {
+    const now = finite(this.state && this.state.simTime, 0);
+    if (threat && Number.isFinite(threat.untilSimT)) entry.violenceUntilSimT = threat.untilSimT;
+    else entry.violenceUntilSimT = now + 5;
+    if (!threat) return;
+    if (threat.hold === true) entry.violenceHold = true;
+    else if (threat.hold === false) entry.violenceHold = false;
+    if (threat.slow === true) entry.violenceSlow = true;
+    else if (threat.slow === false) entry.violenceSlow = false;
+    if (Number.isFinite(threat.x) && Number.isFinite(threat.z)) {
+      entry.violenceX = threat.x;
+      entry.violenceZ = threat.z;
+    }
+    if (threat.entityId != null) entry.threatId = threat.entityId;
+  },
+
+  /**
+   * Traffic-facing flee/hold suspend. The kernel owns phase; this owner keeps the hull's intent.
+   * Idempotent: a live flee refreshes the violence stamp without stacking phases.
+   */
+  interruptJob(jobId, threat = null) {
+    if (jobId == null) return false;
+    const entry = this._byId()[jobId];
+    if (!entry || !entry.job || entry.job.corrupt) return false;
+    if (entry.control) return false;
+    if (entry.job.phase === NPC_JOB_PHASE.COMPLETE) return false;
+    this._stampViolence(entry, threat);
+    if (entry.job.phase !== NPC_JOB_PHASE.FLEE) {
+      interrupt(entry.job, { entityId: threat && threat.entityId != null ? threat.entityId : null });
+    }
+    this._threatQueryDirty = true;
+    return true;
+  },
+
+  resumeJob(jobId) {
+    if (jobId == null) return false;
+    const entry = this._byId()[jobId];
+    if (!entry || !entry.job) return false;
+    if (entry.control) return false;
+    resume(entry.job);
+    entry.threatId = null;
+    this._clearViolenceStamp(entry);
+    this._threatQueryDirty = true;
+    return true;
+  },
+
   _reconcileThreatResult(entry, resultId) {
     const job = entry.job;
     if (!job || job.corrupt || job.phase === NPC_JOB_PHASE.COMPLETE) return;
@@ -2417,9 +2490,18 @@ export const npcJobsRuntime = {
     const liveHostile = this._isJobThreat(nearest)
       ? nearest
       : null;
+    const now = finite(this.state && this.state.simTime, 0);
+    const violenceActive = Number.isFinite(entry.violenceUntilSimT) && now < entry.violenceUntilSimT;
     if (job.phase === NPC_JOB_PHASE.FLEE) {
-      if (!liveHostile) { resume(job); entry.threatId = null; }
-      else { entry.threatId = liveHostile.id; }
+      if (liveHostile) {
+        entry.threatId = liveHostile.id;
+        if (!violenceActive) this._clearViolenceStamp(entry);
+        return;
+      }
+      if (violenceActive) return;
+      resume(job);
+      entry.threatId = null;
+      this._clearViolenceStamp(entry);
       return;
     }
     if (liveHostile) {
@@ -2473,6 +2555,7 @@ export const npcJobsRuntime = {
       virtualize(entry.job);
       entry.entityId = null;
       entry.threatId = null;
+      this._clearViolenceStamp(entry);
     }
     if (sectorId === CERES_ACTIVITY_SECTOR_ID) {
       this._resetCeresEscortAuthority();
