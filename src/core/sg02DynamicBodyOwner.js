@@ -19,6 +19,7 @@ import { SHIPS } from '../data/ships.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
 import { frameToGlobal, globalToFrame } from './coordinates.js';
 import { loadRapierCompatRuntime } from './rapierCompatRuntime.js';
+import { resolveGovernedCombatSpeed } from './flight/propulsionCatalog.js';
 
 export const SG02_DYNAMIC_BODY_OWNER_SCHEMA_VERSION = 1;
 export const SG02_DYNAMIC_BODY_OWNER_DT = 1 / 60;
@@ -92,6 +93,11 @@ const MAX_CONTACT_DW = 2.0;      // rad/s of contact-sourced yaw-rate delta per 
 const CRAFT_CONTACT_YAW_EPS = 0.05;     // leftover contact spin; above damping/solver noise
 const SANE_MAX_YAW_RATE = 6.0;   // absolute yaw-rate ceiling, above every legit tether clamp
 const HELM_LOCKED_TYPES = new Set(['ship', 'drone']);
+
+export const PLAYER_CONTACT_RESPONSE_FRACTION = 0.25;
+export const PLAYER_CONTACT_MAX_CRUISE_FRACTION = 0.10;
+export const PLAYER_CONTACT_EVENT_BRIDGE_TICKS = 6;
+export const PLAYER_CONTACT_ACTIVITY_EPSILON = 1e-3; // WU/s
 
 // Rank-1 CCD gate (physics-spike diagnosis): CCD on every craft × dense static fields makes
 // Rapier TOI work bursty/super-linear. Reserve CCD for genuine fast movers — projectiles
@@ -573,15 +579,21 @@ export class Sg02DynamicBodyOwner {
     for (const rec of this.dynamicRecords) this._captureExpectedKinematics(rec);
 
     this.world.timestep = this.fixedDt;
+    let stepReceipts = [];
     if (this._eventQueue) {
       this.world.step(this._eventQueue);
-      this._captureContactImpacts();
+      stepReceipts = this._captureContactImpacts() || [];
     } else {
       this.world.step();
     }
     this.tick++;
     // Bound solver contact spikes before publishing the authoritative motion snapshot.
     for (const rec of this.dynamicRecords) this._applyStructuralGive(rec);
+
+    if (stepReceipts.length > 0) {
+      this._distributeAppliedPlayerDeltaV(stepReceipts);
+      this._contactImpacts.push(...stepReceipts);
+    }
 
     for (const rec of this.dynamicRecords) {
       const kinematics = this._enforcePlane(rec);
@@ -637,6 +649,104 @@ export class Sg02DynamicBodyOwner {
     e.yaw = wrapAngle(yawFromQuat(rec.body.rotation()) + e.wy * dt);
   }
 
+  // PQ-137.11: player contact structural give.
+  // The player is not ammunition. Preserves the no-contact baseline from _captureExpectedKinematics(),
+  // restricts contact velocity response to along heading, limits response to 25% of solver dV,
+  // enforces cumulative 10% cruise cap across contact episodes, strips contact yaw, and prevents reversal.
+  _applyPlayerStructuralGive(rec) {
+    const e = rec.expected;
+    if (!e) return 0;
+    const v = rec.body.linvel();
+    const vx = finite(v.x);
+    const vz = finite(v.z);
+    const dvx = vx - e.vx;
+    const dvz = vz - e.vz;
+    const dMag = Math.hypot(dvx, dvz);
+
+    let appliedAlong = 0;
+    let actualPlayerDeltaV = 0;
+
+    const isActive = dMag > PLAYER_CONTACT_ACTIVITY_EPSILON;
+    if (isActive) {
+      const lastTick = rec._playerContactLastTick;
+      const gap = Number.isFinite(lastTick) ? this.tick - lastTick : Infinity;
+      if (gap > PLAYER_CONTACT_EVENT_BRIDGE_TICKS) {
+        rec._playerContactCumulativeDeltaV = 0;
+      }
+      rec._playerContactLastTick = this.tick;
+
+      const expectedSpeed = Math.hypot(e.vx, e.vz);
+      if (expectedSpeed <= PLAYER_CONTACT_ACTIVITY_EPSILON) {
+        appliedAlong = 0;
+      } else {
+        const hx = e.vx / expectedSpeed;
+        const hz = e.vz / expectedSpeed;
+        const dotD = dvx * hx + dvz * hz;
+        const candidateAlong = dotD * PLAYER_CONTACT_RESPONSE_FRACTION;
+        const fallback = (rec.entity && (rec.entity.combatSpeed || rec.entity.maxSpeed)) || 0;
+        const cruise = resolveGovernedCombatSpeed(rec.entity, null, fallback);
+        const eventBudget = PLAYER_CONTACT_MAX_CRUISE_FRACTION * cruise;
+        const cumulative = rec._playerContactCumulativeDeltaV || 0;
+        const remainingBudget = Math.max(0, eventBudget - cumulative);
+
+        appliedAlong = clamp(candidateAlong, -remainingBudget, remainingBudget);
+        if (appliedAlong < -expectedSpeed) {
+          appliedAlong = -expectedSpeed;
+        }
+      }
+
+      actualPlayerDeltaV = Math.abs(appliedAlong);
+      rec._playerContactCumulativeDeltaV = (rec._playerContactCumulativeDeltaV || 0) + actualPlayerDeltaV;
+    }
+
+    let finalVx = e.vx;
+    let finalVz = e.vz;
+    if (appliedAlong !== 0) {
+      const expectedSpeed = Math.hypot(e.vx, e.vz);
+      const hx = e.vx / expectedSpeed;
+      const hz = e.vz / expectedSpeed;
+      finalVx += hx * appliedAlong;
+      finalVz += hz * appliedAlong;
+    }
+    rec.body.setLinvel({ x: finalVx, y: 0, z: finalVz }, true);
+
+    const yaw = Number.isFinite(e.yaw) ? e.yaw : 0;
+    rec.body.setRotation(quatFromYaw(yaw), true);
+    rec.body.setAngvel({ x: 0, y: finite(e.wy), z: 0 }, true);
+
+    rec._lastAppliedPlayerDeltaV = actualPlayerDeltaV;
+    return actualPlayerDeltaV;
+  }
+
+  _distributeAppliedPlayerDeltaV(receipts) {
+    for (const rec of this.records.values()) {
+      if (rec.entity && rec.entity.isPlayer === true) {
+        const playerId = rec.entity.id;
+        const playerReceipts = receipts.filter(
+          (r) => r.aId === playerId || r.bId === playerId
+        );
+        if (playerReceipts.length > 0) {
+          const actualApplied = rec._lastAppliedPlayerDeltaV || 0;
+          let totalImpulse = 0;
+          for (const r of playerReceipts) totalImpulse += finite(r.impulse, 0);
+          let assigned = 0;
+          for (let i = 0; i < playerReceipts.length; i++) {
+            const r = playerReceipts[i];
+            if (i === playerReceipts.length - 1) {
+              r.appliedPlayerDeltaV = actualApplied - assigned;
+              continue;
+            }
+            const share = totalImpulse > 0
+              ? (finite(r.impulse, 0) / totalImpulse) * actualApplied
+              : actualApplied / playerReceipts.length;
+            r.appliedPlayerDeltaV = share;
+            assigned += share;
+          }
+        }
+      }
+    }
+  }
+
   // Clamp the solver-contact contribution to this tick's velocity change (see MAX_CONTACT_DV).
   // Angular damping also lands in the "excess" term but at ≤0.7% of the rate per tick it never
   // approaches the clamp. The absolute yaw ceiling is the final sanity net: nothing in the game
@@ -647,6 +757,10 @@ export class Sg02DynamicBodyOwner {
   _applyStructuralGive(rec) {
     const e = rec.expected;
     if (!e) return;
+    if (rec.entity && rec.entity.isPlayer === true) {
+      this._applyPlayerStructuralGive(rec);
+      return;
+    }
     const v = rec.body.linvel();
     const w = rec.body.angvel();
     let vx = finite(v.x);
@@ -887,7 +1001,7 @@ export class Sg02DynamicBodyOwner {
   }
 
   _captureContactImpacts() {
-    if (!this._eventQueue || typeof this._eventQueue.drainContactForceEvents !== 'function') return;
+    if (!this._eventQueue || typeof this._eventQueue.drainContactForceEvents !== 'function') return [];
     const merged = new Map();
     this._eventQueue.drainContactForceEvents((event) => {
       const ownedA = this._colliderOwners.get(event.collider1());
@@ -946,6 +1060,7 @@ export class Sg02DynamicBodyOwner {
       const existing = merged.get(key);
       const impulse = Math.min((existing && existing.impulse || 0) + boundedImpulse, Math.min(...dynamicCaps));
       const normal = normalizePlanarDirection(direction);
+      const isPlayerReceipt = (a.entity && a.entity.isPlayer === true) || (b.entity && b.entity.isPlayer === true);
       const receipt = {
         schemaVersion: 1,
         tick: this.tick + 1,
@@ -959,10 +1074,13 @@ export class Sg02DynamicBodyOwner {
           ? Math.max(existing.preSolveClosingSpeed, closingSpeed)
           : closingSpeed,
       };
+      if (isPlayerReceipt) {
+        receipt.appliedPlayerDeltaV = 0;
+      }
       merged.set(key, receipt);
     });
     const receipts = [...merged.values()].sort((a, b) => compareIds(a.aId, b.aId) || compareIds(a.bId, b.bId));
-    this._contactImpacts.push(...receipts);
+    return receipts;
   }
 
   _maybeResyncBodyPose(rec, entity) {

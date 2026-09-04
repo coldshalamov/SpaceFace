@@ -323,9 +323,17 @@ export async function runKnockBudget(seed, { simSeconds, emptyField = false } = 
     const receipts = [];
     host.bus.on('physics:impact', (payload) => {
       if (!payload || !payload.playerInvolved) return;
+      if (!Number.isFinite(payload.appliedPlayerDeltaV)) {
+        if (!assertError) {
+          assertError = new Error(`feel.knock_budget: player receipt at tick ${payload.tick} missing finite appliedPlayerDeltaV`);
+        }
+      }
       receipts.push({
         tick: finite(payload.tick, host.state.tick | 0),
         playerDeltaV: Math.abs(finite(payload.playerDeltaV)),
+        appliedPlayerDeltaV: Number.isFinite(payload.appliedPlayerDeltaV)
+          ? Math.abs(Number(payload.appliedPlayerDeltaV))
+          : NaN,
         dp: finite(payload.dp),
         otherId: payload.aId === player.id ? payload.bId : payload.aId,
         causalActorId: payload.causalActorId == null ? null : payload.causalActorId,
@@ -501,7 +509,8 @@ export async function runKnockBudget(seed, { simSeconds, emptyField = false } = 
     for (const r of windowReceipts) {
       if (open && r.sampleTick - open.lastTick <= EVENT_BRIDGE_TICKS) {
         open.lastTick = r.sampleTick;
-        open.receiptDeltaV += r.playerDeltaV;
+        open.receiptDeltaV += r.appliedPlayerDeltaV;
+        open.rawDeltaV += r.playerDeltaV;
         open.dp += r.dp;
         open.receiptCount += 1;
         if (r.otherId != null) open.others.add(r.otherId);
@@ -513,7 +522,8 @@ export async function runKnockBudget(seed, { simSeconds, emptyField = false } = 
         open = {
           firstTick: r.sampleTick,
           lastTick: r.sampleTick,
-          receiptDeltaV: r.playerDeltaV,
+          receiptDeltaV: r.appliedPlayerDeltaV,
+          rawDeltaV: r.playerDeltaV,
           dp: r.dp,
           receiptCount: 1,
           kind: r.kind,
@@ -595,23 +605,21 @@ export async function runKnockBudget(seed, { simSeconds, emptyField = false } = 
       ev.measuredDeltaV = measuredDeltaV;
       ev.rotDriftRad = rotDrift;
 
-      if (!(ev.receiptDeltaV >= knockFloor)) continue;
-
-      // B13 exempts "a deliberate big event (a slam the player chose, a well flown into)". The
-      // arena knows which bodies it put ON the hull's line rather than beside it, so a head-on is
-      // identified by the PLAN that placed it, not by how hard it turned out to hit — that would be
-      // circular, and would let the bar excuse whatever it could not meet.
+      // Classify deliberate head-on/ram events from RAW delta-V before the governed applied-dV
+      // noise floor. Ordinary B13 frequency/magnitude uses applied; raw impact is the legible event.
       let isHeadOn = false;
       for (const id of ev.others) if (headOnIds.has(id)) isHeadOn = true;
+      const rawDeltaV = ev.rawDeltaV != null ? ev.rawDeltaV : ev.receiptDeltaV;
       if (isHeadOn) {
+        if (!(rawDeltaV >= knockFloor)) continue;
         headOnEvents += 1;
-        if (ev.receiptDeltaV > headOnMaxDeltaV) headOnMaxDeltaV = ev.receiptDeltaV;
+        if (rawDeltaV > headOnMaxDeltaV) headOnMaxDeltaV = rawDeltaV;
         eventTrace.push({
           tick: samples[startIdx].tick,
           type: 'collision:playerHeadOn',
           data: {
-            deltaV: ev.receiptDeltaV,
-            deltaVFractionOfCruise: ev.receiptDeltaV / cruiseSpeed,
+            deltaV: rawDeltaV,
+            deltaVFractionOfCruise: rawDeltaV / cruiseSpeed,
             eventTicks: endIdx - startIdx + 1,
           },
         });
@@ -621,23 +629,26 @@ export async function runKnockBudget(seed, { simSeconds, emptyField = false } = 
       // Taste ruling: a hostile-initiated ram is a fight, not an ordinary bump. It is reported
       // beside the bar with its legibility, never counted against the ordinary-bump budget.
       if (ev.kind === 'ram') {
+        if (!(rawDeltaV >= knockFloor)) continue;
         ramKnockEvents += 1;
-        if (ev.receiptDeltaV > ramMaxDeltaV) ramMaxDeltaV = ev.receiptDeltaV;
+        if (rawDeltaV > ramMaxDeltaV) ramMaxDeltaV = rawDeltaV;
         // "Legible" in the contract's sense: at or above the deliberate-big-event threshold, so the
         // player can tell something happened TO them rather than feeling a mystery nudge.
-        if (ev.receiptDeltaV >= LEGIBLE_EVENT_DELTA_V) ramLegibleEvents += 1;
+        if (rawDeltaV >= LEGIBLE_EVENT_DELTA_V) ramLegibleEvents += 1;
         eventTrace.push({
           tick: samples[startIdx].tick,
           type: 'collision:playerRammed',
           data: {
-            deltaV: ev.receiptDeltaV,
-            deltaVFractionOfCruise: ev.receiptDeltaV / cruiseSpeed,
-            legible: ev.receiptDeltaV >= LEGIBLE_EVENT_DELTA_V,
+            deltaV: rawDeltaV,
+            deltaVFractionOfCruise: rawDeltaV / cruiseSpeed,
+            legible: rawDeltaV >= LEGIBLE_EVENT_DELTA_V,
             eventTicks: endIdx - startIdx + 1,
           },
         });
         continue;
       }
+
+      if (!(ev.receiptDeltaV >= knockFloor)) continue;
 
       knockCount += 1;
       const evTicks = endIdx - startIdx + 1;
@@ -676,7 +687,6 @@ export async function runKnockBudget(seed, { simSeconds, emptyField = false } = 
         Math.atan2(post.velX, post.velZ) - Math.atan2(pre.velX, pre.velZ),
       )) * (180 / Math.PI);
       if (velDeg > velocityHeadingChangeMaxDeg) velocityHeadingChangeMaxDeg = velDeg;
-
       // Jitter: does the hull wobble after the bump? Lateral velocity in the pre-contact hull
       // frame, sign flips inside 0.25 s.
       const laterals = [];
@@ -694,6 +704,8 @@ export async function runKnockBudget(seed, { simSeconds, emptyField = false } = 
         type: 'collision:playerKnock',
         data: {
           deltaV: ev.receiptDeltaV,
+          rawDeltaV: ev.rawDeltaV,
+          appliedDeltaV: ev.receiptDeltaV,
           deltaVFractionOfCruise: ev.receiptDeltaV / cruiseSpeed,
           measuredDeltaV,
           headingChangeDeg: headingDeg,
@@ -731,7 +743,7 @@ export async function runKnockBudget(seed, { simSeconds, emptyField = false } = 
         playerMass: finite(player.mass, 0),
         simSeconds,
         ticks,
-        knockSource: 'physics:impact(playerInvolved).playerDeltaV',
+        knockSource: 'physics:impact(playerInvolved).appliedPlayerDeltaV',
         // The bar's three numbers above are AMBIENT ONLY, per the taste ruling. These are the
         // hostile-initiated rams that were excluded, with their legibility, so excluding them can
         // never hide a problem.

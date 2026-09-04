@@ -414,6 +414,7 @@ export const physics = {
         normal: receipt.normal,
         causalActorId: receipt.causalActorId,
         preSolveClosingSpeed: receipt.preSolveClosingSpeed,
+        appliedPlayerDeltaV: receipt.appliedPlayerDeltaV,
       });
       if (dp > 0) emitted++;
     }
@@ -1247,6 +1248,9 @@ function emitPhysicsImpact(bus, state, a, b, impulseMag, material, pos, options 
   };
   if (Number.isFinite(options.preSolveClosingSpeed)) {
     payload.preSolveClosingSpeed = options.preSolveClosingSpeed;
+  }
+  if (Number.isFinite(options.appliedPlayerDeltaV)) {
+    payload.appliedPlayerDeltaV = options.appliedPlayerDeltaV;
   }
   bus.emit('physics:impact', payload);
   return dp;

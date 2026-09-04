@@ -23,6 +23,7 @@
     "check:map-nav-context",
     "check:map-never-lost",
     "check:navigation-stale-route",
+    "check:player-knock",
     "check:propulsion",
     "check:propulsion:authority",
     "check:propulsion:extreme",

@@ -63,10 +63,12 @@ const VERB_PERIOD = 150;
 const CRUISE_FRAC = 0.72;
 const KNOCK_EVENTS_PER_MIN_LIMIT = 2.0;
 const KNOCK_MAX_FRACTION_LIMIT = 0.10;
+const KNOCK_FLOOR_FRACTION = 0.005;
 // ONE knock definition, owned by CONTACT in scripts/lib/bench/scenarios/feel.knock_budget.mjs.
 // Rapier answers a single graze with a RUN of consecutive receipt ticks, so receipts within this
-// many ticks are ONE event and the event's magnitude is the SUM of their playerDeltaV. B13 counts
-// EVENTS, not solver ticks. Counting ticks reported 907 "knocks/min" on one Crucible cell.
+// many ticks are ONE event and the event's magnitude is the SUM of their appliedPlayerDeltaV for
+// ordinary/ambient B13, raw playerDeltaV for hostile ram legibility. B13 counts EVENTS, not solver
+// ticks. Counting ticks reported 907 "knocks/min" on one Crucible cell.
 const EVENT_BRIDGE_TICKS = 6;
 // Master ruling 2026-09-04 01:45: B13's sentence is about ORDINARY flight. A hostile that rams the
 // player is a deliberate big event BY THE HOSTILE and belongs to the legibility clause, not the
@@ -812,6 +814,8 @@ function ingestLiveEvent(ev, ctx) {
         data: {
           // Missing playerDeltaV stays missing — finiteOrZero here would turn a hole into a gentle 0.
           deltaV: finiteOrNull(p.playerDeltaV),
+          rawDeltaV: finiteOrNull(p.playerDeltaV),
+          appliedDeltaV: finiteOrNull(p.appliedPlayerDeltaV),
           deltaVFractionOfCruise: null,
           headingChangeRad: null,
           causalActorId,
@@ -1068,15 +1072,22 @@ export function buildKnockEvents(eventTrace, { playerId, cruiseSpeed } = {}) {
   const events = [];
   let open = null;
   for (const r of receipts) {
-    const dv = r.data && Number.isFinite(r.data.deltaV) ? r.data.deltaV : null;
+    const rawDv = r.data && Number.isFinite(r.data.rawDeltaV)
+      ? r.data.rawDeltaV
+      : (r.data && Number.isFinite(r.data.deltaV) ? r.data.deltaV : null);
+    const appliedDv = r.data && Number.isFinite(r.data.appliedDeltaV)
+      ? r.data.appliedDeltaV
+      : null;
     const heading = r.data && Number.isFinite(r.data.headingChangeRad) ? r.data.headingChangeRad : null;
     const headingMissing = !(r.data && Number.isFinite(r.data.headingChangeRad));
     const attr = receiptAttribution(r.data);
     if (open && r.tick - open.lastTick <= EVENT_BRIDGE_TICKS) {
       open.lastTick = r.tick;
       open.receipts += 1;
-      if (dv === null) open.missingDeltaV = true;
-      else open.deltaV += dv;
+      if (rawDv === null) open.missingRawDeltaV = true;
+      else open.rawDeltaV += rawDv;
+      if (appliedDv === null) open.missingAppliedDeltaV = true;
+      else open.appliedDeltaV += appliedDv;
       if (headingMissing) open.missingHeading = true;
       recordUniqueTickHeading(open, r.tick, headingMissing ? null : heading);
       open.constituents.push({ tick: r.tick, ...attr });
@@ -1085,8 +1096,10 @@ export function buildKnockEvents(eventTrace, { playerId, cruiseSpeed } = {}) {
     open = {
       startTick: r.tick,
       lastTick: r.tick,
-      deltaV: dv === null ? 0 : dv,
-      missingDeltaV: dv === null,
+      rawDeltaV: rawDv === null ? 0 : rawDv,
+      appliedDeltaV: appliedDv === null ? 0 : appliedDv,
+      missingRawDeltaV: rawDv === null,
+      missingAppliedDeltaV: appliedDv === null,
       missingHeading: headingMissing,
       receipts: 1,
       constituents: [{ tick: r.tick, ...attr }],
@@ -1104,11 +1117,18 @@ export function buildKnockEvents(eventTrace, { playerId, cruiseSpeed } = {}) {
 
   for (const ev of events) {
     finalizeEventHeading(ev);
-    if (ev.missingDeltaV) ev.deltaVFractionOfCruise = null;
-    else if (cruiseSpeed !== null && cruiseSpeed > 0) ev.deltaVFractionOfCruise = ev.deltaV / cruiseSpeed;
+    ev.hostileInitiated = classifyHostileInitiated(ev, playerId);
+    // Legacy `deltaV` stays the raw/compatible sum so fixtures without appliedDeltaV still
+    // add up. Ambient B13 magnitude uses applied and fails closed when it is missing; hostile
+    // ram legibility uses raw.
+    ev.deltaV = ev.rawDeltaV;
+    ev.missingDeltaV = ev.missingRawDeltaV;
+    const governedDv = ev.hostileInitiated ? ev.rawDeltaV : ev.appliedDeltaV;
+    const governedMissing = ev.hostileInitiated ? ev.missingRawDeltaV : ev.missingAppliedDeltaV;
+    if (governedMissing) ev.deltaVFractionOfCruise = null;
+    else if (cruiseSpeed !== null && cruiseSpeed > 0) ev.deltaVFractionOfCruise = governedDv / cruiseSpeed;
     else ev.deltaVFractionOfCruise = null;
 
-    ev.hostileInitiated = classifyHostileInitiated(ev, playerId);
     const intent = ev.aiPhase;
     ev.phase = intent ? intent.phase : null;
     ev.maneuverKind = intent ? intent.maneuverKind : null;
@@ -1142,6 +1162,7 @@ function summarizeMetrics({ eventTrace, knockEvents, ticks, wavesCleared, cruise
   let playerKnockEvents = 0;
   let maxPlayerKnockFraction = 0;
   let knocksMissingDeltaV = 0;
+  let knocksMissingAppliedDeltaV = 0;
   let knocksMissingActor = 0;
   let collateralMoments = 0;
   const verbs = new Set();
@@ -1152,12 +1173,17 @@ function summarizeMetrics({ eventTrace, knockEvents, ticks, wavesCleared, cruise
     else if (ev.type === 'entity:killed' && ev.data && ev.data.cause !== 'player') totalKills += 1;
     else if (ev.type === 'combat:collateral') collateralMoments += 1;
     else if (ev.type === 'collision:playerKnock') {
-      // A knock the physics authority reported without a deltaV is a HOLE, not a zero.
-      const raw = ev.data && ev.data.deltaV != null ? Number(ev.data.deltaV) : NaN;
+      // A knock the physics authority reported without deltaV is a HOLE, not a zero.
+      const raw = ev.data && ev.data.rawDeltaV != null ? Number(ev.data.rawDeltaV) : (ev.data && ev.data.deltaV != null ? Number(ev.data.deltaV) : NaN);
+      const applied = ev.data && ev.data.appliedDeltaV != null ? Number(ev.data.appliedDeltaV) : NaN;
       if (!Number.isFinite(raw)) knocksMissingDeltaV += 1;
+      if (!Number.isFinite(applied)) knocksMissingAppliedDeltaV += 1;
       if (!ev.data || ev.data.causalActorId == null) knocksMissingActor += 1;
       if (ev.data) {
-        ev.data.deltaVFractionOfCruise = cruiseSpeed !== null && cruiseSpeed > 0 && Number.isFinite(raw)
+        ev.data.deltaVFractionOfCruise = cruiseSpeed !== null && cruiseSpeed > 0 && Number.isFinite(applied)
+          ? applied / cruiseSpeed
+          : null;
+        ev.data.rawDeltaVFractionOfCruise = cruiseSpeed !== null && cruiseSpeed > 0 && Number.isFinite(raw)
           ? raw / cruiseSpeed
           : null;
       }
@@ -1165,8 +1191,15 @@ function summarizeMetrics({ eventTrace, knockEvents, ticks, wavesCleared, cruise
   }
 
   // EVENTS, not receipts, and AMBIENT events for the budget clauses (master ruling 01:45).
+  // Ordinary rate/magnitude uses applied player delta-V; a receipt with no retained response is
+  // not a knock the player could feel. Missing applied stays in the set so acceptance fails closed.
   const events = Array.isArray(knockEvents) ? knockEvents : [];
-  const ambient = events.filter((e) => !e.hostileInitiated);
+  const knockFloor = cruiseSpeed !== null && cruiseSpeed > 0 ? KNOCK_FLOOR_FRACTION * cruiseSpeed : 0;
+  const ambient = events.filter((e) => {
+    if (e.hostileInitiated) return false;
+    if (e.missingAppliedDeltaV) return true;
+    return Number.isFinite(e.appliedDeltaV) && e.appliedDeltaV >= knockFloor;
+  });
   const hostile = events.filter((e) => e.hostileInitiated);
   playerKnockEvents = ambient.length;
   let headingChangeEvents = 0;
@@ -1195,7 +1228,7 @@ function summarizeMetrics({ eventTrace, knockEvents, ticks, wavesCleared, cruise
   // contract also requires no visible jitter. This harness is headless, so jitter is
   // unmeasured and the full-contract verdict must never read true.
   const cruiseKnown = cruiseSpeed !== null && cruiseSpeed > 0;
-  const fractionKnown = cruiseKnown && ambientFractionKnown && knocksMissingDeltaV === 0;
+  const fractionKnown = cruiseKnown && ambientFractionKnown && knocksMissingDeltaV === 0 && knocksMissingAppliedDeltaV === 0;
   const jitterMeasured = false;
   const overBudget = (headingKnown && headingChangeEvents > 0)
     || (fractionKnown && maxPlayerKnockFraction > KNOCK_MAX_FRACTION_LIMIT)
@@ -1207,7 +1240,8 @@ function summarizeMetrics({ eventTrace, knockEvents, ticks, wavesCleared, cruise
     && knockRate <= KNOCK_EVENTS_PER_MIN_LIMIT;
   let b13Met;
   if (overBudget) b13Met = false;
-  else if (!b13ComponentsMet || !jitterMeasured) b13Met = null;
+  else if (!jitterMeasured) b13Met = false;
+  else if (!b13ComponentsMet) b13Met = false;
   else b13Met = true;
   const gapParts = [];
   if (!cruiseKnown) {
@@ -1215,6 +1249,9 @@ function summarizeMetrics({ eventTrace, knockEvents, ticks, wavesCleared, cruise
   }
   if (knocksMissingDeltaV > 0) {
     gapParts.push(`${knocksMissingDeltaV} physics:impact event(s) named the player but carried no playerDeltaV`);
+  }
+  if (knocksMissingAppliedDeltaV > 0) {
+    gapParts.push(`${knocksMissingAppliedDeltaV} physics:impact event(s) named the player but carried no appliedPlayerDeltaV`);
   }
   if (knocksMissingActor > 0) {
     gapParts.push(`${knocksMissingActor} player knock receipt(s) named no causalActorId`);
@@ -1251,10 +1288,11 @@ function summarizeMetrics({ eventTrace, knockEvents, ticks, wavesCleared, cruise
     b13Met,
     knockGap: gapParts.length ? gapParts.join('; ') : null,
     knocksMissingDeltaV,
+    knocksMissingAppliedDeltaV,
     knocksMissingActor,
     wavesCleared,
     simSeconds: round2(simSeconds),
-    knockSource: 'physics:impact(playerInvolved).playerDeltaV, receipts coalesced into events',
+    knockSource: 'physics:impact(playerInvolved).appliedPlayerDeltaV, receipts coalesced into events',
   };
 }
 
@@ -1314,6 +1352,7 @@ function hashableMetrics(metrics, extra) {
     maxPlayerKnockFraction: metrics.maxPlayerKnockFraction,
     headingChangeEvents: metrics.headingChangeEvents,
     knocksMissingDeltaV: metrics.knocksMissingDeltaV,
+    knocksMissingAppliedDeltaV: metrics.knocksMissingAppliedDeltaV,
     knocksMissingActor: metrics.knocksMissingActor,
     knockReceipts: metrics.knockReceipts,
     knockEventsTotal: metrics.knockEventsTotal,
