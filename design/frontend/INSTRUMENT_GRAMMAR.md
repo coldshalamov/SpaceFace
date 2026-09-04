@@ -380,3 +380,50 @@ A screen is not finished until all of these are true:
 11. No text container has a fixed width, no sentence is built by concatenation, and every label still
     reads at **+40 % string length**. `nowrap` is allowed only on numerals and key caps.
 12. On ultrawide it clamps to a centred safe box rather than stretching to unreadable corners.
+
+### 12.1 The floor, in numbers — one file (PQ-180 .01)
+
+The numbers behind this list live in **`scripts/ui-grammar-thresholds.mjs`** and nowhere else. Prose
+here explains them; the file *is* them, and `check:ui:grammar-matrix` reads that file. Do not restate
+a number in a spec — cite the file.
+
+| Rule | Floor | From |
+|---|---|---|
+| Type floor | **12 px** minimum computed size on any visible text-bearing node | §12.2 |
+| Localization | every label reads at **+40 %** string length (`qps-ploc` boot) | §12.11 |
+| Widths | **1280 / 1920 / 2560** | §12.8 |
+| DOM budget | **≤ 1,500 elements** in one surface subtree | PQ-180 .01 |
+| UI frame cost | **≤ 2 ms** per surface refresh | PQ-180 .01 |
+| Data states | all four of **EMPTY, LOADING, ERROR, DENIED** declared | §12.9 |
+| Per-surface measurement | **≤ 5 s** | PQ-180 budget |
+
+### 12.2 The matrix (PQ-180)
+
+Whether a surface meets this list is **generated, not asserted**:
+
+```
+node scripts/check-ui-grammar-matrix.mjs --static   # manifest + reference-frame coverage, no browser
+node scripts/check-ui-grammar-matrix.mjs            # boots the game and measures (owned capture window)
+```
+
+- The surface list is `scripts/ui-grammar-surfaces.mjs` — entry route, owner file, archetype, and the
+  packet **and leaf** that clears each failing cell.
+- **A cell is green only when the rule itself was measured.** A proxy is not a pass: naming
+  `check:wcag-contrast` does not measure contrast, counting focusables is not a keyboard traversal,
+  visible text under `forced-colors` is not legibility, a stored memory bag is not a proven restore,
+  and one `[data-why]` node is not three tiers. The observation is kept in the cell detail; the
+  status stays `unproven`.
+- `green` / `n/a` pass. `red` (measured, below the floor), `unproven` (not directly exercised) and
+  `unmeasured` (no seam exists) all **fail**. There is no default-pass path and no baseline
+  suppression: `test/ui-grammar-baseline.json` is an observation record that says which reds are new.
+- `pseudo-loc` goes green only when the expansion is **witnessed** in the measured text — the
+  `qps-ploc` flag is a request, not a result.
+- Ownership of every red cell, and the six surfaces with no admitted owner packet:
+  [`UI_GRAMMAR_OWNERSHIP.md`](./UI_GRAMMAR_OWNERSHIP.md).
+
+A fixture (a named environmental state set by a bus event) may unlock measurement of a surface, and
+can **never** make its reachability cell green — including for a child surface whose parent is
+fixture-only.
+
+Headless Chromium renders through SwiftShader (software); `--headed` uses the host GPU. Every run
+records its renderer, and nothing measured under SwiftShader is performance acceptance evidence.

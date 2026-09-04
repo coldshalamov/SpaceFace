@@ -10,6 +10,7 @@ import {
   captureUiMatrix,
   frameFileName,
 } from './capture-ui-matrix.mjs';
+import { SHIPPING_SURFACES } from './ui-grammar-surfaces.mjs';
 
 const require = createRequire(import.meta.url);
 const { PNG } = require('pngjs');
@@ -26,6 +27,13 @@ const DEFAULT_CHANNEL_TOLERANCE = 8;
 //                               HUD; catches gross regressions only) -> 10%
 // Raising these further to make a diff pass without knowing WHAT changed violates the golden
 // law in test/ui-frame-references/README.md - these floors are the measured rest variance.
+//
+// PQ-180 .03 extends this matrix from five surfaces to every surface in
+// scripts/ui-grammar-surfaces.mjs. The five calibrated floors above stay EXACTLY as measured; a
+// newly covered surface has no measured variance yet, so it starts at the strictest deterministic
+// floor and is re-calibrated from its own two-pass repeatability numbers when the first full run
+// lands. Starting a new surface loose would be a guess; starting it tight makes its real variance
+// show up as a failure with a number attached, which is the calibration.
 const SURFACE_THRESHOLDS = Object.freeze({
   footprint: 0.005,
   range: 0.005,
@@ -45,7 +53,7 @@ const captureB = path.join(workRoot, 'capture-b');
 let exitCode = 0;
 
 try {
-  assertReferenceSetExists(plan);
+  const coverage = reportReferenceCoverage(plan);
 
   await runCaptureWithRetries('A', captureA);
   await runCaptureWithRetries('B (repeatability guard)', captureB);
@@ -67,12 +75,16 @@ try {
   });
   printVisualReport(visual, args);
 
-  if (repeatability.failures.length || visual.failures.length) {
+  if (repeatability.failures.length || visual.failures.length || coverage.missing.length) {
     exitCode = 1;
     const parts = [];
+    if (coverage.missing.length) parts.push(`${coverage.missing.length} missing reference frame(s)`);
     if (repeatability.failures.length) parts.push(`${repeatability.failures.length} repeatability failure(s)`);
     if (visual.failures.length) parts.push(`${visual.failures.length} regression failure(s)`);
     console.error(`\nFAIL check:visual-regression — ${parts.join(', ')}`);
+    if (coverage.missing.length) {
+      console.error(`  remedy for the missing frames: npm run capture:ui-matrix -- --update`);
+    }
   } else {
     console.log('\nPASS check:visual-regression');
   }
@@ -94,8 +106,10 @@ function parseArgs(argv) {
     deterministicThreshold: DEFAULT_DETERMINISTIC_THRESHOLD,
     flightThreshold: DEFAULT_FLIGHT_THRESHOLD,
     keepTemp: false,
+    headed: false,
   };
   for (const arg of argv) {
+    if (arg === '--headed') { parsed.headed = true; continue; }
     if (arg === '--keep-temp') {
       parsed.keepTemp = true;
       continue;
@@ -126,20 +140,34 @@ function parseArgs(argv) {
   return parsed;
 }
 
-function assertReferenceSetExists(matrixPlan) {
+/**
+ * PQ-180 .03: the plan covers EVERY shipping surface × 4 modes × 3 widths. A planned frame with no
+ * reference PNG is an explicit missing entry with the surface, the owner and the remedy printed —
+ * never an abort that hides the other 400 rows, and never a silent omission from the plan.
+ */
+function reportReferenceCoverage(matrixPlan) {
+  const bySurface = new Map();
   const missing = [];
   for (const entry of matrixPlan) {
     const file = frameFileName(entry);
-    const full = path.join(UI_FRAME_REFERENCE_DIR, file);
-    if (!existsSync(full)) missing.push(file);
+    const bucket = bySurface.get(entry.surface) || { expected: 0, present: 0 };
+    bucket.expected += 1;
+    if (existsSync(path.join(UI_FRAME_REFERENCE_DIR, file))) bucket.present += 1;
+    else missing.push({ file, surface: entry.surface });
+    bySurface.set(entry.surface, bucket);
   }
-  if (missing.length) {
-    throw new Error(
-      `missing ${missing.length} reference frame(s) in ${UI_FRAME_REFERENCE_DIR}\n` +
-      `run: npm run capture:ui-matrix -- --update\n` +
-      missing.slice(0, 12).map((name) => `  - ${name}`).join('\n'),
+
+  console.log(`\nreference-frame coverage: ${matrixPlan.length - missing.length}/${matrixPlan.length} frames over ${bySurface.size} shipping surfaces`);
+  console.log('surface                frames   owner      route');
+  for (const surface of SHIPPING_SURFACES) {
+    const bucket = bySurface.get(surface.id) || { expected: 0, present: 0 };
+    const state = `${bucket.present}/${bucket.expected}`;
+    console.log(
+      `  ${bucket.present >= bucket.expected ? 'ok ' : 'MISS'} ${surface.id.padEnd(20)} ${state.padStart(6)}   `
+      + `${(surface.owner || '-').padEnd(9)}  ${surface.entry.detail || surface.entry.kind}`,
     );
   }
+  return { missing, bySurface };
 }
 
 function runRepeatabilityGuard({ plan: matrixPlan, firstDir, secondDir }) {
@@ -214,6 +242,17 @@ function runVisualDiff({
 }
 
 function diffPng(aPath, bPath, channelTolerance) {
+  // A frame that was never produced is an EXPLICIT error row, not a crash that hides every other
+  // row in the table (PQ-180 .03: unavailable surfaces stay visible as missing entries).
+  if (!existsSync(aPath) || !existsSync(bPath)) {
+    return {
+      totalPixels: 1,
+      changedPixels: 1,
+      ratio: 1,
+      dimensionsMatch: false,
+      missing: !existsSync(aPath) ? aPath : bPath,
+    };
+  }
   const a = PNG.sync.read(readFileSync(aPath));
   const b = PNG.sync.read(readFileSync(bPath));
   if (a.width !== b.width || a.height !== b.height) {
@@ -286,6 +325,7 @@ async function runCaptureWithRetries(label, outputDir, attempts = 3) {
       await captureUiMatrix({
         outputDir,
         updateReferences: false,
+        headed: args.headed,
         printTable: false,
         quiet: true,
       });

@@ -6,6 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { loadPlaywright } from './lib/load-playwright.mjs';
+import { CAPTURE_SURFACES, IMPLEMENTED_ENTRY_KINDS, orderForOneBoot } from './ui-grammar-surfaces.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const DEFAULT_OUTPUT_DIR = path.join(ROOT, '.devshots', 'ui-matrix');
@@ -44,42 +45,43 @@ const PSEUDO_MODE = Object.freeze({
   locale: 'qps-ploc',
 });
 
-const SURFACE_CAPTURE_ORDER = Object.freeze(['chart', 'footprint', 'range', 'ship']);
+// Per-surface settle overrides. Everything else takes SURFACE_SETTLE_MS. The ship stage waits
+// longest because its WebGL preview streams a hull before it is worth photographing.
+const SETTLE_OVERRIDES = Object.freeze({
+  flight: FLIGHT_SETTLE_MS,
+  ship: SHIP_STAGE_SETTLE_MS,
+});
 
-export const MATRIX_SURFACES = Object.freeze([
-  Object.freeze({
-    id: 'flight',
-    key: null,
-    selectors: Object.freeze([]),
-    settleMs: FLIGHT_SETTLE_MS,
-  }),
-  Object.freeze({
-    id: 'ship',
-    key: 'F2',
-    selectors: Object.freeze(['[data-screen="ship"]']),
-    settleMs: SHIP_STAGE_SETTLE_MS,
-  }),
-  Object.freeze({
-    id: 'footprint',
-    key: 'F3',
-    selectors: Object.freeze(['[data-screen="footprint"]']),
-    settleMs: SURFACE_SETTLE_MS,
-  }),
-  Object.freeze({
-    id: 'range',
-    key: 'F4',
-    selectors: Object.freeze(['[data-screen="range"]']),
-    settleMs: SURFACE_SETTLE_MS,
-  }),
-  Object.freeze({
-    id: 'chart',
-    key: 'M',
-    selectors: Object.freeze(['[data-screen="galaxyMap"]', '[data-screen="localmap"]', '[data-screen="starmap"]']),
-    settleMs: SURFACE_SETTLE_MS,
-  }),
-]);
+// PQ-180 .03: the capture surface list is no longer hand-written here — it is the manifest in
+// scripts/ui-grammar-surfaces.mjs, so a surface added to the matrix is captured by construction and
+// the two can never drift. The five original ids (flight/ship/footprint/range/chart) keep their
+// names, so the committed reference PNGs for them stay valid byte-for-byte.
+export const MATRIX_SURFACES = Object.freeze(CAPTURE_SURFACES.map((surface) => Object.freeze({
+  id: surface.id,
+  key: surface.entry.kind === 'key' ? surface.entry.key : null,
+  entry: surface.entry,
+  screenId: surface.screenId || null,
+  archetype: surface.archetype,
+  selectors: Object.freeze([...(surface.root || [])]),
+  settleMs: SETTLE_OVERRIDES[surface.id] || SURFACE_SETTLE_MS,
+  destructive: surface.destructive === true,
+  // 'element' crops to the surface's own box — the right frame for an overlay that lives inside the
+  // flight picture (the Power Rail, the radials). Anything else is the whole viewport.
+  captureMode: surface.captureMode === 'element' ? 'element' : 'viewport',
+})));
 
 const SURFACE_BY_ID = new Map(MATRIX_SURFACES.map((surface) => [surface.id, surface]));
+
+/** Pre-launch surfaces (title, new game) live before Launch and are captured in the menu phase. */
+const PRE_LAUNCH_KINDS = new Set(['boot', 'boot-nested']);
+// Ordered by scripts/ui-grammar-surfaces.mjs `orderForOneBoot`: a fixture changes the session, so
+// key-entry flight surfaces come first, push-screen fixtures next, docking after that. A destructive
+// surface would end the run for every mode sharing this boot, so it is photographed in its own boot
+// (DESTRUCTIVE_SURFACES below) rather than being dropped from the plan.
+const IN_FLIGHT_SURFACES = Object.freeze(orderForOneBoot(
+  MATRIX_SURFACES.filter((s) => !PRE_LAUNCH_KINDS.has(s.entry.kind) && s.id !== 'flight' && !s.destructive),
+));
+const DESTRUCTIVE_SURFACES = Object.freeze(MATRIX_SURFACES.filter((s) => s.destructive));
 
 export function buildFramePlan() {
   const out = [];
@@ -115,15 +117,32 @@ export async function captureUiMatrix(options = {}) {
   if (updateReferences) mkdirSync(UI_FRAME_REFERENCE_DIR, { recursive: true });
 
   const { chromium } = await loadPlaywright();
+  // Server first, browser second, and the server is torn down if the browser never starts — a
+  // stranded node server would hold its port for every later run.
   const server = await startFreshServer();
-  const browser = await chromium.launch({ headless: true });
+  let browser = null;
+  try {
+    browser = await chromium.launch({ headless: options.headed !== true });
+  } catch (error) {
+    server.kill();
+    throw new Error(`chromium.launch failed (server torn down): ${error.message}`);
+  }
 
   const captures = [];
+  // A surface that could not be opened is an EXPLICIT missing/error entry, never a silently short
+  // plan: PQ-180 .03 covers every surface, and a gap has to be visible to be assigned.
+  const failures = [];
   let bootCount = 0;
 
   try {
     for (const viewport of MATRIX_VIEWPORTS) {
-      const primaryBoot = await openBootWithRetry({ browser, baseUrl: server.baseUrl, viewport, locale: null });
+      const primaryBoot = await openBootWithRetry({
+        browser,
+        baseUrl: server.baseUrl,
+        viewport,
+        locale: null,
+        menuPhase: makeMenuPhaseCapture({ modes: STANDARD_MODES, outputDir, captures, failures, viewport }),
+      });
       bootCount += 1;
       try {
         for (const mode of STANDARD_MODES) {
@@ -133,13 +152,20 @@ export async function captureUiMatrix(options = {}) {
             mode,
             outputDir,
             captures,
+            failures,
           });
         }
       } finally {
         await primaryBoot.close();
       }
 
-      const pseudoBoot = await openBootWithRetry({ browser, baseUrl: server.baseUrl, viewport, locale: PSEUDO_MODE.locale });
+      const pseudoBoot = await openBootWithRetry({
+        browser,
+        baseUrl: server.baseUrl,
+        viewport,
+        locale: PSEUDO_MODE.locale,
+        menuPhase: makeMenuPhaseCapture({ modes: [PSEUDO_MODE], outputDir, captures, failures, viewport }),
+      });
       bootCount += 1;
       try {
         await captureModeSet({
@@ -148,10 +174,38 @@ export async function captureUiMatrix(options = {}) {
           mode: PSEUDO_MODE,
           outputDir,
           captures,
+          failures,
           expectedLocale: PSEUDO_MODE.locale,
         });
       } finally {
         await pseudoBoot.close();
+      }
+
+      // Destructive surfaces end the run, so each gets its own boot per mode. Sharing one would
+      // make every frame after it in that boot a picture of a dead session.
+      for (const surface of DESTRUCTIVE_SURFACES) {
+        for (const mode of [...STANDARD_MODES, PSEUDO_MODE]) {
+          const isolated = await openBootWithRetry({
+            browser, baseUrl: server.baseUrl, viewport, locale: mode.locale || null,
+          });
+          bootCount += 1;
+          try {
+            await isolated.page.emulateMedia(mode.emulate);
+            const opened = await openSurface(isolated.page, surface);
+            if (!opened.ok) {
+              failures.push({ surface: surface.id, mode: mode.id, viewport, reason: opened.reason });
+            } else {
+              await isolated.page.waitForTimeout(surface.settleMs);
+              await captureSurfaceScreenshot({
+                page: isolated.page, outputDir, captures, surface, modeId: mode.id, viewport,
+              });
+            }
+          } catch (error) {
+            failures.push({ surface: surface.id, mode: mode.id, viewport, reason: error.message });
+          } finally {
+            await isolated.close().catch(() => {});
+          }
+        }
       }
     }
   } finally {
@@ -159,8 +213,11 @@ export async function captureUiMatrix(options = {}) {
     server.kill();
   }
 
-  if (captures.length !== plan.length) {
-    throw new Error(`capture matrix incomplete: expected ${plan.length} frames, got ${captures.length}`);
+  if (captures.length !== plan.length && !quiet) {
+    console.warn(
+      `\ncapture coverage: ${captures.length}/${plan.length} planned frames produced; `
+      + `${failures.length} explicit failure(s) recorded (see the table below).`,
+    );
   }
 
   if (updateReferences) {
@@ -190,6 +247,7 @@ export async function captureUiMatrix(options = {}) {
       bootCount,
       totalBytes,
     });
+    printCaptureFailures(failures, plan.length, enriched.length);
   }
 
   return {
@@ -197,9 +255,30 @@ export async function captureUiMatrix(options = {}) {
     bootCount,
     totalBytes,
     captures: enriched,
+    failures,
     referenceDir: UI_FRAME_REFERENCE_DIR,
     frames: plan.length,
+    renderer: options.headed === true
+      ? 'headed Chromium (host GPU)'
+      : 'headless Chromium (SwiftShader software rendering — not performance acceptance evidence)',
   };
+}
+
+/** Named, per-frame reasons — a plan entry with no PNG must say why, or it is just silence. */
+function printCaptureFailures(failures, planned, produced) {
+  console.log(`\ncapture coverage: ${produced}/${planned} planned frames produced`);
+  if (!failures.length) return;
+  console.log(`${failures.length} frame(s) could not be captured:`);
+  const bySurface = new Map();
+  for (const f of failures) {
+    const bucket = bySurface.get(f.surface) || [];
+    bucket.push(`${f.mode}@${f.viewport.width}x${f.viewport.height}: ${f.reason}`);
+    bySurface.set(f.surface, bucket);
+  }
+  for (const [surface, reasons] of bySurface) {
+    console.log(`  ${surface} (${reasons.length})`);
+    console.log(`    ${reasons[0]}`);
+  }
 }
 
 function pruneStaleReferencePngs(expectedNames) {
@@ -216,6 +295,7 @@ async function captureModeSet({
   mode,
   outputDir,
   captures,
+  failures,
   expectedLocale = null,
 }) {
   await page.emulateMedia(mode.emulate);
@@ -237,31 +317,340 @@ async function captureModeSet({
     page,
     outputDir,
     captures,
-    surface: MATRIX_SURFACES[0],
+    surface: SURFACE_BY_ID.get('flight'),
     modeId: mode.id,
     viewport,
   });
 
-  for (const surfaceId of SURFACE_CAPTURE_ORDER) {
-    const surface = SURFACE_BY_ID.get(surfaceId);
-    if (!surface) continue;
-    await ensureFlightIdle(page);
-    await page.keyboard.press(surface.key);
-    await waitForAnyVisible(page, surface.selectors, 20_000, `${surface.id} visible`);
-    await page.waitForTimeout(surface.settleMs);
-    await stabilizeSurfaceForCapture(page, surface.id);
-    await captureSurfaceScreenshot({
-      page,
-      outputDir,
-      captures,
-      surface,
-      modeId: mode.id,
-      viewport,
-    });
-    await closeOpenScreens(page);
+  for (const surface of IN_FLIGHT_SURFACES) {
+    try {
+      const opened = await openSurface(page, surface);
+      if (!opened.ok) {
+        failures.push({ surface: surface.id, mode: mode.id, viewport, reason: opened.reason });
+      } else {
+        await page.waitForTimeout(surface.settleMs);
+        await stabilizeSurfaceForCapture(page, surface.id);
+        await captureSurfaceScreenshot({
+          page,
+          outputDir,
+          captures,
+          surface,
+          modeId: mode.id,
+          viewport,
+        });
+      }
+    } catch (error) {
+      failures.push({ surface: surface.id, mode: mode.id, viewport, reason: error.message });
+    }
+    // Recovery is mandatory and VERIFIED, not best-effort: a radial or drawer left open would be
+    // photographed on top of the next surface — and it would eat the Escape that opens pause — so
+    // every later frame in this mode would show a defect that is really this one.
+    const closed = await closeSurface(page, surface).catch((error) => ({ ok: false, reason: error.message }));
+    if (!closed.ok) {
+      failures.push({
+        surface: surface.id, mode: mode.id, viewport,
+        reason: `${closed.reason} — remaining surfaces in this mode were skipped`,
+      });
+      return;
+    }
+    try {
+      await ensureFlightIdle(page);
+    } catch (error) {
+      failures.push({
+        surface: surface.id, mode: mode.id, viewport,
+        reason: `could not return to idle flight after this surface: ${error.message} — remaining surfaces in this mode were skipped`,
+      });
+      return;
+    }
   }
+}
 
-  await ensureFlightIdle(page);
+/**
+ * Return to the menu stage after opening something from it. `closeOpenScreens` can never succeed
+ * here: the title screen is ITSELF an open screen, so "close the open screen" would loop through
+ * twelve Escapes and then throw. One Escape, then wait for the stage to be back.
+ */
+async function returnToStage(page, stage) {
+  for (let i = 0; i < 8; i += 1) {
+    if (await anyVisible(page, stage.selectors)) return { ok: true };
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(250);
+  }
+  return { ok: false, reason: `could not return to "${stage.id}" in the menu phase` };
+}
+
+/**
+ * Open one manifest surface the way its entry route says to. Returns { ok, reason } instead of
+ * throwing, so an unreachable surface becomes an explicit red cell in the grammar matrix rather
+ * than an aborted run. Never force-injects DOM or instantiates a screen object directly — a
+ * surface that cannot be reached through a control or a NAMED fixture is reported as unreachable.
+ */
+export async function openSurface(page, surface, context = {}) {
+  const entry = surface.entry || {};
+  if (!IMPLEMENTED_ENTRY_KINDS.includes(entry.kind)) {
+    return { ok: false, reason: `no opener implemented for entry kind "${entry.kind}": ${entry.detail || ''}` };
+  }
+  try {
+    switch (entry.kind) {
+      case 'default':
+        await ensureFlightIdle(page);
+        break;
+      case 'key':
+        await ensureFlightIdle(page);
+        await page.keyboard.press(normalizeKey(entry.key));
+        break;
+      case 'nested': {
+        const parent = SURFACE_BY_ID.get(entry.parent) || null;
+        if (!parent) return { ok: false, reason: `parent surface "${entry.parent}" is not in the capture set` };
+        const parentOpened = await openSurface(page, parent, context);
+        if (!parentOpened.ok) return { ok: false, reason: `parent ${entry.parent}: ${parentOpened.reason}` };
+        await page.waitForTimeout(300);
+        const clicked = await clickControl(page, entry);
+        if (!clicked.ok) return { ok: false, reason: clicked.reason };
+        break;
+      }
+      case 'fixture': {
+        const applied = await applyFixture(page, entry.fixture);
+        if (!applied.ok) return applied;
+        break;
+      }
+      case 'boot':
+        // The stage itself is already on screen during the menu phase; there is nothing to press.
+        if (context.stage !== surface.id) {
+          return { ok: false, reason: 'pre-launch surface: only openable during the menu phase of a boot' };
+        }
+        break;
+      case 'boot-nested': {
+        if (context.stage !== entry.parent) {
+          return { ok: false, reason: `pre-launch surface: only openable while "${entry.parent}" is on screen` };
+        }
+        const clicked = await clickControl(page, entry);
+        if (!clicked.ok) return { ok: false, reason: clicked.reason };
+        break;
+      }
+      default:
+        return { ok: false, reason: `no automatable entry (${entry.kind}): ${entry.detail || ''}` };
+    }
+
+    const selectors = surfaceSelectors(surface);
+    if (!selectors.length) return { ok: true, route: entry.kind };
+    await waitForAnyVisible(page, selectors, 20_000, `${surface.id} visible`);
+    return { ok: true, route: entry.kind };
+  } catch (error) {
+    return { ok: false, reason: error && error.message ? error.message : String(error) };
+  }
+}
+
+/**
+ * Press the manifest key VERBATIM. The manifest stores the BINDINGS `.key` value (`l`, `z`, `m`…)
+ * and `matchesBinding` in src/ui/input.js accepts `ev.key === binding.key`, so the lowercase press
+ * always matches. Upper-casing would rely on the binding also declaring a `.label`, which not every
+ * binding does — and it asks the browser for a shifted key the player never presses.
+ */
+function normalizeKey(key) {
+  return key;
+}
+
+/**
+ * Click the control named by an entry. When the entry names `text`, the label is matched after
+ * stripping pseudo-localization decoration (accents, wrapping punctuation, padding), so the SAME
+ * public route works in the qps-ploc pass instead of being written off as unreachable there.
+ */
+// Both callers pass a surface: the capture harness passes its own MATRIX_SURFACES record
+// (`selectors`, `key`), the grammar matrix passes the manifest entry (`root`, `entry.key`). One
+// normalizer so neither caller has to reshape, and neither silently reads `undefined` — which would
+// skip the visibility wait and measure a surface that had not opened yet.
+function surfaceSelectors(surface) {
+  if (surface.selectors && surface.selectors.length) return surface.selectors;
+  return surface.root || [];
+}
+
+function surfaceKey(surface) {
+  if (surface.key) return surface.key;
+  return surface.entry && surface.entry.kind === 'key' ? surface.entry.key : null;
+}
+
+/**
+ * Close ONE surface and prove it closed. `closeOpenScreens` only knows about the screen stack, so a
+ * radial or a drawer — which are not stack screens — would survive it silently, still be on screen
+ * when the next surface is photographed, and eat the Escape that should have opened the pause menu.
+ * Every later row would then report a defect that is really this one.
+ *
+ * Returns { ok, reason }; the caller records a failure rather than proceeding on a dirty page.
+ */
+export async function closeSurface(page, surface) {
+  const selectors = surfaceSelectors(surface);
+  const key = surfaceKey(surface);
+  const isOverlay = surface.archetype === 'OVERLAY';
+
+  // An overlay toggles off with its own key first, then Escape; a stack screen goes through the
+  // manager. Either way we VERIFY, and "always mounted" surfaces have nothing to close.
+  if (surface.entry && surface.entry.kind === 'default') return { ok: true };
+
+  if (isOverlay && key) {
+    await page.keyboard.press(normalizeKey(key));
+    await page.waitForTimeout(200);
+  }
+  if (await anyVisible(page, selectors)) {
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(250);
+  }
+  if (await anyVisible(page, selectors)) {
+    if (!isOverlay) {
+      try { await closeOpenScreens(page); } catch (error) { return { ok: false, reason: error.message }; }
+    }
+  }
+  for (let i = 0; i < 12; i += 1) {
+    if (!(await anyVisible(page, selectors))) return { ok: true };
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(200);
+  }
+  return { ok: false, reason: `"${surface.id}" is still on screen after its close route; the next surface would be measured through it` };
+}
+
+async function anyVisible(page, selectors) {
+  if (!selectors || !selectors.length) return false;
+  return page.evaluate((items) => items.some((selector) => {
+    const node = document.querySelector(selector);
+    if (!node) return false;
+    const style = getComputedStyle(node);
+    const rect = node.getBoundingClientRect();
+    return !node.hidden
+      && style.display !== 'none'
+      && style.visibility !== 'hidden'
+      && parseFloat(style.opacity || '1') > 0.01
+      && rect.width > 4 && rect.height > 4;
+  }), selectors);
+}
+
+async function clickControl(page, entry, attempts = 40) {
+  for (let i = 0; i < attempts; i += 1) {
+    const result = await page.evaluate(({ selector, text }) => {
+      function normalize(value) {
+        return String(value || '')
+          .normalize('NFD')
+          .replace(/[̀-ͯ]/g, '')      // pseudo-loc accents
+          .replace(/[^a-z0-9]/gi, '')            // brackets, padding, punctuation
+          .toLowerCase();
+      }
+      const nodes = [...document.querySelectorAll(selector)];
+      if (!nodes.length) return { ok: false, reason: 'no node matched', seen: [] };
+      const wanted = normalize(text);
+      const seen = [];
+      for (const node of nodes) {
+        const label = node.textContent || '';
+        seen.push(label.trim().slice(0, 24));
+        if (wanted && !normalize(label).includes(wanted)) continue;
+        if (node.disabled) return { ok: false, reason: 'control found but disabled', seen };
+        const style = getComputedStyle(node);
+        if (style.display === 'none' || style.visibility === 'hidden') {
+          return { ok: false, reason: 'control found but hidden', seen };
+        }
+        node.click();
+        return { ok: true };
+      }
+      return { ok: false, reason: wanted ? 'no control matched the label' : 'no enabled control', seen };
+    }, { selector: entry.selector, text: entry.text || null });
+    if (result.ok) return { ok: true };
+    if (i === attempts - 1) {
+      return {
+        ok: false,
+        reason: `${result.reason} for ${entry.selector}${entry.text ? ` text="${entry.text}"` : ''}`
+          + `${result.seen && result.seen.length ? ` (labels present: ${result.seen.join(' | ')})` : ''}`,
+      };
+    }
+    await page.waitForTimeout(250);
+  }
+  return { ok: false, reason: `control never became clickable: ${entry.selector}` };
+}
+
+/**
+ * Named runtime fixtures. Each one puts the game in a state the harness cannot yet FLY to; it
+ * unlocks measurement and never counts as reachability evidence (see ui-grammar-surfaces.mjs).
+ * The dock fixture is the same `dock:docked` route check-station-tab-navigation-runtime uses.
+ */
+export async function applyFixture(page, name) {
+  const result = await page.evaluate((fixture) => {
+    const sf = window.SF;
+    if (!sf || !sf.bus || !sf.state) return { ok: false, reason: 'SF bus not available' };
+    switch (fixture) {
+      case 'dock': {
+        const station = (sf.state.entityList || []).find((e) => e && e.data && e.data.stationId);
+        if (!station) return { ok: false, reason: 'no dockable station in the first-session sector' };
+        sf.bus.emit('dock:docked', { stationId: station.data.stationId });
+        return { ok: true };
+      }
+      case 'crucible-door':
+        sf.bus.emit('ui:pushScreen', { id: 'crucible', source: 'ui-grammar-matrix-fixture' });
+        return { ok: true };
+      case 'crucible-draft':
+        sf.bus.emit('ui:pushScreen', { id: 'crucibleDraft', source: 'ui-grammar-matrix-fixture' });
+        return { ok: true };
+      case 'crucible-refit':
+        sf.bus.emit('ui:pushScreen', { id: 'crucibleRefit', source: 'ui-grammar-matrix-fixture' });
+        return { ok: true };
+      case 'crucible-results':
+        sf.bus.emit('ui:pushScreen', { id: 'crucibleResults', source: 'ui-grammar-matrix-fixture' });
+        return { ok: true };
+      case 'automation':
+        sf.bus.emit('ui:pushScreen', { id: 'automation', source: 'ui-grammar-matrix-fixture' });
+        return { ok: true };
+      case 'player-death': {
+        // The after-action screen is opened by the `game:over` subscription in uiRoot.js (~1004),
+        // NOT by an entity-destroyed event. It also returns early during a live Survival run, so the
+        // fixture refuses rather than silently producing a picture of the wrong thing.
+        const run = sf.state.run;
+        if (run && run.kind === 'survival' && run.phase !== 'inactive') {
+          return { ok: false, reason: 'a Survival run is live; game:over routes to the Crucible results instead' };
+        }
+        sf.bus.emit('game:over', { cause: 'ui-grammar-matrix-fixture' });
+        return { ok: true };
+      }
+      default:
+        return { ok: false, reason: `unknown fixture "${fixture}"` };
+    }
+  }, name);
+  if (!result || !result.ok) {
+    return { ok: false, reason: `fixture "${name}": ${(result && result.reason) || 'failed'}` };
+  }
+  await page.waitForTimeout(500);
+  return { ok: true };
+}
+
+/**
+ * The title and the new-game screens only exist before Launch, so they are photographed in every
+ * mode during the menu phase of the same boot — no second server, no forced re-entry.
+ */
+function makeMenuPhaseCapture({ modes, outputDir, captures, failures, viewport }) {
+  return async (page, stageId) => {
+    const stage = SURFACE_BY_ID.get(stageId);
+    // Surfaces reached by a button ON this stage — the Crucible door hangs off the title screen and
+    // exists nowhere else, so it is photographed here or not at all.
+    const children = MATRIX_SURFACES.filter((s) => s.entry.kind === 'boot-nested' && s.entry.parent === stageId);
+    for (const mode of modes) {
+      await page.emulateMedia(mode.emulate);
+      for (const surface of [stage, ...children]) {
+        if (!surface) continue;
+        try {
+          if (surface !== stage) {
+            const opened = await openSurface(page, surface, { stage: stageId });
+            if (!opened.ok) {
+              failures.push({ surface: surface.id, mode: mode.id, viewport, reason: opened.reason });
+              continue;
+            }
+          }
+          await waitForAnyVisible(page, surface.selectors, 20_000, `${surface.id} visible`);
+          await page.waitForTimeout(surface.settleMs);
+          await captureSurfaceScreenshot({ page, outputDir, captures, surface, modeId: mode.id, viewport });
+        } catch (error) {
+          failures.push({ surface: surface.id, mode: mode.id, viewport, reason: error.message });
+        } finally {
+          if (surface !== stage && stage) await returnToStage(page, stage).catch(() => {});
+        }
+      }
+    }
+    await page.emulateMedia(modes[0].emulate);
+  };
 }
 
 async function captureSurfaceScreenshot({
@@ -280,11 +669,33 @@ async function captureSurfaceScreenshot({
   };
   const name = frameFileName(entry);
   const dest = path.join(outputDir, name);
-  await page.screenshot({ path: dest, fullPage: false, animations: 'disabled' });
+  if (surface.captureMode === 'element') {
+    // Crop to the overlay's own box. Playwright's element screenshot is the honest frame for a
+    // surface that sits inside the flight picture: a full viewport would just be the HUD again.
+    const handle = await firstVisibleHandle(page, surface.selectors);
+    if (!handle) throw new Error(`element capture: no visible root for "${surface.id}"`);
+    await handle.screenshot({ path: dest, animations: 'disabled' });
+  } else {
+    await page.screenshot({ path: dest, fullPage: false, animations: 'disabled' });
+  }
   captures.push({ name, path: dest });
 }
 
-async function openBoot({ browser, baseUrl, viewport, locale = null }) {
+async function firstVisibleHandle(page, selectors) {
+  for (const selector of selectors || []) {
+    const handle = await page.$(selector);
+    if (!handle) continue;
+    if (await handle.isVisible().catch(() => false)) return handle;
+  }
+  return null;
+}
+
+/**
+ * Boot the game through the real title flow. `menuPhase(page, stageId)` is called while the title
+ * and the new-game screens are on screen — that is the only moment those two surfaces exist, so
+ * pre-launch capture and measurement hook in there rather than trying to reach them from flight.
+ */
+export async function openBoot({ browser, baseUrl, viewport, locale = null, menuPhase = null }) {
   const context = await browser.newContext({
     viewport: { width: viewport.width, height: viewport.height },
     screen: { width: viewport.width, height: viewport.height },
@@ -308,9 +719,11 @@ async function openBoot({ browser, baseUrl, viewport, locale = null }) {
       { timeout: 120_000 },
     );
     await waitForAnyVisible(page, ['[data-screen="mainMenu"]'], MAIN_MENU_TIMEOUT_MS, 'main menu');
+    if (menuPhase) await menuPhase(page, 'title');
 
     if (!(await clickMainMenuNewGame(page))) throw new Error('main menu New Game button missing or disabled');
     await waitForAnyVisible(page, ['[data-screen="newGame"]'], NEW_GAME_TIMEOUT_MS, 'new game screen');
+    if (menuPhase) await menuPhase(page, 'new-game');
     if (!(await clickNewGameLaunch(page))) throw new Error('new game Launch button missing or disabled');
 
     await page.waitForFunction(() => {
@@ -332,7 +745,7 @@ async function openBoot({ browser, baseUrl, viewport, locale = null }) {
   }
 }
 
-async function openBootWithRetry(params, attempts = 4) {
+export async function openBootWithRetry(params, attempts = 4) {
   let lastError = null;
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     try {
@@ -346,7 +759,7 @@ async function openBootWithRetry(params, attempts = 4) {
   throw new Error(`boot failed after ${attempts} attempt(s): ${lastError && lastError.message ? lastError.message : String(lastError)}`);
 }
 
-async function ensureFlightIdle(page) {
+export async function ensureFlightIdle(page) {
   for (let attempt = 0; attempt < 20; attempt += 1) {
     const status = await readUiStatus(page);
     if (status.mode === 'flight' && status.screenOpen === false) return;
@@ -360,7 +773,7 @@ async function ensureFlightIdle(page) {
   throw new Error('Unable to return to idle flight state for capture');
 }
 
-async function closeOpenScreens(page) {
+export async function closeOpenScreens(page) {
   for (let attempt = 0; attempt < 12; attempt += 1) {
     const status = await readUiStatus(page);
     if (!status.screenOpen) return;
@@ -379,7 +792,9 @@ async function stabilizeSurfaceForCapture(page, surfaceId) {
     await stabilizeRangeScreen(page);
     return;
   }
-  if (surfaceId === 'chart') {
+  // Both chart focuses are the same animated screen; both need the scan/iris animation parked or
+  // the 0.5% repeatability floor flakes on paint timing.
+  if (surfaceId === 'chart' || surfaceId === 'chart-galaxy') {
     await stabilizeChartScreen(page);
   }
 }
@@ -453,7 +868,7 @@ async function readUiStatus(page) {
   });
 }
 
-async function waitForAnyVisible(page, selectors, timeout, description) {
+export async function waitForAnyVisible(page, selectors, timeout, description) {
   await page.waitForFunction((items) => {
     function visible(node) {
       if (!node) return false;
@@ -554,7 +969,7 @@ async function findFreePort(start) {
   throw new Error('no free probe port');
 }
 
-async function startFreshServer() {
+export async function startFreshServer() {
   for (let attempt = 1; attempt <= 6; attempt += 1) {
     const seedPort = 16000 + Math.floor(Math.random() * 32000);
     const port = await findFreePort(seedPort);
@@ -594,6 +1009,7 @@ async function startFreshServer() {
 function parseArgs(argv) {
   return {
     updateReferences: argv.includes('--update'),
+    headed: argv.includes('--headed'),
     quiet: argv.includes('--quiet'),
   };
 }
@@ -603,6 +1019,7 @@ async function runCli() {
   const result = await captureUiMatrix({
     outputDir: DEFAULT_OUTPUT_DIR,
     updateReferences: args.updateReferences,
+    headed: args.headed,
     printTable: true,
     quiet: args.quiet,
   });
