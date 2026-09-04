@@ -3,7 +3,7 @@
 
 ```yaml
 refreshed: 2026-09-04
-baseCommit: b881a1fc7f495c6768855f64a598bc9429d27c49
+baseCommit: 8aed504e1c45a440532252ec43e6be4567d3d593
 expiresAfterCommits: 10
 expiresAfterDays: 2
 ```
@@ -41,13 +41,6 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| PQ-137.10/.03/.08 FLIGHT lane (fun-loop campaign) | fable-master/lane-flight | MUTATING 2026-09-03 | `src/core/flight/`, `src/systems/flightV3.js`, `src/render/camera.js`, `src/render/velocityLanguage.js`, `src/data/ships.js`, `src/combat/autoTargetMode.js`, `test/flightV3.spec.mjs`, `test/travel-drive.test.mjs`, `test/auto-target-path*.test.mjs`, `scripts/lib/bench/flightBench.mjs`, `scripts/lib/bench/scenarios/feel.{reversal_course,screen_crossing,earned_speed_kept}.mjs` | bars B2/B3 measured then met → review → commit per leaf → master pushes |
-| PQ-137.10/.04/.05 FORCE lane (fun-loop campaign) | fable-master/lane-force | MUTATING 2026-09-03 | `src/combat/impulseKernel.js`, `src/combat/damage.js`, `src/systems/weapons.js`, `src/data/weapons.js`, `src/systems/impulseCharges.js`, `src/systems/tumbleStates.js`, `src/systems/aiPorts.js`, `src/data/combatLabSetups.js`, `test/weapon-*.test.mjs` (not -consequence), `scripts/lib/bench/scenarios/feel.hitstun_curve.mjs` | B11 curve then law → B4/B5 met → commit per leaf |
-| PQ-137.11/.06/.07 CONTACT lane (fun-loop campaign) | fable-master/lane-contact | MUTATING 2026-09-03 | `src/core/sg02DynamicBodyOwner.js`, `src/systems/collisionConsequences.js`, `src/systems/tetherGameplay.js`, `src/systems/motionTelemetry.js`, `test/weapon-impulse-consequence.test.mjs`, `scripts/lib/bench/knockModel.mjs`, `scripts/lib/bench/scenarios/feel.knock_budget_10min.mjs` | B13 measured on the real path then met → B6 heavy clause → B7 → commit per leaf |
-| PQ-139.00–.05 IMPACT lane (fun-loop campaign) | fable-master/lane-impact | MUTATING 2026-09-03 | `src/render/feel.js`, `src/core/timeEffects.js`, `src/render/masslinePresentation.js`, `src/audio/`, `src/render/vfx.js`, `src/vfxnext/`, `src/render/shipPitchPresentation.js`, `src/render/post/spaceRenderGraph.js`, `src/render/weapons/presenter.js`, `src/systems/fields.js` (presentation hook only) | hitstop/trauma by momentum with frames → sound by mass → commit per leaf |
-| PQ-138.00–.04 WORLD lane (fun-loop campaign) | fable-master/lane-world | MUTATING 2026-09-03 | `src/systems/lawSecurity.js`, `src/systems/traffic.js`, `src/systems/survivorPod.js`, `src/systems/encounterScripts.js`, `src/systems/aftermathWrecks.js`, `src/systems/missions.js`, `src/systems/contractClauses.js`, `scripts/lib/bench/scenarios/world.reaction_trio.mjs` | three listeners on the route (B10) → wrecks keep momentum → failure mutates → commit per leaf |
-| PQ-173.00 repair (headless) BENCH lane (fun-loop campaign): the Crucible bench runs the real runtime | fable-master/lane-bench | MUTATING 2026-09-03 | `scripts/lib/bench/crucibleBench.mjs`, `scripts/lib/bench/funMetrics.mjs`, `scripts/measure-fun-loop.mjs` (crucible glue only), `test/fun-bench.test.mjs`, `test/fun-measurer.test.mjs`, `test/crucible-bench-real-path.test.mjs`, `tools/agentic/scenarios/crucible-*.json` | real-runtime Crucible runs with a seeded pilot policy → fun metrics from real bus events → same-seed hash identical → commit |
-| PQ-173.00 repair/.02/.03 INSTRUMENT lane (fun-loop campaign) | fable-master/lane-instrument | MUTATING 2026-09-03 | `scripts/lib/bench/frameStripCapture.mjs`, `scripts/run-fun-bench.mjs` (headed path), `scripts/critic-fun-loop.mjs`, `scripts/lib/critic/`, `scripts/report-fun-loop.mjs`, `scripts/lib/report/`, `tools/agentic/critic/`, `design/program/TRANSLATOR_CHECKLIST.md` | real gameplay frames at the chase camera → vision critic → owner report on one real cycle → commit per leaf |
 These paths are protected from overwrite until a task explicitly adopts and finishes them. They are
 not active leases and do not prevent other tasks from proceeding.
 
