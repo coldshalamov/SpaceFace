@@ -15220,7 +15220,7 @@
       "priority": 59,
       "title": "Difficulty by geometry, verified",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -15247,7 +15247,9 @@
         "npm run check:crucible:run",
         "npm run check:crucible:arc"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-174-07-REPORT.md"
+      ],
       "brief": "Wave N+10 has the same enemy hull values as wave N and is harder because of count, mass, anchors, hazards and angles; a check asserts no HP inflation across the arc. DONE WHEN: `check:crucible:arc` gains the no-inflation assertion; it fails when a wave recipe raises hull values."
     },
     {

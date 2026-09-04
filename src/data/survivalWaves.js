@@ -118,11 +118,36 @@ export function validateWaveRecipe(recipe) {
   }
 }
 
+// Difficulty comes from geometry and mass, never from wave-authored hit points.
+// Inspect nested overrides too; a future consumer must not silently activate an
+// old recipe's ignored health multiplier.
+const WAVE_HEALTH_OVERRIDES = new Set([
+  'hp', 'hpmax', 'maxhp', 'health', 'maxhealth', 'hull', 'maxhull', 'hullmax',
+  'hpscale', 'healthscale', 'hullscale', 'hpmultiplier', 'healthmultiplier', 'hullmultiplier',
+]);
+export function waveHealthOverrideIssues(value, path = '', seen = new Set()) {
+  if (!value || typeof value !== 'object' || seen.has(value)) return [];
+  seen.add(value);
+  const issues = [];
+  for (const [key, child] of Object.entries(value)) {
+    const childPath = path ? `${path}.${key}` : key;
+    const normalized = key.replace(/[_-]/g, '').toLowerCase();
+    if (WAVE_HEALTH_OVERRIDES.has(normalized)) {
+      issues.push(issue(childPath, 'Difficulty comes from geometry, mass and numbers, never enemy hit points (PQ-174.07)'));
+    } else {
+      issues.push(...waveHealthOverrideIssues(child, childPath, seen));
+    }
+  }
+  return issues;
+}
+
 function validateWaveRecipeInner(recipe) {
   const issues = [];
   if (!isPlainObject(recipe)) {
     return { ok: false, issues: [issue('', 'recipe must be an object')] };
   }
+
+  issues.push(...waveHealthOverrideIssues(recipe));
 
   if (typeof recipe.id !== 'string' || recipe.id.length === 0) {
     issues.push(issue('id', 'id must be a non-empty string'));
