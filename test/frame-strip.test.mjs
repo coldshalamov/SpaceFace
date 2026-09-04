@@ -14,6 +14,7 @@ import { tmpdir } from 'node:os';
 
 import {
   retentionMask,
+  waitForRealtime,
   condenseMoments,
   compareStripEventTicks,
   MOMENT_IMPACT_FLOOR,
@@ -230,4 +231,23 @@ test('cleanup refuses a junction or symlink that escapes the authorized root', (
     rmSync(root, { recursive: true, force: true });
     rmSync(outside, { recursive: true, force: true });
   }
+});
+
+
+test('capture readiness rejects a fast empty-arena window followed by slow hull admission', async (t) => {
+  let now = 0, sim = 0, windows = 0;
+  t.mock.method(Date, 'now', () => now);
+  const fractions = [0.9, 0.14, 0.9, 0.9, 0.9];
+  const page = { evaluate: async () => sim, waitForTimeout: async ms => { now += ms; sim += fractions[windows++] * ms / 1000; } };
+  const result = await waitForRealtime(page, { windowMs: 1000, maxWaitMs: 5000 });
+  assert.equal(result.reachedFloor, true);
+  assert.equal(windows, 5, 'normal speed must be sustained after the slow interval');
+});
+
+test('capture readiness does not accept one late fast window at timeout', async (t) => {
+  let now = 0, sim = 0, windows = 0;
+  t.mock.method(Date, 'now', () => now);
+  const fractions = [0.14, 0.14, 0.9];
+  const page = { evaluate: async () => sim, waitForTimeout: async ms => { now += ms; sim += fractions[windows++] * ms / 1000; } };
+  assert.equal((await waitForRealtime(page, { windowMs: 1000, maxWaitMs: 3000 })).reachedFloor, false);
 });

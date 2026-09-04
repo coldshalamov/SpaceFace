@@ -263,10 +263,11 @@ export function condenseMoments(raw, { floor = MOMENT_IMPACT_FLOOR, mergeS = MOM
  * rewritten to end.
  */
 export async function waitForRealtime(page, {
-  floor = NORMAL_SPEED_FLOOR, windowMs = 2000, maxWaitMs = 60000, log = () => {},
+  floor = NORMAL_SPEED_FLOOR, windowMs = 2000, maxWaitMs = 60000, requiredWindows = 3, log = () => {},
 } = {}) {
   const started = Date.now();
   let fraction = 0;
+  let stableWindows = 0;
   while (Date.now() - started < maxWaitMs) {
     const a = await page.evaluate(() => window.SF.state.simTime);
     const t0 = Date.now();
@@ -274,9 +275,10 @@ export async function waitForRealtime(page, {
     const b = await page.evaluate(() => window.SF.state.simTime);
     fraction = (b - a) / ((Date.now() - t0) / 1000);
     log(`realtime ${(fraction * 100).toFixed(0)}%`);
-    if (fraction >= floor) break;
+    stableWindows = fraction >= floor ? stableWindows + 1 : 0;
+    if (stableWindows >= requiredWindows) break;
   }
-  return { fraction, waitedS: (Date.now() - started) / 1000, reachedFloor: fraction >= floor };
+  return { fraction, waitedS: (Date.now() - started) / 1000, reachedFloor: stableWindows >= requiredWindows, stableWindows };
 }
 
 /**
@@ -987,15 +989,6 @@ export async function captureFrameStrip({
       };
     });
 
-    // ── Wait for the game to be running at normal speed ───────────────────────────────────────
-    // MEASURED on this machine (probe, 2026-09-03): for roughly the first twenty seconds of a run
-    // the arena is still building and streaming assets, and the sim advances at ~13 % of real time.
-    // The first repaired capture photographed exactly that window and got five seconds of game in
-    // twenty-two seconds of wall clock, with the hull and the hostiles not yet drawn. "At normal
-    // speed" is part of the capture contract, so it is now a gate with a number, not an assumption.
-    const settle = await waitForRealtime(page, { log });
-    log(`settled at ${(settle.fraction * 100).toFixed(0)}% of real time after ${settle.waitedS.toFixed(1)}s`);
-
     // ── Wait for the SHIPS, and throw if they never arrive ────────────────────────────────────
     // Running at normal speed is not the same as having a ship on screen. See waitForHullsDrawn:
     // the first repaired strip was 403 photographs of an empty arena taken at 90 % of real time.
@@ -1012,6 +1005,12 @@ export async function captureFrameStrip({
     log(`ships drawn after ${hulls.waitedS.toFixed(1)}s (sim ${hulls.simTime.toFixed(1)}s): `
       + `hull ${hulls.hullPx.toFixed(0)}px, ${hulls.brightPx} lit pixels on it, `
       + `${hulls.hostilesWithParts} hostiles drawing`);
+
+    // Hull admission triggers deferred shader work. A fast empty arena before that work
+    // is not readiness: the observed 72% window dropped to 14% after hulls arrived.
+    const settle = await waitForRealtime(page, { log });
+    if (!settle.reachedFloor) throw new Error('The drawn game did not sustain normal speed; capture was not started');
+    log('drawn game sustained normal speed for ' + settle.stableWindows + ' windows');
 
     // ── Record one state sample per drawn frame, inside the page ──────────────────────────────
     // A per-frame `page.evaluate` round trip is what made the first version cost seconds a frame.
