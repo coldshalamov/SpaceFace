@@ -181,6 +181,24 @@ test('Chromium parity gate is a single pinned member of the real CI matrix', () 
   assert.ok(baseline.mustGate.includes(gate), `${gate} must remain pinned in the baseline`);
 });
 
+test('draw-to-fly gate runs path-tracking and stroke-speed exactly once from check/check:ci', () => {
+  const scripts = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).scripts;
+  const baseline = JSON.parse(readFileSync(new URL('./gate-reachability.baseline.json', import.meta.url), 'utf8'));
+  const gate = 'check:draw-to-fly';
+  const body = scripts[gate];
+
+  assert.equal(
+    body,
+    'node --test test/draw-to-fly-path-tracking.test.mjs test/draw-to-fly-stroke-speed.test.mjs',
+  );
+  assert.equal((body.match(/draw-to-fly-path-tracking\.test\.mjs/g) || []).length, 1);
+  assert.equal((body.match(/draw-to-fly-stroke-speed\.test\.mjs/g) || []).length, 1);
+  assert.equal(directNpmDependencies(scripts.check).filter((name) => name === gate).length, 1);
+  assert.equal(countGateInvocations(scripts, 'check', gate), 1);
+  assert.equal(countGateInvocations(scripts, 'check:ci', gate), 1);
+  assert.ok(baseline.mustGate.includes(gate), `${gate} must remain pinned in the baseline`);
+});
+
 test('the atlas program suite is pinned and reachable, not merely green', () => {
   const scripts = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).scripts;
   const baseline = JSON.parse(readFileSync(new URL('./gate-reachability.baseline.json', import.meta.url), 'utf8'));

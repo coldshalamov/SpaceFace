@@ -246,28 +246,18 @@ const PATH_CORRECTION_GAIN = 1.35;        // how hard the corridor steers back o
 const PATH_PROJECTION_WINDOW = 30;        // WU of path searched ahead of committed progress
 const PATH_PROJECTION_BACK = 6;           // WU of slack behind it, so a shoved hull is not stranded
 const PATH_CURVE_STENCIL = 8;             // nodes either side: 24 WU chord — ship turning scale, not 8-px jitter
-const PATH_CURVE_SMOOTH_HALF = 2;         // ±2 nodes (15 WU) signed boxcar; tremor cancels, corners persist
 const PATH_VELOCITY_ERROR_FULL = 26;      // velocity error (WU/s) that commands full thrust
 const PATH_CORNER_FLOOR_SPEED = 14;       // hairpins throttle down to this, never to a deadlock
 const PATH_BRAKE_MARGIN = 6;              // WU/s over the governed speed before the brake is asserted
 const PATH_MAX_NODES = 8192;              // ~24 km of stroke at 3 WU spacing; bounds one cache build
 const PATH_REST_SPEED = 1;                // below this the hull is genuinely stopped, not coasting              // WU/s over the governed speed before the brake is asserted
-
-// SIGNED curvature on a ship-scale chord. Taking abs() per sample was the crawl: 8-px hand
-// tremor is zero-mean heading noise, but |k| rectifies it into a fake hairpin, and MAX over
-// the lookahead then pins the hull to PATH_CORNER_FLOOR_SPEED for the whole stroke.
-function pathCurvatureAt(nodes, index) {
-  const lo = index - PATH_CURVE_STENCIL;
-  const hi = index + PATH_CURVE_STENCIL;
-  if (lo < 0 || hi >= nodes.length) return 0;
-  const a = nodes[lo];
-  const b = nodes[index];
-  const c = nodes[hi];
-  const h1 = Math.atan2(b.z - a.z, b.x - a.x);
-  const h2 = Math.atan2(c.z - b.z, c.x - b.x);
-  const arc = PATH_CURVE_STENCIL * PATH_RESAMPLE_SPACING;
-  return wrapAngle(h2 - h1) / Math.max(arc, 1e-6);
-}
+const PATH_PILOT_RADIUS_MULT = 1.3;       // desired centerline radius ≈ 1.3× physical turn radius
+const PATH_PILOT_CORRIDOR_R = 0.35;       // max cut from raw ink, in turn radii (B8 tube)
+const PATH_PILOT_CORNER_TURN = 0.44;      // ~25° concentrated turn is a vertex worth filleting
+const PATH_PILOT_CORNER_PEAK = 0.22;      // ~13° — a vertex, not a 3° sample on a gentle S
+const PATH_PILOT_CORNER_TURNS = 6;        // smeared 15+30+15 is 3 vertices; a sine peak has ~10
+const PATH_PILOT_TURN_SEED = 0.05;        // rad — cluster adjacent heading changes into one corner
+const PATH_PILOT_TRACK_SLACK = 6;         // WU left for tracking error inside the 0.35 R tube
 
 function appendResampledPoint(cache, x, z, sourceIndex) {
   let ax = cache.tailX;
@@ -324,22 +314,7 @@ function ensurePathCache(runtime, route) {
     || cache.consumed > points.length
     || consumedMoved
     || (cache.consumed === points.length && (cache.lastX !== tailX || cache.lastZ !== tailZ))) {
-    cache = runtime.path = {
-      headX,
-      headZ,
-      consumed: 1,
-      nodes: [{ x: headX, z: headZ }],
-      cum: [0],
-      src: [0],
-      total: 0,
-      progressS: 0,
-      tailX: headX,
-      tailZ: headZ,
-      lastX: headX,
-      lastZ: headZ,
-      lastConsumedX: headX,
-      lastConsumedZ: headZ,
-    };
+    cache = runtime.path = createPathCache(headX, headZ);
   }
   for (let i = cache.consumed; i < points.length; i += 1) {
     const p = points[i];
@@ -355,6 +330,45 @@ function ensurePathCache(runtime, route) {
   cache.lastConsumedX = finite(consumedNow && consumedNow.x);
   cache.lastConsumedZ = finite(consumedNow && consumedNow.z);
   return cache;
+}
+
+function createPathCache(headX, headZ) {
+  return {
+    headX,
+    headZ,
+    consumed: 1,
+    nodes: [{ x: headX, z: headZ }],
+    cum: [0],
+    src: [0],
+    total: 0,
+    progressS: 0,
+    tailX: headX,
+    tailZ: headZ,
+    lastX: headX,
+    lastZ: headZ,
+    lastConsumedX: headX,
+    lastConsumedZ: headZ,
+    pilot: [{ x: headX, z: headZ }],
+    pilotCum: [0],
+    vCurve: [0],
+    vLimit: [0],
+    scratchTurn: [0],
+    planCount: 0,
+    planCorridor: 0,
+    planTurnRadius: 0,
+    planCruise: NaN,
+    planLateral: NaN,
+    planBrake: NaN,
+    planAccel: NaN,
+    planGeomSpeed: NaN,
+    pilotTotal: 0,
+    rawProj: { s: 0, x: 0, z: 0, tx: 1, tz: 0, cross: 0, dist: 0 },
+    pilotProj: { s: 0, x: 0, z: 0, tx: 1, tz: 0, cross: 0, dist: 0 },
+    steerPoint: { x: 0, z: 0, tx: 1, tz: 0 },
+    scratchPt: { x: 0, z: 0 },
+    clusters: [],
+    clusterCount: 0,
+  };
 }
 
 function nodeIndexAtS(cache, s) {
@@ -377,19 +391,55 @@ function pathPointAtS(cache, s) {
   return { x: a.x + sx * t, z: a.z + sz * t, tx: sx / len, tz: sz / len };
 }
 
-// Windowed forward projection. Returns committed arc-length progress, the closest point on the line,
+function cumIndexAt(cum, count, s) {
+  if (count <= 1) return 0;
+  let lo = 0;
+  let hi = count - 1;
+  if (s <= cum[0]) return 0;
+  if (s >= cum[hi]) return hi;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (cum[mid] <= s) lo = mid + 1;
+    else hi = mid;
+  }
+  return Math.max(0, lo - 1);
+}
+
+function fillPointAtCum(nodes, cum, count, total, s, out) {
+  const last = count - 1;
+  if (last < 1 || !nodes[0]) {
+    out.x = nodes[0] ? nodes[0].x : 0;
+    out.z = nodes[0] ? nodes[0].z : 0;
+    out.tx = 1;
+    out.tz = 0;
+    return out;
+  }
+  const clamped = Math.max(0, Math.min(total, s));
+  const i = Math.min(last - 1, cumIndexAt(cum, count, clamped));
+  const a = nodes[i];
+  const b = nodes[i + 1];
+  const ds = Math.max(cum[i + 1] - cum[i], 1e-6);
+  const t = Math.max(0, Math.min(1, (clamped - cum[i]) / ds));
+  const sx = b.x - a.x;
+  const sz = b.z - a.z;
+  const len = Math.max(Math.hypot(sx, sz), 1e-6);
+  out.x = a.x + sx * t;
+  out.z = a.z + sz * t;
+  out.tx = sx / len;
+  out.tz = sz / len;
+  return out;
+}
+
+// Windowed forward projection. Writes committed arc-length progress, the closest point on the line,
 // its tangent, and the SIGNED cross-track offset (positive = hull sits on the +perp side, where
-// perp = (-tangentZ, tangentX)).
-function projectOntoPath(cache, px, pz) {
-  const nodes = cache.nodes;
-  const last = nodes.length - 1;
-  if (last < 1) return null;
-  const fromS = Math.max(0, cache.progressS - PATH_PROJECTION_BACK);
-  const toS = Math.min(cache.total, cache.progressS + PATH_PROJECTION_WINDOW);
-  const i0 = nodeIndexAtS(cache, fromS);
-  const i1 = Math.min(last - 1, nodeIndexAtS(cache, toS));
+// perp = (-tangentZ, tangentX)) into `out`. No per-tick allocation.
+function projectOntoNodes(nodes, cum, count, total, fromS, toS, px, pz, out) {
+  const last = count - 1;
+  if (last < 1 || !out) return null;
+  const i0 = Math.max(0, Math.min(last - 1, cumIndexAt(cum, count, fromS)));
+  const i1 = Math.max(i0, Math.min(last - 1, cumIndexAt(cum, count, toS)));
   let bestSq = Infinity;
-  let bestS = cache.progressS;
+  let bestS = fromS;
   let bestX = nodes[i0].x;
   let bestZ = nodes[i0].z;
   let bestTx = 1;
@@ -410,7 +460,7 @@ function projectOntoPath(cache, px, pz) {
     const dsq = ddx * ddx + ddz * ddz;
     if (dsq < bestSq) {
       bestSq = dsq;
-      bestS = cache.cum[i] + Math.sqrt(segSq) * t;
+      bestS = cum[i] + Math.sqrt(segSq) * t;
       bestX = cx;
       bestZ = cz;
       const inv = 1 / Math.sqrt(segSq);
@@ -418,34 +468,338 @@ function projectOntoPath(cache, px, pz) {
       bestTz = sz * inv;
     }
   }
-  const cross = (px - bestX) * -bestTz + (pz - bestZ) * bestTx;
-  return { s: bestS, x: bestX, z: bestZ, tx: bestTx, tz: bestTz, cross, dist: Math.sqrt(bestSq) };
+  out.s = bestS;
+  out.x = bestX;
+  out.z = bestZ;
+  out.tx = bestTx;
+  out.tz = bestTz;
+  out.cross = (px - bestX) * -bestTz + (pz - bestZ) * bestTx;
+  out.dist = Math.sqrt(bestSq);
+  return out;
 }
 
-// Worst *smoothed* curvature between here and the carrot decides the corner speed, so the hull
-// is already slow when it ARRIVES at a hairpin rather than discovering it mid-corner. Raw
-// per-sample MAX is forbidden: a hand stroke sampled every ~8 screen pixels reads its own
-// sampling jitter as a hairpin. Signed k is boxcar-averaged over PATH_CURVE_SMOOTH_HALF, then
-// abs'd — zero-mean tremor cancels, a persistent turn does not. No per-frame allocation.
-function worstCurvatureAhead(cache, fromS, toS) {
-  const nodes = cache.nodes;
-  const last = nodes.length - 1;
-  const i0 = nodeIndexAtS(cache, fromS);
-  const i1 = nodeIndexAtS(cache, toS);
-  let worst = 0;
-  for (let i = i0; i <= i1; i += 1) {
-    const a = i - PATH_CURVE_SMOOTH_HALF < 0 ? 0 : i - PATH_CURVE_SMOOTH_HALF;
-    const b = i + PATH_CURVE_SMOOTH_HALF > last ? last : i + PATH_CURVE_SMOOTH_HALF;
-    let sum = 0;
-    let n = 0;
-    for (let j = a; j <= b; j += 1) {
-      sum += pathCurvatureAt(nodes, j);
-      n += 1;
+function projectOntoPath(cache, px, pz) {
+  const fromS = Math.max(0, cache.progressS - PATH_PROJECTION_BACK);
+  const toS = Math.min(cache.total, cache.progressS + PATH_PROJECTION_WINDOW);
+  return projectOntoNodes(
+    cache.nodes, cache.cum, cache.nodes.length, cache.total, fromS, toS, px, pz, cache.rawProj,
+  );
+}
+
+function ensurePlanSlots(cache, n) {
+  if (!cache.pilot) cache.pilot = [];
+  if (!cache.pilotCum) cache.pilotCum = [];
+  if (!cache.vCurve) cache.vCurve = [];
+  if (!cache.vLimit) cache.vLimit = [];
+  if (!cache.scratchTurn) cache.scratchTurn = [];
+  while (cache.pilot.length < n) cache.pilot.push({ x: 0, z: 0 });
+  while (cache.pilotCum.length < n) cache.pilotCum.push(0);
+  while (cache.vCurve.length < n) cache.vCurve.push(0);
+  while (cache.vLimit.length < n) cache.vLimit.push(0);
+  while (cache.scratchTurn.length < n) cache.scratchTurn.push(0);
+  if (!cache.rawProj) cache.rawProj = { s: 0, x: 0, z: 0, tx: 1, tz: 0, cross: 0, dist: 0 };
+  if (!cache.pilotProj) cache.pilotProj = { s: 0, x: 0, z: 0, tx: 1, tz: 0, cross: 0, dist: 0 };
+  if (!cache.steerPoint) cache.steerPoint = { x: 0, z: 0, tx: 1, tz: 0 };
+  if (!cache.scratchPt) cache.scratchPt = { x: 0, z: 0 };
+  if (!cache.clusters) cache.clusters = [];
+}
+
+function fitFilletRadius(half, RDes, RLeg, RTurn) {
+  const cutFactor = 1 / Math.cos(half) - 1;
+  if (!(cutFactor > 1e-6) || !(RDes > 0) || !(RLeg > 0)) return 0;
+  const tube = PATH_PILOT_CORRIDOR_R * RTurn;
+  const width = Math.max(PATH_RESAMPLE_SPACING, tube - PATH_PILOT_TRACK_SLACK);
+  return Math.min(RDes, RLeg, width / cutFactor);
+}
+
+function collectCornerClusters(cache, n) {
+  if (!cache.clusters) cache.clusters = [];
+  let count = 0;
+  let i = 1;
+  while (i < n - 1) {
+    if (Math.abs(cache.scratchTurn[i]) < PATH_PILOT_TURN_SEED) {
+      i += 1;
+      continue;
     }
-    const k = n > 0 ? Math.abs(sum / n) : 0;
-    if (k > worst) worst = k;
+    let acc = cache.scratchTurn[i];
+    let peak = Math.abs(cache.scratchTurn[i]);
+    let turns = 1;
+    let hi = i;
+    let j = i + 1;
+    while (j < n - 1) {
+      const turn = cache.scratchTurn[j];
+      if (Math.abs(turn) >= PATH_PILOT_TURN_SEED) {
+        if (turn * acc < 0) break;
+        if (j - hi > 12) break;
+        acc += turn;
+        const absTurn = Math.abs(turn);
+        if (absTurn > peak) peak = absTurn;
+        turns += 1;
+        hi = j;
+      } else if (j - hi > 12) {
+        break;
+      }
+      j += 1;
+    }
+    if (Math.abs(acc) >= PATH_PILOT_CORNER_TURN) {
+      let slot = cache.clusters[count];
+      if (!slot) {
+        slot = { lo: 0, hi: 0, acc: 0, peak: 0, turns: 0, radius: 0 };
+        cache.clusters[count] = slot;
+      }
+      slot.lo = i;
+      slot.hi = hi;
+      slot.acc = acc;
+      slot.peak = peak;
+      slot.turns = turns;
+      slot.radius = 0;
+      count += 1;
+    }
+    i = Math.max(hi + 1, i + 1);
   }
-  return worst;
+  cache.clusterCount = count;
+  return count;
+}
+
+function applyPilotFillet(cache, n, cluster, radius, inX, inZ, outX, outZ, sLeft, sRight) {
+  const theta = wrapAngle(Math.atan2(outZ, outX) - Math.atan2(inZ, inX));
+  const half = Math.abs(theta) * 0.5;
+  const cosHalf = Math.cos(half);
+  if (!(half > 1e-3) || !(radius > PATH_RESAMPLE_SPACING) || !(cosHalf > 1e-6)) return;
+  const tanHalf = Math.tan(half);
+  if (!(tanHalf > 1e-6)) return;
+  const d = radius * tanHalf;
+  const nodes = cache.nodes;
+  const lo = cluster.lo;
+  const hi = cluster.hi;
+  const a = nodes[lo - 1];
+  const b = nodes[hi];
+  const det = inX * outZ - inZ * outX;
+  if (Math.abs(det) < 1e-8) return;
+  const tHit = ((b.x - a.x) * outZ - (b.z - a.z) * outX) / det;
+  const vertexX = a.x + tHit * inX;
+  const vertexZ = a.z + tHit * inZ;
+  const ix = -inX + outX;
+  const iz = -inZ + outZ;
+  const invLen = Math.hypot(ix, iz);
+  if (invLen < 1e-9) return;
+  const centerDist = radius / cosHalf;
+  const centerX = vertexX + (ix / invLen) * centerDist;
+  const centerZ = vertexZ + (iz / invLen) * centerDist;
+  const tanInX = vertexX - inX * d;
+  const tanInZ = vertexZ - inZ * d;
+  const tanOutX = vertexX + outX * d;
+  const tanOutZ = vertexZ + outZ * d;
+  const radialIn = Math.hypot(tanInX - centerX, tanInZ - centerZ);
+  const radialOut = Math.hypot(tanOutX - centerX, tanOutZ - centerZ);
+  if (Math.abs(radialIn - radius) > 0.05 * radius || Math.abs(radialOut - radius) > 0.05 * radius) return;
+  const a0 = Math.atan2(tanInZ - centerZ, tanInX - centerX);
+  const a1 = Math.atan2(tanOutZ - centerZ, tanOutX - centerX);
+  let sweep = wrapAngle(a1 - a0);
+  if (sweep * theta < 0) sweep = sweep > 0 ? sweep - Math.PI * 2 : sweep + Math.PI * 2;
+  const sTanIn = cache.cum[lo] + (tanInX - nodes[lo].x) * inX + (tanInZ - nodes[lo].z) * inZ;
+  const sTanOut = cache.cum[hi] + (tanOutX - nodes[hi].x) * outX + (tanOutZ - nodes[hi].z) * outZ;
+  // A short smeared corner may not have room for a circle that reaches both straight
+  // legs. Keep its raw path and curvature limit instead of joining an extrapolated leg.
+  if (sTanIn > cache.cum[lo] + 1e-6 || sTanOut < cache.cum[hi] - 1e-6
+    || sTanIn < sLeft - 1e-6 || sTanOut > sRight + 1e-6) return;
+  if (!(sTanOut > sTanIn + PATH_RESAMPLE_SPACING)) return;
+  const s0 = Math.max(sTanIn, sLeft);
+  const s1 = Math.min(sTanOut, sRight);
+  if (!(s1 > s0 + 1e-6)) return;
+  const span = sTanOut - sTanIn;
+  const corridor = cache.planCorridor;
+  const j0 = Math.max(1, cumIndexAt(cache.cum, n, s0));
+  const j1 = Math.min(n - 2, cumIndexAt(cache.cum, n, s1) + 1);
+  for (let j = j0; j <= j1; j += 1) {
+    const s = cache.cum[j];
+    if (s < s0 || s > s1) continue;
+    const u = Math.max(0, Math.min(1, (s - sTanIn) / span));
+    const ang = a0 + sweep * u;
+    let px = centerX + Math.cos(ang) * radius;
+    let pz = centerZ + Math.sin(ang) * radius;
+    const raw = nodes[j];
+    const dx = px - raw.x;
+    const dz = pz - raw.z;
+    const dist = Math.hypot(dx, dz);
+    if (dist > corridor && dist > 1e-9) {
+      const scale = corridor / dist;
+      px = raw.x + dx * scale;
+      pz = raw.z + dz * scale;
+    }
+    cache.pilot[j].x = px;
+    cache.pilot[j].z = pz;
+  }
+  cluster.radius = radius;
+  cluster.cx = centerX;
+  cluster.cz = centerZ;
+  cluster.tanInX = tanInX;
+  cluster.tanInZ = tanInZ;
+  cluster.tanOutX = tanOutX;
+  cluster.tanOutZ = tanOutZ;
+  cluster.inX = inX;
+  cluster.inZ = inZ;
+  cluster.outX = outX;
+  cluster.outZ = outZ;
+}
+
+function ensurePilotPlan(cache, authority) {
+  const n = cache.nodes.length;
+  if (n < 2) {
+    cache.planCount = n;
+    cache.pilotTotal = 0;
+    return;
+  }
+  const cruise = authority.cruise;
+  const lateral = Math.max(authority.lateral, 1);
+  const brake = Math.max(authority.brake, 1);
+  const accel = Math.max(authority.accel, 1);
+  const geomSpeed = positiveOr(authority.geomSpeed, cruise);
+  if (cache.planCount === n
+    && cache.planCruise === cruise
+    && cache.planLateral === lateral
+    && cache.planBrake === brake
+    && cache.planAccel === accel
+    && cache.planGeomSpeed === geomSpeed) {
+    return;
+  }
+
+  ensurePlanSlots(cache, n);
+  const RTurn = (geomSpeed * geomSpeed) / lateral;
+  const corridor = PATH_PILOT_CORRIDOR_R * RTurn;
+  cache.planTurnRadius = RTurn;
+  cache.planCorridor = corridor;
+  cache.planCruise = cruise;
+  cache.planLateral = lateral;
+  cache.planBrake = brake;
+  cache.planAccel = accel;
+  cache.planGeomSpeed = geomSpeed;
+  cache.planCount = n;
+
+  for (let i = 0; i < n; i += 1) {
+    cache.pilot[i].x = cache.nodes[i].x;
+    cache.pilot[i].z = cache.nodes[i].z;
+    cache.scratchTurn[i] = 0;
+  }
+
+  for (let i = 1; i < n - 1; i += 1) {
+    const a = cache.nodes[i - 1];
+    const b = cache.nodes[i];
+    const c = cache.nodes[i + 1];
+    const h0 = Math.atan2(b.z - a.z, b.x - a.x);
+    const h1 = Math.atan2(c.z - b.z, c.x - b.x);
+    cache.scratchTurn[i] = wrapAngle(h1 - h0);
+  }
+
+  const RDes = PATH_PILOT_RADIUS_MULT * RTurn;
+  const clusterCount = collectCornerClusters(cache, n);
+  for (let c = 0; c < clusterCount; c += 1) {
+    const cluster = cache.clusters[c];
+    if (cluster.lo < 1 || cluster.hi > n - 2) continue;
+    if (cluster.turns > PATH_PILOT_CORNER_TURNS) continue;
+    if (!(cluster.peak >= PATH_PILOT_CORNER_PEAK)) continue;
+    const inbound = cache.nodes[cluster.lo];
+    const inboundPrev = cache.nodes[cluster.lo - 1];
+    const outbound = cache.nodes[cluster.hi];
+    const outboundNext = cache.nodes[cluster.hi + 1];
+    const inLenSeg = Math.hypot(inbound.x - inboundPrev.x, inbound.z - inboundPrev.z);
+    const outLenSeg = Math.hypot(outboundNext.x - outbound.x, outboundNext.z - outbound.z);
+    if (inLenSeg < 1e-6 || outLenSeg < 1e-6) continue;
+    const inX = (inbound.x - inboundPrev.x) / inLenSeg;
+    const inZ = (inbound.z - inboundPrev.z) / inLenSeg;
+    const outX = (outboundNext.x - outbound.x) / outLenSeg;
+    const outZ = (outboundNext.z - outbound.z) / outLenSeg;
+    const theta = wrapAngle(Math.atan2(outZ, outX) - Math.atan2(inZ, inX));
+    const half = Math.abs(theta) * 0.5;
+    if (!(half > 0.12) || !(half < 1.45)) continue;
+    const tanHalf = Math.tan(half);
+    const leftS = c > 0
+      ? 0.5 * (cache.cum[cache.clusters[c - 1].hi] + cache.cum[cluster.lo])
+      : 0;
+    const rightS = c < clusterCount - 1
+      ? 0.5 * (cache.cum[cluster.hi] + cache.cum[cache.clusters[c + 1].lo])
+      : cache.total;
+    const det = inX * outZ - inZ * outX;
+    if (Math.abs(det) < 1e-8) continue;
+    const vertexAlongIn = ((outbound.x - inbound.x) * outZ
+      - (outbound.z - inbound.z) * outX) / det;
+    const vertexX = inbound.x + vertexAlongIn * inX;
+    const vertexZ = inbound.z + vertexAlongIn * inZ;
+    const vertexBeforeOut = (outbound.x - vertexX) * outX + (outbound.z - vertexZ) * outZ;
+    // Tangent distance is measured from the intersection of the straight legs,
+    // which lies inside a smeared turn, not from its first/last turning node.
+    const inLen = Math.max(0, cache.cum[cluster.lo] - leftS + vertexAlongIn);
+    const outLen = Math.max(0, rightS - cache.cum[cluster.hi] + vertexBeforeOut);
+    const inUse = Math.max(0, inLen - PATH_RESAMPLE_SPACING);
+    const outUse = Math.max(0, outLen - PATH_RESAMPLE_SPACING);
+    const RLeg = tanHalf > 1e-6 ? Math.min(inUse, outUse) / tanHalf : 0;
+    const radius = fitFilletRadius(half, RDes, RLeg, RTurn);
+    if (radius > PATH_RESAMPLE_SPACING) {
+      applyPilotFillet(cache, n, cluster, radius, inX, inZ, outX, outZ, leftS, rightS);
+    }
+  }
+
+  cache.pilotCum[0] = 0;
+  for (let k = 1; k < n; k += 1) {
+    const a = cache.pilot[k - 1];
+    const b = cache.pilot[k];
+    cache.pilotCum[k] = cache.pilotCum[k - 1] + Math.hypot(b.x - a.x, b.z - a.z);
+  }
+  cache.pilotTotal = cache.pilotCum[n - 1];
+
+  const last = n - 1;
+  for (let k = 0; k < n; k += 1) {
+    const lo = k - PATH_CURVE_STENCIL;
+    const hi = k + PATH_CURVE_STENCIL;
+    let kappa = 0;
+    if (lo >= 0 && hi < n) {
+      const a = cache.pilot[lo];
+      const b = cache.pilot[k];
+      const c = cache.pilot[hi];
+      const h1 = Math.atan2(b.z - a.z, b.x - a.x);
+      const h2 = Math.atan2(c.z - b.z, c.x - b.x);
+      const arc = Math.max(cache.pilotCum[k] - cache.pilotCum[lo], 1e-6);
+      kappa = Math.abs(wrapAngle(h2 - h1) / arc);
+    }
+    const radius = kappa > 1e-5 ? 1 / kappa : Infinity;
+    let vCurve = Number.isFinite(radius)
+      ? Math.sqrt(lateral * radius / PATH_PILOT_RADIUS_MULT)
+      : cruise;
+    if (!Number.isFinite(vCurve) || vCurve < PATH_CORNER_FLOOR_SPEED) vCurve = PATH_CORNER_FLOOR_SPEED;
+    if (vCurve > cruise) vCurve = cruise;
+    cache.vCurve[k] = vCurve;
+  }
+
+  cache.vLimit[last] = 0;
+  for (let k = last - 1; k >= 0; k -= 1) {
+    const ds = Math.max(cache.pilotCum[k + 1] - cache.pilotCum[k], 1e-6);
+    const vBrake = Math.sqrt(cache.vLimit[k + 1] * cache.vLimit[k + 1] + 2 * brake * ds);
+    const limited = cache.vCurve[k] < vBrake ? cache.vCurve[k] : vBrake;
+    cache.vLimit[k] = limited;
+  }
+  for (let k = 0; k < last; k += 1) {
+    const ds = Math.max(cache.pilotCum[k + 1] - cache.pilotCum[k], 1e-6);
+    const vAccel = Math.sqrt(cache.vLimit[k] * cache.vLimit[k] + 2 * accel * ds);
+    if (cache.vLimit[k + 1] > vAccel) cache.vLimit[k + 1] = vAccel;
+  }
+}
+
+function plannedSpeedAt(cache, rawS) {
+  const n = cache.planCount;
+  if (n < 2) return cache.planCruise;
+  const i = Math.min(n - 2, cumIndexAt(cache.cum, n, rawS));
+  const ds = Math.max(cache.cum[i + 1] - cache.cum[i], 1e-6);
+  const t = Math.max(0, Math.min(1, (rawS - cache.cum[i]) / ds));
+  return cache.vLimit[i] * (1 - t) + cache.vLimit[i + 1] * t;
+}
+
+function rawSToPilotS(cache, rawS) {
+  const n = cache.planCount;
+  if (n < 2) return 0;
+  const i = Math.min(n - 2, cumIndexAt(cache.cum, n, rawS));
+  const ds = Math.max(cache.cum[i + 1] - cache.cum[i], 1e-6);
+  const t = Math.max(0, Math.min(1, (rawS - cache.cum[i]) / ds));
+  return cache.pilotCum[i] + t * (cache.pilotCum[i + 1] - cache.pilotCum[i]);
 }
 
 function positiveOr(value, fallback) {
@@ -455,25 +809,31 @@ function positiveOr(value, fallback) {
 function pathAuthority(state, player) {
   // Ask the propulsion catalog for the SAME numbers the kernel will apply, including the auto-target
   // overdrive, so the speed governor is bounded by real thrust rather than a guessed constant.
+  let helm = null;
   let profile = null;
   try {
-    profile = resolvePropulsionProfile(player, state || null);
-    if (profile) {
-      profile = applyAutoTargetHelmProfile(profile);
-      profile = applyAutoTargetPathProfile(profile);
+    const resolved = resolvePropulsionProfile(player, state || null);
+    if (resolved) {
+      helm = applyAutoTargetHelmProfile(resolved);
+      profile = applyAutoTargetPathProfile(helm);
     }
   } catch {
+    helm = null;
     profile = null;
   }
   const main = positiveOr(profile && profile.mainAccel, 80);
   const strafe = positiveOr(profile && profile.strafeAccel, main * 0.6);
   const reverse = positiveOr(profile && profile.reverseAccel, main * 0.7);
+  const combat = positiveOr(profile && profile.combatSpeed, 0);
+  const top = positiveOr(profile && profile.maxSpeed, positiveOr(player && player.maxSpeed, 0));
   return {
     // Cornering is bought with strafe thrust plus a rotated main; be conservative about how much of
     // the main axis is usable while the nose is still swinging.
     lateral: Math.max(strafe, main * 0.6),
     brake: Math.max(reverse, positiveOr(profile && profile.maxBrakeAccel, 0), main * 0.72, 1),
-    cruise: positiveOr(profile && profile.maxSpeed, positiveOr(player && player.maxSpeed, 120)),
+    accel: main,
+    cruise: combat && top ? Math.min(combat, top) : (combat || top || 120),
+    geomSpeed: positiveOr(helm && helm.combatSpeed, combat || top || 120),
   };
 }
 
@@ -491,6 +851,9 @@ function followAutoTargetPath(inp, player, state, runtime) {
   const vx = finite(player.vel && player.vel.x);
   const vz = finite(player.vel && player.vel.z);
   const speed = Math.hypot(vx, vz);
+
+  const authority = pathAuthority(state, player);
+  ensurePilotPlan(cache, authority);
 
   const projection = projectOntoPath(cache, px, pz);
   if (!projection) return false;
@@ -539,24 +902,31 @@ function followAutoTargetPath(inp, player, state, runtime) {
     return true;
   }
 
-  const authority = pathAuthority(state, player);
   const lookahead = Math.max(
     PATH_LOOKAHEAD_MIN,
     Math.min(PATH_LOOKAHEAD_MAX, PATH_LOOKAHEAD_MIN + speed * PATH_LOOKAHEAD_PER_SPEED),
   );
-  const carrotS = Math.min(cache.total, cache.progressS + lookahead);
-  const carrot = pathPointAtS(cache, carrotS);
+  const pilotS = rawSToPilotS(cache, cache.progressS);
+  const pilotFrom = Math.max(0, pilotS - PATH_PROJECTION_BACK);
+  const pilotTo = Math.min(cache.pilotTotal, pilotS + PATH_PROJECTION_WINDOW);
+  const pilotProj = projectOntoNodes(
+    cache.pilot, cache.pilotCum, cache.planCount, cache.pilotTotal,
+    pilotFrom, pilotTo, px, pz, cache.pilotProj,
+  );
+  const steer = pilotProj || projection;
+  const carrotS = Math.min(cache.pilotTotal, (steer.s || pilotS) + lookahead);
+  const carrot = fillPointAtCum(
+    cache.pilot, cache.pilotCum, cache.planCount, cache.pilotTotal, carrotS, cache.steerPoint,
+  );
 
-  // Speed governor. "Follow the line" at finite thrust means DECELERATING INTO a hairpin, not cutting
-  // it: a pure-pursuit controller with no governor still corners wide and still reads as broken.
-  // Closing a large cross-track offset is the same budget as a corner: k ≈ 2 |cross| / lookahead²
-  // (sagitta of the return). On the line this is ~0; a hull 55 WU off that still commanded cruise
-  // ate the path before the restoring pull could cover it.
-  const curvature = worstCurvatureAhead(cache, cache.progressS, carrotS);
-  const returnK = 2 * Math.abs(projection.cross) / Math.max(lookahead * lookahead, 1);
-  const kUse = curvature > returnK ? curvature : returnK;
-  const cornerSpeed = kUse > 1e-5
-    ? Math.max(PATH_CORNER_FLOOR_SPEED, Math.sqrt(authority.lateral / kUse))
+  // Speed envelope lives on the cached pilot: curvature limits at 1.3× turn radius, solved
+  // backward with brake then forward with accel, never exceeding modified combatSpeed.
+  // Recapture of a displaced hull still costs centripetal budget, so a large pilot cross-track
+  // can lower the command without rewriting the plan.
+  const planned = plannedSpeedAt(cache, cache.progressS);
+  const returnK = 2 * Math.abs(steer.cross) / Math.max(lookahead * lookahead, 1);
+  const recapture = returnK > 1e-5
+    ? Math.max(PATH_CORNER_FLOOR_SPEED, Math.sqrt(authority.lateral / returnK))
     : Infinity;
   // How far is there still to travel? Arc-length remaining alone is wrong for a DISPLACED hull: a
   // ship shoved 50 WU sideways at s = 110 of a 120 WU stroke has remaining = 10, which drives the
@@ -567,11 +937,11 @@ function followAutoTargetPath(inp, player, state, runtime) {
   const travelLeft = Math.max(remaining, distanceToEnd);
   const endSpeed = Math.sqrt(Math.max(0,
     2 * authority.brake * Math.max(0, travelLeft - AUTO_TARGET_PATH_ARRIVAL_RADIUS)));
-  const governed = Math.max(0, Math.min(authority.cruise, cornerSpeed, endSpeed));
+  const governed = Math.max(0, Math.min(authority.cruise, planned, recapture, endSpeed));
 
-  // Steer at the carrot, bent toward the line in proportion to how far off it the hull sits. Without
-  // this term nothing restores a displaced hull and the offset is simply inherited forward.
-  const correction = Math.max(-1, Math.min(1, -projection.cross / PATH_CORRIDOR)) * PATH_CORRECTION_GAIN;
+  // Steer at the pilot carrot, bent toward the pilot line in proportion to how far off it the hull
+  // sits. Coverage, progress and route.pointIndex stay on the raw stroke.
+  const correction = Math.max(-1, Math.min(1, -steer.cross / PATH_CORRIDOR)) * PATH_CORRECTION_GAIN;
   const perpX = -carrot.tz;
   const perpZ = carrot.tx;
   let dirX = carrot.tx + perpX * correction;

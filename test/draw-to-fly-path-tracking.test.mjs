@@ -435,7 +435,7 @@ const CASES = [
   ['tight-switchback', tightSwitchback(), 6, 18, 2.4], // 1.84 6.30 0.74 | old 62.70 /161.04
   ['loop', loop(), 4, 10, 1.2], //           0.35   1.98   0.22      |  old 63.53 /165.98
   ['uneven-sampling', unevenSampling(), 5, 30, 1.5], // 1.50 13.23 0.50 | old 4.43 /302.07
-  ['hairpin', hairpin(), 4, 12, 1.2], //     0.16   2.62   0.25      |  old 56.94 /408.86
+  ['hairpin', hairpin(), 4, 16, 1.2], // 13.06 WU ≈ 0.19 R_turn (synthetic ≈ 69.7); B8 allows 0.35 R | old 56.94 /408.86
 ];
 
 for (const [name, points, medianBound, maxBound, flipBound] of CASES) {
@@ -462,7 +462,7 @@ test('a drawn stroke is flown at a speed a player would choose, AND still tracke
   const GENTLE_MAX = 12;
   const GENTLE_FLIPS = 1.6;
   const HAIRPIN_MEDIAN = 4;
-  const HAIRPIN_MAX = 12;
+  const HAIRPIN_MAX = 16; // measured 13.06 WU ≈ 0.19 R_turn vs B8's 0.35 R; do not loosen further
   const gentle = flyStroke(gentleS());
   const drawn = flyStroke(handDrawnGentleS());
   const pin = flyStroke(hairpin());
@@ -474,12 +474,17 @@ test('a drawn stroke is flown at a speed a player would choose, AND still tracke
   assert.ok(drawn.meanSpeed >= speedBar,
     `hand-drawn gentle-s mid-stroke ${drawn.meanSpeed.toFixed(1)} WU/s is below 60% of cruise ${cruise} (${speedBar.toFixed(1)}) — stroke jitter is still being read as a hairpin`);
 
-  // A genuine corner must still slow down WHILE TRACKING, so the fix cannot be "ignore curvature".
-  // Off-track p10 is a trap: a hull that blows the hairpin wide then crawls back still looks slow.
-  assert.ok(pin.p10OnTrack <= 0.5 * cruise,
-    `hairpin on-track 10th-percentile speed ${pin.p10OnTrack.toFixed(1)} WU/s did not drop to ≤ 50% of cruise ${cruise} — the governor is ignoring the corner`);
-  assert.ok(pin.p10OnTrack < 0.75 * gentle.meanSpeed,
-    `hairpin on-track 10th-percentile ${pin.p10OnTrack.toFixed(1)} WU/s is not slower than the gentle S (${gentle.meanSpeed.toFixed(1)}) — curvature is not governing`);
+  // Vision/B8 pilot-cut law. The previous p10 ≤ 50% of this harness's synthetic 120 WU/s
+  // cruise demanded a crawl from a mass-1 hand-integrated fixture — the opposite of "I sketch
+  // a trick move, the ship rips through it." A hairpin may leave the ink by up to 0.35 turn
+  // radii; mean speed still has to rip, and the slowest on-track sample may not drop below
+  // 0.35 of cruise.
+  assert.ok(pin.meanSpeed >= 0.70 * cruise,
+    `hairpin mean ${pin.meanSpeed.toFixed(1)} WU/s is below 70% of cruise ${cruise} — the follower crawled the vertex instead of cutting it`);
+  assert.ok(pin.p10OnTrack >= 0.35 * cruise,
+    `hairpin on-track 10th-percentile ${pin.p10OnTrack.toFixed(1)} WU/s is below 35% of cruise ${cruise} — slower than a pilot cut allows`);
+  assert.ok(pin.orderedCoverage >= 0.90,
+    `hairpin ordered coverage ${(pin.orderedCoverage * 100).toFixed(1)}% — cutting the corner must still fly the stroke in drawn order`);
 
   for (const [name, r] of [['gentle-s', gentle], ['hand-drawn-gentle-s', drawn]]) {
     assert.ok(r.coverage >= 0.95,
@@ -730,6 +735,248 @@ function mkRoute(points, pos = { x: 0, z: 0 }, drawing = false) {
   return { state, player };
 }
 
+function wrapHeading(delta) {
+  let d = delta;
+  while (d > Math.PI) d -= Math.PI * 2;
+  while (d < -Math.PI) d += Math.PI * 2;
+  return d;
+}
+
+function headingAbs(delta) {
+  return Math.abs(wrapHeading(delta));
+}
+
+function nodeCut(cache, i) {
+  const raw = cache.nodes[i];
+  const pilot = cache.pilot[i];
+  return Math.hypot(pilot.x - raw.x, pilot.z - raw.z);
+}
+
+function cutRuns(cache, eps = 0.25) {
+  const runs = [];
+  let start = -1;
+  const last = cache.planCount - 1;
+  for (let i = 1; i < last; i += 1) {
+    if (nodeCut(cache, i) > eps) {
+      if (start < 0) start = i;
+    } else if (start >= 0) {
+      runs.push({ lo: start, hi: i - 1 });
+      start = -1;
+    }
+  }
+  if (start >= 0) runs.push({ lo: start, hi: last - 1 });
+  return runs;
+}
+
+function headingOf(ax, az, bx, bz) {
+  return Math.atan2(bz - az, bx - ax);
+}
+
+function planStroke(points) {
+  const { state } = mkRoute(points);
+  const runtime = createAutoTargetRuntime();
+  tickAutoTarget(state, DT, null, runtime);
+  return { state, runtime, cache: runtime.path };
+}
+
+function assertCorridorMonotoneAndLimits(cache, label) {
+  assert.ok(cache && cache.planCount >= 2, `${label}: the follower must publish a cached pilot plan`);
+  assert.ok(Array.isArray(cache.pilot) && cache.pilot.length >= cache.planCount,
+    `${label}: the pilot centerline must be cached on runtime.path`);
+  assert.ok(cache.planCorridor > 0, `${label}: the plan must record the ink corridor used to clamp cuts`);
+  assert.equal(cache.pilot[0].x, cache.nodes[0].x, `${label}: pilot must anchor the raw start`);
+  assert.equal(cache.pilot[0].z, cache.nodes[0].z, `${label}: pilot must anchor the raw start`);
+  const last = cache.planCount - 1;
+  assert.equal(cache.pilot[last].x, cache.nodes[last].x, `${label}: pilot must anchor the raw end`);
+  assert.equal(cache.pilot[last].z, cache.nodes[last].z, `${label}: pilot must anchor the raw end`);
+
+  let prevRaw = -1;
+  let prevPilot = -1;
+  let prevX = cache.pilot[0].x;
+  let prevZ = cache.pilot[0].z;
+  let prevHeading = null;
+  let maxCut = 0;
+  for (let i = 0; i < cache.planCount; i += 1) {
+    const cut = nodeCut(cache, i);
+    if (cut > maxCut) maxCut = cut;
+    assert.ok(cut <= cache.planCorridor + 1e-6,
+      `${label}: pilot node ${i} cuts ${cut.toFixed(3)} WU from raw ink, corridor is ${cache.planCorridor.toFixed(3)} WU`);
+    assert.ok(cache.cum[i] + 1e-9 >= prevRaw, `${label}: raw arc mapping must stay monotonic`);
+    assert.ok(cache.pilotCum[i] + 1e-9 >= prevPilot, `${label}: pilot arc mapping must stay monotonic`);
+    assert.ok(Number.isFinite(cache.vCurve[i]), `${label}: vCurve[${i}] must be finite`);
+    assert.ok(Number.isFinite(cache.vLimit[i]), `${label}: vLimit[${i}] must be finite`);
+    assert.ok(cache.vLimit[i] >= -1e-9, `${label}: vLimit[${i}] is negative`);
+    assert.ok(cache.vLimit[i] <= cache.planCruise + 1e-6,
+      `${label}: vLimit[${i}]=${cache.vLimit[i].toFixed(3)} exceeds cruise ${cache.planCruise}`);
+    if (i > 0) {
+      const step = Math.hypot(cache.pilot[i].x - prevX, cache.pilot[i].z - prevZ);
+      assert.ok(step + 1e-9 >= 0, `${label}: pilot step ${i} reversed`);
+      if (step > 1e-6) {
+        const heading = headingOf(prevX, prevZ, cache.pilot[i].x, cache.pilot[i].z);
+        if (prevHeading != null && step > 0.5) {
+          const kink = headingAbs(heading - prevHeading);
+          assert.ok(kink < Math.PI * 0.9,
+            `${label}: pilot heading reversed at node ${i} (${(kink * 180 / Math.PI).toFixed(1)}°)`);
+        }
+        prevHeading = heading;
+      }
+    }
+    prevRaw = cache.cum[i];
+    prevPilot = cache.pilotCum[i];
+    prevX = cache.pilot[i].x;
+    prevZ = cache.pilot[i].z;
+  }
+  return maxCut;
+}
+
+const PATH_RESAMPLE_FOR_TEST = 3;
+
+function appliedClusters(cache) {
+  const out = [];
+  const n = cache.clusterCount || 0;
+  for (let i = 0; i < n; i += 1) {
+    const cluster = cache.clusters[i];
+    if (cluster && cluster.radius > PATH_RESAMPLE_FOR_TEST) out.push(cluster);
+  }
+  return out;
+}
+
+function assertFilletCircles(cache, label) {
+  const fillets = appliedClusters(cache);
+  assert.ok(fillets.length >= 1, `${label}: a concentrated corner must construct a fillet circle`);
+  const perpLim = Math.sin(5 * Math.PI / 180);
+  for (let i = 0; i < fillets.length; i += 1) {
+    const f = fillets[i];
+    const rIn = Math.hypot(f.tanInX - f.cx, f.tanInZ - f.cz);
+    const rOut = Math.hypot(f.tanOutX - f.cx, f.tanOutZ - f.cz);
+    assert.ok(Math.abs(rIn - f.radius) <= 1e-3 * Math.max(1, f.radius),
+      `${label}: fillet ${i} entry is ${rIn.toFixed(4)} from center, radius ${f.radius.toFixed(4)}`);
+    assert.ok(Math.abs(rOut - f.radius) <= 1e-3 * Math.max(1, f.radius),
+      `${label}: fillet ${i} exit is ${rOut.toFixed(4)} from center, radius ${f.radius.toFixed(4)}`);
+    const inDot = ((f.tanInX - f.cx) * f.inX + (f.tanInZ - f.cz) * f.inZ) / f.radius;
+    const outDot = ((f.tanOutX - f.cx) * f.outX + (f.tanOutZ - f.cz) * f.outZ) / f.radius;
+    assert.ok(Math.abs(inDot) <= perpLim,
+      `${label}: fillet ${i} radius is not perpendicular to inbound at tanIn (dot ${inDot.toFixed(4)})`);
+    assert.ok(Math.abs(outDot) <= perpLim,
+      `${label}: fillet ${i} radius is not perpendicular to outbound at tanOut (dot ${outDot.toFixed(4)})`);
+  }
+}
+
+function assertForwardArcTraversal(cache, label) {
+  const fillets = appliedClusters(cache);
+  for (let i = 0; i < fillets.length; i += 1) {
+    const f = fillets[i];
+    const a0 = Math.atan2(f.tanInZ - f.cz, f.tanInX - f.cx);
+    const a1 = Math.atan2(f.tanOutZ - f.cz, f.tanOutX - f.cx);
+    let sweep = wrapHeading(a1 - a0);
+    const theta = wrapHeading(Math.atan2(f.outZ, f.outX) - Math.atan2(f.inZ, f.inX));
+    if (sweep * theta < 0) sweep = sweep > 0 ? sweep - Math.PI * 2 : sweep + Math.PI * 2;
+    const band = Math.max(0.75, 0.05 * f.radius);
+    let prevRel = null;
+    let prevHeading = null;
+    let onArc = 0;
+    for (let j = 1; j < cache.planCount; j += 1) {
+      const p = cache.pilot[j];
+      const radial = Math.hypot(p.x - f.cx, p.z - f.cz);
+      if (Math.abs(radial - f.radius) > band) {
+        prevHeading = null;
+        continue;
+      }
+      const rel = wrapHeading(Math.atan2(p.z - f.cz, p.x - f.cx) - a0);
+      const along = sweep >= 0 ? rel : -rel;
+      if (along < -0.05 || along > Math.abs(sweep) + 0.05) {
+        prevHeading = null;
+        continue;
+      }
+      if (prevRel != null) {
+        assert.ok(along + 1e-4 >= prevRel,
+          `${label}: fillet ${i} arc parameter reversed at node ${j} (${along.toFixed(4)} < ${prevRel.toFixed(4)})`);
+        const ds = Math.hypot(p.x - cache.pilot[j - 1].x, p.z - cache.pilot[j - 1].z);
+        if (ds > 1e-6 && prevHeading != null) {
+          const heading = headingOf(cache.pilot[j - 1].x, cache.pilot[j - 1].z, p.x, p.z);
+          const kink = headingAbs(heading - prevHeading);
+          const allow = Math.max(8 * Math.PI / 180, 2 * (ds / f.radius) + 5 * Math.PI / 180);
+          assert.ok(kink <= allow,
+            `${label}: fillet ${i} has a line-to-arc discontinuity at node ${j} (${(kink * 180 / Math.PI).toFixed(1)}°)`);
+          prevHeading = heading;
+        }
+      } else {
+        prevHeading = j > 0
+          ? headingOf(cache.pilot[j - 1].x, cache.pilot[j - 1].z, p.x, p.z)
+          : null;
+      }
+      prevRel = along;
+      onArc += 1;
+    }
+    assert.ok(onArc >= 2, `${label}: fillet ${i} must sample its constructed arc, got ${onArc} nodes`);
+  }
+}
+
+function assertTangentJoins(cache, inX, inZ, outX, outZ, label) {
+  assertFilletCircles(cache, label);
+  assertForwardArcTraversal(cache, label);
+  const runs = cutRuns(cache);
+  assert.ok(runs.length >= 1, `${label}: a concentrated corner must cut the raw ink`);
+  const first = runs[0].lo;
+  const lastCut = runs[runs.length - 1].hi;
+  assert.ok(first >= 1 && lastCut + 1 < cache.planCount,
+    `${label}: cut join must sit between untouched raw inbound and outbound`);
+  const inHeading = Math.atan2(inZ, inX);
+  const outHeading = Math.atan2(outZ, outX);
+  const lim = 5 * Math.PI / 180;
+  const joinIn = headingOf(
+    cache.pilot[first - 1].x, cache.pilot[first - 1].z,
+    cache.pilot[first].x, cache.pilot[first].z,
+  );
+  const joinOut = headingOf(
+    cache.pilot[lastCut].x, cache.pilot[lastCut].z,
+    cache.pilot[lastCut + 1].x, cache.pilot[lastCut + 1].z,
+  );
+  assert.ok(headingAbs(joinIn - inHeading) <= lim,
+    `${label}: first changed segment ${(joinIn * 180 / Math.PI).toFixed(1)}° is not tangent to inbound ${(inHeading * 180 / Math.PI).toFixed(1)}°`);
+  assert.ok(headingAbs(joinOut - outHeading) <= lim,
+    `${label}: last changed segment ${(joinOut * 180 / Math.PI).toFixed(1)}° is not tangent to outbound ${(outHeading * 180 / Math.PI).toFixed(1)}°`);
+}
+
+function assertPilotCacheReuse(state, runtime, cache, label) {
+  const pilot = cache.pilot;
+  const snapshot = [];
+  for (let i = 0; i < cache.planCount; i += 1) snapshot.push({ x: cache.pilot[i].x, z: cache.pilot[i].z });
+  tickAutoTarget(state, DT, null, runtime);
+  assert.equal(runtime.path, cache, `${label}: same geometry must keep the runtime.path identity`);
+  assert.equal(runtime.path.pilot, pilot, `${label}: same geometry must keep the cached pilot array identity`);
+  for (let i = 0; i < cache.planCount; i += 1) {
+    assert.equal(cache.pilot[i].x, snapshot[i].x, `${label}: reused pilot[${i}].x moved`);
+    assert.equal(cache.pilot[i].z, snapshot[i].z, `${label}: reused pilot[${i}].z moved`);
+  }
+}
+
+function smearedCorner() {
+  const deg = (d) => d * Math.PI / 180;
+  const pts = [{ x: 0, z: 0 }];
+  let x = 0;
+  let z = 0;
+  let h = 0;
+  const legs = [120, 18, 18, 120];
+  const turns = [deg(15), deg(30), deg(15)];
+  for (let i = 0; i < legs.length; i += 1) {
+    x += Math.cos(h) * legs[i];
+    z += Math.sin(h) * legs[i];
+    pts.push({ x, z });
+    if (i < turns.length) h += turns[i];
+  }
+  return pts;
+}
+
+function adjacentCorners() {
+  return [
+    { x: 0, z: 0 },
+    { x: 100, z: 0 },
+    { x: 100, z: 40 },
+    { x: 200, z: 40 },
+  ];
+}
+
 test('a replaced route is not flown using the previous route geometry', () => {
   // Every stroke starts at the hull, so two consecutive strokes drawn from a stationary ship share a
   // head. When they also shared a point count the cache was reused wholesale and the ship flew the
@@ -841,6 +1088,85 @@ test('the stroke is flown in the order it was drawn, not merely touched', () => 
     assert.ok(r.orderedCoverage >= 0.9,
       `${name}: only ${(r.orderedCoverage * 100).toFixed(1)}% of the stroke was flown in drawn order`);
   }
+});
+
+test('the pilot centerline stays inside the B8 corridor and maps monotonically to the raw ink', () => {
+  // A right-angle the production corner stroke also uses: two 90° vertices on long legs.
+  // The planner must cut those vertices without leaving a 0.35-turn-radius tube around the
+  // raw resampled ink, and the pilot arc must stay a monotonic reparameterization of raw s.
+  const points = [
+    { x: 0, z: 0 },
+    { x: 120, z: 0 },
+    { x: 120, z: 120 },
+    { x: 240, z: 120 },
+  ];
+  const { state, runtime, cache } = planStroke(points);
+  const maxCut = assertCorridorMonotoneAndLimits(cache, 'right-angle');
+  assert.ok(maxCut > 0.5,
+    `a 90° vertex must be cut, not treated as mandatory ink (max cut ${maxCut.toFixed(3)} WU)`);
+  assertTangentJoins(cache, 1, 0, 1, 0, 'right-angle');
+  assertPilotCacheReuse(state, runtime, cache, 'right-angle');
+});
+
+test('a smeared 15+30+15 corner is filleted from cluster-boundary tangents', () => {
+  const points = smearedCorner();
+  const { state, runtime, cache } = planStroke(points);
+  const maxCut = assertCorridorMonotoneAndLimits(cache, 'smeared');
+  assert.ok(maxCut > 0.5,
+    `a smeared 60° corner must be cut (max cut ${maxCut.toFixed(3)} WU)`);
+  const outHeading = 60 * Math.PI / 180;
+  assertTangentJoins(cache, 1, 0, Math.cos(outHeading), Math.sin(outHeading), 'smeared');
+  assertPilotCacheReuse(state, runtime, cache, 'smeared');
+});
+
+test('adjacent corners cannot overlap or overwrite each other', () => {
+  const points = adjacentCorners();
+  const { state, runtime, cache } = planStroke(points);
+  const maxCut = assertCorridorMonotoneAndLimits(cache, 'adjacent');
+  assert.ok(maxCut > 0.5,
+    `each 90° vertex must be cut (max cut ${maxCut.toFixed(3)} WU)`);
+  assertTangentJoins(cache, 1, 0, 1, 0, 'adjacent');
+  const runs = cutRuns(cache);
+  assert.ok(runs.length >= 2,
+    `two adjacent 90° corners must produce two cut-runs, got ${runs.length}`);
+  assert.ok(runs[0].hi + 1 < runs[1].lo,
+    `adjacent fillets overlap: first run ends at ${runs[0].hi}, second starts at ${runs[1].lo}`);
+  let uncut = 0;
+  for (let i = runs[0].hi + 1; i < runs[1].lo; i += 1) {
+    if (nodeCut(cache, i) <= 0.25) uncut += 1;
+  }
+  assert.ok(uncut >= 1,
+    'the intervening straight between adjacent corners must keep at least one uncut node');
+  assertPilotCacheReuse(state, runtime, cache, 'adjacent');
+});
+
+test('a short smeared corner uses the available tangent legs without losing coverage', (t) => {
+  const points = [{ x: 0, z: 0 }];
+  let x = 0;
+  let z = 0;
+  let heading = 0;
+  const legs = [15, 18, 18, 15];
+  const turns = [15, 30, 15, 0];
+  for (let i = 0; i < legs.length; i += 1) {
+    x += Math.cos(heading) * legs[i];
+    z += Math.sin(heading) * legs[i];
+    points.push({ x, z });
+    heading += turns[i] * Math.PI / 180;
+  }
+  const { state, runtime, cache } = planStroke(points);
+  assertCorridorMonotoneAndLimits(cache, 'short smeared');
+  assert.equal(appliedClusters(cache).length, 1,
+    'a short straight leg still permits a circle measured from its virtual intersection');
+  assertFilletCircles(cache, 'short smeared');
+  assertForwardArcTraversal(cache, 'short smeared');
+  assertPilotCacheReuse(state, runtime, cache, 'short smeared');
+  const flown = flyStroke(points);
+  assert.ok(flown.orderedCoverage >= 0.9, 'the short fallback must still fly the stroke in order');
+  assert.ok(Number.isFinite(flown.meanSpeed) && flown.meanSpeed > 0,
+    'the short fallback must move through the turn');
+  t.diagnostic(`short smeared synthetic: mean/cruise=${flown.meanSpeed / flown.cruise}, p10/cruise=${flown.p10Speed / flown.cruise}, coverage=${flown.orderedCoverage}, maxDeviation=${flown.maxCross} WU`);
+  const straightControl = flyStroke([{ x: 0, z: 0 }, { x: 66, z: 0 }]);
+  t.diagnostic(`same-length straight synthetic from rest: mean/cruise=${straightControl.meanSpeed / straightControl.cruise}, p10/cruise=${straightControl.p10Speed / straightControl.cruise}, coverage=${straightControl.orderedCoverage}`);
 });
 
 test('the route point index advances across the stroke rather than sitting at 1', () => {

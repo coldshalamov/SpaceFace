@@ -72,7 +72,7 @@
     "check:crucible:arc": "node --test test/crucible-thirty-wave-arc.test.mjs test/crucible-survival-style.test.mjs test/crucible-no-hp-scaling.test.mjs",
     "check:attack-spec": "node --test test/attack-spec.test.mjs test/attack-lineage.test.mjs test/surface-contact.test.mjs test/attack-chain-payload.test.mjs test/attack-live-wiring.test.mjs test/orbit-cryo-reactions.test.mjs test/weapons-five-verified-defects.test.mjs",
     "check:all": "node scripts/check-ci-report.mjs",
-    "check:draw-to-fly": "node --test test/draw-to-fly-path-tracking.test.mjs",
+    "check:draw-to-fly": "node --test test/draw-to-fly-path-tracking.test.mjs test/draw-to-fly-stroke-speed.test.mjs",
     "check:colour-tokens": "node scripts/check-colour-tokens.mjs",
     "check:type-floor": "node scripts/check-type-floor.mjs",
     "check:arcade-structural-fx": "node --test test/arcade-structural-fx-mount.test.mjs",

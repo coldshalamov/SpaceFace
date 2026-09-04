@@ -115,7 +115,27 @@ test('the instrument measures the real path and is deterministic on a fixed seed
     assert.equal(slowest.unit, CLAUSE_UNITS['slowest point']);
     assert.equal(deviation.unit, CLAUSE_UNITS['max deviation']);
     assert.equal(coverage.unit, CLAUSE_UNITS['ordered coverage']);
+
+    assert.equal(mean.met, true,
+      `${name}: mean speed ${mean.value} must meet B8 (≥ 0.70 of cruise)`);
+    assert.ok(mean.value >= 0.70,
+      `${name}: mean speed ${mean.value} is below 0.70 of cruise`);
+    assert.equal(slowest.met, true,
+      `${name}: slowest point ${slowest.value} must meet B8 (≥ 0.35 of cruise)`);
+    assert.ok(slowest.value >= 0.35,
+      `${name}: slowest point ${slowest.value} is below 0.35 of cruise`);
+    assert.equal(deviation.met, true,
+      `${name}: max deviation ${deviation.value}R must meet B8 (≤ 0.35 turn radii)`);
+    assert.ok(deviation.value <= 0.35,
+      `${name}: max deviation ${deviation.value}R exceeds 0.35 turn radii`);
+    assert.equal(coverage.met, true,
+      `${name}: ordered coverage ${coverage.value} must meet B8 (≥ 0.90)`);
+    assert.ok(coverage.value >= 0.90,
+      `${name}: ordered coverage ${coverage.value} is below 0.90`);
   }
+
+  assert.equal(m.barMet, true,
+    'B8 must pass on the production Hitch for corner/S/hook — speed is the criterion, track is the constraint');
 });
 
 test('a dead no-follower control is unmeasured, not a green zero-deviation row', LONG, async () => {
