@@ -16,6 +16,8 @@
 // This step MEASURES. It does not fix. barMet may be false — that is the result.
 
 import { bootRealPath, writeRealPathInput, REAL_PATH_DT } from '../realPath.mjs';
+import { tumbleStates } from '../../../../src/systems/tumbleStates.js';
+import { combat } from '../../../../src/systems/combat.js';
 
 const LIGHT_HULL_ID = 'ship_wasp';
 const HEAVY_HULL_ID = 'ship_atlas';
@@ -32,7 +34,7 @@ const MAX_APPROACH_TICKS = 900;
 // commanded speed, short enough to stay inside SG-02's body-admission ring the whole way in.
 const RUNWAY_WU = 520;
 
-const SYSTEMS = Object.freeze(['actions', 'flightV3', 'collisionConsequences', 'physics']);
+const SYSTEMS = Object.freeze(['actions', 'flightV3', tumbleStates, 'collisionConsequences', 'physics', combat]);
 
 export const scenario = {
   id: 'feel.terrain_slam',
@@ -336,6 +338,11 @@ async function runSlam(seed, { caseId, hullId, cruiseFrac = null, matchAbsoluteS
         deltaV: finite(payload.deltaV),
       });
     });
+    const tumbledEvents = [];
+    host.bus.on('combat:tumbled', (payload) => {
+      if (!payload || payload.victimId !== hostile.id) return;
+      tumbledEvents.push(payload);
+    });
 
     eventTrace.push({
       tick: tickCursor,
@@ -468,11 +475,11 @@ async function runSlam(seed, { caseId, hullId, cruiseFrac = null, matchAbsoluteS
     const damageProof = damageReceipt != null
       && Number.isFinite(hullBefore)
       && Number.isFinite(shieldBefore);
-    const helmProof = consequenceReceipts.length > 0;
-    const hullLostFraction = damageProof && hullMax > 0 ? hullDelta / hullMax : (damageProof ? 0 : null);
-    const lostHelm = helmProof ? helmHit != null : null;
-
+    const tumbleOwnerPresent = host.runtime.getSystem('tumbleStates') != null;
     const tumbleLive = host.withFeatures(() => readCollisionTumble(host.state, hostile));
+    const helmProof = consequenceReceipts.length > 0 && tumbleOwnerPresent === true;
+    const hullLostFraction = damageProof && hullMax > 0 ? hullDelta / hullMax : (damageProof ? 0 : null);
+    const lostHelm = helmProof ? (tumbleLive === true || tumbledEvents.length > 0) : null;
 
     eventTrace.push({
       tick: tickCursor + ticks,
@@ -490,7 +497,9 @@ async function runSlam(seed, { caseId, hullId, cruiseFrac = null, matchAbsoluteS
         helmControl: helmHit ? helmHit.control : (damageReceipt ? damageReceipt.control : null),
         damageProof,
         helmProof,
+        tumbleOwnerPresent,
         tumbleLive: tumbleLive === true,
+        tumbledEvents: tumbledEvents.length,
         contactReceipts: namedImpacts.length,
         consequenceReceipts: consequenceReceipts.length,
       },
@@ -523,6 +532,7 @@ async function runSlam(seed, { caseId, hullId, cruiseFrac = null, matchAbsoluteS
       helmControl: helmHit ? helmHit.control : (damageReceipt ? damageReceipt.control : null),
       damageProof,
       helmProof,
+      tumbleOwnerPresent,
       isLethal,
       contactImpulse,
       contactImpulseOverMass: mass > 0 ? contactImpulse / mass : 0,

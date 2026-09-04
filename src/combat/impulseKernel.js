@@ -35,18 +35,37 @@ export const HITSTUN_LAW = Object.freeze({
   spinPerExcessU: 12,
   spinMin: 0.4,
   spinMax: 6,
+  // Static terrain/structure is not a combatant. Mapping the rock's collider mass (often huge
+  // or infinite) into attackerMass clamps every hull to mF=2.2 and stuns an Atlas that B6
+  // requires keep its helm at the same speed a Wasp loses it. The world strikes as a light
+  // combatant; heavies shrug through an unclamped mass factor.
+  worldRefMass: 16,
 });
 
-export function hitstunMassFactor(attackerMass, victimMass) {
+export function hitstunMassFactor(attackerMass, victimMass, opts = {}) {
+  const min = Number.isFinite(opts.min) ? opts.min : HITSTUN_LAW.massFactorMin;
+  const max = Number.isFinite(opts.max) ? opts.max : HITSTUN_LAW.massFactorMax;
   const ratio = Math.max(0.1, positive(attackerMass, 1)) / Math.max(0.1, positive(victimMass, 1));
-  return clamp(Math.sqrt(ratio), HITSTUN_LAW.massFactorMin, HITSTUN_LAW.massFactorMax);
+  return clamp(Math.sqrt(ratio), min, max);
+}
+
+export function isWorldHitstunBody(entity) {
+  const surface = collisionSurface(entity);
+  return surface === 'terrain' || surface === 'structure';
+}
+
+export function hitstunAttackerMassForCollision(other) {
+  if (isWorldHitstunBody(other)) return HITSTUN_LAW.worldRefMass;
+  return positive(other && (other.physicsBody && other.physicsBody.mass || other.mass), 1);
 }
 
 export function resolveHitstunLaw(input = {}) {
   const deltaV = nonNegative(input.deltaV);
   const cruise = positive(input.victimCruise, 0);
   const k = cruise > 0 ? deltaV / cruise : 0;
-  const mF = hitstunMassFactor(input.attackerMass, input.victimMass);
+  const worldBody = input.worldBody === true;
+  const attackerMass = worldBody ? HITSTUN_LAW.worldRefMass : input.attackerMass;
+  const mF = hitstunMassFactor(attackerMass, input.victimMass, worldBody ? { min: 0 } : {});
   const u = k * mF;
   const durationS = u <= HITSTUN_LAW.uFloor
     ? 0
@@ -54,7 +73,7 @@ export function resolveHitstunLaw(input = {}) {
   const entrySpin = durationS > 0
     ? clamp(HITSTUN_LAW.spinPerExcessU * (u - HITSTUN_LAW.uFloor), HITSTUN_LAW.spinMin, HITSTUN_LAW.spinMax)
     : 0;
-  return Object.freeze({ k, mF, u, durationS, entrySpin });
+  return Object.freeze({ k, mF, u, durationS, entrySpin, worldBody });
 }
 
 export function signedHitSide(target, impulse, hit, fallbackId) {
@@ -66,6 +85,13 @@ export function signedHitSide(target, impulse, hit, fallbackId) {
     const rz = finite(hit.pos.z) - finite(target.pos && target.pos.z);
     const cross = rz * ix - rx * iz;
     if (Math.abs(cross) > 1e-6) return Math.sign(cross);
+  }
+  if (target && mag > 1e-9) {
+    const rot = finite(target.rot);
+    const fx = Math.cos(rot);
+    const fz = Math.sin(rot);
+    const headingCross = fz * ix - fx * iz;
+    if (Math.abs(headingCross) > 1e-6) return Math.sign(headingCross);
   }
   return numericParity(fallbackId) ? 1 : -1;
 }
@@ -87,6 +113,7 @@ export function publishHitstunImpulse(bus, payload = {}) {
     dirX: length > 1e-9 ? dirX / length : 0,
     dirZ: length > 1e-9 ? dirZ / length : 0,
     hitSide: payload.hitSide === -1 ? -1 : 1,
+    worldBody: payload.worldBody === true,
     provenance: payload.provenance && typeof payload.provenance === 'object' ? payload.provenance : null,
     tick: nonNegativeInteger(payload.tick),
   }));

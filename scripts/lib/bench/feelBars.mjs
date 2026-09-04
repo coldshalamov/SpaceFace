@@ -493,7 +493,17 @@ function evaluateB6(bar, list) {
   } else {
     notes.push("no slam run reached the ≥ 50 % closing band, so the damage and helm clauses were not exercised.");
   }
-  notes.push("the heavy-side clause (≤ 15 % hull lost, helm kept at the same speed) is unbenched.");
+  const heavyHull = worstMetric(runs, (run) => run.metrics && run.metrics.heavy75HullLostFraction, "max");
+  if (heavyHull.value != null) {
+    values.push(entry(`heavy hull lost at the same speed (worst of ${heavyHull.n} run(s))`, heavyHull.value, "fraction", heavyHull.value <= 0.15));
+  }
+  const heavyHelmRuns = runs.filter((run) => run.metrics && typeof run.metrics.heavy75KeptHelm === "boolean");
+  if (heavyHelmRuns.length) {
+    const allKept = heavyHelmRuns.every((run) => run.metrics.heavy75KeptHelm === true);
+    values.push(entry(`heavy keeps its helm at the same speed (${heavyHelmRuns.length} run(s))`, allKept ? 1 : 0, "bool", allKept));
+  } else if (runs.some((run) => run.metrics && run.metrics.heavy75HelmProof === false)) {
+    notes.push("the heavy-side helm clause was reported without proof and cannot pass.");
+  }
   if (damageRuns.length && lethalRuns.length) {
     notes.push("the ≥ 50 % band damage and helm clauses were exercised by the same slam run(s) as the lethality clause, not by a separate slower run.");
   }
@@ -516,7 +526,6 @@ function evaluateB7(bar, list) {
     coverage: "partial",
     fedBy: runs.map(fedByOf),
     notes: [
-      "the verb scenario swings at cruise (195 WU/s) on an 80 WU line, not the contract's 1.5× cruise on a 100 WU line around a heavy anchor.",
       "Line break is not instrumented (the bench detaches the tether by design at release).",
     ],
   });
@@ -596,9 +605,6 @@ function evaluateB11(bar, list) {
         : "measured below the ≥ 30 % ΔV regime; helm duration is the scenario constant, not a measured curve, and the ≥ 1 s helm clause cannot be evaluated from it.",
     );
   }
-  notes.push(
-    "the universal-curve sweep (one helm-loss function of ΔV ÷ cruise and attacker ÷ victim mass across guns, throws, flings and collisions) is unbenched.",
-  );
   return finish(bar, {
     values,
     coverage: values.length ? "partial" : "none",

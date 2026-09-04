@@ -10,8 +10,8 @@
 //   4. The solver contracts: constrained lead solve intercepts a rotating tethered target where
 //      the linear solver misses; throw solutions sweep through onSolution once per revolution.
 //   5. System behaviors with flags forced on: armed throw auto-cuts on the solution frame and
-//      announces massline:throw; tumble entry queues a real torque impulse, zeroes control and
-//      fire intent, stamps the morale window, and recovers; the cloak toggles/drains/gates
+//      announces massline:throw; tumble entry queues a real torque impulse, commands bounded yaw
+//      recovery opposite spin, zeroes drive/fire, stamps morale, and recovers; the cloak toggles/drains/gates
 //      perception honestly (in/out of radius) and NEVER hides the player from himself; loot
 //      shards ride the loot:drop seam; terrain anchors spawn big-and-few and refuse busy bubbles;
 //      jettison produces a capped reaction impulse; the player is never a victim of the new
@@ -37,7 +37,7 @@ import {
 } from '../src/systems/impulseCharges.js';
 import { cloakHidesPlayerFrom } from '../src/systems/aiPorts.js';
 import { ENCOUNTER_SCRIPTS, patrolCanInitiateScan } from '../src/systems/encounterScripts.js';
-import { consumePhysicsCommand, queuePhysicsImpulse, writePhysicsControl } from '../src/core/physicsAuthority.js';
+import { consumePhysicsCommand, queuePhysicsImpulse, writePhysicsControl, measureThrusterAuthority } from '../src/core/physicsAuthority.js';
 import { createRegistry } from '../src/core/registry.js';
 import { PRODUCTION_UPDATE_ORDER } from '../src/runtime/authoritativeSystemManifest.js';
 import { createCombatKernel } from '../src/combat/kernel.js';
@@ -411,7 +411,7 @@ withFlags(true, () => {
       'the solver must hit under the actual aim-true projectile velocity model');
   });
 
-  section('tumble entry: real torque impulse, zero control, no fire, morale stamp, recovery', () => {
+  section('tumble entry: real torque impulse, recovery yaw, no fire, morale stamp, recovery', () => {
     const bus = makeBus();
     const state = makeState();
     addEntity(state, { id: 1, type: 'ship', team: 0, mass: 200 });
@@ -430,24 +430,48 @@ withFlags(true, () => {
     assert.equal(victim.data.tumble, undefined, 'entity data must not duplicate the active tumble fact');
     assert.ok(Number.isFinite(victim.data.tumbledAt), 'morale stamp must be written');
     system.update(1 / 60, state);
-    const cmd = consumePhysicsCommand(victim);
-    assert.ok(cmd && cmd.torqueImpulses.length >= 1, 'a real angular impulse must be queued');
-    assert.ok(cmd.control && cmd.control.mode === 'tumbling', 'control must be overwritten to tumbling');
-    assert.equal(cmd.control.torque.y, 0, 'commanded torque must be zero while tumbling');
+    const entry = consumePhysicsCommand(victim);
+    assert.ok(entry && entry.torqueImpulses.length >= 1, 'a real angular impulse must be queued');
+    assert.ok(entry.control && entry.control.mode === 'tumbling', 'control must be overwritten to tumbling');
+    assert.equal(entry.control.force.x, 0);
+    assert.equal(entry.control.force.z, 0);
+    assert.equal(entry.control.torque.y, 0 + 0, 'zero spin on entry must command numeric zero yaw, not -0');
+    assert.equal(Object.is(entry.control.torque.y, -0), false, 'zero recovery torque must not be -0');
     assert.equal(victim.data.intent.fire, false, 'fire intent must be cleared');
+    assert.equal(victim.data.intent.moveX, 0, 'drive intent must be suppressed');
+    assert.equal(victim.data.intent.moveZ, 0, 'drive intent must be suppressed');
     assert.ok(bus.events.some((e) => e.name === 'massline:tumbled'), 'massline:tumbled must be announced');
     state.tick++;
     kernel.prePhysics(1 / 60);
     const active = state.combat.entities[String(victim.id)].statuses[TUMBLE_STATUS_ID];
     assert.equal(active.data.kind, MASSLINE_TUMBLE_KIND,
       'pending tumble metadata must become the same authoritative active status');
-    // Recovery: spin caught + min duration elapsed.
+
+    victim.angVel = 2.4;
+    system.update(1 / 60, state);
+    const recovering = consumePhysicsCommand(victim);
+    assert.ok(recovering && recovering.control && recovering.control.mode === 'tumbling');
+    assert.ok(recovering.control.torque.y * victim.angVel < 0,
+      'commanded recovery yaw must oppose nonzero spin');
+    const authority = measureThrusterAuthority(victim);
+    const yaw = Math.max(0, Math.min(1, Number.isFinite(authority && authority.yaw) ? authority.yaw : 1));
+    const maxTorque = 18 * Math.max(0.05, yaw) * Math.max(0.1, Number(victim.physicsBody && victim.physicsBody.inertiaY) || 1);
+    assert.ok(Math.abs(recovering.control.torque.y) <= maxTorque + 1e-6,
+      'recovery yaw must stay inside real thruster authority');
+
+    victim.angVel = 0;
+    system.update(1 / 60, state);
+    const coast = consumePhysicsCommand(victim);
+    assert.equal(coast.control.torque.y, 0 + 0, 'zero spin must command numeric zero yaw');
+    assert.equal(Object.is(coast.control.torque.y, -0), false);
+
+    // Recovery: jump past the law's until, not a stale 1.5 s massline floor.
     victim.angVel = 0.2;
-    state.simTime += 3;
-    state.tick += 180;
+    state.simTime = Number(active.data.until) + 1 / 60;
+    state.tick += Math.max(1, Math.ceil((state.simTime - 10) * 60));
     system.update(1 / 60, state);
     assert.equal(readMasslineTumbleStatus(state, victim), null,
-      'tumble status must clear once the RCS catches the spin');
+      'tumble status must clear once duration elapses');
     assert.equal(victim.data.tumble, undefined, 'recovery must not recreate the deleted duplicate state');
     assert.ok(bus.events.some((e) => e.name === 'massline:tumbleEnd'));
     kernel.prePhysics(1 / 60);

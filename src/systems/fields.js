@@ -29,7 +29,7 @@ import { isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
 import { Masks } from '../core/entity.js';
 import { getCombatKernel } from '../combat/kernel.js';
 import { ensureCombatant } from '../combat/runtime.js';
-import { publishHitstunImpulse } from '../combat/impulseKernel.js';
+import { publishHitstunImpulse, signedHitSide } from '../combat/impulseKernel.js';
 import { PINNED_STATUS_ID, UNMOORED_STATUS_ID } from '../data/combatDefs.js';
 import { combatFlag } from '../data/featureFlags.js';
 import {
@@ -743,7 +743,12 @@ export const fields = {
       deltaV,
       dirX: rec.dx,
       dirZ: rec.dz,
-      hitSide: entity.id,
+      hitSide: signedHitSide(entity, { x: rec.dx, z: rec.dz }, {
+        pos: {
+          x: finite(entity.pos && entity.pos.x),
+          z: finite(entity.pos && entity.pos.z) + Math.max(4, (entity.radius || 8) * 0.75),
+        },
+      }, entity.id),
       tick: state && state.tick,
     });
   },

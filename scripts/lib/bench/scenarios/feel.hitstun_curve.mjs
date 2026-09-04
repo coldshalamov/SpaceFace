@@ -15,7 +15,7 @@ import {
   queuePhysicsImpulse,
   readPhysicsTelemetry,
 } from '../../../../src/core/physicsAuthority.js';
-import { HITSTUN_IMPULSE_EVENT, recordImpulseProvenance } from '../../../../src/combat/impulseKernel.js';
+import { HITSTUN_IMPULSE_EVENT, hitstunMassFactor, recordImpulseProvenance } from '../../../../src/combat/impulseKernel.js';
 import { combat } from '../../../../src/systems/combat.js';
 import { impulseCharges } from '../../../../src/systems/impulseCharges.js';
 import { tumbleStates } from '../../../../src/systems/tumbleStates.js';
@@ -48,6 +48,25 @@ const TORQUE_RECOVERY_MIN = 0.1;
 export const HITSTUN_HULLS = Object.freeze(['ship_wasp', 'ship_drifter', 'ship_atlas']);
 export const HITSTUN_LEVELS = Object.freeze([0.05, 0.15, 0.30, 0.60, 1.30]);
 export const HITSTUN_SOURCES = Object.freeze(['gun', 'rope_throw', 'well_fling', 'collision']);
+
+export function hitstunSourceTag(source) {
+  if (source === 'well_fling') return 'well';
+  if (source === 'gun') return 'gun';
+  if (source === 'collision') return 'collision';
+  if (source === 'weapon') return 'weapon';
+  return null;
+}
+
+export function selectCausalHitstunEvent(events, { victimId, source } = {}) {
+  const tag = hitstunSourceTag(source);
+  if (!tag || victimId == null || !Array.isArray(events)) return null;
+  for (let i = 0; i < events.length; i++) {
+    const ev = events[i];
+    if (!ev || ev.victimId !== victimId) continue;
+    if (ev.source === tag) return ev;
+  }
+  return null;
+}
 
 // B11's governing quantity is measured k = ΔV/cruise, never kIntended. Lights-lose-helm uses
 // k >= 0.30. Cross-source / cross-mass clauses require measured k inside this band around 0.30.
@@ -114,6 +133,7 @@ export async function runHitstunCells({
   sources = HITSTUN_SOURCES,
   hulls = HITSTUN_HULLS,
   levels = HITSTUN_LEVELS,
+  beforeCell = null,
 } = {}) {
   if (!Number.isFinite(seed)) throw new Error('feel.hitstun_curve: seed must be a finite number');
   const eventTrace = [];
@@ -132,6 +152,7 @@ export async function runHitstunCells({
           hullId,
           kIntended,
           eventTrace,
+          beforeCell,
         });
         if (!flagsChecked) {
           flagsChecked = true;
@@ -164,7 +185,7 @@ function isReferenceCell(source, hullId, kIntended) {
   return source === 'gun' && hullId === 'ship_wasp' && Math.abs(kIntended - 0.30) < 1e-9;
 }
 
-async function measureOneCell({ seed, source, hullId, kIntended, eventTrace }) {
+async function measureOneCell({ seed, source, hullId, kIntended, eventTrace, beforeCell }) {
   const host = await bootRealPath({
     seed,
     systems: [...CURVE_SYSTEMS],
@@ -244,6 +265,7 @@ async function measureOneCell({ seed, source, hullId, kIntended, eventTrace }) {
       if (!payload || payload.victimId !== victim.id) return;
       hitstunEvents.push(payload);
     });
+    if (typeof beforeCell === 'function') beforeCell({ host, victim, player, source });
 
     const cellBase = {
       source,
@@ -287,6 +309,8 @@ async function measureOneCell({ seed, source, hullId, kIntended, eventTrace }) {
     let recoveredAtTick = null;
     let peakTorqueHelmLoss = 0;
     let peakTorqueRecovery = 0;
+    let recoveryTorqueObserved = false;
+    let recoveryOpposesSpin = false;
     let zeroTorqueHelmLossTicks = 0;
     let zeroTorqueRecoveryTicks = 0;
     let recoveryObserveTicks = 0;
@@ -305,34 +329,16 @@ async function measureOneCell({ seed, source, hullId, kIntended, eventTrace }) {
         vBefore = { x: finite(victim.vel && victim.vel.x), z: finite(victim.vel && victim.vel.z) };
         const mag = hullMass * kIntended * cruise.cruiseSpeed;
         if (source === 'gun') {
-          const combatSys = host.runtime.getSystem('combat');
-          const kernel = combatSys && combatSys.kernel;
-          if (!kernel || typeof kernel.routeDamage !== 'function') {
-            deliveryError = 'gun has no production combat.routeDamage';
+          const result = deliverProductionGunHit(host, victim, {
+            attackerId: player ? player.id : null,
+            nx: SHOVE_NX,
+            nz: SHOVE_NZ,
+            magnitude: mag,
+          });
+          if (result && result.reason === 'gun has no production combat.routeDamage') {
+            deliveryError = result.reason;
             return false;
           }
-          const result = host.withFeatures(() => kernel.routeDamage({
-            attackerId: player ? player.id : null,
-            targetId: victim.id,
-            packet: {
-              channels: { kinetic: 1 },
-              impulse: { x: mag, z: 0 },
-              tumbleTorque: 0,
-              hit: {
-                pos: {
-                  x: finite(victim.pos && victim.pos.x),
-                  z: finite(victim.pos && victim.pos.z) + Math.max(4, (victim.radius || 8) * 0.75),
-                },
-                approach: { x: SHOVE_NX, z: SHOVE_NZ },
-              },
-              source: {
-                kind: 'weapon',
-                weaponId: GUN_WEAPON_ID,
-                impulseProvenance: GUN_PROVENANCE_TAG,
-              },
-            },
-            origin: { kind: 'weapon', id: GUN_WEAPON_ID, weaponId: GUN_WEAPON_ID },
-          }));
           angularProduction = !!(result && result.impulseApplied);
           if (!angularProduction) {
             deliveryError = 'gun production damage.applyImpulse did not apply the authored impulse';
@@ -388,7 +394,7 @@ async function measureOneCell({ seed, source, hullId, kIntended, eventTrace }) {
             asteroid.pos.z = VICTIM_POS.z + 8000;
           }
         } else if (source === 'well_fling' && eventTick === 'pending') {
-          if (hitstunEvents.length) {
+          if (selectCausalHitstunEvent(hitstunEvents, { victimId: victim.id, source })) {
             eventTick = tick;
             vAfter = { x: finite(victim.vel && victim.vel.x), z: finite(victim.vel && victim.vel.z) };
           }
@@ -425,16 +431,20 @@ async function measureOneCell({ seed, source, hullId, kIntended, eventTrace }) {
                 recordHelmModeNames(helmEvents, helmModesSeen);
                 if (torqueMag > peakTorqueHelmLoss) peakTorqueHelmLoss = torqueMag;
                 if (torqueMag <= 1e-4) zeroTorqueHelmLossTicks += 1;
+                const spinSigned = finite(victim.angVel, 0);
+                const ty = tel && tel.torque ? finite(tel.torque.y) : 0;
+                if (Math.abs(spinSigned) >= 1e-4 && ty * spinSigned < 0) {
+                  recoveryOpposesSpin = true;
+                  recoveryTorqueObserved = true;
+                  const mag = Math.abs(ty);
+                  if (mag > peakTorqueRecovery) peakTorqueRecovery = mag;
+                }
               } else {
                 helmRecovered = true;
                 recoveredAtTick = tick;
-                if (torqueMag > peakTorqueRecovery) peakTorqueRecovery = torqueMag;
-                if (torqueMag <= 1e-4) zeroTorqueRecoveryTicks += 1;
               }
             } else {
               recoveryObserveTicks += 1;
-              if (torqueMag > peakTorqueRecovery) peakTorqueRecovery = torqueMag;
-              if (torqueMag <= 1e-4) zeroTorqueRecoveryTicks += 1;
             }
           }
 
@@ -471,12 +481,19 @@ async function measureOneCell({ seed, source, hullId, kIntended, eventTrace }) {
     const dVx = vAfter.x - vBefore.x;
     const dVz = vAfter.z - vBefore.z;
     const observedDeltaV = Math.hypot(dVx, dVz);
-    const published = hitstunEvents[0];
+    const published = selectCausalHitstunEvent(hitstunEvents, { victimId: victim.id, source });
     const deltaV = published && Number.isFinite(published.deltaV) && published.deltaV > 0
       ? published.deltaV
       : (authoredDeltaV > 0 ? authoredDeltaV : observedDeltaV);
+    const attackerMassForU = published && Number.isFinite(published.attackerMass) && published.attackerMass > 0
+      ? published.attackerMass
+      : finite(player && player.mass, 1);
+    const worldBody = !!(published && published.worldBody);
+    const mFMeasured = worldBody
+      ? hitstunMassFactor(attackerMassForU, hullMass, { min: 0 })
+      : clamp(Math.sqrt(Math.max(0.1, hullMass > 0 ? attackerMassForU / hullMass : 0)), MF_MIN, MF_MAX);
     const k = cruise.cruiseSpeed > 0 ? deltaV / cruise.cruiseSpeed : 0;
-    const u = k * mF;
+    const u = k * mFMeasured;
     const windowEvents = eventsInHelmWindow(helmEvents, eventTick, helmLossTicks);
     const helmOwner = resolveHelmOwner(windowEvents);
     helmModesSeen.length = 0;
@@ -494,12 +511,14 @@ async function measureOneCell({ seed, source, hullId, kIntended, eventTrace }) {
         helmLossDurationS: helmLossTicks / 60,
         helmOwner,
         entrySpinRadPerS: peakSpin,
-        peakTorque: Math.max(peakTorqueHelmLoss, helmRecovered ? peakTorqueRecovery : 0),
+        peakTorque: recoveryTorqueObserved ? peakTorqueRecovery : peakTorqueHelmLoss,
       });
     }
 
     return {
       ...cellBase,
+      mF: mFMeasured,
+      massRatio: hullMass > 0 ? attackerMassForU / hullMass : 0,
       k,
       u,
       deltaV,
@@ -509,10 +528,12 @@ async function measureOneCell({ seed, source, hullId, kIntended, eventTrace }) {
       helmOwner,
       recoveredAtTick,
       recoveryObserved: helmRecovered,
+      recoveryTorqueObserved,
+      recoveryOpposesSpin,
       angularProduction,
       peakTorqueHelmLoss,
-      peakTorqueRecovery: helmRecovered ? peakTorqueRecovery : null,
-      peakTorque: Math.max(peakTorqueHelmLoss, helmRecovered ? peakTorqueRecovery : 0),
+      peakTorqueRecovery: recoveryTorqueObserved ? peakTorqueRecovery : null,
+      peakTorque: recoveryTorqueObserved ? peakTorqueRecovery : peakTorqueHelmLoss,
       zeroTorqueDurationS: zeroTorqueHelmLossTicks / 60,
       zeroTorqueRecoveryS: helmRecovered ? zeroTorqueRecoveryTicks / 60 : null,
       measured: true,
@@ -603,6 +624,49 @@ export function deliverGunHit(victim, {
     appliedTick: tick,
     magnitude,
   });
+}
+
+export function deliverProductionGunHit(host, victim, {
+  attackerId = null,
+  nx = SHOVE_NX,
+  nz = SHOVE_NZ,
+  magnitude,
+  weaponId = GUN_WEAPON_ID,
+  tag = GUN_PROVENANCE_TAG,
+} = {}) {
+  const combatSys = host && host.runtime && host.runtime.getSystem
+    ? host.runtime.getSystem('combat')
+    : null;
+  const kernel = combatSys && combatSys.kernel;
+  if (!kernel || typeof kernel.routeDamage !== 'function') {
+    return { ok: false, reason: 'gun has no production combat.routeDamage', impulseApplied: false };
+  }
+  const mag = finite(magnitude);
+  const vx = finite(victim && victim.pos && victim.pos.x);
+  const vz = finite(victim && victim.pos && victim.pos.z);
+  const apply = () => kernel.routeDamage({
+    attackerId,
+    targetId: victim.id,
+    packet: {
+      channels: { kinetic: 1 },
+      impulse: { x: nx * mag, z: nz * mag },
+      tumbleTorque: 0,
+      hit: {
+        pos: {
+          x: vx,
+          z: vz + Math.max(4, (victim.radius || 8) * 0.75),
+        },
+        approach: { x: nx, z: nz },
+      },
+      source: {
+        kind: 'weapon',
+        weaponId,
+        impulseProvenance: tag,
+      },
+    },
+    origin: { kind: 'weapon', id: weaponId, weaponId },
+  });
+  return typeof host.withFeatures === 'function' ? host.withFeatures(apply) : apply();
 }
 
 export function driveNotAnswering(entity, telemetry) {
@@ -696,7 +760,9 @@ function inMatchedKBand(k) {
 }
 
 function recoveryTorqueMeasured(cell) {
-  return !!(cell && cell.recoveryObserved === true && Number.isFinite(cell.peakTorqueRecovery));
+  return !!(cell && cell.recoveryTorqueObserved === true
+    && Number.isFinite(cell.peakTorqueRecovery)
+    && cell.peakTorqueRecovery > TORQUE_RECOVERY_MIN);
 }
 
 /**
@@ -863,24 +929,27 @@ export function buildB11Bars(cells, notes) {
       gyroNotes.push('gun angular consequence did not traverse the production damage/impulse path with real hit geometry and damage-fraction scaling');
       continue;
     }
-    if (!recoveryTorqueMeasured(pick) && !(Number.isFinite(pick.peakTorqueHelmLoss) && pick.peakTorqueHelmLoss > TORQUE_RECOVERY_MIN)) {
-      gyroUnmeasured = true;
-      gyroNotes.push(`${source} recovery torque unmeasured (helm loss outlasted the window or recovery was never observed)`);
-      continue;
-    }
     const spin = finite(pick.entrySpinRadPerS, 0);
-    const torque = Math.max(finite(pick.peakTorqueRecovery, 0), finite(pick.peakTorqueHelmLoss, 0));
     if (spin < MEASURABLE_SPIN_RAD_PER_S) {
       gyroNotes.push(`${source} entrySpin ${round4(spin)} rad/s below ${MEASURABLE_SPIN_RAD_PER_S} (zero recovery torque is not a hidden gyro)`);
       continue;
     }
+    if (!recoveryTorqueMeasured(pick)) {
+      gyroUnmeasured = true;
+      gyroNotes.push(`${source} recovery torque unmeasured (entry torque is not recovery; helm loss outlasted the window or recovery was never observed)`);
+      continue;
+    }
+    const torque = finite(pick.peakTorqueRecovery, 0);
     spinningJudged += 1;
-    if (torque > TORQUE_RECOVERY_MIN) {
+    if (pick.recoveryOpposesSpin === false) {
+      gyroFail = true;
+      gyroNotes.push(`${source} spin ${round4(spin)} rad/s recovery ${round4(torque)} Nm did not oppose angular velocity`);
+    } else if (torque > TORQUE_RECOVERY_MIN) {
       spinningWithTorque += 1;
-      gyroNotes.push(`${source} spin ${round4(spin)} rad/s recovery ${round4(torque)} Nm`);
+      gyroNotes.push(`${source} spin ${round4(spin)} rad/s recovery ${round4(torque)} Nm opposing spin`);
     } else {
       gyroFail = true;
-      gyroNotes.push(`${source} spin ${round4(spin)} rad/s recovery ${round4(torque)} Nm (no commanded torque)`);
+      gyroNotes.push(`${source} spin ${round4(spin)} rad/s recovery ${round4(torque)} Nm (no commanded recovery torque after entry)`);
     }
   }
   const gyroNote = gyroNotes.join('; ') || 'gyro clause could not be asked';

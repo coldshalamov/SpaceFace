@@ -5,7 +5,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { WEAPONS } from '../src/data/weapons.js';
-import { resolveHitstunLaw } from '../src/combat/impulseKernel.js';
+import {
+  HITSTUN_IMPULSE_EVENT,
+  HITSTUN_LAW,
+  hitstunAttackerMassForCollision,
+  resolveHitstunLaw,
+  signedHitSide,
+} from '../src/combat/impulseKernel.js';
 import {
   buildB11Bars,
   HEAVY_GUN_SCALE_K,
@@ -15,6 +21,7 @@ import {
   MATCHED_U_BAND,
   MEASURABLE_SPIN_RAD_PER_S,
   runHitstunCells,
+  selectCausalHitstunEvent,
   scenario,
 } from '../scripts/lib/bench/scenarios/feel.hitstun_curve.mjs';
 import { scenario as shoveScenario } from '../scripts/lib/bench/scenarios/feel.shove_magnitude.mjs';
@@ -166,11 +173,14 @@ test('hitstun curve instruments torque telemetry, mass-ratio bar, and gyro bar',
     assert.ok(Number.isFinite(c.peakTorqueHelmLoss), `peakTorqueHelmLoss must be finite (${c.hullId})`);
     assert.ok(Number.isFinite(c.peakTorque), `peakTorque must be finite (${c.hullId})`);
     assert.ok(Number.isFinite(c.zeroTorqueDurationS), `zeroTorqueDurationS (helm-loss window) must be finite (${c.hullId})`);
-    if (c.recoveryObserved) {
+    if (c.recoveryTorqueObserved) {
       assert.ok(Number.isFinite(c.peakTorqueRecovery), `observed recovery torque must be finite (${c.hullId})`);
-      assert.ok(Number.isFinite(c.zeroTorqueRecoveryS), `zeroTorqueRecoveryS must be finite when recovery was observed (${c.hullId})`);
     } else {
-      assert.equal(c.peakTorqueRecovery, null, `recovery not observed must not read as 0 Nm (${c.hullId})`);
+      assert.equal(c.peakTorqueRecovery, null, `recovery torque not observed after entry must not read as 0 Nm (${c.hullId})`);
+    }
+    if (c.recoveryObserved) {
+      assert.ok(Number.isFinite(c.zeroTorqueRecoveryS), `zeroTorqueRecoveryS must be finite when helm recovery was observed (${c.hullId})`);
+    } else {
       assert.equal(c.zeroTorqueRecoveryS, null, `recovery window must be unmeasured when recovery was not observed (${c.hullId})`);
     }
     assert.equal(
@@ -212,16 +222,17 @@ test('hitstun curve instruments torque telemetry, mass-ratio bar, and gyro bar',
   const colCell = collisionRun.cells[0];
   assert.equal(colCell.measured, true, 'collision cell must be measured');
   assert.ok(colCell.k > 0, 'collision cell must measure real delta-v');
-  if (colCell.recoveryObserved) {
+  if (colCell.recoveryTorqueObserved) {
     assert.ok(Number.isFinite(colCell.peakTorqueRecovery), 'observed collision recovery torque must be finite');
     if (colCell.entrySpinRadPerS >= MEASURABLE_SPIN_RAD_PER_S) {
       assert.ok(
         colCell.peakTorqueRecovery > 0,
         'measurable collision spin must recover with commanded torque, not a hidden gyro',
       );
+      assert.equal(colCell.recoveryOpposesSpin, true);
     }
   } else {
-    assert.equal(colCell.peakTorqueRecovery, null, 'collision recovery not observed must not read as 0 Nm');
+    assert.equal(colCell.peakTorqueRecovery, null, 'collision recovery torque not observed must not read as 0 Nm');
   }
 
   const wellRun = await runHitstunCells({
@@ -241,6 +252,8 @@ test('B11 bars fail closed on missing sources, intended-k, and unobserved recove
   const spinning = {
     measured: true,
     recoveryObserved: true,
+    recoveryTorqueObserved: true,
+    recoveryOpposesSpin: true,
     recoveredAtTick: 80,
     peakTorqueRecovery: 12,
     peakTorqueHelmLoss: 0,
@@ -354,6 +367,8 @@ test('B11 bars fail closed on missing sources, intended-k, and unobserved recove
       k: 0.30,
       helmLossDurationS: source === 'rope_throw' ? 6 : 1.2,
       recoveryObserved: source !== 'rope_throw',
+      recoveryTorqueObserved: source !== 'rope_throw',
+      recoveryOpposesSpin: source !== 'rope_throw',
       peakTorqueRecovery: source === 'rope_throw' ? null : 12,
       recoveredAtTick: source === 'rope_throw' ? null : 80,
     })),
@@ -405,6 +420,115 @@ test('B11 bars fail closed on missing sources, intended-k, and unobserved recove
   assert.equal(gyroZeroSpin.met, true, 'zero-spin gun with 0 Nm is a zero-error controller when the other claimed sources recover with torque');
 });
 
+test('static terrain uses a light combatant reference mass so Atlas keeps helm and Wasp loses it at the same ΔV', () => {
+  const atlas = resolveHitstunLaw({
+    deltaV: 40,
+    victimCruise: 85,
+    attackerMass: 1_000_000,
+    victimMass: 200,
+    worldBody: true,
+  });
+  assert.equal(atlas.worldBody, true);
+  assert.ok(Math.abs(atlas.mF - Math.sqrt(HITSTUN_LAW.worldRefMass / 200)) < 1e-9);
+  assert.ok(atlas.u < HITSTUN_LAW.uFloor, `Atlas terrain u was ${atlas.u}`);
+  assert.equal(atlas.durationS, 0, 'heavy hull keeps helm on world-body slam ΔV');
+
+  const wasp = resolveHitstunLaw({
+    deltaV: 40,
+    victimCruise: 105,
+    attackerMass: 1_000_000,
+    victimMass: 16,
+    worldBody: true,
+  });
+  assert.ok(wasp.durationS > 0, 'light hull still loses helm at the same world ΔV');
+  assert.equal(hitstunAttackerMassForCollision({ type: 'asteroid', mass: 1_000_000 }), HITSTUN_LAW.worldRefMass);
+  assert.equal(hitstunAttackerMassForCollision({ type: 'ship', mass: 24 }), 24);
+});
+
+test('signed well/collision hitSide is geometric, not an entity-id parity bit', () => {
+  const even = { id: 2, pos: { x: 0, z: 0 }, rot: 0, radius: 8 };
+  assert.equal(
+    signedHitSide(even, { x: -12, z: 0 }, { pos: { x: 0, z: 6 } }, even.id),
+    -1,
+    'a -X impulse on the +Z flank must be -1 even when the id would have normalized to +1',
+  );
+  assert.equal(
+    signedHitSide(even, { x: 12, z: 0 }, { pos: { x: 0, z: 6 } }, even.id),
+    1,
+  );
+});
+
+test('causal B11 measurement ignores a foreign collision event on rope and well cells', LONG, async () => {
+  const injectForeign = ({ host, victim }) => {
+    host.bus.emit(HITSTUN_IMPULSE_EVENT, {
+      source: 'collision',
+      victimId: victim.id,
+      attackerId: null,
+      attackerMass: 200,
+      victimMass: 16,
+      deltaV: 3,
+      dirX: 1,
+      dirZ: 0,
+      hitSide: 1,
+      worldBody: true,
+      tick: host.state.tick | 0,
+    });
+    host.bus.emit(HITSTUN_IMPULSE_EVENT, {
+      source: 'collision',
+      victimId: 'not-the-victim',
+      attackerId: null,
+      attackerMass: 200,
+      victimMass: 16,
+      deltaV: 40,
+      dirX: 1,
+      dirZ: 0,
+      hitSide: 1,
+      worldBody: true,
+      tick: host.state.tick | 0,
+    });
+  };
+
+  const stolen = selectCausalHitstunEvent([
+    { victimId: 9, source: 'collision', deltaV: 3 },
+    { victimId: 9, source: 'well', deltaV: 22 },
+  ], { victimId: 9, source: 'well_fling' });
+  assert.equal(stolen && stolen.source, 'well');
+  assert.equal(stolen.deltaV, 22);
+  assert.equal(
+    selectCausalHitstunEvent([{ victimId: 9, source: 'collision', deltaV: 3 }], { victimId: 9, source: 'rope_throw' }),
+    null,
+    'Massline throw must not bind a collision hitstun event',
+  );
+
+  const rope = await runHitstunCells({
+    seed: SEED,
+    sources: ['rope_throw'],
+    hulls: ['ship_wasp'],
+    levels: [0.30],
+    beforeCell: injectForeign,
+  });
+  const ropeCell = rope.cells[0];
+  assert.equal(ropeCell.measured, true, 'rope cell must still measure after a foreign collision event');
+  assert.ok(
+    ropeCell.k > 0.2,
+    `rope must keep authored ΔV, not steal collision ΔV=3 (k=${ropeCell.k})`,
+  );
+
+  const well = await runHitstunCells({
+    seed: SEED,
+    sources: ['well_fling'],
+    hulls: ['ship_wasp'],
+    levels: [0.30],
+    beforeCell: injectForeign,
+  });
+  const wellCell = well.cells[0];
+  assert.equal(wellCell.measured, true, 'well cell must still measure after a foreign collision event');
+  assert.ok(
+    wellCell.k !== 3 / wellCell.cruiseSpeed,
+    `well must not bind the injected collision ΔV=3 (k=${wellCell.k})`,
+  );
+});
+
 function fakeCell(overrides = {}) {
   return {
     source: 'gun',
@@ -419,6 +543,8 @@ function fakeCell(overrides = {}) {
     helmOwner: 'none',
     recoveredAtTick: 80,
     recoveryObserved: true,
+    recoveryTorqueObserved: true,
+    recoveryOpposesSpin: true,
     peakTorqueHelmLoss: 0,
     peakTorqueRecovery: 4,
     peakTorque: 4,

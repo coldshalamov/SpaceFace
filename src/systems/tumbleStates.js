@@ -179,6 +179,7 @@ export const tumbleStates = {
       attackerId: payload.attackerId,
       attackerMass: payload.attackerMass,
       hitSide: payload.hitSide === -1 ? -1 : 1,
+      worldBody: payload.worldBody === true,
       requireMassline: false,
     });
   },
@@ -197,6 +198,7 @@ export const tumbleStates = {
       victimCruise: cruise,
       attackerMass: input.attackerMass,
       victimMass: massOf(victim),
+      worldBody: input.worldBody === true,
     });
     if (!(law.durationS > 0)) return;
 
@@ -317,7 +319,7 @@ function recoveryControl(entity, dt, kind) {
   return {
     mode: 'tumbling',
     force: { x: 0, y: 0, z: 0 },
-    torque: { x: 0, y: alpha * inertia, z: 0 },
+    torque: { x: 0, y: 0 + alpha * inertia, z: 0 },
     source: kind === MASSLINE_TUMBLE_KIND ? 'massline_tumble' : 'hitstun',
   };
 }

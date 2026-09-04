@@ -44,7 +44,7 @@ import {
   GUN_WEAPON_ID,
   SCREEN_DEPTH_WU,
   SHOVE_SYSTEMS,
-  deliverGunHit,
+  deliverProductionGunHit,
   driveNotAnswering,
   emptyIntent,
   readCruiseSpeed,
@@ -288,6 +288,7 @@ async function runShoveArm(seed, { weaponId, direction, tag, eventTrace, straigh
 
     let eventTick = null;
     let pendingEvent = false;
+    let deliveryError = null;
     let vBefore = { x: 0, z: 0 };
     let speedBefore = 0;
     let vAfter = null;
@@ -322,15 +323,17 @@ async function runShoveArm(seed, { weaponId, direction, tag, eventTrace, straigh
           impulseMagnitude = resolved && Number.isFinite(resolved.magnitude) ? resolved.magnitude : 0;
           const nx = direction === 'along' ? lineDir.x : -lineDir.z;
           const nz = direction === 'along' ? lineDir.z : lineDir.x;
-          deliverGunHit(victim, {
+          const result = deliverProductionGunHit(host, victim, {
             attackerId: player ? player.id : null,
-            tick: state.tick,
             nx,
             nz,
             magnitude: impulseMagnitude,
             weaponId,
             tag: (resolved && resolved.provenance) || (def && def.impulseProvenance) || GUN_PROVENANCE_TAG,
           });
+          if (!result || result.impulseApplied !== true) {
+            deliveryError = (result && result.reason) || 'shove production damage.applyImpulse did not apply the authored impulse';
+          }
         }
         pendingEvent = true;
         shotsAtEvent = victimShots;
@@ -376,6 +379,17 @@ async function runShoveArm(seed, { weaponId, direction, tag, eventTrace, straigh
       return {
         measured: false,
         unmeasuredReason: 'bodyless at end of run',
+        realPathProof: proof,
+        cruiseField: cruise.cruiseField,
+        cruiseSpeed: cruise.cruiseSpeed,
+        victimShots: 0,
+      };
+    }
+
+    if (deliveryError) {
+      return {
+        measured: false,
+        unmeasuredReason: deliveryError,
         realPathProof: proof,
         cruiseField: cruise.cruiseField,
         cruiseSpeed: cruise.cruiseSpeed,

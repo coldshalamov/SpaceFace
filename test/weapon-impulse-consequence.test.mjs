@@ -6,7 +6,7 @@ import { COMBAT_FLAGS } from '../src/data/featureFlags.js';
 import { createCombatKernel } from '../src/combat/kernel.js';
 import { createCombatCatalog } from '../src/combat/runtime.js';
 import { createBus } from '../src/core/eventBus.js';
-import { consumePhysicsCommand } from '../src/core/physicsAuthority.js';
+import { consumePhysicsCommand, writePhysicsControl } from '../src/core/physicsAuthority.js';
 
 let impulseKernelPromise;
 function impulseKernel() {
@@ -318,6 +318,112 @@ test('combat routes weapon linear and tumble impulse through the authority with 
   assert.equal(hitstun[0].hitSide, 1);
   assert.ok(hitstun[0].deltaV > 0);
   assert.ok(hitstun[0].attackerMass > 0 && hitstun[0].victimMass > 0);
+});
+
+test('tumbleStates owns retrigger, inclusive expiry, player immunity, and first-tick AI control', async (t) => {
+  const previousFlag = COMBAT_FLAGS.weaponImpulseConsequences;
+  COMBAT_FLAGS.weaponImpulseConsequences = true;
+  t.after(() => { COMBAT_FLAGS.weaponImpulseConsequences = previousFlag; });
+
+  const { tumbleStates } = await import('../src/systems/tumbleStates.js');
+  const { HITSTUN_IMPULSE_EVENT, resolveHitstunLaw } = await import('../src/combat/impulseKernel.js');
+  const { TUMBLE_STATUS_ID, readTumbleStatus } = await import('../src/combat/tumbleStatus.js');
+
+  const player = combatShip(1, 0, 0);
+  player.mass = 18;
+  const victim = combatShip(2, 1, 40);
+  victim.mass = 16;
+  victim.data.intent = { fire: true, moveX: 1, moveZ: 0 };
+
+  const bus = createBus();
+  const helpers = { combatPhysics: { applyImpulse: () => true } };
+  const state = {
+    tick: 100,
+    simTime: 10,
+    mode: 'flight',
+    playerId: 1,
+    entities: new Map([[player.id, player], [victim.id, victim]]),
+    entityList: [player, victim],
+    combat: { beams: [], threatTables: new Map() },
+    meta: { seed: 47 },
+  };
+  const kernel = createCombatKernel({ state, bus, helpers, registry: { get: () => null } });
+  const system = Object.create(tumbleStates);
+  system.init({
+    state,
+    bus,
+    helpers,
+    registry: { get: (name) => (name === 'combat' ? { kernel } : null) },
+  });
+
+  const law = resolveHitstunLaw({
+    deltaV: 40,
+    victimCruise: 105,
+    attackerMass: 18,
+    victimMass: 16,
+  });
+  assert.ok(law.durationS > 1, `reference hit must stun (${law.durationS}s)`);
+
+  const emitGun = (targetId, extra = {}) => {
+    bus.emit(HITSTUN_IMPULSE_EVENT, {
+      source: 'gun',
+      victimId: targetId,
+      attackerId: player.id,
+      attackerMass: 18,
+      victimMass: targetId === victim.id ? 16 : 18,
+      deltaV: 40,
+      dirX: 1,
+      dirZ: 0,
+      hitSide: 1,
+      tick: state.tick,
+      ...extra,
+    });
+  };
+
+  emitGun(player.id);
+  assert.equal(readTumbleStatus(state, player), null, 'the player never tumbles');
+  system.update(1 / 60, state);
+  assert.equal(consumePhysicsCommand(player), null, 'player immunity must not queue a helm override');
+
+  emitGun(victim.id);
+  state.tick += 1;
+  kernel.prePhysics(1 / 60);
+  const first = readTumbleStatus(state, victim);
+  assert.ok(first, 'first qualifying hit schedules tumble on tumbleStates');
+  assert.equal(first.id, TUMBLE_STATUS_ID);
+  const until1 = first.data.until;
+  assert.ok(Math.abs(until1 - (10 + law.durationS)) < 1e-6);
+
+  state.simTime = 10 + law.durationS * 0.4;
+  emitGun(victim.id);
+  state.tick += 1;
+  kernel.prePhysics(1 / 60);
+  const second = readTumbleStatus(state, victim);
+  const until2 = second.data.until;
+  assert.ok(until2 >= until1 - 1e-9, 'a second hit must never shorten the existing until');
+  assert.ok(
+    Math.abs(until2 - (state.simTime + law.durationS)) < 1e-6,
+    'until = max(existing, now+T)',
+  );
+
+  state.simTime = until2 - 1e-6;
+  system.update(1 / 60, state);
+  assert.ok(readTumbleStatus(state, victim), 'tumble remains active before until');
+
+  victim.data.intent.fire = true;
+  writePhysicsControl(victim, {
+    mode: 'ai_attack_run',
+    force: { x: 12, y: 0, z: 4 },
+    torque: { x: 0, y: 3, z: 0 },
+    source: 'aiPorts',
+  });
+  state.simTime = until2;
+  system.update(1 / 60, state);
+  assert.equal(readTumbleStatus(state, victim), null, 'inclusive expiry clears when now >= until');
+  const after = consumePhysicsCommand(victim);
+  assert.ok(after && after.control);
+  assert.equal(after.control.source, 'aiPorts', 'the first tick after expiry preserves AI control');
+  assert.equal(victim.data.intent.fire, true, 'expiry does not keep zeroing AI fire');
 });
 
 test('full shield absorption does not shrink the authored impulse', async (t) => {

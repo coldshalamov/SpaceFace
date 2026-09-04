@@ -6,6 +6,8 @@
 // transient episode/control state stays outside the entity graph.
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import {
+  hitstunAttackerMassForCollision,
+  isWorldHitstunBody,
   publishHitstunImpulse,
   readRecentImpulseProvenance,
   resolveCollisionConsequence,
@@ -168,12 +170,13 @@ export const collisionConsequences = {
       source: 'collision',
       victimId: target.id,
       attackerId: other.id,
-      attackerMass: positiveMass(other),
+      attackerMass: hitstunAttackerMassForCollision(other),
       victimMass: positiveMass(target),
       deltaV: receipt.deltaV,
       dirX: finite(receipt.normal && receipt.normal.x),
       dirZ: finite(receipt.normal && receipt.normal.z),
       hitSide: signedHitSide(target, receipt.normal, { pos: receipt.pos }, target.id),
+      worldBody: isWorldHitstunBody(other),
       provenance: receipt.provenance,
       tick,
     });
