@@ -7,11 +7,13 @@
 //
 // Design invariants:
 //   1. Reaction / torch / sail drives have no hidden vacuum drag or arcade terminal speed.
-//      In ASSISTED mode the flight computer additionally governs commanded forward speed toward
-//      the drive's combatSpeed (a speed COMMAND, not drag): thrust eases off as the ship reaches
-//      throttle × combatSpeed, and overspeed converges gently using real reverse-thruster
-//      authority. Drift and newtonian modes keep the raw ungoverned model — slingshots, massline
-//      tricks and expert flying accumulate speed without interference.
+//      In ASSISTED mode the flight computer additionally governs the planar speed the ship's
+//      own translation may produce toward commandFraction × combatSpeed (a speed COMMAND, not
+//      drag). The axial forward servo and a finite result.maxSpeed — consumed by the physics
+//      owner's thrust-only clamp — share that cap. Yawing must not launder governed speed into
+//      ungoverned lateral speed. Physics-earned overspeed is never spent. Drift and newtonian
+//      modes keep the raw ungoverned model — slingshots, massline tricks and expert flying
+//      accumulate speed without interference.
 //   2. Assisted flight brakes by spending real counter-thruster authority.
 //   3. Turning the nose does not rotate the velocity vector.
 //   4. Gravimetric drives are explicitly non-Newtonian and trade cumulative speed for control.
@@ -244,7 +246,7 @@ function stepReaction(body, input, profile, runtime, environment, dt) {
     runtime: nextRuntime,
     acceleration: accel,
     angularAcceleration: yaw.angularAcceleration,
-    maxSpeed: finiteOrInfinity(profile.solverSpeedLimit),
+    maxSpeed: controlMadeSpeedLimit(governor, profile),
     demand,
     events: transitionEvents(runtime, nextRuntime, input, profile),
     telemetry: {
@@ -262,46 +264,55 @@ function stepReaction(body, input, profile, runtime, environment, dt) {
   });
 }
 
-// Assisted-mode speed governor: forward throttle is a speed command toward
-// throttle × combatSpeed (boost raises the cap by boostSpeedMult). Below the cap the servo
-// saturates at full thruster authority, so acceleration feel is unchanged until the last
-// ~governorResponseS worth of closing speed. Above the cap — a slingshot, dash or boost
-// carry-over — convergence is deliberately gentle (overspeedBrakeFraction of reverse
-// authority) so momentum earned through play is spent, not confiscated. Drift/newtonian:
-// untouched — those modes ARE the ungoverned toy. Mutates manualLocal.forward in place and
-// returns telemetry (null when the governor has no opinion this tick).
+// Assisted-mode speed governor: any positive translation command is a speed command toward
+// commandFraction × combatSpeed (boost raises the cap by boostSpeedMult). commandFraction is
+// hypot(max(0, throttle), strafe) clamped to 1, so a diagonal W+A/D requests ONE full-cap
+// vector rather than two independent caps, and pure lateral still has a cap. Negative throttle
+// alone stays the brake/reverse path. The quantity it governs is TOTAL planar speed, not the
+// nose-forward component: yawing must not launder governed speed into ungoverned lateral speed
+// (PQ-137.03b). Below the cap the existing axial forward servo saturates at full thruster
+// authority until the last ~governorResponseS of closing speed. The physics owner's thrust-only
+// maxSpeed bound (result.maxSpeed) is the final vector clamp on control-made speed; this
+// function does not rewrite lateral thrust and never spends physics-earned overspeed — above
+// the cap the forward command floors at coast (0), never reverse. Drift/newtonian: untouched.
+// Mutates manualLocal.forward in place and returns telemetry (null when the governor has no
+// opinion this tick).
 function applySpeedGovernor(manualLocal, input, limits, localVelocity, profile, dt) {
+  void limits;
   if (normalizeAssistMode(input.assistMode) !== 'assisted') return null;
   const settings = profile.assist || {};
   const deadInput = positive(settings.deadInput, 0.025);
-  if (!(input.throttle > deadInput)) return null;
+  const commandFraction = clamp(Math.hypot(Math.max(0, input.throttle), input.strafe), 0, 1);
+  if (!(commandFraction > deadInput)) return null;
   const governedSpeed = positive(profile.combatSpeed, 0);
   if (!(governedSpeed > 0)) return null;
 
   const boostMult = input.boost ? positive(profile.boostSpeedMult, 1.55) : 1;
-  const baseCap = input.throttle * governedSpeed * boostMult;
+  const baseCap = commandFraction * governedSpeed * boostMult;
+  const speed = Math.hypot(localVelocity.forward, localVelocity.lateral);
   // The tag is supplied only for a real tether/self-sling exit. It cannot create overspeed:
   // from below the ordinary cap, baseCap remains the target. From above it, the moving target
   // decays exponentially, preserving the spectacle while still spending the earned velocity.
-  const physicsEarned = !!input.physicsEarnedMomentum && localVelocity.forward > baseCap;
+  const physicsEarned = !!input.physicsEarnedMomentum && speed > baseCap;
   const decayTauS = positive(input.earnedMomentumDecayTauS, 6);
   const earnedCap = physicsEarned
-    ? localVelocity.forward * Math.exp(-Math.max(0, finite(dt, 0)) / decayTauS)
+    ? speed * Math.exp(-Math.max(0, finite(dt, 0)) / decayTauS)
     : baseCap;
   // Travel drive (D5). A third axis, orthogonal to the assist regime and to who is holding the
   // stick: it raises the *cap* along a ramp and never touches thruster authority, so assisted /
   // drift / newtonian keep their existing meanings and `route-follower + assisted + engaged` is
   // simply autopilot cruise. The governor is shaped here, never bypassed.
   //
-  // Note the ramp cap is only consulted while there is throttle — this function has already
-  // returned null otherwise. That is correct rather than a gap: with no throttle the governor
-  // expresses no opinion at all, so a cap that is not applied is indistinguishable from no cap,
-  // and the coasting ship is carried by the existing earned-momentum decay instead.
+  // Note the ramp cap is only consulted while there is a positive translation command — this
+  // function has already returned null otherwise. That is correct rather than a gap: with no
+  // translation the governor expresses no opinion at all, so a cap that is not applied is
+  // indistinguishable from no cap, and the coasting ship is carried by the existing
+  // earned-momentum decay instead.
   const burn = travelFlag('travelBurn')
-    ? advanceTravelDrive(normalizeTravelDrive(input.travelDrive), profile, baseCap, localVelocity.forward, dt)
+    ? advanceTravelDrive(normalizeTravelDrive(input.travelDrive), profile, baseCap, speed, dt)
     : null;
   const cap = Math.max(baseCap, earnedCap, burn ? burn.cap : 0);
-  const err = cap - localVelocity.forward;
+  const err = cap - speed;
   const responseS = positive(settings.governorResponseS, 0.9);
   // The governor bounds what THRUST may produce. It never spends speed the pilot earned: above
   // the cap the forward command floors at coast (0), never at reverse thrust. History: the shipped
@@ -311,9 +322,14 @@ function applySpeedGovernor(manualLocal, input, limits, localVelocity, profile, 
   // coast while boosting only; the rule is now unconditional. Spending speed above the cap is the
   // pilot brake's job (reactionAssistAcceleration keeps full brake authority).
   const brakeFloor = 0;
-  const governed = clamp(err / responseS, brakeFloor, manualLocal.forward);
-  const engaged = governed < manualLocal.forward - EPS;
-  manualLocal.forward = governed;
+  // The axial servo only ever reduces POSITIVE forward. Reverse/brake stays the reverse path even
+  // if strafe caused the governor to engage.
+  let engaged = false;
+  if (manualLocal.forward > EPS) {
+    const governed = clamp(err / responseS, brakeFloor, manualLocal.forward);
+    engaged = governed < manualLocal.forward - EPS;
+    manualLocal.forward = governed;
+  }
   const telemetry = {
     cap,
     baseCap,
@@ -339,6 +355,20 @@ function applySpeedGovernor(manualLocal, input, limits, localVelocity, profile, 
     };
   }
   return telemetry;
+}
+
+/**
+ * Finite bound on planar speed this tick's continuous translation may produce. Null governor
+ * (Drift, Newtonian, hands-off) preserves the drive's solver limit — Infinity for reaction —
+ * so the physics owner does not clamp. A live assisted cap is min'd with a finite solver
+ * envelope and forwarded as result.maxSpeed; `_clampSpeed` then bounds only thrust-added speed.
+ */
+function controlMadeSpeedLimit(governor, profile) {
+  const solver = finiteOrInfinity(profile.solverSpeedLimit);
+  if (!governor) return solver;
+  const cap = finite(governor.cap, 0);
+  if (!(cap > 0)) return solver;
+  return Number.isFinite(solver) ? Math.min(cap, solver) : cap;
 }
 
 function stepGravimetric(body, input, profile, runtime, environment, dt) {
@@ -570,7 +600,7 @@ function stepTorch(body, input, profile, runtime, environment, dt) {
     runtime: nextRuntime,
     acceleration: accel,
     angularAcceleration: yaw.angularAcceleration,
-    maxSpeed: finiteOrInfinity(profile.solverSpeedLimit),
+    maxSpeed: controlMadeSpeedLimit(governor, effective),
     demand,
     events: transitionEvents(runtime, nextRuntime, input, profile),
     telemetry: {

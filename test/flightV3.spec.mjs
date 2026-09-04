@@ -488,4 +488,87 @@ function simulate({ profile, b, input, ticks, runtime }) {
   }
 }
 
+// 12f. PQ-137.03b: the assisted governor caps PLANAR speed the ship's own translation creates.
+// "Thrusters have a cap; physics-earned speed does not get eaten by the brakes."
+{
+  const vision = 'Thrusters have a cap; physics-earned speed does not get eaten by the brakes.';
+  const profile = PROPULSION_PROFILES.drive_reaction_m;
+  const cruise = profile.combatSpeed;
+
+  const straight = body();
+  simulate({ profile, b: straight, input: { throttle: 1, assistMode: 'assisted' }, ticks: 1800 });
+  const straightSpeed = Math.hypot(straight.vel.x, straight.vel.z);
+  assert.ok(Math.abs(straightSpeed - cruise) <= cruise * 0.01,
+    `"${vision}" — straight assisted cruise stays within 1% of the governed cap (got ${straightSpeed.toFixed(2)} vs ${cruise})`);
+
+  const weave = body();
+  simulate({
+    profile,
+    b: weave,
+    input: (i) => ({ throttle: 1, turn: Math.sin(i / 600) * 0.06, assistMode: 'assisted' }),
+    ticks: 2400,
+  });
+  const weaveSpeed = Math.hypot(weave.vel.x, weave.vel.z);
+  assert.ok(weaveSpeed <= cruise * 1.02,
+    `"${vision}" — a gentle assisted weave must not manufacture speed (got ${weaveSpeed.toFixed(2)} vs cruise ${cruise})`);
+
+  const diagonal = stepPropulsion({
+    dt: DT, body: body(), input: { throttle: 1, strafe: 1, assistMode: 'assisted' },
+    profile, runtime: createPropulsionRuntime(profile),
+  });
+  const forwardOnly = stepPropulsion({
+    dt: DT, body: body(), input: { throttle: 1, assistMode: 'assisted' },
+    profile, runtime: createPropulsionRuntime(profile),
+  });
+  assert.equal(diagonal.telemetry.governor.cap, forwardOnly.telemetry.governor.cap,
+    `"${vision}" — a diagonal W+A command must request one full-cap vector, not two independent caps`);
+  assert.ok(Number.isFinite(diagonal.maxSpeed) && diagonal.maxSpeed <= cruise + 1e-9,
+    `"${vision}" — diagonal assisted translation publishes a finite control-made bound (got ${diagonal.maxSpeed})`);
+
+  const lateral = stepPropulsion({
+    dt: DT, body: body(), input: { strafe: 1, assistMode: 'assisted' },
+    profile, runtime: createPropulsionRuntime(profile),
+  });
+  assert.ok(lateral.telemetry.governor && Number.isFinite(lateral.maxSpeed) && lateral.maxSpeed <= cruise + 1e-9,
+    `"${vision}" — pure lateral assisted translation publishes a finite control-made bound (got ${lateral.maxSpeed})`);
+
+  const boosted = stepPropulsion({
+    dt: DT, body: body(), input: { throttle: 1, boost: true, assistMode: 'assisted' },
+    profile, runtime: createPropulsionRuntime(profile),
+  });
+  const boostCap = cruise * (Number.isFinite(profile.boostSpeedMult) && profile.boostSpeedMult > 0
+    ? profile.boostSpeedMult
+    : 1.55);
+  assert.ok(Math.abs(boosted.telemetry.governor.cap - boostCap) < 1e-9,
+    `"${vision}" — held boost publishes the authored raised cap (got ${boosted.telemetry.governor.cap} vs ${boostCap})`);
+
+  const drift = stepPropulsion({
+    dt: DT, body: body(), input: { throttle: 1, strafe: 1, assistMode: 'drift' },
+    profile, runtime: createPropulsionRuntime(profile),
+  });
+  assert.equal(drift.telemetry.governor, null, `"${vision}" — Drift publishes no governor`);
+  assert.equal(drift.maxSpeed, Infinity, `"${vision}" — Drift remains ungoverned`);
+
+  const newtonian = stepPropulsion({
+    dt: DT, body: body(), input: { throttle: 1, strafe: 1, assistMode: 'newtonian' },
+    profile, runtime: createPropulsionRuntime(profile),
+  });
+  assert.equal(newtonian.telemetry.governor, null, `"${vision}" — Newtonian publishes no governor`);
+  assert.equal(newtonian.maxSpeed, Infinity, `"${vision}" — Newtonian remains ungoverned`);
+
+  const handsOff = stepPropulsion({
+    dt: DT, body: body({ vel: { x: cruise * 2, z: 0 } }), input: { assistMode: 'assisted' },
+    profile, runtime: createPropulsionRuntime(profile),
+  });
+  assert.equal(handsOff.telemetry.governor, null, `"${vision}" — hands-off coast publishes no governor`);
+  assert.equal(handsOff.maxSpeed, Infinity, `"${vision}" — hands-off coast remains ungoverned`);
+
+  const earned0 = Math.hypot(260, 300);
+  const earned = body({ vel: { x: 260, z: 300 } });
+  simulate({ profile, b: earned, input: { throttle: 1, assistMode: 'assisted' }, ticks: 60 });
+  const earned1 = Math.hypot(earned.vel.x, earned.vel.z);
+  assert.ok(earned1 >= earned0 * 0.99,
+    `"${vision}" — an oblique 2x physics-earned vector keeps >=99% after 1 s of held thrust (got ${earned1.toFixed(2)} from ${earned0.toFixed(2)})`);
+}
+
 console.log('SpaceFace Flight V3 generated checks: PASS');

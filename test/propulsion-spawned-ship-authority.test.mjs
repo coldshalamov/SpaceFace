@@ -32,12 +32,12 @@
 //   * `derived.flightModel.maxSpeed` = 145.0 for the starter kestrel, and it rises with the fitted
 //     engine module (ion 145 -> fusion 185.7 -> warp 217.4).
 //   * `profile.combatSpeed` = 195, fixed by the resolved drive and unaffected by engine fittings.
-// The clamp actually applied is the kernel's: `stepReaction` publishes
-// `maxSpeed: finiteOrInfinity(profile.solverSpeedLimit)`, flightV3 forwards it verbatim through
-// `writePhysicsControl` (`flightV3.js:261-266`) and `physicsAuthority.js:33` takes it as the
-// velocity clamp. For `drive_reaction_m` that value is **Infinity**. So under flightV3 nothing
-// clamps the player to 145: the operative authority is the assisted governor servoing toward
-// `combatSpeed` (195), which is what the tests below assert against.
+// The clamp actually applied is the kernel's: assisted translation publishes
+// `maxSpeed: min(governor.cap, solverSpeedLimit)` while the governor has an opinion, and
+// `finiteOrInfinity(profile.solverSpeedLimit)` (Infinity for reaction) when it does not.
+// flightV3 forwards that verbatim through `writePhysicsControl` and `_clampSpeed` bounds only
+// thrust-added speed. For `drive_reaction_m` the operative assisted authority is therefore
+// `combatSpeed` (95 after PQ-137.03), not the legacy derived `flightModel.maxSpeed`.
 //
 // WHAT THIS FILE DELIBERATELY DOES NOT DO. It does not assert unbuilt product. The travel-drive
 // axis has no production input owner (ledger W1-1/W1-2 "built, NOT wired") and the velocity tape
@@ -235,6 +235,32 @@ test('spawned derived propulsion keeps the unbounded solver sentinel out of seri
   const { result } = fly(profile, body(), { assistMode: 'assisted', throttle: 0 });
   assert.equal(result.maxSpeed, Infinity,
     'removing the sentinel from serializable state must not install a physics speed clamp');
+});
+
+test('assisted translation publishes a finite control-made speed bound on the real player ship', () => {
+  const { profile, body } = player();
+  const idle = fly(profile, body(), { assistMode: 'assisted', throttle: 0 });
+  assert.equal(idle.result.maxSpeed, Infinity,
+    'hands-off assisted coast must not install a physics speed clamp');
+
+  const held = fly(profile, body(), { assistMode: 'assisted', throttle: 1 });
+  assert.ok(Number.isFinite(held.result.maxSpeed),
+    'held assisted throttle must publish a finite control-made bound');
+  assert.equal(held.result.maxSpeed, profile.combatSpeed,
+    'the bound must be the governed combatSpeed, not a second invented cap');
+
+  const strafe = fly(profile, body(), { assistMode: 'assisted', strafe: 1 });
+  assert.equal(strafe.result.maxSpeed, profile.combatSpeed,
+    'pure lateral assisted translation must share the same planar cap');
+
+  const diagonal = fly(profile, body(), { assistMode: 'assisted', throttle: 1, strafe: 1 });
+  assert.equal(diagonal.result.maxSpeed, profile.combatSpeed,
+    'W+A must request one full-cap vector, not two independent caps');
+
+  const drift = fly(profile, body(), { assistMode: 'drift', throttle: 1, strafe: 1 });
+  assert.equal(drift.result.maxSpeed, Infinity, 'Drift remains ungoverned');
+  const newtonian = fly(profile, body(), { assistMode: 'newtonian', throttle: 1, strafe: 1 });
+  assert.equal(newtonian.result.maxSpeed, Infinity, 'Newtonian remains ungoverned');
 });
 
 test("the kernel body carries the ship's DERIVED stats, not invented fixture numbers", () => {
