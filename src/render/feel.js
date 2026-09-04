@@ -17,6 +17,7 @@
 // All event subscriptions are registered in init; frame() integrates the timers.
 import { damp } from '../core/math.js';
 import { createTimeEffects } from '../core/timeEffects.js';
+import { resolveGovernedCombatSpeed } from '../core/flight/propulsionCatalog.js';
 import { WEAPONS } from '../data/weapons.js';
 import {
   VL_COLOR,
@@ -422,7 +423,12 @@ export const feel = {
     if (player && player.vel) {
       const vel = player.vel;
       speed = Math.hypot(vel.x, vel.z);
-      maxSpd = Math.max(1, player.maxSpeed || 1);
+      // B3: the owner-bound exceptional-speed record (and the streaks) key to governed combat
+      // speed. `player.maxSpeed` is ships.js's derived stat and does not move with the drive catalog.
+      maxSpd = Math.max(
+        1,
+        resolveGovernedCombatSpeed(player, this.state, player.maxSpeed || 1),
+      );
       boosting = !!(player.flags && player.flags.boosting);
 
       // Project world velocity onto the camera view plane analytically.

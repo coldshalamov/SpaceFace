@@ -62,3 +62,44 @@ test('B3 prints every clause as a number in player units', LONG, async () => {
     assert.equal(typeof row.met, 'boolean', 'every B3 clause must carry a boolean met verdict');
   }
 });
+
+test('B3 real-path clauses all meet their FEEL_CONTRACT thresholds', LONG, async () => {
+  const result = await crossing.run(4242);
+  const metrics = result && result.metrics ? result.metrics : {};
+  const bars = Array.isArray(metrics.bars)
+    ? metrics.bars.filter((row) => row && row.bar === 'B3')
+    : [];
+  assert.equal(
+    bars.length,
+    B3_CLAUSES,
+    '"Zip around, stay in control of the combat area" — B3 must print every real-path clause',
+  );
+  for (const row of bars) {
+    assert.equal(
+      row.met,
+      true,
+      `"Zip around, stay in control of the combat area" — ${row.label} must meet (got ${row.value} ${row.unit})`,
+    );
+  }
+  assert.ok(
+    metrics.crossingAtCruiseS >= 1.2,
+    `cruise crossing must be >= 1.2 s (got ${metrics.crossingAtCruiseS})`,
+  );
+  assert.ok(
+    metrics.depthGrowthAt2x >= 1.5,
+    `depth growth at 2x cruise must be >= 1.5x (got ${metrics.depthGrowthAt2x})`,
+  );
+  assert.ok(
+    metrics.depthGrowthAt3x >= 2.5,
+    `depth growth at 3x cruise must be >= 2.5x (got ${metrics.depthGrowthAt3x})`,
+  );
+  assert.equal(
+    metrics.openingMonotonic,
+    true,
+    'visible depth must grow monotonically from cruise to 3x cruise',
+  );
+  assert.ok(
+    metrics.minHullFramePct >= 4,
+    `starter hull must stay >= 4% of frame width (got ${metrics.minHullFramePct})`,
+  );
+});

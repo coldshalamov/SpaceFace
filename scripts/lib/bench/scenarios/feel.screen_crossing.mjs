@@ -23,19 +23,12 @@ const MONOTONIC_EPSILON_WU = 1e-9;
  * Visible chase-camera ground depth in WU at a given player speed, from the live camera code.
  * CAMERA_ZOOM_MAX bounds only the manual setZoom; the live speed-zoom target is not clamped by it.
  */
-export function screenDepthWuAtSpeed(speed, { fovDeg, maxSpeedRef, earnedRef, physicsEarned = false } = {}) {
-  // TWO references, because the live camera uses two.
-  //  - the ORDINARY factor is keyed to the hull's governed combat speed (PQ-137.03 re-keyed
-  //    `camera.js`'s dynamic-zoom sample to `resolveGovernedCombatSpeed`);
-  //  - the ABOVE-CAP opening is NOT computed in camera.js at all. It consumes
-  //    `readOwnedExceptionalSpeed(state)`, whose single writer is `src/render/feel.js:421/450`, and
-  //    that line is still keyed to the LEGACY derived `player.maxSpeed`.
-  // Modelling both with one reference would make this instrument read ~1.8x where the player would
-  // actually see ~1.01x. An instrument that does not read what the live code reads is a lie.
+export function screenDepthWuAtSpeed(speed, { fovDeg, maxSpeedRef, physicsEarned = false } = {}) {
+  // Both camera stages key to governed combat speed: camera.js's ordinary factor and the
+  // exceptional-speed record feel.js publishes. One reference is the live picture.
   const ordinary = resolveSpeedZoomFactor(speed, maxSpeedRef, false);
-  const earnedReference = Number.isFinite(earnedRef) && earnedRef > 0 ? earnedRef : maxSpeedRef;
   const factor = physicsEarned
-    ? resolveExceptionalSpeedZoomFactor(resolveExceptionalSpeed(speed, earnedReference, true), ordinary)
+    ? resolveExceptionalSpeedZoomFactor(resolveExceptionalSpeed(speed, maxSpeedRef, true), ordinary)
     : ordinary;
   const zoom = CHASE_ZOOM_DEFAULT * factor;
   return 2 * Math.tan((fovDeg * Math.PI / 180) * 0.5) * zoom * 0.72;
@@ -60,7 +53,7 @@ export const scenario = {
         },
       });
       const cruiseSpeed = samples.length ? samples[samples.length - 1].speed : 0;
-      const { fovDeg, maxSpeedRef, earnedRef } = chaseCameraRefs(host.state, player);
+      const { fovDeg, maxSpeedRef } = chaseCameraRefs(host.state, player);
       const screenDepthAtCruiseWu = screenDepthWuAtSpeed(cruiseSpeed, {
         fovDeg,
         maxSpeedRef,
@@ -81,7 +74,7 @@ export const scenario = {
         },
       });
       const exitSpeed2x = planarSpeed(player);
-      const depthAt2xWu = screenDepthWuAtSpeed(exitSpeed2x, { fovDeg, maxSpeedRef, earnedRef, physicsEarned: true });
+      const depthAt2xWu = screenDepthWuAtSpeed(exitSpeed2x, { fovDeg, maxSpeedRef, physicsEarned: true });
       pushTrace(eventTrace, host, 'exit2x:sampled', { exitSpeed: exitSpeed2x, depthWu: depthAt2xWu });
 
       host.step(1, {
@@ -91,7 +84,7 @@ export const scenario = {
         },
       });
       const exitSpeed3x = planarSpeed(player);
-      const depthAt3xWu = screenDepthWuAtSpeed(exitSpeed3x, { fovDeg, maxSpeedRef, earnedRef, physicsEarned: true });
+      const depthAt3xWu = screenDepthWuAtSpeed(exitSpeed3x, { fovDeg, maxSpeedRef, physicsEarned: true });
       pushTrace(eventTrace, host, 'exit3x:sampled', { exitSpeed: exitSpeed3x, depthWu: depthAt3xWu });
 
       // The opening curve between the cap and the fastest speed reached, straight off the live
@@ -102,7 +95,6 @@ export const scenario = {
         toSpeed: exitSpeed3x,
         fovDeg,
         maxSpeedRef,
-        earnedRef,
         hullWidthWu,
       });
 
@@ -116,7 +108,7 @@ export const scenario = {
           value: crossingAtCruiseS,
           unit: 's',
           met: Number.isFinite(crossingAtCruiseS) && crossingAtCruiseS >= 1.2,
-          note: `screen depth ${screenDepthAtCruiseWu} WU read from the live chase camera at cruise ${cruiseSpeed} WU/s; camera speed reference maxSpeed=${maxSpeedRef}`,
+          note: `screen depth ${screenDepthAtCruiseWu} WU read from the live chase camera at cruise ${cruiseSpeed} WU/s; both camera stages key to governed combat speed ${maxSpeedRef}`,
         },
         {
           bar: 'B3',
@@ -124,7 +116,7 @@ export const scenario = {
           value: growth2x,
           unit: 'x at-cruise depth',
           met: Number.isFinite(growth2x) && growth2x >= 1.5,
-          note: `reached ${exitSpeed2x} WU/s by a physics impulse (target 2x cruise = ${2 * cruiseSpeed}); depth ${depthAt2xWu} WU vs ${screenDepthAtCruiseWu} WU at cruise; the above-cap opening is keyed to earnedRef=${earnedRef} (the legacy derived maxSpeed that src/render/feel.js:421 still hands the velocity-language record), NOT to the governed cap ${maxSpeedRef} — re-keying that one line is filed as a cross-lane request and is what this clause is waiting on`,
+          note: `reached ${exitSpeed2x} WU/s by a physics impulse (target 2x cruise = ${2 * cruiseSpeed}); depth ${depthAt2xWu} WU vs ${screenDepthAtCruiseWu} WU at cruise; both camera stages key to governed combat speed ${maxSpeedRef}`,
         },
         {
           bar: 'B3',
@@ -132,7 +124,7 @@ export const scenario = {
           value: growth3x,
           unit: 'x at-cruise depth',
           met: Number.isFinite(growth3x) && growth3x >= 2.5,
-          note: `reached ${exitSpeed3x} WU/s by a physics impulse (target 3x cruise = ${3 * cruiseSpeed}); depth ${depthAt3xWu} WU; the above-cap opening is keyed to earnedRef=${earnedRef} (the legacy derived maxSpeed that src/render/feel.js:421 still hands the velocity-language record), NOT to the governed cap ${maxSpeedRef} — re-keying that one line is filed as a cross-lane request and is what this clause is waiting on`,
+          note: `reached ${exitSpeed3x} WU/s by a physics impulse (target 3x cruise = ${3 * cruiseSpeed}); depth ${depthAt3xWu} WU; both camera stages key to governed combat speed ${maxSpeedRef}`,
         },
         {
           bar: 'B3',
@@ -158,7 +150,6 @@ export const scenario = {
           seed,
           cruiseSpeed,
           maxSpeedRef,
-          earnedRef,
           fovDeg,
           hullWidthWu,
           frameAspect: FRAME_ASPECT,
@@ -211,12 +202,10 @@ export function chaseCameraRefs(state, player) {
   const fallback = player && Number.isFinite(player.maxSpeed) && player.maxSpeed > 0
     ? player.maxSpeed
     : 120;
-  // `maxSpeedRef` is what the camera's ORDINARY factor keys to after PQ-137.03: the governed cap.
-  // `earnedRef` is what the ABOVE-CAP opening actually keys to today: the legacy derived stat that
-  // `src/render/feel.js:421` still hands to the velocity-language record. They are the same number
-  // only once that line is re-keyed (cross-lane request to IMPACT, 2026-09-04).
+  // Ordinary speed-zoom and the above-cap exceptional-speed record both key to governed combat
+  // speed. `player.maxSpeed` is the legacy derived stat and is only the catalog fallback.
   const maxSpeedRef = resolveGovernedCombatSpeed(player, state, fallback);
-  return { fovDeg: fov, maxSpeedRef, earnedRef: fallback };
+  return { fovDeg: fov, maxSpeedRef };
 }
 
 /**
@@ -260,7 +249,7 @@ export function hullWidthOf(entity) {
  * frame width the hull ever falls to. Frame width uses the camera's own default aspect
  * (clampFocusToPlayerSafeRect defaults to 16/9) because a headless bench has no window.
  */
-export function sampleOpeningCurve({ fromSpeed, toSpeed, fovDeg, maxSpeedRef, earnedRef, hullWidthWu, samples = 61 }) {
+export function sampleOpeningCurve({ fromSpeed, toSpeed, fovDeg, maxSpeedRef, hullWidthWu, samples = 61 }) {
   if (!(toSpeed > fromSpeed) || !(fromSpeed > 0)) {
     return { monotonic: false, worstBackstepWu: null, minHullFramePct: null, minHullFrameSpeed: null, samples: 0 };
   }
@@ -270,7 +259,7 @@ export function sampleOpeningCurve({ fromSpeed, toSpeed, fovDeg, maxSpeedRef, ea
   let minPctSpeed = null;
   for (let i = 0; i < samples; i++) {
     const speed = fromSpeed + ((toSpeed - fromSpeed) * i) / (samples - 1);
-    const depth = screenDepthWuAtSpeed(speed, { fovDeg, maxSpeedRef, earnedRef, physicsEarned: true });
+    const depth = screenDepthWuAtSpeed(speed, { fovDeg, maxSpeedRef, physicsEarned: true });
     if (prevDepth != null && depth < prevDepth) {
       const back = prevDepth - depth;
       if (back > worstBackstep) worstBackstep = back;

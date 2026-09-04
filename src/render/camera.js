@@ -992,11 +992,9 @@ export function createChaseCamera(state) {
           // saturated everywhere the fight actually happens.
           const governedCap = resolveGovernedCombatSpeed(p, state, p.maxSpeed || 120);
           const ordinarySpeedZoom = resolveSpeedZoomFactor(playerSpeed, governedCap, false);
-          // The above-cap opening is NOT computed here. `velocityLanguage`'s owner-bound record is
-          // the single writer (check-chase-camera-juice cycle 15 pins that), and it is still keyed to
-          // `player.maxSpeed` in src/render/feel.js:421 — which is why FEEL_CONTRACT B3's "visible
-          // depth reaches 1.5x at 2x cruise" cannot pass yet. Re-keying that one line is filed as a
-          // cross-lane request; when it lands, this reads the right number with no change here.
+          // The above-cap opening is not computed here. `velocityLanguage`'s owner-bound record is
+          // the single writer; the owned exceptional-speed scalar and this ordinary camera curve
+          // share the governed combat-speed cap.
           const exceptionalSpeed = isMotionReduced(state) ? 0 : readOwnedExceptionalSpeed(state);
           _speedZoomFactor = resolveExceptionalSpeedZoomFactor(
             exceptionalSpeed,

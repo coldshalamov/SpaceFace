@@ -13,6 +13,7 @@ import {
   resolveRegionCrossfade,
   velocityBandDrive,
 } from '../src/render/velocityLanguage.js';
+import { resolveGovernedCombatSpeed } from '../src/core/flight/propulsionCatalog.js';
 import { feel, speedLineDriveLegacy } from '../src/render/feel.js';
 import {
   PHYSICS_EARNED_SPEED_ZOOM_MAX,
@@ -101,7 +102,8 @@ test('feel retains live velocity and region records across high-refresh publicat
       id: 17,
       pos: { x: 0, z: 0 },
       vel: { x: 210, z: 35 },
-      maxSpeed: 100,
+      maxSpeed: 172.07,
+      propulsion: { family: 'reaction', combatSpeed: 95, maxSpeed: 95 },
       flags: { boosting: false },
       _flightFrame: { governor: { physicsEarned: true } },
     };
@@ -137,9 +139,11 @@ test('feel retains live velocity and region records across high-refresh publicat
     }
 
     const speed = Math.hypot(player.vel.x, player.vel.z);
+    const governedCap = resolveGovernedCombatSpeed(player, state, player.maxSpeed);
+    assert.equal(governedCap, 95);
     assert.deepEqual(
       { ...node.drive },
-      velocityBandDrive(speed, player.maxSpeed, false, false, true),
+      velocityBandDrive(speed, governedCap, false, false, true),
     );
     assert.deepEqual({ ...node.region }, resolveRegionCrossfade(player.pos));
     assert.equal(node.frame, 241);
@@ -153,8 +157,9 @@ test('feel publishes an owner-bound exceptional scalar and reduced motion zeros 
   const player = {
     id: 7,
     pos: { x: 0, z: 0 },
-    vel: { x: 200, z: 0 },
-    maxSpeed: 100,
+    vel: { x: 190, z: 0 },
+    maxSpeed: 172.07,
+    propulsion: { family: 'reaction', combatSpeed: 95, maxSpeed: 95 },
     flags: { boosting: true },
     _flightFrame: { governor: { physicsEarned: true } },
   };
@@ -175,12 +180,18 @@ test('feel publishes an owner-bound exceptional scalar and reduced motion zeros 
   system._updateSpeedLines(0);
   assert.equal(state.render.velocityLanguage.schema, 'velocity_language_v1');
   assert.equal(state.render.velocityLanguage.ownerId, player.id);
-  near(state.render.velocityLanguage.drive.exceptionalSpeed, 0.5, 'published 2x scalar');
+  near(state.render.velocityLanguage.drive.exceptionalSpeed, 0.5, 'published 2x scalar at 190 WU/s');
   near(readOwnedExceptionalSpeed(state), 0.5, 'owned scalar');
+
+  player.vel.x = 285;
+  system._updateSpeedLines(0);
+  near(state.render.velocityLanguage.drive.exceptionalSpeed, 1, 'published 3x scalar at 285 WU/s');
+  near(readOwnedExceptionalSpeed(state), 1, 'owned 3x scalar');
 
   state.render.velocityLanguage.ownerId = 99;
   assert.equal(readOwnedExceptionalSpeed(state), 0, 'stale player record must fail closed');
   state.settings.video.motionReduce = true;
+  player.vel.x = 190;
   system._updateSpeedLines(0);
   assert.equal(state.render.velocityLanguage.ownerId, player.id);
   assert.equal(state.render.velocityLanguage.drive.exceptionalSpeed, 0);
@@ -201,17 +212,28 @@ test('feel publishes an owner-bound exceptional scalar and reduced motion zeros 
 });
 
 test('camera preserves ordinary framing and consumes only the normalized exceptional scalar', () => {
+  const exceptionalMid = SPEED_ZOOM_MAX + (PHYSICS_EARNED_SPEED_ZOOM_MAX - SPEED_ZOOM_MAX) * 0.5;
+  const vision =
+    'Zip around, stay in control of the combat area — above the cap the camera opens with speed';
   near(resolveSpeedZoomFactor(0, 100, false), SPEED_ZOOM_MIN, 'idle ordinary frame');
   near(resolveSpeedZoomFactor(100, 100, false), SPEED_ZOOM_MAX, 'hull-max ordinary frame');
   near(resolveSpeedZoomFactor(300, 100, false), SPEED_ZOOM_MAX, 'ordinary cap');
   near(resolveExceptionalSpeedZoomFactor(0), SPEED_ZOOM_MAX, 'exceptional 0');
-  near(resolveExceptionalSpeedZoomFactor(0.5), 1.365, 'exceptional midpoint');
+  near(
+    resolveExceptionalSpeedZoomFactor(0.5),
+    exceptionalMid,
+    `${vision}: exceptional midpoint must sit halfway from the ordinary cap to the earned cap`,
+  );
   near(resolveExceptionalSpeedZoomFactor(1), PHYSICS_EARNED_SPEED_ZOOM_MAX, 'exceptional max');
   near(resolveExceptionalSpeedZoomFactor(NaN), SPEED_ZOOM_MAX, 'nonfinite scalar');
   near(resolveExceptionalSpeedZoomFactor(8), PHYSICS_EARNED_SPEED_ZOOM_MAX, 'clamped scalar');
 
   // Compatibility wrapper retains the previous boolean call surface and exact curve.
-  near(resolveSpeedZoomFactor(200, 100, true), 1.365, 'legacy 2x boolean wrapper');
+  near(
+    resolveSpeedZoomFactor(200, 100, true),
+    exceptionalMid,
+    `${vision}: 2x cruise with physics-earned provenance must open to the same midpoint`,
+  );
   near(resolveSpeedZoomFactor(300, 100, true), PHYSICS_EARNED_SPEED_ZOOM_MAX, 'legacy 3x wrapper');
   near(resolveSpeedZoomFactor(300, 100, 1), SPEED_ZOOM_MAX, 'legacy provenance remains strict');
 });

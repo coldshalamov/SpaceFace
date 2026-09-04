@@ -130,8 +130,9 @@ assert.ok(resolveSpeedZoomFactor(60, 120) > 1, 'mid/high speed should naturally 
 near(resolveSpeedZoomFactor(120, 120), SPEED_ZOOM_MAX, 'ship max speed should reach the speed zoom-out cap');
 near(resolveSpeedZoomFactor(240, 120, false), SPEED_ZOOM_MAX,
   'unearned overspeed should stay at the ordinary speed zoom cap');
-near(resolveExceptionalSpeedZoomFactor(0.5), 1.365,
-  'the shared midpoint scalar should open the scene halfway to the exceptional cap');
+const exceptionalMid = SPEED_ZOOM_MAX + (PHYSICS_EARNED_SPEED_ZOOM_MAX - SPEED_ZOOM_MAX) * 0.5;
+near(resolveExceptionalSpeedZoomFactor(0.5), exceptionalMid,
+  'Zip around, stay in control of the combat area — the shared midpoint scalar should open the scene halfway to the exceptional cap');
 near(resolveExceptionalSpeedZoomFactor(1), PHYSICS_EARNED_SPEED_ZOOM_MAX,
   'the shared exceptional scalar should reach its bounded wide cap');
 near(resolveExceptionalSpeedZoomFactor(99), PHYSICS_EARNED_SPEED_ZOOM_MAX,
