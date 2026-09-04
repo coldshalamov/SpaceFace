@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-04T03:59:41.259Z",
+  "updatedAt": "2026-09-04T04:19:20.237Z",
   "purpose": "Canonical cross-plan priority and dispatch queue. Product completion remains authoritative in design/program/03_LIVE_ACCEPTANCE_MATRIX.md.",
   "stateContract": {
     "allowed": [
@@ -10779,7 +10779,7 @@
       "priority": 62,
       "title": "Death is sized to mass and cause",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "impact-spectacle"
@@ -10792,7 +10792,9 @@
         "npm run check:baseline",
         "npm run check:vfx-techniques"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-139.02-REPORT.md"
+      ],
       "brief": "Explosion and audio scale with mass and cause (>= 4 tiers or continuous), directional when caused; the wreck inherits motion (with PQ-138.03)."
     },
     {
