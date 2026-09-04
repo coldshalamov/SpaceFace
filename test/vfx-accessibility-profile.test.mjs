@@ -83,11 +83,16 @@ test('luminous velocity ribbons honor flash, motion, quality, and engine-trail s
     pos: { x: 0, z: 0 }, vel: { x: 120, z: 0 }, maxSpeed: 120,
     flags: {}, data: {}, _flightFrame: { throttle: 1 },
   };
+  const npc = {
+    id: 2, type: 'ship', alive: true, radius: 24, rot: 0,
+    pos: { x: 0, z: 0 }, vel: { x: 120, z: 0 }, maxSpeed: 120,
+    flags: {}, data: { defId: 'ship_ironback' }, _flightFrame: { throttle: 1 },
+  };
   const state = {
     playerId: player.id,
-    player: { cruise: null },
-    entities: new Map([[player.id, player]]),
-    entityList: [player],
+    player: { cruise: null, targetId: npc.id },
+    entities: new Map([[player.id, player], [npc.id, npc]]),
+    entityList: [player, npc],
     settings: {
       video: { particleQuality: 'high', motionReduce: false, engineTrails: true },
       accessibility: { flashReduce: false },
@@ -100,10 +105,13 @@ test('luminous velocity ribbons honor flash, motion, quality, and engine-trail s
 
   system._updateRibbonTrails(1 / 60);
   player.pos.x = 12;
+  npc.pos.x = 12;
   system._updateRibbonTrails(1 / 30);
-  const trail = system._ribbonTrails.get(player.id);
+  assert.equal(system._ribbonTrails.has(player.id), false,
+    'the player never enters _ribbonTrails');
+  const trail = system._ribbonTrails.get(npc.id);
   assert.ok(trail && trail.getMesh().visible,
-    'the player receives a live ordinary-route ribbon even on a sub-22-WU hull');
+    'the eligible NPC receives a live ordinary-route ribbon');
   const material = trail.getMaterial();
   const fullOpacity = material.uniforms.uOpacity.value;
   const fullRadiance = material.uniforms.uRadiance.value;
@@ -111,15 +119,15 @@ test('luminous velocity ribbons honor flash, motion, quality, and engine-trail s
     'default presentation keeps a bright HDR filament and colored sheath');
 
   const rebuildWake = () => {
-    player.pos.x += 2;
+    npc.pos.x += 2;
     system._updateRibbonTrails(1 / 60);
-    player.pos.x += 12;
+    npc.pos.x += 12;
     system._updateRibbonTrails(1 / 30);
     assert.equal(trail.getMesh().visible, true, 'boundary reset must reseed into a live wake');
   };
   for (const event of ['ship:appearanceChanged', 'world:playerRelocated', 'save:restoring',
     'sector:exit', 'game:new']) {
-    bus.emit(event, event === 'ship:appearanceChanged' ? { id: player.id } : {});
+    bus.emit(event, event === 'ship:appearanceChanged' ? { id: npc.id } : {});
     assert.equal(trail.getMesh().visible, false, `${event} must clear stale ribbon geometry`);
     assert.equal(trail.inspect().visiblePointCount, 0, `${event} must clear ribbon history`);
     rebuildWake();
@@ -129,14 +137,14 @@ test('luminous velocity ribbons honor flash, motion, quality, and engine-trail s
   assert.equal(trail.inspect().visiblePointCount, 0, 'floating-origin shift must clear ribbon history');
   rebuildWake();
 
-  player.vel.x = 5000;
-  player.pos.x += RIBBON_DISCONTINUITY_MAX_WU * 4;
+  npc.vel.x = 5000;
+  npc.pos.x += RIBBON_DISCONTINUITY_MAX_WU * 4;
   system._updateRibbonTrails(0.1);
   assert.equal(trail.getMesh().visible, false,
     'an extreme-speed un-signaled teleport must reseed instead of drawing a screen bridge');
   assert.equal(trail.inspect().visiblePointCount, 1,
     'the production discontinuity ceiling must retain only the current nozzle pose');
-  player.vel.x = 120;
+  npc.vel.x = 120;
   rebuildWake();
 
   const reducedFlashShapes = [
@@ -210,6 +218,7 @@ test('dense fleets keep ribbon owners and full NPC history rebuilds bounded', ()
   };
   const system = Object.create(vfx);
   system.init({ state, bus: createBus(), helpers: {} });
+  system._trailTierFor = (e, ctx) => (e.id === ctx.targetId ? 'full' : 'reduced');
 
   const frames = 12;
   for (let frame = 0; frame < frames; frame++) {
@@ -238,15 +247,17 @@ test('dense fleets keep ribbon owners and full NPC history rebuilds bounded', ()
   assert.equal(rebuildsAfterRepeatedToken, rebuildsBeforeRepeatedToken,
     'a high-refresh display frame sharing the same trail tick must not repeat full NPC uploads');
 
-  assert.ok(system._ribbonTrails.size <= RIBBON_NPC_OWNER_CAP + 1,
-    `dense fleet created ${system._ribbonTrails.size} ribbons above the player + NPC cap`);
+  assert.equal(system._ribbonTrails.has(player.id), false,
+    'the player never enters _ribbonTrails');
+  assert.ok(system._ribbonTrails.size <= RIBBON_NPC_OWNER_CAP,
+    `dense fleet created ${system._ribbonTrails.size} ribbons above the NPC cap`);
   let npcOwners = 0;
   let headSyncs = 0;
   for (const [id, trail] of system._ribbonTrails) {
     if (id === player.id) continue;
     npcOwners++;
     const stats = trail.inspect();
-    assert.equal(stats.capacity, 48, 'NPC ribbon capacity must remain fixed');
+    assert.equal(stats.capacity, 24, 'NPC ribbon capacity must remain fixed');
     if (id === state.player.targetId) {
       assert.ok(stats.fullRebuildCount > Math.ceil(frames / 3),
         'the selected target must retain full-rate presentation inside the fixed owner budget');

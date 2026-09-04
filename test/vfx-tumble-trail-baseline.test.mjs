@@ -15,6 +15,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createRibbonTrail } from '../src/render/engineTrailSurfaces.js';
 import { resolveTumbleBodyLanguage } from '../src/render/masslinePresentation.js';
+import { scenario } from '../scripts/lib/bench/scenarios/feel.tumble_trail.mjs';
 
 const SPEED = 180; // WU/s, nominal ship cruise speed
 const DT = 1 / 60;
@@ -25,7 +26,7 @@ const BACK = RADIUS * 0.88; // Nozzle setback distance from entity center (21.12
 const SPACING = Math.max(2.0, RADIUS * 0.12); // 2.88 WU sample spacing
 const DISCONTINUITY = 240;
 const PERIOD = 1 / 30; // 30 Hz trail sample period
-const SEGMENT_CAPACITY = 48;
+const SEGMENT_CAPACITY = 24; // Live NPC ribbons retain 24 segments (historical synthetic test used 48)
 
 /**
  * Extract center line coordinates for all committed history samples from ribbon geometry.
@@ -196,19 +197,72 @@ test('vfx-tumble-trail-baseline: characterization of scene-graph socket sampler 
 
   assert.equal(straight.meanLateralDeviation, 0, 'Condition A straight flight must have 0 lateral deviation');
 
-  // Assert current socket behavior: only tiny accidental Euler cross-coupling (~0.25 WU), far below visual legibility
+  // Assert current socket behavior: only tiny accidental Euler cross-coupling, far below visual legibility
   assert.ok(
-    tumbleNominal.meanLateralDeviation > 0.20 && tumbleNominal.meanLateralDeviation < 0.32,
-    `CURRENT BASELINE PIN: Scene-graph socket produces only ~0.25 WU of accidental Euler cross-coupling ` +
+    tumbleNominal.meanLateralDeviation > 0.20 && tumbleNominal.meanLateralDeviation < 0.45,
+    `SYNTHETIC BASELINE PIN: Scene-graph socket with frozen rot=0 produces only accidental Euler cross-coupling ` +
     `(${tumbleNominal.meanLateralDeviation.toFixed(4)} WU measured), and discards all vertical corkscrew motion. ` +
-    'This test will fail when intentional legible wake corkscrew is implemented ' +
-    '("A tumble must be legible from the wake, not only from the hull.").',
+    'This synthetic measurement is superseded by the real production path characterization below.',
   );
 
-  // Assert spin sensitivity ordering
+  // Assert spin sensitivity ordering for peak excursion
   assert.ok(
-    tumbleLow.meanLateralDeviation < tumbleNominal.meanLateralDeviation &&
-    tumbleNominal.meanLateralDeviation < tumbleHigh.meanLateralDeviation,
-    'Tumble socket lateral deviation must scale with spin rate',
+    tumbleLow.maxLateralDeviation < tumbleNominal.maxLateralDeviation &&
+    tumbleNominal.maxLateralDeviation <= tumbleHigh.maxLateralDeviation,
+    'Tumble socket peak lateral excursion scales with spin rate',
   );
+});
+
+test('vfx-tumble-trail-baseline: real production path characterization (rapier-dynamic SG-02)', async () => {
+  const result = await scenario.run(4242);
+  const metrics = result.metrics;
+  assert.equal(metrics.schema, 'spaceface.feel.tumbleTrail.v1');
+  assert.equal(metrics.projection, 'shipping XZ projection');
+  assert.equal(metrics.historicalBaseline.valid, false);
+
+  const straight = metrics.cases.matched_straight;
+  assert.equal(straight.peakMaxCrossTrackWU, 0, 'matched straight flight retains 0 cross-track departure');
+  assert.equal(straight.yawTurns, 0, 'straight flight produces 0 turns');
+  assert.equal(straight.socketSamplerUsed, true, 'straight case must use the marked production socket sampler');
+  assert.equal(straight.fallbackSamplerHits, 0, 'fallback-only sampling must not pass while claiming socket sampling');
+  assert.equal(straight.historyCapacity, 24, 'observed inspect() capacity must be the governed 24');
+  assert.ok(straight.historyCount > 0, 'straight case must accumulate ribbon history');
+  assert.ok(straight.peakAppliedThrust > 0,
+    'straight case must report applied physics thrust, not only a coasting speed glow');
+  assert.equal(straight.recoveryTimeS, null, 'straight case has no tumble recovery to observe');
+
+  const saturated = metrics.cases.saturated_tumble;
+  assert.equal(saturated.tumbledReceiptReceived, true, 'tumble receipt must be emitted and recorded');
+  assert.equal(saturated.socketSamplerUsed, true, 'saturated case must use the marked production socket sampler');
+  assert.equal(saturated.fallbackSamplerHits, 0, 'fallback-only sampling must not pass while claiming socket sampling');
+  assert.equal(saturated.historyCapacity, 24, 'observed inspect() capacity must be the governed 24');
+  assert.ok(saturated.historyCount > 0, 'saturated case must accumulate ribbon history');
+  assert.ok(saturated.peakAppliedThrust > 0,
+    'saturated case must report applied physics thrust');
+  assert.ok(saturated.entrySpin > 5.0, 'saturated tumble must reach clamped spinMax ~6 rad/s');
+
+  // The historical 0 / 0.25 WU baseline is refuted: real path produces ~2.1-4.7 WU peak cross-track departure
+  assert.ok(saturated.peakMaxCrossTrackWU > 2.0 && saturated.peakMaxCrossTrackWU < 5.0,
+    `real production dynamic impulse produces ${saturated.peakMaxCrossTrackWU.toFixed(3)} WU peak cross-track departure`);
+
+  assert.ok(saturated.yawTurns > 0, 'nonzero spin receipt must produce actual integrated yaw');
+  assert.ok(saturated.lateralReversals > 0, 'the presented wake has alternating projected departure');
+
+  // Missing recovery stays null; residual is reported separately and must be finite.
+  assert.ok(saturated.recoveryTimeS === null || Number.isFinite(saturated.recoveryTimeS),
+    'recoveryTimeS must remain null when unobserved, never a fabricated zero');
+  assert.notEqual(saturated.recoveryTimeS, 0, 'missing recovery must not collapse to a green zero');
+  assert.ok(Number.isFinite(saturated.terminalResidualCrossTrackWU),
+    `terminal residual must be a finite observed value (${saturated.terminalResidualCrossTrackWU})`);
+
+  for (const bar of metrics.bars) {
+    assert.equal(Number.isFinite(bar.value), true, `${bar.bar} must fail closed on missing/non-finite values`);
+    assert.equal(typeof bar.note, 'string');
+    if (bar.bar === 'PQ-139.04-turns') {
+      assert.match(bar.note, /not a minimum full physics rotation/);
+    }
+    if (bar.bar === 'PQ-139.04-recovery' && saturated.recoveryTimeS === null) {
+      assert.equal(bar.met, false, 'unobserved recovery cannot pass from a small terminal residual');
+    }
+  }
 });
