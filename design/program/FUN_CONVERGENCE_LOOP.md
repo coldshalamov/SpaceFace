@@ -194,6 +194,9 @@ Verdict examples and their translations:
 | "it follows the line but it's slow and dumb" | B8 stroke speed; hypothesis in the corner rule |
 | "it's not fun" with nothing else | Run the full bench; take the critic's question 10 |
 
+The step-by-step checklist for wearing that hat, with the audit template and more verdict->bar
+examples: [`TRANSLATOR_CHECKLIST.md`](./TRANSLATOR_CHECKLIST.md).
+
 ## 5. The fleet (who does what, all agents)
 
 Development is fully agentic. Nothing here needs a human except the owner's weekly play.
