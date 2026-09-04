@@ -29,6 +29,7 @@ import {
 
 import { computeRunHash } from './runHash.mjs';
 import { realPathProof } from './realPath.mjs';
+import { formatSwarmBars, measureSwarmRun } from './swarmMetrics.mjs';
 
 export const CRUCIBLE_ARENAS = [
   { id: 'helios_core', name: 'Helios Core (Baseline Foundry)' },
@@ -118,7 +119,9 @@ export async function runCrucibleBench({
             + `ms/tick=${runData.msPerTick}`,
           );
         }
-        runs.push(toRunRecord(runData, { arenaId, loadoutId, seed, waveCount }));
+        const record = toRunRecord(runData, { arenaId, loadoutId, seed, waveCount });
+        console.log(formatSwarmBars(record.swarm));
+        runs.push(record);
       }
     }
   }
@@ -330,6 +333,7 @@ export async function simulateCrucibleSwarm({
     const collisionVictims = new Set();
     const lastActionOn = new Map();
     const cohortSeen = new Set();
+    const firstHostile = { captured: false };
     // Latest AI intent per actor at ingest time. Classification snapshots this onto each knock
     // receipt as it happens so a later map.set cannot rewrite an earlier collision.
     const aiIntent = { phase: new Map(), telegraph: new Map() };
@@ -347,6 +351,16 @@ export async function simulateCrucibleSwarm({
     let stopReason = 'tick_cap';
     const cap = Number.isFinite(tickCap) ? Math.max(0, tickCap | 0) : CRUCIBLE_TICK_CAP;
     const waveTarget = Number.isFinite(waveCount) ? waveCount | 0 : CRUCIBLE_WAVE_TARGET;
+    const swarmTelemetry = {
+      firstHostile: true,
+      menus: true,
+      deathTelegraph: true,
+    };
+    eventTrace.push({
+      tick: 0,
+      type: 'swarm:telemetry',
+      data: { channels: ['hostile:spawned', 'run:draftOffered', 'run:refitOffered', 'player:death-telegraph'] },
+    });
 
     for (; t < cap; t++) {
       const player = playerEntity(state) || spawned;
@@ -366,6 +380,7 @@ export async function simulateCrucibleSwarm({
 
       const tick = state.tick | 0;
       rememberCohortIds(state, cohortSeen);
+      sampleFirstHostile(state, eventTrace, firstHostile);
       lastAction = sampleIssuedVerbs(state, prevVerbs, tick, eventTrace, lastAction);
 
       const playerAfter = playerEntity(state) || player;
@@ -465,6 +480,19 @@ export async function simulateCrucibleSwarm({
     });
     finalizeCombatCounts(metrics, log, state.playerId);
 
+    const swarm = measureSwarmRun({
+      eventTrace,
+      fitReceipt,
+      bodyAdmission,
+      stopReason,
+      ticks: t,
+      simSeconds: metrics.simSeconds,
+      loadoutId,
+      seed,
+      arenaId,
+      swarmTelemetry,
+    });
+
     const hashPayload = {
       config: {
         bench: 'crucible',
@@ -510,6 +538,7 @@ export async function simulateCrucibleSwarm({
       rawBusEventTypes,
       phase: state.run && state.run.phase,
       wave: state.run && state.run.wave,
+      swarm,
     };
   } finally {
     runtime.dispose();
@@ -700,6 +729,29 @@ function rememberCohortIds(state, cohortSeen) {
   }
 }
 
+/** Bounded once-per-run observation at the same cohort walk the bench already does. */
+function sampleFirstHostile(state, eventTrace, firstHostile) {
+  if (!firstHostile || firstHostile.captured) return;
+  const playerId = state && state.playerId;
+  const list = state && state.entityList;
+  if (!Array.isArray(list)) return;
+  for (const e of list) {
+    if (!e || e.alive === false || e.id === playerId) continue;
+    if (!(e.data && e.data.runCohort === SURVIVAL_COHORT_TAG)) continue;
+    firstHostile.captured = true;
+    eventTrace.push({
+      tick: state.tick | 0,
+      type: 'hostile:spawned',
+      data: {
+        entityId: e.id,
+        archetype: e.data.enemyId || e.type || null,
+        wave: e.data.runWave || (state.run && state.run.wave) || null,
+      },
+    });
+    return;
+  }
+}
+
 function ingestLiveEvent(ev, ctx) {
   const { state, playerId, lastAction, lastActionOn, collisionVictims, cohortSeen, eventTrace, aiIntent } = ctx;
   const tick = ev.tick | 0;
@@ -803,20 +855,74 @@ function ingestLiveEvent(ev, ctx) {
   }
 
   if (ev.ev === 'player:death') {
+    const killerId = p.killerId != null ? p.killerId : p.attackerId;
+    const intent = snapshotIntent(aiIntent, killerId);
+    const tg = intent.aiTelegraph;
+    const inForce = telegraphInForce(tg, tick)
+      && (tg.targetId == null || tg.targetId === playerId);
+    const killer = killerId != null && state && state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(killerId)
+      : null;
+    const attackerArchetype = killer
+      ? (killer.data && (killer.data.enemyId || killer.data.archetype)) || killer.type || null
+      : (p.killerClass || p.attackerArchetype || null);
     eventTrace.push({
       tick,
       type: 'entity:killed',
-      data: { cause: 'player', targetId: playerId, archetype: 'player', killerId: p.killerId },
+      data: {
+        // Fingerprint for "the player died". Not a named cause — never lastAction.
+        cause: 'player',
+        targetId: playerId,
+        archetype: 'player',
+        killerId,
+        attackerId: killerId,
+        attackerArchetype,
+        deathCause: attackerArchetype || null,
+        telegraphed: killerId != null && tg ? inForce : null,
+        telegraphInForce: killerId != null && tg ? inForce : null,
+        telegraphKind: inForce ? (tg.kind || true) : null,
+      },
     });
     return;
   }
 
   if (ev.ev === 'run:wavePlanned') {
-    eventTrace.push({ tick, type: 'run:wavePlanned', data: { wave: p.wave } });
+    const swarm = p.plan && p.plan.swarm;
+    eventTrace.push({
+      tick,
+      type: 'run:wavePlanned',
+      data: {
+        wave: p.wave,
+        quota: swarm && Number.isInteger(swarm.quota) ? swarm.quota : null,
+        concurrent: swarm && Number.isInteger(swarm.concurrent) ? swarm.concurrent : null,
+        draftAfter: swarm ? swarm.draftAfter === true : null,
+        refitAfter: swarm ? swarm.refitAfter === true : null,
+      },
+    });
     return;
   }
   if (ev.ev === 'run:waveCleared' || ev.ev === 'survival:waveCleared') {
-    eventTrace.push({ tick, type: 'run:waveCleared', data: { wave: p.wave } });
+    eventTrace.push({
+      tick,
+      type: 'run:waveCleared',
+      data: {
+        wave: p.wave,
+        quota: Number.isInteger(p.quota) ? p.quota : null,
+        killed: Number.isInteger(p.killed) ? p.killed : null,
+        survivors: Number.isInteger(p.survivors) ? p.survivors : null,
+      },
+    });
+    return;
+  }
+  if (ev.ev === 'run:draftOffered' || ev.ev === 'run:refitOffered') {
+    eventTrace.push({
+      tick,
+      type: ev.ev,
+      data: {
+        wave: p.wave ?? null,
+        kind: ev.ev === 'run:refitOffered' ? 'refit' : 'draft',
+      },
+    });
   }
 }
 
@@ -1253,6 +1359,17 @@ function toRunRecord(runData, ids) {
     knockSource: 'physics:impact',
     knockEvents: runData.knockEvents,
     bodyAdmission: runData.bodyAdmission,
+    swarm: runData.swarm || measureSwarmRun({
+      eventTrace: runData.eventTrace,
+      fitReceipt: runData.fitReceipt,
+      bodyAdmission: runData.bodyAdmission,
+      stopReason: runData.stopReason,
+      ticks: runData.ticks,
+      simSeconds: runData.simSeconds,
+      loadoutId: ids.loadoutId,
+      seed: ids.seed,
+      arenaId: ids.arenaId,
+    }),
   };
 }
 

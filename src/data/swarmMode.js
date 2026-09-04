@@ -303,15 +303,30 @@ export const SWARM_QUOTA_CAP = 48;
  *
  * The thing that actually matters is an ABSOLUTE margin: you must put down a full room's worth
  * and then some, so the stream always gets to do its work and the wave always has a middle.
+ *
+ * Wave 1 is the exception: the default physics kit reaches kill 15 at 57–90 s on a 90 s window,
+ * and a quota of 22 meant only two of nine cells finished the opener. Opening quota 15 keeps
+ * live concurrency, reinforcement, and hull values unchanged; survivors still roll into wave 2.
+ * Later waves keep this margin and the 20+2w climb.
  */
 export const SWARM_QUOTA_MARGIN = 8;
 
+/** Wave-1-only quota-over-concurrent margin. Do not use this to weaken later waves or the cap. */
+export const SWARM_QUOTA_OPENING_MARGIN = 5;
+
+/** Wave-1 kill quota. Later waves keep `max(concurrent + SWARM_QUOTA_MARGIN, 20 + 2w)`. */
+export const SWARM_OPENING_QUOTA = 15;
+
 export function swarmQuota(wave) {
   const w = swarmWaveOf(wave);
-  const floor = swarmConcurrent(w) + SWARM_QUOTA_MARGIN;
+  const margin = w <= 1 ? SWARM_QUOTA_OPENING_MARGIN : SWARM_QUOTA_MARGIN;
+  const floor = swarmConcurrent(w) + margin;
   // A boss wave is shorter on chaff, because the boss is the work.
   if (isSwarmBossWave(w)) {
     return Math.min(SWARM_QUOTA_CAP, Math.max(floor, 20 + Math.floor(w / 2)));
+  }
+  if (w === 1) {
+    return Math.min(SWARM_QUOTA_CAP, Math.max(floor, SWARM_OPENING_QUOTA));
   }
   return Math.min(SWARM_QUOTA_CAP, Math.max(floor, 20 + w * 2));
 }
@@ -547,9 +562,12 @@ export function swarmCurveIsSane(wave) {
   const concurrent = swarmConcurrent(w);
   const quota = swarmQuota(w);
   const opening = swarmPressureAt(w, 0);
+  const margin = w <= 1 ? SWARM_QUOTA_OPENING_MARGIN : SWARM_QUOTA_MARGIN;
   return swarmConcurrencyIsLegal(concurrent)
     // You must put down a full room and then some — otherwise the wave is its opening burst.
-    && quota >= concurrent + SWARM_QUOTA_MARGIN
+    // Wave 1 uses the opening-specific margin so a 15-kill opener stays legal without
+    // weakening later-wave margin or the global cap.
+    && quota >= concurrent + margin
     // And the opening burst must never be the whole wave.
     && quota > opening
     // The crescendo must never ask for more than the wave's own ceiling.
