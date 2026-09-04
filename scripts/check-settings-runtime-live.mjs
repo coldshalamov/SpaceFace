@@ -502,7 +502,7 @@ async function snapshotRuntimeTruth(page) {
         : (vfxSys && Number.isFinite(vfxSys._cap) ? vfxSys._cap : null),
       burst: vfxSys && Number.isFinite(vfxSys._burst) ? vfxSys._burst : null,
       liveParticles: inspect && Number.isFinite(inspect.liveParticles) ? inspect.liveParticles : null,
-      pointsUuid: vfxSys && vfxSys._points ? vfxSys._points.uuid : null,
+      shardCloudUuid: vfxSys && vfxSys._shardMesh ? vfxSys._shardMesh.uuid : null,
       sceneAttached: inspect ? !!inspect.sceneAttached : null,
     };
 

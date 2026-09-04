@@ -277,50 +277,6 @@ export const TRAIL_GLSL_LIB = /* glsl */`
   }
 `;
 
-export function buildParticleTrailFrag(baseFrag) {
-  return baseFrag.replace(
-    'void main() {',
-    `${TRAIL_GLSL_LIB}
-  uniform float uTrailScroll;
-  uniform float uTrailTime;
-  varying float vTrailAxis;
-  varying float vTrailStreak;
-  void main() {`,
-  ).replace(
-    'float fall = exp(-r * 14.0);',
-    `float streakMod = 1.0;
-    if (vTrailStreak > 0.5) {
-      vec2 p = gl_PointCoord - vec2(0.5);
-      float ca = cos(vTrailAxis);
-      float sa = sin(vTrailAxis);
-      float along = fract(p.x * ca + p.y * sa + 0.5 + uTrailScroll);
-      float side = (-p.x * sa + p.y * ca) * 2.0;
-      streakMod = 0.40 + trailSampleProcedural(along, side, uTrailTime) * 1.05;
-    }
-    float fall = exp(-r * 14.0) * streakMod;`,
-  );
-}
-
-export function buildParticleTrailVert(baseVert) {
-  return baseVert.replace(
-    'attribute float aAlpha;',
-    `attribute float aAlpha;
-  attribute float aTrailAxis;
-  attribute float aTrailStretch;
-  varying float vTrailAxis;
-  varying float vTrailStreak;`,
-  ).replace(
-    'vAlpha = aAlpha;',
-    `vAlpha = aAlpha;
-    vTrailAxis = aTrailAxis;
-    vTrailStreak = aTrailStretch;`,
-  ).replace(
-    'gl_PointSize = clamp(aSize * (uScale / max(-mv.z, 1.0)), 1.0, 64.0);',
-    `float stretch = 1.0 + max(0.0, aTrailStretch) * 2.2;
-    gl_PointSize = clamp(aSize * stretch * (uScale / max(-mv.z, 1.0)), 1.0, 96.0);`,
-  );
-}
-
 /** Compare flat radial falloff vs streak-modulated intensity for evidence logs. */
 export function compareFlatVsStreakSamples(time = 0.42) {
   const alongSamples = [];

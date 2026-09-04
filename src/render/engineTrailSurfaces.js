@@ -1,10 +1,8 @@
-// Engine-trail surface factory — ribbon, streak mesh, particle trail shader (single contract).
+// Engine-trail surface factory — ribbon, streak mesh (single contract). The retired gaussian
+// point-sprite particle material lived here; pooled sparks now render as instanced fluid-streak
+// shards from particleShards.js.
 import * as THREE from 'three';
-import {
-  TRAIL_GLSL_LIB,
-  buildParticleTrailFrag,
-  buildParticleTrailVert,
-} from './trailTexture.js';
+import { TRAIL_GLSL_LIB } from './trailTexture.js';
 import {
   assertDynamicBufferOwnerWritable,
   commitDynamicBufferOwner,
@@ -24,54 +22,6 @@ const TRAIL_OPACITY = 2;
  * (the visible "skip behind the ship"). Still hard-capped; rebuild is already O(nSeg).
  */
 export const RIBBON_TRAIL_INTERPOLATION_CAP = 32;
-
-const PARTICLE_VERT_BASE = `
-  attribute float aSize;
-  attribute vec3 aColor;
-  attribute float aAlpha;
-  varying vec3 vColor;
-  varying float vAlpha;
-  uniform float uScale;
-  void main() {
-    vColor = aColor;
-    vAlpha = aAlpha;
-    vec4 mv = modelViewMatrix * vec4(position, 1.0);
-    gl_Position = projectionMatrix * mv;
-    gl_PointSize = clamp(aSize * (uScale / max(-mv.z, 1.0)), 1.0, 64.0);
-  }
-`;
-
-const PARTICLE_FRAG_BASE = `
-  precision mediump float;
-  varying vec3 vColor;
-  varying float vAlpha;
-  void main() {
-    vec2 d = gl_PointCoord - vec2(0.5);
-    float r = dot(d, d);
-    float fall = exp(-r * 14.0);
-    if (fall < 0.012) discard;
-    gl_FragColor = vec4(vColor * fall, vAlpha * fall);
-  }
-`;
-
-export const PARTICLE_TRAIL_VERT = buildParticleTrailVert(PARTICLE_VERT_BASE);
-export const PARTICLE_TRAIL_FRAG = buildParticleTrailFrag(PARTICLE_FRAG_BASE);
-
-export function buildParticleTrailMaterial() {
-  return new THREE.ShaderMaterial({
-    uniforms: {
-      uScale: { value: 520 },
-      uTrailScroll: { value: 0 },
-      uTrailTime: { value: 0 },
-    },
-    vertexShader: PARTICLE_TRAIL_VERT,
-    fragmentShader: PARTICLE_TRAIL_FRAG,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-    depthTest: true,
-    transparent: true,
-  });
-}
 
 const RIBBON_TRAIL_VERT = /* glsl */`
   attribute vec2 aTrailUv;

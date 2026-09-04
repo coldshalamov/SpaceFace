@@ -68,9 +68,11 @@ function countBusListeners(bus, event) {
   return set ? set.size : 0;
 }
 
-function countScenePoints(scene) {
+function countSceneParticleClouds(scene) {
   let n = 0;
-  scene.traverse((obj) => { if (obj && obj.isPoints) n += 1; });
+  scene.traverse((obj) => {
+    if (obj && obj.isInstancedMesh && obj.name === 'SF_VFX_ParticleShardStreaks') n += 1;
+  });
   return n;
 }
 
@@ -188,8 +190,8 @@ function spawnLiveParticles(system, count) {
 
 function snapshotPoolIdentity(system, scene, bus) {
   return {
-    pointsRef: system._points || null,
-    scenePoints: countScenePoints(scene),
+    shardRef: system._shardMesh || null,
+    sceneParticleClouds: countSceneParticleClouds(scene),
     sceneSprites: countSceneSprites(scene),
     listeners: Object.fromEntries(
       VFX_SUBSCRIBED_EVENTS.map((ev) => [ev, countBusListeners(bus, ev)]),
@@ -200,9 +202,9 @@ function snapshotPoolIdentity(system, scene, bus) {
 
 function assertNoDuplicatePoolsOrListeners(before, after, label) {
   assert.equal(
-    after.scenePoints,
-    before.scenePoints,
-    `${label}: scene THREE.Points count must not grow (before=${before.scenePoints}, after=${after.scenePoints}) — migration must replace/reuse, not stack pools`,
+    after.sceneParticleClouds,
+    before.sceneParticleClouds,
+    `${label}: scene particle shard-cloud count must not grow (before=${before.sceneParticleClouds}, after=${after.sceneParticleClouds}) — migration must replace/reuse, not stack pools`,
   );
   assert.equal(
     after.sceneSprites,
@@ -216,11 +218,11 @@ function assertNoDuplicatePoolsOrListeners(before, after, label) {
       `${label}: bus listener count for '${ev}' must not double on quality change (before=${before.listeners[ev]}, after=${after.listeners[ev]})`,
     );
   }
-  if (before.pointsRef && after.pointsRef && before.pointsRef !== after.pointsRef) {
+  if (before.shardRef && after.shardRef && before.shardRef !== after.shardRef) {
     assert.equal(
-      before.pointsRef.parent,
+      before.shardRef.parent,
       null,
-      `${label}: when pool mesh is replaced, the previous Points must be removed from the scene`,
+      `${label}: when pool mesh is replaced, the previous shard cloud must be removed from the scene`,
     );
   }
 }
@@ -230,7 +232,7 @@ for (const q of ['low', 'medium', 'high']) {
   record(`boot cap/burst [${q}]`, () => {
     const h = makeHarness(q);
     assertCapBurst(h.system, q, `boot[${q}]`);
-    assert.equal(countScenePoints(h.scene), 1, `boot[${q}]: exactly one Points cloud`);
+    assert.equal(countSceneParticleClouds(h.scene), 1, `boot[${q}]: exactly one particle shard cloud`);
   });
 }
 
@@ -268,7 +270,7 @@ record('current→max: pool migration without duplicate pools/listeners', () => 
   const h = makeHarness('medium');
   spawnLiveParticles(h.system, 8);
   const before = snapshotPoolIdentity(h.system, h.scene, h.bus);
-  assert.equal(before.scenePoints, 1);
+  assert.equal(before.sceneParticleClouds, 1);
   assert.equal(before.listeners['combat:fire'], 1);
 
   applyParticleQuality(h, 'high');
@@ -324,10 +326,10 @@ record('sanity: raw _initPools/_subscribe without teardown duplicates', () => {
   h.system._subscribe();
   const after = snapshotPoolIdentity(h.system, h.scene, h.bus);
   assert.ok(
-    after.scenePoints > before.scenePoints
+    after.sceneParticleClouds > before.sceneParticleClouds
       || after.listeners['combat:fire'] > before.listeners['combat:fire'],
     'sanity: raw _initPools/_subscribe without teardown must duplicate pools or listeners '
-      + `(points ${before.scenePoints}→${after.scenePoints}, `
+      + `(shard clouds ${before.sceneParticleClouds}→${after.sceneParticleClouds}, `
       + `combat:fire ${before.listeners['combat:fire']}→${after.listeners['combat:fire']})`,
   );
 });

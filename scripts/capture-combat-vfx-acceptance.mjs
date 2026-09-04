@@ -403,7 +403,7 @@ try {
     const buckets = vfx?._spriteBatches;
     const beams = vfx?._combatBeams;
     const surfaces = [
-      vfx?._points,
+      vfx?._shardMesh,
       vfx?._trailStreakPool?.mesh,
       buckets?.glow?.mesh,
       buckets?.ring?.mesh,
@@ -456,7 +456,7 @@ try {
         explosions: vfx?._explosions?.capacity || 0,
       },
       persistentDrawBudget: {
-        particlePoints: vfx?._points ? 1 : 0,
+        particleShards: vfx?._shardMesh ? 1 : 0,
         trailBatch: vfx?._trailStreakPool?.mesh ? 1 : 0,
         spriteBuckets: buckets ? 4 : 0,
         combatBeamLayers: beams?.core && beams?.halo ? 2 : 0,

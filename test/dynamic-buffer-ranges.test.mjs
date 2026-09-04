@@ -37,6 +37,7 @@ import {
 import { ContinuousPlumeSystem } from '../src/render/thruster/systems/continuousPlume.js';
 import { RcsImpulseSystem } from '../src/render/thruster/systems/rcsImpulse.js';
 import { vfx } from '../src/render/vfx.js';
+import { createShardStreakCloud } from '../src/render/particleShards.js';
 import * as partsLibrary from '../src/render/partsLibrary.js';
 
 function acknowledgeInitial(attribute) {
@@ -117,34 +118,23 @@ function makeParticleVfxFixture(capacity = 3000) {
   const scene = new THREE.Scene();
   const coordinator = createDynamicBufferCoordinator(scene);
   const camera = new THREE.PerspectiveCamera();
-  const geometry = new THREE.BufferGeometry();
-  const attributes = {
-    position: new THREE.BufferAttribute(new Float32Array(capacity * 3), 3),
-    aColor: new THREE.BufferAttribute(new Float32Array(capacity * 3), 3),
-    aSize: new THREE.BufferAttribute(new Float32Array(capacity), 1),
-    aAlpha: new THREE.BufferAttribute(new Float32Array(capacity), 1),
-    aTrailAxis: new THREE.BufferAttribute(new Float32Array(capacity), 1),
-    aTrailStretch: new THREE.BufferAttribute(new Float32Array(capacity), 1),
-  };
-  for (const [name, attribute] of Object.entries(attributes)) geometry.setAttribute(name, attribute);
-  geometry.setDrawRange(0, 2);
-  const material = new THREE.PointsMaterial();
-  const points = new THREE.Points(geometry, material);
-  points.frustumCulled = false;
-  scene.add(points);
+  const cloud = createShardStreakCloud(scene, capacity);
+  const material = cloud.material;
+  const mesh = cloud.mesh;
 
   const fixture = Object.create(vfx);
   fixture.state = { settings: { video: { particleQuality: 'medium' } } };
   fixture._scene = scene;
-  fixture._points = points;
-  fixture._pGeo = geometry;
+  fixture._shardMesh = mesh;
+  fixture._cloud = cloud;
+  fixture._pGeo = cloud.geometry;
   fixture._cap = capacity;
-  fixture._pPos = attributes.position.array;
-  fixture._pCol = attributes.aColor.array;
-  fixture._pSize = attributes.aSize.array;
-  fixture._pAlpha = attributes.aAlpha.array;
-  fixture._pTrailAxis = attributes.aTrailAxis.array;
-  fixture._pTrailStretch = attributes.aTrailStretch.array;
+  fixture._pPos = cloud.position.array;
+  fixture._pCol = cloud.color.array;
+  fixture._pSize = cloud.size.array;
+  fixture._pAlpha = cloud.alpha.array;
+  fixture._pTrailAxis = cloud.trailAxis.array;
+  fixture._pTrailStretch = cloud.trailStretch.array;
   fixture._particleTrailAxis = new Float32Array(capacity);
   fixture._particleTrailStretch = new Float32Array(capacity);
   fixture._pPackedParticleSlots = new Int32Array(capacity);
@@ -182,7 +172,7 @@ function makeParticleVfxFixture(capacity = 3000) {
     fixture._particleTrailStretch[index] = 2 + index;
   }
   fixture._bindParticleDynamicBuffers();
-  return { fixture, scene, coordinator, camera, material, points };
+  return { fixture, scene, coordinator, camera, material, mesh };
 }
 
 test('component spans retain one bounded union in component indexes', () => {
@@ -944,10 +934,10 @@ test('signed RCS layers publish only the live impulse prefix', () => {
   rcs.dispose();
 });
 
-test('ordinary-flight point particles publish only their live prefix and survive quality migration', () => {
-  const { fixture, scene, coordinator, camera, material, points } = makeParticleVfxFixture();
+test('ordinary-flight shard particles publish only their live prefix and survive quality migration', () => {
+  const { fixture, scene, coordinator, camera, material, mesh } = makeParticleVfxFixture();
   const attributes = () => [
-    fixture._pGeo.attributes.position,
+    fixture._pGeo.attributes.aShardPos,
     fixture._pGeo.attributes.aColor,
     fixture._pGeo.attributes.aSize,
     fixture._pGeo.attributes.aAlpha,
@@ -996,8 +986,8 @@ test('ordinary-flight point particles publish only their live prefix and survive
   fixture.state.settings.video.particleQuality = 'low';
   assert.equal(fixture._syncParticleQuality(), true);
   assert.equal(fixture._particleDynamicBufferOwner.diagnostics.capacity, 1500);
-  assert.equal(points.geometry, fixture._pGeo);
-  assert.equal(points.count, 2);
+  assert.equal(mesh.geometry, fixture._pGeo);
+  assert.equal(mesh.count, 2);
   for (const attribute of oldAttributes) {
     assert.equal(Object.hasOwn(attribute, 'onUploadCallback'), false,
       'quality migration releases callbacks from disposed attributes');
@@ -1015,11 +1005,11 @@ test('ordinary-flight point particles publish only their live prefix and survive
   fixture._pGeo.dispose();
 });
 
-test('point particles pack fragmented CPU slots into the live GPU prefix', () => {
+test('shard particles pack fragmented CPU slots into the live GPU prefix', () => {
   const capacity = 3000;
   const { fixture, scene, coordinator, camera, material } = makeParticleVfxFixture(capacity);
   const attributes = [
-    fixture._pGeo.attributes.position,
+    fixture._pGeo.attributes.aShardPos,
     fixture._pGeo.attributes.aColor,
     fixture._pGeo.attributes.aSize,
     fixture._pGeo.attributes.aAlpha,
@@ -1057,8 +1047,8 @@ test('point particles pack fragmented CPU slots into the live GPU prefix', () =>
 
   const requestedBefore = fixture._particleDynamicBufferOwner.diagnostics.requestedUploadBytes;
   fixture._integrateParticles(1 / 60);
-  assert.equal(fixture._pGeo.drawRange.count, 2,
-    'fragmented CPU storage must not leave invisible holes in the GPU draw range');
+  assert.equal(fixture._shardMesh.count, 2,
+    'fragmented CPU storage must not leave invisible holes in the live instance count');
   assert.deepEqual(Array.from(fixture._pPos.slice(3, 6)), [91, 7, -43]);
   assert.equal(fixture._pTrailAxis[1], 0.75);
   assert.equal(fixture._pTrailStretch[1], 4.5);
@@ -1095,7 +1085,7 @@ test('point particles pack fragmented CPU slots into the live GPU prefix', () =>
   fixture._age[0] = fixture._life[0];
   fixture._integrateParticles(1 / 60);
   assert.equal(fixture._liveCount, 1);
-  assert.equal(fixture._pGeo.drawRange.count, 1);
+  assert.equal(fixture._shardMesh.count, 1);
   assert.ok(fixture._pAlpha[0] > 0,
     'retiring a later CPU slot must not erase the already-packed live GPU record at that index');
   assert.deepEqual(Array.from(fixture._pPos.slice(0, 3)), [91, 7, -43]);

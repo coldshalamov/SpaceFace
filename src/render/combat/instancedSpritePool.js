@@ -40,6 +40,7 @@ const VERTEX_SHADER = /* glsl */`
 
 const FRAGMENT_SHADER = /* glsl */`
   uniform sampler2D uSpriteMap;
+  uniform float uRadiance;
 
   varying vec2 vSpriteUv;
   varying vec3 vSpriteColor;
@@ -49,7 +50,9 @@ const FRAGMENT_SHADER = /* glsl */`
     vec4 sampleColor = texture2D(uSpriteMap, vSpriteUv);
     float alpha = sampleColor.a * vSpriteOpacity;
     if (alpha < 0.004) discard;
-    gl_FragColor = vec4(sampleColor.rgb * vSpriteColor, alpha);
+    // HDR headroom: hot energy families are authored above 1.0 so the bloom bright-pass has
+    // something to catch (VFX standard B8); smoke stays at 1.0 under ordinary blending.
+    gl_FragColor = vec4(sampleColor.rgb * vSpriteColor * uRadiance, alpha);
     #include <tonemapping_fragment>
     #include <colorspace_fragment>
   }
@@ -64,10 +67,12 @@ export function createInstancedSpriteBuckets(
   combustionTexture = glowTexture,
 ) {
   const safeCapacity = Math.max(1, Math.floor(capacity || 1));
-  const glow = createBucket(scene, 'glow', safeCapacity, glowTexture, THREE.AdditiveBlending);
-  const ring = createBucket(scene, 'ring', safeCapacity, ringTexture, THREE.AdditiveBlending);
-  const smoke = createBucket(scene, 'smoke', safeCapacity, smokeTexture, THREE.NormalBlending);
-  const combustion = createBucket(scene, 'combustion', safeCapacity, combustionTexture, THREE.AdditiveBlending);
+  const glow = createBucket(scene, 'glow', safeCapacity, glowTexture, THREE.AdditiveBlending, 1.7);
+  const ring = createBucket(scene, 'ring', safeCapacity, ringTexture, THREE.AdditiveBlending, 1.45);
+  const smoke = createBucket(scene, 'smoke', safeCapacity, smokeTexture, THREE.NormalBlending, 1.0);
+  const combustion = createBucket(
+    scene, 'combustion', safeCapacity, combustionTexture, THREE.AdditiveBlending, 1.6,
+  );
   scene.add(glow.mesh, ring.mesh, smoke.mesh, combustion.mesh);
   return { glow, ring, smoke, combustion, capacity: safeCapacity };
 }
@@ -155,7 +160,7 @@ export function commitInstancedSpriteBuckets(buckets) {
   commitBucket(buckets.combustion);
 }
 
-function createBucket(scene, id, capacity, texture, blending) {
+function createBucket(scene, id, capacity, texture, blending, radiance = 1.0) {
   const geometry = new THREE.PlaneGeometry(1, 1);
   const position = dynamicAttribute(capacity * 3, 3);
   const scale = dynamicAttribute(capacity * 2, 2);
@@ -169,9 +174,15 @@ function createBucket(scene, id, capacity, texture, blending) {
   geometry.setAttribute('aSpriteOpacity', opacity);
 
   const material = new THREE.ShaderMaterial({
-    uniforms: { uSpriteMap: { value: texture } },
+    uniforms: {
+      uSpriteMap: { value: texture },
+      uRadiance: { value: radiance },
+    },
     vertexShader: VERTEX_SHADER,
     fragmentShader: FRAGMENT_SHADER,
+    // Additive HDR energy families opt out of tone mapping so their >1.0 cores reach the bloom
+    // bright-pass intact (same contract as the HDR plume); normal-blended smoke stays tonemapped.
+    ...(blending === THREE.AdditiveBlending ? { toneMapped: false } : {}),
     transparent: true,
     depthWrite: false,
     depthTest: true,

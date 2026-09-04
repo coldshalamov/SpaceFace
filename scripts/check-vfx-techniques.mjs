@@ -31,8 +31,15 @@ const patterns = inventory.scanPatterns.map((source, index) => {
 
 const listedFiles = new Set();
 const exceptionIds = new Set(inventory.exceptionIds);
+const seenIds = new Set();
 for (const entry of inventory.entries) {
   assert.ok(entry && entry.id, 'inventory entry missing id');
+  // One id, one technique. Retiring a technique means deleting its entry; renaming an entry onto an
+  // id that already exists silently destroys the surviving record instead. That happened on
+  // 2026-09-04 — `vfx-particle-points` was renamed to `vfx-sprite-puffs` when its point-sprite
+  // material was deleted, leaving two entries and a stale description no reviewer could tell apart.
+  assert.ok(!seenIds.has(entry.id), `${entry.id}: duplicate inventory id — retire the old entry, do not rename onto it`);
+  seenIds.add(entry.id);
   assert.ok(entry.status, `${entry.id}: missing status`);
   assert.ok(Array.isArray(entry.files) && entry.files.length > 0, `${entry.id}: missing files`);
   if (entry.status === 'exception') {

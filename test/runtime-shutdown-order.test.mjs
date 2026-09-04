@@ -259,7 +259,7 @@ test('VFX destroy retires owned roots once and is safe after renderer state disa
     'VFX must release its dynamic upload owners');
   assert.equal(system._scene, null);
   assert.equal(system.state, null);
-  assert.equal(system._points, null);
+  assert.equal(system._shardMesh, null);
   assert.equal(system._spriteBatches, null);
   assert.equal(system._ribbonTrails, null);
   for (const [resource, count] of disposed) {

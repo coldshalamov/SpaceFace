@@ -31,13 +31,17 @@
 import * as THREE from 'three';
 import { createEnergyVolume, createMasslineRibbonMaterial, createPlumeMaterial, createPlumeVolume, updateEnergyMaterial } from './energy/energyMaterials.js';
 import {
-  buildParticleTrailMaterial,
   commitTrailStreakInstances,
   createPrecompileTrailSurfaces,
   createRibbonTrail,
   initTrailStreakPool,
   updateTrailStreakInstance,
 } from './engineTrailSurfaces.js';
+import {
+  createShardStreakCloud,
+  resizeShardStreakCloud,
+  SHARD_BUFFER_BINDINGS,
+} from './particleShards.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 import { MOMENTUM_SINK_FRAME_KIND } from '../combat/momentumSink.js';
@@ -311,14 +315,7 @@ const PARTICLE_TRAIL_AXIS = 4;
 const PARTICLE_TRAIL_STRETCH = 5;
 const INSTANCED_MATRIX_BUFFER = 0;
 const INSTANCED_COLOR_BUFFER = 1;
-const PARTICLE_BUFFER_BINDINGS = Object.freeze([
-  Object.freeze({ name: 'position', key: 'position' }),
-  Object.freeze({ name: 'color', key: 'aColor' }),
-  Object.freeze({ name: 'size', key: 'aSize' }),
-  Object.freeze({ name: 'alpha', key: 'aAlpha' }),
-  Object.freeze({ name: 'trail-axis', key: 'aTrailAxis' }),
-  Object.freeze({ name: 'trail-stretch', key: 'aTrailStretch' }),
-]);
+const PARTICLE_BUFFER_BINDINGS = SHARD_BUFFER_BINDINGS;
 const SPRITE_CAP = 256;
 // Dedicated procedural streak-mesh pool (ShaderMaterial planes) — not the additive sprite pool.
 const TRAIL_STREAK_CAP = 96;
@@ -1213,7 +1210,7 @@ export const vfx = {
     invokeVfxCall(this._disposeEnergy, this, 'energy resources');
 
     const disposeState = createVfxDisposeState();
-    disposeVfxRoot(this._points, disposeState);
+    disposeVfxRoot(this._shardMesh, disposeState);
     disposeVfxRoot(this._trailStreakPool && this._trailStreakPool.mesh, disposeState);
     for (const bucket of spriteBucketValues(this._spriteBatches)) {
       disposeVfxRoot(bucket && bucket.mesh, disposeState);
@@ -1298,7 +1295,8 @@ export const vfx = {
     this._hexRgbCache = null;
     this._rcsScaleCache = null;
     this._tumbleVfxCd = null;
-    this._points = null;
+    this._shardMesh = null;
+    this._cloud = null;
     this._pGeo = null;
     this._particleMat = null;
     this._particleDynamicBufferOwner = null;
@@ -1371,7 +1369,7 @@ export const vfx = {
       seen.add(object);
       roots.push(object);
     };
-    add(this._points);
+    add(this._shardMesh);
     add(this._trailStreakPool && this._trailStreakPool.mesh);
     add(this._spriteBatches && this._spriteBatches.glow.mesh);
     add(this._spriteBatches && this._spriteBatches.ring.mesh);
@@ -1590,38 +1588,20 @@ export const vfx = {
     this._initArcadeStructural();
     this._initFieldGeometry();
     this._initWeaponPresenter();
-    // ---- GPU point cloud ----
-    const geo = new THREE.BufferGeometry();
-    const positions = new Float32Array(cap * 3);
-    const colors = new Float32Array(cap * 3);
-    const sizes = new Float32Array(cap);
-    const alphas = new Float32Array(cap);
-    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    geo.setAttribute('aColor', new THREE.BufferAttribute(colors, 3));
-    geo.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
-    geo.setAttribute('aAlpha', new THREE.BufferAttribute(alphas, 1));
-    const trailAxes = new Float32Array(cap);
-    const trailStretch = new Float32Array(cap);
-    geo.setAttribute('aTrailAxis', new THREE.BufferAttribute(trailAxes, 1));
-    geo.setAttribute('aTrailStretch', new THREE.BufferAttribute(trailStretch, 1));
-    geo.setDrawRange(0, 0);
-
-    const mat = buildParticleTrailMaterial();
-    this._particleMat = mat;
-
-    const points = new THREE.Points(geo, mat);
-    points.frustumCulled = false; // particles are world-scattered; never cull the whole cloud
-    points.renderOrder = 10;
-    scene.add(points);
-
-    this._points = points;
-    this._pGeo = geo;
-    this._pPos = positions;
-    this._pCol = colors;
-    this._pSize = sizes;
-    this._pAlpha = alphas;
-    this._pTrailAxis = trailAxes;
-    this._pTrailStretch = trailStretch;
+    // ---- instanced shard-streak cloud (sparks/chips/embers as oriented fluid streaks) ----
+    // Replaces the retired gaussian point-sprite cloud: same packed upload contract, but every
+    // particle renders as real world-space geometry in the shared trail language.
+    const cloud = createShardStreakCloud(scene, cap);
+    this._shardMesh = cloud.mesh;
+    this._cloud = cloud;
+    this._pGeo = cloud.geometry;
+    this._particleMat = cloud.material;
+    this._pPos = cloud.position.array;
+    this._pCol = cloud.color.array;
+    this._pSize = cloud.size.array;
+    this._pAlpha = cloud.alpha.array;
+    this._pTrailAxis = cloud.trailAxis.array;
+    this._pTrailStretch = cloud.trailStretch.array;
 
     // per-particle CPU state (Structure-of-Arrays; index == particle slot)
     this._px = new Float32Array(cap);
@@ -1730,7 +1710,7 @@ export const vfx = {
   },
 
   _bindParticleDynamicBuffers() {
-    if (!this._scene || !this._points || !this._pGeo) {
+    if (!this._scene || !this._shardMesh || !this._pGeo) {
       this._particleDynamicBufferOwner = null;
       return null;
     }
@@ -1739,12 +1719,12 @@ export const vfx = {
       attribute.setUsage(THREE.DynamicDrawUsage);
       return { name, attribute };
     });
-    // Points draw through BufferGeometry.drawRange; this count is the coordinator's matching
-    // eligibility signal and does not alter Three.js point-cloud draw semantics.
-    this._points.count = this._pDrawMax || 0;
+    // The shard cloud draws through the dynamic owner's live-count commit (mesh.count); this count
+    // is the coordinator's matching eligibility signal, not a per-vertex draw range.
+    this._shardMesh.count = 0;
     this._particleDynamicBufferOwner = registerDynamicBufferOwner(this._scene, {
-      id: 'vfx-particle-cloud',
-      mesh: this._points,
+      id: 'vfx-particle-shard-streaks',
+      mesh: this._shardMesh,
       attributes,
     });
     return this._particleDynamicBufferOwner;
@@ -1758,13 +1738,11 @@ export const vfx = {
     const quality = video.particleQuality || 'high';
     const nextCap = PARTICLE_CAP[quality] || PARTICLE_CAP.high;
     this._burst = QUALITY_BURST[quality] || 1.0;
-    if (!this._scene || !this._points || !this._pGeo || nextCap === this._cap) return false;
+    if (!this._scene || !this._shardMesh || !this._pGeo || nextCap === this._cap) return false;
 
-    const oldGeo = this._pGeo;
     const oldCap = this._cap || 0;
     const oldLiveCount = this._liveCount || 0;
     const oldActive = this._activeParticles;
-    const oldActivePos = this._activeParticlePos;
     const old = {};
     const scalarFields = [
       '_px', '_py', '_pz', '_vx', '_vy', '_vz', '_age', '_life', '_drag',
@@ -1804,19 +1782,15 @@ export const vfx = {
         || old._particleAdmissionSerial[b] - old._particleAdmissionSerial[a]);
     }
 
-    const geo = new THREE.BufferGeometry();
-    this._pPos = new Float32Array(nextCap * 3);
-    this._pCol = new Float32Array(nextCap * 3);
-    this._pSize = new Float32Array(nextCap);
-    this._pAlpha = new Float32Array(nextCap);
-    this._pTrailAxis = new Float32Array(nextCap);
-    this._pTrailStretch = new Float32Array(nextCap);
-    geo.setAttribute('position', new THREE.BufferAttribute(this._pPos, 3));
-    geo.setAttribute('aColor', new THREE.BufferAttribute(this._pCol, 3));
-    geo.setAttribute('aSize', new THREE.BufferAttribute(this._pSize, 1));
-    geo.setAttribute('aAlpha', new THREE.BufferAttribute(this._pAlpha, 1));
-    geo.setAttribute('aTrailAxis', new THREE.BufferAttribute(this._pTrailAxis, 1));
-    geo.setAttribute('aTrailStretch', new THREE.BufferAttribute(this._pTrailStretch, 1));
+    const geo = resizeShardStreakCloud(this._cloud, nextCap);
+    this._pGeo = geo;
+    this._shardMesh.geometry = geo;
+    this._pPos = this._cloud.position.array;
+    this._pCol = this._cloud.color.array;
+    this._pSize = this._cloud.size.array;
+    this._pAlpha = this._cloud.alpha.array;
+    this._pTrailAxis = this._cloud.trailAxis.array;
+    this._pTrailStretch = this._cloud.trailStretch.array;
 
     for (const field of scalarFields) {
       if (field === '_pTrailAxis' || field === '_pTrailStretch') continue;
@@ -1839,39 +1813,21 @@ export const vfx = {
       const src = retainedActive ? retainedActive[dst] : oldActive[dst];
       if (!(src >= 0 && src < oldCap)) continue;
       for (const field of scalarFields) this[field][dst] = old[field][src];
-      // The old GPU attributes are already packed in active-list order, independently of the
-      // stable CPU slot. Preserve the exact last-presented record only while its identity matches;
-      // recycle/retire can invalidate a packed index before the next integration has rewritten it.
-      const packedSource = oldActivePos && oldActivePos[src] >= 0 ? oldActivePos[src] : dst;
+      // Every instance channel is rewritten from CPU state on the next integration, so the
+      // migration only has to carry the sim-side SoA and the spawn-authored trail channels.
+      const life = old._life[src];
+      const t = life > 1e-8 ? Math.max(0, Math.min(1, old._age[src] / life)) : 1;
       const dst3 = dst * 3;
-      const packedIdentityValid = !!old._pPackedParticleSlots
-        && old._pPackedParticleSlots[packedSource] === src;
-      if (packedIdentityValid) {
-        const src3 = packedSource * 3;
-        this._pPos[dst3] = old._pPos[src3];
-        this._pPos[dst3 + 1] = old._pPos[src3 + 1];
-        this._pPos[dst3 + 2] = old._pPos[src3 + 2];
-        this._pCol[dst3] = old._pCol[src3];
-        this._pCol[dst3 + 1] = old._pCol[src3 + 1];
-        this._pCol[dst3 + 2] = old._pCol[src3 + 2];
-        this._pSize[dst] = old._pSize[packedSource];
-        this._pAlpha[dst] = old._pAlpha[packedSource];
-        this._pTrailAxis[dst] = old._pTrailAxis[packedSource];
-        this._pTrailStretch[dst] = old._pTrailStretch[packedSource];
-      } else {
-        const life = old._life[src];
-        const t = life > 1e-8 ? Math.max(0, Math.min(1, old._age[src] / life)) : 1;
-        this._pPos[dst3] = old._px[src];
-        this._pPos[dst3 + 1] = old._py[src];
-        this._pPos[dst3 + 2] = old._pz[src];
-        this._pCol[dst3] = old._cr0[src] + (old._cr1[src] - old._cr0[src]) * t;
-        this._pCol[dst3 + 1] = old._cg0[src] + (old._cg1[src] - old._cg0[src]) * t;
-        this._pCol[dst3 + 2] = old._cb0[src] + (old._cb1[src] - old._cb0[src]) * t;
-        this._pSize[dst] = old._size0[src] + (old._size1[src] - old._size0[src]) * t;
-        this._pAlpha[dst] = 1 - t;
-        this._pTrailAxis[dst] = old._particleTrailAxis[src];
-        this._pTrailStretch[dst] = old._particleTrailStretch[src];
-      }
+      this._pPos[dst3] = old._px[src];
+      this._pPos[dst3 + 1] = old._py[src];
+      this._pPos[dst3 + 2] = old._pz[src];
+      this._pCol[dst3] = old._cr0[src] + (old._cr1[src] - old._cr0[src]) * t;
+      this._pCol[dst3 + 1] = old._cg0[src] + (old._cg1[src] - old._cg0[src]) * t;
+      this._pCol[dst3 + 2] = old._cb0[src] + (old._cb1[src] - old._cb0[src]) * t;
+      this._pSize[dst] = old._size0[src] + (old._size1[src] - old._size0[src]) * t;
+      this._pAlpha[dst] = 1 - t;
+      this._pTrailAxis[dst] = old._particleTrailAxis[src];
+      this._pTrailStretch[dst] = old._particleTrailStretch[src];
       this._alive[dst] = 1;
       this._particleAdmissionPriority[dst] = old._particleAdmissionPriority[src];
       this._particleAdmissionSerial[dst] = old._particleAdmissionSerial[src];
@@ -1887,9 +1843,6 @@ export const vfx = {
     this._freeParticleCount = nextCap - keep;
     for (let i = 0; i < this._freeParticleCount; i++) this._freeParticles[i] = nextCap - 1 - i;
     if (!Number.isFinite(this._admissionSerial)) this._admissionSerial = keep;
-    geo.setDrawRange(0, keep);
-    this._pGeo = geo;
-    this._points.geometry = geo;
     if (this._particleDynamicBufferOwner) {
       for (let index = 0; index < PARTICLE_BUFFER_BINDINGS.length; index++) {
         const { key } = PARTICLE_BUFFER_BINDINGS[index];
@@ -1908,9 +1861,8 @@ export const vfx = {
         attr.setUsage(THREE.DynamicDrawUsage);
         attr.needsUpdate = true;
       }
-      this._points.count = keep;
+      this._shardMesh.count = keep;
     }
-    if (oldGeo && oldGeo !== geo && typeof oldGeo.dispose === 'function') oldGeo.dispose();
     // Tier-1 pool-capacity event: the particle cloud migrated to a new capacity.
     const tier1Grow = this.state && this.state.perfRuntime && this.state.perfRuntime.tier1;
     if (tier1Grow && tier1Grow.isEnabled()) tier1Grow.countVfxPoolGrowth('particle-pool-grow', nextCap);
@@ -2194,8 +2146,14 @@ export const vfx = {
     this._size0[i] = size0; this._size1[i] = size1;
     this._cr0[i] = c0.r; this._cg0[i] = c0.g; this._cb0[i] = c0.b;
     this._cr1[i] = c1.r; this._cg1[i] = c1.g; this._cb1[i] = c1.b;
-    this._particleTrailAxis[i] = Number.isFinite(trailAxis) ? trailAxis : 0;
-    this._particleTrailStretch[i] = Number.isFinite(trailStretch) ? trailStretch : 0;
+    // Shard presentation: heading defaults to the launch axis and length to a speed-scaled
+    // multiple of the shard width, so every spark renders as a motion-oriented streak even when a
+    // spawn site authors no trail channels (drag decelerates without turning, so it stays true).
+    const spawnSpeed = Math.hypot(vx, vz);
+    this._particleTrailAxis[i] = Number.isFinite(trailAxis) ? trailAxis
+      : (spawnSpeed > 1e-4 ? Math.atan2(vz, vx) : 0);
+    this._particleTrailStretch[i] = Number.isFinite(trailStretch) ? trailStretch
+      : (size0 || 1) * (1.6 + Math.min(spawnSpeed * 0.045, 3.2));
     const packedIndex = this._activeParticlePos[i];
     if (packedIndex >= 0 && this._pPackedParticleSlots) {
       this._pPackedParticleSlots[packedIndex] = -1;
@@ -12279,12 +12237,11 @@ export const vfx = {
   _integrateParticles(dt) {
     const dynamicOwner = this._particleDynamicBufferOwner;
     if (dynamicOwner && dynamicOwner.invalid) {
-      if (this._pGeo) this._pGeo.setDrawRange(0, 0);
+      if (this._shardMesh) this._shardMesh.count = 0;
       return;
     }
     assertDynamicBufferOwnerWritable(dynamicOwner);
     if (this._liveCount <= 0) {
-      this._pGeo.setDrawRange(0, 0);
       this._pDrawMax = 0;
       commitDynamicBufferOwner(dynamicOwner, 0);
       return;
@@ -12333,7 +12290,7 @@ export const vfx = {
       cursor++;
     }
     this._pDrawMax = this._liveCount;
-    this._pGeo.setDrawRange(0, this._liveCount);
+    // The shard cloud draws mesh.count instances (set by the owner commit); no vertex drawRange.
     if (dynamicOwner) {
       if (this._liveCount > 0) {
         markDynamicBufferItems(dynamicOwner, PARTICLE_POSITION, 0, this._liveCount);
@@ -12343,12 +12300,13 @@ export const vfx = {
       }
       commitDynamicBufferOwner(dynamicOwner, this._liveCount);
     } else if (this._liveCount > 0) {
-      this._pGeo.attributes.position.needsUpdate = true;
+      this._pGeo.attributes.aShardPos.needsUpdate = true;
       this._pGeo.attributes.aColor.needsUpdate = true;
       this._pGeo.attributes.aSize.needsUpdate = true;
       this._pGeo.attributes.aAlpha.needsUpdate = true;
       this._pGeo.attributes.aTrailAxis.needsUpdate = true;
       this._pGeo.attributes.aTrailStretch.needsUpdate = true;
+      this._shardMesh.count = this._liveCount;
     }
   },
 
@@ -12700,31 +12658,23 @@ export function createVfxPrecompileSalvo() {
   const group = new THREE.Group();
   group.name = 'SF_Precompile_VFX_Salvo';
 
-  const count = 12;
-  const geometry = new THREE.BufferGeometry();
-  const positions = new Float32Array(count * 3);
-  const colors = new Float32Array(count * 3);
-  const sizes = new Float32Array(count);
-  const alphas = new Float32Array(count);
-  for (let i = 0; i < count; i++) {
-    const a = (i / count) * Math.PI * 2;
-    positions[i * 3] = Math.cos(a) * 4;
-    positions[i * 3 + 1] = (i % 3) * 0.5;
-    positions[i * 3 + 2] = Math.sin(a) * 4;
-    colors[i * 3] = i % 2 ? 1 : 0.35;
-    colors[i * 3 + 1] = 0.78;
-    colors[i * 3 + 2] = i % 2 ? 0.28 : 1;
-    sizes[i] = 3 + (i % 4);
-    alphas[i] = 0.85;
-  }
-  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  geometry.setAttribute('aColor', new THREE.BufferAttribute(colors, 3));
-  geometry.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
-  geometry.setAttribute('aAlpha', new THREE.BufferAttribute(alphas, 1));
-  geometry.setDrawRange(0, count);
-  const material = buildParticleTrailMaterial();
-  const points = new THREE.Points(geometry, material);
+  const shardPrecompile = createShardStreakCloud(group, 12);
+  const points = shardPrecompile.mesh;
   points.name = 'SF_Precompile_PooledParticleBurst';
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    shardPrecompile.position.setXYZ(i, Math.cos(a) * 4, 1 + (i % 3) * 0.5, Math.sin(a) * 4);
+    shardPrecompile.color.setXYZ(i, i % 2 ? 1 : 0.35, 0.78, i % 2 ? 0.28 : 1);
+    shardPrecompile.size.setX(i, 2 + (i % 3));
+    shardPrecompile.alpha.setX(i, 0.85);
+    shardPrecompile.trailAxis.setX(i, a + Math.PI * 0.5);
+    shardPrecompile.trailStretch.setX(i, 3 + (i % 4));
+  }
+  for (const key of ['aShardPos', 'aColor', 'aSize', 'aAlpha', 'aTrailAxis', 'aTrailStretch']) {
+    shardPrecompile.geometry.getAttribute(key).needsUpdate = true;
+  }
+  points.count = 6;
+  shardPrecompile.material.uniforms.uTrailTime.value = 0.8;
   points.frustumCulled = false;
   group.add(points);
 
@@ -13244,17 +13194,54 @@ function clearMasslineReleaseTarget(target) {
   target.radius = 0;
 }
 
-// shared radial-gradient glow sprite texture (one canvas for the whole pool)
+// Authored burst card for energy flashes: a compact white-hot core with anisotropic plasma rays
+// over a faint irregular sheath. Not one radial gradient — the silhouette has structure, and the
+// bucket shader's radiance keeps headroom above 1.0 for the bloom bright-pass (VFX standard B8).
 function makeGlowTexture() {
-  const size = 64;
+  const size = 128;
   const cv = (typeof document !== 'undefined') ? document.createElement('canvas') : null;
   if (!cv) { const t = new THREE.Texture(); return t; }
   cv.width = cv.height = size;
   const g = cv.getContext('2d');
-  const grd = g.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  const c = size / 2;
+  g.clearRect(0, 0, size, size);
+  g.globalCompositeOperation = 'lighter';
+  // Wide faint sheath first, so the rays sit on a dim body instead of on black.
+  let grd = g.createRadialGradient(c, c, 0, c, c, c);
+  grd.addColorStop(0.0, 'rgba(255,255,255,0.30)');
+  grd.addColorStop(0.35, 'rgba(255,255,255,0.10)');
+  grd.addColorStop(1.0, 'rgba(255,255,255,0)');
+  g.fillStyle = grd;
+  g.fillRect(0, 0, size, size);
+  // Anisotropic rays: authored angles/lengths give the flash directional energy like the
+  // thruster reference sheets, instead of the same falloff in every direction (B6).
+  const rays = [
+    { angle: 0.0, length: 0.98, width: 0.055 },
+    { angle: Math.PI * 0.5, length: 0.80, width: 0.045 },
+    { angle: Math.PI * 0.94, length: 0.86, width: 0.05 },
+    { angle: Math.PI * 1.52, length: 0.70, width: 0.04 },
+    { angle: Math.PI * 0.28, length: 0.52, width: 0.03 },
+    { angle: Math.PI * 1.24, length: 0.46, width: 0.03 },
+  ];
+  for (const ray of rays) {
+    g.save();
+    g.translate(c, c);
+    g.rotate(ray.angle);
+    const len = c * ray.length;
+    grd = g.createLinearGradient(0, 0, len, 0);
+    grd.addColorStop(0.0, 'rgba(255,255,255,0.85)');
+    grd.addColorStop(0.4, 'rgba(255,255,255,0.28)');
+    grd.addColorStop(1.0, 'rgba(255,255,255,0)');
+    g.fillStyle = grd;
+    g.beginPath();
+    g.ellipse(len * 0.5, 0, len * 0.5, c * ray.width, 0, 0, Math.PI * 2);
+    g.fill();
+    g.restore();
+  }
+  // Hot core on top: the flash reads as an energy release, not a translucent disc.
+  grd = g.createRadialGradient(c, c, 0, c, c, c * 0.34);
   grd.addColorStop(0.0, 'rgba(255,255,255,1)');
-  grd.addColorStop(0.25, 'rgba(255,255,255,0.85)');
-  grd.addColorStop(0.6, 'rgba(255,255,255,0.25)');
+  grd.addColorStop(0.5, 'rgba(255,255,255,0.55)');
   grd.addColorStop(1.0, 'rgba(255,255,255,0)');
   g.fillStyle = grd;
   g.fillRect(0, 0, size, size);
@@ -13265,22 +13252,51 @@ function makeGlowTexture() {
   return tex;
 }
 
-// shared hollow-ring sprite texture (shockwave / shield-fresnel rim). Bright at a mid radius, fading
-// both inward and outward so an additive sprite reads as a thin glowing annulus rather than a disc.
+// Shockwave/shield ripple with a real front: the bright rim varies in thickness around the
+// circumference (deterministic angular modulation), a trailing secondary front follows the main
+// one, and the inner/outer fades stay soft. Reads as an expanding blast wave rather than a smooth
+// annulus cut from a single radial gradient.
 function makeRingTexture() {
-  const size = 64;
+  const size = 128;
   const cv = (typeof document !== 'undefined') ? document.createElement('canvas') : null;
   if (!cv) { const t = new THREE.Texture(); return t; }
   cv.width = cv.height = size;
   const g = cv.getContext('2d');
-  const grd = g.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
-  grd.addColorStop(0.0, 'rgba(255,255,255,0)');
-  grd.addColorStop(0.55, 'rgba(255,255,255,0.04)');
-  grd.addColorStop(0.78, 'rgba(255,255,255,0.95)'); // bright rim
-  grd.addColorStop(0.9, 'rgba(255,255,255,0.45)');
-  grd.addColorStop(1.0, 'rgba(255,255,255,0)');
-  g.fillStyle = grd;
-  g.fillRect(0, 0, size, size);
+  const c = size / 2;
+  const imageData = g.createImageData(size, size);
+  const data = imageData.data;
+  const mainRadius = 0.36;      // of half-size
+  const mainWidth = 0.055;
+  const trailRadius = 0.27;
+  const trailWidth = 0.10;
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const u = (x + 0.5 - c) / c;
+      const v = (y + 0.5 - c) / c;
+      const r = Math.sqrt(u * u + v * v);
+      if (r >= 1) continue;
+      const theta = Math.atan2(v, u);
+      // Angular thickness modulation: three gentle waves make the front break like a physical
+      // wave instead of a compass-drawn circle.
+      const thickness = mainWidth * (1
+        + 0.34 * Math.sin(theta * 3.0 + 0.7)
+        + 0.22 * Math.sin(theta * 7.0 + 2.1)
+        + 0.12 * Math.sin(theta * 13.0 + 4.4));
+      // Facing lobes: the front carries more energy on authored arcs, not isotropically.
+      const facing = 0.72 + 0.28 * Math.max(0, Math.cos(theta * 2.0 - 0.5));
+      const mainBand = Math.exp(-((r - mainRadius) ** 2) / (2 * thickness * thickness));
+      const trailBand = Math.exp(-((r - trailRadius) ** 2) / (2 * trailWidth * trailWidth));
+      const inner = Math.max(0, 1 - r / Math.max(0.02, mainRadius - mainWidth * 2.2));
+      const intensity = Math.min(1, mainBand * facing + trailBand * 0.30 * facing + inner * 0.05);
+      if (intensity <= 0.004) continue;
+      const offset = (y * size + x) * 4;
+      data[offset] = 255;
+      data[offset + 1] = 255;
+      data[offset + 2] = 255;
+      data[offset + 3] = Math.round(intensity * 255);
+    }
+  }
+  g.putImageData(imageData, 0, 0);
   const tex = new THREE.CanvasTexture(cv);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.minFilter = THREE.LinearFilter;

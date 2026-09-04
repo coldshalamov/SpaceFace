@@ -2484,17 +2484,77 @@ export class SpaceBackground {
     if (this.lowTier) return;
     // Comet texture/material content is constant across rebuilds — create both exactly once and
     // keep them for the module's lifetime (noDispose, same shared-program pinning as planets).
+    // Authored comet art: a compact flaring head, two braided ion-tail filaments in cold blues,
+    // and a broader faint dust fan. A smeared one-dimensional gradient reads as a scratched card,
+    // not a comet, so the tail carries internal structure that tapers and breaks up (VFX standard).
     if (!this._cometTex) {
       const c = document.createElement('canvas');
       c.width = 256; c.height = 64;
       const ctx = c.getContext('2d');
-      const g = ctx.createLinearGradient(0, 32, 256, 32);
-      g.addColorStop(0, 'rgba(255,255,255,0)');
-      g.addColorStop(0.3, 'rgba(190,215,255,0.10)');
-      g.addColorStop(0.65, 'rgba(235,242,255,0.45)');
-      g.addColorStop(0.97, 'rgba(255,255,255,0.95)');
-      g.addColorStop(1, 'rgba(255,255,255,0)');
-      ctx.fillStyle = g; ctx.fillRect(0, 8, 256, 48);
+      const headX = 242;
+      const headY = 32;
+      ctx.globalCompositeOperation = 'lighter';
+      // Dust fan: broad, warm-neutral, widest just behind the head, dissolving tailward.
+      let g = ctx.createLinearGradient(headX, headY, 40, headY + 10);
+      g.addColorStop(0, 'rgba(210,220,240,0.34)');
+      g.addColorStop(0.45, 'rgba(180,200,235,0.10)');
+      g.addColorStop(1, 'rgba(160,185,225,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.moveTo(headX, headY - 7);
+      ctx.quadraticCurveTo(140, headY - 20, 34, headY - 13);
+      ctx.quadraticCurveTo(120, headY + 2, 34, headY + 15);
+      ctx.quadraticCurveTo(150, headY + 16, headX, headY + 7);
+      ctx.closePath();
+      ctx.fill();
+      // Ion tail filaments: thin, sharply defined, two braided strands with knots — bright along
+      // their length, dimming tailward, each on its own slight arc so the tail is not one ribbon.
+      const filaments = [
+        { drift: -14, width: 2.1, alpha: 0.62, knotPhase: 0.0 },
+        { drift: -5, width: 1.4, alpha: 0.48, knotPhase: 2.1 },
+        { drift: 6, width: 1.1, alpha: 0.34, knotPhase: 4.2 },
+      ];
+      for (const f of filaments) {
+        for (let pass = 0; pass < 2; pass++) {
+          // Two passes per filament: a soft base stroke, then bright knots on top.
+          ctx.strokeStyle = pass === 0
+            ? `rgba(140,185,255,${f.alpha * 0.4})`
+            : `rgba(205,230,255,${f.alpha})`;
+          ctx.lineWidth = pass === 0 ? f.width * 2.2 : f.width * 0.8;
+          ctx.beginPath();
+          ctx.moveTo(headX - 4, headY + f.drift * 0.12);
+          // Piecewise segments let knot brightness vary along one path via segment alpha.
+          const steps = 14;
+          let prevX = headX - 4;
+          let prevY = headY + f.drift * 0.12;
+          for (let s = 1; s <= steps; s++) {
+            const t = s / steps;
+            const x = headX - 4 - t * (headX - 40);
+            const y = headY + f.drift * t * t
+              + Math.sin(t * 9.0 + f.knotPhase) * 2.4 * t;
+            ctx.globalAlpha = pass === 0 ? 1 : (0.35 + 0.65 * Math.abs(Math.sin(t * 9.0 + f.knotPhase)))
+              * (1 - t * 0.75);
+            ctx.beginPath();
+            ctx.moveTo(prevX, prevY);
+            ctx.lineTo(x, y);
+            ctx.stroke();
+            prevX = x; prevY = y;
+          }
+          ctx.globalAlpha = 1;
+        }
+      }
+      // Head: compact coma with a tiny cross-spike flare — the only near-white region.
+      g = ctx.createRadialGradient(headX, headY, 0, headX, headY, 14);
+      g.addColorStop(0, 'rgba(255,255,255,0.98)');
+      g.addColorStop(0.3, 'rgba(220,235,255,0.55)');
+      g.addColorStop(1, 'rgba(170,205,255,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(headX, headY, 14, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.fillRect(headX - 16, headY - 0.6, 32, 1.2);
+      ctx.fillRect(headX - 0.6, headY - 12, 1.2, 24);
       this._cometTex = new THREE.CanvasTexture(c);
       this._cometTex.colorSpace = THREE.SRGBColorSpace;
     }

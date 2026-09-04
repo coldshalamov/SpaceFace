@@ -44,26 +44,18 @@
     },
     {
       "id": "bg-comet",
-      "status": "banned-live",
-      "playerSees": "A rare smeared streak across the sky",
-      "technique": "Camera-facing sprite painted with a CSS-style gradient",
-      "whyListed": "A designed comet is a head plus an ion tail with structure, not a translucent rectangle.",
+      "status": "distant-impostor",
+      "playerSees": "A rare comet crossing the sky: flaring head, braided ion-tail filaments, dust fan",
+      "technique": "Far-sky camera-facing card carrying authored comet art (head + structured tail), same class as the planet impostors",
+      "whyListed": "Upgraded 2026-09 from a smeared gradient streak to a designed head-plus-tail painting. Still listed because it is a sky-depth impostor card, not licensed at play scale.",
       "files": ["src/render/spaceBackground.js"]
-    },
-    {
-      "id": "vfx-particle-points",
-      "status": "banned-live",
-      "playerSees": "Sparks, mining chips, and trail dots as round glows",
-      "technique": "GPU point sprites with gaussian falloff",
-      "whyListed": "Confetti standing in for fragments, embers, and exhaust.",
-      "files": ["src/render/vfx.js", "src/render/engineTrailSurfaces.js", "src/render/trailTexture.js"]
     },
     {
       "id": "vfx-sprite-puffs",
       "status": "banned-live",
       "playerSees": "Flashes, smoke puffs, and shock rings as translucent cards",
-      "technique": "Instanced camera-facing quads with radial-gradient / noise-blob textures",
-      "whyListed": "Explosions, muzzle, and dust as Super Mario clouds.",
+      "technique": "Instanced camera-facing quads; glow is an authored starburst with a hot core and anisotropic rays, ring is a modulated blast front with a trailing secondary wave, combustion stays an advected lobe mask; additive buckets carry HDR radiance above 1.0 for bloom",
+      "whyListed": "Quality-uplifted 2026-09 (authored structure + HDR headroom), but the card is still the silhouette carrier for flashes. Listed so it cannot silently spread; the replacement direction is the particleShards streak geometry.",
       "files": ["src/render/vfx.js", "src/render/combat/instancedSpritePool.js"]
     },
     {
