@@ -155,6 +155,8 @@ export function createDemoSession(overrides = {}) {
       },
     ],
     ...overrides,
+    synthetic: true,
+    evidenceKind: 'demo',
   };
 }
 

@@ -9,7 +9,7 @@ import process from 'node:process';
 import { parseArgs } from 'node:util';
 
 import { buildSessionReportData } from '../src/observability/sessionReport.js';
-import { auditWeeklyPlaytests } from './run-weekly-playtest.mjs';
+import { auditWeeklyPlaytests, validatePlaytestSession } from './run-weekly-playtest.mjs';
 
 const RECEIPTS_PLAYTESTS_DIR = path.resolve('design/program/roadmap/receipts/playtests');
 
@@ -62,7 +62,7 @@ export function loadPlaytestReports(dir = RECEIPTS_PLAYTESTS_DIR) {
     try {
       const raw = fs.readFileSync(path.join(dir, file), 'utf8');
       const session = JSON.parse(raw);
-      if (session && session.sessionId) {
+      if (validatePlaytestSession(session, dir).ok) {
         reports.push(buildSessionReportData(session));
       }
     } catch (_err) {
@@ -87,6 +87,8 @@ export function computePlaytestGates(reports) {
       completionRate: 0,
       verbsPerHour: 0,
       session2ReturnRate: 0,
+      totalPlaytimeMs: 0, totalPlaytimeMinutes: 0, totalVerbs: 0, verbsPerMinute: 0,
+      targets: { alphaCompletion: 80, alphaVerbsPerHour: 240, betaSession2Return: 60 },
       funnelStepRates: {},
       deathCauses: {},
       gates: {
@@ -186,15 +188,7 @@ export function computePlaytestGates(reports) {
       }
       session2ReturnRate = Math.round((returningCount / testerSessions.size) * 1000) / 10;
     } else {
-      const s1Count = reports.filter((r) => r.sessionNumber === 1 || r.sessionIndex === 1).length;
-      const s2Count = reports.filter((r) => (r.sessionNumber && r.sessionNumber >= 2) || (r.sessionIndex && r.sessionIndex >= 2) || r.isReturn).length;
-      if (s1Count > 0) {
-        session2ReturnRate = Math.round(Math.min(1, s2Count / s1Count) * 1000) / 10;
-      } else if (sessionCount >= 2) {
-        session2ReturnRate = Math.round(((sessionCount - 1) / sessionCount) * 1000) / 10;
-      } else {
-        session2ReturnRate = 0.0;
-      }
+      session2ReturnRate = null; // Anonymous sessions cannot establish return behavior.
     }
   }
 
@@ -243,78 +237,20 @@ export function computePlaytestGates(reports) {
  * @param {Array<object>} reports Loaded reports
  * @returns {string} Formatted output
  */
-export function formatSection15Rows(metrics, reports = []) {
-  const lines = [];
-
-  lines.push('====================================================================================================');
-  lines.push('SPACEFACE RELEASE GATES (§15.1) — COMPUTED FROM TELEMETRY PLAYTEST REPORTS');
-  lines.push('====================================================================================================');
-  lines.push('');
-
-  // ── ALPHA Milestone ─────────────────────────────────────────────────────────────────────────────
-  const alphaStatus = metrics.gates.alpha.passed ? 'MET' : 'WARN';
-  lines.push(`Milestone: ALPHA — "The Toy Works"  [Status: ${alphaStatus}]`);
-  lines.push('----------------------------------------------------------------------------------------------------');
-  lines.push('  Alive enough to surprise:');
-  lines.push('    • 60-second proof (PQ-141, bar B12): ≥ 9 of 11 beats across 5 seeds [MET]');
-  lines.push('    • World-reaction listeners (PQ-138.00–.02): Active and firing on route [MET]');
-  lines.push('  Solid enough to understand:');
-  const compLabel = metrics.completionRate >= metrics.targets.alphaCompletion ? 'PASS' : 'WARN';
-  lines.push(`    • First ten minutes power fantasy (PQ-163): unaided completion = ${metrics.completionRate}% (target ≥ ${metrics.targets.alphaCompletion}%) [${compLabel}]`);
-  lines.push(`      - Funnel rates: flight ${metrics.funnelStepRates.firstFlight || 0}%, swing ${metrics.funnelStepRates.firstSwing || 0}%, shove ${metrics.funnelStepRates.firstShove || 0}%, dock ${metrics.funnelStepRates.firstDock || 0}%, heat ${metrics.funnelStepRates.firstHeat || 0}%`);
-  lines.push('    • Feel contract bars B1–B8, B11: Measured on route (PQ-137.10) [MET]');
-  lines.push('  Permissive enough to abuse:');
-  const verbLabel = metrics.verbsPerHour >= metrics.targets.alphaVerbsPerHour ? 'PASS' : 'WARN';
-  lines.push(`    • Physical verbs rate: ${metrics.verbsPerHour} verbs/hr, ${metrics.verbsPerMinute}/min (target ≥ ${metrics.targets.alphaVerbsPerHour} verbs/hr) [${verbLabel}]`);
-  lines.push('    • Nimble regime (B2/B3), shove magnitudes (B4), terrain lethality (B6): Met');
-  lines.push('    • Stunt grammar (PQ-146): ≥ 12 named tricks detected [MET]');
-  lines.push('');
-
-  // ── BETA Milestone ──────────────────────────────────────────────────────────────────────────────
-  const betaStatus = metrics.gates.beta.passed ? 'IN PROGRESS (ALPHA MET)' : 'PENDING';
-  lines.push(`Milestone: BETA — "The World Works"  [Status: ${betaStatus}]`);
-  lines.push('----------------------------------------------------------------------------------------------------');
-  lines.push('  Alive enough to surprise:');
-  lines.push('    • Six sectors recognizable from 30 s unlabeled activity (PQ-153)');
-  lines.push('    • Storyteller sustains work→tension→violence→aftermath→quiet (PQ-149)');
-  lines.push('    • Named aces hunt player with counter-loadouts (PQ-150)');
-  lines.push('    • Wanted loop has four tiers with physical escape at each (PQ-151)');
-  lines.push('  Solid enough to understand:');
-  lines.push('    • Campaign spine with ending and NG+ (PQ-032 + PQ-152): 10 set pieces');
-  lines.push('    • Economy curve: first upgrade ≤ 15 min, new verb every hour (PQ-155)');
-  lines.push('    • Three starters = three verbs (PQ-156)');
-  lines.push('    • Station redesigned and Chart finished (PQ-162, PQ-168)');
-  const retLabel = metrics.session2ReturnRate >= metrics.targets.betaSession2Return ? 'PASS' : 'WARN';
-  lines.push(`    • Session-2 return rate: ${metrics.session2ReturnRate}% (target ≥ ${metrics.targets.betaSession2Return}%) [${retLabel}]`);
-  lines.push('  Permissive enough to abuse:');
-  lines.push('    • Massline heads and field toys fielded with Range drills (PQ-029–031)');
-  lines.push('    • Machinery and hazards participate (PQ-027/028), cargo is physics (PQ-148)');
-  lines.push('    • Crucible daily seed + ghosts (PQ-169)');
-  lines.push('');
-
-  // ── RELEASE Milestone ───────────────────────────────────────────────────────────────────────────
-  lines.push('Milestone: RELEASE — "It Ships"  [Status: PLANNED]');
-  lines.push('----------------------------------------------------------------------------------------------------');
-  lines.push('  Alive enough to surprise: Audio direction complete (PQ-158), Camera as art direction (PQ-159), Replay/clips (PQ-160)');
-  lines.push('  Solid enough to understand: Accessibility (PQ-165), Pseudo-loc +40% (PQ-166), Controller parity (PQ-164),');
-  lines.push('                              Telemetry funnels and weekly playtest loop (PQ-167) [MET - 4 WEEKS Durably Recorded]');
-  lines.push('  Permissive enough to abuse: PQ-033 release matrix: 60 fps median / ≤ 1 hitch/min, Steam build');
-  lines.push('');
-
-  // ── Telemetry Funnel Summary ────────────────────────────────────────────────────────────────────
-  lines.push('Telemetry & Playtest Dataset Summary:');
-  lines.push(`  • Playtest sessions analyzed: ${metrics.sessionCount} sessions (${metrics.totalPlaytimeMinutes} min / ${metrics.totalPlaytimeHours} hr total)`);
-  lines.push(`  • Physical verbs rate: ${metrics.verbsPerHour} verbs/hr (${metrics.totalVerbs} total verb activations)`);
-  lines.push(`  • Onboarding completion rate: ${metrics.completionRate}% (target ≥ 80.0%)`);
-  lines.push(`  • Session-2 cohort return: ${metrics.session2ReturnRate}% (target ≥ 60.0%)`);
-
-  const topDeaths = Object.entries(metrics.deathCauses)
-    .map(([cause, count]) => `${cause} (${count})`)
-    .join(', ');
-  lines.push(`  • Observed death causes: ${topDeaths || 'None (100% survival)'}`);
-  lines.push('====================================================================================================');
-
-  return lines.join('\n');
+export function formatSection15Rows(metrics, reports = [], audit = null) {
+  return [
+    'SPACEFACE RELEASE GATES (§15.1) — TELEMETRY SUBSET',
+    'Milestone: ALPHA — "The Toy Works" [overall milestone unmeasured]',
+    '  First ten minutes power fantasy (PQ-163): unaided completion is not established by funnel presence alone.',
+    '  Core funnel completion: ' + metrics.completionRate + '% (target ≥ 80%)',
+    '  Physical verbs rate: ' + metrics.verbsPerHour + '/hour (target ≥ 240)',
+    'Milestone: BETA — "The World Works" [overall milestone unmeasured]',
+    '  Session-2 return rate: ' + (metrics.session2ReturnRate === null ? 'unmeasured' : metrics.session2ReturnRate + '%') + ' (target ≥ 60%)',
+    'Milestone: RELEASE — "It Ships" [overall milestone unmeasured]',
+    '  Telemetry funnels and weekly playtest loop (PQ-167): ' + (audit?.ok ? 'four observed consecutive weeks' : 'pending observed weekly sessions'),
+    '  Admitted sessions: ' + metrics.sessionCount + '; playtime: ' + metrics.totalPlaytimeMinutes + ' minutes',
+    'Other §15.1 gates require their own player-route evidence; this report does not mark them met.',
+  ].join('\n');
 }
 
 // CLI Execution
@@ -323,14 +259,14 @@ if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(import.met
   const reports = loadPlaytestReports(dir);
   const metrics = computePlaytestGates(reports);
 
+  const audit = auditWeeklyPlaytests(dir);
   if (values.json) {
-    console.log(JSON.stringify(metrics, null, 2));
+    console.log(JSON.stringify({ ...metrics, weeklyPlaytests: { ok: audit.ok, issues: audit.issues } }, null, 2));
   } else {
-    console.log(formatSection15Rows(metrics, reports));
+    console.log(formatSection15Rows(metrics, reports, audit));
   }
 
-  // Audit weekly playtests protocol as well
-  const audit = auditWeeklyPlaytests(dir);
+  // Evidence gaps remain visible and cannot produce a passing gate.
   if (!audit.ok) {
     console.warn('\n[check:playtest:gates] Warning: playtest receipt audit noted issues:');
     for (const issue of audit.issues) {
@@ -338,6 +274,5 @@ if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(import.met
     }
   }
 
-  // Green exit if gates are successfully computed
-  process.exit(0);
+  process.exit(audit.ok && metrics.gates.alpha.passed && metrics.gates.beta.passed ? 0 : 1);
 }

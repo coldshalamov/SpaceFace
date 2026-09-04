@@ -63,3 +63,7 @@ Naming convention:
 - Telemetry JSON: `YYYY-MM-DD-week-N-session.json`
 
 At least four consecutive weeks of verified playtests must be maintained in the receipts archive to satisfy the `PQ-167.01` release gate.
+
+## Recording completed play
+
+Run `node scripts/run-weekly-playtest.mjs --record --file session.json --capture capture.mp4 --findings findings.json --commit <full-build-commit> --observed-by-owner --week N`. The findings file contains exactly three objects with `observation` and `packet` fields. This imports completed play; it does not play, simulate a tester, manufacture findings, or assert a passing baseline. Demo exports are explicitly synthetic and never satisfy weekly or release gates. Preserve captures alongside the records; absent capture files leave acceptance open.

@@ -14287,7 +14287,7 @@
       "priority": 37,
       "title": "Session report",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "telemetry"
@@ -14301,7 +14301,9 @@
       "checks": [
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-167-telemetry-playtest-REPORT.md"
+      ],
       "brief": "Export a JSON + one-page Markdown report per session from the existing aggregates; opt-in upload later. DONE WHEN: Report renders for any saved session; funnel fields present."
     },
     {
@@ -14310,7 +14312,7 @@
       "priority": 38,
       "title": "The weekly playtest",
       "kind": "implementation",
-      "state": "ready",
+      "state": "deferred",
       "dependsOn": [],
       "mutexes": [
         "telemetry"
@@ -14324,7 +14326,9 @@
       "checks": [
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-167-telemetry-playtest-REPORT.md"
+      ],
       "brief": "A protocol: owner plays 45 minutes on a clean build, capture + report + three findings routed to packets. DONE WHEN: Four consecutive weeks recorded in receipts."
     },
     {
@@ -14333,7 +14337,7 @@
       "priority": 39,
       "title": "Gates from data",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "telemetry"
@@ -14347,7 +14351,9 @@
       "checks": [
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-167-telemetry-playtest-REPORT.md"
+      ],
       "brief": "ALPHA/BETA numeric gates computed from reports (completion %, verbs/hour, session-2 return). DONE WHEN: `check:playtest:gates` prints the §15.1 rows."
     },
     {

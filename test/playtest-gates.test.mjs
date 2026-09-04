@@ -13,41 +13,16 @@ import {
   computePlaytestGates,
   formatSection15Rows,
 } from '../scripts/check-playtest-gates.mjs';
+import { createDemoSession } from '../scripts/export-session-report.mjs';
 import { auditWeeklyPlaytests, recordNewPlaytest } from '../scripts/run-weekly-playtest.mjs';
 
-test('auditWeeklyPlaytests verifies four consecutive weeks of receipts', () => {
-  const audit = auditWeeklyPlaytests();
-  assert.equal(audit.ok, true, `Audit should pass: ${audit.issues.join(', ')}`);
-  assert.ok(audit.totalWeeks >= 4, `At least 4 weeks found, got ${audit.totalWeeks}`);
-
-  for (const week of audit.weeks) {
-    assert.equal(week.hasMatchingJson, true, `${week.file} has matching JSON`);
-    assert.equal(week.findingCount, 3, `${week.file} has exactly 3 findings`);
-    assert.ok(week.sessionData, `${week.file} has parsed session data`);
-    assert.equal(week.sessionData.durationMs, 2700000, `${week.file} duration is exactly 45m`);
-  }
-});
-
-test('computePlaytestGates computes ALPHA and BETA gates from dataset', () => {
-  const reports = loadPlaytestReports();
-  assert.ok(reports.length >= 4, 'Loaded at least 4 playtest reports');
-
-  const metrics = computePlaytestGates(reports);
-
-  // Assert completion %: target >= 80%
-  assert.ok(metrics.completionRate >= 80.0, `Completion rate ${metrics.completionRate}% >= 80%`);
-  assert.equal(metrics.gates.alpha.completionPass, true);
-
-  // Assert verbs / hour: target >= 240 / hr
-  assert.ok(metrics.verbsPerHour >= 240.0, `Verbs/hr ${metrics.verbsPerHour} >= 240/hr`);
-  assert.equal(metrics.gates.alpha.verbsPass, true);
-
-  // Assert session-2 return rate: target >= 60%
-  assert.ok(metrics.session2ReturnRate >= 60.0, `Session-2 return rate ${metrics.session2ReturnRate}% >= 60%`);
-  assert.equal(metrics.gates.beta.returnPass, true);
-
-  // Overall alpha pass
-  assert.equal(metrics.gates.alpha.passed, true);
+test('Demo receipts cannot count as owner playtests', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sf-demo-playtests-'));
+  try {
+    fs.writeFileSync(path.join(dir, 'demo-session.json'), JSON.stringify(createDemoSession()));
+    assert.equal(auditWeeklyPlaytests(dir).ok, false);
+    assert.equal(loadPlaytestReports(dir).length, 0);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
 test('formatSection15Rows prints all three milestone rows', () => {
@@ -114,23 +89,48 @@ test('computePlaytestGates dynamically derives session-2 return rate from data',
   assert.equal(m3.session2ReturnRate, 50.0, '1 of 2 testers returned -> 50% return rate');
 });
 
-test('recordNewPlaytest creates receipts that satisfy auditWeeklyPlaytests', () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sf-playtests-'));
-  try {
-    // Record 4 consecutive weeks
-    for (let w = 1; w <= 4; w++) {
-      const date = `2026-08-${String(w * 7).padStart(2, '0')}`;
-      recordNewPlaytest({
-        week: String(w),
-        date,
-        out: tmpDir,
-      });
-    }
+test('Recording refuses invented sessions and findings', () => {
+  assert.throws(() => recordNewPlaytest({ week: '1' }), /no demo session/);
+});
 
-    const audit = auditWeeklyPlaytests(tmpDir);
-    assert.equal(audit.ok, true, `Audit of recorded playtests should pass: ${audit.issues.join(', ')}`);
-    assert.equal(audit.totalWeeks, 4);
-  } finally {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
-  }
+test('Observed inputs round-trip; missing capture and nonconsecutive weeks fail', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sf-playtests-'));
+  try {
+    const capture = path.join(dir, 'capture.mp4');
+    fs.writeFileSync(capture, 'test fixture capture, not production evidence');
+    const findings = [1, 2, 3].map(n => ({ observation: 'Fixture observation ' + n, packet: 'PQ-137' }));
+    for (let w = 1; w <= 4; w++) {
+      const startedAt = Date.UTC(2026, 7, w * 7, 12);
+      const input = path.join(dir, 'input.json');
+      fs.writeFileSync(input, JSON.stringify({ sessionId: 'fixture_' + w, startedAt, endedAt: startedAt + 2700000, durationMs: 2700000, verbs: { shove: 200 }, funnel: { firstFlightAt: 0 } }));
+      const args = { file: input, capture, findings, commit: 'a'.repeat(40), observedByOwner: true, week: w, out: dir };
+      const result = recordNewPlaytest(args);
+      assert.throws(() => recordNewPlaytest(args), /already exists/);
+      const loaded = JSON.parse(fs.readFileSync(result.sessionJsonPath));
+      assert.equal(loaded.funnel.firstFlightAt, 0);
+      const report = fs.readFileSync(result.mdPath, 'utf8');
+      assert.ok(!report.includes('baselineCheck: green'));
+      assert.ok(report.includes('Not Reached'), 'Missing funnel milestones remain missing');
+    }
+    assert.equal(auditWeeklyPlaytests(dir).ok, true);
+    assert.equal(loadPlaytestReports(dir).length, 4);
+    const p = path.join(dir, '2026-08-28-week-4-session.json');
+    const fourth = JSON.parse(fs.readFileSync(p));
+    fourth.startedAt -= 86400000 * 4; fourth.endedAt -= 86400000 * 4;
+    fs.writeFileSync(p, JSON.stringify(fourth));
+    assert.equal(auditWeeklyPlaytests(dir).ok, false, 'Four files are not four consecutive weeks');
+    fs.unlinkSync(capture);
+    assert.equal(loadPlaytestReports(dir).length, 0, 'Missing capture cannot admit evidence');
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('Empty and anonymous datasets do not crash or invent a return rate', () => {
+  const empty = computePlaytestGates([]);
+  assert.doesNotThrow(() => formatSection15Rows(empty));
+  assert.equal(empty.gates.alpha.passed, false);
+  const report = { durationMs: 2700000, verbs: { totalCount: 20 }, funnel: { steps: [], firstHourComplete: false }, combat: {} };
+  const anonymous = computePlaytestGates([report, report, report, report]);
+  assert.equal(anonymous.session2ReturnRate, null);
+  assert.equal(anonymous.gates.beta.passed, false);
+  assert.ok(!formatSection15Rows(anonymous).includes('[MET]'));
 });
