@@ -17,12 +17,14 @@ import { fileURLToPath } from 'node:url';
 import { runCrucibleBench, CRUCIBLE_ARENAS, CRUCIBLE_LOADOUTS, CRUCIBLE_DEFAULT_SEEDS } from './lib/bench/crucibleBench.mjs';
 import { runFlightBench } from './lib/bench/flightBench.mjs';
 import { runVerbBench } from './lib/bench/verbBench.mjs';
-import { captureFrameStrip } from './lib/bench/frameStripCapture.mjs';
+import { captureFrameStrip, DEFAULT_STRIP_DIR } from './lib/bench/frameStripCapture.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const RECEIPTS_DIR = join(ROOT, 'design/program/roadmap/receipts/fun-loop');
 const RUNS_DIR = join(RECEIPTS_DIR, 'runs');
-const STRIPS_DIR = join(RECEIPTS_DIR, 'strips');
+// Frames are hundreds of MB of capture evidence and live in .devshots like every other capture;
+// only the manifest and the contact sheet land under receipts. (fa099c61 untracked the old PNGs.)
+const STRIPS_DIR = DEFAULT_STRIP_DIR;
 
 const argv = process.argv.slice(2);
 if (argv.includes('--help') || argv.includes('-h')) {
@@ -173,17 +175,40 @@ async function main() {
   }
 
   // ── 4. RECORD FRAME STRIPS IN HEADED MODE ────────────────────────────────────
+  // Every bench that asked to run gets its own strip. The first version captured one Crucible pass
+  // no matter which bench was selected, so `--headed --flight` produced frames of a different
+  // bench entirely — and, because it never left the title screen, of no bench at all.
+  //
+  // The flight and verb benches integrate in node against the authoritative runtime; they have no
+  // browser of their own. Until a browser Motion Lab route exists, their "headed" evidence is the
+  // same real Crucible route flown by hand (scenario `swarm_piloted`), which is where their bars
+  // are actually felt. That substitution is recorded in each strip's manifest, never implied.
   if (HEADED) {
     if (!AS_JSON) console.log('\n► Recording shipping camera frame strips with HUD text off...');
-    await captureFrameStrip({
-      bench: 'crucible',
-      scenarioId: 'shipping_camera_pass',
-      seed: 4242,
-      outDir: STRIPS_DIR,
-      headed: true,
-      frameCount: 12,
-    });
-    if (!AS_JSON) console.log(`  Strips written to ${STRIPS_DIR}`);
+    const stripPlan = [];
+    if (runAll || ONLY_CRUCIBLE) stripPlan.push({ bench: 'crucible', scenarioId: 'swarm_idle', seed: 4242 });
+    if (runAll || ONLY_FLIGHT) stripPlan.push({ bench: 'flight', scenarioId: 'swarm_piloted', seed: 13502 });
+    if (runAll || ONLY_VERBS) stripPlan.push({ bench: 'verbs', scenarioId: 'swarm_piloted', seed: 4242, loadoutId: 'massline_rig' });
+
+    report.strips = [];
+    for (const plan of stripPlan) {
+      const strip = await captureFrameStrip({ ...plan, outDir: STRIPS_DIR, headed: true, verbose: VERBOSE });
+      report.strips.push({
+        bench: plan.bench,
+        scenarioId: plan.scenarioId,
+        seed: plan.seed,
+        framesCount: strip.framesCount,
+        moments: strip.manifest.momentsCount,
+        hudTextVerified: strip.manifest.hudTextVerified,
+        stripDir: strip.targetDir,
+        receiptDir: strip.receiptDir,
+      });
+      if (!AS_JSON) {
+        console.log(`  ${plan.bench}/${plan.scenarioId}: ${strip.framesCount} frames, `
+          + `${strip.manifest.momentsCount} moments, HUD text ${strip.manifest.hudTextVerified ? 'clean' : 'NOT clean'}`);
+      }
+    }
+    if (!AS_JSON) console.log(`  Frames under ${STRIPS_DIR}`);
   }
 
   // ── 5. PERSIST RUN RECEIPTS ──────────────────────────────────────────────────
