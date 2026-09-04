@@ -1,0 +1,123 @@
+{
+  "runHashes": {
+    "feel.shove_magnitude": "73d5c6073bd48ad1b918ea3da4faf5c1ea5d38d5412cd994ef4c2713d2b3457c",
+    "feel.hitstun_curve": "54c162b10f3ddcf22603d4ab7611788cbd29b311102c3af08134f3fa2a037066"
+  },
+  "bars": [
+    {
+      "id": "B4",
+      "title": "Shove magnitude",
+      "met": false,
+      "coverage": "partial",
+      "fedBy": [
+        "verbs/feel.shove_magnitude/s4242"
+      ],
+      "values": [
+        {
+          "label": "shove ΔV, fraction of light-hostile cruise (worst of 1 run(s))",
+          "value": 0.1249164229484291,
+          "unit": "fraction",
+          "met": false
+        },
+        {
+          "label": "starter gun delta-V, fraction of light-hostile cruise",
+          "value": 0.00014880955819708143,
+          "unit": "fraction",
+          "met": false
+        },
+        {
+          "label": "light hostile at cruise shoved ALONG its motion gets faster (speed after / speed before)",
+          "value": 1.528980776823967,
+          "unit": "ratio",
+          "met": true
+        }
+      ],
+      "notes": "the verdict applies the contract's 0.30 threshold; the bench-internal barB4Met boolean uses a looser 0.15 and is ignored here. The starter-gun ≥ 5 % clause and the faster-along-its-motion clause are unbenched. caused by the hit; raw one-tick delta was 3.052659 WU/s, of which 3.050504 WU/s is the victim's own thrust"
+    },
+    {
+      "id": "B5",
+      "title": "Shove displacement",
+      "met": false,
+      "coverage": "partial",
+      "fedBy": [
+        "verbs/feel.shove_magnitude/s4242"
+      ],
+      "values": [
+        {
+          "label": "displacement 2 s after the shove, screen depths (worst of 1 run(s))",
+          "value": 0.463346772573176,
+          "unit": "screen depths",
+          "met": false
+        },
+        {
+          "label": "victim has not fired within 2 s of the shove-weapon hit",
+          "value": 0,
+          "unit": "bool",
+          "met": false
+        }
+      ],
+      "notes": "the \"has not fired\" clause is not instrumented by the verb bench."
+    },
+    {
+      "id": "B11",
+      "title": "Hitstun law is universal",
+      "met": false,
+      "coverage": "partial",
+      "fedBy": [
+        "verbs/feel.shove_magnitude/s4242",
+        "verbs/feel.hitstun_curve/s4242"
+      ],
+      "values": [
+        {
+          "label": "shove helm-loss duration, scenario constant (measured at only 12 % of cruise, below the ≥ 30 % ΔV regime)",
+          "value": 0.48333333333333334,
+          "unit": "s",
+          "met": false
+        },
+        {
+          "label": "light hull loses the helm >= 1 s at measured k >= 0.30 - gun",
+          "value": 0.48333333333333334,
+          "unit": "s",
+          "met": false
+        },
+        {
+          "label": "light hull loses the helm >= 1 s at measured k >= 0.30 - rope_throw",
+          "value": 4.133333333333334,
+          "unit": "s",
+          "met": true
+        },
+        {
+          "label": "light hull loses the helm >= 1 s at measured k >= 0.30 - well_fling",
+          "value": 0,
+          "unit": "s",
+          "met": false
+        },
+        {
+          "label": "light hull loses the helm >= 1 s at measured k >= 0.30 - collision",
+          "value": 1.5,
+          "unit": "s",
+          "met": true
+        },
+        {
+          "label": "heavy hull at gun-scale delta-V never loses the helm (measured k <= 0.06, all sources)",
+          "value": 1.5,
+          "unit": "s",
+          "met": false
+        },
+        {
+          "label": "one law: relative spread of helm-loss across the sources that reach matched k (light hull, k ~ 0.30): gun, rope_throw, well_fling, collision",
+          "value": 1,
+          "unit": "fraction",
+          "met": false
+        },
+        {
+          "label": "helm-loss is monotone non-decreasing in k (light hull, gun source)",
+          "value": 1,
+          "unit": "bool",
+          "met": true
+        }
+      ],
+      "notes": "the feeding terrain-slam runs carried no lostHelm boolean. measured below the ≥ 30 % ΔV regime; helm duration is the scenario constant, not a measured curve, and the ≥ 1 s helm clause cannot be evaluated from it. the universal-curve sweep (one helm-loss function of ΔV ÷ cruise and attacker ÷ victim mass across guns, throws, flings and collisions) is unbenched. gun 0.4833s, rope_throw 4.1333s, well_fling 0s, collision 1.5s"
+    }
+  ]
+}
