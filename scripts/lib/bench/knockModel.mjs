@@ -144,6 +144,11 @@ export function resolveContactKnock({
   tick,
 } = {}) {
   if (!encounter) return null;
+  // Reject non-physical inputs before the impulse math: a zero/NaN mass or a non-finite
+  // closing speed would propagate NaN through reduced mass into the kernel and the metrics.
+  if (!Number.isFinite(playerMass) || playerMass <= 0) return null;
+  if (!Number.isFinite(encounter.otherMass) || encounter.otherMass <= 0) return null;
+  if (!Number.isFinite(encounter.relativeSpeed)) return null;
   const atTick = Number.isFinite(tick) ? Math.max(0, Math.trunc(tick)) : encounter.tick;
   const target = { id: 1, type: 'ship', mass: playerMass, radius: 12, pos: { x: 0, z: 0 }, vel: { x: playerVelX, z: playerVelZ } };
   const otherType = encounter.surface === 'debris' ? 'wreck' : 'ship';
