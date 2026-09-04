@@ -6,6 +6,10 @@
     "sg02DynamicBodies": 1,
     "rapierContacts": 0,
     "contactCaptureEnabled": true,
+    "featuresOutsideStep": {
+      "tumble": false,
+      "weaponImpulseConsequences": false
+    },
     "physicsBackend": "rapier-dynamic",
     "flightBackend": "v3",
     "aiBackend": "sg06-tactical",
@@ -42,7 +46,7 @@
     },
     {
       "closingSpeed": 150,
-      "ticksToContact": 164,
+      "ticksToContact": 125,
       "impactCount": 1,
       "dp": 720,
       "deltaV": 40,
