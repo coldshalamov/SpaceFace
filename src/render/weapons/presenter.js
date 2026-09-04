@@ -20,6 +20,7 @@ import {
   recipeUsesRibbonWake,
   resolveWeaponRecipe,
 } from './recipes.js';
+import { FIELD_DEFS, FIELD_KINDS, FIELD_MAX_ACTIVE } from '../../data/fields.js';
 
 const _color = new THREE.Color();
 const _local = { x: 0, z: 0 };
@@ -31,6 +32,39 @@ const _axis = new THREE.Vector3();
 const _invQuat = new THREE.Quaternion();
 const NEAR_MISS_RADIUS = 10;
 const FULL_LOD_DISTANCE = 240;
+
+// PQ-139.05 well refraction. DistortionField encodes UV offset as envelope * 0.035; at a later
+// 1280px capture that maps the standard 190 WU / strength-240 well to ~11 px peak, localized to
+// the projected field radius. The pass only composites when settings.video.renderGraph is true.
+export const WELL_DISTORTION_CAPACITY = FIELD_MAX_ACTIVE;
+export const WELL_DISTORTION_REF_RADIUS = FIELD_DEFS.well.radius;
+export const WELL_DISTORTION_REF_STRENGTH = FIELD_DEFS.well.strength;
+export const WELL_DISTORTION_REF_GPU_STRENGTH = 0.25;
+export const WELL_DISTORTION_GPU_STRENGTH_MAX = 0.4;
+export const DISTORTION_ENCODED_OFFSET_SCALE = 0.035;
+export const WELL_DISTORTION_CAPTURE_WIDTH_PX = 1280;
+const WELL_DISTORTION_Y = 0;
+
+export function wellDistortionGpuStrength(radius, strength) {
+  const r = Math.max(0, Number(radius) || 0);
+  const s = Math.max(0, Number(strength) || 0);
+  if (!(r > 0) || !(s > 0)) return 0;
+  const mapped = WELL_DISTORTION_REF_GPU_STRENGTH
+    * (s / WELL_DISTORTION_REF_STRENGTH)
+    * (r / WELL_DISTORTION_REF_RADIUS);
+  return mapped < WELL_DISTORTION_GPU_STRENGTH_MAX ? mapped : WELL_DISTORTION_GPU_STRENGTH_MAX;
+}
+
+export function wellDistortionPeakPx1280(radius, strength) {
+  return wellDistortionGpuStrength(radius, strength)
+    * DISTORTION_ENCODED_OFFSET_SCALE
+    * WELL_DISTORTION_CAPTURE_WIDTH_PX;
+}
+
+function reducedMotionProfile(profile) {
+  const id = profile && profile.id;
+  return id === 'reduced-motion' || id === 'reduced-motion-and-flash';
+}
 
 function hexColor(hex, target) {
   target.set(hex || '#ffffff');
@@ -64,6 +98,10 @@ export class WeaponVfxPresenter {
     this.flipbooks = new FlipbookPool(this.scene);
     this.ribbons = new WeaponRibbonPool(this.scene);
     this.distortion = new DistortionField();
+    this.wellDistortion = new DistortionField({ capacity: WELL_DISTORTION_CAPACITY });
+    this.wellDistortion.mesh.name = 'SF_WellDistortion';
+    this.wellDistortion.scene.name = 'SF_WellDistortionScene';
+    this.distortionProducers = [this.distortion, this.wellDistortion];
     this.lights = new WeaponLightPool(this.scene);
     this.scorches = new HullScorchPool(this.scene);
     this._socketScratch = { x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0 };
@@ -74,6 +112,7 @@ export class WeaponVfxPresenter {
     this._socketOriginScratch = { x: 0, z: 0 };
     this._nearMissPlayerLocal = { x: 0, z: 0 };
     this._nearMissLocal = { x: 0, z: 0 };
+    this._wellLocal = { x: 0, z: 0 };
     this._prevLocal = { x: 0, z: 0 };
     this._flightColors = { core: '#ffffff', sheath: '#ffffff' };
     this._boltSpec = {
@@ -94,12 +133,25 @@ export class WeaponVfxPresenter {
   }
 
   attachGraph(graph) {
-    if (this._graph && this._graph !== graph && typeof this._graph.attachDistortionField === 'function') {
-      this._graph.attachDistortionField(null);
-    }
+    if (this._graph && this._graph !== graph) this._detachGraph(this._graph);
     this._graph = graph || null;
-    if (graph && typeof graph.attachDistortionField === 'function') {
+    if (!graph) return;
+    // Well refraction and weapon haze share one SpaceRenderGraph distortion pass. That pass is
+    // only sampled when the live route attaches this graph (settings.video.renderGraph === true).
+    if (typeof graph.attachDistortionProducers === 'function') {
+      graph.attachDistortionProducers(this.distortionProducers);
+    } else if (typeof graph.attachDistortionField === 'function') {
       graph.attachDistortionField(this.distortion);
+    }
+  }
+
+  _detachGraph(graph) {
+    if (!graph) return;
+    if (typeof graph.attachDistortionProducers === 'function') {
+      graph.attachDistortionProducers(null);
+    }
+    if (typeof graph.attachDistortionField === 'function') {
+      graph.attachDistortionField(null);
     }
   }
 
@@ -302,6 +354,7 @@ export class WeaponVfxPresenter {
     this._updateNearMiss(dt, entities, alpha, camera);
     this.flipbooks.update(dt, this._flipbookPoseCallback);
     this.scorches.update(dt, this._scorchPoseCallback);
+    this._syncWellDistortion();
     this.distortion.update(dt);
     this.lights.update(dt);
     this.ribbons.update(dt, camera && camera.position);
@@ -423,6 +476,38 @@ export class WeaponVfxPresenter {
         break;
       }
     }
+  }
+
+  _syncWellDistortion() {
+    const field = this.wellDistortion;
+    const slots = field.slots;
+    let live = 0;
+    if (!reducedMotionProfile(this._a11y())) {
+      const active = this.state && this.state.fields && this.state.fields.active;
+      if (active) {
+        const cap = field.capacity;
+        for (let i = 0; i < active.length && live < cap; i++) {
+          const rec = active[i];
+          if (!rec || rec.kind !== FIELD_KINDS.WELL) continue;
+          const radius = rec.distortionRadius;
+          const strength = rec.distortionStrength;
+          if (!(radius > 0) || !(strength > 0)) continue;
+          const local = this.toLocalXZ(rec.center.x, rec.center.z, this._wellLocal);
+          const s = slots[live];
+          s.alive = 1;
+          s.x = local.x;
+          s.y = WELL_DISTORTION_Y;
+          s.z = local.z;
+          s.radius = radius;
+          s.strength = wellDistortionGpuStrength(radius, strength);
+          s.life = Infinity;
+          s.age = 0;
+          live++;
+        }
+      }
+    }
+    for (let i = live; i < field.capacity; i++) slots[i].alive = 0;
+    field.update(0);
   }
 
   _socketPose(ownerId, origin, angle) {
@@ -559,6 +644,11 @@ export class WeaponVfxPresenter {
       slot.x += ox;
       slot.z += oz;
     }
+    for (const slot of this.wellDistortion.slots) {
+      if (!slot.alive) continue;
+      slot.x += ox;
+      slot.z += oz;
+    }
     for (const slot of this.lights.slots) {
       slot.light.position.x += ox;
       slot.light.position.z += oz;
@@ -582,6 +672,7 @@ export class WeaponVfxPresenter {
       this.ribbons.mesh,
       this.scorches.mesh,
       this.distortion.scene,
+      this.wellDistortion.scene,
       this.lights.group,
     ];
   }
@@ -589,15 +680,14 @@ export class WeaponVfxPresenter {
   dispose() {
     if (this._disposed) return;
     this._disposed = true;
-    if (this._graph && typeof this._graph.attachDistortionField === 'function') {
-      this._graph.attachDistortionField(null);
-    }
+    this._detachGraph(this._graph);
     this._graph = null;
     clearShieldContacts();
     this.bolts.dispose();
     this.flipbooks.dispose();
     this.ribbons.dispose();
     this.distortion.dispose();
+    this.wellDistortion.dispose();
     this.lights.dispose();
     this.scorches.dispose();
   }

@@ -326,5 +326,5 @@ test('accessibility scales flash geometry and reproject keeps target-local marks
   assert.deepEqual({ x: scorch.localX, z: scorch.localZ }, before);
   presenter.dispose();
   presenter.dispose();
-  assert.deepEqual(presenter.getOwnerRoots().length, 6);
+  assert.deepEqual(presenter.getOwnerRoots().length, 7);
 });

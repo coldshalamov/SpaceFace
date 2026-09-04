@@ -113,7 +113,9 @@ test('VFX teardown unsubscribes and disposes the weapon presenter roots', () => 
   assert.equal(typeof presenter.dispose, 'function');
   assert.equal(typeof presenter.getOwnerRoots, 'function');
   const presenterRoots = presenter.getOwnerRoots();
-  const sceneAttachedRoots = presenterRoots.filter((root) => root !== presenter.distortion.scene);
+  const sceneAttachedRoots = presenterRoots.filter((root) => (
+    root !== presenter.distortion.scene && root !== presenter.wellDistortion.scene
+  ));
   const presenterOwnerIds = ['weapon-energy-bolts', 'weapon-flipbooks', 'weapon-hull-scorch'];
   assert.ok(presenterRoots.length > 0);
   assert.ok(sceneAttachedRoots.every((root) => root.parent), 'presenter scene roots start attached');

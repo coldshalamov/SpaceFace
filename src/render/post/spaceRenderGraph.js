@@ -260,8 +260,10 @@ export class SpaceRenderGraph {
       uVignette:this.options.vignette, uGrain:this.options.grain, uGrainFrame:0,
     });
     this.distortionField = null;
+    this.distortionProducers = null;
     this.distortionTarget = null;
     this._distortionLive = false;
+    this._distortionProducerLiveCount = 0;
     this._rendererClearColorScratch = new THREE.Color();
     this._distortionNeutralClear = new THREE.Color(0.5, 0.5, 0);
     this.setOptions({});
@@ -347,8 +349,18 @@ export class SpaceRenderGraph {
   get depthTexture() { return this.sceneTarget.depthTexture; }
   get distortionTexture() { return this.distortionTarget ? this.distortionTarget.texture : null; }
 
+  // Compatibility: one DistortionField. Prefer attachDistortionProducers when the presenter
+  // owns weapon haze plus well slots. Either path is a no-op on the bloom/native route —
+  // SpaceRenderGraph only runs when settings.video.renderGraph is true.
   attachDistortionField(field) {
     this.distortionField = field || null;
+  }
+
+  // Stable preallocated collection (weapon haze + well DistortionField pool). The graph never
+  // allocates this array; callers must pass the same collection each attach. Clear once, then
+  // render every live producer.scene. Asleep when no producer reports hasLive.
+  attachDistortionProducers(producers) {
+    this.distortionProducers = Array.isArray(producers) ? producers : null;
   }
   get normalTexture() { return this.normalTarget ? this.normalTarget.texture : null; }
 
@@ -392,6 +404,7 @@ export class SpaceRenderGraph {
         distortion: this._distortionLive ? 1 : 0,
         composite: 1,
       },
+      distortionProducers: this._distortionProducerLiveCount,
       temporal: false,
       capabilities: this.capabilities,
     };
@@ -516,22 +529,44 @@ export class SpaceRenderGraph {
     this.distortionTarget.texture.name = 'SpaceRenderGraph:Distortion';
   }
 
+  _forEachDistortionProducer(fn) {
+    const collection = this.distortionProducers;
+    if (collection && collection.length) {
+      for (let i = 0; i < collection.length; i++) fn(collection[i]);
+      return;
+    }
+    if (this.distortionField) fn(this.distortionField);
+  }
+
   _renderDistortion(camera) {
     this._distortionLive = false;
-    const field = this.distortionField;
-    if (!field || !field.hasLive || !this.distortionTarget || !camera) return;
+    this._distortionProducerLiveCount = 0;
+    if (!this.distortionTarget || !camera) return;
+    let liveCount = 0;
+    this._forEachDistortionProducer((producer) => {
+      if (producer && producer.hasLive && producer.scene) liveCount++;
+    });
+    if (liveCount === 0) return;
     const renderer = this.renderer;
     const priorClearAlpha = renderer.getClearAlpha();
     renderer.getClearColor(this._rendererClearColorScratch);
-    renderer.setClearColor(this._distortionNeutralClear, 0);
+    const priorAutoClear = renderer.autoClear;
+    renderer.autoClear = false;
     try {
+      renderer.setClearColor(this._distortionNeutralClear, 0);
       renderer.setRenderTarget(this.distortionTarget);
       renderer.clear(true, true, false);
-      renderer.render(field.scene, camera);
+      this._forEachDistortionProducer((producer) => {
+        if (producer && producer.hasLive && producer.scene) {
+          renderer.render(producer.scene, camera);
+        }
+      });
     } finally {
+      renderer.autoClear = priorAutoClear;
       renderer.setClearColor(this._rendererClearColorScratch, priorClearAlpha);
     }
     this._distortionLive = true;
+    this._distortionProducerLiveCount = liveCount;
   }
 
   _disposeTargets() {

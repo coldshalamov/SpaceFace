@@ -690,6 +690,13 @@ export const fields = {
       // engaged = this tick actually pulled/pushed a body (state-driven; drives the world-space
       // engagement tell — no affected body, no articulation, per bible §4).
       rec.engaged = engaged;
+      // PQ-139.05: wells publish RAW kernel radius/strength for the DistortionField producer.
+      // Non-wells stay at zero. Presentation only — kernel forces are unchanged. The refraction
+      // pass is a SpaceRenderGraph composite sample and is not visible when
+      // settings.video.renderGraph is false.
+      const isWell = f.kind === FIELD_KINDS.WELL;
+      rec.distortionRadius = isWell ? finite(f.radius, 0) : 0;
+      rec.distortionStrength = isWell ? Math.max(0, finite(f.strength, 0)) : 0;
     }
     active.length = n; // trim retired fields
     const tel = rt.telemetry;
