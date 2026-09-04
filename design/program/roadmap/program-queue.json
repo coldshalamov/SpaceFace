@@ -10486,7 +10486,7 @@
       "priority": 46,
       "title": "Terrain is lethal: damage from pre-solve closing speed",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [],
       "mutexes": [
         "flight-physics-feel"
@@ -10500,8 +10500,10 @@
         "npm run check:baseline",
         "npm run check:massline"
       ],
-      "receiptRefs": [],
-      "brief": "Consequence damage from pre-solve closing speed and mass (quadratic above ~30 WU/s, inverse in mass); the solver bound stays a rate limit and never the damage input; a light dies at >= 75% of cruise and loses >= 60% at >= 50%; a heavy loses <= 15%. Bar B6 damage half."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-137.06-REPORT.md"
+      ],
+      "brief": "IMPLEMENTED 2026-09-04: terrain and structure damage now use real pre-solve radial closing speed while physical contact dV stays bounded at 40. Seed 4242: Wasp-50 loses 86.96% hull and helm, Wasp-76 dies, Atlas loses 0% hull and keeps helm. B6 is numerically met; headed crash acceptance remains open. See receipt."
     },
     {
       "id": "PQ-137.07",
