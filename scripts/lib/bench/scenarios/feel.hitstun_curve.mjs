@@ -16,6 +16,7 @@ import {
   readPhysicsTelemetry,
 } from '../../../../src/core/physicsAuthority.js';
 import { HITSTUN_IMPULSE_EVENT, hitstunMassFactor, recordImpulseProvenance } from '../../../../src/combat/impulseKernel.js';
+import { readTumbleStatus } from '../../../../src/combat/tumbleStatus.js';
 import { combat } from '../../../../src/systems/combat.js';
 import { impulseCharges } from '../../../../src/systems/impulseCharges.js';
 import { tumbleStates } from '../../../../src/systems/tumbleStates.js';
@@ -416,30 +417,24 @@ async function measureOneCell({ seed, source, hullId, kIntended, eventTrace, bef
             if (spin > peakSpin) peakSpin = spin;
           }
           if (sinceEvent >= 0) {
-            const tumbled = helmEvents.some((ev) => ev.type === 'combat:tumbled' || ev.type === 'massline:tumbled');
-            const notAnswering = driveNotAnswering(victim, tel);
+            const tumbling = readTumbleStatus(host.state, victim) != null;
             if (!helmRecovered) {
-              if (sinceEvent === 0) {
-                if (tumbled) {
-                  helmLossTicks += 1;
-                  recordHelmModeNames(helmEvents, helmModesSeen);
-                  if (torqueMag > peakTorqueHelmLoss) peakTorqueHelmLoss = torqueMag;
-                  if (torqueMag <= 1e-4) zeroTorqueHelmLossTicks += 1;
-                }
-              } else if (notAnswering) {
+              if (tumbling) {
                 helmLossTicks += 1;
                 recordHelmModeNames(helmEvents, helmModesSeen);
                 if (torqueMag > peakTorqueHelmLoss) peakTorqueHelmLoss = torqueMag;
                 if (torqueMag <= 1e-4) zeroTorqueHelmLossTicks += 1;
-                const spinSigned = finite(victim.angVel, 0);
-                const ty = tel && tel.torque ? finite(tel.torque.y) : 0;
-                if (Math.abs(spinSigned) >= 1e-4 && ty * spinSigned < 0) {
-                  recoveryOpposesSpin = true;
-                  recoveryTorqueObserved = true;
-                  const mag = Math.abs(ty);
-                  if (mag > peakTorqueRecovery) peakTorqueRecovery = mag;
+                if (sinceEvent >= 1) {
+                  const spinSigned = finite(victim.angVel, 0);
+                  const ty = tel && tel.torque ? finite(tel.torque.y) : 0;
+                  if (Math.abs(spinSigned) >= 1e-4 && ty * spinSigned < 0) {
+                    recoveryOpposesSpin = true;
+                    recoveryTorqueObserved = true;
+                    const mag = Math.abs(ty);
+                    if (mag > peakTorqueRecovery) peakTorqueRecovery = mag;
+                  }
                 }
-              } else {
+              } else if (sinceEvent > 0) {
                 helmRecovered = true;
                 recoveredAtTick = tick;
               }

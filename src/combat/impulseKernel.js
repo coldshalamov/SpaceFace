@@ -24,11 +24,14 @@ const HELM_NEUTRAL_COLLISION_TAGS = Object.freeze(new Set(['environment', 'direc
 export const HITSTUN_IMPULSE_EVENT = 'combat:hitstunImpulse';
 
 // PQ-137.04 — one helm-loss duration and entry-spin law for every delivered impulse.
-// u = (ΔV / cruise) * clamp(sqrt(attacker/victim), 0.5, 2.2). The Wasp/Kestrel reference
-// u ~= 0.3182 yields ~1.00 s; the heavy gun-scale case (k=0.06, mF=2.2, u=0.132) is exactly 0.
+// u = (ΔV / cruise) * clamp(sqrt(attacker/victim), 0.5, 2.2). T is tick-quantized so a light
+// hull at k = 0.30 (u = 0.30 when massFactor is 1) is exactly 1.00 s. The heavy gun-scale case
+// (k=0.06, mF=2.2, u=0.132) stays exactly 0.
 export const HITSTUN_LAW = Object.freeze({
   uFloor: 0.14,
-  slope: 5.62,
+  // T(u=0.30)=1.00 s so a light hull at k>=0.30 loses the helm for a full second even when
+  // massFactor is 1 (world-body collision). The Kestrel/Wasp gun reference u~=0.3182 is slightly longer.
+  slope: 6.25,
   durationMaxS: 3.5,
   massFactorMin: 0.5,
   massFactorMax: 2.2,
@@ -67,9 +70,12 @@ export function resolveHitstunLaw(input = {}) {
   const attackerMass = worldBody ? HITSTUN_LAW.worldRefMass : input.attackerMass;
   const mF = hitstunMassFactor(attackerMass, input.victimMass, worldBody ? { min: 0 } : {});
   const u = k * mF;
-  const durationS = u <= HITSTUN_LAW.uFloor
+  const rawDuration = u <= HITSTUN_LAW.uFloor
     ? 0
-    : Math.min(HITSTUN_LAW.durationMaxS, HITSTUN_LAW.slope * (u - HITSTUN_LAW.uFloor));
+    : HITSTUN_LAW.slope * (u - HITSTUN_LAW.uFloor);
+  const durationS = rawDuration <= 0
+    ? 0
+    : Math.min(HITSTUN_LAW.durationMaxS, Math.ceil(rawDuration * 60 - 1e-12) / 60);
   const entrySpin = durationS > 0
     ? clamp(HITSTUN_LAW.spinPerExcessU * (u - HITSTUN_LAW.uFloor), HITSTUN_LAW.spinMin, HITSTUN_LAW.spinMax)
     : 0;

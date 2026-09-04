@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { WEAPONS } from '../src/data/weapons.js';
-import { COMBAT_FLAGS } from '../src/data/featureFlags.js';
+import { COMBAT_FLAGS, MASSLINE2_FLAGS } from '../src/data/featureFlags.js';
 import { createCombatKernel } from '../src/combat/kernel.js';
 import { createCombatCatalog } from '../src/combat/runtime.js';
 import { createBus } from '../src/core/eventBus.js';
@@ -385,6 +385,9 @@ test('tumbleStates owns retrigger, inclusive expiry, player immunity, and first-
   system.update(1 / 60, state);
   assert.equal(consumePhysicsCommand(player), null, 'player immunity must not queue a helm override');
 
+  const tumbled = [];
+  bus.on('combat:tumbled', (payload) => tumbled.push(payload));
+
   emitGun(victim.id);
   state.tick += 1;
   kernel.prePhysics(1 / 60);
@@ -393,7 +396,12 @@ test('tumbleStates owns retrigger, inclusive expiry, player immunity, and first-
   assert.equal(first.id, TUMBLE_STATUS_ID);
   const until1 = first.data.until;
   assert.ok(Math.abs(until1 - (10 + law.durationS)) < 1e-6);
+  assert.equal(tumbled.length, 1, 'first qualifying hit emits combat:tumbled');
+  assert.equal(Object.isFrozen(tumbled[0]), true);
+  assert.equal(tumbled[0].startedAt, 10);
+  assert.equal(tumbled[0].durationS, until1 - tumbled[0].startedAt);
 
+  const startedAt = tumbled[0].startedAt;
   state.simTime = 10 + law.durationS * 0.4;
   emitGun(victim.id);
   state.tick += 1;
@@ -405,6 +413,10 @@ test('tumbleStates owns retrigger, inclusive expiry, player immunity, and first-
     Math.abs(until2 - (state.simTime + law.durationS)) < 1e-6,
     'until = max(existing, now+T)',
   );
+  assert.equal(tumbled.length, 2, 'retrigger emits a second combat:tumbled');
+  assert.equal(tumbled[1].startedAt, startedAt, 'retrigger preserves original startedAt');
+  assert.equal(tumbled[1].durationS, until2 - startedAt, 'durationS is the effective scheduled helm interval');
+  assert.equal(second.data.startedAt, startedAt);
 
   state.simTime = until2 - 1e-6;
   system.update(1 / 60, state);
@@ -424,6 +436,143 @@ test('tumbleStates owns retrigger, inclusive expiry, player immunity, and first-
   assert.ok(after && after.control);
   assert.equal(after.control.source, 'aiPorts', 'the first tick after expiry preserves AI control');
   assert.equal(victim.data.intent.fire, true, 'expiry does not keep zeroing AI fire');
+});
+
+test('combat:tumbled is the frozen four-source receipt and heavy hits emit nothing', async (t) => {
+  const previousCombat = COMBAT_FLAGS.weaponImpulseConsequences;
+  const previousMassline = {
+    enabled: MASSLINE2_FLAGS.enabled,
+    tumble: MASSLINE2_FLAGS.tumble,
+  };
+  COMBAT_FLAGS.weaponImpulseConsequences = true;
+  Object.assign(MASSLINE2_FLAGS, { enabled: true, tumble: true });
+  t.after(() => {
+    COMBAT_FLAGS.weaponImpulseConsequences = previousCombat;
+    Object.assign(MASSLINE2_FLAGS, previousMassline);
+  });
+
+  const { tumbleStates } = await import('../src/systems/tumbleStates.js');
+  const { HITSTUN_IMPULSE_EVENT, resolveHitstunLaw } = await import('../src/combat/impulseKernel.js');
+  const { readTumbleStatus } = await import('../src/combat/tumbleStatus.js');
+
+  const player = combatShip(1, 0, 0);
+  player.mass = 18;
+  const victim = combatShip(2, 1, 40);
+  victim.mass = 16;
+  victim.data.intent = { fire: true, moveX: 1, moveZ: 0 };
+
+  const bus = createBus();
+  const state = {
+    tick: 200,
+    simTime: 20,
+    mode: 'flight',
+    playerId: 1,
+    entities: new Map([[player.id, player], [victim.id, victim]]),
+    entityList: [player, victim],
+    combat: { beams: [], threatTables: new Map() },
+    meta: { seed: 47 },
+  };
+  const kernel = createCombatKernel({ state, bus, helpers: {}, registry: { get: () => null } });
+  const system = Object.create(tumbleStates);
+  system.init({
+    state,
+    bus,
+    helpers: {},
+    registry: { get: (name) => (name === 'combat' ? { kernel } : null) },
+  });
+
+  const tumbled = [];
+  const masslineTumbled = [];
+  bus.on('combat:tumbled', (payload) => tumbled.push(payload));
+  bus.on('massline:tumbled', (payload) => masslineTumbled.push(payload));
+
+  const stun = {
+    attackerId: player.id,
+    attackerMass: 18,
+    victimMass: 16,
+    deltaV: 40,
+    dirX: 1,
+    dirZ: 0,
+    hitSide: 1,
+    tick: state.tick,
+  };
+
+  bus.emit(HITSTUN_IMPULSE_EVENT, {
+    ...stun,
+    source: 'gun',
+    victimId: victim.id,
+    provenance: { schemaVersion: 1, tag: 'railgun_penetrator', actorId: player.id },
+  });
+  const gun = tumbled.at(-1);
+  assertTumbleReceipt(gun, { source: 'gun', cause: 'gun', worldBody: false });
+  assert.equal(gun.provenance && gun.provenance.tag, 'railgun_penetrator');
+  assert.equal(Object.isFrozen(gun.provenance), true);
+
+  system._clearTumbleStatus(victim, 'test_reset');
+  tumbled.length = 0;
+
+  bus.emit(HITSTUN_IMPULSE_EVENT, {
+    ...stun,
+    source: 'collision',
+    victimId: victim.id,
+    worldBody: true,
+    attackerMass: 1_000_000,
+    provenance: { schemaVersion: 1, tag: 'terrain_slam', actorId: null },
+  });
+  const collision = tumbled.at(-1);
+  assertTumbleReceipt(collision, { source: 'collision', cause: 'collision', worldBody: true });
+  assert.equal(collision.worldBody, true);
+
+  system._clearTumbleStatus(victim, 'test_reset');
+  tumbled.length = 0;
+
+  bus.emit(HITSTUN_IMPULSE_EVENT, {
+    ...stun,
+    source: 'well',
+    victimId: victim.id,
+    provenance: { schemaVersion: 1, tag: 'gravity_well', actorId: player.id },
+  });
+  const well = tumbled.at(-1);
+  assertTumbleReceipt(well, { source: 'well', cause: 'well', worldBody: false });
+
+  system._clearTumbleStatus(victim, 'test_reset');
+  tumbled.length = 0;
+  masslineTumbled.length = 0;
+
+  bus.emit('massline:throw', { payloadId: victim.id, payloadSpeed: 40 });
+  const rope = tumbled.at(-1);
+  assertTumbleReceipt(rope, { source: 'rope_throw', cause: 'thrown', worldBody: false });
+  assert.equal(rope.provenance && rope.provenance.kind, 'massline');
+  assert.equal(rope.provenance.source, 'throw');
+  assert.equal(rope.provenance.tag, 'massline_throw');
+  assert.equal(masslineTumbled.length, 1, 'rope still emits massline:tumbled');
+  assert.equal(masslineTumbled[0], rope, 'massline:tumbled is the same frozen object');
+
+  system._clearTumbleStatus(victim, 'test_reset');
+  tumbled.length = 0;
+  masslineTumbled.length = 0;
+
+  const heavy = resolveHitstunLaw({
+    deltaV: 0.06,
+    victimCruise: 1,
+    attackerMass: 2.2 * 2.2,
+    victimMass: 1,
+  });
+  assert.equal(heavy.durationS, 0);
+  bus.emit(HITSTUN_IMPULSE_EVENT, {
+    source: 'gun',
+    victimId: victim.id,
+    attackerId: player.id,
+    attackerMass: 2.2 * 2.2,
+    victimMass: 16,
+    deltaV: 0.5,
+    dirX: 1,
+    dirZ: 0,
+    hitSide: 1,
+    tick: state.tick,
+  });
+  assert.equal(tumbled.length, 0, 'a below-floor hit must not emit combat:tumbled');
+  assert.equal(readTumbleStatus(state, victim), null, 'a below-floor hit must not schedule tumble');
 });
 
 test('full shield absorption does not shrink the authored impulse', async (t) => {
@@ -1131,6 +1280,26 @@ test('new-path membrane audit fails closed on an injected direct velocity write'
   assert.equal(directVectorWrite.length, 1,
     'replacing the velocity vector must also fail closed');
 });
+
+function assertTumbleReceipt(ev, expected = {}) {
+  assert.ok(ev, `expected combat:tumbled for ${expected.source || 'source'}`);
+  assert.equal(Object.isFrozen(ev), true, 'combat:tumbled must be frozen');
+  for (const key of [
+    'schemaVersion', 'victimId', 'attackerId', 'source', 'cause', 'deltaV',
+    'hitSide', 'worldBody', 'k', 'mF', 'u', 'spin', 'durationS', 'startedAt',
+    'until', 'provenance', 'tick', 'time',
+  ]) {
+    assert.equal(Object.hasOwn(ev, key), true, `combat:tumbled missing ${key}`);
+  }
+  assert.equal(ev.schemaVersion, 1);
+  assert.equal(ev.durationS, ev.until - ev.startedAt);
+  assert.ok(ev.durationS > 0);
+  assert.equal(ev.source, expected.source);
+  assert.equal(ev.cause, expected.cause);
+  assert.equal(ev.worldBody, expected.worldBody === true);
+  assert.equal([-1, 1].includes(ev.hitSide), true);
+  assert.throws(() => { ev.durationS = 0; });
+}
 
 function combatShip(id, team, x) {
   return {

@@ -60,6 +60,16 @@ test('feel.hitstun_curve exports the contracted scenario shape', () => {
 });
 
 test('the hitstun law is the Wasp/Kestrel reference and zeros the heavy gun-scale case', () => {
+  const equalMassLight = resolveHitstunLaw({
+    deltaV: 0.30 * 95,
+    victimCruise: 95,
+    attackerMass: 16,
+    victimMass: 16,
+  });
+  assert.equal(equalMassLight.k, 0.30);
+  assert.equal(equalMassLight.mF, 1);
+  assert.equal(equalMassLight.durationS, 1, `world-body light T must be 1.00 s, got ${equalMassLight.durationS}`);
+
   const reference = resolveHitstunLaw({
     deltaV: 0.30 * 95,
     victimCruise: 95,
@@ -67,7 +77,7 @@ test('the hitstun law is the Wasp/Kestrel reference and zeros the heavy gun-scal
     victimMass: 16,
   });
   assert.ok(Math.abs(reference.u - 0.318198) < 1e-4, `reference u was ${reference.u}`);
-  assert.ok(Math.abs(reference.durationS - 1.00) < 0.02, `reference T was ${reference.durationS}`);
+  assert.ok(reference.durationS >= 1, `Kestrel/Wasp reference T must be at least 1 s, got ${reference.durationS}`);
   assert.ok(reference.entrySpin > 0);
 
   const heavy = resolveHitstunLaw({
@@ -418,6 +428,36 @@ test('B11 bars fail closed on missing sources, intended-k, and unobserved recove
     'notes must come from data, not a hardcoded claim about unrun sources',
   );
   assert.equal(gyroZeroSpin.met, true, 'zero-spin gun with 0 Nm is a zero-error controller when the other claimed sources recover with torque');
+});
+
+test('real-path light k>=0.30 helm lasts a full second and heavy gun-scale is exactly 0', { timeout: 180_000 }, async () => {
+  const result = await runHitstunCells({
+    seed: SEED,
+    sources: HITSTUN_SOURCES.slice(),
+    hulls: ['ship_wasp', 'ship_atlas'],
+    levels: [0.30, HEAVY_GUN_SCALE_K],
+  });
+  const cells = (result.cells || []).filter((c) => c && c.measured === true);
+  assert.ok(cells.length >= 8, `need measured light and heavy cells, got ${cells.length}`);
+
+  for (const source of HITSTUN_SOURCES) {
+    const light = cells.filter((c) => c.source === source && c.hullId === 'ship_wasp' && c.k >= 0.30);
+    assert.ok(light.length, `need a measured light ${source} cell at k >= 0.30`);
+    for (const c of light) {
+      assert.ok(
+        c.helmLossDurationS >= 1,
+        `${source} light helm must last >= 1.000 s at k=${c.k}, got ${c.helmLossDurationS}`,
+      );
+    }
+    const heavy = cells.filter((c) => c.source === source && c.hullId === 'ship_atlas' && c.k <= HEAVY_GUN_SCALE_K);
+    for (const c of heavy) {
+      assert.equal(
+        c.helmLossDurationS,
+        0,
+        `${source} atlas at k=${c.k} must keep the helm, got ${c.helmLossDurationS}`,
+      );
+    }
+  }
 });
 
 test('static terrain uses a light combatant reference mass so Atlas keeps helm and Wasp loses it at the same ΔV', () => {

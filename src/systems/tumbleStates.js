@@ -142,6 +142,13 @@ export const tumbleStates = {
       attackerMass: massOf(entityById(state, state.playerId)),
       hitSide: numericParity(payload.payloadId) ? 1 : -1,
       requireMassline: true,
+      provenance: Object.freeze({
+        schemaVersion: 1,
+        kind: 'massline',
+        source: 'throw',
+        tag: 'massline_throw',
+        payloadId: payload.payloadId == null ? null : payload.payloadId,
+      }),
     });
   },
 
@@ -159,6 +166,15 @@ export const tumbleStates = {
       attackerMass: positive(payload.mass, massOf(entityById(state, payload.targetId))),
       hitSide: numericParity(payload.victimId) ? 1 : -1,
       requireMassline: true,
+      provenance: Object.freeze({
+        schemaVersion: 1,
+        kind: 'massline',
+        source: 'whip',
+        tag: 'massline_whip',
+        rating: payload.rating || null,
+        targetId: payload.targetId == null ? null : payload.targetId,
+        victimId: payload.victimId == null ? null : payload.victimId,
+      }),
     });
   },
 
@@ -181,6 +197,7 @@ export const tumbleStates = {
       hitSide: payload.hitSide === -1 ? -1 : 1,
       worldBody: payload.worldBody === true,
       requireMassline: false,
+      provenance: payload.provenance && typeof payload.provenance === 'object' ? payload.provenance : null,
     });
   },
 
@@ -205,18 +222,20 @@ export const tumbleStates = {
     const now = finite(state.simTime, state.tick / 60);
     const existing = readTumbleStatus(state, victim);
     const existingUntil = existing && existing.data ? finite(existing.data.until, 0) : 0;
-    const until = Math.max(existingUntil, now + law.durationS);
     const startedAt = existing && existing.data && Number.isFinite(existing.data.startedAt)
       ? existing.data.startedAt
       : now;
+    const until = Math.max(existingUntil, now + law.durationS);
     const scheduled = this._scheduleTumbleStatus(victim, until - now, {
       kind: input.kind,
       startedAt,
       until,
       cause: input.cause,
+      source: input.source,
       spin: law.entrySpin,
       u: law.u,
       k: law.k,
+      mF: law.mF,
     });
     if (!scheduled) return;
 
@@ -226,18 +245,34 @@ export const tumbleStates = {
     const currentSpin = finite(victim.angVel, 0);
     const sign = input.hitSide === -1 ? -1 : 1;
     queuePhysicsTorqueImpulse(victim, { x: 0, y: inertia * (sign * law.entrySpin - currentSpin), z: 0 });
+    writePhysicsControl(victim, recoveryControl(victim, 1 / 60, input.kind));
+    if (victim.data.intent) {
+      victim.data.intent.fire = false;
+      victim.data.intent.moveX = 0;
+      victim.data.intent.moveZ = 0;
+    }
     victim.data.tumbledAt = now;
 
     if (this.bus) {
-      const announcement = {
+      const announcement = freezeTumbleAnnouncement({
         victimId: victim.id,
-        cause: input.cause,
+        attackerId: input.attackerId == null ? null : input.attackerId,
         source: input.source,
+        cause: input.cause,
+        deltaV: finite(input.deltaV),
+        hitSide: input.hitSide === -1 ? -1 : 1,
+        worldBody: input.worldBody === true,
+        k: law.k,
+        mF: law.mF,
+        u: law.u,
         spin: law.entrySpin,
-        durationS: until - now,
+        durationS: until - startedAt,
+        startedAt,
+        until,
+        provenance: input.provenance,
         tick: state.tick,
         time: now,
-      };
+      });
       this.bus.emit('combat:tumbled', announcement);
       if (input.kind === MASSLINE_TUMBLE_KIND) this.bus.emit('massline:tumbled', announcement);
       this.bus.emit('audio:cue', { id: 'massline.tumble', position: { x: victim.pos.x, z: victim.pos.z } });
@@ -287,12 +322,12 @@ export const tumbleStates = {
     const kernel = combatKernel(this);
     if (!kernel || !kernel.statuses || !kernel.catalog) return false;
     const runtime = ensureCombatant(this.state, victim, kernel.catalog);
-    const durationTicks = Math.max(1, Math.ceil(Math.max(0, durationS) * 60) + 1);
+    const durationTicks = Math.max(1, Math.ceil(Math.max(0, durationS) * 60));
     const result = kernel.statuses.schedule(victim, runtime, {
       id: TUMBLE_STATUS_ID,
       stacks: 1,
       durationTicks,
-      applyTick: this.state.tick + 1,
+      applyTick: this.state.tick,
       data,
     }, { attackerId: this.state.playerId, actionId: null });
     return !!(result && result.ok);
@@ -305,6 +340,32 @@ export const tumbleStates = {
     return kernel.statuses.clear(victim, runtime, TUMBLE_STATUS_ID, reason);
   },
 };
+
+function freezeTumbleAnnouncement(payload) {
+  const provenance = payload.provenance && typeof payload.provenance === 'object'
+    ? Object.freeze({ ...payload.provenance })
+    : null;
+  return Object.freeze({
+    schemaVersion: 1,
+    victimId: payload.victimId,
+    attackerId: payload.attackerId == null ? null : payload.attackerId,
+    source: payload.source,
+    cause: payload.cause,
+    deltaV: finite(payload.deltaV),
+    hitSide: payload.hitSide === -1 ? -1 : 1,
+    worldBody: payload.worldBody === true,
+    k: finite(payload.k),
+    mF: finite(payload.mF),
+    u: finite(payload.u),
+    spin: finite(payload.spin),
+    durationS: finite(payload.durationS),
+    startedAt: finite(payload.startedAt),
+    until: finite(payload.until),
+    provenance,
+    tick: finite(payload.tick),
+    time: finite(payload.time),
+  });
+}
 
 function recoveryControl(entity, dt, kind) {
   const profile = resolveFlightProfile(entity);
