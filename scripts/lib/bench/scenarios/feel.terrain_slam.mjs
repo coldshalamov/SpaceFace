@@ -48,7 +48,6 @@ export const scenario = {
       caseId: 'light_50',
       hullId: LIGHT_HULL_ID,
       cruiseFrac: 0.5,
-      cruiseSpeed: null,
       eventTrace,
       tickCursor,
     });
@@ -62,7 +61,6 @@ export const scenario = {
       caseId: 'light_75',
       hullId: LIGHT_HULL_ID,
       cruiseFrac: 0.76,
-      cruiseSpeed: lightCruise || null,
       eventTrace,
       tickCursor,
     });
@@ -72,11 +70,14 @@ export const scenario = {
       cruiseField = light75.cruiseField;
     }
 
+    // Same ABSOLUTE speed as the light 76 % case, not 0.76 of Atlas cruise.
+    const lightAbsoluteSpeed = light75.flownSpeed > 0
+      ? light75.flownSpeed
+      : light75.commandedSpeed;
     const heavy75 = await runSlam(seed, {
       caseId: 'heavy_75',
       hullId: HEAVY_HULL_ID,
-      cruiseFrac: 0.76,
-      cruiseSpeed: lightCruise || null,
+      matchAbsoluteSpeed: lightAbsoluteSpeed,
       eventTrace,
       tickCursor,
     });
@@ -97,22 +98,31 @@ export const scenario = {
 
     const heavy75HullLostFraction = heavy75.hullLostFraction;
     const heavy75LostHelm = heavy75.lostHelm;
-    // The HEAVY's own cruise. Dividing the Atlas's closing speed by the Wasp's cruise printed a
-    // ratio that named the wrong ship, even though the absolute speeds happened to match.
+    // The HEAVY's own cruise. The Atlas is flown at the light case's absolute speed; this ratio
+    // is that speed as a fraction of Atlas cruise, not a second 0.76 throttle.
     const heavy75ClosingRatio = heavy75.cruiseSpeed > 0
       ? heavy75.closingSpeed / heavy75.cruiseSpeed
       : 0;
-    const heavy75Survived = heavy75.isLethal !== true;
-    const heavy75KeptHelm = heavy75.lostHelm !== true;
+    const heavy75OwnCruiseFraction = heavy75.cruiseSpeed > 0 && Number.isFinite(heavy75.flownSpeed)
+      ? heavy75.flownSpeed / heavy75.cruiseSpeed
+      : null;
+    const heavy75Survived = heavy75.damageProof === true && heavy75.isLethal !== true;
+    const heavy75KeptHelm = heavy75.helmProof === true && heavy75.lostHelm === false;
 
     // B6 in full, not just its light half: "A light hostile meeting rock at >= 50 % of cruise loses
     // >= 60 % of hull and its helm; at >= 75 % it dies. A heavy at the same speed loses <= 15 % and
-    // keeps its helm." A barMet that only asked about the light would have printed true for a run
-    // that vaporised the Atlas.
-    const barMet = isLethal === true
+    // keeps its helm." Missing contact/damage/helm proof never fills zero and passes.
+    const barMet = light50.damageProof === true
+      && light50.helmProof === true
+      && light75.damageProof === true
+      && light75.helmProof === true
+      && heavy75.damageProof === true
+      && heavy75.helmProof === true
+      && isLethal === true
       && lostHelm === true
       && light50HullLostFraction >= 0.6
       && light50LostHelm === true
+      && Number.isFinite(heavy75HullLostFraction)
       && heavy75HullLostFraction <= 0.15
       && heavy75KeptHelm === true;
 
@@ -152,6 +162,16 @@ export const scenario = {
         heavy75FlownSpeed: heavy75.flownSpeed,
         heavy75CommandedSpeed: heavy75.commandedSpeed,
         heavy75KeptHelm,
+        heavy75HelmProof: heavy75.helmProof === true,
+        heavy75DamageProof: heavy75.damageProof === true,
+        heavy75OwnCruise: heavy75.cruiseSpeed,
+        heavy75OwnCruiseFraction,
+        light75AbsoluteSpeed: lightAbsoluteSpeed,
+        sameAbsoluteSpeed: Number.isFinite(lightAbsoluteSpeed)
+          && Number.isFinite(heavy75.commandedSpeed)
+          && Math.abs(heavy75.commandedSpeed - lightAbsoluteSpeed) <= 0.05
+          && Number.isFinite(heavy75.flownSpeed)
+          && Math.abs(heavy75.flownSpeed - lightAbsoluteSpeed) <= Math.max(2, 0.08 * lightAbsoluteSpeed),
         cruiseSpeed,
         cruiseField,
         lightHullId: LIGHT_HULL_ID,
@@ -171,52 +191,63 @@ export const scenario = {
         contactReceipts: light75.contactReceipts,
         light50ContactReceipts: light50.contactReceipts,
         heavy75ContactReceipts: heavy75.contactReceipts,
+        light50DamageProof: light50.damageProof === true,
+        light50HelmProof: light50.helmProof === true,
+        light75DamageProof: light75.damageProof === true,
+        light75HelmProof: light75.helmProof === true,
         ticks: light50.ticks + light75.ticks + heavy75.ticks,
         dt: REAL_PATH_DT,
         realPath: light75.realPath,
         bars: [
-          {
-            bar: 'B6',
-            label: 'light hostile hull lost at 50 % of cruise closing',
-            value: light50HullLostFraction,
-            unit: 'fraction',
-            met: light50HullLostFraction >= 0.6,
-          },
-          {
-            bar: 'B6',
-            label: 'light hostile loses the helm at 50 % of cruise closing',
-            value: light50LostHelm ? 1 : 0,
-            unit: 'bool',
-            met: light50LostHelm === true,
-          },
-          {
-            bar: 'B6',
-            label: 'light hostile dies at 76 % of cruise closing',
-            value: isLethal ? 1 : 0,
-            unit: 'bool',
-            met: isLethal === true,
-          },
-          {
-            bar: 'B6',
-            label: 'heavy hull lost at the same closing speed',
-            value: heavy75HullLostFraction,
-            unit: 'fraction',
-            met: heavy75HullLostFraction <= 0.15,
-          },
-          {
-            bar: 'B6',
-            label: 'heavy keeps its helm at the same closing speed',
-            value: heavy75LostHelm ? 1 : 0,
-            unit: 'bool',
-            met: heavy75LostHelm === false,
-          },
+          b6Clause(
+            'light hostile hull lost at 50 % of cruise closing',
+            light50HullLostFraction,
+            'fraction',
+            light50.damageProof === true && light50HullLostFraction >= 0.6,
+            light50.damageProof === true,
+            'missing collision consequence/damage receipt',
+          ),
+          b6Clause(
+            'light hostile loses the helm at 50 % of cruise closing',
+            light50LostHelm == null ? null : (light50LostHelm ? 1 : 0),
+            'bool',
+            light50.helmProof === true && light50LostHelm === true,
+            light50.helmProof === true,
+            'missing helm-taking/tumble receipt',
+          ),
+          b6Clause(
+            'light hostile dies at 76 % of cruise closing',
+            isLethal == null ? null : (isLethal ? 1 : 0),
+            'bool',
+            light75.damageProof === true && isLethal === true,
+            light75.damageProof === true,
+            'missing collision consequence/damage receipt',
+          ),
+          b6Clause(
+            'heavy hull lost at the same closing speed',
+            heavy75HullLostFraction,
+            'fraction',
+            heavy75.damageProof === true
+              && Number.isFinite(heavy75HullLostFraction)
+              && heavy75HullLostFraction <= 0.15,
+            heavy75.damageProof === true,
+            'missing collision consequence/damage receipt',
+          ),
+          b6Clause(
+            'heavy keeps its helm at the same closing speed',
+            heavy75LostHelm == null ? null : (heavy75KeptHelm ? 1 : 0),
+            'bool',
+            heavy75KeptHelm === true,
+            heavy75.helmProof === true,
+            'missing helm receipt — keep-helm cannot pass without proof',
+          ),
         ],
       },
     };
   },
 };
 
-async function runSlam(seed, { caseId, hullId, cruiseFrac, cruiseSpeed, eventTrace, tickCursor }) {
+async function runSlam(seed, { caseId, hullId, cruiseFrac = null, matchAbsoluteSpeed = null, eventTrace, tickCursor }) {
   const host = await bootRealPath({
     seed,
     systems: [...SYSTEMS],
@@ -239,10 +270,12 @@ async function runSlam(seed, { caseId, hullId, cruiseFrac, cruiseSpeed, eventTra
     });
 
     const cruise = readCruiseSpeed(hostile);
-    const usedCruise = Number.isFinite(cruiseSpeed) && cruiseSpeed > 0
-      ? cruiseSpeed
-      : cruise.cruiseSpeed;
-    const setupSpeed = usedCruise * cruiseFrac;
+    const ownCruise = cruise.cruiseSpeed;
+    const commandedSpeed = Number.isFinite(matchAbsoluteSpeed) && matchAbsoluteSpeed > 0
+      ? matchAbsoluteSpeed
+      : ownCruise * (Number.isFinite(cruiseFrac) ? cruiseFrac : 0);
+    const throttle = ownCruise > 0 ? commandedSpeed / ownCruise : 0;
+    const setupSpeed = commandedSpeed;
 
     const rockRadius = finite(rock.radius, 22);
     const shipRadius = finite(hostile.radius, 14);
@@ -258,11 +291,11 @@ async function runSlam(seed, { caseId, hullId, cruiseFrac, cruiseSpeed, eventTra
     hostile.data = hostile.data || {};
     const intent = hostile.data.intent || (hostile.data.intent = {});
     // The throttle IS the experiment. The assisted governor commands `throttle x combatSpeed`
-    // (propulsionKernel.applySpeedGovernor), so throttle 0.5 flies at half cruise and 0.76 at
-    // 76 % of it, under the ship's own drive. The speed reached is then measured, not assumed.
+    // (propulsionKernel.applySpeedGovernor). Light cases use 0.50 / 0.76 of their own cruise.
+    // The heavy case uses the throttle that yields the light case's absolute WU/s.
     const writeHostileIntent = () => {
       intent.moveX = 0;
-      intent.moveZ = cruiseFrac;
+      intent.moveZ = throttle;
       intent.turnIntent = 0;
       intent.boost = false;
       intent.brake = false;
@@ -290,10 +323,12 @@ async function runSlam(seed, { caseId, hullId, cruiseFrac, cruiseSpeed, eventTra
       });
     });
 
-    const helmReceipts = [];
+    // Every collision-consequence receipt, not only helm-taking ones. The first receipt proves
+    // consequence/damage; a later find(stagger/tumble) decides helm loss independently.
+    const consequenceReceipts = [];
     host.bus.on('combat:collisionConsequence', (payload) => {
       if (!payload || payload.targetId !== hostile.id) return;
-      helmReceipts.push({
+      consequenceReceipts.push({
         tick: Number.isFinite(payload.tick) ? payload.tick : (host.state.tick | 0),
         control: payload.control,
         staggerTicks: finite(payload.staggerTicks),
@@ -314,6 +349,9 @@ async function runSlam(seed, { caseId, hullId, cruiseFrac, cruiseSpeed, eventTra
         shieldBefore,
         cruiseSpeed: cruise.cruiseSpeed,
         cruiseField: cruise.cruiseField,
+        ownCruise,
+        throttle,
+        matchAbsoluteSpeed: Number.isFinite(matchAbsoluteSpeed) ? matchAbsoluteSpeed : null,
         setupSpeed,
         standoff,
         rockId: rock.id,
@@ -380,7 +418,6 @@ async function runSlam(seed, { caseId, hullId, cruiseFrac, cruiseSpeed, eventTra
     const firstImpact = rockImpacts[0] || null;
     const contactImpulse = firstImpact ? firstImpact.impulse : 0;
     const flownSpeed = flownAtContact;
-    const commandedSpeed = usedCruise * cruiseFrac;
     if (!firstImpact) {
       throw new Error(`feel.terrain_slam ${caseId}: the hostile never contacted the rock (${namedImpacts.length} unrelated receipt(s), hull speed ${settledSpeed().toFixed(1)} WU/s) - a table of zeros from a missed approach is not a measurement`);
     }
@@ -419,12 +456,21 @@ async function runSlam(seed, { caseId, hullId, cruiseFrac, cruiseSpeed, eventTra
     const alive = !!(still && still.alive !== false);
     const hullAfter = still ? finite(still.hull, 0) : 0;
     const shieldAfter = still ? finite(still.shield, 0) : 0;
-    const impactDamage = Math.max(0, hullBefore - hullAfter);
-    const hullLostFraction = hullMax > 0 ? impactDamage / hullMax : 0;
+    const hullDelta = Math.max(0, hullBefore - hullAfter);
     const isLethal = alive === false || hullAfter <= 0;
 
-    const helmHit = helmReceipts.find((r) => r.control === 'stagger' || r.control === 'tumble') || null;
-    const lostHelm = helmHit != null;
+    // Damage and helm are independent evaluations of the same consequence collection.
+    // First combat:collisionConsequence proves consequence/damage; stagger/tumble decides helm
+    // loss. A heavy that takes damage while keeping helm must still be measured. Missing either
+    // consequence proof or a helm-outcome proof fails closed — never fill zero and pass.
+    const damageReceipt = consequenceReceipts[0] || null;
+    const helmHit = consequenceReceipts.find((r) => r.control === 'stagger' || r.control === 'tumble') || null;
+    const damageProof = damageReceipt != null
+      && Number.isFinite(hullBefore)
+      && Number.isFinite(shieldBefore);
+    const helmProof = consequenceReceipts.length > 0;
+    const hullLostFraction = damageProof && hullMax > 0 ? hullDelta / hullMax : (damageProof ? 0 : null);
+    const lostHelm = helmProof ? helmHit != null : null;
 
     const tumbleLive = host.withFeatures(() => readCollisionTumble(host.state, hostile));
 
@@ -435,15 +481,18 @@ async function runSlam(seed, { caseId, hullId, cruiseFrac, cruiseSpeed, eventTra
         case: caseId,
         hullAfter,
         shieldAfter,
-        impactDamage,
-        consequenceImpactDamage: helmHit ? helmHit.impactDamage : 0,
+        impactDamage: damageProof ? hullDelta : null,
+        consequenceImpactDamage: damageProof ? finite(damageReceipt.impactDamage) : null,
         hullLostFraction,
         lostHelm,
         isLethal,
         alive,
-        helmControl: helmHit ? helmHit.control : 'none',
+        helmControl: helmHit ? helmHit.control : (damageReceipt ? damageReceipt.control : null),
+        damageProof,
+        helmProof,
         tumbleLive: tumbleLive === true,
         contactReceipts: namedImpacts.length,
+        consequenceReceipts: consequenceReceipts.length,
       },
     });
 
@@ -460,16 +509,20 @@ async function runSlam(seed, { caseId, hullId, cruiseFrac, cruiseSpeed, eventTra
       // "50 % of cruise" and "76 % of cruise" labels are fiction and the reader can see it.
       flownSpeed,
       commandedSpeed,
-      hullLost: impactDamage,
+      throttle,
+      hullLost: damageProof ? hullDelta : null,
       hullLostFraction,
-      // The damage the consequence kernel actually produced, and where it went. Reporting only the
-      // hull delta makes "the shield ate 54 points" and "nothing happened" print the same zero.
-      consequenceImpactDamage: helmHit ? helmHit.impactDamage : 0,
+      // The damage the consequence kernel actually produced, and where it went. Reporting only
+      // the hull delta — or coupling it to the first helm-taking receipt — makes "the shield
+      // ate 54 points while helm was kept" print as an indistinguishable zero.
+      consequenceImpactDamage: damageProof ? finite(damageReceipt.impactDamage) : null,
       shieldBefore,
       shieldAfter,
-      shieldAbsorbed: Math.max(0, shieldBefore - shieldAfter),
+      shieldAbsorbed: damageProof ? Math.max(0, shieldBefore - shieldAfter) : null,
       lostHelm,
-      helmControl: helmHit ? helmHit.control : 'none',
+      helmControl: helmHit ? helmHit.control : (damageReceipt ? damageReceipt.control : null),
+      damageProof,
+      helmProof,
       isLethal,
       contactImpulse,
       contactImpulseOverMass: mass > 0 ? contactImpulse / mass : 0,
@@ -527,4 +580,19 @@ function closingAlong(vel, from, to) {
   const dist = hypot2(dx, dz);
   if (!(dist > 1e-9)) return hypot2(vel && vel.x, vel && vel.z);
   return (finite(vel && vel.x) * dx + finite(vel && vel.z) * dz) / dist;
+}
+
+function b6Clause(label, value, unit, met, proof, reason) {
+  if (!proof) {
+    return {
+      bar: 'B6',
+      label,
+      value: null,
+      unit,
+      met: false,
+      unmeasured: true,
+      note: `UNMEASURED — ${reason}`,
+    };
+  }
+  return { bar: 'B6', label, value, unit, met: met === true };
 }
