@@ -366,6 +366,7 @@ const SPR_RING = 1;    // expanding shockwave / shield ripple ring: radius eases
 const SPR_PUFF = 2;    // soft drifting puff (dust, smoke): gentle grow + drift, opacity fades
 const SPR_FRESNEL = 3; // shield-hit fresnel ripple: bright rim ring that snaps to size then fades
 const SPR_COMBUSTION = 4; // asymmetric flame body: irregular edge, directional aspect, fast core-to-sheath fade
+const IMPULSE_SHOVE_RENDER_CAP = 8;
 
 // Per-quality spawn multiplier so "punchier" effects scale with the particle budget instead of
 // blindly multiplying spawns against a 1500-particle low cap (where recycle is O(cap) per spawn).
@@ -3042,7 +3043,11 @@ export const vfx = {
       || recipe.family === 'missile'
       || recipe.family === 'concussion'
       || recipe.family === 'mine'
-      || recipe.family === 'beam';
+      || recipe.family === 'beam'
+      || recipe.family === 'rail'
+      || profile.mode === 'penetration-streak'
+      || profile.mode === 'concussive-slam'
+      || profile.mode === 'radial-shove';
     if (presenterHit && !keepLegacyHit) {
       if (presenterHit.sparks) {
         const approach = p && (p.approach || p.dir) || null;
@@ -3139,16 +3144,27 @@ export const vfx = {
         // Rail contact leaves a narrow axial cut fixed at the contact while a much smaller exit fan
         // departs along the surface normal. The cooler ionized scar survives the launch-white core,
         // so release frames retain a family-specific line rather than collapsing to a few points.
+        // This branch must run on the presenter-live path (keepLegacyHit includes rail) so the
+        // axial family is not replaced by a generic spark cone.
+        const railReduced = resolveVfxAccessibilityProfile(
+          this.state && this.state.settings,
+        ).flashOpacityScale < 1;
         this._spawnProjectileTrailStreak(surfaceX, 0.3, surfaceZ,
-          profile.life * 1.75, 0.32 * scale, 13.5 * scale, 1.0, profile.coreColor, 0, 0, ax, az);
+          profile.life * (railReduced ? 1.2 : 1.75), (railReduced ? 0.22 : 0.32) * scale,
+          (railReduced ? 8.5 : 13.5) * scale, railReduced ? 0.72 : 1.0, profile.coreColor,
+          0, 0, ax, az);
         this._spawnProjectileTrailStreak(surfaceX - ax * 0.55 * scale, 0.2, surfaceZ - az * 0.55 * scale,
-          profile.life * 2.35, 0.18 * scale, 8.8 * scale, 0.64, materialColor,
-          nx * 1.8, nz * 1.8, ax, az);
-        this._spawnProjectileTrailStreak(surfaceX, 0.2, surfaceZ,
-          profile.life * 2.05, 0.28 * scale, 5.2 * scale, 0.58, '#6cbfe8',
-          nx * 6, nz * 6, nx, nz);
+          profile.life * (railReduced ? 1.5 : 2.35), (railReduced ? 0.12 : 0.18) * scale,
+          (railReduced ? 5.4 : 8.8) * scale, railReduced ? 0.48 : 0.64, materialColor,
+          nx * (railReduced ? 1.1 : 1.8), nz * (railReduced ? 1.1 : 1.8), ax, az);
+        if (!railReduced) {
+          this._spawnProjectileTrailStreak(surfaceX, 0.2, surfaceZ,
+            profile.life * 2.05, 0.28 * scale, 5.2 * scale, 0.58, '#6cbfe8',
+            nx * 6, nz * 6, nx, nz);
+        }
         this._impactParticleCone(surfaceX, surfaceZ, normalAngle, 0.46, 48, 86,
-          Math.max(3, Math.round(profile.fragmentCount * burst * 0.65)), 0.24, 0.88,
+          Math.max(railReduced ? 2 : 3, Math.round(profile.fragmentCount * burst * (railReduced ? 0.35 : 0.65))),
+          railReduced ? 0.16 : 0.24, 0.88,
           '#ffffff', '#70808a', 3.2);
         break;
       }
@@ -3286,6 +3302,9 @@ export const vfx = {
         // code ships. Sizes carry the lab calibration (event radius 3 wu at the 110 wu band).
         const slamScale = 3 * scale;
         const reflectAngle = Math.atan2(-az, -ax); // spall opens back toward the shooter
+        const slamReduced = resolveVfxAccessibilityProfile(
+          this.state && this.state.settings,
+        ).flashOpacityScale < 1;
         // 1 — compressed impact flash: size0 > size1 so it collapses as the front expands.
         this._spawnSprite(SPR_FLASH, surfaceX, 0.26, surfaceZ, 0.10,
           3.4 * slamScale, 1.1 * slamScale, 0.95, 0, '#ffffff', 0, 0, 1, normalAngle);
@@ -3296,40 +3315,67 @@ export const vfx = {
           this._spawnSprite(SPR_FLASH,
             surfaceX + nx * side * 0.3 * slamScale + ax * 0.22 * slamScale, 0.24,
             surfaceZ + nz * side * 0.3 * slamScale + az * 0.22 * slamScale,
-            0.34, 0.6 * slamScale, 2.8 * slamScale, 0.72, 0,
+            slamReduced ? 0.24 : 0.34, 0.6 * slamScale, (slamReduced ? 2.0 : 2.8) * slamScale,
+            slamReduced ? 0.55 : 0.72, 0,
             '#fff4e0', 0, 0, 3.2, normalAngle);
         }
         // 3 — trailing pressure wash: genuinely slower and dimmer than the lead front. Two fronts
         // at different speeds is what turns "a ring" into "a shock".
-        for (const side of [-1, 1]) {
-          this._spawnSprite(SPR_FLASH,
-            surfaceX + nx * side * 0.24 * slamScale + ax * 0.13 * slamScale, 0.22,
-            surfaceZ + nz * side * 0.24 * slamScale + az * 0.13 * slamScale,
-            0.5, 1.0 * slamScale, 2.2 * slamScale, 0.38, 0,
-            profile.accentColor, 0, 0, 3.0, normalAngle);
+        if (!slamReduced) {
+          for (const side of [-1, 1]) {
+            this._spawnSprite(SPR_FLASH,
+              surfaceX + nx * side * 0.24 * slamScale + ax * 0.13 * slamScale, 0.22,
+              surfaceZ + nz * side * 0.24 * slamScale + az * 0.13 * slamScale,
+              0.5, 1.0 * slamScale, 2.2 * slamScale, 0.38, 0,
+              profile.accentColor, 0, 0, 3.0, normalAngle);
+          }
         }
         // 4 — debris kick + wide spark cone thrown back along the approach (spall reads as
         // "hit from over there"), with short trails on the largest fragments only.
-        this._impactParticleCone(surfaceX, surfaceZ, reflectAngle, 0.85, 34, 97,
-          Math.max(6, Math.round(profile.fragmentCount * burst * 0.8)), 0.5, 1.5,
+        this._impactParticleCone(surfaceX, surfaceZ, reflectAngle, slamReduced ? 0.55 : 0.85, 34, 97,
+          Math.max(slamReduced ? 3 : 6, Math.round(profile.fragmentCount * burst * (slamReduced ? 0.35 : 0.8))),
+          slamReduced ? 0.28 : 0.5, 1.5,
           '#fffaf0', profile.accentColor, 2.2);
-        for (let k = 0; k < 4; k++) {
-          const a = reflectAngle + (k - 1.5) * 0.38 + (Math.random() - 0.5) * 0.2;
+        const debrisCount = slamReduced ? 2 : 4;
+        for (let k = 0; k < debrisCount; k++) {
+          const a = slamReduced
+            ? reflectAngle + (k - (debrisCount - 1) * 0.5) * 0.38
+            : reflectAngle + (k - 1.5) * 0.38 + (Math.random() - 0.5) * 0.2;
           this._spawnProjectileTrailStreak(surfaceX, 0.2, surfaceZ,
-            0.5 + Math.random() * 0.3, 0.16 * scale, (2.2 + k * 0.5) * scale, 0.7,
+            slamReduced ? 0.32 : 0.5 + Math.random() * 0.3, 0.16 * scale,
+            (slamReduced ? 1.6 : 2.2 + k * 0.5) * scale, slamReduced ? 0.5 : 0.7,
             k % 2 ? '#ffd9a8' : profile.accentColor,
-            Math.cos(a) * (20 + k * 6) * scale, Math.sin(a) * (20 + k * 6) * scale,
+            Math.cos(a) * (slamReduced ? 12 : 20 + k * 6) * scale,
+            Math.sin(a) * (slamReduced ? 12 : 20 + k * 6) * scale,
             Math.cos(a), Math.sin(a));
         }
         // 5 — surface dust: slow, warm, and still saying "something hit here" after the light dies.
-        for (let k = 0; k < 3; k++) {
-          const a = reflectAngle + (Math.random() - 0.5) * 1.4;
-          this._spawnSprite(SPR_PUFF,
-            surfaceX + Math.cos(a) * 0.3 * slamScale, 0.06,
-            surfaceZ + Math.sin(a) * 0.3 * slamScale,
-            1.3 + Math.random() * 1.1, 0.5 * slamScale, 2.0 * slamScale, 0.4, 0,
-            '#8a6a52', Math.cos(a) * 4, Math.sin(a) * 4, 2.0, a);
+        if (!slamReduced) {
+          for (let k = 0; k < 3; k++) {
+            const a = reflectAngle + (Math.random() - 0.5) * 1.4;
+            this._spawnSprite(SPR_PUFF,
+              surfaceX + Math.cos(a) * 0.3 * slamScale, 0.06,
+              surfaceZ + Math.sin(a) * 0.3 * slamScale,
+              1.3 + Math.random() * 1.1, 0.5 * slamScale, 2.0 * slamScale, 0.4, 0,
+              '#8a6a52', Math.cos(a) * 4, Math.sin(a) * 4, 2.0, a);
+          }
         }
+        break;
+      }
+      case 'radial-shove': {
+        // Impulse-mine / charge family: shock sheets and ribbons along the real signed shove,
+        // never a spherical ring. Projectile-hit uses the inbound approach; charge detonation
+        // feeds the same helper with one record per victim.
+        const shoveReduced = resolveVfxAccessibilityProfile(
+          this.state && this.state.settings,
+        ).flashOpacityScale < 1;
+        this._emitDirectionalShoveSheets(
+          { x: surfaceX, z: surfaceZ },
+          [{ dx: ax, dz: az, mag: 1 }],
+          profile,
+          shoveReduced,
+          scale,
+        );
         break;
       }
       default: {
@@ -3361,6 +3407,56 @@ export const vfx = {
     }
     this._flashLight({ x: pos.x, z: pos.z }, hitShield ? shieldColor : profile.accentColor,
       profile.lightPeak * scale, 13, 110 * scale);
+  },
+
+  // One directional shock sheet + ribbon + cone along a REAL signed shove. Used by impulse-charge
+  // detonation (one record per victim) and the radial-shove projectile family. Never invents a
+  // global axis when several directions exist, and never emits SPR_RING.
+  _emitDirectionalShoveSheets(origin, shoves, profile, reduced, sizeScale = 1) {
+    if (!origin || !profile) return;
+    const list = Array.isArray(shoves) ? shoves : [];
+    const n = Math.min(list.length, IMPULSE_SHOVE_RENDER_CAP);
+    const scale = Math.max(0.7, sizeScale);
+    const life = (profile.life || 0.36) * (reduced ? 0.7 : 1);
+    const fragments = Math.max(
+      reduced ? 2 : 4,
+      Math.round((profile.fragmentCount || 12) / Math.max(1, n) * (reduced ? 0.35 : 0.7)),
+    );
+    for (let i = 0; i < n; i++) {
+      const row = list[i];
+      let dx = Number(row && row.dx);
+      let dz = Number(row && row.dz);
+      const len = Math.hypot(dx, dz);
+      if (!(len > 1e-6)) continue;
+      dx /= len;
+      dz /= len;
+      const mag = Math.max(0, Number(row && row.mag) || 1);
+      const angle = Math.atan2(dz, dx);
+      const magReach = mag > 2 ? Math.min(mag * 0.01, 10) : 3.4;
+      const reach = Math.min(16, (4.8 + magReach) * scale);
+      this._spawnSprite(SPR_FLASH,
+        origin.x + dx * 0.4 * scale, 0.22, origin.z + dz * 0.4 * scale,
+        life, 0.55 * scale, (reduced ? 1.6 : 2.6) * scale, reduced ? 0.55 : 0.78, 0,
+        profile.coreColor, dx * (reduced ? 6 : 14), dz * (reduced ? 6 : 14),
+        3.15, angle);
+      if (!reduced) {
+        this._spawnSprite(SPR_FLASH,
+          origin.x + dx * 0.18 * scale, 0.18, origin.z + dz * 0.18 * scale,
+          life * 1.15, 0.9 * scale, 2.1 * scale, 0.4, 0,
+          profile.accentColor, dx * 8, dz * 8, 2.8, angle);
+      }
+      this._spawnProjectileTrailStreak(
+        origin.x, 0.2, origin.z,
+        reduced ? 0.22 : life, (reduced ? 0.1 : 0.16) * scale,
+        reduced ? Math.max(2.4, reach * 0.55) : reach,
+        reduced ? 0.48 : 0.74, profile.accentColor,
+        dx * (reduced ? 10 : 22), dz * (reduced ? 10 : 22), dx, dz);
+      this._impactParticleCone(
+        origin.x, origin.z, angle, reduced ? 0.45 : 0.85,
+        reduced ? 12 : 18, reduced ? 28 : 48,
+        fragments, reduced ? 0.18 : 0.32, 0.9 * scale,
+        profile.coreColor, profile.accentColor, 2.2);
+    }
   },
 
   _impactParticleCone(x, z, base, spread, speedMin, speedMax, count, life, size, color0, color1, drag) {
@@ -7947,23 +8043,20 @@ export const vfx = {
     this._emitJuiceCue('combat.damage.charge', p, 2);
     if (!this._scene || !p || !p.pos) return;
     const pos = p.pos;
-    const r = Math.max(4, p.radius || 12);
+    const r = Math.max(4, Number(p.radius) || 12);
+    const acc = resolveVfxAccessibilityProfile(this.state && this.state.settings);
+    const reduced = acc.flashOpacityScale < 1;
     const neon = resolveForceNeonScale('impulse', this._forceNeonMetrics());
-    const op = Math.min(1, 0.85 * neon.energy * 0.55);
-    // white core + palette shockwave, radius-scaled (spec2/02 §3) — neon-boosted force layer
-    this._spawnSprite(SPR_FLASH, pos.x, 0, pos.z, 0.10, r * 0.6 * neon.energy * 0.55, r * 2.2 * neon.energy * 0.5, 1.0, 0.0, '#ffffff', 0, 0);
-    this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.55, r * 0.4, r * 3.5 * neon.particleBoost * 0.7, Math.min(1, 0.85 * neon.energy * 0.5), 0.0, '#39d0ff', 0, 0);
-    this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.70, r * 0.6, r * 4.5 * neon.particleBoost * 0.7, Math.min(1, 0.55 * neon.energy * 0.55), 0.0, '#ffb35c', 0, 0);
-    this._c0.set('#ffffff'); this._c1.set('#39d0ff');
-    const burst = Math.max(10, Math.round(24 * (this._burst || 1) * neon.particleBoost));
-    for (let k = 0; k < burst; k++) {
-      const a = Math.random() * Math.PI * 2;
-      const v = (20 + Math.random() * 55) * neon.particleBoost;
-      this._spawnParticle(pos.x, pos.z, Math.cos(a) * v, Math.sin(a) * v,
-        0.25 + Math.random() * 0.25, 1.8 * neon.energy * 0.55, 0.0, this._c0, this._c1, 2.0, 0, 0);
+    const profile = resolveImpactPresentationProfile('wpn_vector_mine_m');
+    const coreScale = Math.max(1.6, Math.min(4.5, r * 0.08)) * neon.energy * 0.55;
+    // Compact structural core: collapsing punch, never the retired spherical explosion/ring.
+    this._spawnSprite(SPR_FLASH, pos.x, 0.16, pos.z, 0.10,
+      2.4 * coreScale, 0.85 * coreScale, 0.92, 0, '#ffffff', 0, 0, 1.15, 0);
+    this._emitDirectionalShoveSheets(pos, p.shoves, profile, reduced, Math.max(0.85, coreScale));
+    if (acc.eventLightPeakScale > 0) {
+      this._flashLight({ x: pos.x, z: pos.z }, profile.accentColor || '#39d0ff',
+        4.2 * neon.lightPeak * acc.eventLightPeakScale, 8, 180);
     }
-    this._flashLight({ x: pos.x, z: pos.z }, '#39d0ff', 6.0 * neon.lightPeak, 8, 220 + neon.coreWhite * 40);
-    void op;
   },
 
   // SF-10 wall-impact payoff (combat:collisionConsequence). A light hull slammed into terrain /

@@ -21,6 +21,9 @@ const STICK_TYPES = new Set(['ship', 'drone', 'asteroid']);
 const BLAST_DAMAGE_TYPES = new Set(['ship', 'station', 'drone']);
 const CHARGE_BY_ID = new Map(Object.entries(IMPULSE_CHARGES));
 const MODULE_BY_ID = new Map(MODULES.map((m) => [m.id, m]));
+// Bounded causal blast payload for presentation. A radial mine may shove many hulls; VFX may
+// only illustrate the strongest real directions, never one invented global axis.
+export const IMPULSE_CHARGE_SHOVE_CAP = 8;
 
 // M3 bomb-propulsion dials. Brake/reverse + the existing throw verb drops an already-armed plate
 // aft at a safe but still damaging standoff; R remains the deliberate detonation verb.
@@ -59,6 +62,28 @@ function aimDir(player, state) {
 function linearFalloff(dist, radius) {
   if (!(radius > 0)) return 0;
   return Math.max(0, 1 - dist / radius);
+}
+
+function considerImpulseShove(shoves, id, dirX, dirZ, mag) {
+  const shove = { id, dx: dirX, dz: dirZ, mag };
+  if (shoves.length < IMPULSE_CHARGE_SHOVE_CAP) {
+    shoves.push(shove);
+    return;
+  }
+  let weakest = 0;
+  for (let i = 1; i < shoves.length; i++) {
+    if (shoves[i].mag < shoves[weakest].mag) weakest = i;
+  }
+  if (mag > shoves[weakest].mag) shoves[weakest] = shove;
+}
+
+function freezeImpulseShoves(shoves) {
+  const out = new Array(shoves.length);
+  for (let i = 0; i < shoves.length; i++) {
+    const row = shoves[i];
+    out[i] = Object.freeze({ id: row.id, dx: row.dx, dz: row.dz, mag: row.mag });
+  }
+  return Object.freeze(out);
 }
 
 function worldOffset(host, local) {
@@ -371,6 +396,7 @@ export const impulseCharges = {
     const def = chargeDef(d.chargeId);
     const pos = { x: charge.pos.x, z: charge.pos.z };
     const hits = [];
+    const shoves = [];
 
     // Rung 16 — massline combo for THIS charge. slingBomb amplifies the whole blast; anchorKick
     // channels the anchor's share of it along the tether line instead of the radial direction.
@@ -421,6 +447,7 @@ export const impulseCharges = {
       // never forced with a direct vel write.
       this._applyBlastImpulse(ent, dirX * magnitude, dirZ * magnitude, state);
       hits.push(ent.id);
+      considerImpulseShove(shoves, ent.id, dirX, dirZ, magnitude);
 
       if (BLAST_DAMAGE_TYPES.has(ent.type) && def.damage > 0) {
         const packet = scalarHitToDamagePacket({
@@ -449,18 +476,11 @@ export const impulseCharges = {
         pos,
       });
     }
-    this.bus.emit('charge:detonated', { pos, hits });
-    this.bus.emit('presentation:vfxCue', {
-      id: 'combat.explosion.small',
-      lane: 'combat',
-      particles: 36,
-      lights: 2,
-      magnitude: Math.max(0.5, def.radius / 42),
-      position: pos,
-      material: 'explosive',
-      sourceId: ownerId,
-      targetId: null,
-      flashReduced: false,
+    this.bus.emit('charge:detonated', {
+      pos,
+      hits,
+      radius: def.radius,
+      shoves: freezeImpulseShoves(shoves),
     });
     this.bus.emit('audio:cue', { id: 'sfx_explosion_small', position: pos, gain: 0.65 });
   },
