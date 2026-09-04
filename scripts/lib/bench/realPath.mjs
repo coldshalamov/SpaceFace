@@ -23,9 +23,12 @@
 import { SIM_DT } from '../../../src/core/sim.js';
 import {
   applyFeatureConfigToMaps,
+  combatFlag,
+  massline2Flag,
   restoreFeatureMaps,
   snapshotFeatureMaps,
 } from '../../../src/data/featureFlags.js';
+import { readPhysicsTelemetry } from '../../../src/core/physicsAuthority.js';
 import { createAuthoritativeRuntime } from '../../../src/runtime/createAuthoritativeRuntime.js';
 import { actions } from '../../../src/systems/actions.js';
 import { aiPorts } from '../../../src/systems/aiPorts.js';
@@ -97,6 +100,14 @@ export function realPathProof(runtime) {
     // False means SG-02 was built with contact capture off: the run still has real contact
     // physics, but emits no `physics:impact` receipts and `collisionConsequences` sees nothing.
     contactCaptureEnabled: !!(physicsSys && physicsSys._sg02 && physicsSys._sg02.captureContactImpacts),
+    // The runtime applies the profile's feature config to the process-global MAPS only inside
+    // step()/init. Read here (outside the window) these are the process defaults — false on this
+    // machine — which is exactly what a scenario's hook-time bus.emit or flag-gated call sees unless
+    // it goes through host.withFeatures(). A scenario that reports these as true proved nothing.
+    featuresOutsideStep: {
+      tumble: massline2Flag('tumble') === true,
+      weaponImpulseConsequences: combatFlag('weaponImpulseConsequences') === true,
+    },
     physicsBackend: String(gameplay.physicsBackend || 'none'),
     flightBackend: String(gameplay.flightBackend || 'none'),
     aiBackend: String(gameplay.aiBackend || 'none'),
@@ -210,6 +221,51 @@ export async function bootRealPath({ seed, systems, hulls = [], profileId = 'pro
 
     proof() {
       return realPathProof(runtime);
+    },
+
+    /**
+     * Runs `fn` with THIS runtime's feature config applied to the process-global flag MAPS, then
+     * restores them exactly as createAuthoritativeRuntime does around a step. Anything a scenario
+     * does from a step hook — a bus.emit of a gameplay event, any flag-gated call — otherwise runs
+     * against the process defaults (all false) and silently proves the wrong thing (FORCE lane,
+     * 2026-09-03: a rope throw produced 0 s helm loss because tumbleStates read massline2.tumble as
+     * false from the hook). Use: `host.withFeatures(() => host.bus.emit('massline:throw', {...}))`.
+     */
+    withFeatures(fn) {
+      const previous = snapshotFeatureMaps();
+      applyFeatureConfigToMaps(runtime.config.features);
+      try {
+        return fn();
+      } finally {
+        restoreFeatureMaps(previous);
+      }
+    },
+
+    /**
+     * Throws, naming the offenders, if any of `entities` has no physics body after the first step.
+     * SG-02 only gives a Rapier body to entities the activity classifier keeps near the player
+     * (~750 WU on 2026-09-03); a farther entity never moves and reads dV = 0 forever — a clean table
+     * of zeros that looks exactly like a finding. Call after `host.step(1)` for every actor a
+     * measurement relies on.
+     */
+    assertBodies(entities, label = 'assertBodies') {
+      const list = Array.isArray(entities) ? entities : [entities];
+      const missing = [];
+      for (const entity of list) {
+        if (!entity) { missing.push('(null entity)'); continue; }
+        const telemetry = readPhysicsTelemetry(entity);
+        if (telemetry == null) {
+          const p = entity.pos || {};
+          const dx = host.player && host.player.pos ? (p.x || 0) - host.player.pos.x : NaN;
+          const dz = host.player && host.player.pos ? (p.z || 0) - host.player.pos.z : NaN;
+          const dist = Number.isFinite(dx) && Number.isFinite(dz) ? Math.hypot(dx, dz).toFixed(0) : '?';
+          missing.push(`#${entity.id} ${entity.type || ''} at ${dist} WU from the player`);
+        }
+      }
+      if (missing.length) {
+        throw new Error(`${label}: ${missing.length} of ${list.length} entities have NO physics body (SG-02 admits bodies only near the player; a bodiless entity silently reads dV = 0): ${missing.join('; ')}`);
+      }
+      return list.length;
     },
 
     dispose() {
