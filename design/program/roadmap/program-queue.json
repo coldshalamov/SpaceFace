@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-04T04:23:25.056Z",
+  "updatedAt": "2026-09-04T04:55:59.824Z",
   "purpose": "Canonical cross-plan priority and dispatch queue. Product completion remains authoritative in design/program/03_LIVE_ACCEPTANCE_MATRIX.md.",
   "stateContract": {
     "allowed": [
@@ -14853,7 +14853,8 @@
         "npm run check:crucible:route"
       ],
       "receiptRefs": [
-        "design/program/roadmap/receipts/fun-loop/PQ-173-00-REPORT.md"
+        "design/program/roadmap/receipts/fun-loop/PQ-173-00-REPORT.md",
+        "design/program/roadmap/receipts/PQ-173.00-repair-REPORT.md"
       ],
       "brief": "One command runs the Crucible feel bench (swarm ruleset, three arenas × three loadouts incl. the shove weapon and the rope kit, first three waves, three fixed seeds each), the flight bench and the verb benches, headless; a --headed flag records frame strips at the shipping camera with HUD text off. DONE WHEN: Two runs of the same seed hash identical; strips land under receipts/fun-loop/."
     },
