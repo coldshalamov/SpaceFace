@@ -1164,6 +1164,11 @@ function summarizeMetrics({ eventTrace, knockEvents, ticks, wavesCleared, cruise
   let knocksMissingDeltaV = 0;
   let knocksMissingAppliedDeltaV = 0;
   let knocksMissingActor = 0;
+  // Of those, the ones too small for the player to feel. `directContactCausalActorId` returns null
+  // when the two bodies' normal contributions are symmetric or non-closing — which is exactly what
+  // solver settle looks like. Naming an actor there would be guessing, and the scenario's own law is
+  // that nothing unattributed may be guessed. Split so a settle receipt is not read as a bar gap.
+  let knocksMissingActorSubFloor = 0;
   let collateralMoments = 0;
   const verbs = new Set();
 
@@ -1178,7 +1183,11 @@ function summarizeMetrics({ eventTrace, knockEvents, ticks, wavesCleared, cruise
       const applied = ev.data && ev.data.appliedDeltaV != null ? Number(ev.data.appliedDeltaV) : NaN;
       if (!Number.isFinite(raw)) knocksMissingDeltaV += 1;
       if (!Number.isFinite(applied)) knocksMissingAppliedDeltaV += 1;
-      if (!ev.data || ev.data.causalActorId == null) knocksMissingActor += 1;
+      if (!ev.data || ev.data.causalActorId == null) {
+        knocksMissingActor += 1;
+        const receiptFloor = cruiseSpeed !== null && cruiseSpeed > 0 ? KNOCK_FLOOR_FRACTION * cruiseSpeed : 0;
+        if (Number.isFinite(applied) && applied < receiptFloor) knocksMissingActorSubFloor += 1;
+      }
       if (ev.data) {
         ev.data.deltaVFractionOfCruise = cruiseSpeed !== null && cruiseSpeed > 0 && Number.isFinite(applied)
           ? applied / cruiseSpeed
@@ -1253,8 +1262,11 @@ function summarizeMetrics({ eventTrace, knockEvents, ticks, wavesCleared, cruise
   if (knocksMissingAppliedDeltaV > 0) {
     gapParts.push(`${knocksMissingAppliedDeltaV} physics:impact event(s) named the player but carried no appliedPlayerDeltaV`);
   }
-  if (knocksMissingActor > 0) {
-    gapParts.push(`${knocksMissingActor} player knock receipt(s) named no causalActorId`);
+  const knocksMissingActorAtOrAboveFloor = knocksMissingActor - knocksMissingActorSubFloor;
+  if (knocksMissingActorAtOrAboveFloor > 0) {
+    // Only an unattributed receipt the player could actually feel is a gap: it could be a ram the
+    // bar should exclude or ambient contact the bar should count, and nothing here can tell which.
+    gapParts.push(`${knocksMissingActorAtOrAboveFloor} player knock receipt(s) at or above the knock floor named no causalActorId, so ambient-vs-ram is unproven for them`);
   }
   if (!headingKnown) {
     gapParts.push('headingChange: at least one ambient contact has no measured heading change');
@@ -1290,6 +1302,9 @@ function summarizeMetrics({ eventTrace, knockEvents, ticks, wavesCleared, cruise
     knocksMissingDeltaV,
     knocksMissingAppliedDeltaV,
     knocksMissingActor,
+    // Sub-floor settle contacts the authority declined to attribute. Reported, never a bar gap.
+    knocksMissingActorSubFloor,
+    knocksMissingActorAtOrAboveFloor,
     wavesCleared,
     simSeconds: round2(simSeconds),
     knockSource: 'physics:impact(playerInvolved).appliedPlayerDeltaV, receipts coalesced into events',
