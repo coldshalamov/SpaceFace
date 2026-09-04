@@ -10424,7 +10424,7 @@
       "receiptRefs": [
         "design/program/roadmap/receipts/PQ-137.03-REPORT.md"
       ],
-      "brief": "IMPLEMENTED 2026-09-04: B2 is met on the production path (0.67 s rest-to-cruise, 1.58 s reversal, 0.95 screen-depth turn); travel ceilings preserve earned transit speed. B3 cruise crossing is met, but the governed above-cap camera opening remains honestly red, so this is not done. See receipt."
+      "brief": "IMPLEMENTED 2026-09-04: B2 and all five B3 clauses are met on the production path; the assisted planar governor also closes the weave/lateral exploit without spending physics-earned momentum. Hitch weave ends at 0.997x cruise, diagonals at 1.003x, and a 2x oblique earned exit retains 100%. Headed shipping-camera acceptance remains open. See receipt."
     },
     {
       "id": "PQ-137.04",
