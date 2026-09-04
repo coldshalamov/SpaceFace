@@ -10461,7 +10461,7 @@
       "priority": 45,
       "title": "Weapons have force, including the starter; the Crucible starts with a shove",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-137.04"
       ],
@@ -10477,8 +10477,10 @@
         "npm run check:baseline",
         "npm run check:crucible:route"
       ],
-      "receiptRefs": [],
-      "brief": "Force table per FEEL_CONTRACT section C: starter >= 5% of light cruise per hit, shove weapon >= 30%, mine >= 45% at centre; the Crucible run starts with a shove weapon (record the kit decision; the owner may veto the weapon, not the requirement). Bar B4 magnitudes; re-verify the PQ-133 balance receipt."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-137.05-REPORT.md"
+      ],
+      "brief": "IMPLEMENTED 2026-09-04: force table and real sensor mine integrated; fresh Crucible starts with the shove kit. B4/B5 focused numbers pass; 20-seed kit ordering and visual route acceptance remain open."
     },
     {
       "id": "PQ-137.06",
@@ -10533,7 +10535,7 @@
       "priority": 48,
       "title": "Draw-to-fly rips: a pilot reinterpretation of the ink",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-137.03"
       ],
@@ -10547,8 +10549,10 @@
       "checks": [
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
-      "brief": "Curvature-clamped centerline (r_min ~ 1.3 x turn radius), speed profile solved backward along the path, corridor half-width ~ 0.35 x turn radius, leave the ink only when it demands < 0.8 x turn radius or an obstacle intrudes, rejoin tangentially. Speed is the pass criterion, track is the constraint: mean stroke speed >= 70% cruise, slowest >= 35%, ordered coverage >= 90%. Add the speed bar to the tracking test. Bar B8."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-137.08-REPORT.md"
+      ],
+      "brief": "IMPLEMENTED 2026-09-04: tangent-safe drawn flight integrated; corner/S/hook production cases meet speed and corridor bars. Short strokes from rest and normal-speed route acceptance remain open."
     },
     {
       "id": "PQ-137.09",

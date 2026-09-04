@@ -41,6 +41,7 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
+| PQ-180 frontend grammar | next-five / Claude Opus 5 | IMPLEMENTING | `scripts/ui-grammar-surfaces.mjs`, `scripts/ui-grammar-thresholds.mjs`, `scripts/lib/ui-grammar-measure.mjs`, `scripts/check-ui-grammar-matrix.mjs`, `test/ui-grammar-matrix.test.mjs`, `test/ui-grammar-baseline.json`, `scripts/capture-ui-matrix.mjs`, `scripts/check-visual-regression.mjs`, `design/frontend/INSTRUMENT_GRAMMAR.md`, `design/frontend/UI_GRAMMAR_OWNERSHIP.md` | Complete runtime matrix; controller integrates |
 These paths are protected from overwrite until a task explicitly adopts and finishes them. They are
 not active leases and do not prevent other tasks from proceeding.
 
