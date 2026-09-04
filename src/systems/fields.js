@@ -29,7 +29,9 @@ import { isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
 import { Masks } from '../core/entity.js';
 import { getCombatKernel } from '../combat/kernel.js';
 import { ensureCombatant } from '../combat/runtime.js';
+import { publishHitstunImpulse } from '../combat/impulseKernel.js';
 import { PINNED_STATUS_ID, UNMOORED_STATUS_ID } from '../data/combatDefs.js';
+import { combatFlag } from '../data/featureFlags.js';
 import {
   ORBIT_NODE_TYPE,
   attachOrbitWorld,
@@ -151,6 +153,9 @@ export const fields = {
     this._massStateStrengths = new Map();
     this._accel = { ax: 0, az: 0 };
     this._massStateAccel = { ax: 0, az: 0 };
+    this._wellScratch = { ax: 0, az: 0 };
+    this._wellAccum = new WeakMap();
+    this._wellBodies = new Set();
     this._bodyProfile = { mass: 1, type: null, team: null, id: null, fieldResponseMult: 1, physicsMassScale: 1 };
     this._coneCenter = { x: 0, z: 0 };
     this._coneDir = { x: 1, z: 0 };
@@ -515,6 +520,8 @@ export const fields = {
     }
     if (this._orbitWorld) resetOrbitWorld(this._orbitWorld);
     if (this._kernel) this._kernel.clear();
+    this._wellAccum = new WeakMap();
+    this._wellBodies = new Set();
     this.bus && this.bus.emit && this.bus.emit('fields:cleared', { reason, why });
     state.fields = defaultRuntime();
   },
@@ -605,9 +612,13 @@ export const fields = {
   },
 
   _applyForces(dt, state, rt) {
-    const fieldsList = this._kernel.list();
     const now = nowOf(state);
-    if (fieldsList.length === 0 || dt <= 0) return { queries: 0, affected: 0, accelSum: 0 };
+    if (this._kernel && typeof this._kernel.expire === 'function') this._kernel.expire(now);
+    const fieldsList = this._kernel.list();
+    if (fieldsList.length === 0 || dt <= 0) {
+      this._flushEndedWells(state);
+      return { queries: 0, affected: 0, accelSum: 0 };
+    }
     const queryRadius = this.helpers && this.helpers.queryRadius;
     const affected = this._affected;
     affected.clear();
@@ -655,10 +666,86 @@ export const fields = {
       const mass = positive(e.physicsBody && e.physicsBody.mass, positive(e.mass, 1))
         * positive(profile.physicsMassScale, 1);
       queuePhysicsImpulse(e, { x: accel.ax * mass * dt, y: 0, z: accel.az * mass * dt });
+      this._accumulateWellDelta(e, fieldsList, profile, accel, dt, state);
       affectedCount++;
       accelSum += Math.hypot(accel.ax, accel.az);
     }
+    this._flushEndedWells(state);
     return { queries, affected: affectedCount, accelSum };
+  },
+
+  _accumulateWellDelta(entity, fieldsList, profile, appliedAccel, dt, state) {
+    if (!entity || entity.id === state.playerId) return;
+    if (entity.type !== 'ship' && entity.type !== 'drone') return;
+    let wellOwnerId = null;
+    let wellAffects = false;
+    for (let i = 0; i < fieldsList.length; i++) {
+      const field = fieldsList[i];
+      if (!field || field.kind !== FIELD_KINDS.WELL) continue;
+      if (!fieldAffectsBody(field, profile)) continue;
+      fieldRawAcceleration(field, entity.pos.x, entity.pos.z, this._wellScratch, entity.vel);
+      if (this._wellScratch.ax === 0 && this._wellScratch.az === 0) continue;
+      wellAffects = true;
+      wellOwnerId = field.ownerId;
+      break;
+    }
+    if (!wellAffects) return;
+    let rec = this._wellAccum.get(entity);
+    if (!rec) {
+      rec = { dx: 0, dz: 0, attackerId: null, attackerMass: 1, touched: false };
+      this._wellAccum.set(entity, rec);
+      this._wellBodies.add(entity);
+    }
+    rec.dx += finite(appliedAccel && appliedAccel.ax) * dt;
+    rec.dz += finite(appliedAccel && appliedAccel.az) * dt;
+    rec.touched = true;
+    rec.attackerId = wellOwnerId;
+    const owner = wellOwnerId != null && state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(wellOwnerId)
+      : null;
+    rec.attackerMass = positive(owner && (owner.physicsBody && owner.physicsBody.mass || owner.mass), 1);
+  },
+
+  _flushEndedWells(state) {
+    if (!this._wellBodies || this._wellBodies.size === 0) return;
+    const ended = [];
+    for (const entity of this._wellBodies) {
+      const rec = this._wellAccum.get(entity);
+      if (!rec) {
+        ended.push(entity);
+        continue;
+      }
+      if (rec.touched) {
+        rec.touched = false;
+        continue;
+      }
+      this._publishWellHitstun(entity, rec, state);
+      ended.push(entity);
+    }
+    for (const entity of ended) {
+      this._wellBodies.delete(entity);
+      this._wellAccum.delete(entity);
+    }
+  },
+
+  _publishWellHitstun(entity, rec, state) {
+    if (!entity || !rec) return;
+    if (!combatFlag('weaponImpulseConsequences')) return;
+    const deltaV = Math.hypot(rec.dx, rec.dz);
+    if (!(deltaV > 0)) return;
+    const victimMass = positive(entity.physicsBody && entity.physicsBody.mass, positive(entity.mass, 1));
+    publishHitstunImpulse(this.bus, {
+      source: 'well',
+      victimId: entity.id,
+      attackerId: rec.attackerId,
+      attackerMass: rec.attackerMass,
+      victimMass,
+      deltaV,
+      dirX: rec.dx,
+      dirZ: rec.dz,
+      hitSide: entity.id,
+      tick: state && state.tick,
+    });
   },
 
   // ── presentation publish (VFX/HUD/predictor mirror) ──────────────────────────────────────────

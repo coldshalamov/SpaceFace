@@ -26,6 +26,7 @@ import {
 } from '../src/combat/impulseKernel.js';
 import { consumePhysicsCommand, writePhysicsControl } from '../src/core/physicsAuthority.js';
 import { weapons } from '../src/systems/weapons.js';
+import { tumbleStates } from '../src/systems/tumbleStates.js';
 import {
   resolveWeaponPresentationFamily,
   resolveImpactPresentationProfile,
@@ -96,8 +97,8 @@ test('light-tier mass-response: the concussion cannon tumbles a light hull but a
     provenance: { actorId: 1, weaponId: CONCUSSION.id, tag: CONCUSSION.impulseProvenance, appliedTick: 98 } };
   const lightHit = resolveCollisionConsequence({ ...common, target: { id: 2, type: 'ship', mass: LIGHT_MASS, radius: 6 } });
   const heavyHit = resolveCollisionConsequence({ ...common, target: { id: 3, type: 'ship', mass: HEAVY_MASS, radius: 16 } });
-  assert.equal(lightHit.control, 'none',
-    'a terrain slam must not tumble, even with concussion provenance on the victim');
+  assert.equal(lightHit.control, 'tumble',
+    'a committed terrain slam tumbles a light hull; helm-loss duration is the hitstun law');
   assert.ok(lightHit.impactDamage > 0, 'the light-hull wall impact is a receipted terrain-damage event');
   assert.equal(heavyHit.control, 'none', 'a heavy hull is not tumbled by the same terrain slam');
 
@@ -156,6 +157,25 @@ function makeWeaponsHost(entities, { seed = 47 } = {}) {
   return { host, state, emitted, applied, routed, helpers };
 }
 
+function makeTumbleHost(entities) {
+  const emitted = [];
+  const state = {
+    mode: 'flight', tick: 600, simTime: 10, playerId: 1,
+    entities: new Map(entities.map((e) => [e.id, e])),
+    entityList: entities.slice(),
+    entityIndex: { ships: entities.filter((e) => e.type === 'ship') },
+    combat: { beams: [], threatTables: new Map() },
+    meta: { seed: 47 },
+  };
+  const bus = {
+    emit: (name, payload) => emitted.push({ name, payload }),
+    on: () => () => {},
+  };
+  const host = Object.create(tumbleStates);
+  host.init({ state, bus, helpers: { getEntity: (id) => state.entities.get(id) || null }, registry: { get: () => null } });
+  return { host, state, emitted };
+}
+
 test('impulse provenance history stays bounded and clearable while the compatibility reader remains latest-only', () => {
   const entity = { id: 91, data: {} };
   let latest = null;
@@ -180,113 +200,26 @@ test('impulse provenance history stays bounded and clearable while the compatibi
   assert.deepEqual(readRecentImpulseProvenanceHistory(entity, 731), [], 'explicit clear removes history too');
 });
 
-test('concussion cannon: a fresh direct hit briefly blocks NPC counterthrust without touching velocity or player control', () => {
+test('concussion cannon: weapons no longer writes a post-hit helm override', () => {
   const prev = COMBAT_FLAGS.weaponImpulseConsequences;
   COMBAT_FLAGS.weaponImpulseConsequences = true;
   try {
-    assert.ok(Number.isFinite(CONCUSSION.npcCounterthrustDelayS) && CONCUSSION.npcCounterthrustDelayS > 0,
-      'concussion authors its NPC counterthrust delay in weapon data');
-    assert.ok(CONCUSSION.npcCounterthrustDelayS < RCS.rcsDisruptS,
-      'concussion recovery is a short displacement beat, not a second RCS disable');
-
     const player = { id: 1, type: 'ship', alive: true, team: 0, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, rot: 0, radius: 6, data: {} };
     const enemy = { id: 2, type: 'ship', alive: true, team: 1, pos: { x: 40, z: 0 }, vel: { x: 25, z: -4 }, rot: 0, radius: 6, data: { intent: { thrust: 1, strafe: -1 } } };
-    const otherEnemy = { id: 3, type: 'ship', alive: true, team: 1, pos: { x: 80, z: 0 }, vel: { x: 2, z: 0 }, rot: 0, radius: 6, data: { intent: { thrust: 1 } } };
-    const { host, state } = makeWeaponsHost([player, enemy, otherEnemy]);
-    state.entityIndex = { ships: [player, enemy, otherEnemy] };
-    const velocityAfterHit = { ...enemy.vel };
-    const intentAfterHit = { ...enemy.data.intent };
-    const hitTick = state.tick;
-    const autocannon = BY_ID.get('wpn_autocannon_m');
-
-    // This is the production receipt damage.js leaves after applying the Concussion impulse.
+    const { host, state } = makeWeaponsHost([player, enemy]);
+    state.entityIndex = { ships: [player, enemy] };
+    assert.equal(typeof host._tickNpcCounterthrustRecovery, 'undefined',
+      'the retired concussion counterthrust writer is gone; tumbleStates owns helm-loss');
     recordImpulseProvenance(enemy, {
       actorId: player.id, weaponId: CONCUSSION.id, tag: CONCUSSION.impulseProvenance,
-      appliedTick: hitTick, magnitude: CONCUSSION.impulsePerHit,
+      appliedTick: state.tick, magnitude: CONCUSSION.impulsePerHit,
     });
-    // A later impulse-bearing hit in the same combat tick becomes the compatibility/latest record,
-    // but must not erase the Concussion receipt used by the recovery layer.
-    const overwrittenLatest = recordImpulseProvenance(enemy, {
-      actorId: player.id, weaponId: autocannon.id, tag: autocannon.impulseProvenance,
-      appliedTick: hitTick, magnitude: autocannon.impulsePerHit,
-    });
-    assert.strictEqual(readRecentImpulseProvenance(enemy, hitTick), overwrittenLatest,
-      'collision/presentation compatibility readers still see the latest Autocannon receipt');
-    assert.deepEqual(
-      readRecentImpulseProvenanceHistory(enemy, hitTick).map((record) => record.weaponId),
-      [CONCUSSION.id, autocannon.id],
-      'recovery history retains Concussion even after a later same-tick impulse hit',
-    );
-    // A Concussion hit on the player must never enter the NPC recovery lane.
-    recordImpulseProvenance(player, {
-      actorId: otherEnemy.id, weaponId: CONCUSSION.id, tag: CONCUSSION.impulseProvenance,
-      appliedTick: hitTick, magnitude: CONCUSSION.impulsePerHit,
-    });
-    // An ordinary weapon receipt must leave another NPC's controls unchanged.
-    recordImpulseProvenance(otherEnemy, {
-      actorId: player.id, weaponId: autocannon.id, tag: autocannon.impulseProvenance,
-      appliedTick: hitTick, magnitude: autocannon.impulsePerHit,
-    });
-
-    state.tick = hitTick + 1;
-    writePhysicsControl(enemy, {
+    const aiControl = writePhysicsControl(enemy, {
       mode: 'ai', force: { x: -900, y: 0, z: 0 }, torque: { x: 0, y: 0, z: 12 }, source: 'aiPorts',
     });
-    writePhysicsControl(player, {
-      mode: 'player', force: { x: 400, y: 0, z: 0 }, torque: { x: 0, y: 0, z: -5 }, source: 'flight',
-    });
-    writePhysicsControl(otherEnemy, {
-      mode: 'ai', force: { x: -300, y: 0, z: 0 }, torque: { x: 0, y: 0, z: 4 }, source: 'aiPorts',
-    });
-    host._tickNpcCounterthrustRecovery(state);
-    const cmd = consumePhysicsCommand(enemy);
-    assert.ok(cmd && cmd.control, 'a freshly hit NPC receives a post-AI control override');
-    assert.equal(cmd.control.mode, 'concussion_recovery', 'the override identifies the short Concussion recovery beat');
-    assert.deepEqual(cmd.control.force, { x: 0, y: 0, z: 0 }, 'AI cannot immediately counterthrust the displacement');
-    assert.deepEqual(enemy.vel, velocityAfterHit, 'the recovery layer never rewrites the impulse-authored velocity');
-    assert.equal(consumePhysicsCommand(player).control.mode, 'player', 'Concussion recovery never overrides player control');
-    assert.equal(consumePhysicsCommand(otherEnemy).control.mode, 'ai', 'other weapons leave NPC control unchanged');
-
-    const windowTicks = Math.round(CONCUSSION.npcCounterthrustDelayS * 60);
-    const retriggerTick = hitTick + Math.floor(windowTicks / 2);
-    state.tick = retriggerTick;
-    recordImpulseProvenance(enemy, {
-      actorId: player.id, weaponId: CONCUSSION.id, tag: CONCUSSION.impulseProvenance,
-      appliedTick: retriggerTick, magnitude: CONCUSSION.impulsePerHit,
-    });
-    writePhysicsControl(enemy, {
-      mode: 'ai_retrigger', force: { x: -720, y: 0, z: 20 }, torque: { x: 0, y: 0, z: 6 }, source: 'aiPorts',
-    });
-    host._tickNpcCounterthrustRecovery(state);
-    assert.equal(consumePhysicsCommand(enemy).control.mode, 'concussion_recovery', 'a later Concussion hit retriggers recovery from its own tick');
-
-    state.tick = hitTick + windowTicks + 1;
-    writePhysicsControl(enemy, {
-      mode: 'ai_old_expiry', force: { x: -690, y: 0, z: 55 }, torque: { x: 0, y: 0, z: 7 }, source: 'aiPorts',
-    });
-    host._tickNpcCounterthrustRecovery(state);
-    assert.equal(consumePhysicsCommand(enemy).control.mode, 'concussion_recovery',
-      'the later hit extends recovery beyond the first hit\'s exact expiry');
-
-    const extendedUntil = retriggerTick + windowTicks;
-    state.tick = extendedUntil;
-    writePhysicsControl(enemy, {
-      mode: 'ai_boundary', force: { x: -650, y: 0, z: 75 }, torque: { x: 0, y: 0, z: 8 }, source: 'aiPorts',
-    });
-    host._tickNpcCounterthrustRecovery(state);
-    const boundaryCmd = consumePhysicsCommand(enemy);
-    assert.equal(boundaryCmd.control.mode, 'concussion_recovery', 'the final authored recovery tick still overrides AI control');
-    assert.deepEqual(boundaryCmd.control.force, { x: 0, y: 0, z: 0 }, 'counterthrust remains blocked at the exact inclusive boundary');
-
-    state.tick = extendedUntil + 1;
-    const resumedAiControl = writePhysicsControl(enemy, {
-      mode: 'ai_recovered', force: { x: -321, y: 0, z: 45 }, torque: { x: 0, y: 0, z: -7 }, source: 'aiPorts_after_recovery',
-    });
-    host._tickNpcCounterthrustRecovery(state);
-    assert.deepEqual(consumePhysicsCommand(enemy).control, resumedAiControl,
-      'the first tick after recovery preserves the distinct AI command intact');
-    assert.deepEqual(enemy.vel, velocityAfterHit, 'boundary handling never rewrites velocity');
-    assert.deepEqual(enemy.data.intent, intentAfterHit, 'boundary handling never mutates AI-owned intent');
+    assert.deepEqual(consumePhysicsCommand(enemy).control, aiControl,
+      'weapons leaves the AI command intact; the hitstun law is the sole helm writer');
+    assert.deepEqual(enemy.vel, { x: 25, z: -4 }, 'weapons never rewrites impulse-authored velocity');
   } finally {
     COMBAT_FLAGS.weaponImpulseConsequences = prev;
   }
@@ -306,7 +239,7 @@ test('Concussion counterthrust recovery is a strict no-op when weapon impulse co
       actorId: 1, weaponId: CONCUSSION.id, tag: CONCUSSION.impulseProvenance,
       appliedTick: state.tick, magnitude: CONCUSSION.impulsePerHit,
     });
-    host._tickNpcCounterthrustRecovery(state);
+    assert.equal(typeof host._tickNpcCounterthrustRecovery, 'undefined');
     assert.equal(consumePhysicsCommand(enemy), null, 'flag OFF preserves the frozen simulation path');
   } finally {
     COMBAT_FLAGS.weaponImpulseConsequences = prev;
@@ -386,23 +319,21 @@ test('vector mine: arms after its delay, then a proximity trigger shoves every h
 
 // --- RCS disruptor suppression window ---------------------------------------------------------
 
-test('RCS disruptor: a hit latches a bounded turn-authority override on an NPC, then releases it', () => {
+test('RCS disruptor: tumbleStates latches a bounded turn-authority override on an NPC, then releases it', () => {
   const prev = COMBAT_FLAGS.weaponImpulseConsequences;
   COMBAT_FLAGS.weaponImpulseConsequences = true;
   try {
     const player = { id: 1, type: 'ship', alive: true, team: 0, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, rot: 0, radius: 6, data: {} };
     const enemy = { id: 2, type: 'ship', alive: true, team: 1, pos: { x: 40, z: 0 }, vel: { x: 3, z: 0 }, rot: 0, radius: 6, data: { intent: { fire: true, aimAngle: 0 } } };
-    const { host, state, emitted } = makeWeaponsHost([player, enemy]);
-    state.entityIndex = { ships: [player, enemy] };
+    const { host, state, emitted } = makeTumbleHost([player, enemy]);
+    assert.equal(typeof weapons._tickRcsDisruption, 'undefined',
+      'weapons no longer writes RCS_DISRUPT_CONTROL; tumbleStates is the sole helm writer');
 
-    // Simulate the disruptor hit leaving its PQ-009 provenance on the target (what damage.js does on
-    // an impulse-bearing hit when the flag is live).
     const hitTick = state.tick;
     recordImpulseProvenance(enemy, { actorId: player.id, weaponId: RCS.id, tag: RCS.impulseProvenance, appliedTick: hitTick, magnitude: RCS.impulsePerHit });
 
-    // The tick after the hit: weapons latches the window and writes a control override.
     state.tick = hitTick + 1;
-    host._tickRcsDisruption(state);
+    host.update(1 / 60, state);
     const cmd = consumePhysicsCommand(enemy);
     assert.ok(cmd && cmd.control, 'a disrupted NPC receives a physics-control command');
     assert.equal(cmd.control.mode, 'rcs_disrupted', 'the override is the RCS-disrupt mode');
@@ -412,15 +343,13 @@ test('RCS disruptor: a hit latches a bounded turn-authority override on an NPC, 
     assert.ok(emitted.some((ev) => ev.name === 'presentation:vfxCue' && ev.payload.id === 'ship.rcsDisrupt'),
       'the disable emits its own sparking cue, distinct from the tumble cue');
 
-    // Mid-window: still suppressed.
     const windowTicks = Math.round(RCS.rcsDisruptS * 60);
     state.tick = hitTick + Math.floor(windowTicks / 2);
-    host._tickRcsDisruption(state);
+    host.update(1 / 60, state);
     assert.equal(consumePhysicsCommand(enemy).control.mode, 'rcs_disrupted', 'the override holds through the window');
 
-    // After the window: the latch releases and the NPC regains control (no override written).
     state.tick = hitTick + windowTicks + 5;
-    host._tickRcsDisruption(state);
+    host.update(1 / 60, state);
     assert.equal(consumePhysicsCommand(enemy), null, 'the override expires — control is bounded, not permanent');
   } finally {
     COMBAT_FLAGS.weaponImpulseConsequences = prev;
@@ -432,12 +361,13 @@ test('RCS disruption is a strict no-op when weapon impulse consequences are pinn
   COMBAT_FLAGS.weaponImpulseConsequences = false;
   try {
     const enemy = { id: 2, type: 'ship', alive: true, team: 1, pos: { x: 40, z: 0 }, vel: { x: 0, z: 0 }, rot: 0, radius: 6, data: {} };
-    const { host, state } = makeWeaponsHost([{ id: 1, type: 'ship', alive: true, team: 0, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, rot: 0, radius: 6, data: {} }, enemy]);
-    state.entityIndex = { ships: [enemy] };
+    const { host, state } = makeTumbleHost([
+      { id: 1, type: 'ship', alive: true, team: 0, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, rot: 0, radius: 6, data: {} },
+      enemy,
+    ]);
     recordImpulseProvenance(enemy, { actorId: 1, weaponId: RCS.id, tag: RCS.impulseProvenance, appliedTick: state.tick, magnitude: RCS.impulsePerHit });
-    host._tickRcsDisruption(state);
-    host._tickVectorMines(1 / 60, state);
-    assert.equal(consumePhysicsCommand(enemy), null, 'flag OFF → no control override, no mine tick (golden byte-stable)');
+    host.update(1 / 60, state);
+    assert.equal(consumePhysicsCommand(enemy), null, 'flag OFF → no control override (golden byte-stable)');
   } finally {
     COMBAT_FLAGS.weaponImpulseConsequences = prev;
   }

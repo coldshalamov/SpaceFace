@@ -1,20 +1,11 @@
-// Tumble states (Wave M2 §3.4, design/revamp/MASSLINE_PHYSICS_IDENTITY.md).
+// Tumble states — one helm-override writer for delivered impulses (PQ-137.04).
 //
-// The payoff that makes flinging matter without requiring kills: a ship whipped past what its
-// attitude thrusters can counter enters an uncontrolled spin — can't aim, can't burn — until its
-// RCS (modeled by the shipped rapier angularDamping) physically bleeds the rotation off. Scales
-// with mass ratio for free (heavy flicks light), and the entry spin is a REAL angular impulse
-// through the physics-authority command membrane, never a direct body write.
-//
-// Player-side only power (design principle 2): tumbles are caused exclusively by the player's
-// massline (throw releases and whip impacts). THE PLAYER SHIP NEVER TUMBLES on any path here.
-// The same last-writer slot also enforces NPC Drifting when the canonical combat runtime reports a
-// destroyed drive: zero continuous authority, with existing velocity and external forces untouched.
-//
-// Runs AFTER aiPorts in UPDATE_ORDER so its zero-control overwrite is the last writer before
-// physics consumes the command; runs BEFORE weapons so a cleared fire intent gates this tick's
-// shots. Not in the sf-sim harness; every path also gates on massline2Flag('tumble').
-import { massline2Flag } from '../data/featureFlags.js';
+// Duration and entry spin are the hitstun law in impulseKernel. Recovery uses the victim's
+// actual yaw/thruster authority through the physics command membrane, never a hidden gyro.
+// The player ship never tumbles. RCS disruption is a named non-impulse exception with its
+// authored ~1.6 s drift semantics, still written here so there is one control owner.
+import { massline2Flag, combatFlag } from '../data/featureFlags.js';
+import { WEAPONS } from '../data/weapons.js';
 import {
   ensurePhysicsBodySpec,
   measureThrusterAuthority,
@@ -22,33 +13,38 @@ import {
   writePhysicsControl,
 } from '../core/physicsAuthority.js';
 import { resolveFlightProfile } from '../core/flightDynamics.js';
+import { resolveGovernedCombatSpeed, resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { ensureCombatant } from '../combat/runtime.js';
 import {
+  COLLISION_TUMBLE_KIND,
   MASSLINE_TUMBLE_KIND,
-  readMasslineTumbleStatus,
+  WEAPON_TUMBLE_KIND,
+  WELL_TUMBLE_KIND,
+  readTumbleStatus,
   TUMBLE_STATUS_ID,
 } from '../combat/tumbleStatus.js';
+import {
+  HITSTUN_IMPULSE_EVENT,
+  readRecentImpulseProvenance,
+  resolveHitstunLaw,
+} from '../combat/impulseKernel.js';
 
-// --- Dials (design doc §12) -----------------------------------------------------------------
-const TUMBLE_MIN_S = 1.5;             // duration clamp
-const TUMBLE_MAX_S = 6;
-const TUMBLE_RECOVER_OMEGA = 1.1;     // rad/s — below this the RCS has "caught" the spin
-const TUMBLE_SPIN_MULT = 2.2;         // entry spin as a multiple of the victim's max yaw rate
-const TUMBLE_THROW_MIN_SPEED = 60;    // wu/s — a thrown ship below this was not really whipped
-const TUMBLE_MASS_RATIO_MIN = 0.5;    // sqrt(player/victim) clamp — heavy victims resist
-const TUMBLE_MASS_RATIO_MAX = 2.2;
+const RCS_TRIGGER_MAXAGE_TICKS = 8;
+const RCS_DEFAULT_S = 1.6;
+const RCS_PROVENANCE = 'rcs_disruptor_spike';
+const WEAPON_BY_ID = new Map(WEAPONS.map((w) => [w.id, w]));
 
-const TUMBLE_CONTROL = Object.freeze({
-  mode: 'tumbling',
-  force: Object.freeze({ x: 0, y: 0, z: 0 }),
-  torque: Object.freeze({ x: 0, y: 0, z: 0 }),
-  source: 'massline_tumble',
-});
 const DRIFT_CONTROL = Object.freeze({
   mode: 'drifting',
   force: Object.freeze({ x: 0, y: 0, z: 0 }),
   torque: Object.freeze({ x: 0, y: 0, z: 0 }),
   source: 'drive_disabled',
+});
+const RCS_CONTROL = Object.freeze({
+  mode: 'rcs_disrupted',
+  force: Object.freeze({ x: 0, y: 0, z: 0 }),
+  torque: Object.freeze({ x: 0, y: 0, z: 0 }),
+  source: 'rcs_disruptor',
 });
 
 export const tumbleStates = {
@@ -60,16 +56,19 @@ export const tumbleStates = {
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
     this.registry = ctx.registry;
+    this._rcsDisrupt = new WeakMap();
     this._unsubs = [];
     if (this.bus && typeof this.bus.on === 'function') {
       this._unsubs.push(this.bus.on('tether:whipImpact', (p) => this._onWhipImpact(p || {})));
       this._unsubs.push(this.bus.on('massline:throw', (p) => this._onThrow(p || {})));
+      this._unsubs.push(this.bus.on(HITSTUN_IMPULSE_EVENT, (p) => this._onHitstunImpulse(p || {})));
     }
   },
 
   destroy() {
     for (const off of this._unsubs || []) { if (typeof off === 'function') off(); }
     this._unsubs = [];
+    this._rcsDisrupt = new WeakMap();
   },
 
   update(dt, state) {
@@ -77,12 +76,13 @@ export const tumbleStates = {
     const entities = state.entities;
     if (!entities || typeof entities.values !== 'function') return;
     const now = finite(state.simTime, state.tick / 60);
-    const tumbleEnabled = massline2Flag('tumble');
+    this._tickRcsLatches(state);
 
     for (const e of entities.values()) {
-      const tumble = tumbleEnabled && e ? readMasslineTumbleStatus(state, e) : null;
+      const tumble = e ? readTumbleStatus(state, e) : null;
       const drifting = isNpcDrifting(state, e);
-      if (!tumble && !drifting) continue;
+      const rcs = e ? this._rcsDisrupt.get(e) : null;
+      if (!tumble && !drifting && !rcs) continue;
 
       let tumbleActive = !!tumble;
       if (tumbleActive && (!e.alive || e.id === state.playerId)) {
@@ -92,30 +92,39 @@ export const tumbleStates = {
       if (!e.alive) continue;
 
       if (tumbleActive) {
-        const spin = Math.abs(finite(e.angVel, 0));
         const elapsed = now - finite(tumble.data && tumble.data.startedAt, now);
-        const recovered = elapsed >= TUMBLE_MIN_S && spin <= TUMBLE_RECOVER_OMEGA;
-        if (recovered || now >= finite(tumble.data && tumble.data.until, now)) {
-          this._clearTumbleStatus(e, recovered ? 'rcs_recovered' : 'duration_elapsed');
+        if (now >= finite(tumble.data && tumble.data.until, now)) {
+          this._clearTumbleStatus(e, 'duration_elapsed');
           if (this.bus) this.bus.emit('massline:tumbleEnd', { victimId: e.id, durationS: elapsed });
           tumbleActive = false;
         }
       }
-      if (!tumbleActive && !drifting) continue;
+      if (!tumbleActive && !drifting && !rcs) continue;
 
-      // Suppress this tick's drive authority. writePhysicsControl replaces the command aiPorts
-      // queued earlier in the tick (last-writer-wins by design of the command membrane), while
-      // leaving collision, tether, and other external impulses intact. A destroyed drive therefore
-      // drifts ballistically instead of receiving hidden braking or station-keeping.
-      writePhysicsControl(e, tumbleActive ? TUMBLE_CONTROL : DRIFT_CONTROL);
+      if (tumbleActive) {
+        writePhysicsControl(e, recoveryControl(e, dt, tumble.data && tumble.data.kind));
+        if (e.data && e.data.intent) {
+          e.data.intent.fire = false;
+          e.data.intent.moveX = 0;
+          e.data.intent.moveZ = 0;
+        }
+        continue;
+      }
+      if (rcs) {
+        writePhysicsControl(e, RCS_CONTROL);
+        if (e.data && e.data.intent) {
+          e.data.intent.fire = false;
+          e.data.intent.moveX = 0;
+          e.data.intent.moveZ = 0;
+        }
+        continue;
+      }
+      writePhysicsControl(e, DRIFT_CONTROL);
       if (e.data && e.data.intent) {
-        if (tumbleActive) e.data.intent.fire = false;
         e.data.intent.moveX = 0;
         e.data.intent.moveZ = 0;
-        if (drifting) {
-          e.data.intent.boost = false;
-          e.data.intent.brake = false;
-        }
+        e.data.intent.boost = false;
+        e.data.intent.brake = false;
       }
     }
   },
@@ -123,71 +132,152 @@ export const tumbleStates = {
   _onThrow(payload) {
     const state = this.state;
     if (!massline2Flag('tumble') || !state) return;
-    const victim = state.entities && state.entities.get ? state.entities.get(payload.payloadId) : null;
-    if (!Number.isFinite(payload.payloadSpeed) || payload.payloadSpeed < TUMBLE_THROW_MIN_SPEED) return;
-    this._beginTumble(victim, 'thrown');
+    const victim = entityById(state, payload.payloadId);
+    this._beginFromImpulse(victim, {
+      source: 'rope_throw',
+      kind: MASSLINE_TUMBLE_KIND,
+      cause: 'thrown',
+      deltaV: finite(payload.payloadSpeed),
+      attackerId: state.playerId,
+      attackerMass: massOf(entityById(state, state.playerId)),
+      hitSide: numericParity(payload.payloadId) ? 1 : -1,
+      requireMassline: true,
+    });
   },
 
   _onWhipImpact(payload) {
     const state = this.state;
     if (!massline2Flag('tumble') || !state) return;
     if (payload.rating !== 'solid' && payload.rating !== 'crushing') return;
-    const victim = state.entities && state.entities.get ? state.entities.get(payload.victimId) : null;
-    this._beginTumble(victim, 'struck');
+    const victim = entityById(state, payload.victimId);
+    this._beginFromImpulse(victim, {
+      source: 'rope_whip',
+      kind: MASSLINE_TUMBLE_KIND,
+      cause: 'struck',
+      deltaV: finite(payload.relSpeed, finite(payload.massSpeed)),
+      attackerId: payload.targetId,
+      attackerMass: positive(payload.mass, massOf(entityById(state, payload.targetId))),
+      hitSide: numericParity(payload.victimId) ? 1 : -1,
+      requireMassline: true,
+    });
   },
 
-  _beginTumble(victim, cause) {
+  _onHitstunImpulse(payload) {
+    const state = this.state;
+    if (!state || !combatFlag('weaponImpulseConsequences')) return;
+    const source = payload && payload.source;
+    if (source === 'rope_throw' || source === 'rope_whip') return;
+    const victim = entityById(state, payload.victimId);
+    const kind = source === 'well'
+      ? WELL_TUMBLE_KIND
+      : source === 'collision' ? COLLISION_TUMBLE_KIND : WEAPON_TUMBLE_KIND;
+    this._beginFromImpulse(victim, {
+      source: source || 'weapon',
+      kind,
+      cause: source || 'weapon',
+      deltaV: finite(payload.deltaV),
+      attackerId: payload.attackerId,
+      attackerMass: payload.attackerMass,
+      hitSide: payload.hitSide === -1 ? -1 : 1,
+      requireMassline: false,
+    });
+  },
+
+  _beginFromImpulse(victim, input) {
     const state = this.state;
     if (!victim || victim.alive === false || !victim.data) return;
-    if (victim.id === state.playerId) return;                       // players never tumble
-    if (victim.type !== 'ship' && victim.type !== 'drone') return;  // rocks/stations don't flail
-    if (readMasslineTumbleStatus(state, victim)) return;            // already tumbling
+    if (victim.id === state.playerId) return;
+    if (victim.type !== 'ship' && victim.type !== 'drone') return;
+    if (input.requireMassline && !massline2Flag('tumble')) return;
+    if (!input.requireMassline && !combatFlag('weaponImpulseConsequences')) return;
 
-    const player = state.entities.get(state.playerId);
+    const cruise = resolveGovernedCombatSpeed(victim, state, 0);
+    const law = resolveHitstunLaw({
+      deltaV: input.deltaV,
+      victimCruise: cruise,
+      attackerMass: input.attackerMass,
+      victimMass: massOf(victim),
+    });
+    if (!(law.durationS > 0)) return;
+
     const now = finite(state.simTime, state.tick / 60);
-
-    // "Out-torqued their RCS", made measurable: the entry spin targets a multiple of the victim's
-    // own commandable yaw rate, scaled by the mass advantage of the flinger, and it is delivered
-    // as a real angular impulse (inertia × Δω) that the ship's angularDamping must bleed off.
-    const profile = resolveFlightProfile(victim, state);
-    const authority = measureThrusterAuthority(victim);
-    const body = ensurePhysicsBodySpec(victim);
-    const inertia = Math.max(0.1, finite(body && body.inertiaY, finite(profile.inertia, 1)));
-    const massRatio = player
-      ? clamp(Math.sqrt(Math.max(0.1, finite(player.mass, 1)) / Math.max(0.1, finite(victim.mass, 1))), TUMBLE_MASS_RATIO_MIN, TUMBLE_MASS_RATIO_MAX)
-      : 1;
-    const yawAuthority = Math.max(0.15, finite(authority && authority.yaw, 1));
-    const targetSpin = TUMBLE_SPIN_MULT * Math.max(0.8, finite(profile.maxYawRate, 3)) * massRatio / yawAuthority;
-    const currentSpin = finite(victim.angVel, 0);
-    const sign = currentSpin !== 0 ? Math.sign(currentSpin) : (Math.sign(victim.id % 2 === 0 ? 1 : -1));
-    // Duration is a clamp around the physical decay (angularDamping ~0.4/s gives ln(spin/recover)
-    // / 0.4 seconds); update() ends the state early the moment the spin is genuinely caught.
-    const expected = Math.log(Math.max(1.5, targetSpin / TUMBLE_RECOVER_OMEGA)) / 0.4;
-    const until = now + clamp(expected, TUMBLE_MIN_S, TUMBLE_MAX_S);
+    const existing = readTumbleStatus(state, victim);
+    const existingUntil = existing && existing.data ? finite(existing.data.until, 0) : 0;
+    const until = Math.max(existingUntil, now + law.durationS);
+    const startedAt = existing && existing.data && Number.isFinite(existing.data.startedAt)
+      ? existing.data.startedAt
+      : now;
     const scheduled = this._scheduleTumbleStatus(victim, until - now, {
-      kind: MASSLINE_TUMBLE_KIND,
-      startedAt: now,
+      kind: input.kind,
+      startedAt,
       until,
-      cause,
-      spin: targetSpin,
+      cause: input.cause,
+      spin: law.entrySpin,
+      u: law.u,
+      k: law.k,
     });
     if (!scheduled) return;
 
-    queuePhysicsTorqueImpulse(victim, { x: 0, y: inertia * (sign * targetSpin - currentSpin), z: 0 });
-    // Durable stamp for the pirateDisengage morale window (outlives the tumble itself).
+    const profile = resolveFlightProfile(victim, state);
+    const body = ensurePhysicsBodySpec(victim);
+    const inertia = Math.max(0.1, finite(body && body.inertiaY, finite(profile.inertia, 1)));
+    const currentSpin = finite(victim.angVel, 0);
+    const sign = input.hitSide === -1 ? -1 : 1;
+    queuePhysicsTorqueImpulse(victim, { x: 0, y: inertia * (sign * law.entrySpin - currentSpin), z: 0 });
     victim.data.tumbledAt = now;
 
     if (this.bus) {
-      this.bus.emit('massline:tumbled', {
-        victimId: victim.id, cause, spin: targetSpin,
-        durationS: until - now, tick: state.tick, time: now,
-      });
+      const announcement = {
+        victimId: victim.id,
+        cause: input.cause,
+        source: input.source,
+        spin: law.entrySpin,
+        durationS: until - now,
+        tick: state.tick,
+        time: now,
+      };
+      this.bus.emit('combat:tumbled', announcement);
+      if (input.kind === MASSLINE_TUMBLE_KIND) this.bus.emit('massline:tumbled', announcement);
       this.bus.emit('audio:cue', { id: 'massline.tumble', position: { x: victim.pos.x, z: victim.pos.z } });
       this.bus.emit('presentation:vfxCue', {
-        id: 'ship.tumble', lane: 'massline_tumble',
+        id: 'ship.tumble',
+        lane: input.kind === MASSLINE_TUMBLE_KIND ? 'massline_tumble' : 'hitstun_tumble',
         pos: { x: victim.pos.x, z: victim.pos.z },
-        particles: 16, lights: 1,
+        particles: 16,
+        lights: 1,
       });
+    }
+  },
+
+  _tickRcsLatches(state) {
+    if (!combatFlag('weaponImpulseConsequences')) {
+      this._rcsDisrupt = new WeakMap();
+      return;
+    }
+    const ships = (state.entityIndex && state.entityIndex.ships) || state.entityList;
+    if (!ships) return;
+    const tick = state.tick || 0;
+    for (const s of ships) {
+      if (!s || s.type !== 'ship' || !s.alive || s.id === state.playerId) continue;
+      const prov = readRecentImpulseProvenance(s, tick);
+      if (prov && prov.tag === RCS_PROVENANCE && (tick - prov.appliedTick) <= RCS_TRIGGER_MAXAGE_TICKS) {
+        const def = WEAPON_BY_ID.get(prov.weaponId);
+        const windowTicks = Math.max(1, Math.round((def && def.rcsDisruptS != null ? def.rcsDisruptS : RCS_DEFAULT_S) * 60));
+        const until = prov.appliedTick + windowTicks;
+        const cur = this._rcsDisrupt.get(s);
+        if (!cur || until > cur.until) {
+          this._rcsDisrupt.set(s, { until });
+          if (!cur && this.bus) {
+            this.bus.emit('presentation:vfxCue', {
+              id: 'ship.rcsDisrupt', lane: 'combat', position: { x: s.pos.x, z: s.pos.z },
+              particles: 14, lights: 1, magnitude: 1, material: 'ion', targetId: s.id, flashReduced: false,
+            });
+            this.bus.emit('audio:cue', { id: 'sfx_rcs_disrupt', position: { x: s.pos.x, z: s.pos.z }, gain: 0.5 });
+          }
+        }
+      }
+      const latch = this._rcsDisrupt.get(s);
+      if (latch && tick > latch.until) this._rcsDisrupt.delete(s);
     }
   },
 
@@ -214,6 +304,24 @@ export const tumbleStates = {
   },
 };
 
+function recoveryControl(entity, dt, kind) {
+  const profile = resolveFlightProfile(entity);
+  const propulsion = resolvePropulsionProfile(entity);
+  const body = ensurePhysicsBodySpec(entity);
+  const inertia = Math.max(0.1, finite(body && body.inertiaY, finite(profile.inertia, 1)));
+  const authority = measureThrusterAuthority(entity);
+  const yaw = clamp(finite(authority && authority.yaw, 1), 0, 1);
+  const maxAlpha = positive(propulsion && propulsion.yawBrake, finite(profile.angularBrake, 8)) * Math.max(0.05, yaw);
+  const error = -finite(entity.angVel, 0);
+  const alpha = clamp(error / Math.max(dt, 1 / 120), -maxAlpha, maxAlpha);
+  return {
+    mode: 'tumbling',
+    force: { x: 0, y: 0, z: 0 },
+    torque: { x: 0, y: alpha * inertia, z: 0 },
+    source: kind === MASSLINE_TUMBLE_KIND ? 'massline_tumble' : 'hitstun',
+  };
+}
+
 function combatKernel(host) {
   const combat = host.registry && host.registry.get && host.registry.get('combat');
   if (combat && combat.kernel) return combat.kernel;
@@ -228,5 +336,24 @@ function isNpcDrifting(state, entity) {
   return !!(runtime && runtime.capabilities && runtime.capabilities.drive === false);
 }
 
+function entityById(state, id) {
+  return state.entities && typeof state.entities.get === 'function' ? state.entities.get(id) || null : null;
+}
+
+function massOf(entity) {
+  return positive(entity && (entity.physicsBody && entity.physicsBody.mass || entity.mass), 1);
+}
+
+function numericParity(value) {
+  if (Number.isFinite(value)) return Math.abs(Math.trunc(value)) % 2;
+  const text = String(value == null ? '' : value);
+  let sum = 0;
+  for (let i = 0; i < text.length; i++) sum += text.charCodeAt(i);
+  return sum % 2;
+}
+
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 function finite(v, fb = 0) { return Number.isFinite(v) ? v : fb; }
+function positive(value, fallback = 1) {
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}

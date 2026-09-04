@@ -5,12 +5,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { WEAPONS } from '../src/data/weapons.js';
+import { resolveHitstunLaw } from '../src/combat/impulseKernel.js';
 import {
   buildB11Bars,
   HEAVY_GUN_SCALE_K,
   HITSTUN_HULLS,
   HITSTUN_SOURCES,
   MATCHED_K_BAND,
+  MATCHED_U_BAND,
   MEASURABLE_SPIN_RAD_PER_S,
   runHitstunCells,
   scenario,
@@ -48,6 +50,29 @@ test('feel.hitstun_curve exports the contracted scenario shape', () => {
   assert.equal(typeof scenario.label, 'string');
   assert.equal(typeof scenario.run, 'function');
   assert.equal(typeof buildB11Bars, 'function');
+});
+
+test('the hitstun law is the Wasp/Kestrel reference and zeros the heavy gun-scale case', () => {
+  const reference = resolveHitstunLaw({
+    deltaV: 0.30 * 95,
+    victimCruise: 95,
+    attackerMass: 18,
+    victimMass: 16,
+  });
+  assert.ok(Math.abs(reference.u - 0.318198) < 1e-4, `reference u was ${reference.u}`);
+  assert.ok(Math.abs(reference.durationS - 1.00) < 0.02, `reference T was ${reference.durationS}`);
+  assert.ok(reference.entrySpin > 0);
+
+  const heavy = resolveHitstunLaw({
+    deltaV: 0.06,
+    victimCruise: 1,
+    attackerMass: 2.2 * 2.2,
+    victimMass: 1,
+  });
+  assert.ok(Math.abs(heavy.u - 0.132) < 1e-9, `heavy u was ${heavy.u}`);
+  assert.equal(heavy.durationS, 0);
+  assert.equal(heavy.entrySpin, 0);
+  assert.ok(MATCHED_U_BAND.target > MATCHED_U_BAND.lo);
 });
 
 test('the instrument measures the real path and is deterministic on a fixed seed', LONG, async () => {
@@ -148,10 +173,10 @@ test('hitstun curve instruments torque telemetry, mass-ratio bar, and gyro bar',
       assert.equal(c.peakTorqueRecovery, null, `recovery not observed must not read as 0 Nm (${c.hullId})`);
       assert.equal(c.zeroTorqueRecoveryS, null, `recovery window must be unmeasured when recovery was not observed (${c.hullId})`);
     }
-    assert.notEqual(
+    assert.equal(
       c.angularProduction,
       true,
-      `gun gyro evidence must stay unmeasured: this instrument cannot reach production damage.applyImpulse (${c.hullId})`,
+      `gun gyro evidence must traverse production damage.applyImpulse (${c.hullId})`,
     );
   }
 
@@ -159,7 +184,6 @@ test('hitstun curve instruments torque telemetry, mass-ratio bar, and gyro bar',
   const mass = barByLabel(bars, /mass-ratio scaling/);
   const gyro = barByLabel(bars, /hidden gyro/);
   assert.ok(mass, 'mass-ratio bar must be emitted even when it is unmet or unmeasured');
-  assert.equal(mass.met, false, 'current gun grid does not strictly order wasp > drifter > atlas helm-loss; that is the finding');
   if (mass.unmeasured) {
     assertUnmeasuredBar(mass);
   } else {
@@ -172,10 +196,10 @@ test('hitstun curve instruments torque telemetry, mass-ratio bar, and gyro bar',
   assert.equal(String(gyro.note).includes('gun and rope_throw command 0 Nm'), false);
 
   for (const c of cells) {
-    assert.notEqual(
+    assert.equal(
       c.angularProduction,
       true,
-      `gun cell must not claim production angular evidence (${c.hullId} kIntended=${c.kIntended})`,
+      `gun cell must claim production angular evidence (${c.hullId} kIntended=${c.kIntended})`,
     );
   }
 
@@ -207,16 +231,10 @@ test('hitstun curve instruments torque telemetry, mass-ratio bar, and gyro bar',
     levels: [0.30],
   });
   const wellCell = wellRun.cells[0];
-  assert.equal(wellCell.measured, false, 'well_fling must not count a generic linear impulse as a well');
-  assert.equal(wellCell.unmeasured, true);
-  assert.match(String(wellCell.unmeasuredReason), /impulse-charge|well/);
-  const wellBars = buildB11Bars(wellRun.cells, wellRun.notes);
-  assertUnmeasuredBar(barByLabel(wellBars, /all sources/));
-  assert.match(String(barByLabel(wellBars, /all sources/).note), /well_fling/);
-  assertUnmeasuredBar(barByLabel(wellBars, /one law/));
-  assert.match(String(barByLabel(wellBars, /one law/).note), /well_fling/);
-  assertUnmeasuredBar(barByLabel(wellBars, /hidden gyro/));
-  assert.match(String(barByLabel(wellBars, /hidden gyro/).note), /well_fling/);
+  assert.equal(wellCell.measured, true, 'well_fling must measure the production field path');
+  assert.equal(wellCell.unmeasured, undefined);
+  assert.ok(Number.isFinite(wellCell.k) && wellCell.k >= 0, 'well cell must measure real delta-v');
+  assert.ok(Number.isFinite(wellCell.helmLossDurationS));
 });
 
 test('B11 bars fail closed on missing sources, intended-k, and unobserved recovery', () => {

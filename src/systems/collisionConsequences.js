@@ -6,22 +6,16 @@
 // transient episode/control state stays outside the entity graph.
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import {
+  publishHitstunImpulse,
   readRecentImpulseProvenance,
   resolveCollisionConsequence,
+  signedHitSide,
 } from '../combat/impulseKernel.js';
-import { ensureCombatant } from '../combat/runtime.js';
 import { appendCombatTrace } from '../combat/trace.js';
-import { COLLISION_TUMBLE_KIND, TUMBLE_STATUS_ID } from '../combat/tumbleStatus.js';
 import { combatFlag, massline2Flag } from '../data/featureFlags.js';
-import {
-  queuePhysicsTorqueImpulse,
-  writePhysicsControl,
-} from '../core/physicsAuthority.js';
 
 export const COLLISION_CONSEQUENCE_PAIR_COOLDOWN_TICKS = 12;
 
-const ZERO_FORCE = Object.freeze({ x: 0, y: 0, z: 0 });
-const CONTROL_PRIORITY = Object.freeze({ none: 0, stagger: 1, tumble: 2 });
 const DAMAGEABLE_MOTION = new Set(['ship', 'drone']);
 const RESOLVE_PENDING_CRAFT_CONTACT_EVENT = 'collisionConsequences:resolvePendingCraftContact';
 
@@ -34,7 +28,6 @@ export const collisionConsequences = {
     this.bus = ctx.bus;
     this.registry = ctx.registry;
     this._pairTicks = new Map();
-    this._controlStates = new WeakMap();
     this._pendingCraftContacts = new Map();
     this._applicationEnabled = combatFlag('weaponImpulseConsequences');
     this._unsubs = [];
@@ -65,33 +58,6 @@ export const collisionConsequences = {
     this._applicationEnabled = true;
     if (!state || state.mode !== 'flight') return;
     this._resolveStrandedCraftContactsBefore(nonNegativeTick(state.tick));
-    const entities = state.entities;
-    if (!entities || typeof entities.values !== 'function') return;
-    const tick = nonNegativeTick(state.tick);
-    for (const entity of entities.values()) {
-      const control = entity && this._controlStates.get(entity);
-      if (!control) continue;
-      if (entity.alive === false || tick > control.untilTick) {
-        this._controlStates.delete(entity);
-        continue;
-      }
-      writePhysicsControl(entity, {
-        mode: control.kind === 'tumble' ? 'collision_tumble' : 'collision_stagger',
-        force: ZERO_FORCE,
-        torque: ZERO_FORCE,
-        source: 'collision_consequence',
-      });
-      if (control.torquePending && control.torqueImpulseY !== 0) {
-        queuePhysicsTorqueImpulse(entity, { x: 0, y: control.torqueImpulseY, z: 0 });
-        control.torquePending = false;
-      }
-      const intent = entity.data && entity.data.intent;
-      if (intent) {
-        intent.fire = false;
-        intent.moveX = 0;
-        intent.moveZ = 0;
-      }
-    }
   },
 
   _onImpact(payload) {
@@ -198,9 +164,20 @@ export const collisionConsequences = {
     });
     if (!receipt) return;
 
-    if (receipt.control !== 'none') this._beginControl(target, receipt);
+    publishHitstunImpulse(this.bus, {
+      source: 'collision',
+      victimId: target.id,
+      attackerId: other.id,
+      attackerMass: positiveMass(other),
+      victimMass: positiveMass(target),
+      deltaV: receipt.deltaV,
+      dirX: finite(receipt.normal && receipt.normal.x),
+      dirZ: finite(receipt.normal && receipt.normal.z),
+      hitSide: signedHitSide(target, receipt.normal, { pos: receipt.pos }, target.id),
+      provenance: receipt.provenance,
+      tick,
+    });
     const damageResult = receipt.impactDamage > 0 ? this._routeImpactDamage(target, other, receipt) : null;
-    if (receipt.control === 'tumble') this._scheduleTumbleStatus(target, receipt);
 
     appendCombatTrace(state.combat, tick, 'collision.consequence', {
       actorId: receipt.provenance.actorId,
@@ -235,22 +212,6 @@ export const collisionConsequences = {
     }
   },
 
-  _beginControl(target, receipt) {
-    const previous = this._controlStates.get(target);
-    const untilTick = receipt.tick + Math.max(1, receipt.staggerTicks);
-    const kind = previous && CONTROL_PRIORITY[previous.kind] > CONTROL_PRIORITY[receipt.control]
-      ? previous.kind : receipt.control;
-    const torqueImpulseY = kind === 'tumble'
-      ? collisionTumbleImpulse(target, receipt)
-      : 0;
-    this._controlStates.set(target, {
-      kind,
-      untilTick: Math.max(untilTick, previous && previous.untilTick || 0),
-      torqueImpulseY: torqueImpulseY || previous && previous.torqueImpulseY || 0,
-      torquePending: kind === 'tumble' && !(previous && previous.kind === 'tumble'),
-    });
-  },
-
   _routeImpactDamage(target, other, receipt) {
     const kernel = combatKernel(this);
     if (!kernel || typeof kernel.routeDamage !== 'function') return null;
@@ -283,25 +244,6 @@ export const collisionConsequences = {
     });
   },
 
-  _scheduleTumbleStatus(target, receipt) {
-    const kernel = combatKernel(this);
-    if (!kernel || !kernel.statuses || typeof kernel.statuses.schedule !== 'function' || !kernel.catalog) return false;
-    let runtime = null;
-    try { runtime = ensureCombatant(this.state, target, kernel.catalog); }
-    catch { return false; }
-    const result = kernel.statuses.schedule(target, runtime, {
-      id: TUMBLE_STATUS_ID,
-      stacks: 1,
-      durationTicks: Math.max(1, receipt.staggerTicks),
-      applyTick: receipt.tick + 1,
-      data: { kind: COLLISION_TUMBLE_KIND },
-    }, {
-      attackerId: receipt.provenance.actorId,
-      actionId: null,
-    });
-    return !!(result && result.ok);
-  },
-
   _admitPair(aId, bId, tick) {
     const key = pairKey(aId, bId);
     const previous = this._pairTicks.get(key);
@@ -318,7 +260,6 @@ export const collisionConsequences = {
 
   _resetTransientState() {
     this._pairTicks = new Map();
-    this._controlStates = new WeakMap();
     this._pendingCraftContacts = new Map();
   },
 };
@@ -328,21 +269,6 @@ function combatKernel(host) {
   if (combat && combat.kernel) return combat.kernel;
   const actions = host.registry && host.registry.get && host.registry.get('actions');
   return actions && actions.kernel ? actions.kernel : null;
-}
-
-function collisionTumbleImpulse(target, receipt) {
-  const radius = Math.max(0.1, finite(target.radius, 1));
-  const mass = Math.max(0.1, finite(target.mass, 1));
-  const authoredInertia = target.data && target.data.physicsBody && target.data.physicsBody.inertiaY;
-  const inertia = Math.max(0.1, finite(authoredInertia, 0.5 * mass * radius * radius));
-  const targetOmega = clamp(receipt.deltaV / radius, 0.8, 4);
-  const rx = finite(receipt.pos && receipt.pos.x) - finite(target.pos && target.pos.x);
-  const rz = finite(receipt.pos && receipt.pos.z) - finite(target.pos && target.pos.z);
-  const nx = finite(receipt.normal && receipt.normal.x);
-  const nz = finite(receipt.normal && receipt.normal.z);
-  const crossY = rz * nx - rx * nz;
-  const sign = Math.abs(crossY) > 1e-6 ? Math.sign(crossY) : (numericParity(target.id) ? 1 : -1);
-  return sign * inertia * targetOmega;
 }
 
 function entityById(state, id) {
@@ -355,12 +281,8 @@ function pairKey(aId, bId) {
   return a < b ? `${a}\u0000${b}` : `${b}\u0000${a}`;
 }
 
-function numericParity(value) {
-  if (Number.isFinite(value)) return Math.abs(Math.trunc(value)) % 2;
-  const text = String(value);
-  let sum = 0;
-  for (let i = 0; i < text.length; i++) sum += text.charCodeAt(i);
-  return sum % 2;
+function positiveMass(entity) {
+  return Math.max(0.1, finite(entity && (entity.physicsBody && entity.physicsBody.mass || entity.mass), 1));
 }
 
 function nonNegativeTick(value) {

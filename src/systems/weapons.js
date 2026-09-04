@@ -12,11 +12,10 @@ import { wrapAngle } from '../core/rng.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import {
   resolveWeaponImpulseForHit,
-  readRecentImpulseProvenance,
-  readRecentImpulseProvenanceHistory,
   recordImpulseProvenance,
+  publishHitstunImpulse,
+  signedHitSide,
 } from '../combat/impulseKernel.js';
-import { writePhysicsControl } from '../core/physicsAuthority.js';
 import { isHostileToPlayer } from './scanner.js';
 import { combatFlag, massline2Flag } from '../data/featureFlags.js';
 import {
@@ -45,29 +44,6 @@ import {
 const RAD = Math.PI / 180;
 const TWO_PI = Math.PI * 2;
 const NPC_FIRE_PLAYER_RADAR_RANGE = 4000;
-
-// SF-10 RCS disruptor. A hit leaves the PQ-009 provenance tag 'rcs_disruptor_spike'; weapons latches
-// a suppression window off it only while that tag is fresh (RCS_TRIGGER_MAXAGE_TICKS), so a later hit
-// from another weapon cannot silently extend the disable. The override copies the tumbleStates
-// pattern — a last-writer force/torque-0 control command — but delivers NO entry spin, so a disrupted
-// hull DRIFTS straight (its identity) instead of tumbling (the concussion cannon's throw payoff).
-const RCS_TRIGGER_MAXAGE_TICKS = 8;
-const RCS_DISRUPT_CONTROL = Object.freeze({
-  mode: 'rcs_disrupted',
-  force: Object.freeze({ x: 0, y: 0, z: 0 }),
-  torque: Object.freeze({ x: 0, y: 0, z: 0 }),
-  source: 'rcs_disruptor',
-});
-
-// A data-authored impulse weapon may reserve a short post-hit drift beat for NPCs. The fresh
-// provenance receipt selects the weapon def; no weapon-id branch or serialized status is needed.
-const NPC_COUNTERTHRUST_TRIGGER_MAXAGE_TICKS = 8;
-const NPC_COUNTERTHRUST_RECOVERY_CONTROL = Object.freeze({
-  mode: 'concussion_recovery',
-  force: Object.freeze({ x: 0, y: 0, z: 0 }),
-  torque: Object.freeze({ x: 0, y: 0, z: 0 }),
-  source: 'weapon_impulse_recovery',
-});
 
 // MissileV2 (BP-02, flag `combat.missileV2` — OFF in the golden): a missile burns fuel for a fixed
 // window, then the motor dies and it coasts ballistically ("break-and-coast"). While the motor burns,
@@ -184,11 +160,6 @@ export const weapons = {
     this._beamFiring = new Set();
     this._beamFiringPrev = new Set();
     this._beamActiveMeta = new Map();
-    // SF-10 RCS-disruptor suppression windows, keyed by target entity. Transient (never serialized):
-    // a WeakMap keyed on the live entity graph, so reloads bring fresh entities and an empty map.
-    this._rcsDisrupt = new WeakMap();
-    // The Concussion counterthrust delay follows the same transient/save-safe ownership model.
-    this._npcCounterthrustRecovery = new WeakMap();
     this._diag = {
       autoFireSpatialQueries: 0,
       autoFireCandidates: 0,
@@ -298,14 +269,10 @@ export const weapons = {
     // 3) beam release → one precise stop receipt for each mount that stopped firing.
     this._emitStoppedBeams();
     // 4) physics-weapon consequences (SF-10): tick deployed vector mines (arm → proximity → radial
-    // impulse), the Concussion post-hit drift beat, and RCS-disruptor turn-suppression windows. All
-    // are strict no-ops in the node golden — they gate on weaponImpulseConsequences, which the 47a
-    // scenario pins OFF — so they
-    // cannot perturb the frozen sim hash. weapons is the last control-writer before physics, so the
-    // disruptor's control override is the authoritative command for the tick.
+    // impulse). Helm-loss and RCS disruption are owned by tumbleStates so there is one control
+    // writer. Strict no-op in the node golden — they gate on weaponImpulseConsequences, which the
+    // 47a scenario pins OFF — so they cannot perturb the frozen sim hash.
     this._tickVectorMines(dt, state);
-    this._tickNpcCounterthrustRecovery(state);
-    this._tickRcsDisruption(state);
     state.weaponRuntime = state.weaponRuntime || {};
     state.weaponRuntime.diagnostics = this._diag;
     state.weaponRuntime.attack = this._attackMetrics;
@@ -1141,7 +1108,28 @@ export const weapons = {
           entityId: s.id, impulse: { x: dirX * mag, z: dirZ * mag }, point: null,
           reason: 'vector_mine', tick: state.tick, provenance,
         });
-        if (accepted !== false) recordImpulseProvenance(s, { ...provenance, magnitude: mag });
+        if (accepted !== false) {
+          recordImpulseProvenance(s, { ...provenance, magnitude: mag });
+          if (combatFlag('weaponImpulseConsequences')) {
+            const victimMass = Math.max(0.1, Number(s.mass) || 1);
+            const owner = this.helpers && typeof this.helpers.getEntity === 'function'
+              ? this.helpers.getEntity(d.ownerId)
+              : null;
+            publishHitstunImpulse(this.bus, {
+              source: 'weapon',
+              victimId: s.id,
+              attackerId: d.ownerId == null ? null : d.ownerId,
+              attackerMass: owner && Number.isFinite(owner.mass) && owner.mass > 0 ? owner.mass : 1,
+              victimMass,
+              deltaV: mag / victimMass,
+              dirX,
+              dirZ,
+              hitSide: signedHitSide(s, { x: dirX * mag, z: dirZ * mag }, null, s.id),
+              provenance,
+              tick: state.tick,
+            });
+          }
+        }
       }
       hits.push(s.id);
     }
@@ -1159,83 +1147,6 @@ export const weapons = {
         sourceId: d.ownerId, targetId: null, flashReduced: false,
       });
       this.bus.emit('audio:cue', { id: 'sfx_vector_mine', position: pos, gain: 0.6 });
-    }
-  },
-
-  // --- SF-10 Concussion cannon: bounded NPC counterthrust recovery ------------------------------
-  // A direct impulse hit already writes velocity/torque through physics authority. This post-AI
-  // control override only prevents an NPC from cancelling that displacement on the following tick;
-  // it never touches velocity and never applies to the player. The window is authored on the weapon
-  // def and anchored to appliedTick, so rereading the same provenance cannot extend it indefinitely.
-  _tickNpcCounterthrustRecovery(state) {
-    if (!combatFlag('weaponImpulseConsequences')) return;
-    const ships = (state.entityIndex && state.entityIndex.ships) || state.entityList;
-    if (!ships) return;
-    const tick = state.tick || 0;
-    if (!this._npcCounterthrustRecovery) this._npcCounterthrustRecovery = new WeakMap();
-    for (const s of ships) {
-      if (!s || s.type !== 'ship' || !s.alive || s.id === state.playerId) continue;
-      const history = readRecentImpulseProvenanceHistory(s, tick, NPC_COUNTERTHRUST_TRIGGER_MAXAGE_TICKS);
-      let maxUntil = -1;
-      for (const prov of history) {
-        const def = this._byId.get(prov.weaponId);
-        const delayS = def && def.npcCounterthrustDelayS;
-        if (Number.isFinite(delayS) && delayS > 0 && prov.tag === def.impulseProvenance) {
-          const windowTicks = Math.max(1, Math.round(delayS * 60));
-          maxUntil = Math.max(maxUntil, prov.appliedTick + windowTicks);
-        }
-      }
-      const cur = this._npcCounterthrustRecovery.get(s);
-      if (maxUntil >= tick && (!cur || maxUntil > cur.until)) {
-        this._npcCounterthrustRecovery.set(s, { until: maxUntil });
-      }
-      const latch = this._npcCounterthrustRecovery.get(s);
-      if (!latch) continue;
-      if (tick > latch.until) { this._npcCounterthrustRecovery.delete(s); continue; }
-      writePhysicsControl(s, NPC_COUNTERTHRUST_RECOVERY_CONTROL);
-    }
-  },
-
-  // --- SF-10 RCS disruptor: bounded turn-authority suppression -----------------------------------
-  // weapons runs last before physics, so writing a force/torque-0 control here overwrites the AI's
-  // queued command for the window (the tumbleStates pattern). The window is TRIGGERED off the PQ-009
-  // provenance an RCS-disruptor hit leaves ('rcs_disruptor_spike') and then LATCHED, so a subsequent
-  // hit from another weapon cannot cut it short. Strict no-op in the golden (flag pinned OFF); the
-  // local player is never a target. Reads provenance with the default (non-destructive) max age so it
-  // never evicts the record collisionConsequences also depends on.
-  _tickRcsDisruption(state) {
-    if (!combatFlag('weaponImpulseConsequences')) return;
-    const ships = (state.entityIndex && state.entityIndex.ships) || state.entityList;
-    if (!ships) return;
-    const tick = state.tick || 0;
-    if (!this._rcsDisrupt) this._rcsDisrupt = new WeakMap();
-    for (const s of ships) {
-      if (!s || s.type !== 'ship' || !s.alive || s.id === state.playerId) continue;
-      const prov = readRecentImpulseProvenance(s, tick);
-      if (prov && prov.tag === 'rcs_disruptor_spike' && (tick - prov.appliedTick) <= RCS_TRIGGER_MAXAGE_TICKS) {
-        const def = this._byId.get(prov.weaponId);
-        const windowTicks = Math.max(1, Math.round((def && def.rcsDisruptS != null ? def.rcsDisruptS : 1.6) * 60));
-        const until = prov.appliedTick + windowTicks;
-        const cur = this._rcsDisrupt.get(s);
-        if (!cur || until > cur.until) {
-          this._rcsDisrupt.set(s, { until });
-          if (!cur && this.bus) {
-            // Sparking + attitude-drift tell — distinct id from the massline tumble cue.
-            this.bus.emit('presentation:vfxCue', {
-              id: 'ship.rcsDisrupt', lane: 'combat', position: { x: s.pos.x, z: s.pos.z },
-              particles: 14, lights: 1, magnitude: 1, material: 'ion', targetId: s.id, flashReduced: false,
-            });
-            this.bus.emit('audio:cue', { id: 'sfx_rcs_disrupt', position: { x: s.pos.x, z: s.pos.z }, gain: 0.5 });
-          }
-        }
-      }
-      const latch = this._rcsDisrupt.get(s);
-      if (!latch) continue;
-      if (tick > latch.until) { this._rcsDisrupt.delete(s); continue; }
-      // Attitude drift for the window: no thrust, no steering, NO entry spin (the concussion cannon
-      // owns spin). The hull coasts on residual velocity and its guns cannot bear as it slides off
-      // their gimbal arc — "can't hold a firing line, slides into your tether arc".
-      writePhysicsControl(s, RCS_DISRUPT_CONTROL);
     }
   },
 

@@ -24,6 +24,7 @@ import { createBus } from '../src/core/eventBus.js';
 import { fields } from '../src/systems/fields.js';
 import { physics } from '../src/core/physics.js';
 import { FIELD_DEFS, FIELD_FLAGS, FIELD_MAX_ACTIVE } from '../src/data/fields.js';
+import { COMBAT_FLAGS } from '../src/data/featureFlags.js';
 
 const DT = SIM_DT;
 
@@ -305,5 +306,37 @@ test('two identical field runs produce identical body trajectories', async () =>
     const a = await run();
     const b = await run();
     assert.deepEqual(a, b, 'identical seed/inputs → identical trajectory');
+  });
+});
+
+test('Well publishes accumulated field-caused delta-V onto the hitstun path', async () => {
+  await withFlag(true, async () => {
+    const prev = COMBAT_FLAGS.weaponImpulseConsequences;
+    COMBAT_FLAGS.weaponImpulseConsequences = true;
+    try {
+      const t = await bootPhysics();
+      const events = [];
+      t.bus.on('combat:hitstunImpulse', (p) => events.push(p));
+      const ship = heavyShip(t.sim, 80, 0, 16);
+      const now = Number.isFinite(t.state.simTime) ? t.state.simTime : t.state.tick / 60;
+      t.fieldsSys._kernel.register({
+        id: 'well_hitstun_probe',
+        kind: 'well',
+        center: { x: 0, z: 0 },
+        radius: 190,
+        strength: 240,
+        falloff: 1.6,
+        durationS: 0.25,
+        createdAt: now,
+        ownerId: t.player.id,
+      });
+      for (let i = 0; i < 40; i++) t.sim.step();
+      const hits = events.filter((p) => p && p.victimId === ship.id && p.source === 'well');
+      assert.equal(hits.length, 1, 'one bounded well interaction publishes once');
+      assert.ok(hits[0].deltaV > 0, 'published delta-V is the accumulated field-caused change');
+      t.cleanup();
+    } finally {
+      COMBAT_FLAGS.weaponImpulseConsequences = prev;
+    }
   });
 });

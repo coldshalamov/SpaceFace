@@ -21,6 +21,78 @@ export const IMPULSE_PROVENANCE_MAX_AGE_TICKS = 180;
 // graze never reads as a concussion. Debris contact never takes the helm.
 const HELM_NEUTRAL_COLLISION_TAGS = Object.freeze(new Set(['environment', 'direct_contact']));
 
+export const HITSTUN_IMPULSE_EVENT = 'combat:hitstunImpulse';
+
+// PQ-137.04 — one helm-loss duration and entry-spin law for every delivered impulse.
+// u = (ΔV / cruise) * clamp(sqrt(attacker/victim), 0.5, 2.2). The Wasp/Kestrel reference
+// u ~= 0.3182 yields ~1.00 s; the heavy gun-scale case (k=0.06, mF=2.2, u=0.132) is exactly 0.
+export const HITSTUN_LAW = Object.freeze({
+  uFloor: 0.14,
+  slope: 5.62,
+  durationMaxS: 3.5,
+  massFactorMin: 0.5,
+  massFactorMax: 2.2,
+  spinPerExcessU: 12,
+  spinMin: 0.4,
+  spinMax: 6,
+});
+
+export function hitstunMassFactor(attackerMass, victimMass) {
+  const ratio = Math.max(0.1, positive(attackerMass, 1)) / Math.max(0.1, positive(victimMass, 1));
+  return clamp(Math.sqrt(ratio), HITSTUN_LAW.massFactorMin, HITSTUN_LAW.massFactorMax);
+}
+
+export function resolveHitstunLaw(input = {}) {
+  const deltaV = nonNegative(input.deltaV);
+  const cruise = positive(input.victimCruise, 0);
+  const k = cruise > 0 ? deltaV / cruise : 0;
+  const mF = hitstunMassFactor(input.attackerMass, input.victimMass);
+  const u = k * mF;
+  const durationS = u <= HITSTUN_LAW.uFloor
+    ? 0
+    : Math.min(HITSTUN_LAW.durationMaxS, HITSTUN_LAW.slope * (u - HITSTUN_LAW.uFloor));
+  const entrySpin = durationS > 0
+    ? clamp(HITSTUN_LAW.spinPerExcessU * (u - HITSTUN_LAW.uFloor), HITSTUN_LAW.spinMin, HITSTUN_LAW.spinMax)
+    : 0;
+  return Object.freeze({ k, mF, u, durationS, entrySpin });
+}
+
+export function signedHitSide(target, impulse, hit, fallbackId) {
+  const ix = finite(impulse && (impulse.x != null ? impulse.x : impulse.dirX));
+  const iz = finite(impulse && (impulse.z != null ? impulse.z : impulse.dirZ));
+  const mag = Math.hypot(ix, iz);
+  if (hit && hit.pos && target && target.pos && mag > 1e-9) {
+    const rx = finite(hit.pos.x) - finite(target.pos && target.pos.x);
+    const rz = finite(hit.pos.z) - finite(target.pos && target.pos.z);
+    const cross = rz * ix - rx * iz;
+    if (Math.abs(cross) > 1e-6) return Math.sign(cross);
+  }
+  return numericParity(fallbackId) ? 1 : -1;
+}
+
+export function publishHitstunImpulse(bus, payload = {}) {
+  if (!bus || typeof bus.emit !== 'function') return false;
+  if (payload.victimId == null) return false;
+  const dirX = finite(payload.dirX);
+  const dirZ = finite(payload.dirZ);
+  const length = Math.hypot(dirX, dirZ);
+  bus.emit(HITSTUN_IMPULSE_EVENT, Object.freeze({
+    schemaVersion: 1,
+    source: stableTag(payload.source) || 'unknown',
+    victimId: payload.victimId,
+    attackerId: payload.attackerId == null ? null : payload.attackerId,
+    attackerMass: positive(payload.attackerMass, 1),
+    victimMass: positive(payload.victimMass, 1),
+    deltaV: nonNegative(payload.deltaV),
+    dirX: length > 1e-9 ? dirX / length : 0,
+    dirZ: length > 1e-9 ? dirZ / length : 0,
+    hitSide: payload.hitSide === -1 ? -1 : 1,
+    provenance: payload.provenance && typeof payload.provenance === 'object' ? payload.provenance : null,
+    tick: nonNegativeInteger(payload.tick),
+  }));
+  return true;
+}
+
 export const COLLISION_CONSEQUENCE_LIMITS = Object.freeze({
   minMomentum: 1,
   staggerDeltaV: 3,
@@ -270,4 +342,12 @@ function nonNegativeInteger(value) {
 
 function clamp(value, lo, hi) {
   return Math.max(lo, Math.min(hi, value));
+}
+
+function numericParity(value) {
+  if (Number.isFinite(value)) return Math.abs(Math.trunc(value)) % 2;
+  const text = String(value == null ? '' : value);
+  let sum = 0;
+  for (let i = 0; i < text.length; i++) sum += text.charCodeAt(i);
+  return sum % 2;
 }

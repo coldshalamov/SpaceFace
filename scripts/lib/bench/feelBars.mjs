@@ -127,7 +127,7 @@ export const FEEL_BARS = [
       "Helm-loss duration is one function of (ΔV ÷ cruise) and (attacker mass ÷ victim mass) for guns, throws, flings and collisions alike; lights at ≥ 30 % ΔV lose the helm ≥ 1 s; heavies at gun-scale ΔV never do. NPCs recover with real thruster torque, never a hidden gyro.",
     target: "one universal curve; lights ≥ 30 % ΔV stunned ≥ 1 s; heavies at gun-scale ΔV never",
     benchReachable: true,
-    scenarioIds: ["feel.shove_magnitude", "feel.terrain_slam"],
+    scenarioIds: ["feel.shove_magnitude", "feel.terrain_slam", "feel.hitstun_curve"],
   },
   {
     id: "B12",

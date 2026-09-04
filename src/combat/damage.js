@@ -4,7 +4,11 @@ import { damageSubsystem } from './subsystems.js';
 import { appendCombatTrace } from './trace.js';
 import { difficultyDamageScale } from '../data/difficulty.js';
 import { combatFlag } from '../data/featureFlags.js';
-import { recordImpulseProvenance } from './impulseKernel.js';
+import {
+  publishHitstunImpulse,
+  recordImpulseProvenance,
+  signedHitSide,
+} from './impulseKernel.js';
 import { verbAcceptsType } from '../data/interactionDescriptorCatalog.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
 import {
@@ -15,8 +19,8 @@ import {
 
 export function createDamageRouter(context, statusService, options = {}) {
   const { state, catalog, bus, helpers } = context;
-  const physics = helpers && helpers.combatPhysics;
   const onKill = typeof options.onKill === 'function' ? options.onKill : null;
+  const combatPhysics = () => helpers && helpers.combatPhysics;
 
   // AI victims persist first-hit legal/reward provenance inside their existing data.ai world record,
   // so sector capture/rematerialization and Continue cannot turn later retaliation into pre-existing
@@ -304,6 +308,7 @@ export function createDamageRouter(context, statusService, options = {}) {
     }
     const vector = resolveImpulseVector(target, attacker, packet.impulse, packet.hit);
     if (!vector) return { applied: false, reason: 'none' };
+    const physics = combatPhysics();
     if (!physics || typeof physics.applyImpulse !== 'function') {
       appendCombatTrace(state.combat, state.tick, 'physics.portMissing', {
         actorId: input && input.attackerId,
@@ -331,19 +336,29 @@ export function createDamageRouter(context, statusService, options = {}) {
         provenance,
       });
       if (accepted === false) return { applied: false, reason: 'physics_rejected' };
-      let torqueApplied = false;
-      const torqueY = resolveTumbleTorque(target, vector, packet.tumbleTorque, packet.hit);
-      if (torqueY && typeof physics.applyTorqueImpulse === 'function') {
-        torqueApplied = physics.applyTorqueImpulse({
-          entityId: target.id,
-          impulse: { x: 0, y: torqueY, z: 0 },
-          reason: tag ? 'weapon_hit_tumble' : 'damage_tumble',
-          tick: state.tick,
-          provenance,
-        }) !== false;
-      }
+      const magnitude = Math.hypot(vector.x, vector.z);
+      const victimMass = Math.max(0.1, Number(target.mass) || 1);
+      const attackerMass = attacker && Number.isFinite(attacker.mass) && attacker.mass > 0
+        ? attacker.mass
+        : 1;
+      const hitSide = signedHitSide(target, vector, packet.hit, target.id);
       if (provenance) {
-        recordImpulseProvenance(target, { ...provenance, magnitude: Math.hypot(vector.x, vector.z) });
+        recordImpulseProvenance(target, { ...provenance, magnitude });
+      }
+      if (combatFlag('weaponImpulseConsequences')) {
+        publishHitstunImpulse(bus, {
+          source: 'gun',
+          victimId: target.id,
+          attackerId: input && input.attackerId == null ? null : input.attackerId,
+          attackerMass,
+          victimMass,
+          deltaV: magnitude / victimMass,
+          dirX: vector.x,
+          dirZ: vector.z,
+          hitSide,
+          provenance,
+          tick: state.tick,
+        });
       }
       appendCombatTrace(state.combat, state.tick, 'physics.impulse', {
         actorId: input && input.attackerId,
@@ -352,9 +367,17 @@ export function createDamageRouter(context, statusService, options = {}) {
         reason,
         weaponId,
         provenance: tag,
-        torqueApplied,
+        hitSide,
+        torqueApplied: false,
       });
-      return { applied: true, impulse: vector, torqueApplied };
+      return {
+        applied: true,
+        impulse: vector,
+        torqueApplied: false,
+        hitSide,
+        deltaV: magnitude / victimMass,
+        angularProduction: true,
+      };
     } catch (error) {
       appendCombatTrace(state.combat, state.tick, 'physics.error', {
         actorId: input && input.attackerId,
@@ -535,18 +558,6 @@ function resolveImpulseVector(target, attacker, impulse, hit) {
   }
   const length = Math.hypot(dx, dz) || 1;
   return { x: dx / length * magnitude, z: dz / length * magnitude };
-}
-
-function resolveTumbleTorque(target, impulse, authoredTorque, hit) {
-  const torque = Math.max(0, Number(authoredTorque) || 0);
-  if (!(torque > 0) || !hit || !hit.pos || !target || !target.pos) return 0;
-  const magnitude = Math.hypot(impulse.x, impulse.z);
-  if (!(magnitude > 1e-9)) return 0;
-  const radius = Math.max(0.1, Number(target.radius) || 1);
-  const rx = (Number(hit.pos.x) || 0) - (Number(target.pos.x) || 0);
-  const rz = (Number(hit.pos.z) || 0) - (Number(target.pos.z) || 0);
-  const cross = (rz * impulse.x - rx * impulse.z) / (radius * magnitude);
-  return torque * Math.max(-1, Math.min(1, cross));
 }
 
 function normalizeImpulse(impulse) {

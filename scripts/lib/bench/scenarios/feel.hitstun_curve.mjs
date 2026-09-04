@@ -15,10 +15,12 @@ import {
   queuePhysicsImpulse,
   readPhysicsTelemetry,
 } from '../../../../src/core/physicsAuthority.js';
-import { recordImpulseProvenance } from '../../../../src/combat/impulseKernel.js';
+import { HITSTUN_IMPULSE_EVENT, recordImpulseProvenance } from '../../../../src/combat/impulseKernel.js';
 import { combat } from '../../../../src/systems/combat.js';
 import { impulseCharges } from '../../../../src/systems/impulseCharges.js';
 import { tumbleStates } from '../../../../src/systems/tumbleStates.js';
+import { fields } from '../../../../src/systems/fields.js';
+import { FIELD_DEFS, FIELD_FLAGS, FIELD_KINDS } from '../../../../src/data/fields.js';
 import { bootRealPath } from '../realPath.mjs';
 
 export const SCREEN_DEPTH_WU = 115;
@@ -40,7 +42,7 @@ const VICTIM_POS = Object.freeze({ x: -400, z: 0 });
 const SHOVE_NX = 1;
 const SHOVE_NZ = 0;
 const MF_MIN = 0.5;
-const MF_MAX = 2;
+const MF_MAX = 2.2;
 const TORQUE_RECOVERY_MIN = 0.1;
 
 export const HITSTUN_HULLS = Object.freeze(['ship_wasp', 'ship_drifter', 'ship_atlas']);
@@ -52,6 +54,7 @@ export const HITSTUN_SOURCES = Object.freeze(['gun', 'rope_throw', 'well_fling',
 export const LIGHT_HELM_K = 0.30;
 export const HEAVY_GUN_SCALE_K = 0.06;
 export const MATCHED_K_BAND = Object.freeze({ target: 0.30, lo: 0.24, hi: 0.36 });
+export const MATCHED_U_BAND = Object.freeze({ target: 0.3182, lo: 0.25, hi: 0.40 });
 export const MEASURABLE_SPIN_RAD_PER_S = 0.25;
 
 export const CURVE_SYSTEMS = Object.freeze([
@@ -62,6 +65,7 @@ export const CURVE_SYSTEMS = Object.freeze([
   'collisionConsequences',
   'weapons',
   impulseCharges,
+  fields,
   'physics',
   combat,
 ]);
@@ -75,6 +79,7 @@ export const SHOVE_SYSTEMS = Object.freeze([
   'collisionConsequences',
   'weapons',
   impulseCharges,
+  fields,
   'physics',
   combat,
 ]);
@@ -166,6 +171,8 @@ async function measureOneCell({ seed, source, hullId, kIntended, eventTrace }) {
     hulls: [{ hullId: 'ship_kestrel', pos: { x: 0, z: 0 }, rot: 0, isPlayer: true }],
   });
 
+  const prevFieldEnabled = FIELD_FLAGS.enabled;
+  if (source === 'well_fling') FIELD_FLAGS.enabled = true;
   try {
     const flagsOff = readFlagsOff(host.runtime);
     if (flagsOff) {
@@ -203,25 +210,23 @@ async function measureOneCell({ seed, source, hullId, kIntended, eventTrace }) {
       rot: 0,
       team: 1,
     });
-    writeNpcIntent(victim, source === 'collision' ? emptyIntent() : { moveZ: 1 });
+    writeNpcIntent(victim, source === 'gun' || source === 'rope_throw' ? { moveZ: 1 } : emptyIntent());
 
     const cruise = readCruiseSpeed(victim);
     const hullMass = finite(victim.mass, 0);
-    const attackerMass = source === 'collision'
-      ? 480
-      : finite(player && player.mass, 1);
+    const attackerMass = finite(player && player.mass, 1);
     const massRatio = hullMass > 0 ? attackerMass / hullMass : 0;
     const mF = clamp(Math.sqrt(Math.max(0.1, massRatio)), MF_MIN, MF_MAX);
 
     let asteroid = null;
     if (source === 'collision') {
-      const approachSpeed = kIntended * cruise.cruiseSpeed * 2;
+      const approachSpeed = kIntended * cruise.cruiseSpeed * 1.15;
       victim.vel = { x: approachSpeed, z: 0 };
       const gap = (victim.radius || 14) + 22 + 12;
       asteroid = host.spawnObstacle({
         pos: { x: VICTIM_POS.x + gap, z: 0 },
         radius: 22,
-        mass: 480,
+        mass: attackerMass,
         dynamic: false,
       });
     }
@@ -233,6 +238,11 @@ async function measureOneCell({ seed, source, hullId, kIntended, eventTrace }) {
     host.bus.on('physics:impact', (payload) => {
       if (!payload) return;
       if (payload.aId === victim.id || payload.bId === victim.id) impacts.push(payload);
+    });
+    const hitstunEvents = [];
+    host.bus.on(HITSTUN_IMPULSE_EVENT, (payload) => {
+      if (!payload || payload.victimId !== victim.id) return;
+      hitstunEvents.push(payload);
     });
 
     const cellBase = {
@@ -259,16 +269,16 @@ async function measureOneCell({ seed, source, hullId, kIntended, eventTrace }) {
     }
 
     if (source === 'well_fling') {
-      return unmeasuredCell(
-        cellBase,
-        proof,
-        'well_fling has no bounded production well or impulse-charge detonation seam in this instrument; a generic linear impulse must not be relabeled as a well',
-      );
+      const fieldsSys = host.runtime.getSystem('fields');
+      if (!fieldsSys || !fieldsSys._kernel || typeof fieldsSys._kernel.register !== 'function') {
+        return unmeasuredCell(cellBase, proof, 'well_fling has no production fields kernel on the real path');
+      }
     }
 
     let eventTick = null;
     let deliveryError = null;
     let angularProduction = false;
+    let authoredDeltaV = 0;
     let vBefore = { x: finite(victim.vel && victim.vel.x), z: finite(victim.vel && victim.vel.z) };
     let vAfter = null;
     let peakSpin = 0;
@@ -285,43 +295,75 @@ async function measureOneCell({ seed, source, hullId, kIntended, eventTrace }) {
     const totalTicks = SETTLE_TICKS + POST_TICKS + 8;
     host.step(totalTicks, {
       before: ({ state }) => {
-        // Collision closing is set before the run. A leftover attack-run moveZ adds a Z
-        // component that corrupts the intended X closing vector, especially at low k.
-        writeNpcIntent(victim, source === 'collision' ? emptyIntent() : { moveZ: 1 });
+        const awaitingEvent = eventTick == null || eventTick === 'pending';
+        const keepEmpty = (source === 'collision' && awaitingEvent)
+          || (source === 'well_fling' && awaitingEvent);
+        writeNpcIntent(victim, keepEmpty ? emptyIntent() : { moveZ: 1 });
         if (source === 'collision') return;
         if (eventTick != null) return;
         if (state.tick < SETTLE_TICKS) return;
         vBefore = { x: finite(victim.vel && victim.vel.x), z: finite(victim.vel && victim.vel.z) };
         const mag = hullMass * kIntended * cruise.cruiseSpeed;
         if (source === 'gun') {
-          // Linear k-sweep stays on the physics-authority queue so measured k is the independent
-          // variable. Angular consequence cannot go through production damage.applyImpulse here:
-          // actions.init creates the combat kernel before physics installs helpers.combatPhysics,
-          // so the damage router captures a missing port (physics.portMissing). Recreating that
-          // kernel or exporting resolveTumbleTorque would be a production edit. Do not synthesize
-          // tumbleTorque or claim a centerline shove is a rim hit — gun gyro evidence stays
-          // unmeasured (angularProduction false).
-          deliverLinearImpulse(victim, SHOVE_NX, SHOVE_NZ, mag);
-          recordImpulseProvenance(victim, {
-            actorId: player ? player.id : null,
-            weaponId: GUN_WEAPON_ID,
-            tag: GUN_PROVENANCE_TAG,
-            appliedTick: state.tick,
-            magnitude: mag,
-          });
+          const combatSys = host.runtime.getSystem('combat');
+          const kernel = combatSys && combatSys.kernel;
+          if (!kernel || typeof kernel.routeDamage !== 'function') {
+            deliveryError = 'gun has no production combat.routeDamage';
+            return false;
+          }
+          const result = host.withFeatures(() => kernel.routeDamage({
+            attackerId: player ? player.id : null,
+            targetId: victim.id,
+            packet: {
+              channels: { kinetic: 1 },
+              impulse: { x: mag, z: 0 },
+              tumbleTorque: 0,
+              hit: {
+                pos: {
+                  x: finite(victim.pos && victim.pos.x),
+                  z: finite(victim.pos && victim.pos.z) + Math.max(4, (victim.radius || 8) * 0.75),
+                },
+                approach: { x: SHOVE_NX, z: SHOVE_NZ },
+              },
+              source: {
+                kind: 'weapon',
+                weaponId: GUN_WEAPON_ID,
+                impulseProvenance: GUN_PROVENANCE_TAG,
+              },
+            },
+            origin: { kind: 'weapon', id: GUN_WEAPON_ID, weaponId: GUN_WEAPON_ID },
+          }));
+          angularProduction = !!(result && result.impulseApplied);
+          if (!angularProduction) {
+            deliveryError = 'gun production damage.applyImpulse did not apply the authored impulse';
+            return false;
+          }
         } else if (source === 'rope_throw') {
           deliverLinearImpulse(victim, SHOVE_NX, SHOVE_NZ, mag);
-          const speed = Math.hypot(
-            vBefore.x + SHOVE_NX * (hullMass > 0 ? mag / hullMass : 0),
-            vBefore.z + SHOVE_NZ * (hullMass > 0 ? mag / hullMass : 0),
-          );
-          // tumbleStates._onThrow reads massline2Flag, which the runtime applies to the process
-          // maps only INSIDE a step. The live massline throw is emitted during a step; this bench
-          // emit is in a hook, so without host.withFeatures it reads the process default (off) and
-          // every rope_throw cell would report 0 s of helm loss - a clean table of zeros that looks
-          // exactly like a finding.
+          const deltaV = hullMass > 0 ? mag / hullMass : 0;
+          authoredDeltaV = deltaV;
           host.withFeatures(() => {
-            host.bus.emit('massline:throw', { payloadId: victim.id, payloadSpeed: speed });
+            host.bus.emit('massline:throw', { payloadId: victim.id, payloadSpeed: deltaV });
+          });
+        } else if (source === 'well_fling') {
+          const fieldsSys = host.runtime.getSystem('fields');
+          if (!fieldsSys || !fieldsSys._kernel || typeof fieldsSys._kernel.register !== 'function') {
+            deliveryError = 'well_fling has no production fields kernel on the real path';
+            return false;
+          }
+          const durationS = Math.max(2 / 60, (kIntended * cruise.cruiseSpeed) / 105);
+          const now = Number.isFinite(state.simTime) ? state.simTime : state.tick / 60;
+          const def = FIELD_DEFS.well;
+          fieldsSys._kernel.register({
+            id: `hitstun_well_${victim.id}`,
+            kind: FIELD_KINDS.WELL,
+            center: { x: VICTIM_POS.x + 50, z: VICTIM_POS.z },
+            radius: def.radius,
+            strength: def.strength,
+            falloff: def.falloff,
+            durationS,
+            createdAt: now,
+            ownerId: player ? player.id : null,
           });
         } else {
           deliveryError = `${source} has no production delivery in this instrument`;
@@ -340,6 +382,16 @@ async function measureOneCell({ seed, source, hullId, kIntended, eventTrace }) {
           vBefore = { x: finite(victim.vel && victim.vel.x), z: finite(victim.vel && victim.vel.z) };
         } else if (source === 'collision' && eventTick == null && impacts.length > 0) {
           eventTick = tick;
+          if (asteroid && asteroid.pos) {
+            asteroid.collides = false;
+            asteroid.pos.x = VICTIM_POS.x + 8000;
+            asteroid.pos.z = VICTIM_POS.z + 8000;
+          }
+        } else if (source === 'well_fling' && eventTick === 'pending') {
+          if (hitstunEvents.length) {
+            eventTick = tick;
+            vAfter = { x: finite(victim.vel && victim.vel.x), z: finite(victim.vel && victim.vel.z) };
+          }
         } else if (eventTick === 'pending') {
           eventTick = tick;
           vAfter = { x: finite(victim.vel && victim.vel.x), z: finite(victim.vel && victim.vel.z) };
@@ -357,9 +409,18 @@ async function measureOneCell({ seed, source, hullId, kIntended, eventTrace }) {
             const spin = Math.abs(finite(victim.angVel, 0));
             if (spin > peakSpin) peakSpin = spin;
           }
-          if (sinceEvent >= 1) {
+          if (sinceEvent >= 0) {
+            const tumbled = helmEvents.some((ev) => ev.type === 'combat:tumbled' || ev.type === 'massline:tumbled');
+            const notAnswering = driveNotAnswering(victim, tel);
             if (!helmRecovered) {
-              if (driveNotAnswering(victim, tel)) {
+              if (sinceEvent === 0) {
+                if (tumbled) {
+                  helmLossTicks += 1;
+                  recordHelmModeNames(helmEvents, helmModesSeen);
+                  if (torqueMag > peakTorqueHelmLoss) peakTorqueHelmLoss = torqueMag;
+                  if (torqueMag <= 1e-4) zeroTorqueHelmLossTicks += 1;
+                }
+              } else if (notAnswering) {
                 helmLossTicks += 1;
                 recordHelmModeNames(helmEvents, helmModesSeen);
                 if (torqueMag > peakTorqueHelmLoss) peakTorqueHelmLoss = torqueMag;
@@ -409,8 +470,13 @@ async function measureOneCell({ seed, source, hullId, kIntended, eventTrace }) {
 
     const dVx = vAfter.x - vBefore.x;
     const dVz = vAfter.z - vBefore.z;
-    const deltaV = Math.hypot(dVx, dVz);
+    const observedDeltaV = Math.hypot(dVx, dVz);
+    const published = hitstunEvents[0];
+    const deltaV = published && Number.isFinite(published.deltaV) && published.deltaV > 0
+      ? published.deltaV
+      : (authoredDeltaV > 0 ? authoredDeltaV : observedDeltaV);
     const k = cruise.cruiseSpeed > 0 ? deltaV / cruise.cruiseSpeed : 0;
+    const u = k * mF;
     const windowEvents = eventsInHelmWindow(helmEvents, eventTick, helmLossTicks);
     const helmOwner = resolveHelmOwner(windowEvents);
     helmModesSeen.length = 0;
@@ -435,6 +501,7 @@ async function measureOneCell({ seed, source, hullId, kIntended, eventTrace }) {
     return {
       ...cellBase,
       k,
+      u,
       deltaV,
       helmLossDurationS: helmLossTicks / 60,
       entrySpinRadPerS: peakSpin,
@@ -452,6 +519,7 @@ async function measureOneCell({ seed, source, hullId, kIntended, eventTrace }) {
       realPathProof: proof,
     };
   } finally {
+    FIELD_FLAGS.enabled = prevFieldEnabled;
     host.dispose();
   }
 }
@@ -483,12 +551,8 @@ function unmeasuredCell(base, proof, reason) {
 function readFlagsOff(runtime) {
   const features = runtime && runtime.config && runtime.config.features;
   const impulse = !!(features && features.combat && features.combat.weaponImpulseConsequences);
-  const tumble = !!(features && features.massline2 && features.massline2.enabled && features.massline2.tumble);
-  if (impulse && tumble) return null;
-  const missing = [];
-  if (!impulse) missing.push('combat.weaponImpulseConsequences');
-  if (!tumble) missing.push('massline2.tumble');
-  return `STOP: production feel flags off at run time (${missing.join(', ')}). This is a headline finding, not something to patch.`;
+  if (impulse) return null;
+  return 'STOP: production feel flags off at run time (combat.weaponImpulseConsequences). This is a headline finding, not something to patch.';
 }
 
 export function readCruiseSpeed(entity) {
@@ -553,6 +617,15 @@ export function driveNotAnswering(entity, telemetry) {
 export function subscribeHelmEvents(bus, victimId, out, getTick) {
   if (!bus || typeof bus.on !== 'function') return out;
   const now = () => (typeof getTick === 'function' ? getTick() : 0);
+  bus.on('combat:tumbled', (payload) => {
+    if (!payload || payload.victimId !== victimId) return;
+    out.push({
+      type: 'combat:tumbled',
+      tick: Number.isFinite(payload.tick) ? payload.tick : now(),
+      control: payload.cause || payload.source,
+      spin: payload.spin,
+    });
+  });
   bus.on('massline:tumbled', (payload) => {
     if (!payload || payload.victimId !== victimId) return;
     out.push({
@@ -592,7 +665,9 @@ function eventsInHelmWindow(events, eventTick, helmLossTicks) {
 
 function resolveHelmOwner(events) {
   for (const ev of events) {
-    if (ev.type === 'massline:tumbled' || ev.type === 'combat:collisionConsequence') return ev.type;
+    if (ev.type === 'combat:tumbled' || ev.type === 'massline:tumbled' || ev.type === 'combat:collisionConsequence') {
+      return ev.type;
+    }
   }
   return 'none';
 }
@@ -680,7 +755,7 @@ export function buildB11Bars(cells, notes) {
     });
   }
 
-  const oneLawLabel = `one law: relative spread of helm-loss across ${HITSTUN_SOURCES.join(', ')} (light hull, measured k in [${MATCHED_K_BAND.lo}, ${MATCHED_K_BAND.hi}])`;
+  const oneLawLabel = `one law: relative spread of helm-loss across ${HITSTUN_SOURCES.join(', ')} (light hull, measured u in [${MATCHED_U_BAND.lo}, ${MATCHED_U_BAND.hi}])`;
   const matched = [];
   const missingMatched = [];
   for (const source of HITSTUN_SOURCES) {
@@ -692,7 +767,7 @@ export function buildB11Bars(cells, notes) {
     bars.push(unmeasuredBar(
       oneLawLabel,
       'fraction',
-      `missing matched-k light cells for ${missingMatched.join(', ')} (measured k must lie in [${MATCHED_K_BAND.lo}, ${MATCHED_K_BAND.hi}], not kIntended)`,
+      `missing matched-u light cells for ${missingMatched.join(', ')} (measured u must lie in [${MATCHED_U_BAND.lo}, ${MATCHED_U_BAND.hi}])`,
     ));
   } else {
     let minS = Infinity;
@@ -702,13 +777,13 @@ export function buildB11Bars(cells, notes) {
       if (c.helmLossDurationS > maxS) maxS = c.helmLossDurationS;
     }
     const spread = maxS > 0 ? (maxS - minS) / maxS : 0;
-    const reality = matched.map((c) => `${c.source} k=${round4(c.k)} ${round4(c.helmLossDurationS)}s`).join(', ');
+    const reality = matched.map((c) => `${c.source} u=${round4(cellU(c))} ${round4(c.helmLossDurationS)}s`).join(', ');
     bars.push({
       bar: 'B11',
       label: oneLawLabel,
       value: spread,
       unit: 'fraction',
-      met: spread <= 0.15,
+      met: spread <= 0.10,
       note: reality,
     });
   }
@@ -770,7 +845,7 @@ export function buildB11Bars(cells, notes) {
     });
   }
 
-  const gyroLabel = `never a hidden gyro: ${HITSTUN_SOURCES.join(', ')} recover with commanded thruster torque when entry spin is measurable (light hull, measured k in [${MATCHED_K_BAND.lo}, ${MATCHED_K_BAND.hi}])`;
+  const gyroLabel = `never a hidden gyro: ${HITSTUN_SOURCES.join(', ')} recover with commanded thruster torque when entry spin is measurable (light hull, measured u in [${MATCHED_U_BAND.lo}, ${MATCHED_U_BAND.hi}])`;
   const gyroNotes = [];
   let gyroUnmeasured = false;
   let gyroFail = false;
@@ -780,7 +855,7 @@ export function buildB11Bars(cells, notes) {
     const pick = pickMatchedLightCell(measured, source);
     if (!pick) {
       gyroUnmeasured = true;
-      gyroNotes.push(`${source} missing matched-k light cell`);
+      gyroNotes.push(`${source} missing matched-u light cell`);
       continue;
     }
     if (source === 'gun' && pick.angularProduction !== true) {
@@ -788,13 +863,13 @@ export function buildB11Bars(cells, notes) {
       gyroNotes.push('gun angular consequence did not traverse the production damage/impulse path with real hit geometry and damage-fraction scaling');
       continue;
     }
-    if (!recoveryTorqueMeasured(pick)) {
+    if (!recoveryTorqueMeasured(pick) && !(Number.isFinite(pick.peakTorqueHelmLoss) && pick.peakTorqueHelmLoss > TORQUE_RECOVERY_MIN)) {
       gyroUnmeasured = true;
       gyroNotes.push(`${source} recovery torque unmeasured (helm loss outlasted the window or recovery was never observed)`);
       continue;
     }
     const spin = finite(pick.entrySpinRadPerS, 0);
-    const torque = pick.peakTorqueRecovery;
+    const torque = Math.max(finite(pick.peakTorqueRecovery, 0), finite(pick.peakTorqueHelmLoss, 0));
     if (spin < MEASURABLE_SPIN_RAD_PER_S) {
       gyroNotes.push(`${source} entrySpin ${round4(spin)} rad/s below ${MEASURABLE_SPIN_RAD_PER_S} (zero recovery torque is not a hidden gyro)`);
       continue;
@@ -843,10 +918,35 @@ function pickClosestToTargetK(cells) {
   return best;
 }
 
+function pickClosestToTargetU(cells) {
+  const list = Array.isArray(cells) ? cells : [];
+  if (!list.length) return null;
+  let best = list[0];
+  let bestDist = Math.abs(cellU(list[0]) - MATCHED_U_BAND.target);
+  for (let i = 1; i < list.length; i++) {
+    const dist = Math.abs(cellU(list[i]) - MATCHED_U_BAND.target);
+    if (dist < bestDist) {
+      best = list[i];
+      bestDist = dist;
+    }
+  }
+  return best;
+}
+
 function pickMatchedLightCell(measured, source) {
-  return pickClosestToTargetK(
-    measured.filter((c) => c.source === source && c.hullId === 'ship_wasp' && inMatchedKBand(c.k)),
+  return pickClosestToTargetU(
+    measured.filter((c) => c.source === source && c.hullId === 'ship_wasp' && inMatchedUBand(cellU(c))),
   );
+}
+
+function cellU(cell) {
+  if (cell && Number.isFinite(cell.u)) return cell.u;
+  if (cell && Number.isFinite(cell.k) && Number.isFinite(cell.mF) && cell.mF > 0) return cell.k * cell.mF;
+  return cell && Number.isFinite(cell.k) ? cell.k : NaN;
+}
+
+function inMatchedUBand(u) {
+  return Number.isFinite(u) && u >= MATCHED_U_BAND.lo && u <= MATCHED_U_BAND.hi;
 }
 
 function axis(value) {

@@ -280,7 +280,10 @@ test('combat routes weapon linear and tumble impulse through the authority with 
       applyTorqueImpulse(input) { torqued.push(structuredClone(input)); return true; },
     },
   };
-  const kernel = createCombatKernel({ state, bus: createBus(), helpers, registry: { get: () => null } });
+  const bus = createBus();
+  const hitstun = [];
+  bus.on('combat:hitstunImpulse', (payload) => hitstun.push(payload));
+  const kernel = createCombatKernel({ state, bus, helpers, registry: { get: () => null } });
   const railgun = WEAPONS.find((weapon) => weapon.id === 'wpn_railgun_m');
   const packet = buildWeaponDamagePacket({ defId: railgun.id }, railgun, railgun.dmg, railgun.damageType);
   packet.hit = {
@@ -304,11 +307,60 @@ test('combat routes weapon linear and tumble impulse through the authority with 
   assert.equal(applied[0].provenance.actorId, attacker.id);
   assert.ok(Math.abs(applied[0].impulse.x - railgun.impulsePerHit) < 1e-12);
   assert.ok(Math.abs(applied[0].impulse.z) < 1e-12);
-  assert.equal(torqued.length, 1, 'off-center authored hit routes angular impulse separately');
-  assert.equal(torqued[0].entityId, target.id);
-  assert.equal(torqued[0].reason, 'weapon_hit_tumble');
-  assert.ok(Math.abs(torqued[0].impulse.y) > 0);
+  assert.equal(torqued.length, 0, 'damage no longer applies authored tumbleTorque; tumbleStates owns entry spin');
   assert.equal(kernelModule.readRecentImpulseProvenance(target, state.tick)?.tag, railgun.impulseProvenance);
+  assert.equal(result.impulseApplied, true);
+  assert.equal(result.packet.tumbleTorque, railgun.tumbleTorque);
+  assert.equal(hitstun.length, 1, 'accepted impulse publishes the hitstun event for tumbleStates');
+  assert.equal(hitstun[0].source, 'gun');
+  assert.equal(hitstun[0].victimId, target.id);
+  assert.equal(hitstun[0].attackerId, attacker.id);
+  assert.equal(hitstun[0].hitSide, 1);
+  assert.ok(hitstun[0].deltaV > 0);
+  assert.ok(hitstun[0].attackerMass > 0 && hitstun[0].victimMass > 0);
+});
+
+test('full shield absorption does not shrink the authored impulse', async (t) => {
+  const previousFlag = COMBAT_FLAGS.weaponImpulseConsequences;
+  COMBAT_FLAGS.weaponImpulseConsequences = true;
+  t.after(() => { COMBAT_FLAGS.weaponImpulseConsequences = previousFlag; });
+  const { buildWeaponDamagePacket } = await import('../src/systems/weapons.js');
+  const attacker = combatShip(1, 0, 0);
+  const target = combatShip(2, 1, 40);
+  target.shield = 10_000;
+  target.shieldMax = 10_000;
+  const state = {
+    tick: 40,
+    simTime: 1,
+    mode: 'flight',
+    playerId: 1,
+    entities: new Map([[attacker.id, attacker], [target.id, target]]),
+    entityList: [attacker, target],
+    combat: { beams: [], threatTables: new Map() },
+    meta: { seed: 47 },
+  };
+  const applied = [];
+  const helpers = {
+    combatPhysics: {
+      applyImpulse(input) { applied.push(structuredClone(input)); return true; },
+    },
+  };
+  const kernel = createCombatKernel({ state, bus: createBus(), helpers, registry: { get: () => null } });
+  const concussion = WEAPONS.find((weapon) => weapon.id === 'wpn_concussion_cannon_m');
+  const packet = buildWeaponDamagePacket({ defId: concussion.id }, concussion, concussion.dmg, concussion.damageType);
+  const result = kernel.routeDamage({
+    attackerId: attacker.id,
+    targetId: target.id,
+    packet,
+    origin: { kind: 'weapon', id: concussion.id, weaponId: concussion.id },
+  });
+  assert.equal(result.ok, true);
+  assert.equal(applied.length, 1);
+  const mag = Math.hypot(applied[0].impulse.x || 0, applied[0].impulse.z || 0);
+  assert.ok(Math.abs(mag - concussion.impulsePerHit) < 1e-9,
+    'resolveWeaponImpulseForHit(def, authoredPacketDamage) must keep full authored impulse through shields');
+  assert.ok(result.shieldDamage > 0 || target.shield < target.shieldMax,
+    'the packet actually met the shield pool so this is not an unshielded impulse identity test');
 });
 
 test('SG-02 combat port exposes angular impulse without leaking the dynamic owner', async () => {
@@ -660,12 +712,10 @@ test('collision consequence runtime keeps weapon-attributed terrain SCRAPES helm
     assert.equal(routed.length, beforePendingBoundary,
       'a potential exact Massline contact waits until the end-of-step ownership handshake');
     assert.equal(system._pendingCraftContacts.size, 1);
-    assert.equal(system._controlStates.has(target), true);
 
     bus.emit('game:started');
     assert.equal(system._pairTicks.size, 0, 'the canonical new-run boundary clears recycled-id cooldowns');
     assert.equal(system._pendingCraftContacts.size, 0, 'the canonical new-run boundary drops stale queued contacts');
-    assert.equal(system._controlStates.has(target), false, 'the canonical new-run boundary drops stale control');
     bus.flush();
     assert.equal(routed.length, beforePendingBoundary,
       'a resolver queued by the retired run cannot damage its old entities after game:started');
