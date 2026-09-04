@@ -6,6 +6,7 @@
 // seconds and reported PASS. These are the rules that make that impossible to repeat.
 
 import test from 'node:test';
+import * as THREE from 'three';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { mkdirSync, writeFileSync, existsSync, symlinkSync, mkdtempSync, rmSync } from 'node:fs';
@@ -15,6 +16,7 @@ import { tmpdir } from 'node:os';
 import {
   retentionMask,
   waitForRealtime,
+  installDrawHooks,
   condenseMoments,
   compareStripEventTicks,
   MOMENT_IMPACT_FLOOR,
@@ -250,4 +252,24 @@ test('capture readiness does not accept one late fast window at timeout', async 
   const fractions = [0.14, 0.14, 0.9];
   const page = { evaluate: async () => sim, waitForTimeout: async ms => { now += ms; sim += fractions[windows++] * ms / 1000; } };
   assert.equal((await waitForRealtime(page, { windowMs: 1000, maxWaitMs: 3000 })).reachedFloor, false);
+});
+
+
+test('draw observer reads submitted matrices without updating the scene or retaining an old owner', async () => {
+  const previousWindow = globalThis.window;
+  const camera = {};
+  const mesh = { isMesh: true, name: 'LOD0_hull', parent: {}, matrixWorld: new THREE.Matrix4().makeTranslation(10, 0, 0), getWorldPosition() { throw new Error('observer must not update scene transforms'); } };
+  const player = { id: 1, pos: { x: 10, z: 0 } };
+  const enemy = { id: 2, pos: { x: 30, z: 0 }, alive: true, data: { runCohort: 'survival' } };
+  globalThis.window = { SF: { THREE, state: { playerId: 1, entities: new Map([[1, player]]), entityList: [player, enemy], render: { camera, scene: { traverse(fn) { fn(mesh); } } } } } };
+  try {
+    await installDrawHooks({ evaluate: async (fn, arg) => fn(arg) });
+    mesh.onAfterRender(null, null, camera);
+    assert.equal(window.__stripTally().player, 1);
+    mesh.matrixWorld.makeTranslation(30, 0, 0);
+    mesh.onAfterRender(null, null, camera);
+    const moved = window.__stripTally();
+    assert.equal(moved.player, 0);
+    assert.equal(moved.hostilesDrawing, 1, 'pooled parts are attributed using their current submitted position');
+  } finally { if (previousWindow === undefined) delete globalThis.window; else globalThis.window = previousWindow; }
 });

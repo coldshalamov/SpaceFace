@@ -353,7 +353,10 @@ export async function installDrawHooks(page) {
           anySeen += any;
           const c = useAny ? any : strict;
           if (!c || !o.parent) continue;
-          o.getWorldPosition(tmp);
+          // These objects just rendered: matrixWorld already contains the submitted transform.
+          // getWorldPosition() forces ancestor matrix updates for every authored part and
+          // made this observer disturb the frame it was measuring.
+          tmp.setFromMatrixPosition(o.matrixWorld);
           let bestKey = null;
           let bestD = Infinity;
           if (p) { bestD = Math.hypot(tmp.x - p.pos.x, tmp.z - p.pos.z); bestKey = 'player'; }
