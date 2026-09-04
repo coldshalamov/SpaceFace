@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-03",
+  "updatedAt": "2026-09-04T03:59:41.259Z",
   "purpose": "Canonical cross-plan priority and dispatch queue. Product completion remains authoritative in design/program/03_LIVE_ACCEPTANCE_MATRIX.md.",
   "stateContract": {
     "allowed": [
@@ -10732,7 +10732,7 @@
       "priority": 60,
       "title": "Collisions answer: hitstop and trauma by momentum; the release snaps",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "impact-spectacle"
@@ -10745,7 +10745,10 @@
         "npm run check:baseline",
         "npm run check:vfx-techniques"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-139.00-REPORT.md",
+        "design/program/roadmap/receipts/fun-loop/PQ-139.00/b9-after-real-path.json"
+      ],
       "brief": "feel.js subscribes to combat:collisionConsequence; hitstop and trauma scale with exchanged momentum; the Massline release gets hsDur > 0 behind the headless-safe guard. Bar B9a."
     },
     {
@@ -10754,7 +10757,7 @@
       "priority": 61,
       "title": "Sound tells weight",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "impact-spectacle"
@@ -10766,7 +10769,10 @@
       "checks": [
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-139.01-REPORT.md",
+        "design/program/roadmap/receipts/fun-loop/PQ-139.01/b9-after-real-path.json"
+      ],
       "brief": "Collision audio picks pitch and gain from dp and the two masses (>= one octave and >= 12 dB between a scout on rock and a freighter on station); release and break use different samples. Bar B9b."
     },
     {
