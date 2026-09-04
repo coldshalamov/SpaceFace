@@ -174,6 +174,40 @@ const MISSION_HOSTILE_SPAWN_MIN_WU = 1700;
 const MISSION_HOSTILE_SPAWN_MAX_WU = 2600;
 const MISSION_HOSTILE_SPAWN_ATTEMPTS = 24;
 const MISSION_PORT_SAFE_RADIUS_WU = 1200;
+
+// ── PQ-138.04 failure mutation ("failure should usually mutate the situation") ───────────────
+// A broken contract must not dead-end in a red toast: the situation the player is standing in
+// becomes the next objective. ONE descriptor per failure reason, keyed by prefix so a full reason
+// like `clause_broken:cargo_intact` resolves. Reasons with NO row (abandoned, busted, expiry,
+// condition breaches, story-asset losses) stay plain failures — "usually" is this table. Every
+// `type` reuses an existing MISSION_TYPES entry; nothing here authors a new mission type.
+//
+// DROPPED from the sketched table, deliberately:
+//   clause_broken:no_kills / clause_broken:no_scan — pure fine-print violations with no physical
+//     residue (no wreck, no lost manifest), and the shipped clause acceptance suite
+//     (test/depth-program-sp1-clauses.test.mjs) pins those breaches to settle-and-remove.
+//   heist_failed — the heist already owns an authored failure→follow-up seam
+//     (_boardHeistRecovery + the recovery comms cue); a second generic successor would double-post
+//     on the same settlement.
+const MUTATION_SALVAGE_CMDTYS = Object.freeze(['cmdty_scrap_metal', 'cmdty_salvage_electronics']);
+const MISSION_MUTATIONS = Object.freeze({
+  // The convoy died → the wreck it left is salvage to bring home.
+  escortee_lost: Object.freeze({ type: 'salvage_retrieval', tag: 'salvage' }),
+  // The cargo was confiscated → the manifest is now a debt: replace the lot and finish the leg.
+  'clause_broken:cargo_intact': Object.freeze({ type: 'cargo_delivery', tag: 'restitution' }),
+  // The rescue came second → recover what the wreck left.
+  'clause_broken:rescue_priority': Object.freeze({ type: 'salvage_retrieval', tag: 'recovery' }),
+});
+
+function missionMutationFor(reason) {
+  if (!reason) return null;
+  if (MISSION_MUTATIONS[reason]) return MISSION_MUTATIONS[reason];
+  const text = String(reason);
+  for (const key of Object.keys(MISSION_MUTATIONS)) {
+    if (text.startsWith(`${key}:`)) return MISSION_MUTATIONS[key];
+  }
+  return null;
+}
 const LONG_READ_RUMOR_EVENT = Object.freeze({
   news: 'news:headline',
   comms_intercept: 'comms:popup',
@@ -3875,9 +3909,140 @@ export const missions = {
     );
   },
 
+  /**
+   * PQ-138.04 — failure should usually mutate the situation. Given a failing mission and its
+   * reason, build and post the LIVE successor objective through the one authored-offer seam
+   * (postAndAcceptAuthoredOffer) while the failing mission is still active. Returns
+   * { missionId, offerId, tag, toastText } on success, or null when the failure must run
+   * unchanged: no descriptor, no resolvable station, a full mission log, or a refused accept
+   * preflight. A refused mutation NEVER leaves the player with no mission and no failure.
+   */
+  _mutateInsteadOfFail(m, reason) {
+    const descriptor = missionMutationFor(reason);
+    if (!descriptor) return null;
+    // The successor's dock reads off the failing contract's own stations — never a fresh pick.
+    const originResolves = !!(m.stationId && STATION_INFO.get(m.stationId));
+    const destResolves = !!(m.destStationId && STATION_INFO.get(m.destStationId));
+    const stationId = originResolves ? m.stationId : (destResolves ? m.destStationId : null);
+    if (!stationId) return null;
+    // The failing mission is about to leave `active`; refuse quietly only when its departure still
+    // cannot free the slot the successor needs (mirrors acceptMission's maxActive gate).
+    const cfg = this.state.missions.config || MISSION_TUNING;
+    if (((this.state.missions.active || []).length - 1) >= (cfg.maxActive || 8)) return null;
+    const offer = this._buildMutationOffer(m, reason, descriptor, stationId, originResolves);
+    if (!offer) return null;
+    // Quiet preflight first: a refusal here must not spend the player's error-toast attention on a
+    // successor that was never going to post (acceptMission re-runs the same gate loudly).
+    if (!this._acceptPreflight(offer).ok) return null;
+    const posted = this.postAndAcceptAuthoredOffer(offer);
+    if (!posted || !posted.ok || posted.reused) return null;
+    const successor = (this.state.missions.active || []).find((candidate) => (
+      candidate && candidate.status === 'active' && candidate.id === posted.missionId
+    ));
+    if (!successor) return null;
+    // Conditional fields ONLY — an unconditional key on every instance would move the 47-A
+    // --reload-at golden (same precedent as `clauses`/`heist` in _instanceFromOffer).
+    successor.mutatedFromMissionId = m.id;
+    successor.mutationTag = descriptor.tag;
+    const toastText = {
+      salvage: `Convoy lost — the wreck is still out there. Salvage contract live: ${successor.title}.`,
+      restitution: `Contract broken — the manifest is now a debt. Restitution job live: ${successor.title}.`,
+      recovery: `The rescue was lost — the wreck can still be recovered. Contract live: ${successor.title}.`,
+    }[descriptor.tag] || `Contract broken — a follow-up is live: ${successor.title}.`;
+    return { missionId: successor.id, offerId: posted.offerId, tag: descriptor.tag, toastText };
+  },
+
+  /**
+   * Build the successor offer for one mutation descriptor. Deterministic: the offer id and every
+   * derived scalar come from hash32 over the failing mission's id + reason — never a counter, a
+   * clock, or an rng draw — so two runs of one seed mint the same offer.
+   */
+  _buildMutationOffer(m, reason, descriptor, stationId, originResolves) {
+    const state = this.state;
+    const reasonText = String(reason);
+    const offerId = `mut_${hash32(String(m.id), reasonText, 'mission-mutation').toString(36)}`;
+    const homeStationId = originResolves ? m.stationId : stationId;
+    const homeName = (STATION_INFO.get(homeStationId) || {}).name || homeStationId;
+    const clauseId = reasonText.startsWith('clause_broken:')
+      ? reasonText.slice('clause_broken:'.length) : null;
+    const base = {
+      id: offerId,
+      type: descriptor.type,
+      stationId,
+      // Circumstance, not a faction posting: no standing gate on the follow-up and no second rep
+      // hook (the failure penalty above already settled the offering faction's account).
+      factionId: null,
+      // Reduced stake reads off the failed contract's own reward; the deposit died with it.
+      reward_cr: Math.max(0, Math.round((Number(m.reward_cr) || 0) * 0.5)),
+      collateral_cr: 0,
+      riskTier: Number.isFinite(m.riskTier) ? m.riskTier : 1,
+      distance: Number(m.distance) || 0,
+      source: 'missionMutation',
+      // postAndAcceptAuthoredOffer re-finds the accepted instance by storyTag. Unique per failing
+      // mission (deterministic — derived from the mission id, never a counter/clock) so a second
+      // mutation elsewhere can never be mistaken for this one.
+      storyTag: `mutation:${m.id}`,
+    };
+    if (descriptor.tag === 'salvage' || descriptor.tag === 'recovery') {
+      // The wreck the convoy left is the content. Commodity/qty derive from the failing id; the
+      // pointer to the lost hull and its sector read straight off the mission — nothing invented.
+      const cmdtyId = MUTATION_SALVAGE_CMDTYS[
+        (hash32(String(m.id), reasonText, 'mutation-salvage-cmdty') >>> 0) % MUTATION_SALVAGE_CMDTYS.length
+      ];
+      const qty = 2 + ((hash32(String(m.id), reasonText, 'mutation-salvage-qty') >>> 0) % 3);
+      return {
+        ...base,
+        destStationId: homeStationId,
+        destSectorId: m._escorteeSectorId || m.destSectorId
+          || (state.world && state.world.currentSectorId) || null,
+        title: descriptor.tag === 'salvage'
+          ? `Salvage the convoy wreck — bring it home to ${homeName}`
+          : `Recover what the wreck left — ${homeName}`,
+        brief: descriptor.tag === 'salvage'
+          ? `The convoy is gone. Its wreck is still on the drift; ${homeName} pays for what comes back.`
+          : `The rescue came second. What is left of the hull still answers questions at ${homeName}.`,
+        params: {
+          cmdtyId,
+          qty,
+          lostEntityId: m._escorteeId != null ? m._escorteeId : null,
+          brokenClause: clauseId,
+        },
+      };
+    }
+    // restitution: the lost quantity IS the fiction — replace exactly what the manifest carried and
+    // finish the original leg. NOT preloaded: acquiring the replacement is the debt. No cmdty on
+    // the failing contract degrades to a plain report-in dock objective, never an invented cargo.
+    const lostCmdtyId = m.params && m.params.cmdtyId || null;
+    const lostQty = Math.max(1, Math.round(Number(m.params && m.params.qty) || 1));
+    const destStationId = (m.destStationId && STATION_INFO.get(m.destStationId))
+      ? m.destStationId : homeStationId;
+    const destName = (STATION_INFO.get(destStationId) || {}).name || destStationId;
+    return {
+      ...base,
+      destStationId,
+      destSectorId: m.destSectorId || null,
+      title: lostCmdtyId
+        ? `Make restitution — replace the lost ${lostQty}u and deliver to ${destName}`
+        : `Make restitution — report to ${destName}`,
+      brief: lostCmdtyId
+        ? `Customs took the lot. ${destName} still wants ${lostQty}u — your credits bought the lesson, not the cargo.`
+        : `The clause is broken and the client keeps the book open. Report to ${destName}.`,
+      params: {
+        ...(lostCmdtyId ? { cmdtyId: lostCmdtyId, qty: lostQty } : {}),
+        brokenClause: clauseId,
+        replacesMissionId: m.id,
+      },
+    };
+  },
+
   _failMission(m, index, reason) {
     if (m.status !== 'active') return;
     const setPieceTransition = this._compileSetPieceTransition(m, 'failed', reason || 'failed');
+    // PQ-138.04 — failure should usually mutate the situation. Try the mutation at the same seam
+    // the set-piece recovery already uses: while the mission is still active, before public
+    // failure observers run. Null (no descriptor, or a refused post) means the ordinary failure
+    // below runs completely unchanged.
+    const mutation = this._mutateInsteadOfFail(m, reason || 'failed');
     m.status = 'failed';
     this._clearMissionNav(m.id);
 
@@ -3898,6 +4063,8 @@ export const missions = {
       repDelta: penalty,
       contractCargoRemoved,
       setPieceReceipt: setPieceTransition && setPieceTransition.receipt || null,
+      // Mutation provenance rides the receipt only when a mutation actually happened.
+      ...(mutation ? { mutatedToMissionId: mutation.missionId, mutationTag: mutation.tag } : {}),
     });
     this._emitMissionDebrief(m, 'failed', reason || 'failed');
     // Recovery must be physically present before public failure observers run. Those observers may
@@ -3908,9 +4075,18 @@ export const missions = {
       reason: reason || 'failed',
       source: m.source || undefined,
       causeFingerprint: m.cause && m.cause.fingerprint || undefined,
+      // Never suppressed: aftermathWrecks, haulerOriginSystem and the receipt log consume this
+      // event. The mutation fields are additive so descriptor-less failures keep the exact
+      // legacy payload shape.
+      ...(mutation ? { mutatedToMissionId: mutation.missionId, mutationTag: mutation.tag } : {}),
       ...setPieceEventFields(m, setPieceTransition),
     });
-    this.bus.emit('toast', { text: `Mission FAILED: ${m.title}`, kind: 'error', ttl: 4 });
+    // A mutated failure is not a scolding: the toast says what the situation turned INTO.
+    if (mutation) {
+      this.bus.emit('toast', { text: mutation.toastText, kind: 'warn', ttl: 5 });
+    } else {
+      this.bus.emit('toast', { text: `Mission FAILED: ${m.title}`, kind: 'error', ttl: 4 });
+    }
     this._recordStoryMissionFailure(m, reason || 'failed');
     this._cleanupTargets(m);
     this._removeActive(m.id, index);
@@ -5313,6 +5489,13 @@ export function missionReceiptFor(m, outcome, reason, settlement = {}) {
     ...setPieceFields,
     targetRecordId: m && m.params && m.params.poiSignalFollowup
       && m.params.poiSignalFollowup.targetRecordId || null,
+    // PQ-138.04: mutation provenance on the FAILED contract's receipt, present only when this
+    // failure actually mutated into a live successor — conditional so every other receipt keeps
+    // its exact legacy shape (same golden-safety discipline as the mission-instance fields).
+    ...(settlement.mutatedToMissionId ? {
+      mutatedToMissionId: settlement.mutatedToMissionId,
+      mutationTag: settlement.mutationTag || null,
+    } : {}),
   };
 }
 
