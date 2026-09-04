@@ -41,13 +41,13 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| PQ-180 frontend grammar | next-five / Claude Opus 5 | IMPLEMENTING | `scripts/ui-grammar-surfaces.mjs`, `scripts/ui-grammar-thresholds.mjs`, `scripts/lib/ui-grammar-measure.mjs`, `scripts/check-ui-grammar-matrix.mjs`, `test/ui-grammar-matrix.test.mjs`, `test/ui-grammar-baseline.json`, `scripts/capture-ui-matrix.mjs`, `scripts/check-visual-regression.mjs`, `design/frontend/INSTRUMENT_GRAMMAR.md`, `design/frontend/UI_GRAMMAR_OWNERSHIP.md` | Complete runtime matrix; controller integrates |
-These paths are protected from overwrite until a task explicitly adopts and finishes them. They are
-not active leases and do not prevent other tasks from proceeding.
+| Finish the 2026-09-04 orchestrate-next-build handoff | finishing agent / Claude Opus 5 | INTEGRATING | The four in-flight blocks are committed (`b59cd04a` frontend PQ-180, `90b60fbb` swarm PQ-174.00/.01, `ed99d6eb` VFX shard streaks, `d81179d0` feel B1). Now integrating CONTACT `8198c0ed` (PQ-137.11 / bar B13) and its missing `causalActorId` | Cherry-pick CONTACT, fix causalActorId, then the 9-case swarm AFTER and the PQ-180 headed capture |
 
-| Work | Exact paths | Plain next action |
-|---|---|---|
-| Paused Ceres acceptance repair | `scripts/lib/ceresFiveMinuteAcceptance.mjs`, `test/ceres-five-minute-acceptance.test.mjs` | Preserve without further acceptance work; it does not count as an INFERENCE unit |
+The three prior rows (PQ-180 frontend grammar, an unnamed "Work" row, Paused Ceres acceptance repair)
+were all confirmed STALE by `node scripts/check-now-liveness.mjs` on 2026-09-04 and adopted by this
+agent under rule 3a. The Ceres pause still holds as a note, not a row:
+`scripts/lib/ceresFiveMinuteAcceptance.mjs` and `test/ceres-five-minute-acceptance.test.mjs` are
+preserved without further acceptance work.
 
 ## Start another task
 
