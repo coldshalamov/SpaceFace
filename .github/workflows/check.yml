@@ -1,12 +1,28 @@
 # Continuous integration for SpaceFace.
 #
-# Runs the CI-safe portion of the project's check suite on every push and pull request. The
-# `check:ci` alias includes headless browser probes that boot the normal player route through
-# Playwright, so CI installs the declared Playwright dependency plus its Chromium browser before
-# running checks.
+# WHY THIS IS FOUR JOBS
+# ---------------------
+# This used to be one job: `npm run check:ci` expands `package.json` `scripts.check` into ~280
+# commands and ran them sequentially, behind a Playwright Chromium install that blocked all of them,
+# under a 35-minute ceiling. Every master run ended cancelled or timed out, and a PR's "check" was
+# red for reasons that had nothing to do with the PR — so nobody looked, which is the same as having
+# no CI at all.
 #
-# A green run here means every namespaced data ref resolves, the fixed-timestep sim is
-# deterministic across save/reload, and no wired gameplay contract has regressed.
+# The same matrix now runs as four parallel jobs, partitioned by
+# `node scripts/check-ci-report.mjs --group=<name>`:
+#
+#   static  — pure Node: data refs, schema, source scans, UI/label contracts, asset manifests.
+#   sim     — determinism, the 47-A golden envelope, save/reload continuation, massline.
+#   feel    — the FEEL_CONTRACT handling surface, plus the feel/fun bench that is not in `check`.
+#   browser — everything that launches Playwright/Chromium. The ONLY job that installs a browser.
+#
+# The partition is exact and enforced: `test/check-ci-report.test.mjs` asserts the four groups cover
+# the matrix with no overlap, and a command the classifier cannot place fails the run closed rather
+# than quietly executing in no job at all. Run one locally with
+# `node scripts/check-ci-report.mjs --group=static`; see `docs/VALIDATION_WORKFLOW.md`.
+#
+# A green `check` job at the bottom still means every namespaced data ref resolves, the fixed-timestep
+# sim is deterministic across save/reload, and no wired gameplay contract has regressed.
 name: check
 
 on:
@@ -21,15 +37,24 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  check:
+  # ---------------------------------------------------------------------------
+  # static — the bulk of the matrix. No browser, no goldens, nothing slow per command.
+  # Also carries the fast independently-observable oracles that must stay legible even when the
+  # wider matrix is red.
+  # ---------------------------------------------------------------------------
+  static:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           # Program-control validation verifies integrated receipts against commits reachable from
-          # HEAD, so CI needs history rather than the action's default single-commit checkout.
+          # HEAD, so it needs history rather than the action's default single-commit checkout.
           fetch-depth: 0
 
       - name: Setup Node.js
@@ -40,7 +65,6 @@ jobs:
           node-version: '22'
           cache: 'npm'
 
-      # Install dev dependencies. npm ci is faster + deterministic on CI.
       - name: Install dependencies
         run: npm ci
 
@@ -48,22 +72,141 @@ jobs:
       # document blocks the wider matrix. This is the executable oracle for PRs touching the player
       # plume/contrail path, not a substitute for the full suite below.
       - name: Validate immutable thruster history
+        if: matrix.shard == 1
         run: node --test test/plasma-stream-thruster.test.mjs test/thruster-history-contract.test.mjs
 
-      # Keep the focused renderer/ship contracts ahead of the repository-wide control-plane gate.
-      # This makes a visual regression independently observable even when unrelated plan-index work
-      # on master has temporarily made the broader control-plane validation red.
+      # Focused renderer/ship contracts ahead of the repository-wide control-plane gate, so a visual
+      # regression stays independently observable when plan-index work on master has gone red.
       - name: Validate visual continuity
+        if: matrix.shard == 1
         run: |
           npm run check:parallax
           npm run check:live-whole-ship-admission
 
       - name: Validate program control plane
+        if: matrix.shard == 1
         run: |
           node scripts/check-program-docs.mjs
           node --test test/program-control-tools.test.mjs
           node scripts/check-inference-control.mjs
           node --test test/inference-control.test.mjs
+
+      # The static group is ~3/4 of the matrix, so it is split across several runners. Round-robin by
+      # position, so the shards take roughly the same wall time. The shard COUNT lives in exactly one
+      # place — `strategy.matrix.shard` above — and `strategy.job-total` reads it back, so adding a
+      # runner is a one-line edit.
+      - name: Run static check group (shard ${{ matrix.shard }} of ${{ strategy.job-total }})
+        run: node scripts/check-ci-report.mjs --group=static --shard=${{ matrix.shard }}/${{ strategy.job-total }}
+
+      - name: Upload check report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: check-report-static-${{ matrix.shard }}
+          path: scratch/check-ci-report/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # ---------------------------------------------------------------------------
+  # sim — determinism, goldens, save/reload. CPU-bound and long per command; deliberately alone so a
+  # moved golden is legible on its own instead of buried in 280 lines.
+  # ---------------------------------------------------------------------------
+  sim:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        # Deliberately shallow. Nothing in the sim group shells out to git — verified by walking each
+        # leaf script's relative imports for `spawnSync('git'…)` and friends — so this job skips the
+        # full-history clone the other three need.
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run sim check group
+        run: node scripts/check-ci-report.mjs --group=sim
+
+      - name: Upload check report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: check-report-sim
+          path: scratch/check-ci-report/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # ---------------------------------------------------------------------------
+  # feel — the FEEL_CONTRACT handling surface. `check:feel:scenarios` and `check:fun-bench` are NOT
+  # members of the `check` chain, so they run here as explicit steps: feel that is not measured
+  # regresses, and this is the job that measures it.
+  # ---------------------------------------------------------------------------
+  feel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # The feel bars are read alongside program receipts, which resolve against history.
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Measure the FEEL_CONTRACT bars
+        run: |
+          npm run check:feel:scenarios
+          npm run check:fun-bench
+
+      - name: Run feel check group
+        run: node scripts/check-ci-report.mjs --group=feel
+
+      - name: Upload check report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: check-report-feel
+          path: scratch/check-ci-report/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # ---------------------------------------------------------------------------
+  # browser — the only job that installs and caches Chromium. Every command here boots the normal
+  # player route through Playwright (or, for probe-authored-assets-live, a raw Chrome over CDP).
+  # ---------------------------------------------------------------------------
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # `check:assets:live` binds its candidate identity with `git rev-parse origin/master` and
+          # THROWS when that ref is missing, which is exactly what a shallow single-commit checkout
+          # gives you. This job needs the remote-tracking refs, so it needs full history.
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
 
       - name: Cache Playwright browsers
         uses: actions/cache@v4
@@ -76,5 +219,48 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Run headless check suite (+ bundle verification)
-        run: npm run check:ci
+      - name: Run browser check group
+        run: node scripts/check-ci-report.mjs --group=browser
+
+      - name: Upload check report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: check-report-browser
+          path: scratch/check-ci-report/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # ---------------------------------------------------------------------------
+  # check — the single status a push or PR reports. Keeps the old job name so an existing required
+  # status check keeps resolving.
+  #
+  # The `if:` matters. Without it, a failed dependency SKIPS this job, and a skipped required check
+  # reads neutral rather than red. `!cancelled()` runs it on success AND failure (so a red group is
+  # reported red) while still letting a concurrency-cancelled run report as cancelled rather than
+  # manufacturing a failure out of it.
+  # ---------------------------------------------------------------------------
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: ${{ !cancelled() }}
+    needs: [static, sim, feel, browser]
+    steps:
+      - name: Require every check group
+        env:
+          STATIC_RESULT: ${{ needs.static.result }}
+          SIM_RESULT: ${{ needs.sim.result }}
+          FEEL_RESULT: ${{ needs.feel.result }}
+          BROWSER_RESULT: ${{ needs.browser.result }}
+        run: |
+          failed=0
+          for group in STATIC SIM FEEL BROWSER; do
+            eval "result=\$${group}_RESULT"
+            echo "$group: $result"
+            if [ "$result" != "success" ]; then failed=1; fi
+          done
+          if [ "$failed" -ne 0 ]; then
+            echo "::error::one or more check groups did not succeed"
+            exit 1
+          fi
+          echo "all four check groups passed"

@@ -43,6 +43,66 @@ Do not run the repository-wide `npm run check` while a focused owner failure is 
 use Browser/Electron as an implementation debugger when a deterministic owner-level reproduction is
 possible.
 
+## Continuous integration: four parallel groups
+
+`.github/workflows/check.yml` runs the repository-wide matrix as **four parallel jobs** instead of
+one. It used to be a single sequential job — ~280 commands behind a Playwright Chromium install,
+under a 35-minute ceiling — so every run ended cancelled or timed out and a PR's `check` was red for
+reasons unrelated to the PR. A gate nobody trusts is the same as no gate.
+
+The matrix source is unchanged: `scripts/check-ci-report.mjs` still expands `package.json`
+`scripts.check`. What is new is that it can run one **group** or one **shard** of that expansion.
+
+| Job | Group | Holds | Installs a browser |
+|---|---|---|---|
+| `static` (sharded) | `static` | pure Node: data refs, schema, source scans, UI/label contracts, asset manifests. Also the thruster-history, visual-continuity, and program-control-plane quick steps | no |
+| `sim` | `sim` | determinism, the 47-A golden envelope, save/reload continuation, massline | no |
+| `feel` | `feel` | the FEEL_CONTRACT handling surface, plus `check:feel:scenarios` and `check:fun-bench` as explicit steps (they are not members of the `check` chain) | no |
+| `browser` | `browser` | every command that launches Playwright/Chromium, or raw Chrome over CDP | **yes — only here** |
+
+A fifth job named `check` depends on all four and is the single status a push or PR reports. It runs
+with `if: ${{ !cancelled() }}` and fails unless every group succeeded, so a failed group reads red
+rather than skipped. Each job uploads its `scratch/check-ci-report/` tree as an artifact even on
+failure, so a red run can be read instead of guessed at.
+
+### Running one group locally
+
+```powershell
+# What is in each group, and whether anything is unclassified. Fast, runs nothing.
+node scripts/check-ci-report.mjs --list-groups
+
+# One whole group.
+node scripts/check-ci-report.mjs --group=static
+
+# One shard of a group — what the `static` job does on each of its runners.
+node scripts/check-ci-report.mjs --group=static --shard=1/3
+
+# Stop at the first failure instead of collecting the whole set.
+node scripts/check-ci-report.mjs --group=sim --fail-fast
+```
+
+`--shard=<i>/<n>` is 1-based and assigns round-robin by position, so `n` shards cover the selected
+list exactly once with no overlap. `--group` and `--shard` compose: the group filter runs first, then
+the shard splits what is left. `--smoke` and `--fail-fast` are unchanged. The report JSON records
+`group`, `shard`, and `matrixCommandCount`, so an artifact says which slice produced it.
+
+Do not run `--group=browser` casually on a workstation that is already driving headed captures;
+those commands each launch a real browser and contend for the machine.
+
+### The partition must stay exact
+
+`test/check-ci-report.test.mjs` asserts the four groups cover the matrix with no overlap and that
+**every** command classifies. A command the classifier cannot place is a hard error, not a warning:
+unplaced, it would run in none of the four jobs while the gate still went green.
+
+So when you add a check to the `check` chain, run `--list-groups`. If it lands in the wrong group —
+or in none — fix the classifier in `scripts/check-ci-report.mjs`, near `COMMAND_GROUPS`. Group
+membership is decided from the **resolved leaf command**, not from the script's name: `check:sg06:live-shadow`
+and `check:47a:live-branch` read browser-ish and are pure Node, while `probe-authored-assets-live`
+launches Chrome without ever mentioning Playwright. Verify by following the leaf script's relative
+imports for `load-playwright`, `from 'playwright'`, `chromium.launch`, or a raw
+`--remote-debugging-port` spawn — never by the name alone.
+
 ## Discovery and certification are different jobs
 
 Certifying gates fail fast: once a required invariant is false, the candidate is not admissible.

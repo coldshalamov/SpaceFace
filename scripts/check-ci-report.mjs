@@ -25,28 +25,65 @@ const SMOKE_COMMANDS = [
   cmd('feel-scenarios', 'npm run check:feel:scenarios', LONG_TIMEOUT_MS),
 ];
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  await runCli();
-}
+// NOTE: the CLI entry point is at the BOTTOM of this file, not here. The group/shard classifier
+// below is built from `const` tables, and a top-level `await runCli()` placed above them runs inside
+// their temporal dead zone.
 
 async function runCli() {
   const failFast = process.argv.includes('--fail-fast');
   const smoke = process.argv.includes('--smoke');
   const packageJson = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
+  const scripts = packageJson.scripts || {};
   // The matrix source is `CI_MATRIX_ROOT_SCRIPTS` in scripts/lib/ciGateGraph.mjs — one declaration,
   // shared with check-gate-reachability.mjs and with every gate that asserts "check:ci runs me".
   // Those gates resolve `check:ci` -> `check:ci:report` -> this runner -> this same list, so if the
   // list changes they follow it instead of silently reporting zero.
-  const completeCheckCommand = ciMatrixSourceCommand(packageJson.scripts || {});
+  const completeCheckCommand = ciMatrixSourceCommand(scripts);
   const commands = smoke
     ? SMOKE_COMMANDS
-    : buildCommandMatrix(completeCheckCommand, packageJson.scripts || {});
+    : buildCommandMatrix(completeCheckCommand, scripts);
   if (commands.length === 0) throw new Error('No commands found in the package check matrix');
+
+  if (process.argv.includes('--list-groups')) {
+    const unclassified = findUnclassifiedCommands(commands, scripts);
+    console.log(formatGroupTable(commands, scripts));
+    process.exitCode = unclassified.length ? 1 : 0;
+    return;
+  }
+
+  const group = readFlagValue('--group');
+  const shard = parseShardArg(readFlagValue('--shard'));
+
+  // Fail closed on an unclassified command whenever the matrix is being partitioned: a command in no
+  // group would otherwise silently run in NO parallel job, and the gate would still go green.
+  if (group || shard) {
+    const unclassified = findUnclassifiedCommands(commands, scripts);
+    if (unclassified.length) {
+      throw new Error(
+        `${unclassified.length} check matrix command(s) belong to no group — classify them in `
+        + `COMMAND_GROUPS (scripts/check-ci-report.mjs) or CI will not run them:\n`
+        + unclassified.map((c) => `  - ${c.id}: ${c.command}`).join('\n'),
+      );
+    }
+  }
+
+  let selected = commands;
+  if (group) selected = selectGroup(selected, group, scripts);
+  if (shard) selected = selectShard(selected, shard);
+
+  const selectionLabel = [
+    group ? `group=${group}` : null,
+    shard ? `shard=${shard.index}/${shard.total}` : null,
+  ].filter(Boolean).join(' ');
+  if (selectionLabel) {
+    console.log(`[check-ci-report] ${selectionLabel}: ${selected.length} of ${commands.length} commands`);
+  }
+
   const startedAt = new Date().toISOString();
   const artifactRoot = buildArtifactRoot(startedAt);
   const results = [];
 
-  for (const command of commands) {
+  for (const command of selected) {
     const result = await run(command, {
       artifactPath: buildArtifactPath(startedAt, command.id),
     });
@@ -62,6 +99,9 @@ async function runCli() {
     // Identifier, not prose — downstream tooling groups on this. `precheck` is still read above as a
     // tripwire, but it no longer exists, so the honest name for the matrix source is just `check`.
     matrixSource: smoke ? 'smoke' : 'package:scripts.check',
+    group: group || null,
+    shard,
+    matrixCommandCount: commands.length,
     results,
   });
 
@@ -91,6 +131,11 @@ export function formatCiReportMarkdown(report) {
   lines.push(`- Started: ${report.startedAt || '?'}`);
   lines.push(`- Finished: ${report.finishedAt || '?'}`);
   lines.push(`- Matrix: \`${report.matrixSource || '?'}\``);
+  if (report.group) lines.push(`- Group: \`${report.group}\``);
+  if (report.shard) lines.push(`- Shard: \`${report.shard.index}/${report.shard.total}\``);
+  if (Number.isFinite(report.matrixCommandCount) && report.matrixCommandCount !== results.length) {
+    lines.push(`- Selected: **${results.length}** of **${report.matrixCommandCount}** matrix commands`);
+  }
   lines.push(`- Commands: **${results.length}** — passed **${results.length - failed.length}**, failed **${failed.length}**`);
   lines.push(`- Result: **${report.ok ? 'PASS' : 'FAIL'}**`);
   lines.push('');
@@ -158,6 +203,206 @@ function splitCommandChain(command) {
     .filter(Boolean);
 }
 
+// ---------------------------------------------------------------------------
+// PARTITION — named groups and deterministic shards
+// ---------------------------------------------------------------------------
+//
+// Why this exists
+// ---------------
+// `check:ci` used to be ONE CI job: ~280 commands, sequential, behind a Playwright Chromium install
+// that blocked all of them, under a 35-minute ceiling. Every master run ended cancelled or timed out,
+// so a red "check" told a PR author nothing about the PR. The fix is not to run less; it is to run
+// the same matrix in four parallel jobs, only one of which needs a browser.
+//
+// Two orthogonal knobs:
+//   * `--group=<name>` — a semantic partition of the matrix. Every command lands in EXACTLY one
+//     group; a command in no group is a hard error, because it would otherwise run in no job at all
+//     while the gate still went green.
+//   * `--shard=<i>/<n>` — a mechanical partition, round-robin by position in the selected list, so
+//     `n` runners cover the list exactly once with no overlap. Composable with `--group` (filter to
+//     the group first, then shard inside it) for when one group outgrows its own job.
+//
+// Group meanings, in cost terms rather than taxonomy terms:
+//   * `browser` — spawns Playwright/Chromium (or a raw Chrome + CDP). The only group whose job needs
+//     `npx playwright install`, and the only one that needs a browser cache.
+//   * `sim`     — determinism, the 47-A golden envelope, save/reload continuation, massline. Long,
+//     CPU-bound, and the group whose failures mean "a golden moved".
+//   * `feel`    — the FEEL_CONTRACT handling surface: flight, brake/governor/RCS, propulsion, camera,
+//     draw-to-fly, route following, combat grammar, Crucible. The job also runs
+//     `check:feel:scenarios` and `check:fun-bench` as explicit steps — those bars are NOT in the
+//     package `check` chain, so they are workflow steps, not matrix members.
+//   * `static`  — everything else: pure-Node data refs, schema, source scans, UI/label contracts,
+//     asset manifests, control-plane readers. No browser, no golden, fast per command.
+export const COMMAND_GROUPS = Object.freeze(['static', 'sim', 'browser', 'feel']);
+
+// Leaf files that transitively launch a real browser. Derived by walking each matrix command down to
+// its leaf `node <file>` invocations, following relative imports inside scripts/, test/ and tools/,
+// and looking for `load-playwright`, `from 'playwright'`, `chromium.launch`, or a raw Chrome spawn
+// with `--remote-debugging-port`. Re-derive that way rather than trusting a name: `check:sg06:live-*`
+// and `check:47a:live-branch` read browser-ish and are pure Node, while `probe-authored-assets-live`
+// launches Chrome without ever mentioning Playwright.
+const BROWSER_LEAF_FILES = new Set([
+  'scripts/check-47a-live-cold-open.mjs',
+  'scripts/check-bar-mission-readiness-live.mjs',
+  'scripts/check-confirm-dialog-safety.mjs',
+  'scripts/check-depth-program-k1-ui-runtime.mjs',
+  'scripts/check-first-15-runtime.mjs',
+  'scripts/check-market-first-loop-runtime.mjs',
+  'scripts/check-mission-accept-handoff-runtime.mjs',
+  'scripts/check-mission-cargo-loading-runtime.mjs',
+  'scripts/check-new-game-layout.mjs',
+  'scripts/check-shader-compile.mjs',
+  'scripts/check-station-egress-runtime.mjs',
+  'scripts/check-station-tab-navigation-runtime.mjs',
+  'scripts/check-title-continue-runtime.mjs',
+  'scripts/check-trail-streak-instancing-webgl.mjs',
+  // Raw Chrome + CDP, no Playwright import anywhere in its tree.
+  'scripts/probe-authored-assets-live.mjs',
+  'scripts/probe-flight-visual.mjs',
+  'scripts/probe-ship-visual-stability.mjs',
+  'test/lab-browser-input-grammar.test.mjs',
+]);
+
+// Safety net for a command added after the list above was derived. Matched against the RESOLVED leaf
+// command, so `npm run check:x` is judged by what it actually executes.
+const BROWSER_COMMAND_TEXT = /playwright|chromium|puppeteer|--headed\b|--headless\b|remote-debugging-port|probe-runtime-witness|capture-ui-matrix|check-visual-regression|grammar-matrix:headed/i;
+
+// FEEL_CONTRACT surface — how flying and fighting feel, measured in numbers. The `flight` and
+// `camera` fragments are segment-anchored on purpose: unanchored, `flight` swallows
+// `check-mission-preflight` and `camera` swallows `check-map-camera`, neither of which is a feel bar.
+const FEEL_ID = /(?:^|[-:])(?:feel|fun-bench)(?:[-:]|$)|(?:^|-)flight|(?:^|-)camera-|knock|brake-convergence|governor|rcs-sign|propulsion|draw-to-fly|route-follower|route-engage|speed-lines|attack-spec|combat-grammar|combat-doctrines|crucible|gameplay-core|movement-doctrine|ai-intentionality/i;
+
+// Determinism, goldens, and continuation.
+const SIM_ID = /(?:^|[-:])sim(?:[-:]|$)|sectorsim|47a|massline|save|replay|tether-mass|golden|determinis/i;
+
+// Commands whose generated id does not name what they are. `sf` is
+// `node scripts/sf.mjs validate test/47a.* …` — the 47-A golden envelope validator.
+const SIM_EXTRA_IDS = new Set(['sf']);
+
+// A command shape this runner knows how to reason about. Anything else (a bare `npx …`, a shell
+// pipeline, a build step) is deliberately unclassified so it fails closed instead of quietly
+// defaulting into `static`.
+const RECOGNIZED_COMMAND_SHAPE = /^(?:npm\s+run\s+[\w:@.-]+|node\s+(?:--test\s+)?[\w./\\@-]+\.(?:m|c)?js)(?:\s|$)/;
+
+/** Resolve `npm run X` through package.json until the segments are real commands. */
+export function resolveLeafCommands(command, scripts = {}, stack = []) {
+  return splitCommandChain(command).flatMap((segment) => {
+    const name = segment.match(/^npm\s+run\s+([\w:@.-]+)/)?.[1];
+    if (!name || typeof scripts[name] !== 'string' || stack.includes(name)) return [segment];
+    return resolveLeafCommands(scripts[name], scripts, [...stack, name]);
+  });
+}
+
+/**
+ * The single group a command belongs to, or `null` when it belongs to none.
+ *
+ * Order matters and is not arbitrary: browser wins over everything (a 47-A *visual* probe is a
+ * browser cost, not a golden cost), then feel, then sim, and `static` is the residual for a command
+ * shape this runner recognizes.
+ */
+export function classifyCommandGroup(def = {}, scripts = {}) {
+  const id = String(def.id || '');
+  const command = String(def.command || '');
+  const leaves = resolveLeafCommands(command, scripts);
+  const leafText = leaves.join(' && ');
+  const leafFiles = leafText
+    .split(/\s+/)
+    .filter((token) => /\.(?:m|c)?js$/.test(token))
+    .map((token) => token.replace(/\\/g, '/').replace(/^\.\//, ''));
+
+  if (leafFiles.some((file) => BROWSER_LEAF_FILES.has(file))) return 'browser';
+  if (BROWSER_COMMAND_TEXT.test(leafText)) return 'browser';
+  if (FEEL_ID.test(id)) return 'feel';
+  if (SIM_ID.test(id) || SIM_EXTRA_IDS.has(id)) return 'sim';
+  if (RECOGNIZED_COMMAND_SHAPE.test(command)) return 'static';
+  return null;
+}
+
+/** Commands that belong to no group. A non-empty result is a defect, not a warning. */
+export function findUnclassifiedCommands(commands = [], scripts = {}) {
+  return commands.filter((def) => classifyCommandGroup(def, scripts) === null);
+}
+
+/** The commands in one named group, in matrix order. An empty group is legal, not an error. */
+export function selectGroup(commands = [], group, scripts = {}) {
+  if (!COMMAND_GROUPS.includes(group)) {
+    throw new Error(`unknown --group "${group}" (expected one of: ${COMMAND_GROUPS.join(', ')})`);
+  }
+  return commands.filter((def) => classifyCommandGroup(def, scripts) === group);
+}
+
+/** Parse `--shard=<i>/<n>` into `{ index, total }`, 1-based. `null` when the flag is absent. */
+export function parseShardArg(value) {
+  if (value == null || value === '') return null;
+  const match = String(value).match(/^(\d+)\s*\/\s*(\d+)$/);
+  if (!match) throw new Error(`invalid --shard "${value}" (expected <index>/<total>, 1-based)`);
+  const index = Number(match[1]);
+  const total = Number(match[2]);
+  if (total < 1) throw new Error(`invalid --shard "${value}": total must be at least 1`);
+  if (index < 1 || index > total) {
+    throw new Error(`invalid --shard "${value}": index must be between 1 and ${total}`);
+  }
+  return { index, total };
+}
+
+/**
+ * Round-robin by position: command at position `k` belongs to shard `(k % total) + 1`. Round-robin
+ * rather than contiguous blocks so a run of slow neighbours (the 47-A long compares sit together in
+ * the chain) spreads across runners instead of landing on one.
+ */
+export function selectShard(commands = [], shard) {
+  if (!shard) return commands;
+  return commands.filter((_, position) => (position % shard.total) + 1 === shard.index);
+}
+
+/** Stable, deterministic group table. Same input, same bytes — it is committed evidence, not prose. */
+export function formatGroupTable(commands = [], scripts = {}) {
+  const byGroup = new Map(COMMAND_GROUPS.map((group) => [group, []]));
+  const unclassified = [];
+  for (const def of commands) {
+    const group = classifyCommandGroup(def, scripts);
+    if (group) byGroup.get(group).push(def);
+    else unclassified.push(def);
+  }
+
+  const lines = [];
+  lines.push('# check matrix groups');
+  lines.push('');
+  lines.push(`- Commands: **${commands.length}**`);
+  lines.push('');
+  lines.push('| group | commands |');
+  lines.push('| --- | ---: |');
+  for (const group of COMMAND_GROUPS) lines.push(`| ${group} | ${byGroup.get(group).length} |`);
+  lines.push(`| (unclassified) | ${unclassified.length} |`);
+  lines.push('');
+  for (const group of COMMAND_GROUPS) {
+    lines.push(`## ${group}`);
+    lines.push('');
+    const members = byGroup.get(group);
+    if (!members.length) lines.push('_(empty)_');
+    for (const def of members) lines.push(`- \`${def.id}\` — \`${def.command}\``);
+    lines.push('');
+  }
+  if (unclassified.length) {
+    lines.push('## unclassified — FAIL');
+    lines.push('');
+    lines.push('These commands belong to no group, so no parallel CI job would run them.');
+    lines.push('');
+    for (const def of unclassified) lines.push(`- \`${def.id}\` — \`${def.command}\``);
+    lines.push('');
+  }
+  return lines.join('\n');
+}
+
+/** Read `--flag=value` or `--flag value` from argv. */
+function readFlagValue(flag, argv = process.argv) {
+  const inline = argv.find((arg) => arg.startsWith(`${flag}=`));
+  if (inline) return inline.slice(flag.length + 1);
+  const index = argv.indexOf(flag);
+  if (index >= 0 && argv[index + 1] && !argv[index + 1].startsWith('--')) return argv[index + 1];
+  return null;
+}
+
 export function buildArtifactPath(startedAt, commandId) {
   return `${buildArtifactRoot(startedAt)}/${sanitizeArtifactSegment(commandId, 'command')}.log`;
 }
@@ -214,6 +459,9 @@ export function buildCiReport({
   failFast = false,
   artifactRoot = null,
   matrixSource = 'unspecified',
+  group = null,
+  shard = null,
+  matrixCommandCount = null,
   results = [],
 } = {}) {
   const failed = results.filter((result) => !result.ok);
@@ -231,6 +479,11 @@ export function buildCiReport({
     failFast,
     executionMode: failFast ? 'fail_fast' : 'complete_matrix',
     matrixSource,
+    // Which slice of the matrix this run actually executed. `null`/`null` is the whole matrix; a
+    // parallel CI job records the group it owns and, when the group is sharded, which shard it was.
+    group: group || null,
+    shard: shard ? { index: shard.index, total: shard.total } : null,
+    matrixCommandCount: Number.isFinite(matrixCommandCount) ? matrixCommandCount : null,
     artifactRoot,
     commandCount: results.length,
     failingCount: failed.length,
@@ -638,4 +891,9 @@ function firstMatchingLine(text, pattern) {
 
 function firstNonEmptyLine(text) {
   return String(text || '').split('\n').map((line) => line.trim()).find(Boolean) || '';
+}
+
+// CLI entry. Must stay last: see the note beside `runCli`.
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  await runCli();
 }
