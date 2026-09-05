@@ -350,7 +350,7 @@ export const KNOWN_FUNDAMENTALS = Object.freeze({
   // A1/A2: holding forward (or letting go) above the governed cap slowed the ship.
   governor_brake: /governor|overspeed|neutral.?brake|counter.?thrust|reactionAssist|auto.?brak|earned speed|speed .{0,40}(eaten|confiscat|bled|braked|slowed|decay|falls|drops|is lost|thrown away)|(slow|brak|bleed|decay)\w* .{0,60}(above|past|over) .{0,20}cap|(dead |full |complete )?(stop|halt)\w* .{0,60}(hands.?off|release|let go|throttle|input|coast)|(hands.?off|release|let go|throttle|coast)\w* .{0,60}(dead |full |complete )?(stop|halt|brak)/i,
   // A4: the physics owner truncated every NPC's velocity to 1.15x its cap, deleting given momentum.
-  npc_clamp: /_?clampSpeed|maxSpeed|speed (cap|clamp|limit)|velocity (cap|clamp|limit|truncat)|clamp\w* .{0,60}(velocity|speed|momentum)|(1\.15|115 ?%)|snaps? back|momentum .{0,40}(deleted|erased|clamped|truncated|capped)|(deleted|erased|truncated|capped) .{0,40}momentum/i,
+  npc_clamp: /_?clampSpeed|maxSpeed|speed (cap|clamp|limit)|velocity (cap|clamp|limit|truncat)|clamp\w* .{0,60}(velocity|speed|momentum)|(1\.15|115 ?%)|snaps? back|momentum .{0,40}(deleted|erased|clamped|truncated|capped)|(deleted|erased|truncated|capped) .{0,40}momentum|stays? parked|position barely (changes|moves)|barely (moves|displaced)|no (visible )?(knockback|displacement)|never fl(y|ies) as thrown|not thrown|(not|never) become\w* (a )?projectile/i,
   // A5: terrain and structure contact never took the helm; a slammed ship kept flying its plan.
   terrain_helm: /helm|collisionAllowsHelmLoss|tumble|stagger|keeps? (its )?(heading|course|nose|plan)|(rock|asteroid|terrain|structure) .{0,80}(heading|course|nose|plan|control|helm|tumble)/i,
 });

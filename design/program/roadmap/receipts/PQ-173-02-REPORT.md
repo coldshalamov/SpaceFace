@@ -106,7 +106,7 @@ design documents, and may write "unknown" for the file. Regrading the same strip
 | live `shove_light` | repo in workspace | `_clampSpeed` (the fixed rule, named on the fixed build) | the audit prose primed it |
 | live `shove_light` | frames only | "unknown" file, but still "_clampSpeed NPC velocity clamp"; 3/9 | remembered the name |
 | rules restored `earned_speed` (recaptured, 0.63) | frames only, new project | "Speed governor overspeed auto-braking", file **unknown**, "bleeds off earned speed above the thruster cap while holding forward or coasting, actively braking the ship down to cruise"; 2/9 | a new strip, no remembered answer: **reproduced `governor_brake` from the pictures and the tape** |
-| rules restored `shove_light` | Kimi, frames only | (recorded in the follow-up commit when the run lands) | a different vendor, a fresh process |
+| rules restored `shove_light` (recaptured, 0.80, 28 shots) | **Kimi K3, frames only** (a fresh process, a different vendor, the strip's folder as its whole world) | "The shove cannon applies no visible knockback displacement: shoved light ships stay parked in their swarm slots ... light ships never fly as thrown mass", file **unknown**, breaks "Light ships are ammunition."; 6/9 | **the A4 symptom, from the pictures, with no file name** — the matcher had only known the engineering words and was widened to the observable (`stays parked`, `never fly as thrown`) with Kimi's sentence pinned in the test |
 
 The Gemini route (`agy`) carries memory across conversations and projects. Two verdicts on one
 strip, minutes apart, one with the whole repository in its workspace and one with nothing but the

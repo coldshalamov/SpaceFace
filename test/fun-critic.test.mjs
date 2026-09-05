@@ -1003,3 +1003,16 @@ test('the governor finding is recognised when a critic describes the hands-off d
     rule: 'hostile cap', file: 'physics', does: 'the shoved fighter snaps back to cruise', breaksSentence: 'x',
   }, 'governor_brake').matched, false, 'the NPC cap is a different finding');
 });
+
+test("the NPC-cap finding is recognised in a viewer's words with no file name (Kimi, frames only, 2026-09-05)", async () => {
+  const { matchesExpectedFundamental } = await import('../scripts/lib/critic/validation.mjs');
+  const kimi = {
+    rule: 'The shove cannon applies no visible knockback displacement: shoved light ships stay parked in their swarm slots and the game draws a red glow bubble as the receipt instead of throwing the target',
+    file: 'unknown',
+    does: 'When the player fires, the target gets a translucent red sphere flash but its position barely changes; the swarm holds formation around the planet for the entire 24s despite ~13s of held fire, so light ships never fly as thrown mass',
+    breaksSentence: 'Light ships are ammunition.',
+  };
+  const rep = matchesExpectedFundamental(kimi, 'npc_clamp,terrain_helm');
+  assert.deepEqual(rep.matchedKeys, ['npc_clamp'], 'a critic that has never seen the source names what it saw, not the constant');
+  assert.equal(matchesExpectedFundamental(kimi, 'governor_brake').matched, false);
+});

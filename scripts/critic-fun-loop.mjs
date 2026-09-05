@@ -10,8 +10,7 @@
 // node scripts/critic-fun-loop.mjs --strip <path to strip-manifest.json> \
 //   [--model agy|kimi|manual] [--out <file.json>] [--timeout-ms N] [--verbose]
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync, mkdtempSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { resolve, dirname, join, relative, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -58,10 +57,12 @@ Options:
   --timeout-ms <N>       Execution timeout in milliseconds.
   --repo-dir <path>      The source tree the strip was photographed from (default: this repo). The
                          model runs there, so a critic that reads code reads the code the frames show.
-  --frames-only          The model sees ONLY the strip (frames + manifest): no source, no design
-                         documents, an empty working directory. This is what "from frames alone"
-                         means; the verdict records framesOnly: true. The fundamental's file may be
-                         "unknown" in this mode; the rule must still be named in the critic's words.
+  --frames-only          The model sees ONLY the strip (frames + manifest): it runs in the strip's
+                         own directory with no source and no design documents. This is what "from
+                         frames alone" means; the verdict records framesOnly: true. The fundamental's
+                         file may be "unknown" in this mode; the rule must still be named in the
+                         critic's words. (A model with a memory of this repository can still recall
+                         file names; the receipt says which verdicts came from which route.)
   --expect-fundamental <key|regex>
                          The finding this strip is expected to expose: a KNOWN_FUNDAMENTALS key
                          (${Object.keys(KNOWN_FUNDAMENTALS).join(', ')}) or a regular expression.
@@ -172,12 +173,13 @@ export async function main(argv = process.argv) {
     return 1;
   }
   if (options.framesOnly) {
-    // An empty room with nothing in it but what the strip directory is added as. MEASURED
-    // 2026-09-05: with the repo in its workspace the critic named the audit's own 1.15x clamp on
-    // the build where that clamp is fixed — it had read design/FEEL_CONTRACT.md §A. A verdict
-    // "from frames alone" is only that when the frames are all there is.
-    repoDir = mkdtempSync(join(tmpdir(), 'sf-critic-frames-only-'));
-    log(`frames-only: model runs in empty ${repoDir}`);
+    // The room the model runs in holds nothing but the strip. MEASURED 2026-09-05: with the repo
+    // in its workspace the critic named the audit's own 1.15x clamp on the build where that clamp
+    // is fixed — it had read design/FEEL_CONTRACT.md §A. A verdict "from frames alone" is only
+    // that when the frames are all there is. The room is the strip's own directory (set per strip
+    // below), because opencode refuses a non-interactive read outside its --dir, and an empty
+    // temp directory therefore starved Kimi of the pictures entirely.
+    log('frames-only: the model runs in the strip directory, with no source and no design documents');
   }
 
   // Read optional metrics file if provided
@@ -214,6 +216,7 @@ export async function main(argv = process.argv) {
 
     const stripDir = manifest.stripDir || dirname(manifestPath);
     manifest.stripDir = stripDir;
+    if (options.framesOnly) repoDir = stripDir;
 
     const bench = manifest.bench || 'bench';
     const scenarioId = manifest.scenarioId || 'scenario';
