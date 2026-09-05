@@ -975,6 +975,8 @@ export class PlasmaStreamSystem {
     const commandedThrottle = Math.max(0, Math.min(1, Math.max(throttle, driveInfo && driveInfo.cruise ? 1 : 0)));
     const hauling = !!(driveInfo && (driveInfo.brake || driveInfo.reverse || driveInfo.retroOnly));
     this._ribbonShape.reel = hauling ? 1 : 1 - commandedThrottle;
+    // The hull's spin, for the contrail's corkscrew (PQ-139.04). Zero at rest: nothing changes.
+    this._ribbonShape.spin = owner && Number.isFinite(owner.angVel) ? owner.angVel : 0;
 
     // The jet, standing off the bell. Short by construction.
     this._ribbons.setCamera(this._camObj);

@@ -35,6 +35,28 @@ export const STRAND_COUNT = SHEET_COUNT;
 export const STRAND_ACROSS = 5;
 /** Minimum movement before another exact nozzle position is committed. */
 export const MIN_STEP_WU = 0.12;
+
+/**
+ * TUMBLING SHIPS CORKSCREW (PQ-139.04, design/VISION.md "he becomes a projectile").
+ *
+ * A spun hull's nozzle traces a circle of a few units as the hull yaws, which the recorded history
+ * already keeps — but at the chase camera that helix is narrower than the plume itself and reads as
+ * nothing. So the recorded point is offset ACROSS the exhaust axis by a spin-driven phase: the
+ * offset is zero at rest (bit-identical to before), grows with the spin rate, saturates at a hard
+ * tumble, and follows the hull's own phase (the phase advances by angVel * dt), so the helix on
+ * screen has the period of the spin a viewer sees. Only the RECORDED point moves; the nozzle that
+ * gates sampling (B14) and the plume root are untouched, so a corkscrew never puts the mouth off
+ * the bell. Brightness already follows drive (each sample records the drive it was born with).
+ */
+export const SPIN_HELIX_REF_RAD_S = 2.0;
+export const SPIN_HELIX_AMP_WU = 6.0;
+
+/** Lateral offset (WU) of the recorded point for a spin rate and the accumulated phase. Pure. */
+export function spinHelixOffset(spin, phase) {
+  const s = Number.isFinite(spin) ? Math.abs(spin) : 0;
+  const amp = Math.min(1, s / SPIN_HELIX_REF_RAD_S) * SPIN_HELIX_AMP_WU;
+  return amp > 0 ? amp * Math.sin(phase) : 0;
+}
 /** A teleport/sector jump starts another disconnected history segment; it never erases the old one. */
 export const DISCONTINUITY_WU = 160;
 
@@ -387,6 +409,12 @@ export class ContrailTrail {
     this._isEmitting = false;
     this._segmentId = 0;
     this._capacitySkips = 0;
+    // The corkscrew's phase, advanced by the hull's spin; the last RAW nozzle point that gated a
+    // sample (the recorded point may sit off it by the helix offset).
+    this._helixPhase = 0;
+    this._gateX = 0;
+    this._gateY = 0;
+    this._gateZ = 0;
 
     this._pathTex = makePathTexture(T, this._path, this.samples);
     this._stateTex = makePathTexture(T, this._state, this.samples);
@@ -399,6 +427,8 @@ export class ContrailTrail {
   }
 
   reset() {
+    this._helixPhase = 0;
+    this._gateX = 0; this._gateY = 0; this._gateZ = 0;
     this._live = 0;
     this._isEmitting = false;
     this._segmentId = 0;
@@ -510,6 +540,8 @@ export class ContrailTrail {
     const floor = env && env.emitFloor != null ? env.emitFloor : 0.02;
     const boost = Math.max(0, (env && env.boost) || 0);
     const dash = Math.max(0, (env && env.dash) || 0);
+    const spin = env && Number.isFinite(env.spin) ? env.spin : 0;
+    if (spin !== 0) this._helixPhase += spin * d;
     const wasEmitting = this._isEmitting;
     const isEmitting = !!(nozzle && drive > floor);
     this._isEmitting = isEmitting;
@@ -518,26 +550,51 @@ export class ContrailTrail {
       const x = Number.isFinite(nozzle.x) ? nozzle.x : 0;
       const y = Number.isFinite(nozzle.y) ? nozzle.y : 0;
       const z = Number.isFinite(nozzle.z) ? nozzle.z : 0;
+      // Across the FLOWN LINE in the flight plane (the perpendicular of the bell's own movement since
+      // the last recorded sample — never the exhaust axis, which this history must not know about):
+      // the recorded point rides the helix, the gate below reads the raw nozzle, so a spun ship
+      // samples when its bell moves, not when the helix turns. The first sample of a segment has no
+      // movement to be across, and records where the bell is.
+      const helix = spinHelixOffset(spin, this._helixPhase);
+      let rx = x;
+      let rz = z;
+      if (helix !== 0 && this._live > 0 && wasEmitting) {
+        const mx = x - this._gateX;
+        const mz = z - this._gateZ;
+        const ml = Math.hypot(mx, mz);
+        if (ml > 1e-9) {
+          rx = x - (mz / ml) * helix;
+          rz = z + (mx / ml) * helix;
+        }
+      }
+
+      const record = (segment) => {
+        if (this._push(rx, y, rz, drive, boost, dash, segment)) {
+          this._gateX = x; this._gateY = y; this._gateZ = z;
+          return true;
+        }
+        return false;
+      };
 
       if (this._live === 0) {
-        this._push(x, y, z, drive, boost, dash, this._segmentId);
+        record(this._segmentId);
       } else if (!wasEmitting) {
         // A period with no burn is not part of the burn history, even when the ship barely moved.
         // Start a disconnected segment rather than drawing a false bridge through that interval.
         const nextSegment = this._segmentId + 1;
-        if (this._push(x, y, z, drive, boost, dash, nextSegment)) this._segmentId = nextSegment;
+        if (record(nextSegment)) this._segmentId = nextSegment;
       } else {
-        const dx = x - this._path[0];
-        const dy = y - this._path[1];
-        const dz = z - this._path[2];
+        const dx = x - this._gateX;
+        const dy = y - this._gateY;
+        const dz = z - this._gateZ;
         const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
 
         if (dist > DISCONTINUITY_WU) {
           // Keep old history in place and begin another segment at the new world position.
           const nextSegment = this._segmentId + 1;
-          if (this._push(x, y, z, drive, boost, dash, nextSegment)) this._segmentId = nextSegment;
+          if (record(nextSegment)) this._segmentId = nextSegment;
         } else if (dist >= MIN_STEP_WU) {
-          this._push(x, y, z, drive, boost, dash, this._segmentId);
+          record(this._segmentId);
         }
         // Below MIN_STEP_WU: do nothing. In particular, never move or rejuvenate sample 0.
       }
