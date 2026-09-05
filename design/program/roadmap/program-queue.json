@@ -10432,7 +10432,7 @@
       "priority": 44,
       "title": "One hitstun law for every impulse source",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-137.10"
       ],
@@ -10453,7 +10453,7 @@
       "receiptRefs": [
         "design/program/roadmap/receipts/PQ-137.04-REPORT.md"
       ],
-      "brief": "IMPLEMENTED 2026-09-04: gun, rope throw, well fling, and collision now share one measured hitstun law. On real-path seeds 4242/8008, lights lose helm for 1.08-1.18 s, gun-scale heavies for exactly 0 s, source spread is 8.45%, and recovery uses opposing thruster torque. B11 is met; B5 remains open pending PQ-137.05 weapon force. See receipt."
+      "brief": "ACCEPTED 2026-09-05 (4085ecac + 4a10cbca + 940b3b95 on master; one resolveHitstunLaw for gun/rope/well/collision, player excluded, recovery is thruster torque; hitstun-curve 10/10; feel.shove_magnitude B5 met on seed 4242; the 47-A repin causal record completed to name this leaf). IMPLEMENTED 2026-09-04: gun, rope throw, well fling, and collision now share one measured hitstun law. On real-path seeds 4242/8008, lights lose helm for 1.08-1.18 s, gun-scale heavies for exactly 0 s, source spread is 8.45%, and recovery uses opposing thruster torque. B11 is met; B5 remains open pending PQ-137.05 weapon force. See receipt."
     },
     {
       "id": "PQ-137.05",
