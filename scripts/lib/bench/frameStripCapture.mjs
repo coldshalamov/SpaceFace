@@ -356,8 +356,12 @@ export function condenseMoments(raw, { floor = MOMENT_IMPACT_FLOOR, mergeS = MOM
       prev.magnitude = Math.max(prev.magnitude || 0, m.magnitude || 0);
       prev.playerInvolved = prev.playerInvolved || m.playerInvolved;
       if (m.surface && !prev.surface) prev.surface = m.surface;
-      // The label follows the loudest thing in the cluster: a kill outranks a bump.
+      // The label follows the loudest thing in the cluster: a kill outranks a bump, and the player's
+      // own shot landing outranks a bump too — the first aimed shove strip fired 27 rounds and the
+      // manifest showed none, because every hit fell inside half a second of some contact and took
+      // that contact's name.
       if (m.type === 'entity:killed') prev.type = 'entity:killed';
+      else if (m.type === 'projectile:hit' && prev.type !== 'entity:killed') { prev.type = 'projectile:hit'; prev.playerInvolved = true; }
       continue;
     }
     out.push({ ...m });
@@ -1783,7 +1787,10 @@ function wrapAngle(a) {
  * @returns {{measured:boolean, windows:number, headingReversals:number, screenReversals:number, events:number, windowS:number, cadenceFpsMin:number|null, note:string}}
  */
 export function measureVisibleJitter(frames, momentsInSpan) {
-  const contacts = (momentsInSpan || []).filter((m) => m && m.playerInvolved
+  const firstT = Array.isArray(frames) && frames.length ? frames[0].simTime : -Infinity;
+  // Only contacts a viewer can see the aftermath of: inside the photographed span. The moments list
+  // carries eight seconds of lead for retention, and a contact before the first frame has no window.
+  const contacts = (momentsInSpan || []).filter((m) => m && m.playerInvolved && m.simTime >= firstT
     && (m.type === 'physics:impact' || m.type === 'combat:collisionConsequence'));
   const out = { measured: false, windows: 0, headingReversals: 0, screenReversals: 0, events: 0, windowS: VISIBLE_JITTER_WINDOW_S, cadenceFpsMin: null, note: '' };
   if (!Array.isArray(frames) || frames.length < 3) { out.note = 'too few frames'; return out; }

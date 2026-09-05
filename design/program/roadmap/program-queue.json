@@ -14859,8 +14859,11 @@
         "npm run check:baseline",
         "npm run check:massline"
       ],
-      "receiptRefs": [],
-      "brief": "Measure contact-sourced velocity and heading changes on the player hull (the knock budget, bar B13); bound ordinary bumps and scrapes on the player to <= 10% of cruise per event with no heading change and no jitter, while deliberate big events stay legible. Owner 2026-09-03: my own ship must never get knocked around. DONE WHEN: B13 met on the flight and Crucible benches; a ten-minute ordinary-flight scenario prints the knock budget."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-137-11-jitter-REPORT.md",
+        "design/program/roadmap/receipts/PQ-137.11-REPORT.md"
+      ],
+      "brief": "NOT DONE 2026-09-05 (instrument complete): visible jitter is measured from a headed strip's frames and fed to B13; on the live build B13 reads not met on the Crucible bench (heading changes on ordinary contact in 7 of 9 cells; rope-kit cells 37-73 knocks/min). Next: the velocity-heading restore on sub-tumble player contacts. See the jitter receipt. Measure contact-sourced velocity and heading changes on the player hull (the knock budget, bar B13); bound ordinary bumps and scrapes on the player to <= 10% of cruise per event with no heading change and no jitter, while deliberate big events stay legible. Owner 2026-09-03: my own ship must never get knocked around. DONE WHEN: B13 met on the flight and Crucible benches; a ten-minute ordinary-flight scenario prints the knock budget."
     },
     {
       "id": "PQ-173.00",

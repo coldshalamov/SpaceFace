@@ -376,3 +376,18 @@ test('visible jitter is read from the pictures: a wobble after a contact is a re
   assert.ok(rope.tape.some((s) => s.aim === 'nearestAsteroid') && rope.tape.filter((s) => s.keyDown === 'Space').length === 2);
   assert.ok(Array.isArray(STRIP_SCENARIOS.shove_light.warmup) && STRIP_SCENARIOS.shove_light.warmup.some((s) => s.mouseDown), 'the first shot is paid before the strip');
 });
+
+test('the player\'s hit outranks a bump when moments merge, and jitter windows count only contacts inside the span', async () => {
+  const { measureVisibleJitter } = await import('../scripts/lib/bench/frameStripCapture.mjs');
+  const merged = condenseMoments([
+    { type: 'physics:impact', tick: 600, simTime: 10.0, playerInvolved: false, magnitude: MOMENT_IMPACT_FLOOR + 5 },
+    { type: 'projectile:hit', tick: 606, simTime: 10.1, playerInvolved: true, magnitude: 420, surface: 'ship' },
+  ]);
+  assert.equal(merged.length, 1);
+  assert.equal(merged[0].type, 'projectile:hit', 'the first aimed shove strip fired 27 rounds and the manifest showed none');
+  assert.equal(merged[0].playerInvolved, true);
+  const frames = [];
+  for (let i = 0; i < 12; i++) frames.push({ simTime: 20 + i / 8, playerRot: 0.01 * i, playerScreenXY: [0.5, 0.5] });
+  const before = [{ type: 'physics:impact', simTime: 12.0, playerInvolved: true, magnitude: 30 }];
+  assert.equal(measureVisibleJitter(frames, before).windows, 0, 'a contact before the first frame has no window a viewer can see');
+});

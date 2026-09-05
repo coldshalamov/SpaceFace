@@ -29,6 +29,21 @@ which is what `check:massline:load` already asserted strain must be.
 
 Telemetry gains `stiffness` (what the line carried this tick), `loadStiffness`, and `overloadRatio`.
 
+**Correction, 2026-09-05 (found by the nine-cell Crucible sweep, not by the rope scenario):** the
+load-scaled stiffness has a stability cap. On a short line, or a light pair swung hard, the
+load-scaled value can ask for a natural frequency the 60 Hz explicit step cannot carry, and in
+Cinder Sluice with the rope kit that blew a body's position out of the spatial hash (the unmodified
+head ran the same cell clean). `tautK = min(max(K, loadStiffness), max(K, mu * (0.5 / dt)^2))`
+keeps `omega * dt` at 0.5; the authored K is never lowered by it, and the B7 swing sits an order of
+magnitude under the cap (5.0 % stretch unchanged). Every Crucible cell runs again.
+
+A consequence to know about: in the two rope-kit cells the player's contact rate rose (Lagrange
+4 → 37/min, Cinder 17 → 73/min on seed 4242) — a stiff line reels the pilot into whatever the
+bench's pilot latched, where the soft spring used to give. Both cells were already far over B13's
+two-per-minute budget on the unmodified head; the starter and physics-kit cells are unchanged. That
+is the rope doing what a rope does, and it is the next thing for the bench's rope pilot (and the
+knock budget) to answer.
+
 ## The numbers, on the real path
 
 `node scripts/measure-fun-loop.mjs --verbs --scenarios=feel.rope_swing_release --seeds=4242`,

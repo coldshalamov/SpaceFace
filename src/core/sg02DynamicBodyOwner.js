@@ -45,6 +45,9 @@ const STRETCH_EPSILON = 1e-6;
 // so the line stays within this fraction of its length under whatever swing it is asked to hold,
 // and the authored K remains the floor that shapes the gentle regime and the soft catch.
 const LOAD_STRETCH_RATIO = 0.05;
+// omega * dt bound for the load-scaled stiffness (semi-implicit Euler at 60 Hz is stable below 2;
+// half of one keeps the damping impulse under the body's own momentum as well).
+const STABLE_OMEGA_DT = 0.5;
 // While the pilot actively reels in (holds G / negative reelDelta), the winch hauls harder so a
 // thrusting target can't cancel the pull by matching the spring force. This multiplier is GATED to
 // active reel only — it does not affect neutral auto-hold or slingshot capture, so the massline-feel
@@ -1451,7 +1454,13 @@ export class Sg02DynamicBodyOwner {
     const coupledLoad = mu * tangentialSq / Math.max(distance, STRETCH_EPSILON);
     const loadStiffness = coupledLoad
       / Math.max(positive(spring.loadStretchRatio, LOAD_STRETCH_RATIO) * restLength, STRETCH_EPSILON);
-    const tautK = Math.max(spring.K, loadStiffness);
+    // The explicit spring is only stable while omega * dt stays small: on a short line, or a light
+    // pair swung hard, the load-scaled stiffness can ask for an omega the 60 Hz step cannot carry
+    // (MEASURED 2026-09-05: Cinder Sluice with the rope kit blew a body's position out of the
+    // spatial hash). The cap keeps omega * dt at STABLE_OMEGA_DT; the authored K is never lowered
+    // by it, and the B7 swing (a 100 WU line at 1.5x cruise) sits an order of magnitude under it.
+    const stiffnessCap = mu * (STABLE_OMEGA_DT / this.fixedDt) ** 2;
+    const tautK = Math.min(Math.max(spring.K, loadStiffness), Math.max(spring.K, stiffnessCap));
     const tautDamping = tautK > spring.K ? dampingForStiffness(tautK, spring, mu) : damping;
     const k = inCapture ? tautK * smooth * smooth : tautK;
     const c = inCapture ? tautDamping * (0.5 + 0.5 * smooth) : tautDamping;
