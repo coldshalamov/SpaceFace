@@ -143,7 +143,11 @@
     "2026-09-04 deliberate re-record: CONTACT PQ-137.11 player-knock cherry-pick (commit a3bd740d) in physics owner src/core/physics.js and src/core/sg02DynamicBodyOwner.js.",
     "sim-golden-diff --flight-system v3 against reference 83444ec2: VERDICT MOTION_CHANGED, 14 entity motion fields; 75 snapshot fields moved (54 $.entities[], 17 $.physics, 2 $.input, 2 $.scenario).",
     "Every phase0ObservedTraceCount is UNCHANGED. Prior authoritativeHash was 70eda854ab76bbd0cc8d20bc8e280288138bee7fe3ad1b06aa9a169c9cb916e4.",
-    "2026-09-05 causal-record completion (acceptance review of PQ-137.03-.10): the 83444ec2 -> 0c9c1549 window that this re-record diffed also carried PQ-137.03 (3c4c424a camera keyed to governed combat speed + the catalogue rescale, 461c2cb3 planar assisted-translation cap), PQ-137.04 (4085ecac / 4a10cbca / 940b3b95 one hitstun law) and PQ-137.06 (634a900f terrain damage from pre-solve closing speed), not only PQ-137.11 (a3bd740d).",
-    "The MOTION_CHANGED verdict above is the JOINT effect of those four deliberate, reviewed feel changes (packet PQ-137; each has its receipt under design/program/roadmap/receipts/); per-leaf shares of the moved hash were not separated. No silent regression is hidden in it: every change is an authored rule in the packet."
+    "(cont.) assisted-translation cap), PQ-137.04 (4085ecac / 4a10cbca / 940b3b95 one hitstun law) and PQ-137.06 (634a900f terrain damage from pre-solve closing speed), not only PQ-137.11 (a3bd740d).",
+    "(cont.) hidden in it: every change is an authored rule in the packet.",
+    "2026-09-05 causal-record completion (acceptance review of PQ-137.03-.10): the 83444ec2 -> 0c9c1549 window this re-record diffed also carried PQ-137.03, PQ-137.04 and PQ-137.06, not only PQ-137.11 (a3bd740d).",
+    "PQ-137.03 = 3c4c424a (camera keyed to governed combat speed + catalogue rescale) and 461c2cb3 (planar assisted-translation cap). PQ-137.04 = 4085ecac, 4a10cbca, 940b3b95 (one hitstun law).",
+    "PQ-137.06 = 634a900f (terrain damage from pre-solve closing speed). The MOTION_CHANGED verdict above is the JOINT effect of those four deliberate, reviewed feel changes (packet PQ-137, each receipted).",
+    "Per-leaf shares of the moved hash were not separated. No silent regression hides in it."
   ]
 }
