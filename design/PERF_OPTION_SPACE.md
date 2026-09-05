@@ -128,6 +128,8 @@ as tabletop cheapness, not a skyline) · `PQ-054` bounded GPU admission ·
 `PQ-055` immutable transport · `PQ-056` present/AA · `PQ-057` activity scheduler ·
 `PQ-058` resource governor · `PQ-059` WebGPU scaleout · `PQ-060` native trigger.
 
+Review on file (dated, descriptive, not a lease): [`design/perf/PERFORMANCE_DEEP_REVIEW_AND_CONVERGENCE_2026-08-24.md`](./perf/PERFORMANCE_DEEP_REVIEW_AND_CONVERGENCE_2026-08-24.md) — the 2026-08-24 deep review with a ranked convergence order (`PQ-129.15` → `PQ-084` → `PQ-129.13` → `PQ-129.12` → …) and the benchmark protocol; read it before opening a new perf investigation so its ranking is reused, not rediscovered.
+
 ### 5.2 Investigations and scaffolding
 
 | Plan | Horizon | Player outcome | Scope | Done when |
