@@ -470,9 +470,15 @@ const RAW_SURFACES = Object.freeze([
     ownerFile: 'src/ui/asteroid/asteroidScreen.js',
     screenId: 'drill',
     root: ['[data-screen="drill"]'],
-    entry: key('b', 'BINDINGS.drill on a selected asteroid — requires an asteroid in range'),
+    entry: key('b', 'BINDINGS.drill on a selected asteroid — the harness flies the hull alongside one '
+      + 'of the rocks the sector authors, latches with the real tether key, then presses b and waits '
+      + 'out the approach the tether system reels in'),
     owner: 'PQ-130',
     ownerLeaf: 'works-screens',
+    // Its preparation moves the hull across the sector and leaves a massline latched to a rock.
+    // Every surface photographed after it in the same boot would be a picture of that, so it is
+    // photographed in a boot of its own.
+    isolatedBoot: true,
   }),
   surface({
     id: 'base',
@@ -481,9 +487,15 @@ const RAW_SURFACES = Object.freeze([
     ownerFile: 'src/ui/screens/base.js',
     screenId: 'base',
     root: ['[data-screen="base"]'],
-    entry: key('u', 'BINDINGS.claimBase — requires a claimable body in range'),
+    entry: key('u', 'BINDINGS.claimBase — the boot sector authors NO claimable body, so the harness '
+      + 'flies the jump to a neighbour that does (the world system own enterSector), arrives beside it '
+      + 'with the 15,000 cr the claim costs, and presses u twice for the lazily registered screen'),
     owner: 'PQ-130',
     ownerLeaf: 'works-screens',
+    // It changes SECTOR. Everything photographed after it in the same boot would be a picture of a
+    // different part of the galaxy — including the station fixture, which looks for a station in
+    // whichever sector it finds itself in. So it gets a boot of its own.
+    isolatedBoot: true,
   }),
   surface({
     id: 'automation',
@@ -582,10 +594,14 @@ export function surfaceById(id) {
  *
  *   0  already on screen (the HUD)          40  push-screen fixtures (Crucible, automation)
  *  10  a key press in idle flight           60  docking (no undock route in the harness)
- *  +1  per nesting level under its parent    90  ends the run — nothing may follow
+ *  +1  per nesting level under its parent    80  leaves the session elsewhere (own boot)
+ *                                              90  ends the run — nothing may follow
  */
 export function passOrder(surface, byId = new Map(SURFACES.map((s) => [s.id, s]))) {
   if (surface.destructive) return 90;
+  // 80: not destructive, but it leaves the session somewhere else — a different sector, a hull
+  // parked against a rock. It is photographed in its own boot, so nothing inherits the world it left.
+  if (surface.isolatedBoot) return 80;
   const entry = surface.entry || {};
   switch (entry.kind) {
     case 'default': return 0;

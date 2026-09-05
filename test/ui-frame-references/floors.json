@@ -1,0 +1,329 @@
+{
+  "_law": "test/ui-frame-references/README.md — these floors are MEASURED rest variance, never a knob turned to make an unknown change pass.",
+  "_rule": "floor = max(0.005, ceilTo(measuredMaxRestVariance * 1.2, 0.005))",
+  "_samples": "A calibrated surface carries TWO independent rest-variance samples per frame (pass A vs B and pass A vs C of the same capture run); measuredMaxRestVariance is the worst frame of that surface across both.",
+  "_pinned": "A pinned surface keeps the floor it was measured at on 2026-08-20 and is never widened by a later run.",
+  "calibrationRun": null,
+  "surfaces": {
+    "flight": {
+      "floor": 0.1,
+      "measuredMaxRestVariance": 0.086,
+      "samples": 2,
+      "calibrated": "2026-08-20",
+      "pinned": true,
+      "note": "a live world legitimately moves behind the HUD"
+    },
+    "power-rail": {
+      "floor": 0.005,
+      "measuredMaxRestVariance": null,
+      "samples": 0,
+      "calibrated": null,
+      "pinned": false,
+      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+    },
+    "comms-radial": {
+      "floor": 0.005,
+      "measuredMaxRestVariance": null,
+      "samples": 0,
+      "calibrated": null,
+      "pinned": false,
+      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+    },
+    "wingman-radial": {
+      "floor": 0.005,
+      "measuredMaxRestVariance": null,
+      "samples": 0,
+      "calibrated": null,
+      "pinned": false,
+      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+    },
+    "ship": {
+      "floor": 0.03,
+      "measuredMaxRestVariance": 0.0245,
+      "samples": 2,
+      "calibrated": "2026-08-20",
+      "pinned": true,
+      "note": "one 2.45% settle-frame outlier from the J14 gauge SETTLE easing"
+    },
+    "footprint": {
+      "floor": 0.005,
+      "measuredMaxRestVariance": 0,
+      "samples": 2,
+      "calibrated": "2026-08-20",
+      "pinned": true,
+      "note": "fully deterministic; 0.00% measured"
+    },
+    "range": {
+      "floor": 0.005,
+      "measuredMaxRestVariance": 0.0005,
+      "samples": 2,
+      "calibrated": "2026-08-20",
+      "pinned": true,
+      "note": "sub-pixel only; 0.02-0.05% measured"
+    },
+    "chart": {
+      "floor": 0.05,
+      "measuredMaxRestVariance": 0.04,
+      "samples": 2,
+      "calibrated": "2026-08-20",
+      "pinned": true,
+      "note": "label scramble + staleness animation paints between frames"
+    },
+    "chart-galaxy": {
+      "floor": 0.005,
+      "measuredMaxRestVariance": null,
+      "samples": 0,
+      "calibrated": null,
+      "pinned": false,
+      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+    },
+    "title": {
+      "floor": 0.005,
+      "measuredMaxRestVariance": null,
+      "samples": 0,
+      "calibrated": null,
+      "pinned": false,
+      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+    },
+    "new-game": {
+      "floor": 0.005,
+      "measuredMaxRestVariance": null,
+      "samples": 0,
+      "calibrated": null,
+      "pinned": false,
+      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+    },
+    "pause": {
+      "floor": 0.005,
+      "measuredMaxRestVariance": null,
+      "samples": 0,
+      "calibrated": null,
+      "pinned": false,
+      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+    },
+    "settings": {
+      "floor": 0.005,
+      "measuredMaxRestVariance": null,
+      "samples": 0,
+      "calibrated": null,
+      "pinned": false,
+      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+    },
+    "save-load": {
+      "floor": 0.005,
+      "measuredMaxRestVariance": null,
+      "samples": 0,
+      "calibrated": null,
+      "pinned": false,
+      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+    },
+    "help": {
+      "floor": 0.005,
+      "measuredMaxRestVariance": null,
+      "samples": 0,
+      "calibrated": null,
+      "pinned": false,
+      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+    },
+    "codex": {
+      "floor": 0.005,
+      "measuredMaxRestVariance": null,
+      "samples": 0,
+      "calibrated": null,
+      "pinned": false,
+      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+    },
+    "mission-log": {
+      "floor": 0.005,
+      "measuredMaxRestVariance": null,
+      "samples": 0,
+      "calibrated": null,
+      "pinned": false,
+      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+    },
+    "tech-tree": {
+      "floor": 0.005,
+      "measuredMaxRestVariance": null,
+      "samples": 0,
+      "calibrated": null,
+      "pinned": false,
+      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+    },
+    "game-over": {
+      "floor": 0.005,
+      "measuredMaxRestVariance": null,
+      "samples": 0,
+      "calibrated": null,
+      "pinned": false,
+      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+    },
+    "credits": {
+      "floor": 0.005,
+      "measuredMaxRestVariance": null,
+      "samples": 0,
+      "calibrated": null,
+      "pinned": false,
+      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+    },
+    "statistics": {
+      "floor": 0.005,
+      "measuredMaxRestVariance": null,
+      "samples": 0,
+      "calibrated": null,
+      "pinned": false,
+      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+    },
+    "photo-mode": {
+      "floor": 0.005,
+      "measuredMaxRestVariance": null,
+      "samples": 0,
+      "calibrated": null,
+      "pinned": false,
+      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+    },
+    "station-dock": {
+      "floor": 0.005,
+      "measuredMaxRestVariance": null,
+      "samples": 0,
+      "calibrated": null,
+      "pinned": false,
+      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+    },
+    "station-market": {
+      "floor": 0.005,
+      "measuredMaxRestVariance": null,
+      "samples": 0,
+      "calibrated": null,
+      "pinned": false,
+      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+    },
+    "station-shipworks": {
+      "floor": 0.005,
+      "measuredMaxRestVariance": null,
+      "samples": 0,
+      "calibrated": null,
+      "pinned": false,
+      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+    },
+    "station-industry": {
+      "floor": 0.005,
+      "measuredMaxRestVariance": null,
+      "samples": 0,
+      "calibrated": null,
+      "pinned": false,
+      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+    },
+    "station-contracts": {
+      "floor": 0.005,
+      "measuredMaxRestVariance": null,
+      "samples": 0,
+      "calibrated": null,
+      "pinned": false,
+      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+    },
+    "station-factions": {
+      "floor": 0.005,
+      "measuredMaxRestVariance": null,
+      "samples": 0,
+      "calibrated": null,
+      "pinned": false,
+      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+    },
+    "station-bar": {
+      "floor": 0.005,
+      "measuredMaxRestVariance": null,
+      "samples": 0,
+      "calibrated": null,
+      "pinned": false,
+      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+    },
+    "station-ledger": {
+      "floor": 0.005,
+      "measuredMaxRestVariance": null,
+      "samples": 0,
+      "calibrated": null,
+      "pinned": false,
+      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+    },
+    "crucible-door": {
+      "floor": 0.005,
+      "measuredMaxRestVariance": null,
+      "samples": 0,
+      "calibrated": null,
+      "pinned": false,
+      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+    },
+    "crucible-draft": {
+      "floor": 0.005,
+      "measuredMaxRestVariance": null,
+      "samples": 0,
+      "calibrated": null,
+      "pinned": false,
+      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+    },
+    "crucible-refit": {
+      "floor": 0.005,
+      "measuredMaxRestVariance": null,
+      "samples": 0,
+      "calibrated": null,
+      "pinned": false,
+      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+    },
+    "crucible-results": {
+      "floor": 0.005,
+      "measuredMaxRestVariance": null,
+      "samples": 0,
+      "calibrated": null,
+      "pinned": false,
+      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+    },
+    "crucible-lab": {
+      "floor": 0.005,
+      "measuredMaxRestVariance": null,
+      "samples": 0,
+      "calibrated": null,
+      "pinned": false,
+      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+    },
+    "asteroid-works": {
+      "floor": 0.005,
+      "measuredMaxRestVariance": null,
+      "samples": 0,
+      "calibrated": null,
+      "pinned": false,
+      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+    },
+    "base": {
+      "floor": 0.005,
+      "measuredMaxRestVariance": null,
+      "samples": 0,
+      "calibrated": null,
+      "pinned": false,
+      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+    },
+    "automation": {
+      "floor": 0.005,
+      "measuredMaxRestVariance": null,
+      "samples": 0,
+      "calibrated": null,
+      "pinned": false,
+      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+    },
+    "localmap-legacy": {
+      "floor": 0.005,
+      "measuredMaxRestVariance": null,
+      "samples": 0,
+      "calibrated": null,
+      "pinned": false,
+      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+    },
+    "starmap-legacy": {
+      "floor": 0.005,
+      "measuredMaxRestVariance": null,
+      "samples": 0,
+      "calibrated": null,
+      "pinned": false,
+      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+    }
+  }
+}

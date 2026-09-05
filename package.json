@@ -398,6 +398,7 @@
     "probe:data-states": "node scripts/probe-data-states.mjs",
     "capture:ui-matrix": "node scripts/capture-ui-matrix.mjs",
     "check:visual-regression": "node scripts/check-visual-regression.mjs",
+    "optimize:ui-frame-references": "node scripts/optimize-ui-frame-references.mjs",
     "check:ui:grammar-matrix": "node scripts/check-ui-grammar-matrix.mjs --static",
     "check:ui:grammar-matrix:headed": "node scripts/check-ui-grammar-matrix.mjs --headed",
     "check:ui:grammar-matrix:json": "node scripts/check-ui-grammar-matrix.mjs --json=.devshots/ui-grammar/matrix.json",

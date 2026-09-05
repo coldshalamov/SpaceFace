@@ -503,7 +503,18 @@ function frameCell(surface, frames) {
   if (frames.present >= frames.expected) {
     return cell('green', `${frames.present}/${frames.expected} reference frames`, { value: frames.present });
   }
-  return cell('red', `${frames.present}/${frames.expected} reference frames — run capture:ui-matrix -- --update`, { value: frames.present });
+  // A surface with no route into it cannot be photographed by anyone, and telling the next agent to
+  // run a capture for it sends them to spend an hour proving that. The cell stays RED — it is real
+  // missing coverage, and PQ-180 .02 requires it to carry an owner — but the remedy has to be the
+  // true one: build the screen. `check:visual-regression` draws the same line and does not FAIL on
+  // these, because a gate that is permanently red is a gate agents learn to ignore.
+  if (surface.entry && surface.entry.kind === 'none') {
+    return cell('red', `${frames.present}/${frames.expected} reference frames — no route opens this surface `
+      + `(${surface.entry.detail || 'unreachable'}); it cannot be photographed until ${surface.owner || 'its owner packet'} builds it`,
+    { value: frames.present });
+  }
+  // --fill-missing, not --update: --update rewrites EVERY reference, including the calibrated ones.
+  return cell('red', `${frames.present}/${frames.expected} reference frames — run capture:ui-matrix -- --fill-missing --only=${surface.id}`, { value: frames.present });
 }
 
 function finish(surface, raw, measured = false) {
