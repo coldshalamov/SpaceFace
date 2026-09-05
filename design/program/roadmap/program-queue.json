@@ -10586,7 +10586,7 @@
       "priority": 50,
       "title": "The bars are measured on the route (Motion Lab scenarios)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [],
       "mutexes": [
         "flight-physics-feel"
@@ -10602,10 +10602,11 @@
         "npm run check:all:smoke"
       ],
       "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-137-10-smoke-REPORT.md",
         "design/program/roadmap/receipts/PQ-137.10-stroke-speed-REPORT.md",
         "design/program/roadmap/receipts/PQ-137.10-terrain-rope-REPORT.md"
       ],
-      "brief": "Add feel.earned_speed_kept, feel.reversal_course, feel.screen_crossing, feel.shove_magnitude, feel.shove_displacement, feel.terrain_slam, feel.rope_swing_release, feel.stroke_speed, feel.hitstun_curve; each prints its bar number and runs in check:all:smoke. Do first or alongside .03."
+      "brief": "IMPLEMENTED 2026-09-05: check:feel:scenarios runs all nine bar scenarios' tests (34/34) inside check:all:smoke; B5 cites feel.shove_magnitude; the registry lists the feel scenarios. Commit e4165ba8. Add feel.earned_speed_kept, feel.reversal_course, feel.screen_crossing, feel.shove_magnitude, feel.shove_displacement, feel.terrain_slam, feel.rope_swing_release, feel.stroke_speed, feel.hitstun_curve; each prints its bar number and runs in check:all:smoke. Do first or alongside .03."
     },
     {
       "id": "PQ-138.00",
