@@ -310,8 +310,10 @@ const CSS = `
    button. Every block now has an explicit placement: the summary reads under the
    title, the route keeps only its own height, and the brief/simulator sit side
    by side so the whole brief fits its area (the accept verb stays above the
-   fold) and centers vertically when the host is taller. */
-.sx-app .sx-ct .sx-ct__dossier { justify-content: safe center; overflow-y: auto; }
+   fold). It reads top-down from the offer rail: the earlier "centre vertically when the host is
+   taller" put a 150px void between the rail and the mission title on every 1080p frame, with an
+   equal void under the commit verb, and the screen read as unfinished. */
+.sx-app .sx-ct .sx-ct__dossier { justify-content: flex-start; overflow-y: auto; }
 .sx-app .sx-ct .sx-dossier {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);

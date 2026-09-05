@@ -76,13 +76,13 @@ const CSS = `
    (refine holds the shortest names and the widest); rebalance so names are not
    ellipsized down to nothing in the one column that cannot spare the pixels. */
 .sx-app .sx-ind .sx-ind-spindle { grid-template-columns: 1.3fr 1fr 1fr .9fr; }
-/* The stage below the inputs→output diagram read as a half-empty page while the
-   rail over-cramped. The diagram now owns the leftover height and centers in it,
-   so the void is distributed above and below a composed instrument. */
+/* The inputs→output diagram sits directly under the recipe head. Centring it in the leftover
+   stage height (the previous choice) opened a 200px void between the head and the diagram on
+   every 1080p frame; the one void left is below the instrument, where a page's end belongs. */
 .sx-app .sx-ind .sx-ind__stage { justify-content: flex-start; }
 .sx-app .sx-ind .sx-fab-flow {
-  flex: 1 1 auto; align-self: stretch; min-height: 0;
-  align-content: center; margin-top: 8px;
+  flex: 0 0 auto; align-self: stretch; min-height: 0;
+  align-content: start; margin-top: 18px;
 }
 @media (prefers-reduced-motion: reduce) {
   .sx-ind, .sx-ind * { animation: none !important; transition: none !important; }

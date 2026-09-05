@@ -994,6 +994,12 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       // Fresh dock session: allow one auto-open for the highest-priority physical station action.
       attentionAutoOpenedThisDock = false;
       renderStatus();
+      // First focus lands on the active dock tile. screenManager focuses the first focusable in DOM
+      // order when a screen has not chosen one, and the topbar's HOLD gauge button precedes the
+      // dock — so every keyboard-driven arrival painted a focus ring on the cargo readout. The tile
+      // is the roving-tabindex owner the dock already maintains; focusing it changes no tabindex.
+      const activeTile = dock.el && dock.el.querySelector('.sx-tile.is-active');
+      if (activeTile) { try { activeTile.focus({ preventScroll: true }); } catch (_) {} }
       const attention = applyDockAttention({ allowAutoOpen: true });
       if (!(attention && attention.autoOpen)) {
         const scr = activeScreen();

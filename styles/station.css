@@ -23,7 +23,9 @@
 
 .sx-app {
   /* type */
-  --sx-display:"Saira SemiCondensed","Segoe UI",system-ui,sans-serif;
+  /* Display role = the UI face at a heavier weight (INSTRUMENT_GRAMMAR §3: two faces, no third).
+     Saira stays loadable above for any cached fixture, but no station surface sets it. */
+  --sx-display:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
   --sx-ui:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
   --sx-mono:"IBM Plex Mono","Consolas",ui-monospace,monospace;
   /* surfaces */
