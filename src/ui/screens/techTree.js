@@ -26,7 +26,14 @@ const UNLOCK_NAME_BY_ID = new Map(
   [...SHIPS, ...MODULES, ...WEAPONS, ...BODY_MODULES].map((entry) => [entry.id, entry.name]),
 );
 
-const NODE_W = 150, NODE_H = 58, COL_GAP = 26, ROW_GAP = 30, PAD_X = 28, PAD_Y = 54;
+// Columns are prerequisite depth (a chain reads left→right), lanes are branches (a band reads
+// top→bottom), so every edge points right and stays inside its lane — the one cross-branch
+// prerequisite (drives → flagship command) is the only diagonal. The previous layout put depth on
+// the vertical axis inside each band and siblings across, which drew the combat branch's fan-out
+// as a tangle of curves crossing the whole canvas and left two thirds of the frame empty.
+const NODE_W = 168, NODE_H = 58, COL_GAP = 56, ROW_GAP = 16, PAD_X = 32, PAD_Y = 40;
+const LANE_GAP = 34;          // vertical space between branch lanes (holds the lane label)
+const LANE_LABEL_H = 22;      // label sits inside the lane's top inset
 
 const STYLE_ID = 'sf-techtree-style';
 const CSS = `
@@ -243,48 +250,58 @@ function buildLayout(nodes) {
     s.delete(id);
     return (depthMemo[id] = d);
   }
-  // assign row within each (branch, depth) bucket so siblings don't overlap
-  const layout = {};
-  const bucketCount = {}; // key `${branch}:${depth}` -> running count
-  // stable order: by branch, then depth, then declaration order
-  const ordered = nodes.slice().sort((a, b) => {
-    const ba = BRANCH_INDEX[a.branch] ?? 9, bb = BRANCH_INDEX[b.branch] ?? 9;
-    if (ba !== bb) return ba - bb;
-    return depth(a.id) - depth(b.id);
-  });
-  for (const n of ordered) {
+  // One lane per branch (a branch the data does not use takes no room). Inside a lane, nodes bucket
+  // by depth into columns; each column is ordered by the mean row of its in-lane prerequisites so
+  // a chain reads straight across and siblings fan out beside each other instead of crossing.
+  const laneOf = (n) => (BRANCH_INDEX[n.branch] != null ? n.branch : BRANCHES[BRANCHES.length - 1].id);
+  const lanes = {};
+  for (const b of BRANCHES) lanes[b.id] = { cols: {}, rows: 0 };
+  for (const n of nodes) {
     const d = depth(n.id);
-    const key = `${n.branch}:${d}`;
-    const slot = bucketCount[key] || 0;
-    bucketCount[key] = slot + 1;
-    layout[n.id] = { depth: d, slot };
+    const lane = lanes[laneOf(n)];
+    (lane.cols[d] || (lane.cols[d] = [])).push(n);
   }
-  // Branch band rows: each branch wraps onto its own horizontal band instead of reserving its own
-  // column band across one very wide canvas. The widest branch (combat, 6 slots) now bounds the
-  // canvas width (~1086px), so every card fits the scroll viewport at 100% zoom instead of the
-  // rightmost cards clipping mid-word against the details-panel divider. Total height grows and
-  // scrolls vertically — the natural axis for a .tt-scroll pane.
-  const branchRows = {};
-  for (const n of nodes) {
-    branchRows[n.branch] = Math.max(branchRows[n.branch] || 0, layout[n.id].depth + 1);
-  }
-  const branchTop = {};
-  let bandY = PAD_Y;
+  const layout = {}; // id -> { depth, slot, lane }
   for (const b of BRANCHES) {
-    branchTop[b.id] = bandY;
-    bandY += (branchRows[b.id] || 1) * (NODE_H + ROW_GAP) + ROW_GAP;
+    const lane = lanes[b.id];
+    const depths = Object.keys(lane.cols).map(Number).sort((p, q) => p - q);
+    for (const d of depths) {
+      const col = lane.cols[d];
+      const keyed = col.map((n, i) => {
+        const parents = (n.prereqs || []).map((p) => layout[p]).filter((l) => l && l.lane === b.id);
+        // Roots and cross-lane children keep declaration order, after the barycentred children.
+        const k = parents.length ? parents.reduce((s, l) => s + l.slot, 0) / parents.length : 1e6 + i;
+        return { n, i, k };
+      });
+      keyed.sort((p, q) => (p.k - q.k) || (p.i - q.i));
+      keyed.forEach(({ n }, slot) => { layout[n.id] = { depth: d, slot, lane: b.id }; });
+      lane.rows = Math.max(lane.rows, col.length);
+    }
   }
+  const branchTop = {};   // lane label y (the lane's top inset)
+  const laneBottom = {};  // last card's bottom edge in the lane
   const positions = {};
-  let maxX = 0, maxY = 0;
-  for (const n of nodes) {
-    const l = layout[n.id];
-    const x = PAD_X + l.slot * (NODE_W + COL_GAP);
-    const y = (branchTop[n.branch] || 0) + l.depth * (NODE_H + ROW_GAP);
-    positions[n.id] = { x, y };
-    maxX = Math.max(maxX, x + NODE_W);
-    maxY = Math.max(maxY, y + NODE_H);
+  let y = PAD_Y;
+  let maxX = 0;
+  for (const b of BRANCHES) {
+    const lane = lanes[b.id];
+    if (!lane.rows) continue;
+    branchTop[b.id] = y;
+    const cardsTop = y + LANE_LABEL_H;
+    for (const d of Object.keys(lane.cols)) {
+      for (const n of lane.cols[d]) {
+        const l = layout[n.id];
+        positions[n.id] = {
+          x: PAD_X + l.depth * (NODE_W + COL_GAP),
+          y: cardsTop + l.slot * (NODE_H + ROW_GAP),
+        };
+        maxX = Math.max(maxX, positions[n.id].x + NODE_W);
+      }
+    }
+    laneBottom[b.id] = cardsTop + lane.rows * (NODE_H + ROW_GAP) - ROW_GAP;
+    y = laneBottom[b.id] + LANE_GAP;
   }
-  return { byId, positions, width: maxX + PAD_X, height: maxY + PAD_Y, branchTop };
+  return { byId, positions, width: maxX + PAD_X, height: y - LANE_GAP + PAD_Y, branchTop, laneBottom };
 }
 
 export const techTreeScreen = {
@@ -472,7 +489,9 @@ export const techTreeScreen = {
     if (!this._root || !this._layout) return;
     const scrollEl = this._root.querySelector('.tt-scroll');
     if (!scrollEl || !(scrollEl.clientWidth > 0)) return;
-    const fit = Math.min(1, scrollEl.clientWidth / Math.max(1, this._layout.width));
+    const fitW = scrollEl.clientWidth / Math.max(1, this._layout.width);
+    const fitH = scrollEl.clientHeight > 0 ? scrollEl.clientHeight / Math.max(1, this._layout.height) : 1;
+    const fit = Math.min(1, fitW, fitH);
     this._zoom = Math.max(0.9, Math.floor(fit * 100) / 100);
     this._applyZoom();
   },
@@ -490,32 +509,42 @@ export const techTreeScreen = {
     const roles = canvasRoles();
     const zoom = this._zoom || 1;
 
-    // branch band headers — MICRO, calm: branch identity is band + word, not hue
+    // Lane labels sit in each lane's top inset; a hairline closes the lane below its last card.
+    // Branch identity is lane + word, never hue.
     g.textAlign = 'left'; g.textBaseline = 'top';
     for (const b of BRANCHES) {
       const top = this._layout.branchTop[b.id];
       if (top == null) continue;
       g.fillStyle = roles.calm;
       g.font = canvasFontScaled(600, 12, zoom, 'subhead');
-      g.fillText(b.label.toUpperCase(), PAD_X, top - 22);
+      g.fillText(b.label.toUpperCase(), PAD_X, top + 2);
+      const bottom = this._layout.laneBottom[b.id];
+      if (bottom != null && bottom + LANE_GAP < this._layout.height - PAD_Y) {
+        g.beginPath();
+        g.moveTo(PAD_X, bottom + LANE_GAP / 2);
+        g.lineTo(this._layout.width - PAD_X, bottom + LANE_GAP / 2);
+        g.strokeStyle = paint(roles.edge, 0.9);
+        g.lineWidth = 1;
+        g.stroke();
+      }
     }
 
-    // ---- prereq edges ----
+    // ---- prereq edges: parent's right edge → child's left edge, always pointing right ----
     for (const n of nodes) {
       if (!n.prereqs) continue;
       const np = pos[n.id];
       if (!np) continue;
-      const childTop = { x: np.x + NODE_W / 2, y: np.y };
+      const childLeft = { x: np.x, y: np.y + NODE_H / 2 };
       for (const p of n.prereqs) {
         const pp = pos[p];
         if (!pp) continue;
-        const parentBottom = { x: pp.x + NODE_W / 2, y: pp.y + NODE_H };
+        const parentRight = { x: pp.x + NODE_W, y: pp.y + NODE_H / 2 };
         const met = this._isResearched(p);
+        const reach = Math.max(COL_GAP * 0.55, (childLeft.x - parentRight.x) * 0.5);
         g.beginPath();
-        g.moveTo(parentBottom.x, parentBottom.y);
-        const midY = (parentBottom.y + childTop.y) / 2;
-        g.bezierCurveTo(parentBottom.x, midY, childTop.x, midY, childTop.x, childTop.y);
-        g.strokeStyle = met ? paint(roles.you, 0.55) : paint(roles.calm, 0.28);
+        g.moveTo(parentRight.x, parentRight.y);
+        g.bezierCurveTo(parentRight.x + reach, parentRight.y, childLeft.x - reach, childLeft.y, childLeft.x, childLeft.y);
+        g.strokeStyle = met ? paint(roles.you, 0.7) : paint(roles.calm, 0.32);
         g.lineWidth = met ? 2 : 1;
         g.stroke();
       }
