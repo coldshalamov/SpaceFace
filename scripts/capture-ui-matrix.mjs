@@ -397,6 +397,45 @@ export async function openSurface(page, surface, context = {}) {
         break;
       case 'key':
         await ensureFlightIdle(page);
+        if (surface.id === 'wingman-radial') {
+          await page.evaluate(() => {
+            const s = window.SF && window.SF.state;
+            if (s) {
+              if (!s.automation) s.automation = {};
+              if (!Array.isArray(s.automation.fleet) || !s.automation.fleet.length) {
+                s.automation.fleet = [
+                  { id: 'wm-1', name: 'Alpha 1', hull: 'interceptor', role: 'escort', state: 'active' },
+                ];
+              }
+            }
+          });
+        }
+        if (surface.id === 'comms-radial') {
+          await page.evaluate(() => {
+            const s = window.SF && window.SF.state;
+            if (s) {
+              if (!Array.isArray(s.entityList)) s.entityList = [];
+              let target = s.entityList.find((e) => e && e.type === 'ship' && e.id !== 'player');
+              if (!target) {
+                const px = (s.player && s.player.pos && s.player.pos.x) || 0;
+                const pz = (s.player && s.player.pos && s.player.pos.z) || 0;
+                target = {
+                  id: 'hail-probe-target',
+                  type: 'ship',
+                  name: 'Accord Patrol',
+                  shipClass: 'interceptor',
+                  faction: 'sol_accord',
+                  pos: { x: px + 80, y: 0, z: pz + 80 },
+                  data: { hull: 100, hullMax: 100, role: 'patrol' },
+                };
+                s.entityList.push(target);
+              }
+              if (s.player) s.player.targetId = target.id;
+            }
+          });
+          await page.keyboard.down('Alt');
+          break;
+        }
         await page.keyboard.press(normalizeKey(entry.key));
         break;
       case 'nested': {
@@ -488,7 +527,20 @@ export async function closeSurface(page, surface) {
   if (surface.entry && surface.entry.kind === 'default') return { ok: true };
 
   if (isOverlay && key) {
-    await page.keyboard.press(normalizeKey(key));
+    if (surface.id === 'comms-radial') {
+      await page.keyboard.up('Alt').catch(() => {});
+      await page.evaluate(() => {
+        const fan = document.getElementById('sf-commsfan') || document.querySelector('.sf-commsfan');
+        if (fan) {
+          fan.hidden = true;
+          fan.classList.remove('is-open');
+        }
+        const sf = window.SF;
+        if (sf && sf.state && sf.state.ui) sf.state.ui.commsRadialOpen = false;
+      });
+    } else {
+      await page.keyboard.press(normalizeKey(key));
+    }
     await page.waitForTimeout(200);
   }
   if (await anyVisible(page, selectors)) {
@@ -502,7 +554,7 @@ export async function closeSurface(page, surface) {
   }
   for (let i = 0; i < 12; i += 1) {
     if (!(await anyVisible(page, selectors))) return { ok: true };
-    await page.keyboard.press('Escape');
+    await escalateScreenExit(page);
     await page.waitForTimeout(200);
   }
   return { ok: false, reason: `"${surface.id}" is still on screen after its close route; the next surface would be measured through it` };
@@ -784,6 +836,61 @@ export async function openBootWithRetry(params, attempts = 4) {
 // behaviour; the failure it produces is now self-describing (see ensureFlightIdle) so the next
 // agent starts from the diagnosis rather than rediscovering it.
 async function escalateScreenExit(page) {
+  const status = await readUiStatus(page);
+  // 1. If docked or top screen is station, undock cleanly through the committed undock path
+  if (status && (status.docked || status.top === 'station')) {
+    await page.evaluate(() => {
+      const sf = window.SF;
+      if (!sf) return;
+      const state = sf.state;
+      const bus = sf.bus;
+      const sm = sf.ctx && sf.ctx.screenManager;
+      if (state && state.ui) {
+        state.ui.docked = false;
+        state.ui.dockedStationId = null;
+      }
+      if (bus) {
+        const raw = bus._sfStationExitRawEmit || (typeof bus.emit === 'function' ? bus.emit.bind(bus) : null);
+        if (raw) raw('dock:undocked', { committed: true, intent: 'explicit', source: 'probe-escalate' });
+        else bus.emit('dock:undocked', { committed: true, intent: 'explicit', source: 'probe-escalate' });
+      }
+      if (sm && sm.top() === 'station') {
+        sm.popScreen();
+      }
+      if (sm) sm.syncVisibility();
+      const dockFade = document.getElementById('dock-fade');
+      if (dockFade) {
+        dockFade.classList.remove('is-active');
+        dockFade.style.display = 'none';
+      }
+    });
+    await page.waitForTimeout(300);
+    return;
+  }
+
+  // 2. If a locked modal (e.g. crucible screens) or screen is open that ignores Escape
+  if (status && status.screenOpen && status.top) {
+    const popped = await page.evaluate(() => {
+      const sf = window.SF;
+      const sm = sf && sf.ctx && sf.ctx.screenManager;
+      if (!sm || !sm.isOpen()) return false;
+      const top = sm.top();
+      const def = typeof sm.getActiveScreenDef === 'function' ? sm.getActiveScreenDef() : null;
+      const isLocked = (sm.locked && sm.locked()) || (def && def.data && def.data.locked);
+      if (isLocked || top === 'crucibleDraft' || top === 'crucibleRefit' || top === 'crucibleResults' || top === 'crucible') {
+        sm.popScreen();
+        sm.syncVisibility();
+        return true;
+      }
+      return false;
+    });
+    if (popped) {
+      await page.waitForTimeout(200);
+      return;
+    }
+  }
+
+  // 3. Normal escape keypress for standard modals / screens
   await page.keyboard.press('Escape');
 }
 
@@ -791,19 +898,21 @@ export async function ensureFlightIdle(page) {
   let status = null;
   for (let attempt = 0; attempt < 20; attempt += 1) {
     status = await readUiStatus(page);
-    if (status.mode === 'flight' && status.screenOpen === false) return;
-    if (status.screenOpen) {
+    if (status && status.mode === 'flight' && status.screenOpen === false && !status.docked) return;
+    if (status && (status.screenOpen || status.docked)) {
       await escalateScreenExit(page);
+      await page.waitForTimeout(200);
+      continue;
+    }
+    if (status && status.mode !== 'flight') {
+      await page.keyboard.press('Escape');
       await page.waitForTimeout(200);
       continue;
     }
     await page.waitForTimeout(200);
   }
-  // Say what was actually on screen. "Unable to return to idle flight" with no observation sent
-  // three separate investigations after the wrong cause; the mode and the top screen id are the
-  // whole diagnosis and they were already in hand.
   const seen = status
-    ? `mode=${status.mode === null ? 'null' : status.mode} screenOpen=${status.screenOpen} top=${status.top === null || status.top === undefined ? 'none' : status.top}`
+    ? `mode=${status.mode === null ? 'null' : status.mode} screenOpen=${status.screenOpen} top=${status.top === null || status.top === undefined ? 'none' : status.top} docked=${status.docked}`
     : 'no status could be read';
   throw new Error(`Unable to return to idle flight state for capture — last observed ${seen}`);
 }
@@ -811,7 +920,7 @@ export async function ensureFlightIdle(page) {
 export async function closeOpenScreens(page) {
   for (let attempt = 0; attempt < 12; attempt += 1) {
     const status = await readUiStatus(page);
-    if (!status.screenOpen) return;
+    if (status && !status.screenOpen && !status.docked) return;
     await escalateScreenExit(page);
     await page.waitForTimeout(200);
   }
@@ -900,7 +1009,8 @@ async function readUiStatus(page) {
     const mode = state && state.mode ? state.mode : null;
     const screenOpen = !!(sm && typeof sm.isOpen === 'function' && sm.isOpen());
     const top = sm && typeof sm.top === 'function' ? sm.top() : null;
-    return { mode, screenOpen, top };
+    const docked = !!(state && state.ui && state.ui.docked);
+    return { mode, screenOpen, top, docked };
   });
 }
 

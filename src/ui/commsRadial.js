@@ -830,6 +830,15 @@ export function createCommsRadial(ctx) {
     const targetId = payload && payload.targetId != null ? payload.targetId : null;
     openDeck(targetId);
   });
+  attachBus('ui:commsRadial', (payload = {}) => {
+    if (payload.open === false) {
+      altHeld = false;
+      closeFan();
+    } else {
+      altHeld = true;
+      openFan();
+    }
+  });
   for (const event of ['mode:changed', 'dock:docked', 'game:new', 'game:load']) {
     attachBus(event, () => {
       closeFan();

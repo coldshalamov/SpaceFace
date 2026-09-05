@@ -151,7 +151,7 @@ const RAW_SURFACES = Object.freeze([
     archetype: 'OVERLAY',
     ownerFile: 'src/ui/commsRadial.js',
     root: ['#sf-commsfan', '.sf-commsfan'],
-    entry: key('l', 'comms key (BINDINGS.comms) opens the hail fan in flight'),
+    entry: key('Alt', 'Alt (HOLD ALT) opens the quick comms hail fan in flight'),
     captureMode: 'element',
   }),
   surface({
