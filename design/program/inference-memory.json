@@ -1,6 +1,6 @@
 {
   "schema": "spaceface.inferenceMemory.v1",
-  "updated": "2026-09-03",
+  "updated": "2026-09-05",
   "runs": [
     {
       "date": "2026-08-12",
@@ -15,6 +15,15 @@
       "scope": "FREELIGHT",
       "nx": 5,
       "note": "5x magnet brawler work-hail manifest target-work"
+    },
+    {
+      "date": "2026-09-05",
+      "mode": "repair",
+      "domains": [
+        "WF-01"
+      ],
+      "nx": 1,
+      "note": "1-unit INFERENCE request: wire one unwired catalog microevent into the proven Ceres causal chain"
     }
   ],
   "units": [
@@ -640,6 +649,19 @@
       "references": [],
       "integration": "live",
       "commit": "39dd5cfa",
+      "verification": "focused_green"
+    },
+    {
+      "id": "refinery-outbound-capsule-launch",
+      "date": "2026-09-05",
+      "wf": "WF-01",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Ceres refinery now answers the delivered ore with one outbound refined-metals capsule the player can chase and catch — ev_cargo_capsule_launch wired as the causal chain's eighth link (8/58 catalog events live)",
+      "fingerprint": "verb=chase,subject=cargo_capsule,sector=ceres,layer=midground,tempo=ambient,domain=wf-01",
+      "references": [],
+      "integration": "live",
+      "commit": "8a4730b1",
       "verification": "focused_green"
     }
   ],
