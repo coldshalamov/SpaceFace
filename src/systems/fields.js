@@ -22,7 +22,7 @@
 // cleared on save:loaded/sector:exit/game:new — which deliberately sidesteps the save-schema mutex
 // (a save/reload legitimately clears an in-flight field cooldown).
 
-import { FIELD_DEFS, FIELD_KINDS, FIELD_MAX_ACTIVE, FIELD_END_REASONS, FIELD_PALETTE, fieldsFlag } from '../data/fields.js';
+import { FIELD_DEFS, FIELD_KINDS, FIELD_MAX_ACTIVE, FIELD_END_REASONS, FIELD_PALETTE, WELL_GRIND, fieldsFlag } from '../data/fields.js';
 import { createFieldKernel, fieldAffectsBody, fieldRawAcceleration, sampleFieldAcceleration } from '../core/fields/fieldKernel.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
@@ -41,6 +41,15 @@ import {
 
 const EMITTER_TYPE = 'fieldEmitter';
 const EMITTER_MATERIAL = 'projectile'; // ghost collider: projectile sweeps can hit it, ships don't broadphase against it
+// PQ-137.09 — the well's convergence term is velocity-dependent (see FIELD_DEFS.well.damping),
+// and the leaf that authored it says what it is for: "wells converge SHIPS to 30-60 WU/s
+// relative". Craft are the subject. The kernel applies the term only when a velocity sample is
+// handed to it, so handing it only for craft leaves every other body's pull exactly as authored —
+// a projectile still bends on a pure positional curve ("curve the shot"), loose cargo still
+// vacuums in ("vacuum the loot"), and debris, payloads and rocks still funnel the way the
+// Intake/Tideline reads and the release predictor were built around. It also matches the enemy
+// anchor snare's own words: "the source hull is excluded; escorts and the player are not."
+export const FIELD_VELOCITY_TERM_TYPES = Object.freeze(new Set(['ship', 'drone']));
 const MASS_STATE_TYPES = new Set(['ship', 'drone', 'payload', 'asteroid', 'wreck', 'pickup']);
 const MASS_STATE_DURATION_TICKS = 90;
 const MASS_STATE_REFRESH_LEAD_TICKS = 30;
@@ -156,7 +165,10 @@ export const fields = {
     this._wellScratch = { ax: 0, az: 0 };
     this._wellAccum = new WeakMap();
     this._wellBodies = new Set();
-    this._bodyProfile = { mass: 1, type: null, team: null, id: null, fieldResponseMult: 1, physicsMassScale: 1 };
+    // PQ-137.09 grind ledger: pairKey -> { aId, bId, fieldId, ticks, lastTick, announced }
+    this._grindPairs = new Map();
+    this._grindScratch = [];
+    this._bodyProfile ={ mass: 1, type: null, team: null, id: null, fieldResponseMult: 1, physicsMassScale: 1 };
     this._coneCenter = { x: 0, z: 0 };
     this._coneDir = { x: 1, z: 0 };
     ensureRuntime(ctx.state);
@@ -376,6 +388,12 @@ export const fields = {
       center: { x: cx, z: cz },
       radius: def.radius,
       strength: def.strength,
+      // PQ-137.09 — the deploy path never forwarded the authored damping, so the ONE field record
+      // the kernel built for a player-deployed Well or Repulsor always read damping 0 no matter
+      // what the data said. Every other register site (the anchor snare, external profiles) does
+      // forward it; this one silently dropped it. Without this line the well's convergence law
+      // does not exist on the default route and a body just falls faster and faster.
+      damping: def.damping,
       falloff: def.falloff,
       durationS: def.durationS,
       sourceId: emitter.id,
@@ -522,6 +540,7 @@ export const fields = {
     if (this._kernel) this._kernel.clear();
     this._wellAccum = new WeakMap();
     this._wellBodies = new Set();
+    if (this._grindPairs) this._grindPairs.clear();
     this.bus && this.bus.emit && this.bus.emit('fields:cleared', { reason, why });
     state.fields = defaultRuntime();
   },
@@ -653,7 +672,8 @@ export const fields = {
       const massStateField = this._massStateFields.get(e);
       if (massStateField) this._refreshMassState(state, e, massStateField);
       const profile = this._profileFor(e, state);
-      sampleFieldAcceleration(e.pos, e.vel, fieldsList, now, profile, accel);
+      const velSample = FIELD_VELOCITY_TERM_TYPES.has(e.type) ? e.vel : null;
+      sampleFieldAcceleration(e.pos, velSample, fieldsList, now, profile, accel);
       if (accel.ax === 0 && accel.az === 0) continue;
       // p = a·m·dt, where m must be the mass the SOLVER will use this tick — not the authored one.
       // A Well pins the very bodies it pulls (massScale 6) and a Repulsor unmoors the ones it shoves
@@ -670,14 +690,87 @@ export const fields = {
       affectedCount++;
       accelSum += Math.hypot(accel.ax, accel.az);
     }
+    this._detectWellGrind(state);
     this._flushEndedWells(state);
     return { queries, affected: affectedCount, accelSum };
+  },
+
+  /**
+   * PQ-137.09 — "wells … prime on grind."
+   *
+   * A well converges the hulls it holds onto each other (FIELD_DEFS.well.damping gives that
+   * convergence a 45 WU/s equilibrium instead of an unbounded fall). Two hulls that stay in
+   * surface contact inside the well for WELL_GRIND.ticks consecutive ticks are no longer two
+   * ships near each other; they are one clump being worked against itself, and the well hands
+   * them to the chain owner as primed. This system only OBSERVES — it emits `well:grind` and
+   * never writes primed state (single writer: src/systems/impulseCharges.js).
+   *
+   * Bounded: membership is `_wellBodies` (ships/drones under a well, player excluded), truncated
+   * to WELL_GRIND.maxPairBodies in id-sorted order so the pairwise test is deterministic and its
+   * cost cannot grow with population.
+   */
+  _detectWellGrind(state) {
+    const ledger = this._grindPairs;
+    if (!ledger) return;
+    const tick = state.tick | 0;
+    const bodies = this._grindScratch;
+    bodies.length = 0;
+    for (const entity of this._wellBodies) {
+      if (!entity || entity.alive === false || !entity.pos) continue;
+      const rec = this._wellAccum.get(entity);
+      if (!rec || !rec.touched) continue;
+      bodies.push(entity);
+    }
+    if (bodies.length >= 2) {
+      // Id-sorted: the pair scan, the ledger keys and the emission order are then identical on
+      // every replay of the same seed regardless of Set insertion history.
+      bodies.sort((a, b) => (String(a.id) < String(b.id) ? -1 : String(a.id) > String(b.id) ? 1 : 0));
+      if (bodies.length > WELL_GRIND.maxPairBodies) bodies.length = WELL_GRIND.maxPairBodies;
+      for (let i = 0; i < bodies.length; i++) {
+        const a = bodies[i];
+        for (let j = i + 1; j < bodies.length; j++) {
+          const b = bodies[j];
+          const dx = b.pos.x - a.pos.x;
+          const dz = b.pos.z - a.pos.z;
+          const gap = Math.hypot(dx, dz) - finite(a.radius, 0) - finite(b.radius, 0);
+          if (gap > WELL_GRIND.contactSlackWu) continue;
+          const key = `${a.id}|${b.id}`;
+          let pair = ledger.get(key);
+          if (!pair) {
+            pair = { aId: a.id, bId: b.id, ticks: 0, lastTick: tick, announced: false, fieldId: null };
+            ledger.set(key, pair);
+          }
+          pair.ticks += 1;
+          pair.lastTick = tick;
+          const rec = this._wellAccum.get(a) || this._wellAccum.get(b);
+          pair.fieldId = (rec && rec.fieldId) || pair.fieldId;
+          if (!pair.announced && pair.ticks >= WELL_GRIND.ticks) {
+            pair.announced = true;
+            this.bus.emit('well:grind', {
+              schemaVersion: 1,
+              aId: a.id,
+              bId: b.id,
+              fieldId: pair.fieldId,
+              ticks: pair.ticks,
+              pos: { x: (a.pos.x + b.pos.x) * 0.5, z: (a.pos.z + b.pos.z) * 0.5 },
+              tick,
+            });
+          }
+        }
+      }
+    }
+    // A pair that broke contact this tick loses its streak: a grind is CONSECUTIVE contact, and
+    // pruning here is also what keeps the ledger from growing without bound.
+    for (const [key, pair] of ledger) {
+      if (pair.lastTick !== tick) ledger.delete(key);
+    }
   },
 
   _accumulateWellDelta(entity, fieldsList, profile, appliedAccel, dt, state) {
     if (!entity || entity.id === state.playerId) return;
     if (entity.type !== 'ship' && entity.type !== 'drone') return;
     let wellOwnerId = null;
+    let wellFieldId = null;
     let wellAffects = false;
     for (let i = 0; i < fieldsList.length; i++) {
       const field = fieldsList[i];
@@ -687,12 +780,13 @@ export const fields = {
       if (this._wellScratch.ax === 0 && this._wellScratch.az === 0) continue;
       wellAffects = true;
       wellOwnerId = field.ownerId;
+      wellFieldId = field.id;
       break;
     }
     if (!wellAffects) return;
     let rec = this._wellAccum.get(entity);
     if (!rec) {
-      rec = { dx: 0, dz: 0, attackerId: null, attackerMass: 1, touched: false };
+      rec = { dx: 0, dz: 0, attackerId: null, attackerMass: 1, touched: false, fieldId: null };
       this._wellAccum.set(entity, rec);
       this._wellBodies.add(entity);
     }
@@ -700,6 +794,7 @@ export const fields = {
     rec.dz += finite(appliedAccel && appliedAccel.az) * dt;
     rec.touched = true;
     rec.attackerId = wellOwnerId;
+    rec.fieldId = wellFieldId;
     const owner = wellOwnerId != null && state.entities && typeof state.entities.get === 'function'
       ? state.entities.get(wellOwnerId)
       : null;

@@ -14,6 +14,7 @@ import {
 } from '../combat/masslineTargetScoring.js';
 import { automaticMasslineBreakAllowed } from '../combat/attachments.js';
 import { entityLocalPointToWorld } from '../combat/geometry.js';
+import { publishHitstunImpulse, signedHitSide } from '../combat/impulseKernel.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { isHostileToPlayer } from './scanner.js';
@@ -21,6 +22,14 @@ import { massline2Flag } from '../data/featureFlags.js';
 import { isMassSeedTetherEligible } from './massSeed.js';
 
 const TETHER_DEF_ID = 'tether_standard';
+// PQ-137.09 — the tag a shared helm loss carries, and the loop guard. A shared tumble never
+// propagates again: one hit crosses the rope once, in the direction the rope actually runs.
+const TETHER_SHARE_SOURCE = 'tether_share';
+// A taut line transmits; a slack one does not. These are the attachment authority's own phases.
+const TETHER_TAUT_PHASES = new Set(['capture', 'loaded', 'overload']);
+// Bound on how many lines one tumble may cross in a tick (a hull can carry a massline and a
+// bridle end at once; it can never carry a fleet of them).
+const TETHER_SHARE_MAX_LINKS = 4;
 export const TWIN_BRIDLE_DEF_ID = 'attachment_twin_bridle';
 export const TWIN_BRIDLE_HEAD_ID = 'twin_bridle';
 export const TWIN_BRIDLE_SETUP_S = 10;
@@ -146,6 +155,7 @@ export const tetherGameplay = {
           this.bus.on('sector:enter', () => endForSectorBoundary('sector_enter')),
           this.bus.on('tether:broken', onAuthorityBroken),
           this.bus.on('drill:approachRequested', (payload) => this._requestDrillApproach(payload)),
+          this.bus.on('combat:tumbled', (payload) => this._shareHelmLoss(payload)),
         ]
       : [];
     this._resetPhaseMirror();
@@ -1379,6 +1389,114 @@ export const tetherGameplay = {
   // Mirror the tether state onto state.player.tether for HUD/VFX consumers (single-owner rule:
   // they read, we write). null targetId = no tether. restLength lets the cable visual compute
   // real slack (restLength - distance) instead of guessing from strain.
+  /**
+   * PQ-137.09 — "Tethered pairs share helm loss and inertia."
+   *
+   * A rope makes two hulls one body. When one end takes a helm-losing hit, the other end feels the
+   * share the coupling actually transmits, and it feels it as an INTENT: this system publishes a
+   * hitstun impulse and the one law (tumbleStates + resolveHitstunLaw) decides what that means for
+   * the partner. It never writes the partner's velocity, never spins it by hand, and never grants
+   * a helm loss the law would refuse.
+   *
+   * THE SHARE IS THE ROPE'S OWN INERTIA. For a coupled pair an impulse J landing on the victim
+   * settles to a common velocity change of J/(m_v+m_p); the partner's part of that is
+   *   dV_p = dV_v * m_v/(m_v+m_p) = dV_v * mu/m_p,
+   * mu being the reduced mass the attachment spring already computes for its stiffness and damping
+   * (`sg02DynamicBodyOwner._applyAttachmentSpring`: `reducedMass(owner, target)`). That function is
+   * not exported, so the two-line form is written out here against the same two masses — it is the
+   * same number, not a second model. A light hull hanging off a heavy one barely moves the heavy;
+   * a heavy hull hanging off a light one nearly takes the light one with it.
+   *
+   * A SLACK LINE TRANSMITS NOTHING. The gate is the attachment authority's own phase, so the
+   * rope's answer here and its answer in the solver cannot disagree.
+   */
+  _shareHelmLoss(payload) {
+    if (!payload || payload.victimId == null) return 0;
+    // Loop guard: a shared tumble never shares again. One hit crosses each rope once.
+    if (payload.source === TETHER_SHARE_SOURCE) return 0;
+    const state = this.state;
+    if (!state || !state.entities || typeof state.entities.get !== 'function') return 0;
+    const deltaV = finite(payload.deltaV, 0);
+    if (!(deltaV > 0)) return 0;
+    const victim = state.entities.get(payload.victimId);
+    if (!victim || victim.alive === false) return 0;
+    const byId = state.combat && state.combat.attachments && state.combat.attachments.byId;
+    if (!byId || typeof byId !== 'object') return 0;
+
+    const victimMass = positive(victim.physicsBody && victim.physicsBody.mass, positive(victim.mass, 1));
+    let shared = 0;
+    for (const attachment of Object.values(byId)) {
+      if (shared >= TETHER_SHARE_MAX_LINKS) break;
+      if (!attachment || attachment.state !== 'active') continue;
+      if (attachment.ownerId == null || attachment.targetId == null) continue;
+      let partnerId = null;
+      if (attachment.ownerId === victim.id) partnerId = attachment.targetId;
+      else if (attachment.targetId === victim.id) partnerId = attachment.ownerId;
+      if (partnerId == null || partnerId === victim.id) continue;
+      const partner = state.entities.get(partnerId);
+      if (!partner || partner.alive === false || !partner.pos) continue;
+
+      const telemetry = attachmentTelemetry(this.helpers, attachment, state);
+      // Fail OPEN only when the authority has no telemetry to give (no physics handle yet); when
+      // it answers, its answer is the gate.
+      if (telemetry && !TETHER_TAUT_PHASES.has(String(telemetry.phase || 'slack'))) continue;
+
+      const partnerMass = positive(partner.physicsBody && partner.physicsBody.mass, positive(partner.mass, 1));
+      const share = victimMass / (victimMass + partnerMass);
+      const sharedDeltaV = deltaV * share;
+      if (!(sharedDeltaV > 0)) continue;
+
+      // The rope's direction, not the hit's: a coupled pair is pulled along the line between them.
+      const dx = partner.pos.x - finite(victim.pos && victim.pos.x, 0);
+      const dz = partner.pos.z - finite(victim.pos && victim.pos.z, 0);
+      const len = Math.hypot(dx, dz);
+      const dirX = len > 1e-6 ? dx / len : finite(payload.dirX, 1);
+      const dirZ = len > 1e-6 ? dz / len : finite(payload.dirZ, 0);
+
+      publishHitstunImpulse(this.bus, {
+        source: TETHER_SHARE_SOURCE,
+        victimId: partner.id,
+        attackerId: victim.id,
+        attackerMass: victimMass,
+        victimMass: partnerMass,
+        deltaV: sharedDeltaV,
+        dirX,
+        dirZ,
+        hitSide: signedHitSide(partner, { x: dirX, z: dirZ }, {
+          pos: {
+            x: finite(partner.pos.x, 0),
+            z: finite(partner.pos.z, 0) + Math.max(4, (partner.radius || 8) * 0.75),
+          },
+        }, partner.id),
+        provenance: Object.freeze({
+          schemaVersion: 1,
+          kind: 'massline',
+          source: 'share',
+          tag: 'massline_share',
+          attachmentId: attachment.id == null ? null : String(attachment.id),
+        }),
+        tick: state.tick,
+      });
+      this.bus.emit('chain:tetherShare', {
+        schemaVersion: 1,
+        attachmentId: attachment.id == null ? null : attachment.id,
+        fromId: victim.id,
+        toId: partner.id,
+        deltaV: sharedDeltaV,
+        sourceDeltaV: deltaV,
+        share,
+        // mu = m_v*m_p/(m_v+m_p): the coupled inertia the rope carries, published so a reader can
+        // check the share against the spring's own number.
+        reducedMass: (victimMass * partnerMass) / (victimMass + partnerMass),
+        phase: telemetry ? telemetry.phase : null,
+        cause: payload.source || payload.cause || null,
+        tick: state.tick | 0,
+      });
+      shared += 1;
+    }
+    return shared;
+  },
+
   _mirror(
     state,
     targetId,

@@ -89,7 +89,17 @@ export const FIELD_DEFS = Object.freeze({
     kind: FIELD_KINDS.WELL,
     radius: 190,
     strength: 240,
-    damping: 0,
+    // PQ-137.09 — CONVERGENCE, not a clamp. The kernel's radial term is `strength * fall` inward
+    // and its velocity term is `-v * damping * fall`; both carry the SAME falloff and the SAME
+    // coupling, so they cancel at exactly v = strength / damping, independently of where in the
+    // well the body is and of how heavy it is. 240 / 5.3333 = 45.0 WU/s — the middle of the
+    // leaf's 30-60 WU/s band. Nothing is clipped and no momentum is deleted: a body arriving
+    // faster than 45 is decelerated by a force, a body slower is accelerated by one, and outside
+    // the radius the term does not exist. A heavy takes longer to reach 45; it still reaches 45.
+    // (The enemy anchorSnare below has always used this same term: 185 / 3.2 = 57.8 WU/s.)
+    // src/systems/fields.js withholds the velocity sample from projectiles and pickups so the
+    // "curve the shot / vacuum the loot" reads keep their pure positional bend.
+    damping: 5.3333,
     falloff: 1.6,
     durationS: 9,
     cooldownS: 7,
@@ -144,6 +154,21 @@ export const FIELD_DEFS = Object.freeze({
     spinupTicks: 45,
     maxAffected: 12,
   }),
+});
+
+// PQ-137.09 — "wells … prime on grind". A well converges hulls onto each other; when two of them
+// have been scraping inside it long enough to read as one clump, the well hands them to the chain
+// owner (src/systems/impulseCharges.js) as primed. Detection is the well's; the primed STATE has
+// exactly one writer and it is not this file.
+export const WELL_GRIND = Object.freeze({
+  // Consecutive ticks of surface contact inside a well before it counts. 24 ticks = 0.4 s: a
+  // clean bounce is not a grind, a converged clump is.
+  ticks: 24,
+  // Surface slack (WU) allowed when calling two hulls "in contact".
+  contactSlackWu: 2,
+  // Hardest bound on the pairwise scan. The well's own maxAffected already bounds membership;
+  // this bounds the O(n^2) contact test regardless of how many bodies a stack of wells admits.
+  maxPairBodies: 12,
 });
 
 // Exact lifecycle reasons a field teardown can carry (mirrors MASS_SEED_CUT_REASONS shape so the
