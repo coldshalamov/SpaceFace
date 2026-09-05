@@ -2,32 +2,24 @@
 // Pure. Variety across kill causes raises the multiplier; repeating the last
 // cause decays it toward 1. Direct kills never score below their base.
 
+import { killCauseFamily, killCauseFromPayload } from '../combat/killCausality.js';
+
 export const STYLE_WINDOW = 8;
 export const STYLE_MAX_MULTIPLIER = 4;
 
-const PRESENTATION_TO_STYLE = Object.freeze({
-  explosive: 'explosive',
-  terrain_collision: 'terrain',
-  ship_collision: 'collision',
-  kinetic: 'direct',
-  generic: 'direct',
-});
+const STYLE_CAUSES = new Set(['explosive', 'terrain', 'collision', 'direct']);
 
 function normalizeCause(cause) {
-  if (cause === 'explosive' || cause === 'terrain' || cause === 'collision' || cause === 'direct') {
-    return cause;
-  }
-  return PRESENTATION_TO_STYLE[cause] || 'direct';
+  if (STYLE_CAUSES.has(cause)) return cause;
+  return killCauseFamily(cause);
 }
 
 export function styleCauseFromKill(payload) {
   if (payload && typeof payload.styleCause === 'string') return normalizeCause(payload.styleCause);
-  if (payload && typeof payload.cause === 'string') return normalizeCause(payload.cause);
-  const presentation = payload && payload.presentation;
-  if (presentation && typeof presentation.cause === 'string') {
-    return normalizeCause(presentation.cause);
+  if (payload && typeof payload.cause === 'string' && STYLE_CAUSES.has(payload.cause)) {
+    return payload.cause;
   }
-  return 'direct';
+  return killCauseFamily(killCauseFromPayload(payload));
 }
 
 export function emptyStyle() {

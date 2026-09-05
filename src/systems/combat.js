@@ -2,6 +2,7 @@
 // player respawn, and enemy spawn builders. Consumes projectile:hit from physics (ARCHITECTURE §2.3
 // step 8, §4.4). Single source of health mutation for ships/stations/drones.
 import { WEAPONS } from '../data/weapons.js';
+import { KillCause, KillSurface } from '../combat/killCausality.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
 import { SHIPS } from '../data/ships.js';
 import { MODULES } from '../data/modules.js';
@@ -41,14 +42,10 @@ const RECOVERY_BERTH_CLEARANCE_WU = 140;
 /** Seconds of invulnerability after undock / soft respawn window extension (overnight B1). */
 export const UNDOCK_INVULN_S = 8;
 const BASE_AI_CAPABILITIES = Object.freeze(['drive', 'sensor', 'weapon']);
-const KILL_PRESENTATION_CAUSES = new Set([
-  'generic',
-  'kinetic',
-  'explosive',
-  'terrain_collision',
-  'ship_collision',
-]);
-const KILL_PRESENTATION_SURFACES = new Set(['terrain', 'craft', 'structure']);
+// One vocabulary: the emitter validates against the same table the downstream readers use
+// (src/combat/killCausality.js), so a new cause cannot silently degrade to GENERIC downstream.
+const KILL_PRESENTATION_CAUSES = new Set(Object.values(KillCause));
+const KILL_PRESENTATION_SURFACES = new Set(Object.values(KillSurface));
 const BEAM_QUERY_RADIUS_PAD = 256;
 const ARCHETYPE_TACTICAL_CAPABILITIES = Object.freeze({
   swarmer: Object.freeze(['counter_tether_overload', 'ranged', 'screen']),

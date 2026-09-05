@@ -2,10 +2,13 @@
 //
 // Observer-only combat receipts. Records one terminal outcome per hostile and emits seams that
 // future economy/rep systems can consume; it never writes credits, cargo, rep, AI, or combat state.
+// Kill records retain only compact semantic causality; the richer presentation receipt remains
+// transient and never enters GameState.
+import { compactKillCausality, KillCause } from '../combat/killCausality.js';
 import { isHostileToPlayer } from './scanner.js';
 import { shouldRunOnTick } from '../core/activityScheduler.js';
 
-const STATE_VERSION = 1;
+const STATE_VERSION = 2;
 const MAX_OUTCOMES = 64;
 const DISABLE_OUTCOME_SUBSYSTEMS = new Set([
   'subsystem_drive',
@@ -55,13 +58,23 @@ function isCandidate(entity, state, payload = null) {
   return false;
 }
 
+function killedOutcomeText(label, destruction) {
+  switch (destruction && destruction.cause) {
+    case KillCause.TERRAIN_COLLISION: return `${label} smashed against terrain.`;
+    case KillCause.SHIP_COLLISION: return `${label} destroyed in a collision.`;
+    case KillCause.EXPLOSIVE: return `${label} detonated.`;
+    case KillCause.KINETIC: return `${label} destroyed by weapons fire.`;
+    default: return `${label} destroyed.`;
+  }
+}
+
 function outcomeText(record) {
   const label = record.label || record.victimClass || 'target';
   switch (record.outcome) {
     case 'fled': return `${label} fled the fight.`;
     case 'disabled': return `${label} disabled; capture window open.`;
     case 'surrendered': return `${label} surrendered.`;
-    case 'killed': return `${label} destroyed.`;
+    case 'killed': return killedOutcomeText(label, record.destruction);
     default: return `${label} resolved.`;
   }
 }
@@ -83,6 +96,7 @@ function compactRecord(state, entity, payload, outcome, reason) {
     label: data.name || data.shipName || data.callsign || data.callSign || (payload && payload.label) || null,
     bountyCr: Math.max(0, Math.round(Number((payload && payload.bountyCr) || data.bountyCr || 0) || 0)),
     sourceEvent: payload && payload.sourceEvent || null,
+    destruction: outcome === 'killed' ? compactKillCausality(payload, state.playerId) : null,
   };
 }
 
@@ -173,6 +187,7 @@ export const combatOutcome = {
         factionId: record.factionId,
         sectorId: record.sectorId,
         t: record.t,
+        destruction: record.destruction,
       });
     }
     this._speak(record);
