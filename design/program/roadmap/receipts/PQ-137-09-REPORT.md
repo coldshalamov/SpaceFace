@@ -27,8 +27,13 @@ THE NUMBERS      bar | before | after | target
                  well convergence speed, relative to the well | 81.0 and climbing | 42.5 | 30-60 WU/s
                  hulls a well primes by grinding them together | 0 | 2 | >= 2
 
-THE FRAMES       none — no strip tape exists for this and the tape file belongs to another lane.
-                 The exact block to add is in the appendix.
+THE FRAMES       the §7 tape is now IN the tape file, verbatim, and has been flown on the real route:
+                 design/program/roadmap/receipts/fun-loop/manifests/crucible/3f560ea5-dirty-216b90d9/
+                 chain_reaction-physics_toolkit-s4242/ — NOT at normal speed (0.33 of real time
+                 against the 0.60 floor), and only 7 frames: that run's wave ended before the tape
+                 reached the well, so those frames do NOT show the chain. The run that did show it
+                 was overwritten by its own retry. The machine could not give a normal-speed window
+                 all session. Full reading in §9.
 
 NEXT             PQ-137.11 — "the player is never knocked around" (the knock budget, bar B13).
 ```
@@ -264,3 +269,53 @@ copies; green again after.
 - **`check:baseline` blows its own 90 s wall budget on this machine** (152 s idle, 212 s loaded).
   A harness/machine fact, recorded rather than papered over; every link inside it is green or has a
   green run on this tree.
+
+### 9. The frames (CAPTURES lane, 2026-09-05)
+
+**The tape is in the file.** The block proposed verbatim in §7.2 was added to `STRIP_SCENARIOS` in
+`scripts/lib/bench/frameStripCapture.mjs` unchanged — same label, same 26 s, same warmup, same eleven
+steps, `Digit5` for the well (verified live at `src/systems/input.js:255`, `deployWell: ['Digit5']`,
+and ungated: `fields._handleInput` acts on the action with no item or tech test). `node --test
+test/frame-strip.test.mjs` is 21/21 green with it in place. It is the only thing this lane changed in
+that file.
+
+**The tape works. The machine would not let it be photographed at speed.** Two runs completed and a
+third never started (it waited 183 s for the renderer to admit the hulls, then failed to hold three
+consecutive normal-speed windows inside the settle gate's 60 s, so `captureFrameStrip` threw rather
+than photograph a game that was not running at speed). All were on the real Crucible route (title → door → `physics_toolkit` → seed 4242 → "Hold the line"), shipping
+chase camera, default quality, HUD text off and verified clean, real GPU
+("ANGLE (Intel, Intel(R) Graphics (0x00007D45) Direct3D11 …)"). Every one was under the normal-speed
+floor, and the manifests say why it is not the photographer: the game read **0.399–0.582 of real time
+with the debugger attached and nothing encoding**. Three other lanes were running headed browsers on
+this box and the CPU sampled 76–100 % for the whole session.
+
+- **Run 1 (screencast every 4th frame): 0.15 of real time, 31 retained frames — and it is the run that shows the
+  chain.** Its moment stream: the well went down at sim 43.38–43.80 (`Digit5` held/released in
+  `inputEvents`), the player fired two short bursts at 44.50 and 44.80, and then **five
+  `entity:killed` moments the player was not in** — 44.13, 45.13, 46.63, 47.13, 47.63 — with merged
+  magnitudes escalating 3.6e3 → 7.1e6 → 1.5e7 → 7.0e6 → 2.8e7, i.e. bangs after the shove that the
+  player did not fire, one beat apart, exactly the shape §2's trace describes. Its contact sheet was
+  read once before run 2 overwrote it — a blue-white ring on the left of frame 19, about 1.2 s after
+  the deploy, and orange bangs at frames 25 and 27 — and that sheet no longer exists on disk, so the
+  observation is recorded here as an observation and is not citable evidence.
+- **Run 2 (every 6th frame): 0.33, 7 retained frames, and it destroyed run 1.** Two lessons, both recorded
+  rather than papered over. First, cadence is not the lever here — the losses are upstream of the
+  encoder. Second, **a retry at the same source tag overwrites the previous strip**: the manifest
+  path is `<bench>/<sourceTag>/<scenarioId>-<hull>-s<seed>/`, `cleanTargetDirectory` empties it, and
+  the receipt manifest is rewritten, so run 1's 31 frames are gone. The surviving manifest at
+  `design/program/roadmap/receipts/fun-loop/manifests/crucible/3f560ea5-dirty-216b90d9/chain_reaction-physics_toolkit-s4242/`
+  is run 2's. Pass `candidateId` to `captureFrameStrip` on every retry; this lane did from run 3 on.
+  Run 2 also died early — `stoppedBecause: "run phase left active (ended)"` at sim 66 s, before the
+  tape reached `Digit5` — because a 139 s wait for the renderer to admit the hulls put the capture
+  window at sim 53+, in a much denser room than the tape was written for. That is a property of the
+  loaded machine, not of the tape, and the tape was left verbatim.
+
+**What is still owed:** one run of this same tape at ≥ 0.60 of real time on a quiet machine. Nothing
+about the tape needs to change. Two harness gaps found while doing this, both outside the
+`STRIP_SCENARIOS` block and so filed rather than fixed: `MOMENT_EVENTS` carries no `chain:*` or
+`fields:*` event, so a manifest cannot name the deploy, the prime or the cook-off — the five unfired
+kills above are *consistent with* the chain and are not proof of it, since a dense late-wave room
+produces swarm-on-swarm kills too; and `candidateId` should probably be defaulted per run rather than
+left to the caller, since the default collides with itself on the first retry.
+
+This section supersedes §8's first bullet ("No frames"). Everything else in §8 stands.
