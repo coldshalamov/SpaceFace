@@ -78,6 +78,37 @@ function runProcess(cmd, args, { cwd = ROOT, timeoutMs = 180000, verbose = false
 }
 
 /**
+ * The agy command line. Exported so the two facts that bit this route can be pinned by a test:
+ * agy's print mode has its OWN five-minute timeout, separate from the harness's, so the harness
+ * budget must be handed down or the model is cut off mid-verdict; and agy reads files only inside
+ * its workspace, so a strip that lives outside the tree the critic runs in (the pre-fix clone's
+ * frames live in the primary's .devshots) must be added with --add-dir or the model never sees a
+ * picture and grades from the numbers.
+ *
+ * @param {string} prompt
+ * @param {{ timeoutMs?: number, addDirs?: string[] }} [options]
+ */
+export function buildAgyArgs(prompt, { timeoutMs = DEFAULT_AGY_TIMEOUT_MS, addDirs = [], newProject = false } = {}) {
+  const minutes = Math.max(1, Math.ceil((Number(timeoutMs) || DEFAULT_AGY_TIMEOUT_MS) / 60000));
+  const args = [
+    '--model', 'gemini-3.8-flash-high',
+    '--effort', 'high',
+    '--output-format', 'text',
+    '--print-timeout', `${minutes}m`,
+  ];
+  // MEASURED 2026-09-05: two verdicts on one strip, minutes apart, one with the repo in the
+  // workspace and one with nothing but the frames, came back byte-identical — including a file
+  // name and a constant the second run could not have seen. agy keeps a project memory across
+  // conversations; a frames-only review starts a new project so nothing is remembered into it.
+  if (newProject) args.push('--new-project');
+  for (const dir of Array.isArray(addDirs) ? addDirs : []) {
+    if (typeof dir === 'string' && dir.trim()) args.push('--add-dir', dir);
+  }
+  args.push('-p', prompt);
+  return args;
+}
+
+/**
  * Executes agy (Gemini 3.8 Flash High).
  */
 export async function executeAgyRoute(prompt, options = {}) {
@@ -94,16 +125,7 @@ export async function executeAgyRoute(prompt, options = {}) {
     }
   }
 
-  const args = [
-    '--model',
-    'gemini-3.8-flash-high',
-    '--effort',
-    'high',
-    '--output-format',
-    'text',
-    '-p',
-    prompt,
-  ];
+  const args = buildAgyArgs(prompt, { timeoutMs, addDirs: options.addDirs, newProject: options.newProject === true });
 
   const startTime = Date.now();
   const { code, stdout, stderr } = await runProcess(agyCmd, args, {

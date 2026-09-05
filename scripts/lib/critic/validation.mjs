@@ -340,6 +340,53 @@ export function matchesContentPatterns(input) {
 }
 
 /**
+ * The known audit findings a critic can be asked to reproduce (FEEL_CONTRACT §A, 2026-09-03).
+ *
+ * Each pattern names the MECHANISM in the words a viewer of the frames would use, and the rule's
+ * own name beside it, so a verdict counts whether the critic read the pre-fix source or only the
+ * pictures. `--expect-fundamental` accepts one of these keys or any regular expression.
+ */
+export const KNOWN_FUNDAMENTALS = Object.freeze({
+  // A1/A2: holding forward (or letting go) above the governed cap slowed the ship.
+  governor_brake: /governor|overspeed|neutral.?brake|counter.?thrust|reactionAssist|auto.?brak|earned speed|speed .{0,40}(eaten|confiscat|bled|braked|slowed|decay|falls|drops|is lost|thrown away)|(slow|brak|bleed|decay)\w* .{0,60}(above|past|over) .{0,20}cap|(dead |full |complete )?(stop|halt)\w* .{0,60}(hands.?off|release|let go|throttle|input|coast)|(hands.?off|release|let go|throttle|coast)\w* .{0,60}(dead |full |complete )?(stop|halt|brak)/i,
+  // A4: the physics owner truncated every NPC's velocity to 1.15x its cap, deleting given momentum.
+  npc_clamp: /_?clampSpeed|maxSpeed|speed (cap|clamp|limit)|velocity (cap|clamp|limit|truncat)|clamp\w* .{0,60}(velocity|speed|momentum)|(1\.15|115 ?%)|snaps? back|momentum .{0,40}(deleted|erased|clamped|truncated|capped)|(deleted|erased|truncated|capped) .{0,40}momentum/i,
+  // A5: terrain and structure contact never took the helm; a slammed ship kept flying its plan.
+  terrain_helm: /helm|collisionAllowsHelmLoss|tumble|stagger|keeps? (its )?(heading|course|nose|plan)|(rock|asteroid|terrain|structure) .{0,80}(heading|course|nose|plan|control|helm|tumble)/i,
+});
+
+/**
+ * Does the critic's fundamental name the expected finding? Matches across rule, file, does and
+ * breaksSentence, so a critic that saw the mechanism but named a neighbouring file still counts,
+ * and one that named the file without the mechanism does too.
+ *
+ * @param {object|null} fundamental normalized { rule, file, does, breaksSentence }
+ * @param {string|RegExp} expected a KNOWN_FUNDAMENTALS key or a regular expression source
+ * @returns {{ matched: boolean, pattern: string, text: string }}
+ */
+export function matchesExpectedFundamental(fundamental, expected) {
+  const text = ['rule', 'file', 'does', 'breaksSentence']
+    .map((k) => (fundamental && typeof fundamental[k] === 'string' ? fundamental[k] : ''))
+    .join(' ');
+  // A comma-separated list of known keys is "any of these": one strip can only ever expose one
+  // fundamental per verdict, but the shove tape exposes two findings (the NPC cap and terrain
+  // helm) and either is a reproduction of what that strip was captured for.
+  const wanted = expected instanceof RegExp
+    ? [{ key: expected.source, pattern: expected }]
+    : String(expected || '').split(',').map((s) => s.trim()).filter(Boolean).map((key) => ({
+      key,
+      pattern: KNOWN_FUNDAMENTALS[key] || new RegExp(key, 'i'),
+    }));
+  const matchedKeys = wanted.filter((w) => w.pattern.test(text)).map((w) => w.key);
+  return {
+    matched: matchedKeys.length > 0,
+    matchedKeys,
+    pattern: wanted.map((w) => w.pattern.source).join(' | '),
+    text,
+  };
+}
+
+/**
  * Validates candidate verdict against the strip manifest.
  *
  * @param {object} candidate Parsed model candidate object

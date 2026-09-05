@@ -882,3 +882,68 @@ test('unknown-only explicit --scenarios fails nonzero', () => {
   assert.notEqual(result.status, 0, `unknown-only must fail, stdout=${result.stdout} stderr=${result.stderr}`);
   assert.match(String(result.stderr || ''), /matched nothing|Fun measurer error/);
 });
+
+test('diff mode: a met row that stays met within the noise floor is unchanged, and a multi-clause bar\'s second row is not judged by the first clause', async () => {
+  const { withinNoiseFloor, buildMeasureDiff } = await import('../scripts/measure-fun-loop.mjs');
+  assert.equal(withinNoiseFloor(1.000039, 1.000059), true, 'two hundred-thousandths is the solver, not the change under test');
+  assert.equal(withinNoiseFloor(0.163, 0.050), false);
+  const run = (stretch, kept, stretchMet) => ({
+    schema: 'spaceface.funMeasure.v1',
+    harnessDigest: 'same',
+    benches: { verbs: { runs: [{
+      bench: 'verbs', scenarioId: 'feel.rope_swing_release', seed: 4242, runRef: 'verbs/feel.rope_swing_release/s4242',
+      bars: [{
+        id: 'B7', title: 'The rope is a rope', target: 'stretch < 10 %; release keeps ≥ 95 % of tangential speed at 5 s',
+        met: stretchMet, values: [
+          { label: 'peak stretch on a 100 WU line at 1.5x cruise', unit: 'fraction', value: stretch, met: stretchMet },
+          { label: 'tangential speed kept 5 s after release', unit: 'fraction', value: kept, met: true },
+        ],
+      }],
+    }] } },
+  });
+  const diff = buildMeasureDiff(run(0.163355, 1.000039, false), run(0.050105, 1.000059, true));
+  const b7 = diff.runs[0].bars.find((b) => b.id === 'B7');
+  assert.equal(b7.direction, 'toward', 'the stretch clause crossed its line: the fix is kept — "The rope is a rope."');
+  const kept = b7.rows.find((r) => /kept/.test(r.label));
+  assert.equal(kept.direction, 'unchanged', 'a met row that rose by 2e-5 did not regress under a target whose first clause says "<"');
+  assert.equal(diff.verdict, 'KEEP', `verdict must be KEEP, got ${diff.verdict}: ${JSON.stringify(diff.summary || diff.notes)}`);
+});
+
+test('B13 visible jitter comes from a headed strip of the same cell, and only at normal speed', async () => {
+  const { attachStripJitter } = await import('../scripts/measure-fun-loop.mjs');
+  const { evaluateBars } = await import('../scripts/lib/bench/feelBars.mjs');
+  const { mkdtemp, writeFile, rm } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const dir = await mkdtemp(join(tmpdir(), 'sf-knock-strip-'));
+  try {
+    const strip = (over) => ({
+      schema: 'spaceface.frameStripManifest.v2', arenaId: 'helios_core', loadoutId: 'physics_toolkit', seed: 4242,
+      normalSpeed: true, realtimeFraction: 0.7, harnessDigest: 'x',
+      visibleJitter: { measured: true, windows: 3, headingReversals: 0, screenReversals: 0, events: 0, cadenceFpsMin: 5.2 },
+      ...over,
+    });
+    const good = join(dir, 'good.json'); await writeFile(good, JSON.stringify(strip({})));
+    const slow = join(dir, 'slow.json'); await writeFile(slow, JSON.stringify(strip({ normalSpeed: false, realtimeFraction: 0.4 })));
+    const other = join(dir, 'other.json'); await writeFile(other, JSON.stringify(strip({ seed: 8008 })));
+    const runs = () => [{ bench: 'crucible', arenaId: 'helios_core', loadoutId: 'physics_toolkit', seed: 4242, metrics: { playerKnockEventsPerMin: 1, maxPlayerKnockFraction: 0.05, headingChangeEvents: 0 } }];
+    const r1 = runs();
+    assert.deepEqual(attachStripJitter(r1, [slow]), [], 'a slow strip is not evidence of anything');
+    assert.equal(r1[0].metrics.jitterMeasured, undefined);
+    const r2 = runs();
+    assert.deepEqual(attachStripJitter(r2, [other]), [], 'a different seed is a different fight');
+    const r3 = runs();
+    assert.deepEqual(attachStripJitter(r3, [good]), ['helios_core/physics_toolkit/s4242']);
+    assert.equal(r3[0].metrics.jitterMeasured, true);
+    assert.equal(r3[0].metrics.jitterEvents, 0);
+    const { bars } = evaluateBars(r3);
+    const b13 = bars.find((b) => b.id === 'B13');
+    assert.ok(b13, 'B13 evaluated');
+    const row = (b13.values || []).find((v) => /visible jitter events after contact/.test(v.label || ''));
+    assert.ok(row, 'the jitter clause is a value row, not a note');
+    assert.equal(row.value, 0);
+    assert.notEqual(b13.met, null, 'with jitter measured the bar is no longer withheld as unmeasured');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});

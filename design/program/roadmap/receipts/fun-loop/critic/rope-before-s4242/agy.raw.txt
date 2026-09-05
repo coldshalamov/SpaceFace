@@ -1,0 +1,74 @@
+{
+  "answers": [
+    {
+      "q": 1,
+      "question": "Can I tell what the player did from the frames alone?",
+      "answer": "yes",
+      "frameIndex": 0,
+      "note": "Cyan engine exhaust plume and forward ship heading clearly show player forward throttle engagement."
+    },
+    {
+      "q": 2,
+      "question": "Did the world answer within a third of a second (motion, light, or a visible receipt)?",
+      "answer": "yes",
+      "frameIndex": 103,
+      "note": "Within ~0.32s of impact at simTime 48.23s, the ship's shield flashes bright cyan in frame 103 as an immediate visual receipt."
+    },
+    {
+      "q": 3,
+      "question": "Did something the player did not directly touch change because of it?",
+      "answer": "yes",
+      "frameIndex": 117,
+      "note": "Hostile ships collide in the swarm, producing an orange explosion fireball and wreckage without direct player contact."
+    },
+    {
+      "q": 4,
+      "question": "Would the vision's sentence for this verb be true here? (quote the sentence)",
+      "answer": "no",
+      "frameIndex": 99,
+      "note": "\"Thrusters have a cap; physics-earned speed does not get eaten by the brakes.\" is false; swing-earned speed of ~49 WU/s bleeds away to 15.8 WU/s under hands-off auto-braking."
+    },
+    {
+      "q": 5,
+      "question": "Is the ship a controllable mass (turns inside the screen, stops when braked, keeps earned speed)?",
+      "answer": "no",
+      "frameIndex": 99,
+      "note": "The ship turns inside the screen and stops when braked, but fails to keep earned speed, bleeding from 49 WU/s at release to 15.8 WU/s with hands off."
+    },
+    {
+      "q": 6,
+      "question": "Are the light ships ammunition here, rather than only targets?",
+      "answer": "no",
+      "frameIndex": 100,
+      "note": "Light ships remain targets rather than ammunition; all 10 hostiles persist in a rigid circling pattern and are never weaponized against other craft."
+    },
+    {
+      "q": 7,
+      "question": "Is anything on screen a glowing sphere standing in for a designed event?",
+      "answer": "no",
+      "frameIndex": 103,
+      "note": "Ships and wreckage use authored 3D models, shield hits use shaped Fresnel bubbles, and explosions use textured mesh fireballs rather than glowing spheres."
+    },
+    {
+      "q": 8,
+      "question": "Did anyone flee, choose, or arrive because of the violence?",
+      "answer": "no",
+      "frameIndex": 135,
+      "note": "No NPCs flee, arrive, or make tactical choices in response to destruction; all 10 hostiles continue their rigid swarm paths through frame 135."
+    },
+    {
+      "q": 9,
+      "question": "Would a stranger tell a \"so then\" story about these twelve seconds?",
+      "answer": "yes",
+      "frameIndex": 131,
+      "note": "A stranger would recount swinging past a ringed gas giant into a hostile swarm, taking a heavy shield hit, and watching enemy fighters detonate."
+    }
+  ],
+  "fundamental": {
+    "rule": "reactionAssistAcceleration neutral-counterthrust",
+    "file": "src/core/flight/propulsionKernel.js",
+    "does": "applies counterthrust when translation inputs are idle below combatSpeed, braking physics-earned momentum instead of coasting until pilot brakes",
+    "breaksSentence": "Thrusters have a cap; physics-earned speed does not get eaten by the brakes.",
+    "frameIndex": 99
+  }
+}

@@ -273,3 +273,106 @@ test('draw observer reads submitted matrices without updating the scene or retai
     assert.equal(moved.hostilesDrawing, 1, 'pooled parts are attributed using their current submitted position');
   } finally { if (previousWindow === undefined) delete globalThis.window; else globalThis.window = previousWindow; }
 });
+
+// ---------------------------------------------------------------------------------------------
+// The two tapes that expose the 2026-09-03 audit findings (FEEL_CONTRACT §A) on a build that still
+// has them. PQ-173.02: "the critic reproduces the audit findings on a pre-fix build from frames
+// alone" — which needs frames in which the ship did the thing the finding confiscated.
+// ---------------------------------------------------------------------------------------------
+
+test('the audit tapes drive the real input path with live bindings, in order, inside their span', async () => {
+  const { MOMENT_EVENTS, driveRealCrucibleRoute } = await import('../scripts/lib/bench/frameStripCapture.mjs');
+  const liveKeys = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ShiftLeft', 'ShiftRight']);
+  for (const id of ['earned_speed', 'shove_light']) {
+    const s = STRIP_SCENARIOS[id];
+    assert.ok(s, `${id} must exist`);
+    assert.equal(s.loadoutId, 'physics_toolkit', `${id} flies the kit with the shove weapon`);
+    let last = -1;
+    for (const step of s.tape) {
+      assert.ok(step.atS > last, `${id}: tape must be in time order`);
+      assert.ok(step.atS < s.durationS, `${id}: a step after the strip ends is not on any frame`);
+      last = step.atS;
+      for (const k of ['keyDown', 'keyUp']) if (step[k]) assert.ok(liveKeys.has(step[k]), `${id}: ${step[k]} is not a live binding`);
+    }
+  }
+  // A1/A2: boost past the cap, keep forward held after boost, then hands off, then brake.
+  const es = STRIP_SCENARIOS.earned_speed.tape;
+  const boostOff = es.find((s) => s.keyUp === 'ShiftLeft');
+  const forwardOff = es.find((s) => s.keyUp === 'KeyW');
+  const brakeOn = es.find((s) => s.keyDown === 'KeyS');
+  assert.ok(boostOff && forwardOff && brakeOn, 'boost release, forward release and a deliberate brake are the three regimes');
+  assert.ok(forwardOff.atS - boostOff.atS >= 6, 'forward is held above the cap long enough for a governor brake to show');
+  assert.ok(brakeOn.atS - forwardOff.atS >= 6, 'hands off long enough for neutral counter-thrust to show');
+  // A4/A5: long shove bursts with the nose sweeping.
+  const sl = STRIP_SCENARIOS.shove_light.tape;
+  const bursts = sl.filter((s) => s.mouseDown).length;
+  assert.ok(bursts >= 4, 'several bursts, so at least one lands on a light ship along its motion');
+  assert.ok(sl.some((s) => s.keyDown === 'KeyA') && sl.some((s) => s.keyDown === 'KeyD'), 'the nose sweeps both ways');
+  assert.ok(sl.some((s) => s.aim === 'nearestHostile') && sl.findIndex((s) => s.aim === 'nearestHostile') < sl.findIndex((s) => s.mouseDown),
+    'the cursor is on a hostile before the trigger is held: a cannon fired into a corner of the glass shoves nothing');
+  // The player's own shot landing is a moment, so the critic gets before/at/after around a shove.
+  assert.ok(MOMENT_EVENTS.includes('projectile:hit'));
+  assert.equal(typeof driveRealCrucibleRoute, 'function', 'the click-through is one exported route, not a copy');
+});
+
+test('a merged moment keeps what the ship met', () => {
+  const out = condenseMoments([
+    { type: 'physics:impact', tick: 600, simTime: 10.0, playerInvolved: false, magnitude: MOMENT_IMPACT_FLOOR + 5, surface: null },
+    { type: 'combat:collisionConsequence', tick: 606, simTime: 10.1, playerInvolved: false, magnitude: 0, surface: 'terrain' },
+  ]);
+  assert.equal(out.length, 1);
+  assert.equal(out[0].surface, 'terrain', 'the consequence knew the surface; the merged moment must not lose it');
+});
+
+test('a strip says where it ran slow, not just how slow on average', async () => {
+  const { realtimeBySegment } = await import('../scripts/lib/bench/frameStripCapture.mjs');
+  // Ten seconds of frames at 4 fps: real time for the first five wall seconds, half speed after.
+  const frames = [];
+  for (let i = 0; i <= 40; i++) {
+    const wallS = i * 0.25;
+    frames.push({ wallS, simTime: wallS <= 5 ? wallS : 5 + (wallS - 5) * 0.5 });
+  }
+  const segs = realtimeBySegment(frames, 5);
+  assert.equal(segs.length, 2);
+  assert.equal(segs[0].realtime, 1);
+  assert.equal(segs[1].realtime, 0.5, 'the slow half is named as the slow half');
+  assert.deepEqual(realtimeBySegment([{ wallS: 0, simTime: 0 }]), []);
+});
+
+test('visible jitter is read from the pictures: a wobble after a contact is a reversal inside half a second', async () => {
+  const { measureVisibleJitter, VISIBLE_JITTER_WINDOW_S, createInputDriver, PRESS_METHOD, STRIP_SCENARIOS } = await import('../scripts/lib/bench/frameStripCapture.mjs');
+  const frame = (t, rot, x, y) => ({ simTime: t, playerRot: rot, playerScreenXY: [x, y] });
+  // Eight frames a second, heading turning steadily one way, the hull sliding steadily: no wobble.
+  const calm = [];
+  for (let i = 0; i < 12; i++) calm.push(frame(10 + i / 8, 0.02 * i, 0.5 + 0.01 * i, 0.5));
+  const contact = [{ type: 'physics:impact', simTime: 10.0, playerInvolved: true, magnitude: 30 }];
+  const c = measureVisibleJitter(calm, contact);
+  assert.equal(c.measured, true);
+  assert.equal(c.windows, 1);
+  assert.equal(c.events, 0, 'a steady turn after a bump is not jitter');
+  assert.equal(VISIBLE_JITTER_WINDOW_S, 0.5);
+  // The same frames with the heading flapping back and forth: a wobble a viewer sees.
+  const wobble = calm.map((f, i) => ({ ...f, playerRot: i % 2 ? 0.05 : -0.05 }));
+  const w = measureVisibleJitter(wobble, contact);
+  assert.ok(w.headingReversals >= 2 && w.events === 1, `B13: "never produces visible jitter" — got ${JSON.stringify(w)}`);
+  // A contact nobody was in, or no contact at all, measures nothing about the player.
+  assert.equal(measureVisibleJitter(calm, [{ ...contact[0], playerInvolved: false }]).note, 'no contact involved the player inside the strip');
+  // Too few frames in the window is honest, not a pass.
+  assert.equal(measureVisibleJitter(calm.slice(0, 2), contact).measured, false);
+  // The press goes through the screencast's own session when one exists (the plain press was measured to drop).
+  const sent = [];
+  const fakePage = { mouse: { move: async () => {}, down: async () => { sent.push('pw-down'); }, up: async () => {} }, keyboard: { down: async () => {}, up: async () => {} }, evaluate: async () => null };
+  const fakeCdp = { send: async (m, p) => { sent.push(`${m}:${p.type}`); } };
+  const d = createInputDriver(fakePage, { getCdp: () => fakeCdp });
+  await d.runStep({ atS: 0, mouseDown: true });
+  assert.ok(sent.includes('Input.dispatchMouseEvent:mousePressed') && !sent.includes('pw-down'));
+  assert.equal(d.pressMethod, PRESS_METHOD.cdp);
+  const d2 = createInputDriver(fakePage, { getCdp: () => null });
+  await d2.runStep({ atS: 0, mouseDown: true });
+  assert.equal(d2.pressMethod, PRESS_METHOD.playwright);
+  // The rope tape latches with the Massline key on a rock, swings under forward, and lets go.
+  const rope = STRIP_SCENARIOS.rope_swing;
+  assert.equal(rope.loadoutId, 'massline_rig');
+  assert.ok(rope.tape.some((s) => s.aim === 'nearestAsteroid') && rope.tape.filter((s) => s.keyDown === 'Space').length === 2);
+  assert.ok(Array.isArray(STRIP_SCENARIOS.shove_light.warmup) && STRIP_SCENARIOS.shove_light.warmup.some((s) => s.mouseDown), 'the first shot is paid before the strip');
+});

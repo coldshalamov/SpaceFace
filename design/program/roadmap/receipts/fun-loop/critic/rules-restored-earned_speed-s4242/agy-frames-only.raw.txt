@@ -1,0 +1,76 @@
+```json
+{
+  "answers": [
+    {
+      "q": 1,
+      "question": "Can I tell what the player did from the frames alone?",
+      "answer": "yes",
+      "frameIndex": 8,
+      "note": "Large blue exhaust plume and rapid forward acceleration clearly indicate forward throttle and boost were applied."
+    },
+    {
+      "q": 2,
+      "question": "Did the world answer within a third of a second (motion, light, or a visible receipt)?",
+      "answer": "yes",
+      "frameIndex": 4,
+      "note": "Within 0.08s of throttle input, engine plumes ignited and ship accelerated from 24 to 53.8 WU/s."
+    },
+    {
+      "q": 3,
+      "question": "Did something the player did not directly touch change because of it?",
+      "answer": "no",
+      "frameIndex": 16,
+      "note": "Nearby swarm ships right next to the 120 WU/s collision drift undisturbed with no evasion, deflection, or reaction."
+    },
+    {
+      "q": 4,
+      "question": "Would the vision's sentence for this verb be true here? (quote the sentence)",
+      "answer": "no",
+      "frameIndex": 57,
+      "note": "\"Thrusters have a cap; physics-earned speed does not get eaten by the brakes\" is false; speed decayed from 121 to 83.8 WU/s without braking."
+    },
+    {
+      "q": 5,
+      "question": "Is the ship a controllable mass (turns inside the screen, stops when braked, keeps earned speed)?",
+      "answer": "no",
+      "frameIndex": 57,
+      "note": "The ship fails to keep earned speed: after boosting to 121 WU/s, speed bled down to 83.8 WU/s while throttle was held forward."
+    },
+    {
+      "q": 6,
+      "question": "Are the light ships ammunition here, rather than only targets?",
+      "answer": "no",
+      "frameIndex": 20,
+      "note": "Ramming a hostile at 120 WU/s only triggers a shield bounce; the ship is not flung into others and hostilesAlive stays at 10."
+    },
+    {
+      "q": 7,
+      "question": "Is anything on screen a glowing sphere standing in for a designed event?",
+      "answer": "yes",
+      "frameIndex": 16,
+      "note": "Large translucent glowing colored spheres appear over the colliding ships as generic stand-ins for impact and shield reactions."
+    },
+    {
+      "q": 8,
+      "question": "Did anyone flee, choose, or arrive because of the violence?",
+      "answer": "no",
+      "frameIndex": 114,
+      "note": "Hostiles remain at 10 throughout; no AI units flee, alter doctrine, or arrive in response to the high-speed ramming."
+    },
+    {
+      "q": 9,
+      "question": "Would a stranger tell a \"so then\" story about these twelve seconds?",
+      "answer": "no",
+      "frameIndex": 114,
+      "note": "The run is an inert straight-line boost and bump: nothing dies, no cascade occurs, and the ship simply decelerates to a halt."
+    }
+  ],
+  "fundamental": {
+    "rule": "Speed governor overspeed auto-braking",
+    "file": "unknown",
+    "does": "Bleeds off earned speed above the thruster cap while holding forward or coasting, actively braking the ship down to cruise speed instead of preserving momentum.",
+    "breaksSentence": "Thrusters have a cap; physics-earned speed does not get eaten by the brakes.",
+    "frameIndex": 57
+  }
+}
+```

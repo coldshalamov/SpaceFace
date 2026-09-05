@@ -72,6 +72,29 @@ export const DEFAULT_MANIFEST_DIR = join(ROOT, 'design/program/roadmap/receipts/
 export const FRAME_FORMAT = 'jpeg';
 export const FRAME_QUALITY = 92;
 
+/**
+ * How many compositor frames the screencast lets pass for each one it encodes (1 = every frame).
+ *
+ * MEASURED 2026-09-05 in one Crucible run on this machine (Intel Arc iGPU, headed, ten hostiles,
+ * other agents' browsers on the box), simTime over wall clock in 8 s windows:
+ *
+ *     nobody watching            0.78 – 0.90
+ *     screencast, every frame    0.51   (18 encoded frames a second)
+ *     screencast, every 3rd      0.85   (5 a second — under the 8 Hz sample)
+ *     screencast, every 6th      0.86   (3.6 a second)
+ *     the once-a-second sweep    0.63   (see sweepHudText: now gated on a DOM mutation)
+ *
+ * Every strip captured before this (four, two on the hardware GPU) was under the normal-speed
+ * floor, and encoding every frame was the single biggest reason. The strip retains at most 8 fps,
+ * so encoding every frame spent two thirds of the JPEG work on pictures the retention mask threw
+ * away. Every second frame still left the variant strips at 0.52-0.59 on this loaded machine, so
+ * every third is the shipped cadence: ~5-6 candidates a second, above the 4 fps baseline and below
+ * the 8 fps a moment window asks for. The manifest records the value used AND the frame rate the
+ * compositor actually delivered (`deliveredFps`), so a strip captured at a different cadence is
+ * never silently the same kind of strip and a moment window's real cadence is a number, not a claim.
+ */
+export const SCREENCAST_EVERY_NTH_FRAME = 3;
+
 /** Sample rate. Retention thins this to 4 fps outside moment windows. */
 export const SAMPLE_HZ = 8;
 /** Observatory §3: at least eight seconds before and twelve seconds after each incident. */
@@ -100,6 +123,10 @@ export const MOMENT_EVENTS = Object.freeze([
   'entity:killed',
   'combat:collisionConsequence',
   'massline:sweepImpact',
+  // The player's own shot landing. Kept only when the player owns the projectile (see the in-page
+  // listener), so a critic asked whether a shoved ship flies gets a before/at/after triplet around
+  // the hit rather than around whichever bump happened to be loudest.
+  'projectile:hit',
 ]);
 
 /**
@@ -145,6 +172,87 @@ export const STRIP_SCENARIOS = Object.freeze({
       { atS: 24.0, keyUp: 'KeyW' },
     ],
   },
+  // The two tapes below exist so a critic can SEE the 2026-09-03 audit findings (FEEL_CONTRACT §A)
+  // on a build that still has them, from frames alone. Each puts the ship through the exact motion
+  // the finding confiscated: no state write, no debug key, the same keys a player holds.
+  earned_speed: {
+    // A1/A2. Boost past the governed cap, let boost go while still holding forward, then let go of
+    // everything, then brake on purpose. On the pre-fix build the ship slows down while FORWARD is
+    // held (the governor braked above the cap) and slows harder hands-off (neutral counter-thrust at
+    // any speed). On the fixed build both are a coast; only the brake spends the speed.
+    label: 'Crucible swarm, boost past the cap, hold forward, hands off, then brake',
+    loadoutId: 'physics_toolkit',
+    durationS: 30,
+    tape: [
+      { atS: 0.5, keyDown: 'KeyW' },
+      { atS: 1.5, keyDown: 'ShiftLeft' },
+      { atS: 8.5, keyUp: 'ShiftLeft' },
+      { atS: 16.5, keyUp: 'KeyW' },
+      { atS: 24.5, keyDown: 'KeyS' },
+      { atS: 27.5, keyUp: 'KeyS' },
+    ],
+  },
+  shove_light: {
+    // A4/A5. The physics toolkit's first weapon is the concussion cannon: the shove. Fire long
+    // bursts into the swarm while sweeping the nose, so light ships take hits along and across
+    // their motion and some of them meet the arena's rocks. On the pre-fix build a shoved ship
+    // snaps back to its own cruise one tick later (the NPC cap deleted given momentum) and a ship
+    // that meets a rock keeps its nose on its plan (terrain never took the helm). On the fixed
+    // build the light ship flies, and a hard slam tumbles it.
+    label: 'Crucible swarm, shove cannon into the light ships',
+    loadoutId: 'physics_toolkit',
+    durationS: 30,
+    // The first shot of a run pays a one-off cost (shader and audio admission for the muzzle and
+    // impact families: the measured first-fire stall). It is paid here, before the settle wait and
+    // before the first frame, so the strip photographs the shove and not the game's first hiccup.
+    warmup: [
+      { atS: 0, aim: 'nearestHostile' },
+      { atS: 0.1, mouseDown: true },
+      { atS: 1.2, mouseUp: true },
+    ],
+    tape: [
+      // The mouse is the gun on this route (PILOT scheme: keyboard flies, mouse fights) and the
+      // cannon fires where the cursor points. A cursor parked in one corner of the glass hits
+      // nothing — the first shove strip landed zero shots in eighteen seconds — so the tape does
+      // what a person does: keeps the cursor on the nearest live hostile while the trigger is held.
+      { atS: 0.3, aim: 'nearestHostile' },
+      { atS: 0.5, mouseDown: true },
+      { atS: 4.0, mouseUp: true },
+      { atS: 4.2, keyDown: 'KeyA' },
+      { atS: 5.5, keyUp: 'KeyA' },
+      { atS: 5.7, mouseDown: true },
+      { atS: 9.5, mouseUp: true },
+      { atS: 9.7, keyDown: 'KeyD' },
+      { atS: 11.5, keyUp: 'KeyD' },
+      { atS: 11.7, mouseDown: true },
+      { atS: 16.0, mouseUp: true },
+      { atS: 16.2, keyDown: 'KeyA' },
+      { atS: 17.5, keyUp: 'KeyA' },
+      { atS: 17.7, mouseDown: true },
+      { atS: 22.0, mouseUp: true },
+      { atS: 22.5, keyDown: 'KeyD' },
+      { atS: 24.0, keyUp: 'KeyD' },
+      { atS: 24.2, mouseDown: true },
+      { atS: 28.5, mouseUp: true },
+    ],
+  },
+  rope_swing: {
+    // B7 on the shipping camera: the rope kit, the cursor on the nearest rock, a tap of the
+    // Massline key to latch, forward held to swing, a tap to let go, then hands off to see what
+    // speed the release kept. The manifest records whether the line was live on every frame.
+    label: 'Crucible swarm, latch a rock on the Massline, swing, let go',
+    loadoutId: 'massline_rig',
+    durationS: 26,
+    tape: [
+      { atS: 0.3, aim: 'nearestAsteroid' },
+      { atS: 0.5, keyDown: 'KeyW' },
+      { atS: 2.5, keyDown: 'Space' },
+      { atS: 2.65, keyUp: 'Space' },
+      { atS: 13.0, keyDown: 'Space' },
+      { atS: 13.15, keyUp: 'Space' },
+      { atS: 13.3, keyUp: 'KeyW' },
+    ],
+  },
 });
 
 export async function findFreePort(start = 8500) {
@@ -160,7 +268,7 @@ export async function findFreePort(start = 8500) {
   throw new Error('no free port');
 }
 
-export async function startDevServer(startPort = 8520) {
+export async function startDevServer(startPort = 8520, { env = {} } = {}) {
   const port = await findFreePort(startPort);
   const url = `http://127.0.0.1:${port}/`;
   let serverErr = '';
@@ -168,6 +276,7 @@ export async function startDevServer(startPort = 8520) {
     cwd: ROOT,
     stdio: ['ignore', 'ignore', 'pipe'],
     windowsHide: true,
+    env: { ...process.env, ...env },
   });
   if (child.stderr) child.stderr.on('data', (d) => { serverErr += d.toString(); });
 
@@ -246,6 +355,7 @@ export function condenseMoments(raw, { floor = MOMENT_IMPACT_FLOOR, mergeS = MOM
       prev.merged = (prev.merged || 1) + 1;
       prev.magnitude = Math.max(prev.magnitude || 0, m.magnitude || 0);
       prev.playerInvolved = prev.playerInvolved || m.playerInvolved;
+      if (m.surface && !prev.surface) prev.surface = m.surface;
       // The label follows the loudest thing in the cluster: a kill outranks a bump.
       if (m.type === 'entity:killed') prev.type = 'entity:killed';
       continue;
@@ -262,6 +372,15 @@ export function condenseMoments(raw, { floor = MOMENT_IMPACT_FLOOR, mergeS = MOM
  * evidence; a slow strip that claims "shipping camera, normal speed" is the failure this file was
  * rewritten to end.
  */
+/** simTime advanced over wall clock across one window: 1.0 is real time, 0.5 is half speed. */
+export async function measureRealtime(page, windowMs = 2000) {
+  const a = await page.evaluate(() => window.SF.state.simTime);
+  const t0 = Date.now();
+  await page.waitForTimeout(windowMs);
+  const b = await page.evaluate(() => window.SF.state.simTime);
+  return (b - a) / ((Date.now() - t0) / 1000);
+}
+
 export async function waitForRealtime(page, {
   floor = NORMAL_SPEED_FLOOR, windowMs = 2000, maxWaitMs = 60000, requiredWindows = 3, log = () => {},
 } = {}) {
@@ -589,10 +708,37 @@ export const HUD_TEXT_OFF_CSS = `
  * @returns {Promise<{hidden: Array<{text:string, selector:string}>, verified: boolean,
  *                    leftovers: Array<{text:string, selector:string}>}>}
  */
-export async function sweepHudText(page) {
-  return page.evaluate(() => {
+export async function sweepHudText(page, { onlyIfChanged = false } = {}) {
+  return page.evaluate((onlyIfChanged) => {
     const root = document.getElementById('ui-root');
     const canvas = document.getElementById('gl-canvas');
+    // MEASURED 2026-09-05: walking every text node under #ui-root with getComputedStyle once a
+    // second cost the game ~15 points of real time (0.63 against ~0.80 with nobody sweeping). The
+    // walk is the guarantee, so it is not removed; instead an observer records whether anything
+    // under the overlay CHANGED since the last sweep, and a mid-run sweep that finds nothing
+    // changed returns at once. The two full walks (before the first frame, after the last) never
+    // take this shortcut.
+    if (root && !window.__stripUiObserver && typeof MutationObserver === 'function') {
+      window.__stripUiChanged = true;
+      // The HUD keeps writing its readouts every frame while the stylesheet has it display:none,
+      // so a mutation under a root the stylesheet already hides is not a change to the glass.
+      const hiddenRoots = [...document.querySelectorAll(
+        '#hud, #toasts, #alerts, #boot-overlay, #cinematic-splash, #modal-backdrop, #screens',
+      )];
+      window.__stripUiObserver = new MutationObserver((records) => {
+        for (const rec of records) {
+          const t = rec.target && rec.target.nodeType === 3 ? rec.target.parentElement : rec.target;
+          if (t && hiddenRoots.some((r) => r === t || r.contains(t))) continue;
+          window.__stripUiChanged = true;
+          return;
+        }
+      });
+      window.__stripUiObserver.observe(root, { childList: true, subtree: true, characterData: true, attributes: true });
+    }
+    if (onlyIfChanged && window.__stripUiObserver && window.__stripUiChanged !== true) {
+      return { hidden: [], verified: true, leftovers: [], skipped: true };
+    }
+    window.__stripUiChanged = false;
     const describe = (el) => (el.id ? `#${el.id}` : (typeof el.className === 'string' && el.className)
       ? `.${el.className.split(/\s+/).filter(Boolean).join('.')}`
       : el.tagName);
@@ -626,8 +772,8 @@ export async function sweepHudText(page) {
       }
     }
     const leftovers = visibleTextOwners().map((x) => ({ text: x.text, selector: x.selector })).slice(0, 10);
-    return { hidden: hidden.slice(0, 40), verified: leftovers.length === 0, leftovers };
-  });
+    return { hidden: hidden.slice(0, 40), verified: leftovers.length === 0, leftovers, skipped: false };
+  }, onlyIfChanged);
 }
 
 /**
@@ -769,6 +915,85 @@ export function cleanTargetDirectory(targetDir, authorizedRoot) {
   }
 }
 
+/**
+ * The real click-through (scripts/check-crucible-route.mjs), from a booted page to a Crucible run
+ * with live hostiles: title cinematic -> main menu -> Crucible -> swarm ruleset -> hull card ->
+ * seed -> "Hold the line" -> flight mode -> run phase active -> a live enemy. Exported so a probe
+ * can stand in the same room the strip is photographed in without copying the route.
+ *
+ * @param {import('playwright').Page} page
+ * @param {{ hullId: string, seed: number|string, log?: Function }} options
+ */
+export async function driveRealCrucibleRoute(page, { hullId, seed, log = () => {} }) {
+  // 1. The title cinematic owns focus and defers the main menu until it is dismissed. Clicking
+  //    it is what a player does; waiting out its 18 s auto-dismiss is what the old capture
+  //    accidentally never did. bringToFront first: the dismissal fence starts suspended when the
+  //    document does not have focus, and a suspended fence ignores the click.
+  await page.bringToFront();
+  await page.evaluate(() => {
+    const el = document.getElementById('cinematic-splash');
+    if (el) el.click();
+  });
+  // The splash lingers ~700 ms fading out (intro.css .is-closing); the menu wait covers it.
+  await page.waitForFunction(() => {
+    const el = document.querySelector('[data-screen="mainMenu"]');
+    return !!el && getComputedStyle(el).display !== 'none';
+  }, null, { timeout: 45000 });
+  log('main menu');
+
+  // 2. Menu buttons stay disabled until their screen module finishes its dynamic import.
+  await page.waitForFunction(() => {
+    const b = [...document.querySelectorAll('#screens button')]
+      .find((x) => x.textContent.replace(/\s+/g, ' ').trim() === 'Crucible');
+    return !!b && !b.disabled;
+  }, null, { timeout: 45000 });
+  const doorOpened = await clickButtonByText(page, 'Crucible');
+  if (!doorOpened) throw new Error('the Crucible button did not click');
+  await page.waitForFunction(
+    () => document.querySelector('#screens .sf-crd-hull') && document.querySelector('#screens .sf-crd-seed input'),
+    null, { timeout: 20000 },
+  );
+  log('crucible door');
+
+  // 3. Ruleset: swarm is the default and is what the button plays; select it explicitly anyway.
+  await page.evaluate(() => {
+    const card = [...document.querySelectorAll('#screens .sf-crd-mode')].find((b) => b.dataset.ruleset === 'swarm');
+    if (card) card.click();
+  });
+
+  // 4. Hull and seed. The hull cards carry data-starter-id, so the loadout is selected by id,
+  //    never by matching a label that a copy pass could rewrite.
+  const hullPicked = await page.evaluate((wanted) => {
+    const cards = [...document.querySelectorAll('#screens .sf-crd-hull')];
+    const card = cards.find((b) => b.dataset.starterId === wanted);
+    if (!card) return { ok: false, available: cards.map((c) => c.dataset.starterId) };
+    card.click();
+    return { ok: true, available: cards.map((c) => c.dataset.starterId) };
+  }, hullId);
+  if (!hullPicked.ok) {
+    throw new Error(`hull '${hullId}' is not on the Crucible door; it offers: ${hullPicked.available.join(', ')}`);
+  }
+  await page.evaluate((s) => { document.querySelector('#screens .sf-crd-seed input').value = String(s); }, seed);
+
+  // 5. Launch. The verb is the swarm ruleset's own button text.
+  if (!(await clickButtonByText(page, 'Hold the line'))) throw new Error('"Hold the line" did not click');
+
+  // ── The wait chain: mode, then phase, then a live enemy ────────────────────────────────────
+  // Photographing before the third condition gives an empty arena, and an empty arena is exactly
+  // the picture that lets a strip pass without a game in it.
+  await page.waitForFunction(() => window.SF.state.mode === 'flight', null, { timeout: 120000 });
+  await page.waitForFunction(
+    () => window.SF.state.run && window.SF.state.run.phase === 'active',
+    null, { timeout: 90000 },
+  );
+  await page.waitForFunction(
+    () => window.SF.state.entityList.some((e) => e.alive && e.data && e.data.runCohort === 'survival'),
+    null, { timeout: 60000 },
+  );
+  await page.waitForSelector('#gl-canvas', { timeout: 15000 });
+  log('in flight with live hostiles');
+}
+
 export async function captureFrameStrip({
   bench = 'crucible',
   scenarioId = 'swarm_idle',
@@ -781,6 +1006,14 @@ export async function captureFrameStrip({
   durationS = null,
   verbose = false,
   serverPort = 8520,
+  screencastEveryNthFrame = SCREENCAST_EVERY_NTH_FRAME,
+  /** Extra Chrome switches (a GPU backend, say) appended after CHROME_ARGS; recorded in the manifest. */
+  extraChromeArgs = [],
+  /**
+   * Where the served game keeps player saves. Defaults to an empty directory under the strip so a
+   * capture never reads or writes the owner's real saves (server.js mounts the real store otherwise).
+   */
+  playerStoreDir = null,
 } = {}) {
   const safeBench = assertSafeLeafToken(bench, 'bench');
   const safeScenarioId = assertSafeLeafToken(scenarioId, 'scenarioId');
@@ -824,9 +1057,14 @@ export async function captureFrameStrip({
   let server = null;
   let browser = null;
   try {
-    server = await startDevServer(serverPort);
+    // An empty SPACEFACE_PLAYER_STORE_DIR is the server's explicit unmount: the capture's browser
+    // context is fresh every run and never touches the owner's real save drawer.
+    server = await startDevServer(serverPort, {
+      env: { SPACEFACE_PLAYER_STORE_DIR: playerStoreDir == null ? '' : String(playerStoreDir) },
+    });
     const { chromium } = await loadPlaywright();
-    browser = await chromium.launch({ headless: !headed, args: [...CHROME_ARGS] });
+    const chromeArgs = [...CHROME_ARGS, ...(Array.isArray(extraChromeArgs) ? extraChromeArgs : [])];
+    browser = await chromium.launch({ headless: !headed, args: chromeArgs });
     const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
     const page = await context.newPage();
 
@@ -850,74 +1088,7 @@ export async function captureFrameStrip({
     });
     log('booted');
 
-    // ── The real click-through (scripts/check-crucible-route.mjs) ──────────────────────────────
-    // 1. The title cinematic owns focus and defers the main menu until it is dismissed. Clicking
-    //    it is what a player does; waiting out its 18 s auto-dismiss is what the old capture
-    //    accidentally never did. bringToFront first: the dismissal fence starts suspended when the
-    //    document does not have focus, and a suspended fence ignores the click.
-    await page.bringToFront();
-    await page.evaluate(() => {
-      const el = document.getElementById('cinematic-splash');
-      if (el) el.click();
-    });
-    // The splash lingers ~700 ms fading out (intro.css .is-closing); the menu wait covers it.
-    await page.waitForFunction(() => {
-      const el = document.querySelector('[data-screen="mainMenu"]');
-      return !!el && getComputedStyle(el).display !== 'none';
-    }, null, { timeout: 45000 });
-    log('main menu');
-
-    // 2. Menu buttons stay disabled until their screen module finishes its dynamic import.
-    await page.waitForFunction(() => {
-      const b = [...document.querySelectorAll('#screens button')]
-        .find((x) => x.textContent.replace(/\s+/g, ' ').trim() === 'Crucible');
-      return !!b && !b.disabled;
-    }, null, { timeout: 45000 });
-    const doorOpened = await clickButtonByText(page, 'Crucible');
-    if (!doorOpened) throw new Error('the Crucible button did not click');
-    await page.waitForFunction(
-      () => document.querySelector('#screens .sf-crd-hull') && document.querySelector('#screens .sf-crd-seed input'),
-      null, { timeout: 20000 },
-    );
-    log('crucible door');
-
-    // 3. Ruleset: swarm is the default and is what the button plays; select it explicitly anyway.
-    await page.evaluate(() => {
-      const card = [...document.querySelectorAll('#screens .sf-crd-mode')].find((b) => b.dataset.ruleset === 'swarm');
-      if (card) card.click();
-    });
-
-    // 4. Hull and seed. The hull cards carry data-starter-id, so the loadout is selected by id,
-    //    never by matching a label that a copy pass could rewrite.
-    const hullPicked = await page.evaluate((wanted) => {
-      const cards = [...document.querySelectorAll('#screens .sf-crd-hull')];
-      const card = cards.find((b) => b.dataset.starterId === wanted);
-      if (!card) return { ok: false, available: cards.map((c) => c.dataset.starterId) };
-      card.click();
-      return { ok: true, available: cards.map((c) => c.dataset.starterId) };
-    }, hullId);
-    if (!hullPicked.ok) {
-      throw new Error(`hull '${hullId}' is not on the Crucible door; it offers: ${hullPicked.available.join(', ')}`);
-    }
-    await page.evaluate((s) => { document.querySelector('#screens .sf-crd-seed input').value = String(s); }, seed);
-
-    // 5. Launch. The verb is the swarm ruleset's own button text.
-    if (!(await clickButtonByText(page, 'Hold the line'))) throw new Error('"Hold the line" did not click');
-
-    // ── The wait chain: mode, then phase, then a live enemy ────────────────────────────────────
-    // Photographing before the third condition gives an empty arena, and an empty arena is exactly
-    // the picture that lets a strip pass without a game in it.
-    await page.waitForFunction(() => window.SF.state.mode === 'flight', null, { timeout: 120000 });
-    await page.waitForFunction(
-      () => window.SF.state.run && window.SF.state.run.phase === 'active',
-      null, { timeout: 90000 },
-    );
-    await page.waitForFunction(
-      () => window.SF.state.entityList.some((e) => e.alive && e.data && e.data.runCohort === 'survival'),
-      null, { timeout: 60000 },
-    );
-    await page.waitForSelector('#gl-canvas', { timeout: 15000 });
-    log('in flight with live hostiles');
+    await driveRealCrucibleRoute(page, { hullId, seed, log });
 
     // ── HUD text off, and proof that it is off ────────────────────────────────────────────────
     await page.addStyleTag({ content: HUD_TEXT_OFF_CSS });
@@ -950,16 +1121,44 @@ export async function captureFrameStrip({
     // ── Moment markers off the real bus ───────────────────────────────────────────────────────
     await page.evaluate((events) => {
       window.__stripMoments = [];
+      window.__stripShotsFired = 0;
+      window.SF.bus.on('combat:fire', (p) => {
+        if (p && p.ownerId != null && p.ownerId === window.SF.state.playerId) window.__stripShotsFired += 1;
+      });
       window.__stripRunStartTick = window.SF.state.tick;
+      // What kind of thing the OTHER party was: 'asteroid', 'ship', 'station', ... A moment that
+      // says a ship met a rock is context the frames themselves carry; it never says what the rule
+      // did about it — that is the critic's question, not the manifest's answer.
+      const typeOf = (id) => {
+        const st = window.SF.state;
+        const e = id != null && st.entities ? st.entities.get(id) : null;
+        return e && e.type ? String(e.type) : null;
+      };
       for (const name of events) {
         window.SF.bus.on(name, (p) => {
           const st = window.SF.state;
+          if (name === 'projectile:hit' && !(p && p.ownerId != null && p.ownerId === st.playerId)) return;
+          let surface = null;
+          if (name === 'physics:impact' && p) {
+            const a = typeOf(p.aId);
+            const b = typeOf(p.bId);
+            surface = p.playerInvolved
+              ? (p.aId === st.playerId ? b : a)
+              : [a, b].filter(Boolean).join('|') || null;
+          } else if (name === 'combat:collisionConsequence' && p && p.surface) {
+            surface = String(p.surface);
+          } else if (name === 'projectile:hit' && p) {
+            surface = typeOf(p.targetId);
+          }
+          const packet = p && p.damagePacket;
+          const impulse = packet && (packet.impulse ?? packet.momentum);
           window.__stripMoments.push({
             type: name,
             tick: Math.max(0, Math.trunc(st.tick) - window.__stripRunStartTick),
             simTime: Number(st.simTime.toFixed(4)),
-            playerInvolved: !!(p && p.playerInvolved),
-            magnitude: Number(((p && (p.dp ?? p.impulse ?? p.damage)) || 0).toFixed(3)),
+            playerInvolved: name === 'projectile:hit' ? true : !!(p && p.playerInvolved),
+            magnitude: Number(((p && (p.dp ?? p.impulse ?? p.exchangedMomentum ?? impulse ?? p.damage)) || 0).toFixed(3)),
+            surface,
           });
         });
       }
@@ -1009,6 +1208,31 @@ export async function captureFrameStrip({
       + `hull ${hulls.hullPx.toFixed(0)}px, ${hulls.brightPx} lit pixels on it, `
       + `${hulls.hostilesWithParts} hostiles drawing`);
 
+    // A scenario's warmup pays one-off admission costs (the first shot's muzzle and impact
+    // families) before the settle wait, so the strip is of the verb and not of the game's first
+    // hiccup. It runs through the same input path as the tape and is recorded in the manifest.
+    let cdp = null;
+    const warmup = [...(scenario.warmup || [])].sort((a, b) => a.atS - b.atS);
+    const warmupEvents = [];
+    if (warmup.length) {
+      const warmDriver = createInputDriver(page, { getCdp: () => cdp, log });
+      const w0 = Date.now();
+      let wi = 0;
+      while (wi < warmup.length) {
+        const elapsed = (Date.now() - w0) / 1000;
+        if (warmup[wi].atS > elapsed) { await page.waitForTimeout(50); continue; }
+        const step = warmup[wi++];
+        try {
+          await warmDriver.runStep(step);
+          warmupEvents.push({ atS: step.atS, input: describeTapeStep(step) });
+        } catch (e) {
+          log(`warmup step failed: ${e.message}`);
+        }
+      }
+      await warmDriver.releaseAll();
+      log(`warmup done: ${warmupEvents.map((e) => e.input).join('; ')}`);
+    }
+
     // Hull admission triggers deferred shader work. A fast empty arena before that work
     // is not readiness: the observed 72% window dropped to 14% after hulls arrived.
     const settle = await waitForRealtime(page, { log });
@@ -1049,6 +1273,8 @@ export async function captureFrameStrip({
         const hostilePartsDrawn = tally.hostiles || 0;
         const hostilesDrawing = tally.hostilesDrawing || 0;
         window.__stripSamples.push({
+          playerRot: p && Number.isFinite(p.rot) ? Number(p.rot.toFixed(4)) : null,
+          tetherActive: !!(st.player && st.player.tether && st.player.tether.active),
           hullPartsDrawn,
           hostilePartsDrawn,
           hostilesDrawing,
@@ -1069,12 +1295,15 @@ export async function captureFrameStrip({
       };
       requestAnimationFrame(rec);
     });
+    // The recorder is itself a per-frame cost; measure it rather than assume it is free.
+    const realtimeAfterRecorder = await measureRealtime(page, 2000);
+    log(`with the in-page recorder running the game runs at ${(realtimeAfterRecorder * 100).toFixed(0)}% of real time`);
 
     // ── Stream frames off the compositor (passive; does not stall the renderer) ────────────────
     // MEASURED: an element PNG screenshot costs ~2,100 ms and drops the game to 43 % of real time.
     // A CDP screencast is passive — the compositor hands over frames it already produced — and held
     // ~12 fps at 71 % of real time in the same probe.
-    const cdp = await context.newCDPSession(page);
+    cdp = await context.newCDPSession(page);
     const raw = [];
     cdp.on('Page.screencastFrame', (f) => {
       raw.push({ wallMs: Date.now(), data: f.data });
@@ -1082,19 +1311,25 @@ export async function captureFrameStrip({
     });
     // What the game runs at with nobody photographing it — measured, not assumed, so the cost of
     // the capture itself is always a number in the receipt rather than an argument.
-    const preShotA = await page.evaluate(() => window.SF.state.simTime);
-    const preShotT0 = Date.now();
-    await page.waitForTimeout(3000);
-    const preShotB = await page.evaluate(() => window.SF.state.simTime);
-    const realtimeBeforeScreencast = (preShotB - preShotA) / ((Date.now() - preShotT0) / 1000);
-    log(`without the screencast the game runs at ${(realtimeBeforeScreencast * 100).toFixed(0)}% of real time`);
+    const realtimeBeforeScreencast = await measureRealtime(page, 3000);
+    log(`with the debugger attached but no screencast the game runs at ${(realtimeBeforeScreencast * 100).toFixed(0)}% of real time`);
 
+    const everyNthFrame = Math.max(1, Math.trunc(Number(screencastEveryNthFrame) || 1));
     await cdp.send('Page.startScreencast', {
-      format: FRAME_FORMAT, quality: FRAME_QUALITY, maxWidth: 1280, maxHeight: 720, everyNthFrame: 1,
+      format: FRAME_FORMAT, quality: FRAME_QUALITY, maxWidth: 1280, maxHeight: 720, everyNthFrame,
     });
 
     const tape = [...(scenario.tape || [])].sort((a, b) => a.atS - b.atS);
     let tapeIdx = 0;
+    // What the pilot's hands did, stamped with the sim time it happened at, so a critic can line a
+    // key press up with the frames (the tape is scheduled by wall clock; frames are indexed by
+    // simTime). This is the scenario's own definition, the same kind of fact as the arena and the
+    // hull; it never says what the game did in answer.
+    const inputEvents = [];
+    // The input driver: keys and the cursor through the real input path, the cursor kept on the
+    // nearest hostile or rock when a tape step asks, and the press itself dispatched so that it
+    // still reaches the canvas while the screencast is running (see createInputDriver).
+    const driver = createInputDriver(page, { getCdp: () => cdp, log });
     let lastSweepS = -1;
     let hudSweptDuringRun = 0;
     let stoppedBecause = 'duration reached';
@@ -1108,14 +1343,22 @@ export async function captureFrameStrip({
       while (tapeIdx < tape.length && tape[tapeIdx].atS <= elapsedS) {
         const step = tape[tapeIdx++];
         try {
-          if (step.keyDown) await page.keyboard.down(step.keyDown);
-          if (step.keyUp) await page.keyboard.up(step.keyUp);
-          if (step.mouseDown) { await page.mouse.move(880, 300); await page.mouse.down(); }
-          if (step.mouseUp) await page.mouse.up();
+          await driver.runStep(step);
+          const stamp = await page.evaluate(() => ({
+            simTime: Number(window.SF.state.simTime.toFixed(3)),
+            tick: Math.max(0, Math.trunc(window.SF.state.tick) - window.__stripRunStartTick),
+          }));
+          inputEvents.push({
+            atS: step.atS,
+            simTime: stamp.simTime,
+            tick: stamp.tick,
+            input: describeTapeStep(step),
+          });
         } catch (e) {
           log(`input step failed: ${e.message}`);
         }
       }
+      await driver.pollAim();
       const live = await page.evaluate(() => ({
         mode: window.SF.state.mode,
         phase: (window.SF.state.run && window.SF.state.run.phase) || null,
@@ -1130,7 +1373,7 @@ export async function captureFrameStrip({
         lastSweepS = Math.floor(elapsedS);
         // A LOD swap mid-run introduces a mesh nobody is counting; hook it before it matters.
         await installDrawHooks(page);
-        const midSweep = await sweepHudText(page);
+        const midSweep = await sweepHudText(page, { onlyIfChanged: true });
         if (midSweep.hidden.length) {
           hudSweptDuringRun += midSweep.hidden.length;
           log(`hud sweep at ${elapsedS.toFixed(0)}s hid ${midSweep.hidden.length}: `
@@ -1140,13 +1383,16 @@ export async function captureFrameStrip({
       await page.waitForTimeout(250);
     }
 
-    await cdp.send('Page.stopScreencast').catch(() => {});
-    for (const k of ['KeyW', 'KeyA', 'KeyS', 'KeyD']) { try { await page.keyboard.up(k); } catch { /* not held */ } }
-    try { await page.mouse.up(); } catch { /* not held */ }
-
     const captureWallS = (Date.now() - wallStart) / 1000;
     const simAtCaptureEnd = await page.evaluate(() => window.SF.state.simTime);
     const realtimeFraction = captureWallS > 0 ? (simAtCaptureEnd - simAtCaptureStart) / captureWallS : 0;
+
+    await cdp.send('Page.stopScreencast').catch(() => {});
+    await driver.releaseAll();
+    // With the screencast stopped and the debugger still attached: if the game springs back, the
+    // encoding was the cost; if it stays slow, something else in the run (a wave, a stall) was.
+    const realtimeAfterScreencast = await measureRealtime(page, 3000);
+    log(`with the screencast stopped the game runs at ${(realtimeAfterScreencast * 100).toFixed(0)}% of real time`);
 
     const pageSamples = await page.evaluate(() => {
       window.__stripRecording = false;
@@ -1175,6 +1421,7 @@ export async function captureFrameStrip({
     if (samples.length === 0) throw new Error('no streamed frame could be aligned to a live sample');
 
     const rawMoments = await page.evaluate(() => window.__stripMoments || []);
+    const playerShotsFired = await page.evaluate(() => window.__stripShotsFired || 0);
     // TWO lists, because they answer two different questions and conflating them broke both.
     //
     //   `moments`       — every moment since the run began, including the minutes spent waiting for
@@ -1205,6 +1452,9 @@ export async function captureFrameStrip({
         file: name,
         tick: s.tick,
         simTime: s.simTime,
+        // Wall-clock seconds since the first streamed frame, so slow motion can be located, not
+        // just averaged: simTime against wallS says how fast the game was running right here.
+        wallS: Number(((s.wallMs - samples[0].wallMs) / 1000).toFixed(3)),
         phase: s.phase,
         wave: s.wave,
         hostilesAlive: s.hostilesAlive,
@@ -1212,6 +1462,8 @@ export async function captureFrameStrip({
         playerSpeed: s.playerSpeed,
         playerOnScreen: s.playerOnScreen,
         playerScreenXY: s.playerScreenXY,
+        playerRot: s.playerRot ?? null,
+        tetherActive: s.tetherActive === true,
         // playerOnScreen is a frustum claim; these two are render evidence.
         hullPartsDrawn: s.hullPartsDrawn ?? null,
         hostilesDrawing: s.hostilesDrawing ?? null,
@@ -1252,6 +1504,9 @@ export async function captureFrameStrip({
 
     const spanS = frames.length > 1 ? frames[frames.length - 1].simTime - frames[0].simTime : 0;
     const contactSheet = await writeContactSheet(context, targetDir, frames, join(receiptDir, 'contact-sheet.png'));
+    const realtimeSegments = realtimeBySegment(frames);
+    const visibleJitter = measureVisibleJitter(frames, momentsInSpan);
+    const tetherFrames = frames.filter((f) => f.tetherActive).length;
 
     const manifest = {
       schema: 'spaceface.frameStripManifest.v2',
@@ -1305,7 +1560,18 @@ export async function captureFrameStrip({
         + ' (passive; the compositor hands over frames it already drew)',
       frameFormat: FRAME_FORMAT,
       frameQuality: FRAME_FORMAT === 'jpeg' ? FRAME_QUALITY : null,
-      // How much of the slowdown is the game and how much is the photographer.
+      screencastEveryNthFrame: everyNthFrame,
+      chromeArgs,
+      // How much of the slowdown is the game and how much is the photographer, stage by stage:
+      // the drawn game settled with nobody watching, then with the in-page recorder, then with the
+      // debugger attached, then with the screencast encoding. Each is simTime over wall clock.
+      realtimeStages: {
+        settled: Number(settle.fraction.toFixed(3)),
+        afterRecorder: Number(realtimeAfterRecorder.toFixed(3)),
+        beforeScreencast: Number(realtimeBeforeScreencast.toFixed(3)),
+        duringScreencast: Number(realtimeFraction.toFixed(3)),
+        afterScreencast: Number(realtimeAfterScreencast.toFixed(3)),
+      },
       realtimeBeforeScreencast: Number(realtimeBeforeScreencast.toFixed(3)),
       sampleHz: SAMPLE_HZ,
       baselineFps: 4,
@@ -1325,7 +1591,20 @@ export async function captureFrameStrip({
       realtimeFraction: Number(realtimeFraction.toFixed(3)),
       normalSpeed: realtimeFraction >= NORMAL_SPEED_FLOOR,
       normalSpeedFloor: NORMAL_SPEED_FLOOR,
+      // Where the strip ran slow, in five-second wall-clock segments, so a strip under the floor
+      // can be diagnosed (the boost that spawns a new rock field, a first-fire stall) rather than
+      // recaptured blind.
+      realtimeSegments,
+      // How many shots the player fired during the strip (combat:fire owned by the player) — a
+      // shove strip with zero is a strip of nothing, whatever its frames show.
+      playerShotsFired,
+      // Frames on which the Massline was live, for the rope tape.
+      tetherActiveFrames: tetherFrames,
+      // B13's visible-jitter clause, measured from the pictures: after each contact the player was
+      // in, does the hull's heading or its motion on the glass reverse within half a second?
+      visibleJitter,
       streamedFrames: raw.length,
+      deliveredFps: Number((raw.length / Math.max(captureWallS, 1e-6)).toFixed(2)),
       pageSamples: pageSamples.length,
       alignWorstMs,
       stoppedBecause,
@@ -1340,6 +1619,10 @@ export async function captureFrameStrip({
       stripDir: targetDir,
       receiptDir,
       contactSheet,
+      inputTape: tape,
+      inputEvents,
+      warmup: warmupEvents,
+      pressMethod: driver.pressMethod,
       moments,
       momentsInSpan,
       frames,
@@ -1352,6 +1635,220 @@ export async function captureFrameStrip({
     if (browser) await browser.close().catch(() => {});
     if (server) server.kill();
   }
+}
+
+/**
+ * simTime advanced over wall clock, per wall-clock segment of the retained frames. Pure.
+ *
+ * @param {Array<{simTime:number, wallS:number}>} frames
+ * @param {number} [segmentS]
+ * @returns {Array<{fromWallS:number, toWallS:number, realtime:number}>}
+ */
+export function realtimeBySegment(frames, segmentS = 5) {
+  const out = [];
+  if (!Array.isArray(frames) || frames.length < 2) return out;
+  const last = frames[frames.length - 1];
+  for (let from = 0; from < last.wallS; from += segmentS) {
+    const to = from + segmentS;
+    const inside = frames.filter((f) => f.wallS >= from && f.wallS <= to);
+    if (inside.length < 2) continue;
+    const a = inside[0];
+    const b = inside[inside.length - 1];
+    const wall = b.wallS - a.wallS;
+    if (!(wall > 0)) continue;
+    out.push({ fromWallS: from, toWallS: Number(b.wallS.toFixed(2)), realtime: Number(((b.simTime - a.simTime) / wall).toFixed(3)) });
+  }
+  return out;
+}
+
+/**
+ * Where the nearest live hostile (or rock) is on the glass, and the cursor moved onto it.
+ * Real pointer events, never a state write; null when nothing of that kind is on screen.
+ */
+export async function aimAtNearest(page, kind) {
+  const target = await page.evaluate((kind) => {
+    const st = window.SF.state;
+    const THREE = window.SF.THREE;
+    const cam = st.render && st.render.camera;
+    const p = st.entities && st.playerId != null ? st.entities.get(st.playerId) : null;
+    if (!THREE || !cam || !p || !p.pos) return null;
+    const v = new THREE.Vector3();
+    let best = null;
+    for (const e of st.entityList) {
+      if (!e.alive || !e.pos || e.id === st.playerId) continue;
+      if (kind === 'asteroid' ? e.type !== 'asteroid' : !(e.data && e.data.runCohort === 'survival')) continue;
+      v.set(e.pos.x, e.pos.y || 0, e.pos.z).project(cam);
+      if (Math.abs(v.x) > 1 || Math.abs(v.y) > 1 || v.z >= 1) continue;
+      const d = Math.hypot(e.pos.x - p.pos.x, e.pos.z - p.pos.z);
+      if (!best || d < best.d) {
+        best = { d, x: (v.x * 0.5 + 0.5) * window.innerWidth, y: (0.5 - v.y * 0.5) * window.innerHeight };
+      }
+    }
+    return best;
+  }, kind);
+  if (target) await page.mouse.move(target.x, target.y);
+  return target;
+}
+
+/**
+ * The press. MEASURED 2026-09-05: while a CDP screencast is running on the page, Playwright's
+ * page.mouse.down() is unreliable — three seconds of a held button aimed at a hostile produced zero
+ * shots (state.input.fire stayed false) in one boot, where the same press with no screencast
+ * produced five shots and five hits, and a press dispatched through the screencast's own debugger
+ * session produced three of three. The press therefore goes through that session when one exists.
+ * It is still a pointer event into the page and still the canvas listener; never a state write.
+ * The manifest records which path was used.
+ */
+export const PRESS_METHOD = Object.freeze({ playwright: 'playwright-mouse', cdp: 'cdp-session-mouse' });
+
+export function createInputDriver(page, { getCdp = () => null, log = () => {} } = {}) {
+  const state = { aimMode: null, pointer: { x: 880, y: 300 }, pressMethod: null };
+  const moveTo = async (x, y) => {
+    state.pointer = { x, y };
+    await page.mouse.move(x, y);
+  };
+  const aimForMode = async () => {
+    const kind = state.aimMode === 'nearestHostile' ? 'hostile' : state.aimMode === 'nearestAsteroid' ? 'asteroid' : null;
+    if (!kind) return null;
+    const t = await aimAtNearest(page, kind);
+    if (t) state.pointer = { x: t.x, y: t.y };
+    return t;
+  };
+  const pressDown = async () => {
+    const cdp = getCdp();
+    const { x, y } = state.pointer;
+    if (cdp) {
+      state.pressMethod = PRESS_METHOD.cdp;
+      await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y });
+      await cdp.send('Input.dispatchMouseEvent', { type: 'mousePressed', x, y, button: 'left', buttons: 1, clickCount: 1 });
+    } else {
+      state.pressMethod = PRESS_METHOD.playwright;
+      await page.mouse.down();
+    }
+  };
+  const pressUp = async () => {
+    const cdp = getCdp();
+    const { x, y } = state.pointer;
+    if (cdp) {
+      await cdp.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x, y, button: 'left', buttons: 0, clickCount: 1 }).catch(() => {});
+    } else {
+      await page.mouse.up().catch(() => {});
+    }
+  };
+  return {
+    state,
+    get pressMethod() { return state.pressMethod; },
+    async runStep(step) {
+      if (step.keyDown) await page.keyboard.down(step.keyDown);
+      if (step.keyUp) await page.keyboard.up(step.keyUp);
+      if (Array.isArray(step.mouseMove)) await moveTo(step.mouseMove[0], step.mouseMove[1]);
+      if ('aim' in step) {
+        state.aimMode = step.aim || null;
+        await aimForMode();
+      }
+      if (step.mouseDown) {
+        if (!(await aimForMode()) && !Array.isArray(step.mouseMove)) await moveTo(880, 300);
+        await pressDown();
+      }
+      if (step.mouseUp) await pressUp();
+    },
+    async pollAim() {
+      if (state.aimMode) await aimForMode();
+    },
+    async releaseAll() {
+      for (const k of ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ShiftLeft', 'Space']) { try { await page.keyboard.up(k); } catch { /* not held */ } }
+      await pressUp();
+      try { await page.mouse.up(); } catch { /* not held */ }
+      log('inputs released');
+    },
+  };
+}
+
+/** Half a second after a contact is where a wobble would show. */
+export const VISIBLE_JITTER_WINDOW_S = 0.5;
+
+function wrapAngle(a) {
+  let x = a;
+  while (x > Math.PI) x -= 2 * Math.PI;
+  while (x < -Math.PI) x += 2 * Math.PI;
+  return x;
+}
+
+/**
+ * B13 (FEEL_CONTRACT §B): "never produces visible jitter". Measured from the retained frames, the
+ * way a viewer sees it: for each contact the player was in, the frames inside the next half second;
+ * a heading reversal is the hull's yaw changing direction between consecutive frames, a motion
+ * reversal is the hull's movement on the glass turning back on itself. Pure over the manifest.
+ *
+ * @returns {{measured:boolean, windows:number, headingReversals:number, screenReversals:number, events:number, windowS:number, cadenceFpsMin:number|null, note:string}}
+ */
+export function measureVisibleJitter(frames, momentsInSpan) {
+  const contacts = (momentsInSpan || []).filter((m) => m && m.playerInvolved
+    && (m.type === 'physics:impact' || m.type === 'combat:collisionConsequence'));
+  const out = { measured: false, windows: 0, headingReversals: 0, screenReversals: 0, events: 0, windowS: VISIBLE_JITTER_WINDOW_S, cadenceFpsMin: null, note: '' };
+  if (!Array.isArray(frames) || frames.length < 3) { out.note = 'too few frames'; return out; }
+  if (contacts.length === 0) { out.measured = true; out.note = 'no contact involved the player inside the strip'; return out; }
+  let cadenceMin = null;
+  for (const m of contacts) {
+    const t = Number(m.simTime) || 0;
+    const w = frames.filter((f) => f.simTime > t && f.simTime <= t + VISIBLE_JITTER_WINDOW_S);
+    if (w.length < 3) continue;
+    out.windows += 1;
+    const fps = (w.length - 1) / Math.max(1e-6, w[w.length - 1].simTime - w[0].simTime);
+    cadenceMin = cadenceMin == null ? fps : Math.min(cadenceMin, fps);
+    let headingRev = 0;
+    let screenRev = 0;
+    let prevDRot = null;
+    let prevDx = null;
+    let prevDy = null;
+    for (let i = 1; i < w.length; i++) {
+      const a = w[i - 1];
+      const b = w[i];
+      if (Number.isFinite(a.playerRot) && Number.isFinite(b.playerRot)) {
+        const dRot = wrapAngle(b.playerRot - a.playerRot);
+        if (prevDRot != null && Math.abs(dRot) > 1e-3 && Math.abs(prevDRot) > 1e-3 && Math.sign(dRot) !== Math.sign(prevDRot)) headingRev += 1;
+        if (Math.abs(dRot) > 1e-3) prevDRot = dRot;
+      }
+      if (Array.isArray(a.playerScreenXY) && Array.isArray(b.playerScreenXY)) {
+        const dx = b.playerScreenXY[0] - a.playerScreenXY[0];
+        const dy = b.playerScreenXY[1] - a.playerScreenXY[1];
+        const moved = Math.hypot(dx, dy) > 0.004;
+        if (prevDx != null && moved && (dx * prevDx + dy * prevDy) < 0) screenRev += 1;
+        if (moved) { prevDx = dx; prevDy = dy; }
+      }
+    }
+    out.headingReversals += headingRev;
+    out.screenReversals += screenRev;
+    if (headingRev > 0 || screenRev > 0) out.events += 1;
+  }
+  out.measured = out.windows > 0;
+  out.cadenceFpsMin = cadenceMin == null ? null : Number(cadenceMin.toFixed(2));
+  out.note = out.measured
+    ? `${out.windows} contact window(s) of ${VISIBLE_JITTER_WINDOW_S}s at >= ${out.cadenceFpsMin} fps; a reversal inside a window is a wobble a viewer sees`
+    : 'contacts happened but no window held three frames';
+  return out;
+}
+
+/** A tape step in the words a pilot would use: "forward held", "boost released", "fire held". */
+export function describeTapeStep(step) {
+  const names = {
+    KeyW: 'forward', KeyS: 'reverse/brake', KeyA: 'turn left', KeyD: 'turn right',
+    ShiftLeft: 'boost', ShiftRight: 'boost', Space: 'Massline (latch/cut)', KeyF: 'Massline (latch/cut)',
+  };
+  const parts = [];
+  if (step.keyDown) parts.push(`${names[step.keyDown] || step.keyDown} held`);
+  if (step.keyUp) parts.push(`${names[step.keyUp] || step.keyUp} released`);
+  if (Array.isArray(step.mouseMove)) parts.push('aim moved');
+  if ('aim' in step) {
+    parts.push(step.aim === 'nearestHostile' ? 'cursor kept on the nearest hostile'
+      : step.aim === 'nearestAsteroid' ? 'cursor kept on the nearest rock' : 'cursor parked');
+  }
+  if (step.keyDown === 'Space' || step.keyUp === 'Space') {
+    return parts.map((x) => x.replace(/^Space /, 'Massline ')).join(', ');
+  }
+  if (step.mouseDown) parts.push('fire held');
+  if (step.mouseUp) parts.push('fire released');
+  return parts.join(', ') || 'nothing';
 }
 
 async function clickButtonByText(page, label) {

@@ -16,7 +16,7 @@
 // Bars: design/FEEL_CONTRACT.md §B.
 
 import { mkdirSync, writeFileSync, readFileSync, readdirSync, lstatSync } from 'node:fs';
-import { join, basename } from 'node:path';
+import { join, basename, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
@@ -255,6 +255,9 @@ Options:
                         name it rather than pay for the whole sweep. Unknown-only selections fail
                         nonzero. A mixed known+unknown request runs the known subset and keeps
                         unknown ids explicit in the rollup.
+  --knock-strip <manifest.json>
+                        A headed strip (frameStripManifest.v2, normal speed) of the same Crucible cell;
+                        its visible-jitter measurement feeds B13's jitter clause for that run. Repeatable.
   --quick               Seconds-scale smoke: 1 crucible arena x 1 loadout x 1 seed, verbs full, flight 1 seed
   --json                Print the rollup JSON to stdout (files are still written)
   --out <dir>           Write receipts to <dir> instead of the default receipts folder
@@ -269,7 +272,7 @@ Options:
 // ── argument parsing ─────────────────────────────────────────────────────────────
 
 function parseArgs(list) {
-  const args = { bench: null, seeds: null, quick: false, json: false, out: null, diff: null, scenarioIds: null };
+  const args = { bench: null, seeds: null, quick: false, json: false, out: null, diff: null, scenarioIds: null, knockStrips: [] };
   for (let i = 0; i < list.length; i++) {
     const a = list[i];
     if (a === '--crucible' || a === '--flight' || a === '--verbs') {
@@ -282,6 +285,10 @@ function parseArgs(list) {
       args.scenarioIds = parseIdList(a.slice('--scenarios='.length));
     } else if (a === '--scenarios') {
       args.scenarioIds = parseIdList(list[++i]);
+    } else if (a === '--knock-strip') {
+      const p = list[++i];
+      if (!p) fail('--knock-strip requires a strip-manifest.json path');
+      args.knockStrips.push(p);
     } else if (a === '--quick') {
       args.quick = true;
     } else if (a === '--json') {
@@ -363,6 +370,7 @@ async function runMeasureMode(args, outDir, isoDate) {
     const seeds = pickSeeds(args, CRUCIBLE_DEFAULT_SEEDS);
     if (!args.json) console.log(`► Crucible Feel Bench (${arenas.length} arena x ${loadouts.length} loadout x ${seeds.length} seed x ${CRUCIBLE_WAVE_COUNT} waves)...`);
     const result = await runCrucibleBench({ arenas, loadouts, seeds, waveCount: CRUCIBLE_WAVE_COUNT });
+    attachStripJitter(result.runs, args.knockStrips, (m) => { if (!args.json) console.log(m); });
     benchRuns.push({ name: 'crucible', runs: result.runs });
   }
   if (!args.bench || args.bench === 'flight') {
@@ -867,15 +875,77 @@ export function parseTargetDirection(target) {
   return null;
 }
 
+/**
+ * The noise floor (law §3.6: "no bar regressed beyond the noise floor"). Two runs of one seed on
+ * one harness agree to far better than this; two runs that differ in the fifth decimal differ by
+ * the solver, not by the change under test.
+ */
+export const DIFF_NOISE_ABS = 1e-3;
+export const DIFF_NOISE_REL = 0.005;
+
+export function withinNoiseFloor(before, after) {
+  const d = Math.abs(after - before);
+  return d < Math.max(DIFF_NOISE_ABS, DIFF_NOISE_REL * Math.abs(before));
+}
+
 function diffDirection(before, after, target, metBefore, metAfter) {
   const delta = round(after - before);
   if (Math.abs(after - before) < 1e-9) return { delta: 0, direction: 'unchanged' };
+  // The row's own met state is the authority when it has one: a row that crossed its line moved
+  // toward or away whatever the target's first clause says, and a row that stays met while moving
+  // less than the noise floor did not move. (Before this, every row of a multi-clause bar was
+  // judged by the FIRST clause's direction, so a 2e-5 rise in "speed kept" under a target that
+  // begins "stretch < 10 %" read as a regression and reverted a real fix.)
+  if (metBefore === 'no' && metAfter === 'yes') return { delta, direction: 'toward' };
+  if (metBefore === 'yes' && metAfter === 'no') return { delta, direction: 'away' };
+  if (withinNoiseFloor(before, after)) return { delta, direction: 'unchanged' };
+  if (metBefore === 'yes' && metAfter === 'yes') return { delta, direction: 'unchanged' };
   const dir = parseTargetDirection(target);
   if (dir === 'higher') return { delta, direction: delta > 0 ? 'toward' : 'away' };
   if (dir === 'lower') return { delta, direction: delta < 0 ? 'toward' : 'away' };
-  if (metBefore === 'no' && metAfter === 'yes') return { delta, direction: 'toward' };
-  if (metBefore === 'yes' && metAfter === 'no') return { delta, direction: 'away' };
   return { delta, direction: 'unknown' };
+}
+
+/**
+ * B13's visible-jitter clause is a claim about what a viewer sees, so it is measured from a headed
+ * strip's frames (frameStripCapture.measureVisibleJitter) and attached to the headless Crucible run
+ * of the SAME cell (arena, loadout, seed). A strip under the normal-speed floor, or one whose jitter
+ * was not measured, attaches nothing: the clause stays unmeasured and the bar stays null.
+ * Pure over the runs it is given; exported for the test.
+ */
+export function attachStripJitter(runs, manifestPaths, log = () => {}) {
+  const attached = [];
+  for (const rawPath of manifestPaths || []) {
+    const manifestPath = resolve(rawPath);
+    let manifest;
+    try {
+      manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+    } catch (err) {
+      fail(`--knock-strip ${rawPath}: ${err.message}`);
+    }
+    const vj = manifest && manifest.visibleJitter;
+    if (manifest.schema !== 'spaceface.frameStripManifest.v2') { log(`knock-strip ${rawPath}: not a v2 strip manifest; ignored`); continue; }
+    if (manifest.normalSpeed !== true) { log(`knock-strip ${rawPath}: under the normal-speed floor (${manifest.realtimeFraction}); its jitter is not evidence`); continue; }
+    if (!vj || vj.measured !== true) { log(`knock-strip ${rawPath}: visible jitter not measured (${vj && vj.note})`); continue; }
+    for (const run of runs || []) {
+      if (run.arenaId !== manifest.arenaId || run.loadoutId !== manifest.loadoutId || String(run.seed) !== String(manifest.seed)) continue;
+      run.metrics = run.metrics || {};
+      run.metrics.jitterMeasured = true;
+      run.metrics.jitterEvents = vj.events;
+      run.metrics.jitterSource = {
+        manifest: manifestPath,
+        windows: vj.windows,
+        headingReversals: vj.headingReversals,
+        screenReversals: vj.screenReversals,
+        cadenceFpsMin: vj.cadenceFpsMin,
+        realtimeFraction: manifest.realtimeFraction,
+        harnessDigest: manifest.harnessDigest,
+      };
+      attached.push(`${run.arenaId}/${run.loadoutId}/s${run.seed}`);
+    }
+  }
+  if (attached.length) log(`knock-strip: visible jitter attached to ${attached.join(', ')}`);
+  return attached;
 }
 
 /**

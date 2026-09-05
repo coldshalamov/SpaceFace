@@ -15,6 +15,10 @@ You are a vision-capable reviewer who did not write the game code. Your job is t
 # Camera Configuration
 {{CAMERA_FACTS}}
 
+# What the Pilot's Hands Did (the input tape, in strip time)
+These are the keys the pilot held and released, stamped with the sim time each happened. They say what was asked of the ship, never what the ship did about it; judge the answer from the frames.
+{{INPUT_EVENTS}}
+
 # Moments Observed on the Real Event Bus
 {{MOMENTS_LIST}}
 

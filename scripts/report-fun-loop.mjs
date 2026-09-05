@@ -87,6 +87,8 @@ Options:
   --critic <critic.json>          Legacy / single critic flag (fails if provided alone)
   --leaf PQ-137.03                Packet/leaf id for machine appendix (hidden from visible page)
   --title "..."                   Page title (default: "SpaceFace feel pass")
+  --changed "..."                 One plain-words sentence saying what was changed (the data cannot
+                                  know it; the page is still linted for jargon)
   --include-bench <name>          Admit runs whose bench equals <name> (repeatable). Default: only structured real-path proof.
   --include-scenario <id>         Admit runs whose scenarioId equals <id> (repeatable)
   --out <path.md>                 Write the page here (default: stdout)
@@ -99,7 +101,7 @@ function parseArgs(list) {
   const args = {
     before: null, after: null, diff: null, critic: null,
     beforeCritic: null, afterCritic: null,
-    leaf: 'PQ-000.00', title: null, includeBenches: [], includeScenarios: [], out: null, json: false,
+    leaf: 'PQ-000.00', title: null, changed: null, includeBenches: [], includeScenarios: [], out: null, json: false,
   };
   for (let i = 0; i < list.length; i++) {
     const a = list[i];
@@ -125,6 +127,9 @@ function parseArgs(list) {
       args.leaf = list[++i] || args.leaf;
     } else if (a === '--title') {
       args.title = list[++i];
+    } else if (a === '--changed') {
+      args.changed = list[++i];
+      if (!args.changed) fail('--changed requires one plain-words sentence');
     } else if (a === '--include-bench') {
       const name = list[++i];
       if (!name) fail('--include-bench requires a bench name');
@@ -299,6 +304,7 @@ function main() {
   const model = buildReportModel({
     title: args.title || 'SpaceFace feel pass',
     leaf: args.leaf,
+    changed: args.changed,
     beforeSummary: before,
     afterSummary: after,
     diff,

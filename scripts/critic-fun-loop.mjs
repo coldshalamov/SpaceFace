@@ -10,8 +10,9 @@
 // node scripts/critic-fun-loop.mjs --strip <path to strip-manifest.json> \
 //   [--model agy|kimi|manual] [--out <file.json>] [--timeout-ms N] [--verbose]
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
-import { resolve, dirname, join } from 'node:path';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { resolve, dirname, join, relative, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
@@ -22,6 +23,8 @@ import {
   validateStripAdmission,
   compareCritics,
   selectCriticFrames,
+  matchesExpectedFundamental,
+  KNOWN_FUNDAMENTALS,
   DEFAULT_MAX_FRAMES,
 } from './lib/critic/index.mjs';
 import { computeFunLoopHarnessDigest } from './measure-fun-loop.mjs';
@@ -29,6 +32,11 @@ import { computeFunLoopHarnessDigest } from './measure-fun-loop.mjs';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const ROOT = resolve(__dirname, '../');
+
+function isInside(child, parent) {
+  const rel = relative(resolve(parent), resolve(child));
+  return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel));
+}
 
 function printUsage() {
   console.log(`
@@ -48,12 +56,23 @@ Options:
                          Chosen before/at/after the biggest moments the ship was in, plus an even
                          spread. A verdict may cite only a frame it was shown.
   --timeout-ms <N>       Execution timeout in milliseconds.
+  --repo-dir <path>      The source tree the strip was photographed from (default: this repo). The
+                         model runs there, so a critic that reads code reads the code the frames show.
+  --frames-only          The model sees ONLY the strip (frames + manifest): no source, no design
+                         documents, an empty working directory. This is what "from frames alone"
+                         means; the verdict records framesOnly: true. The fundamental's file may be
+                         "unknown" in this mode; the rule must still be named in the critic's words.
+  --expect-fundamental <key|regex>
+                         The finding this strip is expected to expose: a KNOWN_FUNDAMENTALS key
+                         (${Object.keys(KNOWN_FUNDAMENTALS).join(', ')}) or a regular expression.
+                         An accepted verdict whose fundamental does not name it exits 3.
   --verbose              Print verbose diagnostic output.
   --help, -h             Print this help message and exit.
 
 Exit codes:
   0: Verdict accepted (or manual prompt written).
   2: Verdict rejected (missing frame index, content named in fundamental, bad format).
+  3: Verdict accepted but its fundamental did not name --expect-fundamental.
   1: Harness error (missing strip manifest, dead route, etc.).
 `);
 }
@@ -66,6 +85,9 @@ function parseArgs(argv) {
     metrics: null,
     maxFrames: DEFAULT_MAX_FRAMES,
     timeoutMs: null,
+    repoDir: null,
+    framesOnly: false,
+    expectFundamental: null,
     verbose: false,
     help: false,
   };
@@ -100,6 +122,16 @@ function parseArgs(argv) {
       if (i + 1 < argv.length && !argv[i + 1].startsWith('--')) {
         options.timeoutMs = parseInt(argv[++i], 10);
       }
+    } else if (arg === '--repo-dir') {
+      if (i + 1 < argv.length && !argv[i + 1].startsWith('--')) {
+        options.repoDir = argv[++i];
+      }
+    } else if (arg === '--frames-only') {
+      options.framesOnly = true;
+    } else if (arg === '--expect-fundamental') {
+      if (i + 1 < argv.length && !argv[i + 1].startsWith('--')) {
+        options.expectFundamental = argv[++i];
+      }
     } else {
       console.warn(`[critic] Warning: unknown argument '${arg}'`);
     }
@@ -132,6 +164,21 @@ export async function main(argv = process.argv) {
 
   let hadHarnessError = false;
   let hadRejectedVerdict = false;
+  let hadUnreproducedFinding = false;
+
+  let repoDir = options.repoDir ? resolve(process.cwd(), options.repoDir) : ROOT;
+  if (!existsSync(repoDir)) {
+    console.error(`Error: --repo-dir not found: ${repoDir}`);
+    return 1;
+  }
+  if (options.framesOnly) {
+    // An empty room with nothing in it but what the strip directory is added as. MEASURED
+    // 2026-09-05: with the repo in its workspace the critic named the audit's own 1.15x clamp on
+    // the build where that clamp is fixed — it had read design/FEEL_CONTRACT.md §A. A verdict
+    // "from frames alone" is only that when the frames are all there is.
+    repoDir = mkdtempSync(join(tmpdir(), 'sf-critic-frames-only-'));
+    log(`frames-only: model runs in empty ${repoDir}`);
+  }
 
   // Read optional metrics file if provided
   let metricsData = null;
@@ -203,6 +250,17 @@ export async function main(argv = process.argv) {
         frames: selection.frames,
         selectionReason: selection.reason,
       });
+      if (options.framesOnly) {
+        prompt += [
+          '',
+          '# Frames only',
+          "You have NO access to the game's source code or design documents in this review, and you must",
+          'not guess at file names from memory of other projects. Judge from the pictures and the facts',
+          'above. For question 10 name the rule in your own words (what the game appears to do, when), put',
+          '"unknown" in the file field if you cannot name a file, and still give the frame that shows it.',
+          '',
+        ].join(String.fromCharCode(10));
+      }
     } catch (err) {
       console.error(`Error building prompt for manifest: ${err.message}`);
       hadHarnessError = true;
@@ -230,7 +288,13 @@ export async function main(argv = process.argv) {
           timeoutMs: options.timeoutMs,
           verbose: options.verbose,
           log,
-          repoDir: ROOT,
+          repoDir,
+          // The frames and the manifest may live outside the tree the critic runs in. Frames-only
+          // adds the strip and nothing else — never the repo.
+          addDirs: options.framesOnly
+            ? [...new Set([stripDir, dirname(manifestPath)])]
+            : [...new Set([stripDir, dirname(manifestPath), ROOT].filter((d) => !isInside(d, repoDir)))],
+          newProject: options.framesOnly,
           manifestPath,
           stripName,
           manualOutPath: options.out && options.strips.length === 1 && options.models.length === 1
@@ -294,6 +358,21 @@ export async function main(argv = process.argv) {
         hadRejectedVerdict = true;
       }
 
+      // The reproduction question: does an accepted verdict name the finding this strip was
+      // captured to expose? Recorded on the verdict either way; a miss is exit 3, never silence.
+      if (options.expectFundamental) {
+        const rep = matchesExpectedFundamental(verdict.fundamental, options.expectFundamental);
+        verdict.reproduction = {
+          expected: options.expectFundamental,
+          pattern: rep.pattern,
+          matchedKeys: rep.matchedKeys,
+          reproduced: !verdict.rejected && rep.matched,
+        };
+        if (!verdict.rejected && !rep.matched) hadUnreproducedFinding = true;
+      }
+      verdict.sourceTree = options.framesOnly ? '(frames only: no source, no design documents)' : repoDir;
+      verdict.framesOnly = !!options.framesOnly;
+
       // Write verdict document to outPath
       try {
         mkdirSync(dirname(outPath), { recursive: true });
@@ -314,6 +393,11 @@ export async function main(argv = process.argv) {
           console.log(`  - ${reason}`);
         }
       }
+      if (verdict.reproduction) {
+        console.log(`[critic] Expected finding '${verdict.reproduction.expected}': `
+          + `${verdict.reproduction.reproduced ? `REPRODUCED (${verdict.reproduction.matchedKeys.join(', ')})` : 'NOT reproduced'}`
+          + ` (fundamental: ${verdict.fundamental?.rule || '-'} in ${verdict.fundamental?.file || '-'})`);
+      }
 
       stripResults.push({ model: modelName, result: verdict });
     }
@@ -327,6 +411,7 @@ export async function main(argv = process.argv) {
 
   if (hadHarnessError) return 1;
   if (hadRejectedVerdict) return 2;
+  if (hadUnreproducedFinding) return 3;
   return 0;
 }
 

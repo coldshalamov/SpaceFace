@@ -456,7 +456,9 @@ export function buildReportModel(options) {
     verdict: d.verdict,
     reason: d.reason,
     found: foundSection(effAfterCritic, worst),
-    changed: changedSection(cleanTitle, leaf, real),
+    changed: (typeof options.changed === 'string' && options.changed.trim()
+      ? `${options.changed.trim().replace(/[.]?$/, '.')} `
+      : '') + changedSection(cleanTitle, leaf, real),
     feel: feelSection(real),
     numbers: numbersSection(d, allowlist),
     frames: framesSection(effBeforeCritic, effAfterCritic, { reportOutPath }),

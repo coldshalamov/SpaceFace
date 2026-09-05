@@ -110,7 +110,25 @@ export function buildMomentsListText(manifest) {
     .map(
       (m, i) =>
         `- Moment ${i + 1}: type="${m.type}" | tick=${m.tick} | simTime=${m.simTime}s | magnitude=${m.magnitude} | playerInvolved=${m.playerInvolved}`
+        + (m.surface ? ` | with=${m.surface}` : '')
     )
+    .join('\n');
+}
+
+/**
+ * What the pilot's hands did, in strip time. The tape is the scenario's own definition — the same
+ * kind of fact as the arena and the hull — and it never says what the game did in answer.
+ *
+ * @param {object} manifest
+ * @returns {string}
+ */
+export function buildInputEventsText(manifest) {
+  const events = Array.isArray(manifest?.inputEvents) ? manifest.inputEvents : [];
+  if (events.length === 0) {
+    return '- Hands off the stick for the whole strip (no pilot input).';
+  }
+  return events
+    .map((e) => `- simTime ${Number(e.simTime).toFixed(2)}s (tick ${e.tick}): ${e.input}`)
     .join('\n');
 }
 
@@ -158,6 +176,7 @@ export function buildCriticPrompt(manifest, options = {}) {
   const manifestFacts = buildManifestFactsText(manifest);
   const cameraFacts = buildCameraFactsText(manifest);
   const momentsList = buildMomentsListText(manifest);
+  const inputEvents = buildInputEventsText(manifest);
   const frameList = buildFrameListText(manifest, shownFrames);
   const rubricQuestions = buildRubricQuestionsText();
   const provisionalMetrics = buildProvisionalMetricsText(options.metrics);
@@ -166,6 +185,7 @@ export function buildCriticPrompt(manifest, options = {}) {
     .replace('{{MANIFEST_FACTS}}', manifestFacts)
     .replace('{{CAMERA_FACTS}}', cameraFacts)
     .replace('{{MOMENTS_LIST}}', momentsList)
+    .replace('{{INPUT_EVENTS}}', inputEvents)
     .replace('{{FRAME_LIST}}', shownFrames
       ? `You are shown ${shownFrames.length} of the ${manifest?.frames?.length ?? 0} frames in this strip`
         + `${options.selectionReason ? ` (${options.selectionReason})` : ''}. `

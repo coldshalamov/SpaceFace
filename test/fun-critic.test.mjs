@@ -857,3 +857,149 @@ test('critic CLI refuses a stale harness digest before launching a model', async
     await rm(tmp, { recursive: true, force: true });
   }
 });
+
+// ---------------------------------------------------------------------------------------------
+// The reproduction question (PQ-173.02 done-when): "the critic reproduces the 2026-09-03 audit
+// findings on a pre-fix build (governor brake, NPC clamp, terrain helm) from frames alone."
+// A strip captured to expose one finding is graded with --expect-fundamental, and a verdict that
+// names something else is recorded as NOT reproduced rather than quietly accepted.
+// ---------------------------------------------------------------------------------------------
+
+test('the three audit findings are recognised in a critic\'s words or in the rule\'s own name', async () => {
+  const { KNOWN_FUNDAMENTALS, matchesExpectedFundamental } = await import('../scripts/lib/critic/validation.mjs');
+  assert.deepEqual(Object.keys(KNOWN_FUNDAMENTALS).sort(), ['governor_brake', 'npc_clamp', 'terrain_helm']);
+
+  // A1 in a viewer's words, no file name at all.
+  assert.equal(matchesExpectedFundamental({
+    rule: 'the assisted flight speed rule', file: 'the flight controller',
+    does: 'the ship slows down while forward is held once it is past the cap, so earned speed is eaten by the brakes',
+    breaksSentence: 'Thrusters have a cap; physics-earned speed does not get eaten by the brakes.',
+  }, 'governor_brake').matched, true, 'A1 named by its mechanism counts');
+  // A1 by the rule's own name, from a critic that read the pre-fix source.
+  assert.equal(matchesExpectedFundamental({
+    rule: 'applySpeedGovernor', file: 'src/core/flight/propulsionKernel.js',
+    does: 'commands reverse thrust whenever the throttle is held above combatSpeed', breaksSentence: 'x',
+  }, 'governor_brake').matched, true, 'A1 named by its rule counts');
+
+  // A4 both ways.
+  assert.equal(matchesExpectedFundamental({
+    rule: 'NPC speed limit', file: 'physics',
+    does: 'a shoved fighter snaps back to its own cruise one frame later; the hit is deleted', breaksSentence: 'Light ships are ammunition.',
+  }, 'npc_clamp').matched, true);
+  assert.equal(matchesExpectedFundamental({
+    rule: '_clampSpeed', file: 'src/core/sg02DynamicBodyOwner.js', does: 'truncates velocity to 1.15x maxSpeed', breaksSentence: 'x',
+  }, 'npc_clamp').matched, true);
+
+  // A5 both ways.
+  assert.equal(matchesExpectedFundamental({
+    rule: 'terrain contact rule', file: 'collision rules',
+    does: 'a ship thrown into a rock keeps its heading and flies on as if nothing happened', breaksSentence: 'Slam them into asteroids.',
+  }, 'terrain_helm').matched, true);
+  assert.equal(matchesExpectedFundamental({
+    rule: 'collisionAllowsHelmLoss', file: 'src/combat/impulseKernel.js', does: 'returns false for terrain', breaksSentence: 'x',
+  }, 'terrain_helm').matched, true);
+
+  // A different finding is not a reproduction of the one the strip was captured for.
+  const a11 = {
+    rule: 'the impact response rule', file: 'feel.js',
+    does: 'answers every hit with the same particle burst and no hitstop', breaksSentence: 'Impacts should answer instantly.',
+  };
+  assert.equal(matchesExpectedFundamental(a11, 'governor_brake').matched, false);
+  assert.equal(matchesExpectedFundamental(a11, 'npc_clamp').matched, false);
+  assert.equal(matchesExpectedFundamental(a11, 'terrain_helm').matched, false);
+
+  // An arbitrary expression works too, and an empty fundamental never matches a real one.
+  assert.equal(matchesExpectedFundamental(a11, 'particle burst').matched, true);
+  assert.equal(matchesExpectedFundamental(null, 'governor_brake').matched, false);
+});
+
+test('the critic CLI reports --expect-fundamental in its usage and refuses a missing --repo-dir', async () => {
+  const { spawnSync } = await import('node:child_process');
+  const help = spawnSync(process.execPath, ['scripts/critic-fun-loop.mjs', '--help'], { encoding: 'utf8', cwd: resolve('.') });
+  assert.equal(help.status, 0);
+  assert.match(help.stdout, /--expect-fundamental/);
+  assert.match(help.stdout, /governor_brake, npc_clamp, terrain_helm/);
+  assert.match(help.stdout, /3: Verdict accepted but its fundamental did not name/);
+
+  const missing = spawnSync(process.execPath, [
+    'scripts/critic-fun-loop.mjs', '--strip', 'nope.json', '--repo-dir', join(tmpdir(), 'sf-no-such-tree-' + Date.now()),
+  ], { encoding: 'utf8', cwd: resolve('.') });
+  assert.equal(missing.status, 1);
+  assert.match(missing.stderr, /--repo-dir not found/);
+});
+
+test('a moment that says what the ship met reaches the critic as context, never as the answer', () => {
+  const manifest = createFakeManifest([0, 1, 2], {
+    momentsInSpan: [
+      { type: 'physics:impact', tick: 40, simTime: 1.5, magnitude: 55, playerInvolved: false, surface: 'ship|asteroid' },
+      { type: 'projectile:hit', tick: 60, simTime: 2.0, magnitude: 420, playerInvolved: true, surface: 'ship' },
+    ],
+  });
+  const text = buildMomentsListText(manifest);
+  assert.match(text, /type="physics:impact".*with=ship\|asteroid/);
+  assert.match(text, /type="projectile:hit".*with=ship/);
+  assert.doesNotMatch(text, /control=|helm|tumble/, 'what the rule did about the contact is the critic\'s question');
+});
+
+test('the pilot\'s inputs reach the critic in strip time, as what was asked and never what happened', async () => {
+  const { buildInputEventsText } = await import('../scripts/lib/critic/prompt.mjs');
+  const { describeTapeStep } = await import('../scripts/lib/bench/frameStripCapture.mjs');
+  assert.equal(describeTapeStep({ atS: 1.5, keyDown: 'ShiftLeft' }), 'boost held');
+  assert.equal(describeTapeStep({ atS: 16.5, keyUp: 'KeyW' }), 'forward released');
+  assert.equal(describeTapeStep({ atS: 0.5, mouseDown: true }), 'fire held');
+  assert.equal(describeTapeStep({ atS: 0.5 }), 'nothing');
+
+  const idle = createFakeManifest([0, 1, 2]);
+  assert.match(buildInputEventsText(idle), /Hands off the stick/);
+
+  const flown = createFakeManifest([0, 1, 2], {
+    inputEvents: [
+      { atS: 0.5, simTime: 31.52, tick: 1840, input: 'forward held' },
+      { atS: 8.5, simTime: 38.91, tick: 2283, input: 'boost released' },
+    ],
+  });
+  const text = buildInputEventsText(flown);
+  assert.match(text, /simTime 31\.52s \(tick 1840\): forward held/);
+  assert.match(text, /simTime 38\.91s \(tick 2283\): boost released/);
+  const prompt = buildCriticPrompt(flown, { frames: flown.frames });
+  assert.ok(prompt.includes('What the Pilot\'s Hands Did'), 'the prompt has a section for the tape');
+  assert.ok(prompt.includes('boost released'));
+  assert.ok(prompt.indexOf('What the Pilot\'s Hands Did') < prompt.indexOf('Moments Observed'), 'inputs are stated before the world\'s moments');
+});
+
+test('the agy route hands down the harness budget and opens the strip\'s directory', async () => {
+  const { buildAgyArgs, DEFAULT_AGY_TIMEOUT_MS } = await import('../scripts/lib/critic/modelRoutes.mjs');
+  const args = buildAgyArgs('judge', { timeoutMs: 900000, addDirs: ['C:/strips/one', '', 'C:/repo'] });
+  const at = (flag) => args[args.indexOf(flag) + 1];
+  assert.equal(at('--print-timeout'), '15m', 'agy\'s own print timeout must not cut a fifteen-minute verdict at five');
+  assert.deepEqual(args.filter((a, i) => args[i - 1] === '--add-dir'), ['C:/strips/one', 'C:/repo']);
+  assert.equal(args[args.length - 1], 'judge');
+  assert.equal(buildAgyArgs('x').includes('--add-dir'), false);
+  assert.equal(buildAgyArgs('x')[buildAgyArgs('x').indexOf('--print-timeout') + 1], `${Math.ceil(DEFAULT_AGY_TIMEOUT_MS / 60000)}m`);
+});
+
+test('a strip that exposes two findings is graded as any-of, and the verdict records which one it named', async () => {
+  const { matchesExpectedFundamental } = await import('../scripts/lib/critic/validation.mjs');
+  const helm = {
+    rule: 'terrain contact rule', file: 'collision rules',
+    does: 'a ship thrown into a rock keeps its heading and flies on', breaksSentence: 'Slam them into asteroids.',
+  };
+  const rep = matchesExpectedFundamental(helm, 'npc_clamp,terrain_helm');
+  assert.equal(rep.matched, true);
+  assert.deepEqual(rep.matchedKeys, ['terrain_helm']);
+  const none = matchesExpectedFundamental(helm, 'governor_brake,npc_clamp');
+  assert.equal(none.matched, false);
+  assert.deepEqual(none.matchedKeys, []);
+});
+
+test('the governor finding is recognised when a critic describes the hands-off dead stop', async () => {
+  const { matchesExpectedFundamental } = await import('../scripts/lib/critic/validation.mjs');
+  assert.equal(matchesExpectedFundamental({
+    rule: 'the assisted flight rule', file: 'flight',
+    does: 'the ship comes to a dead stop within two seconds of the throttle being released, and slows while forward is held',
+    breaksSentence: 'physics-earned speed does not get eaten by the brakes',
+  }, 'governor_brake').matched, true);
+  assert.equal(matchesExpectedFundamental({
+    rule: 'hostile cap', file: 'physics', does: 'the shoved fighter snaps back to cruise', breaksSentence: 'x',
+  }, 'governor_brake').matched, false, 'the NPC cap is a different finding');
+});

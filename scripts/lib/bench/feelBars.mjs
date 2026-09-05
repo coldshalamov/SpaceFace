@@ -692,6 +692,20 @@ function evaluateB13(bar, list) {
     if (!jitterMeasuredOnAll) {
       missingRequired = true;
       notes.push("visible jitter is unmeasured on this headless Crucible path; a full B13 pass is impossible.");
+    } else {
+      // Measured from a headed strip's frames of the same cell (measure-fun-loop --knock-strip):
+      // after each contact the player was in, no reversal of heading or of motion on the glass
+      // inside half a second. Zero events is the clause; the worst run decides.
+      const jitterHoles = pushWorst(
+        crucibleRuns,
+        (run) => run.metrics && run.metrics.jitterEvents,
+        "visible jitter events after contact, crucible (headed strip, half-second windows)",
+        "events",
+        (value) => value === 0,
+      );
+      if (jitterHoles) notes.push("at least one Crucible run has no visible-jitter event count despite a strip.");
+      const src = crucibleRuns.map((run) => run.metrics && run.metrics.jitterSource).find(Boolean);
+      if (src) notes.push(`visible jitter read from the headed strip (${src.windows} contact window(s), >= ${src.cadenceFpsMin} fps, real time ${src.realtimeFraction}).`);
     }
     if (rateHoles) notes.push("at least one Crucible run has no finite knock rate; it is retained, not filtered away.");
     if (fracHoles) notes.push("at least one Crucible run has no finite knock fraction of cruise; it is retained, not filtered away.");
