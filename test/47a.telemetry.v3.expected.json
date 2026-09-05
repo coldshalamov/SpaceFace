@@ -68,7 +68,7 @@
     "audio:cue": 5
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "70eda854ab76bbd0cc8d20bc8e280288138bee7fe3ad1b06aa9a169c9cb916e4",
+    "authoritativeHash": "77bbd9cd12f3145c855c6e045ea73adec2982912f0d9695c6c3cbdf757c1cc3b",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -139,6 +139,9 @@
     "Cause: the tape boosts once at tick 120 (ship:boostStart/boostStop stay 1/1). After release the player is above the unboosted cap with forward held; the prior governor spent that speed at 0.24 of reverse authority, the new one keeps it.",
     "Secondary leaves: three propulsion resource/runtime fields, input aimWorld x/z (camera follows the hull), entity[2] shield 10 -> 6.83 under the SAME 17 hits, one fewer causally active Rapier body at tick 720 (physics.bodies 9 -> 8, ids shifted).",
     "Every phase0ObservedTraceCount is UNCHANGED (22 types checked: fire 17, hits 17, damage 17). Legacy envelope test/47a.telemetry.expected.json stays bit-identical: compatibility flight has no governor.",
-    "Prior authoritativeHash was 8e645aa0528db43b617542b9145a5f173a6097e34c486faa51d3d11dc6143e1b."
+    "Prior authoritativeHash was 8e645aa0528db43b617542b9145a5f173a6097e34c486faa51d3d11dc6143e1b.",
+    "2026-09-04 deliberate re-record: CONTACT PQ-137.11 player-knock cherry-pick (commit a3bd740d) in physics owner src/core/physics.js and src/core/sg02DynamicBodyOwner.js.",
+    "sim-golden-diff --flight-system v3 against reference 83444ec2: VERDICT MOTION_CHANGED, 14 entity motion fields; 75 snapshot fields moved (54 $.entities[], 17 $.physics, 2 $.input, 2 $.scenario).",
+    "Every phase0ObservedTraceCount is UNCHANGED. Prior authoritativeHash was 70eda854ab76bbd0cc8d20bc8e280288138bee7fe3ad1b06aa9a169c9cb916e4."
   ]
 }

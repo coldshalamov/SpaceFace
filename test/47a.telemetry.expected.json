@@ -52,8 +52,8 @@
     "scenario:dialogueLine": 1,
     "tether:attached": 1,
     "combat:fire": 17,
-    "projectile:hit": 6,
-    "combat:damage": 6,
+    "projectile:hit": 4,
+    "combat:damage": 4,
     "economy:tick": 2,
     "camera:shake": 1,
     "presentation:cameraCue": 1,
@@ -61,12 +61,12 @@
     "presentation:audioCue": 2,
     "presentation:uiCue": 2,
     "presentation:caption": 2,
-    "presentation:cueApplied": 8,
-    "presentation:cue": 8,
+    "presentation:cueApplied": 6,
+    "presentation:cue": 6,
     "audio:cue": 2
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "21ef7a0f4ec2580cc64d58345bb606b3b242bfe854f20bf450095a2ca985044c",
+    "authoritativeHash": "76116bb577b52a939eadd8ed6ae7266c7bebe112d8a7a326ebff24cacaf34edd",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -118,6 +118,9 @@
     "Trace counts in this legacy envelope are unchanged (combat:fire 17, projectile:hit 11, combat:damage 11). Only the authoritative snapshot hash moved with the new contact response.",
     "Prior authoritativeHash was 8bc6b28158340d57822740b3cc04123e10a37e24c2d39d5f7aec80e622548ff7.",
     "2026-08-30 deliberate re-record: SG-02 contact pose kicks are removed by restoring craft yaw to its no-contact prediction; authored yaw torque remains active.",
-    "sim-golden-diff legacy: MOTION_CHANGED as intended; repeat-20 and reload@600 are deterministic. Trace counts: fire 17, hits 6, damage 6, presentation cues 8."
+    "sim-golden-diff legacy: MOTION_CHANGED as intended; repeat-20 and reload@600 are deterministic. Trace counts: fire 17, hits 6, damage 6, presentation cues 8.",
+    "2026-09-04 deliberate re-record: CONTACT PQ-137.11 player-knock cherry-pick (commit a3bd740d) in physics owner src/core/physics.js and src/core/sg02DynamicBodyOwner.js.",
+    "sim-golden-diff legacy against reference 5fd202d5: VERDICT MOTION_CHANGED, 14 entity motion fields across entities 0, 1, and 3; 66 snapshot fields moved (51 $.entities[], 13 $.physics, 2 $.input).",
+    "Trace counts that moved: projectile:hit 6->4, combat:damage 6->4, presentation:cue 8->6, presentation:cueApplied 8->6. Prior authoritativeHash was 21ef7a0f4ec2580cc64d58345bb606b3b242bfe854f20bf450095a2ca985044c."
   ]
 }
