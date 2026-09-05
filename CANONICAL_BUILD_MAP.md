@@ -3388,22 +3388,61 @@ matrix, not by taste. "Optimized" means a UI frame budget and a node budget per 
 
 ### 18.2 The surfaces (the matrix rows) and their owners
 
-| Surface | Route | Owner packet |
-|---|---|---|
-| Title, credits, version | main menu | `PQ-181` |
-| New Game, Load/Save | main menu | `PQ-181`, `PQ-156` |
-| Settings (5 tabs + presets, frame cap, remap, language, statement) | menu / pause | `PQ-181`, `PQ-164`, `PQ-165`, `PQ-166` |
-| Pause, Game Over, digest, statistics, photo mode | in flight / death | `PQ-181`, `PQ-159` |
-| Flight HUD, Power Rail, reticle, threat halo, comms and wingman radials | flight | verified done (§11); re-checked by the matrix |
-| THE SHIP (F2), THE FOOTPRINT (F3), THE RANGE (F4) | flight | done (§11); re-checked |
-| THE CHART (M) | flight | `PQ-168` |
-| Station: market, contracts, industry, bar, factions, ledger, shipworks (outfitting, shipyard, services) | docked | `PQ-162`, `PQ-176`, `PQ-177` |
-| Crucible: door, draft, refit, results, lab | main menu | `PQ-182` |
-| Asteroid Works | mining | `PQ-185` (with `PQ-130`, `PQ-131`) |
-| Base / claims | docked / claim | `PQ-162` (grammar), `PQ-145` |
-| Help, codex, mission log | anywhere | `PQ-181` |
-| Everything is a link, watch list, global find, chart notes | anywhere | `PQ-183` |
-| UI performance and the legacy refactor | all | `PQ-184` |
+This table mirrors `scripts/ui-grammar-surfaces.mjs` row for row (PQ-180 .02, 2026-09-05): the
+surface id the matrix prints, the archetype, how the probe reaches it (`public-route` is the
+player's own way in; `fixture` is a harness opener that can be measured but never greens
+reachability), and the packet that owns every red cell on that row. Links and UI frame cost are
+always `PQ-183` and `PQ-184` whatever packet owns the screen; a red on a row marked done falls to
+`PQ-180` .02. Regenerate from the manifest; never edit one side alone.
+
+| Surface | What it is | Archetype | Reached by | Owner packet |
+|---|---|---|---|---|
+| `flight` | The flight HUD | FLIGHT-HUD | public-route | done (§11); a red falls to `PQ-180` .02 |
+| `power-rail` | The Power Rail | OVERLAY | public-route | done (§11); a red falls to `PQ-180` .02 |
+| `comms-radial` | The comms fan | OVERLAY | public-route | done (§11); a red falls to `PQ-180` .02 |
+| `wingman-radial` | The wingman command radial | OVERLAY | public-route | done (§11); a red falls to `PQ-180` .02 |
+| `ship` | THE SHIP | INSTRUMENT | public-route | done (§11); a red falls to `PQ-180` .02 |
+| `footprint` | THE FOOTPRINT | INSTRUMENT | public-route | done (§11); a red falls to `PQ-180` .02 |
+| `range` | THE RANGE | INSTRUMENT | public-route | done (§11); a red falls to `PQ-180` .02 |
+| `chart` | THE CHART — local focus | INSTRUMENT | public-route | `PQ-168` |
+| `chart-galaxy` | THE CHART — galaxy focus | INSTRUMENT | public-route | `PQ-168` |
+| `title` | The title screen | META-SHELL | public-route | `PQ-181` |
+| `new-game` | New game | META-SHELL | public-route | `PQ-181` |
+| `pause` | Pause | META-SHELL | public-route | `PQ-181` |
+| `settings` | Settings | META-SHELL | public-route | `PQ-181` |
+| `save-load` | Load and save | META-SHELL | public-route | `PQ-181` |
+| `help` | Help | META-SHELL | public-route | `PQ-181` |
+| `codex` | Codex | META-SHELL | public-route | `PQ-181` |
+| `mission-log` | Mission log | META-SHELL | public-route | `PQ-181` |
+| `tech-tree` | Tech tree | META-SHELL | public-route | `PQ-181` |
+| `game-over` | Game over | META-SHELL | fixture | `PQ-181` |
+| `credits` | Credits | META-SHELL | none | `PQ-181` |
+| `statistics` | Statistics | META-SHELL | none | `PQ-181` |
+| `photo-mode` | Photo mode | META-SHELL | none | `PQ-181` |
+| `station-dock` | The Command Dock (berth fascia) | STATION | fixture | `PQ-162` |
+| `station-market` | Station · Market | STATION | fixture | `PQ-162` |
+| `station-shipworks` | Station · Shipworks | STATION | fixture | `PQ-162` |
+| `station-industry` | Station · Industry | STATION | fixture | `PQ-162` |
+| `station-contracts` | Station · Missions | STATION | fixture | `PQ-162` |
+| `station-factions` | Station · Factions | STATION | fixture | `PQ-162` |
+| `station-bar` | Station · Bar | STATION | fixture | `PQ-162` |
+| `station-ledger` | Station · Ledger | STATION | fixture | `PQ-162` |
+| `crucible-door` | The Crucible door | CRUCIBLE | public-route | `PQ-182` |
+| `crucible-draft` | The Crucible draft | CRUCIBLE | fixture | `PQ-182` |
+| `crucible-refit` | The Crucible refit | CRUCIBLE | fixture | `PQ-182` |
+| `crucible-results` | The Crucible results | CRUCIBLE | fixture | `PQ-182` |
+| `crucible-lab` | The Crucible lab | CRUCIBLE | none | `PQ-182` |
+| `asteroid-works` | Asteroid Works | WORKS | public-route | `PQ-130` |
+| `base` | The base / claims board | WORKS | public-route | `PQ-130` |
+| `automation` | Automation | WORKS | public-route | `PQ-130` |
+| `localmap-legacy` | Local map (legacy) | INSTRUMENT | none | `PQ-168` |
+| `starmap-legacy` | Star map (legacy) | INSTRUMENT | none | `PQ-168` |
+
+The coarse view, for reading: the meta shell (title, new game, load/save, settings, pause, help,
+codex, mission log, tech tree, game over, credits, statistics, photo mode) is `PQ-181`; the station
+screens are `PQ-162`; the chart and the two legacy maps are `PQ-168`; the Crucible screens are
+`PQ-182`; Asteroid Works, base and automation are `PQ-130`; the flight HUD, the rails and radials,
+and the three instruments were verified done in §11 and are re-checked by the matrix.
 
 ### 18.3 The order inside the frontend program
 

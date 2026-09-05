@@ -194,6 +194,7 @@ const RAW_SURFACES = Object.freeze([
   }),
   surface({
     id: 'chart',
+    owner: 'PQ-168', // build map §18.2
     title: 'THE CHART — local focus',
     archetype: 'INSTRUMENT',
     ownerFile: 'src/ui/galaxyMap.js',
@@ -203,6 +204,7 @@ const RAW_SURFACES = Object.freeze([
   }),
   surface({
     id: 'chart-galaxy',
+    owner: 'PQ-168', // build map §18.2
     title: 'THE CHART — galaxy focus',
     archetype: 'INSTRUMENT',
     ownerFile: 'src/ui/galaxyMap.js',
@@ -214,6 +216,7 @@ const RAW_SURFACES = Object.freeze([
   // ---------------------------------------------------------------- meta shell
   surface({
     id: 'title',
+    owner: 'PQ-181', // build map §18.2
     title: 'The title screen',
     archetype: 'META-SHELL',
     ownerFile: 'src/ui/screens/mainMenu.js',
@@ -223,6 +226,7 @@ const RAW_SURFACES = Object.freeze([
   }),
   surface({
     id: 'new-game',
+    owner: 'PQ-181', // build map §18.2
     title: 'New game',
     archetype: 'META-SHELL',
     ownerFile: 'src/ui/screens/newGame.js',
@@ -238,6 +242,7 @@ const RAW_SURFACES = Object.freeze([
   }),
   surface({
     id: 'pause',
+    owner: 'PQ-181', // build map §18.2
     title: 'Pause',
     archetype: 'META-SHELL',
     ownerFile: 'src/ui/screens/pause.js',
@@ -247,6 +252,7 @@ const RAW_SURFACES = Object.freeze([
   }),
   surface({
     id: 'settings',
+    owner: 'PQ-181', // build map §18.2
     title: 'Settings',
     archetype: 'META-SHELL',
     ownerFile: 'src/ui/screens/settings.js',
@@ -256,6 +262,7 @@ const RAW_SURFACES = Object.freeze([
   }),
   surface({
     id: 'save-load',
+    owner: 'PQ-181', // build map §18.2
     title: 'Load and save',
     archetype: 'META-SHELL',
     ownerFile: 'src/ui/screens/saveLoad.js',
@@ -267,6 +274,7 @@ const RAW_SURFACES = Object.freeze([
   }),
   surface({
     id: 'help',
+    owner: 'PQ-181', // build map §18.2
     title: 'Help',
     archetype: 'META-SHELL',
     ownerFile: 'src/ui/screens/help.js',
@@ -276,6 +284,7 @@ const RAW_SURFACES = Object.freeze([
   }),
   surface({
     id: 'codex',
+    owner: 'PQ-181', // build map §18.2
     title: 'Codex',
     archetype: 'META-SHELL',
     ownerFile: 'src/ui/screens/codex.js',
@@ -285,6 +294,7 @@ const RAW_SURFACES = Object.freeze([
   }),
   surface({
     id: 'mission-log',
+    owner: 'PQ-181', // build map §18.2
     title: 'Mission log',
     archetype: 'META-SHELL',
     ownerFile: 'src/ui/screens/missionLog.js',
@@ -294,6 +304,7 @@ const RAW_SURFACES = Object.freeze([
   }),
   surface({
     id: 'tech-tree',
+    owner: 'PQ-181', // build map §18.2
     title: 'Tech tree',
     archetype: 'META-SHELL',
     ownerFile: 'src/ui/screens/techTree.js',
