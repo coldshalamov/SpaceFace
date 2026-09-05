@@ -24,7 +24,7 @@
       "playerSees": "Tiny bright stars with depth in the sky",
       "technique": "Point sprites with round falloff, at sky depth",
       "whyListed": "This is the one place the cheap card reads as the real thing: small, bright, far away.",
-      "files": ["src/render/spaceBackground.js"]
+      "files": ["src/render/spaceBackground.js", "src/render/deepFieldStars.js"]
     },
     {
       "id": "bg-l4-flares",

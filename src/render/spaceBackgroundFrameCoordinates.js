@@ -96,12 +96,15 @@ function withGlobalCameraMatrix(background, method, args) {
 
   if (!(origin.x || origin.z)) return method.apply(background, args);
 
+  const wasGlobalProjection = background._spaceBackgroundGlobalProjection;
+  background._spaceBackgroundGlobalProjection = true;
   camera.position.x = globalX;
   camera.position.z = globalZ;
   if (typeof camera.updateMatrixWorld === 'function') camera.updateMatrixWorld(true);
   try {
     return method.apply(background, args);
   } finally {
+    background._spaceBackgroundGlobalProjection = wasGlobalProjection;
     camera.position.x = localX;
     camera.position.z = localZ;
     if (typeof camera.updateMatrixWorld === 'function') camera.updateMatrixWorld(true);

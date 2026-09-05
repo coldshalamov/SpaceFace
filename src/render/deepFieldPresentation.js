@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { rebuildDeepFieldStars, STELLAR_FORMATIONS } from './deepFieldStars.js';
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
 import {
   DEEP_FIELD_VOID_SIZE, DEEP_FIELD_FINISHES, DEEP_FIELD_VERTEX, DEEP_FIELD_FRAGMENT,
@@ -139,6 +140,7 @@ export function installDeepFieldPresentation(Background) {
     // Retain opaque-first ordering and depth testing. The sky must never paint over ships/VFX.
     material.depthTest = true;
     material.depthWrite = false;
+    if (this.renderer && this.group) rebuildDeepFieldStars(this);
     return result;
   };
 
@@ -155,8 +157,13 @@ export function installDeepFieldPresentation(Background) {
 
   if (typeof stats === 'function') {
     proto.stats = function deepFieldStats() {
+      const base = stats.apply(this, arguments);
       return {
-        ...stats.apply(this, arguments),
+        ...base,
+        drawCalls: base.drawCalls + (this.stellarFormation ? 1 : 0),
+        stellarFormation: STELLAR_FORMATIONS[this.stellarFormation?.family]?.name || null,
+        stellarFormationStars: this.stellarFormation?.activeStars || 0,
+        stellarFormationBytes: this.stellarFormation?.attributeBytes || 0,
         deepFieldPresentation: 'clip-proof-fractured-v1',
         skyCarrierTriangles: 1,
         voidTextureBytes: rgbaMipBytes(DEEP_FIELD_VOID_SIZE),
