@@ -39,6 +39,9 @@ function injectStyle() {
   .sf-slot-list { display: flex; flex-direction: column; gap: var(--sp-2); }
   .screen.sf-menu .sf-slot {
     display: flex; align-items: center; justify-content: space-between;
+    /* Never shrink: with six populated slots on a 720p plate the flex column crushed each row to
+       ~44px and the detail line printed across the next slot's border. The list scrolls instead. */
+    flex: 0 0 auto;
     gap: var(--sp-4); padding: var(--sp-3) var(--sp-4);
     background: color-mix(in srgb, var(--sf-surface) 88%, transparent);
     border: 1px solid var(--sf-edge); border-radius: 2px;
@@ -75,7 +78,7 @@ function injectStyle() {
     font-family: var(--sf-display-face); font-weight: 700; font-size: 28px; line-height: 1.1;
     letter-spacing: 0; text-transform: none; color: var(--sf-paper);
   }
-  .sf-slot.empty .sf-slot-name { font-weight: 400; color: var(--sf-calm); font-style: italic; }
+  .sf-slot.empty .sf-slot-name { font-weight: 500; color: var(--sf-calm); }
   .sf-slot .sf-slot-badge {
     font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
     letter-spacing: var(--sf-track-micro); text-transform: uppercase;
@@ -93,19 +96,24 @@ function injectStyle() {
   .sf-slot .sf-slot-context {
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
+  /* The detail line is a sentence with numbers in it, so it reads in the UI face with tabular
+     numerals; only bare figures (.sf-fig) wear the DATA face. */
+  .sf-slot .sf-fig { font-family: var(--sf-data-face); font-weight: 500; }
   .sf-slot .sf-slot-detail, .sf-slot .sf-fig {
-    font-size: 13px; color: var(--sf-calm); font-family: var(--sf-data-face);
-    font-weight: 500; font-variant-numeric: tabular-nums; margin-top: var(--sp-1);
+    font-size: 13px; color: var(--sf-calm); font-family: var(--sf-body-face);
+    font-weight: 400; font-variant-numeric: tabular-nums; margin-top: var(--sp-1);
     display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
     overflow: hidden; overflow-wrap: anywhere;
   }
   .sf-slot .sf-slot-actions { display: flex; align-items: center; gap: var(--sp-2); flex-shrink: 0; }
   .sf-slot .sf-slot-actions button.sf-tab { min-width: 68px; padding: var(--sp-1) var(--sp-3); cursor: pointer; }
+  /* The row's verb is an interaction, so it wears the accent — not --sf-you, which means "a gain"
+     everywhere else and made SAVE the only green primary button in the game. */
   .sf-slot .sf-slot-actions button.sf-tab--primary {
-    color: var(--sf-surface); background: var(--sf-you); border-color: var(--sf-you); font-weight: 600;
+    color: var(--bg); background: var(--accent); border-color: var(--accent); font-weight: 600;
   }
   .sf-slot .sf-slot-actions button.sf-tab--primary:hover:not(:disabled) {
-    background: var(--sf-you); border-color: var(--sf-you); color: var(--sf-surface);
+    background: color-mix(in srgb, var(--accent) 84%, white); border-color: var(--accent); color: var(--bg);
   }
   @media (forced-colors: active) {
     .screen.sf-menu .sf-slot, .sf-slot .sf-slot-actions button.sf-tab--primary {

@@ -16,20 +16,21 @@ function injectStyle() {
   // menu.css's (0,2,0) base and win on source order (this block injects at runtime).
   s.textContent = `
   .sf-menu.sf-gameover { gap:18px; padding:34px 40px; min-width:380px; max-width:min(92vw,620px); }
+  /* The one DISPLAY-sized element: the verdict word, in the UI face (mono is for numerals only). */
   #screens .sf-menu.sf-gameover h1 { justify-content:center; margin:0; padding-bottom:12px;
-    font-family:var(--mono); letter-spacing:.06em; font-size:22px; color:var(--danger);
+    font-family:var(--mf-display); font-weight:700; letter-spacing:.04em; font-size:24px; color:var(--danger);
     text-transform:uppercase; }
   .sf-menu.sf-gameover .sf-go-sub { text-align:center; color:var(--ink-dim); font-size:13px;
-    letter-spacing:.06em; margin-top:-10px; }
+    letter-spacing:0; margin-top:-10px; line-height:1.5; }
   .sf-menu.sf-gameover .sf-go-grid { display:grid; grid-template-columns:auto 1fr; gap:7px 22px;
     align-items:center; font-size:14px; padding:10px 0; }
-  .sf-menu.sf-gameover .sf-go-grid .k { color:var(--ink-dim); font-family:var(--mono); letter-spacing:.05em; font-size:12px; }
-  .sf-menu.sf-gameover .sf-go-grid .v { color:var(--ink); font-family:var(--mono); text-align:right; }
-  .sf-menu.sf-gameover .sf-go-recovery { border:1px solid rgba(227,161,61,.36); border-radius:2px;
-    background:rgba(227,161,61,.06); color:var(--ink-dim); font-size:12px; line-height:1.5;
+  .sf-menu.sf-gameover .sf-go-grid .k { color:var(--ink-dim); font-family:var(--mf-ui); font-weight:500; letter-spacing:0; font-size:13px; }
+  .sf-menu.sf-gameover .sf-go-grid .v { color:var(--ink); font-family:var(--mf-ui); text-align:right; font-variant-numeric:tabular-nums; }
+  .sf-menu.sf-gameover .sf-go-recovery { border:1px solid color-mix(in srgb, var(--warn) 36%, transparent); border-radius:2px;
+    background:color-mix(in srgb, var(--warn) 6%, transparent); color:var(--ink-dim); font-size:13px; line-height:1.5;
     padding:10px 12px; }
-  .sf-menu.sf-gameover .sf-go-recovery b { color:var(--warn); font-family:var(--mono); letter-spacing:.06em;
-    text-transform:uppercase; }
+  .sf-menu.sf-gameover .sf-go-recovery b { color:var(--warn); font-family:var(--mf-ui); font-weight:600; letter-spacing:0;
+    text-transform:none; }
   .sf-menu.sf-gameover .sf-go-foot { display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-top:10px; }
   .sf-menu.sf-gameover button.sf-btn { width:auto; min-width:170px; padding:11px 18px 11px 28px;
     font-size:13px; letter-spacing:.06em; }

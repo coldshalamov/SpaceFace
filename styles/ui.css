@@ -194,17 +194,22 @@ button:disabled { opacity: .4; cursor: default; }
   pointer-events: none;
 }
 
-/* --- Pause (flight): preserve + dim the live rendered frame ---
-   Title/menu screens keep the cinematic #screens plate. Pause clears that opaque
-   art and the full-opacity menu vignette so #gl-canvas stays visible under the
-   shared #modal-backdrop dim. This is the current readable, low-cost implementation, not a
-   repository-wide ban on other treatments that pass accessibility and measured performance.
-   Triggered by screenManager's .sf-screen--visible / --entering on data-screen=pause. */
+/* --- In a run: preserve + dim the live rendered frame under EVERY plate ---
+   Title/menu screens keep the cinematic #screens plate. Once a run is live (uiRoot sets
+   body.sf-in-run whenever state.mode !== 'menu'), every screen — pause, and everything opened from
+   it or from flight (Settings, Help, Codex, Save/Load, Mission Log, the instruments) — clears that
+   opaque art and the full-opacity menu vignette so #gl-canvas stays visible under a soft dim. This
+   used to key on data-screen=pause alone, so pressing Settings from the pause plate replaced the
+   player's own frozen sector with the title still: the screens read as one generic room.
+   The pause selectors stay as a belt-and-braces path for the first frame before the body class
+   lands. */
+body.sf-in-run #screens,
 #screens:has(> .screen[data-screen="pause"].sf-screen--visible),
 #screens:has(> .screen[data-screen="pause"].sf-screen--entering) {
   background-image: none;
   background-color: transparent;
 }
+body.sf-in-run #screens::before,
 #screens:has(> .screen[data-screen="pause"].sf-screen--visible)::before,
 #screens:has(> .screen[data-screen="pause"].sf-screen--entering)::before {
   /* Soft dim only — do not replace the world with an opaque plate. */
@@ -767,7 +772,7 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
 .sf-target__gimmick {
   font-size: 12px;
   color: var(--warn);
-  letter-spacing: 0.12em;
+  letter-spacing: .06em;
   text-transform: uppercase;
   margin-top: 4px;
   border: 1px solid color-mix(in srgb, var(--sf-goal) 30%, transparent);
@@ -916,7 +921,7 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
 .sf-overview-row { flex-wrap: wrap; }
 .sf-overview-row__state {
   font-size: 12px;
-  letter-spacing: 0.08em;
+  letter-spacing: .06em;
   text-transform: uppercase;
   opacity: 0.85;
 }
@@ -2206,7 +2211,7 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
   display: inline-flex;
   font-family: var(--sf-data-face);
   font-size: 12px;
-  letter-spacing: .1em;
+  letter-spacing: .06em;
   line-height: 1;
   color: var(--sf-you);
   opacity: calc(.52 + var(--sf-comms-density) * .38);

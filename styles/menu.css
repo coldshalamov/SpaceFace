@@ -1,18 +1,19 @@
 /* ============================================================================
    SpaceFace · MENU FASCIA — title / pause / system-menu surfaces.
 
-   Direction: Authentic deep-space flight instrument deck.
-   Machined composite plate with subtle blue-black depth, hairline telemetry
-   borders, letterspaced IBM Plex Mono readouts, off-white Saira display type,
-   and signal cyan for live states and active telemetry.
+   Direction (INSTRUMENT_GRAMMAR §3/§4, 2026-08 revision): a quiet neutral plate.
+   One flat translucent dark surface, 1px hairline edges, IBM Plex Sans for every
+   word, IBM Plex Mono for numerals only, and ONE blue interaction accent spent on
+   what the player can act on. No glass blur, no glow, no gradient fills, no
+   accent rails, no decorative sweeps, no diegetic flavour stamps.
 
    Key Architectural Rules:
    - Stable geometry for multi-tab consoles (Settings, Codex, Help, Save/Load).
      The outer chassis remains fixed in place while inner panes scroll smoothly.
    - Aerospace tactile controls: physical toggles, responsive slider thumbs,
      crisp keycap slots, and telemetry readouts.
-   - Interactive animations: scanline bezel sweep on entry, micro-spring click
-     physics, and smooth tab cross-fades.
+   - Motion only where a state changes (LATCH <= 90 ms, SETTLE <= 180 ms): tab
+     cross-fade and button press. Nothing loops.
    ============================================================================ */
 
 /* ---- 1. Token remap: intro-signal values under the menu scope --------------- */
@@ -37,7 +38,7 @@
   --danger: #e0665f;
   /* type */
   --mono: "IBM Plex Mono", "Consolas", ui-monospace, monospace;
-  --mf-display: "Saira SemiCondensed", "Segoe UI", system-ui, sans-serif;
+  --mf-display: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
   --mf-ui: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
   /* fascia-only aliases */
   --mf-line-1: rgba(148, 178, 205, .10);
@@ -59,20 +60,18 @@
   gap: 12px;
   padding: 24px 28px 20px;
   min-width: 360px;
-  max-width: min(92vw, 920px);
-  max-height: 88vh;
+  max-width: min(94vw, 1120px);
+  max-height: 90vh;
   box-sizing: border-box;
   pointer-events: auto;
   font-family: var(--mf-ui);
   color: var(--ink);
-  background: linear-gradient(180deg, color-mix(in srgb, var(--panel-2) 97%, transparent) 0%, color-mix(in srgb, var(--bg) 98%, transparent) 100%);
-  backdrop-filter: blur(18px);
+  /* One flat surface (no blur stack, no inset highlight): the world behind a pause plate stays
+     legible as a dimmed frame instead of smearing into a frosted card. */
+  background: color-mix(in srgb, var(--panel) 96%, transparent);
   border: 1px solid var(--mf-line-2);
   border-radius: 6px;
-  box-shadow:
-    0 24px 64px rgba(0, 0, 0, .75),
-    0 4px 16px rgba(0, 0, 0, .5),
-    inset 0 1px 0 rgba(255, 255, 255, .06);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, .6);
   /* max-height alone only promised to cap the panel; with no overflow the list simply drew past its
      own border and off the screen. On a 1152x720 laptop the Pause menu's last entry — MAIN MENU —
      was 18px below the viewport with nothing able to scroll to it, so a player could not quit to
@@ -85,45 +84,19 @@
   overscroll-behavior: contain;
 }
 
-/* Diegetic mono stamp in the top right corner. */
-.screen.sf-menu::before {
-  content: attr(data-stamp);
-  position: absolute;
-  top: 10px;
-  right: 18px;
-  font: 500 12px/1.35 var(--mono);
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  color: var(--mf-stamp);
-  pointer-events: none;
-}
-.screen.sf-menu:not([data-stamp])::before { display: none; }
-
-/* Laser sweep / signal trace along the top edge of the plate. */
-.screen.sf-menu::after {
-  content: "";
-  position: absolute;
-  top: -1px;
-  left: 0;
-  width: 100%;
-  height: 2px;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 70%, transparent) 0%, color-mix(in srgb, var(--accent) 25%, transparent) 45%, transparent 80%);
-  border-radius: 6px 6px 0 0;
-  pointer-events: none;
-  animation: sf-menu-laser-sweep 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-@keyframes sf-menu-laser-sweep {
-  0% { opacity: 0; width: 0%; }
-  100% { opacity: 1; width: 100%; }
-}
+/* The diegetic corner stamp ("MISSION CONTROL / STANDBY", "FLIGHT RECORDER / SAVE-LOAD") is
+   flavour chrome the grammar bans (section 9). Screens still set data-stamp -- a route check reads
+   the attribute to find a plate -- but nothing renders it. The top-edge accent sweep went with it: a
+   0.4s decorative animation with no state variable behind it. */
+.screen.sf-menu::before,
+.screen.sf-menu::after { content: none; display: none; }
 
 /* Width & layout variants.
    sf-menu-wide uses stable, non-jumping geometry across all tabs. */
 .screen.sf-menu.sf-menu-narrow { min-width: 320px; width: 380px; }
 .screen.sf-menu.sf-menu-wide {
-  width: min(92vw, 840px);
-  height: min(85vh, 660px);
+  width: min(94vw, 1100px);
+  height: min(88vh, 860px);
   min-height: 520px;
   display: flex;
   flex-direction: column;
@@ -146,18 +119,9 @@
   box-shadow: none;
   backdrop-filter: none;
 }
-.screen.sf-menu.sf-menu--bare::after { display: none; }
-.screen.sf-menu.sf-menu--bare::before {
-  top: -24px;
-  left: 2px;
-  right: auto;
-  font-size: 12px;
-  letter-spacing: .06em;
-  color: #5d6f7d;
-}
 
 /* ---- 3. Headings --------------------------------------------------------------
-   Saira display caps with a signal cyan tick and hairline divider. */
+   Plex Sans caps over a hairline divider. */
 
 #screens .sf-menu h1:not(.sf-title-logo) {
   margin: 4px 0 2px;
@@ -167,12 +131,12 @@
   gap: 10px;
   font-family: var(--mf-display);
   font-weight: 600;
-  font-size: 18px;
-  letter-spacing: .06em;
+  font-size: 19px;
+  letter-spacing: .04em;
   text-transform: uppercase;
   text-align: left;
   color: var(--ink);
-  text-shadow: 0 1px 12px rgba(0, 0, 0, .4);
+  text-shadow: none;
   border-bottom: 1px solid var(--mf-line-1);
 }
 #screens .sf-menu h1:not(.sf-title-logo)::before { content: none; }
@@ -183,12 +147,12 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  font-family: var(--mono);
-  font-weight: 500;
+  font-family: var(--mf-ui);
+  font-weight: 600;
   font-size: 12px;
   letter-spacing: .06em;
   text-transform: uppercase;
-  color: var(--ink-mute);
+  color: var(--ink-dim);
 }
 .screen.sf-menu h2::after {
   content: "";
@@ -265,23 +229,23 @@
   translate: 0 1px;
 }
 
-/* Primary action (Continue / Resume / Launch): solid signal cyan. */
+/* Primary action (Continue / Resume / Launch): the one flat accent fill on the plate. */
 .screen.sf-menu button.sf-btn--primary {
-  background: linear-gradient(180deg, #5ccbe9, #38a9cf);
-  border-bottom-color: rgba(6, 37, 48, .4);
+  background: var(--accent);
+  border-bottom-color: transparent;
   border-radius: 3px;
-  color: #062430;
+  color: var(--bg);
   font-weight: 600;
 }
-.screen.sf-menu button.sf-btn--primary::before { background: rgba(6, 36, 48, .45); }
+.screen.sf-menu button.sf-btn--primary::before { background: color-mix(in srgb, var(--bg) 45%, transparent); }
 .screen.sf-menu button.sf-btn--primary:hover:not(:disabled),
 .screen.sf-menu button.sf-btn--primary:focus-visible {
-  background: var(--accent);
-  color: #04202b;
+  background: color-mix(in srgb, var(--accent) 84%, white);
+  color: var(--bg);
 }
-.screen.sf-menu button.sf-btn--primary:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; }
+.screen.sf-menu button.sf-btn--primary:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 .screen.sf-menu button.sf-btn--primary:hover:not(:disabled)::before,
-.screen.sf-menu button.sf-btn--primary:focus-visible::before { background: #062430; width: 10px; }
+.screen.sf-menu button.sf-btn--primary:focus-visible::before { background: color-mix(in srgb, var(--bg) 60%, transparent); width: 10px; }
 
 /* Destructive action: quiet red text + hairline. */
 .screen.sf-menu button.sf-btn--danger {
@@ -323,7 +287,22 @@
   border-bottom: 0;
 }
 
-/* Custom Webkit scrollbar for aerospace look. */
+/* Scroll-edge shadows: a clipped last row read as a broken layout on Settings, Help, Codex and the
+   Crucible door. The cover gradients scroll with the content (attachment: local) and reveal a fixed
+   shadow only while there is more to scroll in that direction -- pure CSS, no listener, no rAF. */
+.screen.sf-menu .sf-settings-pane,
+.screen.sf-menu .sf-slot-list,
+.screen.sf-menu #sf-settings-pane,
+.screen.sf-menu > .sf-col {
+  --sf-scroll-cover: color-mix(in srgb, var(--panel) 96%, transparent);
+  background:
+    linear-gradient(var(--sf-scroll-cover) 40%, transparent) center top / 100% 30px no-repeat local,
+    linear-gradient(transparent, var(--sf-scroll-cover) 60%) center bottom / 100% 30px no-repeat local,
+    linear-gradient(rgba(0, 0, 0, .55), transparent) center top / 100% 12px no-repeat scroll,
+    linear-gradient(transparent, rgba(0, 0, 0, .55)) center bottom / 100% 12px no-repeat scroll;
+}
+
+/* Thin plate scrollbar. */
 .screen.sf-menu ::-webkit-scrollbar { width: 6px; }
 .screen.sf-menu ::-webkit-scrollbar-track { background: color-mix(in srgb, var(--panel) 60%, transparent); border-radius: 3px; }
 .screen.sf-menu ::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--accent) 35%, transparent); border-radius: 3px; }
@@ -398,21 +377,19 @@
   height: 16px;
   margin-top: -6px;
   border-radius: 3px;
-  background: linear-gradient(180deg, var(--accent-2), var(--accent));
-  border: 1px solid #ffffff;
-  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 60%, transparent);
+  background: var(--accent);
+  border: 1px solid var(--bg);
   cursor: grab;
-  transition: transform .12s ease, box-shadow .12s ease;
+  transition: transform .12s ease, background-color .12s ease;
 }
 .screen.sf-menu input[type=range]:hover::-webkit-slider-thumb {
   transform: scale(1.15);
-  box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 85%, transparent);
+  background: color-mix(in srgb, var(--accent) 84%, white);
 }
 .screen.sf-menu input[type=range]:active::-webkit-slider-thumb {
   cursor: grabbing;
   transform: scale(1.22);
-  background: #ffffff;
-  box-shadow: 0 0 18px var(--accent);
+  background: var(--ink);
 }
 .screen.sf-menu input[type=range]::-moz-range-track {
   height: 6px;
@@ -429,17 +406,16 @@
   width: 16px;
   height: 16px;
   border-radius: 3px;
-  background: linear-gradient(180deg, var(--accent-2), var(--accent));
-  border: 1px solid #ffffff;
-  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 60%, transparent);
+  background: var(--accent);
+  border: 1px solid var(--bg);
 }
 
 /* Precision inputs and selects. */
 .screen.sf-menu select,
 .screen.sf-menu input[type=text],
 .screen.sf-menu input[type=number] {
-  font-family: var(--mono);
-  font-size: 12px;
+  font-family: var(--mf-ui);
+  font-size: 13px;
   color: var(--ink);
   background: color-mix(in srgb, var(--panel) 85%, transparent);
   border: 1px solid var(--mf-line-2);
@@ -463,25 +439,30 @@
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent), inset 0 1px 2px rgba(0, 0, 0, .4);
 }
 
-/* Numeric telemetry readout. */
+/* Numeric readout: DATA face, plain ink -- a percentage is a value, not a state. */
+.screen.sf-menu input[type=number] { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 .screen.sf-menu .sf-val {
   font-family: var(--mono);
-  color: var(--accent-2);
-  font-size: 12px;
-  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 500;
   min-width: 52px;
   text-align: right;
-  letter-spacing: .04em;
+  letter-spacing: 0;
 }
 
 .screen.sf-menu .sf-grid2 {
   display: grid;
-  grid-template-columns: auto 1fr;
+  /* The key column is bounded: one long chord ("Hold + arrows: reel / pay out / orbit; Shift pump")
+     used to size the whole column and push every description into the far half of the plate. */
+  grid-template-columns: minmax(120px, 300px) minmax(0, 1fr);
   gap: 6px 18px;
-  align-items: center;
+  align-items: baseline;
   font-size: 13px;
 }
-.screen.sf-menu .sf-grid2 .k { color: var(--accent-2); font-family: var(--mono); letter-spacing: .05em; font-size: 12px; }
+.screen.sf-menu .sf-grid2 .k { overflow-wrap: anywhere; }
+.screen.sf-menu .sf-grid2 .k { color: var(--accent); font-family: var(--mono); letter-spacing: .02em; font-size: 13px; }
 /* Bare digit keys: the mono face's slashed zero reads as "Θ" at 12px. */
 .screen.sf-menu .sf-grid2 .k--digit { font-family: var(--mf-ui, inherit); letter-spacing: .02em; }
 .screen.sf-menu .sf-grid2 .v { color: var(--ink); }
@@ -505,11 +486,12 @@
   flex-wrap: wrap;
 }
 .screen.sf-menu button.sf-tab {
-  font-family: var(--mono);
+  font-family: var(--mf-ui);
+  font-weight: 500;
   font-size: 12px;
-  letter-spacing: .06em;
+  letter-spacing: .05em;
   text-transform: uppercase;
-  color: var(--ink-mute);
+  color: var(--ink-dim);
   background: color-mix(in srgb, var(--panel) 60%, transparent);
   border: 1px solid var(--mf-line-2);
   border-radius: 3px;
@@ -531,11 +513,10 @@
   translate: 0 1px;
 }
 .screen.sf-menu button.sf-tab.active {
-  color: #04202b;
+  color: var(--bg);
   background: var(--accent);
-  border-color: var(--accent-3);
+  border-color: var(--accent);
   font-weight: 600;
-  box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 /* An ON/OFF toggle is a control state, not a disabled one: keep OFF legible
    (the tab-strip default --ink-mute read as a dead button in Settings/Access). */
@@ -547,6 +528,7 @@
 /* Slots (pause flight brief, save slots, help cards): readout cards. */
 .screen.sf-menu .sf-slot {
   display: flex;
+  flex-shrink: 0; /* a constrained list scrolls; it never crushes a row into its neighbour */
   align-items: center;
   justify-content: space-between;
   gap: 14px;
@@ -563,9 +545,8 @@
   border-color: color-mix(in srgb, var(--accent) 35%, transparent);
 }
 .screen.sf-menu .sf-slot.sel {
-  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+  border-color: var(--accent);
   background: color-mix(in srgb, var(--panel-2) 90%, transparent);
-  box-shadow: inset 3px 0 0 var(--accent), 0 0 16px color-mix(in srgb, var(--accent) 12%, transparent);
 }
 .screen.sf-menu .sf-slot.empty {
   background: color-mix(in srgb, var(--panel) 35%, transparent);
@@ -578,8 +559,8 @@
 }
 .screen.sf-menu .sf-slot-main { flex: 1 1 auto; min-width: 0; }
 .screen.sf-menu .sf-slot-name { font-size: 14px; font-weight: 600; color: var(--ink); }
-.screen.sf-menu .sf-slot.empty .sf-slot-name { font-weight: normal; color: var(--ink-mute); font-style: italic; }
-.screen.sf-menu .sf-slot-sub { font-size: 12px; color: var(--ink-mute); font-family: var(--mono); }
+.screen.sf-menu .sf-slot.empty .sf-slot-name { font-weight: 500; color: var(--ink-dim); }
+.screen.sf-menu .sf-slot-sub { font-size: 12px; color: var(--ink-dim); font-family: var(--mf-ui); line-height: 1.45; }
 .screen.sf-menu .sf-slot button.sf-tab,
 .screen.sf-menu .sf-slot button.sf-btn {
   width: auto;
@@ -595,31 +576,31 @@
   border-radius: 0;
   padding: 3px 0 3px 12px;
   background: transparent;
-  color: var(--ink-mute);
-  font-family: var(--mono);
-  font-size: 12px;
-  line-height: 1.6;
-  letter-spacing: .04em;
+  color: var(--ink-dim);
+  font-family: var(--mf-ui);
+  font-size: 13px;
+  line-height: 1.5;
+  letter-spacing: 0;
 }
 .screen.sf-menu .sf-menu-save-summary.has-save {
   color: var(--ink-dim);
 }
 
 /* ---- 7. Title lockup ------------------------------------------------------------
-   Left-aligned Saira wordmark with a hairline signal rule and a live contract tag. */
+   Left-aligned Plex Sans wordmark with a hairline rule and a live contract tag. */
 
 #screens .sf-menu h1.sf-title-logo {
   margin: 0;
   padding-bottom: 0;
   border-bottom: 0;
   font-family: var(--mf-display);
-  font-weight: 600;
+  font-weight: 700;
   font-size: clamp(38px, 4.8vw, 54px);
-  letter-spacing: .06em;
+  letter-spacing: .04em;
   text-transform: uppercase;
   text-align: left;
   color: var(--ink);
-  text-shadow: 0 2px 20px rgba(0, 0, 0, .55);
+  text-shadow: var(--text-shadow-hard);
 }
 #screens .sf-menu h1.sf-title-logo::after {
   content: "";
@@ -635,9 +616,10 @@
   align-items: center;
   gap: 9px;
   align-self: flex-start;
-  font-family: var(--mono);
+  font-family: var(--mf-ui);
+  font-weight: 500;
   font-size: 12px;
-  letter-spacing: .06em;
+  letter-spacing: .05em;
   text-transform: uppercase;
   text-align: left;
   /* Lighter ink plus a subtle dark plate: the tag sits directly on the nebula
@@ -651,13 +633,10 @@
 .screen.sf-menu .sf-title-tag::before {
   content: "";
   flex: 0 0 auto;
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
   background: var(--accent);
-  box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 70%, transparent);
-  animation: sf-menu-pulse-dot 1.6s steps(2, end) infinite;
 }
-@keyframes sf-menu-pulse-dot { 50% { opacity: .22; } }
 
 /* ---- 8. Confirm dialog -----------------------------------------------------------
    Irreversible action modal with high contrast and explicit choices. */
@@ -665,22 +644,11 @@
 #sf-confirm-root { background: color-mix(in srgb, var(--bg) 82%, transparent); }
 #sf-confirm-root .sf-confirm {
   position: relative;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--panel-2) 98%, transparent) 0%, color-mix(in srgb, var(--bg) 98%, transparent) 100%);
+  background: color-mix(in srgb, var(--panel) 97%, transparent);
   border: 1px solid var(--mf-line-2);
   border-radius: 6px;
   padding: 22px 24px;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, .7), 0 4px 16px rgba(0, 0, 0, .4);
-}
-#sf-confirm-root .sf-confirm::after {
-  content: "";
-  position: absolute;
-  top: -1px;
-  left: 0;
-  width: 100%;
-  height: 2px;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 70%, transparent), color-mix(in srgb, var(--accent) 15%, transparent) 42%, transparent 70%);
-  border-radius: 6px 6px 0 0;
-  pointer-events: none;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, .6);
 }
 #sf-confirm-root .sf-confirm__title {
   margin: 2px 0 8px;
@@ -738,17 +706,17 @@
   color: var(--ink);
 }
 #sf-confirm-root .sf-confirm__btns button.sf-btn--primary {
-  background: linear-gradient(180deg, #5ccbe9, #38a9cf);
-  border-color: rgba(6, 37, 48, .4);
-  color: #062430;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
   font-weight: 600;
 }
 #sf-confirm-root .sf-confirm__btns button.sf-btn--primary:hover:not(:disabled),
 #sf-confirm-root .sf-confirm__btns button.sf-btn--primary:focus-visible {
-  background: var(--accent);
-  color: #04202b;
+  background: color-mix(in srgb, var(--accent) 84%, white);
+  color: var(--bg);
 }
-#sf-confirm-root .sf-confirm__btns button.sf-btn--primary:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; }
+#sf-confirm-root .sf-confirm__btns button.sf-btn--primary:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 #sf-confirm-root .sf-confirm__btns button.sf-btn--danger {
   background: transparent;
   border-color: color-mix(in srgb, var(--danger) 40%, transparent);
@@ -771,9 +739,7 @@ html.sf-dyslexia #sf-confirm-root .sf-confirm {
   --mf-ui: "OpenDyslexic", "Atkinson Hyperlegible", "Comic Sans MS", "Verdana", system-ui, sans-serif;
 }
 
-html.sf-reduce-motion .screen.sf-menu::after,
-html.sf-reduce-motion .sf-pane-anim,
-html.sf-reduce-motion .screen.sf-menu .sf-title-tag::before { animation: none !important; }
+html.sf-reduce-motion .sf-pane-anim { animation: none !important; }
 
 @media (forced-colors: active) {
   html.sf-forced-colors .screen.sf-menu,

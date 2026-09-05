@@ -467,7 +467,10 @@ export function dataState(kind, opts = {}) {
   }
 
   const body = [];
-  body.push(el('span', 'sf-state__word', { text: stateCode(kind, opts) }));
+  // The fault id is validated and kept as data (A-Z/0-9/_), but the player reads it as words:
+  // "NOTHING_STANDS" on the Footprint board was an identifier leaking onto the screen.
+  const code = stateCode(kind, opts);
+  body.push(el('span', 'sf-state__word', { text: code.replace(/_/g, ' '), attrs: { 'data-sf-code': code } }));
   body.push(el('p', 'sf-state__head', { text: String(opts.headline), attrs: { 'data-sf-text': '' } }));
   body.push(el('p', 'sf-state__fills', { text: String(opts.fills), attrs: { 'data-sf-text': '' } }));
   if (opts.detail) body.push(el('p', 'sf-state__detail', { text: String(opts.detail), attrs: { 'data-sf-text': '' } }));

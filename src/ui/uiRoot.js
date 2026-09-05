@@ -599,6 +599,12 @@ export const ui = {
       const modalOpen = this.screenManager && this.screenManager.isOpen && this.screenManager.isOpen();
       const docked = this.state && this.state.ui && this.state.ui.docked === true;
       setFlightUI(this.state && this.state.mode === 'flight' && !modalOpen && !docked);
+      // `body.sf-in-run` tells the stylesheet a run is live behind the screen stack. styles/ui.css
+      // keys the #screens backdrop on it: inside a run every plate (Settings, Help, Codex, Save,
+      // Mission Log, Ship, Chart…) sits over the paused world, dimmed; only the title-screen family
+      // keeps the cinematic still. Before this, only the pause plate cleared the still, so opening
+      // Settings FROM pause swapped the player's own frozen sector for the title art.
+      document.body.classList.toggle('sf-in-run', !!(this.state && this.state.mode !== 'menu'));
     };
     this.bus.on('mode:changed', refreshFlightUI);
     // initial

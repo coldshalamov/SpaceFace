@@ -2236,8 +2236,15 @@ const CSS = `
   font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
   letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-calm);
 }
+/* The screen's title reads like every other plate's h1 (19px UI face), not like a section kicker:
+   with the kicker treatment the crest's biggest words were "J to close". */
+.sf-mlog-head .sf-mlog-title {
+  font-family: var(--sf-display-face); font-weight: 600; font-size: 19px; line-height: 1.2;
+  letter-spacing: .04em; color: var(--sf-paper);
+}
 .sf-mlog-hint {
   font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-calm); letter-spacing: 0;
+  margin-left: auto;
 }
 .sf-mlog-close { font-size: 13px; padding: var(--sp-1) var(--sp-3); color: var(--sf-paper); }
 

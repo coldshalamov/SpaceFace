@@ -37,7 +37,7 @@ function injectStyle() {
   s.textContent = `
   .sf-menu.sf-crucible-door { gap:16px; padding:32px 36px; min-width:400px; max-width:min(92vw,720px); }
   #screens .sf-menu.sf-crucible-door h1 { justify-content:center; margin:0; padding-bottom:10px;
-    font-family:var(--mono); letter-spacing:.06em; font-size:22px; text-transform:uppercase; }
+    font-family:var(--mf-display); font-weight:700; letter-spacing:.04em; font-size:24px; text-transform:uppercase; }
   .sf-menu.sf-crucible-door .sf-crd-sub { text-align:center; color:var(--ink-dim); font-size:13px;
     line-height:1.55; margin-top:-8px; }
   .sf-menu.sf-crucible-door .sf-crd-hulls { display:grid; gap:10px;
@@ -46,7 +46,7 @@ function injectStyle() {
     border:1px solid var(--line); border-radius:2px; background:rgba(255,255,255,.03);
     padding:12px 14px; cursor:pointer; color:var(--ink); font:inherit; }
   .sf-menu.sf-crucible-door .sf-crd-hull[aria-pressed="true"] { border-color:var(--accent-3); }
-  .sf-menu.sf-crucible-door .sf-crd-hull .n { font-family:var(--mono); letter-spacing:.06em;
+  .sf-menu.sf-crucible-door .sf-crd-hull .n { font-family:var(--mf-ui); font-weight:600; letter-spacing:.04em;
     font-size:13px; text-transform:uppercase; }
   .sf-menu.sf-crucible-door .sf-crd-hull .d { font-size:12px; color:var(--ink-dim); }
   .sf-menu.sf-crucible-door .sf-crd-modes { display:grid; gap:10px;
@@ -56,13 +56,17 @@ function injectStyle() {
     padding:12px 14px; cursor:pointer; color:var(--ink); font:inherit; }
   .sf-menu.sf-crucible-door .sf-crd-mode[aria-pressed="true"] { border-color:var(--accent-3);
     background:color-mix(in srgb, var(--accent-3) 9%, transparent); }
-  .sf-menu.sf-crucible-door .sf-crd-mode .n { font-family:var(--mono); letter-spacing:.06em;
+  .sf-menu.sf-crucible-door .sf-crd-mode .n { font-family:var(--mf-ui); font-weight:600; letter-spacing:.04em;
     font-size:13px; text-transform:uppercase; }
-  .sf-menu.sf-crucible-door .sf-crd-mode .d { font-size:12px; color:var(--ink-dim); line-height:1.45; }
-  .sf-menu.sf-crucible-door .sf-crd-label { font-family:var(--mono); font-size:12px;
-    letter-spacing:.08em; text-transform:uppercase; color:var(--ink-dim); }
+  /* Mode and hull descriptions are sentences: sentence case in the UI face, never tracked caps. */
+  .sf-menu.sf-crucible-door .sf-crd-mode .d,
+  .sf-menu.sf-crucible-door .sf-crd-hull .d { font-family:var(--mf-ui); font-size:13px; color:var(--ink-dim);
+    line-height:1.45; letter-spacing:0; text-transform:none; }
+  .sf-menu.sf-crucible-door .sf-crd-label { font-family:var(--mf-ui); font-weight:600; font-size:12px;
+    letter-spacing:.06em; text-transform:uppercase; color:var(--ink-dim); }
   .sf-menu.sf-crucible-door .sf-crd-seed { display:flex; gap:10px; align-items:center;
-    justify-content:center; font-family:var(--mono); font-size:12px; color:var(--ink-dim); }
+    justify-content:center; font-family:var(--mf-ui); font-size:13px; color:var(--ink-dim); }
+  .sf-menu.sf-crucible-door .sf-crd-seed input { font-family:var(--mono); font-variant-numeric:tabular-nums; }
   .sf-menu.sf-crucible-door .sf-crd-seed input { width:130px; background:rgba(0,0,0,.3);
     border:1px solid var(--line); color:var(--ink); font:inherit; padding:6px 8px; border-radius:2px; }
   .sf-menu.sf-crucible-door .sf-crd-foot { display:flex; gap:10px; justify-content:center; margin-top:4px; }
