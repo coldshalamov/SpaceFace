@@ -15962,7 +15962,7 @@
       "priority": 85,
       "title": "Ownership and order",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [],
       "mutexes": [
         "frontend-matrix"
@@ -15979,8 +15979,10 @@
         "npm run check:ui:perf",
         "npm run check:visual-regression"
       ],
-      "receiptRefs": [],
-      "brief": "Every red cell is assigned to a packet (PQ-162 station, PQ-168 chart, PQ-181 meta shell, PQ-182 Crucible screens, PQ-130 works, PQ-183 links, PQ-184 UI perf) with the leaf that clears it; the matrix is the frontend's queue. DONE WHEN: No red cell without an owner; the map §18 table mirrors the matrix."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-180-02-REPORT.md"
+      ],
+      "brief": "IMPLEMENTED 2026-09-05: every failing cell carries an owner packet and leaf (754 in the measured run); the eleven unowned surfaces now own their reds (PQ-181, PQ-168); CANONICAL_BUILD_MAP §18.2 mirrors the manifest row for row. Commit 5169ec66. Every red cell is assigned to a packet (PQ-162 station, PQ-168 chart, PQ-181 meta shell, PQ-182 Crucible screens, PQ-130 works, PQ-183 links, PQ-184 UI perf) with the leaf that clears it; the matrix is the frontend's queue. DONE WHEN: No red cell without an owner; the map §18 table mirrors the matrix."
     },
     {
       "id": "PQ-180.03",
