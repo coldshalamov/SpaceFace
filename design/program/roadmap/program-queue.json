@@ -15934,7 +15934,7 @@
       "priority": 84,
       "title": "The floor, written",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [],
       "mutexes": [
         "frontend-matrix"
@@ -15951,8 +15951,10 @@
         "npm run check:ui:perf",
         "npm run check:visual-regression"
       ],
-      "receiptRefs": [],
-      "brief": "The exact thresholds per rule (12 px, +40 %, 1280/1920/2560, ≤ 1,500 DOM nodes per surface, ≤ 2 ms UI frame cost, four data states named) recorded once in the grammar and read by the check. DONE WHEN: Thresholds live in one file; the check reads them; a deliberate violation goes red."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-180-01-REPORT.md"
+      ],
+      "brief": "IMPLEMENTED 2026-09-05 (verified, built by b59cd04a): thresholds live in scripts/ui-grammar-thresholds.mjs, the grammar §12 quotes them, the check reads them, deliberate violations go red in test/ui-grammar-matrix.test.mjs (42/42). The exact thresholds per rule (12 px, +40 %, 1280/1920/2560, ≤ 1,500 DOM nodes per surface, ≤ 2 ms UI frame cost, four data states named) recorded once in the grammar and read by the check. DONE WHEN: Thresholds live in one file; the check reads them; a deliberate violation goes red."
     },
     {
       "id": "PQ-180.02",
