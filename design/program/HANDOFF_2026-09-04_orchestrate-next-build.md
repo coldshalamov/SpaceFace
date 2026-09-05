@@ -37,11 +37,21 @@ never in-flight work — see "Not attempted" at the bottom.
 
 ## Findings a future agent must not lose
 
-**1. The 47-A sim golden is now red for TWO stacked reasons.** The inherited sim-v3 drift was
-`0f701fcb…`. Integrating CONTACT `a3bd740d` moved it to `77bbd9cd…`, attributed by elimination
-(`src/core/physics.js` and `src/core/sg02DynamicBodyOwner.js` were the only sim code to change).
-A contact change altering a scenario containing collisions is expected. **The golden was not
-repinned.** Whoever re-records it must account for both causes, not one.
+**1. `check:baseline` is now 12/14, not 13/14 — CONTACT moved BOTH 47-A goldens.**
+
+```
+sim-v3   0f701fcb…  ->  77bbd9cd…   (was already red from inherited drift; now red for two reasons)
+sim      GREEN       ->  76116bb5…   (this commit turned it red)
+```
+
+Attributed by elimination: `src/core/physics.js` and `src/core/sg02DynamicBodyOwner.js` from
+`a3bd740d` are the only sim code changed since the last 13/14 run. The change is in the physics
+owner, *below* the flight-system choice, so it moves both flight paths. Expected for a
+contact-physics change to a 720-tick scenario full of collisions. **Neither golden was repinned.**
+
+Process lesson worth keeping: a direct `sim-v3` hash re-run after the cherry-pick showed the v3
+drift and looked sufficient; only the full gate revealed `sim` had gone red as well. **After
+touching sim code, run the whole gate — a targeted hash check is not the gate.**
 
 **2. A CRLF trap was in the tree.** Three files had been rewritten with CRLF by a worktree agent —
 `capture-combat-vfx-acceptance.mjs` looked like a 2,756-line rewrite and contained 4 real changed
@@ -68,7 +78,7 @@ declines to attribute. Now reported separately from real gaps.
 
 ## Baseline and evidence rules (unchanged, still true)
 
-- `check:baseline` is **13/14**; the red is `sim-v3`, now for the two reasons above.
+- `check:baseline` is **12/14**; the reds are `sim-v3` and `sim`, both explained above.
 - Headless capture is SwiftShader software rendering and is invalid as motion/feel evidence.
 - Do not re-run an unchanged capture against the same candidate; fix code first, then one retry.
 - Root owns git index/commits/push, `package.json`, `program-queue.json`, NOW.md, receipts.

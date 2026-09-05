@@ -72,21 +72,33 @@ The bench now splits them — `knocksMissingActorSubFloor` is reported and never
 unattributed receipt *at or above* the knock floor raises one, because only that could be a ram the
 bar should exclude or ambient contact it should count.
 
-## Determinism: a second drift, recorded not repinned
+## Determinism: BOTH 47-A goldens moved. Recorded, not repinned.
 
-Integrating `a3bd740d` moved the 47-A authoritative sim hash:
+`check:baseline` went from **13/14 to 12/14** at this cherry-pick. Both 47-A hashes drifted:
 
 ```
-before a3bd740d:  0f701fcb69b7d7eb2b32ec7c94d55873c75f7fe7cad8183466e963f53ff671d7  (inherited drift)
-after  a3bd740d:  77bbd9cd12f3145c855c6e045ea73adec2982912f0d9695c6c3cbdf757c1cc3b
-expected golden:  70eda854ab76bbd0cc8d20bc8e280288138bee7fe3ad1b06aa9a169c9cb916e4
+sim-v3 (flight v3)
+  before a3bd740d:  0f701fcb69b7d7eb2b32ec7c94d55873c75f7fe7cad8183466e963f53ff671d7  (inherited drift)
+  after  a3bd740d:  77bbd9cd12f3145c855c6e045ea73adec2982912f0d9695c6c3cbdf757c1cc3b
+  expected golden:  70eda854ab76bbd0cc8d20bc8e280288138bee7fe3ad1b06aa9a169c9cb916e4
+
+sim (legacy flight)  — was GREEN before this commit
+  after  a3bd740d:  76116bb577b52a939eadd8ed6ae7266c7bebe112d8a7a326ebff24cacaf34edd
+  expected golden:  21ef7a0f4ec2580cc64d58345bb606b3b242bfe854f20bf450095a2ca985044c
 ```
 
-Attributed by elimination: the only sim code changed since the clean `0f701fcb` measurement is
-`src/core/physics.js` and `src/core/sg02DynamicBodyOwner.js`, both from this cherry-pick. A contact
-change altering a scenario that contains collisions is expected, not a symptom. **The golden was not
-repinned.** It is now red for two stacked reasons — the inherited sim-v3 drift and this contact
-change — and whoever re-records it must account for both, not one.
+Attributed by elimination: the only sim code changed since the last 13/14 run is
+`src/core/physics.js` and `src/core/sg02DynamicBodyOwner.js`, both from this cherry-pick. Everything
+else this session touched is bench scripts, receipts or frontend tooling.
+
+A contact-physics change altering a 720-tick scenario that contains collisions is expected, and it
+moves *both* flight paths because the change is in the physics owner, below the flight-system
+choice. It was found late: a direct `sim-v3` hash re-run after the pick showed the v3 drift, but
+only the full gate revealed that `sim` had gone red too. **Re-run the whole gate after touching sim
+code; a single targeted hash check is not the gate.**
+
+**Neither golden was repinned.** `sim-v3` is now red for two stacked reasons (inherited drift plus
+this change) and `sim` for one. Whoever re-records them must account for both causes on v3, not one.
 
 ## What is still open
 
