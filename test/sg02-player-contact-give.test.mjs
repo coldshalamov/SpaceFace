@@ -87,6 +87,26 @@ test('player contact give: heading, budget, yaw, queued impulses, NPC, receipts,
           playerReceipts.every((r) => Number.isFinite(r.appliedPlayerDeltaV)),
           `${VISION}: every player receipt must carry finite appliedPlayerDeltaV`,
         );
+        // "A controllable mass, not a cursor." — the owner receipts. The rule may keep the nose
+        // and the course; it must SAY what the solver asked for, and it must report a retained
+        // heading/course of exactly zero rather than leaving the question unmeasured.
+        assert.ok(
+          playerReceipts.every((r) => Number.isFinite(r.solverPlayerHeadingRad)
+            && Number.isFinite(r.solverPlayerYawRateKick)
+            && Number.isFinite(r.solverPlayerCourseRad)),
+          `${VISION}: every player receipt carries what the solver tried to do to the nose and the course`,
+        );
+        assert.ok(
+          playerReceipts.every((r) => r.appliedPlayerHeadingRad === 0 && r.appliedPlayerCourseRad === 0),
+          `${VISION}: the retained contact heading and course change on the player are zero by construction`,
+        );
+        // Per-tick angles are stamped whole on every receipt of the tick, never divided.
+        for (const r of playerReceipts) {
+          assert.equal(
+            r.solverPlayerHeadingRad, playerReceipts[0].solverPlayerHeadingRad,
+            `${VISION}: a per-tick angle is stamped whole on every receipt of that tick, not split like delta-V`,
+          );
+        }
         assert.ok(Number.isFinite(playerReceipts[0].impulse), 'raw impulse must remain on the receipt');
         assert.ok(Number.isFinite(playerReceipts[0].preSolveClosingSpeed), 'raw closing speed must remain');
         assert.ok(playerReceipts[0].normal && Number.isFinite(playerReceipts[0].normal.x), 'raw normal remains');
@@ -209,6 +229,11 @@ test('physics adapter forwards appliedPlayerDeltaV without aliasing raw playerDe
         causalActorId: 2,
         preSolveClosingSpeed: 17.5,
         appliedPlayerDeltaV: 1.25,
+        solverPlayerHeadingRad: 0.42,
+        solverPlayerYawRateKick: 25.2,
+        solverPlayerCourseRad: -0.11,
+        appliedPlayerHeadingRad: 0,
+        appliedPlayerCourseRad: 0,
       }];
     },
   };
@@ -236,6 +261,44 @@ test('physics adapter forwards appliedPlayerDeltaV without aliasing raw playerDe
   assert.equal(p.pos.x, 3);
   assert.equal(p.normal.x, 1);
   assert.equal(p.playerInvolved, true);
+  // "A controllable mass, not a cursor." The bus carries both halves of the answer: what a rock
+  // asked of the nose, and what the rule let through.
+  assert.equal(p.solverPlayerHeadingRad, 0.42, 'adapter forwards the solver heading kick unchanged');
+  assert.equal(p.solverPlayerYawRateKick, 25.2, 'adapter forwards the solver yaw-rate kick unchanged');
+  assert.equal(p.solverPlayerCourseRad, -0.11, 'adapter forwards the solver course kick unchanged');
+  assert.equal(p.appliedPlayerHeadingRad, 0, 'retained heading change on the player is zero');
+  assert.equal(p.appliedPlayerCourseRad, 0, 'retained course change on the player is zero');
+});
+
+test('a receipt with no measured owner angles carries no invented zero', () => {
+  const bus = createBus();
+  const payloads = [];
+  bus.on('physics:impact', (payload) => payloads.push(payload));
+  const a = { id: 7, type: 'ship', alive: true, mass: 20, vel: { x: 5, z: 0 }, pos: { x: 0, z: 0 } };
+  const b = { id: 8, type: 'ship', alive: true, mass: 20, vel: { x: 0, z: 0 }, pos: { x: 6, z: 0 } };
+  const prevSg02 = physics._sg02;
+  const prevBus = physics.bus;
+  const prevScratch = physics._pairMaterialScratch;
+  physics.bus = bus;
+  physics._pairMaterialScratch = { push: 1, restitution: 0.18, tangentDamping: 0.04, impactScale: 1 };
+  physics._sg02 = {
+    drainContactImpacts() {
+      return [{ aId: 7, bId: 8, impulse: 12, pos: { x: 3, z: 0 }, normal: { x: 1, z: 0 } }];
+    },
+  };
+  try {
+    physics._emitSg02ContactImpacts({ entities: new Map([[7, a], [8, b]]), tick: 3, playerId: 99 });
+  } finally {
+    physics._sg02 = prevSg02;
+    physics.bus = prevBus;
+    physics._pairMaterialScratch = prevScratch;
+  }
+  assert.equal(payloads.length, 1);
+  // A hole must stay a hole: an unmeasured angle that arrived as 0 would read as "the solver asked
+  // for nothing", which is the exact failure this whole unit exists to stop.
+  assert.equal('solverPlayerHeadingRad' in payloads[0], false);
+  assert.equal('appliedPlayerHeadingRad' in payloads[0], false);
+  assert.equal('appliedPlayerCourseRad' in payloads[0], false);
 });
 
 test('proportional receipts sum exactly to the applied delta-V, last takes the residual', async () => {

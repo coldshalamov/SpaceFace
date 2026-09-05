@@ -377,6 +377,45 @@ test('visible jitter is read from the pictures: a wobble after a contact is a re
   assert.ok(Array.isArray(STRIP_SCENARIOS.shove_light.warmup) && STRIP_SCENARIOS.shove_light.warmup.some((s) => s.mouseDown), 'the first shot is paid before the strip');
 });
 
+test('the pilot\'s own hands are not jitter, and a rotation the frames cannot read is never a pass', async () => {
+  const { measureVisibleJitter, COMMANDED_INPUT_LEAD_S, READABLE_MAX_YAW_RATE } = await import('../scripts/lib/bench/frameStripCapture.mjs');
+  const frame = (t, rot) => ({ simTime: t, playerRot: rot, playerScreenXY: [0.5, 0.5] });
+  const contact = [{ type: 'physics:impact', simTime: 10.0, playerInvolved: true, magnitude: 30 }];
+  // The hull turns one way, then the other, because the pilot let go of "turn right" and held
+  // "turn left". "Turn NOW when I twitch." — the answer to a twitch is not a wobble the hull put
+  // there, and grading it as one grades the tape instead of the game.
+  const flip = [];
+  for (let i = 0; i < 9; i++) flip.push(frame(10.0 + i / 16, i < 4 ? 0.06 * i : 0.18 - 0.06 * (i - 3)));
+  const commanded = measureVisibleJitter(flip, contact, [
+    { simTime: 10.2, input: 'turn right released, turn left held' },
+  ]);
+  assert.equal(commanded.headingReversals, 0, 'a reversal at the pilot\'s own key transition is the pilot');
+  assert.equal(commanded.commandedHeadingReversals, 1, 'and it is published, not discarded');
+  assert.equal(commanded.events, 0);
+  assert.equal(commanded.commandedLeadS, COMMANDED_INPUT_LEAD_S);
+  // The same frames with no key transition anywhere near: the hull did that by itself.
+  const uncommanded = measureVisibleJitter(flip, contact, [{ simTime: 4.0, input: 'forward held' }]);
+  assert.equal(uncommanded.headingReversals, 1, 'the same reversal with no key behind it is jitter');
+  assert.equal(uncommanded.events, 1);
+  // A rotation faster than the ceiling every non-player body is held to cannot be recovered from
+  // 8 fps frames — the hull could have turned that far or that far plus whole turns. Measured on
+  // the live build: a starter pulse hit spins the player to 160 rad/s.
+  const spun = [];
+  for (let i = 0; i < 9; i++) spun.push(frame(10.0 + i / 16, wrapForTest(i * 20)));
+  const aliased = measureVisibleJitter(spun, contact, []);
+  assert.equal(aliased.measured, false, 'B13: an unreadable window is unmeasured, never a pass');
+  assert.ok(aliased.unreadableSteps > 0 && aliased.unreadableWindows === 1);
+  assert.equal(aliased.events, 0, 'an unreadable step must not be counted as a wobble either');
+  assert.equal(aliased.unreadableAboveRadS, READABLE_MAX_YAW_RATE);
+});
+
+function wrapForTest(a) {
+  let x = a;
+  while (x > Math.PI) x -= 2 * Math.PI;
+  while (x < -Math.PI) x += 2 * Math.PI;
+  return x;
+}
+
 test('the player\'s hit outranks a bump when moments merge, and jitter windows count only contacts inside the span', async () => {
   const { measureVisibleJitter } = await import('../scripts/lib/bench/frameStripCapture.mjs');
   const merged = condenseMoments([

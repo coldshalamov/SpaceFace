@@ -25,6 +25,7 @@
 // silently reconciled, because a receipt that misstates what the player feels is itself a finding.
 
 import { readPhysicsTelemetry } from '../../../../src/core/physicsAuthority.js';
+import { resolveGovernedCombatSpeed } from '../../../../src/core/flight/propulsionCatalog.js';
 import { bootRealPath, writeRealPathInput, REAL_PATH_DT } from '../realPath.mjs';
 
 // An event below this is not a knock the player could feel; it is solver settle. 0.5 % of cruise
@@ -116,6 +117,80 @@ function percentile(sorted, q) {
   if (!sorted.length) return 0;
   const i = Math.min(sorted.length - 1, Math.max(0, Math.round(q * (sorted.length - 1))));
   return sorted[i];
+}
+
+// The strip's own jitter rules, so this bench measures the SAME THING the pictures measure rather
+// than something that sounds like it. Both numbers come straight from frameStripCapture.mjs:
+// a reversal is counted when consecutive steps of the hull's heading (or of its motion) point
+// opposite ways, and steps below these thresholds are not motion at all.
+// B13's magnitude ceiling and its stated float tolerance — the same pair feelBars compares with.
+const B13_MAX_KNOCK_FRACTION = 0.10;
+const B13_FRACTION_TOLERANCE = 1e-6;
+
+const STRIP_HEADING_STEP_EPS = 1e-3;      // rad, frameStripCapture measureVisibleJitter
+const STRIP_JITTER_WINDOW_S = 0.5;        // s, VISIBLE_JITTER_WINDOW_S
+const STRIP_CADENCE_TICKS = 8;            // every 8th sim tick ~= 7.5 fps, a strip's contact cadence
+const SIM_MOTION_STEP_WU = 1e-3;          // WU, the world-space stand-in for the strip's 0.004 of screen
+
+/**
+ * B13's jitter clause in the strip's words, evaluated on the sim's own samples.
+ *
+ * The strip asks: in the half second after a contact the player was in, does the hull's heading, or
+ * its motion, turn back on itself between consecutive FRAMES? This asks exactly that of consecutive
+ * SAMPLES — once at the strip's contact cadence (every 8th tick) and once at the full 60 Hz, so a
+ * wobble too fast for a strip to photograph cannot hide behind the frame rate.
+ *
+ * It is not a picture. The pictures witness for this clause is the Crucible strip, and feelBars
+ * says so in plain words before it will accept this number for the flight bench.
+ *
+ * The motion half uses the hull's WORLD position, because headless there is no glass; the strip's
+ * screen-space rule is named beside it so the difference is on the record rather than implied.
+ */
+function measureSimSampledJitter(samples, startIndices, ticks) {
+  const windowTicks = Math.round(STRIP_JITTER_WINDOW_S * 60);
+  const run = (stride) => {
+    const out = { windows: 0, headingReversals: 0, motionReversals: 0, events: 0, strideTicks: stride };
+    for (const startIdx of startIndices) {
+      const rows = [];
+      for (let i = startIdx; i < Math.min(ticks, startIdx + windowTicks + 1); i += stride) rows.push(samples[i]);
+      if (rows.length < 3) continue;
+      out.windows += 1;
+      let headingRev = 0;
+      let motionRev = 0;
+      let prevDRot = null;
+      let prevDx = null;
+      let prevDz = null;
+      for (let i = 1; i < rows.length; i++) {
+        const dRot = wrapAngle(rows[i].rotAbs - rows[i - 1].rotAbs);
+        if (prevDRot != null && Math.abs(dRot) > STRIP_HEADING_STEP_EPS
+          && Math.abs(prevDRot) > STRIP_HEADING_STEP_EPS
+          && Math.sign(dRot) !== Math.sign(prevDRot)) headingRev += 1;
+        if (Math.abs(dRot) > STRIP_HEADING_STEP_EPS) prevDRot = dRot;
+        const dx = rows[i].posX - rows[i - 1].posX;
+        const dz = rows[i].posZ - rows[i - 1].posZ;
+        const moved = Math.hypot(dx, dz) > SIM_MOTION_STEP_WU;
+        if (prevDx != null && moved && (dx * prevDx + dz * prevDz) < 0) motionRev += 1;
+        if (moved) { prevDx = dx; prevDz = dz; }
+      }
+      out.headingReversals += headingRev;
+      out.motionReversals += motionRev;
+      if (headingRev > 0 || motionRev > 0) out.events += 1;
+    }
+    // Fewer than three samples in every window is unmeasured, never a pass — the strip's rule.
+    out.measured = out.windows > 0 || startIndices.length === 0;
+    return out;
+  };
+  return {
+    label: 'the strip\'s jitter definitions (a heading or motion reversal inside half a second after '
+      + 'a contact) read off the SIM at the strip\'s frame cadence and at 60 Hz — not a picture; the '
+      + 'pictures witness for this clause is the Crucible strip',
+    windowS: STRIP_JITTER_WINDOW_S,
+    headingStepEpsRad: STRIP_HEADING_STEP_EPS,
+    motionStepWU: SIM_MOTION_STEP_WU,
+    motionBasis: 'world position (headless has no glass; the strip measures screen position)',
+    atStripCadence: run(STRIP_CADENCE_TICKS),
+    at60Hz: run(1),
+  };
 }
 
 function signFlips(values) {
@@ -299,7 +374,17 @@ export async function runKnockBudget(seed, { simSeconds, emptyField = false } = 
     // Never the measured mean: a hull pinned against a rock has a low mean speed, which would
     // shrink the denominator and flatter the bar exactly when the game is behaving worst.
     const derived = player.data && player.data.derived;
-    const governed = derived && derived.propulsion && Number(derived.propulsion.combatSpeed);
+    const derivedCombatSpeed = derived && derived.propulsion && Number(derived.propulsion.combatSpeed);
+    // PQ-137.11 D: cruise is resolved THE WAY THE CONTACT RULE RESOLVES IT.
+    // `_applyPlayerStructuralGive` budgets a contact at 10 % of
+    // `resolveGovernedCombatSpeed(entity, null, fallback)`. A bench dividing by any other number is
+    // grading the rule against a denominator the rule never used. Same call, same arguments — the
+    // rule does not pass `state` either.
+    const governed = resolveGovernedCombatSpeed(
+      player,
+      null,
+      Number.isFinite(derivedCombatSpeed) && derivedCombatSpeed > 0 ? derivedCombatSpeed : 0,
+    );
     if (!(Number.isFinite(governed) && governed > 0)) {
       throw new Error('feel.knock_budget: the hull has no governed combatSpeed — cruise is undefined');
     }
@@ -454,6 +539,7 @@ export async function runKnockBudget(seed, { simSeconds, emptyField = false } = 
           velZ: vz,
           rot: vBefore.rot,
           posX: finite(player.pos && player.pos.x),
+          posZ: finite(player.pos && player.pos.z),
         });
       },
     });
@@ -588,6 +674,9 @@ export async function runKnockBudget(seed, { simSeconds, emptyField = false } = 
     let ramLegibleEvents = 0;
     let maxCommandedRotResidualDeg = 0;
     const knockFractions = [];
+    // Where each COUNTED knock event started, so the jitter windows below open on the same events
+    // the bar counts and not on sub-floor settle receipts.
+    const countedKnockStartIdx = [];
 
     for (const ev of events) {
       const startIdx = indexByTick.get(ev.firstTick);
@@ -651,6 +740,7 @@ export async function runKnockBudget(seed, { simSeconds, emptyField = false } = 
       if (!(ev.receiptDeltaV >= knockFloor)) continue;
 
       knockCount += 1;
+      countedKnockStartIdx.push(startIdx);
       const evTicks = endIdx - startIdx + 1;
       if (evTicks > maxEventTicks) maxEventTicks = evTicks;
       if (ev.dp > maxDp) maxDp = ev.dp;
@@ -716,11 +806,25 @@ export async function runKnockBudget(seed, { simSeconds, emptyField = false } = 
       });
     }
 
+    // ---- the jitter clause, in the strip's own words, read off the sim -------------------------
+    // B13's last clause is "never produces visible jitter". The pictures witness for it is the
+    // Crucible strip (Crucible first: the strip harness only drives Crucible scenarios, and this
+    // corridor has no browser route). What this computes is the STRIP'S EXACT DEFINITIONS —
+    // a heading reversal and a motion reversal inside half a second after a contact — evaluated on
+    // the sim's own samples, at the strip's frame cadence and again at the full 60 Hz. It is not a
+    // picture and never claims to be one; feelBars accepts it for this bench only alongside a
+    // normal-speed Crucible strip that measured the same thing from frames.
+    const jitterSimSampled = measureSimSampledJitter(samples, countedKnockStartIdx, ticks);
+
     const minutes = simSeconds / 60;
     const knockEventsPerMinute = minutes > 0 ? knockCount / minutes : 0;
     const maxKnockDeltaVFractionOfCruise = maxKnockDeltaV / cruiseSpeed;
+    // The ceiling is compared with the same stated float tolerance feelBars uses: the live rule
+    // caps a contact event's cumulative applied delta-V at exactly 0.10 x cruise, and this bench
+    // sums the per-tick values in a different order, so a run that spends the whole budget can land
+    // one ulp above it. 1e-6 of cruise is 0.0002 WU/s at Kestrel — float slack, never headroom.
     const barMet = knockEventsPerMinute <= 2
-      && maxKnockDeltaVFractionOfCruise <= 0.10
+      && maxKnockDeltaVFractionOfCruise <= B13_MAX_KNOCK_FRACTION + B13_FRACTION_TOLERANCE
       && headingChangeEvents === 0;
 
     eventTrace.push({
@@ -739,6 +843,9 @@ export async function runKnockBudget(seed, { simSeconds, emptyField = false } = 
         barMet,
         // --- what the bar is measured against ---------------------------------------------------
         cruiseSpeed,
+        cruiseSpeedSource: 'resolveGovernedCombatSpeed(player, null, fallback) — the contact rule\'s own cruise',
+        // The hull's own derived number, so the two can be compared rather than assumed equal.
+        derivedCombatSpeed: Number.isFinite(derivedCombatSpeed) ? derivedCombatSpeed : null,
         meanSpeed,
         playerMass: finite(player.mass, 0),
         simSeconds,
@@ -771,8 +878,13 @@ export async function runKnockBudget(seed, { simSeconds, emptyField = false } = 
         maxAngVelAfterKnockDegPerS: maxAngVelAfterKnock * (180 / Math.PI),
         velocityHeadingChangeMaxDeg,
         knockFractionsOfCruise: knockFractions,
+        // The earlier lateral-velocity sign-flip proxy. Reported BESIDE the clause, never folded
+        // into it (the handoff's ruling stands): it is a different question from "does a viewer see
+        // the hull wobble".
         jitterMaxSignFlips,
         jitterEvents,
+        // The clause's own instrument on this bench.
+        jitterSimSampled,
         // --- cross-check: does the receipt agree with what the hull actually did? ---------------
         measuredMaxKnockDeltaVFractionOfCruise: maxMeasuredDeltaV / cruiseSpeed,
         receiptVsMeasuredMaxGapFractionOfCruise: maxReceiptVsMeasuredGap / cruiseSpeed,

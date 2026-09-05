@@ -5,7 +5,6 @@ import { createAuthoritativeRuntime } from '../../../src/runtime/createAuthorita
 import { makeShipEntitySpec } from '../../../src/systems/ships.js';
 import { resolveWeaponImpulseForHit } from '../../../src/combat/impulseKernel.js';
 import { computeRunHash } from './runHash.mjs';
-import { KNOCK_MODEL_CONSTANTS, planKnockEncounters, resolveContactKnock } from './knockModel.mjs';
 import { readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -157,8 +156,6 @@ async function executeVerbScenario(id, seed) {
       return runTerrainSlamScenario(seed);
     case 'world.cargo_spill':
       return runCargoSpillScenario(seed);
-    case 'feel.knock_budget':
-      return runKnockBudgetScenario(seed);
     default:
       throw new Error(`unknown verb scenario: ${id}`);
   }
@@ -433,103 +430,3 @@ async function runCargoSpillScenario(seed) {
   };
 }
 
-/**
- * B13: Player knock budget — ten minutes of ordinary flight with a seeded schedule of
- * incidental contact encounters (traffic/debris bumps), every one resolved through the LIVE
- * consequence rule (resolveCollisionConsequence via knockModel). Reports the live truth: if
- * ordinary bumps knock the player harder or more often than B13 allows, barMet is false.
- * Metric names are pinned — a parallel evaluator consumes them.
- */
-async function runKnockBudgetScenario(seed) {
-  const { playerMass, cruiseSpeed } = KNOCK_MODEL_CONSTANTS;
-  const simSeconds = 600; // ten minutes of ordinary flight
-  const endTick = simSeconds * 60;
-
-  // A few encounters per minute: seeded gaps of 18–32 s (mean 25 s) over the whole run.
-  // Plausible bump range: closing speed 6–40 WU/s, other mass 8–80, craft or debris surface.
-  const encounters = planKnockEncounters({
-    seedKey: `feel.knock_budget:${seed}`,
-    startTick: 600,
-    endTick,
-    minIntervalSeconds: 18,
-    maxIntervalSeconds: 32,
-    minSpeed: 6,
-    maxSpeed: 40,
-    minMass: 8,
-    maxMass: 80,
-    surfaces: ['craft', 'debris'],
-  });
-
-  // Coarse coast integration between encounters (the coast is trivial): advance position with
-  // the current velocity in one step per gap; per-encounter effects are exact.
-  let posX = 0;
-  let posZ = 0;
-  let velX = 0;
-  let velZ = cruiseSpeed;
-  let lastTick = 0;
-
-  const eventTrace = [];
-  let knockEvents = 0;
-  let maxKnockDeltaVFraction = 0;
-  let headingChangeEvents = 0;
-
-  for (const encounter of encounters) {
-    const gapS = (encounter.tick - lastTick) / 60;
-    posX += velX * gapS;
-    posZ += velZ * gapS;
-    lastTick = encounter.tick;
-
-    const knock = resolveContactKnock({
-      encounter,
-      playerMass,
-      cruiseSpeed,
-      playerVelX: velX,
-      playerVelZ: velZ,
-    });
-    if (!knock) continue; // live rule returned null: no velocity-changing contact
-
-    knockEvents++;
-    velX += knock.dVX;
-    velZ += knock.dVZ;
-    posX += knock.dVX * (1 / 60); // apply the impulse over the encounter tick
-    posZ += knock.dVZ * (1 / 60);
-    if (knock.deltaVFractionOfCruise > maxKnockDeltaVFraction) maxKnockDeltaVFraction = knock.deltaVFractionOfCruise;
-    if (knock.headingChangeRad > 1e-9) headingChangeEvents++;
-
-    eventTrace.push({
-      tick: encounter.tick,
-      type: 'collision:playerKnock',
-      data: {
-        deltaV: knock.deltaV,
-        deltaVFractionOfCruise: knock.deltaVFractionOfCruise,
-        headingChangeRad: knock.headingChangeRad,
-      },
-    });
-  }
-  void posX; void posZ; // coast bookkeeping stays exact-to-schedule; position is not a metric
-
-  const knockEventsPerMinute = knockEvents / (simSeconds / 60);
-  const metrics = {
-    cruiseSpeed,
-    playerMass,
-    simSeconds,
-    contactEncounters: encounters.length,
-    knockEventsPerMinute,
-    maxKnockDeltaVFractionOfCruise: maxKnockDeltaVFraction,
-    headingChangeEvents,
-    barMet: knockEventsPerMinute <= 2 && maxKnockDeltaVFraction <= 0.10 && headingChangeEvents === 0,
-  };
-
-  eventTrace.push({
-    tick: endTick,
-    type: 'knock:summary',
-    data: {
-      knockEventsPerMinute,
-      maxKnockDeltaVFractionOfCruise: maxKnockDeltaVFraction,
-      headingChangeEvents,
-      simSeconds,
-    },
-  });
-
-  return { metrics, eventTrace };
-}

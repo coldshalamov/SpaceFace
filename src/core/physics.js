@@ -415,6 +415,14 @@ export const physics = {
         causalActorId: receipt.causalActorId,
         preSolveClosingSpeed: receipt.preSolveClosingSpeed,
         appliedPlayerDeltaV: receipt.appliedPlayerDeltaV,
+        // PQ-137.11: what the solver tried to do to the player's nose and course, beside what the
+        // structural-give rule let through. Per-tick angles — every receipt of a tick carries the
+        // whole tick's value, so a reader sums per unique tick, never across receipts.
+        solverPlayerHeadingRad: receipt.solverPlayerHeadingRad,
+        solverPlayerYawRateKick: receipt.solverPlayerYawRateKick,
+        solverPlayerCourseRad: receipt.solverPlayerCourseRad,
+        appliedPlayerHeadingRad: receipt.appliedPlayerHeadingRad,
+        appliedPlayerCourseRad: receipt.appliedPlayerCourseRad,
       });
       if (dp > 0) emitted++;
     }
@@ -1251,6 +1259,23 @@ function emitPhysicsImpact(bus, state, a, b, impulseMag, material, pos, options 
   }
   if (Number.isFinite(options.appliedPlayerDeltaV)) {
     payload.appliedPlayerDeltaV = options.appliedPlayerDeltaV;
+  }
+  // PQ-137.11 owner receipts. Emitted only when the authority measured them, so a missing field
+  // stays a hole rather than becoming a confident zero.
+  if (Number.isFinite(options.solverPlayerHeadingRad)) {
+    payload.solverPlayerHeadingRad = options.solverPlayerHeadingRad;
+  }
+  if (Number.isFinite(options.solverPlayerYawRateKick)) {
+    payload.solverPlayerYawRateKick = options.solverPlayerYawRateKick;
+  }
+  if (Number.isFinite(options.solverPlayerCourseRad)) {
+    payload.solverPlayerCourseRad = options.solverPlayerCourseRad;
+  }
+  if (Number.isFinite(options.appliedPlayerHeadingRad)) {
+    payload.appliedPlayerHeadingRad = options.appliedPlayerHeadingRad;
+  }
+  if (Number.isFinite(options.appliedPlayerCourseRad)) {
+    payload.appliedPlayerCourseRad = options.appliedPlayerCourseRad;
   }
   bus.emit('physics:impact', payload);
   return dp;

@@ -17,6 +17,8 @@ import { createAuthoritativeRuntime } from '../../../src/runtime/createAuthorita
 import { createBus } from '../../../src/core/eventBus.js';
 import { SIM_DT } from '../../../src/core/sim.js';
 import { mulberry32, wrapAngle } from '../../../src/core/rng.js';
+import { readPhysicsTelemetry } from '../../../src/core/physicsAuthority.js';
+import { resolveGovernedCombatSpeed } from '../../../src/core/flight/propulsionCatalog.js';
 import { makeShipEntitySpec } from '../../../src/systems/ships.js';
 import { applyCombatLabSetup } from '../../../src/ui/sandbox/sandboxSetup.js';
 import { COMBAT_LAB_STARTER_PACKAGES, COMBAT_LAB_ARENAS } from '../../../src/data/combatLabSetups.js';
@@ -75,8 +77,49 @@ const EVENT_BRIDGE_TICKS = 6;
 // <= 2/min budget. So the rate and magnitude clauses are judged on AMBIENT events only, and
 // hostile-initiated events are reported beside them with their telegraph lead.
 const TELEGRAPH_LEGIBLE_S = 0.5;
-// Matches verbBench: a measured heading of ~0 is not a heading change. Missing heading is not 0.
+// Retired 2026-09-05 as the CLAUSE's instrument, kept only to publish what the old instrument was
+// counting (`headingSource`). The raw per-tick rotation delta it was compared against is dominated
+// by the PILOT's own steering — the bench pilot yaws whenever |aim error| > 0.12 rad, i.e. nearly
+// every tick — so it reported 1.3-1.8 rad of "contact heading change" across a seven-second grind
+// the pilot was steering through. The clause now uses the contact-sourced witness below.
 const HEADING_CHANGE_EPS = 1e-9;
+// The contact-sourced heading witness (PQ-137.11).
+//
+//   witness = wrapAngle(rot_after - rot_before) - angVel_after * dt
+//
+// This is INDEPENDENT of the give rule's own claim. It cancels the pilot exactly on the live path
+// because the player's pose and spin are published from the same tick's kinematics:
+// `_applyPlayerStructuralGive` sets rot_after = rot_before + e.wy*dt and angvel_after = e.wy, and
+// `_syncEntityFromKinematics` writes both onto the entity. Anything the SOLVER left in the pose that
+// the spin does not account for shows up here and nowhere else. The threshold is the run's own
+// measured residual floor (p99.5 over receipt-free ticks), never a typed epsilon: rope cells
+// quantize yaw through `_canonicalizeManualSpringBody` and carry a higher floor than the others.
+const WITNESS_FLOOR_PERCENTILE = 0.995;
+// The player is driving INTO the other body: the NORMALISED commanded thrust direction this tick,
+// dotted with the player->other direction, i.e. the cosine of the angle between "where I am
+// pushing" and "where the other hull is". B13 exempts "a slam the player chose".
+//
+// INTEGRATOR CORRECTION 2026-09-05. A bare "positive component" exempts the very knocks this bar
+// exists for: a shoulder graze past a rock while holding forward has a cosine of 0.3-0.6 — the
+// player is going PAST the rock, not INTO it — and would have been waved through as deliberate.
+// A chosen slam is aimed (cosine >= 0.7, within ~45 deg of straight at it) AND held (half a second
+// of contact, not a tick of scrape), or it is fast enough that nothing else explains it.
+// Below this the stick is centred: there is no commanded direction to take a cosine of, and
+// dividing by the length would turn arithmetic noise into an aim.
+const PLAYER_THRUST_COMMAND_EPS = 1e-6;
+const PLAYER_INITIATED_THRUST_DOT = 0.7;
+const PLAYER_INITIATED_SUSTAINED_TICKS = 30; // 0.5 s at 60 Hz
+// ...or the player was closing on it fast enough that the contact was a chosen ram. This is the
+// RADIAL closing speed (`preSolveRadialClosingSpeed`, projected on the centre-to-centre direction
+// and clamped to positive), so flying fast PAST a rock does not read as flying fast INTO it.
+const PLAYER_INITIATED_CLOSING_FRACTION = 0.3;
+// Below this the direction of travel is noise, not a course: a hull at 0.4 WU/s has no heading to
+// change. The player enters the arena at rest, so this is not hypothetical.
+const COURSE_MEASURABLE_SPEED = 1.0; // WU/s
+// `SANE_MAX_YAW_RATE` in src/core/sg02DynamicBodyOwner.js — the absolute yaw ceiling every body
+// EXCEPT the player passes through (the player branch of `_applyStructuralGive` returns first).
+// Mirrored here only to report how often the player's own spin exceeds it; nothing is clamped.
+const SANE_MAX_YAW_RATE_REFERENCE = 6.0; // rad/s
 
 /**
  * Runs the Crucible Feel Bench across the specified arenas, loadouts, and seeds.
@@ -175,6 +218,10 @@ export async function simulateCrucibleSwarm({
   const harnessBusEmits = [];
   const inputTape = [];
   const knockHeadingByTick = new Map();
+  // Per-tick player kinematics: the contact-sourced heading/course witness, the raw rotation delta
+  // the OLD instrument was counting, and the commanded thrust vector used to tell a slam the player
+  // chose from one that happened to them.
+  const playerTickByTick = new Map();
   const waveCheckpoints = [];
   const eventTrace = [];
 
@@ -339,6 +386,8 @@ export async function simulateCrucibleSwarm({
     // Latest AI intent per actor at ingest time. Classification snapshots this onto each knock
     // receipt as it happens so a later map.set cannot rewrite an earlier collision.
     const aiIntent = { phase: new Map(), telegraph: new Map() };
+    // The live Massline target at ingest time, from the real bus.
+    const tether = { targetId: null, sinceTick: null };
     let lastAction = null;
 
     // MASTER TRAP (1), the ~750 WU admission ring: SG-02 gives a Rapier body only to entities
@@ -368,6 +417,7 @@ export async function simulateCrucibleSwarm({
       const player = playerEntity(state) || spawned;
       rememberCohortIds(state, cohortSeen);
       const headingBefore = player && Number.isFinite(player.rot) ? player.rot : null;
+      const kinBefore = samplePlayerKinematics(player);
       drivePilot({
         tick: t,
         state,
@@ -387,6 +437,17 @@ export async function simulateCrucibleSwarm({
 
       const playerAfter = playerEntity(state) || player;
       const headingAfter = playerAfter && Number.isFinite(playerAfter.rot) ? playerAfter.rot : null;
+      // One row per SIM tick, before any receipt is read, so the witness and the floor are measured
+      // on the same run and the floor can be taken from the receipt-free ticks of that run.
+      if (!playerTickByTick.has(tick)) {
+        playerTickByTick.set(tick, measurePlayerTick({
+          before: kinBefore,
+          after: samplePlayerKinematics(playerAfter),
+          telemetry: readPhysicsTelemetry(playerAfter),
+          input: state.input,
+          dt: SIM_DT,
+        }));
+      }
 
       const newEvents = log.slice(logCursor);
       logCursor = log.length;
@@ -403,6 +464,8 @@ export async function simulateCrucibleSwarm({
           cohortSeen,
           eventTrace,
           aiIntent,
+          tether,
+          playerTick: playerTickByTick.get(tick) || null,
         });
         if (ev.ev === 'physics:impact' && ev.payload && ev.payload.playerInvolved === true) {
           sawPlayerKnock = true;
@@ -470,8 +533,19 @@ export async function simulateCrucibleSwarm({
 
     const player = playerEntity(state) || spawned;
     const cruiseSpeed = cruiseSpeedOf(player);
+    const legacyCruiseSpeed = legacyCruiseSpeedOf(player);
+    const receiptTicks = new Set();
+    for (const ev of eventTrace) {
+      if (ev.type === 'collision:playerKnock') receiptTicks.add(ev.tick);
+    }
+    const witnessFloors = measureWitnessFloors(playerTickByTick, receiptTicks);
+    applyKnockWitness(eventTrace, playerTickByTick);
+    // The player's spin, on the record. The player branch of `_applyStructuralGive` returns before
+    // the SANE_MAX_YAW_RATE net every other body passes through, so the player is the one hull with
+    // no absolute yaw ceiling — worth a number rather than an assumption.
+    const spin = summarizePlayerSpin(playerTickByTick, witnessFloors);
     const knockEvents = buildKnockEvents(eventTrace, {
-      playerId: state.playerId, cruiseSpeed,
+      playerId: state.playerId, cruiseSpeed, witnessFloors,
     });
     const metrics = summarizeMetrics({
       eventTrace,
@@ -479,6 +553,9 @@ export async function simulateCrucibleSwarm({
       ticks: t,
       wavesCleared,
       cruiseSpeed,
+      legacyCruiseSpeed,
+      witnessFloors,
+      spin,
     });
     finalizeCombatCounts(metrics, log, state.playerId);
 
@@ -755,9 +832,25 @@ function sampleFirstHostile(state, eventTrace, firstHostile) {
 }
 
 function ingestLiveEvent(ev, ctx) {
-  const { state, playerId, lastAction, lastActionOn, collisionVictims, cohortSeen, eventTrace, aiIntent } = ctx;
+  const {
+    state, playerId, lastAction, lastActionOn, collisionVictims, cohortSeen, eventTrace, aiIntent,
+    tether, playerTick,
+  } = ctx;
   const tick = ev.tick | 0;
   const p = ev.payload || {};
+
+  // The live Massline target, tracked from the real bus so a contact with what the pilot latched
+  // and reeled into can be told from an ordinary bump. B13 says "no rope"; a reel-in contact is the
+  // rope, and counting it as ordinary flight was the third instrument defect.
+  if (tether) {
+    if (ev.ev === 'tether:latched' && p.targetId != null) {
+      tether.targetId = p.targetId;
+      tether.sinceTick = tick;
+    } else if (ev.ev === 'tether:released' || ev.ev === 'tether:broke' || ev.ev === 'tether:cut') {
+      tether.targetId = null;
+      tether.sinceTick = null;
+    }
+  }
 
   // The actor's activity kind at the tick — the other half of the master's classification rule.
   // Snapshot every field the production bus actually emits so classification can require an
@@ -808,6 +901,20 @@ function ingestLiveEvent(ev, ctx) {
       const causalActorId = p.causalActorId != null ? p.causalActorId : null;
       const intent = snapshotIntent(aiIntent, causalActorId);
       const liveHostile = isLiveCohortHostile(state, causalActorId, playerId);
+      const otherId = aId === playerId ? bId : (bId === playerId ? aId : null);
+      // The direction from the player toward the other body, from state positions at ingest.
+      // The receipt's own `normal` is Rapier's max-force direction and its orientation is not
+      // guaranteed to run a->b, so it is recorded but never used to decide who pushed whom.
+      const toOther = directionFromPlayerToOther(state, playerId, otherId);
+      const thrustX = playerTick && Number.isFinite(playerTick.thrustX) ? playerTick.thrustX : null;
+      const thrustZ = playerTick && Number.isFinite(playerTick.thrustZ) ? playerTick.thrustZ : null;
+      // NORMALISED, so the number is a cosine and 0.7 means "within ~45 degrees of straight at it".
+      // The raw vector is (moveZ, moveX) rotated into world space: full forward + full strafe has
+      // length sqrt(2), and an un-normalised dot would have read 1.0 for a 45-degree shove.
+      const thrustMag = (thrustX !== null && thrustZ !== null) ? Math.hypot(thrustX, thrustZ) : 0;
+      const thrustIntoOther = (toOther && thrustMag > PLAYER_THRUST_COMMAND_EPS)
+        ? (thrustX * toOther.x + thrustZ * toOther.z) / thrustMag
+        : null;
       eventTrace.push({
         tick,
         type: 'collision:playerKnock',
@@ -824,6 +931,24 @@ function ingestLiveEvent(ev, ctx) {
           actorInCohort: liveHostile,
           aiPhase: intent.aiPhase,
           aiTelegraph: intent.aiTelegraph,
+          // PQ-137.11 A: what the SOLVER tried to do to the player, beside what the rule let through.
+          solverHeadingRad: finiteOrNull(p.solverPlayerHeadingRad),
+          appliedHeadingRad: finiteOrNull(p.appliedPlayerHeadingRad),
+          solverCourseRad: finiteOrNull(p.solverPlayerCourseRad),
+          appliedCourseRad: finiteOrNull(p.appliedPlayerCourseRad),
+          // PQ-137.11 C: was this contact the player's own doing?
+          aId: aId != null ? aId : null,
+          bId: bId != null ? bId : null,
+          otherId,
+          normal: p.normal && Number.isFinite(p.normal.x) && Number.isFinite(p.normal.z)
+            ? { x: p.normal.x, z: p.normal.z }
+            : null,
+          toOther,
+          preSolveClosingSpeed: finiteOrNull(p.preSolveClosingSpeed),
+          thrustX,
+          thrustZ,
+          thrustIntoOther,
+          tetherTargetId: tether && tether.targetId != null ? tether.targetId : null,
         },
       });
     } else if (p.causalActorId === playerId && aId !== playerId && bId !== playerId) {
@@ -1014,6 +1139,169 @@ function recordUniqueTickHeading(event, tick, heading) {
   event.headingByTick.set(tick, heading);
 }
 
+function firstReceiptFacts(data) {
+  const d = data && typeof data === 'object' ? data : {};
+  return {
+    otherId: d.otherId != null ? d.otherId : null,
+    toOther: d.toOther || null,
+    normal: d.normal || null,
+    thrustIntoOther: Number.isFinite(d.thrustIntoOther) ? d.thrustIntoOther : null,
+    preSolveClosingSpeed: Number.isFinite(d.preSolveClosingSpeed) ? d.preSolveClosingSpeed : null,
+    tetherTargetId: d.tetherTargetId != null ? d.tetherTargetId : null,
+  };
+}
+
+function recordUniqueTickWitness(event, tick, data) {
+  if (!event.witnessByTick) event.witnessByTick = new Map();
+  if (event.witnessByTick.has(tick)) return;
+  const d = data && typeof data === 'object' ? data : {};
+  event.witnessByTick.set(tick, {
+    heading: Number.isFinite(d.headingWitnessRad) ? d.headingWitnessRad : null,
+    course: Number.isFinite(d.courseWitnessRad) ? d.courseWitnessRad : null,
+    rawHeading: Number.isFinite(d.rawHeadingDeltaRad) ? d.rawHeadingDeltaRad : null,
+    appliedHeading: Number.isFinite(d.appliedHeadingRad) ? d.appliedHeadingRad : null,
+    solverHeading: Number.isFinite(d.solverHeadingRad) ? d.solverHeadingRad : null,
+    appliedCourse: Number.isFinite(d.appliedCourseRad) ? d.appliedCourseRad : null,
+    solverCourse: Number.isFinite(d.solverCourseRad) ? d.solverCourseRad : null,
+  });
+}
+
+/**
+ * The CLAUSE's heading measure. Per unique tick, the contact-sourced witness; summed in absolute
+ * value across the event and compared against the run's own measured floor times the number of
+ * ticks, so a long grind cannot fail on accumulated float dust and a single real kick cannot hide
+ * inside one.
+ *
+ * `headingSource` records what the RETIRED instrument (raw rotation delta vs a 1e-9 epsilon) would
+ * have said about this same event, so the receipt can show the difference rather than assert it.
+ */
+function finalizeEventWitness(ev, floors) {
+  const byTick = ev.witnessByTick instanceof Map ? ev.witnessByTick : new Map();
+  delete ev.witnessByTick;
+  let headingAbs = 0;
+  let headingNet = 0;
+  let courseAbs = 0;
+  let courseNet = 0;
+  let appliedHeadingAbs = 0;
+  let solverHeadingAbs = 0;
+  let appliedCourseAbs = 0;
+  let solverCourseAbs = 0;
+  let rawAbs = 0;
+  let ticks = 0;
+  let missing = byTick.size === 0;
+  let oldWouldFire = false;
+  let receiptHeadingKnown = byTick.size > 0;
+  for (const w of byTick.values()) {
+    ticks += 1;
+    if (!Number.isFinite(w.heading)) { missing = true; continue; }
+    headingAbs += Math.abs(w.heading);
+    headingNet = wrapAngle(headingNet + w.heading);
+    if (Number.isFinite(w.course)) {
+      courseAbs += Math.abs(w.course);
+      courseNet = wrapAngle(courseNet + w.course);
+    }
+    if (Number.isFinite(w.rawHeading)) {
+      rawAbs += Math.abs(w.rawHeading);
+      if (Math.abs(w.rawHeading) > HEADING_CHANGE_EPS) oldWouldFire = true;
+    }
+    if (Number.isFinite(w.appliedHeading)) appliedHeadingAbs += Math.abs(w.appliedHeading);
+    else receiptHeadingKnown = false;
+    if (Number.isFinite(w.solverHeading)) solverHeadingAbs += Math.abs(w.solverHeading);
+    if (Number.isFinite(w.appliedCourse)) appliedCourseAbs += Math.abs(w.appliedCourse);
+    if (Number.isFinite(w.solverCourse)) solverCourseAbs += Math.abs(w.solverCourse);
+  }
+  const headingBudget = Math.max(1, ticks) * (floors.headingFloorRad || 0);
+  const courseBudget = Math.max(1, ticks) * (floors.courseFloorRad || 0);
+  ev.witnessTicks = ticks;
+  ev.missingWitness = missing;
+  ev.headingWitnessAbsRad = missing ? null : headingAbs;
+  ev.headingWitnessNetRad = missing ? null : headingNet;
+  ev.headingWitnessFloorRad = headingBudget;
+  ev.headingChangedByWitness = missing ? null : headingAbs > headingBudget;
+  ev.courseWitnessAbsRad = missing ? null : courseAbs;
+  ev.courseWitnessNetRad = missing ? null : courseNet;
+  ev.courseWitnessFloorRad = courseBudget;
+  ev.courseChangedByWitness = missing ? null : courseAbs > courseBudget;
+  // Beside the witness, never instead of it: what the rule's own receipts claim it let through,
+  // and what the solver tried to do before the rule answered.
+  ev.receiptAppliedHeadingAbsRad = receiptHeadingKnown ? appliedHeadingAbs : null;
+  ev.receiptSolverHeadingAbsRad = solverHeadingAbs;
+  ev.receiptAppliedCourseAbsRad = appliedCourseAbs;
+  ev.receiptSolverCourseAbsRad = solverCourseAbs;
+  ev.headingWitnessVsReceiptRad = (missing || !receiptHeadingKnown)
+    ? null
+    : Math.abs(headingAbs - appliedHeadingAbs);
+  ev.rawHeadingAbsRad = rawAbs;
+  ev.headingSource = oldWouldFire
+    ? 'retired raw-rotation instrument would have counted this event as a heading change'
+    : null;
+}
+
+function classifyRopeInitiated(ev) {
+  const first = ev.first;
+  if (!first) return false;
+  if (first.tetherTargetId == null || first.otherId == null) return false;
+  return first.tetherTargetId === first.otherId;
+}
+
+/**
+ * A slam the player chose. B13's own sentence exempts it ("a deliberate big event (a slam the
+ * player chose, a well the player flew into)"), and until now the bench counted every one of them
+ * as ordinary flight — on Lagrange/starter EVERY ambient knock named the player as its causal
+ * actor, because the bench pilot holds forward into the hostile it is chasing and grinds against it
+ * for seconds.
+ *
+ * The rule (integrator's correction, 2026-09-05). ALL of:
+ *   - every constituent receipt names the player as its causal actor, AND
+ *   - EITHER the first receipt's aim is INTO the other hull (normalised commanded thrust dotted
+ *     with player->other >= 0.7) AND the contact is HELD for >= 0.5 s (30 ticks),
+ *     OR the first receipt's radial closing speed is >= 30 % of cruise.
+ *
+ * The aim-and-hold pair is the load-bearing part: a shoulder graze past a rock with forward held
+ * scores 0.3-0.6 and lasts a handful of ticks, so it stays AMBIENT and still has to fit the budget.
+ *
+ * Fail-closed: an event with no attribution, no direction and no closing speed is AMBIENT. Returns
+ * the audit row as well as the verdict so the receipt can print the dots and the durations rather
+ * than assert the classification.
+ */
+function classifyPlayerInitiated(ev, playerId, cruiseSpeed) {
+  const parts = Array.isArray(ev.constituents) ? ev.constituents : [];
+  const first = ev.first || null;
+  const ticks = Math.max(1, (ev.lastTick - ev.startTick) + 1);
+  const dot = first && Number.isFinite(first.thrustIntoOther) ? first.thrustIntoOther : null;
+  const closing = first && Number.isFinite(first.preSolveClosingSpeed)
+    ? first.preSolveClosingSpeed
+    : null;
+  const closingFraction = (closing !== null && Number.isFinite(cruiseSpeed) && cruiseSpeed > 0)
+    ? closing / cruiseSpeed
+    : null;
+  const audit = {
+    startTick: ev.startTick,
+    ticks,
+    durationS: round3(ticks / 60),
+    thrustIntoOtherDot: dot === null ? null : round3(dot),
+    closingFractionOfCruise: closingFraction === null ? null : round3(closingFraction),
+    allPlayerCaused: false,
+    aimedAndHeld: false,
+    ramSpeed: false,
+    verdict: 'ambient',
+  };
+  if (!parts.length || playerId == null || !first) return { deliberate: false, audit };
+  let allPlayer = true;
+  for (const part of parts) {
+    if (part.causalActorId == null || part.causalActorId !== playerId) { allPlayer = false; break; }
+  }
+  audit.allPlayerCaused = allPlayer;
+  if (!allPlayer) return { deliberate: false, audit };
+  audit.aimedAndHeld = dot !== null
+    && dot >= PLAYER_INITIATED_THRUST_DOT
+    && ticks >= PLAYER_INITIATED_SUSTAINED_TICKS;
+  audit.ramSpeed = closingFraction !== null && closingFraction >= PLAYER_INITIATED_CLOSING_FRACTION;
+  const deliberate = audit.aimedAndHeld || audit.ramSpeed;
+  if (deliberate) audit.verdict = audit.aimedAndHeld ? 'playerInitiated:aimed+held' : 'playerInitiated:ram';
+  return { deliberate, audit };
+}
+
 function finalizeEventHeading(ev) {
   const byTick = ev.headingByTick instanceof Map ? ev.headingByTick : new Map();
   delete ev.headingByTick;
@@ -1065,7 +1353,8 @@ function classifyHostileInitiated(ev, playerId) {
  * EVENT_BRIDGE_TICKS rule. Attribution uses the actor/intent snapshot stamped on each receipt
  * at ingest time — a later map.set or cohort join must not rewrite an earlier collision.
  */
-export function buildKnockEvents(eventTrace, { playerId, cruiseSpeed } = {}) {
+export function buildKnockEvents(eventTrace, { playerId, cruiseSpeed, witnessFloors } = {}) {
+  const floors = witnessFloors || { headingFloorRad: 0, courseFloorRad: 0 };
   const receipts = (Array.isArray(eventTrace) ? eventTrace : [])
     .filter((e) => e && e.type === 'collision:playerKnock')
     .sort((a, b) => a.tick - b.tick);
@@ -1090,6 +1379,7 @@ export function buildKnockEvents(eventTrace, { playerId, cruiseSpeed } = {}) {
       else open.appliedDeltaV += appliedDv;
       if (headingMissing) open.missingHeading = true;
       recordUniqueTickHeading(open, r.tick, headingMissing ? null : heading);
+      recordUniqueTickWitness(open, r.tick, r.data);
       open.constituents.push({ tick: r.tick, ...attr });
       continue;
     }
@@ -1104,6 +1394,8 @@ export function buildKnockEvents(eventTrace, { playerId, cruiseSpeed } = {}) {
       receipts: 1,
       constituents: [{ tick: r.tick, ...attr }],
       headingByTick: new Map(),
+      // First receipt only — the contact the player was steering into when it started.
+      first: firstReceiptFacts(r.data),
       // First-receipt identity only — later receipts must not fill a hole.
       causalActorId: attr.causalActorId,
       actorLiveCohortHostile: attr.actorLiveCohortHostile,
@@ -1112,19 +1404,38 @@ export function buildKnockEvents(eventTrace, { playerId, cruiseSpeed } = {}) {
       aiTelegraph: copyTelegraph(attr.aiTelegraph),
     };
     recordUniqueTickHeading(open, r.tick, headingMissing ? null : heading);
+    recordUniqueTickWitness(open, r.tick, r.data);
     events.push(open);
   }
 
   for (const ev of events) {
     finalizeEventHeading(ev);
+    finalizeEventWitness(ev, floors);
     ev.hostileInitiated = classifyHostileInitiated(ev, playerId);
+    ev.ropeInitiated = classifyRopeInitiated(ev);
+    const chosen = classifyPlayerInitiated(ev, playerId, cruiseSpeed);
+    ev.playerInitiated = !ev.ropeInitiated && chosen.deliberate;
+    // The classifier's own working, on the record, for every event it judged. Without this the
+    // exemption is an assertion; with it the receipt can print "dot 0.42 for 9 ticks -> ambient"
+    // for the grinds the previous instrument was waving through.
+    ev.deliberateAudit = {
+      ...chosen.audit,
+      ropeInitiated: ev.ropeInitiated,
+      verdict: ev.ropeInitiated ? 'ropeInitiated' : chosen.audit.verdict,
+    };
+    ev.deliberate = ev.ropeInitiated || ev.playerInitiated;
+    ev.durationS = (ev.lastTick - ev.startTick + 1) / 60;
     // Legacy `deltaV` stays the raw/compatible sum so fixtures without appliedDeltaV still
     // add up. Ambient B13 magnitude uses applied and fails closed when it is missing; hostile
     // ram legibility uses raw.
     ev.deltaV = ev.rawDeltaV;
     ev.missingDeltaV = ev.missingRawDeltaV;
-    const governedDv = ev.hostileInitiated ? ev.rawDeltaV : ev.appliedDeltaV;
-    const governedMissing = ev.hostileInitiated ? ev.missingRawDeltaV : ev.missingAppliedDeltaV;
+    // Ambient magnitude is what the rule LET THROUGH (applied). A deliberate event — a hostile ram,
+    // a slam the player chose, a body the player reeled into — is judged on the raw solver dV,
+    // because legibility is about what the player felt, not about what the budget allowed.
+    const rawGoverned = ev.hostileInitiated || ev.deliberate;
+    const governedDv = rawGoverned ? ev.rawDeltaV : ev.appliedDeltaV;
+    const governedMissing = rawGoverned ? ev.missingRawDeltaV : ev.missingAppliedDeltaV;
     if (governedMissing) ev.deltaVFractionOfCruise = null;
     else if (cruiseSpeed !== null && cruiseSpeed > 0) ev.deltaVFractionOfCruise = governedDv / cruiseSpeed;
     else ev.deltaVFractionOfCruise = null;
@@ -1142,6 +1453,97 @@ export function buildKnockEvents(eventTrace, { playerId, cruiseSpeed } = {}) {
   return events;
 }
 
+/**
+ * Stamp each player-knock receipt with the contact-sourced witness for its tick. The witness is
+ * measured from the player's own published kinematics and owes the give rule nothing, so a rule
+ * that lied about what it let through would show up as a disagreement rather than as agreement.
+ */
+function applyKnockWitness(eventTrace, playerTickByTick) {
+  for (const ev of eventTrace) {
+    if (ev.type !== 'collision:playerKnock') continue;
+    const row = playerTickByTick.get(ev.tick);
+    if (!row) {
+      ev.data.headingWitnessRad = null;
+      ev.data.courseWitnessRad = null;
+      ev.data.rawHeadingDeltaRad = null;
+      continue;
+    }
+    ev.data.headingWitnessRad = Number.isFinite(row.headingWitness) ? row.headingWitness : null;
+    ev.data.courseWitnessRad = Number.isFinite(row.courseWitness) ? row.courseWitness : null;
+    ev.data.rawHeadingDeltaRad = Number.isFinite(row.rawHeadingDelta) ? row.rawHeadingDelta : null;
+  }
+}
+
+/**
+ * The player's own spin over the run. Reported, never a clause: it exists because the player hull
+ * is the one body that skips SANE_MAX_YAW_RATE, and because a strip frame gap of 0.13 s cannot tell
+ * a fast spin from an aliased one without this number to compare against.
+ */
+function summarizePlayerSpin(playerTickByTick, witnessFloors) {
+  let maxYawRate = 0;
+  let maxYawRateTick = null;
+  let maxAngVel = 0;
+  let maxWitness = 0;
+  let maxWitnessTick = null;
+  let ticksAboveSaneYaw = 0;
+  let maxInjected = 0;
+  let maxInjectedTick = null;
+  let maxCommanded = 0;
+  const spinTicks = [];
+  for (const [tick, row] of playerTickByTick) {
+    if (Number.isFinite(row.spinInjected) && Math.abs(row.spinInjected) > maxInjected) {
+      maxInjected = Math.abs(row.spinInjected);
+      maxInjectedTick = tick;
+    }
+    if (Number.isFinite(row.spinCommanded) && Math.abs(row.spinCommanded) > maxCommanded) {
+      maxCommanded = Math.abs(row.spinCommanded);
+    }
+    if (Number.isFinite(row.angVel) && Math.abs(row.angVel) > SANE_MAX_YAW_RATE_REFERENCE) {
+      spinTicks.push({
+        tick,
+        angVel: row.angVel,
+        injected: row.spinInjected,
+        commanded: row.spinCommanded,
+      });
+    }
+  }
+  spinTicks.sort((a, b) => Math.abs(b.angVel) - Math.abs(a.angVel));
+  for (const [tick, row] of playerTickByTick) {
+    if (Number.isFinite(row.yawRate) && Math.abs(row.yawRate) > maxYawRate) {
+      maxYawRate = Math.abs(row.yawRate);
+      maxYawRateTick = tick;
+    }
+    if (Number.isFinite(row.angVel) && Math.abs(row.angVel) > maxAngVel) maxAngVel = Math.abs(row.angVel);
+    if (Number.isFinite(row.headingWitness) && Math.abs(row.headingWitness) > maxWitness) {
+      maxWitness = Math.abs(row.headingWitness);
+      maxWitnessTick = tick;
+    }
+    if (Number.isFinite(row.yawRate) && Math.abs(row.yawRate) > SANE_MAX_YAW_RATE_REFERENCE) {
+      ticksAboveSaneYaw += 1;
+    }
+  }
+  return {
+    maxYawRateRadS: maxYawRate,
+    maxYawRateTick,
+    maxAngVelRadS: maxAngVel,
+    maxHeadingWitnessRad: maxWitness,
+    maxHeadingWitnessTick: maxWitnessTick,
+    ticksAboveSaneYawRate: ticksAboveSaneYaw,
+    saneYawRateReferenceRadS: SANE_MAX_YAW_RATE_REFERENCE,
+    // Where the spin came from. `injected` is angular velocity the control torque does not
+    // account for: an angular impulse applied to the hull between steps.
+    maxSpinInjectedRadS: maxInjected,
+    maxSpinInjectedTick: maxInjectedTick,
+    maxSpinCommandedRadS: maxCommanded,
+    worstSpinTicks: spinTicks.slice(0, 8),
+    headingFloorRad: witnessFloors.headingFloorRad,
+    courseFloorRad: witnessFloors.courseFloorRad,
+    headingFloorSamples: witnessFloors.headingFloorSamples,
+    courseFloorSamples: witnessFloors.courseFloorSamples,
+    ticksSampled: playerTickByTick.size,
+  };
+}
+
 function applyKnockHeadings(eventTrace, knockHeadingByTick) {
   for (const ev of eventTrace) {
     if (ev.type !== 'collision:playerKnock') continue;
@@ -1151,7 +1553,10 @@ function applyKnockHeadings(eventTrace, knockHeadingByTick) {
   }
 }
 
-function summarizeMetrics({ eventTrace, knockEvents, ticks, wavesCleared, cruiseSpeed }) {
+function summarizeMetrics({
+  eventTrace, knockEvents, ticks, wavesCleared, cruiseSpeed,
+  legacyCruiseSpeed = null, witnessFloors = null, spin = null,
+}) {
   const simSeconds = ticks / 60;
   const simMinutes = Math.max(1 / 60, simSeconds / 60);
   let totalKills = 0;
@@ -1204,23 +1609,45 @@ function summarizeMetrics({ eventTrace, knockEvents, ticks, wavesCleared, cruise
   // not a knock the player could feel. Missing applied stays in the set so acceptance fails closed.
   const events = Array.isArray(knockEvents) ? knockEvents : [];
   const knockFloor = cruiseSpeed !== null && cruiseSpeed > 0 ? KNOCK_FLOOR_FRACTION * cruiseSpeed : 0;
+  // Ambient = neither hostile-, player-, nor rope-initiated. The three deliberate classes are
+  // reported beside the budget, exactly as hostile rams already were, and never folded into the
+  // <= 2/min rate or the 10 % magnitude — B13's own sentence exempts them.
   const ambient = events.filter((e) => {
-    if (e.hostileInitiated) return false;
+    if (e.hostileInitiated || e.deliberate) return false;
     if (e.missingAppliedDeltaV) return true;
     return Number.isFinite(e.appliedDeltaV) && e.appliedDeltaV >= knockFloor;
   });
   const hostile = events.filter((e) => e.hostileInitiated);
+  const playerChosen = events.filter((e) => !e.hostileInitiated && e.playerInitiated);
+  const ropeChosen = events.filter((e) => !e.hostileInitiated && e.ropeInitiated);
   playerKnockEvents = ambient.length;
   let headingChangeEvents = 0;
   let headingKnown = true;
+  let courseChangeEvents = 0;
+  let courseKnown = true;
   let ambientFractionKnown = true;
+  let headingWitnessVsReceiptMaxRad = 0;
+  let maxHeadingWitnessAbsRad = 0;
+  let retiredInstrumentWouldHaveFired = 0;
   for (const e of ambient) {
     if (e.deltaVFractionOfCruise !== null && e.deltaVFractionOfCruise > maxPlayerKnockFraction) {
       maxPlayerKnockFraction = e.deltaVFractionOfCruise;
     }
     if (e.deltaVFractionOfCruise === null) ambientFractionKnown = false;
-    if (e.missingHeading === true || e.headingChanged == null) headingKnown = false;
-    else if (e.headingChanged === true) headingChangeEvents += 1;
+    // The CLAUSE: the contact-sourced witness, which owes the give rule nothing and cancels the
+    // pilot's own steering exactly. The retired raw-rotation measure is counted beside it.
+    if (e.missingWitness === true || e.headingChangedByWitness == null) headingKnown = false;
+    else if (e.headingChangedByWitness === true) headingChangeEvents += 1;
+    if (e.missingWitness === true || e.courseChangedByWitness == null) courseKnown = false;
+    else if (e.courseChangedByWitness === true) courseChangeEvents += 1;
+    if (Number.isFinite(e.headingWitnessVsReceiptRad)
+      && e.headingWitnessVsReceiptRad > headingWitnessVsReceiptMaxRad) {
+      headingWitnessVsReceiptMaxRad = e.headingWitnessVsReceiptRad;
+    }
+    if (Number.isFinite(e.headingWitnessAbsRad) && e.headingWitnessAbsRad > maxHeadingWitnessAbsRad) {
+      maxHeadingWitnessAbsRad = e.headingWitnessAbsRad;
+    }
+    if (e.headingSource) retiredInstrumentWouldHaveFired += 1;
   }
   let maxHostileFraction = 0;
   let hostileLegible = 0;
@@ -1269,9 +1696,10 @@ function summarizeMetrics({ eventTrace, knockEvents, ticks, wavesCleared, cruise
     gapParts.push(`${knocksMissingActorAtOrAboveFloor} player knock receipt(s) at or above the knock floor named no causalActorId, so ambient-vs-ram is unproven for them`);
   }
   if (!headingKnown) {
-    gapParts.push('headingChange: at least one ambient contact has no measured heading change');
+    gapParts.push('headingChange: at least one ambient contact has no measured heading witness');
   }
   gapParts.push('visible jitter is unmeasured on this headless path; full B13 cannot pass');
+  const deliberate = summarizeDeliberate({ playerChosen, ropeChosen, cruiseKnown, simMinutes });
   return {
     totalKills,
     totalShots,
@@ -1286,7 +1714,27 @@ function summarizeMetrics({ eventTrace, knockEvents, ticks, wavesCleared, cruise
     playerKnockEventsPerMin: knockRate,
     maxPlayerKnockFraction: cruiseKnown && ambientFractionKnown ? maxPlayerKnockFraction : null,
     headingChangeEvents: headingKnown ? headingChangeEvents : null,
+    courseChangeEvents: courseKnown ? courseChangeEvents : null,
     jitterMeasured,
+    // PQ-137.11 B: the clause's instrument, its floor, and its disagreement with the rule's own
+    // receipts. A rule that misreported what it let through would show up here as a number.
+    headingWitnessSource: 'wrapAngle(rot_after - rot_before) - angVel_after * dt, per knock tick,'
+      + ' thresholded at the run\'s own receipt-free residual floor (p99.5)',
+    headingWitnessFloorRad: witnessFloors ? witnessFloors.headingFloorRad : null,
+    courseWitnessFloorRad: witnessFloors ? witnessFloors.courseFloorRad : null,
+    maxHeadingWitnessAbsRad: headingKnown ? maxHeadingWitnessAbsRad : null,
+    headingWitnessVsReceiptMaxRad: headingKnown ? headingWitnessVsReceiptMaxRad : null,
+    // What the RETIRED raw-rotation instrument would have counted on this same run.
+    retiredRawHeadingChangeEvents: retiredInstrumentWouldHaveFired,
+    // PQ-137.11 D: the denominator changed. Both are printed so the change is visible.
+    cruiseSpeedWU: cruiseSpeed,
+    cruiseSpeedSource: 'resolveGovernedCombatSpeed(player, null, fallback) — the contact rule\'s own cruise',
+    legacyCruiseSpeedWU: legacyCruiseSpeed,
+    // PQ-137.11 C: contacts the player chose, reported beside the budget.
+    ...deliberate,
+    // Every non-hostile event with the classifier's own numbers, so the exemption is auditable.
+    deliberateAudit: collectDeliberateAudit(events),
+    playerSpin: spin,
     // Reported beside B13, never folded into it (master ruling 2026-09-04 01:45).
     knockReceipts: events.reduce((n, e) => n + (e.receipts || 0), 0),
     knockEventsTotal: events.length,
@@ -1309,6 +1757,68 @@ function summarizeMetrics({ eventTrace, knockEvents, ticks, wavesCleared, cruise
     simSeconds: round2(simSeconds),
     knockSource: 'physics:impact(playerInvolved).appliedPlayerDeltaV, receipts coalesced into events',
   };
+}
+
+/**
+ * Contacts the player chose — a slam they held the throttle into, or a body they reeled into on a
+ * live line. Same shape as the hostile-ram report: count, largest fraction of cruise, seconds in
+ * contact. Never folded into the ambient rate or magnitude.
+ */
+function summarizeDeliberate({ playerChosen, ropeChosen, cruiseKnown, simMinutes }) {
+  const reduce = (list) => {
+    let maxFraction = 0;
+    let known = true;
+    let seconds = 0;
+    for (const e of list) {
+      if (e.deltaVFractionOfCruise === null) known = false;
+      else if (e.deltaVFractionOfCruise > maxFraction) maxFraction = e.deltaVFractionOfCruise;
+      seconds += Number.isFinite(e.durationS) ? e.durationS : 0;
+    }
+    return {
+      count: list.length,
+      perMin: list.length / simMinutes,
+      maxFraction: cruiseKnown && known ? maxFraction : null,
+      secondsInContact: round2(seconds),
+    };
+  };
+  const p = reduce(playerChosen);
+  const r = reduce(ropeChosen);
+  return {
+    playerInitiatedKnockEvents: p.count,
+    playerInitiatedKnockEventsPerMin: p.perMin,
+    maxPlayerInitiatedKnockFraction: p.maxFraction,
+    playerInitiatedSecondsInContact: p.secondsInContact,
+    ropeInitiatedKnockEvents: r.count,
+    ropeInitiatedKnockEventsPerMin: r.perMin,
+    maxRopeInitiatedKnockFraction: r.maxFraction,
+    ropeInitiatedSecondsInContact: r.secondsInContact,
+    deliberateKnockRule: 'playerInitiated = every constituent names the player as causal actor AND'
+      + ` ((normalised commanded thrust . player->other >= ${PLAYER_INITIATED_THRUST_DOT} AND the`
+      + ` contact is held >= ${PLAYER_INITIATED_SUSTAINED_TICKS} ticks / 0.5 s)`
+      + ` OR radial pre-solve closing speed >= ${PLAYER_INITIATED_CLOSING_FRACTION} x cruise);`
+      + ' ropeInitiated = the other body is the live Massline target. A shoulder graze past a rock'
+      + ' with forward held scores 0.3-0.6 and lasts a few ticks, so it stays AMBIENT.',
+  };
+}
+
+/**
+ * The classifier's working for every non-hostile event: what the dot was, how long the contact was
+ * held, and which way the rule went. This is what makes the exemption auditable — a reader can see
+ * that the Lagrange grinds scored below the aim threshold and were counted, not waved through.
+ */
+function collectDeliberateAudit(events) {
+  const rows = [];
+  for (const e of events) {
+    if (e.hostileInitiated) continue;
+    if (!e.deliberateAudit) continue;
+    rows.push({
+      ...e.deliberateAudit,
+      deltaVFractionOfCruise: round3(e.deltaVFractionOfCruise),
+      receipts: e.receipts || 0,
+    });
+  }
+  rows.sort((a, b) => a.startTick - b.startTick);
+  return rows;
 }
 
 function measureQuietSeconds(trace) {
@@ -1497,9 +2007,158 @@ function playerEntity(state) {
 // unmeasurable. Returning a hard-coded 195 would compute every knock against an imaginary
 // ship and quietly decide B13 — exactly the class of flattering default this leaf exists to
 // remove. Null here propagates to `maxPlayerKnockFraction: null` and a recorded gap.
+/**
+ * The cruise the CONTACT RULE uses (PQ-137.11 D). `_applyPlayerStructuralGive` budgets a contact
+ * at 10 % of `resolveGovernedCombatSpeed(entity, null, fallback)`; a bench that divided by a
+ * different number was grading the rule against a denominator the rule had never heard of. Called
+ * with the same arguments as the rule, deliberately — `state` is not passed there either.
+ */
 function cruiseSpeedOf(player) {
+  if (!player) return null;
+  const fallback = (Number.isFinite(player.combatSpeed) && player.combatSpeed > 0)
+    ? player.combatSpeed
+    : (Number.isFinite(player.maxSpeed) ? player.maxSpeed : 0);
+  const governed = resolveGovernedCombatSpeed(player, null, fallback);
+  return Number.isFinite(governed) && governed > 0 ? governed : null;
+}
+
+/** The denominator this bench used before PQ-137.11 D, reported once so the change is visible. */
+function legacyCruiseSpeedOf(player) {
   const maxSpeed = player && Number.isFinite(player.maxSpeed) ? player.maxSpeed : 0;
   return maxSpeed > 0 ? maxSpeed * CRUISE_FRAC : null;
+}
+
+function samplePlayerKinematics(player) {
+  if (!player || player.alive === false) return null;
+  return {
+    rot: finiteOrNull(player.rot),
+    wy: finiteOrNull(player.angVel),
+    vx: finiteOrNull(player.vel && player.vel.x),
+    vz: finiteOrNull(player.vel && player.vel.z),
+    x: finiteOrNull(player.pos && player.pos.x),
+    z: finiteOrNull(player.pos && player.pos.z),
+  };
+}
+
+/**
+ * One tick of player kinematics, reduced to what B13 needs.
+ *
+ * `headingWitness` is the contact-sourced pose residual (see WITNESS_FLOOR_PERCENTILE).
+ * `courseWitness` is the same idea for the velocity heading: the course after the step compared
+ * against the course of `v_before + commanded thrust`, so the pilot's own acceleration is removed
+ * and only what CONTACT did to the direction of travel is left.
+ * `rawHeadingDelta` is what the retired instrument counted, kept so the receipt can show it.
+ * `thrust` is the commanded thrust direction in WORLD space (hull forward is (cos rot, sin rot),
+ * measured 2026-09-04; lateral is (-sin rot, cos rot), propulsionKernel.js:917).
+ */
+function measurePlayerTick({ before, after, telemetry, input, dt }) {
+  const row = {
+    rawHeadingDelta: null,
+    headingWitness: null,
+    courseWitness: null,
+    rawCourseDelta: null,
+    speedBefore: null,
+    speedAfter: null,
+    thrustX: null,
+    thrustZ: null,
+    yawRate: null,
+    angVel: null,
+    spinInjected: null,
+    spinCommanded: null,
+  };
+  if (!before || !after) return row;
+  if (Number.isFinite(before.rot) && Number.isFinite(after.rot)) {
+    row.rawHeadingDelta = wrapAngle(after.rot - before.rot);
+    row.yawRate = row.rawHeadingDelta / dt;
+    if (Number.isFinite(after.wy)) {
+      row.headingWitness = wrapAngle(row.rawHeadingDelta - after.wy * dt);
+      row.angVel = after.wy;
+    }
+  }
+  const mass = finiteOrZero(telemetry && telemetry.mass);
+  const force = telemetry && telemetry.force;
+  // Where the player's spin came from this tick. `e.wy` in the give rule is
+  // (previous angvel + controlTorque/I*dt), so the part of the change the control torque does NOT
+  // account for was INJECTED into the body between steps — an angular impulse (a weapon hit at a
+  // point, a rope, a charge), not the pilot steering.
+  const inertiaY = finiteOrZero(telemetry && telemetry.inertiaY);
+  const torqueY = telemetry
+    ? finiteOrZero(telemetry.torque && telemetry.torque.y !== undefined
+      ? telemetry.torque.y
+      : telemetry.torque)
+    : 0;
+  if (Number.isFinite(before.wy) && Number.isFinite(after.wy)) {
+    row.spinCommanded = inertiaY > 0 ? torqueY / inertiaY * dt : 0;
+    row.spinInjected = (after.wy - before.wy) - row.spinCommanded;
+  }
+  const cmdX = mass > 0 && force ? finiteOrZero(force.x) / mass * dt : 0;
+  const cmdZ = mass > 0 && force ? finiteOrZero(force.z) / mass * dt : 0;
+  if (Number.isFinite(before.vx) && Number.isFinite(before.vz)
+    && Number.isFinite(after.vx) && Number.isFinite(after.vz)) {
+    const ex = before.vx + cmdX;
+    const ez = before.vz + cmdZ;
+    row.speedBefore = Math.hypot(before.vx, before.vz);
+    row.speedAfter = Math.hypot(after.vx, after.vz);
+    const expectedSpeed = Math.hypot(ex, ez);
+    if (expectedSpeed > COURSE_MEASURABLE_SPEED && row.speedAfter > COURSE_MEASURABLE_SPEED) {
+      row.courseWitness = wrapAngle(Math.atan2(after.vz, after.vx) - Math.atan2(ez, ex));
+    }
+    if (row.speedBefore > COURSE_MEASURABLE_SPEED && row.speedAfter > COURSE_MEASURABLE_SPEED) {
+      row.rawCourseDelta = wrapAngle(
+        Math.atan2(after.vz, after.vx) - Math.atan2(before.vz, before.vx),
+      );
+    }
+  }
+  const rot = Number.isFinite(before.rot) ? before.rot : null;
+  if (rot !== null && input) {
+    const forward = finiteOrZero(input.moveZ);
+    const strafe = finiteOrZero(input.moveX);
+    row.thrustX = forward * Math.cos(rot) + strafe * -Math.sin(rot);
+    row.thrustZ = forward * Math.sin(rot) + strafe * Math.cos(rot);
+  }
+  return row;
+}
+
+function percentileOf(values, p) {
+  if (!values.length) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const idx = Math.min(sorted.length - 1, Math.max(0, Math.ceil(p * sorted.length) - 1));
+  return sorted[idx];
+}
+
+/**
+ * The floor the witness must clear, measured on the SAME run from ticks with no player contact
+ * receipt. A typed epsilon would be a claim about float arithmetic; this is a measurement of it,
+ * and it is the only thing that keeps a rope cell (whose yaw is quantized by
+ * `_canonicalizeManualSpringBody`) from reading its own quantization as a contact.
+ */
+function measureWitnessFloors(playerTickByTick, receiptTicks) {
+  const heading = [];
+  const course = [];
+  for (const [tick, row] of playerTickByTick) {
+    if (receiptTicks.has(tick)) continue;
+    if (Number.isFinite(row.headingWitness)) heading.push(Math.abs(row.headingWitness));
+    if (Number.isFinite(row.courseWitness)) course.push(Math.abs(row.courseWitness));
+  }
+  return {
+    headingFloorRad: percentileOf(heading, WITNESS_FLOOR_PERCENTILE),
+    courseFloorRad: percentileOf(course, WITNESS_FLOOR_PERCENTILE),
+    headingFloorSamples: heading.length,
+    courseFloorSamples: course.length,
+  };
+}
+
+function directionFromPlayerToOther(state, playerId, otherId) {
+  if (otherId == null || playerId == null) return null;
+  if (!state || !state.entities || typeof state.entities.get !== 'function') return null;
+  const player = state.entities.get(playerId);
+  const other = state.entities.get(otherId);
+  if (!player || !other || !player.pos || !other.pos) return null;
+  const dx = finiteOrZero(other.pos.x) - finiteOrZero(player.pos.x);
+  const dz = finiteOrZero(other.pos.z) - finiteOrZero(player.pos.z);
+  const len = Math.hypot(dx, dz);
+  if (!(len > 1e-6)) return null;
+  return { x: dx / len, z: dz / len };
 }
 
 function isLiveCohortHostile(state, actorId, playerId) {
@@ -1554,6 +2213,11 @@ function finiteOrNull(value) {
 
 function round2(value) {
   return Number.isFinite(value) ? Math.round(value * 100) / 100 : 0;
+}
+
+/** Null stays null: an unmeasured dot must not round to a confident 0. */
+function round3(value) {
+  return Number.isFinite(value) ? Math.round(value * 1000) / 1000 : null;
 }
 
 function wallNow() {

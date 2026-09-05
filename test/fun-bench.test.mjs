@@ -275,6 +275,60 @@ test('dead, stale, mixed, and partially unknown receipts stay ambient; later int
   assert.equal(laterIntent[0].aiPhase && laterIntent[0].aiPhase.targetId, null);
 });
 
+test('a shoulder graze with forward held is NOT a slam the player chose; an aimed, held slam is', () => {
+  // "A controllable mass, not a cursor." B13 exempts a deliberate big event — a slam the player
+  // chose — and nothing else. A bare "the player was pushing somewhat that way" exemption would
+  // wave through the exact contact the bar exists for: a graze past a rock with forward held.
+  const playerId = 1;
+  const cruiseSpeed = 100;
+  const chosen = (tick, extra = {}) => knockReceipt(tick, {
+    deltaV: 1,
+    appliedDeltaV: 1,
+    headingChangeRad: 0,
+    causalActorId: playerId,
+    actorLiveCohortHostile: false,
+    otherId: 42,
+    thrustIntoOther: 0.9,
+    preSolveClosingSpeed: 1,
+    ...extra,
+  });
+  const span = (ticks, extra) => {
+    const out = [];
+    for (let t = 0; t < ticks; t += 5) out.push(chosen(10 + t, extra));
+    out.push(chosen(10 + ticks - 1, extra));
+    return out;
+  };
+
+  // A shoulder graze: the player is going PAST the rock, not into it, and it lasts a moment.
+  const graze = buildKnockEvents(span(10, { thrustIntoOther: 0.5 }), { playerId, cruiseSpeed });
+  assert.equal(graze.length, 1);
+  assert.equal(graze[0].playerInitiated, false, 'a graze past a rock with forward held is ordinary flight, not a chosen slam');
+  assert.equal(graze[0].deliberateAudit.aimedAndHeld, false);
+  assert.equal(graze[0].deliberateAudit.thrustIntoOtherDot, 0.5, 'the dot is published so the exemption is auditable');
+
+  // Aimed straight at it, but let go after a few ticks: still not a slam.
+  const brief = buildKnockEvents(span(10), { playerId, cruiseSpeed });
+  assert.equal(brief[0].playerInitiated, false, 'aim without hold is a bump, not a slam the player chose');
+  assert.equal(brief[0].deliberateAudit.ticks < 30, true);
+
+  // Aimed straight at it and held for more than half a second: the player meant this.
+  const slam = buildKnockEvents(span(40), { playerId, cruiseSpeed });
+  assert.equal(slam.length, 1, 'receipts inside the bridge are one contact');
+  assert.equal(slam[0].playerInitiated, true, 'aimed and held for half a second is a slam the player chose');
+  assert.equal(slam[0].deliberateAudit.verdict, 'playerInitiated:aimed+held');
+
+  // Fast enough that nothing else explains it: a chosen ram, whatever the stick was doing.
+  const ram = buildKnockEvents(span(10, { thrustIntoOther: 0, preSolveClosingSpeed: 35 }), { playerId, cruiseSpeed });
+  assert.equal(ram[0].playerInitiated, true, 'closing at 35 % of cruise is a ram the player flew');
+  assert.equal(ram[0].deliberateAudit.verdict, 'playerInitiated:ram');
+  assert.equal(ram[0].deliberateAudit.closingFractionOfCruise, 0.35);
+
+  // Fail-closed: an aimed, held contact the player did not cause is still ambient.
+  const notMine = buildKnockEvents(span(40, { causalActorId: 77 }), { playerId, cruiseSpeed });
+  assert.equal(notMine[0].playerInitiated, false, 'a contact the player did not cause is never a slam they chose');
+  assert.equal(notMine[0].deliberateAudit.allPlayerCaused, false);
+});
+
 test('same-tick heading is counted once; opposite per-tick rotations cannot cancel the heading clause', () => {
   const playerId = 1;
   const cruiseSpeed = 100;

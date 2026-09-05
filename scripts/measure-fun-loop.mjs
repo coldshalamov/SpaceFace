@@ -30,6 +30,7 @@ import {
 } from './lib/bench/crucibleBench.mjs';
 import { runFlightBench } from './lib/bench/flightBench.mjs';
 import { runVerbBench } from './lib/bench/verbBench.mjs';
+import { measureVisibleJitter } from './lib/bench/frameStripCapture.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const DEFAULT_RECEIPTS_DIR = join(ROOT, 'design/program/roadmap/receipts/fun-loop');
@@ -923,9 +924,18 @@ export function attachStripJitter(runs, manifestPaths, log = () => {}) {
     } catch (err) {
       fail(`--knock-strip ${rawPath}: ${err.message}`);
     }
-    const vj = manifest && manifest.visibleJitter;
     if (manifest.schema !== 'spaceface.frameStripManifest.v2') { log(`knock-strip ${rawPath}: not a v2 strip manifest; ignored`); continue; }
     if (manifest.normalSpeed !== true) { log(`knock-strip ${rawPath}: under the normal-speed floor (${manifest.realtimeFraction}); its jitter is not evidence`); continue; }
+    // RE-MEASURED HERE, from the manifest's own frames, by the measurer this build ships. The
+    // stored `visibleJitter` block was computed by whatever version wrote the strip; trusting it
+    // would let an old reading outlive the rule it was reading. The frames are the evidence, and
+    // they do not change — what we ask of them does.
+    let vj = manifest.visibleJitter;
+    let remeasured = false;
+    if (Array.isArray(manifest.frames) && Array.isArray(manifest.momentsInSpan)) {
+      vj = measureVisibleJitter(manifest.frames, manifest.momentsInSpan, manifest.inputEvents);
+      remeasured = true;
+    }
     if (!vj || vj.measured !== true) { log(`knock-strip ${rawPath}: visible jitter not measured (${vj && vj.note})`); continue; }
     for (const run of runs || []) {
       if (run.arenaId !== manifest.arenaId || run.loadoutId !== manifest.loadoutId || String(run.seed) !== String(manifest.seed)) continue;
@@ -937,9 +947,16 @@ export function attachStripJitter(runs, manifestPaths, log = () => {}) {
         windows: vj.windows,
         headingReversals: vj.headingReversals,
         screenReversals: vj.screenReversals,
+        // The pilot's own key transitions, separated out rather than counted as wobble.
+        commandedHeadingReversals: vj.commandedHeadingReversals ?? null,
+        commandedScreenReversals: vj.commandedScreenReversals ?? null,
+        unreadableSteps: vj.unreadableSteps ?? null,
         cadenceFpsMin: vj.cadenceFpsMin,
         realtimeFraction: manifest.realtimeFraction,
         harnessDigest: manifest.harnessDigest,
+        sourceIdentity: manifest.sourceIdentity ?? null,
+        remeasured,
+        note: vj.note,
       };
       attached.push(`${run.arenaId}/${run.loadoutId}/s${run.seed}`);
     }

@@ -1509,7 +1509,7 @@ export async function captureFrameStrip({
     const spanS = frames.length > 1 ? frames[frames.length - 1].simTime - frames[0].simTime : 0;
     const contactSheet = await writeContactSheet(context, targetDir, frames, join(receiptDir, 'contact-sheet.png'));
     const realtimeSegments = realtimeBySegment(frames);
-    const visibleJitter = measureVisibleJitter(frames, momentsInSpan);
+    const visibleJitter = measureVisibleJitter(frames, momentsInSpan, inputEvents);
     const tetherFrames = frames.filter((f) => f.tetherActive).length;
 
     const manifest = {
@@ -1770,6 +1770,13 @@ export function createInputDriver(page, { getCdp = () => null, log = () => {} } 
 
 /** Half a second after a contact is where a wobble would show. */
 export const VISIBLE_JITTER_WINDOW_S = 0.5;
+// How long after a key transition the glass is still showing the pilot's hands rather than the
+// hull's own behaviour. A reversal inside this shadow is the pilot.
+export const COMMANDED_INPUT_LEAD_S = 0.15;
+// `SANE_MAX_YAW_RATE` in src/core/sg02DynamicBodyOwner.js — the absolute yaw ceiling every body
+// except the player is held to. A frame-to-frame rotation implying more than this cannot be read
+// off a strip: the wrapped sample is one of infinitely many rotations that would look identical.
+export const READABLE_MAX_YAW_RATE = 6.0; // rad/s
 
 function wrapAngle(a) {
   let x = a;
@@ -1786,15 +1793,35 @@ function wrapAngle(a) {
  *
  * @returns {{measured:boolean, windows:number, headingReversals:number, screenReversals:number, events:number, windowS:number, cadenceFpsMin:number|null, note:string}}
  */
-export function measureVisibleJitter(frames, momentsInSpan) {
+export function measureVisibleJitter(frames, momentsInSpan, inputEvents) {
   const firstT = Array.isArray(frames) && frames.length ? frames[0].simTime : -Infinity;
   // Only contacts a viewer can see the aftermath of: inside the photographed span. The moments list
   // carries eight seconds of lead for retention, and a contact before the first frame has no window.
   const contacts = (momentsInSpan || []).filter((m) => m && m.playerInvolved && m.simTime >= firstT
     && (m.type === 'physics:impact' || m.type === 'combat:collisionConsequence'));
-  const out = { measured: false, windows: 0, headingReversals: 0, screenReversals: 0, events: 0, windowS: VISIBLE_JITTER_WINDOW_S, cadenceFpsMin: null, note: '' };
+  const out = {
+    measured: false,
+    windows: 0,
+    headingReversals: 0,
+    screenReversals: 0,
+    commandedHeadingReversals: 0,
+    commandedScreenReversals: 0,
+    unreadableSteps: 0,
+    unreadableWindows: 0,
+    events: 0,
+    windowS: VISIBLE_JITTER_WINDOW_S,
+    cadenceFpsMin: null,
+    commandedLeadS: COMMANDED_INPUT_LEAD_S,
+    unreadableAboveRadS: READABLE_MAX_YAW_RATE,
+    note: '',
+  };
   if (!Array.isArray(frames) || frames.length < 3) { out.note = 'too few frames'; return out; }
   if (contacts.length === 0) { out.measured = true; out.note = 'no contact involved the player inside the strip'; return out; }
+  // The pilot's own hands, from the scenario's own tape. A reversal that lines up with the pilot
+  // letting go of a turn key is the pilot, not a wobble the contact put in the hull, and counting
+  // it as jitter grades the tape instead of the game.
+  const yawKeyTimes = commandedInputTimes(inputEvents, ['turn left', 'turn right']);
+  const motionKeyTimes = commandedInputTimes(inputEvents, ['reverse/brake', 'forward']);
   let cadenceMin = null;
   for (const m of contacts) {
     const t = Number(m.simTime) || 0;
@@ -1805,6 +1832,9 @@ export function measureVisibleJitter(frames, momentsInSpan) {
     cadenceMin = cadenceMin == null ? fps : Math.min(cadenceMin, fps);
     let headingRev = 0;
     let screenRev = 0;
+    let commandedHeadingRev = 0;
+    let commandedScreenRev = 0;
+    let unreadable = 0;
     let prevDRot = null;
     let prevDx = null;
     let prevDy = null;
@@ -1813,27 +1843,79 @@ export function measureVisibleJitter(frames, momentsInSpan) {
       const b = w[i];
       if (Number.isFinite(a.playerRot) && Number.isFinite(b.playerRot)) {
         const dRot = wrapAngle(b.playerRot - a.playerRot);
-        if (prevDRot != null && Math.abs(dRot) > 1e-3 && Math.abs(prevDRot) > 1e-3 && Math.sign(dRot) !== Math.sign(prevDRot)) headingRev += 1;
-        if (Math.abs(dRot) > 1e-3) prevDRot = dRot;
+        const gap = Math.max(1e-6, b.simTime - a.simTime);
+        // Beyond this the wrapped sample is not a measurement of the rotation: the hull could have
+        // turned that far, or that far plus any number of whole turns, and the frames cannot tell.
+        // Measured on the live build 2026-09-05: a starter pulse hit spins the player hull to
+        // 160 rad/s, which at a strip's 7.5 fps is 21 radians between frames.
+        const unreadableStep = Math.abs(dRot) / gap > READABLE_MAX_YAW_RATE;
+        if (unreadableStep) unreadable += 1;
+        else if (prevDRot != null && Math.abs(dRot) > 1e-3 && Math.abs(prevDRot) > 1e-3
+          && Math.sign(dRot) !== Math.sign(prevDRot)) {
+          if (straddlesCommandedInput(yawKeyTimes, a.simTime, b.simTime)) commandedHeadingRev += 1;
+          else headingRev += 1;
+        }
+        if (!unreadableStep && Math.abs(dRot) > 1e-3) prevDRot = dRot;
       }
       if (Array.isArray(a.playerScreenXY) && Array.isArray(b.playerScreenXY)) {
         const dx = b.playerScreenXY[0] - a.playerScreenXY[0];
         const dy = b.playerScreenXY[1] - a.playerScreenXY[1];
         const moved = Math.hypot(dx, dy) > 0.004;
-        if (prevDx != null && moved && (dx * prevDx + dy * prevDy) < 0) screenRev += 1;
+        if (prevDx != null && moved && (dx * prevDx + dy * prevDy) < 0) {
+          if (straddlesCommandedInput(motionKeyTimes, a.simTime, b.simTime)) commandedScreenRev += 1;
+          else screenRev += 1;
+        }
         if (moved) { prevDx = dx; prevDy = dy; }
       }
     }
     out.headingReversals += headingRev;
     out.screenReversals += screenRev;
+    out.commandedHeadingReversals += commandedHeadingRev;
+    out.commandedScreenReversals += commandedScreenRev;
+    out.unreadableSteps += unreadable;
+    if (unreadable > 0) out.unreadableWindows += 1;
     if (headingRev > 0 || screenRev > 0) out.events += 1;
   }
-  out.measured = out.windows > 0;
+  // Fail-closed, the same shape as the three-frame rule: a window the cadence could not read is
+  // not a window that showed no wobble. It is a window nobody looked at.
+  out.measured = out.windows > 0 && out.unreadableWindows === 0;
   out.cadenceFpsMin = cadenceMin == null ? null : Number(cadenceMin.toFixed(2));
-  out.note = out.measured
-    ? `${out.windows} contact window(s) of ${VISIBLE_JITTER_WINDOW_S}s at >= ${out.cadenceFpsMin} fps; a reversal inside a window is a wobble a viewer sees`
-    : 'contacts happened but no window held three frames';
+  if (out.windows === 0) out.note = 'contacts happened but no window held three frames';
+  else if (out.unreadableWindows > 0) {
+    out.note = `${out.unreadableWindows} of ${out.windows} contact window(s) contain a rotation step `
+      + `above ${READABLE_MAX_YAW_RATE} rad/s — cadence below Nyquist for that rate, so the hull's `
+      + 'turn cannot be recovered from these frames: unmeasured, never a pass';
+  } else {
+    out.note = `${out.windows} contact window(s) of ${VISIBLE_JITTER_WINDOW_S}s at >= ${out.cadenceFpsMin} fps; `
+      + `a reversal inside a window is a wobble a viewer sees (${out.commandedHeadingReversals} heading and `
+      + `${out.commandedScreenReversals} motion reversal(s) lined up with the pilot's own key transitions `
+      + `within ${COMMANDED_INPUT_LEAD_S}s and are the pilot, not jitter)`;
+  }
   return out;
+}
+
+/** Sim times of the tape steps whose description names any of these controls. */
+function commandedInputTimes(inputEvents, names) {
+  const out = [];
+  for (const e of Array.isArray(inputEvents) ? inputEvents : []) {
+    if (!e || !Number.isFinite(e.simTime) || typeof e.input !== 'string') continue;
+    for (const name of names) {
+      if (e.input.includes(name)) { out.push(e.simTime); break; }
+    }
+  }
+  return out;
+}
+
+/**
+ * True when a key transition happened between these two frames, or up to COMMANDED_INPUT_LEAD_S
+ * before the first of them — the window in which the reversal on the glass is the pilot's hands
+ * arriving, not the hull wobbling.
+ */
+function straddlesCommandedInput(times, aT, bT) {
+  for (const t of times) {
+    if (t >= aT - COMMANDED_INPUT_LEAD_S && t <= bT) return true;
+  }
+  return false;
 }
 
 /** A tape step in the words a pilot would use: "forward held", "boost released", "fire held". */

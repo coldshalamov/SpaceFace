@@ -626,6 +626,19 @@ function evaluateB11(bar, list) {
   });
 }
 
+// B13's magnitude ceiling, and the float tolerance the comparison is made with.
+//
+// The live rule (`PLAYER_CONTACT_MAX_CRUISE_FRACTION`, src/core/sg02DynamicBodyOwner.js) caps a
+// contact event's CUMULATIVE applied delta-V at exactly 0.10 x cruise, and the bench divides the
+// bench's own sum of the per-receipt applied values by the same cruise. The two sums are made in
+// different orders, so a run that used the whole budget lands at 0.10000000000000002 and a bare
+// `<= 0.1` reads red by one ulp — a failure of arithmetic, not of the game. The tolerance is
+// stated here rather than hidden in a rounding step, and it is 1e-6 of cruise: at Kestrel's
+// 195 WU/s that is 0.0002 WU/s, far below anything a player could feel and far above float dust.
+const B13_MAX_KNOCK_FRACTION = 0.10;
+const B13_FRACTION_TOLERANCE = 1e-6;
+const b13FractionOk = (value) => value <= B13_MAX_KNOCK_FRACTION + B13_FRACTION_TOLERANCE;
+
 function evaluateB13(bar, list) {
   const crucibleRuns = list.filter((run) => run.bench === "crucible");
   const verbRuns = scenarioRuns(list, "feel.knock_budget");
@@ -679,7 +692,7 @@ function evaluateB13(bar, list) {
       (run) => run.metrics && run.metrics.maxPlayerKnockFraction,
       "largest single knock, fraction of cruise, crucible",
       "fraction",
-      (value) => value <= 0.1,
+      b13FractionOk,
     );
     const headingHoles = pushWorst(
       crucibleRuns,
@@ -725,7 +738,7 @@ function evaluateB13(bar, list) {
       (run) => run.metrics && run.metrics.maxKnockDeltaVFractionOfCruise,
       "largest single knock, fraction of cruise, verbs feel.knock_budget",
       "fraction",
-      (value) => value <= 0.1,
+      b13FractionOk,
     );
     const headingHoles = pushWorst(
       verbRuns,
@@ -734,18 +747,82 @@ function evaluateB13(bar, list) {
       "events",
       (value) => value === 0,
     );
-    const jitterMeasuredOnAll = verbRuns.every((run) => run.metrics && run.metrics.jitterMeasured === true);
-    if (!jitterMeasuredOnAll) {
+    // The jitter clause on the flight bench. The strip harness only drives Crucible scenarios and
+    // this corridor has no browser route, so — Crucible first — the PICTURES witness for "never
+    // produces visible jitter" is the Crucible strip. What the flight bench can add is the strip's
+    // OWN DEFINITIONS read off the sim at the strip's frame cadence and at 60 Hz. That is accepted
+    // here only when this same evaluation also carries a normal-speed Crucible strip that measured
+    // jitter from frames on the same source identity: without the pictures, a headless number
+    // answering a question about what a viewer sees is not evidence, and the clause stays open.
+    const stripWitness = crucibleStripWitness(crucibleRuns);
+    const simSampledOnAll = verbRuns.every((run) => run.metrics && run.metrics.jitterSimSampled);
+    if (stripWitness && simSampledOnAll) {
+      const jitterHoles = pushWorst(
+        verbRuns,
+        (run) => simSampledJitterEvents(run.metrics && run.metrics.jitterSimSampled),
+        "visible jitter events after contact, verbs feel.knock_budget (the strip's definitions read from the sim at frame cadence and at 60 Hz)",
+        "events",
+        (value) => value === 0,
+      );
+      if (jitterHoles) notes.push("at least one feel.knock_budget run measured no sim-sampled jitter despite publishing the block.");
+      notes.push(
+        "flight-bench jitter is the strip's definition read from the sim at frame cadence; the pictures witness is the Crucible strip"
+        + ` (${stripWitness.manifest}).`,
+      );
+    } else {
       missingRequired = true;
-      notes.push("visible jitter is unmeasured on the headless verb knock-budget path; a full B13 pass is impossible.");
+      notes.push(
+        simSampledOnAll
+          ? "visible jitter on the flight bench has no pictures behind it: this evaluation carries no normal-speed Crucible strip whose frames measured jitter, so the clause stays open."
+          : "visible jitter is unmeasured on the headless verb knock-budget path; a full B13 pass is impossible.",
+      );
     }
+    notes.push("the lateral-velocity sign-flip proxy (jitterEvents/jitterMaxSignFlips) is reported beside the clause and never folded into it.");
     if (rateHoles || fracHoles || headingHoles) {
       notes.push("a feel.knock_budget run is missing a required component and cannot hide behind a complete sibling.");
     }
   }
   notes.push("the visible-jitter clause and the legible-deliberate-event clause are unbenched unless a headed capture sets jitterMeasured.");
+  notes.push(
+    `the largest-knock ceiling is ${B13_MAX_KNOCK_FRACTION} of cruise compared with a tolerance of `
+    + `${B13_FRACTION_TOLERANCE}: the live rule caps a contact event's cumulative applied delta-V at `
+    + 'exactly that fraction, and the bench sums the per-receipt values in a different order, so a run '
+    + 'that spends the whole budget lands one ulp above it. The tolerance is float slack, never headroom '
+    + `— at Kestrel cruise that is 0.0002 WU/s.`,
+  );
   const met = measuredFail ? false : (missingRequired ? null : verdictFromValues(values));
   return finish(bar, { values, coverage: "partial", fedBy, notes, met });
+}
+
+/**
+ * The pictures, if this evaluation has any: a Crucible run whose jitter came from a normal-speed
+ * headed strip's frames. `attachStripJitter` sets `jitterMeasured` only for a v2 manifest that ran
+ * at or above the normal-speed floor and whose own measurement was `measured`, so this is the
+ * frames talking, not a promise that frames exist.
+ */
+function crucibleStripWitness(crucibleRuns) {
+  for (const run of crucibleRuns) {
+    const m = run && run.metrics;
+    if (m && m.jitterMeasured === true && m.jitterSource && m.jitterSource.manifest) {
+      return m.jitterSource;
+    }
+  }
+  return null;
+}
+
+/**
+ * Worst of the two cadences. A wobble that only the 60 Hz reading can see is still a wobble the
+ * hull performed; a strip simply could not photograph it. Either cadence unmeasured is a hole.
+ */
+function simSampledJitterEvents(block) {
+  if (!block) return null;
+  const parts = [block.atStripCadence, block.at60Hz];
+  let worst = 0;
+  for (const part of parts) {
+    if (!part || part.measured !== true || !Number.isFinite(part.events)) return null;
+    if (part.events > worst) worst = part.events;
+  }
+  return worst;
 }
 
 const BAR_EVALUATORS = {

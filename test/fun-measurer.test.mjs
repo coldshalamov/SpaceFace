@@ -773,7 +773,10 @@ test('integration: knock scenario through evaluateBars + deriveFunMetrics once t
 test('harness digest lists scenario modules and realPath, sorted, without receipt files', () => {
   const files = listFunLoopHarnessFiles();
   assert.ok(files.includes('scripts/lib/bench/realPath.mjs'));
-  assert.ok(files.includes('scripts/lib/bench/knockModel.mjs'));
+  // knockModel.mjs was the invented contact-encounter generator B13 used to be measured with.
+  // The drop-in module scenarios/feel.knock_budget.mjs replaced it with the real physics path, and
+  // the file is gone: nothing may import it back without this line failing.
+  assert.ok(!files.some((f) => f.endsWith('knockModel.mjs')), 'the invented knock model is retired');
   assert.ok(files.some((f) => f.startsWith('scripts/lib/bench/scenarios/') && f.endsWith('.mjs')));
   assert.ok(!files.some((f) => /receipts|contact-sheet|strip-manifest/.test(f)));
   assert.deepEqual(files, [...files].sort((a, b) => a.localeCompare(b)));
@@ -907,6 +910,73 @@ test('diff mode: a met row that stays met within the noise floor is unchanged, a
   const kept = b7.rows.find((r) => /kept/.test(r.label));
   assert.equal(kept.direction, 'unchanged', 'a met row that rose by 2e-5 did not regress under a target whose first clause says "<"');
   assert.equal(diff.verdict, 'KEEP', `verdict must be KEEP, got ${diff.verdict}: ${JSON.stringify(diff.summary || diff.notes)}`);
+});
+
+test('the flight bench may not answer "does a viewer see a wobble" without the Crucible pictures', async () => {
+  // "A controllable mass, not a cursor." The flight corridor has no browser route, so the only
+  // thing it can add to the jitter clause is the STRIP'S OWN DEFINITIONS read off the sim. A
+  // headless number answering a question about what a viewer sees is not evidence on its own, and
+  // the evaluator must refuse it unless the same evaluation carries a normal-speed Crucible strip
+  // that measured jitter from frames.
+  const { evaluateBars } = await import('../scripts/lib/bench/feelBars.mjs');
+  const verbRun = (block) => ({
+    bench: 'verbs',
+    scenarioId: 'feel.knock_budget',
+    seed: 4242,
+    metrics: {
+      knockEventsPerMinute: 1, maxKnockDeltaVFractionOfCruise: 0.05, headingChangeEvents: 0,
+      jitterSimSampled: block,
+    },
+  });
+  const clean = {
+    atStripCadence: { measured: true, events: 0 },
+    at60Hz: { measured: true, events: 0 },
+  };
+  const crucibleWithPictures = {
+    bench: 'crucible', arenaId: 'helios_core', loadoutId: 'physics_toolkit', seed: 4242,
+    metrics: {
+      playerKnockEventsPerMin: 1, maxPlayerKnockFraction: 0.05, headingChangeEvents: 0,
+      jitterMeasured: true, jitterEvents: 0,
+      jitterSource: { manifest: 'strip-manifest.json', windows: 6, cadenceFpsMin: 6.9, realtimeFraction: 0.75 },
+    },
+  };
+  const jitterRow = (runs) => {
+    const b13 = evaluateBars(runs).bars.find((b) => b.id === 'B13');
+    return {
+      row: (b13.values || []).find((v) => /feel\.knock_budget \(the strip's definitions/.test(v.label || '')),
+      notes: String(b13.notes || ''),
+      met: b13.met,
+    };
+  };
+
+  const alone = jitterRow([verbRun(clean)]);
+  assert.equal(alone.row, undefined, 'without pictures the flight bench publishes no jitter value row');
+  assert.match(alone.notes, /no pictures behind it/, 'and it says so in plain words');
+  assert.equal(alone.met, null, 'the clause stays open, so the bar is withheld rather than passed');
+
+  const withPictures = jitterRow([crucibleWithPictures, verbRun(clean)]);
+  assert.ok(withPictures.row, 'with a normal-speed Crucible strip in the same evaluation the row appears');
+  assert.equal(withPictures.row.value, 0);
+  assert.match(
+    withPictures.notes,
+    /the pictures witness is the Crucible strip/,
+    'and the note never lets the sim-sampled number pass itself off as the pictures',
+  );
+
+  // A wobble only the 60 Hz reading can see is still a wobble the hull performed.
+  const fastOnly = jitterRow([crucibleWithPictures, verbRun({
+    atStripCadence: { measured: true, events: 0 },
+    at60Hz: { measured: true, events: 3 },
+  })]);
+  assert.equal(fastOnly.row.value, 3, 'the worse cadence decides; a strip simply could not photograph it');
+
+  // Either cadence unmeasured is a hole, never a pass.
+  const halfMeasured = jitterRow([crucibleWithPictures, verbRun({
+    atStripCadence: { measured: false, events: 0 },
+    at60Hz: { measured: true, events: 0 },
+  })]);
+  assert.equal(halfMeasured.row, undefined, 'an unmeasured cadence is a hole, not a zero');
+  assert.equal(halfMeasured.met, null);
 });
 
 test('B13 visible jitter comes from a headed strip of the same cell, and only at normal speed', async () => {

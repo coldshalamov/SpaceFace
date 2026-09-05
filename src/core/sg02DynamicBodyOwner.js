@@ -680,6 +680,24 @@ export class Sg02DynamicBodyOwner {
     const dvz = vz - e.vz;
     const dMag = Math.hypot(dvx, dvz);
 
+    // OWNER RECEIPTS (PQ-137.11 A). Before restoring anything, record what the SOLVER tried to do
+    // to the player's heading and course. The rule's own answer is published beside it, so a
+    // receipt can show both "what a rock tried to do to my nose" and "what I let through" instead
+    // of only the second. Measured here and nowhere else: after the restore below the evidence is
+    // gone. Nothing on this path changes what the rule does.
+    const w = rec.body.angvel();
+    const solverYaw = wrapAngle(yawFromQuat(rec.body.rotation()));
+    const solverHeadingKickRad = Number.isFinite(e.yaw) ? wrapAngle(solverYaw - e.yaw) : 0;
+    const solverYawRateKick = finite(w.y) - finite(e.wy);
+    const expectedSpeedForCourse = Math.hypot(e.vx, e.vz);
+    const solverSpeed = Math.hypot(vx, vz);
+    // A course is only defined when there is motion to have a direction. Two hulls at rest touching
+    // have no course to change, and atan2(0, 0) would invent one.
+    const solverCourseKickRad = (expectedSpeedForCourse > PLAYER_CONTACT_ACTIVITY_EPSILON
+      && solverSpeed > PLAYER_CONTACT_ACTIVITY_EPSILON)
+      ? wrapAngle(Math.atan2(vz, vx) - Math.atan2(e.vz, e.vx))
+      : 0;
+
     let appliedAlong = 0;
     let actualPlayerDeltaV = 0;
 
@@ -732,6 +750,16 @@ export class Sg02DynamicBodyOwner {
     rec.body.setAngvel({ x: 0, y: finite(e.wy), z: 0 }, true);
 
     rec._lastAppliedPlayerDeltaV = actualPlayerDeltaV;
+    // What the solver asked for, and what the rule answered. Heading and course retained are ZERO
+    // BY CONSTRUCTION — the pose is restored to the no-contact prediction and the retained velocity
+    // response is projected onto the expected heading — and they are published anyway, because a
+    // number that is always zero because the rule holds is evidence, and a number that is always
+    // zero because nobody measured it is not.
+    rec._lastSolverPlayerHeadingRad = solverHeadingKickRad;
+    rec._lastSolverPlayerYawRateKick = solverYawRateKick;
+    rec._lastSolverPlayerCourseRad = solverCourseKickRad;
+    rec._lastAppliedPlayerHeadingRad = 0;
+    rec._lastAppliedPlayerCourseRad = 0;
     return actualPlayerDeltaV;
   }
 
@@ -749,6 +777,15 @@ export class Sg02DynamicBodyOwner {
           let assigned = 0;
           for (let i = 0; i < playerReceipts.length; i++) {
             const r = playerReceipts[i];
+            // Heading and course are PER-TICK ANGLES, not a quantity to divide. Splitting them the
+            // way delta-V is split, or stamping and then summing, would invent a disagreement out
+            // of any tick that produced more than one receipt. Every receipt of the tick carries
+            // the whole tick's angle and the reader sums per unique tick.
+            r.solverPlayerHeadingRad = finite(rec._lastSolverPlayerHeadingRad, 0);
+            r.solverPlayerYawRateKick = finite(rec._lastSolverPlayerYawRateKick, 0);
+            r.solverPlayerCourseRad = finite(rec._lastSolverPlayerCourseRad, 0);
+            r.appliedPlayerHeadingRad = finite(rec._lastAppliedPlayerHeadingRad, 0);
+            r.appliedPlayerCourseRad = finite(rec._lastAppliedPlayerCourseRad, 0);
             if (i === playerReceipts.length - 1) {
               r.appliedPlayerDeltaV = actualApplied - assigned;
               continue;
@@ -1093,6 +1130,13 @@ export class Sg02DynamicBodyOwner {
       };
       if (isPlayerReceipt) {
         receipt.appliedPlayerDeltaV = 0;
+        // Filled by _distributeAppliedPlayerDeltaV. Present from birth so a reader can tell
+        // "the rule reported nothing" from "the field does not exist on this build".
+        receipt.solverPlayerHeadingRad = 0;
+        receipt.solverPlayerYawRateKick = 0;
+        receipt.solverPlayerCourseRad = 0;
+        receipt.appliedPlayerHeadingRad = 0;
+        receipt.appliedPlayerCourseRad = 0;
       }
       merged.set(key, receipt);
     });
