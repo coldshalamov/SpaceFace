@@ -2237,7 +2237,7 @@ const CSS = `
   letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-calm);
 }
 /* The screen's title reads like every other plate's h1 (19px UI face), not like a section kicker:
-   with the kicker treatment the crest's biggest words were "J to close". */
+   with the kicker treatment the close hint outweighed the title. */
 .sf-mlog-head .sf-mlog-title {
   font-family: var(--sf-display-face); font-weight: 600; font-size: 19px; line-height: 1.2;
   letter-spacing: .04em; color: var(--sf-paper);
