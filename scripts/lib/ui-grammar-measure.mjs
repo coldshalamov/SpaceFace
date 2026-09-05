@@ -358,7 +358,12 @@ export function evaluateSurface({ surface, passes = {}, thresholds = THRESHOLDS,
       ? cell('green', `opened via ${surface.entry.kind}: ${surface.entry.detail || ''}`.trim())
       : cell('red', `public route declared (${surface.entry.detail || surface.entry.kind}) but the surface did not open${base && base.error ? `: ${base.error}` : ''}`);
   } else if (evidence === 'fixture') {
-    raw.reachable = cell('red', `opened by the named fixture "${surface.entry.fixture}" only, which is an environmental state, not a player route — ${surface.entry.detail || ''}`);
+    // A nested surface inherits `fixture` evidence from its parent but has no fixture of its own,
+    // so name the chain instead. Printing `fixture "undefined"` sent a reader looking for a
+    // fixture that never existed and hid the real reason: the parent is not on a player route.
+    raw.reachable = surface.entry.inheritedFrom
+      ? cell('red', `reachable only through ${surface.entry.inheritedFrom}, which itself opens by a named fixture rather than a player route — ${surface.entry.detail || ''}`)
+      : cell('red', `opened by the named fixture "${surface.entry.fixture}" only, which is an environmental state, not a player route — ${surface.entry.detail || ''}`);
   } else {
     raw.reachable = cell('red', surface.entry && surface.entry.detail ? surface.entry.detail : 'no entry route');
   }

@@ -114,6 +114,9 @@ function resolveInheritedEvidence(list) {
       entry: Object.freeze({
         ...surface.entry,
         evidence,
+        // Say the evidence was INHERITED, not native. A nested entry has no `fixture` name of its
+        // own, so a reader told only "evidence: fixture" would look for one and find undefined.
+        inheritedFrom: parentId,
         detail: `${surface.entry.detail || ''} — reached only through ${parentId}, which is ${evidence}`.trim(),
       }),
     });
@@ -376,7 +379,6 @@ const RAW_SURFACES = Object.freeze([
     checks: [...BASE_CHECKS, STATION_TABS],
     entry: nested('station-dock', `[data-screen="station"] .sx-dock [data-nav="${id}"]`, null, `Command Dock → ${title}`),
     owner: 'PQ-162',
-    ownerLeaf: 'station-screens',
     ownerLeaf: 'station-screens',
   })),
 
