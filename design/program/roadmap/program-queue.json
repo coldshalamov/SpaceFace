@@ -10562,7 +10562,7 @@
       "priority": 49,
       "title": "Chains go off: tether-two, primed ships, wells",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-137.04"
       ],
@@ -10579,8 +10579,10 @@
         "npm run check:baseline",
         "npm run check:combat"
       ],
-      "receiptRefs": [],
-      "brief": "Tethered pairs share helm loss and inertia; a primed ship detonates on slam and primes what it knocks past the stun threshold for ~0.8 s; wells converge ships to 30-60 WU/s relative and prime on grind. One deterministic prime-sling-chain scenario producing >= 3 secondary consequences from one action."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-137-09-REPORT.md"
+      ],
+      "brief": "IMPLEMENTED 2026-09-05 (integrator-verified: 15 secondary consequences from one action on seed 4242, 4 kinds, well convergence 42.5 WU/s, 2 hulls primed by grind; chain tests 21/26; goldens unmoved). OWED before done: one shipping-camera strip using the chain_reaction tape proposed in the receipt (the strip file is held by PQ-137.11). Tethered pairs share helm loss and inertia; a primed ship detonates on slam and primes what it knocks past the stun threshold for ~0.8 s; wells converge ships to 30-60 WU/s relative and prime on grind. One deterministic prime-sling-chain scenario producing >= 3 secondary consequences from one action."
     },
     {
       "id": "PQ-137.10",
