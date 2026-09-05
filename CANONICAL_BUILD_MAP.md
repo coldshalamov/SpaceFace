@@ -156,7 +156,7 @@ procedure:
 | "finish the game", "what's next for release", "the professional bar" | §15 gates → `--next` |
 | "swarm mode should be more fun" | §16 → `--id PQ-174` |
 | "adventure is boring / thin" | §17 → `--id PQ-176`, `PQ-177`, `PQ-178` |
-| "the screens look cheap", "polish the frontend", "bring the UI up to date" | §18 → `--id PQ-180` then the red cells it assigns; grammar first |
+| "the screens look cheap", "polish the frontend", "bring the UI up to date", "A-list / bold / expressive frontend" | [`design/FRONTEND_DIRECTION.md`](./design/FRONTEND_DIRECTION.md) → `--id PQ-187` (direction lock; owner picks from rendered options) → then the surface packets it gates. `PQ-180` is the floor, not the gate |
 | "it's hitching / stuttering" | §8.4 → `--id PQ-129`; measure first, never cut quality |
 | "the mining board is unreadable / ugly" | `--id PQ-130` (board law) and `PQ-131` (authored objects); `PQ-185` accepts |
 | "the ships / objects look like toys" | §1B graphics doors → `PQ-050`, `PQ-045`, `PQ-136` |
@@ -3412,6 +3412,17 @@ Every story beat is produced the same way and to the same bar as the twelve minu
 
 
 ## 18. Frontend: every surface to the newest version, optimized (`PQ-180`–`PQ-185`) — ADMITTED 2026-09-03
+
+> **DIRECTION OVERRIDE — 2026-09-05.** The owner ruled that the frontend design authority this
+> section builds on was written by agents and "will keep reverting the frontend back to cheap if
+> you rely on them as an authority." [`design/FRONTEND_DIRECTION.md`](./design/FRONTEND_DIRECTION.md)
+> now outranks the grammar, the per-screen specs and every "to the grammar" clause below on
+> anything aesthetic. New packets: **`PQ-187`** (reference board → three rendered directions → the
+> owner's pick → the kit → the blind proof) and **`PQ-188`** (the HUD and the three instruments
+> marked done in §11, rebuilt on the kit). `PQ-162`, `PQ-168`, `PQ-181`, `PQ-182` and `PQ-185` are
+> gated on `PQ-187.03` in the queue; their done-when is the owner's contact-sheet yes. `PQ-180`'s
+> matrix and the reference frames remain the measurable **floor** — a prerequisite for an owner
+> review, never a substitute for one. The phase table is the direction file's §8.
 
 **Source:** the owner, 2026-09-03: *"The frontend of the game needs to be polished massively too,
 everything about it needs to be brought into the newest version and optimized."* §11 landed sixteen

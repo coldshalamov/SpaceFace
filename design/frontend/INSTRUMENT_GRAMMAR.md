@@ -1,4 +1,13 @@
 <!-- LIFETIME: DURABLE -->
+> **2026-09-05 — §3 (Type) and §4 (Colour) SUPERSEDED; the identity is no longer decided here.**
+> Owner ruling: agent-written design law produced a neutral dashboard and keeps the frontend cheap.
+> [`design/FRONTEND_DIRECTION.md`](../FRONTEND_DIRECTION.md) outranks this file on every aesthetic
+> question; §3/§4 are replaced by `direction/DIRECTION_SHEET.md` once `PQ-187.02` locks a direction
+> the owner chose from rendered options. The 28 px display cap, "two faces only", "one accent" and
+> the "80 % neutral" rule are void. What remains binding here: the motion contract (§5), the
+> techniques (§9), reuse before invention (§10), entry keys (§10.5), and the measurable floor of §12
+> — as a floor, never as the definition of done.
+
 # The Instrument Grammar
 
 **Status:** the shared design language for every 2D surface in SpaceFace. Binding on all frontend

@@ -34,6 +34,7 @@ the named outcome of the job you were given, then stop — the full working agre
 | Harvest leftover worktrees / unused models into the live game | **`design/program/ORPHAN_HARVEST_GOAL.txt`** → [`ORPHAN_HARVEST_PLAYBOOK.md`](./design/program/ORPHAN_HARVEST_PLAYBOOK.md) + [`ORPHAN_HARVEST_LEDGER.md`](./design/program/ORPHAN_HARVEST_LEDGER.md) |
 | Resume non-Hitch flyable ship remaster (not Hitch) | **`CANONICAL_BUILD_MAP.md`** campaign door → `PQ-050` / [`design/program/roadmap/active/PQ-050.md`](./design/program/roadmap/active/PQ-050.md) |
 | Add a map-visible place (planet, station, route, region) | `src/data/PLACE_REGISTRATION.md` — **not done until `npm run check:atlas-integrity` is green** |
+| **Frontend looks cheap / make the UI A-list / bold and expressive / any menu, HUD or screen redesign** | **`design/FRONTEND_DIRECTION.md`** (owner ruling 2026-09-05: the agent-written frontend law is superseded on aesthetics) → `--id PQ-187` (direction lock first; surface packets are gated on it) |
 | UI/HUD | `src/ui/AGENTS.md` and `styles/AGENTS.md` |
 | Asteroid Works / mining minigame unreadable or undrivable | **`CANONICAL_BUILD_MAP.md`** door → [`design/program/ASTEROID_WORKS_PLAYFIELD.md`](./design/program/ASTEROID_WORKS_PLAYFIELD.md) → `PQ-130` (`--id PQ-130`) |
 | Flight HUD attention pass (quiet instruments, receipts, no windshield keys) | **`design/HUD_FLIGHT_ATTENTION.md`** (goal prompt: `design/HUD_FLIGHT_ATTENTION_GOAL.txt`) |

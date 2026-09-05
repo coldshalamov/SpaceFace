@@ -1,4 +1,11 @@
 <!-- LIFETIME: DURABLE -->
+> **2026-09-05 — SUPERSEDED ON AESTHETICS.** The owner ruled that the frontend authority in this
+> folder was written by agents and caps quality at "cheap". On anything aesthetic — type, colour,
+> tone, composition, imagery, motion, sound, what polished means — every file here is outranked by
+> [`design/FRONTEND_DIRECTION.md`](../FRONTEND_DIRECTION.md), and the final authority is the set of
+> owner-approved frames it produces under `direction/approved/`. Read this folder for engineering
+> facts (what exists, what is reachable, shared seams) and for the measurable floor only.
+
 # The Frontend Program
 
 **The screens and the HUD are the strategic half of SpaceFace, not the connective tissue between

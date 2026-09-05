@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-05T22:33:59.259Z",
+  "updatedAt": "2026-09-05T22:33:58.210Z",
   "purpose": "Canonical cross-plan priority and dispatch queue. Product completion remains authoritative in design/program/03_LIVE_ACCEPTANCE_MATRIX.md.",
   "stateContract": {
     "allowed": [
@@ -81,7 +81,9 @@
         "PQ-046",
         "PQ-050",
         "PQ-129",
-        "PQ-130"
+        "PQ-130",
+        "PQ-187",
+        "PQ-188"
       ]
     },
     {
@@ -3468,7 +3470,8 @@
       ],
       "aliases": [],
       "dependsOn": [
-        "PQ-137"
+        "PQ-137",
+        "PQ-187"
       ],
       "mutexes": [
         "station-ui"
@@ -3476,11 +3479,12 @@
       "sources": [
         "CANONICAL_BUILD_MAP.md",
         "design/VISION.md",
-        "design/FEEL_CONTRACT.md"
+        "design/FEEL_CONTRACT.md",
+        "design/FRONTEND_DIRECTION.md"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "Seven station screens adopt the instrument grammar skeleton and data states for real; the owner review findings close; docking reads as arriving somewhere. Gap: Flatten happened, redesign did not; zero skeleton adoption; review findings unverified (orange doing four jobs, bar transcript void, italic flavour outranking data). See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-162.md."
+      "brief": "Seven station screens adopt the instrument grammar skeleton and data states for real; the owner review findings close; docking reads as arriving somewhere. Gap: Flatten happened, redesign did not; zero skeleton adoption; review findings unverified (orange doing four jobs, bar transcript void, italic flavour outranking data). See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-162.md. DIRECTION OVERRIDE 2026-09-05: 'to the grammar' is void on aesthetics; builds on the PQ-187.03 kit; done is the owner's contact-sheet yes (design/FRONTEND_DIRECTION.md section 8)."
     },
     {
       "id": "PQ-168",
@@ -3493,7 +3497,8 @@
       "aliases": [],
       "dependsOn": [
         "PQ-137",
-        "PQ-151"
+        "PQ-151",
+        "PQ-187"
       ],
       "mutexes": [
         "chart"
@@ -3501,11 +3506,12 @@
       "sources": [
         "CANONICAL_BUILD_MAP.md",
         "design/VISION.md",
-        "design/FEEL_CONTRACT.md"
+        "design/FEEL_CONTRACT.md",
+        "design/FRONTEND_DIRECTION.md"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "The strategic centrepiece stops reading as an admin screen: the deferred traffic layer lands, duplicated navigation answers merge, tabs get a hierarchy, heat and contracts pin. Gap: J12b traffic layer deferred; duplication; single tab size; sub-12 px nodes; the strategic reviewer called it cheap admin. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-168.md."
+      "brief": "The strategic centrepiece stops reading as an admin screen: the deferred traffic layer lands, duplicated navigation answers merge, tabs get a hierarchy, heat and contracts pin. Gap: J12b traffic layer deferred; duplication; single tab size; sub-12 px nodes; the strategic reviewer called it cheap admin. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-168.md. DIRECTION OVERRIDE 2026-09-05: 'to the grammar' is void on aesthetics; builds on the PQ-187.03 kit; done is the owner's contact-sheet yes (design/FRONTEND_DIRECTION.md section 8)."
     },
     {
       "id": "PQ-173",
@@ -3684,7 +3690,8 @@
       ],
       "aliases": [],
       "dependsOn": [
-        "PQ-180"
+        "PQ-180",
+        "PQ-187"
       ],
       "mutexes": [
         "meta-shell"
@@ -3692,11 +3699,12 @@
       "sources": [
         "CANONICAL_BUILD_MAP.md",
         "design/VISION.md",
-        "design/FEEL_CONTRACT.md"
+        "design/FEEL_CONTRACT.md",
+        "design/FRONTEND_DIRECTION.md"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "Every shell screen to the grammar with the three missing meta screens added, the save portrait, a returning-player digest, a version string, and keyboard/gamepad parity. Gap: Credits, statistics and photo mode absent; no version string; settings lacks presets, frame cap and pad remap; load is a list. See CANONICAL_BUILD_MAP.md section 18 and design/program/roadmap/active/PQ-181.md."
+      "brief": "Every shell screen to the grammar with the three missing meta screens added, the save portrait, a returning-player digest, a version string, and keyboard/gamepad parity. Gap: Credits, statistics and photo mode absent; no version string; settings lacks presets, frame cap and pad remap; load is a list. See CANONICAL_BUILD_MAP.md section 18 and design/program/roadmap/active/PQ-181.md. DIRECTION OVERRIDE 2026-09-05: 'to the grammar' is void on aesthetics; builds on the PQ-187.03 kit; done is the owner's contact-sheet yes (design/FRONTEND_DIRECTION.md section 8)."
     },
     {
       "id": "PQ-182",
@@ -3709,7 +3717,8 @@
       "aliases": [],
       "dependsOn": [
         "PQ-180",
-        "PQ-174"
+        "PQ-174",
+        "PQ-187"
       ],
       "mutexes": [
         "crucible-ui"
@@ -3717,11 +3726,12 @@
       "sources": [
         "CANONICAL_BUILD_MAP.md",
         "design/VISION.md",
-        "design/FEEL_CONTRACT.md"
+        "design/FEEL_CONTRACT.md",
+        "design/FRONTEND_DIRECTION.md"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "The swarm mode's screens become instruments: a door that sells the run in five seconds, drafts readable in one line, a results screen that tells the story, and lab controls that are a toy. Gap: Crucible screens were built during engineering phases and never held to the grammar; results list numbers; the draft explains itself in paragraphs. See CANONICAL_BUILD_MAP.md section 18 and design/program/roadmap/active/PQ-182.md."
+      "brief": "The swarm mode's screens become instruments: a door that sells the run in five seconds, drafts readable in one line, a results screen that tells the story, and lab controls that are a toy. Gap: Crucible screens were built during engineering phases and never held to the grammar; results list numbers; the draft explains itself in paragraphs. See CANONICAL_BUILD_MAP.md section 18 and design/program/roadmap/active/PQ-182.md. DIRECTION OVERRIDE 2026-09-05: 'to the grammar' is void on aesthetics; builds on the PQ-187.03 kit; done is the owner's contact-sheet yes (design/FRONTEND_DIRECTION.md section 8)."
     },
     {
       "id": "PQ-183",
@@ -3782,7 +3792,8 @@
       ],
       "aliases": [],
       "dependsOn": [
-        "PQ-180"
+        "PQ-180",
+        "PQ-187"
       ],
       "mutexes": [
         "asteroid-works-ui"
@@ -3790,11 +3801,12 @@
       "sources": [
         "CANONICAL_BUILD_MAP.md",
         "design/VISION.md",
-        "design/FEEL_CONTRACT.md"
+        "design/FEEL_CONTRACT.md",
+        "design/FRONTEND_DIRECTION.md"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "The one surface with an explicit owner fail is finished under its own design law and the frontend matrix: warm board, perfect grid, authored objects, ≤ 15 visible words, board ≥ 88 % of the glass. Gap: PQ-130 implemented but not accepted; PQ-131 art blocked on its units; the 2026-08-20 playtest remains the defect list. See CANONICAL_BUILD_MAP.md section 18 and design/program/roadmap/active/PQ-185.md."
+      "brief": "The one surface with an explicit owner fail is finished under its own design law and the frontend matrix: warm board, perfect grid, authored objects, ≤ 15 visible words, board ≥ 88 % of the glass. Gap: PQ-130 implemented but not accepted; PQ-131 art blocked on its units; the 2026-08-20 playtest remains the defect list. See CANONICAL_BUILD_MAP.md section 18 and design/program/roadmap/active/PQ-185.md. DIRECTION OVERRIDE 2026-09-05: 'to the grammar' is void on aesthetics; builds on the PQ-187.03 kit; done is the owner's contact-sheet yes (design/FRONTEND_DIRECTION.md section 8)."
     },
     {
       "id": "PQ-186",
@@ -3817,6 +3829,53 @@
       "checks": [],
       "evidence": [],
       "brief": "Every feel bar, owner ruling and refusal in this map is encoded as a deterministic check with the vision sentence in its assertion, so a future agent cannot quietly undo the game. Gap: The 2026-09-03 audit found anti-vision behaviour pinned green by tests; nothing prevents it happening again. See CANONICAL_BUILD_MAP.md section 19 and design/program/roadmap/active/PQ-186.md."
+    },
+    {
+      "id": "PQ-187",
+      "priority": 107,
+      "title": "The direction lock: reference board, three rendered directions, the owner's pick, the kit, the proof",
+      "state": "ready",
+      "canonical": [
+        "FRONTEND-DIRECTION"
+      ],
+      "aliases": [],
+      "dependsOn": [],
+      "mutexes": [
+        "frontend-direction"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FRONTEND_DIRECTION.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "Three materially different frontend directions rendered as real HTML on the same three screens; the owner picks; the picked frames become the aesthetic authority; a kit is built from them; a blind side-by-side against A-list games proves the result. Gap: every frontend authority was agent-written and prescribes a neutral dashboard; the owner was only ever asked to reject. See design/FRONTEND_DIRECTION.md and design/program/roadmap/active/PQ-187.md."
+    },
+    {
+      "id": "PQ-188",
+      "priority": 108,
+      "title": "The flight HUD and the instruments to the direction: HUD arrival, THE SHIP, THE FOOTPRINT, THE RANGE",
+      "state": "ready",
+      "canonical": [
+        "HUD-INSTRUMENTS-DIRECTION"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-187"
+      ],
+      "mutexes": [
+        "flight-hud",
+        "instruments-direction"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/VISION.md",
+        "design/FRONTEND_DIRECTION.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "The HUD and the three instruments marked done under the superseded grammar are rebuilt on the kit with their centerpieces kept; the HUD gains its arrival choreography and its wanted temperature. Gap: no packet could revisit surfaces section 11 marked done. See design/FRONTEND_DIRECTION.md sections 7-8 and design/program/roadmap/active/PQ-188.md."
     },
     {
       "id": "PQ-189",
@@ -9143,7 +9202,7 @@
       "receiptRefs": [
         "design/program/roadmap/receipts/PQ-142-01-REPORT.md"
       ],
-      "brief": "DONE 2026-09-05 (integrator-verified: save round-trip of scars, repair->patch, one bark naming the ship; goldens unmoved; no capture — the surfaces are Ledger text and a spoken line; the paint on the hull mesh is a later render seam). Scars from real impacts persist on the hull, repairs leave patches, NPCs recognise the hull by reputation; save round-trip; one bark that names the ship after a witnessed act."
+      "brief": "OWNER RULING PENDING (the August rejection of hull scars vs the September admission; see the packet Source). DONE 2026-09-05 (integrator-verified: save round-trip of scars, repair->patch, one bark naming the ship; goldens unmoved; no capture — the surfaces are Ledger text and a spoken line; the paint on the hull mesh is a later render seam). Scars from real impacts persist on the hull, repairs leave patches, NPCs recognise the hull by reputation; save round-trip; one bark that names the ship after a witnessed act."
     },
     {
       "id": "PQ-177.00",
@@ -12118,7 +12177,8 @@
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
-        "PQ-137.05"
+        "PQ-137.05",
+        "PQ-187.03"
       ],
       "mutexes": [
         "station-ui"
@@ -12147,7 +12207,8 @@
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
-        "PQ-137.05"
+        "PQ-137.05",
+        "PQ-187.03"
       ],
       "mutexes": [
         "station-ui"
@@ -12176,7 +12237,8 @@
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
-        "PQ-137.05"
+        "PQ-137.05",
+        "PQ-187.03"
       ],
       "mutexes": [
         "station-ui"
@@ -15422,7 +15484,8 @@
         "PQ-137.03",
         "PQ-137.04",
         "PQ-137.05",
-        "PQ-151.00"
+        "PQ-151.00",
+        "PQ-187.03"
       ],
       "mutexes": [
         "chart"
@@ -15451,7 +15514,8 @@
         "PQ-137.03",
         "PQ-137.04",
         "PQ-137.05",
-        "PQ-151.00"
+        "PQ-151.00",
+        "PQ-187.03"
       ],
       "mutexes": [
         "chart"
@@ -15477,7 +15541,8 @@
       "kind": "implementation",
       "state": "ready",
       "dependsOn": [
-        "PQ-180.00"
+        "PQ-180.00",
+        "PQ-187.03"
       ],
       "mutexes": [
         "meta-shell"
@@ -15510,7 +15575,8 @@
       "state": "ready",
       "dependsOn": [
         "PQ-156.00",
-        "PQ-180.00"
+        "PQ-180.00",
+        "PQ-187.03"
       ],
       "mutexes": [
         "meta-shell"
@@ -15543,7 +15609,8 @@
       "state": "ready",
       "dependsOn": [
         "PQ-165.00",
-        "PQ-180.00"
+        "PQ-180.00",
+        "PQ-187.03"
       ],
       "mutexes": [
         "meta-shell"
@@ -15575,7 +15642,8 @@
       "kind": "implementation",
       "state": "ready",
       "dependsOn": [
-        "PQ-180.00"
+        "PQ-180.00",
+        "PQ-187.03"
       ],
       "mutexes": [
         "meta-shell"
@@ -15609,7 +15677,8 @@
       "dependsOn": [
         "PQ-180.00",
         "PQ-174.01",
-        "PQ-174.02"
+        "PQ-174.02",
+        "PQ-187.03"
       ],
       "mutexes": [
         "crucible-ui"
@@ -15639,7 +15708,8 @@
       "dependsOn": [
         "PQ-180.00",
         "PQ-174.01",
-        "PQ-174.02"
+        "PQ-174.02",
+        "PQ-187.03"
       ],
       "mutexes": [
         "crucible-ui"
@@ -15670,7 +15740,8 @@
         "PQ-146.01",
         "PQ-180.00",
         "PQ-174.01",
-        "PQ-174.02"
+        "PQ-174.02",
+        "PQ-187.03"
       ],
       "mutexes": [
         "crucible-ui"
@@ -15700,7 +15771,8 @@
       "dependsOn": [
         "PQ-180.00",
         "PQ-174.01",
-        "PQ-174.02"
+        "PQ-174.02",
+        "PQ-187.03"
       ],
       "mutexes": [
         "crucible-ui"
@@ -15926,7 +15998,8 @@
       "kind": "implementation",
       "state": "ready",
       "dependsOn": [
-        "PQ-180.00"
+        "PQ-180.00",
+        "PQ-187.03"
       ],
       "mutexes": [
         "asteroid-works-ui"
@@ -15952,7 +16025,8 @@
       "kind": "implementation",
       "state": "ready",
       "dependsOn": [
-        "PQ-180.00"
+        "PQ-180.00",
+        "PQ-187.03"
       ],
       "mutexes": [
         "asteroid-works-ui"
@@ -16940,6 +17014,225 @@
       ],
       "receiptRefs": [],
       "brief": "Steam Workshop publish/subscribe for the same directory. DONE WHEN: One mod round-trips through Workshop."
+    },
+    {
+      "id": "PQ-187.00",
+      "parentId": "PQ-187",
+      "priority": 460,
+      "title": "The reference board",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "frontend-direction"
+      ],
+      "paths": [
+        "design/frontend/direction/REFERENCE_BOARD.md"
+      ],
+      "checks": [
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "Ten A-list interfaces with the owner's love/like/hate line per game recorded verbatim. DONE WHEN: the owner's reactions are on the file; the two comps most consistent with them are named."
+    },
+    {
+      "id": "PQ-187.01",
+      "parentId": "PQ-187",
+      "priority": 461,
+      "title": "Three directions, rendered",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-187.00"
+      ],
+      "mutexes": [
+        "frontend-direction"
+      ],
+      "paths": [
+        "design/FRONTEND_DIRECTION.md",
+        "design/frontend/direction/",
+        "_uilab.html",
+        "scripts/probe-frontend-snapshot.mjs",
+        "styles/fonts/",
+        "styles/fonts.css"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run probe:frontend-snapshot"
+      ],
+      "receiptRefs": [],
+      "brief": "Directions A, B, C built as real HTML with real data for the title, the station market and THE SHIP at 1920x1080 and 1280x720, each with a dense pane, an empty state, a focus state and a title-to-market transition capture. DONE WHEN: nine frames per direction under design/frontend/direction/comps/; a contact sheet; the three differ on face, scale, temperature, composition and imagery."
+    },
+    {
+      "id": "PQ-187.02",
+      "parentId": "PQ-187",
+      "priority": 462,
+      "title": "The direction lock",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-187.01"
+      ],
+      "mutexes": [
+        "frontend-direction"
+      ],
+      "paths": [
+        "design/frontend/direction/",
+        "design/frontend/INSTRUMENT_GRAMMAR.md"
+      ],
+      "checks": [
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "The owner's pick recorded verbatim; picked frames copied to design/frontend/direction/approved/; DIRECTION_SHEET.md written from the frames. DONE WHEN: approved/ holds >= 9 frames and the owner's words; the sheet cites frames by filename. OWNER DECISION: cannot be closed by an agent."
+    },
+    {
+      "id": "PQ-187.03",
+      "parentId": "PQ-187",
+      "priority": 463,
+      "title": "The kit",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-187.02"
+      ],
+      "mutexes": [
+        "frontend-direction",
+        "ui-kit"
+      ],
+      "paths": [
+        "styles/",
+        "src/ui/uiPrimitives.js",
+        "src/ui/effects/",
+        "src/ui/transitions.js",
+        "_uilab.html",
+        "design/frontend/direction/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:type-floor",
+        "npm run check:wcag-contrast",
+        "npm run check:ui-a11y",
+        "npm run probe:frontend-snapshot"
+      ],
+      "receiptRefs": [],
+      "brief": "Tokens, the type scale to hero size, the faces, colour-as-mood rules, the transition system, the UI sound palette, every component on one kit page in the lab. Old stylesheets are NOT consolidated; screens migrate later and delete their CSS as they move. DONE WHEN: the kit page captured at three widths with the owner's yes."
+    },
+    {
+      "id": "PQ-187.04",
+      "parentId": "PQ-187",
+      "priority": 464,
+      "title": "The proof",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-181.03",
+        "PQ-188.00",
+        "PQ-188.01",
+        "PQ-188.02",
+        "PQ-162.02",
+        "PQ-168.01",
+        "PQ-182.02",
+        "PQ-185.01"
+      ],
+      "mutexes": [
+        "frontend-direction"
+      ],
+      "paths": [
+        "design/program/roadmap/receipts/",
+        "scripts/",
+        "test/ui-frame-references/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:visual-regression",
+        "node scripts/check-ui-grammar-matrix.mjs --static"
+      ],
+      "receiptRefs": [],
+      "brief": "Blind side-by-side against the reference board with a memoryless vision reviewer; the owner's thirteen signature-moment sign-offs; the regression baseline reshot on the new look; a ninety-second reel. DONE WHEN: SpaceFace chosen in >= 50% of pairings and 100% against the genre baselines; sign-offs on file; matrix and regression green; reel committed."
+    },
+    {
+      "id": "PQ-188.00",
+      "parentId": "PQ-188",
+      "priority": 465,
+      "title": "The flight HUD to the direction",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-187.03"
+      ],
+      "mutexes": [
+        "flight-hud"
+      ],
+      "paths": [
+        "src/ui/hud.js",
+        "src/ui/uiRoot.js",
+        "src/ui/powerRail.js",
+        "src/ui/targetPanel.js",
+        "styles/ui.css",
+        "styles/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:hud-j07",
+        "npm run check:one-voice",
+        "npm run check:ui-a11y",
+        "npm run check:responsive"
+      ],
+      "receiptRefs": [],
+      "brief": "The HUD on the kit: hero scale where it matters, the arrival choreography on first undock, the temperature change on wanted; the attention rules kept. DONE WHEN: contact sheet at three widths with the owner's yes; two ten-second clips; hud-j07 and one-voice green."
+    },
+    {
+      "id": "PQ-188.01",
+      "parentId": "PQ-188",
+      "priority": 466,
+      "title": "THE SHIP to the direction",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-187.03"
+      ],
+      "mutexes": [
+        "instruments-direction"
+      ],
+      "paths": [
+        "src/ui/ship/",
+        "src/ui/shipEngineeringStage.js",
+        "src/ui/shipPreviewMount.js",
+        "styles/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:ui-a11y"
+      ],
+      "receiptRefs": [],
+      "brief": "The hull as the picture at full bleed with labels pinned to it; the four bands re-set on the kit; orbit kept. DONE WHEN: contact sheet with the owner's yes; every band still answers why the ship flies like this."
+    },
+    {
+      "id": "PQ-188.02",
+      "parentId": "PQ-188",
+      "priority": 467,
+      "title": "THE FOOTPRINT and THE RANGE to the direction",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-187.03"
+      ],
+      "mutexes": [
+        "instruments-direction"
+      ],
+      "paths": [
+        "src/ui/footprint/",
+        "src/ui/range/",
+        "src/ui/screens/",
+        "styles/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:ui-a11y"
+      ],
+      "receiptRefs": [],
+      "brief": "The consequence board with its wanted temperature; the Range's teaching voice on the kit without changing the drills. DONE WHEN: contact sheet with the owner's yes; the four rungs still complete under real input."
     }
   ]
 }
