@@ -59,7 +59,7 @@ function injectStyle() {
   .sf-menu.sf-crucible-door .sf-crd-mode .n { font-family:var(--mono); letter-spacing:.06em;
     font-size:13px; text-transform:uppercase; }
   .sf-menu.sf-crucible-door .sf-crd-mode .d { font-size:12px; color:var(--ink-dim); line-height:1.45; }
-  .sf-menu.sf-crucible-door .sf-crd-label { font-family:var(--mono); font-size:11px;
+  .sf-menu.sf-crucible-door .sf-crd-label { font-family:var(--mono); font-size:12px;
     letter-spacing:.08em; text-transform:uppercase; color:var(--ink-dim); }
   .sf-menu.sf-crucible-door .sf-crd-seed { display:flex; gap:10px; align-items:center;
     justify-content:center; font-family:var(--mono); font-size:12px; color:var(--ink-dim); }

@@ -144,12 +144,12 @@ export function createScreenManager(ctx) {
     if (el.hidden) return false;
     if (el.getAttribute && el.getAttribute('aria-hidden') === 'true') return false;
     if (el.style && (el.style.display === 'none' || el.style.visibility === 'hidden')) return false;
-    let parent = el.parentNode;
-    while (parent && parent !== document && parent !== document.documentElement) {
-      if (parent.hidden) return false;
-      if (parent.getAttribute && parent.getAttribute('aria-hidden') === 'true') return false;
-      if (parent.style && (parent.style.display === 'none' || parent.style.visibility === 'hidden')) return false;
-      parent = parent.parentNode;
+    let p = el.parentNode;
+    while (p && p !== document && p !== document.documentElement) {
+      if (p.hidden) return false;
+      if (p.getAttribute && p.getAttribute('aria-hidden') === 'true') return false;
+      if (p.style && (p.style.display === 'none' || p.style.visibility === 'hidden')) return false;
+      p = p.parentNode;
     }
     return true;
   }

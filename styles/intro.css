@@ -176,7 +176,7 @@
   text-transform: uppercase;
   color: var(--ink-dim);
   /* The glitch-art field behind it is loud; without a scrim the hint drowned. */
-  text-shadow: 0 1px 3px rgba(3, 8, 14, .95), 0 0 8px rgba(3, 8, 14, .9);
+  text-shadow: 0 1px 3px color-mix(in srgb, var(--bg) 95%, transparent), 0 0 8px color-mix(in srgb, var(--bg) 90%, transparent);
   opacity: 0;
   animation: boot-skip-in .6s ease-out 4s forwards;
   pointer-events: none;
@@ -348,7 +348,7 @@
   color: #a9bfcd;
   /* The prompt sits over the bright stargate art; without a scrim it vanished at the
      dim end of its pulse. */
-  text-shadow: 0 1px 3px rgba(3, 8, 14, .95), 0 0 10px rgba(3, 8, 14, .85);
+  text-shadow: 0 1px 3px color-mix(in srgb, var(--bg) 95%, transparent), 0 0 10px color-mix(in srgb, var(--bg) 85%, transparent);
   opacity: 0;
   animation:
     cine-rise .8s ease-out 2.35s forwards,

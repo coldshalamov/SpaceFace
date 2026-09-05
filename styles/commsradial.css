@@ -55,6 +55,10 @@
   border-color: var(--sf-goal);
 }
 
+.sf-commsfan__hub:active {
+  translate: 0 1px;
+}
+
 .sf-commsfan__hub:focus-visible {
   outline: 2px solid var(--sf-goal);
   outline-offset: 2px;
@@ -133,6 +137,14 @@
   background: color-mix(in srgb, var(--sf-surface) 98%, transparent);
 }
 
+.sf-commsfan__wedge:hover:not(.is-dim) .sf-commsfan__glyph {
+  transform: scale(1.08);
+}
+
+.sf-commsfan__wedge:active:not(.is-dim) {
+  translate: 0 1px;
+}
+
 .sf-commsfan__wedge:focus-visible {
   outline: 2px solid var(--sf-goal);
   outline-offset: 2px;
@@ -149,6 +161,7 @@
   display: block;
   flex: 0 0 auto;
   color: currentColor;
+  transition: transform var(--sf-t-latch) var(--sf-ease);
 }
 
 .sf-commsfan__verb {

@@ -261,6 +261,9 @@
   background: rgba(18, 26, 38, .85);
   border-color: color-mix(in srgb, var(--accent) 40%, transparent);
 }
+.screen.sf-menu .sf-foot button.sf-btn:active:not(:disabled) {
+  translate: 0 1px;
+}
 
 /* Primary action (Continue / Resume / Launch): solid signal cyan. */
 .screen.sf-menu button.sf-btn--primary {

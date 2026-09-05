@@ -41,11 +41,15 @@ function injectStyle() {
     border-radius:3px !important;
     padding:6px 12px !important;
     white-space:nowrap !important; /* "L-SHIFT / R-SHIFT" must not wrap: a two-line key chip breaks the row rhythm */
-    font-size:11px !important;
+    font-size:12px !important;
+    transition:border-color .12s ease, background .12s ease, box-shadow .12s ease, translate .08s ease !important;
   }
   .sf-bind-btn:hover:not(:disabled) {
     border-color:rgba(78,195,230,.45) !important;
     background:rgba(16,25,36,.95) !important;
+  }
+  .sf-bind-btn:active:not(:disabled) {
+    translate:0 1px !important;
   }
   .sf-bind-btn--capture {
     border-color:var(--accent) !important;

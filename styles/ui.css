@@ -234,7 +234,7 @@ button, .btn {
   border-radius: 6px;
   padding: 8px 16px;
   cursor: pointer;
-  transition: border-color .1s ease, color .1s ease, box-shadow .1s ease, transform .1s ease;
+  transition: border-color .12s ease, color .12s ease, box-shadow .12s ease, translate .08s ease, filter .08s ease;
   text-transform: uppercase;
   letter-spacing: .05em;
   font-size: 0.92em;
@@ -244,13 +244,22 @@ button:hover, .btn:hover {
   color: #fff;
   box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 30%, transparent);
 }
+button:focus-visible, .btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-color: var(--accent);
+  color: #fff;
+}
 /* Press feedback uses the INDIVIDUAL `translate` property, not `transform`.
    `transform` is a single value: a press rule written as `transform:translateY(1px)` REPLACES any
    transform the element uses for positioning. Station hardpoints are centred on their hull anchor
    with `transform:translate(-50%,-50%)`, so the old rule made a 34px reticle jump ~17px right and
    ~16px down while held — it fled the cursor and read as a dead control. `translate` composes with
    `transform` instead of overwriting it, so positioning survives the press. */
-button:active { translate: 0 1px; }
+button:active, .btn:active {
+  translate: 0 1px;
+  filter: brightness(0.95);
+}
 
 .hud-bar {
   background: color-mix(in srgb, var(--bg) 86%, transparent);
@@ -371,6 +380,13 @@ button:active { translate: 0 1px; }
   box-shadow: var(--sh-2);
   transform: translateY(-2px);
 }
+.sf-card--hover:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.sf-card--hover:active {
+  transform: translateY(0);
+}
 .sf-card--accent { border-color: var(--panel-edge-2); }
 
 /* Badge / tag: legality, facing, tier, event pills. */
@@ -450,10 +466,138 @@ button:active { translate: 0 1px; }
 .sf-fadein { animation: sf-fadein var(--dur-slow) var(--ease) both; }
 
 /* Scrollbars: slim, on-theme (the station lists get long). */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--panel-edge-2) color-mix(in srgb, var(--bg) 40%, transparent);
+}
 *::-webkit-scrollbar { width: 9px; height: 9px; }
 *::-webkit-scrollbar-track { background: color-mix(in srgb, var(--bg) 40%, transparent); }
 *::-webkit-scrollbar-thumb { background: var(--panel-edge-2); border-radius: var(--r-pill); }
 *::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+/* Precision range sliders: tactile aerospace thumb and glowing track across all surfaces */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 22px;
+  background: transparent;
+  cursor: pointer;
+  vertical-align: middle;
+}
+input[type="range"]:focus-visible { outline: none; }
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--panel-edge-2) 60%, transparent);
+  border: 1px solid var(--panel-edge);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, .5);
+  transition: border-color .15s var(--ease), background-color .15s var(--ease);
+}
+input[type="range"]:hover::-webkit-slider-runnable-track {
+  border-color: var(--panel-edge-2);
+  background: color-mix(in srgb, var(--panel-edge-2) 80%, transparent);
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -6px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, var(--accent-2), var(--accent));
+  border: 1px solid rgba(255, 255, 255, .8);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 50%, transparent);
+  cursor: grab;
+  transition: transform .12s var(--ease), box-shadow .12s var(--ease), filter .12s var(--ease);
+}
+input[type="range"]:hover::-webkit-slider-thumb {
+  transform: scale(1.18);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 80%, transparent);
+  filter: brightness(1.1);
+}
+input[type="range"]:active::-webkit-slider-thumb {
+  cursor: grabbing;
+  transform: scale(1.28);
+  background: #ffffff;
+  box-shadow: 0 0 18px var(--accent);
+  filter: brightness(1.2);
+}
+input[type="range"]::-moz-range-track {
+  height: 6px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--panel-edge-2) 60%, transparent);
+  border: 1px solid var(--panel-edge);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, .5);
+}
+input[type="range"]::-moz-range-progress {
+  height: 6px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--accent) 60%, transparent);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, var(--accent-2), var(--accent));
+  border: 1px solid rgba(255, 255, 255, .8);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 50%, transparent);
+  cursor: grab;
+  transition: transform .12s var(--ease), box-shadow .12s var(--ease);
+}
+input[type="range"]:hover::-moz-range-thumb {
+  transform: scale(1.18);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 80%, transparent);
+}
+input[type="range"]:active::-moz-range-thumb {
+  cursor: grabbing;
+  transform: scale(1.28);
+  background: #ffffff;
+  box-shadow: 0 0 18px var(--accent);
+}
+
+/* Keycaps & keyboard shortcut badges: physical tactile chip */
+kbd, .sf-keycap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  padding: 1px 6px;
+  font-family: var(--mono);
+  font-size: var(--t-sm, 12px);
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--panel-2) 90%, transparent);
+  border: 1px solid var(--panel-edge-2);
+  border-bottom-width: 2px;
+  border-radius: 3px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .4);
+  vertical-align: baseline;
+  letter-spacing: .02em;
+}
+
+/* Precision input fields & selects: responsive aerospace feel */
+input[type="text"], input[type="number"], select, textarea {
+  font-family: var(--mono);
+  font-size: var(--t-sm, 12px);
+  color: var(--ink);
+  background: color-mix(in srgb, var(--panel-2) 85%, transparent);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--r-sm, 4px);
+  padding: 6px 10px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, .4);
+  transition: border-color .15s var(--ease), box-shadow .15s var(--ease), background-color .15s var(--ease);
+  box-sizing: border-box;
+}
+input[type="text"]:hover, input[type="number"]:hover, select:hover, textarea:hover {
+  border-color: var(--panel-edge-2);
+  background: color-mix(in srgb, var(--panel-2) 95%, transparent);
+}
+input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, .5), 0 0 10px color-mix(in srgb, var(--accent) 30%, transparent);
+}
 
 /* Screen-reader-only live-region text (still announced, never visually shown). */
 .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
@@ -717,7 +861,7 @@ button:active { translate: 0 1px; }
   background: color-mix(in srgb, var(--sf-surface) 40%, transparent);
   color: var(--ink-mute);
   text-align: center;
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.25;
   letter-spacing: 0.02em;
   white-space: nowrap;
@@ -1118,7 +1262,7 @@ button:active { translate: 0 1px; }
    full-bleed (not flex-child sizing): #screens flex-centers its children, so a plain width:100%
    child can still end up content-sized and clipped (vision-review blocker, frame 04). The flight
    host hides commerce: no Fleet/Buy segment (fleet rail stays, inspect-only). */
-.sf-ship { position: absolute; inset: 0; width: 100%; height: 100%; background: linear-gradient(160deg, #070c16 0%, var(--sf-surface) 100%); }
+.sf-ship { position: absolute; inset: 0; width: 100%; height: 100%; background: linear-gradient(160deg, var(--bg) 0%, var(--sf-surface) 100%); }
 .sf-ship .sx-sw { width: min(100%, var(--sf-stage-max)); margin-inline: auto; }
 .sf-ship .sx-sw--flight .sx-seg { display: none; }
 .sf-ship .sx-sw--flight .sx-sw__railstep { display: none; }
@@ -1130,7 +1274,7 @@ button:active { translate: 0 1px; }
 #screens:has(> .screen[data-screen="range"].sf-screen--visible),
 #screens:has(> .screen[data-screen="range"].sf-screen--entering) {
   background-image: none;
-  background-color: #070c16;
+  background-color: var(--bg);
 }
 #screens:has(> .screen[data-screen="range"].sf-screen--visible)::before,
 #screens:has(> .screen[data-screen="range"].sf-screen--entering)::before {
@@ -1141,7 +1285,7 @@ button:active { translate: 0 1px; }
   inset: 0;
   width: 100%;
   height: 100%;
-  background: #070c16;
+  background: var(--bg);
   color: var(--sf-paper);
   font-family: var(--sf-body-face);
   pointer-events: auto;
@@ -1201,7 +1345,7 @@ button:active { translate: 0 1px; }
   width: 100%;
   height: 100%;
   display: block;
-  background: #070c16;
+  background: var(--bg);
   outline: none;
 }
 .sf-range__canvas:focus-visible {
@@ -1391,7 +1535,7 @@ button:active { translate: 0 1px; }
   gap: 14px;
   padding: 26px;
   text-align: center;
-  background: rgba(7, 12, 22, .95);
+  background: color-mix(in srgb, var(--bg) 95%, transparent);
 }
 .sf-range__empty-title {
   margin: 0;
@@ -1467,7 +1611,7 @@ button:active { translate: 0 1px; }
   inset: 0;
   width: 100%;
   height: 100%;
-  background: linear-gradient(180deg, #070d17 0%, var(--sf-surface) 100%);
+  background: linear-gradient(180deg, var(--bg) 0%, var(--sf-surface) 100%);
   color: var(--sf-paper);
 }
 .fp-crest-main { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
