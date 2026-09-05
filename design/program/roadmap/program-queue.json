@@ -15234,7 +15234,7 @@
       "priority": 59,
       "title": "Difficulty by geometry, verified",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -15264,7 +15264,7 @@
       "receiptRefs": [
         "design/program/roadmap/receipts/PQ-174-07-REPORT.md"
       ],
-      "brief": "Wave N+10 has the same enemy hull values as wave N and is harder because of count, mass, anchors, hazards and angles; a check asserts no HP inflation across the arc. DONE WHEN: `check:crucible:arc` gains the no-inflation assertion; it fails when a wave recipe raises hull values."
+      "brief": "ACCEPTED 2026-09-05 (f17ec857 verified on master; crucible-no-hp-scaling 2/2; the recipe validator recurses the whole recipe). Wave N+10 has the same enemy hull values as wave N and is harder because of count, mass, anchors, hazards and angles; a check asserts no HP inflation across the arc. DONE WHEN: `check:crucible:arc` gains the no-inflation assertion; it fails when a wave recipe raises hull values."
     },
     {
       "id": "PQ-175.00",
@@ -15906,7 +15906,7 @@
       "priority": 83,
       "title": "The surface manifest",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "frontend-matrix"
@@ -15926,7 +15926,7 @@
       "receiptRefs": [
         "design/program/roadmap/receipts/PQ-180-00-REPORT.md"
       ],
-      "brief": "IMPLEMENTED 2026-09-05: headed matrix run measured 31/40 surfaces (19 on the public route), fails all 40 by design, baseline recorded from that run (measured: true). Commit 2f48ec2a. A data file listing every surface with its entry route, owner file, archetype and the checks that can reach it; the matrix script boots the game, opens each surface and measures the rules it can measure (smallest font, numeral face, data states present, memory restored, safe-frame at three widths, pseudo-loc clipping, contrast, reduce-motion, DOM node count, frame cost). DONE WHEN: `check:ui:grammar-matrix` prints the matrix for ≥ 30 surfaces and fails any below the floor; committed baseline."
+      "brief": "ACCEPTED 2026-09-05 (2f48ec2a; committed headed baseline measures 31 of 40 surfaces, 754 owned red cells; the static alias measures 0 — the :headed alias is the proof). IMPLEMENTED 2026-09-05: headed matrix run measured 31/40 surfaces (19 on the public route), fails all 40 by design, baseline recorded from that run (measured: true). Commit 2f48ec2a. A data file listing every surface with its entry route, owner file, archetype and the checks that can reach it; the matrix script boots the game, opens each surface and measures the rules it can measure (smallest font, numeral face, data states present, memory restored, safe-frame at three widths, pseudo-loc clipping, contrast, reduce-motion, DOM node count, frame cost). DONE WHEN: `check:ui:grammar-matrix` prints the matrix for ≥ 30 surfaces and fails any below the floor; committed baseline."
     },
     {
       "id": "PQ-180.01",
@@ -15934,7 +15934,7 @@
       "priority": 84,
       "title": "The floor, written",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "frontend-matrix"
@@ -15954,7 +15954,7 @@
       "receiptRefs": [
         "design/program/roadmap/receipts/PQ-180-01-REPORT.md"
       ],
-      "brief": "IMPLEMENTED 2026-09-05 (verified, built by b59cd04a): thresholds live in scripts/ui-grammar-thresholds.mjs, the grammar §12 quotes them, the check reads them, deliberate violations go red in test/ui-grammar-matrix.test.mjs (42/42). The exact thresholds per rule (12 px, +40 %, 1280/1920/2560, ≤ 1,500 DOM nodes per surface, ≤ 2 ms UI frame cost, four data states named) recorded once in the grammar and read by the check. DONE WHEN: Thresholds live in one file; the check reads them; a deliberate violation goes red."
+      "brief": "ACCEPTED 2026-09-05 (thresholds live in scripts/ui-grammar-thresholds.mjs, read by the check; 42/42 incl. one-hair-under goes red; work landed in b59cd04a). IMPLEMENTED 2026-09-05 (verified, built by b59cd04a): thresholds live in scripts/ui-grammar-thresholds.mjs, the grammar §12 quotes them, the check reads them, deliberate violations go red in test/ui-grammar-matrix.test.mjs (42/42). The exact thresholds per rule (12 px, +40 %, 1280/1920/2560, ≤ 1,500 DOM nodes per surface, ≤ 2 ms UI frame cost, four data states named) recorded once in the grammar and read by the check. DONE WHEN: Thresholds live in one file; the check reads them; a deliberate violation goes red."
     },
     {
       "id": "PQ-180.02",
@@ -15962,7 +15962,7 @@
       "priority": 85,
       "title": "Ownership and order",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "frontend-matrix"
@@ -15982,7 +15982,7 @@
       "receiptRefs": [
         "design/program/roadmap/receipts/PQ-180-02-REPORT.md"
       ],
-      "brief": "IMPLEMENTED 2026-09-05: every failing cell carries an owner packet and leaf (754 in the measured run); the eleven unowned surfaces now own their reds (PQ-181, PQ-168); CANONICAL_BUILD_MAP §18.2 mirrors the manifest row for row. Commit 5169ec66. Every red cell is assigned to a packet (PQ-162 station, PQ-168 chart, PQ-181 meta shell, PQ-182 Crucible screens, PQ-130 works, PQ-183 links, PQ-184 UI perf) with the leaf that clears it; the matrix is the frontend's queue. DONE WHEN: No red cell without an owner; the map §18 table mirrors the matrix."
+      "brief": "ACCEPTED 2026-09-05 (5169ec66; 40 surfaces in the manifest = 40 rows in map §18.2, same order; every red cell carries a packet and leaf; the mirror is prose-enforced, not tested). IMPLEMENTED 2026-09-05: every failing cell carries an owner packet and leaf (754 in the measured run); the eleven unowned surfaces now own their reds (PQ-181, PQ-168); CANONICAL_BUILD_MAP §18.2 mirrors the manifest row for row. Commit 5169ec66. Every red cell is assigned to a packet (PQ-162 station, PQ-168 chart, PQ-181 meta shell, PQ-182 Crucible screens, PQ-130 works, PQ-183 links, PQ-184 UI perf) with the leaf that clears it; the matrix is the frontend's queue. DONE WHEN: No red cell without an owner; the map §18 table mirrors the matrix."
     },
     {
       "id": "PQ-180.03",
@@ -16542,7 +16542,7 @@
       "priority": 81,
       "title": "Rulings as guards",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "regression"
@@ -16559,7 +16559,7 @@
       "receiptRefs": [
         "design/program/roadmap/receipts/PQ-186-01-REPORT.md"
       ],
-      "brief": "IMPLEMENTED 2026-09-05: six source guards (two bans, four ratchets against a committed per-file baseline), a fixture that fails each, master green; check:rulings runs them with the two runtime guards as child processes. Commit 7dd13fd9. Static guards: no linear damping calls in sim, no velocity writes outside the physics owner, no `Math.random`/`Date.now` in sim, no HP-scaled knockback, no dialogue-tree data shapes; runtime guards: player knock budget, NPC no-gyro invariant. DONE WHEN: Each guard has a fixture that fails it; all green on master."
+      "brief": "ACCEPTED 2026-09-05 (7dd13fd9; check-rulings-guards PASS 6 guards / 87 baselined; 6/6 fixtures fail their guard; no-dialogue-trees is a ratchet over 18 existing menus, not a ban). IMPLEMENTED 2026-09-05: six source guards (two bans, four ratchets against a committed per-file baseline), a fixture that fails each, master green; check:rulings runs them with the two runtime guards as child processes. Commit 7dd13fd9. Static guards: no linear damping calls in sim, no velocity writes outside the physics owner, no `Math.random`/`Date.now` in sim, no HP-scaled knockback, no dialogue-tree data shapes; runtime guards: player knock budget, NPC no-gyro invariant. DONE WHEN: Each guard has a fixture that fails it; all green on master."
     },
     {
       "id": "PQ-186.02",
