@@ -54,7 +54,14 @@ test('the instrument measures the real path around a 100 WU line at 1.5x cruise'
       assert.ok(Number.isFinite(row.value));
     }
   }
-  assert.notEqual(m.barMet, true, 'do not coach B7 green; stiffness is OPEN until the guts change');
+  // PQ-137.07 changed the guts: the line's stiffness now rises with the coupled load (mu * v_t^2 / r),
+  // so the swing the contract names stays inside 5 % of the line. The bar is met on the real path.
+  const stretch = bars.find((row) => /stretch/i.test(row.label || row.clause || ''));
+  assert.equal(m.barMet, true,
+    'The rope is a rope: a 1.5x cruise swing on a 100 WU line stretches < 10 % and holds, and release keeps >= 95 % of tangential speed 5 s later — "Swing around a huge asteroid and let go flying."');
+  if (stretch && typeof stretch.value === 'number') {
+    assert.ok(stretch.value < 0.10, `peak stretch ${stretch.value} must stay under the contract's 10 % (was 0.163 before the load-scaled stiffness)`);
+  }
 });
 
 test('feel.rope_swing_release is deterministic on a fixed seed', LONG, async () => {

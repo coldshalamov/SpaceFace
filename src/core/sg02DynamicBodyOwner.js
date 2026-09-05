@@ -37,6 +37,14 @@ const REELED_ATTACHMENT_REPLAY_QUANTUM = 1e-7;
 const MAX_STRETCH_RATIO = 0.45;
 const REEL_SAFE_STRETCH_RATIO = 0.43;
 const STRETCH_EPSILON = 1e-6;
+// THE ROPE IS A ROPE (PQ-137.07, FEEL_CONTRACT bar B7; design/VISION.md "swing around a huge
+// asteroid and let go flying"). A spring with an authored K stretches in proportion to the load it
+// carries, and a hull swinging at 1.5x cruise on a 100 WU line carries mu * v_t^2 / r of it: with
+// K = 140 that stretched the line 10 % on the real path (41 % by the audit's arithmetic), and read
+// as a bungee. A rope does not care how hard you swing. Its stiffness rises with the coupled load,
+// so the line stays within this fraction of its length under whatever swing it is asked to hold,
+// and the authored K remains the floor that shapes the gentle regime and the soft catch.
+const LOAD_STRETCH_RATIO = 0.05;
 // While the pilot actively reels in (holds G / negative reelDelta), the winch hauls harder so a
 // thrusting target can't cancel the pull by matching the spring force. This multiplier is GATED to
 // active reel only — it does not affect neutral auto-hold or slingshot capture, so the massline-feel
@@ -550,6 +558,12 @@ export class Sg02DynamicBodyOwner {
       captureT: Math.max(0, finite(springState.captureT)),
       springK: legacyRope ? positive(attachment.break.stiffness, 10) : frameCoupler ? 0 : spring.K,
       springDamping: damping,
+      // The stiffness the line actually carried this tick (authored K or the load-scaled value,
+      // whichever held), the load-scaled value itself, and the worse of the geometric edge and
+      // the load rating. B7's instrument reads these; the HUD reads phase.
+      stiffness: legacyRope || frameCoupler ? null : Math.max(0, finite(springState.lastStiffness, spring.K)),
+      loadStiffness: legacyRope || frameCoupler ? null : Math.max(0, finite(springState.lastLoadStiffness, 0)),
+      overloadRatio: legacyRope || frameCoupler ? null : Math.max(0, finite(springState.lastOverloadRatio, 0)),
       breakRequested: legacyRope ? false : !!springState.breakRequested,
       springState: legacyRope ? null : Object.freeze(cloneSpringState(springState)),
       sourceWorld: Object.freeze(source),
@@ -1425,8 +1439,24 @@ export class Sg02DynamicBodyOwner {
     const inCapture = state.captureActive && state.captureT < captureS;
     const captureX = inCapture && captureS > 0 ? clamp(state.captureT / captureS, 0, 1) : 1;
     const smooth = smoothstep(captureX);
-    const k = inCapture ? spring.K * smooth * smooth : spring.K;
-    const c = inCapture ? damping * (0.5 + 0.5 * smooth) : damping;
+    // The coupled load: the centripetal force the line must carry to keep the two bodies on their
+    // swing, mu * v_t^2 / r, from the tangential part of the relative velocity at the anchors.
+    // Stiffness scaled to that load holds the swing inside LOAD_STRETCH_RATIO of the line; below
+    // the load where that matters the authored K is the floor, so gentle play and the soft catch
+    // are bit-identical to before. Damping follows the effective stiffness so the line stays at
+    // its authored damping ratio instead of ringing when it stiffens.
+    const rvx = scratch.velocityB.x - scratch.velocityA.x;
+    const rvz = scratch.velocityB.z - scratch.velocityA.z;
+    const tangentialSq = Math.max(0, rvx * rvx + rvz * rvz - relativeSpeed * relativeSpeed);
+    const coupledLoad = mu * tangentialSq / Math.max(distance, STRETCH_EPSILON);
+    const loadStiffness = coupledLoad
+      / Math.max(positive(spring.loadStretchRatio, LOAD_STRETCH_RATIO) * restLength, STRETCH_EPSILON);
+    const tautK = Math.max(spring.K, loadStiffness);
+    const tautDamping = tautK > spring.K ? dampingForStiffness(tautK, spring, mu) : damping;
+    const k = inCapture ? tautK * smooth * smooth : tautK;
+    const c = inCapture ? tautDamping * (0.5 + 0.5 * smooth) : tautDamping;
+    state.lastStiffness = k;
+    state.lastLoadStiffness = loadStiffness;
     // Active reel hauls harder so a thrusting target can't cancel the pull. GATED to reelSlip
     // (set only on an explicit shorten command from setAttachmentReel) and to the post-capture
     // regime: capture-phase k is left untouched so the soft-catch envelope (massline-feel golden)
@@ -1455,10 +1485,17 @@ export class Sg02DynamicBodyOwner {
     // impossible once the line crossed its edge. Keep applying the bounded physical spring while
     // publishing normalized overload telemetry; the semantic massline authority then owns the
     // deterministic grace/catastrophic cut policy. Pulling back inside the edge clears this signal.
+    //
+    // A line BREAKS by its load rating, never by how far it happens to be stretched (PQ-137.07):
+    // the break request and the tension the massline authority grades are the physical force
+    // against the authored maxTension. The geometric edge stays as telemetry and as the 'overload'
+    // phase the HUD shows, so a line at its edge still reads as strained.
     const geometricOverloadRatio = restLength > 0
       ? stretch / Math.max(restLength * maxStretchRatio, STRETCH_EPSILON)
       : 0;
-    state.breakRequested = geometricOverloadRatio > 1;
+    const tensionRating = finite(attachment.break.maxTension, Infinity);
+    const loadRatio = Number.isFinite(tensionRating) && tensionRating > 0 ? force / tensionRating : 0;
+    state.breakRequested = loadRatio >= 1;
 
     const forceImpulse = force * this.fixedDt;
     const impulse = forceImpulse * clamp(finite(attachment.forceScale, 1), 0, 4);
@@ -1474,18 +1511,14 @@ export class Sg02DynamicBodyOwner {
       accumulateForce(attachment.target, scratch.impulseB, this.fixedDt);
     }
 
-    const forceBounded = Number.isFinite(spring.maxForce);
-    state.lastTension = geometricOverloadRatio > 1 && !forceBounded
-      ? Math.max(force, finite(attachment.break.maxTension) * geometricOverloadRatio)
-      : force;
-    state.lastImpulse = geometricOverloadRatio > 1 && !forceBounded
-      ? Math.max(forceImpulse, finite(attachment.break.maxImpulse) * geometricOverloadRatio)
-      : forceImpulse;
+    state.lastTension = force;
+    state.lastImpulse = forceImpulse;
     state.lastRelativeSpeed = relativeSpeed;
     state.lastYank = yank;
+    state.lastOverloadRatio = Math.max(geometricOverloadRatio, loadRatio);
     state.phase = geometricOverloadRatio > 1 ? 'overload'
       : inCapture ? 'capture'
-      : force >= finite(attachment.break.maxTension, Infinity) * 0.75 ? 'overload'
+      : loadRatio >= 0.75 ? 'overload'
       : 'loaded';
     if (inCapture) {
       state.captureT += this.fixedDt;
@@ -1794,7 +1827,12 @@ function effectiveMass(rec) {
 }
 
 function dampingForSpring(spring, mu) {
-  return mu > 0 ? 2 * positive(spring && spring.zeta, 0.95) * Math.sqrt(positive(spring && spring.K, 1) * mu) : 0;
+  return dampingForStiffness(positive(spring && spring.K, 1), spring, mu);
+}
+
+/** Critical-ratio damping for an arbitrary stiffness: the authored zeta, whatever the line's K is now. */
+function dampingForStiffness(k, spring, mu) {
+  return mu > 0 ? 2 * positive(spring && spring.zeta, 0.95) * Math.sqrt(positive(k, 1) * mu) : 0;
 }
 
 function distance2d(a, b) {
