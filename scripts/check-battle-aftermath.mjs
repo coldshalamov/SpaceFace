@@ -184,7 +184,9 @@ function testSalvageCompletionRemovesMarker() {
   emitKill(t, 0);
   t.bus.emit('sector:enter', { sectorId: 'sector_pallas_drift' });
   const wreck = spawnedWrecks(t)[0];
-  t.bus.emit('salvage:completed', { wreckId: wreck.id, loot: {} });
+  // The live producer (mining._drainWreck) names the durable marker; since 384e547c the consumer
+  // refuses a bare entity id because ids are recycled across New Game/travel.
+  t.bus.emit('salvage:completed', { wreckId: wreck.id, markerId: wreck.data.provenance.markerId, loot: {} });
   assert.equal(aftermathForSector(t.state, 'sector_pallas_drift').length, 0,
     'completed salvage removes the durable marker');
   assert.equal(t.log.completed.length, 1, 'completion emits a receipt');
@@ -229,8 +231,12 @@ function testPackageRegistryAndSchemaWiring() {
   const registry = readFileSync(new URL('../src/core/registry.js', import.meta.url), 'utf8');
   assert.match(registry, /import \{ aftermathWrecks \} from '\.\.\/systems\/aftermathWrecks\.js';/,
     'registry imports aftermathWrecks');
-  assert.match(registry, /combat, combatOutcome, aftermathWrecks, (?:wingMorale, )?tetherGameplay/,
-    'aftermathWrecks registers after combat outcomes and before salvage readers');
+  // The registry is a tabular ['name', system] list now (one entry per line), not a comma run.
+  const at = (name) => registry.indexOf("['" + name + "',");
+  assert.ok(at('combatOutcome') > 0 && at('aftermathWrecks') > at('combatOutcome'),
+    'aftermathWrecks registers after combat outcomes');
+  assert.ok(at('mining') > at('aftermathWrecks') && at('missions') > at('aftermathWrecks'),
+    'aftermathWrecks registers before the salvage readers (mining, missions)');
 
   const saveSrc = readFileSync(new URL('../src/save/saveSystem.js', import.meta.url), 'utf8');
   assert.match(saveSrc, /data\.aftermathWrecks\s*=\s*this\._callSerialize\('aftermathWrecks'\)/,
