@@ -1,0 +1,51 @@
+name: Deep-field background regression
+on:
+  pull_request:
+    paths:
+      - 'src/render/deepField*.js'
+      - 'src/render/parallaxLayers.js'
+      - 'src/render/spaceBackground*.js'
+      - 'test/deep-field*'
+      - 'test/fixtures/deep-field-background.html'
+      - '.github/workflows/deep-field-background.yml'
+permissions:
+  contents: read
+jobs:
+  background:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+          sparse-checkout: |
+            src
+            vendor
+            test
+            scripts
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Prepare isolated test dependencies without installing the game toolchain
+        run: |
+          mkdir -p node_modules/three
+          cp vendor/three*.js node_modules/three/
+          printf '{"type":"module","exports":"./three.module.js"}\n' > node_modules/three/package.json
+          npm install --prefix "$RUNNER_TEMP/background-test-deps" --ignore-scripts --no-package-lock playwright@1.55.0
+          ln -s "$RUNNER_TEMP/background-test-deps/node_modules/playwright" node_modules/playwright
+          ln -s "$RUNNER_TEMP/background-test-deps/node_modules/playwright-core" node_modules/playwright-core
+          "$RUNNER_TEMP/background-test-deps/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Geometry, shader integration, lifecycle and existing parallax regressions
+        run: |
+          node --test test/deep-field-design.test.mjs test/deep-field-renderer.test.mjs test/deep-field-stars.test.mjs
+          node scripts/check-parallax-layers.mjs
+      - name: Real Three.js GPU component captures at chase distance
+        run: node test/deep-field-browser.mjs .devshots/deep-field-component
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: deep-field-background-evidence
+          path: .devshots/deep-field-component
+          if-no-files-found: warn
+          retention-days: 14

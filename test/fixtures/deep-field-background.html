@@ -1,0 +1,94 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Deep-field renderer probe — component, not full-game acceptance</title>
+<style>html,body{margin:0;background:#000;overflow:hidden}canvas{display:block}</style>
+<script type="importmap">{"imports":{"three":"/vendor/three.module.js","three/addons/":"/vendor/addons/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import { SpaceBackground } from '/src/render/spaceBackground.js';
+import * as parallax from '/src/render/parallaxLayers.js';
+import { SECTORS, SECTOR_PALETTE_CLASSES } from '/src/data/sectors.js';
+import { resolveSectorVisualProfile } from '/src/data/sectorVisualProfiles.js';
+
+// Real renderer components and shipped 144 WU / 60 degree / 50 degree camera. Deliberately no
+// simulation, UI, post stack, world assets or fabricated claim of a full-game acceptance capture.
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1);
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 20000);
+const focus = new THREE.Vector3();
+const state = {
+  meta: { seed: 47 }, settings: { video: { particleQuality: 'medium', motionReduce: false } },
+  render: { renderer, gpu: { tier: 'dedicated', software: false }, sectorPalette: SECTOR_PALETTE_CLASSES.core },
+  camera: { obj: camera, focus, zoom: 144, liveZoom: 144, tilt: 60, fov: 50 },
+  world: { frameOrigin: { x: 0, z: 0 } }, entities: new Map(),
+};
+function pose(distance = 144) {
+  state.camera.zoom = state.camera.liveZoom = distance;
+  camera.position.set(focus.x, distance * Math.sin(Math.PI / 3), focus.z - distance * 0.5);
+  camera.lookAt(focus);
+  camera.updateMatrixWorld(true);
+}
+pose();
+// Fixed neutral diagnostic rig; identical for every region and candidate. Shared rock textures
+// are deliberately not loaded by this component fixture, so it tests surface form, not asset art.
+scene.add(new THREE.HemisphereLight(0x9db9df, 0x080b11, 1.0));
+const key = new THREE.DirectionalLight(0xffefd9, 3.0);
+key.position.set(-180, 240, -100); scene.add(key);
+const bg = new SpaceBackground(scene, state, { renderer, camera });
+const bands = parallax.init(scene, state, null, state.render.sectorPalette);
+let time = 0;
+function frame(dt = 1 / 60) {
+  time += dt;
+  bg.update(dt, time, camera.position);
+  parallax.update(dt);
+  renderer.render(scene, camera);
+}
+window.deepFieldProbe = {
+  async region(id, zoom = 144) {
+    const sector = SECTORS.find(s => s.id === id);
+    if (!sector) throw new Error(`Unknown canonical sector: ${id}`);
+    state.render.sectorPalette = sector.palette;
+    pose(zoom);
+    bg._sectorId = null; // Component-only initial composition capture, not a simulation transition.
+    bg.onSectorEnter(sector, resolveSectorVisualProfile(sector));
+    for (let i = 0; i < 100; i++) frame(1 / 60);
+    return { ...bg.stats(), calls: renderer.info.render.calls,
+      triangles: renderer.info.render.triangles, geometries: renderer.info.memory.geometries,
+      width: innerWidth, height: innerHeight, zoom, tilt: 60, fov: 50,
+      componentOnly: true, authoredRockTexturesLoaded: false };
+  },
+  motion() {
+    const versions = bands.groups.map(g => g.children[0].instanceMatrix.version);
+    for (let i = 0; i < 120; i++) { focus.x += 1; pose(); frame(); }
+    const starGeometry = bg.stellarFormation.points.geometry;
+    const starVersion = starGeometry.getAttribute('position').version;
+    const beforePhase = bg.stellarFormation.points.material.uniforms.uPhaseX.value.toArray();
+    state.world.frameOrigin.x += 8192; focus.x -= 8192; pose(); frame();
+    return { before: versions, after: bands.groups.map(g => g.children[0].instanceMatrix.version),
+      starBefore: starVersion, starAfter: starGeometry.getAttribute('position').version,
+      beforePhase, afterPhase: bg.stellarFormation.points.material.uniforms.uPhaseX.value.toArray() };
+  },
+  quality(tier) {
+    bg.tierOverride = tier;
+    bg.applyGpuTier();
+    state.settings.video.particleQuality = tier === 'low' ? 'low' : 'medium';
+    for (let i = 0; i < 4; i++) frame();
+    return { ...bg.stats(), cloudDrawVertices: bg.stellarFormation.points.geometry.drawRange.count };
+  },
+  resize(width, height, zoom = 330) {
+    renderer.setSize(width, height);
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix(); pose(zoom); bg.onResize(); frame();
+    return { ...bg.stats(), calls: renderer.info.render.calls };
+  },
+  error() { return renderer.getContext().getError(); },
+  dispose() { parallax.dispose(); bg.dispose(); renderer.dispose(); },
+};
+window.deepFieldReady = true;
+</script>
