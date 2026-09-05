@@ -235,7 +235,6 @@ function createTrailStreakPool(cap) {
   const mesh = new THREE.InstancedMesh(geometry, createInstancedTrailStreakMaterial(), capacity);
   mesh.name = 'SF_TrailStreakInstances';
   mesh.count = 0;
-  mesh.visible = false;
   mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   mesh.frustumCulled = false;
   mesh.renderOrder = 11;

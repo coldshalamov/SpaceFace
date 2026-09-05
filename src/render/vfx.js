@@ -9032,7 +9032,6 @@ export const vfx = {
     vaneMesh.frustumCulled = false;
     vaneMesh.renderOrder = 9;
     vaneMesh.count = 0;
-    vaneMesh.visible = false;
     this._scene.add(vaneMesh);
 
     const pipGeo = new THREE.ConeGeometry(0.5, 1.4, 3);
@@ -9046,7 +9045,6 @@ export const vfx = {
     pipMesh.frustumCulled = false;
     pipMesh.renderOrder = 10;
     pipMesh.count = 0;
-    pipMesh.visible = false;
     this._scene.add(pipMesh);
 
     const knotGeo = new THREE.OctahedronGeometry(0.5, 0);
@@ -9057,7 +9055,6 @@ export const vfx = {
     knotMesh.frustumCulled = false;
     knotMesh.renderOrder = 8;
     knotMesh.count = 0;
-    knotMesh.visible = false;
     this._scene.add(knotMesh);
 
     const domeGeo = new THREE.IcosahedronGeometry(1.0, 1);
@@ -9068,7 +9065,6 @@ export const vfx = {
     domeMesh.frustumCulled = false;
     domeMesh.renderOrder = 8;
     domeMesh.count = 0;
-    domeMesh.visible = false;
     this._scene.add(domeMesh);
 
     const ribGeo = new THREE.BoxGeometry(0.35, 0.12, 1.0);
@@ -9081,7 +9077,6 @@ export const vfx = {
     ribMesh.frustumCulled = false;
     ribMesh.renderOrder = 9;
     ribMesh.count = 0;
-    ribMesh.visible = false;
     this._scene.add(ribMesh);
 
     const bermGeo = new THREE.DodecahedronGeometry(0.7, 0);
@@ -9094,7 +9089,6 @@ export const vfx = {
     bermMesh.frustumCulled = false;
     bermMesh.renderOrder = 10;
     bermMesh.count = 0;
-    bermMesh.visible = false;
     this._scene.add(bermMesh);
 
     const chevronGeo = new THREE.ConeGeometry(0.45, 0.95, 3);
@@ -9108,7 +9102,6 @@ export const vfx = {
     chevronMesh.frustumCulled = false;
     chevronMesh.renderOrder = 10;
     chevronMesh.count = 0;
-    chevronMesh.visible = false;
     this._scene.add(chevronMesh);
 
     const bankGeo = new THREE.BoxGeometry(0.18, 0.1, 1.0);
@@ -9121,7 +9114,6 @@ export const vfx = {
     bankMesh.frustumCulled = false;
     bankMesh.renderOrder = 9;
     bankMesh.count = 0;
-    bankMesh.visible = false;
     this._scene.add(bankMesh);
 
     const coreEnergyGeo = new THREE.OctahedronGeometry(1.0, 0);

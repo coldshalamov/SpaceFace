@@ -108,13 +108,13 @@ export function applyInstanceChunkSubmitPolicy(chunk, options = {}) {
     changed = true;
   }
 
-  if (nextCount > 0 && options.refreshBounds === true && typeof mesh.computeBoundingSphere === 'function') {
+  if (!chunk.dynamicBufferOwner && nextCount > 0 && options.refreshBounds === true && typeof mesh.computeBoundingSphere === 'function') {
     mesh.computeBoundingSphere();
     if (mesh.frustumCulled !== true) {
       mesh.frustumCulled = true;
       changed = true;
     }
-  } else if (nextCount <= 0 && mesh.frustumCulled !== false) {
+  } else if ((chunk.dynamicBufferOwner || nextCount <= 0) && mesh.frustumCulled !== false) {
     mesh.frustumCulled = false;
     changed = true;
   }
