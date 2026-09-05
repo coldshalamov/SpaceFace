@@ -1,5 +1,8 @@
 import * as THREE from 'three';
-import { displacementScalar } from './objectSpaceGeology.js';
+import {
+  createFracturedDebrisGeometry, installDebrisVariantAttribute, decorateDebrisMaterial,
+  resolveDebrisFinish,
+} from './deepFieldPresentation.js';
 import { getReadyRockSurfaceTextures } from './rockSurfaceLibrary.js';
 import { stampOpeningSubmissionPackage } from './openingSubmissionPlan.js';
 import { installSpaceBackgroundFrameCoordinateBridge } from './spaceBackgroundFrameCoordinates.js';
@@ -88,6 +91,10 @@ class ParallaxLayers {
     this._colorTarget.copy(this._colorCurrent);
     this._paletteElapsed = PALETTE_LERP_SECONDS;
     this._paletteActive = false;
+    // Color and physical finish share the existing sector transition; rocks never morph or respawn.
+    this._finishTarget = resolveDebrisFinish(this._paletteIdentity);
+    this._finishStart = { ...this._finishTarget };
+    this._finishCurrent = { ...this._finishTarget };
 
     this._matrix = new THREE.Matrix4();
     this._pos = new THREE.Vector3();
@@ -98,7 +105,7 @@ class ParallaxLayers {
     this._qualityLow = null;
     this._motionReduce = null;
 
-    this._chipTemplate = createChipGeometry(2);
+    this._chipTemplate = createFracturedDebrisGeometry();
     this._sharedMaps = getReadyRockSurfaceTextures();
 
     this._debrisSpinUniforms = {
@@ -222,7 +229,9 @@ class ParallaxLayers {
       spin ? this._debrisSpinUniforms : null,
     );
 
+    decorateDebrisMaterial(material, spin);
     const geometry = this._chipTemplate.clone();
+    installDebrisVariantAttribute(geometry, spec.count);
     let spinAxes = null;
     let spinParams = null;
     if (spin) {
@@ -360,6 +369,10 @@ class ParallaxLayers {
     const palette = readPalette(this.state);
     if (!palette || palette === this._paletteIdentity) return;
     this._paletteIdentity = palette;
+    this._finishStart.roughness = this._finishCurrent.roughness;
+    this._finishStart.metalness = this._finishCurrent.metalness;
+    this._finishStart.normalStrength = this._finishCurrent.normalStrength;
+    this._finishTarget = resolveDebrisFinish(palette);
     this._colorStart.copy(this._colorCurrent);
     resolvePaletteColor(this._colorTarget, palette);
     this._paletteElapsed = 0;
@@ -372,6 +385,11 @@ class ParallaxLayers {
     const rawT = PALETTE_LERP_SECONDS > 0 ? this._paletteElapsed / PALETTE_LERP_SECONDS : 1;
     const t = rawT * rawT * (3 - 2 * rawT);
     this._colorCurrent.lerpColors(this._colorStart, this._colorTarget, t);
+    const from = this._finishStart;
+    const to = this._finishTarget;
+    this._finishCurrent.roughness = from.roughness + (to.roughness - from.roughness) * t;
+    this._finishCurrent.metalness = from.metalness + (to.metalness - from.metalness) * t;
+    this._finishCurrent.normalStrength = from.normalStrength + (to.normalStrength - from.normalStrength) * t;
     this._applyPaletteColor(this._colorCurrent);
     if (rawT >= 1) {
       this._paletteActive = false;
@@ -385,6 +403,9 @@ class ParallaxLayers {
       const band = this._bandMaterials[i];
       this._colorScratch.copy(this._rockBase).lerp(color, 0.38).multiplyScalar(band.colorMul);
       band.material.color.copy(this._colorScratch);
+      band.material.roughness = this._finishCurrent.roughness;
+      band.material.metalness = this._finishCurrent.metalness;
+      band.material.normalScale.setScalar(this._finishCurrent.normalStrength);
     }
   }
 
@@ -434,26 +455,6 @@ class ParallaxLayers {
     if (midCount > 0 || (this._nearMesh && this._nearMesh.count > 0)) uniforms.primaryTime.value += dt;
     if (midCount > MID_LOW_COUNT) uniforms.tailTime.value += dt;
   }
-}
-
-function createChipGeometry(variantIndex) {
-  const geo = new THREE.IcosahedronGeometry(1, 1);
-  const pos = geo.attributes.position;
-  for (let i = 0; i < pos.count; i++) {
-    const x = pos.getX(i);
-    const y = pos.getY(i);
-    const z = pos.getZ(i);
-    const len = Math.hypot(x, y, z) || 1;
-    const nx = x / len;
-    const ny = y / len;
-    const nz = z / len;
-    const lift = 1 + displacementScalar(nx, ny, nz, variantIndex) * 2.15;
-    // Flattened flake, not a round pebble: meteoritic chips read as broken matter.
-    pos.setXYZ(i, nx * lift * 1.12, ny * lift * 0.38, nz * lift * 0.82);
-  }
-  geo.computeVertexNormals();
-  geo.computeBoundingSphere();
-  return geo;
 }
 
 function createChipMaterial(maps, colorMul) {

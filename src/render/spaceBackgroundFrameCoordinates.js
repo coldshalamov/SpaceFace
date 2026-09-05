@@ -12,6 +12,7 @@
 // installs it). The per-frame path owns one retained scratch record per background instance.
 
 import { SpaceBackground } from './spaceBackground.js';
+import { installDeepFieldPresentation } from './deepFieldPresentation.js';
 
 const PATCH_MARK = Symbol.for('spaceface.spaceBackgroundFrameCoordinates.v1');
 const SCRATCH_KEY = Symbol.for('spaceface.spaceBackgroundFrameCoordinates.scratch.v1');
@@ -110,6 +111,7 @@ function withGlobalCameraMatrix(background, method, args) {
 
 /** Install once; safe under repeated module evaluation in tests and hot reload. */
 export function installSpaceBackgroundFrameCoordinateBridge() {
+  installDeepFieldPresentation(SpaceBackground);
   const proto = SpaceBackground && SpaceBackground.prototype;
   if (!proto || proto[PATCH_MARK]) return false;
 
