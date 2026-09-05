@@ -68,11 +68,11 @@ window.deepFieldProbe = {
     for (let i = 0; i < 120; i++) { focus.x += 1; pose(); frame(); }
     const starGeometry = bg.stellarFormation.points.geometry;
     const starVersion = starGeometry.getAttribute('position').version;
-    const beforePhase = bg.stellarFormation.points.material.uniforms.uPhaseX.value.toArray();
+    const beforePhase = Array.from(bg.stellarFormation.points.material.uniforms.uPhaseX.value);
     state.world.frameOrigin.x += 8192; focus.x -= 8192; pose(); frame();
     return { before: versions, after: bands.groups.map(g => g.children[0].instanceMatrix.version),
       starBefore: starVersion, starAfter: starGeometry.getAttribute('position').version,
-      beforePhase, afterPhase: bg.stellarFormation.points.material.uniforms.uPhaseX.value.toArray() };
+      beforePhase, afterPhase: Array.from(bg.stellarFormation.points.material.uniforms.uPhaseX.value) };
   },
   quality(tier) {
     bg.tierOverride = tier;

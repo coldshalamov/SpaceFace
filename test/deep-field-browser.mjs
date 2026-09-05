@@ -1,6 +1,7 @@
 // Usage: node test/deep-field-browser.mjs [output-directory]
 // Component GPU validation; does not masquerade as canonical browser/Electron game acceptance.
 import assert from 'node:assert/strict';
+import { STELLAR_FORMATIONS } from '../src/render/deepFieldStars.js';
 import { createServer } from 'node:http';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
@@ -37,7 +38,9 @@ try {
   await page.goto(`http://127.0.0.1:${server.address().port}/test/fixtures/deep-field-background.html`);
   await page.waitForFunction(() => window.deepFieldReady, null, { timeout: 60000 });
   const captures = [];
-  for (const id of ['sector_helios_prime', 'sector_ceres_belt', 'sector_pallas_drift', 'sector_veil_nebula']) {
+  // sector_tethys_junction resolves to the core profile (core_trade_constellation, the DEFAULT_STRUCTURE
+  // fallback): the sky most players see most, and the one the first four-bank version left dark.
+  for (const id of ['sector_helios_prime', 'sector_ceres_belt', 'sector_pallas_drift', 'sector_veil_nebula', 'sector_tethys_junction']) {
     const result = await page.evaluate(id => window.deepFieldProbe.region(id), id);
     assert.equal(result.skyCarrierTriangles, 1);
     assert.equal(result.voidTextureBytes, 5460);
@@ -61,7 +64,7 @@ try {
   }
   const low = await page.evaluate(() => window.deepFieldProbe.quality('low'));
   assert.equal(low.stellarFormationStars, 2048);
-  assert.equal(low.cloudDrawVertices, 8192);
+  assert.equal(low.cloudDrawVertices, 2048 * STELLAR_FORMATIONS.length, 'low tier draws every family prefix');
   await page.screenshot({ path: path.join(output, 'low-tier-portrait.png') });
   assert.equal(await page.evaluate(() => window.deepFieldProbe.error()), 0);
   assert.deepEqual(errors, []);

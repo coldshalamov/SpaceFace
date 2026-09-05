@@ -1,5 +1,14 @@
 name: Deep-field background regression
 on:
+  push:
+    branches: [master]
+    paths:
+      - 'src/render/deepField*.js'
+      - 'src/render/parallaxLayers.js'
+      - 'src/render/spaceBackground*.js'
+      - 'test/deep-field*'
+      - 'test/fixtures/deep-field-background.html'
+      - '.github/workflows/deep-field-background.yml'
   pull_request:
     paths:
       - 'src/render/deepField*.js'

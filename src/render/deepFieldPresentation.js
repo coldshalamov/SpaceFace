@@ -160,10 +160,12 @@ export function installDeepFieldPresentation(Background) {
       const base = stats.apply(this, arguments);
       return {
         ...base,
-        drawCalls: base.drawCalls + (this.stellarFormation ? 1 : 0),
+        drawCalls: base.drawCalls
+          + (this.stellarFormation && this.stellarFormation.points.geometry.drawRange.count > 0 ? 1 : 0),
         stellarFormation: STELLAR_FORMATIONS[this.stellarFormation?.family]?.name || null,
         stellarFormationStars: this.stellarFormation?.activeStars || 0,
         stellarFormationBytes: this.stellarFormation?.attributeBytes || 0,
+        stellarFormationRefills: this.stellarFormation?.refills || 0,
         deepFieldPresentation: 'clip-proof-fractured-v1',
         skyCarrierTriangles: 1,
         voidTextureBytes: rgbaMipBytes(DEEP_FIELD_VOID_SIZE),

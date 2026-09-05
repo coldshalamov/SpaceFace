@@ -55,18 +55,26 @@ empty sky. The second iteration adds a remote stellar scale in `deepFieldStars.j
 | `belt_broken_dust_lane` | Amber stellar river |
 | `fringe_tidal_filament` | More open blue spiral |
 | `anomaly_electromagnetic_scar` | Divided blue stellar stream |
+| `core_trade_constellation` | Populous warm-white spiral seen nearly face-on (the DEFAULT_STRUCTURE fallback and the core-class sectors) |
+| `galactic_spur` | One wide, gently tilted galactic band across the top of the glass |
 
 These are art extrapolations, not new named places. The shape comes from thousands of individual
 stars following explicit spiral/stream trajectories with seeded membership, not large soft cards,
 fog, noise textures or an animated density field. The existing sky-only `bg-l3-stars` exception in
 `SOFT_CARD_INVENTORY.json` names the new source. Points stay at sky depth and at most 4.5 pixels.
 
-Four interleaved static populations share one geometry, material and draw. High tier shows 8,192
-stars in the active formation; mid shows 4,096; low shows 2,048. Regional changes crossfade population
-weights, never morph star positions. Inactive populations are clipped before rasterization. All four
-banks occupy 1,048,576 attribute bytes. Quality changes adjust draw ranges, not buffers. Per-draw work
-is four weight/phase updates, not a per-star loop. Phase is reduced in JS doubles before upload.
-Unknown recipe IDs fade dark. Repeated resize explicitly disposes and replaces the old formation.
+Six interleaved static populations (one per authored deep-field recipe, so no region's sky is
+silently dark) share one geometry, material and draw. High tier shows 8,192 stars in the active
+formation; mid shows 4,096; low shows 2,048. Regional changes crossfade population weights, never
+morph star positions. Inactive populations are clipped before rasterization. The six banks occupy
+1,572,864 attribute bytes. Quality changes adjust draw ranges, not buffers. Per-draw work is six
+weight/phase updates (float uniform arrays indexed by the star's family), not a per-star loop. Phase
+is reduced in JS doubles before upload. A recipe with no formation sets the draw range to zero, so a
+dark sky submits no vertices. `rebuildDeepFieldStars` runs on every `_buildLayers` (first bake,
+sector bakes, every resize): unchanged placement inputs return the existing record untouched; a
+changed aspect/tier/camera height refills the same typed arrays and material in place — no
+allocation, no shader recompile, crossfade weights preserved — so a window drag cannot feed the GC
+wall. Only a missing camera retires the layer.
 
 ### Runtime wiring and ownership
 
@@ -109,8 +117,9 @@ formation name, population and bytes. The clear-path read count is not a claim a
    empty phenomenon recipes unless an explicit new art change is reviewed.
 2. For stellar composition, edit `STELLAR_FORMATIONS`, keyed to that same deep-field recipe ID.
    Anchor, span, inclination, cool/warm hue, intensity and parallax are data. Keep stars at sky depth
-   and leave the flight corridor readable. The current shader/buffer has four banks; adding a fifth
-   requires an explicit budget/layout change, not silently growing per-frame allocations.
+   and leave the flight corridor readable. The bank count follows the table (float uniform arrays,
+   no vec4 ceiling); adding a recipe means adding its formation row here, and the stars test fails
+   until every recipe in `deepFieldStructureRecipes.js` has one. Each bank costs 262,144 bytes.
 3. Reuse the composite, two debris solids and shared rock maps. More colors do not require new draws.
    A new debris silhouette needs a vertex-attribute budget review: spinning mapped instancing already
    uses thirteen locations before optional additional UV/tangent inputs.
