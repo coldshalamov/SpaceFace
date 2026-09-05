@@ -1,0 +1,17 @@
+{
+  "audit_date": "2026-09-05",
+  "commit": "571659e86d892022e2dfa118f058bdcdd0c96eed",
+  "repository_paths_inspected": 48,
+  "external_primary_references": 6,
+  "report_count": 10,
+  "report_word_count_approximate": 22065,
+  "assumption_findings": 29,
+  "work_orders": 12,
+  "standalone_reference_test_count": 33,
+  "standalone_reference_test_pass": 33,
+  "node_version": "22.16.0",
+  "repository_tests_run": false,
+  "live_gameplay_performed": false,
+  "fresh_gpu_benchmark_performed": false,
+  "repository_mutations_performed": false
+}

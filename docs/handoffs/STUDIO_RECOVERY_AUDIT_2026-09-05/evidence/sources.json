@@ -1,0 +1,716 @@
+{
+  "repository": "coldshalamov/SpaceFace",
+  "commit": "571659e86d892022e2dfa118f058bdcdd0c96eed",
+  "audit_date": "2026-09-05",
+  "scope": "Selected source and document excerpts, not an exhaustive repository read or executable checkout.",
+  "sources": [
+    {
+      "id": "AGENTS",
+      "path": "AGENTS.md",
+      "reviewed_ranges": [],
+      "scope_note": "Selected substantial excerpt; response truncated. Not a claim of full-file review.",
+      "kind": "repository",
+      "url": "https://github.com/coldshalamov/SpaceFace/blob/571659e86d892022e2dfa118f058bdcdd0c96eed/AGENTS.md"
+    },
+    {
+      "id": "VISION",
+      "path": "design/VISION.md",
+      "reviewed_ranges": [],
+      "scope_note": "Substantial Part I and beginning of Part II; response truncated.",
+      "kind": "repository",
+      "url": "https://github.com/coldshalamov/SpaceFace/blob/571659e86d892022e2dfa118f058bdcdd0c96eed/design/VISION.md"
+    },
+    {
+      "id": "GDD",
+      "path": "design/GDD_2_0.md",
+      "reviewed_ranges": [
+        [
+          1,
+          160
+        ],
+        [
+          160,
+          350
+        ]
+      ],
+      "scope_note": "Selected sections; do not treat everything described here as implemented.",
+      "kind": "repository",
+      "url": "https://github.com/coldshalamov/SpaceFace/blob/571659e86d892022e2dfa118f058bdcdd0c96eed/design/GDD_2_0.md"
+    },
+    {
+      "id": "ORIENTATION",
+      "path": "docs/ORIENTATION.md",
+      "reviewed_ranges": [],
+      "scope_note": "Orientation text returned; architecture descriptions checked against selected live owners.",
+      "kind": "repository",
+      "url": "https://github.com/coldshalamov/SpaceFace/blob/571659e86d892022e2dfa118f058bdcdd0c96eed/docs/ORIENTATION.md"
+    },
+    {
+      "id": "MODULEMAP",
+      "path": "docs/MODULE_MAP.md",
+      "reviewed_ranges": [
+        [
+          1,
+          240
+        ]
+      ],
+      "scope_note": "Navigation excerpt; response truncated. File size/count annotations not independently verified.",
+      "kind": "repository",
+      "url": "https://github.com/coldshalamov/SpaceFace/blob/571659e86d892022e2dfa118f058bdcdd0c96eed/docs/MODULE_MAP.md"
+    },
+    {
+      "id": "PROGRAM",
+      "path": "design/program/README.md",
+      "reviewed_ranges": [
+        [
+          1,
+          180
+        ]
+      ],
+      "scope_note": "Program lifecycle/acceptance authority; returned text ends before requested maximum.",
+      "kind": "repository",
+      "url": "https://github.com/coldshalamov/SpaceFace/blob/571659e86d892022e2dfa118f058bdcdd0c96eed/design/program/README.md"
+    },
+    {
+      "id": "BUILD",
+      "path": "CANONICAL_BUILD_MAP.md",
+      "reviewed_ranges": [
+        [
+          1,
+          145
+        ]
+      ],
+      "scope_note": "Current front door, order, rules, and reviewer checklist.",
+      "kind": "repository",
+      "url": "https://github.com/coldshalamov/SpaceFace/blob/571659e86d892022e2dfa118f058bdcdd0c96eed/CANONICAL_BUILD_MAP.md"
+    },
+    {
+      "id": "README",
+      "path": "README.md",
+      "reviewed_ranges": [
+        [
+          1,
+          170
+        ]
+      ],
+      "scope_note": "Root pitch, controls, implementation claims, launch policy.",
+      "kind": "repository",
+      "url": "https://github.com/coldshalamov/SpaceFace/blob/571659e86d892022e2dfa118f058bdcdd0c96eed/README.md"
+    },
+    {
+      "id": "ALIGNMENT",
+      "path": "design/program/VISION_ALIGNMENT_PLAN.md",
+      "reviewed_ranges": [
+        [
+          1,
+          180
+        ]
+      ],
+      "scope_note": "Historical August 10 audit and recorded owner decisions; not a current runtime measurement.",
+      "kind": "repository",
+      "url": "https://github.com/coldshalamov/SpaceFace/blob/571659e86d892022e2dfa118f058bdcdd0c96eed/design/program/VISION_ALIGNMENT_PLAN.md"
+    },
+    {
+      "id": "FUN",
+      "path": "design/program/FUN_CONVERGENCE_LOOP.md",
+      "reviewed_ranges": [
+        [
+          1,
+          210
+        ]
+      ],
+      "scope_note": "Current methodology and scoring rules, including negative-polarity rubric question.",
+      "kind": "repository",
+      "url": "https://github.com/coldshalamov/SpaceFace/blob/571659e86d892022e2dfa118f058bdcdd0c96eed/design/program/FUN_CONVERGENCE_LOOP.md"
+    },
+    {
+      "id": "FEEL",
+      "path": "design/FEEL_CONTRACT.md",
+      "reviewed_ranges": [
+        [
+          1,
+          190
+        ],
+        [
+          88,
+          250
+        ]
+      ],
+      "scope_note": "Mixed historical defect rows and newer September 5 results. Reported values not remeasured in this audit.",
+      "kind": "repository",
+      "url": "https://github.com/coldshalamov/SpaceFace/blob/571659e86d892022e2dfa118f058bdcdd0c96eed/design/FEEL_CONTRACT.md"
+    },
+    {
+      "id": "REGISTRY",
+      "path": "src/core/registry.js",
+      "reviewed_ranges": [
+        [
+          1,
+          220
+        ]
+      ],
+      "scope_note": "Selected imports and ownership wiring; import presence alone does not prove every-tick execution.",
+      "kind": "repository",
+      "url": "https://github.com/coldshalamov/SpaceFace/blob/571659e86d892022e2dfa118f058bdcdd0c96eed/src/core/registry.js"
+    },
+    {
+      "id": "LOOP",
+      "path": "src/core/loop.js",
+      "reviewed_ranges": [
+        [
+          1,
+          220
+        ]
+      ],
+      "scope_note": "Short adapter returned in full; simulation/presentation split already exists.",
+      "kind": "repository",
+      "url": "https://github.com/coldshalamov/SpaceFace/blob/571659e86d892022e2dfa118f058bdcdd0c96eed/src/core/loop.js"
+    },
+    {
+      "id": "SIM",
+      "path": "src/core/simulationRunner.js",
+      "reviewed_ranges": [
+        [
+          1,
+          220
+        ]
+      ],
+      "scope_note": "Fixed-step and backlog policy, completed-tick metadata.",
+      "kind": "repository",
+      "url": "https://github.com/coldshalamov/SpaceFace/blob/571659e86d892022e2dfa118f058bdcdd0c96eed/src/core/simulationRunner.js"
+    },
+    {
+      "id": "PRESENT",
+      "path": "src/core/presentationRunner.js",
+      "reviewed_ranges": [
+        [
+          1,
+          180
+        ],
+        [
+          470,
+          680
+        ],
+        [
+          680,
+          860
+        ]
+      ],
+      "scope_note": "Lifecycle, journal handling, advance/render, timing and recovery excerpts.",
+      "kind": "repository",
+      "url": "https://github.com/coldshalamov/SpaceFace/blob/571659e86d892022e2dfa118f058bdcdd0c96eed/src/core/presentationRunner.js"
+    },
+    {
+      "id": "PROFILES",
+      "path": "src/runtime/runtimeProfiles.js",
+      "reviewed_ranges": [
+        [
+          1,
+          170
+        ]
+      ],
+      "scope_note": "Explicit production and legacy47a feature profiles.",
+      "kind": "repository",
+      "url": "https://github.com/coldshalamov/SpaceFace/blob/571659e86d892022e2dfa118f058bdcdd0c96eed/src/runtime/runtimeProfiles.js"
+    },
+    {
+      "id": "FLIGHT",
+      "path": "src/core/flight/propulsionKernel.js",
+      "reviewed_ranges": [
+        [
+          1,
+          210
+        ],
+        [
+          280,
+          470
+        ],
+        [
+          600,
+          815
+        ]
+      ],
+      "scope_note": "Selected governor, assistance, family and manual-input force paths.",
+      "kind": "repository",
+      "url": "https://github.com/coldshalamov/SpaceFace/blob/571659e86d892022e2dfa118f058bdcdd0c96eed/src/core/flight/propulsionKernel.js"
+    },
+    {
+      "id": "INPUT",
+      "path": "src/systems/input.js",
+      "reviewed_ranges": [
+        [
+          200,
+          390
+        ]
+      ],
+      "scope_note": "Action bindings and conditional steering/braking projection.",
+      "kind": "repository",
+      "url": "https://github.com/coldshalamov/SpaceFace/blob/571659e86d892022e2dfa118f058bdcdd0c96eed/src/systems/input.js"
+    },
+    {
+      "id": "WINCH",
+      "path": "src/core/constraints/masslineController.js",
+      "reviewed_ranges": [
+        [
+          1,
+          210
+        ]
+      ],
+      "scope_note": "Winch/telemetry controller; these defaults are not the entire production attachment policy.",
+      "kind": "repository",
+      "url": "https://github.com/coldshalamov/SpaceFace/blob/571659e86d892022e2dfa118f058bdcdd0c96eed/src/core/constraints/masslineController.js"
+    },
+    {
+      "id": "ATTACH",
+      "path": "src/combat/attachments.js",
+      "reviewed_ranges": [
+        [
+          1,
+          210
+        ]
+      ],
+      "scope_note": "Heads, migrations, and automatic-break policy.",
+      "kind": "repository",
+      "url": "https://github.com/coldshalamov/SpaceFace/blob/571659e86d892022e2dfa118f058bdcdd0c96eed/src/combat/attachments.js"
+    },
+    {
+      "id": "IMPULSE",
+      "path": "src/combat/impulseKernel.js",
+      "reviewed_ranges": [
+        [
+          1,
+          220
+        ]
+      ],
+      "scope_note": "Hitstun, collision multipliers, impulse provenance and terrain consequence constants.",
+      "kind": "repository",
+      "url": "https://github.com/coldshalamov/SpaceFace/blob/571659e86d892022e2dfa118f058bdcdd0c96eed/src/combat/impulseKernel.js"
+    },
+    {
+      "id": "PHYSICS",
+      "path": "src/core/sg02DynamicBodyOwner.js",
+      "reviewed_ranges": [
+        [
+          1,
+          170
+        ],
+        [
+          535,
+          720
+        ],
+        [
+          780,
+          852
+        ],
+        [
+          850,
+          1040
+        ]
+      ],
+      "scope_note": "Current spring constants, structural give, dynamic sleep prohibition, CCD, pooling and loop excerpts.",
+      "kind": "repository",
+      "url": "https://github.com/coldshalamov/SpaceFace/blob/571659e86d892022e2dfa118f058bdcdd0c96eed/src/core/sg02DynamicBodyOwner.js"
+    },
+    {
+      "id": "PERFCAMPAIGN",
+      "path": "design/program/PERF_HITCH_CAMPAIGN.md",
+      "reviewed_ranges": [
+        [
+          1,
+          200
+        ]
+      ],
+      "scope_note": "Historical route measurements and sweep receipts; long response truncated.",
+      "kind": "repository",
+      "url": "https://github.com/coldshalamov/SpaceFace/blob/571659e86d892022e2dfa118f058bdcdd0c96eed/design/program/PERF_HITCH_CAMPAIGN.md"
+    },
+    {
+      "id": "PERFORDER",
+      "path": "design/program/PERF_WHAT_MATTERS.md",
+      "reviewed_ranges": [],
+      "scope_note": "Returned operator document; conflicts with later shipped/closed work. Measurements are repository-reported.",
+      "kind": "repository",
+      "url": "https://github.com/coldshalamov/SpaceFace/blob/571659e86d892022e2dfa118f058bdcdd0c96eed/design/program/PERF_WHAT_MATTERS.md"
+    },
+    {
+      "id": "SCHEDULER",
+      "path": "src/core/activityScheduler.js",
+      "reviewed_ranges": [
+        [
+          1,
+          210
+        ]
+      ],
+      "scope_note": "Short file returned; duty-cycle helper exists. All call sites were not exhaustively audited.",
+      "kind": "repository",
+      "url": "https://github.com/coldshalamov/SpaceFace/blob/571659e86d892022e2dfa118f058bdcdd0c96eed/src/core/activityScheduler.js"
+    },
+    {
+      "id": "NEWGAME",
+      "path": "src/data/newGameDefaults.js",
+      "reviewed_ranges": [
+        [
+          1,
+          180
+        ]
+      ],
+      "scope_note": "Starting credits, hull ID, fittings, cargo and location; short file.",
+      "kind": "repository",
+      "url": "https://github.com/coldshalamov/SpaceFace/blob/571659e86d892022e2dfa118f058bdcdd0c96eed/src/data/newGameDefaults.js"
+    },
+    {
+      "id": "SHIPDATA",
+      "path": "src/data/ships.js",
+      "reviewed_ranges": [
+        [
+          1,
+          160
+        ]
+      ],
+      "scope_note": "Hitch and selected T1 hulls plus first T2 entry; not a full catalog census.",
+      "kind": "repository",
+      "url": "https://github.com/coldshalamov/SpaceFace/blob/571659e86d892022e2dfa118f058bdcdd0c96eed/src/data/ships.js"
+    },
+    {
+      "id": "SHIPS",
+      "path": "src/systems/ships.js",
+      "reviewed_ranges": [
+        [
+          1,
+          170
+        ]
+      ],
+      "scope_note": "Derived-stat ownership, station access, head exclusivity, living-hull imports and presets.",
+      "kind": "repository",
+      "url": "https://github.com/coldshalamov/SpaceFace/blob/571659e86d892022e2dfa118f058bdcdd0c96eed/src/systems/ships.js"
+    },
+    {
+      "id": "MODULES",
+      "path": "src/data/modules.js",
+      "reviewed_ranges": [
+        [
+          1,
+          165
+        ]
+      ],
+      "scope_note": "Selected standard modules and behavior-changing Massline heads.",
+      "kind": "repository",
+      "url": "https://github.com/coldshalamov/SpaceFace/blob/571659e86d892022e2dfa118f058bdcdd0c96eed/src/data/modules.js"
+    },
+    {
+      "id": "OUTFIT",
+      "path": "src/ui/screens/outfitting.js",
+      "reviewed_ranges": [
+        [
+          1,
+          180
+        ]
+      ],
+      "scope_note": "Engineering preview imports, fit/purchase validation and inventory behavior.",
+      "kind": "repository",
+      "url": "https://github.com/coldshalamov/SpaceFace/blob/571659e86d892022e2dfa118f058bdcdd0c96eed/src/ui/screens/outfitting.js"
+    },
+    {
+      "id": "ECON",
+      "path": "src/systems/economy.js",
+      "reviewed_ranges": [
+        [
+          1,
+          190
+        ],
+        [
+          950,
+          1140
+        ]
+      ],
+      "scope_note": "Pricing model, credit bounds, market construction, synthetic history and observed-price memory.",
+      "kind": "repository",
+      "url": "https://github.com/coldshalamov/SpaceFace/blob/571659e86d892022e2dfa118f058bdcdd0c96eed/src/systems/economy.js"
+    },
+    {
+      "id": "AUTO",
+      "path": "src/systems/automation.js",
+      "reviewed_ranges": [
+        [
+          1,
+          190
+        ],
+        [
+          460,
+          650
+        ],
+        [
+          700,
+          900
+        ]
+      ],
+      "scope_note": "Passive-cap design, update/expiry, programmed cargo mining/selling and visible drones.",
+      "kind": "repository",
+      "url": "https://github.com/coldshalamov/SpaceFace/blob/571659e86d892022e2dfa118f058bdcdd0c96eed/src/systems/automation.js"
+    },
+    {
+      "id": "ROVERCAMPAIGN",
+      "path": "design/program/ASTEROID_WORKS_PLAYFIELD.md",
+      "reviewed_ranges": [
+        [
+          1,
+          185
+        ]
+      ],
+      "scope_note": "Historical owner playtest plus subsequent amendments; do not infer current screen appearance.",
+      "kind": "repository",
+      "url": "https://github.com/coldshalamov/SpaceFace/blob/571659e86d892022e2dfa118f058bdcdd0c96eed/design/program/ASTEROID_WORKS_PLAYFIELD.md"
+    },
+    {
+      "id": "ROVERLAW",
+      "path": "design/ASTEROID_WORKS_DESIGN_LAW.md",
+      "reviewed_ranges": [
+        [
+          1,
+          210
+        ]
+      ],
+      "scope_note": "Positive mining/factory design, owner rulings, art and rigid numeric UI specifications.",
+      "kind": "repository",
+      "url": "https://github.com/coldshalamov/SpaceFace/blob/571659e86d892022e2dfa118f058bdcdd0c96eed/design/ASTEROID_WORKS_DESIGN_LAW.md"
+    },
+    {
+      "id": "DRILL",
+      "path": "src/systems/drill.js",
+      "reviewed_ranges": [
+        [
+          1,
+          185
+        ],
+        [
+          530,
+          705
+        ]
+      ],
+      "scope_note": "Cadence fixes, geology, recovery and persistent-site bypass.",
+      "kind": "repository",
+      "url": "https://github.com/coldshalamov/SpaceFace/blob/571659e86d892022e2dfa118f058bdcdd0c96eed/src/systems/drill.js"
+    },
+    {
+      "id": "DRILLUI",
+      "path": "src/ui/screens/drill.js",
+      "reviewed_ranges": [
+        [
+          1,
+          165
+        ]
+      ],
+      "scope_note": "Current remap-aware input adapter and bounded render-frame catch-up.",
+      "kind": "repository",
+      "url": "https://github.com/coldshalamov/SpaceFace/blob/571659e86d892022e2dfa118f058bdcdd0c96eed/src/ui/screens/drill.js"
+    },
+    {
+      "id": "SITES",
+      "path": "src/systems/asteroidSites.js",
+      "reviewed_ranges": [
+        [
+          1,
+          200
+        ]
+      ],
+      "scope_note": "Durable site state, Massline Core anchoring, logistics imports, cap routing and survey listeners.",
+      "kind": "repository",
+      "url": "https://github.com/coldshalamov/SpaceFace/blob/571659e86d892022e2dfa118f058bdcdd0c96eed/src/systems/asteroidSites.js"
+    },
+    {
+      "id": "ENGAGE",
+      "path": "src/ai/engagementAuthority.js",
+      "reviewed_ranges": [
+        [
+          1,
+          205
+        ],
+        [
+          185,
+          350
+        ]
+      ],
+      "scope_note": "Final engagement authorization, first-session cap, bounded convoy predation and hostility.",
+      "kind": "repository",
+      "url": "https://github.com/coldshalamov/SpaceFace/blob/571659e86d892022e2dfa118f058bdcdd0c96eed/src/ai/engagementAuthority.js"
+    },
+    {
+      "id": "JOBS",
+      "path": "src/systems/npcJobsRuntime.js",
+      "reviewed_ranges": [
+        [
+          1,
+          195
+        ]
+      ],
+      "scope_note": "Live/virtual adapter, global job time, materialization, and explicitly authored physical relationships.",
+      "kind": "repository",
+      "url": "https://github.com/coldshalamov/SpaceFace/blob/571659e86d892022e2dfa118f058bdcdd0c96eed/src/systems/npcJobsRuntime.js"
+    },
+    {
+      "id": "BLOOM",
+      "path": "src/render/bloom.js",
+      "reviewed_ranges": [
+        [
+          1,
+          190
+        ]
+      ],
+      "scope_note": "Current custom post pipeline and defaults; source comments refer to r160 behavior.",
+      "kind": "repository",
+      "url": "https://github.com/coldshalamov/SpaceFace/blob/571659e86d892022e2dfa118f058bdcdd0c96eed/src/render/bloom.js"
+    },
+    {
+      "id": "SECTORART",
+      "path": "src/data/sectorVisualProfiles.js",
+      "reviewed_ranges": [
+        [
+          1,
+          150
+        ]
+      ],
+      "scope_note": "Helios and other selected sector composition, lighting and bloom overrides.",
+      "kind": "repository",
+      "url": "https://github.com/coldshalamov/SpaceFace/blob/571659e86d892022e2dfa118f058bdcdd0c96eed/src/data/sectorVisualProfiles.js"
+    },
+    {
+      "id": "FEELFX",
+      "path": "src/render/feel.js",
+      "reviewed_ranges": [
+        [
+          1,
+          190
+        ]
+      ],
+      "scope_note": "Collision feedback, real-time cooldown, FOV limits and speed-line limits already exist.",
+      "kind": "repository",
+      "url": "https://github.com/coldshalamov/SpaceFace/blob/571659e86d892022e2dfa118f058bdcdd0c96eed/src/render/feel.js"
+    },
+    {
+      "id": "VFXLAW",
+      "path": "docs/visual-assets/VFX_TECHNIQUE_STANDARD.md",
+      "reviewed_ranges": [
+        [
+          1,
+          145
+        ]
+      ],
+      "scope_note": "Strong appearance rationale plus technique-wide prohibitions and required construction.",
+      "kind": "repository",
+      "url": "https://github.com/coldshalamov/SpaceFace/blob/571659e86d892022e2dfa118f058bdcdd0c96eed/docs/visual-assets/VFX_TECHNIQUE_STANDARD.md"
+    },
+    {
+      "id": "ASSETLAW",
+      "path": "docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md",
+      "reviewed_ranges": [
+        [
+          1,
+          140
+        ]
+      ],
+      "scope_note": "Existing validity/acceptance split, camera-first rule and material/assembly paperwork.",
+      "kind": "repository",
+      "url": "https://github.com/coldshalamov/SpaceFace/blob/571659e86d892022e2dfa118f058bdcdd0c96eed/docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md"
+    },
+    {
+      "id": "WORLDPLAN",
+      "path": "design/program/roadmap/active/PQ-138.md",
+      "reviewed_ranges": [
+        [
+          1,
+          170
+        ]
+      ],
+      "scope_note": "Connection work packet; missing-listener claims are packet-reported, not independently verified at every current producer/consumer.",
+      "kind": "repository",
+      "url": "https://github.com/coldshalamov/SpaceFace/blob/571659e86d892022e2dfa118f058bdcdd0c96eed/design/program/roadmap/active/PQ-138.md"
+    },
+    {
+      "id": "ECONPLAN",
+      "path": "design/program/roadmap/active/PQ-177.md",
+      "reviewed_ranges": [
+        [
+          1,
+          160
+        ]
+      ],
+      "scope_note": "Economic surfacing plan, forecast uplift and interesting-decision acceptance proxies.",
+      "kind": "repository",
+      "url": "https://github.com/coldshalamov/SpaceFace/blob/571659e86d892022e2dfa118f058bdcdd0c96eed/design/program/roadmap/active/PQ-177.md"
+    },
+    {
+      "id": "THREECOLOR",
+      "path": "https://threejs.org/docs/pages/Color.html",
+      "reviewed_ranges": [],
+      "scope_note": "Official current documentation checked September 5, 2026. Verify APIs against vendored revision before implementation.",
+      "kind": "external",
+      "url": "https://threejs.org/docs/pages/Color.html"
+    },
+    {
+      "id": "THREEBATCH",
+      "path": "https://threejs.org/docs/pages/BatchedMesh.html",
+      "reviewed_ranges": [],
+      "scope_note": "Official current documentation; not a drop-in API promise for the repository version.",
+      "kind": "external",
+      "url": "https://threejs.org/docs/pages/BatchedMesh.html"
+    },
+    {
+      "id": "GPUTIMER",
+      "path": "https://developer.mozilla.org/en-US/docs/Web/API/EXT_disjoint_timer_query",
+      "reviewed_ranges": [],
+      "scope_note": "Primary API documentation: asynchronous GPU timer queries and disjoint validity. WebGL2 has its own extension.",
+      "kind": "external",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/API/EXT_disjoint_timer_query"
+    },
+    {
+      "id": "SLEEP",
+      "path": "https://rapier.rs/docs/user_guides/javascript/rigid_body_sleeping/",
+      "reviewed_ranges": [],
+      "scope_note": "Official Rapier sleep/wake behavior; architectural recommendations are independent analysis.",
+      "kind": "external",
+      "url": "https://rapier.rs/docs/user_guides/javascript/rigid_body_sleeping/"
+    },
+    {
+      "id": "DETERMINISM",
+      "path": "https://rapier.rs/docs/user_guides/javascript/determinism/",
+      "reviewed_ranges": [],
+      "scope_note": "Official same-version/initialization/order requirements and JavaScript transcendental caveat.",
+      "kind": "external",
+      "url": "https://rapier.rs/docs/user_guides/javascript/determinism/"
+    },
+    {
+      "id": "BODIES",
+      "path": "https://rapier.rs/docs/user_guides/javascript/rigid_bodies/",
+      "reviewed_ranges": [],
+      "scope_note": "Official rigid-body/collider and force integration concepts.",
+      "kind": "external",
+      "url": "https://rapier.rs/docs/user_guides/javascript/rigid_bodies/"
+    },
+    {
+      "id": "SWARMARENA",
+      "path": "src/systems/swarmArena.js",
+      "reviewed_ranges": [
+        [
+          1,
+          175
+        ]
+      ],
+      "scope_note": "Event-driven debris placement, terrain/wreck retention and historical play notes; no fresh runtime census.",
+      "kind": "repository",
+      "url": "https://github.com/coldshalamov/SpaceFace/blob/571659e86d892022e2dfa118f058bdcdd0c96eed/src/systems/swarmArena.js"
+    },
+    {
+      "id": "SWARMCURVE",
+      "path": "src/data/swarmMode.js",
+      "reviewed_ranges": [
+        [
+          1,
+          185
+        ]
+      ],
+      "scope_note": "Current concurrency, refill, cadence, roster and boss-rotation excerpts.",
+      "kind": "repository",
+      "url": "https://github.com/coldshalamov/SpaceFace/blob/571659e86d892022e2dfa118f058bdcdd0c96eed/src/data/swarmMode.js"
+    }
+  ]
+}

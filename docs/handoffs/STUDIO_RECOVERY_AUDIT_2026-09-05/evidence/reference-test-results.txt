@@ -1,0 +1,208 @@
+TAP version 13
+# Subtest: rope: reduced mass and fixed anchor
+ok 1 - rope: reduced mass and fixed anchor
+  ---
+  duration_ms: 1.131184
+  type: 'test'
+  ...
+# Subtest: rope: zero speed has zero load and stretch
+ok 2 - rope: zero speed has zero load and stretch
+  ---
+  duration_ms: 0.643665
+  type: 'test'
+  ...
+# Subtest: rope: equilibrium satisfies K*x*(L+x)=mu*v^2
+ok 3 - rope: equilibrium satisfies K*x*(L+x)=mu*v^2
+  ---
+  duration_ms: 0.143207
+  type: 'test'
+  ...
+# Subtest: rope: target-derived stiffness produces target extension
+ok 4 - rope: target-derived stiffness produces target extension
+  ---
+  duration_ms: 1.011052
+  type: 'test'
+  ...
+# Subtest: rope: short high-speed line exceeds scalar envelope
+ok 5 - rope: short high-speed line exceeds scalar envelope
+  ---
+  duration_ms: 0.13859
+  type: 'test'
+  ...
+# Subtest: rope: halving timestep quadruples scalar stiffness ceiling
+ok 6 - rope: halving timestep quadruples scalar stiffness ceiling
+  ---
+  duration_ms: 0.184629
+  type: 'test'
+  ...
+# Subtest: rope: invalid and double-fixed pairs reject
+ok 7 - rope: invalid and double-fixed pairs reject
+  ---
+  duration_ms: 0.529152
+  type: 'test'
+  ...
+# Subtest: rope: no input mutation and monotonic speed response
+ok 8 - rope: no input mutation and monotonic speed response
+  ---
+  duration_ms: 0.904871
+  type: 'test'
+  ...
+# Subtest: maneuver: straight capped acceleration-cruise-brake timing
+ok 9 - maneuver: straight capped acceleration-cruise-brake timing
+  ---
+  duration_ms: 0.580058
+  type: 'test'
+  ...
+# Subtest: maneuver: short zero-endpoint segment has finite triangular timing
+ok 10 - maneuver: short zero-endpoint segment has finite triangular timing
+  ---
+  duration_ms: 0.439897
+  type: 'test'
+  ...
+# Subtest: maneuver: intermediate straight samples preserve timing
+ok 11 - maneuver: intermediate straight samples preserve timing
+  ---
+  duration_ms: 0.193333
+  type: 'test'
+  ...
+# Subtest: maneuver: curvature sets lateral-acceleration ceiling
+ok 12 - maneuver: curvature sets lateral-acceleration ceiling
+  ---
+  duration_ms: 0.161415
+  type: 'test'
+  ...
+# Subtest: maneuver: overspeed entry is flagged rather than silently accepted
+ok 13 - maneuver: overspeed entry is flagged rather than silently accepted
+  ---
+  duration_ms: 0.158701
+  type: 'test'
+  ...
+# Subtest: maneuver: unreachable desired exit is flagged
+ok 14 - maneuver: unreachable desired exit is flagged
+  ---
+  duration_ms: 0.156237
+  type: 'test'
+  ...
+# Subtest: maneuver: invalid path and infeasible segment reject
+ok 15 - maneuver: invalid path and infeasible segment reject
+  ---
+  duration_ms: 0.177018
+  type: 'test'
+  ...
+# Subtest: maneuver: input is not mutated
+ok 16 - maneuver: input is not mutated
+  ---
+  duration_ms: 0.154394
+  type: 'test'
+  ...
+# Subtest: trade: money and goods conserved and source immutable
+ok 17 - trade: money and goods conserved and source immutable
+  ---
+  duration_ms: 0.756736
+  type: 'test'
+  ...
+# Subtest: trade: duplicate exact retry after expiry and save round trip is idempotent
+ok 18 - trade: duplicate exact retry after expiry and save round trip is idempotent
+  ---
+  duration_ms: 0.36987
+  type: 'test'
+  ...
+# Subtest: trade: reused receipt with different request rejects
+ok 19 - trade: reused receipt with different request rejects
+  ---
+  duration_ms: 0.499537
+  type: 'test'
+  ...
+# Subtest: trade: stale and expired quotes reject without mutation
+ok 20 - trade: stale and expired quotes reject without mutation
+  ---
+  duration_ms: 0.175405
+  type: 'test'
+  ...
+# Subtest: trade: capacity rejects atomically
+ok 21 - trade: capacity rejects atomically
+  ---
+  duration_ms: 0.564886
+  type: 'test'
+  ...
+# Subtest: trade: insufficient money and stock reject atomically
+ok 22 - trade: insufficient money and stock reject atomically
+  ---
+  duration_ms: 0.296039
+  type: 'test'
+  ...
+# Subtest: trade: integer product overflow is detected exactly
+ok 23 - trade: integer product overflow is detected exactly
+  ---
+  duration_ms: 0.14553
+  type: 'test'
+  ...
+# Subtest: trade: recipient and version overflow reject
+ok 24 - trade: recipient and version overflow reject
+  ---
+  duration_ms: 0.162537
+  type: 'test'
+  ...
+# Subtest: trade: receipt capacity requires explicit checkpoint, not unsafe eviction
+ok 25 - trade: receipt capacity requires explicit checkpoint, not unsafe eviction
+  ---
+  duration_ms: 0.258522
+  type: 'test'
+  ...
+# Subtest: trade: invalid quantities, identifiers, and same-party trades reject
+ok 26 - trade: invalid quantities, identifiers, and same-party trades reject
+  ---
+  duration_ms: 0.296519
+  type: 'test'
+  ...
+# Subtest: trade: overfull initial hold is not laundered through a new trade
+ok 27 - trade: overfull initial hold is not laundered through a new trade
+  ---
+  duration_ms: 0.121173
+  type: 'test'
+  ...
+# Subtest: trade: bounded sequence of trades conserves quantities and money
+ok 28 - trade: bounded sequence of trades conserves quantities and money
+  ---
+  duration_ms: 0.410201
+  type: 'test'
+  ...
+# Subtest: frame: interpolated quantiles and empty data
+ok 29 - frame: interpolated quantiles and empty data
+  ---
+  duration_ms: 1.02281
+  type: 'test'
+  ...
+# Subtest: frame: foreground hitches retained, lifecycle exclusions counted
+ok 30 - frame: foreground hitches retained, lifecycle exclusions counted
+  ---
+  duration_ms: 0.400006
+  type: 'test'
+  ...
+# Subtest: frame: invalid GPU samples are unknown, not zero
+ok 31 - frame: invalid GPU samples are unknown, not zero
+  ---
+  duration_ms: 0.207554
+  type: 'test'
+  ...
+# Subtest: frame: valid GPU and shed simulation time are separately reported
+ok 32 - frame: valid GPU and shed simulation time are separately reported
+  ---
+  duration_ms: 0.200604
+  type: 'test'
+  ...
+# Subtest: frame: comparable manifests require all controlled fields, but not equal commit
+ok 33 - frame: comparable manifests require all controlled fields, but not equal commit
+  ---
+  duration_ms: 0.256689
+  type: 'test'
+  ...
+1..33
+# tests 33
+# suites 0
+# pass 33
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 98.63219

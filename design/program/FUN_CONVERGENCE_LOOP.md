@@ -94,7 +94,8 @@ player units:
 - **moments per minute** (the `PQ-146` moment detector; until it exists, collateral events ≥ 2
   bodies) — dead is < 1;
 - **nothing-happened seconds** (no player input change and no world event for > 4 s) — a fight
-  should have none;
+  should have none; this ceiling belongs to combat benches only — travel, docking and industry have
+  their own pacing envelopes (`PQ-149` writes them; contrast is the point of a quiet stretch);
 - **deaths by cause**, and whether each was telegraphed ≥ 0.5 s ahead;
 - **knock budget on the player** (contact-sourced velocity changes on the player hull per minute and
   the largest as a fraction of cruise) — bar B13.
@@ -120,8 +121,15 @@ is not a verdict.
 10. What is the ONE fundamental that, if fixed, would flip the most "no" answers? Name the rule, the
     file, what it does, and the vision sentence it breaks — the format of `FEEL_CONTRACT.md` §A.
 
-Seven or more "yes" with frames is a pass for that bench. The critic's answer to question 10 is the
-next cycle's hypothesis. The critic never proposes content.
+The count of "yes" answers is a coverage score, never the verdict. The verdict has three parts
+(audit 2026-09-05, `PQ-173.04` makes the tool print them): **blockers** — a bad stand-in (question
+5), an unreachable route, a wrong control label, lost or duplicated value, an unreadable decisive
+threat, a broken save, a performance regression — any one fails the bench regardless of the count;
+**intent result** — did the evidence show the improvement this cycle claimed, and which tradeoff was
+deliberately spent; **play judgment** — what the player can now perceive, decide and execute that they
+could not before, and what would falsify it. Until `PQ-173.04` lands, seven or more "yes" with no
+blocker is the working pass. The critic's answer to question 10 is the next cycle's hypothesis. The
+critic never proposes content.
 
 ### 3.4 NAME THE FUNDAMENTAL — one hypothesis
 
@@ -153,9 +161,11 @@ The change ships with a test whose assertion message quotes the vision sentence 
 
 ### 3.6 COMPARE — keep or revert
 
-Re-run the same bench, same seeds. Keep only if: every bar that moved moved toward its target, no
-bar regressed beyond the noise floor, the critic pass count did not drop, and `npm run
-check:baseline` is green. Ties revert. Two failed cycles on the same causal model falsify the model
+Re-run the same bench, same seeds. Keep only if: the bar the hypothesis named moved toward its
+target, no bar regressed beyond the noise floor except a tradeoff the cycle declared BEFORE the run
+(and no hard bar — B13, the rulings, the refusals — ever), the critic raised no blocker, and `npm run
+check:baseline` is green. Ties revert. Not every design metric is monotone; a cycle is judged on the
+bargain it named, never on every bar moving at once (audit 2026-09-05). Two failed cycles on the same causal model falsify the model
 (`CENTRAL_BRAIN.md` §6.5).
 
 ### 3.7 REPORT — one page, in the owner's words

@@ -1,0 +1,137 @@
+{
+  "package": "SpaceFace Studio Recovery Audit",
+  "audit_date": "2026-09-05",
+  "audited_commit": "571659e86d892022e2dfa118f058bdcdd0c96eed",
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 2855,
+      "sha256": "9775c566766de628f65deeb97c7fe58157c9932ee58004cbcaebaac5d04d2558"
+    },
+    {
+      "path": "READ_THE_REPORT.html",
+      "bytes": 253869,
+      "sha256": "b568dc0e02892249dafed0d65dd27c43b79fa2135b7fd78433f57c111a719545"
+    },
+    {
+      "path": "evidence/audit-summary.json",
+      "bytes": 538,
+      "sha256": "ef0de6f1d2c5660bca81aea0af52db76e336f0729115126b34faa052ebdfb85a"
+    },
+    {
+      "path": "evidence/findings.json",
+      "bytes": 19346,
+      "sha256": "90cdba28dd6be67c17891ef086f18489ae7ae8c4a0cffe4cf916ab2869e86fc9"
+    },
+    {
+      "path": "evidence/reference-example-output.json",
+      "bytes": 2536,
+      "sha256": "8e184ee885622e72d72c8b6939bdfd9c5dc3b9ef257f7753f2dfda3771a5fcaf"
+    },
+    {
+      "path": "evidence/reference-test-results.txt",
+      "bytes": 6069,
+      "sha256": "2f0f42b38a29b84ac5a8c2c3068cb08292329d18c54154e2249ab206a56f013c"
+    },
+    {
+      "path": "evidence/sources.json",
+      "bytes": 23460,
+      "sha256": "edc09fd09ddfacc90816f0f7ecc91b187af3a216ca3ca51eb2d9da0b14b62cab"
+    },
+    {
+      "path": "evidence/synthetic-frame-analysis.json",
+      "bytes": 2006,
+      "sha256": "6f7e89f4a03b88521875efabf258b9cdab8b33cb449a2a28728777cebece88e7"
+    },
+    {
+      "path": "reference_code/README.md",
+      "bytes": 3691,
+      "sha256": "d96ad053d6a61fdd6eb32d7560ff2f87bb751b826136dcf2e3b7dc29a72f3138"
+    },
+    {
+      "path": "reference_code/examples.mjs",
+      "bytes": 1310,
+      "sha256": "0e5094d595efcb5559be4ba56b2dc24d5640e9da962a16fd23addcf95a3e9e07"
+    },
+    {
+      "path": "reference_code/frameAudit.mjs",
+      "bytes": 4433,
+      "sha256": "de6d8fbd5e4f2e6a448452b96a578ee3f1b7686823ef736ad8e60a2137ba25cd"
+    },
+    {
+      "path": "reference_code/maneuverEnvelope.mjs",
+      "bytes": 4347,
+      "sha256": "bee0a56577b934fb48e805e8d5e4d912112bc5e3169d0b7f1c81293aa37b57e0"
+    },
+    {
+      "path": "reference_code/reference.test.mjs",
+      "bytes": 10783,
+      "sha256": "8a2c6e72e2ca672ae6313c890b17df2e4f6ebfae6d0f0983e0bb87e382e6b46b"
+    },
+    {
+      "path": "reference_code/ropeEnvelope.mjs",
+      "bytes": 2690,
+      "sha256": "26d5d4123b42acc1f7b5515bb7d486c1c7ebab67adc1b328d474b9f3fa7afc05"
+    },
+    {
+      "path": "reference_code/synthetic-frame-trace.json",
+      "bytes": 1204,
+      "sha256": "f9e82241baa5c07b5ba5c54af84c2f6d9767dc06ef63f7e5c8d86778a6a38095"
+    },
+    {
+      "path": "reference_code/transferPlan.mjs",
+      "bytes": 4493,
+      "sha256": "d818a1a38a90d76dd3a0f8a05d5a19439a003680c492f65b15094698f4cd273f"
+    },
+    {
+      "path": "reports/00_EXECUTIVE_VERDICT.md",
+      "bytes": 14864,
+      "sha256": "7038030b4d329ea86f1b8780e489ea5e49d7d40fe4100c3ae11cdb7fa7356499"
+    },
+    {
+      "path": "reports/01_PRODUCT_AND_GAME_DESIGN.md",
+      "bytes": 15271,
+      "sha256": "d56ca28f7b3e09f11615081cf5a7138d6d909d9ca20bcf7f72e86ede17a7af9e"
+    },
+    {
+      "path": "reports/02_AUTHORITY_AND_ASSUMPTION_AUDIT.md",
+      "bytes": 20348,
+      "sha256": "d77d1dff6bbd08763dc77a8dabe2fc4a519b9f483e7b43974bd2499b8c594d1e"
+    },
+    {
+      "path": "reports/03_FLIGHT_MASSLINE_AND_COMBAT.md",
+      "bytes": 21259,
+      "sha256": "07912df5cce6510b34e7dcea22d449b2899ad12e3617759224ee1c7ca867c95c"
+    },
+    {
+      "path": "reports/04_PERFORMANCE_AND_RUNTIME.md",
+      "bytes": 18575,
+      "sha256": "0f00323500f2bf4235ca5457ff0f8d933cc786c7bc201b41951a44f241a85ee4"
+    },
+    {
+      "path": "reports/05_ECONOMY_AND_CUSTOMIZATION.md",
+      "bytes": 16693,
+      "sha256": "d59cdea2e5c0ca4844c4939edfcf9dd916f2d71e91103eb00451795b3386771a"
+    },
+    {
+      "path": "reports/06_ROVER_AND_ASTEROID_INDUSTRY.md",
+      "bytes": 12474,
+      "sha256": "58767771bd7e2019fb89ad27885fc81e309c3ab515b1bab8b9a9d4772fdba15c"
+    },
+    {
+      "path": "reports/07_ART_VFX_AUDIO_AND_INTERFACE.md",
+      "bytes": 16493,
+      "sha256": "dcdd091e14db3ff0aea150607c7334cc30e3e2a32b41944cab698ca7e1679058"
+    },
+    {
+      "path": "reports/08_DELIVERY_PLAN_AND_AGENT_WORK_ORDERS.md",
+      "bytes": 21628,
+      "sha256": "0881baa63ddc20d3c723412d0f245ad8807fcbe388df2f742bf26ff185e35ad6"
+    },
+    {
+      "path": "reports/09_EVIDENCE_SCOPE_AND_REFERENCE_GUIDE.md",
+      "bytes": 24650,
+      "sha256": "946fbacd253b0535cc0a94ff3d315405a5037056a618d9f7c647cf26df716307"
+    }
+  ]
+}

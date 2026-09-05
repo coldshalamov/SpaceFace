@@ -53,9 +53,9 @@ wait for, so content cannot be handed out before the ship handles.
 
 | Phase | Gate it serves (§15.1) | Packets, in order |
 |---|---|---|
-| **A · The toy works** (now) | ALPHA | `PQ-173` the fun-loop instrument · `PQ-167` telemetry and the weekly playtest · `PQ-137` the guts (`.03`–`.11`) · `PQ-174` the swarm fun contract · `PQ-139` impacts answer · `PQ-138` the world reacts · `PQ-140` roster as physical problems · `PQ-146` stunt grammar · `PQ-186` the regression fortress · `PQ-180` the frontend grammar matrix · `PQ-163` the first ten minutes · `PQ-141` **the 60-second proof (gate)** |
-| **B · The swarm and the world** | BETA | `PQ-175` swarm content at craft · `PQ-029` `PQ-030` `PQ-031` `PQ-026` heads and coupling · `PQ-147` field toys · `PQ-027` `PQ-028` machinery and infrastructure · `PQ-148` cargo is physics · `PQ-149` the storyteller · `PQ-150` people who remember · `PQ-151` the wanted loop · `PQ-154` wrecks as terrain · `PQ-161` readable at zoom · `PQ-169` Crucible as replay surface |
-| **C · Adventure depth** | BETA | `PQ-176` customization with consequences · `PQ-155` the verb curve · `PQ-156` three starters · `PQ-142` progression and my ship · `PQ-177` an economy you can read · `PQ-178` the story pipeline · `PQ-032` the linear spine · `PQ-152` set pieces from verbs · `PQ-153` six sectors · `PQ-143` ordinary life · `PQ-145` industry authorship · `PQ-171` content grammar |
+| **A · The toy works** (now) | ALPHA | `PQ-173` the fun-loop instrument · `PQ-167` telemetry and the weekly playtest · `PQ-137` the guts (`.03`–`.11`) · `PQ-189` **correct the compass** (controls contract, stale diagnoses retired) · `PQ-174` the swarm fun contract (with `.08` earned breathing room) · `PQ-139` impacts answer · `PQ-158.06` minimal action audio · `PQ-165.03` reduced motion keeps information · `PQ-138` the world reacts · `PQ-140` roster as physical problems · `PQ-146` stunt grammar · `PQ-186` the regression fortress · `PQ-180` the frontend grammar matrix · `PQ-144.01` the production baseline · `PQ-163` the first ten minutes · `PQ-141` **the 60-second proof (gate)** |
+| **B · The swarm and the world** | BETA | `PQ-190` **the style slice** (stylized industrial energy, approved at the shipping camera before any fleet pass) · `PQ-175` swarm content at craft · `PQ-029` `PQ-030` `PQ-031` `PQ-026` heads and coupling · `PQ-147` field toys · `PQ-027` `PQ-028` machinery and infrastructure · `PQ-148` cargo is physics · `PQ-149` the storyteller · `PQ-150` people who remember · `PQ-151` the wanted loop · `PQ-154` wrecks as terrain · `PQ-161` readable at zoom · `PQ-169` Crucible as replay surface |
+| **C · Adventure depth** | BETA | `PQ-177.06`/`.07` cargo custody and visible industrial limits · `PQ-145.01` the first durable site loop · `PQ-176` customization with consequences · `PQ-155` the verb curve · `PQ-156` three starters · `PQ-142` progression and my ship · `PQ-177` an economy you can read · `PQ-178` the story pipeline · `PQ-032` the linear spine · `PQ-152` set pieces from verbs · `PQ-153` six sectors · `PQ-143` ordinary life · `PQ-145` industry authorship · `PQ-171` content grammar |
 | **D · Frontend to the newest version** | BETA | `PQ-162` the station redesign · `PQ-168` the chart finished · `PQ-181` the meta shell · `PQ-182` Crucible screens · `PQ-183` everything is a link · `PQ-184` UI performance · `PQ-185` Asteroid Works accepted (with the live `PQ-130` / `PQ-131`) |
 | **E · It ships** | RELEASE | `PQ-158` audio direction · `PQ-159` camera and photo mode · `PQ-160` replay and clips · `PQ-164` input truth · `PQ-165` accessibility and options · `PQ-166` five languages · `PQ-144` density and perf guard · `PQ-033` the release closeout |
 | **F · After** | POST | `PQ-170` endgame pulls · `PQ-172` mods |
@@ -72,8 +72,10 @@ live row names.
    fixed seed. "It works", "it follows the path", "check is green" are not numbers.
 2. **Frames or it did not happen.** Anything player-felt ships one normal-speed capture at the shipping
    camera, default quality, no overlays. A still proves appearance; temporal claims need strips.
-3. **Consequences or it is thin.** A new action produces at least two further things (a motion, a
-   reaction, a receipt someone consumes). One thing once is content, not a feature.
+3. **Consequences or it is thin.** A new player-facing action or feature produces at least two further
+   things (a motion, a reaction, a receipt someone consumes). One thing once is content, not a feature.
+   A control, a confirmation, a selection, a brake or an instrument is exempt: it must do exactly its
+   one thing well, and demanding noisy secondary events from it is the wrong law (audit 2026-09-05).
 4. **Never answer feel with content.** More enemies, ships, stations or missions never close a feel
    unit. Camera shake and particles never close an event.
 5. **Never add drag.** Never clamp given momentum. Never give an NPC a gyro, a transform write, or
@@ -120,16 +122,27 @@ NEXT             the next unit --next will return
   scenario, choose another model; after three models, escalate in plain words.
 - The owner said stop.
 
-### 1.6 The reviewer's checklist (the integrator rejects on any "yes")
+### 1.6 The reviewer's checklist
+
+**Blockers — the integrator rejects on any "yes":**
 
 - Did the unit close on prose, a green check, or a screenshot at a flattering angle? (LAZY)
-- Does the outcome do one thing once, with no second consequence? (THIN)
+- Does the outcome do one thing once, with no second consequence, where the law asks for two? (THIN)
 - Is any number in the done-when unmeasured, or measured on a random seed? (MISCONFIGURED)
 - Did it add content, shake, particles, drag, a clamp on given momentum, an NPC gyro, hit-point
   scaling, a flag-only path, a second architecture, or a dialogue tree?
 - Did a test or a golden change without the vision sentence or the causal record?
+
+**Required proofs — the integrator rejects on any "no":**
+
 - Is the feature reachable on the default route? Does the surface pass the grammar matrix?
 - Is the report in the owner's words, with the numbers and the frames?
+- Does the receipt name the intended improvement AND the tradeoff it deliberately spent (a larger
+  impact may cost a little fill rate; a crisper brake may change a handling curve)? A unit is judged
+  on that bargain, not on every metric moving at once.
+
+(The 2026-09-05 audit found the old single list mixing both polarities — a "yes" to reachability
+could read as a rejection. Fixed here; `PQ-189.01`.)
 
 ### 1.7 If the owner names a symptom
 
@@ -138,6 +151,7 @@ procedure:
 
 | The owner says | Start here |
 |---|---|
+| "Here is a taste review / an outside audit; fold it in" | Grade every recommendation in §15.9 (adopt / adopt with a guard / decline, with the ruling it agrees or conflicts with); admit each adopted item as a leaf of the packet that already owns the surface, or a new packet only when no packet does; store the review under `docs/handoffs/` as HISTORICAL evidence with a pointer back to the grade. Never a second queue, never verbatim orders |
 | "it's not fun", "make it better", "it sucks", "wonky", "no control" | [`design/program/FUN_CONVERGENCE_LOOP.md`](./design/program/FUN_CONVERGENCE_LOOP.md) → `--id PQ-137`, then `--next` |
 | "finish the game", "what's next for release", "the professional bar" | §15 gates → `--next` |
 | "swarm mode should be more fun" | §16 → `--id PQ-174` |
@@ -3147,6 +3161,48 @@ this build lacks, the funnest toys, the collisions, the session shape, and what 
 - **The one thing they both said that the map had not:** the game needs a **12-word fantasy the store
   page promises and hour one proves** — "light ships are ammunition; swing a rock; keep the speed" —
   and `PQ-163`'s done-when is that sentence, verified by a stranger.
+
+### 15.9b The Studio Recovery Audit (2026-09-05), graded
+
+An independent ~22,000-word source-grounded review of `571659e8` (stored under
+[`docs/handoffs/STUDIO_RECOVERY_AUDIT_2026-09-05/`](./docs/handoffs/STUDIO_RECOVERY_AUDIT_2026-09-05/README.md);
+its four analytical reference modules live under `tools/reference/`, diagnostic only). Its thesis —
+that the repo keeps promoting an implementation, a diagnosis or a convenient surrogate into binding law
+and then optimises the law — is right, and it is the failure §1.3 law 9 and §19 exist to catch. Graded
+by the integrator; nothing below is an owner ruling until the owner says so.
+
+- **Adopted, done in place (`PQ-189.01`):** §1.6 split into blockers and required proofs (a polarity
+  error); law 3 exempts controls and instruments; the fun loop's critic count is a coverage score
+  with a hard blocker for a stand-in, not a yes-count verdict; KEEP/REVERT compares the intended bar
+  against a declared tradeoff instead of demanding every bar move; the quiet-window metric is scoped
+  to combat benches; `FEEL_CONTRACT` §A rows A6–A13 read what landed (they still said OPEN); B8 names
+  admissible stroke geometry (a universal ≥ 70 % promise is infeasible on short strokes); the perf
+  operator no longer orders the shipped scheduler (`PQ-129.15` is deferred as shipped); the README no
+  longer says Space fires.
+- **Adopted as leaves:** the control contract generated from the bindings (`PQ-189.00`, pulls the
+  `PQ-164` slice forward); minimal action audio in the first playable (`PQ-158.06`); reduced motion
+  keeps information (`PQ-165.03`); the production baseline route matrix on named hardware
+  (`PQ-144.01`, with the audit's frame-audit tool); the critic's verdict as blockers + intent result +
+  play judgment (`PQ-173.04`); Swarm's earned breathing room / pressure reservoir (`PQ-174.08`);
+  explicit cargo custody and one-commit transactions (`PQ-177.06`); visible operational limits
+  replacing the passive-income haircut, with a save migration (`PQ-177.07`); forecast quality judged by
+  calibration, not a 30 % uplift (`PQ-177.01` rewritten); the first durable site loop with an exterior
+  consequence (`PQ-145.01`); the style slice and the effect-class VFX matrix (`PQ-190` — world art and
+  effects only; screens, HUD and type belong to the frontend direction, `design/FRONTEND_DIRECTION.md`).
+- **Adopted with a guard:** "mutate, never fail" (`PQ-138.04`) becomes a bounded policy — recovery
+  where meaningful, clean failure and partial success allowed, never recursive busywork; the first-ten-
+  minutes candidate sequence is attached to `PQ-163` as a candidate, not a script; industrial danger
+  stays chosen and visible (no periodic raids as balancing); "never add drag" keeps its meaning — an
+  explicit brake, a drive family, authored angular damping and a visible thruster correction are not
+  drag, a hidden velocity clamp is.
+- **Declined:** a new independent backlog (the audit itself says so); an engine or worker migration as
+  recovery; treating the paperwork ratchets (single writers, goldens with causal records, normal-route
+  evidence, independent acceptance) as waste; a global bloom increase as art direction.
+- **Provenance conflict surfaced, owner's call:** the audit found `VISION_ALIGNMENT_PLAN.md` Big-Five
+  item 4 (2026-08-10) recording the owner's REJECTION of a hull scar / recognition system, while §15
+  (2026-09-03) admitted `PQ-142.01` from VISION Part II and it landed on 2026-09-05 as a record and
+  words (no paint on the hull). The later admission stands until the owner rules; the packet carries
+  the note.
 
 ### 15.10 Dispatch
 

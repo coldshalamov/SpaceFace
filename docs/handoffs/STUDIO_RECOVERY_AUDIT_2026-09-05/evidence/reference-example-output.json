@@ -1,0 +1,119 @@
+{
+  "label": "ANALYTICAL / SYNTHETIC EXAMPLES. Not SpaceFace runtime measurements.",
+  "ropeInputs": {
+    "massA": 18,
+    "massB": 630,
+    "speed": 200,
+    "length": 100,
+    "stiffness": 170
+  },
+  "longLine": {
+    "reducedMass": 17.5,
+    "extension": 31.348921681996064,
+    "extensionRatio": 0.3134892168199606,
+    "firstOrderExtensionRatio": 0.4117647058823529,
+    "requiredStiffness": 1333.333333333333,
+    "scalarStabilityCeiling": 15750,
+    "dampingCoefficient": 98.17840903172143,
+    "targetFitsScalarEnvelope": true,
+    "currentSpringMeetsTarget": false
+  },
+  "shortLine": {
+    "reducedMass": 17.5,
+    "extension": 60.293444913331015,
+    "extensionRatio": 7.536680614166377,
+    "firstOrderExtensionRatio": 64.33823529411765,
+    "requiredStiffness": 208333.3333333333,
+    "scalarStabilityCeiling": 15750,
+    "dampingCoefficient": 98.17840903172143,
+    "targetFitsScalarEnvelope": false,
+    "currentSpringMeetsTarget": false
+  },
+  "shortStroke": {
+    "speeds": [
+      0,
+      0
+    ],
+    "segmentCaps": [
+      100
+    ],
+    "segments": [
+      {
+        "seconds": 0.2,
+        "peakSpeed": 10,
+        "cruiseDistance": 0
+      }
+    ],
+    "seconds": 0.2,
+    "averageSpeed": 5,
+    "entryFeasible": true,
+    "exitFeasible": true,
+    "requestedEntrySpeed": 0,
+    "requestedExitSpeed": 0
+  },
+  "transaction": {
+    "initial": {
+      "version": 0,
+      "wallets": {
+        "pilot": 100,
+        "station": 7
+      },
+      "holds": {
+        "pilot": {
+          "capacity": 10,
+          "items": {
+            "ore": 1
+          }
+        },
+        "station": {
+          "capacity": 20,
+          "items": {
+            "ore": 20
+          }
+        }
+      },
+      "receipts": {}
+    },
+    "quote": {
+      "id": "trade:example",
+      "buyer": "pilot",
+      "seller": "station",
+      "good": "ore",
+      "quantity": 3,
+      "unitPrice": 5,
+      "expectedVersion": 0,
+      "expiresAtTick": 10
+    },
+    "receipt": {
+      "id": "trade:example",
+      "version": 1,
+      "tick": 5,
+      "buyer": "pilot",
+      "seller": "station",
+      "good": "ore",
+      "quantity": 3,
+      "unitPrice": 5,
+      "cost": 15
+    },
+    "walletsAfter": {
+      "pilot": 85,
+      "station": 22
+    },
+    "cargoAfter": {
+      "pilot": {
+        "capacity": 10,
+        "items": {
+          "ore": 4
+        }
+      },
+      "station": {
+        "capacity": 20,
+        "items": {
+          "ore": 17
+        }
+      }
+    },
+    "lateRetryDuplicate": true,
+    "versionAfterRetry": 1
+  }
+}

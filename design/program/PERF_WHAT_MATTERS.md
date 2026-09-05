@@ -138,10 +138,16 @@ WebGPU (`PQ-089`) is a backend swap after the table is cheap. Not a hitch fix.
 node scripts/program-dispatch.mjs --id PQ-129
 ```
 
-Take **`PQ-129.15`** (table cadence / sleep off-table). Finish it. Headed
-witness. If sim p95 is still >5 ms, take physics sleep (`PQ-084`). If the
-player still hitchs on first new ship, take program-lane collapse (`.13`).
-If crowded flight is still 30 fps with sim already cheap, take unique-hull
+`PQ-129.15` (table cadence / sleep off-table) is **shipped** — the activity-tier scheduler is
+`src/core/activityScheduler.js` and `PERF_HITCH_CAMPAIGN.md` records the rejection-as-shipped; the
+queue holds it `deferred`. Do not rebuild it. What is NOT proven is that every expensive consumer
+honours its tier, so the next perf task is the **production baseline route matrix on named hardware**
+(`PQ-144.01`, from the 2026-09-05 audit: cold opening, warm dense combat, earned-speed traversal,
+sustained Swarm, dock/refit/undock, Asteroid Works in and out, save/reload at a busy site — with input
+age and shed ticks, CPU and GPU separated). Then: if sim p95 is still >5 ms, physics sleep
+(`PQ-084`, starting with unconnected inactive bodies — `setCanSleep(false)` is a deliberate choice
+tied to save/reload, not an oversight); if the player still hitches on the first new ship,
+program-lane collapse (`.13`); if crowded flight is still 30 fps with sim already cheap, unique-hull
 batch (`.12`) with the mixed-batch ban in the leaf.
 
 `--next` still returns fleet remaster. That is not perf.

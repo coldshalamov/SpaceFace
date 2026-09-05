@@ -1,0 +1,370 @@
+{
+  "purpose": "Audit findings, not a replacement dispatch queue. Re-read current owners before mutation.",
+  "findings": [
+    {
+      "finding_id": "FINDING-001",
+      "title": "Three descriptions of basic controls",
+      "classification": "confirmed_documentation_conflict",
+      "evidence": "The root README says Space fires; the GDD's control section assigns Space to Massline; its onboarding teaches Space as brake. The inspected input bindings assign Space/F to tether. **Confirmed documentation contradiction.**",
+      "proposed_disposition": "Generate binding labels from action data. Rewrite the onboarding conceptually and verify it against the shipping scheme. [README] [GDD] [INPUT]",
+      "source_ids": [
+        "README",
+        "GDD",
+        "INPUT"
+      ],
+      "audited_commit": "571659e86d892022e2dfa118f058bdcdd0c96eed",
+      "not_a_runtime_measurement": true
+    },
+    {
+      "finding_id": "FINDING-002",
+      "title": "Reverse versus brake",
+      "classification": "confirmed_documentation_conflict",
+      "evidence": "The GDD's terminology includes reverse/brake. The current propulsion path uses braking to suppress manual forward/strafe force rather than providing ordinary assisted reverse thrust. **Confirmed semantic mismatch.**",
+      "proposed_disposition": "Name the actual action accurately; changing the action itself is a separate product decision. [GDD] [FLIGHT]",
+      "source_ids": [
+        "GDD",
+        "FLIGHT"
+      ],
+      "audited_commit": "571659e86d892022e2dfa118f058bdcdd0c96eed",
+      "not_a_runtime_measurement": true
+    },
+    {
+      "finding_id": "FINDING-003",
+      "title": "Old catch-up limit",
+      "classification": "confirmed_documentation_conflict",
+      "evidence": "Orientation says eight steps while the current simulation runner caps ordinary catch-up at four. **Confirmed stale architecture description.**",
+      "proposed_disposition": "Link the constant or generate this factual excerpt. Do not change the runtime back to match the prose. [ORIENTATION] [SIM]",
+      "source_ids": [
+        "ORIENTATION",
+        "SIM"
+      ],
+      "audited_commit": "571659e86d892022e2dfa118f058bdcdd0c96eed",
+      "not_a_runtime_measurement": true
+    },
+    {
+      "finding_id": "FINDING-004",
+      "title": "A shipped scheduler is still ordered as the next fix",
+      "classification": "confirmed_documentation_conflict",
+      "evidence": "The performance operator calls table cadence the next major task; the campaign calls the relevant work already shipped, and the activity-tier scheduler exists. **Confirmed instruction conflict; full call-site coverage unverified.**",
+      "proposed_disposition": "Reconcile the work receipt and inspect remaining consumers. Do not rebuild the scheduler. [PERFORDER] [PERFCAMPAIGN] [SCHEDULER]",
+      "source_ids": [
+        "PERFORDER",
+        "PERFCAMPAIGN",
+        "SCHEDULER"
+      ],
+      "audited_commit": "571659e86d892022e2dfa118f058bdcdd0c96eed",
+      "not_a_runtime_measurement": true
+    },
+    {
+      "finding_id": "FINDING-005",
+      "title": "Historical zero craft damage",
+      "classification": "historical_diagnosis_current_fix_present",
+      "evidence": "An older alignment audit identifies a zero craft-damage multiplier. The current impulse kernel has a nonzero multiplier. **Obsolete diagnosis.**",
+      "proposed_disposition": "Test present damage/feel; do not repeat the zero-to-nonzero patch. [ALIGNMENT] [IMPULSE]",
+      "source_ids": [
+        "ALIGNMENT",
+        "IMPULSE"
+      ],
+      "audited_commit": "571659e86d892022e2dfa118f058bdcdd0c96eed",
+      "not_a_runtime_measurement": true
+    },
+    {
+      "finding_id": "FINDING-006",
+      "title": "Historical forward-held overspeed braking",
+      "classification": "historical_diagnosis_current_fix_present",
+      "evidence": "Older defects describe a governor that destroys earned speed. The current governor has a zero brake floor in that path. **Old remedy already represented in code.**",
+      "proposed_disposition": "Test release, boost, contact, and assistance interactions at the current base. [FEEL] [FLIGHT]",
+      "source_ids": [
+        "FEEL",
+        "FLIGHT"
+      ],
+      "audited_commit": "571659e86d892022e2dfa118f058bdcdd0c96eed",
+      "not_a_runtime_measurement": true
+    },
+    {
+      "finding_id": "FINDING-007",
+      "title": "Historical bungee diagnosis",
+      "classification": "historical_diagnosis_current_fix_present",
+      "evidence": "The feel document includes a fixed-stiffness stretch analysis. The current physics owner already scales stiffness with load and has a five-percent stretch target. **Analysis must be updated.**",
+      "proposed_disposition": "Investigate stability-bound cases and live tracking error, not the already-replaced constant alone. [FEEL] [PHYSICS]",
+      "source_ids": [
+        "FEEL",
+        "PHYSICS"
+      ],
+      "audited_commit": "571659e86d892022e2dfa118f058bdcdd0c96eed",
+      "not_a_runtime_measurement": true
+    },
+    {
+      "finding_id": "FINDING-008",
+      "title": "Historical rover rocket",
+      "classification": "historical_diagnosis_current_fix_present",
+      "evidence": "The playtest records a 0.06-second cell cadence. Current code has a tap/hold split, delayed cruise, and visible bore bite. **Fix present; subjective acceptance unverified.**",
+      "proposed_disposition": "Validate responsiveness and frame-rate behavior instead of merely slowing movement again. [ROVERCAMPAIGN] [DRILL] [DRILLUI]",
+      "source_ids": [
+        "ROVERCAMPAIGN",
+        "DRILL",
+        "DRILLUI"
+      ],
+      "audited_commit": "571659e86d892022e2dfa118f058bdcdd0c96eed",
+      "not_a_runtime_measurement": true
+    },
+    {
+      "finding_id": "FINDING-009",
+      "title": "Positive questions inside an \u201cany yes fails\u201d checklist",
+      "classification": "acceptance_logic_defect",
+      "evidence": "The central reviewer checklist mixes defect questions with questions asking whether the feature is reachable and the report contains evidence. **Literal polarity error.**",
+      "proposed_disposition": "Make every blocker predicate negative, or separate blockers from required proofs. [BUILD]",
+      "source_ids": [
+        "BUILD"
+      ],
+      "audited_commit": "571659e86d892022e2dfa118f058bdcdd0c96eed",
+      "not_a_runtime_measurement": true
+    },
+    {
+      "finding_id": "FINDING-010",
+      "title": "A negative question inside a yes-count pass rubric",
+      "classification": "acceptance_logic_defect",
+      "evidence": "The fun rubric includes a question about a bad visual stand-in alongside positive questions, then counts affirmative answers toward passing. **Literal scoring ambiguity.**",
+      "proposed_disposition": "Replace the summed score with explicit blockers and dimensioned judgments. [FUN]",
+      "source_ids": [
+        "FUN"
+      ],
+      "audited_commit": "571659e86d892022e2dfa118f058bdcdd0c96eed",
+      "not_a_runtime_measurement": true
+    },
+    {
+      "finding_id": "FINDING-011",
+      "title": "Two consequences for every action",
+      "classification": "design_or_production_risk",
+      "evidence": "The build map and fun loop require multiple further effects from a new action. **Overgeneralized design proxy.**",
+      "proposed_disposition": "Require the promised causal consequence and meaningful integration. Do not require noisy secondary events for a brake, confirmation, or selection. [BUILD] [FUN]",
+      "source_ids": [
+        "BUILD",
+        "FUN"
+      ],
+      "audited_commit": "571659e86d892022e2dfa118f058bdcdd0c96eed",
+      "not_a_runtime_measurement": true
+    },
+    {
+      "finding_id": "FINDING-012",
+      "title": "Every measured bar must improve",
+      "classification": "design_or_production_risk",
+      "evidence": "The fun loop's strict reading rejects tradeoffs even when one improvement intentionally spends another resource. **Optimization-policy risk.**",
+      "proposed_disposition": "Protect hard constraints; compare the intended improvement and its declared tradeoff. Not all design metrics are monotone. [FUN]",
+      "source_ids": [
+        "FUN"
+      ],
+      "audited_commit": "571659e86d892022e2dfa118f058bdcdd0c96eed",
+      "not_a_runtime_measurement": true
+    },
+    {
+      "finding_id": "FINDING-013",
+      "title": "No quiet interval longer than a small fixed window",
+      "classification": "design_or_production_risk",
+      "evidence": "A constant spectacle cadence can satisfy the instrument while destroying contrast and exploration. **Hypothesis promoted to law.**",
+      "proposed_disposition": "Use pacing envelopes appropriate to combat, travel, docking, and industry. [FUN]",
+      "source_ids": [
+        "FUN"
+      ],
+      "audited_commit": "571659e86d892022e2dfa118f058bdcdd0c96eed",
+      "not_a_runtime_measurement": true
+    },
+    {
+      "finding_id": "FINDING-014",
+      "title": "Any drawn path must preserve a fixed fraction of cruise speed",
+      "classification": "design_or_production_risk",
+      "evidence": "Arbitrarily short or sharply curved strokes cannot meet a universal high-speed promise under finite acceleration. **Feasibility error in an unrestricted reading.**",
+      "proposed_disposition": "Define admissible path geometry and a force-feasible speed envelope. [FEEL]",
+      "source_ids": [
+        "FEEL"
+      ],
+      "audited_commit": "571659e86d892022e2dfa118f058bdcdd0c96eed",
+      "not_a_runtime_measurement": true
+    },
+    {
+      "finding_id": "FINDING-015",
+      "title": "Rigid camera expansion and minimum hull size",
+      "classification": "design_or_production_risk",
+      "evidence": "Several independent camera ratios can be incompatible in a dense scene. **Constraint conflict requiring geometric reconciliation.**",
+      "proposed_disposition": "Prioritize time-to-threat, target legibility, and a bounded zoom envelope; use cues when all three cannot fit. [FEEL]",
+      "source_ids": [
+        "FEEL"
+      ],
+      "audited_commit": "571659e86d892022e2dfa118f058bdcdd0c96eed",
+      "not_a_runtime_measurement": true
+    },
+    {
+      "finding_id": "FINDING-016",
+      "title": "Hidden passive cap versus increasing industrial income",
+      "classification": "design_or_production_risk",
+      "evidence": "Automation and site export share an overflow haircut; the mining design calls for successively higher industrial income slopes. **Confirmed design tension.**",
+      "proposed_disposition": "Balance physical throughput and demand, migrate the payout model, and show limiting causes. [AUTO] [SITES] [ROVERLAW]",
+      "source_ids": [
+        "AUTO",
+        "SITES",
+        "ROVERLAW"
+      ],
+      "audited_commit": "571659e86d892022e2dfa118f058bdcdd0c96eed",
+      "not_a_runtime_measurement": true
+    },
+    {
+      "finding_id": "FINDING-017",
+      "title": "Attention cost as destruction",
+      "classification": "confirmed_source_behavior_or_scope",
+      "evidence": "A programmed drone group is removed when routine fuel reaches zero. **Confirmed behavior; proposed design reversal.**",
+      "proposed_disposition": "Default to visibly stranded or inactive equipment. Reserve destruction for an advertised destructive cause. [AUTO]",
+      "source_ids": [
+        "AUTO"
+      ],
+      "audited_commit": "571659e86d892022e2dfa118f058bdcdd0c96eed",
+      "not_a_runtime_measurement": true
+    },
+    {
+      "finding_id": "FINDING-018",
+      "title": "Player cargo doubles as programmed-drone inventory",
+      "classification": "confirmed_source_behavior_or_scope",
+      "evidence": "The mining and selling path operates on the player's hold, including all units of the selected ore at sale. **Confirmed ownership coupling.**",
+      "proposed_disposition": "Give the operation explicit cargo custody and a canonical transfer transaction. [AUTO]",
+      "source_ids": [
+        "AUTO"
+      ],
+      "audited_commit": "571659e86d892022e2dfa118f058bdcdd0c96eed",
+      "not_a_runtime_measurement": true
+    },
+    {
+      "finding_id": "FINDING-019",
+      "title": "\u201cPermanent\u201d excavation has multiple meanings",
+      "classification": "confirmed_source_behavior_or_scope",
+      "evidence": "Unanchored drill geometry can recover, while site-associated geometry bypasses that recovery. A Core is required for durable site identity across rematerialization. **Confirmed distinction, often erased by prose.**",
+      "proposed_disposition": "State permanence by lifecycle state. Do not claim that current anchored factories simply heal shut. [DRILL] [SITES]",
+      "source_ids": [
+        "DRILL",
+        "SITES"
+      ],
+      "audited_commit": "571659e86d892022e2dfa118f058bdcdd0c96eed",
+      "not_a_runtime_measurement": true
+    },
+    {
+      "finding_id": "FINDING-020",
+      "title": "No fog versus a surviving claim-survey path",
+      "classification": "requires_current_consumer_trace",
+      "evidence": "The art/design law removes material fog; the site system still advances a volatile claim-survey record. **Potentially distinct mechanics, not yet a proven runtime contradiction.**",
+      "proposed_disposition": "Trace exactly which information each exposes. Retire redundant gating, or name assay/claim information separately from visible geology. [ROVERLAW] [SITES]",
+      "source_ids": [
+        "ROVERLAW",
+        "SITES"
+      ],
+      "audited_commit": "571659e86d892022e2dfa118f058bdcdd0c96eed",
+      "not_a_runtime_measurement": true
+    },
+    {
+      "finding_id": "FINDING-021",
+      "title": "Fifteen words and exact hex values as design authority",
+      "classification": "design_or_production_risk",
+      "evidence": "The rover law treats word count, pixel values, and literal palettes as binding. **Useful anti-clutter intent, brittle acceptance implementation.**",
+      "proposed_disposition": "Preserve board dominance and warm instrument character; permit localization, remapping, scaling, and necessary warnings. [ROVERLAW]",
+      "source_ids": [
+        "ROVERLAW"
+      ],
+      "audited_commit": "571659e86d892022e2dfa118f058bdcdd0c96eed",
+      "not_a_runtime_measurement": true
+    },
+    {
+      "finding_id": "FINDING-022",
+      "title": "Physically plausible lamps versus current expressive art direction",
+      "classification": "design_or_production_risk",
+      "evidence": "Older rover rules forbid many emissive accents; the current request explicitly wants more glowy arcade expression. **Current owner direction requires revision.**",
+      "proposed_disposition": "Preserve full 3D objects and material depth; revise energy-effect and light-language rules. [ROVERLAW]",
+      "source_ids": [
+        "ROVERLAW"
+      ],
+      "audited_commit": "571659e86d892022e2dfa118f058bdcdd0c96eed",
+      "not_a_runtime_measurement": true
+    },
+    {
+      "finding_id": "FINDING-023",
+      "title": "One thruster reference becomes an all-effects construction law",
+      "classification": "design_or_production_risk",
+      "evidence": "The VFX standard universally favors geometric sheets, view-dependent edges, and simulation-authored detail. **Technique overreach.**",
+      "proposed_disposition": "Specify different techniques for jets, histories, impacts, gas, debris, and UI cues. Judge the gameplay-camera result. [VFXLAW]",
+      "source_ids": [
+        "VFXLAW"
+      ],
+      "audited_commit": "571659e86d892022e2dfa118f058bdcdd0c96eed",
+      "not_a_runtime_measurement": true
+    },
+    {
+      "finding_id": "FINDING-024",
+      "title": "Whole-zone manufacturing paperwork competes with play-scale art",
+      "classification": "design_or_production_risk",
+      "evidence": "The asset standard's camera-first and independent-review rules are good; mandatory material narratives can overdirect stylization and consume production effort. **Production-policy risk.**",
+      "proposed_disposition": "Keep proportional provenance and surface intent, not proof by paperwork volume. [ASSETLAW]",
+      "source_ids": [
+        "ASSETLAW"
+      ],
+      "audited_commit": "571659e86d892022e2dfa118f058bdcdd0c96eed",
+      "not_a_runtime_measurement": true
+    },
+    {
+      "finding_id": "FINDING-025",
+      "title": "Legacy golden success treated as production proof",
+      "classification": "confirmed_source_behavior_or_scope",
+      "evidence": "The legacy47a profile intentionally disables many modern features and uses a curated system set. **Confirmed test-scope difference.**",
+      "proposed_disposition": "Label every result by profile. Keep legacy compatibility tests, but require production-path behavior tests. [PROFILES]",
+      "source_ids": [
+        "PROFILES"
+      ],
+      "audited_commit": "571659e86d892022e2dfa118f058bdcdd0c96eed",
+      "not_a_runtime_measurement": true
+    },
+    {
+      "finding_id": "FINDING-026",
+      "title": "\u201cNever fail a mission\u201d",
+      "classification": "design_or_production_risk",
+      "evidence": "The world-reaction packet requires mutation instead of failure for every clause break. **Overgeneralized narrative policy.**",
+      "proposed_disposition": "Author recovery where meaningful; allow clean failure, partial success, and abandonment without recursive busywork. [WORLDPLAN]",
+      "source_ids": [
+        "WORLDPLAN"
+      ],
+      "audited_commit": "571659e86d892022e2dfa118f058bdcdd0c96eed",
+      "not_a_runtime_measurement": true
+    },
+    {
+      "finding_id": "FINDING-027",
+      "title": "Forecast must deliver at least thirty percent more profit",
+      "classification": "design_or_production_risk",
+      "evidence": "The economy packet compares forecast-reading agents against nonreaders over a seeded hour. **Confounded acceptance proxy.**",
+      "proposed_disposition": "Test information quality, calibration, usability, and fair opportunity\u2014not an arbitrary income uplift. [ECONPLAN]",
+      "source_ids": [
+        "ECONPLAN"
+      ],
+      "audited_commit": "571659e86d892022e2dfa118f058bdcdd0c96eed",
+      "not_a_runtime_measurement": true
+    },
+    {
+      "finding_id": "FINDING-028",
+      "title": "Input, audio, and performance too late in the phase table",
+      "classification": "design_or_production_risk",
+      "evidence": "The build map groups several foundational response qualities with release work. **Sequencing risk.**",
+      "proposed_disposition": "Pull the minimal player-facing slices of those tasks into the first toy and Adventure proof. [BUILD]",
+      "source_ids": [
+        "BUILD"
+      ],
+      "audited_commit": "571659e86d892022e2dfa118f058bdcdd0c96eed",
+      "not_a_runtime_measurement": true
+    },
+    {
+      "finding_id": "FINDING-029",
+      "title": "Ship scars versus a recorded rejection",
+      "classification": "authorization_provenance_unresolved",
+      "evidence": "The historical alignment document records rejection of recognition/scar work; current ship code imports living-hull scar/history behavior. **Unresolved authorization provenance.**",
+      "proposed_disposition": "Find a later approval before extending it. Do not delete it based solely on the older note. [ALIGNMENT] [SHIPS]",
+      "source_ids": [
+        "ALIGNMENT",
+        "SHIPS"
+      ],
+      "audited_commit": "571659e86d892022e2dfa118f058bdcdd0c96eed",
+      "not_a_runtime_measurement": true
+    }
+  ]
+}

@@ -29,7 +29,8 @@ Source GLBs under `assets/ships/parts/` are authoring/build inputs. Normal play 
 |---|---|
 | Move / strafe | **W A S D** |
 | Aim | **Mouse** |
-| Fire weapons | **Left‑mouse / Space** |
+| Fire weapons | **Left‑mouse** (the mouse is the gun; Space is not fire) |
+| Massline — latch / cut (tap), line control (hold) | **Space** (alias **F**); **0** is the zero-thrust brake |
 | Mining beam | **Right‑mouse** (hold, near an asteroid) / **LT** on gamepad |
 | Afterburner | **Shift** / **RB** on gamepad |
 | Countermeasure | **X** / **R3** on gamepad |

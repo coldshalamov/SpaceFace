@@ -1,0 +1,83 @@
+{
+  "candidate": {
+    "manifest": {
+      "label": "SYNTHETIC EXAMPLE — NOT SPACEFACE PERFORMANCE DATA",
+      "commit": "synthetic",
+      "route": "demonstration_only",
+      "scenarioRevision": 1,
+      "inputTapeHash": "synthetic",
+      "seed": 0,
+      "hull": "synthetic",
+      "device": "synthetic",
+      "resolution": [
+        1920,
+        1080
+      ],
+      "quality": "synthetic",
+      "profile": "synthetic_not_spaceface",
+      "physicsBackend": "none",
+      "cacheState": "synthetic",
+      "displayHz": 60
+    },
+    "coverage": {
+      "total": 6,
+      "invalid": 0,
+      "excludedLifecycle": 2,
+      "foreground": 4,
+      "gpuValidSamples": 3,
+      "shedCounterSamples": 4
+    },
+    "frameMs": {
+      "samples": 4,
+      "mean": 25.0025,
+      "p50": 16.67,
+      "p95": 45.00049999999999,
+      "p99": 49.00009999999999,
+      "max": 50
+    },
+    "phases": {
+      "cpuCallbackMs": {
+        "samples": 4,
+        "mean": 12.5,
+        "p50": 7,
+        "p95": 25.699999999999992,
+        "p99": 28.339999999999996,
+        "max": 29
+      },
+      "simulationMs": {
+        "samples": 4,
+        "mean": 5,
+        "p50": 2,
+        "p95": 12.199999999999996,
+        "p99": 13.639999999999997,
+        "max": 14
+      },
+      "presentationCpuMs": {
+        "samples": 4,
+        "mean": 4.75,
+        "p50": 3,
+        "p95": 8.949999999999998,
+        "p99": 9.79,
+        "max": 10
+      },
+      "gpuMs": {
+        "samples": 3,
+        "mean": 7.333333333333333,
+        "p50": 5,
+        "p95": 11.299999999999999,
+        "p99": 11.86,
+        "max": 12
+      }
+    },
+    "throughputFps": 39.99600039996,
+    "overBudgetFrames": 4,
+    "hitches": {
+      "over33.333333ms": 1,
+      "over50ms": 0,
+      "over100ms": 0
+    },
+    "shedTicks": 1,
+    "shedSimulationMs": 16.666666666666668,
+    "note": "Phase quantiles are separate distributions; never sum their p95s. GPU samples must have passed disjoint validation. Missing GPU is unknown, not zero."
+  }
+}
