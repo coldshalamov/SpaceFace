@@ -16526,7 +16526,7 @@
       "priority": 81,
       "title": "Rulings as guards",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [],
       "mutexes": [
         "regression"
@@ -16540,8 +16540,10 @@
         "npm run check:baseline",
         "npm run check:all:smoke"
       ],
-      "receiptRefs": [],
-      "brief": "Static guards: no linear damping calls in sim, no velocity writes outside the physics owner, no `Math.random`/`Date.now` in sim, no HP-scaled knockback, no dialogue-tree data shapes; runtime guards: player knock budget, NPC no-gyro invariant. DONE WHEN: Each guard has a fixture that fails it; all green on master."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-186-01-REPORT.md"
+      ],
+      "brief": "IMPLEMENTED 2026-09-05: six source guards (two bans, four ratchets against a committed per-file baseline), a fixture that fails each, master green; check:rulings runs them with the two runtime guards as child processes. Commit 7dd13fd9. Static guards: no linear damping calls in sim, no velocity writes outside the physics owner, no `Math.random`/`Date.now` in sim, no HP-scaled knockback, no dialogue-tree data shapes; runtime guards: player knock budget, NPC no-gyro invariant. DONE WHEN: Each guard has a fixture that fails it; all green on master."
     },
     {
       "id": "PQ-186.02",
