@@ -3,7 +3,7 @@
 
 ```yaml
 refreshed: 2026-09-05
-baseCommit: 958ac02d048114aa13ff277c38bda71e7bfa524f
+baseCommit: 7aa02eb1287a7e0e818cbcf5ca71240d556e6e79
 expiresAfterCommits: 10
 expiresAfterDays: 2
 ```
@@ -41,6 +41,8 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
+| PQ-180.03 reference frames for every surface | fable-orchestrator + opus implementer | MUTATING | scripts/capture-ui-matrix.mjs, scripts/check-visual-regression.mjs, scripts/lib/ui-matrix*/, test/visual-regression*, design/frontend/ (matrix docs), the committed reference-frame baseline dir the check names | review, commit by pathspec, push master |
+| PQ-137.11 knock budget B13 (final cycle) | fable-orchestrator + opus implementer | MUTATING | src/core/sg02DynamicBodyOwner.js, src/core/physics.js, scripts/lib/bench/crucibleBench.mjs, scripts/lib/bench/frameStripCapture.mjs, scripts/lib/bench/feelBars.mjs, scripts/lib/bench/scenarios/feel.knock_budget*.mjs, scripts/measure-fun-loop.mjs, test/sg02-player-contact-give.test.mjs, test/knock-budget.test.mjs, test/fun-measurer.test.mjs, test/frame-strip.test.mjs, design/FEEL_CONTRACT.md (B13 row), design/program/roadmap/receipts/PQ-137.11-REPORT.md | review, commit by pathspec, push master |
 
 _Previously:_ no active mutation windows. The 2026-09-04 orchestrate-next-build handoff is finished: everything
 that was in flight is committed and pushed, and no agent is holding a source file. See
