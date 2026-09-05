@@ -14848,7 +14848,7 @@
       "priority": 51,
       "title": "The player is never knocked around (knock budget, bar B13)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [],
       "mutexes": [
         "flight-physics-feel"
@@ -14864,10 +14864,10 @@
         "npm run check:massline"
       ],
       "receiptRefs": [
-        "design/program/roadmap/receipts/PQ-137-11-jitter-REPORT.md",
-        "design/program/roadmap/receipts/PQ-137.11-REPORT.md"
+        "design/program/roadmap/receipts/PQ-137.11-REPORT.md",
+        "design/program/roadmap/receipts/PQ-137-11-jitter-REPORT.md"
       ],
-      "brief": "NOT DONE 2026-09-05 (instrument complete): visible jitter is measured from a headed strip's frames and fed to B13; on the live build B13 reads not met on the Crucible bench (heading changes on ordinary contact in 7 of 9 cells; rope-kit cells 37-73 knocks/min). Next: the velocity-heading restore on sub-tumble player contacts. See the jitter receipt. Measure contact-sourced velocity and heading changes on the player hull (the knock budget, bar B13); bound ordinary bumps and scrapes on the player to <= 10% of cruise per event with no heading change and no jitter, while deliberate big events stay legible. Owner 2026-09-03: my own ship must never get knocked around. DONE WHEN: B13 met on the flight and Crucible benches; a ten-minute ordinary-flight scenario prints the knock budget."
+      "brief": "IMPLEMENTED 2026-09-05 cycle 3, NOT DONE (integrator-verified): flight bench met on every clause (1.0 knocks/min over ten minutes, largest 6.6 %, 0 heading changes, 0 jitter sim-sampled beside a normal-speed Crucible strip); Crucible worst cell still 10.0 knocks/min (Helios rope) against 2, and one screen-position wobble in the photographed cell that may be the chase camera. Next cycle: event identity/refractory bridge on the player contact budget (rule and bench in sync), world position in strip frames to separate camera from hull, the source of spin injected on the player hull (13.5 rad/s in the rope cell; a pulse hit once spun it to 160 rad/s), seed 8008. NOT DONE 2026-09-05 (instrument complete): visible jitter is measured from a headed strip's frames and fed to B13; on the live build B13 reads not met on the Crucible bench (heading changes on ordinary contact in 7 of 9 cells; rope-kit cells 37-73 knocks/min). Next: the velocity-heading restore on sub-tumble player contacts. See the jitter receipt. Measure contact-sourced velocity and heading changes on the player hull (the knock budget, bar B13); bound ordinary bumps and scrapes on the player to <= 10% of cruise per event with no heading change and no jitter, while deliberate big events stay legible. Owner 2026-09-03: my own ship must never get knocked around. DONE WHEN: B13 met on the flight and Crucible benches; a ten-minute ordinary-flight scenario prints the knock budget."
     },
     {
       "id": "PQ-173.00",
@@ -15994,7 +15994,7 @@
       "priority": 86,
       "title": "Reference frames for every surface",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [],
       "mutexes": [
         "frontend-matrix"
@@ -16011,8 +16011,10 @@
         "npm run check:ui:perf",
         "npm run check:visual-regression"
       ],
-      "receiptRefs": [],
-      "brief": "Extend the visual-regression matrix from 60 frames to every surface × default/reduced-motion/forced-colours/pseudo-loc × three widths; diff on change. DONE WHEN: `check:visual-regression` covers every surface in the manifest."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-180-03-REPORT.md"
+      ],
+      "brief": "IMPLEMENTED 2026-09-05 (harness), NOT DONE: seeded boots, per-frame provenance, 40 surfaces x 4 modes x 3 widths planned, 66/66 tests; the 408 photographs are not taken (2.5 h idle machine) and would be ~330 MB in git. Integrator decision: a reference frame photographs the interface over a neutral ground, not the live 3D picture (the picture has its own strips), which makes the baseline small enough to commit; then shoot on a quiet machine, calibrate floors, run check:visual-regression green. Extend the visual-regression matrix from 60 frames to every surface × default/reduced-motion/forced-colours/pseudo-loc × three widths; diff on change. DONE WHEN: `check:visual-regression` covers every surface in the manifest."
     },
     {
       "id": "PQ-181.00",

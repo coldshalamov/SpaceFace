@@ -3,7 +3,7 @@
 
 ```yaml
 refreshed: 2026-09-05
-baseCommit: 44f019aa449e9b5b44256ec50bd86fccd443c4e1
+baseCommit: 9397d42f002ea61dd66cb80baffeb59583c0a9e9
 expiresAfterCommits: 10
 expiresAfterDays: 2
 ```
@@ -41,10 +41,10 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
+| PQ-137.11 knock budget B13 (cycle 4: rate clause, camera-vs-hull wobble, player spin source) | fable-orchestrator + opus implementer | MUTATING | src/core/sg02DynamicBodyOwner.js, src/core/physics.js, scripts/lib/bench/crucibleBench.mjs, scripts/lib/bench/frameStripCapture.mjs, scripts/lib/bench/feelBars.mjs, scripts/lib/bench/scenarios/feel.knock_budget*.mjs, test/sg02-player-contact-give.test.mjs, test/frame-strip.test.mjs, test/fun-measurer.test.mjs, design/FEEL_CONTRACT.md (B13 row), design/program/roadmap/receipts/PQ-137.11-REPORT.md | review, commit by pathspec, push master |
+| PARKED foreign hunk (not a row of this thread): src/ui/uiRoot.js + styles/menu.css + styles/ui.css carry an uncommitted menu restyle to the instrument grammar (quiet neutral plate, sf-in-run body class) written 09:11 by an interrupted lane; preserved, unreviewed, owner packet PQ-181 | fable-orchestrator | PARKED | src/ui/uiRoot.js, styles/menu.css, styles/ui.css | review under PQ-181 with screenshots before any commit |
 | Pre-existing reds sweep (bark-director, living-hull-presentation, starter-weapon-runtime, first-ten-minute contract, field-anchor-controller) | fable-orchestrator + opus implementer | MUTATING | only the owning source of each red once diagnosed, plus its test/check file; never src/core/sg02DynamicBodyOwner.js, src/core/physics.js, scripts/lib/bench/**, src/data/sectors*.js, src/systems/sectorSim.js | review, commit by pathspec, push master |
 | PQ-143.00 sector identity table, made true on the route (Helios, Ceres) | fable-orchestrator + opus implementer | MUTATING | design/SECTOR_IDENTITY.md (new), src/data/sectorVisualProfiles.js / sectors.js / sectorZones data hunks the unit names, src/systems/sectorSim.js, test/sector-identity*.test.mjs, scripts/lib/bench/scenarios/world.sector_identity*.mjs, design/program/roadmap/receipts/PQ-143-00-REPORT.md | review, commit by pathspec, push master |
-| PQ-180.03 reference frames for every surface | fable-orchestrator + opus implementer | MUTATING | scripts/capture-ui-matrix.mjs, scripts/check-visual-regression.mjs, scripts/lib/ui-matrix*/, test/visual-regression*, design/frontend/ (matrix docs), the committed reference-frame baseline dir the check names | review, commit by pathspec, push master |
-| PQ-137.11 knock budget B13 (final cycle) | fable-orchestrator + opus implementer | MUTATING | src/core/sg02DynamicBodyOwner.js, src/core/physics.js, scripts/lib/bench/crucibleBench.mjs, scripts/lib/bench/frameStripCapture.mjs, scripts/lib/bench/feelBars.mjs, scripts/lib/bench/scenarios/feel.knock_budget*.mjs, scripts/measure-fun-loop.mjs, test/sg02-player-contact-give.test.mjs, test/knock-budget.test.mjs, test/fun-measurer.test.mjs, test/frame-strip.test.mjs, design/FEEL_CONTRACT.md (B13 row), design/program/roadmap/receipts/PQ-137.11-REPORT.md | review, commit by pathspec, push master |
 
 _Previously:_ no active mutation windows. The 2026-09-04 orchestrate-next-build handoff is finished: everything
 that was in flight is committed and pushed, and no agent is holding a source file. See
