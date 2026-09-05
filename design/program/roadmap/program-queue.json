@@ -10513,7 +10513,7 @@
       "priority": 47,
       "title": "The rope is a rope",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "flight-physics-feel"
@@ -10529,7 +10529,7 @@
       "receiptRefs": [
         "design/program/roadmap/receipts/PQ-137-07-REPORT.md"
       ],
-      "brief": "IMPLEMENTED 2026-09-05: line stiffness rises with the coupled load, break by load rating; B7 stretch 0.163 -> 0.050, held, retention 1.000; massline 26/26, goldens hold. Commit 785e92a8. Line stiffness scaled to the coupled load (mass*v^2/r) or a distance constraint: a 1.5x cruise swing on a 100 WU line stretches < 10% and holds; break by load rating, not stretch ratio; release keeps >= 95% tangential speed 5 s later. Bar B7."
+      "brief": "ACCEPTED 2026-09-05 (785e92a8 + 3effea4d; stretch 16.3% -> 5.0% at 1.5x cruise on a 100 WU line, 100% tangential speed kept 5 s after release; rope-swing-release 4/4 pins barMet; before/after strips on disk). IMPLEMENTED 2026-09-05: line stiffness rises with the coupled load, break by load rating; B7 stretch 0.163 -> 0.050, held, retention 1.000; massline 26/26, goldens hold. Commit 785e92a8. Line stiffness scaled to the coupled load (mass*v^2/r) or a distance constraint: a 1.5x cruise swing on a 100 WU line stretches < 10% and holds; break by load rating, not stretch ratio; release keeps >= 95% tangential speed 5 s later. Bar B7."
     },
     {
       "id": "PQ-137.08",
@@ -10588,7 +10588,7 @@
       "priority": 50,
       "title": "The bars are measured on the route (Motion Lab scenarios)",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "flight-physics-feel"
@@ -10608,7 +10608,7 @@
         "design/program/roadmap/receipts/PQ-137.10-stroke-speed-REPORT.md",
         "design/program/roadmap/receipts/PQ-137.10-terrain-rope-REPORT.md"
       ],
-      "brief": "IMPLEMENTED 2026-09-05: check:feel:scenarios runs all nine bar scenarios' tests (34/34) inside check:all:smoke; B5 cites feel.shove_magnitude; the registry lists the feel scenarios. Commit e4165ba8. Add feel.earned_speed_kept, feel.reversal_course, feel.screen_crossing, feel.shove_magnitude, feel.shove_displacement, feel.terrain_slam, feel.rope_swing_release, feel.stroke_speed, feel.hitstun_curve; each prints its bar number and runs in check:all:smoke. Do first or alongside .03."
+      "brief": "ACCEPTED 2026-09-05 (bef385fd + e4e403d1; check:feel:scenarios 34/34 in the smoke tier; every B1-B8/B11 row cites a printing scenario; B2/B4/B5/B6 print but are not pinned). IMPLEMENTED 2026-09-05: check:feel:scenarios runs all nine bar scenarios' tests (34/34) inside check:all:smoke; B5 cites feel.shove_magnitude; the registry lists the feel scenarios. Commit e4165ba8. Add feel.earned_speed_kept, feel.reversal_course, feel.screen_crossing, feel.shove_magnitude, feel.shove_displacement, feel.terrain_slam, feel.rope_swing_release, feel.stroke_speed, feel.hitstun_curve; each prints its bar number and runs in check:all:smoke. Do first or alongside .03."
     },
     {
       "id": "PQ-138.00",
