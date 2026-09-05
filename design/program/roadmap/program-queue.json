@@ -15906,7 +15906,7 @@
       "priority": 83,
       "title": "The surface manifest",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [],
       "mutexes": [
         "frontend-matrix"
@@ -15923,8 +15923,10 @@
         "npm run check:ui:perf",
         "npm run check:visual-regression"
       ],
-      "receiptRefs": [],
-      "brief": "A data file listing every surface with its entry route, owner file, archetype and the checks that can reach it; the matrix script boots the game, opens each surface and measures the rules it can measure (smallest font, numeral face, data states present, memory restored, safe-frame at three widths, pseudo-loc clipping, contrast, reduce-motion, DOM node count, frame cost). DONE WHEN: `check:ui:grammar-matrix` prints the matrix for ≥ 30 surfaces and fails any below the floor; committed baseline."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-180-00-REPORT.md"
+      ],
+      "brief": "IMPLEMENTED 2026-09-05: headed matrix run measured 31/40 surfaces (19 on the public route), fails all 40 by design, baseline recorded from that run (measured: true). Commit 2f48ec2a. A data file listing every surface with its entry route, owner file, archetype and the checks that can reach it; the matrix script boots the game, opens each surface and measures the rules it can measure (smallest font, numeral face, data states present, memory restored, safe-frame at three widths, pseudo-loc clipping, contrast, reduce-motion, DOM node count, frame cost). DONE WHEN: `check:ui:grammar-matrix` prints the matrix for ≥ 30 surfaces and fails any below the floor; committed baseline."
     },
     {
       "id": "PQ-180.01",
