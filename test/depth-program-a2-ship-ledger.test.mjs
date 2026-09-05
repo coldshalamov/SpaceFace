@@ -31,6 +31,57 @@ function playedState() {
       }],
     },
     player: {
+      // PQ-142.01. design/VISION.md Part II: the ship accumulates "scars, repairs, odd fittings,
+      // a reputation by hull — until it is my fucking ship." The hull under the player is a ledger
+      // source like any other durable receipt: one open mark, one the yard covered, one act a
+      // witness saw. Three rows, three source kinds, all read-only.
+      activeShipIndex: 0,
+      ownedShips: [{
+        defId: 'ship_kestrel',
+        fittings: [],
+        livingHull: {
+          schema: 'spaceface.livingHull.v1',
+          historyVersion: 2,
+          killTally: 1,
+          repairPatches: 1,
+          heatScorch: 0,
+          lastWashAtT: 0,
+          washCount: 0,
+          graffitiLine: null,
+          graffitiAuthor: null,
+          updatedAtT: 3000,
+          scars: [
+            {
+              id: 'slam:18000:port bow',
+              cause: 'slam',
+              surface: 'terrain',
+              band: 'crushing',
+              facing: 'port bow',
+              atT: 300,
+              tick: 18000,
+              patchedAtT: 2600,
+            },
+            {
+              id: 'weapon:186000:stern',
+              cause: 'weapon',
+              surface: 'weapon',
+              band: 'hard',
+              facing: 'stern',
+              atT: 3100,
+              tick: 186000,
+              patchedAtT: null,
+            },
+          ],
+          renown: [{
+            id: 'kill:loss_vigil_01',
+            act: 'kill',
+            factionId: 'faction_reach',
+            sectorId: 'sector_helios_prime',
+            atT: 620,
+            tick: 37200,
+          }],
+        },
+      }],
       tradeLedger: [{
         stationId: 'station_helios', commodityId: 'cmdty_refined_metals', side: 'sell',
         qty: 7, total: 847, seenAt: 720,
@@ -144,7 +195,10 @@ function findNode(root, predicate) {
 test('A2 prose bank has at least four distinct variants for every ledger entry type', () => {
   const validation = validateShipLedgerTemplates();
   assert.deepEqual(validation, { ok: true, errors: [] });
-  assert.equal(SHIP_LEDGER_ENTRY_TYPES.length, 8);
+  // Eight archive families plus the three PQ-142.01 hull-history families (scar / patch / renown).
+  // design/VISION.md Part II: "The ship accumulates history — scars, repairs, odd fittings, a
+  // reputation by hull — until it is my fucking ship."
+  assert.equal(SHIP_LEDGER_ENTRY_TYPES.length, 11);
   for (const type of SHIP_LEDGER_ENTRY_TYPES) {
     assert.ok(SHIP_LEDGER_TEMPLATES[type].length >= 4, `${type} must have four variants`);
     assert.equal(new Set(SHIP_LEDGER_TEMPLATES[type].map((entry) => entry.text)).size,
@@ -243,6 +297,9 @@ test('archive is capped and paginated so a panel never receives an unbounded row
   state.lossLedger.entries = [];
   state.player.tradeLedger = [];
   state.player.uniqueWrecks.bearings = {};
+  // No hull in the berth, so the PQ-142.01 hull-history rows cannot pad the count either: this
+  // test is about the archive cap over ONE source, and every other source is silenced.
+  state.player.ownedShips = [];
   state.story.depthProgramEncounters.history = [];
   state.story.recoveredNames = [];
   state.story.titlesSeen = Array.from({ length: 600 }, (_, index) => ({
@@ -290,6 +347,9 @@ test('mounted panel renders one bounded page and keeps archive controls operable
   state.lossLedger.entries = [];
   state.player.tradeLedger = [];
   state.player.uniqueWrecks.bearings = {};
+  // No hull in the berth, so the PQ-142.01 hull-history rows cannot pad the count either: this
+  // test is about the archive cap over ONE source, and every other source is silenced.
+  state.player.ownedShips = [];
   state.story.depthProgramEncounters.history = [];
   state.story.recoveredNames = [];
   state.story.titlesSeen = Array.from({ length: 25 }, (_, index) => ({

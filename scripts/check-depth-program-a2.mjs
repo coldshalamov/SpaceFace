@@ -6,7 +6,7 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import { validateShipLedgerTemplates } from '../src/data/shipLedgerTemplates.js';
+import { SHIP_LEDGER_ENTRY_TYPES, validateShipLedgerTemplates } from '../src/data/shipLedgerTemplates.js';
 import {
   SHIP_LEDGER_MAX_ENTRIES,
   SHIP_LEDGER_MAX_PAGE_SIZE,
@@ -48,7 +48,9 @@ console.log(JSON.stringify({
   check: 'depth-program-a2',
   ok: true,
   sourcePolicy: 'read-only projector; zero subscriptions, emits, or serializers',
-  entryTypes: 8,
+  // Read from the catalog, never restated: the count grew when PQ-142.01 added the hull's own
+  // history families (scar / patch / renown) and a hand-written literal would have lied here.
+  entryTypes: SHIP_LEDGER_ENTRY_TYPES.length,
   variantsPerType: '>=4',
   pageSize: SHIP_LEDGER_PAGE_SIZE,
   maxPageSize: SHIP_LEDGER_MAX_PAGE_SIZE,

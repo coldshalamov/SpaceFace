@@ -336,7 +336,12 @@ function collisionAllowsHelmLoss(surface, provenance, deltaV) {
   return false;
 }
 
-function collisionSurface(entity) {
+/**
+ * The surface classification every collision consequence is written against. Exported so the
+ * durable ship-history reader (src/combat/hullScars.js) records the same word the consequence
+ * receipt uses — a station scrape must not become a rock scrape in the ledger.
+ */
+export function collisionSurface(entity) {
   switch (entity && entity.type) {
     case 'asteroid':
     case 'planet': return 'terrain';

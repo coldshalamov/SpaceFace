@@ -3,13 +3,15 @@
 // Observer-only voice surfacing for already-live ship state. It reads AI/contact transitions,
 // routes faction-specific lines through voiceArbiter's bark channel, and writes only its own
 // state.barkDirector receipt cache so combat/AI/economy behavior stays unchanged.
-import { BARK_SITUATIONS, barkFor } from '../data/barks.js';
+import { BARK_SITUATIONS, barkFor, hullRecognitionBarkFor } from '../data/barks.js';
 import { contactGrammarFor } from '../data/factionContactGrammar.js';
 import { hash32 } from '../core/rng.js';
 import { isHostileToPlayer } from './scanner.js';
 import { shouldOwnerThink } from '../core/activityScheduler.js';
 import { tableSimAuthorityWuFromState } from '../render/tabletopPolicy.js';
 import { ensureActivityClassified } from '../world/activityRuntime.js';
+import { activeHullIdentity } from '../data/hullIdentity.js';
+import { livingHullNotoriety } from '../core/livingHull.js';
 
 const BARK_SET = new Set(BARK_SITUATIONS);
 const VOICE_TTL_S = 1.2;
@@ -19,6 +21,18 @@ export const AMBIENT_BASE_GAP_S = 12.0;
 export const AMBIENT_GAP_STEP_S = 12.0;
 export const AMBIENT_QUIET_STEP_S = 60.0;
 export const AMBIENT_MAX_GAP_S = 60.0;
+
+// PQ-142.01 hull recognition. `design/VISION.md` Part II: the ship earns "a reputation by hull —
+// until it is my fucking ship." A witness who was in the room when the hull did something says the
+// SHIP'S NAME, not "unidentified vessel".
+//
+// Deliberately exempt from the post-combat silence window: the silence exists so flavour chatter
+// does not talk over a fight's tail, and this line IS the tail of the fight — the moment the act
+// lands on the hull's name. It carries its own, much longer gap instead.
+export const HULL_RECOGNITION_GAP_S = 24.0;
+export const HULL_RECOGNITION_TTL_S = 3.0;
+/** No witness, no recognition: a hull is only known by somebody who was close enough to see it. */
+export const HULL_RECOGNITION_FALLBACK_RANGE_WU = 900;
 
 const FLEE_FSMS = new Set(['flee', 'retreat', 'withdraw']);
 const ATTACK_FSMS = new Set(['attack', 'strafe', 'engage', 'fight']);
@@ -36,10 +50,15 @@ export const barkDirector = {
     this._onFlee = (payload) => this._speakFromEvent(payload, 'flee', 'ai:flee');
     this._onReinforcement = (payload) => this._speakFromEvent(payload, 'reinforce', 'ai:reinforcementScheduled');
     this._onCombatOutcome = () => this._enterPostCombatSilence();
+    // The ship-history owner (systems/ships.js) is the single writer of the living-hull record and
+    // republishes it whenever a witnessed act attaches to the hull. Listening to that receipt keeps
+    // this observer independent of system init order.
+    this._onHullHistory = (payload) => this._speakHullRecognition(payload || {});
     if (this.bus && typeof this.bus.on === 'function') {
       this.bus.on('ai:flee', this._onFlee);
       this.bus.on('ai:reinforcementScheduled', this._onReinforcement);
       this.bus.on('combat:outcome', this._onCombatOutcome);
+      this.bus.on('ship:livingHullChanged', this._onHullHistory);
     }
   },
 
@@ -121,6 +140,88 @@ export const barkDirector = {
     return !!accepted;
   },
 
+  /**
+   * One NPC who was close enough to watch says the hull's name. Returns the receipt it published,
+   * or null with a reason recorded on the director's own state slice.
+   */
+  _speakHullRecognition(payload) {
+    const state = this.state;
+    if (!state || payload.source !== 'witnessed_kill') return null;
+    if (state.mode && state.mode !== 'flight') return null;
+    const notoriety = livingHullNotoriety(payload.livingHull);
+    if (notoriety < 1) return null;
+    const identity = activeHullIdentity(state);
+    if (!identity) return null;
+
+    const own = ensureState(state);
+    const now = Number(state.simTime) || 0;
+    const record = hullRecognitionRecord(own);
+    if (Number(record.nextAt) > now) return null;
+
+    const witness = this._nearestWitness();
+    if (!witness) return null;
+
+    const voice = this.helpers && this.helpers.voice;
+    if (!voice || typeof voice.say !== 'function') return null;
+    const factionId = factionFor(witness);
+    const seed = state.meta && state.meta.seed;
+    const index = hash32(seed == null ? 0 : seed, 'hullRecognition', String(witness.id), notoriety);
+    const text = hullRecognitionBarkFor(factionId, index, {
+      ship: identity.name,
+      class: identity.className,
+    });
+    const accepted = voice.say({
+      channel: 'bark',
+      text,
+      kind: 'hullRecognition',
+      ttl: HULL_RECOGNITION_TTL_S,
+      id: `hullRecognition:${witness.id}:${notoriety}`,
+      factionId,
+    });
+    if (!accepted) return null;
+
+    record.lastAt = now;
+    record.nextAt = now + HULL_RECOGNITION_GAP_S;
+    record.lastEntityId = witness.id;
+    record.count = Math.min(Number.MAX_SAFE_INTEGER, (Number(record.count) || 0) + 1);
+    const receipt = {
+      entityId: witness.id,
+      factionId,
+      shipName: identity.name,
+      shipClass: identity.className,
+      shipIndex: identity.index,
+      notoriety,
+      text,
+      t: now,
+    };
+    this._emit('barkDirector:hullRecognition', receipt);
+    return receipt;
+  },
+
+  /** Closest eligible NPC hull inside the live authority radius; ties break on the lower id. */
+  _nearestWitness() {
+    const state = this.state;
+    const player = state.entities && state.entities.get && state.entities.get(state.playerId);
+    if (!player || !player.pos) return null;
+    let radius = Number(tableSimAuthorityWuFromState(state));
+    if (!Number.isFinite(radius) || radius <= 0) radius = HULL_RECOGNITION_FALLBACK_RANGE_WU;
+    const limit = radius * radius;
+    let best = null;
+    let bestDistance = Infinity;
+    for (const entity of state.entityList || []) {
+      if (!eligibleShip(entity, state) || !entity.pos) continue;
+      const dx = Number(entity.pos.x) - Number(player.pos.x);
+      const dz = Number(entity.pos.z) - Number(player.pos.z);
+      const distance = dx * dx + dz * dz;
+      if (!Number.isFinite(distance) || distance > limit) continue;
+      if (distance < bestDistance || (distance === bestDistance && best && entity.id < best.id)) {
+        best = entity;
+        bestDistance = distance;
+      }
+    }
+    return best;
+  },
+
   _enterPostCombatSilence() {
     if (!this.state) return false;
     const own = ensureState(this.state);
@@ -171,10 +272,12 @@ export const barkDirector = {
       if (this._onFlee) this.bus.off('ai:flee', this._onFlee);
       if (this._onReinforcement) this.bus.off('ai:reinforcementScheduled', this._onReinforcement);
       if (this._onCombatOutcome) this.bus.off('combat:outcome', this._onCombatOutcome);
+      if (this._onHullHistory) this.bus.off('ship:livingHullChanged', this._onHullHistory);
     }
     this._onFlee = null;
     this._onReinforcement = null;
     this._onCombatOutcome = null;
+    this._onHullHistory = null;
   },
 };
 
@@ -216,7 +319,23 @@ function freshState() {
     postCombatSilenceUntil: 0,
     ambientBySector: {},
     suppressed: [],
+    hullRecognition: freshHullRecognition(),
   };
+}
+
+// Finite by construction. `postCombatSilenceUntil: 0` is the sibling convention in this same
+// slice, and -Infinity does not survive JSON (it reads back as null), so the gate would silently
+// change meaning the moment anything serialized this record. `nextAt: 0` reads as "never spoken":
+// the gate is `nextAt > now` and sim time is never negative.
+function freshHullRecognition() {
+  return { lastAt: 0, nextAt: 0, lastEntityId: null, count: 0 };
+}
+
+function hullRecognitionRecord(own) {
+  if (!own.hullRecognition || typeof own.hullRecognition !== 'object') {
+    own.hullRecognition = freshHullRecognition();
+  }
+  return own.hullRecognition;
 }
 
 function ensureState(state) {
@@ -224,6 +343,7 @@ function ensureState(state) {
   if (!state.barkDirector.entities || typeof state.barkDirector.entities !== 'object') state.barkDirector.entities = {};
   if (!state.barkDirector.ambientBySector || typeof state.barkDirector.ambientBySector !== 'object') state.barkDirector.ambientBySector = {};
   if (!Array.isArray(state.barkDirector.suppressed)) state.barkDirector.suppressed = [];
+  hullRecognitionRecord(state.barkDirector);
   return state.barkDirector;
 }
 

@@ -33,12 +33,26 @@ import {
   livingHullAfterWash,
   livingHullWithGraffiti,
   livingHullWithKill,
+  livingHullWithPatchedScars,
+  livingHullWithRenown,
   livingHullWithRepair,
+  livingHullWithScar,
   livingHullWithVent,
   normalizeLivingHull,
   sameLivingHull,
 } from '../core/livingHull.js';
+import {
+  scarFromPlayerContact,
+  scarFromPlayerDamage,
+  shouldAdmitScar,
+} from '../combat/hullScars.js';
 import { hash32 } from '../core/rng.js';
+
+/** Non-negative finite reading of a receipt amount; a missing measurement stays zero, never NaN. */
+function finiteAmount(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? Math.max(0, number) : 0;
+}
 
 // ---- catalog lookup tables (built once at module load) ------------------------------------
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
@@ -1010,6 +1024,7 @@ export const ships = {
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
     this._cargoMassRefreshPending = false;
+    this._lastScarByCause = { weapon: null, slam: null };
     const bus = this.bus;
 
     // re-derive on fit/research changes coming from other systems
@@ -1020,6 +1035,7 @@ export const ships = {
     bus.on('cargo:massSettled', () => this.flushCargoMassRefresh());
     bus.on('save:loaded', () => {
       this.flushCargoMassRefresh();
+      this._resetScarAdmission();
       this.reconcileLivingHull({ announce: true });
       // Role identity is derived from the restored active hull. Publish once per Continue so the
       // presentation adapter can surface a one-time briefing without serializing lattice copy.
@@ -1059,12 +1075,40 @@ export const ships = {
     bus.on('lossLedger:recorded', (p) => {
       if (p && p.kind === 'ship' && p.killedByPlayer === true) {
         this._reduceLivingHull((hull, now) => livingHullWithKill(hull, now), 'player_kill');
+        // The same durable receipt also attaches the act to THIS hull. `renown` is a new field on
+        // the living-hull record; it is not faction standing and never touches it — factions.js
+        // remains the sole writer of reputation.
+        this._reduceLivingHull((hull, now) => livingHullWithRenown(hull, {
+          id: `kill:${p.lossId || p.assetId || now}`,
+          act: 'kill',
+          factionId: p.factionId || null,
+          sectorId: p.sectorId || null,
+          atT: Number(p.t) || now,
+          tick: this.state.tick,
+        }, now), 'witnessed_kill');
       }
+    });
+    // PQ-142.01 ship history. Scars come from the impact receipts the player hull actually takes —
+    // never from a paint shop. `combat:damage` is the shot that reached hull; `physics:impact` is
+    // the contact. Both guards are the FIRST statement so the quiet path allocates nothing.
+    bus.on('combat:damage', (p) => {
+      if (!p || p.isPlayer !== true || !(Number(p.hullDamage) > 0)) return;
+      this._recordHullScar(scarFromPlayerDamage(p, this.activeShipEntity(), this.state.tick));
+    });
+    bus.on('physics:impact', (p) => {
+      if (!p || p.playerInvolved !== true) return;
+      this._recordContactScar(p);
     });
     bus.on('service:completed', (p) => {
       if (!p) return;
       if (p.type === 'repair') {
         this._reduceLivingHull((hull, now) => livingHullWithRepair(hull, p, now), 'heavy_repair');
+        // Any yard repair that put hull or armour back covers the open marks. The scar is not
+        // deleted: a patched scar is the record of "repaired here", which is what makes the hull
+        // read as worked-on rather than new.
+        if (finiteAmount(p.restoredHull) + finiteAmount(p.restoredArmor) > 0) {
+          this._reduceLivingHull((hull, now) => livingHullWithPatchedScars(hull, now), 'scars_patched');
+        }
       } else if (p.type === 'hull_wash') {
         this._reduceLivingHull((hull, now) => livingHullAfterWash(hull, now), 'hull_wash');
       }
@@ -1079,7 +1123,10 @@ export const ships = {
         this._reduceLivingHull((hull, now) => livingHullWithGraffiti(hull, p, now), 'bulkhead_graffiti');
       }
     });
-    bus.on('game:started', () => this.reconcileLivingHull({ announce: false }));
+    bus.on('game:started', () => {
+      this._resetScarAdmission();
+      this.reconcileLivingHull({ announce: false });
+    });
   },
 
   // Event-only system. Cargo owns the registered per-tick coalescing boundary and emits one
@@ -1120,6 +1167,37 @@ export const ships = {
       });
     }
     return owned.livingHull;
+  },
+
+  /**
+   * PQ-142.01 — admit one derived scar onto the active hull. The admission gate lives in
+   * src/combat/hullScars.js so a sustained firefight leaves a history, not a log; the record
+   * itself is bounded at LIVING_HULL_SCAR_MAX by the reducer.
+   */
+  _recordHullScar(scar) {
+    if (!scar) return false;
+    if (!this._lastScarByCause) this._lastScarByCause = { weapon: null, slam: null };
+    if (!shouldAdmitScar(this._lastScarByCause[scar.cause] || null, scar)) return false;
+    const changed = this._reduceLivingHull(
+      (hull, now) => livingHullWithScar(hull, { ...scar, atT: now }, now),
+      scar.cause === 'slam' ? 'hull_slam' : 'hull_hit',
+    );
+    if (changed) this._lastScarByCause[scar.cause] = scar;
+    return changed;
+  },
+
+  _recordContactScar(payload) {
+    const state = this.state;
+    const player = this.activeShipEntity();
+    if (!player) return false;
+    const otherId = payload.aId === player.id ? payload.bId : payload.aId;
+    const other = otherId == null ? null : state.entities && state.entities.get(otherId);
+    return this._recordHullScar(scarFromPlayerContact(payload, player, other, state.tick));
+  },
+
+  /** Transient admission memory only — the durable marks live in the saved hull record. */
+  _resetScarAdmission() {
+    this._lastScarByCause = { weapon: null, slam: null };
   },
 
   _reduceLivingHull(reducer, source) {

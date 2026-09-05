@@ -23,6 +23,11 @@ export const SHIP_LEDGER_ENTRY_TYPES = Object.freeze([
   'witness',
   'title',
   'name',
+  // PQ-142.01 — the hull's own history. `design/VISION.md` Part II: the ship accumulates "scars,
+  // repairs, odd fittings, a reputation by hull — until it is my fucking ship."
+  'scar',
+  'patch',
+  'renown',
 ]);
 
 export const SHIP_LEDGER_TEMPLATES = deepFreeze({
@@ -73,6 +78,28 @@ export const SHIP_LEDGER_TEMPLATES = deepFreeze({
     '{name} made it home in ink. Senna witnessed the line.',
     'Registry omitted {name}. Senna and this ledger did not.',
     'Wrote {name} where erasure could not pass for loss.',
+  ]),
+  // An OPEN mark: the impact happened, nothing has covered it. {band} severity, {facing} the side
+  // of the hull in the hull's own frame, {what} what it hit.
+  scar: variants('scar', [
+    'Took a {band} mark on the {facing} from {what}. Still open.',
+    '{what} left a {band} scar across the {facing}. Nobody has covered it.',
+    'The {facing} carries a {band} mark now. {what}, at speed.',
+    'New on the hull: {band} damage, {facing}, {what}. Left as is.',
+  ]),
+  // A CLOSED mark: the yard patched it, and the seam stays on the record.
+  patch: variants('patch', [
+    'The yard covered the {band} mark on the {facing}. The seam still shows.',
+    'Patched: {facing}, {band}, from {what}. The plate does not match.',
+    'A yard closed the {facing} {band} scar. {what} is still in the paperwork.',
+    'Repair filed over the {band} {facing} mark. The hull remembers {what}.',
+  ]),
+  // A witnessed act, attached to THIS hull. {ship} is the hull's name, not the pilot's.
+  renown: variants('renown', [
+    'The {ship} was seen finishing it in {sector}. {faction} was watching.',
+    '{faction} logged the {ship} at work over {sector}.',
+    'They said the name out loud in {sector}: the {ship}.',
+    '{sector} now knows the {ship} by hull, not by transponder. {faction} saw to that.',
   ]),
 });
 

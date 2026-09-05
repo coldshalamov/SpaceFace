@@ -6,7 +6,10 @@
 // state that already round-trips through saves.
 
 import { hash32 } from '../core/rng.js';
+import { livingHullScars, livingHullRenown } from '../core/livingHull.js';
+import { activeHullIdentity, activeOwnedShip } from '../data/hullIdentity.js';
 import { COMMODITIES } from '../data/commodities.js';
+import { FACTION_META } from '../data/factions.js';
 import { SECTORS } from '../data/sectors.js';
 import { SHIPS } from '../data/ships.js';
 import { uniqueWreckById } from '../data/uniqueWrecks.js';
@@ -33,6 +36,25 @@ export const SHIP_LEDGER_EVIDENCE_SITE_ID = 'world_site_wreck_cathedral';
 export const SHIP_LEDGER_EVIDENCE_MAX_REVISIONS = 4;
 
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((entry) => [entry.id, entry]));
+const FACTION_BY_ID = new Map((FACTION_META || []).map((entry) => [entry.id, entry]));
+
+// PQ-142.01 — how the hull's own record reads as prose. The vocabulary is closed on both sides:
+// these keys are exactly LIVING_HULL_SCAR_SURFACES / LIVING_HULL_SCAR_BANDS in core/livingHull.js,
+// so a scar can never reach the page as a raw enum.
+const SCAR_SURFACE_PHRASE = Object.freeze({
+  weapon: 'gunfire',
+  craft: 'another hull',
+  terrain: 'rock',
+  structure: 'station plate',
+  debris: 'drifting wreckage',
+  other: 'something the log did not name',
+});
+const SCAR_BAND_PHRASE = Object.freeze({
+  graze: 'grazing',
+  hard: 'hard',
+  heavy: 'heavy',
+  crushing: 'crushing',
+});
 const SHIP_BY_ID = new Map(SHIPS.map((entry) => [entry.id, entry]));
 const SECTOR_BY_ID = new Map(SECTORS.map((entry) => [entry.id, entry]));
 const STATION_BY_ID = new Map();
@@ -102,6 +124,11 @@ function stationName(id) {
 function commodityName(id) {
   const entry = id && COMMODITY_BY_ID.get(id);
   return entry && entry.name || humanizeId(id, 'unlisted cargo');
+}
+
+function factionName(id) {
+  const entry = id && FACTION_BY_ID.get(id);
+  return entry && (entry.short || entry.name) || humanizeId(id, 'somebody on the channel');
 }
 
 function shipName(entry) {
@@ -424,6 +451,42 @@ function collectCandidates(state) {
           wreck,
           choice: humanizeId(record.choiceId, 'a choice kept off the public file'),
           outcome: humanizeId(record.outcome, 'settled'),
+        },
+      });
+    }
+  }
+
+  // PQ-142.01 — the hull the player is flying reads its own history into the same archive. The
+  // living-hull record is durable and owned by systems/ships.js; this projector only reads it, and
+  // it reads the ACTIVE berth so the page is about the ship under you, not a hull in storage.
+  const activeHull = activeOwnedShip(state);
+  if (activeHull) {
+    const identity = activeHullIdentity(state);
+    const hullName = identity && identity.name || 'this hull';
+    for (const scar of livingHullScars(activeHull.livingHull)) {
+      const patched = scar.patchedAtT != null;
+      add({
+        type: patched ? 'patch' : 'scar',
+        sourceId: `${patched ? 'patch' : 'scar'}:${scar.id}`,
+        sourceKind: 'player.livingHull.scars',
+        at: patched ? scar.patchedAtT : scar.atT,
+        tokens: {
+          band: SCAR_BAND_PHRASE[scar.band] || 'marked',
+          facing: scar.facing,
+          what: SCAR_SURFACE_PHRASE[scar.surface] || SCAR_SURFACE_PHRASE.other,
+        },
+      });
+    }
+    for (const act of livingHullRenown(activeHull.livingHull)) {
+      add({
+        type: 'renown',
+        sourceId: `renown:${act.id}`,
+        sourceKind: 'player.livingHull.renown',
+        at: act.atT,
+        tokens: {
+          ship: hullName,
+          faction: factionName(act.factionId),
+          sector: sectorName(act.sectorId),
         },
       });
     }

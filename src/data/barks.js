@@ -529,6 +529,83 @@ export function barkFor(factionId, situation, rng) {
   return (typeof line === 'string' && line.length) ? line : '...';
 }
 
+// ── PQ-142.01 — recognition by hull ───────────────────────────────────────────────────────────
+//
+// `design/VISION.md` Part II: the ship accumulates "a reputation by hull — until it is my fucking
+// ship". These lines are the moment somebody says the NAME of the ship instead of "unidentified
+// vessel", after that hull was seen doing something. They are deliberately NOT a BARK_SITUATION:
+// that set is the contract every faction must cover for ordinary contact, and recognition is an
+// event, not a contact state.
+//
+// Tokens: {ship} the hull's name, {class} its class word. Both always resolve.
+export const HULL_RECOGNITION = Object.freeze({
+  faction_scn: Object.freeze([
+    'Registry match: {ship}. The incident file grew again. Ref 44-C.',
+    'That is the {ship}. Log the sighting before the shooting stops.',
+    'Concord advisory: {ship} is on scene. Adjust your paperwork accordingly.',
+    '{ship}, {class} hull. We know the silhouette. We are filing it anyway.',
+  ]),
+  faction_mts: Object.freeze([
+    'That is the {ship}. Her wake costs money. Someone always pays it.',
+    'Meridian floor: the {ship} just moved the price of standing here.',
+    '{ship} on the board. Adjust the spread, she does not negotiate.',
+    'Recognise the {class}? That is the {ship}. Invoice follows the wreckage.',
+  ]),
+  faction_dmc: Object.freeze([
+    "That is the {ship}. I've hauled past her twice. Twice was enough.",
+    'Drift crews know the {ship}. Nobody wants the shift she works.',
+    '{ship} again. Long day just got longer.',
+    "It's the {ship}. Shut the intercom and hold the lane.",
+  ]),
+  faction_reach: Object.freeze([
+    'That is the {ship}! I told you the hull was real!',
+    "The {ship}. Somebody's cousin died over this {class}.",
+    "{ship} is here. Say her name so they know we're not scared.",
+    'Reach knows the {ship}. Reach has a price for the {ship}.',
+  ]),
+  faction_quiet: Object.freeze([
+    '{ship}.',
+    'The {ship}. Hold.',
+    'That hull is the {ship}. Say nothing else.',
+    'Recognised: {ship}. Channel closed.',
+  ]),
+  faction_choir: Object.freeze([
+    'The {ship} is written. The Pattern remembers the {class}.',
+    'Behold: {ship}, marked and returning. The mark is the message.',
+    '{ship} carries her scars where the Pattern can read them.',
+    'The {ship} has been counted. Ascension notices the counted.',
+  ]),
+  faction_free: Object.freeze([
+    "That's the {ship}. Everybody out here has heard that name.",
+    '{ship}. Word travels faster than a {class} does.',
+    "It's the {ship}. Leave her the lane, she's earned it.",
+    'Frontier channel: the {ship} is on the board. Mind your distance.',
+  ]),
+  faction_vael: Object.freeze([
+    'Clause four: the vessel {ship} is a party of record.',
+    'Identification affirmed — {ship}, {class} form. Terms are amended.',
+    'The {ship} appears. Prior obligations resume without notice.',
+    '{ship}. Your history is admissible.',
+  ]),
+});
+
+/**
+ * Deterministically select one hull-recognition line and fill its tokens.
+ *
+ * @param {string} factionId  one of BARK_FACTIONS (unknown ids fall back to faction_free).
+ * @param {function|number} [rng]  seeded rng fn or a numeric index. Deterministic.
+ * @param {{ship?: string, class?: string}} [tokens]
+ * @returns {string} a non-empty line with every token resolved.
+ */
+export function hullRecognitionBarkFor(factionId, rng, tokens = {}) {
+  const lines = (factionId && HULL_RECOGNITION[factionId]) || HULL_RECOGNITION.faction_free;
+  const line = lines[pickIndex(rng, lines.length)];
+  const ship = typeof tokens.ship === 'string' && tokens.ship.trim() ? tokens.ship.trim() : 'that hull';
+  const shipClass = typeof tokens.class === 'string' && tokens.class.trim()
+    ? tokens.class.trim() : 'hull';
+  return String(line).replace(/\{ship\}/g, ship).replace(/\{class\}/g, shipClass);
+}
+
 const contactChoice = (id, label, lineIndexes) => Object.freeze({
   id,
   label,
@@ -728,4 +805,12 @@ export const CONTACT_VOICE_REGISTERS = Object.freeze({
   ], true),
 });
 
-export default { BARKS, BARK_FACTIONS, BARK_SITUATIONS, CONTACT_VOICE_REGISTERS, barkFor };
+export default {
+  BARKS,
+  BARK_FACTIONS,
+  BARK_SITUATIONS,
+  CONTACT_VOICE_REGISTERS,
+  HULL_RECOGNITION,
+  barkFor,
+  hullRecognitionBarkFor,
+};
