@@ -8,7 +8,7 @@ export const STELLAR_FORMATIONS = Object.freeze([
     cool: '#7698c9', warm: '#e9c796', intensity: 0.52, parallax: 0.012 }),
   Object.freeze({ recipe: 'belt_broken_dust_lane', name: 'amber-stellar-river', shape: 'stream',
     anchor: [-0.16, 0.52], span: 0.76, tilt: 0.13, flatten: 0.58,
-    cool: '#899ec1', warm: '#dfb987', intensity: 0.40, parallax: 0.016 }),
+    cool: '#b29c82', warm: '#eed0a0', intensity: 0.40, parallax: 0.016 }),
   Object.freeze({ recipe: 'fringe_tidal_filament', name: 'blue-flocculent-spiral', shape: 'spiral',
     anchor: [0.38, 0.47], span: 0.49, tilt: -0.42, flatten: 0.62,
     cool: '#709dcf', warm: '#ded1b4', intensity: 0.62, parallax: 0.010 }),
@@ -42,16 +42,16 @@ export function sampleStellarFormation(shape, random, out) {
   let x, y, radius;
   if (shape === 'spiral') {
     const family = random();
-    if (family < 0.20) {
-      radius = Math.min(0.40, -Math.log(Math.max(1e-7, random())) * 0.075);
+    if (family < 0.16) {
+      radius = Math.min(0.40, -Math.log(Math.max(1e-7, random())) * 0.12);
       const angle = random() * Math.PI * 2;
       x = Math.cos(angle) * radius; y = Math.sin(angle) * radius * 0.86;
     } else {
-      radius = Math.pow(random(), 0.70) * 0.97;
+      radius = Math.pow(random(), 1.10) * 0.97;
       const branch = random() < 0.5 ? 0 : Math.PI;
       // Two open, winding arms, with a small diffuse disk population between them.
-      const angle = family < 0.86
-        ? branch + 4.25 * Math.log(1 + radius * 4) + gaussian * (0.045 + radius * 0.08)
+      const angle = family < 0.73
+        ? branch + 2.25 * Math.log(1 + radius * 5) + gaussian * (0.14 + radius * 0.24)
         : random() * Math.PI * 2;
       const breadth = (random() - 0.5) * 0.055;
       x = Math.cos(angle) * radius + breadth;
@@ -164,7 +164,10 @@ export function rebuildDeepFieldStars(background) {
       // Interleaving makes every low-quality prefix retain all four regional populations.
       const index = i * FAMILIES + family;
       sampleStellarFormation(spec.shape, random, sample);
-      const sx = sample[0], sy = sample[1] * spec.flatten;
+      // A galaxy's central population is thicker than its disk. A single flattened nucleus
+      // reads like a white needle; diffuse arms need width, not closed concentric point rings.
+      const roundCore = spec.shape === 'spiral' ? Math.exp(-sample[2] * 11) : 0;
+      const sx = sample[0], sy = sample[1] * (spec.flatten + (0.80 - spec.flatten) * roundCore);
       const nx = spec.anchor[0] + (sx * ct - sy * st) * spec.span;
       const ny = spec.anchor[1] + (sx * st + sy * ct) * spec.span * camera.aspect;
       point.set(nx, ny, 0.5).unproject(camera).sub(camera.position);
@@ -177,11 +180,11 @@ export function rebuildDeepFieldStars(background) {
       const central = Math.pow(Math.max(0, 1 - sample[2]), 3.2);
       const end = spec.shape === 'spiral' ? 1 - 0.75 * Math.pow(sample[2], 4)
         : Math.pow(Math.max(0, 1 - Math.abs(sample[0])), 0.45);
-      const energy = (0.15 + random() * 0.40 + central * 0.22) * end;
+      const energy = (0.10 + random() * 0.27 + central * 0.06) * end;
       colors[index * 3] = (cool.r + (warm.r - cool.r) * central) * energy;
       colors[index * 3 + 1] = (cool.g + (warm.g - cool.g) * central) * energy;
       colors[index * 3 + 2] = (cool.b + (warm.b - cool.b) * central) * energy;
-      sizes[index] = (2.2 + random() * 1.2) * Math.max(1, -projected.z) / Math.max(1, pixelScale);
+      sizes[index] = (2.5 + random() * 1.3) * Math.max(1, -projected.z) / Math.max(1, pixelScale);
       families[index] = family;
     }
   }
