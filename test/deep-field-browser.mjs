@@ -42,6 +42,8 @@ try {
     assert.equal(result.skyCarrierTriangles, 1);
     assert.equal(result.voidTextureBytes, 5460);
     assert.ok(result.stars >= 1);
+    assert.equal(typeof result.stellarFormation, 'string');
+    assert.equal(result.stellarFormationStars, 8192);
     assert.ok(result.calls < 32, `unexpected background submission growth: ${result.calls}`);
     const file = `${id}.png`;
     await page.screenshot({ path: path.join(output, file) });
@@ -49,17 +51,23 @@ try {
   }
   const motion = await page.evaluate(() => window.deepFieldProbe.motion());
   assert.deepEqual(motion.after, motion.before, 'movement must not upload instance matrices');
+  assert.equal(motion.starAfter, motion.starBefore);
+  assert.deepEqual(motion.afterPhase, motion.beforePhase, 'rebase must not move distant stellar formations');
   for (const [width, height] of [[2560, 1080], [900, 1200]]) {
     await page.setViewportSize({ width, height });
     const result = await page.evaluate(([w, h]) => window.deepFieldProbe.resize(w, h), [width, height]);
     assert.equal(result.skyCarrierTriangles, 1);
     await page.screenshot({ path: path.join(output, `zoom330-${width}x${height}.png`) });
   }
+  const low = await page.evaluate(() => window.deepFieldProbe.quality('low'));
+  assert.equal(low.stellarFormationStars, 2048);
+  assert.equal(low.cloudDrawVertices, 8192);
+  await page.screenshot({ path: path.join(output, 'low-tier-portrait.png') });
   assert.equal(await page.evaluate(() => window.deepFieldProbe.error()), 0);
   assert.deepEqual(errors, []);
   await writeFile(path.join(output, 'report.json'), JSON.stringify({
     scope: 'Real Three.js background components; canonical camera; neutral fixture lighting; not full game/Electron',
-    captures, motion, errors,
+    captures, motion, low, errors,
   }, null, 2));
   await page.evaluate(() => window.deepFieldProbe.dispose());
   console.log(`Deep-field GPU component probe passed; evidence: ${output}`);

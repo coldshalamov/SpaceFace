@@ -38,7 +38,7 @@ jobs:
           "$RUNNER_TEMP/background-test-deps/node_modules/.bin/playwright" install --with-deps chromium
       - name: Geometry, shader integration, lifecycle and existing parallax regressions
         run: |
-          node --test test/deep-field-design.test.mjs test/deep-field-renderer.test.mjs
+          node --test test/deep-field-design.test.mjs test/deep-field-renderer.test.mjs test/deep-field-stars.test.mjs
           node scripts/check-parallax-layers.mjs
       - name: Real Three.js GPU component captures at chase distance
         run: node test/deep-field-browser.mjs .devshots/deep-field-component
