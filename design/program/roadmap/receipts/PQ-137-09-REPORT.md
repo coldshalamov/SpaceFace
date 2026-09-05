@@ -30,7 +30,7 @@ THE NUMBERS      bar | before | after | target
 THE FRAMES       none — no strip tape exists for this and the tape file belongs to another lane.
                  The exact block to add is in the appendix.
 
-NEXT             node scripts/program-dispatch.mjs --next
+NEXT             PQ-137.11 — "the player is never knocked around" (the knock budget, bar B13).
 ```
 
 ---
@@ -95,6 +95,15 @@ t141 second.
 3. **Cook-off.** A primed hull answers its NEXT slam with a blast at `sympatheticYield ^ link` of a
    plate. Decaying yield is why a chain is finite; `maxLinks` (4) is the hard stop behind it. Nothing
    scripts a death — a hull lives or dies on the damage.
+4a. **An instrument lie, and the second instrument that caught it before it became a claim.** The
+   well arm's first version averaged the body's speed across the whole sample band and printed
+   **45.19 WU/s** — a perfect-looking hit on a 45.0 equilibrium that did not exist yet, because it
+   was the mean of an accelerating ramp on a well whose damping was never forwarded to the kernel
+   at all. Nothing in the bench said so; a throwaway debug harness that printed the body's speed
+   and radius every 20 ticks is what showed the speed climbing through 81 and the pair killing each
+   other. The bar now reads the PEAK speed inside the well, which is the value a body approaching a
+   fixed point from below actually reaches: **81.0 and still climbing** before, **42.5** after.
+
 4. **Well convergence.** `FIELD_DEFS.well.damping = 5.3333`. The kernel's radial term is
    `strength * fall` and its velocity term is `-v * damping * fall`: same falloff, same coupling, so
    they cancel at exactly `strength / damping = 45.0 WU/s`, at every depth and for every mass. A
@@ -155,14 +164,15 @@ New events, all additive: `chain:slam`, `chain:primed`, `chain:primeEnded`, `cha
 
 | Check | Result |
 |---|---|
-| `npm run check:baseline` (before) | green except the two `sim` children, which fail on a PRE-EXISTING evidence-schema violation in `test/47a.telemetry*.expected.json` (`notes[44]`, `notes[45]`, `notes[63]`, `notes[64]` exceed the 260-character cap). Not this unit's; not touched. |
-| `npm run check:baseline` (after) | see the line recorded below the table |
-| `npm run check:massline` | 25/26 green; `check:47a:physical-branches` hit its 150 s wall budget at 152 s under parallel load. Re-run alone: **green** (exit 0). Environmental, not a red link. |
-| `node --test test/chain-*.test.mjs` | 28/28 green |
-| `node --test` on the field / charge / vfx surface | green, except `field-anchor-controller` "anchor snare alters a body trajectory", which is **RED AT HEAD** — verified by running that file against `git show HEAD:` copies of both fields files. Not this unit's. |
+| `npm run check:baseline` (before) | the two `sim` children failed on an evidence-schema violation in `test/47a.telemetry*.expected.json` (`notes[44/45/63/64]` over the 260-character cap) — **not mine, and someone else fixed it mid-session** (`7aca4db2 test: 47-A causal-record notes split to the evidence schema's 260-character line limit`). The rest of that run's output was tail-truncated, so I record what I saw and claim nothing more. |
+| `npm run check:baseline` (after, machine idle) | **13/14 green.** The one red link is `massline`, and that is itself 25/26 (below). It also blew its own 90 s wall budget at 152 s — a harness/machine fact, seen on both of my runs. |
+| `npm run check:massline` | 25/26 green; `check:47a:physical-branches` hit its 150 s budget at ~152 s. Re-run alone: **green, exit 0**. In an earlier aggregate run on this same tree, that link and the other three that later timed out (`debris-sling`, `recovery-contested`, `civilian-priority`) all read **PASS at 40–47 s each**. Every timed-out link therefore has a green run on this tree: contention, not a red link. |
+| `npm run check:massline2` | 1 section red — `bullet-time audio sweeps physical buses` — **RED AT HEAD**, verified by re-running it against `git show HEAD:` copies of all five source files (HEAD then predated any of this work). Nothing to do with the chain. The section that reads `charge_standard.radius`, `bomb propulsion is tech-paced, drops armed aft, and rides honest radial impulse`, is **PASS** with the radius at 84. |
+| `node --test` on `test/chain-*.test.mjs` | 28/28 green (19 unit + 2 scenario/determinism, plus the surface below) |
+| `node --test` on the field / charge / vfx surface | green, except `field-anchor-controller` "anchor snare alters a body trajectory", which is **RED AT HEAD** — verified the same way. Not this unit's. |
 | `node scripts/check-impulse-authority.mjs` | green |
 | `node scripts/check-impulse-massline-combos.mjs` | green |
-| `node scripts/sim-golden-diff.mjs` (+ `--flight-system v3`) | see below |
+| `npm run check:sim` / `npm run check:sim:v3`, each run alone | **both exit 0 — no golden hash moved.** (`scripts/sim-golden-diff.mjs` answers "did a hash change matter"; no hash changed, so there was nothing for it to diff.) |
 
 **Goldens.** No hash should move and none did: `impulseCharges`, `fields`, `tetherGameplay`,
 `tumbleStates` and `collisionConsequences` are all absent from `sf-sim.mjs`'s curated 47-A system
@@ -218,6 +228,30 @@ copies; green again after.
   },
 ```
 
+### 7a. Two notes for the integrator
+
+- **This work was already committed mid-session by a concurrent lane** (`c9e94bb9`, then
+  `44f019aa`). Everything in HEAD is the finished state and is what the numbers above were measured
+  on. Two small corrections landed after that commit and are still in the working tree, in
+  `scripts/lib/bench/scenarios/feel.chain_reaction.mjs` only: (a) the scenario's `metrics.bars`
+  clauses were tagged `B11`, which would have fed four `count`/`WU/s` clauses into "Hitstun law is
+  universal" — a bar `feel.hitstun_curve` owns; they now carry `PQ-137.09`, which matches no
+  FEEL_CONTRACT bar and is therefore not merged by `feelBars.mergeRunProvidedBars`. PQ-137.09 has no
+  §B bar; its done-when is the count itself. (b) the well arm raised `FIELD_FLAGS.enabled` before
+  its `try`, so a boot that threw would have left field forces on for every later scenario in the
+  same verbBench process — the flag and the boot are now both inside the `try`.
+- **`design/program/NOW.md` and the queue were not touched by me** (this lane was told not to).
+- **A near-miss worth recording.** While isolating the pre-existing reds I restored files with a
+  loop keyed on `basename`, and `src/systems/fields.js` and `src/data/fields.js` share one — so two
+  of my own working files were briefly overwritten with data-file contents. Nothing belonging to
+  another lane was touched, and the finished state was recoverable only because the integrator had
+  already committed it. Recovery was from HEAD, not from the stale scratch backups, and verified:
+  the markers (`FIELD_VELOCITY_TERM_TYPES`, `_detectWellGrind`, `damping: def.damping`, no
+  `ship.primed` cue, `primedTick`, the link guard) all read correct, and 51/51 tests plus both
+  impulse checks are green on the restored tree with the scenario unchanged at 15 consequences.
+  The lesson for the next lane: isolate a suspected pre-existing red with `git show HEAD:<path>` in
+  a scratch directory and import from there — never by writing over the working file.
+
 ### 8. Unfinished, and why
 
 - **No frames.** There is no chain tape and I may not add one to another lane's file; the block
@@ -226,5 +260,7 @@ copies; green again after.
   PQ-139, and `chain:primed` / `chain:detonated` / `chain:slam` are the receipts it will read.
 - **`field-anchor-controller` "anchor snare alters a body trajectory" is red**, at HEAD and after.
   It is not this unit's and I did not touch it.
-- **The two `sim` children of `check:baseline` are red on an evidence-schema length cap** in a
-  golden's `notes` array, at HEAD and after. Not this unit's.
+- **`check:massline2`'s bullet-time audio section is red**, at HEAD and after. Not this unit's.
+- **`check:baseline` blows its own 90 s wall budget on this machine** (152 s idle, 212 s loaded).
+  A harness/machine fact, recorded rather than papered over; every link inside it is green or has a
+  green run on this tree.

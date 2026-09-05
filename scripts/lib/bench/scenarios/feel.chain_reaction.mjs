@@ -64,6 +64,14 @@ const WELL_SAMPLE_BAND = Object.freeze({ lo: 0.05, hi: 0.9 });
 // 81 WU/s and climbs — a runaway fall, not a convergence.
 const WELL_BAND = Object.freeze({ lo: 30, hi: 60 });
 
+// The id this scenario's clauses are filed under. PQ-137.09 has NO FEEL_CONTRACT §B bar — its
+// done-when is the consequence count itself — so the clauses must not be tagged with someone
+// else's. `feelBars.mergeRunProvidedBars` matches an entry only when `item.bar` equals a bar's id
+// or key, so an id that names no bar is simply not merged; tagging these `B11` would instead feed
+// four `count` and `WU/s` clauses straight into "Hitstun law is universal", which
+// `feel.hitstun_curve` owns. The numbers a reader needs are in `metrics` above.
+const BAR_ID = 'PQ-137.09';
+
 export const scenario = {
   id: 'feel.chain_reaction',
   label: 'PQ-137.09 Chains go off — secondary consequences from ONE player action (REAL PATH)',
@@ -349,21 +357,24 @@ async function runChainArm(seed, { eventTrace }) {
 async function runWellArm(seed, { eventTrace }) {
   // The fields system is a strict no-op under node unless this is opted in (src/data/fields.js
   // documents the headless opt-in). Without it the whole arm prints a clean table of zeros.
+  // THE OPT-IN AND THE BOOT ARE BOTH INSIDE THE try: verbBench runs every scenario in ONE process,
+  // so a boot that throws after the flag was raised would leave field forces switched on for every
+  // lane that runs after this one — the exact golden-safety gate the flag exists to hold.
   const previousFieldsFlag = FIELD_FLAGS.enabled;
-  FIELD_FLAGS.enabled = true;
-  const host = await bootRealPath({
-    seed,
-    systems: [...CURVE_SYSTEMS],
-    hulls: [{
-      hullId: PLAYER_HULL_ID,
-      pos: { x: WELL_PLAYER_POS.x, z: WELL_PLAYER_POS.z },
-      rot: Math.PI / 2,
-      isPlayer: true,
-      factionId: 'faction_free',
-    }],
-  });
-
+  let host = null;
   try {
+    FIELD_FLAGS.enabled = true;
+    host = await bootRealPath({
+      seed,
+      systems: [...CURVE_SYSTEMS],
+      hulls: [{
+        hullId: PLAYER_HULL_ID,
+        pos: { x: WELL_PLAYER_POS.x, z: WELL_PLAYER_POS.z },
+        rot: Math.PI / 2,
+        isPlayer: true,
+        factionId: 'faction_free',
+      }],
+    });
     const state = host.state;
     const a = host.spawnShip({ hullId: LIGHT_HULL_ID, pos: { ...WELL_BODY_POS[0] }, rot: 0, team: 1 });
     const b = host.spawnShip({ hullId: LIGHT_HULL_ID, pos: { ...WELL_BODY_POS[1] }, rot: 0, team: 1 });
@@ -452,7 +463,7 @@ async function runWellArm(seed, { eventTrace }) {
       grindPrimes: grindPrimes.length,
     };
   } finally {
-    host.dispose();
+    if (host) host.dispose();
     FIELD_FLAGS.enabled = previousFieldsFlag;
   }
 }
@@ -472,7 +483,7 @@ function speedOf(entity) {
 
 function clause(label, value, unit, met, proof, reason) {
   if (!proof) {
-    return { bar: 'B11', label, value: null, unit, met: false, unmeasured: true, note: `UNMEASURED — ${reason}` };
+    return { bar: BAR_ID, label, value: null, unit, met: false, unmeasured: true, note: `UNMEASURED — ${reason}` };
   }
-  return { bar: 'B11', label, value, unit, met: met === true };
+  return { bar: BAR_ID, label, value, unit, met: met === true };
 }
