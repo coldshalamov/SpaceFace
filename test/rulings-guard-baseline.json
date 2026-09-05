@@ -1,0 +1,60 @@
+{
+  "schema": "spaceface.rulingsGuardBaseline.v1",
+  "note": "Per-file counts of ratcheted patterns on master. Counts may only go down. Re-record with --write-baseline after a receipted reduction, never to pass.",
+  "guards": {
+    "no-ambient-randomness": {
+      "src/systems/telemetry.js": 1
+    },
+    "no-wall-clock-in-sim": {
+      "src/core/perfRuntime.js": 2,
+      "src/core/physics.js": 1,
+      "src/core/presentationRunner.js": 2,
+      "src/core/renderUpdatePhase.js": 1,
+      "src/core/runtimeWitness.js": 3,
+      "src/systems/automation.js": 1,
+      "src/systems/flight.js": 1,
+      "src/systems/flightV3.js": 1,
+      "src/systems/gamepad.js": 2,
+      "src/systems/telemetry.js": 6,
+      "src/systems/touch.js": 2
+    },
+    "no-linear-damping": {
+      "src/systems/automation.js": 2
+    },
+    "no-velocity-writes-outside-owner": {
+      "src/ai/fodderCohort.js": 4,
+      "src/ai/squadFrame.js": 4,
+      "src/systems/automation.js": 6,
+      "src/systems/bountyHunt.js": 2,
+      "src/systems/e1EncounterRuntime.js": 2,
+      "src/systems/flight.js": 6,
+      "src/systems/impulseCharges.js": 4,
+      "src/systems/massSeed.js": 2,
+      "src/systems/mining.js": 4,
+      "src/systems/onboarding.js": 2,
+      "src/systems/survivalArena.js": 2,
+      "src/systems/uniqueLootAbilities.js": 2,
+      "src/systems/weapons.js": 2,
+      "src/systems/world.js": 2
+    },
+    "no-dialogue-trees": {
+      "src/data/encounters/220-depth-h1-distress-from-inside.js": 1,
+      "src/data/encounters/230-depth-h2-drifting-bloom.js": 1,
+      "src/data/encounters/240-depth-h3-wreck-that-knows-you.js": 1,
+      "src/data/encounters/250-depth-h4-love-letter-buoy.js": 1,
+      "src/data/encounters/260-depth-h5-corridor-massacre.js": 1,
+      "src/data/encounters/270-depth-h6-patrol-ambush.js": 1,
+      "src/data/encounters/280-depth-h7-spared-return.js": 1,
+      "src/data/encounters/290-depth-h8-echo-of-player.js": 1,
+      "src/data/encounters/320-the-botched-procedure.js": 1,
+      "src/data/encounters/321-the-customs-logic-puzzle.js": 1,
+      "src/data/encounters/322-the-backwater-escort.js": 1,
+      "src/data/encounters/323-the-wrong-laugh.js": 1,
+      "src/data/encounters/324-the-literalized-drawer.js": 1,
+      "src/data/encounters/325-minefield-wake.js": 1,
+      "src/data/encounters/326-customs-logic-net.js": 1,
+      "src/data/encounters/329-curtain-convoy.js": 1,
+      "src/data/uniqueWrecks.js": 2
+    }
+  }
+}
