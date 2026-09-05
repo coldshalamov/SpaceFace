@@ -727,8 +727,8 @@ function injectCommsCss() {
   .sf-comm--out { transform:translateX(-130%); opacity:0; }
   .sf-comm__head { display:flex; align-items:baseline; gap:7px; margin-bottom:3px; }
   .sf-comm__tag { padding:1px 4px; background:color-mix(in srgb, var(--comm-color) 13%, transparent);
-    font:700 12px var(--hud-display,"Saira SemiCondensed",sans-serif); letter-spacing:.06em; color:var(--comm-color); text-shadow:none; }
-  .sf-comm__sender { font:600 12px var(--hud-display,"Saira SemiCondensed",sans-serif); letter-spacing:.06em;
+    font:700 12px var(--hud-display,"IBM Plex Sans",sans-serif); letter-spacing:.06em; color:var(--comm-color); text-shadow:none; }
+  .sf-comm__sender { font:600 12px var(--hud-display,"IBM Plex Sans",sans-serif); letter-spacing:.06em;
     color:var(--hud-muted,#718298); text-transform:uppercase;
     overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .sf-comm__body { line-height:1.38; color:var(--hud-paper,#e7edf5); }
@@ -739,7 +739,7 @@ function injectCommsCss() {
     display:flex; align-items:center; justify-content:center;
     background:linear-gradient(180deg,rgba(20,29,41,.88),rgba(8,13,21,.9));
     border:1px solid rgba(147,174,195,.34); border-radius:2px 0 0 2px; color:#aebdce;
-    font:700 12px var(--hud-display,"Saira SemiCondensed",sans-serif); letter-spacing:.06em; cursor:pointer; pointer-events:auto;
+    font:700 12px var(--hud-display,"IBM Plex Sans",sans-serif); letter-spacing:.06em; cursor:pointer; pointer-events:auto;
     transition:color .12s, border-color .12s; text-shadow:none; }
   .sf-comm-backlog-btn:hover { border-color:var(--accent,#4f8fdd); color:#e7edf5; }
   .sf-comm-backlog-btn--pulse { color:#e7edf5; border-color:var(--accent,#4f8fdd);

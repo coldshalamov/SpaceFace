@@ -264,9 +264,9 @@ function injectStyle() {
   #ui-root > #sf-sector-law { position:absolute; top:112px; right:20px; width:min(340px, calc(100vw - 40px)); }
   #sf-sector-law[hidden] { display:none !important; }
   .sf-law__head { display:flex; justify-content:space-between; gap:12px;
-    font:700 12px var(--hud-display,"Saira SemiCondensed",sans-serif); letter-spacing:.06em;
+    font:700 12px var(--hud-display,"IBM Plex Sans",sans-serif); letter-spacing:.06em;
     color:var(--accent,#4f8fdd); }
-  .sf-law__headline { margin-top:5px; font:700 14px/1.2 var(--hud-display,"Saira SemiCondensed",sans-serif); letter-spacing:.035em; }
+  .sf-law__headline { margin-top:5px; font:700 14px/1.2 var(--hud-display,"IBM Plex Sans",sans-serif); letter-spacing:.035em; }
   .sf-law__meta { margin-top:3px; font:500 12px/1.35 var(--hud-data,"IBM Plex Mono",monospace); letter-spacing:.05em; color:#718298; }
   .sf-law__detail { margin-top:5px; font-size:12px; line-height:1.4; color:#aebdce; }
   /* Level colour is the semantic set, by meaning: lawful/high reads as the Concord accent,

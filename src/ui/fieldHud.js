@@ -20,7 +20,7 @@ const FIELD_HUD_CSS = `
 .sf-field-pill {
   position: absolute; left: 50%; bottom: 146px; transform: translateX(-50%);
   display: none; align-items: center; gap: 8px; padding: 4px 12px;
-  font: 600 12px/1.2 "Segoe UI", system-ui, sans-serif; letter-spacing: 0.08em;
+  font: 600 12px/1.2 "Segoe UI", system-ui, sans-serif; letter-spacing: .06em;
   color: #cfe8ff; background: rgba(10, 18, 28, 0.72); border: 1px solid rgba(120, 190, 235, 0.4);
   border-radius: 3px; pointer-events: none; white-space: nowrap;
 }

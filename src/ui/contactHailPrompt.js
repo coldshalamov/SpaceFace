@@ -260,7 +260,7 @@ function injectStyle() {
   .sf-contact-hail__button { width:72px; height:32px; padding:0 10px;
     border:1px solid color-mix(in srgb, var(--sf-calm) 38%, transparent);
     background:color-mix(in srgb, var(--sf-surface) 90%, transparent); color:var(--sf-calm);
-    font:600 12px var(--sf-subhead-face, "Saira SemiCondensed", sans-serif); letter-spacing:.04em; cursor:default; }
+    font:600 12px var(--sf-subhead-face, "IBM Plex Sans", sans-serif); letter-spacing:.04em; cursor:default; }
   .sf-contact-hail--ready .sf-contact-hail__button { color:var(--sf-paper); border-color:var(--sf-goal);
     cursor:pointer; }
   .sf-contact-hail__button:hover:not(:disabled), .sf-contact-hail__button:focus-visible,
@@ -278,7 +278,7 @@ function injectStyle() {
     column-gap:9px; row-gap:2px; text-align:left; cursor:pointer; margin-bottom:8px; }
   .sf-contact-hail__crest { grid-row:1 / span 2; width:24px; height:24px; display:inline-flex; align-items:center; justify-content:center; color:var(--sf-calm); }
   .sf-contact-hail__who { grid-column:2; display:grid; gap:1px; }
-  .sf-contact-hail__pilot { font:600 14px var(--sf-subhead-face, "Saira SemiCondensed", sans-serif); line-height:1.1; letter-spacing:.02em; }
+  .sf-contact-hail__pilot { font:600 14px var(--sf-subhead-face, "IBM Plex Sans", sans-serif); line-height:1.1; letter-spacing:.02em; }
   .sf-contact-hail__class { font-size:12px; color:var(--sf-calm); line-height:1.2; }
   .sf-contact-hail__freq { grid-column:2; font:500 12px var(--sf-data-face, "IBM Plex Mono", monospace); color:var(--sf-goal); }
   .sf-contact-hail__ribbon { grid-column:1 / -1; width:100%; height:22px; color:var(--sf-you); }

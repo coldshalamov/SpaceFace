@@ -2165,7 +2165,7 @@ export function createHud(ctx, alerts) {
   .sf-cargo-panel__title {
     font-size: 16px;
     font-weight: bold;
-    letter-spacing: 0.1em;
+    letter-spacing: .06em;
     color: var(--visor-cyan);
   }
   .sf-cargo-status-tag {

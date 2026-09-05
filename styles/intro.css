@@ -77,7 +77,7 @@
   pointer-events: none;
 }
 .boot-meta__registry {
-  font-family: "Saira SemiCondensed", "Arial Narrow", sans-serif;
+  font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
   font-weight: 600;
   font-size: 12px;
   letter-spacing:.06em;
@@ -108,7 +108,7 @@
   pointer-events: none;
 }
 .boot-wordmark {
-  font-family: "Saira SemiCondensed", "Arial Narrow", sans-serif;
+  font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
   font-weight: 700;
   font-size: 40px;
   letter-spacing: .05em;
@@ -117,7 +117,7 @@
 }
 .boot-label {
   margin-top: 10px;
-  font-family: "Saira SemiCondensed", "Arial Narrow", sans-serif;
+  font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
   font-weight: 600;
   font-size: 15px;
   letter-spacing: .02em;
@@ -169,7 +169,7 @@
   right: clamp(18px, 2.8vw, 38px);
   bottom: clamp(14px, 2.4vh, 26px);
   z-index: 2;
-  font-family: "Saira SemiCondensed", "Arial Narrow", sans-serif;
+  font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
   font-weight: 600;
   font-size: 12px;
   letter-spacing:.06em;
@@ -288,7 +288,7 @@
 }
 .cine-title {
   margin: 16px 0 0;
-  font-family: "Saira SemiCondensed", "Segoe UI", system-ui, sans-serif;
+  font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
   font-weight: 600;
   font-size: clamp(52px, 9.5vw, 96px);
   line-height: 1.04;

@@ -1954,7 +1954,7 @@ function injectHudCss() {
      Holographic-bleak rather than frosted-glass: crisp hairlines and flat dark surfaces with no
      always-on backdrop blur (compositor cost) — legibility comes from panel opacity, not frost. */
   #hud {
-    --hud-display:"Saira SemiCondensed", "Arial Narrow", sans-serif;
+    --hud-display:"IBM Plex Sans", "Segoe UI", sans-serif; /* display = the UI face, heavier (grammar §3: two faces) */
     --hud-body:"IBM Plex Sans", "Segoe UI", sans-serif;
     --hud-data:"IBM Plex Mono", Consolas, monospace;
     --hud-paper:#e9eff4;

@@ -36,7 +36,7 @@ export const MASSLINE_HUD_CSS = `
 #sf-ml2 .ml2-mark.ml2-offscreen { filter:drop-shadow(0 0 7px rgba(2,6,11,0.92)); }
 #sf-ml2 .ml2-mark-label { position:absolute; left:50%; top:calc(100% + 7px); transform:translateX(-50%);
   padding:2px 5px; border:1px solid currentColor; background:rgba(4,14,24,0.82); color:var(--ml2-c,#5fd7ff);
-  font:750 12px/1.2 system-ui,sans-serif; letter-spacing:0.08em; text-shadow:0 1px 2px #02060b;
+  font:750 12px/1.2 system-ui,sans-serif; letter-spacing:.06em; text-shadow:0 1px 2px #02060b;
   white-space:nowrap; }
 #sf-ml2 .ml2-preview-link { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
 #sf-ml2 .ml2-preview-line { stroke:rgba(125,224,255,0.62); stroke-width:1.5; stroke-dasharray:4 6;
@@ -67,7 +67,7 @@ export const MASSLINE_HUD_CSS = `
   background:linear-gradient(90deg,rgba(4,14,24,0.82),rgba(4,14,24,0.36));
   clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px));
   color:#e5f8ff; text-shadow:0 1px 2px #02060b; white-space:nowrap;
-  font:650 12px/1.28 system-ui,sans-serif; letter-spacing:0.075em;
+  font:650 12px/1.28 system-ui,sans-serif; letter-spacing:.06em;
   animation:ml2preview 1.3s ease-in-out infinite; }
 #sf-ml2 .ml2-preview.ml2-preview-blocked,
 #sf-ml2 .ml2-preview.ml2-preview-protected,
@@ -94,7 +94,7 @@ export const MASSLINE_HUD_CSS = `
   gap:6px; align-items:flex-start; }
 #sf-ml2 .ml2-pill { display:flex; align-items:center; gap:7px; padding:3px 9px; border-radius:999px;
   background:rgba(10,16,24,0.62); border:1px solid rgba(148,163,184,0.28);
-  font:600 12px/1.4 system-ui, sans-serif; letter-spacing:0.08em; color:#cbd5e1; }
+  font:600 12px/1.4 system-ui, sans-serif; letter-spacing:.06em; color:#cbd5e1; }
 #sf-ml2 .ml2-pill .ml2-fill { width:64px; height:4px; border-radius:2px; background:rgba(148,163,184,0.22);
   position:relative; overflow:hidden; }
 #sf-ml2 .ml2-pill .ml2-fill i { position:absolute; inset:0; transform-origin:left center; background:#5fd7ff; }

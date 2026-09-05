@@ -151,7 +151,7 @@ const TYPE_FLOOR_PX = 12;
 const floorPx = (px) => Math.max(TYPE_FLOOR_PX, Number.isFinite(px) ? px : TYPE_FLOOR_PX);
 const FONT_MONO = (weight, px) => `${weight} ${floorPx(px)}px "IBM Plex Mono", ui-monospace, monospace`;
 const FONT_UI = (weight, px) => `${weight} ${floorPx(px)}px "IBM Plex Sans", "Segoe UI", system-ui, sans-serif`;
-const FONT_DISPLAY = (weight, px) => `${weight} ${floorPx(px)}px "Saira SemiCondensed", "IBM Plex Sans", system-ui, sans-serif`;
+const FONT_DISPLAY = (weight, px) => `${weight} ${floorPx(px)}px "IBM Plex Sans", "Segoe UI", system-ui, sans-serif`;
 
 /** Stable 0..1 hash for cosmetic phase offsets (deterministic, never fed into sim). */
 function cosmeticHash01(text) {
@@ -10385,7 +10385,9 @@ function drawPlayerFixMark(g, x, y, rot, options = {}) {
  */
 function navCartoucheBounds(rowCount, w, h) {
   if (!(rowCount > 0)) return null;
-  const rowH = 26;
+  // Two 12px lines per row (label over value) need 28px: at 26 the value line started 10px under
+  // the label and the two printed through each other on every frame.
+  const rowH = 28;
   const padX = 12;
   const padY = 10;
   const boxW = Math.min(300, Math.max(212, w * 0.26));
@@ -10437,18 +10439,20 @@ function drawNavCartouche(g, rows, w, h, options = {}) {
     }
     g.restore();
 
+    // Sizes are written at the 12px floor the canvas font helper enforces anyway; asking for 8px
+    // and placing the next line 10px down assumed a size that never rendered.
     g.textAlign = 'left';
     g.textBaseline = 'top';
-    g.font = FONT_MONO(500, 8);
+    g.font = FONT_MONO(500, 12);
     g.fillStyle = INK.ink2;
     g.fillText(row.label, padX + 8, y);
 
-    g.font = FONT_DISPLAY(600, 11.5);
+    g.font = FONT_DISPLAY(600, 12);
     g.fillStyle = tracked ? INK.amberHot : (muted ? INK.ink2 : INK.ink0);
-    g.fillText(fitCartoucheText(g, row.value, boxW - padX * 2 - 10), padX + 8, y + 10);
+    g.fillText(fitCartoucheText(g, row.value, boxW - padX * 2 - 10), padX + 8, y + 13);
 
     if (row.detail) {
-      g.font = FONT_MONO(500, 8);
+      g.font = FONT_MONO(500, 12);
       g.fillStyle = INK.ink2;
       const detailW = g.measureText(row.detail).width;
       // Detail is right-aligned against the plate edge so the four value strings stay on one

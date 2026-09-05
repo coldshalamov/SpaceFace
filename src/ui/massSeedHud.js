@@ -15,7 +15,7 @@ const MASS_SEED_HUD_CSS = `
 .sf-mseed-pill {
   position: absolute; left: 50%; bottom: 118px; transform: translateX(-50%);
   display: none; align-items: center; gap: 8px; padding: 4px 12px;
-  font: 600 12px/1.2 "Segoe UI", system-ui, sans-serif; letter-spacing: 0.08em;
+  font: 600 12px/1.2 "Segoe UI", system-ui, sans-serif; letter-spacing: .06em;
   color: #cfe8ff; background: rgba(10, 18, 28, 0.72); border: 1px solid rgba(120, 190, 235, 0.4);
   border-radius: 3px; pointer-events: none; white-space: nowrap;
 }
@@ -32,7 +32,7 @@ const MASS_SEED_HUD_CSS = `
 }
 .sf-mseed-mark .mseed-mark-label {
   position: absolute; left: 10px; top: -8px; font: 600 12px/1.35 "Segoe UI", system-ui, sans-serif;
-  letter-spacing: 0.1em; color: #bfe6ff; text-shadow: 0 1px 2px rgba(0,0,0,0.8); white-space: nowrap;
+  letter-spacing: .06em; color: #bfe6ff; text-shadow: 0 1px 2px rgba(0,0,0,0.8); white-space: nowrap;
 }
 .sf-mseed-root.mseed-reduced-motion .sf-mseed-mark .mseed-diamond { border-style: dashed; }
 `;

@@ -19,11 +19,11 @@
 // next redraw picks up the real face.
 
 const FALLBACK = Object.freeze({
-  mono: 'Consolas, "SFMono-Regular", ui-monospace, monospace',
-  sans: '"Segoe UI", system-ui, -apple-system, sans-serif',
+  mono: '"IBM Plex Mono", Consolas, "SFMono-Regular", ui-monospace, monospace',
+  sans: '"IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif',
   data: '"IBM Plex Mono", Consolas, monospace',
-  display: '"Saira SemiCondensed", "Arial Narrow", sans-serif',
-  subhead: '"Saira SemiCondensed", "Arial Narrow", sans-serif',
+  display: '"IBM Plex Sans", "Segoe UI", sans-serif',
+  subhead: '"IBM Plex Sans", "Segoe UI", sans-serif',
   body: '"IBM Plex Sans", "Segoe UI", sans-serif',
 });
 

@@ -12,8 +12,11 @@
   --accent: #4f8fdd; --accent-2: #4fbf8f; --accent-3: #4f8fdd;
   --warn: #d9a054; --danger: #d95f6a; --good: #4fbf8f;
   --hull: #d95f6a; --shield: #4f8fdd; --energy: #d4b45f; --cargo: #4fbf8f;
-  --font: "Segoe UI", system-ui, -apple-system, sans-serif;
-  --mono: "Consolas", "SFMono-Regular", ui-monospace, monospace;
+  /* The two faces of the 2026-08 identity are vendored and loaded at boot (fonts.css), so the
+     legacy tokens resolve to them too: the flight HUD, prompts and every older screen that still
+     reads --font / --mono no longer fall back to Segoe UI and Consolas beside Plex on the menus. */
+  --font: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: "IBM Plex Mono", "Consolas", "SFMono-Regular", ui-monospace, monospace;
   --ui-scale: 1;
   /* Responsive policy (A_LIST_GAPS §4): ultrawide anchors clamp to a centered safe frame. */
   --sf-safe-inset-x: max(0px, calc((100vw - 100vh * 16 / 9) / 2));
@@ -1633,8 +1636,11 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
 .fp-display--calm { color: var(--sf-calm); }
 .fp-line {
   margin: 0;
-  font-family: var(--sf-data-face);
+  /* A sentence with figures in it reads in the UI face with tabular numerals; the data face is for
+     bare numerals (grammar §3). */
+  font-family: var(--sf-body-face);
   font-size: 14px;
+  line-height: 1.4;
   font-variant-numeric: tabular-nums;
   color: var(--sf-paper);
   overflow-wrap: break-word;
@@ -1770,11 +1776,10 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
   box-shadow: none;
   transition: border-color var(--sf-t-latch) var(--sf-ease), color var(--sf-t-latch) var(--sf-ease), opacity var(--sf-t-latch) var(--sf-ease);
 }
-.fp-node--act { border-left-color: var(--sf-goal); }
-.fp-node--incident { border-left-color: var(--sf-calm); }
-.fp-node--standing { border-left-color: var(--sf-you); }
-.fp-node--spillover { border-left-color: var(--sf-calm); border-style: dashed; }
-.fp-node--consequence { border-left-color: var(--sf-foe); }
+/* Node kind is carried by its column (ACT / INCIDENT / STANDING / CONSEQUENCE) and its words; the
+   coloured left rails that used to restate it are the accent-rail pattern the grammar bans (§4).
+   A spillover node keeps its dashed edge — that is a shape, not a rail. */
+.fp-node--spillover { border-style: dashed; }
 .fp-node:hover { border-color: color-mix(in srgb, var(--sf-goal) 50%, var(--sf-edge)); }
 .fp-node:focus-visible { outline: 2px solid var(--sf-goal); outline-offset: 2px; }
 .fp-node:active { transform: none; }
