@@ -266,92 +266,100 @@ export function describeOutpostOperation(outpost = {}, def = {}) {
 
 const STYLE_ID = 'sf-automation-style';
 const CSS = `
-#sf-automation { width: min(92vw, 1000px); height: min(88vh, 720px); display: flex; flex-direction: column;
-  background: linear-gradient(180deg, var(--panel-2), var(--panel)); border: 1px solid var(--panel-edge);
-  border-radius: 10px; box-shadow: 0 12px 48px rgba(0,0,0,.6); overflow: hidden; pointer-events: auto; }
-#sf-automation .au-head { padding: 12px 18px; border-bottom: 1px solid var(--panel-edge); background: rgba(8,14,26,.7);
-  display: flex; flex-direction: column; gap: 10px; }
-#sf-automation .au-top { display: flex; align-items: center; justify-content: space-between; }
-#sf-automation .au-top-right { display: flex; align-items: center; gap: 14px; }
-#sf-automation .au-title { font-size: 1.2em; letter-spacing:.06em; text-transform: uppercase; color: var(--accent);
-  text-shadow: 0 0 12px rgba(79,143,221,.5); }
-#sf-automation .au-credits { font-family: var(--mono); font-size: .9em; color: var(--energy); }
-#sf-automation .au-close { font-family: var(--mono); font-size: .74em; letter-spacing:.06em; text-transform: uppercase;
-  padding: 5px 12px; border-radius: 6px; color: var(--ink-dim); }
-#sf-automation .au-close:hover { color: #fff; border-color: var(--accent); }
-#sf-automation .au-income { display: flex; align-items: center; gap: 14px; font-family: var(--mono); font-size: .8em; }
-#sf-automation .au-income .lbl { color: var(--ink-dim); }
-#sf-automation .au-income .val { color: var(--accent-2); font-weight: 700; }
-#sf-automation .au-capbar { flex: 1; height: 12px; border-radius: 6px; background: rgba(10,18,30,.9);
+/* Operations board on the shared plate vocabulary (styles/menu.css): one flat dark surface, a
+   19px title, tabs and buttons that match Settings / Codex / Help, IBM Plex for words and Plex
+   Mono for numerals. Every size is in px at or above the 12px floor — the previous block sized
+   text in em against the 15px root (.62em = 9.3px), which check:type-floor cannot see. */
+#sf-automation { width: min(94vw, 1100px); height: min(88vh, 860px); display: flex; flex-direction: column;
+  background: color-mix(in srgb, var(--panel) 96%, transparent); border: 1px solid var(--panel-edge);
+  border-radius: 6px; box-shadow: 0 24px 64px rgba(0,0,0,.6); overflow: hidden; pointer-events: auto;
+  font-family: var(--sf-body-face); font-size: 14px; color: var(--ink); }
+#sf-automation .au-head { padding: 18px 24px 12px; border-bottom: 1px solid var(--panel-edge);
+  display: flex; flex-direction: column; gap: 12px; }
+#sf-automation .au-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+#sf-automation .au-top-right { display: flex; align-items: center; gap: 16px; }
+#sf-automation .au-title { font-family: var(--sf-display-face); font-weight: 600; font-size: 19px; line-height: 1.2;
+  letter-spacing: .04em; text-transform: uppercase; color: var(--ink); }
+#sf-automation .au-credits { font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; font-size: 13px; color: var(--ink); }
+#sf-automation .au-close { font-family: var(--sf-body-face); font-weight: 500; font-size: 12px; letter-spacing: .05em; text-transform: uppercase;
+  padding: 6px 14px; border-radius: 3px; color: var(--ink-dim); background: transparent; border: 1px solid var(--panel-edge); box-shadow: none; }
+#sf-automation .au-close:hover { color: var(--ink); border-color: var(--accent); }
+#sf-automation .au-close:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
+#sf-automation .au-income { display: flex; align-items: center; gap: 14px; font-size: 13px; }
+#sf-automation .au-income .lbl { color: var(--ink-dim); font-weight: 600; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; }
+#sf-automation .au-income .val { color: var(--ink); font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; font-weight: 500; }
+#sf-automation .au-capbar { flex: 1; height: 8px; border-radius: 2px; background: color-mix(in srgb, var(--panel-2) 80%, transparent);
   border: 1px solid var(--panel-edge); position: relative; overflow: hidden; min-width: 120px; }
 #sf-automation .au-capfill { position: absolute; left: 0; top: 0; bottom: 0; width: 0%;
-  background: linear-gradient(90deg, var(--accent-2), var(--accent)); transition: width .2s ease; }
-#sf-automation .au-captxt { font-family: var(--mono); font-size: .72em; color: var(--ink-dim); white-space: nowrap; }
-#sf-automation .au-tabs { display: flex; gap: 4px; }
-#sf-automation .au-tab { padding: 6px 16px; font-size: .82em; letter-spacing: .06em; text-transform: uppercase;
-  border-radius: 6px 6px 0 0; }
-#sf-automation .au-tab.active { background: rgba(79,143,221,.14); border-color: var(--accent); color: #fff;
-  text-shadow: 0 0 8px rgba(79,143,221,.5); }
-#sf-automation .au-body { flex: 1; overflow-y: auto; padding: 16px 18px; display: flex; flex-direction: column; gap: 18px; }
+  background: var(--accent); transition: width .18s ease; }
+#sf-automation .au-captxt { font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; font-size: 12px; color: var(--ink-dim); white-space: nowrap; }
+#sf-automation .au-tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+#sf-automation .au-tab { padding: 6px 14px; font-family: var(--sf-body-face); font-weight: 500; font-size: 12px; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--ink-dim); background: color-mix(in srgb, var(--panel) 60%, transparent); border: 1px solid var(--panel-edge-2); border-radius: 3px; box-shadow: none; }
+#sf-automation .au-tab:hover { color: var(--ink); border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
+#sf-automation .au-tab:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
+#sf-automation .au-tab.active { background: var(--accent); border-color: var(--accent); color: var(--bg); font-weight: 600; text-shadow: none; }
+#sf-automation .au-body { flex: 1; overflow-y: auto; padding: 16px 24px 20px; display: flex; flex-direction: column; gap: 18px; }
 #sf-automation .au-command { display: grid; grid-template-columns: minmax(230px, 1.08fr) minmax(0, 1.92fr);
   gap: 12px; align-items: stretch; }
 #sf-automation .au-next, #sf-automation .au-summary {
-  border: 1px solid var(--panel-edge); border-radius: 8px; background: rgba(10,18,30,.62);
-  padding: 12px 13px; }
-#sf-automation .au-next { display: flex; flex-direction: column; gap: 8px; border-color: rgba(79,143,221,.42); }
-#sf-automation .au-kicker { font-family: var(--mono); font-size: .68em; letter-spacing:.06em; text-transform: uppercase;
-  color: var(--accent-2); }
-#sf-automation .au-next-title { font-size: 1em; color: var(--ink); }
-#sf-automation .au-next-body { font-size: .82em; line-height: 1.35; color: var(--ink-dim); }
+  border: 1px solid var(--panel-edge); border-radius: 4px; background: color-mix(in srgb, var(--panel-2) 55%, transparent);
+  padding: 14px 15px; }
+#sf-automation .au-next { display: flex; flex-direction: column; gap: 8px; }
+#sf-automation .au-kicker { font-family: var(--sf-body-face); font-weight: 600; font-size: 12px; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--ink-dim); }
+#sf-automation .au-next-title { font-size: 15px; font-weight: 600; color: var(--ink); }
+#sf-automation .au-next-body { font-size: 13px; line-height: 1.45; color: var(--ink-dim); }
 #sf-automation .au-next-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: auto; }
-#sf-automation .au-next-meta { font-family: var(--mono); font-size: .72em; color: var(--energy); }
-#sf-automation .au-cta { padding: 7px 12px; white-space: nowrap; border-color: var(--accent-2);
-  background: rgba(79,143,221,.11); color: var(--ink); }
-#sf-automation .au-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 9px; }
-#sf-automation .au-metric { min-width: 0; border: 1px solid rgba(79,143,221,.16); border-radius: 6px;
-  background: rgba(6,10,18,.5); padding: 8px 9px; }
-#sf-automation .au-metric .k { font-family: var(--mono); font-size: .66em; letter-spacing:.06em; text-transform: uppercase;
-  color: var(--ink-mute); }
-#sf-automation .au-metric .v { margin-top: 4px; font-family: var(--mono); font-size: .88em; color: var(--ink); }
-#sf-automation .au-metric .s { margin-top: 3px; font-size: .72em; line-height: 1.25; color: var(--ink-dim); }
-#sf-automation .au-note { font-size: .78em; color: var(--ink-dim); line-height: 1.35; margin-top: 6px; }
-#sf-automation .au-section-h { font-family: var(--mono); font-size: .76em; letter-spacing:.06em; text-transform: uppercase;
-  color: var(--ink-mute); border-bottom: 1px solid var(--panel-edge); padding-bottom: 5px; margin-bottom: 2px; }
-#sf-automation .au-card { display: flex; align-items: center; gap: 14px; padding: 11px 13px;
-  background: rgba(10,18,30,.6); border: 1px solid var(--panel-edge); border-radius: 8px; }
-#sf-automation .au-card .nm { font-size: .96em; color: var(--ink); }
-#sf-automation .au-card .meta { font-family: var(--mono); font-size: .76em; color: var(--ink-dim); margin-top: 3px;
+#sf-automation .au-next-meta { font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; font-size: 13px; color: var(--ink-dim); }
+#sf-automation .au-cta { padding: 8px 14px; white-space: nowrap; border: 1px solid var(--accent); border-radius: 3px;
+  background: var(--accent); color: var(--bg); font-weight: 600; font-size: 13px; box-shadow: none; }
+#sf-automation .au-cta:hover { background: color-mix(in srgb, var(--accent) 84%, white); }
+#sf-automation .au-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+#sf-automation .au-metric { min-width: 0; border: 1px solid var(--panel-edge); border-radius: 4px;
+  background: color-mix(in srgb, var(--panel) 70%, transparent); padding: 10px 11px; }
+#sf-automation .au-metric .k { font-family: var(--sf-body-face); font-weight: 600; font-size: 12px; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--ink-dim); }
+#sf-automation .au-metric .v { margin-top: 4px; font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; font-weight: 500; font-size: 15px; color: var(--ink); }
+#sf-automation .au-metric .s { margin-top: 3px; font-size: 12px; line-height: 1.3; color: var(--ink-dim); }
+#sf-automation .au-note { font-size: 13px; color: var(--ink-dim); line-height: 1.45; margin-top: 6px; }
+#sf-automation .au-section-h { font-family: var(--sf-body-face); font-weight: 600; font-size: 12px; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--ink-dim); border-bottom: 1px solid var(--panel-edge); padding-bottom: 6px; margin-bottom: 2px; }
+#sf-automation .au-card { display: flex; align-items: center; gap: 14px; padding: 12px 14px;
+  background: color-mix(in srgb, var(--panel-2) 55%, transparent); border: 1px solid var(--panel-edge); border-radius: 4px; }
+#sf-automation .au-card .nm { font-size: 15px; font-weight: 600; color: var(--ink); }
+#sf-automation .au-card .meta { font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; font-size: 13px; color: var(--ink-dim); margin-top: 4px;
   display: flex; gap: 14px; flex-wrap: wrap; }
 #sf-automation .au-card .grow { flex: 1; min-width: 0; }
-#sf-automation .au-card button { padding: 7px 14px; white-space: nowrap; }
+#sf-automation .au-card button { padding: 7px 14px; white-space: nowrap; font-size: 13px; border-radius: 3px; box-shadow: none; }
 #sf-automation .au-card.au-outpost { align-items: stretch; padding: 13px 14px; }
 #sf-automation .au-card.au-outpost > .au-recall { align-self: center; min-height: 38px; }
 #sf-automation .au-outpost-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 #sf-automation .au-outpost-head .nm { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 #sf-automation .au-outpost-flow { display: grid; grid-template-columns: minmax(150px, 1fr) 30px minmax(145px, .92fr) 30px minmax(170px, 1.12fr);
-  align-items: stretch; gap: 5px; margin-top: 9px; padding: 9px 10px; border-top: 1px solid rgba(79,143,221,.16);
-  border-bottom: 1px solid rgba(79,143,221,.16); background: linear-gradient(90deg, rgba(6,10,18,.46), rgba(12,23,36,.58), rgba(6,10,18,.46)); }
+  align-items: stretch; gap: 5px; margin-top: 9px; padding: 9px 10px; border-top: 1px solid var(--panel-edge);
+  border-bottom: 1px solid var(--panel-edge); background: color-mix(in srgb, var(--panel) 50%, transparent); }
 #sf-automation .au-flow-node, #sf-automation .au-flow-core { min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 3px; }
-#sf-automation .au-flow-core { padding: 5px 8px; text-align: center; border-left: 1px solid rgba(79,143,221,.2); border-right: 1px solid rgba(79,143,221,.2); }
-#sf-automation .au-flow-k { font-family: var(--mono); font-size: .62em; letter-spacing:.06em; text-transform: uppercase; color: var(--ink-mute); }
-#sf-automation .au-flow-node strong, #sf-automation .au-flow-core strong { overflow: hidden; text-overflow: ellipsis; color: var(--ink); font-size: .84em; }
+#sf-automation .au-flow-core { padding: 5px 8px; text-align: center; border-left: 1px solid var(--panel-edge); border-right: 1px solid var(--panel-edge); }
+#sf-automation .au-flow-k { font-family: var(--sf-body-face); font-weight: 600; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-dim); }
+#sf-automation .au-flow-node strong, #sf-automation .au-flow-core strong { overflow: hidden; text-overflow: ellipsis; color: var(--ink); font-size: 13px; }
 #sf-automation .au-flow-core strong { white-space: normal; }
-#sf-automation .au-flow-v { font-family: var(--mono); font-size: .72em; color: var(--ink-dim); }
+#sf-automation .au-flow-v { font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; font-size: 12px; color: var(--ink-dim); }
 #sf-automation .au-flow-v + .au-flow-v { margin-top: 1px; }
-#sf-automation .au-storebar { width: 72px; height: 5px; margin-left: 5px; border-radius: 1px; background: rgba(20,28,42,.9);
+#sf-automation .au-storebar { width: 72px; height: 5px; margin-left: 5px; border-radius: 1px; background: color-mix(in srgb, var(--panel-2) 90%, transparent);
   overflow: hidden; display: inline-block; vertical-align: middle; }
 #sf-automation .au-storebar > i { display: block; height: 100%; }
-#sf-automation .au-flow-link { align-self: center; position: relative; height: 1px; background: rgba(127,152,172,.3); }
+#sf-automation .au-flow-link { align-self: center; position: relative; height: 1px; background: var(--panel-edge-2); }
 #sf-automation .au-flow-link::after { content: ''; position: absolute; right: -1px; top: -3px; width: 6px; height: 6px;
-  border-top: 1px solid currentColor; border-right: 1px solid currentColor; transform: rotate(45deg); color: rgba(127,152,172,.65); }
-#sf-automation .au-outpost-flow[data-state="producing"] .au-flow-link { background: rgba(98,224,138,.55); box-shadow: 0 0 8px rgba(98,224,138,.14); }
+  border-top: 1px solid currentColor; border-right: 1px solid currentColor; transform: rotate(45deg); color: var(--ink-mute); }
+#sf-automation .au-outpost-flow[data-state="producing"] .au-flow-link { background: var(--good); }
 #sf-automation .au-outpost-flow[data-state="producing"] .au-flow-link::after { color: var(--good); }
 #sf-automation .au-outpost-flow[data-state="starved"] .au-flow-link,
-#sf-automation .au-outpost-flow[data-state="storage_full"] .au-flow-link { background: rgba(255,179,71,.48); }
+#sf-automation .au-outpost-flow[data-state="storage_full"] .au-flow-link { background: var(--warn); }
 #sf-automation .au-outpost-flow[data-state="starved"] .au-flow-link::after,
 #sf-automation .au-outpost-flow[data-state="storage_full"] .au-flow-link::after { color: var(--warn); }
 #sf-automation .au-outpost-flow[data-state="raided"] .au-flow-link,
-#sf-automation .au-outpost-flow[data-state="distressed"] .au-flow-link { background: rgba(255,84,112,.44); }
+#sf-automation .au-outpost-flow[data-state="distressed"] .au-flow-link { background: var(--danger); }
 #sf-automation .au-outpost-flow[data-state="raided"] .au-flow-link::after,
 #sf-automation .au-outpost-flow[data-state="distressed"] .au-flow-link::after { color: var(--danger); }
 #sf-automation .au-operation-status { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
@@ -360,37 +368,44 @@ const CSS = `
 #sf-automation .au-operation-status.warn { color: var(--warn); }
 #sf-automation .au-operation-status.bad { color: var(--danger); }
 #sf-automation .au-operation-status.neutral { color: var(--ink-dim); }
-#sf-automation .au-operation-reason { margin-top: 7px; font-size: .76em; line-height: 1.35; color: var(--ink-dim); }
-#sf-automation .au-outpost-detail { margin-top: 6px; font-size: .74em; color: var(--ink-dim); }
-#sf-automation .au-outpost-detail summary { width: fit-content; cursor: pointer; color: var(--accent-2); }
+#sf-automation .au-operation-reason { margin-top: 7px; font-size: 13px; line-height: 1.4; color: var(--ink-dim); }
+#sf-automation .au-outpost-detail { margin-top: 6px; font-size: 13px; color: var(--ink-dim); }
+#sf-automation .au-outpost-detail summary { width: fit-content; cursor: pointer; color: var(--accent); }
 #sf-automation .au-outpost-detail summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-#sf-automation .au-outpost-detail .au-detail-row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 6px; font-family: var(--mono); }
-#sf-automation .au-buy { background: rgba(98,224,138,.12); border-color: var(--good); color: #d9ffe7; }
-#sf-automation .au-buy:hover { border-color: var(--good); }
-#sf-automation .au-order { background: rgba(79,143,221,.1); border-color: var(--accent-2); }
-#sf-automation .au-recall { background: rgba(255,84,112,.1); border-color: var(--danger); color: #ffd6dd; }
-#sf-automation .au-empty { font-size: .84em; color: var(--ink-mute); font-style: italic; padding: 6px 0; }
-#sf-automation .au-pill { font-family: var(--mono); font-size: .68em; padding: 1px 7px; border-radius: 10px;
+#sf-automation .au-outpost-detail .au-detail-row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 6px; font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; }
+/* Verbs: the primary (buy / deploy) is the one accent fill; ordering is an accent outline; recall
+   is destructive and stays a quiet danger outline. */
+#sf-automation .au-buy { background: var(--accent); border-color: var(--accent); color: var(--bg); font-weight: 600; }
+#sf-automation .au-buy:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 84%, white); border-color: var(--accent); }
+#sf-automation .au-order { background: transparent; border-color: var(--accent); color: var(--ink); }
+#sf-automation .au-recall { background: transparent; border-color: color-mix(in srgb, var(--danger) 55%, transparent); color: var(--danger); }
+#sf-automation .au-empty { font-size: 13px; color: var(--ink-dim); padding: 6px 0; line-height: 1.45; }
+#sf-automation .au-pill { font-family: var(--sf-body-face); font-weight: 600; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; padding: 2px 8px; border-radius: 2px;
   border: 1px solid var(--panel-edge); color: var(--ink-dim); }
-#sf-automation .au-pill.ok { color: var(--good); border-color: rgba(98,224,138,.5); }
-#sf-automation .au-pill.warn { color: var(--warn); border-color: rgba(255,179,71,.5); }
-#sf-automation .au-pill.bad { color: var(--danger); border-color: rgba(255,84,112,.5); }
+#sf-automation .au-pill.ok { color: var(--good); border-color: color-mix(in srgb, var(--good) 50%, transparent); }
+#sf-automation .au-pill.warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 50%, transparent); }
+#sf-automation .au-pill.bad { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 50%, transparent); }
 #sf-automation .au-program-row { display:flex; align-items:center; gap:8px; margin-top:6px; }
-#sf-automation .au-program-label { font-size:.7em; color:var(--ink-mute); letter-spacing:.04em; text-transform:uppercase; }
-#sf-automation .au-program { font-family:var(--mono); font-size:.78em; padding:3px 8px; border-radius:4px;
-  background:var(--panel); color:var(--ink); border:1px solid var(--panel-edge); cursor:pointer; }
-#sf-automation .au-program-badge { font-family:var(--mono); font-size:.66em; padding:1px 6px; border-radius:8px;
-  background:rgba(79,143,221,.12); color:var(--accent); border:1px solid rgba(79,143,221,.4); margin-left:6px; }
-#sf-automation .au-minibar { width: 90px; height: 6px; border-radius: 3px; background: rgba(20,28,42,.9);
+#sf-automation .au-program-label { font-size: 12px; font-weight: 600; color: var(--ink-dim); letter-spacing: .06em; text-transform: uppercase; }
+#sf-automation .au-program { font-family: var(--sf-body-face); font-size: 13px; padding: 4px 8px; border-radius: 3px;
+  background: var(--panel); color: var(--ink); border: 1px solid var(--panel-edge); cursor: pointer; }
+#sf-automation .au-program-badge { font-family: var(--sf-body-face); font-weight: 600; font-size: 12px; padding: 1px 6px; border-radius: 2px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); margin-left: 6px; }
+#sf-automation .au-minibar { width: 90px; height: 6px; border-radius: 2px; background: color-mix(in srgb, var(--panel-2) 90%, transparent);
   overflow: hidden; display: inline-block; vertical-align: middle; }
 #sf-automation .au-minibar > i { display: block; height: 100%; background: var(--good); }
-#sf-automation .au-locked { font-size: .8em; color: var(--warn); }
+#sf-automation .au-locked { font-size: 13px; color: var(--warn); }
 @media (max-width: 760px) {
   #sf-automation .au-command { grid-template-columns: 1fr; }
   #sf-automation .au-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   #sf-automation .au-outpost-flow { grid-template-columns: 1fr; }
   #sf-automation .au-flow-link { display: none; }
   #sf-automation .au-flow-node, #sf-automation .au-flow-core { padding: 5px 0; text-align: left; border-left: 0; border-right: 0; }
+}
+@media (forced-colors: active) {
+  #sf-automation, #sf-automation .au-next, #sf-automation .au-summary, #sf-automation .au-metric, #sf-automation .au-card {
+    background: Canvas; color: CanvasText; border-color: CanvasText;
+  }
 }
 `;
 
