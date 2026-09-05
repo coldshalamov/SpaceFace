@@ -10513,7 +10513,7 @@
       "priority": 47,
       "title": "The rope is a rope",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [],
       "mutexes": [
         "flight-physics-feel"
@@ -10526,8 +10526,10 @@
         "npm run check:baseline",
         "npm run check:massline"
       ],
-      "receiptRefs": [],
-      "brief": "Line stiffness scaled to the coupled load (mass*v^2/r) or a distance constraint: a 1.5x cruise swing on a 100 WU line stretches < 10% and holds; break by load rating, not stretch ratio; release keeps >= 95% tangential speed 5 s later. Bar B7."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-137-07-REPORT.md"
+      ],
+      "brief": "IMPLEMENTED 2026-09-05: line stiffness rises with the coupled load, break by load rating; B7 stretch 0.163 -> 0.050, held, retention 1.000; massline 26/26, goldens hold. Commit 785e92a8. Line stiffness scaled to the coupled load (mass*v^2/r) or a distance constraint: a 1.5x cruise swing on a 100 WU line stretches < 10% and holds; break by load rating, not stretch ratio; release keeps >= 95% tangential speed 5 s later. Bar B7."
     },
     {
       "id": "PQ-137.08",
@@ -14921,7 +14923,7 @@
       "priority": 35,
       "title": "The critic",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [],
       "mutexes": [
         "fun-loop"
@@ -14937,8 +14939,10 @@
         "npm run check:baseline",
         "npm run check:crucible:route"
       ],
-      "receiptRefs": [],
-      "brief": "A prompt + harness that hands frame strips and metrics to a vision-capable model with the ten-question rubric and returns yes/no with frame indices and the ONE fundamental in the §A audit format; runs with a model that did not make the change. DONE WHEN: The critic reproduces the 2026-09-03 audit findings on a pre-fix build (governor brake, NPC clamp, terrain helm) from frames alone."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-173-02-REPORT.md"
+      ],
+      "brief": "IMPLEMENTED 2026-09-05: a model that did not make the change graded frames of the live head with the three September rules restored and named the governor brake (twice, once frames-only on a fresh capture) and the NPC cap; terrain helm not singled out, recorded. Commit 1ed674fa. A prompt + harness that hands frame strips and metrics to a vision-capable model with the ten-question rubric and returns yes/no with frame indices and the ONE fundamental in the §A audit format; runs with a model that did not make the change. DONE WHEN: The critic reproduces the 2026-09-03 audit findings on a pre-fix build (governor brake, NPC clamp, terrain helm) from frames alone."
     },
     {
       "id": "PQ-173.03",
@@ -14946,7 +14950,7 @@
       "priority": 36,
       "title": "The report and the translator",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [],
       "mutexes": [
         "fun-loop"
@@ -14962,8 +14966,10 @@
         "npm run check:baseline",
         "npm run check:crucible:route"
       ],
-      "receiptRefs": [],
-      "brief": "Render the one-page owner report (found / changed / what you will feel / numbers / frames / next) and encode the verdict-to-bar translator protocol as a checklist the agent must fill before touching code. DONE WHEN: One real cycle run end to end and committed with its report; the owner reads it without asking what a term means."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-173-03-REPORT.md"
+      ],
+      "brief": "IMPLEMENTED 2026-09-05: one real cycle end to end on the rope unit with the owner page at receipts/fun-loop/cycles/2026-09-05-rope/OWNER-REPORT.md (KEEP, 16.3 % -> 5.0 %); the diff's first-clause defect fixed; --changed added. Commit 1ed674fa. Render the one-page owner report (found / changed / what you will feel / numbers / frames / next) and encode the verdict-to-bar translator protocol as a checklist the agent must fill before touching code. DONE WHEN: One real cycle run end to end and committed with its report; the owner reads it without asking what a term means."
     },
     {
       "id": "PQ-174.00",

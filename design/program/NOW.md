@@ -2,8 +2,8 @@
 # NOW — threads changing the shared checkout
 
 ```yaml
-refreshed: 2026-09-04
-baseCommit: 2c457cbc4dacae2bdc1a28fedbac78bdc706e505
+refreshed: 2026-09-05
+baseCommit: 57a31390fb1be4bab0a16e6aae4988c593e389c5
 expiresAfterCommits: 10
 expiresAfterDays: 2
 ```
@@ -41,8 +41,9 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
+| PQ-137.11 visible jitter (knock strip) | claude-fable-goal | MUTATING | scripts/lib/bench/frameStripCapture.mjs (moment merge, jitter windows), design/program/roadmap/receipts/fun-loop/ | capture the knock strip, measure with --knock-strip, commit by pathspec |
 
-_No active mutation windows._ The 2026-09-04 orchestrate-next-build handoff is finished: everything
+_Previously:_ no active mutation windows. The 2026-09-04 orchestrate-next-build handoff is finished: everything
 that was in flight is committed and pushed, and no agent is holding a source file. See
 [`HANDOFF_2026-09-04_orchestrate-next-build.md`](./HANDOFF_2026-09-04_orchestrate-next-build.md) for
 what landed, the two 47-A goldens that moved, and the two open PQ-180 harness defects.
