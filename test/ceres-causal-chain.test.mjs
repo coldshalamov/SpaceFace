@@ -1,5 +1,5 @@
 /**
- * PQ-045.causal-chain — six ambient microevents as one authored Ceres chain.
+ * PQ-045.causal-chain — eight ambient microevents as one authored Ceres chain.
  *
  * Seconds-scale, seed-pinned characterization of the traffic-owned choreography timer.
  * Does not touch goldens, npcJobsRuntime, or render.
@@ -43,6 +43,7 @@ const EXPECTED_CHAIN = Object.freeze([
   'ev_rich_seam_strike',
   'ev_miner_calls_hauler',
   'ev_patrol_scans_suspect',
+  'ev_cargo_capsule_launch',
   'ev_disabled_hauler_recovery',
   'ev_tender_services_miner',
   'ev_cutter_strips_wreck',
@@ -362,7 +363,7 @@ function runUntil(traffic, state, predicate, { start = state.simTime, maxS = 900
   return null;
 }
 
-test('catalog order is the seven admitted microevents', () => {
+test('catalog order is the eight admitted microevents', () => {
   assert.deepEqual(CHAIN_EVENT_IDS, [...EXPECTED_CHAIN]);
   assert.equal(CERES_CAUSAL_CHAIN_MAX_CONCURRENT, 2);
   assert.equal(CERES_CAUSAL_CHAIN_SCHEMA, 'spaceface.ceresCausalChain.v1');
@@ -1102,8 +1103,24 @@ test('D1: kill hauler mid-scan seeds aftermath_open, not hauler_stressed', () =>
 test('D1: every chain entry authors interruptSeeds distinct from complete seeds where story diverges', () => {
   for (const entry of CERES_CAUSAL_CHAIN) {
     assert.ok(Array.isArray(entry.seeds), `${entry.id} seeds array`);
-    assert.ok(Array.isArray(entry.interruptSeeds) && entry.interruptSeeds.length > 0,
-      `${entry.id} interruptSeeds`);
+    assert.ok(Array.isArray(entry.interruptSeeds), `${entry.id} interruptSeeds array`);
+    if (entry.seeds.length === 0) {
+      // A seedless-on-complete entry cannot claim facts its phases did not make physical. What
+      // its interrupt path may still do depends on whether the world can interrupt it at all:
+      // a cast-slot entry loses actors (the call link's aftermath_open), while an actorless
+      // station-side link has nothing in the world to interrupt, so both outcomes tell the same
+      // story and its resolution — not a seed bag — is what the cycle ledger counts. That
+      // no-softlock duty transfers to the runtime: the link must resolve on every outcome.
+      if (entry.interruptSeeds.length > 0) {
+        assert.ok(Array.isArray(entry.actorSlots) && entry.actorSlots.length > 0,
+          `${entry.id} diverges on interrupt only through its cast participants`);
+      } else {
+        assert.ok(Array.isArray(entry.actorSlots) && entry.actorSlots.length === 0,
+          `${entry.id} resolves identically on every outcome only without cast slots`);
+      }
+      continue;
+    }
+    assert.ok(entry.interruptSeeds.length > 0, `${entry.id} interruptSeeds`);
   }
   const handoff = CERES_CAUSAL_CHAIN.find((e) => e.id === 'ev_miner_calls_hauler');
   assert.deepEqual(handoff.seeds, [], 'the event phase cannot claim cargo before a physical transfer');
@@ -1390,4 +1407,63 @@ test('the cutter count spill drops real grabbable pickups at the wreck, once per
 
   traffic._applyCeresCausalPhaseEffects(cutterDef, live, 'stack');
   assert.equal(spillPickups().length, 3, 'the stack spills once per link, not per tick');
+});
+
+test('the refinery outbound capsule leaves the station face once per link as a real pickup', () => {
+  const { traffic, state } = bootCausalHarness({ simTime: 100 });
+  stepTo(traffic, state, 100); // materialize the activity cast
+  // The harness stub spawns nothing; give it a minimal real spawn for this capsule-only test.
+  let spawnSeq = 9500;
+  traffic.helpers.spawnEntity = (spec) => {
+    const entity = {
+      id: spawnSeq++, type: spec.type, alive: true,
+      pos: { ...spec.pos }, vel: { ...(spec.vel || {}) }, radius: spec.radius,
+      data: { ...spec.data },
+    };
+    state.entityList.push(entity);
+    state.entities.set(entity.id, entity);
+    return entity;
+  };
+  const capsuleDef = CERES_CAUSAL_CHAIN.find((entry) => entry.id === 'ev_cargo_capsule_launch');
+  assert.ok(capsuleDef, 'the capsule link is the eighth admitted event');
+  assert.deepEqual(capsuleDef.requires, ['ore_handoff'],
+    'the launch rides the custody transfer, not a cooldown draw');
+  const station = state.entityList.find((entity) => entity.data
+    && entity.data.stationId === 'station_ceres');
+  assert.ok(station, 'station_ceres is live in the harness');
+  const live = { eventId: capsuleDef.id, phase: 'launch', actorSlotIds: [] };
+  const capsules = () => [...state.entityList].filter((entity) => entity
+    && entity.type === 'pickup' && entity.data
+    && entity.data.ceresCapsuleSource === 'ev_cargo_capsule_launch');
+  assert.equal(capsules().length, 0, 'no capsule before the launch phase');
+
+  traffic._applyCeresCausalPhaseEffects(capsuleDef, live, 'stage');
+  assert.equal(capsules().length, 0, 'the stage beat launches nothing');
+
+  traffic._applyCeresCausalPhaseEffects(capsuleDef, live, 'launch');
+  const launched = capsules();
+  assert.equal(launched.length, 1, 'the launch phase puts one capsule on the lane');
+  const capsule = launched[0];
+  assert.equal(capsule.data.commodityId, 'cmdty_refined_metals', 'the batch is the refinery product');
+  assert.equal(capsule.data.amount, 5);
+  assert.equal(capsule.data.name, 'Refinery Outbound Capsule');
+  assert.ok(capsule.data.despawnAt > state.simTime, 'the capsule despawns on a timer');
+  const leg = Math.hypot(capsule.vel.x, capsule.vel.z);
+  assert.ok(leg > 0 && leg <= 20, `the capsule coasts a catchable leg (${leg.toFixed(1)}wu/s)`);
+  const clearance = Math.hypot(capsule.pos.x - station.pos.x, capsule.pos.z - station.pos.z);
+  assert.ok(clearance > (station.radius || 30),
+    `the capsule clears the launch face (${clearance.toFixed(1)}wu)`);
+
+  traffic._applyCeresCausalPhaseEffects(capsuleDef, live, 'launch');
+  assert.equal(capsules().length, 1, 'one launch per link, not per tick');
+  traffic._applyCeresCausalPhaseEffects(capsuleDef, live, 'coast');
+  assert.equal(capsules().length, 1, 'later phases never relaunch');
+
+  // A launcher with no resolvable face falls back to the catalog's stage-only behavior.
+  const liveNoFace = { eventId: capsuleDef.id, phase: 'launch', actorSlotIds: [] };
+  const realStations = traffic._sectorStations;
+  traffic._sectorStations = () => [];
+  traffic._applyCeresCausalPhaseEffects(capsuleDef, liveNoFace, 'launch');
+  traffic._sectorStations = realStations;
+  assert.equal(capsules().length, 1, 'no face resolved → the fallback completes without a capsule');
 });

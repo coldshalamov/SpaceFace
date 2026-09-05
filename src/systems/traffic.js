@@ -366,8 +366,8 @@ const CERES_ORE_BARGE_UNLOAD_ACTION = Object.freeze({
 });
 
 // ── PQ-045.causal-chain ──────────────────────────────────────────────────────────────────────────
-// Seven catalog microevents form ONE authored causal story in the Ceres reference sector (the
-// seventh, ev_rock_calving, is the environmental coda that closes every cycle). This is a
+// Eight catalog microevents form ONE authored causal story in the Ceres reference sector (the
+// last, ev_rock_calving, is the environmental coda that closes every cycle). This is a
 // choreography timer bound to the cast that already flies — not a generic ambient-event policy
 // layer. Concurrency is hard-capped at two active links; later links wait on seeds, not on a
 // cooldown/draw policy. Ledger lives on the traffic instance only (transient; out of the save
@@ -398,6 +398,13 @@ const CERES_TENDER_SERVICE_REPAIR_AMOUNT = 999;
 const CERES_CUTTER_SPILL_PICKUPS = 3;
 const CERES_CUTTER_SPILL_QTY = 2;
 const CERES_CUTTER_SPILL_TTL_S = 180;
+// ev_cargo_capsule_launch: one outbound refinery batch per cycle, launched once the day's ore is
+// in traffic custody (ore_handoff). The capsule is a single grabbable pickup on a fixed ballistic
+// leg; the TTL covers the authored launch..exit window plus coast margin before the lane is clean.
+const CERES_CAPSULE_BATCH_U = 5;
+const CERES_CAPSULE_COAST_SPEED_WU_S = 14;
+const CERES_CAPSULE_TTL_S = 60;
+const CERES_CAPSULE_LAUNCH_CLEARANCE_WU = 12;
 // The calved fresh face out-pays the strike's default seam bonus (fieldDepletion default 8u):
 // the catalog aftermath is "fresh faces are visibly brighter ore", so the re-armed window is the
 // richer one. The target panel names it FRESH SEAM and the Hold's lot row shows the bonus size.
@@ -501,6 +508,31 @@ const CERES_CAUSAL_CHAIN = Object.freeze([
       Object.freeze({ name: 'lock', durationS: 10, cue: 'on_the_pin' }),
       Object.freeze({ name: 'read', durationS: 15, cue: 'on_the_pin' }),
       Object.freeze({ name: 'release', durationS: 8, cue: 'on_the_pin' }),
+    ]),
+  }),
+  Object.freeze({
+    // ev_cargo_capsule_launch (catalog logistics, next20 tier) rides the delivery the call link
+    // made physical: once the day's ore is in traffic custody, the refinery answers with one
+    // outbound batch — an unmanned refined-metals capsule boosting down-lane on a fixed leg. The
+    // station is the chain's first non-hull participant, so the link binds no cast slot: nothing
+    // in the world can interrupt it and both outcomes tell the same story, which is why it is
+    // the one entry with no seed bag at all (nothing downstream waits on it; its resolution is
+    // what the cycle ledger counts). The capsule rides the standard pickup pipeline — a player
+    // who reads the launch can chase it down and take the batch, or watch it leave — and the
+    // catalog's crack-and-scatter branch stays unwired exactly like the calving's body-split:
+    // pickups are not damageable, and the boundary is recorded here.
+    id: 'ev_cargo_capsule_launch',
+    actorSlots: Object.freeze([]),
+    requires: Object.freeze(['ore_handoff']),
+    seedAtPhase: 'launch',
+    seeds: Object.freeze([]),
+    interruptSeeds: Object.freeze([]),
+    jobHints: Object.freeze([]),
+    phases: Object.freeze([
+      Object.freeze({ name: 'stage', durationS: 10, cue: null }),
+      Object.freeze({ name: 'launch', durationS: 6, cue: 'clean_burn' }),
+      Object.freeze({ name: 'coast', durationS: 20, cue: 'clean_burn' }),
+      Object.freeze({ name: 'exit', durationS: 8, cue: null }),
     ]),
   }),
   Object.freeze({
@@ -7135,6 +7167,54 @@ export const traffic = {
     live.countSpilled = true;
   },
 
+  /**
+   * ev_cargo_capsule_launch's launch phase: the refinery's outbound batch as one real pickup on a
+   * fixed ballistic leg. The bearing is a hash32 of the event id — the launcher's scheduled lane,
+   * identical across seeds and cycles without consuming shared rng. Standard pickup pipeline: the
+   * collecting player owns the cargo write, exactly like the cutter spill; the TTL bounds the exit
+   * leg so the lane never accumulates capsules. No launch face resolvable → the link completes as
+   * the catalog's fallback (the stage beat played; nothing left the face).
+   */
+  _launchCeresCargoCapsule(live) {
+    if (!live || live.capsuleLaunched) return;
+    if (!this.helpers || typeof this.helpers.spawnEntity !== 'function') return;
+    const stations = this._sectorStations();
+    let station = null;
+    for (let i = 0; i < stations.length; i++) {
+      const candidate = stations[i];
+      if (candidate && candidate.alive !== false && candidate.pos
+        && candidate.data && candidate.data.stationId === 'station_ceres') {
+        station = candidate;
+        break;
+      }
+    }
+    if (!station) return;
+    const bearing = (hash32('ev_cargo_capsule_launch', 0, 'capsule-leg') % 6284) / 1000;
+    const launchDist = (station.radius || 30) + CERES_CAPSULE_LAUNCH_CLEARANCE_WU;
+    const now = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    const entity = this.helpers.spawnEntity({
+      type: 'pickup',
+      pos: {
+        x: station.pos.x + Math.cos(bearing) * launchDist,
+        z: station.pos.z + Math.sin(bearing) * launchDist,
+      },
+      vel: {
+        x: Math.cos(bearing) * CERES_CAPSULE_COAST_SPEED_WU_S,
+        z: Math.sin(bearing) * CERES_CAPSULE_COAST_SPEED_WU_S,
+      },
+      radius: 2.4, mass: 0.6, collides: true,
+      data: {
+        kind: 'ore',
+        commodityId: 'cmdty_refined_metals',
+        amount: CERES_CAPSULE_BATCH_U,
+        name: 'Refinery Outbound Capsule',
+        despawnAt: now + CERES_CAPSULE_TTL_S,
+        ceresCapsuleSource: 'ev_cargo_capsule_launch',
+      },
+    });
+    if (entity) live.capsuleLaunched = true;
+  },
+
   _restoreCeresCausalJobs(live) {
     if (!live || !Array.isArray(live.redirectedSlots) || !live.redirectedSlots.length) return;
     const release = this.helpers && this.helpers.npcJobs && this.helpers.npcJobs.release;
@@ -7163,12 +7243,17 @@ export const traffic = {
 
   _applyCeresCausalPhaseEffects(def, live, phaseName) {
     if (!def || !live) return;
-    // Choreography-only for every link except one authored exception: the salvor's stack phase is
-    // the wreck-stripping aftermath made physical (catalog: "scrap pickups persist").
-    // The spill rides the standard pickup pipeline — the collecting player owns the cargo write,
-    // exactly like the disabled-hauler spill — so traffic mints no cargo onto any hull.
+    // Choreography-only for every link except two authored exceptions: the salvor's stack phase
+    // spills its cutting count as real pickups at the wreck (catalog: "scrap pickups persist"),
+    // and the capsule launch puts the refinery's outbound batch on the lane as one real pickup
+    // (see _launchCeresCargoCapsule). Both ride the standard pickup pipeline — the collecting
+    // player owns the cargo write, exactly like the disabled-hauler spill — so traffic mints no
+    // cargo onto any hull.
     if (def.id === 'ev_cutter_strips_wreck' && phaseName === 'stack') {
       this._spillCeresCutterCount(live);
+    }
+    if (def.id === 'ev_cargo_capsule_launch' && phaseName === 'launch') {
+      this._launchCeresCargoCapsule(live);
     }
     this._applyCeresCausalJobHints(def, live, phaseName);
     void phaseName;
