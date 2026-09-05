@@ -14,7 +14,7 @@ never in-flight work — see "Not attempted" at the bottom.
 | Queue item | Outcome |
 |---|---|
 | 1. Triage + commit the three in-flight blocks | **Done** — landed as four commits, not three |
-| 2. PQ-180 runtime capture + package scripts | **Partly done** — scripts added; matrix measured; see PQ-180 below |
+| 2. PQ-180 runtime capture + package scripts | **Partly done** — scripts added and the matrix measured headed (0 → 30 surfaces); the PNG capture is **blocked**, diagnosed below |
 | 3. Full 9-case swarm AFTER + receipt | **Done** — `cf836f2c` |
 | 4. Integrate CONTACT, fix `causalActorId`, re-measure B13 | **Done** — `a3bd740d`, `e5602348`, `2b41fb96` |
 | 5. PQ-173 / PQ-186 leaves | **Not attempted** — multi-day packets, see below |
@@ -96,11 +96,19 @@ time (previously every runtime cell was `measured:false`). Two things a follow-u
    `test/ui-grammar-baseline.json`.** The first owner of these reds is the harness, not the surfaces.
 2. **`comms-radial` and `wingman-radial` time out** at 20 s waiting to become visible.
 
-Still to do: `npm run capture:ui-matrix -- --update --headed` (~6 boots per viewport × 3 viewports,
-384 PNGs — must be headed), then `npm run check:visual-regression`, calibrating only *unlisted*
-surface floors from that run's own repeatability numbers. The five committed floors stay exactly as
-measured. `check:ui:grammar-matrix` is deliberately **not** in any gate: the static variant exits
-non-zero, and a gate that is red on arrival teaches agents to ignore it.
+**The capture is blocked by defect 1.** `capture:ui-matrix -- --update --headed` aborts where the
+matrix only warns, with `mode=flight screenOpen=true top=station`. Three programmatic exits were
+tried and rejected on evidence: `closeAll()` leaves `state.ui.docked` true and strands the sim in
+`paused` with an empty stack; a probe-emitted `station:exitRequest` never reaches the committed
+undock because that flow needs a real opener; dock-aware combinations hit the same two dead ends.
+The real question is whether undocking can be driven from outside its confirm flow — product-level,
+not a probe tweak. The probe keeps Escape-only behaviour; only the diagnosis was landed, so
+`ensureFlightIdle` now names the mode, the open flag and the top screen it last saw.
+
+After that unblocks: `npm run check:visual-regression`, calibrating only *unlisted* surface floors
+from that run's own repeatability numbers. The five committed floors stay exactly as measured.
+`check:ui:grammar-matrix` is deliberately **not** in any gate: the static variant exits non-zero, and
+a gate that is red on arrival teaches agents to ignore it.
 
 ## The feel-regression harness is finished
 

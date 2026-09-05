@@ -77,13 +77,38 @@ evidence now records `inheritedFrom` and reads: *"reachable only through station
 opens by a named fixture rather than a player route."* A duplicated `ownerLeaf` key in the same
 station block was removed.
 
-## Not done
+## The capture is BLOCKED, and here is exactly where
 
-`npm run capture:ui-matrix -- --update --headed` (~6 boots per viewport × 3 viewports, 384 PNGs) and
-`npm run check:visual-regression` were not run in this session. When they are: read the repeatability
-report **before** touching a floor, calibrate only surfaces that have no committed floor, from that
-run's own two-pass numbers. The five committed floors are measured rest variance and stay exactly as
-they are; widening a floor to pass is the one thing that would void the instrument.
+`npm run capture:ui-matrix -- --update --headed` was attempted four times and **cannot complete**.
+It is the same defect as #1, but the capture aborts where the matrix only warns.
+
+One boot photographs three modes in sequence on the same page, so the second mode's
+`ensureFlightIdle` has to recover from whatever the first left open. It cannot leave the station:
+
+```
+Unable to return to idle flight state for capture — last observed mode=flight screenOpen=true top=station
+```
+
+Three programmatic exits were tried and each was **measured and rejected**, not left in the code:
+
+| Attempt | Result |
+|---|---|
+| `screenManager.closeAll()` | Panel closes, but `state.ui.docked` stays true, so the manager's own pause request stays raised. Sim strands at `mode=paused screenOpen=false` — an empty stack and nothing left to close. Strictly worse. |
+| `bus.emit('station:exitRequest', …)` from the probe | Station exit is a clean → confirm → committed-undock flow. An emit with no real opener never reaches the committed step; the screen just stays open. |
+| Both, dock-aware, either order | Same two dead ends. |
+
+So the blocker is that **undocking cannot be driven from outside its confirm flow** — a product-level
+question about the station exit contract, not a probe tweak. The probe keeps its original Escape-only
+behaviour rather than shipping an unproven change to a measuring instrument. What did land is the
+diagnosis: `ensureFlightIdle` now reports the mode, the open flag and the top screen id it last saw,
+so the next agent starts from the answer instead of rediscovering it (three separate investigations
+in this session chased the wrong cause because the error said only "unable to return to idle").
+
+Once a surface can leave the station, run the capture and then `npm run check:visual-regression`:
+read the repeatability report **before** touching a floor, calibrate only surfaces that have no
+committed floor, from that run's own two-pass numbers. The five committed floors are measured rest
+variance and stay exactly as they are; widening a floor to pass is the one thing that would void the
+instrument.
 
 `check:ui:grammar-matrix` is deliberately **not** in any gate. The static variant exits non-zero
 (0 surfaces measured against a floor of 30), and a gate that is red on arrival teaches agents to

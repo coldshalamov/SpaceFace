@@ -759,25 +759,60 @@ export async function openBootWithRetry(params, attempts = 4) {
   throw new Error(`boot failed after ${attempts} attempt(s): ${lastError && lastError.message ? lastError.message : String(lastError)}`);
 }
 
+// Escape alone cannot leave every screen. The station is the clear case: dismissing it is an
+// implicit Back that must route through the station-exit owner (`station:exitRequest`) so the
+// transient clean and confirm run before a committed undock — and while the hull is still docked,
+// closing the panel would not restore flight anyway. Crucible run screens are similar: they are
+// advanced by a choice, not dismissed by a key.
+//
+// So escalate through the UI's OWN exit paths rather than pressing Escape harder. Before this, the
+// probe pressed Escape twenty times and then measured the next surface through whatever was still
+// on screen, which is how a whole pass of station rows became unusable as evidence.
+// Escape only. Three programmatic escalations were tried on 2026-09-04 to get the capture past a
+// station screen, and each was measured and rejected rather than left in:
+//
+//   - `screenManager.closeAll()` — tears the panel down but leaves `state.ui.docked` true, so the
+//     manager's own pause request stays raised and the sim strands in `paused` with an EMPTY stack
+//     and nothing left to close. Strictly worse than being stuck on the panel.
+//   - `bus.emit('station:exitRequest', …)` from the probe — the station exit is a clean → confirm →
+//     committed-undock flow; an emit with no real opener never reaches the committed step, so the
+//     screen simply stays open.
+//   - Both, dock-aware and in either order — same two dead ends.
+//
+// So the real blocker is that undocking cannot be driven from outside its confirm flow, which is a
+// product-level question, not a probe tweak. Escape is kept because it is the honest, unchanged
+// behaviour; the failure it produces is now self-describing (see ensureFlightIdle) so the next
+// agent starts from the diagnosis rather than rediscovering it.
+async function escalateScreenExit(page) {
+  await page.keyboard.press('Escape');
+}
+
 export async function ensureFlightIdle(page) {
+  let status = null;
   for (let attempt = 0; attempt < 20; attempt += 1) {
-    const status = await readUiStatus(page);
+    status = await readUiStatus(page);
     if (status.mode === 'flight' && status.screenOpen === false) return;
     if (status.screenOpen) {
-      await page.keyboard.press('Escape');
+      await escalateScreenExit(page);
       await page.waitForTimeout(200);
       continue;
     }
     await page.waitForTimeout(200);
   }
-  throw new Error('Unable to return to idle flight state for capture');
+  // Say what was actually on screen. "Unable to return to idle flight" with no observation sent
+  // three separate investigations after the wrong cause; the mode and the top screen id are the
+  // whole diagnosis and they were already in hand.
+  const seen = status
+    ? `mode=${status.mode === null ? 'null' : status.mode} screenOpen=${status.screenOpen} top=${status.top === null || status.top === undefined ? 'none' : status.top}`
+    : 'no status could be read';
+  throw new Error(`Unable to return to idle flight state for capture — last observed ${seen}`);
 }
 
 export async function closeOpenScreens(page) {
   for (let attempt = 0; attempt < 12; attempt += 1) {
     const status = await readUiStatus(page);
     if (!status.screenOpen) return;
-    await page.keyboard.press('Escape');
+    await escalateScreenExit(page);
     await page.waitForTimeout(200);
   }
   throw new Error('Escape did not close active screen');
@@ -864,7 +899,8 @@ async function readUiStatus(page) {
     const sm = sf && sf.ctx && sf.ctx.screenManager;
     const mode = state && state.mode ? state.mode : null;
     const screenOpen = !!(sm && typeof sm.isOpen === 'function' && sm.isOpen());
-    return { mode, screenOpen };
+    const top = sm && typeof sm.top === 'function' ? sm.top() : null;
+    return { mode, screenOpen, top };
   });
 }
 
