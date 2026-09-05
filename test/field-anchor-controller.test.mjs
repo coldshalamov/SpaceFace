@@ -133,11 +133,21 @@ test('seeded authored spawn produces one anchor controller plus escorts', () => 
 test('anchor snare alters a body trajectory through the shared field owner', async () => {
   await withFieldsEnabled(async () => {
     const h = await bootPhysics(7222);
-    spawnAnchor(h.sim, { x: 0, z: 0 });
-    const body = spawnBody(h.sim, { x: 145, z: 0 }, { x: 30, z: 0 }, 24);
+    // The anchor must not be spawned on top of boot()'s player, who sits at the origin. Two
+    // dynamic hulls at the identical XZ give the solver a degenerate contact normal, and under
+    // rapier-dynamic that resolves as a cannon launch (measured: 15 ticks of creep, then tick 16
+    // throws the anchor to x=217474 and the player to x=-2283486). The field follows its hull, so
+    // the snare left the sector with it and this test measured nothing — the body's velocity came
+    // back exactly as spawned. Placing the pair clear of the origin keeps the geometry under test
+    // identical (145 WU outbound inside the 235 WU snare) and lets the field actually act.
+    // The launch itself is a real physics-owner defect, reported separately; it is not this
+    // scenario's subject and must not be pinned green here.
+    const anchorX = 400;
+    spawnAnchor(h.sim, { x: anchorX, z: 0 });
+    const body = spawnBody(h.sim, { x: anchorX + 145, z: 0 }, { x: 30, z: 0 }, 24);
     runPastSpinup(h.sim, 50);
     assert.ok(body.vel.x < 20, `snare drag slowed outbound velocity through physics, got ${body.vel.x}`);
-    assert.ok(body.pos.x < 145 + 30 * (100 / 60), 'trajectory changed from free outbound travel');
+    assert.ok(body.pos.x < anchorX + 145 + 30 * (100 / 60), 'trajectory changed from free outbound travel');
     assert.ok(h.state.fields.telemetry.queries >= 1, 'field used bounded spatial query telemetry');
     h.cleanup();
   });

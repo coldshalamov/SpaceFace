@@ -5,6 +5,8 @@ import { existsSync, readFileSync } from 'node:fs';
 
 import { createSimulation } from '../src/core/sim.js';
 import { barkFor } from '../src/data/barks.js';
+import { contactGrammarFor } from '../src/data/factionContactGrammar.js';
+import { PRODUCTION_UPDATE_ORDER } from '../src/runtime/authoritativeSystemManifest.js';
 import { hash32 } from '../src/core/rng.js';
 import { voiceArbiter } from '../src/ui/voiceArbiter.js';
 
@@ -118,14 +120,25 @@ function testSimultaneousBarksUseArbiterFloor() {
   const two = spawnContact(t, { pos: { x: 260, z: 20 }, ai: { squadId: 'second' } });
   t.sim.step();
 
+  // Both contacts are Crimson Reach (spawnContact's default faction). Commit f277c5e7 taught
+  // classifyBarkSituation the faction contact grammar: a faction whose demandType is 'tithe' opens
+  // a contact with the toll ask, not with paperwork. Reach's authored grammar says exactly that
+  // (contactWord 'TOLL', demandType 'tithe', primaryBark 'demand-cargo'), so a Reach picket's
+  // first line is the demand. The subject of this section is unchanged — two same-priority barks
+  // in one tick are serialized by the arbiter — only the opening situation follows the grammar.
+  const opening = 'demand-cargo';
+  assert.equal(opening, contactGrammarFor('faction_reach').primaryBark,
+    'the pinned opening situation is the faction grammar primary bark, not a loose literal');
+
   assert.equal(t.log.voices.length, 2, 'two simultaneous contacts enqueue two bark receipts');
-  assert.deepEqual(t.log.voices.map((v) => v.situation), ['scan', 'scan'], 'both contacts request scan barks');
+  assert.deepEqual(t.log.voices.map((v) => v.situation), [opening, opening],
+    'both Reach contacts open with their faction primary bark');
   assert.equal(t.log.toasts.length, 1, 'voiceArbiter surfaces only one bark on the floor this tick');
-  assert.equal(t.log.toasts[0].text, expectedLine(1220, one.id, 'faction_reach', 'scan'),
+  assert.equal(t.log.toasts[0].text, expectedLine(1220, one.id, 'faction_reach', opening),
     'first insertion wins the same-priority floor');
   const arbiter = t.sim.registry.get('voiceArbiter');
   assert.equal(arbiter.queue.pending.length, 1, 'second same-priority bark remains queued, not overlapping');
-  assert.equal(arbiter.queue.pending[0].text, expectedLine(1220, two.id, 'faction_reach', 'scan'),
+  assert.equal(arbiter.queue.pending[0].text, expectedLine(1220, two.id, 'faction_reach', opening),
     'queued bark keeps its deterministic text');
   ok('simultaneous barks are serialized by voiceArbiter');
 }
@@ -171,7 +184,17 @@ function testPackageRegistryAndSourceGuards() {
   const registry = readFileSync(new URL('../src/core/registry.js', import.meta.url), 'utf8');
   assert.match(registry, /import \{ barkDirector \} from '\.\.\/systems\/barkDirector\.js';/,
     'registry imports barkDirector system');
-  assert.match(registry, /aceMemory, aiSlot, barkDirector, aiEncounter/,
+  // Commit 3f98e842 ("feat(lab): Phase 2 authoritative runtime profiles and system manifest") moved
+  // the sim update order out of a flat identifier list in registry.js and into the authoritative
+  // manifest; registry.js now materialises UPDATE_ORDER from PRODUCTION_UPDATE_ORDER. The order
+  // itself did not change (factionPresence was inserted before aiSlot, which is why the old text
+  // literal no longer matched). Assert the ordering the sentence actually claims, at its source.
+  const aiIndex = PRODUCTION_UPDATE_ORDER.indexOf('aiSlot');
+  const barkIndex = PRODUCTION_UPDATE_ORDER.indexOf('barkDirector');
+  const encounterIndex = PRODUCTION_UPDATE_ORDER.indexOf('aiEncounter');
+  assert.ok(aiIndex >= 0 && barkIndex >= 0 && encounterIndex >= 0,
+    'aiSlot, barkDirector and aiEncounter are all in the production update order');
+  assert.ok(aiIndex < barkIndex && barkIndex < encounterIndex,
     'barkDirector runs after AI and before aiEncounter in update order');
 
   const source = readFileSync(new URL('../src/systems/barkDirector.js', import.meta.url), 'utf8');

@@ -142,11 +142,18 @@ test('feel.knock_budget metrics are finite, non-negative, and barMet matches the
 });
 
 test('simulateCrucibleSwarm exposes eventTrace derived from the real bus, not a stand-in', { timeout: 120_000 }, async () => {
+  // tickCap is this assertion's observation window, not a bar. What is being pinned is the
+  // provenance of the trace — it comes off the real bus, not a stand-in loop. PQ-137.03 halved the
+  // flight speed table, which moved the scripted pilot's first traced verb from inside the old
+  // 180-tick window out to tick 225 (`brake`, measured on this seed at HEAD). 300 ticks covers it
+  // with margin. This is not a "verb within 3 s" bar: over 600 ticks this pilot emits exactly one
+  // traced verb, so no such bar was ever being held here. The assertion can still fail — a
+  // stand-in trace emits no verb:used at any cap.
   const run = await simulateCrucibleSwarm({
     arenaId: 'helios_core',
     loadoutId: 'energy_baseline',
     seed: 4242,
-    tickCap: 180,
+    tickCap: 300,
   });
 
   assert.ok(Array.isArray(run.eventTrace), 'run must expose an eventTrace array');

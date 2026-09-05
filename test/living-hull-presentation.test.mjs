@@ -152,8 +152,15 @@ test('one controller reparents across player roots and stays hidden until author
 
 test('renderer binds Living Hull changes to the retained adapter, not the ship rebuild route', () => {
   const source = readFileSync(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
-  const start = source.indexOf("bus.on('ship:livingHullChanged'");
-  assert.ok(start >= 0, 'renderer must consume the rare Living Hull event');
+  // 9ed20a0b ("fix(render): own browser lifecycle callbacks") moved every renderer subscription
+  // onto the lifecycle helper `onBus(...)`, which records the handler so teardown can unsubscribe
+  // it. The intent of this assertion is unchanged — the presentation must consume the rare Living
+  // Hull event — but a raw `bus.on` here would now leak a handler past renderer teardown, so the
+  // lifecycle form is the one thing that satisfies it.
+  const start = source.indexOf("onBus('ship:livingHullChanged'");
+  assert.ok(start >= 0, 'renderer must consume the rare Living Hull event through the lifecycle');
+  assert.doesNotMatch(source, /bus\.on\('ship:livingHullChanged'/,
+    'the Living Hull subscription never bypasses lifecycle teardown with a raw bus.on');
   const block = source.slice(start, start + 900);
   assert.match(block, /_livingHullPresentation\.attach\(mesh\)/);
   assert.match(block, /_livingHullPresentation\.sync\(/);

@@ -1,17 +1,26 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-// weapons.js intentionally enables the player-facing vent path only when window exists. Define it
-// before the dynamic import so this headless test exercises the same weapon gate as Browser/Electron.
-globalThis.window = {};
+// The forced heat vent used to be gated on `typeof window`, so this file defined a window before
+// importing weapons.js to reach the same path as Browser/Electron. Commit 7a8a0c78 ("fix(lab):
+// holistic FIX2 — close remaining open/partial holes + N1/N2") replaced that host sniff with the
+// explicit runtime profile: `isWeaponVentEnabled` now reads the `weaponHeatVent` combat flag, whose
+// process default is the legacy47a profile (OFF, to keep the 47-A goldens byte-stable) while the
+// production profile — the default route — is ON. Defining `window` therefore no longer selects
+// anything; seeding the production feature config in starterHarness() does, and that is what
+// Browser/Electron actually run.
 
-const [{ createBus }, { createGameState }, { NEW_GAME }, shipsModule, { combat }, { weapons }] = await Promise.all([
+const [
+  { createBus }, { createGameState }, { NEW_GAME }, shipsModule, { combat }, { weapons },
+  { PRODUCTION_FEATURES },
+] = await Promise.all([
   import('../src/core/eventBus.js'),
   import('../src/core/gameState.js'),
   import('../src/data/newGameDefaults.js'),
   import('../src/systems/ships.js'),
   import('../src/systems/combat.js'),
   import('../src/systems/weapons.js'),
+  import('../src/runtime/runtimeProfiles.js'),
 ]);
 
 const { fittingsFromDefaultModules, makeShipEntitySpec } = shipsModule;
@@ -54,6 +63,9 @@ function helpersFor(state) {
 
 function starterHarness(options = {}) {
   const state = createGameState(47);
+  // Same shape createSimulation binds (src/core/sim.js): the profile's frozen feature config on
+  // state.runtime.features. Production is the default route, and production runs the heat vent.
+  state.runtime = Object.freeze({ ...(state.runtime || {}), profileId: 'production', features: PRODUCTION_FEATURES });
   state.mode = 'flight';
   state.entities.clear();
   state.entityList.length = 0;

@@ -719,7 +719,11 @@ await check('objective exposes one action, destination, distance, and distinctiv
 
   const radarSrc = read('../src/ui/radar.js');
   assert.match(radarSrc, /drawWaypointDiamond/, 'radar draws a distinctive waypoint diamond');
-  assert.match(radarSrc, /COL\.objective/, 'radar uses objective color for mission markers');
+  // da3288c3 ("refactor(map): replace fuzzy map semantics with native tactical grammar") retired
+  // radar.js's local `COL` map; the objective color now comes from the shared tactical palette.
+  // Same contract, one source of truth — the marker still paints in the objective color.
+  assert.match(radarSrc, /TACTICAL_MAP_PALETTE\.objective/,
+    'radar uses objective color for mission markers');
   assert.match(radarSrc, /waypointLabel/, 'radar labels the mission marker');
 
   const hudSrc = read('../src/ui/hud.js');
