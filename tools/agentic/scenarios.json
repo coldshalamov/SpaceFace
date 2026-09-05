@@ -2,24 +2,533 @@
   "schemaVersion": 1,
   "name": "spaceface.agenticScenarioRegistry",
   "scenarios": [
-    {"id":"boot-liveness","seconds":20,"purpose":"Title/New Game or Continue reaches changing flight canvas; sim and renderer advance together.","checkpoints":["flight-entered","canvas-changing","player-control"],"invariants":["no-frame-error-streak","no-required-asset-invisible","no-unrecovered-context-loss"]},
-    {"id":"flight-accel-brake","seconds":18,"purpose":"Measure throttle response, acceleration, jerk, brake settling and residual drift.","checkpoints":["throttle-on","cruise","brake-on","settled"],"metrics":["inputLatencyMs","peakAccel","peakJerk","brakeSettleS","residualSpeed"]},
-    {"id":"flight-slalom","seconds":25,"purpose":"Repeatable alternating gates at shipping camera; compare path error and speed without rewarding crawling.","checkpoints":["gate-1","gate-3","gate-5","complete"],"metrics":["crossTrackP95","meanSpeed","yawJerkP95","overshootCount"]},
-    {"id":"flight-reversal","seconds":14,"purpose":"Full-speed 180-degree reversal; distinguish intentional inertia from mushy control.","checkpoints":["cruise","reverse-command","heading-cross","settled"],"metrics":["reversalTimeS","distanceToReverse","headingReversalCount","angularJerkP95"]},
-    {"id":"collision-recovery","seconds":20,"purpose":"Controlled glancing and hard collision followed by player recovery.","checkpoints":["impact","max-displacement","control-restored"],"metrics":["impactImpulse","recoveryTimeS","cameraJerkP95","contactStormCount"]},
-    {"id":"stationary-target","seconds":20,"purpose":"Weapon/cue causal-chain test against non-maneuvering target.","checkpoints":["first-fire","first-contact","first-damage","kill-or-timeout"],"metrics":["fireToContactMs","contactToFeedbackMs","duplicateDamageCount"]},
-    {"id":"duel-1v1","seconds":45,"purpose":"One player and one representative hostile exercising movement, targeting, weapons and feedback.","checkpoints":["contact","engagement","first-hit","resolution"],"metrics":["targetChurn","tacticTransitions","headingReversals","activeFireRatio","frameP95"]},
-    {"id":"mixed-wing","seconds":60,"purpose":"Four-role hostile wing; formation entry, break, crossing lanes, extension and reform.","checkpoints":["wing-visible","fan","cross","extension","reform"],"metrics":["formationDispersion","mergeCollisionCount","tacticChurn","concurrentAttackers","frameP95"]},
-    {"id":"swarm-12","seconds":60,"purpose":"Twelve-body cohort should read as coherent flow without point-collapse or AI thrash.","checkpoints":["cohort-visible","first-turn","player-break","recovery"],"metrics":["neighborDistanceP10","headingVariance","pointCollapseEvents","blockedActionLoops","simP95"]},
-    {"id":"first-new-asset","seconds":30,"purpose":"Introduce a not-yet-seen authored hull/prop during live flight and measure admission/compile/upload behavior.","checkpoints":["before-admission","admitted","first-visible"],"metrics":["admissionMaxMs","renderMaxMs","newPrograms","newTextures","newGeometries"]},
-    {"id":"vfx-gallery","seconds":20,"purpose":"Deterministic gallery of primary cue families at play size.","checkpoints":["direct","collision","tether","field","reaction","destruction"],"metrics":["requests","spawns","drops","highWater"]},
-    {"id":"vfx-saturation","seconds":45,"purpose":"Dense combat event burst; hero cues stay legible while pools remain bounded.","checkpoints":["warm","saturation","recovery"],"metrics":["vfxDropsByPriority","poolHighWater","frameP95","frameP99"]},
-    {"id":"asset-gallery","seconds":30,"purpose":"Expose representative ships, props, places and traffic at shipping camera for quality-parity review.","checkpoints":["ships","props","places","traffic"],"metrics":["requiredFallbackCount","partialPublicationCount"]},
-    {"id":"ui-gallery","seconds":30,"purpose":"Capture HUD and major strategic surfaces across normal/error/reduced-motion/pseudo-loc states.","checkpoints":["flight-hud","ship","chart","footprint","range","station"],"metrics":["overflowCount","missingStateCount"]},
-    {"id":"map-overlay","seconds":20,"purpose":"Map open/close, zoom/pan/layers and restore remembered state.","checkpoints":["open","manipulate","close","reopen"],"metrics":["stateRestoreFailures","frameP95"]},
-    {"id":"sector-transition","seconds":45,"purpose":"Cross floating-origin/sector boundaries without sky/debris jumps, duplicate spawns or long stalls.","checkpoints":["approach","boundary","post-boundary"],"metrics":["maxVisualDelta","duplicateEntityCount","frameMax","originRebaseMs"]},
-    {"id":"soak-20m","seconds":1200,"purpose":"Bounded long-session lifecycle and memory slope test.","checkpoints":["minute-1","minute-5","minute-10","minute-20"],"metrics":["heapSlopeMBMin","entitySlopePerMin","gpuResourceSlopePerMin","hitches"]},
-    {"id":"content-coverage","seconds":1,"purpose":"Static+simulation matrix for tactical-role/movement/range/defense/faction/perf-cost coverage.","checkpoints":["matrix-built"],"metrics":["emptyCoverageCells","nearDuplicatePairs"]},
-    {"id":"quality-tour","seconds":180,"purpose":"Representative route sampling flight, combat, HUD, map, station and world objects for cross-system quality variance.","checkpoints":["flight","combat","map","station","world-object"],"metrics":["qualityTierSpread","requiredFallbackCount","frameP95"]}
+    {
+      "id": "boot-liveness",
+      "seconds": 20,
+      "purpose": "Title/New Game or Continue reaches changing flight canvas; sim and renderer advance together.",
+      "checkpoints": [
+        "flight-entered",
+        "canvas-changing",
+        "player-control"
+      ],
+      "invariants": [
+        "no-frame-error-streak",
+        "no-required-asset-invisible",
+        "no-unrecovered-context-loss"
+      ]
+    },
+    {
+      "id": "flight-accel-brake",
+      "seconds": 18,
+      "purpose": "Measure throttle response, acceleration, jerk, brake settling and residual drift.",
+      "checkpoints": [
+        "throttle-on",
+        "cruise",
+        "brake-on",
+        "settled"
+      ],
+      "metrics": [
+        "inputLatencyMs",
+        "peakAccel",
+        "peakJerk",
+        "brakeSettleS",
+        "residualSpeed"
+      ]
+    },
+    {
+      "id": "flight-slalom",
+      "seconds": 25,
+      "purpose": "Repeatable alternating gates at shipping camera; compare path error and speed without rewarding crawling.",
+      "checkpoints": [
+        "gate-1",
+        "gate-3",
+        "gate-5",
+        "complete"
+      ],
+      "metrics": [
+        "crossTrackP95",
+        "meanSpeed",
+        "yawJerkP95",
+        "overshootCount"
+      ]
+    },
+    {
+      "id": "flight-reversal",
+      "seconds": 14,
+      "purpose": "Full-speed 180-degree reversal; distinguish intentional inertia from mushy control.",
+      "checkpoints": [
+        "cruise",
+        "reverse-command",
+        "heading-cross",
+        "settled"
+      ],
+      "metrics": [
+        "reversalTimeS",
+        "distanceToReverse",
+        "headingReversalCount",
+        "angularJerkP95"
+      ]
+    },
+    {
+      "id": "collision-recovery",
+      "seconds": 20,
+      "purpose": "Controlled glancing and hard collision followed by player recovery.",
+      "checkpoints": [
+        "impact",
+        "max-displacement",
+        "control-restored"
+      ],
+      "metrics": [
+        "impactImpulse",
+        "recoveryTimeS",
+        "cameraJerkP95",
+        "contactStormCount"
+      ]
+    },
+    {
+      "id": "stationary-target",
+      "seconds": 20,
+      "purpose": "Weapon/cue causal-chain test against non-maneuvering target.",
+      "checkpoints": [
+        "first-fire",
+        "first-contact",
+        "first-damage",
+        "kill-or-timeout"
+      ],
+      "metrics": [
+        "fireToContactMs",
+        "contactToFeedbackMs",
+        "duplicateDamageCount"
+      ]
+    },
+    {
+      "id": "duel-1v1",
+      "seconds": 45,
+      "purpose": "One player and one representative hostile exercising movement, targeting, weapons and feedback.",
+      "checkpoints": [
+        "contact",
+        "engagement",
+        "first-hit",
+        "resolution"
+      ],
+      "metrics": [
+        "targetChurn",
+        "tacticTransitions",
+        "headingReversals",
+        "activeFireRatio",
+        "frameP95"
+      ]
+    },
+    {
+      "id": "mixed-wing",
+      "seconds": 60,
+      "purpose": "Four-role hostile wing; formation entry, break, crossing lanes, extension and reform.",
+      "checkpoints": [
+        "wing-visible",
+        "fan",
+        "cross",
+        "extension",
+        "reform"
+      ],
+      "metrics": [
+        "formationDispersion",
+        "mergeCollisionCount",
+        "tacticChurn",
+        "concurrentAttackers",
+        "frameP95"
+      ]
+    },
+    {
+      "id": "swarm-12",
+      "seconds": 60,
+      "purpose": "Twelve-body cohort should read as coherent flow without point-collapse or AI thrash.",
+      "checkpoints": [
+        "cohort-visible",
+        "first-turn",
+        "player-break",
+        "recovery"
+      ],
+      "metrics": [
+        "neighborDistanceP10",
+        "headingVariance",
+        "pointCollapseEvents",
+        "blockedActionLoops",
+        "simP95"
+      ]
+    },
+    {
+      "id": "first-new-asset",
+      "seconds": 30,
+      "purpose": "Introduce a not-yet-seen authored hull/prop during live flight and measure admission/compile/upload behavior.",
+      "checkpoints": [
+        "before-admission",
+        "admitted",
+        "first-visible"
+      ],
+      "metrics": [
+        "admissionMaxMs",
+        "renderMaxMs",
+        "newPrograms",
+        "newTextures",
+        "newGeometries"
+      ]
+    },
+    {
+      "id": "vfx-gallery",
+      "seconds": 20,
+      "purpose": "Deterministic gallery of primary cue families at play size.",
+      "checkpoints": [
+        "direct",
+        "collision",
+        "tether",
+        "field",
+        "reaction",
+        "destruction"
+      ],
+      "metrics": [
+        "requests",
+        "spawns",
+        "drops",
+        "highWater"
+      ]
+    },
+    {
+      "id": "vfx-saturation",
+      "seconds": 45,
+      "purpose": "Dense combat event burst; hero cues stay legible while pools remain bounded.",
+      "checkpoints": [
+        "warm",
+        "saturation",
+        "recovery"
+      ],
+      "metrics": [
+        "vfxDropsByPriority",
+        "poolHighWater",
+        "frameP95",
+        "frameP99"
+      ]
+    },
+    {
+      "id": "asset-gallery",
+      "seconds": 30,
+      "purpose": "Expose representative ships, props, places and traffic at shipping camera for quality-parity review.",
+      "checkpoints": [
+        "ships",
+        "props",
+        "places",
+        "traffic"
+      ],
+      "metrics": [
+        "requiredFallbackCount",
+        "partialPublicationCount"
+      ]
+    },
+    {
+      "id": "ui-gallery",
+      "seconds": 30,
+      "purpose": "Capture HUD and major strategic surfaces across normal/error/reduced-motion/pseudo-loc states.",
+      "checkpoints": [
+        "flight-hud",
+        "ship",
+        "chart",
+        "footprint",
+        "range",
+        "station"
+      ],
+      "metrics": [
+        "overflowCount",
+        "missingStateCount"
+      ]
+    },
+    {
+      "id": "map-overlay",
+      "seconds": 20,
+      "purpose": "Map open/close, zoom/pan/layers and restore remembered state.",
+      "checkpoints": [
+        "open",
+        "manipulate",
+        "close",
+        "reopen"
+      ],
+      "metrics": [
+        "stateRestoreFailures",
+        "frameP95"
+      ]
+    },
+    {
+      "id": "sector-transition",
+      "seconds": 45,
+      "purpose": "Cross floating-origin/sector boundaries without sky/debris jumps, duplicate spawns or long stalls.",
+      "checkpoints": [
+        "approach",
+        "boundary",
+        "post-boundary"
+      ],
+      "metrics": [
+        "maxVisualDelta",
+        "duplicateEntityCount",
+        "frameMax",
+        "originRebaseMs"
+      ]
+    },
+    {
+      "id": "soak-20m",
+      "seconds": 1200,
+      "purpose": "Bounded long-session lifecycle and memory slope test.",
+      "checkpoints": [
+        "minute-1",
+        "minute-5",
+        "minute-10",
+        "minute-20"
+      ],
+      "metrics": [
+        "heapSlopeMBMin",
+        "entitySlopePerMin",
+        "gpuResourceSlopePerMin",
+        "hitches"
+      ]
+    },
+    {
+      "id": "content-coverage",
+      "seconds": 1,
+      "purpose": "Static+simulation matrix for tactical-role/movement/range/defense/faction/perf-cost coverage.",
+      "checkpoints": [
+        "matrix-built"
+      ],
+      "metrics": [
+        "emptyCoverageCells",
+        "nearDuplicatePairs"
+      ]
+    },
+    {
+      "id": "quality-tour",
+      "seconds": 180,
+      "purpose": "Representative route sampling flight, combat, HUD, map, station and world objects for cross-system quality variance.",
+      "checkpoints": [
+        "flight",
+        "combat",
+        "map",
+        "station",
+        "world-object"
+      ],
+      "metrics": [
+        "qualityTierSpread",
+        "requiredFallbackCount",
+        "frameP95"
+      ]
+    },
+    {
+      "id": "feel.earned_speed_kept",
+      "seconds": 12,
+      "purpose": "Real path: a physics impulse takes the starter past its cap; fraction of exit speed kept 10 s later, hands off and forward held.",
+      "bar": "B1",
+      "bench": "fun-loop (scripts/lib/bench/scenarios/feel.earned_speed_kept.mjs)",
+      "run": "node scripts/measure-fun-loop.mjs --verbs --scenarios=feel.earned_speed_kept --seeds=4242",
+      "checkpoints": [
+        "real-path-ready",
+        "measured"
+      ],
+      "metrics": [
+        "fractionKeptHandsOff",
+        "fractionKeptForwardHeld"
+      ]
+    },
+    {
+      "id": "feel.governor_integrity",
+      "seconds": 12,
+      "purpose": "Real path: weaving and strafing under the governor never manufacture uncapped cruise, and never spend given momentum.",
+      "bar": "B1",
+      "bench": "fun-loop (scripts/lib/bench/scenarios/feel.governor_integrity.mjs)",
+      "run": "node scripts/measure-fun-loop.mjs --verbs --scenarios=feel.governor_integrity --seeds=4242",
+      "checkpoints": [
+        "real-path-ready",
+        "measured"
+      ],
+      "metrics": [
+        "planarSpeedOverCap",
+        "earnedSpeedKept"
+      ]
+    },
+    {
+      "id": "feel.reversal_course",
+      "seconds": 14,
+      "purpose": "Real path: rest to cruise seconds, full reversal seconds, turn radius at cruise in screen depths.",
+      "bar": "B2",
+      "bench": "fun-loop (scripts/lib/bench/scenarios/feel.reversal_course.mjs)",
+      "run": "node scripts/measure-fun-loop.mjs --verbs --scenarios=feel.reversal_course --seeds=4242",
+      "checkpoints": [
+        "real-path-ready",
+        "measured"
+      ],
+      "metrics": [
+        "restToCruiseS",
+        "reversalS",
+        "turnRadiusScreens"
+      ]
+    },
+    {
+      "id": "feel.screen_crossing",
+      "seconds": 12,
+      "purpose": "Real path: seconds to cross the visible screen at cruise; camera opening above the cap.",
+      "bar": "B3",
+      "bench": "fun-loop (scripts/lib/bench/scenarios/feel.screen_crossing.mjs)",
+      "run": "node scripts/measure-fun-loop.mjs --verbs --scenarios=feel.screen_crossing --seeds=4242",
+      "checkpoints": [
+        "real-path-ready",
+        "measured"
+      ],
+      "metrics": [
+        "screenCrossingS",
+        "cameraOpenFraction"
+      ]
+    },
+    {
+      "id": "feel.shove_magnitude",
+      "seconds": 8,
+      "purpose": "Real path: a light hostile's velocity change per shove hit as a fraction of cruise, and its displacement 2 s later in screen depths.",
+      "bar": "B4/B5",
+      "bench": "fun-loop (scripts/lib/bench/scenarios/feel.shove_magnitude.mjs)",
+      "run": "node scripts/measure-fun-loop.mjs --verbs --scenarios=feel.shove_magnitude --seeds=4242",
+      "checkpoints": [
+        "real-path-ready",
+        "measured"
+      ],
+      "metrics": [
+        "deltaVFractionOfCruise",
+        "displacementScreens"
+      ]
+    },
+    {
+      "id": "feel.terrain_slam",
+      "seconds": 10,
+      "purpose": "Real path: a light and a heavy flown into rock at the same absolute speed; hull lost, helm lost, death.",
+      "bar": "B6",
+      "bench": "fun-loop (scripts/lib/bench/scenarios/feel.terrain_slam.mjs)",
+      "run": "node scripts/measure-fun-loop.mjs --verbs --scenarios=feel.terrain_slam --seeds=4242",
+      "checkpoints": [
+        "real-path-ready",
+        "measured"
+      ],
+      "metrics": [
+        "hullLostFraction",
+        "helmLost",
+        "died"
+      ]
+    },
+    {
+      "id": "feel.rope_swing_release",
+      "seconds": 9,
+      "purpose": "Real path: a 1.5x cruise swing on a 100 WU line around a heavy anchor; peak stretch, line held, tangential speed kept 5 s after release.",
+      "bar": "B7",
+      "bench": "fun-loop (scripts/lib/bench/scenarios/feel.rope_swing_release.mjs)",
+      "run": "node scripts/measure-fun-loop.mjs --verbs --scenarios=feel.rope_swing_release --seeds=4242",
+      "checkpoints": [
+        "real-path-ready",
+        "measured"
+      ],
+      "metrics": [
+        "peakStretchFraction",
+        "lineHeld",
+        "retentionFraction"
+      ]
+    },
+    {
+      "id": "feel.stroke_speed",
+      "seconds": 20,
+      "purpose": "Real path: mean and slowest speed along a hand-drawn stroke as fractions of cruise, ordered coverage.",
+      "bar": "B8",
+      "bench": "fun-loop (scripts/lib/bench/scenarios/feel.stroke_speed.mjs)",
+      "run": "node scripts/measure-fun-loop.mjs --verbs --scenarios=feel.stroke_speed --seeds=4242",
+      "checkpoints": [
+        "real-path-ready",
+        "measured"
+      ],
+      "metrics": [
+        "meanSpeedFraction",
+        "slowestSpeedFraction",
+        "orderedCoverage"
+      ]
+    },
+    {
+      "id": "feel.impact_feedback",
+      "seconds": 8,
+      "purpose": "Receipt level: hitstop and trauma scale with exchanged momentum; collision audio differs by mass.",
+      "bar": "B9",
+      "bench": "fun-loop (scripts/lib/bench/scenarios/feel.impact_feedback.mjs)",
+      "run": "node scripts/measure-fun-loop.mjs --verbs --scenarios=feel.impact_feedback --seeds=4242",
+      "checkpoints": [
+        "real-path-ready",
+        "measured"
+      ],
+      "metrics": [
+        "hitstopMs",
+        "traumaScale"
+      ]
+    },
+    {
+      "id": "feel.hitstun_curve",
+      "seconds": 12,
+      "purpose": "Real path: helm-loss seconds as one function of deltaV/cruise and mass ratio for guns, throws, flings and collisions; no hidden gyro.",
+      "bar": "B11",
+      "bench": "fun-loop (scripts/lib/bench/scenarios/feel.hitstun_curve.mjs)",
+      "run": "node scripts/measure-fun-loop.mjs --verbs --scenarios=feel.hitstun_curve --seeds=4242",
+      "checkpoints": [
+        "real-path-ready",
+        "measured"
+      ],
+      "metrics": [
+        "helmLossS",
+        "gyroBar"
+      ]
+    },
+    {
+      "id": "feel.knock_budget",
+      "seconds": 120,
+      "purpose": "Real path: contact knocks on the player hull per minute, largest as a fraction of cruise, heading changes, lateral sign-flip proxy.",
+      "bar": "B13",
+      "bench": "fun-loop (scripts/lib/bench/scenarios/feel.knock_budget.mjs)",
+      "run": "node scripts/measure-fun-loop.mjs --verbs --scenarios=feel.knock_budget --seeds=4242",
+      "checkpoints": [
+        "real-path-ready",
+        "measured"
+      ],
+      "metrics": [
+        "knockEventsPerMinute",
+        "maxKnockDeltaVFractionOfCruise",
+        "headingChangeEvents"
+      ]
+    },
+    {
+      "id": "feel.knock_budget_10min",
+      "seconds": 600,
+      "purpose": "Real path: the contract's ten minutes of ordinary flight; prints the knock budget.",
+      "bar": "B13",
+      "bench": "fun-loop (scripts/lib/bench/scenarios/feel.knock_budget_10min.mjs)",
+      "run": "node scripts/measure-fun-loop.mjs --verbs --scenarios=feel.knock_budget_10min --seeds=4242",
+      "checkpoints": [
+        "real-path-ready",
+        "measured"
+      ],
+      "metrics": [
+        "knockEventsPerMinute",
+        "maxKnockDeltaVFractionOfCruise",
+        "headingChangeEvents"
+      ]
+    },
+    {
+      "id": "world.reaction_trio",
+      "seconds": 20,
+      "purpose": "Real path: the three world-reaction listeners answer a wreck, a survivor pod and a cargo spill.",
+      "bar": "B10",
+      "bench": "fun-loop (scripts/lib/bench/scenarios/world.reaction_trio.mjs)",
+      "run": "node scripts/measure-fun-loop.mjs --verbs --scenarios=world.reaction_trio --seeds=4242",
+      "checkpoints": [
+        "real-path-ready",
+        "measured"
+      ],
+      "metrics": [
+        "reactionsWithin3s"
+      ]
+    }
   ]
 }

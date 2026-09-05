@@ -20,6 +20,9 @@ const SMOKE_COMMANDS = [
   cmd('claim-base', 'npm run check:claim-base'),
   cmd('flight-clean', 'npm run check:flight:clean', LONG_TIMEOUT_MS),
   cmd('save-schema', 'npm run check:save-schema'),
+  // PQ-137.10: every FEEL_CONTRACT bar the bench can reach (B1-B8, B11, B13) is a real-path scenario
+  // with a test that prints its number; feel that is not measured regresses.
+  cmd('feel-scenarios', 'npm run check:feel:scenarios', LONG_TIMEOUT_MS),
 ];
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
