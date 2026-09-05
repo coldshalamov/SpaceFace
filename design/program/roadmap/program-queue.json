@@ -11104,7 +11104,7 @@
       "priority": 181,
       "title": "Ship history: scars, repairs, recognition",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "progression-verbs"
@@ -11118,8 +11118,10 @@
         "npm run check:baseline",
         "npm run check:save-schema"
       ],
-      "receiptRefs": [],
-      "brief": "Scars from real impacts persist on the hull, repairs leave patches, NPCs recognise the hull by reputation; save round-trip; one bark that names the ship after a witnessed act."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-142-01-REPORT.md"
+      ],
+      "brief": "DONE 2026-09-05 (integrator-verified: save round-trip of scars, repair->patch, one bark naming the ship; goldens unmoved; no capture — the surfaces are Ledger text and a spoken line; the paint on the hull mesh is a later render seam). Scars from real impacts persist on the hull, repairs leave patches, NPCs recognise the hull by reputation; save round-trip; one bark that names the ship after a witnessed act."
     },
     {
       "id": "PQ-143.00",
