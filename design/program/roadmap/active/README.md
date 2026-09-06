@@ -96,6 +96,7 @@ evidence triggers are proved.
 | [`PQ-050.md`](./PQ-050.md) | remaster every live flyable ship except Hitch, one ship per leaf, under the MTX technique contract | Hitch frozen; ledger required; factory loft+boxes cannot close a leaf; first ready is Hornet |
 | [`PQ-129.md`](./PQ-129.md) | name every hitch on the live path, then remove compose/compile/upload/admission bricks without quality cuts | `--id PQ-129`; Wave A measure; Wave B ready after the classifier; Wave C planned |
 | [`PQ-130.md`](./PQ-130.md) | put the player inside the asteroid; HUD is ugly and too big | `--id PQ-130`; theater/dashboard first; vanilla CSS shrink is a fail |
+| [`PQ-191.md`](./PQ-191.md) | independent play pass over the 2026-09-06 landings for taste, improvements, and bugs | `--id PQ-191`; first ready leaf; a report with defects still visible is not done |
 
 PQ-043 and PQ-044 are admitted queue identities but remain deferred and packet-less until their
 conditional triggers are proved.

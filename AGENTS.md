@@ -21,6 +21,7 @@ the named outcome of the job you were given, then stop — the full working agre
 | The game is not fun / combat and flight feel wonky / "agents keep adding content instead of fixing the feel" | **`CANONICAL_BUILD_MAP.md` §13C** → [`design/FEEL_CONTRACT.md`](./design/FEEL_CONTRACT.md) → `PQ-137` (`--id PQ-137`). Answer with a bar and the number that moved, never with more content |
 | "Make it better" / it sucks / it's not fun | **`design/program/FUN_CONVERGENCE_LOOP.md`** → copy `design/program/FUN_CONVERGENCE_GOAL.txt`. Play the bench on fixed seeds, name the ONE fundamental, fix the guts, show the number and the frames. Crucible first; never answer with content |
 | Finish the game / what is next for release / the professional bar | **`CANONICAL_BUILD_MAP.md` §15** (three release milestones with gates) → `--id PQ-146` or any §15.2 ID; the eight reactivated packets `PQ-026`–`PQ-033` are ready again |
+| Independent pass over what just landed / taste, improvements, and bugs before those units are finished | **`CANONICAL_BUILD_MAP.md` §1.7** → `--id PQ-191`. Play the named surfaces; fix real defects; a report with leftovers still on camera is not done |
 | What is active or occupied now? | `design/program/NOW.md` → `design/program/README.md` |
 | Claim a multi-week roadmap packet | `design/program/roadmap/README.md` → `design/program/roadmap/00_EXECUTION_PROTOCOL.md` |
 | Implement a feature/fix | Activated plan/spec → `docs/MODULE_MAP.md` → owning nested `AGENTS.md` |

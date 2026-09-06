@@ -9,7 +9,14 @@ This is the repository's implementation front door. It routes an agent to the sm
 physics-centric, arcade-style combat that plays optimally in swarm mode, and is super interesting and
 mentally stimulating in adventure mode because of its advanced customization and economic features,
 as well as the storyline; with a frontend polished massively, everything brought into the newest
-version and optimized.* Product intent: [`design/VISION.md`](./design/VISION.md). Bars:
+version and optimized.* Product intent: [`design/VISION.md`](./design/VISION.md).
+Expansion alignment is retained in the non-dispatching [`EXPANSION_MASTER_BLUEPRINT.md`](./design/program/roadmap/active/EXPANSION_MASTER_BLUEPRINT.md)
+and the story/place concept companion [`EXPANSION_STORY_AND_PLACES.md`](./design/spec3/EXPANSION_STORY_AND_PLACES.md).
+Those syntheses do not add queue IDs or replace packet ownership. Existing owners stay compactly mapped here:
+kinetic combat and the Massline → `PQ-137`, `PQ-026`–`PQ-031`, `PQ-140`, `PQ-146`; readable swarms and
+world reactions → `PQ-140`, `PQ-174`, `PQ-175`, `PQ-138`, `PQ-143`, `PQ-151`, `PQ-144`; readable trade
+and progression → `PQ-177`, `PQ-155`, `PQ-148`, `PQ-151`; visual hierarchy and impact presentation →
+`PQ-190`, `PQ-134`, `PQ-023`, `PQ-144`. Bars:
 [`design/FEEL_CONTRACT.md`](./design/FEEL_CONTRACT.md). The finish line: §15–§19 below.
 
 **You do not need to be told what to work on.** The queue is the plan, its order is the project
@@ -152,6 +159,7 @@ procedure:
 | The owner says | Start here |
 |---|---|
 | "Here is a taste review / an outside audit; fold it in" | Grade every recommendation in §15.9 (adopt / adopt with a guard / decline, with the ruling it agrees or conflicts with); admit each adopted item as a leaf of the packet that already owns the surface, or a new packet only when no packet does; store the review under `docs/handoffs/` as HISTORICAL evidence with a pointer back to the grade. Never a second queue, never verbatim orders |
+| "review what just landed", "second pair of eyes", "taste passover before those units are finished" | `--id PQ-191` — a second agent plays the named surfaces, **fixes** real taste and bugs, and reports in §1.4 words. This is the passover itself. Incoming written audits still grade through the row above and §15.9; never a second standing queue |
 | "it's not fun", "make it better", "it sucks", "wonky", "no control" | [`design/program/FUN_CONVERGENCE_LOOP.md`](./design/program/FUN_CONVERGENCE_LOOP.md) → `--id PQ-137`, then `--next` |
 | "finish the game", "what's next for release", "the professional bar" | §15 gates → `--next` |
 | "swarm mode should be more fun" | §16 → `--id PQ-174` |
@@ -199,6 +207,11 @@ admit, mutate queue truth, or replace the routing doors in this map.
 These campaigns are live or resumable and keep their own laws. `--next` already interleaves their
 units; open the door below only when the owner names the campaign.
 
+- **Independent passover of a just-landed batch** → `--id PQ-191` and
+  [`PQ-191.md`](./design/program/roadmap/active/PQ-191.md). A second agent plays the named
+  surfaces for taste, improvements, and bugs, and **fixes** what is real. A report with defects
+  still on camera is not done. Do not answer with new content. Incoming written audits still
+  grade through §1.7 / §15.9; this door is the play pass, not a second backlog.
 - **Hitching / stuttering** → §8.4, [`design/program/PERF_HITCH_CAMPAIGN.md`](./design/program/PERF_HITCH_CAMPAIGN.md),
   `--id PQ-129`. Measure with `npm run probe:runtime-witness` first. Never cut quality or delete
   off-screen actors.
@@ -2639,6 +2652,8 @@ The 47-A opener is the best twelve minutes in the game; the next three beats are
 | `.02` | **The climax is a toy.** Each ending's final set piece requires the verbs of the branch (siege by wrecking ball, evidence tow, blockade run). | Owner plays each ending's climax; verdict recorded. |
 | `.03` | **NG+ carries a legacy.** Ship scars, titles, ace grudges, one head, and the ending's world facts carry; everything else resets. | Save migration test; the mechanic names the carried history. |
 
+- **Concept companion:** Candidate B0–B7 beat treatments remain in [`EXPANSION_STORY_AND_PLACES.md`](./design/spec3/EXPANSION_STORY_AND_PLACES.md#1-campaign-spine-candidate-beats). They fill the existing spine and route through `.00`–`.02`; they do not add beats, branches, endings, numeric gates, or asset acceptance.
+
 - **Not:** No new endings, no new branches, no dialogue trees; existing endings stay untouched.
 - **How agents get this wrong:** Adding a branch or a choice menu: one linear story, by ruling; Moving the ending gate without a combat stake: a combat-only run must reach an ending.
 
@@ -2657,6 +2672,8 @@ Ten authored set pieces and three new procedural mission types whose headline ve
 | `.01` | **Ten authored set pieces.** Authored once each with actors, a place, a twist clause and two solutions; the 47-A craft level. | Ten playable on the route; owner verdict per piece. |
 | `.02` | **The capital boss.** A heavy with sub-systems (thrusters, bays, turrets) vulnerable to thrown mass; no immunity theatre. | Killable by physics alone in a scenario; the tumble law applies to its sub-systems. |
 | `.03` | **Clauses that twist.** Contract terms that fire mid-mission (the escort turns, the cargo is volatile, the buyer is the law). | ≥ 5 twist clauses live; each mutates rather than fails (PQ-138.04). |
+
+- **Concept companion:** Candidate briefs `SM-01`–`SM-08` in [`EXPANSION_STORY_AND_PLACES.md`](./design/spec3/EXPANSION_STORY_AND_PLACES.md#2-eight-candidate-briefs-for-existing-set-piece-slots) are proposals for eight of the ten existing `.01` slots. They add no missions or leaves; mass, timing, survivability, and outcomes remain packet-owned, and no brief promises a forced fatal collision.
 
 - **Not:** No mission that is 'fly there and hold fire'.
 - **How agents get this wrong:** A mission whose headline is 'fly there and hold fire': the headline verb is physical or the mission is not admitted; One solution per set piece: two solutions, both reachable on a trackpad; A boss with immunity phases: physics is the fast way, guns the slow way, immunity never.
@@ -2771,6 +2788,8 @@ The docked station is the second most used surface and the only one an owner-com
 | `.00` | **Skeleton and data states adopted.** All seven station screens render through CREST/STAGE/APRON/DRAWER with the four data states and entity links; the legacy stationHub helpers are lifted out (Phase 7 as a refactor). | check:data-states and check:entity-links cover the station; zero legacy imports from stationHub.js. |
 | `.01` | **Hierarchy and colour discipline.** One primary per screen, orange means one thing, italics never outrank data, the bar has a transcript, industry tiers read. | A cold reviewer verdict per screen; the Kimi findings closed one by one in the receipt. |
 | `.02` | **Arriving somewhere.** Docking is a place: the berth with your hull, the mechanic, ambient work, one line of local news; screens open from the place, not from a tab strip. | Blind reviewer names the station from the docked view; capture. |
+
+- **Concept companion:** Four nonbinding place briefs for the existing station route are retained in [`EXPANSION_STORY_AND_PLACES.md`](./design/spec3/EXPANSION_STORY_AND_PLACES.md#3-four-candidate-place-briefs). They inform `.02`'s sense of arrival without adding station types, approving assets, or redesigning the flight HUD.
 
 - **Not:** No new station types; no redesign of the flight HUD.
 - **How agents get this wrong:** Repainting the station again: the skeleton and the data-state and entity-link contracts must be adopted, measured by the checks; Redesigning the flight HUD on the way: out of scope; the attention pass stands; Deleting legacy modules before the live station stops importing them.
@@ -3212,6 +3231,11 @@ by the integrator; nothing below is an owner ruling until the owner says so.
   `node scripts/program-dispatch.mjs --id PQ-146` (or any ID in §15.2). The eight reactivated packets
   (`PQ-026`–`PQ-033`) are `ready` with fresh leaves; their old one-line briefs are superseded by their
   packet files.
+- **Door, landing passover:** another agent reviews what just landed for taste, improvements, and
+  bugs before those units are treated as finished →
+  `node scripts/program-dispatch.mjs --id PQ-191`. Play the surfaces named in
+  [`PQ-191.md`](./design/program/roadmap/active/PQ-191.md); fix real defects; do not open a second
+  backlog.
 - Every packet here closes on the same law as §13C: **numbers in player units, measured at the
   shipping camera, before and after.** A packet that adds content without naming the gate row it
   moves is not admitted.
@@ -3712,22 +3736,22 @@ The game cannot regress silently. Each FEEL_CONTRACT bar has a scenario check; e
 - **Not:** No fixed pass/reviewer counts as gates; no check that cannot fail (§7).
 - **How agents get this wrong:** Writing a check that imports a node:test file and cannot fail (§7): run suites as child processes and honour exit codes; Encoding a bar with a tolerance so wide it never fails: inject the old defect and watch it go red before committing.
 
-
-
-## 20. Owed review — the flash ten-unit batch (`PQ-191`) — SESSION 2026-09-05/06
+## 20. Owed review — the flash ten-unit batch (`PQ-191.01`) — SESSION 2026-09-05/06
 
 A goal-directed session picked ten ready units rated ≤ 5 complexity and shipped five of them out
 of order (the rest of the picked pool went back untouched: PQ-184.01/.02/.03 and the two PQ-022
 captures are normal ready units, not leftovers). Every unit has a receipt, an integratedCommit,
-and a subagent review round behind it. **A senior agent owes this batch a review**: `--id PQ-191`
-(packet: `design/program/roadmap/active/PQ-191.md`).
+and a subagent review round behind it. **A senior agent owes this batch a review**:
+`node scripts/program-dispatch.mjs --id PQ-191`, then take leaf **`.01`** (packet:
+[`PQ-191.md`](./design/program/roadmap/active/PQ-191.md)). Leaf `.00` is the other 2026-09-06
+landing's play-and-fix passover; do not treat this section as the whole packet.
 
 The review is a judgment pass, not a rubber stamp: the six taste calls the batch made (grammar
 debt reported-not-fatal, the courier's deterministic traffic fixture, one-off set pieces reusing
 packaged art, the corkscrew amplitudes, the bars-as-checks polarity, the density table's home)
 are listed in the packet as INPUTS for the reviewer to ratify, adjust, or overturn — none of them
 is locked in, and the owner's taste outranks every one. Entry point: the five receipts named in
-the packet.
+the packet. Adopted defects are **fixed**, not only listed.
 
 | Unit | One line |
 |---|---|
