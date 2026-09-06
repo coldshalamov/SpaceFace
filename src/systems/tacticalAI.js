@@ -1,7 +1,11 @@
 import { AIInspectionEndpoint } from '../ai/inspection.js';
 import { createSG03ActionPort } from '../ai/sg03ActionPort.js';
 import { TacticalAIStack } from '../ai/stack.js';
-import { NORMALIZED_THRUSTER_REQUEST_FLAG } from '../ai/contracts.js';
+import {
+  ManeuverKind,
+  NORMALIZED_THRUSTER_REQUEST_FLAG,
+  wrapAngle,
+} from '../ai/contracts.js';
 import { applyAIFiringIntent } from './aiFireIntent.js';
 import {
   maintainFirstSessionAttackerOwnership,
@@ -9,6 +13,7 @@ import {
   resetFirstSessionAttackerOwnership,
 } from '../ai/engagementAuthority.js';
 import { hullIdFromEntity } from '../data/flightFeelEnvelopes.js';
+import { SHIPS } from '../data/ships.js';
 import { recipeIdFromEntity } from '../ai/squadFrame.js';
 import {
   cohortRecipeFromEntity,
@@ -18,9 +23,76 @@ import { ensureActivityClassified, entityNeedsAiThink } from '../world/activityR
 import { applySpecialistCounterplay } from '../ai/specialistCounterplay.js';
 import { specialistPlanByEnemyId } from '../ai/specialistPlans.js';
 import { getCombatKernel } from '../combat/kernel.js';
-import { ManeuverKind } from '../ai/contracts.js';
 
 const OWNERSHIP_REFRESH_TICKS = 3;
+const HEAVY_MASS_THRESHOLD = 150;
+const HEAVY_TURN_MANEUVERS = new Set([
+  ManeuverKind.INTERCEPT,
+  ManeuverKind.ORBIT,
+  ManeuverKind.APPROACH_SOCKET,
+  ManeuverKind.CUT_TETHER,
+]);
+const DEFAULT_HEAVY_MOTION = Object.freeze({
+  minTurnSpeed: 18,
+  turnStartAngle: 0.68,
+  turnCarryForward: 0.12,
+});
+const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
+
+/**
+ * Keep a moving heavy's momentum while it slews onto a new line. The maneuver planner already
+ * derives hull-relative yaw/acceleration envelopes; this small policy prevents the planner's
+ * turn-before-burn gate from making a heavy hull stop dead and rotate like a turret. It only
+ * shapes a normalized request, never an entity transform or physics state.
+ */
+export function shapeHeavyManeuverRequest(request, state) {
+  if (!request || !HEAVY_TURN_MANEUVERS.has(request.kind) || request.brake) return request;
+  const entity = entityForManeuver(state, request.entityId);
+  const motion = heavyMotionForEntity(entity);
+  if (!motion || !request.forceLocal) return request;
+  const speed = Math.hypot(
+    finite(entity && entity.vel && entity.vel.x),
+    finite(entity && entity.vel && entity.vel.z),
+  );
+  if (speed < motion.minTurnSpeed) return request;
+  const heading = finite(request.targetHeading, finite(entity && entity.rot));
+  const turnError = Math.abs(wrapAngle(heading - finite(entity && entity.rot)));
+  if (turnError < motion.turnStartAngle) return request;
+  if (finite(request.forceLocal.forward) >= motion.turnCarryForward) return request;
+
+  const nextForward = motion.turnCarryForward;
+  if (!Object.isFrozen(request) && !Object.isFrozen(request.forceLocal)) {
+    request.forceLocal.forward = nextForward;
+    return request;
+  }
+
+  const nextForce = { ...request.forceLocal, forward: nextForward };
+  if (Object.isFrozen(request.forceLocal) || Object.isFrozen(request)) Object.freeze(nextForce);
+  const next = { ...request, forceLocal: nextForce };
+  if (request[NORMALIZED_THRUSTER_REQUEST_FLAG] === true) {
+    Object.defineProperty(next, NORMALIZED_THRUSTER_REQUEST_FLAG, { value: true });
+  }
+  if (Object.isFrozen(request)) Object.freeze(next);
+  return next;
+}
+
+function entityForManeuver(state, entityId) {
+  const entities = state && state.entities;
+  return entities && typeof entities.get === 'function' ? entities.get(entityId) : null;
+}
+
+function heavyMotionForEntity(entity) {
+  if (!entity || typeof entity !== 'object') return null;
+  const hull = SHIP_BY_ID.get(hullIdFromEntity(entity));
+  const authored = hull && hull.heavyMotion;
+  const mass = finite(entity.mass, finite(entity.data && entity.data.derived && entity.data.derived.mass));
+  if (!authored && mass < HEAVY_MASS_THRESHOLD) return null;
+  return authored || DEFAULT_HEAVY_MOTION;
+}
+
+function finite(value, fallback = 0) {
+  return Number.isFinite(value) ? value : fallback;
+}
 
 /**
  * SG-06 simulation-system factory.
@@ -74,10 +146,11 @@ export function createTacticalAISystem({
     if (stack) return stack;
     if (!ctxRef) throw new Error('tacticalAI used before init');
     const helpers = ctxRef.helpers || (ctxRef.helpers = {});
+    const baseManeuver = maneuver || helpers.aiManeuver;
     const ports = {
       sensors: sensors || helpers.aiSensors,
       roster: roster || helpers.aiRoster,
-      maneuver: maneuver || helpers.aiManeuver,
+      maneuver: heavyAwareManeuverPort(baseManeuver, () => ctxRef && ctxRef.state),
       encounter: encounter || helpers.aiEncounter || null,
       actions: actionPortFactory(ctxRef),
     };
@@ -89,6 +162,16 @@ export function createTacticalAISystem({
     bindHullResolver(stack);
     inspection = new AIInspectionEndpoint(stack);
     return stack;
+  }
+
+  function heavyAwareManeuverPort(basePort, stateProvider) {
+    if (!basePort || typeof basePort.request !== 'function') return basePort;
+    return {
+      request(request) {
+        const state = typeof stateProvider === 'function' ? stateProvider() : null;
+        return basePort.request(shapeHeavyManeuverRequest(request, state));
+      },
+    };
   }
 
   const hullHint = { hullId: null, flightClass: null };
@@ -359,7 +442,7 @@ export function applyEngagementPosture(entity, doctrine, state) {
     if (base && current && String(current.reason || '').startsWith(POSTURE_REASON_PREFIX)) {
       ai.activity = base;
     }
-    delete ai.postureBaseActivity;
+    ai.postureBaseActivity = null;
     return;
   }
   // Survival orders (morale flee / fsm flee) and already-postured activity outrank the break.

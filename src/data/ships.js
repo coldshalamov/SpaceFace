@@ -276,6 +276,8 @@ export const SHIPS = [
     driveId: 'drive_reaction_l',  // large reaction drive — the ponderous bulk hauler's long-burn motor
     energyCap: 360, energyRegen: 40, collisionRadius: 30, price: 380000,
     boost: { max: 160, drainRate: 26, regenRate: 36, dashImpulse: 320, dashCooldown: 2.0 },  // the escape-king: huge dash, fast recharge, ponderous otherwise
+    // PQ-140.01: keep carrying speed while turning; mass and the real flight solver supply the radius.
+    heavyMotion: { minTurnSpeed: 16, turnStartAngle: 0.60, turnCarryForward: 0.15 },
     // ponderous hauler: front + rear PD guns — survive, don't win fights
     slots: { weapon: ['M', { size:'M', facing:'rear' }], shield: ['L','L'], engine: ['L'], cargo: ['L','L','L','L','L','L'], mining: [], utility: ['M','M','M'] },
     visuals: {
@@ -340,6 +342,8 @@ export const SHIPS = [
     driveId: 'drive_torch_l',  // torch drive — the wall of guns advances under sustained thrust
     energyCap: 720, energyRegen: 84, collisionRadius: 26, price: 950000,
     boost: { max: 90, drainRate: 40, regenRate: 24, dashImpulse: 90, dashCooldown: 3.0 },  // a wall of guns that advances, doesn't chase
+    // PQ-140.01: a gunship banks through a line change instead of pinning in place.
+    heavyMotion: { minTurnSpeed: 18, turnStartAngle: 0.66, turnCarryForward: 0.13 },
     // gunship: 2 front heavies + 1 broadside each side = a weapons platform
     slots: { weapon: ['L', 'L', { size:'L', facing:'left' }, { size:'L', facing:'right' }], shield: ['L','L','L'], engine: ['L'], cargo: ['M'], mining: [], utility: ['L','L','L','L'] },
     visuals: {
@@ -373,6 +377,8 @@ export const SHIPS = [
     driveId: 'drive_torch_l',  // torch drive — high-acceleration axial thrust for the capital battlecruiser
     energyCap: 900, energyRegen: 100, collisionRadius: 32, price: 1400000,
     boost: { max: 80, drainRate: 42, regenRate: 22, dashImpulse: 70, dashCooldown: 3.2 },
+    // PQ-140.01: broad turn commitment makes this hull a navigable obstacle, not a turret.
+    heavyMotion: { minTurnSpeed: 20, turnStartAngle: 0.72, turnCarryForward: 0.11 },
     // battlecruiser: 3 front + broadside batteries both sides
     slots: { weapon: ['L', 'L', 'L', { size:'L', facing:'left' }, { size:'L', facing:'right' }], shield: ['L','L','L','L'], engine: ['L'], cargo: ['L','L'], mining: [], utility: ['L','L','L','L','L'] },
     visuals: {
@@ -409,6 +415,8 @@ export const SHIPS = [
     driveId: 'drive_torch_l',  // torch drive — the flagship's enormous axial motor
     energyCap: 1600, energyRegen: 160, collisionRadius: 45, price: 4500000,
     boost: { max: 70, drainRate: 46, regenRate: 18, dashImpulse: 50, dashCooldown: 3.6 },
+    // PQ-140.01: the flagship takes the longest line to change and keeps its wake through it.
+    heavyMotion: { minTurnSpeed: 22, turnStartAngle: 0.78, turnCarryForward: 0.09 },
     // flagship: 3 front + 2 broadside each side — a broadside duel monster
     slots: { weapon: ['L', 'L', 'L', { size:'L', facing:'left' }, { size:'L', facing:'left' }, { size:'L', facing:'right' }, { size:'L', facing:'right' }], shield: ['L','L','L','L','L'], engine: ['L'], cargo: ['L','L','L'], mining: [], utility: ['L','L','L','L','L','L','L','L'] },
     visuals: {
