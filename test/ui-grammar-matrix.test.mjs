@@ -39,10 +39,13 @@ import {
 } from '../scripts/lib/ui-grammar-measure.mjs';
 import {
   MATRIX_VIEWPORTS,
+  NEUTRAL_GROUND_HEX,
   UI_FRAME_REFERENCE_DIR,
+  UI_MATRIX_GROUND,
   UI_MATRIX_SEED,
   buildFramePlan,
   frameFileName,
+  isFrameCurrent,
   labelCandidates,
   normalizeFrameFilter,
 } from '../scripts/capture-ui-matrix.mjs';
@@ -474,6 +477,22 @@ test('one boot visits key routes before fixtures, docking late, and anything tha
   }
 });
 
+test('Asteroid Works takes one boot per media mode, and a filtered own-boot run skips the shared session', () => {
+  // Latching reels the hull into the rock. A second mode in that same boot photographs the
+  // aftermath and cannot re-latch. The claims board only changes sector, so it may still share a
+  // boot across media modes. The grouping expression is the whole decision.
+  const capture = readFileSync(path.join(ROOT, 'scripts', 'capture-ui-matrix.mjs'), 'utf8');
+  assert.match(capture, /surface\.destructive \|\| surface\.id === 'asteroid-works'/,
+    'Asteroid Works must boot once per mode the way a destructive surface does');
+  assert.doesNotMatch(capture, /const groups = surface\.destructive\s*\n\s*\?/,
+    'the old grouping (destructive-only) would put three media modes in one Asteroid Works boot');
+  assert.match(capture, /const sharedWork = flightIncluded/,
+    'a --only=asteroid-works run must not pay for a shared boot that has nothing to photograph');
+  assert.match(capture,
+    /captures\.push\(\{ name: frameName, path: path\.join\(UI_FRAME_REFERENCE_DIR, frameName\), reference: 'kept' \}\)/,
+    'a kept fill-missing frame must point at the committed reference, not at an output file this run never wrote');
+});
+
 // --------------------------------------------------------------------------------- thresholds + baseline
 
 test('the thresholds file is the only source of the floor numbers', () => {
@@ -685,16 +704,32 @@ test('every shipping surface carries a diff floor, and an unlisted one takes the
   assert.equal(floorForSurface('a-surface-that-does-not-exist', floors), MIN_FLOOR);
 });
 
-test('the five floors measured on 2026-08-20 are pinned and unchanged', () => {
+test('a pin is a measurement, so it names the ground it was measured over', () => {
+  // The five floors measured on 2026-08-20 were measured with the live 3D picture behind the
+  // interface — `flight` at 10% carries the note "a live world legitimately moves behind the HUD",
+  // which is why the number is that large. A reference frame now photographs the interface over a
+  // flat neutral ground, and holding 10% there would mean 276,000 changed pixels at 2560x1080
+  // counted as "at rest": the gate reading green straight through the regressions it exists to catch.
+  //
+  // So a pin carries the ground it belongs to. It holds while that ground is what the harness shoots
+  // over, and lapses when the ground changes — which can only ever TIGHTEN a floor. Whether a given
+  // surface is still pinned today depends on whether it has been re-calibrated since; what must
+  // never happen is a pin with no ground on it, holding a number nobody can date.
   const floors = loadFloors();
-  assert.equal(floors.surfaces.footprint.floor, 0.005);
-  assert.equal(floors.surfaces.range.floor, 0.005);
-  assert.equal(floors.surfaces.ship.floor, 0.03);
-  assert.equal(floors.surfaces.chart.floor, 0.05);
-  assert.equal(floors.surfaces.flight.floor, 0.1);
   for (const id of ['footprint', 'range', 'ship', 'chart', 'flight']) {
-    assert.equal(floors.surfaces[id].pinned, true, `${id} must stay pinned`);
+    const record = floors.surfaces[id];
+    assert.ok(record, `${id} must carry a floor record`);
+    assert.ok(record.pinnedGround, `${id} was pinned once, so it must name the ground it was pinned over`);
+    if (record.pinned) {
+      assert.equal(record.pinnedGround, 'live-3d',
+        `${id} still holds its 2026-08-20 pin, which was measured over the live 3D picture`);
+    }
   }
+
+  const check = readFileSync(path.join(ROOT, 'scripts', 'check-visual-regression.mjs'), 'utf8');
+  assert.match(check, /const pinHolds = record\.pinned && pinnedGround === UI_MATRIX_GROUND;/,
+    'the pin must be conditional on the ground, not on the flag alone');
+  assert.match(check, /record\.pinLapsed = \{/, 'a lapsed pin must record the number it used to hold');
 });
 
 test('a floor is derived from measured rest variance by one stated rule, never chosen', () => {
@@ -854,6 +889,15 @@ test('the check CLI exits on the shared rule, not on a second copy of it', () =>
   // The capture writes into a temp dir it deletes first. The cross-variance sample now defaults to
   // the committed baseline, so one wrong call would erase the whole reference set.
   assert.match(source, /refusing to capture into the committed reference directory/);
+});
+
+test('--coverage-only judges the committed baseline without recapturing', () => {
+  const source = readFileSync(path.join(ROOT, 'scripts', 'check-visual-regression.mjs'), 'utf8');
+  assert.match(source, /if \(arg === '--coverage-only'\) \{ parsed\.coverageOnly = true/);
+  assert.match(source, /args\.coverageOnly \|\| !!args\.fromDirs/,
+    'coverage-only must skip the capture the same way --from-dirs does');
+  assert.match(source, /if \(args\.coverageOnly\)/,
+    'coverage-only must not run rest-twin or visual judges against an empty temp dir');
 });
 
 // ------------------------------------------------- the perturbation, through the real judge
@@ -1125,6 +1169,7 @@ test('the check reads provenance, and the capture writes it as it goes', () => {
   const check = readFileSync(path.join(ROOT, 'scripts', 'check-visual-regression.mjs'), 'utf8');
   assert.match(check, /provenance: readReferenceProvenance\(\)/);
   assert.match(check, /expectedSeed: UI_MATRIX_SEED/);
+  assert.match(check, /expectedGround: UI_MATRIX_GROUND/);
   assert.match(check, /skipFrames: notCurrent/, 'coverage and the diff table must agree on what is current');
 
   const capture = readFileSync(path.join(ROOT, 'scripts', 'capture-ui-matrix.mjs'), 'utf8');
@@ -1132,6 +1177,210 @@ test('the check reads provenance, and the capture writes it as it goes', () => {
   // the last frame turns any interruption into a baseline whose provenance is unknown.
   const promoteAt = capture.indexOf('recordReferenceProvenance(name, provenance)');
   assert.ok(promoteAt > 0, 'the promote path must record provenance');
-  assert.match(capture, /provenance\.frames\[name\] && provenance\.frames\[name\]\.seed === UI_MATRIX_SEED/,
-    '--fill-missing must re-shoot a frame that is present but from another universe');
+  assert.match(capture, /const current = existsSync\(target\)\s+&& !!provenance && isFrameCurrent\(provenance\.frames\[name\]\);/,
+    '--fill-missing must re-shoot a frame that is present but not comparable — wrong universe OR wrong ground');
+});
+
+// ------------------------------------------------- the ground a reference frame is shot over
+
+test('a reference frame photographs the interface over a neutral ground, and both halves of the 3D picture are hidden', () => {
+  // The decision this pins: the matrix measures the INTERFACE. Type roles and the 12 px floor,
+  // tabular numerals, colour spent on state, the layout skeleton, clipping at +40 %, forced-colours
+  // and reduce-motion are every one of them properties of the interface layer. None of them is a
+  // property of the starfield behind it, and the 3D picture already has its own instruments.
+  //
+  // Photographing the live picture costs the matrix its reason to exist: the world legitimately
+  // moves, so the floor has to be widened until a real interface regression fits inside it. `flight`
+  // carried a 10 % floor for exactly that reason.
+  //
+  // The game's 3D picture reaches the screen TWO ways, and both are ground: `#gl-canvas`, the live
+  // WebGL surface, and the `#screens` cinematic plate, which is the same picture pre-rendered.
+  // Calling one ground and the other interface would be incoherent.
+  const source = readFileSync(path.join(ROOT, 'scripts', 'capture-ui-matrix.mjs'), 'utf8');
+  assert.match(source, /#gl-canvas \{ opacity: 0 !important; \}/,
+    'the live picture is hidden with opacity, so the canvas keeps its box and its hit-testing '
+    + '(src/systems/input.js binds to #gl-canvas; autoTargetAssist reads its rect)');
+  assert.doesNotMatch(source, /#gl-canvas \{[^}]*display: none/,
+    'display:none would resize the renderer and change what the game is doing, not just what is filmed');
+  assert.match(source, /#screens \{ background-image: none !important; \}/,
+    'the baked half of the picture is hidden too, and ONLY its image — the readability scrim above it '
+    + 'is interface and stays');
+
+  // What is NOT hidden: every canvas the interface owns. The radar dial, the chart, the ship stage's
+  // hull preview and the portraits are drawn to canvases and are part of the picture being measured.
+  // A blanket `canvas { ... }` rule would erase them and nobody would see it in a coverage number.
+  assert.doesNotMatch(source, /\n\s*canvas \{/, 'the rule is per element, never every canvas on the page');
+
+  // The ground token carries the hex. A silent change to the colour would move every diff in the
+  // matrix with nothing anywhere saying so — the unpinned-seed failure, one layer down.
+  assert.match(UI_MATRIX_GROUND, /^neutral-[0-9a-f]{6}$/);
+  assert.equal(UI_MATRIX_GROUND, `neutral-${NEUTRAL_GROUND_HEX.slice(1)}`);
+
+  // Applied at the top of the boot. The title and new-game frames are shot inside menuPhase, which
+  // runs later in the same openBoot; a ground applied after them would leave two frames on the old one.
+  const groundAt = source.indexOf('await applyNeutralGround(page);');
+  const titleAt = source.indexOf("if (menuPhase) await menuPhase(page, 'title');");
+  assert.ok(groundAt > 0 && titleAt > groundAt,
+    'the ground must be established before the first frame of the boot');
+});
+
+test('a frame shot over another ground is MISSING, never quietly counted as coverage', () => {
+  // The same law as the seed, for the same reason. A frame from the live-ground era, diffed against
+  // a current capture, differs by 40-90 % for reasons that have nothing to do with the interface —
+  // and the calibration would bank that as the surface's floor.
+  const plan = buildFramePlan({ surfaces: ['footprint'], modes: ['default'], viewports: ['1280'] });
+  const file = frameFileName(plan[0]);
+  const onDisk = () => true;
+  const report = (record) => buildCoverageReport({
+    plan, referenceDir: '/anywhere', frameFileName, surfaces: SHIPPING_SURFACES, exists: onDisk,
+    provenance: { seed: UI_MATRIX_SEED, ground: UI_MATRIX_GROUND, frames: { [file]: record } },
+    expectedSeed: UI_MATRIX_SEED,
+    expectedGround: UI_MATRIX_GROUND,
+  });
+
+  const current = report({ seed: UI_MATRIX_SEED, ground: UI_MATRIX_GROUND });
+  assert.equal(current.present, 1, 'the right universe over the right ground is coverage');
+
+  const otherGround = report({ seed: UI_MATRIX_SEED, ground: 'live-3d' });
+  assert.equal(otherGround.present, 0, 'the right universe over the WRONG ground is not coverage');
+  assert.equal(otherGround.staleFrames.length, 1);
+  assert.equal(otherGround.staleFrames[0].staleReason, 'ground');
+  assert.equal(otherGround.missingReachable.length, 1, 'and it is a failure, because footprint is shootable');
+  assert.match(otherGround.staleFrames[0].remedy, /photographed over a different ground/);
+  assert.match(otherGround.staleFrames[0].remedy, /--update --only=footprint/);
+
+  // Unrecorded is the same answer: every frame from before the ground was pinned was shot over the
+  // live picture, and nothing is known to be current.
+  const unrecorded = report({ seed: UI_MATRIX_SEED });
+  assert.equal(unrecorded.present, 0);
+  assert.match(unrecorded.staleFrames[0].remedy, /unrecorded — the live 3D picture/);
+
+  // A wrong seed is still reported as a wrong seed, not swallowed by the ground row.
+  const otherSeed = report({ seed: 999, ground: UI_MATRIX_GROUND });
+  assert.equal(otherSeed.staleFrames[0].staleReason, 'seed');
+  assert.match(otherSeed.staleFrames[0].remedy, /photographed in a different universe/);
+
+  const line = formatCoverageReport(otherGround, SHIPPING_SURFACES);
+  assert.match(line, /0 from another universe, 1 over another ground/);
+});
+
+test('a frame is current only when the universe AND the ground both match', () => {
+  assert.equal(isFrameCurrent({ seed: UI_MATRIX_SEED, ground: UI_MATRIX_GROUND }), true);
+  assert.equal(isFrameCurrent({ seed: UI_MATRIX_SEED, ground: 'live-3d' }), false);
+  assert.equal(isFrameCurrent({ seed: UI_MATRIX_SEED }), false, 'an unrecorded ground is the live picture');
+  assert.equal(isFrameCurrent({ seed: 999, ground: UI_MATRIX_GROUND }), false);
+  assert.equal(isFrameCurrent(null), false);
+});
+
+test('the provenance record carries the ground for every frame, and so does the file it writes', () => {
+  const capture = readFileSync(path.join(ROOT, 'scripts', 'capture-ui-matrix.mjs'), 'utf8');
+  assert.match(capture, /ground: UI_MATRIX_GROUND,\s*\n\s*capturedAt:/,
+    'every promoted frame records the ground it was shot over, beside the seed');
+  assert.match(capture, /ground: provenance\.ground,/, 'and the file states the run ground once at the top');
+
+  const file = path.join(UI_FRAME_REFERENCE_DIR, 'provenance.json');
+  if (!existsSync(file)) return; // an empty baseline is a legitimate state; the coverage table says so
+  const record = JSON.parse(readFileSync(file, 'utf8'));
+  const frames = Object.entries(record.frames || {});
+  if (!frames.length) return;
+  // Not an assertion that the baseline is complete — that is the check's job, and a partly re-shot
+  // baseline is a legitimate state. This asserts only that nothing reads as current that is not.
+  for (const [name, entry] of frames) {
+    if (entry.ground === UI_MATRIX_GROUND && entry.seed === UI_MATRIX_SEED) continue;
+    assert.notEqual(isFrameCurrent(entry), true, `${name} must not read as current`);
+  }
+});
+
+test('a REAL committed frame, perturbed, goes red — and the same frame unchanged stays green', async (t) => {
+  // The synthetic proof above shows the judge counts pixels. This one runs it against the actual
+  // baseline on disk: a committed reference frame, at its real size, over the real neutral ground,
+  // with its real floor. Nothing is written into the baseline — the perturbation lives in a temp
+  // directory, because the golden law is that a reference changes only when the change was intended.
+  const provenanceFile = path.join(UI_FRAME_REFERENCE_DIR, 'provenance.json');
+  if (!existsSync(provenanceFile)) return;
+  const provenance = JSON.parse(readFileSync(provenanceFile, 'utf8'));
+  const plan = buildFramePlan();
+  const byName = new Map(plan.map((entry) => [frameFileName(entry), entry]));
+  const picked = Object.entries(provenance.frames || {})
+    .filter(([name, entry]) => isFrameCurrent(entry)
+      && byName.has(name)
+      && existsSync(path.join(UI_FRAME_REFERENCE_DIR, name)))
+    .map(([name]) => name)
+    .sort()[0];
+  if (!picked) return; // nothing shot yet; the coverage table is what reports that
+  const entry = byName.get(picked);
+
+  const { PNG } = createRequire(import.meta.url)('pngjs');
+  const dir = mkdtempSync(path.join(tmpdir(), 'sf-ui-frame-real-'));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const cleanDir = path.join(dir, 'clean');
+  const dirtyDir = path.join(dir, 'dirty');
+  mkdirSync(cleanDir); mkdirSync(dirtyDir);
+
+  const bytes = readFileSync(path.join(UI_FRAME_REFERENCE_DIR, picked));
+  writeFileSync(path.join(cleanDir, picked), bytes);
+
+  // The perturbation is the size of defect this matrix exists to catch: a band of pixels well above
+  // the surface's floor and nowhere near "the whole screen changed" — a control that moved, a panel
+  // that grew, a colour that stopped meaning a state.
+  const floor = floorForSurface(entry.surface);
+  const png = PNG.sync.read(bytes);
+  const target = Math.min(0.9, Math.max(floor * 4, 0.02));
+  const rows = Math.max(1, Math.round(png.height * target));
+  for (let y = 0; y < rows; y += 1) {
+    for (let x = 0; x < png.width; x += 1) {
+      const i = ((y * png.width) + x) << 2;
+      png.data[i] = 255 - png.data[i];
+      png.data[i + 1] = 255 - png.data[i + 1];
+      png.data[i + 2] = 255 - png.data[i + 2];
+    }
+  }
+  writeFileSync(path.join(dirtyDir, picked), PNG.sync.write(png));
+
+  const floors = loadFloors();
+  const green = judgeFrames({
+    plan: [entry], referenceDir: UI_FRAME_REFERENCE_DIR, candidateDir: cleanDir, floors, frameFileName,
+  });
+  assert.equal(green.rows.length, 1, `${picked} must be judged`);
+  assert.equal(green.failures.length, 0, 'a byte-identical capture of a committed frame must be green');
+
+  const red = judgeFrames({
+    plan: [entry], referenceDir: UI_FRAME_REFERENCE_DIR, candidateDir: dirtyDir, floors, frameFileName,
+  });
+  assert.equal(red.failures.length, 1, `${picked} perturbed by ~${(target * 100).toFixed(1)}% must fail`);
+  assert.ok(red.failures[0].ratio > floor,
+    `the perturbation (${(red.failures[0].ratio * 100).toFixed(3)}%) must exceed the surface floor `
+    + `(${(floor * 100).toFixed(3)}%) — otherwise this proves nothing`);
+
+  const fullCoverage = { missing: [], missingReachable: [], missingUnreachable: [] };
+  assert.equal(decideExit({ coverage: fullCoverage, repeatability: green, visual: green }).code, 0);
+  assert.equal(decideExit({ coverage: fullCoverage, repeatability: green, visual: red }).code, 1,
+    'and the check exits non-zero on it');
+});
+
+test('every path that promotes a frame carries the provenance record with it', () => {
+  // The defect this pins cost a whole capture run and had exactly one symptom: a coverage number
+  // that would not move. The primary-boot `captureModeSet` call — the one responsible for roughly
+  // 270 of the 408 frames — was missing its `provenance` argument. Every frame it promoted was
+  // copied into the baseline correctly and recorded nowhere, so each one read as STALE on every
+  // later run, and the check could never go green no matter how many times the matrix was shot.
+  //
+  // It was invisible because promoting and recording were two statements and only one of them was
+  // guarded. So the promote path now REFUSES to write a frame it cannot record, and every call site
+  // is checked here — a capture that costs hours must fail in its first seconds, not at the end.
+  const source = readFileSync(path.join(ROOT, 'scripts', 'capture-ui-matrix.mjs'), 'utf8');
+
+  assert.match(source, /if \(!provenance\) \{\s*\n\s*throw new Error\(`refusing to promote/,
+    'promoting a frame with no provenance record must throw, not write a permanently stale frame');
+
+  // Every call that can promote must hand the record along. `promoteReference` is what turns a
+  // capture into a baseline write; wherever it is passed, `provenance` must be passed too.
+  const calls = [...source.matchAll(/await\s+capture(?:ModeSet|SurfaceScreenshot)\(\{[\s\S]*?\n\s*\}\)/g)]
+    .map((match) => match[0]);
+  assert.ok(calls.length >= 4, `expected the capture call sites to be found, saw ${calls.length}`);
+  for (const call of calls) {
+    if (!/promoteReference/.test(call)) continue;
+    assert.match(call, /provenance/,
+      `a capture call that can promote a reference must pass provenance:\n${call}`);
+  }
 });

@@ -40,18 +40,62 @@ so, because the frames themselves looked perfect.
 
 If you change the seed, the entire baseline has to be re-shot. It is not a knob either.
 
+## One ground
+
+**A reference frame here photographs the INTERFACE, over a flat neutral ground. It does not
+photograph the game's 3D picture.**
+
+That is a decision about what this instrument measures. Every rule the grammar matrix scores — type
+roles and the 12 px floor, tabular numerals, colour spent only on state, the layout skeleton, the
+three disclosure tiers, clipping at +40 %, forced-colours, reduce-motion — is a property of the
+interface layer. None of them is a property of the starfield behind it. The 3D picture has its own
+instruments: the runtime witness, the fun-loop bench strips, the shipping-camera captures. A
+screenshot diff is the wrong tool for a world that legitimately moves, and using one costs the matrix
+its whole reason to exist — the floor has to be widened until a real interface regression fits inside
+it. `flight` carried a **10 %** floor for exactly that reason, and 10 % of 2560x1080 is 276,000
+pixels of change this gate would have called "at rest".
+
+The game's picture reaches the screen two ways, and **both** are ground:
+
+| Hidden | What it is |
+|---|---|
+| `#gl-canvas` | the live WebGL surface the renderer draws into (`src/render/renderer.js`) |
+| the `#screens` background image | `assets/cinematics/C-INTRO-01.jpg` — the same picture, pre-rendered, behind every menu-phase screen (`styles/ui.css`) |
+
+Calling the live one ground and the baked one interface would be incoherent; they are the same
+content in two encodings. What the plate can hide is an **asset** change, which belongs to the
+visual-asset route, not to a type-and-layout gate.
+
+**Everything the interface draws is kept and photographed**, including the layers between the plate
+and the panel: the `#screens::before` readability scrim and its vignette composite over the neutral
+ground exactly as they composite over the plate, so a regression that breaks the scrim is still a
+diff. Every canvas the interface owns is kept too — the radar dial (`src/ui/radar.js`), the chart, the
+ship stage's hull preview, the portraits. The line is "is this the game's 3D world", never "is this a
+canvas" and never "is this a background".
+
+The canvas is hidden with `opacity: 0`, not `visibility: hidden` or `display: none`: it keeps its box
+and its hit-testing, so `src/systems/input.js` (which binds to `#gl-canvas`) and `autoTargetAssist.js`
+(which reads its rect) behave exactly as they do in play. Nothing about the game changes except what
+reaches the film.
+
+The ground colour is part of the token (`UI_MATRIX_GROUND` = `neutral-12151a`). Changing the hex
+changes every frame in the matrix, so it is recorded per frame the same way the seed is. Under the
+`forced-colors` column Chromium substitutes the system `Canvas` colour for it — still a flat,
+deterministic ground, and the correct one for that mode.
+
 ### provenance.json
 
-`provenance.json` records which universe each committed frame was photographed in, and it is what
-makes a partly re-shot baseline honest rather than dangerous. **A frame counts as coverage only while
-its recorded seed matches the seed the harness shoots in.** Anything else — another seed, or no
-record at all — is reported `STALE`, counted as missing, and **never diffed**.
+`provenance.json` records which universe each committed frame was photographed in **and which ground
+it was photographed over**, and it is what makes a partly re-shot baseline honest rather than
+dangerous. **A frame counts as coverage only while its recorded seed AND ground match what the
+harness shoots today.** Anything else — another seed, another ground, or no record at all — is
+reported `STALE`, counted as missing, and **never diffed**.
 
 That matters more than it sounds. A leftover frame from another universe, diffed against a current
-capture, reads as a 5-40 % change that nothing distinguishes from a real regression, and the
-calibration would then bank that difference as the surface's floor. It also means the baseline can be
-re-shot a few surfaces at a time, across sessions and machines, and the check always says exactly
-which frames are current:
+capture, reads as a 5-40 % change that nothing distinguishes from a real regression; one from the
+live-ground era reads as 40-90 %. The calibration would then bank that difference as the surface's
+floor. It also means the baseline can be re-shot a few surfaces at a time, across sessions and
+machines, and the check always says exactly which frames are current:
 
 ```bash
 npm run capture:ui-matrix -- --update --only=station-market
@@ -126,7 +170,10 @@ session somewhere else, and every frame taken afterwards would be a picture of t
 - `base` **flies to another sector** — the boot sector authors no claimable body — which would also
   point the station fixture at a sector that may have no station in it.
 
-Those three are `destructive` / `isolatedBoot` in the manifest and get a boot each, per mode.
+Those three are `destructive` / `isolatedBoot` in the manifest. `game-over` and `asteroid-works`
+each take **one boot per media mode** (the run is over; the hull is parked against the rock).
+`base` only changes sector, so it still shares a boot across default / reduced-motion /
+forced-colours, and takes a second boot only for the pseudo-locale.
 
 ## The floors
 
@@ -139,8 +186,18 @@ floor = max(0.5%, ceilTo(measuredMaxRestVariance × 1.2, 0.5%))
 
 Replayed against the five floors measured on 2026-08-20 the rule reproduces four of them exactly
 (footprint 0.5 %, range 0.5 %, ship 3 %, chart 5 %) and would have given flight 10.5 % where 10 %
-was written down. Those five stay **pinned** at the values they were measured at; the rule governs
+was written down. Those five were **pinned** at the values they were measured at; the rule governs
 every surface calibrated after them.
+
+**A pin belongs to the ground it was measured over.** Those five were measured with the live 3D
+picture behind the interface — `flight`'s note says so in as many words: "a live world legitimately
+moves behind the HUD". That is why the number is 10 %, and it is not true of a frame shot over the
+neutral ground. So each floor record carries `pinnedGround`, a pin holds only while that ground is
+the ground the harness shoots over, and a pin whose ground has changed **lapses** at the next
+calibration: the surface is re-measured from this run's two samples, and the number it used to hold
+is kept in `pinLapsed` rather than erased. A lapse can only ever **tighten** a floor. Nothing here
+widens one — that rule is untouched, and a lapsed pin still goes through the suspect refusal below
+like any other surface.
 
 Each surface's rest variance is measured **twice per frame**:
 

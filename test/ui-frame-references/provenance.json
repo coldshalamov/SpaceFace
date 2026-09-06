@@ -1,0 +1,2047 @@
+{
+  "_law": "test/ui-frame-references/README.md — a frame counts as coverage only while it was shot in the universe the harness shoots in AND over the ground the harness shoots over. A frame from another seed, or over the live 3D picture, is reported MISSING and never diffed.",
+  "seed": 47,
+  "ground": "neutral-12151a",
+  "frames": {
+    "asteroid-works-default-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-06T02:53:46.896Z"
+    },
+    "asteroid-works-default-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-06T03:15:05.524Z"
+    },
+    "asteroid-works-default-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-06T03:03:03.260Z"
+    },
+    "asteroid-works-forced-colors-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-06T03:59:49.085Z"
+    },
+    "asteroid-works-forced-colors-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-06T03:54:51.481Z"
+    },
+    "asteroid-works-forced-colors-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-06T04:05:31.948Z"
+    },
+    "asteroid-works-pseudo-localized-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-06T03:27:27.841Z"
+    },
+    "asteroid-works-pseudo-localized-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-06T03:18:29.562Z"
+    },
+    "asteroid-works-pseudo-localized-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-06T03:49:15.303Z"
+    },
+    "asteroid-works-reduced-motion-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-06T03:57:19.603Z"
+    },
+    "asteroid-works-reduced-motion-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-06T03:52:00.082Z"
+    },
+    "asteroid-works-reduced-motion-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-06T03:43:20.325Z"
+    },
+    "automation-default-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:41:41.196Z"
+    },
+    "automation-default-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:02:05.895Z"
+    },
+    "automation-default-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:15:26.563Z"
+    },
+    "automation-forced-colors-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:49:30.721Z"
+    },
+    "automation-forced-colors-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:11:28.212Z"
+    },
+    "automation-forced-colors-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:24:11.386Z"
+    },
+    "automation-pseudo-localized-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:54:21.070Z"
+    },
+    "automation-pseudo-localized-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:17:53.485Z"
+    },
+    "automation-pseudo-localized-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:32:25.427Z"
+    },
+    "automation-reduced-motion-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:45:41.632Z"
+    },
+    "automation-reduced-motion-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:07:07.985Z"
+    },
+    "automation-reduced-motion-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:19:41.774Z"
+    },
+    "base-default-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-06T00:01:47.743Z"
+    },
+    "base-default-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:26:45.875Z"
+    },
+    "base-default-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:43:04.451Z"
+    },
+    "base-forced-colors-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-06T00:01:54.524Z"
+    },
+    "base-forced-colors-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:26:52.330Z"
+    },
+    "base-forced-colors-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:43:12.901Z"
+    },
+    "base-pseudo-localized-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-06T00:04:09.610Z"
+    },
+    "base-pseudo-localized-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:29:52.640Z"
+    },
+    "base-pseudo-localized-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:46:11.358Z"
+    },
+    "base-reduced-motion-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-06T00:01:51.153Z"
+    },
+    "base-reduced-motion-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:26:49.194Z"
+    },
+    "base-reduced-motion-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:43:08.851Z"
+    },
+    "chart-default-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:41:10.389Z"
+    },
+    "chart-default-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:00:52.546Z"
+    },
+    "chart-default-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:13:12.960Z"
+    },
+    "chart-forced-colors-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:48:52.950Z"
+    },
+    "chart-forced-colors-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:10:58.886Z"
+    },
+    "chart-forced-colors-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:23:20.484Z"
+    },
+    "chart-galaxy-default-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:41:15.918Z"
+    },
+    "chart-galaxy-default-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:01:10.770Z"
+    },
+    "chart-galaxy-default-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:13:32.168Z"
+    },
+    "chart-galaxy-forced-colors-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:48:57.137Z"
+    },
+    "chart-galaxy-forced-colors-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:11:02.985Z"
+    },
+    "chart-galaxy-forced-colors-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:23:24.845Z"
+    },
+    "chart-galaxy-pseudo-localized-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:53:53.966Z"
+    },
+    "chart-galaxy-pseudo-localized-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:17:11.205Z"
+    },
+    "chart-galaxy-pseudo-localized-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:30:45.664Z"
+    },
+    "chart-galaxy-reduced-motion-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:45:13.811Z"
+    },
+    "chart-galaxy-reduced-motion-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:06:37.031Z"
+    },
+    "chart-galaxy-reduced-motion-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:18:58.676Z"
+    },
+    "chart-pseudo-localized-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:53:43.094Z"
+    },
+    "chart-pseudo-localized-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:17:06.723Z"
+    },
+    "chart-pseudo-localized-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:30:25.051Z"
+    },
+    "chart-reduced-motion-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:45:10.391Z"
+    },
+    "chart-reduced-motion-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:06:32.527Z"
+    },
+    "chart-reduced-motion-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:18:52.166Z"
+    },
+    "codex-default-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:41:25.853Z"
+    },
+    "codex-default-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:01:33.959Z"
+    },
+    "codex-default-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:14:20.029Z"
+    },
+    "codex-forced-colors-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:49:08.175Z"
+    },
+    "codex-forced-colors-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:11:11.470Z"
+    },
+    "codex-forced-colors-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:23:44.546Z"
+    },
+    "codex-pseudo-localized-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:54:04.461Z"
+    },
+    "codex-pseudo-localized-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:17:31.550Z"
+    },
+    "codex-pseudo-localized-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:31:19.254Z"
+    },
+    "codex-reduced-motion-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:45:22.576Z"
+    },
+    "codex-reduced-motion-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:06:46.846Z"
+    },
+    "codex-reduced-motion-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:19:16.804Z"
+    },
+    "comms-radial-default-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:40:11.628Z"
+    },
+    "comms-radial-default-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:59:56.880Z"
+    },
+    "comms-radial-default-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:11:52.749Z"
+    },
+    "comms-radial-forced-colors-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:48:20.811Z"
+    },
+    "comms-radial-forced-colors-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:10:30.582Z"
+    },
+    "comms-radial-forced-colors-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:22:41.009Z"
+    },
+    "comms-radial-pseudo-localized-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:52:57.533Z"
+    },
+    "comms-radial-pseudo-localized-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:16:10.492Z"
+    },
+    "comms-radial-pseudo-localized-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:29:19.721Z"
+    },
+    "comms-radial-reduced-motion-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:44:40.860Z"
+    },
+    "comms-radial-reduced-motion-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:05:44.788Z"
+    },
+    "comms-radial-reduced-motion-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:17:59.468Z"
+    },
+    "crucible-door-default-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:38:36.516Z"
+    },
+    "crucible-door-default-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:57:01.715Z"
+    },
+    "crucible-door-default-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:09:07.440Z"
+    },
+    "crucible-door-forced-colors-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:39:05.534Z"
+    },
+    "crucible-door-forced-colors-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:57:53.209Z"
+    },
+    "crucible-door-forced-colors-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:10:03.143Z"
+    },
+    "crucible-door-pseudo-localized-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:51:57.516Z"
+    },
+    "crucible-door-pseudo-localized-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:14:52.737Z"
+    },
+    "crucible-door-pseudo-localized-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:27:02.145Z"
+    },
+    "crucible-door-reduced-motion-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:38:42.763Z"
+    },
+    "crucible-door-reduced-motion-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:57:14.377Z"
+    },
+    "crucible-door-reduced-motion-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:09:36.255Z"
+    },
+    "crucible-draft-default-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:41:45.176Z"
+    },
+    "crucible-draft-default-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:02:23.459Z"
+    },
+    "crucible-draft-default-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:15:39.636Z"
+    },
+    "crucible-draft-forced-colors-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:49:36.253Z"
+    },
+    "crucible-draft-forced-colors-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:11:31.727Z"
+    },
+    "crucible-draft-forced-colors-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:24:14.795Z"
+    },
+    "crucible-draft-pseudo-localized-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:54:24.824Z"
+    },
+    "crucible-draft-pseudo-localized-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:18:02.651Z"
+    },
+    "crucible-draft-pseudo-localized-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:32:30.821Z"
+    },
+    "crucible-draft-reduced-motion-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:45:45.587Z"
+    },
+    "crucible-draft-reduced-motion-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:07:11.628Z"
+    },
+    "crucible-draft-reduced-motion-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:19:46.229Z"
+    },
+    "crucible-refit-default-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:41:49.518Z"
+    },
+    "crucible-refit-default-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:02:31.336Z"
+    },
+    "crucible-refit-default-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:15:51.906Z"
+    },
+    "crucible-refit-forced-colors-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:49:40.762Z"
+    },
+    "crucible-refit-forced-colors-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:11:36.759Z"
+    },
+    "crucible-refit-forced-colors-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:24:18.854Z"
+    },
+    "crucible-refit-pseudo-localized-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:54:28.320Z"
+    },
+    "crucible-refit-pseudo-localized-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:18:17.046Z"
+    },
+    "crucible-refit-pseudo-localized-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:32:35.503Z"
+    },
+    "crucible-refit-reduced-motion-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:45:50.122Z"
+    },
+    "crucible-refit-reduced-motion-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:07:15.290Z"
+    },
+    "crucible-refit-reduced-motion-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:19:51.543Z"
+    },
+    "crucible-results-default-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:41:53.614Z"
+    },
+    "crucible-results-default-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:02:47.215Z"
+    },
+    "crucible-results-default-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:16:01.662Z"
+    },
+    "crucible-results-forced-colors-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:49:46.287Z"
+    },
+    "crucible-results-forced-colors-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:11:44.200Z"
+    },
+    "crucible-results-forced-colors-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:24:25.374Z"
+    },
+    "crucible-results-pseudo-localized-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:54:33.361Z"
+    },
+    "crucible-results-pseudo-localized-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:18:32.977Z"
+    },
+    "crucible-results-pseudo-localized-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:32:40.776Z"
+    },
+    "crucible-results-reduced-motion-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:45:54.264Z"
+    },
+    "crucible-results-reduced-motion-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:07:19.230Z"
+    },
+    "crucible-results-reduced-motion-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:19:55.788Z"
+    },
+    "flight-default-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:40:05.562Z"
+    },
+    "flight-default-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:59:49.498Z"
+    },
+    "flight-default-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:11:41.358Z"
+    },
+    "flight-forced-colors-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:48:13.144Z"
+    },
+    "flight-forced-colors-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:10:06.923Z"
+    },
+    "flight-forced-colors-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:22:10.859Z"
+    },
+    "flight-pseudo-localized-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:52:50.938Z"
+    },
+    "flight-pseudo-localized-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:16:04.776Z"
+    },
+    "flight-pseudo-localized-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:29:10.235Z"
+    },
+    "flight-reduced-motion-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:44:26.897Z"
+    },
+    "flight-reduced-motion-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:05:36.035Z"
+    },
+    "flight-reduced-motion-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:17:42.416Z"
+    },
+    "footprint-default-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:40:55.609Z"
+    },
+    "footprint-default-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:00:30.484Z"
+    },
+    "footprint-default-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:12:59.539Z"
+    },
+    "footprint-forced-colors-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:48:42.745Z"
+    },
+    "footprint-forced-colors-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:10:50.988Z"
+    },
+    "footprint-forced-colors-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:23:08.853Z"
+    },
+    "footprint-pseudo-localized-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:53:28.443Z"
+    },
+    "footprint-pseudo-localized-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:16:50.579Z"
+    },
+    "footprint-pseudo-localized-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:30:01.575Z"
+    },
+    "footprint-reduced-motion-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:45:03.235Z"
+    },
+    "footprint-reduced-motion-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:06:17.894Z"
+    },
+    "footprint-reduced-motion-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:18:42.613Z"
+    },
+    "game-over-default-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-06T00:05:14.895Z"
+    },
+    "game-over-default-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:31:49.961Z"
+    },
+    "game-over-default-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:48:20.779Z"
+    },
+    "game-over-forced-colors-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-06T00:09:09.427Z"
+    },
+    "game-over-forced-colors-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:36:18.194Z"
+    },
+    "game-over-forced-colors-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:53:24.849Z"
+    },
+    "game-over-pseudo-localized-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-06T00:11:04.540Z"
+    },
+    "game-over-pseudo-localized-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:37:43.067Z"
+    },
+    "game-over-pseudo-localized-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:55:20.289Z"
+    },
+    "game-over-reduced-motion-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-06T00:06:42.698Z"
+    },
+    "game-over-reduced-motion-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:34:07.406Z"
+    },
+    "game-over-reduced-motion-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:51:21.544Z"
+    },
+    "help-default-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:41:22.220Z"
+    },
+    "help-default-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:01:31.055Z"
+    },
+    "help-default-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:14:12.029Z"
+    },
+    "help-forced-colors-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:49:04.528Z"
+    },
+    "help-forced-colors-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:11:08.621Z"
+    },
+    "help-forced-colors-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:23:41.093Z"
+    },
+    "help-pseudo-localized-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:54:01.338Z"
+    },
+    "help-pseudo-localized-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:17:27.895Z"
+    },
+    "help-pseudo-localized-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:31:15.233Z"
+    },
+    "help-reduced-motion-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:45:19.750Z"
+    },
+    "help-reduced-motion-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:06:43.655Z"
+    },
+    "help-reduced-motion-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:19:11.186Z"
+    },
+    "mission-log-default-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:41:28.456Z"
+    },
+    "mission-log-default-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:01:39.283Z"
+    },
+    "mission-log-default-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:14:26.571Z"
+    },
+    "mission-log-forced-colors-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:49:11.665Z"
+    },
+    "mission-log-forced-colors-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:11:14.350Z"
+    },
+    "mission-log-forced-colors-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:23:48.145Z"
+    },
+    "mission-log-pseudo-localized-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:54:07.533Z"
+    },
+    "mission-log-pseudo-localized-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:17:34.554Z"
+    },
+    "mission-log-pseudo-localized-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:31:28.330Z"
+    },
+    "mission-log-reduced-motion-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:45:25.894Z"
+    },
+    "mission-log-reduced-motion-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:06:50.604Z"
+    },
+    "mission-log-reduced-motion-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:19:22.563Z"
+    },
+    "new-game-default-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:39:10.952Z"
+    },
+    "new-game-default-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:58:04.043Z"
+    },
+    "new-game-default-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:10:14.162Z"
+    },
+    "new-game-forced-colors-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:39:15.646Z"
+    },
+    "new-game-forced-colors-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:58:12.238Z"
+    },
+    "new-game-forced-colors-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:10:29.366Z"
+    },
+    "new-game-pseudo-localized-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:52:02.894Z"
+    },
+    "new-game-pseudo-localized-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:14:55.647Z"
+    },
+    "new-game-pseudo-localized-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:27:10.150Z"
+    },
+    "new-game-reduced-motion-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:39:12.833Z"
+    },
+    "new-game-reduced-motion-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:58:06.393Z"
+    },
+    "new-game-reduced-motion-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:10:16.286Z"
+    },
+    "pause-default-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:41:19.038Z"
+    },
+    "pause-default-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:01:28.241Z"
+    },
+    "pause-default-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:13:57.415Z"
+    },
+    "pause-forced-colors-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:49:00.998Z"
+    },
+    "pause-forced-colors-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:11:05.766Z"
+    },
+    "pause-forced-colors-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:23:30.171Z"
+    },
+    "pause-pseudo-localized-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:53:59.099Z"
+    },
+    "pause-pseudo-localized-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:17:24.546Z"
+    },
+    "pause-pseudo-localized-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:31:11.679Z"
+    },
+    "pause-reduced-motion-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:45:16.821Z"
+    },
+    "pause-reduced-motion-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:06:40.462Z"
+    },
+    "pause-reduced-motion-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:19:03.392Z"
+    },
+    "power-rail-default-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:40:08.175Z"
+    },
+    "power-rail-default-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:59:52.936Z"
+    },
+    "power-rail-default-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:11:47.128Z"
+    },
+    "power-rail-forced-colors-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:48:16.353Z"
+    },
+    "power-rail-forced-colors-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:10:10.963Z"
+    },
+    "power-rail-forced-colors-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:22:14.235Z"
+    },
+    "power-rail-pseudo-localized-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:52:53.909Z"
+    },
+    "power-rail-pseudo-localized-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:16:07.840Z"
+    },
+    "power-rail-pseudo-localized-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:29:14.754Z"
+    },
+    "power-rail-reduced-motion-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:44:30.261Z"
+    },
+    "power-rail-reduced-motion-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:05:40.176Z"
+    },
+    "power-rail-reduced-motion-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:17:50.873Z"
+    },
+    "range-default-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:40:59.999Z"
+    },
+    "range-default-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:00:47.051Z"
+    },
+    "range-default-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:13:06.157Z"
+    },
+    "range-forced-colors-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:48:48.317Z"
+    },
+    "range-forced-colors-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:10:54.838Z"
+    },
+    "range-forced-colors-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:23:15.794Z"
+    },
+    "range-pseudo-localized-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:53:31.967Z"
+    },
+    "range-pseudo-localized-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:16:53.779Z"
+    },
+    "range-pseudo-localized-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:30:19.336Z"
+    },
+    "range-reduced-motion-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:45:06.951Z"
+    },
+    "range-reduced-motion-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:06:27.429Z"
+    },
+    "range-reduced-motion-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:18:46.517Z"
+    },
+    "save-load-default-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:41:37.584Z"
+    },
+    "save-load-default-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:01:55.815Z"
+    },
+    "save-load-default-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:15:16.074Z"
+    },
+    "save-load-forced-colors-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:49:26.097Z"
+    },
+    "save-load-forced-colors-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:11:24.226Z"
+    },
+    "save-load-forced-colors-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:24:02.970Z"
+    },
+    "save-load-pseudo-localized-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:54:17.418Z"
+    },
+    "save-load-pseudo-localized-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:17:45.757Z"
+    },
+    "save-load-pseudo-localized-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:32:12.484Z"
+    },
+    "save-load-reduced-motion-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:45:37.982Z"
+    },
+    "save-load-reduced-motion-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:07:03.574Z"
+    },
+    "save-load-reduced-motion-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:19:37.326Z"
+    },
+    "settings-default-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:41:34.103Z"
+    },
+    "settings-default-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:01:50.238Z"
+    },
+    "settings-default-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:14:52.087Z"
+    },
+    "settings-forced-colors-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:49:19.007Z"
+    },
+    "settings-forced-colors-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:11:20.491Z"
+    },
+    "settings-forced-colors-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:23:56.016Z"
+    },
+    "settings-pseudo-localized-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:54:13.870Z"
+    },
+    "settings-pseudo-localized-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:17:40.830Z"
+    },
+    "settings-pseudo-localized-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:31:55.965Z"
+    },
+    "settings-reduced-motion-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:45:33.746Z"
+    },
+    "settings-reduced-motion-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:06:58.659Z"
+    },
+    "settings-reduced-motion-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:19:33.105Z"
+    },
+    "ship-default-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:40:44.374Z"
+    },
+    "ship-default-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:00:26.650Z"
+    },
+    "ship-default-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:12:55.111Z"
+    },
+    "ship-forced-colors-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:48:39.252Z"
+    },
+    "ship-forced-colors-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:10:48.117Z"
+    },
+    "ship-forced-colors-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:23:05.791Z"
+    },
+    "ship-pseudo-localized-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:53:19.701Z"
+    },
+    "ship-pseudo-localized-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:16:40.907Z"
+    },
+    "ship-pseudo-localized-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:29:57.122Z"
+    },
+    "ship-reduced-motion-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:45:00.391Z"
+    },
+    "ship-reduced-motion-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:06:08.621Z"
+    },
+    "ship-reduced-motion-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:18:39.679Z"
+    },
+    "station-bar-default-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:44:19.269Z"
+    },
+    "station-bar-default-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:05:22.650Z"
+    },
+    "station-bar-default-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:17:28.849Z"
+    },
+    "station-bar-forced-colors-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:51:04.264Z"
+    },
+    "station-bar-forced-colors-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:14:17.289Z"
+    },
+    "station-bar-forced-colors-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:26:02.106Z"
+    },
+    "station-bar-pseudo-localized-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:56:34.464Z"
+    },
+    "station-bar-pseudo-localized-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:20:50.932Z"
+    },
+    "station-bar-pseudo-localized-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:34:19.209Z"
+    },
+    "station-bar-reduced-motion-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:48:02.515Z"
+    },
+    "station-bar-reduced-motion-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:09:56.612Z"
+    },
+    "station-bar-reduced-motion-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:22:02.526Z"
+    },
+    "station-contracts-default-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:44:12.201Z"
+    },
+    "station-contracts-default-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:05:13.489Z"
+    },
+    "station-contracts-default-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:17:15.901Z"
+    },
+    "station-contracts-forced-colors-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:50:56.943Z"
+    },
+    "station-contracts-forced-colors-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:14:09.835Z"
+    },
+    "station-contracts-forced-colors-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:25:54.871Z"
+    },
+    "station-contracts-pseudo-localized-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:56:27.043Z"
+    },
+    "station-contracts-pseudo-localized-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:20:41.895Z"
+    },
+    "station-contracts-pseudo-localized-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:34:09.051Z"
+    },
+    "station-contracts-reduced-motion-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:47:54.644Z"
+    },
+    "station-contracts-reduced-motion-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:09:47.575Z"
+    },
+    "station-contracts-reduced-motion-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:21:54.986Z"
+    },
+    "station-dock-default-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:42:03.239Z"
+    },
+    "station-dock-default-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:02:55.532Z"
+    },
+    "station-dock-default-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:16:18.130Z"
+    },
+    "station-dock-forced-colors-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:49:51.691Z"
+    },
+    "station-dock-forced-colors-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:11:52.173Z"
+    },
+    "station-dock-forced-colors-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:24:29.709Z"
+    },
+    "station-dock-pseudo-localized-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:54:38.244Z"
+    },
+    "station-dock-pseudo-localized-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:18:59.608Z"
+    },
+    "station-dock-pseudo-localized-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:32:51.209Z"
+    },
+    "station-dock-reduced-motion-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:45:58.087Z"
+    },
+    "station-dock-reduced-motion-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:07:23.330Z"
+    },
+    "station-dock-reduced-motion-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:20:00.705Z"
+    },
+    "station-factions-default-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:44:15.714Z"
+    },
+    "station-factions-default-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:05:17.638Z"
+    },
+    "station-factions-default-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:17:21.190Z"
+    },
+    "station-factions-forced-colors-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:51:00.537Z"
+    },
+    "station-factions-forced-colors-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:14:13.523Z"
+    },
+    "station-factions-forced-colors-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:25:58.578Z"
+    },
+    "station-factions-pseudo-localized-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:56:30.575Z"
+    },
+    "station-factions-pseudo-localized-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:20:46.881Z"
+    },
+    "station-factions-pseudo-localized-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:34:13.179Z"
+    },
+    "station-factions-reduced-motion-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:47:58.975Z"
+    },
+    "station-factions-reduced-motion-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:09:52.132Z"
+    },
+    "station-factions-reduced-motion-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:21:58.808Z"
+    },
+    "station-industry-default-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:44:08.196Z"
+    },
+    "station-industry-default-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:05:07.662Z"
+    },
+    "station-industry-default-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:17:09.352Z"
+    },
+    "station-industry-forced-colors-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:50:53.325Z"
+    },
+    "station-industry-forced-colors-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:14:06.051Z"
+    },
+    "station-industry-forced-colors-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:25:51.292Z"
+    },
+    "station-industry-pseudo-localized-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:56:23.235Z"
+    },
+    "station-industry-pseudo-localized-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:20:37.711Z"
+    },
+    "station-industry-pseudo-localized-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:34:04.313Z"
+    },
+    "station-industry-reduced-motion-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:47:50.712Z"
+    },
+    "station-industry-reduced-motion-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:09:43.069Z"
+    },
+    "station-industry-reduced-motion-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:21:51.079Z"
+    },
+    "station-ledger-default-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:44:22.748Z"
+    },
+    "station-ledger-default-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:05:26.752Z"
+    },
+    "station-ledger-default-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:17:33.440Z"
+    },
+    "station-ledger-forced-colors-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:51:08.044Z"
+    },
+    "station-ledger-forced-colors-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:14:21.276Z"
+    },
+    "station-ledger-forced-colors-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:26:05.641Z"
+    },
+    "station-ledger-pseudo-localized-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:56:38.169Z"
+    },
+    "station-ledger-pseudo-localized-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:20:54.626Z"
+    },
+    "station-ledger-pseudo-localized-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:34:25.126Z"
+    },
+    "station-ledger-reduced-motion-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:48:05.932Z"
+    },
+    "station-ledger-reduced-motion-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:10:00.275Z"
+    },
+    "station-ledger-reduced-motion-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:22:06.132Z"
+    },
+    "station-market-default-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:42:12.905Z"
+    },
+    "station-market-default-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:03:06.065Z"
+    },
+    "station-market-default-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:16:42.115Z"
+    },
+    "station-market-forced-colors-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:49:57.771Z"
+    },
+    "station-market-forced-colors-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:11:56.768Z"
+    },
+    "station-market-forced-colors-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:24:35.808Z"
+    },
+    "station-market-pseudo-localized-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:54:46.317Z"
+    },
+    "station-market-pseudo-localized-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:19:04.722Z"
+    },
+    "station-market-pseudo-localized-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:33:00.481Z"
+    },
+    "station-market-reduced-motion-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:46:03.003Z"
+    },
+    "station-market-reduced-motion-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:07:29.518Z"
+    },
+    "station-market-reduced-motion-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:20:06.862Z"
+    },
+    "station-shipworks-default-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-06T01:37:12.837Z"
+    },
+    "station-shipworks-default-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-06T01:26:07.870Z"
+    },
+    "station-shipworks-default-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:17:03.905Z"
+    },
+    "station-shipworks-forced-colors-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-06T01:37:53.377Z"
+    },
+    "station-shipworks-forced-colors-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-06T01:26:59.363Z"
+    },
+    "station-shipworks-forced-colors-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-06T01:12:18.444Z"
+    },
+    "station-shipworks-pseudo-localized-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-06T01:40:35.714Z"
+    },
+    "station-shipworks-pseudo-localized-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-06T01:29:50.223Z"
+    },
+    "station-shipworks-pseudo-localized-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-06T01:16:19.358Z"
+    },
+    "station-shipworks-reduced-motion-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-06T01:37:32.096Z"
+    },
+    "station-shipworks-reduced-motion-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-06T01:26:28.517Z"
+    },
+    "station-shipworks-reduced-motion-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-06T01:12:01.717Z"
+    },
+    "tech-tree-default-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:41:31.131Z"
+    },
+    "tech-tree-default-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:01:45.444Z"
+    },
+    "tech-tree-default-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:14:34.387Z"
+    },
+    "tech-tree-forced-colors-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:49:14.910Z"
+    },
+    "tech-tree-forced-colors-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:11:17.171Z"
+    },
+    "tech-tree-forced-colors-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:23:51.794Z"
+    },
+    "tech-tree-pseudo-localized-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:54:10.326Z"
+    },
+    "tech-tree-pseudo-localized-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:17:36.985Z"
+    },
+    "tech-tree-pseudo-localized-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:31:36.657Z"
+    },
+    "tech-tree-reduced-motion-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:45:29.293Z"
+    },
+    "tech-tree-reduced-motion-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:06:54.384Z"
+    },
+    "tech-tree-reduced-motion-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:19:28.540Z"
+    },
+    "title-default-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:38:32.186Z"
+    },
+    "title-default-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:56:39.203Z"
+    },
+    "title-default-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:09:00.862Z"
+    },
+    "title-forced-colors-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:38:44.796Z"
+    },
+    "title-forced-colors-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:57:45.020Z"
+    },
+    "title-forced-colors-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:09:53.132Z"
+    },
+    "title-pseudo-localized-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:51:53.449Z"
+    },
+    "title-pseudo-localized-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:14:45.512Z"
+    },
+    "title-pseudo-localized-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:26:37.935Z"
+    },
+    "title-reduced-motion-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:38:38.718Z"
+    },
+    "title-reduced-motion-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:57:06.610Z"
+    },
+    "title-reduced-motion-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:09:30.468Z"
+    },
+    "wingman-radial-default-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:40:24.278Z"
+    },
+    "wingman-radial-default-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:00:01.831Z"
+    },
+    "wingman-radial-default-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:12:02.923Z"
+    },
+    "wingman-radial-forced-colors-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:48:28.180Z"
+    },
+    "wingman-radial-forced-colors-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:10:34.663Z"
+    },
+    "wingman-radial-forced-colors-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:22:47.717Z"
+    },
+    "wingman-radial-pseudo-localized-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:53:01.780Z"
+    },
+    "wingman-radial-pseudo-localized-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:16:26.326Z"
+    },
+    "wingman-radial-pseudo-localized-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:29:25.748Z"
+    },
+    "wingman-radial-reduced-motion-1280x720.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:44:45.349Z"
+    },
+    "wingman-radial-reduced-motion-1920x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T23:05:49.731Z"
+    },
+    "wingman-radial-reduced-motion-2560x1080.png": {
+      "seed": 47,
+      "ground": "neutral-12151a",
+      "capturedAt": "2026-09-05T22:18:06.141Z"
+    }
+  }
+}

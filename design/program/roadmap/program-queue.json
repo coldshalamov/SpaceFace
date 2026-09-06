@@ -6505,7 +6505,7 @@
       "receiptRefs": [
         "design/program/roadmap/receipts/PQ-180-03-REPORT.md"
       ],
-      "brief": "IMPLEMENTED 2026-09-05 (harness), NOT DONE: seeded boots, per-frame provenance, 40 surfaces x 4 modes x 3 widths planned, 66/66 tests; the 408 photographs are not taken (2.5 h idle machine) and would be ~330 MB in git. Integrator decision: a reference frame photographs the interface over a neutral ground, not the live 3D picture (the picture has its own strips), which makes the baseline small enough to commit; then shoot on a quiet machine, calibrate floors, run check:visual-regression green. Extend the visual-regression matrix from 60 frames to every surface × default/reduced-motion/forced-colours/pseudo-loc × three widths; diff on change. DONE WHEN: `check:visual-regression` covers every surface in the manifest."
+      "brief": "IMPLEMENTED 2026-09-06 (cycle 2): 408/408 reachable frames current on seed 47 over ground neutral-12151a; 72 frames on 6 unreachable surfaces remain OWED; check:visual-regression --coverage-only PASS; Asteroid Works boots once per media mode. Integrator decision held: a reference frame photographs the interface over a neutral ground. Recapture rest-twins with the unflagged check when a quiet machine can spare two hours. Extend the visual-regression matrix from 60 frames to every surface × default/reduced-motion/forced-colours/pseudo-loc × three widths; diff on change. DONE WHEN: `check:visual-regression` covers every surface in the manifest."
     },
     {
       "id": "PQ-144.01",

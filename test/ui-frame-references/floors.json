@@ -1,8 +1,8 @@
 {
-  "_law": "test/ui-frame-references/README.md — these floors are MEASURED rest variance, never a knob turned to make an unknown change pass.",
+  "_law": "test/ui-frame-references/README.md \u2014 these floors are MEASURED rest variance, never a knob turned to make an unknown change pass.",
   "_rule": "floor = max(0.005, ceilTo(measuredMaxRestVariance * 1.2, 0.005))",
   "_samples": "A calibrated surface carries TWO independent rest-variance samples per frame (pass A vs B and pass A vs C of the same capture run); measuredMaxRestVariance is the worst frame of that surface across both.",
-  "_pinned": "A pinned surface keeps the floor it was measured at on 2026-08-20 and is never widened by a later run.",
+  "_pinned": "A pinned surface keeps the floor it was measured at, but a pin belongs to the GROUND it was measured over: the five floors pinned on 2026-08-20 were measured with the live 3D picture behind the interface. A reference frame now photographs the interface over a flat neutral ground, so those pins lapse at the next calibration and are re-measured. A lapse can only ever tighten a floor; nothing here widens one.",
   "calibrationRun": null,
   "surfaces": {
     "flight": {
@@ -11,7 +11,9 @@
       "samples": 2,
       "calibrated": "2026-08-20",
       "pinned": true,
-      "note": "a live world legitimately moves behind the HUD"
+      "note": "a live world legitimately moves behind the HUD",
+      "pinnedGround": "live-3d",
+      "ground": "live-3d"
     },
     "power-rail": {
       "floor": 0.005,
@@ -19,7 +21,8 @@
       "samples": 0,
       "calibrated": null,
       "pinned": false,
-      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+      "note": "not calibrated yet \u2014 holds the strictest floor so its real variance surfaces as a number",
+      "ground": null
     },
     "comms-radial": {
       "floor": 0.005,
@@ -27,7 +30,8 @@
       "samples": 0,
       "calibrated": null,
       "pinned": false,
-      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+      "note": "not calibrated yet \u2014 holds the strictest floor so its real variance surfaces as a number",
+      "ground": null
     },
     "wingman-radial": {
       "floor": 0.005,
@@ -35,7 +39,8 @@
       "samples": 0,
       "calibrated": null,
       "pinned": false,
-      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+      "note": "not calibrated yet \u2014 holds the strictest floor so its real variance surfaces as a number",
+      "ground": null
     },
     "ship": {
       "floor": 0.03,
@@ -43,7 +48,9 @@
       "samples": 2,
       "calibrated": "2026-08-20",
       "pinned": true,
-      "note": "one 2.45% settle-frame outlier from the J14 gauge SETTLE easing"
+      "note": "one 2.45% settle-frame outlier from the J14 gauge SETTLE easing",
+      "pinnedGround": "live-3d",
+      "ground": "live-3d"
     },
     "footprint": {
       "floor": 0.005,
@@ -51,7 +58,9 @@
       "samples": 2,
       "calibrated": "2026-08-20",
       "pinned": true,
-      "note": "fully deterministic; 0.00% measured"
+      "note": "fully deterministic; 0.00% measured",
+      "pinnedGround": "live-3d",
+      "ground": "live-3d"
     },
     "range": {
       "floor": 0.005,
@@ -59,7 +68,9 @@
       "samples": 2,
       "calibrated": "2026-08-20",
       "pinned": true,
-      "note": "sub-pixel only; 0.02-0.05% measured"
+      "note": "sub-pixel only; 0.02-0.05% measured",
+      "pinnedGround": "live-3d",
+      "ground": "live-3d"
     },
     "chart": {
       "floor": 0.05,
@@ -67,7 +78,9 @@
       "samples": 2,
       "calibrated": "2026-08-20",
       "pinned": true,
-      "note": "label scramble + staleness animation paints between frames"
+      "note": "label scramble + staleness animation paints between frames",
+      "pinnedGround": "live-3d",
+      "ground": "live-3d"
     },
     "chart-galaxy": {
       "floor": 0.005,
@@ -75,7 +88,8 @@
       "samples": 0,
       "calibrated": null,
       "pinned": false,
-      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+      "note": "not calibrated yet \u2014 holds the strictest floor so its real variance surfaces as a number",
+      "ground": null
     },
     "title": {
       "floor": 0.005,
@@ -83,7 +97,8 @@
       "samples": 0,
       "calibrated": null,
       "pinned": false,
-      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+      "note": "not calibrated yet \u2014 holds the strictest floor so its real variance surfaces as a number",
+      "ground": null
     },
     "new-game": {
       "floor": 0.005,
@@ -91,7 +106,8 @@
       "samples": 0,
       "calibrated": null,
       "pinned": false,
-      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+      "note": "not calibrated yet \u2014 holds the strictest floor so its real variance surfaces as a number",
+      "ground": null
     },
     "pause": {
       "floor": 0.005,
@@ -99,7 +115,8 @@
       "samples": 0,
       "calibrated": null,
       "pinned": false,
-      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+      "note": "not calibrated yet \u2014 holds the strictest floor so its real variance surfaces as a number",
+      "ground": null
     },
     "settings": {
       "floor": 0.005,
@@ -107,7 +124,8 @@
       "samples": 0,
       "calibrated": null,
       "pinned": false,
-      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+      "note": "not calibrated yet \u2014 holds the strictest floor so its real variance surfaces as a number",
+      "ground": null
     },
     "save-load": {
       "floor": 0.005,
@@ -115,7 +133,8 @@
       "samples": 0,
       "calibrated": null,
       "pinned": false,
-      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+      "note": "not calibrated yet \u2014 holds the strictest floor so its real variance surfaces as a number",
+      "ground": null
     },
     "help": {
       "floor": 0.005,
@@ -123,7 +142,8 @@
       "samples": 0,
       "calibrated": null,
       "pinned": false,
-      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+      "note": "not calibrated yet \u2014 holds the strictest floor so its real variance surfaces as a number",
+      "ground": null
     },
     "codex": {
       "floor": 0.005,
@@ -131,7 +151,8 @@
       "samples": 0,
       "calibrated": null,
       "pinned": false,
-      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+      "note": "not calibrated yet \u2014 holds the strictest floor so its real variance surfaces as a number",
+      "ground": null
     },
     "mission-log": {
       "floor": 0.005,
@@ -139,7 +160,8 @@
       "samples": 0,
       "calibrated": null,
       "pinned": false,
-      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+      "note": "not calibrated yet \u2014 holds the strictest floor so its real variance surfaces as a number",
+      "ground": null
     },
     "tech-tree": {
       "floor": 0.005,
@@ -147,7 +169,8 @@
       "samples": 0,
       "calibrated": null,
       "pinned": false,
-      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+      "note": "not calibrated yet \u2014 holds the strictest floor so its real variance surfaces as a number",
+      "ground": null
     },
     "game-over": {
       "floor": 0.005,
@@ -155,7 +178,8 @@
       "samples": 0,
       "calibrated": null,
       "pinned": false,
-      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+      "note": "not calibrated yet \u2014 holds the strictest floor so its real variance surfaces as a number",
+      "ground": null
     },
     "credits": {
       "floor": 0.005,
@@ -163,7 +187,8 @@
       "samples": 0,
       "calibrated": null,
       "pinned": false,
-      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+      "note": "not calibrated yet \u2014 holds the strictest floor so its real variance surfaces as a number",
+      "ground": null
     },
     "statistics": {
       "floor": 0.005,
@@ -171,7 +196,8 @@
       "samples": 0,
       "calibrated": null,
       "pinned": false,
-      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+      "note": "not calibrated yet \u2014 holds the strictest floor so its real variance surfaces as a number",
+      "ground": null
     },
     "photo-mode": {
       "floor": 0.005,
@@ -179,7 +205,8 @@
       "samples": 0,
       "calibrated": null,
       "pinned": false,
-      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+      "note": "not calibrated yet \u2014 holds the strictest floor so its real variance surfaces as a number",
+      "ground": null
     },
     "station-dock": {
       "floor": 0.005,
@@ -187,7 +214,8 @@
       "samples": 0,
       "calibrated": null,
       "pinned": false,
-      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+      "note": "not calibrated yet \u2014 holds the strictest floor so its real variance surfaces as a number",
+      "ground": null
     },
     "station-market": {
       "floor": 0.005,
@@ -195,7 +223,8 @@
       "samples": 0,
       "calibrated": null,
       "pinned": false,
-      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+      "note": "not calibrated yet \u2014 holds the strictest floor so its real variance surfaces as a number",
+      "ground": null
     },
     "station-shipworks": {
       "floor": 0.005,
@@ -203,7 +232,8 @@
       "samples": 0,
       "calibrated": null,
       "pinned": false,
-      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+      "note": "not calibrated yet \u2014 holds the strictest floor so its real variance surfaces as a number",
+      "ground": null
     },
     "station-industry": {
       "floor": 0.005,
@@ -211,7 +241,8 @@
       "samples": 0,
       "calibrated": null,
       "pinned": false,
-      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+      "note": "not calibrated yet \u2014 holds the strictest floor so its real variance surfaces as a number",
+      "ground": null
     },
     "station-contracts": {
       "floor": 0.005,
@@ -219,7 +250,8 @@
       "samples": 0,
       "calibrated": null,
       "pinned": false,
-      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+      "note": "not calibrated yet \u2014 holds the strictest floor so its real variance surfaces as a number",
+      "ground": null
     },
     "station-factions": {
       "floor": 0.005,
@@ -227,7 +259,8 @@
       "samples": 0,
       "calibrated": null,
       "pinned": false,
-      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+      "note": "not calibrated yet \u2014 holds the strictest floor so its real variance surfaces as a number",
+      "ground": null
     },
     "station-bar": {
       "floor": 0.005,
@@ -235,7 +268,8 @@
       "samples": 0,
       "calibrated": null,
       "pinned": false,
-      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+      "note": "not calibrated yet \u2014 holds the strictest floor so its real variance surfaces as a number",
+      "ground": null
     },
     "station-ledger": {
       "floor": 0.005,
@@ -243,7 +277,8 @@
       "samples": 0,
       "calibrated": null,
       "pinned": false,
-      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+      "note": "not calibrated yet \u2014 holds the strictest floor so its real variance surfaces as a number",
+      "ground": null
     },
     "crucible-door": {
       "floor": 0.005,
@@ -251,7 +286,8 @@
       "samples": 0,
       "calibrated": null,
       "pinned": false,
-      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+      "note": "not calibrated yet \u2014 holds the strictest floor so its real variance surfaces as a number",
+      "ground": null
     },
     "crucible-draft": {
       "floor": 0.005,
@@ -259,7 +295,8 @@
       "samples": 0,
       "calibrated": null,
       "pinned": false,
-      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+      "note": "not calibrated yet \u2014 holds the strictest floor so its real variance surfaces as a number",
+      "ground": null
     },
     "crucible-refit": {
       "floor": 0.005,
@@ -267,7 +304,8 @@
       "samples": 0,
       "calibrated": null,
       "pinned": false,
-      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+      "note": "not calibrated yet \u2014 holds the strictest floor so its real variance surfaces as a number",
+      "ground": null
     },
     "crucible-results": {
       "floor": 0.005,
@@ -275,7 +313,8 @@
       "samples": 0,
       "calibrated": null,
       "pinned": false,
-      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+      "note": "not calibrated yet \u2014 holds the strictest floor so its real variance surfaces as a number",
+      "ground": null
     },
     "crucible-lab": {
       "floor": 0.005,
@@ -283,7 +322,8 @@
       "samples": 0,
       "calibrated": null,
       "pinned": false,
-      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+      "note": "not calibrated yet \u2014 holds the strictest floor so its real variance surfaces as a number",
+      "ground": null
     },
     "asteroid-works": {
       "floor": 0.005,
@@ -291,7 +331,8 @@
       "samples": 0,
       "calibrated": null,
       "pinned": false,
-      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+      "note": "not calibrated yet \u2014 holds the strictest floor so its real variance surfaces as a number",
+      "ground": null
     },
     "base": {
       "floor": 0.005,
@@ -299,7 +340,8 @@
       "samples": 0,
       "calibrated": null,
       "pinned": false,
-      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+      "note": "not calibrated yet \u2014 holds the strictest floor so its real variance surfaces as a number",
+      "ground": null
     },
     "automation": {
       "floor": 0.005,
@@ -307,7 +349,8 @@
       "samples": 0,
       "calibrated": null,
       "pinned": false,
-      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+      "note": "not calibrated yet \u2014 holds the strictest floor so its real variance surfaces as a number",
+      "ground": null
     },
     "localmap-legacy": {
       "floor": 0.005,
@@ -315,7 +358,8 @@
       "samples": 0,
       "calibrated": null,
       "pinned": false,
-      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+      "note": "not calibrated yet \u2014 holds the strictest floor so its real variance surfaces as a number",
+      "ground": null
     },
     "starmap-legacy": {
       "floor": 0.005,
@@ -323,7 +367,9 @@
       "samples": 0,
       "calibrated": null,
       "pinned": false,
-      "note": "not calibrated yet — holds the strictest floor so its real variance surfaces as a number"
+      "note": "not calibrated yet \u2014 holds the strictest floor so its real variance surfaces as a number",
+      "ground": null
     }
-  }
+  },
+  "_ground": "A reference frame photographs the INTERFACE over a flat neutral ground \u2014 the game's one WebGL surface (#gl-canvas) is hidden, every interface canvas is kept. The 3D picture has its own instruments; a screenshot diff is the wrong tool for a world that legitimately moves. See scripts/capture-ui-matrix.mjs, UI_MATRIX_GROUND."
 }

@@ -158,6 +158,12 @@ export function buildCoverageReport({
   // resumable: it can be re-shot a few surfaces at a time and the check always says which are current.
   provenance = null,
   expectedSeed = null,
+  // Which GROUND each committed frame was shot over. A reference frame photographs the interface
+  // over a flat neutral ground (capture-ui-matrix.mjs, UI_MATRIX_GROUND); a frame from the era when
+  // the live 3D picture was behind the HUD differs from a current capture by 40-90% for reasons that
+  // have nothing to do with the interface. It rides the same road as a wrong seed: reported MISSING,
+  // never diffed, and re-shot even under --fill-missing.
+  expectedGround = null,
 }) {
   const surfaceById = new Map(surfaces.map((s) => [s.id, s]));
   const failureByFrame = new Map();
@@ -180,10 +186,12 @@ export function buildCoverageReport({
       || { surface: entry.surface, expected: 0, present: 0, missingFiles: [], reachable };
     bucket.expected += 1;
     const onDisk = exists(path.join(referenceDir, file));
-    const shotSeed = provenance && provenance.frames && provenance.frames[file]
-      ? provenance.frames[file].seed
-      : null;
-    const current = expectedSeed == null ? onDisk : (onDisk && shotSeed === expectedSeed);
+    const record = provenance && provenance.frames ? provenance.frames[file] : null;
+    const shotSeed = record ? (record.seed ?? null) : null;
+    const shotGround = record ? (record.ground ?? null) : null;
+    const seedOk = expectedSeed == null || shotSeed === expectedSeed;
+    const groundOk = expectedGround == null || shotGround === expectedGround;
+    const current = onDisk && seedOk && groundOk;
     if (current) {
       bucket.present += 1;
     } else {
@@ -199,13 +207,21 @@ export function buildCoverageReport({
         reachable,
         stale,
         shotSeed,
+        shotGround,
+        staleReason: stale ? (!seedOk ? 'seed' : 'ground') : null,
         owner: (surface && surface.owner) || 'PQ-180',
         ownerLeaf: (surface && surface.ownerLeaf) || '.03',
         remedy: stale
-          ? 'on disk, but photographed in a different universe '
-            + `(seed ${shotSeed == null ? 'unrecorded' : shotSeed}; the harness now shoots seed ${expectedSeed}), `
-            + 'so it is not comparable with anything and is never diffed — re-shoot it: '
-            + `npm run capture:ui-matrix -- --update --only=${entry.surface}`
+          ? (!seedOk
+            ? 'on disk, but photographed in a different universe '
+              + `(seed ${shotSeed == null ? 'unrecorded' : shotSeed}; the harness now shoots seed ${expectedSeed}), `
+              + 'so it is not comparable with anything and is never diffed — re-shoot it: '
+              + `npm run capture:ui-matrix -- --update --only=${entry.surface}`
+            : 'on disk, but photographed over a different ground '
+              + `(${shotGround == null ? 'unrecorded — the live 3D picture' : shotGround}; the harness now `
+              + `shoots over ${expectedGround}), so its diff would measure the world behind the interface `
+              + 'rather than the interface — re-shoot it: '
+              + `npm run capture:ui-matrix -- --update --only=${entry.surface}`)
           : remedyForSurface(surface || { id: entry.surface, entry: { kind: 'none' } }, failure),
       };
       missing.push(row);
@@ -262,13 +278,17 @@ export function formatCoverageReport(coverage, surfaces = SHIPPING_SURFACES) {
   const unreachableBuckets = buckets.filter((b) => !b.reachable);
 
   if (coverage.staleFrames && coverage.staleFrames.length) {
+    const bySeed = coverage.staleFrames.filter((row) => row.staleReason === 'seed');
+    const byGround = coverage.staleFrames.filter((row) => row.staleReason === 'ground');
     lines.push('');
     lines.push(
-      `STALE — ${coverage.staleFrames.length} frame(s) are on disk but were photographed in a different `
-      + 'universe. They are counted as missing and are never diffed: a frame from another seed reads as '
-      + 'a regression that nothing distinguishes from a real one.',
+      `STALE — ${coverage.staleFrames.length} frame(s) are on disk but are not comparable with what the `
+      + `harness shoots today (${bySeed.length} from another universe, ${byGround.length} over another `
+      + 'ground). They are counted as missing and are never diffed: either one reads as a regression '
+      + 'that nothing distinguishes from a real one.',
     );
-    lines.push(`    ${coverage.staleFrames[0].remedy}`);
+    if (bySeed.length) lines.push(`    ${bySeed[0].remedy}`);
+    if (byGround.length) lines.push(`    ${byGround[0].remedy}`);
   }
   if (reachableBuckets.length) {
     lines.push('');

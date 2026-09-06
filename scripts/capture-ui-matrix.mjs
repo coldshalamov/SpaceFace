@@ -48,6 +48,82 @@ export const UI_FRAME_PROVENANCE_FILE = path.join(UI_FRAME_REFERENCE_DIR, 'prove
  */
 export const UI_MATRIX_SEED = 47;
 
+/**
+ * THE GROUND, pinned — and the reason a full baseline fits in git at all.
+ *
+ * A reference frame in this matrix photographs the INTERFACE, over a flat neutral ground. It does
+ * not photograph the live 3D picture, and that is a decision about what this instrument measures,
+ * not a shortcut:
+ *
+ *   * Every rule the grammar matrix scores — type roles and the 12 px floor, tabular numerals,
+ *     colour spent only on state, the layout skeleton, clipping at +40 %, forced-colours,
+ *     reduce-motion — is a property of the interface layer. None of them is a property of the
+ *     starfield behind it.
+ *   * The 3D picture already has its own instruments: the runtime witness, the fun-loop bench
+ *     strips, the shipping-camera captures. A screenshot diff is the wrong tool for it, and using
+ *     one costs the matrix its whole reason to exist: the world legitimately moves, so the floor has
+ *     to be widened until a real interface regression fits inside it. `flight` carried a 10 % floor
+ *     for exactly that reason — 10 % of 2560x1080 is 276,000 pixels of change that this gate would
+ *     have called "at rest".
+ *   * And it is what makes the baseline affordable. The live picture is high-entropy noise that PNG
+ *     cannot compress; flat ground plus DOM is the opposite.
+ *
+ * TWO things are hidden, because the game's 3D picture reaches the screen two ways:
+ *
+ *   * `#gl-canvas` — the single WebGL surface the renderer draws into (src/render/renderer.js), the
+ *     live picture;
+ *   * the `#screens` cinematic plate (`assets/cinematics/C-INTRO-01.jpg`, styles/ui.css) — the SAME
+ *     picture, pre-rendered, standing behind the menu-phase screens whenever a run is not live.
+ *
+ * Calling the live one "ground" and the baked one "interface" would be incoherent: they are the same
+ * content in two encodings, and the second is the most expensive thing in the matrix (2.3 MB of
+ * photographic PNG per frame at 2560, on six surfaces). What that plate can hide is an asset change,
+ * which belongs to the visual-asset route and not to a type-and-layout gate.
+ *
+ * Everything the INTERFACE itself draws is kept and photographed, including the parts that sit
+ * between the plate and the panel: the `#screens::before` readability scrim and its vignette
+ * composite over the neutral ground exactly as they composite over the plate, so a regression that
+ * breaks the scrim is still a diff. Every canvas the interface owns is kept too — the radar dial
+ * (src/ui/radar.js), the chart, the ship stage's hull preview, portrait art. The line is "is this the
+ * game's 3D world", not "is this a canvas" and not "is this a background".
+ *
+ * `opacity: 0` rather than `visibility: hidden` or `display: none`: the canvas keeps its box and its
+ * hit-testing, so `src/systems/input.js` (which binds to `#gl-canvas`) and `autoTargetAssist.js`
+ * (which reads its rect) behave exactly as they do in play. Nothing about the game changes except
+ * what reaches the film.
+ *
+ * The hex is part of the token. A frame shot over a different ground colour is a different
+ * photograph, and a silent change to this constant would move every diff in the matrix with nothing
+ * anywhere saying so — the same failure mode as the unpinned seed, one layer down.
+ */
+export const NEUTRAL_GROUND_HEX = '#12151a';
+export const UI_MATRIX_GROUND = `neutral-${NEUTRAL_GROUND_HEX.slice(1)}`;
+
+/**
+ * `!important` on both rules, and appended after the document's own stylesheets: `src/ui/uiRoot.js`
+ * injects HUD CSS at runtime, which lands after a `<link>` in `<head>` and would win a tie.
+ *
+ * Under the forced-colours column Chromium substitutes the system `Canvas` colour for this
+ * background. That is still a flat, deterministic ground — it is simply the system's, not this hex,
+ * and it is the correct ground for that mode.
+ */
+const NEUTRAL_GROUND_CSS = `
+  #gl-canvas { opacity: 0 !important; }
+  html, body { background: ${NEUTRAL_GROUND_HEX} !important; background-image: none !important; }
+  /* The baked half of the picture. Only the IMAGE goes: #screens keeps whatever background-colour
+     the interface gives it, and the ::before scrim above it is untouched, so the neutral ground
+     shows through exactly where the plate used to. */
+  #screens { background-image: none !important; }
+`;
+
+/**
+ * Applied once per boot, immediately after the document exists and long before any frame is shot —
+ * the title screen is photographed inside `menuPhase`, which runs later in the same `openBoot`.
+ */
+async function applyNeutralGround(page) {
+  await page.addStyleTag({ content: NEUTRAL_GROUND_CSS });
+}
+
 const FLIGHT_SETTLE_MS = 1500;
 const SURFACE_SETTLE_MS = 1500;
 const SHIP_STAGE_SETTLE_MS = 6000;
@@ -120,15 +196,34 @@ export const MATRIX_SURFACES = Object.freeze(CAPTURE_SURFACES.map((surface) => O
 const SURFACE_BY_ID = new Map(MATRIX_SURFACES.map((surface) => [surface.id, surface]));
 
 export function readReferenceProvenance(file = UI_FRAME_PROVENANCE_FILE) {
-  if (!existsSync(file)) return { seed: null, frames: {} };
+  if (!existsSync(file)) return { seed: null, ground: null, frames: {} };
   try {
     const parsed = JSON.parse(readFileSync(file, 'utf8'));
-    return { seed: parsed.seed ?? null, frames: parsed.frames || {} };
+    return { seed: parsed.seed ?? null, ground: parsed.ground ?? null, frames: parsed.frames || {} };
   } catch (_) {
     // An unreadable record means NOTHING is known to be current, which is the safe reading: every
     // frame is reported missing and re-shot, rather than silently trusted.
-    return { seed: null, frames: {} };
+    return { seed: null, ground: null, frames: {} };
   }
+}
+
+/**
+ * Is this committed frame comparable with what the harness shoots today? Two questions, one answer,
+ * asked from three places (coverage, the fill-missing keep test, and the tests) so they can never
+ * drift apart:
+ *
+ *   * the same universe — a frame from another seed shows different prices, contracts and traffic;
+ *   * the same ground — a frame shot over the live 3D picture, diffed against one shot over the
+ *     neutral ground, is a 40-90 % difference that has nothing to do with the interface.
+ *
+ * A frame that fails either is reported MISSING, never diffed, and re-shot even under
+ * `--fill-missing`.
+ */
+export function isFrameCurrent(record, { seed = UI_MATRIX_SEED, ground = UI_MATRIX_GROUND } = {}) {
+  if (!record) return false;
+  if (seed != null && record.seed !== seed) return false;
+  if (ground != null && record.ground !== ground) return false;
+  return true;
 }
 
 /**
@@ -137,12 +232,19 @@ export function readReferenceProvenance(file = UI_FRAME_PROVENANCE_FILE) {
  * unknown — which is the same lie in a different place.
  */
 function recordReferenceProvenance(name, provenance) {
-  provenance.frames[name] = { seed: UI_MATRIX_SEED, capturedAt: new Date().toISOString() };
+  provenance.frames[name] = {
+    seed: UI_MATRIX_SEED,
+    ground: UI_MATRIX_GROUND,
+    capturedAt: new Date().toISOString(),
+  };
   provenance.seed = UI_MATRIX_SEED;
+  provenance.ground = UI_MATRIX_GROUND;
   writeFileSync(UI_FRAME_PROVENANCE_FILE, `${JSON.stringify({
     _law: 'test/ui-frame-references/README.md — a frame counts as coverage only while it was shot in '
-      + 'the universe the harness shoots in. A frame from another seed is reported MISSING, never diffed.',
+      + 'the universe the harness shoots in AND over the ground the harness shoots over. A frame from '
+      + 'another seed, or over the live 3D picture, is reported MISSING and never diffed.',
     seed: provenance.seed,
+    ground: provenance.ground,
     frames: Object.fromEntries(Object.entries(provenance.frames).sort(([a], [b]) => a.localeCompare(b))),
   }, null, 2)}
 `);
@@ -284,7 +386,15 @@ export async function captureUiMatrix(options = {}) {
   try {
     for (const viewport of MATRIX_VIEWPORTS) {
       if (!planIncludes(filter, { viewport })) continue;
-      if (modes.length) {
+      // A filtered run that only names an own-boot surface (Asteroid Works, the claims board,
+      // game-over) has nothing for a shared session to photograph. Booting one anyway used to cost
+      // two extra launches per width — minutes each — before the isolated boots even started.
+      const sharedWork = flightIncluded
+        || inBootSurfaces.length > 0
+        || MATRIX_SURFACES.some((surface) => (
+          PRE_LAUNCH_KINDS.has(surface.entry.kind) && planIncludes(filter, { surfaceId: surface.id })
+        ));
+      if (modes.length && sharedWork) {
         // A boot that never comes up costs THIS viewport's frames, not the run. Before this, the
         // throw escaped captureUiMatrix, and check:visual-regression's retry loop answered it by
         // re-shooting the entire matrix — an hour of capture to re-ask a question already answered.
@@ -317,6 +427,7 @@ export async function captureUiMatrix(options = {}) {
                   captureFlight: flightIncluded,
                   restTwinDir,
                   promoteReference,
+                  provenance,
                 });
               } catch (error) {
                 // One mode wedging the page must not silently cost the modes after it their rows.
@@ -329,7 +440,7 @@ export async function captureUiMatrix(options = {}) {
         }
       }
 
-      if (pseudoIncluded) {
+      if (pseudoIncluded && sharedWork) {
         let pseudoBoot = null;
         try {
           pseudoBoot = await openBootWithRetry({
@@ -369,31 +480,47 @@ export async function captureUiMatrix(options = {}) {
 
       // A boot to itself — see OWN_BOOT_SURFACES.
       //
-      // How MANY boots is the difference between two reasons for isolation, and they are not the
-      // same. `destructive` ends the run, so a second mode has nothing left to photograph: one boot
-      // per mode, unavoidably. `isolatedBoot` only means the surface leaves the session somewhere
-      // ELSE — that matters to every other surface, and not at all to another photograph of itself.
-      // So those re-open in the same boot for each media mode, and take a second boot only for the
-      // pseudo-locale, which is a URL parameter and cannot be switched in place. Twenty-four boots
-      // became twelve for the two of them, which on this matrix is about a quarter of an hour.
+      // Destructive surfaces end the run, so each mode is its own boot. Asteroid Works reels the
+      // hull into the rock; a second mode in that same boot would photograph (and fail to re-latch)
+      // the aftermath. Other isolatedBoot surfaces (the claims board) only change sector, and can
+      // still share a boot across media modes, with a second boot only for the pseudo-locale.
       for (const surface of ownBootSurfaces) {
-        const groups = surface.destructive
+        const groups = (surface.destructive || surface.id === 'asteroid-works')
           ? [...modes, ...(pseudoIncluded ? [PSEUDO_MODE] : [])].map((mode) => [mode])
           : [modes, ...(pseudoIncluded ? [[PSEUDO_MODE]] : [])].filter((group) => group.length);
         for (const group of groups) {
-          const locale = group[0].locale || null;
+          const needed = [];
+          for (const mode of group) {
+            const frameName = frameFileName({
+              surface: surface.id,
+              mode: mode.id,
+              width: viewport.width,
+              height: viewport.height,
+            });
+            if (promoteReference === 'fill-missing' && provenance
+              && existsSync(path.join(UI_FRAME_REFERENCE_DIR, frameName))
+              && isFrameCurrent(provenance.frames[frameName])) {
+              captures.push({ name: frameName, path: path.join(UI_FRAME_REFERENCE_DIR, frameName), reference: 'kept' });
+            } else {
+              needed.push(mode);
+            }
+          }
+          if (!needed.length) continue;
+          const locale = needed[0].locale || null;
           let isolated = null;
           try {
             isolated = await openBootWithRetry({ browser, baseUrl: server.baseUrl, viewport, locale });
           } catch (error) {
-            for (const mode of group) {
+            for (const mode of needed) {
               failures.push({ surface: surface.id, mode: mode.id, viewport, reason: `isolated boot failed: ${error.message}` });
             }
             continue;
           }
           bootCount += 1;
           try {
-            for (const mode of group) {
+            await waitForSimTicks(isolated.page, 90, 45_000, FLIGHT_SETTLE_MS);
+            await waitUntilFlightKeysLive(isolated.page);
+            for (const mode of needed) {
               try {
                 await isolated.page.emulateMedia(mode.emulate);
                 const opened = await openSurface(isolated.page, surface);
@@ -411,13 +538,13 @@ export async function captureUiMatrix(options = {}) {
               }
               // Re-open for the next mode from a KNOWN state. Verified, like everywhere else: a
               // screen left open would be photographed again under the next mode's name.
-              if (group.length > 1) {
+              if (needed.length > 1) {
                 const closed = await closeSurface(isolated.page, surface).catch((error) => ({ ok: false, reason: error.message }));
                 if (!closed.ok) {
                   recordBootFailure({
                     failures,
                     surfaces: [surface],
-                    modes: group.slice(group.indexOf(mode) + 1),
+                    modes: needed.slice(needed.indexOf(mode) + 1),
                     viewport,
                     reason: `${surface.id} did not close between modes (${closed.reason})`,
                   });
@@ -557,10 +684,9 @@ async function captureModeSet({
   }
 
   await waitForSimTicks(page, 90, 45_000, FLIGHT_SETTLE_MS);
-  // The intro live-screen fence fades the comms panel in as it clears; capture after the fade
-  // so the flight frame does not show half-faded instrument text.
-  await page.waitForFunction(() => !document.body.classList.contains('ui-live-screen'), null, { timeout: 30_000 }).catch(() => {});
-  await page.waitForTimeout(400);
+  // The intro live-screen fence also swallows Space/F. Shared-boot flight waits it out before
+  // photographing; isolated boots (Asteroid Works, claims) must too or the Massline never latches.
+  await waitUntilFlightKeysLive(page);
   if (captureFlight) {
     await captureSurfaceScreenshot({
       page,
@@ -737,7 +863,11 @@ export async function openSurface(page, surface, context = {}) {
 
     const selectors = surfaceSelectors(surface);
     if (!selectors.length) return { ok: true, route: entry.kind };
-    await waitForAnyVisible(page, selectors, 20_000, `${surface.id} visible`);
+    // Asteroid Works presses `b` and then the tether reels the hull in before the screen is
+    // pushed. Twenty seconds is enough on a quiet laptop; forced-colors at 2560 is the slowest
+    // Chromium path and timed out there with the latch already live.
+    const visibleMs = surface.id === 'asteroid-works' ? 60_000 : 20_000;
+    await waitForAnyVisible(page, selectors, visibleMs, `${surface.id} visible`);
     return { ok: true, route: entry.kind };
   } catch (error) {
     return { ok: false, reason: error && error.message ? error.message : String(error) };
@@ -861,6 +991,15 @@ async function prepareCommsFan(page) {
  * real, which is why this waits for the screen rather than assuming it.
  */
 async function prepareAsteroidWorks(page) {
+  await waitUntilFlightKeysLive(page);
+  const attached = await page.evaluate(() => !!(window.SF && window.SF.state && window.SF.state.player
+    && window.SF.state.player.tether && window.SF.state.player.tether.active));
+  if (attached) {
+    await page.keyboard.press('Space');
+    await page.waitForFunction(() => !(window.SF && window.SF.state && window.SF.state.player
+      && window.SF.state.player.tether && window.SF.state.player.tether.active), null, { timeout: 4000 })
+      .catch(() => {});
+  }
   const staged = await page.evaluate(() => {
     const sf = window.SF;
     const s = sf && sf.state;
@@ -875,31 +1014,110 @@ async function prepareAsteroidWorks(page) {
       if (d < bestD) { bestD = d; best = e; }
     }
     if (!best) return { ok: false, reason: 'no asteroid exists in this sector' };
-    // Alongside, not inside: clear of both radii and well inside the 220 wu drill approach bound.
     const standoff = (best.radius || 0) + (player.radius || 0) + 90;
-    player.pos.x = best.pos.x + standoff;
-    player.pos.z = best.pos.z;
-    if (player.vel) { player.vel.x = 0; player.vel.z = 0; }
+    const standAt = {
+      x: best.pos.x + standoff,
+      z: best.pos.z,
+    };
+    standAt.heading = Math.atan2(best.pos.z - standAt.z, best.pos.x - standAt.x);
+    const world = sf.registry && sf.registry.get ? sf.registry.get('world') : null;
+    if (world && typeof world.relocatePlayerInSector === 'function') {
+      world.relocatePlayerInSector(standAt, { reason: 'capture:asteroid-works' });
+    } else {
+      player.pos.x = standAt.x;
+      player.pos.z = standAt.z;
+      player.rot = standAt.heading;
+      if (player.vel) { player.vel.x = 0; player.vel.z = 0; }
+      player.flags = player.flags || {};
+      player.flags.noInterp = true;
+    }
+    const physicsOwner = sf.registry && sf.registry.get && sf.registry.get('physics')
+      && sf.registry.get('physics')._sg02;
+    const rec = physicsOwner && physicsOwner.records && physicsOwner.records.get(player.id);
+    if (rec && rec.body && typeof rec.body.setTranslation === 'function') {
+      const local = physicsOwner._globalPointToFrameLocal
+        ? physicsOwner._globalPointToFrameLocal({ x: standAt.x, y: 0, z: standAt.z }, rec.body.translation())
+        : { x: standAt.x, z: standAt.z };
+      rec.body.setTranslation({ x: local.x, y: 0, z: local.z }, true);
+      if (typeof rec.body.setLinvel === 'function') rec.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+      if (typeof rec.body.setAngvel === 'function') rec.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
+    }
     if (s.player) s.player.targetId = best.id;
     return { ok: true, asteroidId: best.id, flownFrom: Math.round(bestD) };
   });
   if (!staged.ok) return { ok: false, reason: `asteroid works: ${staged.reason}` };
 
-  // The real latch key (BINDINGS.tether). Held, because the massline is a hold-to-latch verb.
-  await page.keyboard.down('Space');
+  await waitForSimTicks(page, 45, 15_000, 800);
+
+  await page.evaluate(() => {
+    const sf = window.SF;
+    const s = sf && sf.state;
+    const player = s && s.entities && s.entities.get && s.entities.get(s.playerId);
+    const tether = sf && sf.registry && sf.registry.get && sf.registry.get('tetherGameplay');
+    const def = { maxLength: 390 };
+    if (tether && typeof tether._refreshAcquisitionPreview === 'function' && player) {
+      tether._refreshAcquisitionPreview(player, def, s, s.simTime || 0, true, true);
+    }
+  });
+
+  // The scorer may prefer a different nearby rock than the nearest-at-spawn pick. Latch that one.
+  const readyId = await page.waitForFunction(() => {
+    const s = window.SF && window.SF.state;
+    const selected = s && s.masslineAcquisition && s.masslineAcquisition.selected;
+    if (!selected || selected.status !== 'ready') return false;
+    const target = s.entities && s.entities.get && s.entities.get(selected.targetId);
+    if (!target || target.type !== 'asteroid' || target.alive === false) return false;
+    return String(selected.targetId);
+  }, null, { timeout: 8000 }).then((handle) => handle.jsonValue()).catch(() => null);
+  if (readyId == null) {
+    const why = await page.evaluate((asteroidId) => {
+      const s = window.SF && window.SF.state;
+      const player = s && s.entities && s.entities.get && s.entities.get(s.playerId);
+      const ast = s && s.entities && s.entities.get && s.entities.get(asteroidId);
+      const selected = s && s.masslineAcquisition && s.masslineAcquisition.selected;
+      const live = document.body.classList.contains('ui-live-screen');
+      const dist = player && ast && player.pos && ast.pos
+        ? Math.round(Math.hypot(ast.pos.x - player.pos.x, ast.pos.z - player.pos.z))
+        : null;
+      const selectedEnt = selected && s.entities && s.entities.get && s.entities.get(selected.targetId);
+      return {
+        live,
+        dist,
+        selectedId: selected && selected.targetId,
+        selectedType: selectedEnt && selectedEnt.type,
+        status: selected && selected.status,
+        reason: selected && selected.reason,
+      };
+    }, staged.asteroidId);
+    return {
+      ok: false,
+      reason: `asteroid works: massline never read ready on a rock`
+        + ` (status=${why.status || 'none'} reason=${why.reason || 'n/a'} dist=${why.dist}`
+        + ` live-screen=${why.live} selected=${why.selectedId || 'none'}:${why.selectedType || '?'})`,
+    };
+  }
+
+  await page.keyboard.press('Space');
   const latched = await page.waitForFunction((asteroidId) => {
     const s = window.SF && window.SF.state;
+    const tether = s && s.player && s.player.tether;
+    if (tether && tether.active && String(tether.targetId) === String(asteroidId)) return true;
     const byId = s && s.combat && s.combat.attachments && s.combat.attachments.byId;
     if (!byId) return false;
-    return Object.values(byId).some((att) => att && att.state === 'active'
-      && att.ownerId === s.playerId && att.targetId === asteroidId && att.defId === 'tether_standard');
-  }, staged.asteroidId, { timeout: 8000 }).then(() => true).catch(() => false);
-  await page.keyboard.up('Space').catch(() => {});
+    return Object.values(byId).some((att) => att && (att.state === 'active' || att.state === 'latched')
+      && att.ownerId === s.playerId && String(att.targetId) === String(asteroidId));
+  }, readyId, { timeout: 8000 }).then(() => true).catch(() => false);
   if (!latched) {
+    const denial = await page.evaluate(() => {
+      const tether = window.SF && window.SF.registry && window.SF.registry.get
+        && window.SF.registry.get('tetherGameplay');
+      return tether && tether._lastLatchDenial ? tether._lastLatchDenial : null;
+    });
     return {
       ok: false,
       reason: 'asteroid works: the standard massline never latched to the rock within 8s, so `b` has '
-        + 'nothing to drill (src/ui/input.js openDrill requires an active tether_standard on the target)',
+        + 'nothing to drill (src/ui/input.js openDrill requires an active tether_standard on the target)'
+        + (denial ? ` [${JSON.stringify(denial)}]` : ''),
     };
   }
   return { ok: true };
@@ -1255,11 +1473,24 @@ async function captureSurfaceScreenshot({
   // the loss of every frame before it.
   let reference = null;
   if (promoteReference) {
+    // A PROMOTED FRAME WITHOUT A PROVENANCE RECORD IS A FRAME THAT CAN NEVER COUNT AS COVERAGE.
+    //
+    // It lands on disk, looks perfect, and is reported STALE by every later run — so the check can
+    // never go green no matter how many times the matrix is shot. This is not hypothetical: the
+    // primary-boot `captureModeSet` call was missing its `provenance` argument, which is roughly 270
+    // of the 408 frames, and the only symptom was a coverage number that would not move. A missing
+    // argument must fail here, loudly, in the first seconds of a run that otherwise costs hours.
+    if (!provenance) {
+      throw new Error(`refusing to promote "${name}" with no provenance record — it would be written to `
+        + 'the baseline and then reported STALE forever. The capture path that reached here did not '
+        + 'pass `provenance`.');
+    }
     const target = path.join(UI_FRAME_REFERENCE_DIR, name);
     // "Already there" is not the same as "already current". A frame left over from another universe
-    // has to be re-shot even under --fill-missing, or the gap it represents stays invisible.
+    // — or shot over the live 3D picture rather than the neutral ground — has to be re-shot even
+    // under --fill-missing, or the gap it represents stays invisible.
     const current = existsSync(target)
-      && provenance && provenance.frames[name] && provenance.frames[name].seed === UI_MATRIX_SEED;
+      && !!provenance && isFrameCurrent(provenance.frames[name]);
     if (promoteReference === 'fill-missing' && current) {
       reference = 'kept';
     } else {
@@ -1310,6 +1541,10 @@ export async function openBoot({ browser, baseUrl, viewport, locale = null, menu
       : baseUrl;
 
     await page.goto(rootUrl, { waitUntil: 'domcontentloaded', timeout: 120_000 });
+    // Before anything is photographed, and before the title screen exists. A frame shot over the
+    // live 3D picture is not comparable with one shot over the neutral ground, so the ground is
+    // established at the top of the boot rather than per surface.
+    await applyNeutralGround(page);
     await page.waitForFunction(
       () => !!(window.SF && window.SF.state && window.SF.ctx && window.SF.bus),
       null,
@@ -1594,6 +1829,11 @@ export async function waitForAnyVisible(page, selectors, timeout, description) {
   }, selectors, { timeout }).catch((error) => {
     throw new Error(`${description} timeout (${timeout}ms): ${error.message}`);
   });
+}
+
+async function waitUntilFlightKeysLive(page) {
+  await page.waitForFunction(() => !document.body.classList.contains('ui-live-screen'), null, { timeout: 30_000 }).catch(() => {});
+  await page.waitForTimeout(400);
 }
 
 async function waitForSimTicks(page, deltaTicks, timeoutMs, fallbackMs) {

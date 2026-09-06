@@ -32,6 +32,7 @@ import path from 'node:path';
 
 import {
   UI_FRAME_REFERENCE_DIR,
+  UI_MATRIX_GROUND,
   UI_MATRIX_SEED,
   buildFramePlan,
   captureUiMatrix,
@@ -52,6 +53,13 @@ import {
   loadFloors,
 } from './lib/ui-frame-regression.mjs';
 
+/**
+ * The ground the five 2026-08-20 floors were measured over: the live 3D picture, behind the
+ * interface. A floor record with no `pinnedGround` predates the token and is that ground by
+ * definition — which is why the default is here and not `null`.
+ */
+const LEGACY_LIVE_GROUND = 'live-3d';
+
 const args = parseArgs(process.argv.slice(2));
 const plan = buildFramePlan();
 const workRoot = mkdtempSync(path.join(tmpdir(), 'spaceface-ui-regression-'));
@@ -70,10 +78,11 @@ const captureB = args.fromDirs
 let exitCode = 0;
 
 try {
-  // --from-dirs replays capture directories that already exist instead of shooting new ones. It is
-  // how a calibration measured per viewport is folded into one set of floors, how a failing run is
-  // re-judged without paying for the capture twice, and how the perturbation proof runs in seconds.
-  const runA = args.fromDirs ? { failures: [] } : await runCapture('A', captureA, twinA);
+  // --coverage-only answers the packet's done-when ("covers every surface") from the committed
+  // baseline and provenance, without a two-hour recapture. Rest-twin and visual diffs still need
+  // a capture pass (the default, or --from-dirs).
+  const skipCapture = args.coverageOnly || !!args.fromDirs;
+  const runA = skipCapture ? { failures: [] } : await runCapture('A', captureA, twinA);
   const runB = (args.calibrate && args.secondPass && !args.fromDirs)
     ? await runCapture('B (second variance sample)', captureB)
     : { failures: [] };
@@ -88,11 +97,30 @@ try {
     surfaces: SHIPPING_SURFACES,
     provenance: readReferenceProvenance(),
     expectedSeed: UI_MATRIX_SEED,
+    expectedGround: UI_MATRIX_GROUND,
   });
   // Everything coverage ruled not-current is billed there and must never reach a diff table.
   const notCurrent = new Set(coverage.missing.map((row) => row.file));
   console.log(`\n${formatCoverageReport(coverage, SHIPPING_SURFACES)}`);
 
+  if (args.coverageOnly) {
+    const decision = decideExit({ coverage, repeatability: { failures: [] }, visual: { failures: [] } });
+    exitCode = decision.code;
+    if (decision.code) {
+      console.error(`\nFAIL check:visual-regression --coverage-only — ${decision.reasons.join(', ')}`);
+      if (coverage.missingReachable.length) {
+        console.error('  each missing surface names its own remedy in the coverage table above.');
+      }
+    } else {
+      const owed = coverage.missingUnreachable.length;
+      console.log(`\nPASS check:visual-regression --coverage-only — ${coverage.present}/${coverage.frames} frames present and current`
+        + (owed
+          ? `; ${owed} frame(s) on ${coverage.unreachableSurfaces.length} unreachable surface(s) are OWED, not shot `
+            + `(${coverage.unreachableSurfaces.join(', ')})`
+          : '')
+        + '. Rest-twin and visual diffs were not run; recapture for those.');
+    }
+  } else {
   if (args.calibrate) {
     const calibration = calibrateFloors({
       plan, dirA: captureA, dirTwin: twinA, dirCross: captureB,
@@ -146,6 +174,7 @@ try {
           + `(${coverage.unreachableSurfaces.join(', ')})`
         : ''));
   }
+  }
 } catch (error) {
   exitCode = 1;
   console.error(error && error.stack ? error.stack : String(error));
@@ -166,12 +195,14 @@ function parseArgs(argv) {
     calibrate: false,
     secondPass: false,
     fromDirs: null,
+    coverageOnly: false,
   };
   for (const arg of argv) {
     if (arg === '--headed') { parsed.headed = true; continue; }
     if (arg === '--calibrate') { parsed.calibrate = true; continue; }
     if (arg === '--second-pass') { parsed.secondPass = true; continue; }
     if (arg === '--keep-temp') { parsed.keepTemp = true; continue; }
+    if (arg === '--coverage-only') { parsed.coverageOnly = true; continue; }
     if (arg.startsWith('--from-dirs=')) {
       const dirs = arg.slice('--from-dirs='.length).split(',').map((d) => d.trim()).filter(Boolean);
       if (dirs.length !== 3) throw new Error('--from-dirs needs exactly three directories: pass-A,rest-twin,cross-sample');
@@ -249,7 +280,33 @@ function calibrateFloors({ plan: matrixPlan, dirA, dirTwin, dirCross, skipCross 
     if (restless) suspect.push({ surface: surface.id, twin: round(bucket.worstTwin), cross: round(bucket.worstCross) });
 
     const derived = deriveFloor(bucket.measured);
-    if (record.pinned) {
+    // A PIN IS A MEASUREMENT, AND A MEASUREMENT BELONGS TO ITS CONDITIONS.
+    //
+    // The five floors pinned on 2026-08-20 were measured with the live 3D picture behind the
+    // interface — `flight` at 10% carries the note "a live world legitimately moves behind the HUD",
+    // which was true then and is exactly why the number is that large. It is not true now: a
+    // reference frame photographs the interface over a flat neutral ground. Holding a 10% floor over
+    // a still ground would mean 276,000 changed pixels at 2560x1080 counted as "at rest" — the gate
+    // reading green through the regressions it exists to catch.
+    //
+    // So a pin holds only while the ground it was measured over is the ground being shot. When the
+    // ground changes, the pin lapses and the surface is re-measured from this run's two samples. The
+    // old number is kept, with the ground it belonged to, so nothing is quietly erased. This can only
+    // ever TIGHTEN a floor below what a live ground needed; the widening rule is untouched, and a
+    // lapsed pin still goes through the suspect refusal like any other surface.
+    const pinnedGround = record.pinnedGround || LEGACY_LIVE_GROUND;
+    const pinHolds = record.pinned && pinnedGround === UI_MATRIX_GROUND;
+    if (record.pinned && !pinHolds) {
+      record.pinned = false;
+      record.pinLapsed = {
+        at: today,
+        floor: record.floor,
+        measuredUnder: pinnedGround,
+        nowShootingOver: UI_MATRIX_GROUND,
+        why: 'the pin was measured over a different ground, so it no longer describes this surface',
+      };
+    }
+    if (pinHolds) {
       record.lastObservedRestVariance = round(bucket.measured);
       record.lastObservedAt = today;
       decisions.push({
@@ -292,7 +349,8 @@ function calibrateFloors({ plan: matrixPlan, dirA, dirTwin, dirCross, skipCross 
     delete record.suspect;
     delete record.suspectSince;
     record.floor = derived;
-    record.note = `measured over ${bucket.frames} frame(s), worst ${bucket.worstFrame}`;
+    record.ground = UI_MATRIX_GROUND;
+    record.note = `measured over ${bucket.frames} frame(s) on ${UI_MATRIX_GROUND}, worst ${bucket.worstFrame}`;
     decisions.push({ surface: surface.id, action: 'calibrated', floor: derived, measured: bucket.measured });
   }
   document.calibrationRun = {

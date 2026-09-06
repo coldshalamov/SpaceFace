@@ -3,7 +3,7 @@
 
 ```yaml
 refreshed: 2026-09-06
-baseCommit: d5fc57e1a7adddbd449e72454bf2486a6426cf72
+baseCommit: 01c3e151bfa72151a81030f54cc7ff0d0b7c9d14
 expiresAfterCommits: 10
 expiresAfterDays: 2
 ```
@@ -41,8 +41,8 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| PQ-180.03 cycle 2: reference frames photograph the interface over a neutral ground, then the 408-frame baseline is shot | fable-orchestrator + opus implementer | MUTATING | scripts/capture-ui-matrix.mjs, scripts/check-visual-regression.mjs, scripts/lib/ui-frame-regression.mjs, test/ui-grammar-matrix.test.mjs, test/ui-frame-references/** (baseline PNGs, floors.json, README), design/program/roadmap/receipts/PQ-180-03-REPORT.md | review, commit by pathspec, push master |
 | PQ-137.11 knock budget B13 (cycle 4: rate clause, camera-vs-hull wobble, player spin source) | fable-orchestrator + opus implementer | MUTATING | src/core/sg02DynamicBodyOwner.js, src/core/physics.js, scripts/lib/bench/crucibleBench.mjs, scripts/lib/bench/frameStripCapture.mjs, scripts/lib/bench/feelBars.mjs, scripts/lib/bench/scenarios/feel.knock_budget*.mjs, test/sg02-player-contact-give.test.mjs, test/frame-strip.test.mjs, test/fun-measurer.test.mjs, design/FEEL_CONTRACT.md (B13 row), design/program/roadmap/receipts/PQ-137.11-REPORT.md | review, commit by pathspec, push master |
+| PQ-139.04 tumbling ships corkscrew their trail (enemy card-plume half) | flash-10-unit-batch (U3 of 10) | MUTATING | src/render/thruster/systems/continuousPlume.js (spin instance attribute + packing), src/render/thruster/systems/familyFleet.js (per-ship spin phase), src/render/thruster/materials/flowFlipbookMaterial.js (vertex wobble), src/render/vfx.js (one setShipSpin call site), test/plume-spin-wobble.test.mjs (new), scripts/capture-pq139-04-shove-spin.mjs (new), design/program/roadmap/receipts/PQ-139-04-REPORT.md | vfx checks + capture, review, commit by pathspec, push master |
 
 _Previously:_ no active mutation windows. The 2026-09-04 orchestrate-next-build handoff is finished: everything
 that was in flight is committed and pushed, and no agent is holding a source file. See
