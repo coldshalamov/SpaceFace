@@ -1557,6 +1557,7 @@ export function buildAuthoredCargoCapsule(entity, options = {}) {
     const upgradeOptions = {
       releaseMode,
       loadAuthoredPart: options.loadAuthoredPart,
+      onSwap: options.onSwap,
       ...residency,
       ...requestOptions,
     };
@@ -1770,6 +1771,10 @@ function commitAuthoredCargoCapsuleBoundary(
   delete boundary.userData.__setActiveVisualRoot;
   const publish = () => {
     boundary.userData.authoredAssetState = 'authored';
+    if (typeof options.onSwap === 'function') {
+      try { options.onSwap({ boundary, root: authored.root, authoredRoot: authored.root, entity, authoredParts: authored.authoredParts }); }
+      catch (error) { console.warn('[partsLibrary] cargo swap observer failed', error); }
+    }
     setPresentationAdmission(entity, PRESENTATION_ADMISSION.ready);
     return true;
   };
@@ -2022,6 +2027,7 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
       releaseMode,
       loadAuthoredPart: options.loadAuthoredPart,
       admissionEntity: options.liveEntity || entity,
+      onSwap: options.onSwap,
       ...residency,
       ...requestOptions,
     };
@@ -2345,12 +2351,8 @@ function commitAuthoredPlaceBoundary(
   // in play, so there is no placeholder frame or blue-clay-to-authored identity swap.
   boundary.remove(fallbackRoot);
   boundary.add(authored.root);
-  // FlightRenderPackage v3 already bakes and joins the immutable lanes offline. Re-running the
-  // generic cross-root optimizer would clone, transform, de-index, and merge that geometry during
-  // New Game — exactly the runtime compiler this package route exists to remove.
-  if (authored.root.userData?.spacefaceFlightStaticV3 !== true) {
-    optimizeStaticBatchesForRoot(authored.root);
-  }
+  // buildAuthoredPlaceRoot already batches the authored meshes before binding their LODs and
+  // specialized materials. Re-batching here replaces those meshes and leaves stale LOD bindings.
   freezeStaticChildMatrices(authored.root);
   unregisterPreparedAuthoredAdmission(authored);
   setActive(authored.root);
@@ -2366,6 +2368,10 @@ function commitAuthoredPlaceBoundary(
 
   const publish = () => {
     boundary.userData.authoredAssetState = 'authored';
+    if (typeof options.onSwap === 'function') {
+      try { options.onSwap({ boundary, root: authored.root, authoredRoot: authored.root, entity: admissionEntity, authoredParts: authored.authoredParts }); }
+      catch (error) { console.warn('[partsLibrary] place swap observer failed', error); }
+    }
     setPresentationAdmission(admissionEntity, PRESENTATION_ADMISSION.ready);
     return true;
   };

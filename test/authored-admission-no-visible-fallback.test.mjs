@@ -557,6 +557,74 @@ test('authored station LOD requests reach the admitted root after the async swap
   assert.deepEqual(visibility(), { lod0: false, lod1: true, lod2: false });
 });
 
+test('station publication invokes its swap callback only after the authored root replaces fallback', async () => {
+  const entity = {
+    id: 271,
+    type: 'station',
+    alive: true,
+    radius: 34,
+    pos: { x: 0, z: 0 },
+    data: {
+      stationId: 'station_helios',
+      archetypeGlb: 'place_station_trade_hub',
+      placeId: 'place_station_trade_hub',
+      dockRadius: 72,
+      placeScale: 72 / 14,
+    },
+  };
+  const record = {
+    url: 'assets/ships/release/parts/places/place_station_trade_hub.glb',
+    assetId: 'place_station_trade_hub',
+    slot: 'place',
+    bounds: { size: [28, 18, 28], center: [0, 0, 0] },
+    primitives: [{
+      key: 'lod0:callback',
+      name: 'LOD0_TradeHubCallback',
+      geometry: new THREE.BoxGeometry(28, 18, 28),
+      material: new THREE.MeshStandardMaterial(),
+      matrix: new THREE.Matrix4(),
+      tags: { lod: 'lod0' },
+    }],
+    markers: [],
+  };
+  const swaps = [];
+  const boundary = buildAuthoredStationArchetype(entity, {
+    releaseMode: true,
+    loadAuthoredPart: async () => record,
+    onSwap: (payload) => swaps.push({
+      ...payload,
+      state: boundary.userData.authoredAssetState,
+      admission: entity.presentationAdmission,
+      fallbackAttached: boundary.children.includes(fallbackRoot),
+    }),
+  });
+  const fallbackRoot = boundary.children[0];
+  const scene = new THREE.Scene();
+  scene.add(boundary);
+
+  const completion = boundary.userData.requestAuthoredUpgrade({}, scene);
+  assert.ok(completion && typeof completion.then === 'function');
+  assert.equal(swaps.length, 0, 'a station callback cannot run while its fallback is still active');
+  assert.equal(boundary.userData.authoredAssetState, 'loading');
+  assert.equal(boundary.children.includes(fallbackRoot), true);
+
+  const receipt = await completion;
+  const authoredRoot = boundary.userData.hull;
+  assert.equal(receipt.error, null);
+  assert.equal(receipt.result, true);
+  assert.equal(swaps.length, 1, 'the admitted station root notifies its consumer once');
+  assert.equal(swaps[0].boundary, boundary);
+  assert.equal(swaps[0].root, authoredRoot);
+  assert.equal(swaps[0].authoredRoot, authoredRoot);
+  assert.equal(swaps[0].entity, entity);
+  assert.deepEqual(swaps[0].authoredParts, [record.url]);
+  assert.equal(swaps[0].state, 'authored');
+  assert.equal(swaps[0].admission, 'pending',
+    'the callback marks the exact authored publication before the station reports ready');
+  assert.equal(swaps[0].fallbackAttached, false, 'the callback never observes the station fallback as active');
+  assert.equal(entity.presentationAdmission, 'ready');
+});
+
 test('the claim relay keeps exact closed surfaces while sampling its packed ORM once', async () => {
   const entity = {
     id: 28,

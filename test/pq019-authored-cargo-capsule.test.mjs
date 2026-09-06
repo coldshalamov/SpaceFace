@@ -117,9 +117,18 @@ test('the PQ-019 cargo boundary loads the exact release pod slot and admits a ce
   assert.equal(typeof partsLibrary.upgradeAuthoredCargoCapsuleBoundaryForProbe, 'function');
 
   const entity = capsuleEntity();
-  const factory = installVisualOverrides(createVisualFactory(), { releaseMode: true });
-  const boundary = factory.build(entity);
-  const fallbackRoot = boundary.children[0];
+  const fallbackRoot = createVisualFactory().build(entity);
+  const swaps = [];
+  const boundary = partsLibrary.buildAuthoredCargoCapsule(entity, {
+    releaseMode: true,
+    fallbackRoot,
+    onSwap: (payload) => swaps.push({
+      ...payload,
+      state: boundary.userData.authoredAssetState,
+      admission: entity.presentationAdmission,
+      fallbackAttached: boundary.children.includes(fallbackRoot),
+    }),
+  });
   const fallbackResources = [];
   fallbackRoot.traverse((object) => {
     if (object.geometry) fallbackResources.push(object.geometry);
@@ -133,23 +142,33 @@ test('the PQ-019 cargo boundary loads the exact release pod slot and admits a ce
   scene.add(boundary);
   const requests = [];
 
-  const upgraded = await partsLibrary.upgradeAuthoredCargoCapsuleBoundaryForProbe(
-    boundary,
-    fallbackRoot,
-    entity,
-    {},
-    scene,
-    {
-      releaseMode: true,
-      loadAuthoredPart: async (url, options) => {
-        requests.push({ url, slot: options.slot, optional: options.optional });
-        return fixtureRecord();
-      },
+  const completion = boundary.userData.requestAuthoredUpgrade({}, scene, {
+    loadAuthoredPart: async (url, options) => {
+      requests.push({ url, slot: options.slot, optional: options.optional });
+      return fixtureRecord();
     },
-  );
+  });
+  assert.ok(completion && typeof completion.then === 'function');
+  assert.equal(swaps.length, 0, 'a callback cannot run while the hidden cargo substrate still owns the boundary');
+  assert.equal(boundary.userData.authoredAssetState, 'loading');
+  assert.equal(boundary.children.includes(fallbackRoot), true);
 
+  const receipt = await completion;
+  const upgraded = receipt.result;
+
+  assert.equal(receipt.error, null);
   assert.equal(upgraded, true);
   assert.deepEqual(requests, [{ url: CAPSULE_RELEASE_URL, slot: 'pod', optional: true }]);
+  assert.equal(swaps.length, 1, 'the published cargo root notifies its consumer once');
+  assert.equal(swaps[0].boundary, boundary);
+  assert.equal(swaps[0].root, boundary.children[0]);
+  assert.equal(swaps[0].authoredRoot, boundary.children[0]);
+  assert.equal(swaps[0].entity, entity);
+  assert.deepEqual(swaps[0].authoredParts, [CAPSULE_RELEASE_URL]);
+  assert.equal(swaps[0].state, 'authored');
+  assert.equal(swaps[0].admission, PRESENTATION_ADMISSION.pending,
+    'the callback marks the exact authored publication before the entity reports ready');
+  assert.equal(swaps[0].fallbackAttached, false, 'the callback never observes the procedural fallback as active');
   assert.equal(entity.presentationAdmission, PRESENTATION_ADMISSION.ready);
   assert.equal(boundary.userData.authoredAssetState, 'authored');
   assert.equal(boundary.userData.authoredVisualRoot, 'authored-root');
@@ -295,8 +314,8 @@ test('the existing cargo pod is already present in source, release, and the runt
   const release = releaseManifest.assets.find((entry) => entry.id === CAPSULE_ASSET_ID);
 
   assert.equal(source?.file, CAPSULE_PART_FILE);
-  assert.equal(source?.tris, 3776);
+  assert.equal(source?.tris, 3976);
   assert.equal(release?.release, CAPSULE_RELEASE_URL);
-  assert.equal(release?.releaseSha256, 'fd5b538629d17a9191a147be1a3ef6222d6fb890565f5cf4d11722c7ece0d5fa');
+  assert.equal(release?.releaseSha256, '1bd99864be12a7909ffca950b33733765dd6fce0ce9f213ff8d83383aeff3b9b');
   assert.ok(partsLibrary.PART_LIBRARY_CONTRACT.slots.pod.includes(CAPSULE_PART_FILE));
 });

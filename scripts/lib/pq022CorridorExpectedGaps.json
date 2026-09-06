@@ -35,14 +35,6 @@
       "blocksMilestone": false,
       "ownerLane": "unowned — no lane has ever claimed the production Wasp LOD family",
       "reason": "Same unmanifested dormant artifact as wasp_production_v1_lod1, release side."
-    },
-    {
-      "assetId": "place_lane_beacon",
-      "gap": "source-bytes-mismatch",
-      "severity": "low",
-      "blocksMilestone": false,
-      "ownerLane": "asset-manifest metadata hygiene (unowned; safe to fold into any lane holding the asset-manifest mutex)",
-      "reason": "parts_manifest.bytes says 3,777,536; the artifact is 3,775,520. The release manifest's sourceBytes AND sourceSha256 both bind to the on-disk artifact, so asset identity is sound — only the parts_manifest byte metadata drifted (~2 KB, consistent with a re-export that updated one catalogue and not the other)."
     }
   ]
 }
