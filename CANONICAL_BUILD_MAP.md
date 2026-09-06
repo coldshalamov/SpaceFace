@@ -26,11 +26,14 @@ ways to get it wrong. An agent given nothing, or "next", or "go", or "make it be
 ### 1.1 The procedure
 
 1. `git status --short`; read [`design/program/NOW.md`](./design/program/NOW.md). A dirty foreign hunk
-   is protected; nothing else is.
+   is protected. A mutation row protects only its exact paths while its checkpoint is fresh; a
+   legacy row without a checkpoint uses the 90-minute path-mtime fallback.
 2. `node scripts/program-dispatch.mjs --next`. That is your unit. Open the packet it names under
    [`design/program/roadmap/active/`](./design/program/roadmap/active/README.md). Do not shop around
-   `--ready` for something you would rather do; the order is the plan (§1.2). If the unit's paths
-   collide with a live `NOW.md` row, take the next unit, not the subsystem.
+   `--ready` for something you would rather do; the order is the plan (§1.2). If the unit's exact
+   hunk is covered by a fresh `NOW.md` checkpoint, take the next unit or continue on disjoint paths.
+   If the checkpoint is stale, adopt the existing diff and checkpoint after inspection; do not route
+   around unfinished work or create a parallel implementation.
 3. Read the packet's **How agents get this wrong** section before touching code. Then its Leaves row:
    the done-when is the definition of done, in player units. If a done-when is missing, unclear, or
    could be satisfied by something the owner would call thin, write the missing number into the
@@ -39,8 +42,11 @@ ways to get it wrong. An agent given nothing, or "next", or "go", or "make it be
    `PQ-175`, `PQ-176`, `PQ-186` and any leaf whose done-when names a `FEEL_CONTRACT` bar), run the
    Fun Convergence Loop: [`design/program/FUN_CONVERGENCE_LOOP.md`](./design/program/FUN_CONVERGENCE_LOOP.md).
    Fixed seeds, one hypothesis, a critic that can see, before/after numbers, a plain-words report.
-5. Finish the whole unit. Add a `NOW.md` row when mutation starts; release it when it stops. Run
-   `npm run check:baseline` before and after; the packet's own checks; the docs checker
+5. Finish the whole unit. Before mutation, run `node scripts/agent-checkpoint.mjs start` with 5–10
+   bounded todos and exact paths; if the prompt names a sequence, reserve the current unit plus at
+   most four next units with repeated `--reserve` flags. Add its checkpoint path to the `NOW.md` row.
+   Check off each todo at a meaningful boundary with `agent-checkpoint.mjs check` — never use it as a
+   heartbeat. Release the row when mutation stops. Run `npm run check:baseline` before and after; the packet's own checks; the docs checker
    (`node scripts/check-program-docs.mjs`) if you touched a packet or the queue. Commit only your
    files by pathspec; push the current branch by name.
 6. Write the report in the format of §1.4. Update the unit's state through the integrator path
@@ -589,7 +595,7 @@ buggy implementation is current.
 
 | Surface | Lifetime | Owns | Must not own |
 |---|---|---|---|
-| [`NOW.md`](./design/program/NOW.md) | volatile | threads actually mutating now, exact dirty hunks, brief publication windows, unassigned dirty work | history, task-long ownership, subsystem lanes, dependencies, completion, test transcripts |
+| [`NOW.md`](./design/program/NOW.md) + local checkpoints | volatile | threads actually mutating now, exact dirty hunks, brief publication windows, per-task todo progress, and up-to-five-task lookahead intent | history, task-long ownership, subsystem lanes, dependencies, completion, test transcripts, heartbeats, permanent queue claims |
 | `scripts/program-dispatch.mjs` + [`program-queue.json`](./design/program/roadmap/program-queue.json) | compact read view + durable machine index | exact dispatch units, parent identity, integration dependencies, broad checks/evidence, coarse parent state | active mutation windows, implementation prose, acceptance transcripts |
 | [`active/`](./design/program/roadmap/active/README.md) | active packet | executable outcome, live seams, phases, write budget, proof budget, stop conditions | global status, unrelated backlog, permanent architecture |
 | `receipts/` and acceptance pages | evidence | exact-revision proof and honest residuals | future requirements or dispatch state |
@@ -599,7 +605,8 @@ Status is two-dimensional:
 
 - **Lifecycle:** `planned → ready → claimed → implemented → integrated`, with `deferred` and
   `historical` as explicit dispositions. The legacy `blocked` enum remains only for schema
-  compatibility and has no current queue rows. Named human-only work uses `deferred`; internal
+  compatibility. Human/owner-verdict wording is legacy: use an independent agent review against the
+  named evidence; only an explicit user-requested external action may remain `deferred`. Internal
   dependencies, another thread, dirty files, tools, reviews, or hardware never become blockers.
 - **Acceptance:** `unproven → focused_green → route_accepted → milestone_accepted`.
 
@@ -611,9 +618,13 @@ The existing queue's `state` field is transitional and can contain legacy accept
 
 Choose the first dependency-front dispatch unit, or an exact unit named by the user, and reduce it to
 the smallest coherent slice that can reach its declared terminal state. `--ready` is the preferred
-integration order, not a list of the only work that exists. `NOW.md` prevents one dirty hunk from
+integration order, not a list of the only work that exists. `program-dispatch --next` skips fresh
+lookahead reservations and `--ready` annotates them; those reservations cover at most the current
+unit plus four next units and are not queue lifecycle claims. `NOW.md` prevents one dirty hunk from
 being overwritten: if that exact hunk is actively changing, continue the task's disjoint work or take
-the next returned unit. Never turn the overlap into a blocked packet, subsystem, or roadmap.
+the next unreserved unit. If a future reservation is stale or another agent has taken it, re-plan the
+remaining horizon; never contest or revert the other agent. Never turn the overlap into a blocked
+packet, subsystem, or roadmap.
 
 An executable packet must name:
 
@@ -685,7 +696,7 @@ are:
   open-ended fresh audits; use a separate reviewer when one exists, but the finishing agent may issue
   the verdict from retained evidence and must disclose that it is a self-review;
 - unrelated new ideas become follow-ups, not reasons to reopen the packet indefinitely;
-- every execution ends `PASS`, `FAIL`, `NEEDS HUMAN`, or `DEFERRED` with an exact-revision receipt,
+- every execution ends `PASS`, `FAIL`, `UNPROVEN`, or `DEFERRED` with an exact-revision receipt,
   then reports plain `DONE` or `NOT DONE` to the user.
 
 Certification remains fail-fast. A diagnostic route may collect several independent recoverable
@@ -4079,3 +4090,29 @@ task 2, tasks 3–10 run in parallel under their own packets and mutexes.
 task 2, play the title screen. If it is wrong, say what is wrong in plain words; the sheet's title
 picture is revised and task 2 is redone before anything else. If it is right, say nothing — the
 rest proceeds in parallel and each surface arrives in the game as it lands.
+
+#### 20.14.1 The four handoffs — specifics for a less able agent (added 2026-09-06)
+
+The twelve steps above are grouped into **four handoff tasks**, each with its own file giving the
+order of work, the exact files, per-screen geometry tables, the checks and the review handoff, all
+built on one implementation spec. A starter prompt for each is in
+[`design/frontend/direction/HANDOFF_PROMPTS.md`](./design/frontend/direction/HANDOFF_PROMPTS.md).
+Task A is serial and gates the rest; B, C and D run in parallel; D's sweep and proof wait for B
+and C.
+
+| Task | Covers (steps above) | Queue units | File |
+|---|---|---|---|
+| **A** The kit and the title | 1, 2 | `PQ-187.02`, `PQ-187.03` | [`tasks/TASK_A_KIT_AND_TITLE.md`](./design/frontend/direction/tasks/TASK_A_KIT_AND_TITLE.md) |
+| **B** The shell and the flight HUD | 3, 4 | `PQ-181.00`–`.03`, `PQ-188.00` | [`tasks/TASK_B_SHELL_AND_HUD.md`](./design/frontend/direction/tasks/TASK_B_SHELL_AND_HUD.md) |
+| **C** The station, the instruments, the chart | 5, 6, 7 | `PQ-162.00`–`.02`, `PQ-188.01`–`.02`, `PQ-168.00`–`.01` | [`tasks/TASK_C_STATION_INSTRUMENTS_CHART.md`](./design/frontend/direction/tasks/TASK_C_STATION_INSTRUMENTS_CHART.md) |
+| **D** The modes, the reading screens, the sweep, the proof | 8, 9, 10, 11 (the CSS/font sweep and the floor reshoot), 12 | `PQ-182.00`–`.03`, `PQ-185.00`–`.01`, `PQ-192.00`–`.01`, `PQ-184` (sweep leaves), `PQ-187.04` | [`tasks/TASK_D_MODES_READING_SWEEP_PROOF.md`](./design/frontend/direction/tasks/TASK_D_MODES_READING_SWEEP_PROOF.md) |
+
+The spec they all build on: [`design/frontend/direction/KIT_SPEC.md`](./design/frontend/direction/KIT_SPEC.md)
+— the vendored variable display face and the command that vendors it, the complete token block,
+the type scale, the temperature attribute and its derivation from real state fields, every
+component's CSS and markup, the transition helper, the eight sound recipes re-tuned in the game's
+own synthesiser, the geometry conventions, the banned-CSS table, the capture and review protocol,
+and the integration seams with file and line references (audited 2026-09-06: no base screen class,
+one starter hull, the world canvas frozen while docked, one shared ship stage, the chart is
+`galaxyMap.js`). `PQ-183`'s link/find/watch-list features are feature work outside the four tasks
+and keep their own packet. The sheet was amended the same day to match the audited facts.

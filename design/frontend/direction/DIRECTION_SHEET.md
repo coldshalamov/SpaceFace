@@ -4,8 +4,10 @@
 **Status:** DECIDED 2026-09-06 under the owner's delegation (receipt:
 [`PQ-187-01-REPORT.md`](../../program/roadmap/receipts/PQ-187-01-REPORT.md)). This sheet is the
 aesthetic authority for every player-facing screen and the HUD. `design/FRONTEND_DIRECTION.md` §13
-says why; `CANONICAL_BUILD_MAP.md` §20.14 is the task series. A frame is right when it matches this
-sheet; a reviewer checks a frame with §9. Nobody is asked to choose between options — the sheet
+says why; `CANONICAL_BUILD_MAP.md` §20.14 is the task series; [`KIT_SPEC.md`](./KIT_SPEC.md) gives the
+exact tokens, classes and seams and [`tasks/`](./tasks/) the four handoff tasks. A frame is right when it
+matches this sheet; a reviewer checks a frame with §9. *Amended 2026-09-06 after the code audit: one
+starter hull, the real menu words, no station home, the real game-over fields.* Nobody is asked to choose between options — the sheet
 decides, and the owner's veto is exercised by looking at the game.
 
 ---
@@ -33,29 +35,37 @@ the line for their screen into the receipt and the reviewer checks the capture a
 
 - **Title.** The starter hull in the hangar rig fills the right two-thirds of the frame, lit warm
   key / cool fill against the sky, turning very slowly. Top-left, the game's name in the display
-  face at the largest size on the scale. Down the left edge, five words — Continue, New Game, Load,
-  Settings, Quit — at menu size; the focused word is full-strength bone with a short gold rule
-  under it, the rest at 62 %. Bottom-left, the version in fine print. No plate, no logo lockup, no
+  face at the largest size on the scale. Down the left edge, a column of words — Continue, New game,
+  Load, Crucible, Archive, Settings, Quit (Sandbox only in a dev build) — at menu size; the focused
+  word is full-strength bone with a short gold rule under it, the rest at 62 %; under Continue, the
+  latest save in one fine line. Bottom-left, the version in fine print with Credits as a fine word. No plate, no logo lockup, no
   buttons. The menu arrives after the hull: the words stamp in one after another over a third of a
   second.
-- **New game.** The sky. Three hulls side by side, each lit in its rig, each with its name at
-  section size and one sentence under it saying how it plays. The focused hull is at full
-  strength; the others dim to 62 %. One word at the bottom: Launch. That is the whole screen.
-- **Load.** Saves as portraits: your hull as it is in that save, scars and all, with the ship's
-  name huge, the sector and the date in fine print, the credits as a hero number. Six across at
-  1920, the focused one full-strength. No timestamps list.
+- **New game.** The sky. The starter hull lit in its rig on the stage with its name and one
+  sentence saying how it plays; the difficulty as four words in a row with the live one bright and
+  its sentence beneath; the pilot's name as an underlined field; the seed in fine print; New Run+
+  as a two-word toggle when it applies; the loadout as four quiet words. One primary word at the
+  bottom: Launch. (When more starters exist they become hulls side by side, the focused one
+  bright.)
+- **Load.** Saves as portraits: the saves as hairline rows down the left (slot, sector · ship,
+  credits), and on the stage the focused save's hull as it is in that save, its name huge, the
+  objective as one sentence, the credits as a hero number, the sector and date in fine print. Not
+  a list of timestamps.
 - **Settings.** The world stays behind at 25 % scrim. A left column of section words (Display,
   Controls, Audio, Accessibility, Game); the chosen section's controls to the right as rows with
   hairlines, each row a label and its value; toggles are two words with the live one at full
   strength. Nothing is a slider unless it is a number; numbers are tabular.
 - **Pause.** The world held, not hidden: the frozen game at 0 % scrim, one word — Paused — at
-  screen-title size top-left, and the four resume/settings/photo/quit words down the left edge. The
-  HUD dims to 38 % rather than disappearing.
-- **Game over.** A still. The wreck or the last frame, cooled with the wanted-blue scrim. Two
-  lines: what killed you, at screen-title size; the telegraph you missed, at emphasis size. What
-  you keep, as three numbers. Retry, Load, Title as three words.
-- **Photo mode.** Everything gone except a fine-print hint at the bottom edge that fades after two
-  seconds.
+  screen-title size top-left, the flight brief as one sentence beneath it, and the actions as a
+  column of words down the left edge (Resume first, then Settings, Save, Load, Missions, My ship,
+  Operations, the map, Help, Codex, Photo, Main menu, Quit). The HUD dims to 38 % rather than
+  disappearing.
+- **Game over.** A still. The wreck or the last frame, cooled with the wanted-blue scrim. What
+  killed you at screen-title size; the final sortie and the final damage as the second line. The
+  recovery dock, the recovery cost and the cargo consequence as three hero blocks; coverage as one
+  sentence. Continue from the recovery berth, Load, New game, Main menu as words.
+- **Photo mode.** Entered from Pause with the sim still held: everything gone except a fine-print
+  hint at the bottom edge that fades after two seconds; Esc returns to the pause.
 
 ### Flight
 
@@ -76,12 +86,15 @@ the line for their screen into the receipt and the reviewer checks the capture a
 
 ### The station
 
-- **Docking.** Arrival, not a menu: the berth with your hull in it, ambient work in the background,
-  the station's name at hero size, one line of local news in emphasis size, and the six instruments
-  as six words in a row along the bottom edge. The frame warms to the docked scrim. A low swell.
-- **Station home (Orbital Command).** The same berth shot, resting. The six words are the
-  navigation; the focused word is full strength. Credits as a tabular number top-right. No grid
-  of tiles.
+- **Docking.** Arrival, not a menu: the berth with your hull in it (the hull in the station's own
+  dock interior — the world canvas is frozen while docked, so the hull rig is the picture), the
+  station's name at hero size, one line of local news in emphasis size, the destinations as words
+  in a row along the bottom edge with Undock as the one primary word at the row's end and its
+  readiness beneath, and credits with the four vitals and their service verbs as a quiet column
+  top-right. The frame warms to the docked scrim. A low swell.
+- **Station home.** There is no separate home: docking lands on the last destination (the market
+  at first) over the same berth shot, resting. The words along the bottom edge are the navigation;
+  the live word is full strength. No grid of tiles, no operation rail, no fascia.
 - **Market.** The berth darkened to the docked scrim. Left half: the commodity table in the dense
   register — name, buy, sell, stock — twelve rows visible with hairlines, the selected row marked
   by a gold rule on its left edge. Right half: the selected commodity's name at screen-title size
@@ -117,15 +130,16 @@ the line for their screen into the receipt and the reviewer checks the capture a
 - **The chart.** The sector drawn as a star system at full bleed; the selected place's name at
   screen-title size in the corner with one sentence and the route's time; traffic, heat and
   contract pins as hairline marks on the map, never as a legend panel. The inspector is one column
-  of words and numbers, not tabs.
+  of words and numbers; its sections are fine-print words in a row, never tabs with plates.
 
 ### The modes
 
-- **Crucible door.** The arena at 0 % scrim; the signal colour is white here. Seed, ruleset, arena
-  and hull as four words with their values, changeable in place; the daily seed named; Enter as
-  one word. A stranger reads it in five seconds.
-- **Crucible draft.** Cards are one line and one glyph each, three across, on the sky; the focused
-  card full strength.
+- **Crucible door.** The arena at 0 % scrim; the signal colour is white here. Mode (Swarm or
+  Gauntlet), Hull and Seed as three words with their values, changeable in place — the arena is
+  fixed and named in fine print; Enter as one word, the mode's verb. A stranger reads it in five
+  seconds.
+- **Crucible draft.** Offers three across on the sky, each a verb, a name and one line with its
+  key in fine print; the focused offer full strength, the others at 62 %.
 - **Crucible results.** The run as a story: the best chain as a hero number, the moments as a
   column of sentences, the cause of death and its telegraph as two lines, the build code as fine
   print, Retry as one word. A still, not a form.

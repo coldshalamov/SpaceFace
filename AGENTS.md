@@ -22,7 +22,7 @@ the named outcome of the job you were given, then stop — the full working agre
 | "Make it better" / it sucks / it's not fun | **`design/program/FUN_CONVERGENCE_LOOP.md`** → copy `design/program/FUN_CONVERGENCE_GOAL.txt`. Play the bench on fixed seeds, name the ONE fundamental, fix the guts, show the number and the frames. Crucible first; never answer with content |
 | Finish the game / what is next for release / the professional bar | **`CANONICAL_BUILD_MAP.md` §15** (three release milestones with gates) → `--id PQ-146` or any §15.2 ID; the eight reactivated packets `PQ-026`–`PQ-033` are ready again |
 | Independent pass over what just landed / taste, improvements, and bugs before those units are finished | **`CANONICAL_BUILD_MAP.md` §1.7** → `--id PQ-191`. Play the named surfaces; fix real defects; a report with leftovers still on camera is not done |
-| What is active or occupied now? | `design/program/NOW.md` → `design/program/README.md` |
+| What is active or occupied now? | `design/program/NOW.md` + `node scripts/check-now-liveness.mjs` → `design/program/README.md` |
 | Claim a multi-week roadmap packet | `design/program/roadmap/README.md` → `design/program/roadmap/00_EXECUTION_PROTOCOL.md` |
 | Implement a feature/fix | Activated plan/spec → `docs/MODULE_MAP.md` → owning nested `AGENTS.md` |
 | Recurring bug | `docs/COMMON_BUGS.md` |
@@ -35,7 +35,7 @@ the named outcome of the job you were given, then stop — the full working agre
 | Harvest leftover worktrees / unused models into the live game | **`design/program/ORPHAN_HARVEST_GOAL.txt`** → [`ORPHAN_HARVEST_PLAYBOOK.md`](./design/program/ORPHAN_HARVEST_PLAYBOOK.md) + [`ORPHAN_HARVEST_LEDGER.md`](./design/program/ORPHAN_HARVEST_LEDGER.md) |
 | Resume non-Hitch flyable ship remaster (not Hitch) | **`CANONICAL_BUILD_MAP.md`** campaign door → `PQ-050` / [`design/program/roadmap/active/PQ-050.md`](./design/program/roadmap/active/PQ-050.md) |
 | Add a map-visible place (planet, station, route, region) | `src/data/PLACE_REGISTRATION.md` — **not done until `npm run check:atlas-integrity` is green** |
-| **Frontend looks cheap / make the UI A-list / bold and expressive / any menu, HUD or screen redesign** | **`design/FRONTEND_DIRECTION.md`** (owner ruling 2026-09-05: the agent-written frontend law is superseded on aesthetics) → `--id PQ-187` (decided 2026-09-06: [`design/frontend/direction/DIRECTION_SHEET.md`](./design/frontend/direction/DIRECTION_SHEET.md) is the authority; next `PQ-187.02` the kit, then `.03` the title live, which gates every surface packet) |
+| **Frontend looks cheap / make the UI A-list / bold and expressive / any menu, HUD or screen redesign** | **`design/FRONTEND_DIRECTION.md`** (owner ruling 2026-09-05: the agent-written frontend law is superseded on aesthetics) → `--id PQ-187` (decided 2026-09-06: [`design/frontend/direction/DIRECTION_SHEET.md`](./design/frontend/direction/DIRECTION_SHEET.md) is the authority; next `PQ-187.02` the kit, then `.03` the title live, which gates every surface packet; spec `design/frontend/direction/KIT_SPEC.md`; four handoff tasks + starter prompts `design/frontend/direction/HANDOFF_PROMPTS.md`) |
 | UI/HUD | `src/ui/AGENTS.md` and `styles/AGENTS.md` |
 | Asteroid Works / mining minigame unreadable or undrivable | **`CANONICAL_BUILD_MAP.md`** door → [`design/program/ASTEROID_WORKS_PLAYFIELD.md`](./design/program/ASTEROID_WORKS_PLAYFIELD.md) → `PQ-130` (`--id PQ-130`) |
 | Flight HUD attention pass (quiet instruments, receipts, no windshield keys) | **`design/HUD_FLIGHT_ATTENTION.md`** (goal prompt: `design/HUD_FLIGHT_ATTENTION_GOAL.txt`) |
@@ -60,8 +60,24 @@ The working tree may contain valuable concurrent work that is newer than `HEAD`.
 
 - Inspect `git status --short` and `git diff -- <owner-file>` before diagnosing or editing.
 - Treat ownership as **exact and current**. A path is protected when it is dirty/untracked foreign
-  work, or when a current-date `NOW.md` row names that exact path and a demonstrably live writer.
-  A lane label, mutex name, old branch, worktree, or pre-today claim alone is not a blocker.
+  work, or when a current-date `NOW.md` row names that exact path and its checkpoint is fresh. A
+  legacy row without a checkpoint uses the 90-minute path-mtime fallback. A lane label, mutex name,
+  old branch, worktree, or pre-today claim alone is not a blocker.
+- Before the first mutation, create one local checkpoint with
+  `node scripts/agent-checkpoint.mjs start`. Give it 5–10 bounded todos, exact paths, and a task
+  owner. If the thread was assigned a sequence, reserve the current task plus at most four next
+  tasks with repeated `--reserve` flags; never reserve an entire backlog. Put the resulting
+  `.codex/agent-checkpoints/<task>.json` path in the NOW row. Check off a todo only at a meaningful
+  boundary with `agent-checkpoint.mjs check` — this is progress journaling, not a heartbeat, and it
+  should not be updated on a timer.
+- Fresh lookahead reservations are soft session intent, not queue lifecycle state. `program-dispatch
+  --next` skips them and `--ready` annotates them. When the current task finishes, close its checkpoint
+  and immediately start the next checkpoint if continuing; if another agent has taken a future task,
+  re-plan around it rather than fighting or reverting that work.
+- `node scripts/check-now-liveness.mjs` is mechanical. More than 90 minutes since
+  `lastProgressAt` makes a checkpoint stale and adoptable. The adopting agent inspects and preserves
+  the existing diff, adopts the checkpoint, and continues the same work; it never starts a parallel
+  implementation or reverts a foreign hunk merely because the previous writer disappeared.
 - If only part of a packet overlaps protected paths, split or reroute that part and continue the
   disjoint work. Do not turn one exact-path collision into ownership of a subsystem, packet, or plan.
 - Never run destructive tree-wide `reset`, `restore`, `checkout`, `clean`, or `stash` operations.
@@ -89,6 +105,11 @@ files are work, not external blockers. Status, receipt, harness, and validation-
 count as production outcomes unless the user asked for those artifacts. Finish only the user's
 declared milestone, or when every remaining route has a concrete external dependency or exact
 live-path collision.
+
+No human verdict is an execution gate. If an older packet says `NEEDS HUMAN`, `owner verdict`, or
+`human review`, use an independent agent review against the named evidence, record the reviewer
+identity and residual honestly, and continue. Only an explicit external action requested by the user
+may remain deferred; it must not strand in-repo implementation.
 
 ## 5. Live runtime selection
 

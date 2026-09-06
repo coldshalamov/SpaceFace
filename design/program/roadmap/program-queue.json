@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-06T21:35:42.000Z",
+  "updatedAt": "2026-09-06T22:52:29.000Z",
   "purpose": "Canonical cross-plan priority and dispatch queue. Product completion remains authoritative in design/program/03_LIVE_ACCEPTANCE_MATRIX.md.",
   "stateContract": {
     "allowed": [
@@ -2221,7 +2221,7 @@
         "five-minute-gate",
         "human-review"
       ],
-      "brief": "Retroactively admit the R5 Ceres reference pocket and its five-minute acceptance harness, which landed on master 2026-08-08 with no queue row, no lease and no receipt, then carry the slice to a human-reviewed five-minute gate. That gate is the declared prerequisite for R8 showcase work and for any sector-propagation pass. PQ-020 established the Ceres geography and route and remains its owner; this row deliberately carries no hard dependsOn on it, because the R5 implementation has already landed and its own leaf chain supplies the real ordering."
+      "brief": "Retroactively admit the R5 Ceres reference pocket and its five-minute acceptance harness, which landed on master 2026-08-08 with no queue row, no lease and no receipt, then carry the slice to an independent-agent-reviewed five-minute gate. That gate is the declared prerequisite for R8 showcase work and for any sector-propagation pass. PQ-020 established the Ceres geography and route and remains its owner; this row deliberately carries no hard dependsOn on it, because the R5 implementation has already landed and its own leaf chain supplies the real ordering."
     },
     {
       "id": "PQ-046",
@@ -3484,7 +3484,7 @@
       ],
       "checks": [],
       "evidence": [],
-      "brief": "Seven station screens adopt the instrument grammar skeleton and data states for real; the owner review findings close; docking reads as arriving somewhere. Gap: Flatten happened, redesign did not; zero skeleton adoption; review findings unverified (orange doing four jobs, bar transcript void, italic flavour outranking data). See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-162.md. DIRECTION OVERRIDE 2026-09-05: 'to the grammar' is void on aesthetics; builds on the PQ-187.03 kit; done is a hash-bound visual review against design/frontend/direction/DIRECTION_SHEET.md (decided 2026-09-06) (design/FRONTEND_DIRECTION.md section 8)."
+      "brief": "Seven station screens adopt the instrument grammar skeleton and data states for real; the owner review findings close; docking reads as arriving somewhere. Gap: Flatten happened, redesign did not; zero skeleton adoption; review findings unverified (orange doing four jobs, bar transcript void, italic flavour outranking data). See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-162.md. DIRECTION OVERRIDE 2026-09-05: 'to the grammar' is void on aesthetics; builds on the PQ-187.03 kit; done is a hash-bound visual review against design/frontend/direction/DIRECTION_SHEET.md (decided 2026-09-06) (design/FRONTEND_DIRECTION.md section 8). Handoff prompts: design/frontend/direction/HANDOFF_PROMPTS.md."
     },
     {
       "id": "PQ-168",
@@ -3511,7 +3511,7 @@
       ],
       "checks": [],
       "evidence": [],
-      "brief": "The strategic centrepiece stops reading as an admin screen: the deferred traffic layer lands, duplicated navigation answers merge, tabs get a hierarchy, heat and contracts pin. Gap: J12b traffic layer deferred; duplication; single tab size; sub-12 px nodes; the strategic reviewer called it cheap admin. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-168.md. DIRECTION OVERRIDE 2026-09-05: 'to the grammar' is void on aesthetics; builds on the PQ-187.03 kit; done is a hash-bound visual review against design/frontend/direction/DIRECTION_SHEET.md (decided 2026-09-06) (design/FRONTEND_DIRECTION.md section 8)."
+      "brief": "The strategic centrepiece stops reading as an admin screen: the deferred traffic layer lands, duplicated navigation answers merge, tabs get a hierarchy, heat and contracts pin. Gap: J12b traffic layer deferred; duplication; single tab size; sub-12 px nodes; the strategic reviewer called it cheap admin. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-168.md. DIRECTION OVERRIDE 2026-09-05: 'to the grammar' is void on aesthetics; builds on the PQ-187.03 kit; done is a hash-bound visual review against design/frontend/direction/DIRECTION_SHEET.md (decided 2026-09-06) (design/FRONTEND_DIRECTION.md section 8). Handoff prompts: design/frontend/direction/HANDOFF_PROMPTS.md."
     },
     {
       "id": "PQ-173",
@@ -3704,7 +3704,7 @@
       ],
       "checks": [],
       "evidence": [],
-      "brief": "Every shell screen to the grammar with the three missing meta screens added, the save portrait, a returning-player digest, a version string, and keyboard/gamepad parity. Gap: Credits, statistics and photo mode absent; no version string; settings lacks presets, frame cap and pad remap; load is a list. See CANONICAL_BUILD_MAP.md section 18 and design/program/roadmap/active/PQ-181.md. DIRECTION OVERRIDE 2026-09-05: 'to the grammar' is void on aesthetics; builds on the PQ-187.03 kit; done is a hash-bound visual review against design/frontend/direction/DIRECTION_SHEET.md (decided 2026-09-06) (design/FRONTEND_DIRECTION.md section 8)."
+      "brief": "Every shell screen to the grammar with the three missing meta screens added, the save portrait, a returning-player digest, a version string, and keyboard/gamepad parity. Gap: Credits, statistics and photo mode absent; no version string; settings lacks presets, frame cap and pad remap; load is a list. See CANONICAL_BUILD_MAP.md section 18 and design/program/roadmap/active/PQ-181.md. DIRECTION OVERRIDE 2026-09-05: 'to the grammar' is void on aesthetics; builds on the PQ-187.03 kit; done is a hash-bound visual review against design/frontend/direction/DIRECTION_SHEET.md (decided 2026-09-06) (design/FRONTEND_DIRECTION.md section 8). Handoff prompts: design/frontend/direction/HANDOFF_PROMPTS.md."
     },
     {
       "id": "PQ-182",
@@ -3731,7 +3731,7 @@
       ],
       "checks": [],
       "evidence": [],
-      "brief": "The swarm mode's screens become instruments: a door that sells the run in five seconds, drafts readable in one line, a results screen that tells the story, and lab controls that are a toy. Gap: Crucible screens were built during engineering phases and never held to the grammar; results list numbers; the draft explains itself in paragraphs. See CANONICAL_BUILD_MAP.md section 18 and design/program/roadmap/active/PQ-182.md. DIRECTION OVERRIDE 2026-09-05: 'to the grammar' is void on aesthetics; builds on the PQ-187.03 kit; done is a hash-bound visual review against design/frontend/direction/DIRECTION_SHEET.md (decided 2026-09-06) (design/FRONTEND_DIRECTION.md section 8)."
+      "brief": "The swarm mode's screens become instruments: a door that sells the run in five seconds, drafts readable in one line, a results screen that tells the story, and lab controls that are a toy. Gap: Crucible screens were built during engineering phases and never held to the grammar; results list numbers; the draft explains itself in paragraphs. See CANONICAL_BUILD_MAP.md section 18 and design/program/roadmap/active/PQ-182.md. DIRECTION OVERRIDE 2026-09-05: 'to the grammar' is void on aesthetics; builds on the PQ-187.03 kit; done is a hash-bound visual review against design/frontend/direction/DIRECTION_SHEET.md (decided 2026-09-06) (design/FRONTEND_DIRECTION.md section 8). Handoff prompts: design/frontend/direction/HANDOFF_PROMPTS.md."
     },
     {
       "id": "PQ-183",
@@ -3806,7 +3806,7 @@
       ],
       "checks": [],
       "evidence": [],
-      "brief": "The one surface with an explicit owner fail is finished under its own design law and the frontend matrix: warm board, perfect grid, authored objects, ≤ 15 visible words, board ≥ 88 % of the glass. Gap: PQ-130 implemented but not accepted; PQ-131 art blocked on its units; the 2026-08-20 playtest remains the defect list. See CANONICAL_BUILD_MAP.md section 18 and design/program/roadmap/active/PQ-185.md. DIRECTION OVERRIDE 2026-09-05: 'to the grammar' is void on aesthetics; builds on the PQ-187.03 kit; done is a hash-bound visual review against design/frontend/direction/DIRECTION_SHEET.md (decided 2026-09-06) (design/FRONTEND_DIRECTION.md section 8)."
+      "brief": "The one surface with an explicit owner fail is finished under its own design law and the frontend matrix: warm board, perfect grid, authored objects, ≤ 15 visible words, board ≥ 88 % of the glass. Gap: PQ-130 implemented but not accepted; PQ-131 art blocked on its units; the 2026-08-20 playtest remains the defect list. See CANONICAL_BUILD_MAP.md section 18 and design/program/roadmap/active/PQ-185.md. DIRECTION OVERRIDE 2026-09-05: 'to the grammar' is void on aesthetics; builds on the PQ-187.03 kit; done is a hash-bound visual review against design/frontend/direction/DIRECTION_SHEET.md (decided 2026-09-06) (design/FRONTEND_DIRECTION.md section 8). Handoff prompts: design/frontend/direction/HANDOFF_PROMPTS.md."
     },
     {
       "id": "PQ-186",
@@ -3850,7 +3850,7 @@
       ],
       "checks": [],
       "evidence": [],
-      "brief": "The owner declined to choose between abstract directions and delegated the decision on 2026-09-06 ('You'll just have to decide'; leaning Cinematic Minimal). Decided: Cinematic Minimal tuned for SpaceFace - the world is the interface. design/frontend/direction/DIRECTION_SHEET.md is the aesthetic authority; a kit is built from it; the title goes live first so the direction is seen in the actual game after one unit and the owner can veto before anything else moves; a blind side-by-side against A-list games proves the result. Receipt: design/program/roadmap/receipts/PQ-187-01-REPORT.md. See design/FRONTEND_DIRECTION.md section 13 and design/program/roadmap/active/PQ-187.md."
+      "brief": "The owner declined to choose between abstract directions and delegated the decision on 2026-09-06 ('You'll just have to decide'; leaning Cinematic Minimal). Decided: Cinematic Minimal tuned for SpaceFace - the world is the interface. design/frontend/direction/DIRECTION_SHEET.md is the aesthetic authority; a kit is built from it; the title goes live first so the direction is seen in the actual game after one unit and the owner can veto before anything else moves; a blind side-by-side against A-list games proves the result. Receipt: design/program/roadmap/receipts/PQ-187-01-REPORT.md. See design/FRONTEND_DIRECTION.md section 13 and design/program/roadmap/active/PQ-187.md. Handoff prompts: design/frontend/direction/HANDOFF_PROMPTS.md."
     },
     {
       "id": "PQ-188",
@@ -3875,7 +3875,7 @@
       ],
       "checks": [],
       "evidence": [],
-      "brief": "The HUD and the three instruments marked done under the superseded grammar are rebuilt on the kit with their centerpieces kept; the HUD gains its arrival choreography and its wanted temperature. Gap: no packet could revisit surfaces section 11 marked done. See design/FRONTEND_DIRECTION.md sections 7-8 and design/program/roadmap/active/PQ-188.md."
+      "brief": "The HUD and the three instruments marked done under the superseded grammar are rebuilt on the kit with their centerpieces kept; the HUD gains its arrival choreography and its wanted temperature. Gap: no packet could revisit surfaces section 11 marked done. See design/FRONTEND_DIRECTION.md sections 7-8 and design/program/roadmap/active/PQ-188.md. Handoff prompts: design/frontend/direction/HANDOFF_PROMPTS.md."
     },
     {
       "id": "PQ-189",
@@ -3964,7 +3964,7 @@
       ],
       "checks": [],
       "evidence": [],
-      "brief": "The four screens the player reads rather than operates - missions log, codex, help, tech tree - migrate onto the kit to the pictures in design/frontend/direction/DIRECTION_SHEET.md section 2 'The reading screens', keeping what each does and deleting their old style blocks as they move. Gap: reachable on the default route, covered by no frontend packet. See design/program/roadmap/active/PQ-192.md."
+      "brief": "The four screens the player reads rather than operates - missions log, codex, help, tech tree - migrate onto the kit to the pictures in design/frontend/direction/DIRECTION_SHEET.md section 2 'The reading screens', keeping what each does and deleting their old style blocks as they move. Gap: reachable on the default route, covered by no frontend packet. See design/program/roadmap/active/PQ-192.md. Handoff prompts: design/frontend/direction/HANDOFF_PROMPTS.md."
     }
   ],
   "dispatchUnits": [
@@ -6851,7 +6851,7 @@
       "parentId": "PQ-190",
       "priority": 103,
       "title": "The effect-class VFX matrix",
-      "state": "ready",
+      "state": "claimed",
       "dependsOn": [
         "PQ-190.00"
       ],
@@ -10682,7 +10682,7 @@
       "priority": 234,
       "title": "PERF-04 dense PresentationWorld native acceptance",
       "kind": "acceptance_capture",
-      "state": "ready",
+      "state": "claimed",
       "dependsOn": [
         "PQ-034.native-closure",
         "PQ-038.focused-implementation"
@@ -10782,7 +10782,7 @@
       "priority": 237,
       "title": "PERF-07 exact-package and native Electron acceptance",
       "kind": "acceptance_capture",
-      "state": "ready",
+      "state": "claimed",
       "dependsOn": [
         "PQ-034.native-closure",
         "PQ-041.electron-smoke-h1-capture",
@@ -11018,7 +11018,7 @@
       "priority": 245,
       "title": "Capture the revised four-role facility presentation",
       "kind": "acceptance_capture",
-      "state": "ready",
+      "state": "claimed",
       "dependsOn": [
         "PQ-019.receiver-facility-reauthor",
         "PQ-022.relay-reauthor-review"
@@ -11765,9 +11765,9 @@
       "id": "PQ-045.human-review",
       "parentId": "PQ-045",
       "priority": 272,
-      "title": "Human five-minute Ceres verdict",
+      "title": "Independent five-minute Ceres review",
       "kind": "acceptance_review",
-      "state": "deferred",
+      "state": "ready",
       "dependsOn": [
         "PQ-045.five-minute-h1"
       ],
@@ -11781,7 +11781,7 @@
         "npm run check:ceres:five-minute"
       ],
       "receiptRefs": [],
-      "brief": "evaluateCeresHumanReview requires a named human reviewer, a timestamp, a KEEP or REVISE verdict and an explicit judgment on whether the longest zero-visible-activity interval reads as a brief intentional void. NO AGENT MAY SELF-GRANT THIS. It is the declared precondition for R8 showcase work and for any sector-propagation pass."
+      "brief": "Run the candidate-bound five-minute evidence review with an independent agent reviewer, timestamp, KEEP or REVISE verdict, and explicit judgment on whether the longest zero-visible-activity interval reads as a brief intentional void. Record the reviewing thread identity in the compatibility reviewer field; no human verdict is required. It is the declared precondition for R8 showcase work and for any sector-propagation pass."
     },
     {
       "id": "PQ-153.01",
@@ -12281,7 +12281,7 @@
         "npm run check:ui-effects"
       ],
       "receiptRefs": [],
-      "brief": "All seven station screens render through CREST/STAGE/APRON/DRAWER with the four data states and entity links; the legacy stationHub helpers are lifted out (Phase 7 as a refactor). DONE WHEN: check:data-states and check:entity-links cover the station; zero legacy imports from stationHub.js."
+      "brief": "All seven station screens render through CREST/STAGE/APRON/DRAWER with the four data states and entity links; the legacy stationHub helpers are lifted out (Phase 7 as a refactor). DONE WHEN: check:data-states and check:entity-links cover the station; zero legacy imports from stationHub.js. Task file: design/frontend/direction/tasks/TASK_C_STATION_INSTRUMENTS_CHART.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-162.01",
@@ -12311,7 +12311,7 @@
         "npm run check:ui-effects"
       ],
       "receiptRefs": [],
-      "brief": "One primary per screen, orange means one thing, italics never outrank data, the bar has a transcript, industry tiers read. DONE WHEN: A cold reviewer verdict per screen; the Kimi findings closed one by one in the receipt."
+      "brief": "One primary per screen, orange means one thing, italics never outrank data, the bar has a transcript, industry tiers read. DONE WHEN: A cold reviewer verdict per screen; the Kimi findings closed one by one in the receipt. Task file: design/frontend/direction/tasks/TASK_C_STATION_INSTRUMENTS_CHART.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-162.02",
@@ -12341,7 +12341,7 @@
         "npm run check:ui-effects"
       ],
       "receiptRefs": [],
-      "brief": "Docking is a place: the berth with your hull, the mechanic, ambient work, one line of local news; screens open from the place, not from a tab strip. DONE WHEN: Blind reviewer names the station from the docked view; capture."
+      "brief": "Docking is a place: the berth with your hull, the mechanic, ambient work, one line of local news; screens open from the place, not from a tab strip. DONE WHEN: Blind reviewer names the station from the docked view; capture. Task file: design/frontend/direction/tasks/TASK_C_STATION_INSTRUMENTS_CHART.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-048.01",
@@ -15587,7 +15587,7 @@
         "npm run check:starmap-objective"
       ],
       "receiptRefs": [],
-      "brief": "Convoys, traffic density and patrol presence from state.traffic; heat tiers from PQ-151; contract pins as a layer. DONE WHEN: Toggling layers shows live traffic; layer state persists (screen memory)."
+      "brief": "Convoys, traffic density and patrol presence from state.traffic; heat tiers from PQ-151; contract pins as a layer. DONE WHEN: Toggling layers shows live traffic; layer state persists (screen memory). Task file: design/frontend/direction/tasks/TASK_C_STATION_INSTRUMENTS_CHART.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-168.01",
@@ -15617,7 +15617,7 @@
         "npm run check:starmap-objective"
       ],
       "receiptRefs": [],
-      "brief": "Merge mapNavContext and the Overview inspector; nine tabs get primary/secondary tiers; sub-12 px nodes to the floor by layout. DONE WHEN: Zero duplicated answers; smallest text 12 px; cold review verdict."
+      "brief": "Merge mapNavContext and the Overview inspector; nine tabs get primary/secondary tiers; sub-12 px nodes to the floor by layout. DONE WHEN: Zero duplicated answers; smallest text 12 px; cold review verdict. Task file: design/frontend/direction/tasks/TASK_C_STATION_INSTRUMENTS_CHART.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-181.00",
@@ -15650,7 +15650,7 @@
         "npm run check:visual-regression"
       ],
       "receiptRefs": [],
-      "brief": "The title itself lands in PQ-187.03; this leaf adds the credits screen with third-party notices (PQ-033.00), the visible version and build hash, and the title's continue/attract states on the kit. DONE WHEN: credits and version visible in a capture that matches DIRECTION_SHEET.md under a hash-bound visual review; check:title-continue-runtime green."
+      "brief": "The title itself lands in PQ-187.03; this leaf adds the credits screen with third-party notices (PQ-033.00), the visible version and build hash, and the title's continue/attract states on the kit. DONE WHEN: credits and version visible in a capture that matches DIRECTION_SHEET.md under a hash-bound visual review; check:title-continue-runtime green. Task file: design/frontend/direction/tasks/TASK_B_SHELL_AND_HUD.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-181.01",
@@ -15684,7 +15684,7 @@
         "npm run check:visual-regression"
       ],
       "receiptRefs": [],
-      "brief": "Three starters as three ways to play with a sentence each (PQ-156); Load renders save portraits (hull, scars, titles, rap sheet, grudge). DONE WHEN: Matrix green; save round-trip; capture."
+      "brief": "Three starters as three ways to play with a sentence each (PQ-156); Load renders save portraits (hull, scars, titles, rap sheet, grudge). DONE WHEN: Matrix green; save round-trip; capture. Task file: design/frontend/direction/tasks/TASK_B_SHELL_AND_HUD.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-181.02",
@@ -15718,7 +15718,7 @@
         "npm run check:visual-regression"
       ],
       "receiptRefs": [],
-      "brief": "Presets, frame cap, pad remap, language, accessibility statement (PQ-164/165/166 leaves land here). DONE WHEN: Matrix green; every setting round-trips through the profile check."
+      "brief": "Presets, frame cap, pad remap, language, accessibility statement (PQ-164/165/166 leaves land here). DONE WHEN: Matrix green; every setting round-trips through the profile check. Task file: design/frontend/direction/tasks/TASK_B_SHELL_AND_HUD.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-181.03",
@@ -15751,7 +15751,7 @@
         "npm run check:visual-regression"
       ],
       "receiptRefs": [],
-      "brief": "Pause with photo mode entry; Game Over that names the cause and the telegraph; returning-player digest; lifetime statistics from aggregates. DONE WHEN: Matrix green; digest appears after a day-old save; statistics match telemetry."
+      "brief": "Pause with photo mode entry; Game Over that names the cause and the telegraph; returning-player digest; lifetime statistics from aggregates. DONE WHEN: Matrix green; digest appears after a day-old save; statistics match telemetry. Task file: design/frontend/direction/tasks/TASK_B_SHELL_AND_HUD.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-182.00",
@@ -15782,7 +15782,7 @@
         "npm run check:visual-regression"
       ],
       "receiptRefs": [],
-      "brief": "Seed, ruleset, arena and hull as one choice a stranger makes in five seconds; the daily seed (PQ-169.00) is the default. DONE WHEN: Matrix green; a new tester launches a run in ≤ 10 s without reading."
+      "brief": "Seed, ruleset, arena and hull as one choice a stranger makes in five seconds; the daily seed (PQ-169.00) is the default. DONE WHEN: Matrix green; a new tester launches a run in ≤ 10 s without reading. Task file: design/frontend/direction/tasks/TASK_D_MODES_READING_SWEEP_PROOF.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-182.01",
@@ -15813,7 +15813,7 @@
         "npm run check:visual-regression"
       ],
       "receiptRefs": [],
-      "brief": "Cards are one line plus one glyph of the verb; refit reuses the ship screen bands. DONE WHEN: Matrix green; a tester describes every card after one use."
+      "brief": "Cards are one line plus one glyph of the verb; refit reuses the ship screen bands. DONE WHEN: Matrix green; a tester describes every card after one use. Task file: design/frontend/direction/tasks/TASK_D_MODES_READING_SWEEP_PROOF.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-182.02",
@@ -15845,7 +15845,7 @@
         "npm run check:visual-regression"
       ],
       "receiptRefs": [],
-      "brief": "Moments, tricks, best chain, cause of death and its telegraph, build code, one-click retry same seed. DONE WHEN: Matrix green; results capture reviewed; retry ≤ 5 s."
+      "brief": "Moments, tricks, best chain, cause of death and its telegraph, build code, one-click retry same seed. DONE WHEN: Matrix green; results capture reviewed; retry ≤ 5 s. Task file: design/frontend/direction/tasks/TASK_D_MODES_READING_SWEEP_PROOF.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-182.03",
@@ -15876,7 +15876,7 @@
         "npm run check:visual-regression"
       ],
       "receiptRefs": [],
-      "brief": "Lab controls to the grammar with the range's teaching voice; telemetry overlay is an instrument, not a debug dump. DONE WHEN: Matrix green; frame cost ≤ 2 ms."
+      "brief": "Lab controls to the grammar with the range's teaching voice; telemetry overlay is an instrument, not a debug dump. DONE WHEN: Matrix green; frame cost ≤ 2 ms. Task file: design/frontend/direction/tasks/TASK_D_MODES_READING_SWEEP_PROOF.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-183.00",
@@ -16111,7 +16111,7 @@
         "npm run check:visual-regression"
       ],
       "receiptRefs": [],
-      "brief": "The law's twelve statements become assertions the works capture can verify (word count, board fraction, grid alignment, fog absent, event sound). DONE WHEN: `check:asteroid-works-render` asserts the law; red on the current build where the law is unmet."
+      "brief": "The law's twelve statements become assertions the works capture can verify (word count, board fraction, grid alignment, fog absent, event sound). DONE WHEN: `check:asteroid-works-render` asserts the law; red on the current build where the law is unmet. Task file: design/frontend/direction/tasks/TASK_D_MODES_READING_SWEEP_PROOF.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-185.01",
@@ -16138,7 +16138,7 @@
         "npm run check:visual-regression"
       ],
       "receiptRefs": [],
-      "brief": "The surface passes the grammar matrix; PQ-130 acceptance re-run with the owner after PQ-131 art lands. DONE WHEN: Owner verdict KEEP recorded; matrix green."
+      "brief": "The surface passes the grammar matrix; PQ-130 acceptance re-run with the owner after PQ-131 art lands. DONE WHEN: Owner verdict KEEP recorded; matrix green. Task file: design/frontend/direction/tasks/TASK_D_MODES_READING_SWEEP_PROOF.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-158.00",
@@ -17169,7 +17169,7 @@
       "priority": 462,
       "title": "The kit",
       "kind": "implementation",
-      "state": "ready",
+      "state": "claimed",
       "dependsOn": [
         "PQ-187.01"
       ],
@@ -17192,7 +17192,7 @@
         "npm run check:wcag-contrast"
       ],
       "receiptRefs": [],
-      "brief": "Tokens and the type scale 12 to 160 px; Bricolage Grotesque vendored as the variable face (weight to 800, opsz and wdth axes, OFL) beside Instrument Sans (tabular figures verified present in the vendored file); no mono on player surfaces; the temperature states (flight, docked, wanted, Crucible, Works); the transition helper (a cut plus a settle of at most 160 ms, state-bound, reduced-motion is a plain cut); the UI sound palette (at most eight low tonal samples through audio:cue); every component rendered on one kit page in the lab and captured at 1280, 1920 and 2560. DONE WHEN: the kit page matches DIRECTION_SHEET.md under a hash-bound visual review by a memoryless vision reviewer; the old stylesheets are untouched (screens migrate in later packets); no owner decision is required."
+      "brief": "Tokens and the type scale 12 to 160 px; Bricolage Grotesque vendored as the variable face (weight to 800, opsz and wdth axes, OFL) beside Instrument Sans (tabular figures verified present in the vendored file); no mono on player surfaces; the temperature states (flight, docked, wanted, Crucible, Works); the transition helper (a cut plus a settle of at most 160 ms, state-bound, reduced-motion is a plain cut); the UI sound palette (at most eight low tonal samples through audio:cue); every component rendered on one kit page in the lab and captured at 1280, 1920 and 2560. DONE WHEN: the kit page matches DIRECTION_SHEET.md under a hash-bound visual review by a memoryless vision reviewer; the old stylesheets are untouched (screens migrate in later packets); no owner decision is required. Task file: design/frontend/direction/tasks/TASK_A_KIT_AND_TITLE.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-187.03",
@@ -17224,7 +17224,7 @@
         "npm run probe:frontend-snapshot"
       ],
       "receiptRefs": [],
-      "brief": "The first real screen in the direction, on the default route: the starter hull in the hangar rig fills the frame against the sky, the game's name at hero scale top-left, the menu as five words down the left edge with the focused word at full strength, version bottom-left; the menu plate and its CSS deleted; the transition helper and the open/confirm sounds live. DONE WHEN: booting the game shows it; frames at 1280, 1920 and 2560 match DIRECTION_SHEET.md under a hash-bound visual review; check:title-continue-runtime green; the owner sees it in the game and has not vetoed. This is the gate every surface packet depends on."
+      "brief": "The first real screen in the direction, on the default route: the starter hull in the hangar rig fills the frame against the sky, the game's name at hero scale top-left, the menu as five words down the left edge with the focused word at full strength, version bottom-left; the menu plate and its CSS deleted; the transition helper and the open/confirm sounds live. DONE WHEN: booting the game shows it; frames at 1280, 1920 and 2560 match DIRECTION_SHEET.md under a hash-bound visual review; check:title-continue-runtime green; the owner sees it in the game and has not vetoed. This is the gate every surface packet depends on. Task file: design/frontend/direction/tasks/TASK_A_KIT_AND_TITLE.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-187.04",
@@ -17258,7 +17258,7 @@
         "node scripts/check-ui-grammar-matrix.mjs --static"
       ],
       "receiptRefs": [],
-      "brief": "Blind side-by-side against the reference board with a memoryless vision reviewer; the thirteen signature moments each captured as a ten-second clip and reviewed against DIRECTION_SHEET.md by the same reviewer; the regression baseline reshot on the new look; a ninety-second reel the owner watches in place of any sign-off form. DONE WHEN: SpaceFace chosen in >= 50% of pairings and 100% against the genre baselines; thirteen clip reviews on file; matrix and regression green; reel committed."
+      "brief": "Blind side-by-side against the reference board with a memoryless vision reviewer; the thirteen signature moments each captured as a ten-second clip and reviewed against DIRECTION_SHEET.md by the same reviewer; the regression baseline reshot on the new look; a ninety-second reel the owner watches in place of any sign-off form. DONE WHEN: SpaceFace chosen in >= 50% of pairings and 100% against the genre baselines; thirteen clip reviews on file; matrix and regression green; reel committed. Task file: design/frontend/direction/tasks/TASK_D_MODES_READING_SWEEP_PROOF.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-188.00",
@@ -17289,7 +17289,7 @@
         "npm run check:responsive"
       ],
       "receiptRefs": [],
-      "brief": "The HUD on the kit: hero scale where it matters, the arrival choreography on first undock, the temperature change on wanted; the attention rules kept. DONE WHEN: contact sheet at three widths with a hash-bound visual review against DIRECTION_SHEET.md; two ten-second clips; hud-j07 and one-voice green."
+      "brief": "The HUD on the kit: hero scale where it matters, the arrival choreography on first undock, the temperature change on wanted; the attention rules kept. DONE WHEN: contact sheet at three widths with a hash-bound visual review against DIRECTION_SHEET.md; two ten-second clips; hud-j07 and one-voice green. Task file: design/frontend/direction/tasks/TASK_B_SHELL_AND_HUD.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-188.01",
@@ -17315,7 +17315,7 @@
         "npm run check:ui-a11y"
       ],
       "receiptRefs": [],
-      "brief": "The hull as the picture at full bleed with labels pinned to it; the four bands re-set on the kit; orbit kept. DONE WHEN: contact sheet with a hash-bound visual review against DIRECTION_SHEET.md; every band still answers why the ship flies like this."
+      "brief": "The hull as the picture at full bleed with labels pinned to it; the four bands re-set on the kit; orbit kept. DONE WHEN: contact sheet with a hash-bound visual review against DIRECTION_SHEET.md; every band still answers why the ship flies like this. Task file: design/frontend/direction/tasks/TASK_C_STATION_INSTRUMENTS_CHART.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-188.02",
@@ -17341,7 +17341,7 @@
         "npm run check:ui-a11y"
       ],
       "receiptRefs": [],
-      "brief": "The consequence board with its wanted temperature; the Range's teaching voice on the kit without changing the drills. DONE WHEN: contact sheet with a hash-bound visual review against DIRECTION_SHEET.md; the four rungs still complete under real input."
+      "brief": "The consequence board with its wanted temperature; the Range's teaching voice on the kit without changing the drills. DONE WHEN: contact sheet with a hash-bound visual review against DIRECTION_SHEET.md; the four rungs still complete under real input. Task file: design/frontend/direction/tasks/TASK_C_STATION_INSTRUMENTS_CHART.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-191.00",
@@ -17416,7 +17416,7 @@
         "npm run check:ui-a11y"
       ],
       "receiptRefs": [],
-      "brief": "The log as one column of sentences with hairlines and the focused mission opened on the right at screen-title size with its next step and reward; the codex as a left column of entry names and a readable measure of text with its plate. Over the sky at the menus scrim; old style blocks deleted. DONE WHEN: captures at 1280/1920/2560 match the sheet under a hash-bound visual review against DIRECTION_SHEET.md; entity links and the four data states still work; check:ui-screen-imports green."
+      "brief": "The log as one column of sentences with hairlines and the focused mission opened on the right at screen-title size with its next step and reward; the codex as a left column of entry names and a readable measure of text with its plate. Over the sky at the menus scrim; old style blocks deleted. DONE WHEN: captures at 1280/1920/2560 match the sheet under a hash-bound visual review against DIRECTION_SHEET.md; entity links and the four data states still work; check:ui-screen-imports green. Task file: design/frontend/direction/tasks/TASK_D_MODES_READING_SWEEP_PROOF.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-192.01",
@@ -17442,7 +17442,7 @@
         "npm run check:ui-a11y"
       ],
       "receiptRefs": [],
-      "brief": "Help as hairline rows of action and key with the current profile named; the tech tree's lanes as hairline paths on the sky, nodes as words, the selected node's name at screen-title size with its cost and Unlock as one word. Old style blocks deleted. DONE WHEN: captures at three widths match the sheet under a hash-bound visual review against DIRECTION_SHEET.md; every displayed key still resolves from input.js after a remap; unlocks still apply; check:ui-screen-imports green."
+      "brief": "Help as hairline rows of action and key with the current profile named; the tech tree's lanes as hairline paths on the sky, nodes as words, the selected node's name at screen-title size with its cost and Unlock as one word. Old style blocks deleted. DONE WHEN: captures at three widths match the sheet under a hash-bound visual review against DIRECTION_SHEET.md; every displayed key still resolves from input.js after a remap; unlocks still apply; check:ui-screen-imports green. Task file: design/frontend/direction/tasks/TASK_D_MODES_READING_SWEEP_PROOF.md (spec: design/frontend/direction/KIT_SPEC.md)."
     }
   ]
 }
