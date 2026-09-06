@@ -424,6 +424,69 @@ test('flee: a nearby hostile interrupts the job into flee; removing it resumes t
   assert.notEqual(job.phase, NPC_JOB_PHASE.FLEE, 'with the threat gone the job resumes');
 });
 
+// PQ-143.00: a law patrol is team 1 so it can arrest a wanted player, but doctrine already refuses
+// fire on an unwanted civilian. The job threat query used to treat that hull as a pirate and empty
+// the Ceres yard. Pin the rule here so the identity bench cannot stay green while the yard cowers.
+test('flee: a lawful-wanted-only patrol is not a predator; a weapons-free hull still is', () => {
+  const sim = boot();
+  const e = hull(sim, 'rec-cop', { x: 0, z: 0 });
+  sim.helpers.npcJobs.assign(e, minerSpec());
+  const jobs = sim.registry.get('npcJobsRuntime');
+  const job = jobs._byId()['job:rec-cop'].job;
+  while (job.phase !== NPC_JOB_PHASE.TRANSIT) sim.step(DT);
+  const phaseBefore = job.phase;
+
+  const cop = sim.spawn({
+    type: 'ship', team: 1, pos: { x: e.pos.x + 60, z: e.pos.z }, vel: { x: 0, z: 0 },
+    hull: 100, hullMax: 100, radius: 6,
+  });
+  cop.data = cop.data || {};
+  cop.data.ai = { roe: 'lawful_wanted_only', doctrine: 'official' };
+  sim.step(DT);
+  assert.equal(
+    job.phase,
+    phaseBefore,
+    'a policeman standing over the yard is not a reason to drop the job',
+  );
+
+  const pirate = sim.spawn({
+    type: 'ship', team: 1, pos: { x: e.pos.x + 50, z: e.pos.z }, vel: { x: 0, z: 0 },
+    hull: 100, hullMax: 100, radius: 6,
+  });
+  pirate.data = pirate.data || {};
+  pirate.data.ai = { roe: 'weapons_free' };
+  sim.step(DT);
+  assert.equal(job.phase, NPC_JOB_PHASE.FLEE, 'a weapons-free hull still scatters the civilian');
+});
+
+test('flee: a violence stamp still interrupts even when the nearby hull is a lawful patrol', () => {
+  const sim = boot();
+  const e = hull(sim, 'rec-cop-violence', { x: 0, z: 0 });
+  sim.helpers.npcJobs.assign(e, minerSpec());
+  const jobs = sim.registry.get('npcJobsRuntime');
+  const job = jobs._byId()['job:rec-cop-violence'].job;
+  while (job.phase !== NPC_JOB_PHASE.TRANSIT) sim.step(DT);
+
+  const cop = sim.spawn({
+    type: 'ship', team: 1, pos: { x: e.pos.x + 60, z: e.pos.z }, vel: { x: 0, z: 0 },
+    hull: 100, hullMax: 100, radius: 6,
+  });
+  cop.data = cop.data || {};
+  cop.data.ai = { roe: 'lawful_wanted_only', doctrine: 'official' };
+  sim.step(DT);
+  assert.notEqual(job.phase, NPC_JOB_PHASE.FLEE, 'proximity to the patrol alone must not flee');
+
+  sim.helpers.npcJobs.interrupt('job:rec-cop-violence', {
+    entityId: cop.id, x: cop.pos.x, z: cop.pos.z,
+  });
+  sim.step(DT);
+  assert.equal(
+    job.phase,
+    NPC_JOB_PHASE.FLEE,
+    'real violence still empties the job even if the nearby hull is lawful',
+  );
+});
+
 // ═══ THE REAL Continue path: saveSystem.serialize → loadEnvelope with the runtime REGISTERED ═══════
 // The other save test round-trips the bag directly; this exercises the production save envelope +
 // destructive restore end-to-end (the path the browser save→Continue capture will exercise).

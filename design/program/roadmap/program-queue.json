@@ -11806,7 +11806,7 @@
       "priority": 276,
       "title": "Sector identity table, made true on the route",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [],
       "mutexes": [
         "places-ordinary-life"
@@ -11820,8 +11820,10 @@
         "npm run check:baseline",
         "npm run check:atlas-integrity"
       ],
-      "receiptRefs": [],
-      "brief": "For Helios and Ceres: verb, rhythm, law, crime, ships, structures, what the player can physically do here, what remains when damaged; a blind reviewer names the sector from a 30 s capture with labels hidden."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-143-00-REPORT.md"
+      ],
+      "brief": "IMPLEMENTED 2026-09-05 (not done): Ceres workers kept their jobs because a lawful patrol is no longer treated as a pirate; 6 of 8 identity columns differ on seed 4242 (bar >= 4); rhythm and crime still read the same; no committed 30 s strip and no blind naming, so the packet done-when stays open for PQ-143.01. DONE WHEN: a blind reviewer names the sector from a 30 s capture with labels hidden."
     },
     {
       "id": "PQ-143.01",

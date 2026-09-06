@@ -3,7 +3,7 @@
 
 ```yaml
 refreshed: 2026-09-05
-baseCommit: 9397d42f002ea61dd66cb80baffeb59583c0a9e9
+baseCommit: 3c58aaa417dab42136e66934a8484fc50313f8c0
 expiresAfterCommits: 10
 expiresAfterDays: 2
 ```
@@ -45,7 +45,6 @@ working. Product status and remaining tasks live in
 | PQ-189.00 the control contract, generated from the bindings | fable-orchestrator + fable implementer | MUTATING | src/systems/input.js (label resolver exports only), src/ui/hud.js + src/ui/screens/** + src/ui/station/** (label call sites only), scripts/check-ui-control-labels.mjs (new), package.json (one line), test/ui-control-labels*.test.mjs, README.md + design/GDD_2_0.md §4 control tables, design/program/roadmap/receipts/PQ-189-00-REPORT.md | review, commit by pathspec, push master |
 | PQ-180.03 cycle 2: reference frames photograph the interface over a neutral ground, then the 408-frame baseline is shot | fable-orchestrator + opus implementer | MUTATING | scripts/capture-ui-matrix.mjs, scripts/check-visual-regression.mjs, scripts/lib/ui-frame-regression.mjs, test/ui-grammar-matrix.test.mjs, test/ui-frame-references/** (baseline PNGs, floors.json, README), design/program/roadmap/receipts/PQ-180-03-REPORT.md | review, commit by pathspec, push master |
 | PQ-137.11 knock budget B13 (cycle 4: rate clause, camera-vs-hull wobble, player spin source) | fable-orchestrator + opus implementer | MUTATING | src/core/sg02DynamicBodyOwner.js, src/core/physics.js, scripts/lib/bench/crucibleBench.mjs, scripts/lib/bench/frameStripCapture.mjs, scripts/lib/bench/feelBars.mjs, scripts/lib/bench/scenarios/feel.knock_budget*.mjs, test/sg02-player-contact-give.test.mjs, test/frame-strip.test.mjs, test/fun-measurer.test.mjs, design/FEEL_CONTRACT.md (B13 row), design/program/roadmap/receipts/PQ-137.11-REPORT.md | review, commit by pathspec, push master |
-| PQ-143.00 sector identity table, made true on the route (Helios, Ceres) | fable-orchestrator + opus implementer | MUTATING | design/SECTOR_IDENTITY.md (new), src/data/sectorVisualProfiles.js / sectors.js / sectorZones data hunks the unit names, src/systems/sectorSim.js, test/sector-identity*.test.mjs, scripts/lib/bench/scenarios/world.sector_identity*.mjs, design/program/roadmap/receipts/PQ-143-00-REPORT.md | review, commit by pathspec, push master |
 
 _Previously:_ no active mutation windows. The 2026-09-04 orchestrate-next-build handoff is finished: everything
 that was in flight is committed and pushed, and no agent is holding a source file. See

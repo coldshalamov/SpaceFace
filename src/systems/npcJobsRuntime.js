@@ -304,10 +304,40 @@ function clearRouteBrake(entity) {
   if (intent) intent.brake = false;
 }
 
+/**
+ * Is this hull a PREDATOR to a working civilian — the thing a hauler drops its cargo run to run from?
+ *
+ * The threat query that feeds this only asks for `team: 1`, and team 1 is "hostile to the player",
+ * which is not the same question. A law patrol is on team 1 precisely so it CAN engage the player
+ * once the player is wanted; it carries `doctrine: 'official'` and `roe: 'lawful_wanted_only'`, and
+ * `src/ai/doctrine.js` already encodes what that means — "a lawful-wanted-only hull does not engage
+ * an unwanted target". A hauler is never wanted. So the police were never going to touch it.
+ *
+ * Before this clause they scattered it anyway. Measured on the default route, seed 4242, at the Ceres
+ * refinery: a single SCN patrol (entity 119, `faction_scn`, `lawful_wanted_only`) parked 240 WU off
+ * the station and held the refinery's whole authored workforce in `flee` — the tender that services
+ * the disabled hull, the hauler that runs the cargo pod — for the entire observation window, while
+ * firing not one shot in fifty-four seconds. Ceres's front door read as empty space with one
+ * cowering drifter, which is the exact inverse of `design/VISION.md` Part II: "the world does boring
+ * jobs on screen … Ceres should feel like Ceres because of what it does."
+ *
+ * Law standing over a working yard should make a place read as ORDERED, not evacuate it. Note what
+ * this does NOT change: a civilian still flees real violence, because that runs on the separate
+ * traffic-facing violence stamp (`interruptJob` → `_stampViolence` → `violenceUntilSimT`), not on
+ * this proximity reflex. Only "a policeman is nearby" stops being a reason to abandon the job.
+ *
+ * KNOWN LIMIT, recorded rather than guessed: a civilian that is ITSELF wanted (a smuggler running
+ * contraband) genuinely should fear a lawful patrol, but NPC traffic carries no heat today —
+ * `isPlayerWanted` is player-only — so there is no wanted-NPC state to consult. When one exists, the
+ * lawful case becomes conditional on the fleeing hull's own standing rather than unconditional here.
+ */
 function eligibleActiveHostile(entity) {
   const ai = entity && entity.data && entity.data.ai;
-  return !(ai && (ai.passive === true
-    || normalizeRoe(ai.roe) === RulesOfEngagement.HOLD_FIRE));
+  if (!ai) return true;
+  if (ai.passive === true) return false;
+  const roe = normalizeRoe(ai.roe);
+  return !(roe === RulesOfEngagement.HOLD_FIRE
+    || roe === RulesOfEngagement.LAWFUL_WANTED_ONLY);
 }
 
 function cleanClaimId(value) {
