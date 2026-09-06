@@ -58,6 +58,7 @@ import {
   PASSENGER_LINER_SERVICE,
   PASSENGER_LINER_SERVICE_SCHEMA,
   NAMED_LANE_CONTACTS,
+  CINDER_RUN_COURIER_CONTACT_ID,
   isPriorityCourierItinerary,
   isPassengerLinerItinerary,
   pickNamedLaneContact,
@@ -2910,10 +2911,17 @@ export const traffic = {
       this._ensurePriorityCourierService(sectorId, stations);
       return;
     }
-    // Already have a live named contact?
+    // PQ-143.02 one-off: the Cinder Run Courier is an authored fixture of the start sector —
+    // stamped deterministically on her own dedicated express slot every pass (never the seed-hash
+    // pick), so the default route always has its far-too-fast courier. The generic
+    // single-named-contact rule below ignores her slot, so the sector's picked contact (Mira or
+    // Kess) still appears alongside her.
+    this._ensureCinderRunCourierFixture(sectorId, sector, stations, list);
+    // Already have a live named contact? (The courier's dedicated fixture slot does not count.)
     for (const rec of list) {
       const e = this.state.entities && this.state.entities.get(rec.id);
-      if (e && e.alive && e.data && e.data.namedLaneContactId) return;
+      if (e && e.alive && e.data && e.data.namedLaneContactId
+        && e.data.namedLaneContactId !== CINDER_RUN_COURIER_CONTACT_ID) return;
     }
     const seed = (this.state.meta && this.state.meta.seed) || 1;
     const contact = pickNamedLaneContact(sectorId, seed);
@@ -2987,6 +2995,59 @@ export const traffic = {
         ent.data.ai.spawnContext = 'patrol';
       }
     }
+  },
+
+  // PQ-143.02 one-off fixture: stamp the Cinder Run Courier onto a live express freighter in the
+  // start sector, or spawn her dedicated hull near Helios Station when none exists. Deterministic
+  // by construction (idempotent per live slot) — her presence never depends on the seed hash, and
+  // other sectors' pick pools are untouched.
+  _ensureCinderRunCourierFixture(sectorId, sector, stations, list) {
+    if (sectorId !== 'sector_helios_prime') return;
+    const contact = NAMED_LANE_CONTACTS.find((c) => c.id === CINDER_RUN_COURIER_CONTACT_ID);
+    if (!contact) return;
+    for (const rec of list) {
+      const entity = liveEntity(this.state, rec.id);
+      if (entity && entity.data && entity.data.namedLaneContactId === contact.id) return;
+    }
+    let rec = list.find((r) => r.role === contact.role) || null;
+    let ent = rec && this.state.entities.get(rec.id);
+    if (!ent || !ent.alive) {
+      if (!this.helpers || !this.helpers.spawnEntity || !stations || !stations.length) return;
+      const role = contact.role || 'express';
+      const def = TRAFFIC_ROLES[role] || TRAFFIC_ROLES.courier;
+      const station = this._pocketStation(stations, sectorId) || stations[0];
+      const ang = this._rng() * Math.PI * 2;
+      const r = 110 + this._rng() * 80;
+      const pos = { x: station.pos.x + Math.cos(ang) * r, z: station.pos.z + Math.sin(ang) * r };
+      const aiSpec = {
+        archetype: def.archetype,
+        passive: true,
+        spawnContext: 'convoy_civilian',
+      };
+      const laneFaction = (sector && sector.factionId) || 'faction_free';
+      const spec = makeShipEntitySpec(
+        contact.ship || factionHullFor(def.ship, laneFaction, () => this._rng()),
+        { team: def.team, factionId: laneFaction, pos, ai: aiSpec },
+      );
+      ent = this.helpers.spawnEntity(spec);
+      if (!ent) return;
+      this._stampTrafficDurableIdentity(ent, sectorId, role, def, list.length);
+      const target = this._pickStation(stations);
+      const manifest = this._assignManifest(ent, role, target, sectorId);
+      this._active.push(ent.id);
+      rec = {
+        id: ent.id,
+        role,
+        targetId: target.id,
+        waitT: 0,
+        nextTradeT: 3,
+        orbitPhase: this._rng() * Math.PI * 2,
+        dockSeq: 0,
+        manifest,
+      };
+      list.push(rec);
+    }
+    this._stampNamedLaneContact(ent, contact);
   },
 
   /**

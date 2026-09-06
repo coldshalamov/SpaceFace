@@ -57,7 +57,27 @@ export const NAMED_LANE_CONTACTS = Object.freeze([
     ship: 'ship_kestrel',
     sectorIds: Object.freeze(['sector_veil_nebula']),
   }),
+  Object.freeze({
+    // PQ-143.02 one-off "a courier far too fast": she flies the `express` role, whose live V3
+    // boost intent really does carry a hull at liner sprint (247 WU/s) — far too fast for a
+    // courier barge, which is the point. She is a DETERMINISTIC fixture of the start sector
+    // (traffic.js stamps her own dedicated express slot every pass, never the seed-hash pick —
+    // the pick pools of other sectors are untouched, see the Ceres authored-cast law), so she is
+    // always on the default route. Keep her OUT of the generic pick pools: adding her to Ceres's
+    // pool broke that sector's authored cast (the pool pick would sometimes displace the seam
+    // miner's identity).
+    id: 'lane_cinder_run_courier',
+    name: 'The Cinder Run Courier',
+    callsign: 'CINDER-RUN',
+    role: 'express',
+    gimmick: 'liner-sprint-courier',
+    ship: 'ship_mule',
+    sectorIds: Object.freeze(['sector_helios_prime']),
+  }),
 ]);
+
+/** PQ-143.02: the one-off courier's contact id, exported for traffic.js's dedicated fixture slot. */
+export const CINDER_RUN_COURIER_CONTACT_ID = 'lane_cinder_run_courier';
 
 // PQ-048.09: one authored courier service, not a global scheduling vocabulary. Traffic owns the
 // mutable per-leg timetable in the courier's durable itinerary; this record names the stable route
@@ -182,4 +202,7 @@ export const LANE_GIMMICK_LABELS = Object.freeze({
   ore_tally: 'ORE TALLY',
   'sealed-cargo': 'SEALED CARGO',
   sealed_cargo: 'SEALED CARGO',
+  // PQ-143.02 one-off courier (target-panel fallback label).
+  'liner-sprint-courier': 'LINER SPRINT',
+  liner_sprint_courier: 'LINER SPRINT',
 });

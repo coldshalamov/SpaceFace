@@ -22,6 +22,7 @@
 //   gate tolls and never writes credits/cargo/rep directly. (Radiation hull drain is an
 //   environmental effect applied to the entity hull, which has no separate combat owner.)
 import { SECTORS, SECTOR_PALETTE_CLASSES, dangerIndex, surveyDataPrice } from '../data/sectors.js';
+import { WORLD_ONE_OFFS } from '../data/worldOneOffs.js'; // PQ-143.02 six texture one-offs
 import {
   FRONTIER_RUMOR_RECEIPT_LIMIT,
   frontierRumorOffer,
@@ -152,6 +153,7 @@ function applySameSectorPlayerRelocation(state, entryPoint) {
 
 // ---- global tuning constants (design 05 "GLOBAL TUNING CONSTANTS" + "Formulas") -------------
 const DEFAULT_WORLD_RADIUS = 4000;
+const EMPTY_ONE_OFF_PARTS = []; // no-cluster one-offs iterate this (no allocation per spawn)
 const BASE_FUEL = 4;            // fuel units per lightyear
 const BASE_INTERDICT = 0.35;
 const GATE_CHARGE = 3.0;        // s align time for a gate jump
@@ -908,6 +910,7 @@ export const world = {
     this._captureSectorDurableRecords(sectorId, { reason: 'strip_full', despawnIds: kill });
     active.enemies = [];
     active.dressing = [];
+    active.worldOneOffSpins = [];
     if (active.boss) delete active.boss;
   },
 
@@ -1860,6 +1863,75 @@ export const world = {
     }
     this._spawnEverydaySpaceKitDressing(sector, active, paletteClass);
     this._spawnWreckAftermathDressing(sector, active, paletteClass);
+    this._spawnWorldOneOffs(sector, active);
+  },
+
+  // PQ-143.02 "six texture one-offs": memorable, non-systemic set pieces from
+  // src/data/worldOneOffs.js. No seed, no epoch, no rng — a one-off is always exactly where the
+  // data says, on the same non-colliding dressing substrate as every other prop (so it is killed
+  // with the rest of the sector's dressing on deactivation), and a record may carry a slow
+  // `spin` the tick loop advances. Anchors: 'station'/'gate' rows of the sector's own anchors,
+  // sector-local.
+  _spawnWorldOneOffs(sector, active) {
+    for (const oneOff of WORLD_ONE_OFFS) {
+      if (oneOff.sectorId !== sector.id) continue;
+      const anchorPos = this._oneOffAnchorPos(sector, oneOff.anchor);
+      if (!anchorPos) continue;
+      const pos = {
+        x: anchorPos.x + oneOff.offsetLocal.x,
+        z: anchorPos.z + oneOff.offsetLocal.z,
+      };
+      const ent = this._spawnPlaceProp(active, sector, oneOff.placeId, pos, {
+        rot: oneOff.rot,
+        name: oneOff.name,
+        radius: oneOff.radius,
+        // The PQ-020 structural-cost census classifies additive dressing by data flag; without
+        // it the authored one-offs would be counted as core sector entities.
+        worldOneOff: true,
+      });
+      if (ent && oneOff.spin) this._trackOneOffSpin(active, ent.id, oneOff.spin);
+      for (const part of oneOff.cluster ? oneOff.cluster.props : EMPTY_ONE_OFF_PARTS) {
+        this._spawnPlaceProp(active, sector, part.placeId, {
+          x: pos.x + part.dx,
+          z: pos.z + part.dz,
+        }, { rot: part.rot, name: oneOff.name, radius: part.radius, worldOneOff: true });
+      }
+    }
+  },
+
+  _trackOneOffSpin(active, entityId, spin) {
+    if (!active.worldOneOffSpins) active.worldOneOffSpins = [];
+    active.worldOneOffSpins.push({ id: entityId, spin });
+  },
+
+  _oneOffAnchorPos(sector, anchor) {
+    if (!anchor) return null;
+    const stations = sector.stations || [];
+    const gates = sector.gates || [];
+    if (anchor.type === 'station') {
+      const row = stations.find((s) => s.id === anchor.id);
+      return row && row.pos ? row.pos : null;
+    }
+    if (anchor.type === 'gate') {
+      const row = gates.find((g) => g.to === anchor.id);
+      return row && row.pos ? row.pos : null;
+    }
+    return null;
+  },
+
+  // Advance the authored one-off props' spin. O(authored one-offs) per tick; the list lives on
+  // the active-sector record next to `dressing` and is reset with it on deactivation, so a dead
+  // id simply resolves to no entity.
+  _tickWorldOneOffSpin(dt, state) {
+    const active = state.world && state.world.activeSector;
+    const spins = active && active.worldOneOffSpins;
+    if (!spins || !spins.length) return;
+    const entities = this.state.entities;
+    if (!entities) return;
+    for (const row of spins) {
+      const ent = entities.get(row.id);
+      if (ent) ent.rot += row.spin * dt;
+    }
   },
 
   _spawnEverydaySpaceKitDressing(sector, active, paletteClass) {
@@ -2105,6 +2177,7 @@ export const world = {
           : {}),
         ...(options.everydaySpaceKit === true ? { everydaySpaceKit: true } : {}),
         ...(options.wreckAftermath === true ? { wreckAftermath: true } : {}),
+        ...(options.worldOneOff === true ? { worldOneOff: true } : {}),
       },
     });
     this._stampHomeSector(ent, sector.id);
@@ -2659,6 +2732,7 @@ export const world = {
     this._tickHazards(dt, state);
     this._tickZoneLabel(state);
     this._tickPOIScan(state);
+    this._tickWorldOneOffSpin(dt, state);
     gcExpiredRecentMemory(ensureWorldRecords(state.world), state.simTime);
   },
 

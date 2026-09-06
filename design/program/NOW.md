@@ -41,6 +41,7 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
+| PQ-140.02 Four specialists, one plan each | finish-campaign /goal | MUTATING | src/ai/specialistPlans.js, src/ai/specialistCounterplay.js, src/systems/tacticalAI.js, src/systems/fields.js, test/pq-140-02-specialists.test.mjs | recapture fighters toward camera, commit |
 
 _Previously:_ no active mutation windows. The 2026-09-04 orchestrate-next-build handoff is finished: everything
 that was in flight is committed and pushed, and no agent is holding a source file. See

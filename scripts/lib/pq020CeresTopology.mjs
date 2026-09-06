@@ -88,6 +88,16 @@ const EXPECTED_ADDITIVE_DRESSING_CENSUSES = Object.freeze({
     collidable: 0,
     colliders: 0,
   }),
+  // PQ-143.02 six texture one-offs: the abandoned tug, the strut shrine, the pirate ram and the
+  // eight shells of the decades-old pod field (hero + seven scatter parts) are authored dressing
+  // in Ceres Belt (worldOneOffs.js) — non-colliding fx props like the other additive groups,
+  // excluded from the core structural census.
+  worldOneOff: Object.freeze({
+    entities: 11,
+    byType: Object.freeze({ fx: 11 }),
+    collidable: 0,
+    colliders: 0,
+  }),
 });
 
 const EXPECTED_POCKETS = Object.freeze({
