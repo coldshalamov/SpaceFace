@@ -2731,7 +2731,10 @@ function productionManifest(route) {
                   ? 'Continue producing site -> F5 quick-save -> F9 quick-load'
                   : 'unknown',
     hull: null,
-    host: { platform: process.platform, arch: process.arch, cpus: os.cpus()?.length || null },
+    host: {
+      platform: process.platform, arch: process.arch, osRelease: os.release(),
+      cpus: os.cpus()?.length || null, cpuModel: os.cpus()?.[0]?.model || null,
+    },
     runtime: { node: process.version },
     resolution: null,
     settings: null,
@@ -3163,12 +3166,23 @@ try {
       const state = window.SF?.state;
       const player = state?.entities?.get?.(state?.playerId);
       const canvas = state?.render?.renderer?.domElement;
+      const gl = state?.render?.renderer?.getContext?.();
+      const gpuDebug = gl?.getExtension?.('WEBGL_debug_renderer_info');
+      const gpu = gl ? {
+        renderer: gl.getParameter(gpuDebug ? gpuDebug.UNMASKED_RENDERER_WEBGL : gl.RENDERER),
+        vendor: gl.getParameter(gpuDebug ? gpuDebug.UNMASKED_VENDOR_WEBGL : gl.VENDOR),
+        unmasked: !!gpuDebug,
+      } : null;
       return {
         ...base,
-        hull: player?.data?.defId || player?.data?.shipId || player?.data?.hullId || null,
+        hull: player?.data?.defId || player?.defId || player?.data?.shipId || player?.data?.hullId || null,
+        host: { ...base.host, gpu },
         resolution: canvas ? { width: canvas.width, height: canvas.height, devicePixelRatio: window.devicePixelRatio || null } : null,
         settings: state?.settings?.video || null,
-        runtime: { ...base.runtime, userAgent: navigator.userAgent, displayRateHz: null },
+        runtime: {
+          ...base.runtime, userAgent: navigator.userAgent, displayRateHz: null,
+          displayRateUnknownReason: 'Display refresh rate is not exposed by this browser API; rAF cadence is measured separately.',
+        },
       };
     }, productionManifest(PRODUCTION_ROUTE));
     if (!productionRecorder) {
