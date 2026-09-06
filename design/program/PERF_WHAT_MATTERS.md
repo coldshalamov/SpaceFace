@@ -10,6 +10,16 @@ are slog. Stop them.
 Picture contract is unchanged: default bloom, shadows, particles, population,
 and near meshes stay on. This is not a quality-cut campaign.
 
+## Current production baseline — 2026-09-06
+
+[The seven-route PQ-144.01 matrix](./roadmap/receipts/PQ-144-01-REPORT.md) is the current measured
+baseline on the Ultra 7 155U / Intel 0x7D45 laptop. Simulation frames lead the steady CPU ranking on
+all seven routes (p95 7.2–17.7 ms); several routes still have multi-second first-use or reload gaps.
+GPU timers produced no valid samples, and some external gaps remain unattributed. The historical
+shadow fix below remains landed, but its old conclusion that the entry hitch is gone must not be
+applied to this current build. Continue the existing simulation-cadence and fewer-program-keys rows;
+these results authorize no quality cuts or generic prewarm retries.
+
 ## The two problems (do not mix them)
 
 | What you feel | What it is | Size |

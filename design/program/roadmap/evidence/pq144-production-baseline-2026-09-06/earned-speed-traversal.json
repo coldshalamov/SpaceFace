@@ -1,0 +1,351 @@
+{
+  "schema": "spaceface.runtimeWitness.productionMatrix.v1",
+  "status": "measured",
+  "route": {
+    "id": "earned-speed-traversal",
+    "label": "earned-speed traversal",
+    "driver": "public-sector-traversal"
+  },
+  "manifest": {
+    "candidateHash": "22001eab943a48a8173b318b1bf9665d1f854a5d",
+    "sourceDigest": "c37f2a01727c12705aedb3f5c7e97b7ebce7ea13fd9ec99fa06053f59974af57",
+    "harnessDigest": "5358dfa4fd83dc95dff71f7f5e125137a281efc36e66c7d3612b1b5145f54dc5",
+    "evidenceClass": "diagnostic",
+    "profile": "production",
+    "backend": "electron-webgl",
+    "routeRevision": "PQ-144.01-r2",
+    "route": "earned-speed-traversal",
+    "seed": 47,
+    "tape": "New Game seed 47; public Ceres Belt jump, then held W + L-Shift until boost energy and velocity were observed",
+    "hull": "ship_kestrel",
+    "host": {
+      "platform": "win32",
+      "arch": "x64",
+      "osRelease": "10.0.26200",
+      "cpus": 14,
+      "cpuModel": "Intel(R) Core(TM) Ultra 7 155U",
+      "gpu": {
+        "renderer": "ANGLE (Intel, Intel(R) Graphics (0x00007D45) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+        "vendor": "Google Inc. (Intel)",
+        "unmasked": true
+      }
+    },
+    "runtime": {
+      "node": "v24.15.0",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) spaceface/0.1.0 Chrome/150.0.7871.129 Electron/43.2.0 Safari/537.36",
+      "displayRateHz": null,
+      "displayRateUnknownReason": "Display refresh rate is not exposed by this browser API; rAF cadence is measured separately."
+    },
+    "resolution": {
+      "width": 1832,
+      "height": 973,
+      "devicePixelRatio": 1.25
+    },
+    "settings": {
+      "renderScale": 1,
+      "bloom": true,
+      "bloomStrength": 0.52,
+      "bloomThreshold": 1,
+      "vsync": true,
+      "fov": 50,
+      "particleQuality": "medium",
+      "engineTrails": true,
+      "pixelRatioCap": 2,
+      "motionReduce": false,
+      "shadows": true,
+      "energyMaterials": true,
+      "renderGraph": false,
+      "dynamicResolution": false,
+      "chaseClose": false
+    },
+    "coldWarm": "warm"
+  },
+  "foregroundFrames": {
+    "samples": 559,
+    "p50": 16.700000000004366,
+    "p95": 50,
+    "p99": 66.80000000000291,
+    "max": 6366.800000000003,
+    "exceedances": {
+      "over16_7ms": 303,
+      "over33_3ms": 135,
+      "over50ms": 19
+    },
+    "longest": [
+      {
+        "elapsedMs": 12020.000000002983,
+        "intervalMs": 6366.800000000003,
+        "phase": {
+          "frameDtMs": 250,
+          "stepsThisFrame": 4,
+          "shedBacklogFrames": 13,
+          "shedStepsTotal": 74,
+          "callbackMs": 23.799999997019768,
+          "untrackedMs": 0.30000001192092896,
+          "callbackIntervalMs": 36.70000000298023,
+          "externalCallbackGapMs": 15,
+          "callbackDispatchLagMs": 13.999999997016857,
+          "backlogCause": "external-scheduling",
+          "simMs": 3.199999988079071,
+          "simFrameMs": 16.899999991059303,
+          "presentationMs": 6.700000002980232,
+          "renderMs": 4.5,
+          "vfxMs": 0.5,
+          "feelMs": 0,
+          "uiMs": 1.5999999940395355,
+          "admissionMs": 12.299999997019768
+        }
+      },
+      {
+        "elapsedMs": 553.2000000029802,
+        "intervalMs": 516.6999999999971,
+        "phase": {
+          "frameDtMs": 250,
+          "stepsThisFrame": 4,
+          "shedBacklogFrames": 9,
+          "shedStepsTotal": 58,
+          "callbackMs": 23.600000008940697,
+          "untrackedMs": 0.29999999701976776,
+          "callbackIntervalMs": 34.599999994039536,
+          "externalCallbackGapMs": 24.599999994039536,
+          "callbackDispatchLagMs": 21.599999994039536,
+          "backlogCause": "external-scheduling",
+          "simMs": 5.700000002980232,
+          "simFrameMs": 16.900000005960464,
+          "presentationMs": 6.4000000059604645,
+          "renderMs": 3.5,
+          "vfxMs": 0.7999999970197678,
+          "feelMs": 0.20000000298023224,
+          "uiMs": 1.9000000059604645,
+          "admissionMs": 0.4000000059604645
+        }
+      },
+      {
+        "elapsedMs": 3269.9000000029773,
+        "intervalMs": 100.09999999999854,
+        "phase": {
+          "frameDtMs": 100.09999999999854,
+          "stepsThisFrame": 4,
+          "shedBacklogFrames": 11,
+          "shedStepsTotal": 61,
+          "callbackMs": 30.900000005960464,
+          "untrackedMs": 0.10000000894069672,
+          "callbackIntervalMs": 48.70000000298023,
+          "externalCallbackGapMs": 20.099999994039536,
+          "callbackDispatchLagMs": 23.399999994042446,
+          "backlogCause": "simulation",
+          "simMs": 5.100000008940697,
+          "simFrameMs": 22.799999997019768,
+          "presentationMs": 8,
+          "renderMs": 4.699999988079071,
+          "vfxMs": 0.7000000029802322,
+          "feelMs": 0.4000000059604645,
+          "uiMs": 2.2000000029802322,
+          "admissionMs": 0
+        }
+      },
+      {
+        "elapsedMs": 4003.2000000029802,
+        "intervalMs": 100,
+        "phase": {
+          "frameDtMs": 100,
+          "stepsThisFrame": 4,
+          "shedBacklogFrames": 12,
+          "shedStepsTotal": 63,
+          "callbackMs": 31.099999994039536,
+          "untrackedMs": 0.20000000298023224,
+          "callbackIntervalMs": 43,
+          "externalCallbackGapMs": 6.9000000059604645,
+          "callbackDispatchLagMs": 6.799999997019768,
+          "backlogCause": "presentation",
+          "simMs": 6.700000002980232,
+          "simFrameMs": 24.100000008940697,
+          "presentationMs": 6.899999991059303,
+          "renderMs": 4.5,
+          "vfxMs": 0.5999999940395355,
+          "feelMs": 0,
+          "uiMs": 1.699999988079071,
+          "admissionMs": 0
+        }
+      },
+      {
+        "elapsedMs": 2236.4000000029773,
+        "intervalMs": 83.29999999999563,
+        "phase": {
+          "frameDtMs": 83.29999999999563,
+          "stepsThisFrame": 4,
+          "shedBacklogFrames": 10,
+          "shedStepsTotal": 59,
+          "callbackMs": 29.5,
+          "untrackedMs": 0.10000000894069672,
+          "callbackIntervalMs": 43.5,
+          "externalCallbackGapMs": 31.399999991059303,
+          "callbackDispatchLagMs": 5.899999994042446,
+          "backlogCause": "external-scheduling",
+          "simMs": 4.600000008940697,
+          "simFrameMs": 21.399999991059303,
+          "presentationMs": 8,
+          "renderMs": 3.7000000178813934,
+          "vfxMs": 0.8999999910593033,
+          "feelMs": 0.09999999403953552,
+          "uiMs": 3.2999999970197678,
+          "admissionMs": 0
+        }
+      },
+      {
+        "elapsedMs": 19836.80000000298,
+        "intervalMs": 83.29999999999563,
+        "phase": {
+          "frameDtMs": 83.29999999999563,
+          "stepsThisFrame": 4,
+          "shedBacklogFrames": 14,
+          "shedStepsTotal": 75,
+          "callbackMs": 33.20000000298023,
+          "untrackedMs": 0.20000000298023224,
+          "callbackIntervalMs": 20.299999997019768,
+          "externalCallbackGapMs": 2.9000000059604645,
+          "callbackDispatchLagMs": 8.699999997021223,
+          "backlogCause": "simulation",
+          "simMs": 4.899999991059303,
+          "simFrameMs": 21.200000002980232,
+          "presentationMs": 11.900000005960464,
+          "renderMs": 7.5,
+          "vfxMs": 0.9000000059604645,
+          "feelMs": 0.20000000298023224,
+          "uiMs": 3.199999988079071,
+          "admissionMs": 0
+        }
+      },
+      {
+        "elapsedMs": 4736.600000002982,
+        "intervalMs": 66.80000000000291,
+        "phase": {
+          "frameDtMs": 66.80000000000291,
+          "stepsThisFrame": 4,
+          "shedBacklogFrames": 12,
+          "shedStepsTotal": 63,
+          "callbackMs": 26,
+          "untrackedMs": 0.10000000894069672,
+          "callbackIntervalMs": 29.299999997019768,
+          "externalCallbackGapMs": 7.799999997019768,
+          "callbackDispatchLagMs": 11.19999999403808,
+          "backlogCause": "simulation",
+          "simMs": 4.0999999940395355,
+          "simFrameMs": 20.599999994039536,
+          "presentationMs": 5.299999997019768,
+          "renderMs": 3.499999985098839,
+          "vfxMs": 1.1000000089406967,
+          "feelMs": 0.10000000894069672,
+          "uiMs": 0.5999999940395355,
+          "admissionMs": 0
+        }
+      },
+      {
+        "elapsedMs": 16503.500000002983,
+        "intervalMs": 66.70000000000437,
+        "phase": {
+          "frameDtMs": 66.70000000000437,
+          "stepsThisFrame": 4,
+          "shedBacklogFrames": 13,
+          "shedStepsTotal": 74,
+          "callbackMs": 27.899999991059303,
+          "untrackedMs": 0.20000000298023224,
+          "callbackIntervalMs": 30.80000001192093,
+          "externalCallbackGapMs": 11,
+          "callbackDispatchLagMs": 11.400000002977322,
+          "backlogCause": "simulation",
+          "simMs": 4.399999991059303,
+          "simFrameMs": 19.599999994039536,
+          "presentationMs": 8.200000002980232,
+          "renderMs": 4.9000000059604645,
+          "vfxMs": 0.7999999970197678,
+          "feelMs": 0,
+          "uiMs": 2.3999999910593033,
+          "admissionMs": 0
+        }
+      }
+    ]
+  },
+  "cpuPhases": [
+    {
+      "name": "simFrameMs",
+      "samples": 560,
+      "p50": 6,
+      "p95": 15.400000005960464,
+      "p99": 22,
+      "max": 29
+    },
+    {
+      "name": "presentationMs",
+      "samples": 560,
+      "p50": 4.800000011920929,
+      "p95": 8.300000011920929,
+      "p99": 10.099999994039536,
+      "max": 24.19999998807907
+    },
+    {
+      "name": "simMs",
+      "samples": 560,
+      "p50": 4.9000000059604645,
+      "p95": 7.200000002980232,
+      "p99": 11.299999997019768,
+      "max": 12.300000011920929
+    },
+    {
+      "name": "renderMs",
+      "samples": 560,
+      "p50": 3.3999999910593033,
+      "p95": 5.799999997019768,
+      "p99": 7.199999988079071,
+      "max": 16.200000002980232
+    },
+    {
+      "name": "uiMs",
+      "samples": 560,
+      "p50": 0.4000000059604645,
+      "p95": 2.2999999970197678,
+      "p99": 2.8999999910593033,
+      "max": 3.699999988079071
+    },
+    {
+      "name": "vfxMs",
+      "samples": 560,
+      "p50": 0.5999999940395355,
+      "p95": 1.0999999940395355,
+      "p99": 1.3999999910593033,
+      "max": 2.7000000029802322
+    },
+    {
+      "name": "feelMs",
+      "samples": 560,
+      "p50": 0.20000000298023224,
+      "p95": 0.4000000059604645,
+      "p99": 0.5,
+      "max": 5.799999997019768
+    },
+    {
+      "name": "admissionMs",
+      "samples": 560,
+      "p50": 0,
+      "p95": 0,
+      "p99": 0.7000000029802322,
+      "max": 6337.5
+    }
+  ],
+  "gpu": {
+    "status": "invalid",
+    "reason": "GPU timer capture was invalid",
+    "samples": 0
+  },
+  "inputAge": {
+    "status": "unknown",
+    "reason": "no public input timestamp is published by the running route"
+  },
+  "shedSimulation": {
+    "status": "measured",
+    "counterWindow": "first-to-last observed frame",
+    "observedShedFrames": 6,
+    "observedShedSteps": 28,
+    "shedTimeMs": 466.6666666666667
+  }
+}

@@ -6543,7 +6543,7 @@
       "parentId": "PQ-144",
       "priority": 93,
       "title": "The production baseline route matrix on named hardware",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "perf-witness"
@@ -6558,9 +6558,13 @@
       "checks": [
         "npm run probe:runtime-witness"
       ],
-      "receiptRefs": [],
-      "brief": "Seven production-profile routes (cold opening, warm dense combat, earned-speed traversal, sustained Swarm, dock/refit/undock, Asteroid Works in and out, save/reload at a busy site), each with frame-interval distributions, correlated CPU phases and valid GPU timer samples, input age, shed sim time and a full run manifest, on the named baseline machine. DONE WHEN: one dominant observed cost or a bounded uncertainty is named per route; every number traces to a current run; PERF_WHAT_MATTERS points at the finding.",
-      "kind": "implementation"
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-144-01-REPORT.md"
+      ],
+      "brief": "DONE 2026-09-06: all seven real production routes measured on the named Intel baseline laptop with one source digest. Foreground intervals, correlated CPU phases, reset-aware shed time, invalid GPU timing and unknown input age are explicit. Current findings and all seven run manifests are in PQ-144-01-REPORT.md and linked by PERF_WHAT_MATTERS.md; this closes the baseline, not performance optimization.",
+      "kind": "implementation",
+      "integratedCommit": "22001eab",
+      "acceptanceRef": "design/program/roadmap/receipts/PQ-144-01-REPORT.md"
     },
     {
       "id": "PQ-163.00",
