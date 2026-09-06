@@ -2543,10 +2543,6 @@
       "tris": 2824,
       "bytes": 1617316,
       "textureSize": 512,
-      "tintable": {
-        "hull": "Material_Struct",
-        "accent": "Material_PaintTeal"
-      },
       "note": "PQ-045-PROP-PROMOTION-001 — Everyday Space production prop from kit donor `conveyor_truss`. LOD0/1/2 tris 2824/2724/1444. Role-classified PBR (baseColor/ORM/normal); vertex-tight box collision; sockets preserved. Runtime scatter/wiring is a separate PQ-045 leaf. G1/G2/G4 independent review open.",
       "hooks": [],
       "sockets": [
@@ -2856,8 +2852,7 @@
       "bytes": 1500344,
       "textureSize": 512,
       "tintable": {
-        "hull": "Material_Struct",
-        "accent": "Material_PaintTeal"
+        "hull": "Material_Struct"
       },
       "note": "PQ-045-PROP-PROMOTION-001 — Everyday Space production prop from kit donor `drill_platform`. LOD0/1/2 tris 2008/1896/456. Role-classified PBR (baseColor/ORM/normal); vertex-tight box collision; sockets preserved. Runtime scatter/wiring is a separate PQ-045 leaf. G1/G2/G4 independent review open.",
       "hooks": [],
@@ -2894,8 +2889,7 @@
       "bytes": 1077640,
       "textureSize": 512,
       "tintable": {
-        "hull": "Material_Struct",
-        "accent": "Material_PaintTeal"
+        "hull": "Material_Struct"
       },
       "note": "PQ-045-PROP-PROMOTION-001 — Everyday Space production prop from kit donor `extraction_mast`. LOD0/1/2 tris 728/248/148. Role-classified PBR (baseColor/ORM/normal); vertex-tight box collision; sockets preserved. Runtime scatter/wiring is a separate PQ-045 leaf. G1/G2/G4 independent review open.",
       "hooks": [],
@@ -3062,10 +3056,6 @@
       "tris": 646,
       "bytes": 955308,
       "textureSize": 512,
-      "tintable": {
-        "hull": "Material_Struct",
-        "accent": "Material_PaintTeal"
-      },
       "note": "PQ-045-PROP-PROMOTION-001 — Everyday Space production prop from kit donor `interdiction_buoy`. LOD0/1/2 tris 646/430/230. Role-classified PBR (baseColor/ORM/normal); vertex-tight box collision; sockets preserved. Runtime scatter/wiring is a separate PQ-045 leaf. G1/G2/G4 independent review open.",
       "hooks": [],
       "sockets": [
@@ -3203,8 +3193,7 @@
       "bytes": 1295856,
       "textureSize": 512,
       "tintable": {
-        "hull": "Material_Struct",
-        "accent": "Material_PaintTeal"
+        "hull": "Material_Struct"
       },
       "note": "PQ-045-PROP-PROMOTION-001 — Everyday Space production prop from kit donor `maintenance_gantry`. LOD0/1/2 tris 1716/1692/172. Role-classified PBR (baseColor/ORM/normal); vertex-tight box collision; sockets preserved. Runtime scatter/wiring is a separate PQ-045 leaf. G1/G2/G4 independent review open.",
       "hooks": [],
@@ -3364,8 +3353,7 @@
       "bytes": 1060524,
       "textureSize": 512,
       "tintable": {
-        "hull": "Material_Struct",
-        "accent": "Material_PaintTeal"
+        "hull": "Material_Struct"
       },
       "note": "PQ-045-PROP-PROMOTION-001 — Everyday Space production prop from kit donor `radiator_bank`. LOD0/1/2 tris 880/280/184. Role-classified PBR (baseColor/ORM/normal); vertex-tight box collision; sockets preserved. Runtime scatter/wiring is a separate PQ-045 leaf. G1/G2/G4 independent review open.",
       "hooks": [],
@@ -3401,8 +3389,7 @@
       "bytes": 1033956,
       "textureSize": 512,
       "tintable": {
-        "hull": "Material_Struct",
-        "accent": "Material_PaintTeal"
+        "hull": "Material_Struct"
       },
       "note": "PQ-045-PROP-PROMOTION-001 — Everyday Space production prop from kit donor `scrap_cage`. LOD0/1/2 tris 588/96/72. Role-classified PBR (baseColor/ORM/normal); vertex-tight box collision; sockets preserved. Runtime scatter/wiring is a separate PQ-045 leaf. G1/G2/G4 independent review open.",
       "hooks": [],
@@ -3438,8 +3425,7 @@
       "bytes": 1238272,
       "textureSize": 512,
       "tintable": {
-        "hull": "Material_Struct",
-        "accent": "Material_PaintTeal"
+        "hull": "Material_Struct"
       },
       "note": "PQ-045-PROP-PROMOTION-001 — Everyday Space production prop from kit donor `sensor_mast`. LOD0/1/2 tris 1248/768/468. Role-classified PBR (baseColor/ORM/normal); vertex-tight box collision; sockets preserved. Runtime scatter/wiring is a separate PQ-045 leaf. G1/G2/G4 independent review open.",
       "hooks": [],
@@ -3475,8 +3461,7 @@
       "bytes": 1824800,
       "textureSize": 512,
       "tintable": {
-        "hull": "Material_Struct",
-        "accent": "Material_PaintTeal"
+        "hull": "Material_Struct"
       },
       "note": "PQ-045-PROP-PROMOTION-001 — Everyday Space production prop from kit donor `slurry_tank`. LOD0/1/2 tris 2368/1180/460. Role-classified PBR (baseColor/ORM/normal); vertex-tight box collision; sockets preserved. Runtime scatter/wiring is a separate PQ-045 leaf. G1/G2/G4 independent review open.",
       "hooks": [],
@@ -3590,7 +3575,8 @@
           116.5104,
           34.5153
         ]
-      }
+      },
+      "triangleMetric": "lod0"
     },
     {
       "id": "place_station_fab",
@@ -3759,7 +3745,8 @@
           111.4004,
           48.0479
         ]
-      }
+      },
+      "triangleMetric": "lod0"
     },
     {
       "id": "place_station_refinery",
@@ -3815,7 +3802,8 @@
           55.5,
           86.8325
         ]
-      }
+      },
+      "triangleMetric": "lod0"
     },
     {
       "id": "place_station_research",
@@ -3871,7 +3859,8 @@
           107.1984,
           65.0638
         ]
-      }
+      },
+      "triangleMetric": "lod0"
     },
     {
       "id": "place_station_trade_hub",
@@ -3984,8 +3973,7 @@
       "bytes": 1054344,
       "textureSize": 512,
       "tintable": {
-        "hull": "Material_Struct",
-        "accent": "Material_PaintTeal"
+        "hull": "Material_Struct"
       },
       "note": "PQ-045-PROP-PROMOTION-001 — Everyday Space production prop from kit donor `transponder_gate`. LOD0/1/2 tris 1916/156/96. Role-classified PBR (baseColor/ORM/normal); vertex-tight box collision; sockets preserved. Runtime scatter/wiring is a separate PQ-045 leaf. G1/G2/G4 independent review open.",
       "hooks": [],
@@ -4034,8 +4022,7 @@
       "bytes": 635028,
       "textureSize": 512,
       "tintable": {
-        "hull": "Material_Struct",
-        "accent": "Material_PaintTeal"
+        "hull": "Material_Struct"
       },
       "note": "PQ-045-PROP-PROMOTION-001 — Everyday Space production prop from kit donor `worklight_tower`. LOD0/1/2 tris 768/208/108. Role-classified PBR (baseColor/ORM/normal); vertex-tight box collision; sockets preserved. Runtime scatter/wiring is a separate PQ-045 leaf. G1/G2/G4 independent review open.",
       "hooks": [],
