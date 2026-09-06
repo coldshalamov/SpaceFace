@@ -3948,7 +3948,7 @@
       "title": "The reading screens on the kit: missions log, codex, help, tech tree",
       "state": "ready",
       "canonical": [
-        "HUD-INSTRUMENTS-DIRECTION"
+        "READING-SCREENS-DIRECTION"
       ],
       "aliases": [],
       "dependsOn": [
