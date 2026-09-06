@@ -4,6 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { runInNewContext } from 'node:vm';
 
 import manifest, {
   createPq019aCapsulePresentationManifest,
@@ -111,4 +112,84 @@ test('the cell stays presentation-only', () => {
   ]) assert.doesNotMatch(source, forbidden);
   assert.match(source, /Presentation stills only/);
   assert.match(source, /'matched traffic performance'/);
+});
+
+// Execute only the capture-owned framing seam. No browser, renderer, broker claim, or wall wait.
+function facilityCaptureSeam() {
+  const source = read('scripts/capture-pq019a-acceptance.mjs');
+  const declarations = source.slice(source.indexOf('const FRAMINGS ='), source.indexOf('function systemBrowser()'));
+  const frameSubject = source.slice(source.indexOf('async function frameSubject'), source.indexOf('// Track the frozen subject'));
+  return runInNewContext(`${declarations}\n${frameSubject}\n({ FRAMINGS, FACILITIES, frameSubject })`, {
+    PQ019A_CAPSULE_FRAMINGS,
+  });
+}
+
+test('facility framing honors the camera floor and ceiling without changing retained facility scales', async () => {
+  const { FRAMINGS, frameSubject } = facilityCaptureSeam();
+  const cases = [
+    { role: 'heist_launcher', placeRadius: 20, radius: 99, zooms: [60, 110, 220] },
+    { role: 'lawful_catcher', placeRadius: 24, radius: 99, zooms: [72, 132, 264] },
+    { role: 'fence_receiver', placeRadius: 24, radius: 99, zooms: [72, 132, 264] },
+    // This shared approach seam also handles the six-WU capsule before its accepted frozen views.
+    { role: 'cargo_capsule', radius: 6, zooms: [45, 45, 66] },
+    { role: 'floor-boundary', radius: 15, zooms: [45, 82.5, 165] },
+    { role: 'ceiling-boundary', radius: 110, zooms: [330, 330, 330] },
+  ];
+  for (const fixture of cases) {
+    for (const [index, framing] of FRAMINGS.entries()) {
+      const player = { id: 'player', pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 } };
+      const target = {
+        id: fixture.role, pos: { x: 100, z: 200 }, radius: fixture.radius,
+        data: { placeRadius: fixture.placeRadius },
+      };
+      const requested = [];
+      const state = { playerId: player.id, camera: {}, entityList: [player, target],
+        entities: new Map([[player.id, player], [target.id, target]]) };
+      const page = {
+        // A fresh page context catches omitted Node-to-page arguments rather than closing over them.
+        evaluate(fn, args) {
+          return runInNewContext(`(${fn.toString()})(args)`, {
+            args,
+            window: { SF: { state, bus: { emit(event, { level }) {
+              assert.equal(event, 'camera:zoom');
+              requested.push(level);
+              state.camera.zoom = Math.min(330, Math.max(45, level));
+            } } } },
+            setTimeout: (resolve) => resolve(),
+            requestAnimationFrame: (resolve) => resolve(),
+          });
+        },
+      };
+      const receipt = await frameSubject(page, target.id, framing);
+      const label = `${fixture.role}/${framing.name}`;
+      assert.deepEqual(requested, [fixture.zooms[index]], `${label}: request must model the camera owner`);
+      assert.equal(receipt.cameraZoom, fixture.zooms[index], `${label}: no below-floor overwrite after the bus clamp`);
+      assert.equal(receipt.subjectRadius, fixture.placeRadius ?? fixture.radius);
+    }
+  }
+});
+
+test('facility screenshot metadata retains each declared zoom multiplier after JSON serialization', async () => {
+  const source = read('scripts/capture-pq019a-acceptance.mjs');
+  const { FRAMINGS, FACILITIES } = facilityCaptureSeam();
+  const start = source.indexOf('captures.push(await screenshot(page, `${facility.id}-${framing.name}.png`');
+  assert.ok(start >= 0, 'the actual facility screenshot call must be exercised');
+  const end = source.indexOf('}));', start);
+  assert.ok(end > start, 'the actual screenshot metadata must be complete');
+  const capture = source.slice(start, end + 4);
+  for (const facility of FACILITIES) {
+    for (const framing of FRAMINGS) {
+      const captures = [];
+      await runInNewContext(`(async () => { ${capture} })()`, {
+        facility, framing, captures, page: {}, receipt: {},
+        SECTOR_ID: 'sector_tethys_junction', CAPTURE_SEED: PQ019A_CAPSULE_PRESENTATION_FIXED_SEED,
+        screenshot: async (_page, file, entry) => ({ ...entry, file }),
+      });
+      const [serialized] = JSON.parse(JSON.stringify(captures));
+      assert.equal(serialized.subject, facility.id);
+      assert.equal(serialized.framing, framing.name);
+      assert.equal(serialized.framingRadii, framing.zoomRadii,
+        `${facility.id}/${framing.name}: undefined framing.radii disappears from manifest JSON`);
+    }
+  }
 });

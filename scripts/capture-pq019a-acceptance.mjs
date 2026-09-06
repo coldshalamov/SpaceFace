@@ -123,7 +123,7 @@ async function waitForAdmission(page, targetId, { requireAuthored }) {
 // Place the player so `targetId` sits in frame at the requested framing, then let the renderer
 // settle and report exactly what was on screen.
 async function frameSubject(page, targetId, framing) {
-  return page.evaluate(async ({ targetId, framing, zoomMax, ndcLimit }) => {
+  return page.evaluate(async ({ targetId, framing, zoomMax, cameraZoomMin, ndcLimit }) => {
     const state = window.SF.state;
     const player = state.entities.get(state.playerId);
     const target = state.entities.get(targetId);
@@ -152,7 +152,7 @@ async function frameSubject(page, targetId, framing) {
     };
 
     const radius = Number(target.data?.placeRadius || target.radius || 12);
-    const zoom = Math.min(zoomMax, Math.max(24, radius * framing.zoomRadii));
+    const zoom = Math.min(zoomMax, Math.max(cameraZoomMin, radius * framing.zoomRadii));
     state.camera.zoom = zoom;
     window.SF.bus.emit('camera:zoom', { level: zoom });
 
@@ -220,7 +220,7 @@ async function frameSubject(page, targetId, framing) {
       sectorId: state.world?.currentSectorId || null,
       simTime: state.simTime,
     };
-  }, { targetId, framing, zoomMax: CAMERA_ZOOM_MAX, ndcLimit: NDC_LIMIT });
+  }, { targetId, framing, zoomMax: CAMERA_ZOOM_MAX, cameraZoomMin: CAMERA_ZOOM_MIN, ndcLimit: NDC_LIMIT });
 }
 
 // Track the frozen subject with the ordinary game camera, leaving the player exactly where it
@@ -417,7 +417,7 @@ try {
           subject: facility.id,
           label: facility.label,
           framing: framing.name,
-          framingRadii: framing.radii,
+          framingRadii: framing.zoomRadii,
           route: `New Game -> ${SECTOR_ID} -> ${facility.id}`,
           seed: CAPTURE_SEED,
           receipt,
