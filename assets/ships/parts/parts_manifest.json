@@ -1861,9 +1861,6 @@
       "tris": 420,
       "bytes": 40944,
       "textureSize": 0,
-      "tintable": {
-        "accent": "furniture_signal_lens"
-      },
       "note": "LANE-FURNITURE-001 2026-08-06 — authored from design/fiction/LANE_FURNITURE.md via tools/blender/build_lane_furniture.py; two adversarial review rounds. Untextured vertex-colour-free source; materials are role-named for a later texture pass. sha256=e8ee1f32538bbd27"
     },
     {
@@ -3207,28 +3204,26 @@
           "thruster": "#4ddc92"
         }
       },
-      "hooks": [
-        "HOOK_Emissive"
-      ],
+      "hooks": [],
       "sockets": [
-        "SOCKET_Beacon_Core"
+        "SOCKET_Structure_Core"
       ],
       "mount": "origin",
       "bounds": {
         "min": [
-          -3.0295,
-          0.25,
-          -3.0378
+          -1.75,
+          -5.1,
+          -1.75
         ],
         "max": [
-          3.0295,
-          30.8,
-          3.0378
+          9.1,
+          9.4,
+          1.75
         ],
         "dimensionsM": [
-          6.059,
-          30.55,
-          6.0755
+          10.85,
+          14.5,
+          3.5
         ]
       }
     },
@@ -3944,9 +3939,7 @@
           "thruster": "#4ddc92"
         }
       },
-      "hooks": [
-        "HOOK_Emissive"
-      ],
+      "hooks": [],
       "sockets": [
         "SOCKET_Structure_Core"
       ],
@@ -4685,7 +4678,7 @@
       "tris": 2464,
       "triangleMetric": "lod0",
       "budgetClass": "landmark",
-      "bytes": 2564832,
+      "bytes": 2564824,
       "textureSize": 1024,
       "tintable": {},
       "note": "PQ-131.07 authored gas tap. The selected runtime source contains LOD0/work and LOD1/site only; LOD2 remains source/evidence-only. valve_wheel, gauge_needle, and lamp are runtime-owned hooks. Work/site route evidence and independent KEEP reviews are bound in assets/works/gas_tap/evidence/cycle_003/.",
@@ -4793,6 +4786,8 @@
       "priority": "P1",
       "file": "works/place_works_rover.glb",
       "tris": 17438,
+      "triangleMetric": "lod0",
+      "boundsMetric": "lod0",
       "budgetClass": "landmark",
       "bytes": 17216204,
       "textureSize": 2048,
@@ -4817,19 +4812,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.935,
+          -0.9289,
           0,
-          -0.88
+          -0.905
         ],
         "max": [
-          0.935,
-          0.99,
-          0.88
+          1.02687,
+          1.03,
+          0.905
         ],
         "dimensionsM": [
-          1.87,
-          0.99,
-          1.76
+          1.95577,
+          1.03,
+          1.81
         ]
       }
     },
@@ -6382,6 +6377,8 @@
       "priority": "P1",
       "file": "works/place_works_inclusion_kit.glb",
       "tris": 24028,
+      "triangleMetric": "lod0",
+      "boundsMetric": "variant",
       "budgetClass": "landmark",
       "bytes": 6686356,
       "textureSize": 2048,

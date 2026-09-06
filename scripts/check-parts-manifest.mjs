@@ -16,6 +16,8 @@ import {
 import { validateSourceTextureRoleCoverage } from '../tools/art/lib/sourceTextureRoleValidation.mjs';
 import {
   collectLodTriangleCounts,
+  nodeLod,
+  resolveBoundsMetric,
   resolveTriangleMetric,
 } from './lib/partsManifestMetrics.mjs';
 import {
@@ -243,9 +245,9 @@ for (const part of manifest.parts || []) {
   const triangleMetric = resolveTriangleMetric(part, metrics);
   check(`${label}: triangle metric is supported`, triangleMetric.supported,
     `metric=${triangleMetric.metric}`);
-  const triangleDetail = triangleMetric.metric === 'lod0'
-    ? `metric=lod0 glb=${triangleMetric.measured} total=${triangleMetric.total} manifest=${part.tris}`
-    : `glb=${triangleMetric.measured} manifest=${part.tris}`;
+  const triangleDetail = triangleMetric.metric === 'all'
+    ? `glb=${triangleMetric.measured} manifest=${part.tris}`
+    : `metric=${triangleMetric.metric} glb=${triangleMetric.measured} total=${triangleMetric.total} manifest=${part.tris}`;
   check(`${label}: triangles match manifest`, triangleMetric.supported && triangleMetric.measured === part.tris,
     triangleDetail);
   check(`${label}: extras part id`, extras.partId === part.id, `extras=${extras.partId}`);
@@ -260,7 +262,8 @@ for (const part of manifest.parts || []) {
   // loadability requirements. Family-specific receipt checks still own any required mirror.
   diagnose(`${label}: legacy extras priority matches manifest`, extras.priority === part.priority, `extras=${extras.priority}`);
   diagnose(`${label}: legacy extras triangle count matches manifest`, extras.triangleCount === part.tris, `extras=${extras.triangleCount}`);
-  check(`${label}: extras texture size`, extras.textureSize === part.textureSize, `extras=${extras.textureSize}`);
+  diagnose(`${label}: legacy extras texture size matches manifest`, extras.textureSize === part.textureSize,
+    `extras=${extras.textureSize}`);
   check(`${label}: extras coordinate contract`,
     extras.forwardAxis === '+X' && extras.upAxis === '+Y' && extras.starboardAxis === '+Z' && extras.unit === 'metre');
   // Procedural parts embed PNG textures; authored hulls embed KTX2/BasisU (KHR_texture_basisu) per
@@ -373,10 +376,17 @@ for (const part of manifest.parts || []) {
   const undeclaredSockets = [...metrics.nodeNames].filter((name) => name.startsWith('SOCKET_') && !(part.sockets || []).includes(name));
   check(`${label}: all GLB sockets declared`, undeclaredSockets.length === 0, `undeclared=${undeclaredSockets.join(',')}`);
 
-  const dimensions = dimensionsFromBounds(metrics.bounds);
+  const boundsMetric = resolveBoundsMetric(part);
+  check(`${label}: bounds metric is supported`, boundsMetric.supported, `metric=${boundsMetric.metric}`);
+  const measuredBounds = boundsMetric.metric === 'lod0'
+    ? collectWorldBounds(gltf, parsed.binary, { lod: 'lod0' })
+    : boundsMetric.metric === 'variant'
+      ? collectCenteredVariantBounds(gltf, parsed.binary)
+      : metrics.bounds;
+  const dimensions = dimensionsFromBounds(measuredBounds);
   const manifestDimensions = part.bounds?.dimensionsM;
   check(`${label}: computed dimensions match manifest`, sameVec(dimensions, manifestDimensions),
-    `computed=${dimensions.map((v) => v.toFixed(3)).join(',')} manifest=${(manifestDimensions || []).join(',')}`);
+    `metric=${boundsMetric.metric} computed=${dimensions.map((v) => v.toFixed(3)).join(',')} manifest=${(manifestDimensions || []).join(',')}`);
   diagnose(`${label}: legacy extras dimensions match manifest`, sameVec(extras.boundsDimensionsM, manifestDimensions),
     `extras=${(extras.boundsDimensionsM || []).join(',')} manifest=${(manifestDimensions || []).join(',')}`);
 }
@@ -461,20 +471,76 @@ function collectMetrics(gltf, binary) {
   };
 }
 
-function collectWorldBounds(gltf, binary) {
+function collectWorldBounds(gltf, binary, {
+  lod = null,
+  rootNodes = null,
+  ignoreRootTransform = false,
+} = {}) {
   const min = new THREE.Vector3(Infinity, Infinity, Infinity);
   const max = new THREE.Vector3(-Infinity, -Infinity, -Infinity);
   const identity = new THREE.Matrix4();
-  const rootNodes = gltf.scenes?.[gltf.scene || 0]?.nodes || gltf.scenes?.[0]?.nodes || [];
-  for (const nodeIndex of rootNodes) visitNode(gltf, binary, nodeIndex, identity, min, max);
+  const roots = rootNodes || gltf.scenes?.[gltf.scene || 0]?.nodes || gltf.scenes?.[0]?.nodes || [];
+  for (const nodeIndex of roots) {
+    visitNode(gltf, binary, nodeIndex, identity, min, max, { lod, inheritedLod: null, ignoreNodeTransform: ignoreRootTransform });
+  }
   return { min: min.toArray(), max: max.toArray() };
 }
 
-function visitNode(gltf, binary, nodeIndex, parentMatrix, outMin, outMax) {
+function collectCenteredVariantBounds(gltf, binary) {
+  const nodes = gltf.nodes || [];
+  const kitRoots = nodes.flatMap((node, index) => (
+    Array.isArray(node?.extras?.spacefaceAsset?.variants) ? [index] : []
+  ));
+  if (kitRoots.length !== 1) return { min: [NaN, NaN, NaN], max: [NaN, NaN, NaN] };
+  const kitRoot = nodes[kitRoots[0]];
+  const variantIds = kitRoot.extras.spacefaceAsset.variants;
+  const directChildren = new Map((kitRoot.children || []).map((index) => [nodes[index]?.name, index]));
+  const minimum = [Infinity, Infinity, Infinity];
+  const maximum = [-Infinity, -Infinity, -Infinity];
+  // `extractWorksInclusionKit` resolves each declared variant's exact LOD0 primitive and ignores
+  // every source-node transform (including the sheet position). Bounds stay in the manifest's
+  // canonical source axes; its later board-presentation seat is not an asset-coordinate contract.
+  for (const id of variantIds) {
+    const pivotIndex = directChildren.get(id);
+    const pivot = nodes[pivotIndex];
+    if (!pivot || !isInstancePivot(pivot)) return { min: [NaN, NaN, NaN], max: [NaN, NaN, NaN] };
+    const lod0 = (pivot.children || []).filter((index) => (
+      nodes[index]?.name === `LOD0_${id}` && nodeLod(nodes[index]) === 'lod0'
+    ));
+    if (lod0.length !== 1 || nodes[lod0[0]]?.mesh == null) {
+      return { min: [NaN, NaN, NaN], max: [NaN, NaN, NaN] };
+    }
+    const bounds = collectWorldBounds(gltf, binary, {
+      rootNodes: lod0,
+      ignoreRootTransform: true,
+    });
+    const dimensions = dimensionsFromBounds(bounds);
+    if (!vector3(dimensions)) return { min: [NaN, NaN, NaN], max: [NaN, NaN, NaN] };
+    // Preserve the existing shared source-space clearance: it must contain every possible
+    // variant about its authored pivot, not only the widest span after independent recentering.
+    for (let axis = 0; axis < maximum.length; axis++) {
+      minimum[axis] = Math.min(minimum[axis], bounds.min[axis]);
+      maximum[axis] = Math.max(maximum[axis], bounds.max[axis]);
+    }
+  }
+  return { min: minimum, max: maximum };
+}
+
+function isInstancePivot(node) {
+  const extras = node?.extras || {};
+  return extras?.spaceface?.instancePivot === true || extras?.['spaceface.instancePivot'] === true;
+}
+
+function visitNode(gltf, binary, nodeIndex, parentMatrix, outMin, outMax, {
+  lod = null,
+  inheritedLod = null,
+  ignoreNodeTransform = false,
+} = {}) {
   const node = gltf.nodes?.[nodeIndex];
   if (!node) return;
-  const world = parentMatrix.clone().multiply(nodeMatrix(node));
-  if (node.mesh != null) {
+  const world = ignoreNodeTransform ? parentMatrix.clone() : parentMatrix.clone().multiply(nodeMatrix(node));
+  const effectiveLod = nodeLod(node) || inheritedLod;
+  if (node.mesh != null && (!lod || effectiveLod === lod)) {
     const mesh = gltf.meshes?.[node.mesh];
     for (const primitive of mesh?.primitives || []) {
       const accessor = gltf.accessors?.[primitive.attributes?.POSITION];
@@ -485,7 +551,9 @@ function visitNode(gltf, binary, nodeIndex, parentMatrix, outMin, outMax) {
       }
     }
   }
-  for (const child of node.children || []) visitNode(gltf, binary, child, world, outMin, outMax);
+  for (const child of node.children || []) {
+    visitNode(gltf, binary, child, world, outMin, outMax, { lod, inheritedLod: effectiveLod });
+  }
 }
 
 function nodeMatrix(node) {

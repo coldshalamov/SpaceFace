@@ -6,6 +6,24 @@
 
 const DEFAULT_TRIANGLE_METRIC = 'all';
 const SUPPORTED_TRIANGLE_METRICS = new Set(['all', 'lod0']);
+const DEFAULT_BOUNDS_METRIC = 'all';
+const SUPPORTED_BOUNDS_METRICS = new Set(['all', 'lod0', 'variant']);
+
+function normalizeLod(value) {
+  const match = String(value || '').toLowerCase().match(/^lod([012])$/u);
+  return match ? `lod${match[1]}` : null;
+}
+
+/**
+ * Matches assetLoader's LOD precedence: a node-name convention supplies a default, while explicit
+ * `spaceface.lod` / `spacefaceLod` metadata is the author-controlled runtime value.
+ */
+export function nodeLod(node) {
+  const named = /^LOD([012])(?:_|$)/i.exec(node?.name || '');
+  const extras = node?.extras || {};
+  const explicit = extras?.spaceface?.lod || extras?.spacefaceLod;
+  return normalizeLod(explicit) || (named ? `lod${named[1]}` : null);
+}
 
 function primitiveTriangles(gltf, primitive) {
   if ((primitive?.mode ?? 4) !== 4) return 0;
@@ -16,7 +34,7 @@ function primitiveTriangles(gltf, primitive) {
 }
 
 /**
- * Count triangles by the LOD encoded in node names (for example LOD0_Frame).
+ * Count triangles by runtime LOD metadata (for example LOD0_Frame or `spacefaceLod: lod0`).
  * A mesh referenced more than once by the same LOD is counted once, matching
  * the manifest's mesh-level aggregate accounting while avoiding duplicate
  * node instances.
@@ -26,9 +44,8 @@ export function collectLodTriangleCounts(gltf) {
   const seen = new Set();
 
   for (const node of gltf?.nodes || []) {
-    const match = /^LOD([012])(?:_|$)/i.exec(node?.name || '');
-    if (!match || node?.mesh == null) continue;
-    const lod = `lod${match[1]}`;
+    const lod = nodeLod(node);
+    if (!lod || node?.mesh == null) continue;
     const key = `${lod}:${node.mesh}`;
     if (seen.has(key)) continue;
     seen.add(key);
@@ -40,6 +57,11 @@ export function collectLodTriangleCounts(gltf) {
   }
 
   return lodTriangles;
+}
+
+export function resolveBoundsMetric(part) {
+  const metric = part?.boundsMetric ?? DEFAULT_BOUNDS_METRIC;
+  return { metric, supported: SUPPORTED_BOUNDS_METRICS.has(metric) };
 }
 
 /**

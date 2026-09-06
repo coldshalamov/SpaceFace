@@ -1,10 +1,23 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 
 import {
   collectLodTriangleCounts,
+  resolveBoundsMetric,
   resolveTriangleMetric,
 } from '../scripts/lib/partsManifestMetrics.mjs';
+
+const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
+
+function glbJson(relative) {
+  const payload = readFileSync(resolve(ROOT, relative));
+  assert.equal(payload.toString('ascii', 0, 4), 'glTF');
+  const length = payload.readUInt32LE(12);
+  return JSON.parse(payload.subarray(20, 20 + length).toString('utf8'));
+}
 
 test('explicit lod0 rows measure tagged LOD0 while retaining aggregate total', () => {
   const gltf = {
@@ -49,4 +62,22 @@ test('unknown triangle metric fails closed instead of silently changing conventi
   );
   assert.equal(resolved.supported, false);
   assert.equal(resolved.measured, 4);
+});
+
+test('Works rover honors explicit LOD tags and the inclusion kit declares per-variant bounds', () => {
+  const rover = glbJson('assets/ships/parts/works/place_works_rover.glb');
+  const kit = glbJson('assets/ships/parts/works/place_works_inclusion_kit.glb');
+
+  // Rover's LOD0 state surfaces intentionally keep canonical unprefixed names for the runtime
+  // hook map, so node metadata — not a name-only scanner — determines their active register.
+  assert.deepEqual(collectLodTriangleCounts(rover), { lod0: 17438, lod1: 3002, lod2: 0 });
+  assert.equal(resolveTriangleMetric({ triangleMetric: 'lod0' }, {
+    triangles: 20440,
+    lodTriangles: collectLodTriangleCounts(rover),
+  }).measured, 17438);
+
+  assert.deepEqual(collectLodTriangleCounts(kit), { lod0: 24028, lod1: 6444, lod2: 0 });
+  assert.deepEqual(resolveBoundsMetric({ boundsMetric: 'variant' }), {
+    metric: 'variant', supported: true,
+  });
 });
