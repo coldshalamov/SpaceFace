@@ -409,6 +409,46 @@ test('the pilot\'s own hands are not jitter, and a rotation the frames cannot re
   assert.equal(aliased.unreadableAboveRadS, READABLE_MAX_YAW_RATE);
 });
 
+test('a reversal on the glass with no reversal in the world is the chase camera, not the hull', async () => {
+  const { measureVisibleJitter } = await import('../scripts/lib/bench/frameStripCapture.mjs');
+  const contact = [{ type: 'physics:impact', simTime: 10.0, playerInvolved: true, magnitude: 30 }];
+  // The hull flies STRAIGHT through the world at a steady 8 WU per frame. Its place on the glass
+  // walks forward and then back, which is what a chase camera settling behind a hull looks like.
+  // "A controllable mass, not a cursor." — the mass did not move back, so the ship did not wobble.
+  const lens = [];
+  for (let i = 0; i < 9; i++) {
+    lens.push({
+      simTime: 10.0 + i / 16,
+      playerRot: 0.02 * i,
+      playerScreenXY: [0.5 + (i < 4 ? 0.02 * i : 0.06 - 0.02 * (i - 3)), 0.5],
+      playerWorldXZ: [100 + 8 * i, 40],
+      cameraWorldXZ: [100 + 8 * i - 140 + (i < 4 ? 2 * i : 6 - 2 * (i - 3)), 40],
+    });
+  }
+  const camera = measureVisibleJitter(lens, contact, []);
+  assert.equal(camera.worldMotionMeasured, true, 'the frames carry the hull world position, so the two can be told apart');
+  assert.equal(camera.screenReversals, 0, 'B13 is a claim about the ship, not about the lens');
+  assert.equal(camera.cameraReversals, 1, 'and the lens reversal is published, not discarded');
+  assert.equal(camera.events, 0);
+  assert.ok(camera.note.includes('chase camera'), `the note must say what it separated: ${camera.note}`);
+
+  // The same walk on the glass, but the hull really did jog backwards in the world.
+  const jog = lens.map((f, i) => ({ ...f, playerWorldXZ: [100 + (i < 4 ? 8 * i : 24 - 8 * (i - 3)), 40] }));
+  const hull = measureVisibleJitter(jog, contact, []);
+  assert.equal(hull.cameraReversals, 0, 'the hull reversed in the world, so this one is the ship');
+  assert.equal(hull.screenReversals, 1);
+  assert.equal(hull.events, 1);
+
+  // A manifest captured before this channel existed cannot separate them, and says so instead of
+  // quietly crediting the camera. Fail-closed: the reversal is still charged as jitter.
+  const old = lens.map((f) => ({ simTime: f.simTime, playerRot: f.playerRot, playerScreenXY: f.playerScreenXY }));
+  const blind = measureVisibleJitter(old, contact, []);
+  assert.equal(blind.worldMotionMeasured, false);
+  assert.equal(blind.cameraReversals, 0);
+  assert.equal(blind.screenReversals, 1, 'without the world channel a screen reversal is still charged as jitter');
+  assert.ok(blind.note.includes('CANNOT'), `the note must say the separation was impossible: ${blind.note}`);
+});
+
 function wrapForTest(a) {
   let x = a;
   while (x > Math.PI) x -= 2 * Math.PI;

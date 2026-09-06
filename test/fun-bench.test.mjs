@@ -6,6 +6,7 @@ import { computeRunHash } from '../scripts/lib/bench/runHash.mjs';
 import { simulateCrucibleSwarm, buildKnockEvents, verifyCrucibleDeterminism } from '../scripts/lib/bench/crucibleBench.mjs';
 import { runFlightBench } from '../scripts/lib/bench/flightBench.mjs';
 import { runVerbBench, listVerbScenarios, VERB_BENCH_SCENARIOS } from '../scripts/lib/bench/verbBench.mjs';
+import { PLAYER_CONTACT_EVENT_BRIDGE_TICKS } from '../src/core/sg02DynamicBodyOwner.js';
 
 test('computeRunHash generates bit-identical SHA-256 hashes for identical inputs', () => {
   const payloadA = {
@@ -214,7 +215,9 @@ test('Rapier receipt ticks of one contact coalesce; a later intent snapshot cann
 
   const farApart = buildKnockEvents([
     knockReceipt(10, { deltaV: 2, headingChangeRad: 0, causalActorId: actorId, actorLiveCohortHostile: false }),
-    knockReceipt(80, { deltaV: 2, headingChangeRad: 0, causalActorId: actorId, actorLiveCohortHostile: false }),
+    knockReceipt(10 + PLAYER_CONTACT_EVENT_BRIDGE_TICKS + 1, {
+      deltaV: 2, headingChangeRad: 0, causalActorId: actorId, actorLiveCohortHostile: false,
+    }),
   ], { playerId, cruiseSpeed });
   assert.equal(farApart.length, 2, 'a long quiet gap is a second contact, not one event');
 

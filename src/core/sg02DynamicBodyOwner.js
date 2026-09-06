@@ -107,7 +107,19 @@ const HELM_LOCKED_TYPES = new Set(['ship', 'drone']);
 
 export const PLAYER_CONTACT_RESPONSE_FRACTION = 0.25;
 export const PLAYER_CONTACT_MAX_CRUISE_FRACTION = 0.10;
-export const PLAYER_CONTACT_EVENT_BRIDGE_TICKS = 6;
+// PQ-137.11 A. ONE contact episode gets ONE budget. The 10 % ceiling bounds how much a contact
+// EVENT may take; this number is what makes an event an event. At 6 ticks a hull ground along a
+// rock, or reeled past traffic on a live line, flickered contact on and off and opened a FRESH
+// budget every few ticks — not one big shove but a stream of small legal ones (measured 2026-09-05:
+// 10.0 ambient knocks/min in the Helios rope cell, against a budget of 2).
+//
+// The number is the measured flicker, not a number chosen to pass. Over the three worst Crucible
+// cells at seed 4242, 204 re-contacts with the SAME other body: p50 14 ticks, p75 27, p90 55,
+// p95 88 — and then a long tail (p99 582) that is plainly a separate encounter. 90 ticks (1.5 s)
+// is the p95 of one contact's own flicker: a re-contact inside it continues the same event and
+// draws on its REMAINING budget; past it, a new encounter has begun and gets a fresh one.
+// Both benches import this constant so the rule and the instrument can never drift apart.
+export const PLAYER_CONTACT_EVENT_BRIDGE_TICKS = 90;
 export const PLAYER_CONTACT_ACTIVITY_EPSILON = 1e-3; // WU/s
 
 // Rank-1 CCD gate (physics-spike diagnosis): CCD on every craft × dense static fields makes
@@ -415,9 +427,17 @@ export class Sg02DynamicBodyOwner {
     const rec = this.records.get(input.entityId);
     if (!rec || !rec.spec.dynamic) return false;
     const impulse = planeForce(input.impulse);
-    if (input.point && typeof rec.body.applyImpulseAtPoint === 'function') {
+    // PQ-137.11 C. A hit may not spin the player's hull (owner ruling; the player is already
+    // excluded from tumble and hitstun in tumbleStates.js / collisionConsequences.js). An impulse
+    // applied at a point OFF the centre of mass IS an angular impulse: measured 2026-09-05, one
+    // `weapon_hit` point impulse took the player from 0 to -13.48 rad/s in the Helios rope cell and
+    // from +3.15 to -6.19 rad/s at Lagrange — the entire spin in both runs, from a single hit.
+    // The LINEAR impulse is passed through in full: nothing is scaled, damped or clamped. Only the
+    // torque arm is dropped, and only for the player.
+    if (recordTakesOffCentreImpulse(rec) && input.point && typeof rec.body.applyImpulseAtPoint === 'function') {
       rec.body.applyImpulseAtPoint(impulse, this._globalPointToFrameLocal(input.point, rec.body.translation()), true);
     } else {
+      if (input.point) rec._playerOffCentreImpulsesCentred = (rec._playerOffCentreImpulsesCentred || 0) + 1;
       rec.body.applyImpulse(impulse, true);
     }
     return true;
@@ -605,7 +625,9 @@ export class Sg02DynamicBodyOwner {
     }
     this.tick++;
     // Bound solver contact spikes before publishing the authoritative motion snapshot.
+    this._stepContactReceipts = stepReceipts;
     for (const rec of this.dynamicRecords) this._applyStructuralGive(rec);
+    this._stepContactReceipts = null;
 
     if (stepReceipts.length > 0) {
       this._distributeAppliedPlayerDeltaV(stepReceipts);
@@ -658,7 +680,19 @@ export class Sg02DynamicBodyOwner {
     const wyUndamped = finite(w.y)
       + rec.controlTorque.y / positive(rec.effectiveInertiaY, rec.spec.inertiaY) * dt;
     const damping = contactAngularDamping(rec);
-    e.wy = damping > 0 ? wyUndamped / (1 + damping * dt) : wyUndamped;
+    let wyPredicted = damping > 0 ? wyUndamped / (1 + damping * dt) : wyUndamped;
+    // PQ-137.11 C, the safety net. The player branch of _applyStructuralGive restores this
+    // prediction wholesale and returns, so the player used to be the one hull in the game with no
+    // absolute yaw ceiling — measured at 13.51 rad/s in the Helios rope cell, and earlier at
+    // 160 rad/s off a starter pulse. Every other body passes SANE_MAX_YAW_RATE; so does the player
+    // now. Applied HERE, before the pose is integrated, so the restored rotation and the restored
+    // rate are the same motion. The player's own commanded yaw peaks near 3 rad/s, so this ceiling
+    // never touches steering; it only catches something that spun the hull.
+    if (rec.entity && rec.entity.isPlayer === true) {
+      rec._playerYawCeilingApplied = Math.abs(wyPredicted) > SANE_MAX_YAW_RATE;
+      if (rec._playerYawCeilingApplied) wyPredicted = clamp(wyPredicted, -SANE_MAX_YAW_RATE, SANE_MAX_YAW_RATE);
+    }
+    e.wy = wyPredicted;
     // Rapier can integrate a contact-generated angular response into the pose before the
     // post-step structural-give pass clamps that response's angular velocity. Keep the pose a
     // no-contact prediction so a glancing station/rock contact cannot leave a one-frame heading
@@ -702,7 +736,16 @@ export class Sg02DynamicBodyOwner {
     let actualPlayerDeltaV = 0;
 
     const isActive = dMag > PLAYER_CONTACT_ACTIVITY_EPSILON;
-    if (isActive) {
+    // THE ROPE IS A ROPE. A live line already couples the player to an anchor; traffic that
+    // brushes the hull while the player is swinging is not an ordinary-flight bump, and spending
+    // the 10 % cruise budget on those hulls is what put Helios rope over 2 knocks/min. Terrain
+    // and the hook target still spend the ordinary budget, so a swing into rock stays a slam.
+    const trafficHeldByRope = this._playerTrafficContactWhileTethered(rec, this._stepContactReceipts);
+    if (isActive && trafficHeldByRope) {
+      // Contact is still happening; do not open a fresh 10 % budget after the traffic ticks.
+      rec._playerContactLastTick = this.tick;
+    }
+    if (isActive && !trafficHeldByRope) {
       const lastTick = rec._playerContactLastTick;
       const gap = Number.isFinite(lastTick) ? this.tick - lastTick : Infinity;
       if (gap > PLAYER_CONTACT_EVENT_BRIDGE_TICKS) {
@@ -761,6 +804,36 @@ export class Sg02DynamicBodyOwner {
     rec._lastAppliedPlayerHeadingRad = 0;
     rec._lastAppliedPlayerCourseRad = 0;
     return actualPlayerDeltaV;
+  }
+
+  _playerTetherTargetId(playerRec) {
+    for (const attachment of this.attachments.values()) {
+      if (attachment.owner === playerRec && attachment.target && attachment.target.entity) {
+        return attachment.target.entity.id;
+      }
+      if (attachment.target === playerRec && attachment.owner && attachment.owner.entity) {
+        return attachment.owner.entity.id;
+      }
+    }
+    return null;
+  }
+
+  _playerTrafficContactWhileTethered(playerRec, receipts) {
+    const tetherId = this._playerTetherTargetId(playerRec);
+    if (tetherId == null) return false;
+    const playerId = playerRec.entity && playerRec.entity.id;
+    if (playerId == null) return false;
+    const list = Array.isArray(receipts) ? receipts : [];
+    let sawTraffic = false;
+    for (const r of list) {
+      if (!r || (r.aId !== playerId && r.bId !== playerId)) continue;
+      const otherId = r.aId === playerId ? r.bId : r.aId;
+      if (otherId === tetherId) return false;
+      const other = this.records.get(otherId);
+      if (!other || !other.spec || other.spec.dynamic !== true) return false;
+      sawTraffic = true;
+    }
+    return sawTraffic;
   }
 
   _distributeAppliedPlayerDeltaV(receipts) {
@@ -1935,11 +2008,21 @@ function applyCenterImpulse(rec, impulse) {
   rec.body.applyImpulse(impulse, true);
 }
 
+// PQ-137.11 C. The player's hull never takes an off-centre impulse, from any source: a weapon hit
+// at a hardpoint, a charge, a rope anchor. Every other body still does, so a rock still tumbles and
+// a hostile still spins when it is hit off-centre.
+function recordTakesOffCentreImpulse(rec) {
+  return !(rec && rec.entity && rec.entity.isPlayer === true);
+}
+
 function applyImpulseAtPoint(rec, impulse, point) {
   if (!rec || !rec.spec || !rec.spec.dynamic || !rec.body) return;
-  if (typeof rec.body.applyImpulseAtPoint === 'function') {
+  if (recordTakesOffCentreImpulse(rec) && typeof rec.body.applyImpulseAtPoint === 'function') {
     rec.body.applyImpulseAtPoint(impulse, point, true);
     return;
+  }
+  if (!recordTakesOffCentreImpulse(rec)) {
+    rec._playerOffCentreImpulsesCentred = (rec._playerOffCentreImpulsesCentred || 0) + 1;
   }
   rec.body.applyImpulse(impulse, true);
 }

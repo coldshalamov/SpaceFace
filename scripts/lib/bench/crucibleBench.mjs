@@ -18,6 +18,7 @@ import { createBus } from '../../../src/core/eventBus.js';
 import { SIM_DT } from '../../../src/core/sim.js';
 import { mulberry32, wrapAngle } from '../../../src/core/rng.js';
 import { readPhysicsTelemetry } from '../../../src/core/physicsAuthority.js';
+import { PLAYER_CONTACT_EVENT_BRIDGE_TICKS } from '../../../src/core/sg02DynamicBodyOwner.js';
 import { resolveGovernedCombatSpeed } from '../../../src/core/flight/propulsionCatalog.js';
 import { makeShipEntitySpec } from '../../../src/systems/ships.js';
 import { applyCombatLabSetup } from '../../../src/ui/sandbox/sandboxSetup.js';
@@ -71,7 +72,10 @@ const KNOCK_FLOOR_FRACTION = 0.005;
 // many ticks are ONE event and the event's magnitude is the SUM of their appliedPlayerDeltaV for
 // ordinary/ambient B13, raw playerDeltaV for hostile ram legibility. B13 counts EVENTS, not solver
 // ticks. Counting ticks reported 907 "knocks/min" on one Crucible cell.
-const EVENT_BRIDGE_TICKS = 6;
+// IMPORTED, never typed. The rule owns what an event is (`PLAYER_CONTACT_EVENT_BRIDGE_TICKS` in
+// src/core/sg02DynamicBodyOwner.js) and the instrument must count the same events the rule budgets.
+// A local copy is how the two drift apart; `test/fun-measurer.test.mjs` pins the identity.
+export const EVENT_BRIDGE_TICKS = PLAYER_CONTACT_EVENT_BRIDGE_TICKS;
 // Master ruling 2026-09-04 01:45: B13's sentence is about ORDINARY flight. A hostile that rams the
 // player is a deliberate big event BY THE HOSTILE and belongs to the legibility clause, not the
 // <= 2/min budget. So the rate and magnitude clauses are judged on AMBIENT events only, and
@@ -1282,15 +1286,25 @@ function classifyPlayerInitiated(ev, playerId, cruiseSpeed) {
     thrustIntoOtherDot: dot === null ? null : round3(dot),
     closingFractionOfCruise: closingFraction === null ? null : round3(closingFraction),
     allPlayerCaused: false,
+    namedActors: 0,
+    unattributedReceipts: 0,
     aimedAndHeld: false,
     ramSpeed: false,
     verdict: 'ambient',
   };
   if (!parts.length || playerId == null || !first) return { deliberate: false, audit };
-  let allPlayer = true;
-  for (const part of parts) {
-    if (part.causalActorId == null || part.causalActorId !== playerId) { allPlayer = false; break; }
-  }
+  // FIRST-CONTACT AUTHORSHIP (PQ-137.11 cycle 4, the attribution hole cycle 3 named).
+  // `directContactCausalActorId` names an author only while a contact is CLOSING; the resting ticks
+  // that follow it are non-closing and carry no actor by design. Requiring EVERY tick to re-name
+  // the author therefore made every event longer than one tick unattributable: measured 2026-09-05,
+  // 12 of the 22 ambient events in the Helios rope cell had a named player author on the first
+  // receipt and were vetoed only by later nulls. An author is decided at the moment of contact and
+  // is never rewritten: the FIRST receipt must name it, and no later receipt may name a DIFFERENT
+  // one. A hole in the first receipt, or two actors in one event, still fails closed to ambient.
+  const authorship = eventAuthor(parts);
+  audit.namedActors = authorship.distinctNamed;
+  audit.unattributedReceipts = authorship.unattributed;
+  const allPlayer = authorship.author != null && authorship.author === playerId;
   audit.allPlayerCaused = allPlayer;
   if (!allPlayer) return { deliberate: false, audit };
   audit.aimedAndHeld = dot !== null
@@ -1331,14 +1345,34 @@ function finalizeEventHeading(ev) {
  * time. Unknown, stale, dead/wreck, mixed-actor, or partially unattributed → ambient.
  * A later receipt never rewrites an earlier snapshot.
  */
+/**
+ * Who authored a contact event. Decided at FIRST CONTACT and never rewritten: the first receipt
+ * must name an actor, and no later receipt may name a different one. Receipts that name nobody are
+ * the non-closing ticks of the same contact and carry no new information — they neither confirm
+ * nor veto. Mixed authorship, or a hole in the first receipt, returns null (fails closed).
+ */
+function eventAuthor(parts) {
+  let unattributed = 0;
+  const named = new Set();
+  for (const part of parts) {
+    if (part.causalActorId == null) { unattributed += 1; continue; }
+    named.add(part.causalActorId);
+  }
+  const first = parts.length ? parts[0].causalActorId : null;
+  const author = (first != null && named.size === 1) ? first : null;
+  return { author, unattributed, distinctNamed: named.size };
+}
+
 function classifyHostileInitiated(ev, playerId) {
   const parts = Array.isArray(ev.constituents) ? ev.constituents : [];
   if (!parts.length) return false;
-  const actorId = parts[0].causalActorId;
+  const { author } = eventAuthor(parts);
+  const actorId = author;
   if (actorId == null || actorId === playerId) return false;
   for (const part of parts) {
-    if (part.causalActorId == null || part.causalActorId !== actorId) return false;
-    if (part.actorLiveCohortHostile !== true) return false;
+    if (part.causalActorId != null && part.causalActorId !== actorId) return false;
+    if (part.causalActorId != null && part.actorLiveCohortHostile !== true) return false;
+    if (part.causalActorId == null) continue;
     const intent = part.aiPhase;
     if (!intent || intent.targetId !== playerId) return false;
     const tg = part.aiTelegraph;

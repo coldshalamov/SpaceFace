@@ -41,7 +41,6 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| PQ-137.11 knock budget B13 (cycle 4: rate clause, camera-vs-hull wobble, player spin source) | fable-orchestrator + opus implementer | MUTATING | src/core/sg02DynamicBodyOwner.js, src/core/physics.js, scripts/lib/bench/crucibleBench.mjs, scripts/lib/bench/frameStripCapture.mjs, scripts/lib/bench/feelBars.mjs, scripts/lib/bench/scenarios/feel.knock_budget*.mjs, test/sg02-player-contact-give.test.mjs, test/frame-strip.test.mjs, test/fun-measurer.test.mjs, design/FEEL_CONTRACT.md (B13 row), design/program/roadmap/receipts/PQ-137.11-REPORT.md | review, commit by pathspec, push master |
 | PQ-139.04 tumbling ships corkscrew their trail (enemy card-plume half) | flash-10-unit-batch (U3 of 10) | MUTATING | src/render/thruster/systems/continuousPlume.js (spin instance attribute + packing), src/render/thruster/systems/familyFleet.js (per-ship spin phase), src/render/thruster/materials/flowFlipbookMaterial.js (vertex wobble), src/render/vfx.js (one setShipSpin call site), test/plume-spin-wobble.test.mjs (new), scripts/capture-pq139-04-shove-spin.mjs (new), design/program/roadmap/receipts/PQ-139-04-REPORT.md | vfx checks + capture, review, commit by pathspec, push master |
 
 _Previously:_ no active mutation windows. The 2026-09-04 orchestrate-next-build handoff is finished: everything

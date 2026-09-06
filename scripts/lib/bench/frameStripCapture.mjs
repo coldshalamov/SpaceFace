@@ -253,6 +253,84 @@ export const STRIP_SCENARIOS = Object.freeze({
       { atS: 13.3, keyUp: 'KeyW' },
     ],
   },
+  // ── The CAPTURES lane's tapes (2026-09-05) ────────────────────────────────────────────────
+  // Added so two built units that had no shipping-camera evidence can have some. Written by the
+  // lanes that built the rules (PQ-137.09 appendix §7 proposed this block verbatim, because the
+  // tape file was not theirs to edit) and added here unchanged.
+  chain_reaction: {
+    // PQ-137.09. Deploy a Well into the swarm so it converges hulls onto each other and primes
+    // what it grinds, then shove one of them with the concussion cannon. What the strip has to
+    // show is the beat AFTER the shove: a bang the player did not fire, ships spinning, then a
+    // second bang a moment later.
+    label: 'Crucible swarm, well the cluster, then shove one primed hull into it',
+    loadoutId: 'physics_toolkit',
+    durationS: 26,
+    warmup: [
+      { atS: 0, aim: 'nearestHostile' },
+      { atS: 0.1, mouseDown: true },
+      { atS: 1.2, mouseUp: true },
+    ],
+    tape: [
+      { atS: 0.5, keyDown: 'KeyW' },
+      { atS: 2.5, keyUp: 'KeyW' },
+      { atS: 3.0, aim: 'nearestHostile' },
+      { atS: 3.5, keyDown: 'Digit5' },
+      { atS: 3.65, keyUp: 'Digit5' },
+      { atS: 9.0, aim: 'nearestHostile' },
+      { atS: 9.5, mouseDown: true },
+      { atS: 11.0, mouseUp: true },
+      { atS: 16.0, aim: 'nearestHostile' },
+      { atS: 16.5, mouseDown: true },
+      { atS: 18.0, mouseUp: true },
+    ],
+  },
+  draw_stroke: {
+    // PQ-137.08 (bar B8). Draw-to-fly is an ordinary flight mode, not an adventure-route feature:
+    // `KeyG` toggles `state.input.autoFire` (src/systems/input.js:282/302/320 in all three scheme
+    // tables, ungated by item or tech), and while it is on the mousemove stream — movementX/Y, which
+    // Chromium synthesises for a dispatched move whether or not the pointer is locked — is fed to
+    // `recordAutoTargetPath` and becomes a world-space route the follower flies.
+    //
+    // MEASURED on the real Crucible route 2026-09-05 before this tape was written: KeyG set
+    // autoFire true and took pointer lock on #gl-canvas; 22 dispatched moves produced 24 route
+    // points; the ship left 0.37 WU/s and was doing 67.1 WU/s with no throttle key held, and four
+    // seconds later `pointIndex` had advanced 6 -> 12. It flies the line it was given.
+    //
+    // The shape is the CORNER case B8 is written about: a straight leg, one hard 90-degree corner,
+    // a second straight leg. The first move is spent BEFORE the mode is on, because the virtual pen
+    // integrates deltas from wherever the real cursor was and an uneaten first jump pins it to the
+    // edge margin.
+    label: 'Crucible swarm, draw a corner and let the ship fly it',
+    loadoutId: 'physics_toolkit',
+    durationS: 26,
+    tape: [
+      { atS: 0.2, mouseMove: [640, 360] },
+      { atS: 0.5, keyDown: 'KeyG' },
+      { atS: 0.65, keyUp: 'KeyG' },
+      { atS: 2.0, mouseMove: [665, 360] },
+      { atS: 2.3, mouseMove: [690, 360] },
+      { atS: 2.6, mouseMove: [715, 360] },
+      { atS: 2.9, mouseMove: [740, 360] },
+      { atS: 3.2, mouseMove: [765, 360] },
+      { atS: 3.5, mouseMove: [790, 360] },
+      { atS: 3.8, mouseMove: [815, 360] },
+      { atS: 4.1, mouseMove: [840, 360] },
+      { atS: 4.4, mouseMove: [865, 360] },
+      { atS: 4.7, mouseMove: [890, 360] },
+      { atS: 5.0, mouseMove: [915, 360] },
+      { atS: 5.3, mouseMove: [940, 360] },
+      { atS: 5.6, mouseMove: [940, 385] },
+      { atS: 5.9, mouseMove: [940, 410] },
+      { atS: 6.2, mouseMove: [940, 435] },
+      { atS: 6.5, mouseMove: [940, 460] },
+      { atS: 6.8, mouseMove: [940, 485] },
+      { atS: 7.1, mouseMove: [940, 510] },
+      { atS: 7.4, mouseMove: [940, 535] },
+      { atS: 7.7, mouseMove: [940, 560] },
+      { atS: 8.0, mouseMove: [940, 585] },
+      { atS: 8.3, mouseMove: [940, 610] },
+    ],
+  },
 });
 
 export async function findFreePort(start = 8500) {
@@ -1294,6 +1372,13 @@ export async function captureFrameStrip({
           playerAlive: !!(p && p.alive),
           playerOnScreen: ps ? ps.inside : null,
           playerScreenXY: ps ? [ps.x, ps.y] : null,
+          // PQ-137.11 B. Screen position is not hull position. A reversal on the glass with no
+          // reversal in the world is the chase camera settling, not the hull jogging, and the
+          // strip could not tell them apart until these two channels existed side by side.
+          playerWorldXZ: p && p.pos && Number.isFinite(p.pos.x) && Number.isFinite(p.pos.z)
+            ? [Number(p.pos.x.toFixed(3)), Number(p.pos.z.toFixed(3))] : null,
+          cameraWorldXZ: cam && cam.position && Number.isFinite(cam.position.x) && Number.isFinite(cam.position.z)
+            ? [Number(cam.position.x.toFixed(3)), Number(cam.position.z.toFixed(3))] : null,
         });
         requestAnimationFrame(rec);
       };
@@ -1335,6 +1420,7 @@ export async function captureFrameStrip({
     // still reaches the canvas while the screencast is running (see createInputDriver).
     const driver = createInputDriver(page, { getCdp: () => cdp, log });
     let lastSweepS = -1;
+    let lastHookS = -999;
     let hudSweptDuringRun = 0;
     let stoppedBecause = 'duration reached';
     const wallStart = Date.now();
@@ -1363,20 +1449,22 @@ export async function captureFrameStrip({
         }
       }
       await driver.pollAim();
-      const live = await page.evaluate(() => ({
-        mode: window.SF.state.mode,
-        phase: (window.SF.state.run && window.SF.state.run.phase) || null,
-      }));
       // A dead or finished run must not keep photographing: those frames are a results screen.
-      if (live.mode !== 'flight') { stoppedBecause = `mode left flight (${live.mode})`; break; }
-      if (live.phase !== 'active') { stoppedBecause = `run phase left active (${live.phase})`; break; }
-      // A contract card, a custody panel or a toast that appears now is on every frame after it.
-      // Sweeping once a second costs nothing and is the only thing that keeps the glass clean for
-      // the whole strip rather than for its first instant.
+      // The old loop evaluated this every 250 ms and re-hooked Three.js every second — each
+      // round-trip shares the debugger with the screencast, and that chatter is what dropped a
+      // 90 % settled game to 0.37–0.57 of real time while filming.
       if (Math.floor(elapsedS) !== lastSweepS) {
         lastSweepS = Math.floor(elapsedS);
-        // A LOD swap mid-run introduces a mesh nobody is counting; hook it before it matters.
-        await installDrawHooks(page);
+        const live = await page.evaluate(() => ({
+          mode: window.SF.state.mode,
+          phase: (window.SF.state.run && window.SF.state.run.phase) || null,
+        }));
+        if (live.mode !== 'flight') { stoppedBecause = `mode left flight (${live.mode})`; break; }
+        if (live.phase !== 'active') { stoppedBecause = `run phase left active (${live.phase})`; break; }
+        if (elapsedS - lastHookS >= 4) {
+          lastHookS = elapsedS;
+          await installDrawHooks(page);
+        }
         const midSweep = await sweepHudText(page, { onlyIfChanged: true });
         if (midSweep.hidden.length) {
           hudSweptDuringRun += midSweep.hidden.length;
@@ -1384,7 +1472,10 @@ export async function captureFrameStrip({
             + midSweep.hidden.map((h) => h.text).join(' | '));
         }
       }
-      await page.waitForTimeout(250);
+      const nextTapeAt = tapeIdx < tape.length ? tape[tapeIdx].atS : seconds;
+      const nextSweepAt = Math.floor(elapsedS) + 1;
+      const sleepS = Math.max(0.04, Math.min(nextTapeAt, nextSweepAt, seconds) - elapsedS);
+      await page.waitForTimeout(Math.ceil(sleepS * 1000));
     }
 
     const captureWallS = (Date.now() - wallStart) / 1000;
@@ -1466,6 +1557,8 @@ export async function captureFrameStrip({
         playerSpeed: s.playerSpeed,
         playerOnScreen: s.playerOnScreen,
         playerScreenXY: s.playerScreenXY,
+        playerWorldXZ: s.playerWorldXZ ?? null,
+        cameraWorldXZ: s.cameraWorldXZ ?? null,
         playerRot: s.playerRot ?? null,
         tetherActive: s.tetherActive === true,
         // playerOnScreen is a frustum claim; these two are render evidence.
@@ -1793,6 +1886,10 @@ function wrapAngle(a) {
  *
  * @returns {{measured:boolean, windows:number, headingReversals:number, screenReversals:number, events:number, windowS:number, cadenceFpsMin:number|null, note:string}}
  */
+// Below this the hull did not move in the world between two frames; at 60 WU/s and 7.5 fps a
+// moving hull covers ~8 WU per frame, so 0.02 WU is solidly inside "did not move".
+const WORLD_MOTION_EPS_WU = 0.02;
+
 export function measureVisibleJitter(frames, momentsInSpan, inputEvents) {
   const firstT = Array.isArray(frames) && frames.length ? frames[0].simTime : -Infinity;
   // Only contacts a viewer can see the aftermath of: inside the photographed span. The moments list
@@ -1804,6 +1901,10 @@ export function measureVisibleJitter(frames, momentsInSpan, inputEvents) {
     windows: 0,
     headingReversals: 0,
     screenReversals: 0,
+    // A reversal ON THE GLASS whose matching WORLD motion did not reverse. That is the chase
+    // camera settling behind the hull, and B13 is a claim about the ship, not about the lens.
+    cameraReversals: 0,
+    worldMotionMeasured: false,
     commandedHeadingReversals: 0,
     commandedScreenReversals: 0,
     unreadableSteps: 0,
@@ -1823,6 +1924,11 @@ export function measureVisibleJitter(frames, momentsInSpan, inputEvents) {
   const yawKeyTimes = commandedInputTimes(inputEvents, ['turn left', 'turn right']);
   const motionKeyTimes = commandedInputTimes(inputEvents, ['reverse/brake', 'forward']);
   let cadenceMin = null;
+  // Only claim the separation when the frames actually carry the hull's world position. A manifest
+  // captured before PQ-137.11 cycle 4 has no such channel, and on those a screen reversal still
+  // counts as jitter — fail-closed, and the note says the camera could not be told apart.
+  const worldAvailable = frames.some((f) => Array.isArray(f.playerWorldXZ));
+  out.worldMotionMeasured = worldAvailable;
   for (const m of contacts) {
     const t = Number(m.simTime) || 0;
     const w = frames.filter((f) => f.simTime > t && f.simTime <= t + VISIBLE_JITTER_WINDOW_S);
@@ -1834,10 +1940,13 @@ export function measureVisibleJitter(frames, momentsInSpan, inputEvents) {
     let screenRev = 0;
     let commandedHeadingRev = 0;
     let commandedScreenRev = 0;
+    let cameraRev = 0;
     let unreadable = 0;
     let prevDRot = null;
     let prevDx = null;
     let prevDy = null;
+    let prevWx = null;
+    let prevWz = null;
     for (let i = 1; i < w.length; i++) {
       const a = w[i - 1];
       const b = w[i];
@@ -1857,12 +1966,25 @@ export function measureVisibleJitter(frames, momentsInSpan, inputEvents) {
         }
         if (!unreadableStep && Math.abs(dRot) > 1e-3) prevDRot = dRot;
       }
+      // The hull's own motion through the world, in the same frame pair. Kept beside the screen
+      // channel so a reversal can be attributed rather than assumed.
+      let worldReversed = null;
+      if (Array.isArray(a.playerWorldXZ) && Array.isArray(b.playerWorldXZ)) {
+        const wx = b.playerWorldXZ[0] - a.playerWorldXZ[0];
+        const wz = b.playerWorldXZ[1] - a.playerWorldXZ[1];
+        const wMoved = Math.hypot(wx, wz) > WORLD_MOTION_EPS_WU;
+        if (prevWx != null && wMoved) worldReversed = (wx * prevWx + wz * prevWz) < 0;
+        if (wMoved) { prevWx = wx; prevWz = wz; }
+      }
       if (Array.isArray(a.playerScreenXY) && Array.isArray(b.playerScreenXY)) {
         const dx = b.playerScreenXY[0] - a.playerScreenXY[0];
         const dy = b.playerScreenXY[1] - a.playerScreenXY[1];
         const moved = Math.hypot(dx, dy) > 0.004;
         if (prevDx != null && moved && (dx * prevDx + dy * prevDy) < 0) {
           if (straddlesCommandedInput(motionKeyTimes, a.simTime, b.simTime)) commandedScreenRev += 1;
+          // The glass turned back on itself while the hull kept going the same way through the
+          // world: that is the lens, not the ship.
+          else if (worldReversed === false) cameraRev += 1;
           else screenRev += 1;
         }
         if (moved) { prevDx = dx; prevDy = dy; }
@@ -1870,6 +1992,7 @@ export function measureVisibleJitter(frames, momentsInSpan, inputEvents) {
     }
     out.headingReversals += headingRev;
     out.screenReversals += screenRev;
+    out.cameraReversals += cameraRev;
     out.commandedHeadingReversals += commandedHeadingRev;
     out.commandedScreenReversals += commandedScreenRev;
     out.unreadableSteps += unreadable;
@@ -1889,7 +2012,12 @@ export function measureVisibleJitter(frames, momentsInSpan, inputEvents) {
     out.note = `${out.windows} contact window(s) of ${VISIBLE_JITTER_WINDOW_S}s at >= ${out.cadenceFpsMin} fps; `
       + `a reversal inside a window is a wobble a viewer sees (${out.commandedHeadingReversals} heading and `
       + `${out.commandedScreenReversals} motion reversal(s) lined up with the pilot's own key transitions `
-      + `within ${COMMANDED_INPUT_LEAD_S}s and are the pilot, not jitter)`;
+      + `within ${COMMANDED_INPUT_LEAD_S}s and are the pilot, not jitter)`
+      + (worldAvailable
+        ? `; ${out.cameraReversals} reversal(s) on the glass had no reversal in the hull's world `
+          + 'motion and are the chase camera, not the ship'
+        : '; these frames carry no hull world position, so a camera settle CANNOT be told from a '
+          + 'hull jog here and every screen reversal is charged as jitter');
   }
   return out;
 }

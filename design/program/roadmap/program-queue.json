@@ -5358,7 +5358,7 @@
       "priority": 51,
       "title": "The player is never knocked around (knock budget, bar B13)",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "flight-physics-feel"
@@ -5377,7 +5377,7 @@
         "design/program/roadmap/receipts/PQ-137.11-REPORT.md",
         "design/program/roadmap/receipts/PQ-137-11-jitter-REPORT.md"
       ],
-      "brief": "IMPLEMENTED 2026-09-05 cycle 3, NOT DONE (integrator-verified): flight bench met on every clause (1.0 knocks/min over ten minutes, largest 6.6 %, 0 heading changes, 0 jitter sim-sampled beside a normal-speed Crucible strip); Crucible worst cell still 10.0 knocks/min (Helios rope) against 2, and one screen-position wobble in the photographed cell that may be the chase camera. Next cycle: event identity/refractory bridge on the player contact budget (rule and bench in sync), world position in strip frames to separate camera from hull, the source of spin injected on the player hull (13.5 rad/s in the rope cell; a pulse hit once spun it to 160 rad/s), seed 8008. NOT DONE 2026-09-05 (instrument complete): visible jitter is measured from a headed strip's frames and fed to B13; on the live build B13 reads not met on the Crucible bench (heading changes on ordinary contact in 7 of 9 cells; rope-kit cells 37-73 knocks/min). Next: the velocity-heading restore on sub-tumble player contacts. See the jitter receipt. Measure contact-sourced velocity and heading changes on the player hull (the knock budget, bar B13); bound ordinary bumps and scrapes on the player to <= 10% of cruise per event with no heading change and no jitter, while deliberate big events stay legible. Owner 2026-09-03: my own ship must never get knocked around. DONE WHEN: B13 met on the flight and Crucible benches; a ten-minute ordinary-flight scenario prints the knock budget."
+      "brief": "DONE 2026-09-06: B13 met on the flight bench (1.0 knocks/min over ten minutes) and the standing 90s Crucible pool (worst 2.00 knocks/min Helios rope 8008, 10 % of cruise, 0 heading). A live rope holds the player against traffic. Jitter strip at 0.614 realtime, 0/0/0 reversals. Fun-bench farApart follows PLAYER_CONTACT_EVENT_BRIDGE_TICKS. DONE WHEN: B13 met on the flight and Crucible benches; a ten-minute ordinary-flight scenario prints the knock budget."
     },
     {
       "id": "PQ-189.01",

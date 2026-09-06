@@ -199,6 +199,117 @@ test('player contact give: heading, budget, yaw, queued impulses, NPC, receipts,
   }
 });
 
+test('a hit may not spin the player: an off-centre impulse is centred on the player and only on the player', async () => {
+  const owner = await createSg02DynamicBodyOwner({ publishTelemetry: false, fixedDt: DT });
+  try {
+    const player = makeCraft(1, { isPlayer: true, x: 0, z: 0 });
+    const npc = makeCraft(2, { isPlayer: false, x: 0, z: 400 });
+    owner.syncFromEntities([player, npc]);
+    // One warm step: Rapier realises a body's mass properties on its first step, and an impulse
+    // against a zero-mass body is silently ignored (measured while writing this test).
+    owner.step(DT);
+    owner.drainContactImpacts();
+    // The same impulse, at the same offset from the hull's own centre, on both hulls. This is the
+    // shape of the real injector found on 2026-09-05: `weapon_hit` applied at the point of impact,
+    // which took the player from 0 to -13.48 rad/s in one tick in the Helios rope cell.
+    const kick = { x: 0, y: 0, z: 900 };
+    assert.equal(owner.applyImpulse({ entityId: 1, impulse: kick, point: { x: 5, z: 0 }, reason: 'weapon_hit' }), true);
+    assert.equal(owner.applyImpulse({ entityId: 2, impulse: kick, point: { x: 5, z: 400 }, reason: 'weapon_hit' }), true);
+    owner.step(DT);
+    owner.drainContactImpacts();
+    // "A controllable mass, not a cursor." The mass moves; the nose does not.
+    assert.ok(Math.abs(player.angVel) < 1e-6,
+      `${VISION}: an off-centre hit must not spin the player's hull (angVel=${player.angVel})`);
+    assert.ok(Math.abs(npc.angVel) > 0.5,
+      `every other hull still takes the torque an off-centre hit carries (npc angVel=${npc.angVel})`);
+    // The LINEAR half is passed through in full — this is not drag and not a clamp on given
+    // momentum, which the packet forbids outright. Both hulls gain the same speed.
+    const playerSpeed = Math.hypot(player.vel.x, player.vel.z);
+    const npcSpeed = Math.hypot(npc.vel.x, npc.vel.z);
+    assert.ok(playerSpeed > 30, `the player still takes the whole linear shove (${playerSpeed})`);
+    assert.ok(Math.abs(playerSpeed - npcSpeed) < 1e-3,
+      `only the torque arm is dropped, never the momentum (player=${playerSpeed} npc=${npcSpeed})`);
+  } finally {
+    owner.dispose();
+  }
+});
+
+test('the player is under the same absolute yaw ceiling as every other hull', async () => {
+  const owner = await createSg02DynamicBodyOwner({ publishTelemetry: false, fixedDt: DT });
+  try {
+    const player = makeCraft(1, { isPlayer: true, x: 0, z: 0 });
+    owner.syncFromEntities([player]);
+    // A torque far past anything the pilot can command (the player's own yaw peaks near 3 rad/s).
+    // Before this net the player was the ONE hull that skipped SANE_MAX_YAW_RATE entirely, and it
+    // was measured at 13.51 rad/s on the live Crucible path.
+    queuePhysicsTorqueImpulse(player, { x: 0, y: 48_000, z: 0 });
+    const rotBefore = player.rot;
+    owner.step(DT);
+    owner.drainContactImpacts();
+    assert.ok(Math.abs(player.angVel) <= 6.0 + 1e-6,
+      `${VISION}: nothing may spin the player's hull past the ceiling every other body obeys (angVel=${player.angVel})`);
+    // The pose and the rate are the same motion: the ceiling is applied before the rotation is
+    // integrated, so a reader can never find a hull whose spin says one thing and whose nose says
+    // another. "Turn NOW when I twitch." — the nose must always be where the spin says it is.
+    const turned = Math.abs(player.rot - rotBefore);
+    assert.ok(Math.abs(turned - Math.abs(player.angVel) * DT) < 1e-3,
+      `${VISION}: the restored pose matches the restored spin (turned=${turned} expected=${Math.abs(player.angVel) * DT})`);
+  } finally {
+    owner.dispose();
+  }
+});
+
+test('a live rope holds the player against other hulls, not against rock', async () => {
+  const owner = await createSg02DynamicBodyOwner({ publishTelemetry: false, fixedDt: DT });
+  try {
+    const hooked = makeCraft(1, { isPlayer: true, x: -28, z: 0, vx: 80 });
+    const free = makeCraft(2, { isPlayer: true, x: -28, z: 80, vx: 80 });
+    const trafficHooked = makeCraft(3, { isPlayer: false, x: 8, z: 0, vx: 0 });
+    const trafficFree = makeCraft(4, { isPlayer: false, x: 8, z: 80, vx: 0 });
+    const anchor = makeRock(20, { x: -220, z: 0 });
+    owner.syncFromEntities([hooked, free, trafficHooked, trafficFree, anchor]);
+    const handle = owner.createAttachment({
+      attachmentId: 'rope-holds-traffic',
+      defId: 'tether_standard',
+      ownerId: hooked.id,
+      targetId: anchor.id,
+      sourceWorld: hooked.pos,
+      targetWorld: anchor.pos,
+      restLength: 220,
+      tick: 0,
+    });
+    assert.ok(handle, `${VISION}: the fixture hooks the player to a far rock`);
+
+    let hookedApplied = 0;
+    let freeApplied = 0;
+    for (let i = 0; i < 90; i++) {
+      owner.step(DT);
+      const receipts = owner.drainContactImpacts();
+      for (const r of receipts) {
+        if (involves(r, hooked.id) && involves(r, trafficHooked.id)) {
+          hookedApplied += Math.abs(r.appliedPlayerDeltaV || 0);
+        }
+        if (involves(r, free.id) && involves(r, trafficFree.id)) {
+          freeApplied += Math.abs(r.appliedPlayerDeltaV || 0);
+        }
+      }
+    }
+    assert.ok(freeApplied > 0.5, `${VISION}: without a line the same scrape still spends the budget (free=${freeApplied})`);
+    assert.ok(hookedApplied <= 1e-6, `${VISION}: a live line holds the player against traffic (hooked=${hookedApplied})`);
+  } finally {
+    owner.dispose();
+  }
+});
+
+test('one contact episode gets one budget: the event bridge is the measured flicker, not six ticks', () => {
+  // The rule's own definition of an event. The Crucible instrument and the flight scenario both
+  // IMPORT this number; a local copy is how a stream of small legal shoves passed a bar that counts
+  // events. Measured 2026-09-05 across the three worst cells: p95 of same-body re-contact flicker
+  // was 88 ticks, so 90 (1.5 s) keeps one grind inside one budget.
+  assert.equal(PLAYER_CONTACT_EVENT_BRIDGE_TICKS, 90,
+    `${VISION}: a re-contact inside 1.5 s continues the SAME event and draws on its remaining budget`);
+});
+
 test('physics adapter forwards appliedPlayerDeltaV without aliasing raw playerDeltaV', () => {
   const bus = createBus();
   const payloads = [];

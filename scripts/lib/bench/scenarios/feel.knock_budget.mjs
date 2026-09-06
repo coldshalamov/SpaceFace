@@ -27,6 +27,7 @@
 import { readPhysicsTelemetry } from '../../../../src/core/physicsAuthority.js';
 import { resolveGovernedCombatSpeed } from '../../../../src/core/flight/propulsionCatalog.js';
 import { bootRealPath, writeRealPathInput, REAL_PATH_DT } from '../realPath.mjs';
+import { PLAYER_CONTACT_EVENT_BRIDGE_TICKS } from '../../../../src/core/sg02DynamicBodyOwner.js';
 
 // An event below this is not a knock the player could feel; it is solver settle. 0.5 % of cruise
 // on the Kestrel is 0.98 WU/s.
@@ -36,9 +37,17 @@ const KNOCK_FLOOR_FRACTION = 0.005;
 // every number is taken at cruise and never during the spin-up.
 const RAMP_IN_SECONDS = 12;
 const JITTER_WINDOW_TICKS = 15;
-// Rapier answers one graze over a run of consecutive ticks (measured 2026-09-03: one rock produced
-// 8 ticks of response). A gap of up to this many receipt-free ticks stays inside the same event.
-const EVENT_BRIDGE_TICKS = 6;
+// IMPORTED from the rule, never typed here. `PLAYER_CONTACT_EVENT_BRIDGE_TICKS` in
+// src/core/sg02DynamicBodyOwner.js decides which receipts belong to ONE contact event and therefore
+// share ONE budget; this instrument must count the same events the rule budgets or the two drift
+// apart. `test/fun-measurer.test.mjs` pins the identity.
+export const EVENT_BRIDGE_TICKS = PLAYER_CONTACT_EVENT_BRIDGE_TICKS;
+// A DIFFERENT JOB, deliberately not the bridge: how far a sample must be from any receipt before
+// this instrument will use it to measure its own noise floor. Rapier answers one graze over a run
+// of consecutive ticks (measured 2026-09-03: one rock produced 8 ticks of response), so 6 clear
+// ticks either side is enough to call a sample contact-free. Widening it to the event bridge would
+// throw away most of the run and leave the floor measured on almost nothing.
+const RECEIPT_QUIET_MARGIN_TICKS = 6;
 // The `physics:impact` receipt is stamped with the POST-step tick while the step hook reports the
 // PRE-step tick. Measured: receiptTick === sampleTick + 1 in every case. Comparing them raw makes
 // every knock look receipt-less and every receipt look knock-less.
@@ -627,7 +636,7 @@ export async function runKnockBudget(seed, { simSeconds, emptyField = false } = 
     const quietRotSteps = [];
     for (let i = 0; i < ticks; i++) {
       let nearReceipt = false;
-      for (let d = -EVENT_BRIDGE_TICKS; d <= EVENT_BRIDGE_TICKS && !nearReceipt; d++) {
+      for (let d = -RECEIPT_QUIET_MARGIN_TICKS; d <= RECEIPT_QUIET_MARGIN_TICKS && !nearReceipt; d++) {
         if (receiptTicks.has(samples[i].tick + d)) nearReceipt = true;
       }
       if (nearReceipt) continue;

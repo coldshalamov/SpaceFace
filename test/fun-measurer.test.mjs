@@ -1017,3 +1017,65 @@ test('B13 visible jitter comes from a headed strip of the same cell, and only at
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+test('the rule owns what a contact event is; both instruments import it rather than typing it', async () => {
+  // "A controllable mass, not a cursor." B13 counts EVENTS, and the 10 % ceiling budgets EVENTS, so
+  // the rule and the two instruments must mean the same thing by the word. A local copy of the
+  // number is exactly how a hull ground along a rock opened a fresh budget every few ticks and
+  // still read as one legal shove: cycle 3 measured 10.0 ambient knocks/min in the Helios rope cell
+  // against a budget of 2, all of them inside what the rule now calls a single event.
+  const { PLAYER_CONTACT_EVENT_BRIDGE_TICKS } = await import('../src/core/sg02DynamicBodyOwner.js');
+  const { EVENT_BRIDGE_TICKS: crucibleBridge } = await import('../scripts/lib/bench/crucibleBench.mjs');
+  const { EVENT_BRIDGE_TICKS: flightBridge } = await import('../scripts/lib/bench/scenarios/feel.knock_budget.mjs');
+  assert.equal(crucibleBridge, PLAYER_CONTACT_EVENT_BRIDGE_TICKS,
+    'the Crucible instrument must count the events the rule budgets');
+  assert.equal(flightBridge, PLAYER_CONTACT_EVENT_BRIDGE_TICKS,
+    'and so must the flight scenario');
+});
+
+test('a contact event is authored at first contact; the resting ticks that follow do not veto it', async () => {
+  // The attribution hole cycle 3 named. `directContactCausalActorId` names an author only while a
+  // contact is CLOSING; the resting ticks that follow carry no actor BY DESIGN. Requiring every
+  // tick to re-name the author made every event longer than one tick unattributable — measured
+  // 2026-09-05, 12 of the 22 ambient events in the Helios rope cell had a named player author on
+  // the first receipt and were vetoed only by later nulls. "A controllable mass, not a cursor."
+  // means the bar must know who moved the mass; a hole in a resting tick is not an answer.
+  const { buildKnockEvents } = await import('../scripts/lib/bench/crucibleBench.mjs');
+  const playerId = 1;
+  const cruiseSpeed = 100;
+  const r = (tick, extra) => ({
+    type: 'collision:playerKnock',
+    tick,
+    data: {
+      deltaV: 1, appliedDeltaV: 1, headingChangeRad: 0, otherId: 42,
+      preSolveClosingSpeed: 50, actorLiveCohortHostile: false, ...extra,
+    },
+  });
+
+  // The player drives into a hull at half of cruise; the next two ticks are the resting contact.
+  const authored = buildKnockEvents(
+    [r(10, { causalActorId: playerId }), r(12, { causalActorId: null }), r(14, { causalActorId: null })],
+    { playerId, cruiseSpeed },
+  );
+  assert.equal(authored.length, 1);
+  assert.equal(authored[0].deliberateAudit.allPlayerCaused, true,
+    'the author is decided at first contact and the resting ticks do not un-decide it');
+  assert.equal(authored[0].deliberateAudit.unattributedReceipts, 2, 'and the holes are published, not hidden');
+  assert.equal(authored[0].playerInitiated, true, "a slam the player chose at half of cruise is B13's own exemption");
+
+  // A hole in the FIRST receipt is a real unknown: nobody saw who started it, so it fails closed.
+  const headless = buildKnockEvents(
+    [r(10, { causalActorId: null }), r(12, { causalActorId: playerId })],
+    { playerId, cruiseSpeed },
+  );
+  assert.equal(headless[0].playerInitiated, false,
+    'an unattributed opening receipt stays ambient: the bar is never flattered by a guess');
+
+  // Two different named actors inside one event is mixed authorship, not an author.
+  const mixed = buildKnockEvents(
+    [r(10, { causalActorId: playerId }), r(12, { causalActorId: 77 })],
+    { playerId, cruiseSpeed },
+  );
+  assert.equal(mixed[0].playerInitiated, false, 'mixed authorship fails closed to ambient');
+  assert.equal(mixed[0].deliberateAudit.namedActors, 2, 'and says how many actors it saw');
+});
