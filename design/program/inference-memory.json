@@ -806,6 +806,19 @@
       "integration": "live",
       "commit": "3042a867",
       "verification": "focused_green"
+    },
+    {
+      "id": "vault-maw-poi",
+      "date": "2026-09-06",
+      "wf": "WF-04",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "the Vault Maw landmark now charts in Ashfall Reach: anomaly POI with archive scanner signal and discovery plate, anchoring the authored lore to a reachable world site",
+      "fingerprint": "verb=scan,subject=vault_maw,sector=ashfall_reach,layer=foreground,domain=wf-04",
+      "references": [],
+      "integration": "live",
+      "commit": "752da2f6",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
