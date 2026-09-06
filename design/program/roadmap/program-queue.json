@@ -16010,7 +16010,7 @@
       "priority": 422,
       "title": "No per-frame allocation, no layout thrash",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-180.00"
       ],
@@ -16028,8 +16028,10 @@
         "npm run check:ui-effects",
         "node scripts/check-ui-screen-imports.mjs"
       ],
-      "receiptRefs": [],
-      "brief": "Audit hot surfaces (HUD, chart, station) for per-frame DOM writes and forced reflows; fix by batching and state variables. DONE WHEN: Frame cost under budget on all three; frame-sleep counters 0 when idle."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-184-02-REPORT.md"
+      ],
+      "brief": "DONE 2026-09-06: unchanged HUD DOM sleeps, chart caches authored paths and labels, and station screens use event-driven shared models. Headed 1080p mean UI cost: HUD 0.461 ms, chart 1.400 ms, station maximum 0.244 ms; focused idle checks pass. Wider Works budget debt and aggregate baseline refresh remain explicitly open in the receipt."
     },
     {
       "id": "PQ-184.03",
