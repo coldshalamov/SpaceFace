@@ -1858,10 +1858,10 @@
       "category": "places",
       "priority": "P2",
       "file": "places/place_ash_pin.glb",
-      "tris": 420,
-      "bytes": 40944,
-      "textureSize": 0,
-      "note": "LANE-FURNITURE-001 2026-08-06 — authored from design/fiction/LANE_FURNITURE.md via tools/blender/build_lane_furniture.py; two adversarial review rounds. Untextured vertex-colour-free source; materials are role-named for a later texture pass. sha256=e8ee1f32538bbd27"
+      "tris": 1268,
+      "bytes": 296784,
+      "textureSize": 128,
+      "note": "LANE-FURNITURE-001 2026-08-06 authored from design/fiction/LANE_FURNITURE.md via tools/blender/build_lane_furniture.py; two adversarial review rounds. Surfaced 2026-09-06: 12 packed 128px maps, every material carrying baseColor, metallicRoughness and occlusion plus TEXCOORD_0; world-projected UVs tile past [0,1] by design. Held off the live place selector; G1/G2/G4 open. sha256=52be00c8b6a86615"
     },
     {
       "id": "place_asteroid_graffiti",
@@ -2175,13 +2175,13 @@
       "category": "places",
       "priority": "P2",
       "file": "places/place_claim_mark.glb",
-      "tris": 856,
-      "bytes": 58356,
-      "textureSize": 0,
+      "tris": 1380,
+      "bytes": 372104,
+      "textureSize": 128,
       "tintable": {
         "accent": "furniture_signal_lens"
       },
-      "note": "LANE-FURNITURE-001 2026-08-06 — authored from design/fiction/LANE_FURNITURE.md via tools/blender/build_lane_furniture.py; two adversarial review rounds. Untextured vertex-colour-free source; materials are role-named for a later texture pass. sha256=87f084ad0c36b64d"
+      "note": "LANE-FURNITURE-001 2026-08-06 authored from design/fiction/LANE_FURNITURE.md via tools/blender/build_lane_furniture.py; two adversarial review rounds. Surfaced 2026-09-06: 17 packed 128px maps, every material carrying baseColor, metallicRoughness and occlusion plus TEXCOORD_0; world-projected UVs tile past [0,1] by design. Held off the live place selector; G1/G2/G4 open. sha256=c8547d27ffc02077"
     },
     {
       "id": "place_claim_outpost_base",
@@ -3918,13 +3918,13 @@
       "category": "places",
       "priority": "P2",
       "file": "places/place_tally_post.glb",
-      "tris": 496,
-      "bytes": 46364,
-      "textureSize": 0,
+      "tris": 1444,
+      "bytes": 392984,
+      "textureSize": 128,
       "tintable": {
         "accent": "furniture_signal_lens"
       },
-      "note": "LANE-FURNITURE-001 2026-08-06 — authored from design/fiction/LANE_FURNITURE.md via tools/blender/build_lane_furniture.py; two adversarial review rounds. Untextured vertex-colour-free source; materials are role-named for a later texture pass. sha256=e2433efc7c352919"
+      "note": "LANE-FURNITURE-001 2026-08-06 authored from design/fiction/LANE_FURNITURE.md via tools/blender/build_lane_furniture.py; two adversarial review rounds. Surfaced 2026-09-06: 17 packed 128px maps, every material carrying baseColor, metallicRoughness and occlusion plus TEXCOORD_0; world-projected UVs tile past [0,1] by design. Held off the live place selector; G1/G2/G4 open. sha256=4f6356e98fd8e6f0"
     },
     {
       "id": "place_transfer_arm",
@@ -4005,13 +4005,13 @@
       "category": "places",
       "priority": "P2",
       "file": "places/place_whistle.glb",
-      "tris": 804,
-      "bytes": 68636,
-      "textureSize": 0,
+      "tris": 1720,
+      "bytes": 414028,
+      "textureSize": 128,
       "tintable": {
         "accent": "furniture_signal_lens"
       },
-      "note": "LANE-FURNITURE-001 2026-08-06 — authored from design/fiction/LANE_FURNITURE.md via tools/blender/build_lane_furniture.py; two adversarial review rounds. Untextured vertex-colour-free source; materials are role-named for a later texture pass. sha256=696e63693b6a2583"
+      "note": "LANE-FURNITURE-001 2026-08-06 authored from design/fiction/LANE_FURNITURE.md via tools/blender/build_lane_furniture.py; two adversarial review rounds. Surfaced 2026-09-06: 17 packed 128px maps, every material carrying baseColor, metallicRoughness and occlusion plus TEXCOORD_0; world-projected UVs tile past [0,1] by design. Held off the live place selector; G1/G2/G4 open. sha256=b67f349b70eea74d"
     },
     {
       "id": "place_worklight_tower",
