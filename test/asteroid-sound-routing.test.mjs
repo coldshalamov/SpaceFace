@@ -779,6 +779,52 @@ section('§8 mutation guards bite', () => {
   assert.equal(arb.admit('lockRefusal', MINE_REFUSAL_SUPPRESS_MS + 1).ok, true);
 });
 
+// ===========================================================================
+// §9 — WANTED heat family: the live bus subscription itself is load-bearing.
+// The wanted-heat unit suite drives _onHeatChanged directly (pure routing); only a real
+// audio.init + real bus proves the heat:changed subscription exists and speaks through the
+// flight mix. Deleting `bus.on('heat:changed', ...)` from audioSystem init must go red here.
+// ===========================================================================
+section('§9 heat:changed reaches the wanted family through the live bus', () => {
+  const h = boot([]);
+  const playLog = [];
+  const originalPlay = audio.play;
+  audio.play = function spyPlay(recipeId, opts) {
+    playLog.push({ recipeId, opts });
+    return originalPlay.call(this, recipeId, opts);
+  };
+  try {
+    // Flip: WANTED appears — the ducked, critical alarm.
+    h.bus.emit('heat:changed', { value: 0.16, previousValue: 0, level: 1, wanted: true, wantedCrossed: true });
+    assert.deepEqual(playLog.map((e) => e.recipeId), ['sfx_wanted_alert'],
+      'the heat:changed subscription must voice the flip through the flight mix');
+    assert.equal(playLog[0].opts.critical, true, 'the flip alarm must ride as a critical voice');
+
+    // Decay to clean — the clear sting, also critical.
+    playLog.length = 0;
+    h.bus.emit('heat:changed', { value: 0, previousValue: 0.3, level: 0, wanted: false, wantedCrossed: true });
+    assert.deepEqual(playLog.map((e) => e.recipeId), ['sfx_wanted_clear'],
+      'dropping clean must voice the clear sting on the live bus');
+    assert.equal(playLog[0].opts.critical, true, 'the clear sting must ride as a critical voice');
+
+    // Restart boundary: game:started swaps state.player without save:loaded; the next flip
+    // must still speak (the handler is fully packet-driven — this pins that no transient
+    // reset requirement has crept back in).
+    playLog.length = 0;
+    h.bus.emit('game:started', {});
+    h.bus.emit('heat:changed', { value: 0.2, previousValue: 0.1, level: 1, wanted: true, wantedCrossed: true });
+    assert.deepEqual(playLog.map((e) => e.recipeId), ['sfx_wanted_alert'],
+      'a flip after an in-process new game must still speak');
+
+    // Silence contract on the live bus: an in-band chip voices nothing.
+    playLog.length = 0;
+    h.bus.emit('heat:changed', { value: 0.22, previousValue: 0.2, level: 1, wanted: true, wantedCrossed: false });
+    assert.equal(playLog.length, 0, 'an in-band chip must stay silent on the live bus');
+  } finally {
+    audio.play = originalPlay;
+  }
+});
+
 try { audio.destroy(); } catch (_) {}
 
 if (failures.length) {

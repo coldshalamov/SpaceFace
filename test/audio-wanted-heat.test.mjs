@@ -1,7 +1,10 @@
 // WF-13 — the WANTED heat family's semantic audio: the authoritative heat:changed packet keys
-// the whole family. Only edges speak: the WANTED flip and band climbs play the rising alarm
-// (pitched up per band), dropping clean plays the clear sting; chips inside a band, decay
-// without clear, and the first packet after a load without a real edge stay silent.
+// the whole family, and the handler is FULLY PACKET-DRIVEN — every verdict derives from the
+// packet's own level/previousValue/wanted/wantedCrossed, so no cross-run or post-load transient
+// can stale it (the wave-2 review proved a memory-based climb guard plays a phantom escalation
+// after heat.js's 0.4s emit throttle suppresses a climb). Only edges speak: the WANTED flip and
+// band climbs play the rising alarm (pitched up per band), dropping clean plays the clear sting;
+// chips inside a band and decay-without-clear stay silent.
 // Pure routing characterization: the AudioContext is never created here.
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -10,8 +13,8 @@ import { RECIPES } from '../src/data/audioRecipes.js';
 import { AUDIO_CUE_TO_RECIPE, audio } from '../src/audio/audioSystem.js';
 import { heatLevelFor, THRESHOLD } from '../src/systems/heat.js';
 
-// Level/threshold come from the producer's own math (heat.js) so a drift in the emit contract
-// fails here instead of silently keeping the suite green.
+// Level/wanted/wantedCrossed derive from the producer's own math (heat.js) so a drift in the
+// emit contract fails here instead of silently keeping the suite green.
 function heatPacket(overrides = {}) {
   const value = overrides.value != null ? overrides.value : 0.3;
   const previousValue = overrides.previousValue != null ? overrides.previousValue : 0.2;
@@ -29,7 +32,6 @@ function heatPacket(overrides = {}) {
 
 function hostWith(played = []) {
   const host = Object.create(audio);
-  host._lastHeatLevel = null;
   host._onCue = (cue) => { played.push(cue); return null; };
   return host;
 }
@@ -50,74 +52,98 @@ test('the heat family ships both recipes as ui-category data with envelopes', ()
 test('the WANTED flip ducks and speaks louder than a band climb', () => {
   const played = [];
   const host = hostWith(played);
-  host._onHeatChanged(heatPacket({ level: 1, wanted: true, wantedCrossed: true }));
+  host._onHeatChanged(heatPacket({ value: 0.16, previousValue: 0, wantedCrossed: true }));
   assert.equal(played.length, 1);
   assert.equal(played[0].id, 'wanted_escalate');
   assert.equal(played[0].duck, true, 'the flip owns the ear');
+  assert.equal(played[0].importance, 0.9);
 
   const climbed = [];
   const climber = hostWith(climbed);
-  climber._lastHeatLevel = 1;
-  climber._onHeatChanged(heatPacket({ level: 2, wanted: true, wantedCrossed: false }));
+  climber._onHeatChanged(heatPacket({ value: 0.3, previousValue: 0.16 }));
   assert.equal(climbed.length, 1);
   assert.equal(climbed[0].id, 'wanted_escalate');
   assert.equal(climbed[0].duck, false, 'a climb inside WANTED never squelches combat audio');
   assert.ok(climbed[0].importance < 0.8, 'climbs stay below the priority-squelch threshold');
 });
 
-test('alarm pitch and gain rise with the heat band', () => {
+test('dropping clean plays the clear sting at critical importance (squelch-proof)', () => {
   const played = [];
   const host = hostWith(played);
-  host._lastHeatLevel = 1;
-  host._onHeatChanged(heatPacket({ level: 2, wanted: true, wantedCrossed: false }));
-  host._lastHeatLevel = 2;
-  host._onHeatChanged(heatPacket({ level: 4, wanted: true, wantedCrossed: false }));
-  assert.equal(played.length, 2);
-  assert.ok(played[1].rate > played[0].rate, 'higher band is pitched up');
-  assert.ok(played[1].gain > played[0].gain, 'higher band is louder');
+  host._onHeatChanged(heatPacket({ value: 0, previousValue: 0.3, wantedCrossed: true }));
+  assert.equal(played.length, 1);
+  assert.equal(played[0].id, 'wanted_clear');
+  assert.equal(played[0].importance, 0.8, 'the relief sting must survive a combat squelch window');
 });
 
-test('chips inside a band, decay without clear, and level 0 are silent', () => {
+test('the alarm ladder is audible across all five bands (rate steps ~2 semitones)', () => {
   const played = [];
   const host = hostWith(played);
-  host._lastHeatLevel = 3;
-  host._onHeatChanged(heatPacket({ level: 3, wanted: true, wantedCrossed: false }));
-  host._onHeatChanged(heatPacket({ level: 2, wanted: true, wantedCrossed: false }));
-  host._onHeatChanged(heatPacket({ level: 1, wanted: false, wantedCrossed: false }));
-  host._onHeatChanged(heatPacket({ level: 0, wanted: false, wantedCrossed: false }));
+  let prev = 0.16;
+  host._onHeatChanged(heatPacket({ value: 0.16, previousValue: 0, wantedCrossed: true }));
+  for (const value of [0.25, 0.45, 0.65, 0.85]) {
+    host._onHeatChanged(heatPacket({ value, previousValue: prev }));
+    prev = value;
+  }
+  assert.equal(played.length, 5, 'flip + four climbs all speak');
+  for (let i = 1; i < played.length; i++) {
+    assert.ok(played[i].rate > played[i - 1].rate, `band ${i + 1} is pitched up`);
+    assert.ok(played[i].gain > played[i - 1].gain, `band ${i + 1} is louder`);
+  }
+  assert.equal(played[0].rate, 1, 'band 1 enters at natural pitch');
+  assert.ok(played[4].rate >= 1.4, 'band 5 is at least a fifth up from band 1 — the ladder must be perceivable, not sub-JND');
+  assert.ok(played[4].rate <= 1.6 && played[4].gain <= 0.9, 'clamps hold at the top band');
+});
+
+test('chips inside a band, mid-band decay, and sub-threshold drift are silent', () => {
+  const played = [];
+  const host = hostWith(played);
+  host._onHeatChanged(heatPacket({ value: 0.2, previousValue: 0.18 }));   // in-band chip
+  host._onHeatChanged(heatPacket({ value: 0.45, previousValue: 0.5 }));   // decay, same band
+  host._onHeatChanged(heatPacket({ value: 0.35, previousValue: 0.45 }));  // decay band 3→2
+  host._onHeatChanged(heatPacket({ value: 0.16, previousValue: 0.35 }));  // decay band 2→1, still wanted
+  host._onHeatChanged(heatPacket({ value: 0.05, previousValue: 0.1 }));   // sub-threshold drift, no WANTED edge
   assert.equal(played.length, 0, 'only edges may speak');
 });
 
-test('dropping clean plays the clear sting, not the alarm', () => {
+test('a throttle-suppressed climb never plays a phantom escalation on the later decay step', () => {
   const played = [];
   const host = hostWith(played);
-  host._lastHeatLevel = 2;
-  host._onHeatChanged(heatPacket({ level: 0, wanted: false, wantedCrossed: true }));
+  // Bust → flip at band 1 (packet 1 speaks).
+  host._onHeatChanged(heatPacket({ value: 0.16, previousValue: 0, wantedCrossed: true }));
   assert.equal(played.length, 1);
-  assert.equal(played[0].id, 'wanted_clear');
+  // A second raise to band 3 inside heat.js's 0.4s emit window is suppressed by the producer:
+  // no packet exists, so the handler must learn about band 3 only when a future packet says so.
+  // The first decay step (3→2) carries previousValue ABOVE the current level — it must stay
+  // silent even though the handler never saw band 2 or 3 before.
+  host._onHeatChanged(heatPacket({ value: 0.4, previousValue: 0.524 }));
+  assert.equal(played.length, 1, 'a falling packet may never voice the rising alarm');
 });
 
-test('the first packet after a load speaks only on a real WANTED edge', () => {
+test('the first climb after a load speaks without any prior packet (fully packet-driven)', () => {
   const played = [];
   const host = hostWith(played);
-  // Loaded mid-heat: a routine chip arrives with no crossing — no phantom alarm.
-  host._onHeatChanged(heatPacket({ level: 3, wanted: true, wantedCrossed: false }));
-  assert.equal(played.length, 0);
-  // Then a genuine edge speaks.
-  host._onHeatChanged(heatPacket({ level: 0, wanted: false, wantedCrossed: true }));
-  assert.deepEqual(played.map((cue) => cue.id), ['wanted_clear']);
+  // Save restored heat 0.20 (band 1); no restore packet is emitted. The next bust raises to
+  // 0.36 = band 2 — the packet's own previousValue proves the climb.
+  host._onHeatChanged(heatPacket({ value: 0.36, previousValue: 0.2 }));
+  assert.equal(played.length, 1);
+  assert.equal(played[0].id, 'wanted_escalate');
 });
 
-test('a stale cross-run level never gates the WANTED flip (in-process New Game)', () => {
+test('a crossing with no usable previousValue speaks; without a crossing nothing may', () => {
   const played = [];
   const host = hostWith(played);
-  // Prior run ended at heat band 4; game:started wiped state.player without a save:loaded.
-  host._lastHeatLevel = 4;
-  // The new run's first crime flips WANTED at band 1 — the packet edge must speak.
-  host._onHeatChanged(heatPacket({ value: 0.2, previousValue: 0.1, wantedCrossed: true }));
+  // The producer always sends previousValue (its own fallback sets it to value, which cannot
+  // prove a climb) — if such a packet ever arrives, the packet's crossing edge alone must still
+  // voice the flip.
+  host._onHeatChanged({ value: 0.16, previousValue: 0.16, level: 1, wanted: true, wantedCrossed: true, threshold: THRESHOLD });
   assert.equal(played.length, 1);
   assert.equal(played[0].id, 'wanted_escalate');
   assert.equal(played[0].duck, true);
+  // The same packet without the crossing edge: nothing may speak.
+  const silent = [];
+  hostWith(silent)._onHeatChanged({ value: 0.3, previousValue: 0.3, level: 2, wanted: true, wantedCrossed: false, threshold: THRESHOLD });
+  assert.equal(silent.length, 0);
 });
 
 test('null payloads never throw', () => {
@@ -125,5 +151,6 @@ test('null payloads never throw', () => {
   const host = hostWith(played);
   host._onHeatChanged(null);
   host._onHeatChanged(undefined);
-  assert.equal(played.length, 0);
+  host._onHeatChanged({ level: 2, wanted: true, wantedCrossed: false });
+  assert.equal(played.length, 0, 'a packet without previousValue cannot prove a climb');
 });

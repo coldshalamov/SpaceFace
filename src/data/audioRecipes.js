@@ -584,7 +584,6 @@ export const RECIPES = [
     baseFreq: 523, freqSweep: [523, 349], sweepTimeS: 0.28,
     gainEnvelope: { attack: 0.014, sustain: 0.05, release: 0.3 },
     gainMult: 0.6,
-    reverbMix: 0.15, reverbDecay: 0.9,
   },
 
   // --- UI hover (soft tick, higher than click) ---

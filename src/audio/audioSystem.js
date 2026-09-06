@@ -30,6 +30,7 @@ import {
 } from './cuePriorityBus.js';
 import { TABLE_HEARING_FAR_WU, TABLE_HEARING_PAN_WU } from '../render/tabletopPolicy.js';
 import { entityNeedsExactAudio } from './audioActiveSet.js';
+import { heatLevelFor } from '../systems/heat.js';
 
 // --- positional model (ARCHITECTURE / spec) ---
 const D_NEAR = 40;     // wu — full volume within this
@@ -1277,15 +1278,10 @@ export const audio = {
     bus.on('save:loaded', () => {
       rt._activeCombatEncounters.clear();
       rt._doctrineThreatUntil = -1e9;
-      this._lastHeatLevel = null;
       this._applySettings();
       this._markMusicDirty();
     });
-    // In-process New Game swaps state.player without a save:loaded (resetRunState + game:started),
-    // so presentation transients keyed to per-run state must reset here too, mirroring heat.js.
-    bus.on('game:started', () => {
-      this._lastHeatLevel = null;
-    });
+    bus.on('game:started', () => { /* context already (or soon) created on gesture */ });
 
     // If a context already exists (hot reload), wire immediately.
     if (typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext)) {
@@ -2859,34 +2855,32 @@ export const audio = {
   },
 
   // WANTED heat family, keyed on the authoritative heat:changed packet (heat.js is the single
-  // writer and already throttles emits). Only edges speak: the WANTED flip and band climbs play
-  // the rising alarm (pitched up per band); dropping clean plays the clear sting. Chips inside a
-  // band and decay-without-clear stay silent. Level tracking is presentation-only transient,
-  // nulled on save:loaded AND game:started — the in-process New Game loop swaps state.player
-  // without a save:loaded, so the flip is gated on the packet's own wantedCrossed edge and
-  // speaks regardless of any cross-run stale level.
+  // writer). Fully packet-driven: every emit carries previousValue, so each verdict derives from
+  // the packet itself and no cross-run or post-load transient can stale it. Only edges speak:
+  // the WANTED flip and band climbs play the rising alarm (pitched up per band); dropping clean
+  // plays the clear sting; chips inside a band and decay-without-clear stay silent.
   _onHeatChanged(p) {
     if (!p) return;
     const level = Number.isFinite(p.level) ? p.level : 0;
-    const prevLevel = this._lastHeatLevel;
-    this._lastHeatLevel = level;
     if (p.wantedCrossed && !p.wanted) {
       // importance 0.8 = critical voice: the relief sting survives a combat squelch window,
       // mirroring the escalation alarm's immunity.
       this._onCue({ id: 'wanted_clear', gain: 0.7, importance: 0.8 });
       return;
     }
+    const prevLevel = Number.isFinite(p.previousValue) ? heatLevelFor(p.previousValue) : null;
     const escalated = level > 0
       && ((p.wantedCrossed && p.wanted) || (prevLevel != null && level > prevLevel));
     if (!escalated) return;
-    // Band ceiling mirrors HEAT_LEVEL_COUNT in src/systems/heat.js; bands 1..5.
+    // Band scale mirrors HEAT_LEVEL_COUNT in src/systems/heat.js; bands 1..5. The per-band rate
+    // step (0.12 ≈ 2 semitones) keeps the escalation ladder audible; gain steps add on top.
     const band = Math.max(1, Math.min(5, level));
     this._onCue({
       id: 'wanted_escalate',
       gain: clamp(0.55 + band * 0.06, 0.55, 0.9),
-      rate: clamp(1 + (band - 1) * 0.07, 1, 1.3),
-      // The flip owns the ear (duck, like fuel:empty); climbs inside WANTED speak below the
-      // priority-squelch threshold so a band climb never tramples live combat audio.
+      rate: clamp(1 + (band - 1) * 0.12, 1, 1.6),
+      // The flip owns the ear (duck, like fuel:empty). Climbs speak at 0.75 — and either way the
+      // recipe's 'alert' id already grants squelch immunity (see _isPriorityVoice).
       importance: p.wantedCrossed ? 0.9 : 0.75,
       duck: !!p.wantedCrossed,
     });
