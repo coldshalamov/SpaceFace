@@ -213,10 +213,10 @@ export const ENCOUNTER_BARKS = Object.freeze({
   // salvage
   salvage_ping: Object.freeze([
     'Salvage transponder, faint. Derelict field marked.',
-    'Weak beacon in the derelict field. Worth a look.',
-    'Faint salvage ping off the wreck shelf.',
-    'Transponder ghost near derelicts. Someone left cargo.',
-    'Scrap signal brushing the debris field edge.',
+    'Weak salvage beacon nearby. Worth a look.',
+    'Faint salvage ping off the sensor shelf.',
+    'Transponder ghost logged. Someone left cargo.',
+    'Scrap signal brushing past local sensors.',
   ]),
   // hunters
   bounty_notice: Object.freeze([

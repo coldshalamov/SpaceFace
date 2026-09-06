@@ -45,7 +45,7 @@ export default defineFlavorPack({
     },
     {
       id: 'vault_maw', programSlot: 'C4', targetRef: 'landmark_c4_vault_maw',
-      displayName: 'The Vault Maw', location: { sectorId: 'sector_ashfall_reach', zoneId: 'zone_ashfall_vault' },
+      displayName: 'The Vault Maw', location: { sectorId: 'sector_ashfall_reach', zoneId: 'zone_ashfall_vault', poiId: 'poi_vault_maw' },
       lines: [
         { id: 'c4_01', text: 'Six stone petals meet like a jaw around sealed records.' },
         { id: 'c4_02', text: 'Thousands of keyholes cover the teeth. One is real.' },
@@ -117,7 +117,7 @@ export default defineFlavorPack({
     },
     {
       id: 'ringworld_arc', programSlot: 'C11', targetRef: 'landmark_c11_ringworld_arc',
-      displayName: 'The Ringworld Arc', location: { sectorId: 'sector_sedna_dark' },
+      displayName: 'The Ringworld Arc', location: { sectorId: 'sector_sedna_dark', poiId: 'poi_sedna_ringworld' },
       lines: [
         { id: 'c11_01', text: 'The ring survives. Its star does not.' },
         { id: 'c11_02', text: 'Dead rivers cross the inner face beneath cycling city lights.' },
@@ -127,7 +127,7 @@ export default defineFlavorPack({
     },
     {
       id: 'metronome', programSlot: 'C12', targetRef: 'landmark_c12_metronome',
-      displayName: 'The Metronome', location: { sectorId: 'sector_eris_margin' },
+      displayName: 'The Metronome', location: { sectorId: 'sector_eris_margin', poiId: 'poi_eris_metronome' },
       lines: [
         { id: 'c12_01', text: 'The beam crosses the galactic plane every eight seconds.' },
         { id: 'c12_02', text: 'Navigators call it a lighthouse. The radiation disagrees.' },
@@ -198,7 +198,7 @@ export default defineFlavorPack({
     },
     {
       id: 'tide_locked_watcher', programSlot: 'C15', targetRef: 'landmark_c15_tide_locked_watcher',
-      displayName: 'The Tide-Locked Watcher', location: { sectorId: 'sector_triton_wake' },
+      displayName: 'The Tide-Locked Watcher', location: { sectorId: 'sector_triton_wake', poiId: 'poi_triton_watcher' },
       lines: [
         { id: 'c15_01', text: 'The carved eye has watched empty space for eighty million years.' },
         { id: 'c15_02', text: 'Stellar drift says a star once occupied its gaze.' },

@@ -289,7 +289,7 @@ export const EAST_SECTORS = Object.freeze([
         flavorTargetRef: 'landmark_c15_tide_locked_watcher',
         discoveryPlate: Object.freeze({
           title: 'The Tide-Locked Watcher',
-          body: 'A carved eye that has watched empty space for eighty million years; stellar drift says a star once occupied its gaze. Enter the sightline and your scanners dim while one note sounds.',
+          body: 'Monolithic megalith shaped into an aperture oriented toward empty dark space. Spectrometry dates the carving eighty million years back, aligned with a vanished stellar cradle. Close sensor passes confirm persistent localized dampening fields along its focal axis.',
         }),
       }),
     ]),

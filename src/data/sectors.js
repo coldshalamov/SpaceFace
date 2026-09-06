@@ -392,7 +392,7 @@ const CORE_SECTORS = [
         flavorTargetRef: 'landmark_c4_vault_maw',
         discoveryPlate: {
           title: 'The Vault Maw',
-          body: 'Six stone petals meet like a jaw around sealed records. Thousands of keyholes cover the teeth, and only one is real — wrong keys wake the guard before they fit.',
+          body: 'A heavily armored pre-collapse archive sealed behind interlocking petal-plates. The locking seam bears thousands of false cryptographic keyways tied to ancient defensive countermeasures, guarding historical ledgers expunged from all modern sector registries.',
         },
       },
     ],

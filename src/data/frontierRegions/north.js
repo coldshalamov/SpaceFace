@@ -247,7 +247,7 @@ export const NORTH_SECTORS = Object.freeze([
         flavorTargetRef: 'landmark_c12_metronome',
         discoveryPlate: Object.freeze({
           title: 'The Metronome',
-          body: 'A lighthouse that crosses the galactic plane every eight seconds. Navigators set watches by it; the radiation disagrees. Quiet crossing logs cluster precisely between the beam\'s returns.',
+          body: 'Ancient navigational beacon maintaining an unyielding 8.00-second sweep across the galactic rim. Navigators calibrate deep-space chronometers to its pulse, though high-energy telemetry suggests it was engineered as an area-denial emitter rather than an aid to navigation.',
         }),
       }),
     ]),

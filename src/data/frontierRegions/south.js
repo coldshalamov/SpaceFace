@@ -230,7 +230,7 @@ export const SOUTH_SECTORS = Object.freeze([
         flavorTargetRef: 'landmark_c11_ringworld_arc',
         discoveryPlate: Object.freeze({
           title: 'The Ringworld Arc',
-          body: 'The ring survives; its star does not. Dead rivers cross the inner face beneath cycling city lights that should have failed before human history, spelling something no translator will commit to.',
+          body: 'A colossal arc segment of an ancient orbital megastructure orbiting the frozen dark. Dry river basins and dormant metropolis grids curve across the interior circumference, powered by deep geothermal reserves that have outlived the system\'s dead primary.',
         }),
       }),
     ]),

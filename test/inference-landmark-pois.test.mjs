@@ -27,4 +27,8 @@ for (const { poiId, sectorId, ref } of LANDMARK_POIS) {
     `${poiId} carries a real discovery plate`);
   assert.equal(poi.scannerSignalKind, 'archive', `${poiId} is scannable as an archive signal`);
   assert.ok(poi.landmark === true, `${poiId} charts as a landmark`);
+
+  const loreEntry = landmarkLorePack.entries.find((entry) => entry.targetRef === ref);
+  assert.ok(loreEntry, `${ref} lore entry exists`);
+  assert.equal(loreEntry.location?.poiId, poiId, `${poiId} mapped to lore entry location for physical proximity identification`);
 }
