@@ -14,8 +14,9 @@
 // footprint-forced-colors-1920x1080.png. Anything that changes a pixel changes what the diff floors
 // mean, so it is rejected here rather than discovered later as an unexplained red row.
 //
-// What it actually recovers, measured on this tree: about 4-5 %. Some frames get BIGGER — the flat,
-// already-optimal ones — and those keep the bytes they had.
+// Try fixed and adaptive PNG row filters: the smaller encoding depends on the picture.
+// Keep the best candidate only after verifying identical decoded pixels. Already smaller
+// originals remain untouched.
 //
 //   node scripts/optimize-ui-frame-references.mjs            # every frame
 //   node scripts/optimize-ui-frame-references.mjs --dry-run  # measure, write nothing
@@ -56,14 +57,19 @@ for (const name of files) {
   const originalBuffer = readFileSync(file);
 
   let candidate = null;
-  try {
-    candidate = await sharp(originalBuffer)
-      // palette:false is the load-bearing argument. Without it libvips may quantise, and the result
-      // is a smaller file that is not the same picture.
-      .png({ compressionLevel: 9, adaptiveFiltering: true, palette: false })
-      .toBuffer();
-  } catch (error) {
-    console.log(`  skip  ${name} — re-encode failed: ${error.message}`);
+  for (const adaptiveFiltering of [false, true]) {
+    try {
+      const encoded = await sharp(originalBuffer)
+        // palette:false is the load-bearing argument. Without it libvips may quantise, and the
+        // result is a smaller file that is not the same picture.
+        .png({ compressionLevel: 9, adaptiveFiltering, palette: false })
+        .toBuffer();
+      if (!candidate || encoded.length < candidate.length) candidate = encoded;
+    } catch (error) {
+      console.log(`  skip  ${name} (adaptiveFiltering=${adaptiveFiltering}) — re-encode failed: ${error.message}`);
+    }
+  }
+  if (!candidate) {
     after += originalBytes;
     kept += 1;
     continue;
