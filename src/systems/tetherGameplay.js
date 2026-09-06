@@ -32,7 +32,9 @@ const TETHER_TAUT_PHASES = new Set(['capture', 'loaded', 'overload']);
 const TETHER_SHARE_MAX_LINKS = 4;
 export const TWIN_BRIDLE_DEF_ID = 'attachment_twin_bridle';
 export const TWIN_BRIDLE_HEAD_ID = 'twin_bridle';
-export const TWIN_BRIDLE_SETUP_S = 10;
+// PQ-031.00: the second latch is the throw, not a lingering setup mode. Keep the A endpoint
+// alive for only the authored combat-range throw window; all elapsed time comes from simTime.
+export const TWIN_BRIDLE_SETUP_S = 2;
 const STRAIN_EVENT_INTERVAL_S = 0.2;
 const RELATCH_COOLDOWN_S = 0.25;   // after cut/break — prevents same-press ghost re-latches
 const TAP_CUT_DELAY_S = 0.22;       // legacy direct-action path: hold becomes reel, tap becomes cut
