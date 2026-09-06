@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../src/ai/doctrine.js';
+import { COHORT_RECIPE_RIVER } from '../src/ai/fodderCohort.js';
 import { shouldRunOnTick } from '../src/core/activityScheduler.js';
 import { createTacticalAISystem } from '../src/systems/tacticalAI.js';
 
@@ -144,6 +145,65 @@ test('skipped decision ticks revoke cached fire immediately when the live target
     'the next fixed tick clears stale authorization without waiting for another tactical decision');
 });
 
+test('one cohort reuses its same-tick inspection while every member keeps its maneuver lookup', () => {
+  const player = ship(100, 0, 0);
+  const members = [
+    cohortShip(1, 1, 80, 'swarm_fixture'),
+    cohortShip(2, 1, 100, 'swarm_fixture'),
+    cohortShip(3, 1, 120, 'swarm_fixture'),
+  ];
+  const actors = new Map([player, ...members].map((entity) => [entity.id, entity]));
+  const requests = [];
+  const tactical = createTacticalAISystem({
+    seed: 47,
+    config: { runtime: { decisionIntervalTicks: 2, memberBatchSize: 3 }, trace: { enabled: false } },
+    sensors: { frameFor(entityId, tick) { return idleSensorFrame(actors.get(entityId), tick); } },
+    roster: {
+      listSquads() {
+        return [{
+          id: 'swarm_fixture', doctrine: 'patrol', faction: 'fixture',
+          members: members.map((entity) => cohortRosterMember(entity, player)),
+        }];
+      },
+    },
+    maneuver: { request(request) { requests.push(request); return true; } },
+    actionPortFactory: () => idleActionPort(),
+  });
+  const state = {
+    tick: 0,
+    playerId: player.id,
+    player: { heat: 0 },
+    entities: actors,
+    entityList: [player, ...members],
+    combat: { trace: { events: [] } },
+  };
+  tactical.init({ state, bus: null, helpers: {} });
+  tactical.update(1 / 60, state); // seed the cohort's first live plans
+
+  const director = tactical.stack.fodderCohorts;
+  const squadDirector = tactical.stack.maneuver.squadFrames;
+  const originalPlanFor = squadDirector.planFor.bind(squadDirector);
+  const originalInspect = director.inspect.bind(director);
+  let squadPlanReads = 0;
+  let inspectionReads = 0;
+  squadDirector.planFor = (id) => { squadPlanReads++; return originalPlanFor(id); };
+  director.inspect = (id) => { inspectionReads++; return originalInspect(id); };
+  requests.length = 0;
+  state.tick = 1;
+  tactical.update(1 / 60, state);
+
+  assert.equal(squadPlanReads, members.length,
+    'ManeuverPlanner keeps its original composite plan lookup for each member');
+  assert.equal(inspectionReads, 1,
+    'one immutable cohort inspection snapshot is shared across the three member stamps');
+  assert.deepEqual(requests.map((request) => request.entityId).sort((a, b) => a - b), [1, 2, 3],
+    'reuse does not skip any member’s 60 Hz maneuver authority');
+  for (const member of members) {
+    assert.equal(member.data.ai.fodderCohort.shape, 'river');
+    assert.equal(typeof member.data.ai.fodderCohort.usedSpatialHash, 'boolean');
+  }
+});
+
 function sensorFrame(attacker, target, entityId, tick) {
   return {
     tick,
@@ -279,5 +339,32 @@ function combatAI() {
       startedTick: 0,
     }),
     roe: RulesOfEngagement.WEAPONS_FREE,
+  };
+}
+
+function cohortShip(id, team, x, squadId) {
+  const entity = ship(id, team, x, {
+    passive: false,
+    forcePlayerTarget: true,
+    cohortRecipe: COHORT_RECIPE_RIVER,
+    squadId,
+  });
+  entity.data.combat.targetId = 100;
+  return entity;
+}
+
+function cohortRosterMember(entity, player) {
+  return {
+    id: entity.id,
+    capabilities: ['drive'],
+    combatDoctrineId: null,
+    team: entity.team,
+    alive: true,
+    pos: entity.pos,
+    passive: false,
+    playerId: player.id,
+    playerTeam: player.team,
+    authorityOrigin: player.pos,
+    authorityRadius: 500,
   };
 }

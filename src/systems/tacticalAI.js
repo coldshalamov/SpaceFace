@@ -481,11 +481,22 @@ function driveCohortMembers(liveStack, state, tick) {
   const maneuverPort = liveStack.ports && liveStack.ports.maneuver;
   const list = state && state.entityList;
   if (!list) return;
+  // Cohort stepAll has already published immutable-for-this-tick plans. Reuse the read-only
+  // inspection snapshot for every member, while each member keeps its original maneuver lookup
+  // and submission on every fixed tick.
+  const inspectionByCohortId = cohortInspectionCache(liveStack, tick);
   for (let i = 0; i < list.length; i++) {
     const entity = list[i];
     if (!entity || entity.alive === false) continue;
     if (!cohortRecipeFromEntity(entity)) continue;
-    stampFodder(entity, director.planFor(entity.id), director);
+    const choreographyPlan = director.planFor(entity.id);
+    const cohortId = choreographyPlan && choreographyPlan.squadId;
+    let inspection = null;
+    if (cohortId != null) {
+      if (!inspectionByCohortId.has(cohortId)) inspectionByCohortId.set(cohortId, director.inspect(cohortId));
+      inspection = inspectionByCohortId.get(cohortId);
+    }
+    stampFodder(entity, choreographyPlan, inspection);
     if (entityNeedsAiThink(entity, state) === false) continue;
     const request = planChoreographyManeuver(liveStack, state, entity, tick);
     if (request && maneuverPort && typeof maneuverPort.request === 'function') {
@@ -494,15 +505,25 @@ function driveCohortMembers(liveStack, state, tick) {
   }
 }
 
-function stampFodder(entity, plan, director) {
+function cohortInspectionCache(liveStack, tick) {
+  let cache = liveStack.cohortInspectionCache;
+  if (!cache) {
+    cache = { tick: null, byCohortId: new Map() };
+    liveStack.cohortInspectionCache = cache;
+  }
+  if (cache.tick !== tick) {
+    cache.tick = tick;
+    cache.byCohortId.clear();
+  }
+  return cache.byCohortId;
+}
+
+function stampFodder(entity, plan, inspection = null) {
   if (!entity || !entity.data) return;
   const ai = entity.data.ai || (entity.data.ai = {});
   const stamp = ai.fodderCohort || (ai.fodderCohort = {});
-  const inspect = plan && plan.squadId && director && typeof director.inspect === 'function'
-    ? director.inspect(plan.squadId)
-    : null;
   stamp.phase = plan ? plan.phase : null;
-  stamp.shape = inspect ? inspect.shape : null;
+  stamp.shape = inspection ? inspection.shape : null;
   stamp.integrity = plan ? plan.integrity : null;
   stamp.slotError = plan ? plan.slotError : null;
   stamp.shapeError = plan && Number.isFinite(plan.shapeError) ? plan.shapeError : stamp.slotError;
