@@ -5,7 +5,7 @@ import {
   runM2,
   runM3,
   runM8,
-} from '../../../src/systems/motionScenarios.js';
+} from '../../../src/testing/motionScenarios.js';
 import { computeRunHash } from './runHash.mjs';
 
 export const FLIGHT_BENCH_SCENARIOS = [

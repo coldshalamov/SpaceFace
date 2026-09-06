@@ -13,22 +13,22 @@ export const TECH_NODES = [
   {
     id: 'tech_beam_focusing', name: 'Beam Focusing', branch: 'combat', prereqs: ['tech_combat_basics'],
     cost: { credits: 18000, rp: 30 },
-    unlocks: { modules: ['wpn_pulse_laser_m', 'wpn_beam_laser_m'] },
+    unlocks: { modules: ['wpn_pulse_laser_m', 'wpn_beam_laser_m', 'mod_thermal_sink_m'] },
   },
   {
     id: 'tech_kinetic_drivers', name: 'Kinetic Drivers', branch: 'combat', prereqs: ['tech_combat_basics'],
     cost: { credits: 22000, rp: 35 },
-    unlocks: { modules: ['wpn_autocannon_m', 'wpn_railgun_m'] },
+    unlocks: { modules: ['wpn_autocannon_m', 'wpn_railgun_m', 'wpn_concussion_cannon_m'] },
   },
   {
     id: 'tech_guided_ordnance', name: 'Guided Ordnance', branch: 'combat', prereqs: ['tech_combat_basics'],
     cost: { credits: 26000, rp: 45 },
-    unlocks: { modules: ['wpn_missile_rack_m'] },
+    unlocks: { modules: ['wpn_missile_rack_m', 'wpn_vector_mine_m'] },
   },
   {
     id: 'tech_plasma_dynamics', name: 'Plasma Dynamics', branch: 'combat', prereqs: ['tech_kinetic_drivers', 'tech_beam_focusing'],
     cost: { credits: 90000, rp: 150 },
-    unlocks: { modules: ['wpn_plasma_cannon_m', 'wpn_emp_disruptor_m'] },
+    unlocks: { modules: ['wpn_plasma_cannon_m', 'wpn_emp_disruptor_m', 'wpn_rcs_disruptor_m'] },
   },
   {
     id: 'tech_deflector_theory', name: 'Deflector Theory', branch: 'combat', prereqs: [],
@@ -76,7 +76,7 @@ export const TECH_NODES = [
   {
     id: 'tech_attack_topology', name: 'Attack Topology', branch: 'combat', prereqs: ['tech_combat_basics'],
     cost: { credits: 28000, rp: 40 },
-    unlocks: { modules: ['mod_twin_mount', 'mod_triad_mount', 'mod_piercing_core', 'mod_forked_core'] },
+    unlocks: { modules: ['mod_twin_mount', 'mod_triad_mount', 'mod_piercing_core', 'mod_forked_core', 'mod_herald_fan'] },
   },
   {
     id: 'tech_ricochet_ballistics', name: 'Ricochet Ballistics', branch: 'combat', prereqs: ['tech_attack_topology'],

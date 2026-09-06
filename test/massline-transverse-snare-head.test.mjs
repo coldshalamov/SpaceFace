@@ -16,7 +16,7 @@ import {
 import { fittingsFromDefaultModules, getDerivedStats } from '../src/systems/ships.js';
 import { masslineTetherStatus } from '../src/ui/hud.js';
 import { MASSLINE_HUD_CSS } from '../src/ui/masslineHud.js';
-import { statSnippet } from '../src/ui/screens/outfitting.js';
+import { statSnippet } from '../src/ui/station/outfittingGuidance.js';
 
 const DT = 1 / 60;
 const STANDARD = ATTACHMENT_DEFS.find((def) => def.id === 'tether_standard');

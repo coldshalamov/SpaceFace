@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import {
   isJsonSerializable,
   jsonRoundTrip,
-} from '../src/systems/motionTelemetry.js';
+} from '../src/testing/motionTelemetry.js';
 import {
   deriveEnemyMotionScale,
   ENEMY_MOTION_IDENTITY_SCALE,
@@ -34,7 +34,7 @@ import {
   runM6,
   runM8,
   runM11,
-} from '../src/systems/motionScenarios.js';
+} from '../src/testing/motionScenarios.js';
 
 const SEED = MOTION_LAB_SEED;
 const LONG = { timeout: 180_000 };

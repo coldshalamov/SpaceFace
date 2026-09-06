@@ -12,6 +12,7 @@ import {
   findMasslineHeadConflict,
   fits,
   getDerivedStats,
+  outfitBudgetBlocker,
   shipworksStationAccess,
 } from '../../../systems/ships.js';
 import { SHIPS } from '../../../data/ships.js';
@@ -22,7 +23,9 @@ import { WEAPONS } from '../../../data/weapons.js';
 import { escapeHtml } from '../../comms.js';
 import { confirm, isConfirmOpen } from '../../confirm.js';
 import { describeOutfittingSpendConfirm } from '../../outfittingSpendConfirm.js';
+import { moduleRiskStrip } from '../../panels/moduleRisk.js';
 import { icon } from '../icons.js';
+import { describeOutfittingPurchase, masslineHeadOutcome } from '../outfittingGuidance.js';
 import {
   createShipPreviewMount,
   dockInteriorIdForArchetype,
@@ -184,12 +187,6 @@ export function shipworksActionAvailability(state) {
 }
 const titleCaseWords = (value) => String(value || '').replace(/[_-]+/g, ' ')
   .replace(/\b\w/g, (letter) => letter.toUpperCase());
-
-function researched(state) {
-  const r = state && state.player && (state.player.researchedNodes || state.player.researched);
-  return new Set(Array.isArray(r) ? r : []);
-}
-function moduleLocked(d, state) { return !!(d.requiresTech && !researched(state).has(d.requiresTech)); }
 
 function fittedIdentityLine(def) {
   if (!def) return '';
@@ -1751,18 +1748,14 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     if (def.slotType === 'engine') return 'Propulsion and handling system';
     if (def.slotType === 'cargo') return def.mods && def.mods.hiddenCargoPct ? 'Concealed cargo system' : 'Load-space system';
     if (def.slotType === 'mining') return def.directToCargo ? 'Direct-feed extraction system' : 'Ore extraction system';
+    const masslineOutcome = masslineHeadOutcome(def);
+    if (masslineOutcome) return masslineOutcome;
     if (def.mods && def.mods.hullRepairOOC) return 'Autonomous repair system';
     if (def.mods && def.mods.scannerCloak) return 'Sensor scrambling and stealth system';
     if (def.mods && def.mods.weaponHeatDissipPct) return 'Thermal regulation and weapon heatsink';
     if (def.mods && def.mods.weaponRangePct) return 'Fire-control support system';
     if (def.mods && def.mods.radarRangePct) return 'Long-range sensor system';
     if (def.mods && def.mods.countermeasure) return 'Defensive countermeasure';
-    if (def.mods && def.mods.masslineHeadId === 'tractor') return 'Massline Tractor head';
-    if (def.mods && def.mods.masslineHeadId === 'elastic_whip') return 'Massline spring-energy head';
-    if (def.mods && def.mods.masslineHeadId === 'frame_coupler') return 'Massline separation-damping head';
-    if (def.mods && def.mods.masslineHeadId === 'monofilament_sweep') return 'Massline hostile-cut sweep head';
-    if (def.mods && def.mods.masslineHeadId === 'transverse_snare') return 'Massline free-target crossing snare';
-    if (def.mods && def.mods.masslineHeadId === 'twin_bridle') return 'Massline two-endpoint world tether';
     if (def.mods && (def.mods.tetherSpoolMult || def.mods.tetherReelRateMult)) return 'Massline handling system';
     return 'Utility support system';
   }
@@ -1847,6 +1840,19 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     return '<span class="sx-modrow__unchanged">No derived change</span>';
   }
 
+  function moduleRiskChipsHtml(shipDef, fittings, slotIndex, candidate) {
+    if (!shipDef || !candidate) return '';
+    const prospective = Array.isArray(fittings) ? fittings.slice() : [];
+    prospective[slotIndex] = candidate.id;
+    const risks = moduleRiskStrip(prospective, {
+      shipId: shipDef.id,
+      fittings: prospective,
+      player: ctx.state.player,
+    }).risks || [];
+    return risks.slice(0, 3).map((risk) =>
+      `<span class="sx-modrow__chip">Risk: ${escapeHtml(risk.label)}</span>`).join('');
+  }
+
   // ---------- slot chooser (dim + reveal compatible modules) ----------
   function stopChooserFloating() {
     if (stopChooserPositioning) { try { stopChooserPositioning(); } catch (_) {} }
@@ -1881,10 +1887,14 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       placement: 'right-start',
       middleware: [
         offset(18),
-        flip({ fallbackPlacements: ['left-start', 'bottom'], padding: 18 }),
-        shift({ padding: 18 }),
+        // The station's persistent command chrome is outside Shipworks. Constrain the floating
+        // tray to this actual operation surface so a tall candidate list scrolls within its tray
+        // instead of shifting its heading up behind the dock/navigation band.
+        flip({ boundary: el, fallbackPlacements: ['left-start', 'bottom'], padding: 12 }),
+        shift({ boundary: el, padding: 12 }),
         size({
-          padding: 18,
+          boundary: el,
+          padding: 12,
           apply({ availableWidth, availableHeight, elements }) {
             elements.floating.style.maxWidth = `${Math.max(340, Math.min(560, availableWidth))}px`;
             // Inline max-height is the only ceiling that actually binds (a stylesheet rule loses
@@ -1913,16 +1923,13 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     if (!opts.silent) emitUiCue(UI_SWITCH_DETENT_CUE);
     const fittings = s.fittings || [];
     const fittedId = fittings[slotIndex];
-    const credits = (ctx.state.player && ctx.state.player.credits) || 0;
     const availability = shipworksActionAvailability(ctx.state);
     const compat = FITTABLE.filter((d) => d.slotType === slot.type && fits(slot, d) && d.purchasable !== false)
       .sort((a, b) => (a.tier - b.tier) || (a.price - b.price));
 
     const list = compat.map((d) => {
-      const locked = moduleLocked(d, ctx.state);
       const headConflict = findMasslineHeadConflict(fittings, slotIndex, d);
       const equipped = d.id === fittedId;
-      const afford = (d.price || 0) <= credits;
       const shopDelta = presentShopModuleDelta({
         defId: def.id,
         fittings,
@@ -1932,21 +1939,37 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       });
       const fittedDef = fittedId ? FITTABLE_BY_ID.get(fittedId) : null;
       const chips = shopDeltaChipsHtml(shopDelta, d, fittedDef);
+      const purchase = describeOutfittingPurchase(d, ctx.state.player || {}, slots, fittings, def);
+      const selectedFittings = fittings.slice();
+      selectedFittings[slotIndex] = d.id;
+      const selectedBudgetBlocker = outfitBudgetBlocker(def, selectedFittings);
+      const selectedFit = !equipped && !purchase.disabled && !headConflict && !selectedBudgetBlocker;
+      const riskChips = moduleRiskChipsHtml(def, fittings, slotIndex, d);
       const metaFallback = escapeHtml(d.size || '') + ' · T' + d.tier;
+      const actionDetail = equipped ? 'Installed in this slot.'
+        : purchase.disabled ? purchase.title
+        : headConflict ? `Unfit ${headConflict.name} before installing another Massline head. This purchase goes to inventory.`
+        : selectedBudgetBlocker ? `${selectedBudgetBlocker.text || 'This fitting exceeds the hull budget'}. This purchase goes to inventory.`
+        : selectedFit && fittedId
+        ? `Buy ${d.name} and replace ${(fittedDef && fittedDef.name) || 'the fitted module'}; the removed module goes to inventory.`
+        : selectedFit
+          ? `Buy ${d.name} and fit it to this ${slot.type} ${slot.size} slot.`
+        : purchase.title;
       const btn = equipped
         ? `<span class="sx-modrow__eq">Equipped</span>`
-        : headConflict
-          ? `<span class="sx-modrow__lock">${icon('info', 13)} Unfit ${escapeHtml(headConflict.name)} first</span>`
-        : locked
-          ? `<span class="sx-modrow__lock">${icon('info', 13)} Tech locked</span>`
-          : `<button type="button" class="sx-modrow__buy" data-buyfit="${escapeHtml(d.id)}" data-slot="${slotIndex}" ${afford && availability.outfitEnabled ? '' : `disabled aria-label="${escapeHtml(availability.outfitEnabled ? `${fmt(d.price)} credits, ${fmt(Math.max(0, (d.price || 0) - credits))} credits short` : availability.outfitLabel)}"`}>${availability.outfitEnabled ? (d.price > 0 ? (afford ? 'Buy · ' + fmt(d.price) : `<span>${fmt(d.price)} cr</span><small>${fmt(Math.max(0, d.price - credits))} short</small>`) : 'Fit') : 'Dock to fit'}</button>`;
+        : purchase.state === 'locked'
+          ? `<span class="sx-modrow__lock">${icon('info', 13)} ${escapeHtml(purchase.label)}</span>`
+          : purchase.state === 'funding'
+            ? `<button type="button" class="sx-modrow__buy" disabled>${fmt(d.price)} cr<small>${escapeHtml(purchase.label)}</small></button>`
+            : `<button type="button" class="sx-modrow__buy" data-buyfit="${escapeHtml(d.id)}"${selectedFit ? ` data-fit-slot="${slotIndex}"` : ''} ${availability.outfitEnabled ? '' : `disabled aria-label="${escapeHtml(availability.outfitLabel)}"`}>${availability.outfitEnabled ? (selectedFit ? (fittedId ? 'Buy & Replace' : 'Buy & Fit') : 'Buy to Inventory') : 'Dock to fit'}<small>${fmt(d.price || 0)} cr</small></button>`;
       return (
-        `<div class="sx-modrow${equipped ? ' is-eq' : ''}${locked || headConflict ? ' is-locked' : ''}" ${headConflict ? '' : `data-preview-module="${escapeHtml(d.id)}" data-preview-slot="${slotIndex}"`} tabindex="0">` +
+        `<div class="sx-modrow${equipped ? ' is-eq' : ''}${purchase.disabled || headConflict ? ' is-locked' : ''}" ${headConflict ? '' : `data-preview-module="${escapeHtml(d.id)}" data-preview-slot="${slotIndex}"`} tabindex="0">` +
           `<span class="sx-modrow__ic">${icon(SLOT_ICON[slot.type] || 'spark', 18)}</span>` +
           `<span class="sx-modrow__body"><span class="sx-modrow__name">${escapeHtml(d.name)}</span>` +
             `<span class="sx-modrow__role">${escapeHtml(moduleRole(d))} · ${metaFallback}</span>` +
             `<span class="sx-modrow__metrics">${moduleMetricsHtml(d)}</span>` +
-            `<span class="sx-modrow__meta">${chips}</span></span>` +
+            `<span class="sx-modrow__meta">${chips}${riskChips}</span>` +
+            `<span class="sx-modrow__role">${escapeHtml(actionDetail)}</span></span>` +
           btn +
         `</div>`
       );
@@ -2435,11 +2458,12 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     if (bf && !bf.disabled && shipworksActionAvailability(ctx.state).outfitEnabled) {
       if (buyConfirmBusy || isConfirmOpen()) return;
       const defId = bf.getAttribute('data-buyfit');
-      const slotIndex = Number(bf.getAttribute('data-slot'));
+      const fitSlotValue = bf.getAttribute('data-fit-slot');
+      const fitSlotIndex = fitSlotValue == null ? null : Number(fitSlotValue);
       const def = FITTABLE_BY_ID.get(defId);
       if (!def) return;
       const credits = Math.max(0, Number(ctx.state.player && ctx.state.player.credits) || 0);
-      const confirmOpts = describeOutfittingSpendConfirm(def, credits, { fitSlotIndex: slotIndex });
+      const confirmOpts = describeOutfittingSpendConfirm(def, credits, { fitSlotIndex });
       if (confirmOpts) {
         try { bf.focus({ preventScroll: true }); } catch (_) {
           try { bf.focus(); } catch (__) {}
@@ -2456,7 +2480,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
           return;
         }
       }
-      if (ctx.bus) { ctx.bus.emit('ui:buyModule', { defId, fitSlotIndex: slotIndex }); ctx.bus.emit('audio:cue', { id: UI_SWITCH_DETENT_CUE }); }
+      if (ctx.bus) { ctx.bus.emit('ui:buyModule', { defId, fitSlotIndex }); ctx.bus.emit('audio:cue', { id: UI_SWITCH_DETENT_CUE }); }
       closeChooser(); setTimeout(refresh, 70); return;
     }
     const uf = ev.target.closest('[data-unfit]');

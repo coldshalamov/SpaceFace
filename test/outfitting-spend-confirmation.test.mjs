@@ -10,17 +10,13 @@ import { fileURLToPath } from 'node:url';
 
 import { MODULES } from '../src/data/modules.js';
 import { WEAPONS } from '../src/data/weapons.js';
+import { describeOutfittingPurchase, masslineHeadOutcome } from '../src/ui/station/outfittingGuidance.js';
 import {
-  describeOutfittingPurchase,
   describeOutfittingSpendConfirm,
   isOutfittingSpendDanger,
-} from '../src/ui/screens/outfitting.js';
+} from '../src/ui/outfittingSpendConfirm.js';
 import { confirm, isConfirmOpen } from '../src/ui/confirm.js';
 
-const OUTFIT_SOURCE = readFileSync(
-  fileURLToPath(new URL('../src/ui/screens/outfitting.js', import.meta.url)),
-  'utf8',
-);
 const SHIPWORKS_SOURCE = readFileSync(
   fileURLToPath(new URL('../src/ui/station/screens/shipworks.js', import.meta.url)),
   'utf8',
@@ -442,37 +438,20 @@ function getConfirmDialog() {
   assert.equal(secondResult, true, 'second confirm resolves normally');
 }
 
-// ── Source integration assertions for outfitting.js ─────────────────────────
-
-{
-  // The single Buy handler must exist and gate paid purchases with confirm().
-  assert.match(OUTFIT_SOURCE, /shopList\.addEventListener\('click',\s*async\s*\(ev\)\s*=>\s*\{/, 'outfitting shop has a single async click handler');
-  assert.match(OUTFIT_SOURCE, /if\s*\(buyConfirmBusy\s*\|\|\s*isConfirmOpen\(\)\)\s*return/, 'handler has re-entry guard while a confirm is open');
-  assert.match(OUTFIT_SOURCE, /describeOutfittingSpendConfirm\(def,\s*credits,\s*\{[\s\S]*?fitSlotIndex:\s*payload\.fitSlotIndex[\s\S]*?\}\)/, 'handler builds confirm options from the production helper');
-  assert.match(OUTFIT_SOURCE, /ok\s*=\s*await\s+confirm\(confirmOpts\)/, 'paid module awaits confirm before proceeding');
-  assert.match(OUTFIT_SOURCE, /if\s*\(!ok\)\s*\{[\s\S]*?ctx\.bus\.emit\('audio:cue',\s*\{\s*id:\s*'ui_deny'\s*\}\);[\s\S]*?return;\s*\}/, 'cancel emits ui_deny and returns without buy');
-  assert.match(OUTFIT_SOURCE, /ctx\.bus\.emit\('ui:buyModule',\s*payload\)/, 'handler emits ui:buyModule after confirmation');
-
-  // Confirm that the payload passed to ui:buyModule carries the original defId and optional fitSlotIndex.
-  const buyEmitIndex = OUTFIT_SOURCE.indexOf("ctx.bus.emit('ui:buyModule', payload)");
-  const confirmAwaitIndex = OUTFIT_SOURCE.indexOf('ok = await confirm(confirmOpts)');
-  assert.ok(buyEmitIndex > confirmAwaitIndex, 'ui:buyModule emit follows the confirm await');
-  assert.match(OUTFIT_SOURCE, /const\s+payload\s*=\s*\{\s*defId\s*\}/, 'payload starts with original defId');
-  assert.match(OUTFIT_SOURCE, /payload\.fitSlotIndex\s*=\s*fitSlotIndex/, 'payload preserves optional fitSlotIndex');
-
-  // Focus restoration: the button is focused before confirm so cancel restores to it.
-  assert.match(OUTFIT_SOURCE, /btn\.focus\(\{\s*preventScroll:\s*true\s*\}\)/, 'handler focuses the Buy button before opening confirm');
-}
-
 // ── Default Shipworks source integration ──────────────────────────────
 
 {
   assert.match(SHIPWORKS_SOURCE, /chooserEl\.addEventListener\('click',\s*async\s*\(ev\)\s*=>\s*\{/, 'default Shipworks chooser has one async click handler');
   assert.match(SHIPWORKS_SOURCE, /if\s*\(buyConfirmBusy\s*\|\|\s*isConfirmOpen\(\)\)\s*return/, 'Shipworks blocks purchase re-entry while confirmation is open');
-  assert.match(SHIPWORKS_SOURCE, /describeOutfittingSpendConfirm\(def,\s*credits,\s*\{\s*fitSlotIndex:\s*slotIndex\s*\}\)/, 'Shipworks uses the shared module-spend description');
+  assert.match(SHIPWORKS_SOURCE, /describeOutfittingPurchase\(d,\s*ctx\.state\.player/, 'Shipworks uses the shared purchase explanation for each visible module row');
+  assert.match(SHIPWORKS_SOURCE, /moduleRiskStrip\(prospective/, 'Shipworks renders only risks derived from the prospective real fitting');
+  assert.match(SHIPWORKS_SOURCE, /data-fit-slot/, 'Shipworks distinguishes Buy & Fit from Buy to Inventory');
+  assert.match(SHIPWORKS_SOURCE, /selectedFit\s*=\s*!equipped\s*&&\s*!purchase\.disabled\s*&&\s*!headConflict/, 'Shipworks bases direct fitting on the selected compatible slot, not the first available slot');
+  assert.match(SHIPWORKS_SOURCE, /Buy & Replace/, 'Shipworks names the supported selected-slot replacement action');
+  assert.match(SHIPWORKS_SOURCE, /describeOutfittingSpendConfirm\(def,\s*credits,\s*\{\s*fitSlotIndex\s*\}\)/, 'Shipworks uses the selected fitting action in the shared module-spend description');
   assert.match(SHIPWORKS_SOURCE, /ok\s*=\s*await\s+confirm\(confirmOpts\)/, 'Shipworks awaits paid-spend confirmation');
   assert.match(SHIPWORKS_SOURCE, /if\s*\(!ok\)\s*\{[\s\S]*?return;\s*\}/, 'Shipworks cancellation returns before purchase');
-  const shipworksBuyIndex = SHIPWORKS_SOURCE.indexOf("ctx.bus.emit('ui:buyModule', { defId, fitSlotIndex: slotIndex })");
+  const shipworksBuyIndex = SHIPWORKS_SOURCE.indexOf("ctx.bus.emit('ui:buyModule', { defId, fitSlotIndex })");
   const shipworksConfirmIndex = SHIPWORKS_SOURCE.indexOf('ok = await confirm(confirmOpts)');
   assert.ok(shipworksBuyIndex > shipworksConfirmIndex, 'default-route module purchase follows confirmation');
 }
@@ -493,6 +472,11 @@ function getConfirmDialog() {
   assert.equal(fit.disabled, false, 'affordable researched module with open slot is enabled');
   assert.equal(fit.label, 'Buy & Fit', 'open compatible slot shows Buy & Fit');
   assert.equal(fit.fitSlotIndex, 0, 'fitSlotIndex points at the open slot');
+
+  const full = describeOutfittingPurchase(mod, { credits: 10000, researchedNodes: ['tech_deflectors'] }, slots, ['mod_shield_booster_s']);
+  assert.equal(full.label, 'Buy to Inventory', 'a full compatible slot keeps purchase distinct from fitting');
+  assert.match(full.title, /every compatible slot is full/i);
+  assert.equal(masslineHeadOutcome({ mods: { masslineHeadId: 'transverse_snare' } }), 'Massline free-target crossing snare');
 }
 
 console.log('outfitting-spend-confirmation: all acceptance checks passed');

@@ -10,6 +10,7 @@ import { createHash } from 'node:crypto';
 import { SHIPS } from '../src/data/ships.js';
 import { MODULES } from '../src/data/modules.js';
 import { WEAPONS } from '../src/data/weapons.js';
+import { BODY_MODULES } from '../src/data/claimableBodies.js';
 import { TECH_NODES } from '../src/data/tech.js';
 import {
   CAREER_IDS,
@@ -34,14 +35,12 @@ import {
   getShipRoleIdentity,
   buildSlotList,
 } from '../src/systems/ships.js';
-import {
-  describeShipyardHullCompare,
-  describeShipyardPurchase,
-} from '../src/ui/screens/shipyard.js';
+import { presentHullCompare } from '../src/ui/presenters/engineeringPreview.js';
 
 const TECH_BY_ID = new Map(TECH_NODES.map((t) => [t.id, t]));
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
 const FITTABLE_BY_ID = new Map([...MODULES, ...WEAPONS].map((d) => [d.id, d]));
+const BODY_MODULE_BY_ID = new Map(BODY_MODULES.map((d) => [d.id, d]));
 const FAIL = [];
 function check(cond, msg) {
   if (!cond) FAIL.push(msg);
@@ -107,7 +106,7 @@ for (const def of [...SHIPS, ...MODULES, ...WEAPONS]) {
 }
 for (const tech of TECH_NODES) {
   for (const defId of [...(tech.unlocks?.ships || []), ...(tech.unlocks?.modules || [])]) {
-    const def = SHIP_BY_ID.get(defId) || FITTABLE_BY_ID.get(defId);
+    const def = SHIP_BY_ID.get(defId) || FITTABLE_BY_ID.get(defId) || BODY_MODULE_BY_ID.get(defId);
     check(!!def, tech.id + ' unlocks unknown catalog id ' + defId);
     check(!def?.requiresTech || def.requiresTech === tech.id,
       tech.id + ' claims ' + defId + ' but its requiresTech is ' + (def?.requiresTech || 'none'));
@@ -220,24 +219,19 @@ const identity = getShipRoleIdentity('ship_wasp');
 check(identity && identity.shortWhy && identity.dimensions, 'getShipRoleIdentity packet');
 check(flightClassForHull(SHIP_BY_ID.get('ship_atlas')) === 'hauler', 'atlas flight class');
 
-// ---- 7. Shipyard why + compare (real stats) ------------------------------------
-const purchase = describeShipyardPurchase(SHIP_BY_ID.get('ship_pelican'), { credits: 22000 }, true);
-check(purchase.state === 'available', 'pelican purchase available');
-check(/mining|ore|drill|hardpoint/i.test(purchase.title + ' ' + describeHullRole('ship_pelican').shortWhy),
-  'purchase/why must explain mining role');
-
+// ---- 7. Shipworks compare uses the live engineering presenter ------------------
 const player = {
   credits: 100000,
   activeShipIndex: 0,
   ownedShips: [{ defId: 'ship_kestrel', fittings: fittingsFromDefaultModules('ship_kestrel', []) }],
   cargo: { usedMass: 0 },
 };
-const cmp = describeShipyardHullCompare(SHIP_BY_ID.get('ship_mule'), player);
+const cmp = presentHullCompare(SHIP_BY_ID.get('ship_mule'), player);
 check(cmp && cmp.kind === 'compare', 'shipyard compare vs owned');
 check(cmp.compare && cmp.compare.rows.length >= 5, 'compare has real rows');
 check(cmp.compare.rows.every((r) => Number.isFinite(r.candidate) && Number.isFinite(r.current)),
   'compare rows must be finite real stats');
-const selfCmp = describeShipyardHullCompare(SHIP_BY_ID.get('ship_kestrel'), player);
+const selfCmp = presentHullCompare(SHIP_BY_ID.get('ship_kestrel'), player);
 check(selfCmp && selfCmp.kind === 'current', 'active hull compare is self');
 
 const pureCmp = compareHulls('ship_hornet', 'ship_kestrel',

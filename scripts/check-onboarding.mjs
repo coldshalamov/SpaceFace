@@ -19,7 +19,6 @@ const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const src = readFileSync(join(ROOT, 'src/systems/onboarding.js'), 'utf8');
 const promptSrc = readFileSync(join(ROOT, 'src/ui/controlPrompts.js'), 'utf8');
 const readme = readFileSync(join(ROOT, 'README.md'), 'utf8');
-const wfRest = readFileSync(join(ROOT, 'scripts/wf-rest.js'), 'utf8');
 
 // Each un-onboarded system → the event that fires on first interaction + the hint key that should
 // be shown. (The station-hub orientation hint is included too — it's the single biggest cliff.)
@@ -114,11 +113,11 @@ for (const staleDockCopy of [/Press Enter at the dock prompt/, /Press ENTER to d
     `onboarding.js must not use stale hard-coded dock copy: ${staleDockCopy}`);
   assert.doesNotMatch(readme, staleDockCopy,
     `README.md must not teach stale dock copy: ${staleDockCopy}`);
-  assert.doesNotMatch(wfRest, staleDockCopy,
-    `wf-rest.js must not teach future agents stale dock copy: ${staleDockCopy}`);
+  assert.doesNotMatch(promptSrc, staleDockCopy,
+    `controlPrompts.js must not teach stale hard-coded dock copy: ${staleDockCopy}`);
 }
-assert.match(wfRest, /dock binding from src\/ui\/bindings\.js|UI-owned dock binding is src\/ui\/bindings\.js dock/,
-  'wf-rest.js should tell future UI agents to source dock prompts from src/ui/bindings.js');
+assert.match(promptSrc, /BINDINGS\.dock\.label/,
+  'controlPrompts.js must source live dock guidance from the binding catalog');
 for (const staleMapCopy of [/Star Map \(M\)/, /N local map/, /M star map/, /M open Star Map/]) {
   assert.doesNotMatch(src, staleMapCopy,
     `onboarding.js must not use stale hard-coded map copy: ${staleMapCopy}`);

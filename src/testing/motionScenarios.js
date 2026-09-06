@@ -22,14 +22,14 @@ import {
   restoreFeatureMaps,
   snapshotFeatureMaps,
 } from '../data/featureFlags.js';
-import { actions } from './actions.js';
-import { aiPorts } from './aiPorts.js';
-import { makeEnemySpawnSpec } from './combat.js';
-import { flightV3 } from './flightV3.js';
+import { actions } from '../systems/actions.js';
+import { aiPorts } from '../systems/aiPorts.js';
+import { makeEnemySpawnSpec } from '../systems/combat.js';
+import { flightV3 } from '../systems/flightV3.js';
 import { physics } from '../core/physics.js';
-import { makeShipEntitySpec } from './ships.js';
-import { createTacticalAISystem } from './tacticalAI.js';
-import { weapons } from './weapons.js';
+import { makeShipEntitySpec } from '../systems/ships.js';
+import { createTacticalAISystem } from '../systems/tacticalAI.js';
+import { weapons } from '../systems/weapons.js';
 import {
   angularSignChangesPerSecond,
   alongImpulseDisplacement,
@@ -1771,5 +1771,4 @@ function nsToMs(ns) {
   const value = typeof ns === 'bigint' ? Number(ns) / 1e6 : 0;
   return jsonNumber(value, 0);
 }
-
 

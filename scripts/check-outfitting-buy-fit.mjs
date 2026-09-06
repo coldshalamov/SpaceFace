@@ -13,7 +13,7 @@ import {
   recommendOutfittingPurchase,
   slotReadiness,
   statSnippet,
-} from '../src/ui/screens/outfitting.js';
+} from '../src/ui/station/outfittingGuidance.js';
 import {
   buildSlotList,
   findMasslineHeadConflict,
@@ -44,26 +44,6 @@ function eventPayload(events, name) {
   const event = events.find((entry) => entry.name === name);
   return event && event.payload;
 }
-
-const outfitSource = readFileSync(new URL('../src/ui/screens/outfitting.js', import.meta.url), 'utf8');
-assert.match(outfitSource, /Buy & Fit/, 'Outfitting shop should expose a Buy & Fit action for empty compatible slots');
-assert.match(outfitSource, /Buy to Inventory/, 'Outfitting shop should name inventory-only purchases');
-assert.match(outfitSource, /describeOutfittingPurchase/, 'Outfitting shop should centralize purchase guidance');
-assert.match(outfitSource, /data-fit-slot/, 'Outfitting shop should carry the target slot index on Buy & Fit buttons');
-assert.match(outfitSource, /fitSlotIndex/, 'Outfitting shop should emit fitSlotIndex through ui:buyModule');
-assert.match(outfitSource, /aria-label="/, 'Outfitting shop buttons should expose accessible action guidance');
-assert.match(outfitSource, /MISSION FIT ADVISOR/, 'Outfitting should explain how the tracked mission maps to the fitting bay');
-assert.match(outfitSource, /Pick a contract on the Mission Board/, 'Outfitting should send uncommitted players back to the Mission Board first');
-assert.match(outfitSource, /job fit/, 'Outfitting shop should tag modules that match the tracked mission fit');
-assert.match(outfitSource, /missionFitGuide/, 'Outfitting should centralize mission-type fit guidance');
-assert.match(outfitSource, /recommendOutfittingPurchase/, 'Outfitting should centralize next-buy recommendation guidance');
-assert.match(outfitSource, /Next buy:/, 'Outfitting advisor should name the next concrete shop action');
-assert.match(outfitSource, /st-outfit-nextbuy/, 'Outfitting advisor should render the next-buy guidance as player-facing copy');
-assert.match(outfitSource, /buildMassDelta/, 'Outfitting should consume the shipped mass-feel readout');
-assert.match(outfitSource, /handlingProfileForShip/, 'Outfitting should consume the shipped handling profile');
-assert.match(outfitSource, /moduleRiskStrip/, 'Outfitting should consume the shipped module-risk readout');
-assert.match(outfitSource, /shopList\.addEventListener\('focusin'/,
-  'keyboard focus should drive the same engineering preview as pointer hover');
 
 const trackedPick = missionPickForOutfitting({
   ui: { trackedMissionId: 'm_smuggle' },
@@ -332,6 +312,18 @@ assert.equal(eventPayload(bus.events, 'module:equipped').defId, 'mod_shield_boos
   'buy-and-fit should emit the canonical module:equipped event');
 assert(bus.events.some((entry) => entry.name === 'toast' && /Purchased and equipped Shield Booster S/.test(entry.payload && entry.payload.text)),
   'buy-and-fit should tell the player the module was equipped immediately');
+
+bus.events.length = 0;
+assert.equal(sys.buyModule({ defId: 'mod_shield_booster_s', fitSlotIndex: 1 }), true,
+  'buy-and-fit can replace the selected occupied compatible slot');
+assert.equal(state.player.ownedShips[0].fittings[1], 'mod_shield_booster_s',
+  'replacement keeps the purchased module in the selected slot');
+assert.equal(state.player.moduleInventory.length, 1,
+  'replacement returns the removed module to inventory');
+assert.equal(state.player.moduleInventory[0].defId, 'mod_shield_booster_s',
+  'replacement inventory record is the displaced fitting');
+assert.equal(eventPayload(bus.events, 'module:purchased').fitSlotIndex, 1,
+  'replacement purchase receipt retains the selected fitting slot');
 
 const drifterDef = SHIPS.find((entry) => entry.id === 'ship_drifter');
 const drifterSlots = buildSlotList(drifterDef);

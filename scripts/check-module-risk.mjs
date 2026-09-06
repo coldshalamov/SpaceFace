@@ -12,7 +12,7 @@ import {
   moduleRiskGlyphs,
   moduleRiskStrip,
 } from '../src/ui/panels/moduleRisk.js';
-import { statSnippet } from '../src/ui/screens/outfitting.js';
+import { statSnippet } from '../src/ui/station/outfittingGuidance.js';
 
 assert.equal(typeof window, 'undefined', 'this check must run headless');
 assert.ok(existsSync(new URL('../src/ui/panels/moduleRisk.js', import.meta.url)),

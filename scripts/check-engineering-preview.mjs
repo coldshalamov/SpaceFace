@@ -25,11 +25,8 @@ import {
   presentShopModuleDelta,
   stockPreviewPlayer,
 } from '../src/ui/presenters/engineeringPreview.js';
-import { describeShipyardHullCompare } from '../src/ui/screens/shipyard.js';
 
 const presenterSrc = readFileSync(new URL('../src/ui/presenters/engineeringPreview.js', import.meta.url), 'utf8');
-const shipyardSrc = readFileSync(new URL('../src/ui/screens/shipyard.js', import.meta.url), 'utf8');
-const outfitSrc = readFileSync(new URL('../src/ui/screens/outfitting.js', import.meta.url), 'utf8');
 const liveShipworksSrc = readFileSync(new URL('../src/ui/station/screens/shipworks.js', import.meta.url), 'utf8');
 
 assert.equal(typeof window, 'undefined', 'engineering preview contract runs headless');
@@ -52,20 +49,6 @@ function guarded(fn) {
   }
 }
 
-// ---- source contract: screens wire the presenter; outfitting forbids raw mods deltas ----
-assert.match(shipyardSrc, /presentHullCompare|presentGaugePacket/,
-  'shipyard must import engineering preview presenter');
-assert.match(shipyardSrc, /from '\.\.\/presenters\/engineeringPreview\.js'/,
-  'shipyard must load presenters/engineeringPreview.js');
-assert.match(outfitSrc, /presentShopModuleDelta|presentModuleFitPreview/,
-  'outfitting must import engineering preview presenter');
-assert.match(outfitSrc, /from '\.\.\/presenters\/engineeringPreview\.js'/,
-  'outfitting must load presenters/engineeringPreview.js');
-// Ban the old fabricated path: iterating def.mods keys for shop deltas
-assert.doesNotMatch(outfitSrc, /Object\.keys\(def\.mods\).*Object\.keys\(fittedDef\.mods\)/s,
-  'outfitting must not compare raw module.mods keys for loadout deltas');
-assert.doesNotMatch(outfitSrc, /allKeys = new Set\(\[\.\.\.Object\.keys\(def\.mods\)/,
-  'outfitting must not build mod-key sets for shop deltas');
 assert.match(presenterSrc, /getDerivedStats/,
   'presenter must call ships.getDerivedStats');
 assert.doesNotMatch(presenterSrc, /document\.|createElement|innerHTML/,
@@ -76,13 +59,13 @@ assert.doesNotMatch(liveShipworksSrc, /function\s+shipStats\s*\(|function\s+modu
   'live Shipworks must not retain simplified parallel stat authorities');
 assert.doesNotMatch(liveShipworksSrc, /allowFastFallback:\s*true/,
   'live Shipworks must refuse the fabricated fast preview fallback');
-assert.match(liveShipworksSrc, /if\s*\(!ghostActive\)\s*renderCenter\(\)/,
-  'periodic station refresh must preserve an active pointer/focus module preview');
+assert.match(liveShipworksSrc, /if\s*\(!\(ghostActive\s*&&\s*ghostSource\s*===\s*['"]module['"]\)\)\s*renderCenter\(\)/,
+  'periodic station refresh must preserve an active pointer/focus module preview while still refreshing ordinary and preset views');
 assert.match(liveShipworksSrc, /if\s*\(chooserEl\.hidden\)\s*renderSide\(\)/,
   'periodic station refresh must not rebuild the active module chooser');
 assert.match(liveShipworksSrc, /if\s*\(periodicCtx\s*===\s*ctx\)\s*return/,
   'station cadence must not replace event-driven Shipworks pointer targets');
-ok('source wiring forbids fabricated mod-key shop deltas in legacy and live station routes');
+ok('live Shipworks uses the canonical engineering presenter');
 
 // ---- stock player zeros cargo ----
 const stock = stockPreviewPlayer({ cargo: { usedMass: 40 }, efficiencyMods: { cargoCapMult: 1.1 } });
@@ -127,10 +110,6 @@ const hullRow = cmp.compare.rows.find((r) => r.label === 'Hull');
 assert.ok(hullRow);
 assert.equal(hullRow.candidate, muleStock.hullMax);
 assert.equal(hullRow.current, kestrelStock.hullMax);
-// Screen re-export stays wired
-const screenCmp = describeShipyardHullCompare(SHIPS.find((s) => s.id === 'ship_mule'), player);
-assert.equal(screenCmp.kind, 'compare');
-assert.equal(screenCmp.basis, 'stock');
 const self = presentHullCompare(kestrel, player);
 assert.equal(self.kind, 'current');
 ok('hull compare is stock getDerivedStats both sides');

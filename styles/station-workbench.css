@@ -314,7 +314,7 @@
 .sx-sw__chooser[hidden] { display:none; }
 .sx-chooser__scrim { position:fixed; inset:0; pointer-events:auto; background:rgba(2,3,4,.68); }
 .sx-chooser__panel {
-  position:fixed; pointer-events:auto; height:auto; min-height:270px;
+  position:fixed; z-index:1; pointer-events:auto; height:auto; min-height:270px;
   border:1px solid #575044; border-left:1px solid var(--sf-edge);
   opacity:0; transform:translateX(-8px) scale(.985);
 }

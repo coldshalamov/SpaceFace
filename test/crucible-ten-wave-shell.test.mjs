@@ -32,7 +32,6 @@ import {
   runModifierRecord,
   validateRunModifier,
 } from '../src/data/runModifiers.js';
-import { crucibleResultsScreen as RESULTS_FROM_OWNER } from '../src/ui/screens/crucibleResults.js';
 import { crucibleResultsScreen as RESULTS_FROM_SURFACE } from '../src/ui/screens/crucible.js';
 import {
   damageBreakdown,
@@ -147,11 +146,6 @@ test('every live draft verb validates, and no validator verb is orphaned', async
   for (const verb of RUN_MODIFIER_VERBS) {
     assert.ok(catalogVerbs.has(verb), `validator verb ${JSON.stringify(verb)} is orphaned`);
   }
-});
-
-test('crucibleResults owner aliases the live results surface', () => {
-  assert.equal(RESULTS_FROM_OWNER, RESULTS_FROM_SURFACE);
-  assert.equal(RESULTS_FROM_OWNER.id, 'crucibleResults');
 });
 
 test('stopReason distinguishes quitting from the arena failing', () => {

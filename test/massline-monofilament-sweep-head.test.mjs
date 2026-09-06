@@ -12,7 +12,7 @@ import { masslineImpactDamage } from '../src/systems/masslineImpactDamage.js';
 import { masslineImpacts } from '../src/systems/masslineImpacts.js';
 import { presentationOrchestrator } from '../src/systems/presentationOrchestrator.js';
 import { fittingsFromDefaultModules, getDerivedStats } from '../src/systems/ships.js';
-import { statSnippet } from '../src/ui/screens/outfitting.js';
+import { statSnippet } from '../src/ui/station/outfittingGuidance.js';
 
 const DT = 1 / 60;
 const STANDARD = ATTACHMENT_DEFS.find((def) => def.id === 'tether_standard');

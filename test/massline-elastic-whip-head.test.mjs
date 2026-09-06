@@ -15,7 +15,7 @@ import {
   getDerivedStats,
   ships,
 } from '../src/systems/ships.js';
-import { statSnippet } from '../src/ui/screens/outfitting.js';
+import { statSnippet } from '../src/ui/station/outfittingGuidance.js';
 
 const DT = 1 / 60;
 const STANDARD = ATTACHMENT_DEFS.find((def) => def.id === 'tether_standard');

@@ -1,7 +1,7 @@
 // B2 — nimble regime. Rest→cruise, 180° velocity reversal (Motion Lab M3), and
 // turn radius at cruise in screen depths, measured on the real path.
 import { wrapAngle } from '../../../../src/core/rng.js';
-import { runM3 } from '../../../../src/systems/motionScenarios.js';
+import { runM3 } from '../../../../src/testing/motionScenarios.js';
 import { writeRealPathInput } from '../realPath.mjs';
 import {
   bootPlayer,
