@@ -60,6 +60,7 @@ import {
   resolveWorksConduitPiece,
   INCLUSION_KIT_ID,
 } from './worksPartLoader.js';
+import { applyWorksFurnaceHeat } from '../../render/industrialMaterialFamilies.js';
 
 const { COLS, ROWS, SCAN_RADIUS, SCAN_ACTIVE_S } = DRILL_CONST;
 export const VIEW_ROWS = 18;
@@ -406,6 +407,10 @@ export function bindAuthoredRefinery(group) {
   };
   const furnaceMaterials = collectStatusMaterials(hooks.furnace_slit, /^LOD[01]_furnace_slit$/u, 'furnace slit');
   const lampMaterials = collectStatusMaterials(hooks.lamp, /^LOD[01]_lamp_lens$/u, 'lamp lens');
+
+  // The state driver changes intensity, but the authored slit has a black emissive colour.
+  // Give these instance-owned materials an ember colour so running/starved heat is visible.
+  applyWorksFurnaceHeat(furnaceMaterials);
 
   group.rotation.x = Math.PI / 2;
   group.position.set(0, 0, 0);

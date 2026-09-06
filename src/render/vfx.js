@@ -1896,6 +1896,7 @@ export const vfx = {
     add('projectile:ricochet', (p) => this._onArcadeBankShot(p, 'projectile:ricochet'));
     add('combat:bankShot', (p) => this._onArcadeBankShot(p, 'combat:bankShot'));
     add('combat:damage', (p) => this._onDamage(p));
+    add('combat:weakPointHit', (p) => this._onWeakPointHit(p));
     add('physics:impact', (p) => this._onPhysicsImpact(p));
     add('collision', (p) => this._onCollision(p));
     // SF-10: the PQ-009 collision-consequence receipts (a hull slammed into terrain — the concussion
@@ -3428,6 +3429,127 @@ export const vfx = {
         life * (0.78 + Math.random() * 0.44), size * (0.72 + Math.random() * 0.48), 0,
         this._c0, this._c1, drag, 0, 0);
     }
+  },
+
+  // A weak-point hit is a material event, not another generic damage bloom. The exposed hull opens
+  // along the actual contact normal: oriented shard geometry sprays out of the breach while three
+  // short pooled streaks describe the torn seam. The event is presentation-only; combat already
+  // applied the multiplier and owns every gameplay value.
+  _onWeakPointHit(p) {
+    if (!this._scene || !p) return;
+    const pos = this._posFrom(p, p.targetId);
+    if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return;
+
+    const target = this._ent(p.targetId);
+    let nx = p.normal && Number(p.normal.x);
+    let nz = p.normal && Number(p.normal.z);
+    if (!Number.isFinite(nx) || !Number.isFinite(nz) || Math.hypot(nx, nz) < 1e-6) {
+      const center = target && target.pos;
+      nx = center && Number.isFinite(center.x) ? pos.x - center.x : NaN;
+      nz = center && Number.isFinite(center.z) ? pos.z - center.z : NaN;
+    }
+    if (!Number.isFinite(nx) || !Number.isFinite(nz) || Math.hypot(nx, nz) < 1e-6) {
+      const rot = target && Number(target.rot);
+      nx = Number.isFinite(rot) ? Math.cos(rot) : 1;
+      nz = Number.isFinite(rot) ? Math.sin(rot) : 0;
+    }
+    const normalLength = Math.hypot(nx, nz) || 1;
+    nx /= normalLength;
+    nz /= normalLength;
+    const tangentX = -nz;
+    const tangentZ = nx;
+    const normalAngle = Math.atan2(nz, nx);
+    const mult = Number.isFinite(p.mult) ? Math.max(1, Math.min(2.4, p.mult)) : 1;
+    const scale = 0.9 + (mult - 1) * 0.2;
+    const settings = this.state && this.state.settings;
+    const video = settings && settings.video;
+    const a11y = resolveVfxAccessibilityProfile(settings);
+    const reducedMotion = !!(video && video.motionReduce);
+    const reducedFlash = a11y.flashOpacityScale < 1;
+    const burst = this._burst || 1;
+
+    this._emitJuiceCue('combat.weakPoint', p, 2);
+
+    // Shards are instanced swept geometry, so the fan remains readable as metal even when the
+    // camera catches the surface edge. Fixed offsets keep the receipt visually stable without
+    // touching the deterministic simulation RNG.
+    this._c0.set('#fff5dc');
+    this._c1.set('#56636c');
+    const shardCount = Math.max(8, Math.round(10 * burst));
+    const half = (shardCount - 1) * 0.5 || 1;
+    const fanHalfAngle = reducedMotion ? 0.28 : 0.48;
+    for (let k = 0; k < shardCount; k++) {
+      const fan = (k - half) / half;
+      const angle = normalAngle + fan * fanHalfAngle;
+      const speed = (24 + (k % 3) * 6) * scale * (reducedMotion ? 0.52 : 1);
+      const life = (0.18 + (k % 3) * 0.035) * (reducedMotion ? 1.18 : 1);
+      this._spawnParticle(
+        pos.x + nx * 0.18 * scale,
+        pos.z + nz * 0.18 * scale,
+        Math.cos(angle) * speed,
+        Math.sin(angle) * speed,
+        life,
+        (reducedFlash ? 0.72 : 0.95) * scale,
+        0.06,
+        this._c0,
+        this._c1,
+        2.8,
+        0.16,
+        0,
+        angle,
+        reducedMotion ? 2.0 : 3.1,
+      );
+    }
+
+    // A central outward tear, then two cooler cross-grain fragments. These are real pooled swept
+    // streaks, not an expanding ring or a camera-facing glow card.
+    const seamSpeed = reducedMotion ? 4.5 : 9;
+    this._spawnProjectileTrailStreak(
+      pos.x + nx * 0.24 * scale,
+      0.24,
+      pos.z + nz * 0.24 * scale,
+      reducedMotion ? 0.24 : 0.18,
+      0.15 * scale,
+      (3.2 + (mult - 1) * 1.8) * scale,
+      reducedFlash ? 0.54 : 0.9,
+      '#d6e4eb',
+      nx * seamSpeed,
+      nz * seamSpeed,
+      nx,
+      nz,
+    );
+    this._spawnProjectileTrailStreak(
+      pos.x + tangentX * 0.34 * scale,
+      0.20,
+      pos.z + tangentZ * 0.34 * scale,
+      reducedMotion ? 0.21 : 0.16,
+      0.085 * scale,
+      2.35 * scale,
+      reducedFlash ? 0.38 : 0.66,
+      '#8298a5',
+      tangentX * (reducedMotion ? 2.8 : 6.5),
+      tangentZ * (reducedMotion ? 2.8 : 6.5),
+      tangentX,
+      tangentZ,
+    );
+    this._spawnProjectileTrailStreak(
+      pos.x - tangentX * 0.28 * scale,
+      0.18,
+      pos.z - tangentZ * 0.28 * scale,
+      reducedMotion ? 0.18 : 0.14,
+      0.06 * scale,
+      1.65 * scale,
+      reducedFlash ? 0.28 : 0.48,
+      '#52616b',
+      -tangentX * (reducedMotion ? 1.8 : 4.2),
+      -tangentZ * (reducedMotion ? 1.8 : 4.2),
+      -tangentX,
+      -tangentZ,
+    );
+
+    // The shared event-light pool supplies a brief hot reflection; accessibility scales or removes
+    // it, while the directional geometry above remains the readable receipt.
+    this._flashLight(pos, '#d7efff', 2.8 * scale, 14, 86);
   },
 
   _onDamage(p) {

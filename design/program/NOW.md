@@ -3,7 +3,7 @@
 
 ```yaml
 refreshed: 2026-09-06
-baseCommit: fd399adc49288d06fecb8e1ea8f74a5d78b20e51
+baseCommit: f2a7c9473b36d3fd71186580f80ab3b9acad0364
 expiresAfterCommits: 10
 expiresAfterDays: 2
 ```
@@ -41,13 +41,13 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| World materials and hit feedback | controller 01a0768b | MUTATING | `src/render/industrialMaterialFamilies.js`, `src/render/visualOverrides.js`, `src/render/engineTrailSurfaces.js`, `src/ui/asteroid/asteroidRenderer3d.js`, `test/industrial-material-families.test.mjs`, `design/program/roadmap/receipts/PQ-190-00-material-candidate.md`, `src/render/vfx.js`, `test/vfx-weakpoint-receipt.test.mjs` | visual review of authored admission and real combat feedback |
-| Shield and exhaust readability | controller review of native Claude Opus 5 | REVIEWING | `src/render/engineTrailSurfaces.js` (ribbon shader), `src/render/renderer.js` (shield pool shaders), `src/render/ships/shipKit.js` (shield shader) | review repaired shaders and accept current engine/shield captures |
+| World materials and hit feedback | controller 01a0768b | MUTATING | `src/render/industrialMaterialFamilies.js`, `src/render/visualOverrides.js`, `src/ui/asteroid/asteroidRenderer3d.js`, `test/industrial-material-families.test.mjs`, `design/program/roadmap/receipts/PQ-190-00-material-candidate.md`, `src/render/vfx.js`, `test/vfx-weakpoint-receipt.test.mjs` | accept the coast comparison and current combat/rover captures |
+| Stale asset metadata | luna economy_fixtures | MUTATING | `assets/ships/parts/parts_manifest.json` | correct remaining declarations from current asset/generator facts |
 | Campaign coordination | controller 01a0768b | MUTATING | `design/program/NOW.md` | keep current ownership and close accepted leaves in existing queue |
 
 The legacy extraction, live Shipworks guidance, Market quantity controls and public career route are
 committed after controller review. Native workers have released their files. Ordinary-life,
-operational-limit, material and place acceptance continues in this campaign. PQ-184.01, PQ-184.03
+material and place acceptance continues in this campaign. PQ-184.01, PQ-184.03,
 PQ-187.00 and PQ-177.07 are closed in the canonical queue. The duplicate incomplete checkout was removed
 after its DROP disposition was committed and pushed.
 

@@ -20,6 +20,10 @@ import {
 import { isReleaseAssetMode } from './releaseMode.js';
 import { configureTransparentSinglePassSurfaces } from './transparentSinglePassPolicy.js';
 import {
+  applyIndustrialMaterialFamilies,
+  resolveIndustrialAssetKey,
+} from './industrialMaterialFamilies.js';
+import {
   hasExplicitAuthoredGeologyPresentation,
   hasExplicitAuthoredPayloadPresentation,
   PRESENTATION_ADMISSION,
@@ -94,6 +98,26 @@ function unavailableVisual(entity, reason, error) {
     gracefulFallback: false,
   };
   return root;
+}
+
+// PQ-190.00 — the style slice binds material families at the exact authored swap, never per frame.
+//
+// Ship, station and cargo publishers supply the admitted GLB URLs. Resolve those URLs rather
+// than duplicating the parts library's ship/asset selection from entity definition IDs.
+function settleIndustrialSurfacing(payload, options) {
+  if (!payload) return;
+  const root = payload.authoredRoot || payload.root || payload.boundary;
+  if (!root) return;
+  const assetKey = resolveIndustrialAssetKey({
+    authoredParts: payload.authoredParts,
+    entity: payload.entity,
+    userData: payload.boundary && payload.boundary.userData,
+  });
+  if (!assetKey) return;
+  try { applyIndustrialMaterialFamilies(root, assetKey); }
+  catch (error) {
+    reportVisualWarning(options, '[visualOverrides] industrial material family pass failed; authored response retained', error);
+  }
 }
 
 function directAuthoredAdmissionSubstrate(entity) {
@@ -188,7 +212,12 @@ export function installVisualOverrides(factory, options = {}) {
       }
       if (!visual && geologyFallback) visual = settleSameSemanticGeologyBuildFallback(geologyFallback, entity);
     } else if (hasStationArchetype(entity)) {
-      try { visual = authoredStationBuilder(entity, { releaseMode }); }
+      try {
+        visual = authoredStationBuilder(entity, {
+          releaseMode,
+          onSwap: (payload) => settleIndustrialSurfacing(payload, options),
+        });
+      }
       catch (error) {
         reportVisualWarning(options, '[visualOverrides] authored station archetype failed closed', error);
         visual = unavailableVisual(entity, 'authored-station-build-failed', error);
@@ -199,6 +228,7 @@ export function installVisualOverrides(factory, options = {}) {
         visual = authoredCargoCapsuleBuilder(entity, {
           releaseMode,
           fallbackRoot: payloadSubstrate,
+          onSwap: (payload) => settleIndustrialSurfacing(payload, options),
         });
       } catch (error) {
         setPresentationAdmission(entity, PRESENTATION_ADMISSION.unavailable);
@@ -262,6 +292,7 @@ export function installVisualOverrides(factory, options = {}) {
         requiredWholeShip,
         onSwap: (payload) => {
           configureTransparentSinglePassSurfaces(payload && (payload.authoredRoot || payload.boundary));
+          settleIndustrialSurfacing(payload, options);
           if (typeof options.onAuthoredAssetSwap === 'function') options.onAuthoredAssetSwap(payload);
         },
       });
