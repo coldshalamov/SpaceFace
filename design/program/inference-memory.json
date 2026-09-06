@@ -793,6 +793,19 @@
       "integration": "live",
       "commit": "add191c3",
       "verification": "focused_green"
+    },
+    {
+      "id": "ringworld-arc-poi",
+      "date": "2026-09-06",
+      "wf": "WF-04",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "the Ringworld Arc landmark now charts in Sedna Dark: anomaly POI with archive scanner signal and discovery plate, anchoring the authored lore to a reachable world site",
+      "fingerprint": "verb=scan,subject=ringworld_arc,sector=sedna_dark,layer=foreground,domain=wf-04",
+      "references": [],
+      "integration": "live",
+      "commit": "3042a867",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
