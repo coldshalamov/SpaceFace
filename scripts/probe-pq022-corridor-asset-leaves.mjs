@@ -45,18 +45,36 @@ import corridorManifest, {
 } from './validation-manifests/pq022-corridor-asset-leaves.mjs';
 import relayBrowserManifest from './validation-manifests/pq022-relay-reauthor-browser.mjs';
 import relayElectronManifest from './validation-manifests/pq022-relay-reauthor-electron.mjs';
+import refineryBrowserManifest from './validation-manifests/pq022-refinery-reauthor-browser.mjs';
+import refineryElectronManifest from './validation-manifests/pq022-refinery-reauthor-electron.mjs';
+import billboardBuoyBrowserManifest from './validation-manifests/pq022-billboard-buoy-reauthor-browser.mjs';
+import billboardBuoyElectronManifest from './validation-manifests/pq022-billboard-buoy-reauthor-electron.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const ONLY = readEncodedOption('--only');
 const RUNTIME = readEncodedOption('--runtime') || 'browser';
-assert(ONLY == null || ONLY === 'relay-collar', `unsupported PQ-022 --only selector: ${ONLY}`);
+assert(ONLY == null || ['relay-collar', 'refinery', 'billboard-buoy'].includes(ONLY), `unsupported PQ-022 --only selector: ${ONLY}`);
 assert(RUNTIME === 'browser' || RUNTIME === 'electron', `unsupported PQ-022 runtime: ${RUNTIME}`);
-assert(ONLY === 'relay-collar' || RUNTIME === 'browser', 'Electron is available only for --only=relay-collar');
+assert(ONLY != null || RUNTIME === 'browser', 'the aggregate corridor capture is Browser-only');
 const RELAY_ONLY = ONLY === 'relay-collar';
+const REFINERY_ONLY = ONLY === 'refinery';
+const BILLBOARD_BUOY_ONLY = ONLY === 'billboard-buoy';
+const AGGREGATE = ONLY == null;
 const ELECTRON_RUNTIME = RUNTIME === 'electron';
-const manifest = RELAY_ONLY
-  ? (ELECTRON_RUNTIME ? relayElectronManifest : relayBrowserManifest)
-  : corridorManifest;
+const manifest = AGGREGATE
+  ? corridorManifest
+  : RELAY_ONLY
+    ? (ELECTRON_RUNTIME ? relayElectronManifest : relayBrowserManifest)
+    : REFINERY_ONLY
+      ? (ELECTRON_RUNTIME ? refineryElectronManifest : refineryBrowserManifest)
+      : (ELECTRON_RUNTIME ? billboardBuoyElectronManifest : billboardBuoyBrowserManifest);
+const browserManifest = RELAY_ONLY
+  ? relayBrowserManifest
+  : REFINERY_ONLY
+    ? refineryBrowserManifest
+    : BILLBOARD_BUOY_ONLY
+      ? billboardBuoyBrowserManifest
+      : null;
 const ARTIFACT_ROOT = path.resolve(ROOT, manifest.artifactRoot);
 const VIEWPORT = Object.freeze({ width: 1440, height: 900 });
 const DIAGNOSTIC = process.argv.includes('--diagnostic');
@@ -138,8 +156,28 @@ const SHOT_PLAN = Object.freeze([
   Object.freeze({ key: 'traffic-cradle', name: '13-helios-cradle-miner.png', framing: 'default', lod: 'lod1' }),
 ]);
 
-const ACTIVE_ASSETS = RELAY_ONLY ? ASSETS.filter((row) => row.key === 'relay-collar') : ASSETS;
-const ACTIVE_SHOT_PLAN = RELAY_ONLY ? SHOT_PLAN.filter((row) => row.key === 'relay-collar') : SHOT_PLAN;
+const REFINERY_REAUTHOR_SHOT_PLAN = Object.freeze([
+  Object.freeze({ key: 'station-refinery', name: '01-refinery-ordinary.png', framing: 'default', lod: 'lod1' }),
+  Object.freeze({ key: 'station-refinery', name: '02-refinery-diagnostic-close.png', framing: 'close', lod: 'lod0' }),
+]);
+const BILLBOARD_BUOY_REAUTHOR_SHOT_PLAN = Object.freeze([
+  Object.freeze({ key: 'station-billboard', name: '01-core-station-billboard-ordinary.png', framing: 'default', lod: 'lod1' }),
+  Object.freeze({ key: 'nav-buoy', name: '02-tethys-customs-buoy-ordinary.png', framing: 'default', lod: 'lod1' }),
+]);
+const ACTIVE_ASSETS = RELAY_ONLY
+  ? ASSETS.filter((row) => row.key === 'relay-collar')
+  : REFINERY_ONLY
+    ? ASSETS.filter((row) => row.key === 'station-refinery')
+    : BILLBOARD_BUOY_ONLY
+      ? ASSETS.filter((row) => ['station-billboard', 'nav-buoy'].includes(row.key))
+      : ASSETS;
+const ACTIVE_SHOT_PLAN = RELAY_ONLY
+  ? SHOT_PLAN.filter((row) => row.key === 'relay-collar')
+  : REFINERY_ONLY
+    ? REFINERY_REAUTHOR_SHOT_PLAN
+    : BILLBOARD_BUOY_ONLY
+      ? BILLBOARD_BUOY_REAUTHOR_SHOT_PLAN
+      : SHOT_PLAN;
 const ASSET_BY_KEY = new Map(ASSETS.map((row) => [row.key, row]));
 const FRAME_DISTANCE = Object.freeze({ close: 2.35, default: 3.7, far: 7.4 });
 
@@ -187,27 +225,24 @@ let recordedSeed = null;
 try {
   if (ELECTRON_RUNTIME) {
     phase = 'browser-receipt-prerequisite';
-    const browserReportPath = path.resolve(ROOT, relayBrowserManifest.artifactRoot, 'report.json');
+    assert(browserManifest, 'a selected Electron leaf must declare its paired Browser manifest');
+    const browserReportPath = path.resolve(ROOT, browserManifest.artifactRoot, 'report.json');
     browserReport = JSON.parse(await readFile(browserReportPath, 'utf8'));
-    const browserDigests = await computeGateDigestsFromManifest({
-      root: ROOT,
-      manifest: relayBrowserManifest,
-    });
-    const browserClaimId = browserReport?.broker?.claimId;
-    const consumedBrowserClaim = typeof browserClaimId === 'string' && browserClaimId.length > 0
-      ? await readConsumedClaimLedgerEntry(
-        path.resolve(ROOT, relayBrowserManifest.artifactRoot),
-        browserClaimId,
-      )
-      : null;
-    assertCurrentPq022RelayBrowserReceipt({
-      receipt: browserReport,
-      digests: browserDigests,
-      consumedClaim: consumedBrowserClaim,
-    });
+    if (RELAY_ONLY) {
+      const browserDigests = await computeGateDigestsFromManifest({ root: ROOT, manifest: relayBrowserManifest });
+      const browserClaimId = browserReport?.broker?.claimId;
+      const consumedBrowserClaim = typeof browserClaimId === 'string' && browserClaimId.length > 0
+        ? await readConsumedClaimLedgerEntry(path.resolve(ROOT, relayBrowserManifest.artifactRoot), browserClaimId)
+        : null;
+      assertCurrentPq022RelayBrowserReceipt({ receipt: browserReport, digests: browserDigests, consumedClaim: consumedBrowserClaim });
+    } else {
+      assert.equal(browserReport?.disposition, 'PASS', 'paired Browser leaf receipt must pass before Electron capture');
+      assert.equal(browserReport?.brokerManifestId, browserManifest.id, 'paired Browser receipt must bind the selected leaf manifest');
+      assert.equal(browserReport?.broker?.primaryAcceptance, true, 'paired Browser receipt must be broker-authorized acceptance evidence');
+    }
 
     const { _electron: electron } = await loadPlaywright();
-    electronLaunch = createIsolatedElectronLaunch({ root: ROOT, taskId: 'pq022-relay-reauthor' });
+    electronLaunch = createIsolatedElectronLaunch({ root: ROOT, taskId: manifest.id });
     electronApp = await electron.launch(electronLaunch.options);
     electronChildProcess = electronApp.process();
     electronProcessMonitor = createElectronProcessMonitor({
@@ -275,7 +310,7 @@ try {
 
   phase = 'helios-live-subjects';
   await enterSector(page, 'sector_helios_prime');
-  if (!RELAY_ONLY) {
+  if (AGGREGATE) {
     runtimeSubjects.set('station-trade-hub', await locateSubject(page, {
       type: 'station', stationId: 'station_helios', archetypeGlb: 'place_station_trade_hub',
     }));
@@ -285,23 +320,29 @@ try {
     runtimeSubjects.set('gate-jump-ring', await locateSubject(page, {
       type: 'station', isGate: true, archetypeGlb: 'place_gate_jump_ring',
     }));
+  }
+  if (AGGREGATE || BILLBOARD_BUOY_ONLY) {
+    // poi_memorial now resolves place_memorial_array. The billboard is live core-station dressing,
+    // so the real visible owner is its spawned place prop, never the old landmark selector.
     runtimeSubjects.set('station-billboard', await locateSubject(page, {
-      type: 'fx', poiId: 'poi_memorial', placeId: 'place_station_billboard',
+      type: 'fx', placeId: 'place_station_billboard',
     }));
   }
 
-  phase = 'relay-owner-placement';
-  relayPlacement = await createRelayOnLiveRock(page);
-  assert.ok(!relayPlacement.error, `relay placement failed: ${relayPlacement.error}`);
-  assert.equal(relayPlacement.placeId, 'place_claim_outpost_relay');
-  runtimeSubjects.set('relay-collar', relayPlacement.relayId);
-  compressions.push({
-    kind: 'owner-fixture',
-    subject: 'relay-collar',
-    detail: 'asteroidSites._ensureBeacon placed the shipped relay on a live Helios asteroid; no fixture renderer or entity shape',
-  });
+  if (AGGREGATE || RELAY_ONLY) {
+    phase = 'relay-owner-placement';
+    relayPlacement = await createRelayOnLiveRock(page);
+    assert.ok(!relayPlacement.error, `relay placement failed: ${relayPlacement.error}`);
+    assert.equal(relayPlacement.placeId, 'place_claim_outpost_relay');
+    runtimeSubjects.set('relay-collar', relayPlacement.relayId);
+    compressions.push({
+      kind: 'owner-fixture',
+      subject: 'relay-collar',
+      detail: 'asteroidSites._ensureBeacon placed the shipped relay on a live Helios asteroid; no fixture renderer or entity shape',
+    });
+  }
 
-  if (!RELAY_ONLY) {
+  if (AGGREGATE) {
     phase = 'traffic-owner-fixtures';
     trafficFixtures = await createTrafficOwnerFixtures(page);
     for (const row of ASSETS.filter((asset) => asset.role)) {
@@ -319,14 +360,20 @@ try {
   }
 
   phase = 'helios-captures';
-  for (const shot of ACTIVE_SHOT_PLAN.filter((row) => [
-    'relay-collar', 'station-trade-hub', 'station-military', 'gate-jump-ring',
-    'station-billboard', 'traffic-lark', 'traffic-span', 'traffic-cradle',
-  ].includes(row.key))) {
-    captures.push(await captureSubject(page, shot, runtimeSubjects.get(shot.key)));
+  if (AGGREGATE || RELAY_ONLY) {
+    for (const shot of ACTIVE_SHOT_PLAN.filter((row) => [
+      'relay-collar', 'station-trade-hub', 'station-military', 'gate-jump-ring',
+      'station-billboard', 'traffic-lark', 'traffic-span', 'traffic-cradle',
+    ].includes(row.key))) {
+      captures.push(await captureSubject(page, shot, runtimeSubjects.get(shot.key)));
+    }
+  } else if (BILLBOARD_BUOY_ONLY) {
+    for (const shot of ACTIVE_SHOT_PLAN.filter((row) => row.key === 'station-billboard')) {
+      captures.push(await captureSubject(page, shot, runtimeSubjects.get(shot.key)));
+    }
   }
 
-  if (!RELAY_ONLY) {
+  if (AGGREGATE || REFINERY_ONLY) {
     phase = 'ceres-live-subjects';
     await enterSector(page, 'sector_ceres_belt');
     compressions.push({
@@ -337,29 +384,34 @@ try {
     runtimeSubjects.set('station-refinery', await locateSubject(page, {
       type: 'station', stationId: 'station_ceres', archetypeGlb: 'place_station_refinery',
     }));
-    runtimeSubjects.set('station-mining', await locateSubject(page, {
-      type: 'station', stationId: 'station_beltout', archetypeGlb: 'place_station_mining',
-    }));
-    for (const key of ['station-refinery', 'station-mining']) {
-      const shot = SHOT_PLAN.find((row) => row.key === key);
-      captures.push(await captureSubject(page, shot, runtimeSubjects.get(key)));
+    if (AGGREGATE) {
+      runtimeSubjects.set('station-mining', await locateSubject(page, {
+        type: 'station', stationId: 'station_beltout', archetypeGlb: 'place_station_mining',
+      }));
     }
+    for (const key of AGGREGATE ? ['station-refinery', 'station-mining'] : ['station-refinery']) {
+      for (const shot of ACTIVE_SHOT_PLAN.filter((row) => row.key === key)) {
+        captures.push(await captureSubject(page, shot, runtimeSubjects.get(key)));
+      }
+    }
+  }
 
+  if (AGGREGATE || BILLBOARD_BUOY_ONLY) {
     phase = 'tethys-live-subject';
     await enterSector(page, 'sector_tethys_junction');
     compressions.push({
       kind: 'travel',
       subject: 'corridor-lane-furniture',
-      detail: 'called the registered world.enterSector(sector_tethys_junction) owner instead of flying the route; the nav buoy remains the live poi_blackmkt place entity',
+      detail: AGGREGATE
+        ? 'called the registered world.enterSector(sector_tethys_junction) owner instead of flying the route; the nav buoy remains the live poi_blackmkt place entity'
+        : 'called the registered world.enterSector(sector_tethys_junction) owner; the public Customs Log Relay is the ordinary live buoy subject',
     });
     runtimeSubjects.set('nav-buoy', await locateSubject(page, {
-      type: 'fx', poiId: 'poi_blackmkt', placeId: 'place_nav_buoy',
+      type: 'fx', poiId: AGGREGATE ? 'poi_blackmkt' : 'poi_tethys_customs_log', placeId: 'place_nav_buoy',
     }));
-    captures.push(await captureSubject(
-      page,
-      SHOT_PLAN.find((row) => row.key === 'nav-buoy'),
-      runtimeSubjects.get('nav-buoy'),
-    ));
+    for (const shot of ACTIVE_SHOT_PLAN.filter((row) => row.key === 'nav-buoy')) {
+      captures.push(await captureSubject(page, shot, runtimeSubjects.get('nav-buoy')));
+    }
   }
 
   phase = 'receipt-validation';
@@ -376,9 +428,7 @@ try {
   assert.deepEqual(pageIssues, [], 'the PQ-022 headed route must not emit Browser runtime errors');
 
   report = {
-    schema: RELAY_ONLY
-      ? 'spaceface.pq022-relay-reauthor-h1.v1'
-      : 'spaceface.pq022-corridor-asset-leaves-h1.v1',
+    schema: reportSchemaForSelector(ONLY),
     row: 7,
     disposition: 'PASS',
     runtime: ELECTRON_RUNTIME ? 'electron' : 'browser-chromium-headed',
@@ -389,9 +439,7 @@ try {
     recordedSeed,
     viewport: VIEWPORT,
     gpu,
-    routeContract: RELAY_ONLY
-      ? 'visible fixed-seed New Game -> asteroidSites relay owner -> close/default/far game-camera stills'
-      : 'visible fixed-seed New Game -> production owners -> controlled game-camera stills',
+    routeContract: routeContractForSelector(ONLY),
     compressions,
     relayPlacement,
     trafficFixtures,
@@ -407,13 +455,17 @@ try {
     noPerformanceEvidenceNote: 'Matched performance remains Phase H3.',
   };
   if (ELECTRON_RUNTIME) {
-    const normalizedBrowser = normalizePq022RelayReauthorReceipt(browserReport);
-    const normalizedElectron = normalizePq022RelayReauthorReceipt(report);
+    const normalizedBrowser = RELAY_ONLY
+      ? normalizePq022RelayReauthorReceipt(browserReport)
+      : normalizePq022ReauthorReceipt(browserReport);
+    const normalizedElectron = RELAY_ONLY
+      ? normalizePq022RelayReauthorReceipt(report)
+      : normalizePq022ReauthorReceipt(report);
     assert.deepEqual(normalizedElectron, normalizedBrowser,
-      'PQ-022 relay Electron identity/admission/placement must match the accepted Browser cell');
+      'PQ-022 Electron identity/admission/placement must match the accepted Browser cell');
     report.browserComparison = {
       pass: true,
-      comparedAgainst: repoRel(path.resolve(ROOT, relayBrowserManifest.artifactRoot, 'report.json')),
+      comparedAgainst: repoRel(path.resolve(ROOT, browserManifest.artifactRoot, 'report.json')),
       normalizedBrowser,
       normalizedElectron,
     };
@@ -427,9 +479,7 @@ try {
     }).catch(() => {});
   }
   report = {
-    schema: RELAY_ONLY
-      ? 'spaceface.pq022-relay-reauthor-h1.v1'
-      : 'spaceface.pq022-corridor-asset-leaves-h1.v1',
+    schema: reportSchemaForSelector(ONLY),
     row: 7,
     disposition: 'FAIL',
     failureClass: 'UNCLASSIFIED_BY_PROBE',
@@ -501,9 +551,9 @@ if (report.disposition !== 'PASS') {
   process.exit(1);
 }
 
-console.log(RELAY_ONLY
-  ? `[${manifest.id}] PASS — relay identity, admission, placement, and three prescribed stills`
-  : '[pq022-corridor-asset-leaves] PASS — eleven exact identities, thirteen headed stills');
+console.log(AGGREGATE
+  ? '[pq022-corridor-asset-leaves] PASS — eleven exact identities, thirteen headed stills'
+  : `[${manifest.id}] PASS — ${ACTIVE_ASSETS.map((asset) => asset.assetId).join(', ')} identity, admission, and prescribed stills`);
 console.log(`  receipt: ${repoRel(path.join(ARTIFACT_ROOT, 'report.json'))}`);
 
 async function bootSeededFlight(targetPage, rootUrl, { navigateInitialRoot = true } = {}) {
@@ -714,7 +764,9 @@ async function locateSubject(targetPage, query) {
       if (wanted.isGate != null && (data.isGate === true) !== wanted.isGate) return false;
       return true;
     });
-    return entity?.mesh ? entity.id : false;
+    // A distant subject may legitimately have no resident mesh. captureSubject first moves the
+    // player into its admission range; waiting for a mesh here would prevent that approach.
+    return entity ? entity.id : false;
   }, query, { timeout: 60_000 });
   return handle.jsonValue();
 }
@@ -736,7 +788,7 @@ async function captureSubject(targetPage, shot, subjectId) {
   }, { id: subjectId, releaseFile: asset.releaseFile }, { timeout: ADMISSION_TIMEOUT_MS });
 
   const frame = await targetPage.evaluate(({
-    id, framing, lod, distanceFactor, explicitDistance, explicitHeight,
+    id, framing, lod, distanceFactor, explicitDistance, explicitHeight, shippingFraming,
   }) => {
     const state = window.SF.state;
     const entity = state.entities.get(id);
@@ -785,15 +837,24 @@ async function captureSubject(targetPage, shot, subjectId) {
       ? explicitHeight
       : Math.max(3, radius * 0.42);
     const camera = render.camera;
-    camera.position.set(
-      center.x + distance * 0.72,
-      center.y + height,
-      center.z + distance * 0.58,
-    );
-    camera.up.set(0, 1, 0);
-    camera.lookAt(center);
-    camera.near = 0.1;
-    camera.far = Math.max(camera.far || 0, distance * 12, 8000);
+    if (shippingFraming) {
+      // Keep the shipped chase-camera angle, zoom and projection. Centre the subject for this
+      // presentation fixture; the old low-angle inspection rig was not an ordinary flight view.
+      render.cameraCtrl.snapToPlayer();
+      const focus = state.camera.focus;
+      camera.position.add(new THREE.Vector3(center.x - focus.x, center.y - focus.y, center.z - focus.z));
+      camera.lookAt(center);
+    } else {
+      camera.position.set(
+        center.x + distance * 0.72,
+        center.y + height,
+        center.z + distance * 0.58,
+      );
+      camera.up.set(0, 1, 0);
+      camera.lookAt(center);
+      camera.near = 0.1;
+      camera.far = Math.max(camera.far || 0, distance * 12, 8000);
+    }
     camera.updateProjectionMatrix();
     camera.updateMatrixWorld(true);
     if (typeof render.warmPostProcess === 'function') render.warmPostProcess();
@@ -820,6 +881,9 @@ async function captureSubject(targetPage, shot, subjectId) {
         defId: entity.data?.defId || null,
         worldRecordId: entity.data?.worldRecordId || null,
       },
+      captureSurface: 'game-render-canvas-hud-excluded',
+      cameraRig: shippingFraming ? 'shipping-chase-angle-and-zoom-target-centred' : 'diagnostic-low-angle',
+      emissiveComparison: 'not-supported-by-shared-public-rig',
       presentationAdmission: entity.presentationAdmission ?? null,
       authoredAssetState: root.userData?.authoredAssetState ?? null,
       authoredAssetMode: root.userData?.authoredAssetMode ?? null,
@@ -842,6 +906,7 @@ async function captureSubject(targetPage, shot, subjectId) {
     distanceFactor: FRAME_DISTANCE[shot.framing],
     explicitDistance: shot.cameraDistance ?? null,
     explicitHeight: shot.cameraHeight ?? null,
+    shippingFraming: (REFINERY_ONLY || BILLBOARD_BUOY_ONLY) && shot.framing === 'default',
   });
 
   assert.ok(!frame.error, `${shot.key}/${shot.framing}: ${frame.error}`);
@@ -1007,6 +1072,51 @@ function brokerEvidence(gate) {
     candidateDigest: claim?.digests?.candidateDigest ?? claim?.receipt?.candidateDigest ?? null,
     manifestDigest: claim?.digests?.manifestDigest ?? null,
     inputDigest: claim?.digests?.inputDigest ?? null,
+  };
+}
+
+function reportSchemaForSelector(selector) {
+  if (selector === 'relay-collar') return 'spaceface.pq022-relay-reauthor-h1.v1';
+  if (selector === 'refinery') return 'spaceface.pq022-refinery-reauthor-h1.v1';
+  if (selector === 'billboard-buoy') return 'spaceface.pq022-billboard-buoy-reauthor-h1.v1';
+  return 'spaceface.pq022-corridor-asset-leaves-h1.v1';
+}
+
+function routeContractForSelector(selector) {
+  if (selector === 'relay-collar') return 'visible fixed-seed New Game -> asteroidSites relay owner -> close/default/far game-camera stills';
+  if (selector === 'refinery') return 'visible fixed-seed New Game -> Ceres refinery owner -> ordinary and diagnostic game-canvas stills';
+  if (selector === 'billboard-buoy') return 'visible fixed-seed New Game -> core-station billboard dressing and Tethys Customs Log buoy -> ordinary game-canvas stills';
+  return 'visible fixed-seed New Game -> production owners -> controlled game-camera stills';
+}
+
+function normalizePq022ReauthorReceipt(receipt) {
+  return {
+    schema: receipt?.schema || null,
+    selector: receipt?.selector || null,
+    fixedSeed: receipt?.fixedSeed || null,
+    routeContract: receipt?.routeContract || null,
+    uniqueAssetCount: receipt?.uniqueAssetCount || null,
+    screenshotCount: receipt?.screenshotCount || null,
+    captures: (receipt?.captures || []).map((capture) => ({
+      subjectKey: capture.subjectKey,
+      assetId: capture.assetId,
+      manifestId: capture.manifestId,
+      family: capture.family,
+      framing: capture.framing,
+      requestedLod: capture.requestedLod,
+      runtimeIdentity: capture.runtimeIdentity,
+        captureSurface: capture.captureSurface,
+        cameraRig: capture.cameraRig,
+      emissiveComparison: capture.emissiveComparison,
+      presentationAdmission: capture.presentationAdmission,
+      authoredAssetState: capture.authoredAssetState,
+      authoredAssetMode: capture.authoredAssetMode,
+      authoredVisualRoot: capture.authoredVisualRoot,
+      authoredReadableFallbackRetained: capture.authoredReadableFallbackRetained,
+      authoredCompositionId: capture.authoredCompositionId,
+      authoredSlots: capture.authoredSlots,
+      centerOnScreen: capture.centerOnScreen,
+    })),
   };
 }
 
