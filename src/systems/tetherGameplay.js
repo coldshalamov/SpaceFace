@@ -20,6 +20,7 @@ import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { isHostileToPlayer } from './scanner.js';
 import { massline2Flag } from '../data/featureFlags.js';
 import { isMassSeedTetherEligible } from './massSeed.js';
+import { specialistPlanByEnemyId } from '../ai/specialistPlans.js';
 
 const TETHER_DEF_ID = 'tether_standard';
 // PQ-137.09 — the tag a shared helm loss carries, and the loop guard. A shared tumble never
@@ -35,6 +36,13 @@ export const TWIN_BRIDLE_HEAD_ID = 'twin_bridle';
 // PQ-031.00: the second latch is the throw, not a lingering setup mode. Keep the A endpoint
 // alive for only the authored combat-range throw window; all elapsed time comes from simTime.
 export const TWIN_BRIDLE_SETUP_S = 2;
+const NPC_BRIDLE_CUT_COOLDOWN_TICKS = 90;
+const NPC_BRIDLE_CUT_RANGE_WU = 180;
+const NPC_ACE_BRIDLE_CUT_RANGE_WU = 220;
+const NPC_HEAVY_BRIDLE_MASS = 150;
+const NPC_ACE_BRIDLE_CUT_PHASES = new Set([
+  'engine_flare', 'strike', 'commit', 'control', 'anchor_hold', 'broadside_fire', 'screen_hold', 'fire_window',
+]);
 const STRAIN_EVENT_INTERVAL_S = 0.2;
 const RELATCH_COOLDOWN_S = 0.25;   // after cut/break — prevents same-press ghost re-latches
 const TAP_CUT_DELAY_S = 0.22;       // legacy direct-action path: hold becomes reel, tap becomes cut
@@ -106,6 +114,7 @@ export const tetherGameplay = {
     this._lastLatchDenial = null;
     this._bridleSetup = null;
     this._bridleActive = null;
+    this._npcBridleCutTicks = new Map();
     this._bridleAdoptionPending = true;
     this._pendingDrillApproach = null;
     this._drillApproach = null;
@@ -119,12 +128,14 @@ export const tetherGameplay = {
       this._pendingCut = null;
       this._ignoreReleaseCutUntilReelIdle = false;
       this._lastStrainT = -Infinity;
+      this._npcBridleCutTicks.clear();
       this._cancelDrillApproach('save_loaded');
       this._resetAcquisitionRuntime(this.state);
       this._resetTwinBridleRuntime(this.state, 'save_loaded', true);
     };
     const resetForNewGame = () => {
       this._cancelDrillApproach('new_game');
+      this._npcBridleCutTicks.clear();
       this._resetAcquisitionRuntime(this.state);
       this._resetTwinBridleRuntime(this.state, 'new_game', false);
     };
@@ -158,6 +169,7 @@ export const tetherGameplay = {
           this.bus.on('tether:broken', onAuthorityBroken),
           this.bus.on('drill:approachRequested', (payload) => this._requestDrillApproach(payload)),
           this.bus.on('combat:tumbled', (payload) => this._shareHelmLoss(payload)),
+          this.bus.on('ai:doctrinePhase', (payload) => this._handleNPCBridleCounterplay(payload)),
         ]
       : [];
     this._resetPhaseMirror();
@@ -761,6 +773,35 @@ export const tetherGameplay = {
     mirror.load = computeTetherLoad(phase, strain);
     mirror.automaticBreakAllowed = automaticMasslineBreakAllowed(def, source, target);
     mirror.lastEndReason = null;
+  },
+
+  // NPC counterplay stays on the AI's existing phase-change seam. The specialist plan owns the
+  // visible attach-window telegraph; named aces get the same physical cutter during their authored
+  // offensive phases. Only player-controlled Twin Bridles are eligible, so an NPC never cuts a
+  // foreign NPC line or writes around the attachment authority.
+  _handleNPCBridleCounterplay(payload) {
+    if (!payload || payload.entityId == null) return null;
+    const state = this.state;
+    const actor = state && state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(payload.entityId)
+      : null;
+    if (!actor || actor.alive === false) return null;
+    const data = actor.data || {};
+    const enemyId = data.enemyTypeId || data.lootTableId || data.typeId || null;
+    const plan = specialistPlanByEnemyId(enemyId || payload.doctrineId);
+    const specialistCutter = !!(plan && plan.verb === 'cut_line');
+    const aceCutter = isNamedAceEntity(actor);
+    if (!specialistCutter && !aceCutter) return null;
+    const phase = String(payload.phase || '');
+    if (specialistCutter ? phase !== 'attach_window' : !NPC_ACE_BRIDLE_CUT_PHASES.has(phase)) return null;
+    const rangeWu = specialistCutter
+      ? positive(plan.cutRangeWu, NPC_BRIDLE_CUT_RANGE_WU)
+      : NPC_ACE_BRIDLE_CUT_RANGE_WU;
+    return cutNearestPlayerTwinBridle(this, actor, {
+      rangeWu,
+      reason: aceCutter ? 'ace_cut' : 'specialist_cut',
+      tick: payload.tick,
+    });
   },
 
   _endTwinBridleMirror(state, reason) {
@@ -1598,6 +1639,10 @@ export function validateTwinBridlePair(host, state, player, source, target, def)
   );
   if (physicalDistance > maxLength) return 'pair_out_of_range';
   if (isLargeBridleEndpoint(source) && isLargeBridleEndpoint(target)) return 'two_heavy_endpoints';
+  // Moving heavy NPCs are terrain in the fight: the line may pull a light hull around them, but
+  // the heavy does not accept a player bridle as a control surface. Player/persistent haulers stay
+  // eligible for the authored bolas toy; this gate is NPC identity plus mass, not mass alone.
+  if (isNpcHeavyBridleEndpoint(source) || isNpcHeavyBridleEndpoint(target)) return 'heavy_endpoint_resists';
   if (activeAttachmentPathExists(state, source.id, target.id)) return 'attachment_cycle';
   if (masslineObstructed(host, state, source, target)) return 'blocked';
   return null;
@@ -1627,6 +1672,110 @@ function isLargeBridleEndpoint(entity) {
   if (body && typeof body === 'object' && body.dynamic === false) return true;
   const mass = Number(body && body.mass != null ? body.mass : entity.mass);
   return Number.isFinite(mass) && mass >= MASSIVE_ANCHOR_MIN_MASS;
+}
+
+function isNpcHeavyBridleEndpoint(entity) {
+  if (!entity || entity.type !== 'ship') return false;
+  const data = entity.data || {};
+  const ai = data.ai || {};
+  const npc = entity.team === 1
+    || data.enemyTypeId != null
+    || data.lootTableId != null
+    || ai.combatDoctrineId != null;
+  if (!npc) return false;
+  const body = entity.physicsBody;
+  const mass = Number(body && body.mass != null ? body.mass : entity.mass);
+  return Number.isFinite(mass) && mass >= NPC_HEAVY_BRIDLE_MASS;
+}
+
+function isNamedAceEntity(entity) {
+  const data = entity && entity.data || {};
+  const ai = data.ai || {};
+  return data.namedAceId != null
+    || data.aceId != null
+    || ai.namedAceId != null
+    || ai.aceId != null
+    || data.named === true
+    || data.ace === true
+    || data.isAce === true;
+}
+
+function cutNearestPlayerTwinBridle(host, actor, { rangeWu, reason, tick } = {}) {
+  const state = host && host.state;
+  const byId = state && state.combat && state.combat.attachments && state.combat.attachments.byId;
+  const kernel = combatKernel(host);
+  const attachments = kernel && kernel.attachments;
+  if (!byId || typeof byId !== 'object' || !attachments
+      || typeof attachments.breakAttachment !== 'function') return null;
+
+  const playerId = state.playerId;
+  const range = positive(rangeWu, NPC_BRIDLE_CUT_RANGE_WU);
+  const rangeSq = range * range;
+  let nearest = null;
+  let nearestDistanceSq = Infinity;
+  for (const attachment of Object.values(byId)) {
+    if (!attachment || attachment.state !== 'active' || attachment.defId !== TWIN_BRIDLE_DEF_ID) continue;
+    if (attachment.controllerId == null || String(attachment.controllerId) !== String(playerId)) continue;
+    const source = state.entities && state.entities.get ? state.entities.get(attachment.ownerId) : null;
+    const target = state.entities && state.entities.get ? state.entities.get(attachment.targetId) : null;
+    if (!source || source.alive === false || !target || target.alive === false) continue;
+    const distanceSq = distanceToSegmentSq(actor.pos, source.pos, target.pos);
+    if (distanceSq > rangeSq) continue;
+    if (distanceSq < nearestDistanceSq
+        || (distanceSq === nearestDistanceSq
+          && String(attachment.id).localeCompare(String(nearest && nearest.id)) < 0)) {
+      nearest = attachment;
+      nearestDistanceSq = distanceSq;
+    }
+  }
+  if (!nearest) return null;
+
+  const currentTick = Number.isFinite(tick) ? Math.trunc(tick)
+    : Number.isFinite(state.tick) ? Math.trunc(state.tick) : 0;
+  const key = `${String(actor.id)}:${String(nearest.id)}`;
+  const lastTick = host._npcBridleCutTicks && host._npcBridleCutTicks.get(key);
+  if (Number.isFinite(lastTick) && currentTick - lastTick < NPC_BRIDLE_CUT_COOLDOWN_TICKS) return null;
+  const result = attachments.breakAttachment(nearest, reason || 'specialist_cut', actor.id);
+  if (!result || !result.ok) return null;
+  if (!host._npcBridleCutTicks) host._npcBridleCutTicks = new Map();
+  host._npcBridleCutTicks.set(key, currentTick);
+  if (host.bus && typeof host.bus.emit === 'function') {
+    host.bus.emit('massline:npcCounterplay', {
+      schemaVersion: 1,
+      verb: 'cut_bridle',
+      role: reason === 'ace_cut' ? 'ace' : 'specialist',
+      actorId: actor.id,
+      attachmentId: nearest.id,
+      reason: reason || 'specialist_cut',
+      tick: currentTick,
+    });
+  }
+  return {
+    verb: 'cut_bridle',
+    ok: true,
+    role: reason === 'ace_cut' ? 'ace' : 'specialist',
+    attachmentId: nearest.id,
+  };
+}
+
+function distanceToSegmentSq(point, start, end) {
+  if (!point || !start || !end) return Infinity;
+  const px = Number(point.x);
+  const pz = Number(point.z);
+  const ax = Number(start.x);
+  const az = Number(start.z);
+  const bx = Number(end.x);
+  const bz = Number(end.z);
+  if (![px, pz, ax, az, bx, bz].every(Number.isFinite)) return Infinity;
+  const dx = bx - ax;
+  const dz = bz - az;
+  const lengthSq = dx * dx + dz * dz;
+  const projection = lengthSq > 1e-9
+    ? clamp(((px - ax) * dx + (pz - az) * dz) / lengthSq, 0, 1)
+    : 0;
+  const nearestX = ax + dx * projection;
+  const nearestZ = az + dz * projection;
+  return (px - nearestX) ** 2 + (pz - nearestZ) ** 2;
 }
 
 function activeAttachmentPathExists(state, sourceId, targetId) {
