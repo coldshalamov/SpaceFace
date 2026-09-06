@@ -1080,6 +1080,11 @@ export function createBloom(renderer, width, height, instrumentation = null) {
         quadMesh.material = downsampleMat;
         renderer.setRenderTarget(down[0]);
         if (typeof renderer.compile === 'function') renderer.compile(quadScene, quadCam);
+        // compile() links the shader but does not make Three register the private fullscreen
+        // geometry with WebGLGeometries. Submit one disposable offscreen pass while loading so
+        // the opening receipt includes this renderer-owned buffer; the first visible bloom pass
+        // must never be the quad's first GPU admission.
+        if (typeof renderer.render === 'function') renderer.render(quadScene, quadCam);
       }
       quadMesh.material = compositeMat;
       renderer.setRenderTarget(null);

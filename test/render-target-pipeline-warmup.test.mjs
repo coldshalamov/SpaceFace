@@ -209,6 +209,33 @@ test('bloom instance exposes the loading warm-up contract used by renderer admis
   bloom.dispose();
 });
 
+test('bloom resource preparation submits its private fullscreen geometry before opening receipt capture', async () => {
+  const initializedTargets = [];
+  const renders = [];
+  const priorTarget = { name: 'existing offscreen target' };
+  let activeTarget = priorTarget;
+  const renderer = {
+    capabilities: { isWebGL2: false, maxSamples: 0 },
+    autoClear: true,
+    getRenderTarget: () => activeTarget,
+    setRenderTarget: (target) => { activeTarget = target; },
+    initRenderTarget: (target) => { initializedTargets.push(target); },
+    compile() {},
+    render(scene, camera) { renders.push({ scene, camera, target: activeTarget }); },
+  };
+  const bloom = createBloom(renderer, 64, 64);
+
+  const result = await bloom.prepareResources();
+
+  assert.equal(result.skipped, false);
+  assert.equal(initializedTargets.length, bloom.contextLossResources().length);
+  assert.equal(renders.length, 1, 'one private offscreen quad submission admits its geometry');
+  assert.strictEqual(renders[0].target, bloom.contextLossResources()[1],
+    'the admission draw stays on the initialized first bloom target');
+  assert.strictEqual(activeTarget, priorTarget, 'resource preparation restores the prior target');
+  bloom.dispose();
+});
+
 test('render graph exposes every off-scene target to context-loss cleanup', () => {
   const renderer = {
     isWebGLRenderer: true,
@@ -863,9 +890,8 @@ test('renderer wires startup to captured authored admissions, never the installe
     'the retained full-scene compiler is explicit diagnostic compatibility only');
   assert.match(source, /createOpeningSubmissionPlan/, 'startup must build an exact first-picture leaf plan');
   assert.match(source, /state\.render\.captureOpeningSubmissionPlan/, 'startup must capture the exact plan');
-  assert.match(source,
-    /afterBrowserPaint\([\s\S]{0,1600}?resumeDeferredPipelineAdmissions/,
-    'late authored roots resume only after the first playable paint');
+  // The extracted first-paint release and admission resumption are exercised directly in
+  // opening-mesh-defer.test.mjs; character distance between source tokens is not that contract.
 });
 
 test('renderer entry points delegate route selection instead of branching on bloom controls', async () => {
