@@ -36,6 +36,26 @@ export const VOICE_OWNED_ALERT_TEXTS = Object.freeze([
   'OUT OF FUEL',
 ]);
 
+const BLOCKED_OUTPUT_STATES = new Set(['starved', 'no-power', 'backlogged']);
+
+/** Flight-HUD status line for a mill that cannot produce. Not a one-voice bark: it stays up
+ *  while the machine is blocked so reduce-motion still has a word when shake/zoom are off. */
+export function blockedOutputAlertText(payload) {
+  if (!payload) return null;
+  const s = String(payload.state || payload.status || '');
+  return BLOCKED_OUTPUT_STATES.has(s) ? 'OUTPUT BLOCKED' : null;
+}
+
+/** Per-machine blocked set so a running mill cannot hide a starved neighbour. */
+export function applyBlockedOutputMachine(blocked, payload) {
+  const next = blocked instanceof Set ? new Set(blocked) : new Set();
+  if (!payload || payload.machineId == null) return next;
+  const key = `${payload.siteId != null ? payload.siteId : '_'}::${payload.machineId}`;
+  if (blockedOutputAlertText(payload)) next.add(key);
+  else next.delete(key);
+  return next;
+}
+
 /** Normalize a status line for ownership compare (case/punct-insensitive exact short match). */
 export function normalizeAlertToastText(text) {
   return String(text || '')
@@ -65,6 +85,7 @@ export function createAlerts(ctx) {
   const map = new Map(); // key -> { key, sev, text, ttl(ms)|Infinity, born, el }
   const expiredKeys = [];
   let nextExpiryAt = Infinity;
+  let blockedMills = new Set();
 
   function ensureEl(rec) {
     if (rec.el) return rec.el;
@@ -119,6 +140,40 @@ export function createAlerts(ctx) {
         el.parentNode.removeChild(el);
       }
     }
+  }
+
+  function syncBlockedOutputPill() {
+    if (blockedMills.size > 0) {
+      raise({ key: 'mill-blocked', sev: 'warn', text: 'OUTPUT BLOCKED', ttl: Infinity });
+    } else {
+      clear('mill-blocked');
+    }
+  }
+
+  function refreshBlockedMillsFromSites() {
+    const state = ctx && ctx.state;
+    const sites = state && state.sites;
+    const sys = ctx && ctx.registry && typeof ctx.registry.get === 'function'
+      ? ctx.registry.get('asteroidSites')
+      : null;
+    const next = new Set();
+    let scanned = false;
+    if (sites && sys && typeof sys.projection === 'function') {
+      scanned = true;
+      const order = Array.isArray(sites.order) ? sites.order : [];
+      for (const siteId of order) {
+        const proj = sys.projection(siteId);
+        const machines = proj && Array.isArray(proj.machines) ? proj.machines : [];
+        for (const machine of machines) {
+          const status = machine && machine.status;
+          if (blockedOutputAlertText(status)) {
+            next.add(`${siteId}::${machine.id}`);
+          }
+        }
+      }
+    }
+    if (scanned) blockedMills = next;
+    syncBlockedOutputPill();
   }
 
   // Expiry sweep — called from hud frame(), but wakes only when a finite alert can expire.
@@ -270,6 +325,23 @@ export function createAlerts(ctx) {
     if (inRange) raise({ key: 'gate', sev: 'info', text: `${name || 'JUMP GATE'} · OPEN STARMAP (${BINDINGS.starmap.label}) TO JUMP`, ttl: Infinity });
     else clear('gate');
   });
+
+  bus.on('site:machineStatus', (p) => {
+    blockedMills = applyBlockedOutputMachine(blockedMills, p);
+    syncBlockedOutputPill();
+  });
+  bus.on('site:machineInstalled', () => refreshBlockedMillsFromSites());
+  bus.on('site:lost', (p) => {
+    const prefix = `${p && p.siteId != null ? p.siteId : '_'}::`;
+    const next = new Set();
+    for (const key of blockedMills) {
+      if (!key.startsWith(prefix)) next.add(key);
+    }
+    blockedMills = next;
+    syncBlockedOutputPill();
+  });
+  bus.on('game:started', () => refreshBlockedMillsFromSites());
+  bus.on('save:loaded', () => refreshBlockedMillsFromSites());
 
   // incoming fire on the player — transient one-shots → the one-voice floor ONLY (no parallel pill
   // or toast). shield-down is listed in VOICE_OWNED_ALERT_TEXTS so toasts.js drops any mirror.

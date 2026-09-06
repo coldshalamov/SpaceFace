@@ -5490,7 +5490,7 @@
       "parentId": "PQ-165",
       "priority": 56,
       "title": "Reduced motion keeps the information",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "accessibility"
@@ -5505,8 +5505,10 @@
         "npm run check:baseline",
         "npm run check:ui-a11y"
       ],
-      "receiptRefs": [],
-      "brief": "With reduce-motion on, every directional cue, state transition and readable timing survives without FOV punch, shake or time distortion. DONE WHEN: a strip pair (motion on / reduce-motion) of the same seed at the shipping camera; a critic names the same events from both; no cue exists only as shake or zoom.",
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-165-03-REPORT.md"
+      ],
+      "brief": "DONE 2026-09-06: same-seed Helios pair; critic names CHARGE, hull H chevron, shield S, TETHER LOADED, and OUTPUT BLOCKED on both motion-on and reduce-motion. Collision shake stays off under reduce-motion; the mill pill is per-machine. DONE WHEN: a strip pair (motion on / reduce-motion) of the same seed at the shipping camera; a critic names the same events from both; no cue exists only as shake or zoom.",
       "kind": "implementation"
     },
     {

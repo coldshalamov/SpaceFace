@@ -19,6 +19,7 @@ import { createRadar } from './radar.js';
 import { createTargetPanel } from './targetPanel.js';
 import { createFloatingText } from './floatingText.js';
 import { createDamageIndicators } from './damageIndicators.js';
+import { buildReducedMotionContactCue } from './reducedMotionInformation.js';
 import { createHudMeta, HUD_META_CSS } from './hudMeta.js';
 import { icon } from './station/icons.js';
 import { glyphSvg } from './glyphs.js';
@@ -1508,6 +1509,16 @@ export function createHud(ctx, alerts) {
   );
   root.appendChild(dmgInd.el);
   ctx.bus.on('combat:damage', (p) => dmgInd.onDamage(p));
+  ctx.bus.on('collision', (p) => {
+    const other = state.entities && state.entities.get
+      ? state.entities.get(p && p.aId === state.playerId ? p.bId : p && p.aId)
+      : null;
+    const cue = buildReducedMotionContactCue({
+      ...p,
+      otherPos: (other && other.pos) || (p && p.pos),
+    }, state.playerId);
+    if (cue) dmgInd.onDamage(cue);
+  });
 
   // ---- objective tracker (relocated to the bottom-left contextual column) + off-screen arrow.
   // The arrow (below) stays a root-level, world-following overlay; only the objective LIST moves. ----
