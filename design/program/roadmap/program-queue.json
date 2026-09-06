@@ -6853,7 +6853,7 @@
       "parentId": "PQ-190",
       "priority": 103,
       "title": "The effect-class VFX matrix",
-      "state": "claimed",
+      "state": "implemented",
       "dependsOn": [
         "PQ-190.00"
       ],
@@ -10684,7 +10684,7 @@
       "priority": 234,
       "title": "PERF-04 dense PresentationWorld native acceptance",
       "kind": "acceptance_capture",
-      "state": "claimed",
+      "state": "implemented",
       "dependsOn": [
         "PQ-034.native-closure",
         "PQ-038.focused-implementation"
@@ -10784,7 +10784,7 @@
       "priority": 237,
       "title": "PERF-07 exact-package and native Electron acceptance",
       "kind": "acceptance_capture",
-      "state": "claimed",
+      "state": "implemented",
       "dependsOn": [
         "PQ-034.native-closure",
         "PQ-041.electron-smoke-h1-capture",
@@ -11020,7 +11020,7 @@
       "priority": 245,
       "title": "Capture the revised four-role facility presentation",
       "kind": "acceptance_capture",
-      "state": "claimed",
+      "state": "implemented",
       "dependsOn": [
         "PQ-019.receiver-facility-reauthor",
         "PQ-022.relay-reauthor-review"
