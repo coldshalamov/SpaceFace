@@ -202,7 +202,7 @@ export function evaluateProgrammedMiner(facts = {}) {
   } else if (fuel <= 0) {
     limitStage = LIMIT_STAGE.MISSING_INPUT;
     operatingState = OPERATING_STATE.STRANDED;
-  } else if (!hasRock && mining && !storageFull) {
+  } else if (!hasRock && (stored <= 0 || (mining && !storageFull))) {
     limitStage = LIMIT_STAGE.NO_EXPOSED_FACE;
     operatingState = OPERATING_STATE.STALLED;
   } else if (storageFull && mining) {

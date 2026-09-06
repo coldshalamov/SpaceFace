@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { assignTemplate } from '../src/systems/alphabet.js';
+import { assignTemplate, tickProgram } from '../src/systems/alphabet.js';
 import { automation } from '../src/systems/automation.js';
 import { economy } from '../src/systems/economy.js';
 import {
@@ -89,6 +89,35 @@ function programmedGroup(overrides = {}) {
   return group;
 }
 
+test('an empty miner stays at a depleted field while a partial shipment leaves for its depot', () => {
+  const { state } = bootAutomation();
+  const group = programmedGroup();
+  let stored = 0;
+  let moves = 0;
+  const ctx = { state, group, operationUsed: () => stored, operationFull: () => false,
+    steerTo: () => { moves++; return false; }, mineIntoCargo: () => assert.fail('no rock exists') };
+  for (let tick = 0; tick < 120; tick++) tickProgram(group, ctx, 1 / 60);
+  assert.equal(group.programState.pc, 0);
+  assert.equal(moves, 0);
+  stored = 1;
+  tickProgram(group, ctx, 1 / 60);
+  assert.equal(group.programState.pc, 1, 'the finite partial load still travels home');
+});
+
+test('empty depleted workers never report productive throughput during saved routing steps', () => {
+  for (const programStep of ['mine', 'haul', 'sell']) {
+    const op = evaluateProgrammedMiner({ fuel: 240, hasRock: false, hasDepot: true,
+      shipmentUsed: 0, shipmentCap: 40, programStep, upkeepPerMin: 6, grossValuePerMin: 576 });
+    assert.equal(op.operatingState, OPERATING_STATE.STALLED);
+    assert.equal(op.limitStage, LIMIT_STAGE.NO_EXPOSED_FACE);
+    assert.equal(op.operatingCostPerMin, 0);
+    assert.equal(op.netThroughputPerMin, 0);
+  }
+  const loaded = evaluateProgrammedMiner({ fuel: 240, hasRock: false, hasDepot: true,
+    shipmentUsed: 1, shipmentCap: 40, programStep: 'haul', upkeepPerMin: 6 });
+  assert.equal(loaded.operatingState, OPERATING_STATE.RUNNING);
+});
+
 test('PQ-177.07 a player can name why a second machine would help or sit idle', () => {
   const running = evaluateProgrammedMiner({
     fuel: 240,
@@ -152,6 +181,11 @@ test('reading an operation card does not mutate a saved drone', () => {
 test('PQ-177.07 fuel shortage strands the machine and never deletes it', () => {
   const { state, inst } = bootAutomation();
   const group = programmedGroup({ fuel: 0.25 });
+  // Fuel is spent while working. An empty depleted field now correctly waits without burning it.
+  const rock = { id: 2, type: 'asteroid', alive: true, pos: { x: 0, z: 0 }, radius: 12,
+    data: { oreHP: 14, oreHPMax: 14 } };
+  state.entities.set(rock.id, rock);
+  state.entityList.push(rock);
   state.automation.drones.push(group);
   inst.update(1, state);
   assert.equal(state.automation.drones.length, 1);

@@ -7,7 +7,7 @@
 // construction itself still goes through the visible Operations control and ui:fleetOrder intent.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { createServer as createNetServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
 
@@ -70,6 +70,33 @@ try {
   });
   assert.notEqual(playerEntry.alive, false, `player should be live after new-game entry: ${JSON.stringify(playerEntry)}`);
   mark('flight-ready');
+
+  // Flight mode flips before the first visible draw. The automation fixture replaces the active
+  // hull, so it must wait for the opening receipt outcome rather than changing the exact scene
+  // whose GPU residency was admitted for the starter hull.
+  const openingSubmission = await page.waitForFunction(() => {
+    const render = window.SF?.state?.render;
+    if (!render) return null;
+    const firstPlayable = Number.isFinite(render.firstPlayableFrameAt);
+    const validation = render.openingSubmissionValidation || null;
+    if (!firstPlayable && !validation) return null;
+    return {
+      validation,
+      preSubmitValidation: render.openingSubmissionPreSubmitValidation || null,
+      firstVisibleGpuCounts: render.openingFirstVisibleGpuCounts || null,
+      route: render.openingSubmissionPlan?.route || null,
+      openingSubmissionFirstDrawSubmittedAt: render.openingSubmissionFirstDrawSubmittedAt || null,
+      firstPlayableFrameAt: render.firstPlayableFrameAt || null,
+    };
+  }, null, { timeout: START_TIMEOUT_MS });
+  const openingSubmissionSnapshot = await openingSubmission.jsonValue();
+  mkdirSync(SHOT_DIR, { recursive: true });
+  writeFileSync(`${SHOT_DIR}/opening-submission.json`, JSON.stringify(openingSubmissionSnapshot, null, 2));
+  if (openingSubmissionSnapshot.validation) {
+    assert.equal(openingSubmissionSnapshot.validation.ok, true,
+      `opening submission must validate before the automation fixture: ${JSON.stringify(openingSubmissionSnapshot.validation)}`);
+  }
+  mark('opening-submission-ready');
 
   const automationFixture = await page.evaluate(prepareAutomationFixture);
   assert.equal(automationFixture.activeHull, 'ship_ranger', 'live automation fixture should use Ranger');
@@ -804,10 +831,14 @@ function prepareSaturationFixture({ groupId }) {
   if (!before || !before.ok || !(before.fillable > 0)) {
     throw new Error(`destination has no live intake before saturation: ${JSON.stringify(before)}`);
   }
+  // A depot filled exactly to its standing-order target can consume enough ore during the
+  // physical round trip to accept the next unit. Seed an explicitly oversupplied destination
+  // through the same stock owner so this case remains saturated while normal demand keeps running.
+  const suppliedVolume = Math.max(before.fillable, Math.ceil(before.intakeTarget * 2 - before.stock));
   sf.bus.emit('economy:applyTradePressure', {
     stationId,
     good: oreId,
-    vol: before.fillable,
+    vol: suppliedVolume,
   });
   const saturated = economy.quoteAutomationIntake(stationId, oreId, 1);
   if (!saturated || saturated.ok || saturated.reason !== 'demand_saturation') {
@@ -856,6 +887,7 @@ function prepareSaturationFixture({ groupId }) {
     stationId,
     oreId,
     expectedHeadroom: before.fillable,
+    controlledSupplyVolume: suppliedVolume,
     stockBefore: before.stock,
     stockAfter: saturated.stock,
     intakeTarget: before.intakeTarget,

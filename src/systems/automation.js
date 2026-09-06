@@ -2983,6 +2983,9 @@ function makeProgramContext(host) {
     sellMinedCargo(stationId) {
       return host._programSellCargo(this.group, stationId);
     },
+    operationUsed() {
+      return shipmentUsed(this.group);
+    },
     operationFull() {
       const g = this.group;
       const def = this.def || {};

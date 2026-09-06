@@ -133,7 +133,14 @@ export function tickProgram(group, ctx, dt) {
       // Steer to the field; fill the operation shipment. Completion is shipment-full, never the
       // player hold (a full Hitch must not freeze a worker, and a worker must not wait on the hold).
       const mineBeacon = beacon || resolveBeacon('field', ctx);
-      if (!mineBeacon) { advance(ps, tpl); return false; }
+      if (!mineBeacon) {
+        // A depleted field sends an existing load home. An empty worker waits here instead of
+        // cycling through empty trips and alternating between "running" and "no rock to cut".
+        const stored = typeof ctx.operationUsed === 'function'
+          ? ctx.operationUsed() : Number(cargo && cargo.usedVolume) || 0;
+        if (stored > 0) advance(ps, tpl);
+        return false;
+      }
       const onRock = ctx.steerTo(mineBeacon, dt);
       if (onRock && !holdFull) {
         ctx.mineIntoCargo(dt, mineBeacon.entity);
