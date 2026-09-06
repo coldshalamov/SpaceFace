@@ -297,3 +297,71 @@ quality settings.
 | `npm run check:perf:control` | rAF environment floor (blank / WebGL-clear) |
 | `npm run check:hitch-budget` | Long-run hitch histogram + spike attribution |
 | `npm run check:ui:perf` | UI frame-sleep, radar perf, compositor shell rules |
+
+---
+
+## 8. The three density layers (PQ-144.00)
+
+The universe looks larger than the simulation budget because detail is tiered by **how near the
+player is to interaction**, not by palette or tricks. Every tier below names the systems that
+already implement it. **The closer the player gets, the more truthful the world becomes** —
+nothing a player can reach is implied, and nothing implied is reachable. This table is the honest
+boundary every §13C packet must respect; the runtime witness
+(`npm run probe:runtime-witness` → `.devshots/runtime-witness/report.md`) is run **before and
+after every §13C packet lands**, and no new top frame-time bucket may appear.
+
+### 8.1 Foreground — fully simulated, interruptible, near the player
+
+| System | Tier behavior | Anchor |
+|---|---|---|
+| Tactical AI stack | Decisions decimated to 30 Hz (`decisionIntervalTicks: 2`), thruster authority stays 60 Hz, skipped ticks replay last maneuver; members batched 3 per spread | `src/systems/tacticalAI.js:41` |
+| NPC job runtime (live hulls) | Live job hulls advanced per tick; coarse threat sensor at 15 Hz (`THREAT_QUERY_INTERVAL_TICKS = 4`) | `src/systems/npcJobsRuntime.js:78` |
+| Encounter director | Pacing gate 1 Hz, one due item per beat; gaps 15–240 s, pool cap 140 | `src/systems/encounterDirector.js:210` |
+| Ship LOD0 | Player + near contacts render full-detail GLB; `LOD0_ABOVE = 120` px projected, 25 px hysteresis | `src/render/lod.js:17` |
+| Player plume | Deliberately **not** cadence-gated (ship-attached geometry exemption) | `src/render/vfx.js:473` |
+
+### 8.2 Midground — coherent behavior at cheaper cadence
+
+| System | Tier behavior | Anchor |
+|---|---|---|
+| Sector residency | Current sector FULL; corridor neighbors REDUCED (structural only); rest RECORD_ONLY (durable identity records, scoped despawn, rematerialize exactly once on re-entry); materialized cap 3 | `src/data/sectorCoordinates.js:75`, `src/systems/world.js:714` |
+| NPC jobs (virtualized) | Jobs virtualize on sector exit (route clock keeps running); the whole away-interval advances through the same `advance()` in one aggregated call, clamped at `MAX_CATCHUP_S = 3600` | `src/systems/npcJobsRuntime.js:82`, `:2658` |
+| sectorSim (offscreen world) | Headless deterministic graph — **no agents simulated**; danger/price/influence fields integrate once per sim-minute | `src/systems/sectorSim.js:12` |
+| Regional ecology → traffic | Day-driven deltas bias the traffic density multiplier (0.015–0.085) consumed by the spawner | `src/systems/regionalEcology.js:235`, `src/systems/traffic.js:992` |
+| Living POI behaviors | Deterministic planner, one representative per family per zone per day; emits consequence intents, never spawns | `src/systems/livingPoiBehaviors.js:14` |
+| Ambient traffic | One spawner, `MAX_PER_SECTOR = 8` real fly-to-able freighters; pocket clustering `POCKET_CLUSTER_R = 420` keeps density in sensor range | `src/systems/traffic.js:95` |
+| Spawn budget | Single accounting authority: `DEFAULT_MAX = 24`, `HARD_MAX = 40` | `src/systems/spawnBudget.js:30` |
+| Radar | Contact-index reuse + adaptive spatial-query fallback (`RADAR_QUERY_VISIT_RATIO_LIMIT = 0.4`) | `src/ui/radar.js:588` |
+
+### 8.3 Background — implied world (lights, silhouettes, crossings)
+
+| System | Tier behavior | Anchor |
+|---|---|---|
+| Trail tiers | Player/target FULL; on-glass NPCs NORMAL; off-glass SKIP ("map facts, not 3D ribbons"); screen-check budget 8 projections/frame, REDUCED emits 1-in-3 frames capped at 18 | `src/render/vfx.js:450`, `src/render/tabletopPolicy.js:246` |
+| Job working lights | Blink-code signatures (cadence is the signal); drawn only inside the measured 300 wu camera bubble, capacity 12 | `src/render/npcJobSignatureVfx.js:47` |
+| Ship LOD1/LOD2 | Whole-ship lower-poly GLB swap from the same family catalog; distant traffic may spawn directly at LOD1/2; LOD2 non-player ships skip runtime/damage presentation closures (a pixel cannot change) | `src/render/wholeShipLodPolicy.js:60`, `src/render/renderer.js:6330` |
+| View culling | Frustum-cylinder cull with authored XZ bounds; `forceRender`/`neverCull` gameplay entities exempt | `src/render/renderer.js:6065` |
+| Mesh build budget | Runtime reconcile drains 2 builds/frame (`RUNTIME_MESH_BUILD_BUDGET = 2`) | `src/render/renderer.js:347` |
+| HLOD (stations) | Authored flourishes hidden at LOD2; generic silhouette proxy **deliberately disabled** — identity is never swapped | `src/render/hlod.js:22` |
+| Parallax dressing | Three instanced debris layers (far dust 80 / mid 1400, halved to 700 only at `particleQuality: 'low'` / near motes 96); zoom-out grows the wrap tile, instance counts never change | `src/render/parallaxLayers.js:21` |
+| Starfield backdrop | 4 parallax point-sprite star layers + near-3D planets at factor 0.96 (sky depth only) | `src/render/starfield.js:208` |
+
+### 8.4 The honest boundary
+
+- **The sim never cheapens by distance.** Every ship in the active sector is a real entity
+  advanced at 60 Hz regardless of LOD or culling; view culling is presentation-only and skips
+  gameplay entities (`src/render/renderer.js:6330`, `:6079`).
+- **Background traffic is real hulls, not billboards.** No sprite/impostor substitution for ships
+  exists; ambient traffic is capped real freighters the player can fly to (`src/systems/traffic.js:95`).
+- **Off-screen sectors are records, not fake presence.** RECORD_ONLY sectors hold durable identity
+  records that rematerialize once on re-entry; the offscreen "world" simulates no agents
+  (`src/systems/world.js:751`, `src/systems/sectorSim.js:12`). The boundary is a hard enter, not a
+  distance fade.
+- **Offscreen job outcomes converge, they are not approximated.** Virtual jobs advance through the
+  same `advance()` the live hull uses; cheapening it would break the offscreen≈onscreen convergence
+  proof (`src/systems/npcJobsRuntime.js:1957`).
+- **VFX cheapening is screen-based and self-aware.** The cheapened layer is explicitly the
+  invisible layer (off-glass trails, out-of-bubble signatures), never a distant-but-visible one.
+- **Travel lanes are real modifiers on the continuous plane** — "not a warp, not a tunnel, not a
+  disguised loading screen" (`src/systems/travelLanes.js:5`). The layers are always crossed by
+  physically flying, never by implied transit.
