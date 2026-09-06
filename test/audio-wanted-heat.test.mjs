@@ -8,16 +8,21 @@ import test from 'node:test';
 
 import { RECIPES } from '../src/data/audioRecipes.js';
 import { AUDIO_CUE_TO_RECIPE, audio } from '../src/audio/audioSystem.js';
+import { heatLevelFor, THRESHOLD } from '../src/systems/heat.js';
 
+// Level/threshold come from the producer's own math (heat.js) so a drift in the emit contract
+// fails here instead of silently keeping the suite green.
 function heatPacket(overrides = {}) {
+  const value = overrides.value != null ? overrides.value : 0.3;
+  const previousValue = overrides.previousValue != null ? overrides.previousValue : 0.2;
   return {
-    value: 0.3,
-    previousValue: 0.2,
-    level: 2,
-    wanted: true,
-    wantedCrossed: false,
-    suspicion: 1,
-    threshold: 0.15,
+    value,
+    previousValue,
+    level: heatLevelFor(value),
+    wanted: value >= THRESHOLD,
+    wantedCrossed: (value >= THRESHOLD) !== (previousValue >= THRESHOLD),
+    suspicion: value <= 0 ? 0 : Math.min(1, value / THRESHOLD),
+    threshold: THRESHOLD,
     ...overrides,
   };
 }
@@ -101,6 +106,18 @@ test('the first packet after a load speaks only on a real WANTED edge', () => {
   // Then a genuine edge speaks.
   host._onHeatChanged(heatPacket({ level: 0, wanted: false, wantedCrossed: true }));
   assert.deepEqual(played.map((cue) => cue.id), ['wanted_clear']);
+});
+
+test('a stale cross-run level never gates the WANTED flip (in-process New Game)', () => {
+  const played = [];
+  const host = hostWith(played);
+  // Prior run ended at heat band 4; game:started wiped state.player without a save:loaded.
+  host._lastHeatLevel = 4;
+  // The new run's first crime flips WANTED at band 1 — the packet edge must speak.
+  host._onHeatChanged(heatPacket({ value: 0.2, previousValue: 0.1, wantedCrossed: true }));
+  assert.equal(played.length, 1);
+  assert.equal(played[0].id, 'wanted_escalate');
+  assert.equal(played[0].duck, true);
 });
 
 test('null payloads never throw', () => {

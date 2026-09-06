@@ -483,7 +483,9 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   // Gameplay cues with dedicated recipes (drill.js loot/hazard, countermeasures.js, combat shield break).
   loot_collect: 'sfx_loot_collect', mining_core_fizzle: 'sfx_mining_core_fizzle',
   shield_break: 'sfx.shieldBreak', cm_chaff: 'sfx_cm_chaff', cm_ecm: 'sfx_cm_ecm',
-  // WANTED heat escalation/clear — the law's attention speaks in its own voice, not UI chrome.
+  // WANTED heat escalation/clear — gameplay warning voices, not menu feedback. They ride the ui
+  // bus like every established warning, and cut through squelch as priority voices ('alert'
+  // substring) instead of relying on bus choice.
   wanted_escalate: 'sfx_wanted_alert', wanted_clear: 'sfx_wanted_clear',
   [FIRST_HOUR_AUDIO_SIGNATURES.masslineLatch.semanticId]: FIRST_HOUR_AUDIO_SIGNATURES.masslineLatch.recipeId,
   [FIRST_HOUR_AUDIO_SIGNATURES.masslineStrain.semanticId]: FIRST_HOUR_AUDIO_SIGNATURES.masslineStrain.recipeId,
@@ -1279,7 +1281,11 @@ export const audio = {
       this._applySettings();
       this._markMusicDirty();
     });
-    bus.on('game:started', () => { /* context already (or soon) created on gesture */ });
+    // In-process New Game swaps state.player without a save:loaded (resetRunState + game:started),
+    // so presentation transients keyed to per-run state must reset here too, mirroring heat.js.
+    bus.on('game:started', () => {
+      this._lastHeatLevel = null;
+    });
 
     // If a context already exists (hot reload), wire immediately.
     if (typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext)) {
@@ -2856,20 +2862,24 @@ export const audio = {
   // writer and already throttles emits). Only edges speak: the WANTED flip and band climbs play
   // the rising alarm (pitched up per band); dropping clean plays the clear sting. Chips inside a
   // band and decay-without-clear stay silent. Level tracking is presentation-only transient,
-  // nulled on save:loaded — the first packet after a load speaks only on a real wanted edge, so a
-  // mid-heat load cannot mint a phantom escalation alarm.
+  // nulled on save:loaded AND game:started — the in-process New Game loop swaps state.player
+  // without a save:loaded, so the flip is gated on the packet's own wantedCrossed edge and
+  // speaks regardless of any cross-run stale level.
   _onHeatChanged(p) {
     if (!p) return;
     const level = Number.isFinite(p.level) ? p.level : 0;
     const prevLevel = this._lastHeatLevel;
     this._lastHeatLevel = level;
     if (p.wantedCrossed && !p.wanted) {
-      this._onCue({ id: 'wanted_clear', gain: 0.7 });
+      // importance 0.8 = critical voice: the relief sting survives a combat squelch window,
+      // mirroring the escalation alarm's immunity.
+      this._onCue({ id: 'wanted_clear', gain: 0.7, importance: 0.8 });
       return;
     }
     const escalated = level > 0
-      && (prevLevel == null ? !!(p.wantedCrossed && p.wanted) : level > prevLevel);
+      && ((p.wantedCrossed && p.wanted) || (prevLevel != null && level > prevLevel));
     if (!escalated) return;
+    // Band ceiling mirrors HEAT_LEVEL_COUNT in src/systems/heat.js; bands 1..5.
     const band = Math.max(1, Math.min(5, level));
     this._onCue({
       id: 'wanted_escalate',
