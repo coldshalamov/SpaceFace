@@ -4,7 +4,8 @@
  *
  * One Game Path only (canonical public root, no query flags / alternate game).
  * Unlock via real framework APIs (noteSkillProof + offer). Accept proven through
- * UI → bus → leaf. Station rail, mission-log chip, map CTA, keyboard focus.
+ * the live Mission Log chip → bus → leaf. Map CTA, keyboard focus, and branch choices
+ * stay on that mounted surface.
  * Screenshots under ignored .devshots/career-ladder-ui/.
  *
  * Evidence truth (fail-closed):
@@ -13,9 +14,9 @@
  *  - never label a Market image as station rail
  *  - must AWAIT state.render.authoredPartLibraryReady promise before Launch; fail if false
  *  - public New Game / Launch, waypoint+autopilot, physical dock prompt + E
- *  - public station Hub navigation; public ladder UI accept; Mission Log CTA
+ *  - public station Hub navigation; public Mission Log ladder UI accept/decline
  *  - fail fast on game:startFailed
- *  - primaryClaims: public flight, physical dock, station offer+UI accept,
+ *  - primaryClaims: public flight, physical dock, Mission Log offer+UI accept,
  *    mission-log chip, career map source (data-map-source careerLadder:*)
  *  - applySignal complete/fail only as supporting_framework_setup (not primaryClaims)
  *  - no owner mutation recoverReadyAtS / recover({force}) / accept({ignorePrereqs})
@@ -47,7 +48,7 @@ import { fileURLToPath } from 'node:url';
 import { collectPageIssues, summarizeIssues } from './lib/browser-issues.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
 import { acquireVisualProbeServer } from './lib/visualProbeServer.mjs';
-import { closeOwnedResources } from './lib/alphaLiveBaselineContracts.mjs';
+import { closeOwnedResources, createCanonicalUrlTracker } from './lib/alphaLiveBaselineContracts.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const OUT_DIR = path.join(ROOT, '.devshots', 'career-ladder-ui');
@@ -59,25 +60,24 @@ const ASSET_LOCK = path.join(ROOT, 'assets', 'ships', 'release.__lock');
 const ASSET_BUILDING = path.join(ROOT, 'assets', 'ships', 'release.__building');
 
 const SHOTS = Object.freeze({
-  locked: '01-station-rail-locked.png',
-  offered: '02-station-rail-offered.png',
-  active: '03-station-rail-active.png',
-  recovering: '04-station-rail-recovering.png',
+  locked: '01-mission-log-locked.png',
+  offered: '02-mission-log-offered.png',
+  active: '03-mission-log-active.png',
+  recovering: '04-mission-log-recovering.png',
   hunterChoice: '05-hunter-choice.png',
   haulerChoice: '05b-hauler-lane-tax-choice.png',
   missionLog: '06-mission-log-chip.png',
   mapHandoff: '07-map-handoff.png',
 });
 
-const RAIL_SEL = '[data-testid="career-ladder-rail"]';
 const CHIP_SEL = '[data-testid="mission-log-career-chip"]';
-const MAP_BTN_SEL = '[data-testid="career-ladder-map"]';
-const MISSION_LOG_CTA_SEL = '[data-testid="career-ladder-mission-log"]';
+const HAULER_CHIP_SEL = CHIP_SEL + '[data-career-id="hauler"]';
+const MAP_BTN_SEL = HAULER_CHIP_SEL + ' [data-career-act="openMap"]';
 
 const PRIMARY_CLAIM_NAMES = Object.freeze([
   'public_flight',
   'physical_dock',
-  'station_offer_ui_accept',
+  'mission_log_offer_ui_accept',
   'mission_log_chip',
   'career_map_source',
 ]);
@@ -150,8 +150,8 @@ async function shot(page, name) {
 }
 
 /**
- * Scroll a rail/chip into view, assert viewport intersection, element-screenshot.
- * Used for offered/active/recovering/choice rails and mission-log chip (not map page shot).
+ * Scroll the live Mission Log career chip into view, assert viewport intersection, element-screenshot.
+ * Used for offered/active/recovering/choice chip states (not the full map page shot).
  */
 async function shotSubject(page, selector, name) {
   const dest = path.join(OUT_DIR, name);
@@ -255,6 +255,158 @@ async function assertNoStartFailed(page, phase) {
 }
 
 /**
+ * Read the live target and control owned by the visible Galaxy Map inspector.
+ *
+ * The map keeps one persistent action node and resolves its payload only when the player clicks
+ * it. Keeping this probe on the same root as the action prevents a cached/hidden screen wrapper
+ * from being mistaken for the active map, and gives a useful failure record when a search result
+ * did not actually become the intended station selection.
+ */
+async function readPublicHeliosMapSelection(page) {
+  return page.evaluate(() => {
+    const ui = window.SF && window.SF.registry && window.SF.registry.get && window.SF.registry.get('ui');
+    const mgr = ui && (ui.screenManager || ui.manager);
+    const screen = mgr && typeof mgr.getActiveScreenDef === 'function'
+      ? mgr.getActiveScreenDef()
+      : null;
+    const target = screen && screen._selectedTarget;
+    const root = document.querySelector('#sf-galaxymap');
+    const button = root && root.querySelector('#gm-set-course-btn');
+    const buttonRect = button && button.getBoundingClientRect();
+    const rootRect = root && root.getBoundingClientRect();
+    const selected = target && {
+      id: target.id ?? null,
+      kind: target.kind ?? null,
+      name: target.name ?? target.courseLabel ?? null,
+      stationId: target.stationId ?? null,
+      entityId: target.entityId ?? target.targetEntityId ?? null,
+      x: Number.isFinite(target.x) ? target.x : null,
+      z: Number.isFinite(target.z) ? target.z : null,
+    };
+    return {
+      top: mgr && typeof mgr.top === 'function' ? mgr.top() : null,
+      mapRoot: !!root,
+      mapRootVisible: !!(root && rootRect && rootRect.width > 10 && rootRect.height > 10),
+      selected: selected || null,
+      inspectorText: root ? ((root.querySelector('.gm-inspector-details')?.innerText || '').trim()) : '',
+      button: button ? {
+        hidden: !!button.hidden,
+        disabled: !!button.disabled,
+        text: (button.textContent || '').trim(),
+        width: buttonRect ? buttonRect.width : 0,
+        height: buttonRect ? buttonRect.height : 0,
+      } : null,
+    };
+  });
+}
+
+/**
+ * Activate the map's real Set Waypoint control and wait for the exact nav state it owns.
+ *
+ * A headed pointer can land between display frames while the map is repainting. Retry the public
+ * pointer action for a short bounded window, sampling the resulting state after each click. This
+ * never writes nav state or invokes the world handler directly; it only repeats the same visible
+ * action a pilot can take. The final snapshot makes a selector/action mismatch actionable.
+ */
+async function clickPublicHeliosWaypoint(page, locator, expectedTarget) {
+  const attempts = [];
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const visible = await locator.isVisible().catch(() => false);
+    const enabled = await locator.isEnabled().catch(() => false);
+    if (!visible || !enabled) {
+      attempts.push({ attempt, visible, enabled, reason: 'button_not_actionable' });
+      break;
+    }
+
+    // The wide map inspector is independently scrollable. Bring the scoped action into its
+    // scrollport, then let locator.click perform the public actionability and hit-test checks.
+    let scrollError = null;
+    try {
+      await locator.scrollIntoViewIfNeeded({ timeout: 3_000 });
+    } catch (error) {
+      scrollError = { name: error && error.name, message: error && error.message };
+    }
+    const box = await locator.boundingBox().catch(() => null);
+    const pointerTarget = box && box.width > 2 && box.height > 2
+      ? await page.evaluate(({ px, py }) => {
+        const hit = document.elementFromPoint(px, py);
+        const button = hit && hit.closest ? hit.closest('#sf-galaxymap #gm-set-course-btn') : null;
+        return {
+          tag: hit && hit.tagName || null,
+          id: hit && hit.id || null,
+          className: hit && typeof hit.className === 'string' ? hit.className : null,
+          isButton: !!button,
+        };
+      }, {
+        px: Math.round(box.x + box.width / 2),
+        py: Math.round(box.y + box.height / 2),
+      }).catch(() => null)
+      : null;
+    let clickError = null;
+    let armed = false;
+    try {
+      // Locator click is the only action: it auto-scrolls and hit-tests the real nested control.
+      await locator.click({ timeout: 3_000 });
+      armed = await page.waitForFunction((expected) => {
+        const nav = window.SF?.state?.nav;
+        const ap = nav?.autopilot;
+        const wp = nav?.waypoint;
+        if (!ap || ap.active !== true || !wp || !wp.pos) return false;
+        const expectedId = expected && expected.entityId != null ? String(expected.entityId) : null;
+        const actualId = ap.targetEntityId != null ? String(ap.targetEntityId) : null;
+        const targetMatches = expectedId == null || actualId === expectedId;
+        const apLabel = String(ap.label || '');
+        const wpLabel = String(wp.label || wp.reason || '');
+        return targetMatches
+          && /Helios Station/i.test(apLabel)
+          && /Helios Station/i.test(wpLabel)
+          && Number.isFinite(Number(wp.pos.x))
+          && Number.isFinite(Number(wp.pos.z));
+      }, expectedTarget || {}, { timeout: 750 }).then(() => true, () => false);
+    } catch (error) {
+      clickError = { name: error && error.name, message: error && error.message };
+    }
+
+    const nav = await page.evaluate(() => {
+      const stateNav = window.SF?.state?.nav;
+      const autopilot = stateNav?.autopilot;
+      const waypoint = stateNav?.waypoint;
+      return {
+        autopilot: autopilot ? {
+          active: autopilot.active === true,
+          status: autopilot.status || null,
+          targetEntityId: autopilot.targetEntityId ?? null,
+          label: autopilot.label || null,
+        } : null,
+        waypoint: waypoint ? {
+          kind: waypoint.kind || null,
+          targetEntityId: waypoint.targetEntityId ?? null,
+          label: waypoint.label || null,
+          pos: waypoint.pos && Number.isFinite(Number(waypoint.pos.x)) && Number.isFinite(Number(waypoint.pos.z))
+            ? { x: waypoint.pos.x, z: waypoint.pos.z }
+            : null,
+        } : null,
+      };
+    }).catch(() => null);
+    attempts.push({ attempt, box, pointerTarget, nav, armed, clickError, scrollError });
+    if (armed) return;
+
+    // A second click is allowed only when the same visible enabled control remains actionable
+    // and the first click produced no qualifying navigation state. Never mask a close/detach.
+    const remainsActionable = await locator.isVisible().catch(() => false)
+      && await locator.isEnabled().catch(() => false)
+      && !!(await locator.boundingBox().catch(() => null));
+    if (!remainsActionable) break;
+    if (attempt === 0) await page.waitForTimeout(50);
+  }
+  const final = await readPublicHeliosMapSelection(page).catch(() => null);
+  throw new Error(
+    'FAIL_CLOSED visible Helios Set Waypoint did not arm exact autopilot; '
+    + JSON.stringify({ expectedTarget, attempts, final }),
+  );
+}
+
+/**
  * Public boot → flight → Helios waypoint/autopilot → physical dock + E → public station hub.
  * Never emits dock:docked. Never pushScreen('station'). Never injects ui.docked.
  */
@@ -310,6 +462,8 @@ async function bootPublicRouteAndDock(page, evidence) {
       || !!document.querySelector('.gm-root')
       || !!document.querySelector('[data-screen="galaxyMap"]');
   }, null, { timeout: 20_000 });
+  const mapRoot = page.locator('#sf-galaxymap');
+  await mapRoot.waitFor({ state: 'visible', timeout: 20_000 });
 
   await page.keyboard.press('/');
   await page.waitForTimeout(100);
@@ -321,29 +475,71 @@ async function bootPublicRouteAndDock(page, evidence) {
   }
   const hit = page.locator('.gm-search-item-name', { hasText: 'Helios Station' }).first();
   await hit.waitFor({ state: 'visible', timeout: 12_000 });
-  await hit.click().catch(async () => { await page.keyboard.press('Enter'); });
-  const setWaypointButton = page.getByRole('button', { name: 'Set Waypoint', exact: true });
+  await hit.click().catch(async () => {
+    await search.focus().catch(() => {});
+    await page.keyboard.press('Enter');
+  });
+
+  // Search rows are presentation only; the map's active screen owns the selected target. Prove
+  // that the row selected the live Helios station before touching the persistent action button.
+  await page.waitForFunction(() => {
+    const ui = window.SF && window.SF.registry && window.SF.registry.get && window.SF.registry.get('ui');
+    const mgr = ui && (ui.screenManager || ui.manager);
+    const screen = mgr && typeof mgr.getActiveScreenDef === 'function'
+      ? mgr.getActiveScreenDef()
+      : null;
+    const target = screen && screen._selectedTarget;
+    return !!(target
+      && target.kind === 'station'
+      && /Helios Station/i.test(String(target.name || target.courseLabel || ''))
+      && (target.stationId === 'station_helios' || target.id === 'station_helios'));
+  }, null, { timeout: 12_000 });
+  const mapSelection = await readPublicHeliosMapSelection(page);
+  assert.ok(
+    mapSelection.selected
+      && mapSelection.selected.kind === 'station'
+      && /Helios Station/i.test(String(mapSelection.selected.name || '')),
+    'search must select the live Helios Station target: ' + JSON.stringify(mapSelection),
+  );
+  assert.equal(
+    mapSelection.selected.stationId || mapSelection.selected.id,
+    'station_helios',
+    'search selection must carry canonical station_helios identity: ' + JSON.stringify(mapSelection),
+  );
+  evidence.steps.push({ name: 'helios_map_selection', ...mapSelection });
+
+  const setWaypointButton = mapRoot.locator('#gm-set-course-btn');
   await setWaypointButton.waitFor({ state: 'visible', timeout: 12_000 });
+  await page.waitForFunction((sel) => {
+    const btn = document.querySelector(sel);
+    return !!(btn && !btn.hidden && !btn.disabled);
+  }, '#sf-galaxymap #gm-set-course-btn', { timeout: 12_000 });
 
   // Public pointer click to arm waypoint + autopilot (no synthetic nav writes).
-  const box = await setWaypointButton.boundingBox();
-  assert.ok(box && box.width > 2 && box.height > 2, 'Set Waypoint button must be visible for public pointer click');
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-  await page.waitForFunction(() => {
-    const nav = window.SF && window.SF.state && window.SF.state.nav;
-    const ap = nav && nav.autopilot;
-    const wp = nav && nav.waypoint;
-    const apOk = !!(ap && ap.active === true);
-    const wpOk = !!(wp && (wp.stationId || wp.label || wp.pos));
-    return apOk || wpOk;
-  }, null, { timeout: 12_000 });
+  await clickPublicHeliosWaypoint(page, setWaypointButton, mapSelection.selected);
   log('helios waypoint/autopilot armed via public Set Waypoint');
-  evidence.steps.push({ name: 'public_waypoint_autopilot', pass: true });
+  const armedNavigation = await page.evaluate(() => {
+    const nav = window.SF?.state?.nav;
+    return {
+      autopilot: nav?.autopilot ? {
+        active: nav.autopilot.active === true,
+        status: nav.autopilot.status || null,
+        targetEntityId: nav.autopilot.targetEntityId ?? null,
+        label: nav.autopilot.label || null,
+      } : null,
+      waypoint: nav?.waypoint ? {
+        kind: nav.waypoint.kind || null,
+        targetEntityId: nav.waypoint.targetEntityId ?? null,
+        label: nav.waypoint.label || null,
+        pos: nav.waypoint.pos && { x: nav.waypoint.pos.x, z: nav.waypoint.pos.z },
+      } : null,
+    };
+  });
+  evidence.steps.push({ name: 'public_waypoint_autopilot', pass: true, navigation: armedNavigation });
 
-  await page.keyboard.press('Escape');
-  await page.waitForTimeout(150);
-  await page.keyboard.press('Escape');
-  await page.waitForTimeout(150);
+  // A local Set Waypoint commits the fix and closes the chart. Escape here would open Pause
+  // and cancel the very approach this driver is meant to observe.
+  await page.waitForFunction(() => window.SF.state.mode === 'flight', null, { timeout: 10_000 });
 
   const dockPrompt = page.locator('.sf-alert--dock');
   const dockDeadline = Date.now() + DOCK_TIMEOUT_MS;
@@ -389,13 +585,12 @@ async function bootPublicRouteAndDock(page, evidence) {
   );
   await assertNoStartFailed(page, 'dock');
 
-  // Public station hub only — never pushScreen('station').
+  // Public station hub only — never pushScreen('station'). The station adapter mounts `.sx-app`
+  // inside the ScreenManager's `[data-screen="station"]` root.
   const hubSelectors = [
     '[data-screen="station"]',
-    '.st-hub',
-    '.st-hub--os',
-    '.st-hub--desk',
-    '[data-testid="career-ladder-rail"]',
+    '.sx-app',
+    '.sx-workspace',
   ];
   const hubDeadline = Date.now() + 25_000;
   let hubEvidence = null;
@@ -417,8 +612,8 @@ async function bootPublicRouteAndDock(page, evidence) {
         found,
         hasPublicHub: !!(
           document.querySelector('[data-screen="station"]')
-          || document.querySelector('.st-hub, .st-hub--os, .st-hub--desk')
-          || (top === 'station' && document.querySelector('[data-testid="career-ladder-rail"]'))
+          || document.querySelector('.sx-app, .sx-workspace')
+          || (top === 'station' && document.querySelector('.sx-screen'))
         ),
       };
     }, hubSelectors);
@@ -507,11 +702,14 @@ async function unlockAndOfferLadders(page) {
   });
 }
 
-async function waitForLadderRail(page, { timeout = 20_000 } = {}) {
-  const rail = page.getByTestId('career-ladder-rail');
-  await rail.waitFor({ state: 'attached', timeout });
-  await page.waitForFunction(() => {
-    const el = document.querySelector('[data-testid="career-ladder-rail"]');
+async function waitForMissionLogChip(page, { timeout = 20_000, careerId = null } = {}) {
+  const selector = careerId
+    ? CHIP_SEL + '[data-career-id="' + careerId + '"]'
+    : CHIP_SEL;
+  const chip = page.locator(selector).first();
+  await chip.waitFor({ state: 'attached', timeout });
+  await page.waitForFunction((sel) => {
+    const el = document.querySelector(sel);
     if (!el || el.hidden) return false;
     const style = getComputedStyle(el);
     const rect = el.getBoundingClientRect();
@@ -519,28 +717,39 @@ async function waitForLadderRail(page, { timeout = 20_000 } = {}) {
       && style.visibility !== 'hidden'
       && rect.width > 4
       && rect.height > 4;
-  }, null, { timeout });
-  return rail;
+  }, selector, { timeout });
+  return chip;
 }
 
-/** Assert the ladder rail is the station career rail — not a Market panel mislabel. */
-async function assertStationLadderRailNotMarket(page) {
+async function openMissionLog(page, { timeout = 15_000, chip = false } = {}) {
+  // J is the shipped Mission Log binding for the docked station and flight routes.
+  await page.keyboard.press('KeyJ');
+  await page.waitForFunction(() => {
+    const ui = window.SF && window.SF.registry && window.SF.registry.get && window.SF.registry.get('ui');
+    const mgr = ui && (ui.screenManager || ui.manager);
+    return !!(mgr && typeof mgr.top === 'function' && mgr.top() === 'missionLog');
+  }, null, { timeout });
+  if (chip) return waitForMissionLogChip(page, { timeout });
+  return page.getByTestId('mission-log-career-chip').first();
+}
+
+/** Assert the live chip is a Mission Log career surface — not a station/Market panel mislabel. */
+async function assertLiveMissionLogChip(page) {
   const probe = await page.evaluate(() => {
-    const rail = document.querySelector('[data-testid="career-ladder-rail"]');
-    if (!rail) return { ok: false, reason: 'rail_missing' };
-    const marketPanel = document.querySelector('.st-market, [data-panel="market"], .mk-root, .sf-market');
-    const railInMarket = !!(marketPanel && marketPanel.contains(rail));
-    const hasCareerChoice = !!rail.querySelector('[data-testid^="career-ladder-choice-"], [data-ladder-career]');
-    const cls = rail.className || '';
+    const chip = document.querySelector('[data-testid="mission-log-career-chip"]');
+    if (!chip) return { ok: false, reason: 'chip_missing' };
+    const missionLog = chip.closest('[data-screen="missionLog"]');
+    const hasCareerAction = !!chip.querySelector('[data-career-act][data-career-id]');
+    const cls = chip.className || '';
     return {
-      ok: !railInMarket && (hasCareerChoice || cls.includes('st-ladder-rail')),
-      railInMarket,
-      hasCareerChoice,
+      ok: !!missionLog && hasCareerAction && cls.includes('sf-mlog-career'),
+      missionLogPresent: !!missionLog,
+      hasCareerAction,
       className: cls,
-      testid: rail.getAttribute('data-testid'),
+      testid: chip.getAttribute('data-testid'),
     };
   });
-  assert.equal(probe.ok, true, 'career rail must be station ladder rail, not Market chrome: ' + JSON.stringify(probe));
+  assert.equal(probe.ok, true, 'career chip must be mounted in Mission Log with live actions: ' + JSON.stringify(probe));
   return probe;
 }
 
@@ -552,16 +761,16 @@ async function waitForPublicStationHub(page, { timeout = 15_000 } = {}) {
       const ui = window.SF && window.SF.registry && window.SF.registry.get && window.SF.registry.get('ui');
       const mgr = ui && (ui.screenManager || ui.manager);
       const top = mgr && typeof mgr.top === 'function' ? mgr.top() : null;
-      const hub = document.querySelector('[data-screen="station"], .st-hub, .st-hub--os, .st-hub--desk');
-      const rail = document.querySelector('[data-testid="career-ladder-rail"]');
+      const hub = document.querySelector('[data-screen="station"], .sx-app, .sx-workspace');
+      const app = document.querySelector('.sx-app, .sx-workspace');
       return {
         top,
         docked: !!(window.SF && window.SF.state && window.SF.state.ui && window.SF.state.ui.docked),
         hubPresent: !!hub,
-        railPresent: !!rail,
+        stationAppPresent: !!app,
       };
     });
-    if (last && last.docked && (last.hubPresent || last.top === 'station' || last.railPresent)) {
+    if (last && last.docked && (last.hubPresent || last.stationAppPresent || last.top === 'station')) {
       return last;
     }
     await page.waitForTimeout(150);
@@ -665,16 +874,13 @@ async function advanceToStep(page, careerId, targetStepId, maxCompletes = 6) {
   }, { careerId, targetStepId, maxCompletes });
 }
 
-/** Public UI accept for a career branch (no ignorePrereqs owner API). */
+/** Public Mission Log UI accept for a career branch (no ignorePrereqs owner API). */
 async function publicUiAcceptCareer(page, careerId) {
-  const choiceSel = '[data-testid="career-ladder-choice-' + careerId + '"]';
-  await page.waitForSelector(choiceSel, { timeout: 10_000 });
-  await domClickTestId(page, 'career-ladder-choice-' + careerId);
-  await page.waitForFunction(() => {
-    const btn = document.querySelector('[data-testid="career-ladder-accept"]');
-    return !!(btn && !btn.disabled && !btn.hidden);
-  }, null, { timeout: 10_000 });
-  await domClickTestId(page, 'career-ladder-accept');
+  const acceptSel = CHIP_SEL + '[data-career-id="' + careerId + '"]'
+    + ' [data-career-act="ladderAccept"]';
+  const accept = page.locator(acceptSel).first();
+  await accept.waitFor({ state: 'visible', timeout: 10_000 });
+  await accept.click();
   await page.waitForFunction((id) => {
     const leaf = window.SF && window.SF.state && window.SF.state.careers
       && window.SF.state.careers.ladders && window.SF.state.careers.ladders[id];
@@ -683,13 +889,21 @@ async function publicUiAcceptCareer(page, careerId) {
   return leafStatus(page, careerId);
 }
 
-async function assertNoBlockingDialog(page, phase) {
-  const probe = await page.evaluate(() => {
+async function assertNoBlockingDialog(page, phase, { allowActiveMissionLog = false } = {}) {
+  const probe = await page.evaluate((allowMissionLog) => {
+    const ui = window.SF && window.SF.registry && window.SF.registry.get && window.SF.registry.get('ui');
+    const mgr = ui && (ui.screenManager || ui.manager);
+    const activeTop = mgr && typeof mgr.top === 'function' ? mgr.top() : null;
     const nodes = Array.from(document.querySelectorAll(
-      '[role="alertdialog"], [role="dialog"], .sf-confirm, .sf-modal--confirm',
+      '[role="alertdialog"], [role="dialog"], [aria-modal="true"], .sf-confirm, .sf-modal--confirm',
     ));
     const visible = nodes.filter((el) => {
       if (!el || el.hidden) return false;
+      // Mission Log is the intended mounted screen after the map route and uses role=dialog
+      // for its accessible surface. Keep real alert/confirm overlays fail-closed.
+      if (allowMissionLog && activeTop === 'missionLog'
+        && el.matches('.sf-mlog')
+        && !el.matches('.sf-confirm, .sf-modal--confirm')) return false;
       const style = getComputedStyle(el);
       if (style.display === 'none' || style.visibility === 'hidden') return false;
       const r = el.getBoundingClientRect();
@@ -699,8 +913,8 @@ async function assertNoBlockingDialog(page, phase) {
       className: el.className || '',
       text: ((el.textContent || '').trim().slice(0, 120)),
     }));
-    return { blocking: visible.length > 0, visible };
-  });
+    return { blocking: visible.length > 0, visible, activeTop };
+  }, allowActiveMissionLog);
   assert.equal(
     probe.blocking,
     false,
@@ -739,6 +953,7 @@ async function main() {
   let browser = null;
   let context = null;
   let page = null;
+  let canonicalUrlTracker = null;
   const evidence = {
     screenshots: {},
     steps: [],
@@ -777,6 +992,7 @@ async function main() {
       colorScheme: 'dark',
     });
     page = await context.newPage();
+    canonicalUrlTracker = createCanonicalUrlTracker(page, server.baseUrl);
     const issues = collectPageIssues(page, { ignoreProbeWarnings: true });
     page.setDefaultTimeout(30_000);
     page.setDefaultNavigationTimeout(60_000);
@@ -790,18 +1006,25 @@ async function main() {
 
     await bootPublicRouteAndDock(page, evidence);
 
+    await openMissionLog(page, { timeout: 15_000 });
     evidence.screenshots.locked = await shot(page, SHOTS.locked);
     const lockedProbe = await page.evaluate(() => {
-      const el = document.querySelector('[data-testid="career-ladder-rail"]');
+      const chips = document.querySelectorAll('[data-testid="mission-log-career-chip"]');
+      const careerList = document.querySelector('.sf-mlog-career-list');
+      const ladderStarts = document.querySelectorAll(
+        '[data-testid="mission-log-career-chip"] [data-career-act="ladderAccept"]',
+      );
       const leafH = window.SF && window.SF.state && window.SF.state.careers
         && window.SF.state.careers.ladders && window.SF.state.careers.ladders.hauler;
       return {
-        railPresent: !!el,
-        railHidden: !el || el.hidden === true,
+        chipCount: chips.length,
+        ladderStartCount: ladderStarts.length,
+        careerListPresent: !!careerList,
+        careerListHidden: !careerList || careerList.hidden === true,
         haulerStatus: leafH ? leafH.status : null,
       };
     });
-    assert.ok(lockedProbe.railPresent, 'stationHub must mount career-ladder-rail even when hidden');
+    assert.equal(lockedProbe.ladderStartCount, 0, 'locked path must not mount a Mission Log ladder START PATH');
     evidence.steps.push({ name: 'locked_snapshot', ...lockedProbe });
 
     const unlock = await unlockAndOfferLadders(page);
@@ -811,29 +1034,33 @@ async function main() {
       );
     }
     assert.deepEqual([...unlock.registered].sort(), ['hauler', 'hunter', 'prospector']);
-    evidence.steps.push({ name: 'station_offer', unlock });
+    evidence.steps.push({ name: 'mission_log_offer', unlock });
     log('unlock ok registered=' + unlock.registered.join(','));
 
     await forceRefreshLadderUi(page);
-    const rail = await waitForLadderRail(page, { timeout: 25_000 });
-    await assertStationLadderRailNotMarket(page);
-    evidence.screenshots.offered = await shotSubject(page, RAIL_SEL, SHOTS.offered);
-    assert.equal(await rail.isVisible(), true, 'station ladder rail must be visible after offer');
+    const offeredChip = await waitForMissionLogChip(page, { timeout: 25_000 });
+    await assertLiveMissionLogChip(page);
+    evidence.screenshots.offered = await shotSubject(page, CHIP_SEL, SHOTS.offered);
+    assert.equal(await offeredChip.isVisible(), true, 'Mission Log career chip must be visible after offer');
     assert.ok(
-      await page.locator('[data-testid^="career-ladder-choice-"]').count() >= 1,
-      'offered rail must expose at least one career choice',
+      await page.locator('[data-career-act="ladderAccept"]').count() >= 1,
+      'offered Mission Log chip must expose START PATH',
+    );
+    assert.ok(
+      await page.locator('[data-career-act="ladderDecline"]').count() >= 1,
+      'offered Mission Log chip must expose NOT NOW',
     );
 
     // Gamepad reachability seam: all branch controls tabbable (tabIndex >= 0).
     const tabProbe = await page.evaluate(() => {
-      const buttons = Array.from(document.querySelectorAll('[data-testid^="career-ladder-choice-"]'));
+      const buttons = Array.from(document.querySelectorAll('[data-testid="mission-log-career-chip"] button[data-career-act]'));
       return buttons.map((b) => ({
-        id: b.getAttribute('data-ladder-career') || b.getAttribute('data-testid'),
+        id: b.getAttribute('data-career-id') || b.getAttribute('data-career-act'),
         tabIndex: b.tabIndex,
         ariaPressed: b.getAttribute('aria-pressed'),
       }));
     });
-    assert.ok(tabProbe.length >= 1, 'career branch controls must exist for tabbability probe');
+    assert.ok(tabProbe.length >= 1, 'Mission Log career controls must exist for tabbability probe');
     for (const row of tabProbe) {
       assert.ok(row.tabIndex >= 0, 'career branch must be tabbable for gamepad: ' + JSON.stringify(row));
     }
@@ -868,7 +1095,7 @@ async function main() {
     assert.equal(afterAccept.status, 'active', 'accept must change hauler leaf to active via system');
     assert.ok(afterAccept.stepId, 'active leaf must have stepId');
     evidence.steps.push({
-      name: 'station_offer_ui_accept',
+      name: 'mission_log_offer_ui_accept',
       careerId: 'hauler',
       before: beforeAccept,
       after: afterAccept,
@@ -877,44 +1104,49 @@ async function main() {
     log('accept hauler → active stepId=' + afterAccept.stepId);
 
     await forceRefreshLadderUi(page);
-    evidence.screenshots.active = await shotSubject(page, RAIL_SEL, SHOTS.active);
+    evidence.screenshots.active = await shotSubject(page, CHIP_SEL + '[data-career-id="hauler"]', SHOTS.active);
 
-    await page.evaluate(() => {
-      const el = document.querySelector('[data-testid^="career-ladder-choice-"]');
-      if (el) {
-        try { el.scrollIntoView({ block: 'center' }); } catch (_) { /* ignore */ }
-        el.focus();
-      }
-    });
-    const focusBefore = await page.evaluate(() => {
+    // Repaint the live Mission Log career list while a CTA owns focus. The screen's
+    // semantic token must restore the same action, then its arrow navigation keeps focus
+    // within the mounted career group.
+    const focusSelector = CHIP_SEL + '[data-career-id="hunter"]'
+      + ' [data-career-act="ladderDecline"]';
+    const focusBtn = page.locator(focusSelector).first();
+    await focusBtn.waitFor({ state: 'visible', timeout: 10_000 });
+    await focusBtn.focus();
+    const readFocus = () => page.evaluate(() => {
       const el = document.activeElement;
-      return el ? el.getAttribute('data-testid') || el.getAttribute('data-ladder-career') : null;
-    });
-    assert.ok(focusBefore, 'keyboard focus must land on a ladder career control');
-    await page.keyboard.press('ArrowRight');
-    await page.waitForTimeout(80);
-    const focusAfter = await page.evaluate(() => {
-      const el = document.activeElement;
-      const sel = document.querySelector('.st-ladder-choice.is-selected');
+      const career = el && el.closest && el.closest('.sf-mlog-career-list');
       return {
-        testid: el ? el.getAttribute('data-testid') : null,
-        career: el ? el.getAttribute('data-ladder-career') : null,
-        selected: sel ? sel.getAttribute('data-ladder-career') : null,
+        inside: !!career,
+        act: el ? el.getAttribute('data-career-act') : null,
+        careerId: el ? el.getAttribute('data-career-id') : null,
+        choiceId: el ? el.getAttribute('data-choice-id') : null,
       };
     });
-    assert.ok(
-      focusAfter.selected || focusAfter.career || focusAfter.testid,
-      'ArrowRight must keep keyboard focus inside ladder career group',
+    const focusBefore = await readFocus();
+    assert.equal(focusBefore.inside, true, 'keyboard focus must land inside Mission Log career group');
+    assert.equal(focusBefore.act, 'ladderDecline', 'focus probe must use a live ladder CTA');
+    await forceRefreshLadderUi(page);
+    const focusAfterRefresh = await readFocus();
+    assert.deepEqual(
+      focusAfterRefresh,
+      focusBefore,
+      'Mission Log repaint must restore the focused career CTA by semantic token',
     );
-    evidence.steps.push({ name: 'keyboard_focus', focusBefore, focusAfter });
+    await page.keyboard.press('ArrowRight');
+    await page.waitForTimeout(80);
+    const focusAfter = await readFocus();
+    assert.equal(focusAfter.inside, true, 'ArrowRight must keep focus inside Mission Log career group');
+    evidence.steps.push({ name: 'keyboard_focus', focusBefore, focusAfterRefresh, focusAfter });
     log('keyboard focus ok');
 
-    const mapBtn = page.getByTestId('career-ladder-map');
+    const mapBtn = page.locator(MAP_BTN_SEL).first();
     await mapBtn.waitFor({ state: 'visible', timeout: 10_000 });
-    await page.waitForFunction(() => {
-      const btn = document.querySelector('[data-testid="career-ladder-map"]');
+    await page.waitForFunction((sel) => {
+      const btn = document.querySelector(sel);
       return btn && !btn.disabled && !btn.hidden;
-    }, null, { timeout: 10_000 });
+    }, MAP_BTN_SEL, { timeout: 10_000 });
 
     // Read data-map-source BEFORE click; require careerLadder: unconditionally (no soft OR).
     const mapSourceBeforeClick = await page.evaluate((sel) => {
@@ -961,39 +1193,20 @@ async function main() {
     });
     log('map CTA ok top=' + mapTop + ' data-map-source=' + mapSourceBeforeClick);
 
-    // Exactly one Escape/pop back to station after career map.
+    // Exactly one Escape/pop back to the live Mission Log after career map.
     await page.keyboard.press('Escape');
     await page.waitForTimeout(200);
-    await page.waitForFunction(
-      () => window.SF && window.SF.state && window.SF.state.ui && window.SF.state.ui.docked === true,
-      null,
-      { timeout: 10_000 },
-    );
-    // Public restore only — never pushScreen('station').
-    await waitForPublicStationHub(page, { timeout: 15_000 });
-    await waitForLadderRail(page, { timeout: 15_000 });
-
-    await assertNoBlockingDialog(page, 'mission_log_screenshot');
-
-    // Require station career CTA; no KeyJ fallback. Require top===missionLog.
-    const logBtnCount = await page.locator(MISSION_LOG_CTA_SEL).count();
-    assert.ok(
-      logBtnCount >= 1,
-      'station career mission-log CTA required (no KeyJ fallback); count=' + logBtnCount,
-    );
-    await domClickTestId(page, 'career-ladder-mission-log');
     await page.waitForFunction(() => {
       const ui = window.SF && window.SF.registry && window.SF.registry.get && window.SF.registry.get('ui');
       const mgr = ui && (ui.screenManager || ui.manager);
-      const top = mgr && typeof mgr.top === 'function' ? mgr.top() : null;
-      return top === 'missionLog';
+      return !!(mgr && typeof mgr.top === 'function' && mgr.top() === 'missionLog');
     }, null, { timeout: 15_000 });
-    await page.waitForFunction(() => {
-      const chip = document.querySelector('[data-testid="mission-log-career-chip"]');
-      if (!chip) return false;
-      const rect = chip.getBoundingClientRect();
-      return rect.width > 4 && rect.height > 4;
-    }, null, { timeout: 15_000 });
+    await waitForMissionLogChip(page, { timeout: 15_000, careerId: 'hauler' });
+
+    await assertNoBlockingDialog(page, 'mission_log_screenshot', { allowActiveMissionLog: true });
+
+    // The Mission Log remains the live owner after returning from the map; its mounted
+    // career chip is the direct player-facing route and needs no retired station CTA.
     const chip = page.getByTestId('mission-log-career-chip');
     assert.equal(await chip.first().isVisible(), true, 'mission-log-career-chip must be visible');
     const missionTop = await page.evaluate(() => {
@@ -1006,15 +1219,10 @@ async function main() {
     evidence.steps.push({
       name: 'mission_log_chip',
       visible: true,
-      via: 'station_career_cta',
+      via: 'mission_log_live_surface',
       top: missionTop,
     });
     log('mission log chip visible top=missionLog');
-
-    await page.keyboard.press('Escape');
-    await page.waitForTimeout(200);
-    await waitForPublicStationHub(page, { timeout: 15_000 });
-    await waitForLadderRail(page, { timeout: 15_000 });
 
     // Supporting framework setup: applySignal complete only (not primary claim).
     const haulerAdvance = await advanceToStep(page, 'hauler', 'risk_lane_tax', 4);
@@ -1027,21 +1235,18 @@ async function main() {
       ...haulerAdvance,
     });
     await forceRefreshLadderUi(page);
-    await domClickTestId(page, 'career-ladder-choice-hauler').catch(() => {});
-    await forceRefreshLadderUi(page);
-    await page.waitForFunction(() => {
-      const railEl = document.querySelector('[data-testid="career-ladder-rail"]');
-      if (!railEl || railEl.hidden) return false;
-      const choices = railEl.querySelectorAll('[data-ladder-choice], [data-testid^="career-ladder-path-choice-"]');
-      return choices.length >= 3;
-    }, null, { timeout: 15_000 });
+    await page.waitForFunction((selector) => {
+      const chip = document.querySelector(selector);
+      if (!chip || chip.hidden) return false;
+      return chip.querySelectorAll('[data-career-act="choose"][data-choice-id]').length >= 3;
+    }, HAULER_CHIP_SEL, { timeout: 15_000 });
     for (const id of ['pay_toll', 'run_guns', 'veer_slip']) {
       const n = await page.locator(
-        '[data-ladder-choice="' + id + '"], [data-testid="career-ladder-path-choice-' + id + '"]',
+        HAULER_CHIP_SEL + ' [data-career-act="choose"][data-choice-id="' + id + '"]',
       ).count();
-      assert.ok(n >= 1, 'hauler rail must show choice ' + id);
+      assert.ok(n >= 1, 'hauler Mission Log chip must show choice ' + id);
     }
-    evidence.screenshots.haulerChoice = await shotSubject(page, RAIL_SEL, SHOTS.haulerChoice);
+    evidence.screenshots.haulerChoice = await shotSubject(page, HAULER_CHIP_SEL, SHOTS.haulerChoice);
     evidence.steps.push({
       name: 'hauler_lane_tax_choices',
       evidenceClass: 'supporting',
@@ -1072,7 +1277,7 @@ async function main() {
         && window.SF.state.careers.ladders.hauler.status;
       return st === 'recovering' || st === 'step_failed';
     }, null, { timeout: 10_000 });
-    evidence.screenshots.recovering = await shotSubject(page, RAIL_SEL, SHOTS.recovering);
+    evidence.screenshots.recovering = await shotSubject(page, HAULER_CHIP_SEL, SHOTS.recovering);
     evidence.steps.push({
       name: 'recovering',
       evidenceClass: 'supporting',
@@ -1082,7 +1287,7 @@ async function main() {
 
     // Public UI must accept Hunter (no accept({ignorePrereqs:true})).
     await forceRefreshLadderUi(page);
-    await waitForLadderRail(page, { timeout: 15_000 });
+    await waitForMissionLogChip(page, { timeout: 15_000, careerId: 'hunter' });
     const hunterBefore = await leafStatus(page, 'hunter');
     assert.ok(hunterBefore, 'hunter leaf must exist after unlock');
     if (hunterBefore.status !== 'active') {
@@ -1108,20 +1313,18 @@ async function main() {
       ...hunterAdvance,
     });
     await forceRefreshLadderUi(page);
-    await domClickTestId(page, 'career-ladder-choice-hunter').catch(() => {});
-    await forceRefreshLadderUi(page);
-    await page.waitForFunction(() => {
-      const railEl = document.querySelector('[data-testid="career-ladder-rail"]');
-      if (!railEl || railEl.hidden) return false;
-      const capture = railEl.querySelector(
-        '[data-ladder-choice="capture"], [data-testid="career-ladder-path-choice-capture"]',
-      );
-      const execute = railEl.querySelector(
-        '[data-ladder-choice="execute"], [data-testid="career-ladder-path-choice-execute"]',
-      );
+    await page.waitForFunction((selector) => {
+      const chip = document.querySelector(selector);
+      if (!chip || chip.hidden) return false;
+      const capture = chip.querySelector('[data-career-act="choose"][data-choice-id="capture"]');
+      const execute = chip.querySelector('[data-career-act="choose"][data-choice-id="execute"]');
       return !!(capture && execute);
-    }, null, { timeout: 15_000 });
-    evidence.screenshots.hunterChoice = await shotSubject(page, RAIL_SEL, SHOTS.hunterChoice);
+    }, CHIP_SEL + '[data-career-id="hunter"]', { timeout: 15_000 });
+    evidence.screenshots.hunterChoice = await shotSubject(
+      page,
+      CHIP_SEL + '[data-career-id="hunter"]',
+      SHOTS.hunterChoice,
+    );
     evidence.steps.push({
       name: 'hunter_capture_choices',
       evidenceClass: 'supporting',
@@ -1180,7 +1383,7 @@ async function main() {
       noSyntheticDockOrScreen: true,
       syntheticDock: false,
       syntheticScreen: false,
-      publicPath: 'New Game → Launch → waypoint/autopilot → physical dock prompt + E → public station hub',
+      publicPath: 'New Game → Launch → waypoint/autopilot → physical dock prompt + E → public station hub → J Mission Log',
       primaryClaims,
       supporting: {
         advancedChoiceRecoveryShots: supportingShots,
@@ -1202,7 +1405,7 @@ async function main() {
       primaryClaims: PRIMARY_CLAIM_NAMES,
       publicFlight: true,
       physicalDock: true,
-      stationOfferUiAccept: afterAccept.status,
+      missionLogOfferUiAccept: afterAccept.status,
       missionLogChip: true,
       careerMapSource: mapSourceBeforeClick,
       noSyntheticDockOrScreen: true,
@@ -1238,7 +1441,7 @@ async function main() {
     process.exitCode = 1;
   } finally {
     try {
-      await closeOwnedResources({ page, context, browser, server });
+      await closeOwnedResources({ page, context, browser, server, canonicalUrlTracker });
     } catch (cleanupErr) {
       console.error(
         '[career-ladder-ui-browser] CLEANUP FAIL: '
