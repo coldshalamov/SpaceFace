@@ -42,6 +42,8 @@ test('ordinary core stations retain the shared neutral billboard identity', () =
   assert.equal(ordinaryCoreBillboardCount, 6);
   assert.ok(coreDressingStart >= 0 && coreDressingEnd > coreDressingStart);
   assert.match(coreDressingSource, /_spawnPlaceProp\(active, sector, 'place_station_billboard'/);
+  assert.match(coreDressingSource, /rot: bearingToward\(station\.pos, pos\) \+ Math\.PI \/ 2/,
+    'core billboard must turn its authored local +Z display face stationward under renderer yaw');
   assert.doesNotMatch(coreDressingSource, /place_memorial_array/);
   assert.equal(allPoiUses('place_station_billboard').length, 0);
   assert.equal(

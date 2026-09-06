@@ -2005,7 +2005,9 @@ export const world = {
       const pos = offsetAlongRadial(station.pos, 1.0, 150 + rng() * 70, origin);
       this._spawnPlaceProp(active, sector, 'place_station_billboard', pos, {
         paletteClass,
-        rot: bearingToward(station.pos, pos),
+        // The authored display face is local +Z; renderer applies -entity.rot, so turn it
+        // stationward instead of leaving it edge-on to the station bearing.
+        rot: bearingToward(station.pos, pos) + Math.PI / 2,
         name: `${station.stationId || 'Station'} Billboard`,
         placeScale: 1,
       });

@@ -1,0 +1,778 @@
+{
+  "schema": "spaceface.stationBillboardReadableV3CandidateReport.v1",
+  "packet": "PQ-022",
+  "dispatchUnit": "next10.station-billboard-readable-v3",
+  "partId": "place_station_billboard",
+  "assetId": "SF_PLACE_HELIOS_SUPPORT_DOCK_ARM",
+  "rootNode": "SF_M4_HELIOS_DOCK_ARM_ROOT",
+  "candidateId": "next10-station-billboard-readable-v3",
+  "state": "surfaced_candidate",
+  "claims": {
+    "candidateOnly": true,
+    "promoted": false,
+    "routeEvidence": false,
+    "performanceEvidence": false,
+    "visualReview": false
+  },
+  "generator": {
+    "path": "tools/blender/build_station_billboard_readable_v3.py",
+    "sha256": "6f0ff5c2357c00d1c096bdf9cebb2122924ddcb01db3e2efeb488191d3854090",
+    "bytes": 44962
+  },
+  "importedHelpersFrom": {
+    "path": "tools/blender/build_navigation_infrastructure_material_truth_v2.py",
+    "sha256": "bba5e4b07a93858b63cd533978f2ce64a05096cb0f30106db7758cf86f6df03d",
+    "bytes": 100495
+  },
+  "candidateGlb": {
+    "path": ".devshots/next10-billboard-candidate/glb/place_station_billboard_readable_v3.glb",
+    "sha256": "9245e7275b36ebed9e7e853a14f1e0315d85d23c14323b6d947ea4cb3a1f2ff6",
+    "bytes": 1314736
+  },
+  "blender": {
+    "path": ".devshots/next10-billboard-candidate/blender/place_station_billboard_readable_v3.blend",
+    "sha256": "03c99e6423e2e14fa3b4f89adf33c83b74603bbc9217b3b21e0e53cb4d7e07ea",
+    "bytes": 360845
+  },
+  "baseline": {
+    "source": {
+      "path": ".devshots/next10-billboard-candidate/before-runtime/assets/ships/parts/places/place_station_billboard.glb",
+      "sha256": "ccdd548c3d2cf323a75658464dd37d96c564aa270e8945771c3ab5dc0a5acac9",
+      "bytes": 444680
+    },
+    "release": {
+      "path": ".devshots/next10-billboard-candidate/before-runtime/assets/ships/release/parts/places/place_station_billboard.glb",
+      "sha256": "1a780be072b47a1ba38dbd977fdcfb16c5d1a7318213c1edc167cd5025b5d0c5",
+      "bytes": 193736
+    },
+    "lod0AabbSize": [
+      14.800000190734863,
+      3.0500000715255737,
+      3.0
+    ],
+    "displayFaceM": [
+      12.51,
+      1.7
+    ],
+    "displayFaceEmissive": false
+  },
+  "envelopeBeforeAfter": {
+    "before": {
+      "gltfSize": [
+        14.8,
+        3.05,
+        3.0
+      ],
+      "faceM": [
+        12.51,
+        1.7
+      ],
+      "cantDeg": 0.0
+    },
+    "after": {
+      "gltfSize": [
+        14.220000267028809,
+        5.75,
+        7.579502582550049
+      ],
+      "faceM": [
+        13.0,
+        5.8
+      ],
+      "cantDeg": 35.0,
+      "faces": 2,
+      "cornerRadiusM": 8.622019272676578,
+      "dressingRadiusWU": 28
+    }
+  },
+  "envelope": {
+    "blender_min": [
+      -7.110000133514404,
+      -3.7897512912750244,
+      -3.069999933242798
+    ],
+    "blender_max": [
+      7.110000133514404,
+      3.7897512912750244,
+      2.680000066757202
+    ],
+    "blender_size": [
+      14.220000267028809,
+      7.579502582550049,
+      5.75
+    ],
+    "gltf_min": [
+      -7.110000133514404,
+      -3.069999933242798,
+      -3.7897512912750244
+    ],
+    "gltf_max": [
+      7.110000133514404,
+      2.680000066757202,
+      3.7897512912750244
+    ],
+    "gltf_size": [
+      14.220000267028809,
+      5.75,
+      7.579502582550049
+    ],
+    "collision_translation_gltf": [
+      0.0,
+      -0.19499993324279785,
+      0.0
+    ],
+    "collision_node_bounds": {
+      "min": [
+        -6.541200122833252,
+        -3.4865711879730226,
+        -2.839999933242798
+      ],
+      "max": [
+        6.541200122833252,
+        3.4865711879730226,
+        2.450000066757202
+      ],
+      "size": [
+        13.082400245666504,
+        6.973142375946045,
+        5.29
+      ]
+    },
+    "collision_runtime_bounds": {
+      "min": [
+        -6.541200122833252,
+        -2.645,
+        -3.4865711879730226
+      ],
+      "max": [
+        6.541200122833252,
+        2.645,
+        3.4865711879730226
+      ],
+      "size": [
+        13.082400245666504,
+        5.29,
+        6.973142375946045
+      ],
+      "center": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "collision_coverage": {
+      "perAxis": [
+        0.92,
+        0.92,
+        0.92
+      ],
+      "min": 0.92,
+      "mean": 0.92
+    },
+    "corner_radius_m": 8.622019272676578
+  },
+  "exportedBounds": {
+    "min": [
+      -7.110000133514404,
+      -3.069999933242798,
+      -3.810147285461426
+    ],
+    "max": [
+      7.110000133514404,
+      2.680000066757202,
+      3.810147285461426
+    ],
+    "size": [
+      14.220000267028809,
+      5.75,
+      7.620294570922852
+    ],
+    "perLod": {
+      "lod0": {
+        "min": [
+          -7.110000133514404,
+          -3.069999933242798,
+          -3.7897512912750244
+        ],
+        "max": [
+          7.110000133514404,
+          2.680000066757202,
+          3.7897512912750244
+        ],
+        "size": [
+          14.220000267028809,
+          5.75,
+          7.579502582550049
+        ]
+      },
+      "lod1": {
+        "min": [
+          -7.110000133514404,
+          -3.069999933242798,
+          -3.7923665046691895
+        ],
+        "max": [
+          7.110000133514404,
+          2.680000066757202,
+          3.7923665046691895
+        ],
+        "size": [
+          14.220000267028809,
+          5.75,
+          7.584733009338379
+        ]
+      },
+      "lod2": {
+        "min": [
+          -7.110000133514404,
+          -3.0628085136413574,
+          -3.810147285461426
+        ],
+        "max": [
+          7.110000133514404,
+          2.680000066757202,
+          3.810147285461426
+        ],
+        "size": [
+          14.220000267028809,
+          5.74280858039856,
+          7.620294570922852
+        ]
+      }
+    }
+  },
+  "lod": {
+    "lod0": {
+      "triangles": 6832,
+      "ceiling": 9000,
+      "drawGroups": 5,
+      "materials": [
+        "Display_Frame_Coat",
+        "Display_Screen_Glass",
+        "Display_Service_Alloy",
+        "Display_Backplate",
+        "Display_Safety_Marking"
+      ]
+    },
+    "lod1": {
+      "triangles": 2864,
+      "ceiling": 3200,
+      "drawGroups": 5,
+      "materials": [
+        "Display_Frame_Coat",
+        "Display_Screen_Glass",
+        "Display_Service_Alloy",
+        "Display_Backplate",
+        "Display_Safety_Marking"
+      ]
+    },
+    "lod2": {
+      "triangles": 780,
+      "ceiling": 800,
+      "drawGroups": 5,
+      "materials": [
+        "Display_Frame_Coat",
+        "Display_Screen_Glass",
+        "Display_Service_Alloy",
+        "Display_Backplate",
+        "Display_Safety_Marking"
+      ]
+    }
+  },
+  "topology": {
+    "LOD0_Display_Frame_Coat": {
+      "vertices": 896,
+      "edges": 2592,
+      "triangles": 1728,
+      "degenerateTriangles": 0,
+      "boundaryEdges": 0,
+      "invalidNonManifoldEdges": 0
+    },
+    "LOD0_Display_Screen_Glass": {
+      "vertices": 720,
+      "edges": 1620,
+      "triangles": 1080,
+      "degenerateTriangles": 0,
+      "boundaryEdges": 0,
+      "invalidNonManifoldEdges": 0
+    },
+    "LOD0_Display_Service_Alloy": {
+      "vertices": 1400,
+      "edges": 4092,
+      "triangles": 2728,
+      "degenerateTriangles": 0,
+      "boundaryEdges": 0,
+      "invalidNonManifoldEdges": 0
+    },
+    "LOD0_Display_Backplate": {
+      "vertices": 224,
+      "edges": 648,
+      "triangles": 432,
+      "degenerateTriangles": 0,
+      "boundaryEdges": 0,
+      "invalidNonManifoldEdges": 0
+    },
+    "LOD0_Display_Safety_Marking": {
+      "vertices": 464,
+      "edges": 1296,
+      "triangles": 864,
+      "degenerateTriangles": 0,
+      "boundaryEdges": 0,
+      "invalidNonManifoldEdges": 0
+    },
+    "LOD1_Display_Frame_Coat": {
+      "vertices": 384,
+      "edges": 1056,
+      "triangles": 704,
+      "degenerateTriangles": 0,
+      "boundaryEdges": 0,
+      "invalidNonManifoldEdges": 0
+    },
+    "LOD1_Display_Screen_Glass": {
+      "vertices": 400,
+      "edges": 900,
+      "triangles": 600,
+      "degenerateTriangles": 0,
+      "boundaryEdges": 0,
+      "invalidNonManifoldEdges": 0
+    },
+    "LOD1_Display_Service_Alloy": {
+      "vertices": 528,
+      "edges": 1476,
+      "triangles": 984,
+      "degenerateTriangles": 0,
+      "boundaryEdges": 0,
+      "invalidNonManifoldEdges": 0
+    },
+    "LOD1_Display_Backplate": {
+      "vertices": 96,
+      "edges": 264,
+      "triangles": 176,
+      "degenerateTriangles": 0,
+      "boundaryEdges": 0,
+      "invalidNonManifoldEdges": 0
+    },
+    "LOD1_Display_Safety_Marking": {
+      "vertices": 224,
+      "edges": 600,
+      "triangles": 400,
+      "degenerateTriangles": 0,
+      "boundaryEdges": 0,
+      "invalidNonManifoldEdges": 0
+    },
+    "LOD2_Display_Frame_Coat": {
+      "vertices": 96,
+      "edges": 216,
+      "triangles": 144,
+      "degenerateTriangles": 0,
+      "boundaryEdges": 0,
+      "invalidNonManifoldEdges": 0
+    },
+    "LOD2_Display_Screen_Glass": {
+      "vertices": 272,
+      "edges": 612,
+      "triangles": 408,
+      "degenerateTriangles": 0,
+      "boundaryEdges": 0,
+      "invalidNonManifoldEdges": 0
+    },
+    "LOD2_Display_Service_Alloy": {
+      "vertices": 88,
+      "edges": 198,
+      "triangles": 132,
+      "degenerateTriangles": 0,
+      "boundaryEdges": 0,
+      "invalidNonManifoldEdges": 0
+    },
+    "LOD2_Display_Backplate": {
+      "vertices": 32,
+      "edges": 72,
+      "triangles": 48,
+      "degenerateTriangles": 0,
+      "boundaryEdges": 0,
+      "invalidNonManifoldEdges": 0
+    },
+    "LOD2_Display_Safety_Marking": {
+      "vertices": 32,
+      "edges": 72,
+      "triangles": 48,
+      "degenerateTriangles": 0,
+      "boundaryEdges": 0,
+      "invalidNonManifoldEdges": 0
+    }
+  },
+  "materialZones": {
+    "Display_Frame_Coat": {
+      "role": "satin_painted_formed_frame",
+      "baseColorLinear": [
+        0.3,
+        0.345,
+        0.365
+      ],
+      "metallic": 0.04,
+      "roughness": 0.42,
+      "family": "coat",
+      "emission": null
+    },
+    "Display_Screen_Glass": {
+      "role": "segmented_information_emitter",
+      "baseColorLinear": [
+        0.055,
+        0.075,
+        0.09
+      ],
+      "metallic": 0.02,
+      "roughness": 0.16,
+      "family": "glass",
+      "emission": [
+        0.62,
+        0.8,
+        1.0,
+        2.8
+      ]
+    },
+    "Display_Service_Alloy": {
+      "role": "machined_service_alloy",
+      "baseColorLinear": [
+        0.44,
+        0.475,
+        0.49
+      ],
+      "metallic": 0.88,
+      "roughness": 0.33,
+      "family": "machined",
+      "emission": null
+    },
+    "Display_Backplate": {
+      "role": "folded_dark_backplate",
+      "baseColorLinear": [
+        0.055,
+        0.065,
+        0.072
+      ],
+      "metallic": 0.24,
+      "roughness": 0.7,
+      "family": "folded",
+      "emission": null
+    },
+    "Display_Safety_Marking": {
+      "role": "finite_amber_status_marking",
+      "baseColorLinear": [
+        0.8,
+        0.33,
+        0.03
+      ],
+      "metallic": 0.01,
+      "roughness": 0.46,
+      "family": "marking",
+      "emission": [
+        0.85,
+        0.3,
+        0.03,
+        2.4
+      ]
+    }
+  },
+  "stamp": {
+    "contractVersion": 1,
+    "assetId": "SF_PLACE_HELIOS_SUPPORT_DOCK_ARM",
+    "partId": "place_station_billboard",
+    "liveId": "place_station_billboard",
+    "slot": "place",
+    "category": "places",
+    "priority": "P1",
+    "triangleMetric": "lod0",
+    "forward": "+X",
+    "up": "+Y",
+    "starboard": "+Z",
+    "unit": "metre",
+    "normalConvention": "OpenGL",
+    "ormChannels": "R=AO,G=Roughness,B=Metallic",
+    "textureCompression": "PNG-source",
+    "textureSize": 256,
+    "triBudget": 9000,
+    "chamfered": true,
+    "bevelRadiusM": 0.05,
+    "packet": "PQ-022",
+    "dispatchUnit": "next10.station-billboard-readable-v3",
+    "state": "candidate_only",
+    "claims": {
+      "candidateOnly": true,
+      "promoted": false,
+      "routeEvidence": false,
+      "performanceEvidence": false,
+      "visualReview": false
+    },
+    "role": "core_station_information_display",
+    "title": "Core Station Information Display",
+    "kind": "station_infrastructure",
+    "tier": "B",
+    "deliverableRole": "production_multi_lod",
+    "lods": [
+      "lod0",
+      "lod1",
+      "lod2"
+    ],
+    "triangleCount": 6832,
+    "collisionTriangleCount": 0,
+    "lodTriangles": {
+      "lod0": 6832,
+      "lod1": 2864,
+      "lod2": 780
+    },
+    "drawGroupsPerLod": {
+      "lod0": 5,
+      "lod1": 5,
+      "lod2": 5
+    },
+    "wiringStatus": "isolated_candidate",
+    "candidateId": "next10-station-billboard-readable-v3",
+    "revisionPass": "station_billboard_readable_v3",
+    "sourceGenerator": "tools/blender/build_station_billboard_readable_v3.py",
+    "sourceBlenderVersion": "5.1.2",
+    "authoringAxes": "X forward / Y starboard / Z up",
+    "processChain": [
+      "blender-5.1-python",
+      "glb-source-candidate",
+      "headless-export-verification"
+    ],
+    "wiring": {
+      "partId": "place_station_billboard",
+      "slot": "place",
+      "rootNode": "SF_M4_HELIOS_DOCK_ARM_ROOT",
+      "sockets": [
+        "SOCKET_Structure_Core"
+      ]
+    },
+    "materials": [
+      "Display_Frame_Coat",
+      "Display_Screen_Glass",
+      "Display_Service_Alloy",
+      "Display_Backplate",
+      "Display_Safety_Marking"
+    ],
+    "materialRoles": {
+      "Display_Frame_Coat": "satin_painted_formed_frame",
+      "Display_Screen_Glass": "segmented_information_emitter",
+      "Display_Service_Alloy": "machined_service_alloy",
+      "Display_Backplate": "folded_dark_backplate",
+      "Display_Safety_Marking": "finite_amber_status_marking"
+    },
+    "displayGeometry": {
+      "faces": 2,
+      "arrangement": "back_to_back_a_frame_under_shared_ridge_visor",
+      "cantDegreesFromVertical": 35.0,
+      "faceWidthM": 13.0,
+      "faceHeightM": 5.8,
+      "previousFaceM": [
+        12.51,
+        1.7
+      ],
+      "facingStrengthWorstCase": 0.4967,
+      "facingStrengthBestCase": 0.9063,
+      "horizontalApproachStrength": 0.8192,
+      "markCoverageOfFaceHeight": {
+        "lod0": 0.65,
+        "lod1": 0.717,
+        "lod2": 0.741
+      }
+    },
+    "lod0AabbSize": [
+      14.220000267028809,
+      5.75,
+      7.579502582550049
+    ],
+    "collisionBounds": {
+      "min": [
+        -6.541200122833252,
+        -2.645,
+        -3.4865711879730226
+      ],
+      "max": [
+        6.541200122833252,
+        2.645,
+        3.4865711879730226
+      ],
+      "size": [
+        13.082400245666504,
+        5.29,
+        6.973142375946045
+      ],
+      "center": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "collisionCoverageRatio": {
+      "perAxis": [
+        0.92,
+        0.92,
+        0.92
+      ],
+      "min": 0.92,
+      "mean": 0.92
+    },
+    "collision": {
+      "representation": "non_mesh_helper",
+      "triangles": 0,
+      "translation": [
+        0.0,
+        -0.19499993324279785,
+        0.0
+      ],
+      "nodeBounds": {
+        "min": [
+          -6.541200122833252,
+          -3.4865711879730226,
+          -2.839999933242798
+        ],
+        "max": [
+          6.541200122833252,
+          3.4865711879730226,
+          2.450000066757202
+        ],
+        "size": [
+          13.082400245666504,
+          6.973142375946045,
+          5.29
+        ]
+      },
+      "runtimeBounds": {
+        "min": [
+          -6.541200122833252,
+          -2.645,
+          -3.4865711879730226
+        ],
+        "max": [
+          6.541200122833252,
+          2.645,
+          3.4865711879730226
+        ],
+        "size": [
+          13.082400245666504,
+          5.29,
+          6.973142375946045
+        ],
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "coverageRatio": {
+        "perAxis": [
+          0.92,
+          0.92,
+          0.92
+        ],
+        "min": 0.92,
+        "mean": 0.92
+      }
+    },
+    "boundsDimensionsM": [
+      14.220000267028809,
+      5.75,
+      7.620294570922852
+    ]
+  },
+  "exportDiagnostics": [],
+  "verification": {
+    "nodesPresent": true,
+    "lodTriangles": {
+      "lod0": 6832,
+      "lod1": 2864,
+      "lod2": 780
+    },
+    "blenderLodTriangles": {
+      "lod0": 6832,
+      "lod1": 2864,
+      "lod2": 780
+    },
+    "emissive": {
+      "Display_Backplate": {
+        "emissiveFactor": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "emissiveStrength": 1.0,
+        "emits": false
+      },
+      "Display_Frame_Coat": {
+        "emissiveFactor": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "emissiveStrength": 1.0,
+        "emits": false
+      },
+      "Display_Safety_Marking": {
+        "emissiveFactor": [
+          1,
+          0.352941180595477,
+          0.03529411586820053
+        ],
+        "emissiveStrength": 2.040000138282778,
+        "emits": true
+      },
+      "Display_Screen_Glass": {
+        "emissiveFactor": [
+          0.6200000047683716,
+          0.800000011920929,
+          1
+        ],
+        "emissiveStrength": 2.799999952316284,
+        "emits": true
+      },
+      "Display_Service_Alloy": {
+        "emissiveFactor": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "emissiveStrength": 1.0,
+        "emits": false
+      }
+    },
+    "cantNormalClusters": {
+      "expectedY": 0.57358,
+      "expectedAbsZ": 0.81915,
+      "plusZ": 180,
+      "minusZ": 180,
+      "other": 1800
+    },
+    "failures": [],
+    "pass": true
+  },
+  "textures": {
+    "Display_Frame_Coat": {
+      "basecolor": ".devshots/next10-billboard-candidate/textures/satin_painted_formed_frame_basecolor.png",
+      "orm": ".devshots/next10-billboard-candidate/textures/satin_painted_formed_frame_orm.png",
+      "normal": ".devshots/next10-billboard-candidate/textures/satin_painted_formed_frame_normal.png"
+    },
+    "Display_Screen_Glass": {
+      "basecolor": ".devshots/next10-billboard-candidate/textures/segmented_information_emitter_basecolor.png",
+      "orm": ".devshots/next10-billboard-candidate/textures/segmented_information_emitter_orm.png",
+      "normal": ".devshots/next10-billboard-candidate/textures/segmented_information_emitter_normal.png"
+    },
+    "Display_Service_Alloy": {
+      "basecolor": ".devshots/next10-billboard-candidate/textures/machined_service_alloy_basecolor.png",
+      "orm": ".devshots/next10-billboard-candidate/textures/machined_service_alloy_orm.png",
+      "normal": ".devshots/next10-billboard-candidate/textures/machined_service_alloy_normal.png"
+    },
+    "Display_Backplate": {
+      "basecolor": ".devshots/next10-billboard-candidate/textures/folded_dark_backplate_basecolor.png",
+      "orm": ".devshots/next10-billboard-candidate/textures/folded_dark_backplate_orm.png",
+      "normal": ".devshots/next10-billboard-candidate/textures/folded_dark_backplate_normal.png"
+    },
+    "Display_Safety_Marking": {
+      "basecolor": ".devshots/next10-billboard-candidate/textures/finite_amber_status_marking_basecolor.png",
+      "orm": ".devshots/next10-billboard-candidate/textures/finite_amber_status_marking_orm.png",
+      "normal": ".devshots/next10-billboard-candidate/textures/finite_amber_status_marking_normal.png"
+    }
+  },
+  "renderPerformed": false,
+  "elapsedSeconds": 11.44
+}

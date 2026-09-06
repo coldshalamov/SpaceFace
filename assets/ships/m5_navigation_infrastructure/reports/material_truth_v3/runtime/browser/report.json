@@ -1,0 +1,205 @@
+{
+  "schema": "spaceface.pq022-billboard-buoy-reauthor-h1.v1",
+  "row": 7,
+  "disposition": "PASS",
+  "runtime": "browser-chromium-headed",
+  "brokerManifestId": "pq022-billboard-buoy-reauthor-browser",
+  "broker": {
+    "reason": "diagnostic-nonpromoting",
+    "diagnostic": true,
+    "primaryAcceptance": false,
+    "claimId": null,
+    "mode": null,
+    "runtimeKind": null,
+    "candidateDigest": null,
+    "manifestDigest": null,
+    "inputDigest": null
+  },
+  "selector": "billboard-buoy",
+  "fixedSeed": 47,
+  "recordedSeed": 47,
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "gpu": {
+    "available": true,
+    "vendor": "Google Inc. (Intel)",
+    "renderer": "ANGLE (Intel, Intel(R) Graphics (0x00007D45) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+  },
+  "routeContract": "visible fixed-seed New Game -> core-station billboard dressing and Tethys Customs Log buoy -> ordinary game-canvas stills",
+  "compressions": [
+    {
+      "kind": "travel",
+      "subject": "corridor-lane-furniture",
+      "detail": "called the registered world.enterSector(sector_tethys_junction) owner; the public Customs Log Relay is the ordinary live buoy subject"
+    }
+  ],
+  "relayPlacement": null,
+  "trafficFixtures": null,
+  "manifestIdentity": [
+    {
+      "key": "station-billboard",
+      "assetId": "place_station_billboard",
+      "manifestId": "place_station_billboard",
+      "family": "corridor-lane-furniture",
+      "source": "assets/ships/parts/places/place_station_billboard.glb",
+      "release": "assets/ships/release/parts/places/place_station_billboard.glb",
+      "sourceSha256": "9245e7275b36ebed9e7e853a14f1e0315d85d23c14323b6d947ea4cb3a1f2ff6",
+      "releaseSha256": "f94ce276f99defb0aa770dd9cc0accd24e828d9b56ecb27d5ea0b3383699a293",
+      "sourceBytes": 1314736,
+      "releaseBytes": 430692,
+      "sourceManifestFile": "places/place_station_billboard.glb"
+    },
+    {
+      "key": "nav-buoy",
+      "assetId": "place_nav_buoy",
+      "manifestId": "place_nav_buoy",
+      "family": "corridor-lane-furniture",
+      "source": "assets/ships/parts/places/place_nav_buoy.glb",
+      "release": "assets/ships/release/parts/places/place_nav_buoy.glb",
+      "sourceSha256": "ced25c9c6d47bf27ab1c58ed61658738d2b28e36e7b0e743c6d245df042cf77b",
+      "releaseSha256": "d39f5b42d5b790c12546cb395629ff79c82b607296e1b0b555eed6b25f7a2dcd",
+      "sourceBytes": 429928,
+      "releaseBytes": 205128,
+      "sourceManifestFile": "places/place_nav_buoy.glb"
+    }
+  ],
+  "captures": [
+    {
+      "subjectKey": "station-billboard",
+      "assetId": "place_station_billboard",
+      "manifestId": "place_station_billboard",
+      "family": "corridor-lane-furniture",
+      "file": ".devshots/pq022-billboard-buoy-reauthor/browser/01-core-station-billboard-ordinary.png",
+      "bytes": 471358,
+      "sha256": "699fe1773733e14b77ff26459cfa3ff83b6dd276fb02947106118dc83b944946",
+      "framing": "default",
+      "requestedLod": "lod1",
+      "mode": "flight",
+      "sectorId": "sector_helios_prime",
+      "entityId": 90,
+      "entityType": "fx",
+      "runtimeIdentity": {
+        "stationId": null,
+        "archetypeGlb": null,
+        "placeId": "place_station_billboard",
+        "poiId": null,
+        "isGate": false,
+        "trafficRole": null,
+        "defId": null,
+        "worldRecordId": null
+      },
+      "captureSurface": "game-render-canvas-hud-excluded",
+      "cameraRig": "shipping-chase-angle-and-zoom-target-centred",
+      "emissiveComparison": "not-supported-by-shared-public-rig",
+      "presentationAdmission": "ready",
+      "authoredAssetState": "authored",
+      "authoredAssetMode": "release",
+      "authoredVisualRoot": "authored-root",
+      "authoredReadableFallbackRetained": false,
+      "authoredCompositionId": "GLTFKIT_place_station_billboard",
+      "authoredSlots": {
+        "place": [
+          "assets/ships/release/parts/places/place_station_billboard.glb"
+        ]
+      },
+      "visibleMeshes": 5,
+      "materialNames": [
+        "SF_Shared_canopy_hull",
+        "SF_Shared_hull_textured_hull",
+        "SF_Shared_none_textured_none_native"
+      ],
+      "textureRoles": [
+        "aoMap",
+        "map",
+        "metalnessMap",
+        "normalMap",
+        "roughnessMap"
+      ],
+      "visibleSizeM": [
+        15.69349335358038,
+        5.749711036682129,
+        11.415767285099378
+      ],
+      "cameraDistance": 144,
+      "centerNdc": {
+        "x": 0,
+        "y": 4.2326772615425816e-16,
+        "z": 0.9862529863244199
+      },
+      "centerOnScreen": true
+    },
+    {
+      "subjectKey": "nav-buoy",
+      "assetId": "place_nav_buoy",
+      "manifestId": "place_nav_buoy",
+      "family": "corridor-lane-furniture",
+      "file": ".devshots/pq022-billboard-buoy-reauthor/browser/02-tethys-customs-buoy-ordinary.png",
+      "bytes": 298368,
+      "sha256": "8af4c4ba889c37dfdd23261331211ba769fbc14229012bddaed67b430ff51935",
+      "framing": "default",
+      "requestedLod": "lod1",
+      "mode": "flight",
+      "sectorId": "sector_tethys_junction",
+      "entityId": 299,
+      "entityType": "fx",
+      "runtimeIdentity": {
+        "stationId": null,
+        "archetypeGlb": null,
+        "placeId": "place_nav_buoy",
+        "poiId": "poi_tethys_customs_log",
+        "isGate": false,
+        "trafficRole": null,
+        "defId": null,
+        "worldRecordId": null
+      },
+      "captureSurface": "game-render-canvas-hud-excluded",
+      "cameraRig": "shipping-chase-angle-and-zoom-target-centred",
+      "emissiveComparison": "not-supported-by-shared-public-rig",
+      "presentationAdmission": "ready",
+      "authoredAssetState": "authored",
+      "authoredAssetMode": "release",
+      "authoredVisualRoot": "authored-root",
+      "authoredReadableFallbackRetained": false,
+      "authoredCompositionId": "GLTFKIT_place_nav_buoy",
+      "authoredSlots": {
+        "place": [
+          "assets/ships/release/parts/places/place_nav_buoy.glb"
+        ]
+      },
+      "visibleMeshes": 5,
+      "materialNames": [
+        "SF_Shared_hull_textured_hull",
+        "SF_Shared_none_textured_none_native",
+        "SF_Shared_signal_hull"
+      ],
+      "textureRoles": [
+        "aoMap",
+        "map",
+        "metalnessMap",
+        "normalMap",
+        "roughnessMap"
+      ],
+      "visibleSizeM": [
+        2.974865674972534,
+        15.300000190734863,
+        2.799731492996216
+      ],
+      "cameraDistance": 144,
+      "centerNdc": {
+        "x": 0,
+        "y": 0,
+        "z": 0.9862529863244199
+      },
+      "centerOnScreen": true
+    }
+  ],
+  "uniqueAssetCount": 2,
+  "screenshotCount": 2,
+  "pageIssues": [],
+  "informational_contended": true,
+  "informational_contended_note": "Phase H1 ran contended by design. This receipt contains identity, admission, visibility, and still-image facts only; no time-valued field is performance evidence.",
+  "noPerformanceEvidence": true,
+  "noPerformanceEvidenceNote": "Matched performance remains Phase H3."
+}

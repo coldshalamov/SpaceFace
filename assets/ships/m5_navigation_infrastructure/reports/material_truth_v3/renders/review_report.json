@@ -1,0 +1,296 @@
+{
+  "schema": "spaceface.stationBillboardReadableV3CpuVisualReview.v1",
+  "candidateId": "next10-station-billboard-readable-v3",
+  "partId": "place_station_billboard",
+  "assetId": "SF_PLACE_HELIOS_SUPPORT_DOCK_ARM",
+  "rootNode": "SF_M4_HELIOS_DOCK_ARM_ROOT",
+  "socket": "SOCKET_Structure_Core",
+  "reviewDate": "2026-09-06",
+  "reviewPurpose": "diagnostic authored visual evidence for parent controller review",
+  "acceptance": {
+    "final": false,
+    "browserElectronBroker": "pending",
+    "performance": "pending",
+    "owner": "controller"
+  },
+  "source": {
+    "blend": {
+      "path": "assets/ships/m5_navigation_infrastructure/blender/source/material_truth_v3/place_station_billboard_readable_v3.blend",
+      "sha256": "03c99e6423e2e14fa3b4f89adf33c83b74603bbc9217b3b21e0e53cb4d7e07ea",
+      "bytes": 360845
+    },
+    "sourceFileWrites": 0,
+    "gameAssetWrites": 0,
+    "openedWithoutSave": true
+  },
+  "render": {
+    "engine": "CYCLES",
+    "device": "CPU",
+    "threads": 4,
+    "samples": 32,
+    "blenderVersion": "5.1.2",
+    "resolution": [
+      1024,
+      768
+    ],
+    "lod": "lod0",
+    "boundsBlenderM": {
+      "min": [
+        -7.11,
+        -3.789751,
+        -3.07
+      ],
+      "max": [
+        7.11,
+        3.789751,
+        2.68
+      ],
+      "size": [
+        14.22,
+        7.579503,
+        5.75
+      ]
+    },
+    "target": [
+      0.0,
+      0.0,
+      -0.075
+    ]
+  },
+  "reviewScript": {
+    "path": ".devshots/next10-billboard-candidate/review_station_billboard_v3.py",
+    "sha256": "338bad38555a7ab4bd1339e98b668d81b48d0b07e6b39bcf92365a4b6d37cefa",
+    "bytes": 16892
+  },
+  "images": [
+    {
+      "name": "front_oblique",
+      "file": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v3/renders/01-front-oblique.png",
+      "sha256": "b2d04909f9d7c7addced7e2ed95b210c2c6f830b1436b9391c0049b8d8612867",
+      "bytes": 742306,
+      "purpose": "normal front/oblique read of the paired bays, chevron, perimeter frame and canted faces",
+      "lod": "lod0",
+      "resolution": [
+        1024,
+        768
+      ],
+      "camera": {
+        "position": [
+          8.03173,
+          -26.10313,
+          9.67782
+        ],
+        "target": [
+          0.0,
+          0.0,
+          -0.075
+        ],
+        "distanceM": 29.0,
+        "lensMm": 50.0,
+        "direction": [
+          0.27696,
+          -0.90011,
+          0.3363
+        ]
+      },
+      "lighting": {
+        "mode": "normal",
+        "keyEnergy": 1200.0,
+        "fillEnergy": 700.0,
+        "rimEnergy": 1000.0,
+        "sunEnergy": 0.18000000715255737
+      },
+      "materialMode": "authored",
+      "emissionOff": false
+    },
+    {
+      "name": "rear_service",
+      "file": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v3/renders/02-rear-service.png",
+      "sha256": "2f0d9aaadab04a28efeb43509da83f232f96a7d0a28d7c2b5331cbfc3387de15",
+      "bytes": 728010,
+      "purpose": "rear service read of the backplate, ridge, trunks, shoes and structure-core load path",
+      "lod": "lod0",
+      "resolution": [
+        1024,
+        768
+      ],
+      "camera": {
+        "position": [
+          24.73803,
+          4.94761,
+          9.54535
+        ],
+        "target": [
+          0.0,
+          0.0,
+          -0.075
+        ],
+        "distanceM": 27.0,
+        "lensMm": 50.0,
+        "direction": [
+          0.91622,
+          0.18324,
+          0.35631
+        ]
+      },
+      "lighting": {
+        "mode": "rear_service",
+        "keyEnergy": 1100.0,
+        "fillEnergy": 650.0,
+        "rimEnergy": 900.0,
+        "sunEnergy": 0.18000000715255737
+      },
+      "materialMode": "authored",
+      "emissionOff": false
+    },
+    {
+      "name": "neutral_clay",
+      "file": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v3/renders/03-neutral-clay.png",
+      "sha256": "b8f7a779ab5197b43fef57eb2188f6cb5efadaa15c0b39f3a7cf37fe29e28688",
+      "bytes": 758729,
+      "purpose": "neutral clay form check for silhouette, openings, recesses, frame depth and primitive-stack reads",
+      "lod": "lod0",
+      "resolution": [
+        1024,
+        768
+      ],
+      "camera": {
+        "position": [
+          10.0479,
+          -24.56153,
+          8.85646
+        ],
+        "target": [
+          0.0,
+          0.0,
+          -0.075
+        ],
+        "distanceM": 28.0,
+        "lensMm": 52.0,
+        "direction": [
+          0.35885,
+          -0.8772,
+          0.31898
+        ]
+      },
+      "lighting": {
+        "mode": "normal",
+        "keyEnergy": 1200.0,
+        "fillEnergy": 700.0,
+        "rimEnergy": 1000.0,
+        "sunEnergy": 0.18000000715255737
+      },
+      "materialMode": "neutral_clay",
+      "emissionOff": true
+    },
+    {
+      "name": "hard_grazing",
+      "file": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v3/renders/04-hard-grazing.png",
+      "sha256": "aaf0d1dc10d8f7e514a139c0e707990803b98375dbb58e5d046da2d62735051b",
+      "bytes": 672790,
+      "purpose": "hard grazing diagnostic for bevel highlights, plate flatness, frame edges and service recesses",
+      "lod": "lod0",
+      "resolution": [
+        1024,
+        768
+      ],
+      "camera": {
+        "position": [
+          -15.86764,
+          -20.24492,
+          8.1324
+        ],
+        "target": [
+          0.0,
+          0.0,
+          -0.075
+        ],
+        "distanceM": 27.0,
+        "lensMm": 55.0,
+        "direction": [
+          -0.58769,
+          -0.74981,
+          0.30398
+        ]
+      },
+      "lighting": {
+        "mode": "hard_grazing",
+        "keyEnergy": 1900.0,
+        "fillEnergy": 0.0,
+        "rimEnergy": 0.0,
+        "sunEnergy": 0.05000000074505806
+      },
+      "materialMode": "authored",
+      "emissionOff": true
+    },
+    {
+      "name": "emission_off",
+      "file": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v3/renders/05-emission-off.png",
+      "sha256": "46c5e309e817f0ea999556793d82859f0c3cb178a668ba46336ca655ce1553b3",
+      "bytes": 720712,
+      "purpose": "authored material separation with all emission disabled; form and substance must carry the read",
+      "lod": "lod0",
+      "resolution": [
+        1024,
+        768
+      ],
+      "camera": {
+        "position": [
+          8.03173,
+          -26.10313,
+          9.67782
+        ],
+        "target": [
+          0.0,
+          0.0,
+          -0.075
+        ],
+        "distanceM": 29.0,
+        "lensMm": 50.0,
+        "direction": [
+          0.27696,
+          -0.90011,
+          0.3363
+        ]
+      },
+      "lighting": {
+        "mode": "normal",
+        "keyEnergy": 1200.0,
+        "fillEnergy": 700.0,
+        "rimEnergy": 1000.0,
+        "sunEnergy": 0.18000000715255737
+      },
+      "materialMode": "authored",
+      "emissionOff": true
+    }
+  ],
+  "evidenceBoundary": "These five CPU renders are diagnostic source-side evidence. They do not close G1/G2/G4, do not replace the parent Browser/Electron broker route, and do not establish performance.",
+  "techniqueDisposition": {
+    "reviewableFromTheseStills": [
+      "MTX-01",
+      "MTX-03",
+      "MTX-31",
+      "MTX-46"
+    ],
+    "stillNeededForSeparateProof": [
+      "MTX-16",
+      "MTX-22",
+      "MTX-23",
+      "MTX-24",
+      "MTX-25",
+      "MTX-32",
+      "MTX-33",
+      "MTX-39",
+      "MTX-50"
+    ],
+    "notApplicableProposal": [
+      "MTX-21",
+      "MTX-52",
+      "MTX-53"
+    ],
+    "keepBlockedUntilParentReview": [
+      "MTX-54"
+    ],
+    "note": "A clay and grazing still can inform form rows, but no row is promoted here; the parent owns G1/G2/G4 judgment."
+  }
+}

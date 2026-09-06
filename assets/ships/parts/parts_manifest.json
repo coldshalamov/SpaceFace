@@ -3552,10 +3552,11 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_station_billboard.glb",
-      "tris": 2168,
-      "bytes": 444680,
+      "tris": 6832,
+      "triangleMetric": "lod0",
+      "bytes": 1314736,
       "textureSize": 256,
-      "note": "PQ-022 navigation-infrastructure material-truth V2 — admitted candidate d86365e3129b, promoted source ccdd548c3d2c; LOD0/1/2 2168/788/136 render tris across five semantic PBR groups. Browser/Electron route and performance remain separate gates.",
+      "note": "PQ-022 navigation-infrastructure material-truth V3 — WIP candidate source 9245e7275b36; LOD0/1/2 6832/2864/780 render tris across five semantic PBR groups. Parent visual review, Browser/Electron route, and performance remain separate gates.",
       "hooks": [],
       "sockets": [
         "SOCKET_Structure_Core"
@@ -3563,19 +3564,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -1.5,
-          -1.2000000476837158,
-          -1.5
+          -7.110000133514404,
+          -3.069999933242798,
+          -3.810147285461426
         ],
         "max": [
-          13.300000190734863,
-          1.850000023841858,
-          1.5
+          7.110000133514404,
+          2.680000066757202,
+          3.810147285461426
         ],
         "dimensionsM": [
-          14.800000190734863,
-          3.0500000715255737,
-          3
+          14.220000267028809,
+          5.75,
+          7.620294570922852
         ]
       }
     },

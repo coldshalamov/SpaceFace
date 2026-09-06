@@ -1,0 +1,280 @@
+{
+  "schema": "spaceface.pq022StationBillboardReadableV3CandidateBinding.v1",
+  "packet": "PQ-022",
+  "dispatchUnit": "next10.station-billboard-readable-v3",
+  "candidateSetId": "next10-station-billboard-readable-v3",
+  "state": "candidate_only",
+  "claims": {
+    "candidateOnly": true,
+    "promoted": false,
+    "routeEvidence": false,
+    "performanceEvidence": false,
+    "visualReview": false
+  },
+  "diagnosticVisualDisposition": {
+    "decision": "KEEP",
+    "reviewer": "controller",
+    "date": "2026-09-06",
+    "scope": "whole_asset_candidate_side_source_views_plus_one_live_route_view",
+    "candidateSideDisposition": {
+      "G1": "KEEP",
+      "G2": "KEEP",
+      "G4": "KEEP for the ordinary shipping-camera picture only",
+      "evidence": [
+        "assets/ships/m5_navigation_infrastructure/reports/material_truth_v3/renders/review_report.json",
+        "assets/ships/m5_navigation_infrastructure/reports/material_truth_v3/runtime/browser/01-core-station-billboard-ordinary.png"
+      ],
+      "limitations": [
+        "mandatory technique rows and unsupported channel-isolation views remain open",
+        "Browser/Electron H1 acceptance, performance, promotion, and final acceptance remain open"
+      ]
+    },
+    "finalAcceptance": false
+  },
+  "generator": {
+    "path": "tools/blender/build_station_billboard_readable_v3.py",
+    "sha256": "b9ddc81d6da7166532419d52ddeadeb5bd519a41b13c262d80b00a7166abaa02",
+    "bytes": 46216,
+    "role": "current source; baseline fallback reports unavailable instead of inferring V2"
+  },
+  "generatorAtBuild": {
+    "path": "tools/blender/build_station_billboard_readable_v3.py",
+    "sha256": "6f0ff5c2357c00d1c096bdf9cebb2122924ddcb01db3e2efeb488191d3854090",
+    "bytes": 44962,
+    "role": "builder that actually produced the bound GLB and copied build receipt"
+  },
+  "importedHelpersFrom": {
+    "path": "tools/blender/build_navigation_infrastructure_material_truth_v2.py",
+    "sha256": "bba5e4b07a93858b63cd533978f2ce64a05096cb0f30106db7758cf86f6df03d",
+    "bytes": 100495
+  },
+  "authoringSource": {
+    "path": "assets/ships/m5_navigation_infrastructure/blender/source/material_truth_v3/place_station_billboard_readable_v3.blend",
+    "sha256": "03c99e6423e2e14fa3b4f89adf33c83b74603bbc9217b3b21e0e53cb4d7e07ea",
+    "bytes": 360845,
+    "emittedBy": "tools/blender/build_station_billboard_readable_v3.py"
+  },
+  "buildReport": {
+    "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v3/build_report.json",
+    "sha256": "5957e1437dfce239e9bd6821819a7fd7154c28ea838621ec534ee3a96ed28416",
+    "bytes": 18984,
+    "copiedUnchanged": false,
+    "normalization": {
+      "reason": "CRLF to LF newline normalization only; parsed JSON semantics are unchanged",
+      "originalRawPath": ".devshots/next10-billboard-candidate/records/build_report.json",
+      "originalRawSha256": "199bac476238cc07f6218534eea2dea854aa49b933f625581f01b765aed740ce",
+      "originalRawBytes": 19762
+    }
+  },
+  "assets": [
+    {
+      "partId": "place_station_billboard",
+      "assetId": "SF_PLACE_HELIOS_SUPPORT_DOCK_ARM",
+      "rootNode": "SF_M4_HELIOS_DOCK_ARM_ROOT",
+      "slot": "place",
+      "source": {
+        "path": "assets/ships/parts/places/place_station_billboard.glb",
+        "sha256": "9245e7275b36ebed9e7e853a14f1e0315d85d23c14323b6d947ea4cb3a1f2ff6",
+        "bytes": 1314736
+      },
+      "release": {
+        "path": "assets/ships/release/parts/places/place_station_billboard.glb",
+        "sha256": "f94ce276f99defb0aa770dd9cc0accd24e828d9b56ecb27d5ea0b3383699a293",
+        "bytes": 430692
+      },
+      "lodTriangles": {
+        "lod0": 6832,
+        "lod1": 2864,
+        "lod2": 780
+      },
+      "triangleMetric": "lod0",
+      "boundsM": [14.220000267028809, 5.75, 7.620294570922852],
+      "socket": "SOCKET_Structure_Core",
+      "axes": "+X forward / +Y up / +Z starboard",
+      "collision": {
+        "representation": "non_mesh_helper",
+        "triangles": 0,
+        "minimumCoverageRatio": 0.92
+      }
+    }
+  ],
+  "renderPackage": {
+    "pilotManifest": {
+      "path": "assets/ships/render-packages/pilots.json",
+      "sha256": "3324cf7d6c5bfa76ce0d47656b144fab44f8b90447d0f55e765f7e378c26db47",
+      "bytes": 91874,
+      "key": "station-billboard",
+      "releaseSha256": "f94ce276f99defb0aa770dd9cc0accd24e828d9b56ecb27d5ea0b3383699a293"
+    },
+    "metadata": {
+      "path": "assets/ships/release/render-packages/station-billboard/render-package.json",
+      "sha256": "e368e39c9ba300b8c49bee0b32bd9c60b04a2dbd25ae512337a97fb1e13d615f",
+      "bytes": 43989,
+      "contentHash": "b733ba013eb2b05b0644e8341d616e925e4439322f087e712deaece3661b29a4",
+      "runtimeHash": "e5249cc42cf80723be64d8c9d05abd801eaf1d44b0781fa9ba3887c0ec82b180"
+    },
+    "renderGlb": {
+      "path": "assets/ships/release/render-packages/station-billboard/render.glb",
+      "sha256": "fcd72ad5a1d9c5c5c6cf81bb0ab39c911ea899e917f526bebd15f6a9cc4080b0",
+      "bytes": 688844
+    },
+    "runtimeMap": {
+      "path": "src/render/renderPackageManifest.js",
+      "sha256": "010acf7eaaaaaaa0595c25418603c5ae6ab3798e73a84728f6a58c0286a98bd9",
+      "bytes": 68548
+    }
+  },
+  "manifests": {
+    "sourceParts": {
+      "path": "assets/ships/parts/parts_manifest.json",
+      "sha256": "103ffd802c5b6c14880839a0bd2b4a5b560a24c46ceed1f7f44643b090841257",
+      "bytes": 179455,
+      "selectedRow": "place_station_billboard",
+      "selectedRowTriangleMetric": "lod0"
+    },
+    "release": {
+      "path": "assets/ships/release/release_manifest.json",
+      "sha256": "002cfd0a9476006f37b296b24664e968725ac89d73c277e8f9d88a720a3f8747",
+      "bytes": 174074,
+      "selectedRow": "place_station_billboard"
+    }
+  },
+  "visualReview": {
+    "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v3/VISUAL_REVIEW.md",
+    "sha256": "76401ef8ba4a794f685d70ca3f7a7f30d77e60fa812fe213817ae9c9d2986097",
+    "bytes": 4668,
+    "decision": "KEEP diagnostic"
+  },
+  "reviewScript": {
+    "path": ".devshots/next10-billboard-candidate/review_station_billboard_v3.py",
+    "sha256": "338bad38555a7ab4bd1339e98b668d81b48d0b07e6b39bcf92365a4b6d37cefa",
+    "bytes": 16892,
+    "ignored": true,
+    "sourceWrites": 0
+  },
+  "cpuVisualReview": {
+    "report": {
+      "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v3/renders/review_report.json",
+      "sha256": "cfdd1968446f956663f57d8e2c55024875edf4f15b8a4c8465ab124bcbe83af9",
+      "bytes": 7623
+    },
+    "engine": "CYCLES",
+    "device": "CPU",
+    "threads": 4,
+    "samples": 32,
+    "resolution": [1024, 768],
+    "lod": "lod0",
+    "images": [
+      {
+        "name": "front_oblique",
+        "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v3/renders/01-front-oblique.png",
+        "sha256": "b2d04909f9d7c7addced7e2ed95b210c2c6f830b1436b9391c0049b8d8612867",
+        "bytes": 742306
+      },
+      {
+        "name": "rear_service",
+        "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v3/renders/02-rear-service.png",
+        "sha256": "2f0d9aaadab04a28efeb43509da83f232f96a7d0a28d7c2b5331cbfc3387de15",
+        "bytes": 728010
+      },
+      {
+        "name": "neutral_clay",
+        "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v3/renders/03-neutral-clay.png",
+        "sha256": "b8f7a779ab5197b43fef57eb2188f6cb5efadaa15c0b39f3a7cf37fe29e28688",
+        "bytes": 758729
+      },
+      {
+        "name": "hard_grazing",
+        "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v3/renders/04-hard-grazing.png",
+        "sha256": "aaf0d1dc10d8f7e514a139c0e707990803b98375dbb58e5d046da2d62735051b",
+        "bytes": 672790
+      },
+      {
+        "name": "emission_off",
+        "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v3/renders/05-emission-off.png",
+        "sha256": "46c5e309e817f0ea999556793d82859f0c3cb178a668ba46336ca655ce1553b3",
+        "bytes": 720712
+      }
+    ]
+  },
+  "records": {
+    "techniqueLedger": {
+      "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v3/TECHNIQUE_LEDGER.json",
+      "sha256": "3d2e0cc6b51e09f493bdd917eff8b639c0578ef941b5790902bc98c2af4196f2",
+      "bytes": 9979
+    },
+    "materialTruthPreflight": {
+      "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v3/MATERIAL_TRUTH_PREFLIGHT.md",
+      "sha256": "545a1ec72b0b6cca613882a05ef090a433384ebdceeb30859ad1efa24c3f89b7",
+      "bytes": 8025
+    },
+    "visualReview": {
+      "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v3/VISUAL_REVIEW.md",
+      "sha256": "76401ef8ba4a794f685d70ca3f7a7f30d77e60fa812fe213817ae9c9d2986097",
+      "bytes": 4668
+    }
+  },
+  "visualEvidence": {
+    "still": {
+      "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v3/runtime/browser/01-core-station-billboard-ordinary.png",
+      "sha256": "699fe1773733e14b77ff26459cfa3ff83b6dd276fb02947106118dc83b944946",
+      "bytes": 471358
+    },
+    "rawReport": {
+      "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v3/runtime/browser/report.json",
+      "sha256": "8d20d6600b88fd67b8850e422f10713af08ce2e59fd679a799ac8429895cbe31",
+      "bytes": 6944,
+      "brokerDiagnostic": true,
+      "primaryAcceptance": false
+    },
+    "route": {
+      "runtime": "browser-chromium-headed",
+      "fixedSeed": 47,
+      "viewport": [1440, 900],
+      "requestedLod": "lod1",
+      "cameraDistance": 144,
+      "captureSurface": "game-render-canvas-hud-excluded"
+    }
+  },
+  "baseline": {
+    "sourceSha256": "ccdd548c3d2cf323a75658464dd37d96c564aa270e8945771c3ab5dc0a5acac9",
+    "sourceBytes": 444680,
+    "releaseSha256": "1a780be072b47a1ba38dbd977fdcfb16c5d1a7318213c1edc167cd5025b5d0c5",
+    "releaseBytes": 193736,
+    "origin": "before-runtime preserved copies recorded by the build receipt",
+    "durableFiles": false,
+    "comparisonAvailableAtBuild": true,
+    "comparisonFallback": "If preserved copies are absent, the current builder reports unavailable and never uses the live V3 path as V2."
+  },
+  "checks": [
+    {
+      "command": "Blender 5.1.2 no-render V3 export verification",
+      "result": "pass",
+      "note": "Historical build receipt; no rerun in the durable-record task."
+    },
+    {
+      "command": "node --test test/check-parts-manifest-lod-metric.test.mjs",
+      "result": "pass",
+      "note": "Focused LOD0 metric regression, 2 tests."
+    },
+    {
+      "command": "node scripts/build-render-package-pilots.mjs --only=station-billboard --check",
+      "result": "pass",
+      "note": "134 production packages fresh."
+    },
+    {
+      "command": "direct source/release/package parity check",
+      "result": "pass"
+    }
+  ],
+  "openGates": [
+    "Browser broker primary acceptance",
+    "Electron broker acceptance",
+    "representative performance evidence",
+    "full supported-view material-truth and technique still set"
+  ],
+  "retention": {
+    "externalTexturePngs": false,
+    "reason": "The candidate embeds its material textures in the GLB/package; ignored build-local PNGs are regeneration inputs, not canonical shipped evidence."
+  }
+}
