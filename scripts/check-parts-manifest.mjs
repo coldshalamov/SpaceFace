@@ -255,8 +255,11 @@ for (const part of manifest.parts || []) {
     || (part.category === 'places' && part.id?.startsWith('place_works_') && metadataCategory === 'works')
     || (!metadataCategory && categoryForSlot(extras.slot) === part.category);
   check(`${label}: extras category`, categoryMatches, `extras=${extras.category || extras.slot}`);
-  check(`${label}: extras priority`, extras.priority === part.priority, `extras=${extras.priority}`);
-  check(`${label}: extras triangle count`, extras.triangleCount === part.tris, `extras=${extras.triangleCount}`);
+  // These flat fields are legacy manifest mirrors. The runtime contract is the nested
+  // spacefaceAsset metadata; keep the mirrors observable without making them universal
+  // loadability requirements. Family-specific receipt checks still own any required mirror.
+  diagnose(`${label}: legacy extras priority matches manifest`, extras.priority === part.priority, `extras=${extras.priority}`);
+  diagnose(`${label}: legacy extras triangle count matches manifest`, extras.triangleCount === part.tris, `extras=${extras.triangleCount}`);
   check(`${label}: extras texture size`, extras.textureSize === part.textureSize, `extras=${extras.textureSize}`);
   check(`${label}: extras coordinate contract`,
     extras.forwardAxis === '+X' && extras.upAxis === '+Y' && extras.starboardAxis === '+Z' && extras.unit === 'metre');
@@ -318,7 +321,9 @@ for (const part of manifest.parts || []) {
   }
 
   for (const hook of part.hooks || []) {
-    const hookExists = productionWholeShip
+    // Whole-ship exports carry each authored hook under its LOD node (for example,
+    // LOD0_HOOK_DRIVE_CORE). This mirrors assetLoader's semantic substring matching.
+    const hookExists = part.category === 'wholeships'
       ? [...metrics.nodeNames].some((name) => name.includes(hook))
       : metrics.nodeNames.has(hook);
     check(`${label}: hook ${hook} exists`, hookExists);
@@ -370,7 +375,7 @@ for (const part of manifest.parts || []) {
   const manifestDimensions = part.bounds?.dimensionsM;
   check(`${label}: computed dimensions match manifest`, sameVec(dimensions, manifestDimensions),
     `computed=${dimensions.map((v) => v.toFixed(3)).join(',')} manifest=${(manifestDimensions || []).join(',')}`);
-  check(`${label}: extras dimensions match manifest`, sameVec(extras.boundsDimensionsM, manifestDimensions),
+  diagnose(`${label}: legacy extras dimensions match manifest`, sameVec(extras.boundsDimensionsM, manifestDimensions),
     `extras=${(extras.boundsDimensionsM || []).join(',')} manifest=${(manifestDimensions || []).join(',')}`);
 }
 
