@@ -238,6 +238,7 @@ const CORE_SECTOR_ANCHORS = {
     pois: [
       { id: 'poi_boss', pos: { x: 240, z: 1180 }, landmarkGlb: 'place_nav_buoy', landmark: true },
       { id: 'poi_vault', pos: { x: -1480, z: 320 }, landmarkGlb: 'place_debris_chunk' },
+      { id: 'poi_vault_maw', pos: { x: -980, z: 1240 }, landmarkGlb: 'place_asteroid_seamed', landmark: true },
     ],
   },
 };

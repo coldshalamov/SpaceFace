@@ -384,6 +384,17 @@ const CORE_SECTORS = [
           body: 'Behind the Iron Maw was no treasury, but a growth archive: hull-seed genealogies, failed warship molts, and one empty cradle still warm enough to register on the scanner.',
         },
       },
+      {
+        id: 'poi_vault_maw', type: 'anomaly', name: 'The Vault Maw',
+        factionId: 'faction_vael',
+        scannerSignalKind: 'archive',
+        repeatableScannerSignal: true,
+        flavorTargetRef: 'landmark_c4_vault_maw',
+        discoveryPlate: {
+          title: 'The Vault Maw',
+          body: 'Six stone petals meet like a jaw around sealed records. Thousands of keyholes cover the teeth, and only one is real — wrong keys wake the guard before they fit.',
+        },
+      },
     ],
   },
 ];
