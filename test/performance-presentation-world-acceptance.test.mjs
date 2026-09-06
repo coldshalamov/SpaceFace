@@ -143,6 +143,53 @@ test('raw churn lifecycle and publisher deltas fail closed when any field is mis
   }
 });
 
+for (const runtimeKind of ['browser', 'electron']) {
+  test(`churn reconciles raw snapshots instead of trusting successful summaries (${runtimeKind})`, async (t) => {
+    const worldKeys = [
+      'active', 'bound', 'capacity', 'highWater', 'free',
+      'allocations', 'retirements', 'rebuilds', 'growths', 'spatialMoves',
+      'staleHandleRejects', 'duplicateIdRejects', 'chainGuardTrips',
+    ];
+    const publisherKeys = ['fullRebuilds', 'fallbackRebuilds', 'rangeFailures', 'applyFailures'];
+    const mutations = [
+      ['missing raw world snapshot', (settlement) => { delete settlement.diagnosticsBefore; }],
+      ['nonfinite raw world counter', (settlement) => { settlement.diagnosticsBefore.allocations = NaN; }],
+      ['nonfinite raw publisher counter', (settlement) => { settlement.publisherAfter.applyFailures = Infinity; }],
+    ];
+    for (const [sections, keys] of [
+      [['diagnosticsBefore', 'diagnosticsAfter'], worldKeys],
+      [['publisherBefore', 'publisherAfter'], publisherKeys],
+    ]) {
+      for (const section of sections) {
+        for (const key of keys) {
+          mutations.push(
+            [`missing ${section}.${key}`, (settlement) => { delete settlement[section][key]; }],
+            [`contradictory ${section}.${key}`, (settlement) => { settlement[section][key]++; }],
+          );
+        }
+      }
+    }
+    const control = evaluatePresentationWorldRuntime(runtimeFixture(runtimeKind), { runtimeKind });
+    assert.equal(control.criterionPass, true, control.criterionFailures.join('; '));
+    assert.equal(control.status, 'partial');
+    for (const [name, mutate] of mutations) {
+      await t.test(name, () => {
+        const document = runtimeFixture(runtimeKind);
+        mutate(windowBy(document, 'presentation_world_churn').scenarioPreparation.churn.settlement);
+        const original = structuredClone(document);
+        const result = evaluatePresentationWorldRuntime(document, { runtimeKind });
+        assert.deepEqual(document, original, 'evaluation must preserve the raw evidence');
+        assert.equal(result.criterionPass, false);
+        assert.equal(result.coverage.churnLifecycle, false);
+        assert.equal(result.status, 'fail');
+        assert.equal(result.pass, false);
+        assert.match(result.criterionFailures.join('\n'), /churn did not retire\/reuse/);
+        assert.deepEqual(result.openCriteria, control.openCriteria, 'no native/live cell may close');
+      });
+    }
+  });
+}
+
 test('cleanup and rebase require finite raw snapshots and every named restoration field', () => {
   const commonChecks = [
     'presentationCountsRestored', 'presentationMeshesRestored', 'presentationResourcesIdle',
@@ -704,6 +751,10 @@ function churnPreparation() {
       publisherDeltas: { fullRebuilds: 0, fallbackRebuilds: 0, rangeFailures: 0, applyFailures: 0 },
       publisherBefore: publisher(),
       publisherAfter: publisher(),
+      diagnosticsBefore: diagnostics({
+        active: B * 2, bound: B * 2, free: 0, capacity: 64, highWater: B * 2,
+        allocations: B + B, retirements: 0, spatialMoves: B + B,
+      }),
       diagnosticsAfter: diagnostics({
         active: B * 2, bound: B * 2, free: 0, capacity: 64, highWater: B * 2,
         allocations: B + B + 5, retirements: 5, spatialMoves: B + B + 5,

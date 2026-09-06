@@ -239,6 +239,22 @@ export function evaluatePresentationWorldRuntime(document, { runtimeKind = 'brow
       active: churnTarget,
       bound: churnTarget,
     })
+    && diagnosticsInternallyConsistent(churnSettlement?.diagnosticsBefore, {
+      active: churnTarget,
+      bound: churnTarget,
+    })
+    && zeroCounterDelta(churnSettlement?.diagnosticsBefore, churnSettlement?.diagnosticsAfter, [
+      'active', 'bound', 'capacity', 'highWater', 'free',
+    ])
+    && counterDeltasMatchSnapshots(
+      churnSettlement?.diagnosticsBefore, churnSettlement?.diagnosticsAfter, churnCounters,
+      ['allocations', 'retirements', 'spatialMoves', 'rebuilds', 'growths',
+        'staleHandleRejects', 'duplicateIdRejects', 'chainGuardTrips'],
+    )
+    && counterDeltasMatchSnapshots(
+      churnSettlement?.publisherBefore, churnSettlement?.publisherAfter, churnPublisher,
+      PUBLISHER_COUNTER_KEYS,
+    )
     && finite(churnCounters?.allocations) === churnCount
     && finite(churnCounters?.retirements) === churnCount
     && finite(churnCounters?.spatialMoves) === churnCount
@@ -749,6 +765,14 @@ function zeroCounterDelta(before, after, keys) {
   return hasFiniteCounters(before, keys)
     && hasFiniteCounters(after, keys)
     && keys.every((key) => finite(after[key]) - finite(before[key]) === 0);
+}
+
+// Producer summaries cannot override the raw lifecycle snapshots they summarize.
+function counterDeltasMatchSnapshots(before, after, deltas, keys) {
+  return hasFiniteCounters(before, keys)
+    && hasFiniteCounters(after, keys)
+    && hasFiniteCounters(deltas, keys)
+    && keys.every((key) => finite(after[key]) - finite(before[key]) === finite(deltas[key]));
 }
 
 function samePublisherError(before, after) {
