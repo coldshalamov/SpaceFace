@@ -15,6 +15,7 @@
 // loop/alarm state and (re)started once audio resumes.
 
 import { RECIPES, MUSIC_STEMS } from '../data/audioRecipes.js';
+import { bindMinimalActionAudio } from './minimalActionAudio.js';
 import { playRecipe, releaseVoice, disposeVoice, getNoiseBuffer } from './synth.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
@@ -1283,6 +1284,7 @@ export const audio = {
       this._markMusicDirty();
     });
     bus.on('game:started', () => { /* context already (or soon) created on gesture */ });
+    bindMinimalActionAudio(this, bus);
 
     // If a context already exists (hot reload), wire immediately.
     if (typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext)) {
@@ -1642,6 +1644,8 @@ export const audio = {
     const id = String(recipeId || '');
     if (id.includes('squelch') || id.includes('alert') || id.includes('mission') || id.includes('lock_acquired')) return true;
     if (id.includes('shieldBreak') || id.includes('cruiseSnared') || id.includes('player_death')) return true;
+    if (id.includes('tetherLatch') || id.includes('tetherSnap') || id.includes('vent_chime')
+      || id.includes('tether_strain') || id.includes('boost_whoosh')) return true;
     if (id.startsWith('presentation.') || id.includes('objective') || id.includes('comms')) return true;
     const cat = (AUDIO_RECIPE_BY_ID[recipeId] && AUDIO_RECIPE_BY_ID[recipeId].category) || '';
     return cat === 'comms';
@@ -1721,7 +1725,9 @@ export const audio = {
   _isMuted() {
     // Playwright exposes this standard browser signal even in older probes that bypass the shared
     // launcher wrapper. Automation never owns the host audio device, regardless of saved settings.
-    if (typeof window !== 'undefined'
+    // An explicit capture flag opts a headed proof in (PQ-158.06 fight tape), and only then.
+    const allowCaptureAudio = typeof window !== 'undefined' && window.__SF_CAPTURE_AUDIO === true;
+    if (!allowCaptureAudio && typeof window !== 'undefined'
       && window.navigator
       && window.navigator.webdriver === true) return true;
     const a = this.state && this.state.settings && this.state.settings.audio;

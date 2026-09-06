@@ -1,0 +1,93 @@
+{
+  "schema": "spaceface.pq15806FightTape.v1",
+  "seed": 4242,
+  "normalSpeed": true,
+  "mime": "video/webm",
+  "audioMime": "audio/webm;codecs=opus",
+  "durationMs": 25522.5,
+  "bytes": 6651007,
+  "plays": [
+    {
+      "recipeId": "sfx_ui_click",
+      "tick": 17,
+      "simTime": 0.2833333333333333,
+      "wallMs": 42605.40000000596
+    },
+    {
+      "recipeId": "sfx_wpn_pulse_laser",
+      "tick": 72,
+      "simTime": 1.2000000000000006,
+      "wallMs": 44032.79999999702
+    },
+    {
+      "recipeId": "sfx.hullHit",
+      "tick": 72,
+      "simTime": 1.2000000000000006,
+      "wallMs": 44038
+    },
+    {
+      "recipeId": "sfx_mining_impact",
+      "tick": 72,
+      "simTime": 1.2000000000000006,
+      "wallMs": 44048.90000000596
+    },
+    {
+      "recipeId": "sfx_core_bell",
+      "tick": 119,
+      "simTime": 1.9833333333333312,
+      "wallMs": 52843
+    },
+    {
+      "recipeId": "sfx.shieldBreak",
+      "tick": 119,
+      "simTime": 1.9833333333333312,
+      "wallMs": 52866.59999999404
+    },
+    {
+      "recipeId": "sfx_traffic_blip",
+      "tick": 155,
+      "simTime": 2.583333333333329,
+      "wallMs": 66744
+    },
+    {
+      "recipeId": "sfx_vent_chime",
+      "tick": 155,
+      "simTime": 2.583333333333329,
+      "wallMs": 66753
+    },
+    {
+      "recipeId": "sfx_boost_whoosh",
+      "tick": 155,
+      "simTime": 2.583333333333329,
+      "wallMs": 66753.59999999404
+    },
+    {
+      "recipeId": "sfx_vent_chime",
+      "tick": 160,
+      "simTime": 2.666666666666662,
+      "wallMs": 66884.59999999404
+    }
+  ],
+  "beats": [
+    "anticipation:telegraph",
+    "contact:hit",
+    "consequence:shieldDown",
+    "recovery:vent+boost"
+  ],
+  "stills": [
+    "design/program/roadmap/receipts/PQ-158-06-fight-anticipation.png",
+    "design/program/roadmap/receipts/PQ-158-06-fight-contact.png",
+    "design/program/roadmap/receipts/PQ-158-06-fight-consequence.png",
+    "design/program/roadmap/receipts/PQ-158-06-fight-recovery.png"
+  ],
+  "probe": {
+    "hasAudio": true,
+    "hasVideo": true,
+    "durationS": 25.388,
+    "codecs": [
+      "video:vp8",
+      "audio:opus"
+    ]
+  },
+  "issues": []
+}
