@@ -314,11 +314,12 @@ export const heat = {
     player.heat = after;
     if (after >= WANTED_THRESHOLD) this._refreshZone(true);
     if (player.heat !== before) {
-      // emit immediately on threshold crossings (WANTED appearing/disappearing) and on any
-      // WANTED-band increase, so HUD/audio presentation reacts crisply to escalations; everything
-      // else (in-band chips, decays) throttles to once per ~0.4s. Without the band clause a climb
-      // landing inside the throttle window is never emitted, and every level-keyed consumer
-      // (radar, audio alarm) stays stale until the next emit.
+      // emit immediately on every edge — threshold crossings (WANTED appearing/disappearing) and
+      // WANTED-band increases — so HUD/audio presentation reacts crisply to escalations. Only
+      // in-band chips throttle to once per ~0.4s; every _setHeat write (decay steps, clears)
+      // already force-emits via the crossed flag. Without the band clause a climb landing inside
+      // the throttle window is never emitted, and every level-keyed consumer (radar, audio alarm)
+      // stays stale until the next emit.
       const crossed = (before < WANTED_THRESHOLD) !== (player.heat < WANTED_THRESHOLD);
       const bandMoved = heatLevelFor(player.heat) > heatLevelFor(before);
       const now = this.state.simTime || 0;

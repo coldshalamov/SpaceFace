@@ -485,8 +485,8 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   loot_collect: 'sfx_loot_collect', mining_core_fizzle: 'sfx_mining_core_fizzle',
   shield_break: 'sfx.shieldBreak', cm_chaff: 'sfx_cm_chaff', cm_ecm: 'sfx_cm_ecm',
   // WANTED heat escalation/clear — gameplay warning voices, not menu feedback. They ride the ui
-  // bus like every established warning, and cut through squelch as priority voices ('alert'
-  // substring) instead of relying on bus choice.
+  // bus like every established warning: the alarm cuts through squelch as a priority voice
+  // ('alert' substring in _isPriorityVoice); the clear sting survives via its critical importance.
   wanted_escalate: 'sfx_wanted_alert', wanted_clear: 'sfx_wanted_clear',
   [FIRST_HOUR_AUDIO_SIGNATURES.masslineLatch.semanticId]: FIRST_HOUR_AUDIO_SIGNATURES.masslineLatch.recipeId,
   [FIRST_HOUR_AUDIO_SIGNATURES.masslineStrain.semanticId]: FIRST_HOUR_AUDIO_SIGNATURES.masslineStrain.recipeId,
