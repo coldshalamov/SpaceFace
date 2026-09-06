@@ -3727,20 +3727,6 @@
       "contractNodeCount": 18
     },
     {
-      "id": "wholeship_yard_tug",
-      "kind": "part:wholeships",
-      "source": "assets/ships/parts/wholeships/yard_tug.glb",
-      "release": "assets/ships/release/parts/wholeships/yard_tug.glb",
-      "sourceSha256": "745849c9e24f71b727e2b50688a35f555071ab164f6e05a265c44f416f2e03be",
-      "releaseSha256": "3eb9d11172a6ba04a017d8ddc9bbf1ff35f37dcc293a9dfd865783afb8893f45",
-      "sourceBytes": 3546672,
-      "releaseBytes": 2660528,
-      "textures": 20,
-      "ktx2Textures": 20,
-      "meshoptBufferViews": 77,
-      "contractNodeCount": 23
-    },
-    {
       "id": "place_works_inclusion_kit",
       "kind": "part:places",
       "source": "assets/ships/parts/works/place_works_inclusion_kit.glb",
@@ -3758,6 +3744,20 @@
         "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
         "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
       }
+    },
+    {
+      "id": "wholeship_yard_tug",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/yard_tug.glb",
+      "release": "assets/ships/release/parts/wholeships/yard_tug.glb",
+      "sourceSha256": "5af02cd7cf6ba5b310f3c870d1dc47710dd738a3d3910fcb4787d00291f35713",
+      "releaseSha256": "036b46403e92c5ff313c4b0b49db649dfb99b9b74b07c10b4208ad7f268dd768",
+      "sourceBytes": 4103548,
+      "releaseBytes": 2792564,
+      "textures": 20,
+      "ktx2Textures": 20,
+      "meshoptBufferViews": 77,
+      "contractNodeCount": 23
     }
   ]
 }

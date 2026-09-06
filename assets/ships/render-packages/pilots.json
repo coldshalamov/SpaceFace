@@ -2024,8 +2024,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_yard_tug",
       "sourceUrl": "assets/ships/release/parts/wholeships/yard_tug.glb",
-      "releaseSha256": "3eb9d11172a6ba04a017d8ddc9bbf1ff35f37dcc293a9dfd865783afb8893f45",
-      "releaseBytes": 2660528,
+      "releaseSha256": "036b46403e92c5ff313c4b0b49db649dfb99b9b74b07c10b4208ad7f268dd768",
+      "releaseBytes": 2792564,
       "rootNode": "SF_NPCWORK_YARD_TUG_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE"

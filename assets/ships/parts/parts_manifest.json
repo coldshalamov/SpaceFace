@@ -6344,8 +6344,8 @@
       "category": "wholeships",
       "priority": "P2",
       "file": "wholeships/yard_tug.glb",
-      "tris": 3336,
-      "bytes": 3546672,
+      "tris": 12662,
+      "bytes": 4103548,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -6366,22 +6366,22 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -12,
-          -1.1,
-          -3.8
+          -12.5268,
+          -1.58,
+          -5.0714
         ],
         "max": [
-          12.4,
-          4.9,
-          3.8
+          13.51,
+          4.42,
+          3.5402
         ],
         "dimensionsM": [
-          24.4,
+          26.0368,
           6,
-          7.6
+          8.6116
         ]
       },
-      "note": "PQ-045-NPC-IDENTITY-WORK-FLEET-001 — Yard Tug, live traffic role tug; re-authored from the npc_activity_pack donor silhouette (review 2026-08-08 boundary: re-author, never copy), explicit LOD0/1/2 (2240/760/324 tris), role-classified procedural 1K PBR maps, packed ORM with bound occlusion, stable sockets, no embedded plume. Whole-asset G1/G2/G4 remain OPEN pending independent hash-bound review. Project-original provenance: assets/ships/npc_work_fleet/PROVENANCE.json."
+      "note": "PQ-045-NPC-IDENTITY-WORK-FLEET-001 — Yard Tug, live traffic role tug; re-authored from the npc_activity_pack donor silhouette (review 2026-08-08 boundary: re-author, never copy), explicit LOD0/1/2 (8208/3116/1331 tris), role-classified procedural 1K PBR maps, packed ORM with bound occlusion, stable sockets, no embedded plume. Whole-asset G1/G2/G4 remain OPEN pending independent hash-bound review. Project-original provenance: assets/ships/npc_work_fleet/PROVENANCE.json."
     },
     {
       "id": "place_works_inclusion_kit",

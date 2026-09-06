@@ -4,7 +4,7 @@
   "family": "npc_work_fleet",
   "blender": "5.1.2",
   "builder": "tools/blender/build_npc_work_fleet.py",
-  "builderSha256": "e84c14f05afe58b81bf5da55b53416334a8d8189cf07ca55ffa63bf4595cbe76",
+  "builderSha256": "912b48a15ab8bf98a5bfea3f38753a5ccd7efbc0c98dc6592564742a8fd21682",
   "donorPack": "assets/incubator/npc_activity_pack/",
   "donorReview": "assets/incubator/npc_activity_pack/evidence/REVIEW-independent-2026-08-08.md",
   "ships": [
@@ -2197,55 +2197,55 @@
       "partId": "wholeship_yard_tug",
       "trafficRole": "tug",
       "file": "assets/ships/npc_work_fleet/source/wholeships/yard_tug.glb",
-      "sha256": "9fe5c58ff63fac28428aa0aabd4300de6ead454fdd3522002f76e9611de9766e",
-      "bytes": 3549092,
-      "sourceParts": 24,
+      "sha256": "363f40bdc34f67eca48039be317db2adada4594cb5ab960f8f78d038b4613ec9",
+      "bytes": 4105980,
+      "sourceParts": 122,
       "fictionLengthM": 26.0,
       "lodStats": [
         {
           "lod": "lod0",
           "decimate_ratio": 1.0,
           "mesh_count": 6,
-          "triangles": 2240,
+          "triangles": 8208,
           "meshes": [
             {
               "name": "LOD0_Merged_Material_Hull",
-              "tris": 324,
+              "tris": 3852,
               "materials": [
                 "Material_Hull"
               ]
             },
             {
               "name": "LOD0_Merged_Material_Mechanical",
-              "tris": 908,
+              "tris": 3284,
               "materials": [
                 "Material_Mechanical"
               ]
             },
             {
               "name": "LOD0_Merged_Material_Warm",
-              "tris": 540,
+              "tris": 756,
               "materials": [
                 "Material_Warm"
               ]
             },
             {
               "name": "LOD0_Merged_Material_Glass",
-              "tris": 108,
+              "tris": 60,
               "materials": [
                 "Material_Glass"
               ]
             },
             {
               "name": "LOD0_HOOK_DRIVE_FAN",
-              "tris": 240,
+              "tris": 168,
               "materials": [
                 "Material_Mechanical"
               ]
             },
             {
               "name": "LOD0_HOOK_DRIVE_CORE",
-              "tris": 120,
+              "tris": 88,
               "materials": [
                 "Material_Cyan"
               ]
@@ -2258,55 +2258,75 @@
           "lod": "lod1",
           "decimate_ratio": 0.42,
           "mesh_count": 6,
-          "triangles": 760,
+          "triangles": 3116,
           "meshes": [
             {
               "name": "LOD1_Merged_Material_Hull",
-              "tris": 136,
+              "tris": 1616,
               "materials": [
                 "Material_Hull"
               ]
             },
             {
               "name": "LOD1_Merged_Material_Mechanical",
-              "tris": 380,
+              "tris": 1116,
               "materials": [
                 "Material_Mechanical"
               ]
             },
             {
               "name": "LOD1_Merged_Material_Warm",
-              "tris": 90,
+              "tris": 282,
               "materials": [
                 "Material_Warm"
               ]
             },
             {
               "name": "LOD1_Merged_Material_Glass",
-              "tris": 44,
+              "tris": 24,
               "materials": [
                 "Material_Glass"
               ]
             },
             {
               "name": "LOD1_HOOK_DRIVE_FAN",
-              "tris": 74,
+              "tris": 52,
               "materials": [
                 "Material_Mechanical"
               ]
             },
             {
               "name": "LOD1_HOOK_DRIVE_CORE",
-              "tris": 36,
+              "tris": 26,
               "materials": [
                 "Material_Cyan"
               ]
             }
           ],
           "removed_close_only": [
-            "Tug_Shoe_-1",
-            "Tug_Shoe_1",
-            "Tug_CapPlate"
+            "Tug_Bollard_0_P",
+            "Tug_Bollard_0_S",
+            "Tug_Bollard_1_P",
+            "Tug_Bollard_1_S",
+            "Tug_TrussRib_P_0",
+            "Tug_TrussRib_P_1",
+            "Tug_TrussRib_S_0",
+            "Tug_TrussRib_S_1",
+            "Tug_HipKnee_P",
+            "Tug_Nudge_P_0",
+            "Tug_Nudge_P_1",
+            "Tug_HipKnee_S",
+            "Tug_Nudge_S_0",
+            "Tug_Nudge_S_1",
+            "Tug_CapPlate",
+            "Tug_WindowRail_P",
+            "Tug_WindowRail_S",
+            "Tug_Flood_P_mast",
+            "Tug_Flood_P_hood",
+            "Tug_Flood_P_lens",
+            "Tug_Flood_S_mast",
+            "Tug_Flood_S_hood",
+            "Tug_Flood_S_lens"
           ],
           "draw_estimate": 6
         },
@@ -2314,61 +2334,81 @@
           "lod": "lod2",
           "decimate_ratio": 0.18,
           "mesh_count": 6,
-          "triangles": 324,
+          "triangles": 1331,
           "meshes": [
             {
               "name": "LOD2_Merged_Material_Hull",
-              "tris": 58,
+              "tris": 692,
               "materials": [
                 "Material_Hull"
               ]
             },
             {
               "name": "LOD2_Merged_Material_Mechanical",
-              "tris": 162,
+              "tris": 478,
               "materials": [
                 "Material_Mechanical"
               ]
             },
             {
               "name": "LOD2_Merged_Material_Warm",
-              "tris": 38,
+              "tris": 120,
               "materials": [
                 "Material_Warm"
               ]
             },
             {
               "name": "LOD2_Merged_Material_Glass",
-              "tris": 18,
+              "tris": 10,
               "materials": [
                 "Material_Glass"
               ]
             },
             {
               "name": "LOD2_HOOK_DRIVE_FAN",
-              "tris": 32,
+              "tris": 21,
               "materials": [
                 "Material_Mechanical"
               ]
             },
             {
               "name": "LOD2_HOOK_DRIVE_CORE",
-              "tris": 16,
+              "tris": 10,
               "materials": [
                 "Material_Cyan"
               ]
             }
           ],
           "removed_close_only": [
-            "Tug_Shoe_-1",
-            "Tug_Shoe_1",
-            "Tug_CapPlate"
+            "Tug_Bollard_0_P",
+            "Tug_Bollard_0_S",
+            "Tug_Bollard_1_P",
+            "Tug_Bollard_1_S",
+            "Tug_TrussRib_P_0",
+            "Tug_TrussRib_P_1",
+            "Tug_TrussRib_S_0",
+            "Tug_TrussRib_S_1",
+            "Tug_HipKnee_P",
+            "Tug_Nudge_P_0",
+            "Tug_Nudge_P_1",
+            "Tug_HipKnee_S",
+            "Tug_Nudge_S_0",
+            "Tug_Nudge_S_1",
+            "Tug_CapPlate",
+            "Tug_WindowRail_P",
+            "Tug_WindowRail_S",
+            "Tug_Flood_P_mast",
+            "Tug_Flood_P_hood",
+            "Tug_Flood_P_lens",
+            "Tug_Flood_S_mast",
+            "Tug_Flood_S_hood",
+            "Tug_Flood_S_lens"
           ],
           "draw_estimate": 6
         }
       ],
       "glb": {
-        "triangles": 3336,
+        "triangles": 12662,
         "sockets": [
           "SOCKET_Camera_Focus",
           "SOCKET_Engine_Main",
@@ -2378,31 +2418,31 @@
         ],
         "lod0Aabb": {
           "min": [
-            -12,
-            -1.100000023841858,
-            -3.8000001907348633
+            -12.449999809265137,
+            -1.5800000429153442,
+            -3.5401997566223145
           ],
           "max": [
-            12.399999618530273,
-            4.900000095367432,
-            3.8000001907348633
+            13.50999927520752,
+            4.420000076293945,
+            3.5401997566223145
           ]
         },
         "collisionBounds": {
           "min": [
-            -11.223999977111816,
+            -11.94159984588623,
             -2.759999990463257,
-            -3.496000289916992
+            -3.256983757019043
           ],
           "max": [
-            11.223999977111816,
+            11.94159984588623,
             2.759999990463257,
-            3.496000289916992
+            3.256983757019043
           ],
           "size": [
-            22.447999954223633,
+            23.88319969177246,
             5.519999980926514,
-            6.992000579833984
+            6.513967514038086
           ]
         },
         "materials": [
@@ -2413,7 +2453,7 @@
           "Material_Warm"
         ]
       },
-      "buildSeconds": 4.93
+      "buildSeconds": 9.56
     },
     {
       "id": "inspection_cutter",

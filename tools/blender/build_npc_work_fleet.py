@@ -1398,41 +1398,484 @@ def build_scrap_sweeper_parts(coll: bpy.types.Collection, mats: dict[str, bpy.ty
     return parts
 
 
+# ---------------------------------------------------------------------------
+# Yard tug local assembly helpers
+# ---------------------------------------------------------------------------
+# Used ONLY by build_yard_tug_parts. The tug's box kit was rejected on four reads
+# (see assets/ships/npc_work_fleet/YARD_TUG_REAUTHOR.md): stacked pale blocks, a
+# blank winch mast, a flat canopy lid, and patterned black engine boxes — the
+# last because metre-wide flat Material_Mechanical plates turn that material's
+# 40x16px seam grid into a stamped pattern. These helpers supply the two things
+# make_box/make_cylinder cannot express: a continuously lofted plate body, and a
+# drive bell with an actual cavity.
+
+TUG_RING_POINTS = 8
+
+
+def _tug_ring(hb: float, y_top: float, y_bot: float, *, deck: float = 0.62,
+              bilge: float = 0.56, shoulder: float = 0.30,
+              tumble: float = 0.24) -> list[tuple[float, float]]:
+    """One eight-point chamfered plate section, in runtime (z, y).
+
+    Flat deck, chamfered shoulder, a vertical strake band (where the rubbing
+    strake and the drive-pod bearers land), turn of bilge, flat keel plate.
+    """
+    span = max(1e-4, y_top - y_bot)
+    y_shoulder = y_top - span * shoulder
+    y_bilge = y_bot + span * tumble
+    return [
+        (hb * deck, y_top), (hb, y_shoulder), (hb, y_bilge), (hb * bilge, y_bot),
+        (-hb * bilge, y_bot), (-hb, y_bilge), (-hb, y_shoulder), (-hb * deck, y_top),
+    ]
+
+
+def _tug_loft(name: str, stations: list[tuple], mat: bpy.types.Material | None,
+              coll: bpy.types.Collection, *, z_off: float = 0.0, bevel: float = 0.0,
+              close: bool = False, component: str = '') -> bpy.types.Object:
+    """Sweep `_tug_ring` over ordered stations into ONE continuous shell.
+
+    `stations` are `(x, half_beam, y_top, y_bot[, ring_kwargs])` in runtime axes,
+    ordered aft -> forward. Consecutive rings bridge with quads; both ends fan to
+    a centre vertex. Taper, shoulder, waist and machinery flare therefore read as
+    a single manufactured body instead of a stack of primitives — the direct
+    repair for the "stacked LEGO blocks" verdict.
+    """
+    verts: list[tuple[float, float, float]] = []
+    faces: list[tuple[int, ...]] = []
+    rings: list[list[int]] = []
+    for station in stations:
+        x, hb, y_top, y_bot = station[0], station[1], station[2], station[3]
+        ring_kwargs = station[4] if len(station) > 4 else {}
+        ring: list[int] = []
+        for z, y in _tug_ring(hb, y_top, y_bot, **ring_kwargs):
+            ring.append(len(verts))
+            verts.append(L(x, y, z + z_off))
+        rings.append(ring)
+
+    n = TUG_RING_POINTS
+    for aft, fwd in zip(rings, rings[1:]):
+        for i in range(n):
+            j = (i + 1) % n
+            faces.append((aft[i], aft[j], fwd[j], fwd[i]))
+    for ring in (rings[0], rings[-1]):
+        centre = len(verts)
+        verts.append((
+            sum(verts[i][0] for i in ring) / n,
+            sum(verts[i][1] for i in ring) / n,
+            sum(verts[i][2] for i in ring) / n,
+        ))
+        for i in range(n):
+            faces.append((ring[i], ring[(i + 1) % n], centre))
+
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata(verts, [], faces)
+    mesh.validate()
+    mesh.update()
+    obj = bpy.data.objects.new(name, mesh)
+    coll.objects.link(obj)
+    _tug_normals_outward(obj)
+    if bevel > 0:
+        bevel_object(obj, bevel)
+    _assign(obj, mat)
+    if close:
+        obj['sf_close_only'] = True
+    if component:
+        obj['sf_component'] = component
+    return obj
+
+
+def _tug_normals_outward(obj: bpy.types.Object) -> None:
+    """Force consistent outward normals (loft winding is built, not authored)."""
+    ensure_object_mode()
+    deselect_all()
+    obj.select_set(True)
+    bpy.context.view_layer.objects.active = obj
+    try:
+        bpy.ops.object.mode_set(mode='EDIT')
+        bpy.ops.mesh.select_all(action='SELECT')
+        bpy.ops.mesh.normals_make_consistent(inside=False)
+        bpy.ops.object.mode_set(mode='OBJECT')
+    except Exception as exc:
+        log(f'WARN loft normals {obj.name}: {exc}')
+        ensure_object_mode()
+    obj.select_set(False)
+
+
+def _tug_flip_normals(obj: bpy.types.Object) -> None:
+    """Invert an open shell so it reads as an inner wall under backface culling."""
+    ensure_object_mode()
+    deselect_all()
+    obj.select_set(True)
+    bpy.context.view_layer.objects.active = obj
+    try:
+        bpy.ops.object.mode_set(mode='EDIT')
+        bpy.ops.mesh.select_all(action='SELECT')
+        bpy.ops.mesh.flip_normals()
+        bpy.ops.object.mode_set(mode='OBJECT')
+    except Exception as exc:
+        log(f'WARN flip normals {obj.name}: {exc}')
+        ensure_object_mode()
+    obj.select_set(False)
+
+
+def _tug_half_beam(stations: list[tuple], x: float) -> float:
+    """Interpolated half beam of a lofted body at station x."""
+    if x <= stations[0][0]:
+        return stations[0][1]
+    if x >= stations[-1][0]:
+        return stations[-1][1]
+    for aft, fwd in zip(stations, stations[1:]):
+        if aft[0] <= x <= fwd[0]:
+            span = fwd[0] - aft[0]
+            t = 0.0 if span <= 0 else (x - aft[0]) / span
+            return aft[1] + (fwd[1] - aft[1]) * t
+    return stations[-1][1]
+
+
+def _tug_flank_run(parts: list[bpy.types.Object], coll: bpy.types.Collection,
+                   mat: bpy.types.Material, stations: list[tuple], prefix: str,
+                   x0: float, x1: float, y: float, height: float, thickness: float,
+                   *, count: int = 3, bevel: float = 0.0, close: bool = False) -> None:
+    """Segmented strip that follows a lofted flank (rubbing strake / frame seam).
+
+    A straight strip floats off a lofted hull, so each segment sits at the
+    interpolated half beam of its own station and is embedded a quarter of its
+    own thickness.
+    """
+    segment = (x1 - x0) / count
+    for i in range(count):
+        cx = x0 + segment * (i + 0.5)
+        hb = _tug_half_beam(stations, cx)
+        for side in (-1, 1):
+            parts.append(make_box(f'{prefix}_{i}_{side}', (segment * 0.94, height, thickness),
+                                  (cx, y, side * (hb - thickness * 0.25)), mat, coll,
+                                  bevel=bevel, close=close))
+
+
+def _tug_station(stations: list[tuple], x: float, idx: int) -> float:
+    """Interpolated station value at x for any column of a loft table.
+
+    `_tug_half_beam` is this for column 1; deck work needs column 2 (the deck top)
+    as well, and reading it from the same table is what keeps a deck fitting ON the
+    deck instead of floating over the sheer.
+    """
+    if x <= stations[0][0]:
+        return stations[0][idx]
+    if x >= stations[-1][0]:
+        return stations[-1][idx]
+    for aft, fwd in zip(stations, stations[1:]):
+        if aft[0] <= x <= fwd[0]:
+            span = fwd[0] - aft[0]
+            t = 0.0 if span <= 0 else (x - aft[0]) / span
+            return aft[idx] + (fwd[idx] - aft[idx]) * t
+    return stations[-1][idx]
+
+
+def _tug_deck_run(parts: list[bpy.types.Object], coll: bpy.types.Collection,
+                  mat: bpy.types.Material | None, stations: list[tuple], prefix: str,
+                  x0: float, x1: float, *, inset: float, width: float, height: float,
+                  count: int = 6, centreline: bool = False, bevel: float = 0.0,
+                  close: bool = False) -> None:
+    """Segmented fitting that follows the DECK of a lofted body.
+
+    THE VIEW THIS EXISTS FOR. SpaceFace is played from overhead, so the plan is the
+    picture: whatever the deck does is what the player sees of this hull, and the
+    flank strake that breaks the pale mass in a three-quarter still is edge-on and
+    invisible from directly above. Deck fittings are placed at the interpolated deck
+    top and either inboard of the sheer by `inset` (margin work, port and starboard)
+    or on the centreline. Each segment sits slightly proud so it reads as a fitting
+    bolted to the deck rather than a stripe painted on it.
+    """
+    segment = (x1 - x0) / count
+    for i in range(count):
+        cx = x0 + segment * (i + 0.5)
+        deck = _tug_station(stations, cx, 2)
+        if centreline:
+            parts.append(make_box(f'{prefix}_{i}', (segment * 0.92, height, width),
+                                  (cx, deck + height * 0.30, 0.0), mat, coll,
+                                  bevel=bevel, close=close))
+            continue
+        hb = _tug_station(stations, cx, 1)
+        for side in (-1, 1):
+            parts.append(make_box(f'{prefix}_{i}_{side}', (segment * 0.92, height, width),
+                                  (cx, deck + height * 0.30, side * (hb - inset)), mat, coll,
+                                  bevel=bevel, close=close))
+
+
+def _tug_drive_bell(parts: list[bpy.types.Object], coll: bpy.types.Collection,
+                    mats: dict[str, bpy.types.Material], x_mouth: float, y: float, z: float,
+                    *, mouth: float = 0.86, throat: float = 0.44, depth: float = 2.1) -> None:
+    """Hollow drive bell seated in the pod casing: outer cone, inward-facing
+    liner (wall thickness and a real cavity), rolled rim, and the emissive core
+    recessed ~1.9 m up the throat. Never a bright disk on a flat face.
+
+    The `fan`/`core` tags are what build_lod_collection turns into
+    HOOK_DRIVE_FAN / HOOK_DRIVE_CORE, so the declared hooks survive unchanged.
+    """
+    mech = mats['Material_Mechanical']
+    cyan = mats['Material_Cyan']
+    tag = 'S' if z >= 0 else 'P'
+    centre = x_mouth + depth * 0.5
+
+    outer = make_cone(f'Tug_Bell_{tag}', mouth, throat, depth, (centre, y, z), mech, coll,
+                      rot=ROT_ALONG_X, verts=14, fill='NOTHING', component='engine')
+    outer['sf_drive_part'] = 'fan'
+    parts.append(outer)
+
+    liner = make_cone(f'Tug_BellLiner_{tag}', mouth * 0.86, throat * 0.80, depth * 0.94,
+                      (centre + depth * 0.03, y, z), mech, coll,
+                      rot=ROT_ALONG_X, verts=14, fill='NOTHING', component='engine')
+    _tug_flip_normals(liner)
+    liner['sf_drive_part'] = 'fan'
+    parts.append(liner)
+
+    rim = make_cone(f'Tug_BellRim_{tag}', mouth * 1.07, mouth * 0.99, 0.22,
+                    (x_mouth + 0.11, y, z), mech, coll,
+                    rot=ROT_ALONG_X, verts=14, fill='NOTHING', component='engine')
+    rim['sf_drive_part'] = 'fan'
+    parts.append(rim)
+
+    core = make_cylinder(f'Tug_DriveCore_{tag}', throat * 0.78, 0.14,
+                         (x_mouth + depth * 0.92, y, z), cyan, coll,
+                         rot=ROT_ALONG_X, verts=12, component='engine')
+    core['sf_drive_part'] = 'core'
+    parts.append(core)
+
+
 def build_yard_tug_parts(coll: bpy.types.Collection, mats: dict[str, bpy.types.Material]) -> list[bpy.types.Object]:
     """Fiction §6: twenty-six metres of which eleven are engine. Push-cradle,
-    hip nudge-keels, aft winch tower, high bridge looking down the client."""
+    hip nudge-keels, aft winch tower, high bridge looking down the client.
+
+    Re-authored 2026-09-06 against the actual-source rejection renders. The hull
+    is one lofted plate girder that narrows aft into a spine frame; the drive
+    pods are shoulder-seated on it in two housings with the machinery space open
+    between them; the winch is a load path (plinth -> standards -> drum -> aft
+    fairlead) instead of a blank tower; the pilothouse is a raked wraparound
+    wheelhouse with inset glass. Painted plate carries the large forms and dark
+    alloy is confined to sections, cavities and hardware, so no material is asked
+    to cover a metre-wide blank face. Preflight and material bill:
+    assets/ships/npc_work_fleet/YARD_TUG_REAUTHOR.md.
+    """
     H = mats['Material_Hull']
     M = mats['Material_Mechanical']
     W = mats['Material_Warm']
     G = mats['Material_Glass']
     parts: list[bpy.types.Object] = []
 
-    parts.append(make_box('Tug_Spine', (16.5, 1.6, 2.4), (-1.4, 0.4, 0.0), H, coll, bevel=0.12))
-    parts.append(make_box('Tug_Keel', (14.0, 0.8, 1.6), (-1.8, -0.7, 0.0), M, coll, bevel=0.05))
-    parts.append(make_box('Tug_DriveBlockL', (6.4, 3.6, 2.8), (-8.8, 0.7, -2.4), M, coll, bevel=0.12))
-    parts.append(make_box('Tug_DriveBlockR', (6.4, 3.6, 2.8), (-8.8, 0.7, 2.4), M, coll, bevel=0.12))
-    _drive_cluster(parts, coll, mats, -11.8, 0.7, [-2.4, 2.4], 1.05, 'Tug')
+    # --- primary hull: one continuous girder, deep at the hips, narrowing aft
+    # into the spine frame the drive pods shoulder onto -------------------------
+    hull_stations = [
+        (-9.40, 1.28, 1.80, -0.30),
+        (-7.60, 1.42, 1.86, -0.55),
+        (-5.40, 1.62, 1.76, -0.80),
+        (-2.60, 2.30, 1.54, -1.02),
+        (1.00, 2.54, 1.48, -1.06),
+        (4.40, 2.16, 1.44, -0.94),
+        (7.20, 1.74, 1.30, -0.68),
+        (9.60, 1.42, 1.12, -0.34),
+    ]
+    parts.append(_tug_loft('Tug_Hull', hull_stations, H, coll, bevel=0.05))
+    parts.append(_tug_loft('Tug_KeelGirder', [
+        (-7.00, 0.90, -0.50, -0.98),
+        (-3.60, 1.02, -0.82, -1.26),
+        (1.60, 1.02, -0.92, -1.30),
+        (5.60, 0.84, -0.78, -1.06),
+        (8.40, 0.60, -0.40, -0.72),
+    ], H, coll, bevel=0.04))
+    # Dark rubbing strake along the working band: breaks the pale mass with a
+    # real section instead of a texture, and marks where a client hull touches.
+    _tug_flank_run(parts, coll, M, hull_stations, 'Tug_Strake',
+                   -3.20, 6.40, 0.10, 0.36, 0.14, count=3)
 
-    parts.append(make_box('Tug_CradleYoke', (1.2, 2.8, 6.4), (8.4, 0.5, 0.0), M, coll, bevel=0.08))
+    # --- the working deck, which is the view the player actually has -----------
+    # The strake above answers the three-quarter still. It cannot answer the game
+    # camera: overhead, a rubbing strake is a line seen edge-on, and the tug read
+    # as one uninterrupted pale mass in plan. A working deck is not blank, so the
+    # fittings that a tug needs anyway are the ones that break it. All of this is
+    # fabricated structure at section scale, never a wide plate and never paint
+    # standing in for form (YARD_TUG_REAUTHOR.md D4, SKILL.md 5).
+    #
+    # Deck margin: the bulwark plate a crew works behind, port and starboard, in
+    # dark alloy. This is the single strongest plan-view read on the hull, so it
+    # is NOT LOD0-only detail — it must survive into the 95-165 WU traffic band
+    # where the tug is a small shape and the pale mass problem is worst.
+    _tug_deck_run(parts, coll, M, hull_stations, 'Tug_DeckMargin',
+                  -8.40, 9.20, inset=0.20, width=0.16, height=0.26, count=7)
+    # Machinery-space access on the working deck: real hatches with raised coamings,
+    # spaced down the length so the plan reads as a deck with work on it.
+    for i, hx in enumerate((-4.30, -2.10, 0.20, 6.10)):
+        deck_y = _tug_station(hull_stations, hx, 2)
+        parts.append(make_box(f'Tug_HatchCoaming_{i}', (1.16, 0.16, 1.16),
+                              (hx, deck_y + 0.06, 0.0), M, coll, bevel=0.02))
+        parts.append(make_box(f'Tug_HatchLid_{i}', (0.94, 0.10, 0.94),
+                              (hx, deck_y + 0.15, 0.0), H, coll))
+    # The line-handling deck aft: dark working plate under the winch where the wire
+    # is walked, with its own raised margin so it reads as a separate zone in plan.
+    parts.append(make_box('Tug_WinchDeck', (3.60, 0.10, 2.44), (-6.40, 1.72, 0.0), M, coll,
+                          bevel=0.02))
     for side in (-1, 1):
-        parts.append(make_box(f'Tug_CradleArm_{side}', (3.6, 0.55, 0.7), (10.4, 0.35, side * 2.4),
-                              M, coll, bevel=0.05, component='utility'))
-        parts.append(make_box(f'Tug_Pad_{side}', (2.4, 0.85, 0.35), (11.2, 0.35, side * 2.75),
-                              W, coll, bevel=0.06, component='utility'))
-        parts.append(make_box(f'Tug_Nudge_{side}', (3.2, 0.7, 0.55), (1.2, -0.55, side * 2.15),
-                              M, coll, bevel=0.05))
-        parts.append(make_box(f'Tug_Shoe_{side}', (2.4, 0.28, 0.4), (1.2, -0.95, side * 2.35),
-                              W, coll, bevel=0.03, close=True))
+        parts.append(make_box(f'Tug_WinchDeckKerb_{"S" if side > 0 else "P"}',
+                              (3.60, 0.20, 0.14), (-6.40, 1.84, side * 1.22), M, coll))
+    # Walkway from the wheelhouse door aft to the winch head: the route the crew
+    # actually takes, in dark non-skid, on the centreline where the plan sees it.
+    _tug_deck_run(parts, coll, M, hull_stations, 'Tug_Walkway',
+                  -4.90, 2.40, inset=0.0, width=0.62, height=0.07, count=4,
+                  centreline=True)
+    # Amber replaceable wear, read from above: the hip shoes already carry oxidised
+    # service metal on their outboard face, but that face is edge-on overhead. Cap
+    # them so the tug's wear parts are legible from the camera that matters.
+    for side in (-1, 1):
+        tag = 'S' if side > 0 else 'P'
+        parts.append(make_box(f'Tug_HipShoeCap_{tag}', (3.60, 0.09, 0.30),
+                              (0.60, 1.30, side * 2.52), W, coll))
+    # Bollards the tow wire is actually made fast to, flanking the winch deck.
+    for i, bx in enumerate((-5.10, -7.70)):
+        for side in (-1, 1):
+            parts.append(make_cylinder(f'Tug_Bollard_{i}_{"S" if side > 0 else "P"}',
+                                       0.17, 0.44, (bx, 1.96, side * 1.00), M, coll,
+                                       rot=(0.0, 0.0, 0.0), verts=8, close=True))
 
-    parts.append(make_box('Tug_WinchTower', (1.6, 4.2, 1.6), (-5.6, 2.6, 0.0), H, coll, bevel=0.1))
-    parts.append(make_cylinder('Tug_Drum', 0.7, 1.4, (-5.6, 3.6, 0.0), M, coll,
+    # --- drive pods: eleven metres of machinery, seated on the spine ----------
+    for side in (-1, 1):
+        tag = 'S' if side > 0 else 'P'
+        pod_z = side * 2.62
+        parts.append(_tug_loft(f'Tug_PodFwd_{tag}', [
+            (-5.30, 0.80, 1.48, -0.28),
+            (-3.20, 0.72, 1.34, -0.10),
+            (-1.60, 0.42, 0.95, 0.20),
+        ], H, coll, z_off=pod_z, bevel=0.05))
+        parts.append(_tug_loft(f'Tug_PodAft_{tag}', [
+            (-11.60, 0.66, 1.16, -0.02),
+            (-10.60, 0.80, 1.40, -0.24),
+            (-8.40, 0.84, 1.52, -0.32),
+            (-6.30, 0.82, 1.50, -0.30),
+        ], H, coll, z_off=pod_z, bevel=0.05))
+        # Machinery space left open between the two housings: a load-bearing
+        # truss with its ribs proud, not a painted shell hiding the machinery.
+        parts.append(make_box(f'Tug_PodTruss_{tag}', (1.15, 0.95, 0.95),
+                              (-5.80, 0.58, pod_z), M, coll, bevel=0.03, component='engine'))
+        for i, rx in enumerate((-5.46, -6.14)):
+            parts.append(make_box(f'Tug_TrussRib_{tag}_{i}', (0.10, 1.10, 1.06),
+                                  (rx, 0.58, pod_z), M, coll, close=True))
+        # Bearers actually bridge spine flank to pod: the pods are carried, not
+        # parked alongside.
+        for i, bx in enumerate((-6.90, -9.00)):
+            hb = _tug_half_beam(hull_stations, bx)
+            inner = hb - 0.10
+            outer = abs(pod_z) - 0.70
+            parts.append(make_box(f'Tug_Bearer_{tag}_{i}', (0.60, 0.70, outer - inner),
+                                  (bx, 0.62, side * (inner + outer) * 0.5), M, coll, bevel=0.03))
+        parts.append(make_box(f'Tug_Gusset_{tag}', (0.95, 0.62, 0.52),
+                              (-4.30, 0.35, side * 1.92), M, coll))
+        _tug_drive_bell(parts, coll, mats, -12.45, 0.60, pod_z)
+
+    # --- bow push cradle: horns off the shoulders, closed by a girder ---------
+    for side in (-1, 1):
+        tag = 'S' if side > 0 else 'P'
+        parts.append(_tug_loft(f'Tug_Horn_{tag}', [
+            (8.60, 0.46, 0.98, -0.20),
+            (11.20, 0.40, 0.86, -0.12),
+            (12.90, 0.34, 0.74, -0.06),
+        ], H, coll, z_off=side * 2.10, bevel=0.05, component='utility'))
+        # Diagonal brace: cradle load runs back into the keel girder, not into
+        # thin air.
+        parts.append(make_box(f'Tug_Brace_{tag}', (2.50, 0.26, 0.20),
+                              (8.55, 0.00, side * 1.95), M, coll,
+                              rot=(0.0, math.radians(-26.0), 0.0)))
+        # Replaceable rubbing ribs on a dark backing frame — the padded ribs
+        # "scuffed white from a thousand kisses", bolted to something.
+        parts.append(make_box(f'Tug_PadFrame_{tag}', (0.36, 1.05, 0.90),
+                              (13.10, 0.34, side * 2.10), M, coll, bevel=0.03,
+                              component='utility'))
+        for i, pz in enumerate((-0.28, 0.28)):
+            parts.append(make_box(f'Tug_PadRib_{tag}_{i}', (0.30, 0.92, 0.26),
+                                  (13.36, 0.34, side * 2.10 + pz), W, coll, bevel=0.03,
+                                  component='utility'))
+    parts.append(make_box('Tug_BeamWeb', (0.42, 0.86, 5.00), (10.60, 0.40, 0.0), H, coll,
+                          bevel=0.04, component='utility'))
+    parts.append(make_box('Tug_BeamFlangeTop', (0.74, 0.18, 5.00), (10.60, 0.92, 0.0), H, coll,
+                          bevel=0.03, component='utility'))
+    parts.append(make_box('Tug_BeamFlangeBot', (0.74, 0.18, 5.00), (10.60, -0.12, 0.0), H, coll,
+                          bevel=0.03, component='utility'))
+
+    # --- hip nudge-keels: fins grown off the turn of bilge, shod and thrusted --
+    for side in (-1, 1):
+        tag = 'S' if side > 0 else 'P'
+        parts.append(make_box(f'Tug_HipKeel_{tag}', (4.20, 0.82, 0.24),
+                              (1.50, -1.02, side * 2.42), H, coll, bevel=0.04))
+        parts.append(make_box(f'Tug_HipShoe_{tag}', (3.60, 0.20, 0.34),
+                              (1.50, -1.48, side * 2.42), W, coll, bevel=0.03))
+        parts.append(make_box(f'Tug_HipKnee_{tag}', (0.90, 0.50, 0.40),
+                              (2.90, -0.72, side * 2.36), M, coll, close=True))
+        for i, nx in enumerate((0.30, 2.60)):
+            parts.append(make_cylinder(f'Tug_Nudge_{tag}_{i}', 0.20, 0.30,
+                                       (nx, -0.95, side * 2.62), M, coll,
+                                       rot=ROT_ALONG_Y_PORT, verts=10, close=True,
+                                       component='utility'))
+
+    # --- winch: a tow route with bearings, not a blank mast -------------------
+    parts.append(make_box('Tug_WinchPlinth', (2.90, 0.50, 2.30), (-6.40, 1.95, 0.0), H, coll,
+                          bevel=0.06, component='utility'))
+    for side in (-1, 1):
+        tag = 'S' if side > 0 else 'P'
+        parts.append(make_box(f'Tug_WinchStandard_{tag}', (0.60, 1.90, 0.22),
+                              (-6.40, 3.10, side * 1.15), M, coll, bevel=0.03,
+                              component='utility'))
+        parts.append(make_cylinder(f'Tug_DrumFlange_{tag}', 0.82, 0.14,
+                                   (-6.40, 3.60, side * 0.90), M, coll,
+                                   rot=ROT_ALONG_Y_PORT, verts=16, component='utility'))
+        parts.append(make_box(f'Tug_Fairlead_{tag}', (0.50, 1.00, 0.18),
+                              (-9.00, 2.25, side * 0.62), M, coll, bevel=0.02,
+                              component='utility'))
+    parts.append(make_cylinder('Tug_Drum', 0.62, 2.15, (-6.40, 3.60, 0.0), M, coll,
+                               rot=ROT_ALONG_Y_PORT, verts=16, component='utility'))
+    parts.append(make_box('Tug_WinchHead', (0.50, 0.20, 2.70), (-6.40, 4.15, 0.0), M, coll,
+                          bevel=0.02, component='utility'))
+    parts.append(make_box('Tug_Gearbox', (1.00, 0.85, 0.55), (-6.40, 3.35, -1.55), M, coll,
+                          bevel=0.03, component='utility'))
+    parts.append(make_cylinder('Tug_FairleadRoller', 0.28, 1.05, (-9.00, 2.55, 0.0), M, coll,
                                rot=ROT_ALONG_Y_PORT, verts=12, component='utility'))
-    parts.append(make_box('Tug_CapPlate', (0.7, 0.7, 0.08), (-5.6, 4.55, 0.85), W, coll,
-                          bevel=0.02, close=True))
+    parts.append(make_box('Tug_CapPlate', (0.70, 0.50, 0.06), (-6.40, 3.05, 1.28), W, coll,
+                          close=True))
 
-    parts.append(make_box('Tug_Bridge', (3.2, 1.6, 2.8), (2.4, 2.35, 0.0), H, coll, bevel=0.12))
-    parts.append(make_box('Tug_Canopy', (2.2, 0.6, 2.2), (2.8, 3.15, 0.0), G, coll,
-                          bevel=0.12, component='canopy'))
+    # --- pilothouse: raised, raked, wrapped, and looking DOWN the load --------
+    parts.append(make_box('Tug_BridgeTrunk', (2.10, 1.10, 2.30), (3.30, 1.92, 0.0), H, coll,
+                          bevel=0.06))
+    parts.append(_tug_loft('Tug_Pilothouse', [
+        (2.30, 1.30, 3.86, 2.42),
+        (3.05, 1.46, 3.98, 2.40),
+        (4.00, 1.42, 3.90, 2.42),
+        (4.55, 1.16, 3.66, 2.50),
+    ], H, coll, bevel=0.05))
+    parts.append(make_box('Tug_HouseRoof', (2.50, 0.16, 3.05), (3.30, 4.00, 0.0), H, coll,
+                          bevel=0.08))
+    parts.append(make_box('Tug_HouseApron', (0.44, 0.32, 2.05), (4.68, 2.62, 0.0), H, coll,
+                          bevel=0.03))
+    # Brow over the windscreen: the shade that stops the glass reading as a lit
+    # slab, and the strongest silhouette cue that this is a working wheelhouse.
+    parts.append(make_box('Tug_Brow', (0.62, 0.14, 2.25), (5.02, 3.86, 0.0), H, coll,
+                          bevel=0.03, rot=(0.0, math.radians(14.0), 0.0)))
+    parts.append(make_box('Tug_GlassFront', (0.10, 1.15, 1.85), (4.80, 3.16, 0.0), G, coll,
+                          rot=(0.0, math.radians(18.0), 0.0), component='canopy'))
+    for side in (-1, 1):
+        tag = 'S' if side > 0 else 'P'
+        parts.append(make_box(f'Tug_Jamb_{tag}', (0.52, 1.24, 0.12),
+                              (4.80, 3.16, side * 0.98), M, coll,
+                              rot=(0.0, math.radians(18.0), 0.0), component='canopy'))
+        parts.append(make_box(f'Tug_GlassQuarter_{tag}', (0.10, 1.00, 0.86),
+                              (4.42, 3.18, side * 1.16), G, coll,
+                              rot=(0.0, math.radians(16.0), math.radians(-side * 26.0)),
+                              component='canopy'))
+        parts.append(make_box(f'Tug_GlassSide_{tag}', (1.50, 0.86, 0.10),
+                              (3.45, 3.20, side * 1.41), G, coll, component='canopy'))
+        parts.append(make_box(f'Tug_WindowRail_{tag}', (1.70, 0.16, 0.14),
+                              (3.45, 2.66, side * 1.46), M, coll, close=True))
+
+    # Caged cradle floods on the foredeck: hooded fixtures aimed at the client's
+    # hull, at human scale. Lamp lives inside the hood (shared house fixture).
+    for side in (-1, 1):
+        _flood_fixture(parts, coll, mats, (7.90, 0.95, side * 1.75),
+                       f'Tug_Flood_{"S" if side > 0 else "P"}', tilt=math.radians(12.0))
     return parts
 
 
