@@ -81,7 +81,7 @@ import {
   snapshotIndexOf,
 } from './snapshotFence.js';
 import { createPersistentSubmitLanes, SUBMIT_LANE } from './persistentSubmitLanes.js';
-import { shieldBubbleGeometry } from './ships/shipKit.js';
+import { shieldBubbleGeometry, SHIELD_SHELL_GLSL } from './ships/shipKit.js';
 import { projectedWidthPx } from './lod.js';
 import { resolveWebGlRendererFlags } from './presentPath.js';
 import {
@@ -914,11 +914,14 @@ const SHIELD_POOL_VERT = /* glsl */`
   varying vec4 vHit1;
   varying vec4 vHit2;
   varying vec4 vHit3;
+  varying vec3 vObjDir;
   void main() {
     mat4 instanceModel = modelMatrix * instanceMatrix;
     vec4 wp = instanceModel * vec4(position, 1.0);
     vWorldPos = wp.xyz;
     vNormal = normalize(mat3(instanceModel) * normal);
+    // Object space is shared with the per-ship lane: the panel lattice is welded to the hull.
+    vObjDir = normalize(position);
     vInstanceColor = instanceColor;
     vFlash = instanceFlash;
     vBase = instanceBase;
@@ -929,8 +932,12 @@ const SHIELD_POOL_VERT = /* glsl */`
     gl_Position = projectionMatrix * viewMatrix * wp;
   }
 `;
+// Composed from the same shared shell construction as the per-ship material in shipKit.js, so the
+// pooled and fallback shields read as one effect. The pooled lane's only addition is that it has
+// four live contacts to hand the shared response; the fallback hands it none.
 const SHIELD_POOL_FRAG = /* glsl */`
   precision highp float;
+  ${SHIELD_SHELL_GLSL}
   varying vec3 vNormal;
   varying vec3 vWorldPos;
   varying vec3 vInstanceColor;
@@ -940,24 +947,16 @@ const SHIELD_POOL_FRAG = /* glsl */`
   varying vec4 vHit1;
   varying vec4 vHit2;
   varying vec4 vHit3;
-  float contactFlare(vec3 N, vec4 hit) {
-    if (hit.w <= 0.001) return 0.0;
-    vec3 dir = hit.xyz;
-    float len = length(dir);
-    if (len < 1e-4) return 0.0;
-    dir /= len;
-    float lobe = pow(max(0.0, dot(N, dir)), 8.0);
-    return lobe * hit.w;
-  }
+  varying vec3 vObjDir;
   void main() {
     vec3 N = normalize(vNormal);
     vec3 V = normalize(cameraPosition - vWorldPos);
-    float fres = pow(1.0 - max(0.0, dot(N, V)), 2.5);
-    float contact = contactFlare(N, vHit0) + contactFlare(N, vHit1)
-      + contactFlare(N, vHit2) + contactFlare(N, vHit3);
-    float alpha = clamp(vBase * fres + vFlash + contact * 0.85, 0.0, 1.0);
-    vec3 col = mix(vInstanceColor, vec3(1.0), min(1.0, vFlash * 0.7 + contact * 0.55));
-    gl_FragColor = vec4(col, alpha * (0.45 + 0.55 * fres));
+    // Summed before the response clamps it, so overlapping fresh hits saturate one local core
+    // instead of adding up into a filled cap across the shell.
+    vec2 contact = sfShieldContact(N, vHit0) + sfShieldContact(N, vHit1)
+      + sfShieldContact(N, vHit2) + sfShieldContact(N, vHit3);
+    gl_FragColor = sfShieldShellResponse(
+      sfShieldPanels(normalize(vObjDir)), sfShieldRim(N, V), vFlash, vBase, contact, vInstanceColor);
   }
 `;
 

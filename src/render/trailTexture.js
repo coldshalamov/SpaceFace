@@ -106,54 +106,103 @@ export function sampleTrailTexture(u, v, time = 0, opts = {}) {
  * Mirrors RIBBON_TRAIL_FRAG in engineTrailSurfaces.js (braided liquid plasma wake).
  */
 export function sampleLuminousTrailLayers(u, v, pathT, time = 0, opts = {}) {
-  const liquid = sampleTrailTexture(u, v, time, opts);
+  // `u` is the shader's wrapped flow coordinate. Keep the physical history coordinate separate:
+  // the shader's temperature, strand spread, and shedding fields all use pathT, never `along`.
+  const along = fract(Number.isFinite(u) ? u : 0);
   const side = Math.max(-1, Math.min(1, Number.isFinite(v) ? v : 0));
-  const filament = Math.exp(-side * side * 24);
-  const ribbonOffA = 0.22 + 0.12 * Math.sin(u * 11 + time * 2.8);
-  const ribbonOffB = 0.26 + 0.10 * Math.cos(u * 8.5 - time * 2.1);
-  const ribbonA = Math.exp(-((side - ribbonOffA) ** 2) * 32);
-  const ribbonB = Math.exp(-((side + ribbonOffB) ** 2) * 30);
-  const ribbons = ribbonA * 0.62 + ribbonB * 0.55;
-  const sheath = Math.exp(-side * side * 4.2);
-  const arcNoise = valueNoise2D(u * 22 - time * 1.8, side * 5 + 0.6);
-  // smoothstep(0.58, 0.92, arcNoise) with hermite easing for GLSL parity.
-  const arcT = Math.max(0, Math.min(1, (arcNoise - 0.58) / 0.34));
-  const arcsSmooth = arcT * arcT * (3 - 2 * arcT) * Math.exp(-Math.abs(side) * 2.4) * liquid;
-  const fluidNoise = valueNoise2D(u * 9, time * 0.22);
-  const threadNoise = valueNoise2D(u * 17 - time * 0.31, side * 2.4 + 1.7);
-  const brokenSheath = liquid * sheath * (0.42 + 0.58 * fluidNoise)
-    * (0.72 + 0.28 * threadNoise);
   const t = Math.max(0, Math.min(1, Number.isFinite(pathT) ? pathT : 1));
-  // smoothstep(0.38, 1.0, pathT) → shorter jet tail
-  const tailEdge = Math.max(0, Math.min(1, (t - 0.38) / 0.62));
-  const tailEnvelope = 1 - tailEdge * tailEdge * (3 - 2 * tailEdge);
-  // smoothstep(0.0, 0.12, pathT)
-  const headEdge = Math.max(0, Math.min(1, t / 0.12));
-  const headBoost = 1 - headEdge * headEdge * (3 - 2 * headEdge);
+  const liquid = sampleTrailTexture(along, side, time);
+
+  // Longitudinal temperature: the white throat is short-lived while the coloured plasma body
+  // survives farther down the flown path.
+  const throat = Math.exp(-t * 9.5);
+  const plasma = Math.exp(-t * 4.1);
+
+  // Physical-history braided strands: they spread, loosen, and shed independently as the wake
+  // ages. These terms mirror the current RIBBON_TRAIL_FRAG exactly.
+  const spread = 0.52 * Math.pow(t, 0.70);
+  const twist = t * 7.4 - time * 1.9;
+  const strandTight = 1 / (1 + 5.4 * t);
+  const ribbonOffA = 0.22 + 0.12 * Math.sin(along * 11 + time * 2.8)
+    + spread * (0.55 + 0.45 * Math.sin(twist));
+  const ribbonOffB = 0.26 + 0.10 * Math.cos(along * 8.5 - time * 2.1)
+    + spread * (0.52 + 0.45 * Math.sin(twist + 2.09));
+  const ribbonA = Math.exp(-((side - ribbonOffA) ** 2) * 32 * strandTight);
+  const ribbonB = Math.exp(-((side + ribbonOffB) ** 2) * 30 * strandTight);
+  const tear = Math.max(0, Math.min(1, (t - 0.08) / 0.50));
+  const tearSmooth = tear * tear * (3 - 2 * tear);
+  const shedA = valueNoise2D(t * 5.9 + 3.1, time * 0.17);
+  const shedB = valueNoise2D(t * 7.3 - 1.7, time * 0.13 + 4.6);
+  const shedC = valueNoise2D(t * 4.3 + 8.8, time * 0.09 + 1.2);
+  const smooth = (edge0, edge1, value) => {
+    const edgeT = Math.max(0, Math.min(1, (value - edge0) / (edge1 - edge0)));
+    return edgeT * edgeT * (3 - 2 * edgeT);
+  };
+  const liveA = (1 + (smooth(0.20, 0.74, shedA) - 1) * tearSmooth)
+    * (1 - smooth(0.42, 0.94, t));
+  const liveB = (1 + (smooth(0.24, 0.78, shedB) - 1) * tearSmooth)
+    * (1 - smooth(0.34, 0.86, t));
+  const ribbons = ribbonA * 0.62 * liveA + ribbonB * 0.55 * liveB;
+
+  const coreShape = Math.exp(-side * side * (24 + 62 * throat));
+  const filament = coreShape * (0.16 + 0.84 * plasma);
+  const sheath = Math.exp(-side * side * (4.2 + 7.5 * t));
+  const arcNoise = valueNoise2D(along * 22 - time * 1.8, side * 5 + 0.6);
+  const arcs = smooth(0.58, 0.92, arcNoise) * Math.exp(-Math.abs(side) * 2.4) * liquid
+    * (0.22 + 1.05 * plasma);
+  const tailEnvelope = 1 - smooth(0.30, 0.88, t);
+  const headBoost = 1 - smooth(0.0, 0.12, t);
+  const fluidNoise = valueNoise2D(along * 9, time * 0.22);
+  const threadNoise = valueNoise2D(along * 17 - time * 0.31, side * 2.4 + 1.7);
+  const sheathLive = 1 + (smooth(0.14, 0.66, shedC) - 1) * tearSmooth;
+  const brokenSheath = liquid * sheath * (0.42 + 0.58 * fluidNoise)
+    * (0.72 + 0.28 * threadNoise) * sheathLive;
   const opacity = Number.isFinite(opts.opacity) ? Math.max(0, Math.min(1, opts.opacity)) : 1;
   const radianceScale = Number.isFinite(opts.radiance)
     ? Math.max(0, Math.min(3.2, opts.radiance))
     : 1;
   const sheathNoise = fluidNoise;
   const hotMix = Math.max(0, Math.min(1,
-    filament * 0.78 + ribbons * 0.22 + headBoost * 0.20 + arcsSmooth * 0.18));
+    coreShape * throat * 1.15 + headBoost * 0.26 + arcs * 0.20));
+  const thermal = 0.26 + 0.78 * plasma + 0.22 * throat;
   return {
+    along,
+    pathT: t,
     liquid,
+    throat,
+    plasma,
+    spread,
+    twist,
+    strandTight,
+    ribbonOffA,
+    ribbonOffB,
+    ribbonA,
+    ribbonB,
+    tear: tearSmooth,
+    shedA,
+    shedB,
+    shedC,
+    liveA,
+    liveB,
+    coreShape,
     filament,
     sheath,
     ribbons,
-    arcs: arcsSmooth,
+    arcs,
     sheathNoise,
+    sheathLive,
     brokenSheath,
     tailEnvelope,
     headBoost,
     opacity,
     radianceScale,
     alpha: Math.min(1, opacity * tailEnvelope
-      * (filament * 0.88 + ribbons * 0.72 + brokenSheath * 0.48 + sheath * 0.10 + arcsSmooth * 0.55)
+      * (filament * 0.88 + ribbons * 0.72 + brokenSheath * 0.48 + sheath * 0.10 + arcs * 0.55)
       * (0.86 + headBoost * 0.28)),
     radiance: radianceScale
-      * (0.72 + liquid * 0.78 + filament * 0.48 + ribbons * 0.28 + headBoost * 0.20 + arcsSmooth * 0.22),
+      * thermal
+      * (0.72 + liquid * 0.78 + filament * 0.48 + ribbons * 0.28 + headBoost * 0.20 + arcs * 0.22),
+    thermal,
     hotMix,
   };
 }

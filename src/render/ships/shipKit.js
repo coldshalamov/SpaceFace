@@ -368,30 +368,145 @@ export function addSocket(parent, name, position, role, forward = [1, 0, 0]) {
 // GR-5: persistent 3D shield bubble. Shared geometry + per-instance shader material so each ship
 // carries its own fresnel flash state. The renderer toggles visibility from e.shield and punches
 // uFlash on combat:damage.
+
+/**
+ * Shared shell construction for BOTH shield lanes: the per-ship fallback material below and the
+ * pooled instanced material in `renderer.js` compose their fragment from these pure functions, so
+ * the two cannot drift into different-looking shields.
+ *
+ * The shell is a segmented energetic membrane, not a translucent marble. Its light lives on the
+ * panel walls, on the grazing limb, and wherever a contact is actually landing — never as a flat
+ * alpha over the silhouette, which is what filled the hull with an opaque pastel disc on every hit.
+ */
+export const SHIELD_SHELL_GLSL = /* glsl */`
+  // The twelve five-fold axes of the shell's own IcosahedronGeometry, as six +/- pairs. Reading the
+  // lattice from OBJECT space is what gives the shield real structure: the panels are welded to the
+  // hull, so they neither swim as the camera orbits nor counter-rotate as the ship turns.
+  const vec3 SF_SHIELD_AXIS_A = vec3(0.0, 0.52573111, 0.85065081);
+  const vec3 SF_SHIELD_AXIS_B = vec3(0.0, 0.52573111, -0.85065081);
+  const vec3 SF_SHIELD_AXIS_C = vec3(0.52573111, 0.85065081, 0.0);
+  const vec3 SF_SHIELD_AXIS_D = vec3(-0.52573111, 0.85065081, 0.0);
+  const vec3 SF_SHIELD_AXIS_E = vec3(0.85065081, 0.0, 0.52573111);
+  const vec3 SF_SHIELD_AXIS_F = vec3(0.85065081, 0.0, -0.52573111);
+  // cos(31.717 deg) — a vertex-cell's angular radius at the wall, so the inward coordinate spans 0..1.
+  const float SF_SHIELD_WALL_COS = 0.85065081;
+
+  void sfShieldAxis(vec3 dir, vec3 axis, float id, inout float best, inout float second, inout float bestId) {
+    float d = dot(dir, axis);
+    float m = abs(d);
+    if (m > best) {
+      second = best;
+      best = m;
+      bestId = d < 0.0 ? id + 6.0 : id;
+    } else if (m > second) {
+      second = m;
+    }
+  }
+
+  // Spherical Voronoi of those twelve axes is the dodecahedral panel set: twelve pentagons whose
+  // walls are great-circle arcs, plus one concentric rib inside each panel.
+  // Returns (wall proximity, panel identity, distance inward from the wall).
+  vec3 sfShieldPanels(vec3 dir) {
+    float best = -1.0;
+    float second = -1.0;
+    float bestId = 0.0;
+    sfShieldAxis(dir, SF_SHIELD_AXIS_A, 0.0, best, second, bestId);
+    sfShieldAxis(dir, SF_SHIELD_AXIS_B, 1.0, best, second, bestId);
+    sfShieldAxis(dir, SF_SHIELD_AXIS_C, 2.0, best, second, bestId);
+    sfShieldAxis(dir, SF_SHIELD_AXIS_D, 3.0, best, second, bestId);
+    sfShieldAxis(dir, SF_SHIELD_AXIS_E, 4.0, best, second, bestId);
+    sfShieldAxis(dir, SF_SHIELD_AXIS_F, 5.0, best, second, bestId);
+    float gap = best - second;
+    float wall = 1.0 - smoothstep(0.0, 0.055, gap);
+    float rib = 1.0 - smoothstep(0.0, 0.030, abs(gap - 0.135));
+    // A low-discrepancy per-panel constant, not a noise lookup: it only orders the panels.
+    float cell = fract(bestId * 0.6180339887);
+    float inward = clamp((best - SF_SHIELD_WALL_COS) * 6.71, 0.0, 1.0);
+    return vec3(clamp(wall + rib * 0.45, 0.0, 1.0), cell, inward);
+  }
+
+  float sfShieldRim(vec3 N, vec3 V) {
+    float f = 1.0 - max(0.0, dot(N, V));
+    return f * f * f;
+  }
+
+  // A hit is a LOCAL event. hit.w is the contact's own strength, aged linearly to zero by
+  // shieldContacts.js, so it doubles as the ripple's envelope: the bite is tight and incandescent
+  // while the contact is fresh, and the ring it throws off widens and thins as that strength
+  // drains. No extra channel is needed, so the four-slot payload stays exactly as it is.
+  // Returns (incandescent core, expanding ring).
+  vec2 sfShieldContact(vec3 N, vec4 hit) {
+    if (hit.w <= 0.001) return vec2(0.0);
+    vec3 dir = hit.xyz;
+    float len = length(dir);
+    if (len < 1e-4) return vec2(0.0);
+    dir /= len;
+    // 0 at the impact point, 2 at the far side; a chord measure, so no inverse trig on the hot path.
+    float d = 1.0 - clamp(dot(N, dir), -1.0, 1.0);
+    float w = clamp(hit.w, 0.0, 1.0);
+    float age = 1.0 - w;
+    float ringR = 0.035 + age * 0.62;
+    float ringW = 0.030 + age * 0.085;
+    float s = (d - ringR) / ringW;
+    float ring = exp(-s * s) * w * (0.35 + 0.65 * w);
+    float core = exp(-d / (0.016 + age * 0.020)) * w * w;
+    return vec2(core, ring);
+  }
+
+  // One response for both lanes. The pooled instance passes its four accumulated contacts; the
+  // per-ship fallback passes none. Every term is thin — a grazing limb, the panel walls, and
+  // whatever a local impact is doing — so a fragment in the middle of a panel is fully transparent
+  // and the hull reads straight through the bubble.
+  vec4 sfShieldShellResponse(vec3 lattice, float rim, float flash, float base, vec2 contact, vec3 tint) {
+    float seam = lattice.x;
+    float cell = lattice.y;
+    float inward = lattice.z;
+
+    // Absorbed charge does not light every panel at once: each panel has its own place in the
+    // sequence, so the lattice energises as a scatter across the shell and drains the same way.
+    float panelCharge = clamp(flash * 1.35 - cell * 0.35, 0.0, 1.0);
+
+    float wall = seam * (0.22 + 0.78 * panelCharge);
+    float shoulder = pow(1.0 - inward, 2.4) * panelCharge * 0.30;
+    float core = clamp(contact.x, 0.0, 1.4);
+    float ring = clamp(contact.y, 0.0, 1.4);
+    float limb = rim * (base * 6.2 + 0.30 * flash);
+
+    float alpha = clamp(limb + wall * 0.62 + shoulder + ring * 0.55 + core * 0.85, 0.0, 1.0);
+    float heat = clamp(core * 1.25 + ring * 0.45 + seam * panelCharge * 0.55 + flash * 0.22, 0.0, 1.0);
+    vec3 col = mix(tint, vec3(1.0), heat);
+    // Deliberate bloom headroom: an impact core leaves this shader well above 1.0.
+    vec3 rgb = col * (0.85 + 0.65 * seam * panelCharge + 1.35 * core + 0.45 * ring + 0.35 * rim);
+    return vec4(rgb, alpha);
+  }
+`;
+
 const SHIELD_VERT = /* glsl */`
   varying vec3 vNormal;
   varying vec3 vWorldPos;
+  varying vec3 vObjDir;
   void main() {
     vec4 wp = modelMatrix * vec4(position, 1.0);
     vWorldPos = wp.xyz;
     vNormal = normalize(mat3(modelMatrix) * normal);
+    vObjDir = normalize(position);
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
   }
 `;
 const SHIELD_FRAG = /* glsl */`
   precision highp float;
+  ${SHIELD_SHELL_GLSL}
   varying vec3 vNormal;
   varying vec3 vWorldPos;
+  varying vec3 vObjDir;
   uniform vec3  uColor;
   uniform float uFlash;
   uniform float uBase;
   void main() {
     vec3 N = normalize(vNormal);
     vec3 V = normalize(cameraPosition - vWorldPos);
-    float fres = pow(1.0 - max(0.0, dot(N, V)), 3.2);
-    float alpha = clamp(uBase * fres + uFlash, 0.0, 1.0);
-    vec3 col = mix(uColor, vec3(1.0), uFlash * 0.7);
-    gl_FragColor = vec4(col, alpha * (0.08 + 0.92 * fres));
+    gl_FragColor = sfShieldShellResponse(
+      sfShieldPanels(normalize(vObjDir)), sfShieldRim(N, V), uFlash, uBase, vec2(0.0), uColor);
   }
 `;
 let _shieldGeo = null;

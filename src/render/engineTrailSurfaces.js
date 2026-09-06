@@ -23,6 +23,14 @@ const TRAIL_OPACITY = 2;
  */
 export const RIBBON_TRAIL_INTERPOLATION_CAP = 32;
 
+// Both streak lanes share the same radiance curve: lower the floor from 0.65 to 0.28 while
+// retaining the 1.20 peak. The quadratic term concentrates brightness in the procedural core.
+const TRAIL_STREAK_RADIANCE_GLSL = /* glsl */`
+  float trailStreakRadiance(float streak) {
+    return 0.28 + streak * 0.72 + streak * streak * 0.20;
+  }
+`;
+
 const RIBBON_TRAIL_VERT = /* glsl */`
   attribute vec2 aTrailUv;
   varying vec2 vTrailUv;
@@ -48,34 +56,86 @@ const RIBBON_TRAIL_FRAG = /* glsl */`
     float along = fract(pathT * 3.15 - uTrailScroll * 1.55);
     float side = vTrailUv.y * 2.0 - 1.0;
     float liquid = trailSampleProcedural(along, side, uTrailTime);
-    // Hot core filament + forked side ribbons (liquid/electric edges, not a solid tube).
-    float filament = exp(-side * side * 24.0);
-    float ribbonOffA = 0.22 + 0.12 * sin(along * 11.0 + uTrailTime * 2.8);
-    float ribbonOffB = 0.26 + 0.10 * cos(along * 8.5 - uTrailTime * 2.1);
-    float ribbonA = exp(-pow(side - ribbonOffA, 2.0) * 32.0);
-    float ribbonB = exp(-pow(side + ribbonOffB, 2.0) * 30.0);
-    float ribbons = ribbonA * 0.62 + ribbonB * 0.55;
-    // Soft sheath kept dim so the body does not fill into a solid cable.
-    float sheath = exp(-side * side * 4.2);
-    // Electric crackle along the fluid edges (reference: braided plasma arcs).
+
+    // Longitudinal temperature. Exhaust cools with distance flown, so every heat term is a function
+    // of the PHYSICAL history coordinate. The white-hot band is a throat feature and is starved
+    // within a nozzle length or two; the coloured plasma body outlives it; the spent wake carries
+    // neither. Previously the hot term had no history coordinate at all, so the incandescent core
+    // ran the entire ribbon and the trail read as one screen-length white bar.
+    float throat = exp(-pathT * 9.5);
+    float plasma = exp(-pathT * 4.1);
+
+    // Braided strands. The offsets sweep with physical distance so the two forks cross over one
+    // another down-path instead of running as parallel rails, and they walk apart and broaden as
+    // the jet expands into vacuum — bright along the folds, dark between them.
+    float spread = 0.52 * pow(pathT, 0.70);
+    float twist = pathT * 7.4 - uTrailTime * 1.9;
+    float strandTight = 1.0 / (1.0 + 5.4 * pathT);
+    float ribbonOffA = 0.22 + 0.12 * sin(along * 11.0 + uTrailTime * 2.8)
+      + spread * (0.55 + 0.45 * sin(twist));
+    float ribbonOffB = 0.26 + 0.10 * cos(along * 8.5 - uTrailTime * 2.1)
+      + spread * (0.52 + 0.45 * sin(twist + 2.09));
+    // Squared explicitly: pow() with a negative base is undefined in GLSL, and both offsets are
+    // routinely crossed by the side coordinate.
+    float dA = side - ribbonOffA;
+    float dB = side + ribbonOffB;
+    float ribbonA = exp(-dA * dA * 32.0 * strandTight);
+    float ribbonB = exp(-dB * dB * 30.0 * strandTight);
+
+    // Each strand runs out of material at its own distance and tears into its own clumps, so the
+    // wake ends where several elements happen to expire rather than at a plane. The fields are
+    // keyed to the physical coordinate and a slow clock, never to the flow coordinate: that one
+    // wraps three times down the trail and scrolls with the animation, so a cut keyed to it would
+    // repeat and slide through the wake instead of ageing with it.
+    float tear = smoothstep(0.08, 0.58, pathT);
+    float shedA = trailValueNoise(vec2(pathT * 5.9 + 3.1, uTrailTime * 0.17));
+    float shedB = trailValueNoise(vec2(pathT * 7.3 - 1.7, uTrailTime * 0.13 + 4.6));
+    float shedC = trailValueNoise(vec2(pathT * 4.3 + 8.8, uTrailTime * 0.09 + 1.2));
+    float liveA = mix(1.0, smoothstep(0.20, 0.74, shedA), tear)
+      * (1.0 - smoothstep(0.42, 0.94, pathT));
+    float liveB = mix(1.0, smoothstep(0.24, 0.78, shedB), tear)
+      * (1.0 - smoothstep(0.34, 0.86, pathT));
+    float ribbons = ribbonA * 0.62 * liveA + ribbonB * 0.55 * liveB;
+
+    // The white-hot filament is the choked throat: tightest and brightest at the nozzle, cooling
+    // fast along the flown path.
+    float coreShape = exp(-side * side * (24.0 + 62.0 * throat));
+    float filament = coreShape * (0.16 + 0.84 * plasma);
+    // Sheath: the emission envelope closes down as the gas dilutes, so the lit body narrows to a
+    // point even while the strands themselves spread.
+    float sheath = exp(-side * side * (4.2 + 7.5 * pathT));
+    // Electric crackle along the fluid edges (reference: braided plasma arcs), concentrated where
+    // the flow is still ionised.
     float arcNoise = trailValueNoise(vec2(along * 22.0 - uTrailTime * 1.8, side * 5.0 + 0.6));
-    float arcs = smoothstep(0.58, 0.92, arcNoise) * exp(-abs(side) * 2.4) * liquid;
-    // Shorter physical wake: energy fades earlier so the trail is a jet, not a long tube.
-    float tailEnvelope = 1.0 - smoothstep(0.38, 1.0, pathT);
+    float arcs = smoothstep(0.58, 0.92, arcNoise) * exp(-abs(side) * 2.4) * liquid
+      * (0.22 + 1.05 * plasma);
+    // Shorter physical wake: energy fades earlier so the trail is a jet, not a long tube, and the
+    // last of it is gone before the mesh runs out.
+    float tailEnvelope = 1.0 - smoothstep(0.30, 0.88, pathT);
     float headBoost = 1.0 - smoothstep(0.0, 0.12, pathT);
     float fluidNoise = trailValueNoise(vec2(along * 9.0, uTrailTime * 0.22));
     float threadNoise = trailValueNoise(vec2(along * 17.0 - uTrailTime * 0.31, side * 2.4 + 1.7));
+    float sheathLive = mix(1.0, smoothstep(0.14, 0.66, shedC), tear);
     float brokenSheath = liquid * sheath * (0.42 + 0.58 * fluidNoise)
-      * (0.72 + 0.28 * threadNoise);
+      * (0.72 + 0.28 * threadNoise) * sheathLive;
     float alpha = min(1.0, uOpacity * tailEnvelope
       * (filament * 0.88 + ribbons * 0.72 + brokenSheath * 0.48 + sheath * 0.10 + arcs * 0.55)
       * (0.86 + headBoost * 0.28));
     if (alpha < 0.006) discard;
+
+    // Three thermal bands, the outer two leaning on the ship's own trail colour so per-hull
+    // identity survives the ramp: an incandescent throat, a saturated plasma body, a deep spent
+    // wake. Only the throat term can reach white.
     vec3 whiteHot = vec3(1.0, 0.988, 0.94);
-    vec3 coolSheath = mix(uColor, vec3(0.45, 0.82, 1.0), 0.36);
-    float hotMix = clamp(filament * 0.78 + ribbons * 0.22 + headBoost * 0.20 + arcs * 0.18, 0.0, 1.0);
-    vec3 radiance = mix(coolSheath, whiteHot, hotMix)
-      * uRadiance * (0.72 + liquid * 0.78 + filament * 0.48 + ribbons * 0.28 + headBoost * 0.20 + arcs * 0.22);
+    vec3 hotPlasma = mix(uColor, vec3(0.62, 0.90, 1.0), 0.42);
+    vec3 coldWake = mix(uColor * 0.44, vec3(0.17, 0.23, 0.60), 0.52);
+    vec3 body = mix(coldWake, hotPlasma, clamp(plasma * 1.25, 0.0, 1.0));
+    float hotMix = clamp(coreShape * throat * 1.15 + headBoost * 0.26 + arcs * 0.20, 0.0, 1.0);
+    // Radiance hierarchy rather than a blanket dim: hotter than before at the throat, far colder
+    // down the wake, which holds its energy as saturated colour and structure instead of white fill.
+    float thermal = 0.26 + 0.78 * plasma + 0.22 * throat;
+    vec3 radiance = mix(body, whiteHot, hotMix) * uRadiance * thermal
+      * (0.72 + liquid * 0.78 + filament * 0.48 + ribbons * 0.28 + headBoost * 0.20 + arcs * 0.22);
     gl_FragColor = vec4(radiance, alpha);
   }
 `;
@@ -109,6 +169,7 @@ const TRAIL_STREAK_VERT = /* glsl */`
 const TRAIL_STREAK_FRAG = /* glsl */`
   precision mediump float;
   ${TRAIL_GLSL_LIB}
+  ${TRAIL_STREAK_RADIANCE_GLSL}
   uniform float uTrailScroll;
   uniform float uTrailTime;
   uniform vec3 uColor;
@@ -119,7 +180,7 @@ const TRAIL_STREAK_FRAG = /* glsl */`
     float side = vTrailUv.x * 2.0 - 1.0;
     float streak = trailSampleProcedural(along, side, uTrailTime);
     if (streak < 0.008) discard;
-    gl_FragColor = vec4(uColor * (0.65 + streak * 0.55), uOpacity * streak);
+    gl_FragColor = vec4(uColor * trailStreakRadiance(streak), uOpacity * streak);
   }
 `;
 
@@ -140,6 +201,7 @@ const INSTANCED_TRAIL_STREAK_VERT = /* glsl */`
 const INSTANCED_TRAIL_STREAK_FRAG = /* glsl */`
   precision mediump float;
   ${TRAIL_GLSL_LIB}
+  ${TRAIL_STREAK_RADIANCE_GLSL}
   uniform float uTrailScroll;
   uniform float uTrailTime;
   varying vec2 vTrailUv;
@@ -150,7 +212,7 @@ const INSTANCED_TRAIL_STREAK_FRAG = /* glsl */`
     float side = vTrailUv.x * 2.0 - 1.0;
     float streak = trailSampleProcedural(along, side, uTrailTime);
     if (streak < 0.008) discard;
-    gl_FragColor = vec4(vTrailColor * (0.65 + streak * 0.55), vTrailOpacity * streak);
+    gl_FragColor = vec4(vTrailColor * trailStreakRadiance(streak), vTrailOpacity * streak);
   }
 `;
 

@@ -29,6 +29,10 @@ const log = [];
 const refFract = (value) => value - Math.floor(value);
 const refClamp01 = (value) => Math.max(0, Math.min(1, value));
 const refMix = (a, b, t) => a + (b - a) * t;
+const refSmoothstep = (edge0, edge1, value) => {
+  const t = refClamp01((value - edge0) / (edge1 - edge0));
+  return t * t * (3 - 2 * t);
+};
 function directGlslHash21(x, y) {
   let px = refFract(x * 123.34);
   let py = refFract(y * 456.21);
@@ -76,28 +80,69 @@ function directGlslTrailSample(u, v, time) {
   return refClamp01(cross * (0.30 + streak * 0.82) * (0.64 + breakup * 0.58) * taper);
 }
 function directGlslLuminousLayers(u, side, pathT, time, opacity, radianceScale) {
-  const liquid = directGlslTrailSample(u, side, time);
-  const filament = Math.exp(-side * side * 24);
-  const ribbonOffA = 0.22 + 0.12 * Math.sin(u * 11 + time * 2.8);
-  const ribbonOffB = 0.26 + 0.10 * Math.cos(u * 8.5 - time * 2.1);
-  const ribbonA = Math.exp(-((side - ribbonOffA) ** 2) * 32);
-  const ribbonB = Math.exp(-((side + ribbonOffB) ** 2) * 30);
-  const ribbons = ribbonA * 0.62 + ribbonB * 0.55;
-  const sheath = Math.exp(-side * side * 4.2);
-  const arcNoise = directGlslValueNoise(u * 22 - time * 1.8, side * 5 + 0.6);
-  const arcT = refClamp01((arcNoise - 0.58) / 0.34);
-  const arcs = arcT * arcT * (3 - 2 * arcT) * Math.exp(-Math.abs(side) * 2.4) * liquid;
-  const t = refClamp01(pathT);
-  const tailProgress = refClamp01((t - 0.38) / (1 - 0.38));
-  const tailEnvelope = 1 - tailProgress * tailProgress * (3 - 2 * tailProgress);
-  const headProgress = refClamp01(t / 0.12);
-  const headBoost = 1 - headProgress * headProgress * (3 - 2 * headProgress);
-  const fluidNoise = directGlslValueNoise(u * 9, time * 0.22);
-  const threadNoise = directGlslValueNoise(u * 17 - time * 0.31, side * 2.4 + 1.7);
+  const along = refFract(Number.isFinite(u) ? u : 0);
+  const safeSide = Number.isFinite(side) ? Math.max(-1, Math.min(1, side)) : 0;
+  const t = Number.isFinite(pathT) ? refClamp01(pathT) : 1;
+  const safeOpacity = Number.isFinite(opacity) ? refClamp01(opacity) : 1;
+  const safeRadianceScale = Number.isFinite(radianceScale)
+    ? Math.max(0, Math.min(3.2, radianceScale))
+    : 1;
+  const liquid = directGlslTrailSample(along, safeSide, time);
+  const throat = Math.exp(-t * 9.5);
+  const plasma = Math.exp(-t * 4.1);
+  const spread = 0.52 * Math.pow(t, 0.70);
+  const twist = t * 7.4 - time * 1.9;
+  const strandTight = 1 / (1 + 5.4 * t);
+  const ribbonOffA = 0.22 + 0.12 * Math.sin(along * 11 + time * 2.8)
+    + spread * (0.55 + 0.45 * Math.sin(twist));
+  const ribbonOffB = 0.26 + 0.10 * Math.cos(along * 8.5 - time * 2.1)
+    + spread * (0.52 + 0.45 * Math.sin(twist + 2.09));
+  const ribbonA = Math.exp(-((safeSide - ribbonOffA) ** 2) * 32 * strandTight);
+  const ribbonB = Math.exp(-((safeSide + ribbonOffB) ** 2) * 30 * strandTight);
+  const tear = refSmoothstep(0.08, 0.58, t);
+  const shedA = directGlslValueNoise(t * 5.9 + 3.1, time * 0.17);
+  const shedB = directGlslValueNoise(t * 7.3 - 1.7, time * 0.13 + 4.6);
+  const shedC = directGlslValueNoise(t * 4.3 + 8.8, time * 0.09 + 1.2);
+  const liveA = refMix(1, refSmoothstep(0.20, 0.74, shedA), tear)
+    * (1 - refSmoothstep(0.42, 0.94, t));
+  const liveB = refMix(1, refSmoothstep(0.24, 0.78, shedB), tear)
+    * (1 - refSmoothstep(0.34, 0.86, t));
+  const ribbons = ribbonA * 0.62 * liveA + ribbonB * 0.55 * liveB;
+  const coreShape = Math.exp(-safeSide * safeSide * (24 + 62 * throat));
+  const filament = coreShape * (0.16 + 0.84 * plasma);
+  const sheath = Math.exp(-safeSide * safeSide * (4.2 + 7.5 * t));
+  const arcNoise = directGlslValueNoise(along * 22 - time * 1.8, safeSide * 5 + 0.6);
+  const arcs = refSmoothstep(0.58, 0.92, arcNoise) * Math.exp(-Math.abs(safeSide) * 2.4) * liquid
+    * (0.22 + 1.05 * plasma);
+  const tailEnvelope = 1 - refSmoothstep(0.30, 0.88, t);
+  const headBoost = 1 - refSmoothstep(0.0, 0.12, t);
+  const fluidNoise = directGlslValueNoise(along * 9, time * 0.22);
+  const threadNoise = directGlslValueNoise(along * 17 - time * 0.31, safeSide * 2.4 + 1.7);
+  const sheathLive = refMix(1, refSmoothstep(0.14, 0.66, shedC), tear);
   const brokenSheath = liquid * sheath * (0.42 + 0.58 * fluidNoise)
-    * (0.72 + 0.28 * threadNoise);
+    * (0.72 + 0.28 * threadNoise) * sheathLive;
+  const hotMix = refClamp01(coreShape * throat * 1.15 + headBoost * 0.26 + arcs * 0.20);
+  const thermal = 0.26 + 0.78 * plasma + 0.22 * throat;
   return {
+    along,
+    pathT: t,
     liquid,
+    throat,
+    plasma,
+    spread,
+    twist,
+    strandTight,
+    ribbonOffA,
+    ribbonOffB,
+    ribbonA,
+    ribbonB,
+    tear,
+    shedA,
+    shedB,
+    shedC,
+    liveA,
+    liveB,
+    coreShape,
     filament,
     sheath,
     ribbons,
@@ -105,12 +150,18 @@ function directGlslLuminousLayers(u, side, pathT, time, opacity, radianceScale) 
     tailEnvelope,
     headBoost,
     sheathNoise: fluidNoise,
+    sheathLive,
     brokenSheath,
-    alpha: Math.min(1, opacity * tailEnvelope
+    opacity: safeOpacity,
+    radianceScale: safeRadianceScale,
+    alpha: Math.min(1, safeOpacity * tailEnvelope
       * (filament * 0.88 + ribbons * 0.72 + brokenSheath * 0.48 + sheath * 0.10 + arcs * 0.55)
       * (0.86 + headBoost * 0.28)),
-    radiance: radianceScale
+    radiance: safeRadianceScale
+      * thermal
       * (0.72 + liquid * 0.78 + filament * 0.48 + ribbons * 0.28 + headBoost * 0.20 + arcs * 0.22),
+    thermal,
+    hotMix,
   };
 }
 
@@ -140,8 +191,11 @@ function directGlslLuminousLayers(u, side, pathT, time, opacity, radianceScale) 
       sample.opacity,
       sample.radiance,
     );
-    for (const key of ['liquid', 'filament', 'sheath', 'ribbons', 'arcs', 'tailEnvelope', 'headBoost',
-      'sheathNoise', 'brokenSheath', 'alpha', 'radiance']) {
+    for (const key of ['along', 'pathT', 'liquid', 'throat', 'plasma', 'spread', 'twist', 'strandTight',
+      'ribbonOffA', 'ribbonOffB', 'ribbonA', 'ribbonB', 'tear', 'shedA', 'shedB', 'shedC', 'liveA',
+      'liveB', 'coreShape', 'filament', 'sheath', 'ribbons', 'arcs', 'sheathNoise', 'sheathLive',
+      'brokenSheath', 'tailEnvelope', 'headBoost', 'opacity', 'radianceScale', 'alpha', 'radiance',
+      'thermal', 'hotMix']) {
       const delta = Math.abs(cpu[key] - ref[key]);
       maxDelta = Math.max(maxDelta, delta);
       assert.ok(delta < 1e-10,
@@ -184,6 +238,7 @@ function directGlslLuminousLayers(u, side, pathT, time, opacity, radianceScale) 
       + core.sheath * 0.10 + core.arcs * 0.55)
     * (0.86 + core.headBoost * 0.28));
   const expectedRadiance = liveUniforms.radiance
+    * core.thermal
     * (0.72 + core.liquid * 0.78 + core.filament * 0.48 + core.ribbons * 0.28
       + core.headBoost * 0.20 + core.arcs * 0.22);
   assert.ok(Math.abs(core.alpha - expectedAlpha) < 1e-12,
@@ -196,6 +251,24 @@ function directGlslLuminousLayers(u, side, pathT, time, opacity, radianceScale) 
   assert(Math.abs(breakup1 - breakup0) > 0.01, 'fluid sheath breakup must animate over time');
   assert(Math.abs(animatedSheath.brokenSheath - sheath.brokenSheath) > 0.001,
     'the shader-equivalent secondary sheath breakup must animate over time');
+
+  // Physical-history thermal regression: the white core belongs at the nozzle and must cool before
+  // the emitted wake reaches its endpoint. This exercises the shader's thermal bands and endpoint
+  // envelope through observable output instead of checking implementation strings.
+  const nozzle = sampleLuminousTrailLayers(0.37, 0, 0, TIME, liveUniforms);
+  const cooling = sampleLuminousTrailLayers(0.37, 0, 0.45, TIME, liveUniforms);
+  const endpoint = sampleLuminousTrailLayers(0.37, 0, 0.9, TIME, liveUniforms);
+  log.push(`thermal-history: nozzleHotMix=${nozzle.hotMix.toFixed(4)} `
+    + `coolingThermal=${cooling.thermal.toFixed(4)} endpointThermal=${endpoint.thermal.toFixed(4)} `
+    + `endpointAlpha=${endpoint.alpha.toFixed(4)}`);
+  assert(nozzle.hotMix > 0.95, 'nozzle center must retain the white-hot core');
+  assert(nozzle.filament > cooling.filament && cooling.filament > endpoint.filament,
+    'white-core filament must cool along physical history');
+  assert(nozzle.thermal > cooling.thermal && cooling.thermal > endpoint.thermal,
+    'thermal radiance must cool along physical history');
+  assert(endpoint.tailEnvelope < 1e-8 && endpoint.alpha < 1e-8,
+    'trail endpoint must shed its remaining emission instead of ending as a solid cap');
+  assert(endpoint.hotMix < 0.35, 'trail endpoint must not retain a white-hot core');
 }
 
 // Cross-section falloff: center brighter than edge at mid-length.
