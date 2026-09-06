@@ -3,7 +3,7 @@
 
 ```yaml
 refreshed: 2026-09-06
-baseCommit: f2a7c9473b36d3fd71186580f80ab3b9acad0364
+baseCommit: 88abc26ca98edb1b4f6a1540c0a42c68dca231d1
 expiresAfterCommits: 10
 expiresAfterDays: 2
 ```
@@ -41,14 +41,12 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| World materials and hit feedback | controller 01a0768b | MUTATING | `src/render/industrialMaterialFamilies.js`, `src/render/visualOverrides.js`, `src/ui/asteroid/asteroidRenderer3d.js`, `test/industrial-material-families.test.mjs`, `design/program/roadmap/receipts/PQ-190-00-material-candidate.md`, `src/render/vfx.js`, `test/vfx-weakpoint-receipt.test.mjs` | accept the coast comparison and current combat/rover captures |
-| Stale asset metadata | luna economy_fixtures | MUTATING | `assets/ships/parts/parts_manifest.json` | correct remaining declarations from current asset/generator facts |
 | Campaign coordination | controller 01a0768b | MUTATING | `design/program/NOW.md` | keep current ownership and close accepted leaves in existing queue |
 
 The legacy extraction, live Shipworks guidance, Market quantity controls and public career route are
 committed after controller review. Native workers have released their files. Ordinary-life,
-material and place acceptance continues in this campaign. PQ-184.01, PQ-184.03,
-PQ-187.00 and PQ-177.07 are closed in the canonical queue. The duplicate incomplete checkout was removed
+UI performance and place acceptance continue in this campaign. PQ-184.01, PQ-184.03,
+PQ-187.00, PQ-177.07, PQ-144.01 and PQ-190.00 are closed in the canonical queue. The duplicate incomplete checkout was removed
 after its DROP disposition was committed and pushed.
 
 ## Start another task

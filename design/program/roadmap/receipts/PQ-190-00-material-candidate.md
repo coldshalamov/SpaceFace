@@ -6,7 +6,7 @@ Material inventory and implementation notes follow
 `.grok/skills/spaceface-blender-material-truth/SKILL.md` §"Classify the substance before setting
 Principled values" — that preflight applies to runtime material response, not only to Blender authoring.
 
-State: `controller_reviewed`; independent action-read review is pending. The controller has reviewed
+RESULT: DONE. State: `controller_accepted`. The controller has reviewed
 the current quiet flight, combat, shield, Massline, rover and off-thrust comparison frames.
 
 ---
@@ -324,7 +324,7 @@ motion evidence. The settled capture waits for the actual authored pipeline/GPU 
 and then records at 99.95%. The runtime witness recorded a 5.4-second admission outlier; that loading
 cost remains a production-matrix finding, not a claim of smooth startup or of a shield shader cost.
 
-## 7. Verification and remaining review
+## 7. Verification
 
 - `check:baseline`: all 15 groups passed in 54.312 seconds after the bloom admission repair.
 - 23 industrial material tests and three weak-point receipt tests passed. Existing VFX technique
@@ -335,6 +335,36 @@ cost remains a production-matrix finding, not a claim of smooth startup or of a 
   performance improvement numbers. No default quality or authored geometry was reduced.
 - The user explicitly delegated creative approval to this controller. This records the controller's
   KEEP under that authority, not a fabricated direct owner response to unseen images.
-- Independent action-read findings will be appended before the queue leaf is closed. Other asset
-  metadata and broader campaign failures remain owned by the campaign; old worker failures are
-  not excused as somebody else's work.
+- Independent action-read findings and controller dispositions follow. Other asset metadata and
+  broader campaign failures remain owned by this campaign.
+
+## 8. Independent review and final choice
+
+[The complete blind critique and 23 unchanged review frames](../evidence/pq190-style-2026-09-06/blind-review.md)
+are retained beside a SHA-256 binding. The native reviewer used Claude Opus 5 at max effort, with
+Read/Glob only, session `e8e4840e-f71a-49d4-b777-b3d4d050e16f`. It saw the four anonymous strips and
+no source or author notes. A previous nonpersistent review lost its result after an unwanted advisor
+attempt; that attempt is not counted as a review. The replacement returned its own findings.
+
+The reviewer identified sustained engine burn (A), surface pit mining (B), a low-speed multi-ship
+engagement (C), and thrust with a slack line becoming straight and amber (D). It could not establish
+which shot caused a hit in C, or the exact game name of D's line. Those narrower claims are not made.
+Works retains its in-world ore labels; flight HUD text is hidden. The review therefore establishes
+recognisable activity, not a test of every possible unlabeled game mechanic.
+
+Controller dispositions:
+
+- Missing ownership/health labels in the flight strips are expected from the required HUD mask.
+  Keep the actual HUD controls and indicators; do not add a second permanent overlay to solve a
+  deliberately hidden one. The central player silhouette remains the action anchor.
+- The criticism of similarly valued small rocks and repetitive Works floor texture is useful world-art
+  feedback. This six-subject slice changes the useful cargo object and machine state, not the entire
+  asteroid catalog or Works floor. It does not claim a fleet/world-wide material remaster.
+- The controller disagrees with the description of a constant-brightness, untapered exhaust: the
+  retained A frames show a white throat, cyan body and fading indigo tail. The pulse and loaded line
+  remain distinct. A sustained burn is not evidence of changing throttle; no throttle-transition claim
+  is made from these five stills. The separately retained shield frames show the new transparent
+  panel response at normal speed, with the hull visible throughout.
+
+KEEP under the user's explicitly delegated creative authority. The baseline, source inspection,
+normal-speed captures and independent action read complete this leaf.

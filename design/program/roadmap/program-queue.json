@@ -6798,7 +6798,7 @@
       "parentId": "PQ-190",
       "priority": 102,
       "title": "The style slice",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "visual-direction"
@@ -6814,9 +6814,13 @@
         "npm run check:vfx-sleep",
         "npm run probe:runtime-witness"
       ],
-      "receiptRefs": [],
-      "brief": "Six things re-authored toward matte/satin colour masses, controlled specular, emission that explains a state: the starter, one contrasting enemy, one solid object, one landmark, one industrial machine and their action effects; three attention levels allocated by state. DONE WHEN: three normal-speed captures (quiet flight, dense combat, rover) read as one authored world; a critic names the action from frames; the witness shows no new top bucket; the owner says yes to the look.",
-      "kind": "implementation"
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-190-00-material-candidate.md"
+      ],
+      "brief": "DONE 2026-09-06: six-subject industrial material/state slice integrated in 029a8b42 and effects in b6f77401. Normal-speed flight, combat, rover and shield captures, loaded-line frames and an independent Opus5 action read are retained with source/image hashes. Controller KEEP under explicit owner-delegated creative authority; simulation remains the top steady CPU bucket. Wider catalog/floor art and the effect-class matrix remain their own scope.",
+      "kind": "implementation",
+      "integratedCommit": "029a8b42",
+      "acceptanceRef": "design/program/roadmap/receipts/PQ-190-00-material-candidate.md"
     },
     {
       "id": "PQ-190.01",

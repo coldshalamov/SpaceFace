@@ -1,0 +1,138 @@
+{
+  "schema": "spaceface.pq190.styleReview.v1",
+  "capturedProductionDiffHash": "483e0387ddb82245474ec97a1ae539aed5313781061f89e6b26e5d329947f321",
+  "reviewerSession": "e8e4840e-f71a-49d4-b777-b3d4d050e16f",
+  "mapping": {
+    "A": "quiet-ordinary-flight/1788716297639 frames00,02,04,06,07",
+    "B": "rover-productive-site/1788716471161 frames00,02,04,06,07",
+    "C": "shove_light-physics_toolkit-s4242/review-firing-8-1788717244080 frames010,012,014,016,017",
+    "D": "rope_swing-massline_rig-s4242/review-sequential-8-1788716876302 frames016,018,020,022,023"
+  },
+  "files": [
+    {
+      "file": "A-00.jpg",
+      "sha256": "e75f776a9ba962d836f55a8f9b45d9f8a7631430414833b5208c2bca825ad36b",
+      "source": ".devshots/next10-style-blind-final/A/00.jpg"
+    },
+    {
+      "file": "A-01.jpg",
+      "sha256": "4d6da95d1e04f2c55d06ec8b5fc7f5878b2839476e6f4b8b9f4fdd3d9fd51b97",
+      "source": ".devshots/next10-style-blind-final/A/01.jpg"
+    },
+    {
+      "file": "A-02.jpg",
+      "sha256": "c98c0eae4bc5237c148e0ad20d4bcf3a7212c7d8d1b9bc6120e1740bb4a81ae7",
+      "source": ".devshots/next10-style-blind-final/A/02.jpg"
+    },
+    {
+      "file": "A-03.jpg",
+      "sha256": "c83d8d1eda0a6d0c8bd87b2a051e566f3e221caf3a9c1888327fa9a84e017c44",
+      "source": ".devshots/next10-style-blind-final/A/03.jpg"
+    },
+    {
+      "file": "A-04.jpg",
+      "sha256": "814a69231bb8d5cfab9d9cb2cd8f3ce64c674a28f2b4376dec81347b1f1a46b7",
+      "source": ".devshots/next10-style-blind-final/A/04.jpg"
+    },
+    {
+      "file": "B-00.jpg",
+      "sha256": "32509ad7e1aa3196e70085c236e02a75c001d49b8555b8c7c0b7afd5c21313e7",
+      "source": ".devshots/next10-style-blind-final/B/00.jpg"
+    },
+    {
+      "file": "B-01.jpg",
+      "sha256": "2ac1cfa6bc7496a1840df442f54853c6b48c5d5e3f8abfe6443a3c693f7ca1f9",
+      "source": ".devshots/next10-style-blind-final/B/01.jpg"
+    },
+    {
+      "file": "B-02.jpg",
+      "sha256": "eed2588a4e9befddf9019ccfd1c621ea74003de1fc879b9e226a13b38236d835",
+      "source": ".devshots/next10-style-blind-final/B/02.jpg"
+    },
+    {
+      "file": "B-03.jpg",
+      "sha256": "4730248c52e4f4fc4365d5232c1e5f6f9942ea9a28ec42e035ad281d8421b437",
+      "source": ".devshots/next10-style-blind-final/B/03.jpg"
+    },
+    {
+      "file": "B-04.jpg",
+      "sha256": "15a4026eb32e4012691f514fc577b265a89d008d8e681b6f0cc049a7cc176c6b",
+      "source": ".devshots/next10-style-blind-final/B/04.jpg"
+    },
+    {
+      "file": "C-00.jpg",
+      "sha256": "7a865096a51455665c4642058045440a57c75878f5ffc4791c2cf012450e9210",
+      "source": ".devshots/next10-style-blind-final/C/00.jpg"
+    },
+    {
+      "file": "C-01.jpg",
+      "sha256": "768b1cb3b3df719b4e990e00a0782a6e87ddddb80f75a1e7b5813bb64939ba27",
+      "source": ".devshots/next10-style-blind-final/C/01.jpg"
+    },
+    {
+      "file": "C-02.jpg",
+      "sha256": "7cc5de9069d88e342f0c46116ab5e5ecd7fcd0345a830252fb3a77301afd6a32",
+      "source": ".devshots/next10-style-blind-final/C/02.jpg"
+    },
+    {
+      "file": "C-03.jpg",
+      "sha256": "663c13f6684ff38b2ec414810b69fc47bc738f08f98e7f6ca663ef23aea0ec70",
+      "source": ".devshots/next10-style-blind-final/C/03.jpg"
+    },
+    {
+      "file": "C-04.jpg",
+      "sha256": "813a331bd40837d3be3b1aeeb6c543beada4caa6b7aa336b23b4fad66236be9c",
+      "source": ".devshots/next10-style-blind-final/C/04.jpg"
+    },
+    {
+      "file": "D-00.jpg",
+      "sha256": "f46179ad5f68b8d1532933b055197bfe939c2bd1a8270ea2067f924dd49d91ef",
+      "source": ".devshots/next10-style-blind-final/D/00.jpg"
+    },
+    {
+      "file": "D-01.jpg",
+      "sha256": "85a79250df920b55871135ea0a9f28009b06aef58af54c4b3a8e423f65c91535",
+      "source": ".devshots/next10-style-blind-final/D/01.jpg"
+    },
+    {
+      "file": "D-02.jpg",
+      "sha256": "1d2425cf150027bfeef27295c8cef6132ac6446f34ee4daa536d96f78c4ee76f",
+      "source": ".devshots/next10-style-blind-final/D/02.jpg"
+    },
+    {
+      "file": "D-03.jpg",
+      "sha256": "4a58dd457a681debc81a4446798c74a712d0413fb6f0fa082bef10971413ff70",
+      "source": ".devshots/next10-style-blind-final/D/03.jpg"
+    },
+    {
+      "file": "D-04.jpg",
+      "sha256": "65c8621a5330036ef3535c3f45a2ef606734ae7fccc7dc57619ba2dd97a942a8",
+      "source": ".devshots/next10-style-blind-final/D/04.jpg"
+    },
+    {
+      "file": "shield-00.jpg",
+      "sha256": "cff4cd526485d89fbd18edc9d6fed78c76050c82fe44f6676b83cc8fd1307856",
+      "source": ".devshots/pq190-shipping-strips/dense-shield-response/1788717810079/frame_00.jpg"
+    },
+    {
+      "file": "shield-03.jpg",
+      "sha256": "0433f6795717a0f07c59667ac90f4250259fbc27668daf23a16990f367833b9a",
+      "source": ".devshots/pq190-shipping-strips/dense-shield-response/1788717810079/frame_03.jpg"
+    },
+    {
+      "file": "shield-07.jpg",
+      "sha256": "5b0b677ec0898fc121741963a08f610af07096f5f5ad63cd8a27d3659d020ff8",
+      "source": ".devshots/pq190-shipping-strips/dense-shield-response/1788717810079/frame_07.jpg"
+    }
+  ],
+  "currentSources": {
+    "src/render/industrialMaterialFamilies.js": "100a2e75940f2e7cee8af531ba7810b92d5d65a0232acd5e7fddb285b75eaa47",
+    "src/render/visualOverrides.js": "fad2cabaab717ab53d93ddf2c363ffb19ce553d49d53000516886552f849a3ed",
+    "src/render/vfx.js": "7183e28dac12557519b2c595dc310cea7c5f32d2508a36bad8562d3797c65551",
+    "src/ui/asteroid/asteroidRenderer3d.js": "5e3509775b8abc4cf93620017003155a4b46988e97eafa3d71b6ddca7a90bd6e",
+    "src/render/engineTrailSurfaces.js": "264fd776e392e885cb5e2523ccc8e86af09a3e73f19d11b1006a81d98b7f6e36",
+    "src/render/trailTexture.js": "e847555a9d89ff471b77eb14e579b00522465e8355396817bd3fbc602e477cf3",
+    "src/render/renderer.js": "c25c257c045c5925681eaa6ef7e3ddcedc243388ecb11144a732eb618a58f778",
+    "src/render/ships/shipKit.js": "ce2bf9d8bbe34ffdd42d176f065a070096b501a4155f05e1d1ead0071f685e21"
+  }
+}
