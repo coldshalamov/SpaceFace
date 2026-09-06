@@ -5902,7 +5902,8 @@ export const galaxyMapScreen = {
     // OPENING A SCREEN SHOULD SIZE IT, NOT RENDER IT. `refresh()` draws the map and reads the
     // inspector synchronously, so opening the galaxy map paid for a full draw plus two inspector
     // updates before a single frame had been scheduled. The cheap DOM syncs still happen here; the
-    // expensive pair is marked dirty and the first cadence frame does it.
+    // expensive pair is marked dirty and the next frame does it, then a static chart sleeps.
+    this._drawPending = true;
     this._syncPublicIdentity();
     this._syncScaleButtons();
     this._updateHeaderWeather(this._ctx && this._ctx.state);
@@ -6206,18 +6207,22 @@ export const galaxyMapScreen = {
     const dtSec = Math.max(0, (now - this._lastTime) / 1000);
     this._lastTime = now;
     this._animT = (this._animT || 0) + dtSec;
-    let changed = false;
+    let changed = this._drawPending === true;
+    this._drawPending = false;
     if (Math.abs(this._zoom - this._targetZoom) > 0.0005) {
       const alpha = 1 - Math.exp(-dtSec / 0.10);
       this._zoom += (this._targetZoom - this._zoom) * Math.min(1, alpha);
       changed = true;
     }
     if (this._scanRings.length > 0) {
-      this._scanRings = this._scanRings.filter((ring) => {
+      let live = 0;
+      for (let i = 0; i < this._scanRings.length; i += 1) {
+        const ring = this._scanRings[i];
         ring.t += 1;
         ring.r = (ring.t / ring.maxT) * ring.maxR;
-        return ring.t < ring.maxT;
-      });
+        if (ring.t < ring.maxT) this._scanRings[live++] = ring;
+      }
+      this._scanRings.length = live;
       changed = true;
     }
     if (this._iris) {
@@ -6454,6 +6459,22 @@ export const galaxyMapScreen = {
     }
 
     if (!state) return;
+
+    // Only Overview consumes the per-kind model below. Building its route, market and mission
+    // markup on every animation frame while another tab is visible discards all of that work.
+    // Selection and navigation controls still project fresh state on every inspector update.
+    if (this._activeTab && this._activeTab !== 'overview') {
+      const primary = resolveGalaxyMapPrimaryAction(state, t);
+      let label = 'Track Target';
+      if (t.kind === 'sector') label = primary?.label || 'Plot Course';
+      else if (t.kind === 'station' || t.kind === 'gate') label = primary?.label || 'Set Waypoint';
+      else if (t.kind === 'claim') label = 'Set Base Waypoint';
+      else if (t.kind === 'rumor') label = 'Manual Search Area';
+      else if (t.kind === 'zone') label = 'Align Autopilot';
+      else if (t.kind === 'waypoint') label = 'Track Waypoint';
+      this._paintInspectorBody(state, detailsEl, btn, null, label, primary);
+      return;
+    }
 
     let html = '';
     let buttonLabel = 'Track Target';
@@ -6810,12 +6831,16 @@ export const galaxyMapScreen = {
     // SLICE C: the per-kind detail above is the OVERVIEW body. Every other tab renders its own
     // depth for the same selection, one at a time — the selection detail is no longer the only
     // thing the panel can show, and it is no longer stacked underneath everything else either.
-    const tabbed = this._tabHtml(state, html);
+    this._paintInspectorBody(state, detailsEl, btn, html, buttonLabel,
+      resolveGalaxyMapPrimaryAction(state, t));
+  },
+
+  _paintInspectorBody(state, detailsEl, btn, selectionHtml, buttonLabel, primary) {
+    const tabbed = this._tabHtml(state, selectionHtml);
     if (this._inspectorDetailsHtml !== tabbed) {
       detailsEl.innerHTML = tabbed;
       this._inspectorDetailsHtml = tabbed;
     }
-    const primary = resolveGalaxyMapPrimaryAction(state, t);
     if (btn.textContent !== buttonLabel) btn.textContent = buttonLabel;
     if (primary && primary.coursePayload) {
       if (btn.hidden) btn.hidden = false;

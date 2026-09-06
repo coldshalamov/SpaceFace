@@ -69,6 +69,20 @@ galaxyMapScreen._updateInspector();
 assert.equal(details.innerHTMLWrites, writesAfterFirstSectorRender,
   'an unchanged causal snapshot reuses the existing inspector cache instead of churning the DOM');
 
+// PQ-184.02: background contact animation must not rebuild the hidden Overview model.
+let overviewReads = 0;
+Object.defineProperty(knownSector, 'security', {
+  configurable: true,
+  get() { overviewReads += 1; return 0.98; },
+});
+galaxyMapScreen._activeTab = 'history';
+galaxyMapScreen._updateInspector();
+assert.equal(overviewReads, 0, 'History must not compute the hidden sector Overview');
+galaxyMapScreen._activeTab = 'overview';
+galaxyMapScreen._updateInspector();
+assert.ok(overviewReads > 0, 'returning to Overview must read the current sector model');
+Object.defineProperty(knownSector, 'security', { configurable: true, writable: true, value: 0.98 });
+
 ctx.state.world.discovery = { sector_sker_haven: { discovered: false } };
 galaxyMapScreen._selectedTarget = {
   id: 'sector_sker_haven', sectorId: 'sector_sker_haven', kind: 'sector', name: 'Sker Haven',
@@ -260,7 +274,7 @@ assert.deepEqual(afterRemountEvents.at(-1).payload.pos, { x: 1777, z: -333 },
 
 await testScheduledRefreshCadence(galaxyMapScreen, ctx, remountedButton);
 
-console.log('Galaxy map inspector stability OK: focus, deselection, remount disposal, one intent/pop, cached details, 64ms cadence.');
+console.log('Galaxy map inspector stability OK: focus, deselection, remount disposal, one intent/pop, cached details, opening draw and idle sleep.');
 }
 
 function testRealShowHideLifecycle(screen, screenCtx, persistentButton) {
@@ -356,25 +370,22 @@ async function testScheduledRefreshCadence(screen, screenCtx, persistentButton) 
   try {
     screen.onShow(screenCtx);
     assert.deepEqual({ resizeCount, drawCount, inspectorCount }, { resizeCount: 1, drawCount: 0, inspectorCount: 0 },
-      'onShow performs its immediate sizing without an expensive draw before the cadence boundary');
+      'onShow sizes immediately and leaves the first paint to the browser frame');
 
-    for (const timestamp of [16, 32, 48]) step(timestamp);
-    assert.deepEqual({ drawCount, inspectorCount }, { drawCount: 0, inspectorCount: 0 },
-      'ordinary rAF frames below 64ms must not trigger expensive refresh work');
+    // PQ-184.02 replaces the obsolete permanent 64ms poll with wake/paint/sleep. The first
+    // paint is still required: a settled zoom must not leave the old selection on a blank map.
+    step(16);
+    assert.deepEqual({ resizeCount, drawCount, inspectorCount }, { resizeCount: 1, drawCount: 1, inspectorCount: 1 },
+      'a newly opened static chart paints its content and current inspector once');
+    assert.equal(frames.length, 0, 'a static chart must leave no animation callback running');
 
-    step(64);
-    assert.deepEqual({ resizeCount, drawCount, inspectorCount }, { resizeCount: 2, drawCount: 1, inspectorCount: 1 },
-      'the first scheduled refresh executes at the 64ms cadence boundary');
-    assert.equal(screen._lastDrawTime, 64, 'scheduled refresh must advance the cadence timestamp');
-
-    for (const timestamp of [80, 96, 112]) step(timestamp);
-    assert.deepEqual({ drawCount, inspectorCount }, { drawCount: 1, inspectorCount: 1 },
-      'the next three rAF frames remain below the next cadence boundary');
-
-    step(128);
-    assert.deepEqual({ resizeCount, drawCount, inspectorCount }, { resizeCount: 3, drawCount: 2, inspectorCount: 2 },
-      'scheduled refresh repeats at approximately 64ms rather than every rAF');
-    assert.equal(screen._lastDrawTime, 128);
+    screen.refresh();
+    assert.deepEqual({ drawCount, inspectorCount }, { drawCount: 2, inspectorCount: 2 },
+      'an explicit state-change refresh still updates the picture and inspector immediately');
+    step(32);
+    assert.deepEqual({ drawCount, inspectorCount }, { drawCount: 2, inspectorCount: 2 },
+      'waking after a completed static refresh does not paint the same data again');
+    assert.equal(frames.length, 0, 'the chart returns to sleep after the change');
     assert.equal(persistentButton.listenerCount('click'), 1,
       'show/update cycles do not add duplicate action handlers');
   } finally {
