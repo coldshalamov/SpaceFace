@@ -1,0 +1,275 @@
+{
+  "schema": "spaceface.ui-budget-baseline.v1",
+  "capturedAt": "2026-09-06T11:20:43.288Z",
+  "headed": true,
+  "renderer": "headed Chromium (host GPU)",
+  "measured": "whole rAF frame callback (sim + presentation + UI), 150 ms warm-up discarded, worst sample per surface over a 600 ms headed window",
+  "seed": 47,
+  "uiSourceDigest": "e834c9161dbbb625e47ae3b0dae6753c32e0ef9b8a18235ffa4e569eff619ba5",
+  "surfaces": {
+    "asteroid-works": {
+      "domNodes": 58,
+      "frameMeanMs": 3.5303030316576813,
+      "frameP95Ms": 7.5999999940395355,
+      "frameMaxMs": 7.9000000059604645,
+      "samples": 33
+    },
+    "automation": {
+      "domNodes": 95,
+      "frameMeanMs": 9.649999999574252,
+      "frameP95Ms": 11.400000005960464,
+      "frameMaxMs": 12.199999988079071,
+      "samples": 28
+    },
+    "base": {
+      "domNodes": 71,
+      "frameMeanMs": 3.9321428579943523,
+      "frameP95Ms": 4.799999997019768,
+      "frameMaxMs": 4.899999991059303,
+      "samples": 28
+    },
+    "chart": {
+      "domNodes": 351,
+      "frameMeanMs": 4.114545454220338,
+      "frameP95Ms": 9.200000002980232,
+      "frameMaxMs": 11.100000008940697,
+      "samples": 55
+    },
+    "chart-galaxy": {
+      "domNodes": 351,
+      "frameMeanMs": 2.8023255815686183,
+      "frameP95Ms": 8.700000002980232,
+      "frameMaxMs": 19,
+      "samples": 86
+    },
+    "codex": {
+      "domNodes": 76,
+      "frameMeanMs": 12.13214285671711,
+      "frameP95Ms": 14.899999991059303,
+      "frameMaxMs": 15.5,
+      "samples": 28
+    },
+    "comms-radial": {
+      "domNodes": 34,
+      "frameMeanMs": 40.73333332935969,
+      "frameP95Ms": 59.3999999910593,
+      "frameMaxMs": 59.3999999910593,
+      "samples": 9
+    },
+    "crucible-door": {
+      "domNodes": 116,
+      "frameMeanMs": 1.7428571424846138,
+      "frameP95Ms": 3.7999999970197678,
+      "frameMaxMs": 4.299999997019768,
+      "samples": 56
+    },
+    "crucible-draft": {
+      "domNodes": 10,
+      "frameMeanMs": 8.496428570577077,
+      "frameP95Ms": 10.599999994039536,
+      "frameMaxMs": 13,
+      "samples": 28
+    },
+    "crucible-refit": {
+      "domNodes": 26,
+      "frameMeanMs": 8.746428570044893,
+      "frameP95Ms": 10.299999997019768,
+      "frameMaxMs": 11.599999994039536,
+      "samples": 28
+    },
+    "crucible-results": {
+      "domNodes": 8,
+      "frameMeanMs": 8.721428571002823,
+      "frameP95Ms": 10.400000005960464,
+      "frameMaxMs": 11.700000002980232,
+      "samples": 28
+    },
+    "flight": {
+      "domNodes": 720,
+      "frameMeanMs": 18.86521739091562,
+      "frameP95Ms": 51.79999999701977,
+      "frameMaxMs": 95.20000000298023,
+      "samples": 23
+    },
+    "footprint": {
+      "domNodes": 66,
+      "frameMeanMs": 7.410714285714286,
+      "frameP95Ms": 20.899999991059303,
+      "frameMaxMs": 26.799999997019768,
+      "samples": 28
+    },
+    "game-over": {
+      "domNodes": 24,
+      "frameMeanMs": 7.160714284649917,
+      "frameP95Ms": 8.400000005960464,
+      "frameMaxMs": 12.400000005960464,
+      "samples": 28
+    },
+    "help": {
+      "domNodes": 145,
+      "frameMeanMs": 10.682142854801246,
+      "frameP95Ms": 12.299999997019768,
+      "frameMaxMs": 14.799999997019768,
+      "samples": 28
+    },
+    "mission-log": {
+      "domNodes": 88,
+      "frameMeanMs": 9.764285713966403,
+      "frameP95Ms": 10.900000005960464,
+      "frameMaxMs": 11,
+      "samples": 28
+    },
+    "new-game": {
+      "domNodes": 73,
+      "frameMeanMs": 1.3981481475962534,
+      "frameP95Ms": 3.199999988079071,
+      "frameMaxMs": 6.0999999940395355,
+      "samples": 54
+    },
+    "pause": {
+      "domNodes": 22,
+      "frameMeanMs": 5.949999995529652,
+      "frameP95Ms": 11.899999991059303,
+      "frameMaxMs": 11.899999991059303,
+      "samples": 2
+    },
+    "power-rail": {
+      "domNodes": 89,
+      "frameMeanMs": 32.6769230812788,
+      "frameP95Ms": 49.3999999910593,
+      "frameMaxMs": 49.3999999910593,
+      "samples": 13
+    },
+    "range": {
+      "domNodes": 99,
+      "frameMeanMs": 7.017857141792774,
+      "frameP95Ms": 8.599999994039536,
+      "frameMaxMs": 9.099999994039536,
+      "samples": 28
+    },
+    "save-load": {
+      "domNodes": 65,
+      "frameMeanMs": 9.915384616416235,
+      "frameP95Ms": 9.799999997019768,
+      "frameMaxMs": 45.20000000298023,
+      "samples": 26
+    },
+    "settings": {
+      "domNodes": 55,
+      "frameMeanMs": 9.478571429848671,
+      "frameP95Ms": 10.900000005960464,
+      "frameMaxMs": 11.100000008940697,
+      "samples": 28
+    },
+    "ship": {
+      "domNodes": 267,
+      "frameMeanMs": 2.0521126754686865,
+      "frameP95Ms": 7.200000002980232,
+      "frameMaxMs": 7.9000000059604645,
+      "samples": 71
+    },
+    "station-bar": {
+      "domNodes": 241,
+      "frameMeanMs": 0.4000000006386212,
+      "frameP95Ms": 1.0999999940395355,
+      "frameMaxMs": 1.0999999940395355,
+      "samples": 28
+    },
+    "station-contracts": {
+      "domNodes": 383,
+      "frameMeanMs": 0.4000000006386212,
+      "frameP95Ms": 1,
+      "frameMaxMs": 1.2000000029802322,
+      "samples": 28
+    },
+    "station-dock": {
+      "domNodes": 383,
+      "frameMeanMs": 0.49629629651705426,
+      "frameP95Ms": 1.5,
+      "frameMaxMs": 1.5999999940395355,
+      "samples": 27
+    },
+    "station-factions": {
+      "domNodes": 471,
+      "frameMeanMs": 0.4357142858207226,
+      "frameP95Ms": 1.1000000089406967,
+      "frameMaxMs": 1.199999988079071,
+      "samples": 28
+    },
+    "station-industry": {
+      "domNodes": 337,
+      "frameMeanMs": 0.39999999957425253,
+      "frameP95Ms": 1,
+      "frameMaxMs": 1.2000000029802322,
+      "samples": 28
+    },
+    "station-ledger": {
+      "domNodes": 178,
+      "frameMeanMs": 0.43214285905872074,
+      "frameP95Ms": 1,
+      "frameMaxMs": 1,
+      "samples": 28
+    },
+    "station-market": {
+      "domNodes": 964,
+      "frameMeanMs": 0.39642857174788204,
+      "frameP95Ms": 0.5,
+      "frameMaxMs": 1.1000000089406967,
+      "samples": 28
+    },
+    "station-shipworks": {
+      "domNodes": 420,
+      "frameMeanMs": 0.41071428411773275,
+      "frameP95Ms": 1.199999988079071,
+      "frameMaxMs": 1.300000011920929,
+      "samples": 28
+    },
+    "tech-tree": {
+      "domNodes": 25,
+      "frameMeanMs": 9.389285714498588,
+      "frameP95Ms": 10.700000002980232,
+      "frameMaxMs": 10.700000002980232,
+      "samples": 28
+    },
+    "title": {
+      "domNodes": 13,
+      "frameMeanMs": 2.100000003973643,
+      "frameP95Ms": 5.800000011920929,
+      "frameMaxMs": 5.800000011920929,
+      "samples": 3
+    },
+    "wingman-radial": {
+      "domNodes": 33,
+      "frameMeanMs": 41.999999998137355,
+      "frameP95Ms": 74.30000001192093,
+      "frameMaxMs": 74.30000001192093,
+      "samples": 8
+    }
+  },
+  "missing": [
+    {
+      "surface": "credits",
+      "reason": "default@1920x1080: no opener implemented for entry kind \"none\": no credits surface exists on any route (audited 2026-09-04)"
+    },
+    {
+      "surface": "statistics",
+      "reason": "default@1920x1080: no opener implemented for entry kind \"none\": career/ladder models exist in src/ui/careerLadderView.js but no statistics surface is registered"
+    },
+    {
+      "surface": "photo-mode",
+      "reason": "default@1920x1080: no opener implemented for entry kind \"none\": no photo mode exists (audited 2026-09-04)"
+    },
+    {
+      "surface": "crucible-lab",
+      "reason": "default@1920x1080: no opener implemented for entry kind \"none\": the lab controls module registers no screen id; there is no route that opens it as a surface"
+    },
+    {
+      "surface": "localmap-legacy",
+      "reason": "default@1920x1080: no opener implemented for entry kind \"none\": superseded by the chart; registered for tools/checks only, no player route"
+    },
+    {
+      "surface": "starmap-legacy",
+      "reason": "default@1920x1080: no opener implemented for entry kind \"none\": superseded by the chart; registered for tools/checks only, no player route"
+    }
+  ]
+}

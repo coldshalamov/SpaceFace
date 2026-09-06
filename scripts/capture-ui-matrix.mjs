@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { loadPlaywright } from './lib/load-playwright.mjs';
 import { CAPTURE_SURFACES, IMPLEMENTED_ENTRY_KINDS, orderForOneBoot } from './ui-grammar-surfaces.mjs';
 import { RESPONSIVE_WIDTHS } from './ui-grammar-thresholds.mjs';
+import { UI_BUDGETS_SCHEMA, aggregateBudgetRows, uiSourceDigest } from './lib/uiBudgets.mjs';
 // The pseudo-locale is the game's OWN (src/localization/runtime.js), not a string the harness
 // invents: a capture that boots a locale the game does not implement would photograph the English
 // fallback and call it a +40 % pass. `pseudoLocalize` comes from the same module for the same
@@ -16,6 +17,13 @@ import { PSEUDO_LOCALE, pseudoLocalize } from '../src/localization/runtime.js';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const DEFAULT_OUTPUT_DIR = path.join(ROOT, '.devshots', 'ui-matrix');
+
+// PQ-184.00 budget columns: the probe reads cost nothing unless the run asks for budgets, so the
+// 408-frame reference matrix keeps its exact cost. A budgets run samples BUDGET_SAMPLE_MS of real
+// frames per surface (rAF-wrapped callback time — see the probe in openBoot) and counts the
+// surface's DOM subtree.
+const BUDGET_SAMPLE_MS = 600;
+let BUDGET_PROBE_ACTIVE = false;
 export const UI_FRAME_REFERENCE_DIR = path.join(ROOT, 'test', 'ui-frame-references');
 /**
  * Which universe each committed reference frame was photographed in.
@@ -330,6 +338,10 @@ export function frameFileName({ surface, mode, width, height }) {
 
 export async function captureUiMatrix(options = {}) {
   const outputDir = path.resolve(options.outputDir || DEFAULT_OUTPUT_DIR);
+  const budgetsOut = options.budgetsOut
+    ? path.resolve(options.budgetsOut)
+    : null;
+  if (budgetsOut) BUDGET_PROBE_ACTIVE = true;
   const updateReferences = options.updateReferences === true;
   // Fill-missing writes ONLY references that do not exist yet and never prunes. That is what makes
   // it safe to grow the baseline from 60 frames to the full matrix without touching a single one of
@@ -618,7 +630,7 @@ export async function captureUiMatrix(options = {}) {
     printCaptureFailures(failures, plan.length, enriched.length);
   }
 
-  return {
+  const result = {
     outputDir,
     bootCount,
     totalBytes,
@@ -632,6 +644,47 @@ export async function captureUiMatrix(options = {}) {
       ? 'headed Chromium (host GPU)'
       : 'headless Chromium (SwiftShader software rendering — not performance acceptance evidence)',
   };
+  // PQ-184.00: a --budgets-out run writes the per-surface budget baseline beside the reference
+  // PNGs — the "matrix columns live; baseline committed" half of the leaf. The baseline names its
+  // renderer (a headed run is performance evidence; headless SwiftShader is not) and the UI
+  // source digest it budgets, so a stale baseline is itself red in check:ui:budgets.
+  if (budgetsOut) {
+    const surfaces = aggregateBudgetRows(enriched);
+    const budgeted = Object.keys(surfaces).length;
+    if (!budgeted) throw new Error('budget probe produced no rows — the page never exposed __sfBudgetProbe');
+    // A surface the run NAMED as a capture failure (with its reason) is recorded as a named gap,
+    // not silently dropped: the judge accepts a named gap and refuses an unnamed one, so the
+    // baseline can never quietly shrink. This includes surfaces whose probe simply returned no
+    // usable samples on a loaded box — they are named too, with the reason they have no row.
+    const budgetedIds = new Set(Object.keys(surfaces));
+    const plannedIds = [...new Set((allPlannedSurfaces || []).map((s) => s.id))]
+      .filter((id) => planIncludes(filter, { surfaceId: id }));
+    const reasonFor = (id) => {
+      const hit = (failures || []).find((f) => f && f.surface === id);
+      return hit
+        ? `${hit.mode}@${hit.viewport?.width}x${hit.viewport?.height}: ${hit.reason}`
+        : 'no budget row: the probe returned no usable samples in the sampling window';
+    };
+    const missing = plannedIds
+      .filter((id) => !budgetedIds.has(id))
+      .map((id) => ({ surface: id, reason: reasonFor(id) }));
+    const baseline = {
+      schema: UI_BUDGETS_SCHEMA,
+      capturedAt: new Date().toISOString(),
+      headed: options.headed === true,
+      renderer: result.renderer,
+      measured: 'whole rAF frame callback (sim + presentation + UI), 150 ms warm-up discarded, '
+        + 'worst sample per surface over a 600 ms headed window',
+      seed: UI_MATRIX_SEED,
+      uiSourceDigest: uiSourceDigest(ROOT),
+      surfaces,
+      missing,
+    };
+    mkdirSync(path.dirname(budgetsOut), { recursive: true });
+    writeFileSync(budgetsOut, `${JSON.stringify(baseline, null, 2)}\n`);
+    console.log(`ui budget baseline: ${budgeted} surfaces (+${missing.length} named gaps) → ${budgetsOut}`);
+  }
+  return result;
 }
 
 /** Named, per-frame reasons — a plan entry with no PNG must say why, or it is just silence. */
@@ -1467,6 +1520,27 @@ async function captureSurfaceScreenshot({
       await page.screenshot({ path: target, fullPage: false, animations: 'disabled' });
     }
   };
+  // PQ-184.00 budget columns: when the run carries a budgets probe, sample the live surface's
+  // frame cost over BUDGET_SAMPLE_MS of real frames and count its DOM subtree — the two numbers
+  // the grammar's §12.1 budget table names. The probe is only read when asked for, so the
+  // 408-frame reference matrix pays nothing.
+  let budget = null;
+  if (BUDGET_PROBE_ACTIVE) {
+    const rootHandle = await firstVisibleHandle(page, surface.selectors);
+    await page.evaluate(() => window.__sfBudgetProbe && window.__sfBudgetProbe.reset());
+    await page.waitForTimeout(BUDGET_SAMPLE_MS);
+    budget = await page.evaluate(() => {
+      const probe = window.__sfBudgetProbe;
+      return probe ? { frameMs: probe.frameMs() } : null;
+    }).catch(() => null);
+    if (budget && rootHandle) {
+      // Count on the RESOLVED handle, not a re-run selector: multi-selector roots (the station
+      // panels) re-resolve differently in-document and committed a domNodes: 0 lie once already.
+      budget.domNodes = await rootHandle
+        .evaluate((el) => el.querySelectorAll('*').length + 1)
+        .catch(() => 0);
+    }
+  }
   await shoot(dest);
   // Promote to the committed baseline immediately, not at the end of the run. A full matrix takes
   // hours; a run that only writes its references after the last frame turns any late failure into
@@ -1506,7 +1580,7 @@ async function captureSurfaceScreenshot({
     await page.waitForTimeout(REST_TWIN_BEAT_MS);
     await shoot(path.join(restTwinDir, name));
   }
-  captures.push({ name, path: dest, reference });
+  captures.push({ name, path: dest, reference, surface: surface.id, budget });
 }
 
 async function firstVisibleHandle(page, selectors) {
@@ -1535,6 +1609,47 @@ export async function openBoot({ browser, baseUrl, viewport, locale = null, menu
     await page.addInitScript(() => {
       try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {}
     });
+    // PQ-184.00 budget probe: wrap rAF so every frame's callback execution time (the sim's UI +
+    // presentation work for the live surface) is sampled without changing the cadence — the
+    // callback still runs inside the same animation frame, we just time it. The wrapper is
+    // installed before any page script runs, so the game's own rAF loop is the wrapped one, and
+    // ONLY on budgets runs (BUDGET_PROBE_ACTIVE), so the reference matrix pays nothing.
+    if (BUDGET_PROBE_ACTIVE) {
+      await page.addInitScript(() => {
+        try {
+          const raf = window.requestAnimationFrame.bind(window);
+          // Reset discards a warm-up of 150 ms (compile/GC dust after the surface opens) —
+          // TIME-based, not frame-count-based: on a loaded box 12 slow frames would eat the
+          // whole sampling window and commit a zero-sample row. A hitch after the warm-up is
+          // real but lives in max, not in the mean/p95 the budget uses.
+          const stats = { samples: [], resetAt: 0 };
+          window.__sfBudgetProbe = {
+            stats,
+            reset() { stats.samples.length = 0; stats.resetAt = performance.now(); },
+            frameMs() {
+              const a = stats.samples;
+              if (!a.length) return { mean: 0, p95: 0, max: 0, n: 0 };
+              const sorted = [...a].sort((x, y) => x - y);
+              return {
+                mean: a.reduce((s, v) => s + v, 0) / a.length,
+                p95: sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95))],
+                max: sorted[sorted.length - 1],
+                n: a.length,
+              };
+            },
+          };
+          window.requestAnimationFrame = (cb) => raf((t) => {
+            const t0 = performance.now();
+            try { cb(t); } finally {
+              if (t0 - stats.resetAt >= 150) {
+                stats.samples.push(performance.now() - t0);
+                if (stats.samples.length > 900) stats.samples.shift();
+              }
+            }
+          });
+        } catch (_) {}
+      });
+    }
 
     const rootUrl = locale
       ? `${baseUrl}?locale=${encodeURIComponent(locale)}`
@@ -1986,6 +2101,7 @@ export function parseArgs(argv) {
     quiet: argv.includes('--quiet'),
     restTwinDir: (argv.find((a) => a.startsWith('--rest-twin=')) || '').slice('--rest-twin='.length) || null,
     outputDir: (argv.find((a) => a.startsWith('--out=')) || '').slice('--out='.length) || null,
+    budgetsOut: (argv.find((a) => a.startsWith('--budgets-out=')) || '').slice('--budgets-out='.length) || null,
     filter: {
       surfaces: list('--only='),
       modes: list('--mode='),
@@ -2005,6 +2121,7 @@ async function runCli() {
     quiet: args.quiet,
     restTwinDir: args.restTwinDir,
     filter: args.filter,
+    budgetsOut: args.budgetsOut,
   });
   console.log(`capture:ui-matrix complete — ${result.frames} frames planned, ${result.captures.length} produced`);
   if (args.updateReferences || args.fillMissingOnly) {

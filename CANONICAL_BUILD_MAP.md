@@ -3713,3 +3713,26 @@ The game cannot regress silently. Each FEEL_CONTRACT bar has a scenario check; e
 - **How agents get this wrong:** Writing a check that imports a node:test file and cannot fail (§7): run suites as child processes and honour exit codes; Encoding a bar with a tolerance so wide it never fails: inject the old defect and watch it go red before committing.
 
 
+
+## 20. Owed review — the flash ten-unit batch (`PQ-191`) — SESSION 2026-09-05/06
+
+A goal-directed session picked ten ready units rated ≤ 5 complexity and shipped five of them out
+of order (the rest of the picked pool went back untouched: PQ-184.01/.02/.03 and the two PQ-022
+captures are normal ready units, not leftovers). Every unit has a receipt, an integratedCommit,
+and a subagent review round behind it. **A senior agent owes this batch a review**: `--id PQ-191`
+(packet: `design/program/roadmap/active/PQ-191.md`).
+
+The review is a judgment pass, not a rubber stamp: the six taste calls the batch made (grammar
+debt reported-not-fatal, the courier's deterministic traffic fixture, one-off set pieces reusing
+packaged art, the corkscrew amplitudes, the bars-as-checks polarity, the density table's home)
+are listed in the packet as INPUTS for the reviewer to ratify, adjust, or overturn — none of them
+is locked in, and the owner's taste outranks every one. Entry point: the five receipts named in
+the packet.
+
+| Unit | One line |
+|---|---|
+| PQ-144.00 | the three density layers as a budget table |
+| PQ-186.00 | every feel bar as a standing check that fails in the bar's own words |
+| PQ-139.04 | tumbling ships corkscrew their trail (both plume families) |
+| PQ-143.02 | six texture one-offs on the starter route |
+| PQ-184.00 | per-surface UI frame/DOM budgets, measured and gated |
