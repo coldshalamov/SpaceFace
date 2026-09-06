@@ -1015,8 +1015,14 @@ function deterministicAvoidanceSide(baseX, baseZ) {
     : (baseZ >= 0 ? 1 : -1);
 }
 
+// Reused scratch buffer: this runs every sim tick while autopilot is steering, so a fresh
+// array per call was steady GC churn. Callers consume it before the next tick, and nothing
+// downstream retains the array or its entries.
+const AUTOPILOT_OBSTACLE_SCRATCH = [];
+
 function autopilotObstacles(state, player, target) {
-  const out = [];
+  const out = AUTOPILOT_OBSTACLE_SCRATCH;
+  out.length = 0;
   const list = state && state.entityList ? state.entityList : [];
   for (const e of list) {
     if (!e || e === player || e === target.entity || e.alive === false || e.collides === false || !e.pos) continue;
