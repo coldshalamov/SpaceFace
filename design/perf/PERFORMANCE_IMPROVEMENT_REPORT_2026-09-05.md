@@ -1,440 +1,762 @@
-<!-- LIFETIME: DATED REVIEW — descriptive evidence, not admission. New work must still be admitted
-     through design/PERF_OPTION_SPACE.md (PQ leaves) before implementation. -->
+<!-- LIFETIME: DATED REVIEW + EXECUTION GUIDE — research and proposed work packets, not queue admission.
+     Reuse design/PERF_OPTION_SPACE.md identities and the admitted PQ-129 campaign.
+     This document changes no runtime defaults, physics contracts, queue status, or performance verdicts. -->
 
 # Performance improvement report — 2026-09-05
 
-Scope: a repo-wide, code-level sweep for performance improvements that could be implemented or
-tried, sized small / medium / huge, with special attention to **integrated-graphics laptops**
-(weak GPU with shared memory bandwidth, weaker CPU). This review is descriptive: it names findings
-and evidence, it does not admit work. Items that overlap an existing reserved identity in
-`design/PERF_OPTION_SPACE.md` are cross-referenced in §6 rather than re-numbered.
+## Integrated-graphics optimization and agentic execution guide
 
-## Coverage and method
+**Research baseline:** `coldshalamov/SpaceFace` at `4cd6d50f8402082526e6660eddb160fb4e33dfdf`, the commit containing the original report. **Research date:** 2026-09-05. **Deliverable:** an expanded, executable optimization plan, not a claim that the proposed improvements have been implemented or benchmarked.
 
-Six parallel structured sweeps plus direct reads of the core loop, event bus, registry, simulation
-runner, presentation runner, renderer hot paths (`renderer.js`, `bloom.js`, `vfx.js` frame paths,
-`presentPath.js`, `adaptiveQuality.js`), physics authority (`physics.js`,
-`sg02DynamicBodyOwner.js`, `rapierCollisionWorld.js`), HUD patterns, `partsLibrary.js` seams, and
-startup (`main.js`, `index.html`, `electron/main.cjs`). Deep-swept areas: all of `src/systems/`
-(~55k lines), `src/render/` (~45k), `src/ui/` (~30k+), `src/core/` + `src/combat/` + `src/ai/`
-(~35k), `src/audio/` + `src/save/` + `src/data/` seams + `partsLibrary.js` (~25k). Combined with
-the direct reads this covers well over 40% of the runtime code, weighted toward the per-frame and
-per-tick paths. Every finding below carries a `file:line` anchor read in the working tree.
+This edition reorganizes the original six huge, 29 medium, and 40 small findings into a measurement protocol, dependency-ordered work packets, correctness contracts, and a complete 75-item migration ledger. The original wording remains available in the [immutable initial report][R00]. Its findings are retained; its confidence labels, suggested ordering, and unmeasured speedup implications are not treated as experimental results.
 
-## 1. Calibration: what is already optimal (do not pay for these again)
+**No new hardware benchmarks were executed for this expansion.** Historical measurements below belong to the cited repository documents or code comments. New implementation ideas are hypotheses until a matched player-route experiment accepts them. The original author's claimed percentage of repository coverage is not independently certified here.
 
-This codebase has had substantial, measured perf work. Any improvement campaign should start from
-this list, not rediscover it:
+### Read this first
 
-- **Loop**: fixed 60 Hz sim with bounded catch-up (4) and backlog shedding, allocation-free runner
-  and completed-tick ring (`src/core/simulationRunner.js`); presentation runner with lifecycle
-  suspend/restore and stall detection (`src/core/presentationRunner.js`).
-- **Event bus**: pooled dispatch snapshots and pooled deferred records; no per-emit array garbage
-  except one closure + one swap array (§4.10) (`src/core/eventBus.js`).
-- **Renderer**: canvas MSAA off on the default bloom route (`src/render/presentPath.js:19-25`);
-  single-sampled MSAA-0 HalfFloat HDR targets; 2 full-res + 2 reduced-res post passes total; no
-  additive upsample RT; opaque sort bypassed (`renderer.js:3065`); BatchedMesh explicitly rejected
-  on Intel/ANGLE measurement (`renderer.js:3075-3080`); `preserveDrawingBuffer` only on the devshot
-  route (`presentPath.js:38-50`).
-- **Entity submit**: presentation-world slot queries with retained arrays, dirty masks,
-  projected-px LOD with hysteresis, glass/runway bands, per-entity shadow-caster policy
-  (`renderer.js:6154-6451`).
-- **Particles/VFX**: SoA typed-array pools, instanced shard cloud + sprite buckets, partial
-  dynamic-range uploads, swap-remove retire, relevance probes + 12–30 Hz cadences that fully sleep
-  (`vfx.js` update paths).
-- **Asteroids**: instanced common-rock pool with view+shadow frustum culling and dirty-slot matrix
-  reuse (`asteroidInstancePool.js`).
-- **Textures**: KTX2/BasisU mip-chained pipeline with Draco/meshopt and GPU residency budgets
-  (`assetLoader.js`, `assetResidency.js`).
-- **Adaptive resolution**: GPU tier detection incl. `intel/iris/Apple GPU` + dynamic-resolution
-  controller, currently enabled only for the `software` tier (`adaptiveQuality.js`,
-  `renderer.js:3936-3947`) — see §2.1/§3.20 for the integrated-tier gap.
-- **HUD**: dirty-checked `setText/setStyle/setClass`, numerics at 10 Hz, roster keyed-reconcile at
-  5 Hz, retained overlays (`hud.js`).
-- **Save**: worker-encoded chunked autosave with 8 ms synchronous-slice target, calm-window
-  deferral (`saveSystem.js`).
-- **Shadows**: single 512² directional over ±300, texel-snapped follow, dirty-gated re-render,
-  one-frame skip when present >22 ms (`shadowCasterPolicy.js`, `shadowPresentCadence.js`).
-- **Audio**: capped 12-voice one-shot pool, write-gained bed params, 100 ms threat recompute.
-- **Spatial hash**: layered static/dynamic with active-bucket iteration, stamp dedup, batch radius
-  queries (`spatialHash.js`) — AI perception is broadphase-based, not O(n²).
+1. **Reuse the existing performance machinery.** The repo already has asynchronous GPU timers, runtime witnesses, presentation snapshots, culling bands, asset admission, instancing, dirty uploads, and an admitted hitch campaign. Do not spend another campaign building their replacements.
+2. **Find the current bottleneck on the actual target machine.** Prior Intel measurements name different owners at different commits and in different scenarios. A September source review cannot establish that DPR, LOD, bloom, or physics is currently the largest bill.
+3. **Optimize the existing picture and behavior first.** Lower resolution, fewer effects, reduced shadows, simpler canopies, slower combat, and different solver settings are not interchangeable with equivalent-work optimization.
+4. **Deliver one measured runtime improvement per accepted implementation packet.** More detectors, documents, tests, or green source checks alone are not a smoother game.
 
-**The remaining wins are therefore mostly: (a) leftover per-tick scans/allocations in sim systems
-and AI, (b) a handful of real GPU levers (fill-rate defaults, ship draw-call LOD, shader loop
-size), (c) DOM/CSS steady-state waste in map/screens/HUD, (d) audio node churn, (e) burst
-main-thread JSON on save/menu/boot paths, and (f) Rapier solver/sleep configuration.**
+### Contents
 
-Entity scale for cost reasoning: ~100–300 live entities typical (≈80 asteroids/sector +
-`spawnBudget` cap 24 (hard 40) ships + traffic cap 8/sector), worst case ~400–500 in a big fight.
-`MAX_CATCHUP_STEPS = 4` means every render overrun amplifies into sim backlog — CPU wins convert
-directly into frame pacing.
+- [1. Authority, evidence, and corrections](#1-authority-evidence-and-corrections)
+- [2. Targets and acceptance rules](#2-targets-and-acceptance-rules)
+- [3. Measurement protocol](#3-measurement-protocol)
+- [4. Agent execution and handoff](#4-agent-execution-and-handoff)
+- [5. Dependency-ordered work packets](#5-dependency-ordered-work-packets)
+- [6. Regression matrix and release closure](#6-regression-matrix-and-release-closure)
+- [7. Complete original-finding migration ledger](#7-complete-original-finding-migration-ledger)
+- [8. Repository evidence and primary research](#8-repository-evidence-and-primary-research)
 
 ---
 
-## 2. HUGE items (multi-day; the ones that move integrated-GPU frames)
+## 1. Authority, evidence, and corrections
 
-### 2.1 Tier-aware default `pixelRatioCap` — the single biggest iGPU fill-rate lever
-- Today: `pixelRatioCap: 2` default (`src/core/gameState.js:28`) applied as
-  `min(devicePixelRatio, cap) × renderScale` (`renderer.js:7876-7891`). On the extremely common
-  150%-scaling / Retina integrated laptop, the full HalfFloat HDR scene RT + composite render at
-  up to 2× linear = **4× the pixels**, over shared-memory bandwidth, for a tilted tabletop game
-  that is GPU present-bound by the repo's own diagnostics comment (`renderer.js:3913-3921`).
-- Try: pick the default cap at boot from the already-computed `detectGpu()` tier — e.g. 1.25–1.5
-  on `integrated`, keep 2 on discrete. One-time decision, no runtime RT churn (which is why
-  dynamic resolution was disabled for this tier). Keep the player slider authoritative when set.
-- Doctrine note: `design/PERF_BUDGET.md` §3 forbids lowering these knobs **to pass gates**; a
-  tier-specific *playability default* is a product decision to try with the standard A/B evidence,
-  not a silent quality cut. Verify with the §7 protocol and the pixel-parity gate expectations.
-- Size: huge win, small-medium implementation. Confidence: high.
+### 1.1 Fit this plan into the existing repo
 
-### 2.2 LOD for procedural ships — the biggest remaining draw-call/vertex lever
-- Today: procedural ships get `optimizeStaticBatches` only — no `attachLodState`, no `updateLod`
-  (`visualFactory.js:3485`); `lod.js:10-13` says "LOD0-only for now"; `wholeShipLodPolicy.js`
-  covers authored GLB families only. Asteroids and stations already have the full machinery. Every
-  NPC ship at any distance draws greeble scatter, 3 blinker fixtures, per-hardpoint weapons,
-  engine fans, sensor masts, shield ring, decals — the dominant per-ship cost in a freighter
-  swarm, and nothing in `syncEntityViews` (`renderer.js:6285-6289`) can demote them.
-- Try: wire `attachLodState` + an `updateLod` that hides far-detail leaves (greebles, blinkers,
-  masts) at LOD2 and decal shells at LOD1, using the existing `hlod.js:23-39` helpers and
-  `isFarDetailSurface()` classification. Preserves the close-up picture exactly (PQ-108's
-  on-glass-LOD idea, applied to procedural hulls).
-- Size: huge in busy sectors; medium implementation. Confidence: high.
+Read root `AGENTS.md`, the nearest directory instructions, and the live implementation before editing. The performance authority chain is:
 
-### 2.3 Galaxy map: route planner runs 2× per animation frame
-- Today: `_draw` → `_updateRailSections` (`galaxyMap.js:8533` → `:7780-7781`) →
-  `_routeAlternativesHtml` runs `world.computeRoute(dest, 'fuel')` **and** `computeRoute(dest,
-  'hops')` every frame, building an HTML string that is only then change-compared. The rAF loop is
-  active whenever LOCAL-level live contacts exist (`_animationActive`, `galaxyMap.js:6194-6203`).
-  `_revealAlternatives` (`:7849-7867`) auto-opens that section whenever a route/contract/selection
-  exists, so this is the common case, not an edge case.
-- Cost: full route-graph walks twice per frame on the main thread, colliding with the WebGL canvas
-  — the largest single UI-side frame cost found in the repo.
-- Try: memoize on (destination, plotted-route shape, discovered-count); recompute on route events
-  and `refresh()`, never inside `_draw`.
-- Size: huge (while chart open at LOCAL). Confidence: high.
+`CANONICAL_BUILD_MAP.md` → `design/PERF_OPTION_SPACE.md` → `design/program/PERF_HITCH_CAMPAIGN.md` / `PQ-129` → the particular admitted leaf.
 
-### 2.4 Rapier configuration pass: solver iterations, selective sleep, redundant WASM reads
-- Today (all in `src/core/sg02DynamicBodyOwner.js`):
-  - `new RAPIER.World(...)` with defaults — no `numSolverIterations` tuning (`:190`), despite the
-    game being planar with manually integrated springs (`:1440-1452`) so the solver only sees
-    plain contacts.
-  - Every dynamic body is created `setCanSleep(false)` (`:903-906`) for replay stability — idle
-    wrecks/chunks/parked drones are integrated and narrow-phase-checked every step, forever.
-  - `_maybeResyncBodyPose` reads `body.translation()` for **every dynamic body every tick**
-    (`:1179-1208` via `:1060-1064`) and `_enforcePlane` reads translation/linvel/rotation/angvel
-    again (`:1311-1342`) — each read is a JS→WASM boundary call that allocates a result object in
-    the glue. At small body counts the boundary overhead dominates.
-- Try (each behind the determinism gate PQ-066 and 47-A golden hashes): `numSolverIterations = 2`
-  (structural-give clamping at `:843-884` already masks small solver loss); allow sleep for bodies
-  with no spring attachment and no commanded force (wake via the membrane on impulse); skip the
-  pre-step pose verification for bodies the owner exclusively writes. This is the concrete code
-  entry point for reserved identity **PQ-084 (physics sleep)** plus a solver-tuning sibling.
-- Size: huge on weak CPU as bodies grow; medium implementation + A/B. Confidence: high on the
-  mechanics; needs golden-hash validation before keep.
+`design/PERF_BUDGET.md` supplies the frame and same-picture contract. This report supplies research and execution detail, **not a second queue**. Packet labels `P00`–`P17` below are local document references, not new PQ identities. Inspect current dispatch and ownership before claiming implementation. Reuse an existing reserved identity; route a genuinely uncovered outcome through the existing sweep/admission mechanism. Do not copy changing queue status into this dated report. [R01–R05]
 
-### 2.5 Tactical AI restructure: stop re-deriving membership and inspect data every tick
-- Today (`src/systems/tacticalAI.js`): 5–6 full `entityList` passes per tick, each allocating
-  fresh Map/Set/array containers — `markCheapCohortMembers` (`:354-365`), `gatherCohorts`
-  (`:382-409`, `new Map()` + `[...byId.values()]`), `gatherRecipeSquads` (`:450-477`), 
-  `driveChoreographyMembers` (`:479-503`, `new Set()`), `applySquadTokenFireGate` (`:605-622`).
-  Additionally every stamp calls `director.inspect()` which builds a debug-shaped snapshot object
-  per member per tick (`fodderCohort.js:1090-1116`, `squadFrame.js:928-958`), and choreography
-  members are stamped **twice** per tick (`:495` and `:616`). The roster itself is rebuilt,
-  re-normalized, and re-sorted every 2 ticks even when unchanged (`aiPorts.js:425-511`) although
-  the stack's `_syncRoster` already supports zero-cost reuse (`ai/stack.js:340-361`).
-- Try: one membership index maintained in `entityIndex` (like the existing `aiShips` bucket),
-  pooled per-tick shared containers, expose the 4 scalar stamp fields on the pooled plan record
-  instead of calling `inspect()`, and skip roster rebuilds on an identity/version signature.
-- Size: huge at scale, medium implementation. Confidence: high (every tick, hot).
+The live game uses Three.js browser/Electron presentation and a fixed-step simulation. `src/core/loop.js` is a compatibility adapter composing `SimulationRunner` and `PresentationRunner`, not an invitation to build a second loop. Root instructions identify `flightV3.js`, `tacticalAI.js`, and the Rapier dynamic authority as live owners; legacy flight/AI implementations are not optimization targets merely because their filenames are familiar. [R01, R07]
 
-### 2.6 Platform scaleout (already reserved; listed for completeness)
-Sim Worker (`PQ-082`/`PQ-043`), WASM sim island (`PQ-083`), WebGPU backend (`PQ-089`/`PQ-044`),
-SharedArrayBuffer snapshots (`PQ-093`), native present (`PQ-090`). All stay gated on the §5.2/§7
-investigation order in `PERF_OPTION_SPACE.md`. Listed here because on a 4-core integrated laptop
-offloading the ~5 ms sim budget is the only remaining way to buy headroom once the items above are
-spent. Size: huge each.
+`index.html` maps `three` and Rapier to checked-in vendor files. `package.json` uses the existing server/Electron/bundle tooling, not a presumed new Vite application. Record the actual runtime `THREE.REVISION`, Rapier version or vendor hashes, browser/Electron version, and lockfile before using current documentation. A comment mentioning r160 is not proof that the current vendor bundle is r160. API examples from the web require a version/capability check. [R08, R09]
+
+### 1.2 Evidence classes
+
+Every packet receipt must classify its claims:
+
+| Label | Meaning | What it permits |
+|---|---|---|
+| **V — source verified** | The named path/symbol was inspected at the pinned commit. | A grounded implementation hypothesis; not a speedup claim. |
+| **H — historical measurement** | An existing repo receipt or code comment reports an experiment. | Reuse its detector and failure knowledge; reproduce before asserting current performance. |
+| **I — inherited finding** | Retained from the initial report, without independent re-reading of every cited implementation span. | Locate and revalidate the current symbol before editing. |
+| **P — proposal** | Engineering deduction or proposed implementation/test design. | An experiment with explicit acceptance and rejection conditions. |
+
+Line numbers in the original inventory are historical locators. They already drift within related files: the inspected SG-02 sleep setting is around lines 870–875, rather than the original report's 903–906. Use symbols and current code, not blind line-number surgery.
+
+### 1.3 What the direct inspection establishes
+
+| Area | Evidence at the research baseline | Consequence |
+|---|---|---|
+| Map alternatives | `_updateRailSections` calls `_routeAlternativesHtml`; that method calls `world.computeRoute` for both `fuel` and `hops` before comparing generated HTML. `src/ui/galaxyMap.js`, approximately 7730–7840. **V** | Cache planner results and retained presentation separately. Preserve the shipped planner. |
+| Tactical AI | `gatherCohorts` and `gatherRecipeSquads` construct maps and member arrays by walking `entityList`; choreography builds a new `Set`; `stampFodder` invokes `director.inspect`. `src/systems/tacticalAI.js`, approximately 354–503. **V** | Separate stable membership and runtime scalars from inspection snapshots. |
+| Combat phases | `prePhysics` and `postPhysics` both synchronize combatant bounds, with physics and attachment work between them. `src/combat/kernel.js`, approximately 111–140. **V** | These are not automatically duplicate computations. Post-step positions can differ. |
+| Physics sleep | `_createRecord` explicitly disables sleep because save/reload rebuilds bodies from authoritative pose/velocity and sleeping is hidden solver state. **V** | Sleep is a save/replay contract problem, not a one-line toggle. |
+| Existing physics reuse | `_createRecord` already reuses pooled ghost projectile bodies under a shape/mass key. **V** | Do not propose projectile pooling as wholly absent or generalize its contact-free equivalence to colliding bodies. |
+| Batching | Renderer leaves `_opaqueBatchEnabled` false. Its comment reports an Intel experiment where disabling per-frame repacking reduced `bloomScene` p95 from 114.5 ms to 11.0 ms despite more draws. **V/H** | Fewer draw calls are not an acceptance criterion. A retained-slot design must address the rejected design's upload/repack costs. |
+| Opaque ordering | Renderer currently installs `setOpaqueSort(() => 0)`. **V** | Coarse depth/material ordering is a possible controlled experiment, not an assumed free improvement. |
+| GPU timers | `gpuTimers.js` already has capability detection, bounded pending queries, origin frame/tick IDs, terminal outcomes, and delayed query machinery. Its small summary ring is not a long-run p99 distribution. **V** | Extend existing raw evidence only where a demonstrated gap prevents attribution. Do not write another timer subsystem. |
+| Bloom | `bloom.js` describes a full-resolution HDR scene, reduced-resolution downsample pyramid, and shared final composite. Its contract retains canonical tone mapping/encoding even with bloom neutralized. **V** | Do not reintroduce an upsample target or bypass color management as an alleged bloom-off optimization. |
+| Camera/table cost | `PERF_TABLE_ANALYSIS.md` records a historical sample with 3 glass, 7 runway, 317 beyond, 10 submitted, and 16 resident; later historical timing names simulation as the larger owner. **H** | Do not optimize a hypothetical visible far fleet when those entities are already culled. |
+
+Sources: [R06–R15]. These observations establish where to investigate; none proves today's frame rate on the user's machine.
+
+### 1.4 Corrections to the original recommendations
+
+**DPR is a product lever, not the default first optimization.** Halving linear render dimensions quarters pixel count, but does not imply four times the frame rate. CPU work, fixed passes, synchronization, and presentation remain. Lowering `pixelRatioCap` changes sampling quality. Keep it in the separately authorized preset packet, not the same-picture baseline. An integrated GPU label also does not imply a weak CPU or a universal performance tier. [R02, S01, S17]
+
+**Procedural ship LOD is conditional on visible procedural cost.** Determine how many procedural roots actually draw, their projected sizes, and whether authored assets are failing over. Far off-table entities should remain unsubmitted, not gain new LOD meshes. The historical tabletop census makes this distinction especially important. [R06, R15]
+
+**Cache validity is stronger than a convenient key.** Destination plus discovered-sector count is insufficient: equally sized discovered sets can differ, route weights can change, and the origin can move. Determine the actual dependency graph of the shipped planner, then version those inputs. Never silently tolerate stale route legality or hostility with an arbitrary TTL.
+
+**Do not reduce solver iterations because a clamp might hide the error.** A changed solver is a changed numerical system. Repeatability under the new settings is not equivalence to the old results. Sleeping also changes internal solver state and reconstruction behavior. Separate wrapper/allocation optimization, selective-sleep research, and physics-model changes. [R13, S12, S13]
+
+**Do not remove the second combat bounds synchronization without proof.** Pre-physics and post-physics bounds answer different temporal questions. A dirty/version optimization must represent pose, shape, scale, attachment, damage, and teleport changes at the correct phase. [R12]
+
+**Do not replace immediate pre-load rollback state with the last autosave.** Those snapshots can contain different unsaved progress. Reduce duplicate encoding/copying while preserving the exact rollback boundary.
+
+**Do not call `FrontSide` a universal free raster win.** Transparent double-sided materials can use two passes in Three.js; `forceSinglePass` can be appropriate for some flat effects. Neither that nor culling back faces is automatically equivalent for ribbons, shells, tilted geometry, or camera transitions. Verify the actual material and vendor implementation. [S06]
+
+**Do not infer forced layout from selector counts alone.** DOM queries consume CPU, but forced reflow is specifically about layout-dependent reads after invalidation. A transformed filtered layer may or may not repaint on a particular compositor path. Use the trace and paint evidence before prescribing a CSS rewrite. [S09, S10]
+
+**Do not sum phase p95s or confuse submit time with GPU time.** CPU and GPU work overlap; high CPU time around a renderer call may include driver backpressure. Delayed GPU queries must be joined to their original frame. [S02, S03]
+
+**Do not inherit the original “only remaining way” claim about Workers.** A Worker relocates work and adds transport/scheduling costs; it does not remove that work or guarantee spare CPU capacity. Existing representation, cadence, and locality problems can remain the dominant opportunity.
 
 ---
 
-## 3. MEDIUM items (roughly a day each; clear, measurable wins)
+## 2. Targets and acceptance rules
 
-### Sim CPU — leftover per-tick scans and rebuilds
-1. **Combat kernel iterates and re-sorts the full entity list every tick.** `prePhysics`/
-   `postPhysics` use `sortedEntitiesFromSource` = `[...list].sort()` with cache invalidation on
-   every spawn/destroy (`src/combat/kernel.js:111-140, 266-280`) — during combat that is nearly
-   every tick. `syncCombatantBounds` also runs twice per combatant per tick (`:127,:138`). Fix:
-   iterate `entityIndex.ships/drones/stations` + damageables; sort the small typed lists; skip the
-   second bounds sync. *(medium)*
-2. **AI contact objects allocated per candidate per sensor refresh.** `entityContacts` spreads a
-   fresh ~28-field object per asteroid/pickup/projectile in 1600 WU (`aiPorts.js:887-919`) —
-   hundreds of short-lived objects per decision tick in rock fields. Cache the hazard contact per
-   source per tick (the `_contactBaseFor` pattern at `:561-575` already exists) and stamp per-
-   observer fields onto the live copy. *(medium-large in asteroid sectors)*
-3. **`worldRecordId → entity` reverse index.** `entityWithWorldRecord` scans the whole entity map
-   per call on per-tick paths (`traffic.js:8175-8181`; call sites `:3406, :5214, :5621, :5937`),
-   and `findLiveEntityForRecord` re-implements the same scan (`world/worldRecords.js:1035-1042`);
-   `presentationAdmission.js:81-97` scans all entities per world-site per tick
-   (`asteroidSites.js:1288`). One Map in the entity index removes an entire class of O(N) scans.
-   *(medium)*
-4. **Sanctuary-withdrawal pass touches every entity every tick** with per-NPC station distance
-   tests (`lawSecurity.js:434-454`). Cadence to 4–8 Hz with `shouldRunOnTick` and pre-fetch the
-   station list from `entityIndex.stations`. *(medium)*
-5. **`describeEntity()` rebuilt per tick while the mining beam is held** (`mining.js:225` →
-   `interactionDescriptors.js:118-141`: fresh descriptor, stable-key string, display-name string,
-   lowercase hostility probes, arrays). Cache per target id, invalidate on events; or compute only
-   the fields `resolveBeamVerb` reads per tick. *(medium)*
-6. **Full-entityList scans for rare entity types, per tick**: vector mines (`weapons.js:1059`),
-   mines (`mines.js:116-141`), ghost contacts (`scanner.js:831-847`), cruise mass-lock
-   (`cruise.js:106-120`). Fix: typed buckets in `entityIndex` (the pattern exists) or spatial
-   queries. *(medium)*
-7. **Beam combat per-tick rebuilds**: `buildWeaponDamagePacket` clones statuses per beam per tick,
-   beam record + `beamKey` template string + `combat:fire` event with fresh origin/`to` objects
-   every tick per beam (`weapons.js:601-630`, `_muzzle` `:1212-1223`). Reuse the packet during the
-   beam phase; cadence `phase:'update'` emits to ~15 Hz. *(medium)*
-8. **Massline acquisition snapshot churn** (`tetherGameplay.js:1704-1793`, `:2212-2230`): per
-   refresh at up to 12.5 Hz — `[...nearby]` copies, full `entityList` scan for attachable
-   candidates (pickups/payloads are already indexed), fresh Maps/Sets/sort closures, and
-   per-candidate `isHostileToPlayer` (next item); optional per-candidate Rapier raycasts
-   (`:1894-1925`) — batch or top-3 only. *(medium)*
-9. **`isHostileToPlayer()` memoization** (`scanner.js:1443-1481`): `String(...)` + `.toLowerCase()`
-   allocations per call and worst-case O(gates+hazards) lane scan per call (`:1550-1573`); called
-   from weapons, tether acquisition, mining, and HUD contact words (twice on some paths).
-   Memoize ~0.25 s per entity; hoist sector lane-danger per tick. *(medium)*
-10. **Bulk entity removal splices ~24 index arrays per dead entity**
-    (`coreSystem.js:470-525`): a missile-salvo expiry costs O(24·N·shift) in one tick. Mark stale
-    and let `reconcileEntityIndexSource` rebuild once (`:527-534`), or swap-remove. *(medium, spiky)*
-11. **Economy econTick lookups**: `stationInfo()` linear scan per station per tick-of-econ
-    (`economy.js:159-175`), `commodityDef()` `.find` per listing (`:177-184`), fresh closures per
-    listing (`:306-312`, `:770`), `SECTORS.find` in `propagateEvents` (`:1942`), `_rng()` re-hashing
-    its seed per draw (`:2026-2029`). Maps + cached seed. *(small-medium at 5 s cadence)*
-12. **`getDerivedStats` resolves fittings twice per call** (`ships.js:623-624` → two
-    `resolveFittings`/`buildSlotList` passes); memoize slot list per defId. *(small)*
+### 2.1 Preserve the product contract
 
-### GPU / render
-13. **Cross-root merge + matrix freeze for ship hulls.** Procedural ships only get per-parent
-    merge; asteroids/stations/wrecks get `freezeStaticPresentation` →
-    `optimizeStaticBatchesForRoot` (`visualFactory.js:3485` vs `:268-338`). Ship sub-trees
-    (weapons `:1693`, engines `:1703`, masts `:1737-1744`) can't collapse and recompute local
-    matrices every `updateMatrixWorld`. Freeze hull-relative statics with the existing exclusions.
-    *(small-medium)*
-14. **Event-light pool sized by GPU tier.** 6 permanently-visible PointLights bake 6-light loops
-    into every PBR program (`vfx.js:209`, `:11455`, `:216-218`); the count is already a managed
-    shader-key input with matching precompile. A 4-light `integrated` preset is a safe boot-time
-    change. Cross-ref PQ-096. *(medium)*
-15. **Screen-size clamps for additive particles/flares.** Smoke grows to ~11 WU
-    (`vfx.js:12204`); shards/sprites are additive (`particleShards.js:136`,
-    `instancedSpritePool.js:70-75`); at close zoom these are unbounded screen-size additive
-    overdraw — the classic shared-memory fill killer. Clamp projected size (the starfield already
-    does: `spaceBackground.js:630`). *(medium)*
-16. **Shadows tier default.** Shadows default ON with a still-rebuilt-almost-every-frame 512²
-    depth pass while moving (`gameState.js:28`, `renderer.js:6968-6994`). Try: shadows off or
-    256² on `integrated` (contact-shadow discs already carry the ground read,
-    `renderer.js:758-799`). Same doctrine caveat as §2.1. *(small-medium change, medium GPU win)*
-17. **Material clones break per-ship batching**: per-fixture `emissiveMaterial(...).clone()`
-    blinkers ×3 (`visualFactory.js:2255`), armor clone `:1442`, grime `:1467`, gem `:2672`. Share
-    per (ship,color); pulse via instance color. *(small-medium)*
-18. **NPC canopy glass**: `MeshPhysicalMaterial` clearcoat, transparent, DoubleSide on every
-    procedural ship (`visualFactory.js:525-537`). Use MeshStandardMaterial for NPC tiers.
-    *(small)*
-19. **Dynamic resolution for the `integrated` tier without RT-churn hitches** (`renderer.js:3936-
-    3947`): a `setSize`-free path that only resizes bloom RTs, or a small preset ladder. As
-    shipped, an integrated GPU under transient load has zero automatic relief. *(medium)*
+Keep default bloom, shadow behavior, particles, render scale, pixel-ratio cap, authored near detail, and on-screen population unchanged during same-picture comparisons. Input, flight, weapons, collisions, and required physics remain at the authoritative 60 Hz step. Browser and Electron continue to use one game and asset path. Do not modify golden expectations to make an optimization pass. [R01–R04]
 
-### UI / DOM / CSS
-20. **`box-shadow` keyframe animations on always-visible HUD** (`uiRoot.js:1464-1465, 1669-1672,
-    1731-1733`; `comms.js:747`): paint-property animations run continuously over the WebGL canvas.
-    Animate `opacity` on a static pre-rendered glow pseudo-element instead. *(medium — duty-cycle
-    dependent)*
-21. **Market + bar screens rebuild on the ~3.3 Hz periodic path**: per-row quote recomputation, ~8
-    `querySelector` per row, unconditional textContent writes, full chip-DOM rebuild per row
-    (`market.js:1240-1330`, `renderIntelStrip :1518+`); bar rebuilds every contact card with fresh
-    listeners (`bar.js:1484-1553`). Signature-gate rows, cache field spans, no-op on
-    `options.periodic` (missionLog already does: `missionLog.js:1837`). *(medium)*
-22. **Galaxy map per-frame DOM/model work beyond the planner**: ~11 `querySelector` per `_draw`
-    (`galaxyMap.js:8495, 8503, 7730-7778`), inspector string rebuild every frame instead of the
-    file's own 64 ms cadence (`:6236`, `:6377-6382`), weather/cargo-deck snapshots computed every
-    frame (`:8534-8535`), ribbon legs `innerHTML` keyed on live ETA labels (`:7614-7650`),
-    `getBoundingClientRect` on every mousemove (`:8221`). Cache refs; cadence to 64 ms; coarse
-    keys. *(medium aggregated)*
-23. **`drop-shadow` filters on per-frame-translated overlays** (`uiRoot.js:1608, 1781-1782,
-    2033-2035`): each 30–60 Hz transform write re-rasterizes the filtered layer. Isolate filters
-    onto static children or drop at this scale. *(small-medium)*
+There are three implementation classes:
 
-### Audio (steady-state node churn)
-24. **All four music-stem sequencers run forever, even at 0.0001 gain** — in `calm`, stems B/C/D
-    keep creating oscillators/filters/BufferSources every 16th note into a silent bus
-    (`audioSystem.js:3081-3098`, `:3405-3420`). Gate `scheduleNotes` on stem weight with a small
-    lookahead; also call `_pauseMusicSchedulers()` on gameplay pause (`_onPause`, `:1638-1681`).
-    *(medium)*
-25. **Engine hum writes 8 AudioParam automations per frame uncached** (`audioSystem.js:3920-3931`
-    ≈ 480 events/s) and **priority-duck rewrites loop gains per frame** (`:4114-4124`). Apply the
-    existing `_bedTargetCache` / `v._audioGainTarget` patterns (`:3973-4013`, `:3651-3658`).
-    *(small-medium)*
+| Class | Examples | Required approval/evidence |
+|---|---|---|
+| **Equivalent work** | Remove repeated HTML construction, reuse immutable indexes, avoid unchanged uploads, share truly immutable material resources. | Behavioral tests, matched timing, visual verification when presentation is touched. |
+| **Perceptually equivalent representation** | Approved projected-pixel detail suppression, alternate geometry organization, shader/pass fusion. | Near-view contract plus temporal visual review, relevant pixel comparisons, unchanged gameplay, and performance evidence. Do not claim bit-identical output unless measured. |
+| **Product/physics change** | Lower DPR, fewer lights, smaller particles, lower shadow resolution, slower authoritative AI, solver-iteration reduction. | Separate explicit decision and baseline. Never disguise it as a same-picture win. |
 
-### Save / load / boot (burst main-thread work)
-26. **Manual save stringifies the payload twice and parses twice synchronously**
-    (`saveSystem.js:506-513, 789-831`); the transactional autosave path already shows the correct
-    shape. Reuse the checksum string; route validation through the worker. *(small-medium)*
-27. **Rollback snapshot on every load-from-flight** runs a full capture + checksum stringify +
-    deep clone before restore starts (`saveSystem.js:2593-2610`, `:2494-2500`). Reuse the last
-    validated autosave bytes as the rollback target. *(medium)*
-28. **`listSlots()` fallback scan validates every slot's full payload** (parse + fnv1a per slot,
-    `saveSystem.js:1025-1063`, `:4066-4072`) — menu hitch with several multi-MB slots; the file's
-    own comment (`:969-971`) describes the index-first contract. Trust the index unless corrupt.
-    *(medium)*
-29. **Boot path**: `partsLibrary.js` and its deep render graph are statically imported at boot
-    though nothing authored renders until a run starts (`main.js:28`); scenario contract
-    fetch + canonical stringify + SHA-256 block the loop start (`main.js:108`). Dynamic-import the
-    library inside the new-game transition; overlap the fetch/hash with registry init. *(medium)*
+### 2.2 Quantitative targets
+
+`PERF_BUDGET.md` states the existing 60 fps / 16.7 ms desktop target and 30 fps / 33.3 ms low-end floor. It allocates planning budgets of 5 ms simulation, 7 ms render, 2.5 ms VFX, 1.2 ms UI, and 1 ms headroom. Preserve that authority; do not reinterpret CPU submission timers as actual GPU execution. [R02]
+
+For implementation, report both **sim cost per fixed tick** and **aggregate sim cost per displayed frame**. A 30 fps render interval normally contains about two 60 Hz simulation steps; comparing that aggregate to a one-tick budget is misleading. Count catch-up steps and shed backlog explicitly.
+
+The following are **proposed measurement gates**, to be calibrated and recorded before a packet's A/B, not new silently imposed global budgets:
+
+- Meet the selected device's target on the defined player scenarios; report p50, p95, p99, worst frame, and missed-target rate rather than average FPS alone.
+- No persistent loss of simulation time under the agreed normal and busy workloads. Any backlog shedding is visible in the receipt, not used to manufacture smoothness by slowing the game.
+- No new unexplained >100 ms playable-frame stall. Track >50 ms and >100 ms event counts separately from the target-specific pacing metric.
+- No repeatable regression outside measurement noise in an untargeted owner, input responsiveness, startup/Continue, first combat, or memory retention.
+- After warm-up, repeated travel/customization/menu cycles reach a bounded memory plateau rather than a positive retained-growth trend.
+
+**The 32 ms trap:** retain the repo's historical `>32 ms` hitch metric for comparability, but do not describe a deliberately paced 33.3 ms presentation as stuttering solely because every frame crosses that threshold. Add selected-target misses and excess time above target; distinguish work duration from delivered-frame interval. Likewise, a Long Animation Frames observer is useful for larger stalls, but its 50 ms threshold cannot see every missed 16.7 or 33.3 ms deadline. [S11]
+
+No universal draw-call, triangle, or material ceiling is invented here. Those counts are explanatory counters. The player receives frames, not a draw-call spreadsheet.
+
+### 2.3 Keep / reject / inconclusive
+
+Before changing code, name one primary metric and its practical improvement threshold. Derive the noise envelope from repeated unchanged runs. A small apparent win within that envelope is **inconclusive**, not accepted. A large change in a known expensive operation still needs the end-to-end player-route gate.
+
+For a vsync-limited route, unchanged FPS can coexist with a useful measured reduction in work, memory, or thermal load. State that result accurately; demonstrate the extra headroom in a fixed, legal stress case without changing the picture or population between A and B.
+
+Reject when the picture, behavior, replay, save integrity, or liveness contract fails—even if frame timing improves. Reject when the hitch merely moves into loading, first shot, entry, or restore. Do not average away a severe regression in one scenario with wins elsewhere.
 
 ---
 
-## 4. SMALL items (hours each; aggregate GC/CPU hygiene)
+## 3. Measurement protocol
 
-**Sim/systems**
-1. `JSON.parse(JSON.stringify(manifest))` per tick per Ceres disabled-hauler incident, twice
-   (`traffic.js:5957` via `:6298-6299`). *(high confidence)*
-2. `traffic._rng()` → `_ensureState()` re-runs 3× `compactStableIds` (arrays + Sets) per RNG draw
-   (`traffic.js:8032-8035`, `:7916-7960`). Read the seed directly.
-3. Salvor dispatch pass full-scan + `localeCompare` sort every 4th tick in every sector
-   (`traffic.js:3400-3401`, `:4080-4102`). Cadence to 30–60 ticks or event-driven.
-4. `stationIdentity()` `String()` per candidate inside `.find()` per tick
-   (`traffic.js:8159-8164`, used at `:3407, :3461`). Cache on `station.data`.
-5. Courier/liner per-tick presentation strings + itinerary objects + `Object.keys(...).sort()`
-   while boarding (`traffic.js:2127-2145, 2202-2216, 2436-2455, 2506-2520, 2632-2648`).
-6. `gcExpiredRecentMemory` materializes `Object.keys(bag.byId)` per tick
-   (`world.js:2662` → `worldRecords.js:113-128`). 1–2 s accumulator.
-7. `mining:tick` event at 60 Hz per active miner/drone with fresh payload (`mining.js:689-694`,
-   `automation.js:858-875`); `beam:denied` per tick while denied (`mining.js:254`);
-   `mining:heatChanged` at 50 Hz (`mining.js:523-534`). Cadence + reuse payloads.
-8. Mining per-tick allocs: `beamLineFor`, `toolState`, `rayCircleContact`, seam points
-   (`mining.js:229-250, 1622-1645`); `_rollOre` table rebuild per unit (`:851-866`);
-   `richOreForTier` sorts ORES per call (`:1861-1867`); `_drainWreck` per-tick spread + sort +
-   reduces (`:1046-1108`). Static caches + scratch objects.
-9. `Math.hypot` in range-gate branches across traffic/mining/weapons/AI helpers
-   (`src/core/math.js:27-29`, `ai/contracts.js:219-225`, `traffic.js:3363` etc.) — `d²` compare or
-   `sqrt(dx²+dz²)`; keep `hypot` where golden hashes pin it.
-10. String-building sort comparators per comparison: `compareId` (`fodderCohort.js:1153-1159`),
-    `stableId` (`ai/contracts.js:180-183`); numeric compare or precomputed keys; drop the
-    `slice()` before sort (`:357`).
-11. `_attackSpecFor` builds a `join(',')` cache key per shot (`weapons.js:773-774`); RNG entropy
-    object allocated per draw (`weapons.js:328-335`); weapon def + heat fields re-resolved per
-    weapon per tick (`weapons.js:289, 354, 365`) — bake onto runtime.
-12. Automation outposts: per-tick production plan + input scan + filter/sort per good
-    (`automation.js:1364-1416`) — refresh at 0.5–1 s, keep `storage += rate*dt` per tick.
-13. Missions: `_adoptLiveMissionTargets` full-entity filter+sort run twice per retry window
-    (`missions.js:4192-4256` via `:4181` and `:4362`); persistent `missionId → entities` index
-    (`missionTag` already stamped, `:4286`).
-14. Story: `snapshotEndingFacts` allocations per tick once `flags.endgame` is set
-    (`story.js:579-630` → `story/endings/eligibility.js:23-50`). Cache or event-driven.
-15. Claims: defense-warning waypoint object + template string rebuilt per tick
-    (`claims.js:1198-1213`).
-16. `hash32(...args)` builds a join string per call (`src/core/rng.js:74-82`) — numeric fast path.
-17. Event bus: per-`emit` closure `set.forEach((fn)=>snapshot.push(fn))` and a fresh `[]` per
-    non-empty flush (`eventBus.js:31-33, 53-54`). Hoist the callback; double-buffer `deferred`.
-18. Registry: `shouldSkipSystemOnCatchup(s.name, state)` per system per tick
-    (`registry.js:755-759`) — hoist the per-tick decision.
-19. Runtime witness 1 Hz `getReport()` builds a large report (180-sample sorts × ~40 stats + full
-    entity walk) on the main thread (`runtimeWitness.js:587-598` → `perfRuntime.js:1115-1191`) —
-    a periodic few-ms spike; read scalars or memoize.
-20. SG-02 owner hygiene: `stepReceipts = []` per step (`sg02DynamicBodyOwner.js:619`), `new Map()`
-    per step in `_captureContactImpacts` (`:1091`), `[...merged.values()].sort()` per step
-    (`:1175`), `Math.min(...dynamicCaps)` spreads (`:1104, 1147`), `diagnostics()` walks all
-    records twice per tick (`:386-405`), `_hasManualSpringAttachment` walks all attachments per
-    body per step (`:644-651`), `push(...stepReceipts)` spread (`:632`).
-21. Physics command membrane: `writePhysicsControl` allocates ~6 objects per craft per tick,
-    command record re-created per tick (`physicsAuthority.js:26-39, 56-60, 257-270`),
-    `planeForce`/`yawTorque`/`quatFromYaw` copies per application (`sg02DynamicBodyOwner.js:1263-
-    1281`, `:1997-2005`) — retain + reset instead of delete/recreate. ~25k allocs/s at 40 craft.
-22. Projectile sweep falls back to all-collidables × all projectiles when the hash is off below 96
-    collidables (`physics.js:614-633`, `:929-936`) — count statics only, or lower the threshold.
-23. `updateDockRange` walks stations per tick (`physics.js:738-811`) — early-out when docked.
+### 3.1 Use existing entry points first
 
-**Render**
-24. Shadow-follow key template string per frame (`renderer.js:7271`) — 5-number compare.
-25. `bubble.updateWorldMatrix(true,false)` + nav-source matrix update per ship per frame
-    (`renderer.js:1365, 1401`) — read `matrixWorld` after the frame's `updateMatrixWorld`.
-26. Field-geometry instanced pools rewritten every frame while fields exist (`vfx.js:9768-9771`,
-    ~400 matrices) — `_consumeCadence` like the other VFX subsystems.
-27. `DoubleSide` on all VFX quads (`particleShards.js:138`, `instancedSpritePool.js:190`,
-    `engineTrailSurfaces.js:97,170,186`) — plane-viewed; FrontSide is a free raster win.
-28. Common-rock geometry is non-indexed after `toCreasedNormals` (`visualFactory.js:1951-1971`) —
-    an indexed instanced variant cuts vertex invocations ~3× if rock-heavy views matter.
-29. `getExternalTexture` lacks mipmap/anisotropy caps (`vfx.js:241-253`,
-    `visualFactory.js:201-214`) — guard against authored fallback cost.
-30. No-op self-assignment `slot.obj.intensity = slot.intensity` (`vfx.js:11635`).
+Start in a clean, identified checkout, without resetting unrelated work:
 
-**UI**
-31. HUD per-frame `heatRow.querySelector('.sf-bar')` (`hud.js:4237`) — cache at build.
-32. Unconditional `document.body.dataset.sfHudJob` write at 10 Hz (`hud.js:4309-4311`).
-33. Per-frame `{x,y,z}` allocations into `worldToScreen` (`hud.js:1760, 1794, 2107, 4612`;
-    `uiRoot.js:563`) and per-tell layout records (`hud.js:809`) — scratch vectors; cache layout
-    per (w,h).
-34. `getElementById('toasts')` per 10 Hz lane placement (`hud.js:4572`).
-35. `syncHudAccessibility` unconditional `getElementById`+`setAttribute`+`inert` per frame
-    (`uiRoot.js:1131-1133` → `screenManager.js:269-275`).
-36. `getElementById('aim-reticle')` per frame (`uiRoot.js:512`).
-37. `JSON.stringify` signature per frame in band HUD (`bandHud.js:115` via `uiRoot.js:1147`) —
-    tuple compare.
-38. Radar 2D: `createRadialGradient` per 10 Hz draw + full clear (`radar.js:469`) — pre-render the
-    static plate offscreen (galaxyMap already does this: `galaxyMap.js:8413-8472`).
-39. `backdrop-filter: blur(2px)` on cargo/contacts/weapon panels (`uiRoot.js:2510-2512`).
+```sh
+git status --short
+git rev-parse HEAD
+node --version
+npm run check:baseline
+node scripts/program-dispatch.mjs --id PQ-129
+npm run probe:runtime-witness
+```
 
-**Audio**
-40. `_noteFreq` allocates its SEMITONES table per note (`audioSystem.js:2995-3001`) — hoist.
+Read `.devshots/runtime-witness/report.md` and the probe's raw output. Inspect `scripts/probe-runtime-witness.mjs` and relevant package scripts before supplying extra flags. Historical receipts use `SPACEFACE_WITNESS_MS=30000 ... --continue`; verify that interface still exists, and use a dedicated test save/profile, not the only copy of a player's save. Environment-variable syntax differs between shells.
+
+Discover the current specialized scripts instead of inventing command names:
+
+```sh
+node --input-type=module -e "import fs from 'node:fs'; const p=JSON.parse(fs.readFileSync('package.json','utf8')); for(const [k,v] of Object.entries(p.scripts||{})) if(/perf|hitch|witness|playable|sim|sg02|map|asset.*dispos|audio/i.test(k)) console.log(k+' => '+v)"
+```
+
+Use `check:perf`, `check:hitch-budget`, and the existing specialized probes according to their actual current definitions. A headless/software-rendered check is a structural or regression check, **not certification of an Intel GPU**. Do not relabel SwiftShader as integrated hardware. The existing campaign explicitly distinguishes these routes. [R03, R09]
+
+### 3.2 Hardware and environment fingerprint
+
+Record for every run: commit and dirty diff; seed/input tape/save fixture; scenario and sample interval; OS; CPU; physical GPU and active browser renderer/ANGLE backend; driver; browser/Electron; vendor-library versions/hashes; CSS viewport; drawing-buffer dimensions; OS display scale and DPR; refresh rate; render scale; all graphics settings; audio enabled state; window visibility/focus/occlusion; AC/battery and power mode; warm/cold asset state; and competing workloads.
+
+First reproduce on the actual integrated machine implicated by the player's symptom. Then use at least one other available graphics architecture as a regression lane. Do not invent a supported minimum SKU or claim support for an unavailable device. A strong integrated GPU, older Intel hardware, and a software rasterizer are different populations.
+
+Serialize GPU measurements. Agents may analyze or implement independent files in parallel, but do not run Blender, asset conversion, multiple game probes, and several browser instances on the benchmark machine simultaneously. Interleave A/B runs to reduce thermal and background drift. Include a sustained run: a cold laptop's first 20 seconds are not its long-session performance.
+
+### 3.3 Scenario manifest
+
+Reuse existing fixtures where possible. Add a missing stimulus to the current harness rather than a competing benchmark framework. Each scenario records the real action path, not a synthetic replacement renderer.
+
+| Scenario | Required stimulus and invariant | Owners exposed |
+|---|---|---|
+| Opening | New Game to first visibly moving, controllable ship; defaults unchanged. | Imports, compose, compile, upload, readiness. |
+| Continue | Load a dedicated representative save; fly and fire immediately after readiness. | Decode, migrations, reconstruction, delayed admission. |
+| Ordinary flight | Fixed input tape through the existing sector with the normal camera. | Steady sim, submit, background, HUD. |
+| Busy combat | Fixed legal population and weapon sequence including first and repeated effects. | Combat, physics, AI, materials, VFX overdraw. |
+| Tether/mining | Attach, tension, release, drag through contacts, mine/deplete, change target. | Massline, bounds, event cadence, allocations. |
+| Travel | Approach, high-speed entry, turn back, revisit; include rebasing where supported. | Runway/residency, first-use, dispose/recreate, late jobs. |
+| Map | LOCAL contacts animated; alternatives open; change origin/destination/cost/knowledge and plot/abort. | Planner cache validity, retained DOM, interactions. |
+| Dock/customization | Open/close market and preview, change fittings/paint/loadout, return to flight. | Material ownership, geometry cache, UI and asset lifecycle. |
+| Save under load | Trigger the shipped save path during a representative busy interval. | Snapshot capture, serialization, storage, worker transfer. |
+| Lifecycle/soak | Hide/minimize, restore, change viewport, repeat travel and previews; capability-gated context-loss test. | Extra rAF owners, timer reset, retained memory, resource recovery. |
+
+Record glass/runway/beyond counts, visible subject identities, active combatants, submitted roots, resident roots, and active physics bodies. A faster run with fewer enemies, missing authored meshes, or an unpainted canvas is invalid.
+
+### 3.4 Measurement channels
+
+**Presentation interval:** consecutive delivered render samples, missed target intervals, long streaks, and input-to-simulation/presentation latency proxies. A changing sim clock alone does not prove a changing 3D frame.
+
+**CPU:** fixed-step owners; render preparation; entity admission/compose; WebGL submission; UI scripting; browser style/layout/paint; audio control; save capture/encode; and GC. Preserve exclusive versus inclusive timing semantics. Do not add nested buckets twice.
+
+**GPU:** reuse `src/render/gpuTimers.js`. Query asynchronously; collect later after availability; invalidate disjoint/context-loss samples; retain origin frame/tick IDs; bound pending capacity; never busy-wait or call `gl.finish()` to make a graph convenient. Do not nest incompatible elapsed queries. A missing timer result is unavailable data, not zero GPU cost. [R11, S02]
+
+**Submission/resources:** accumulate the complete logical frame across all passes. Three's `renderer.info` can reset per render call, so verify the repo's aggregation before trusting draw totals. Track programs and resource counts, plus estimated bytes and upload ranges; resource counts alone are not memory-byte measurements. [S03]
+
+**Browser compositor:** use a separate diagnostic trace for layout/paint/composite and a frame capture for draw/program/texture attribution. Capture tooling changes workload: do not mix screenshot readbacks, heap snapshots, or instrumented frame captures into the final timing window. Avoid synchronous GL inspection in the production hot path. [S01, S09]
+
+**Allocation/retention:** use allocation sampling to identify constructors and snapshots; use before/after heap or resource snapshots outside the timing sample to identify retained owners. Inspect both JS-side decoded assets and GPU-side resources. Shared system-memory pressure matters on integrated hardware, but process memory, JS heap, estimated textures, and actual driver residency are not interchangeable. [S08, S17]
+
+### 3.5 Baseline → candidate experiment
+
+1. Freeze the base commit, fixture, viewport/settings, and selected primary metric. Verify liveness and authored-asset diagnostics.
+2. Run unchanged repetitions to establish noise and warm-up behavior. As a practical starting point, use a brief existing witness for triage and multiple 60–120 second samples for acceptance; extend rare-event and thermal tests as needed.
+3. Separate cold opening, warm steady play, first-use events, and sustained-session results. Do not delete the troublesome opening interval from a startup claim.
+4. Implement one hypothesis, run focused correctness checks, and then compare matched A/B/A or interleaved ABBA runs. Use fresh processes or the same documented cache reset policy for both sides.
+5. Export raw per-frame or event data through existing facilities. A 64-sample summary ring cannot establish a stable long-run p99; do not concatenate overlapping rolling windows as independent samples. Deduplicate by origin identity where applicable.
+6. Compute per-run quantiles, event counts, and uncertainty across runs. Frames are temporally correlated; do not claim thousands of independent experiments from one flight. Block/run-level comparisons are preferable to naive frame-wise significance claims.
+7. Check stills and motion separately using the same input/seed and relevant simulation times. Review silhouette, weapon tells, shadow attachment, halo width, background continuity, LOD transitions, and transparent ordering. Do not mask the very region the optimization changes.
+8. Re-run the original baseline when a surprising result appears. Record kept, rejected, or inconclusive with the causal evidence, not just a favorable percent.
+
+### 3.6 Bottleneck decision table
+
+| Observation | Next investigation | Wrong inference to avoid |
+|---|---|---|
+| Fixed-step CPU dominates; GPU is short | AI membership, combat indexes, physics membrane, off-table authority. | Add more ship LOD or lower bloom. |
+| Render-prep CPU grows with resident, not visible roots | Admission, retained slots, bounds/versioning, offstage work. | Lower textures globally. |
+| GPU scene time scales strongly with drawing-buffer pixels | Overdraw, shading, RT bandwidth; preset experiment only in its own lane. | Claim DPR is equivalent quality. |
+| Renderer call stalls while GPU workload is large | Driver backpressure/upload, GPU trace, batch data traffic. | Assume the renderer's JS is all the cost. |
+| First-use spike only | Compose/compile/upload key and admission ordering. | Reduce steady AI rate. |
+| Map open causes CPU spike without more 3D | Route planner, DOM rebuild, layout/paint. | Rewrite the renderer. |
+| Periodic spikes match witness/report/save/audio cadence | Diagnostic construction, serialization, control automation, GC. | Blame Rapier from a coarse sim/present label. |
+| Long-session decline with growth | Retainers, unbounded caches, decoded assets, previews, pending jobs. | Add another larger object pool. |
+| Healthy internal timers but bad delivered pacing | Visibility, compositor, OS scheduling, cap/lifecycle, measurement overhead. | Relabel all unexplained time as GPU. |
 
 ---
 
-## 5. Suggested order of attack for integrated graphics
+## 4. Agent execution and handoff
 
-If the goal is "smooth on an integrated laptop," spend in this order (each needs the §7 evidence):
+### 4.1 One shared loop, not an expanding bureaucracy
 
-1. §2.1 tier-aware pixelRatioCap default (fill rate — biggest lever, boot-time safe).
-2. §2.3 galaxy-map planner memoization (biggest UI-side frame cost).
-3. §2.2 procedural-ship LOD (draw calls/vertices in traffic).
-4. §2.5 tactical AI membership/stamp/roster restructure (every-tick CPU waste).
-5. §3.1 combat kernel typed iteration (combat-hot CPU).
-6. §2.4 Rapier solver iterations + selective sleep (behind the determinism gate).
-7. §3.20 box-shadow → opacity HUD animations (paint contention with the canvas).
-8. §3.13–3.16 ship merge/freeze, light-pool tier, particle size clamps, shadow tier.
-9. §3.24–3.25 audio sequencer gating + param caching (steady node churn).
-10. §3.26–3.29 save/boot burst work (hitch class, not steady state).
-11. The §4 hygiene pass as a batched cleanup campaign.
+`validated baseline → named owner → smallest legal change → focused tests → matched player-route A/B → picture/behavior gate → keep or revert → fresh census`
 
-## 6. Cross-reference to the reserved PQ catalog
+An investigation ends when it selects an implementation, rejects the candidate with a reason, or identifies the **specific missing measurement**. It does not end with another broad request to investigate performance.
 
-Findings above that map onto identities already reserved in `design/PERF_OPTION_SPACE.md` — admit
-through those leaves, don't mint duplicates:
+Allow one bounded instrumentation repair when existing evidence is inadequate. State the missing observable and the implementation decision it unlocks. After repairing it, make that decision. Do not continue adding schema layers, validators, dashboards, or scenario languages without a demonstrated blocker.
 
-| Report item | Existing identity |
-|---|---|
-| §2.4 Rapier sleep | `PQ-084` (physics sleep); solver tuning is a natural sibling leaf |
-| §2.2 ship LOD / tiny-ship detail | `PQ-053` (live LOD/HLOD), `PQ-108` (on-glass LOD) |
-| §3.14 event-light cardinality | `PQ-096` (+ `PQ-072` exact-key prewarm) |
-| §3.15 VFX on-glass/table sizing | `PQ-115`, `PQ-121`, `PQ-126` |
-| §3.16 shadow glass set | `PQ-077` |
-| §3.19 dynamic resolution | `PQ-056` / present; `PQ-058` resource governor |
-| §3.5/§3.6 admission + world-record scans | `PQ-070` (offstage work freeze), `PQ-080` (table cadence) |
-| §3.21–3.23 HUD/map/screen cadence | `PQ-088` (HUD/audio cadence), `PQ-102`/`PQ-117` (hidden screens) |
-| §3.24–3.25 audio | `PQ-105` (audio table cull), `PQ-088` |
-| §3.26–3.29 save/boot bursts | `PQ-087` (autosave hitch), `PQ-103`/`PQ-104` (decode/binary cache, boot family) |
-| §4 allocation hygiene batch | `PQ-106` (hot-alloc shapes) |
-| §2.6 platform scaleout | `PQ-082`/`PQ-083`/`PQ-089`–`PQ-093` |
-| Draw-order/present experiments | `PQ-052`, `PQ-076`, `PQ-078`, `PQ-097`, `PQ-116`, `PQ-107` |
+If the machine cannot run a real hardware probe, produce the narrowly scoped patch and its executable correctness evidence, label hardware acceptance pending, and retain a reproducible command/fixture. Do not claim a performance win; do not repeatedly rebuild harnesses to conceal the lack of hardware. Do not merge a behavior-sensitive speculative change as performance-certified.
 
-Items **not** in the catalog that likely merit new leaves via a `PQ-094` sweep note: §2.1
-(tier-aware pixel-ratio default), §2.3 (galaxy-map planner per-frame), §2.5 (tactical-AI
-membership/stamp restructure), §3.1 (combat kernel typed iteration), §3.20 (HUD box-shadow paint
-animations).
+### 4.2 Ownership and parallelism
 
-## 7. How to try any of these (repo contract)
+Use current repo ownership/claim conventions. Give each implementer a narrow file surface and one packet. Keep one integrator responsible for shared contracts and final measurements. UI, save, and audio work can proceed independently when they do not modify the same dispatcher or event contract. Renderer/bloom/precompile and physics/AI scheduling require coordinated ownership.
 
-- Run the investigation first when the owner is unknown: `npm run probe:runtime-witness` and read
-  `.devshots/runtime-witness/report.md`; the catalog's `PQ-061`–`PQ-063` censuses name owners.
-- Before/after on the same machine/window/seed: `npm run check:perf` (p95, hitch count, phase
-  p95s, `render.calls` peak), `npm run check:hitch-budget`; graphics-adjacent changes also take a
-  paired still-diff so the default picture provably holds (`PQ-111`).
-- Sim-touching cadence/physics changes must clear the determinism lab before keep (`PQ-066`); no
-  golden re-recording to pass.
-- Quality-default experiments (§2.1, §3.14–§3.16) are product decisions with evidence, not gate
-  shortcuts — `design/PERF_BUDGET.md` §3 governs.
+Do not create branches/worktrees or rewrite unrelated work merely to fit this guide; follow current repository conventions and the user's branch instructions. Re-read HEAD and the target file before writing. Every merged candidate is re-tested against the integrated head—wins measured on divergent parents are not additive evidence.
+
+Run correctness jobs in parallel only when they do not interfere with shared profiles/ports/assets. GPU timing is serialized. Rebase or resolve semantic conflicts before accepting a receipt; a clean text merge does not prove cache invalidation or shader-key compatibility.
+
+### 4.3 Required packet receipt
+
+Keep raw artifacts in the existing probe output or a bounded local folder such as `.devshots/perf/<packet>/<commit>/<device>/`; do not commit giant traces unless repo policy requires it. Place only the concise durable result in the established campaign/leaf location.
+
+```yaml
+packet: P01                  # local guide reference, not a new queue identity
+admitted_leaf: <existing PQ identity>
+base_commit: <sha>
+candidate_commit: <sha>
+status: proposed | rejected | inconclusive | accepted
+claim: <one sentence about the player symptom and causal owner>
+evidence_class: V | H | I | P
+owned_files: []
+contract_preserved: <picture, behavior, save, replay, authority>
+scenario: <fixture, seed, input, sample interval, graphics settings>
+hardware: <complete fingerprint; software rendering explicitly identified>
+primary_metric: <metric and predeclared practical threshold>
+raw_evidence: <paths; actual executed commands and exit status>
+before_after: <per-run distributions, not invented or overlapping summaries>
+untargeted_regressions: <results or not run>
+visual_temporal_review: <review result or not run>
+rollback: <isolated commit/config reversal and cache cleanup consequences>
+next_action: <one concrete next packet or stop>
+```
+
+`not run` is a valid factual state. It is not a pass. Never prepopulate a completed receipt from a plan.
+
+### 4.4 Agent task template
+
+> Read this report's packet and the admitted leaf, then inspect the named current implementation. Reuse the existing detector. State the precise redundant work and the invariant that permits its removal. Change only the owned surface. Test real production functions, including invalidation/lifecycle paths. Run a matched player-route comparison on the designated hardware, or explicitly leave that acceptance pending. Preserve defaults, visible subjects, authoritative tick behavior, save/reload, and golden expectations. Keep only the measured, contract-preserving result. Deliver the patch, actual commands/results, causal interpretation, and rollback. Do not replace implementation with more planning.
+
+---
+
+## 5. Dependency-ordered work packets
+
+### Execution order
+
+`P00` is the shared entry gate. After it, choose the packet matching the measured owner; the numbering is not permission to ignore the census.
+
+- For ordinary-flight CPU pressure, prioritize `P02`/`P03`/`P04`; consider `P05` only with its stronger authority contract.
+- For map-specific pressure, `P01` is a bounded first candidate, with `P11` for remaining browser work.
+- For missing first-use smoothness, use `P09` before broad scene simplification.
+- For a demonstrated visible-scene GPU/submit owner, choose `P06`–`P08`; `P10` handles retention/background/lifecycle interactions.
+- `P12`/`P13` follow save or audio evidence. `P14` is a separately authorized product lane. `P15` requires a platform break-even experiment. `P16` closes integration. `P17` is only for residual measured micro-costs.
+
+### P00 — Establish one trustworthy live baseline
+
+**Depends on:** current dispatch/ownership. **Maps to:** existing measurement leaves `PQ-061`–`PQ-066`, their `PQ-129` executor, and the existing runtime witness. **Scope:** existing probes, `gpuTimers.js`, diagnostics/perf runtime only where deficient.
+
+1. Read the existing hitch campaign and tabletop analysis before running anything; identify which statements are historical.
+2. Fingerprint the checkout, graphics route, hardware, settings, and test save. Confirm the moving 3D canvas and expected subjects.
+3. Run opening, normal flight, one busy scenario, and the symptom-specific scenario. Capture glass/runway/beyond counts and per-owner time.
+4. Reconcile CPU/GPU clocks and frame IDs. Check timer terminal counts, missing samples, disjoint handling, counter resets, and diagnostic overhead.
+5. Repair only a measurement hole that prevents selecting an owner. Existing timer origin fields and witness machinery should survive intact.
+6. Write one census naming the primary owner, its scope, and the next smallest implementation packet. If the owner is external scheduling, fix the experiment before modifying game code.
+
+**Accept:** comparable live evidence with enough attribution to select a change. **Reject/stop:** empty canvas, software renderer mistaken for hardware, changed settings/population, overlapping agents, or counter holes that invalidate the conclusion. **Not done:** adding a new universal profiler without selecting a runtime action.
+
+### P01 — Retain galaxy-map route results and UI structure
+
+**Depends on:** P00 map evidence. **Evidence:** V in `src/ui/galaxyMap.js`; I for adjacent map work. **Maps to:** relevant map/HUD catalog leaves; use the existing sweep for an uncovered planner-cache sub-outcome, not a duplicate planner.
+
+1. Instrument calls to the actual `world.computeRoute` and route-alternative DOM construction across an unchanged LOCAL animation interval.
+2. Read the planner and enumerate every input it consumes: origin, destination, objective, topology/knowledge, cost/risk/fuel rules, and any other real dependency. Do not add guessed dependencies as a new source of truth.
+3. Derive a retained cache key from authoritative revisions. Separate planner inputs from display-only plotted-route selection and ETA changes. Cache failures/unreachable results only until their dependencies change.
+4. Compute alternatives outside `_draw`, on activation or an invalidated data revision. Keep `world.computeRoute(dest, mode)` as the sole routing authority; preserve plot-versus-engage semantics.
+5. Retain row nodes or cached HTML behind the same revisions. Cache mounted DOM references and invalidate them on unmount/rebuild. Do not replace expensive planning with expensive per-frame JSON-stringified keys.
+6. Test origin change, destination change, equal-count but different discovered sets, changed edge costs, unreachable→reachable, route abort/replot, collapsed disclosure, close/reopen, and save/load. Add dependencies only when confirmed in the planner.
+7. Verify live contacts remain animated and route controls remain keyboard/pointer accessible. Account for existing source-shape tests without weakening the semantic requirement that alternatives use the shipped planner.
+
+**Accept:** unchanged animation frames trigger zero planner recomputations and zero structural alternative-row rebuilds; each relevant invalidation produces correct fresh results; map CPU/pacing improves outside noise. **Reject:** stale legality/cost, frozen contact animation, lost selection, or an independent route algorithm. **Rollback:** isolate cache/reconciliation changes and clear retained references on disposal.
+
+### P02 — Make tactical membership persistent; remove inspect-shaped hot data
+
+**Depends on:** P00 CPU attribution. **Evidence:** V in `tacticalAI.js`; I in its ports/directors. **Maps to:** allocation/cadence work under existing identities, with deterministic gates.
+
+1. Locate the current `aiPorts.js`, director, and entity-index imports. Count membership rebuilds, roster sorts, `inspect()` calls, and allocated bytes per fixed tick.
+2. Document what changes membership: spawn/despawn, death, squad/recipe changes, faction/role transitions, load/reset, and any in-place mutation in the actual implementation.
+3. Maintain deterministic member lists by authoritative revision or existing entity-index lifecycle hooks. Preserve ordering and same-tick visibility. Batch changes at the same boundary as before; do not silently delay a new combatant by one tick.
+4. Separate membership from changing target/plan state. A retained cohort still needs current target selection and alive status; preserving only membership does not preserve all behavior.
+5. Expose the few runtime stamp scalars directly from the retained plan/director state. Keep `inspect()` as an on-demand diagnostic API. Remove duplicate stamping only after proving phase equivalence.
+6. Reuse transient sets/arrays with defined lifetime. Clear obsolete records on load and removal; use generations if IDs can be reused. Do not retain dead entities through a cache.
+7. Test heterogeneous squads, forced-player targets, first-non-null target selection, deaths during a tick, recipe mutation, empty groups, load/reset, and debug inspection. Compare decision/event traces as well as simulation hashes.
+
+**Accept:** stable membership causes no roster reconstruction, diagnostic snapshots leave the runtime hot path, and AI CPU/allocation decreases without changed actions or timing. **Reject:** reordered tie breaks, delayed targeting, stale membership, or new unbounded indexes. **Do not** reduce authoritative think frequency in this packet.
+
+### P03 — Combat/entity indexes with phase-correct bounds
+
+**Depends on:** P00; coordinate with P02 if sharing index hooks. **Evidence:** V for combat phases; I for reverse lookup and typed-bucket findings. **Maps to:** hot-query/allocation outcomes and existing entity-index work.
+
+1. Profile `sortedEntitiesForTick`, invalidation frequency, world-record reverse scans, mine/scanner/cruise type filters, and combat profile resolution.
+2. Retain combatant/type-specific lists only where they beat the current list at actual population/churn. Preserve stable iteration/tie-break ordering. Do not replace a cheap 20-element scan with a maintenance subsystem without evidence.
+3. Add a reverse world-record index only after deciding its true cardinality: one record can potentially have zero, one, or several live representatives. Match existing semantics rather than assuming a one-to-one map.
+4. Version static combat-profile/shape data separately from pose. Keep pre- and post-physics bounds current; compute once per unchanged pose/shape revision, not once per arbitrary frame.
+5. Preserve spawn/destroy during combat callbacks, attachment reconciliation, and mutation visibility. Stable compaction is required where array order is semantically observable; swap-remove is not universally legal.
+6. Rebuild indexes atomically after load/reset and verify against a scan-based test oracle over randomized lifecycle sequences. Test movement, collision, teleport, shape/damage change, destruction, ID reuse, and compound bodies.
+7. Consider cheap squared-distance gates only where finite numeric ranges and boundary comparisons preserve results. Do not broadly change math/RNG/sort behavior to satisfy a microbenchmark.
+
+**Accept:** fewer scans/sorts/allocations and lower target CPU time, with exact query membership/order and correct phase bounds. **Reject:** stale collision bounds, changed damage ordering, mismatched reverse-index cardinality, or increased churn cost. Keep the general scan available for test verification, not as a second live authority.
+
+### P04 — Optimize the physics membrane before changing physics
+
+**Depends on:** P00 physics-owner evidence; deterministic baseline. **Evidence:** V for SG-02 creation/reuse; I for command and diagnostic allocations. **Maps to:** `PQ-106`-class allocation work and existing physics authority leaves; not automatic sleep admission.
+
+1. Break the physics bill into entity synchronization, command construction, JS↔WASM calls, actual solver step, contact extraction, plane enforcement, attachment work, and diagnostics.
+2. Trace exclusive pose ownership. Remove a redundant verification/read only if every legal external writer, teleport, load, rebase, and body rebuild invalidates the corresponding revision.
+3. Retain/reset command records and scratch vectors under an explicit lifetime. Do not reuse an object that a deferred consumer or receipt still owns. Preserve how absent commands differ from zero commands.
+4. Reuse contact/receipt working storage only after auditing ordering and consumer retention. Avoid repeated full-record diagnostics on the playable path; materialize rich reports on demand.
+5. Preserve existing ghost-projectile pooling. Test reset of pose, velocity, enable state, CCD/material configuration, and identifiers before expanding any pool; contact-bearing bodies need a separate equivalence proof.
+6. Audit unconditional wake-up writes and duplicate getters as information, but do not change sleep behavior in this packet. Capture output pose/velocity once at a valid phase if downstream consumers can share it safely.
+7. Run short/long deterministic, save/reload, production combat, tether, release, collision, rebase, and repeated projectile reuse checks.
+
+**Accept:** membrane/diagnostic overhead or allocation drops while the physics algorithm, stepping, command semantics, and replay results stay fixed. **Reject:** missing forces, reused mutable receipts, stale owner state, or altered contact order. **Rollback:** one isolated authority/membrane commit; no save-schema migration should be necessary.
+
+### P05 — Selective sleep and off-table scheduling, with an influence contract
+
+**Depends on:** P04 or evidence that it is not material; `PQ-066` equivalence admission. **Maps to:** `PQ-080`, `PQ-084`, related campaign table-cadence leaves. **This is a higher-risk packet; split AI cadence and Rapier sleep into separate implementation commits.**
+
+1. Distinguish rendering visibility, AI scheduling, and physical participation. A culled enemy can still shoot, collide, send an event, affect the economy, or enter the table quickly. Off-screen is not permission to delete simulation.
+2. Build an explicit wake/influence dependency set from current game rules: player, hostiles/combatants, projectiles, pending damage/events, contacts, manual springs/tethers, mission interactions, and approach reachability. Existing policy remains authoritative unless separately changed.
+3. Express scheduling in deterministic ticks and stable IDs, not wall-clock time or frame rate. Preserve the integrated effect of any existing coarse economic/traffic update; a rate update is not equivalent when discrete thresholds, transactions, or RNG consumption differ.
+4. For physical sleep, first choose how sleep/wake and other relevant solver state survive save/reload. The current reconstruction from poses is the reason sleep is disabled. Candidate choices require explicit serialization/reconstruction tests; do not assume a boolean sleep flag fully reproduces solver internals.
+5. Audit every command and structural operation that must wake a body. A body with a manual spring or pending impulse is not idle just because its current velocity is small. Test new contacts, removed colliders/joints, force application, attachment break, and resumed control. [S12]
+6. Test boundary oscillation, maximum approach speed, off-screen fighting, projectile crossing, long idle periods, load at several sleep ages, and deterministic repeat/reload across the actual supported runtimes. Parameter and insertion/removal order consistency matter to Rapier determinism. [S13]
+7. Compare CPU saved against wake/re-entry bursts. A savings graph that ends before all sleeping objects become relevant is incomplete.
+
+**Accept:** the specifically admitted equivalence/authority contract holds and both sustained work and re-entry tails improve. **Reject:** missed events, changed authoritative outcomes without approved contract change, a desynchronized load, or a thundering-herd wake hitch. **Solver iterations remain unchanged.** Tuning them belongs to a separately authorized physics-model experiment, not a fallback when sleep fails.
+
+### P06 — Make submitted procedural ships cheaper, not imaginary far fleets
+
+**Depends on:** P00 visible-root census; verify authored fallback status. **Maps to:** `PQ-053`, `PQ-108`, existing LOD/HLOD leaves. **Evidence:** I for procedural factory gap; H for tabletop limitations.
+
+1. Count actual submitted authored/procedural ships by projected pixel width, submesh/material cost, and camera state. Inspect authored-load diagnostics; fix an asset-load failure before optimizing the fallback as the intended default.
+2. Identify static hull-relative geometry versus animated guns, fans, damage parts, lights, canopies, selection/picking surfaces, and attachment markers. Preserve gameplay data and collision geometry independently of presentation LOD.
+3. Merge compatible static hull-local pieces once per composition revision, not once per frame. Freeze only genuinely static local transforms. The ship's world transform still changes.
+4. Use the existing projected-size policy and hysteresis for detail that is already submitted. For perspective, projected size depends on view-space depth; for orthographic views it depends on view span/zoom, not distance alone. Reuse the repo helper rather than introducing conflicting math.
+5. Preserve player and close inspection/customization detail; retain silhouette, faction identity, weapon tells, and navigational cues. Classify removable detail semantically, not by arbitrary node-name substring alone.
+6. Prebuild/cache only variants proven useful, with bounded ownership and invalidation for fittings, paint, damage, and composition. Do not retain every possible combinatorial ship indefinitely.
+7. Review fixed-input motion at threshold crossings, zoom extremes, pitch/bank, rapid entry, shadow views, and mixed unique hulls. Verify missing authored content has not masqueraded as a lower LOD.
+
+**Accept:** the measured visible procedural owner becomes cheaper; near views and gameplay remain intact; no popping or new first-use hitch. **Reject:** adding meshes to beyond-band entities, simplifying the hero by default, or spending a large pipeline rewrite on a population the census does not draw.
+
+### P07 — Retained batching, immutable materials, and measured opaque ordering
+
+**Depends on:** P00 submit/upload evidence; coordinate with P06/P09. **Maps to:** `PQ-052`, `PQ-076`, `PQ-106`, related submit leaves. **Evidence:** V/H for the explicitly disabled batch bridge.
+
+1. Inventory draws by geometry/material/program and measure CPU preparation, changed bytes, GPU scene time, and driver stalls. Separate repeated geometry from unique hulls.
+2. Prefer existing instancing for genuinely shared geometry/materials; use one-time hull-local merges for static unique structures when appropriate. Both retain correct bounds and instance→entity identity. [S04]
+3. Do not simply re-enable `_opaqueBatchEnabled`. A new batch experiment must retain geometry/instance slots, avoid per-frame repacking, update only changed attributes, and account for capacity growth and deletion.
+4. Retain spatial/semantic batch boundaries so culling and transparency do not degrade into one giant always-visible object. Evaluate the actual vendor's BatchedMesh culling/sorting behavior and capabilities. [S05]
+5. Define material ownership: immutable shared role, per-instance attributes, or explicitly cloned mutable state. Damage, blink/emissive animation, recoloring, environment response, and customization must not leak across ships.
+6. Compare unchanged opaque ordering with coarse depth/material buckets on the exact scene. Preserve explicit render order and transparent ordering. Keep only if sorting cost and state/overdraw tradeoffs improve end-to-end behavior; do not impose a universal sort recipe.
+7. Test stable occupancy, high churn, diverse hulls, capacity boundaries, disposal, picking, shadow pass, and context restore. Track changed/uploaded bytes alongside draws.
+
+**Accept:** frame tails or measured headroom improve without a worse upload/compile/memory bill. **Reject:** fewer draws but slower frames, per-frame full repacking, broken culling, mutable shared materials, or another unbounded batch cache. Retain the historical rejection so agents do not replay the same failed bridge.
+
+### P08 — Reduce GPU work without reducing the intended effects
+
+**Depends on:** P00 GPU/pass evidence. **Maps to:** existing VFX, shadow, present, and dirty-range leaves including `PQ-077`, `PQ-097`, `PQ-115`, `PQ-121`, `PQ-126`. **Coordinate renderer, VFX, bloom, and precompile ownership.**
+
+1. Attribute the GPU owner: opaque scene, transparent coverage, shadow rendering, reduced-resolution bloom, final composite, or uploads. Do not infer bloom is expensive merely because the scene is named `bloomScene`.
+2. For VFX, first eliminate invisible work: dead capacity outside active spans, unchanged field transforms, empty texture borders that can be safely trimmed, and off-glass cosmetic updates already eligible under existing relevance policy. Keep visible emission/coverage unchanged.
+3. Use current partial-range buffer machinery. Update ranges are in attribute components, not bytes or instance count; bound and coalesce them, and compare against full updates when most data changes. Set usage before first upload where the vendor requires it. [S07]
+4. Test `forceSinglePass` only on compatible flat transparent effects; test FrontSide only where winding and all allowed views prove equivalence. Do not apply either globally to shield volumes or trails. [S06]
+5. Preserve shadow resolution and light coverage while auditing caster inclusion and dirty triggers. A moving caster/receiver, changed light, rebase, or relevant presentation transform can invalidate a cached shadow; a camera-only key may be insufficient.
+6. Preserve light-pool/precompile key agreement. Zero intensity does not necessarily remove a light from a compiled loop, but changing the live light count can also trigger shader churn. Compare a defined stable variant strategy before considering a separately approved reduction in lights.
+7. Audit the actual post graph and target lifetimes. The existing bloom path already avoids a separate upsample target. Reuse compatible attachments/targets where legal; do not attach/discard buffers still needed by a later pass. A bloom-only resolution change does not reduce full-resolution scene cost.
+8. Preserve the canonical linear/HDR operations and exactly one output encoding. Pass fusion, target formats, and no-op paths must maintain tone mapping, exposure, toe, halo, and transparent composition; measure error in dark scenes and emissive combat. [R14, S18]
+
+**Accept:** the identified GPU owner improves with stable near/motion captures and no runtime allocation churn. **Reject:** less visible smoke/light/shadow, altered color pipeline, shimmer, or missing effects. Lowering light counts, shadow dimensions, particle size, or canvas resolution moves the work to P14 rather than passing this packet.
+
+### P09 — Remove first-use stalls through retained preparation and bounded admission
+
+**Depends on:** P00 event attribution. **Maps to:** `PQ-054`, `PQ-072`–`PQ-075`, current hitch leaves. **Evidence:** H/I; inspect current implementations before assuming an old compose loophole still exists.
+
+1. Identify the exact first-use event and owner: module evaluation, decode, ship composition, shader linking, texture upload, geometry upload, or publication. Include New Game, Continue, first enemy, first shot, sector entry, and customization.
+2. Reuse the existing prepared-boundary/admission queues. Split genuinely splittable CPU composition work at semantic part boundaries; do not expose half-built gameplay-critical subjects or move a single unsplittable stall behind an `async` keyword.
+3. Keep a bounded, deduplicated queue keyed by composition/asset revision. Prioritize visible and soon-visible subjects with fairness; cancel obsolete jobs on sector changes, removal, load/reset, and context generation changes.
+4. Inspect shader program keys and actual readiness facilities. Where supported, asynchronous compilation requires the real lighting/material/target configuration; compiling the wrong variant is not warming the one used in play. Texture/target initialization is a separate first-use concern. [S03]
+5. Do not replay the historically rejected dummy-prewarm experiment unchanged. First reduce unnecessary program permutations and share stable material roles, then warm only missing proven keys under the existing admission design.
+6. Schedule preparation with a measured per-frame debt budget and backpressure. Doing work “after render” inside the same rAF callback still occupies that callback; a queued microtask also does not guarantee a paint. Verify an actual yield and measure where the work lands.
+7. Publish only a complete, still-relevant generation. Handle load failure visibly through existing diagnostics, without declaring an invisible or fallback-filled scene ready. Bound queue age as well as slice duration so low-priority work cannot starve forever.
+8. Compare end-to-end loading and first-play latency. Include cold-cache and warm-cache cases; retain the same expected subjects.
+
+**Accept:** the named first-use stall disappears or materially shrinks without extending another critical interval or missing a ship/effect. **Reject:** a smoother sample obtained by delaying all enemies, unbounded prewarm, wrong program keys, or a loading screen that absorbs the entire stall.
+
+### P10 — Bound residency, background work, and lifecycle cost
+
+**Depends on:** P00 memory/lifecycle census; coordinate with P06/P09. **Maps to:** `PQ-058`, `PQ-068`–`PQ-071`, `PQ-079`, `PQ-086`, existing asset-disposal/lifecycle work.
+
+1. Inventory ownership across source bytes, decoded geometry/images, compressed textures, GPU objects, prepared hulls, previews, instance pools, queued jobs, and event listeners. Distinguish borrowed shared resources from owned resources.
+2. Reuse approach-seconds residency and glass/runway/beyond policy. Derive runway requirements from measured relative approach, camera transitions, preparation latency, and a recorded safety margin—not a fixed distant-space radius or current visibility alone.
+3. Use bounded caches keyed by asset/composition revision with explicit leases/references. Release decoded source copies only when no rebuild/recovery path still depends on them. Removing an Object3D from a scene is not sufficient disposal of owned GPU resources. [S08]
+4. Verify the existing KTX2/BasisU/meshopt path is actually used, including runtime fallback diagnostics, supported transcode format, mip availability, and peak worker/decode concurrency. Recommending compression that already exists is not a task. [S14]
+5. For geometry cooking, use full relevant attribute equivalence when indexing; position-only welding can destroy hard normals, UV seams, and material boundaries. Compare vertex-cache/fetch changes and optional overdraw optimization on target hardware; do not assume one ordering is optimal everywhere. [S15]
+6. Audit sky/background ownership separately from world simulation. Check clipping/bounds, double updates, duplicate rAF owners, needless texture/geometry regeneration, transparency coverage, and disposal across region transitions. Preserve designed sky variation and parallax; do not replace the background with an empty clear color.
+7. Verify hidden/minimized behavior across game presentation, map animations, previews, loading art, audio, and workers. Reuse the lifecycle coordinator. On restore, reset timing origins as required and republish valid resources without a backlog explosion.
+8. Run repeated sector/preview/customization cycles, then a sustained soak and context-loss/restore test where supported. Compare stable resource counts and retained bytes after comparable cleanup opportunities; do not force GC inside production timing.
+
+**Accept:** bounded retention and lower measured invisible work, with reliable entry, restore, and resource sharing. **Reject:** use-after-dispose, broken borrowed assets, reload/download storms, blank background, late-entry pop, or a cache that grows with every unique loadout.
+
+### P11 — Retained HUD/screens and trace-led compositor optimization
+
+**Depends on:** P00 UI attribution; P01 handles planner recomputation. **Maps to:** `PQ-088`, `PQ-102`, `PQ-117`, related HUD leaves. **Evidence:** I for detailed market/bar/HUD findings.
+
+1. Reuse existing `setText`/style/class dirty guards, keyed roster reconciliation, `hudSkipUnchanged`, and DOM instrumentation before adding new abstractions.
+2. Separate structural changes from numeric updates. Retain market/bar/mission rows, event handlers, DOM references, and map rail structures; update only changed fields. Unmount/rebuild invalidates cached nodes.
+3. Preserve existing cadence for low-frequency labels while keeping aiming, reticle motion, immediate input feedback, and safety/combat cues responsive. Do not blanket-throttle the HUD to 5 Hz.
+4. Batch layout reads before writes. Cache viewport/element rectangles until relevant resize, scroll, layout, or transform changes. A cached rectangle invalidated only on window resize can still become stale.
+5. Use browser traces to identify real paint-heavy effects. Try a static glow with opacity animation for an animated box-shadow only when it preserves the design; compare composite layer count/memory and paint area. Transform/opacity is a starting hypothesis, not a blanket ban on blur. [S09, S10]
+6. Avoid broad per-frame selector queries, redundant dataset writes, DOM lookups for stable toasts, and full JSON signatures where a revision exists. Do not remove accessibility announcements, focus management, keyboard controls, or disclosure behavior.
+7. Test open/close, screen swaps, resize/DPR, scrolling, keyboard focus, contact churn, pointer dragging, and return to flight. Capture UI input latency and browser rendering cost separately from the WebGL bill.
+
+**Accept:** unchanged screens cease structural writes, layout/paint or UI CPU improves, and immediate feedback/accessibility remain intact. **Reject:** stale DOM references, lost listeners, layout jitter, hidden expensive layers still running, or a bland redesign substituted for optimization.
+
+### P12 — Preserve save semantics while removing duplicate serialization
+
+**Depends on:** P00 save/Continue evidence. **Maps to:** `PQ-087`, boot/cache leaves `PQ-103`/`PQ-104`. **Evidence:** I; inspect the current `saveSystem.js` and worker paths by symbol.
+
+1. Trace snapshot capture, validation, encoding, checksum, transfer, persistence, menu listing, load/migration, and rollback separately. The existing worker-encoded autosave is not proof that main-thread snapshot capture is free.
+2. Identify byte-identical duplicate encodings and copies. Reuse the exact serialized representation for checksum/storage where the existing format permits; preserve ordering, validation, migration, and corruption detection.
+3. Preserve a coherent snapshot boundary. If encoding spans ticks, use the existing immutable snapshot/version mechanism or establish one; do not serialize a mixture of states while simulation mutates them.
+4. Preserve exact pre-load rollback state, including unsaved changes. Optimize its capture/copy representation without substituting an older autosave.
+5. Use a trusted bounded slot metadata index only with a defined invalidation/checksum/version contract and a correct corruption fallback. Do not skip validation of untrusted or stale storage to make the menu faster.
+6. For transferable buffers, preserve ownership: transfer detaches the sender's buffer. Use a safe buffer lifecycle and measure capture+encode+transfer+storage+ack, not worker execution alone. [S16]
+7. Test worker failure/unavailability, quota/storage errors, interrupted writes, malformed saves, old migrations, immediate load after change, cancellation, repeated autosave, and recovery. Use disposable test saves.
+
+**Accept:** the save/Continue owner improves, snapshot integrity and exact rollback survive, and no hitch is relocated to receipt/restore. **Reject:** lost progress, mixed-tick snapshots, detached data still in use, weakened checksum/migration handling, or unbounded pending saves.
+
+### P13 — Reduce audio control and silent scheduling work
+
+**Depends on:** P00 audio or periodic-main-thread evidence. **Maps to:** `PQ-105`, related cadence/allocation leaves. **Evidence:** I; inspect current `audioSystem.js` implementation and existing parameter caches.
+
+1. Count node creation, silent stem scheduling, AudioParam writes, threat recomputation, active voices, and pause/restore work. A tiny gain is not itself proof the browser eliminates all upstream synthesis.
+2. Extend the existing target-value caches, not parallel audio state. Avoid rescheduling unchanged gain/pitch/filter/duck targets every presentation frame.
+3. Preserve envelopes when replacing automation: use supported hold/cancel behavior or an equivalent tested envelope reconstruction. Blind cancellation plus an immediate value set can introduce clicks. Capability-gate APIs. [S19]
+4. Gate truly inactive music-stem scheduling with sufficient lookahead and shared musical phase. Do not stop a stem that must re-enter on a beat and restart it from the beginning.
+5. Retain short release tails and the current voice-priority/cap policy. Pool or reuse only when overlapping voices and node lifetimes remain correct.
+6. Test first gesture/audio unlock, rapid threat changes, engine acceleration, overlapping weapons, repeated ducking, pause/minimize/restore, and device/sample-rate variation where available. Use repeatable listening/captured-audio review alongside timing.
+
+**Accept:** fewer control writes/nodes with equivalent cue timing, mix, and transitions. **Reject:** clicks, drift, late combat cues, lost release tails, or audio continuity sacrificed for a lower node counter.
+
+### P14 — Explicit integrated-hardware presets and optional adaptive resolution
+
+**Depends on:** separate product authorization plus P00 pixel-cost evidence. **Maps to:** relevant `PQ-056`/`PQ-058` investigations only under their authority; not an automatic exception to the same-picture contract.
+
+1. Keep the original default route as the comparison baseline. Label any balanced/low-power preset as a product choice, with its exact changes exposed to the player.
+2. Preserve saved explicit preferences. Do not overwrite a user setting because a renderer string contains Intel, Apple, or another vendor. Treat GPU detection as a hint supplemented by capabilities and measured sustained behavior.
+3. Document physical drawing-buffer dimensions. For CSS width W, height H, effective linear scale d, scene pixels are approximately `W * H * d^2`; compute the actual rounded dimensions rather than assuming desktop resolution equals scene resolution.
+4. Test static render-scale/DPR options before adding a controller. Keep DOM text and interaction geometry correct when the 3D canvas scale differs from CSS pixels.
+5. If dynamic resolution is authorized, use slow bounded changes, hysteresis, minimum dwell, scene-change handling, and a measured signal. Do not react to CPU-only hitches by repeatedly resizing GPU targets.
+6. Reuse compatible allocated targets or a bounded scale ladder when feasible; account for padding/UVs, depth, picking, post kernels, and peak memory. Allocating every scale simultaneously can defeat the integrated-memory goal.
+7. Compare image quality in motion, thermal stability, latency, resize churn, and sustained pacing. Do not call reduced bloom resolution a reduction in the full scene's render cost.
+
+**Accept:** an explicitly labeled preset gives a documented quality/performance tradeoff without oscillation or lost settings. **Reject:** silently lowering defaults to pass performance gates, a resize hitch loop, misleading 4×-FPS claims, or a blanket vendor penalty.
+
+### P15 — Worker, WASM, WebGPU, or native spike only after a break-even case
+
+**Depends on:** P00 remaining-owner evidence and `PQ-067` platform investigation. **Maps to:** existing `PQ-082`/`PQ-043`, `PQ-083`, `PQ-089`/`PQ-044`, `PQ-090`, `PQ-093`. These are alternatives to evaluate, not a mandatory migration ladder.
+
+1. Define the remaining bottleneck and the exact boundary the new backend changes. Estimate the maximum benefit from eliminating that owner before building a port; a renderer rewrite cannot remove a map-planning CPU bill.
+2. For a sim Worker, reuse existing immutable snapshot/fence and input-tick conventions. Keep one authoritative sim owner. Measure queue latency, snapshot packing, transfer, receiving decode, main-thread integration, and missed-input deadlines.
+3. Use bounded double/triple buffering or another explicit ownership protocol; never transfer a buffer still read by the renderer. For SharedArrayBuffer, require the actual deployment's cross-origin-isolation support and define atomic publication/read ownership, not just a shared byte array. Test browser and Electron asset/origin behavior. [S16, S20]
+4. For WASM, isolate a sufficiently coarse kernel to amortize boundary and representation conversion. Verify numerical behavior, ordering, allocation, and save compatibility; calling a tiny WASM function per entity can lose to the original JS loop.
+5. For WebGPU/native, prototype the same representative scene, materials, post graph, shadows, transparency, and resource lifecycle. Do not compare a simplified port against the full WebGL route. Audit shader customization, loader, timing, screenshot, fallback, and packaging compatibility.
+6. Evaluate total CPU/GPU work, presentation tails, input latency, power/thermal behavior, memory, startup, implementation complexity, and maintenance of the single game path. A Worker can compete with the render/driver on a constrained laptop.
+7. Keep the old path until the candidate passes the full contract. Document a precise rejection or promotion result; do not create a permanent second half-working renderer from an inconclusive spike.
+
+**Accept:** measured end-to-end benefit large enough to justify the new boundary, with parity and recovery. **Reject:** copy/synchronization cost consumes the gain, input lags, physics diverges, unsupported deployment requirements, or different pictures are being compared.
+
+### P16 — Integrate, soak, and close the campaign
+
+**Depends on:** each accepted implementation packet; this is not a new optimization owner.
+
+1. Integrate accepted commits one at a time. Re-run their focused tests and the original baseline on the integrated head.
+2. Run the scenario matrix across the actual available target devices and browser/Electron paths. Do not infer the untested device's result from a vendor name.
+3. Re-check defaults, liveness, authored readiness, simulated population, fixed tick rate, saved preferences, and input behavior before comparing numbers.
+4. Run sustained combat/travel/customization/save/lifecycle cycles. Check retained-memory trend, queue depth/age, hidden work, context recovery, and thermal pacing.
+5. Inspect the worst events, not only the final summary. A stable p95 can conceal one recurring seconds-long Continue or first-shot stall.
+6. Remove temporary hot-path logging and diagnostic allocations. Keep bounded detectors and concise receipts so the next agent can reproduce both wins and rejected approaches.
+7. Close when the agreed device/scenario targets and contract hold. Otherwise name the next measured owner and return to the matching packet; do not continue micro-cleanup indefinitely.
+
+**Accept:** reproducible integrated improvement, bounded resources, no new functional/visual/save failures, and clearly stated remaining bottlenecks. **Do not claim “perfect on integrated graphics” from a single short run or a headless test.**
+
+### P17 — Residual micro-costs only after attribution
+
+**Depends on:** P00 or a fresh post-integration census. **Maps to:** existing allocation/query/UI/audio leaves. **Scope:** the small-item ledger, not a license for unrelated refactoring.
+
+1. Select one remaining measured constructor, sort, string key, or repeated calculation. Group only changes with the same owner and lifetime contract.
+2. Prefer authoritative revisions and retained immutable data to repeated deep signatures. Keep bounded memory and explicit teardown.
+3. For event-bus scratch reuse, preserve listener snapshot semantics, subscription changes during emit, nested emit, deferred events emitted during flush, and consumer ownership. Hoisting a callback is unsafe if it relies on a shared snapshot variable across reentrant emissions.
+4. For RNG/hash/sort/math changes, prove exact outputs and consumption order. Do not replace a string hash with a “similar” numeric hash or lexicographic IDs with numeric ordering.
+5. For runtime-witness reports, separate cheap scalar collection from expensive report materialization/quantile sorting; keep the diagnostic meaning and raw evidence intact.
+6. Use the focused production-function test plus player-route A/B. Keep only a meaningful gain or a clearly justified bounded-allocation improvement with no regression; do not inflate maintenance complexity for noise.
+
+**Accept:** a named residual cost is removed under its exact semantic contract. **Reject:** arithmetic/reentrancy drift, stale caching, or hundreds of low-value edits that obscure the real bottleneck.
+
+---
+
+## 6. Regression matrix and release closure
+
+### 6.1 Existing commands to reuse
+
+The inspected `package.json` exposes the following useful commands. Their presence is not proof that their assertions cover a proposed change. Read the tests and exercise the actual production seam; add the missing regression to the appropriate existing family.
+
+| Surface | Existing entry points observed | Required additions/checks for a candidate |
+|---|---|---|
+| Baseline/runtime | `check:baseline`, `probe:runtime-witness`, `check:all`, `check:all:smoke`; campaign also names `check:playable` | Real foreground hardware route, expected subjects, non-overlapping raw evidence. |
+| Sim/replay | `check:sim`, `check:sim:v3`, `check:sim:v3:compare`, `check:sim:dynamic`, `check:sim:long`, `check:sim:long:compare` | Same input/seed, relevant load/reload boundary, mutation order, no golden rerecording. |
+| Physics/massline | `check:physics-authority`, `check:sg02:dynamic-lab`, `check:sg02:authority`, `check:sg02:production-combat`, `check:sg02:tether`, `check:sg02:tether-resilience` | Sleep-age, wake/re-entry, rebase, collision/attachment and command-lifetime cases. |
+| Map | `check:galaxy-map-inspector`, `check:galaxy-map-search-pointer`, `check:map-information-depth`, `check:navigation-stale-route`, `check:map-camera`, `check:map-frames`, `check:map-nav-context` | Planner dependency invalidation; no per-animation recompute; disclosure/focus semantics. |
+| Render/assets | `check:perf-packets`, `check:asset-runtime-disposal`, `check:asset-startup-readiness`, `check:asteroid-instance-structure`, `check:sector-prewarm`, `check:shader-compile`, `check:render-path-parity` | Real shader/target route, near and temporal visuals, lifecycle ownership, full-frame counters. |
+| Transport/platform | `check:presentation-snapshot`, `check:batched-instances`, `check:sim-transport`, `check:backend-decision` | Buffer ownership, input deadline, source/backend parity, context reset. |
+| Audio | `check:audio-identity`, `check:first-hour-audio`; parameter-churn coverage in `check:perf-packets` | Envelope/click, phase, unlock, pause/restore and control-count regressions. |
+
+Do not run the entire expensive suite after every trivial local edit. Run focused tests during development, the required leaf checks before A/B, and the prescribed integrated suite before delivery. Do not rerun an unchanged failing setup without a relevant hypothesis or environment change. Preserve the error fingerprint and move to the appropriate corrective action.
+
+### 6.2 Must-pass semantic edge cases
+
+**Indexes/caches:** spawn/remove in callbacks; in-place role/recipe changes; equal-count but different sets; ID reuse; load/reset; invalidation during computation; cache eviction; mutable result consumers.
+
+**Rendering:** asymmetric hulls; mixed materials; hero and close inspection; small on-glass contacts; partially visible bounds; rapid turns/zoom; glass and additive ordering; shadows crossing bounds; changing loadouts/damage; context loss; resource sharing.
+
+**Physics:** force versus impulse; zero versus absent commands; contacts after sleep; manual springs/tethers; compound proxies; high speed; teleport/rebase; destruction during callbacks; save/reload before and after wake.
+
+**Scheduling:** immediate input and combat effects; deterministic event order; catching up after one late present; render at 30/60/high-refresh while sim stays 60 Hz; hide/restore; starvation and backpressure.
+
+**Persistence/audio/UI:** storage and worker failure; unsaved rollback; repeated menus/previews; stale node handles; screen-reader/live-region behavior; audio unlock, envelopes, musical phase, and transition latency.
+
+### 6.3 Completion criteria for the overall effort
+
+The campaign is complete for a declared hardware/scenario envelope when the selected pacing target holds reproducibly, normal play no longer systematically sheds sim time, remaining first-use events stay within the agreed envelope, memory/resource ownership is bounded, defaults and gameplay remain intact, and browser/Electron parity survives the full scenario matrix.
+
+If that envelope does not hold, the deliverable names the unresolved owner and its actual evidence. It does not claim that every possible optimization is exhausted. Conversely, once it does hold, do not spend weeks pursuing tiny unmeasurable differences simply because the ledger still contains untried ideas.
+
+---
+
+## 7. Complete original-finding migration ledger
+
+This preserves all **75 original findings** as locatable research leads. `Hn`, `Mn`, and `Sn` mean the original huge/medium/small item numbers, not new task IDs. Unless independently verified in §1.3, these entries are **I — inherited**. Consult [R00] for original line anchors and wording, then locate the current production symbol before editing. Basenames are intentional where the initial finding did not establish a full path here; use `rg --files src` and current imports rather than guessing directories.
+
+### 7.1 Huge findings — all six
+
+| Original | Retained finding | Execution / correction |
+|---|---|---|
+| H1 | Tier-aware default `pixelRatioCap` (`gameState`, renderer resize). | P14 only with product authorization; not the first same-picture fix or a guaranteed 4× speedup. |
+| H2 | Procedural ship LOD gap (`visualFactory`, `lod`, whole-ship policy). | P06 after visible procedural census; no far-fleet resurrection. |
+| H3 | Galaxy-map alternatives call two route objectives per animation. | P01; version actual planner dependencies, not discovered count alone. |
+| H4 | Rapier solver settings, disabled sleep, repeated pose/WASM reads. | Split P04 equivalent membrane work from P05 sleep; solver tuning is separate physics work. |
+| H5 | Tactical membership scans, inspect-shaped stamping, roster rebuilds. | P02; preserve dynamic target state, ordering, and same-tick changes. |
+| H6 | Worker/WASM/WebGPU/SAB/native scaleout. | P15; measured break-even, not inevitable migration. |
+
+### 7.2 Medium findings — all 29
+
+| Original | Retained finding / locator | Execution / correctness condition |
+|---|---|---|
+| M1 | `combat/kernel`: list sort/invalidation and two bounds synchronizations. | P03; pre/post bounds differ in phase, so do not blindly delete one. |
+| M2 | `aiPorts`: allocated hazard-contact records in perception radius. | P02/P03; observer-specific state must not leak through shared caches. |
+| M3 | `traffic`, `worldRecords`, `presentationAdmission`: reverse world-record scans. | P03; establish cardinality, lifecycle, and load/reset semantics. |
+| M4 | `lawSecurity`: sanctuary checks per entity/tick. | P03/P05; preserve immediate law/combat transitions, not arbitrary stale TTLs. |
+| M5 | `mining`/`interactionDescriptors`: held-beam descriptor rebuilding. | P03/P17; target/config revisions and consumer lifetimes. |
+| M6 | Mine/ghost scanner/cruise/weapon type scans without dedicated buckets. | P03; measure churn and maintain deterministic ordering. |
+| M7 | Beam/muzzle packet cloning, keys, and tick events in `weapons`. | P03/P17; separate presentation coalescing from authoritative event semantics. |
+| M8 | `tetherGameplay`: acquisition copies/maps/sorts, hostility tests and raycasts. | P03; broadphase/early rejection must preserve selected target. “Raycast only top three” is not automatically equivalent. |
+| M9 | `scanner`: hostility normalization and lane scans. | P03; invalidate on actual relation/lane changes, not a blind 0.25 s cache. |
+| M10 | `coreSystem`: removal splices across many arrays/reconcile. | P03/P17; stable compaction where order matters. |
+| M11 | `economy`: repeated maps and deterministic seed derivation. | P17; preserve transactions, RNG and existing cadence. |
+| M12 | `ships`: repeated fitting/slot resolution. | P06/P17; equipment revision invalidation. |
+| M13 | `visualFactory`: static ship batches and matrix-freeze opportunity. | P06/P07; merge once, freeze local static transforms only. |
+| M14 | `vfx`: always-visible pooled point lights and shader loop size. | P08 for equivalent work; fewer lights is P14 unless parity is established. |
+| M15 | Large screen-covering additive smoke/shards/sprites. | P08 for unused coverage/overdraw; shrinking the intended effect is P14. |
+| M16 | Default shadow pass/resolution. | P08 for dirty/caster ownership; disabling/halving resolution is P14. |
+| M17 | Fixture/armor/grime/gem material cloning. | P07; immutable role sharing versus per-entity mutable state. |
+| M18 | NPC canopy physical/clearcoat/transparent/double-sided material. | P07/P08 only with parity; Standard-material substitution is a quality decision. |
+| M19 | Integrated-tier adaptive-resolution exclusion and RT churn. | P14; scene versus bloom resolution and bounded allocation policy. |
+| M20 | Animated box shadows in `uiRoot`/comms. | P11; trace paint cost and preserve the intended visual. |
+| M21 | `market`/`bar`: repeated row queries, contact HTML/listener rebuilding. | P11; structural revisions, retained keyed rows and handlers. |
+| M22 | `galaxyMap`: selectors, inspector cadence, weather/cargo, ETA ribbon, pointer rect. | P01/P11; separate data revisions from live animation. |
+| M23 | Drop-shadow filters on transformed overlays. | P11; compositor-dependent measurement, not universal re-rasterization claims. |
+| M24 | `audioSystem`: nearly silent music stems still scheduled. | P13; preserve phase, lookahead and re-entry. |
+| M25 | Engine and ducking AudioParam writes each frame. | P13; reuse existing caches and preserve envelopes. |
+| M26 | `saveSystem`: repeated stringify/parse/checksum encoding. | P12; reuse exact bytes with coherent snapshot semantics. |
+| M27 | Immediate rollback deep-copy/encoding before load. | P12; preserve current unsaved state, never substitute an older autosave. |
+| M28 | Save-slot listing falls back to full validation. | P12; trustworthy index plus correct corruption fallback. |
+| M29 | Eager `partsLibrary`/startup scenario preparation. | P09/P12; overlap only when readiness and first-use behavior remain correct. |
+
+### 7.3 Small findings — all 40
+
+| Original | Retained finding / locator | Execution / guard |
+|---|---|---|
+| S1 | Disabled-hauler plan deep clone in `traffic`. | P17; confirm disabled plan's consumer/lifetime contract. |
+| S2 | Repeated traffic identifier compaction around RNG. | P17; preserve exact entropy and RNG stream. |
+| S3 | Salvor ranking/sorting every few ticks. | P03/P17; target/relevance revision and deterministic ties. |
+| S4 | Station-identity resolution repeated in traffic. | P17; identity/version cache with reset. |
+| S5 | Traffic strings, itinerary and boarding presentation reconstruction. | P11/P17; retain only unchanged presentation facts. |
+| S6 | Expired memory-key work in world/world-record paths each tick. | P17; deterministic expiry boundary and bounded storage. |
+| S7 | Mining tick/denial/heat event and payload churn. | P17; event subscribers, deferred ownership and required cadence. |
+| S8 | Mining beam/ray/seam/tool allocations and ore/wreck sorts. | P03/P17; scratch lifetime, RNG/order and depletion behavior. |
+| S9 | `Math.hypot` used in range gates. | P17; finite ranges and exact boundary/replay consequences. |
+| S10 | String sort keys/comparators in AI contracts/cohorts. | P02/P17; precompute equivalent keys, do not change ordering. |
+| S11 | Weapon attack-spec keys, entropy objects and repeated definition resolution. | P03/P17; loadout/heat revisions and exact random consumption. |
+| S12 | Automation production planning and per-good scans. | P05/P17; integrated output alone is insufficient if discrete timing changes. |
+| S13 | Mission-target adoption scans/sorts repeated in retries. | P03; retained mission→entity index with lifecycle verification. |
+| S14 | Endgame fact snapshots rebuilt every tick. | P17; all eligibility dependencies invalidate. |
+| S15 | Claims defense-warning waypoint/string rebuilt every tick. | P11/P17; retain stable display data. |
+| S16 | `rng.hash32(...args)` rest/join allocation. | P17; exact hash compatibility, not a merely similar numeric hash. |
+| S17 | Event-bus emit closure and deferred-flush array allocation. | P17; nested emit, listener snapshots and flush reentrancy. |
+| S18 | Registry catch-up skip policy recalculated per system. | P17; only hoist truly tick-invariant inputs, not the system-specific decision. |
+| S19 | Runtime witness 1 Hz rich report/sort/entity-walk overhead. | P00/P17; cheap collection, off-hot-path materialization, honest observer cost. |
+| S20 | SG-02 receipts/maps/sorts/spreads/diagnostic and attachment scans. | P04; stable contact ordering and retained consumer ownership. |
+| S21 | Physics command/vector/quaternion construction per craft/tick. | P04; absence versus zero, mutation lifetime, rebase/load correctness. |
+| S22 | Projectile sweep all-pairs fallback below spatial-hash threshold. | P03/P04; benchmark actual occupancy/churn and preserve sweep coverage. |
+| S23 | Dock-range station scan while already docked. | P17; preserve transitions and undock invalidation. |
+| S24 | Renderer shadow-follow string key per frame. | P08/P17; numeric comparison with complete invalidation inputs. |
+| S25 | Shield/nav world-matrix updates repeated per ship. | P06/P17; reuse only after the valid frame transform phase. |
+| S26 | VFX field-instance matrices rewritten while fields exist. | P08; actual dirty/cadence state, not lower visible effect fidelity. |
+| S27 | Double-sided VFX quads/ribbons/surfaces. | P08; material-specific single-pass/winding tests, no global FrontSide rule. |
+| S28 | Common rocks non-indexed after creased-normal generation. | P10; full-attribute indexing and measured vertex reuse, no assumed 3× gain. |
+| S29 | External texture mip/anisotropy/fallback policy. | P10; inspect actual assets and sampling quality before imposing caps. |
+| S30 | VFX light intensity self-assignment. | P17; tiny hygiene only, not a campaign outcome. |
+| S31 | HUD per-bar queries. | P11; mounted reference lifecycle. |
+| S32 | Redundant body dataset writes. | P11; dirty-write guard. |
+| S33 | World-to-screen allocations/layout reads. | P11; scratch and viewport invalidation, correct projection phase. |
+| S34 | Repeated toast lookup. | P11; retained node references with removal. |
+| S35 | Accessibility checks across UI/screen manager. | P11; preserve live-region/focus semantics. |
+| S36 | Reticle repeated lookup/update. | P11; keep immediate aiming feedback. |
+| S37 | Band HUD JSON-stringified signature. | P11/P17; actual data revision instead of deep hot signature. |
+| S38 | Radar gradient recreation. | P11/P17; invalidate for dimensions/theme/context changes. |
+| S39 | Backdrop blur on UI. | P11; measure, preserve design, and remove hidden work—not a blanket effect ban. |
+| S40 | Audio note-frequency calculation table. | P13/P17; exact tuning and measured relevance. |
+
+Original overlapping identities remain authoritative: ship LOD `PQ-053`/`PQ-108`; physics sleep `PQ-084`; event lights/prewarm `PQ-096`/`PQ-072`; VFX `PQ-115`/`PQ-121`/`PQ-126`; shadows `PQ-077`; resolution/governor `PQ-056`/`PQ-058`; offstage/world work `PQ-070`/`PQ-080`; UI `PQ-088`/`PQ-102`/`PQ-117`; audio `PQ-105`; save `PQ-087`; startup caches `PQ-103`/`PQ-104`; allocation `PQ-106`; platform `PQ-082`/`PQ-083`/`PQ-089`–`PQ-093`. Recheck catalog/dispatch before use; this is a scope crosswalk, not a completion list.
+
+---
+
+## 8. Repository evidence and primary research
+
+### 8.1 Repository sources
+
+The following references identify the inspected baseline. Use current code for execution, but retain the pinned links when explaining why a historical conclusion was made. Detailed unverified inventory anchors remain in R00.
+
+- **R00:** Initial 75-finding report, immutable commit; source of inherited findings and original method claims.
+- **R01:** Root and design agent instructions; live owner, determinism, work and authority contracts.
+- **R02:** Existing performance budget, same-picture constraints, and already-implemented optimization context.
+- **R03:** Hitch campaign; admitted execution method, historical failures, hardware caveats and receipts.
+- **R04:** Performance option space; reserved identities, investigate/invalidate/implement contract.
+- **R05:** Renderer instructions; presentation ownership, authored fallback diagnostics, visual validation and light/precompile coupling.
+- **R06:** Tabletop analysis; historical visible/resident/sim census and batching rejection.
+- **R07:** Main-loop adapter; distinct simulation/presentation owners.
+- **R08:** Browser import map and vendored renderer entry; dependency/version provenance.
+- **R09:** Package scripts; actual commands and integration surfaces.
+- **R10:** Renderer creation, opaque sorting and disabled batch bridge.
+- **R11:** Existing asynchronous GPU timer implementation and provenance records.
+- **R12:** Combat pre/post-physics bounds synchronization.
+- **R13:** Dynamic-body creation, explicit no-sleep rationale, and ghost-body reuse.
+- **R14:** Bloom pipeline and shared color-management contract.
+- **R15:** Galaxy-map alternatives and tactical membership/stamping implementation.
+
+[R00]: https://github.com/coldshalamov/SpaceFace/blob/4cd6d50f8402082526e6660eddb160fb4e33dfdf/design/perf/PERFORMANCE_IMPROVEMENT_REPORT_2026-09-05.md
+[R01]: https://github.com/coldshalamov/SpaceFace/blob/4cd6d50f8402082526e6660eddb160fb4e33dfdf/AGENTS.md
+[R02]: https://github.com/coldshalamov/SpaceFace/blob/4cd6d50f8402082526e6660eddb160fb4e33dfdf/design/PERF_BUDGET.md
+[R03]: https://github.com/coldshalamov/SpaceFace/blob/4cd6d50f8402082526e6660eddb160fb4e33dfdf/design/program/PERF_HITCH_CAMPAIGN.md
+[R04]: https://github.com/coldshalamov/SpaceFace/blob/4cd6d50f8402082526e6660eddb160fb4e33dfdf/design/PERF_OPTION_SPACE.md
+[R05]: https://github.com/coldshalamov/SpaceFace/blob/4cd6d50f8402082526e6660eddb160fb4e33dfdf/src/render/AGENTS.md
+[R06]: https://github.com/coldshalamov/SpaceFace/blob/4cd6d50f8402082526e6660eddb160fb4e33dfdf/design/program/PERF_TABLE_ANALYSIS.md
+[R07]: https://github.com/coldshalamov/SpaceFace/blob/4cd6d50f8402082526e6660eddb160fb4e33dfdf/src/core/loop.js
+[R08]: https://github.com/coldshalamov/SpaceFace/blob/4cd6d50f8402082526e6660eddb160fb4e33dfdf/index.html
+[R09]: https://github.com/coldshalamov/SpaceFace/blob/4cd6d50f8402082526e6660eddb160fb4e33dfdf/package.json
+[R10]: https://github.com/coldshalamov/SpaceFace/blob/4cd6d50f8402082526e6660eddb160fb4e33dfdf/src/render/renderer.js#L3020-L3095
+[R11]: https://github.com/coldshalamov/SpaceFace/blob/4cd6d50f8402082526e6660eddb160fb4e33dfdf/src/render/gpuTimers.js
+[R12]: https://github.com/coldshalamov/SpaceFace/blob/4cd6d50f8402082526e6660eddb160fb4e33dfdf/src/combat/kernel.js#L111-L140
+[R13]: https://github.com/coldshalamov/SpaceFace/blob/4cd6d50f8402082526e6660eddb160fb4e33dfdf/src/core/sg02DynamicBodyOwner.js#L854-L925
+[R14]: https://github.com/coldshalamov/SpaceFace/blob/4cd6d50f8402082526e6660eddb160fb4e33dfdf/src/render/bloom.js#L1-L125
+[R15]: https://github.com/coldshalamov/SpaceFace/blob/4cd6d50f8402082526e6660eddb160fb4e33dfdf/src/ui/galaxyMap.js#L7730-L7845
+
+Additional directly inspected baseline files: `design/AGENTS.md`, `src/systems/tacticalAI.js` (approximately 354–515), and `vendor/three.module.js`. The direct code observations are not a claim that every line of every large file was reviewed.
+
+### 8.2 Primary external references, checked 2026-09-05
+
+These establish API/engine behavior and support the proposed experiments. They do not establish SpaceFace-specific performance gains. Keep API availability tied to the checked-in vendor and actual browser capabilities.
+
+| Ref | Primary source | Applied here |
+|---|---|---|
+| S01 | [MDN: WebGL best practices](https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/WebGL_best_practices) | Blocking calls, pixel/attachment costs, resource discipline and measured WebGL tradeoffs. |
+| S02 | [Khronos: EXT_disjoint_timer_query_webgl2](https://registry.khronos.org/webgl/extensions/EXT_disjoint_timer_query_webgl2/) | Availability, delayed query polling, disjoint invalidation, nanosecond results. |
+| S03 | [Three.js: WebGLRenderer](https://threejs.org/docs/pages/WebGLRenderer.html) | Full-frame info accounting, compile/readiness and resource initialization APIs; version-gated. |
+| S04 | [Three.js: InstancedMesh](https://threejs.org/docs/pages/InstancedMesh.html) | Shared geometry/material, transform/color updates, bounds and ownership. |
+| S05 | [Three.js: BatchedMesh](https://threejs.org/docs/pages/BatchedMesh.html) | Distinct geometry batching, per-object culling and sorting; not proof of a faster bridge. |
+| S06 | [Three.js: Material](https://threejs.org/docs/pages/Material.html) | Double-sided transparent two-pass behavior and `forceSinglePass`. |
+| S07 | [Three.js: BufferAttribute](https://threejs.org/docs/pages/BufferAttribute.html) | Component-based update ranges and usage lifetime. |
+| S08 | [Three.js: Cleanup](https://threejs.org/manual/en/cleanup.html) | Explicit disposal and resource ownership. |
+| S09 | [Chrome: Forced reflow](https://developer.chrome.com/docs/performance/insights/forced-reflow) | Layout-dependent reads after invalidation, not selector counts alone. |
+| S10 | [web.dev: High-performance CSS animations](https://web.dev/articles/animations-guide) | Trace-led animation/paint/compositor experiments. |
+| S11 | [Chrome: Long Animation Frames API](https://developer.chrome.com/docs/web-platform/long-animation-frames) | Attribution and the 50 ms blind spot for tighter game deadlines. |
+| S12 | [Rapier: Rigid bodies](https://rapier.rs/docs/user_guides/javascript/rigid_bodies/) | Sleeping, waking and body-control semantics. |
+| S13 | [Rapier: Determinism](https://rapier.rs/docs/user_guides/javascript/determinism/) | Same version/initialization/parameters and insertion/removal order; game-level equivalence still needs tests. |
+| S14 | [Three.js: KTX2Loader](https://threejs.org/docs/pages/KTX2Loader.html) | Actual supported GPU transcode formats and worker/resource lifecycle. |
+| S15 | [meshoptimizer: Core pipeline](https://meshoptimizer.org/) | Attribute-aware indexing, cache/fetch ordering and hardware-dependent overdraw tradeoffs. |
+| S16 | [MDN: Transferable objects](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Transferable_objects) | ArrayBuffer transfer/detachment and ownership across workers. |
+| S17 | [Intel: Shared GPU memory](https://www.intel.com/content/www/us/en/support/articles/000041253/graphics.html) | Shared system-memory architecture; not a recommendation to change BIOS allocations. |
+| S18 | [Three.js: Color management](https://threejs.org/manual/en/color-management.html) | Linear working space, texture roles and output conversion. |
+| S19 | [MDN: AudioParam.cancelAndHoldAtTime](https://developer.mozilla.org/en-US/docs/Web/API/AudioParam/cancelAndHoldAtTime) | Preserving scheduled envelope continuity when modifying automation; capability check required. |
+| S20 | [MDN: crossOriginIsolated](https://developer.mozilla.org/en-US/docs/Web/API/Window/crossOriginIsolated) | Deployment constraints for shared memory and isolation-sensitive browser capabilities. |
+
+**Execution principle:** remove work that provably need not happen, at the layer that actually owns the cost. Preserve the table, the fight, and the save. Measure the delivered frame before declaring victory.
