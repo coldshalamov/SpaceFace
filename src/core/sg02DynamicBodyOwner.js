@@ -60,6 +60,11 @@ const REEL_BOOST_K_MULT = 1.15;
 // re-lengthens when stretch is right at the break edge, so a violently fleeing capital can still
 // snap the line (the intended escape) but a normal haul no longer pays out.
 const REEL_SLIP_RELENGTH_RATIO = 0.95;
+// Twin Bridle is the one paired line with an authored tension rating. Keep a small physical
+// overshoot window so the attachment service can observe a strict `>` rating breach and cut the
+// line, while preventing the spring from injecting an unbounded impulse into either hull.
+const TWIN_BRIDLE_DEF_ID = 'attachment_twin_bridle';
+const TWIN_BRIDLE_TENSION_OVERSHOOT = 1.05;
 const SPRING_TUNES = Object.freeze({
   tether_standard: Object.freeze({ K: 140, zeta: 0.95, captureS: 0.35, maxStretchRatio: 1.44, reelSafeStretchRatio: 1.32 }),
   attachment_massline: Object.freeze({ K: 170, zeta: 0.90, captureS: 0.30 }),
@@ -1812,6 +1817,11 @@ function normalizeSpring(value = {}, defId = '', breakValue = {}) {
   const tune = SPRING_TUNES[String(defId || '')] || null;
   const maxStretchRatio = positive(value && value.maxStretchRatio, positive(tune && tune.maxStretchRatio, MAX_STRETCH_RATIO));
   const requestedMode = value && value.mode;
+  const requestedMaxForce = positive(value && value.maxForce, Infinity);
+  const tensionRating = positive(breakValue && breakValue.maxTension, Infinity);
+  const maxForce = String(defId || '') === TWIN_BRIDLE_DEF_ID && Number.isFinite(tensionRating)
+    ? Math.min(requestedMaxForce, tensionRating * TWIN_BRIDLE_TENSION_OVERSHOOT)
+    : requestedMaxForce;
   return {
     mode: requestedMode === 'legacy_rope' ? 'legacy_rope'
       : requestedMode === 'frame_coupler' ? 'frame_coupler'
@@ -1819,7 +1829,7 @@ function normalizeSpring(value = {}, defId = '', breakValue = {}) {
     K: positive(value && value.K, positive(value && value.k, positive(tune && tune.K, positive(breakValue && breakValue.stiffness, 140)))),
     zeta: positive(value && value.zeta, positive(tune && tune.zeta, 0.95)),
     captureS: positive(value && value.captureS, positive(tune && tune.captureS, 0.35)),
-    maxForce: positive(value && value.maxForce, Infinity),
+    maxForce,
     velocityGain: positive(value && value.velocityGain, 0),
     maxStretchRatio,
     reelSafeStretchRatio: positive(value && value.reelSafeStretchRatio,

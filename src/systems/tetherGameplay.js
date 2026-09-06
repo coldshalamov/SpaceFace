@@ -744,7 +744,8 @@ export const tetherGameplay = {
     const tension = Math.max(0, finite(telemetry && telemetry.tension, finite(attachment.lastTension)));
     const strain = clamp(tension / threshold, 0, 2);
     let phase = telemetry && telemetry.phase ? normalizePhase(telemetry.phase) : 'slack';
-    if (attachment.nearBreakWarned || strain >= 0.75) phase = 'overload';
+    const breakRequested = telemetry && telemetry.breakRequested === true;
+    if (breakRequested || attachment.nearBreakWarned || strain >= 0.75) phase = 'overload';
     else if (phase === 'slack' && tension > 0) phase = 'loaded';
     mirror.active = !!(source && source.alive && target && target.alive);
     mirror.kind = TWIN_BRIDLE_HEAD_ID;

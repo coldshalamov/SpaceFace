@@ -186,7 +186,8 @@ export const tumbleStates = {
     const victim = entityById(state, payload.victimId);
     const kind = source === 'well'
       ? WELL_TUMBLE_KIND
-      : source === 'collision' ? COLLISION_TUMBLE_KIND : WEAPON_TUMBLE_KIND;
+      : source === 'collision' ? COLLISION_TUMBLE_KIND
+        : source === 'tether_share' ? MASSLINE_TUMBLE_KIND : WEAPON_TUMBLE_KIND;
     this._beginFromImpulse(victim, {
       source: source || 'weapon',
       kind,
