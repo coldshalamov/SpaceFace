@@ -28,6 +28,12 @@ implementation hazards.
   mutation, reread `NOW.md` and preserve exact foreign dirty hunks; neither the check nor a
   coordination hint creates task-long ownership or blocks a packet. The command never mutates,
   launches acceptance, or promotes work.
+- `agent-checkpoint.mjs` is the lightweight mutation-progress writer. It may write only local
+  `.codex/agent-checkpoints/*.json` state. Checkpoints contain exact paths and 5–10 bounded todos;
+  `check` is used at real todo boundaries, not on a timer. A checkpoint may reserve the current task
+  plus at most four next tasks as soft lookahead. `program-dispatch --next` skips fresh reservations;
+  `check-now-liveness.mjs` treats a missing or 90-minute-stale checkpoint/reservation as adoptable and
+  never treats a stale row as a reason to revert or fork the dirty diff.
 
 See [`../design/program/roadmap/00_EXECUTION_PROTOCOL.md`](../design/program/roadmap/00_EXECUTION_PROTOCOL.md) for the finite state machine.
 

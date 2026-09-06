@@ -15,7 +15,7 @@ one task and stops; it does not start an open-ended campaign.
 ## Prompt 0 — the default (no scope words)
 
 ```text
-Read CANONICAL_BUILD_MAP.md section 1 and do exactly what it says: node scripts/program-dispatch.mjs --next is your unit; read its packet, especially "How agents get this wrong"; finish the whole unit to its done-when in player units on a fixed seed; if it is feel or combat, run design/program/FUN_CONVERGENCE_LOOP.md; commit only your files by pathspec and push the current branch by name; report in the section 1.4 format in plain words; then take the next unit. Stop only for a section 1.5 stop condition, and say which.
+Read CANONICAL_BUILD_MAP.md section 1 and do exactly what it says: node scripts/program-dispatch.mjs --next is your unit (fresh lookahead reservations are skipped); read its packet, especially "How agents get this wrong"; before mutation create a checkpoint for the current unit and reserve at most the next four units if this prompt is a sequence; finish the whole unit to its done-when in player units on a fixed seed; if it is feel or combat, run design/program/FUN_CONVERGENCE_LOOP.md; commit only your files by pathspec and push the current branch by name; report in the section 1.4 format in plain words; then close the checkpoint before taking the next unit. Stop only for a section 1.5 stop condition, and say which.
 ```
 
 ## Which door? Exact task vs. develop the game
@@ -32,8 +32,29 @@ Read CANONICAL_BUILD_MAP.md section 1 and do exactly what it says: node scripts/
 
 Give Prompt A to each thread, or give different concrete prompts from the bottom of this file. Each
 thread reads the same `NOW.md` and `--ready` list. If two threads initially inspect the same task, the
-first one that actually begins mutation records the short exact-path row; the other chooses the next
-task and keeps working. No coordinator, permanent lane, or worktree is required.
+first one that actually begins mutation creates the task checkpoint and records the short exact-path
+row; the other chooses the next task and keeps working. No coordinator, permanent lane, heartbeat, or
+worktree is required.
+
+## Checkpoint protocol — include this in every mutation prompt
+
+Before the first patch, run:
+
+```text
+node scripts/agent-checkpoint.mjs start --task <UNIT_ID> --owner <THREAD_ID> --path <EXACT_PATH> \
+  --todo "preflight" --todo "implement" --todo "verify" --todo "receipt" \
+  --reserve <NEXT_UNIT_ID> --reserve <NEXT_NEXT_UNIT_ID>
+```
+
+Use 5–10 bounded todos when the unit is larger; each should fit inside 90 minutes. Put the printed
+`.codex/agent-checkpoints/<UNIT_ID>.json` path in the NOW row. At each meaningful boundary run
+`node scripts/agent-checkpoint.mjs check --file <CHECKPOINT> --todo <N>`; this timestamps a real
+checkpoint and is not a heartbeat. Reserve no more than five tasks total, including the current task;
+when the current task finishes, close its checkpoint and start the next one before mutating. `node
+scripts/program-dispatch.mjs --next` skips fresh reservations, while `--ready` annotates them. If
+`node scripts/check-now-liveness.mjs` says a row/reservation is stale, inspect the current diff, adopt
+the existing checkpoint, and continue it. If another live agent has claimed a future reservation,
+re-plan rather than contesting or forking the unfinished work.
 
 ## Prompt A0-H — orphan harvest / unused models / leftover agent copies
 
@@ -189,11 +210,12 @@ currently dirty overlapping hunk that another thread has not handed off. Do not 
 worktree. Add one short NOW.md row only when you begin editing; research, reading, tests, and reviews
 do not reserve files.
 
-Implement the selected outcome, run its focused proof, obtain the required review, stage only its
-exact files, commit, fetch, push the current branch explicitly, update its receipt/status truthfully,
-and remove the NOW row. If another thread has an exact dirty hunk, preserve that hunk and continue on
-disjoint work or take the next returned task; do not declare the packet or repo blocked. Do not loop
-on an unchanged failing command.
+Implement the selected outcome, run its focused proof, obtain the required independent agent review,
+stage only its exact files, commit, fetch, push the current branch explicitly, update its receipt/status
+truthfully, and remove the NOW row. If another thread has an exact dirty hunk, preserve that hunk and
+continue on disjoint work or take the next returned task; if its checkpoint is stale, adopt it rather
+than working around it. Do not declare the packet or repo blocked, ask for a human verdict, or loop on
+an unchanged failing command.
 
 Stop after one finished task. Your final response must be exactly understandable as:
 RESULT: DONE or NOT DONE
@@ -216,16 +238,16 @@ Read CANONICAL_BUILD_MAP.md and design/program/NOW.md, then run
 `node scripts/program-dispatch.mjs --ready` and locate `<UNIT_ID>` in
 `design/program/roadmap/program-queue.json`. Run `node scripts/program-dispatch.mjs --id PQ-XXX`
 using the unit's `parentId`, then open that packet, verify the live owner code, and deliver the exact
-unit's player outcome. If the unit is not yet printed by `--ready`, its `dependsOn` list is integration
+unit's player outcome. Before mutation, initialize the checkpoint described above. If the unit is not yet printed by `--ready`, its `dependsOn` list is integration
 order, not permission to forget the task: complete any missing in-repo prerequisite needed to deliver
 the assigned outcome, and do not mark the unit done until the full result is integrated. Do not create
 a worktree and do not stop because another task exists. Record a
 NOW row only during mutation. Preserve any exact foreign dirty hunk; continue the disjoint parts and
-arrange an explicit handoff for a genuinely overlapping hunk.
+adopt a stale checkpoint for a genuinely overlapping hunk instead of creating a parallel copy.
 
-Keep working until the outcome is implemented, focused proof is green, required route/review evidence
-is honest, and the exact files are committed and pushed. Update the receipt and task state. End with
-the DONE/NOT DONE template from design/program/02_REMAINING_WORK.md, then stop.
+Keep working until the outcome is implemented, focused proof is green, required route/independent-agent
+review evidence is honest, and the exact files are committed and pushed. Update the receipt and task
+state. End with the DONE/NOT DONE template from design/program/02_REMAINING_WORK.md, then stop.
 ```
 
 ## Prompt C — finish or discard an existing dirty candidate
@@ -322,4 +344,5 @@ Finish only the one selected unit and stop. Do not interpret the later units as 
 documented continuation for subsequent agents.
 ```
 
-The final `PQ-045.human-review` is a prompt for the named human reviewer, not an autonomous agent.
+The final `PQ-045.human-review` is an independent-agent review task. Use the candidate-bound evidence,
+record KEEP or REVISE with the reviewing thread identity, and do not wait for a human verdict.

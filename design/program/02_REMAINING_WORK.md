@@ -28,16 +28,16 @@ or mapped to an exact queue leaf.
 | `DONE` | The result is committed on `master` and the cited proof exists. |
 | `IN PROGRESS` | Uncommitted work exists. It is not done; the row names the exact next action. |
 | `TODO` | The result is not done. It may be assigned as a bounded task. |
-| `NEEDS HUMAN` | Agent work is complete only when the named human action is performed and recorded. |
+| `REVIEW OPEN` | Agent implementation still needs the named independent-agent review and evidence; no human verdict is required. |
 
 There is no durable `BLOCKED` status for in-repo work. A dependency is integration order, not a
 reason to abandon a task. A dirty path, another agent, Blender, the GPU, a validation broker, or a
 shared source file is coordination at execution time, not product status.
 
-The queue contains 113 exact leaves: 80 `done`, 32 agent-ready, and one deferred named-human review,
-with zero dependency-only blocked leaves. `dependsOn` records the preferred integration order.
-`program-dispatch --ready` reports the current front of that order; it is not the list of all work
-that exists and it never cancels a task.
+This dated snapshot is not the live count. The queue and `program-dispatch` are authoritative for
+current state; `dependsOn` records integration order, and a review row is agent-owned unless the user
+explicitly requests an external action. `program-dispatch --ready` reports the current front of that
+order; it is not the list of all work that exists and it never cancels a task.
 
 ### How concurrent agents finish in one checkout
 
@@ -96,7 +96,7 @@ agent should invent a blocker or stop unrelated work.
 | `TODO` | 258 — `PQ-045.wreck-dressing` | Give the two Ceres wreck sites specific aftermath identities. | Re-author and place the seven selected wreck pieces. | Final route topology |
 | `TODO` | 259 — `PQ-045.vfx-recipes` | Make five causal events visibly readable through the live VFX owner. | Port the five bounded recipes and prove accessibility/cleanup. | Causal events |
 | `TODO` | 260 — `PQ-045.five-minute-h1` | Prove the finished Ceres slice in Browser and Electron. | Run one clean fixed-seed five-minute candidate. | Causal/NPC/prop/wreck/VFX leaves |
-| `NEEDS HUMAN` | 261 — `PQ-045.human-review` | Decide whether Ceres feels populated and coherent in ordinary play. | Record named KEEP or REVISE against the exact candidate. | Five-minute machine evidence |
+| `REVIEW OPEN` | 261 — `PQ-045.human-review` | Decide whether Ceres feels populated and coherent in ordinary play. | Independent agent records named KEEP or REVISE against the exact candidate. | Five-minute machine evidence |
 | `TODO` | 270 — `PQ-045.target-motion-late-audit` | Resolve two late target-motion lifecycle questions without reopening the feature. | Run exactly two causal reproductions; repair only a reproduced defect or close with evidence. | Independent follow-up; it does not gate tender or Ceres acceptance |
 
 The full cross-program list remains in

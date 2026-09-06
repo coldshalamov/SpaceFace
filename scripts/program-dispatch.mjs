@@ -16,6 +16,7 @@ import {
 } from './lib/programControlPlane.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
+const CHECKPOINT_STALE_MS = 90 * 60 * 1000;
 
 function fail(message, code = 2, details = []) {
   console.error(`program-dispatch: ${message}`);
@@ -25,13 +26,47 @@ function fail(message, code = 2, details = []) {
 
 function usage() {
   console.log(`Usage:
-  node scripts/program-dispatch.mjs --next [--root PATH]
+  node scripts/program-dispatch.mjs --next [--include-reserved] [--root PATH]
   node scripts/program-dispatch.mjs --ready [--root PATH]
   node scripts/program-dispatch.mjs --id PQ-018 [--root PATH]
   node scripts/program-dispatch.mjs --list [--root PATH]
 
-When dispatchUnits exist, --next returns the first ready unit and --ready returns every ready unit.
-Outputs compact JSON; starting a task requires no separate coordinator or lease.`);
+When dispatchUnits exist, --next returns the first ready unit without a fresh lookahead reservation;
+--include-reserved is for explicit inspection. --ready returns every ready unit and annotates reserved
+ones. Outputs compact JSON; starting a task requires no separate coordinator or lease.`);
+}
+
+function liveReservations(root) {
+  const dir = path.join(root, '.codex', 'agent-checkpoints');
+  if (!fs.existsSync(dir)) return new Map();
+  const byTask = new Map();
+  let names = [];
+  try { names = fs.readdirSync(dir).filter((name) => name.endsWith('.json')); } catch { return byTask; }
+  for (const name of names) {
+    const file = path.join(dir, name);
+    let checkpoint;
+    try { checkpoint = JSON.parse(fs.readFileSync(file, 'utf8')); } catch { continue; }
+    if (!checkpoint || typeof checkpoint !== 'object' || checkpoint.state === 'DONE') continue;
+    const progress = Date.parse(String(checkpoint.lastProgressAt || ''));
+    let timestamp = progress;
+    if (!Number.isFinite(timestamp)) {
+      try { timestamp = fs.statSync(file).mtimeMs; } catch { timestamp = 0; }
+    }
+    if (!timestamp || Date.now() - timestamp > CHECKPOINT_STALE_MS) continue;
+    const taskIds = Array.isArray(checkpoint.reservedTasks) && checkpoint.reservedTasks.length
+      ? checkpoint.reservedTasks
+      : checkpoint.task ? [checkpoint.task] : [];
+    for (const taskId of taskIds) {
+      const id = String(taskId);
+      if (!byTask.has(id)) byTask.set(id, []);
+      byTask.get(id).push({
+        owner: String(checkpoint.owner || 'unknown owner'),
+        checkpoint: path.relative(root, file).replaceAll('\\', '/'),
+        ageMinutes: Math.max(0, Math.round((Date.now() - timestamp) / 60000)),
+      });
+    }
+  }
+  return byTask;
 }
 
 let values;
@@ -46,6 +81,7 @@ try {
       ready: { type: 'boolean' },
       id: { type: 'string' },
       list: { type: 'boolean' },
+      'include-reserved': { type: 'boolean' },
       root: { type: 'string' },
     },
   }));
@@ -66,6 +102,15 @@ if (values.id !== undefined && !/^PQ-\d{3}$/.test(values.id)) {
 
 const ROOT = values.root ? path.resolve(values.root) : path.resolve(SCRIPT_DIR, '..');
 const queueFile = path.join(ROOT, 'design', 'program', 'roadmap', 'program-queue.json');
+const reservations = liveReservations(ROOT);
+
+function summarizeUnit(unit, control) {
+  const summary = summarizeDispatchUnit(unit, control);
+  const reservedBy = reservations.get(unit.id);
+  if (reservedBy?.length) summary.reservedBy = reservedBy;
+  summary.instruction = `${summary.instruction} Fresh lookahead reservations are skipped by --next and are soft session intent, not queue ownership.`;
+  return summary;
+}
 
 let control;
 try {
@@ -79,7 +124,7 @@ try {
 try {
   if (values.ready) {
     console.log(JSON.stringify(
-      readyDispatchUnits(control).map((unit) => summarizeDispatchUnit(unit, control)),
+      readyDispatchUnits(control).map((unit) => summarizeUnit(unit, control)),
       null,
       2,
     ));
@@ -106,9 +151,16 @@ try {
   }
 
   if (control.dispatchUnits.length > 0) {
-    const [nextUnit] = readyDispatchUnits(control);
-    if (!nextUnit) fail('no ready dispatch unit found', 1);
-    console.log(JSON.stringify(summarizeDispatchUnit(nextUnit, control), null, 2));
+    const ready = readyDispatchUnits(control);
+    const candidates = values['include-reserved']
+      ? ready
+      : ready.filter((unit) => !reservations.has(unit.id));
+    const [nextUnit] = candidates;
+    if (!nextUnit) {
+      if (!ready.length) fail('no ready dispatch unit found', 1);
+      fail(`all ${ready.length} ready dispatch units have fresh lookahead reservations; inspect --ready or use --include-reserved explicitly`, 1);
+    }
+    console.log(JSON.stringify(summarizeUnit(nextUnit, control), null, 2));
     process.exit(0);
   }
 

@@ -38,10 +38,27 @@ Lifecycle and acceptance are independent. `integrated` does not imply `route_acc
 does not imply wired; an asset may be source-complete while runtime-unproven. Use exact labels and
 never compress these distinctions into “done.”
 
-When an agent begins editing, it adds its own short exact-path row to `NOW.md`; when mutation stops,
-it removes that row. The finishing agent updates only status artifacts proportionate to the actual
-claim. Research, reading, testing, and review do not reserve files, and in-repo work is not declared
-blocked merely because another thread exists.
+When an agent begins editing, it creates one local checkpoint with
+`node scripts/agent-checkpoint.mjs start`, containing 5–10 exact, bounded todos and every path it
+will mutate. A multi-task session may reserve the current task plus at most four next tasks with
+repeated `--reserve` flags; that is lookahead intent, not task-long ownership. It then adds a short
+exact-path row to `NOW.md` with the checkpoint path in a backtick cell. At each meaningful todo
+boundary it runs `agent-checkpoint.mjs check`; this is not a heartbeat and does not require periodic
+file churn. When mutation stops, it removes the NOW row. A checkpoint with no progress for 90 minutes
+is stale by definition: the next agent inspects the diff, adopts the checkpoint, preserves the
+existing hunks, and continues the same task. It does not create a parallel implementation or revert
+work because the original thread disappeared. Rows without checkpoints use the legacy path-mtime
+fallback and are not permanent ownership.
+
+`node scripts/program-dispatch.mjs --next` skips fresh lookahead reservations; `--ready` annotates
+them. At each task boundary, close the current checkpoint and start the next one before mutating. If
+another live agent claims a future reservation, re-plan around it rather than contesting its files.
+
+The finishing agent updates only status artifacts proportionate to the actual claim. Research,
+reading, testing, and review do not reserve files, and in-repo work is not declared blocked merely
+because another thread exists. No human verdict is an execution gate: convert legacy human/owner
+review wording into an independent agent review against the named evidence and record the residual
+honestly. Only an explicit user-requested external action may remain deferred.
 
 Keep global state out of packet prose. Link receipts instead of copying test transcripts and incident
 histories into queue rows. A green check proves only its contract; it does not prove visual quality,

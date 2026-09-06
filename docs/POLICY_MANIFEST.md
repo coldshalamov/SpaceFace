@@ -71,6 +71,7 @@ A packet may choose an art direction or technique for one outcome. That local de
 | `ARCHITECTURE.md` | `ACTIVE_MANUAL` | engine/data contracts | not a visual-style guide; reconcile descriptive details with code |
 | `design/GDD_2_0.md` | `ACTIVE_MANUAL` | product pillars | technique follows evidence |
 | `design/program/` | mixed | global status, active packets, receipts | each file obeys its lifetime marker |
+| `.codex/agent-checkpoints/` | `MACHINE_ENFORCED` | local per-task todo timestamps consumed by `check-now-liveness.mjs` | not production history, not a permanent lease, intentionally excluded from Git |
 | `design/vision/`, `depth-program/`, `spec2/`, `spec3/`, `revamp/`, `graphics-sprints/` | `ACTIVE_MANUAL` | task-specific intent | read only the activated slice |
 | scripts/tests/schemas/manifests | `MACHINE_ENFORCED` | executable contracts | prove behavior/contracts, not taste |
 | asset manifests/release metadata | `MACHINE_ENFORCED` | exact identity/provenance/reachability | exact IDs outrank prose inventories |

@@ -39,7 +39,8 @@ Another agent thread can appear in this repo at any time — `HEAD` may move eve
 working tree may carry dozens of uncommitted files from in-progress work. **This is a normal state of
 the repo, not a hazard that justifies stopping.**
 
-- Just do the work. Git collisions are cheap and recoverable.
+- Just do the work inside the exact unclaimed write set. A collision is handled by preserving the
+  foreign hunk and continuing on disjoint paths; do not enter a revert-and-reapply loop.
 - Scope commits to the exact paths you changed, so you never sweep up someone else's work.
 - Never commit, delete, revert, or "clean up" another lane's uncommitted files.
 - Never raise attribution. The owner does not care whose name work is filed under.
@@ -49,26 +50,47 @@ the repo, not a hazard that justifies stopping.**
 Questions like "should I edit this or wait for the other agent?" cannot be answered by someone who
 cannot see either agent's work. Decide it yourself and act.
 
-Stop only for (a) genuinely destructive irreversible actions, or (b) art-direction and design calls —
-what the game should look like, feel like, or do.
+Stop only for genuinely destructive irreversible actions or a missing external authority that the
+user explicitly required. A taste question is resolved by the selected design contract and an
+independent agent review; it is not a reason to ask the owner for a verdict.
 
-## `NOW.md` must never stop you
+## `NOW.md` and bounded checkpoints
 
-`design/program/NOW.md` is a **lock board, not a bulletin board.** Every row is a prohibition
-("this path is claimed"); it has no vocabulary for "go ahead." Read literally, it can only ever
-produce a stop.
+`design/program/NOW.md` records short mutation windows for exact dirty hunks. It is not a task-long
+lease, a subsystem lane, or a reason to route around unfinished work.
 
-It is also mostly dead: most rows say RELEASED or COMPLETE — finished work nobody deleted. It is
-chronically past its own commit expiry and contradicts itself about which lanes are active.
+Before the first patch:
 
-Therefore:
+1. Run `node scripts/agent-checkpoint.mjs start` with the task owner, exact paths, and 5–10 bounded
+   todos. Keep each todo small enough to finish within 90 minutes. For a multi-task prompt, reserve
+   only the current task plus at most four next tasks with repeated `--reserve` flags; do not reserve
+   an entire roadmap.
+2. Add the exact-path NOW row and include the checkpoint path
+   `.codex/agent-checkpoints/<task>.json` in a backtick cell.
+3. At each meaningful todo boundary, run `agent-checkpoint.mjs check`. This writes the todo's
+   `completedAt` and `lastProgressAt`; it is event-based progress, not a periodic heartbeat.
 
-- **A row in `NOW.md` is not a reason to stop, and never a reason to ask the owner what to do.**
-  Treat it as a hint about where a collision is *possible*, nothing more.
-- Verify against reality instead — `git log`, `git status`, and the file itself. Recent commits beat
-  any row on that board.
-- Do not stop to reconcile, refresh, or audit the board unless that is the actual assigned task.
-- If you do need to claim something, add your row and keep working. Do not wait for anything.
+`node scripts/check-now-liveness.mjs` uses `lastProgressAt` for checkpointed rows. More than 90
+minutes without progress makes the row stale by definition. Any agent may adopt it after inspecting
+the current diff: run `agent-checkpoint.mjs adopt`, preserve every existing hunk, continue the same
+task, and remove the NOW row only when mutation stops. A checkpoint marked `DONE` with a row still
+present is also stale and needs cleanup. Rows from before this protocol use the legacy claimed-path
+mtime fallback and are reported as such; they do not create permanent ownership.
+
+Never rewrite or revert a foreign dirty file merely because its prior agent is gone. Adoption changes
+the owner of the existing work; it does not create a competing implementation. Reading, testing, and
+reviewing reserve no files.
+
+Lookahead reservations are soft session intent, not queue state. `node scripts/program-dispatch.mjs
+--next` skips fresh reservations; `--ready` shows them as annotations. At a task boundary, finish the
+current checkpoint and create the next task checkpoint before mutating it. If a future reservation was
+claimed by another live agent, re-plan the remaining four slots and continue elsewhere; never contest
+it or revert its changes. A stale reservation expires with the same 90-minute checkpoint rule.
+
+No human verdict is an execution gate. Legacy `NEEDS HUMAN`, `owner verdict`, and `human review`
+labels mean that an independent agent must evaluate the named evidence and record KEEP/REVISE (or the
+packet's equivalent) with a reviewer identity. Only an explicit external action requested by the user
+may remain deferred, and it cannot block unrelated in-repo work.
 
 ## Do not use git worktrees here, and clean up after yourself
 
@@ -135,8 +157,8 @@ Do not stop, investigate at length, or report these as findings unless they are 
 - `check:assets:live` fails whenever the working tree is dirty (it demands a globally clean tree) or
   when `HEAD` is ahead of `origin/master`. With a concurrent agent running, it is usually red.
 - `check-helios-sky-kit.mjs` fails on `cycle 10: core fog density`.
-- `node scripts/check-program-docs.mjs` reports `design/program/NOW.md` stale — the board is
-  chronically past its own expiry by design; see the `NOW.md` section above.
+- `node scripts/check-program-docs.mjs` may warn that the `NOW.md` header is old; per-task checkpoint
+  liveness and `node scripts/check-now-liveness.mjs` are the current ownership evidence.
 - A stochastic ~250 ms combat spike from a `buildComposedShip` admission stall.
 
 ## Reporting

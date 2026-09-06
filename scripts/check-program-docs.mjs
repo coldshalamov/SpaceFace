@@ -173,7 +173,9 @@ function checkVolatileBoard() {
 
   if (refreshed && validIsoDate(refreshed) && Number.isInteger(expiryDays) && expiryDays > 0) {
     const ageDays = Math.floor((Date.now() - new Date(`${refreshed}T00:00:00Z`).getTime()) / 86_400_000);
-    if (ageDays > expiryDays) errors.push(`${rel}: stale by age (${ageDays} days, expiry ${expiryDays})`);
+    if (ageDays > expiryDays) {
+      warnings.push(`${rel}: header stale by age (${ageDays} days, expiry ${expiryDays}); per-task checkpoint liveness is authoritative`);
+    }
     if (ageDays < -1) errors.push(`${rel}: refreshed date is in the future`);
   }
 
@@ -202,7 +204,7 @@ function checkVolatileBoard() {
     }).trim());
     if (!Number.isFinite(count)) errors.push(`${rel}: commit freshness returned a non-number`);
     else if (count > expiryCommits) {
-      errors.push(`${rel}: stale by ${count} commits (expiry ${expiryCommits})`);
+      warnings.push(`${rel}: header stale by ${count} commits (expiry ${expiryCommits}); per-task checkpoint liveness is authoritative`);
     }
   } catch (error) {
     errors.push(`${rel}: could not evaluate commit freshness (${error.message})`);
