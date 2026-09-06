@@ -66,7 +66,7 @@
     "audio:cue": 2
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "76116bb577b52a939eadd8ed6ae7266c7bebe112d8a7a326ebff24cacaf34edd",
+    "authoritativeHash": "ecd131b4344e5be230cb9ed31e87b42cb530aa3b31dcf6cfa578e9109f1035af",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -127,6 +127,10 @@
     "2026-09-05 causal-record completion (acceptance review of PQ-137.03-.10): the 83444ec2 -> 0c9c1549 window this re-record diffed also carried PQ-137.03, PQ-137.04 and PQ-137.06, not only PQ-137.11 (a3bd740d).",
     "PQ-137.03 = 3c4c424a (camera keyed to governed combat speed + catalogue rescale) and 461c2cb3 (planar assisted-translation cap). PQ-137.04 = 4085ecac, 4a10cbca, 940b3b95 (one hitstun law).",
     "PQ-137.06 = 634a900f (terrain damage from pre-solve closing speed). The MOTION_CHANGED verdict above is the JOINT effect of those four deliberate, reviewed feel changes (packet PQ-137, each receipted).",
-    "Per-leaf shares of the moved hash were not separated. No silent regression hides in it."
+    "Per-leaf shares of the moved hash were not separated. No silent regression hides in it.",
+    "2026-09-06 integrator acceptance of the deliberate PQ-137.11 contact-episode rule (cfb505ef): PLAYER_CONTACT_EVENT_BRIDGE_TICKS 6 -> 90 keeps a repeated scrape within one 10% cruise shove budget.",
+    "Prior authoritativeHash was 76116bb577b52a939eadd8ed6ae7266c7bebe112d8a7a326ebff24cacaf34edd. Current sim-golden-diff reproduced the prior reference: MOTION_CHANGED, 11 entity motion, 12 physics and 2 aimWorld fields; trace counts unchanged.",
+    "Player x 551.349731 -> 552.200928 at tick 720. The isolated bridge experiment is recorded in design/program/roadmap/receipts/PQ-137.11-REPORT.md: restoring 6 while retaining off-centre impulse and yaw changes reproduces the previous hash.",
+    "This is an accepted gameplay change, not content-only churn. The V3 golden is unchanged and both save/reload comparisons passed at campaign entry."
   ]
 }
