@@ -8,15 +8,20 @@
 import test from 'node:test';
 import { resolve, join } from 'node:path';
 import { mkdtemp, writeFile, rm, mkdir } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
+import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
 
 import {
   RUBRIC_QUESTIONS,
   QUESTION_7_INVERTED,
-  PASS_THRESHOLD,
-  computePassCount,
-  isPass,
+  BLOCKERS,
+  BLOCKER_SENTENCE,
+  COVERAGE_SENTENCE,
+  computeCoverage,
+  decideVerdict,
+  spliceRubricDoc,
 } from '../scripts/lib/critic/rubric.mjs';
 
 import {
@@ -26,7 +31,7 @@ import {
 import {
   CONTENT_ANSWER_PATTERNS,
   matchesContentPatterns,
-  validateVerdict,
+  validateVerdict as validateVerdictRaw,
   validateStripAdmission,
   CANONICAL_NORMAL_SPEED_FLOOR,
 } from '../scripts/lib/critic/validation.mjs';
@@ -46,6 +51,7 @@ import {
 import {
   compareCritics,
 } from '../scripts/lib/critic/multiCritic.mjs';
+import { formatVerdictLines } from '../scripts/critic-fun-loop.mjs';
 
 /**
  * Creates a valid fake manifest with non-consecutive frame indices.
@@ -158,6 +164,44 @@ function createValidFundamental(frameIndex = 4, overrides = {}) {
     frameIndex,
     ...overrides,
   };
+}
+
+function createClearBlockers(frameIndex = 4) {
+  return BLOCKERS.map((def) => ({
+    id: def.id,
+    blocked: false,
+    evidence: `looked at frame ${frameIndex}; ${def.ownerWords} is not in the pictures`,
+    frameIndex,
+  }));
+}
+
+function createValidJudgment(frameIndex = 4) {
+  return {
+    perceive: 'the ship answers the stick with a shove other hulls actually feel',
+    decide: 'the player can choose to hit or to miss and see the difference',
+    execute: 'a tap on the stick produces a readable shove',
+    friction: 'the chase camera still settles after a hit',
+    falsifier: 'a contact that turns the nose would falsify this',
+    frames: [frameIndex],
+  };
+}
+
+function completeCandidate(candidate) {
+  const frameIndex = candidate?.fundamental?.frameIndex
+    ?? candidate?.answers?.find((a) => Number.isInteger(a?.frameIndex))?.frameIndex
+    ?? 4;
+  return {
+    blockers: createClearBlockers(frameIndex),
+    judgment: createValidJudgment(frameIndex),
+    ...candidate,
+  };
+}
+
+function validateVerdict(candidate, manifest, options) {
+  if (!candidate || typeof candidate !== 'object') {
+    return validateVerdictRaw(candidate, manifest, options);
+  }
+  return validateVerdictRaw(completeCandidate(candidate), manifest, options);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -286,32 +330,65 @@ test('extractBalancedJson throws meaningful error when no valid JSON is present'
 // ─────────────────────────────────────────────────────────────────────────────
 // Test 4: Question 7 inversion in passCount
 // ─────────────────────────────────────────────────────────────────────────────
-test('passCount counts question 7 inverted: "no" is a point, "yes" is not', () => {
+test('coverage counts question 7 inverted: "no" is a point, "yes" is not; the count is never the verdict', () => {
   assert.equal(QUESTION_7_INVERTED, 7);
 
-  // All 9 matching their goodAnswers: Q7 is 'no', others 'yes'
   const allGoodAnswers = createValidAnswers(4);
-  assert.equal(computePassCount(allGoodAnswers), 9);
-  assert.equal(isPass(9), true);
+  assert.deepEqual(computeCoverage(allGoodAnswers), { good: 9, of: 9 });
 
-  // If Q7 is answered "yes", it should NOT get a point (passCount drops to 8)
   const q7YesAnswers = createValidAnswers(4, { 7: 'yes' });
-  assert.equal(computePassCount(q7YesAnswers), 8);
+  assert.equal(computeCoverage(q7YesAnswers).good, 8);
 
-  // If Q7 is answered "no", it DOES get a point
   const q7NoAnswers = createValidAnswers(4, { 7: 'no' });
-  assert.equal(computePassCount(q7NoAnswers), 9);
+  assert.equal(computeCoverage(q7NoAnswers).good, 9);
 
-  // Edge case: all "no" answers -> only Q7 gets a point
   const allNoAnswers = [];
   for (let q = 1; q <= 9; q++) {
     allNoAnswers.push({ q, answer: 'no', frameIndex: 4 });
   }
-  assert.equal(computePassCount(allNoAnswers), 1, 'Only question 7 should earn a point when all answers are "no"');
+  assert.equal(computeCoverage(allNoAnswers).good, 1, 'Only question 7 should earn a point when all answers are "no"');
+});
 
-  // Verify pass threshold (>= 7)
-  assert.equal(isPass(7), true);
-  assert.equal(isPass(6), false);
+test('a synthetic verdict with one blocker and nine good coverage answers fails', () => {
+  const manifest = createFakeManifest();
+  const blockers = createClearBlockers(4);
+  blockers[0] = {
+    id: 'visual_stand_in',
+    blocked: true,
+    evidence: 'frame 4 is a glowing disc standing in for the explosion',
+    frameIndex: 4,
+  };
+  const verdict = validateVerdict({
+    answers: createValidAnswers(4),
+    fundamental: createValidFundamental(4),
+    blockers,
+  }, manifest);
+
+  assert.equal(verdict.rejected, false, 'the document is well-formed; the verdict is the three parts');
+  assert.equal(verdict.coverage.good, 9, 'nine good answers is coverage, never a pass');
+  assert.equal(verdict.verdict.pass, false, BLOCKER_SENTENCE);
+  assert.deepEqual(verdict.verdict.blockerIds, ['visual_stand_in']);
+  assert.equal(decideVerdict({ blockers, intent: { declared: false }, rejected: false }).pass, false);
+});
+
+test('a verdict missing the seven blockers is rejected even when every question is yes', () => {
+  const manifest = createFakeManifest();
+  const verdict = validateVerdictRaw({
+    answers: createValidAnswers(4),
+    fundamental: createValidFundamental(4),
+    judgment: createValidJudgment(4),
+  }, manifest);
+  assert.equal(verdict.rejected, true);
+  assert.ok(verdict.rejectReasons.some((r) => r.includes('blockers')));
+});
+
+test('FUN_CONVERGENCE_LOOP.md §3.3 is generated from the rubric', () => {
+  const docPath = fileURLToPath(new URL('../design/program/FUN_CONVERGENCE_LOOP.md', import.meta.url));
+  const result = spliceRubricDoc(readFileSync(docPath, 'utf8'));
+  assert.equal(result.ok, true, result.reason || 'rubric markers must be present');
+  assert.equal(result.changed, false, 'run node scripts/generate-critic-rubric-doc.mjs after editing the rubric');
+  assert.match(result.generated, /visual_stand_in/);
+  assert.match(result.generated, new RegExp(COVERAGE_SENTENCE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -400,6 +477,13 @@ test('prompt generator includes frames, manifest facts, hard content instruction
   for (const rq of RUBRIC_QUESTIONS) {
     assert.ok(prompt.includes(rq.question), `Rubric question ${rq.q} must be present verbatim in prompt`);
   }
+
+  assert.ok(prompt.includes('The count of "yes" answers is a coverage score, never the verdict.'));
+  for (const b of BLOCKERS) {
+    assert.ok(prompt.includes(b.id), `blocker ${b.id} must be named in the prompt`);
+    assert.ok(prompt.includes(b.definition), `blocker ${b.id} definition must be verbatim`);
+  }
+  assert.ok(prompt.includes('what the player can now perceive'));
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -429,10 +513,25 @@ test('compareCritics reports agreement on matching questions and isolates disagr
   assert.equal(comparison.disagreedQuestions[0].q, 3);
   assert.equal(comparison.fundamentals.length, 2);
 
-  assert.ok(comparison.summaryText.includes('Total Agreement: 8/9 questions agreed.'));
+  assert.ok(comparison.summaryText.includes('Total Agreement: 8/9 questions agreed (coverage, never the verdict).'));
   assert.ok(comparison.summaryText.includes('Q3: DISAGREE'));
   assert.ok(comparison.summaryText.includes('rule A in physics'));
   assert.ok(comparison.summaryText.includes('rule B in propulsion'));
+});
+
+test('the critic tool prints blockers, intent result, and play judgment instead of a yes-count verdict', () => {
+  const manifest = createFakeManifest();
+  const verdict = validateVerdict({
+    answers: createValidAnswers(4),
+    fundamental: createValidFundamental(4),
+  }, manifest);
+  const lines = formatVerdictLines(verdict).join('\n');
+  assert.match(lines, /Verdict: PASS/);
+  assert.match(lines, /Coverage: 9 of 9 good answers \(coverage, never the verdict\)/);
+  assert.match(lines, /BLOCKERS: none raised \(7 answered\)/);
+  assert.match(lines, /INTENT RESULT: no claim was declared/);
+  assert.match(lines, /PLAY JUDGMENT:/);
+  assert.match(lines, /perceive:/);
 });
 
 

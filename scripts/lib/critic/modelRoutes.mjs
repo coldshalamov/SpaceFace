@@ -218,6 +218,7 @@ export async function executeManualRoute(prompt, manifest, options = {}) {
     'Inspect the frame files listed below and answer the 10-question rubric.',
     'Every answer to questions 1-9 MUST provide the integer frameIndex from the strip that proves it.',
     'Question 10 (the fundamental) must name the rule, the file, what it does, the vision sentence it breaks, and the frameIndex.',
+    'The count of good answers is coverage, never the verdict. The verdict has three parts: the seven blockers (each a boolean, true = blocked, with evidence), the intent result (does the strip show the declared claim, and which tradeoff was spent), and the play judgment (perceive / decide / execute / friction / falsifier). One raised blocker fails the bench.',
     'The critic proposes a rule change, never more stuff. Do not propose more enemies, ships, weapons, missions, particles, camera shake, or health.',
     'Your response must be strictly the JSON result document.',
     '',

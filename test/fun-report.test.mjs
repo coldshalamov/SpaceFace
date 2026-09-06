@@ -105,7 +105,7 @@ function criticResult(dir = '.devshots/strips/fix1', overrides = {}) {
   }));
   const { strip: stripOverrides, ...rest } = overrides;
   return {
-    schema: 'spaceface.funCritic.v1',
+    schema: 'spaceface.funCritic.v2',
     strip: {
       bench: 'crucible', scenarioId: 'swarm_run', seed: 4242,
       arenaId: 'helios_core', loadoutId: 'physics_toolkit',
@@ -138,6 +138,25 @@ function criticResult(dir = '.devshots/strips/fix1', overrides = {}) {
       frameIndex: 11,
     },
     passCount: 8, pass: true, rejected: false, rejectReasons: [],
+    coverage: { good: 8, of: 9 },
+    verdict: { pass: true, blocked: false, blockerIds: [], reason: 'no blocker' },
+    blockers: [
+      { id: 'visual_stand_in', blocked: false, evidence: 'no glowing stand-in in the pictures', frameIndex: 7 },
+      { id: 'unreachable_route', blocked: false, evidence: 'this is the ordinary game', frameIndex: 7 },
+      { id: 'wrong_control_label', blocked: false, evidence: 'labels match what the stick does', frameIndex: 7 },
+      { id: 'value_lost_or_duplicated', blocked: false, evidence: 'nothing vanished or doubled', frameIndex: 7 },
+      { id: 'unreadable_decisive_threat', blocked: false, evidence: 'the hit was readable before it landed', frameIndex: 7 },
+      { id: 'broken_save', blocked: false, evidence: 'this run did not save', frameIndex: 7 },
+      { id: 'performance_regression', blocked: false, evidence: 'the pictures ran at full speed', frameIndex: 7 },
+    ],
+    intent: { declared: false, supported: null, claim: '', tradeoff: '', evidence: [] },
+    judgment: {
+      perceive: 'the shove now sends the little ship tumbling away',
+      decide: 'you can choose to hit or to miss and see the difference',
+      execute: 'a tap on the stick produces a readable shove',
+      friction: 'the chase camera still settles after a hit',
+      falsifier: 'a contact that turns the nose would falsify this',
+    },
     ...rest,
   };
 }
@@ -295,11 +314,33 @@ test('WHAT I FOUND names the critic fundamental in plain words without the file 
   assert.doesNotMatch(sectionBetween(markdown, 'WHAT I FOUND', 'WHAT I CHANGED'), /someRule|\.js|src\//);
 });
 
+test('THE FRAMES names a hard stop in owner words, never the engineering id', () => {
+  const before = beforeCriticResult('.devshots/strips/before');
+  const after = afterCriticResult('.devshots/strips/after', {
+    verdict: { pass: false, blocked: true, blockerIds: ['visual_stand_in'], reason: 'blocked' },
+    blockers: [
+      { id: 'visual_stand_in', blocked: true, evidence: 'glowing disc', frameIndex: 7 },
+      { id: 'unreachable_route', blocked: false, evidence: 'ordinary game', frameIndex: 7 },
+      { id: 'wrong_control_label', blocked: false, evidence: 'labels match', frameIndex: 7 },
+      { id: 'value_lost_or_duplicated', blocked: false, evidence: 'nothing doubled', frameIndex: 7 },
+      { id: 'unreadable_decisive_threat', blocked: false, evidence: 'hit was readable', frameIndex: 7 },
+      { id: 'broken_save', blocked: false, evidence: 'this run did not save', frameIndex: 7 },
+      { id: 'performance_regression', blocked: false, evidence: 'pictures ran at full speed', frameIndex: 7 },
+    ],
+  });
+  const { text } = framesSection(before, after);
+  assert.match(text, /Hard stop: a glowing blob or soft disc standing in for something that should have been designed/);
+  assert.doesNotMatch(text, /visual_stand_in|performance_regression|unreachable_route/);
+});
+
 test('THE FRAMES builds two rows of six evenly spaced picture links and quotes the looker', () => {
   const before = beforeCriticResult('.devshots/strips/before');
   const after = afterCriticResult('.devshots/strips/after', { passCount: 8, pass: true });
   const { text, table } = framesSection(before, after);
-  assert.match(text, /counted 8 of 9 good signs, so they thought it worked/);
+  assert.match(text, /counted 8 of 9 good signs/);
+  assert.match(text, /that count is how much of the checklist the pictures covered, not the decision/);
+  assert.match(text, /Nothing in the pictures was a hard stop/);
+  assert.match(text, /the shove now sends the little ship tumbling away/);
   assert.match(text, /the shove finally sends the little ship tumbling away/);
   const rows = table.split('\n').filter((l) => l.startsWith('| before') || l.startsWith('| after'));
   assert.equal(rows.length, 2);

@@ -4,8 +4,10 @@
 // "printing a short agreement summary: which questions they agreed on and, separately,
 // their two answers to question 10. Never average two critics. Disagreement is recorded
 // as disagreement."
+// The three-part verdict (PQ-173.04) is compared the same way: each model's blockers and
+// intent result are listed side by side, never merged.
 
-import { RUBRIC_QUESTIONS } from './rubric.mjs';
+import { RUBRIC_QUESTIONS, BLOCKERS } from './rubric.mjs';
 
 /**
  * Compares answers from multiple critic runs on the same strip.
@@ -51,6 +53,24 @@ export function compareCritics(runs) {
     fundamental: r.result?.fundamental || null,
   }));
 
+  // Verdict parts, per model. A blocker one critic raised and another cleared is a disagreement
+  // to read, not a coin to flip.
+  const verdicts = runs.map((r) => ({
+    model: r.model,
+    pass: r.result?.verdict?.pass ?? null,
+    raised: (r.result?.blockers || []).filter((b) => b && b.blocked === true).map((b) => `${b.id} (${b.frameIndex != null ? `frame ${b.frameIndex}` : 'receipt'})`),
+    intent: r.result?.intent || null,
+  }));
+  const blockerDisagreements = BLOCKERS
+    .map((def) => ({
+      id: def.id,
+      states: runs.map((r) => ({
+        model: r.model,
+        blocked: (r.result?.blockers || []).find((b) => b && b.id === def.id)?.blocked ?? null,
+      })),
+    }))
+    .filter((row) => new Set(row.states.map((s) => s.blocked)).size > 1);
+
   // Build formatted summary text
   const lines = [
     '========================================================================',
@@ -76,7 +96,22 @@ export function compareCritics(runs) {
   }
 
   lines.push('');
-  lines.push(`Total Agreement: ${agreedQuestions.length}/9 questions agreed.`);
+  lines.push(`Total Agreement: ${agreedQuestions.length}/9 questions agreed (coverage, never the verdict).`);
+  lines.push('');
+  lines.push('── The Verdict: Blockers and Intent (Never Averaged) ──────────────────');
+  for (const v of verdicts) {
+    const passWord = v.pass === true ? 'PASS' : (v.pass === false ? 'FAIL' : 'no verdict recorded');
+    lines.push(`[Model: ${v.model}] ${passWord}; blockers raised: ${v.raised.length ? v.raised.join(', ') : 'none'}`);
+    if (v.intent && v.intent.declared) {
+      const support = v.intent.supported === true ? 'SUPPORTED' : (v.intent.supported === false ? 'NOT SUPPORTED' : 'unanswered');
+      lines.push(`  intent: ${support} — tradeoff spent: ${v.intent.tradeoff || 'unspecified'}`);
+    }
+  }
+  if (blockerDisagreements.length > 0) {
+    lines.push(`Blockers the models disagree on: ${blockerDisagreements
+      .map((d) => `${d.id} [${d.states.map((s) => `${s.model}=${s.blocked === true ? 'BLOCKED' : (s.blocked === false ? 'clear' : 'none')}`).join(', ')}]`)
+      .join('; ')}`);
+  }
   lines.push('');
   lines.push('── Question 10: The Fundamental (Never Averaged) ──────────────────────');
 
@@ -102,5 +137,7 @@ export function compareCritics(runs) {
     agreedQuestions,
     disagreedQuestions,
     fundamentals,
+    verdicts,
+    blockerDisagreements,
   };
 }

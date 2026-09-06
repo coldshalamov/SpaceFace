@@ -8,10 +8,22 @@
 //    weapons, missions, stations, levels, particles, camera shake, more health, or level scaling.
 // 3. Fewer than nine yes/no answers, or duplicate q, or answer not 'yes' or 'no'.
 // 4. Extractable balanced JSON.
+// 5. The three-part verdict (PQ-173.04, audit 2026-09-05) fails closed: all seven blockers, each
+//    with a JSON boolean and a non-empty evidence field (a raised frame-proof blocker needs a shown
+//    frame); the intent result when a claim was declared (a boolean, at least one shown frame, the
+//    tradeoff spent); the five sentences of the play judgment. A missing part is a rejected verdict,
+//    never a cleared one.
 
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { dirname, resolve, relative, isAbsolute, basename } from 'node:path';
-import { RUBRIC_QUESTIONS, computePassCount, isPass } from './rubric.mjs';
+import {
+  RUBRIC_QUESTIONS,
+  BLOCKERS,
+  JUDGMENT_FIELDS,
+  VISION_SENTENCE,
+  computeCoverage,
+  decideVerdict,
+} from './rubric.mjs';
 
 /** Capture's NORMAL_SPEED_FLOOR. Never trust a lower manifest-supplied floor. */
 export const CANONICAL_NORMAL_SPEED_FLOOR = 0.60;
@@ -386,13 +398,175 @@ export function matchesExpectedFundamental(fundamental, expected) {
   };
 }
 
+const EVIDENCE_MAX_CHARS = 400;
+
+function frameIndexProblem(value, validFrameIndices) {
+  if (value === null || value === undefined) return null;
+  if (typeof value !== 'number' || !Number.isInteger(value)) {
+    return `non-integer frameIndex ${JSON.stringify(value)}`;
+  }
+  if (!validFrameIndices.has(value)) {
+    return `frameIndex ${value}, which is outside the ${validFrameIndices.size} frames the critic was shown`;
+  }
+  return null;
+}
+
+/**
+ * The seven blockers, fail closed. Every blocker must be present exactly once with a JSON boolean
+ * (`true` = blocked, always), a non-empty evidence sentence, and — when raised — the proof its
+ * definition demands: a shown frame for a 'frame' blocker; a shown frame or the evidence sentence
+ * itself (a receipt in the run facts) for a 'frame-or-receipt' blocker.
+ *
+ * @param {unknown} candidateBlockers
+ * @param {Set<number>} validFrameIndices
+ * @param {string[]} rejectReasons appended in place
+ * @returns {Array<object>} normalized blockers in rubric order
+ */
+export function normalizeBlockers(candidateBlockers, validFrameIndices, rejectReasons) {
+  const byId = new Map();
+  if (!Array.isArray(candidateBlockers)) {
+    rejectReasons.push('Verdict is missing "blockers" array: a verdict without its seven blockers is not a verdict');
+  } else {
+    for (let i = 0; i < candidateBlockers.length; i++) {
+      const b = candidateBlockers[i];
+      if (!b || typeof b !== 'object') {
+        rejectReasons.push(`Blocker item at index ${i} is not an object`);
+        continue;
+      }
+      const id = typeof b.id === 'string' ? b.id.trim() : '';
+      if (!BLOCKERS.some((def) => def.id === id)) {
+        rejectReasons.push(`Unknown blocker id ${JSON.stringify(b.id)} at index ${i}`);
+        continue;
+      }
+      if (byId.has(id)) {
+        rejectReasons.push(`Duplicate blocker '${id}'`);
+        continue;
+      }
+      byId.set(id, b);
+    }
+  }
+
+  const normalized = [];
+  for (const def of BLOCKERS) {
+    const b = byId.get(def.id);
+    if (!b) {
+      rejectReasons.push(`Missing blocker '${def.id}': every one of the seven must be answered, clear or blocked`);
+      normalized.push({ id: def.id, blocked: null, evidence: '', frameIndex: null, evidenceKind: 'missing' });
+      continue;
+    }
+    if (typeof b.blocked !== 'boolean') {
+      rejectReasons.push(`Blocker '${def.id}' has non-boolean "blocked": ${JSON.stringify(b.blocked)} (true = blocked, false = clear, nothing else)`);
+    }
+    const evidence = typeof b.evidence === 'string' ? b.evidence.trim().slice(0, EVIDENCE_MAX_CHARS) : '';
+    if (!evidence) {
+      rejectReasons.push(`Blocker '${def.id}' is missing its evidence field: a blocker with no evidence is neither clear nor blocked`);
+    }
+    const frameProblem = frameIndexProblem(b.frameIndex, validFrameIndices);
+    if (frameProblem) {
+      rejectReasons.push(`Blocker '${def.id}' cites ${frameProblem}`);
+    }
+    const hasFrame = !frameProblem && typeof b.frameIndex === 'number';
+    if (b.blocked === true && def.proof === 'frame' && !hasFrame) {
+      rejectReasons.push(`Blocker '${def.id}' is raised without a shown frame. ${VISION_SENTENCE}`);
+    }
+    normalized.push({
+      id: def.id,
+      blocked: typeof b.blocked === 'boolean' ? b.blocked : null,
+      evidence,
+      frameIndex: hasFrame ? b.frameIndex : null,
+      evidenceKind: hasFrame ? 'frame' : (evidence ? 'receipt' : 'missing'),
+    });
+  }
+  return normalized;
+}
+
+/**
+ * The intent result. The harness owns the claim (it came from `--intent`); the model reports only
+ * whether the frames support it, with the frames, and which tradeoff it saw spent. With no declared
+ * claim there is nothing to judge, and the model's "intent" is ignored rather than trusted.
+ *
+ * @param {unknown} candidateIntent
+ * @param {{ claim?: string, tradeoff?: string }|null} declared
+ * @param {Set<number>} validFrameIndices
+ * @param {string[]} rejectReasons appended in place
+ */
+export function normalizeIntent(candidateIntent, declared, validFrameIndices, rejectReasons) {
+  const claim = declared && typeof declared.claim === 'string' ? declared.claim.trim() : '';
+  const declaredTradeoff = declared && typeof declared.tradeoff === 'string' && declared.tradeoff.trim()
+    ? declared.tradeoff.trim()
+    : null;
+  if (!claim) {
+    return { declared: false, claim: null, declaredTradeoff: null, supported: null, evidence: [], tradeoff: null, note: '' };
+  }
+  const result = { declared: true, claim, declaredTradeoff, supported: null, evidence: [], tradeoff: null, note: '' };
+  if (!candidateIntent || typeof candidateIntent !== 'object') {
+    rejectReasons.push('Verdict is missing "intent": a claim was declared and the critic did not say whether the frames support it');
+    return result;
+  }
+  if (typeof candidateIntent.supported !== 'boolean') {
+    rejectReasons.push(`intent.supported must be a JSON boolean, got ${JSON.stringify(candidateIntent.supported)}: a claim is supported by the frames or it is not`);
+  } else {
+    result.supported = candidateIntent.supported;
+  }
+  const evidence = Array.isArray(candidateIntent.evidence) ? candidateIntent.evidence : [];
+  const frames = [];
+  for (const idx of evidence) {
+    const problem = frameIndexProblem(idx, validFrameIndices);
+    if (problem) rejectReasons.push(`intent.evidence cites ${problem}`);
+    else if (typeof idx === 'number' && !frames.includes(idx)) frames.push(idx);
+  }
+  if (frames.length === 0) {
+    rejectReasons.push(`intent.evidence names no shown frame. ${VISION_SENTENCE}`);
+  }
+  result.evidence = frames.sort((a, b) => a - b);
+  const tradeoff = typeof candidateIntent.tradeoff === 'string' ? candidateIntent.tradeoff.trim().slice(0, EVIDENCE_MAX_CHARS) : '';
+  if (!tradeoff) {
+    rejectReasons.push('intent.tradeoff is empty: say which tradeoff was spent, or "none observed"');
+  }
+  result.tradeoff = tradeoff || null;
+  result.note = typeof candidateIntent.note === 'string' ? candidateIntent.note.trim().slice(0, EVIDENCE_MAX_CHARS) : '';
+  return result;
+}
+
+/**
+ * The play judgment: five non-empty sentences, plus an optional list of shown frames.
+ *
+ * @param {unknown} candidateJudgment
+ * @param {Set<number>} validFrameIndices
+ * @param {string[]} rejectReasons appended in place
+ */
+export function normalizeJudgment(candidateJudgment, validFrameIndices, rejectReasons) {
+  const result = {};
+  for (const f of JUDGMENT_FIELDS) result[f.key] = '';
+  result.frames = [];
+  if (!candidateJudgment || typeof candidateJudgment !== 'object') {
+    rejectReasons.push('Verdict is missing "judgment": the play judgment is a part of the verdict, not an optional remark');
+    return result;
+  }
+  for (const f of JUDGMENT_FIELDS) {
+    const text = typeof candidateJudgment[f.key] === 'string' ? candidateJudgment[f.key].trim().slice(0, EVIDENCE_MAX_CHARS) : '';
+    if (!text) rejectReasons.push(`judgment.${f.key} is empty (${f.prompt})`);
+    result[f.key] = text;
+  }
+  const frames = Array.isArray(candidateJudgment.frames) ? candidateJudgment.frames : [];
+  for (const idx of frames) {
+    const problem = frameIndexProblem(idx, validFrameIndices);
+    if (problem) rejectReasons.push(`judgment.frames cites ${problem}`);
+    else if (typeof idx === 'number' && !result.frames.includes(idx)) result.frames.push(idx);
+  }
+  result.frames.sort((a, b) => a - b);
+  return result;
+}
+
 /**
  * Validates candidate verdict against the strip manifest.
  *
  * @param {object} candidate Parsed model candidate object
  * @param {object} manifest Manifest schema spaceface.frameStripManifest.v2
  * @param {object} [options] Model/run metadata
- * @returns {object} Full spaceface.funCritic.v1 document
+ * @param {{ claim?: string, tradeoff?: string }|null} [options.intent] The cycle's declared claim
+ *   and tradeoff (from --intent / --tradeoff). Absent means no claim: no intent result is judged.
+ * @returns {object} Full spaceface.funCritic.v2 document
  */
 export function validateVerdict(candidate, manifest, options = {}) {
   const rejectReasons = [];
@@ -507,12 +681,17 @@ export function validateVerdict(candidate, manifest, options = {}) {
     }
   }
 
-  const passCount = computePassCount(normalizedAnswers);
-  const pass = isPass(passCount);
+  // The three parts of the verdict. Each fails closed; the coverage count is not an input.
+  const blockers = normalizeBlockers(candidate?.blockers, validFrameIndices, rejectReasons);
+  const intent = normalizeIntent(candidate?.intent, options.intent || null, validFrameIndices, rejectReasons);
+  const judgment = normalizeJudgment(candidate?.judgment, validFrameIndices, rejectReasons);
+
+  const coverage = computeCoverage(normalizedAnswers);
   const rejected = rejectReasons.length > 0;
+  const verdict = decideVerdict({ blockers, intent, rejected });
 
   return {
-    schema: 'spaceface.funCritic.v1',
+    schema: 'spaceface.funCritic.v2',
     strip: {
       bench: manifest?.bench || 'unknown',
       scenarioId: manifest?.scenarioId || 'unknown',
@@ -548,8 +727,13 @@ export function validateVerdict(candidate, manifest, options = {}) {
     },
     answers: normalizedAnswers,
     fundamental: normalizedFundamental,
-    passCount,
-    pass,
+    // Coverage: how much of the checklist the pictures covered. Never the verdict.
+    coverage,
+    // The verdict's three parts, and the decision made from them alone.
+    blockers,
+    intent,
+    judgment,
+    verdict,
     rejected,
     rejectReasons,
     rawResponsePath: options.rawResponsePath || '',

@@ -105,31 +105,72 @@ The measurer writes one JSON and one Markdown table per run under
 
 ### 3.3 JUDGE — the critic looks, with a fixed rubric
 
+<!-- critic-rubric:begin (generated from scripts/lib/critic/rubric.mjs — do not edit by hand) -->
 A vision-capable model that did not make the change reads the frame strips and the metrics and
-answers ten yes/no questions, each with the frame index that proves the answer. Prose without a frame
-is not a verdict.
+answers ten yes/no questions, each with the frame index that proves the answer. Prose without a
+frame is not a verdict.
 
 1. Can I tell what the player did from the frames alone?
-2. Did the world answer within a third of a second (motion, light, or sound receipt)?
+2. Did the world answer within a third of a second (motion, light, or a visible receipt)?
 3. Did something the player did not directly touch change because of it?
 4. Would the vision's sentence for this verb be true here? (quote the sentence)
 5. Is the ship a controllable mass (turns inside the screen, stops when braked, keeps earned speed)?
-6. Are the light ships ammunition here, or targets?
-7. Is anything on screen a glowing sphere standing in for a designed event?
+6. Are the light ships ammunition here, rather than only targets?
+7. Is anything on screen a glowing sphere standing in for a designed event? (the good answer is
+   "no")
 8. Did anyone flee, choose, or arrive because of the violence?
 9. Would a stranger tell a "so then" story about these twelve seconds?
 10. What is the ONE fundamental that, if fixed, would flip the most "no" answers? Name the rule, the
     file, what it does, and the vision sentence it breaks — the format of `FEEL_CONTRACT.md` §A.
 
-The count of "yes" answers is a coverage score, never the verdict. The verdict has three parts
-(audit 2026-09-05, `PQ-173.04` makes the tool print them): **blockers** — a bad stand-in (question
-5), an unreachable route, a wrong control label, lost or duplicated value, an unreadable decisive
-threat, a broken save, a performance regression — any one fails the bench regardless of the count;
-**intent result** — did the evidence show the improvement this cycle claimed, and which tradeoff was
-deliberately spent; **play judgment** — what the player can now perceive, decide and execute that they
-could not before, and what would falsify it. Until `PQ-173.04` lands, seven or more "yes" with no
-blocker is the working pass. The critic's answer to question 10 is the next cycle's hypothesis. The
+The count of "yes" answers is a coverage score, never the verdict. The verdict has three independent
+parts (audit 2026-09-05, `PQ-173.04`), and the tool prints each of them:
+
+- **Blockers** — seven, each answered separately with a boolean whose polarity is always the same
+  (`blocked: true` means blocked) and an evidence field: a frame the critic was shown, or a receipt
+  in the run facts where the definition allows one. Any one blocker fails the bench regardless of
+  the count.
+  - `visual_stand_in` — a bad visual stand-in (question 7); a frame is required when raised. A
+    camera-facing glow, soft disc, sphere or particle cloud is doing the job of a designed object or
+    event. Tiny background stars at sky depth are the only exception; anything the ship can fly past
+    is not a star.
+  - `unreachable_route` — an unreachable default route; a frame or a receipt when raised. What the
+    strip shows cannot be reached on the default route without a flag, a URL parameter or a debug
+    key (the run facts name the route the strip was photographed on).
+  - `wrong_control_label` — a wrong control label; a frame is required when raised. A label visible
+    in the frames names a key or an action that the pictures or the input tape show is not what
+    happens.
+  - `value_lost_or_duplicated` — lost or duplicated value; a frame or a receipt when raised.
+    Credits, cargo, loot, a claim or a ship appears twice or disappears without a cause the frames
+    show.
+  - `unreadable_decisive_threat` — an unreadable decisive threat; a frame is required when raised.
+    The threat that decided the outcome (the shot, the ram, the wall, the wave) was not readable at
+    the shipping camera before it landed.
+  - `broken_save` — a broken save; a frame or a receipt when raised. A save-and-reload inside the
+    run changed a position, an owner, a count or an outcome. If the run had no save boundary, the
+    blocker is clear and the evidence says so.
+  - `performance_regression` — a performance regression; a frame or a receipt when raised. The strip
+    stutters, repeats frames, or a stretch of it ran below the normal-speed floor (the run-health
+    facts say where and how far).
+- **Intent result** — the one-line hypothesis the cycle declared (§3.4, handed to the tool with
+  `--intent`), whether the frames support it (a boolean, with the frames that show it holding or
+  failing), and which tradeoff was actually spent against the one the cycle declared before the run
+  (§3.6, `--tradeoff`). A strip graded with no declared claim records no intent result; the critic
+  never invents one.
+- **Play judgment** — what the player can now perceive that they could not before; what the player
+  can now decide that they could not before; what the player can now execute that they could not
+  before; where friction remains; what observation would falsify the candidate. Written for someone
+  who does not read code. It is not a sum of adjectives and not an event counter.
+
+A verdict passes only with no blocker and, when a claim was declared, with the frames supporting it;
+a verdict with one blocker fails however many good answers it counted. The owner report renders the
+three parts in plain words. The critic's answer to question 10 is the next cycle's hypothesis. The
 critic never proposes content.
+
+This block is generated from `scripts/lib/critic/rubric.mjs` by `node
+scripts/generate-critic-rubric-doc.mjs` and checked against it by `test/fun-critic.test.mjs`; change
+the rubric, not this text.
+<!-- critic-rubric:end -->
 
 ### 3.4 NAME THE FUNDAMENTAL — one hypothesis
 

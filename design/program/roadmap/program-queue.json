@@ -5438,7 +5438,7 @@
       "parentId": "PQ-173",
       "priority": 54,
       "title": "The critic's verdict: blockers, intent result, play judgment",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [],
       "mutexes": [
         "fun-loop-instrument"
@@ -5452,8 +5452,10 @@
       "checks": [
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
-      "brief": "The critic tool prints blockers (each a boolean with evidence, consistent polarity), the intent result (claim, shown or not, tradeoff spent) and the play judgment, instead of a yes-count; the ten questions stay as coverage; the owner report renders the three parts. DONE WHEN: the tool and its tests emit the three-part verdict; a synthetic verdict with one blocker and ten yeses fails; FUN_CONVERGENCE_LOOP section 3.3 matches the rubric.",
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-173-04-REPORT.md"
+      ],
+      "brief": "IMPLEMENTED 2026-09-05: the critic prints blockers, intent result and play judgment; nine good answers with one blocker fail; FUN_CONVERGENCE_LOOP §3.3 is generated from the rubric; the owner page renders the three parts in plain words. DONE WHEN: the tool and its tests emit the three-part verdict; a synthetic verdict with one blocker and ten yeses fails; FUN_CONVERGENCE_LOOP section 3.3 matches the rubric.",
       "kind": "implementation"
     },
     {

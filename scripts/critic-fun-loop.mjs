@@ -5,10 +5,13 @@
 // "A vision-capable model that did not make the change reads the frame strips and the metrics
 // and answers ten yes/no questions, each with the frame index that proves the answer.
 // Prose without a frame is not a verdict."
+// "The count of "yes" answers is a coverage score, never the verdict." The verdict printed here has
+// three parts (PQ-173.04): BLOCKERS, INTENT RESULT, PLAY JUDGMENT. One blocker fails it.
 //
 // Usage:
 // node scripts/critic-fun-loop.mjs --strip <path to strip-manifest.json> \
-//   [--model agy|kimi|manual] [--out <file.json>] [--timeout-ms N] [--verbose]
+//   [--model agy|kimi|manual] [--intent "<one line>"] [--tradeoff "<what it spends>"] \
+//   [--out <file.json>] [--timeout-ms N] [--verbose]
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { resolve, dirname, join, relative, isAbsolute } from 'node:path';
@@ -48,9 +51,14 @@ Options:
   --model <name>         Model route to evaluate: 'agy' (default), 'kimi', or 'manual'.
                          Can be specified multiple times (e.g. '--model agy --model kimi')
                          to evaluate with multiple models and print an agreement summary.
-  --out <file.json>      Custom output path for the spaceface.funCritic.v1 verdict document.
+  --out <file.json>      Custom output path for the spaceface.funCritic.v2 verdict document.
                          Default: design/program/roadmap/receipts/fun-loop/critic/<bench>-<scenarioId>-s<seed>/<model>.json
   --metrics <file.json>  Provisional metrics file from headless bench (labelled provisional in prompt).
+  --intent "<one line>"  The cycle's declared hypothesis (FUN_CONVERGENCE_LOOP §3.4), in the owner's
+                         words. The critic reports whether the frames support it and which tradeoff
+                         was spent; without it no intent result is judged and none is invented.
+  --tradeoff "<text>"    The tradeoff the cycle declared BEFORE the run (§3.6); recorded beside the
+                         one the critic saw spent.
   --max-frames <N>       How many frames the critic is shown (default ${DEFAULT_MAX_FRAMES}).
                          Chosen before/at/after the biggest moments the ship was in, plus an even
                          spread. A verdict may cite only a frame it was shown.
@@ -71,8 +79,10 @@ Options:
   --help, -h             Print this help message and exit.
 
 Exit codes:
-  0: Verdict accepted (or manual prompt written).
-  2: Verdict rejected (missing frame index, content named in fundamental, bad format).
+  0: Verdict accepted (or manual prompt written). Accepted is not passed: read the printed
+     BLOCKERS / INTENT / JUDGMENT and verdict.pass in the document.
+  2: Verdict rejected (missing frame index, content named in fundamental, a blocker without its
+     evidence, a missing verdict part, bad format).
   3: Verdict accepted but its fundamental did not name --expect-fundamental.
   1: Harness error (missing strip manifest, dead route, etc.).
 `);
@@ -89,6 +99,8 @@ function parseArgs(argv) {
     repoDir: null,
     framesOnly: false,
     expectFundamental: null,
+    intent: null,
+    tradeoff: null,
     verbose: false,
     help: false,
   };
@@ -133,6 +145,14 @@ function parseArgs(argv) {
       if (i + 1 < argv.length && !argv[i + 1].startsWith('--')) {
         options.expectFundamental = argv[++i];
       }
+    } else if (arg === '--intent') {
+      if (i + 1 < argv.length && !argv[i + 1].startsWith('--')) {
+        options.intent = argv[++i];
+      }
+    } else if (arg === '--tradeoff') {
+      if (i + 1 < argv.length && !argv[i + 1].startsWith('--')) {
+        options.tradeoff = argv[++i];
+      }
     } else {
       console.warn(`[critic] Warning: unknown argument '${arg}'`);
     }
@@ -141,8 +161,51 @@ function parseArgs(argv) {
   if (options.models.length === 0) {
     options.models.push('agy');
   }
+  if (options.tradeoff && !options.intent) {
+    console.warn('[critic] Warning: --tradeoff without --intent; a tradeoff belongs to a claim, so it is ignored');
+    options.tradeoff = null;
+  }
 
   return options;
+}
+
+/**
+ * The three parts of the verdict, printed one under the other. Polarity is the same everywhere:
+ * BLOCKED is blocked, clear is clear.
+ * @param {object} verdict spaceface.funCritic.v2
+ * @returns {string[]}
+ */
+export function formatVerdictLines(verdict) {
+  const lines = [];
+  const v = verdict.verdict || {};
+  const cov = verdict.coverage || { good: 0, of: 9 };
+  lines.push(`[critic] Verdict: ${v.pass ? 'PASS' : 'FAIL'} — ${v.reason || ''}`);
+  lines.push(`[critic] Coverage: ${cov.good} of ${cov.of} good answers (coverage, never the verdict)`);
+  const raised = (verdict.blockers || []).filter((b) => b.blocked === true);
+  lines.push(`[critic] BLOCKERS: ${raised.length === 0 ? 'none raised' : `${raised.length} raised`} (${(verdict.blockers || []).length} answered)`);
+  for (const b of verdict.blockers || []) {
+    const state = b.blocked === true ? 'BLOCKED' : (b.blocked === false ? 'clear' : 'unanswered');
+    const where = b.frameIndex != null ? `frame ${b.frameIndex}` : (b.evidenceKind === 'receipt' ? 'receipt' : 'no evidence');
+    lines.push(`  - ${b.id}: ${state} [${where}] ${b.evidence || ''}`.trimEnd());
+  }
+  const it = verdict.intent || {};
+  if (!it.declared) {
+    lines.push('[critic] INTENT RESULT: no claim was declared for this strip; nothing to judge');
+  } else {
+    const support = it.supported === true ? 'SUPPORTED' : (it.supported === false ? 'NOT SUPPORTED' : 'unanswered');
+    lines.push(`[critic] INTENT RESULT: ${support} — "${it.claim}"`);
+    lines.push(`  frames: ${it.evidence && it.evidence.length ? it.evidence.join(', ') : 'none'}`);
+    lines.push(`  tradeoff declared: ${it.declaredTradeoff || '(none)'}`);
+    lines.push(`  tradeoff spent (critic): ${it.tradeoff || '(unanswered)'}`);
+    if (it.note) lines.push(`  note: ${it.note}`);
+  }
+  const j = verdict.judgment || {};
+  lines.push('[critic] PLAY JUDGMENT:');
+  for (const key of ['perceive', 'decide', 'execute', 'friction', 'falsifier']) {
+    lines.push(`  ${key}: ${j[key] || '(unanswered)'}`);
+  }
+  if (Array.isArray(j.frames) && j.frames.length) lines.push(`  frames: ${j.frames.join(', ')}`);
+  return lines;
 }
 
 export async function main(argv = process.argv) {
@@ -245,6 +308,11 @@ export async function main(argv = process.argv) {
     const selection = selectCriticFrames(manifest, { maxFrames: options.maxFrames });
     log(`showing ${selection.frames.length} frames: ${selection.reason}`);
 
+    // The cycle's claim, if one was declared. The harness owns it; the model only judges it.
+    const declaredIntent = options.intent
+      ? { claim: String(options.intent).trim(), tradeoff: options.tradeoff ? String(options.tradeoff).trim() : null }
+      : null;
+
     // Build prompt for critic
     let prompt;
     try {
@@ -252,6 +320,7 @@ export async function main(argv = process.argv) {
         metrics: metricsData,
         frames: selection.frames,
         selectionReason: selection.reason,
+        intent: declaredIntent,
       });
       if (options.framesOnly) {
         prompt += [
@@ -343,6 +412,7 @@ export async function main(argv = process.argv) {
           modelLabel: routeResult.label,
           wallMs: routeResult.wallMs,
           rawResponsePath,
+          intent: declaredIntent,
         });
         verdict.rejected = true;
         verdict.rejectReasons.unshift(`Failed to extract balanced JSON: ${parseError}`);
@@ -354,6 +424,7 @@ export async function main(argv = process.argv) {
           modelLabel: routeResult.label,
           wallMs: routeResult.wallMs,
           rawResponsePath,
+          intent: declaredIntent,
         });
       }
 
@@ -388,7 +459,7 @@ export async function main(argv = process.argv) {
 
       console.log(`[critic] Verdict written to: ${outPath}`);
       console.log(`[critic] Model: ${verdict.model.label} (${verdict.model.wallMs}ms)`);
-      console.log(`[critic] Status: ${verdict.rejected ? 'REJECTED' : 'ACCEPTED'} | Pass: ${verdict.pass} (${verdict.passCount}/9 good answers)`);
+      console.log(`[critic] Status: ${verdict.rejected ? 'REJECTED' : 'ACCEPTED'}`);
 
       if (verdict.rejected) {
         console.log('[critic] Rejection reasons:');
@@ -396,6 +467,7 @@ export async function main(argv = process.argv) {
           console.log(`  - ${reason}`);
         }
       }
+      for (const line of formatVerdictLines(verdict)) console.log(line);
       if (verdict.reproduction) {
         console.log(`[critic] Expected finding '${verdict.reproduction.expected}': `
           + `${verdict.reproduction.reproduced ? `REPRODUCED (${verdict.reproduction.matchedKeys.join(', ')})` : 'NOT reproduced'}`

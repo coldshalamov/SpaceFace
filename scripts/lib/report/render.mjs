@@ -8,6 +8,7 @@ import {
   plainSentence,
   plainValue,
 } from './plainWords.mjs';
+import { BLOCKERS } from '../critic/rubric.mjs';
 
 const MOVED_RANK = { toward: 0, away: 1, unknown: 2, unchanged: 3 };
 const UNMEASURED_SENTENCE = 'Nothing in this cycle was measured on the real game yet.';
@@ -352,15 +353,47 @@ export function framesSection(arg1, arg2, options = {}) {
   if (beforeSheet) tableLines.push('', `Before contact sheet: ![before contact sheet](${beforeSheet})`);
   if (afterSheet) tableLines.push(`After contact sheet: ![after contact sheet](${afterSheet})`);
 
-  const passCount = Number.isFinite(Number(afterCritic.passCount)) ? Number(afterCritic.passCount) : 0;
-  const verdictWords = afterCritic.pass ? 'thought it worked' : 'did not think it worked yet';
+  const coverage = afterCritic.coverage || {};
+  const good = Number.isFinite(Number(coverage.good))
+    ? Number(coverage.good)
+    : (Number.isFinite(Number(afterCritic.passCount)) ? Number(afterCritic.passCount) : 0);
+  const of = Number.isFinite(Number(coverage.of)) ? Number(coverage.of) : 9;
   const noted = (afterCritic.answers && afterCritic.answers.find((a) => a && typeof a.note === 'string' && a.note.trim()))
     || (beforeCritic.answers && beforeCritic.answers.find((a) => a && typeof a.note === 'string' && a.note.trim()));
-  const quote = noted ? `; on one of the pictures they wrote: "${plainSentence(noted.note)}"` : '';
-  const text = `The person who looked at the pictures counted ${passCount} of 9 good signs, `
-    + `so they ${verdictWords}${quote}.`;
+  const quote = noted ? ` On one of the pictures they wrote: "${plainSentence(noted.note)}"` : '';
+  const text = `The person who looked at the pictures counted ${good} of ${of} good signs — that count is how much of the checklist the pictures covered, not the decision.${quote} ${criticOwnerWords(afterCritic)}`.trim();
 
   return { text, table: tableLines.join('\n') };
+}
+
+function criticOwnerWords(critic) {
+  if (!critic || critic.rejected === true) return '';
+  const sentences = [];
+  const raised = (Array.isArray(critic.blockers) ? critic.blockers : []).filter((b) => b && b.blocked === true);
+  if (raised.length === 0 && (Array.isArray(critic.blockers) ? critic.blockers.length : 0) > 0) {
+    sentences.push('Nothing in the pictures was a hard stop.');
+  }
+  for (const b of raised) {
+    const words = (BLOCKERS.find((def) => def.id === b.id) || {}).ownerWords
+      || 'something that should not have shipped';
+    sentences.push(`Hard stop: ${words}.`);
+  }
+  const it = critic.intent || {};
+  if (it.declared === true) {
+    sentences.push(it.supported === true
+      ? 'The pictures show the improvement this pass claimed.'
+      : 'The pictures do not show the improvement this pass claimed.');
+    if (it.tradeoff) sentences.push(plainSentence(it.tradeoff));
+  }
+  const j = critic.judgment || {};
+  for (const key of ['perceive', 'decide', 'execute', 'friction', 'falsifier']) {
+    if (typeof j[key] === 'string' && j[key].trim()) sentences.push(plainSentence(j[key]));
+  }
+  if (sentences.length === 0) {
+    const pass = critic.verdict ? critic.verdict.pass : critic.pass;
+    sentences.push(pass ? 'They thought it worked.' : 'They did not think it worked yet.');
+  }
+  return sentences.join(' ');
 }
 
 export function buildReportModel(options) {

@@ -22,6 +22,12 @@ import { buildMeasureDiff } from './measure-fun-loop.mjs';
 import { buildReportModel, renderReport, flattenSummaryRuns, exactSourceIdentitiesEqual } from './lib/report/render.mjs';
 import { lintJargon } from './lib/report/lint.mjs';
 
+const FUN_CRITIC_SCHEMAS = new Set(['spaceface.funCritic.v1', 'spaceface.funCritic.v2']);
+
+function isFunCriticDocument(doc) {
+  return !!(doc && FUN_CRITIC_SCHEMAS.has(doc.schema));
+}
+
 function fail(message) {
   console.error(`Fun report error: ${message}`);
   process.exit(1);
@@ -82,8 +88,8 @@ Options:
   --before <summary.json>         REQUIRED: before measure summary (spaceface.funMeasure.v1)
   --after <summary.json>          REQUIRED: after measure summary (spaceface.funMeasure.v1)
   --diff <diff.json>              Use this diff result instead of computing it (funMeasureDiff.v1)
-  --before-critic <critic.json>   Before critic result (spaceface.funCritic.v1)
-  --after-critic <critic.json>    After critic result (spaceface.funCritic.v1)
+  --before-critic <critic.json>   Before critic result (spaceface.funCritic.v1 or v2)
+  --after-critic <critic.json>    After critic result (spaceface.funCritic.v1 or v2)
   --critic <critic.json>          Legacy / single critic flag (fails if provided alone)
   --leaf PQ-137.03                Packet/leaf id for machine appendix (hidden from visible page)
   --title "..."                   Page title (default: "SpaceFace feel pass")
@@ -241,11 +247,11 @@ function main() {
     }
     beforeCritic = readJson(args.beforeCritic, '--before-critic');
     afterCritic = readJson(args.afterCritic, '--after-critic');
-    if (!beforeCritic || beforeCritic.schema !== 'spaceface.funCritic.v1') {
-      fail(`"${args.beforeCritic}" is not a valid critic verdict (expected schema spaceface.funCritic.v1)`);
+    if (!isFunCriticDocument(beforeCritic)) {
+      fail(`"${args.beforeCritic}" is not a valid critic verdict (expected schema spaceface.funCritic.v1 or v2)`);
     }
-    if (!afterCritic || afterCritic.schema !== 'spaceface.funCritic.v1') {
-      fail(`"${args.afterCritic}" is not a valid critic verdict (expected schema spaceface.funCritic.v1)`);
+    if (!isFunCriticDocument(afterCritic)) {
+      fail(`"${args.afterCritic}" is not a valid critic verdict (expected schema spaceface.funCritic.v1 or v2)`);
     }
     if (beforeCritic.rejected || afterCritic.rejected) {
       fail('cannot render report with rejected critic verdicts');
