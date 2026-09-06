@@ -190,6 +190,44 @@ export const fields = {
     this._clearAll(FIELD_END_REASONS.cleared, 'new_game');
   },
 
+  /**
+   * PQ-140.02 field-disruptor: collapse every player-owned well/repulsor/cone whose emitter sits
+   * inside `radius` of `origin`. Anchor snares (enemy-owned) are not the player's plan and stay.
+   */
+  disruptNear(state, origin, radius, sourceId = null) {
+    if (!origin || !Number.isFinite(origin.x) || !Number.isFinite(origin.z)) return 0;
+    const rt = ensureRuntime(state);
+    const r = Number.isFinite(radius) && radius > 0 ? radius : 420;
+    const r2 = r * r;
+    let n = 0;
+    for (const rec of Object.values(rt.deployed || {})) {
+      if (!rec) continue;
+      const emitter = state.entities && state.entities.get && state.entities.get(rec.emitterId);
+      const pos = (emitter && emitter.pos) || rec.center;
+      if (!pos) continue;
+      const dx = pos.x - origin.x;
+      const dz = pos.z - origin.z;
+      if ((dx * dx + dz * dz) > r2) continue;
+      this._retireDeployed(state, rt, rec, FIELD_END_REASONS.disrupted);
+      n += 1;
+    }
+    if (rt.coneActive) {
+      const player = this._player(state);
+      if (player && player.pos) {
+        const dx = player.pos.x - origin.x;
+        const dz = player.pos.z - origin.z;
+        if ((dx * dx + dz * dz) <= r2) {
+          this._setConeActive(state, rt, false, FIELD_END_REASONS.disrupted);
+          n += 1;
+        }
+      }
+    }
+    if (n > 0 && this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('fields:specialistDisrupt', { sourceId, count: n, radius: r });
+    }
+    return n;
+  },
+
   update(dt, state) {
     const rt = ensureRuntime(state);
     // Golden-safety gate (layer b): strict no-op unless enabled (OFF under node).

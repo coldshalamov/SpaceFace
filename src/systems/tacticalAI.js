@@ -15,6 +15,9 @@ import {
   createFodderCohortDirector,
 } from '../ai/fodderCohort.js';
 import { ensureActivityClassified, entityNeedsAiThink } from '../world/activityRuntime.js';
+import { applySpecialistCounterplay } from '../ai/specialistCounterplay.js';
+import { specialistPlanByEnemyId } from '../ai/specialistPlans.js';
+import { getCombatKernel } from '../combat/kernel.js';
 import { ManeuverKind } from '../ai/contracts.js';
 
 const OWNERSHIP_REFRESH_TICKS = 3;
@@ -272,6 +275,22 @@ export function createTacticalAISystem({
         applyChoreographyFireWindow(liveStack, decision);
         applyEngagementPosture(entity, decision.combatDoctrine || null, state);
         applyAIFiringIntent(decision, state);
+        const enemyId = entity && entity.data && (entity.data.lootTableId || entity.data.enemyTypeId);
+        if (entity && specialistPlanByEnemyId(enemyId) && ctxRef) {
+          const kernel = getCombatKernel(ctxRef);
+          const fields = ctxRef.registry && typeof ctxRef.registry.get === 'function'
+            ? ctxRef.registry.get('fields')
+            : null;
+          applySpecialistCounterplay({
+            state,
+            specialist: entity,
+            enemyId,
+            doctrinePhase: doctrine && doctrine.phase,
+            tick,
+            attachments: kernel && kernel.attachments,
+            fields,
+          });
+        }
       }
       driveChoreographyMembers(liveStack, state, tick, result.decisions || []);
       driveCohortMembers(liveStack, state, tick);

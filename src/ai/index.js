@@ -9,3 +9,5 @@ export * from './sg03ActionPort.js';
 export * from './squad.js';
 export * from './stack.js';
 export * from './trace.js';
+export * from './specialistPlans.js';
+export * from './specialistCounterplay.js';

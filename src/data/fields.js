@@ -179,4 +179,5 @@ export const FIELD_END_REASONS = Object.freeze({
   replaced: 'field_replaced',
   cleared: 'field_cleared',
   toggledOff: 'field_toggled_off',
+  disrupted: 'field_disrupted',
 });
