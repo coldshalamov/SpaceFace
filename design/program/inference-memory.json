@@ -767,6 +767,19 @@
       "integration": "live",
       "commit": "440c5f52",
       "verification": "focused_green"
+    },
+    {
+      "id": "autopilot-obstacle-scratch",
+      "date": "2026-09-06",
+      "wf": "WF-19",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "autopilot obstacle scan no longer allocates a fresh 400-entry array every steering tick; check:sim:v3 golden confirms behavior unchanged",
+      "fingerprint": "verb=scale,subject=autopilot_scan,sector=any,domain=wf-19",
+      "references": [],
+      "integration": "live",
+      "commit": "faefacf3",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
