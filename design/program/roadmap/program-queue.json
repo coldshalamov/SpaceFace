@@ -9435,7 +9435,7 @@
       "parentId": "PQ-177",
       "priority": 197,
       "title": "Cargo custody and one-commit transactions",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "economy"
@@ -9446,15 +9446,18 @@
         "src/systems/cargo*.js",
         "src/systems/asteroidSites.js",
         "src/core/save*.js",
-        "test/"
+        "test/",
+        "src/systems/alphabet.js"
       ],
       "checks": [
         "npm run check:baseline",
         "npm run check:save-schema",
         "npm run check:sim"
       ],
-      "receiptRefs": [],
-      "brief": "Operations own their inventory/shipment records; custody moves once with a receipt; a purchase or sale is one validated plan committed atomically through the canonical owners with a durable receipt so retries never pay twice; station price quoted at the sale call; the programmed miner stops writing the player hold. DONE WHEN: manual cargo can never be sold or discounted by a worker; retry and save/reload duplicate and lose nothing (JSON round trip mid-transaction); the receipt names station and quote.",
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-177-06-REPORT.md"
+      ],
+      "brief": "DONE 2026-09-06: programmed miner fills an operation shipment, never the player hold. mine_to_depot leaves when the shipment is full (not the Hitch). Worker sales quote the depot at the call, commit once, and a duplicate intent returns the prior receipt.",
       "kind": "implementation"
     },
     {

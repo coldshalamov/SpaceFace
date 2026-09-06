@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { automation } from '../src/systems/automation.js';
+import { shipmentQty } from '../src/systems/cargoCustody.js';
 
 function bootMiner() {
   const state = {
@@ -24,6 +25,7 @@ test('programmed drones accrue at the authored mineRate, not one unit per sim ti
   assert.equal(state.player.cargo.items.cmdty_ore_iron || 0, 0, '0.8u/s cannot mint a whole unit in one second');
 
   for (let i = 0; i < 60; i++) inst._programMineIntoCargo(group, def, dt);
-  assert.equal(state.player.cargo.items.cmdty_ore_iron, 1, 'two seconds at 0.8u/s grants one whole unit');
+  assert.equal(shipmentQty(group, 'cmdty_ore_iron'), 1, 'two seconds at 0.8u/s grants one whole unit');
+  assert.equal(state.player.cargo.items.cmdty_ore_iron || 0, 0, 'the player hold is not the drone inventory');
   assert.ok(group._programMineCarry > 0.5 && group._programMineCarry < 0.7, 'fractional remainder stays on the carry');
 });

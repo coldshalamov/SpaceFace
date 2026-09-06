@@ -29,8 +29,14 @@ import { SECTORS, dangerIndex } from '../data/sectors.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { tickProgram, assignTemplate, clearTemplate, TEMPLATES } from './alphabet.js';
-import { addCargo, removeCargo } from './cargo.js';
 import { ASTEROIDS } from '../data/mining.js';
+import {
+  addToShipment,
+  commitShipmentSale,
+  ensureShipment,
+  shipmentQty,
+  shipmentUsed,
+} from './cargoCustody.js';
 import {
   WING_ORDER,
   WING_ORDER_SCOPE,
@@ -624,9 +630,8 @@ export const automation = {
       if (g.sectorId !== curSector) continue;
 
       // PROGRAM PATH (V2 §4 / cut-list #28): if the group has an assigned alphabet template,
-      // run it instead of the legacy mine-to-buffer loop. The drone mines into the player's REAL
-      // cargo (via canonical addCargo) and sells at a depot for real credits — the player-authored
-      // automation fantasy. Falls through to the legacy path when no program is assigned.
+      // run it instead of the legacy mine-to-buffer loop. PQ-177.06: ore lands in the operation
+      // shipment, never the player hold. Depot sales move that shipment once, with a receipt.
       if (g.program && TEMPLATES[g.program.templateId]) {
         this._runProgrammedGroup(g, def, dt, curSector);
         // fuel still bleeds while running a program (the attention cost, same as legacy)
@@ -671,10 +676,9 @@ export const automation = {
   },
 
   // Run a drone group's alphabet program (V2 §4 / cut-list #28). Provides the callbacks the
-  // alphabet runtime needs: steerTo (drives the flying entities), mineIntoCargo (real cargo via
-  // addCargo), sellMinedCargo (real credits via the passive funnel). Mines the same authored rate
-  // as the legacy path so balance is unchanged — the program just changes WHERE the ore goes
-  // (player cargo + sold by the drone, vs a realized-on-recall buffer).
+  // alphabet runtime needs: steerTo, mineIntoCargo (operation shipment), sellMinedCargo (credits
+  // via the passive funnel from that shipment only). Mines the same authored rate as the legacy
+  // path. The player hold is never a worker's inventory.
   _runProgrammedGroup(g, def, dt, curSector) {
     // ensure entities exist (same spawn as legacy)
     if ((!g.entityIds || !g.entityIds.length) && g.sectorId === curSector) this._spawnDroneEntities(g, def);
@@ -711,48 +715,85 @@ export const automation = {
     return (dx * dx + dz * dz) < arriveR * arriveR;
   },
 
-  // Mine into the PLAYER'S cargo at the authored rate (capped by free cargo volume). This is the
-  // real-cargo grant path — the drone is now earning actual ore the player can use or sell.
-  // Whole units only enter the hold, so sub-unit progress lives on a per-group carry. Using
-  // max(1, floor(rate*dt)) used to grant one unit every sim tick (~60u/s vs the 0.8u/s table).
+  // Mine into the OPERATION shipment at the authored rate (capped by the group's buffer).
+  // Whole units only enter the shipment; sub-unit progress lives on a per-group carry.
   _programMineIntoCargo(g, def, dt) {
-    const cargo = this.state.player.cargo;
-    if (!cargo) return;
-    const free = cargo.capVolume - cargo.usedVolume;
-    if (!(free > 0)) {
-      g._programMineCarry = 0;
-      return;
-    }
+    ensureShipment(g);
+    const cap = Math.max(0, Number(g.bufferCap || def.bufferCap) || 0) || 40;
     const rate = Math.max(0, (def.mineRate || 0.8) * Math.max(1, Number(g.count) || 1));
     g._programMineCarry = (Number(g._programMineCarry) || 0) + rate * Math.max(0, Number(dt) || 0);
     const want = Math.floor(g._programMineCarry + 1e-9);
     if (want <= 0) return;
-    const added = addCargo(this.state, g.oreType || DRONE_ORE_ID, want);
+    const oreId = g.oreType || DRONE_ORE_ID;
+    const added = addToShipment(g, oreId, want, cap);
     if (added > 0) {
       g._programMineCarry = Math.max(0, g._programMineCarry - added);
-      // cosmetic mining-tick feedback so the player SEES the drone working
       const rock = this._nearestAsteroid(this._playerPos(), 600);
-      this.bus.emit('mining:tick', { contactPos: rock ? rock.pos : this._playerPos(), oreType: g.oreType || DRONE_ORE_ID });
+      this.bus.emit('mining:tick', { contactPos: rock ? rock.pos : this._playerPos(), oreType: oreId });
       return;
     }
     g._programMineCarry = Math.min(g._programMineCarry, 1);
   },
 
-  // Sell the player's mined ore at the depot station for real credits, through the passive funnel
-  // (so the cap still applies — program income isn't a cap bypass). Sells the drone's chosen ore.
+  // Sell the operation shipment at the depot. Never reads or writes the player hold.
+  // Station price is quoted at this call. A pending intent survives save/reload so a retry
+  // returns the same receipt instead of paying twice.
   _programSellCargo(g, stationId) {
-    const cargo = this.state.player.cargo;
-    if (!cargo || !cargo.items) return;
+    ensureShipment(g);
     const oreId = g.oreType || DRONE_ORE_ID;
-    const have = cargo.items[oreId] || 0;
-    if (have <= 0) return;
-    const price = this._orePrice(oreId);
-    const gross = have * price;
-    if (gross > 0) {
-      removeCargo(this.state, oreId, have);
-      this.creditPassive(gross, 'drone:program');
-      if (stationId) this.bus.emit('economy:applyTradePressure', { stationId, good: oreId, vol: have });
+    let pending = g.pendingSale;
+    if (pending && pending.intentId && g.saleReceipts && g.saleReceipts[pending.intentId]) {
+      const sealed = g.saleReceipts[pending.intentId];
+      g.pendingSale = null;
+      return { ok: true, duplicate: true, receipt: sealed.receipt };
     }
+    const have = shipmentQty(g, oreId);
+    if (have <= 0) {
+      g.pendingSale = null;
+      return null;
+    }
+    if (!pending || pending.good !== oreId || !(pending.quantity > 0)) {
+      g.saleSeq = (g.saleSeq | 0) + 1;
+      pending = g.pendingSale = {
+        intentId: `drone-sale:${g.id}:${g.saleSeq}`,
+        stationId: stationId || null,
+        good: oreId,
+        quantity: have,
+      };
+    }
+    const qty = Math.min(pending.quantity | 0, have);
+    const quote = this._quoteOperationSale(pending.stationId || stationId, pending.good, qty);
+    const plan = {
+      intentId: pending.intentId,
+      stationId: pending.stationId || stationId || null,
+      good: pending.good,
+      quantity: qty,
+      unitPrice: quote.unitAvg,
+      total: quote.total,
+      quoteVersion: quote.quoteVersion,
+    };
+    const result = commitShipmentSale(g, plan, () => this.creditPassive(plan.total, 'drone:program'));
+    if (result && result.ok && !result.duplicate && plan.stationId) {
+      this.bus.emit('economy:applyTradePressure', {
+        stationId: plan.stationId,
+        good: plan.good,
+        vol: plan.quantity,
+      });
+    }
+    return result;
+  },
+
+  _quoteOperationSale(stationId, commodityId, qty) {
+    const unitFromStation = stationId
+      ? this._stationPrice(stationId, commodityId, 'sell', qty)
+      : this._orePrice(commodityId);
+    const unit = Math.max(0, Math.round(Number(unitFromStation) || 0));
+    const quantity = Math.max(0, Math.floor(Number(qty) || 0));
+    return {
+      unitAvg: unit,
+      total: unit * quantity,
+      quoteVersion: unit,
+    };
   },
 
 
@@ -1187,7 +1228,9 @@ export const automation = {
   },
 
   _droneBufferValue(g) {
-    return Math.round((g.buffer || 0) * this._orePrice(g.oreType || DRONE_ORE_ID));
+    const oreId = g.oreType || DRONE_ORE_ID;
+    const shipped = shipmentQty(g, oreId);
+    return Math.round(((g.buffer || 0) + shipped) * this._orePrice(oreId));
   },
 
   // ------------------------------------------------------------------------------------------
@@ -1768,6 +1811,8 @@ export const automation = {
     const g = a.drones[idx];
     const value = this._droneBufferValue(g);
     if (value > 0) this.creditPassive(value, 'drone'); // bank the buffer through the cap funnel
+    if (g.shipment) g.shipment.items = {};
+    g.pendingSale = null;
     // refuel cost on recall (attention cost): (fuelMax - fuel)*0.5 cr
     const def = DRONE_BY_ID.get(g.defId) || g;
     const refuel = Math.round(((def.fuelMax || 0) - (g.fuel || 0)) * 0.5);
@@ -2641,6 +2686,12 @@ function makeProgramContext(host) {
     },
     sellMinedCargo(stationId) {
       return host._programSellCargo(this.group, stationId);
+    },
+    operationFull() {
+      const g = this.group;
+      const def = this.def || {};
+      const cap = Math.max(0, Number(g.bufferCap || def.bufferCap) || 0) || 40;
+      return shipmentUsed(g) >= cap - 1e-9;
     },
   };
 }

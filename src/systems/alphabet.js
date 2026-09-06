@@ -17,8 +17,9 @@
 //
 // Integration: this is an opt-in layer over the existing automation drone. A drone group with a
 // `program` field runs the alphabet; a drone without one uses the legacy mine-to-buffer behavior
-// (backward compatible). The alphabet reads/writes only its own program state on the group; cargo
-// grants route through the canonical cargo.addCargo and credits through economy:grantCredits.
+// (backward compatible). The alphabet reads/writes only its own program state on the group.
+// Programmed mining fills the operation shipment (PQ-177.06), never the player hold; credits
+// still go through economy:grantCredits via the automation seller.
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 
 // Primitive type tags.
@@ -36,9 +37,9 @@ export const TEMPLATES = Object.freeze({
   mine_to_depot: {
     id: 'mine_to_depot', name: 'Mine → Haul to Depot', desc: 'Mine the current field until full, fly to the depot beacon, sell, repeat.',
     steps: [
-      { op: P.MINE, until: 'cargoFull' },
+      { op: P.MINE, target: 'field', until: 'cargoFull' },
       { op: P.MOVE, target: 'depot' },
-      { op: P.INTERACT, verb: 'sell' },
+      { op: P.INTERACT, verb: 'sell', target: 'depot' },
       { op: P.MOVE, target: 'field' },
     ],
   },
@@ -122,21 +123,22 @@ export function tickProgram(group, ctx, dt) {
   if (!step) { ps.pc = 0; return false; }
 
   const beacon = step.target ? resolveBeacon(step.target, ctx) : null;
-  const cargo = ctx.state.player.cargo;
-  const cargoFull = cargo && cargo.usedVolume >= cargo.capVolume - 0.01;
+  const cargo = ctx.state && ctx.state.player && ctx.state.player.cargo;
+  const holdFull = typeof ctx.operationFull === 'function'
+    ? !!ctx.operationFull()
+    : !!(cargo && cargo.usedVolume >= cargo.capVolume - 0.01);
 
   switch (step.op) {
     case P.MINE: {
-      // steer to the field beacon; accrue into cargo (not the legacy buffer) when on a rock.
-      // Completion: cargo full OR no rock available.
-      if (!beacon) { advance(ps, tpl); return false; }
-      const onRock = ctx.steerTo(beacon, dt);
-      if (onRock && !cargoFull) {
+      // Steer to the field; fill the operation shipment. Completion is shipment-full, never the
+      // player hold (a full Hitch must not freeze a worker, and a worker must not wait on the hold).
+      const mineBeacon = beacon || resolveBeacon('field', ctx);
+      if (!mineBeacon) { advance(ps, tpl); return false; }
+      const onRock = ctx.steerTo(mineBeacon, dt);
+      if (onRock && !holdFull) {
         ctx.mineIntoCargo(dt);
       }
-      if (cargoFull || step.until === 'veinEmpty') {
-        if (step.until === 'cargoFull' && cargoFull) { advance(ps, tpl); }
-      }
+      if (step.until === 'cargoFull' && holdFull) advance(ps, tpl);
       return onRock;
     }
     case P.MOVE: {

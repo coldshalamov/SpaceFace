@@ -26,6 +26,7 @@ import { COMMODITIES } from '../data/commodities.js';
 import { SECTORS } from '../data/sectors.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
 import { addCargo, isUnsellableCargo, removeCargo } from './cargo.js';
+import { ensureCommittedIntents } from './cargoCustody.js';
 import {
   getCycle as getCycleCore, cycleFactorAt, maybeAdvanceRegime, createCycle,
   serializeCycles, deserializeCycles, applyCycleToMid,
@@ -1228,11 +1229,21 @@ export const economy = {
     };
   },
 
-  /** execute(stationId, cmdtyId, side, qty) -> { ok, qty, unitAvg, total, profit?, reason }.
-   *  Validate-then-apply (transactional): a failed credit/cargo/stock check changes nothing. */
-  execute(stationId, commodityId, side, qty) {
+  /** execute(stationId, cmdtyId, side, qty, opts?) -> { ok, qty, unitAvg, total, profit?, reason, duplicate? }.
+   *  Validate-then-apply (transactional): a failed credit/cargo/stock check changes nothing.
+   *  PQ-177.06: opts.intentId makes a successful commit idempotent — the same plan returns the
+   *  prior receipt instead of paying twice. */
+  execute(stationId, commodityId, side, qty, opts = null) {
     const state = this.state;
     qty = Math.max(0, Math.floor(qty || 0));
+    const intentId = opts && typeof opts.intentId === 'string' && opts.intentId
+      ? opts.intentId
+      : null;
+    const intents = ensureCommittedIntents(state);
+    if (intentId && intents && intents[intentId]) {
+      const prior = intents[intentId];
+      return { ...(prior.result || {}), duplicate: true, receipt: prior.receipt };
+    }
     // Enforce sealed-freight authority at execution as well as quote. This is the final shared
     // boundary for every station UI (legacy and Orbital Command) and keeps a stale or custom quote
     // adapter from turning mission cargo into credits.
@@ -1275,7 +1286,9 @@ export const economy = {
       this.recordLivePriceHistory(entry, def, stationId, commodityId);
       const unitAvg = realCost / realQty;
       this.afterTrade(state, stationId, commodityId, 'buy', realQty, unitAvg, realCost, fq.priceImpactPct, def);
-      return { ok: true, qty: realQty, unitAvg, total: realCost, priceImpactPct: fq.priceImpactPct };
+      return this._sealTradeIntent(intentId, {
+        ok: true, qty: realQty, unitAvg, total: realCost, priceImpactPct: fq.priceImpactPct,
+      }, { stationId, commodityId, side: 'buy' });
     } else {
       // SELL — need the stock in cargo
       const have = state.player.cargo.items[commodityId] || 0;
@@ -1305,8 +1318,29 @@ export const economy = {
         def,
       );
       const profit = receipt ? receipt.profit : 0;
-      return { ok: true, qty: realQty, unitAvg, total: realGross, priceImpactPct: fq.priceImpactPct, profit };
+      return this._sealTradeIntent(intentId, {
+        ok: true, qty: realQty, unitAvg, total: realGross, priceImpactPct: fq.priceImpactPct, profit,
+      }, { stationId, commodityId, side: 'sell' });
     }
+  },
+
+  _sealTradeIntent(intentId, result, meta) {
+    if (!intentId || !result || result.ok !== true) return result;
+    const intents = ensureCommittedIntents(this.state);
+    if (!intents) return result;
+    const receipt = {
+      id: intentId,
+      stationId: meta.stationId,
+      good: meta.commodityId,
+      side: meta.side,
+      quantity: result.qty,
+      unitPrice: result.unitAvg,
+      total: result.total,
+      quoteVersion: result.unitAvg,
+    };
+    intents[intentId] = { result: { ...result }, receipt };
+    result.receipt = receipt;
+    return result;
   },
 
   frontierPenaltyFor(state, stationId) {
@@ -2042,6 +2076,7 @@ export const economy = {
     state.player.tradeLedger = [];
     state.player.tradeLots = {};
     state.player.tradeReceiptSeq = 0;
+    delete state.economy.committedIntents;
     this.resetRng();
     this._nextEventId = 1;
     this._eventAccumulator = 0;
@@ -2087,6 +2122,13 @@ export const economy = {
       nextEventId: this._nextEventId,
       eventAccumulator: Number.isFinite(this._eventAccumulator) ? this._eventAccumulator : 0,
     };
+    const committedIntents = econ.committedIntents && typeof econ.committedIntents === 'object'
+      && !Array.isArray(econ.committedIntents)
+      ? econ.committedIntents
+      : null;
+    if (committedIntents && Object.keys(committedIntents).length) {
+      data.committedIntents = cloneSaveTree(committedIntents);
+    }
     if (salvageIntakeState.receipts.length) {
       data.appliedSalvageIntakeReceipts = salvageIntakeState.receipts.map((receipt) => ({
         ...receipt,
@@ -2153,6 +2195,12 @@ export const economy = {
       : hash32(this.state.meta && this.state.meta.seed, 'economy');
     this._nextEventId = data.nextEventId || 1;
     this._eventAccumulator = Number.isFinite(data.eventAccumulator) ? data.eventAccumulator : 0;
+    if (data.committedIntents && typeof data.committedIntents === 'object'
+      && !Array.isArray(data.committedIntents) && Object.keys(data.committedIntents).length) {
+      econ.committedIntents = cloneSaveTree(data.committedIntents);
+    } else {
+      delete econ.committedIntents;
+    }
     this._installRngFunction();
   },
 };
@@ -2169,8 +2217,8 @@ function cloneSaveTree(value) {
 export function quote(stationId, commodityId, side, qty) {
   return economy._instance ? economy._instance.quote(stationId, commodityId, side, qty) : { ok: false, reason: 'no_economy' };
 }
-export function execute(stationId, commodityId, side, qty) {
-  return economy._instance ? economy._instance.execute(stationId, commodityId, side, qty) : { ok: false, reason: 'no_economy' };
+export function execute(stationId, commodityId, side, qty, opts) {
+  return economy._instance ? economy._instance.execute(stationId, commodityId, side, qty, opts) : { ok: false, reason: 'no_economy' };
 }
 export function getCycle(stationId, commodityId) {
   return economy._instance ? economy._instance.getCycle(stationId, commodityId) : null;
