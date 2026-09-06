@@ -16027,7 +16027,7 @@
       "priority": 423,
       "title": "Lift the legacy hub",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-180.00"
       ],
@@ -16045,8 +16045,10 @@
         "npm run check:ui-effects",
         "node scripts/check-ui-screen-imports.mjs"
       ],
-      "receiptRefs": [],
-      "brief": "Shared logic out of stationHub.js, market.js, bar.js, services.js, shipLedger.js, factions.js into modules; delete dead renderers; the import check confirms. DONE WHEN: stationHub.js gone or < 300 lines of pure helpers; check:ui-screen-imports green."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-184-03-REPORT.md"
+      ],
+      "brief": "DONE 2026-09-06 in ce9ba29f: explicit shared station models and retained helper modules replace the six legacy renderers; stationHub.js is deleted. 52 live imports, baseline, contract/exit controls and controller layout review pass. UI budget baseline renewal belongs to PQ-184.02."
     },
     {
       "id": "PQ-185.00",
