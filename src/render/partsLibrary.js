@@ -5415,7 +5415,21 @@ function createFlightRootTemplateEntry({
 
 function createFlightTemplateRoot(sourceRoot) {
   if (!sourceRoot || typeof sourceRoot.clone !== 'function') return null;
-  const templateRoot = sourceRoot.clone(true);
+  // The source tree keeps its real userData; only the clone reads the projected copy, and callers
+  // such as createFlightRootTemplateEntry read source userData.hull right after this returns.
+  const sourceUserData = new Map();
+  let templateRoot = null;
+  try {
+    if (typeof sourceRoot.traverse === 'function') {
+      sourceRoot.traverse((object) => {
+        sourceUserData.set(object, object.userData);
+        object.userData = flightTemplateCloneUserData(object.userData);
+      });
+    }
+    templateRoot = sourceRoot.clone(true);
+  } finally {
+    for (const [object, userData] of sourceUserData) object.userData = userData;
+  }
   const geometries = new Map();
   const materials = new Map();
   templateRoot.traverse((object) => {
@@ -5482,6 +5496,62 @@ function sanitizeFlightTemplateUserData(userData) {
     if (typeof value === 'function') delete next[key];
   }
   return next;
+}
+
+// three.js deep-copies userData inside Object3D.copy with JSON.parse(JSON.stringify(...)), so any
+// THREE object parked on userData drags its whole material/texture graph through Texture.toJSON and
+// serializeImage. Every key that costs anything to serialize here is deleted again by the sanitize
+// and clear passes a few lines later, so the serialization is pure waste: project the source
+// userData down to what survives those passes before the clone reads it.
+const FLIGHT_TEMPLATE_THREE_VALUE_FLAGS = Object.freeze([
+  'isObject3D',
+  'isMaterial',
+  'isTexture',
+  'isSource',
+  'isBufferGeometry',
+  'isRenderTarget',
+]);
+const FLIGHT_TEMPLATE_DROP = Symbol('flightTemplateDrop');
+
+function scrubFlightTemplateCloneValue(value, stack) {
+  if (typeof value === 'function') return FLIGHT_TEMPLATE_DROP;
+  if (!value || typeof value !== 'object') return value;
+  if (FLIGHT_TEMPLATE_THREE_VALUE_FLAGS.some((flag) => value[flag] === true)) return FLIGHT_TEMPLATE_DROP;
+  // A cycle already throws inside JSON.stringify; hand the value back so that stays true.
+  if (stack.has(value)) return value;
+  const prototype = Object.getPrototypeOf(value);
+  const plain = Array.isArray(value) || prototype === Object.prototype || prototype === null;
+  if (!plain) return value;
+  stack.add(value);
+  try {
+    let changed = false;
+    if (Array.isArray(value)) {
+      const next = [];
+      for (const entry of value) {
+        const scrubbed = scrubFlightTemplateCloneValue(entry, stack);
+        if (scrubbed === FLIGHT_TEMPLATE_DROP) { changed = true; continue; }
+        if (scrubbed !== entry) changed = true;
+        next.push(scrubbed);
+      }
+      return changed ? next : value;
+    }
+    const next = {};
+    for (const [key, entry] of Object.entries(value)) {
+      const scrubbed = scrubFlightTemplateCloneValue(entry, stack);
+      if (scrubbed === FLIGHT_TEMPLATE_DROP) { changed = true; continue; }
+      if (scrubbed !== entry) changed = true;
+      next[key] = scrubbed;
+    }
+    return changed ? next : value;
+  } finally {
+    stack.delete(value);
+  }
+}
+
+function flightTemplateCloneUserData(userData) {
+  const projected = dropFlightTemplateDynamicUserData(sanitizeFlightTemplateUserData(userData));
+  const scrubbed = scrubFlightTemplateCloneValue(projected, new Set());
+  return scrubbed === FLIGHT_TEMPLATE_DROP ? {} : scrubbed;
 }
 
 function collectFlightPackageRecipes(root) {
@@ -5552,21 +5622,24 @@ function stripFlightPackageTemplateSubtrees(root, recipes) {
   }
 }
 
+function dropFlightTemplateDynamicUserData(data) {
+  delete data.updateLod;
+  delete data.updateDriveState;
+  delete data.updateDamageState;
+  delete data.damageParts;
+  delete data.damageState;
+  delete data.hullFrac;
+  delete data.lod;
+  delete data.hull;
+  delete data.shieldBubble;
+  delete data.openingSubmissionPackage;
+  return data;
+}
+
 function clearFlightTemplateDynamicUserData(root) {
   if (!root) return;
   root.traverse((object) => {
-    const data = object.userData || {};
-    delete data.updateLod;
-    delete data.updateDriveState;
-    delete data.updateDamageState;
-    delete data.damageParts;
-    delete data.damageState;
-    delete data.hullFrac;
-    delete data.lod;
-    delete data.hull;
-    delete data.shieldBubble;
-    delete data.openingSubmissionPackage;
-    object.userData = data;
+    object.userData = dropFlightTemplateDynamicUserData(object.userData || {});
   });
 }
 
