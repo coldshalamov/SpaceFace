@@ -3,7 +3,7 @@
 
 ```yaml
 refreshed: 2026-09-06
-baseCommit: 9442a60d
+baseCommit: fd399adc49288d06fecb8e1ea8f74a5d78b20e51
 expiresAfterCommits: 10
 expiresAfterDays: 2
 ```
@@ -41,18 +41,14 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| Operational limits route | luna economy_fixtures | MUTATING | `scripts/probe-automation-outpost-live.mjs`, `src/systems/automation.js`, `test/automation-program-mine-rate.test.mjs` | resolve full-registry drone control and finish physical route |
-| Production baseline | controller 01a0768b | MUTATING | `scripts/probe-runtime-witness.mjs`, `scripts/lib/runtimeWitnessProductionMatrix.mjs`, `test/runtime-witness-production-matrix.test.mjs` | finish public routes after station migration |
 | World materials and hit feedback | controller 01a0768b | MUTATING | `src/render/industrialMaterialFamilies.js`, `src/render/visualOverrides.js`, `src/render/engineTrailSurfaces.js`, `src/ui/asteroid/asteroidRenderer3d.js`, `test/industrial-material-families.test.mjs`, `design/program/roadmap/receipts/PQ-190-00-material-candidate.md`, `src/render/vfx.js`, `test/vfx-weakpoint-receipt.test.mjs` | visual review of authored admission and real combat feedback |
-| Reauthored place acceptance | controller 01a0768b | MUTATING | `scripts/probe-pq022-corridor-asset-leaves.mjs`, `scripts/validation-manifests/pq022-corridor-asset-leaves.mjs`, `scripts/validation-manifests/pq022-refinery-reauthor-browser.mjs`, `scripts/validation-manifests/pq022-refinery-reauthor-electron.mjs`, `scripts/validation-manifests/pq022-billboard-buoy-reauthor-browser.mjs`, `scripts/validation-manifests/pq022-billboard-buoy-reauthor-electron.mjs`, `test/pq022-reauthor-h1-manifests.test.mjs`, `src/systems/world.js`, `test/pq022-navigation-infrastructure-runtime-split.test.mjs` | resolve billboard readability; Browser/Electron route acceptance |
-| Swarm cohort work reuse | terra idle_recovery | MUTATING | `src/systems/tacticalAI.js`, `test/tactical-ai-production-cadence.test.mjs` | retain per-member decisions while sharing inspection snapshots |
-| Billboard form candidate | luna provider_preflight and controller | MUTATING | `tools/blender/build_station_billboard_readable_v3.py`, `scripts/check-parts-manifest.mjs`, `assets/ships/parts/places/place_station_billboard.glb`, `assets/ships/release/parts/places/place_station_billboard.glb`, `assets/ships/parts/parts_manifest.json`, `assets/ships/release/release_manifest.json`, `assets/ships/render-packages/pilots.json`, `assets/ships/release/render-packages/station-billboard/render.glb`, `assets/ships/release/render-packages/station-billboard/render-package.json`, `src/render/renderPackageManifest.js` | separated readout strokes, truthful export metadata, narrow package publication |
+| Shield and exhaust readability | controller review of native Claude Opus 5 | REVIEWING | `src/render/engineTrailSurfaces.js` (ribbon shader), `src/render/renderer.js` (shield pool shaders), `src/render/ships/shipKit.js` (shield shader) | review repaired shaders and accept current engine/shield captures |
 | Campaign coordination | controller 01a0768b | MUTATING | `design/program/NOW.md` | keep current ownership and close accepted leaves in existing queue |
 
 The legacy extraction, live Shipworks guidance, Market quantity controls and public career route are
 committed after controller review. Native workers have released their files. Ordinary-life,
 operational-limit, material and place acceptance continues in this campaign. PQ-184.01, PQ-184.03
-and PQ-187.00 are closed in the canonical queue. The duplicate incomplete checkout was removed
+PQ-187.00 and PQ-177.07 are closed in the canonical queue. The duplicate incomplete checkout was removed
 after its DROP disposition was committed and pushed.
 
 ## Start another task

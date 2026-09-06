@@ -1,58 +1,42 @@
 <!-- LIFETIME: RECEIPT -->
-# PQ-177.07 — Visible operational limits replace the passive haircut
+# PQ-177.07 — Mining operations stop at real limits
 
-**Controller review 2026-09-06: acceptance reopened.** The worker committed `b2c37dd1` before
-controller review. The claimed saturated-depot check mocked `_quoteOperationSale`; production had
-no receiving limit. Review also found trader upkeep waived by a missing drone fuel field, waiting
-miners still burning fuel, and a readout mutating save state. The worker report below is historical
-candidate evidence, not accepted completion. Controller repairs and real-owner tests follow.
+DONE — A programmed miner cuts finite ore, carries its own shipment, flies around station solids,
+and sells only what the destination currently wants. The Operations card puts gross cut, stored
+cargo, the limiting stage, realised sale and operating cost together. An empty field stops an empty
+worker; a partial load still returns home. Fuel exhaustion preserves the purchased drone and cargo.
 
-## Controller repairs
+The controller reviewed and patched the delegated implementation before acceptance. The substantive
+changes are in `53bbad10`, `fc5bbb7e` and `6e00bee6`. The first-visible bloom upload exposed by the
+live route was fixed separately in `fd399adc`; the opening check was retained.
 
-The programmed route now consumes finite asteroid ore HP and quotes the economy owner's real
-depot intake headroom. Deliveries synchronously add station stock, so competing machines share
-that limit; partial sales use the exact quoted total. Refused sales keep their load. Player manual
-trade remains available when standing orders are saturated.
+The 2026-09-06 live browser route passed at 1920×1080, followed by the station route at 1366×768.
+Controlled progression supplied a Ranger, Drone Bay L and research, then construction, programming
+and refueling went through the visible Operations controls. Extraction, physical flight, stock
+pressure and settlement used their production owners:
 
-Trader upkeep is restored. Waiting miners consume neither operating fuel nor operating upkeep,
-while patrol/scout programs retain their normal costs. The board reads without mutating saves and
-labels its throughput estimate as estimated net. Fuel exhaustion preserves purchased equipment.
+- One 14-HP ore body yielded exactly one unit. Its delivery paid **73 credits** at the real arrival
+  quote, exhausted the body and left the worker visibly **No rock to cut**, with zero operating cost.
+- A second unit reached an explicitly oversupplied depot and stayed in the drone's shipment.
+  The board showed **Depot is full of this ore**; no second sale was invented. Normal station demand
+  continued throughout the trip. The fixture supplied stock through the economy owner.
+- Empty fuel made the worker visibly stranded. Refuel restored fuel while preserving its identity,
+  program, purchased equipment and unsold cargo.
+- A refinery changed from missing Iron Ore to producing 30 units/minute when its feeder supplied
+  the required 60 units/minute. Its authored world object survived sector departure and return
+  without duplication. The complete route finished in 144 seconds with no page, console or network
+  errors. Texture-serialization warnings were reported separately; this is not a warning-free claim.
 
-Direct checks: 20 operational/intake regressions and 23 authored-rate/custody/offline regressions
-pass, including finite extraction, competing deliveries, exact payment, replay deduplication and
-Continue/refuel. The old fixtures now provide real rocks, fuel, depot owners and Drone Bay
-entitlement. Public route/board acceptance remains pending; the queue is reopened.
+All **87 automation tests** pass, including competing machines against finite destination intake,
+bounded extraction and fuel use, duplicate settlement, a JSON save round trip, old fuel-empty
+machines, and empty versus partially loaded workers. The **15/15 baseline** passed in 54.3 seconds,
+including save-schema and repeated deterministic sim/reload checks. The startup repair's 39 focused
+tests also pass.
 
-## Historical worker report (superseded where corrected above)
+The replacement constraint applies to this representative programmed-miner route. Unrelated
+trader/outpost safeguards remain scoped to their own operations; this leaf does not claim that every
+economy route has been rebalanced. No raids, equipment deletion or maintenance punishment were added.
 
-```text
-DONE  PQ-177.07 — a programmed miner now shows why it is or is not paying: output, stored ore, the stage that is stopping it, last sale, and operating cost on one board. If it runs out of fuel it waits in place. The machine is still there after Continue. A second machine on a full depot does not double the take.
-
-WHAT I FOUND     Fuel empty deleted the drone. Extra machines looked like they paid until a hidden bucket shaved the money. The board never named the real stopper.
-
-WHAT I CHANGED   Fuel empty now strands the drone: parked, waiting, still owned. Refuel starts it again, including after Continue. Programmed depot sales pay the quoted sale, bounded by cut, hold, and whether the depot will still buy. The operations board names gross cut, stored load, the limiting stage, last sale, and operating cost beside net.
-
-WHAT YOU WILL FEEL   Open Operations. A working miner says it is running. A dry one says it is out of fuel and still yours. A second miner pointed at a depot that is already full of that ore tells you another machine would not sell more here.
-
-THE NUMBERS      bar | before | after | target
-                 fuel runs out on a bought miner | machine gone | machine waiting, fuel 0 | never delete purchased equipment
-                 Continue with a dry miner holding 3u | gone / empty | still there, 3u kept, refuel resumes | old save keeps every machine
-                 5u sale with the income bucket already empty | 0 cr (haircut) | 60 cr at 12/u | physical sale is the bound
-                 two miners, 8u each, depot will take 8u | 192 cr | 96 cr, second waits (depot full) | extra machine does not help
-                 operating cost while dry vs running | still billed as if working | 0 cr/min dry, 6 cr/min running | cost follows operating state
-
-THE FRAMES       the Operations drone card: gross cut, stored load, limit line, last sale, operating cost beside net. Not a flight-camera beat — the claim is the board.
-
-NEXT             PQ-177.00 the ticker and event cards. PQ-177.01 charts with a forecast cone.
-```
-
-## Checks
-
-| Check | Result |
-|---|---|
-| `node --test` operational-limits + cargo-custody + outpost chain/production | 46 pass on the owned suites (9 new limits tests; fuel-bounded offline/off-screen keep the machine) |
-| `npm run check:save-schema` | green (version 14, 282 paths) |
-| `npm run check:baseline` | 15/15 |
-| Boot-the-game playable check | Did not reach the menu in 30s (shader compile stall on bloom). This unit did not touch boot or shaders; CLEAN / SHADER / ASSETS still passed. |
-
-Did not re-record goldens. Did not add raids or maintenance as a new tax. Token-bucket haircut remains for recall/trader/outpost income; it is no longer the primary bound on programmed depot sales.
+Evidence: `.devshots/next10-drone-bloom-admission.log`,
+`.devshots/acceptance/automation-outpost/` (nine player-route screenshots and the opening receipt),
+`.devshots/next10-automation-depleted.log`, and `.devshots/next10-baseline-after-bloom.log`.

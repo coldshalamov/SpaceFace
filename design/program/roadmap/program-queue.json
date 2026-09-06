@@ -9486,7 +9486,7 @@
       "parentId": "PQ-177",
       "priority": 198,
       "title": "Visible operational limits replace the passive haircut",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-177.06"
       ],
@@ -9509,7 +9509,7 @@
       "receiptRefs": [
         "design/program/roadmap/receipts/PQ-177-07-REPORT.md"
       ],
-      "brief": "Controller repair 2026-09-06: worker candidate committed before acceptance. Fuel persistence retained; repair real destination intake, finite extraction, trader upkeep and operation-readout consistency before marking done. The worker's saturation test mocked the missing limit.",
+      "brief": "DONE 2026-09-06: finite extraction, physical delivery, real depot intake and visible operating limits replace the programmed-miner haircut. Empty fields stop empty workers; partial loads return; saturation and fuel exhaustion preserve cargo and machines. Controller-reviewed live route, 87 automation tests and 15/15 baseline pass. See PQ-177-07-REPORT.md.",
       "kind": "implementation"
     },
     {
