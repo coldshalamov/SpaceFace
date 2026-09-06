@@ -37,6 +37,33 @@ test('feel.screen_crossing is deterministic on a fixed seed', LONG, async () => 
 // monotonic, and the hull's smallest share of frame width.
 const B3_CLAUSES = 5;
 
+// PQ-186.00: the check's assertion message is the bar's own sentence.
+const B2_SENTENCE =
+  'From rest to cruise ≤ 1.5 s. Full 180° velocity reversal ≤ 3.0 s. Turn radius at cruise ≤ 1 screen depth.';
+const B3_SENTENCE =
+  `At cruise the hull needs ≥ 1.2 s to cross the visible depth. Above the cap the camera opens with speed: visible depth grows monotonically, reaches ≥ 1.5× the at-cruise depth at 2× cruise and ≥ 2.5× at 3× cruise, and the starter hull never falls below 4 % of frame width.`;
+
+test('B2 the nimble regime meets the contract on the real path', LONG, async () => {
+  const result = await reversal.run(4242);
+  const bars = result && result.metrics && Array.isArray(result.metrics.bars)
+    ? result.metrics.bars.filter((row) => row && row.bar === 'B2')
+    : [];
+  assert.ok(
+    bars.length >= 6,
+    `${B2_SENTENCE} — both hulls must print all three clauses (got ${bars.length})`,
+  );
+  for (const row of bars) {
+    if (row.unmeasured === true) {
+      assert.fail(`${B2_SENTENCE} — clause "${row.label}" is UNMEASURED; fix the instrument, not the bar`);
+    }
+    assert.equal(
+      row.met,
+      true,
+      `${B2_SENTENCE} — clause "${row.label}" measured ${row.value} ${row.unit}`,
+    );
+  }
+});
+
 test('B3 prints every clause as a number in player units', LONG, async () => {
   const result = await crossing.run(4242);
   const bars = result && result.metrics && Array.isArray(result.metrics.bars)
@@ -78,7 +105,7 @@ test('B3 real-path clauses all meet their FEEL_CONTRACT thresholds', LONG, async
     assert.equal(
       row.met,
       true,
-      `"Zip around, stay in control of the combat area" — ${row.label} must meet (got ${row.value} ${row.unit})`,
+      `"Zip around, stay in control of the combat area" — ${B3_SENTENCE} — ${row.label} must meet (got ${row.value} ${row.unit})`,
     );
   }
   assert.ok(

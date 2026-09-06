@@ -604,3 +604,36 @@ function barByLabel(bars, pattern) {
   assert.ok(bar, `expected a bar matching ${pattern}`);
   return bar;
 }
+
+// PQ-186.00 "Bars as checks": B11's check message is the bar's own sentence, and the clauses the
+// scenario computes as met must stay met. The collision-source clause the bench reports unmet is
+// not pinned red here — pinning a known defect green OR red both freeze it; the bar evaluator
+// owns the verdict and the contract owns the sentence.
+// One literal, verbatim from FEEL_CONTRACT §B — the coverage contract
+// (test/feel-bars-contract.test.mjs) source-scans this file for the exact quote.
+const B11_SENTENCE = `Helm-loss duration is one function of (ΔV ÷ cruise) and (attacker mass ÷ victim mass) for guns, throws, flings and collisions alike; lights at ≥ 30 % ΔV lose the helm ≥ 1 s; heavies at gun-scale ΔV never do. NPCs recover with real thruster torque, never a hidden gyro.`;
+
+test('B11 met clauses hold with the contract sentence as the message', LONG, async () => {
+  const result = await scenario.run(4242);
+  const bars = result && result.metrics && Array.isArray(result.metrics.bars)
+    ? result.metrics.bars.filter((row) => row && row.bar === 'B11')
+    : [];
+  assert.ok(bars.length >= 8, `${B11_SENTENCE} — the law must print its clauses (got ${bars.length})`);
+  for (const row of bars) {
+    assert.equal(typeof row.met, 'boolean',
+      `${B11_SENTENCE} — clause "${row.label}" must carry a boolean verdict`);
+    if (row.unmeasured === true) {
+      assert.equal(row.met, false, `${B11_SENTENCE} — UNMEASURED never passes`);
+    }
+  }
+  // Only the recorded owed clause may be unmet — a second silently-unmet source must go red here.
+  const unmet = bars.filter((row) => row.met === false && row.unmeasured !== true);
+  assert.ok(unmet.length <= 1 && unmet.every((row) => /- collision/.test(row.label || '')),
+    `${B11_SENTENCE} — only the owed collision-source clause may be unmet (unmet: ${unmet.map((r) => r.label).join('; ')})`);
+  const lawClauses = bars.filter((row) => row.met === true && /helm >= 1 s/.test(row.label || ''));
+  assert.ok(lawClauses.length >= 3,
+    `${B11_SENTENCE} — the light hull must lose the helm ≥ 1 s across gun, throw and fling sources (got ${lawClauses.length})`);
+  const gyro = bars.find((row) => /hidden gyro/.test(row.label || ''));
+  assert.ok(gyro && gyro.met === true,
+    `${B11_SENTENCE} — recovery must be commanded thruster torque, never a hidden gyro`);
+});

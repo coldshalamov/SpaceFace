@@ -69,7 +69,11 @@ function assertBar(m, seed) {
     `${VISION}: ordinary flight must not change the player's heading (seed ${seed})`);
   assert.equal(m.jitterEvents, 0,
     `${VISION}: ordinary flight must not produce visible jitter (seed ${seed})`);
-  assert.equal(m.barMet, true, `B13 component clauses must hold on seed ${seed}`);
+  // Verbatim from FEEL_CONTRACT §B — the coverage contract (test/feel-bars-contract.test.mjs)
+  // source-scans this file for the exact quote, so no escapes or concatenation inside the sentence.
+  const B13_SENTENCE = `In ten minutes of ordinary flight (no rope, no fields, no deliberate ram), contact changes the player's velocity ≤ 2 times per minute and never by more than 10 % of cruise in one event, never changes the player's heading, and never produces visible jitter; a deliberate big event (a slam the player chose, a well the player flew into) may, and it must be legible.`;
+  assert.equal(m.barMet, true,
+    `${B13_SENTENCE} — B13 component clauses must hold on seed ${seed}`);
 }
 
 test('feel.knock_budget runs the real physics authority, builds its arena, and reports B13 honestly', { timeout: 300_000 }, async () => {

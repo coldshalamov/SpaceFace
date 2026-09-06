@@ -328,7 +328,7 @@
     "bench:fun": "node scripts/run-fun-bench.mjs",
     "bench:fun:headed": "node scripts/run-fun-bench.mjs --headed",
     "check:fun-bench": "node --test test/fun-bench.test.mjs",
-    "check:feel:scenarios": "node --test test/feel-regression.test.mjs test/fun-bench-scenario-modules.test.mjs test/fun-bench-flight-scenarios.test.mjs test/rope-swing-release.test.mjs test/terrain-slam.test.mjs test/hitstun-curve.test.mjs test/draw-to-fly-stroke-speed.test.mjs test/knock-budget.test.mjs test/feel-collision-impact.test.mjs",
+    "check:feel:scenarios": "node --test test/feel-regression.test.mjs test/fun-bench-scenario-modules.test.mjs test/fun-bench-flight-scenarios.test.mjs test/rope-swing-release.test.mjs test/terrain-slam.test.mjs test/hitstun-curve.test.mjs test/draw-to-fly-stroke-speed.test.mjs test/knock-budget.test.mjs test/feel-collision-impact.test.mjs test/feel-bars-contract.test.mjs test/feel-shove-bars.test.mjs test/world-reaction-bars.test.mjs",
     "build:whole-ships": "node tools/art/finalize_whole_ship.mjs",
     "build:sg04:release-assets": "node scripts/build-sg04-release-assets.mjs",
     "build:dock-interiors": "node scripts/build-dock-interiors.mjs",

@@ -37,16 +37,20 @@ function flightCtx(deltaV, extra = {}) {
 }
 
 test('collision feel ramps hitstop and trauma with exchanged momentum', () => {
+  // PQ-186.00: the check's message is B9's own first sentence (the audio clauses are owed to
+  // PQ-139/PQ-158 and are recorded unreachable in the bench registry).
+  const B9_SENTENCE =
+    'Every collision with ΔV ≥ 8 WU/s produces hitstop and camera trauma scaled by exchanged momentum.';
   assert.ok(COLLISION_HITSTOP_COOLDOWN > HS_IMPACT_MAX,
-    `${VISION}: grind cooldown outlasts the longest collision beat`);
+    `${VISION}: grind cooldown outlasts the longest collision beat — ${B9_SENTENCE}`);
 
   const below = resolveCollisionFeel(impactPayload(7.9), flightCtx(7.9));
   assert.equal(below, null,
-    `${VISION} applies to impacts, not to touching (deltaV 7.9 < floor ${COLLISION_DELTA_V_FLOOR})`);
+    `${B9_SENTENCE} — applies to impacts, not to touching (deltaV 7.9 < floor ${COLLISION_DELTA_V_FLOOR})`);
 
   const atFloor = resolveCollisionFeel(impactPayload(8), flightCtx(8));
   assert.ok(atFloor && atFloor.hsDur >= HS_IMPACT_MIN,
-    `${VISION}: at the deltaV floor hitstop is at least one rendered frame`);
+    `${B9_SENTENCE} — at the deltaV floor hitstop is at least one rendered frame`);
 
   const rampAt = [8, 20, 60, 150, 300].map((dv) => resolveCollisionFeel(impactPayload(dv), flightCtx(dv)));
   for (let i = 1; i < rampAt.length; i++) {

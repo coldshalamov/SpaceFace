@@ -135,7 +135,7 @@ test('the instrument measures the real path and is deterministic on a fixed seed
   }
 
   assert.equal(m.barMet, true,
-    'B8 must pass on the production Hitch for corner/S/hook — speed is the criterion, track is the constraint');
+    'Mean speed along any hand-drawn stroke at least three turn radii long (shorter strokes follow the force-feasible envelope — a triangular speed profile inside the segment — and pass on that envelope, never on a universal 70 %; audit 2026-09-05) ≥ 70 % of cruise; the slowest point ≥ 35 % of cruise; the hull may leave the ink by up to 0.35× its own turn radius to cut a corner; ordered coverage ≥ 90 %. Speed is the pass criterion; track is the constraint. — B8 must pass on the production Hitch for corner/S/hook');
 });
 
 test('a dead no-follower control is unmeasured, not a green zero-deviation row', LONG, async () => {

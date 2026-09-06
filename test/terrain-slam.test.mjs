@@ -76,6 +76,22 @@ test('damage and helm receipts are independent, and missing proof cannot pass', 
   assert.equal(m.realPath.backend, 'rapier-dynamic');
 });
 
+test('B6 terrain-is-lethal clauses computed by the scenario meet the contract', LONG, async () => {
+  const result = await scenario.run(SEED);
+  const bars = b6Bars(result);
+  const B6_SENTENCE =
+    'A light hostile meeting rock at ≥ 50 % of cruise loses ≥ 60 % of hull and its helm; at ≥ 75 % of cruise it dies. ' +
+    'A heavy at the same speed loses ≤ 15 % and keeps its helm.';
+  assert.ok(bars.length >= 5, `${B6_SENTENCE} — every clause must print (got ${bars.length})`);
+  for (const row of bars) {
+    if (row.unmeasured === true) {
+      assert.equal(row.met, false, `${B6_SENTENCE} — UNMEASURED never passes`);
+      continue;
+    }
+    assert.equal(row.met, true, `${B6_SENTENCE} — clause "${row.label}" measured ${row.value} ${row.unit}`);
+  }
+});
+
 test('feel.terrain_slam is deterministic on a fixed seed', LONG, async () => {
   const a = await scenario.run(SEED);
   const b = await scenario.run(SEED);
