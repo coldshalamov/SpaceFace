@@ -1185,7 +1185,18 @@ async function prepareAsteroidWorks(page) {
     const denial = await page.evaluate(() => {
       const tether = window.SF && window.SF.registry && window.SF.registry.get
         && window.SF.registry.get('tetherGameplay');
-      return tether && tether._lastLatchDenial ? tether._lastLatchDenial : null;
+      const s = window.SF?.state;
+      const selected = s?.masslineAcquisition?.selected;
+      return {
+        denial: tether?._lastLatchDenial ?? null,
+        active: s?.player?.tether?.active ?? false,
+        targetId: s?.player?.tether?.targetId ?? null,
+        selectedId: selected?.targetId ?? null,
+        selectedStatus: selected?.status ?? null,
+        selectedReason: selected?.reason ?? null,
+        liveScreen: document.body.classList.contains('ui-live-screen'),
+        mode: s?.mode,
+      };
     });
     return {
       ok: false,
