@@ -176,6 +176,30 @@ function ceresSeamMinerOwnerIdentity(entity, record = null) {
 // civilian-manifest payloads. Bounded small so aftermath never becomes a salvage fleet parade.
 // Ceres authored pockets are gated out separately — their cathedral salvor is cast choreography.
 const MAX_GENERAL_SALVORS_PER_SECTOR = 2;
+// One tug per sector. The done-when asks for "a slow tug", singular: a second one does not
+// make the pocket read more industrial, it just doubles a heavy hull and its tow constraint.
+const MAX_YARD_TUGS_PER_SECTOR = 1;
+// Bulk, not commodity count, is what makes a body tug work: a tug is hired for what a thing weighs
+// and how awkward it is, never for how many units of scrap are inside it. Below this radius the body
+// is cutter work and reads as a pebble on the tow line at the shipping camera.
+const TOWABLE_BODY_MIN_RADIUS_WU = 5;
+// Anything at or above this mass is pinned scenery, not freight. Ceres alone stands nineteen
+// `world_site_*` proxies at mass 1e9; a "tow" of one of those is a line drawn to an immovable
+// object — the decorative tow the packet forbids — and would also misreport an authored site as
+// loose salvage. Measured 2026-09-06 on seed 47.
+const PINNED_BODY_MASS = 1e6;
+// The tug's own load. `pod_cargo_container` is the authored container the PQ-019 capsule already
+// uses, so the lot arrives as a real manufactured body rather than a soft billboard, and
+// `presentationAdmission` admits it by that exact asset id.
+const YARD_TUG_LOT = Object.freeze({
+  assetId: 'pod_cargo_container',
+  radius: 9,
+  // The Mule hull the tug flies is mass 55. The towing proof moved an 80-mass load behind a 20-mass
+  // hull (4x) through the same `tether_standard` policy, so 190 sits inside a ratio already shown to
+  // drag rather than snap. Heavier than the 180 heist capsule because this one is meant to look big.
+  mass: 190,
+  hull: 220,
+});
 // Notice delay before a fresh wreck/payload draws a cutter (sim-seconds). Hash-pinned per target
 // so two seeds with the same aftermath produce the same response time without a scheduler queue.
 const SALVOR_NOTICE_DELAY_MIN_S = 18;
@@ -198,7 +222,7 @@ const CIVILIAN_VIOLENCE_RADIUS_WU = 300;
 const CIVILIAN_VIOLENCE_RADIUS_SQ = CIVILIAN_VIOLENCE_RADIUS_WU * CIVILIAN_VIOLENCE_RADIUS_WU;
 const CIVILIAN_ALARM_TTL_S = 5;
 const CIVILIAN_VIOLENCE_RING_CAP = 8;
-const CIVILIAN_ALARM_FLEE_ROLES = new Set(['hauler', 'courier', 'ore_carrier', 'shuttle']);
+const CIVILIAN_ALARM_FLEE_ROLES = new Set(['hauler', 'courier', 'ore_carrier', 'shuttle', 'tug']);
 const CIVILIAN_ALARM_HOLD_ROLES = new Set(['miner', 'surveyor', 'tender', 'salvor']);
 const CERES_LAW_RESPONSE_SLOT_IDS = new Set([
   'ceres_ambush_escort',
@@ -293,15 +317,20 @@ const TRAFFIC_ROLES = {
   // inside the current ambient cap; they do not raise MAX_PER_SECTOR.
   //
   // Held back deliberately (no role here, so they never roll): `tanker`
-  // (volatiles_tanker), `tug` (yard_tug) and `customs` (inspection_cutter). Still reviews
-  // in 8257fd9e called the tanker and tug a missing-hull kit and sent customs back to the
-  // Hornet. They stay packaged candidates awaiting a fresh chase-camera still review.
+  // (volatiles_tanker) and `customs` (inspection_cutter). The yard tug is a bounded draft
+  // through the existing hauler job/economy path pending the current owner visual review;
+  // its physical tow attachment is owned separately.
   prospector: { ship: 'ship_drifter',  team: 2, speed: 32, archetype: 'fleeing_trader', weight: 5,
               label: 'Prospector', docks: true, trades: false, seeks: 'asteroid' },
   sweeper:    { ship: 'ship_pelican',  team: 2, speed: 28, archetype: 'fleeing_trader', weight: 4,
               label: 'Scrap Sweeper', docks: true, trades: false },
   shuttle:    { ship: 'ship_mule',     team: 2, speed: 38, archetype: 'fleeing_trader', weight: 4,
               label: 'Apron Shuttle', docks: true, trades: true },
+  // The tug carries a finite freight lot through the existing hauler graph. Its lower planning
+  // speed keeps the working hull visibly distinct until the combat/tether owner supplies its
+  // real attached load.
+  tug:        { ship: 'ship_mule',     team: 2, speed: 20, archetype: 'passive', weight: 4,
+              label: 'Yard Tug', docks: true, trades: true },
 };
 
 function lawPresenceRole(role) {
@@ -332,6 +361,7 @@ const HEAVE_TO_COMPLIANT_ROLES = new Set([
   'prospector',
   'sweeper',
   'shuttle',
+  'tug',
 ]);
 
 function trafficHeaveToComplies(role, entity) {
@@ -641,6 +671,8 @@ export {
   CERES_CAUSAL_CHAIN_SCHEMA,
   CERES_CAUSAL_CHAIN_MAX_CONCURRENT,
   MAX_GENERAL_SALVORS_PER_SECTOR,
+  MAX_YARD_TUGS_PER_SECTOR,
+  TOWABLE_BODY_MIN_RADIUS_WU,
 };
 
 function terminalWorldRecord(record) {
@@ -961,6 +993,12 @@ export function trafficRoleMixForSector(sector, state = null) {
   // Zero ambient weight so golden scenarios and ordinary pockets never roll a cutter from the
   // role mix alone — the cleanup profession only appears when there is something to clean.
   out.salvor = 0;
+  // The yard tug follows the same doctrine, and for a stronger reason: a tug whose whole job is to
+  // drag a body somewhere is a decorative hull if it rolls into a pocket with nothing to drag. It is
+  // dispatched against a real towable body by `_dispatchYardTugs`, so ambient weight is zero here.
+  // This also keeps the weighted draw byte-identical to the pre-tug distribution, which is why the
+  // sim/massline goldens are untouched by fielding the role.
+  out.tug = 0;
   return state ? regionalTrafficRoleWeights(state, sec.id, out) : out;
 }
 function pickRole(roleWeights, rng) {
@@ -1350,6 +1388,7 @@ export const traffic = {
     this._applyWorldSiteTrafficHooks(sectorId);
     this._applyClaimTravelHooks(sectorId);
     this._dispatchGeneralSalvors(sectorId);
+    this._dispatchYardTugs(sectorId);
   },
 
   _retireLegacyCeresTraffic() {
@@ -2032,6 +2071,32 @@ export const traffic = {
           { id: 'home:' + stationIdentity(home), pos: { x: home.pos.x, z: home.pos.z }, label: 'Refinery' },
           { id: 'field:' + rockId, pos: { x: rock.pos.x, z: rock.pos.z }, label: 'Belt' },
         ],
+      };
+    }
+    if (role === 'tug') {
+      // A tug's run is the tow. Its route therefore starts AT the body it came for and ends at the
+      // yard that wants it, which is what puts the load inside `NPC_TOW_MAX_RANGE_WU` by the time
+      // npcJobsRuntime opens the DEPART phase — the attachment forms because the tug is actually
+      // there, not because a timer said so. No target means no job: a tug with nothing to drag is
+      // exactly the decorative hull this role is not allowed to be.
+      // `target` is the exact body the dispatcher booked this run for. Re-searching here could pick
+      // a different one than the dispatcher claimed and leave the claim on the wrong body.
+      const body = target && target.pos ? target : this._pickUnclaimedTowTarget(home);
+      if (!body || !body.pos) return null;
+      const yard = this._nearestStationTo(stations, home) || home;
+      if (!yard || !yard.pos) return null;
+      return {
+        kind: 'hauler', sectorId,
+        speed: TRAFFIC_ROLES.tug.speed,
+        route: [
+          { id: 'tow:' + body.id, pos: { x: body.pos.x, z: body.pos.z }, label: 'Tow' },
+          { id: 'yard:' + stationIdentity(yard), pos: { x: yard.pos.x, z: yard.pos.z }, label: 'Yard' },
+        ],
+        payload: {
+          role: 'tug',
+          towTargetId: body.id,
+          manifest: ent && ent.data && ent.data.cargoManifest ? ent.data.cargoManifest : null,
+        },
       };
     }
     if (role === 'hauler' || occupationalJobKind(role) === 'hauler') {
@@ -3460,6 +3525,9 @@ export const traffic = {
     // need a cutter. No separate scheduler — same traffic tick that flies everyone else.
     this._dispatchGeneralSalvors(state.world && state.world.currentSectorId);
     this._maintainGeneralSalvorJobs();
+    // Same tick, same rule: a loose body in the pocket is a tow somebody is paid to make.
+    this._dispatchYardTugs(state.world && state.world.currentSectorId);
+    this._maintainYardTugJobs();
   },
 
   _stepWorldSiteRoute(entity, rec, stations, dt) {
@@ -4065,6 +4133,7 @@ export const traffic = {
     this._salvageTargetCache = null;
     this._salvageTargetCacheTick = null;
     this._dispatchGeneralSalvors(sectorId);
+    this._dispatchYardTugs(sectorId);
     if (this.bus && typeof this.bus.emit === 'function') {
       this.bus.emit('traffic:spillNoticed', {
         encounterId,
@@ -4434,6 +4503,321 @@ export const traffic = {
     };
     this.state.traffic.freighters.push(rec);
     return { entity: ent, rec };
+  },
+
+  // ── Yard tugs: the ordinary-life tow (PQ-143.01) ───────────────────────────────────────────────
+  //
+  // Same doctrine as the cleanup profession below: the tug is dispatched against a real body, never
+  // rolled from the ambient mix (`trafficRoleMixForSector` holds `out.tug = 0`). Unlike salvors this
+  // DOES run in the Ceres pocket — the eight-actor authored cast contains a salvor but no tug, so a
+  // dispatched tug is additive ambient traffic and never contends with an authored slot.
+  //
+  // The tug takes the body somewhere; the cutter strips it where it lies. They must therefore never
+  // want the same wreck in the same moment, which `_salvorClaimantOf` and `npcTowedByJobId` already
+  // enforce from both sides.
+
+  _countYardTugs() {
+    let n = 0;
+    for (const rec of this.state.traffic.freighters || []) {
+      if (!rec || rec.role !== 'tug') continue;
+      const ent = this.state.entities && this.state.entities.get && this.state.entities.get(rec.id);
+      if (!ent || ent.alive === false || !ent.data) continue;
+      if (ent.data.ceresActivityCast === true || ent.data.activityActorSlotId) continue;
+      if (ent.data.jobId) n += 1;
+    }
+    return n;
+  },
+
+  // A towable body is a salvageable body heavy enough to be worth a tug and not already spoken for
+  // by a cutter or another tug. Reusing `_listSalvageTargets` keeps one cached census of loose
+  // bodies per tick instead of adding a second full `entityList` sweep.
+  _isTowableBody(entity) {
+    if (!this._isSalvageableBody(entity)) return false;
+    if (entity.type !== 'wreck' && entity.type !== 'payload') return false;
+    const data = entity.data || {};
+    if (data.npcTowedByJobId != null) return false;
+    if (this._salvorClaimantOf(entity)) return false;
+    // Authored site structure is not loose freight. Every "wreck" standing in the Ceres pocket is a
+    // `world_site_*` collision proxy or component owned by worldSiteKernel; dragging one away would
+    // dismantle an authored place.
+    if (data.worldSiteId != null || data.worldObjectId != null) return false;
+    if (Number(entity.mass) >= PINNED_BODY_MASS) return false;
+    return Number(entity.radius) >= TOWABLE_BODY_MIN_RADIUS_WU;
+  },
+
+  _pickUnclaimedTowTarget(anchor) {
+    const ax = anchor && anchor.pos && Number.isFinite(anchor.pos.x) ? anchor.pos.x : 0;
+    const az = anchor && anchor.pos && Number.isFinite(anchor.pos.z) ? anchor.pos.z : 0;
+    let best = null;
+    let bestD2 = Infinity;
+    let bestId = '';
+    for (const target of this._listSalvageTargets()) {
+      if (!this._isTowableBody(target)) continue;
+      if (!this._salvorNoticeReady(target, this.state.simTime || 0)) continue;
+      const dx = target.pos.x - ax;
+      const dz = target.pos.z - az;
+      const d2 = dx * dx + dz * dz;
+      if (!Number.isFinite(d2)) continue;
+      const id = String(target.id);
+      // Distance first, id second: a stable total order, so two ticks with the same world pick the
+      // same body and the choice never depends on entity iteration order.
+      if (d2 < bestD2 || (d2 === bestD2 && id < bestId)) { best = target; bestD2 = d2; bestId = id; }
+    }
+    return best;
+  },
+
+  _spawnYardTugNear(home, sectorId, seq) {
+    if (!this.helpers || typeof this.helpers.spawnEntity !== 'function') return null;
+    if (!home || !home.pos) return null;
+    const def = TRAFFIC_ROLES.tug;
+    const sector = (this.state.world && this.state.world.sectors)
+      ? this.state.world.sectors[sectorId]
+      : null;
+    const controllingFaction = (sector && sector.factionId)
+      || (this.state.world && this.state.world.currentSector && this.state.world.currentSector.factionId)
+      || 'faction_free';
+    const ang = ((hash32((this.state.meta && this.state.meta.seed) || 1, 'yard_tug_spawn', sectorId, seq) >>> 0)
+      / 0xffffffff) * Math.PI * 2;
+    const r = 110 + (seq % 3) * 24;
+    const pos = { x: home.pos.x + Math.cos(ang) * r, z: home.pos.z + Math.sin(ang) * r };
+    const spec = makeShipEntitySpec(factionHullFor(def.ship, controllingFaction, () => 0.5), {
+      team: def.team,
+      factionId: controllingFaction,
+      pos,
+      ai: {
+        archetype: def.archetype,
+        passive: true,
+        spawnContext: 'convoy_civilian',
+      },
+    });
+    const ent = this.helpers.spawnEntity(spec);
+    if (!ent) return null;
+    this._stampTrafficDurableIdentity(ent, sectorId, 'tug', def, 900 + (seq | 0));
+    ent.data.trafficRole = 'tug';
+    ent.data.role = 'tug';
+    ent.data.trafficLabel = def.label;
+    ent.data.yardTug = true;
+    // A tug mid-tow must survive Continue, exactly as a mid-job cutter does.
+    ent.flags = Object.assign({}, ent.flags, { persistent: true });
+    this._active.push(ent.id);
+    const rec = {
+      id: ent.id,
+      role: 'tug',
+      targetId: home.id,
+      waitT: 0,
+      nextTradeT: 0,
+      orbitPhase: ang,
+      dockSeq: 0,
+      manifest: null,
+      yardTug: true,
+    };
+    this.state.traffic.freighters.push(rec);
+    return { entity: ent, rec };
+  },
+
+  // The physical thing the tug came for. It exists because a tug job exists, and it is a real body
+  // the player can shoot, salvage or simply get in front of — not a marker and not a line ending in
+  // nothing. Traffic owns this lifecycle exactly as it owns the hulls it spawns; npcJobsRuntime only
+  // binds the already-live body through the combat attachment service.
+  _spawnYardTugLot(berth, sectorId, manifest, seq) {
+    if (!this.helpers || typeof this.helpers.spawnEntity !== 'function') return null;
+    if (!berth || !berth.pos) return null;
+    const total = manifest && Number.isFinite(Number(manifest.totalQty)) ? Math.floor(Number(manifest.totalQty)) : 0;
+    if (!(total > 0)) return null; // no finite freight → no lot, and therefore no job
+    const ang = ((hash32((this.state.meta && this.state.meta.seed) || 1, 'yard_tug_lot', sectorId, seq) >>> 0)
+      / 0xffffffff) * Math.PI * 2;
+    // Stand the lot off the berth ring so it is clear of the station collider it was loaded from.
+    const r = (Number(berth.radius) || 40) + YARD_TUG_LOT.radius + 34;
+    const pos = { x: berth.pos.x + Math.cos(ang) * r, z: berth.pos.z + Math.sin(ang) * r };
+    // The lot's salvage value IS the booked manifest, so a player who cracks it open takes exactly
+    // the freight the tug was hired to move. Nothing is minted here that the economy did not book.
+    const salvagePool = {};
+    for (const line of Array.isArray(manifest.lines) ? manifest.lines : []) {
+      const qty = Math.floor(Number(line && line.qty) || 0);
+      if (line && typeof line.commodityId === 'string' && qty > 0) {
+        salvagePool[line.commodityId] = (salvagePool[line.commodityId] || 0) + qty;
+      }
+    }
+    if (Object.keys(salvagePool).length === 0) return null;
+    const ent = this.helpers.spawnEntity({
+      type: 'payload',
+      team: 2,
+      pos,
+      vel: { x: 0, z: 0 },
+      rot: ang,
+      radius: YARD_TUG_LOT.radius,
+      mass: YARD_TUG_LOT.mass,
+      hull: YARD_TUG_LOT.hull,
+      hullMax: YARD_TUG_LOT.hull,
+      collides: true,
+      ttl: Infinity,
+      homeSectorId: sectorId,
+      physicsBody: {
+        dynamic: true,
+        radius: YARD_TUG_LOT.radius,
+        mass: YARD_TUG_LOT.mass,
+        inertiaY: 0.5 * YARD_TUG_LOT.mass * YARD_TUG_LOT.radius * YARD_TUG_LOT.radius,
+      },
+      data: {
+        sectorId,
+        payloadType: CIVILIAN_MANIFEST_PAYLOAD_TYPE,
+        authoredPayloadAssetId: YARD_TUG_LOT.assetId,
+        payloadStableId: 'yard_tug_lot',
+        yardTugLot: true,
+        towable: true,
+        salvagePool,
+        cargoManifest: manifest,
+      },
+    });
+    if (!ent) return null;
+    // A lot under tow must survive Continue with its tug.
+    ent.flags = Object.assign({}, ent.flags, { persistent: true });
+    this._active.push(ent.id);
+    return ent;
+  },
+
+  _dispatchYardTugs(sectorId) {
+    if (!sectorId) return 0;
+    const assign = this.helpers && this.helpers.npcJobs && this.helpers.npcJobs.assign;
+    if (typeof assign !== 'function') return 0; // golden / headless without job runtime → no tugs
+    if ((this.state.mode || 'flight') !== 'flight') return 0;
+    this._ensureState();
+    const stations = this._sectorStations();
+    if (stations.length < 2) return 0; // a tow needs somewhere to take the body
+
+    let active = this._countYardTugs();
+    if (active >= MAX_YARD_TUGS_PER_SECTOR) return 0;
+
+    // Two ways a tow exists. FIRST, a loose body already drifting in the pocket — the honest case,
+    // and the one a player creates by leaving a kill behind. SECOND, and this is what makes the
+    // profession visible in a quiet five minutes, the yard's own outbound freight: a berth books a
+    // finite lot, and the tug is what moves it. Both are real bodies under the same physics owner.
+    const berth = this._nearestStationTo(stations, stations[0]) ? stations[0] : null;
+    if (!berth || !berth.pos) return 0;
+
+    let dispatched = 0;
+    let existing = this._pickUnclaimedTowTarget(berth);
+
+    while (active < MAX_YARD_TUGS_PER_SECTOR) {
+      const home = existing ? (this._nearestStationTo(stations, existing) || berth) : berth;
+      if (!home || !home.pos) break;
+
+      // Prefer an idle tug hull already in the sector before adding another body to the pocket.
+      let pair = null;
+      for (const rec of this.state.traffic.freighters || []) {
+        if (!rec || rec.role !== 'tug') continue;
+        const ent = this.state.entities && this.state.entities.get && this.state.entities.get(rec.id);
+        if (!ent || ent.alive === false || !ent.data) continue;
+        if (ent.data.ceresActivityCast === true || ent.data.activityActorSlotId) continue;
+        if (ent.data.jobId) continue;
+        pair = { entity: ent, rec };
+        break;
+      }
+      if (!pair) {
+        pair = this._spawnYardTugNear(home, sectorId, active + dispatched);
+        if (!pair) break;
+      }
+
+      // The finite work lot the tug books for this run. Stamped before assign so the job kernel and
+      // the npcJobsRuntime manifest gate see the same numbers the economy owner wrote.
+      this._assignManifest(pair.entity, 'tug', home, sectorId);
+      const manifest = pair.entity.data && pair.entity.data.cargoManifest;
+      // No loose body to fetch → the berth's own outbound lot becomes the physical load.
+      let target = existing;
+      let spawnedLot = null;
+      if (!target) {
+        spawnedLot = this._spawnYardTugLot(home, sectorId, manifest, active + dispatched);
+        target = spawnedLot;
+      }
+      if (!target || !target.pos) break;
+
+      const spec = this._buildJobSpec('tug', pair.entity, home, target, stations, sectorId);
+      if (!spec || !this._stampSalvorClaim(target, pair.entity.data.worldRecordId)) {
+        if (spawnedLot) this._despawnYardTugLot(spawnedLot);
+        break;
+      }
+      const jobId = assign(pair.entity, spec);
+      if (!jobId) {
+        this._clearSalvorClaim(target, pair.entity.data.worldRecordId);
+        if (spawnedLot) this._despawnYardTugLot(spawnedLot);
+        break;
+      }
+      pair.entity.data.jobKind = 'hauler';
+      pair.entity.data.yardTug = true;
+      pair.rec.yardTug = true;
+      pair.rec.role = 'tug';
+      active += 1;
+      dispatched += 1;
+      existing = null;
+    }
+    return dispatched;
+  },
+
+  // A delivered or abandoned lot must leave the world. Without this the yard accumulates one
+  // container per completed run forever, which is unbounded entity growth, not ordinary life.
+  _despawnYardTugLot(lot) {
+    if (!lot) return;
+    lot.alive = false;
+    lot.ttl = 0;
+    if (lot.data) lot.data.yardTugLotRetired = true;
+    const despawn = this.helpers && (this.helpers.despawnEntity || this.helpers.removeEntity);
+    if (typeof despawn === 'function') despawn(lot.id);
+    else if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('entity:destroyed', { id: lot.id, reason: 'yard_tug_lot_delivered' });
+    }
+  },
+
+  // Release a tug whose body vanished (the player stripped it, a cutter finished it, it despawned)
+  // so the hull returns to its ambient stepper instead of hauling an empty line to the yard.
+  _maintainYardTugJobs() {
+    const getJob = this.helpers && this.helpers.npcJobs && this.helpers.npcJobs.get;
+    const release = this.helpers && this.helpers.npcJobs && this.helpers.npcJobs.release;
+    if (typeof getJob !== 'function' || typeof release !== 'function') return;
+    for (const rec of this.state.traffic.freighters || []) {
+      if (!rec || rec.role !== 'tug') continue;
+      const ent = this.state.entities && this.state.entities.get && this.state.entities.get(rec.id);
+      if (!ent || !ent.data || !ent.data.jobId || ent.data.ceresActivityCast === true) continue;
+      const entry = getJob(ent.data.jobId);
+      const job = entry && entry.job;
+      if (!job || job.kind !== 'hauler' || job.corrupt) continue;
+      const targetId = job.payload && job.payload.towTargetId;
+      if (targetId == null) continue;
+      const body = this.state.entities && this.state.entities.get
+        ? this.state.entities.get(targetId)
+        : null;
+      // Still there, or already under tow: leave the run alone.
+      if (body && body.alive !== false && (body.data && body.data.npcTowedByJobId != null
+        || this._salvagePoolTotal(body.data && body.data.salvagePool) > 0)) continue;
+      if (body) this._clearSalvorClaim(body, ent.data.worldRecordId);
+      release(ent.data.jobId);
+    }
+    this._retireDeliveredYardTugLots();
+  },
+
+  // Delivery cleanup. A lot the tug booked is retired once no live job still owns it: the run
+  // completed at the yard, or the tug that was hired for it is gone. A lot the PLAYER is working
+  // (its pool already opened) is left alone — that is their salvage now, not the yard's freight.
+  _retireDeliveredYardTugLots() {
+    const byId = this.state.npcJobs && this.state.npcJobs.byId;
+    for (const ent of this.state.entityList || []) {
+      if (!ent || ent.alive === false || !ent.data || ent.data.yardTugLot !== true) continue;
+      if (ent.data.npcTowedByJobId != null) {
+        // Under tow: alive by definition, and its owning job is the authority.
+        const owner = ent.data.npcTowedByJobId;
+        if (byId && byId[owner]) continue;
+      }
+      let owned = false;
+      for (const rec of this.state.traffic.freighters || []) {
+        if (!rec || rec.role !== 'tug') continue;
+        const tug = this.state.entities && this.state.entities.get && this.state.entities.get(rec.id);
+        if (!tug || tug.alive === false || !tug.data || !tug.data.jobId) continue;
+        const entry = byId && byId[tug.data.jobId];
+        const payload = entry && entry.job && entry.job.payload;
+        if (payload && payload.towTargetId === ent.id) { owned = true; break; }
+      }
+      if (owned) continue;
+      this._despawnYardTugLot(ent);
+    }
   },
 
   _dispatchGeneralSalvors(sectorId) {
@@ -7689,7 +8073,7 @@ export const traffic = {
     if (intent.kind !== 'hauler' && intent.kind !== 'miner') return false;
     const context = intent.kind === 'miner'
       ? this._jobTrafficContext(intent, 'miner', ['miner', 'ore_carrier'])
-      : this._jobTrafficContext(intent, 'hauler', ['hauler', 'courier']);
+      : this._jobTrafficContext(intent, 'hauler', ['hauler', 'courier', 'shuttle', 'tug']);
     if (!context) return false;
 
     const destination = typeof intent.destination === 'string' ? intent.destination : '';

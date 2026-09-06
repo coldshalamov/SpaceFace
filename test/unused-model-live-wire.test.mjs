@@ -1,12 +1,10 @@
-// PQ-136.02 fields FOUR of the leftover occupational hulls through live traffic + npcJobs
-// (rescue lifter, prospector skiff, scrap sweeper, apron shuttle) — the ones with no
-// recorded still-review defect.
+// PQ-136.02 fields the admitted occupational hulls through live traffic + npcJobs
+// (rescue lifter, prospector skiff, scrap sweeper, apron shuttle, yard tug).
 //
-// THREE stay checkpointed OFF live traffic: volatiles_tanker, yard_tug and the
-// inspection_cutter-as-customs. 8257fd9e ("unwire below-bar work hulls") records the
-// still reviews that called the tanker and tug a missing-hull kit and sent customs back to
-// the Hornet. That rejection still stands, so this file guards it both ways: the four must
-// spawn, and the three must not. Do not invert the guard without a passing still review.
+// TWO remain checkpointed OFF live traffic: volatiles_tanker and the inspection_cutter-as-customs.
+// The tug draft uses the current released whole-ship body and existing hauler/economy path;
+// the old still-review note remains open for owner visual review. The two other candidates stay
+// guarded here.
 //
 // Yard props and uncleared lane furniture stay checkpointed off the place selector.
 import assert from 'node:assert/strict';
@@ -28,7 +26,12 @@ import {
 import { SECTOR_ANCHORS } from '../src/data/sectorAnchors.js';
 import { resolvePlaceFileForEntity, wholeShipVisualForEntity } from '../src/render/partsLibrary.js';
 import { npcJobsRuntime } from '../src/systems/npcJobsRuntime.js';
-import { traffic, TRAFFIC_ROLES, trafficRoleMixForSector } from '../src/systems/traffic.js';
+import {
+  traffic,
+  TOWABLE_BODY_MIN_RADIUS_WU,
+  TRAFFIC_ROLES,
+  trafficRoleMixForSector,
+} from '../src/systems/traffic.js';
 import { world } from '../src/systems/world.js';
 
 const ROOT = resolve(fileURLToPath(new URL('../', import.meta.url)));
@@ -41,10 +44,13 @@ const WIRED_LANE_FURNITURE_RELEASE_SHA256 = Object.freeze({
 // Still-rejected in 8257fd9e — packaged and kept on disk, but must not reach live traffic.
 const HELD_BACK_HULLS = Object.freeze([
   { id: 'volatiles_tanker', role: 'tanker', file: 'wholeships/volatiles_tanker.glb' },
-  { id: 'yard_tug', role: 'tug', file: 'wholeships/yard_tug.glb' },
   { id: 'inspection_cutter', role: 'customs', hostile: 'customs_cutter',
     file: 'wholeships/inspection_cutter.glb' },
 ]);
+
+// Professions that only fly when a real body needs them (traffic's `_dispatchGeneralSalvors` /
+// `_dispatchYardTugs`). They are deliberately absent from the weighted ambient mix.
+const DEMAND_DISPATCHED_ROLES = new Set(['tug']);
 
 const FIELDING_SECTOR = 'sector_occupational_fielding_probe';
 const FIELDING_SECTOR_DATA = {
@@ -182,6 +188,15 @@ test('fielded occupational hulls stay on disk and bind live traffic roles', () =
 test('live ambient spawn assigns fielded occupational craft to existing job machines', () => {
   const mix = trafficRoleMixForSector(FIELDING_SECTOR_DATA);
   for (const craft of OCCUPATIONAL_TRAFFIC_CRAFT) {
+    if (DEMAND_DISPATCHED_ROLES.has(craft.role)) {
+      // A demand-dispatched profession must NOT be drawable from the weighted mix. Zero here is the
+      // contract, not an omission: it is what stops a tug rolling into a pocket with nothing to tow
+      // (a hull whose entire job is a tow, flying empty, is the decorative actor PQ-143.01 forbids),
+      // and it is what keeps the seeded role draw byte-identical to the pre-tug goldens.
+      assert.equal(mix[craft.role], 0,
+        `${craft.role} is dispatched against a real body and must carry no ambient weight`);
+      continue;
+    }
     assert.ok(mix[craft.role] > 0, `${craft.role} must be drawable in the ambient mix`);
   }
 
@@ -199,11 +214,22 @@ test('live ambient spawn assigns fielded occupational craft to existing job mach
       const data = entity && entity.data || {};
       const selection = wholeShipVisualForEntity(entity);
       const entry = data.jobId ? bag[data.jobId] : null;
+      const towTargetId = entry && entry.job && entry.job.payload
+        ? entry.job.payload.towTargetId : null;
+      const lot = towTargetId != null
+        ? (sim.state.entityList || []).find((e) => e && e.id === towTargetId && e.alive !== false)
+        : null;
       found.set(craft.role, {
         trafficRole: data.trafficRole,
         trafficLabel: data.trafficLabel,
         jobId: data.jobId || null,
         jobKind: entry && entry.kind || null,
+        jobSpeed: entry && entry.job && entry.job.speed || null,
+        manifestQty: data.cargoManifest && data.cargoManifest.totalQty || 0,
+        towTargetId,
+        lotAlive: !!lot,
+        lotRadius: lot ? Number(lot.radius) || 0 : 0,
+        lotAuthoredAsset: lot && lot.data ? lot.data.authoredPayloadAssetId : null,
         file: selection && selection.file || null,
         assetId: selection && selection.assetId || null,
       });
@@ -227,6 +253,20 @@ test('live ambient spawn assigns fielded occupational craft to existing job mach
     assert.ok(hit.jobId, `${craft.craftId} must receive an npcJobs assignment`);
     assert.equal(hit.jobKind, craft.jobKind,
       `${craft.craftId} must ride the existing ${craft.jobKind} phase machine`);
+    if (craft.role === 'tug') {
+      assert.equal(hit.jobSpeed, TRAFFIC_ROLES.tug.speed,
+        'yard tug uses the slow planning speed in the existing hauler kernel');
+      assert.ok(hit.manifestQty > 0,
+        'yard tug carries a finite economy manifest');
+      // The tow is the job. A tug whose route does not end at a real body it can attach to is the
+      // decorative hull this role is not allowed to be.
+      assert.ok(hit.towTargetId != null, 'yard tug is dispatched against a specific physical body');
+      assert.ok(hit.lotAlive, 'the body the tug was hired to move exists in the world');
+      assert.ok(hit.lotRadius >= TOWABLE_BODY_MIN_RADIUS_WU,
+        `the tow body is bulk a tug is hired for (radius ${hit.lotRadius})`);
+      assert.equal(hit.lotAuthoredAsset, 'pod_cargo_container',
+        'the load wears an authored container body, never an unauthored stand-in');
+    }
   }
 });
 

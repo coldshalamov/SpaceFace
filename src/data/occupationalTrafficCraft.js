@@ -10,14 +10,17 @@
 // traffic role, no whole-ship binding, no spawn):
 //
 //   volatiles_tanker  (would be role `tanker`)
-//   yard_tug          (would be role `tug`)
 //   inspection_cutter (would be role `customs`)
 //
-// These three were wired once (aef7caad) and unwired again by 8257fd9e, whose still
-// reviews called the tanker and tug a "missing-hull kit" and sent customs traffic back to
-// the Hornet. That is a recorded ART rejection, not an oversight, so re-fielding them is
-// an owner call. They are queued for a fresh chase-camera still review and stay candidates
-// — do not delete the bodies, and do not re-add rows here without that review passing.
+// The tanker, tug, and cutter were wired once (aef7caad) and unwired again by 8257fd9e.
+// The old still review called the tanker and tug a "missing-hull kit" and sent customs back
+// to the Hornet. The tanker and cutter remain held-back candidates; the tug row below is a
+// bounded draft wiring for the current owner visual review, and its final admission remains
+// an owner decision.
+//
+// The draft yard-tug behavior uses the existing hauler job/economy path. Its physical tow
+// attachment remains a separate combat/tether owner seam; the role still carries a real
+// finite freight manifest while that seam is completed.
 
 export const OCCUPATIONAL_TRAFFIC_CRAFT = Object.freeze([
   Object.freeze({
@@ -51,6 +54,14 @@ export const OCCUPATIONAL_TRAFFIC_CRAFT = Object.freeze([
     assetId: 'SF_WHOLESHIP_APRON_SHUTTLE',
     jobKind: 'hauler',
     releaseUrl: 'assets/ships/release/parts/wholeships/apron_shuttle.glb',
+  }),
+  Object.freeze({
+    craftId: 'yard_tug',
+    role: 'tug',
+    file: 'wholeships/yard_tug.glb',
+    assetId: 'SF_WHOLESHIP_YARD_TUG',
+    jobKind: 'hauler',
+    releaseUrl: 'assets/ships/release/parts/wholeships/yard_tug.glb',
   }),
 ]);
 

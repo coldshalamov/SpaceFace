@@ -51,6 +51,7 @@ export const FREIGHT_TRADING_ROLES = Object.freeze([
   'smuggler',
   'express',
   'shuttle',
+  'tug',
 ]);
 
 const ROLE_CAPACITY = Object.freeze({
@@ -61,6 +62,8 @@ const ROLE_CAPACITY = Object.freeze({
   smuggler: 14,
   express: 28,
   shuttle: 16,
+  // A yard tug carries a finite work lot while its physical tow attachment is separate.
+  tug: 24,
   patrol: 0,
   escort: 0,
   pirate: 0,

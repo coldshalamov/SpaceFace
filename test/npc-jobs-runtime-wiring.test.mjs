@@ -19,6 +19,7 @@ import { traffic } from '../src/systems/traffic.js';
 import { world } from '../src/systems/world.js';
 import { save } from '../src/save/saveSystem.js';
 import { NPC_JOB_PHASE, NPC_JOB_KIND } from '../src/systems/npcJobs.js';
+import { CURRENT_VERSION } from '../src/data/saveVersion.js';
 import { resolvePropulsionProfile } from '../src/core/flight/propulsionCatalog.js';
 
 const DT = 1 / 60;
@@ -513,7 +514,11 @@ test('save/Continue (real envelope): a restored job relinks after its durable hu
 
   const saveSys = sim.registry.get('save');
   const envelope = saveSys.serialize('test-slot');
-  assert.equal(envelope.version, 12, 'envelope stamped v12');
+  // Bind to the live constant, not a literal. This assertion is here to prove the envelope is
+  // stamped at all; hardcoding the number meant every save-version bump left it red for a
+  // reason that has nothing to do with npcJobs (it read 12 against a v14 envelope).
+  assert.equal(envelope.version, CURRENT_VERSION,
+    `envelope stamped at the current save version (v${CURRENT_VERSION})`);
   assert.ok(envelope.data.npcJobs && envelope.data.npcJobs.byId, 'envelope carries the npcJobs bag');
   const savedJob = envelope.data.npcJobs.byId['job:rec-continue'];
   assert.ok(savedJob && savedJob.job, 'the LIVE job is serialized (registered runtime, not the {} unregistered fallback)');

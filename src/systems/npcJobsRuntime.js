@@ -94,6 +94,22 @@ const NPC_MINER_FIELD_RETARGET_INTERVAL_S = 1;
 const NPC_MINER_BASE_WORK_S = 30;
 const NPC_MINER_THIN_WORK_S = 54;
 
+// A yard tug's freight manifest and its physical load are two different authored bodies. The
+// manifest is still settled by the freight/economy owner; this runtime only binds an already-live
+// payload/wreck to the tug through the ordinary combat attachment service. No body is spawned or
+// moved here, and an empty/invalid manifest cannot create a decorative tow line.
+const NPC_TOW_ATTACHMENT_DEF_ID = 'tether_standard';
+const NPC_TOW_MAX_RANGE_WU = 390;
+const NPC_TOW_SCAN_INTERVAL_S = 0.5;
+// At or above this the body is anchored scenery rather than freight (see isTowableCargoTarget).
+const NPC_TOW_PINNED_BODY_MASS = 1e6;
+const NPC_TOW_PHASES = new Set([
+  NPC_JOB_PHASE.DEPART,
+  NPC_JOB_PHASE.TRANSIT,
+  NPC_JOB_PHASE.APPROACH,
+  NPC_JOB_PHASE.UNLOAD,
+]);
+
 // R6 escort formation is deliberately one exact authored relationship, not a generic targetRef
 // movement language. Stable record/job ids remain the authority across rematerialization; live
 // numeric ids are looked up through the current job entries and are never retained or serialized.
@@ -344,6 +360,57 @@ function cleanClaimId(value) {
   if (typeof value !== 'string') return null;
   const trimmed = value.trim();
   return trimmed.length > 0 && trimmed.length <= 200 ? trimmed : null;
+}
+
+function finiteManifestQuantity(manifest) {
+  if (!manifest || typeof manifest !== 'object') return 0;
+  const declared = Number(manifest.totalQty);
+  if (!(Number.isFinite(declared) && declared > 0)) return 0;
+  if (!Array.isArray(manifest.lines) || manifest.lines.length === 0) return Math.floor(declared);
+  let lineTotal = 0;
+  for (const line of manifest.lines) {
+    const qty = Number(line && line.qty);
+    if (Number.isFinite(qty) && qty > 0) lineTotal += qty;
+  }
+  return Math.max(0, Math.min(Math.floor(declared), Math.floor(lineTotal)));
+}
+
+function finiteSalvageQuantity(pool) {
+  if (!pool || typeof pool !== 'object') return 0;
+  let total = 0;
+  for (const value of Object.values(pool)) {
+    const qty = Number(value);
+    if (Number.isFinite(qty) && qty > 0) total += qty;
+  }
+  return Math.floor(total);
+}
+
+function isTugJob(entry, entity) {
+  const data = entity && entity.data;
+  const payload = entry && entry.job && entry.job.payload;
+  return !!entry && !!entry.job && entry.job.kind === NPC_JOB_KIND.HAULER
+    && (data && (data.trafficRole === 'tug' || data.role === 'tug')
+      || payload && (payload.role === 'tug' || payload.freightRole === 'tug'));
+}
+
+// `ownerRecordId` is the stable world-record id of the tug asking. A body reserved by the cleanup
+// profession belongs to that cutter and is not tug work — but traffic reserves the tug's OWN booked
+// lot through the same field, so a claim held by this tug is a reservation, not a refusal.
+function isTowableCargoTarget(target, ownerRecordId = null) {
+  if (!target || target.alive === false || (target.type !== 'payload' && target.type !== 'wreck')) return false;
+  const data = target.data;
+  if (!data || data.npcTowedByJobId != null) return false;
+  if (data.salvorClaimedBy != null && data.salvorClaimedBy !== ownerRecordId) return false;
+  // Authored site structure and pinned scenery are never freight. The nearest-body fallback scan
+  // below runs inside a 390 WU pocket that on Ceres holds nineteen `world_site_*` proxies at mass
+  // 1e9; binding one would draw a line to an immovable object and misreport an authored place as
+  // loose salvage. traffic.js applies the same two gates from its side.
+  if (data.worldSiteId != null || data.worldObjectId != null) return false;
+  if (Number(target.mass) >= NPC_TOW_PINNED_BODY_MASS) return false;
+  // Existing industrial payloads and salvage wrecks carry a finite salvagePool. A producer may
+  // additionally mark a finite cargo manifest as towable, but the marker alone is never enough.
+  return finiteSalvageQuantity(data.salvagePool) > 0
+    || (data.towable === true && finiteManifestQuantity(data.cargoManifest) > 0);
 }
 
 const THREAT_QUERY_DIAGNOSTIC_FIELDS = Object.freeze([
@@ -1457,6 +1524,13 @@ export const npcJobsRuntime = {
       entityId: entity.id,
       lastAdvanceSimT: finite(this.state.simTime, 0),
       threatId: null,
+      // Transient physical tow sidecar. Numeric entity ids are intentionally not serialized; the
+      // live attachment service remains the authority and this cache is only a lifecycle join.
+      towAttachmentId: null,
+      towTargetId: null,
+      towOwnerRef: null,
+      towTargetRef: null,
+      towNextScanSimT: 0,
     };
     if (realTargetActor && (job.schema !== NPC_JOB_SCHEMA || job.id !== jobId
       || job.kind !== realTargetActor.descriptor.slot.jobKind || job.corrupt === true
@@ -1468,6 +1542,156 @@ export const npcJobsRuntime = {
     if (formationSlot) this._bindCeresFormationSlot(formationSlot, entry, entity);
     this._refreshCeresRealTargetsForEntry(entry, entity);
     return jobId;
+  },
+
+  _combatAttachments() {
+    const combat = this.registry && typeof this.registry.get === 'function'
+      ? this.registry.get('combat')
+      : null;
+    return combat && combat.kernel && combat.kernel.attachments
+      && typeof combat.kernel.attachments.create === 'function'
+      ? combat.kernel.attachments
+      : null;
+  },
+
+  _findTugTowTarget(entry, entity) {
+    const data = entity && entity.data;
+    const ownerRecordId = data && typeof data.worldRecordId === 'string' ? data.worldRecordId : null;
+    const payload = entry && entry.job && entry.job.payload;
+    const explicitId = data && data.towTargetId != null && data.towTargetId !== ''
+      ? data.towTargetId
+      : payload && payload.towTargetId != null && payload.towTargetId !== ''
+        ? payload.towTargetId
+        : null;
+    const entities = this.state && this.state.entities;
+    if (explicitId != null) {
+      const explicit = entities && typeof entities.get === 'function' ? entities.get(explicitId) : null;
+      if (!explicit || !isTowableCargoTarget(explicit, ownerRecordId)
+        || !explicit.pos || !entity.pos
+        || Math.hypot(explicit.pos.x - entity.pos.x, explicit.pos.z - entity.pos.z) > NPC_TOW_MAX_RANGE_WU) {
+        return null;
+      }
+      const targetSector = explicit.data && explicit.data.sectorId;
+      if (targetSector && entry.sectorId && targetSector !== entry.sectorId) return null;
+      return explicit;
+    }
+
+    const list = this.state && this.state.entityList;
+    if (!Array.isArray(list) || !entity || !entity.pos) return null;
+    let best = null;
+    let bestDistance = Infinity;
+    let bestId = '';
+    const maxDistanceSq = NPC_TOW_MAX_RANGE_WU * NPC_TOW_MAX_RANGE_WU;
+    for (const candidate of list) {
+      if (!candidate || candidate === entity || candidate.alive === false
+        || !candidate.pos || !entities || entities.get(candidate.id) !== candidate
+        || !isTowableCargoTarget(candidate, ownerRecordId)) continue;
+      const targetSector = candidate.data && candidate.data.sectorId;
+      if (targetSector && entry.sectorId && targetSector !== entry.sectorId) continue;
+      const dx = candidate.pos.x - entity.pos.x;
+      const dz = candidate.pos.z - entity.pos.z;
+      const distanceSq = dx * dx + dz * dz;
+      if (!Number.isFinite(distanceSq) || distanceSq > maxDistanceSq) continue;
+      const candidateId = String(candidate.id);
+      if (distanceSq < bestDistance
+        || (distanceSq === bestDistance && candidateId < bestId)) {
+        best = candidate;
+        bestDistance = distanceSq;
+        bestId = candidateId;
+      }
+    }
+    return best;
+  },
+
+  _clearTugAttachment(entry, reason = 'npc_tow_cleanup') {
+    if (!entry) return false;
+    const attachmentId = entry.towAttachmentId;
+    const attachments = this._combatAttachments();
+    const attachment = attachmentId != null && attachments && typeof attachments.get === 'function'
+      ? attachments.get(attachmentId)
+      : null;
+    if (attachment && attachment.state === 'active' && attachments
+      && typeof attachments.breakAttachment === 'function') {
+      attachments.breakAttachment(attachment, reason, null);
+    }
+    const owner = entry.towOwnerRef
+      || (entry.entityId != null && this.state.entities && this.state.entities.get(entry.entityId));
+    const target = entry.towTargetRef
+      || (entry.towTargetId != null && this.state.entities && this.state.entities.get(entry.towTargetId));
+    const jobId = entry.worldRecordId ? `job:${entry.worldRecordId}` : null;
+    if (owner && owner.data) {
+      if (owner.data.npcTowAttachmentId === attachmentId) delete owner.data.npcTowAttachmentId;
+      if (owner.data.npcTowJobId === jobId) delete owner.data.npcTowJobId;
+    }
+    if (target && target.data) {
+      if (target.data.npcTowAttachmentId === attachmentId) delete target.data.npcTowAttachmentId;
+      if (target.data.npcTowedByJobId === jobId) delete target.data.npcTowedByJobId;
+    }
+    entry.towAttachmentId = null;
+    entry.towTargetId = null;
+    entry.towOwnerRef = null;
+    entry.towTargetRef = null;
+    entry.towNextScanSimT = 0;
+    return !!attachment || attachmentId != null;
+  },
+
+  _tryAttachTug(entry, entity, simT = finite(this.state && this.state.simTime, 0)) {
+    if (!isTugJob(entry, entity) || !NPC_TOW_PHASES.has(entry.job.phase)) return false;
+    const manifest = entity.data && entity.data.cargoManifest
+      || entry.job.payload && entry.job.payload.manifest;
+    if (finiteManifestQuantity(manifest) <= 0) return false;
+    const attachments = this._combatAttachments();
+    if (!attachments) return false;
+
+    if (entry.towAttachmentId != null) {
+      const existing = attachments.get(entry.towAttachmentId);
+      if (existing && existing.state === 'active' && existing.ownerId === entity.id
+        && existing.controlMode === 'npc_tow') return true;
+      this._clearTugAttachment(entry, 'npc_tow_stale');
+    }
+
+    // Save/reload may restore the combat attachment before this runtime has re-linked its transient
+    // sidecar. Adopt only an active line owned by this tug and explicitly created for NPC towing.
+    if (typeof attachments.listForEntity === 'function') {
+      const restored = attachments.listForEntity(entity.id, true)
+        .find((candidate) => candidate.ownerId === entity.id && candidate.controlMode === 'npc_tow');
+      if (restored) {
+        entry.towAttachmentId = restored.id;
+        entry.towTargetId = restored.targetId;
+        entry.towOwnerRef = entity;
+        entry.towTargetRef = this.state.entities && this.state.entities.get(restored.targetId) || null;
+        return true;
+      }
+    }
+
+    const data = entity.data;
+    const explicitTarget = data && data.towTargetId != null && data.towTargetId !== '';
+    if (!explicitTarget && simT < finite(entry.towNextScanSimT, 0)) return false;
+    entry.towNextScanSimT = simT + NPC_TOW_SCAN_INTERVAL_S;
+    const target = this._findTugTowTarget(entry, entity);
+    if (!target || !entity.pos || !target.pos) return false;
+    const created = attachments.create({
+      defId: NPC_TOW_ATTACHMENT_DEF_ID,
+      ownerId: entity.id,
+      targetId: target.id,
+      controlMode: 'npc_tow',
+      sourceWorld: { x: entity.pos.x, y: 0, z: entity.pos.z },
+      targetWorld: { x: target.pos.x, y: 0, z: target.pos.z },
+    });
+    if (!created || created.ok !== true || !created.attachment) return false;
+    const attachment = created.attachment;
+    entry.towAttachmentId = attachment.id;
+    entry.towTargetId = target.id;
+    entry.towOwnerRef = entity;
+    entry.towTargetRef = target;
+    if (data) {
+      data.npcTowAttachmentId = attachment.id;
+      data.npcTowJobId = `job:${entry.worldRecordId}`;
+    }
+    target.data = target.data || {};
+    target.data.npcTowAttachmentId = attachment.id;
+    target.data.npcTowedByJobId = `job:${entry.worldRecordId}`;
+    return true;
   },
 
   release(jobId) {
@@ -1489,6 +1713,7 @@ export const npcJobsRuntime = {
       delete ent.data.jobPhase;
       delete ent.data.jobProgress;
     }
+    this._clearTugAttachment(entry, 'npc_tow_job_released');
     const formationSlot = this._ceresFormationSlotForWorldRecordId(entry.worldRecordId);
     if (formationSlot) this._clearCeresFormationEntry(formationSlot, entry);
     if (realTargetJobBinding) this._clearCeresRealTargetsForJob(jobId, true);
@@ -2019,6 +2244,13 @@ export const npcJobsRuntime = {
         entity.data.jobProgress = Number.isFinite(entry.job.progress) ? entry.job.progress : 0;
       }
       const claimed = !!entry.control;
+
+      // A tug's load is a real attachment owned by the combat/physics authority. Bind it only after
+      // the finite freight job has left loading, and never while a controller lease owns the hull.
+      // The movement writer below remains the sole intent producer; SG-02 pulls the target body.
+      if (!claimed && entry.job.phase !== NPC_JOB_PHASE.COMPLETE) {
+        this._tryAttachTug(entry, entity, simT);
+      }
 
       // Terminal hauler: hand the hull back to its ambient stepper (ruling 5: job ends with entity).
       // NOT while leased: dropping the entry here would delete `data.jobId`, the ambient stepper
@@ -2632,6 +2864,7 @@ export const npcJobsRuntime = {
         delete ent.data.jobPhase;
         delete ent.data.jobProgress;
       }
+      this._clearTugAttachment(entry, 'npc_tow_sector_exit');
       virtualize(entry.job);
       entry.entityId = null;
       entry.threatId = null;
@@ -2723,6 +2956,7 @@ export const npcJobsRuntime = {
     if (entry.job.phase === NPC_JOB_PHASE.COMPLETE) {
       // A hauler that finished its run while away: no live job to resume; hand the hull back.
       clearRouteBrake(entity);
+      this._clearTugAttachment(entry, 'npc_tow_offscreen_complete');
       if (entity.data && entity.data.jobId === ('job:' + entry.worldRecordId)) delete entity.data.jobId;
       if (formationSlot) this._clearCeresFormationEntry(formationSlot, entry);
       delete this._byId()['job:' + entry.worldRecordId];
@@ -2790,6 +3024,12 @@ export const npcJobsRuntime = {
     if (id == null) return;
     const entry = this._entryForEntity(id);
     if (entry) this.release('job:' + entry.worldRecordId);
+    const byId = this._byId();
+    for (const jobId of Object.keys(byId)) {
+      const candidate = byId[jobId];
+      if (!candidate || candidate.towTargetId !== id) continue;
+      this._clearTugAttachment(candidate, 'npc_tow_target_gone');
+    }
   },
 
   // ── save / restore ────────────────────────────────────────────────────────────────────────────
@@ -2839,6 +3079,14 @@ export const npcJobsRuntime = {
         clearRouteBrake(entity);
         delete entity.data.jobId;
       }
+      if (entity && entity.data) {
+        // Tow ids are live numeric joins. Combat persistence restores the attachment itself (when
+        // applicable); the runtime adopts it on the next materialized tug tick, so stale markers
+        // from a retired object must never block a new finite load.
+        delete entity.data.npcTowAttachmentId;
+        delete entity.data.npcTowJobId;
+        delete entity.data.npcTowedByJobId;
+      }
     }
     const byId = {};
     const src = data && data.byId && typeof data.byId === 'object' ? data.byId : {};
@@ -2856,6 +3104,11 @@ export const npcJobsRuntime = {
         entityId: null,
         lastAdvanceSimT: finite(saved.lastAdvanceSimT, 0),
         threatId: null,
+        towAttachmentId: null,
+        towTargetId: null,
+        towOwnerRef: null,
+        towTargetRef: null,
+        towNextScanSimT: 0,
       };
     }
     this.state.npcJobs = { byId, siteCouriers: {} };
