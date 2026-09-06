@@ -15973,7 +15973,7 @@
       "priority": 421,
       "title": "Virtualise the long lists",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-180.00"
       ],
@@ -15991,8 +15991,10 @@
         "npm run check:ui-effects",
         "node scripts/check-ui-screen-imports.mjs"
       ],
-      "receiptRefs": [],
-      "brief": "Market, contracts, ledger, codex and results lists render only visible rows. DONE WHEN: A 2,000-row list stays under budget; keyboard navigation still reaches every row."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-184-01-REPORT.md"
+      ],
+      "brief": "DONE 2026-09-06: live Market uses bounded window rendering; 2,000-row production-component fixture averages 1.35 ms with 98 nodes, Home/End focus and stable identity through sorting/filtering. Existing bounded or paginated lists retain their limits. See receipt for measurement scope."
     },
     {
       "id": "PQ-184.02",
