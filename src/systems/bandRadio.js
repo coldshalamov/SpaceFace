@@ -24,6 +24,9 @@ export const BAND_MIN_SIGNAL = 0.08;
 export const NUMBERS_DROP_DENOMINATOR = 29;
 
 const LANDMARK_PROXIMITY_SAMPLE_INTERVAL_S = 0.2;
+// Live landmark carriers, one per authored landmark (see flavor/060-quiessence, 070-hush, and the
+// Resonance Obelisk landmark lore). The runtime samples world entities carrying the source's data
+// key and feeds the falloff strength into resolveLandmarkBleed.
 const LIVE_LANDMARK_SOURCES = Object.freeze({
   landmark_quiessence: Object.freeze({
     sectorId: 'sector_pallas_drift',
@@ -36,6 +39,12 @@ const LIVE_LANDMARK_SOURCES = Object.freeze({
     dataKey: 'flavorSourceId',
     dataValue: 'planet_hush',
     falloffRadius: 2400,
+  }),
+  resonance_obelisk: Object.freeze({
+    sectorId: 'sector_veil_nebula',
+    dataKey: 'flavorTargetRef',
+    dataValue: 'landmark_c2_resonance_obelisk',
+    falloffRadius: 1900,
   }),
 });
 const LIVE_LANDMARK_SOURCE_ENTRIES = Object.freeze(Object.entries(LIVE_LANDMARK_SOURCES));
@@ -343,14 +352,12 @@ export const bandRadio = {
     this._nextLandmarkProximitySampleAtS = now + LANDMARK_PROXIMITY_SAMPLE_INTERVAL_S;
     if (!player || !finitePoint(player.pos)) {
       const own = this._ensureState();
-      setProximityValue(own.proximitySources, 'landmark_quiessence', 0);
-      setProximityValue(own.proximitySources, 'planet_hush', 0);
+      for (const [sourceId] of LIVE_LANDMARK_SOURCE_ENTRIES) setProximityValue(own.proximitySources, sourceId, 0);
       return true;
     }
 
     const sectorId = this.state.world && this.state.world.currentSectorId;
-    let quiessenceStrength = 0;
-    let hushStrength = 0;
+    const strengths = Object.fromEntries(LIVE_LANDMARK_SOURCE_ENTRIES.map(([sourceId]) => [sourceId, 0]));
     for (const entity of entities.values()) {
       if (!entity || entity === player || entity.alive === false || !finitePoint(entity.pos)) continue;
       const data = entity.data && typeof entity.data === 'object' ? entity.data : {};
@@ -363,14 +370,14 @@ export const bandRadio = {
         const centerDistance = Math.hypot(entity.pos.x - player.pos.x, entity.pos.z - player.pos.z);
         const surfaceDistance = Math.max(0, centerDistance - Math.max(0, finite(entity.radius, 0)));
         const strength = clamp01(1 - surfaceDistance / falloffRadius);
-        if (sourceId === 'planet_hush') hushStrength = Math.max(hushStrength, strength);
-        else quiessenceStrength = Math.max(quiessenceStrength, strength);
+        strengths[sourceId] = Math.max(strengths[sourceId], strength);
       }
     }
 
     const own = this._ensureState();
-    setProximityValue(own.proximitySources, 'landmark_quiessence', quiessenceStrength);
-    setProximityValue(own.proximitySources, 'planet_hush', hushStrength);
+    for (const [sourceId, strength] of Object.entries(strengths)) {
+      setProximityValue(own.proximitySources, sourceId, strength);
+    }
     return true;
   },
 
@@ -386,7 +393,7 @@ export const bandRadio = {
   },
 
   _setSourceProximity(payload) {
-    if (!payload || !['landmark_quiessence', 'planet_hush'].includes(payload.sourceId)) return;
+    if (!payload || !['landmark_quiessence', 'planet_hush', 'resonance_obelisk'].includes(payload.sourceId)) return;
     const own = this._ensureState();
     const strength = clamp01(finite(payload.strength, 0));
     if (strength <= 0) delete own.proximitySources[payload.sourceId];

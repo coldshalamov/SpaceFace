@@ -118,21 +118,28 @@ export function selectBandLine(channelOrId, context, programSeed, sequence, sect
 }
 
 /** Landmark carriers are supplied through the additive band:sourceProximity seam. The Hush wins
- * whenever its RF hole is in range; Quiessence otherwise overrides the tuned carrier nearby. */
+ * whenever its RF hole is in range; Quiessence otherwise overrides the tuned carrier nearby, and
+ * the Resonance Obelisk pulses its ident carrier once its anomaly is in falloff. */
 export function resolveLandmarkBleed(proximitySources = {}) {
   const channel = BAND_CHANNEL_BY_ID.landmark_bleed;
   if (!channel) return null;
-  const hushStrength = clamp01(finite(proximitySources.planet_hush, 0));
-  const quiessenceStrength = clamp01(finite(proximitySources.landmark_quiessence, 0));
+  const strengthBySource = {
+    planet_hush: clamp01(finite(proximitySources.planet_hush, 0)),
+    landmark_quiessence: clamp01(finite(proximitySources.landmark_quiessence, 0)),
+    resonance_obelisk: clamp01(finite(proximitySources.resonance_obelisk, 0)),
+  };
+  // Fixed deterministic precedence: the Hush's silence outranks any ident carrier; the two idents
+  // live in different sectors, so their order never actually competes.
   let sourceId = null;
-  if (hushStrength >= 0.6) sourceId = 'planet_hush';
-  else if (quiessenceStrength >= 0.55) sourceId = 'landmark_quiessence';
+  if (strengthBySource.planet_hush >= 0.6) sourceId = 'planet_hush';
+  else if (strengthBySource.landmark_quiessence >= 0.55) sourceId = 'landmark_quiessence';
+  else if (strengthBySource.resonance_obelisk >= 0.55) sourceId = 'resonance_obelisk';
   if (!sourceId) return null;
   const behavior = channel.sourceBehaviors.find((entry) => entry.sourceId === sourceId) || null;
   const silence = !!(behavior && behavior.kind === 'silence');
   return Object.freeze({
     sourceId,
-    strength: sourceId === 'planet_hush' ? hushStrength : quiessenceStrength,
+    strength: strengthBySource[sourceId],
     silence,
     ident: behavior && behavior.ident || null,
     bed: channel.bed,

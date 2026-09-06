@@ -69,4 +69,14 @@ test('Band content pick and landmark bleed are deterministic and source-bound', 
   const hush = bandData.resolveLandmarkBleed({ planet_hush: 0.9 });
   assert.equal(hush.sourceId, 'planet_hush');
   assert.equal(hush.silence, true);
+
+  const obelisk = bandData.resolveLandmarkBleed({ resonance_obelisk: 0.7 });
+  assert.equal(obelisk.sourceId, 'resonance_obelisk', 'the Veil obelisk pulses its ident carrier in falloff');
+  assert.equal(obelisk.silence, false);
+  assert.ok(obelisk.ident && obelisk.ident.text.length > 0, 'the obelisk ident carrier is authored');
+  assert.ok(obelisk.lines.length >= 4 && obelisk.lines.every((line) => line.sourceId === 'resonance_obelisk'));
+  assert.equal(bandData.resolveLandmarkBleed({ resonance_obelisk: 0.3 }), null,
+    'below the falloff threshold the obelisk stays silent');
+  assert.equal(bandData.resolveLandmarkBleed({ planet_hush: 0.9, resonance_obelisk: 0.9 }).sourceId, 'planet_hush',
+    'the Hush silence outranks any ident carrier');
 });

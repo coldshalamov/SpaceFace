@@ -130,6 +130,10 @@ export default defineFlavorPack({
           ident: { id: 'quiessence_ident', text: 'QUIET MEMORIAL: THEY ARE NOT DEAD.' },
         },
         { id: 'hush_carrier', sourceId: 'planet_hush', kind: 'silence' },
+        {
+          id: 'obelisk_carrier', sourceId: 'resonance_obelisk', kind: 'ident',
+          ident: { id: 'obelisk_ident', text: 'RESONANCE: THE OBELISK COUNTS YOUR SCANS.' },
+        },
       ],
       lines: [
         { id: 'local_quiessence_01', sourceId: 'landmark_quiessence', text: 'Seventeen intact hulls answer only by staying dark.' },
@@ -140,6 +144,10 @@ export default defineFlavorPack({
         { id: 'local_hush_02', sourceId: 'planet_hush', text: 'Carrier absent. Static absent. Nothing to tune.' },
         { id: 'local_hush_03', sourceId: 'planet_hush', text: 'Gain rises. The silence stays level.' },
         { id: 'local_hush_04', sourceId: 'planet_hush', text: "Signal resumes beyond the Hush's orbital shadow." },
+        { id: 'local_obelisk_01', sourceId: 'resonance_obelisk', text: 'Your own ping comes back a half-beat early.' },
+        { id: 'local_obelisk_02', sourceId: 'resonance_obelisk', text: 'Carrier bears no callsign. The interval is a countdown.' },
+        { id: 'local_obelisk_03', sourceId: 'resonance_obelisk', text: 'Vael patrol chatter drops every word near the anomaly.' },
+        { id: 'local_obelisk_04', sourceId: 'resonance_obelisk', text: "The dark companion answers in your hull's resonance band." },
       ],
     },
   ],
