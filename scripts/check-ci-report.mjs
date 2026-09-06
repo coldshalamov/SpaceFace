@@ -23,6 +23,23 @@ const SMOKE_COMMANDS = [
   // PQ-137.10: every FEEL_CONTRACT bar the bench can reach (B1-B8, B11, B13) is a real-path scenario
   // with a test that prints its number; feel that is not measured regresses.
   cmd('feel-scenarios', 'npm run check:feel:scenarios', LONG_TIMEOUT_MS),
+  // Wired owner-seam proofs: each is a new node --test of live production that smoke must run.
+  cmd('seam-cloak', 'node --test test/seam-cloak.test.mjs'),
+  cmd('seam-beacons', 'node --test test/seam-beacons.test.mjs'),
+  cmd('seam-fragile-cargo', 'node --test test/seam-fragile-cargo.test.mjs'),
+  cmd('seam-jettison-impulse', 'node --test test/seam-jettison-impulse.test.mjs'),
+  cmd('seam-bullet-time', 'node --test test/seam-bullet-time.test.mjs'),
+  cmd('seam-scan-reveal', 'node --test test/seam-scan-reveal.test.mjs'),
+  cmd('seam-kill-causality', 'node --test test/seam-kill-causality.test.mjs'),
+  cmd('seam-combat-statuses', 'node --test test/seam-combat-statuses.test.mjs'),
+  cmd('seam-combat-subsystems', 'node --test test/seam-combat-subsystems.test.mjs'),
+  cmd('seam-fire-discipline', 'node --test test/seam-fire-discipline.test.mjs'),
+  cmd('seam-gunnery', 'node --test test/seam-gunnery.test.mjs'),
+  cmd('seam-inspection', 'node --test test/seam-inspection.test.mjs'),
+  cmd('seam-pirate-disguise', 'node --test test/seam-pirate-disguise.test.mjs'),
+  cmd('seam-terrain-anchors', 'node --test test/seam-terrain-anchors.test.mjs'),
+  cmd('seam-bounty-hunt', 'node --test test/seam-bounty-hunt.test.mjs'),
+  cmd('seam-mines', 'node --test test/seam-mines.test.mjs'),
 ];
 
 // NOTE: the CLI entry point is at the BOTTOM of this file, not here. The group/shard classifier
