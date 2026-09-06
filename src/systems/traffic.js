@@ -199,7 +199,7 @@ const CIVILIAN_VIOLENCE_RADIUS_SQ = CIVILIAN_VIOLENCE_RADIUS_WU * CIVILIAN_VIOLE
 const CIVILIAN_ALARM_TTL_S = 5;
 const CIVILIAN_VIOLENCE_RING_CAP = 8;
 const CIVILIAN_ALARM_FLEE_ROLES = new Set(['hauler', 'courier', 'ore_carrier', 'shuttle']);
-const CIVILIAN_ALARM_HOLD_ROLES = new Set(['miner', 'surveyor']);
+const CIVILIAN_ALARM_HOLD_ROLES = new Set(['miner', 'surveyor', 'tender', 'salvor']);
 const CERES_LAW_RESPONSE_SLOT_IDS = new Set([
   'ceres_ambush_escort',
   'ceres_cathedral_patrol',
@@ -3703,7 +3703,7 @@ export const traffic = {
    * Returns true only when this owner wrote ambient intent for the tick.
    */
   _reactCivilianViolence(e, rec, stations, state) {
-    const roleName = rec.role || (e.data && (e.data.trafficRole || e.data.role)) || '';
+    const roleName = (rec && rec.role) || (e.data && (e.data.trafficRole || e.data.jobKind || e.data.role)) || '';
     const doesFlee = CIVILIAN_ALARM_FLEE_ROLES.has(roleName);
     const doesHold = CIVILIAN_ALARM_HOLD_ROLES.has(roleName);
     if (!doesFlee && !doesHold) return false;
@@ -3713,19 +3713,23 @@ export const traffic = {
     const hit = this._nearbyViolence(e, now);
     const jobId = e.data && e.data.jobId;
     const jobs = this.helpers && this.helpers.npcJobs;
-    const carrying = !!(rec && rec.carrying);
+    const carrying = !!((rec && rec.carrying)
+      || (e.data?.cargoManifest?.totalQty > 0)
+      || (rec && rec.manifest && rec.manifest.totalQty > 0));
 
     if (!hit) {
-      if (rec.violenceAlarmed) {
-        rec.violenceAlarmed = false;
+      const alarmed = (rec && rec.violenceAlarmed) || (e.data && e.data.violenceAlarmed);
+      if (alarmed) {
+        if (rec) rec.violenceAlarmed = false;
+        if (e.data) e.data.violenceAlarmed = false;
         if (jobId && jobs && typeof jobs.resume === 'function') jobs.resume(jobId);
-        const resumeId = rec.violenceResumeTargetId;
-        rec.violenceResumeTargetId = null;
+        const resumeId = rec ? rec.violenceResumeTargetId : null;
+        if (rec) rec.violenceResumeTargetId = null;
         if (!jobId && resumeId != null) {
           const prev = state.entities && typeof state.entities.get === 'function'
             ? state.entities.get(resumeId)
             : null;
-          if (prev && prev.alive !== false) rec.targetId = resumeId;
+          if (prev && prev.alive !== false && rec) rec.targetId = resumeId;
         }
         if (!jobId && e.data && e.data.intent) e.data.intent.brake = false;
       }
@@ -3745,11 +3749,13 @@ export const traffic = {
         threat.slow = carrying;
         jobs.interrupt(jobId, threat);
       }
-      rec.violenceAlarmed = true;
+      if (rec) rec.violenceAlarmed = true;
+      if (e.data) e.data.violenceAlarmed = true;
       return false;
     }
 
-    rec.violenceAlarmed = true;
+    if (rec) rec.violenceAlarmed = true;
+    if (e.data) e.data.violenceAlarmed = true;
     if (hold) {
       const aim = (e.data && e.data.intent && Number.isFinite(e.data.intent.aimAngle))
         ? e.data.intent.aimAngle

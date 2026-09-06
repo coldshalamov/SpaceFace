@@ -1484,7 +1484,11 @@ export const npcJobsRuntime = {
       ent = null;
     }
     clearRouteBrake(ent);
-    if (ent && ent.data && ent.data.jobId === jobId) delete ent.data.jobId;
+    if (ent && ent.data && ent.data.jobId === jobId) {
+      delete ent.data.jobId;
+      delete ent.data.jobPhase;
+      delete ent.data.jobProgress;
+    }
     const formationSlot = this._ceresFormationSlotForWorldRecordId(entry.worldRecordId);
     if (formationSlot) this._clearCeresFormationEntry(formationSlot, entry);
     if (realTargetJobBinding) this._clearCeresRealTargetsForJob(jobId, true);
@@ -2010,6 +2014,10 @@ export const npcJobsRuntime = {
         || !entity.data
         || entity.data.jobId !== jobId) return;
       entry.lastAdvanceSimT = simT;
+      if (entity.data) {
+        entity.data.jobPhase = entry.job.phase;
+        entity.data.jobProgress = Number.isFinite(entry.job.progress) ? entry.job.progress : 0;
+      }
       const claimed = !!entry.control;
 
       // Terminal hauler: hand the hull back to its ambient stepper (ruling 5: job ends with entity).
@@ -2380,7 +2388,14 @@ export const npcJobsRuntime = {
     if (phase === NPC_JOB_PHASE.FLEE) {
       // Nearby gunfire can suspend a job without a team-1 spatial threat. Workers hold;
       // a loaded hull keeps its tow and leaves without boost; everyone else bolts.
-      if (entry.violenceHold === true) {
+      const isWorker = entry.kind === NPC_JOB_KIND.MINER
+        || entry.kind === NPC_JOB_KIND.SALVOR
+        || entry.kind === NPC_JOB_KIND.TENDER
+        || entry.kind === NPC_JOB_KIND.SURVEYOR;
+      const isCarrying = entry.violenceSlow === true
+        || !!(entity.data?.cargoManifest?.totalQty > 0);
+      const hold = entry.violenceHold === true || (isWorker && !isCarrying && entry.threatId == null);
+      if (hold) {
         this._writeIntent(entity, 0, 0, false, entity.rot || 0, true);
         return;
       }
@@ -2395,7 +2410,7 @@ export const npcJobsRuntime = {
       }
       if (Number.isFinite(ax) && Number.isFinite(az)) {
         const aim = Math.atan2(entity.pos.z - az, entity.pos.x - ax);
-        this._writeIntent(entity, 0, 1, entry.violenceSlow !== true, aim, false);
+        this._writeIntent(entity, 0, 1, !isCarrying && entry.violenceSlow !== true, aim, false);
       } else {
         this._writeIntent(entity, 0, 0, false, entity.rot || 0);
       }
@@ -2612,7 +2627,11 @@ export const npcJobsRuntime = {
         ent = null;
       }
       clearRouteBrake(ent);
-      if (ent && ent.data && ent.data.jobId === jobId) delete ent.data.jobId;
+      if (ent && ent.data && ent.data.jobId === jobId) {
+        delete ent.data.jobId;
+        delete ent.data.jobPhase;
+        delete ent.data.jobProgress;
+      }
       virtualize(entry.job);
       entry.entityId = null;
       entry.threatId = null;
@@ -2714,6 +2733,8 @@ export const npcJobsRuntime = {
     entry.threatId = null;
     clearRouteBrake(entity);
     entity.data.jobId = 'job:' + entry.worldRecordId;
+    entity.data.jobPhase = entry.job.phase;
+    entity.data.jobProgress = Number.isFinite(entry.job.progress) ? entry.job.progress : 0;
     if (formationSlot) this._bindCeresFormationSlot(formationSlot, entry, entity);
     this._refreshCeresRealTargetsForEntry(entry, entity);
     return true;
