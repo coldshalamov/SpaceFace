@@ -4692,7 +4692,16 @@ export const traffic = {
     // and the one a player creates by leaving a kill behind. SECOND, and this is what makes the
     // profession visible in a quiet five minutes, the yard's own outbound freight: a berth books a
     // finite lot, and the tug is what moves it. Both are real bodies under the same physics owner.
-    const berth = this._nearestStationTo(stations, stations[0]) ? stations[0] : null;
+    // Stage the tow where it can actually be seen AND actually be simulated. Both reasons point the
+    // same way: ordinary life the player never flies past is not ordinary life, and SG-02 only gives
+    // a Rapier body to what is inside the player's physics reach — a tug working the far side of the
+    // sector gets a tow line to a body with no dynamic authority, which is a line to nothing.
+    // Measured 2026-09-06 on the Ceres reference pocket: dispatching from `stations[0]` produced a
+    // booked lot that never moved for a full five-minute capture.
+    const player = this.state.entities && this.state.playerId != null
+      ? this.state.entities.get(this.state.playerId)
+      : null;
+    const berth = (player && player.pos ? this._nearestStationTo(stations, player) : null) || stations[0];
     if (!berth || !berth.pos) return 0;
 
     let dispatched = 0;

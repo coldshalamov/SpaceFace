@@ -1646,7 +1646,26 @@ export const npcJobsRuntime = {
     if (entry.towAttachmentId != null) {
       const existing = attachments.get(entry.towAttachmentId);
       if (existing && existing.state === 'active' && existing.ownerId === entity.id
-        && existing.controlMode === 'npc_tow') return true;
+        && existing.controlMode === 'npc_tow') {
+        // Re-stamp the owner markers rather than returning bare. They are observer-facing joins, and
+        // they do NOT survive on their own: `deserialize` deletes them by design, and a hull that
+        // rematerializes arrives with a fresh `data`. Measured 2026-09-06 on the Ceres reference
+        // pocket — a five-minute capture found the load carrying `npcTowedByJobId` for 33 samples
+        // while the tug towing it reported no attachment at all, because this path never wrote the
+        // marker back. The live attachment stays the authority; this only keeps the join honest.
+        if (entity.data) {
+          entity.data.npcTowAttachmentId = existing.id;
+          entity.data.npcTowJobId = `job:${entry.worldRecordId}`;
+        }
+        const towed = entry.towTargetRef
+          || (entry.towTargetId != null && this.state.entities
+            && this.state.entities.get(entry.towTargetId));
+        if (towed && towed.data) {
+          towed.data.npcTowAttachmentId = existing.id;
+          towed.data.npcTowedByJobId = `job:${entry.worldRecordId}`;
+        }
+        return true;
+      }
       this._clearTugAttachment(entry, 'npc_tow_stale');
     }
 
@@ -1660,6 +1679,14 @@ export const npcJobsRuntime = {
         entry.towTargetId = restored.targetId;
         entry.towOwnerRef = entity;
         entry.towTargetRef = this.state.entities && this.state.entities.get(restored.targetId) || null;
+        if (entity.data) {
+          entity.data.npcTowAttachmentId = restored.id;
+          entity.data.npcTowJobId = `job:${entry.worldRecordId}`;
+        }
+        if (entry.towTargetRef && entry.towTargetRef.data) {
+          entry.towTargetRef.data.npcTowAttachmentId = restored.id;
+          entry.towTargetRef.data.npcTowedByJobId = `job:${entry.worldRecordId}`;
+        }
         return true;
       }
     }
