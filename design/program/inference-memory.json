@@ -741,6 +741,32 @@
       "integration": "live",
       "commit": "60f7cc2b",
       "verification": "focused_green"
+    },
+    {
+      "id": "wf03-ambient-civilian-frontier-zones",
+      "date": "2026-09-06",
+      "wf": "WF-03",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "salvage_signal/anomaly_whisper now anchor in outlaw_zone/nebula_fog/radiation_field so zero-civilian-life frontier sectors (nyx_march, kepler_scar, eris_margin) get varied ambient world-life",
+      "fingerprint": "verb=widen,subject=ambient-civilian-deck,sector=nyx_march,kepler_scar,eris_margin,domain=wf-03",
+      "references": [],
+      "integration": "live",
+      "commit": "489dce40",
+      "verification": "focused_green"
+    },
+    {
+      "id": "metronome-eris-margin-poi",
+      "date": "2026-09-06",
+      "wf": "WF-04",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "the Metronome landmark now charts in Eris Margin: anomaly POI with archive scanner signal and discovery plate, giving the authored lore a reachable world anchor",
+      "fingerprint": "verb=scan,subject=metronome,sector=eris_margin,layer=foreground,domain=wf-04",
+      "references": [],
+      "integration": "live",
+      "commit": "440c5f52",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
