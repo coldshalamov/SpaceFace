@@ -22,35 +22,64 @@ function makeBus() {
 }
 
 function bootMiner() {
+  const rock = {
+    id: 'ast-test-custody',
+    type: 'asteroid',
+    alive: true,
+    pos: { x: 0, z: 0 },
+    hull: 140,
+    hullMax: 140,
+    data: { typeId: 'ast_rock', oreHP: 140, oreHPMax: 140 },
+  };
   const state = {
+    mode: 'flight',
+    simTime: 0,
+    meta: { seed: 17706 },
+    playerId: 1,
     player: {
       credits: 0,
       cargo: { items: {}, usedVolume: 0, usedMass: 0, capVolume: 40, capMass: 40 },
+      marketMemory: {},
+      tradeLedger: [],
+      tradeLots: {},
+      stats: {},
     },
+    story: { flags: {} },
+    factions: { faction_scn: { rep: 0 } },
+    economy: {},
+    conflicts: {},
+    sectorSim: { field: { nodes: {} } },
+    world: { currentSectorId: 'sector_helios_prime', sectors: {} },
+    ui: {},
+    nav: {},
+    entities: new Map(),
+    entityList: [rock],
   };
   const inst = Object.create(automation);
   inst.state = state;
   inst.bus = makeBus();
-  inst._nearestAsteroid = () => null;
   inst._playerPos = () => ({ x: 0, z: 0 });
-  inst._orePrice = () => 10;
-  inst._stationPrice = () => 12;
-  inst._credited = 0;
-  inst.creditPassive = (amount) => {
-    inst._credited += amount;
-    return amount;
-  };
+  const econ = Object.create(economy);
+  econ.init({ state, bus: inst.bus, helpers: {}, registry: { get: () => null } });
+  econ.newGame();
+  inst.init({ state, bus: inst.bus, helpers: {}, registry: { get: (id) => id === 'economy' ? econ : null } });
+  inst.newGame();
   return {
     state,
     inst,
+    econ,
     group: {
       id: 'drone-1',
+      defId: 'drone_mk1',
       count: 1,
       oreType: 'cmdty_ore_iron',
       bufferCap: 40,
       sectorId: 'sector_helios_prime',
+      originPos: { x: 0, z: 0 },
+      fuel: 240,
+      fuelMax: 240,
     },
-    def: { mineRate: 0.8, bufferCap: 40 },
+    def: { id: 'drone_mk1', mineRate: 0.8, bufferCap: 40, fuelRate: 1 },
   };
 }
 
@@ -98,22 +127,26 @@ test('PQ-177.06 programmed miner fills the operation shipment, not the player ho
 });
 
 test('PQ-177.06 a worker sale cannot spend or discount the player hold', () => {
-  const { state, inst, group, def } = bootMiner();
+  const { state, inst, econ, group, def } = bootMiner();
   addCargo(state, 'cmdty_ore_iron', 7);
   mineTwoSeconds(inst, group, def);
+  const expected = econ.quoteAutomationIntake('station_helios', 'cmdty_ore_iron', 1);
+  assert.equal(expected.ok, true);
+  const expectedCredited = Math.round(expected.total);
   const first = inst._programSellCargo(group, 'station_helios');
   assert.equal(first.ok, true);
   assert.equal(first.duplicate, false);
   assert.equal(first.receipt.stationId, 'station_helios');
-  assert.equal(first.receipt.quoteVersion, 12);
-  assert.equal(first.receipt.unitPrice, 12);
+  assert.equal(first.receipt.quoteVersion, expected.stock);
+  assert.equal(first.receipt.unitPrice, expected.unitAvg | 0);
   assert.equal(state.player.cargo.items.cmdty_ore_iron, 7, 'the worker sold its shipment, not the hold');
   assert.equal(shipmentQty(group, 'cmdty_ore_iron'), 0);
-  assert.equal(inst._credited, 12);
+  assert.equal(first.receipt.credited, expectedCredited);
+  assert.equal(state.player.credits, expectedCredited, 'the economy owner paid the quoted intake total');
 });
 
 test('PQ-177.06 retry and save/reload of a mid-sale intent duplicate nothing', () => {
-  const { state, inst, group, def } = bootMiner();
+  const { state, inst, econ, group, def } = bootMiner();
   mineTwoSeconds(inst, group, def);
   group.saleSeq = 1;
   group.pendingSale = {
@@ -123,10 +156,14 @@ test('PQ-177.06 retry and save/reload of a mid-sale intent duplicate nothing', (
     quantity: 1,
   };
   const mid = JSON.parse(JSON.stringify(group));
+  const expected = econ.quoteAutomationIntake('station_helios', 'cmdty_ore_iron', 1);
+  assert.equal(expected.ok, true);
+  const expectedCredited = Math.round(expected.total);
   const first = inst._programSellCargo(mid, 'station_helios');
   assert.equal(first.ok, true);
   assert.equal(first.duplicate, false);
-  assert.equal(inst._credited, 12);
+  assert.equal(first.receipt.credited, expectedCredited);
+  assert.equal(state.player.credits, expectedCredited);
 
   const afterCommit = JSON.parse(JSON.stringify(mid));
   afterCommit.pendingSale = {
@@ -139,7 +176,7 @@ test('PQ-177.06 retry and save/reload of a mid-sale intent duplicate nothing', (
   assert.equal(replay.ok, true);
   assert.equal(replay.duplicate, true);
   assert.equal(replay.receipt.id, first.receipt.id);
-  assert.equal(inst._credited, 12, 'the replay did not pay again');
+  assert.equal(state.player.credits, expected.total, 'the replay did not pay again');
   assert.equal(state.player.cargo.items.cmdty_ore_iron || 0, 0);
 
   addToShipment(afterCommit, 'cmdty_ore_iron', 1, 40);
@@ -148,13 +185,13 @@ test('PQ-177.06 retry and save/reload of a mid-sale intent duplicate nothing', (
     stationId: 'station_helios',
     good: 'cmdty_ore_iron',
     quantity: 9,
-    unitPrice: 12,
-    total: 108,
-    quoteVersion: 12,
-  }, () => 108);
+    unitPrice: expected.unitAvg,
+    total: expected.total,
+    quoteVersion: expected.stock,
+  }, () => expectedCredited);
   assert.equal(collision.ok, false);
   assert.equal(collision.reason, 'receipt_id_collision');
-  assert.equal(inst._credited, 12);
+  assert.equal(state.player.credits, expected.total);
   assert.equal(shipmentQty(afterCommit, 'cmdty_ore_iron'), 1, 'a colliding retry does not take stock');
 });
 

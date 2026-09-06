@@ -16,6 +16,7 @@ import {
   OFFLINE_EFF_MAX,
 } from '../src/systems/automation.js';
 import { AUTO_BALANCE, DRONES, TRADERS, OUTPOSTS } from '../src/data/automation.js';
+import { fittingsFromDefaultModules } from '../src/systems/ships.js';
 
 // ── pure helpers ─────────────────────────────────────────────────────────────────────────────
 
@@ -119,7 +120,12 @@ function makeState(seed = 47) {
       droneTierCap: 1,
       stats: {},
       cargo: { items: {}, usedVolume: 0, usedMass: 0, capVolume: 200, capMass: 200 },
-      ownedShips: [],
+      activeShipIndex: 0,
+      researchedNodes: ['tech_drone_control', 'tech_long_range_survey'],
+      ownedShips: [{
+        defId: 'ship_ranger',
+        fittings: fittingsFromDefaultModules('ship_ranger', ['mod_drone_bay_l']),
+      }],
     },
     world: { currentSectorId: 'sector_helios_prime', activeSector: null },
     entities: new Map(),

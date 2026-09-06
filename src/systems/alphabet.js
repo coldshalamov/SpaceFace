@@ -136,7 +136,7 @@ export function tickProgram(group, ctx, dt) {
       if (!mineBeacon) { advance(ps, tpl); return false; }
       const onRock = ctx.steerTo(mineBeacon, dt);
       if (onRock && !holdFull) {
-        ctx.mineIntoCargo(dt);
+        ctx.mineIntoCargo(dt, mineBeacon.entity);
       }
       if (step.until === 'cargoFull' && holdFull) advance(ps, tpl);
       return onRock;

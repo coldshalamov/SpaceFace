@@ -73,7 +73,7 @@ export function isThroughputSettledSource(source) {
 export function isFuelStranded(group) {
   if (!group || typeof group !== 'object') return false;
   if (group.status === 'distressed') return false;
-  if ((Number(group.fuel) || 0) <= 0) return true;
+  if (group.fuel != null && Number.isFinite(Number(group.fuel)) && Number(group.fuel) <= 0) return true;
   if (group.status === OPERATING_STATE.STRANDED) return true;
   const op = group.operation;
   return !!(op && op.operatingState === OPERATING_STATE.STRANDED);
@@ -226,7 +226,8 @@ export function evaluateProgrammedMiner(facts = {}) {
   const operatingCost = operatingCostPerMin(facts.upkeepPerMin, operatingState);
   const lastSale = facts.lastSale && typeof facts.lastSale === 'object' ? facts.lastSale : null;
   const grossValuePerMin = Math.max(0, Number(facts.grossValuePerMin) || 0);
-  const netThroughputPerMin = Math.max(0, grossValuePerMin - operatingCost);
+  const netThroughputPerMin = operatingState === OPERATING_STATE.RUNNING
+    ? grossValuePerMin - operatingCost : 0;
 
   let addingMachineHelps;
   let reason;
@@ -294,7 +295,7 @@ export function migrateDroneOperation(group) {
 }
 
 export function describeProgrammedMinerOperation(group, def = {}) {
-  const op = group && group.operation ? group.operation : ensureOperation(group) || {};
+  const op = group && group.operation ? group.operation : {};
   const stored = Math.max(0, Number(op.storedUnits) || 0);
   const cap = Math.max(0, Number(op.storedCap != null ? op.storedCap : def.bufferCap) || 0);
   const last = op.lastSale;
@@ -302,7 +303,7 @@ export function describeProgrammedMinerOperation(group, def = {}) {
     ? `${last.credited} cr for ${last.quantity}u`
     : 'No sale yet';
   const cost = Math.max(0, Number(op.operatingCostPerMin) || 0);
-  const net = Math.max(0, Number(op.netThroughputPerMin) || 0);
+  const net = Number(op.netThroughputPerMin) || 0;
   const state = op.operatingState || OPERATING_STATE.RUNNING;
   const tone = state === OPERATING_STATE.RUNNING
     ? 'ok'
@@ -317,7 +318,7 @@ export function describeProgrammedMinerOperation(group, def = {}) {
     `Stored ${stored} of ${cap} units`,
     `Last sale ${lastText}`,
     `Operating cost ${cost} credits per minute`,
-    `Net ${net} credits per minute`,
+    `Estimated net ${net} credits per minute`,
     reason,
   ].join('. ');
   return {

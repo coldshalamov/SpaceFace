@@ -597,7 +597,10 @@ export const automationScreen = {
       for (const d of a.drones || []) {
         const program = d.program && d.program.templateId;
         parts.push(d.id, d.defId, d.status, Math.round(d.buffer || 0), Math.round(d.fuel || 0), program || '',
-          d.operation && d.operation.limitStage || '', d.operation && d.operation.operatingState || '');
+          d.operation && d.operation.limitStage || '', d.operation && d.operation.operatingState || '',
+          d.operation?.grossUnits, d.operation?.storedUnits, d.operation?.storedCap,
+          d.operation?.lastSale?.credited, d.operation?.lastSale?.quantity,
+          d.operation?.operatingCostPerMin, d.operation?.netThroughputPerMin);
       }
     } else if (this._tab === 'traders') {
       const hireUnlocked = (player.researchedNodes || []).includes('tech_autonomous_fleets');
@@ -724,7 +727,7 @@ export const automationScreen = {
           .join('');
         const programBadge = curTpl ? ` <span class="au-program-badge">${escapeHtml(programLabel(curTpl))}</span>` : '';
         const programMeta = curTpl ? programMetaText(curTpl) : PROGRAM_OPTIONS[0].meta;
-        const readout = curTpl ? describeProgrammedMinerOperation(d, def) : null;
+        const readout = curTpl === 'mine_to_depot' ? describeProgrammedMinerOperation(d, def) : null;
         const opsHtml = readout ? `
             <div class="au-miner-ops" data-state="${escapeHtml(readout.state)}" role="img" aria-label="${escapeHtml(readout.accessibleSummary)}">
               <div><span class="au-flow-k">Gross cut</span><strong>${escapeHtml(String(readout.grossUnits))} u</strong></div>
@@ -732,7 +735,7 @@ export const automationScreen = {
               <div><span class="au-flow-k">Limit</span><strong class="au-operation-status ${escapeHtml(readout.tone)}">${escapeHtml(readout.statusLabel)}</strong></div>
               <div><span class="au-flow-k">Last sale</span><strong>${escapeHtml(readout.lastText)}</strong></div>
             </div>
-            <div class="au-note">Operating cost ${escapeHtml(String(readout.operatingCostPerMin))} cr/min · net ${fmtCr(readout.netThroughputPerMin)}/min. ${escapeHtml(readout.reason)}</div>`
+            <div class="au-note">Operating cost ${escapeHtml(String(readout.operatingCostPerMin))} cr/min · estimated net ${fmtCr(readout.netThroughputPerMin)}/min. ${escapeHtml(readout.reason)}</div>`
           : `<div class="au-note">${escapeHtml(programMeta)}</div>`;
         const stranded = d.status === 'stranded';
         const refuelBtn = stranded
@@ -1418,8 +1421,11 @@ function estimateUpkeepPerMin(a) {
 }
 
 function defUpkeep(defs, inst) {
-  if (inst && (inst.status === 'stranded' || inst.status === 'distressed')) return 0;
+  if (defs === DRONES && inst?.status === 'stranded') return 0;
   const def = defs.find((x) => x.id === inst.defId) || inst;
+  if (defs === DRONES && inst?.status !== 'distressed' && inst?.program?.templateId === 'mine_to_depot' && inst?.operation) {
+    return inst.operation.operatingCostPerMin || 0;
+  }
   return def.upkeepPerMin || 0;
 }
 

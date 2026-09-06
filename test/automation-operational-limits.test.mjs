@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import { assignTemplate } from '../src/systems/alphabet.js';
 import { automation } from '../src/systems/automation.js';
+import { economy } from '../src/systems/economy.js';
 import {
   LIMIT_STAGE,
   OPERATING_STATE,
@@ -15,6 +16,7 @@ import {
 } from '../src/systems/automationOperations.js';
 import { addToShipment, shipmentQty } from '../src/systems/cargoCustody.js';
 import { automationNextAction } from '../src/ui/screens/automationPanel.js';
+import { TRADERS } from '../src/data/automation.js';
 
 function makeBus() {
   const handlers = new Map();
@@ -49,13 +51,22 @@ function bootAutomation(seed = 17707) {
     entityList: [],
     automation: null,
   };
+  const bus = makeBus();
+  Object.assign(state, {
+    story: { flags: {}, persistentCargo: [] }, missions: { active: [] },
+    factions: { faction_scn: { rep: 0 } }, economy: {}, conflicts: {},
+    sectorSim: { field: { nodes: {} } }, ui: {}, nav: {},
+  });
+  const econ = Object.create(economy);
+  econ.init({ state, bus, helpers: {}, registry: { get: () => null } });
+  econ.newGame();
   const inst = Object.create(automation);
-  inst.init({ state, bus: makeBus(), helpers: {}, registry: null });
+  inst.init({ state, bus, helpers: {}, registry: { get: (id) => id === 'economy' ? econ : null } });
   inst.newGame();
   inst._orePrice = () => 12;
   inst._stationPrice = () => 12;
   inst._capBudget = 0;
-  return { state, inst };
+  return { state, inst, econ };
 }
 
 function programmedGroup(overrides = {}) {
@@ -118,6 +129,26 @@ test('PQ-177.07 operating cost is tied to operating state', () => {
   assert.equal(operatingCostPerMin(6, OPERATING_STATE.STALLED), 0);
 });
 
+test('a trader without a drone fuel field still pays its authored upkeep', () => {
+  const { state, inst } = bootAutomation();
+  state.automation.traders.push({ id: 'hired', defId: TRADERS[0].id, status: 'active' });
+  assert.equal(inst.totalUpkeepPerMin(), TRADERS[0].upkeepPerMin);
+});
+
+test('waiting programmed miners stop consuming operating fuel and upkeep', () => {
+  const { state, inst } = bootAutomation();
+  const group = programmedGroup({ operation: { operatingState: 'waiting' } });
+  state.automation.drones.push(group);
+  inst._burnOperatingFuel(group, { fuelRate: 1 }, 1);
+  assert.equal(group.fuel, 240);
+  assert.equal(inst.totalUpkeepPerMin(), 0);
+});
+
+test('reading an operation card does not mutate a saved drone', () => {
+  const group = Object.freeze({ id: 'old', fuel: 10 });
+  assert.doesNotThrow(() => describeProgrammedMinerOperation(group));
+});
+
 test('PQ-177.07 fuel shortage strands the machine and never deletes it', () => {
   const { state, inst } = bootAutomation();
   const group = programmedGroup({ fuel: 0.25 });
@@ -157,38 +188,36 @@ test('PQ-177.07 a stranded machine resumes after fuel returns, including after C
 });
 
 test('PQ-177.07 one programmed miner sells through throughput, not the token bucket', () => {
-  const { inst } = bootAutomation();
+  const { inst, econ } = bootAutomation();
   inst._capBudget = 0;
   const group = programmedGroup();
   addToShipment(group, 'cmdty_ore_iron', 5, 40);
+  const expected = econ.quoteAutomationIntake('station_helios', 'cmdty_ore_iron', 5);
   const result = inst._programSellCargo(group, 'station_helios');
   assert.equal(result.ok, true);
-  assert.equal(result.receipt.credited, 60);
+  assert.equal(result.receipt.credited, expected.total);
   assert.equal(result.receipt.stationId, 'station_helios');
-  assert.equal(group.operation.lastSale.credited, 60);
+  assert.equal(group.operation.lastSale.credited, expected.total);
   assert.equal(shipmentQty(group, 'cmdty_ore_iron'), 0);
   assert.equal(inst._capBudget, 0, 'the bucket is not the primary bound on this route');
 });
 
 test('PQ-177.07 competing machines on a saturated depot do not double the take', () => {
-  const { inst } = bootAutomation();
-  let sold = 0;
-  const demand = 8;
-  inst._quoteOperationSale = (_stationId, _good, qty) => {
-    const room = Math.max(0, demand - sold);
-    const take = Math.min(Math.max(0, qty | 0), room);
-    if (take <= 0) return { unitAvg: 0, total: 0, quoteVersion: 0, fillable: 0, saturated: true };
-    return { unitAvg: 12, total: 12 * take, quoteVersion: 12, fillable: take, saturated: false };
-  };
+  const { inst, econ } = bootAutomation();
+  const initial = econ.quoteAutomationIntake('station_helios', 'cmdty_ore_iron', 100000);
+  econ.bus.emit('economy:applyTradePressure', {
+    stationId: 'station_helios', good: 'cmdty_ore_iron', vol: initial.fillable - 8,
+  });
+  const expected = econ.quoteAutomationIntake('station_helios', 'cmdty_ore_iron', 8);
+  assert.equal(expected.fillable, 8);
   const first = programmedGroup({ id: 'drone-a' });
   const second = programmedGroup({ id: 'drone-b' });
   addToShipment(first, 'cmdty_ore_iron', 8, 40);
   addToShipment(second, 'cmdty_ore_iron', 8, 40);
   const saleA = inst._programSellCargo(first, 'station_helios');
-  sold += saleA.receipt.quantity;
   const saleB = inst._programSellCargo(second, 'station_helios');
   assert.equal(saleA.ok, true);
-  assert.equal(saleA.receipt.credited, 96);
+  assert.equal(saleA.receipt.credited, expected.total);
   assert.equal(saleB.ok, false);
   assert.equal(saleB.reason, 'demand_saturation');
   assert.equal(shipmentQty(second, 'cmdty_ore_iron'), 8, 'the second machine keeps its load');
@@ -203,8 +232,36 @@ test('PQ-177.07 competing machines on a saturated depot do not double the take',
     demandOpen: false,
   });
   assert.equal(why.addingMachineHelps, false);
-  assert.equal((saleA.receipt.credited + (saleB.ok ? saleB.receipt.credited : 0)), 96,
+  assert.equal((saleA.receipt.credited + (saleB.ok ? saleB.receipt.credited : 0)), expected.total,
     'returns stay bounded by destination demand, not machine count');
+});
+
+test('programmed miners share finite rock depletion instead of minting the final unit twice', () => {
+  const { inst, state } = bootAutomation();
+  const rock = { id: 92, type: 'asteroid', alive: true, pos: { x: 0, z: 0 }, hull: 14, data: { oreHP: 14 } };
+  state.entityList.push(rock);
+  const first = programmedGroup({ id: 'one' });
+  const second = programmedGroup({ id: 'two' });
+  const def = { mineRate: 1, fuelRate: 1, bufferCap: 40 };
+  inst._programMineIntoCargo(first, def, 10, rock);
+  inst._programMineIntoCargo(second, def, 10, rock);
+  assert.equal(shipmentQty(first, 'cmdty_ore_iron'), 1);
+  assert.equal(shipmentQty(second, 'cmdty_ore_iron'), 0);
+  assert.equal(rock.data.oreHP, 0);
+  assert.equal(rock.alive, false);
+  assert.ok(rock.data.respawnAt > state.simTime);
+});
+
+test('programmed extraction is bounded by available fuel and never produces ore without a rock', () => {
+  const { inst } = bootAutomation();
+  const group = programmedGroup({ fuel: 1 });
+  const def = { mineRate: 1, fuelRate: 1, bufferCap: 40 };
+  inst._programMineIntoCargo(group, def, 10);
+  assert.equal(shipmentQty(group, 'cmdty_ore_iron'), 0);
+  const rock = { id: 93, alive: true, pos: { x: 0, z: 0 }, hull: 140, data: { oreHP: 140 } };
+  inst._programMineIntoCargo(group, def, 10, rock);
+  assert.equal(shipmentQty(group, 'cmdty_ore_iron'), 1);
+  assert.equal(rock.data.oreHP, 126);
 });
 
 test('PQ-177.07 demand bound sells only what the depot will take', () => {

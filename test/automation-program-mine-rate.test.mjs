@@ -5,7 +5,18 @@ import { automation } from '../src/systems/automation.js';
 import { shipmentQty } from '../src/systems/cargoCustody.js';
 
 function bootMiner() {
+  const rock = {
+    id: 'ast-test-rate',
+    type: 'asteroid',
+    alive: true,
+    pos: { x: 0, z: 0 },
+    hull: 140,
+    hullMax: 140,
+    data: { typeId: 'ast_rock', oreHP: 140, oreHPMax: 140 },
+  };
   const state = {
+    simTime: 0,
+    entityList: [rock],
     player: {
       cargo: { items: {}, usedVolume: 0, usedMass: 0, capVolume: 40, capMass: 40 },
     },
@@ -13,9 +24,20 @@ function bootMiner() {
   const inst = Object.create(automation);
   inst.state = state;
   inst.bus = { emit() {} };
-  inst._nearestAsteroid = () => null;
   inst._playerPos = () => ({ x: 0, z: 0 });
-  return { state, inst, group: { count: 1, oreType: 'cmdty_ore_iron' }, def: { mineRate: 0.8 } };
+  return {
+    state,
+    inst,
+    group: {
+      count: 1,
+      oreType: 'cmdty_ore_iron',
+      bufferCap: 40,
+      originPos: { x: 0, z: 0 },
+      fuel: 240,
+      fuelMax: 240,
+    },
+    def: { mineRate: 0.8, bufferCap: 40, fuelRate: 1 },
+  };
 }
 
 test('programmed drones accrue at the authored mineRate, not one unit per sim tick', () => {

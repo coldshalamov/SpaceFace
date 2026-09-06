@@ -720,11 +720,20 @@ export const automation = {
 
   // Mine into the OPERATION shipment at the authored rate (capped by the group's buffer).
   // Whole units only enter the shipment; sub-unit progress lives on a per-group carry.
-  _programMineIntoCargo(g, def, dt) {
+  _programMineIntoCargo(g, def, dt, targetRock = null) {
     ensureShipment(g);
     const cap = Math.max(0, Number(g.bufferCap || def.bufferCap) || 0) || 40;
     const rate = Math.max(0, (def.mineRate || 0.8) * Math.max(1, Number(g.count) || 1));
-    g._programMineCarry = (Number(g._programMineCarry) || 0) + rate * Math.max(0, Number(dt) || 0);
+    const rock = targetRock || this._nearestAsteroid(g.originPos || this._playerPos(), def.deployRange || 400);
+    if (!rock || rock.alive === false || rock.data?.respawnAt != null || rate <= 0) return;
+    const room = Math.max(0, cap - shipmentUsed(g) - (Number(g._programMineCarry) || 0));
+    const fuelTime = Math.max(0, Number(g.fuel) || 0) / Math.max(0.001, Number(def.fuelRate) || 1);
+    const workTime = Math.min(Math.max(0, Number(dt) || 0), fuelTime, room / rate);
+    if (workTime <= 0) return;
+    // The same depletion owner used by manual drones bounds the shipment. Two miners cannot
+    // both extract the final unit from a rock, and moving the player does not create a new source.
+    const removedHp = this._chipAsteroid(rock, { mineRate: rate }, workTime);
+    g._programMineCarry = (Number(g._programMineCarry) || 0) + removedHp / 14;
     const want = Math.floor(g._programMineCarry + 1e-9);
     if (want <= 0) return;
     const oreId = g.oreType || DRONE_ORE_ID;
@@ -732,8 +741,6 @@ export const automation = {
     if (added > 0) {
       g._programMineCarry = Math.max(0, g._programMineCarry - added);
       recordGrossUnits(g, added);
-      const rock = this._nearestAsteroid(this._playerPos(), 600);
-      this.bus.emit('mining:tick', { contactPos: rock ? rock.pos : this._playerPos(), oreType: oreId });
       return;
     }
     g._programMineCarry = Math.min(g._programMineCarry, 1);
@@ -787,7 +794,7 @@ export const automation = {
       good: pending.good,
       quantity: qty,
       unitPrice: quote.unitAvg,
-      total: quote.unitAvg * qty,
+      total: quote.total,
       quoteVersion: quote.quoteVersion,
     };
     const result = commitShipmentSale(g, plan, () => this.creditPassive(plan.total, 'drone:program'));
@@ -814,31 +821,16 @@ export const automation = {
 
   _quoteOperationSale(stationId, commodityId, qty) {
     const quantity = Math.max(0, Math.floor(Number(qty) || 0));
-    if (!stationId || quantity <= 0) {
-      return { unitAvg: 0, total: 0, quoteVersion: 0, fillable: 0, saturated: true };
-    }
     const econ = this._economy();
-    if (econ && typeof econ.quote === 'function') {
-      const q = econ.quote(stationId, commodityId, 'sell', quantity);
-      if (q && q.ok) {
-        const unit = Math.max(0, Math.round(Number(q.unitAvg) || 0));
-        return {
-          unitAvg: unit,
-          total: Math.max(0, Math.round(Number(q.total != null ? q.total : unit * quantity) || 0)),
-          quoteVersion: unit,
-          fillable: unit > 0 ? quantity : 0,
-          saturated: unit <= 0,
-        };
-      }
-    }
-    const unitFromStation = this._stationPrice(stationId, commodityId, 'sell', quantity);
-    const unit = Math.max(0, Math.round(Number(unitFromStation) || 0));
+    const q = stationId && quantity > 0 && typeof econ?.quoteAutomationIntake === 'function'
+      ? econ.quoteAutomationIntake(stationId, commodityId, quantity)
+      : null;
     return {
-      unitAvg: unit,
-      total: unit * quantity,
-      quoteVersion: unit,
-      fillable: unit > 0 ? quantity : 0,
-      saturated: unit <= 0,
+      unitAvg: q?.ok ? q.unitAvg : 0,
+      total: q?.ok ? q.total : 0,
+      quoteVersion: q?.stock ?? 0,
+      fillable: q?.ok ? q.fillable : 0,
+      saturated: q?.reason === 'demand_saturation',
     };
   },
 
@@ -960,6 +952,7 @@ export const automation = {
       ast.alive = false;
       this.bus.emit('asteroid:destroyed', { id: ast.id, typeId: d.typeId || null, pos: { x: ast.pos.x, z: ast.pos.z } });
     }
+    return Math.max(0, before - d.oreHP);
   },
 
   _nearestAsteroid(pos, range) {
@@ -1269,6 +1262,8 @@ export const automation = {
 
   _burnOperatingFuel(g, def, dt) {
     if (!g || isFuelStranded(g) || g.status === 'distressed') return isFuelStranded(g);
+    if (g.program?.templateId === 'mine_to_depot'
+      && g.operation && g.operation.operatingState !== 'running') return false;
     const rate = Math.max(0, Number(def && def.fuelRate) || 1);
     g.fuel = Math.max(0, (Number(g.fuel) || 0) - rate * Math.max(0, Number(dt) || 0));
     if (g.fuel > 0) {
@@ -1307,6 +1302,7 @@ export const automation = {
   },
 
   _syncProgrammedOperation(g, def, curSector) {
+    if (g.program?.templateId !== 'mine_to_depot') return;
     ensureShipment(g);
     const cap = Math.max(0, Number(g.bufferCap || (def && def.bufferCap)) || 0) || 40;
     const stored = shipmentUsed(g);
@@ -1687,9 +1683,14 @@ export const automation = {
   },
 
   _upkeepOf(map, inst) {
-    if (inst && (inst.status === 'stranded' || isFuelStranded(inst))) return 0;
+    if (map === DRONE_BY_ID && inst && isFuelStranded(inst)) return 0;
     const def = map.get(inst.defId);
-    return (def ? def.upkeepPerMin : inst.upkeepPerMin) || 0;
+    const upkeep = (def ? def.upkeepPerMin : inst.upkeepPerMin) || 0;
+    if (map === DRONE_BY_ID && inst.status !== 'distressed'
+      && inst.program?.templateId === 'mine_to_depot' && inst.operation) {
+      return operatingCostPerMin(upkeep, inst.operation.operatingState);
+    }
+    return upkeep;
   },
 
   _distressAll(a) {
@@ -2847,8 +2848,8 @@ function makeProgramContext(host) {
     steerTo(beacon, ddt) {
       return host._steerGroupTo(this.group, this.def, beacon, ddt, this.curSector);
     },
-    mineIntoCargo(ddt) {
-      return host._programMineIntoCargo(this.group, this.def, ddt);
+    mineIntoCargo(ddt, rock) {
+      return host._programMineIntoCargo(this.group, this.def, ddt, rock);
     },
     sellMinedCargo(stationId) {
       return host._programSellCargo(this.group, stationId);

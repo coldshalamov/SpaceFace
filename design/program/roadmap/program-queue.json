@@ -9486,7 +9486,7 @@
       "parentId": "PQ-177",
       "priority": 198,
       "title": "Visible operational limits replace the passive haircut",
-      "state": "done",
+      "state": "ready",
       "dependsOn": [
         "PQ-177.06"
       ],
@@ -9509,7 +9509,7 @@
       "receiptRefs": [
         "design/program/roadmap/receipts/PQ-177-07-REPORT.md"
       ],
-      "brief": "DONE 2026-09-06: programmed miner shows gross cut, stored load, limiting stage, last sale and operating cost. Fuel empty strands the machine; Continue keeps it; a second machine on a saturated depot does not double the take. Bucket is no longer the primary bound on that sale route.",
+      "brief": "Controller repair 2026-09-06: worker candidate committed before acceptance. Fuel persistence retained; repair real destination intake, finite extraction, trader upkeep and operation-readout consistency before marking done. The worker's saturation test mocked the missing limit.",
       "kind": "implementation"
     },
     {

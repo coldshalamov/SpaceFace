@@ -1229,6 +1229,54 @@ export const economy = {
     };
   },
 
+  /**
+   * Bound a programmed standing-order delivery to this depot's real receiving room.
+   * Player manual quote/execute is unchanged. Does not move stock or credits.
+   * Intake target is ceil(2 * effectiveEq): operating stock plus one reserve, at least 1.
+   */
+  quoteAutomationIntake(stationId, commodityId, qty) {
+    const state = this.state;
+    const requested = Math.max(0, Math.floor(Number(qty) || 0));
+    const refuse = (reason, stock = 0, intakeTarget = 0) => ({
+      ok: false,
+      reason,
+      fillable: 0,
+      unitAvg: 0,
+      total: 0,
+      stock,
+      intakeTarget,
+    });
+    if (!stationId || !commodityId || !state || !state.economy) return refuse('untraded');
+    const market = state.economy.markets[stationId] || this.ensureMarket(stationId);
+    const entry = market && market[commodityId];
+    const def = commodityDef(state, commodityId);
+    if (!entry || !def) return refuse('untraded');
+    const eff = Number(effectiveEq(entry, state, stationId, commodityId));
+    const intakeTarget = Math.max(1, Math.ceil(2 * (Number.isFinite(eff) ? eff : 0)));
+    const stock = entry.stock;
+    if (isUnsellableCargo(state, commodityId)) {
+      return refuse('mission_cargo_locked', stock, intakeTarget);
+    }
+    const headroom = Math.max(0, Math.floor(intakeTarget - stock));
+    const fillable = Math.min(requested, headroom);
+    if (fillable <= 0) {
+      return refuse(headroom <= 0 ? 'demand_saturation' : 'qty', stock, intakeTarget);
+    }
+    const quoted = this.quote(stationId, commodityId, 'sell', fillable);
+    if (!quoted || quoted.ok !== true) {
+      return refuse((quoted && quoted.reason) || 'untraded', stock, intakeTarget);
+    }
+    return {
+      ok: true,
+      reason: null,
+      fillable,
+      unitAvg: quoted.unitAvg,
+      total: quoted.total,
+      stock,
+      intakeTarget,
+    };
+  },
+
   /** execute(stationId, cmdtyId, side, qty, opts?) -> { ok, qty, unitAvg, total, profit?, reason, duplicate? }.
    *  Validate-then-apply (transactional): a failed credit/cargo/stock check changes nothing.
    *  PQ-177.06: opts.intentId makes a successful commit idempotent — the same plan returns the
@@ -2216,6 +2264,11 @@ function cloneSaveTree(value) {
 // ---- exported public API (UI & other systems call without the bus) --------------------------
 export function quote(stationId, commodityId, side, qty) {
   return economy._instance ? economy._instance.quote(stationId, commodityId, side, qty) : { ok: false, reason: 'no_economy' };
+}
+export function quoteAutomationIntake(stationId, commodityId, qty) {
+  return economy._instance
+    ? economy._instance.quoteAutomationIntake(stationId, commodityId, qty)
+    : { ok: false, reason: 'no_economy', fillable: 0, unitAvg: 0, total: 0, stock: 0, intakeTarget: 0 };
 }
 export function execute(stationId, commodityId, side, qty, opts) {
   return economy._instance ? economy._instance.execute(stationId, commodityId, side, qty, opts) : { ok: false, reason: 'no_economy' };
