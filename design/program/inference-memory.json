@@ -702,6 +702,32 @@
       "integration": "live",
       "commit": "e5f29f35",
       "verification": "focused_green"
+    },
+    {
+      "id": "fighter-pressure-break",
+      "date": "2026-09-06",
+      "wf": "WF-02",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "hurt or heat-soaked fighters break to their authored egress phase instead of grinding one relentless attack_run; engagements now press, break, and re-press",
+      "fingerprint": "verb=flee,subject=enemy_fighter,sector=any,layer=midground,domain=wf-02",
+      "references": [],
+      "integration": "live",
+      "commit": "a1bfbc0f",
+      "verification": "focused_green"
+    },
+    {
+      "id": "wf13-cargo-jettison-cue",
+      "date": "2026-09-06",
+      "wf": "WF-13",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "Cargo jettison (HUD JETTISON -> cargo.dumpCargo) was silent; now plays the authored massline jettison kick with an empty-receipt guard and a routing test",
+      "fingerprint": "verb=hear,subject=cargo jettison,sector=any,layer=audio-system,domain=wf-13",
+      "references": [],
+      "integration": "live",
+      "commit": "3edb0c2d",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
