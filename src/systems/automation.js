@@ -6,20 +6,19 @@
 //
 // THREE ACCRUAL TYPES:
 //   - Mining DRONES: continuous mineRate*count*dt into a SHARED group buffer (capped at bufferCap).
-//     Buffer is realized to credits on Recall (collect/bank). Fuel bleeds each active tick; fuel=0
-//     -> group LOST (the attention cost).
+//     Buffer is realized to credits on Recall (collect/bank). Fuel bleeds while the group is
+//     operating; fuel=0 strands the machine in place. Purchased equipment is never deleted for a
+//     routine fuel shortage (PQ-177.07).
 //   - Hired TRADERS: discrete. cycleProgress += dt/cycleTime; on a completed cycle, credit the
 //     spread profit (read live via economy.priceOf/quote), roll a danger-scaled loss, and emit
 //     economy:applyTradePressure so the route self-limits. upkeep drains regardless.
 //   - OUTPOSTS: continuous production into a capped storage buffer; if autoSell, the local market
 //     buys the surplus at a 20% penalty each minute. Raidable on a 600s interval.
 //
-// THE SIGNATURE MECHANIC — GLOBAL PASSIVE CAP (spec risk #1): every credit of passive income is
-// funnelled through ONE function, creditPassive(), which enforces a per-minute token bucket sized
-// at passiveCapFrac * A(T_player). Income up to the bucket pays full value; the overflow above it
-// is crushed to overflowEff (0.25). This is the spec's `credited = cap + (net-cap)*overflowEff`
-// applied incrementally so bursty trader lumps are handled correctly. Nothing else emits
-// economy:grantCredits. Net passive/min therefore stays well below active play at every tier.
+// THE SIGNATURE MECHANIC — GLOBAL PASSIVE CAP (spec risk #1): most passive credits still pass
+// through creditPassive()'s per-minute token bucket. Programmed-miner depot sales (drone:program)
+// are the proven exception (PQ-177.07): physical throughput, storage, fuel, and destination demand
+// are the primary bound, and those sales settle at the quoted total without the bucket haircut.
 //
 // Pure-data deps only (no 'three'). Reads economy via the registry (priceOf/quote/getMarket),
 // danger from the SECTORS catalog (dangerIndex), the player tier from player.droneTierCap.
@@ -37,6 +36,18 @@ import {
   shipmentQty,
   shipmentUsed,
 } from './cargoCustody.js';
+import {
+  applyFuelShortage,
+  boundDemandQty,
+  isFuelStranded,
+  isThroughputSettledSource,
+  migrateDroneOperation,
+  operatingCostPerMin,
+  recordGrossUnits,
+  recordRealisedSale,
+  resumeAfterFuel,
+  stampOperation,
+} from './automationOperations.js';
 import {
   WING_ORDER,
   WING_ORDER_SCOPE,
@@ -599,7 +610,8 @@ export const automation = {
   // ------------------------------------------------------------------------------------------
   // DRONES — REAL flying entities. Each deployed group owns N type:'drone' entities that orbit
   // and seek the nearest live asteroid, chip ore (inline mining math), and bank it to the SHARED
-  // capped buffer. Fuel bleeds while active; fuel=0 -> group LOST. Buffer realized on recall.
+  // capped buffer. Fuel bleeds while active; fuel=0 strands the group in place until refuel.
+  // Purchased equipment is never deleted for a routine fuel shortage (PQ-177.07).
   //
   // The per-second mine RATE is still authored by AUTO_BALANCE/DRONES.mineRate (def.mineRate*count)
   // so balance is untouched — the flying entities are the *vehicle* for that yield, gated on the
@@ -613,6 +625,10 @@ export const automation = {
       const g = a.drones[i];
       const def = DRONE_BY_ID.get(g.defId) || g;
       if (g.status === 'distressed') { this._parkDroneEntities(g); continue; } // frozen until upkeep paid
+      if (isFuelStranded(g)) {
+        this._strandForFuel(g, def, { toast: false });
+        continue;
+      }
 
       g.oreType = g.oreType || DRONE_ORE_ID;
 
@@ -634,14 +650,7 @@ export const automation = {
       // shipment, never the player hold. Depot sales move that shipment once, with a receipt.
       if (g.program && TEMPLATES[g.program.templateId]) {
         this._runProgrammedGroup(g, def, dt, curSector);
-        // fuel still bleeds while running a program (the attention cost, same as legacy)
-        g.fuel = Math.max(0, (g.fuel || 0) - (def.fuelRate || 1) * dt);
-        if (g.fuel <= 0) {
-          this._releaseDroneEntities(g);
-          this._loseAsset('drone', g, this._droneBufferValue(g), g.sectorId);
-          a.drones.splice(i, 1);
-          continue;
-        }
+        if (this._burnOperatingFuel(g, def, dt)) continue;
         g.status = 'program';
         continue;
       }
@@ -662,14 +671,7 @@ export const automation = {
         g.buffer = (g.buffer || 0) + mined;
       }
 
-      // fuel bleed (only while actively able to mine)
-      g.fuel = Math.max(0, (g.fuel || 0) - (def.fuelRate || 1) * dt);
-      if (g.fuel <= 0) {
-        this._releaseDroneEntities(g);
-        this._loseAsset('drone', g, this._droneBufferValue(g), g.sectorId);
-        a.drones.splice(i, 1);
-        continue;
-      }
+      if (this._burnOperatingFuel(g, def, dt)) continue;
       g.status = (g.buffer || 0) >= cap - 1e-6 ? 'idle' : 'mining';
       g.ratePerMin = this._droneRatePerMin(g, def);
     }
@@ -691,6 +693,7 @@ export const automation = {
     ctx.curSector = curSector;
     ctx.diagnostics = this._diag;
     tickProgram(g, ctx, dt);
+    this._syncProgrammedOperation(g, def, curSector);
   },
 
   // Steer every live entity in the group toward a beacon; returns true when the lead entity is
@@ -728,6 +731,7 @@ export const automation = {
     const added = addToShipment(g, oreId, want, cap);
     if (added > 0) {
       g._programMineCarry = Math.max(0, g._programMineCarry - added);
+      recordGrossUnits(g, added);
       const rock = this._nearestAsteroid(this._playerPos(), 600);
       this.bus.emit('mining:tick', { contactPos: rock ? rock.pos : this._playerPos(), oreType: oreId });
       return;
@@ -745,54 +749,96 @@ export const automation = {
     if (pending && pending.intentId && g.saleReceipts && g.saleReceipts[pending.intentId]) {
       const sealed = g.saleReceipts[pending.intentId];
       g.pendingSale = null;
+      g._lastSaleBlock = null;
       return { ok: true, duplicate: true, receipt: sealed.receipt };
     }
     const have = shipmentQty(g, oreId);
     if (have <= 0) {
       g.pendingSale = null;
+      g._lastSaleBlock = null;
       return null;
+    }
+    const dest = (pending && pending.stationId) || stationId || null;
+    if (!dest) {
+      g._lastSaleBlock = 'blocked_lane';
+      return { ok: false, reason: 'blocked_lane' };
     }
     if (!pending || pending.good !== oreId || !(pending.quantity > 0)) {
       g.saleSeq = (g.saleSeq | 0) + 1;
       pending = g.pendingSale = {
         intentId: `drone-sale:${g.id}:${g.saleSeq}`,
-        stationId: stationId || null,
+        stationId: dest,
         good: oreId,
         quantity: have,
       };
     }
-    const qty = Math.min(pending.quantity | 0, have);
-    const quote = this._quoteOperationSale(pending.stationId || stationId, pending.good, qty);
+    const quote = this._quoteOperationSale(pending.stationId || dest, pending.good, Math.min(pending.quantity | 0, have));
+    const qty = boundDemandQty(Math.min(pending.quantity | 0, have), quote);
+    if (qty <= 0) {
+      const reason = quote && quote.saturated ? 'demand_saturation' : 'poor_destination';
+      g._lastSaleBlock = reason;
+      return { ok: false, reason };
+    }
+    pending.quantity = qty;
+    pending.stationId = pending.stationId || dest;
     const plan = {
       intentId: pending.intentId,
-      stationId: pending.stationId || stationId || null,
+      stationId: pending.stationId,
       good: pending.good,
       quantity: qty,
       unitPrice: quote.unitAvg,
-      total: quote.total,
+      total: quote.unitAvg * qty,
       quoteVersion: quote.quoteVersion,
     };
     const result = commitShipmentSale(g, plan, () => this.creditPassive(plan.total, 'drone:program'));
-    if (result && result.ok && !result.duplicate && plan.stationId) {
-      this.bus.emit('economy:applyTradePressure', {
+    if (result && result.ok && !result.duplicate) {
+      g._lastSaleBlock = null;
+      const def = DRONE_BY_ID.get(g.defId) || g;
+      recordRealisedSale(g, {
         stationId: plan.stationId,
-        good: plan.good,
-        vol: plan.quantity,
+        quantity: plan.quantity,
+        unitPrice: plan.unitPrice,
+        credited: result.receipt && result.receipt.credited,
+        operatingCostPerMin: operatingCostPerMin(def.upkeepPerMin, 'running'),
       });
+      if (plan.stationId) {
+        this.bus.emit('economy:applyTradePressure', {
+          stationId: plan.stationId,
+          good: plan.good,
+          vol: plan.quantity,
+        });
+      }
     }
     return result;
   },
 
   _quoteOperationSale(stationId, commodityId, qty) {
-    const unitFromStation = stationId
-      ? this._stationPrice(stationId, commodityId, 'sell', qty)
-      : this._orePrice(commodityId);
-    const unit = Math.max(0, Math.round(Number(unitFromStation) || 0));
     const quantity = Math.max(0, Math.floor(Number(qty) || 0));
+    if (!stationId || quantity <= 0) {
+      return { unitAvg: 0, total: 0, quoteVersion: 0, fillable: 0, saturated: true };
+    }
+    const econ = this._economy();
+    if (econ && typeof econ.quote === 'function') {
+      const q = econ.quote(stationId, commodityId, 'sell', quantity);
+      if (q && q.ok) {
+        const unit = Math.max(0, Math.round(Number(q.unitAvg) || 0));
+        return {
+          unitAvg: unit,
+          total: Math.max(0, Math.round(Number(q.total != null ? q.total : unit * quantity) || 0)),
+          quoteVersion: unit,
+          fillable: unit > 0 ? quantity : 0,
+          saturated: unit <= 0,
+        };
+      }
+    }
+    const unitFromStation = this._stationPrice(stationId, commodityId, 'sell', quantity);
+    const unit = Math.max(0, Math.round(Number(unitFromStation) || 0));
     return {
       unitAvg: unit,
       total: unit * quantity,
       quoteVersion: unit,
+      fillable: unit > 0 ? quantity : 0,
+      saturated: unit <= 0,
     };
   },
 
@@ -998,11 +1044,18 @@ export const automation = {
 
     // Aggregate extraction into a temporary streaming supply. Production consumes it before the
     // physical drone buffer cap is applied, matching what repeated live ticks would deliver.
+    const strandFuel = (g) => {
+      this._strandForFuel(g, DRONE_BY_ID.get(g.defId) || g, { toast: false });
+    };
     const exhaustedBeforeWork = [];
     const exhaustedAfterWork = [];
     for (let i = a.drones.length - 1; i >= 0; i--) {
       const g = a.drones[i];
       if (!g || g.sectorId === currentSectorId || g.status === 'distressed') continue;
+      if (isFuelStranded(g)) {
+        strandFuel(g);
+        continue;
+      }
       const def = DRONE_BY_ID.get(g.defId) || g;
       g.oreType = g.oreType || DRONE_ORE_ID;
       // Alphabet steps resolve live beacons, steer rendered entities, and may touch the current
@@ -1027,15 +1080,8 @@ export const automation = {
       }
     }
 
-    const retireExhausted = (g) => {
-      const index = a.drones.indexOf(g);
-      if (index < 0) return;
-      this._releaseDroneEntities(g);
-      this._loseAsset('drone', g, this._droneBufferValue(g), g.sectorId);
-      a.drones.splice(index, 1);
-    };
-    // A group with no operating time loses its pre-existing buffer before facilities can claim it.
-    for (const g of exhaustedBeforeWork) retireExhausted(g);
+    // A group with no operating time waits in place; its hold is not a refinery feed.
+    for (const g of exhaustedBeforeWork) strandFuel(g);
 
     const orderedOutposts = a.outposts
       .filter((o) => o && o.sectorId !== currentSectorId)
@@ -1047,12 +1093,12 @@ export const automation = {
     }
 
     // A group that worked during this cadence delivers its final fuel-bounded batch first, then
-    // retires. This mirrors fine-step presence and offline catch-up ordering.
-    for (const g of exhaustedAfterWork) retireExhausted(g);
+    // waits in place. Fuel shortage never deletes the purchased machine.
+    for (const g of exhaustedAfterWork) strandFuel(g);
 
     // Only residual ore occupies the drone's physical buffer after the coarse transfer settles.
     for (const g of a.drones) {
-      if (!g || g.sectorId === currentSectorId || g.status === 'distressed'
+      if (!g || g.sectorId === currentSectorId || g.status === 'distressed' || g.status === 'stranded'
         || (g.program && TEMPLATES[g.program.templateId])) continue;
       const def = DRONE_BY_ID.get(g.defId) || g;
       const cap = Math.max(0, Number(g.bufferCap || def.bufferCap) || 0);
@@ -1213,11 +1259,89 @@ export const automation = {
     };
   },
 
-  // Distressed group: stop the drones in place (don't despawn — they resume when upkeep is paid).
+  // Distressed or fuel-stranded group: stop the drones in place (don't despawn — they resume
+  // when upkeep is paid or fuel returns).
   _parkDroneEntities(g) {
     if (!g || !g.entityIds || !g.entityIds.length) return;
     const getEnt = (this.helpers && this.helpers.getEntity) || ((id) => this.state.entities.get(id));
     for (const id of g.entityIds) { const e = getEnt(id); if (e && e.alive) { e.vel.x = 0; e.vel.z = 0; } }
+  },
+
+  _burnOperatingFuel(g, def, dt) {
+    if (!g || isFuelStranded(g) || g.status === 'distressed') return isFuelStranded(g);
+    const rate = Math.max(0, Number(def && def.fuelRate) || 1);
+    g.fuel = Math.max(0, (Number(g.fuel) || 0) - rate * Math.max(0, Number(dt) || 0));
+    if (g.fuel > 0) {
+      g._fuelStrandNotified = false;
+      return false;
+    }
+    this._strandForFuel(g, def, { toast: true });
+    return true;
+  },
+
+  _strandForFuel(g, def, { toast = false } = {}) {
+    this._parkDroneEntities(g);
+    applyFuelShortage(g);
+    g.ratePerMin = 0;
+    const stored = shipmentUsed(g);
+    const cap = Math.max(0, Number(g.bufferCap || (def && def.bufferCap)) || 0);
+    stampOperation(g, {
+      fuel: 0,
+      distressed: false,
+      hasRock: true,
+      hasDepot: true,
+      shipmentUsed: stored,
+      shipmentCap: cap,
+      grossUnits: g.operation && g.operation.grossUnits,
+      lastSale: g.operation && g.operation.lastSale,
+      upkeepPerMin: 0,
+    });
+    if (toast && !g._fuelStrandNotified) {
+      g._fuelStrandNotified = true;
+      this.bus.emit('toast', {
+        text: 'Drone out of fuel — waiting. The machine is still here.',
+        kind: 'warn',
+        ttl: 4,
+      });
+    }
+  },
+
+  _syncProgrammedOperation(g, def, curSector) {
+    ensureShipment(g);
+    const cap = Math.max(0, Number(g.bufferCap || (def && def.bufferCap)) || 0) || 40;
+    const stored = shipmentUsed(g);
+    const rock = this._nearestAsteroid(g.originPos || this._playerPos(), (def && def.deployRange) || 400);
+    const depot = this._homeStation();
+    const step = g.program && TEMPLATES[g.program.templateId]
+      ? (TEMPLATES[g.program.templateId].steps[(g.programState && g.programState.pc) || 0] || {})
+      : {};
+    let programStep = 'mine';
+    if (step.op === 'move' && step.target === 'depot') programStep = 'haul';
+    else if (step.op === 'interact' || step.verb === 'sell') programStep = 'sell';
+    const block = g._lastSaleBlock;
+    const demandOpen = block !== 'demand_saturation';
+    const quoteOk = block !== 'poor_destination';
+    const hasDepot = !!depot && block !== 'blocked_lane';
+    const bay = droneBayCapacityForState(this.state);
+    const orePrice = this._orePrice(g.oreType || DRONE_ORE_ID);
+    const grossValuePerMin = (def.mineRate || 0) * Math.max(1, Number(g.count) || 1) * 60 * (orePrice || 0);
+    const op = stampOperation(g, {
+      fuel: Number(g.fuel) || 0,
+      distressed: g.status === 'distressed',
+      hasRock: !!rock || g.sectorId !== curSector,
+      hasDepot,
+      shipmentUsed: stored,
+      shipmentCap: cap,
+      quoteOk,
+      demandOpen,
+      bayFull: bay.available <= 0,
+      programStep,
+      upkeepPerMin: def.upkeepPerMin || 0,
+      grossUnits: g.operation && g.operation.grossUnits,
+      lastSale: g.operation && g.operation.lastSale,
+      grossValuePerMin: isFuelStranded(g) ? 0 : grossValuePerMin,
+    });
+    g.ratePerMin = op && op.operatingState === 'running' ? grossValuePerMin : 0;
   },
 
   // Buffer realized to credits only on recall (collect/bank). Display rate is the gross mine value
@@ -1430,6 +1554,7 @@ export const automation = {
       limitingGoodId: plan.limitingGoodId,
       localFeeders: (a.drones || []).filter((g) => (
         g && g.sectorId === o.sectorId && g.status !== 'distressed'
+        && g.status !== 'stranded'
         && !(g.program && TEMPLATES[g.program.templateId])
       )).length,
     };
@@ -1442,6 +1567,7 @@ export const automation = {
         g
         && g.sectorId === o.sectorId
         && g.status !== 'distressed'
+        && g.status !== 'stranded'
         && !(g.program && TEMPLATES[g.program.templateId])
         && (goodId == null || (g.oreType || DRONE_ORE_ID) === goodId)
         && (g.buffer || 0) > 0
@@ -1561,6 +1687,7 @@ export const automation = {
   },
 
   _upkeepOf(map, inst) {
+    if (inst && (inst.status === 'stranded' || isFuelStranded(inst))) return 0;
     const def = map.get(inst.defId);
     return (def ? def.upkeepPerMin : inst.upkeepPerMin) || 0;
   },
@@ -1604,6 +1731,7 @@ export const automation = {
   creditPassive(grossAmount, source) {
     let gross = Math.max(0, grossAmount);
     if (gross <= 0) return 0;
+    if (isThroughputSettledSource(source)) return this._creditThroughput(gross, source);
     const settlement = creditPassiveFromBudget(gross, this._capBudget);
     this._capBudget = settlement.remainingBudget;
     // HARD CLAMP (not the spec's overflowEff credit): the spec's `credited = cap + (net-cap)*0.25`
@@ -1622,6 +1750,17 @@ export const automation = {
     const stats = this.state.player && this.state.player.stats;
     if (stats) stats.totalPassiveEarnedLifetime = (stats.totalPassiveEarnedLifetime || 0) + credited;
     this.bus.emit('automation:incomeCredited', { amount: credited, source: source || 'passive' });
+    return credited;
+  },
+
+  _creditThroughput(grossAmount, source) {
+    const credited = Math.round(Math.max(0, grossAmount || 0));
+    if (credited <= 0) return 0;
+    this.bus.emit('economy:grantCredits', { amount: credited, reason: 'automation:' + (source || 'throughput') });
+    this.meta().totalPassiveEarnedLifetime = (this.meta().totalPassiveEarnedLifetime || 0) + credited;
+    const stats = this.state.player && this.state.player.stats;
+    if (stats) stats.totalPassiveEarnedLifetime = (stats.totalPassiveEarnedLifetime || 0) + credited;
+    this.bus.emit('automation:incomeCredited', { amount: credited, source: source || 'throughput' });
     return credited;
   },
 
@@ -1645,6 +1784,7 @@ export const automation = {
     switch (order) {
       case 'buyDrone': return this.buyDrone(p.targetRef);
       case 'recall': return this.recallDrone(p.shipId);
+      case 'refuel': return this.refuelDrone(p.shipId);
       case 'hireTrader': return this.hireTrader(p.targetRef);
       case 'assignRoute': return this.reroute(p.shipId);
       case 'dismiss': return this.dismissTrader(p.shipId);
@@ -1820,6 +1960,27 @@ export const automation = {
     this._releaseDroneEntities(g); // despawn the flying drones
     a.drones.splice(idx, 1);
     this.toast(`Drone recalled (+${value} cr ore, -${refuel} cr fuel)`, 'success');
+    return true;
+  },
+
+  refuelDrone(id) {
+    const g = this.state.automation.drones.find((x) => x.id === id);
+    if (!g) return false;
+    const def = DRONE_BY_ID.get(g.defId) || g;
+    const max = def.fuelMax || g.fuelMax || 0;
+    const need = Math.max(0, max - (Number(g.fuel) || 0));
+    if (need <= 0) return true;
+    const cost = Math.round(need * 0.5);
+    if (cost > 0 && !this._charge(cost, 'drone:refuel')) return false;
+    resumeAfterFuel(g, max, def.upkeepPerMin || 0);
+    g._fuelStrandNotified = false;
+    if (g.program && TEMPLATES[g.program.templateId]) {
+      this._syncProgrammedOperation(g, def, (this.state.world && this.state.world.currentSectorId) || g.sectorId);
+    } else {
+      g.status = (g.buffer || 0) >= (g.bufferCap || def.bufferCap || 0) - 1e-6 ? 'idle' : 'mining';
+      g.ratePerMin = this._droneRatePerMin(g, def);
+    }
+    this.toast(`Drone refueled (-${cost} cr). Work resumes.`, 'success');
     return true;
   },
 
@@ -2158,20 +2319,23 @@ export const automation = {
     // per-entity simulation: it is the same coarse node ledger used while a sector is absent. The
     // cadence matters because auto-sell frees facility storage each minute; a single four-hour
     // storage clamp would silently erase valid throughput.
+    for (const g of a.drones) {
+      if (g && isFuelStranded(g) && g.status !== 'distressed') {
+        this._strandForFuel(g, DRONE_BY_ID.get(g.defId) || g, { toast: false });
+      }
+    }
     const legacyDrones = a.drones.filter((g) => (
       g
       && g.status !== 'distressed'
+      && g.status !== 'stranded'
+      && !isFuelStranded(g)
       && !(g.program && TEMPLATES[g.program.templateId])
     ));
     const orderedOutposts = [...a.outposts].sort(compareStableId);
-    const retireOfflineDrone = ({ g, def }) => {
-      const activeIndex = a.drones.indexOf(g);
-      if (activeIndex >= 0) a.drones.splice(activeIndex, 1);
+    const parkOfflineDrone = ({ g, def }) => {
+      this._strandForFuel(g, def, { toast: false });
       const coarseIndex = legacyDrones.indexOf(g);
       if (coarseIndex >= 0) legacyDrones.splice(coarseIndex, 1);
-      this._releaseDroneEntities(g);
-      this._loseAsset('drone', g, this._droneBufferValue(g), g.sectorId);
-      lost += 1;
     };
     let networkRemainingS = elapsed;
     while (networkRemainingS > 1e-9) {
@@ -2196,8 +2360,8 @@ export const automation = {
         }
       }
 
-      // A group with no active time is lost with its buffer before the production network runs.
-      for (const exhausted of exhaustedBeforeWork) retireOfflineDrone(exhausted);
+      // A group with no active time waits with its hold; facilities do not siphon a stranded machine.
+      for (const exhausted of exhaustedBeforeWork) parkOfflineDrone(exhausted);
 
       // Same-sector recipe consumers compete in stable ledger-id order.
       for (const o of orderedOutposts) {
@@ -2206,9 +2370,8 @@ export const automation = {
         this._advanceOutpost(o, def, stepS, a);
       }
 
-      // Let facilities consume the final streamed ore before an exhausted group is removed, as
-      // repeated live ticks would. Runtime entities are absent during this coarse settlement.
-      for (const exhausted of exhaustedAfterWork) retireOfflineDrone(exhausted);
+      // Facilities take the final streamed ore, then the machine waits in place.
+      for (const exhausted of exhaustedAfterWork) parkOfflineDrone(exhausted);
 
       // Mirror the live minute-cadence auto-sell without emitting market pressure off-screen.
       for (const o of orderedOutposts) {
@@ -2541,7 +2704,10 @@ export const automation = {
   _normalizeAutomation(a) {
     a.drones = normalizeAutomationRecordList(a.drones, 'drone');
     // entityIds are runtime-only; a fresh load/normalize starts with none so they re-spawn in-sector.
-    for (const g of a.drones) g.entityIds = [];
+    for (const g of a.drones) {
+      g.entityIds = [];
+      migrateDroneOperation(g);
+    }
     a.traders = normalizeAutomationRecordList(a.traders, 'trader');
     a.outposts = normalizeAutomationRecordList(a.outposts, 'outpost');
     for (const o of a.outposts) delete o.entityId;

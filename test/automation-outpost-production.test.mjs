@@ -5,8 +5,19 @@ import assert from 'node:assert/strict';
 
 import { automation } from '../src/systems/automation.js';
 import { OUTPOSTS } from '../src/data/automation.js';
+import { SHIPS } from '../src/data/ships.js';
+import { buildSlotList } from '../src/systems/ships.js';
 
 const OUTPOST_BY_ID = new Map(OUTPOSTS.map((def) => [def.id, def]));
+
+function rangerWithDroneBay() {
+  const hull = SHIPS.find((def) => def.id === 'ship_ranger');
+  const slots = buildSlotList(hull);
+  const fittings = new Array(slots.length).fill(null);
+  const bay = slots.findIndex((slot) => slot.type === 'utility' && slot.size === 'L');
+  if (bay >= 0) fittings[bay] = 'mod_drone_bay_l';
+  return { defId: 'ship_ranger', fittings };
+}
 
 function makeBus() {
   const handlers = new Map();
@@ -31,9 +42,11 @@ function boot(seed = 0xB1) {
     player: {
       credits: 100_000,
       droneTierCap: 1,
+      researchedNodes: ['tech_drone_control'],
+      activeShipIndex: 0,
       stats: {},
       cargo: { items: {}, usedVolume: 0, usedMass: 0, capVolume: 200, capMass: 200 },
-      ownedShips: [],
+      ownedShips: [rangerWithDroneBay()],
     },
     world: { currentSectorId: 'sector_helios_prime', activeSector: null },
     entities: new Map(),
@@ -294,7 +307,7 @@ test('off-screen drone-to-outpost throughput advances on a coarse minute cadence
     'one coarse minute converts the streamed 48 iron into 24 alloys at the 2:1 recipe');
 });
 
-test('an off-screen drone delivers its final fuel-bounded batch before retirement', () => {
+test('an off-screen drone delivers its final fuel-bounded batch then waits in place', () => {
   const { state, inst } = boot();
   const remoteSector = 'sector_frontier_remote';
   const remote = addFeed(state, {
@@ -312,8 +325,10 @@ test('an off-screen drone delivers its final fuel-bounded batch before retiremen
   inst.update(60, state);
 
   assert.equal(outpost.storage, 24,
-    'the refinery receives 48 final iron and converts it to 24 alloys before drone retirement');
-  assert.equal(state.automation.drones.length, 0);
+    'the refinery receives 48 final iron and converts it to 24 alloys before the drone waits');
+  assert.equal(state.automation.drones.length, 1, 'fuel shortage never deletes the purchased machine');
+  assert.equal(remote.status, 'stranded');
+  assert.equal(remote.fuel, 0);
 });
 
 test('a remote outpost produces for the remainder of a cadence after raid recovery', () => {

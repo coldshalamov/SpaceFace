@@ -10,6 +10,7 @@ import { DRONES, TRADERS, OUTPOSTS, AUTO_BALANCE } from '../../data/automation.j
 import { COMMODITIES } from '../../data/commodities.js';
 import { TECH_NODES } from '../../data/tech.js';
 import { droneBayCapacityForState, normalizeAutomationRecordId } from '../../systems/automation.js';
+import { describeProgrammedMinerOperation } from '../../systems/automationOperations.js';
 import { shipworksStationAccess } from '../../systems/ships.js';
 import { escapeHtml } from '../comms.js';
 import { enhanceSelects } from '../uiPrimitives.js';
@@ -27,7 +28,7 @@ export function automationRecordRefAttr(value, fallback = '') {
 
 const PROGRAM_OPTIONS = Object.freeze([
   { value: '', label: 'Manual (mine -> bank)', meta: 'Banks ore in the drone buffer; recall to cash out.' },
-  { value: 'mine_to_depot', label: 'Mine -> Haul -> Sell', meta: 'Loops field mining into depot sales through the passive cap.' },
+  { value: 'mine_to_depot', label: 'Mine -> Haul -> Sell', meta: 'Loops field mining into depot sales. The board names the stage that is actually stopping work.' },
   { value: 'patrol_guard', label: 'Guard Player', meta: 'Keeps the drone close as a defensive escort.' },
   { value: 'scout_report', label: 'Scout -> Report', meta: 'Tests beacon movement and a short overwatch loop.' },
 ]);
@@ -368,7 +369,12 @@ const CSS = `
 #sf-automation .au-operation-status.warn { color: var(--warn); }
 #sf-automation .au-operation-status.bad { color: var(--danger); }
 #sf-automation .au-operation-status.neutral { color: var(--ink-dim); }
-#sf-automation .au-operation-reason { margin-top: 7px; font-size: 13px; line-height: 1.4; color: var(--ink-dim); }
+#sf-automation .au-miner-ops { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px; margin-top: 8px; padding: 8px 10px; border-top: 1px solid var(--panel-edge);
+  background: color-mix(in srgb, var(--panel) 50%, transparent); }
+#sf-automation .au-miner-ops .au-flow-k { font-family: var(--sf-body-face); font-weight: 600; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-dim); }
+#sf-automation .au-miner-ops strong { display: block; margin-top: 2px; font-size: 13px; color: var(--ink); }
+#sf-automation .au-card button.au-refuel { background: transparent; border: 1px solid var(--accent); color: var(--accent); }
 #sf-automation .au-outpost-detail { margin-top: 6px; font-size: 13px; color: var(--ink-dim); }
 #sf-automation .au-outpost-detail summary { width: fit-content; cursor: pointer; color: var(--accent); }
 #sf-automation .au-outpost-detail summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
@@ -590,7 +596,8 @@ export const automationScreen = {
     if (this._tab === 'drones') {
       for (const d of a.drones || []) {
         const program = d.program && d.program.templateId;
-        parts.push(d.id, d.defId, d.status, Math.round(d.buffer || 0), Math.round(d.fuel || 0), program || '');
+        parts.push(d.id, d.defId, d.status, Math.round(d.buffer || 0), Math.round(d.fuel || 0), program || '',
+          d.operation && d.operation.limitStage || '', d.operation && d.operation.operatingState || '');
       }
     } else if (this._tab === 'traders') {
       const hireUnlocked = (player.researchedNodes || []).includes('tech_autonomous_fleets');
@@ -702,7 +709,7 @@ export const automationScreen = {
 
     frag.appendChild(this._section(`Deployed Drones (${owned.length}/${droneBay.capacity})`));
     if (!owned.length) {
-      frag.appendChild(emptyEl('No drones deployed. Buy a Mk1 near an asteroid field, then recall it before fuel runs dry to bank ore.'));
+      frag.appendChild(emptyEl('No drones deployed. Buy a Mk1 near an asteroid field. If it runs dry it waits for fuel — the machine stays.'));
     } else {
       for (const d of owned) {
         const def = DRONES.find((x) => x.id === d.defId) || d;
@@ -717,6 +724,20 @@ export const automationScreen = {
           .join('');
         const programBadge = curTpl ? ` <span class="au-program-badge">${escapeHtml(programLabel(curTpl))}</span>` : '';
         const programMeta = curTpl ? programMetaText(curTpl) : PROGRAM_OPTIONS[0].meta;
+        const readout = curTpl ? describeProgrammedMinerOperation(d, def) : null;
+        const opsHtml = readout ? `
+            <div class="au-miner-ops" data-state="${escapeHtml(readout.state)}" role="img" aria-label="${escapeHtml(readout.accessibleSummary)}">
+              <div><span class="au-flow-k">Gross cut</span><strong>${escapeHtml(String(readout.grossUnits))} u</strong></div>
+              <div><span class="au-flow-k">Stored</span><strong>${escapeHtml(String(readout.stored))}/${escapeHtml(String(readout.cap))} u</strong></div>
+              <div><span class="au-flow-k">Limit</span><strong class="au-operation-status ${escapeHtml(readout.tone)}">${escapeHtml(readout.statusLabel)}</strong></div>
+              <div><span class="au-flow-k">Last sale</span><strong>${escapeHtml(readout.lastText)}</strong></div>
+            </div>
+            <div class="au-note">Operating cost ${escapeHtml(String(readout.operatingCostPerMin))} cr/min · net ${fmtCr(readout.netThroughputPerMin)}/min. ${escapeHtml(readout.reason)}</div>`
+          : `<div class="au-note">${escapeHtml(programMeta)}</div>`;
+        const stranded = d.status === 'stranded';
+        const refuelBtn = stranded
+          ? `<button class="au-refuel" data-act="refuel" data-ref="${automationRecordRefAttr(d.id, def.id)}" data-kind="drone">Refuel</button>`
+          : '';
         const card = document.createElement('div');
         card.className = 'au-card';
         card.innerHTML = `
@@ -734,8 +755,9 @@ export const automationScreen = {
               <span class="au-program-label">Program:</span>
               <select class="au-program" data-act="assignProgram" data-ref="${automationRecordRefAttr(d.id, def.id)}" data-kind="drone">${programOpts}</select>
             </div>
-            <div class="au-note">${escapeHtml(programMeta)}</div>
+            ${opsHtml}
           </div>
+          ${refuelBtn}
           <button class="au-order" data-act="recall" data-ref="${automationRecordRefAttr(d.id, def.id)}" data-kind="drone">Recall</button>`;
         frag.appendChild(card);
       }
@@ -1008,6 +1030,7 @@ export const automationScreen = {
     const toastFor = {
       buyDrone: 'Deploying mining drone…',
       recall: 'Recalling asset…',
+      refuel: 'Refueling drone…',
       hireTrader: 'Hiring NPC trader…',
       assignRoute: 'Assigning trade route…',
       dismiss: 'Dismissing trader…',
@@ -1205,6 +1228,19 @@ export function automationNextAction(state) {
       'Your automation is unpaid or under attack. Bank drone buffers, cut upkeep, or fly rescue before repossession.',
       `${summary.distressedAssets} distressed`, 'Review Assets');
   }
+  const stranded = (a.drones || []).find((d) => d && d.status === 'stranded');
+  if (stranded) {
+    return nextAction('drones', 'Refuel the waiting drone',
+      'It ran out of fuel and stopped. The machine is still there. Refuel to start it again.',
+      'waiting on fuel',
+      'Refuel',
+      {
+        action: 'refuel',
+        targetRef: stranded.id,
+        kind: 'drone',
+        actionTitle: 'Refuel waiting drone',
+      });
+  }
   if (!(a.drones || []).length) {
     const purchase = describeAutomationPurchase('drone', droneMk1, state);
     const prerequisite = purchase.state === 'drone_hull'
@@ -1382,6 +1418,7 @@ function estimateUpkeepPerMin(a) {
 }
 
 function defUpkeep(defs, inst) {
+  if (inst && (inst.status === 'stranded' || inst.status === 'distressed')) return 0;
   const def = defs.find((x) => x.id === inst.defId) || inst;
   return def.upkeepPerMin || 0;
 }
@@ -1426,8 +1463,8 @@ function recipeText(r) {
 
 function statusPill(status) {
   if (!status || status === 'active' || status === 'working' || status === 'deployed') return `<span class="au-pill ok">active</span>`;
-  if (status === 'distressed' || status === 'lowfuel' || status === 'idle') return `<span class="au-pill warn">${escapeHtml(status)}</span>`;
-  if (status === 'lost' || status === 'raided' || status === 'destroyed') return `<span class="au-pill bad">${escapeHtml(status)}</span>`;
+  if (status === 'distressed' || status === 'lowfuel' || status === 'idle' || status === 'waiting') return `<span class="au-pill warn">${escapeHtml(status)}</span>`;
+  if (status === 'lost' || status === 'raided' || status === 'destroyed' || status === 'stranded' || status === 'stalled') return `<span class="au-pill bad">${escapeHtml(status)}</span>`;
   return `<span class="au-pill">${escapeHtml(status)}</span>`;
 }
 

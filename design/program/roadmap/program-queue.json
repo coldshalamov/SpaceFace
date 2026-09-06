@@ -9486,7 +9486,7 @@
       "parentId": "PQ-177",
       "priority": 198,
       "title": "Visible operational limits replace the passive haircut",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-177.06"
       ],
@@ -9506,8 +9506,10 @@
         "npm run check:save-schema",
         "npm run check:sim"
       ],
-      "receiptRefs": [],
-      "brief": "One representative operation shows gross output, the limiting physical stage, realised sale and operating cost; fuel shortage stops work visibly and never deletes equipment; the passive-income bucket and overflow discount retire as the primary constraint only after the throughput/demand model is proven and old saves migrate their machinery. DONE WHEN: the player can explain why a machine helped or not; returns stay bounded on tested loops; an old save keeps every machine; no raids or maintenance punishment as balancing.",
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-177-07-REPORT.md"
+      ],
+      "brief": "DONE 2026-09-06: programmed miner shows gross cut, stored load, limiting stage, last sale and operating cost. Fuel empty strands the machine; Continue keeps it; a second machine on a saturated depot does not double the take. Bucket is no longer the primary bound on that sale route.",
       "kind": "implementation"
     },
     {

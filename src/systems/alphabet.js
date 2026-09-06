@@ -150,7 +150,8 @@ export function tickProgram(group, ctx, dt) {
     case P.INTERACT: {
       // sell: realize the group's mined cargo as credits at the depot station.
       if (step.verb === 'sell') {
-        ctx.sellMinedCargo(beacon && beacon.stationId);
+        const result = ctx.sellMinedCargo(beacon && beacon.stationId);
+        if (result && result.ok === false) return false;
       }
       advance(ps, tpl);
       return true;

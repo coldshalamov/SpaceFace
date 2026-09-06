@@ -260,7 +260,7 @@ test('long offline windows settle auto-selling production at coarse minute caden
   assert.equal(receipt.grossCr, expectedOutpostGross);
 });
 
-test('offline production is bounded by drone fuel and removes an exhausted group deterministically', () => {
+test('offline production is bounded by drone fuel and keeps an exhausted group waiting', () => {
   const { state, inst } = boot();
   const iron = addDrone(state, {
     id: 'drone_one_second_of_fuel',
@@ -273,19 +273,20 @@ test('offline production is bounded by drone fuel and removes an exhausted group
   const elapsedSec = 120;
   const receipt = inst.runOfflineCatchup({ nowMs: WINDOW_START_MS + elapsedSec * 1000 });
 
-  // Mk1 fuelRate is 1/s: one second yields 0.8 iron -> 0.4 alloys, then the group is lost.
+  // Mk1 fuelRate is 1/s: one second yields 0.8 iron -> 0.4 alloys, then the group waits.
   const expectedAlloys = 0.4;
   const expectedOutpostGross = expectedAlloys * PRICE.cmdty_alloys
     * AUTOMATION_PASSIVE_TUNING.outpostAutosellMult;
-  assert.equal(state.automation.drones.length, 0);
+  assert.equal(state.automation.drones.length, 1, 'fuel shortage never deletes the purchased machine');
+  assert.equal(iron.status, 'stranded');
   assert.equal(iron.fuel, 0);
-  assert.equal(receipt.lost, 1);
+  assert.equal(receipt.lost, 0);
   assert.equal(receipt.droneCr, 0);
   assert.equal(receipt.outpostCr, Math.round(expectedOutpostGross * receipt.offlineEff));
   assert.equal(receipt.grossCr, expectedOutpostGross);
 });
 
-test('offline upkeep accrues through a fuel-bounded drone lifetime before retirement', () => {
+test('offline upkeep accrues through a fuel-bounded drone lifetime while the machine remains', () => {
   const { state, inst } = boot();
   const iron = addDrone(state, {
     id: 'drone_one_minute_of_upkeep',
@@ -297,13 +298,14 @@ test('offline upkeep accrues through a fuel-bounded drone lifetime before retire
   const elapsedSec = 120;
   const receipt = inst.runOfflineCatchup({ nowMs: WINDOW_START_MS + elapsedSec * 1000 });
 
-  assert.equal(state.automation.drones.length, 0);
-  assert.equal(receipt.lost, 1);
+  assert.equal(state.automation.drones.length, 1, 'fuel shortage never deletes the purchased machine');
+  assert.equal(iron.status, 'stranded');
+  assert.equal(receipt.lost, 0);
   assert.equal(receipt.upkeep, 6,
-    'Mk1 upkeep is charged for its one fuel-bounded operating minute, not erased on retirement');
+    'Mk1 upkeep is charged for its one fuel-bounded operating minute, not as a deletion penalty');
 });
 
-test('a drone already out of fuel cannot feed a refinery before its offline loss is settled', () => {
+test('a drone already out of fuel cannot feed a refinery and stays as a waiting machine', () => {
   const { state, inst } = boot();
   const empty = addDrone(state, {
     id: 'drone_empty_at_window_start',
@@ -315,11 +317,13 @@ test('a drone already out of fuel cannot feed a refinery before its offline loss
 
   const receipt = catchUp(inst);
 
-  assert.equal(state.automation.drones.length, 0);
-  assert.equal(receipt.lost, 1);
+  assert.equal(state.automation.drones.length, 1, 'fuel shortage never deletes the purchased machine');
+  assert.equal(empty.status, 'stranded');
+  assert.equal(empty.buffer, 4, 'the waiting hold is not siphoned into the refinery');
+  assert.equal(receipt.lost, 0);
   assert.equal(receipt.droneCr, 0);
   assert.equal(receipt.outpostCr, 0,
-    'a zero-duration group is lost with its buffer before any facility can consume it');
+    'a zero-duration group waits with its buffer; facilities do not consume it');
 });
 
 test('offline raid cooldown expires at its boundary and production resumes for remaining time', () => {
