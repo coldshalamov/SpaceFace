@@ -3144,7 +3144,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       if (!material) continue;
       if (color) material.emissive.copy(color);
       material.emissiveIntensity = intensity;
-      material.needsUpdate = true;
+      // Emissive values are uniforms; changing them does not invalidate the shader program.
     }
   }
   function makeVisibilityProxy(nodes) {
