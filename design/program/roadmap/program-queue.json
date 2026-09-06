@@ -11930,7 +11930,7 @@
       "parentId": "PQ-145",
       "priority": 280,
       "title": "The first durable site loop",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "asteroid-works"
@@ -11940,6 +11940,8 @@
         "src/ui/screens/drill.js",
         "src/systems/asteroidSites.js",
         "src/systems/npcJobsRuntime.js",
+        "src/ui/asteroid/inspector.js",
+        "src/ui/asteroid/asteroidScreen.js",
         "test/"
       ],
       "checks": [
@@ -11947,8 +11949,10 @@
         "npm run check:atlas-integrity",
         "npm run check:save-schema"
       ],
-      "receiptRefs": [],
-      "brief": "One small geological arrangement with one clear sacrifice; cut-preview truth; the first anchoring unmistakable and cheap; one machine relation, one buffer, one export with a receipt; return after save/reload to the same operation; claim survey told apart from visible geology. DONE WHEN: output reaches the flight economy exactly once; a blocked operation shows its cause and a corrective action; save/reload before/after delivery, during a blocked lane and after a geometry change reproduces the operation without replaying rewards; leaving it inactive destroys nothing.",
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-145-01-REPORT.md"
+      ],
+      "brief": "DONE 2026-09-06: the first machine stakes the claim. Cut-preview names the sacrificed face. A cargo port berths one starter courier. One pod sale pays once through cargoCustody (qty, destination, price, operating cost, loss) and a duplicate intent after Continue does not. A dark mill says paint a cable. Idle and geometry-change Continue keep the operation without replaying rewards. Drill cadence unchanged.",
       "kind": "implementation"
     },
     {

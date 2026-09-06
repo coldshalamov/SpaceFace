@@ -10,18 +10,23 @@
 //   • Determinism: state.simTime cadence + drawSeeded(state.sites.meta) streams. No wall clock,
 //     no Math.random. Courier losses are seeded-stochastic (brief §6).
 //
-// Durability model (brief §3): any machine creates a site record, but the record stays
-// UNANCHORED — tied to its live asteroid entity — until a Massline Core is installed. Asteroid
-// entities re-roll ids/layout every sector materialization, so an unanchored site dies with its
-// rock (the UI warns). Installing the Core freezes the bore layout (ent.data.boreSeed), records a
-// physical anchor, and from then on this system re-spawns the same rock, same interior, every
-// sector visit. The Core IS the persistence mechanic, not a buff.
+// Durability model (PQ-145.01): the first machine is the claim. Installing anything stakes the
+// rock — freeze the bore, record the physical anchor, commit the survey — so a sector reroll
+// cannot erase the factory. The Massline Core remains the unique power/command housing, not the
+// persistence gate. Legacy unanchored records (pre-this leaf) still die with their rock.
 //
 // Excavation stays owned by systems/drill.js. This system reads the same field math
 // (generateDrillField + cleared list) to recompute machine contact rings with no live session —
 // the contact ring (brief §1) is sacred: hollowing a neighbor permanently costs that contact.
 import { generateDrillField, applyClearedTiles, normalizeClearedTiles, tileIndex, DRILL_CONST } from './drill.js';
 import { addCargo, removeCargo } from './cargo.js';
+import {
+  addToShipment,
+  commitShipmentSale,
+  ensureShipment,
+  shipmentQty,
+  takeFromShipment,
+} from './cargoCustody.js';
 import {
   SITE_MACHINES, SITE_MACHINE_BY_ID, SITE_RECIPE_BY_ID, SITE_BALANCE,
 } from '../data/sites.js';
@@ -89,7 +94,7 @@ export function makeSiteRecord({ id, asteroidId, sectorId, fieldId, createdT }) 
     fieldId: fieldId || null,
     anchored: false,
     asteroidId: asteroidId ?? null,
-    boreSeed: null,           // frozen at core install; until then the live entity id seeds the bore
+    boreSeed: null,           // frozen at first install; until then the live entity id seeds the bore
     anchor: null,             // { x, z, radius, typeId, yieldU } — physical re-spawn recipe
     cleared: [],
     machines: [],
@@ -238,7 +243,7 @@ export const asteroidSites = {
       const site = src.byId[id];
       // Unanchored sites are physically tied to a transient rock: they survive in-session saves
       // only if their entity does, and entity links can't be trusted across arbitrary loads.
-      // Ship the anchored ones; the UI is explicit that pre-Core work is at risk.
+      // First-machine claims are anchored; ship those. Legacy pre-claim work still dies with the rock.
       if (!site || !site.anchored) continue;
       byId[id] = JSON.parse(JSON.stringify(site));
       order.push(id);
@@ -674,18 +679,18 @@ export const asteroidSites = {
       return { ok: false, reason: 'unique', missing: {}, profile: null };
     }
 
-    // PQ-024: Core commitment adopts the volatile claim survey atomically. When a survey exists
-    // but no longer matches the rock (the assayed formation was drilled into), the commitment
-    // refuses VISIBLY — it never silently rerolls to a different formation. Runs even before the
-    // site record exists (a Core-first install must not strand a stale survey mid-transaction).
-    if (defId === 'sm_massline_core'
+    // PQ-024 / PQ-145.01: the first machine commits the claim survey. When a survey exists
+    // but no longer matches the rock (the assayed formation was drilled into), that commit
+    // refuses VISIBLY — it never silently rerolls to a different formation. Same gate for
+    // Core and for any other first install; later machines on an already-staked claim skip it.
+    if (!(site && site.anchored)
       && this._surveyAdoption(site, asteroidId, field).status === 'stale') {
       return { ok: false, reason: 'survey-stale', missing: {}, profile: null };
     }
 
-    // Brief §5 learning curve: before a Core exists installation is physical — the rover must be
-    // beside the cell. Once the site is anchored, construction is remotely queueable anywhere
-    // hollow (the Core's command bandwidth), tethered or not.
+    // Brief §5 learning curve: before the claim is staked, installation is physical — the rover
+    // must be beside the cell. Once the first machine has anchored the site, construction is
+    // remotely queueable anywhere hollow, tethered or not.
     const anchored = !!(site && site.anchored);
     if (!anchored) {
       if (!sessionHere) return { ok: false, reason: 'no-session', missing: {}, profile: null };
@@ -702,6 +707,62 @@ export const asteroidSites = {
     const missing = this._missingMaterials(site, def.cost, this._fundingStoresFor(site, col, row));
     if (Object.keys(missing).length) return { ok: false, reason: 'materials', missing, profile };
     return { ok: true, reason: null, missing: {}, profile };
+  },
+
+  /**
+   * What a seated geology machine loses if this still-solid cell is bored out. Pure read.
+   * The sacrifice the leaf names: cut the face now, or keep it for the machine.
+   */
+  previewBreak(siteId, col, row) {
+    const site = this.getSite(siteId);
+    if (!site) return null;
+    const c = col | 0;
+    const r = row | 0;
+    const rt = this._runtime(site);
+    const field = rt && rt.field;
+    const tile = field && field[c] && field[c][r];
+    if (!tile || tile.type === 'empty') return null;
+    const neighbors = [];
+    for (const machine of site.machines) {
+      const def = SITE_MACHINE_BY_ID.get(machine.defId);
+      if (!def || !def.usesGeology) continue;
+      if (Math.abs(machine.col - c) > 1 || Math.abs(machine.row - r) > 1) continue;
+      if (machine.col === c && machine.row === r) continue;
+      neighbors.push({ machine, def });
+    }
+    if (!neighbors.length) return null;
+    const afterField = field.map((column) => column.map((cell) => ({ ...cell })));
+    afterField[c][r] = {
+      type: 'empty', hp: 0, maxHp: 0, ore: null, hazard: false, tierReq: 1, hardness: 0,
+    };
+    let contactsLost = 0;
+    const rateDelta = {};
+    for (const { machine, def } of neighbors) {
+      const geoBefore = contactProfile(field, machine.col, machine.row, COLS, ROWS);
+      const geoAfter = contactProfile(afterField, machine.col, machine.row, COLS, ROWS);
+      contactsLost += Math.max(0, (geoBefore.solid | 0) - (geoAfter.solid | 0));
+      const capBefore = machineCapability(def, geoBefore, machine.mode);
+      const capAfter = machineCapability(def, geoAfter, machine.mode);
+      const goods = new Set([
+        ...Object.keys(capBefore.outputsPerMin || {}),
+        ...Object.keys(capAfter.outputsPerMin || {}),
+      ]);
+      for (const goodId of goods) {
+        const delta = (Number(capAfter.outputsPerMin[goodId]) || 0)
+          - (Number(capBefore.outputsPerMin[goodId]) || 0);
+        if (Math.abs(delta) > 1e-9) rateDelta[goodId] = (rateDelta[goodId] || 0) + delta;
+      }
+    }
+    let rateLost = 0;
+    for (const delta of Object.values(rateDelta)) {
+      if (delta < 0) rateLost += -delta;
+    }
+    return {
+      contactsLost,
+      rateLost: Math.round(rateLost * 1000) / 1000,
+      rateDelta,
+      machineCount: neighbors.length,
+    };
   },
 
   /**
@@ -759,8 +820,8 @@ export const asteroidSites = {
   },
 
   /**
-   * Install a machine. Creates the site record on first install; installing the Massline Core
-   * anchors the site permanently (freezes bore layout + records the physical anchor).
+   * Install a machine. Creates the site record on first install and stakes the claim immediately
+   * (PQ-145.01): the rock is a permanent site from the first housing, not from the Core.
    */
   installMachine({ asteroidId, defId, col, row }) {
     const check = this.canInstall({ asteroidId, defId, col, row });
@@ -785,7 +846,7 @@ export const asteroidSites = {
       sites.order.push(id);
       ent.data.siteId = id;
       this.bus.emit('site:created', { siteId: id, asteroidId });
-      this._ledger(site, 'info', 'Claim opened — machines on an unanchored rock are lost if you leave the sector before a Massline Core is installed.');
+      this._ledger(site, 'info', 'Claim opened — the first machine stakes this rock.');
     }
 
     this._consumeMaterials(site, def.cost, this._fundingStoresFor(site, col, row));
@@ -804,7 +865,14 @@ export const asteroidSites = {
     const rt = this._rt.get(site.id);
     if (rt) rt.geoDirty = true;
 
-    if (defId === 'sm_massline_core' && !site.anchored) this._anchorSite(site, ent);
+    if (!site.anchored) this._anchorSite(site, ent, { reason: defId === 'sm_massline_core' ? 'core' : 'first-install' });
+    else if (defId === 'sm_massline_core') {
+      this._ledger(site, 'good', 'Massline Core online — command and power are live.');
+    }
+    if (defId === 'sm_cargo_port' && (site.fleet.podsReady | 0) < 1) {
+      site.fleet.podsReady = 1;
+      this._ledger(site, 'info', 'Starter courier berthed — the port can launch without a fabricator.');
+    }
 
     this._stampStructures(site);
     this._ledger(site, 'good', `${def.name} installed at ${col},${row}.`);
@@ -812,12 +880,14 @@ export const asteroidSites = {
     return { ok: true, reason: null, machineId: machine.id, siteId: site.id };
   },
 
-  _anchorSite(site, ent) {
+  _anchorSite(site, ent, { reason } = {}) {
     const state = this.state;
     site.anchored = true;
-    // Freeze the interior: the current entity id has been seeding this bore all along, so
-    // recording it preserves exactly the layout the player has been digging.
-    site.boreSeed = Number.isFinite(ent.data && ent.data.boreSeed) ? ent.data.boreSeed : ((site.asteroidId >>> 0) || 1);
+    // Freeze the interior from the live rock id that has been seeding this bore all along.
+    // Do not inherit a recycled runtime id stamped on ent.data after a later rematerialize.
+    if (!Number.isFinite(site.boreSeed)) {
+      site.boreSeed = (site.asteroidId >>> 0) || 1;
+    }
     ent.data.boreSeed = site.boreSeed;
     ent.data.siteAnchored = true;
     site.anchor = {
@@ -830,11 +900,14 @@ export const asteroidSites = {
     site.sectorId = (state.world && state.world.currentSectorId) || site.sectorId;
     // PQ-024: the same transaction that anchors the site also commits the claim survey — either
     // adopting the volatile session assay EXACTLY (no reroll) or, when no survey was ever pulsed,
-    // deriving the same deterministic target from the field the Core just froze. One record, one
+    // deriving the same deterministic target from the field just frozen. One record, one
     // truth: no durable survey without an anchored site, no anchored site without its survey.
     this._commitClaimSurvey(site);
-    this._ledger(site, 'good', 'Massline Core online — this asteroid is now a permanent site.');
-    this.bus.emit('site:anchored', { siteId: site.id, asteroidId: site.asteroidId, sectorId: site.sectorId });
+    const line = reason === 'core'
+      ? 'Massline Core online — this asteroid is now a permanent site.'
+      : 'Claim staked — this rock will be here when you come back.';
+    this._ledger(site, 'good', line);
+    this.bus.emit('site:anchored', { siteId: site.id, asteroidId: site.asteroidId, sectorId: site.sectorId, reason: reason || 'first-install' });
     // The exterior relay is deliberately NOT projected here: it is the producing site's visible
     // industrial consequence (PQ-024 lifecycle cold -> committed -> producing) and appears only
     // with the first real positive output. See _acceptProductionReceipt/_repairAnchors.
@@ -905,12 +978,13 @@ export const asteroidSites = {
     const adoption = this._surveyAdoption(site, site.asteroidId, field);
     let target = null;
     let revealedCells = [];
+    if (adoption.status === 'stale') return false;
     if (adoption.status === 'adopt') {
       target = adoption.survey;
       revealedCells = adoption.survey.revealed.filter((idx) => adoption.survey.cells.includes(idx));
     } else {
-      // No session survey: derive the SAME deterministic target from the field the Core just
-      // froze. canInstall already refused a genuinely stale record, so this is the documented
+      // No session survey: derive the SAME deterministic target from the field just frozen.
+      // canInstall already refused a genuinely stale record, so this is the documented
       // reconstruction path (and the pre-PQ-024 save convergence), never a silent reroll.
       target = selectSurveyTarget(field, COLS, ROWS, SURVEY_LIMITS);
     }
@@ -1667,6 +1741,10 @@ export const asteroidSites = {
     const roll = drawSeeded(state.sites.meta, 'rngSeed', hash32(state.meta && state.meta.seed || 1, site.id, fleet.launches));
     const lost = roll < podLossChance(danger);
     const travel = podTravelS(danger);
+    const intentId = `site-sale:${site.id}:${fleet.launches}`;
+    ensureShipment(site);
+    addToShipment(site, '_pod', loaded, 9999);
+    const worldRecordId = `site:${site.id}:pod:${fleet.launches}`;
     fleet.inFlight.push({
       launchT: state.simTime,
       arriveT: state.simTime + travel,
@@ -1674,6 +1752,8 @@ export const asteroidSites = {
       lost,
       stationId: station ? station.id : null,
       stationName: station ? station.name : 'the freight lane',
+      intentId,
+      worldRecordId,
     });
     this._ledger(site, 'info', `Courier pod away — ${loaded}u for ${station ? station.name : 'the freight lane'}.`);
     this.bus.emit('site:courierLaunched', {
@@ -1682,8 +1762,23 @@ export const asteroidSites = {
       sectorId: site.sectorId,
       cargoUnits: loaded,
       arriveT: state.simTime + travel,
+      intentId,
+      worldRecordId,
     });
-    this._spawnCourierVisual(site, state);
+    const jobs = this._registry && this._registry.get ? this._registry.get('npcJobs') : null;
+    if (jobs && typeof jobs.noteSiteCourier === 'function') {
+      jobs.noteSiteCourier({
+        worldRecordId,
+        siteId: site.id,
+        intentId,
+        sectorId: site.sectorId,
+        destinationId: station ? station.id : null,
+        cargo,
+        launchT: state.simTime,
+        arriveT: state.simTime + travel,
+      });
+    }
+    this._spawnCourierVisual(site, state, worldRecordId);
   },
 
   /**
@@ -1691,7 +1786,7 @@ export const asteroidSites = {
    * rock and coasts out toward the lane, then despawns. Visual only — the economics resolved in
    * _tryLaunch/_resolvePods regardless of who is watching. Coasting uses plain vel integration.
    */
-  _spawnCourierVisual(site, state) {
+  _spawnCourierVisual(site, state, worldRecordId) {
     if (!state.world || state.world.currentSectorId !== site.sectorId) return;
     const rock = state.entities.get(site.asteroidId);
     const spawnEntity = this.ctx && this.ctx.helpers && this.ctx.helpers.spawnEntity;
@@ -1716,6 +1811,7 @@ export const asteroidSites = {
         siteId: site.id,
         sectorId: site.sectorId,
         homeSectorId: site.sectorId,
+        worldRecordId: worldRecordId || `site:${site.id}:pod:${site.fleet.launches}`,
         despawnAt: state.simTime + 14,
       },
     });
@@ -1727,36 +1823,93 @@ export const asteroidSites = {
     const remaining = [];
     for (const pod of fleet.inFlight) {
       if (pod.arriveT > state.simTime) { remaining.push(pod); continue; }
+      const sealed = this._sealPodOutcome(site, pod);
+      if (sealed && sealed.duplicate) continue;
       if (pod.lost) {
         fleet.lost += 1;
         const units = storeTotal(pod.cargo);
         this._ledger(site, 'bad', `Courier lost en route to ${pod.stationName} — ${units}u of cargo gone.`);
-        this.bus.emit('site:courierLost', { siteId: site.id, cargo: pod.cargo, stationId: pod.stationId });
+        this.bus.emit('site:courierLost', {
+          siteId: site.id,
+          cargo: pod.cargo,
+          stationId: pod.stationId,
+          receipt: sealed && sealed.receipt,
+        });
         continue;
       }
       fleet.delivered += 1;
-      let gross = 0;
-      let units = 0;
-      for (const goodId of Object.keys(pod.cargo).sort()) {
-        const qty = pod.cargo[goodId];
-        units += qty;
-        gross += qty * this._salePrice(pod.stationId, goodId);
-      }
-      gross = Math.round(gross * SITE_BALANCE.podSalvageMult);
-      site.stats.grossCr += gross;
-      site.stats.exportedU += units;
-      const credited = this._creditPassive(gross);
-      site.stats.creditedCr += credited;
+      const units = sealed ? sealed.receipt.quantity : storeTotal(pod.cargo);
+      const credited = sealed ? sealed.receipt.credited : 0;
       this._ledger(site, 'good', `Courier delivered ${units}u to ${pod.stationName} — ${credited} cr banked.`);
       this.bus.emit('site:courierDelivered', {
         siteId: site.id,
         stationId: pod.stationId,
         units,
-        grossCr: gross,
+        grossCr: sealed ? sealed.receipt.realisedTotal : 0,
         creditedCr: credited,
+        operatingCost: sealed ? sealed.receipt.operatingCost : 0,
+        loss: 0,
+        receipt: sealed && sealed.receipt,
       });
     }
     fleet.inFlight = remaining;
+  },
+
+  _sealPodOutcome(site, pod) {
+    ensureShipment(site);
+    const intentId = pod.intentId || `site-sale:${site.id}:${pod.launchT}`;
+    const prior = site.saleReceipts && site.saleReceipts[intentId];
+    if (prior) return { ok: true, duplicate: true, receipt: prior.receipt };
+    const units = storeTotal(pod.cargo);
+    if (pod.lost) {
+      takeFromShipment(site, '_pod', units);
+      const receipt = {
+        id: intentId,
+        stationId: pod.stationId || null,
+        quantity: units,
+        destination: pod.stationName || pod.stationId || null,
+        realisedPrice: 0,
+        realisedTotal: 0,
+        operatingCost: 0,
+        loss: units,
+        credited: 0,
+      };
+      site.saleReceipts[intentId] = { fingerprint: `lost:${intentId}`, receipt };
+      return { ok: true, duplicate: false, receipt };
+    }
+    let rawGross = 0;
+    for (const goodId of Object.keys(pod.cargo || {}).sort()) {
+      rawGross += pod.cargo[goodId] * this._salePrice(pod.stationId, goodId);
+    }
+    const realisedTotal = Math.round(rawGross * SITE_BALANCE.podSalvageMult);
+    const realisedPrice = units > 0 ? realisedTotal / units : 0;
+    const operatingCost = Math.max(0, Math.round(rawGross) - realisedTotal);
+    const have = shipmentQty(site, '_pod');
+    if (have < units) addToShipment(site, '_pod', units - have, 9999);
+    const plan = {
+      intentId,
+      stationId: pod.stationId || null,
+      good: '_pod',
+      quantity: units,
+      unitPrice: realisedPrice,
+      total: realisedTotal,
+      quoteVersion: realisedPrice,
+    };
+    const result = commitShipmentSale(site, plan, () => this._creditPassive(realisedTotal));
+    if (result && result.ok && result.receipt) {
+      result.receipt.destination = pod.stationName || pod.stationId || null;
+      result.receipt.realisedPrice = realisedPrice;
+      result.receipt.realisedTotal = realisedTotal;
+      result.receipt.operatingCost = operatingCost;
+      result.receipt.loss = 0;
+      result.receipt.credited = result.receipt.credited | 0;
+      if (!result.duplicate) {
+        site.stats.grossCr += realisedTotal;
+        site.stats.exportedU += units;
+        site.stats.creditedCr += result.receipt.credited;
+      }
+    }
+    return result;
   },
 
   _salePrice(stationId, goodId) {

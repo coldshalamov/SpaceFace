@@ -493,8 +493,12 @@ export const npcJobsRuntime = {
   // ── owned state ────────────────────────────────────────────────────────────────────────────
   _ensureState() {
     const state = this.state;
-    if (!state.npcJobs || typeof state.npcJobs !== 'object') state.npcJobs = { byId: {} };
+    if (!state.npcJobs || typeof state.npcJobs !== 'object') state.npcJobs = { byId: {}, siteCouriers: {} };
     if (!state.npcJobs.byId || typeof state.npcJobs.byId !== 'object') state.npcJobs.byId = {};
+    if (!state.npcJobs.siteCouriers || typeof state.npcJobs.siteCouriers !== 'object'
+      || Array.isArray(state.npcJobs.siteCouriers)) {
+      state.npcJobs.siteCouriers = {};
+    }
     return state.npcJobs;
   },
   _byId() { return this._ensureState().byId; },
@@ -1299,7 +1303,7 @@ export const npcJobsRuntime = {
   },
 
   newGame() {
-    this.state.npcJobs = { byId: {} };
+    this.state.npcJobs = { byId: {}, siteCouriers: {} };
     this._pendingMinerFieldRetargets = new Map();
     this._heaveToLease = null;
     this._fieldRetargetScanAccum = 0;
@@ -1308,6 +1312,33 @@ export const npcJobsRuntime = {
     this._threatQueries?.reset();
     this._lastThreatQueryTick = null;
     this._threatQueryDirty = true;
+  },
+
+  /**
+   * PQ-145.01: a site courier is a one-shot haul identity. Credits stay on asteroidSites via
+   * cargoCustody — this bag is how the job runtime names the flight so it cannot pay twice later.
+   */
+  noteSiteCourier(spec) {
+    if (!spec || typeof spec.worldRecordId !== 'string' || !spec.worldRecordId) return null;
+    if (!this.state.npcJobs) this.state.npcJobs = { byId: {}, siteCouriers: {} };
+    if (!this.state.npcJobs.siteCouriers || typeof this.state.npcJobs.siteCouriers !== 'object'
+      || Array.isArray(this.state.npcJobs.siteCouriers)) {
+      this.state.npcJobs.siteCouriers = {};
+    }
+    const prior = this.state.npcJobs.siteCouriers[spec.worldRecordId];
+    if (prior) return prior;
+    const rec = {
+      worldRecordId: spec.worldRecordId,
+      siteId: spec.siteId || null,
+      intentId: spec.intentId || null,
+      sectorId: spec.sectorId || null,
+      destinationId: spec.destinationId || null,
+      cargo: spec.cargo && typeof spec.cargo === 'object' ? { ...spec.cargo } : {},
+      launchT: Number(spec.launchT) || 0,
+      arriveT: Number(spec.arriveT) || 0,
+    };
+    this.state.npcJobs.siteCouriers[spec.worldRecordId] = rec;
+    return rec;
   },
 
   // ── producer seam: create + link a job for a freshly spawned civilian hull ───────────────────
@@ -2767,6 +2798,10 @@ export const npcJobsRuntime = {
         lastAdvanceSimT: finite(entry.lastAdvanceSimT, 0),
       };
     }
+    const couriers = this.state.npcJobs && this.state.npcJobs.siteCouriers;
+    if (couriers && typeof couriers === 'object' && !Array.isArray(couriers) && Object.keys(couriers).length) {
+      out.siteCouriers = JSON.parse(JSON.stringify(couriers));
+    }
     return out;
   },
 
@@ -2802,7 +2837,10 @@ export const npcJobsRuntime = {
         threatId: null,
       };
     }
-    this.state.npcJobs = { byId };
+    this.state.npcJobs = { byId, siteCouriers: {} };
+    if (data && data.siteCouriers && typeof data.siteCouriers === 'object' && !Array.isArray(data.siteCouriers)) {
+      this.state.npcJobs.siteCouriers = JSON.parse(JSON.stringify(data.siteCouriers));
+    }
     this._threatQueries?.reset();
     this._lastThreatQueryTick = null;
     this._threatQueryDirty = true;

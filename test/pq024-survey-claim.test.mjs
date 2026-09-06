@@ -172,6 +172,9 @@ test('selector: class rank, size, then stable cell key; band filter and fallback
   put(field, [[8, 20], [9, 20]], GAS()); // size 2 < minArea; the dirt sea > maxArea
   t = selectSurveyTarget(field, COLS, ROWS);
   assert.ok(t, 'selector is total when only out-of-band components exist');
+  assert.equal(t.material, 'matrix');
+  assert.equal(selectSurveyTarget(makeField('empty'), COLS, ROWS), null);
+});
 
 test('reveal frontier: seeds the stable key, spreads ascending, bounded, terminates', () => {
   const cells = [tileIndex(16, 10), tileIndex(17, 10), tileIndex(16, 11), tileIndex(17, 11)].sort((a, b) => a - b);
@@ -234,6 +237,11 @@ test('normalizeSurveyRecord: hardens saves — demotes unprovable producing, dro
   assert.equal(normalizeSurveyRecord('junk', COLS, ROWS), null);
   const clamped = normalizeSurveyRecord({ ...good, lifecycle: 'committed', receipt: null, cells: [100, COLS * ROWS + 1, 101] }, COLS, ROWS);
   assert.deepEqual(clamped.cells, [100, 101], 'out-of-range cells are dropped, valid truth kept');
+  const trimmed = normalizeSurveyRecord({ ...good, lifecycle: 'committed', receipt: null, revealedCells: [100, 555] }, COLS, ROWS);
+  assert.deepEqual(trimmed.revealedCells, [100], 'reveal set is restricted to formation members');
+  assert.equal(normalizeProductionReceipt(null), null);
+  assert.equal(normalizeProductionReceipt({ ...receipt, defId: 'sm_massline_core' }), null, 'the Core is never a producer');
+});
 
 // ------------------------------------------------------------------ volatile assay (cold)
 
@@ -342,6 +350,9 @@ test('stale assay refuses the Core visibly — no reroll, no partial commit', ()
   const vr = Math.floor(victim / COLS);
   h.state.drill.field[vc][vr] = EMPTY();
   h.bus.emit('drill:break', { col: vc, row: vr });
+  const extractorCheck = h.sys.canInstall({ asteroidId: 42, defId: 'sm_extractor', col: 13, row: 2 });
+  assert.equal(extractorCheck.ok, false);
+  assert.equal(extractorCheck.reason, 'survey-stale', 'the first mill cannot silently reroll a stale assay');
   const check = h.sys.canInstall({ asteroidId: 42, defId: 'sm_massline_core', col: 14, row: 1 });
   assert.equal(check.ok, false);
   assert.equal(check.reason, 'survey-stale');
@@ -349,6 +360,7 @@ test('stale assay refuses the Core visibly — no reroll, no partial commit', ()
   const res = h.sys.installMachine({ asteroidId: 42, defId: 'sm_massline_core', col: 14, row: 1 });
   assert.equal(res.ok, false);
   assert.equal(res.reason, 'survey-stale');
+  assert.equal(h.sys.installMachine({ asteroidId: 42, defId: 'sm_extractor', col: 13, row: 2 }).reason, 'survey-stale');
   assert.deepEqual(h.state.player.cargo.items, cargoBefore, 'no materials consumed by the refused commit');
   assert.equal(h.sys.siteForAsteroid(42), null, 'no partial site');
   assert.ok(!h.bus.events.some((e) => e.name === 'site:surveyCommitted'));
@@ -385,6 +397,10 @@ test('reload mid-survey: volatile assay never reaches the save', () => {
   assert.ok(!JSON.stringify(data).includes('frm_'), 'no survey identity in the save');
   const h2 = makeHarness();
   h2.sys.deserialize(JSON.parse(JSON.stringify(data)));
+  assert.equal(h2.sys.surveyStatusFor(42), null);
+  assert.equal(h2.sys._surveyByAsteroid.size, 0);
+  assert.equal(h2.state.sites.order.length, 0, 'unanchored claims are not saved either');
+});
 
 // ------------------------------------------------------------------ producing (committed -> producing)
 
@@ -474,6 +490,10 @@ test('legacy anchored site without a survey converges at its first real output',
   assert.equal(site.survey.lifecycle, 'producing');
   assert.equal(site.survey.targetId, want.targetId, 'reconstruction is byte-identical to the frozen field');
   assert.deepEqual(site.survey.cells, want.cells);
+  assert.deepEqual(site.survey.revealedCells, []);
+  assert.ok(site.survey.receipt);
+  assert.equal(h.spawned.filter((e) => e.data && e.data.siteBeacon === site.id).length, 1);
+});
 
 // ------------------------------------------------------------------ save / Continue / re-entry
 
@@ -518,25 +538,30 @@ test('committed (pre-output) survives Continue with zero relay; later output tur
     'committed projects nothing even after Continue');
   let guard = 0;
   while (site2.survey.lifecycle !== 'producing' && guard++ < 120) tick(h2);
+  assert.equal(site2.survey.lifecycle, 'producing');
+  assert.equal(h2.spawned.filter((e) => e.data && e.data.siteBeacon === site2.id).length, 1);
+});
 
 // ------------------------------------------------------------------ partial claim / missing asset
 
-test('partial claim: unanchored loss removes the site and every assay residue', () => {
+test('partial claim: first install is a durable claim; killing the rock rematerializes it', () => {
   const h = makeHarness();
   wireDrill(h);
   addAsteroid(h);
   openSession(h, 42, POCKET);
-  h.sys.installMachine({ asteroidId: 42, defId: 'sm_extractor', col: 13, row: 2 });
+  const res = h.sys.installMachine({ asteroidId: 42, defId: 'sm_extractor', col: 13, row: 2 });
   pulse(h);
-  assert.ok(h.sys._surveyByAsteroid.size > 0);
+  const siteId = res.siteId;
+  assert.equal(h.sys.getSite(siteId).anchored, true, 'the first machine stakes the rock');
   h.entities.get(42).alive = false;
   h.state.drill = null;
+  h.sys._repairSweepWanted = true;
   tick(h);
-  assert.equal(h.sys.siteForAsteroid(42), null);
-  assert.equal(h.sys._surveyByAsteroid.size, 0, 'a lost claim keeps no assay residue');
-  assert.equal(h.sys.surveyStatusFor(42), null);
-  assert.ok(h.bus.events.some((e) => e.name === 'site:lost'));
-  assert.equal(h.sys.serialize().order.length, 0);
+  const site = h.sys.getSite(siteId);
+  assert.ok(site, 'a staked claim is not erased with the rock');
+  assert.equal(h.sys.serialize().order.includes(siteId), true);
+  const rock = [...h.entities.values()].find((e) => e.type === 'asteroid' && e.data && e.data.siteId === siteId);
+  assert.ok(rock, 'the claim rematerializes its asteroid');
 });
 
 test('missing asset / spawn failure: lifecycle still records; relay recovers on re-entry', () => {
@@ -603,7 +628,7 @@ test('Asteroid Ops exposes mode selection and the atomic Core-survey consequence
   const line = asteroidScreenPresentation.anchoredClaimAnnouncement({
     survey: { lifecycle: 'committed', cells: [11, 12, 13] },
   });
-  assert.match(line, /Massline Core online/i);
+  assert.match(line, /Claim staked/i);
   assert.match(line, /survey committed/i);
   assert.match(line, /3 formation cells/i);
 });
@@ -650,33 +675,6 @@ test('determinism: identical runs produce identical records, receipts, and relay
   };
   assert.deepEqual(run(), run());
 });
-
-  assert.equal(site2.survey.lifecycle, 'producing');
-  assert.equal(h2.spawned.filter((e) => e.data && e.data.siteBeacon === site2.id).length, 1);
-});
-
-  assert.deepEqual(site.survey.revealedCells, []);
-  assert.ok(site.survey.receipt);
-  assert.equal(h.spawned.filter((e) => e.data && e.data.siteBeacon === site.id).length, 1);
-});
-
-  assert.equal(h2.sys.surveyStatusFor(42), null);
-  assert.equal(h2.sys._surveyByAsteroid.size, 0);
-  assert.equal(h2.state.sites.order.length, 0, 'unanchored claims are not saved either');
-});
-
-
-  const trimmed = normalizeSurveyRecord({ ...good, lifecycle: 'committed', receipt: null, revealedCells: [100, 555] }, COLS, ROWS);
-  assert.deepEqual(trimmed.revealedCells, [100], 'reveal set is restricted to formation members');
-  assert.equal(normalizeProductionReceipt(null), null);
-  assert.equal(normalizeProductionReceipt({ ...receipt, defId: 'sm_massline_core' }), null, 'the Core is never a producer');
-});
-
-  assert.equal(t.material, 'matrix');
-  // Fully hollow interior: genuinely nothing to assay.
-  assert.equal(selectSurveyTarget(makeField('empty'), COLS, ROWS), null);
-});
-
 
 /** Extractor + Core on conducting cells (13,2)/(14,2) inside the pocket; returns the site. */
 function buildCommittedSite(h) {

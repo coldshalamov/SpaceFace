@@ -297,12 +297,13 @@ test('install law: hollow + rover adjacency + materials; core anchors and freeze
   res = h.sys.installMachine({ asteroidId: 42, defId: 'sm_extractor', col: 13, row: 2 });
   assert.equal(res.ok, true);
   const site = h.sys.getSite(res.siteId);
-  assert.equal(site.anchored, false);
+  assert.equal(site.anchored, true, 'the first machine stakes the claim');
   // Gas tap demands a gas contact.
   res = h.sys.installMachine({ asteroidId: 42, defId: 'sm_gas_tap', col: 15, row: 2 });
   assert.equal(res.reason, 'needs-gas-contact');
-  // Core anchors, freezes boreSeed, and stamps the entity. PQ-024: the exterior relay is the
-  // PRODUCING site's consequence — committed (anchored, pre-output) sites project nothing yet.
+  // Core is unique power/command. The first machine already froze boreSeed and stamped the rock.
+  // PQ-024: the exterior relay is the PRODUCING site's consequence — committed (anchored,
+  // pre-output) sites project nothing yet.
   res = h.sys.installMachine({ asteroidId: 42, defId: 'sm_massline_core', col: 14, row: 1 });
   assert.equal(res.ok, true);
   assert.equal(site.anchored, true);
@@ -344,37 +345,26 @@ test('construction draws only from the lane component that would own the install
   assert.equal(totalRegoInStores, 2, 'the disconnected store keeps its 2u untouched');
 });
 
-test('unanchored sites die with their rock; anchored sites re-materialize it', () => {
+test('the first machine stakes the claim; the rock rematerializes after it dies', () => {
   const h = makeHarness();
   addAsteroid(h);
   openSession(h, 42, POCKET);
   const res = h.sys.installMachine({ asteroidId: 42, defId: 'sm_extractor', col: 13, row: 2 });
   const siteId = res.siteId;
-  // Rock dies (mined out / sector reroll) → unanchored site is lost on the next tick.
-  h.entities.get(42).alive = false;
+  assert.equal(h.sys.getSite(siteId).anchored, true);
+  assert.equal(h.sys.getSite(siteId).boreSeed, 42);
+  h.entities.delete(42);
   h.state.drill = null;
-  h.state.simTime += 1;
-  h.sys.update(1, h.state);
-  assert.equal(h.sys.getSite(siteId), null);
-  assert.ok(h.bus.events.some((e) => e.name === 'site:lost'));
-
-  // Now an anchored site: entity vanishes, repair sweep respawns the same interior.
-  const h2 = makeHarness();
-  addAsteroid(h2, 77);
-  openSession(h2, 77, POCKET);
-  h2.sys.installMachine({ asteroidId: 77, defId: 'sm_extractor', col: 13, row: 2 });
-  const r2 = h2.sys.installMachine({ asteroidId: 77, defId: 'sm_massline_core', col: 14, row: 1 });
-  const site2 = h2.sys.getSite(r2.siteId);
-  h2.entities.delete(77);
-  h2.state.drill = null;
-  h2.sys._repairSweepWanted = true;
-  h2.state.simTime += 1;
-  h2.sys.update(1, h2.state);
-  const rock = [...h2.entities.values()].find((e) => e.type === 'asteroid' && e.data && e.data.siteId === site2.id);
-  assert.ok(rock, 'anchored site respawned its rock');
-  assert.equal(rock.data.boreSeed, 77);
-  assert.equal(site2.asteroidId, rock.id);
-  assert.deepEqual(rock.data.drillCleared, site2.cleared);
+  h.sys._repairSweepWanted = true;
+  h.sys._repairAnchors();
+  const site = h.sys.getSite(siteId);
+  assert.ok(site, 'a staked claim is not lost with the rock');
+  const rock = [...h.entities.values()].find((e) => e.alive !== false && e.type === 'asteroid' && e.data && e.data.siteId === site.id);
+  assert.ok(rock, 'staked site respawned its rock');
+  assert.equal(site.boreSeed, 42);
+  assert.equal(rock.data.boreSeed, site.boreSeed);
+  assert.equal(site.asteroidId, rock.id);
+  assert.deepEqual(rock.data.drillCleared, site.cleared);
 });
 
 /** Build the §9 milestone chain in a hand-carved pocket and run it. */
@@ -490,20 +480,20 @@ test('determinism: identical harness runs produce identical outcomes', () => {
   assert.equal(run(), run());
 });
 
-test('serialize keeps anchored sites only and survives a roundtrip', () => {
+test('serialize keeps every staked claim and survives a roundtrip', () => {
   const h = makeHarness();
   const { siteId, site } = buildMilestoneSite(h);
-  // A second, unanchored claim on another rock.
   addAsteroid(h, 55);
   openSession(h, 55, POCKET);
   const r = h.sys.installMachine({ asteroidId: 55, defId: 'sm_extractor', col: 13, row: 2 });
   assert.notEqual(r.siteId, siteId);
   const blob = h.sys.serialize();
-  assert.ok(blob.byId[siteId], 'anchored site serialized');
-  assert.equal(blob.byId[r.siteId], undefined, 'unanchored site not serialized');
+  assert.ok(blob.byId[siteId], 'first claim serialized');
+  assert.ok(blob.byId[r.siteId], 'the second rock is also a staked claim');
   h.sys.deserialize(JSON.parse(JSON.stringify(blob)));
   const restored = h.sys.getSite(siteId);
   assert.equal(restored.machines.length, site.machines.length);
   assert.equal(restored.anchored, true);
   assert.deepEqual(restored.overlays, site.overlays);
+  assert.equal(h.sys.getSite(r.siteId).anchored, true);
 });

@@ -69,7 +69,7 @@ export function surveySentences(survey) {
     if (!survey.material) return [{ text: 'No formation assay yet — pulse the survey scanner.', kind: '' }];
     return [
       { text: `Survey: ${formationLabel(survey.material)} detected — ${survey.revealed}/${survey.cells} cells assayed.`, kind: '' },
-      { text: 'Assay is volatile: leaving this rock discards it. Install a Massline Core to commit the survey.', kind: 'warn' },
+      { text: 'Assay is volatile: leaving this rock discards it. Stake a machine to commit the survey.', kind: 'warn' },
     ];
   }
   if (survey.state === 'committed') {
@@ -96,7 +96,7 @@ export function placementReason(check) {
     'not-hollow': 'The cell must be hollow. Bore it out first.',
     occupied: 'A machine already occupies this cell.',
     'rover-here': 'The rover is parked there — move it first.',
-    'rover-not-adjacent': 'Manual install: drive the rover next to the cell (the Core unlocks remote construction).',
+    'rover-not-adjacent': 'Manual install: drive the rover next to the cell (a staked claim unlocks remote construction).',
     'needs-gas-contact': 'A Gas Tap must sit beside at least one sealed gas pocket.',
     unique: 'Only one Massline Core per asteroid.',
     materials: 'Missing materials.',
@@ -160,16 +160,16 @@ export function lensChip(id, suffix = '') {
 const STATUS_ROW = {
   running: { tone: 'mint', body: '' },
   building: { tone: 'mint', body: 'Assembling' },
-  throttled: { tone: 'gold', body: 'Throttled — network brown-out' },
-  starved: { tone: 'gold', body: 'Starved — no feedstock' },
+  throttled: { tone: 'gold', body: 'Throttled — paint more cable' },
+  starved: { tone: 'gold', body: 'Starved — feed the mill' },
   limited: { tone: 'gold', body: 'Lane throughput capped' },
-  backlogged: { tone: 'gold', body: 'Lane buffer full' },
+  backlogged: { tone: 'gold', body: 'Lane full — clear the port' },
   stalled: { tone: 'coral', body: 'Stalled' },
   'fleet-full': { tone: 'mint', body: 'Fleet at target' },
-  'no-power': { tone: 'coral', body: 'No power' },
-  'no-pods': { tone: 'gold', body: 'No couriers ready' },
-  'no-network': { tone: 'coral', body: 'No material lane' },
-  'no-geology': { tone: 'coral', body: 'No contacts' },
+  'no-power': { tone: 'coral', body: 'No power — paint a cable' },
+  'no-pods': { tone: 'gold', body: 'No couriers — berth a pod' },
+  'no-network': { tone: 'coral', body: 'No lane — paint a lane' },
+  'no-geology': { tone: 'coral', body: 'No contacts — keep a face' },
   staged: { tone: 'mint', body: 'Cargo staged' },
   idle: { tone: 'idle', body: 'Idle' },
 };
@@ -293,7 +293,7 @@ export function seamSplits(field, cols, rows, col, row) {
  * seeing on a hovered cell, and law §6.4 has no line to spend explaining it.
  */
 export function tileLensModel({
-  tile, appearance, telemetry, drillTier = 1, splits = false, formation = null,
+  tile, appearance, telemetry, drillTier = 1, splits = false, formation = null, cutPreview = null,
 }) {
   if (!tile) return null;
   const claim = !formation ? null
@@ -338,6 +338,13 @@ export function tileLensModel({
   }
 
   const progress = telemetry ? Math.max(0, Math.min(1, Number(telemetry.progress) || 0)) : 0;
+  let body = '';
+  if (cutPreview && (cutPreview.contactsLost > 0 || cutPreview.rateLost > 0)) {
+    const bits = [];
+    if (cutPreview.contactsLost > 0) bits.push(`Cuts ${cutPreview.contactsLost} contact${cutPreview.contactsLost === 1 ? '' : 's'}`);
+    if (cutPreview.rateLost > 0) bits.push(`−${cutPreview.rateLost}/min`);
+    body = bits.join(' · ');
+  }
   return {
     kind: 'tile',
     swatch: swatchPaint({ material, ore, type }),
@@ -347,7 +354,7 @@ export function tileLensModel({
     claim,
     hp: progress > 0.005 ? 1 - progress : null,
     chips: chips.filter(Boolean),
-    body: '',
+    body,
     ring: null,
   };
 }

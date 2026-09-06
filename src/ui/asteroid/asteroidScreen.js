@@ -50,11 +50,11 @@ export function syncAsteroidConsoleModeButtons(driveButton, buildButton, mode) {
 export function anchoredClaimAnnouncement(claim) {
   const survey = claim && claim.survey;
   const committed = survey && (survey.lifecycle === 'committed' || survey.lifecycle === 'producing');
-  if (!committed) return 'Massline Core online. This asteroid is now a permanent site.';
+  if (!committed) return 'Claim staked. This asteroid is now a permanent site.';
   const cells = Array.isArray(survey.cells)
     ? survey.cells.length : Math.max(0, Math.trunc(Number(survey.cells) || 0));
   const count = cells > 0 ? `${cells} formation ${cells === 1 ? 'cell' : 'cells'} are` : 'the formation is';
-  return `Massline Core online. Survey committed: ${count} now part of this permanent site.`;
+  return `Claim staked. Survey committed: ${count} now part of this permanent site.`;
 }
 
 // ---------------------------------------------------------------------------- §6.6 drawers
@@ -1617,13 +1617,13 @@ export const asteroidScreen = {
       if (!p || p.asteroidId !== asteroidId()) return;
       const label = formationLabel(p.material);
       pushLedgerLine('info', `Survey: ${label} detected — assaying ${p.cellsTotal} cells.`);
-      announce(`Survey detected a ${label}. Assay is volatile — install a Massline Core before leaving this rock to commit it.`);
+      announce(`Survey detected a ${label}. Assay is volatile — stake a machine on this rock to keep it.`);
       inspElapsed = 10;
     }));
     unsubs.push(ctx.bus.on('site:surveyComplete', (p) => {
       if (!p || p.asteroidId !== asteroidId()) return;
-      pushLedgerLine('good', `Survey complete — ${p.cellsTotal} cells assayed. Commit a Core to keep this record.`);
-      announce('Formation fully assayed. Install a Massline Core to commit the survey record.');
+      pushLedgerLine('good', `Survey complete — ${p.cellsTotal} cells assayed. Stake a machine to keep this record.`);
+      announce('Formation fully assayed. Stake a machine to commit the survey record.');
       inspElapsed = 10;
     }));
     unsubs.push(ctx.bus.on('site:surveyCommitted', (p) => {
@@ -1741,7 +1741,7 @@ export const asteroidScreen = {
       setText(hudEls.claim, 'dc', claimText);
       setCn(hudEls.claim, 'dccn', !s ? 'aw-chip' : (s.anchored ? 'aw-chip ok' : 'aw-chip bad'));
       if (s && !s.anchored && bannerKind == null) {
-        showBanner('unanchored', 'Unanchored — install a Core before leaving', 'warn');
+        showBanner('unanchored', 'Unanchored — stake a machine before leaving', 'warn');
       } else if (s && s.anchored) {
         clearBanner('unanchored');
       }
@@ -1796,6 +1796,9 @@ export const asteroidScreen = {
         ? hook.cellAppearance(cursor.col, cursor.row) : null;
       const splits = tile.type === 'vein' && tile.ore
         ? seamSplits(d.field, COLS, ROWS, cursor.col, cursor.row) : false;
+      const cutPreview = s && siteSys && tile.type !== 'empty'
+        ? siteSys.previewBreak(s.id, cursor.col, cursor.row)
+        : null;
       return tileLensModel({
         tile,
         appearance,
@@ -1806,6 +1809,7 @@ export const asteroidScreen = {
         // not as a sentence. This is the lens's only reader of the survey record.
         formation: siteSys
           ? siteSys.surveyCellRole(asteroidId(), tileIndex(cursor.col, cursor.row)) : null,
+        cutPreview,
       });
     }
 
@@ -1968,7 +1972,7 @@ export const asteroidScreen = {
       paletteSettleAllowed = true;
       const s = site();
       if (s && !s.anchored) {
-        showBanner('unanchored', 'Unanchored — install a Core before leaving', 'warn');
+        showBanner('unanchored', 'Unanchored — stake a machine before leaving', 'warn');
       }
 
       last = performance.now();
