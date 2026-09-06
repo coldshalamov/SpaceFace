@@ -8,7 +8,8 @@ export const trigger = deepFreeze({
   "deck": "civilian",
   "weight": 2,
   "zoneTypes": [
-    "derelict_field"
+    "derelict_field",
+    "outlaw_zone"
   ],
   "script": "salvageSignal",
   "pressureCost": 20,

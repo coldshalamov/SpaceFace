@@ -8,7 +8,9 @@ export const trigger = deepFreeze({
   "deck": "civilian",
   "weight": 1,
   "zoneTypes": [
-    "anomaly_deep"
+    "anomaly_deep",
+    "nebula_fog",
+    "radiation_field"
   ],
   "script": "whisper",
   "pressureCost": 5,
