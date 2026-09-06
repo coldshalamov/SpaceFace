@@ -15,7 +15,11 @@ import {
   waitForCurrentRenderPipelines,
 } from '../src/render/pipelineReadiness.js';
 import { SpaceRenderGraph } from '../src/render/post/spaceRenderGraph.js';
-import { POST_PROCESS_ROUTE, render as renderSystem } from '../src/render/renderer.js';
+import {
+  compileGraphNormalSubjects,
+  POST_PROCESS_ROUTE,
+  render as renderSystem,
+} from '../src/render/renderer.js';
 
 test('pipeline warm-up compiles against the exact render target and restores renderer state', async () => {
   const previousTarget = { name: 'previous-target' };
@@ -246,6 +250,94 @@ test('render graph exposes every off-scene target to context-loss cleanup', () =
   assert.equal(graph.contextLossResources().length, graph.diagnostics().renderTargetCount);
   assert.ok(graph.contextLossResources().every((target) => target?.isWebGLRenderTarget));
   graph.dispose();
+});
+
+test('graph normal pass excludes inactive instanced pools and restores them after render errors', () => {
+  let activeTarget = null;
+  let throwOnNormal = false;
+  const normalVisibility = [];
+  const renderer = {
+    isWebGLRenderer: true,
+    capabilities: { isWebGL2: false },
+    autoClear: true,
+    getRenderTarget: () => activeTarget,
+    setRenderTarget(target) { activeTarget = target; },
+    clear() {},
+    render(scene) {
+      if (activeTarget !== graph.normalTarget) return;
+      normalVisibility.push({ inactive: inactive.layers.test(camera.layers), active: active.layers.test(camera.layers), child: child.layers.test(camera.layers), parentVisible: inactive.visible });
+      if (throwOnNormal) throw new Error('normal target interrupted');
+    },
+  };
+  const graph = new SpaceRenderGraph(renderer, { ao: true, bloom: false });
+  graph.setSize(64, 64);
+  const scene = new THREE.Scene();
+  const geometry = new THREE.BoxGeometry();
+  const material = new THREE.MeshBasicMaterial();
+  const inactive = new THREE.InstancedMesh(geometry, material, 1);
+  inactive.count = 0;
+  const active = new THREE.InstancedMesh(geometry, material, 1);
+  const child = new THREE.InstancedMesh(geometry, material, 1);
+  inactive.add(child);
+  inactive.layers.enable(3);
+  const originalMask = inactive.layers.mask;
+  scene.add(inactive, active);
+  const camera = new THREE.PerspectiveCamera();
+
+  graph.render(scene, camera, { time: 0 });
+  assert.deepEqual(normalVisibility, [{ inactive: false, active: true, child: true, parentVisible: true }],
+    'only zero-instance pools leave the normal pass');
+  assert.equal(inactive.visible, true);
+  assert.equal(active.visible, true);
+
+  throwOnNormal = true;
+  assert.throws(() => graph.render(scene, camera, { time: 1 }), /normal target interrupted/);
+  assert.equal(inactive.layers.mask, originalMask, 'failed normal renders restore every original layer');
+  assert.equal(inactive.visible, true, 'inactive parent remains visible so its live children can render');
+  assert.equal(active.visible, true);
+  graph.dispose();
+  geometry.dispose();
+  material.dispose();
+});
+
+test('graph normal admission substitutes exact subject materials for compile and restores them', async () => {
+  const normal = { name: 'normal prepass' };
+  const original = { name: 'normal-eligible', allowOverride: true };
+  const protectedMaterial = { name: 'protected', allowOverride: false };
+  const unmarkedMaterial = { name: 'unmarked' };
+  const originalMaterials = [original, protectedMaterial, unmarkedMaterial];
+  const subject = { material: originalMaterials };
+  const calls = [];
+  const renderer = {
+    getRenderTarget: () => null,
+    setRenderTarget() {},
+    async compileAsync(compiledSubject, camera, lightingScene) {
+      calls.push({
+        materials: [...compiledSubject.material],
+        overridePresent: Object.hasOwn(compiledSubject, 'overrideMaterial'),
+        camera,
+        lightingScene,
+      });
+    },
+    info: { programs: [] },
+  };
+  const camera = {};
+  const lightingScene = {};
+  await compileGraphNormalSubjects(renderer, { name: 'normal target' }, [subject], camera, lightingScene, normal);
+  assert.deepEqual(calls, [{
+    materials: [normal, protectedMaterial, unmarkedMaterial],
+    overridePresent: false,
+    camera,
+    lightingScene,
+  }], 'compile-compatible renderers receive the actual temporary material substitution');
+  assert.strictEqual(subject.material[0], original);
+  assert.strictEqual(subject.material[1], protectedMaterial);
+  assert.strictEqual(subject.material, originalMaterials);
+  renderer.compileAsync = async () => { throw new Error('compile interrupted'); };
+  await assert.rejects(() => compileGraphNormalSubjects(
+    renderer, {}, [subject], camera, lightingScene, normal,
+  ), /compile interrupted/);
+  assert.strictEqual(subject.material, originalMaterials, 'an interrupted compile restores the exact material array');
 });
 
 test('render graph prepares only active private passes and delegates its normal prepass to exact subjects', async () => {

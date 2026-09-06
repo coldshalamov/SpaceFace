@@ -693,6 +693,32 @@ function restoreObjectHome(home) {
   children.splice(Math.min(index, children.length), 0, object);
 }
 
+export async function compileGraphNormalSubjects(
+  renderer, normalTarget, subjects, camera, lightingScene, normalMaterial,
+) {
+  for (const subject of subjects || []) {
+    if (!subject || !subject.material) continue;
+    const originalMaterial = subject.material;
+    const normalMaterialFor = (material) => (
+      material?.allowOverride === true ? normalMaterial : material
+    );
+    const replacement = Array.isArray(originalMaterial)
+      ? originalMaterial.map(normalMaterialFor)
+      : normalMaterialFor(originalMaterial);
+    const changed = Array.isArray(originalMaterial)
+      ? replacement.some((material, index) => material !== originalMaterial[index])
+      : replacement !== originalMaterial;
+    if (changed) subject.material = replacement;
+    try {
+      await compileScenePipelinesForRenderTarget(
+        renderer, normalTarget, subject, camera, lightingScene,
+      );
+    } finally {
+      if (changed) subject.material = originalMaterial;
+    }
+  }
+}
+
 /** Keep every draw/readiness boundary closed until a restored context finishes rebuilding. */
 export const CONTEXT_RESTORE_MAX_RETRIES = 8;
 
@@ -4610,23 +4636,14 @@ export const render = {
           result.post = await this._renderGraph.prepareResources({
             yieldToMain: yieldToBrowser,
             camera: cam.obj,
-            prepareNormalSubjects: async () => {
-              const subjects = (plan.compileSubjects || []).filter(Boolean);
-              const staging = new THREE.Scene();
-              staging.name = 'SF_OpeningGraphNormalAdmission';
-              const homes = subjects.map((subject) => captureObjectHome(subject));
-              try {
-                for (const subject of subjects) staging.add(subject);
-                staging.overrideMaterial = this._renderGraph.normalMaterial;
-                await compileScenePipelinesForRenderTarget(
-                  renderer, this._renderGraph.normalTarget, staging, cam.obj, scene,
-                );
-              } finally {
-                staging.overrideMaterial = null;
-                for (const home of homes) restoreObjectHome(home);
-                staging.clear();
-              }
-            },
+            prepareNormalSubjects: () => compileGraphNormalSubjects(
+              renderer,
+              this._renderGraph.normalTarget,
+              plan.compileSubjects,
+              cam.obj,
+              scene,
+              this._renderGraph.normalMaterial,
+            ),
           });
           openingPostMaterials = this._renderGraph.openingProgramMaterials();
         }

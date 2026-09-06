@@ -27,6 +27,23 @@ const POST_DEFAULTS = Object.freeze({
   ...DEFAULT_POST_PRESENTATION,
 });
 
+function hideInactiveInstancedMeshes(scene, hidden) {
+  hidden.length = 0;
+  if (!scene || typeof scene.traverseVisible !== 'function') return;
+  scene.traverseVisible((object) => {
+    if (!object?.isInstancedMesh || !(Number(object.count) <= 0) || !object.layers?.mask) return;
+    // A zero-instance mesh has no pixels, but its children may. Suppress only its own draw;
+    // visibility=false would also remove any live child from Three's traversal.
+    hidden.push(object, object.layers.mask);
+    object.layers.mask = 0;
+  });
+}
+
+function restoreInactiveInstancedMeshes(hidden) {
+  for (let index = 0; index < hidden.length; index += 2) hidden[index].layers.mask = hidden[index + 1];
+  hidden.length = 0;
+}
+
 const FULLSCREEN_VERT = /* glsl */`
   varying vec2 vUv;
   void main() {
@@ -237,6 +254,7 @@ export class SpaceRenderGraph {
 
     this.normalMaterial = new THREE.MeshNormalMaterial({ blending: THREE.NoBlending });
     this.normalMaterial.name = 'SpaceRenderGraph:normal-prepass';
+    this._hiddenNormalPassInstances = [];
     this.quad = new FullscreenQuad();
     this.aoMaterial = shaderMaterial(AO_FRAG, {
       tDepth: null, tNormal: null, uInvResolution: new THREE.Vector2(1,1),
@@ -331,8 +349,13 @@ export class SpaceRenderGraph {
         scene.overrideMaterial = this.normalMaterial;
         renderer.setRenderTarget(this.normalTarget);
         renderer.clear(true, true, true);
-        renderer.render(scene, camera);
-        scene.overrideMaterial = previousOverride;
+        hideInactiveInstancedMeshes(scene, this._hiddenNormalPassInstances);
+        try {
+          renderer.render(scene, camera);
+        } finally {
+          restoreInactiveInstancedMeshes(this._hiddenNormalPassInstances);
+          scene.overrideMaterial = previousOverride;
+        }
         this._renderAo(camera);
       }
       if (this._bloomActive()) this._renderBloom();
