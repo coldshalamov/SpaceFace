@@ -164,7 +164,7 @@ procedure:
 | "finish the game", "what's next for release", "the professional bar" | §15 gates → `--next` |
 | "swarm mode should be more fun" | §16 → `--id PQ-174` |
 | "adventure is boring / thin" | §17 → `--id PQ-176`, `PQ-177`, `PQ-178` |
-| "the screens look cheap", "polish the frontend", "bring the UI up to date", "A-list / bold / expressive frontend" | **§20** → [`design/FRONTEND_DIRECTION.md`](./design/FRONTEND_DIRECTION.md) → `--id PQ-187` (direction lock; owner picks from rendered options) → then the surface packets it gates. `PQ-180` is the floor, not the gate |
+| "the screens look cheap", "polish the frontend", "bring the UI up to date", "A-list / bold / expressive frontend" | **§20.14** (decided 2026-09-06: [`DIRECTION_SHEET.md`](./design/frontend/direction/DIRECTION_SHEET.md)) → [`design/FRONTEND_DIRECTION.md`](./design/FRONTEND_DIRECTION.md) → `--id PQ-187` (direction lock; owner picks from rendered options) → then the surface packets it gates. `PQ-180` is the floor, not the gate |
 | "it's hitching / stuttering" | §8.4 → `--id PQ-129`; measure first, never cut quality |
 | "the mining board is unreadable / ugly" | `--id PQ-130` (board law) and `PQ-131` (authored objects); `PQ-185` accepts |
 | "the ships / objects look like toys" | §1B graphics doors → `PQ-050`, `PQ-045`, `PQ-136` |
@@ -3802,14 +3802,16 @@ actual screens.
 
 ### 20.2 The mechanism that breaks the loop
 
-1. **Rendered frames are the authority; prose is subordinate.** `direction/approved/<surface>.png`
-   plus a one-page `DIRECTION_SHEET.md` written *from* the frames.
-2. **The owner chooses between real options.** The same three screens (title, station market, THE
-   SHIP) built three ways as real HTML at real size in `_uilab.html`; the owner picks; "none of
-   these" restarts the round. Enforced in the queue: every surface packet's units depend on
-   `PQ-187.03`, so `program-dispatch --next` cannot hand out surface work before the lock.
-3. **Every phase ends with a contact sheet the owner says yes or no to.** Done is the owner's yes,
-   never a green check.
+1. **The sheet is the authority; the first live frames confirm it.** *(Revised 2026-09-06, §20.14.)*
+   `design/frontend/direction/DIRECTION_SHEET.md` — every screen as a picture in plain words plus
+   the rules — and, once the title is live, its captures under `direction/approved/`.
+2. **Nobody picks between options.** *(Revised 2026-09-06.)* The owner declined to choose between
+   stylesheets and delegated the decision; the sheet decides. Enforced in the queue: every surface
+   packet's units depend on `PQ-187.03` (the title live on the kit), so `program-dispatch --next`
+   cannot hand out surface work before the direction is visible in the game.
+3. **Every leaf ends with a hash-bound visual review against the sheet.** *(Revised 2026-09-06.)*
+   A memoryless reviewer answers the sheet's §9 checklist on the capture; the integrator closes; the
+   owner's veto is exercised in the game, never on a form.
 4. **The proof is blind and comparative** (§20.10).
 5. **Agents are told, by name, what not to reach for** (§20.9).
 
@@ -3893,10 +3895,10 @@ transition system, never a uniform fade).
 
 ### 20.8 The program — phases, packets, owner checkpoints
 
-| Phase | Packet · leaf | Delivers | Owner checkpoint |
+| Phase | Packet · leaf | Delivers | Evidence |
 |---|---|---|---|
-| **0 · Direction** | `PQ-187.00` board · `.01` three directions rendered · `.02` lock | the board reactions; nine frames per direction; the pick committed as `direction/approved/` + `DIRECTION_SHEET.md` | **the pick** — nothing below starts until it exists |
-| **1 · The kit** | `PQ-187.03` | tokens, the type scale to hero size, the faces, colour-as-mood rules, the transition system, the UI sound palette, every component on one kit page | the kit page |
+| **0 · Direction** | `PQ-187.00` board · `.01` the decision and the sheet | *(revised 2026-09-06)* the board; `DIRECTION_SHEET.md` — decided, §20.14 | done |
+| **1 · The kit, then the title live** | `PQ-187.02` the kit · `.03` the title on the kit on the default route — the gate for every surface packet | tokens, the type scale to hero size, the faces, colour-as-mood rules, the transition system, the UI sound palette, every component on one kit page | the kit page |
 | **2 · Shell and signature moments** | `PQ-181` (moments 1, 2, 7, 10, 11, 12, 13) | title, new game, load portraits, pause, game over, settings, credits, statistics, photo mode, the transition system live | contact sheet + seven clips |
 | **3 · The flight HUD** | `PQ-188.00` (moments 3, 6) | hero scale where it matters, the arrival choreography, temperature on wanted; the attention pass kept | contact sheet at three widths + two clips |
 | **4 · The station as a place** | `PQ-162` (moments 4, 5) | seven screens on the kit; docking and undocking as arrival and departure | contact sheet + two clips |
@@ -3905,8 +3907,9 @@ transition system, never a uniform fade).
 | **7 · One system, fast** | `PQ-183` · `PQ-184` | every name a link, the watch list, global find; budgets met; the legacy hub gone; dead CSS and dead fonts deleted last | the numbers |
 | **8 · Proof** | `PQ-187.04` | the blind side-by-side, thirteen sign-offs, the regression baseline reshot on the new look, a ninety-second reel | **the reel** |
 
-Sequencing: `PQ-187.00`–`.03` are strictly serial and `.02` is an owner decision no agent can
-close. Once `.03` lands, phases 2–6 run in parallel by mutex. `PQ-180`'s matrix and the reference
+Sequencing: `PQ-187.01`–`.03` are strictly serial and none needs a human pick — `.01` is decided
+(§20.14), `.02` and `.03` close on a visual review against the sheet. Once `.03` lands, phases 2–6
+and `PQ-192` run in parallel by mutex. `PQ-180`'s matrix and the reference
 frames stay as the **floor**, re-measured after every phase; the current baseline (`PQ-180.03`) is
 a floor tool for the current look and is reshot after phase 2 — that lane is not blocked by this
 section. `PQ-183` and `PQ-184` are unchanged in scope and run after migration.
@@ -3928,7 +3931,7 @@ An integrator rejects a unit that matches any line (§1.6, §19 W-list applies t
 - **A settings-page voice on a hero surface.** Title, load, death, results are compositions, not
   lists.
 - **Consolidating the old CSS before the kit exists.** Build fresh; migrate; delete.
-- **Calling a phase done on a green matrix.** Done is the owner's yes on the contact sheet.
+- **Calling a phase done on a green matrix.** Done is the capture matching the sheet under a hash-bound visual review *(revised 2026-09-06)*.
 - **Any first-person motif.** Permanent.
 - **Motion with no state variable, over 180 ms, or without a reduced-motion authoring.** The motion
   contract is floor.
@@ -3949,22 +3952,23 @@ An integrator rejects a unit that matches any line (§1.6, §19 W-list applies t
 
 | Packet | Pillar | One line | Wave |
 |---|---|---|---|
-| **`PQ-187`** The direction lock: reference board, three rendered directions, the owner's pick, the kit, the proof — [`active/PQ-187.md`](./design/program/roadmap/active/PQ-187.md) | F · Frontend | Three materially different directions rendered on the same three screens; the owner picks; the picked frames become the authority; a kit is built from them; a blind side-by-side against A-list games proves the result. | ALPHA |
+| **`PQ-187`** The direction, decided: the sheet, the kit, the title live, the proof — [`active/PQ-187.md`](./design/program/roadmap/active/PQ-187.md) | F · Frontend | *(revised 2026-09-06)* The direction is decided and written as `DIRECTION_SHEET.md`; the kit is built from it; the title goes live first so the owner sees the direction in the game after one unit; a blind side-by-side against A-list games proves the result. | ALPHA |
+| **`PQ-192`** The reading screens on the kit — [`active/PQ-192.md`](./design/program/roadmap/active/PQ-192.md) | F · Frontend | Missions log, codex, help and tech tree migrate onto the kit to the sheet's pictures, shedding their old style blocks. | BETA |
 | **`PQ-188`** The flight HUD and the instruments to the direction — [`active/PQ-188.md`](./design/program/roadmap/active/PQ-188.md) | F · Frontend | The HUD and the three instruments §11 marked done, rebuilt on the kit with their centerpieces kept; the HUD gains its arrival choreography and its wanted temperature. | BETA |
-| `PQ-181` meta shell · `PQ-162` station · `PQ-168` chart · `PQ-182` Crucible · `PQ-185` Works | F · Frontend | Unchanged in scope; re-gated on `PQ-187.03` (packetRevision bumped, direction-override note under the yaml); done is the owner's contact-sheet yes. | BETA |
+| `PQ-181` meta shell · `PQ-162` station · `PQ-168` chart · `PQ-182` Crucible · `PQ-185` Works | F · Frontend | Unchanged in scope; re-gated on `PQ-187.03` (packetRevision bumped, direction-override note under the yaml); done is a hash-bound visual review against the sheet *(revised 2026-09-06)*. | BETA |
 
 ### 20.12 The plans, in detail
 
 #### Pillar F · Frontend
 
-**`PQ-187` — The direction lock** · *ALPHA* · after nothing
+**`PQ-187` — The direction, decided** · *ALPHA* · after nothing · *(revised 2026-09-06, §20.14)*
 
-The frontend has a direction the owner chose from real, rendered options — not one an agent wrote
-down.
+The frontend has one decided direction — Cinematic Minimal, tuned for SpaceFace — written as a
+sheet a builder can work from and a non-designer can picture; the title goes live on it first.
 
 - **Gap:** every frontend authority in the repo was written by agents and prescribes a neutral
   dashboard; the owner has only ever been asked to reject, never to choose. **Reference:** how an
-  art director works — comps, a pick, a sheet written from the pick.
+  art director works when the client delegates — a decision, a sheet, and the first live frame that confirms it.
 - **Exists:** `_uilab.html` + `scripts/probe-frontend-snapshot.mjs`; `src/ui/shipPreviewMount.js`
   (the hull in a hangar rig); `src/ui/station/icons.js` (stroke icons + 14 crests); vendored faces in
   `styles/fonts/` incl. `bricolage-grotesque-600`, `instrument-sans-var`, `spline-sans-mono-500`
@@ -3976,14 +3980,13 @@ down.
 
 | Leaf | Outcome | Done when |
 |---|---|---|
-| `.00` | **The reference board.** `direction/REFERENCE_BOARD.md`: the ten games with one representative frame each (linked or described, never reproduced beyond fair use) and the owner's love/like/hate line per game verbatim. | The owner's reactions are on the file; the two comps most consistent with them are named. |
-| `.01` (after `.00`) | **Three directions, rendered.** A, B, C (or the owner's replacements) as real HTML with real data for the title, the station market and THE SHIP at 1920×1080 and 1280×720; dense pane, empty state, focus state, reduced-motion note, ten-second transition capture with placeholder sound; candidate faces vendored under OFL. | Nine frames per direction under `direction/comps/<A|B|C>/`; a contact sheet; the three differ on face, scale, temperature, composition and imagery. |
-| `.02` (after `.01`) | **The direction lock.** The owner's pick verbatim; picked frames copied to `direction/approved/`; `DIRECTION_SHEET.md` written from the frames; grammar §3/§4 marked replaced. **Owner decision — no agent can close it.** | `approved/` holds ≥ 9 frames and the owner's words; the sheet cites frames by filename; `.03` becomes ready. |
-| `.03` (after `.02`) | **The kit.** Tokens; the type scale to hero size; display, text and numeral faces; colour-as-mood rules; the transition system; the UI sound palette through `audio:cue`; every component on one kit page. Old stylesheets are not consolidated. | The kit page captured at three widths with the owner's yes; the surface packets unblock. |
-| `.04` (after every surface packet) | **The proof.** §20.10 in full. | ≥ 50 % / 100 % on the side-by-side; thirteen sign-offs; matrix and regression green; the reel committed under `receipts/`. |
-
-- **Not:** no direction sheet before the pick; no comps outside the lab; no CSS cleanup.
-- **How agents get this wrong:** §20.9, plus: treating a green matrix as the owner's yes.
+| `.00` | **The reference board.** Done 2026-09-06. | Present. |
+| `.01` | **The decision and the direction sheet.** Done 2026-09-06. `DIRECTION_SHEET.md`: every screen as a picture in plain words, then faces, scale, temperature, the dense register, motion, sound, the review checklist, what survives and what retires. The comparison round is void. | The sheet exists and every frontend packet cites it; the receipt quotes the owner verbatim. |
+| `.02` (after `.01`) | **The kit.** The variable Bricolage vendored (OFL) beside Instrument Sans; tokens and the 12→160 px scale; the temperature states; the transition helper (cut + ≤ 160 ms settle, state-bound, reduced-motion = cut); ≤ 8 UI sounds through `audio:cue`; every component on one kit page. Old stylesheets untouched. | The kit page at three widths matches the sheet under a hash-bound visual review; `check:type-floor`, `check:wcag-contrast` green; no owner decision required. |
+| `.03` (after `.02`) | **The title and main menu live on the kit.** The hull in the hangar rig fills the frame against the sky; the game's name at hero scale; five words down the left edge; the menu plate and its CSS deleted; open/confirm sounds live. | Booting the game shows it; captures at three widths match the sheet under a hash-bound visual review; `check:title-continue-runtime` green; the owner has seen it in the game and not vetoed. **The gate every surface packet depends on.** |
+| `.04` (after every surface packet) | **The proof.** §20.10 in full; the thirteen signature moments as clips reviewed against the sheet; the reel. | ≥ 50 % / 100 % on the side-by-side; thirteen clip reviews; matrix and regression green; the reel under `receipts/`. |
+- **Not:** no comps; no second direction; no owner pick or sign-off form; no CSS cleanup.
+- **How agents get this wrong:** §20.9, plus: asking the owner to choose between stylesheets; treating a green matrix as a match to the sheet.
 
 **`PQ-188` — The flight HUD and the instruments to the direction** · *BETA* · after `PQ-187.03`
 
@@ -4003,9 +4006,9 @@ their centerpieces and manipulation verbs kept, and the HUD gains its two signat
 
 | Leaf | Outcome | Done when |
 |---|---|---|
-| `.00` | **The flight HUD.** Hero scale where it matters (speed, heat, the target); the display face on the few words that deserve it; the arrival choreography on first undock; the temperature change on wanted; the attention rules kept. | Contact sheet at 1280 / 1920 / 2560 with the owner's yes; two ten-second clips; `check:hud-j07` and `check:one-voice` green; the receipts channel unchanged. |
-| `.01` | **THE SHIP.** The hull as the picture at full bleed with labels pinned to it; the four bands re-set on the kit; orbit kept. | Contact sheet with the owner's yes; every band still answers "why does my ship fly like this". |
-| `.02` | **THE FOOTPRINT and THE RANGE.** The consequence board with its wanted temperature; the Range's teaching voice on the kit without changing the drills. | Contact sheet with the owner's yes; the four rungs still complete under real input. |
+| `.00` | **The flight HUD.** Hero scale where it matters (speed, heat, the target); the display face on the few words that deserve it; the arrival choreography on first undock; the temperature change on wanted; the attention rules kept. | Contact sheet at 1280 / 1920 / 2560 under a hash-bound visual review against the sheet; two ten-second clips; `check:hud-j07` and `check:one-voice` green; the receipts channel unchanged. |
+| `.01` | **THE SHIP.** The hull as the picture at full bleed with labels pinned to it; the four bands re-set on the kit; orbit kept. | Contact sheet under a hash-bound visual review against the sheet; every band still answers "why does my ship fly like this". |
+| `.02` | **THE FOOTPRINT and THE RANGE.** The consequence board with its wanted temperature; the Range's teaching voice on the kit without changing the drills. | Contact sheet under a hash-bound visual review against the sheet; the four rungs still complete under real input. |
 
 - **Not:** no change to what the instruments do; no second receipts channel; no restyle before the
   kit exists.
@@ -4020,3 +4023,57 @@ the board whose interface you admire. The answer is recorded verbatim at the top
 `design/frontend/direction/REFERENCE_BOARD.md`, and `PQ-187.01` is built against it. The
 owner-facing rendering of this plan, with the three directions set in their own type, is the
 published page "SpaceFace Frontend Direction".
+
+**Answered 2026-09-06.** The owner declined to review a board or stylesheets and delegated the
+decision; see §20.14. The question is closed.
+
+### 20.14 The decision and the task series — 2026-09-06
+
+**Decided: Cinematic Minimal, tuned for SpaceFace — the world is the interface.** The owner looked
+at the three direction cards and said (verbatim in
+[`receipts/PQ-187-01-REPORT.md`](./design/program/roadmap/receipts/PQ-187-01-REPORT.md)) that none
+of them looked like a game, that they could not picture the result from a stylesheet, that they
+leaned cinematic minimal, and: *"You'll just have to decide what the game being described in the
+docs would look best like, and make it into a series of frontend tasks we could tackle."* The
+decision was made under that delegation and is written as
+[`design/frontend/direction/DIRECTION_SHEET.md`](./design/frontend/direction/DIRECTION_SHEET.md) —
+a picture in plain words of every screen, then the rules (faces, scale, colour and temperature,
+composition, the dense register, motion, sound, a review checklist, what survives, what retires,
+the never-list). The why is the direction file §13. §20.2's owner pick, §20.8's Phase 0 comparison
+round, the "owner's yes" done-whens and §20.13 are superseded by this section.
+
+**The mechanism now.** The sheet is the authority. A leaf closes when its actual capture matches the
+sheet under a hash-bound review by a memoryless vision reviewer answering the sheet's §9 checklist,
+and the integrator accepts. No unit waits on a human choosing between options; a unit that would is
+a defect. The owner's veto is exercised by looking at the game, and the title goes live first so
+that look happens after one unit.
+
+**Gut it or not?** Not. The bones stay: the screen manager and screen memory, the three-anchor HUD
+and the Power Rail, the station OS and its six instruments, the instruments' centerpieces and verbs,
+the icon set and the crests, the hangar-rig hull render, the chart's star-system drawing, the
+accessibility and performance floors. The skin retires screen by screen as each migrates: the menu
+plate, every panel and card and border, chips and badges, Saira and the Plex trio, monospace as a
+look, the uniform fade, the filled buttons, the tile grids.
+
+**The task series.** In order; each line is what the owner sees in the game when it lands. After
+task 2, tasks 3–10 run in parallel under their own packets and mutexes.
+
+| # | Unit | What lands | What you will see |
+|---|---|---|---|
+| 1 | `PQ-187.02` | **The kit.** The variable display face vendored, tokens and the 12→160 px scale, the temperature states, the transition helper, eight UI sounds, every component on one lab page. | Nothing in the game yet. One lab page showing every button, row, table, title and number in the new look, captured at three widths. |
+| 2 | `PQ-187.03` | **The title, live.** The first real screen, on the default route; the menu plate and its CSS deleted. | Boot the game: your hull in the hangar rig fills the frame against the sky, the game's name enormous top-left, five words down the left edge, the focused one bright with a short gold rule. **This is the veto point** — say so here and nothing else moves until it is right. |
+| 3 | `PQ-181` | **The shell.** New game, load, settings, pause, game over, photo mode, credits and version on the kit. | New game is three lit hulls with a sentence each. Load is portraits of your ships, not timestamps. Pause holds the world instead of hiding it. Game over is a still that names what killed you and the telegraph you missed. |
+| 4 | `PQ-188.00` | **The flight HUD.** Hero-scale speed and heat, the rail as words, the arrival choreography, the wanted temperature; the attention rules kept. | Speed huge in the bottom-left corner, everything else quiet at the edges. On your first undock the instruments come online one by one with a low tone each. When you go wanted the whole frame turns cold and the gold turns red. |
+| 5 | `PQ-162` | **The station as a place.** Docking as arrival; the six instruments on the kit; the market as the dense-register proof. | Docking shows the berth with your hull in it and the station's name enormous; the six instruments are six words along the bottom. The market is three enormous numbers, a sentence and a half-width table. No tiles, no panels. |
+| 6 | `PQ-188.01` · `.02` | **THE SHIP, THE FOOTPRINT, THE RANGE** on the kit with orbit, trace and fly kept. | The hull full-bleed with labels pinned to it and four big numbers along the bottom. The consequence graph drawn on the sky. The drill box with one teaching sentence. |
+| 7 | `PQ-168` | **The chart** finished on the kit. | The star system full-bleed; the selected place named in the corner with one sentence and the route time; pins as hairline marks, not a legend. |
+| 8 | `PQ-182` | **The Crucible** door, draft, refit, results on the kit. | The door is four words a stranger reads in five seconds, the signal colour white. Results tell the run as a story with the best chain as a hero number and Retry as one word. |
+| 9 | `PQ-185` | **Asteroid Works** reconciled with the sheet under its own accepted warm law. | The Works looks as it does, with the sheet's composition and motion; nothing boxed. |
+| 10 | `PQ-192` | **The reading screens.** Missions, codex, help, tech tree on the kit. | Missions as a column of sentences with the chosen one opened large on the right. The codex reads like a book. Help is rows of action and key. The tech tree's lanes drawn on the sky. |
+| 11 | `PQ-183` · `PQ-184` | **One system, fast.** Every name a link, the watch list, global find; budgets met; the legacy hub, dead CSS and dead fonts deleted last. | Any name anywhere is clickable and takes you there. Nothing hitches. The old fonts and stylesheets are gone. |
+| 12 | `PQ-187.04` | **The proof.** The blind side-by-side against the best games' screens, the thirteen signature-moment clips reviewed against the sheet, the regression baseline reshot, a ninety-second reel. | A ninety-second reel of the game's interface cut to its own sounds, and a tally showing SpaceFace chosen at least half the time against A-list screens and every time against the genre baselines. |
+
+**How the owner uses this.** Say "next" and the dispatcher hands out task 1, then task 2. After
+task 2, play the title screen. If it is wrong, say what is wrong in plain words; the sheet's title
+picture is revised and task 2 is redone before anything else. If it is right, say nothing — the
+rest proceeds in parallel and each surface arrives in the game as it lands.

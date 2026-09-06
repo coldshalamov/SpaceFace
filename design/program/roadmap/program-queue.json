@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-06T21:25:34.000Z",
+  "updatedAt": "2026-09-06T21:35:42.000Z",
   "purpose": "Canonical cross-plan priority and dispatch queue. Product completion remains authoritative in design/program/03_LIVE_ACCEPTANCE_MATRIX.md.",
   "stateContract": {
     "allowed": [
@@ -3484,7 +3484,7 @@
       ],
       "checks": [],
       "evidence": [],
-      "brief": "Seven station screens adopt the instrument grammar skeleton and data states for real; the owner review findings close; docking reads as arriving somewhere. Gap: Flatten happened, redesign did not; zero skeleton adoption; review findings unverified (orange doing four jobs, bar transcript void, italic flavour outranking data). See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-162.md. DIRECTION OVERRIDE 2026-09-05: 'to the grammar' is void on aesthetics; builds on the PQ-187.03 kit; done is the owner's contact-sheet yes (design/FRONTEND_DIRECTION.md section 8)."
+      "brief": "Seven station screens adopt the instrument grammar skeleton and data states for real; the owner review findings close; docking reads as arriving somewhere. Gap: Flatten happened, redesign did not; zero skeleton adoption; review findings unverified (orange doing four jobs, bar transcript void, italic flavour outranking data). See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-162.md. DIRECTION OVERRIDE 2026-09-05: 'to the grammar' is void on aesthetics; builds on the PQ-187.03 kit; done is a hash-bound visual review against design/frontend/direction/DIRECTION_SHEET.md (decided 2026-09-06) (design/FRONTEND_DIRECTION.md section 8)."
     },
     {
       "id": "PQ-168",
@@ -3511,7 +3511,7 @@
       ],
       "checks": [],
       "evidence": [],
-      "brief": "The strategic centrepiece stops reading as an admin screen: the deferred traffic layer lands, duplicated navigation answers merge, tabs get a hierarchy, heat and contracts pin. Gap: J12b traffic layer deferred; duplication; single tab size; sub-12 px nodes; the strategic reviewer called it cheap admin. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-168.md. DIRECTION OVERRIDE 2026-09-05: 'to the grammar' is void on aesthetics; builds on the PQ-187.03 kit; done is the owner's contact-sheet yes (design/FRONTEND_DIRECTION.md section 8)."
+      "brief": "The strategic centrepiece stops reading as an admin screen: the deferred traffic layer lands, duplicated navigation answers merge, tabs get a hierarchy, heat and contracts pin. Gap: J12b traffic layer deferred; duplication; single tab size; sub-12 px nodes; the strategic reviewer called it cheap admin. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-168.md. DIRECTION OVERRIDE 2026-09-05: 'to the grammar' is void on aesthetics; builds on the PQ-187.03 kit; done is a hash-bound visual review against design/frontend/direction/DIRECTION_SHEET.md (decided 2026-09-06) (design/FRONTEND_DIRECTION.md section 8)."
     },
     {
       "id": "PQ-173",
@@ -3704,7 +3704,7 @@
       ],
       "checks": [],
       "evidence": [],
-      "brief": "Every shell screen to the grammar with the three missing meta screens added, the save portrait, a returning-player digest, a version string, and keyboard/gamepad parity. Gap: Credits, statistics and photo mode absent; no version string; settings lacks presets, frame cap and pad remap; load is a list. See CANONICAL_BUILD_MAP.md section 18 and design/program/roadmap/active/PQ-181.md. DIRECTION OVERRIDE 2026-09-05: 'to the grammar' is void on aesthetics; builds on the PQ-187.03 kit; done is the owner's contact-sheet yes (design/FRONTEND_DIRECTION.md section 8)."
+      "brief": "Every shell screen to the grammar with the three missing meta screens added, the save portrait, a returning-player digest, a version string, and keyboard/gamepad parity. Gap: Credits, statistics and photo mode absent; no version string; settings lacks presets, frame cap and pad remap; load is a list. See CANONICAL_BUILD_MAP.md section 18 and design/program/roadmap/active/PQ-181.md. DIRECTION OVERRIDE 2026-09-05: 'to the grammar' is void on aesthetics; builds on the PQ-187.03 kit; done is a hash-bound visual review against design/frontend/direction/DIRECTION_SHEET.md (decided 2026-09-06) (design/FRONTEND_DIRECTION.md section 8)."
     },
     {
       "id": "PQ-182",
@@ -3731,7 +3731,7 @@
       ],
       "checks": [],
       "evidence": [],
-      "brief": "The swarm mode's screens become instruments: a door that sells the run in five seconds, drafts readable in one line, a results screen that tells the story, and lab controls that are a toy. Gap: Crucible screens were built during engineering phases and never held to the grammar; results list numbers; the draft explains itself in paragraphs. See CANONICAL_BUILD_MAP.md section 18 and design/program/roadmap/active/PQ-182.md. DIRECTION OVERRIDE 2026-09-05: 'to the grammar' is void on aesthetics; builds on the PQ-187.03 kit; done is the owner's contact-sheet yes (design/FRONTEND_DIRECTION.md section 8)."
+      "brief": "The swarm mode's screens become instruments: a door that sells the run in five seconds, drafts readable in one line, a results screen that tells the story, and lab controls that are a toy. Gap: Crucible screens were built during engineering phases and never held to the grammar; results list numbers; the draft explains itself in paragraphs. See CANONICAL_BUILD_MAP.md section 18 and design/program/roadmap/active/PQ-182.md. DIRECTION OVERRIDE 2026-09-05: 'to the grammar' is void on aesthetics; builds on the PQ-187.03 kit; done is a hash-bound visual review against design/frontend/direction/DIRECTION_SHEET.md (decided 2026-09-06) (design/FRONTEND_DIRECTION.md section 8)."
     },
     {
       "id": "PQ-183",
@@ -3806,7 +3806,7 @@
       ],
       "checks": [],
       "evidence": [],
-      "brief": "The one surface with an explicit owner fail is finished under its own design law and the frontend matrix: warm board, perfect grid, authored objects, ≤ 15 visible words, board ≥ 88 % of the glass. Gap: PQ-130 implemented but not accepted; PQ-131 art blocked on its units; the 2026-08-20 playtest remains the defect list. See CANONICAL_BUILD_MAP.md section 18 and design/program/roadmap/active/PQ-185.md. DIRECTION OVERRIDE 2026-09-05: 'to the grammar' is void on aesthetics; builds on the PQ-187.03 kit; done is the owner's contact-sheet yes (design/FRONTEND_DIRECTION.md section 8)."
+      "brief": "The one surface with an explicit owner fail is finished under its own design law and the frontend matrix: warm board, perfect grid, authored objects, ≤ 15 visible words, board ≥ 88 % of the glass. Gap: PQ-130 implemented but not accepted; PQ-131 art blocked on its units; the 2026-08-20 playtest remains the defect list. See CANONICAL_BUILD_MAP.md section 18 and design/program/roadmap/active/PQ-185.md. DIRECTION OVERRIDE 2026-09-05: 'to the grammar' is void on aesthetics; builds on the PQ-187.03 kit; done is a hash-bound visual review against design/frontend/direction/DIRECTION_SHEET.md (decided 2026-09-06) (design/FRONTEND_DIRECTION.md section 8)."
     },
     {
       "id": "PQ-186",
@@ -3941,6 +3941,30 @@
       "checks": [],
       "evidence": [],
       "brief": "A second agent plays the 2026-09-06 landings, fixes real taste and bugs, and writes the receipt in owner words. This is the passover itself, not a second standing queue. Gap: units can sit at implemented or done after the implementer's own review without a cold play pass. See CANONICAL_BUILD_MAP.md section 1.7 and design/program/roadmap/active/PQ-191.md."
+    },
+    {
+      "id": "PQ-192",
+      "priority": 112,
+      "title": "The reading screens on the kit: missions log, codex, help, tech tree",
+      "state": "ready",
+      "canonical": [
+        "HUD-INSTRUMENTS-DIRECTION"
+      ],
+      "aliases": [],
+      "dependsOn": [
+        "PQ-187"
+      ],
+      "mutexes": [
+        "reading-screens"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/FRONTEND_DIRECTION.md",
+        "design/frontend/direction/DIRECTION_SHEET.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "The four screens the player reads rather than operates - missions log, codex, help, tech tree - migrate onto the kit to the pictures in design/frontend/direction/DIRECTION_SHEET.md section 2 'The reading screens', keeping what each does and deleting their old style blocks as they move. Gap: reachable on the default route, covered by no frontend packet. See design/program/roadmap/active/PQ-192.md."
     }
   ],
   "dispatchUnits": [
@@ -17217,7 +17241,8 @@
         "PQ-162.02",
         "PQ-168.01",
         "PQ-182.02",
-        "PQ-185.01"
+        "PQ-185.01",
+        "PQ-192.01"
       ],
       "mutexes": [
         "frontend-direction"
@@ -17264,7 +17289,7 @@
         "npm run check:responsive"
       ],
       "receiptRefs": [],
-      "brief": "The HUD on the kit: hero scale where it matters, the arrival choreography on first undock, the temperature change on wanted; the attention rules kept. DONE WHEN: contact sheet at three widths with the owner's yes; two ten-second clips; hud-j07 and one-voice green."
+      "brief": "The HUD on the kit: hero scale where it matters, the arrival choreography on first undock, the temperature change on wanted; the attention rules kept. DONE WHEN: contact sheet at three widths with a hash-bound visual review against DIRECTION_SHEET.md; two ten-second clips; hud-j07 and one-voice green."
     },
     {
       "id": "PQ-188.01",
@@ -17290,7 +17315,7 @@
         "npm run check:ui-a11y"
       ],
       "receiptRefs": [],
-      "brief": "The hull as the picture at full bleed with labels pinned to it; the four bands re-set on the kit; orbit kept. DONE WHEN: contact sheet with the owner's yes; every band still answers why the ship flies like this."
+      "brief": "The hull as the picture at full bleed with labels pinned to it; the four bands re-set on the kit; orbit kept. DONE WHEN: contact sheet with a hash-bound visual review against DIRECTION_SHEET.md; every band still answers why the ship flies like this."
     },
     {
       "id": "PQ-188.02",
@@ -17316,7 +17341,7 @@
         "npm run check:ui-a11y"
       ],
       "receiptRefs": [],
-      "brief": "The consequence board with its wanted temperature; the Range's teaching voice on the kit without changing the drills. DONE WHEN: contact sheet with the owner's yes; the four rungs still complete under real input."
+      "brief": "The consequence board with its wanted temperature; the Range's teaching voice on the kit without changing the drills. DONE WHEN: contact sheet with a hash-bound visual review against DIRECTION_SHEET.md; the four rungs still complete under real input."
     },
     {
       "id": "PQ-191.00",
@@ -17366,6 +17391,58 @@
       ],
       "receiptRefs": [],
       "brief": "Ratify, adjust, or overturn the six named taste calls on PQ-144.00, PQ-186.00, PQ-139.04, PQ-143.02, and PQ-184.00. Implement every adjustment. Do not drop the taste-call list. Stay off PQ-184.01/.02/.03 and PQ-022/PQ-018 capture leaves. DONE WHEN: every call has a verdict in owner words; adopted changes are in the owning files; receipt under design/program/roadmap/receipts/PQ-191-01-REPORT.md."
+    },
+    {
+      "id": "PQ-192.00",
+      "parentId": "PQ-192",
+      "priority": 470,
+      "title": "Missions log and codex",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-187.03"
+      ],
+      "mutexes": [
+        "reading-screens"
+      ],
+      "paths": [
+        "src/ui/screens/missionLog.js",
+        "src/ui/screens/codex.js",
+        "styles/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "node scripts/check-ui-screen-imports.mjs",
+        "npm run check:ui-a11y"
+      ],
+      "receiptRefs": [],
+      "brief": "The log as one column of sentences with hairlines and the focused mission opened on the right at screen-title size with its next step and reward; the codex as a left column of entry names and a readable measure of text with its plate. Over the sky at the menus scrim; old style blocks deleted. DONE WHEN: captures at 1280/1920/2560 match the sheet under a hash-bound visual review against DIRECTION_SHEET.md; entity links and the four data states still work; check:ui-screen-imports green."
+    },
+    {
+      "id": "PQ-192.01",
+      "parentId": "PQ-192",
+      "priority": 471,
+      "title": "Help and tech tree",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-187.03"
+      ],
+      "mutexes": [
+        "reading-screens"
+      ],
+      "paths": [
+        "src/ui/screens/help.js",
+        "src/ui/screens/techTree.js",
+        "styles/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "node scripts/check-ui-screen-imports.mjs",
+        "npm run check:ui-a11y"
+      ],
+      "receiptRefs": [],
+      "brief": "Help as hairline rows of action and key with the current profile named; the tech tree's lanes as hairline paths on the sky, nodes as words, the selected node's name at screen-title size with its cost and Unlock as one word. Old style blocks deleted. DONE WHEN: captures at three widths match the sheet under a hash-bound visual review against DIRECTION_SHEET.md; every displayed key still resolves from input.js after a remap; unlocks still apply; check:ui-screen-imports green."
     }
   ]
 }
