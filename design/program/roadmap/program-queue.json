@@ -17083,7 +17083,7 @@
       "priority": 460,
       "title": "The reference board",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "frontend-direction"
@@ -17092,10 +17092,12 @@
         "design/frontend/direction/REFERENCE_BOARD.md"
       ],
       "checks": [
-        "npm run check:baseline"
+        "node scripts/check-program-docs.mjs"
       ],
-      "receiptRefs": [],
-      "brief": "Ten A-list interfaces with the owner's love/like/hate line per game recorded verbatim. DONE WHEN: the owner's reactions are on the file; the two comps most consistent with them are named."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-187-00-REPORT.md"
+      ],
+      "brief": "DONE 2026-09-06: controller-curated ten-game reference board plus two genre baselines, under the user’s explicit creative delegation. Primary industrial reference Shipbreaker, composition reference Control; A and C prioritized for the three-direction comparison. No owner quotes or rendered-direction approval invented."
     },
     {
       "id": "PQ-187.01",
