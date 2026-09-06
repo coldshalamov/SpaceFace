@@ -1,6 +1,6 @@
 {
   "schema": "spaceface.inferenceMemory.v1",
-  "updated": "2026-09-05",
+  "updated": "2026-09-06",
   "runs": [
     {
       "date": "2026-08-12",
@@ -24,6 +24,32 @@
       ],
       "nx": 1,
       "note": "1-unit INFERENCE request: wire one unwired catalog microevent into the proven Ceres causal chain"
+    },
+    {
+      "date": "2026-09-05",
+      "mode": "repair",
+      "domains": [
+        "WF-02",
+        "WF-03",
+        "WF-12",
+        "WF-15",
+        "WF-10",
+        "WF-13",
+        "WF-19"
+      ],
+      "scope": "none",
+      "nx": 10,
+      "note": "10-unit production target via orchestrated subagents; adversarial review waves per user request"
+    },
+    {
+      "date": "2026-09-06",
+      "mode": "repair",
+      "domains": [
+        "WF-13"
+      ],
+      "scope": "AUDIO",
+      "nx": 1,
+      "note": "1-unit production target; WANTED heat audio family; 3x3 review waves requested by user"
     }
   ],
   "units": [
@@ -662,6 +688,19 @@
       "references": [],
       "integration": "live",
       "commit": "8a4730b1",
+      "verification": "focused_green"
+    },
+    {
+      "id": "wanted-heat-audio-family",
+      "date": "2026-09-06",
+      "wf": "WF-13",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "WANTED heat escalation gains a live audio identity: rising per-band alarm on flip/climb, clear sting on dropping clean",
+      "fingerprint": "verb=hear,subject=wanted-heat,sector=any,domain=wf-13",
+      "references": [],
+      "integration": "live",
+      "commit": "e5f29f35",
       "verification": "focused_green"
     }
   ],
