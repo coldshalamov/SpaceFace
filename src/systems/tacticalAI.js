@@ -363,6 +363,10 @@ export function applyEngagementPosture(entity, doctrine, state) {
   // Survival orders (morale flee / fsm flee) and already-postured activity outrank the break.
   if (!current || current.kind === 'flee' || current.kind === 'disengage') return;
   if (String(current.reason || '').startsWith(POSTURE_REASON_PREFIX)) return;
+  // A break is already in flight but another writer replaced the activity with a non-posture
+  // reason: do not stash the interloper — re-commit must hand back the ORIGINAL authored
+  // activity, so leave the stash and the live activity alone this tick.
+  if (ai.postureBaseActivity) return;
   const preferred = Number.isFinite(doctrine.preferredRange) && doctrine.preferredRange > 0
     ? doctrine.preferredRange
     : (Number.isFinite(current.preferredRange) && current.preferredRange > 0 ? current.preferredRange : 620);

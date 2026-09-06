@@ -32,13 +32,19 @@ const INTERCEPTOR_REFORM_TICKS = 45;
 const BRAWLER_COMMIT_MIN_TICKS = 90;
 const BRAWLER_COMMIT_MAX_TICKS = 120;
 const BRAWLER_BREAKAWAY_TICKS = 105;
+// Distance-gated egress exits also need a clock: a breakaway that requires separation never
+// happens when the target keeps chasing, and without a hatch the "break" inverts into a hull
+// that runs from a pursuer forever and never re-commits. Same pattern as INTERCEPTOR_EXTEND_MAX.
+const BRAWLER_BREAKAWAY_MAX_TICKS = 240;
 const BRAWLER_REFORM_TICKS = 60;
 const TETHER_ATTACH_TICKS = 15;
 const TETHER_CONTROL_TICKS = 90;
 const TETHER_ESCAPE_TICKS = 90;
+const TETHER_ESCAPE_MAX_TICKS = 240;
 const TETHER_REFORM_TICKS = 45;
 const FIELD_ANCHOR_HOLD_TICKS = 180;
 const FIELD_ANCHOR_RECOVER_TICKS = 75;
+const FIELD_ANCHOR_RECOVER_MAX_TICKS = 200;
 const RANGED_REPOSITION_TICKS = 45;
 const RANGED_FIRE_TICKS = 18;
 const RANGED_RESET_TICKS = 18;
@@ -183,7 +189,7 @@ export class CombatDoctrineRuntime {
       return snapshot(record, target, directive, factionBehavior);
     }
     if (pressureBreakDue(record, self, tick)) {
-      beginEgress(record, egressPhaseFor(doctrineId), tick, self, target, PRESSURE_BREAK_OUTCOME);
+      beginEgress(record, egressPhaseFor(record), tick, self, target, PRESSURE_BREAK_OUTCOME);
       return snapshot(record, target, directive, factionBehavior);
     }
     if (doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY) {
@@ -319,7 +325,8 @@ function updateBrawler(record, tick, self, target, distance) {
     if ((age >= BRAWLER_COMMIT_MIN_TICKS && passed) || age >= BRAWLER_COMMIT_MAX_TICKS) {
       beginEgress(record, 'breakaway', tick, self, target, 'brawler_commit_complete');
     }
-  } else if (record.phase === 'breakaway' && age >= BRAWLER_BREAKAWAY_TICKS && distance >= 600) {
+  } else if (record.phase === 'breakaway' && age >= BRAWLER_BREAKAWAY_TICKS &&
+    (distance >= 600 || age >= BRAWLER_BREAKAWAY_MAX_TICKS)) {
     beginReform(record, tick);
   } else if (record.phase === 'reform' && age >= BRAWLER_REFORM_TICKS) {
     advanceCycle(record, tick, 'ingress');
@@ -346,7 +353,8 @@ function updateTetherRaider(record, tick, entityId, perception, self, target, di
   else if (record.phase === 'control' && hasTag(tether, 'slack')) beginEgress(record, 'escape', tick, self, target, 'slack_line');
   else if (record.phase === 'control' && vectorReversed(perception, target)) beginEgress(record, 'escape', tick, self, target, 'vector_reversal');
   else if (record.phase === 'control' && age >= TETHER_CONTROL_TICKS) beginEgress(record, 'escape', tick, self, target, 'control_complete');
-  else if (record.phase === 'escape' && age >= TETHER_ESCAPE_TICKS && distance >= 700) beginReform(record, tick);
+  else if (record.phase === 'escape' && age >= TETHER_ESCAPE_TICKS &&
+    (distance >= 700 || age >= TETHER_ESCAPE_MAX_TICKS)) beginReform(record, tick);
   else if (record.phase === 'reform' && age >= TETHER_REFORM_TICKS) advanceCycle(record, tick, 'flank');
   record.actionTargetId = tether ? (tether.attachmentId || tether.id) : target.id;
 }
@@ -357,7 +365,8 @@ function updateFieldAnchor(record, tick, self, target, distance) {
   else if (record.phase === 'field_spool' && age >= DOCTRINE_TELEGRAPH_TICKS) enter(record, 'anchor_hold', tick, null);
   else if (record.phase === 'anchor_hold' && (age >= FIELD_ANCHOR_HOLD_TICKS || distance < 220)) {
     beginEgress(record, 'recover', tick, self, target, 'field_cycle_complete');
-  } else if (record.phase === 'recover' && age >= FIELD_ANCHOR_RECOVER_TICKS && distance >= 520) {
+  } else if (record.phase === 'recover' && age >= FIELD_ANCHOR_RECOVER_TICKS &&
+    (distance >= 520 || age >= FIELD_ANCHOR_RECOVER_MAX_TICKS)) {
     beginReform(record, tick);
   } else if (record.phase === 'reform' && age >= TETHER_REFORM_TICKS) {
     advanceCycle(record, tick, 'approach');
@@ -452,11 +461,16 @@ function pressureBreakDue(record, self, tick) {
   if (!self || !Number.isFinite(self.hullFraction)) return false;
   const phase = record.phase;
   if (PRESSURE_BREAK_EXCLUDED_PHASES.has(phase)) return false;
-  if (phase === egressPhaseFor(record.doctrineId)) return false;
+  if (phase === egressPhaseFor(record)) return false;
   if (tick - record.phaseStartedTick < PRESSURE_MIN_PHASE_TICKS) return false;
   // Hull never recovers mid-fight, so without this gate a hurt ship would re-break at exactly
   // PRESSURE_MIN_PHASE_TICKS of every approach leg and never reach a fire window again — the
   // break must land during the actual grind (strike/commit/hold), not cancel the re-press.
+  // Two doctrines never satisfy this gate and are deliberately break-proof: the tether raider
+  // (its grind phase 'control' is not a fire window — a break mid-tow would strand the escape
+  // machine's line-lost handling, and control already has four authored abort outcomes) and the
+  // ranged disengager (its fire_window lasts RANGED_FIRE_TICKS=18 < PRESSURE_MIN_PHASE_TICKS, and
+  // it already self-breaks on the closing_interrupt retreat).
   if (!record.fireWindow) return false;
   const hull = self.hullFraction;
   const heat = Number.isFinite(self.heatFraction) ? self.heatFraction : 0;
@@ -465,8 +479,15 @@ function pressureBreakDue(record, self, tick) {
 }
 
 /** Each doctrine breaks to its own authored egress phase so the maneuver vocabulary stays coherent. */
-function egressPhaseFor(doctrineId) {
-  if (doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY) return 'extend';
+function egressPhaseFor(record) {
+  const doctrineId = record && record.doctrineId;
+  // A heavy/capital-mass interceptor flies the brawler profile (flightProfileFor), so every phase
+  // of its record is advanced by updateBrawler — which has no 'extend' branch. Breaking it to
+  // 'extend' parked the hull on a stale egress point in a phase nothing would ever advance.
+  // The break must name the egress phase of the PROFILE actually driving the record.
+  if (doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY) {
+    return record && record.flightProfile === 'brawler_commit' ? 'breakaway' : 'extend';
+  }
   if (doctrineId === CombatDoctrineId.BRAWLER_COMMIT) return 'breakaway';
   if (doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER) return 'escape';
   if (doctrineId === CombatDoctrineId.FIELD_ANCHOR_CONTROLLER) return 'recover';
@@ -492,7 +513,10 @@ function updateRanged(record, tick, self, target, distance) {
     if (distance >= 520 && closing < 10) enter(record, 'outer_standoff', tick, null);
     return;
   }
-  if (record.phase === 'outer_standoff' && age >= RANGED_REPOSITION_TICKS && distance >= 420 && distance <= 1100) {
+  // The charge floor must meet the retreat trigger (300) exactly: between them the doctrine had
+  // no legal move — too close to fire, too far to flee — and a disengager parked at 300-420wu
+  // orbited in outer_standoff forever. Retreat is checked first, so 300 stays panic territory.
+  if (record.phase === 'outer_standoff' && age >= RANGED_REPOSITION_TICKS && distance >= 300 && distance <= 1100) {
     enter(record, 'charge_cue', tick, 'weapon_charge');
   }
   else if (record.phase === 'charge_cue' && age >= DOCTRINE_TELEGRAPH_TICKS) enter(record, 'fire_window', tick, null);
