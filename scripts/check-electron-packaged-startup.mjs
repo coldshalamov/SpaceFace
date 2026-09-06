@@ -139,6 +139,13 @@ try {
     appPath: electronApp.getAppPath(),
     versions: { ...process.versions },
   }));
+  // A stale unpacked executable can satisfy path/isPackaged checks; bind its runtime too.
+  const expectedElectronVersion = JSON.parse(readFileSync(path.join(ROOT, 'package.json'), 'utf8'))
+    .devDependencies?.electron;
+  assert(typeof expectedElectronVersion === 'string' && /^\d+\.\d+\.\d+$/.test(expectedElectronVersion),
+    'packaged startup requires an exact Electron version in candidate package.json');
+  assert.equal(mainIdentity.versions?.electron, expectedElectronVersion,
+    'packaged Electron runtime must match the candidate package.json target');
   pageSnapshot = await page.evaluate(({ expectedRoot, newGameWasVisible }) => {
     const storageKey = '__spaceface_packaged_startup_probe__';
     let storageRoundTrip = false;
