@@ -2675,7 +2675,7 @@ async function driveEarnedSpeedTraversal(targetPage) {
 async function saveReloadBusySitePublic(targetPage) {
   if (!CONTINUE_ROUTE) throw new Error('busy-site-save-reload requires --continue from a player save with a producing Asteroid Works site');
   await targetPage.waitForFunction(() => {
-    const sites = window.SF?.state?.sites?.worldById || {};
+    const sites = window.SF?.state?.sites?.byId || {};
     return Object.values(sites).some((site) => site?.survey?.lifecycle === 'producing') ? true : null;
   }, null, { timeout: 20_000 });
   await targetPage.evaluate(() => {
