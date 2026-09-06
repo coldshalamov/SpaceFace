@@ -14,6 +14,11 @@ import {
   isBlenderAuthoringMethod,
 } from '../tools/art/lib/partProvenance.mjs';
 import { validateSourceTextureRoleCoverage } from '../tools/art/lib/sourceTextureRoleValidation.mjs';
+import {
+  collectLodTriangleCounts,
+  resolveTriangleMetric,
+} from './lib/partsManifestMetrics.mjs';
+import { isPublishedPartsSourceFile } from './lib/partsManifestScope.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const PART_ROOT = resolve(ROOT, 'assets/ships/parts');
@@ -153,7 +158,9 @@ for (const part of manifest.parts || []) {
   }
   check(`${label}: bounds vectors declared`, vector3(part.bounds?.min) && vector3(part.bounds?.max) && vector3(part.bounds?.dimensionsM));
 
-  check(`${label}: wired to a runtime slot`, runtimeFiles.has(part.file), `file=${part.file}`);
+  // runtimeSlots is a bounded preload/catalog declaration, not an inverse runtime inventory.
+  // Place reachability is resolved by partsLibrary's place maps and checked by
+  // check-atlas-integrity.mjs; keep the forward runtimeSlots -> manifest/disk checks below.
 
   let parsed = null;
   const abs = resolve(PART_ROOT, part.file);
@@ -228,7 +235,14 @@ for (const part of manifest.parts || []) {
   check(`${label}: required mesh compression is supported by the runtime`, unsupportedMeshCompression.length === 0,
     `unsupported=${unsupportedMeshCompression.join(',')}`);
   check(`${label}: bytes match manifest`, bytes.length === part.bytes, `glb=${bytes.length} manifest=${part.bytes}`);
-  check(`${label}: triangles match manifest`, metrics.triangles === part.tris, `glb=${metrics.triangles} manifest=${part.tris}`);
+  const triangleMetric = resolveTriangleMetric(part, metrics);
+  check(`${label}: triangle metric is supported`, triangleMetric.supported,
+    `metric=${triangleMetric.metric}`);
+  const triangleDetail = triangleMetric.metric === 'lod0'
+    ? `metric=lod0 glb=${triangleMetric.measured} total=${triangleMetric.total} manifest=${part.tris}`
+    : `glb=${triangleMetric.measured} manifest=${part.tris}`;
+  check(`${label}: triangles match manifest`, triangleMetric.supported && triangleMetric.measured === part.tris,
+    triangleDetail);
   check(`${label}: extras part id`, extras.partId === part.id, `extras=${extras.partId}`);
   check(`${label}: extras category`, extras.category === part.category, `extras=${extras.category}`);
   check(`${label}: extras priority`, extras.priority === part.priority, `extras=${extras.priority}`);
@@ -350,7 +364,7 @@ for (const part of manifest.parts || []) {
     `extras=${(extras.boundsDimensionsM || []).join(',')} manifest=${(manifestDimensions || []).join(',')}`);
 }
 
-const diskGlbFiles = collectGlbFiles(PART_ROOT);
+const diskGlbFiles = new Set([...collectGlbFiles(PART_ROOT)].filter(isPublishedPartsSourceFile));
 // Whole-ship bodies (wholeships/*.glb) are authored single-mesh ships wired through the hull slot,
 // not catalog parts — they have no parts_manifest entry and use the lenient legacy loader path.
 const isWholeShipFile = (f) => String(f).startsWith('wholeships/');
@@ -424,6 +438,7 @@ function collectMetrics(gltf, binary) {
   const nodeNames = new Set((gltf.nodes || []).map((node) => node.name).filter(Boolean));
   return {
     triangles,
+    lodTriangles: collectLodTriangleCounts(gltf),
     nodeNames,
     bounds: collectWorldBounds(gltf, binary),
   };
