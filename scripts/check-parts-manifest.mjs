@@ -306,18 +306,20 @@ for (const part of manifest.parts || []) {
     factorOnlyBlender
       ? 'factor-only Blender materials'
       : (textureRoleError || `images=${embeddedImages.length} roleContract=${textureRoleContractVersion || 'legacy'}/${textureRoleMode || 'legacy'}`));
-  const activeMaterialContract = productionWholeShip
-    ? manifest.wholeShipMaterialContract || {}
-    : manifest.materialContract || {};
-  const contractMaterials = new Set(Object.values(activeMaterialContract));
-  const extraMaterials = [...materialNames].filter((name) => !contractMaterials.has(name));
   check(`${label}: has at least one material`, materialNames.size > 0,
     `materials=${[...materialNames].join(',')}`);
-  diagnose(`${label}: additional semantic materials require visual/perf review`, extraMaterials.length === 0,
-    `extra=${extraMaterials.join(',')}`);
+  // Each declared swatch must exist, but authored material names are not restricted to the
+  // old library-wide four-name template. Runtime uses per-material semantic/palette extras and
+  // mesh tags; a legacy `tintable` label alone does not override those production owners.
+  const materialsByName = new Map((gltf.materials || []).filter((material) => material.name)
+    .map((material) => [material.name, material]));
   for (const [role, materialName] of Object.entries(part.tintable || {})) {
-    check(`${label}: tint role ${role} is in manifest material contract`, Object.values(activeMaterialContract).includes(materialName), `material=${materialName}`);
-    check(`${label}: tint material ${materialName} exists in GLB`, materialNames.has(materialName), `materials=${[...materialNames].join(',')}`);
+    const material = materialsByName.get(materialName);
+    check(`${label}: tint material ${materialName} exists in GLB`, !!material,
+      `materials=${[...materialNames].join(',')}`);
+    const explicitPalette = material?.extras?.spacefacePaletteTint;
+    if (explicitPalette) diagnose(`${label}: authored palette intent for ${materialName}`, explicitPalette === role,
+      `manifestSwatch=${role} authoredPalette=${explicitPalette}`);
   }
 
   for (const hook of part.hooks || []) {
