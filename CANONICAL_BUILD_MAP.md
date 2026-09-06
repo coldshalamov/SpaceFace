@@ -3907,6 +3907,8 @@ transition system, never a uniform fade).
 | **7 · One system, fast** | `PQ-183` · `PQ-184` | every name a link, the watch list, global find; budgets met; the legacy hub gone; dead CSS and dead fonts deleted last | the numbers |
 | **8 · Proof** | `PQ-187.04` | the blind side-by-side, thirteen sign-offs, the regression baseline reshot on the new look, a ninety-second reel | **the reel** |
 
+*A "contact sheet" in this table is the set of captures the reviewer judges against `DIRECTION_SHEET.md`, not an owner checkpoint (revised 2026-09-06).*
+
 Sequencing: `PQ-187.01`–`.03` are strictly serial and none needs a human pick — `.01` is decided
 (§20.14), `.02` and `.03` close on a visual review against the sheet. Once `.03` lands, phases 2–6
 and `PQ-192` run in parallel by mutex. `PQ-180`'s matrix and the reference
@@ -4073,7 +4075,7 @@ task 2, tasks 3–10 run in parallel under their own packets and mutexes.
 | 11 | `PQ-183` · `PQ-184` | **One system, fast.** Every name a link, the watch list, global find; budgets met; the legacy hub, dead CSS and dead fonts deleted last. | Any name anywhere is clickable and takes you there. Nothing hitches. The old fonts and stylesheets are gone. |
 | 12 | `PQ-187.04` | **The proof.** The blind side-by-side against the best games' screens, the thirteen signature-moment clips reviewed against the sheet, the regression baseline reshot, a ninety-second reel. | A ninety-second reel of the game's interface cut to its own sounds, and a tally showing SpaceFace chosen at least half the time against A-list screens and every time against the genre baselines. |
 
-**How the owner uses this.** Say "next" and the dispatcher hands out task 1, then task 2. After
+**How the owner uses this.** Say "do the frontend" — the router row in `AGENTS.md` sends that to `PQ-187`, and an agent runs `--id PQ-187` for task 1, then task 2 (a bare "next" hands out whatever unit is highest in the whole queue, which may be another lane's). After
 task 2, play the title screen. If it is wrong, say what is wrong in plain words; the sheet's title
 picture is revised and task 2 is redone before anything else. If it is right, say nothing — the
 rest proceeds in parallel and each surface arrives in the game as it lands.

@@ -280,6 +280,8 @@ lock.
 | **7 · One system, fast** | `PQ-183`, `PQ-184` | every name a link, the watch list, global find; budgets met; the legacy hub gone; dead CSS and dead fonts deleted last | the numbers |
 | **8 · Proof** | `PQ-187.04` | the blind side-by-side, the owner's thirteen sign-offs, the regression baseline reshot on the new look, a ninety-second reel | **the reel** |
 
+*A "contact sheet" in this table is the set of captures the reviewer judges against `DIRECTION_SHEET.md`, not an owner checkpoint (revised 2026-09-06).*
+
 The floor is re-measured after every phase by the existing matrix and regression frames. **The
 current reference baseline (`PQ-180.03`, in flight today) is a floor tool for the current look and
 will be reshot after Phase 2.** That lane is not blocked by this plan.

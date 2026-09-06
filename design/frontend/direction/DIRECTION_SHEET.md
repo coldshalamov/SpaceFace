@@ -275,7 +275,10 @@ change makes no sound.
 ## 9. The review — how a frame is judged
 
 A reviewer (memoryless, sees only the capture and this sheet) answers these for the screen's line in
-§2 and the rules in §3–§8. Any "no" fails the frame.
+§2 and the rules in §3–§8. Any "no" fails the frame. One exception: a capture in which the world object
+the sheet puts in the shot (hull, berth, chart, arena) is missing while the DOM is right is a **capture
+defect** — headless captures of THE SHIP today show no hull — and is returned to the capture seam, never
+passed by painting a background and never failed as a frame.
 
 1. Is the world in the shot — a hull, a berth, a chart, an arena, or the sky — and not a painted
    background?
