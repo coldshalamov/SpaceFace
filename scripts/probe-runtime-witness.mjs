@@ -20,7 +20,7 @@ import {
 } from './lib/electronTestIsolation.mjs';
 import { classifyRuntimeWitness, formatHitchAttributionDetailLines, formatRuntimeWitnessReport } from '../src/core/runtimeWitness.js';
 import { loadPlaywright } from './lib/load-playwright.mjs';
-import { installCspSafePlaywrightPolling } from './lib/playwrightCspPolling.mjs';
+import { consumePageConditionValue, installCspSafePlaywrightPolling } from './lib/playwrightCspPolling.mjs';
 import { digestSourcePaths, listSrcJsSourcePaths } from './lib/validationFingerprint.mjs';
 import {
   formatRuntimeWitnessProductionMatrix,
@@ -2592,7 +2592,7 @@ async function refitAndUndockPublic(targetPage) {
       && preset.fittings.every((defId, index) => defId === snapshot.fittings[index]));
     return created?.id || null;
   }, before, { timeout: 10_000 });
-  const savedPresetId = await presetId.jsonValue();
+  const savedPresetId = await consumePageConditionValue(presetId);
   if (!savedPresetId) throw new Error('Shipworks save control did not create an owned loadout preset');
 
   const hardpoint = shipworksRoot.locator(`[data-spatial-slot="${before.slotIndex}"]`);
@@ -2668,7 +2668,7 @@ async function driveEarnedSpeedTraversal(targetPage) {
       return player?.flags?.boosting === true && boostEnergy < before.boostEnergy && speed > before.speed + 10
         ? { speed, boostEnergy, baseline: before, maxSpeed: Number(player.maxSpeed) || null } : null;
     }, baseline, { timeout: 15_000 });
-    return handle.jsonValue();
+    return consumePageConditionValue(handle);
   } finally { await targetPage.keyboard.up('ShiftLeft').catch(() => {}); await targetPage.keyboard.up('KeyW').catch(() => {}); }
 }
 
