@@ -181,10 +181,13 @@ for (const type of Object.keys(envelope.phase0ObservedTraceCounts)) {
   assert(DEFAULT_TRACE_EVENTS.includes(type), `observed trace count is not subscribed by event trace: ${type}`);
 }
 assert.equal(envelope.phase0ObservedTraceCounts['combat:fire'], 17, 'expected telemetry should pin observed combat fire count');
-assert.equal(envelope.phase0ObservedTraceCounts['projectile:hit'], 11, 'expected telemetry should pin observed projectile hit count');
-assert.equal(envelope.phase0ObservedTraceCounts['combat:damage'], 11, 'expected telemetry should pin observed combat damage count');
+// The accepted 2026-09-04 contact-episode record in the canonical envelope moved hits/damage
+// 6 -> 4 and presentation cues 8 -> 6. These assertions consume that accepted golden; they do
+// not re-record or normalize telemetry here.
+assert.equal(envelope.phase0ObservedTraceCounts['projectile:hit'], 4, 'expected telemetry should pin observed projectile hit count');
+assert.equal(envelope.phase0ObservedTraceCounts['combat:damage'], 4, 'expected telemetry should pin observed combat damage count');
 assert.equal(envelope.phase0ObservedTraceCounts['economy:tick'], 2, 'expected telemetry should pin observed economy tick count');
-assert.equal(envelope.phase0ObservedTraceCounts['presentation:cue'], 15, 'expected telemetry should pin SG-08 presentation cue count');
+assert.equal(envelope.phase0ObservedTraceCounts['presentation:cue'], 6, 'expected telemetry should pin SG-08 presentation cue count');
 assert.equal(envelope.phase0ObservedTraceCounts['scenario:loaded'], 1, 'expected telemetry should pin scenario load count');
 assert.equal(envelope.phase0ObservedTraceCounts['scenario:factsInitialized'], 1, 'expected telemetry should pin scenario fact initialization count');
 assert.equal(envelope.phase0ObservedTraceCounts['scenario:actorBindings'], 1, 'expected telemetry should pin scenario actor-binding audit count');

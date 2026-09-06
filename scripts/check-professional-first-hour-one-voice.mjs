@@ -29,6 +29,10 @@ import {
   voiceArbiter,
 } from '../src/ui/voiceArbiter.js';
 import { FLIGHT_DRILL_BEATS } from '../src/onboarding/flightDrill.js';
+import {
+  PRODUCTION_INIT_ORDER,
+  PRODUCTION_UPDATE_ORDER,
+} from '../src/runtime/authoritativeSystemManifest.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const read = (rel) => {
@@ -67,6 +71,8 @@ const storySrc = read('src/systems/story.js');
 const missionsSrc = read('src/systems/missions.js');
 const hudSrc = read('src/ui/hud.js');
 const radarSrc = read('src/ui/radar.js');
+const hudAttentionSrc = read('src/ui/hudAttention.js');
+const tacticalMapGrammarSrc = read('src/ui/map/tacticalMapGrammar.js');
 const commsSrc = read('src/ui/comms.js');
 const uiRootSrc = read('src/ui/uiRoot.js');
 const registrySrc = read('src/core/registry.js');
@@ -109,11 +115,18 @@ check('toasts suppress arbiter _fromVoice mirror (no double-surface)', 'SOURCE',
 });
 
 check('registry installs voice before callers and updates after story/onboarding', 'SOURCE', () => {
-  assert.match(registrySrc, /core, voiceArbiter, input/,
+  assert.match(registrySrc, /resolveRuntimeManifest/,
+    'registry must materialize its authoritative orders from the runtime manifest');
+  const coreInitIndex = PRODUCTION_INIT_ORDER.indexOf('core');
+  const voiceInitIndex = PRODUCTION_INIT_ORDER.indexOf('voiceArbiter');
+  const inputInitIndex = PRODUCTION_INIT_ORDER.indexOf('input');
+  assert.ok(coreInitIndex >= 0 && voiceInitIndex >= 0 && inputInitIndex >= 0
+    && voiceInitIndex > coreInitIndex && voiceInitIndex < inputInitIndex,
     'voiceArbiter must init early so helpers.voice exists for first-hour speakers');
-  const updateOrder = registrySrc.match(/const UPDATE_ORDER = \[([\s\S]*?)\n\s*\];/);
-  assert.ok(updateOrder, 'registry UPDATE_ORDER must remain statically auditable');
-  assert.ok(updateOrder[1].indexOf('voiceArbiter') > updateOrder[1].indexOf('onboarding'),
+  const onboardingUpdateIndex = PRODUCTION_UPDATE_ORDER.indexOf('onboarding');
+  const voiceUpdateIndex = PRODUCTION_UPDATE_ORDER.indexOf('voiceArbiter');
+  assert.ok(onboardingUpdateIndex >= 0 && voiceUpdateIndex >= 0
+    && voiceUpdateIndex > onboardingUpdateIndex,
     'voiceArbiter update must run after onboarding so tutorial lines surface same tick');
 });
 
@@ -279,8 +292,12 @@ check('active objective owns attention without suppressing combat/mining targeti
 });
 
 check('objective hierarchy remains legible and quiet for assistive technology', 'SOURCE', () => {
-  assert.match(radarSrc, /g\.lineWidth = 2\.4/, 'objective diamond must have the strongest radar stroke');
-  assert.match(radarSrc, /g\.arc\(x, y, 14/, 'objective marker must have a unique outer acquisition ring');
+  assert.match(radarSrc, /drawObjectiveBracket/,
+    'radar must route objectives through the shared objective marker renderer');
+  assert.match(tacticalMapGrammarSrc, /g\.lineWidth = 2\.1/,
+    'objective bracket must retain the strongest shared-map stroke');
+  assert.match(tacticalMapGrammarSrc, /g\.arc\(0, 0, offRange \? 12 : 14/,
+    'objective marker must retain its unique 14px acquisition ring');
   assert.doesNotMatch(uiRootSrc, /\.sf-radar-objective-key\s*\{\s*display\s*:\s*none/,
     'matching objective key must not disappear on narrow layouts');
   const trackerSetup = hudSrc.slice(
@@ -391,9 +408,9 @@ check('station hub owns the first-dock handoff rail (sell → job → departure)
 });
 
 check('onboarding yields first-dock persistence to the station handoff rail', 'SOURCE', () => {
-  assert.match(onboardingSrc, /left rail/,
-    'firstHub must teach the live left-rail layout, not top tabs');
-  assert.match(onboardingSrc, /Use the left rail\. Departure Check owns undock\./,
+  assert.match(onboardingSrc, /firstUseLine\('firstHub'\)/,
+    'onboarding must request the live first-dock line from HUD attention authority');
+  assert.match(hudAttentionSrc, /Pick a service above\. Undock when you're ready\./,
     'firstHub must be a terse pointer, not a duplicate sell-job-undock checklist');
   assert.match(onboardingSrc, /_tutorialRailOwnsVoice\(\)/,
     'contextual firstHub must be suppressed while B0-B5 owns teaching');
@@ -511,11 +528,11 @@ check('ROUTE: launchers use shared gameServer; Electron loads canonical root URL
     'browser server must require shared gameServer');
   assert.match(electronMainSrc, /gameServer\.cjs/,
     'Electron must require shared gameServer');
-  const loadUrlLine = electronMainSrc.split(/\r?\n/).find((line) => line.includes('win.loadURL')) || '';
-  assert.ok(loadUrlLine.includes('http://127.0.0.1:${port}/`')
-    || /loadURL\(`http:\/\/127\.0\.0\.1:\$\{port\}\/`\)/.test(electronMainSrc),
+  assert.match(electronMainSrc, /const gameUrl = `http:\/\/127\.0\.0\.1:\$\{port\}\/`/,
     'Electron must load the canonical root game URL');
-  assert.doesNotMatch(loadUrlLine, /\?|prod=1|release=1|debug=/,
+  assert.match(electronMainSrc, /win\.loadURL\(gameUrl\)/,
+    'Electron must load the canonical game URL variable');
+  assert.doesNotMatch(electronMainSrc.match(/const gameUrl = [^;]+/)?.[0] || '', /\?|prod=1|release=1|debug=/,
     'Electron must not inject mode/query flags into the normal game launch URL');
 });
 

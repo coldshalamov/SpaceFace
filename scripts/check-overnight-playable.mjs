@@ -1,7 +1,7 @@
 /**
  * Overnight B1 playable-core gates — drives REAL shipped modules (no reimplementation).
  * Covers: latch grace widen, nose spool lever, undock invuln, bank standstill, flyby focus pick,
- * starter ship display name, soft-latch exports, discoverability prompts (MMB / G / F).
+ * starter ship display name, soft-latch exports, discoverability prompts (pointer draw / G / F).
  */
 import assert from 'node:assert/strict';
 import {
@@ -116,7 +116,7 @@ assert.ok(FLIGHT_BANK_TUNING.BANK_RATE_GAIN <= 0.26, 'bank rate gain should be c
   const src = fs.readFileSync(new URL('../src/render/ships/kestrelHero.js', import.meta.url), 'utf8');
   assert.ok(!/emissiveMaterial\(COLOR\.frontierPale,\s*3\.2\)/.test(src),
     'high-intensity frontierPale sensor (floating white box) must be gone');
-  assert.ok(/sensor:\s*emissiveMaterial\(COLOR\.frontier,\s*0\.95\)/.test(src),
+  assert.ok(/sensor:\s*emissiveMaterial\(KESTREL_HERO_COLORS\.frontier,\s*0\.95\)/.test(src),
     'sensor emissive should be toned-down cyan');
 }
 
@@ -157,16 +157,17 @@ assert.ok(MANEUVER_SPEED_CAPS.interceptSpeed <= 80,
   assert.ok(live.length >= 15, `VISIBLE_IN_PLAY places expected ≥15, got ${live.length}`);
 }
 
-// --- Discoverability: helm + pilot prompts expose MMB course/pursue, G combat computer, F massline ---
+// --- Discoverability: helm + pilot prompts expose pointer draw-to-fly, G auto-target, F massline ---
 // Drives the real controlPrompt() resolver (same path UI uses), not a string reimplementation.
 {
   function assertDiscoverable(scheme, key) {
     setPromptScheme(scheme);
     const text = controlPrompt(key, 'kbm');
     assert.ok(typeof text === 'string' && text.length > 20, `${scheme}/${key} prompt missing`);
-    assert.match(text, /\bMMB\b/i, `${scheme}/${key} must mention MMB course/pursue`);
-    assert.match(text, /\bG\b.*combat computer|combat computer.*\bG\b/i,
-      `${scheme}/${key} must teach G combat computer`);
+    assert.match(text, /draw with pointer|draw to fly/i,
+      `${scheme}/${key} must teach the live pointer draw-to-fly route`);
+    assert.match(text, /\bG\b.*auto-target|auto-target.*\bG\b/i,
+      `${scheme}/${key} must teach G auto-target`);
     assert.match(text, /\bF\b.*massline|massline.*\bF\b/i,
       `${scheme}/${key} must teach F massline`);
     return text;
@@ -175,15 +176,16 @@ assert.ok(MANEUVER_SPEED_CAPS.interceptSpeed <= 80,
   for (const scheme of ['pilot', 'helm-assist']) {
     const flight = assertDiscoverable(scheme, 'flight');
     const combat = assertDiscoverable(scheme, 'combat');
-    // firstCombat must call out flyby focus window (signature overnight assist)
+    // First combat teaches the actual G route. Flyby Focus announces on its later, conditional
+    // high-speed near-miss event, and Massline is already present in both live prompt surfaces.
     setPromptScheme(scheme);
     const firstCombat = controlPrompt('firstCombat', 'kbm');
-    assert.match(firstCombat, /FLYBY FOCUS|flyby focus/i,
-      `${scheme}/firstCombat must mention Flyby Focus`);
-    assert.match(firstCombat, /\bF\b/, `${scheme}/firstCombat must mention F latch`);
-    // Ensure combat computer phrasing is not the old vague "auto-target" only
-    assert.ok(/combat computer/i.test(flight) || /combat computer/i.test(combat),
-      `${scheme} must say "combat computer" not only auto-target`);
+    assert.match(firstCombat, /\bG\b.*auto-target|auto-target.*\bG\b/i,
+      `${scheme}/firstCombat must teach G auto-target`);
+    assert.match(firstCombat, /guns track lock/i,
+      `${scheme}/firstCombat must state the auto-target outcome`);
+    assert.match(combat, /guns track lock/i,
+      `${scheme}/combat must state the auto-target outcome`);
   }
 
   // Resolver must switch schemes (proves we hit real scheme tables)

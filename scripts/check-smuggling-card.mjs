@@ -175,7 +175,16 @@ function testLiveCustomsConsequencesBackTheCard() {
   assert.equal(bribeRun.state.player.cargo.items.cmdty_narcotics, 4, 'bribe keeps the contraband cargo');
 
   const scanRun = bootCustoms(25);
-  const caught = scanRun.econ.runScan({ security: 1, scannerCloak: -1, factionId: 'faction_scn', stationId: 'station_customs' });
+  const originalRng = scanRun.econ._rng;
+  let caught;
+  try {
+    // This checks the caught consequence branch, not chance tuning. security:1 is a real 50%
+    // scan chance, so force this local deterministic roll and restore the instance immediately.
+    scanRun.econ._rng = () => 0;
+    caught = scanRun.econ.runScan({ security: 1, scannerCloak: -1, factionId: 'faction_scn', stationId: 'station_customs' });
+  } finally {
+    scanRun.econ._rng = originalRng;
+  }
   assert.equal(caught.found, true, 'forced high-security scan catches the contraband');
   assert.equal(caught.fine, 1320, 'real scan charges the same fine the card warned about');
   assert.equal(scanRun.state.player.cargo.items.cmdty_narcotics || 0, 0, 'real scan confiscates contraband through cargo');

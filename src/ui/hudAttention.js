@@ -133,7 +133,7 @@ export const FIRST_USE_LINE = Object.freeze({
   firstStation: 'Dock.',
   firstGate: 'Plot a jump.',
   firstCargoFull: 'Sell cargo.',
-  firstHub: 'Use the left rail. Departure Check owns undock.',
+  firstHub: "Pick a service above. Undock when you're ready.",
   firstDrill: 'Mine the veins.',
   firstOutfit: 'Fit the module.',
   firstTech: 'Research unlocked gear.',
