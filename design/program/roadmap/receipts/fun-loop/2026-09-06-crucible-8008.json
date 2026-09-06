@@ -1,0 +1,893 @@
+{
+  "schema": "spaceface.funMeasure.v1",
+  "timestamp": "2026-09-06T04:35:16.636Z",
+  "bench": "crucible",
+  "seed": 8008,
+  "bars": [
+    {
+      "id": "B1",
+      "key": "feel.earned_speed_kept",
+      "title": "Earned speed is kept",
+      "statement": "After leaving the cap at 2× cruise by ANY means (rope release, shove, well fling, bounce), speed 10 s later is ≥ 99 % of the exit speed with hands off, and ≥ 99 % with forward held. Only the brake spends it.",
+      "target": "≥ 99 % of exit speed 10 s later, hands off and forward held",
+      "reachable": true,
+      "coverage": "none",
+      "values": [],
+      "met": null,
+      "notes": "fed only by feel.rope_swing_release — not in this evaluation input",
+      "fedBy": []
+    },
+    {
+      "id": "B2",
+      "key": "feel.reversal_course",
+      "title": "Nimble regime",
+      "statement": "From rest to cruise ≤ 1.5 s. Full 180° velocity reversal ≤ 3.0 s. Turn radius at cruise ≤ 1 screen depth.",
+      "target": "rest→cruise ≤ 1.5 s; 180° velocity reversal ≤ 3.0 s; turn radius at cruise ≤ 1 screen depth",
+      "reachable": true,
+      "coverage": "none",
+      "values": [],
+      "met": null,
+      "notes": "fed only by flight-reversal / flight-accel-brake — not in this evaluation input",
+      "fedBy": []
+    },
+    {
+      "id": "B3",
+      "key": "feel.screen_crossing",
+      "title": "The fight stays on screen",
+      "statement": "At cruise the hull needs ≥ 1.2 s to cross the visible depth. Above the cap the camera opens so that a 2× cruise exit still shows ≥ 2 s of travel.",
+      "target": "≥ 1.2 s to cross the visible depth at cruise",
+      "reachable": true,
+      "coverage": "none",
+      "values": [],
+      "met": null,
+      "notes": "fed only by feel.stroke_speed — not in this evaluation input",
+      "fedBy": []
+    },
+    {
+      "id": "B4",
+      "key": "feel.shove_magnitude",
+      "title": "Shove magnitude",
+      "statement": "The dedicated shove weapon changes a light hostile's velocity by ≥ 30 % of its cruise per hit. The starter gun changes it by ≥ 5 % per hit. A light hostile already at cruise gets faster when shoved along its motion.",
+      "target": "shove ΔV ≥ 30 % of light-hostile cruise per hit (starter gun ≥ 5 %)",
+      "reachable": true,
+      "coverage": "none",
+      "values": [],
+      "met": null,
+      "notes": "fed only by feel.shove_magnitude — not in this evaluation input",
+      "fedBy": []
+    },
+    {
+      "id": "B5",
+      "key": "feel.shove_displacement",
+      "title": "Shove displacement",
+      "statement": "2 s after a shove-weapon hit, a light hostile is ≥ 1 screen depth off the line it was flying and has not fired.",
+      "target": "≥ 1 screen depth off the original line 2 s after the hit",
+      "reachable": true,
+      "coverage": "none",
+      "values": [],
+      "met": null,
+      "notes": "fed only by feel.shove_magnitude — not in this evaluation input",
+      "fedBy": []
+    },
+    {
+      "id": "B6",
+      "key": "feel.terrain_slam",
+      "title": "Terrain is lethal",
+      "statement": "A light hostile meeting rock at ≥ 50 % of cruise loses ≥ 60 % of hull and its helm; at ≥ 75 % of cruise it dies. A heavy at the same speed loses ≤ 15 % and keeps its helm.",
+      "target": "dies at ≥ 75 % cruise closing; ≥ 60 % hull + helm lost at ≥ 50 %; heavy ≤ 15 %",
+      "reachable": true,
+      "coverage": "none",
+      "values": [],
+      "met": null,
+      "notes": "fed only by feel.terrain_slam — not in this evaluation input",
+      "fedBy": []
+    },
+    {
+      "id": "B7",
+      "key": "feel.rope_swing_release",
+      "title": "The rope is a rope",
+      "statement": "Swinging at 1.5× cruise on a 100 WU line around a heavy anchor stretches the line < 10 % and does not break; releasing at the tangent keeps ≥ 95 % of tangential speed 5 s later.",
+      "target": "stretch < 10 %; release keeps ≥ 95 % of tangential speed at 5 s",
+      "reachable": true,
+      "coverage": "none",
+      "values": [],
+      "met": null,
+      "notes": "fed only by feel.rope_swing_release — not in this evaluation input",
+      "fedBy": []
+    },
+    {
+      "id": "B8",
+      "key": "feel.stroke_speed",
+      "title": "Draw-to-fly rips",
+      "statement": "Mean speed along any hand-drawn stroke ≥ 70 % of cruise; the slowest point ≥ 35 % of cruise. Speed is the pass criterion; track is the constraint.",
+      "target": "mean stroke speed ≥ 70 % of cruise; slowest point ≥ 35 %",
+      "reachable": true,
+      "coverage": "none",
+      "values": [],
+      "met": null,
+      "notes": "fed only by feel.stroke_speed — not in this evaluation input",
+      "fedBy": []
+    },
+    {
+      "id": "B9",
+      "key": "feel.impact_feedback",
+      "title": "Impacts answer",
+      "statement": "Every collision with ΔV ≥ 8 WU/s produces hitstop and camera trauma scaled by exchanged momentum. Collision audio differs by ≥ one octave of pitch and ≥ 12 dB between a scout kissing a rock and a freighter broadsiding a station. A Massline release has a time-domain snap.",
+      "target": "hitstop + trauma at ΔV ≥ 8 WU/s; audio ≥ 1 octave and ≥ 12 dB apart; release snaps",
+      "reachable": false,
+      "coverage": "none",
+      "values": [],
+      "met": null,
+      "notes": "hitstop, camera trauma and audio are presentation-layer; the headless bench has no instrument for them. the bar is listed here for completeness; this bench cannot measure it.",
+      "fedBy": []
+    },
+    {
+      "id": "B10",
+      "key": "world.reaction_trio",
+      "title": "The world reacts",
+      "statement": "Within 10 s of a kill in a patrol's sight, the patrol makes a visible stay-with-wreck / chase choice. Spilled cargo attracts an NPC within 30 s. Civilians within 300 WU of gunfire change course within 3 s.",
+      "target": "salvor arrives ≤ 30 s; patrol chooses within 10 s; civilians turn within 3 s",
+      "reachable": true,
+      "coverage": "none",
+      "values": [],
+      "met": null,
+      "notes": "fed only by world.cargo_spill — not in this evaluation input",
+      "fedBy": []
+    },
+    {
+      "id": "B11",
+      "key": "feel.hitstun_curve",
+      "title": "Hitstun law is universal",
+      "statement": "Helm-loss duration is one function of (ΔV ÷ cruise) and (attacker mass ÷ victim mass) for guns, throws, flings and collisions alike; lights at ≥ 30 % ΔV lose the helm ≥ 1 s; heavies at gun-scale ΔV never do. NPCs recover with real thruster torque, never a hidden gyro.",
+      "target": "one universal curve; lights ≥ 30 % ΔV stunned ≥ 1 s; heavies at gun-scale ΔV never",
+      "reachable": true,
+      "coverage": "none",
+      "values": [],
+      "met": null,
+      "notes": "fed only by feel.shove_magnitude / feel.terrain_slam / feel.hitstun_curve — not in this evaluation input",
+      "fedBy": []
+    },
+    {
+      "id": "B12",
+      "key": "proof.sixty_seconds",
+      "title": "The 60-second proof",
+      "statement": "At the reference site, the VISION.md sequence (op working → hauler leaves → pirates intercept → shove spins one → rope-swing-release makes a projectile → collateral → cargo spills → hauler flees → patrol arrives → grab pod → run WANTED) occurs in a deterministic scenario with ≥ 9 of the 11 beats, and in a headed capture at the shipping camera.",
+      "target": "≥ 9 of 11 beats in a deterministic scenario plus a headed capture at the shipping camera",
+      "reachable": false,
+      "coverage": "none",
+      "values": [],
+      "met": null,
+      "notes": "needs the PQ-141 60-second proof scenario, which does not exist yet. the bar is listed here for completeness; this bench cannot measure it.",
+      "fedBy": []
+    },
+    {
+      "id": "B13",
+      "key": "feel.knock_budget",
+      "title": "The player is never knocked around",
+      "statement": "In ten minutes of ordinary flight (no rope, no fields, no deliberate ram), contact changes the player's velocity ≤ 2 times per minute and never by more than 10 % of cruise in one event, never changes the player's heading, and never produces visible jitter; a deliberate big event (a slam the player chose, a well the player flew into) may, and it must be legible.",
+      "target": "≤ 2 contact knocks per minute; largest ≤ 10 % of cruise; zero heading changes; no visible jitter",
+      "reachable": true,
+      "coverage": "partial",
+      "values": [
+        {
+          "label": "contact knocks per minute on the player, crucible (worst of 9 run(s))",
+          "value": 4.666666666666667,
+          "unit": "events/min",
+          "met": false
+        },
+        {
+          "label": "largest single knock, fraction of cruise, crucible (worst of 9 run(s))",
+          "value": 0.1,
+          "unit": "fraction",
+          "met": true
+        },
+        {
+          "label": "knock events that changed the player's heading, crucible (worst of 9 run(s))",
+          "value": 0,
+          "unit": "events",
+          "met": true
+        }
+      ],
+      "met": false,
+      "notes": "visible jitter is unmeasured on this headless Crucible path; a full B13 pass is impossible. crucible knock counts come from short wave runs (~25 s of flight), not the contract's ten minutes of ordinary flight. the visible-jitter clause and the legible-deliberate-event clause are unbenched unless a headed capture sets jitterMeasured. the largest-knock ceiling is 0.1 of cruise compared with a tolerance of 0.000001: the live rule caps a contact event's cumulative applied delta-V at exactly that fraction, and the bench sums the per-receipt values in a different order, so a run that spends the whole budget lands one ulp above it. The tolerance is float slack, never headroom — at Kestrel cruise that is 0.0002 WU/s.",
+      "fedBy": [
+        "crucible/helios_core/energy_baseline/s8008",
+        "crucible/helios_core/physics_toolkit/s8008",
+        "crucible/helios_core/massline_rig/s8008",
+        "crucible/lagrange_crucible/energy_baseline/s8008",
+        "crucible/lagrange_crucible/physics_toolkit/s8008",
+        "crucible/lagrange_crucible/massline_rig/s8008",
+        "crucible/cinder_sluice/energy_baseline/s8008",
+        "crucible/cinder_sluice/physics_toolkit/s8008",
+        "crucible/cinder_sluice/massline_rig/s8008"
+      ]
+    }
+  ],
+  "runs": [
+    {
+      "runRef": "crucible helios_core/energy_baseline seed 8008",
+      "bench": "crucible",
+      "arenaId": "helios_core",
+      "loadoutId": "energy_baseline",
+      "seed": 8008,
+      "runHash": "af7309d6f36e19cc8dae7b962a6f2f5fc740e1572a9533832784a31e080ff95f",
+      "fedByRef": "crucible/helios_core/energy_baseline/s8008",
+      "funMetrics": {
+        "verbsPerMinute": 2.293724115960497,
+        "verbsUsed": 2,
+        "consequencesPerAction": 3.171122994652406,
+        "timeToFirstConsequenceS": 1.1833333333333333,
+        "momentsPerMinute": 338.21656050955414,
+        "nothingHappenedSeconds": 0,
+        "deathsByCause": {
+          "collision": 13,
+          "weapon": 4,
+          "brake": 1,
+          "player": 1
+        },
+        "knockBudget": {
+          "eventsPerMinute": 1.1468620579802484,
+          "maxDeltaVFractionOfCruise": 0.1,
+          "headingChangeEvents": 0,
+          "jitterMeasured": false,
+          "met": null,
+          "source": "run"
+        },
+        "gaps": [
+          "knockBudget: visible jitter is unmeasured (headless); full B13 cannot pass"
+        ]
+      },
+      "bars": [
+        {
+          "id": "B13",
+          "key": "feel.knock_budget",
+          "title": "The player is never knocked around",
+          "statement": "In ten minutes of ordinary flight (no rope, no fields, no deliberate ram), contact changes the player's velocity ≤ 2 times per minute and never by more than 10 % of cruise in one event, never changes the player's heading, and never produces visible jitter; a deliberate big event (a slam the player chose, a well the player flew into) may, and it must be legible.",
+          "target": "≤ 2 contact knocks per minute; largest ≤ 10 % of cruise; zero heading changes; no visible jitter",
+          "reachable": true,
+          "coverage": "partial",
+          "values": [
+            {
+              "label": "contact knocks per minute on the player, crucible (worst of 9 run(s))",
+              "value": 4.666666666666667,
+              "unit": "events/min",
+              "met": false
+            },
+            {
+              "label": "largest single knock, fraction of cruise, crucible (worst of 9 run(s))",
+              "value": 0.1,
+              "unit": "fraction",
+              "met": true
+            },
+            {
+              "label": "knock events that changed the player's heading, crucible (worst of 9 run(s))",
+              "value": 0,
+              "unit": "events",
+              "met": true
+            }
+          ],
+          "met": false,
+          "notes": "visible jitter is unmeasured on this headless Crucible path; a full B13 pass is impossible. crucible knock counts come from short wave runs (~25 s of flight), not the contract's ten minutes of ordinary flight. the visible-jitter clause and the legible-deliberate-event clause are unbenched unless a headed capture sets jitterMeasured. the largest-knock ceiling is 0.1 of cruise compared with a tolerance of 0.000001: the live rule caps a contact event's cumulative applied delta-V at exactly that fraction, and the bench sums the per-receipt values in a different order, so a run that spends the whole budget lands one ulp above it. The tolerance is float slack, never headroom — at Kestrel cruise that is 0.0002 WU/s.",
+          "fedBy": [
+            "crucible/helios_core/energy_baseline/s8008",
+            "crucible/helios_core/physics_toolkit/s8008",
+            "crucible/helios_core/massline_rig/s8008",
+            "crucible/lagrange_crucible/energy_baseline/s8008",
+            "crucible/lagrange_crucible/physics_toolkit/s8008",
+            "crucible/lagrange_crucible/massline_rig/s8008",
+            "crucible/cinder_sluice/energy_baseline/s8008",
+            "crucible/cinder_sluice/physics_toolkit/s8008",
+            "crucible/cinder_sluice/massline_rig/s8008"
+          ]
+        }
+      ]
+    },
+    {
+      "runRef": "crucible helios_core/physics_toolkit seed 8008",
+      "bench": "crucible",
+      "arenaId": "helios_core",
+      "loadoutId": "physics_toolkit",
+      "seed": 8008,
+      "runHash": "1cb4ff885444f590fc33b0ce3b3bcb47d2b682661a500289599bc2a261c44d97",
+      "fedByRef": "crucible/helios_core/physics_toolkit/s8008",
+      "funMetrics": {
+        "verbsPerMinute": 3.3333333333333335,
+        "verbsUsed": 5,
+        "consequencesPerAction": 1.8148148148148149,
+        "timeToFirstConsequenceS": 1.1333333333333333,
+        "momentsPerMinute": 62.20886551465064,
+        "nothingHappenedSeconds": 0,
+        "deathsByCause": {
+          "collision": 6
+        },
+        "knockBudget": {
+          "eventsPerMinute": 0,
+          "maxDeltaVFractionOfCruise": 0,
+          "headingChangeEvents": 0,
+          "jitterMeasured": false,
+          "met": null,
+          "source": "run"
+        },
+        "gaps": [
+          "knockBudget: visible jitter is unmeasured (headless); full B13 cannot pass"
+        ]
+      },
+      "bars": [
+        {
+          "id": "B13",
+          "key": "feel.knock_budget",
+          "title": "The player is never knocked around",
+          "statement": "In ten minutes of ordinary flight (no rope, no fields, no deliberate ram), contact changes the player's velocity ≤ 2 times per minute and never by more than 10 % of cruise in one event, never changes the player's heading, and never produces visible jitter; a deliberate big event (a slam the player chose, a well the player flew into) may, and it must be legible.",
+          "target": "≤ 2 contact knocks per minute; largest ≤ 10 % of cruise; zero heading changes; no visible jitter",
+          "reachable": true,
+          "coverage": "partial",
+          "values": [
+            {
+              "label": "contact knocks per minute on the player, crucible (worst of 9 run(s))",
+              "value": 4.666666666666667,
+              "unit": "events/min",
+              "met": false
+            },
+            {
+              "label": "largest single knock, fraction of cruise, crucible (worst of 9 run(s))",
+              "value": 0.1,
+              "unit": "fraction",
+              "met": true
+            },
+            {
+              "label": "knock events that changed the player's heading, crucible (worst of 9 run(s))",
+              "value": 0,
+              "unit": "events",
+              "met": true
+            }
+          ],
+          "met": false,
+          "notes": "visible jitter is unmeasured on this headless Crucible path; a full B13 pass is impossible. crucible knock counts come from short wave runs (~25 s of flight), not the contract's ten minutes of ordinary flight. the visible-jitter clause and the legible-deliberate-event clause are unbenched unless a headed capture sets jitterMeasured. the largest-knock ceiling is 0.1 of cruise compared with a tolerance of 0.000001: the live rule caps a contact event's cumulative applied delta-V at exactly that fraction, and the bench sums the per-receipt values in a different order, so a run that spends the whole budget lands one ulp above it. The tolerance is float slack, never headroom — at Kestrel cruise that is 0.0002 WU/s.",
+          "fedBy": [
+            "crucible/helios_core/energy_baseline/s8008",
+            "crucible/helios_core/physics_toolkit/s8008",
+            "crucible/helios_core/massline_rig/s8008",
+            "crucible/lagrange_crucible/energy_baseline/s8008",
+            "crucible/lagrange_crucible/physics_toolkit/s8008",
+            "crucible/lagrange_crucible/massline_rig/s8008",
+            "crucible/cinder_sluice/energy_baseline/s8008",
+            "crucible/cinder_sluice/physics_toolkit/s8008",
+            "crucible/cinder_sluice/massline_rig/s8008"
+          ]
+        }
+      ]
+    },
+    {
+      "runRef": "crucible helios_core/massline_rig seed 8008",
+      "bench": "crucible",
+      "arenaId": "helios_core",
+      "loadoutId": "massline_rig",
+      "seed": 8008,
+      "runHash": "8f738658cbb56d732d7493e6bbed8ad596fb4439b4600466cd09e62fb8677021",
+      "fedByRef": "crucible/helios_core/massline_rig/s8008",
+      "funMetrics": {
+        "verbsPerMinute": 3.3333333333333335,
+        "verbsUsed": 5,
+        "consequencesPerAction": 20.418367346938776,
+        "timeToFirstConsequenceS": 1.1166666666666667,
+        "momentsPerMinute": 515.2391546162403,
+        "nothingHappenedSeconds": 0,
+        "deathsByCause": {
+          "weapon": 11,
+          "collision": 6
+        },
+        "knockBudget": {
+          "eventsPerMinute": 4.666666666666667,
+          "maxDeltaVFractionOfCruise": 0.1,
+          "headingChangeEvents": 0,
+          "jitterMeasured": false,
+          "met": false,
+          "source": "run"
+        },
+        "gaps": [
+          "knockBudget: visible jitter is unmeasured (headless); full B13 cannot pass"
+        ]
+      },
+      "bars": [
+        {
+          "id": "B13",
+          "key": "feel.knock_budget",
+          "title": "The player is never knocked around",
+          "statement": "In ten minutes of ordinary flight (no rope, no fields, no deliberate ram), contact changes the player's velocity ≤ 2 times per minute and never by more than 10 % of cruise in one event, never changes the player's heading, and never produces visible jitter; a deliberate big event (a slam the player chose, a well the player flew into) may, and it must be legible.",
+          "target": "≤ 2 contact knocks per minute; largest ≤ 10 % of cruise; zero heading changes; no visible jitter",
+          "reachable": true,
+          "coverage": "partial",
+          "values": [
+            {
+              "label": "contact knocks per minute on the player, crucible (worst of 9 run(s))",
+              "value": 4.666666666666667,
+              "unit": "events/min",
+              "met": false
+            },
+            {
+              "label": "largest single knock, fraction of cruise, crucible (worst of 9 run(s))",
+              "value": 0.1,
+              "unit": "fraction",
+              "met": true
+            },
+            {
+              "label": "knock events that changed the player's heading, crucible (worst of 9 run(s))",
+              "value": 0,
+              "unit": "events",
+              "met": true
+            }
+          ],
+          "met": false,
+          "notes": "visible jitter is unmeasured on this headless Crucible path; a full B13 pass is impossible. crucible knock counts come from short wave runs (~25 s of flight), not the contract's ten minutes of ordinary flight. the visible-jitter clause and the legible-deliberate-event clause are unbenched unless a headed capture sets jitterMeasured. the largest-knock ceiling is 0.1 of cruise compared with a tolerance of 0.000001: the live rule caps a contact event's cumulative applied delta-V at exactly that fraction, and the bench sums the per-receipt values in a different order, so a run that spends the whole budget lands one ulp above it. The tolerance is float slack, never headroom — at Kestrel cruise that is 0.0002 WU/s.",
+          "fedBy": [
+            "crucible/helios_core/energy_baseline/s8008",
+            "crucible/helios_core/physics_toolkit/s8008",
+            "crucible/helios_core/massline_rig/s8008",
+            "crucible/lagrange_crucible/energy_baseline/s8008",
+            "crucible/lagrange_crucible/physics_toolkit/s8008",
+            "crucible/lagrange_crucible/massline_rig/s8008",
+            "crucible/cinder_sluice/energy_baseline/s8008",
+            "crucible/cinder_sluice/physics_toolkit/s8008",
+            "crucible/cinder_sluice/massline_rig/s8008"
+          ]
+        }
+      ]
+    },
+    {
+      "runRef": "crucible lagrange_crucible/energy_baseline seed 8008",
+      "bench": "crucible",
+      "arenaId": "lagrange_crucible",
+      "loadoutId": "energy_baseline",
+      "seed": 8008,
+      "runHash": "4d143d1e4bf51c69c36378fa6323d00aba16937f964e71aee302826542ef7c59",
+      "fedByRef": "crucible/lagrange_crucible/energy_baseline/s8008",
+      "funMetrics": {
+        "verbsPerMinute": 1.3333333333333333,
+        "verbsUsed": 2,
+        "consequencesPerAction": 1.8487394957983194,
+        "timeToFirstConsequenceS": 0.6,
+        "momentsPerMinute": 334,
+        "nothingHappenedSeconds": 0,
+        "deathsByCause": {
+          "weapon": 11,
+          "collision": 6
+        },
+        "knockBudget": {
+          "eventsPerMinute": 0.6666666666666666,
+          "maxDeltaVFractionOfCruise": 0.04895885773993225,
+          "headingChangeEvents": 0,
+          "jitterMeasured": false,
+          "met": null,
+          "source": "run"
+        },
+        "gaps": [
+          "knockBudget: visible jitter is unmeasured (headless); full B13 cannot pass"
+        ]
+      },
+      "bars": [
+        {
+          "id": "B13",
+          "key": "feel.knock_budget",
+          "title": "The player is never knocked around",
+          "statement": "In ten minutes of ordinary flight (no rope, no fields, no deliberate ram), contact changes the player's velocity ≤ 2 times per minute and never by more than 10 % of cruise in one event, never changes the player's heading, and never produces visible jitter; a deliberate big event (a slam the player chose, a well the player flew into) may, and it must be legible.",
+          "target": "≤ 2 contact knocks per minute; largest ≤ 10 % of cruise; zero heading changes; no visible jitter",
+          "reachable": true,
+          "coverage": "partial",
+          "values": [
+            {
+              "label": "contact knocks per minute on the player, crucible (worst of 9 run(s))",
+              "value": 4.666666666666667,
+              "unit": "events/min",
+              "met": false
+            },
+            {
+              "label": "largest single knock, fraction of cruise, crucible (worst of 9 run(s))",
+              "value": 0.1,
+              "unit": "fraction",
+              "met": true
+            },
+            {
+              "label": "knock events that changed the player's heading, crucible (worst of 9 run(s))",
+              "value": 0,
+              "unit": "events",
+              "met": true
+            }
+          ],
+          "met": false,
+          "notes": "visible jitter is unmeasured on this headless Crucible path; a full B13 pass is impossible. crucible knock counts come from short wave runs (~25 s of flight), not the contract's ten minutes of ordinary flight. the visible-jitter clause and the legible-deliberate-event clause are unbenched unless a headed capture sets jitterMeasured. the largest-knock ceiling is 0.1 of cruise compared with a tolerance of 0.000001: the live rule caps a contact event's cumulative applied delta-V at exactly that fraction, and the bench sums the per-receipt values in a different order, so a run that spends the whole budget lands one ulp above it. The tolerance is float slack, never headroom — at Kestrel cruise that is 0.0002 WU/s.",
+          "fedBy": [
+            "crucible/helios_core/energy_baseline/s8008",
+            "crucible/helios_core/physics_toolkit/s8008",
+            "crucible/helios_core/massline_rig/s8008",
+            "crucible/lagrange_crucible/energy_baseline/s8008",
+            "crucible/lagrange_crucible/physics_toolkit/s8008",
+            "crucible/lagrange_crucible/massline_rig/s8008",
+            "crucible/cinder_sluice/energy_baseline/s8008",
+            "crucible/cinder_sluice/physics_toolkit/s8008",
+            "crucible/cinder_sluice/massline_rig/s8008"
+          ]
+        }
+      ]
+    },
+    {
+      "runRef": "crucible lagrange_crucible/physics_toolkit seed 8008",
+      "bench": "crucible",
+      "arenaId": "lagrange_crucible",
+      "loadoutId": "physics_toolkit",
+      "seed": 8008,
+      "runHash": "7836ccc937e99d9b5f38b5efc0ae958ed89eabd5e80e5fb66be97d18ea2da7f3",
+      "fedByRef": "crucible/lagrange_crucible/physics_toolkit/s8008",
+      "funMetrics": {
+        "verbsPerMinute": 3.3333333333333335,
+        "verbsUsed": 5,
+        "consequencesPerAction": 2.336448598130841,
+        "timeToFirstConsequenceS": 0.65,
+        "momentsPerMinute": 41.247182569496616,
+        "nothingHappenedSeconds": 0,
+        "deathsByCause": {
+          "weapon": 7,
+          "collision": 2
+        },
+        "knockBudget": {
+          "eventsPerMinute": 0.6666666666666666,
+          "maxDeltaVFractionOfCruise": 0.03818439787735683,
+          "headingChangeEvents": 0,
+          "jitterMeasured": false,
+          "met": null,
+          "source": "run"
+        },
+        "gaps": [
+          "knockBudget: visible jitter is unmeasured (headless); full B13 cannot pass"
+        ]
+      },
+      "bars": [
+        {
+          "id": "B13",
+          "key": "feel.knock_budget",
+          "title": "The player is never knocked around",
+          "statement": "In ten minutes of ordinary flight (no rope, no fields, no deliberate ram), contact changes the player's velocity ≤ 2 times per minute and never by more than 10 % of cruise in one event, never changes the player's heading, and never produces visible jitter; a deliberate big event (a slam the player chose, a well the player flew into) may, and it must be legible.",
+          "target": "≤ 2 contact knocks per minute; largest ≤ 10 % of cruise; zero heading changes; no visible jitter",
+          "reachable": true,
+          "coverage": "partial",
+          "values": [
+            {
+              "label": "contact knocks per minute on the player, crucible (worst of 9 run(s))",
+              "value": 4.666666666666667,
+              "unit": "events/min",
+              "met": false
+            },
+            {
+              "label": "largest single knock, fraction of cruise, crucible (worst of 9 run(s))",
+              "value": 0.1,
+              "unit": "fraction",
+              "met": true
+            },
+            {
+              "label": "knock events that changed the player's heading, crucible (worst of 9 run(s))",
+              "value": 0,
+              "unit": "events",
+              "met": true
+            }
+          ],
+          "met": false,
+          "notes": "visible jitter is unmeasured on this headless Crucible path; a full B13 pass is impossible. crucible knock counts come from short wave runs (~25 s of flight), not the contract's ten minutes of ordinary flight. the visible-jitter clause and the legible-deliberate-event clause are unbenched unless a headed capture sets jitterMeasured. the largest-knock ceiling is 0.1 of cruise compared with a tolerance of 0.000001: the live rule caps a contact event's cumulative applied delta-V at exactly that fraction, and the bench sums the per-receipt values in a different order, so a run that spends the whole budget lands one ulp above it. The tolerance is float slack, never headroom — at Kestrel cruise that is 0.0002 WU/s.",
+          "fedBy": [
+            "crucible/helios_core/energy_baseline/s8008",
+            "crucible/helios_core/physics_toolkit/s8008",
+            "crucible/helios_core/massline_rig/s8008",
+            "crucible/lagrange_crucible/energy_baseline/s8008",
+            "crucible/lagrange_crucible/physics_toolkit/s8008",
+            "crucible/lagrange_crucible/massline_rig/s8008",
+            "crucible/cinder_sluice/energy_baseline/s8008",
+            "crucible/cinder_sluice/physics_toolkit/s8008",
+            "crucible/cinder_sluice/massline_rig/s8008"
+          ]
+        }
+      ]
+    },
+    {
+      "runRef": "crucible lagrange_crucible/massline_rig seed 8008",
+      "bench": "crucible",
+      "arenaId": "lagrange_crucible",
+      "loadoutId": "massline_rig",
+      "seed": 8008,
+      "runHash": "716005fac600ae9ffcf6201ae6e3a9524ee8d4d7d583571e60b214784735769b",
+      "fedByRef": "crucible/lagrange_crucible/massline_rig/s8008",
+      "funMetrics": {
+        "verbsPerMinute": 3.3333333333333335,
+        "verbsUsed": 5,
+        "consequencesPerAction": 8.463157894736842,
+        "timeToFirstConsequenceS": 0.5833333333333334,
+        "momentsPerMinute": 388.1239562070885,
+        "nothingHappenedSeconds": 0,
+        "deathsByCause": {
+          "collision": 8,
+          "weapon": 10
+        },
+        "knockBudget": {
+          "eventsPerMinute": 1.3333333333333333,
+          "maxDeltaVFractionOfCruise": 0.037471002501005,
+          "headingChangeEvents": 0,
+          "jitterMeasured": false,
+          "met": null,
+          "source": "run"
+        },
+        "gaps": [
+          "knockBudget: visible jitter is unmeasured (headless); full B13 cannot pass"
+        ]
+      },
+      "bars": [
+        {
+          "id": "B13",
+          "key": "feel.knock_budget",
+          "title": "The player is never knocked around",
+          "statement": "In ten minutes of ordinary flight (no rope, no fields, no deliberate ram), contact changes the player's velocity ≤ 2 times per minute and never by more than 10 % of cruise in one event, never changes the player's heading, and never produces visible jitter; a deliberate big event (a slam the player chose, a well the player flew into) may, and it must be legible.",
+          "target": "≤ 2 contact knocks per minute; largest ≤ 10 % of cruise; zero heading changes; no visible jitter",
+          "reachable": true,
+          "coverage": "partial",
+          "values": [
+            {
+              "label": "contact knocks per minute on the player, crucible (worst of 9 run(s))",
+              "value": 4.666666666666667,
+              "unit": "events/min",
+              "met": false
+            },
+            {
+              "label": "largest single knock, fraction of cruise, crucible (worst of 9 run(s))",
+              "value": 0.1,
+              "unit": "fraction",
+              "met": true
+            },
+            {
+              "label": "knock events that changed the player's heading, crucible (worst of 9 run(s))",
+              "value": 0,
+              "unit": "events",
+              "met": true
+            }
+          ],
+          "met": false,
+          "notes": "visible jitter is unmeasured on this headless Crucible path; a full B13 pass is impossible. crucible knock counts come from short wave runs (~25 s of flight), not the contract's ten minutes of ordinary flight. the visible-jitter clause and the legible-deliberate-event clause are unbenched unless a headed capture sets jitterMeasured. the largest-knock ceiling is 0.1 of cruise compared with a tolerance of 0.000001: the live rule caps a contact event's cumulative applied delta-V at exactly that fraction, and the bench sums the per-receipt values in a different order, so a run that spends the whole budget lands one ulp above it. The tolerance is float slack, never headroom — at Kestrel cruise that is 0.0002 WU/s.",
+          "fedBy": [
+            "crucible/helios_core/energy_baseline/s8008",
+            "crucible/helios_core/physics_toolkit/s8008",
+            "crucible/helios_core/massline_rig/s8008",
+            "crucible/lagrange_crucible/energy_baseline/s8008",
+            "crucible/lagrange_crucible/physics_toolkit/s8008",
+            "crucible/lagrange_crucible/massline_rig/s8008",
+            "crucible/cinder_sluice/energy_baseline/s8008",
+            "crucible/cinder_sluice/physics_toolkit/s8008",
+            "crucible/cinder_sluice/massline_rig/s8008"
+          ]
+        }
+      ]
+    },
+    {
+      "runRef": "crucible cinder_sluice/energy_baseline seed 8008",
+      "bench": "crucible",
+      "arenaId": "cinder_sluice",
+      "loadoutId": "energy_baseline",
+      "seed": 8008,
+      "runHash": "550121f4bb03a65d450888c25c0eee262b31dbdfa4584af75e8638155df4763b",
+      "fedByRef": "crucible/cinder_sluice/energy_baseline/s8008",
+      "funMetrics": {
+        "verbsPerMinute": 1.3333333333333333,
+        "verbsUsed": 2,
+        "consequencesPerAction": 1.3581661891117478,
+        "timeToFirstConsequenceS": 0.7,
+        "momentsPerMinute": 155.4772937905468,
+        "nothingHappenedSeconds": 0,
+        "deathsByCause": {
+          "weapon": 13
+        },
+        "knockBudget": {
+          "eventsPerMinute": 0.6666666666666666,
+          "maxDeltaVFractionOfCruise": 0.009442278437849769,
+          "headingChangeEvents": 0,
+          "jitterMeasured": false,
+          "met": null,
+          "source": "run"
+        },
+        "gaps": [
+          "knockBudget: visible jitter is unmeasured (headless); full B13 cannot pass"
+        ]
+      },
+      "bars": [
+        {
+          "id": "B13",
+          "key": "feel.knock_budget",
+          "title": "The player is never knocked around",
+          "statement": "In ten minutes of ordinary flight (no rope, no fields, no deliberate ram), contact changes the player's velocity ≤ 2 times per minute and never by more than 10 % of cruise in one event, never changes the player's heading, and never produces visible jitter; a deliberate big event (a slam the player chose, a well the player flew into) may, and it must be legible.",
+          "target": "≤ 2 contact knocks per minute; largest ≤ 10 % of cruise; zero heading changes; no visible jitter",
+          "reachable": true,
+          "coverage": "partial",
+          "values": [
+            {
+              "label": "contact knocks per minute on the player, crucible (worst of 9 run(s))",
+              "value": 4.666666666666667,
+              "unit": "events/min",
+              "met": false
+            },
+            {
+              "label": "largest single knock, fraction of cruise, crucible (worst of 9 run(s))",
+              "value": 0.1,
+              "unit": "fraction",
+              "met": true
+            },
+            {
+              "label": "knock events that changed the player's heading, crucible (worst of 9 run(s))",
+              "value": 0,
+              "unit": "events",
+              "met": true
+            }
+          ],
+          "met": false,
+          "notes": "visible jitter is unmeasured on this headless Crucible path; a full B13 pass is impossible. crucible knock counts come from short wave runs (~25 s of flight), not the contract's ten minutes of ordinary flight. the visible-jitter clause and the legible-deliberate-event clause are unbenched unless a headed capture sets jitterMeasured. the largest-knock ceiling is 0.1 of cruise compared with a tolerance of 0.000001: the live rule caps a contact event's cumulative applied delta-V at exactly that fraction, and the bench sums the per-receipt values in a different order, so a run that spends the whole budget lands one ulp above it. The tolerance is float slack, never headroom — at Kestrel cruise that is 0.0002 WU/s.",
+          "fedBy": [
+            "crucible/helios_core/energy_baseline/s8008",
+            "crucible/helios_core/physics_toolkit/s8008",
+            "crucible/helios_core/massline_rig/s8008",
+            "crucible/lagrange_crucible/energy_baseline/s8008",
+            "crucible/lagrange_crucible/physics_toolkit/s8008",
+            "crucible/lagrange_crucible/massline_rig/s8008",
+            "crucible/cinder_sluice/energy_baseline/s8008",
+            "crucible/cinder_sluice/physics_toolkit/s8008",
+            "crucible/cinder_sluice/massline_rig/s8008"
+          ]
+        }
+      ]
+    },
+    {
+      "runRef": "crucible cinder_sluice/physics_toolkit seed 8008",
+      "bench": "crucible",
+      "arenaId": "cinder_sluice",
+      "loadoutId": "physics_toolkit",
+      "seed": 8008,
+      "runHash": "c848b105df07fb30d79f3bbc289180429236fde9762535b49de941337eb86fdb",
+      "fedByRef": "crucible/cinder_sluice/physics_toolkit/s8008",
+      "funMetrics": {
+        "verbsPerMinute": 3.3333333333333335,
+        "verbsUsed": 5,
+        "consequencesPerAction": 4.166666666666667,
+        "timeToFirstConsequenceS": 0.6833333333333333,
+        "momentsPerMinute": 298.9363687255085,
+        "nothingHappenedSeconds": 0,
+        "deathsByCause": {
+          "weapon": 7,
+          "collision": 5
+        },
+        "knockBudget": {
+          "eventsPerMinute": 0.6666666666666666,
+          "maxDeltaVFractionOfCruise": 0.09991306420853643,
+          "headingChangeEvents": 0,
+          "jitterMeasured": false,
+          "met": null,
+          "source": "run"
+        },
+        "gaps": [
+          "knockBudget: visible jitter is unmeasured (headless); full B13 cannot pass"
+        ]
+      },
+      "bars": [
+        {
+          "id": "B13",
+          "key": "feel.knock_budget",
+          "title": "The player is never knocked around",
+          "statement": "In ten minutes of ordinary flight (no rope, no fields, no deliberate ram), contact changes the player's velocity ≤ 2 times per minute and never by more than 10 % of cruise in one event, never changes the player's heading, and never produces visible jitter; a deliberate big event (a slam the player chose, a well the player flew into) may, and it must be legible.",
+          "target": "≤ 2 contact knocks per minute; largest ≤ 10 % of cruise; zero heading changes; no visible jitter",
+          "reachable": true,
+          "coverage": "partial",
+          "values": [
+            {
+              "label": "contact knocks per minute on the player, crucible (worst of 9 run(s))",
+              "value": 4.666666666666667,
+              "unit": "events/min",
+              "met": false
+            },
+            {
+              "label": "largest single knock, fraction of cruise, crucible (worst of 9 run(s))",
+              "value": 0.1,
+              "unit": "fraction",
+              "met": true
+            },
+            {
+              "label": "knock events that changed the player's heading, crucible (worst of 9 run(s))",
+              "value": 0,
+              "unit": "events",
+              "met": true
+            }
+          ],
+          "met": false,
+          "notes": "visible jitter is unmeasured on this headless Crucible path; a full B13 pass is impossible. crucible knock counts come from short wave runs (~25 s of flight), not the contract's ten minutes of ordinary flight. the visible-jitter clause and the legible-deliberate-event clause are unbenched unless a headed capture sets jitterMeasured. the largest-knock ceiling is 0.1 of cruise compared with a tolerance of 0.000001: the live rule caps a contact event's cumulative applied delta-V at exactly that fraction, and the bench sums the per-receipt values in a different order, so a run that spends the whole budget lands one ulp above it. The tolerance is float slack, never headroom — at Kestrel cruise that is 0.0002 WU/s.",
+          "fedBy": [
+            "crucible/helios_core/energy_baseline/s8008",
+            "crucible/helios_core/physics_toolkit/s8008",
+            "crucible/helios_core/massline_rig/s8008",
+            "crucible/lagrange_crucible/energy_baseline/s8008",
+            "crucible/lagrange_crucible/physics_toolkit/s8008",
+            "crucible/lagrange_crucible/massline_rig/s8008",
+            "crucible/cinder_sluice/energy_baseline/s8008",
+            "crucible/cinder_sluice/physics_toolkit/s8008",
+            "crucible/cinder_sluice/massline_rig/s8008"
+          ]
+        }
+      ]
+    },
+    {
+      "runRef": "crucible cinder_sluice/massline_rig seed 8008",
+      "bench": "crucible",
+      "arenaId": "cinder_sluice",
+      "loadoutId": "massline_rig",
+      "seed": 8008,
+      "runHash": "b4be3c169133282c0691bd6ec5b2b55ff6ae4975fccc7cdf63bb730feeab4308",
+      "fedByRef": "crucible/cinder_sluice/massline_rig/s8008",
+      "funMetrics": {
+        "verbsPerMinute": 2.6666666666666665,
+        "verbsUsed": 4,
+        "consequencesPerAction": 11.957142857142857,
+        "timeToFirstConsequenceS": 0.6333333333333333,
+        "momentsPerMinute": 304.11263430900334,
+        "nothingHappenedSeconds": 0,
+        "deathsByCause": {
+          "collision": 5,
+          "weapon": 6,
+          "reel": 1
+        },
+        "knockBudget": {
+          "eventsPerMinute": 1.3333333333333333,
+          "maxDeltaVFractionOfCruise": 0.009817702287046806,
+          "headingChangeEvents": 0,
+          "jitterMeasured": false,
+          "met": null,
+          "source": "run"
+        },
+        "gaps": [
+          "knockBudget: visible jitter is unmeasured (headless); full B13 cannot pass"
+        ]
+      },
+      "bars": [
+        {
+          "id": "B13",
+          "key": "feel.knock_budget",
+          "title": "The player is never knocked around",
+          "statement": "In ten minutes of ordinary flight (no rope, no fields, no deliberate ram), contact changes the player's velocity ≤ 2 times per minute and never by more than 10 % of cruise in one event, never changes the player's heading, and never produces visible jitter; a deliberate big event (a slam the player chose, a well the player flew into) may, and it must be legible.",
+          "target": "≤ 2 contact knocks per minute; largest ≤ 10 % of cruise; zero heading changes; no visible jitter",
+          "reachable": true,
+          "coverage": "partial",
+          "values": [
+            {
+              "label": "contact knocks per minute on the player, crucible (worst of 9 run(s))",
+              "value": 4.666666666666667,
+              "unit": "events/min",
+              "met": false
+            },
+            {
+              "label": "largest single knock, fraction of cruise, crucible (worst of 9 run(s))",
+              "value": 0.1,
+              "unit": "fraction",
+              "met": true
+            },
+            {
+              "label": "knock events that changed the player's heading, crucible (worst of 9 run(s))",
+              "value": 0,
+              "unit": "events",
+              "met": true
+            }
+          ],
+          "met": false,
+          "notes": "visible jitter is unmeasured on this headless Crucible path; a full B13 pass is impossible. crucible knock counts come from short wave runs (~25 s of flight), not the contract's ten minutes of ordinary flight. the visible-jitter clause and the legible-deliberate-event clause are unbenched unless a headed capture sets jitterMeasured. the largest-knock ceiling is 0.1 of cruise compared with a tolerance of 0.000001: the live rule caps a contact event's cumulative applied delta-V at exactly that fraction, and the bench sums the per-receipt values in a different order, so a run that spends the whole budget lands one ulp above it. The tolerance is float slack, never headroom — at Kestrel cruise that is 0.0002 WU/s.",
+          "fedBy": [
+            "crucible/helios_core/energy_baseline/s8008",
+            "crucible/helios_core/physics_toolkit/s8008",
+            "crucible/helios_core/massline_rig/s8008",
+            "crucible/lagrange_crucible/energy_baseline/s8008",
+            "crucible/lagrange_crucible/physics_toolkit/s8008",
+            "crucible/lagrange_crucible/massline_rig/s8008",
+            "crucible/cinder_sluice/energy_baseline/s8008",
+            "crucible/cinder_sluice/physics_toolkit/s8008",
+            "crucible/cinder_sluice/massline_rig/s8008"
+          ]
+        }
+      ]
+    }
+  ]
+}
