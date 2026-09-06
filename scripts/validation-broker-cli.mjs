@@ -99,6 +99,11 @@ async function main({ manifestId, issueClaimOnly, diagnostic, extraArgs }) {
 
   if (result.cached || result.launched === false) {
     console.error(`[validation-broker] ${result.status}: ${result.reason}`);
+    if (result.failedCommand) {
+      console.error(`[validation-broker] failed command: ${typeof result.failedCommand === 'string' ? result.failedCommand : JSON.stringify(result.failedCommand)}`);
+    }
+    if (result.stdout) process.stdout.write(result.stdout);
+    if (result.stderr) process.stderr.write(result.stderr);
     if (result.failureFingerprint) {
       console.error(`[validation-broker] failureFingerprint: ${result.failureFingerprint}`);
     }
