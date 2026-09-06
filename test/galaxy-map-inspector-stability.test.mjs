@@ -40,6 +40,24 @@ const ctx = {
 const root = new FakeRoot(documentRef);
 galaxyMapScreen.mount(root, ctx);
 
+// PQ-184.02: the scale label is part of the canvas draw path, but its value only changes when
+// crossing a map level. Two paints at one level must therefore perform one DOM write total.
+const levelEl = root.querySelector('[data-level]');
+const levelWritesBeforeDraw = levelEl.textContentWrites;
+galaxyMapScreen._draw();
+galaxyMapScreen._draw();
+assert.equal(levelEl.textContentWrites, levelWritesBeforeDraw + 1,
+  'unchanged map-level paints must not rewrite the scale label');
+
+// The local model is state-derived; drawing the animated sweep against a paused sim should reuse
+// the same contacts, while a new state snapshot must rebuild them.
+const firstLocalModel = galaxyMapScreen._localModelForState(ctx.state);
+assert.strictEqual(galaxyMapScreen._localModelForState(ctx.state), firstLocalModel,
+  'unchanged local state reuses its contact model during visual animation');
+const nextLocalState = { ...ctx.state, simTime: ctx.state.simTime + 1 };
+assert.notStrictEqual(galaxyMapScreen._localModelForState(nextLocalState), firstLocalModel,
+  'a new simulation snapshot invalidates the local contact model');
+
 const knownSector = {
   id: 'sector_helios_prime',
   sectorId: 'sector_helios_prime',
@@ -386,6 +404,20 @@ async function testScheduledRefreshCadence(screen, screenCtx, persistentButton) 
     assert.deepEqual({ drawCount, inspectorCount }, { drawCount: 2, inspectorCount: 2 },
       'waking after a completed static refresh does not paint the same data again');
     assert.equal(frames.length, 0, 'the chart returns to sleep after the change');
+
+    // A live contact keeps the authored sweep running. Its animation redraws every frame, while
+    // the inspector remains on the existing state-change/periodic refresh cadence.
+    screen._zoom = 3.2;
+    screen._targetZoom = 3.2;
+    screen._localLiveContacts = 1;
+    screen._wake();
+    step(48);
+    assert.equal(drawCount, 3, 'live contact animation keeps painting every frame');
+    assert.equal(inspectorCount, 2, 'live contact animation does not rebuild the inspector each frame');
+    step(64);
+    assert.equal(drawCount, 4, 'continuous contact animation remains frame-driven');
+    assert.equal(inspectorCount, 2, 'continuous contact animation keeps inspector work off the draw cadence');
+
     assert.equal(persistentButton.listenerCount('click'), 1,
       'show/update cycles do not add duplicate action handlers');
   } finally {
@@ -592,6 +624,7 @@ class FakeElement {
     this._innerHTML = '';
     this.innerHTMLWrites = 0;
     this._textContent = '';
+    this.textContentWrites = 0;
     this._listeners = new Map();
   }
 
@@ -608,7 +641,10 @@ class FakeElement {
     }
   }
   get hidden() { return this._hidden; }
-  set textContent(value) { this._textContent = String(value); }
+  set textContent(value) {
+    this._textContent = String(value);
+    this.textContentWrites += 1;
+  }
   get textContent() { return this._textContent; }
 
   addEventListener(type, handler) {

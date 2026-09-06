@@ -4861,6 +4861,12 @@ export const galaxyMapScreen = {
   _ro: null,
   _visible: false,
   _animFrame: null,
+  _inspectorPending: false,
+  // DOM-only panels follow the screen refresh cadence; the canvas remains frame-driven while an
+  // animation is alive. A pending flag keeps level changes and event-driven invalidations visible
+  // without rebuilding rail/header/cargo markup on every paint.
+  _domRefreshPending: false,
+  _lastDrawLevel: null,
   _lastDrawTime: 0,
   _dpr: 1,
   _lastCw: 0,
@@ -4916,6 +4922,12 @@ export const galaxyMapScreen = {
   _groundKey: '',
   // simTime of the last intel sync, so a paused sim does not re-observe identical tracks per frame.
   _localIntelSyncedAtS: -1,
+  // LOCAL model cache. The model is state-derived; scan/iris/contact animation remains draw-time
+  // work, so a paused sim can keep painting without rebuilding identical contact records.
+  _localModelCache: null,
+  _localModelCacheState: null,
+  _localModelCacheKey: null,
+  _localModelDirty: true,
   // Motion preference, sampled at show time (see _syncReduceMotion).
   _reduceMotion: false,
 
@@ -4949,6 +4961,7 @@ export const galaxyMapScreen = {
   _busUnsubs: [],
   _scanSweepUntil: 0,
   _localLiveContacts: 0,
+  _levelEl: null,
 
   _claimsSystem() {
     const registry = this._ctx && this._ctx.registry;
@@ -5426,6 +5439,7 @@ export const galaxyMapScreen = {
     this._body = rootEl.querySelector('.gm-viewport');
     this._canvas = rootEl.querySelector('canvas');
     this._g = this._canvas.getContext('2d');
+    this._levelEl = rootEl.querySelector('[data-level]');
     this._inspectorDetails = rootEl.querySelector('.gm-inspector-details');
     this._setCourseButton = rootEl.querySelector('#gm-set-course-btn');
     this._engageButton = rootEl.querySelector('#gm-engage-route-btn');
@@ -5559,6 +5573,12 @@ export const galaxyMapScreen = {
     this._deckEl = rootEl.querySelector('#gm-cargo-deck');
     this._deckTableEl = rootEl.querySelector('#gm-deck-table');
     this._deckSortBtn = rootEl.querySelector('#gm-deck-sort');
+    this._localModelDirty = true;
+    this._localModelCache = null;
+    this._localModelCacheState = null;
+    this._localModelCacheKey = null;
+    this._domRefreshPending = true;
+    this._lastDrawLevel = null;
     this._tabButtons = [];
     // The screen object is a singleton, so every render cache MUST be cleared on mount: the new
     // root's DOM is empty while the cached key still says "already rendered". Leaving these set
@@ -5901,13 +5921,14 @@ export const galaxyMapScreen = {
 
     // OPENING A SCREEN SHOULD SIZE IT, NOT RENDER IT. `refresh()` draws the map and reads the
     // inspector synchronously, so opening the galaxy map paid for a full draw plus two inspector
-    // updates before a single frame had been scheduled. The cheap DOM syncs still happen here; the
-    // expensive pair is marked dirty and the next frame does it, then a static chart sleeps.
+    // updates before a single frame had been scheduled. The canvas and deferred panel sync are
+    // marked dirty here; the next frame does them, then a static chart sleeps.
     this._drawPending = true;
+    this._inspectorPending = true;
+    this._localModelDirty = true;
+    this._domRefreshPending = true;
     this._syncPublicIdentity();
     this._syncScaleButtons();
-    this._updateHeaderWeather(this._ctx && this._ctx.state);
-    this._updateCargoDeck(this._ctx && this._ctx.state);
     this._wake();
   },
 
@@ -5920,6 +5941,10 @@ export const galaxyMapScreen = {
     this._unsubscribeKills();
     this._rememberScreenState();
     this._localLiveContacts = 0;
+    this._localModelDirty = true;
+    this._inspectorPending = false;
+    this._domRefreshPending = false;
+    this._lastDrawLevel = null;
   },
 
   // ── J4 screen state memory (build map §11.12) ───────────────────────────────────────────────
@@ -6047,6 +6072,8 @@ export const galaxyMapScreen = {
       const id = payload && payload.id;
       const intel = galaxyMapScreen._localIntel;
       if (id != null && intel && intel.tracks) intel.tracks.delete(String(id));
+      galaxyMapScreen._localModelDirty = true;
+      galaxyMapScreen._inspectorPending = true;
       galaxyMapScreen._wake();
     });
     const wake = () => {
@@ -6207,7 +6234,7 @@ export const galaxyMapScreen = {
     const dtSec = Math.max(0, (now - this._lastTime) / 1000);
     this._lastTime = now;
     this._animT = (this._animT || 0) + dtSec;
-    let changed = this._drawPending === true;
+    let changed = this._drawPending === true || this._inspectorPending === true;
     this._drawPending = false;
     if (Math.abs(this._zoom - this._targetZoom) > 0.0005) {
       const alpha = 1 - Math.exp(-dtSec / 0.10);
@@ -6238,7 +6265,13 @@ export const galaxyMapScreen = {
     }
     if (changed) {
       this._draw();
-      this._updateInspector();
+      if (this._inspectorPending) {
+        this._updateInspector();
+        this._inspectorPending = false;
+      }
+    }
+    if (this._domRefreshPending) {
+      this._refreshDomPanels(this._ctx && this._ctx.state);
     }
     return this._animationActive(now);
   },
@@ -6328,12 +6361,15 @@ export const galaxyMapScreen = {
 
   refresh() {
     if (galaxyMapScreen._visible) {
+      galaxyMapScreen._localModelDirty = true;
+      galaxyMapScreen._inspectorPending = true;
+      galaxyMapScreen._domRefreshPending = true;
       galaxyMapScreen._syncPublicIdentity();
       galaxyMapScreen._draw();
       galaxyMapScreen._updateInspector();
+      galaxyMapScreen._inspectorPending = false;
       galaxyMapScreen._syncScaleButtons();
-      galaxyMapScreen._updateHeaderWeather(galaxyMapScreen._ctx && galaxyMapScreen._ctx.state);
-      galaxyMapScreen._updateCargoDeck(galaxyMapScreen._ctx && galaxyMapScreen._ctx.state);
+      galaxyMapScreen._refreshDomPanels(galaxyMapScreen._ctx && galaxyMapScreen._ctx.state);
       galaxyMapScreen._wake();
     }
   },
@@ -7481,6 +7517,19 @@ export const galaxyMapScreen = {
     };
   },
 
+  /**
+   * Refresh the DOM panels whose data changes on sim/event cadence rather than with canvas motion.
+   * The route ribbon stays on `_draw` because its live executor readout is part of the moving
+   * navigation instrument; these three panels are independently change-keyed and safe to defer.
+   */
+  _refreshDomPanels(state = this._ctx && this._ctx.state) {
+    if (!this._domRefreshPending) return;
+    this._updateRailSections(state);
+    this._updateHeaderWeather(state);
+    this._updateCargoDeck(state);
+    this._domRefreshPending = false;
+  },
+
   _updateHeaderWeather(state) {
     if (!HAS_DOC || !this._weatherEl) return;
     const snap = this._weatherSnapshot(state);
@@ -8125,7 +8174,13 @@ export const galaxyMapScreen = {
 
     this._camera = setSpan(setFocus(this._cameraOrInit(), focus), spanWU);
     this._syncLegacyFromCamera();
-    if (draw && HAS_DOC && this._canvas) this._draw();
+    if (draw && HAS_DOC && this._canvas) {
+      this._draw();
+      // Bookmark/mission framing callers do not always start a scan ring. Wake once so a level
+      // transition's deferred panel refresh is still visible immediately on an otherwise static
+      // chart.
+      this._wake();
+    }
     return true;
   },
 
@@ -8515,6 +8570,10 @@ export const galaxyMapScreen = {
     this._paintGround(g, w, h);
 
     const level = levelForZoom(this._zoom);
+    if (this._lastDrawLevel !== level) {
+      this._lastDrawLevel = level;
+      this._domRefreshPending = true;
+    }
 
     // Update search placeholder to match the active scale.
     const searchInput = this._root && this._root.querySelector('.gm-search-input');
@@ -8523,10 +8582,10 @@ export const galaxyMapScreen = {
       if (searchInput.placeholder !== placeholder) searchInput.placeholder = placeholder;
     }
 
-    if (this._levelEl) this._levelEl.textContent = level.toUpperCase();
-
-    const scaleEl = this._root.querySelector('[data-level]');
-    if (scaleEl) scaleEl.textContent = level.toUpperCase();
+    const levelLabel = level.toUpperCase();
+    if (this._levelEl && this._levelEl.textContent !== levelLabel) {
+      this._levelEl.textContent = levelLabel;
+    }
 
     // Contact memory accrues whenever the chart is reading the near field, not only while LOCAL
     // happens to be the level on screen — otherwise zooming out for a moment silently resets what
@@ -8555,9 +8614,6 @@ export const galaxyMapScreen = {
     // it cannot silently stop tracking the executor at one scale. It is internally change-keyed,
     // so being called every frame does not mean re-rendering every frame.
     this._updateRibbon(state);
-    this._updateRailSections(state);
-    this._updateHeaderWeather(state);
-    this._updateCargoDeck(state);
 
     // Hover pre-selection. Resolved against THIS frame's click targets rather than the coordinates
     // captured when the pointer last moved, so the ring cannot lag a pan or a zoom by a frame.
@@ -9590,13 +9646,35 @@ export const galaxyMapScreen = {
   },
 
   // --- LOCAL DRAW ---
+  _localModelForState(state) {
+    const simTime = Math.max(0, Number(state && state.simTime) || 0);
+    const sectorId = currentSectorId(state);
+    const key = `${simTime}|${sectorId || ''}|${this._localIntelSyncedAtS}`;
+    if (!this._localModelDirty
+      && this._localModelCache
+      && this._localModelCacheState === state
+      && this._localModelCacheKey === key) {
+      return this._localModelCache;
+    }
+    const model = buildLocalModel(state, this._isHostile, {
+      claimsSystem: this._claimsSystem(),
+      intel: this._localIntel,
+    });
+    this._localModelCache = model;
+    this._localModelCacheState = state;
+    this._localModelCacheKey = key;
+    this._localModelDirty = false;
+    return model;
+  },
+
   _drawLocal(g, state, w, h) {
     // Fed by _draw before dispatch, so memory survives a trip out to SYSTEM and back.
-    const intel = this._localIntel;
-    const model = buildLocalModel(state, this._isHostile, { claimsSystem: this._claimsSystem(), intel });
-    this._localLiveContacts = model.contacts
-      ? model.contacts.filter((contact) => contact && !contact.remembered).length
-      : 0;
+    const model = this._localModelForState(state);
+    let liveContactCount = 0;
+    for (const contact of model.contacts || []) {
+      if (contact && !contact.remembered) liveContactCount += 1;
+    }
+    this._localLiveContacts = liveContactCount;
     const cam = this._cams.local;
     const wp = state.nav && state.nav.waypoint;
     const wpPos = resolveWaypointPresentationPosition(state, wp);
@@ -9977,7 +10055,7 @@ export const galaxyMapScreen = {
     // Empty-space reassurance. Remembered marks do not count as company — the skies really are
     // clear when only memory is left — but the pilot is told the scope is still holding fixes so a
     // faded chevron on an otherwise empty table reads as memory rather than as a rendering fault.
-    const liveContacts = model.contacts.reduce((n, c) => (c.remembered ? n : n + 1), 0);
+    const liveContacts = this._localLiveContacts;
     const rememberedContacts = model.contacts.length - liveContacts;
     const holdingCount = this._layers.holdings ? model.ownership.length : 0;
     if (liveContacts === 0 && holdingCount === 0 && model.bearings.length === 0) {
@@ -10531,25 +10609,83 @@ function drawHostileMark(g, x, y, rot) {
   g.restore();
 }
 
-/** Asteroid: a deterministic irregular polygon keyed by id — a rock, never a circle. */
-function drawAsteroidMark(g, x, y, seedId) {
-  const seed = cosmeticHash01(String(seedId || 'rock'));
-  const verts = 5 + Math.floor(seed * 3);
+/**
+ * Asteroid: a deterministic irregular polygon keyed by id — a rock, never a circle.
+ *
+ * The shape is authored in local glyph space once per id and translated at draw time. Keeping the
+ * exact seeded vertices (including the old 5–7 vertex range and radii) preserves the map's visual
+ * language while avoiding repeated hash/trig work for the many contacts painted each frame. A
+ * bounded cache keeps a changing contact stream from retaining every id forever; older browsers or
+ * test canvases use the original immediate path construction.
+ */
+export const ASTEROID_GLYPH_CACHE_LIMIT = 256;
+const asteroidGlyphPathCache = new Map();
+
+function asteroidGlyphPath(seedId) {
+  const Path2DImpl = typeof globalThis !== 'undefined' ? globalThis.Path2D : undefined;
+  if (typeof Path2DImpl !== 'function') return null;
+
+  // Keep the raw id as the cache key: the legacy geometry normalises only the angular seed, while
+  // the radius seed uses String(seedId), so falsy ids must not alias one another.
+  const cacheKey = String(seedId);
+  const cached = asteroidGlyphPathCache.get(cacheKey);
+  if (cached) return cached;
+
+  let path;
+  try {
+    path = new Path2DImpl();
+    const seed = cosmeticHash01(String(seedId || 'rock'));
+    const verts = 5 + Math.floor(seed * 3);
+    for (let i = 0; i < verts; i += 1) {
+      const a = (i / verts) * Math.PI * 2 + seed * Math.PI;
+      const r = 2.4 + cosmeticHash01(String(seedId) + ':' + i) * 1.8;
+      const vx = Math.cos(a) * r;
+      const vy = Math.sin(a) * r;
+      if (i === 0) path.moveTo(vx, vy);
+      else path.lineTo(vx, vy);
+    }
+    path.closePath();
+  } catch (_) {
+    // A host can expose Path2D without a usable constructor (for example, a partial test canvas).
+    // The caller will take the immediate path fallback below.
+    return null;
+  }
+
+  if (asteroidGlyphPathCache.size >= ASTEROID_GLYPH_CACHE_LIMIT) {
+    const oldest = asteroidGlyphPathCache.keys().next().value;
+    if (oldest !== undefined) asteroidGlyphPathCache.delete(oldest);
+  }
+  asteroidGlyphPathCache.set(cacheKey, path);
+  return path;
+}
+
+export function drawAsteroidMark(g, x, y, seedId) {
+  const path = asteroidGlyphPath(seedId);
   g.save();
   g.fillStyle = 'rgba(142, 134, 117, 0.40)';
   g.strokeStyle = 'rgba(142, 134, 117, 0.70)';
   g.lineWidth = 0.8;
-  g.beginPath();
-  for (let i = 0; i < verts; i += 1) {
-    const a = (i / verts) * Math.PI * 2 + seed * Math.PI;
-    const r = 2.4 + cosmeticHash01(String(seedId) + ':' + i) * 1.8;
-    const vx = x + Math.cos(a) * r;
-    const vy = y + Math.sin(a) * r;
-    if (i === 0) g.moveTo(vx, vy);
-    else g.lineTo(vx, vy);
+  if (path && typeof g.translate === 'function'
+    && typeof g.fill === 'function' && typeof g.stroke === 'function') {
+    g.translate(x, y);
+    g.fill(path);
+    g.stroke(path);
+  } else {
+    // Immediate fallback intentionally mirrors the pre-cache geometry exactly.
+    const seed = cosmeticHash01(String(seedId || 'rock'));
+    const verts = 5 + Math.floor(seed * 3);
+    g.beginPath();
+    for (let i = 0; i < verts; i += 1) {
+      const a = (i / verts) * Math.PI * 2 + seed * Math.PI;
+      const r = 2.4 + cosmeticHash01(String(seedId) + ':' + i) * 1.8;
+      const vx = x + Math.cos(a) * r;
+      const vy = y + Math.sin(a) * r;
+      if (i === 0) g.moveTo(vx, vy);
+      else g.lineTo(vx, vy);
+    }
+    g.closePath();
+    g.fill(); g.stroke();
   }
-  g.closePath();
-  g.fill(); g.stroke();
   g.restore();
 }
 
