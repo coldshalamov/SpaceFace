@@ -6322,7 +6322,9 @@
       "priority": 86,
       "title": "Bars as checks",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
+      "integratedCommit": "86c3e5e8",
+      "acceptanceRef": "design/program/roadmap/receipts/PQ-186-00-REPORT.md",
       "dependsOn": [
         "PQ-137.10"
       ],
@@ -6338,7 +6340,9 @@
         "npm run check:baseline",
         "npm run check:all:smoke"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-186-00-REPORT.md"
+      ],
       "brief": "One check per FEEL_CONTRACT bar the lab can reach, assertion message = the bar's sentence; wired into check:all:smoke. DONE WHEN: Every reachable bar has a check; injecting the old governor brake turns B1 red."
     },
     {
