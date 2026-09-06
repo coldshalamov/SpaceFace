@@ -167,6 +167,21 @@ test('numbers station waits for an external canonical resolution and receipts it
     'one accepted receipt caps the numbers drop for this save');
 });
 
+test('every live source id round-trips the band:sourceProximity seam (no dropped source)', () => {
+  // Drift-guard: the resolver table (data/bandRadio.js) and the proximity seam (systems/bandRadio.js)
+  // must agree on the source id set. A source present in one but not the other reads as applied but
+  // no-ops. Emitting each table id must register; an unknown id must not.
+  const h = makeHarness();
+  for (const sourceId of ['landmark_quiessence', 'planet_hush', 'resonance_obelisk']) {
+    h.bus.emit('band:sourceProximity', { sourceId, strength: 0.9 });
+    assert.equal(h.state.bandRadio.proximitySources[sourceId], 0.9,
+      `the live source ${sourceId} must register through the seam`);
+  }
+  h.bus.emit('band:sourceProximity', { sourceId: 'future_unwired_source', strength: 0.9 });
+  assert.equal(h.state.bandRadio.proximitySources.future_unwired_source, undefined,
+    'an unwired source id must not register');
+});
+
 test('Quiessence overrides the tuned carrier while the Hush produces an RF hole', () => {
   const h = makeHarness();
   tuneAndSpeak(h, 'concord_bulletin');

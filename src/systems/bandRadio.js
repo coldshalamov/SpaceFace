@@ -393,7 +393,9 @@ export const bandRadio = {
   },
 
   _setSourceProximity(payload) {
-    if (!payload || !['landmark_quiessence', 'planet_hush', 'resonance_obelisk'].includes(payload.sourceId)) return;
+    // Derive the accept-set from the source table so adding a source can never leave this seam
+    // silently dropping the new id (a stale hardcoded allowlist read as "applied" but no-oped).
+    if (!payload || !Object.prototype.hasOwnProperty.call(LIVE_LANDMARK_SOURCES, payload.sourceId)) return;
     const own = this._ensureState();
     const strength = clamp01(finite(payload.strength, 0));
     if (strength <= 0) delete own.proximitySources[payload.sourceId];
