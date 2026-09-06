@@ -780,6 +780,19 @@
       "integration": "live",
       "commit": "faefacf3",
       "verification": "focused_green"
+    },
+    {
+      "id": "tide-locked-watcher-poi",
+      "date": "2026-09-06",
+      "wf": "WF-04",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "the Tide-Locked Watcher landmark now charts in Triton Wake: anomaly POI with archive scanner signal and discovery plate, anchoring the authored lore to a reachable world site",
+      "fingerprint": "verb=scan,subject=tide_locked_watcher,sector=triton_wake,layer=foreground,domain=wf-04",
+      "references": [],
+      "integration": "live",
+      "commit": "add191c3",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
