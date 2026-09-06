@@ -3,7 +3,7 @@
 
 ```yaml
 refreshed: 2026-09-06
-baseCommit: c58f74421d66ef38e41a5c21690fc82904b2b23d
+baseCommit: 75a3885984cdb52b5ac678e24fa4e662c0b8ba06
 expiresAfterCommits: 10
 expiresAfterDays: 2
 ```
@@ -41,19 +41,19 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| Next ten and idle recovery | codex-01a0768b | MUTATING | `design/program/roadmap/active/PQ-144.md`, `design/program/roadmap/active/PQ-177.md`, `design/program/roadmap/active/PQ-143.md`, `design/program/roadmap/active/PQ-184.md` | tighten the selected player contracts, delegate exact source slices, review before commits |
-| PQ-191 independent pass over the 2026-09-06 landing | cursor-grok | MUTATING | `CANONICAL_BUILD_MAP.md`, `design/program/roadmap/program-queue.json`, `design/program/roadmap/active/PQ-191.md`, `design/program/roadmap/active/README.md`, `AGENTS.md` | add review door + packet, stop |
+| Station migration and retained controls | controller 01a0768b / terra idle_recovery | MUTATING | `src/ui/station/stationApp.js` (controller insurance, Terra handoff), `src/ui/station/screens/factions.js`, `scripts/check-first-dock-handoff.mjs`, `test/station-exit-confirmation.test.mjs` | finish dismissal; controller review and commit returned extraction/import changes |
+| Contract readiness parity | claude-opus / controller 01a0768b | MUTATING | `src/ui/station/screens/contracts.js`, `scripts/check-mission-preflight.mjs`, `scripts/check-mission-board-recommendation.mjs` | restore shared preflight authority; parent review |
+| UI measurement | luna provider_preflight | MUTATING | `scripts/capture-ui-matrix.mjs`, `scripts/lib/uiBudgets.mjs`, `test/ui-budgets.test.mjs` | fix callback error preservation and current public context route |
+| Operational limits route | luna economy_fixtures | MUTATING | `scripts/probe-automation-outpost-live.mjs` | prepare real Drone Bay/finite ore/fuel/depot route for serial capture |
+| Production baseline | controller 01a0768b | MUTATING | `scripts/probe-runtime-witness.mjs`, `scripts/lib/runtimeWitnessProductionMatrix.mjs`, `test/runtime-witness-production-matrix.test.mjs` | finish public routes after station migration |
+| World materials and hit feedback | controller 01a0768b | MUTATING | `src/render/industrialMaterialFamilies.js`, `src/render/visualOverrides.js`, `src/render/engineTrailSurfaces.js`, `src/ui/asteroid/asteroidRenderer3d.js`, `test/industrial-material-families.test.mjs`, `design/program/roadmap/receipts/PQ-190-00-material-candidate.md`, `src/render/vfx.js`, `test/vfx-weakpoint-receipt.test.mjs` | visual review of authored admission and real combat feedback |
+| Reauthored place acceptance | controller 01a0768b | MUTATING | `scripts/probe-pq022-corridor-asset-leaves.mjs`, `scripts/validation-manifests/pq022-corridor-asset-leaves.mjs`, `scripts/validation-manifests/pq022-refinery-reauthor-browser.mjs`, `scripts/validation-manifests/pq022-refinery-reauthor-electron.mjs`, `scripts/validation-manifests/pq022-billboard-buoy-reauthor-browser.mjs`, `scripts/validation-manifests/pq022-billboard-buoy-reauthor-electron.mjs`, `test/pq022-reauthor-h1-manifests.test.mjs` | resolve billboard readability; Browser/Electron route acceptance |
+| Next ten plan refinement | controller 01a0768b | MUTATING | `design/program/NOW.md`, `design/program/roadmap/active/PQ-143.md`, `design/program/roadmap/active/PQ-144.md`, `design/program/roadmap/active/PQ-177.md`, `design/program/roadmap/active/PQ-184.md` | land senior refinements in existing queue |
 
-_Previously:_ no active mutation windows. The 2026-09-04 orchestrate-next-build handoff is finished: everything
-that was in flight is committed and pushed, and no agent is holding a source file. See
-[`HANDOFF_2026-09-04_orchestrate-next-build.md`](./HANDOFF_2026-09-04_orchestrate-next-build.md) for
-what landed, the two 47-A goldens that moved, and the two open PQ-180 harness defects.
-
-The three prior rows (PQ-180 frontend grammar, an unnamed "Work" row, Paused Ceres acceptance repair)
-were all confirmed STALE by `node scripts/check-now-liveness.mjs` on 2026-09-04 and adopted by this
-agent under rule 3a. The Ceres pause still holds as a note, not a row:
-`scripts/lib/ceresFiveMinuteAcceptance.mjs` and `test/ceres-five-minute-acceptance.test.mjs` are
-preserved without further acceptance work.
+Returned GLM/Terra extraction candidates are under controller review; their exact dirty paths remain
+preserved in Git. Native workers have released those files. The ordinary-life, operational-limit,
+market virtualization, HUD and chart source changes are committed; their remaining route acceptance
+is work, not an active source reservation. PQ-187.00 is closed in the canonical queue.
 
 ## Start another task
 
