@@ -62,6 +62,29 @@ export function compileShadowDepthPipelines(options = {}) {
     : null;
   const restoreVisibility = revealSubjectForCompile(staging);
   const restoreCasters = casting.map((root) => revealSubjectForCompile(root));
+  const programCacheKeys = new Set();
+  let renderedMaterials = 0;
+  let missingProgramBindings = 0;
+  const originalRenderBufferDirect = typeof renderer.renderBufferDirect === 'function'
+    ? renderer.renderBufferDirect
+    : null;
+  if (originalRenderBufferDirect) {
+    renderer.renderBufferDirect = function captureShadowProgramBinding(...args) {
+      const result = originalRenderBufferDirect.apply(this, args);
+      renderedMaterials += 1;
+      const material = args[3];
+      let program = null;
+      try {
+        program = renderer.properties && typeof renderer.properties.get === 'function'
+          ? renderer.properties.get(material)?.currentProgram
+          : null;
+      } catch (_) { /* The real shadow draw succeeded; report its missing binding fail-closed. */ }
+      const key = program && (program.cacheKey || (program.id != null ? `id:${program.id}` : ''));
+      if (key) programCacheKeys.add(String(key));
+      else missingProgramBindings += 1;
+      return result;
+    };
+  }
   try {
     if (forceEnable) {
       shadowMap.enabled = true;
@@ -76,8 +99,20 @@ export function compileShadowDepthPipelines(options = {}) {
     // An empty caster list still runs so light.shadow.map exists before color compile —
     // otherwise numDirLightShadows stays 0 and the first shadowed draw relinks physical.
     shadowMap.render([light], staging, camera);
-    return { skipped: false, subjects: casting.length };
+    const programBindingFailures = [];
+    if (casting.length > 0 && !originalRenderBufferDirect) {
+      programBindingFailures.push(`shadow-depth:${casting.length}:render-buffer-direct-unavailable`);
+    } else if (missingProgramBindings > 0) {
+      programBindingFailures.push(`shadow-depth:${missingProgramBindings}/${renderedMaterials}:unprepared-program-binding`);
+    }
+    return {
+      skipped: false,
+      subjects: casting.length,
+      programCacheKeys: [...programCacheKeys].sort(),
+      programBindingFailures,
+    };
   } finally {
+    if (originalRenderBufferDirect) renderer.renderBufferDirect = originalRenderBufferDirect;
     if (forceEnable) {
       shadowMap.enabled = previousEnabled;
       light.castShadow = previousCastShadow;

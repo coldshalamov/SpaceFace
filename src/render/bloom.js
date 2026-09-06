@@ -1116,6 +1116,10 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     return [rtScene, ...down].filter(Boolean);
   }
 
+  function openingProgramMaterials() {
+    return [downsampleMat, compositeMat];
+  }
+
   function setSize(w, h) {
     const nextW = Math.max(1, w | 0);
     const nextH = Math.max(1, h | 0);
@@ -1239,6 +1243,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     warmScenePipelines,
     touchScenePipelines,
     prepareResources,
+    openingProgramMaterials,
     contextLossResources,
     setSize,
     setOptions,

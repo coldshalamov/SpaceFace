@@ -4382,6 +4382,7 @@ export const render = {
         })
         : { skipped: true, reason: 'empty opening draw set' };
       const shadowResult = warmOpeningShadowPipelines(subjects);
+      this._openingShadowAdmission = shadowResult;
       this._firstPresentGpuReady = true;
       return {
         schema: plan.schema,
@@ -4598,13 +4599,46 @@ export const render = {
         result.openingCompositionRoots = plan.roots.length;
         result.vfxRoots = plan.roots.filter((root) => root.role === 'vfx').length;
         result.vfxTextures = plan.textures.length;
-        if (this.bloom && typeof this.bloom.prepareResources === 'function') {
+        const postRoute = this._selectPostRoute();
+        let openingPostMaterials = [];
+        if (postRoute === POST_PROCESS_ROUTE.BLOOM
+          && this.bloom && typeof this.bloom.prepareResources === 'function') {
           result.post = await this.bloom.prepareResources(yieldToBrowser);
+          openingPostMaterials = this.bloom.openingProgramMaterials();
+        } else if (postRoute === POST_PROCESS_ROUTE.GRAPH
+          && this._renderGraph && typeof this._renderGraph.prepareResources === 'function') {
+          result.post = await this._renderGraph.prepareResources({
+            yieldToMain: yieldToBrowser,
+            camera: cam.obj,
+            prepareNormalSubjects: async () => {
+              const subjects = (plan.compileSubjects || []).filter(Boolean);
+              const staging = new THREE.Scene();
+              staging.name = 'SF_OpeningGraphNormalAdmission';
+              const homes = subjects.map((subject) => captureObjectHome(subject));
+              try {
+                for (const subject of subjects) staging.add(subject);
+                staging.overrideMaterial = this._renderGraph.normalMaterial;
+                await compileScenePipelinesForRenderTarget(
+                  renderer, this._renderGraph.normalTarget, staging, cam.obj, scene,
+                );
+              } finally {
+                staging.overrideMaterial = null;
+                for (const home of homes) restoreObjectHome(home);
+                staging.clear();
+              }
+            },
+          });
+          openingPostMaterials = this._renderGraph.openingProgramMaterials();
         }
         // The first visible frame is the only submission. Capture its resource baseline now that
         // exact leaves, textures, and post targets are admitted; drawPreparedFrame validates that
         // no program/geometry/texture appears outside this frozen plan.
-        state.render.openingSubmissionReceipt = createOpeningSubmissionReceipt(renderer, plan, { scene });
+        state.render.openingSubmissionReceipt = createOpeningSubmissionReceipt(renderer, plan, {
+          scene,
+          programMaterials: openingPostMaterials,
+          shadowProgramKeys: this._openingShadowAdmission?.programCacheKeys,
+          shadowProgramBindingFailures: this._openingShadowAdmission?.programBindingFailures,
+        });
         await yieldToBrowser();
         state.render.startupGpuResidency = result;
         return result;
@@ -5383,6 +5417,7 @@ export const render = {
         state.render.openingSubmissionFirstDrawSubmittedAt = null;
         state.render.openingSubmissionPlan = null;
         state.render.openingSubmissionReceipt = null;
+        this._openingShadowAdmission = null;
         state.render.openingFirstVisibleGpuCounts = null;
         state.render.openingSubmissionPreSubmitValidation = null;
         state.render.openingSubmissionValidation = null;
@@ -7075,6 +7110,7 @@ export const render = {
         this.state.render.openingSubmissionPreSubmitValidation = preSubmitValidation;
         if (!preSubmitValidation.ok) {
           const missingCount = (preSubmitValidation.missingProgramKeys || []).length
+            + (preSubmitValidation.missingProgramBindings || []).length
             + (preSubmitValidation.missingGeometryBufferIds || []).length
             + (preSubmitValidation.missingTextureIds || []).length
             + (preSubmitValidation.missingShadowResourceIds || []).length;
@@ -7086,6 +7122,7 @@ export const render = {
             uncapturedTextureIds: preSubmitValidation.uncapturedTextureIds || [],
             uncapturedShadowResourceIds: preSubmitValidation.uncapturedShadowResourceIds || [],
             missingProgramKeys: preSubmitValidation.missingProgramKeys || [],
+            missingProgramBindings: preSubmitValidation.missingProgramBindings || [],
             missingGeometryBufferIds: preSubmitValidation.missingGeometryBufferIds || [],
             missingTextureIds: preSubmitValidation.missingTextureIds || [],
             missingShadowResourceIds: preSubmitValidation.missingShadowResourceIds || [],

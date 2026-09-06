@@ -507,6 +507,7 @@ test('opening submission receipt fails closed on an uncaptured first-draw resour
   material.customProgramCacheKey = () => 'opening';
   const leaf = mesh('background', material);
   leaf.castShadow = true;
+  const postMaterial = new THREE.ShaderMaterial();
   const originalGeometry = leaf.geometry;
   root.add(leaf);
   const plan = createOpeningSubmissionPlan({
@@ -515,22 +516,71 @@ test('opening submission receipt fails closed on an uncaptured first-draw resour
     candidates: [{ root, role: 'firstFrameBackground' }],
     shadows: true,
   });
+  const bindings = new WeakMap([
+    [material, {
+      programs: new Map([['opening', {}]]),
+      currentProgram: { cacheKey: 'opening' },
+    }],
+    [postMaterial, {
+      programs: new Map([['opening-post', {}]]),
+      currentProgram: { cacheKey: 'opening-post' },
+    }],
+  ]);
   const renderer = {
-    info: { programs: [{ cacheKey: 'opening' }], memory: { geometries: 5, textures: 7 } },
+    info: {
+      programs: [
+        { cacheKey: 'opening' },
+        { cacheKey: 'opening-depth' },
+        { cacheKey: 'opening-post' },
+        { cacheKey: 'retired-warmup-program' },
+      ],
+      memory: { geometries: 5, textures: 7 },
+    },
+    properties: { get: (value) => bindings.get(value) || {} },
   };
-  const receipt = createOpeningSubmissionReceipt(renderer, plan);
+  const receipt = createOpeningSubmissionReceipt(renderer, plan, {
+    programMaterials: [postMaterial],
+    shadowProgramKeys: ['opening-depth'],
+  });
+  assert.deepEqual(receipt.required.programCacheKeys, [
+    'opening',
+    'opening-depth',
+    'opening-post',
+  ]);
 
   const accepted = validateOpeningSubmissionReceipt(receipt, renderer);
   assert.equal(accepted.ok, true);
   assert.deepEqual(accepted.uncaptured, []);
 
-  renderer.info.programs = [{ cacheKey: 'uncaptured-key' }];
+  renderer.info.programs = [
+    { cacheKey: 'opening' },
+    { cacheKey: 'opening-depth' },
+    { cacheKey: 'opening-post' },
+  ];
+  const retiredWarmup = validateOpeningSubmissionReceipt(receipt, renderer);
+  assert.equal(retiredWarmup.ok, true, 'a non-plan warmup program may retire before first paint');
+
+  renderer.info.programs = [{ cacheKey: 'opening-depth' }, { cacheKey: 'opening-post' }];
+  const missingRequired = validateOpeningSubmissionReceipt(receipt, renderer);
+  assert.equal(missingRequired.ok, false);
+  assert.deepEqual(missingRequired.missingProgramKeys, ['opening']);
+
+  renderer.info.programs = [
+    { cacheKey: 'opening' },
+    { cacheKey: 'opening-depth' },
+    { cacheKey: 'opening-post' },
+    { cacheKey: 'uncaptured-key' },
+  ];
   const failed = validateOpeningSubmissionReceipt(receipt, renderer);
   assert.equal(failed.ok, false);
   assert.deepEqual(failed.uncaptured, ['programs']);
   assert.deepEqual(failed.uncapturedProgramKeys, ['uncaptured-key']);
 
-  renderer.info.programs = [{ cacheKey: 'opening' }];
+  renderer.info.programs = [
+    { cacheKey: 'opening' },
+    { cacheKey: 'opening-depth' },
+    { cacheKey: 'opening-post' },
+  ];
   leaf.geometry = new THREE.BoxGeometry();
   const geometryFailure = validateOpeningSubmissionReceipt(receipt, renderer);
   assert.equal(geometryFailure.ok, false, 'a replacement geometry must fail at unchanged count');
@@ -547,6 +597,24 @@ test('opening submission receipt fails closed on an uncaptured first-draw resour
   const shadowFailure = validateOpeningSubmissionReceipt(receipt, renderer);
   assert.equal(shadowFailure.ok, false, 'shadow resources have no arbitrary first-draw allowance');
   assert.ok(shadowFailure.uncapturedShadowResourceIds.length > 0);
+});
+
+test('opening submission receipt fails closed when an exact material has no live Three program binding', () => {
+  const root = new THREE.Group();
+  productionMetadata(root);
+  const leaf = mesh('unprepared-opening-leaf');
+  root.add(leaf);
+  const plan = createOpeningSubmissionPlan(planOptions(root));
+  const renderer = {
+    info: { programs: [{ cacheKey: 'unrelated-warmup' }], memory: {} },
+    properties: { get: () => ({}) },
+  };
+
+  const receipt = createOpeningSubmissionReceipt(renderer, plan);
+  const validation = validateOpeningSubmissionReceipt(receipt, renderer);
+  assert.equal(validation.ok, false);
+  assert.equal(validation.reason, 'unprepared-opening-program-binding');
+  assert.deepEqual(validation.missingProgramBindings, ['plan:0:material:0:unprepared-material']);
 });
 
 test('production startup no longer invokes a hidden opening discovery render or global loading compile', async () => {

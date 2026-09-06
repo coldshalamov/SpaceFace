@@ -248,6 +248,75 @@ test('render graph exposes every off-scene target to context-loss cleanup', () =
   graph.dispose();
 });
 
+test('render graph prepares only active private passes and delegates its normal prepass to exact subjects', async () => {
+  const initializedTargets = [];
+  const renders = [];
+  const priorTarget = { name: 'prior target' };
+  let activeTarget = priorTarget;
+  const renderer = {
+    isWebGLRenderer: true,
+    capabilities: { isWebGL2: false },
+    getRenderTarget: () => activeTarget,
+    setRenderTarget: (target) => { activeTarget = target; },
+    initRenderTarget: (target) => { initializedTargets.push(target); },
+    clear() {},
+    render(scene, camera) { renders.push({ scene, camera, target: activeTarget }); },
+    compile() {},
+  };
+  const graph = new SpaceRenderGraph(renderer, { ao: true, bloom: true, bloomStrength: 0.5 });
+  graph.setSize(64, 64);
+  let normalSubjectPasses = 0;
+  const result = await graph.prepareResources({
+    camera: new THREE.PerspectiveCamera(),
+    prepareNormalSubjects: async () => { normalSubjectPasses += 1; },
+  });
+  assert.equal(result.skipped, false);
+  assert.equal(normalSubjectPasses, 1);
+  assert.ok(initializedTargets.includes(graph.normalTarget));
+  assert.ok(initializedTargets.includes(graph.aoTarget));
+  assert.ok(initializedTargets.includes(graph.bloomTargets[0]));
+  assert.ok(renders.some((entry) => entry.target === graph.aoTarget));
+  assert.ok(renders.some((entry) => entry.target === graph.bloomTargets[0]));
+  assert.deepEqual(result, { skipped: false, targets: initializedTargets.length });
+  assert.strictEqual(activeTarget, priorTarget);
+  graph.dispose();
+});
+
+test('render graph admits its composite resources with no AO or bloom pass and restores on init failure', async () => {
+  const priorTarget = { name: 'prior target' };
+  let activeTarget = priorTarget;
+  const renderedTargets = [];
+  const renderer = {
+    isWebGLRenderer: true,
+    capabilities: { isWebGL2: false },
+    getRenderTarget: () => activeTarget,
+    setRenderTarget: (target) => { activeTarget = target; },
+    initRenderTarget() {},
+    clear() {},
+    render() { renderedTargets.push(activeTarget); },
+    compile() {},
+  };
+  const graph = new SpaceRenderGraph(renderer, { ao: false, bloom: false });
+  graph._distortionLive = true;
+  const result = await graph.prepareResources({ camera: new THREE.PerspectiveCamera() });
+  assert.deepEqual(result, { skipped: false, targets: 2 });
+  assert.deepEqual(renderedTargets, [graph.distortionTarget]);
+  assert.strictEqual(graph.compositeMaterial.uniforms.tDistortion.value, graph.blackBloomTexture,
+    'the composite warmup destination is never sampled as an active distortion input');
+  assert.equal(graph._distortionLive, true, 'warmup restores the prior distortion activity state');
+  assert.strictEqual(activeTarget, priorTarget);
+  graph.dispose();
+
+  const failingRenderer = {
+    ...renderer,
+    initRenderTarget() { throw new Error('target allocation failed'); },
+  };
+  const failingGraph = new SpaceRenderGraph(failingRenderer, { ao: false, bloom: false });
+  await assert.rejects(() => failingGraph.prepareResources(), /target allocation failed/);
+  assert.strictEqual(activeTarget, priorTarget);
+  failingGraph.dispose();
+});
+
 test('render graph owns one clamped scene scale and reallocates when only that scale changes', () => {
   const renderer = {
     isWebGLRenderer: true,

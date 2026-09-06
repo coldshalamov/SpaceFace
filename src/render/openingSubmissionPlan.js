@@ -310,17 +310,75 @@ let nextProgramObjectId = 1;
 function rendererProgramKeys(renderer) {
   const programs = renderer && renderer.info && renderer.info.programs;
   if (!Array.isArray(programs)) return [];
-  return [...new Set(programs.map((program) => {
-    if (!program || typeof program !== 'object') return '';
-    if (program.cacheKey) return String(program.cacheKey);
-    if (program.id != null) return `id:${program.id}`;
-    let identity = programObjectIds.get(program);
-    if (!identity) {
-      identity = `object:${nextProgramObjectId++}`;
-      programObjectIds.set(program, identity);
+  return [...new Set(programs.map(programCacheKey).filter(Boolean))];
+}
+
+function programCacheKey(program) {
+  if (!program || typeof program !== 'object') return '';
+  if (program.cacheKey) return String(program.cacheKey);
+  if (program.id != null) return `id:${program.id}`;
+  let identity = programObjectIds.get(program);
+  if (!identity) {
+    identity = `object:${nextProgramObjectId++}`;
+    programObjectIds.set(program, identity);
+  }
+  return identity;
+}
+
+function materialProgramBinding(renderer, material, label) {
+  if (!renderer || !renderer.properties || typeof renderer.properties.get !== 'function') {
+    return { keys: [], failure: `${label}:renderer-properties-unavailable` };
+  }
+  let properties = null;
+  try {
+    properties = renderer.properties.get(material);
+  } catch (_) {
+    return { keys: [], failure: `${label}:renderer-properties-unreadable` };
+  }
+  const keys = new Set();
+  const programs = properties && properties.programs;
+  if (programs && typeof programs.keys === 'function') {
+    for (const key of programs.keys()) if (key != null && String(key)) keys.add(String(key));
+  }
+  const currentKey = programCacheKey(properties && properties.currentProgram);
+  if (currentKey) keys.add(currentKey);
+  return keys.size > 0
+    ? { keys: [...keys].sort(), failure: null }
+    : { keys: [], failure: `${label}:unprepared-material` };
+}
+
+function receiptProgramMaterials(plan, options = {}) {
+  const entries = [];
+  const seen = new Set();
+  const add = (material, label) => {
+    if (!material || seen.has(material)) return;
+    seen.add(material);
+    entries.push({ material, label });
+  };
+  for (const [index, subject] of (plan && plan.compileSubjects || []).entries()) {
+    for (const [materialIndex, material] of materialList(subject).entries()) {
+      add(material, `plan:${index}:material:${materialIndex}`);
     }
-    return identity;
-  }).filter(Boolean))];
+  }
+  for (const [index, material] of (options.programMaterials || []).entries()) {
+    add(material, `post:${index}`);
+  }
+  return entries;
+}
+
+function requiredProgramBindings(renderer, plan, options = {}) {
+  const keys = new Set();
+  const failures = [];
+  for (const { material, label } of receiptProgramMaterials(plan, options)) {
+    const binding = materialProgramBinding(renderer, material, label);
+    for (const key of binding.keys) keys.add(key);
+    if (binding.failure) failures.push(binding.failure);
+  }
+  for (const key of options.shadowProgramKeys || []) if (key != null && String(key)) keys.add(String(key));
+  for (const failure of options.shadowProgramBindingFailures || []) {
+    if (failure != null && String(failure)) failures.push(String(failure));
+  }
+  return { keys: [...keys].sort(), failures: failures.sort() };
 }
 
 function textureSourceIdentity(texture) {
@@ -996,11 +1054,13 @@ export function createOpeningSubmissionReceipt(renderer, plan, options = {}) {
     blockingTextureIds: [...resourceIdentitySets.blockingTextureIds],
     shadowResourceIds: [...resourceIdentitySets.shadowResourceIds],
   };
+  const programBindings = requiredProgramBindings(renderer, plan, options);
   const required = {
-    // Program subject keys select the exact leaves before compile. The actual driver cache keys
-    // are only authoritative after Three has compiled those leaves, so the receipt captures the
-    // real renderer census here instead of pretending a producer subject key is a driver key.
-    programCacheKeys: [...before.programCacheKeys].sort(),
+    // Keep `before` as the broad cache census for strict no-new-program detection. Required keys
+    // must instead be bound to the exact opening leaves (and active post materials): unrelated
+    // warmup programs legitimately retire before first paint and cannot block the route.
+    programCacheKeys: programBindings.keys,
+    programBindingFailures: programBindings.failures,
     geometryBufferIds: [...resourceIdentitySets.geometryBufferIds],
     blockingTextureIds: [...resourceIdentitySets.blockingTextureIds],
     shadowResourceIds: plan && Array.isArray(plan.shadowResources)
@@ -1121,10 +1181,12 @@ export function validateOpeningSubmissionReceipt(receipt, renderer) {
     required.geometryBufferIds,
     required.blockingTextureIds,
     required.shadowResourceIds,
+    required.programBindingFailures,
   ].every((value) => Array.isArray(value));
+  const missingProgramBindings = required.programBindingFailures || [];
   return freeze({
     ok: !!(planComplete && exactReceipt && receipt.planSchema === OPENING_SUBMISSION_PLAN_SCHEMA
-      && uncaptured.length === 0),
+      && missingProgramBindings.length === 0 && uncaptured.length === 0),
     baseline,
     current: currentCounts,
     currentResources,
@@ -1138,10 +1200,13 @@ export function validateOpeningSubmissionReceipt(receipt, renderer) {
     missingGeometryBufferIds,
     missingTextureIds,
     missingShadowResourceIds,
+    missingProgramBindings,
     reason: !planComplete
       ? 'incomplete-opening-submission-plan'
       : !exactReceipt
         ? 'incomplete-opening-submission-receipt'
-      : uncaptured.length ? 'uncaptured-first-draw-resource' : null,
+        : missingProgramBindings.length
+          ? 'unprepared-opening-program-binding'
+        : uncaptured.length ? 'uncaptured-first-draw-resource' : null,
   });
 }

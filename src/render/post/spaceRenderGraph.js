@@ -410,6 +410,59 @@ export class SpaceRenderGraph {
     };
   }
 
+  openingProgramMaterials() {
+    const materials = [this.compositeMaterial];
+    if (this.options.ao) materials.push(this.normalMaterial, this.aoMaterial, this.blurMaterial);
+    if (this._bloomActive()) materials.push(this.bloomMaterial);
+    return materials;
+  }
+
+  async prepareResources(options = {}) {
+    const renderer = this.renderer;
+    const yieldToMain = typeof options.yieldToMain === 'function'
+      ? options.yieldToMain
+      : () => Promise.resolve();
+    if (!renderer || typeof renderer.initRenderTarget !== 'function') {
+      return { skipped: true, reason: 'initRenderTarget unavailable', targets: 0 };
+    }
+    const targets = [
+      this.sceneTarget,
+      ...(this.options.ao ? [this.normalTarget, this.aoTarget, this.aoBlurTarget] : []),
+      ...(this._bloomActive() ? this.bloomTargets : []),
+      // Composite warms against this private destination, but never samples it during admission.
+      this.distortionTarget,
+    ].filter(Boolean);
+    const previousTarget = typeof renderer.getRenderTarget === 'function'
+      ? renderer.getRenderTarget()
+      : null;
+    const previousMaterial = this.quad.mesh.material;
+    const previousDistortionLive = this._distortionLive;
+    try {
+      for (const target of targets) {
+        await yieldToMain();
+        renderer.initRenderTarget(target);
+      }
+      if (this.options.ao && typeof options.prepareNormalSubjects === 'function') {
+        await options.prepareNormalSubjects();
+      }
+      if (this.options.ao) this._renderAo(options.camera);
+      if (this._bloomActive()) this._renderBloom();
+      // A real private draw admits the fullscreen quad geometry and its input textures even when
+      // AO and bloom are off. Distortion is neutral here, so the destination is never sampled.
+      this._distortionLive = false;
+      this._renderComposite(this.distortionTarget);
+      this.quad.mesh.material = this.compositeMaterial;
+      renderer.setRenderTarget(null);
+      if (typeof renderer.compile === 'function') renderer.compile(this.quad.scene, this.quad.camera);
+    } finally {
+      this._distortionLive = previousDistortionLive;
+      this.quad.mesh.material = previousMaterial;
+      if (typeof renderer.setRenderTarget === 'function') renderer.setRenderTarget(previousTarget || null);
+    }
+    await yieldToMain();
+    return { skipped: false, targets: targets.length };
+  }
+
   contextLossResources() {
     return [
       this.sceneTarget,

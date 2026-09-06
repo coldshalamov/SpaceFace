@@ -43,6 +43,8 @@ test('shadow depth compile runs the real shadow pass on exact casters and restor
     },
     getRenderTarget() { return { name: 'previous' }; },
     setRenderTarget(target) { renderer._target = target; },
+    properties: { get: (material) => material && material.properties || {} },
+    renderBufferDirect() {},
   };
   const light = { name: 'key', castShadow: false, shadow: { needsUpdate: false } };
   const result = compileShadowDepthPipelines({
@@ -75,6 +77,83 @@ test('shadow depth compile runs the real shadow pass on exact casters and restor
   assert.equal(renderer.shadowMap.enabled, false);
   assert.equal(light.shadow.needsUpdate, true);
   assert.equal(renderer._target?.name, 'previous');
+  assert.deepEqual(result.programBindingFailures, [], 'culled casters may produce no shadow draw');
+});
+
+test('shadow depth admission records the actual generated depth binding and restores an existing driver hook', () => {
+  const hull = { isMesh: true, castShadow: true, name: 'hull', parent: { children: [] } };
+  hull.parent.children.push(hull);
+  const generatedDepth = { properties: { currentProgram: { cacheKey: 'generated-depth-program' } } };
+  let directCalls = 0;
+  const originalRenderBufferDirect = function originalRenderBufferDirect() { directCalls += 1; };
+  const renderer = {
+    shadowMap: {
+      enabled: true,
+      render() { renderer.renderBufferDirect({}, {}, {}, generatedDepth, hull, null); },
+    },
+    renderBufferDirect: originalRenderBufferDirect,
+    properties: { get: (material) => material?.properties || {} },
+    getRenderTarget() { return null; },
+    setRenderTarget() {},
+  };
+  const result = compileShadowDepthPipelines({
+    renderer,
+    light: { castShadow: true, shadow: {} },
+    camera: {},
+    subjects: [hull],
+    THREE: { Group: class { constructor() { this.children = []; } add(child) { this.children.push(child); } clear() {} updateMatrixWorld() {} } },
+    captureObjectHome: (object) => ({ object }),
+    restoreObjectHome() {},
+  });
+  assert.deepEqual(result.programCacheKeys, ['generated-depth-program']);
+  assert.deepEqual(result.programBindingFailures, []);
+  assert.equal(directCalls, 1);
+  assert.equal(renderer.renderBufferDirect, originalRenderBufferDirect);
+});
+
+test('shadow depth admission fails closed when its actual depth draw has no program binding', () => {
+  const hull = { isMesh: true, castShadow: true, parent: { children: [] } };
+  hull.parent.children.push(hull);
+  const renderer = {
+    shadowMap: { enabled: true, render() { renderer.renderBufferDirect({}, {}, {}, {}, hull, null); } },
+    renderBufferDirect() {},
+    properties: { get: () => ({}) },
+    getRenderTarget() { return null; },
+    setRenderTarget() {},
+  };
+  const result = compileShadowDepthPipelines({
+    renderer,
+    light: { castShadow: true, shadow: {} },
+    camera: {},
+    subjects: [hull],
+    THREE: { Group: class { constructor() { this.children = []; } add(child) { this.children.push(child); } clear() {} updateMatrixWorld() {} } },
+    captureObjectHome: (object) => ({ object }),
+    restoreObjectHome() {},
+  });
+  assert.deepEqual(result.programCacheKeys, []);
+  assert.deepEqual(result.programBindingFailures, ['shadow-depth:1/1:unprepared-program-binding']);
+});
+
+test('shadow depth admission restores the prior renderBufferDirect hook when the shadow pass throws', () => {
+  const hull = { isMesh: true, castShadow: true, parent: { children: [] } };
+  hull.parent.children.push(hull);
+  const originalRenderBufferDirect = () => {};
+  const renderer = {
+    shadowMap: { enabled: true, render() { throw new Error('shadow draw failed'); } },
+    renderBufferDirect: originalRenderBufferDirect,
+    getRenderTarget() { return null; },
+    setRenderTarget() {},
+  };
+  assert.throws(() => compileShadowDepthPipelines({
+    renderer,
+    light: { castShadow: true, shadow: {} },
+    camera: {},
+    subjects: [hull],
+    THREE: { Group: class { constructor() { this.children = []; } add(child) { this.children.push(child); } clear() {} updateMatrixWorld() {} } },
+    captureObjectHome: (object) => ({ object }),
+    restoreObjectHome() {},
+  }), /shadow draw failed/);
+  assert.equal(renderer.renderBufferDirect, originalRenderBufferDirect);
 });
 
 test('hidden zero-count instanced casters are revealed for the shadow pass', () => {
