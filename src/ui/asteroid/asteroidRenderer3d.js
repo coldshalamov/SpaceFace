@@ -75,6 +75,17 @@ export const CONTACT_RING = Object.freeze([
   [-1, 1], [0, 1], [1, 1],
 ]);
 
+// Annotation plates are pooled and re-emitted every frame. Reassigning `map` to the texture the
+// material is already sampling still costs a material invalidation, and the Works board re-emits
+// every why-plate, seam chip and want chip on every frame — so the steady state was paying for a
+// map change that never happened. Publish only a real change in texture identity.
+export function setWorksAnnotationTexture(material, texture) {
+  if (!material || material.map === texture) return false;
+  material.map = texture;
+  material.needsUpdate = true;
+  return true;
+}
+
 // Placement is register-invariant: only visibility and projected-pixel reporting change between
 // work and site. This makes a zoom flip a LOD operation rather than a topology transaction.
 export function worksConduitRegisterSemantics(register, pixelsPerCell) {
@@ -5783,8 +5794,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     whyUsed++;
     let tex = whyTextures.get(reason);
     if (!tex) { tex = makeWhyGlyphTexture(reason); whyTextures.set(reason, tex); }
-    plate.mat.map = tex;
-    plate.mat.needsUpdate = true;
+    setWorksAnnotationTexture(plate.mat, tex);
     // A CORNER STAMP, NOT A COVER. Centred and cell-sized the plate hid whatever it was explaining;
     // pinned small to the cell's top-left it reads as a tag on the block.
     plate.mesh.position.set(wx - S * 0.28, wy + S * 0.28, Z.face + 0.07);
@@ -6684,8 +6694,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     }
     chipsUsed++;
     const rec = chipTexture(label);
-    chip.mat.map = rec.tex;
-    chip.mat.needsUpdate = true;
+    setWorksAnnotationTexture(chip.mat, rec.tex);
     chip.wPx = rec.wPx;
     chip.hPx = rec.hPx;
     chip.mesh.position.set(wx, wy, Z.face + 0.05);
@@ -6786,8 +6795,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     }
     wantChipsUsed++;
     const rec = wantTexture(key, swatchHex);
-    chip.mat.map = rec.tex;
-    chip.mat.needsUpdate = true;
+    setWorksAnnotationTexture(chip.mat, rec.tex);
     chip.wPx = rec.wPx;
     chip.hPx = rec.hPx;
     // it FLOATS: a slow bob above the housing, so a dark machine still moves on a still board

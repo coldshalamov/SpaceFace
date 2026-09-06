@@ -21,7 +21,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { CONTACT_RING, contactRingDivergence } from '../src/ui/asteroid/asteroidRenderer3d.js';
+import {
+  CONTACT_RING,
+  contactRingDivergence,
+  setWorksAnnotationTexture,
+} from '../src/ui/asteroid/asteroidRenderer3d.js';
 import { contactKind, contactProfile } from '../src/systems/siteProduction.js';
 
 /** The renderer's own signature rule, reproduced here so a reorder cannot pass silently. */
@@ -36,6 +40,24 @@ function ringSignature(field, cols, rows, col, row) {
   }
   return parts.join(';');
 }
+
+test('pooled Works annotations only invalidate a material when their texture identity changes', () => {
+  const material = { map: null, invalidations: 0 };
+  Object.defineProperty(material, 'needsUpdate', {
+    set(value) { if (value === true) material.invalidations += 1; },
+  });
+  const seamTexture = { name: 'seam-count' };
+  const nextTexture = { name: 'next-seam-count' };
+
+  assert.equal(setWorksAnnotationTexture(material, seamTexture), true);
+  assert.equal(material.invalidations, 1);
+  assert.equal(setWorksAnnotationTexture(material, seamTexture), false,
+    'the steady annotation frame reuses the existing sampler binding');
+  assert.equal(material.invalidations, 1);
+  assert.equal(setWorksAnnotationTexture(material, nextTexture), true,
+    'a changed label/selection still publishes its new texture');
+  assert.equal(material.invalidations, 2);
+});
 
 test('renderer CONTACT_RING agrees with the sim ring on every kind and on the boundary', () => {
   assert.equal(
