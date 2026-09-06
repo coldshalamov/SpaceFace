@@ -11909,7 +11909,7 @@
       "priority": 277,
       "title": "Ordinary-life rhythm",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-138.02"
       ],
@@ -11925,8 +11925,10 @@
         "npm run check:baseline",
         "npm run check:playable"
       ],
-      "receiptRefs": [],
-      "brief": "Routine traffic, inspections, cargo transfers, repair, waiting, a slow tug, visible at the shipping camera without HUD text; a 5-minute capture at the reference site shows all of them; activity telemetry shows the rhythm."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-143-01-REPORT.md"
+      ],
+      "brief": "IMPLEMENTED 2026-09-06: the tug is dispatched against a real body (zero ambient weight, like the salvor), tows the yard's own booked lot — an authored pod_cargo_container whose salvagePool is the booked manifest — through the combat attachment service under Rapier, and works the berth nearest the player so the tow is both visible and inside SG-02's reach. Both towable gates refuse world_site_* bodies and pinned mass. A five-minute HUD-hidden capture on the public Ceres route (seed 47, 98.8% realtime, 301 samples, 8 workers) shows all six quiet behaviours; scripts/capture-ordinary-life.mjs scores them and exits non-zero if one is missing. check:playable is red on that machine at a 29.1s boot against a 30s budget, not a broken game."
     },
     {
       "id": "PQ-143.02",
