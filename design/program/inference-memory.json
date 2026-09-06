@@ -728,6 +728,19 @@
       "integration": "live",
       "commit": "3edb0c2d",
       "verification": "focused_green"
+    },
+    {
+      "id": "resonance-obelisk-band-bleed",
+      "date": "2026-09-06",
+      "wf": "WF-10",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "the hidden Resonance Obelisk anomaly now has an audible payoff: a third live landmark carrier pulses its ident and authored lines on the band when the player flies its falloff",
+      "fingerprint": "verb=hear,subject=resonance_obelisk,sector=veil_nebula,layer=foreground,domain=wf-10",
+      "references": [],
+      "integration": "live",
+      "commit": "60f7cc2b",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
