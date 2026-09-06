@@ -166,8 +166,9 @@ at 11276 and was reduced by dropping bevels from the segmented strip runs and th
 which cost nothing at any real viewing distance. For family scale: `ore_barge` 7752, `repair_tender`
 5652. The tug is now the heaviest hull in the fleet by a small margin, which is the right order — it
 carries the most working plant (winch load path, push cradle, hip keels, deck fittings). Frozen
-contracts hold: 6 meshes, the same four canonical materials plus `HOOK_DRIVE_FAN`/`HOOK_DRIVE_CORE`
-at every LOD, sockets, asset/part ids and the root contract untouched.
+contracts hold at every LOD: the same 6 meshes — four merged by canonical material name plus
+`HOOK_DRIVE_FAN` and `HOOK_DRIVE_CORE` — carrying the same canonical five of §4, with `Material_Cyan`
+still confined to the drive-core hook. Sockets, asset/part ids and the root contract are untouched.
 
 **Controller review of this exact candidate, at the two documented source framings.** Verdict
 **keep**. Silhouette, construction and material zoning all read as manufactured hardware; in plan the
