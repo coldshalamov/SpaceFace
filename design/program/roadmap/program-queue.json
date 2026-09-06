@@ -5465,7 +5465,7 @@
       "parentId": "PQ-158",
       "priority": 55,
       "title": "Minimal action audio in the first playable",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "audio"
@@ -5479,8 +5479,10 @@
       "checks": [
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
-      "brief": "The nine sounds that establish response timing (attachment, loaded line, release, valid/invalid drilling, shield break, weapon vent, engine mode change, committed purchase, blocked production) with priority, concurrency limits and spatial relevance; synthetic or authored samples, no recorded actors. DONE WHEN: each event has a sound on the default route within 0.1 s of its receipt (tick-indexed test); one normal-speed capture with audio shows anticipation -> contact -> consequence -> recovery; reduced motion keeps every cue.",
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-158-06-REPORT.md"
+      ],
+      "brief": "DONE 2026-09-06: ten named action receipts request a voice on the same tick; reduced-motion keeps them; Helios fight tape 25.4s vp8+opus (telegraph → hit 18 → shield break → vent+boost). Latch/shield/vent/boost/buy were already live; taut line, messy release, flight drill, starved mill were the gaps. Default mute unchanged (PQ-158.00). DONE WHEN: each event has a sound on the default route within 0.1 s of its receipt (tick-indexed test); one normal-speed capture with audio shows anticipation -> contact -> consequence -> recovery; reduced motion keeps every cue.",
       "kind": "implementation"
     },
     {
@@ -5927,7 +5929,9 @@
       "priority": 70,
       "title": "Tumbling ships corkscrew their trail",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
+      "integratedCommit": "2b9812d3",
+      "acceptanceRef": "design/program/roadmap/receipts/PQ-139-04-REPORT.md",
       "dependsOn": [],
       "mutexes": [
         "impact-spectacle"
@@ -5940,7 +5944,9 @@
         "npm run check:baseline",
         "npm run check:vfx-techniques"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-139-04-REPORT.md"
+      ],
       "brief": "The plume/contrail reacts to angVel (helix with spin, brightness with thrust); frame-sleep counters stay 0 when idle."
     },
     {
