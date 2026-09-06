@@ -1,5 +1,19 @@
 # Agentic quality tools
 
+The canonical work queue and default route remain `node scripts/program-dispatch.mjs --next`.
+These tools advise on that existing queue; they do not admit a parallel backlog.
+
+Additional existing tools recovered from PR #108's index:
+
+- `inventory_plans.py --format table` locates and classifies planning artifacts for deduplication.
+- `runtime_log_analyzer.py runtime.log --pretty` reduces existing runtime incidents.
+- `compare_runs.py baseline.json candidate.json --format json` compares matched recorded runs.
+- `select_next_work.py --format prompt` selects one advisory Central Brain result.
+- `validate_control_plane.py` checks recovered control-plane files and routing.
+
+The architecture and plans are under [`docs/agentic-development/`](../../docs/agentic-development/),
+with their current canonical integration in [`CENTRAL_BRAIN.md`](../../design/program/CENTRAL_BRAIN.md).
+
 These tools support `design/program/CENTRAL_BRAIN.md`. They do not replace `program-dispatch`, the deterministic lab,
 the validation broker, `NOW.md`, or packet receipts.
 

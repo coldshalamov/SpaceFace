@@ -14,6 +14,22 @@ and [`ORPHAN_HARVEST_LEDGER.md`](./ORPHAN_HARVEST_LEDGER.md), not this table.
 
 ## Live shared-tree snapshot — 2026-08-09
 
+### Remote reconciliation — 2026-09-06
+
+At `b1033f01`, fetched `origin/master` and confirmed no missing upstream commits. The old PRs are
+reconciled into the existing program, not treated as new queues:
+
+- PR #106's 200 planning subjects all map to the expanded 1,000-task bank already integrated by
+  `eb640037`. `node scripts/jules-dispatch.mjs --validate` passes all 1,000 tasks. Closed the
+  superseded PR; its branch remains available as history.
+- PR #108's Central Brain selector rewrite was superseded by the integrated routing in `dc8beea6`:
+  `program-dispatch` remains the default and Central Brain is advisory. Retained that current
+  decision. Adopted the useful deletion of `.github/workflows/agentic-frontdoor-migration.yml`,
+  whose old marker patcher could rewrite the historical convergence branch, and indexed the
+  existing planning tools below their current README. The PR's old roadmap rewrites are not merged.
+
+The remaining table below is the historical August snapshot, not current ownership.
+
 At reconciliation, `master`, `HEAD`, and `origin/master` are
 `8b7b1d3b26181fdc38325a63f5e9d85574bf321b`; the index is empty and no `index.lock` exists. The
 latest disjoint commit updates the canonical graphics G0-2 result and remaining ROI work; it does not
