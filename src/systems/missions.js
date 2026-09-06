@@ -42,7 +42,7 @@
 //
 // DETERMINISM (§0.5): board offers + spawn rolls use mulberry32(hash32(seed, …)); never Math.random.
 import {
-  MISSION_TYPES, STORY_BEATS, OFFER_MIX, MISSION_TUNING,
+  MISSION_TYPES, STORY_BEATS, OFFER_MIX, MISSION_TUNING, ONE_LOAD_CARGO_TYPES,
   missionMinRepForRisk,
   STORY_BRANCH_INTROS,
   STORY_BRANCH_INTRO_MIN_REP,
@@ -159,7 +159,6 @@ const ALL_STATIONS = [...STATION_INFO.values()];
 const LEGAL_TRADE_CMDTYS = COMMODITIES.filter((c) => c.legality === 'legal').map((c) => c.id);
 const MINEABLE_CMDTYS = COMMODITIES.filter((c) => (c.producedBy || []).includes('mining')).map((c) => c.id);
 const CONTRABAND_CMDTYS = COMMODITIES.filter((c) => c.legality === 'contraband' || c.legality === 'restricted').map((c) => c.id);
-const ONE_LOAD_CARGO_TYPES = new Set(['cargo_delivery', 'salvage_retrieval', 'smuggling_run']);
 const MISSION_RECEIPT_LIMIT = 10;
 const BULK_HAUL_TYPE = 'bulk_haul';
 const BULK_HAUL_MIN_MASS_U = 25;

@@ -10,8 +10,8 @@ import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { addCargo } from '../src/systems/cargo.js';
 import { economy } from '../src/systems/economy.js';
-import { holdUnitSellPrice } from '../src/ui/screens/stationHub.js';
-import { serviceQuote } from '../src/ui/screens/services.js';
+import { holdUnitSellPrice } from '../src/ui/station/stationHubModel.js';
+import { serviceQuote } from '../src/ui/station/serviceQuotes.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const appPath = join(ROOT, 'src/ui/station/stationApp.js');

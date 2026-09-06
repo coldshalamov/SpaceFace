@@ -13,7 +13,7 @@ import {
 import { stationContacts } from '../src/systems/stationContacts.js';
 import { MAP_FOCUS, MAP_SCREEN_ID } from '../src/ui/mapAuthority.js';
 import { applyMapOpenIntentToView } from '../src/ui/galaxyMap.js';
-import { buildReply, openDossArchiveMap } from '../src/ui/screens/bar.js';
+import { buildReply, openDossArchiveMap } from '../src/ui/station/barContacts.js';
 
 const VESTA_DETAIL = Object.freeze({
   preserve: 'Seal left intact. The fixed cache remains in the ship chart for a later return.',

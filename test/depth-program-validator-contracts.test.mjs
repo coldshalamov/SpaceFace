@@ -213,7 +213,7 @@ test('all three validator CLIs reject deliberate temporary bad fixtures and leav
     const uniqueFixture = join(dir, 'bad-unique.json');
     writeFileSync(uniqueFixture, JSON.stringify({
       schemaVersion: 1,
-      channels: [{ id: 'bar', carrier: 'src/ui/screens/bar.js' }],
+      channels: [{ id: 'bar', carrier: 'src/ui/station/barContacts.js' }],
       wrecks: [{
         id: 'bad_wreck', programSlot: 'D1', status: 'reserved',
         uniqueDrops: [{ id: 'mod_shield_booster_s', kind: 'module', baseId: 'mod_shield_booster_s' }],

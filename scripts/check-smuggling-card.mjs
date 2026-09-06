@@ -18,7 +18,7 @@ import {
   missionPreflight,
   missionRiskRewardSummary,
 } from '../src/ui/missionPreflight.js';
-import { missionBoardReadiness } from '../src/ui/screens/stationHub.js';
+import { missionBoardReadiness } from '../src/ui/station/stationHubModel.js';
 import { activeMissionContractTerms } from '../src/ui/screens/missionLog.js';
 import { BRIBE_FRAC, customsDecision, holdRisk } from '../src/ui/customsPrompt.js';
 

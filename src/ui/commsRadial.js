@@ -20,7 +20,7 @@ import { isUiInteractionFenced, spatialFocusTarget } from './input.js';
 import { createMorphLabel } from './effects/morphLabel.js';
 import { factionIcon, icon as stationIcon } from './station/icons.js';
 import { FACTION_META } from '../data/factions.js';
-import { tierFor, factionStandingGuidance } from './screens/factions.js';
+import { tierFor, factionStandingGuidance } from './factionStanding.js';
 import { resolveEntity } from './entityResolver.js';
 
 const MODULE_BY_ID = new Map(MODULES.map((row) => [row.id, row]));

@@ -1,12 +1,10 @@
 // src/ui/station/stationScreen.js — screen-module adapter for the docked station.
 // Wraps the "Orbital Command" app (createStationApp) in the { id, mount, onShow, onHide, refresh }
 // contract uiRoot expects, injects the real serviceQuote for dock-action costs, and re-exports the
-// exit-gate hook (uiRoot calls mod.installStationExitGate for id==='station'). The legacy
-// stationHub.js stays on disk so its helper exports keep resolving for checks — it just no longer
-// registers as the station screen.
+// exit-gate hook (uiRoot calls mod.installStationExitGate for id==='station').
 import { createStationApp } from './stationApp.js';
-import { serviceQuote } from '../screens/services.js';
-export { installStationExitGate, commitStationUndock, setStationExitOwner } from '../screens/stationHub.js';
+import { serviceQuote } from './serviceQuotes.js';
+export { installStationExitGate, commitStationUndock, setStationExitOwner } from './stationHubModel.js';
 
 let app = null;
 

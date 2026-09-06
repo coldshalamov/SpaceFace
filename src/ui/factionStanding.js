@@ -1,13 +1,14 @@
+// Shared faction-standing tiers and player guidance.
+// DOM rendering belongs to src/ui/station/screens/factions.js.
+
 // src/ui/screens/factions.js — STATION "Factions" tab panel.
 // Read-only rep standings. Reputation is [-1000, +1000] with 9 tiers (ARCHITECTURE §0.9).
 // Reads state.factions[id].rep; the factions system is the sole writer (§0.6). Falls back to the
 // NEW_GAME starting reps and FACTION_META when state.factions hasn't been populated yet (stub).
-import { FACTION_META } from '../../data/factions.js';
-import { MISSION_STANDING_LADDER } from '../../data/missions.js';
-import { NEW_GAME } from '../../data/newGameDefaults.js';
-import { REP_REASON_LABELS } from '../../data/repReasons.js';
-import { shouldHideOwnRepDelta } from '../../story/endings/publicIdentity.js';
-import { escapeHtml } from '../comms.js';
+import { FACTION_META } from '../data/factions.js';
+import { MISSION_STANDING_LADDER } from '../data/missions.js';
+import { NEW_GAME } from '../data/newGameDefaults.js';
+import { REP_REASON_LABELS } from '../data/repReasons.js';
 
 // 9 tiers over -1000..1000. Thresholds are the lower bound of each tier.
 const TIERS = [
@@ -28,7 +29,7 @@ const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 
 export const FACTION_TIERS = TIERS;
 export const FACTION_AGGRO_THRESHOLD = AGGRO_THRESHOLD;
-export { REP_REASON_LABELS } from '../../data/repReasons.js';
+export { REP_REASON_LABELS } from '../data/repReasons.js';
 
 function safeRep(rep) {
   const n = Number(rep);
@@ -178,82 +179,4 @@ function standingEffect(rep, meta) {
   if (rep <= -400) return short + ' crews are looking for a reason to escalate.';
   if (rep < 0) return short + ' contacts are cold; small mistakes will travel.';
   return short + ' remains neutral; contracts and trade can still move the needle.';
-}
-
-export function createFactionsPanel(ctx) {
-  const root = document.createElement('div');
-  root.className = 'st-panel st-factions';
-  root.innerHTML = '<div class="st-sub-h">Faction Standings</div>' +
-    '<div class="st-fac-note mono">Reputation -1000 ... +1000 · aggro at -150 · 9 tiers</div>' +
-    '<div class="st-fac-list"></div>';
-  const list = root.querySelector('.st-fac-list');
-
-  function recordFor(fid) {
-    return ctx.state.factions && ctx.state.factions[fid] || null;
-  }
-
-  function repFor(fid) {
-    const f = recordFor(fid);
-    if (f && typeof f.rep === 'number') return f.rep;
-    // fallback to starting reps (factions system not yet populated)
-    if (NEW_GAME.factionRep && typeof NEW_GAME.factionRep[fid] === 'number') return NEW_GAME.factionRep[fid];
-    return 0;
-  }
-
-  function refresh() {
-    const frag = document.createDocumentFragment();
-    for (const meta of FACTION_META) {
-      const rec = recordFor(meta.id);
-      const rep = repFor(meta.id);
-      const tier = tierFor(rep);
-      const guidance = factionStandingGuidance(rep, meta, rec && rec.lastDelta, {
-        hideLastDelta: shouldHideOwnRepDelta(ctx.state),
-      });
-      const ladder = factionContractLadderRows(rep);
-      const fill = (rep + 1000) / 2000; // 0..1
-      const rel = relationSummary(meta);
-      const ladderHtml = ladder.map((row) =>
-        '<span class="st-fac-contract ' + (row.unlocked ? 'unlocked' : 'locked') + (row.aspirational ? ' aspirational' : '') + '"' +
-          ' title="' + escapeHtml(row.unlocks) + '">' +
-          '<b>' + escapeHtml(row.short) + '</b> ' + escapeHtml(row.name) +
-        '</span>'
-      ).join('');
-      const row = document.createElement('div');
-      row.className = 'st-fac-row';
-      row.innerHTML =
-        '<div class="st-fac-head">' +
-          '<span class="st-fac-dot" style="background:' + (meta.color || '#888') + '"></span>' +
-          '<span class="st-fac-name">' + escapeHtml(meta.name) + '</span>' +
-          '<span class="st-fac-tier st-fac-' + tier.cls + '">' + tier.name + '</span>' +
-          '<span class="st-fac-val mono">' + (rep > 0 ? '+' : '') + rep + '</span>' +
-        '</div>' +
-        '<div class="st-fac-bar"><div class="st-fac-bar-mid"></div>' +
-          '<div class="st-fac-bar-fill st-fac-' + tier.cls + '" style="transform:scaleX(' + fill.toFixed(3) + ')"></div>' +
-        '</div>' +
-        '<div class="st-fac-ctrl mono">Controls: ' + escapeHtml((meta.controls || []).join(' · ')) + '</div>' +
-        '<div class="st-fac-rel mono">Allies: ' + escapeHtml(rel.allies) + ' · Rivals: ' + escapeHtml(rel.rivals) + '</div>' +
-        '<div class="st-fac-effect">' + escapeHtml(standingEffect(rep, meta)) + '</div>' +
-        '<div class="st-fac-guidance" aria-label="' + escapeHtml(meta.name) + ' standing guidance">' +
-          '<span class="st-fac-guidance-label mono">Next</span><span>' + escapeHtml(guidance.next) + '</span>' +
-          '<span class="st-fac-guidance-label mono">Last</span><span>' + escapeHtml(guidance.last) + '</span>' +
-          '<span class="st-fac-guidance-label mono">Risk</span><span>' + escapeHtml(guidance.risk) + '</span>' +
-          '<span class="st-fac-guidance-label mono">Plan</span><span>' + escapeHtml(guidance.plan) + '</span>' +
-          '<span class="st-fac-guidance-label mono">Contracts</span><span>' + escapeHtml(factionContractLadderText(rep)) + '</span>' +
-        '</div>';
-      row.innerHTML +=
-        '<div class="st-fac-contracts" aria-label="' + escapeHtml(meta.name) + ' contract ladder">' +
-          ladderHtml +
-        '</div>';
-      frag.appendChild(row);
-    }
-    list.textContent = '';
-    list.appendChild(frag);
-  }
-
-  return {
-    el: root,
-    stationId: null,
-    onShow(c) { if (c && c.stationId) this.stationId = c.stationId; refresh(); },
-    refresh,
-  };
 }

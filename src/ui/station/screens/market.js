@@ -14,7 +14,7 @@ import { marketCardDrivers, marketQuoteValue, presentMarketDrivers } from '../..
 import { createVirtualList, rowFromHtml } from '../../virtualList.js';
 // Trade-route intel + course plotting reuse the canonical market logic (same waypoint/ui:setCourse
 // contract the legacy panel used) — never re-derive routes or nav here.
-import { computeBestTrades, applyTradeNavigation } from '../../screens/market.js';
+import { computeBestTrades, applyTradeNavigation } from '../../market/tradeLogic.js';
 
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const STATION_NAME = new Map();
@@ -515,7 +515,7 @@ export function createMarketScreen(ctx) {
       // Which set of commodities the rail is showing — as opposed to what those commodities cost.
       // A player action that changes the SET starts the rail at its left edge, exactly as the old
       // full rebuild did; a price tick keeps the player where they had scrolled to.
-      const structure = `${marketFilter} ${marketQuery} ${cargoOnly}`;
+      const structure = `${marketFilter}\0${marketQuery}\0${cargoOnly}`;
       restructured = structure !== listStructureKey;
       listStructureKey = structure;
 

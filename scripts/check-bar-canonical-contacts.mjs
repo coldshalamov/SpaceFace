@@ -3,9 +3,10 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { SECTORS } from '../src/data/sectors.js';
-import { barContactIntelTags } from '../src/ui/screens/bar.js';
+import { barContactIntelTags } from '../src/ui/station/barContacts.js';
 
-const source = readFileSync(new URL('../src/ui/screens/bar.js', import.meta.url), 'utf8');
+const contactSource = readFileSync(new URL('../src/ui/station/barContacts.js', import.meta.url), 'utf8');
+const stationBarSource = readFileSync(new URL('../src/ui/station/screens/bar.js', import.meta.url), 'utf8');
 const stationIds = new Set();
 for (const sector of SECTORS) {
   for (const station of sector.stations || []) {
@@ -25,33 +26,32 @@ const expected = [
 ];
 
 for (const entry of expected) {
-  assert.ok(source.includes(`key: '${entry.key}'`), `bar canonical contacts missing ${entry.key}`);
-  assert.ok(source.includes(entry.text), `bar canonical contact ${entry.key} missing expected authored text "${entry.text}"`);
+  assert.ok(contactSource.includes(`key: '${entry.key}'`), `bar canonical contacts missing ${entry.key}`);
+  assert.ok(contactSource.includes(entry.text), `bar canonical contact ${entry.key} missing expected authored text "${entry.text}"`);
   for (const stationId of entry.stations) {
     assert.ok(stationIds.has(stationId), `${entry.key} references missing station ${stationId}`);
-    assert.ok(source.includes(`'${stationId}'`), `${entry.key} is not wired to ${stationId}`);
+    assert.ok(contactSource.includes(`'${stationId}'`), `${entry.key} is not wired to ${stationId}`);
   }
 }
 
-assert.ok(source.includes('const canonical = canonicalContactForStation(stationId)'), 'bar contact generation must insert canonical contacts');
-assert.ok(source.includes('buildCanonicalReply(contact, choiceId, ctx, stationId)'), 'bar replies must dispatch to canonical contacts');
-assert.ok(source.includes('c.roleLabel || ROLE_LABELS[c.role]'), 'bar render must show canonical role labels');
-assert.ok(source.includes('function rewardCredits('), 'bar mission replies must share a reward formatter instead of ad hoc reward fields');
-assert.ok(!source.includes("|| '???'"), 'bar mission replies must not show ??? for unknown reward fields');
-assert.ok(source.includes('missionOfferAvailable(ctx, missionId)'), 'bar accept button must verify the offer is still available before/after the intent');
-assert.ok(source.includes('const accepted = wasAvailable && !missionOfferAvailable(ctx, missionId)'), 'bar accept button must only mark accepted after the mission system removes the offer');
-assert.ok(source.includes("import { missionPreflight } from '../missionPreflight.js'"), 'bar mission offers must use shared mission preflight');
-assert.ok(source.includes("import { missionConsequenceSummary } from '../missionPreflight.js'"), 'bar mission offers must use shared mission consequences');
-assert.ok(source.includes('st-bar-offer'), 'bar mission offers must render a readiness/action block');
-assert.ok(source.includes('st-bar-offer-consequences'), 'bar mission offers must render visible consequence stakes');
-assert.ok(source.includes('st-bar-offer-blocker'), 'bar mission offers must show visible readiness blockers');
-assert.ok(source.includes('ACCEPT + TRACK'), 'bar mission accept button must use the same tracking language as the board');
-assert.ok(source.includes('offer.requirementUnmet || offer.lockedReason || preflight.blocker'), 'bar offer buttons must respect shared readiness blockers');
-assert.ok(source.includes("acceptButton.setAttribute('aria-label', acceptButton.title)"), 'bar mission offer buttons must expose readiness titles to assistive tech');
-assert.ok(source.includes("acceptBtn.textContent = 'No Longer Available'"), 'stale bar mission offers must avoid generic unavailable copy');
-assert.ok(source.includes('export function barContactIntelTags'), 'bar contact intel tags must stay directly testable');
-assert.ok(source.includes('class="st-bar-intel"'), 'bar contact cards must render a visible intel strip before dialogue choices');
-assert.ok(source.includes('st-bar-intel-chip--'), 'bar contact intel tags must expose stable tone style hooks');
+assert.ok(contactSource.includes('const canonical = canonicalContactForStation(stationId)'), 'bar contact generation must insert canonical contacts');
+assert.ok(contactSource.includes('buildCanonicalReply(contact, choiceId, ctx, stationId)'), 'bar replies must dispatch to canonical contacts');
+assert.ok(stationBarSource.includes('createBarScreen(ctx)'), 'the shipped Station Bar must remain the live screen');
+assert.ok(stationBarSource.includes('barContactIntelTags'), 'the shipped Station Bar must render canonical contact intelligence');
+assert.ok(stationBarSource.includes('sx-bar-row__role'), 'the shipped Station Bar must show each contact role');
+assert.ok(contactSource.includes('function rewardCredits('), 'bar mission replies must share a reward formatter instead of ad hoc reward fields');
+assert.ok(!contactSource.includes("|| '???'"), 'bar mission replies must not show ??? for unknown reward fields');
+assert.ok(stationBarSource.includes('const wasAvailable = missionOfferAvailable(ctx.state || {}, missionId);'), 'live bar acceptance must verify the offer before its intent');
+assert.ok(stationBarSource.includes('if (wasAvailable && !missionOfferAvailable(ctx.state || {}, missionId))'), 'live bar acceptance must only mark accepted after the mission system removes the offer');
+assert.ok(stationBarSource.includes('missionPreflight'), 'the live Station Bar must use shared mission preflight');
+assert.ok(stationBarSource.includes('missionConsequenceSummary'), 'the live Station Bar must use shared mission consequences');
+assert.ok(stationBarSource.includes('sx-bar-offer'), 'the live Station Bar must render a mission readiness/action block');
+assert.ok(stationBarSource.includes('sx-bar-offer__stakes'), 'the live Station Bar must render visible consequence stakes');
+assert.ok(stationBarSource.includes('sx-bar-offer__blocker'), 'the live Station Bar must show visible readiness blockers');
+assert.ok(stationBarSource.includes('ACCEPT + TRACK'), 'the live Station Bar accept button must use the board tracking language');
+assert.ok(stationBarSource.includes('offer.requirementUnmet || offer.lockedReason || preflight.blocker'), 'live bar offers must respect shared readiness blockers');
+assert.ok(stationBarSource.includes("acceptedMissionId = missionId"), 'the live Station Bar must mark a mission accepted only after its intent resolves');
+assert.ok(contactSource.includes('export function barContactIntelTags'), 'bar contact intel tags must remain directly testable pure logic');
 
 const routeState = {
   economy: {

@@ -10,7 +10,7 @@ import {
   SHIP_LEDGER_EVIDENCE_SITE_ID,
   SHIP_LEDGER_EVIDENCE_MAX_REVISIONS,
 } from '../src/systems/shipLedger.js';
-import { createShipLedgerPanel } from '../src/ui/screens/shipLedger.js';
+import { createShipLedgerPanel } from '../src/ui/shipLedgerPanel.js';
 import {
   WRECK_CATHEDRAL_EVIDENCE_PAGE_IDS,
   WRECK_CATHEDRAL_EVIDENCE_CATALOG_REVISION,

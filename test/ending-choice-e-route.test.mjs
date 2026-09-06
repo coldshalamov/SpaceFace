@@ -6,7 +6,7 @@ import { createGameState } from '../src/core/gameState.js';
 import { ENDGAME_NET_WORTH_CR, ENDGAME_REP_MIN } from '../src/story/endings/endingDefs.js';
 import { isChoiceECourierReady } from '../src/story/endings/eligibility.js';
 import { story as storyPrototype } from '../src/systems/story.js';
-import { buildReply, generateContacts, getChoices } from '../src/ui/screens/bar.js';
+import { buildReply, generateContacts, getChoices } from '../src/ui/station/barContacts.js';
 
 const ASHCACHE = 'station_ashcache';
 

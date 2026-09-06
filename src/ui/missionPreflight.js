@@ -2,6 +2,7 @@ import { COMMODITIES } from '../data/commodities.js';
 import { FACTION_META } from '../data/factions.js';
 import {
   MISSION_TUNING,
+  ONE_LOAD_CARGO_TYPES,
   missionMinRepForRisk,
   missionStandingGateForMinRep,
   STORY_BRANCH_INTROS,
@@ -23,7 +24,6 @@ const STATION_SECTOR_BY_ID = new Map();
 for (const sector of SECTORS) {
   for (const station of sector.stations || []) STATION_SECTOR_BY_ID.set(station.id, sector.id);
 }
-const SINGLE_LOAD_CARGO_MISSIONS = new Set(['cargo_delivery', 'salvage_retrieval', 'smuggling_run']);
 const MARKET_STAGED_CARGO_MISSIONS = new Set(['cargo_delivery', 'bulk_trade', 'smuggling_run']);
 const ECONOMY_ROUTE_MISSIONS = new Set(['cargo_delivery', 'bulk_trade', 'smuggling_run', 'passenger_transport']);
 const DANGEROUS_MISSION_TYPES = new Set(['bounty_hunt', 'patrol_clear', 'escort', 'smuggling_run']);
@@ -671,15 +671,13 @@ export function missionPreflight(m, state) {
     const cap = Number.isFinite(cargo.capVolume) ? cargo.capVolume : 0;
     const used = Number.isFinite(cargo.usedVolume) ? cargo.usedVolume : 0;
     const free = Math.max(0, cap - used);
-    const oneLoad = SINGLE_LOAD_CARGO_MISSIONS.has(m && m.type);
+    const oneLoad = ONE_LOAD_CARGO_TYPES.has(m && m.type);
     if (oneLoad) {
-      if (cap < cargoNeed.volume) {
-        blockers.push(`Requires ${fmtHoldUnits(cargoNeed.volume)}u cargo capacity`);
-      } else if (free < cargoNeed.volume) {
-        warnings.push(`Only ${fmtHoldUnits(free)}u free now; clear space before carrying this cargo.`);
-      }
+      // The sim's _acceptPreflight rejects on free hold, before collateral/upfront charges. Keep
+      // this exact gate here so the dossier cannot expose an accept button the sim will refuse.
+      if (free < cargoNeed.volume) blockers.push(`Need ${fmtHoldUnits(cargoNeed.volume)}u cargo capacity for this contract`);
       chips.push({
-        kind: cap < cargoNeed.volume ? 'bad' : (free < cargoNeed.volume ? 'warn' : 'ok'),
+        kind: free < cargoNeed.volume ? 'bad' : 'ok',
         text: `${fmtHoldUnits(cargoNeed.volume)}u hold required`,
       });
     } else {

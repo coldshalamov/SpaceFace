@@ -57,7 +57,7 @@ test('the manifest pins the paths that can invalidate a route receipt', () => {
   // If any of these change, a previously accepted route receipt must not still count.
   for (const required of [
     'src/systems/shipLedger.js',
-    'src/ui/screens/shipLedger.js',
+    'src/ui/shipLedgerPanel.js',
     'src/ui/station/screens/ledger.js',
     'src/ui/screens/codex.js',
     'src/data/wreckCathedralEvidenceCatalog.js',

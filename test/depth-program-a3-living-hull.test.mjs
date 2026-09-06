@@ -19,7 +19,7 @@ import {
 } from '../src/core/livingHull.js';
 import { economy, SERVICE_PRICES } from '../src/systems/economy.js';
 import { ships } from '../src/systems/ships.js';
-import { serviceQuote } from '../src/ui/screens/services.js';
+import { serviceQuote } from '../src/ui/station/serviceQuotes.js';
 
 function reduceTimes(seed, count, reducer) {
   let value = seed;

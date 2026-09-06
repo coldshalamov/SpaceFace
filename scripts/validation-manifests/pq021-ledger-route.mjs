@@ -45,7 +45,7 @@ export function createPq021LedgerRouteManifest(overrides = {}) {
     productionSourcePaths: [
       'package.json',
       'src/systems/shipLedger.js',
-      'src/ui/screens/shipLedger.js',
+      'src/ui/shipLedgerPanel.js',
       'src/ui/station/screens/ledger.js',
       'src/ui/station/stationApp.js',
       'src/ui/screens/codex.js',

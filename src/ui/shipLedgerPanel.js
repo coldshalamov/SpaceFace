@@ -1,4 +1,4 @@
-// A2 dock-screen surface for the Ship's Ledger. It mounts as a sibling panel (the station app and
+// Shared Ship Ledger panel for Station and Codex hosts. It mounts as a sibling panel (the station app and
 // the Codex "Ledger" tab both mount this same factory) and renders exactly one bounded archive page
 // at a time. Source state is never written; only this panel's local page cursor moves.
 //
@@ -9,7 +9,7 @@
 import {
   buildShipLedger,
   SHIP_LEDGER_PAGE_SIZE,
-} from '../../systems/shipLedger.js';
+} from '../systems/shipLedger.js';
 
 export function shipLedgerEntryAriaLabel(entry) {
   if (!entry) return 'Empty ship ledger entry';

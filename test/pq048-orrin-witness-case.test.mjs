@@ -13,7 +13,7 @@ import { stationContacts } from '../src/systems/stationContacts.js';
 import { story } from '../src/systems/story.js';
 import { world } from '../src/systems/world.js';
 import { applyMapOpenIntentToView, buildSystemModel } from '../src/ui/galaxyMap.js';
-import { emitBarContactChoice } from '../src/ui/screens/bar.js';
+import { emitBarContactChoice } from '../src/ui/station/barContacts.js';
 
 const H5 = ORRIN_WITNESS_SOURCE_SHAPE_ID;
 

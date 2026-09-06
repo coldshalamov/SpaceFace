@@ -38,7 +38,7 @@ const MEDIA_PREFIX = 'assets/ships/release/media/wreck-cathedral/';
 // The panel is authored for a bounded evidence figure, not a full-bleed hero. An image wider than
 // this in the mounted host means no crop is being applied at all.
 const MAX_FIGURE_WIDTH_PX = 900;
-// The panel's authored figure cap (src/ui/screens/shipLedger.js). The station host column is made wider
+// The panel's authored figure cap (src/ui/shipLedgerPanel.js). The station host column is made wider
 // than this on purpose so the cap is what bounds the figure, not the container.
 const FIGURE_CAP_PX = 720;
 
@@ -168,7 +168,7 @@ try {
   // ---- 2. Mount both hosts from the real modules. ----------------------------------------------
   const mountReport = await page.evaluate(async ({ record, siteId }) => {
     const [panelMod, stationMod] = await Promise.all([
-      import('/src/ui/screens/shipLedger.js'),
+      import('/src/ui/shipLedgerPanel.js'),
       import('/src/ui/station/screens/ledger.js'),
     ]);
     const busEmits = [];

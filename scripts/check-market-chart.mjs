@@ -16,7 +16,7 @@ import { cycleFactorAt, maybeAdvanceRegime, predictPriceCurve, rawCycleFactorAt,
 import { initPriceHistory, getPriceHistory, loadHistory } from '../src/ui/priceHistory.js';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
-const MARKET_SOURCE = readFileSync(join(ROOT, 'src/ui/screens/market.js'), 'utf8');
+const MARKET_SOURCE = readFileSync(join(ROOT, 'src/ui/market/tradeLogic.js'), 'utf8');
 const STATION_MARKET_SOURCE = readFileSync(join(ROOT, 'src/ui/station/screens/market.js'), 'utf8');
 const STATION_APP_SOURCE = readFileSync(join(ROOT, 'src/ui/station/stationApp.js'), 'utf8');
 
@@ -91,37 +91,23 @@ function testRealEconomyHistoryAndForecast() {
 }
 
 function testMarketScreenChartSourceContract() {
+  // Visible chart checks belong to the shipped Station Market. Trade-route helpers live in
+  // market/tradeLogic and intentionally contain no DOM/chart implementation.
   const checks = [
-    [/import \{ getPriceHistory \} from '\.\.\/priceHistory\.js';/, 'imports real price history'],
-    [/import \{ drawSparkline \} from '\.\.\/sparkline\.js';/, 'imports row sparkline renderer'],
-    [/import \{ getCycle \} from '\.\.\/\.\.\/systems\/economy\.js';/, 'imports live economy cycle wrapper'],
-    [/import \{ predictPriceCurve, regimeLabel \} from '\.\.\/\.\.\/systems\/economyCycles\.js';/, 'imports forecast cycle helpers'],
-    [/chartModal\.id = 'market-chart-modal';/, 'creates the chart modal by id'],
-    [/class="st-expanded-chart"/, 'modal owns an expanded chart canvas'],
-    [/class="st-chart-tooltip"/, 'modal owns an interactive chart tooltip'],
-    [/class="st-modal-event-log"/, 'modal owns an economic event log'],
-    [/if \(!btn\) \{\s*openChartModal\(cmdtyId\);\s*return;\s*\}/s, 'clicking a commodity card opens the chart'],
-    [/chartModal\.querySelector\('\.st-modal-title'\)\.textContent = def\.name \+ ' Historical Pricing & Forecast';/, 'chart names history plus forecast'],
-    [/const cycle = getCycle\(stationId, cmdtyId\);/, 'chart reads the live cycle regime'],
-    [/regimeLabel\(cycle\.regime\)/, 'chart renders a human regime label'],
-    [/const pred = predictPriceCurve\(state, stationId, cmdtyId, 24, 5\);/, 'chart renders the shipped 24x5s forecast window'],
-    [/const hist = getPriceHistory\(stationId, cmdtyId\);/, 'chart uses recorded history'],
-    [/if \(change > 0\.04\).*Rising/s, 'chart labels material rising forecasts only'],
-    [/else if \(change < -0\.04\).*Falling/s, 'chart labels material falling forecasts only'],
-    [/activeEvents\.filter\(e => e\.stationId === stationId && \(e\.commodityId === '\*' \|\| e\.commodityId === cmdtyId\)\)/, 'event log filters to matching station and commodity'],
-    [/drawExpandedChart\(canvas, hist, pred, def\.basePrice\);/, 'chart draws history plus forecast against base price'],
-    [/setupChartTooltip\(canvas, hist, pred, def\.basePrice\);/, 'chart wires interactive tooltips to the same data'],
-    [/drawSparkline\(spark, history, \{ upColor: '#f2a83b', downColor: '#8fb0c0' \}\);/, 'commodity rows use the same price history'],
-    [/ctx\.fillText\('BASE', W - padRight, basePriceY - 8\);/, 'expanded chart labels the base-price baseline'],
-    [/Future price prediction line[\s\S]*ctx\.setLineDash\(\[4, 4\]\);/, 'forecast line is visually distinct from observed history'],
+    [/export function createMarketScreen\(ctx\)/, 'exports the shipped Station Market screen'],
+    [/entry && Array\.isArray\(entry\.history\)/, 'reads economy-owned listing history'],
+    [/function buildChart\(hist, avg, gradientId, label\)/, 'builds the selected commodity chart'],
+    [/linearGradient id="\$\{gradientId\}"/, 'gives each chart a distinct gradient id'],
+    [/class="sx-mkt-brush"/, 'renders the visible compare-interval brush'],
+    [/createVirtualList\(\{[\s\S]*selectionFollowsFocus: true/, 'keeps the commodity rail keyboard-selectable'],
+    [/const go = ev\.target\.closest\('\[data-go\]'\);/, 'keeps the visible buy/sell control wired'],
   ];
   for (const [pattern, label] of checks) {
-    if (!pattern.test(MARKET_SOURCE)) {
-      throw new Error(`market chart source contract failed: ${label}`);
+    if (!pattern.test(STATION_MARKET_SOURCE)) {
+      throw new Error(`station market chart source contract failed: ${label}`);
     }
   }
 }
-
 function testSeededStationMarketHistory() {
   const { state, bus, econ, stationId } = bootEconomyChartFixture();
   const market = state.economy.markets[stationId];

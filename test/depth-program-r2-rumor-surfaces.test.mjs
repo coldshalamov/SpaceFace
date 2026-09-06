@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 
 import { createGameState } from '../src/core/gameState.js';
 import { FLAVOR_SOURCE_BY_REF } from '../src/data/flavor/index.generated.js';
-import { buildReply, generateContacts } from '../src/ui/screens/bar.js';
+import { buildReply, generateContacts } from '../src/ui/station/barContacts.js';
 import { uniqueWreckBarRumor } from '../src/ui/uniqueWreckRumorSurface.js';
 
 const BAR_CASES = Object.freeze([
@@ -72,8 +72,8 @@ test('Sker canonical barkeep yields once to the authored wreck lead, then resume
 });
 
 test('the live Bar bridge emits the durable rumor receipt only after a returned rumor', () => {
-  const source = readFileSync(new URL('../src/ui/screens/bar.js', import.meta.url), 'utf8');
-  assert.match(source, /const result = buildReply[\s\S]*if \(result\.uniqueWreckRumor\)[\s\S]*emit\('uniqueWreck:rumorHeard', result\.uniqueWreckRumor\)/);
+  const source = readFileSync(new URL('../src/ui/station/screens/bar.js', import.meta.url), 'utf8');
+  assert.match(source, /let result = null;[\s\S]*result = buildReply[\s\S]*if \(result && result\.uniqueWreckRumor && ctx\.bus\) ctx\.bus\.emit\('uniqueWreck:rumorHeard', result\.uniqueWreckRumor\)/);
 });
 
 test('a settled unique-wreck receipt cannot leave its obsolete choice buttons visible', () => {

@@ -99,7 +99,7 @@ const uiInput = read('src/ui/input.js');
 const uiRoot = read('src/ui/uiRoot.js');
 const pause = read('src/ui/screens/pause.js');
 const missionLog = read('src/ui/screens/missionLog.js');
-const stationHub = read('src/ui/screens/stationHub.js');
+const stationHub = read('src/ui/station/stationApp.js') + read('src/ui/station/screens/contracts.js');
 const galaxyMap = read('src/ui/galaxyMap.js');
 const world = read('src/systems/world.js');
 const pkg = JSON.parse(read('package.json'));
@@ -167,8 +167,7 @@ const openersCanonical =
   /openGalaxyMap/.test(uiInput)
   && /openGalaxyMap/.test(missionLog)
   && /openGalaxyMap/.test(stationHub)
-  && /openGalaxyMap/.test(pause)
-  && /isMapScreenId/.test(uiRoot)
+  && /openGalaxyMap/.test(pause)  && /isMapScreenId/.test(uiRoot)
   && /openGalaxyMap/.test(uiRoot)
   && !pauseDual
   && !inputDual

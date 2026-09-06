@@ -1,20 +1,23 @@
-// Guards the Station Hub departure readiness strip.
-// The strip is non-blocking UI, but it must keep reading live mission/cargo/fuel/hull state.
+// Guards the live station departure readiness contract.
+// The Undock tile is non-blocking UI, but it must keep reading live mission/cargo/fuel/hull state.
 //
-// Primary coverage instantiates stationHub with a stub bus, emits each named data event, and
-// asserts _refreshDeparture actually changes Undock readiness. Source-matching is secondary
-// and runs on comment-stripped source so a block-commented bus.on cannot satisfy it.
+// Coverage: the pure departure model computes the READY/CHECK/RISK summary and chips from live
+// sim state (behavior), and the live "Orbital Command" shell (src/ui/station/stationApp.js)
+// paints that summary onto the Undock control, opens the Departure Check for a non-ready launch,
+// and keeps undock reachable ("Launch Anyway") — committed through the canonical bus event.
+// Source-matching runs on comment-stripped source so a block-commented read cannot satisfy it.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-import { createBus } from '../src/core/eventBus.js';
 import {
+  departureReadinessChips,
   departureReadinessSummary,
-  stationHub,
-} from '../src/ui/screens/stationHub.js';
+} from '../src/ui/station/stationDepartureModel.js';
 
-const source = readFileSync(new URL('../src/ui/screens/stationHub.js', import.meta.url), 'utf8');
-const servicesSource = readFileSync(new URL('../src/ui/screens/services.js', import.meta.url), 'utf8');
+const ROOT = new URL('.', import.meta.url);
+const appSource = readFileSync(new URL('../src/ui/station/stationApp.js', import.meta.url), 'utf8');
+const uiRootSource = readFileSync(new URL('../src/ui/uiRoot.js', import.meta.url), 'utf8');
+const modelSource = readFileSync(new URL('../src/ui/station/stationDepartureModel.js', import.meta.url), 'utf8');
 
 function stripJsComments(src) {
   return src
@@ -22,27 +25,16 @@ function stripJsComments(src) {
     .replace(/(^|[^:])\/\/[^\n]*/g, '$1');
 }
 
-const stripped = stripJsComments(source);
-const servicesStripped = stripJsComments(servicesSource);
-
-const DEPARTURE_EVENTS = [
-  'cargo:changed',
-  'credits:changed',
-  'ship:statsChanged',
-  'fuel:changed',
-  'mission:updated',
-  'mission:accepted',
-  'mission:completed',
-  'mission:failed',
-  'mission:expired',
-  'nav:waypoint',
-];
+const app = stripJsComments(appSource);
+const model = stripJsComments(modelSource);
 
 assert.equal(typeof departureReadinessSummary, 'function',
-  'station hub must export its pure departure summary contract for behavioral verification');
+  'station departure model must export its pure summary contract for behavioral verification');
+assert.equal(typeof departureReadinessChips, 'function',
+  'station departure model must export its pure chip projection for behavioral verification');
 
-const summarizeDeparture = departureReadinessSummary;
-const readySummary = summarizeDeparture([
+// ── 1) Summary contract: exact visual label + semantic Undock name ──────────
+const readySummary = departureReadinessSummary([
   { kind: 'ok', label: 'Track', text: 'Contract plotted' },
   { kind: 'ok', label: 'Hold', text: '12u free' },
   { kind: 'ok', label: 'Fuel', text: '100%' },
@@ -56,7 +48,7 @@ assert.deepEqual(readySummary, {
   accessibleLabel: 'Undock. Departure Check: READY. Tracked work, cargo, fuel, and hull look serviceable.',
 }, 'READY departure summary must preserve the visual label and expose a semantic Undock name with readiness detail');
 
-const checkSummary = summarizeDeparture([
+const checkSummary = departureReadinessSummary([
   { kind: 'warn', label: 'Fuel', text: '32%' },
 ]);
 assert.equal(checkSummary.label, '⏏ UNDOCK · CHECK', 'CHECK must retain the exact visual Undock label');
@@ -65,7 +57,7 @@ assert.equal(checkSummary.accessibleLabel, `Undock. ${checkSummary.title}`,
 assert.match(checkSummary.accessibleLabel, /^Undock\. Departure Check: CHECK\. Fuel: 32%\./,
   'CHECK accessible name must expose its current readiness detail');
 
-const riskSummary = summarizeDeparture([
+const riskSummary = departureReadinessSummary([
   { kind: 'bad', label: 'Hull', text: '12%' },
 ]);
 assert.equal(riskSummary.label, '⏏ UNDOCK · RISK', 'RISK must retain the exact visual Undock label');
@@ -73,19 +65,16 @@ assert.equal(riskSummary.accessibleLabel, `Undock. ${riskSummary.title}`,
   'RISK accessible name must begin with Undock and include the live risk explanation');
 assert.match(riskSummary.accessibleLabel, /^Undock\. Departure Check: RISK\. Hull: 12%\./,
   'RISK accessible name must expose its current readiness detail');
+console.log('ok    summary: READY/CHECK/RISK keep exact Undock label + accessible explanation');
 
-function makePlayer(hull = 100, hullMax = 100) {
-  return { hull, hullMax };
-}
-
+// ── 2) Chips read live state: dropping fuel flips the same docked state to RISK ──
 function readyState() {
-  const player = makePlayer(100, 100);
+  const player = { hull: 100, hullMax: 100 };
   return {
     ui: {
-      screenStack: ['station'],
       docked: true,
+      dockedStationId: 'station_helios',
       trackedMissionId: 'mission_ready',
-      activeStationTab: 'market',
     },
     missions: {
       active: [{ id: 'mission_ready', status: 'active', title: 'Helios Run', type: 'cargo_delivery' }],
@@ -101,171 +90,87 @@ function readyState() {
   };
 }
 
-function makeUndockBtn() {
-  const attrs = Object.create(null);
-  return {
-    textContent: '',
-    title: '',
-    setAttribute(name, value) { attrs[name] = String(value); },
-    getAttribute(name) { return Object.prototype.hasOwnProperty.call(attrs, name) ? attrs[name] : null; },
-  };
+{
+  const before = departureReadinessSummary(departureReadinessChips(readyState()));
+  assert.equal(before.state, 'ready', 'fixture must read READY from live tracked+supplied state');
+
+  const risky = readyState();
+  risky.fuel.current = 10;
+  const after = departureReadinessSummary(departureReadinessChips(risky));
+  assert.notEqual(after.state, before.state,
+    'live fuel dropping below the bad threshold must flip departure readiness');
+  assert.equal(after.state, 'risk', 'fuel at 10% must paint RISK before undock');
+  assert.match(after.title, /Fuel: 10%/, 'the risk explanation must name the failing surface');
+  console.log(`ok    live state: departure readiness flips ${before.state} → ${after.state} when fuel drops`);
 }
 
-function installDepartureUnit(state, bus) {
-  const undockBtn = makeUndockBtn();
-  const footerStyle = { _props: Object.create(null), setProperty(k, v) { this._props[k] = String(v); } };
-  stationHub._ctx = { state, bus };
-  stationHub._el = { id: 'station-stub' };
-  stationHub._panels = {};
-  stationHub._departureEl = { innerHTML: '' };
-  stationHub._undockBtn = undockBtn;
-  stationHub._footerEl = {
-    style: footerStyle,
-    setAttribute() {},
-    getAttribute() { return null; },
-  };
-  stationHub._handoffEl = null;
-  stationHub._missionEls = null;
-  stationHub._rail = null;
-  stationHub._nodesPane = null;
-  stationHub._econBadge = null;
-  stationHub._vitalEls = null;
-  stationHub._subbed = false;
-  stationHub._subscribe();
-  return undockBtn;
-}
-
-const bus = createBus();
-const state = readyState();
-const undockBtn = installDepartureUnit(state, bus);
-
-let refreshCalls = 0;
-const originalRefresh = stationHub._refreshDeparture.bind(stationHub);
-stationHub._refreshDeparture = function wrappedRefreshDeparture() {
-  refreshCalls += 1;
-  return originalRefresh();
-};
-
-function paintReady() {
-  const next = readyState();
-  state.ui.trackedMissionId = next.ui.trackedMissionId;
-  state.ui.screenStack = next.ui.screenStack;
-  state.missions.active = next.missions.active;
-  state.player.cargo = next.player.cargo;
-  state.fuel.current = next.fuel.current;
-  state.fuel.max = next.fuel.max;
-  const ship = state.entities.get('player');
-  ship.hull = 100;
-  ship.hullMax = 100;
-  state.nav.waypoint = next.nav.waypoint;
-  refreshCalls = 0;
-  stationHub._refreshDeparture();
-  assert.equal(undockBtn.getAttribute('data-readiness'), 'ready', 'fixture must start from READY departure state');
-}
-
-function makeRisky() {
-  state.fuel.current = 10;
-  state.fuel.max = 100;
-}
-
-for (const eventName of DEPARTURE_EVENTS) {
-  paintReady();
-  const before = undockBtn.getAttribute('data-readiness');
-  const callsBefore = refreshCalls;
-  makeRisky();
-  bus.emit(eventName, eventName.startsWith('mission:') ? { missionId: 'mission_ready' } : {});
-  const after = undockBtn.getAttribute('data-readiness');
-  assert.ok(
-    refreshCalls > callsBefore,
-    `${eventName} must call _refreshDeparture (got ${refreshCalls - callsBefore} calls)`,
-  );
-  assert.notEqual(
-    after,
-    before,
-    `${eventName} must refresh live departure readiness (stayed ${before} after fuel dropped to 10%)`,
-  );
-  assert.equal(
-    after,
-    'risk',
-    `${eventName} must paint RISK after live fuel drops below the bad threshold (got ${after})`,
-  );
-  console.log(`ok    ${eventName} refreshes departure readiness (${before} → ${after})`);
-}
-
-// Secondary: comment-stripped source still names the live chips, Undock contract, and bus.on lines.
-assert.match(stripped, /function departureReadinessChips\(state\)/,
-  'station hub must compute departure readiness chips from live state');
-assert.match(stripped, /function departureReadinessSummary\(chips\)/,
-  'station hub must summarize departure readiness on the Undock command');
-assert.match(stripped, /label: '⏏ UNDOCK · ' \+ status/,
-  'Undock button must show READY, CHECK, or RISK from live departure readiness');
-assert.match(stripped, /Undock remains available/,
-  'departure summary must explain that readiness warnings do not hard-block undock');
-assert.match(stripped, /departureMissionChip\(state\)/, 'departure readiness must include tracked mission/nav state');
-assert.match(stripped, /function departureTradeWaypointChip\(state, waypoint\)/,
-  'departure readiness must summarize trade route waypoints');
-assert.match(stripped, /trackedMissionId/, 'departure readiness must read trackedMissionId');
-assert.match(stripped, /activeJobs\.length > 0/,
-  'departure readiness must distinguish active-but-untracked missions from having no job');
-assert.match(stripped, /1 untracked job/,
-  'departure readiness must tell players when an active mission still needs tracking');
-assert.match(stripped, /Open Mission Log to track the active job/,
-  'untracked mission readiness must route players to the Mission Log with a clear action');
-assert.match(stripped, /state && state\.nav && state\.nav\.waypoint/, 'departure readiness must fall back to nav waypoint');
-assert.match(stripped, /waypoint\.kind !== 'trade'/, 'departure readiness must identify trade waypoints');
-assert.match(stripped, /commodityId/, 'departure trade route readiness must read waypoint commodity ids');
-assert.match(stripped, /targetTab: 'market'/, 'trade and hold readiness chips must route to Market');
-assert.match(stripped, /targetScreen: 'missionLog'/, 'tracked objective readiness chips must route to Mission Log');
-assert.match(stripped, /Open Missions to accept and track a job/,
-  'empty mission readiness must still route players to the station contract board');
-assert.match(stripped, /targetTab: 'missions'/, 'contract-board readiness chips must route to Missions');
-assert.match(stripped, /targetTab: 'services'/, 'fuel and hull readiness chips must route to Services');
-assert.match(stripped, /actionLabel:/, 'actionable departure chips must expose clear accessible action labels');
-assert.match(stripped, /departureCargoChip\(state\)/, 'departure readiness must include cargo hold free space');
-assert.match(stripped, /capVolume/, 'departure readiness must read cargo capVolume');
-assert.match(stripped, /departureFuelChip\(state\)/, 'departure readiness must include fuel state');
-assert.match(stripped, /state && state\.fuel/, 'departure readiness must read state.fuel');
-assert.match(stripped, /departureHullChip\(state\)/, 'departure readiness must include hull state');
-assert.match(stripped, /state\.entities\.get\(state\.playerId\)/, 'departure readiness must read the live player entity');
-assert.match(stripped, /<div class="st-departure-label mono">Departure Check<\/div>/,
-  'station hub must render a visible Departure Check strip');
-assert.match(stripped, /this\._undockBtn\.setAttribute\('data-readiness', summary\.state\)/,
+// ── 3) The live shell paints the summary and keeps undock reachable ──────────
+assert.match(app, /chips = departureReadinessChips\(s\)/,
+  'the docked shell must compute departure chips from live state');
+assert.match(app, /sum = departureReadinessSummary\(chips\)/,
+  'the docked shell must summarize departure readiness for the Undock command');
+assert.match(app, /launchEl\.setAttribute\('data-state', depState\)/,
   'Undock command must expose its readiness state for styling and inspection');
-assert.match(stripped, /this\._undockBtn\.setAttribute\('aria-label', summary\.accessibleLabel\)/,
+assert.match(app, /launchEl\.setAttribute\('aria-label', `Undock\. \$\{dep\.title\}`\)/,
   'Undock command must consume the behaviorally verified accessible departure label');
-assert.match(stripped, /\.st-undock\[data-readiness="risk"\]/,
-  'Undock command must visually distinguish risky departure state');
-assert.match(stripped, /data-departure-tab/, 'station hub must render actionable departure readiness chips');
-assert.match(stripped, /data-departure-screen/, 'station hub must render actionable departure chips for non-station screens');
-assert.match(stripped, /departureChipHtml\(chip\)/, 'departure chip rendering must preserve action metadata');
-assert.match(stripped, /this\.setTab\(tabId, \{ focusRail: true \}\)/,
-  'departure chip actions must use the same tab activation path as the rail');
-assert.match(stripped, /pushDepartureScreen\(ctx, screenId\)/,
-  'departure screen chip actions must use the shared screen manager path');
-assert.match(stripped, /st-departure-chip--warn/, 'departure readiness must style warning chips');
-assert.match(stripped, /st-departure-chip--bad/, 'departure readiness must style bad chips');
-assert.match(stripped, /button\.st-departure-chip:focus-visible/,
-  'actionable departure chips must keep keyboard focus visible');
-assert.match(stripped, /function stationRecordId\(stn\)/,
-  'station hub must resolve live active-sector station records through stationId, not only entity id');
-assert.match(stripped, /stationRecordId\(x\) === sid/,
-  'station hub active-sector lookup must match authored station ids carried on live records');
-assert.match(stripped, /Object\.values\(sectors\)/,
-  'station hub must prefer the runtime sector catalog before falling back to static data');
-assert.match(stripped, /stationDefFrom\(catalogRecord \|\| activeRecord, liveStationEntity\(state, sid\), sid\)/,
-  'station hub must merge live entity station data when catalog records are thin');
-assert.match(servicesStripped, /function stationRecordId\(station\)/,
-  'services panel must share stationId-aware live station resolution');
-assert.match(servicesStripped, /stationRecordId\(x\) === sid/,
-  'services panel active-sector lookup must match stationId records');
-assert.match(servicesStripped, /liveStationData\(s, sid\)/,
-  'services panel must fall back to live station services when runtime catalogs are thin');
+assert.match(app, /if \(dep\.state !== 'ready'\) \{ openDeparturePop\(\); return false; \}/,
+  'launching while not ready must open the Departure Check instead of stranding the player');
+assert.match(app, /data-pop-launch/,
+  'the Departure Check must keep a visible Launch Anyway control');
+assert.match(app, /if \(ev\.target\.closest\('\[data-pop-launch\]'\)\) \{ closePop\(\); commitUndock\(\); \}/,
+  'Launch Anyway must commit the canonical undock');
+assert.match(app, /function commitUndock\(\) \{\s*if \(ctx && ctx\.bus\) ctx\.bus\.emit\('dock:undocked', \{ committed: true, intent: 'explicit', source: 'sx-dock' \}\);\s*\}/,
+  'committed departure emits the single canonical dock:undocked');
+console.log('ok    live shell: Undock reads live readiness, Departure Check + Launch Anyway reachable');
 
-for (const eventName of DEPARTURE_EVENTS) {
-  assert(stripped.includes(`bus.on('${eventName}'`), `departure readiness must subscribe to ${eventName}`);
-}
+// ── 4) Readiness stays live: refresh re-renders the tile from current state ──
+assert.match(uiRootSource, /def\.refresh\(this\.ctx, \{ periodic: true \}\)/,
+  'the UI heartbeat must re-refresh modal screens so the Undock tile stays current');
+assert.match(app, /function refresh\(_nextCtx, options = \{\}\) \{\s*renderStatus\(\);/,
+  'every shell refresh must repaint status (vitals + Undock readiness) from live state');
+console.log('ok    liveness: shell refresh repaints Undock readiness from live state each heartbeat');
 
-assert.match(stripped, /const refreshDeparture = \(\) => \{ if \(this\._visible\(\)\) this\._refreshDeparture\(\); \};/,
-  'station hub must only refresh departure readiness while visible');
+// ── 5) Chip projection keeps routing players to real destinations ────────────
+assert.match(model, /function departureReadinessChips\(state\)/,
+  'departure readiness must compute chips from live state');
+assert.match(model, /departureMissionChip\(state\)/, 'departure readiness must include tracked mission/nav state');
+assert.match(model, /function departureTradeWaypointChip\(state, waypoint\)/,
+  'departure readiness must summarize trade route waypoints');
+assert.match(model, /trackedMissionId/, 'departure readiness must read trackedMissionId');
+assert.match(model, /activeJobs\.length > 0/,
+  'departure readiness must distinguish active-but-untracked missions from having no job');
+assert.match(model, /1 untracked job/,
+  'departure readiness must tell players when an active mission still needs tracking');
+assert.match(model, /Open Mission Log to track the active job/,
+  'untracked mission readiness must route players to the Mission Log with a clear action');
+assert.match(model, /state && state\.nav && state\.nav\.waypoint/, 'departure readiness must fall back to nav waypoint');
+assert.match(model, /waypoint\.kind !== 'trade'/, 'departure readiness must identify trade waypoints');
+assert.match(model, /commodityId/, 'departure trade route readiness must read waypoint commodity ids');
+assert.match(model, /targetTab: 'market'/, 'trade and hold readiness chips must route to Market');
+assert.match(model, /targetScreen: 'missionLog'/, 'tracked objective readiness chips must route to Mission Log');
+assert.match(model, /Open Missions to accept and track a job/,
+  'empty mission readiness must still route players to the station contract board');
+assert.match(model, /targetTab: 'missions'/, 'contract-board readiness chips must route to Missions');
+assert.match(model, /targetTab: 'services'/, 'fuel and hull readiness chips must route to Services');
+assert.match(model, /actionLabel:/, 'actionable departure chips must expose clear accessible action labels');
+assert.match(model, /departureCargoChip\(state\)/, 'departure readiness must include cargo hold free space');
+assert.match(model, /capVolume/, 'departure readiness must read cargo capVolume');
+assert.match(model, /departureFuelChip\(state\)/, 'departure readiness must include fuel state');
+assert.match(model, /state && state\.fuel/, 'departure readiness must read state.fuel');
+assert.match(model, /departureHullChip\(state\)/, 'departure readiness must include hull state');
+assert.match(model, /state\.entities\.get\(state\.playerId\)/, 'departure readiness must read the live player entity');
+assert.match(model, /Undock remains available/,
+  'departure summary must explain that readiness warnings do not hard-block undock');
+console.log('ok    chips: track/trade-route/hold/fuel/hull projections keep destination routing');
+
+// ── 6) Live station services resolve from the docked station record ────────
+assert.match(app, /function resolveStation\(ctx\)/,
+  'the live station shell must resolve the docked station before rendering vitals');
+assert.match(app, /const id = ctx && ctx\.state && ctx\.state\.ui && ctx\.state\.ui\.dockedStationId/,
+  'the live station shell must read the authoritative docked station id');
+assert.match(app, /const rec = id && STATION_REC\.get\(id\)/,
+  'the live station shell must resolve services from the docked station record');
+assert.match(app, /services: Array\.isArray\(s\.services\) \? s\.services\.slice\(\) : \[\]/,
+  'the live station shell must carry the station service list into its vital controls');
 
 console.log('Station departure readiness OK - tracked objective, trade route, hold, fuel, and hull are visible before undock.');

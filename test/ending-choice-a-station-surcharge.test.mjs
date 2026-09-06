@@ -3,7 +3,7 @@ import test from 'node:test';
 
 import { economy } from '../src/systems/economy.js';
 import { priceModForState } from '../src/systems/factions.js';
-import { stationSurchargeWaiverLabel, unitPrice } from '../src/ui/screens/market.js';
+import { stationSurchargeWaiverLabel, unitPrice } from '../src/ui/market/tradeLogic.js';
 
 function makeBus() {
   const handlers = new Map();

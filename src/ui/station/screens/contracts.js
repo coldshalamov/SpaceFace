@@ -8,14 +8,24 @@
 // not a scavenger hunt under an old "Contracts" label.
 import { COMMODITIES } from '../../../data/commodities.js';
 import { FACTION_META } from '../../../data/factions.js';
-import { MISSION_TUNING, MISSION_TYPES, missionMinRepForRisk } from '../../../data/missions.js';
+import { MISSION_TYPES } from '../../../data/missions.js';
 import { SECTORS } from '../../../data/sectors.js';
 import { contractTermById } from '../../../data/contractClauses.js';
 import { escapeHtml } from '../../comms.js';
 import { entitySpanHtml } from '../../entityResolver.js';
 import { MAP_FOCUS, openGalaxyMap } from '../../mapAuthority.js';
+import {
+  missionCargoFootprint,
+  missionConsequenceSummary,
+  missionPreflight,
+  missionRouteScope,
+  missionStandingRequirement,
+  missionUpfrontCost,
+} from '../../missionPreflight.js';
 import { mountDataState } from '../../uiPrimitives.js';
 import { icon } from '../icons.js';
+import { missionBoardReadiness } from '../stationHubModel.js';
+import { recommendMissionBoardOffer } from '../stationMissionModel.js';
 
 const CMDTY = new Map(COMMODITIES.map((c) => [c.id, c]));
 const FAC = new Map(FACTION_META.map((f) => [f.id, f]));
@@ -50,8 +60,6 @@ export function clauseWhyAttr(clause) {
 }
 const reward = (m) => num(m.reward != null ? m.reward : (m.reward_cr != null ? m.reward_cr : (m.rewardCr != null ? m.rewardCr : m.payout)));
 const risk = (m) => num(m.riskTier != null ? m.riskTier : m.risk);
-const collateral = (m) => num(m.collateral_cr != null ? m.collateral_cr : (m.collateralCr != null ? m.collateralCr : m.collateral));
-const upfront = (m) => num(m.upfrontCostCr);
 const typeLabel = (t) => String(t || 'mission').replace(/_/g, ' ');
 const facName = (m) => { const f = FAC.get(m.factionId); return (f && f.name) || (m.factionName) || 'Open mission'; };
 const facTint = (m) => FAC_TINT[m.factionId] || '#4aa8ff';
@@ -121,17 +129,39 @@ function cargoEntityHtml(cargo, cargoName) {
   return entitySpanHtml('commodity:' + cargo.commodityId, escapeHtml(cargoName));
 }
 
-function missionRepPreview(m) {
-  const base = MISSION_TUNING.BASE_REP[m && m.type] != null ? MISSION_TUNING.BASE_REP[m.type] : 3;
-  const gain = Math.round(base * (1 + risk(m) * 0.4));
-  return { gain, loss: -Math.ceil(gain * 0.6) };
+/**
+ * Readiness for the briefing dossier. `missionPreflight` is the authority — the station does not
+ * keep its own standing/funds/route/ship policy. Warnings stay warnings: a caution offer is still
+ * acceptable, which is what the sim does with it. Consumed by `renderDossier`.
+ */
+export function missionDossierReadiness(mission, state) {
+  const preflight = missionPreflight(mission, state);
+  const blocker = preflight.blocker || null;
+  const warning = blocker ? null : (preflight.warning || null);
+  const readiness = missionBoardReadiness({ blocker, warning });
+  const standing = missionStandingRequirement(mission, state);
+  return {
+    state: readiness.state,
+    label: readiness.state === 'ready' ? 'ROUTE CLEAR' : (readiness.state === 'caution' ? 'CHECK' : 'BLOCKED'),
+    detail: blocker || warning || 'Ship and account ready',
+    blocker,
+    warning,
+    canAccept: !blocker,
+    standingShort: !!(standing && !standing.ok),
+    preflight,
+  };
 }
 
 function cargoRequirement(m) {
-  if (m && m.cargo) return m.cargo;
-  if (m && m.cargoCommodityId) return { commodityId: m.cargoCommodityId, qty: m.cargoQty };
-  if (m && m.params && m.params.cmdtyId) return { commodityId: m.params.cmdtyId, qty: m.params.qty };
-  return null;
+  const params = m && m.params || {};
+  const cargo = m && m.cargo || {};
+  const footprint = missionCargoFootprint(m);
+  const commodityId = params.cmdtyId || cargo.commodityId || cargo.cmdtyId
+    || (m && m.cargoCommodityId);
+  const qty = footprint.qty > 0
+    ? footprint.qty
+    : num(params.qty || cargo.qty || (m && m.cargoQty));
+  return commodityId && qty > 0 ? { commodityId, qty } : null;
 }
 
 function riskPips(r, size) {
@@ -166,6 +196,26 @@ export function firstHourBoardOfferPresentation(state, offer) {
     return { label: 'RECOMMENDED', rank: -1, kind: 'recommended' };
   }
   return null;
+}
+
+/**
+ * The one best-next pick for an ORDINARY board, as `{ missionId, label }` — the shared policy in
+ * stationMissionModel decides it, this only decides whether the board is allowed to show one.
+ * Two suppressions, both about not competing with a stronger authored voice:
+ *  · any authored first-hour presentation on the board owns the badge slot outright, so a second
+ *    "RECOMMENDED"-class badge cannot appear on a different row;
+ *  · final-disposition filings are withdrawn from the input — a filing carries no payout and no
+ *    accept blocker, so the score would happily "recommend" an irreversible ending.
+ * The result is a badge and aria prefix only: order, selection, and every other offer are untouched.
+ */
+export function boardRecommendedOfferId(list = [], state = {}) {
+  const offers = (Array.isArray(list) ? list : []).filter(Boolean);
+  if (offers.some((offer) => firstHourBoardOfferPresentation(state, offer))) return { missionId: null, label: '' };
+  const ordinary = offers.filter((offer) => !finalDispositionPresentation(offer));
+  if (!ordinary.length) return { missionId: null, label: '' };
+  const pick = recommendMissionBoardOffer(ordinary, state);
+  if (!pick || pick.missionId == null) return { missionId: null, label: '' };
+  return { missionId: String(pick.missionId), label: String(pick.label || '') };
 }
 
 function sortBoardOffers(list, state, focusId) {
@@ -270,6 +320,104 @@ function finalDispositionDossierHtml(mission, filing, options = {}) {
   );
 }
 
+function briefCell(ic, k, v, sub) {
+  return `<div class="sx-brief"><span class="sx-brief__ic">${icon(ic, 16)}</span><span class="sx-brief__k">${k}</span><span class="sx-brief__v">${v}</span>${sub ? `<span class="sx-brief__sub">${sub}</span>` : ''}</div>`;
+}
+
+/**
+ * The briefing dossier for an ordinary contract — the markup the player reads before accepting.
+ * Pure so the readiness it prints can be tested against the sim without a browser; `renderDossier`
+ * is its only production caller. Final-disposition filings take `finalDispositionDossierHtml`
+ * instead: the sim stages those through `ui:endgameChoose` and its separate irreversible
+ * confirmation, deliberately ahead of mission accept preflight.
+ */
+export function missionDossierHtml(m, state, options = {}) {
+  const tint = options.tint || facTint(m);
+  const origin = options.origin || 'This station';
+  const focusAccept = !!options.focusAccept;
+  const r = risk(m);
+  const cargo = cargoRequirement(m);
+  const cargoName = cargo ? ((CMDTY.get(cargo.commodityId) || {}).name || cargo.commodityId) : null;
+  const jumps = m.jumps != null ? m.jumps : (m.routeJumps != null ? m.routeJumps : 0);
+  const clauses = Array.isArray(m.clauses) ? m.clauses : [];
+  const readiness = missionDossierReadiness(m, state);
+  const ready = readiness.canAccept;
+  const consequences = missionConsequenceSummary(m);
+  const upfrontCr = missionUpfrontCost(m);
+  const facShort = escapeHtml((FAC.get(m.factionId) || {}).short || 'faction');
+  const authoredSummary = missionDossierSummary(m);
+  const title = m.title || typeLabel(m.type);
+  const routeScope = missionRouteScope(m, state);
+  const routeText = routeScope && routeScope.text
+    ? routeScope.text
+    : (jumps > 0 ? `${jumps} jump${jumps > 1 ? 's' : ''}` : 'Route pending');
+  // Restores the guidance the retired hub gave assistive tech: the verb must say what pressing it
+  // does AND why it cannot be pressed, without depending on the visual readiness module.
+  const acceptAria = ready
+    ? `Accept ${title} and bind its route. ${readiness.detail}.`
+    : `Cannot accept ${title}. ${readiness.detail}.`;
+
+  return (
+    `<div class="sx-dossier${focusAccept ? ' is-attention' : ''}">` +
+      `<header class="sx-dossier__head">` +
+        `<span class="sx-dossier__crest" style="--tint:${tint}">${icon(TYPE_ICON[m.type] || 'contracts', 26)}</span>` +
+        `<div class="sx-dossier__id">` +
+          `<span class="sx-dossier__client">${clientEntityHtml(m)} · ${escapeHtml(typeLabel(m.type))}</span>` +
+          `<h2>${entitySpanHtml('contract:' + String(mid(m)), escapeHtml(title))}</h2>` +
+        `</div>` +
+      `</header>` +
+      (authoredSummary
+        ? `<p class="sx-dossier__summary">${escapeHtml(authoredSummary)}</p>`
+        : '') +
+
+      `<div class="sx-dossier__topline">` +
+        `<div class="sx-dossier__reward"><span>Reward</span><b>${reward(m).toLocaleString('en-US')}<i>cr</i></b></div>` +
+        `<div class="sx-dossier__risk"><span>Risk assessment</span><div class="sx-dossier__riskrow">${riskPips(r, 'lg')}<em style="color:${riskColor(r)}">${RISK_LABEL[Math.min(r, 5)]}</em></div></div>` +
+      `</div>` +
+
+      `<div class="sx-dossier__route" aria-label="Mission operation route">` +
+        `<div class="sx-route">` +
+          `<span class="sx-route__node"><i></i>${originEntityHtml(state, origin)}</span>` +
+          `<span class="sx-route__line"><span class="sx-route__jumps">${escapeHtml(routeText)}</span></span>` +
+          `<span class="sx-route__stage"><i></i><b>PREP</b><em>${cargoName ? `${num(cargo.qty)}u payload` : 'fit + fuel'}</em></span>` +
+          `<span class="sx-route__line sx-route__line--short"></span>` +
+          `<span class="sx-route__node sx-route__node--dest"><i></i>${destEntityHtml(m)}</span>` +
+        `</div>` +
+      `</div>` +
+
+      `<div class="sx-dossier__grid">` +
+        (cargoName ? briefCell('cargo', 'Payload', cargoEntityHtml(cargo, cargoName), (cargo.qty ? cargo.qty + ' u' : '')) : '') +
+        briefCell('clock', 'Time', m.timeLabel || (m.timeLimitMin ? m.timeLimitMin + ' min' : 'Flexible'), '') +
+        (consequences.collateral ? briefCell('info', 'Collateral', consequences.collateral.toLocaleString('en-US') + ' cr', 'on failure') : '') +
+        (upfrontCr ? briefCell('credits', 'Upfront', upfrontCr.toLocaleString('en-US') + ' cr', 'to accept') : '') +
+        (missionOffersFollowUp(m) ? briefCell('spark', 'Follow-up', 'Posted on success', 'same contract family') : '') +
+        // One gate line, in the slot the standing gate already occupied. A blocker names what stops
+        // the accept; a warning names what to check and leaves the accept available.
+        (readiness.blocker || readiness.warning
+          ? `<p class="sx-dossier__gate">${icon(readiness.standingShort ? 'factions' : 'info', 14)}<span>${escapeHtml(readiness.blocker || readiness.warning)}</span></p>`
+          : '') +
+        (clauses.length ? `<div class="sx-dossier__clauses">${clauses.map((c) => `<span class="sx-tag"${clauseWhyAttr(c)}>${escapeHtml(c.label || c.id || 'clause')}</span>`).join('')}</div>` : '') +
+      `</div>` +
+
+      `<div class="sx-contract-sim" aria-label="Previewed mission consequences">` +
+        `<span class="sx-contract-sim__label">OUTCOME</span>` +
+        `<div><span>SUCCESS</span><b>+${reward(m).toLocaleString('en-US')} cr</b><em>${consequences.repReward > 0 ? `+${consequences.repReward} ${facShort} rep` : 'no standing change'}</em></div>` +
+        `<div><span>FAILURE</span><b>${consequences.collateral ? `−${consequences.collateral.toLocaleString('en-US')} cr collateral` : 'No collateral loss'}</b><em>${consequences.repPenalty < 0 ? `${consequences.repPenalty} ${facShort} rep` : 'no standing change'}</em></div>` +
+        `<div class="${ready ? (readiness.warning ? 'is-check' : 'is-ready') : 'is-blocked'}"><span>READINESS</span><b>${readiness.label}</b><em>${escapeHtml(readiness.detail)}</em></div>` +
+      `</div>` +
+      `<div class="sx-dossier__foot">` +
+        `<button type="button" class="sx-btn-primary sx-ct-commit${focusAccept && ready ? ' is-attention' : ''}" data-accept="${escapeHtml(String(mid(m)))}"${ready ? '' : ' disabled'} aria-label="${escapeHtml(acceptAria)}">` +
+          `<span>${ready ? (focusAccept ? 'Accept Mission + Bind Route' : 'Accept + Bind Route') : 'Resolve Readiness'}</span>` +
+          // The OUTCOME readiness module directly above already carries this
+          // sentence ("Ship and account ready"); the verb drops the duplicate
+          // and keeps an <em> only as the reason while blocked.
+          (ready ? '' : `<em>${escapeHtml(readiness.detail)}</em>`) +
+        `</button>` +
+      `</div>` +
+    `</div>`
+  );
+}
+
 function cleanText(value) {
   return typeof value === 'string' ? value.trim() : '';
 }
@@ -335,6 +483,9 @@ const CSS = `
 .sx-app .sx-ct .sx-ct-commit {
   background: var(--accent, #4f8fdd); color: #fff; box-shadow: none;
 }
+/* Readiness has three honest states, not two: a CHECK offer is acceptable — the sim takes it —
+   so it must not borrow the blocked row's loss colour. */
+.sx-app .sx-ct .sx-contract-sim > div.is-check b { color: var(--warn); }
 .sx-app .sx-ct .sx-ct-commit:disabled {
   background: var(--sxb-panel-hi, #232a2f); color: var(--sxb-ink-3, #78838a);
   border: 1px solid var(--sxb-line-2, rgba(255,255,255,.14));
@@ -397,6 +548,7 @@ export function createContractsScreen(ctx) {
       });
       return;
     }
+    const recommended = boardRecommendedOfferId(list, state);
     boardEl.innerHTML =
       `<span class="sx-ct-dispatch__label">${escapeHtml(missionBoardDispatchLabel(state, stationId, list.length))}</span>` +
       list.map((m, index) => {
@@ -407,10 +559,14 @@ export function createContractsScreen(ctx) {
       const r = risk(m);
       const filing = finalDispositionPresentation(m);
       const firstHour = firstHourBoardOfferPresentation(state, m);
-      const firstHourPrefix = firstHour ? `${firstHour.label} · ` : '';
+      // Authored first-hour provenance keeps the badge slot when it owns this offer; otherwise the
+      // shared board policy may name one best-next pick. Never both, never a reorder.
+      const badge = firstHour ? firstHour.label
+        : (recommended.label && recommended.missionId === id ? recommended.label : '');
+      const badgePrefix = badge ? `${badge} · ` : '';
       const rowAria = filing
         ? `${m.title || `Choice ${filing.choiceId}`}, final disposition from ${filing.issuerName}, separate irreversible confirmation required`
-        : `${firstHourPrefix}${m.title || typeLabel(m.type)}, ${reward(m).toLocaleString('en-US')} credits, ${RISK_LABEL[Math.min(r, 5)]} risk${missionOffersFollowUp(m) ? ', follow-up available on success' : ''}`;
+        : `${badgePrefix}${m.title || typeLabel(m.type)}, ${reward(m).toLocaleString('en-US')} credits, ${RISK_LABEL[Math.min(r, 5)]} risk${missionOffersFollowUp(m) ? ', follow-up available on success' : ''}`;
       return (
         `<button type="button" class="sx-ct-row${active}${needs}" data-mid="${escapeHtml(id)}" role="tab" aria-selected="${id === selectedId}"` +
           ` style="--signal:${facTint(m)}"` +
@@ -421,7 +577,7 @@ export function createContractsScreen(ctx) {
             `<span class="sx-ct-row__title">${escapeHtml(m.title || typeLabel(m.type))}</span>` +
             `<span class="sx-ct-row__meta">${filing
               ? `${escapeHtml(filing.issuerName)} · FINAL DISPOSITION · ${escapeHtml(filing.destinationName)}`
-              : `${firstHour ? `<b>${escapeHtml(firstHour.label)}</b> · ` : ''}${escapeHtml(facName(m))} · ${escapeHtml(destName(m))}${missionOffersFollowUp(m) ? ' · FOLLOW-UP' : ''}`}</span>` +
+              : `${badge ? `<b>${escapeHtml(badge)}</b> · ` : ''}${escapeHtml(facName(m))} · ${escapeHtml(destName(m))}${missionOffersFollowUp(m) ? ' · FOLLOW-UP' : ''}`}</span>` +
           `</span>` +
           `<span class="sx-ct-row__route" aria-hidden="true"><i></i><b></b><i></i></span>` +
           `<span class="sx-ct-row__risk">${filing ? 'FINAL' : riskPips(r, 'xs')}</span>` +
@@ -459,90 +615,11 @@ export function createContractsScreen(ctx) {
       });
       return;
     }
-    const r = risk(m);
-    const tint = facTint(m);
-    const cargo = cargoRequirement(m);
-    const cargoName = cargo ? ((CMDTY.get(cargo.commodityId) || {}).name || cargo.commodityId) : null;
-    const jumps = m.jumps != null ? m.jumps : (m.routeJumps != null ? m.routeJumps : 0);
-    const origin = (ctx.station && ctx.station.name) || 'This station';
-    const clauses = Array.isArray(m.clauses) ? m.clauses : [];
-    const requiredRep = Number.isFinite(Number(m.minRep)) ? Number(m.minRep) : missionMinRepForRisk(r);
-    const factionRep = m.factionId && state.factions && state.factions[m.factionId]
-      ? Number(state.factions[m.factionId].rep) || 0 : 0;
-    const standingOk = !m.factionId || factionRep >= requiredRep;
-    const playerCredits = Number(state.player && state.player.credits) || 0;
-    const acceptCost = collateral(m) + upfront(m);
-    const fundsOk = playerCredits >= acceptCost;
-    const cargoDef = cargo && CMDTY.get(cargo.commodityId);
-    const cargoVolume = cargo ? Math.max(0, Number(cargo.qty) || 0) * Math.max(.01, Number(cargoDef && cargoDef.volume) || 1) : 0;
-    const hold = (state.player && state.player.cargo) || {};
-    const holdFree = Math.max(0, (Number(hold.capVolume) || 0) - (Number(hold.usedVolume) || 0));
-    const cargoOk = !(m.preloadedCargo && cargoVolume > holdFree);
-    const ready = standingOk && fundsOk && cargoOk;
-    const repPreview = missionRepPreview(m);
-    const readiness = !standingOk ? `${facName(m)} ${requiredRep > 0 ? '+' : ''}${requiredRep} standing required`
-      : !fundsOk ? `${acceptCost.toLocaleString('en-US')} cr required to bind`
-        : !cargoOk ? `${Math.ceil(cargoVolume)}u free hold required` : 'Ship and account ready';
-    const authoredSummary = missionDossierSummary(m);
-
-    dossierEl.innerHTML =
-      `<div class="sx-dossier${focusAccept ? ' is-attention' : ''}">` +
-        `<header class="sx-dossier__head">` +
-          `<span class="sx-dossier__crest" style="--tint:${tint}">${icon(TYPE_ICON[m.type] || 'contracts', 26)}</span>` +
-          `<div class="sx-dossier__id">` +
-            `<span class="sx-dossier__client">${clientEntityHtml(m)} · ${escapeHtml(typeLabel(m.type))}</span>` +
-            `<h2>${entitySpanHtml('contract:' + String(mid(m)), escapeHtml(m.title || typeLabel(m.type)))}</h2>` +
-          `</div>` +
-        `</header>` +
-        (authoredSummary
-          ? `<p class="sx-dossier__summary">${escapeHtml(authoredSummary)}</p>`
-          : '') +
-
-        `<div class="sx-dossier__topline">` +
-          `<div class="sx-dossier__reward"><span>Reward</span><b>${reward(m).toLocaleString('en-US')}<i>cr</i></b></div>` +
-          `<div class="sx-dossier__risk"><span>Risk assessment</span><div class="sx-dossier__riskrow">${riskPips(r, 'lg')}<em style="color:${riskColor(r)}">${RISK_LABEL[Math.min(r, 5)]}</em></div></div>` +
-        `</div>` +
-
-        `<div class="sx-dossier__route" aria-label="Mission operation route">` +
-          `<div class="sx-route">` +
-            `<span class="sx-route__node"><i></i>${originEntityHtml(state, origin)}</span>` +
-            `<span class="sx-route__line"><span class="sx-route__jumps">${jumps > 0 ? jumps + ' jump' + (jumps > 1 ? 's' : '') : 'in-sector'}</span></span>` +
-            `<span class="sx-route__stage"><i></i><b>PREP</b><em>${cargoName ? `${num(cargo.qty)}u payload` : 'fit + fuel'}</em></span>` +
-            `<span class="sx-route__line sx-route__line--short"></span>` +
-            `<span class="sx-route__node sx-route__node--dest"><i></i>${destEntityHtml(m)}</span>` +
-          `</div>` +
-        `</div>` +
-
-        `<div class="sx-dossier__grid">` +
-          (cargoName ? briefCell('cargo', 'Payload', cargoEntityHtml(cargo, cargoName), (cargo.qty ? cargo.qty + ' u' : '')) : '') +
-          briefCell('clock', 'Time', m.timeLabel || (m.timeLimitMin ? m.timeLimitMin + ' min' : 'Flexible'), '') +
-          (collateral(m) ? briefCell('info', 'Collateral', collateral(m).toLocaleString('en-US') + ' cr', 'on failure') : '') +
-          (upfront(m) ? briefCell('credits', 'Upfront', upfront(m).toLocaleString('en-US') + ' cr', 'to accept') : '') +
-          (missionOffersFollowUp(m) ? briefCell('spark', 'Follow-up', 'Posted on success', 'same contract family') : '') +
-          (!standingOk ? `<p class="sx-dossier__gate">${icon('factions', 14)}<span>${escapeHtml(readiness)}</span></p>` : '') +
-          (clauses.length ? `<div class="sx-dossier__clauses">${clauses.map((c) => `<span class="sx-tag"${clauseWhyAttr(c)}>${escapeHtml(c.label || c.id || 'clause')}</span>`).join('')}</div>` : '') +
-        `</div>` +
-
-        `<div class="sx-contract-sim" aria-label="Previewed mission consequences">` +
-          `<span class="sx-contract-sim__label">OUTCOME</span>` +
-          `<div><span>SUCCESS</span><b>+${reward(m).toLocaleString('en-US')} cr</b><em>+${repPreview.gain} ${escapeHtml((FAC.get(m.factionId) || {}).short || 'faction')} rep</em></div>` +
-          `<div><span>FAILURE</span><b>${collateral(m) ? `−${collateral(m).toLocaleString('en-US')} cr collateral` : 'No collateral loss'}</b><em>${repPreview.loss} faction rep</em></div>` +
-          `<div class="${ready ? 'is-ready' : 'is-blocked'}"><span>READINESS</span><b>${ready ? 'ROUTE CLEAR' : 'BLOCKED'}</b><em>${escapeHtml(readiness)}</em></div>` +
-        `</div>` +
-        `<div class="sx-dossier__foot">` +
-          `<button type="button" class="sx-btn-primary sx-ct-commit${focusAccept && ready ? ' is-attention' : ''}" data-accept="${escapeHtml(String(mid(m)))}"${ready ? '' : ' disabled'}>` +
-            `<span>${ready ? (focusAccept ? 'Accept Mission + Bind Route' : 'Accept + Bind Route') : 'Resolve Readiness'}</span>` +
-            // The OUTCOME readiness module directly above already carries this
-            // sentence ("Ship and account ready"); the verb drops the duplicate
-            // and keeps an <em> only as the reason while blocked.
-            (ready ? '' : `<em>${escapeHtml(readiness)}</em>`) +
-          `</button>` +
-        `</div>` +
-      `</div>`;
-  }
-
-  function briefCell(ic, k, v, sub) {
-    return `<div class="sx-brief"><span class="sx-brief__ic">${icon(ic, 16)}</span><span class="sx-brief__k">${k}</span><span class="sx-brief__v">${v}</span>${sub ? `<span class="sx-brief__sub">${sub}</span>` : ''}</div>`;
+    dossierEl.innerHTML = missionDossierHtml(m, state, {
+      tint: facTint(m),
+      origin: (ctx.station && ctx.station.name) || 'This station',
+      focusAccept,
+    });
   }
 
   function renderActive(state) {

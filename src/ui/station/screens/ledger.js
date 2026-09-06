@@ -3,7 +3,7 @@
 // the station contract (onShow/onHide/refresh/dispose). The panel owns no subscriptions; refresh
 // reads the live state reference the station already holds, so there is no hidden refresh and no
 // listener leak across host-switch or show/hide cycles.
-import { createShipLedgerPanel } from '../../screens/shipLedger.js';
+import { createShipLedgerPanel } from '../../shipLedgerPanel.js';
 
 // Station-host corrections that belong to this destination (scoped under .sx-ledger, which only
 // exists here; the Codex host mounts the same panel without this wrap and is untouched):

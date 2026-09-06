@@ -19,7 +19,7 @@ import {
   createContactHailResponse,
 } from '../src/data/contactHail.js';
 import { richSeamTargetReadout } from '../src/ui/targetPanel.js';
-import { richLotReadoutHtml } from '../src/ui/screens/stationHub.js';
+import { richLotReadoutHtml } from '../src/ui/station/stationHubFormatters.js';
 
 const FIELD_ID = 'f_ceres_1';
 const SLOT_ID = 'ceres_seam_ore_clast';

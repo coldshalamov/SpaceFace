@@ -42,7 +42,7 @@ const REACHABILITY = Object.freeze({
     carrier: 'Helios arrival news headline is live; intended station Bar -> uniqueWreck:rumorHeard path is blocked',
     consumers: Object.freeze([
       'src/ui/uniqueWreckRumorSurface.js',
-      'src/ui/screens/bar.js',
+      'src/ui/station/barContacts.js',
       'src/systems/uniqueWrecks.js',
     ]),
     missingSeam: 'The live headline carrier surfaces authored wreck copy, but stationApp forwards no stationId to createBarPanel.onShow, so the Bar renders zero contacts and its deliberate rumor/bearing path cannot be reached.',

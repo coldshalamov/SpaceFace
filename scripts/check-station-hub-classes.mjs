@@ -1,8 +1,9 @@
 #!/usr/bin/env node
-// check-station-hub-classes.mjs — Station OS hub root class invariants.
-// Proves _resolveStation / applyStationHubRootClasses preserves desk+os bases,
-// swaps exclusive type modifiers without stale accumulation, and does not
-// destroy st-hub--engineering or trace-active (UIUX-STATION-OS-IMPL-001).
+// check-station-hub-classes.mjs — Station root class invariants (live shell + shared model).
+// Proves applyStationHubRootClasses preserves desk+os bases, swaps exclusive type modifiers
+// without stale accumulation, and does not destroy st-hub--engineering or trace-active
+// (UIUX-STATION-OS-IMPL-001); the live "Orbital Command" shell keeps its mount-seeded root
+// class and updates readouts in place instead of rebuilding pointer targets.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -12,11 +13,11 @@ import {
   dockRailItemKey,
   STATION_HUB_ROOT_BASE_CLASSES,
   STATION_HUB_TYPE_CLASSES,
-} from '../src/ui/screens/stationHub.js';
+} from '../src/ui/station/stationHubModel.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
-const hubPath = join(ROOT, 'src/ui/screens/stationHub.js');
-const hubSrc = readFileSync(hubPath, 'utf8');
+const appPath = join(ROOT, 'src/ui/station/stationApp.js');
+const appSrc = readFileSync(appPath, 'utf8');
 
 // ── Lightweight classList stub (no browser DOM required) ─────────────────────
 function makeClassList(initial = []) {
@@ -57,27 +58,22 @@ function assertBases(el, label) {
   }
 }
 
-// ── Static anti-regression: the exact wipe line must not return ──────────────
+// ── Static anti-regression: the live shell never wholesale-wipes its root class ──
 assert.doesNotMatch(
-  hubSrc,
+  appSrc,
   /this\._el\.className\s*=\s*['"]st-hub panel['"]/,
-  'hub root must not wholesale-assign className to incomplete "st-hub panel"',
+  'no screen may wholesale-assign className to incomplete "st-hub panel"',
 );
-assert.match(
-  hubSrc,
-  /applyStationHubRootClasses\s*\(\s*this\._el/,
-  '_resolveStation must call applyStationHubRootClasses on the hub root',
-);
-assert.match(
-  hubSrc,
-  /className\s*=\s*['"]st-hub panel['"]/,
-  'mount seeds gold framed hub bases (st-hub panel)',
+const rootClassSeeds = appSrc.match(/app\.className\s*=/g) || [];
+assert.ok(
+  rootClassSeeds.length === 1 && /app\.className\s*=\s*['"]sx-app['"]/.test(appSrc),
+  'station shell seeds its sx-app root class exactly once at mount and never wipes it later',
 );
 assert.ok(
   STATION_HUB_ROOT_BASE_CLASSES.includes('st-hub') && STATION_HUB_ROOT_BASE_CLASSES.includes('panel'),
   'STATION_HUB_ROOT_BASE_CLASSES must include st-hub + panel',
 );
-console.log('ok   static: no className wipe; resolve uses helper; mount bases present');
+console.log('ok   static: no className wipe; shell root class is mount-seeded only');
 
 // ── Service Dock refresh identity: status changes must not rebuild hoverable buttons ────────────
 {
@@ -97,12 +93,12 @@ console.log('ok   static: no className wipe; resolve uses helper; mount bases pr
     'readiness-only updates must preserve the dock item identity and therefore hover/focus state');
   assert.notEqual(dockRailItemKey(stable), dockRailItemKey(changedStructure),
     'a real service-layout change must still rebuild the dock controls');
-  assert.match(hubSrc, /if\s*\(this\._dockRailItemKey\s*!==\s*itemKey\)[\s\S]*?setItems\(items\)[\s\S]*?else\s*\{[\s\S]*?setReadiness\(item\.id, item\.readiness\)/,
-    'station refresh must update dock readiness in place instead of rebuilding pointer targets');
-  assert.match(hubSrc, /if\s*\(options\.periodic\)\s*return;/,
-    'the periodic modal heartbeat must not rebuild the docked station DOM while simulation is paused');
-  assert.match(hubSrc, /const refreshServiceDock[\s\S]*?_refreshSchematicAndNodes\(\)[\s\S]*?bus\.on\(['"]ship:statsChanged['"],\s*refreshServiceDock\)[\s\S]*?bus\.on\(['"]fuel:changed['"],\s*refreshServiceDock\)/,
-    'event-driven ship and fuel changes must update Service Dock readiness after the periodic refresh sleeps');
+  assert.match(appSrc, /if\s*\(vitalsHtml\s*!==\s*readoutsSignature\)\s*\{[\s\S]*?vitalsEl\.innerHTML\s*=\s*vitalsHtml;/,
+    'station refresh must update vitals in place instead of rebuilding pointer targets on every tick');
+  assert.match(appSrc, /if\s*\(options\.periodic\)\s*return;/,
+    'the periodic modal heartbeat must not rebuild the docked station operation screens while simulation is paused');
+  assert.match(appSrc, /subscribe\(['"]economy:tradeCompleted['"],[\s\S]*?refresh\(\)/,
+    'event-driven trade changes must refresh the docked station outside the periodic heartbeat');
   console.log('ok   service dock refresh keeps hover/focus targets stable across live status updates');
 }
 

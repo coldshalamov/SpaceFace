@@ -60,7 +60,8 @@ const voiceSrc = read('src/ui/voiceArbiter.js');
 const toastsSrc = read('src/ui/toasts.js');
 const onboardingSrc = read('src/systems/onboarding.js');
 const newGameSrc = read('src/ui/screens/newGame.js');
-const stationHubSrc = read('src/ui/screens/stationHub.js');
+const departureModelSrc = read('src/ui/station/stationDepartureModel.js');
+const stationAppSrc = read('src/ui/station/stationApp.js');
 const controlPromptsSrc = read('src/ui/controlPrompts.js');
 const storySrc = read('src/systems/story.js');
 const missionsSrc = read('src/systems/missions.js');
@@ -361,37 +362,32 @@ check('B4 dock beat speaks only through the tutorial chokepoint (no parallel doc
 // 6. FIRST-HUB HANDOFF OWNERSHIP
 // ═══════════════════════════════════════════════════════════════════════════════
 check('station hub owns the first-dock handoff rail (sell → job → departure)', 'SOURCE', () => {
-  assert.match(stationHubSrc, /export function firstDockHandoffVisible/,
+  assert.match(departureModelSrc, /export function firstDockHandoffVisible/,
     'handoff visibility must be exported for contract tests');
-  assert.match(stationHubSrc, /export function firstDockHandoffSteps/,
+  assert.match(departureModelSrc, /export function firstDockHandoffSteps/,
     'handoff step planner must be exported');
-  assert.ok(stationHubSrc.includes("handoff.className = 'st-handoff'")
-    || stationHubSrc.includes('className = \'st-handoff\''),
-    'visible st-handoff container required');
-  assert.ok(stationHubSrc.includes('First dock — do these three')
-    || stationHubSrc.includes('First Dock Handoff'),
-    'player-facing handoff title required');
-  assert.ok(
-    stationHubSrc.includes('Sell what you hauled')
-    || stationHubSrc.includes('Open your hold'),
+  assert.ok(departureModelSrc.includes('Sell what you hauled')
+    || departureModelSrc.includes('Open your hold'),
     'handoff must start with truthful sell/hold step');
   assert.ok(
-    stationHubSrc.includes('Take one easy job')
-    || stationHubSrc.includes('Accept one low-risk job'),
+    departureModelSrc.includes('Take one easy job')
+    || departureModelSrc.includes('Accept one low-risk job'),
     'handoff must send players to a safe first contract');
   assert.ok(
-    stationHubSrc.includes('Safe to undock')
-    || stationHubSrc.includes('Fix launch risks'),
+    departureModelSrc.includes('Safe to undock')
+    || departureModelSrc.includes('Fix launch risks'),
     'handoff must end on Departure Check / undock readiness');
-  assert.ok(stationHubSrc.includes('data-handoff-tab'),
-    'handoff steps must be clickable tab actions');
-  assert.ok(stationHubSrc.includes('data-handoff-dismiss')
-    || stationHubSrc.includes('st-handoff-dismiss'),
-    'handoff must be dismissible (strip, not permanent chrome)');
-  assert.match(stationHubSrc, /departureReadinessChips\(state\)/,
+  assert.match(departureModelSrc, /departureReadinessChips\(state\)/,
     'departure step must read shared departure readiness (no invented launch truth)');
-  assert.match(stationHubSrc, /this\._refreshHandoff\(\)/,
-    'hub must refresh handoff from lifecycle/event paths');
+  assert.ok(stationAppSrc.includes('sxb-handoff'),
+    'visible handoff container required on the live shell');
+  assert.ok(stationAppSrc.includes('data-handoff'),
+    'handoff steps must be clickable destination actions');
+  assert.ok(stationAppSrc.includes('handoffEl.hidden = true')
+    && stationAppSrc.includes('handoffEl.hidden = false'),
+    'handoff must be dismissible (strip hides when the planner retires it, not permanent chrome)');
+  assert.match(stationAppSrc, /function renderHandoff\(\)/,
+    'live shell must refresh the handoff rail from its render path');
 });
 
 check('onboarding yields first-dock persistence to the station handoff rail', 'SOURCE', () => {
@@ -401,13 +397,13 @@ check('onboarding yields first-dock persistence to the station handoff rail', 'S
     'firstHub must be a terse pointer, not a duplicate sell-job-undock checklist');
   assert.match(onboardingSrc, /_tutorialRailOwnsVoice\(\)/,
     'contextual firstHub must be suppressed while B0-B5 owns teaching');
-  assert.match(stationHubSrc, /beatDoneAt\.dock/,
+  assert.match(departureModelSrc, /beatDoneAt\.dock/,
     'handoff sell completion must read the live onboarding beat receipt');
-  assert.doesNotMatch(stationHubSrc, /ob\.done|done\.sell|done\.next/,
+  assert.doesNotMatch(departureModelSrc, /ob\.done|done\.sell|done\.next/,
     'handoff must not read the obsolete onboarding.done shape');
   assert.doesNotMatch(onboardingSrc, /tab labels at top/i,
     'must not describe the old top-tab layout');
-  assert.doesNotMatch(stationHubSrc, /codex/i,
+  assert.doesNotMatch(departureModelSrc, /codex/i,
     'first-dock handoff slice must not own Codex');
 });
 

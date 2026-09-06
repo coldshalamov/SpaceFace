@@ -13,7 +13,7 @@ import { TETHYS_BLACK_MARKET_DISCOVERY } from '../../data/frontierRumors.js';
 import { explorationDiscoveryPlates, galaxyExplorationSummary } from '../../world/explorationJournal.js';
 import { decorateEntityNode } from '../entityResolver.js';
 import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
-import { createShipLedgerPanel } from './shipLedger.js';
+import { createShipLedgerPanel } from '../shipLedgerPanel.js';
 
 /** Honest org → faction id only. Unknown orgs stay plain text — never invent a door. */
 const FIGURE_FACTION = Object.freeze({

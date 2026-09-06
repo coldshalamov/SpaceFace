@@ -5,9 +5,8 @@ import { BINDINGS } from '../src/ui/bindings.js';
 import { controlPrompt } from '../src/ui/controlPrompts.js';
 
 const checks = [
-  ['../src/ui/screens/stationHub.js', 'stationHub'],
   // Live docked station ("Orbital Command") — the registered station screen def (wraps
-  // src/ui/station/stationApp.js); legacy screens/stationHub.js no longer registers as the screen.
+  // src/ui/station/stationApp.js); legacy screens/stationHub.js no longer registers a screen.
   ['../src/ui/station/stationScreen.js', 'stationScreen'],
   ['../src/ui/screens/starmap.js', 'starmapScreen'],
   ['../src/ui/screens/localmap.js', 'localmapScreen'],
@@ -124,7 +123,8 @@ const inputSrc = readFileSync(new URL('../src/ui/input.js', import.meta.url), 'u
 const localmapSrc = readFileSync(new URL('../src/ui/screens/localmap.js', import.meta.url), 'utf8');
 const codexSrc = readFileSync(new URL('../src/ui/screens/codex.js', import.meta.url), 'utf8');
 const missionLogSrc = readFileSync(new URL('../src/ui/screens/missionLog.js', import.meta.url), 'utf8');
-const stationHubSrc = readFileSync(new URL('../src/ui/screens/stationHub.js', import.meta.url), 'utf8');
+// The docked station surfaces the Mission Log key on its Bar screen (src/ui/station/screens/bar.js).
+const stationBarSrc = readFileSync(new URL('../src/ui/station/screens/bar.js', import.meta.url), 'utf8');
 const hudSrc = readFileSync(new URL('../src/ui/hud.js', import.meta.url), 'utf8');
 const alertsSrc = readFileSync(new URL('../src/ui/alerts.js', import.meta.url), 'utf8');
 const commsSrc = readFileSync(new URL('../src/ui/comms.js', import.meta.url), 'utf8');
@@ -135,7 +135,7 @@ const onboardingSrc = readFileSync(new URL('../src/systems/onboarding.js', impor
 const mainMenuSrc = readFileSync(new URL('../src/ui/screens/mainMenu.js', import.meta.url), 'utf8');
 const newGameSrc = readFileSync(new URL('../src/ui/screens/newGame.js', import.meta.url), 'utf8');
 const gameOverSrc = readFileSync(new URL('../src/ui/screens/gameOver.js', import.meta.url), 'utf8');
-const factionsSrc = readFileSync(new URL('../src/ui/screens/factions.js', import.meta.url), 'utf8');
+const factionsSrc = readFileSync(new URL('../src/ui/factionStanding.js', import.meta.url), 'utf8');
 const automationSrc = readFileSync(new URL('../src/ui/screens/automationPanel.js', import.meta.url), 'utf8');
 const pauseSrc = readFileSync(new URL('../src/ui/screens/pause.js', import.meta.url), 'utf8');
 const settingsSrc = readFileSync(new URL('../src/ui/screens/settings.js', import.meta.url), 'utf8');
@@ -203,11 +203,10 @@ if (!bindingsSrc.includes("missionLog: { key: 'j', code: 'KeyJ', label: 'J' }")
   || !helpSrc.includes('BINDINGS.missionLog.label')
   || !missionLogSrc.includes("import { BINDINGS } from '../bindings.js'")
   || !missionLogSrc.includes('BINDINGS.missionLog.label')
-  || !stationHubSrc.includes("import { BINDINGS } from '../bindings.js'")
-  || !stationHubSrc.includes('BINDINGS.missionLog.label')) {
+  || !stationBarSrc.includes('BINDINGS.missionLog.label')) {
   console.log('FAIL missionLog binding - mission log key must read src/ui/bindings.js across input and UI copy');
   fail++;
-} else if (/case 'j'|key === 'j'|J Mission Log|Mission Log \(J\)|J to close|Mission log', null, 'J'/.test(inputSrc + hudSrc + helpSrc + missionLogSrc + stationHubSrc)) {
+} else if (/case 'j'|key === 'j'|J Mission Log|Mission Log \(J\)|J to close|Mission log', null, 'J'/.test(inputSrc + hudSrc + helpSrc + missionLogSrc + stationBarSrc)) {
   console.log('FAIL missionLog binding - visible mission log key text must not hard-code J');
   fail++;
 } else {

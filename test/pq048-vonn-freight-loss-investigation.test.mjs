@@ -23,7 +23,7 @@ import {
   vonnFreightLossFor,
   vonnFreightLossMapOffer,
 } from '../src/data/vonnFreightLoss.js';
-import { buildReply, openVonnFreightLossMap } from '../src/ui/screens/bar.js';
+import { buildReply, openVonnFreightLossMap } from '../src/ui/station/barContacts.js';
 import { peekMapOpenIntent } from '../src/ui/mapAuthority.js';
 
 const ANCHOR = Object.freeze(sectorLocalToGlobalForSector({ x: 1420, z: 760 }, VONN_FREIGHT_SECTOR_ID));

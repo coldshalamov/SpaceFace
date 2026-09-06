@@ -32,6 +32,15 @@ export const MISSION_TUNING = {
   maxActive: 8,
 };
 
+// Mission families whose generated payload must fit in free hold at accept time. The simulation
+// and station preflight import this same set so a contract cannot look ready and then fail after
+// its collateral has been charged.
+export const ONE_LOAD_CARGO_TYPES = new Set([
+  'cargo_delivery',
+  'salvage_retrieval',
+  'smuggling_run',
+]);
+
 export const MISSION_STANDING_LADDER = [
   {
     minRep: -149,

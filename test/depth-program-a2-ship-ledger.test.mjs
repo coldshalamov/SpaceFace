@@ -17,7 +17,7 @@ import {
   shipLedgerGraffitiQuotes,
   volsLedgerGateOpen,
 } from '../src/systems/shipLedger.js';
-import { createShipLedgerPanel, shipLedgerEntryAriaLabel } from '../src/ui/screens/shipLedger.js';
+import { createShipLedgerPanel, shipLedgerEntryAriaLabel } from '../src/ui/shipLedgerPanel.js';
 
 function playedState() {
   return {
@@ -326,7 +326,7 @@ test('archive is capped and paginated so a panel never receives an unbounded row
 });
 
 test('standalone dock panel carries semantic landmarks and descriptive archive controls', async () => {
-  const source = await readFile(new URL('../src/ui/screens/shipLedger.js', import.meta.url), 'utf8');
+  const source = await readFile(new URL('../src/ui/shipLedgerPanel.js', import.meta.url), 'utf8');
   assert.match(source, /createElement\('section'\)/);
   assert.match(source, /aria-labelledby/);
   assert.match(source, /role', 'status'/);

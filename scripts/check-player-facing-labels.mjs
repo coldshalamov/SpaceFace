@@ -6,9 +6,10 @@ import {
   storyBeatDisplayName,
   storyIntroducesDisplayName,
 } from '../src/ui/screens/missionLog.js';
+import { stationServiceLabel } from '../src/ui/station/stationHubModel.js';
 
 const hudMetaSource = readFileSync(new URL('../src/ui/hudMeta.js', import.meta.url), 'utf8');
-const stationHubSource = readFileSync(new URL('../src/ui/screens/stationHub.js', import.meta.url), 'utf8');
+const stationModelSource = readFileSync(new URL('../src/ui/station/stationHubModel.js', import.meta.url), 'utf8');
 const missionLogSource = readFileSync(new URL('../src/ui/screens/missionLog.js', import.meta.url), 'utf8');
 const drillSource = readFileSync(new URL('../src/ui/screens/drill.js', import.meta.url), 'utf8');
 
@@ -23,14 +24,19 @@ assert.doesNotMatch(
   'manifest ghost label helper must not be a raw cmdty_* string replacement',
 );
 
-assert.match(stationHubSource, /const SERVICE_LABELS = \{/, 'station hub should keep authored service labels');
-assert.match(stationHubSource, /black_market: 'Black Market'/, 'black-market services should display with storefront copy');
-assert.match(stationHubSource, /services\.map\(stationServiceLabel\)/, 'station service summary should use the service-label helper');
-assert.doesNotMatch(
-  stationHubSource,
-  /services\.map\(\(s\) => String\(s\)\.replace\(/,
-  'station service summary must not print raw service ids with underscores',
-);
+assert.match(stationModelSource, /const SERVICE_LABELS = \{/, 'station model should keep authored service labels');
+assert.match(stationModelSource, /black_market: 'Black Market'/, 'black-market services should display with storefront copy');
+for (const [svc, expected] of [
+  ['black_market', 'Black Market'],
+  ['ore_buy', 'Ore Buyer'],
+  ['module_craft', 'Manufacture'],
+  ['scan_tech', 'Survey Lab'],
+  ['totally_unknown_service', 'Totally Unknown Service'],
+]) {
+  const label = stationServiceLabel(svc);
+  assert.equal(label, expected, `station service "${svc}" must display as authored/title-cased copy`);
+  assert.ok(!label.includes('_'), 'station service labels must never print raw underscore ids');
+}
 
 assert.match(
   missionLogSource,

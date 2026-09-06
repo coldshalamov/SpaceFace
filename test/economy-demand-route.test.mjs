@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { computeBestTrades } from '../src/ui/screens/market.js';
+import { computeBestTrades } from '../src/ui/market/tradeLogic.js';
 
 test('best-trade output preserves the persistent demand reason behind a destination premium', () => {
   const state = {

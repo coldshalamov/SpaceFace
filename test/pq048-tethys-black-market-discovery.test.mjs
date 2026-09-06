@@ -10,7 +10,7 @@ import { SECTORS } from '../src/data/sectors.js';
 import { scanner as scannerProto } from '../src/systems/scanner.js';
 import { world as worldProto } from '../src/systems/world.js';
 import { frontierRumorMapReadouts } from '../src/ui/frontierRumorMapLayer.js';
-import { buildReply } from '../src/ui/screens/bar.js';
+import { buildReply } from '../src/ui/station/barContacts.js';
 
 const DISCOVERY = TETHYS_BLACK_MARKET_DISCOVERY;
 

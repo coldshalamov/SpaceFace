@@ -14,7 +14,8 @@ import {
   FACTION_TIERS,
   FACTION_AGGRO_THRESHOLD,
   factionStandingGuidance,
-} from '../../screens/factions.js';
+  factionContractLadderRows,
+} from '../../factionStanding.js';
 import { escapeHtml } from '../../comms.js';
 import { icon, factionIcon } from '../icons.js';
 
@@ -202,7 +203,13 @@ const FACTIONS_CSS = `
 .sx-fac .sx-fac-decisions b { color: var(--sf-paper); font-family: var(--sf-body-face); font-weight: 600; font-size: 13px; }
 .sx-fac .sx-fac-decisions em { color: var(--sf-calm); font-family: var(--sf-body-face); font-size: 13px; font-style: normal; }
 .sx-fac .sx-fac-network { background: color-mix(in srgb, var(--sf-surface) 80%, transparent); box-shadow: none; animation: none; }
-.sx-fac .sx-fac-network > svg line { animation: none !important; filter: none; stroke: var(--relation); }
+.sx-fac .sx-fac-pulse { width: 380px; }
+.sx-fac .sx-fac-network { left: 390px; }
+.sx-fac .sx-fac-network > header { left: 16px; right: 16px; }
+.sx-fac .sx-fac-network__map { position: absolute; inset: 66px 0 32px; }
+.sx-fac .sx-fac-network__map > svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.sx-fac .sx-fac-network__map > svg line { animation: none !important; filter: none; stroke: var(--relation); stroke-width: 1; stroke-opacity: .6; stroke-dasharray: 2 2; vector-effect: non-scaling-stroke; }
+.sx-fac .sx-fac-network__core { left: 50%; }
 .sx-fac .sx-fac-network > header span {
   color: color-mix(in srgb, var(--sf-calm) 78%, var(--sf-paper));
   font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
@@ -253,6 +260,14 @@ const FACTIONS_CSS = `
   letter-spacing: var(--sf-track-micro);
 }
 .sx-fac .sx-ladder__min { font-size: 13px; color: var(--sf-calm); }
+.sx-fac .sx-fac__detail { grid-template-rows: auto auto; }
+.sx-fac .sx-fac__detail > .sx-fac-ladder { grid-column: 1; }
+.sx-fac .sx-fac__detail > .sx-fac-intent { grid-column: 2; grid-row: 1 / span 2; }
+.sx-fac .sx-fac-contracts .sx-ladder { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.sx-fac .sx-fac-contracts .sx-ladder::before { display: none; }
+.sx-fac .sx-fac-contracts .sx-ladder__step { padding: 10px 8px; gap: 5px; opacity: 1; }
+.sx-fac .sx-fac-contracts .sx-ladder__name { line-height: 1.35; text-transform: none; }
+.sx-fac .sx-fac-contracts .sx-ladder__dot { display: none; }
 .sx-fac .sx-ladder__step.is-current {
   background: color-mix(in srgb, var(--standing, var(--sf-calm)) 12%, transparent);
   box-shadow: none; border-bottom: var(--sf-rail-w) solid var(--standing, var(--sf-you));
@@ -273,6 +288,11 @@ const FACTIONS_CSS = `
   mask-image: none;
 }
 .sx-fac .sx-fac-row { flex: 0 1 176px; min-width: 158px; }
+@media (max-height: 850px) {
+  /* Preserve the relation field on short displays; scroll the dossier instead of crushing it. */
+  .sx-fac { grid-template-rows: max-content 310px max-content; align-content: start; overflow-y: auto; }
+  .sx-fac .sx-fac__detail { max-height: none; overflow: visible; }
+}
 @media (max-width: 1220px) {
   .sx-fac .sx-fac-standing { grid-template-columns: 160px minmax(0, 1fr); padding-inline: var(--sp-3); width: 380px; }
 }
@@ -399,8 +419,8 @@ export function createFactionsScreen(ctx) {
         `<section class="sx-fac-network" aria-label="Relationship field for ${escapeHtml(f.name)}">` +
           `<header><span>RELATION FIELD</span><b>Select a connected power to follow the consequence web</b></header>` +
           (relations.length
-            ? `<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${lines}</svg>` +
-              `<div class="sx-fac-network__core"><span style="--identity:${tint}">${crest(f.id, 25)}</span><b>${escapeHtml(f.meta.short || f.name)}</b><em>SELECTED</em></div>${nodes}`
+            ? `<div class="sx-fac-network__map"><svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${lines}</svg>` +
+              `<div class="sx-fac-network__core"><span style="--identity:${tint}">${crest(f.id, 25)}</span><b>${escapeHtml(f.meta.short || f.name)}</b><em>SELECTED</em></div>${nodes}</div>`
             : `<div class="sx-fac-network__empty">NO MATERIAL RELATIONS RECORDED</div>`) +
           `<footer><span><i class="is-aligned"></i> aligned spillover</span><span><i class="is-rival"></i> rival spillover</span></footer>` +
         `</section>` +
@@ -452,6 +472,15 @@ export function createFactionsScreen(ctx) {
       `<div class="sx-fac-ladder" style="--standing:${standingColor(rep)}">` +
         `<div class="sx-fac-ladder__head">${icon('spark', 15)}<span>Standing ladder</span><b>Each threshold changes access and contract consequence</b></div>` +
         `<ol class="sx-ladder">${ladder}</ol>` +
+      `</div>` +
+      `<div class="sx-fac-ladder sx-fac-contracts" aria-label="Contract access">` +
+        `<div class="sx-fac-ladder__head">${icon('contracts', 15)}<span>Contract access</span><b>Standing required to take this work</b></div>` +
+        `<ol class="sx-ladder">${factionContractLadderRows(rep).map((row) =>
+          `<li class="sx-ladder__step${row.unlocked ? ' is-reached' : ''}">` +
+            `<span class="sx-ladder__dot" aria-hidden="true"></span>` +
+            `<span class="sx-ladder__name">${escapeHtml(row.name)} · ${escapeHtml(row.unlocks)}${row.aspirational ? ' · future work' : row.unlocked ? ' · unlocked' : ' · locked'}</span>` +
+            `<span class="sx-ladder__min sf-fig">${row.minRep > 0 ? '+' : ''}${row.minRep}</span>` +
+          `</li>`).join('')}</ol>` +
       `</div>` +
       `<div class="sx-fac-intent">` +
         `<span>NEXT MOVE</span><b>${escapeHtml(guidance.plan)}</b>` +

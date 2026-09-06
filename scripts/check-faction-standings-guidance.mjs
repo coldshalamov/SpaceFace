@@ -6,7 +6,7 @@ import {
   factionNextTierText,
   factionStandingGuidance,
   tierFor,
-} from '../src/ui/screens/factions.js';
+} from '../src/ui/factionStanding.js';
 
 const concord = { id: 'faction_scn', name: 'Solar Concord Navy', short: 'Concord' };
 const reach = { id: 'faction_reach', name: 'Crimson Reach', short: 'Reach' };

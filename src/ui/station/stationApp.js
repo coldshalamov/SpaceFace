@@ -21,15 +21,18 @@ import { SECTORS } from '../../data/sectors.js';
 import { FACTION_META } from '../../data/factions.js';
 import { COMMODITIES } from '../../data/commodities.js';
 import { escapeHtml } from '../comms.js';
+import { confirm } from '../confirm.js';
+import {
+  holdUnitSellPrice,
+  setStationExitOwner,
+  stationExitNeedsConfirm,
+} from './stationHubModel.js';
 import {
   departureReadinessChips,
   departureReadinessSummary,
   firstDockHandoffVisible,
   firstDockHandoffSteps,
-  holdUnitSellPrice,
-  setStationExitOwner,
-  stationExitNeedsConfirm,
-} from '../screens/stationHub.js';
+} from './stationDepartureModel.js';
 import { missionDockAttention } from './missionDockAttention.js';
 import { isChoiceECourierReady } from '../../story/endings/eligibility.js';
 
@@ -474,9 +477,10 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     const s = state();
     let visible = false;
     try { visible = !!firstDockHandoffVisible(s, stationId()); } catch (_) { visible = false; }
+    const dismissed = !!(ctx && ctx.screenMemory && ctx.screenMemory.read('station', 'firstDockHandoffDismissed', false));
     let steps = [];
-    if (visible) { try { steps = firstDockHandoffSteps(s) || []; } catch (_) { steps = []; } }
-    if (!visible || !steps.length) {
+    if (visible && !dismissed) { try { steps = firstDockHandoffSteps(s) || []; } catch (_) { steps = []; } }
+    if (!visible || dismissed || !steps.length) {
       if (!handoffEl.hidden) handoffEl.hidden = true;
       if (handoffSignature) handoffEl.replaceChildren();
       handoffSignature = '';
@@ -484,6 +488,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     }
     const html =
       `<span class="sxb-handoff__k">Getting started</span>` +
+      `<button type="button" class="sxb-help" data-handoff-dismiss aria-label="Dismiss getting started guidance">×</button>` +
       steps.map((st, i) => {
         // A step whose target is a verb (`services` → undock) carries the verb. It previously fell
         // through `TARGET_MAP[tab] || 'market'`, so "Launch · safe to undock" opened the Market.
@@ -507,6 +512,11 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     }
   }
   handoffEl.addEventListener('click', (ev) => {
+    if (ev.target.closest('[data-handoff-dismiss]')) {
+      if (ctx && ctx.screenMemory) ctx.screenMemory.set('station', { firstDockHandoffDismissed: true });
+      renderHandoff();
+      return;
+    }
     const verb = ev.target.closest('[data-handoff-act]');
     if (verb) { runAction(verb.getAttribute('data-handoff-act')); return; }
     const b = ev.target.closest('[data-handoff]');
@@ -708,6 +718,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
         repair: toCost(q('repair'), 'repair'),
         refuel: toCost(q('refuel'), 'refuel'),
         resupply: toCost(q('ammo'), 'ammo'),
+        insurance: toCost(q('insurance'), 'insurance'),
         wash: washAvailable
           ? toCost(q('hull_wash'), 'hull_wash')
           : { text: 'Offline', disabled: true, title: 'Hull wash requires a repair berth' },
@@ -739,7 +750,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       commitUndock();
       return true;
     }
-    const typeMap = { repair: 'repair', refuel: 'refuel', resupply: 'ammo', wash: 'hull_wash' };
+    const typeMap = { repair: 'repair', refuel: 'refuel', resupply: 'ammo', wash: 'hull_wash', insurance: 'insurance' };
     const type = typeMap[id];
     if (type && bus) {
       if (type === 'hull_wash' && !resolveStation(ctx).services.includes('repair')) return false;
@@ -748,6 +759,10 @@ export function createStationApp(rootEl, ctx, opts = {}) {
         try { quote = opts.serviceQuote(type, state(), playerEntity(state())); } catch (_) { quote = null; }
       }
       if (quote && quote.disabled) return false;
+      if (type === 'insurance') {
+        if (quote) void runInsuranceService(quote);
+        return false;
+      }
       bus.emit('ui:service', { type, amount: quote && Number.isFinite(Number(quote.amount)) ? Number(quote.amount) : undefined });
       bus.emit('audio:cue', { id: 'ui_click' });
     }
@@ -756,6 +771,42 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   }
 
   // ---------- vitals ----------
+  let insurancePending = false;
+  async function runInsuranceService(quote) {
+    if (insurancePending) return;
+    insurancePending = true;
+    const quotedStation = stationId();
+    try {
+      const cancelling = Number(quote.amount) === 0;
+      const ok = await confirm(cancelling ? {
+        title: 'Cancel hull insurance?',
+        body: 'Station recovery will no longer protect installed modules on death. Cargo loss still applies either way, and cancelling does not refund the paid deductible.',
+        confirmLabel: 'Cancel Insurance',
+        cancelLabel: 'Keep Insurance',
+        danger: true,
+      } : {
+        title: 'Insure installed modules?',
+        body: `${quote.detail} · ${fmtCr(quote.cost)} cr`,
+        confirmLabel: `Purchase · ${fmtCr(quote.cost)} cr`,
+        cancelLabel: 'Not Now',
+      });
+      if (!ok) return;
+      const s = state();
+      if (!s.ui?.docked || stationId() !== quotedStation) return;
+      const current = opts.serviceQuote('insurance', s, playerEntity(s));
+      // A delayed confirmation cannot toggle a policy that changed underneath it.
+      if (!current || current.disabled || current.amount !== quote.amount || current.cost !== quote.cost) {
+        refresh();
+        return;
+      }
+      ctx.bus.emit('ui:service', { type: 'insurance', amount: current.amount });
+      ctx.bus.emit('audio:cue', { id: 'ui_click' });
+      refresh();
+    } finally {
+      insurancePending = false;
+    }
+  }
+
   // A vital is a resource and the verb that changes it, as one object. The verb is only rendered
   // when it is worth offering: a full tank shows "Full", not a Refuel button you cannot use.
 
@@ -818,7 +869,8 @@ export function createStationApp(rootEl, ctx, opts = {}) {
         value: `${fmtCr(ship && ship.hull)} / ${fmtCr(ship && ship.hullMax)}`,
         aria: `Hull ${(hullF * 100).toFixed(0)} percent`,
         acts: [vitalActHtml('repair', costs.repair, 'Repair'),
-               vitalActHtml('wash', costs.wash, 'Wash', true)],
+               vitalActHtml('wash', costs.wash, 'Wash', true),
+               vitalActHtml('insurance', costs.insurance, s.player?.insurance?.insuredModules ? 'Insurance · Active' : 'Insurance', true)],
       },
       {
         k: 'fuel', label: 'Fuel', frac: fuelF, tone: vitalTone(fuelF, 'fuel'),
@@ -976,7 +1028,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   }
 
   renderStatus();
-  // Restore the last destination this save left on, unless mission attention immediately re-routes.
+  // Restore the last destination this save left on, unless mission attention re-routes.
   const remembered = ctx && ctx.screenMemory && ctx.screenMemory.read('station', 'destination', null);
   navigate(DESTINATIONS.some((d) => d.id === remembered) ? remembered : 'market');
   applyDockAttention({ allowAutoOpen: true });

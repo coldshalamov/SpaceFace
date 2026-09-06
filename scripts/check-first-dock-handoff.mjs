@@ -1,13 +1,18 @@
 // Guards the first dock handoff rail.
 // The rail is non-blocking UI, but it must keep the opening station loop explicit:
 // sell cargo (Market → Selling), take one safe job (Missions), then fix launch risks / undock.
+// The pure step planner lives in src/ui/station/stationDepartureModel.js; the live
+// "Orbital Command" shell (src/ui/station/stationApp.js) renders it on every docked refresh.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
-const stationSource = readFileSync(join(ROOT, 'src/ui/screens/stationHub.js'), 'utf8');
+const departureModelPath = join(ROOT, 'src/ui/station/stationDepartureModel.js');
+const stationAppPath = join(ROOT, 'src/ui/station/stationApp.js');
+const modelSource = readFileSync(departureModelPath, 'utf8');
+const appSource = readFileSync(stationAppPath, 'utf8');
 const onboardingSource = readFileSync(join(ROOT, 'src/systems/onboarding.js'), 'utf8');
 // The first-use LINES live in hudAttention, not in the system that fires them. Asserting the copy
 // against onboarding.js reported a correct game as broken: hudAttention.js has carried
@@ -16,68 +21,67 @@ const onboardingSource = readFileSync(join(ROOT, 'src/systems/onboarding.js'), '
 const firstUseCopySource = readFileSync(join(ROOT, 'src/ui/hudAttention.js'), 'utf8');
 const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
 
-assert.match(stationSource, /export function firstDockHandoffVisible\(state, stationId\)/,
-  'station hub must keep first dock handoff visibility directly testable');
-assert.match(stationSource, /export function firstDockHandoffSteps\(state = \{\}\)/,
-  'station hub must keep first dock handoff step planning directly testable');
-assert.ok(stationSource.includes("handoff.className = 'st-handoff'"),
-  'station hub must render a visible first dock handoff container');
-assert.ok(stationSource.includes('First dock — do these three') || stationSource.includes('First Dock Handoff'),
-  'handoff rail must have a player-facing title');
-assert.ok(
-  stationSource.includes('Sell what you hauled')
-    || stationSource.includes('Open your hold')
-    || stationSource.includes('Audit hold / sell cargo'),
+assert.match(modelSource, /export function firstDockHandoffVisible\(state, stationId\)/,
+  'station departure model must keep first dock handoff visibility directly testable');
+assert.match(modelSource, /export function firstDockHandoffSteps\(state = \{\}\)/,
+  'station departure model must keep first dock handoff step planning directly testable');
+assert.ok(modelSource.includes('Sell what you hauled')
+  || modelSource.includes('Open your hold')
+  || modelSource.includes('Audit hold / sell cargo'),
   'handoff rail must start with a truthful sell/hold step');
-assert.doesNotMatch(stationSource, /Sell the sample|Sample cleared|Sell mined cargo/i,
+assert.doesNotMatch(modelSource, /Sell the sample|Sample cleared|Sell mined cargo/i,
   'first dock handoff must not claim a sample or mined cargo exists when the hold can be empty');
 assert.ok(
-  stationSource.includes('Take one easy job')
-    || stationSource.includes('Accept one low-risk job'),
+  modelSource.includes('Take one easy job')
+    || modelSource.includes('Accept one low-risk job'),
   'handoff rail must send players to a safe first contract');
 assert.ok(
-  stationSource.includes('Safe to undock')
-    || stationSource.includes('Fix launch risks')
-    || stationSource.includes('Launch when safe'),
+  modelSource.includes('Safe to undock')
+    || modelSource.includes('Fix launch risks')
+    || modelSource.includes('Launch when safe'),
   'handoff rail must end by reinforcing Departure Check / undock readiness');
-assert.ok(stationSource.includes('data-handoff-tab'),
-  'handoff rail steps must be clickable tab actions');
-assert.ok(stationSource.includes('data-handoff-dismiss') || stationSource.includes('st-handoff-dismiss'),
-  'first dock handoff must be dismissible (single strip, not permanent chrome)');
-assert.match(stationSource, /target\.getAttribute\('data-handoff-tab'\)[\s\S]*this\.setTab\(tabId, \{ focusRail: true \}\)/,
-  'handoff clicks must route through the same focus-aware station tab path as the rail');
 assert.ok(
-  stationSource.includes("targetTab: hasCargo ? 'market' : 'hold'")
-    || stationSource.includes("tradeMode: hasCargo ? 'sell'"),
+  modelSource.includes("targetTab: hasCargo ? 'market' : 'hold'")
+    || modelSource.includes("tradeMode: hasCargo ? 'sell'"),
   'cargo handoff step should open Market → Selling when the player has cargo to sell');
-assert.ok(stationSource.includes('data-handoff-trade-mode') || stationSource.includes('tradeMode'),
+assert.ok(modelSource.includes('tradeMode'),
   'sell handoff must pass tradeMode so Market opens in Selling filter');
-assert.match(stationSource, /ctx\.bus\.emit\('audio:cue', \{ id: 'ui_tab' \}\)/,
-  'handoff clicks should use the existing tab audio cue');
-assert.match(stationSource, /function firstDockDepartureTarget\(chips\)/,
+assert.match(modelSource, /function firstDockDepartureTarget\(chips\)/,
   'handoff departure step must reuse Departure Check chips instead of inventing launch readiness');
-assert.match(stationSource, /departureReadinessChips\(state\)/,
+assert.match(modelSource, /departureReadinessChips\(state\)/,
   'handoff departure step must read shared departure readiness');
-assert.match(stationSource, /this\._refreshHandoff\(\)/,
-  'station hub must refresh the handoff rail from lifecycle and event paths');
-assert.match(stationSource, /const refreshHandoff = \(\) => \{ if \(this\._visible\(\)\) this\._refreshHandoff\(\); \};/,
-  'handoff refresh must stay visible-screen scoped');
+assert.match(modelSource, /beatDoneAt\.dock/,
+  'handoff sell step must complete from the live B4 receipt');
+assert.match(modelSource, /beatDoneAt\.choice/,
+  'handoff must hide/complete from the live B5 receipt');
+assert.doesNotMatch(modelSource, /ob\.done|done\.sell|done\.next/,
+  'handoff must not consume the obsolete onboarding.done shape');
 
-for (const eventName of [
-  'economy:tradeCompleted',
-  'cargo:changed',
-  'ship:statsChanged',
-  'fuel:changed',
-  'nav:waypoint',
-  'mission:updated',
-  'mission:accepted',
-  'mission:completed',
-]) {
-  assert.ok(stationSource.includes(`bus.on('${eventName}'`),
-    `first dock handoff must react to ${eventName}`);
-}
+// The live shell renders the handoff strip and routes steps to real destinations.
+assert.match(appSource, /firstDockHandoffVisible\(s, stationId\(\)\)/,
+  'the docked shell must gate the handoff strip through the shared visibility planner');
+assert.match(appSource, /firstDockHandoffSteps\(s\)/,
+  'the docked shell must render steps from the shared planner');
+assert.ok(appSource.includes('sxb-handoff'),
+  'live shell must render a visible first dock handoff container');
+assert.ok(appSource.includes('data-handoff'),
+  'handoff rail steps must be clickable destination actions');
+assert.ok(appSource.includes('data-handoff-mode'),
+  'sell handoff must carry trade mode so Market opens in Selling filter');
+assert.match(appSource, /screenMemory\.read\('station', 'firstDockHandoffDismissed', false\)/,
+  'handoff dismissal must use the existing per-save Station screen-memory bag');
+assert.ok(appSource.includes('data-handoff-dismiss'),
+  'handoff rail must provide a user-operable dismissal control');
+assert.match(appSource, /aria-label="Dismiss getting started guidance"/,
+  'handoff dismissal must have an accessible name');
+assert.match(appSource, /screenMemory\.set\('station', \{ firstDockHandoffDismissed: true \}\)/,
+  'handoff dismissal must persist a benign UI preference rather than bypass onboarding state');
+assert.match(appSource, /function renderHandoff\(\)/,
+  'the docked shell must refresh the handoff rail from its render path');
+assert.match(appSource, /renderHandoff\(\)/,
+  'shell refresh must repaint the handoff strip from live onboarding state');
 
-assert.doesNotMatch(stationSource, /codex/i,
+assert.doesNotMatch(modelSource, /codex/i,
   'first dock handoff slice must not touch Codex responsibilities');
 for (const [label, source] of [['onboarding', onboardingSource], ['first-use copy', firstUseCopySource]]) {
   assert.doesNotMatch(source, /tab labels at top/i,
@@ -89,14 +93,6 @@ assert.match(firstUseCopySource, /Use the left rail\. Departure Check owns undoc
   'firstHub copy must point at the handoff owner without repeating its full checklist');
 assert.match(onboardingSource, /_tutorialRailOwnsVoice\(\)/,
   'firstHub hint must yield while the staged B0-B5 tutorial is active');
-assert.match(stationSource, /beatDoneAt\.dock/,
-  'handoff sell step must complete from the live B4 receipt');
-assert.match(stationSource, /beatDoneAt\.choice/,
-  'handoff must hide/complete from the live B5 receipt');
-assert.doesNotMatch(stationSource, /ob\.done|done\.sell|done\.next/,
-  'handoff must not consume the obsolete onboarding.done shape');
-assert.match(stationSource, /focusedTab[\s\S]*replacement\.focus/,
-  'handoff refresh must restore focus after replacing its step DOM');
 
 assert.equal(pkg.scripts['check:first-dock-handoff'], 'node scripts/check-first-dock-handoff.mjs',
   'package.json must expose the first dock handoff guard');

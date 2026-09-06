@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { factionPresence } from '../src/systems/factionPresence.js';
-import { factionPresenceServiceRows } from '../src/ui/screens/services.js';
+import { factionPresenceServiceRows } from '../src/ui/station/serviceQuotes.js';
 
 function serviceRuntime() {
   const state = createGameState(0x47a);

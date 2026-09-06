@@ -139,12 +139,12 @@ assert.ok(MANEUVER_SPEED_CAPS.interceptSpeed <= 80,
 
 // --- UI: no Market loop purpose essay on default market surface ---
 {
-  const marketSrc = fs.readFileSync(new URL('../src/ui/screens/market.js', import.meta.url), 'utf8');
+  const marketSrc = fs.readFileSync(new URL('../src/ui/market/tradeLogic.js', import.meta.url), 'utf8');
   assert.ok(!/st-market-purpose/.test(marketSrc) || !/Market loop:/.test(marketSrc),
     'market purpose-essay banner must be removed from default surface');
   assert.ok(!/innerHTML = '<b>Market loop:/.test(marketSrc), 'Market loop banner HTML must be gone');
-  const hubSrc = fs.readFileSync(new URL('../src/ui/screens/stationHub.js', import.meta.url), 'utf8');
-  assert.ok(!/st-mission-guide">Pick a contract to preflight/.test(hubSrc),
+  const contractsSrc = fs.readFileSync(new URL('../src/ui/station/screens/contracts.js', import.meta.url), 'utf8');
+  assert.ok(!/st-mission-guide">Pick a contract to preflight/.test(contractsSrc),
     'missions multi-sentence guide essay must be removed');
 }
 

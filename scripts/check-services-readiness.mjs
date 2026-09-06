@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-import { AMMO_BATCH, serviceQuote, serviceReadinessRecommendation } from '../src/ui/screens/services.js';
+import { AMMO_BATCH, serviceQuote, serviceReadinessRecommendation } from '../src/ui/station/serviceQuotes.js';
 
-const servicesSource = readFileSync(new URL('../src/ui/screens/services.js', import.meta.url), 'utf8');
+const servicesSource = readFileSync(new URL('../src/ui/station/serviceQuotes.js', import.meta.url), 'utf8');
+const stationAppSource = readFileSync(new URL('../src/ui/station/stationApp.js', import.meta.url), 'utf8');
 
 function baseState(overrides = {}) {
   return {
@@ -95,24 +96,23 @@ function checkInsuranceQuoteShowsDeductibleGate() {
 }
 
 function checkInsuranceCancelIsConfirmed() {
-  assert.match(servicesSource, /import \{ confirm \} from '\.\.\/confirm\.js';/,
-    'Services must use the shared confirm dialog for destructive service toggles');
-  assert.match(servicesSource, /list\.addEventListener\('click', async \(ev\) => \{/,
-    'Services click handler must be async so insurance cancellation can await confirmation');
-  assert.match(servicesSource, /type === 'insurance' && amount === 0 && state\.player\.insurance && state\.player\.insurance\.insuredModules/,
-    'active insurance cancellation should be the only insurance service action gated by confirm');
-  assert.match(servicesSource, /title: 'Cancel hull insurance\?'/,
-    'insurance cancel confirm should name the destructive action');
-  assert.match(servicesSource, /confirmLabel: 'Cancel Insurance'/,
-    'insurance cancel confirm should make the destructive button explicit');
-  assert.match(servicesSource, /cancelLabel: 'Keep Insurance'/,
-    'insurance cancel confirm should make the safe escape explicit');
-  assert.match(servicesSource, /danger: true/,
-    'insurance cancel confirm should use danger mode so the shared modal defaults to the safe button');
-  assert.match(servicesSource, /if \(!ok\) \{\s*ctx\.bus\.emit\('audio:cue', \{ id: 'ui_deny' \}\);\s*return;\s*\}/s,
-    'declining insurance cancel must not emit ui:service');
+  // This is a visible StationApp contract. serviceQuote only computes the active, free Cancel
+  // quote; the live control must require an explicit confirmation before it emits ui:service.
+  assert.match(stationAppSource, /vitalActHtml\('insurance'/,
+    'the live Station vitals must expose the insurance action');
+  assert.match(stationAppSource, /typeMap\s*=\s*\{[^}]*insurance:\s*'insurance'/,
+    'the live Station must map the insurance vital to the canonical service type');
+  assert.match(stationAppSource, /type === 'insurance'[\s\S]*confirm\(/,
+    'active insurance cancellation must await the shared confirmation dialog');
+  assert.match(stationAppSource, /title:\s*'Cancel hull insurance\?'/,
+    'insurance cancellation confirmation must name the destructive action');
+  assert.match(stationAppSource, /confirmLabel:\s*'Cancel Insurance'/,
+    'insurance cancellation confirmation must name its destructive commit');
+  assert.match(stationAppSource, /cancelLabel:\s*'Keep Insurance'/,
+    'insurance cancellation confirmation must provide the safe escape');
+  assert.match(stationAppSource, /if \(!ok\)[\s\S]{0,160}return;/,
+    'declining insurance cancellation must return before a service intent is emitted');
 }
-
 function checkReadinessRecommendsPartialRefuel() {
   const state = baseState({
     fuel: { current: 10, max: 100 },
@@ -147,14 +147,6 @@ function checkReadinessSurfacesUnavailableRefuel() {
   assert.match(rec.reason, /does not offer Refuel/i, 'unavailable recommendation should explain the station limitation');
 }
 
-function checkUnavailableServiceButtonsUseUnavailableCopy() {
-  assert.match(servicesSource, /const actionLabel = offered \? quote\.buttonLabel : 'Unavailable';/,
-    'service rows must show a clear Unavailable button label when the station lacks that service');
-  assert.match(servicesSource, /quote\.detail \+ \(offered \? '' : ' · not offered here'\)/,
-    'service rows must keep a visible not-offered reason beside unavailable services');
-  assert.match(servicesSource, /'>' \+ actionLabel \+ '<\/button>'/,
-    'service row buttons must render the availability-aware action label');
-}
 
 function checkReadinessAllClear() {
   const state = baseState({ fuel: { current: 90, max: 100 } });
@@ -175,7 +167,6 @@ checkInsuranceCancelIsConfirmed();
 checkReadinessRecommendsPartialRefuel();
 checkReadinessPrefersCriticalRepair();
 checkReadinessSurfacesUnavailableRefuel();
-checkUnavailableServiceButtonsUseUnavailableCopy();
 checkReadinessAllClear();
 
 console.log('Services readiness checks OK');

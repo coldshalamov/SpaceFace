@@ -17,7 +17,7 @@ import {
 import {
   bestKnownSellFor,
   formatBestKnownSellLine,
-} from '../src/ui/screens/market.js';
+} from '../src/ui/market/tradeLogic.js';
 import { marketMemoryStationOverlays } from '../src/ui/screens/starmap.js';
 import { buildSlotList, fits, getDerivedStats } from '../src/systems/ships.js';
 

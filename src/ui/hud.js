@@ -44,7 +44,7 @@ import { createThreatHalo } from './threatHalo.js';
 import { SHIP_SILHOUETTES } from '../data/shipSilhouettes.js';
 import { computeLeadPipOverlay, leadSolution, primaryProjSpeed, hasBallisticWeapon } from '../ai/gunnery.js';
 import { confirm } from './confirm.js';
-import { bestKnownSellFor, applyTradeNavigation } from './screens/market.js';
+import { bestKnownSellFor, applyTradeNavigation } from './market/tradeLogic.js';
 import { createFlickerGrid, createHexPattern, createRouteBeam, createCircularGauge, createSupplyTree } from './effects/index.js';
 import { createGaugeSettleSpring, planGaugeSettle } from './effects/gaugeSettle.js';
 import {

@@ -32,7 +32,8 @@ test('all public map callers cut over to the single galaxyMap authority', () => 
   const input = read('../src/ui/input.js');
   const pause = read('../src/ui/screens/pause.js');
   const missionLog = read('../src/ui/screens/missionLog.js');
-  const stationHub = read('../src/ui/screens/stationHub.js');
+  // The docked station shell + its contracts board are the station's public map callers.
+  const stationHub = read('../src/ui/station/stationApp.js') + read('../src/ui/station/screens/contracts.js');
   const uiRoot = read('../src/ui/uiRoot.js');
 
   for (const [name, source] of Object.entries({ input, pause, missionLog, stationHub, uiRoot })) {

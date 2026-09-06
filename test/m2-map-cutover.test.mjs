@@ -136,7 +136,7 @@ function sourceOpeners() {
     uiInput: read('src/ui/input.js'),
     uiRoot: read('src/ui/uiRoot.js'),
     missionLog: read('src/ui/screens/missionLog.js'),
-    stationHub: read('src/ui/screens/stationHub.js'),
+    stationHub: read('src/ui/station/stationApp.js') + read('src/ui/station/screens/contracts.js'),
     pause: read('src/ui/screens/pause.js'),
     starmap: read('src/ui/screens/starmap.js'),
     localmap: read('src/ui/screens/localmap.js'),

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 import { mapOperatorLabel } from '../src/ui/galaxyMap.js';
 import { factionRepToastText } from '../src/ui/floatingText.js';
-import { factionStandingGuidance } from '../src/ui/screens/factions.js';
+import { factionStandingGuidance } from '../src/ui/factionStanding.js';
 
 const visibleState = {
   story: { endgameChoice: null, flags: {} },

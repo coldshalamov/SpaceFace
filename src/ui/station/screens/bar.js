@@ -14,7 +14,7 @@ import {
   surveyOfferLabel,
   missionBoardSlots,
   barContactIntelTags,
-} from '../../screens/bar.js';
+} from '../barContacts.js';
 import { stationContactMemoryFor, stationContactMemoryLine } from '../../../data/stationContacts.js';
 import { mountContactPortrait } from '../../portraitArt.js';
 import { escapeHtml } from '../../comms.js';

@@ -424,7 +424,7 @@ function read(rel) {
 // ---------------------------------------------------------------------------
 const uiInputSrc = read('src/ui/input.js');
 const missionLogSrc = read('src/ui/screens/missionLog.js');
-const stationHubSrc = read('src/ui/screens/stationHub.js');
+const contractsSrc = read('src/ui/station/screens/contracts.js');
 const starmapSrc = read('src/ui/screens/starmap.js');
 const uiRootSrc = read('src/ui/uiRoot.js');
 const galaxyMapSrc = read('src/ui/galaxyMap.js');
@@ -480,11 +480,13 @@ assert.doesNotMatch(missionLogSrc, /screenId:\s*'localmap'/,
 assert.doesNotMatch(missionLogSrc, /screenId:\s*'starmap'/,
   'Mission Log policy must not hand off to legacy starmap screen id');
 
-// Station Plot Route
-assert.match(stationHubSrc, /openGalaxyMap\(ctx,[\s\S]*MAP_FOCUS\.LOCAL[\s\S]*MAP_FOCUS\.GALAXY[\s\S]*source:\s*'station:mission-route'/,
-  'Station Plot Route must open galaxyMap with LOCAL/GALAXY focus and station mission-route source');
-assert.doesNotMatch(stationHubSrc, /ui:pushScreen',\s*\{\s*id:\s*local \? 'localmap'/,
-  'Station Plot Route must not emit legacy localmap/starmap screen ids');
+// Station Plot Route — the docked contracts board opens the chart through the map authority.
+assert.match(contractsSrc, /openGalaxyMap\(ctx,\s*\{\s*focus:\s*MAP_FOCUS\.SYSTEM,\s*source:\s*'contracts-empty'/,
+  'station board empty-state must open galaxyMap through the map authority with a station source');
+assert.match(contractsSrc, /openGalaxyMap\(ctx,\s*\{\s*focus:\s*MAP_FOCUS\.SYSTEM,\s*source:\s*'contracts-brief'/,
+  'station board briefing must open galaxyMap through the map authority with a station source');
+assert.doesNotMatch(contractsSrc, /pushScreen\(\s*['"](?:localmap|starmap)['"]/,
+  'station board must not emit legacy localmap/starmap screen ids');
 
 // Legacy starmap objective CTA
 assert.match(starmapSrc, /objective-localmap[\s\S]*openGalaxyMap[\s\S]*MAP_FOCUS\.LOCAL/,

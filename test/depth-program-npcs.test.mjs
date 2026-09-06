@@ -14,7 +14,7 @@ import {
   depthContactsForStation,
   validateDepthProgramContacts,
 } from '../src/story/campaign47a/embodiedDialogue.js';
-import { authoredBarContactsForStation } from '../src/ui/screens/bar.js';
+import { authoredBarContactsForStation } from '../src/ui/station/barContacts.js';
 
 const EXPECTED = Object.freeze([
   ['G1', 'contact_yune', 'Clerk Yune', 'Sealed files open for a fee. Then re-seal.', ['station_nyx_march'], 'yune.trust'],

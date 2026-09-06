@@ -21,21 +21,15 @@ import { fileURLToPath } from 'node:url';
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const SCREENS_DIR = 'src/ui/screens';
 
-// Captured surfaces. Legacy entries carry `file` relative to SCREENS_DIR; an entry may instead
+// Captured surfaces. Screen entries carry `file` relative to SCREENS_DIR; an entry may instead
 // carry an explicit repo-root-relative `path` (the live station lives under src/ui/station/**).
-// exportName: the top-level screen def to structurally verify (mount/onHide). Panels (market /
-// outfitting / shipyard / factions are stationHub children) have no top-level def → null.
+// exportName: the top-level screen def to structurally verify (mount/onHide). Station panels
+// are mounted by stationApp and expose factories instead of a top-level screen definition.
 const SCREENS = [
   { key: 'main-menu',   file: 'mainMenu.js',        exportName: 'mainMenuScreen' },
   { key: 'galaxy-map',  file: 'starmap.js',         exportName: 'starmapScreen' },
-  { key: 'station-hub', file: 'stationHub.js',      exportName: 'stationHub' },
-  { key: 'hold',        file: 'stationHub.js',      exportName: null },
-  { key: 'market',      file: 'market.js',          exportName: null },
-  { key: 'outfitting',  file: 'outfitting.js',      exportName: null },
-  { key: 'shipyard',    file: 'shipyard.js',        exportName: null },
-  { key: 'missions',    file: 'stationHub.js',      exportName: null },
+  { key: 'missions',    file: 'missionLog.js',      exportName: 'missionLogScreen' },
   { key: 'automation',  file: 'automationPanel.js', exportName: 'automationScreen' },
-  { key: 'factions',    file: 'factions.js',        exportName: null },
   { key: 'anomaly',     file: 'codex.js',           exportName: 'codexScreen' },
   // Live docked station ("Orbital Command", src/ui/station/**) — what the player actually sees on
   // every dock. stationScreen is the registered screen def; the rest are the app shell, the seven

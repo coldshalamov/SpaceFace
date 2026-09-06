@@ -1,8 +1,13 @@
 // UIUX-STATION-EXIT-CONFIRMATION-TESTS-001
 // Acceptance tests for station exit confirmation.
-// Proves implicit Escape/B/E/backdrop cannot directly undock, implicit requests open confirm with
-// cancel/accept behavior, explicit Undock remains deliberate, nested modal Back pops before
-// station-root logic, and input.js needs no changes.
+// Proves implicit Escape/B/E/backdrop cannot directly undock, implicit requests open the live
+// Departure Check with cancel/accept behavior, explicit Undock remains deliberate, nested modal
+// Back pops before station-root logic, and input.js needs no changes.
+//
+// The live docked station is the "Orbital Command" shell (src/ui/station/stationApp.js wrapped by
+// stationScreen.js). These tests mount the real app on a minimal fake DOM and drive the shipped
+// exit path: bus gate → station:exitRequest → app.requestStationExit → Departure Check popover →
+// "Launch Anyway" / dismiss.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -11,12 +16,14 @@ import { fileURLToPath } from 'node:url';
 import { createGameState } from '../src/core/gameState.js';
 import { createScreenManager } from '../src/ui/screenManager.js';
 import {
-  stationHub,
   installStationExitGate,
   setStationExitOwner,
   commitStationUndock,
   stationExitNeedsConfirm,
-} from '../src/ui/screens/stationHub.js';
+} from '../src/ui/station/stationHubModel.js';
+import { createStationApp } from '../src/ui/station/stationApp.js';
+import { serviceQuote } from '../src/ui/station/serviceQuotes.js';
+import { createScreenMemory } from '../src/ui/screenMemory.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 
@@ -50,6 +57,7 @@ class FakeEvent {
     this.currentTarget = opts.currentTarget || this.target;
     this.bubbles = !!opts.bubbles;
     this.shiftKey = !!opts.shiftKey;
+    this.key = opts.key || null;
     this._pd = false;
     this._sp = false;
   }
@@ -60,10 +68,15 @@ class FakeEvent {
 class FakeElement {
   constructor(tagName = 'div') {
     this.tagName = String(tagName).toUpperCase();
+    // floating-ui (and DOM code generally) keys off nodeName; '#text' keeps text nodes inert.
+    this.nodeName = this.tagName === '#TEXT' ? '#text' : this.tagName.toLowerCase();
     this.children = [];
     this.childNodes = this.children;
     this.parentNode = null;
-    this.style = {};
+    this.style = {
+      setProperty(k, v) { this[k] = String(v); },
+      getPropertyValue(k) { return this[k] != null ? String(this[k]) : ''; },
+    };
     this.dataset = {};
     this.classList = new FakeClassList();
     this.attributes = new Map();
@@ -82,6 +95,7 @@ class FakeElement {
     this._className = String(value || '');
     this.classList = new FakeClassList(this._className.split(/\s+/).filter(Boolean));
   }
+  get firstChild() { return this.children[0] || null; }
   get innerHTML() { return ''; }
   set innerHTML(html) {
     for (const child of [...this.children]) {
@@ -92,8 +106,18 @@ class FakeElement {
     const text = String(html || '');
     const stack = [this];
     const tagRe = /<(\/?)([a-zA-Z0-9-]+)([^>]*)>/g;
+    let last = 0;
     let m;
+    const appendText = (raw) => {
+      if (!raw) return;
+      const top = stack[stack.length - 1];
+      const tn = new FakeElement('#text');
+      tn.textContent = raw;
+      top.appendChild(tn);
+    };
     while ((m = tagRe.exec(text)) !== null) {
+      appendText(text.slice(last, m.index));
+      last = tagRe.lastIndex;
       const closing = m[1] === '/';
       const tagName = m[2];
       const attrPart = m[3];
@@ -107,10 +131,17 @@ class FakeElement {
       while ((am = attrRe.exec(attrPart)) !== null) {
         el.setAttribute(am[1], am[2]);
       }
+      // Valueless attributes (data-market-search, inert, ...) exist as empty-string attributes.
+      const bareRe = /(^|\s)([a-zA-Z0-9-:]+)(?=[\s/]|$)/g;
+      let bm;
+      while ((bm = bareRe.exec(attrPart)) !== null) {
+        if (!el.hasAttribute(bm[2])) el.setAttribute(bm[2], '');
+      }
       const selfClosing = attrPart.trim().endsWith('/') || ['br', 'hr', 'img', 'input', 'meta', 'link'].includes(tagName);
       stack[stack.length - 1].appendChild(el);
       if (!selfClosing) stack.push(el);
     }
+    appendText(text.slice(last));
   }
   appendChild(child) {
     child.parentNode = this;
@@ -140,7 +171,17 @@ class FakeElement {
       child.parentNode = null;
       child.isConnected = false;
     }
-    return child;
+  }
+  remove() {
+    if (this.parentNode) this.parentNode.removeChild(this);
+  }
+  replaceChildren(...nodes) {
+    for (const child of [...this.children]) {
+      child.parentNode = null;
+      child.isConnected = false;
+    }
+    this.children.length = 0;
+    for (const n of nodes) this.appendChild(n);
   }
   addEventListener(type, fn) {
     if (!this._listeners.has(type)) this._listeners.set(type, []);
@@ -159,6 +200,15 @@ class FakeElement {
     for (const fn of list) fn(ev);
     if (ev.bubbles && this.parentNode) this.parentNode.dispatchEvent(ev);
   }
+  closest(sel) {
+    for (let n = this; n; n = n.parentNode) {
+      if (matchSelector(n, sel)) return n;
+    }
+    return null;
+  }
+  getBoundingClientRect() {
+    return { x: 0, y: 0, top: 0, left: 0, right: 0, bottom: 0, width: 0, height: 0 };
+  }
   querySelectorAll(sel) {
     const out = [];
     const walk = (node) => {
@@ -176,13 +226,15 @@ class FakeElement {
     this.attributes.set(name, v);
     if (name === 'id') this.id = v;
     if (name === 'class') this.className = v;
+    if (name === 'hidden') this.hidden = true;
   }
   removeAttribute(name) {
     this.attributes.delete(name);
     if (name === 'id') this.id = '';
-    if (name === 'class') this.classList = new FakeClassList();
+    if (name === 'class') this.className = '';
   }
   getAttribute(name) { return this.attributes.has(name) ? this.attributes.get(name) : null; }
+  hasAttribute(name) { return this.attributes.has(name); }
   contains(candidate) {
     for (let n = candidate; n; n = n.parentNode) if (n === this) return true;
     return false;
@@ -192,6 +244,7 @@ class FakeElement {
   click() { this.dispatchEvent(new FakeEvent('click', { bubbles: true, target: this, currentTarget: this })); }
   getContext() { return stubCanvasContext; }
 }
+
 
 const stubCanvasContext = {
   clearRect() {}, fillRect() {}, beginPath() {}, moveTo() {}, lineTo() {}, stroke() {},
@@ -213,7 +266,8 @@ function matchSelector(el, sel) {
     if (p.startsWith('#') && el.id === p.slice(1)) return true;
     if (p.startsWith('[') && p.endsWith(']')) {
       const attr = p.slice(1, -1);
-      if (el.getAttribute(attr) != null) return true;
+      const equals = attr.match(/^([^=]+)=["']?([^"']*)["']?$/);
+      if (equals ? el.getAttribute(equals[1]) === equals[2] : el.getAttribute(attr) != null) return true;
     }
     if (p.includes('[role=')) {
       const m = p.match(/\[role=["']?([^"'\]]+)["']?\]/);
@@ -252,9 +306,23 @@ function installDom() {
   screens.ownerDocument = globalThis.document;
   uiRoot.ownerDocument = globalThis.document;
 
-  globalThis.window = { innerWidth: 1920, innerHeight: 1080, addEventListener() {}, removeEventListener() {} };
+  globalThis.window = {
+    innerWidth: 1920,
+    innerHeight: 1080,
+    addEventListener() {},
+    removeEventListener() {},
+    getComputedStyle() {
+      return { getPropertyValue() { return ''; } };
+    },
+  };
   globalThis.requestAnimationFrame = (cb) => { cb(0); return 1; };
   globalThis.cancelAnimationFrame = () => {};
+  // floating-ui identity/observer seams (pop positioning only; zero-size rects are fine).
+  globalThis.Node = FakeElement;
+  globalThis.Element = FakeElement;
+  globalThis.HTMLElement = FakeElement;
+  globalThis.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} };
+  globalThis.IntersectionObserver = class { observe() {} unobserve() {} disconnect() {} };
 
   return { body, screens, backdrop, hud, uiRoot, elements };
 }
@@ -266,6 +334,11 @@ function makeBus() {
     on(ev, fn) {
       if (!handlers.has(ev)) handlers.set(ev, []);
       handlers.get(ev).push(fn);
+    },
+    off(ev, fn) {
+      const list = handlers.get(ev) || [];
+      const i = list.indexOf(fn);
+      if (i >= 0) list.splice(i, 1);
     },
     emit(ev, payload) {
       emitted.push({ event: ev, payload });
@@ -281,43 +354,36 @@ function makeCtx(seed) {
   const state = createGameState(seed);
   state.mode = 'flight';
   state.ui.docked = true;
-  state.ui.dockedStationId = 'test-station';
+  state.ui.dockedStationId = 'station_helios';
   state.ui.screenStack = [];
+  state.playerId = 1;
+  state.entities = new Map([[1, {
+    id: 1, type: 'ship', alive: true, hull: 100, hullMax: 100,
+    pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, data: {},
+  }]]);
+  state.entityList = [state.entities.get(1)];
+  state.fuel = { current: 100, max: 100 };
   const { bus, emitted } = makeBus();
   installStationExitGate({ bus, state });
   return { state, bus, emitted };
 }
 
-function bindStationHub(ctx) {
-  stationHub._ctx = ctx;
-  stationHub._exitInFlight = false;
-  stationHub._undockBtn = document.createElement('button');
-  stationHub._undockBtn.id = 'test-undock-btn';
-  stationHub._undockChargeTimer = null;
-  stationHub._inspectorEl = document.createElement('div');
-  stationHub._inspectorEl.classList.add('is-collapsed');
-  stationHub._setInspectorOpen = (open) => {
-    stationHub._inspectorEl.classList.toggle('is-collapsed', !open);
-    stationHub._inspectorEl.setAttribute('aria-hidden', open ? 'false' : 'true');
-  };
-  stationHub._el = document.createElement('div');
-  stationHub._el.id = 'test-station-hub';
-  setStationExitOwner(stationHub);
+function undocks(emitted) {
+  return emitted.filter((e) => e.event === 'dock:undocked');
 }
 
-function getConfirmDialog() {
-  const root = document.getElementById('sf-confirm-root');
-  if (!root) return null;
-  return root.querySelector('.sf-confirm');
+// Mounts the live station app and returns { app, pop } for exit-flow assertions.
+function mountStationApp(ctx, options = {}) {
+  const rootEl = document.createElement('div');
+  rootEl.id = 'station-root';
+  document.body.appendChild(rootEl);
+  const app = createStationApp(rootEl, ctx, options);
+  const pop = rootEl.querySelector('.sx-pop');
+  return { app, pop, rootEl };
 }
 
-function getConfirmButtons() {
-  const dialog = getConfirmDialog();
-  if (!dialog) return { ok: null, cancel: null };
-  return {
-    ok: dialog.querySelector('.sf-confirm__ok'),
-    cancel: dialog.querySelector('.sf-confirm__cancel'),
-  };
+function launchAnywayButton(pop) {
+  return pop && pop.querySelector('[data-pop-launch]');
 }
 
 // ── 1) Pure confirm-needs contract ───────────────────────────────────────────
@@ -382,89 +448,76 @@ console.log('ok   stationExitNeedsConfirm gates implicit and explicit risk-unhel
 
 {
   installDom();
-  const { state, bus, emitted } = makeCtx(2);
+  const { bus, emitted } = makeCtx(2);
 
   commitStationUndock(bus, { source: 'accept' });
-  const undocks = emitted.filter((e) => e.event === 'dock:undocked');
-  assert.equal(undocks.length, 1, 'commit must emit exactly one dock:undocked');
-  assert.equal(undocks[0].payload.committed, true, 'committed undock must carry committed:true');
-  assert.equal(undocks[0].payload.source, 'accept', 'committed undock must preserve source');
+  const list = undocks(emitted);
+  assert.equal(list.length, 1, 'commit must emit exactly one dock:undocked');
+  assert.equal(list[0].payload.committed, true, 'committed undock must carry committed:true');
+  assert.equal(list[0].payload.source, 'accept', 'committed undock must preserve source');
 
   console.log('ok   commitStationUndock emits single canonical committed dock:undocked');
 }
 
-// ── 4) Implicit request with dirty state clears first, stays docked ──────────
+// ── 4) Implicit exit opens the live Departure Check and stays docked ─────────
 
 {
   installDom();
   const ctx = makeCtx(3);
-  bindStationHub(ctx);
+  mountStationApp(ctx);
+  ctx.emitted.length = 0;
 
-  stationHub._undockChargeTimer = setTimeout(() => {}, 9999);
-  stationHub._inspectorEl.classList.remove('is-collapsed');
-  stationHub._inspectorEl.setAttribute('aria-hidden', 'false');
+  ctx.bus.emit('dock:undocked', { source: 'escape' });
 
-  const input = document.createElement('input');
-  stationHub._el.appendChild(input);
-  input.focus();
-
-  const pending = stationHub.requestStationExit({ intent: 'implicit', source: 'escape' });
-  const { cancel } = getConfirmButtons();
-  assert.ok(cancel, 'transient station UI must not bypass the implicit confirmation');
-
-  cancel.click();
-  await pending;
-  clearTimeout(stationHub._undockChargeTimer);
-  stationHub._undockChargeTimer = null;
-
-  assert.equal(ctx.state.ui.docked, true, 'cancel must keep the player docked');
-  assert.equal(ctx.emitted.filter((e) => e.event === 'dock:undocked').length, 0, 'cancel must not emit undock');
-
-  console.log('ok   transient station UI still requires implicit confirmation');
+  const list = undocks(ctx.emitted);
+  assert.equal(list.length, 0, 'implicit exit must not undock directly');
+  assert.equal(ctx.state.ui.docked, true, 'implicit exit must keep the player docked');
+  console.log('ok   bare implicit undock is rewritten and committed by the shell only');
 }
 
-// ── 5) Clean implicit request opens confirm; cancel keeps docked ─────────────
+// ── 5) Implicit request opens the Departure Check; dismissing keeps docked ───
 
 {
   installDom();
   const ctx = makeCtx(4);
-  bindStationHub(ctx);
+  const { pop } = mountStationApp(ctx);
+  ctx.emitted.length = 0;
 
-  const opener = document.createElement('button');
-  document.body.appendChild(opener);
-  opener.focus();
+  ctx.bus.emit('station:exitRequest', { intent: 'implicit', source: 'backdrop' });
+  assert.equal(pop.hidden, false, 'clean implicit request must open the Departure Check popover');
+  assert.ok(pop.querySelector('[data-pop-launch]'), 'Departure Check must expose Launch Anyway');
+  assert.equal(undocks(ctx.emitted).length, 0, 'no undock while the check is open');
 
-  const pending = stationHub.requestStationExit({ intent: 'implicit', source: 'backdrop' });
-  const { ok, cancel } = getConfirmButtons();
-  assert.ok(ok && cancel, 'clean implicit request must open a confirm dialog');
+  // Dismiss (click outside the popover and its anchor) — the player stays docked.
+  const appEl = pop.closest('.sx-app');
+  appEl.dispatchEvent(new FakeEvent('click', { target: appEl, currentTarget: appEl }));
+  assert.equal(pop.hidden, false, 'dismiss defers the hide by a frame (150ms timer pending)');
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  assert.equal(pop.hidden, true, 'dismiss must close the Departure Check');
+  assert.equal(ctx.state.ui.docked, true, 'dismiss must keep the player docked');
+  assert.equal(undocks(ctx.emitted).length, 0, 'dismiss must not emit undock');
 
-  cancel.click();
-  await pending;
-  assert.equal(ctx.state.ui.docked, true, 'cancel must keep the player docked');
-  assert.equal(ctx.emitted.filter((e) => e.event === 'dock:undocked').length, 0, 'cancel must not emit undock');
-  assert.equal(document.activeElement, opener, 'cancel must restore focus to the opener');
-
-  console.log('ok   clean implicit confirm cancel keeps docked and restores focus');
+  console.log('ok   implicit Departure Check dismiss keeps docked');
 }
 
-// ── 6) Clean implicit request accept emits single canonical undock ───────────
+// ── 6) Departure Check accept ("Launch Anyway") emits one canonical undock ───
 
 {
   installDom();
   const ctx = makeCtx(5);
-  bindStationHub(ctx);
+  const { pop } = mountStationApp(ctx);
+  ctx.emitted.length = 0;
 
-  const pending = stationHub.requestStationExit({ intent: 'implicit', source: 'escape' });
-  const { ok } = getConfirmButtons();
-  assert.ok(ok, 'confirm dialog must be open');
+  ctx.bus.emit('station:exitRequest', { intent: 'implicit', source: 'escape' });
+  const launch = launchAnywayButton(pop);
+  assert.ok(launch, 'confirm dialog must be open (Departure Check popover)');
 
-  ok.click();
-  await pending;
-  const undocks = ctx.emitted.filter((e) => e.event === 'dock:undocked');
-  assert.equal(undocks.length, 1, 'accept must emit exactly one dock:undocked');
-  assert.equal(undocks[0].payload.committed, true, 'emitted undock must be committed');
+  pop.dispatchEvent(new FakeEvent('click', { target: launch, currentTarget: pop }));
+  const list = undocks(ctx.emitted);
+  assert.equal(list.length, 1, 'accept must emit exactly one dock:undocked');
+  assert.equal(list[0].payload.committed, true, 'emitted undock must be committed');
 
-  console.log('ok   clean implicit confirm accept emits single canonical undock');
+  console.log('ok   Departure Check accept emits single canonical undock');
 }
 
 // ── 7) Explicit Undock (ready + held) is deliberate and direct ───────────────
@@ -472,40 +525,39 @@ console.log('ok   stationExitNeedsConfirm gates implicit and explicit risk-unhel
 {
   installDom();
   const ctx = makeCtx(6);
-  bindStationHub(ctx);
+  const { pop } = mountStationApp(ctx);
+  ctx.emitted.length = 0;
 
-  await stationHub.requestStationExit({ intent: 'explicit', source: 'undock-hold', held: true });
-  const undocks = ctx.emitted.filter((e) => e.event === 'dock:undocked');
-  assert.equal(undocks.length, 1, 'held explicit undock must emit exactly one committed undock');
-  assert.equal(undocks[0].payload.committed, true, 'held explicit undock must be committed');
+  ctx.bus.emit('station:exitRequest', { intent: 'explicit', source: 'undock-hold', held: true });
+  const list = undocks(ctx.emitted);
+  assert.equal(list.length, 1, 'held explicit undock must emit exactly one committed undock');
+  assert.equal(list[0].payload.committed, true, 'held explicit undock must be committed');
+  assert.equal(pop.hidden, true, 'ready explicit undock needs no Departure Check');
 
   console.log('ok   explicit Undock ready+held directly emits committed undock');
 }
 
-// ── 8) Explicit Undock risk + unheld opens confirm ───────────────────────────
+// ── 8) Explicit Undock risk + unheld opens the Departure Check first ─────────
 
 {
   installDom();
   const ctx = makeCtx(7);
-  bindStationHub(ctx);
-  stationHub._undockBtn.setAttribute('data-readiness', 'risk');
+  const { pop } = mountStationApp(ctx);
+  ctx.emitted.length = 0;
 
   ctx.state.fuel = { current: 0, max: 100 };
-  ctx.state.entities.set(ctx.state.playerId, {
-    id: ctx.state.playerId, type: 'ship', alive: true,
-    hull: 10, hullMax: 100,
-    pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, data: {},
-  });
+  ctx.state.entities.get(ctx.state.playerId).hull = 10;
 
-  const pending = stationHub.requestStationExit({ intent: 'explicit', source: 'undock-activate', held: false });
-  const { ok, cancel } = getConfirmButtons();
-  assert.ok(ok && cancel, 'explicit risk unheld undock must open confirm');
+  ctx.bus.emit('station:exitRequest', { intent: 'explicit', source: 'undock-activate', held: false });
+  assert.equal(pop.hidden, false, 'explicit risk unheld undock must open the Departure Check');
+  assert.ok(launchAnywayButton(pop), 'risk Departure Check must keep Launch Anyway reachable');
+  assert.equal(undocks(ctx.emitted).length, 0, 'risk explicit undock must not undock before accept');
 
-  cancel.click();
-  await pending;
-  assert.equal(ctx.state.ui.docked, true, 'risk explicit cancel keeps docked');
+  ctx.bus.emit('station:exitRequest', { intent: 'implicit', source: 'backdrop' });
+  assert.equal(undocks(ctx.emitted).length, 0, 'another implicit request cannot accept the departure');
+  assert.equal(ctx.state.ui.docked, true, 'repeated exit requests keep the player docked');
 
-  console.log('ok   explicit Undock risk+unheld opens confirm before undocking');
+  console.log('ok   explicit Undock risk+unheld opens Departure Check before undocking');
 }
 
 // ── 9) Nested modal Back pops before station-root logic ──────────────────────
@@ -568,7 +620,7 @@ console.log('ok   stationExitNeedsConfirm gates implicit and explicit risk-unhel
     'input.js must route station Escape/B/E to undock(), not bare popScreen');
   assert.match(inputSrc, /function undock\(\)/,
     'input.js must define undock()');
-  assert.match(inputSrc, /bus\.on\('ui:undock', undock\);/,
+  assert.match(inputSrc, /bus\.on\('ui:undock', undock\)/,
     'input.js must let external callers trigger undock via ui:undock');
   assert.match(inputSrc, /bus\.emit\('dock:undocked',\s*\{\}\);/,
     'input.js undock() emits the gated dock:undocked event');
@@ -576,6 +628,60 @@ console.log('ok   stationExitNeedsConfirm gates implicit and explicit risk-unhel
     'input.js must let the shared confirm dialog trap all keys');
 
   console.log('ok   input.js routes station exit through ui:undock without direct dock:undocked');
+}
+
+// The live Hull action uses the real quote and shared dialog, and never cancels on first click.
+{
+  installDom();
+  const ctx = makeCtx(40);
+  ctx.state.player.insurance = { insuredModules: true, deductibleCr: 100, rate: 0.6 };
+  const { rootEl } = mountStationApp(ctx, { serviceQuote });
+  const clickInsurance = () => {
+    const button = rootEl.querySelector('[data-vital-act="insurance"]');
+    assert.ok(button, 'live Hull vital exposes insurance');
+    button.dispatchEvent(new FakeEvent('click', { target: button, bubbles: true }));
+  };
+  const insuranceIntents = () => ctx.emitted.filter((e) => e.event === 'ui:service' && e.payload.type === 'insurance');
+  clickInsurance();
+  assert.equal(insuranceIntents().length, 0, 'opening the dialog changes no policy');
+  const keep = document.body.querySelector('.sf-confirm__cancel');
+  assert.equal(keep.textContent, 'Keep Insurance');
+  keep.click();
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  assert.equal(insuranceIntents().length, 0, 'Keep Insurance emits no cancellation');
+  clickInsurance();
+  document.body.querySelector('.sf-confirm__ok').click();
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  assert.deepEqual(insuranceIntents().map((e) => e.payload), [{ type: 'insurance', amount: 0 }],
+    'explicit cancellation sends exactly one owner intent');
+  ctx.emitted.length = 0;
+  clickInsurance();
+  ctx.state.player.insurance.insuredModules = false;
+  document.body.querySelector('.sf-confirm__ok').click();
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  assert.equal(insuranceIntents().length, 0, 'a stale cancellation cannot buy a changed policy');
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  console.log('ok   live Hull insurance confirms cancellation and rejects stale policy changes');
+}
+
+{
+  installDom();
+  const ctx = makeCtx(41);
+  ctx.state.onboarding = { active: true, finished: false, beatDoneAt: {} };
+  ctx.screenMemory = createScreenMemory(ctx.state);
+  const original = JSON.stringify(ctx.state.onboarding);
+  const { app, rootEl } = mountStationApp(ctx);
+  const rail = rootEl.querySelector('.sxb-handoff');
+  assert.equal(rail.hidden, false);
+  const dismiss = rail.querySelector('[data-handoff-dismiss]');
+  assert.ok(dismiss);
+  dismiss.dispatchEvent(new FakeEvent('click', { target: dismiss, bubbles: true }));
+  assert.equal(rail.hidden, true, 'dismiss closes guidance immediately');
+  assert.equal(ctx.screenMemory.read('station', 'firstDockHandoffDismissed', false), true);
+  app.refresh(ctx);
+  assert.equal(rail.hidden, true, 'refresh preserves dismissal');
+  assert.equal(JSON.stringify(ctx.state.onboarding), original, 'dismissal changes no onboarding progress');
+  console.log('ok   first dock dismissal persists without changing tutorial progress');
 }
 
 console.log('station-exit-confirmation: all acceptance tests PASS');

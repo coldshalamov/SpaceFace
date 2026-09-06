@@ -5,13 +5,15 @@ import {
   normalizeEconomyEventType,
   normalizeRestoredEconomyEvent,
 } from '../src/systems/economy.js';
-import { marketEventTypeHtml } from '../src/ui/screens/market.js';
+import { marketEventTypeHtml } from '../src/ui/market/tradeLogic.js';
 import {
   canonicalCargoItemId,
+  normalizeCargoItemKey,
+} from '../src/ui/station/stationHubModel.js';
+import {
   cargoItemLabelHtml,
   cargoItemRefAttr,
-  normalizeCargoItemKey,
-} from '../src/ui/screens/stationHub.js';
+} from '../src/ui/station/stationHubFormatters.js';
 import { automation, normalizeAutomationRecordId } from '../src/systems/automation.js';
 import { automationRecordRefAttr } from '../src/ui/screens/automationPanel.js';
 import { normalizeProvenanceText } from '../src/systems/provenanceLedger.js';

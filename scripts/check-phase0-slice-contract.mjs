@@ -56,7 +56,6 @@ const allowedRandomFiles = new Map([
   // the sim's state.rng is never read here. See PHASE0_AUTHORITY_AUDIT.md.
   ['src/audio/bandBeds.js', 'cosmetic procedural noise buffer (injected-default RNG seam)'],
   ['src/testing/lab/runScenario.js', 'local lab run id only; lab results are non-promoting/internal-test'],
-  ['src/ui/screens/stationHub.js', 'cosmetic station-name acquire animation token'],
   // spawnChunks() scatters the tumbling rock debris when a mining block lets go. Verified
   // render-only before listing: `particles` is a LOCAL array inside the renderer (declared at
   // asteroidRenderer3d.js:2027) feeding instanced additive chips, and the only readers outside the

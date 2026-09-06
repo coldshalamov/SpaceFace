@@ -21,14 +21,14 @@ import {
 import {
   factionContractLadderRows,
   factionContractLadderText,
-} from '../src/ui/screens/factions.js';
-import { recommendMissionBoardOffer } from '../src/ui/screens/stationHub.js';
+} from '../src/ui/factionStanding.js';
+import { recommendMissionBoardOffer } from '../src/ui/station/stationMissionModel.js';
 
 const dataSrc = readFileSync(new URL('../src/data/missions.js', import.meta.url), 'utf8');
 const missionsSrc = readFileSync(new URL('../src/systems/missions.js', import.meta.url), 'utf8');
 const preflightSrc = readFileSync(new URL('../src/ui/missionPreflight.js', import.meta.url), 'utf8');
-const stationHubSrc = readFileSync(new URL('../src/ui/screens/stationHub.js', import.meta.url), 'utf8');
-const factionsSrc = readFileSync(new URL('../src/ui/screens/factions.js', import.meta.url), 'utf8');
+const factionLogicSrc = readFileSync(new URL('../src/ui/factionStanding.js', import.meta.url), 'utf8');
+const stationFactionsSrc = readFileSync(new URL('../src/ui/station/screens/factions.js', import.meta.url), 'utf8');
 
 assert.match(dataSrc, /export const MISSION_STANDING_LADDER/,
   'mission standing ladder must live in canonical mission data');
@@ -40,12 +40,12 @@ assert.match(preflightSrc, /export function missionStandingRequirement/,
   'mission preflight must expose the shared standing requirement helper');
 assert.match(missionsSrc, /_rollStoryBranchIntroOffer/,
   'Beat 4 story-intro offers must be explicitly generated and tagged');
-assert.match(stationHubSrc, /st-mission-standing/,
-  'mission cards must render a dedicated standing gate line');
-assert.match(factionsSrc, /export function factionContractLadderRows/,
-  'Faction dossier must expose direct-testable contract ladder rows');
-assert.match(factionsSrc, /st-fac-contracts/,
-  'Faction dossier must render contract ladder rows');
+assert.match(factionLogicSrc, /export function factionContractLadderRows/,
+  'Faction standing logic must expose direct-testable contract ladder rows');
+assert.match(stationFactionsSrc, /factionContractLadderRows\(rep\)/,
+  'the live Factions screen must read the shared contract ladder');
+assert.match(stationFactionsSrc, /sx-fac-ladder/,
+  'the live Factions screen must render a standing ladder');
 
 assert.ok(MISSION_STANDING_LADDER.length >= 5, 'ladder should include playable and aspirational tiers');
 assert.equal(missionMinRepForRisk(0), -149, 'R0 work should stay available above aggro');

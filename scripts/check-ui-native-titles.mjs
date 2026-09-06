@@ -6,11 +6,8 @@
 // creep back onto a converted surface, and pins the converted `[data-why]` wiring (hover AND
 // keyboard focus, through the one shared reveal in whyReveal.js — never a second tooltip).
 //
-// NOT a blanket repo ban, on purpose. 38 further native titles live in the UNMOUNTED legacy
-// station-hub chain (screens/stationHub.js and the create*Panel bodies only it ever called:
-// market/outfitting/services/shipyard/manufacture/factions in src/ui/screens/). They render for no
-// player. If any of those files returns to the live route, ADD IT HERE the same day — that is the
-// price of staying out of the ban list.
+// The legacy station panel chain was retired in PQ-184.03. This check covers the live station
+// surfaces below; other menus retain their own accessibility contracts.
 //
 // ALLOWLIST (one file, two entries): shipworks rail rows keep a native title because the visible
 // ship name is ellipsized by design (station-workbench.css .sx-sw-row__name: nowrap + ellipsis).

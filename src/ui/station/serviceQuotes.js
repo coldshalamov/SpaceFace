@@ -1,10 +1,9 @@
-// src/ui/screens/services.js — STATION "Services" tab panel.
-// Refuel / repair hull / buy ammo / toggle insurance. Each action emits ui:service {type,amount};
-// economy/world own the credit charge + the effect (§0.6, §4.4). Read-only over sim state.
+// Shared dock service quotes and readiness data.
+// Live dock controls are rendered by stationApp.
+
 import { COMMODITIES } from '../../data/commodities.js';
 import { SERVICE_PRICES } from '../../systems/economy.js';
 import { livingHullCyclesSinceWash, livingHullGrimeAt } from '../../core/livingHull.js';
-import { confirm } from '../confirm.js';
 
 export function factionPresenceServiceRows(state, stationId) {
   const own = state && state.factionPresence;
@@ -95,19 +94,6 @@ function afterCreditsChip(credits, cost) {
 
 function serviceRow(type) {
   return SERVICE_ROWS.find((row) => row.type === type) || null;
-}
-
-function stationRecordId(station) {
-  if (!station) return null;
-  if (typeof station.stationId === 'string' && station.stationId) return station.stationId;
-  return (typeof station.id === 'string' && station.id) ? station.id : null;
-}
-
-function liveStationData(state, stationId) {
-  for (const e of ((state && state.entityList) || [])) {
-    if (e && e.type === 'station' && e.data && e.data.stationId === stationId) return e.data;
-  }
-  return null;
 }
 
 function isServiceOffered(type, stationServices) {
@@ -376,174 +362,4 @@ export function serviceQuote(type, state, entity) {
     };
   }
   return { amount: 0, cost: 0, detail: '', buttonLabel: '', disabled: true, chips: [] };
-}
-
-function renderRecommendation(rec) {
-  const row = document.createElement('div');
-  const actionable = !!rec.type;
-  row.className = 'st-svc-row st-svc-row--recommend st-svc-row--recommend-' + (rec.kind || 'ok') + (actionable ? '' : ' disabled');
-  const chips = (rec.chips || []).map((chip) =>
-    '<span class="st-svc-chip st-svc-chip--' + (chip.kind || 'cost') + '">' + chip.text + '</span>').join('');
-  const title = actionable
-    ? (rec.cost > 0 ? 'Spend ' + fmtCr(rec.cost) + ' credits.' : rec.reason)
-    : rec.reason;
-  row.innerHTML =
-    '<div class="st-svc-info"><div class="st-svc-name">Recommended Before Undock</div>' +
-    '<div class="st-svc-detail mono">' + rec.title + ' · ' + rec.reason + '</div>' +
-    '<div class="st-svc-meta">' + chips + '</div></div>' +
-    (actionable
-      ? '<button data-svc="' + rec.type + '" data-amount="' + rec.amount + '" title="' + title + '" aria-label="' + title + '">' + rec.actionLabel + '</button>'
-      : '<button disabled title="' + title + '" aria-label="' + title + '">' + rec.actionLabel + '</button>');
-  return row;
-}
-
-export function createServicesPanel(ctx) {
-  const root = document.createElement('div');
-  root.className = 'st-panel st-services';
-  root.innerHTML = '<div class="st-sub-h">Station Services</div><div class="st-svc-list"></div>';
-  const list = root.querySelector('.st-svc-list');
-
-  list.addEventListener('click', async (ev) => {
-    const presenceBtn = ev.target.closest('[data-faction-presence-service]');
-    if (presenceBtn) {
-      ctx.bus.emit('ui:factionPresenceService', {
-        stationId: panel.stationId,
-        serviceId: presenceBtn.getAttribute('data-faction-presence-service'),
-        targetTab: presenceBtn.getAttribute('data-target-tab') || null,
-      });
-      ctx.bus.emit('audio:cue', { id: presenceBtn.disabled ? 'ui_deny' : 'ui_click' });
-      return;
-    }
-    const btn = ev.target.closest('[data-svc]');
-    if (!btn) return;
-    const type = btn.getAttribute('data-svc');
-    const state = ctx.state;
-    const explicitAmount = Number(btn.getAttribute('data-amount'));
-    let amount = 0;
-    if (Number.isFinite(explicitAmount) && explicitAmount >= 0) {
-      amount = explicitAmount;
-    } else if (type === 'refuel') {
-      amount = Math.max(0, (state.fuel.max || 0) - (state.fuel.current || 0));
-    } else if (type === 'repair') {
-      const e = state.entities.get(state.playerId);
-      amount = repairMissing(e).total;
-    } else if (type === 'ammo') {
-      amount = AMMO_BATCH;
-    } else if (type === 'insurance') {
-      amount = state.player.insurance && state.player.insurance.insuredModules ? 0 : 1; // toggle intent
-    }
-    if ((type === 'refuel' || type === 'repair' || type === 'hull_wash' || type === 'ammo') && amount <= 0) {
-      ctx.bus.emit('audio:cue', { id: 'ui_deny' });
-      ctx.bus.emit('toast', { text: type === 'ammo' ? 'No munitions can fit right now' : 'Nothing to ' + type, kind: 'info', ttl: 2 });
-      return;
-    }
-    if (type === 'insurance' && amount === 0 && state.player.insurance && state.player.insurance.insuredModules) {
-      const ok = await confirm({
-        title: 'Cancel hull insurance?',
-        body: 'Station recovery will no longer protect installed modules on death. Cargo loss still applies either way, and cancelling does not refund the paid deductible.',
-        confirmLabel: 'Cancel Insurance',
-        cancelLabel: 'Keep Insurance',
-        danger: true,
-      });
-      if (!ok) {
-        ctx.bus.emit('audio:cue', { id: 'ui_deny' });
-        return;
-      }
-    } else if (type === 'refuel' || type === 'repair' || type === 'hull_wash' || type === 'ammo') {
-      // Quote → confirm for paid berth verbs (Station OS control grammar).
-      const e = state.entities && state.entities.get(state.playerId);
-      const quote = serviceQuote(type, state, e);
-      if (quote && quote.cost > 0) {
-        const ok = await confirm({
-          title: quote.buttonLabel || (type === 'refuel' ? 'Refuel' : type === 'repair' ? 'Repair' : type === 'hull_wash' ? 'Wash Hull' : 'Buy munitions'),
-          body: (quote.detail || type) + ' · ' + fmtCr(quote.cost) + ' cr',
-          confirmLabel: 'Confirm · ' + fmtCr(quote.cost) + ' cr',
-          cancelLabel: 'Cancel',
-          danger: false,
-        });
-        if (!ok) {
-          ctx.bus.emit('audio:cue', { id: 'ui_deny' });
-          return;
-        }
-      }
-    }
-    ctx.bus.emit('ui:service', { type, amount });
-    ctx.bus.emit('audio:cue', { id: 'ui_click' });
-    // optimistic refresh; the owning system's fuel:changed / cargo:changed / credits:changed
-    // events trigger the real refresh through stationHub.
-    refresh();
-  });
-
-  function stationServices() {
-    const s = ctx.state;
-    const sid = panel.stationId;
-    // find the station def in the active sector or the sectors map.
-    const sect = s.world && s.world.activeSector;
-    let stn = sect && (sect.stations || []).find((x) => stationRecordId(x) === sid);
-    if (!stn) {
-      const sectors = s.world && s.world.sectors;
-      for (const k in (sectors || {})) {
-        const found = (sectors[k].stations || []).find((x) => stationRecordId(x) === sid);
-        if (found) { stn = found; break; }
-      }
-    }
-    const data = liveStationData(s, sid);
-    return (stn && stn.services) || (data && data.services) || null;
-  }
-
-  function refresh() {
-    const state = ctx.state;
-    const svc = stationServices();
-    const e = state.entities.get(state.playerId);
-    const frag = document.createDocumentFragment();
-    frag.appendChild(renderRecommendation(serviceReadinessRecommendation(state, e, svc)));
-    for (const r of SERVICE_ROWS) {
-      const offered = isServiceOffered(r.type, svc);
-      const quote = serviceQuote(r.type, state, e);
-      const row = document.createElement('div');
-      const dis = !offered || quote.disabled;
-      row.className = 'st-svc-row' + (offered ? '' : ' disabled') + (quote.disabledReason ? ' st-svc-row--blocked' : '');
-      const chips = (quote.chips || []).map((chip) =>
-        '<span class="st-svc-chip st-svc-chip--' + (chip.kind || 'cost') + '">' + chip.text + '</span>').join('');
-      const actionLabel = offered ? quote.buttonLabel : 'Unavailable';
-      const title = offered
-        ? (quote.disabledReason || (quote.cost > 0 ? 'Spend ' + fmtCr(quote.cost) + ' credits.' : r.desc))
-        : 'This station does not offer ' + r.label + '.';
-      row.innerHTML =
-        '<div class="st-svc-info"><div class="st-svc-name">' + r.label + '</div>' +
-        '<div class="st-svc-detail mono">' + quote.detail + (offered ? '' : ' · not offered here') + '</div>' +
-        '<div class="st-svc-meta">' + chips + '</div></div>' +
-        '<button data-svc="' + r.type + '" data-amount="' + quote.amount + '" title="' + title + '" aria-label="' + title + '"' + (dis ? ' disabled' : '') + '>' + actionLabel + '</button>';
-      frag.appendChild(row);
-    }
-    for (const r of factionPresenceServiceRows(state, panel.stationId)) {
-      const row = document.createElement('div');
-      row.className = 'st-svc-row st-svc-row--faction' + (r.available ? '' : ' disabled st-svc-row--blocked');
-      const title = r.available ? r.desc : r.disabledReason;
-      row.innerHTML =
-        '<div class="st-svc-info"><div class="st-svc-name"></div>' +
-        '<div class="st-svc-detail mono"></div></div>' +
-        '<button type="button"></button>';
-      row.querySelector('.st-svc-name').textContent = r.label;
-      row.querySelector('.st-svc-detail').textContent = r.available ? r.desc : r.disabledReason;
-      const button = row.querySelector('button');
-      button.textContent = r.available ? (r.targetTab ? 'Open' : 'Read') : 'Locked';
-      button.disabled = !r.available;
-      button.setAttribute('data-faction-presence-service', r.id);
-      if (r.targetTab) button.setAttribute('data-target-tab', r.targetTab);
-      button.setAttribute('title', title);
-      button.setAttribute('aria-label', `${r.label}. ${title}`);
-      frag.appendChild(row);
-    }
-    list.textContent = '';
-    list.appendChild(frag);
-  }
-
-  const panel = {
-    el: root,
-    stationId: null,
-    onShow(c) { if (c && c.stationId) this.stationId = c.stationId; refresh(); },
-    refresh,
-  };
-  return panel;
 }

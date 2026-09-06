@@ -6,14 +6,14 @@ import test from 'node:test';
 import { BINDINGS } from '../src/ui/bindings.js';
 import { confirmGamepadAccept, confirmGamepadCancel, isConfirmOpen } from '../src/ui/confirm.js';
 import { createUiInput } from '../src/ui/input.js';
-import { cargoQty } from '../src/ui/screens/market.js';
+import { cargoQty } from '../src/ui/market/tradeLogic.js';
 import { cycleTarget } from '../src/ui/uiRoot.js';
 import { createGamepad } from '../src/systems/gamepad.js';
 import { input } from '../src/systems/input.js';
 import { createTouch } from '../src/systems/touch.js';
 
 const INPUT_SRC = readFileSync(fileURLToPath(new URL('../src/ui/input.js', import.meta.url)), 'utf8');
-const MARKET_SRC = readFileSync(fileURLToPath(new URL('../src/ui/screens/market.js', import.meta.url)), 'utf8');
+const MARKET_SRC = readFileSync(fileURLToPath(new URL('../src/ui/market/tradeLogic.js', import.meta.url)), 'utf8');
 const STATION_MARKET_SRC = readFileSync(
   fileURLToPath(new URL('../src/ui/station/screens/market.js', import.meta.url)),
   'utf8',

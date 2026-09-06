@@ -62,7 +62,7 @@ import { createWingmanRadial } from './wingmanRadial.js';
 // build/web, which strands packaged players in an empty HUD before the menu registers.
 const SCREEN_MODULES = [
   // Docked station: the "Orbital Command" rebuild (src/ui/station/). The adapter re-exports
-  // installStationExitGate; legacy screens/stationHub.js stays on disk for its helper exports.
+  // installStationExitGate; shared helpers live in src/ui/station/.
   { path: './station/stationScreen.js', load: () => import('./station/stationScreen.js'), name: 'stationScreen' },
   // REVAMP 2.1 — one zoomable galaxy map (supersedes starmap+localmap once BP-03 parity passes). Lives in src/ui/, not screens/.
   { path: './galaxyMap.js', load: () => import('./galaxyMap.js'), name: 'galaxyMapScreen' },

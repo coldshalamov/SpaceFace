@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { MISSION_TUNING } from '../src/data/missions.js';
+import { MISSION_TUNING, ONE_LOAD_CARGO_TYPES } from '../src/data/missions.js';
 import { missions } from '../src/systems/missions.js';
 import {
   missionCargoStaging,
@@ -17,16 +17,18 @@ import {
   missionShipReadiness,
   missionTimePacing,
 } from '../src/ui/missionPreflight.js';
-import { missionBoardReadiness } from '../src/ui/screens/stationHub.js';
+import { missionBoardReadiness } from '../src/ui/station/stationHubModel.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
-const stationHubSrc = readFileSync(join(ROOT, 'src/ui/screens/stationHub.js'), 'utf8');
+const missionModelSrc = readFileSync(join(ROOT, 'src/ui/station/stationMissionModel.js'), 'utf8');
 const missionPreflightSrc = readFileSync(join(ROOT, 'src/ui/missionPreflight.js'), 'utf8');
 const missionsSrc = readFileSync(join(ROOT, 'src/systems/missions.js'), 'utf8');
+const contractsSrc = readFileSync(join(ROOT, 'src/ui/station/screens/contracts.js'), 'utf8');
 
-assert.match(stationHubSrc, /import \{ missionPreflight \} from '\.\.\/missionPreflight\.js'/,
-  'stationHub mission board must use the shared mission preflight helper');
+assert.match(missionModelSrc, /import \{ missionPreflight,[^}]*\} from '\.\.\/missionPreflight\.js'/,
+  'station mission model must use the shared mission preflight helper');
 assert.match(missionPreflightSrc, /export function missionPreflight/, 'shared mission preflight helper must be exported');
+assert.match(missionPreflightSrc, /ONE_LOAD_CARGO_TYPES/, 'shared preflight must use the canonical one-load mission set');
 assert.match(missionPreflightSrc, /export function missionRouteScope/,
   'shared mission preflight helper must expose route-scope policy for direct tests');
 assert.match(missionPreflightSrc, /export function missionCargoStaging/,
@@ -43,14 +45,12 @@ assert.match(missionPreflightSrc, /sectorSignalFor/,
   'mission preflight route intel must read the same sector signal contract as Star Map risk');
 assert.match(missionPreflightSrc, /forecastTransitFor/,
   'mission preflight route intel must reuse the shared transit forecast contract');
-assert.match(stationHubSrc, /missionConsequenceSummary\(m\)/,
-  'mission cards must use the shared consequence helper');
+assert.match(missionModelSrc, /missionConsequenceSummary\(mission\)/,
+  'station mission model must use the shared consequence helper');
 assert.match(missionPreflightSrc, /export function missionConsequenceSummary/,
   'shared mission consequence helper must be exported');
 assert.match(missionPreflightSrc, /export function missionRiskRewardSummary/,
   'shared mission risk/reward helper must be exported for direct tests');
-assert.match(stationHubSrc, /st-mission-preflight/, 'mission cards must render preflight chips');
-assert.match(stationHubSrc, /st-mission-consequences/, 'mission cards must render consequence chips');
 assert.match(missionPreflightSrc, /Jump route: \$\{sectorName\(targetSectorId\)\}/,
   'mission preflight must label off-sector destination scope before accept');
 assert.match(missionPreflightSrc, /STATION_SECTOR_BY_ID/,
@@ -65,24 +65,21 @@ assert.match(missionPreflightSrc, /DANGEROUS_MISSION_TYPES/,
   'mission preflight must distinguish risky/combat contracts for ship-readiness warnings');
 assert.match(missionPreflightSrc, /Hull is worn/,
   'mission preflight must explain damaged-hull risk before recommending dangerous work');
-assert.match(missionPreflightSrc, /Requires \$\{fmtHoldUnits\(cargoNeed\.volume\)\}u cargo capacity/,
+assert.match(missionPreflightSrc, /Need \$\{fmtHoldUnits\(cargoNeed\.volume\)\}u cargo capacity for this contract/,
   'mission preflight must flag cargo capacity blockers');
-assert.match(stationHubSrc, /st-mission-preflight-warn/, 'mission cards must render non-blocking readiness warnings');
-assert.match(stationHubSrc, /st-mission-readiness/, 'mission cards must render a fast readiness badge');
-assert.match(stationHubSrc, /missionBoardReadiness\(preflight\)/,
-  'mission cards must derive the readiness badge from shared preflight state');
-assert.match(stationHubSrc, /function missionRiskCopy\(riskValue\)/,
-  'mission cards must explain compact risk badges for accessibility');
-assert.match(stationHubSrc, /const risk = missionRiskTier\(m\)/,
-  'mission cards must normalize risk tiers before rendering risk badge classes');
-assert.match(stationHubSrc, /aria-label="' \+ escapeHtml\(riskTitle\)/,
-  'mission risk badges must expose the risk-band meaning to assistive tech');
-assert.match(stationHubSrc, /aria-label="' \+ escapeHtml\(acceptTitle\)/,
-  'mission accept buttons must expose exact ready/blocked guidance to assistive tech');
 assert.match(missionsSrc, /_acceptPreflight\(offer\)/, 'missions.acceptMission must call _acceptPreflight before accepting');
-assert.match(missionsSrc, /ONE_LOAD_CARGO_TYPES/, 'missions must define the one-load cargo mission set');
+assert.match(missionsSrc, /ONE_LOAD_CARGO_TYPES/, 'missions must use the canonical one-load cargo mission set');
+assert.match(missionsSrc, /import \{[\s\S]*?ONE_LOAD_CARGO_TYPES[\s\S]*?\} from '\.\.\/data\/missions\.js'/,
+  'missions must import the one-load cargo mission set from mission data');
+assert.doesNotMatch(missionsSrc, /const ONE_LOAD_CARGO_TYPES\s*=\s*new Set/,
+  'missions must not maintain a second one-load cargo mission set');
 assert.match(missionsSrc, /Need \$\{fmtCargoUnits\(requiredVolume\)\}u cargo capacity/,
   'missions accept guard must explain cargo capacity failures');
+assert.doesNotMatch(contractsSrc, /SIM_ONE_LOAD_CARGO_TYPES|missionHoldBlocker/,
+  'station contracts must not duplicate the sim one-load hold gate');
+assert.match(contractsSrc, /missionDossierReadiness/, 'station contracts must consume shared readiness');
+assert.deepEqual([...ONE_LOAD_CARGO_TYPES].sort(), ['cargo_delivery', 'salvage_retrieval', 'smuggling_run'],
+  'canonical one-load mission set must cover the sim accept families exactly');
 
 function makeOffer(overrides = {}) {
   return {
@@ -182,7 +179,7 @@ assert.equal(missionBoardReadiness(lowCapUiPreflight).state, 'blocked',
   'mission board readiness should mark cargo-capacity blockers as blocked');
 assert.equal(missionBoardReadiness(lowCapUiPreflight).label, 'BLOCKED',
   'blocked mission cards should be scannable before reading details');
-assert.equal(lowCapUiPreflight.blocker, 'Requires 5u cargo capacity',
+assert.equal(lowCapUiPreflight.blocker, 'Need 5u cargo capacity for this contract',
   'shared UI preflight must surface impossible cargo capacity before accept');
 assert.ok(lowCapUiPreflight.chips.some((chip) => chip.kind === 'ok' && chip.text === riskRewardChipText),
   'shared UI preflight must expose payout/risk/stake before accept');
@@ -210,12 +207,12 @@ assert.ok(lowCapBus.events.some((event) =>
 const lowFreeState = makeState(8);
 lowFreeState.player.cargo.usedVolume = 6;
 const lowFreeUiPreflight = missionPreflight(makeOffer(), lowFreeState);
-assert.equal(missionBoardReadiness(lowFreeUiPreflight).state, 'caution',
-  'mission board readiness should mark non-blocking cargo-space warnings as caution');
-assert.equal(missionBoardReadiness(lowFreeUiPreflight).label, 'CHECK',
-  'caution mission cards should ask the player to check prep details');
-assert.equal(lowFreeUiPreflight.blocker, null, 'low free space should warn without blocking a capable hull');
-assert.match(lowFreeUiPreflight.warning || '', /clear space/, 'shared UI preflight must tell the player to clear cargo space');
+assert.equal(missionBoardReadiness(lowFreeUiPreflight).state, 'blocked',
+  'one-load cargo shortage must match the sim accept blocker');
+assert.equal(missionBoardReadiness(lowFreeUiPreflight).label, 'BLOCKED',
+  'one-load cargo shortage must disable the station accept action');
+assert.equal(lowFreeUiPreflight.blocker, 'Need 5u cargo capacity for this contract',
+  'low free hold must be rejected before the sim can charge collateral');
 
 const stockedCargoState = stockMissionCargo(makeState(8), 12);
 const stockedCargo = missionCargoStaging(makeOffer(), stockedCargoState);
@@ -303,8 +300,10 @@ assert.match(criticalPacing.warning || '', /critical/, 'critical route timers sh
 const tightLowFreeState = makeState(8);
 tightLowFreeState.player.cargo.usedVolume = 6;
 const tightLowFreePreflight = missionPreflight(tightOffer, tightLowFreeState);
-assert.match(tightLowFreePreflight.warning || '', /clear space/,
-  'cargo-space warnings should remain first when a tight timer also applies');
+assert.equal(tightLowFreePreflight.blocker, 'Need 5u cargo capacity for this contract',
+  'one-load free-hold blocker must remain first when a tight timer also applies');
+assert.match(tightLowFreePreflight.warning || '', /launch directly/,
+  'independent timer guidance must remain a warning alongside the cargo blocker');
 
 const damagedBountyState = stageShip(makeState(8), { hull: 60, fuel: 100 });
 const damagedBountyOffer = makeOffer({

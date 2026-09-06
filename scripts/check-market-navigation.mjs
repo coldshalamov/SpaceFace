@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-import { applyTradeNavigation, computeBestTrades, describeTradeIntel, formatCargoUnits, unitPrice } from '../src/ui/screens/market.js';
+import { applyTradeNavigation, computeBestTrades, describeTradeIntel, formatCargoUnits, unitPrice } from '../src/ui/market/tradeLogic.js';
 
-const MARKET_SOURCE = readFileSync(new URL('../src/ui/screens/market.js', import.meta.url), 'utf8');
+const TRADE_LOGIC_SOURCE = readFileSync(new URL('../src/ui/market/tradeLogic.js', import.meta.url), 'utf8');
+const STATION_MARKET_SOURCE = readFileSync(new URL('../src/ui/station/screens/market.js', import.meta.url), 'utf8');
 
 function makeHarness(currentSectorId = 'sector_helios_prime') {
   const events = [];
@@ -210,21 +211,21 @@ function checkMarketCargoUnitFormatting() {
   assert.equal(formatCargoUnits(0.5), '0.5', 'cargo formatter should preserve fractional hold units');
   assert.equal(formatCargoUnits(1234.56), '1,234.6', 'cargo formatter should group cargo quantities');
   assert.equal(formatCargoUnits(Number.NaN), '0', 'cargo formatter should fail closed for invalid values');
-  assert.doesNotMatch(MARKET_SOURCE, /fmtCr\([^)]*\) \+ 'u/,
-    'market cargo-unit copy should not use the credit formatter');
-  assert.match(MARKET_SOURCE, /using about ' \+ formatCargoUnits\(buyQty \* vol\) \+ 'u cargo/,
-    'buy title should format hold volume with the cargo-unit formatter');
-  assert.match(MARKET_SOURCE, /hold ' \+ formatCargoUnits\(t\.loadVolume\) \+ 'u/,
-    'trade planner title should format hold volume with the cargo-unit formatter');
+  assert.match(TRADE_LOGIC_SOURCE, /export function formatCargoUnits/,
+    'pure market logic must keep the shared cargo-unit formatter');
+  assert.match(STATION_MARKET_SOURCE, /rowKV\('Hold free', fmt\(free\) \+ ' u'\)/,
+    'the live Station Market must show remaining hold capacity in cargo units');
+  assert.doesNotMatch(STATION_MARKET_SOURCE, /fmtCr\([^)]*\) \+ ' u/,
+    'the live Station Market must not render cargo units through the credit formatter');
 }
 
-function checkMarketListActionDispatchOrder() {
-  assert.match(MARKET_SOURCE, /const act = btn\.getAttribute\('data-act'\);\s+if \(act === 'expand'\)/,
-    'market row listener must read data-act before checking expand/select actions');
-  assert.doesNotMatch(MARKET_SOURCE, /if \(act === 'expand'\)[\s\S]{0,180}const act = btn\.getAttribute\('data-act'\);/,
-    'market row listener must not reference act before its declaration');
-  assert.match(MARKET_SOURCE, /if \(!btn\) \{\s+selectCommodity\(cmdtyId\);\s+return;\s+\}/,
-    'market row background click should select the inline trade-intelligence stage, not cover it with a modal');
+function checkStationMarketSelectionContract() {
+  assert.match(STATION_MARKET_SOURCE, /selectionFollowsFocus: true/,
+    'the live Station Market rail must move the quote with keyboard focus');
+  assert.match(STATION_MARKET_SOURCE, /onSelect: \(id\) => \{[\s\S]*renderStage\(state\); renderConsole\(state\);/,
+    'selecting a live commodity card must redraw its quote and trade console');
+  assert.match(STATION_MARKET_SOURCE, /const go = ev\.target\.closest\('\[data-go\]'\);/,
+    'the live Station Market must delegate its visible buy/sell commit control');
 }
 
 function checkBestTradeExplainsBlockedLoad() {
@@ -267,7 +268,7 @@ checkFailedQuoteFallsBackToRolePrice();
 checkLiveActiveStationRecordUsesStationIdForRolePrice();
 checkLiveQuoteStillWins();
 checkMarketCargoUnitFormatting();
-checkMarketListActionDispatchOrder();
+checkStationMarketSelectionContract();
 checkBestTradeShowsCurrentLoadAndProfit();
 checkBestTradeExplainsBlockedLoad();
 checkBestTradeUsesWarmedMarketSnapshots();

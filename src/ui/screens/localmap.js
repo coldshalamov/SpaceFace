@@ -16,7 +16,7 @@ import { COMMODITIES } from '../../data/commodities.js';
 import { STORY_BEATS } from '../../data/missions.js';
 import { SECTORS } from '../../data/sectors.js';
 import { BINDINGS } from '../bindings.js';
-import { applyTradeNavigation } from './market.js';
+import { applyTradeNavigation } from '../market/tradeLogic.js';
 import { isHostileToPlayer } from '../../systems/scanner.js';
 import { sectorSignalFor, effectiveDangerTierFor } from '../../systems/sectorSim.js';
 import { resolveWaypointPresentationPosition } from '../navigationWaypoint.js';
