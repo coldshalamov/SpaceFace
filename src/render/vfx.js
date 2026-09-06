@@ -10717,6 +10717,7 @@ export const vfx = {
       const socketCount = this._writeProductionPlumeSockets(e);
       fleet.setShipSockets(ship, this._productionPlumeSocketView, socketCount);
       fleet.setShipDrive(ship, this._engineDriveFor(e));
+      fleet.setShipSpin(ship, e.angVel);
       this._factionThrusterRgbInto(e, rgb);
       fleet.setShipFactionRgb(ship, rgb.r, rgb.g, rgb.b);
     }
@@ -10771,6 +10772,7 @@ export const vfx = {
       const socketCount = this._writeProductionPlumeSockets(e);
       fleet.setShipSockets(ship, this._productionPlumeSocketView, socketCount);
       fleet.setShipDrive(ship, this._engineDriveFor(e));
+      fleet.setShipSpin(ship, e.angVel);
       this._factionThrusterRgbInto(e, rgb);
       fleet.setShipFactionRgb(ship, rgb.r, rgb.g, rgb.b);
     }

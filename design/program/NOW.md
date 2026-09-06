@@ -41,7 +41,7 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| PQ-139.04 tumbling ships corkscrew their trail (enemy card-plume half) | flash-10-unit-batch (U3 of 10) | MUTATING | src/render/thruster/systems/continuousPlume.js (spin instance attribute + packing), src/render/thruster/systems/familyFleet.js (per-ship spin phase), src/render/thruster/materials/flowFlipbookMaterial.js (vertex wobble), src/render/vfx.js (one setShipSpin call site), test/plume-spin-wobble.test.mjs (new), scripts/capture-pq139-04-shove-spin.mjs (new), design/program/roadmap/receipts/PQ-139-04-REPORT.md | vfx checks + capture, review, commit by pathspec, push master |
+| PQ-158.06 Minimal action audio in the first playable | finish-campaign /goal | PUBLISHING | src/audio/minimalActionAudio.js, src/audio/audioSystem.js, test/pq-158-06-action-audio.test.mjs, scripts/capture-pq158-06-action-audio.mjs, design/program/roadmap/receipts/PQ-158-06-* | review, baseline, commit by pathspec |
 
 _Previously:_ no active mutation windows. The 2026-09-04 orchestrate-next-build handoff is finished: everything
 that was in flight is committed and pushed, and no agent is holding a source file. See

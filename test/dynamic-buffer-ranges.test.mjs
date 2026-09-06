@@ -745,6 +745,7 @@ test('ordinary-flight plume layers publish one packed socket prefix per layer', 
     [batch.attrs.instParams, 4, 7],
     [batch.attrs.instDynamics, 4, 11],
     [batch.attrs.instColor, 3, 15],
+    [batch.attrs.instSpin, 2, 18],
   ];
   const assertPackedParity = (batch) => {
     const sourceSlots = plume.pool.slots
@@ -753,10 +754,10 @@ test('ordinary-flight plume layers publish one packed socket prefix per layer', 
     assert.equal(sourceSlots.length, batch.writeCount);
     for (let index = 0; index < batch.writeCount; index++) {
       const slot = sourceSlots[index];
-      const packedStart = index * 18;
+      const packedStart = index * 20;
       const offsetStart = index * 3;
       const fourStart = index * 4;
-      const packed = Array.from(batch.backing.array.slice(packedStart, packedStart + 18));
+      const packed = Array.from(batch.backing.array.slice(packedStart, packedStart + 20));
       const expectedFromSource = Array.from(Float32Array.from([
         ...slot.offset,
         ...slot.axis,
@@ -770,15 +771,18 @@ test('ordinary-flight plume layers publish one packed socket prefix per layer', 
         slot.coreSheath ?? 0.8,
         slot.dissipation ?? 1,
         ...slot.color,
+        slot.spinAmp ?? 0,
+        slot.spinPhase ?? 0,
       ]));
       assert.deepEqual(packed, expectedFromSource,
-        `${batch.role} packs the exact 18 authored instance scalars from the live slot`);
+        `${batch.role} packs the exact 20 authored instance scalars from the live slot`);
       assert.deepEqual(packed, [
           ...batch.offset.slice(offsetStart, offsetStart + 3),
           ...batch.axisScale.slice(fourStart, fourStart + 4),
           ...batch.params.slice(fourStart, fourStart + 4),
           ...batch.dynamics.slice(fourStart, fourStart + 4),
           ...batch.color.slice(offsetStart, offsetStart + 3),
+          ...batch.spin.slice(index * 2, index * 2 + 2),
         ], `${batch.role} keeps its existing CPU readback contract`);
     }
   };
@@ -792,7 +796,7 @@ test('ordinary-flight plume layers publish one packed socket prefix per layer', 
     assert.equal(batch.dynamicBufferOwner.bindings.length, 1,
       'one backing store replaces five per-layer publication owners');
     assert.equal(batch.dynamicBufferOwner.bindings[0].attribute, batch.backing);
-    assert.equal(batch.backing.stride, 18);
+    assert.equal(batch.backing.stride, 20);
     assert.equal(batch.backing.isInstancedInterleavedBuffer, true);
     for (const [attribute, itemSize, offset] of attributesFor(batch)) {
       assert.equal(attribute.isInterleavedBufferAttribute, true);
@@ -820,9 +824,9 @@ test('ordinary-flight plume layers publish one packed socket prefix per layer', 
   for (const batch of activeBatches) {
     assert.deepEqual(batch.backing.updateRanges, [{
       start: 0,
-      count: batch.writeCount * 18,
+      count: batch.writeCount * 20,
     }]);
-    expectedBytes += batch.writeCount * 18 * Float32Array.BYTES_PER_ELEMENT;
+    expectedBytes += batch.writeCount * 20 * Float32Array.BYTES_PER_ELEMENT;
     fullBytes += batch.backing.array.byteLength;
     assertPackedParity(batch);
     acknowledgeUpdate(batch.backing);

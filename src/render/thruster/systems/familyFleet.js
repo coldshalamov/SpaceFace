@@ -181,6 +181,9 @@ export class FamilyProductionFleet {
       factionR: 0.533,
       factionG: 0.667,
       factionB: 1.0,
+      // Tumbling ships corkscrew (PQ-139.04): raw angVel and the accumulated wobble phase.
+      spin: 0,
+      spinPhase: 0,
     };
   }
 
@@ -308,10 +311,13 @@ export class FamilyProductionFleet {
   _activateShip(ship, entityId, entry, isPlayer) {
     const prevEntity = ship.entityId;
     const prevProfile = ship.profileId;
-    // New ownership or family change must not inherit smoothed boost / plume drive.
+    // New ownership or family change must not inherit smoothed boost / plume drive,
+    // nor the previous hull's wobble phase (PQ-139.04).
     if (prevEntity !== entityId || prevProfile !== entry.profileId) {
       ship.driveState.plumeDrive = 0;
       ship.driveState.boostBlend = 0;
+      ship.spin = 0;
+      ship.spinPhase = 0;
     }
     ship.alive = true;
     ship.entityId = entityId;
@@ -456,6 +462,15 @@ export class FamilyProductionFleet {
   }
 
   /**
+   * Tumbling ships corkscrew (PQ-139.04): snapshot the hull's raw angVel each frame; the
+   * wobble phase accumulates from it in endFrame, so the plume's screw turns with the hull.
+   */
+  setShipSpin(ship, angVel) {
+    if (!ship) return;
+    ship.spin = Number.isFinite(angVel) ? angVel : 0;
+  }
+
+  /**
    * Precomputed faction thruster RGB (0..1). Stored on the ship record so plume
    * instance colors can blend without per-frame object allocation.
    */
@@ -500,6 +515,9 @@ export class FamilyProductionFleet {
       const ship = this.ships[i];
       if (!ship.alive) continue;
       aliveCount += 1;
+      // The wobble screw turns with the hull: advance the phase by the ship's own spin
+      // (PQ-139.04) — before the socket skip, so a re-drawn hidden ship's phase never stalls.
+      if (ship.spin) ship.spinPhase += ship.spin * dt;
       if (ship.drive < 0.08 && ship.boost < 0.05) idleShips += 1;
       // 0 sockets is intentional (player plasma stream owns the jet). Do not invent
       // a fallback socket — that drew a throttle-locked ghost at the world origin.

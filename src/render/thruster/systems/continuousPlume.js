@@ -43,12 +43,35 @@ import {
 
 const ROLE_ORDER = ['core', 'inner', 'sheath', 'vapor', 'distortion'];
 const QUALITY_TIERS = ['high', 'medium', 'low'];
-const PLUME_INSTANCE_STRIDE = 18;
+const PLUME_INSTANCE_STRIDE = 20;
 const PLUME_OFFSET_OFFSET = 0;
 const PLUME_AXIS_SCALE_OFFSET = 3;
 const PLUME_PARAMS_OFFSET = 7;
 const PLUME_DYNAMICS_OFFSET = 11;
 const PLUME_COLOR_OFFSET = 15;
+const PLUME_SPIN_OFFSET = 18;
+
+/**
+ * TUMBLING SHIPS CORKSCREW (PQ-139.04, enemy card-plume half).
+ *
+ * The player's contrail already corkscrews (contrailTrail.js). Enemy hulls draw card plumes
+ * with no recorded history, so their spin had no read at all. Each card carries a per-instance
+ * spin pair (amp, phase) and the vertex shader bows it sideways by
+ * `amp * sin(phase - along * SPIN_WOBBLE_WAVENUMBER)`, so a spun hostile's plume draws a
+ * helix with the period of the spin a viewer sees. Zero at rest is bit-identical: amp 0
+ * contributes an exact zero displacement.
+ */
+export const SPIN_WOBBLE_REF_RAD_S = 2.0;
+export const SPIN_WOBBLE_AMP_WU = 4.5;
+export const SPIN_WOBBLE_REDUCED_MOTION_SCALE = 0.35;
+
+/** Lateral wobble amplitude (WU) for a spin rate. Pure; zero at rest and for non-finite input. */
+export function spinWobbleAmp(spin, reducedMotion = false) {
+  const s = Number.isFinite(spin) ? Math.abs(spin) : 0;
+  const amp = Math.min(1, s / SPIN_WOBBLE_REF_RAD_S) * SPIN_WOBBLE_AMP_WU;
+  if (!(amp > 0)) return 0;
+  return amp * (reducedMotion ? SPIN_WOBBLE_REDUCED_MOTION_SCALE : 1);
+}
 
 /**
  * Parse #RRGGBB into preallocated rgb array.
@@ -173,6 +196,9 @@ export class PlumeSlotPool {
         dissipation: 1,
         boostBlend: 0,
         mode: 'idle',
+        // Spin wobble (PQ-139.04): amp 0 at rest, phase accumulated on the owning ship.
+        spinAmp: 0,
+        spinPhase: 0,
       };
       this._allocCount += 1;
     }
@@ -331,6 +357,10 @@ export class PlumeSlotPool {
     const dynDiss = sample.dissipation;
     const dynBoost = boostBlend;
     const dynMode = sample.mode || tf.mode || 'accel';
+    // Spin wobble (PQ-139.04): the fleet ship record carries its raw angVel (`spin`) and the
+    // phase it accumulated (`spinPhase`). Zero amp at rest keeps the card bit-identical.
+    const spinAmp = spinWobbleAmp(signals ? signals.spin : 0, !!flags.reducedMotion);
+    const spinPhase = signals && Number.isFinite(signals.spinPhase) ? signals.spinPhase : 0;
 
     let writtenSockets = 0;
     for (let s = 0; s < nSockets; s++) {
@@ -368,6 +398,8 @@ export class PlumeSlotPool {
         slot.intensity = this._layerIntensity[li] * intensityScale;
         slot.opacity = this._layerOpacity[li];
         slot.softEdge = this._layerSoftEdge[li] + this._presentation.softEdgeBoost;
+        slot.spinAmp = spinAmp;
+        slot.spinPhase = spinPhase;
         // Recipe RGB blended with precomputed faction thruster RGB (no object alloc).
         // Core stays white-hot (light blend); sheath/vapor carry more faction identity.
         const br = this._layerColor[li * 3];
@@ -605,12 +637,13 @@ export class ContinuousPlumeSystem {
         const geo = createSegmentedPlumeGeometry(THREE, segs);
         // These compact arrays are retained as the CPU readback contract used by
         // acceptance/capture tooling. The renderer binds only the interleaved
-        // backing below, so one instance is one 18-float GPU publication.
+        // backing below, so one instance is one 20-float GPU publication.
         const offset = new Float32Array(capacity * 3);
         const axisScale = new Float32Array(capacity * 4);
         const params = new Float32Array(capacity * 4);
         const dynamics = new Float32Array(capacity * 4);
         const color = new Float32Array(capacity * 3);
+        const spin = new Float32Array(capacity * 2);
         const backing = new THREE.InstancedInterleavedBuffer(
           new Float32Array(capacity * PLUME_INSTANCE_STRIDE),
           PLUME_INSTANCE_STRIDE,
@@ -630,11 +663,15 @@ export class ContinuousPlumeSystem {
         const instColor = new THREE.InterleavedBufferAttribute(
           backing, 3, PLUME_COLOR_OFFSET,
         );
+        const instSpin = new THREE.InterleavedBufferAttribute(
+          backing, 2, PLUME_SPIN_OFFSET,
+        );
         geo.setAttribute('instanceOffset', instOffset);
         geo.setAttribute('instanceAxisScale', instAxis);
         geo.setAttribute('instanceParams', instParams);
         geo.setAttribute('instanceDynamics', instDynamics);
         geo.setAttribute('instanceColor', instColor);
+        geo.setAttribute('instanceSpin', instSpin);
         tierBuffers[tier] = {
           geo,
           offset,
@@ -642,8 +679,9 @@ export class ContinuousPlumeSystem {
           params,
           dynamics,
           color,
+          spin,
           backing,
-          attrs: { instOffset, instAxis, instParams, instDynamics, instColor },
+          attrs: { instOffset, instAxis, instParams, instDynamics, instColor, instSpin },
           segments: segs,
         };
       }
@@ -697,6 +735,7 @@ export class ContinuousPlumeSystem {
         params: active.params,
         dynamics: active.dynamics,
         color: active.color,
+        spin: active.spin,
         backing: active.backing,
         attrs: active.attrs,
         tierBuffers,
@@ -892,6 +931,9 @@ export class ContinuousPlumeSystem {
         batch.color[oi] = packed[p + PLUME_COLOR_OFFSET] = s.color[0];
         batch.color[oi + 1] = packed[p + PLUME_COLOR_OFFSET + 1] = s.color[1];
         batch.color[oi + 2] = packed[p + PLUME_COLOR_OFFSET + 2] = s.color[2];
+        const si = w * 2;
+        batch.spin[si] = packed[p + PLUME_SPIN_OFFSET] = s.spinAmp || 0;
+        batch.spin[si + 1] = packed[p + PLUME_SPIN_OFFSET + 1] = s.spinPhase || 0;
         batch.writeCount = w + 1;
       }
 

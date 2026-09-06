@@ -30,12 +30,23 @@ export function computeLayerRadiance(baseIntensity, intensityScale, throttle, _r
   return Math.max(0, (baseIntensity || 0) * scale * (0.55 + t * 0.9));
 }
 
+/**
+ * Tumbling ships corkscrew (PQ-139.04): rad of screw per WU along the plume card
+ * (~18 WU per turn). Consumed by the vertex shader's spin wobble below.
+ */
+export const SPIN_WOBBLE_WAVENUMBER = 0.35;
+
 export const FLOW_FLIPBOOK_VERTEX = /* glsl */`
   attribute vec3 instanceOffset;
   attribute vec4 instanceAxisScale; // xyz axis in LOCAL parent space, w = length
   attribute vec4 instanceParams;    // x=width, y=throttleOrEnvelope, z=phase, w=boostBlend
   attribute vec4 instanceDynamics;  // x=flowSpeed, y=turbulence, z=coreSheath, w=dissipation
   attribute vec3 instanceColor;
+  attribute vec2 instanceSpin;      // x=wobble amp (WU, 0 at rest), y=wobble phase (rad)
+
+  // Tumbling ships corkscrew (PQ-139.04): rad of screw per WU along the card (~18 WU per turn).
+  const float SPIN_WOBBLE_WAVENUMBER = ${SPIN_WOBBLE_WAVENUMBER.toFixed(2)};
+
 
   varying vec2 vUv;
   varying float vAlong;
@@ -127,6 +138,10 @@ ${AXIAL_WIDTH_ENVELOPE_GLSL}
     float lateral = (uv.y - 0.5) * 2.0 * widthEff;
     vec3 world = worldNozzle - axisWorld * along + sideW * lateral
       + binormalW * (lift + cameraEscape);
+    // Tumbling ships corkscrew (PQ-139.04): the card bows sideways along its length by a
+    // spin-phased screw whose period is the hull's own spin (phase advances by angVel*dt on
+    // the CPU). amp 0 at rest contributes an exact zero displacement — bit-identical.
+    world += sideW * (instanceSpin.x * sin(instanceSpin.y - along * SPIN_WOBBLE_WAVENUMBER));
     vec4 mv = viewMatrix * vec4(world, 1.0);
     gl_Position = projectionMatrix * mv;
   }
