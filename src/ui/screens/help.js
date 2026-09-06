@@ -11,7 +11,7 @@ import { COMMODITIES } from '../../data/commodities.js';
 import { ORES, ASTEROIDS } from '../../data/mining.js';
 import { FACTION_META } from '../../data/factions.js';
 import { createListControls } from '../listControls.js';
-import { DEFAULTS } from '../../systems/input.js';
+import { formatBindingCode, resolveActionLabel, resolveActionCodes } from '../../systems/input.js';
 import { BINDINGS } from '../bindings.js';
 
 const STYLE_ID = 'sf-help-menu-style';
@@ -113,117 +113,113 @@ function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.
 
 // action -> default human-readable key. Sections group the grid.
 // Each row: [label, actionId (or null for fixed/non-rebindable), documented default text].
-// actionId matches the input system's binding() keys (forward/yawRight/strafeLeft/boost/fire/
-// autoFire). UI-owned keys (dock/map/tech/…) are handled in src/ui/input.js and are NOT rebindable
-// in this pass, so they carry null + a fixed label.
-const SECTIONS = [
-  ['Flight', [
-    ['Throttle forward', 'forward', '↑↓ / W S'],
-    ['Reverse + brake', 'reverse', '↓ / S'],
-    ['Dedicated brake', 'brake', '0'],
-    ['Steer right (yaw + bank)', 'yawRight', '←→ / A D'],
-    ['Steer left (yaw + bank)', 'yawLeft', '←→ / A D'],
-    ['Lateral thruster (left)', 'strafeLeft', 'Q / E'],
-    ['Lateral thruster (right)', 'strafeRight', 'Q / E'],
-    ['Boost (hold) / Dash (tap)', 'boost', 'Shift'],
-    ['Fire weapons', 'fire', 'LMB'],
-    ['Auto-target / draw-to-fly (toggle)', 'autoFire', 'G'],
-    ['Countermeasure', 'countermeasure', 'X'],
-    // The primary/alias pair remains live and rebindable. Directional line control is contextual.
-    ['Massline tap: latch / cut', 'tether', 'Space / F'],
-    ['Massline directional control', null, 'Hold + ↑/↓/←→: reel/pay out/orbit; Shift pump'],
-    ['Massline dedicated reel in', 'reelIn', '—'],
-    ['Massline dedicated pay out', 'reelOut', '—'],
-    // PQ-011: the anchor seed turns empty space into a swing anchor. Keyboard verb (rebindable);
-    // no standard gamepad button remains unclaimed, matching the impulse-charge verbs' posture.
-    ['Deploy anchor Mass Seed', 'deployMassSeed', '4 (toward aim; locks on arrival, then latch it)'],
-    // PQ-012 continuous field tools (rebindable keyboard verbs, same posture as the seed/charge verbs).
-    ['Deploy attractive Well', 'deployWell', '5 (at aim; pulls light bodies & shots — heavy ships shrug)'],
-    ['Deploy Repulsor', 'deployRepulsor', '6 (drops at ship; shoves bodies outward)'],
-    ['Toggle Clearing Cone', 'toggleClearingCone', '7 (forward gravitic snowplow; toggle on/off)'],
-  ]],
-  ['Interface (fixed keys)', [
-    ['Aim weapons', null, 'Mouse'],
-    ['Mine beam', null, 'RMB on rock'],
-    ['Deep-core extraction', null, `${BINDINGS.drill.label} (target an asteroid)`],
-    ['Claim body / open base', null, `${BINDINGS.claimBase.label} (near a colony/moon)`],
-    ['Cycle target', null, 'Tab'],
-    ['Dock', null, `${BINDINGS.dock.label} (when prompted)`],
-    ['Pause', null, 'ESC / P'],
-    ['Star-map', null, BINDINGS.starmap.label],
-    ['Local system map', null, BINDINGS.localmap.label],
-    ['Tech tree', null, BINDINGS.techTree.label],
-    ['Mission log', null, BINDINGS.missionLog.label],
-    ['Cargo hold', null, BINDINGS.cargo.label],
-    ['Comms log', null, BINDINGS.comms.label],
-    ['Codex', null, BINDINGS.codex.label],
-    ['Help', null, 'F1 / H'],
-    ['Quick save / load', null, 'F5 / F9'],
-  ]],
-  ['Gamepad (Xbox / PlayStation)', [
-    ['Fly (yaw + throttle)', null, 'Left stick'],
-    ['Aim weapons', null, 'Right stick'],
-    ['Fire', null, 'RT / R2'],
-    ['Mine beam', null, 'LT / L2'],
-    ['Boost', null, 'RB / R1'],
-    ['Brake / reverse', null, 'LB / L1'],
-    ['Massline', null, 'A / X: Massline (dock/accept when prompted)'],
-    ['Anchor Mass Seed', null, 'keyboard verb — rebind under Settings → Controls'],
-    ['Countermeasure', null, 'R3'],
-    ['Cycle target', null, 'X / □'],
-    ['Open star-map', null, 'View / Select'],
-    ['Open codex', null, 'Y / △'],
-    ['Open mission log', null, 'Start / Options → Pause → Mission Log'],
-    ['Pause', null, 'Start / Options'],
-    ['Dock / activate', null, 'A / X (when prompted)'],
-    ['Cancel / back', null, 'B / ○'],
-  ]],
-  ['Touch (phone / tablet)', [
-    ['Fly (yaw + throttle)', null, 'Left stick'],
-    ['Aim weapons', null, 'Right stick'],
-    ['Fire', null, 'Fire button'],
-    ['Mine beam', null, 'Mine button'],
-    ['Boost', null, 'Boost button'],
-    ['Dock / activate', null, 'Dock button (when prompted)'],
-    ['Open local map', null, 'Map button'],
-    ['Open mission log', null, 'Log button'],
-    ['Open star-map', null, 'Star button'],
-    ['Pause / Help route', null, 'Pause button -> Help / Controls'],
-  ]],
-];
-
-// Normalize a single KeyboardEvent.code to a friendly label (matches humanizeCode in settings.js).
-function codeLabel(code) {
-  if (!code) return '—';
-  if (/^Key[A-Z]$/.test(code)) return code.slice(3);
-  if (/^Digit\d$/.test(code)) return code.slice(5);
-  if (code.startsWith('Arrow')) return { ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→' }[code] || code;
-  if (code === 'Space') return 'Space';
-  if (code === 'ShiftLeft') return 'L-Shift';
-  if (code === 'ShiftRight') return 'R-Shift';
-  if (code === 'ControlLeft') return 'L-Ctrl';
-  if (code === 'ControlRight') return 'R-Ctrl';
-  if (code === 'AltLeft') return 'L-Alt';
-  return code;
+// actionId matches the input system's binding() keys. UI-owned keys (dock/map/tech/…) are
+// handled in src/ui/input.js and are NOT rebindable, so they carry null + a registry label.
+function liveGlyph(state, action) {
+  return formatBindingCode(resolveActionCodes(state, action)[0]);
 }
 
-// Resolve the keys for a row: rebindable actions read the live binding (settings.controls.bindings,
-// falling back to DEFAULT_BINDINGS exactly like input.js); null actions keep their documented label.
-function keyLabel(binds, action, def) {
-  if (!action) return def; // fixed / non-rebindable key
-  // binds is settings.controls.bindings; prefer it, then the input defaults, then the doc text.
-  // Explicit empty override (present key, empty list) is unbound — do not fall back to def/default.
-  if (binds && Object.prototype.hasOwnProperty.call(binds, action)) {
-    const codes = binds[action];
-    const arr = Array.isArray(codes) ? codes : (codes ? [codes] : []);
-    if (!arr.length) return '—';
-    return arr.map(codeLabel).join(' / ');
-  }
-  let codes = DEFAULTS.BINDINGS[action];
-  if (codes == null) return def;
-  const arr = Array.isArray(codes) ? codes : [codes];
-  if (!arr.length) return def;
-  return arr.map(codeLabel).join(' / ');
+function livePair(state, leftAction, rightAction) {
+  const left = liveGlyph(state, leftAction);
+  const right = liveGlyph(state, rightAction);
+  if (!left) return right || '';
+  if (!right) return left;
+  return (left.length <= 1 && right.length <= 1) ? `${left}${right}` : `${left}/${right}`;
+}
+
+function liveBoostLabel(state) {
+  const codes = resolveActionCodes(state, 'boost');
+  if (!codes.length) return '';
+  return codes.every((c) => String(c).startsWith('Shift'))
+    ? 'Shift'
+    : resolveActionLabel(state, 'boost');
+}
+
+function controlSections(state) {
+  const holdLine = [liveGlyph(state, 'forward'), liveGlyph(state, 'reverse'), livePair(state, 'yawLeft', 'yawRight')]
+    .filter(Boolean)
+    .join('/');
+  const pump = liveBoostLabel(state);
+  const directional = [
+    holdLine && `Hold + ${holdLine}: reel/pay out/orbit`,
+    pump && `${pump} pump`,
+  ].filter(Boolean).join('; ');
+  return [
+    ['Flight', [
+      ['Throttle forward', 'forward'],
+      ['Reverse + brake', 'reverse'],
+      ['Dedicated brake', 'brake'],
+      ['Steer right (yaw + bank)', 'yawRight'],
+      ['Steer left (yaw + bank)', 'yawLeft'],
+      ['Lateral thruster (left)', 'strafeLeft'],
+      ['Lateral thruster (right)', 'strafeRight'],
+      ['Boost (hold) / Dash (tap)', 'boost'],
+      ['Fire weapons', 'fire'],
+      ['Auto-target / draw-to-fly (toggle)', 'autoFire'],
+      ['Countermeasure', 'countermeasure'],
+      ['Massline tap: latch / cut', 'tether'],
+      ['Massline directional control', null, directional || '—'],
+      ['Massline dedicated reel in', 'reelIn'],
+      ['Massline dedicated pay out', 'reelOut'],
+      ['Deploy anchor Mass Seed (toward aim; locks on arrival, then latch it)', 'deployMassSeed'],
+      ['Deploy attractive Well (at aim; pulls light bodies & shots — heavy ships shrug)', 'deployWell'],
+      ['Deploy Repulsor (drops at ship; shoves bodies outward)', 'deployRepulsor'],
+      ['Toggle Clearing Cone (forward gravitic snowplow; toggle on/off)', 'toggleClearingCone'],
+    ]],
+    ['Interface (fixed keys)', [
+      ['Aim weapons', null, 'Mouse'],
+      ['Mine beam', null, 'RMB on rock'],
+      ['Deep-core extraction', null, `${BINDINGS.drill.label} (target an asteroid)`],
+      ['Claim body / open base', null, `${BINDINGS.claimBase.label} (near a colony/moon)`],
+      ['Cycle target', null, 'Tab'],
+      ['Dock', null, `${BINDINGS.dock.label} (when prompted)`],
+      ['Pause', null, 'ESC / P'],
+      ['Star-map', null, BINDINGS.starmap.label],
+      ['Local system map', null, BINDINGS.localmap.label],
+      ['Tech tree', null, BINDINGS.techTree.label],
+      ['Mission log', null, BINDINGS.missionLog.label],
+      ['Cargo hold', null, BINDINGS.cargo.label],
+      ['Comms log', null, BINDINGS.comms.label],
+      ['Codex', null, BINDINGS.codex.label],
+      ['Help', null, 'F1 / H'],
+      ['Quick save / load', null, 'F5 / F9'],
+    ]],
+    ['Gamepad (Xbox / PlayStation)', [
+      ['Fly (yaw + throttle)', null, 'Left stick'],
+      ['Aim weapons', null, 'Right stick'],
+      ['Fire', null, 'RT / R2'],
+      ['Mine beam', null, 'LT / L2'],
+      ['Boost', null, 'RB / R1'],
+      ['Brake / reverse', null, 'LB / L1'],
+      ['Massline', null, 'A / X: Massline (dock/accept when prompted)'],
+      ['Anchor Mass Seed', null, 'keyboard verb — rebind under Settings → Controls'],
+      ['Countermeasure', null, 'R3'],
+      ['Cycle target', null, 'X / □'],
+      ['Open star-map', null, 'View / Select'],
+      ['Open codex', null, 'Y / △'],
+      ['Open mission log', null, 'Start / Options → Pause → Mission Log'],
+      ['Pause', null, 'Start / Options'],
+      ['Dock / activate', null, 'A / X (when prompted)'],
+      ['Cancel / back', null, 'B / ○'],
+    ]],
+    ['Touch (phone / tablet)', [
+      ['Fly (yaw + throttle)', null, 'Left stick'],
+      ['Aim weapons', null, 'Right stick'],
+      ['Fire', null, 'Fire button'],
+      ['Mine beam', null, 'Mine button'],
+      ['Boost', null, 'Boost button'],
+      ['Dock / activate', null, 'Dock button (when prompted)'],
+      ['Open local map', null, 'Map button'],
+      ['Open mission log', null, 'Log button'],
+      ['Open star-map', null, 'Star button'],
+      ['Pause / Help route', null, 'Pause button -> Help / Controls'],
+    ]],
+  ];
+}
+
+function keyLabel(state, action, def) {
+  if (action) return resolveActionLabel(state, action, { sep: ' / ' }) || '—';
+  return def || '—';
 }
 
 const TABS = ['Controls', 'Loops', 'Ships', 'Commodities', 'Ores', 'Factions'];
@@ -332,17 +328,12 @@ export const helpScreen = {
   },
 
   _renderControls(ctx) {
-    // Read the LIVE keybindings (Settings → Controls persists here). Falls back to the input
-    // system's DEFAULT_BINDINGS inside keyLabel, so help always shows what the keys actually do —
-    // even on a fresh save with no rebinds, and correctly after any rebind.
-    const binds = (ctx.state.settings && ctx.state.settings.controls && ctx.state.settings.controls.bindings) || {};
-    SECTIONS.forEach(([heading, rows]) => {
+    const state = ctx.state;
+    controlSections(state).forEach(([heading, rows]) => {
       this._body.appendChild(el('h2', null, heading));
       const grid = el('div', 'sf-grid2');
       rows.forEach(([label, action, def]) => {
-        const keyText = keyLabel(binds, action, def);
-        // A bare digit in the mono face reads as "Θ" at 12px (slashed zero); render digit keys
-        // in the UI face so "0" stays a zero.
+        const keyText = keyLabel(state, action, def);
         const keyCls = 'k' + (/^\d$/.test(keyText) ? ' k--digit' : '');
         grid.appendChild(el('div', keyCls, keyText));
         grid.appendChild(el('div', 'v', label));

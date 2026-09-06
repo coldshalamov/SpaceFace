@@ -13,6 +13,8 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { controlPrompt, setPromptScheme } from '../src/ui/controlPrompts.js';
+
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const src = readFileSync(join(ROOT, 'src/systems/onboarding.js'), 'utf8');
 const promptSrc = readFileSync(join(ROOT, 'src/ui/controlPrompts.js'), 'utf8');
@@ -125,10 +127,15 @@ for (const staleControlCopy of [/RMB samples/, /RMB sample/, /RMB mass sample/, 
   assert.doesNotMatch(src, staleControlCopy,
     `onboarding.js must not use stale hard-coded control copy: ${staleControlCopy}`);
 }
-assert.match(promptSrc, /RMB mine/, 'controlPrompts.js must advertise RMB mining for keyboard/mouse');
-assert.match(promptSrc, /LT mine/, 'controlPrompts.js must advertise LT mining for gamepad');
-assert.match(promptSrc, /A dock/, 'controlPrompts.js must advertise gamepad docking');
-assert.match(promptSrc, /Mine button/, 'controlPrompts.js must include touch mining copy');
+setPromptScheme('pilot');
+assert.match(controlPrompt('mining', 'kbm'), /RMB hold to mine/,
+  'controlPrompts must advertise RMB mining for keyboard/mouse');
+assert.match(controlPrompt('flight', 'gamepad'), /LT mine/,
+  'controlPrompts must advertise LT mining for gamepad');
+assert.match(controlPrompt('station', 'gamepad'), /A dock/,
+  'controlPrompts must advertise gamepad docking');
+assert.match(controlPrompt('mining', 'touch'), /Mine button/,
+  'controlPrompts must include touch mining copy');
 assert.match(readme, /\|\s*Dock\s*\|\s*\*\*E\*\*/, 'README controls must document E as the primary dock key');
 assert.match(readme, /\|\s*Codex\s*\|\s*\*\*K\*\*/, 'README controls must document K as the Codex key');
 

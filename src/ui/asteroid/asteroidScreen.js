@@ -14,6 +14,7 @@
 // asteroidController owns modes/input. Excavation sim stays in systems/drill.js; durable
 // structures/production in systems/asteroidSites.js.
 import { DRILL_CONST, tileIndex } from '../../systems/drill.js';
+import { BINDINGS } from '../bindings.js';
 import { resolveDrillControlMap } from '../screens/drill.js';
 import { prefersReducedMotion } from '../effects/effectRuntime.js';
 import { machineName } from './asteroidRenderer2d.js';
@@ -107,9 +108,9 @@ export function ledgerDrawerRows(buffer) {
 export function helpDrawerRows(controlMap) {
   const map = controlMap || {};
   return [
-    { keys: map.movementLabel || 'W / A / S / D', label: 'Drive, and keep holding to bore' },
-    { keys: map.scanLabel || 'F', label: 'Survey pulse' },
-    { keys: 'B', label: 'Build mode' },
+    { keys: map.movementLabel || 'UNBOUND', label: 'Drive, and keep holding to bore' },
+    { keys: map.scanLabel || 'UNBOUND', label: 'Survey pulse' },
+    { keys: BINDINGS.drill.label, label: 'Build mode' },
     { keys: '1 - 9', label: 'Pick a structure' },
     { keys: 'Q / E', label: 'Cycle structures' },
     { keys: 'Enter', label: 'Place it' },
@@ -405,7 +406,7 @@ export const asteroidScreen = {
     canvas.tabIndex = 0;
     canvas.setAttribute('role', 'img');
     canvas.setAttribute('aria-label',
-      `Asteroid cross-section. Hold ${controlMap.movementLabel} to drive or bore. Press B for build mode, ${controlMap.scanLabel} to survey.`);
+      `Asteroid cross-section. Hold ${controlMap.movementLabel} to drive or bore. Press ${BINDINGS.drill.label} for build mode, ${controlMap.scanLabel} to survey.`);
     stage.appendChild(canvas);
 
     const rig = document.createElement('div');

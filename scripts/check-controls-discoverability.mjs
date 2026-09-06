@@ -50,13 +50,17 @@ assert.match(settingsSource, /A\/Cross Massline \(dock\/accept when prompted\)/,
   'Settings must disclose the contextual gamepad A/Cross arbitration');
 assert.match(settingsSource, /masslineBindingProfile\s*=\s*MASSLINE_BINDING_PROFILE_SPACE/,
   'Reset to defaults must explicitly adopt the current Space-primary profile');
-assert.match(helpSource, /Hold \+ ↑\/↓\/←→: reel\/pay out\/orbit/,
+assert.match(helpSource, /reel\/pay out\/orbit/,
   'Help must teach the line-control axes without inventing separate default keys');
+assert.match(helpSource, /resolveActionLabel/,
+  'Help must resolve rebindable keys from src/systems/input.js');
 assert.match(helpSource, /A \/ X: Massline \(dock\/accept when prompted\)/,
   'Help must teach the gamepad Massline route and its dock priority');
-assert.match(hudSource, /↑ REEL · ↓ PAY OUT · ←→ ORBIT · SHIFT PUMP/,
-  'The active tether HUD must visibly signal line-control mode');
-assert.match(promptSource, /Space\/F Massline/,
-  'Persistent keyboard hints must expose the new default and legacy alias');
+assert.match(hudSource, /elTetherKeys\.textContent/,
+  'The active tether HUD must print live line-control keys');
+assert.match(hudSource, /resolveActionCodes/,
+  'The tether HUD hint must resolve from the live flight bindings');
+assert.match(promptSource, /resolveActionLabel/,
+  'Persistent keyboard hints must resolve flight keys from input.js');
 
 console.log('Settings Controls discoverability OK - fixed ship/system shortcuts are visible beside flight rebinds.');

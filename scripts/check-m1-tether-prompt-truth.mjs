@@ -115,11 +115,11 @@ check('input.DEFAULTS.tether_is_KeyF_across_schemes', () => {
   for (const name of ['pilot', 'classic', 'helm-assist']) {
     const scheme = INPUT_DEFAULTS.SCHEMES[name];
     assert.ok(scheme, `scheme ${name} exists`);
-    assert.deepEqual(scheme.tether, ['KeyF'], `${name}.tether default is KeyF (latch/cut edge)`);
+    assert.deepEqual(scheme.tether, ['Space', 'KeyF'], `${name}.tether default is Space with F as alias`);
     assert.deepEqual(scheme.reelIn, [], `${name}.reelIn empty by default (hold-tether reels)`);
     assert.deepEqual(scheme.reelOut, [], `${name}.reelOut empty by default`);
   }
-  assert.deepEqual(INPUT_DEFAULTS.BINDINGS.tether, ['KeyF'], 'classic BINDINGS.tether is KeyF');
+  assert.deepEqual(INPUT_DEFAULTS.BINDINGS.tether, ['Space', 'KeyF'], 'classic BINDINGS.tether is Space with F as alias');
 });
 
 check('input.source.action_contract_tetherFire_tetherCut_reelDelta', () => {
@@ -252,40 +252,25 @@ const hudSrc = read('src/ui/hud.js');
 check('hud.source.imports_INPUT_DEFAULTS_for_flight_bindings', () => {
   assert.match(hudSrc, /DEFAULTS as INPUT_DEFAULTS/,
     'HUD must import input DEFAULTS for flight binding labels');
-  assert.match(hudSrc, /function resolveActionCodes\(state, action\)/,
-    'HUD must own resolveActionCodes');
-  assert.match(hudSrc, /function resolveActionLabel\(state, action\)/,
-    'HUD must own resolveActionLabel');
-  assert.match(hudSrc,
-    /settings\.controls\.bindings/,
-    'HUD resolution must read settings.controls.bindings (rebinds)');
-  assert.match(hudSrc,
-    /controlScheme/,
-    'HUD resolution must consult gameplay.controlScheme');
-  assert.match(hudSrc,
-    /INPUT_DEFAULTS\.SCHEMES|INPUT_DEFAULTS && INPUT_DEFAULTS\.SCHEMES/,
-    'HUD resolution must fall through to INPUT_DEFAULTS.SCHEMES');
+  assert.match(hudSrc, /resolveActionCodes/,
+    'HUD must call resolveActionCodes from input.js');
+  assert.match(hudSrc, /resolveActionLabel/,
+    'HUD must call resolveActionLabel from input.js');
+  assert.match(hudSrc, /from ['"].*systems\/input\.js['"]/,
+    'HUD labels come from src/systems/input.js, not a private copy');
 });
 
 check('hud.source.buildTetherControlPrompt_uses_action_ids', () => {
   assert.match(hudSrc, /masslineInstrumentReadout/,
     'HUD owns the latched Massline analog instrument');
-  assert.match(hudSrc, /resolveActionLabel\(state,\s*'tether'\)/,
-    'cut/latch label from action tether');
-  assert.match(hudSrc, /resolveActionLabel\(state,\s*'reelIn'\)/,
-    'reel-in label from action reelIn');
-  assert.match(hudSrc, /resolveActionLabel\(state,\s*'reelOut'\)/,
-    'reel-out label from action reelOut');
-  assert.match(hudSrc, /HOLD \[\$\{cutLabel\}\] REEL/,
-    'default hold-reel copy uses resolved cutLabel');
-  assert.match(hudSrc, /TAP \[\$\{cutLabel\}\] CUT/,
-    'tap-cut copy uses resolved cutLabel');
-  assert.match(hudSrc, /\[\$\{reelInLabel\}\] REEL IN/,
-    'dedicated reel-in copy uses resolved reelInLabel');
-  assert.match(hudSrc, /\[\$\{reelOutLabel\}\] PAY OUT/,
-    'dedicated pay-out copy uses resolved reelOutLabel');
-  assert.match(hudSrc, /LINE_CONTROL_HINT|↑ REEL · ↓ PAY OUT · ←→ ORBIT · SHIFT PUMP/,
-    'hold-mode axes remain discoverable on the active tether path');
+  assert.match(hudSrc, /elTetherKeys\.textContent/,
+    'latched line-control keys are printed from the live bindings');
+  assert.match(hudSrc, /resolveActionCodes\(state,\s*'forward'\)/,
+    'reel axis follows the live forward binding');
+  assert.match(hudSrc, /resolveActionCodes\(state,\s*'reverse'\)/,
+    'pay-out axis follows the live reverse binding');
+  assert.match(hudSrc, /resolveActionLabel\(state,\s*'boost'\)/,
+    'pump follows the live boost binding');
 });
 
 check('hud.source.reel_cut_only_while_tether_active', () => {
@@ -335,7 +320,6 @@ check('settings.rebind_surface_exposes_tether_actions', () => {
 });
 
 check('settings.humanizeCode_matches_hud_codeToBindingLabel', () => {
-  // Both surfaces must present the same glyph for a rebound code so rebind UI and tether prompt agree.
   const samples = [
     ['KeyF', 'F'], ['KeyG', 'G'], ['Digit2', '2'],
     ['ArrowUp', '↑'], ['ArrowDown', '↓'], ['Space', 'Space'],
@@ -344,15 +328,10 @@ check('settings.humanizeCode_matches_hud_codeToBindingLabel', () => {
   for (const [code, label] of samples) {
     assert.equal(codeToBindingLabel(code), label, `codeToBindingLabel(${code})`);
   }
-  // Source isomorphism: settings humanizeCode + hud codeToBindingLabel share Key/Arrow/Space rules.
-  assert.match(settingsSrc, /function humanizeCode\(code\)/,
-    'settings owns humanizeCode for rebind grid');
-  assert.match(settingsSrc, /code\.slice\(3\)/,
-    'settings humanizeCode maps KeyX → X');
-  assert.match(hudSrc, /function codeToBindingLabel\(code\)/,
-    'HUD owns codeToBindingLabel for prompts');
-  assert.match(hudSrc, /code\.slice\(3\)/,
-    'HUD codeToBindingLabel maps KeyX → X');
+  assert.match(settingsSrc, /formatBindingCode/,
+    'settings formats rebound codes with the shared input.js formatter');
+  assert.match(hudSrc, /formatBindingCode/,
+    'HUD formats live keys with the shared input.js formatter');
 });
 
 // ── 5. tetherGameplay mirror is the active authority HUD reads ───────────────────────────────

@@ -5410,7 +5410,7 @@
       "parentId": "PQ-189",
       "priority": 53,
       "title": "The control contract, generated from the bindings",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [],
       "mutexes": [
         "ui-labels"
@@ -5429,8 +5429,10 @@
         "npm run check:baseline",
         "npm run check:ui-a11y"
       ],
-      "receiptRefs": [],
-      "brief": "Every displayed binding label (HUD prompts, help, onboarding, rover hints, station verbs) resolves from the live binding source; a remap re-labels every surface; README/GDD control tables generated or checked against it; a source-scan check fails on hard-coded key names in src/ui prose. Bindings never change. DONE WHEN: a test walks every taught action on the default route and asserts the labelled key produces it, after a remap, after focus loss and across flight->rover->flight; check:ui:control-labels green; HUD and rover screenshots with labels verified against input.js.",
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-189-00-REPORT.md"
+      ],
+      "brief": "IMPLEMENTED 2026-09-06: every displayed flight label resolves from input.js; a remap re-labels HUD/help/rover/prompts; check:ui:control-labels walks src/ui and fails typed Massline/arrow/WASD fallbacks; README star map is N. Bindings unchanged. DONE WHEN: walk test covers remap, focus loss, flight->rover->flight; check:ui:control-labels green; HUD and rover screenshots against input.js.",
       "kind": "implementation"
     },
     {

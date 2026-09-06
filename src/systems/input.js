@@ -375,6 +375,68 @@ function binding(state, action) {
 
 export const DEFAULTS = { BINDINGS: DEFAULT_BINDINGS, SCHEMES: SCHEME_BINDINGS };
 
+const ARROW_GLYPHS = Object.freeze({
+  ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→',
+});
+const ARROW_WORDS = Object.freeze({
+  ArrowUp: 'Up', ArrowDown: 'Down', ArrowLeft: 'Left', ArrowRight: 'Right',
+});
+
+/** Mouse buttons are not remappable; empty `fire` still means the left mouse button. */
+export const MOUSE_ACTION_LABELS = Object.freeze({ fire: 'LMB', mine: 'RMB' });
+
+/** Flight actions the default route teaches. Interface keys live in `src/ui/bindings.js`. */
+export const TAUGHT_FLIGHT_ACTIONS = Object.freeze([
+  'forward', 'reverse', 'brake', 'yawLeft', 'yawRight', 'strafeLeft', 'strafeRight',
+  'boost', 'fire', 'autoFire', 'countermeasure', 'tether', 'deployMassSeed',
+  'siteBeam', 'scanPulse', 'cruise',
+]);
+
+/**
+ * Live bound KeyboardEvent.code list for a flight action.
+ * Player rebinds win, then the active scheme, then classic defaults.
+ */
+export function resolveActionCodes(state, action) {
+  return binding(state, action);
+}
+
+/** Short player-facing name for one KeyboardEvent.code. */
+export function formatBindingCode(code, { arrows = 'glyph' } = {}) {
+  if (!code) return '';
+  if (/^Key[A-Z]$/.test(code)) return code.slice(3);
+  if (/^Digit\d$/.test(code)) return code.slice(5);
+  if (code.startsWith('Arrow')) {
+    const table = arrows === 'word' ? ARROW_WORDS : ARROW_GLYPHS;
+    return table[code] || code;
+  }
+  if (code === 'Space') return 'Space';
+  if (code === 'ShiftLeft') return 'L-Shift';
+  if (code === 'ShiftRight') return 'R-Shift';
+  if (code === 'ControlLeft') return 'L-Ctrl';
+  if (code === 'ControlRight') return 'R-Ctrl';
+  if (code === 'AltLeft') return 'L-Alt';
+  if (code === 'AltRight') return 'R-Alt';
+  if (code === 'NumLock') return 'Num Lock';
+  if (code === 'CapsLock') return 'Caps Lock';
+  if (code === 'Backquote') return '`';
+  if (code === 'Mouse0' || code === 'mouse0') return MOUSE_ACTION_LABELS.fire;
+  if (code === 'Mouse2' || code === 'mouse2') return MOUSE_ACTION_LABELS.mine;
+  return code;
+}
+
+/**
+ * The label every HUD / help / prompt surface must print for a flight action.
+ * Empty `fire` is LMB (the mouse is not remappable). Other empty bindings print `empty`.
+ */
+export function resolveActionLabel(state, action, { sep = '/', arrows = 'glyph', empty = '' } = {}) {
+  const codes = binding(state, action);
+  if (!codes.length) {
+    if (action === 'fire') return MOUSE_ACTION_LABELS.fire;
+    return empty;
+  }
+  return codes.map((c) => formatBindingCode(c, { arrows })).filter(Boolean).join(sep);
+}
+
 const KEY_CODE_FALLBACKS = {
   w: 'KeyW',
   a: 'KeyA',

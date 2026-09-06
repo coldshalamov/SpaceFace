@@ -46,7 +46,12 @@ import { confirm } from './confirm.js';
 import { bestKnownSellFor, applyTradeNavigation } from './screens/market.js';
 import { createFlickerGrid, createHexPattern, createRouteBeam, createCircularGauge, createSupplyTree } from './effects/index.js';
 import { createGaugeSettleSpring, planGaugeSettle } from './effects/gaugeSettle.js';
-import { DEFAULTS as INPUT_DEFAULTS } from '../systems/input.js';
+import {
+  DEFAULTS as INPUT_DEFAULTS,
+  formatBindingCode,
+  resolveActionCodes,
+  resolveActionLabel,
+} from '../systems/input.js';
 import { createHudDragController } from './hudLayout.js';
 import {
   MAX_GRAVITY_MARK_OVERLAYS,
@@ -669,46 +674,6 @@ function hudEntityName(entity) {
   return (entity && (entity.name || (entity.data && entity.data.name))) || (entity ? entity.type : '');
 }
 
-// Live flight-binding labels (matches settings rebind + help): settings overrides → scheme → classic.
-// Used so tether reel/cut prompts never hard-code a key that can drift from input.js.
-function codeToBindingLabel(code) {
-  if (!code) return '';
-  if (/^Key[A-Z]$/.test(code)) return code.slice(3);
-  if (/^Digit\d$/.test(code)) return code.slice(5);
-  if (code.startsWith('Arrow')) return { ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→' }[code] || code;
-  if (code === 'Space') return 'Space';
-  if (code === 'ShiftLeft') return 'L-Shift';
-  if (code === 'ShiftRight') return 'R-Shift';
-  if (code === 'ControlLeft') return 'L-Ctrl';
-  if (code === 'ControlRight') return 'R-Ctrl';
-  if (code === 'AltLeft') return 'L-Alt';
-  if (code === 'AltRight') return 'R-Alt';
-  return code;
-}
-
-function resolveActionCodes(state, action) {
-  const cfg = state && state.settings && state.settings.controls && state.settings.controls.bindings;
-  const schemeName = state && state.settings && state.settings.gameplay && state.settings.gameplay.controlScheme;
-  const schemes = (INPUT_DEFAULTS && INPUT_DEFAULTS.SCHEMES) || {};
-  const scheme = schemes[schemeName] || schemes.pilot || (INPUT_DEFAULTS && INPUT_DEFAULTS.BINDINGS) || {};
-  // Explicit empty settings override (e.g. tether: []) must not fall through to scheme/defaults.
-  // Absent key → scheme → classic DEFAULTS. Present key (even []) is the player's override.
-  let list;
-  if (cfg && Object.prototype.hasOwnProperty.call(cfg, action)) {
-    list = cfg[action];
-  } else {
-    list = scheme[action] || (INPUT_DEFAULTS && INPUT_DEFAULTS.BINDINGS && INPUT_DEFAULTS.BINDINGS[action]);
-  }
-  if (Array.isArray(list)) return list.filter(Boolean);
-  return list ? [list] : [];
-}
-
-function resolveActionLabel(state, action) {
-  const codes = resolveActionCodes(state, action);
-  if (!codes.length) return '';
-  return codes.map(codeToBindingLabel).filter(Boolean).join('/');
-}
-
 // M1 doctrine player-tells: map live ai:telegraph kinds (+ doctrineId fallback) to HUD tell ids.
 const DOCTRINE_TELL_BY_KIND = Object.freeze({
   engine_flare: 'FLYBY',
@@ -1285,7 +1250,7 @@ export function createHud(ctx, alerts) {
   center.innerHTML = `
     <div class="sf-stat sf-stat--info sf-stat--speed"><span class="sf-stat__k">SPD</span><span class="sf-stat__v mono" data-k="speed">0</span><div class="sf-tip" data-tip="speed"></div></div>
     <div class="sf-stat sf-stat--info" id="sf-wpnstat"><span class="sf-stat__k">WPN</span><span class="sf-stat__v mono" data-k="weapons">—</span><div class="sf-tip" data-tip="weapons"></div></div>
-    <div class="sf-stat sf-stat--wide" id="sf-tetherstat" style="display:none"><span class="sf-stat__k">TETHER</span><span class="sf-stat__v mono" data-k="tether">LOCKED</span><span class="sf-stat__hint mono" data-k="tetherkeys" hidden>↑ REEL · ↓ PAY OUT · ←→ ORBIT · SHIFT PUMP</span></div>
+    <div class="sf-stat sf-stat--wide" id="sf-tetherstat" style="display:none"><span class="sf-stat__k">TETHER</span><span class="sf-stat__v mono" data-k="tether">LOCKED</span><span class="sf-stat__hint mono" data-k="tetherkeys" hidden></span></div>
     <div class="sf-stat sf-stat--wide sf-stat--chip" data-chip="cargo"><span class="sf-stat__k">CARGO</span><span class="sf-stat__v mono" data-k="cargo">0 / 40 u</span></div>
     <div class="sf-stat sf-stat--wide sf-stat--chip" data-chip="credits"><span class="sf-stat__k">CR</span><span class="sf-stat__v mono sf-credits" data-k="credits">0</span></div>
     <div class="sf-stat sf-stat--wide sf-stat--chip" id="sf-rolestat" data-chip="role"><span class="sf-stat__k">CLASS</span><span class="sf-stat__v mono" data-k="role">—</span></div>`;
@@ -4320,11 +4285,30 @@ export function createHud(ctx, alerts) {
           setStyle(elTetherStat, 'display', '');
           setText(elTether, tetherStatus.text);
           setClass(elTether, 'sf-warn', tetherStatus.warn);
-          // Build-map inhibitor #6 is "the HUD hides what you can already do". While a line is
-          // attached the arrow keys reel, pay out and orbit and SHIFT pumps — four verbs on the
-          // game's signature mechanic that the HUD never mentioned, so the only way to find them
-          // was the help screen. The hint appears exactly while those keys do something.
-          if (elTetherKeys) elTetherKeys.hidden = false;
+          // While a line is attached the live movement/boost bindings reel, pay out, orbit and pump.
+          if (elTetherKeys) {
+            const glyph = (action) => formatBindingCode(resolveActionCodes(state, action)[0]);
+            const fwd = glyph('forward');
+            const rev = glyph('reverse');
+            const left = glyph('yawLeft');
+            const right = glyph('yawRight');
+            const orbit = left && right
+              ? (left.length <= 1 && right.length <= 1 ? `${left}${right}` : `${left}/${right}`)
+              : (left || right);
+            const boostCodes = resolveActionCodes(state, 'boost');
+            const pump = !boostCodes.length
+              ? ''
+              : (boostCodes.every((c) => String(c).startsWith('Shift'))
+                ? 'SHIFT'
+                : resolveActionLabel(state, 'boost').toUpperCase());
+            const parts = [];
+            if (fwd) parts.push(`${fwd} REEL`);
+            if (rev) parts.push(`${rev} PAY OUT`);
+            if (orbit) parts.push(`${orbit} ORBIT`);
+            if (pump) parts.push(`${pump} PUMP`);
+            elTetherKeys.textContent = parts.join(' · ');
+            elTetherKeys.hidden = false;
+          }
         }
       } else if (elTetherStat) {
         setStyle(elTetherStat, 'display', 'none');

@@ -27,6 +27,7 @@ import { generateDrillField, tileIndex } from '../src/systems/drill.js';
 import { asteroidSites } from '../src/systems/asteroidSites.js';
 import { COMMODITIES } from '../src/data/commodities.js';
 import { SITE_BALANCE } from '../src/data/sites.js';
+import { BINDINGS } from '../src/ui/bindings.js';
 import {
   DRAWER_TABS, drawerClock, ledgerDrawerRows, helpDrawerRows, machineModeLabel,
   transferRefusalText, siteDrawerModel,
@@ -543,9 +544,10 @@ test('site zoom is armed only where there is status to read, and released by the
 // ==========================================================================
 
 test('Help teaches the keys once, from the resolved control map', () => {
-  const rows = helpDrawerRows({ movementLabel: 'W / A / S / D', scanLabel: 'F' });
-  assert.equal(rows[0].keys, 'W / A / S / D', 'movement comes from the live bindings, not a literal');
-  assert.equal(rows[1].keys, 'F');
+  const rows = helpDrawerRows({ movementLabel: 'Y / Q / H / E', scanLabel: 'C' });
+  assert.equal(rows[0].keys, 'Y / Q / H / E', 'movement comes from the live bindings, not a literal');
+  assert.equal(rows[1].keys, 'C');
+  assert.equal(rows[2].keys, BINDINGS.drill.label, 'build mode follows the drill registry key');
   const labels = rows.map((r) => r.label);
   assert.ok(labels.includes('Drawers'));
   assert.ok(labels.includes('Leave the rock'));
@@ -555,8 +557,8 @@ test('Help teaches the keys once, from the resolved control map', () => {
       'law §3.3 sentence case');
     assert.ok(row.label === row.label.toUpperCase() ? false : true, 'no shouting');
   }
-  // Unbound controls fall back rather than printing "UNBOUND" at the player.
-  assert.equal(helpDrawerRows(null)[0].keys, 'W / A / S / D');
+  assert.equal(helpDrawerRows(null)[0].keys, 'UNBOUND');
+  assert.equal(helpDrawerRows(null)[1].keys, 'UNBOUND');
 });
 
 test('mode labels read as words, never as recipe ids', () => {

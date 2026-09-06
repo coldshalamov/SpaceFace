@@ -3,7 +3,7 @@ import { ENEMY_TYPES } from '../../data/enemies.js';
 import { WEAK_POINTS_BY_CLASS } from '../../data/weakPoints.js';
 import { ATTACHMENT_DEFS } from '../../data/combatDefs.js';
 import { getDerivedStats } from '../../systems/ships.js';
-import { DEFAULTS as INPUT_DEFAULTS } from '../../systems/input.js';
+import { formatBindingCode, resolveActionCodes, resolveActionLabel } from '../../systems/input.js';
 import { stopDistanceEstimate } from '../panels/massDelta.js';
 import { createMorphLabel, createRouteBeam } from '../effects/index.js';
 import { prefersReducedMotion } from '../effects/effectRuntime.js';
@@ -174,42 +174,49 @@ function wrapAngle(angle) {
   return out;
 }
 
-function codeLabel(code) {
-  if (!code) return 'UNBOUND';
-  if (code.startsWith('Key')) return code.slice(3).toUpperCase();
-  if (code.startsWith('Digit')) return code.slice(5);
-  return ({
-    Space: 'SPACE',
-    ArrowLeft: 'LEFT',
-    ArrowRight: 'RIGHT',
-    ArrowUp: 'UP',
-    ArrowDown: 'DOWN',
-    ShiftLeft: 'LSHIFT',
-    ShiftRight: 'RSHIFT',
-    Mouse0: 'LMB',
-    Mouse1: 'RMB',
-  })[code] || code.replace(/([a-z])([A-Z])/g, '$1 $2').toUpperCase();
-}
-
-function labelCodes(codes, fallback = 'UNBOUND') {
-  const list = [...new Set((Array.isArray(codes) ? codes : []).filter(Boolean))];
-  if (!list.length) return fallback;
-  return list.map(codeLabel).join(' / ');
-}
-
-function bindingCodes(state, action) {
-  const configured = state && state.settings && state.settings.controls && state.settings.controls.bindings;
-  if (configured && Object.prototype.hasOwnProperty.call(configured, action)) {
-    const value = configured[action];
-    if (Array.isArray(value)) return value.slice();
-    return value ? [value] : [];
+function labelCodes(state, actions, empty = 'UNBOUND') {
+  const seen = new Set();
+  const labels = [];
+  for (const action of actions) {
+    for (const code of resolveActionCodes(state, action)) {
+      if (seen.has(code)) continue;
+      seen.add(code);
+      const label = formatBindingCode(code);
+      if (label) labels.push(label);
+    }
   }
-  const schemeId = state && state.settings && state.settings.gameplay
-    ? state.settings.gameplay.controlScheme
-    : 'pilot';
-  const scheme = INPUT_DEFAULTS.SCHEMES[schemeId] || INPUT_DEFAULTS.SCHEMES.pilot;
-  const value = scheme[action] || INPUT_DEFAULTS.BINDINGS[action] || [];
-  return Array.isArray(value) ? value.slice() : [value];
+  return labels.join(' / ') || empty;
+}
+
+function controlMapForState(state) {
+  const drillMap = resolveDrillControlMap(state);
+  const yawLeft = resolveActionCodes(state, 'yawLeft');
+  const yawRight = resolveActionCodes(state, 'yawRight');
+  const forward = resolveActionCodes(state, 'forward');
+  const reverse = resolveActionCodes(state, 'reverse');
+  const strafeLeft = resolveActionCodes(state, 'strafeLeft');
+  const strafeRight = resolveActionCodes(state, 'strafeRight');
+  const boost = resolveActionCodes(state, 'boost');
+  const fire = resolveActionCodes(state, 'fire');
+  const tether = resolveActionCodes(state, 'tether');
+  return {
+    movementLabel: drillMap.movementLabel || 'UNBOUND',
+    turnLabel: labelCodes(state, ['yawLeft', 'yawRight']),
+    fireLabel: resolveActionLabel(state, 'fire') || 'UNBOUND',
+    tetherLabel: resolveActionLabel(state, 'tether', { sep: ' / ' }) || 'UNBOUND',
+    boostLabel: resolveActionLabel(state, 'boost') || 'UNBOUND',
+    codeSets: {
+      yawLeft: new Set(yawLeft),
+      yawRight: new Set(yawRight),
+      forward: new Set(forward),
+      reverse: new Set(reverse),
+      strafeLeft: new Set(strafeLeft),
+      strafeRight: new Set(strafeRight),
+      boost: new Set(boost),
+      fire: new Set(fire),
+      tether: new Set(tether),
+    },
+  };
 }
 
 function withCargoMass(player, usedMass) {
@@ -309,37 +316,6 @@ function pickLightHull(state, currentShipId) {
   if (currentShipId !== 'ship_kestrel' && SHIP_BY_ID.has('ship_kestrel')) return 'ship_kestrel';
   if (currentShipId !== 'ship_wasp' && SHIP_BY_ID.has('ship_wasp')) return 'ship_wasp';
   return currentShipId;
-}
-
-function controlMapForState(state) {
-  const drillMap = resolveDrillControlMap(state);
-  const yawLeft = bindingCodes(state, 'yawLeft');
-  const yawRight = bindingCodes(state, 'yawRight');
-  const forward = bindingCodes(state, 'forward');
-  const reverse = bindingCodes(state, 'reverse');
-  const strafeLeft = bindingCodes(state, 'strafeLeft');
-  const strafeRight = bindingCodes(state, 'strafeRight');
-  const boost = bindingCodes(state, 'boost');
-  const fire = bindingCodes(state, 'fire');
-  const tether = bindingCodes(state, 'tether');
-  return {
-    movementLabel: drillMap.movementLabel || 'UNBOUND',
-    turnLabel: labelCodes([...yawLeft, ...yawRight], 'UNBOUND'),
-    fireLabel: labelCodes(fire, 'LMB'),
-    tetherLabel: labelCodes(tether, 'SPACE / F'),
-    boostLabel: labelCodes(boost, 'SHIFT'),
-    codeSets: {
-      yawLeft: new Set(yawLeft),
-      yawRight: new Set(yawRight),
-      forward: new Set(forward),
-      reverse: new Set(reverse),
-      strafeLeft: new Set(strafeLeft),
-      strafeRight: new Set(strafeRight),
-      boost: new Set(boost),
-      fire: new Set(fire),
-      tether: new Set(tether),
-    },
-  };
 }
 
 function makePlayerFromModel(model, options = {}) {

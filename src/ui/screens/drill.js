@@ -9,29 +9,17 @@ import {
 } from '../../systems/drill.js';
 import { COMMODITIES } from '../../data/commodities.js';
 import { prefersReducedMotion } from '../effects/effectRuntime.js';
-import { DEFAULTS as INPUT_DEFAULTS } from '../../systems/input.js';
+import { formatBindingCode, resolveActionCodes } from '../../systems/input.js';
 
 const { COLS, ROWS, TILE, SCAN_RADIUS, SCAN_COOLDOWN_S, SCAN_ACTIVE_S } = DRILL_CONST;
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 
 function bindingCodes(state, action) {
-  const configured = state.settings?.controls?.bindings;
-  if (configured && Object.prototype.hasOwnProperty.call(configured, action)) {
-    const value = configured[action];
-    return Array.isArray(value) ? value : (value ? [value] : []);
-  }
-  const schemeId = state.settings?.gameplay?.controlScheme || 'pilot';
-  const scheme = INPUT_DEFAULTS.SCHEMES[schemeId] || INPUT_DEFAULTS.SCHEMES.pilot;
-  const value = scheme[action] || INPUT_DEFAULTS.BINDINGS[action] || [];
-  return Array.isArray(value) ? value : [value];
+  return resolveActionCodes(state, action);
 }
 
 function codeLabel(code) {
-  if (!code) return 'UNBOUND';
-  if (code.startsWith('Key')) return code.slice(3);
-  if (code.startsWith('Digit')) return code.slice(5);
-  return ({ Space: 'SPACE', ArrowLeft: '←', ArrowRight: '→', ArrowUp: '↑', ArrowDown: '↓' })[code]
-    || code.replace(/([a-z])([A-Z])/g, '$1 $2').toUpperCase();
+  return formatBindingCode(code) || 'UNBOUND';
 }
 
 export function resolveDrillControlMap(state) {

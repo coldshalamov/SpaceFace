@@ -11,7 +11,7 @@
 
 import { isConfirmOpen, confirmGamepadAccept, confirmGamepadCancel } from './confirm.js';
 import { BINDINGS } from './bindings.js';
-import { DEFAULTS as INPUT_DEFAULTS, selectedWorldSiteTarget } from '../systems/input.js';
+import { resolveActionLabel, selectedWorldSiteTarget } from '../systems/input.js';
 import { MAP_FOCUS, openGalaxyMap, isMapScreenId } from './mapAuthority.js';
 import { interactionDisplayName, interactionProfileForEntity } from '../data/entityInteractionProfiles.js';
 import { resolveDockDeny } from './dockDenyBanner.js';
@@ -20,29 +20,6 @@ const DRILL_MASSLINE_DEF_IDS = new Set(['tether_standard', 'attachment_massline'
 
 export function isUiInteractionFenced(state) {
   return !!(state && state.ui && state.ui.fulfillmentBlackoutActive === true);
-}
-
-/** Live flight-action label (settings override → scheme → defaults). Empty when unbound. */
-function flightActionLabel(state, action) {
-  const cfg = state && state.settings && state.settings.controls && state.settings.controls.bindings;
-  const schemeName = state && state.settings && state.settings.gameplay && state.settings.gameplay.controlScheme;
-  const schemes = (INPUT_DEFAULTS && INPUT_DEFAULTS.SCHEMES) || {};
-  const scheme = schemes[schemeName] || schemes.pilot || (INPUT_DEFAULTS && INPUT_DEFAULTS.BINDINGS) || {};
-  let list;
-  if (cfg && Object.prototype.hasOwnProperty.call(cfg, action)) list = cfg[action];
-  else list = scheme[action] || (INPUT_DEFAULTS && INPUT_DEFAULTS.BINDINGS && INPUT_DEFAULTS.BINDINGS[action]);
-  const codes = Array.isArray(list) ? list.filter(Boolean) : (list ? [list] : []);
-  if (!codes.length) return '';
-  return codes.map((code) => {
-    if (!code) return '';
-    if (/^Key[A-Z]$/.test(code)) return code.slice(3);
-    if (/^Digit\d$/.test(code)) return code.slice(5);
-    if (code.startsWith('Arrow')) {
-      return { ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→' }[code] || code;
-    }
-    if (code === 'Space') return 'Space';
-    return code;
-  }).filter(Boolean).join('/');
 }
 
 // Controller focus follows the composed screen, not incidental DOM order. A directional move ranks
@@ -478,7 +455,7 @@ export function createUiInput(ctx, screenManager) {
     );
     if (!activeTether) {
       // Live tether binding label — never hard-code a latch key (rebinds / empty must not lie).
-      const tetherKey = flightActionLabel(state, 'tether');
+      const tetherKey = resolveActionLabel(state, 'tether');
       const latchHint = tetherKey
         ? `Launch a tether (${tetherKey}) to lock onto the asteroid first.`
         : 'Launch a tether to lock onto the asteroid first.';

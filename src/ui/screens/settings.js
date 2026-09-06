@@ -4,7 +4,10 @@
 // UI reads state.settings for display; the write to state.settings is the UI/settings
 // module's own owned subtree (§3.3 owner: ui/settings), so writing it here is in-scope.
 
-import { DEFAULTS as INPUT_DEFAULTS } from '../../systems/input.js';
+import {
+  DEFAULTS as INPUT_DEFAULTS,
+  formatBindingCode,
+} from '../../systems/input.js';
 import { massline2Flag } from '../../data/featureFlags.js';
 import { MASSLINE_BINDING_PROFILE_SPACE } from '../../core/graphicsProfileBootstrap.js';
 import { DEFAULT_BLOOM_STRENGTH } from '../../render/bloom.js';
@@ -180,24 +183,7 @@ export const CONTROL_SHORTCUTS = Object.freeze([
   { label: 'Pause', key: 'Esc / P', note: 'pause menu: resume, settings, save/load, map review' },
 ]);
 
-// Turn a KeyboardEvent.code into a short, readable label: 'KeyW' -> 'W', 'ShiftLeft' -> 'L-Shift',
-// 'ArrowUp' -> '↑', 'Space' -> 'Space'.
-function humanizeCode(code) {
-  if (!code) return '—';
-  if (/^Key[A-Z]$/.test(code)) return code.slice(3);
-  if (/^Digit\d$/.test(code)) return code.slice(5);
-  if (code.startsWith('Arrow')) return { ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→' }[code] || code;
-  if (code === 'Space') return 'Space';
-  if (code === 'ShiftLeft') return 'L-Shift';
-  if (code === 'ShiftRight') return 'R-Shift';
-  if (code === 'ControlLeft') return 'L-Ctrl';
-  if (code === 'ControlRight') return 'R-Ctrl';
-  if (code === 'AltLeft') return 'L-Alt';
-  if (code === 'NumLock') return 'Num Lock';
-  if (code === 'CapsLock') return 'Caps Lock';
-  if (code === 'Backquote') return '`';
-  return code;
-}
+// Turn a KeyboardEvent.code into a short, readable label via the live binding formatter.
 
 export const settingsScreen = {
   id: 'settings',
@@ -552,7 +538,7 @@ export const settingsScreen = {
       const btn = el('button', 'sf-btn sf-bind-btn');
       btn.style.minWidth = '120px';
       const codes = live[action] || [];
-      const keyText = codes.map(humanizeCode).join(' / ') || '—';
+      const keyText = codes.map((code) => formatBindingCode(code) || '—').join(' / ') || '—';
       // A bare digit in the mono face reads as "Θ" at this size; use the UI face for digit keys.
       if (/^\d$/.test(keyText)) btn.classList.add('sf-bind-btn--digit');
       btn.textContent = keyText;

@@ -16,7 +16,7 @@ import { mountWhyReveal } from './whyReveal.js';
 import { createUiInput } from './input.js';
 import { initPriceHistory } from './priceHistory.js';
 import { isConfirmOpen } from './confirm.js';
-import { setPromptScheme } from './controlPrompts.js';
+import { setPromptScheme, setPromptBindings } from './controlPrompts.js';
 import { bracketCss, INK_SHADOW } from './hudBrackets.js';
 import { isHostileToPlayer, SCANNER_CONTACT_RANGE } from '../systems/scanner.js';
 import { presentationAllowsPlayerFacingAction } from '../core/presentationAdmission.js';
@@ -495,9 +495,11 @@ export const ui = {
     // Bind-sheet copy lives in Help / Settings. The flight windshield no longer mounts a key laundry.
     setPromptScheme(this.state && this.state.settings && this.state.settings.gameplay
       && this.state.settings.gameplay.controlScheme);
+    setPromptBindings(this.state);
     this.bus.on('settings:changed', () => {
       setPromptScheme(this.state && this.state.settings && this.state.settings.gameplay
         && this.state.settings.gameplay.controlScheme);
+      setPromptBindings(this.state);
     });
 
     const syncFlightCursor = (visible, reticleAlive = visible) => {

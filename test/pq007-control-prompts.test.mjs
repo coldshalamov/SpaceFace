@@ -13,7 +13,7 @@ const CLASSIC_KBM = Object.freeze({
   combat: 'LMB fire  •  Space/F Massline  •  Mouse aim at target  •  Tab cycle hostiles  •  X countermeasure  •  G auto-target  •  Shift boost to dodge',
   station: 'E dock  •  Hub: arrow keys change tabs  •  Enter/Space act  •  E/Esc undock',
   gate: 'N open Star Map  •  Select destination  •  Jump to travel between systems',
-  tutorialFlight: 'Follow the yellow nav arrow to the bad reading. W / Up thrusts, A D / arrows steer, and the mouse aims.',
+  tutorialFlight: 'Follow the yellow nav arrow to the bad reading. W / Up thrusts, A D steer, and the mouse aims.',
   tutorialMine: 'The Hitch is armed: LMB fires the Pulse Laser S. Hold RMB on the marked rock to mine the mass reading, then collect the drift.',
   tutorialDock: 'Follow the cyan station arrow. Press E at the dock prompt. Bring the discrepancy back before someone edits it out.',
   firstFlight: 'W thrusts. A D steer. Mouse aims.',

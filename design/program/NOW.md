@@ -3,7 +3,7 @@
 
 ```yaml
 refreshed: 2026-09-06
-baseCommit: f12c66e9a33a7b3312c923eb0a959a84f5d57895
+baseCommit: d5fc57e1a7adddbd449e72454bf2486a6426cf72
 expiresAfterCommits: 10
 expiresAfterDays: 2
 ```
@@ -41,9 +41,9 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| PQ-189.00 the control contract, generated from the bindings | fable-orchestrator + fable implementer | MUTATING | src/systems/input.js (label resolver exports only), src/ui/hud.js + src/ui/screens/** + src/ui/station/** (label call sites only), scripts/check-ui-control-labels.mjs (new), package.json (one line), test/ui-control-labels*.test.mjs, README.md + design/GDD_2_0.md §4 control tables, design/program/roadmap/receipts/PQ-189-00-REPORT.md | review, commit by pathspec, push master |
 | PQ-180.03 cycle 2: reference frames photograph the interface over a neutral ground, then the 408-frame baseline is shot | fable-orchestrator + opus implementer | MUTATING | scripts/capture-ui-matrix.mjs, scripts/check-visual-regression.mjs, scripts/lib/ui-frame-regression.mjs, test/ui-grammar-matrix.test.mjs, test/ui-frame-references/** (baseline PNGs, floors.json, README), design/program/roadmap/receipts/PQ-180-03-REPORT.md | review, commit by pathspec, push master |
 | PQ-137.11 knock budget B13 (cycle 4: rate clause, camera-vs-hull wobble, player spin source) | fable-orchestrator + opus implementer | MUTATING | src/core/sg02DynamicBodyOwner.js, src/core/physics.js, scripts/lib/bench/crucibleBench.mjs, scripts/lib/bench/frameStripCapture.mjs, scripts/lib/bench/feelBars.mjs, scripts/lib/bench/scenarios/feel.knock_budget*.mjs, test/sg02-player-contact-give.test.mjs, test/frame-strip.test.mjs, test/fun-measurer.test.mjs, design/FEEL_CONTRACT.md (B13 row), design/program/roadmap/receipts/PQ-137.11-REPORT.md | review, commit by pathspec, push master |
+| PQ-186.00 bars as checks | flash-10-unit-batch (U2 of 10) | MUTATING | test/feel-bars-contract.test.mjs (new), test/feel-shove-bars.test.mjs (new), test/world-reaction-bars.test.mjs (new), test/fun-bench-flight-scenarios.test.mjs, test/terrain-slam.test.mjs, test/rope-swing-release.test.mjs, test/draw-to-fly-stroke-speed.test.mjs, test/feel-collision-impact.test.mjs, test/hitstun-curve.test.mjs, test/knock-budget.test.mjs (sentence messages only), package.json (check:feel:scenarios value only), design/program/roadmap/receipts/PQ-186-00-REPORT.md | run check:feel:scenarios, receipt, commit by pathspec, push master |
 
 _Previously:_ no active mutation windows. The 2026-09-04 orchestrate-next-build handoff is finished: everything
 that was in flight is committed and pushed, and no agent is holding a source file. See

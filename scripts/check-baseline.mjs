@@ -107,6 +107,12 @@ const LINKS = [
       + 'two channels (inline SVG + canvas Path2D); a broken entry is an invisible mark mid-flight.',
   },
   {
+    id: 'ui-control-labels',
+    costHintMs: 200,
+    script: 'check:ui:control-labels',
+    why: 'A HUD or help line that types a key name will lie after a remap. The live input table is the only source.',
+  },
+  {
     id: 'vfx-techniques',
     costHintMs: 400,
     command: 'node scripts/check-vfx-techniques.mjs',
