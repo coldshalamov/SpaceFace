@@ -460,8 +460,8 @@ export const ENDGAME_CHOICES = [
     promptText: 'DEPART ASHFALL REACH?',
     graffitiOnStay: GRAFFITI.THIS_ONE_STAYED,
     graffitiNeverReturn: GRAFFITI.NOT_COMING_BACK,
-    summary: 'Available only if you took the Kurtz figure\u2019s ledger and have not jettisoned it. Stay. Become the next Kurtz figure. Watch, record, stay.',
-    hiddenCost: 'Your ledger entry transitions COUNTERPARTY — ACTIVE → WITNESS — CURRENT. The patterns keep recurring. The Kurtz figure who was here eventually leaves — not by dying, just by not being there when you check next cycle.',
+    summary: 'Available only if you took the administrator\u2019s ledger and have not jettisoned it. Stay. Take the desk. Watch, record, stay.',
+    hiddenCost: 'Your ledger entry transitions COUNTERPARTY — ACTIVE → WITNESS — CURRENT. The patterns keep recurring. The administrator who was here eventually leaves — not by dying, just by not being there when you check next cycle.',
     requires: (s) => hasCargo(s, 'cmdty_personal_ledger'),
     kind: 'stay', // fires on depart-Ashfall prompt if player chooses to stay
   },
@@ -500,7 +500,7 @@ export const KURTZ = {
 export const PERSISTENT_CARGO = [
   { id: 'cmdty_47a_assay_sample', name: '47-A ASSAY SAMPLE', mass: 0.0031, note: 'SEALED EVIDENCE — CONTRACT 47-A. Deliver to Helios Station.' },
   { id: 'cmdty_unclassified_composite', name: 'UNCLASSIFIED COMPOSITE', mass: 0.0031, note: 'PERSONAL EFFECTS — 3.1 kg. The second fragment. In the manifest since first launch.' },
-  KURTZ.ledgerCargoId && { id: KURTZ.ledgerCargoId, name: KURTZ.ledgerName, mass: KURTZ.ledgerMass, note: 'The Kurtz figure\u2019s ledger. 0.4t. The mass never changes, even if jettisoned.' },
+  KURTZ.ledgerCargoId && { id: KURTZ.ledgerCargoId, name: KURTZ.ledgerName, mass: KURTZ.ledgerMass, note: 'The administrator\u2019s ledger. 0.4t. The mass never changes, even if jettisoned.' },
   KURTZ.coordsCargoId && { id: KURTZ.coordsCargoId, name: KURTZ.coordsName, mass: KURTZ.coordsMass, note: 'Coordinates in a format no database recognizes. 0.01t. Format: unknown.' },
 ].filter(Boolean);
 
