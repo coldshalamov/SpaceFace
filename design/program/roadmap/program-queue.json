@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-05T22:33:58.210Z",
+  "updatedAt": "2026-09-06T11:34:00.000Z",
   "purpose": "Canonical cross-plan priority and dispatch queue. Product completion remains authoritative in design/program/03_LIVE_ACCEPTANCE_MATRIX.md.",
   "stateContract": {
     "allowed": [
@@ -3920,6 +3920,27 @@
       "checks": [],
       "evidence": [],
       "brief": "Solid readable industrial forms with expressive luminous machinery and effects, proven on six things at the shipping camera before any fleet pass; the VFX standard becomes an effect-class matrix. Gap: the owner asked for less shiny, more luminous, more expressive; the current standard generalises one thruster reference into a universal technique law. See CANONICAL_BUILD_MAP.md section 15.9b and design/program/roadmap/active/PQ-190.md."
+    },
+    {
+      "id": "PQ-191",
+      "priority": 111,
+      "title": "Independent passover: play what just landed for taste, improvements, and bugs",
+      "state": "ready",
+      "canonical": [
+        "LANDING-PASSOVER"
+      ],
+      "aliases": [],
+      "dependsOn": [],
+      "mutexes": [
+        "landing-passover"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/program/roadmap/active/PQ-191.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "A second agent plays the 2026-09-06 landings, fixes real taste and bugs, and writes the receipt in owner words. This is the passover itself, not a second standing queue. Gap: units can sit at implemented or done after the implementer's own review without a cold play pass. See CANONICAL_BUILD_MAP.md section 1.7 and design/program/roadmap/active/PQ-191.md."
     }
   ],
   "dispatchUnits": [
@@ -15919,7 +15940,9 @@
       "priority": 420,
       "title": "The budgets, measured",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
+      "integratedCommit": "c58f7442",
+      "acceptanceRef": "design/program/roadmap/receipts/PQ-184-00-REPORT.md",
       "dependsOn": [
         "PQ-180.00"
       ],
@@ -15937,7 +15960,9 @@
         "npm run check:ui-effects",
         "node scripts/check-ui-screen-imports.mjs"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-184-00-REPORT.md"
+      ],
       "brief": "Per-surface UI frame cost and DOM node count in the matrix; thresholds in the grammar; regression fails red. DONE WHEN: Matrix columns live; baseline committed."
     },
     {
@@ -17268,6 +17293,55 @@
       ],
       "receiptRefs": [],
       "brief": "The consequence board with its wanted temperature; the Range's teaching voice on the kit without changing the drills. DONE WHEN: contact sheet with the owner's yes; the four rungs still complete under real input."
+    },
+    {
+      "id": "PQ-191.00",
+      "parentId": "PQ-191",
+      "priority": 468,
+      "title": "Play-and-fix the 2026-09-06 implementation landing",
+      "kind": "acceptance_review",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "landing-passover-impl-2026-09-06"
+      ],
+      "paths": [
+        "src/systems/asteroidSites.js",
+        "src/systems/npcJobsRuntime.js",
+        "src/ui/asteroid/",
+        "src/systems/input.js",
+        "src/ui/hud.js",
+        "src/ui/screens/",
+        "test/",
+        "design/program/roadmap/receipts/"
+      ],
+      "checks": [
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "Cold play of the ten implementation-landing surfaces (jobs vs patrol, UI matrix spot-check, ordinary contact, critic verdict shape, live key labels, first-playable audio, reduced-motion reads, four specialists, cargo custody, first mill as claim). Fix real taste and bugs. Sacred: drill cadence 0.18/0.24/0.18, noteSiteCourier never pays, contact-ring clones the field. DONE WHEN: each surface played; adopted defects gone from the camera; receipt in CANONICAL_BUILD_MAP.md section 1.4 words under design/program/roadmap/receipts/PQ-191-00-REPORT.md."
+    },
+    {
+      "id": "PQ-191.01",
+      "parentId": "PQ-191",
+      "priority": 469,
+      "title": "Senior taste review of the 2026-09-06 flash batch",
+      "kind": "acceptance_review",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "landing-passover-flash-2026-09-06"
+      ],
+      "paths": [
+        "design/PERF_BUDGET.md",
+        "src/systems/traffic.js",
+        "design/program/roadmap/receipts/"
+      ],
+      "checks": [
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "Ratify, adjust, or overturn the six named taste calls on PQ-144.00, PQ-186.00, PQ-139.04, PQ-143.02, and PQ-184.00. Implement every adjustment. Do not drop the taste-call list. Stay off PQ-184.01/.02/.03 and PQ-022/PQ-018 capture leaves. DONE WHEN: every call has a verdict in owner words; adopted changes are in the owning files; receipt under design/program/roadmap/receipts/PQ-191-01-REPORT.md."
     }
   ]
 }

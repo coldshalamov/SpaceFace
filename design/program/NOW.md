@@ -3,7 +3,7 @@
 
 ```yaml
 refreshed: 2026-09-06
-baseCommit: 01c3e151bfa72151a81030f54cc7ff0d0b7c9d14
+baseCommit: c58f74421d66ef38e41a5c21690fc82904b2b23d
 expiresAfterCommits: 10
 expiresAfterDays: 2
 ```
@@ -41,6 +41,8 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
+| Next ten and idle recovery | codex-01a0768b | MUTATING | `design/program/roadmap/active/PQ-144.md`, `design/program/roadmap/active/PQ-177.md`, `design/program/roadmap/active/PQ-143.md`, `design/program/roadmap/active/PQ-184.md` | tighten the selected player contracts, delegate exact source slices, review before commits |
+| PQ-191 independent pass over the 2026-09-06 landing | cursor-grok | MUTATING | `CANONICAL_BUILD_MAP.md`, `design/program/roadmap/program-queue.json`, `design/program/roadmap/active/PQ-191.md`, `design/program/roadmap/active/README.md`, `AGENTS.md` | add review door + packet, stop |
 
 _Previously:_ no active mutation windows. The 2026-09-04 orchestrate-next-build handoff is finished: everything
 that was in flight is committed and pushed, and no agent is holding a source file. See
