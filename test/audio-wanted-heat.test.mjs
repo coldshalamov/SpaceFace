@@ -11,7 +11,7 @@ import test from 'node:test';
 
 import { RECIPES } from '../src/data/audioRecipes.js';
 import { AUDIO_CUE_TO_RECIPE, audio } from '../src/audio/audioSystem.js';
-import { heatLevelFor, THRESHOLD } from '../src/systems/heat.js';
+import { heat, heatLevelFor, THRESHOLD } from '../src/systems/heat.js';
 
 // Level/wanted/wantedCrossed derive from the producer's own math (heat.js) so a drift in the
 // emit contract fails here instead of silently keeping the suite green.
@@ -144,6 +144,47 @@ test('a crossing with no usable previousValue speaks; without a crossing nothing
   const silent = [];
   hostWith(silent)._onHeatChanged({ value: 0.3, previousValue: 0.3, level: 2, wanted: true, wantedCrossed: false, threshold: THRESHOLD });
   assert.equal(silent.length, 0);
+});
+
+test('the producer carries previousLevel on the packet (non-enumerable), and the handler reads it', () => {
+  // heat.js now stamps previousLevel non-enumerably so the climb verdict is a packet fact, not a
+  // re-derivation from the raw scalar. A climb whose previousValue sits exactly on a band boundary
+  // (ceil(value*5) lands flat) must still speak, because the packet — not the scalar math — proves it.
+  const played = [];
+  const host = hostWith(played);
+  const packet = heatPacket({ value: 0.41, previousValue: 0.4 });
+  // Simulate the producer's stamp: a genuine 2->3 climb that ceil(previousValue*5) would misread as flat.
+  Object.defineProperty(packet, 'previousLevel', { value: 2, enumerable: false });
+  host._onHeatChanged(packet);
+  assert.equal(played.length, 1, 'a packet-stamped band climb speaks even on a ceil boundary');
+  assert.equal(played[0].id, 'wanted_escalate');
+
+  // The packet field must not leak into serialization (save/clone safety).
+  const clone = JSON.parse(JSON.stringify(packet));
+  assert.equal(clone.previousLevel, undefined, 'previousLevel stays out of cloned/serialized packets');
+
+  // Legacy packets without previousLevel fall back to scalar derivation and stay correct.
+  const legacy = [];
+  hostWith(legacy)._onHeatChanged(heatPacket({ value: 0.3, previousValue: 0.16 }));
+  assert.equal(legacy.length, 1, 'a packet without previousLevel still voices a real climb');
+});
+
+test('the real heat system stamps previousLevel on the emitted packet (non-enumerable)', () => {
+  // Drive the producer itself: 0.4 (band 2) -> 0.45 (band 3) is a genuine climb whose
+  // ceil(previousValue*5) lands flat on the boundary — exactly the case only the stamp gets right.
+  const state = { player: { heat: 0.4 }, simTime: 10, entities: new Map() };
+  const packets = [];
+  const bus = { on: () => () => {}, emit: (name, p) => packets.push(p) };
+  const system = Object.create(heat);
+  system.init({ state, bus });
+  system._raise(0.05, 'test climb');
+  const pkt = packets.filter((p) => p && p.reason === 'test climb').at(-1);
+  assert.ok(pkt, 'the climb emits a heat:changed packet');
+  assert.equal(pkt.level, 3);
+  assert.equal(pkt.previousValue, 0.4);
+  assert.equal(pkt.previousLevel, 2, 'the packet carries the band the value just left');
+  assert.equal(Object.keys(pkt).includes('previousLevel'), false,
+    'the stamp stays out of enumeration (spread/clonePlain/JSON safe)');
 });
 
 test('null payloads never throw', () => {

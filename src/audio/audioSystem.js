@@ -2877,7 +2877,11 @@ export const audio = {
       this._onCue({ id: 'wanted_clear', gain: 0.7, importance: 0.8 });
       return;
     }
-    const prevLevel = Number.isFinite(p.previousValue) ? heatLevelFor(p.previousValue) : null;
+    // The producer now carries previousLevel on the packet (non-enumerable). Read it when present;
+    // only legacy/synthetic packets without it fall back to re-deriving the band from the scalar.
+    const prevLevel = Number.isFinite(p.previousLevel)
+      ? p.previousLevel
+      : (Number.isFinite(p.previousValue) ? heatLevelFor(p.previousValue) : null);
     const escalated = level > 0
       && ((p.wantedCrossed && p.wanted) || (prevLevel != null && level > prevLevel));
     if (!escalated) return;

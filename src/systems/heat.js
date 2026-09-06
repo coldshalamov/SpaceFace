@@ -421,7 +421,7 @@ export const heat = {
     const prev = previousValue != null && Number.isFinite(previousValue) ? previousValue : value;
     const wanted = value >= WANTED_THRESHOLD;
     const wasWanted = prev >= WANTED_THRESHOLD;
-    this.bus.emit('heat:changed', {
+    const packet = {
       value,
       previousValue: prev,
       level: heatLevelFor(value),
@@ -432,7 +432,14 @@ export const heat = {
       // 0..1 approach toward the WANTED gate. 1 at/above threshold. Presentation-only scalar.
       suspicion: value <= 0 ? 0 : Math.min(1, value / WANTED_THRESHOLD),
       threshold: WANTED_THRESHOLD,
+    };
+    // Band the value just left, carried so audio/VFX read the level transition off the packet
+    // instead of re-deriving it from the raw scalar. Non-enumerable: additive, and it must not
+    // leak into any clonePlain/JSON serialization of this packet.
+    Object.defineProperty(packet, 'previousLevel', {
+      value: heatLevelFor(prev), enumerable: false, writable: false, configurable: true,
     });
+    this.bus.emit('heat:changed', packet);
   },
 };
 
