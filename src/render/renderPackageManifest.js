@@ -1324,12 +1324,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.yard-tug",
-    "expectedContentHash": "3ffc4026ed6ef8401318e8cc504adc096d8fb37eed2c8a62b0ea487e4720170b",
+    "expectedContentHash": "95ea8516fd9297205aebbe8df007a54c86731c63f85fe5995b97bff836fb4d86",
     "key": "yard-tug",
     "metadataUrl": "assets/ships/release/render-packages/yard-tug/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_YARD_TUG",
     "slot": "hull",
-    "sourceSha256": "3eb9d11172a6ba04a017d8ddc9bbf1ff35f37dcc293a9dfd865783afb8893f45",
+    "sourceSha256": "036b46403e92c5ff313c4b0b49db649dfb99b9b74b07c10b4208ad7f268dd768",
     "sourceUrl": "assets/ships/release/parts/wholeships/yard_tug.glb"
   },
   {
