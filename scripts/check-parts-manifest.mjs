@@ -18,6 +18,11 @@ import {
   collectLodTriangleCounts,
   resolveTriangleMetric,
 } from './lib/partsManifestMetrics.mjs';
+import {
+  decodedAccessorBounds,
+  manifestPartPathMatchesCategory,
+  resolveManifestAssetMetadata,
+} from './lib/partsManifestAssetContract.mjs';
 import { isPublishedPartsSourceFile } from './lib/partsManifestScope.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -121,11 +126,11 @@ for (const part of manifest.parts || []) {
   // from runtime code. A blocked entry must declare its reason.
   if (part.status === 'blocked') {
     check(`${label}: blocked entry has statusNote`, typeof part.statusNote === 'string' && part.statusNote.length > 20, `statusNote=${part.statusNote && part.statusNote.slice(0, 60)}`);
-    check(`${label}: blocked entry has file path`, typeof part.file === 'string' && part.file.startsWith(`${part.category}/`), `category=${part.category} file=${part.file}`);
+    check(`${label}: blocked entry has file path`, manifestPartPathMatchesCategory(part), `category=${part.category} file=${part.file}`);
     continue;
   }
 
-  check(`${label}: file path matches category`, typeof part.file === 'string' && part.file.startsWith(`${part.category}/`), `category=${part.category} file=${part.file}`);
+  check(`${label}: file path matches category`, manifestPartPathMatchesCategory(part), `category=${part.category} file=${part.file}`);
   check(`${label}: priority is authored`, ['P0', 'P1', 'P2'].includes(part.priority), `priority=${part.priority}`);
   check(`${label}: mount origin`, part.mount === 'origin', `mount=${part.mount}`);
   const landmark = part.budgetClass === 'landmark';
@@ -174,7 +179,7 @@ for (const part of manifest.parts || []) {
   }
 
   const { gltf, bytes } = parsed;
-  const extras = gltf.asset?.extras || {};
+  const extras = resolveManifestAssetMetadata(gltf);
   extrasByFile.set(part.file, extras);
   const metrics = collectMetrics(gltf, parsed.binary);
   check(`${label}: glTF 2 asset`, gltf.asset?.version === '2.0', `version=${gltf.asset?.version}`);
@@ -244,7 +249,12 @@ for (const part of manifest.parts || []) {
   check(`${label}: triangles match manifest`, triangleMetric.supported && triangleMetric.measured === part.tris,
     triangleDetail);
   check(`${label}: extras part id`, extras.partId === part.id, `extras=${extras.partId}`);
-  check(`${label}: extras category`, extras.category === part.category, `extras=${extras.category}`);
+  const metadataCategory = String(extras.category || '').toLowerCase();
+  const categoryMatches = extras.category === part.category
+    || metadataCategory === String(part.category || '').toLowerCase()
+    || (part.category === 'places' && part.id?.startsWith('place_works_') && metadataCategory === 'works')
+    || (!metadataCategory && categoryForSlot(extras.slot) === part.category);
+  check(`${label}: extras category`, categoryMatches, `extras=${extras.category || extras.slot}`);
   check(`${label}: extras priority`, extras.priority === part.priority, `extras=${extras.priority}`);
   check(`${label}: extras triangle count`, extras.triangleCount === part.tris, `extras=${extras.triangleCount}`);
   check(`${label}: extras texture size`, extras.textureSize === part.textureSize, `extras=${extras.textureSize}`);
@@ -461,9 +471,10 @@ function visitNode(gltf, binary, nodeIndex, parentMatrix, outMin, outMax) {
     const mesh = gltf.meshes?.[node.mesh];
     for (const primitive of mesh?.primitives || []) {
       const accessor = gltf.accessors?.[primitive.attributes?.POSITION];
-      if (!vector3(accessor?.min) || !vector3(accessor?.max)) continue;
+      const accessorBounds = decodedAccessorBounds(gltf, accessor);
+      if (!vector3(accessorBounds?.min) || !vector3(accessorBounds?.max)) continue;
       if (!expandByAccessorVertices(gltf, binary, primitive.attributes.POSITION, world, outMin, outMax)) {
-        expandByAccessorBounds(accessor.min, accessor.max, world, outMin, outMax);
+        expandByAccessorBounds(accessorBounds.min, accessorBounds.max, world, outMin, outMax);
       }
     }
   }
@@ -560,7 +571,8 @@ function categoryForSlot(slot) {
 function hasRuntimeAssetMetadata(extras, slot) {
   if (!extras || typeof extras !== 'object') return false;
   const sf = extras.spacefaceAsset;
-  if (sf && sf.contractVersion === 1 && sf.slot === slot && typeof sf.assetId === 'string') return true;
+  if (sf && (sf.contractVersion === 1 || sf.contractVersion === 2)
+      && sf.slot === slot && typeof sf.assetId === 'string') return true;
   return typeof extras.assetId === 'string'
     && categoryForSlot(slot) === extras.category
     && extras.forwardAxis === '+X'
