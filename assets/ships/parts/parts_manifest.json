@@ -2118,7 +2118,8 @@
           3.23,
           3.4
         ]
-      }
+      },
+      "triangleMetric": "lod0"
     },
     {
       "id": "place_ceres_bait_wreck",
@@ -2285,22 +2286,23 @@
       ],
       "bounds": {
         "min": [
-          -47.0226,
-          -17.6696,
-          -47.0226
+          -46.13517,
+          -42.320339,
+          -13.576312
         ],
         "max": [
           55.5,
-          12.5,
-          47.0226
+          42.320339,
+          17.669581
         ],
         "dimensionsM": [
-          102.5226,
-          30.1696,
-          94.0452
+          101.63517,
+          84.640678,
+          31.245893
         ]
       },
-      "note": "Claim Anchor; player claim growth family, PBR, explicit LOD0/1/2. LOD0 15384 tris / 5 draw groups."
+      "note": "Claim Anchor; player claim growth family, PBR, explicit LOD0/1/2. LOD0 15384 tris / 5 draw groups.",
+      "triangleMetric": "lod0"
     },
     {
       "id": "place_claim_outpost_bastion",
@@ -2360,7 +2362,8 @@
           94.0452
         ]
       },
-      "note": "Defense Bastion Claim; player claim growth family, PBR, explicit LOD0/1/2. LOD0 33212 tris / 5 draw groups."
+      "note": "Defense Bastion Claim; player claim growth family, PBR, explicit LOD0/1/2. LOD0 33212 tris / 5 draw groups.",
+      "triangleMetric": "lod0"
     },
     {
       "id": "place_claim_outpost_refinery",
@@ -2420,7 +2423,8 @@
           97.8878
         ]
       },
-      "note": "Industrial Refinery Claim; player claim growth family, PBR, explicit LOD0/1/2. LOD0 56760 tris / 5 draw groups."
+      "note": "Industrial Refinery Claim; player claim growth family, PBR, explicit LOD0/1/2. LOD0 56760 tris / 5 draw groups.",
+      "triangleMetric": "lod0"
     },
     {
       "id": "place_claim_outpost_relay",
@@ -2480,7 +2484,8 @@
           95.859
         ]
       },
-      "note": "Trade Relay Claim material-truth V2; asteroid-gripping recovery/communications relay, PBR, explicit LOD0/1/2. LOD0 62992 tris / 5 draw groups."
+      "note": "Trade Relay Claim material-truth V2; asteroid-gripping recovery/communications relay, PBR, explicit LOD0/1/2. LOD0 62992 tris / 5 draw groups.",
+      "triangleMetric": "lod0"
     },
     {
       "id": "place_cold_locker",
@@ -2530,7 +2535,8 @@
           11.7,
           8.36
         ]
-      }
+      },
+      "triangleMetric": "lod0"
     },
     {
       "id": "place_conveyor_barge",
@@ -2624,7 +2630,8 @@
           6.8301,
           4.6
         ]
-      }
+      },
+      "triangleMetric": "lod0"
     },
     {
       "id": "place_dead_hulk",
@@ -2935,7 +2942,8 @@
           11.74,
           14.7
         ]
-      }
+      },
+      "triangleMetric": "lod0"
     },
     {
       "id": "place_extraction_mast",
@@ -2971,7 +2979,8 @@
           13.0906,
           4.1345
         ]
-      }
+      },
+      "triangleMetric": "lod0"
     },
     {
       "id": "place_freight_platform",
@@ -3008,7 +3017,8 @@
           9.9846,
           14.45
         ]
-      }
+      },
+      "triangleMetric": "lod0"
     },
     {
       "id": "place_gate_jump_ring",
@@ -3051,20 +3061,21 @@
       "bounds": {
         "min": [
           -10,
-          -54.1075,
-          -50.7472
+          -48.0148,
+          -46.8898
         ],
         "max": [
           10,
-          50.0921,
-          55.9523
+          48.0148,
+          46.8898
         ],
         "dimensionsM": [
           20,
-          104.1995,
-          106.6995
+          96.0296,
+          93.7796
         ]
-      }
+      },
+      "triangleMetric": "lod0"
     },
     {
       "id": "place_improvised_dock",
@@ -3100,7 +3111,8 @@
           4.4529,
           12.4593
         ]
-      }
+      },
+      "triangleMetric": "lod0"
     },
     {
       "id": "place_interdiction_buoy",
@@ -3136,7 +3148,8 @@
           4.94,
           6.4276
         ]
-      }
+      },
+      "triangleMetric": "lod0"
     },
     {
       "id": "place_landmark_wreck_cathedral",
@@ -3225,7 +3238,8 @@
           14.5,
           3.5
         ]
-      }
+      },
+      "triangleMetric": "lod0"
     },
     {
       "id": "place_lane_pin",
@@ -3275,7 +3289,8 @@
           10.7112,
           20.1
         ]
-      }
+      },
+      "triangleMetric": "lod0"
     },
     {
       "id": "place_memorial_array",
@@ -3307,7 +3322,8 @@
           3.0500000715255737,
           3
         ]
-      }
+      },
+      "triangleMetric": "lod0"
     },
     {
       "id": "place_mining_drone",
@@ -3396,7 +3412,8 @@
           15.300000190734863,
           2.799999952316284
         ]
-      }
+      },
+      "triangleMetric": "lod0"
     },
     {
       "id": "place_radiator_bank",
@@ -3432,7 +3449,8 @@
           7.05,
           1.6
         ]
-      }
+      },
+      "triangleMetric": "lod0"
     },
     {
       "id": "place_scrap_cage",
@@ -3671,21 +3689,22 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -57.4,
-          -10.3,
-          -29
+          -57.399999,
+          -29,
+          -22.5
         ],
         "max": [
-          43,
-          22.5,
-          29
+          45.179996,
+          29,
+          14.759999
         ],
         "dimensionsM": [
-          100.4,
-          32.8,
-          58
+          102.579995,
+          58,
+          37.259999
         ]
-      }
+      },
+      "triangleMetric": "lod0"
     },
     {
       "id": "place_station_military",
@@ -4010,7 +4029,8 @@
           10.45,
           4.6
         ]
-      }
+      },
+      "triangleMetric": "lod0"
     },
     {
       "id": "place_transponder_gate",

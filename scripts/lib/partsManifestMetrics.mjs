@@ -25,6 +25,15 @@ export function nodeLod(node) {
   return normalizeLod(explicit) || (named ? `lod${named[1]}` : null);
 }
 
+/** Match assetLoader's hidden-helper predicate; metadata alone must not hide rendered geometry. */
+function isRuntimeHiddenHelper(node) {
+  const extras = node?.extras || {};
+  const normalizedName = String(node?.name || '').toUpperCase().replace(/[\s-]+/g, '_');
+  return normalizedName === 'COLLISION_HULL'
+    || extras.nonRender === true
+    || extras.spaceface?.nonRender === true;
+}
+
 function primitiveTriangles(gltf, primitive) {
   if ((primitive?.mode ?? 4) !== 4) return 0;
   const indexAccessor = gltf.accessors?.[primitive.indices];
@@ -44,6 +53,7 @@ export function collectLodTriangleCounts(gltf) {
   const seen = new Set();
 
   for (const node of gltf?.nodes || []) {
+    if (isRuntimeHiddenHelper(node)) continue;
     const lod = nodeLod(node);
     if (!lod || node?.mesh == null) continue;
     const key = `${lod}:${node.mesh}`;
