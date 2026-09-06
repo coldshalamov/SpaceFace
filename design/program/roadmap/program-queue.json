@@ -6169,7 +6169,7 @@
       "priority": 78,
       "title": "Interceptor is a positioning problem",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03"
       ],
@@ -6184,7 +6184,9 @@
         "npm run check:baseline",
         "npm run check:combat"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-140-00-REPORT.md"
+      ],
       "brief": "Crossing lanes, extend-and-return, never a stationary target; metric: time the player spends off its attack line."
     },
     {

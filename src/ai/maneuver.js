@@ -155,7 +155,6 @@ export class ManeuverPlanner {
     const formationBound = Math.max(1, intent.formationBound || 0);
     const rejoinDistance = formationBound * this.config.formationRejoinFraction;
     const mustRejoin = !intent.breakFormation && !choreo && formationDistance > rejoinDistance;
-    const predictedFormationSlot = predictFormationSlot(intent, this.config.formationPredictionTicks);
     const hullScale = hullScaleFor(selfPose, entityId, this.resolveHull);
     let desired;
     if (choreo && choreo.coast) {
@@ -165,7 +164,7 @@ export class ManeuverPlanner {
       desired = commitPoint(selfPose, intent.formationSlot, cap, intent.formationVelocity);
       desired = separateDesiredFromFriends(desired, selfPose, contactSource.ships, 72);
     } else if (mustRejoin) {
-      desired = trackPoint(selfPose, predictedFormationSlot, intent.formationVelocity, 1);
+      desired = trackPoint(selfPose, predictFormationSlot(intent, this.config.formationPredictionTicks), intent.formationVelocity, 1);
     } else {
       desired = desiredForIntent(intent, selfPose, target, contactSource, this.seed, entityId, this.config, this.workCounters, hullScale);
     }
@@ -245,9 +244,11 @@ export class ManeuverPlanner {
       rawForward = (allowReverse ? forwardDot : Math.max(0, forwardDot)) * throttle;
       rawRight = rightDot * throttle * strafeAuthorityForKind(kind);
     }
-    if (speedLimited || closingLimited) {
+    if (speedLimited || (!intent.crossingLane && closingLimited)) {
       rawForward = Math.min(rawForward, speedLimited ? 0.04 : 0.18);
-      rawRight *= 0.35;
+      if (!intent.crossingLane) {
+        rawRight *= 0.35;
+      }
     }
     if (intentionalHold) {
       rawForward = 0;
@@ -274,7 +275,7 @@ export class ManeuverPlanner {
       : 0;
     const brake = choreo && choreo.coast
       ? false
-      : speedLimited || closingLimited || (!(choreo && slotSpeed > 12) && (kind === ManeuverKind.HOLD || kind === ManeuverKind.FORMATION) &&
+      : (intent.crossingLane ? speedLimited : (speedLimited || closingLimited)) || (!(choreo && slotSpeed > 12) && (kind === ManeuverKind.HOLD || kind === ManeuverKind.FORMATION) &&
         arrival < slowRadius && speed > Math.max(4, arrival / 2));
     const trajectory = this.includeTrajectory
       ? buildTrajectory(selfPose, desiredUnit, speed, tick, this.config.trajectoryHorizonTicks, envelope.maxSpeed)
@@ -392,7 +393,7 @@ export class ManeuverPlanner {
 }
 
 function approachSlowRadius(kind, formationBound, config, intent = null) {
-  if (kind === ManeuverKind.INTERCEPT) {
+  if (kind === ManeuverKind.INTERCEPT && intent && intent.crossingLane === true) {
     // Attack intercepts commit speed through the crossing pass and must not throttle to a halt.
     return 0;
   }
@@ -422,7 +423,7 @@ function desiredForIntent(intent, self, target, contactIndex, seed, entityId, co
   switch (intent.kind) {
     case ManeuverKind.INTERCEPT:
       return target
-        ? intercept(self, target, config.interceptHorizonTicks, intent.lateralSign, config.interceptSpeed * (hullScale && hullScale.speed || 1))
+        ? intercept(self, target, config.interceptHorizonTicks, intent.lateralSign, config.interceptSpeed * (hullScale && hullScale.speed || 1), config, intent)
         : trackPoint(self, intent.formationSlot, intent.formationVelocity, 0.7);
     case ManeuverKind.ORBIT: {
       const orbitRadius = Math.max(1, Number.isFinite(intent.preferredRange) ? intent.preferredRange : config.orbitRadius);
@@ -453,19 +454,33 @@ function findContactById(contacts, targetId, counters) {
   return null;
 }
 
-function intercept(self, target, horizonTicks, lateralSign = 0, commitSpeed = 72) {
+function intercept(self, target, horizonTicks, lateralSign = 0, commitSpeed = 72, config = null, intent = null) {
   const distance = distance2(self.pos, target.pos);
   const horizon = clamp(distance / 12, 6, horizonTicks);
-  const point = { x: target.pos.x + target.vel.x * horizon / 60, z: target.pos.z + target.vel.z * horizon / 60 };
+  const tvx = target.vel && Number.isFinite(target.vel.x) ? target.vel.x : 0;
+  const tvz = target.vel && Number.isFinite(target.vel.z) ? target.vel.z : 0;
+  const point = { x: target.pos.x + tvx * horizon / 60, z: target.pos.z + tvz * horizon / 60 };
   if (lateralSign) {
     const dx = target.pos.x - self.pos.x, dz = target.pos.z - self.pos.z;
-    const length = Math.hypot(dx, dz) || 1;
+    const length = Math.hypot(dx, dz);
+    let nx, nz;
+    if (length > 1e-6) {
+      nx = dx / length;
+      nz = dz / length;
+    } else {
+      nx = Math.cos(self.rot || 0);
+      nz = Math.sin(self.rot || 0);
+    }
     // Authored crossing lane: preserves a readable passing corridor tangent to the target.
-    // The corridor offset maintains 55-120 WU clearance so the interceptor cuts cleanly past
+    // The corridor offset maintains clearance so the interceptor cuts cleanly past
     // the target at gun-envelope range rather than steering nose-in to ram or stall.
-    const corridorOffset = clamp(distance * 0.28, 55, 120) * (lateralSign < 0 ? -1 : 1);
-    point.x += -dz / length * corridorOffset;
-    point.z += dx / length * corridorOffset;
+    // Ensure corridor offset also clears the target's physical and mass clearance envelope (e.g. capitals).
+    const targetClearance = (target.radius || 14) + (config ? massClearanceFor(target, intent, self, config) : 0);
+    const minCorridor = Math.max(55, targetClearance + 20);
+    const maxCorridor = Math.max(120, minCorridor + 40);
+    const corridorOffset = clamp(distance * 0.28, minCorridor, maxCorridor) * (lateralSign < 0 ? -1 : 1);
+    point.x += -nz * corridorOffset;
+    point.z += nx * corridorOffset;
 
     // Project through-velocity along the crossing lane vector so commit momentum carries
     // through and past the intercept point without decaying into a hover.
@@ -474,12 +489,12 @@ function intercept(self, target, horizonTicks, lateralSign = 0, commitSpeed = 72
     const laneLen = Math.hypot(laneDirX, laneDirZ) || 1;
     const throughSpeed = Math.max(commitSpeed, 72);
     const feedVel = {
-      x: (target.vel ? target.vel.x : 0) * 0.35 + (laneDirX / laneLen) * throughSpeed * 0.65,
-      z: (target.vel ? target.vel.z : 0) * 0.35 + (laneDirZ / laneLen) * throughSpeed * 0.65,
+      x: tvx * 0.35 + (laneDirX / laneLen) * throughSpeed * 0.65,
+      z: tvz * 0.35 + (laneDirZ / laneLen) * throughSpeed * 0.65,
     };
     return commitPoint(self, point, commitSpeed, feedVel);
   }
-  return commitPoint(self, point, commitSpeed, target.vel);
+  return commitPoint(self, point, commitSpeed, target.vel || ZERO_VEL);
 }
 
 function orbit(self, target, radius, seed, entityId, lateralSign = 0) {
@@ -656,7 +671,7 @@ function closeApproachLimit(kind, intent, self, target, config, fallback) {
 }
 
 function massClearanceFor(contact, intent, self, config) {
-  if (contact.id === intent.targetId && (explicitRamApproach(intent, self) || tetherApproach(intent.kind))) return 0;
+  if (intent && contact.id === intent.targetId && (explicitRamApproach(intent, self) || tetherApproach(intent.kind))) return 0;
   if (contact.operationalMassBand === 'capital') return config.capitalTargetClearance;
   if (contact.operationalMassBand === 'heavy') return config.heavyTargetClearance;
   return 0;
@@ -800,10 +815,15 @@ function smoothControls(runtime, tick, raw, config, options = {}) {
 }
 
 function closingSpeed(self, target) {
+  if (!target || !target.pos || !self || !self.pos) return 0;
   const dx = target.pos.x - self.pos.x;
   const dz = target.pos.z - self.pos.z;
   const dist = Math.hypot(dx, dz) || 1;
-  return ((self.vel.x - target.vel.x) * dx + (self.vel.z - target.vel.z) * dz) / dist;
+  const svx = self.vel && Number.isFinite(self.vel.x) ? self.vel.x : 0;
+  const svz = self.vel && Number.isFinite(self.vel.z) ? self.vel.z : 0;
+  const tvx = target.vel && Number.isFinite(target.vel.x) ? target.vel.x : 0;
+  const tvz = target.vel && Number.isFinite(target.vel.z) ? target.vel.z : 0;
+  return ((svx - tvx) * dx + (svz - tvz) * dz) / dist;
 }
 
 function buildTrajectory(self, direction, speed, tick, horizonTicks, speedBudget = Infinity) {

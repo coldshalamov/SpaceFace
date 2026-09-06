@@ -304,7 +304,7 @@ test('PQ-140.00 scenario metric: time player spends off attack line with dynamic
     interceptor.x += interceptor.vx * (1 / 60);
     interceptor.z += interceptor.vz * (1 / 60);
 
-    const line = attackLineFor(doc, interceptor);
+    const line = doc.attackLine;
     ticksTotal++;
     if (line && isPointOnAttackLine(line, player)) {
       ticksPlayerOnLine++;
@@ -318,4 +318,256 @@ test('PQ-140.00 scenario metric: time player spends off attack line with dynamic
   assert.ok(offLineRatio >= 0.75,
     `player must spend majority of time off attack line through positioning; got ${(offLineRatio * 100).toFixed(1)}%`);
   assert.ok(ticksPlayerOffLine > ticksPlayerOnLine, 'ticks off line must exceed ticks on line');
+});
+
+test('PQ-140.00 capital target crossing pass clears mass clearance without stall or hovering', () => {
+  const planner = new ManeuverPlanner({ seed: 47 });
+  const ship = {
+    x: 0, z: 70,
+    vx: 65, vz: 0,
+    rot: 0,
+    radius: 12,
+  };
+  // Capital target with large radius and capital operationalMassBand
+  const capitalTarget = {
+    id: 1,
+    kind: ContactKind.SHIP,
+    team: 0,
+    alive: true,
+    valid: true,
+    visible: true,
+    hostile: true,
+    confidence: 1,
+    threat: 1.0,
+    pos: { x: 200, z: 0 },
+    vel: { x: 0, z: 0 },
+    radius: 45,
+    operationalMassBand: 'capital',
+    tags: [],
+  };
+
+  const maneuver = {
+    kind: ManeuverKind.INTERCEPT,
+    targetId: 1,
+    preferredRange: 180,
+    lateralSign: 1,
+    crossingLane: true,
+    formationSlot: { x: 0, z: 0 },
+    formationVelocity: { x: 0, z: 0 },
+    formationBound: 200,
+    breakFormation: true,
+    reason: 'combat_doctrine:interceptor_flyby:strike',
+  };
+
+  let req = null;
+  for (let tick = 0; tick <= 30; tick++) {
+    const perception = shipPerception(ship, [capitalTarget]);
+    req = planner.plan({
+      tick,
+      entityId: 2,
+      perception,
+      behavior: { maneuver },
+      directive: baseDirective(1),
+    });
+  }
+
+  // Interceptor must maintain committed flight and not stall or brake outside capital
+  assert.equal(req.brake, false, 'interceptor must not emergency brake against capital crossing pass');
+  assert.ok(req.forceLocal.forward > 0, 'interceptor must maintain forward momentum');
+  // Trajectory destination must clear the capital target clearance envelope (radius 45 + capitalTargetClearance 60 = > 105 WU)
+  const finalWaypt = req.trajectory.at(-1);
+  assert.ok(finalWaypt, 'trajectory must exist');
+  assert.ok(finalWaypt.z >= 75, `crossing path must maintain clearance past capital, got z=${finalWaypt.z}`);
+});
+
+test('PQ-140.00 dynamic moving target with high closing speed (opposite direction)', () => {
+  const planner = new ManeuverPlanner({ seed: 47 });
+  // Interceptor moving +X at 70 WU/s
+  const ship = {
+    x: 0, z: 50,
+    vx: 70, vz: 0,
+    rot: 0,
+    radius: 12,
+  };
+  // Target moving -X at 50 WU/s (closing speed 120 WU/s)
+  const target = targetContact({ x: 300, z: 0 }, { x: -50, z: 0 });
+
+  const maneuver = {
+    kind: ManeuverKind.INTERCEPT,
+    targetId: 1,
+    preferredRange: 150,
+    lateralSign: -1,
+    crossingLane: true,
+    formationSlot: { x: 0, z: 0 },
+    formationVelocity: { x: 0, z: 0 },
+    formationBound: 170,
+    breakFormation: true,
+    reason: 'combat_doctrine:interceptor_flyby:strike',
+  };
+
+  const perception = shipPerception(ship, [target]);
+  const req = planner.plan({
+    tick: 10,
+    entityId: 2,
+    perception,
+    behavior: { maneuver },
+    directive: baseDirective(1),
+  });
+
+  assert.ok(Number.isFinite(req.targetHeading));
+  assert.ok(Number.isFinite(req.forceLocal.forward));
+  assert.ok(Number.isFinite(req.forceLocal.right));
+  assert.equal(req.brake, false);
+});
+
+test('PQ-140.00 edge cases: collocated positions, missing velocity, non-finite coordinates, and rotated headings', () => {
+  const planner = new ManeuverPlanner({ seed: 47 });
+  const ship = { x: 50, z: 50, vx: 0, vz: 0, rot: Math.PI / 4, radius: 12 };
+  // Collocated target with no velocity
+  const collocatedTarget = {
+    id: 1,
+    kind: ContactKind.SHIP,
+    team: 0,
+    pos: { x: 50, z: 50 },
+    vel: null, // missing velocity field
+    radius: 14,
+    tags: [],
+  };
+
+  const maneuver = {
+    kind: ManeuverKind.INTERCEPT,
+    targetId: 1,
+    preferredRange: 150,
+    lateralSign: 1,
+    crossingLane: true,
+  };
+
+  const perception = shipPerception(ship, [collocatedTarget]);
+  // Must not throw TypeError or produce NaN
+  const req = planner.plan({
+    tick: 0,
+    entityId: 2,
+    perception,
+    behavior: { maneuver },
+    directive: baseDirective(1),
+  });
+
+  assert.ok(Number.isFinite(req.targetHeading));
+  assert.ok(Number.isFinite(req.forceLocal.forward));
+
+  // Test attackLine with rotated heading (PI / 2, facing +Z)
+  const rotatedSelf = { pos: { x: 0, z: 0 }, rot: Math.PI / 2, radius: 14 };
+  const record = { doctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY, phase: 'strike', preferredRange: 200 };
+  const line = attackLineFor(record, rotatedSelf);
+  assert.ok(line);
+  assert.ok(Math.abs(line.dir.x) < 1e-5);
+  assert.ok(Math.abs(line.dir.y || line.dir.z - 1) < 1e-5);
+
+  // Point ahead (+Z) is on line
+  assert.equal(isPointOnAttackLine(line, { x: 5, z: 100 }), true);
+  // Point behind (-Z) is off line
+  assert.equal(isPointOnAttackLine(line, { x: 5, z: -20 }), false);
+  // Point with NaN is rejected safely
+  assert.equal(isPointOnAttackLine(line, { x: NaN, z: 100 }), false);
+  assert.equal(isPointOnAttackLine(line, null), false);
+  assert.equal(isPointOnAttackLine(null, { x: 0, z: 0 }), false);
+
+  // Verify caching: calling attackLineFor with same inputs returns same cached reference
+  const line2 = attackLineFor(record, rotatedSelf);
+  assert.equal(line, line2, 'attackLineFor must return cached reference when transform and phase are unchanged');
+});
+
+test('PQ-140.00 tacticalAI system wires attackLine into doctrinePhase and telegraph events', () => {
+  const busEvents = [];
+  const fakeBus = {
+    emit(event, payload) {
+      busEvents.push({ event, payload });
+    },
+    on() {},
+    off() {},
+  };
+
+  const tactical = createTacticalAISystem({
+    seed: 47,
+    actionPortFactory: () => ({
+      list() { return []; },
+      canStart() { return true; },
+      start() { return { ok: true }; },
+      status() { return null; },
+      interrupt() {},
+      execute() {},
+      isReady() { return true; },
+      forget() {},
+    }),
+    sensors: {
+      frameFor() {
+        return {
+          tick: 1,
+          self: {
+            id: 2,
+            team: 1,
+            pos: { x: 0, z: 0 },
+            vel: { x: 60, z: 0 },
+            rot: 0,
+            radius: 12,
+            hullFraction: 1,
+            energyFraction: 1,
+            heatFraction: 0,
+            disabled: false,
+            tethered: false,
+            operationalMassBand: 'light',
+            flightClass: 'fighter',
+            hullId: 'ship_wasp',
+            activity: { kind: 'attack_run', reason: 'test', anchor: { x: 0, z: 0 } },
+            roe: 'weapons_free',
+            combatDoctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
+          },
+          contacts: [targetContact({ x: 300, z: 0 })],
+          events: [],
+        };
+      },
+    },
+    roster: {
+      listSquads() {
+        return [{
+          id: 'test_squad',
+          members: [{ id: 2, capabilities: ['drive', 'sensor', 'weapon'], combatDoctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY }],
+        }];
+      },
+      squadFor() { return null; },
+      directiveFor() { return baseDirective(1); },
+    },
+    maneuver: {
+      request() {
+        return {
+          kind: 'intercept',
+          forceLocal: { forward: 0.5, right: 0 },
+          torqueYaw: 0,
+          targetHeading: 0,
+        };
+      },
+      forget() {},
+    },
+  });
+
+  const state = {
+    tick: 1,
+    simTime: 0.1,
+    rng: () => 0.5,
+    bus: fakeBus,
+    entities: new Map([[2, { id: 2, pos: { x: 0, z: 0 }, vel: { x: 60, z: 0 }, rot: 0, data: {} }]]),
+  };
+
+  // Initialize with context containing bus
+  const ctx = { bus: fakeBus, state, helpers: {} };
+  tactical.init(ctx);
+  tactical.update(1 / 60, state);
+
+  // Check emitted events
+  const phaseEvents = busEvents.filter(e => e.event === 'ai:doctrinePhase');
+  assert.ok(phaseEvents.length > 0, 'ai:doctrinePhase event must be emitted');
+  const phasePayload = phaseEvents[0].payload;
+  assert.equal(phasePayload.entityId, 2);
+  assert.equal(phasePayload.doctrineId, CombatDoctrineId.INTERCEPTOR_FLYBY);
+  assert.ok('attackLine' in phasePayload, 'attackLine must be present in ai:doctrinePhase event payload');
 });

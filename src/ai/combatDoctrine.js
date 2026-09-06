@@ -566,6 +566,12 @@ function makeRecord(seed, tick, entityId, doctrineId, targetId, flightProfile) {
     closestDistance: Infinity,
     flightPoint: null,
     ramAuthorized: false,
+    preferredRange: null,
+    _cachePosX: null,
+    _cachePosZ: null,
+    _cacheRot: null,
+    _cachePhase: null,
+    _cachedAttackLine: null,
     lastTick: tick,
     seed,
     entityId,
@@ -734,7 +740,7 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
       ? 'tether-control-contest'
       : null,
     directiveTargetId: directive && directive.objective && directive.objective.targetId,
-    attackLine: attackLineFor(record, self),
+    attackLine: (record.preferredRange = preferredRange, attackLineFor(record, self)),
   });
 }
 
@@ -746,23 +752,40 @@ export function attackLineFor(record, self) {
   if (!self || !self.pos) return null;
   const phase = record && record.phase;
   const active = phase === 'strike' || phase === 'engine_flare'
-    || phase === 'commit' || phase === 'fire_window';
+    || phase === 'commit' || phase === 'fire_window' || phase === 'charge_cue';
   if (!active) return null;
 
-  const heading = Number.isFinite(self.rot) ? self.rot : 0;
-  return Object.freeze({
-    origin: Object.freeze({
-      x: finite(self.pos.x),
-      z: finite(self.pos.z),
-    }),
-    heading,
-    dir: Object.freeze({
-      x: Math.cos(heading),
-      z: Math.sin(heading),
-    }),
-    range: 480,
-    halfWidth: 32,
+  const px = finite(self.pos.x);
+  const pz = finite(self.pos.z);
+  const rot = Number.isFinite(self.rot) ? self.rot : 0;
+
+  if (record && record._cachedAttackLine &&
+      record._cachePosX === px &&
+      record._cachePosZ === pz &&
+      record._cacheRot === rot &&
+      record._cachePhase === phase) {
+    return record._cachedAttackLine;
+  }
+
+  const range = Number.isFinite(record && record.preferredRange) ? Math.max(480, record.preferredRange * 2.5) : 480;
+  const halfWidth = Math.max(32, (self.radius || 14) + 18);
+  const line = Object.freeze({
+    origin: Object.freeze({ x: px, z: pz }),
+    heading: rot,
+    dir: Object.freeze({ x: Math.cos(rot), z: Math.sin(rot) }),
+    range,
+    halfWidth,
   });
+
+  if (record && !Object.isFrozen(record)) {
+    record._cachePosX = px;
+    record._cachePosZ = pz;
+    record._cacheRot = rot;
+    record._cachePhase = phase;
+    record._cachedAttackLine = line;
+  }
+
+  return line;
 }
 
 /**
@@ -770,8 +793,9 @@ export function attackLineFor(record, self) {
  */
 export function isPointOnAttackLine(attackLine, point) {
   if (!attackLine || !attackLine.origin || !attackLine.dir || !point) return false;
-  const dx = finite(point.x) - attackLine.origin.x;
-  const dz = finite(point.z) - attackLine.origin.z;
+  if (!Number.isFinite(point.x) || !Number.isFinite(point.z)) return false;
+  const dx = point.x - attackLine.origin.x;
+  const dz = point.z - attackLine.origin.z;
   const along = dx * attackLine.dir.x + dz * attackLine.dir.z;
   if (along < 0 || along > attackLine.range) return false;
   const cross = Math.abs(dx * (-attackLine.dir.z) + dz * attackLine.dir.x);
