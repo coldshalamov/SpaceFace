@@ -28,6 +28,7 @@ import { SECTORS, dangerIndex } from '../data/sectors.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { tickProgram, assignTemplate, clearTemplate, TEMPLATES } from './alphabet.js';
+import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { ASTEROIDS } from '../data/mining.js';
 import {
   addToShipment,
@@ -212,11 +213,19 @@ const OFFSCREEN_NETWORK_INTERVAL_S = 60;
 // ---- mining-drone FLYING-ENTITY tuning (real type:'drone' entities that orbit/seek asteroids) ----
 const DRONE_ENTITY_RADIUS = 2.4;      // wu collision radius of a single drone mesh
 const DRONE_SPEED = 130;              // wu/s cruise toward the targeted asteroid
-const DRONE_ACCEL = 7.0;              // velocity lerp rate toward the desired heading (1/s)
 const DRONE_MINE_RANGE = 34;          // wu standoff at which the drone "chips" the rock
 const DRONE_ORBIT_GAP = 14;           // wu added to the asteroid radius for the standoff ring
 const DRONE_SPREAD = 26;              // wu spacing so multiple drones in a group fan out
 const ASTEROID_QUERY_RADIUS_PAD = 64;
+
+// Match Flight V3's deterministic static-obstacle projection envelope for autonomous hulls. The
+// player autopilot keeps this guidance private because it carries a per-route side commitment;
+// programmed drones recompute a pure waypoint from the live pose each tick instead. The clearance
+// and lookahead values stay on the same authored geometry so a station remains a real obstacle,
+// while a save/load cannot strand a group behind transient navigation state.
+const DRONE_NAV_LOOKAHEAD_MIN = 180;
+const DRONE_NAV_LOOKAHEAD_MAX = 760;
+const DRONE_NAV_CLEARANCE_BASE = 58;
 
 // Loss/raid tuning (spec Formulas).
 const TRADER_LOSS_CAP = 0.35;
@@ -683,6 +692,7 @@ export const automation = {
   // path. The player hold is never a worker's inventory.
   _runProgrammedGroup(g, def, dt, curSector) {
     // ensure entities exist (same spawn as legacy)
+    this._hasLiveDroneEntities(g);
     if ((!g.entityIds || !g.entityIds.length) && g.sectorId === curSector) this._spawnDroneEntities(g, def);
     ensureAutomationRuntime(this);
     const ctx = this._programCtx;
@@ -697,23 +707,42 @@ export const automation = {
   },
 
   // Steer every live entity in the group toward a beacon; returns true when the lead entity is
-  // "at" the beacon (within arrival range). Reuses the legacy _driveDrone steering.
+  // "at" the beacon (within arrival range). Movement is published through the flight intent.
   _steerGroupTo(g, def, beacon, dt, curSector) {
     if (!beacon || g.sectorId !== curSector || !g.entityIds || !g.entityIds.length) return false;
     const getEnt = (this.helpers && this.helpers.getEntity) || ((id) => this.state.entities.get(id));
     const target = { x: beacon.x, z: beacon.z };
+    // Keep the lead hull in the same work envelope used by the alphabet's arrival predicate. The
+    // brake is an intent, so the flight and physics owners can settle the hull without a second
+    // writer reaching into its velocity.
+    const arriveR = beacon.entity && beacon.entity.type === 'asteroid'
+      ? (beacon.entity.radius || 6) + 14 + 34
+      : beacon.entity?.type === 'station'
+        // A depot's outer spars/ring extend beyond its coarse collision radius. Hand cargo off
+        // outside the authored dock envelope, leaving room for the physical braking distance.
+        ? Math.max(60, Number(beacon.entity.data?.dockRadius || beacon.entity.radius) + 24)
+        : 60;
     let lead = null;
     for (const id of g.entityIds) {
       const e = getEnt(id);
-      if (!e || !e.alive) continue;
+      if (!isGroupDrone(e, g)) continue;
       lead = e;
-      this._driveDrone(e, target, dt, false);
+      const distance = Math.hypot(target.x - e.pos.x, target.z - e.pos.z);
+      const detour = resolveDroneDetour(this.state, e, target, beacon.entity, arriveR);
+      const steeringTarget = detour || target;
+      let braking = !detour && distance < arriveR;
+      if (!detour && beacon.entity?.type === 'station' && distance > 0) {
+        const closing = Math.max(0, ((target.x - e.pos.x) * (e.vel?.x || 0)
+          + (target.z - e.pos.z) * (e.vel?.z || 0)) / distance);
+        const profile = resolvePropulsionProfile(e, this.state);
+        const brakeAccel = Math.max(1, Number(profile.reverseAccel) || Number(profile.maxBrakeAccel) || 1);
+        // Begin the real counter-thrust before handoff. Arrival distance alone cannot stop a
+        // fast loaded hull; include the NPC actuator's 0.4s slew as well as kinetic stopping.
+        braking ||= closing > 4 && distance - arriveR <= closing * closing / (2 * brakeAccel) + closing * 0.4 + 8;
+      }
+      this._driveDrone(e, steeringTarget, dt, braking);
     }
     if (!lead) return false;
-    // arrival threshold scales with target type (rocks need a standoff; stations/depot closer)
-    const arriveR = beacon.entity && beacon.entity.type === 'asteroid'
-      ? (beacon.entity.radius || 6) + 14 + 34   // standoff + mine range
-      : 60;
     const dx = lead.pos.x - target.x, dz = lead.pos.z - target.z;
     return (dx * dx + dz * dz) < arriveR * arriveR;
   },
@@ -851,8 +880,8 @@ export const automation = {
       const pos = { x: origin.x + Math.cos(ang) * DRONE_SPREAD, z: origin.z + Math.sin(ang) * DRONE_SPREAD };
       // collides:false on purpose — physics' pickup branch treats any colliding type:'drone' as a
       // collector and would silently vacuum (and destroy) the player's loose ore pickups with a
-      // non-player collectorId. These drones are steered manually to a standoff, so they need no
-      // physical collision; their group-level durability is the attention cost (fuel/distress).
+      // non-player collectorId. Flight V3 steers these bodies through Rapier to a standoff;
+      // this flag excludes the pickup collector path, not the physics authority.
       const ent = spawn({
         type: 'drone', team: 0, factionId: 'faction_player',
         pos, rot: ang,
@@ -884,7 +913,7 @@ export const automation = {
     const alive = [];
     for (const id of g.entityIds) {
       const e = getEnt(id);
-      if (!e || !e.alive) continue;     // lost (combat/despawn) — pruned from the group
+      if (!isGroupDrone(e, g)) continue; // lost/recycled ids are never another entity's ownership
       alive.push(id);
 
       // (re)acquire the nearest live asteroid within the deploy range of the drone itself.
@@ -902,12 +931,12 @@ export const automation = {
       if (dist > standoff + DRONE_MINE_RANGE) {
         // cruise toward a standoff point just off the rock surface
         const tx = ast.pos.x - (dx / dist) * standoff, tz = ast.pos.z - (dz / dist) * standoff;
-        this._driveDrone(e, { x: tx, z: tz }, dt, false);
+        const target = { x: tx, z: tz };
+        const detour = resolveDroneDetour(this.state, e, target, ast, standoff + DRONE_MINE_RANGE);
+        this._driveDrone(e, detour || target, dt, false);
       } else {
         // in range: face the rock, ease to a hover, and chip ore into the shared buffer.
-        e.rot = Math.atan2(dz, dx); e.angVel = 0;
-        e.vel.x *= Math.max(0, 1 - DRONE_ACCEL * dt);
-        e.vel.z *= Math.max(0, 1 - DRONE_ACCEL * dt);
+        this._driveDrone(e, { x: ast.pos.x, z: ast.pos.z }, dt, true);
         anyOnRock = true;
         if (wantOre) this._chipAsteroid(ast, def, dt);
       }
@@ -916,19 +945,32 @@ export const automation = {
     return anyOnRock;
   },
 
-  // Move a drone entity toward a world point by easing its velocity (physics integrates position;
-  // renderer rotates by -rot, so point the nose, +X, along travel).
+  // Publish a drone's desired world heading through the canonical Flight V3 intent. The flight
+  // adapter turns this into a physics-authority control; automation never writes a body velocity
+  // or pose directly because SG-02 overwrites those fields from Rapier each fixed step.
   _driveDrone(e, target, dt, brake) {
     const dx = target.x - e.pos.x, dz = target.z - e.pos.z;
-    const d = Math.hypot(dx, dz) || 1e-4;
-    const want = brake ? 0 : DRONE_SPEED;
-    const vx = (dx / d) * want, vz = (dz / d) * want;
-    const k = Math.min(1, DRONE_ACCEL * dt);
-    e.vel.x += (vx - e.vel.x) * k;
-    e.vel.z += (vz - e.vel.z) * k;
-    const sp = Math.hypot(e.vel.x, e.vel.z);
-    if (sp > DRONE_SPEED) { const s = DRONE_SPEED / sp; e.vel.x *= s; e.vel.z *= s; }
-    if (sp > 1) { e.rot = Math.atan2(e.vel.z, e.vel.x); e.angVel = 0; }
+    const d = Math.hypot(dx, dz);
+    const hasDirection = d > 1e-4;
+    const ux = hasDirection ? dx / d : 0;
+    const uz = hasDirection ? dz / d : 0;
+    const heading = hasDirection ? Math.atan2(uz, ux) : e.rot;
+    const cf = Math.cos(e.rot), sf = Math.sin(e.rot);
+    const forward = ux * cf + uz * sf;
+    const right = -ux * sf + uz * cf;
+    const throttle = brake ? 0 : 1;
+    const data = e.data || (e.data = {});
+    const intent = data.intent || (data.intent = {
+      moveX: 0, moveZ: 0, boost: false, brake: false,
+      fire: false, fireGroup: null, aimAngle: e.rot,
+    });
+    intent.moveX = clamp(right * throttle, -1, 1);
+    intent.moveZ = clamp(forward * throttle, -1, 1);
+    intent.boost = false;
+    intent.brake = !!brake;
+    intent.fire = false;
+    intent.fireGroup = null;
+    intent.aimAngle = heading;
   },
 
   // Inline mining: shave ore-HP off the rock and emit a mining-style yield pulse (cosmetic/feedback).
@@ -993,7 +1035,7 @@ export const automation = {
     const alive = [];
     for (const id of g.entityIds) {
       const e = getEnt(id);
-      if (e && e.alive) alive.push(id);
+      if (isGroupDrone(e, g)) alive.push(id);
     }
     if (alive.length !== g.entityIds.length) g.entityIds = alive;
     return alive.length > 0;
@@ -1005,7 +1047,7 @@ export const automation = {
   _releaseDroneEntities(g) {
     if (!g || !g.entityIds || !g.entityIds.length) return;
     const getEnt = (this.helpers && this.helpers.getEntity) || ((id) => this.state.entities.get(id));
-    for (const id of g.entityIds) { const e = getEnt(id); if (e) e.alive = false; }
+    for (const id of g.entityIds) { const e = getEnt(id); if (isGroupDrone(e, g)) e.alive = false; }
     g.entityIds = [];
   },
 
@@ -1257,7 +1299,10 @@ export const automation = {
   _parkDroneEntities(g) {
     if (!g || !g.entityIds || !g.entityIds.length) return;
     const getEnt = (this.helpers && this.helpers.getEntity) || ((id) => this.state.entities.get(id));
-    for (const id of g.entityIds) { const e = getEnt(id); if (e && e.alive) { e.vel.x = 0; e.vel.z = 0; } }
+    for (const id of g.entityIds) {
+      const e = getEnt(id);
+      if (isGroupDrone(e, g)) this._driveDrone(e, e.pos, 0, true);
+    }
   },
 
   _burnOperatingFuel(g, def, dt) {
@@ -2835,6 +2880,90 @@ function resetAutomationDiagnostics(diag) {
   diag.asteroidCandidates = 0;
   diag.alphabetSpatialQueries = 0;
   diag.alphabetCandidates = 0;
+}
+
+// Resolve one deterministic lateral steering waypoint when a live static body blocks the current
+// beacon line. This follows the same projection, lookahead, clearance, and side choice as Flight
+// V3's autopilot guidance, but returns a moving point for the canonical drone intent instead of
+// mutating an autopilot context. Recomputing from the physical pose keeps the route save-safe and
+// avoids a second movement writer or a teleport around the station.
+function isGroupDrone(entity, group) {
+  return !!entity && entity.alive !== false && entity.type === 'drone'
+    && entity.data?.groupId === group.id;
+}
+
+function resolveDroneDetour(state, drone, target, targetEntity, arrivalRadius) {
+  if (!state || !drone || !drone.pos || !target) return null;
+  const dx = Number(target.x) - Number(drone.pos.x);
+  const dz = Number(target.z) - Number(drone.pos.z);
+  const distance = Math.hypot(dx, dz);
+  const arrival = Math.max(0, Number(arrivalRadius) || 0);
+  if (!(distance > Math.max(0.0001, arrival))) return null;
+
+  const baseX = dx / distance;
+  const baseZ = dz / distance;
+  const perpX = -baseZ;
+  const perpZ = baseX;
+  const speed = Math.hypot(
+    Number(drone.vel && drone.vel.x) || 0,
+    Number(drone.vel && drone.vel.z) || 0,
+  );
+  const lookAhead = Math.max(
+    DRONE_NAV_LOOKAHEAD_MIN,
+    Math.min(DRONE_NAV_LOOKAHEAD_MAX, speed * 3.2 + distance * 0.24),
+  );
+  const maxProjection = Math.max(0, Math.min(distance - arrival, lookAhead));
+  if (!(maxProjection > 0)) return null;
+
+  const list = state.entityList || [];
+  const targetId = targetEntity && targetEntity.id;
+  const blockers = [];
+  for (const obstacle of list) {
+    if (!obstacle || obstacle === drone || obstacle === targetEntity
+      || (targetId != null && obstacle.id === targetId)
+      || obstacle.alive === false || obstacle.collides === false || !obstacle.pos) continue;
+    if (obstacle.type !== 'station' && obstacle.type !== 'asteroid'
+      && obstacle.type !== 'wreck' && obstacle.type !== 'ship') continue;
+    const ox = Number(obstacle.pos.x) - Number(drone.pos.x);
+    const oz = Number(obstacle.pos.z) - Number(drone.pos.z);
+    const projection = ox * baseX + oz * baseZ;
+    if (!(projection > 0) || projection > maxProjection) continue;
+    const lateral = ox * perpX + oz * perpZ;
+    const obstacleRadius = Number.isFinite(obstacle.radius) ? Math.max(0, obstacle.radius) : 0;
+    const clearance = Math.max(0, Number(drone.radius) || DRONE_ENTITY_RADIUS)
+      + obstacleRadius + DRONE_NAV_CLEARANCE_BASE + Math.min(70, speed * 0.22);
+    if (Math.abs(lateral) >= clearance) continue;
+    const depth = 1 - projection / Math.max(1, maxProjection);
+    const strength = (1 - Math.abs(lateral) / Math.max(1, clearance)) * (0.7 + depth * 0.8);
+    blockers.push({ obstacle, projection, lateral, clearance, strength });
+  }
+  if (!blockers.length) return null;
+
+  blockers.sort((left, right) => left.projection - right.projection
+    || compareStableId(left.obstacle, right.obstacle));
+  const weightedLateral = blockers.reduce((sum, blocker) => sum + blocker.lateral * blocker.strength, 0);
+  const totalStrength = blockers.reduce((sum, blocker) => sum + blocker.strength, 0);
+  const side = Math.abs(weightedLateral) > 0.01
+    ? -Math.sign(weightedLateral / Math.max(1, totalStrength))
+    : deterministicDroneAvoidanceSide(baseX, baseZ);
+  let steerX = baseX;
+  let steerZ = baseZ;
+  for (const blocker of blockers) {
+    steerX += perpX * side * blocker.strength * 1.65;
+    steerZ += perpZ * side * blocker.strength * 1.65;
+  }
+  const steerLength = Math.hypot(steerX, steerZ) || 1;
+  const horizon = Math.max(24, Math.min(lookAhead, distance));
+  return {
+    x: Number(drone.pos.x) + (steerX / steerLength) * horizon,
+    z: Number(drone.pos.z) + (steerZ / steerLength) * horizon,
+  };
+}
+
+function deterministicDroneAvoidanceSide(baseX, baseZ) {
+  return Math.abs(baseX) >= Math.abs(baseZ)
+    ? (baseX >= 0 ? 1 : -1)
+    : (baseZ >= 0 ? 1 : -1);
 }
 
 function makeProgramContext(host) {
