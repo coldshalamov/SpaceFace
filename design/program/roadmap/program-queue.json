@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-06T11:34:00.000Z",
+  "updatedAt": "2026-09-06T21:25:34.000Z",
   "purpose": "Canonical cross-plan priority and dispatch queue. Product completion remains authoritative in design/program/03_LIVE_ACCEPTANCE_MATRIX.md.",
   "stateContract": {
     "allowed": [
@@ -3833,7 +3833,7 @@
     {
       "id": "PQ-187",
       "priority": 107,
-      "title": "The direction lock: reference board, three rendered directions, the owner's pick, the kit, the proof",
+      "title": "The direction, decided: the sheet, the kit, the title live, the proof",
       "state": "ready",
       "canonical": [
         "FRONTEND-DIRECTION"
@@ -3850,7 +3850,7 @@
       ],
       "checks": [],
       "evidence": [],
-      "brief": "Three materially different frontend directions rendered as real HTML on the same three screens; the owner picks; the picked frames become the aesthetic authority; a kit is built from them; a blind side-by-side against A-list games proves the result. Gap: every frontend authority was agent-written and prescribes a neutral dashboard; the owner was only ever asked to reject. See design/FRONTEND_DIRECTION.md and design/program/roadmap/active/PQ-187.md."
+      "brief": "The owner declined to choose between abstract directions and delegated the decision on 2026-09-06 ('You'll just have to decide'; leaning Cinematic Minimal). Decided: Cinematic Minimal tuned for SpaceFace - the world is the interface. design/frontend/direction/DIRECTION_SHEET.md is the aesthetic authority; a kit is built from it; the title goes live first so the direction is seen in the actual game after one unit and the owner can veto before anything else moves; a blind side-by-side against A-list games proves the result. Receipt: design/program/roadmap/receipts/PQ-187-01-REPORT.md. See design/FRONTEND_DIRECTION.md section 13 and design/program/roadmap/active/PQ-187.md."
     },
     {
       "id": "PQ-188",
@@ -15599,7 +15599,7 @@
       "id": "PQ-181.00",
       "parentId": "PQ-181",
       "priority": 409,
-      "title": "Title, credits, version",
+      "title": "Credits, version, the title's remaining states",
       "kind": "implementation",
       "state": "ready",
       "dependsOn": [
@@ -15626,7 +15626,7 @@
         "npm run check:visual-regression"
       ],
       "receiptRefs": [],
-      "brief": "Title to the grammar; credits screen with third-party notices (PQ-033.00); version and build hash visible. DONE WHEN: Matrix green for title and credits; version visible in a capture."
+      "brief": "The title itself lands in PQ-187.03; this leaf adds the credits screen with third-party notices (PQ-033.00), the visible version and build hash, and the title's continue/attract states on the kit. DONE WHEN: credits and version visible in a capture that matches DIRECTION_SHEET.md under a hash-bound visual review; check:title-continue-runtime green."
     },
     {
       "id": "PQ-181.01",
@@ -17117,9 +17117,9 @@
       "id": "PQ-187.01",
       "parentId": "PQ-187",
       "priority": 461,
-      "title": "Three directions, rendered",
+      "title": "The decision and the direction sheet",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-187.00"
       ],
@@ -17127,25 +17127,23 @@
         "frontend-direction"
       ],
       "paths": [
+        "design/frontend/direction/DIRECTION_SHEET.md",
         "design/FRONTEND_DIRECTION.md",
-        "design/frontend/direction/",
-        "_uilab.html",
-        "scripts/probe-frontend-snapshot.mjs",
-        "styles/fonts/",
-        "styles/fonts.css"
+        "design/program/roadmap/receipts/PQ-187-01-REPORT.md"
       ],
       "checks": [
-        "npm run check:baseline",
-        "npm run probe:frontend-snapshot"
+        "node scripts/check-program-docs.mjs"
       ],
-      "receiptRefs": [],
-      "brief": "Directions A, B, C built as real HTML with real data for the title, the station market and THE SHIP at 1920x1080 and 1280x720, each with a dense pane, an empty state, a focus state and a title-to-market transition capture. DONE WHEN: nine frames per direction under design/frontend/direction/comps/; a contact sheet; the three differ on face, scale, temperature, composition and imagery."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-187-01-REPORT.md"
+      ],
+      "brief": "DONE 2026-09-06: the three-direction comparison round is void - the owner looked at the direction cards and said none of them look like games and that choosing one at random would bottleneck development; they lean Cinematic Minimal and delegated the decision ('You'll just have to decide'). Decided: Cinematic Minimal tuned for SpaceFace. design/frontend/direction/DIRECTION_SHEET.md is written (per-screen pictures in plain words, faces, scale, dense register, temperature states, motion, sound, the never-list, what survives and what retires). No comps are built; the first real frame is the title in PQ-187.03."
     },
     {
       "id": "PQ-187.02",
       "parentId": "PQ-187",
       "priority": 462,
-      "title": "The direction lock",
+      "title": "The kit",
       "kind": "implementation",
       "state": "ready",
       "dependsOn": [
@@ -17155,20 +17153,28 @@
         "frontend-direction"
       ],
       "paths": [
-        "design/frontend/direction/",
-        "design/frontend/INSTRUMENT_GRAMMAR.md"
+        "styles/fonts/",
+        "styles/fonts.css",
+        "styles/kit.css",
+        "src/ui/kit/",
+        "assets/audio/ui/",
+        "_uilab.html",
+        "scripts/probe-frontend-snapshot.mjs"
       ],
       "checks": [
-        "npm run check:baseline"
+        "npm run check:baseline",
+        "npm run probe:frontend-snapshot",
+        "npm run check:type-floor",
+        "npm run check:wcag-contrast"
       ],
       "receiptRefs": [],
-      "brief": "The owner's pick recorded verbatim; picked frames copied to design/frontend/direction/approved/; DIRECTION_SHEET.md written from the frames. DONE WHEN: approved/ holds >= 9 frames and the owner's words; the sheet cites frames by filename. OWNER DECISION: cannot be closed by an agent."
+      "brief": "Tokens and the type scale 12 to 160 px; Bricolage Grotesque vendored as the variable face (weight to 800, opsz and wdth axes, OFL) beside Instrument Sans (tabular figures verified present in the vendored file); no mono on player surfaces; the temperature states (flight, docked, wanted, Crucible, Works); the transition helper (a cut plus a settle of at most 160 ms, state-bound, reduced-motion is a plain cut); the UI sound palette (at most eight low tonal samples through audio:cue); every component rendered on one kit page in the lab and captured at 1280, 1920 and 2560. DONE WHEN: the kit page matches DIRECTION_SHEET.md under a hash-bound visual review by a memoryless vision reviewer; the old stylesheets are untouched (screens migrate in later packets); no owner decision is required."
     },
     {
       "id": "PQ-187.03",
       "parentId": "PQ-187",
       "priority": 463,
-      "title": "The kit",
+      "title": "The title and main menu live on the kit",
       "kind": "implementation",
       "state": "ready",
       "dependsOn": [
@@ -17179,22 +17185,22 @@
         "ui-kit"
       ],
       "paths": [
-        "styles/",
-        "src/ui/uiPrimitives.js",
-        "src/ui/effects/",
-        "src/ui/transitions.js",
-        "_uilab.html",
-        "design/frontend/direction/"
+        "src/ui/screens/mainMenu.js",
+        "src/ui/shipPreviewMount.js",
+        "src/ui/uiRoot.js",
+        "styles/ui.css",
+        "styles/kit.css",
+        "src/ui/kit/"
       ],
       "checks": [
         "npm run check:baseline",
-        "npm run check:type-floor",
-        "npm run check:wcag-contrast",
+        "npm run check:title-continue-runtime",
         "npm run check:ui-a11y",
+        "npm run check:responsive",
         "npm run probe:frontend-snapshot"
       ],
       "receiptRefs": [],
-      "brief": "Tokens, the type scale to hero size, the faces, colour-as-mood rules, the transition system, the UI sound palette, every component on one kit page in the lab. Old stylesheets are NOT consolidated; screens migrate later and delete their CSS as they move. DONE WHEN: the kit page captured at three widths with the owner's yes."
+      "brief": "The first real screen in the direction, on the default route: the starter hull in the hangar rig fills the frame against the sky, the game's name at hero scale top-left, the menu as five words down the left edge with the focused word at full strength, version bottom-left; the menu plate and its CSS deleted; the transition helper and the open/confirm sounds live. DONE WHEN: booting the game shows it; frames at 1280, 1920 and 2560 match DIRECTION_SHEET.md under a hash-bound visual review; check:title-continue-runtime green; the owner sees it in the game and has not vetoed. This is the gate every surface packet depends on."
     },
     {
       "id": "PQ-187.04",
@@ -17227,7 +17233,7 @@
         "node scripts/check-ui-grammar-matrix.mjs --static"
       ],
       "receiptRefs": [],
-      "brief": "Blind side-by-side against the reference board with a memoryless vision reviewer; the owner's thirteen signature-moment sign-offs; the regression baseline reshot on the new look; a ninety-second reel. DONE WHEN: SpaceFace chosen in >= 50% of pairings and 100% against the genre baselines; sign-offs on file; matrix and regression green; reel committed."
+      "brief": "Blind side-by-side against the reference board with a memoryless vision reviewer; the thirteen signature moments each captured as a ten-second clip and reviewed against DIRECTION_SHEET.md by the same reviewer; the regression baseline reshot on the new look; a ninety-second reel the owner watches in place of any sign-off form. DONE WHEN: SpaceFace chosen in >= 50% of pairings and 100% against the genre baselines; thirteen clip reviews on file; matrix and regression green; reel committed."
     },
     {
       "id": "PQ-188.00",
