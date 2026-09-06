@@ -807,6 +807,16 @@ function careerChipHtml(chip, state) {
   const placeLine = [placeContact, place.location].filter(Boolean).join(' · ');
 
   let actions = '';
+  if (chip.canAccept) {
+    actions += '<button class="sf-mlog-career-btn sf-mlog-career-btn-choice" type="button"'
+      + ' data-career-act="ladderAccept" data-career-id="' + escapeHtml(careerId) + '"'
+      + ' aria-label="' + escapeHtml('Start ' + title) + '">START PATH</button>';
+  }
+  if (chip.canDecline) {
+    actions += '<button class="sf-mlog-career-btn sf-mlog-career-btn-abandon" type="button"'
+      + ' data-career-act="ladderDecline" data-career-id="' + escapeHtml(careerId) + '"'
+      + ' aria-label="' + escapeHtml('Decline ' + title + ' for now') + '">NOT NOW</button>';
+  }
   if (chip.canOriginAccept) {
     const acceptText = chip.originAcceptLabel || ('START ' + title.toUpperCase());
     actions += '<button class="sf-mlog-career-btn sf-mlog-career-btn-choice" type="button"'
@@ -921,6 +931,56 @@ function careerChipHtml(chip, state) {
     + choiceHtml
     + (actions ? '<div class="sf-mlog-career-actions" role="group" aria-label="Career actions">' + actions + '</div>' : '')
     + '</div>';
+}
+
+const CURRENT_LADDER_STATUSES = new Set(['offered', 'active', 'recovering', 'step_failed']);
+
+function ladderOwnsMissionLogCareer(chip) {
+  if (!chip) return false;
+  return !!(chip.canAccept || chip.canDecline)
+    || CURRENT_LADDER_STATUSES.has(String(chip.status || ''));
+}
+
+function careerChipHasCurrentAction(chip) {
+  if (!chip) return false;
+  return ladderOwnsMissionLogCareer(chip)
+    || !!(chip.canOriginAccept || chip.canOriginDecline || chip.canOriginRecover || chip.canChoose);
+}
+
+/**
+ * Choose one live card per career while keeping independent origin and ladder ownership clear.
+ * A ladder that is active, offered, or prereq-eligible owns that career's Mission Log card;
+ * otherwise the in-flight origin card remains the player-facing choice. Completed ladder cards
+ * remain useful as a fallback receipt, but do not crowd a list with a current action.
+ */
+export function mergeMissionLogCareerChips(originCards = [], ladderChips = []) {
+  const origins = Array.isArray(originCards) ? originCards.filter(Boolean) : [];
+  const ladders = Array.isArray(ladderChips) ? ladderChips.filter(Boolean) : [];
+  const ladderByCareer = new Map();
+  for (const chip of ladders) {
+    const id = String(chip.careerId || '');
+    if (id) ladderByCareer.set(id, chip);
+  }
+
+  const chosen = [];
+  const used = new Set();
+  for (const origin of origins) {
+    const id = String(origin.careerId || '');
+    const ladder = id ? ladderByCareer.get(id) : null;
+    const card = ladderOwnsMissionLogCareer(ladder) ? ladder : origin;
+    chosen.push(card);
+    if (id) used.add(id);
+  }
+  for (const ladder of ladders) {
+    const id = String(ladder.careerId || '');
+    if (!id || used.has(id)) continue;
+    chosen.push(ladder);
+    used.add(id);
+  }
+
+  const hasCurrentAction = chosen.some(careerChipHasCurrentAction);
+  if (!hasCurrentAction) return chosen;
+  return chosen.filter((chip) => String(chip.status || '') !== 'completed');
 }
 
 
@@ -1623,7 +1683,7 @@ export const missionLogScreen = {
     this._recommendEl = recEl;
 
     // Career ladder chip (CL-UI-03): after story/recommended, before active missions.
-    // Read-only path strip — choose/recover/abandon + map/track only; no accept from flight log.
+    // Intent-only path strip — start/decline/choose/recover/abandon + map/track; owners transition state.
     const careerH = el('div', 'sf-mlog-section-h sf-mlog-section-career', 'CAREER LADDER');
     careerH.id = 'sf-mlog-career-heading';
     careerH.hidden = true;
@@ -1688,6 +1748,14 @@ export const missionLogScreen = {
       const act = btn.getAttribute('data-career-act');
       const careerId = btn.getAttribute('data-career-id');
       if (!act) return;
+
+      if (act === 'ladderAccept' || act === 'ladderDecline') {
+        if (!careerId) return;
+        ctx.bus.emit(act === 'ladderAccept' ? 'career:ladder:accept' : 'career:ladder:decline', { careerId });
+        ctx.bus.emit('audio:cue', { id: act === 'ladderAccept' ? 'ui_accept' : 'ui_click' });
+        this._render();
+        return;
+      }
 
       if (act === 'originAccept') {
         if (!careerId) return;
@@ -2146,7 +2214,7 @@ export const missionLogScreen = {
     const originCards = (originModel && originModel.visible && Array.isArray(originModel.cards))
       ? originModel.cards : [];
     const ladderChips = (model && model.visible && Array.isArray(model.chips)) ? model.chips : [];
-    const chips = originCards.length ? originCards : ladderChips;
+    const chips = mergeMissionLogCareerChips(originCards, ladderChips);
     if (!chips.length) {
       this._careerEl.innerHTML = '';
       this._careerEl.hidden = true;
@@ -2155,7 +2223,8 @@ export const missionLogScreen = {
     }
     if (this._careerHeader) {
       this._careerHeader.hidden = false;
-      this._careerHeader.textContent = originCards.length ? 'CHOOSE A FIRST CONTRACT' : 'CAREER LADDER';
+      this._careerHeader.textContent = chips.some((chip) => chip && chip.originChoice)
+        ? 'CHOOSE A FIRST CONTRACT' : 'CAREER LADDER';
     }
     this._careerEl.hidden = false;
     this._careerEl.innerHTML = chips.map((chip) => careerChipHtml(chip, state)).join('');

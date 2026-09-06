@@ -13,9 +13,10 @@ import {
 } from '../src/careers/ladders/careerLadders.js';
 import { ensureLadderLeaf, ensureCareerLaddersState } from '../src/careers/ladders/ladderSchema.js';
 import { HAULER_LADDER_DEF, HAULER_STEP_PARAMS } from '../src/careers/ladders/haulerLadderDefs.js';
-import { HUNTER_LADDER_DEF } from '../src/careers/ladders/hunterLadderDefs.js';
+import { HUNTER_LADDER_DEF, HUNTER_LADDER_SKILL_PROOF } from '../src/careers/ladders/hunterLadderDefs.js';
 import { PROSPECTOR_LADDER_DEF } from '../src/careers/ladders/prospectorLadderDefs.js';
 import { MAP_FOCUS } from '../src/ui/mapAuthority.js';
+import { mergeMissionLogCareerChips, missionLogScreen } from '../src/ui/screens/missionLog.js';
 import {
   buildLadderMapAction,
   buildLadderRailModel,
@@ -113,6 +114,10 @@ test('latent locked: prereq fail disables accept and keeps card hidden', () => {
   const model = buildLadderRailModel(state);
   // Locked latent without prereqMet is not soft-available → no card
   assert.equal(cardById(model, 'hauler'), null);
+
+  // The live Mission Log must not manufacture a START PATH/NOT NOW control for a blocked path.
+  const chip = buildMissionLogCareerChip(state);
+  assert.equal(chip.chips.some((c) => c.careerId === 'hauler'), false);
 });
 
 test('latent ready after origin complete: Start-enabled, non-binding peers', () => {
@@ -167,6 +172,12 @@ test('offered: accept + decline, next action ready', () => {
   assert.equal(hauler.canDecline, true);
   assert.equal(hauler.canAbandon, true);
   assert.equal(hauler.nextAction, 'Start this professional path when ready.');
+
+  const chip = buildMissionLogCareerChip(state);
+  const live = chip.chips.find((c) => c.careerId === 'hauler');
+  assert.ok(live);
+  assert.equal(live.canAccept, true);
+  assert.equal(live.canDecline, true);
 });
 
 test('declined: still Start-enabled when prereqs met (not sole offer.canAccept)', () => {
@@ -182,6 +193,12 @@ test('declined: still Start-enabled when prereqs met (not sole offer.canAccept)'
   assert.equal(hauler.canAccept, true);
   assert.equal(hauler.canDecline, false);
   assert.equal(hauler.nextAction, 'Still available later. Start when ready.');
+
+  const chip = buildMissionLogCareerChip(state);
+  const live = chip.chips.find((c) => c.careerId === 'hauler');
+  assert.ok(live);
+  assert.equal(live.canAccept, true);
+  assert.equal(live.canDecline, false);
 });
 
 test('active hauler broker: objective + progress + map action', () => {
@@ -211,6 +228,12 @@ test('active hauler broker: objective + progress + map action', () => {
   assert.equal(hauler.mapAction.stationId, 'station_coalition');
   assert.equal(hauler.choices.length, 0);
   assert.equal(hauler.canChoose, false);
+
+  const chip = buildMissionLogCareerChip(state);
+  const live = chip.chips.find((c) => c.careerId === 'hauler');
+  assert.ok(live);
+  assert.equal(live.canAccept, false);
+  assert.equal(live.canDecline, false);
 });
 
 test('active hauler risk_lane_tax: all three choice labels', () => {
@@ -384,7 +407,7 @@ test('readable receipt lines never expose raw receipt ids', () => {
   assert.doesNotMatch(JSON.stringify(h), /choice:hunter:capture_window:capture/);
 });
 
-test('mission log chip surfaces active ladder only', () => {
+test('mission log chip surfaces eligible starts and active ladder together', () => {
   registerAll();
   const state = makeState({
     haulerOrigin: 'completed',
@@ -395,7 +418,7 @@ test('mission log chip surfaces active ladder only', () => {
   hauler.stepId = 'broker_desk';
   hauler.stepIndex = 0;
 
-  leaf(state, 'hunter'); // latent ready → rail yes, chip no
+  leaf(state, 'hunter'); // latent ready → Mission Log START PATH
 
   const chip = buildMissionLogCareerChip(state);
   assert.equal(chip.nonBinding, true);
@@ -404,7 +427,60 @@ test('mission log chip surfaces active ladder only', () => {
   assert.equal(chip.primary.careerId, 'hauler');
   assert.equal(chip.primary.status, LADDER_STATUS.ACTIVE);
   assert.ok(chip.primary.mapAction);
-  assert.equal(chip.chips.some((c) => c.careerId === 'hunter'), false);
+  const hunter = chip.chips.find((c) => c.careerId === 'hunter');
+  assert.ok(hunter);
+  assert.equal(hunter.status, LADDER_STATUS.LATENT);
+  assert.equal(hunter.canAccept, true);
+  assert.equal(hunter.canDecline, false);
+  assert.equal(hunter.nextAction, 'Start this professional path when ready.');
+});
+
+test('Mission Log renders an eligible hunter Start beside other origin offers', () => {
+  registerAll();
+  const state = makeState({ hunterOrigin: 'idle' });
+  ensureCareerLaddersState(state).__meta.skillProof = {
+    [HUNTER_LADDER_SKILL_PROOF.BOUNTY_HUNT_COMPLETE]: 1,
+  };
+  const originCards = ['hauler', 'hunter', 'prospector'].map((careerId) => ({
+    careerId,
+    title: careerId[0].toUpperCase() + careerId.slice(1),
+    line: 'Origin offer',
+    acceptLabel: 'Take ' + careerId + ' path',
+    canAccept: true,
+    canDecline: true,
+    status: 'offered',
+  }));
+  const originSystem = { name: 'careerOrigins', getOfferView: () => ({ offers: originCards }) };
+  const registry = {
+    get(name) {
+      return name === 'careerOrigins' ? originSystem : null;
+    },
+  };
+  const surface = {
+    _ctx: { registry },
+    _careerEl: { innerHTML: '', hidden: true },
+    _careerHeader: { hidden: true, textContent: '' },
+    _captureCareerFocusToken: missionLogScreen._captureCareerFocusToken,
+    _restoreCareerFocusToken: missionLogScreen._restoreCareerFocusToken,
+  };
+
+  missionLogScreen._renderCareerChip.call(surface, state);
+
+  assert.match(
+    surface._careerEl.innerHTML,
+    /data-career-id="hunter"[\s\S]*data-career-act="ladderAccept"[\s\S]*START PATH/,
+  );
+  assert.match(surface._careerEl.innerHTML, /data-career-id="hauler"[\s\S]*data-career-act="originAccept"/);
+  assert.match(surface._careerEl.innerHTML, /data-career-id="prospector"[\s\S]*data-career-act="originAccept"/);
+  assert.equal(surface._careerHeader.textContent, 'CHOOSE A FIRST CONTRACT');
+});
+
+test('Mission Log merge drops completed ladder receipts when a current action exists', () => {
+  const chips = mergeMissionLogCareerChips(
+    [{ careerId: 'hauler', originChoice: true, canOriginAccept: true, status: 'offered' }],
+    [{ careerId: 'legacy', status: 'completed' }],
+  );
+  assert.deepEqual(chips.map((chip) => chip.careerId), ['hauler']);
 });
 
 test('buildLadderMapAction: hauler cross-sector uses STAR MAP', () => {

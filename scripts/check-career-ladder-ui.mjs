@@ -2,9 +2,14 @@
 /**
  * CL-UI-04 static seam gate — career ladder UI integration.
  *
- * Fail-closed: any missing presenter import, RECOVER bus seam, station rail,
- * mission-log chip, Hauler/Hunter choice ids, step_failed abandon, mapAuthority
- * map path, owner-field write, or visor/portrait motif fails the check.
+ * Fail-closed: any missing presenter import, RECOVER bus seam, mission-log chip,
+ * Hauler/Hunter choice ids, step_failed abandon, mapAuthority map path, owner-field
+ * write, or visor/portrait motif fails the check.
+ *
+ * The retired station ladder rail (screens/stationHub.js career-ladder-rail) is gone:
+ * the live ladder surface is the mission-log career chip (missionLog.js, rendered from
+ * careerLadderView models), reachable docked through the station bar's canonical
+ * missionLog push.
  *
  * Does not edit package/production. Does not inspect SAFE-001.
  *
@@ -20,8 +25,8 @@ const ROOT = fileURLToPath(new URL('../', import.meta.url));
 
 const PATHS = Object.freeze({
   presenter: 'src/ui/careerLadderView.js',
-  stationHub: 'src/ui/screens/stationHub.js',
   missionLog: 'src/ui/screens/missionLog.js',
+  stationBar: 'src/ui/station/screens/bar.js',
   ladderShared: 'src/careers/ladders/ladderShared.js',
   careerLadders: 'src/careers/ladders/careerLadders.js',
   haulerDefs: 'src/careers/ladders/haulerLadderDefs.js',
@@ -32,14 +37,6 @@ const PATHS = Object.freeze({
 const HAULER_CHOICES = Object.freeze(['pay_toll', 'run_guns', 'veer_slip']);
 const HUNTER_CAPTURE_CHOICES = Object.freeze(['capture', 'execute']);
 const HUNTER_LEDGER_CHOICES = Object.freeze(['file_law', 'sell_dark']);
-
-const LADDER_MUTATION_EVENTS = Object.freeze([
-  'career:ladder:accept',
-  'career:ladder:decline',
-  'career:ladder:abandon',
-  'career:ladder:choose',
-  'career:ladder:recover',
-]);
 
 const FORBIDDEN_VISOR = Object.freeze([
   'visor',
@@ -96,27 +93,21 @@ function stripCommentsAndStrings(src) {
 
 // ── load sources ─────────────────────────────────────────────────────────────
 const presenter = read(PATHS.presenter);
-const stationHub = read(PATHS.stationHub);
 const missionLog = read(PATHS.missionLog);
+const stationBar = read(PATHS.stationBar);
 const ladderShared = read(PATHS.ladderShared);
 const careerLadders = read(PATHS.careerLadders);
 const haulerDefs = read(PATHS.haulerDefs);
 const hunterDefs = read(PATHS.hunterDefs);
 const mapAuthority = read(PATHS.mapAuthority);
 
-const stationCode = stripCommentsAndStrings(stationHub);
 const missionCode = stripCommentsAndStrings(missionLog);
 const presenterCode = stripCommentsAndStrings(presenter);
 
 // ── 1) Presenter imports ─────────────────────────────────────────────────────
 mustMatch(
-  stationHub,
-  /import\s*\{\s*buildLadderRailModel\s*\}\s*from\s*['"]\.\.\/careerLadderView\.js['"]/,
-  'stationHub must import buildLadderRailModel from careerLadderView.js',
-);
-mustMatch(
   missionLog,
-  /import\s*\{\s*buildMissionLogCareerChip\s*\}\s*from\s*['"]\.\.\/careerLadderView\.js['"]/,
+  /import\s*\{[^}]*buildMissionLogCareerChip[^}]*\}\s*from\s*['"]\.\.\/careerLadderView\.js['"]/,
   'missionLog must import buildMissionLogCareerChip from careerLadderView.js',
 );
 mustMatch(
@@ -157,32 +148,12 @@ mustMatch(
   'careerLadders RECOVER listener must forward to this.recover(careerId)',
 );
 mustMatch(
-  stationHub,
-  /career:ladder:recover/,
-  'stationHub must emit career:ladder:recover',
-);
-mustMatch(
   missionLog,
   /career:ladder:recover/,
   'missionLog must emit career:ladder:recover when recover is ready',
 );
 
-// ── 3) Station rail + Mission Log chip testids ───────────────────────────────
-mustMatch(
-  stationHub,
-  /setAttribute\(\s*['"]data-testid['"]\s*,\s*['"]career-ladder-rail['"]\s*\)|data-testid\s*=\s*['"]career-ladder-rail['"]/,
-  'stationHub must mount data-testid=career-ladder-rail',
-);
-mustMatch(
-  stationHub,
-  /className\s*=\s*['"]st-ladder-rail['"]|class="st-ladder-rail"/,
-  'stationHub rail root must use st-ladder-rail class',
-);
-mustMatch(
-  stationHub,
-  /data-testid\s*=\s*['"]career-ladder-accept['"]/,
-  'stationHub must expose career-ladder-accept',
-);
+// ── 3) Mission Log chip testids (the live ladder surface) ────────────────────
 mustMatch(
   missionLog,
   /data-testid\s*=\s*['"]mission-log-career-chip['"]/,
@@ -208,17 +179,7 @@ for (const id of HUNTER_LEDGER_CHOICES) {
 mustMatch(hunterDefs, /id:\s*['"]capture_window['"]/, 'hunter defs must define capture_window');
 mustMatch(hunterDefs, /id:\s*['"]ledger_choice['"]/, 'hunter defs must define ledger_choice');
 
-// UI path-choice surface (station rail renders choice ids from presenter/defs)
-mustMatch(
-  stationHub,
-  /data-ladder-choice|data-testid="career-ladder-path-choice-/,
-  'stationHub must render path choice buttons with data-ladder-choice',
-);
-mustMatch(
-  stationHub,
-  /career:ladder:choose/,
-  'stationHub must emit career:ladder:choose for path decisions',
-);
+// UI path-choice surface (mission-log chip renders choice ids from presenter/defs)
 mustMatch(
   missionLog,
   /career:ladder:choose|data-career-act="choose"|data-choice-id/,
@@ -258,11 +219,6 @@ mustMatch(
   'presenter ABANDONABLE set must include LADDER_STATUS.STEP_FAILED',
 );
 mustMatch(
-  stationHub,
-  /canAbandon/,
-  'stationHub must gate abandon button on canAbandon',
-);
-mustMatch(
   missionLog,
   /canAbandon/,
   'missionLog must gate abandon CTA on canAbandon',
@@ -275,19 +231,9 @@ mustMatch(
   'mapAuthority must export openGalaxyMap',
 );
 mustMatch(
-  stationHub,
-  /import\s*\{[^}]*openGalaxyMap[^}]*\}\s*from\s*['"]\.\.\/mapAuthority\.js['"]/,
-  'stationHub must import openGalaxyMap from mapAuthority',
-);
-mustMatch(
   missionLog,
   /import\s*\{[^}]*openGalaxyMap[^}]*\}\s*from\s*['"]\.\.\/mapAuthority\.js['"]/,
   'missionLog must import openGalaxyMap from mapAuthority',
-);
-mustMatch(
-  stationHub,
-  /openGalaxyMap\s*\(\s*ctx/,
-  'stationHub ladder map CTA must call openGalaxyMap(ctx, …)',
 );
 mustMatch(
   missionLog,
@@ -296,16 +242,6 @@ mustMatch(
 );
 
 // Forbidden: normal-player pushScreen to legacy map ids from ladder UI files
-mustNotMatch(
-  stationCode,
-  /pushScreen\s*\(\s*['"]localmap['"]\s*\)/,
-  'stationHub must not pushScreen(localmap) for ladder map',
-);
-mustNotMatch(
-  stationCode,
-  /pushScreen\s*\(\s*['"]starmap['"]\s*\)/,
-  'stationHub must not pushScreen(starmap) for ladder map',
-);
 mustNotMatch(
   missionCode,
   /pushScreen\s*\(\s*['"]localmap['"]\s*\)/,
@@ -324,7 +260,6 @@ mustNotMatch(
 
 // ── 7) No direct owner writes from UI surfaces ───────────────────────────────
 for (const [label, src] of [
-  ['stationHub', stationCode],
   ['missionLog', missionCode],
   ['careerLadderView', presenterCode],
 ]) {
@@ -333,26 +268,20 @@ for (const [label, src] of [
   }
 }
 
-// Ladder mutations from stationHub must be bus intents only
-for (const ev of LADDER_MUTATION_EVENTS) {
-  if (ev === 'career:ladder:accept' || ev === 'career:ladder:decline') {
-    // accept/decline preferred at station only
-    mustMatch(stationHub, new RegExp(ev.replace(/:/g, '\\:')), `stationHub must emit ${ev}`);
-  }
-}
-mustMatch(stationHub, /career:ladder:abandon/, 'stationHub must emit career:ladder:abandon');
-mustMatch(stationHub, /career:ladder:choose/, 'stationHub must emit career:ladder:choose');
+// Ladder mutations from the docked route stay on canonical bus intents.
+mustMatch(missionLog, /career:ladder:choose|career:ladder:abandon|career:ladder:recover/,
+  'missionLog career chip must emit ladder bus intents (choose/abandon/recover)');
 
-// missionLog must not accept/decline ladders (station owns start)
-mustNotMatch(
+// The live Mission Log owns starting a professional path after its origin becomes eligible.
+mustMatch(
   missionLog,
   /career:ladder:accept/,
-  'missionLog must not emit career:ladder:accept (station owns start)',
+  'missionLog must expose the canonical ladder start intent',
 );
-mustNotMatch(
+mustMatch(
   missionLog,
   /career:ladder:decline/,
-  'missionLog must not emit career:ladder:decline',
+  'missionLog must expose the canonical ladder decline intent',
 );
 
 // Presenter must not emit bus events
@@ -362,7 +291,6 @@ mustNotMatch(presenter, /Date\.now\s*\(/, 'presenter must not use Date.now');
 
 // ── 8) No visor / portrait motifs ────────────────────────────────────────────
 for (const [label, src] of [
-  ['stationHub', stationHub],
   ['missionLog', missionLog],
   ['careerLadderView', presenter],
 ]) {
@@ -399,72 +327,18 @@ for (const [label, src] of [
 
 // Explicit positive non-diegetic markers expected by taste contract comments
 mustMatch(
-  stationHub,
-  /no visor|non-diegetic|Professional ladder rail/i,
-  'stationHub ladder CSS/comments must keep non-diegetic / no-visor stance',
-);
-mustMatch(
   missionLog,
   /no visor|non-diegetic|Career ladder chip/i,
   'missionLog career chip CSS/comments must keep non-diegetic / no-visor stance',
 );
 
-// ── 9) Gamepad tabbability of career branch controls ─────────────────────────
-// Non-selected branch buttons must NOT use tabindex=-1; gamepad D-pad focus
-// traversal only sees tabbable controls. Selected state is aria-pressed only.
+// ── 9) Gamepad tabbability of career controls ────────────────────────────────
+// The live chip controls are native <button type="button"> elements, so keyboard/gamepad
+// focus traversal reaches every CTA by default; no roving tabindex is involved.
 mustMatch(
-  stationHub,
-  /data-ladder-career[\s\S]{0,320}tabindex="0"/,
-  'stationHub career branch controls must expose tabindex=0 for gamepad reachability',
-);
-mustNotMatch(
-  stationHub,
-  /tabindex="' \+ \(selected \? '0' : '-1'\)|tabindex="\$\{selected \? ['"]0['"] : ['"]-1['"]\}/,
-  'stationHub must not set non-selected career branch controls to tabindex=-1',
-);
-mustNotMatch(
-  stationHub,
-  /data-ladder-career[\s\S]{0,400}tabindex="' \+ \(selected/,
-  'stationHub career branch template must not use selected-conditional tabindex',
-);
-// Selected state still required for AT / keyboard
-mustMatch(
-  stationHub,
-  /aria-pressed="' \+ \(selected \? 'true' : 'false'\)|aria-pressed="\$\{selected/,
-  'stationHub career branch controls must keep aria-pressed selected state',
-);
-mustMatch(
-  stationHub,
-  /ArrowLeft[\s\S]*?Home[\s\S]*?End|_onLadderRailKeydown[\s\S]*?Home/,
-  'stationHub must retain keyboard Arrow/Home/End career branch navigation',
-);
-
-// ── 10) Focus preservation across ladder rail repaint ────────────────────────
-mustMatch(
-  stationHub,
-  /_captureLadderFocusToken\s*\(/,
-  'stationHub must capture ladder focus token before rail repaint',
-);
-mustMatch(
-  stationHub,
-  /_restoreLadderFocusToken\s*\(/,
-  'stationHub must restore ladder focus token after rail repaint',
-);
-mustMatch(
-  stationHub,
-  /_refreshLadderRail\s*\(\s*\)\s*\{[\s\S]*?_captureLadderFocusToken[\s\S]*?_restoreLadderFocusToken/,
-  'stationHub _refreshLadderRail must capture then restore focus token around repaint',
-);
-mustMatch(
-  stationHub,
-  /kind:\s*['"]career['"][\s\S]*?kind:\s*['"]choice['"]|kind:\s*['"]career['"][\s\S]*?kind:\s*['"]action['"]/,
-  'stationHub focus token must cover career/action/choice kinds',
-);
-// Must not steal focus when it was outside the rail
-mustMatch(
-  stationHub,
-  /_captureLadderFocusToken[\s\S]*?contains\(active\)[\s\S]*?return null/,
-  'stationHub focus capture must return null when focus is outside the ladder rail',
+  missionLog,
+  /sf-mlog-career-btn[^"]*"\s+type="button"/,
+  'missionLog career CTAs must be native type=button controls (gamepad/keyboard reachable)',
 );
 
 // ── 11) MissionLog periodic no-op + career CTA focus preserve ────────────────
@@ -499,11 +373,12 @@ mustMatch(
   'missionLog _renderCareerChip must preserve focused career CTA across event-driven repaint',
 );
 
-// Station mission-log CTA: canonical nested push only (no invented authority)
+// Station mission-log CTA: canonical push only (no invented authority). The docked route to the
+// ladder is the station bar's Mission Log control, which emits the canonical ui:pushScreen.
 mustMatch(
-  stationHub,
-  /pushScreen\s*\(\s*['"]missionLog['"]\s*\)/,
-  'stationHub mission-log CTA must use canonical pushScreen(missionLog)',
+  stationBar,
+  /ui:pushScreen',\s*\{\s*id:\s*'missionLog'/,
+  'station bar mission-log CTA must use canonical ui:pushScreen(missionLog)',
 );
 
 // ── 12) Fail closed summary ──────────────────────────────────────────────────
@@ -519,7 +394,6 @@ console.log(JSON.stringify({
   proves: [
     'presenter_imports',
     'recover_seam',
-    'station_rail',
     'mission_log_chip',
     'hauler_hunter_choices',
     'step_failed_abandon',
@@ -527,10 +401,9 @@ console.log(JSON.stringify({
     'no_direct_owner_writes',
     'no_visor_portrait',
     'gamepad_tabbability',
-    'ladder_focus_preserve',
     'missionlog_periodic_noop',
     'missionlog_career_focus_preserve',
-    'station_missionlog_canonical_push',
+    'station_bar_canonical_push',
   ],
   files: PATHS,
   choiceIds: {

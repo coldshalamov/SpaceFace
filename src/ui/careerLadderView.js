@@ -739,7 +739,7 @@ export function buildLadderRailModel(state, api = null) {
 
 /**
  * Mission Log career chip model (pure, read-only).
- * Surfaces busy / completed ladder cards for the log strip.
+ * Surfaces available, busy and completed professional paths in the live log strip.
  * @returns {{ nonBinding: true, visible: boolean, chips: object[], primary: object|null }}
  */
 export function buildMissionLogCareerChip(state, api = null) {
@@ -749,7 +749,8 @@ export function buildMissionLogCareerChip(state, api = null) {
     if (!card) continue;
     const st = card.status;
     if (
-      st === LADDER_STATUS.OFFERED
+      card.canAccept
+      || st === LADDER_STATUS.OFFERED
       || st === LADDER_STATUS.ACTIVE
       || st === LADDER_STATUS.RECOVERING
       || st === LADDER_STATUS.STEP_FAILED
@@ -770,6 +771,8 @@ export function buildMissionLogCareerChip(state, api = null) {
         recovery: card.recovery,
         mapAction: card.mapAction,
         choices: card.choices,
+        canAccept: card.canAccept,
+        canDecline: card.canDecline,
         canChoose: card.canChoose,
         canRecover: card.canRecover,
         canAbandon: card.canAbandon,
