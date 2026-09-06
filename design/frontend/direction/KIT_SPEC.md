@@ -45,7 +45,10 @@ not a screen; it keeps its own injected stylesheet and adopts the kit's tokens a
 | `_kitlab.html`, `scripts/capture-kit.mjs` | the kit page and its three-width capture (§10). |
 
 Nothing else is added. No per-screen CSS files. No new fonts beyond Bricolage. No images. No new
-audio files (the game synthesises every sound; §8).
+audio files (the game synthesises every sound; §8). Tasks B, C and D each add the few rules their
+task file permits: append them under a `/* Task <X> additions */` comment at the **end** of
+`styles/kit.css`, keep `temperature.js` edits to the lines the task names, and run
+`git pull --rebase origin master` before every push — three agents touch the kit in parallel.
 
 ## 2. Faces
 
@@ -102,7 +105,8 @@ The complete `:root` block. Copy it verbatim into `styles/kit.css`.
 ```css
 :root {
   /* scale: 1 at 1920 px wide, 0.75 at 1280, 1.25 at 2560; every size below multiplies by it */
-  --k-s: clamp(0.75, calc(100vw / 1920), 1.25);
+  --k-s: 1;                                              /* fallback where trig functions are unsupported */
+  --k-s: clamp(0.75, tan(atan2(100vw, 1920px)), 1.25);   /* unitless viewport ratio: 0.75 at 1280, 1 at 1920, 1.25 at 2560 */
 
   /* faces */
   --k-display: "Bricolage Grotesque", "Instrument Sans", system-ui, sans-serif;
@@ -156,6 +160,12 @@ The complete `:root` block. Copy it verbatim into `styles/kit.css`.
 ```
 
 Rules that follow from the tokens:
+
+- `--k-s` must stay **unitless**. `calc(100vw / 1920)` is a length, and a length inside `clamp()`
+  with plain numbers is invalid CSS — the browser drops the declaration and every
+  `calc(Npx * var(--k-s))` collapses. The `tan(atan2(...))` form divides two lengths into a number;
+  where a browser cannot parse it the line is dropped at parse time and the `1` above stands, so
+  sizes fall back to the 1920 values instead of vanishing. Do not "simplify" it.
 
 - Every size in a migrated screen is one of the ten `--k-fs-*` tokens. No other `font-size` value
   may appear.
@@ -663,6 +673,9 @@ builder's reference for Tasks B–D.
 - The root is created by the manager (≈ 189–211): `div.screen[data-screen=id][role=dialog]` inside
   `#screens`, `display:none` until top of stack (`syncVisibility`, ≈ 213–267). Screens are built
   once and cached. A migrated screen **adds** `k-screen` (and a variant) to that root in `mount`.
+  The manager writes the visible screen's `style.display` **inline** (`'flex'`, ≈ 221), which would
+  override the kit's `display: grid`; the Task A edit below makes it `'grid'` for roots that carry
+  `k-screen` and leaves `'flex'` for every other screen.
 - **Every screen pauses the sim** (stack occupancy → `sim:pause` / `sim:resume`, ≈ 295–310).
 - The legacy ground is `#screens` (`styles/ui.css` ≈ 180–198: the cinematic still + a two-gradient
   `::before`), cleared in a run by `body.sf-in-run` (≈ 209–221; set in `src/ui/uiRoot.js` ≈ 609).
@@ -670,6 +683,7 @@ builder's reference for Tasks B–D.
 - **The one screen-manager edit (Task A):** in `syncVisibility()`, once the top element is known:
 
   ```js
+  // where the manager assigns the visible display value (≈ 221): el.style.display = el.classList.contains('k-screen') ? 'grid' : 'flex';
   document.body.classList.toggle('k-screen-top', !!topEl && topEl.classList.contains('k-screen'));
   document.body.dataset.kScreen = topEl ? (topEl.dataset.screen || '') : '';
   this.bus?.emit?.('ui:screenTop', { id: document.body.dataset.kScreen || null });   // if the manager holds a bus; else emit from uiRoot where it calls syncVisibility

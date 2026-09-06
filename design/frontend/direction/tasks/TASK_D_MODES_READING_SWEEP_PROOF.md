@@ -26,6 +26,10 @@ the station, the instruments and the chart.
 ## 0. Before the first edit
 
 1. `git status --short`, `node scripts/check-now-liveness.mjs`, your `NOW.md` row, `npm run check:baseline`.
+   Tasks B, C and D edit `styles/kit.css` and `src/ui/kit/temperature.js` in parallel: append your
+   permitted rules under a `/* Task D additions */` comment at the end of `kit.css`, keep
+   `temperature.js` edits to the lines this file names, and `git pull --rebase origin master` before
+   every push.
 2. Confirm the facts this task relies on (audited 2026-09-06):
    - **Crucible door** `crucible.js` (`crucibleScreen`, id `crucible`; results are
      `crucibleResultsScreen` in the same file, id `crucibleResults`, `data.locked`): the "Mode"

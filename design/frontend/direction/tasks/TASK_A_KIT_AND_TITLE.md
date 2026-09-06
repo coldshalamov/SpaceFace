@@ -90,7 +90,7 @@ are named in spec §11 — use exactly those names. `dom.js` exports:
 
 ```js
 export function el(tag, className, text)            // createElement + className + textContent
-export function words(items, { onPick, onMove })    // <ul class="k-words"> of <li><button class="k-word" data-action>; ArrowUp/Down/Home/End roving focus; calls sound cue('move') on keyboard moves and cue('confirm') on pick
+export function words(items, { row = false, onPick })  // <ul class="k-words"> (k-words--row when row) of <li><button class="k-word" data-action>; ArrowUp/Down (Left/Right when row)/Home/End roving focus; cue('move') on keyboard moves, cue('confirm') on pick, cue('deny') on a disabled word — exactly spec §6.5
 export function rows(items, { cols, onPick })       // <ul class="k-rows"> of .k-row with .k-row__name / .k-row__num / .k-row__sub cells
 export function table({ head, body, onPick })       // .k-table-wrap > table.k-table with .k-caps headers, .k-name / .k-num cells, aria-selected
 export function hero(n, w, { size = 'num', signal = false })  // .k-hero with .k-hero__n (k-display) and .k-hero__w
@@ -102,8 +102,9 @@ title screen (Step 7) imports from `../kit/index.js`, so every module has a cons
 
 ### Step 4 — the screen manager knows a kit screen (one edit)
 
-In `src/ui/screenManager.js` `syncVisibility()` (≈ 213–267), after the top-of-stack element is
-resolved, add:
+In `src/ui/screenManager.js` `syncVisibility()` (≈ 213–267): where the visible screen's display
+value is written inline (≈ 221, `'flex'`), make it `el.classList.contains('k-screen') ? 'grid' : 'flex'`
+(inline `flex` would override the kit grid); then, after the top-of-stack element is resolved, add:
 
 ```js
 document.body.classList.toggle('k-screen-top', !!topEl && topEl.classList.contains('k-screen'));
@@ -165,8 +166,10 @@ Fix both, additively, in `scripts/capture-ui-matrix.mjs`:
    `args: ['--use-gl=angle', '--ignore-gpu-blocklist', '--mute-audio']`, **skip**
    `applyNeutralGround`, and after each surface opens wait
    `await page.waitForFunction(() => { const r = document.querySelector('.k-screen[data-screen]'); return !r || r.dataset.kReady === '1'; }, null, { timeout: 15000 })`
-   before the screenshot. Kit screens that host a 3D mount set `data-k-ready="1"` in the mount's
-   `onFirstFrame`; kit screens without a mount set it in `onShow`.
+   before the screenshot — **wrapped in try/catch**: on timeout, continue with the run and write
+   `hull absent: <surface>` into the run's log and the receipt; never let one surface abort the
+   matrix. Kit screens that host a 3D mount set `data-k-ready="1"` in the mount's `onFirstFrame`;
+   kit screens without a mount set it in `onShow`.
 2. Add `--out=<dir>` (default unchanged) so review captures go to `.devshots/frontend/<TASK>/`.
 3. Change the boot's New Game selector (≈ 2258) to `[data-screen="mainMenu"] [data-action="newGame"]`
    and keep the Launch selector as it is. The title (Step 7) puts `data-action` on every word.
@@ -188,7 +191,7 @@ stamp dataset, the attract-mode code (`ATTRACT_IDLE_MS`, `_startIdleAttract`, `_
 **Markup** (build with `dom.js`; every `data-action` is required):
 
 ```html
-<section class="screen k-screen k-screen--stage" data-screen="mainMenu" data-k-ready="0">
+<div class="screen k-screen k-screen--stage" data-screen="mainMenu" data-k-ready="0">   <!-- the root the manager hands to mount(el): add the classes to it; the children go inside -->
   <canvas class="k-world" aria-hidden="true"></canvas>                 <!-- the hull in its hangar -->
   <header class="k-title">
     <h1 class="k-display k-t-name">SpaceFace</h1>
@@ -208,7 +211,7 @@ stamp dataset, the attract-mode code (`ATTRACT_IDLE_MS`, `_startIdleAttract`, `_
     </ul>
   </div>
   <div class="k-fine" data-role="version">SpaceFace v0.0.0</div>
-</section>
+</div>
 ```
 
 Add to `kit.css` (kit component, not screen CSS):
@@ -227,7 +230,7 @@ Add to `kit.css` (kit component, not screen CSS):
 | tagline | under the name, 16 px gap | `k-t-emph` 62 % |
 | words | x = 96, first word 64 px under the tagline (≈ y 350) | `k-t-menu` 40 px, 16 px gaps; Continue's sub line 14 px 38 % |
 | version | (96, 1040) | `k-fine` 12 px 38 % |
-| scrim | none | temperature `menu` gives 25 %; the title sets `data-k-temp="flight"`-equivalent by calling `setTemperature('flight')` in `onShow` — the sheet says 0 % on the title |
+| scrim | none | the kit derives `flight` for `mainMenu` (spec §5): 0 % on the title; the screen sets nothing |
 
 **The hull.** In `mount(el, ctx)`: create the canvas, then
 `this.mount3d = createShipPreviewMount(canvas, { dockId: dockInteriorIdForArchetype(<the starter's archetype glb — read how shipworks.js derives it, ≈ 758–773>), authoredShips: true, authoredWarmup: true, fastPreview: false, allowFastFallback: false, onFirstFrame: () => { el.dataset.kReady = '1'; this._arrive(); } })`.
@@ -247,8 +250,8 @@ the title block from `top`; then `stamp` the `li` elements of the words list wit
 with a catch that leaves the text as `SpaceFace`. The server serves the repo root, so the file is
 reachable in the browser and in Electron.
 
-**Temperature.** `onShow` → `setTemperature('flight')` (0 % scrim on the title);
-`onHide` → nothing (the next screen or `bindTemperature` decides).
+**Temperature.** Nothing to do: the kit derives `flight` for `mainMenu` (spec §5); a screen never
+sets it.
 
 **Focus and keys.** The words list uses `dom.words()` so ArrowUp/Down/Home/End move focus and play
 `move`; Enter/Space activate and play `confirm`. The first show focuses Continue when enabled,

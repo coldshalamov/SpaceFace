@@ -24,6 +24,10 @@ the Crucible, the Works, the reading screens and the sweep. Do not enter their f
 ## 0. Before the first edit
 
 1. `git status --short`, `node scripts/check-now-liveness.mjs`, your `NOW.md` row, `npm run check:baseline`.
+   Tasks B, C and D edit `styles/kit.css` and `src/ui/kit/temperature.js` in parallel: append your
+   permitted rules under a `/* Task C additions */` comment at the end of `kit.css`, keep
+   `temperature.js` edits to the lines this file names, and `git pull --rebase origin master` before
+   every push.
 2. Confirm the facts this task relies on (audited 2026-09-06):
    - **Docked is not a mode.** `state.ui.docked === true` (set `uiRoot.js` ≈ 898, cleared ≈ 947); the
      world canvas **stops redrawing while docked** (`src/core/renderUpdatePhase.js` ≈ 25–31 returns
@@ -161,7 +165,9 @@ The `.sx-app` root (the host `.screen` gets `k-screen`; `.sx-app` becomes a plai
 Arrival (moment 4): on the station's first show after `dock:docked`, `setTemperature` is the
 kit's; the station stamps its name (`stamp` on the `h1` words, state `'station:arrive'`), then the
 news line (`settle` top, delay 200), then the foot words (`stamp`, gap 60, delay 400), then the
-panel (`settle` left/right, delay 700); the dock sound is already the game's. On later
+panel (`settle` left/right, delay 700); the dock sound: verify the cue emitted on `dock:docked`
+(`uiRoot.js` ≈ 909 emits `ui_confirm` today) and change it to `ui_dock` so the re-tuned swell
+(`sfx_dock_clunk`) plays; the undock path already plays `sfx_undock_release`. On later
 navigation only the panel settles. Undock (moment 5): `cue` is the game's; the panel and foot
 `k-out` in 140 ms, then the existing fade.
 

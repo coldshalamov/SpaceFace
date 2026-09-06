@@ -53,7 +53,9 @@ reviewer takes it from there.
 ```
 You are implementing Task B of the SpaceFace frontend: the shell screens and the flight HUD. Task
 A (the kit and the title) is accepted and on master; build on it and do not change the kit except
-where your task file explicitly permits a recorded one-line addition. Work in the repo at the
+where your task file explicitly permits a recorded one-line addition (append it under a
+"/* Task B additions */" comment at the end of styles/kit.css, and git pull --rebase origin master
+before every push — other agents edit the kit in parallel). Work in the repo at the
 current directory. Read, in this order, before touching anything:
 1. AGENTS.md.
 2. design/frontend/direction/DIRECTION_SHEET.md — all of it; your screens are under "The shell"
@@ -86,8 +88,10 @@ Then stop; the reviewer takes it from there.
 ```
 You are implementing Task C of the SpaceFace frontend: the station as a place, THE SHIP, THE
 FOOTPRINT, THE RANGE and the chart. Task A (the kit and the title) is accepted and on master;
-build on it and add to the kit only the rules your task file lists in its §1.1, recording them.
-Work in the repo at the current directory. Read, in this order:
+build on it and add to the kit only the rules your task file lists in its §1.1, recording them
+(append them under a "/* Task C additions */" comment at the end of styles/kit.css, and git pull
+--rebase origin master before every push — other agents edit the kit in parallel). Work in the repo
+at the current directory. Read, in this order:
 1. AGENTS.md.
 2. design/frontend/direction/DIRECTION_SHEET.md — all of it; your screens are under "The
    station" and "The instruments" in §2, and §6 (the dense register) is your hardest rule.
@@ -120,7 +124,9 @@ You are implementing Task D of the SpaceFace frontend: the Crucible screens, Ast
 reconciled, the reading screens, then the final sweep and the proof. Task A is accepted and on
 master. Tasks B and C may be landing in parallel on other agents — do not touch their files; do
 the Crucible, the Works and the reading screens first, and start the sweep and the proof only when
-B and C are on master. Work in the repo at the current directory. Read, in this order:
+B and C are on master. Any kit rule your task permits goes under a "/* Task D additions */"
+comment at the end of styles/kit.css, and git pull --rebase origin master before every push —
+other agents edit the kit in parallel. Work in the repo at the current directory. Read, in this order:
 1. AGENTS.md.
 2. design/frontend/direction/DIRECTION_SHEET.md — all of it; your screens are under "The modes"
    and "The reading screens" in §2; §10 (what retires) and §11 (the never-list) drive the sweep.

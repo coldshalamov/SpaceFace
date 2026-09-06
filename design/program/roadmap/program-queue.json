@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-06T22:52:29.000Z",
+  "updatedAt": "2026-09-06T23:01:49.000Z",
   "purpose": "Canonical cross-plan priority and dispatch queue. Product completion remains authoritative in design/program/03_LIVE_ACCEPTANCE_MATRIX.md.",
   "stateContract": {
     "allowed": [
@@ -17224,7 +17224,7 @@
         "npm run probe:frontend-snapshot"
       ],
       "receiptRefs": [],
-      "brief": "The first real screen in the direction, on the default route: the starter hull in the hangar rig fills the frame against the sky, the game's name at hero scale top-left, the menu as five words down the left edge with the focused word at full strength, version bottom-left; the menu plate and its CSS deleted; the transition helper and the open/confirm sounds live. DONE WHEN: booting the game shows it; frames at 1280, 1920 and 2560 match DIRECTION_SHEET.md under a hash-bound visual review; check:title-continue-runtime green; the owner sees it in the game and has not vetoed. This is the gate every surface packet depends on. Task file: design/frontend/direction/tasks/TASK_A_KIT_AND_TITLE.md (spec: design/frontend/direction/KIT_SPEC.md)."
+      "brief": "The first real screen in the direction, on the default route: the starter hull in the hangar rig fills the frame against the sky, the game's name at hero scale top-left, the menu as a column of words down the left edge with the focused word at full strength, version bottom-left; the menu plate and its CSS deleted; the transition helper and the open/confirm sounds live. DONE WHEN: booting the game shows it; frames at 1280, 1920 and 2560 match DIRECTION_SHEET.md under a hash-bound visual review; check:title-continue-runtime green; the owner sees it in the game and has not vetoed. This is the gate every surface packet depends on. Task file: design/frontend/direction/tasks/TASK_A_KIT_AND_TITLE.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-187.04",

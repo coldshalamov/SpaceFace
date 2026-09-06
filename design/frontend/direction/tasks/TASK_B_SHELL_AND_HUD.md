@@ -25,6 +25,10 @@ only). Tasks C and D touch other files; do not enter theirs.
 
 1. `git status --short`, `node scripts/check-now-liveness.mjs`, add your `NOW.md` row naming the
    files above. `npm run check:baseline` at the candidate base.
+   Tasks B, C and D edit `styles/kit.css` and `src/ui/kit/temperature.js` in parallel: append your
+   permitted rules under a `/* Task B additions */` comment at the end of `kit.css`, keep
+   `temperature.js` edits to the lines this file names, and `git pull --rebase origin master` before
+   every push.
 2. Confirm the facts this task relies on (audited 2026-09-06):
    - Every shell screen is a duck-typed object (`id`, `mount(el, ctx)`, `onShow`, `refresh`,
      `onHide`, `dispose`); each adds `panel sf-menu …` to its root and injects a style block
