@@ -11,6 +11,7 @@ import { mountDataState } from '../../uiPrimitives.js';
 import { icon } from '../icons.js';
 import { renderAdBoardNotice } from '../adBoard.js';
 import { marketCardDrivers, marketQuoteValue, presentMarketDrivers } from '../../marketDriverPresenter.js';
+import { createVirtualList, rowFromHtml } from '../../virtualList.js';
 // Trade-route intel + course plotting reuse the canonical market logic (same waypoint/ui:setCourse
 // contract the legacy panel used) — never re-derive routes or nav here.
 import { computeBestTrades, applyTradeNavigation } from '../../screens/market.js';
@@ -113,6 +114,19 @@ const MARKET_FILTERS = [
   { id: 'military', label: 'Military' },
   { id: 'restricted', label: 'Restricted' },
 ];
+
+// The commodity rail is the station's longest list and its heaviest subtree: every one of the
+// exchange's commodities is a ~20-node card, so the whole rail used to cost the better part of a
+// thousand DOM nodes to show the dozen cards that fit on screen. It is virtualised through the
+// shared visible-window list (`src/ui/virtualList.js`), which needs the row PITCH along the scroll
+// axis. These two numbers are the rail's own geometry, declared in styles/station-workbench.css:
+//   .sx-mkt__list .sx-mkt-row  { flex:0 0 236px; width:236px; }
+//   .sx-mkt-browser__rail      { display:flex; gap:6px; }
+// They are corrected from the live card on show (`measureRailPitch`), so a stylesheet change
+// cannot silently desynchronise the window from what the browser lays out.
+const RAIL_CARD_W = 236;
+const RAIL_GAP = 6;
+const RAIL_PITCH = RAIL_CARD_W + RAIL_GAP;
 
 function marketFamily(category) {
   if (['raw ore', 'gas', 'crystal', 'exotic'].includes(category)) return 'raw';
@@ -247,6 +261,17 @@ export function createMarketScreen(ctx) {
   let marketFilter = 'all';
   let marketQuery = '';
   let listRenderSignature = '';
+  let listStructureKey = '';
+  // The virtualised commodity rail and the chrome around it, all built once by buildBrowserChrome.
+  let rail = null;
+  let railEl = null;
+  let modeEl = null;
+  let searchEl = null;
+  let filterEls = null;
+  // The rail builds rows lazily — including on a scroll, long after renderList returned — so the
+  // state and tracked-contract id a card is drawn from are held here rather than passed down.
+  let railState = null;
+  let railTracked = null;
   let activeChart = null;
   let chartIndex = -1;
   let brushStart = -1;
@@ -324,6 +349,124 @@ export function createMarketScreen(ctx) {
     }
   }
 
+  // One commodity card, byte-for-byte the markup the rail rendered before it was windowed. The
+  // virtual list stamps aria-setsize/aria-posinset and the roving tabindex over the top; the
+  // `tabindex` written here is the pre-mount default it replaces.
+  //
+  // `selected` arrives from the list rather than being compared against `selectedId` here. A click
+  // restyles the affected rows BEFORE it reports the new selection back to this screen, so a card
+  // drawn from `selectedId` would render one selection behind — the quote panel would move while
+  // the rail still highlighted the previous commodity.
+  function commodityRowHtml(r, state, tracked_, selected) {
+    const hist = priceHistory(r.entry, r.def);
+    const buy = unitBuy(r.entry, r.def);
+    const up = hist[hist.length - 1] >= hist[0];
+    const pct = hist[0] ? Math.round(((hist[hist.length - 1] - hist[0]) / hist[0]) * 100) : 0;
+    const demand = demandLevel(r.entry);
+    const drivers = presentMarketDrivers({ state, stationId: stationId(state), commodity: r.def, entry: r.entry });
+    const cardDrivers = marketCardDrivers(drivers.primary);
+    const active = selected ? ' is-active' : '';
+    const tracked = r.id === tracked_ ? ' is-tracked' : '';
+    const held = heldQty(state, r.id);
+    const family = marketFamily(r.def.category || '');
+    return (
+      `<button type="button" id="sx-market-tab-${escapeHtml(r.id)}" class="sx-mkt-row${active}${tracked}" data-cmdty="${escapeHtml(r.id)}" role="tab" aria-selected="${!!selected}" tabindex="${selected ? '0' : '-1'}" aria-controls="sx-market-instrument"` +
+        ` data-family="${family}"` +
+        // No tooltip on the tracked flag: the row already carries the price-why (causeLedger), so
+        // a second reveal here would fight it for the one shared tip. The tracked fact reaches
+        // keyboard and screen readers through the aria-label below, and sighted players through
+        // the ◆ flag, the row treatment, and the instrument callout.
+        ` aria-label="${escapeHtml(r.def.name)}, ${fmt(buy)} credits, ${demand === 3 ? 'high' : demand === 2 ? 'normal' : 'low'} demand${held ? `, ${fmt(held)} units held` : ''}${tracked ? ', tracked for your active contract' : ''}. ${escapeHtml(drivers.accessibleSummary)}">` +
+        (tracked ? `<span class="sx-mkt-row__flag" aria-hidden="true">◆</span>` : '') +
+        `<span class="sx-mkt-row__glyph">${commodityGlyph(r.def.category || '')}</span>` +
+        `<span class="sx-mkt-row__body"><span class="sx-mkt-row__name">${escapeHtml(r.def.name)}</span>` +
+          `<span class="sx-mkt-row__category">${escapeHtml(r.def.category || 'goods')}</span></span>` +
+        `<span class="sx-mkt-row__quote"><span class="sx-mkt-row__price sf-fig">${fmt(buy)}<i> cr</i></span>` +
+          `<span class="sx-mkt-row__tr ${up ? 'is-up' : 'is-down'}">${up ? '▲ UP' : '▼ DOWN'} ${Math.abs(pct)}%</span></span>` +
+        `<span class="sx-mkt-row__held">${held > 0 ? fmt(held) + 'u IN HOLD' : (demand === 3 ? 'HIGH DEMAND' : demand === 1 ? 'LOW DEMAND' : 'NORMAL DEMAND')}</span>` +
+        (cardDrivers.length ? `<span class="sx-mkt-row__drivers" aria-hidden="true">${cardDrivers.map((item) => `<i data-direction="${item.direction}">${escapeHtml(item.shortLabel)}</i>`).join('')}</span>` : '') +
+      `</button>`
+    );
+  }
+
+  function emptyFilterLabel() {
+    return marketQuery || MARKET_FILTERS.find((f) => f.id === marketFilter)?.label || 'this filter';
+  }
+
+  // The browser chrome (tools line, family filters, prev/next deck, rail) is built once and then
+  // updated in place. It used to be re-written wholesale on every data tick, which is what forced
+  // the focus-restoration dance below it — rebuilding the subtree blurred whatever the player was
+  // typing in or arrowing through, and reset the rail's scroll position to the far left on every
+  // price movement. Nothing here is destroyed now, so neither problem can recur.
+  function buildBrowserChrome() {
+    listEl.innerHTML =
+      `<div class="sx-mkt-browser">` +
+        `<div class="sx-mkt-browser__tools">` +
+          `<span class="sx-mkt-browser__mode">STATION EXCHANGE<b>0 / 0 visible</b></span>` +
+          `<label class="sx-mkt-search"><span>FIND COMMODITY</span><input type="search" data-market-search placeholder="Name or category" autocomplete="off" spellcheck="false"/></label>` +
+        `</div>` +
+        `<div class="sx-mkt-browser__filters" aria-label="Commodity families">` +
+          MARKET_FILTERS.map((filter) =>
+            `<button type="button" class="sx-mkt-filter" data-market-filter="${filter.id}" aria-pressed="false">` +
+              `${filter.label}<b>0</b></button>`).join('') +
+        `</div>` +
+        `<div class="sx-mkt-browser__deck">` +
+          `<button type="button" class="sx-mkt-browser__step" data-market-step="-1" aria-label="Previous commodities">‹</button>` +
+          `<div class="sx-mkt-browser__rail"></div>` +
+          `<button type="button" class="sx-mkt-browser__step is-next" data-market-step="1" aria-label="Next commodities">›</button>` +
+        `</div>` +
+      `</div>`;
+    modeEl = listEl.querySelector('.sx-mkt-browser__mode');
+    searchEl = listEl.querySelector('[data-market-search]');
+    railEl = listEl.querySelector('.sx-mkt-browser__rail');
+    filterEls = new Map();
+    for (const btn of listEl.querySelectorAll('[data-market-filter]')) {
+      filterEls.set(btn.getAttribute('data-market-filter'), btn);
+    }
+
+    rail = createVirtualList({
+      el: railEl,
+      axis: 'x',
+      rowExtent: RAIL_PITCH,
+      gap: RAIL_GAP,
+      role: 'tablist',
+      ariaLabel: 'Visible commodities',
+      // Arrow keys move the quote with the focus, which is what the rail did before by focusing a
+      // tab and clicking it. Home/End reach the first and last commodity even when neither is in
+      // the DOM, which is the thing a hand-rolled `querySelectorAll` walk could no longer do.
+      selectionFollowsFocus: true,
+      getKey: (r) => r.id,
+      renderRow: (r, info) => rowFromHtml(commodityRowHtml(r, railState, railTracked, info.selected)),
+      renderEmpty: () => rowFromHtml(
+        `<div class="sx-mkt-browser__empty">No commodities match <b>${escapeHtml(emptyFilterLabel())}</b>.</div>`,
+      ),
+      onSelect: (id) => {
+        if (!id || id === selectedId) return;
+        selectedId = id;
+        qty = 1;
+        const state = ctx.state || {};
+        // Only the two panels that read `selectedId` are redrawn: the rail has already restyled
+        // the row it owns, and calling back into renderList from its own callback would re-enter.
+        renderStage(state); renderConsole(state);
+        if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tab' });
+      },
+    });
+  }
+
+  // The declared pitch is the stylesheet's; this is the browser's. Reading it once the rail has a
+  // layout box keeps the window aligned if a breakpoint or a later edit changes the card.
+  function measureRailPitch() {
+    if (!rail || !railEl || typeof window === 'undefined' || !window.getComputedStyle) return;
+    const card = railEl.querySelector('.sx-mkt-row');
+    if (!card || !card.offsetWidth) return;
+    let gap = RAIL_GAP;
+    try {
+      const parsed = parseFloat(window.getComputedStyle(railEl).columnGap);
+      if (Number.isFinite(parsed)) gap = parsed;
+    } catch (_) { /* keep the declared gap */ }
+    rail.setRowExtent(Math.round(card.offsetWidth + gap));
+  }
+
   function renderList(state) {
     const rows = tradedList(state);
     const tracked_ = trackedCmdty(state);
@@ -347,83 +490,58 @@ export function createMarketScreen(ctx) {
       if (heldQty(state, r.id) > 0) counts.set('hold', (counts.get('hold') || 0) + 1);
     }
 
-    const nodes = visible.map((r) => {
-      const hist = priceHistory(r.entry, r.def);
-      const buy = unitBuy(r.entry, r.def);
-      const up = hist[hist.length - 1] >= hist[0];
-      const pct = hist[0] ? Math.round(((hist[hist.length - 1] - hist[0]) / hist[0]) * 100) : 0;
-      const demand = demandLevel(r.entry);
-      const drivers = presentMarketDrivers({ state, stationId: stationId(state), commodity: r.def, entry: r.entry });
-      const cardDrivers = marketCardDrivers(drivers.primary);
-      const active = r.id === selectedId ? ' is-active' : '';
-      const tracked = r.id === tracked_ ? ' is-tracked' : '';
-      const held = heldQty(state, r.id);
-      const family = marketFamily(r.def.category || '');
-      return (
-        `<button type="button" id="sx-market-tab-${escapeHtml(r.id)}" class="sx-mkt-row${active}${tracked}" data-cmdty="${escapeHtml(r.id)}" role="tab" aria-selected="${r.id === selectedId}" tabindex="${r.id === selectedId ? '0' : '-1'}" aria-controls="sx-market-instrument"` +
-          ` data-family="${family}"` +
-          // No tooltip on the tracked flag: the row already carries the price-why (causeLedger), so
-          // a second reveal here would fight it for the one shared tip. The tracked fact reaches
-          // keyboard and screen readers through the aria-label below, and sighted players through
-          // the ◆ flag, the row treatment, and the instrument callout.
-          ` aria-label="${escapeHtml(r.def.name)}, ${fmt(buy)} credits, ${demand === 3 ? 'high' : demand === 2 ? 'normal' : 'low'} demand${held ? `, ${fmt(held)} units held` : ''}${tracked ? ', tracked for your active contract' : ''}. ${escapeHtml(drivers.accessibleSummary)}">` +
-          (tracked ? `<span class="sx-mkt-row__flag" aria-hidden="true">◆</span>` : '') +
-          `<span class="sx-mkt-row__glyph">${commodityGlyph(r.def.category || '')}</span>` +
-          `<span class="sx-mkt-row__body"><span class="sx-mkt-row__name">${escapeHtml(r.def.name)}</span>` +
-            `<span class="sx-mkt-row__category">${escapeHtml(r.def.category || 'goods')}</span></span>` +
-          `<span class="sx-mkt-row__quote"><span class="sx-mkt-row__price sf-fig">${fmt(buy)}<i> cr</i></span>` +
-            `<span class="sx-mkt-row__tr ${up ? 'is-up' : 'is-down'}">${up ? '▲ UP' : '▼ DOWN'} ${Math.abs(pct)}%</span></span>` +
-          `<span class="sx-mkt-row__held">${held > 0 ? fmt(held) + 'u IN HOLD' : (demand === 3 ? 'HIGH DEMAND' : demand === 1 ? 'LOW DEMAND' : 'NORMAL DEMAND')}</span>` +
-          (cardDrivers.length ? `<span class="sx-mkt-row__drivers" aria-hidden="true">${cardDrivers.map((item) => `<i data-direction="${item.direction}">${escapeHtml(item.shortLabel)}</i>`).join('')}</span>` : '') +
-        `</button>`
-      );
-    }).join('');
     const signature = JSON.stringify({
       // `tracked_` belongs in the no-churn signature because it is RENDERED into every row (the
       // is-tracked class and the ◆ "Tracked contract cargo" flag). Without it, accepting or
       // switching a contract while the list was already cached left the flag stale — the instrument
       // panel below re-renders unconditionally and showed the "buy it here for your job" callout,
       // while the row it points at carried no mark at all. Caught by check:mission-handoff.
-      selectedId, marketFilter, marketQuery, cargoOnly, tracked: tracked_,
+      //
+      // `selectedId` is deliberately NOT here: selection is applied to the rail through
+      // setSelectedKey, which restyles only the two rows whose state moved. Folding it into this
+      // signature would make every click reload the whole window instead.
+      marketFilter, marketQuery, cargoOnly, tracked: tracked_,
       rows: visible.map((r) => [r.id, unitBuy(r.entry, r.def), heldQty(state, r.id), r.entry && r.entry.demandMult,
         JSON.stringify(r.entry && r.entry.demandDrivers || []),
         priceHistory(r.entry, r.def).at(-1)]),
     });
-    if (signature === listRenderSignature) return;
-    listRenderSignature = signature;
-    const searchHadFocus = document.activeElement && document.activeElement.matches('[data-market-search]');
-    const searchSelection = searchHadFocus ? document.activeElement.selectionStart : null;
-    const focusedCommodity = document.activeElement && document.activeElement.getAttribute
-      ? document.activeElement.getAttribute('data-cmdty')
-      : null;
-    const filters = MARKET_FILTERS.map((filter) =>
-      `<button type="button" class="sx-mkt-filter${filter.id === marketFilter ? ' is-on' : ''}" data-market-filter="${filter.id}" ` +
-        `aria-pressed="${filter.id === marketFilter}">${filter.label}<b>${counts.get(filter.id) || 0}</b></button>`).join('');
-    listEl.innerHTML =
-      `<div class="sx-mkt-browser">` +
-        `<div class="sx-mkt-browser__tools">` +
-          `<span class="sx-mkt-browser__mode">${cargoOnly ? 'YOUR CARGO HOLD' : 'STATION EXCHANGE'}<b>${visible.length} / ${rows.length} visible</b></span>` +
-          `<label class="sx-mkt-search"><span>FIND COMMODITY</span><input type="search" data-market-search value="${escapeHtml(marketQuery)}" placeholder="Name or category" autocomplete="off" spellcheck="false"/></label>` +
-        `</div>` +
-        `<div class="sx-mkt-browser__filters" aria-label="Commodity families">${filters}</div>` +
-        `<div class="sx-mkt-browser__deck">` +
-          `<button type="button" class="sx-mkt-browser__step" data-market-step="-1" aria-label="Previous commodities">‹</button>` +
-          `<div class="sx-mkt-browser__rail" role="tablist" aria-label="Visible commodities">` +
-            (nodes || `<div class="sx-mkt-browser__empty">No commodities match <b>${escapeHtml(marketQuery || MARKET_FILTERS.find((f) => f.id === marketFilter)?.label || 'this filter')}</b>.</div>`) +
-          `</div>` +
-          `<button type="button" class="sx-mkt-browser__step is-next" data-market-step="1" aria-label="Next commodities">›</button>` +
-        `</div>` +
-      `</div>`;
-    if (searchHadFocus) {
-      const search = listEl.querySelector('[data-market-search]');
-      if (search) {
-        search.focus({ preventScroll: true });
-        const at = Math.min(search.value.length, searchSelection == null ? search.value.length : searchSelection);
-        try { search.setSelectionRange(at, at); } catch (_) {}
+    railState = state;
+    railTracked = tracked_;
+    if (!rail) buildBrowserChrome();
+
+    let restructured = false;
+    if (signature !== listRenderSignature) {
+      listRenderSignature = signature;
+      // Which set of commodities the rail is showing — as opposed to what those commodities cost.
+      // A player action that changes the SET starts the rail at its left edge, exactly as the old
+      // full rebuild did; a price tick keeps the player where they had scrolled to.
+      const structure = `${marketFilter} ${marketQuery} ${cargoOnly}`;
+      restructured = structure !== listStructureKey;
+      listStructureKey = structure;
+
+      modeEl.firstChild.textContent = cargoOnly ? 'YOUR CARGO HOLD' : 'STATION EXCHANGE';
+      modeEl.querySelector('b').textContent = `${visible.length} / ${rows.length} visible`;
+      for (const [id, btn] of filterEls) {
+        btn.classList.toggle('is-on', id === marketFilter);
+        btn.setAttribute('aria-pressed', String(id === marketFilter));
+        btn.querySelector('b').textContent = String(counts.get(id) || 0);
       }
-    } else if (focusedCommodity) {
-      const focused = listEl.querySelector(`[data-cmdty="${focusedCommodity}"]`);
-      if (focused) focused.focus({ preventScroll: true });
+      // Written only when it actually differs (an Escape clear, or an external open): assigning to
+      // a focused search field on every price tick would drop the caret to the end mid-word.
+      if (searchEl.value !== marketQuery) searchEl.value = marketQuery;
+
+      const settled = rail.setItems(visible, { preserveScroll: !restructured });
+      // A filter that removes the selected commodity falls to the first survivor. That comes back
+      // through the return value rather than onSelect, so the stage and console below — which read
+      // `selectedId` — would otherwise keep quoting a row the rail no longer lists.
+      if (settled.selectedKey && settled.selectedKey !== selectedId) selectedId = settled.selectedKey;
+    }
+    if (selectedId) {
+      rail.setSelectedKey(selectedId, { scrollIntoView: false, notify: false });
+      // A filter or a mode switch reseats the rail at its left edge. If the quoted commodity
+      // survived that change further down the list, bring it back on screen rather than leaving
+      // the instrument describing a card the player cannot see.
+      if (restructured) rail.scrollSelectedIntoView();
     }
   }
 
@@ -433,6 +551,7 @@ export function createMarketScreen(ctx) {
     if (!r) {
       activeChart = null;
       stageEl.removeAttribute('aria-labelledby');
+      stageEl.removeAttribute('aria-label');
       stageEl.removeAttribute('aria-describedby');
       mountDataState(stageEl, 'empty', {
         code: mode === 'sell' ? 'HOLD_EMPTY' : 'EXCHANGE_DARK',
@@ -470,6 +589,10 @@ export function createMarketScreen(ctx) {
     const trackedGuidance = isTracked ? trackedCargoGuidance(state, r.id, def.name) : null;
     activeChart = { hist, avg, label: def.name };
     stageEl.setAttribute('aria-labelledby', `sx-market-tab-${r.id}`);
+    // The rail mounts only the cards on screen, so the tab this panel names can be scrolled out of
+    // the DOM. An aria-labelledby with no resolvable target is skipped by the name computation,
+    // which then falls through to this label — the panel keeps a name either way.
+    stageEl.setAttribute('aria-label', def.name);
     stageEl.setAttribute('aria-describedby', 'sx-market-driver-summary');
     stageEl.innerHTML =
       (isTracked ? `<div class="sx-mkt-tracked" data-tracked-state="${trackedGuidance.state}">${icon('contracts', 15)}<span><b>Tracked contract</b> — ${escapeHtml(trackedGuidance.text)}</span></div>` : '') +
@@ -657,19 +780,13 @@ export function createMarketScreen(ctx) {
     }
     const step = ev.target.closest('[data-market-step]');
     if (step) {
-      const rail = listEl.querySelector('.sx-mkt-browser__rail');
       const direction = Number(step.getAttribute('data-market-step')) || 1;
-      if (rail) rail.scrollBy({ left: direction * Math.max(300, rail.clientWidth * .72), behavior: 'smooth' });
-      return;
+      // Still a real scroll of a real scroll container: the rail's scroll event feeds the window,
+      // so the smooth animation and the mounted range stay in step.
+      if (railEl) railEl.scrollBy({ left: direction * Math.max(300, railEl.clientWidth * .72), behavior: 'smooth' });
     }
-    const btn = ev.target.closest('[data-cmdty]');
-    if (!btn) return;
-    const id = btn.getAttribute('data-cmdty');
-    if (id === selectedId) return;
-    selectedId = id; qty = 1;
-    const state = ctx.state || {};
-    renderList(state); renderStage(state); renderConsole(state);
-    if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tab' });
+    // Selecting a commodity is the virtual list's own click contract (see its onSelect above).
+    // Handling it a second time here would double the selection work and the audio cue.
   });
   listEl.addEventListener('input', (ev) => {
     if (!ev.target.matches('[data-market-search]')) return;
@@ -679,22 +796,10 @@ export function createMarketScreen(ctx) {
     renderList(state); renderStage(state); renderConsole(state);
   });
   listEl.addEventListener('keydown', (ev) => {
-    const commodityTab = ev.target.closest && ev.target.closest('[data-cmdty][role="tab"]');
-    if (commodityTab && ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(ev.key)) {
-      const tabs = [...listEl.querySelectorAll('[data-cmdty][role="tab"]')];
-      const index = tabs.indexOf(commodityTab);
-      let next = index;
-      if (ev.key === 'Home') next = 0;
-      else if (ev.key === 'End') next = tabs.length - 1;
-      else next = Math.max(0, Math.min(tabs.length - 1, index + (ev.key === 'ArrowLeft' ? -1 : 1)));
-      if (tabs[next]) {
-        ev.preventDefault();
-        tabs[next].focus({ preventScroll: true });
-        tabs[next].scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
-        tabs[next].click();
-      }
-      return;
-    }
+    // Arrow/Home/End/PageUp/PageDown over the commodity tabs belong to the virtual list, which
+    // scrolls its target into the window before focusing it. The walk that used to live here read
+    // `querySelectorAll` and so could only ever reach the rows already in the DOM — with a window
+    // mounted, End would have stopped at the edge of the window instead of the last commodity.
     if (ev.key !== 'Escape' || !ev.target.matches('[data-market-search]') || !marketQuery) return;
     ev.preventDefault();
     marketQuery = '';
@@ -703,10 +808,10 @@ export function createMarketScreen(ctx) {
     renderList(state); renderStage(state); renderConsole(state);
   });
   listEl.addEventListener('wheel', (ev) => {
-    const rail = ev.target.closest('.sx-mkt-browser__rail');
-    if (!rail || Math.abs(ev.deltaY) <= Math.abs(ev.deltaX)) return;
+    const target = ev.target.closest('.sx-mkt-browser__rail');
+    if (!target || Math.abs(ev.deltaY) <= Math.abs(ev.deltaX)) return;
     ev.preventDefault();
-    rail.scrollLeft += ev.deltaY;
+    target.scrollLeft += ev.deltaY;
   }, { passive: false });
 
   stageEl.addEventListener('pointermove', (ev) => {
@@ -824,9 +929,20 @@ export function createMarketScreen(ctx) {
         const tracked = trackedCmdty(st);
         if (tracked && tradedList(st).some((r) => r.id === tracked)) selectedId = tracked;
       }
+      // The rail is detached while another destination is on the dock, so it has no layout box and
+      // no measurable viewport. onShow is the first moment it does; the station app has already
+      // flushed layout by the time it calls us.
+      if (rail) rail.onShow();
       renderAll(st);
+      measureRailPitch();
+      if (rail) rail.scrollSelectedIntoView();
     },
     refresh(c) { renderAll((c || ctx).state || {}); },
-    dispose() {},
+    // A rail that is off-screen stops rebuilding rows for nobody; the station app refreshes every
+    // destination it has cached, not just the visible one.
+    onHide() { if (rail) rail.onHide(); },
+    dispose() {
+      if (rail) { rail.destroy(); rail = null; }
+    },
   };
 }
