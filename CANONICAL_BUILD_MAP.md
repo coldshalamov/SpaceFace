@@ -164,7 +164,7 @@ procedure:
 | "finish the game", "what's next for release", "the professional bar" | §15 gates → `--next` |
 | "swarm mode should be more fun" | §16 → `--id PQ-174` |
 | "adventure is boring / thin" | §17 → `--id PQ-176`, `PQ-177`, `PQ-178` |
-| "the screens look cheap", "polish the frontend", "bring the UI up to date", "A-list / bold / expressive frontend" | [`design/FRONTEND_DIRECTION.md`](./design/FRONTEND_DIRECTION.md) → `--id PQ-187` (direction lock; owner picks from rendered options) → then the surface packets it gates. `PQ-180` is the floor, not the gate |
+| "the screens look cheap", "polish the frontend", "bring the UI up to date", "A-list / bold / expressive frontend" | **§20** → [`design/FRONTEND_DIRECTION.md`](./design/FRONTEND_DIRECTION.md) → `--id PQ-187` (direction lock; owner picks from rendered options) → then the surface packets it gates. `PQ-180` is the floor, not the gate |
 | "it's hitching / stuttering" | §8.4 → `--id PQ-129`; measure first, never cut quality |
 | "the mining board is unreadable / ugly" | `--id PQ-130` (board law) and `PQ-131` (authored objects); `PQ-185` accepts |
 | "the ships / objects look like toys" | §1B graphics doors → `PQ-050`, `PQ-045`, `PQ-136` |
@@ -2287,7 +2287,7 @@ abandoned. Implementers and reviewers are always different models. Every lane pa
 **file**; two agents never hold the same file. Every leaf commits immediately after review, scoped to
 its exact paths. `npm run check:playable` is run before any "done".
 
-## 15. Finishing SpaceFace — the A-list program (`PQ-146` … `PQ-173`, plus eight reactivated packets; §16–§19 extend it to `PQ-186`) — ADMITTED 2026-09-03
+## 15. Finishing SpaceFace — the A-list program (`PQ-146` … `PQ-173`, plus eight reactivated packets; §16–§20 extend it to `PQ-188`) — ADMITTED 2026-09-03
 
 **Source:** the owner's direction of 2026-09-03 (*"plan out the finish of this game … creative,
 fun, fast-paced, nuanced, and performant"*), [`design/VISION.md`](./design/VISION.md) Parts I and II,
@@ -3446,7 +3446,7 @@ Every story beat is produced the same way and to the same bar as the twelve minu
 > marked done in §11, rebuilt on the kit). `PQ-162`, `PQ-168`, `PQ-181`, `PQ-182` and `PQ-185` are
 > gated on `PQ-187.03` in the queue; their done-when is the owner's contact-sheet yes. `PQ-180`'s
 > matrix and the reference frames remain the measurable **floor** — a prerequisite for an owner
-> review, never a substitute for one. The phase table is the direction file's §8.
+> review, never a substitute for one. The phase table is the direction file's §8, mirrored in §20.8.
 
 **Source:** the owner, 2026-09-03: *"The frontend of the game needs to be polished massively too,
 everything about it needs to be brought into the newest version and optimized."* §11 landed sixteen
@@ -3760,3 +3760,263 @@ the packet. Adopted defects are **fixed**, not only listed.
 | PQ-139.04 | tumbling ships corkscrew their trail (both plume families) |
 | PQ-143.02 | six texture one-offs on the starter route |
 | PQ-184.00 | per-surface UI frame/DOM budgets, measured and gated |
+
+## 20. The frontend direction — the A-list plan (`PQ-187`, `PQ-188`; re-gates `PQ-162`, `PQ-168`, `PQ-181`, `PQ-182`, `PQ-185`) — ADMITTED 2026-09-05
+
+**Source:** the owner, 2026-09-05, verbatim:
+
+> "I'm not sure I support the decision to build everything on existing design authority, less
+> design-oriented agents wrote all of that and the frontend is stubbornly cheap, I think there have
+> been essentially poisoned frontend instructions that will keep reverting the frontend back to
+> cheap if you rely on them as an authority."
+
+> "Think of the timeline: I tell an agent to make the game, it makes a cheap frontend, I then employ
+> you to fix it, you then read its notes and consider them to be an authority, capping the frontend
+> quality at the same level of cheapness because the less-smart agent came first."
+
+> "If I wanted an optimally clean and sleek A-list bold and expressive frontend that exceeds most
+> games we need a plan for that."
+
+**Authority.** The plan is [`design/FRONTEND_DIRECTION.md`](./design/FRONTEND_DIRECTION.md). It
+sits in the *user direction* tier (`AGENTS.md` §4), directly under `design/VISION.md`, and on
+anything aesthetic — type, colour, tone, composition, imagery, motion, sound, what "polished" means
+— it outranks every document in `design/frontend/`, every per-screen spec, every "to the grammar"
+clause in §18, and every review. Those files remain valid for engineering facts and for the
+measurable floor in §20.3 only. **Prose written by an agent, this section included, is never the
+final authority on taste. The authority is the set of rendered frames the owner approved**, kept at
+`design/frontend/direction/approved/` once `PQ-187.02` locks. Where this section and the direction
+file disagree, the direction file wins; where either disagrees with the approved frames, the frames
+win.
+
+### 20.1 The answer in one paragraph
+
+The frontend is cheap because its design law was written by agents and prescribes a neutral admin
+dashboard — charcoal panels, hairline borders, one blue, display type capped at 28 px, "80 % neutral
+at rest", "polished is a column of greens". Any agent that obeys that law regenerates the same look
+however skilled. The 2026-09-05 repair pass (`e86f4be8`–`81253f60`) made every screen obey it
+consistently; **that was hygiene, not direction.** The way out is not better prose from another
+agent. It is to put three genuinely different, fully rendered directions in front of the owner, lock
+the one they pick as the authority, build a kit from it, migrate every surface onto the kit with an
+owner checkpoint at the end of each phase, and prove the result blind against the best games'
+actual screens.
+
+### 20.2 The mechanism that breaks the loop
+
+1. **Rendered frames are the authority; prose is subordinate.** `direction/approved/<surface>.png`
+   plus a one-page `DIRECTION_SHEET.md` written *from* the frames.
+2. **The owner chooses between real options.** The same three screens (title, station market, THE
+   SHIP) built three ways as real HTML at real size in `_uilab.html`; the owner picks; "none of
+   these" restarts the round. Enforced in the queue: every surface packet's units depend on
+   `PQ-187.03`, so `program-dispatch --next` cannot hand out surface work before the lock.
+3. **Every phase ends with a contact sheet the owner says yes or no to.** Done is the owner's yes,
+   never a green check.
+4. **The proof is blind and comparative** (§20.10).
+5. **Agents are told, by name, what not to reach for** (§20.9).
+
+### 20.3 Floor and ceiling
+
+**Kept, because each is measurable — not because the old documents said so:** no text below 12 px;
+EMPTY / LOADING / ERROR / DENIED declared with a verb on every pane; every screen restores what the
+player last chose, per save; every label survives +40 % and no sentence is concatenated; every
+surface holds at 1280 / 1920 / 2560 and clamps to a safe box on ultrawide; legible under
+`forced-colors`, complete under reduced motion; keyboard and gamepad reach everything; ≤ 2 ms UI
+frame cost, ≤ 1,500 DOM nodes per surface, no per-frame allocation; reference frames committed and
+diffed; no first-person visor / cockpit / helmet / pilot-portrait motif; no neon halos, glass blur
+stacks or gradient button fills.
+
+**Voided:** the 28 px display cap and "two faces only" (grammar §3); "one interaction accent" and
+"80 % neutral at rest" (grammar §4); "flat translucent dark panels, 1 px hairline edges, calm
+off-white type" as *the identity* (grammar §4); "screens differ by centerpiece and verb, never by
+styling" (grammar §2); "polished is a column of greens" and matrix-green as a gate (`PQ-180`, §18);
+every "to the grammar" done-when in `PQ-162`, `PQ-168`, `PQ-181`, `PQ-182`, `PQ-185`; and
+"consolidate the stylesheets first" — build the kit fresh, migrate screens onto it, delete old CSS as
+each screen moves.
+
+**Still binding from the grammar:** the motion contract (§5: a named state variable behind every
+motion, three verbs, nothing infinite, ≤ 180 ms, reduced motion authored), the techniques (§9), reuse
+before invention (§10), entry keys (§10.5). They constrain how things move, not what the game looks
+like.
+
+### 20.4 What "bold and expressive" means here
+
+Owner taste record, in order: neon cyan rejected; "refined readable shadcn-like surfaces" requested
+and delivered; that result judged cheap; the warm "field equipment at dusk" direction for Asteroid
+Works liked; "gray, bleak, vibe-coded, harsh fonts" rejected; cockpit motifs out permanently. So
+**bold is not loud, and sleek is not neutral.** Boldness comes from five sources and only these:
+
+| Source | The rule |
+|---|---|
+| **Scale contrast** | one thing on the screen is enormous, the rest small and exact; the type scale runs to 96–160 px on hero surfaces |
+| **A display face with a point of view** | paired with a quiet text face and a tabular numeral face; chosen from rendered comps, never from a name |
+| **Composition** | asymmetric, edge-anchored, full-bleed, with deliberate emptiness; never a centred card in a dark field |
+| **The game's own imagery** | the player's hull with its scars, the sector's sky, faction crests, station art, the wreck you just made — the hangar-rig render already exists and is never used as a picture |
+| **Choreographed motion with sound** | screens cut and slide like editing, type arrives, numbers count, every action has a sound; still state-bound, still ≤ 180 ms; the game ships zero recorded audio today and a UI sound palette is part of the bar |
+
+Colour is spent at screen scale as mood and state (the shell warms when docked, the Footprint goes
+cold and red when wanted, the Crucible has its own temperature), never as chrome on widgets.
+
+### 20.5 The three candidate directions (Phase 0)
+
+Rendered on the title, the station market and THE SHIP at 1920×1080 and 1280×720, each with one
+dense pane, one empty state, one focus state, reduced-motion noted, and a ten-second title→market
+transition with placeholder sound. They must differ on face, scale, temperature, composition and
+imagery; tints of one layout are rejected. Candidate faces are named so the comps can be built; the
+owner's pick is the decision.
+
+| Direction | In one line | Candidate faces | Risk the comps must answer |
+|---|---|---|---|
+| **A · Editorial Industrial** | the frontier's own printed matter: condensed display type set enormous, bone on warm graphite, one signal orange, broadsheet rules, columns hung from the top edge; hard cuts, type that stamps in; relays and heavy switches | Big Shoulders Display Black · Archivo Expanded Black | drifts to military stencil — prove warmth |
+| **B · Cinematic Minimal** | almost nothing on screen and what is there is huge; the sky and the hull fill the frame; a few large words, one signal colour, cursor-led composition; slow-fast easing; low tonal sound | Archivo Black · Syne ExtraBold · Unbounded | dense panes need a second register — include one |
+| **C · Warm Instrument** | "field equipment at dusk" extended to the whole game: worn amber, oxblood, brass on slate; a humanist display face with nerve (a serif is on the table); illustrated crests and hull art; controls that read as built objects; mechanical settle; latches and relays | Bricolage Grotesque · Fraunces | the most work to make sleek — prove it can be quiet |
+
+### 20.6 The reference board
+
+Ten interfaces that bracket the space; the owner reacts love / like / hate with a line each, and the
+reactions steer which comps get built and how: **Persona 5** (type as hero, asymmetric cut-outs),
+**NieR: Automata** (stark, sleek, a sound on every action), **Destiny 2** (hierarchy through scale,
+the world as backdrop), **Control** (editorial type at giant size, no chrome), **Hades** (warm,
+handmade, the run as a story), **Hardspace: Shipbreaker** (warm industrial, tactile), **Death
+Stranding** (ritual and big numerals), **Alan Wake 2** (photographic, layered paper), **Highfleet**
+(the boldest genre-adjacent UI; sets the ceiling for *expressive*), **Into the Breach** (nothing on
+screen that is not information). Two genre baselines the result must beat: **Everspace 2** and
+**Starsector**. If a blind reviewer cannot tell SpaceFace from Everspace 2, the plan has failed.
+
+### 20.7 The thirteen signature moments
+
+Each is built as a composition with a transition and a sound, captured as a ten-second clip, and
+signed off by the owner individually: cold open and title · new game (three starters as three ways
+to play) · first undock (the HUD arrives element by element) · docking (arriving somewhere; the shell
+warms) · undocking · going wanted (temperature, not text) · death and game over (a still, not a
+form) · Crucible results (the run as a story) · first upgrade (an earned reveal) · load (saves as
+portraits) · pause (the world held, not hidden) · photo mode · every screen open and close (one
+transition system, never a uniform fade).
+
+### 20.8 The program — phases, packets, owner checkpoints
+
+| Phase | Packet · leaf | Delivers | Owner checkpoint |
+|---|---|---|---|
+| **0 · Direction** | `PQ-187.00` board · `.01` three directions rendered · `.02` lock | the board reactions; nine frames per direction; the pick committed as `direction/approved/` + `DIRECTION_SHEET.md` | **the pick** — nothing below starts until it exists |
+| **1 · The kit** | `PQ-187.03` | tokens, the type scale to hero size, the faces, colour-as-mood rules, the transition system, the UI sound palette, every component on one kit page | the kit page |
+| **2 · Shell and signature moments** | `PQ-181` (moments 1, 2, 7, 10, 11, 12, 13) | title, new game, load portraits, pause, game over, settings, credits, statistics, photo mode, the transition system live | contact sheet + seven clips |
+| **3 · The flight HUD** | `PQ-188.00` (moments 3, 6) | hero scale where it matters, the arrival choreography, temperature on wanted; the attention pass kept | contact sheet at three widths + two clips |
+| **4 · The station as a place** | `PQ-162` (moments 4, 5) | seven screens on the kit; docking and undocking as arrival and departure | contact sheet + two clips |
+| **5 · The four instruments** | `PQ-188.01` THE SHIP · `.02` FOOTPRINT + RANGE · `PQ-168` THE CHART | rebuilt on the kit with their centerpieces kept (orbit, trace, fly, push) | contact sheet |
+| **6 · Crucible and the Works** | `PQ-182` (moment 8) · `PQ-185` | door, draft, refit, results; Asteroid Works accepted under its own warm law, reconciled with the direction | contact sheet + the results clip |
+| **7 · One system, fast** | `PQ-183` · `PQ-184` | every name a link, the watch list, global find; budgets met; the legacy hub gone; dead CSS and dead fonts deleted last | the numbers |
+| **8 · Proof** | `PQ-187.04` | the blind side-by-side, thirteen sign-offs, the regression baseline reshot on the new look, a ninety-second reel | **the reel** |
+
+Sequencing: `PQ-187.00`–`.03` are strictly serial and `.02` is an owner decision no agent can
+close. Once `.03` lands, phases 2–6 run in parallel by mutex. `PQ-180`'s matrix and the reference
+frames stay as the **floor**, re-measured after every phase; the current baseline (`PQ-180.03`) is
+a floor tool for the current look and is reshot after phase 2 — that lane is not blocked by this
+section. `PQ-183` and `PQ-184` are unchanged in scope and run after migration.
+
+### 20.9 How agents get this wrong — the cheapness generators
+
+An integrator rejects a unit that matches any line (§1.6, §19 W-list applies too).
+
+- **Reaching for glow to be bold.** A halo, a gradient fill, a glass panel or a tracked-out label is
+  an automatic reject; boldness is scale, face, composition, imagery, motion.
+- **Building the comps as mock-ups.** Phase 0 comps are real HTML in the lab at real size with real
+  data.
+- **Three directions that are three tints of one layout.**
+- **Writing a direction sheet from prose, or before the owner has picked.** The sheet describes
+  the approved frames; frames outrank it.
+- **Citing grammar §3/§4, a per-screen spec or a review as a reason to keep something.** Void on
+  aesthetics.
+- **Centring a card in a dark field.** The default composition is edge-anchored and asymmetric.
+- **A settings-page voice on a hero surface.** Title, load, death, results are compositions, not
+  lists.
+- **Consolidating the old CSS before the kit exists.** Build fresh; migrate; delete.
+- **Calling a phase done on a green matrix.** Done is the owner's yes on the contact sheet.
+- **Any first-person motif.** Permanent.
+- **Motion with no state variable, over 180 ms, or without a reduced-motion authoring.** The motion
+  contract is floor.
+
+### 20.10 Proof — what "exceeds most games" means, measurably
+
+1. **Blind side-by-side.** For eight screen types (title, load, pause, results, map, ship, market,
+   HUD) a memoryless vision reviewer sees the SpaceFace frame beside the reference board's frame of
+   the same type, unlabeled, and picks the more polished, more distinctive interface. Target:
+   SpaceFace chosen in ≥ 50 % of pairings across the board and 100 % against the two genre baselines.
+2. **The owner's thirteen.** Every signature moment has a clip the owner signed off.
+3. **The floor is green** across the matrix at three widths, pseudo-localised, forced-colours,
+   reduced-motion, inside the budgets, with the regression baseline reshot on the new look.
+4. **The reel.** Ninety seconds of the frontend alone, cut to its own UI sound, that a stranger
+   would mistake for a shipped title's trailer.
+
+### 20.11 The packets
+
+| Packet | Pillar | One line | Wave |
+|---|---|---|---|
+| **`PQ-187`** The direction lock: reference board, three rendered directions, the owner's pick, the kit, the proof — [`active/PQ-187.md`](./design/program/roadmap/active/PQ-187.md) | F · Frontend | Three materially different directions rendered on the same three screens; the owner picks; the picked frames become the authority; a kit is built from them; a blind side-by-side against A-list games proves the result. | ALPHA |
+| **`PQ-188`** The flight HUD and the instruments to the direction — [`active/PQ-188.md`](./design/program/roadmap/active/PQ-188.md) | F · Frontend | The HUD and the three instruments §11 marked done, rebuilt on the kit with their centerpieces kept; the HUD gains its arrival choreography and its wanted temperature. | BETA |
+| `PQ-181` meta shell · `PQ-162` station · `PQ-168` chart · `PQ-182` Crucible · `PQ-185` Works | F · Frontend | Unchanged in scope; re-gated on `PQ-187.03` (packetRevision bumped, direction-override note under the yaml); done is the owner's contact-sheet yes. | BETA |
+
+### 20.12 The plans, in detail
+
+#### Pillar F · Frontend
+
+**`PQ-187` — The direction lock** · *ALPHA* · after nothing
+
+The frontend has a direction the owner chose from real, rendered options — not one an agent wrote
+down.
+
+- **Gap:** every frontend authority in the repo was written by agents and prescribes a neutral
+  dashboard; the owner has only ever been asked to reject, never to choose. **Reference:** how an
+  art director works — comps, a pick, a sheet written from the pick.
+- **Exists:** `_uilab.html` + `scripts/probe-frontend-snapshot.mjs`; `src/ui/shipPreviewMount.js`
+  (the hull in a hangar rig); `src/ui/station/icons.js` (stroke icons + 14 crests); vendored faces in
+  `styles/fonts/` incl. `bricolage-grotesque-600`, `instrument-sans-var`, `spline-sans-mono-500`
+  (unused); the `audio:cue` vocabulary with zero samples; `scripts/capture-ui-matrix.mjs`.
+- **Routes through:** the direction file §2, §5, §6, §8, §11; §18 (floor); `PQ-158` (audio
+  direction) for the sound palette's samples.
+- **Writes:** `design/frontend/direction/`, `_uilab.html`, `styles/`, `src/ui/uiPrimitives.js`,
+  `src/ui/effects/`, `scripts/`.
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **The reference board.** `direction/REFERENCE_BOARD.md`: the ten games with one representative frame each (linked or described, never reproduced beyond fair use) and the owner's love/like/hate line per game verbatim. | The owner's reactions are on the file; the two comps most consistent with them are named. |
+| `.01` (after `.00`) | **Three directions, rendered.** A, B, C (or the owner's replacements) as real HTML with real data for the title, the station market and THE SHIP at 1920×1080 and 1280×720; dense pane, empty state, focus state, reduced-motion note, ten-second transition capture with placeholder sound; candidate faces vendored under OFL. | Nine frames per direction under `direction/comps/<A|B|C>/`; a contact sheet; the three differ on face, scale, temperature, composition and imagery. |
+| `.02` (after `.01`) | **The direction lock.** The owner's pick verbatim; picked frames copied to `direction/approved/`; `DIRECTION_SHEET.md` written from the frames; grammar §3/§4 marked replaced. **Owner decision — no agent can close it.** | `approved/` holds ≥ 9 frames and the owner's words; the sheet cites frames by filename; `.03` becomes ready. |
+| `.03` (after `.02`) | **The kit.** Tokens; the type scale to hero size; display, text and numeral faces; colour-as-mood rules; the transition system; the UI sound palette through `audio:cue`; every component on one kit page. Old stylesheets are not consolidated. | The kit page captured at three widths with the owner's yes; the surface packets unblock. |
+| `.04` (after every surface packet) | **The proof.** §20.10 in full. | ≥ 50 % / 100 % on the side-by-side; thirteen sign-offs; matrix and regression green; the reel committed under `receipts/`. |
+
+- **Not:** no direction sheet before the pick; no comps outside the lab; no CSS cleanup.
+- **How agents get this wrong:** §20.9, plus: treating a green matrix as the owner's yes.
+
+**`PQ-188` — The flight HUD and the instruments to the direction** · *BETA* · after `PQ-187.03`
+
+The surfaces §11 marked done were built to the superseded grammar; they are rebuilt on the kit with
+their centerpieces and manipulation verbs kept, and the HUD gains its two signature moments.
+
+- **Gap:** the HUD and three instruments pass the floor and look like nothing; no packet could
+  revisit surfaces marked done. **Reference:** Ace Combat's arrival choreography; Red Dead 2's
+  wanted temperature.
+- **Exists:** `src/ui/hud.js` (three anchors, Power Rail, right dock, hull mark, comms tape);
+  `src/ui/ship/` bands; the FOOTPRINT board and provenance ledger; THE RANGE integrator and rungs;
+  `design/HUD_FLIGHT_ATTENTION.md` (still binding); `check:hud-j07`, `check:one-voice`.
+- **Routes through:** the direction file §7 (moments 3, 6) and §8 (phases 3, 5); §11.4 Power Bar;
+  `HUD_FLIGHT_ATTENTION.md`.
+- **Writes:** `src/ui/hud.js`, `src/ui/uiRoot.js`, `src/ui/ship/`, the footprint and range modules,
+  `styles/`.
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| `.00` | **The flight HUD.** Hero scale where it matters (speed, heat, the target); the display face on the few words that deserve it; the arrival choreography on first undock; the temperature change on wanted; the attention rules kept. | Contact sheet at 1280 / 1920 / 2560 with the owner's yes; two ten-second clips; `check:hud-j07` and `check:one-voice` green; the receipts channel unchanged. |
+| `.01` | **THE SHIP.** The hull as the picture at full bleed with labels pinned to it; the four bands re-set on the kit; orbit kept. | Contact sheet with the owner's yes; every band still answers "why does my ship fly like this". |
+| `.02` | **THE FOOTPRINT and THE RANGE.** The consequence board with its wanted temperature; the Range's teaching voice on the kit without changing the drills. | Contact sheet with the owner's yes; the four rungs still complete under real input. |
+
+- **Not:** no change to what the instruments do; no second receipts channel; no restyle before the
+  kit exists.
+- **How agents get this wrong:** breaking the attention pass; glow for speed or threat; calling a
+  leaf done on a green check.
+
+### 20.13 The first question for the owner
+
+Phase 0 starts with the reference board. The one answer that most improves the comps: **which of
+the ten games in §20.6 do you love, which do you hate, and why in a line each?** Add any game not on
+the board whose interface you admire. The answer is recorded verbatim at the top of
+`design/frontend/direction/REFERENCE_BOARD.md`, and `PQ-187.01` is built against it. The
+owner-facing rendering of this plan, with the three directions set in their own type, is the
+published page "SpaceFace Frontend Direction".
