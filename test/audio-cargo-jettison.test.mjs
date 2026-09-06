@@ -7,6 +7,7 @@ import test from 'node:test';
 
 import { RECIPES } from '../src/data/audioRecipes.js';
 import { audio } from '../src/audio/audioSystem.js';
+import { MASSLINE2_FLAGS } from '../src/data/featureFlags.js';
 
 function hostWith(played = []) {
   const host = Object.create(audio);
@@ -34,4 +35,20 @@ test('a real jettison receipt plays the kick; empty and malformed receipts stay 
   host._onCargoJettisoned({ commodityId: 'ore_generic', amount: 0 });
   host._onCargoJettisoned(null);
   assert.deepEqual(played, [], 'no voice for a zero-amount or missing receipt');
+});
+
+test('on routes where jettisonImpulse owns the voice, the handler stays silent (no stacked kick)', () => {
+  const played = [];
+  const host = hostWith(played);
+  const prevEnabled = MASSLINE2_FLAGS.enabled;
+  const prevJettison = MASSLINE2_FLAGS.jettisonImpulse;
+  MASSLINE2_FLAGS.enabled = true;
+  MASSLINE2_FLAGS.jettisonImpulse = true;
+  try {
+    host._onCargoJettisoned({ commodityId: 'ore_generic', amount: 12 });
+    assert.deepEqual(played, [], 'the impulse system already speaks; the handler must not double it');
+  } finally {
+    MASSLINE2_FLAGS.enabled = prevEnabled;
+    MASSLINE2_FLAGS.jettisonImpulse = prevJettison;
+  }
 });

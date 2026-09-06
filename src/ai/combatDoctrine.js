@@ -454,6 +454,10 @@ function pressureBreakDue(record, self, tick) {
   if (PRESSURE_BREAK_EXCLUDED_PHASES.has(phase)) return false;
   if (phase === egressPhaseFor(record.doctrineId)) return false;
   if (tick - record.phaseStartedTick < PRESSURE_MIN_PHASE_TICKS) return false;
+  // Hull never recovers mid-fight, so without this gate a hurt ship would re-break at exactly
+  // PRESSURE_MIN_PHASE_TICKS of every approach leg and never reach a fire window again — the
+  // break must land during the actual grind (strike/commit/hold), not cancel the re-press.
+  if (!record.fireWindow) return false;
   const hull = self.hullFraction;
   const heat = Number.isFinite(self.heatFraction) ? self.heatFraction : 0;
   if (hull < CORNERED_HULL_FRACTION) return false;
@@ -467,6 +471,10 @@ function egressPhaseFor(doctrineId) {
   if (doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER) return 'escape';
   if (doctrineId === CombatDoctrineId.FIELD_ANCHOR_CONTROLLER) return 'recover';
   if (doctrineId === CombatDoctrineId.ESCORT_SCREEN) return 'regroup';
+  // The capital has no generic retreat machine: broadside_shift is its authored reposition beat
+  // (timer exit back to broadside_charge), so a broken-off capital re-enters its cycle instead of
+  // parking on a stale flightPoint in a phase updateCapitalBroadside never advances.
+  if (doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE) return 'broadside_shift';
   return 'retreat';
 }
 
@@ -507,6 +515,8 @@ function updateCapitalBroadside(record, tick, distance) {
     enter(record, 'broadside_shift', tick, null);
   } else if (record.phase === 'broadside_shift' && age >= CAPITAL_BROADSIDE_SHIFT_TICKS) {
     record.cycle++;
+    // Release the egress/shift steering point so the re-committed cycle steers on its own maneuver.
+    record.flightPoint = null;
     enter(record, 'broadside_charge', tick, 'broadside_charge');
   }
 }

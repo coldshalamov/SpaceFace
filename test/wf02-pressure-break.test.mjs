@@ -70,12 +70,22 @@ const directive = {};
 {
   const runtime = new CombatDoctrineRuntime({ seed: 47 });
   runtime.update({ tick: 0, entityId: 'b', doctrineId: CombatDoctrineId.BRAWLER_COMMIT, perception: perception(), directive });
+  runtime.update({ tick: 30, entityId: 'b', doctrineId: CombatDoctrineId.BRAWLER_COMMIT, perception: perception(), directive });
   const hurt = runtime.update({
     tick: 120, entityId: 'b', doctrineId: CombatDoctrineId.BRAWLER_COMMIT,
     perception: perception({ hullFraction: 0.4 }), directive,
   });
-  assert.equal(hurt.outcome, 'pressure_break', 'a hurt fighter breaks to its authored egress phase');
+  assert.equal(hurt.outcome, 'pressure_break', 'a hurt fighter breaks off mid-grind, from its live commit fire window');
   assert.equal(hurt.phase, 'breakaway', 'the brawler breaks away, not into the morale death spiral');
+  // An approach leg never breaks: pressureBreakDue requires a live fire window, so the opening
+  // pass always completes before the break decision can even be considered.
+  const runtime2 = new CombatDoctrineRuntime({ seed: 47 });
+  runtime2.update({ tick: 0, entityId: 'b2', doctrineId: CombatDoctrineId.BRAWLER_COMMIT, perception: perception(), directive });
+  const approach = runtime2.update({
+    tick: 10, entityId: 'b2', doctrineId: CombatDoctrineId.BRAWLER_COMMIT,
+    perception: perception({ hullFraction: 0.4 }), directive,
+  });
+  assert.notEqual(approach.outcome, 'pressure_break', 'no break before the fire window opens');
 }
 
 {
@@ -96,16 +106,18 @@ const directive = {};
 {
   const runtime = new CombatDoctrineRuntime({ seed: 47 });
   runtime.update({ tick: 0, entityId: 'esc', doctrineId: CombatDoctrineId.ESCORT_SCREEN, perception: perception(), directive });
+  runtime.update({ tick: 60, entityId: 'esc', doctrineId: CombatDoctrineId.ESCORT_SCREEN, perception: perception(), directive });
+  runtime.update({ tick: 90, entityId: 'esc', doctrineId: CombatDoctrineId.ESCORT_SCREEN, perception: perception(), directive });
   const hurt = runtime.update({
-    tick: 120, entityId: 'esc', doctrineId: CombatDoctrineId.ESCORT_SCREEN,
+    tick: 150, entityId: 'esc', doctrineId: CombatDoctrineId.ESCORT_SCREEN,
     perception: perception({ hullFraction: 0.4 }), directive,
   });
-  assert.equal(hurt.outcome, 'pressure_break', 'a hurt escort breaks off to its regroup lull');
+  assert.equal(hurt.outcome, 'pressure_break', 'a hurt escort breaks off from its live screen_hold fire window');
   assert.equal(hurt.phase, 'regroup');
   // The regroup lull must be owned by the escort's own phase machine: after ESCORT_REGROUP_TICKS
   // (45) the escort transitions regroup → reform and re-commits, never circling in regroup forever.
   const lull = runtime.update({
-    tick: 170, entityId: 'esc', doctrineId: CombatDoctrineId.ESCORT_SCREEN,
+    tick: 200, entityId: 'esc', doctrineId: CombatDoctrineId.ESCORT_SCREEN,
     perception: perception({ hullFraction: 0.4 }), directive,
   });
   assert.notEqual(lull.outcome, 'pressure_break', 'the regroup lull never re-triggers the break');

@@ -46,6 +46,10 @@ export const jettisonImpulse = {
 
     const qty = Math.max(0, Number(payload.amount) || 0);
     if (!(qty > 0)) return;
+    // The kick's audio is the dump's voice, not the kick's: any real dump speaks, even a token
+    // one whose dv is below the physical-kick floor (otherwise small gas dumps are fully silent
+    // on routes where this flag is on and the audioSystem's own handler is gated off).
+    this.bus.emit('audio:cue', { id: 'massline.jettisonKick' });
     const def = MASS_BY_ID.get(payload.commodityId);
     const unitMass = def && Number.isFinite(def.massPerU) ? def.massPerU : 0.5;
     const shipMass = Math.max(0.1, Number.isFinite(player.mass) ? player.mass : 18);
@@ -60,6 +64,5 @@ export const jettisonImpulse = {
       reason: 'cargo_jettison',
       tick: state.tick,
     });
-    this.bus.emit('audio:cue', { id: 'massline.jettisonKick' });
   },
 };
