@@ -257,6 +257,7 @@ export function createTacticalAISystem({
             phase: doctrine.phase,
             kind: doctrine.telegraph.kind,
             durationTicks: doctrine.telegraph.durationTicks,
+            attackLine: doctrine.attackLine || null,
             tick,
           });
         }
@@ -269,6 +270,7 @@ export function createTacticalAISystem({
             phase: doctrine.phase,
             fireWindow: doctrine.fireWindow,
             maneuverKind: doctrine.maneuverKind,
+            attackLine: doctrine.attackLine || null,
             tick,
           });
         }

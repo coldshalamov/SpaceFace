@@ -168,7 +168,7 @@ export class CombatDoctrineRuntime {
 
     if (!target) {
       enter(record, initialPhase(doctrineId), tick, null);
-      return snapshot(record, null, directive, factionBehavior);
+      return snapshot(record, null, directive, factionBehavior, self);
     }
 
     const distance = self && self.pos ? distance2(self.pos, target.pos) : Infinity;
@@ -186,11 +186,11 @@ export class CombatDoctrineRuntime {
           : doctrineId === CombatDoctrineId.ESCORT_SCREEN ? 'regroup'
           : 'retreat';
       if (record.phase !== egressPhase) beginEgress(record, egressPhase, tick, self, target, 'target_disabled');
-      return snapshot(record, target, directive, factionBehavior);
+      return snapshot(record, target, directive, factionBehavior, self);
     }
     if (pressureBreakDue(record, self, tick)) {
       beginEgress(record, egressPhaseFor(record), tick, self, target, PRESSURE_BREAK_OUTCOME);
-      return snapshot(record, target, directive, factionBehavior);
+      return snapshot(record, target, directive, factionBehavior, self);
     }
     if (doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY) {
       updateInterceptor(record, tick, self, target, distance);
@@ -207,7 +207,7 @@ export class CombatDoctrineRuntime {
     } else {
       updateRanged(record, tick, self, target, distance);
     }
-    return snapshot(record, target, directive, factionBehavior);
+    return snapshot(record, target, directive, factionBehavior, self);
   }
 
   forget(entityId) {
@@ -284,6 +284,9 @@ export function applyCombatDoctrineToSelection(selected, doctrine) {
       flightPoint: doctrine.flightPoint,
       formationLocked: doctrine.formationLocked,
       breakFormation: !doctrine.formationLocked,
+      attackLine: doctrine.attackLine || null,
+      crossingLane: doctrine.doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY &&
+        (doctrine.phase === 'engine_flare' || doctrine.phase === 'strike'),
       reason: `combat_doctrine:${doctrine.doctrineId}:${doctrine.phase}`,
     },
   };
@@ -589,6 +592,7 @@ function advanceCycle(record, tick, phase) {
   record.actionTargetId = record.targetId;
   record.closestDistance = Infinity;
   record.flightPoint = null;
+  record.side = sideFor(record.seed, record.entityId, record.doctrineId, record.cycle, record.targetId);
   enter(record, phase, tick, null);
 }
 
@@ -606,7 +610,7 @@ function beginReform(record, tick) {
   enter(record, 'reform', tick, null);
 }
 
-function snapshot(record, target, directive, factionBehavior = null) {
+function snapshot(record, target, directive, factionBehavior = null, self = null) {
   const phase = record.phase;
   const doctrineId = record.doctrineId;
   let maneuverKind = ManeuverKind.INTERCEPT;
@@ -730,7 +734,48 @@ function snapshot(record, target, directive, factionBehavior = null) {
       ? 'tether-control-contest'
       : null,
     directiveTargetId: directive && directive.objective && directive.objective.targetId,
+    attackLine: attackLineFor(record, self),
   });
+}
+
+/**
+ * Computes the readable attack line / forward threat corridor for an interceptor or attacker.
+ * Active during attack cue (engine_flare/charge_cue) and firing pass (strike/commit/fire_window).
+ */
+export function attackLineFor(record, self) {
+  if (!self || !self.pos) return null;
+  const phase = record && record.phase;
+  const active = phase === 'strike' || phase === 'engine_flare'
+    || phase === 'commit' || phase === 'fire_window';
+  if (!active) return null;
+
+  const heading = Number.isFinite(self.rot) ? self.rot : 0;
+  return Object.freeze({
+    origin: Object.freeze({
+      x: finite(self.pos.x),
+      z: finite(self.pos.z),
+    }),
+    heading,
+    dir: Object.freeze({
+      x: Math.cos(heading),
+      z: Math.sin(heading),
+    }),
+    range: 480,
+    halfWidth: 32,
+  });
+}
+
+/**
+ * Evaluates whether a point in space (e.g. the player's position) lies within the attack line threat corridor.
+ */
+export function isPointOnAttackLine(attackLine, point) {
+  if (!attackLine || !attackLine.origin || !attackLine.dir || !point) return false;
+  const dx = finite(point.x) - attackLine.origin.x;
+  const dz = finite(point.z) - attackLine.origin.z;
+  const along = dx * attackLine.dir.x + dz * attackLine.dir.z;
+  if (along < 0 || along > attackLine.range) return false;
+  const cross = Math.abs(dx * (-attackLine.dir.z) + dz * attackLine.dir.x);
+  return cross <= attackLine.halfWidth;
 }
 
 function targetScore(doctrineId, contact, ward = null) {

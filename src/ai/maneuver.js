@@ -208,7 +208,7 @@ export class ManeuverPlanner {
     const arrival = desired.arrivalDistance == null ? Infinity : desired.arrivalDistance;
     const slowRadius = choreo && !choreo.coast
       ? this.config.arrivalRadius
-      : approachSlowRadius(kind, formationBound, this.config);
+      : approachSlowRadius(kind, formationBound, this.config, intent);
     const envelope = motionEnvelope(kind, intent, arrival, formationDistance, formationBound, this.config, hullScale);
     if (choreo && !choreo.coast) {
       const frac = Number.isFinite(choreo.speedFraction) ? choreo.speedFraction : 0.8;
@@ -391,11 +391,15 @@ export class ManeuverPlanner {
   }
 }
 
-function approachSlowRadius(kind, formationBound, config) {
+function approachSlowRadius(kind, formationBound, config, intent = null) {
+  if (kind === ManeuverKind.INTERCEPT) {
+    // Attack intercepts commit speed through the crossing pass and must not throttle to a halt.
+    return 0;
+  }
   if (kind === ManeuverKind.FORMATION) return Math.max(config.arrivalRadius * 2, formationBound * 0.85);
   if (kind === ManeuverKind.HOLD) return Math.max(config.arrivalRadius * 1.5, formationBound * 0.35);
   if (kind === ManeuverKind.ORBIT) return Math.max(config.arrivalRadius * 3, config.orbitRadius * 0.35);
-  if (kind === ManeuverKind.INTERCEPT || kind === ManeuverKind.APPROACH_SOCKET || kind === ManeuverKind.CUT_TETHER) {
+  if (kind === ManeuverKind.APPROACH_SOCKET || kind === ManeuverKind.CUT_TETHER) {
     return Math.max(config.arrivalRadius * 3, formationBound * 0.55);
   }
   return config.arrivalRadius;
@@ -456,9 +460,24 @@ function intercept(self, target, horizonTicks, lateralSign = 0, commitSpeed = 72
   if (lateralSign) {
     const dx = target.pos.x - self.pos.x, dz = target.pos.z - self.pos.z;
     const length = Math.hypot(dx, dz) || 1;
-    const offset = clamp(distance * 0.28, 45, 140) * (lateralSign < 0 ? -1 : 1);
-    point.x += -dz / length * offset;
-    point.z += dx / length * offset;
+    // Authored crossing lane: preserves a readable passing corridor tangent to the target.
+    // The corridor offset maintains 55-120 WU clearance so the interceptor cuts cleanly past
+    // the target at gun-envelope range rather than steering nose-in to ram or stall.
+    const corridorOffset = clamp(distance * 0.28, 55, 120) * (lateralSign < 0 ? -1 : 1);
+    point.x += -dz / length * corridorOffset;
+    point.z += dx / length * corridorOffset;
+
+    // Project through-velocity along the crossing lane vector so commit momentum carries
+    // through and past the intercept point without decaying into a hover.
+    const laneDirX = point.x - self.pos.x;
+    const laneDirZ = point.z - self.pos.z;
+    const laneLen = Math.hypot(laneDirX, laneDirZ) || 1;
+    const throughSpeed = Math.max(commitSpeed, 72);
+    const feedVel = {
+      x: (target.vel ? target.vel.x : 0) * 0.35 + (laneDirX / laneLen) * throughSpeed * 0.65,
+      z: (target.vel ? target.vel.z : 0) * 0.35 + (laneDirZ / laneLen) * throughSpeed * 0.65,
+    };
+    return commitPoint(self, point, commitSpeed, feedVel);
   }
   return commitPoint(self, point, commitSpeed, target.vel);
 }
@@ -702,7 +721,7 @@ function motionEnvelope(kind, intent, arrival, formationDistance, formationBound
       break;
     case ManeuverKind.INTERCEPT:
       maxSpeed = config.interceptSpeed;
-      maxClosingSpeed = Math.max(config.maxApproachClosingSpeed, (intent.preferredRange || formationBound) * 0.12);
+      maxClosingSpeed = config.interceptSpeed * 1.5;
       break;
     case ManeuverKind.RETREAT:
       maxSpeed = config.retreatSpeed;
