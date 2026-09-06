@@ -2287,19 +2287,19 @@
       ],
       "bounds": {
         "min": [
-          -47.0226,
-          -17.6696,
-          -47.0226
+          -46.1352,
+          -42.3203,
+          -39.55
         ],
         "max": [
           55.5,
-          39.55,
-          47.0226
+          42.3203,
+          25.7488
         ],
         "dimensionsM": [
-          102.5226,
-          57.2196,
-          94.0452
+          101.6352,
+          84.6406,
+          65.2988
         ]
       },
       "note": "Defense Bastion Claim; player claim growth family, PBR, explicit LOD0/1/2. LOD0 33212 tris / 5 draw groups.",
@@ -2348,19 +2348,19 @@
       ],
       "bounds": {
         "min": [
-          -50.8652,
-          -17.6696,
-          -50.8652
+          -47.8643,
+          -44.0495,
+          -30.93
         ],
         "max": [
           55.5,
-          30.93,
-          47.0226
+          44.0495,
+          21.8698
         ],
         "dimensionsM": [
-          106.3652,
-          48.5996,
-          97.8878
+          103.3643,
+          88.099,
+          52.7998
         ]
       },
       "note": "Industrial Refinery Claim; player claim growth family, PBR, explicit LOD0/1/2. LOD0 56760 tris / 5 draw groups.",
@@ -2410,18 +2410,18 @@
       "bounds": {
         "min": [
           -48.8364,
-          -17.6696,
-          -47.9295
+          -47.9295,
+          -37.65
         ],
         "max": [
           55.5,
-          37.65,
-          47.9295
+          47.9295,
+          24.8938
         ],
         "dimensionsM": [
           104.3364,
-          55.3196,
-          95.859
+          95.859,
+          62.5438
         ]
       },
       "note": "Trade Relay Claim material-truth V2; asteroid-gripping recovery/communications relay, PBR, explicit LOD0/1/2. LOD0 62992 tris / 5 draw groups.",
@@ -3426,7 +3426,8 @@
           5.7038,
           6.22
         ]
-      }
+      },
+      "triangleMetric": "lod0"
     },
     {
       "id": "place_sensor_mast",
@@ -3462,7 +3463,8 @@
           13.3306,
           4
         ]
-      }
+      },
+      "triangleMetric": "lod0"
     },
     {
       "id": "place_slurry_tank",
@@ -3498,7 +3500,8 @@
           5.76,
           4.5039
         ]
-      }
+      },
+      "triangleMetric": "lod0"
     },
     {
       "id": "place_station_billboard",
@@ -4006,7 +4009,8 @@
           13.2421,
           22.4
         ]
-      }
+      },
+      "triangleMetric": "lod0"
     },
     {
       "id": "place_whistle",
@@ -4055,7 +4059,8 @@
           15.82,
           3
         ]
-      }
+      },
+      "triangleMetric": "lod0"
     },
     {
       "id": "place_works_cargo_port",
@@ -5466,8 +5471,18 @@
       ],
       "mount": "origin",
       "bounds": {
+        "min": [
+          -7.025,
+          -0.7226,
+          -3.025
+        ],
+        "max": [
+          8.7501,
+          1.575,
+          3.025
+        ],
         "dimensionsM": [
-          15.775,
+          15.7751,
           2.2976,
           6.05
         ]
@@ -5505,6 +5520,16 @@
       ],
       "mount": "origin",
       "bounds": {
+        "min": [
+          -11.525,
+          -1.755,
+          -4.9875
+        ],
+        "max": [
+          12.1,
+          2.575,
+          4.9875
+        ],
         "dimensionsM": [
           23.625,
           4.33,
@@ -5546,10 +5571,20 @@
       ],
       "mount": "origin",
       "bounds": {
+        "min": [
+          -8.175,
+          -2.1,
+          -3.1814
+        ],
+        "max": [
+          9.54,
+          3.87,
+          1.805
+        ],
         "dimensionsM": [
           17.715,
           5.97,
-          4.975
+          4.9864
         ]
       },
       "note": "M4-ASHLINE-HOSTILE-VISUAL-FAMILY-001 — Ashline Hook, live tether_control_raider Reach hostile body; explicit LOD0/1/2, 9/8/8 draws, damageable drive/gun/tether roles, sodium-red/amber semantic material language, stable sockets, no embedded plume. Project-original provenance: assets/ships/m4_ashline/PROVENANCE.json."
@@ -5586,6 +5621,16 @@
       ],
       "mount": "origin",
       "bounds": {
+        "min": [
+          -10.35,
+          -3.65,
+          -4.65
+        ],
+        "max": [
+          11.8,
+          5.05,
+          4.65
+        ],
         "dimensionsM": [
           22.15,
           8.7,
@@ -5625,8 +5670,18 @@
       ],
       "mount": "origin",
       "bounds": {
+        "min": [
+          -8.275,
+          -1.225,
+          -3.7
+        ],
+        "max": [
+          9.9501,
+          2.12,
+          3.7
+        ],
         "dimensionsM": [
-          18.225,
+          18.2251,
           3.345,
           7.4
         ]
@@ -5664,6 +5719,16 @@
       ],
       "mount": "origin",
       "bounds": {
+        "min": [
+          -14.325,
+          -2.3,
+          -4.46
+        ],
+        "max": [
+          14.15,
+          2.81,
+          4.46
+        ],
         "dimensionsM": [
           28.475,
           5.11,
