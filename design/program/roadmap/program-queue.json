@@ -6173,7 +6173,7 @@
       "priority": 80,
       "title": "Four specialists, one plan each",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.04"
       ],
@@ -6190,8 +6190,10 @@
         "npm run check:baseline",
         "npm run check:combat"
       ],
-      "receiptRefs": [],
-      "brief": "Tether-cutter, field-disruptor, anchor, cargo-protector; each breaks one specific player plan and is readable by silhouette and behaviour before any label; four scenarios."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-140-02-REPORT.md"
+      ],
+      "brief": "DONE 2026-09-06: four named plans on live hulls. Loaded Massline dies after spool telegraph (breakAttachment). Parked well dies after charge telegraph (fields.disruptNear). Anchor snare >=200 WU. Warden screens short of the hunt. Verbs key on enemy hull id so ordinary ranged_disengager snipers do not collapse wells."
     },
     {
       "id": "PQ-140.03",
@@ -11872,7 +11874,9 @@
       "priority": 278,
       "title": "Six texture one-offs",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
+      "integratedCommit": "88bb1add",
+      "acceptanceRef": "design/program/roadmap/receipts/PQ-143-02-REPORT.md",
       "dependsOn": [],
       "mutexes": [
         "places-ordinary-life"
@@ -11885,7 +11889,9 @@
         "npm run check:baseline",
         "npm run check:atlas-integrity"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-143-02-REPORT.md"
+      ],
       "brief": "An abandoned tug spinning beside a refinery, a courier far too fast, a shrine on a strut, a pirate with a ridiculous ram, a decades-old pod field, a very large tanker; placed and reachable on the default route."
     },
     {
