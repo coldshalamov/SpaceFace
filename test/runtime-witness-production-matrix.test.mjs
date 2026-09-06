@@ -34,7 +34,7 @@ test('matrix preserves foreground distributions and does not sum CPU phase perce
   assert.equal(result.cpuPhases[0].p95, 8);
   assert.equal(result.gpu.status, 'measured');
   assert.equal(result.gpu.p95, 4, 'real gpuTimers terminal elapsedMs values feed the distribution');
-  assert.equal(result.shedSimulation.maxBacklogFrames, 1);
+  assert.equal(result.shedSimulation.observedShedFrames, 1);
 });
 
 test('matrix reports unavailable GPU and input age as unknown rather than zero', () => {
@@ -59,4 +59,16 @@ test('missing intervals and phase samples do not become zero-duration measuremen
   assert.equal(result.foregroundFrames.p50, 20);
   assert.equal(result.cpuPhases[0].samples, 1);
   assert.equal(result.cpuPhases[0].p50, 7);
+});
+
+test('shed simulation counts cumulative counter increments, including load resets', () => {
+  const result = summarizeRuntimeWitnessProductionWindow({
+    route: 'busy-site-save-reload',
+    samples: [[10, 40], [11, 42], [11, 42], [0, 0], [2, 3]].map(([frames, steps]) => ({
+      intervalMs: 20, frame: { shedBacklogFrames: frames, shedStepsTotal: steps },
+    })),
+  });
+  assert.equal(result.shedSimulation.observedShedFrames, 3);
+  assert.equal(result.shedSimulation.observedShedSteps, 5);
+  assert.ok(Math.abs(result.shedSimulation.shedTimeMs - 1000 / 12) < 1e-9);
 });

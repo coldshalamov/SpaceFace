@@ -13,6 +13,20 @@ export const RUNTIME_WITNESS_PRODUCTION_ROUTES = Object.freeze([
 
 const ROUTE_BY_ID = new Map(RUNTIME_WITNESS_PRODUCTION_ROUTES.map((route) => [route.id, route]));
 
+// perfRuntime exposes cumulative counters, not one counter per frame. Count increments within
+// the observed window, including a counter reset on a loading transition, without charging the
+// first sample's pre-window history to this route. Simulation uses src/core/sim.js's fixed 60 Hz.
+function counterIncrements(values) {
+  let previous = null;
+  let total = 0;
+  for (const value of values) {
+    if (!Number.isFinite(value) || value < 0) continue;
+    if (previous !== null) total += value >= previous ? value - previous : value;
+    previous = value;
+  }
+  return previous === null ? null : total;
+}
+
 export function productionRouteById(id) {
   return ROUTE_BY_ID.get(String(id || '')) || null;
 }
@@ -80,6 +94,7 @@ export function summarizeRuntimeWitnessProductionWindow({ route, samples = [], g
   const frameIntervals = clean.map((sample) => sample.intervalMs);
   const inputAges = clean.map((sample) => sample.inputAgeMs).filter(Number.isFinite);
   const shed = clean.map((sample) => sample.frame?.shedBacklogFrames).filter(Number.isFinite);
+  const shedSteps = counterIncrements(clean.map((sample) => sample.frame?.shedStepsTotal));
   const longest = clean
     .filter((sample) => finite(sample.intervalMs) !== null)
     .sort((a, b) => Number(b.intervalMs) - Number(a.intervalMs))
@@ -106,7 +121,9 @@ export function summarizeRuntimeWitnessProductionWindow({ route, samples = [], g
       ? { status: 'measured', ...distribution(inputAges) }
       : { status: 'unknown', reason: 'no public input timestamp is published by the running route' },
     shedSimulation: shed.length > 0
-      ? { status: 'measured', maxBacklogFrames: Math.max(...shed), totalObservedFrames: shed.reduce((sum, value) => sum + value, 0) }
+      ? { status: 'measured', counterWindow: 'first-to-last observed frame',
+        observedShedFrames: counterIncrements(shed), observedShedSteps: shedSteps,
+        shedTimeMs: shedSteps === null ? null : shedSteps * (1000 / 60) }
       : { status: 'unknown', reason: 'perfRuntime.readFrameSample() did not expose shedBacklogFrames' },
   };
 }
@@ -123,6 +140,6 @@ export function formatRuntimeWitnessProductionMatrix(result) {
     `- dominant measured CPU phase: ${top ? `${top.name} p95 ${top.p95 ?? 'unknown'} ms` : 'unknown'}`,
     `- GPU: ${gpu.status || 'unavailable'}${gpu.reason ? ` (${gpu.reason})` : ''}`,
     `- input age: ${result?.inputAge?.status || 'unknown'}${result?.inputAge?.reason ? ` (${result.inputAge.reason})` : ''}`,
-    `- shed simulated time: ${result?.shedSimulation?.status || 'unknown'}${result?.shedSimulation?.reason ? ` (${result.shedSimulation.reason})` : ''}`,
+    `- shed simulated time: ${result?.shedSimulation?.shedTimeMs ?? 'unknown'} ms; frames with shedding: ${result?.shedSimulation?.observedShedFrames ?? 'unknown'}${result?.shedSimulation?.reason ? ` (${result.shedSimulation.reason})` : ''}`,
   ].join('\n');
 }
