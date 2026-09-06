@@ -14,6 +14,7 @@ import { COMMODITIES } from '../src/data/commodities.js';
 import { economy, getCycle as liveCycleFor } from '../src/systems/economy.js';
 import { cycleFactorAt, maybeAdvanceRegime, predictPriceCurve, rawCycleFactorAt, regimeLabel } from '../src/systems/economyCycles.js';
 import { initPriceHistory, getPriceHistory, loadHistory } from '../src/ui/priceHistory.js';
+import { maxAffordableQuantity } from '../src/ui/station/screens/market.js';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const MARKET_SOURCE = readFileSync(join(ROOT, 'src/ui/market/tradeLogic.js'), 'utf8');
@@ -25,6 +26,7 @@ assert.equal(typeof window, 'undefined', 'this check must run headless');
 guarded(testRealEconomyHistoryAndForecast);
 guarded(testSeededStationMarketHistory);
 guarded(testRingBufferSeededOnFreshGame);
+guarded(testBulkQuoteMatchesExecutedTrade);
 testMarketScreenChartSourceContract();
 testStationMarketSourceContract();
 
@@ -107,6 +109,43 @@ function testMarketScreenChartSourceContract() {
       throw new Error(`station market chart source contract failed: ${label}`);
     }
   }
+}
+
+function testBulkQuoteMatchesExecutedTrade() {
+  const { state, econ, stationId, commodityId } = bootEconomyChartFixture();
+  // The chart fixture predates the cargo-volume authority. Execution uses the current live shape.
+  state.player.cargo.capVolume = 100;
+  state.player.cargo.usedVolume = 0;
+  const qty = 5;
+  const buyQuote = econ.quote(stationId, commodityId, 'buy', qty);
+  assert.equal(buyQuote.ok, true, 'fixture supplies a live buy quote');
+  const capacity = Math.floor(state.economy.markets[stationId][commodityId].stock - 1);
+  const quote = (n) => econ.quote(stationId, commodityId, 'buy', n);
+  assert.equal(maxAffordableQuantity({ limit: capacity, credits: buyQuote.total, quote }), qty,
+    'Max uses the quantity integral and reaches exactly the affordable purchase');
+  assert.ok(maxAffordableQuantity({ limit: capacity, credits: buyQuote.total - 1, quote }) < qty,
+    'Max steps down when one credit short instead of leaving Confirm disabled');
+  assert.equal(maxAffordableQuantity({ limit: 2, credits: 1000000, quote }), 2,
+    'Max cannot exceed physical stock or hold capacity');
+  assert.equal(buyQuote.total, Math.round(buyQuote.unitAvg * qty),
+    'quantity quote owns the rounded transaction total');
+  const beforeBuy = state.player.credits;
+  const bought = econ.execute(stationId, commodityId, 'buy', qty);
+  assert.equal(bought.ok, true, 'quoted purchase executes');
+  assert.equal(bought.qty, qty, 'quoted purchase does not clip a physically available quantity');
+  assert.equal(bought.total, buyQuote.total, 'buy receipt total is the selected quantity quote');
+  assert.equal(beforeBuy - state.player.credits, buyQuote.total, 'buy debit equals the shown authority quote');
+
+  const sellQuote = econ.quote(stationId, commodityId, 'sell', qty);
+  assert.equal(sellQuote.ok, true, 'fixture supplies a live sell quote');
+  const beforeSell = state.player.credits;
+  const sold = econ.execute(stationId, commodityId, 'sell', qty);
+  assert.equal(sold.ok, true, 'quoted sale executes');
+  assert.equal(sold.qty, qty, 'quoted sale does not clip held quantity');
+  assert.equal(sold.total, sellQuote.total, 'sell receipt total is the selected quantity quote');
+  assert.equal(state.player.credits - beforeSell, sellQuote.total, 'sell credit equals the shown authority quote');
+
+  economy._instance = null;
 }
 function testSeededStationMarketHistory() {
   const { state, bus, econ, stationId } = bootEconomyChartFixture();

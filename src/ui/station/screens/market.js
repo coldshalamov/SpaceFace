@@ -11,6 +11,7 @@ import { mountDataState } from '../../uiPrimitives.js';
 import { icon } from '../icons.js';
 import { renderAdBoardNotice } from '../adBoard.js';
 import { marketCardDrivers, marketQuoteValue, presentMarketDrivers } from '../../marketDriverPresenter.js';
+import { presentCommodityIntel, presentInspectorRows } from '../../marketIntelPresenter.js';
 import { createVirtualList, rowFromHtml } from '../../virtualList.js';
 // Trade-route intel + course plotting reuse the canonical market logic (same waypoint/ui:setCourse
 // contract the legacy panel used) — never re-derive routes or nav here.
@@ -26,6 +27,17 @@ const STYLE_ID = 'sf-market-style';
 
 export function chartTrendRole(up) { return up ? 'you' : 'foe'; }
 export function chartTrendColor(up) { return up ? 'var(--sf-you)' : 'var(--sf-foe)'; }
+export function maxAffordableQuantity({ limit, credits, quote }) {
+  let low = 0;
+  let high = Math.max(0, Math.floor(Number(limit) || 0));
+  while (low < high) {
+    const mid = Math.ceil((low + high) / 2);
+    const value = quote(mid);
+    if (value && value.ok && Number.isFinite(value.total) && value.total <= credits) low = mid;
+    else high = mid - 1;
+  }
+  return low;
+}
 export function legalityRole(legal) {
   if (legal === 'contraband') return 'foe';
   if (legal === 'restricted') return 'goal';
@@ -328,6 +340,51 @@ export function createMarketScreen(ctx) {
     return cargoOnly
       ? rows.filter((r) => heldQty(state, r.id) > 0 && !isUnsellableCargo(state, r.id))
       : rows;
+  }
+
+  // Keep the commodity instrument honest: exact quantity pricing comes from the live economy
+  // authority; remembered quotes stay in the pure presenter, and a route margin only appears for
+  // a route the existing Market has actually found from this station.
+  function selectedMarketIntel(state, row, quote) {
+    const sid = stationId(state);
+    let route = null;
+    if (mode === 'buy' && sid) {
+      try { route = (computeBestTrades(state, sid) || []).find((trade) => trade.cmdtyId === row.id) || null; } catch (_) { route = null; }
+    }
+    const view = presentCommodityIntel({
+      state,
+      commodityId: row.id,
+      stationId: sid,
+      liveBuy: unitBuy(row.entry, row.def),
+      liveSell: unitSell(row.entry, row.def),
+      qty,
+      quoteUnit: quote && quote.ok ? quote.unitAvg : null,
+      priceImpactPct: quote && quote.ok ? quote.priceImpactPct : null,
+      side: mode,
+      def: row.def,
+      route,
+    });
+    return presentInspectorRows(view).filter((intelRow) => {
+      if (intelRow.id === 'age' || intelRow.id === 'conf' || intelRow.id === 'kvl') return true;
+      if (intelRow.id === 'cargo') return mode === 'buy' && qty >= 1;
+      return (intelRow.id === 'margin' || intelRow.id === 'route') && !!route;
+    });
+  }
+
+  function selectedTradeQuote(state, row, quantity = qty) {
+    const sid = stationId(state);
+    const economy = ctx.registry && typeof ctx.registry.get === 'function' ? ctx.registry.get('economy') : null;
+    if (!economy || typeof economy.quote !== 'function' || !sid || quantity < 1) return null;
+    try { return economy.quote(sid, row.id, mode, quantity); } catch (_) { return null; }
+  }
+
+  function tradeQuantityLimit(state, row) {
+    if (mode === 'sell') return heldQty(state, row.id);
+    const free = holdFree(state);
+    const volume = Number(row.def.volPerU) > 0 ? Number(row.def.volPerU) : 1;
+    const stock = Math.max(0, Math.floor(Number(row.entry && row.entry.stock) || 0) - 1);
+    const limit = Math.min(stock, free === Infinity ? stock : Math.floor(free / volume));
+    return maxAffordableQuantity({ limit, credits: credits(state), quote: (n) => selectedTradeQuote(state, row, n) });
   }
 
   function openTradeMode(nextMode, state, options = {}) {
@@ -677,7 +734,7 @@ export function createMarketScreen(ctx) {
     return `<div class="sx-stat"><span class="sx-stat__k">${k}</span><span class="sx-stat__v sf-fig">${v}</span><span class="sx-stat__sub">${sub}</span></div>`;
   }
 
-  function renderConsole(state) {
+  function renderConsole(state, { receiptOnly = false } = {}) {
     const rows = tradedList(state);
     const r = rows.find((x) => x.id === selectedId) || rows[0];
     if (!r) {
@@ -694,14 +751,41 @@ export function createMarketScreen(ctx) {
     const held = heldQty(state, r.id);
     const cr = credits(state);
     const free = holdFree(state);
-    const volPerU = Number(def.volPerU) || 1;
-    const maxByCredits = unit > 0 ? Math.floor(cr / unit) : 9999;
-    const maxByHold = free === Infinity ? 9999 : Math.floor(free / volPerU);
-    const maxQty = mode === 'buy' ? Math.max(0, Math.min(maxByCredits, maxByHold)) : held;
-    if (qty > maxQty) qty = maxQty;
-    if (qty < 1 && maxQty >= 1) qty = 1;
-    const total = unit * qty;
-    const canAct = qty >= 1 && qty <= maxQty && maxQty >= 1;
+    const maxQty = tradeQuantityLimit(state, r);
+    if (!receiptOnly) {
+      if (qty > maxQty) qty = maxQty;
+      if (qty < 1 && maxQty >= 1) qty = 1;
+    }
+    // This one selected-quantity quote drives both the receipt the pilot sees and the presenter.
+    // The static listing stays only as a rail readout; execute() reuses the
+    // same economy integral, including the bulk price impact, when the player confirms.
+    const quote = selectedTradeQuote(state, r);
+    const quoteReady = !!(quote && quote.ok);
+    const total = quoteReady ? quote.total : unit * qty;
+    const quoteUnit = quoteReady ? quote.unitAvg : unit;
+    const creditReady = mode !== 'buy' || (quoteReady && quote.total <= cr);
+    const canAct = quoteReady && creditReady && qty >= 1 && qty <= maxQty && maxQty >= 1;
+    const intelRows = selectedMarketIntel(state, r, quote);
+    const receiptHtml = rowKV('Quantity', fmt(qty) + ' u') +
+      rowKV('Average unit', quoteReady ? fmt(quoteUnit) + ' cr/u' : 'Unavailable') +
+      rowKV(mode === 'buy' ? 'Total cost' : 'Total gain', quoteReady ? fmt(total) + ' cr' : 'Unavailable', mode === 'buy' ? 'loss' : 'gain') +
+      rowKV('You hold', fmt(held) + ' u') + rowKV('Credits', fmt(cr) + ' cr') +
+      (free !== Infinity ? rowKV('Hold free', fmt(free) + ' u') : '') +
+      intelRows.map((intelRow) => rowKV(intelRow.label, intelRow.value,
+        intelRow.tone === 'good' ? 'gain' : (intelRow.tone === 'danger' || intelRow.tone === 'warn' ? 'loss' : ''))).join('');
+    const note = !quoteReady && qty >= 1 ? 'Live quote unavailable.'
+      : !creditReady ? 'Not enough credits for this quantity.'
+      : qty > maxQty ? 'This quantity exceeds available stock or hold space.'
+      : maxQty < 1 ? (mode === 'buy' ? 'Not enough credits, stock, or hold space.' : 'Nothing to sell here.') : '';
+    if (receiptOnly && tradeEl.querySelector('[data-market-intel]')) {
+      // Keep the focused numeric input alive while each keystroke updates its actual quote.
+      tradeEl.querySelector('[data-market-intel]').innerHTML = receiptHtml;
+      tradeEl.querySelector('[data-go]').disabled = !canAct;
+      const noteEl = tradeEl.querySelector('.sx-trade__note');
+      noteEl.textContent = note;
+      noteEl.hidden = !note;
+      return;
+    }
 
     tradeEl.innerHTML =
       `<div class="sx-trade">` +
@@ -716,22 +800,18 @@ export function createMarketScreen(ctx) {
           `<button type="button" class="sx-qty__max" data-q="max">Max</button>` +
         `</div>` +
         `<input class="sx-qty__slider" type="range" min="0" max="${Math.max(1, maxQty)}" value="${qty}" aria-label="Quantity slider"/>` +
-        `<div class="sx-trade__rows">` +
-          rowKV('Quantity', fmt(qty) + ' u') +
-          rowKV(mode === 'buy' ? 'Total cost' : 'Total gain', fmt(total) + ' cr', mode === 'buy' ? 'loss' : 'gain') +
-          rowKV('You hold', fmt(held) + ' u') +
-          rowKV('Credits', fmt(cr) + ' cr') +
-          (free !== Infinity ? rowKV('Hold free', fmt(free) + ' u') : '') +
+        `<div class="sx-trade__rows" data-market-intel>` +
+          receiptHtml +
         `</div>` +
         `<button type="button" class="sx-trade__go sx-trade__go--${mode}" data-go ${canAct ? '' : 'disabled'}>` +
           `${mode === 'buy' ? 'Confirm Purchase' : 'Confirm Sale'}` +
         `</button>` +
-        (maxQty < 1 ? `<p class="sx-trade__note">${mode === 'buy' ? 'Not enough credits or hold space.' : 'Nothing to sell here.'}</p>` : '') +
+        `<p class="sx-trade__note" ${note ? '' : 'hidden'}>${escapeHtml(note)}</p>` +
       `</div>`;
   }
 
   function rowKV(k, v, tone) {
-    return `<div class="sx-kv"><span>${k}</span><b class="${tone ? 'is-' + tone : ''}">${v}</b></div>`;
+    return `<div class="sx-kv"><span>${escapeHtml(k)}</span><b class="${tone ? 'is-' + tone : ''}">${escapeHtml(v)}</b></div>`;
   }
 
   // Best trade runs from here + one-click course plotting (canonical logic, same nav contract).
@@ -764,7 +844,12 @@ export function createMarketScreen(ctx) {
 
   function renderAll(state) {
     renderAdBoardNotice(adBoardEl, state);
-    renderList(state); renderStage(state); renderConsole(state); renderRoutes(state);
+    const active = typeof document !== 'undefined' ? document.activeElement : null;
+    const editingQuantity = !!(active && tradeEl.contains(active)
+      && (active.classList.contains('sx-qty__in') || active.classList.contains('sx-qty__slider')));
+    renderList(state); renderStage(state);
+    renderConsole(state, { receiptOnly: editingQuantity });
+    renderRoutes(state);
   }
 
   // ---- interactions ----
@@ -881,10 +966,7 @@ export function createMarketScreen(ctx) {
       const state = ctx.state || {};
       const rows = tradedList(state); const r = rows.find((x) => x.id === selectedId);
       const def = r && r.def; const entry = r && r.entry;
-      const unit = mode === 'buy' ? unitBuy(entry, def) : unitSell(entry, def);
-      const held = heldQty(state, selectedId);
-      const free = holdFree(state); const volPerU = Number(def && def.volPerU) || 1;
-      const maxQty = mode === 'buy' ? Math.max(0, Math.min(unit > 0 ? Math.floor(credits(state) / unit) : 9999, free === Infinity ? 9999 : Math.floor(free / volPerU))) : held;
+      const maxQty = tradeQuantityLimit(state, { id: selectedId, entry, def });
       if (v === 'max') qty = maxQty; else qty = Math.max(1, Math.min(maxQty, qty + Number(v)));
       renderConsole(state); return;
     }
@@ -904,8 +986,16 @@ export function createMarketScreen(ctx) {
   });
 
   consoleEl.addEventListener('input', (ev) => {
-    if (ev.target.classList.contains('sx-qty__slider')) { qty = Math.max(0, Number(ev.target.value) || 0); renderConsole(ctx.state || {}); }
-    else if (ev.target.classList.contains('sx-qty__in')) { const n = parseInt(ev.target.value, 10); if (Number.isFinite(n)) { qty = Math.max(0, n); } }
+    if (ev.target.classList.contains('sx-qty__slider')) {
+      qty = Math.max(0, Number(ev.target.value) || 0);
+      tradeEl.querySelector('.sx-qty__in').value = String(qty);
+      renderConsole(ctx.state || {}, { receiptOnly: true });
+    }
+    else if (ev.target.classList.contains('sx-qty__in')) {
+      const n = parseInt(ev.target.value, 10);
+      qty = Number.isFinite(n) ? Math.max(0, n) : 0;
+      renderConsole(ctx.state || {}, { receiptOnly: true });
+    }
   });
 
   return {

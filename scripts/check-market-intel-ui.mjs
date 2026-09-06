@@ -22,7 +22,7 @@ import { STALE_CAVEAT } from '../src/ui/marketIntelligence.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PRESENTER = path.join(ROOT, 'src', 'ui', 'marketIntelPresenter.js');
-const MARKET = path.join(ROOT, 'src', 'ui', 'screens', 'market.js');
+const MARKET = path.join(ROOT, 'src', 'ui', 'station', 'screens', 'market.js');
 const UNIT = path.join(ROOT, 'test', 'market-intel-presenter.test.mjs');
 const CMDTY = 'cmdty_ore_iron';
 
@@ -69,22 +69,25 @@ function testMarketWiring() {
   const src = readFileSync(MARKET, 'utf8');
   assert.match(src, /marketIntelPresenter/);
   assert.match(src, /presentCommodityIntel/);
-  assert.match(src, /data-intel-strip/);
-  assert.match(src, /data-intel-inspector/);
-  assert.match(src, /data-intel-chip/);
-  assert.match(src, /renderIntelStrip/);
-  assert.match(src, /renderIntelInspector/);
-  assert.doesNotMatch(src, /chipRow\.style|toneColor\(/);
+  assert.match(src, /presentInspectorRows/);
+  assert.match(src, /selectedMarketIntel/);
+  assert.match(src, /data-market-intel/);
+  assert.match(src, /quoteUnit:\s*quote/);
+  assert.match(src, /priceImpactPct:\s*quote/);
+  assert.match(src, /const total = quoteReady \? quote\.total : unit \* qty;/,
+    'the visible total uses the exact quantity quote, not unit times quantity');
+  assert.match(src, /const quoteUnit = quoteReady \? quote\.unitAvg : unit;/,
+    'the visible unit is the quantity-weighted economy quote');
+  assert.match(src, /const canAct = quoteReady && creditReady/,
+    'confirm is gated by the same live quote shown to the pilot');
   // Still intent-only trade verbs
   assert.match(src, /ui:buy/);
   assert.match(src, /ui:sell/);
-  // Purpose essay not on default chrome (hidden)
-  assert.match(src, /st-cmdty-purpose" hidden/);
   // Must not import locked / out-of-scope surfaces
   assert.doesNotMatch(src, /from\s+['"].*stationHub/);
   assert.doesNotMatch(src, /from\s+['"].*missionLog/);
   assert.doesNotMatch(src, /from\s+['"].*systems\/input/);
-  ok('market.js wires strip+inspector; intents only; purpose hidden');
+  ok('live Market wires honest quantity intel into its existing trade detail; intents only');
 }
 
 // ── 3. five-second field contract ────────────────────────────────────────────────────────────
