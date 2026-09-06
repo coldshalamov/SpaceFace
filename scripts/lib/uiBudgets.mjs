@@ -11,12 +11,22 @@ import { join, relative } from 'node:path';
 
 import { MAX_UI_FRAME_MS, MAX_SURFACE_DOM_NODES } from '../ui-grammar-thresholds.mjs';
 
-export const UI_BUDGETS_SCHEMA = 'spaceface.ui-budget-baseline.v1';
+export const UI_BUDGETS_SCHEMA = 'spaceface.ui-budget-baseline.v2';
 export const UI_BUDGETS_FILE = 'test/ui-frame-references/budgets.json';
+// The budget's frameMeanMs/frameP95Ms/frameMaxMs fields are deliberately kept for the existing
+// checker, but these tags make their meaning explicit. A prior v1 row measured an arbitrary rAF
+// callback (which could contain simulation, render, or another UI animation) and cannot be compared
+// with this scoped sample. Known authored UI rAF callbacks are admitted only from an src/ui callsite
+// and are bucketed into the same presentation timestamp as the UI owner.
+export const UI_BUDGET_MEASUREMENT_SCOPE = 'registry.get("ui").frame+authored-src/ui-raf-by-presentation-timestamp';
+export const UI_FRAME_TOTAL_SCOPE = 'presentation-runner.game-rAF-callback';
+export const UI_KNOWN_RAF_SCOPE = 'window.requestAnimationFrame.authored-src-ui-callback';
+export const UI_AUXILIARY_RAF_SCOPE = 'window.requestAnimationFrame.unclassified-non-game-callback';
+export const UI_DOM_LAYOUT_SCOPE = 'ui-owner-synchronous-javascript-window';
 
 /** Directories whose content the UI frame/node budget covers: the DOM sources plus the modules
- * that run inside the measured rAF callback (sim presentation + render submission move the same
- * number), so a slowdown there stales the baseline instead of reading as a UI regression. */
+ * that own the UI and its presentation context. The baseline carries separate scope tags for the
+ * synchronous UI owner, authored UI rAF callbacks, the whole game rAF callback, and unknown rAF work. */
 const UI_SOURCE_ROOTS = ['src/ui', 'styles', 'src/core', 'src/render'];
 
 /** Content digest of the UI source the budget covers — the baseline's staleness contract. */
@@ -40,30 +50,105 @@ export function uiSourceDigest(repoRoot) {
   return hash.digest('hex');
 }
 
+function hasStats(value, { allowEmpty = false } = {}) {
+  return !!(value
+    && Number.isFinite(value.mean) && value.mean >= 0
+    && Number.isFinite(value.p95) && value.p95 >= 0
+    && Number.isFinite(value.max) && value.max >= 0
+    && Number.isInteger(value.n) && value.n >= 0
+    && (allowEmpty || value.n > 0));
+}
+
 /**
- * Aggregate per-frame capture rows ({ surface, budget: { frameMs, domNodes } }) into the
- * per-surface baseline: the budget is per surface, so a surface's number is the WORST frame
- * sample the run saw, not the average.
+ * A capture row is usable only when it carries the exact owner scopes. In particular, a v1-style
+ * `{ frameMs }` sample is not allowed to masquerade as a UI-owner measurement, and a missing DOM
+ * count is not converted into a healthy-looking zero.
+ */
+export function isUiBudgetSample(row) {
+  const budget = row && row.budget;
+  return !!(row && row.surface
+    && budget
+    && budget.measurementScope === UI_BUDGET_MEASUREMENT_SCOPE
+    && budget.frameTotalScope === UI_FRAME_TOTAL_SCOPE
+    && budget.knownUiRafScope === UI_KNOWN_RAF_SCOPE
+    && budget.auxiliaryRafScope === UI_AUXILIARY_RAF_SCOPE
+    && budget.domLayoutScope === UI_DOM_LAYOUT_SCOPE
+    && hasStats(budget.uiFrameMs)
+    && hasStats(budget.uiOwnerMs)
+    && hasStats(budget.knownUiRafMs, { allowEmpty: true })
+    && hasStats(budget.frameTotalMs)
+    && hasStats(budget.auxiliaryRafMs, { allowEmpty: true })
+    && hasStats(budget.unbucketedUiRafMs, { allowEmpty: true })
+    && budget.unbucketedUiRafMs.n === 0
+    && Number.isFinite(budget.domNodes) && budget.domNodes >= 0);
+}
+
+/**
+ * Aggregate per-frame capture rows ({ surface, budget: { uiFrameMs, frameTotalMs, domNodes } })
+ * into the per-surface baseline. The UI budget is per surface, so its number is the WORST combined
+ * UI sample the run saw, not the average. Owner, authored-UI-rAF, whole-game, and unknown-rAF
+ * diagnostics travel alongside it under their own names; only the first two feed the UI number.
  */
 export function aggregateBudgetRows(rows) {
   const surfaces = new Map();
   for (const row of rows || []) {
-    if (!row || !row.surface || !row.budget || !row.budget.frameMs) continue;
+    if (!isUiBudgetSample(row)) continue;
+    const budget = row.budget;
     // A zero-sample read (throttled page, hidden tab) is not a zero cost — skip it rather than
     // commit a healthy-looking lie.
-    if (!row.budget.frameMs.n) continue;
+    if (!budget.uiFrameMs.n || !budget.frameTotalMs.n) continue;
     const prior = surfaces.get(row.surface) || {
       domNodes: 0,
       frameMeanMs: 0,
       frameP95Ms: 0,
       frameMaxMs: 0,
+      uiOwnerMeanMs: 0,
+      uiOwnerP95Ms: 0,
+      uiOwnerMaxMs: 0,
+      knownUiRafMeanMs: 0,
+      knownUiRafP95Ms: 0,
+      knownUiRafMaxMs: 0,
+      unbucketedUiRafMeanMs: 0,
+      unbucketedUiRafP95Ms: 0,
+      unbucketedUiRafMaxMs: 0,
+      frameTotalMeanMs: 0,
+      frameTotalP95Ms: 0,
+      frameTotalMaxMs: 0,
+      auxiliaryRafMeanMs: 0,
+      auxiliaryRafP95Ms: 0,
+      auxiliaryRafMaxMs: 0,
       samples: 0,
+      uiOwnerSamples: 0,
+      knownUiRafSamples: 0,
+      unbucketedUiRafSamples: 0,
+      frameTotalSamples: 0,
+      auxiliaryRafSamples: 0,
     };
-    prior.domNodes = Math.max(prior.domNodes, row.budget.domNodes || 0);
-    prior.frameMeanMs = Math.max(prior.frameMeanMs, row.budget.frameMs.mean || 0);
-    prior.frameP95Ms = Math.max(prior.frameP95Ms, row.budget.frameMs.p95 || 0);
-    prior.frameMaxMs = Math.max(prior.frameMaxMs, row.budget.frameMs.max || 0);
-    prior.samples = Math.max(prior.samples, row.budget.frameMs.n);
+    prior.domNodes = Math.max(prior.domNodes, budget.domNodes);
+    prior.frameMeanMs = Math.max(prior.frameMeanMs, budget.uiFrameMs.mean);
+    prior.frameP95Ms = Math.max(prior.frameP95Ms, budget.uiFrameMs.p95);
+    prior.frameMaxMs = Math.max(prior.frameMaxMs, budget.uiFrameMs.max);
+    prior.uiOwnerMeanMs = Math.max(prior.uiOwnerMeanMs, budget.uiOwnerMs.mean);
+    prior.uiOwnerP95Ms = Math.max(prior.uiOwnerP95Ms, budget.uiOwnerMs.p95);
+    prior.uiOwnerMaxMs = Math.max(prior.uiOwnerMaxMs, budget.uiOwnerMs.max);
+    prior.knownUiRafMeanMs = Math.max(prior.knownUiRafMeanMs, budget.knownUiRafMs.mean);
+    prior.knownUiRafP95Ms = Math.max(prior.knownUiRafP95Ms, budget.knownUiRafMs.p95);
+    prior.knownUiRafMaxMs = Math.max(prior.knownUiRafMaxMs, budget.knownUiRafMs.max);
+    prior.unbucketedUiRafMeanMs = Math.max(prior.unbucketedUiRafMeanMs, budget.unbucketedUiRafMs.mean);
+    prior.unbucketedUiRafP95Ms = Math.max(prior.unbucketedUiRafP95Ms, budget.unbucketedUiRafMs.p95);
+    prior.unbucketedUiRafMaxMs = Math.max(prior.unbucketedUiRafMaxMs, budget.unbucketedUiRafMs.max);
+    prior.frameTotalMeanMs = Math.max(prior.frameTotalMeanMs, budget.frameTotalMs.mean);
+    prior.frameTotalP95Ms = Math.max(prior.frameTotalP95Ms, budget.frameTotalMs.p95);
+    prior.frameTotalMaxMs = Math.max(prior.frameTotalMaxMs, budget.frameTotalMs.max);
+    prior.auxiliaryRafMeanMs = Math.max(prior.auxiliaryRafMeanMs, budget.auxiliaryRafMs.mean);
+    prior.auxiliaryRafP95Ms = Math.max(prior.auxiliaryRafP95Ms, budget.auxiliaryRafMs.p95);
+    prior.auxiliaryRafMaxMs = Math.max(prior.auxiliaryRafMaxMs, budget.auxiliaryRafMs.max);
+    prior.samples = Math.max(prior.samples, budget.uiFrameMs.n);
+    prior.uiOwnerSamples = Math.max(prior.uiOwnerSamples || 0, budget.uiOwnerMs.n);
+    prior.knownUiRafSamples = Math.max(prior.knownUiRafSamples || 0, budget.knownUiRafMs.n);
+    prior.unbucketedUiRafSamples = Math.max(prior.unbucketedUiRafSamples || 0, budget.unbucketedUiRafMs.n);
+    prior.frameTotalSamples = Math.max(prior.frameTotalSamples, budget.frameTotalMs.n);
+    prior.auxiliaryRafSamples = Math.max(prior.auxiliaryRafSamples, budget.auxiliaryRafMs.n);
     surfaces.set(row.surface, prior);
   }
   return Object.fromEntries([...surfaces.entries()].sort(([a], [b]) => a.localeCompare(b)));
@@ -86,6 +171,21 @@ export function judgeBudgets(baseline, { sourceDigest = null, current = null, st
     failures.push(`baseline:${UI_BUDGETS_SCHEMA} schema missing or wrong`);
     return { ok: false, failures, breaches: [], debt: [], strictFailures: [] };
   }
+  if (baseline.measurementScope !== UI_BUDGET_MEASUREMENT_SCOPE) {
+    failures.push(`baseline:measurementScope must be ${UI_BUDGET_MEASUREMENT_SCOPE}`);
+  }
+  if (baseline.frameTotalScope !== UI_FRAME_TOTAL_SCOPE) {
+    failures.push(`baseline:frameTotalScope must be ${UI_FRAME_TOTAL_SCOPE}`);
+  }
+  if (baseline.knownUiRafScope !== UI_KNOWN_RAF_SCOPE) {
+    failures.push(`baseline:knownUiRafScope must be ${UI_KNOWN_RAF_SCOPE}`);
+  }
+  if (baseline.auxiliaryRafScope !== UI_AUXILIARY_RAF_SCOPE) {
+    failures.push(`baseline:auxiliaryRafScope must be ${UI_AUXILIARY_RAF_SCOPE}`);
+  }
+  if (baseline.domLayoutScope !== UI_DOM_LAYOUT_SCOPE) {
+    failures.push(`baseline:domLayoutScope must be ${UI_DOM_LAYOUT_SCOPE}`);
+  }
   if (baseline.headed !== true) {
     failures.push('baseline:not-headed — headless SwiftShader numbers are not performance evidence; '
       + 're-shoot with --headed');
@@ -96,6 +196,38 @@ export function judgeBudgets(baseline, { sourceDigest = null, current = null, st
   }
   const surfaces = baseline.surfaces || {};
   if (!Object.keys(surfaces).length) failures.push('baseline:empty — no per-surface rows');
+  const requiredSurfaceNumbers = [
+    'domNodes',
+    'frameMeanMs', 'frameP95Ms', 'frameMaxMs',
+    'uiOwnerMeanMs', 'uiOwnerP95Ms', 'uiOwnerMaxMs',
+    'knownUiRafMeanMs', 'knownUiRafP95Ms', 'knownUiRafMaxMs',
+    'unbucketedUiRafMeanMs', 'unbucketedUiRafP95Ms', 'unbucketedUiRafMaxMs',
+    'uiOwnerSamples', 'knownUiRafSamples', 'unbucketedUiRafSamples',
+    'frameTotalMeanMs', 'frameTotalP95Ms', 'frameTotalMaxMs',
+    'auxiliaryRafMeanMs', 'auxiliaryRafP95Ms', 'auxiliaryRafMaxMs',
+    'samples', 'frameTotalSamples', 'auxiliaryRafSamples',
+  ];
+  for (const [id, row] of Object.entries(surfaces)) {
+    for (const key of requiredSurfaceNumbers) {
+      const value = row && row[key];
+      if (!Number.isFinite(value) || value < 0) {
+        failures.push(`baseline:${id} missing finite non-negative ${key}`);
+      }
+    }
+    // Persisted rows are only evidence when the canonical present-frame sample and both owners
+    // were actually observed. A zero count otherwise looks like a healthy zero-cost surface. Any
+    // authored UI callback that could not be joined to a game presentation frame is a named gap,
+    // never a row that can pass by carrying a few otherwise-valid summary numbers.
+    for (const key of ['samples', 'uiOwnerSamples', 'frameTotalSamples']) {
+      const value = row && row[key];
+      if (!Number.isInteger(value) || value <= 0) {
+        failures.push(`baseline:${id} requires positive ${key}`);
+      }
+    }
+    if (Number.isFinite(row && row.unbucketedUiRafSamples) && row.unbucketedUiRafSamples > 0) {
+      failures.push(`baseline:${id} has ${row.unbucketedUiRafSamples} unbucketed UI rAF sample(s)`);
+    }
+  }
   if (expectedSurfaceIds && expectedSurfaceIds.length) {
     // A NAMED gap (the capture run recorded the surface as a failure, with its reason, in the
     // baseline's `missing` list) is visible and accepted; an UNNAMED missing surface is a silent

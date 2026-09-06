@@ -8,7 +8,16 @@ import { fileURLToPath } from 'node:url';
 import { loadPlaywright } from './lib/load-playwright.mjs';
 import { CAPTURE_SURFACES, IMPLEMENTED_ENTRY_KINDS, orderForOneBoot } from './ui-grammar-surfaces.mjs';
 import { RESPONSIVE_WIDTHS } from './ui-grammar-thresholds.mjs';
-import { UI_BUDGETS_SCHEMA, aggregateBudgetRows, uiSourceDigest } from './lib/uiBudgets.mjs';
+import {
+  UI_AUXILIARY_RAF_SCOPE,
+  UI_BUDGET_MEASUREMENT_SCOPE,
+  UI_BUDGETS_SCHEMA,
+  UI_DOM_LAYOUT_SCOPE,
+  UI_FRAME_TOTAL_SCOPE,
+  UI_KNOWN_RAF_SCOPE,
+  aggregateBudgetRows,
+  uiSourceDigest,
+} from './lib/uiBudgets.mjs';
 // The pseudo-locale is the game's OWN (src/localization/runtime.js), not a string the harness
 // invents: a capture that boots a locale the game does not implement would photograph the English
 // fallback and call it a +40 % pass. `pseudoLocalize` comes from the same module for the same
@@ -20,7 +29,8 @@ const DEFAULT_OUTPUT_DIR = path.join(ROOT, '.devshots', 'ui-matrix');
 
 // PQ-184.00 budget columns: the probe reads cost nothing unless the run asks for budgets, so the
 // 408-frame reference matrix keeps its exact cost. A budgets run samples BUDGET_SAMPLE_MS of real
-// frames per surface (rAF-wrapped callback time — see the probe in openBoot) and counts the
+// present frames per surface (the synchronous registry UI owner plus authored src/ui callbacks
+// bucketed at the same rAF timestamp, with game/unknown-rAF diagnostics alongside) and counts the
 // surface's DOM subtree.
 const BUDGET_SAMPLE_MS = 600;
 let BUDGET_PROBE_ACTIVE = false;
@@ -651,7 +661,10 @@ export async function captureUiMatrix(options = {}) {
   if (budgetsOut) {
     const surfaces = aggregateBudgetRows(enriched);
     const budgeted = Object.keys(surfaces).length;
-    if (!budgeted) throw new Error('budget probe produced no rows — the page never exposed __sfBudgetProbe');
+    if (!budgeted) {
+      throw new Error('budget probe produced no scoped UI rows — the page did not expose a usable '
+        + 'registry.get("ui").frame sample (or its game-frame/DOM evidence was missing)');
+    }
     // A surface the run NAMED as a capture failure (with its reason) is recorded as a named gap,
     // not silently dropped: the judge accepts a named gap and refuses an unnamed one, so the
     // baseline can never quietly shrink. This includes surfaces whose probe simply returned no
@@ -673,8 +686,16 @@ export async function captureUiMatrix(options = {}) {
       capturedAt: new Date().toISOString(),
       headed: options.headed === true,
       renderer: result.renderer,
-      measured: 'whole rAF frame callback (sim + presentation + UI), 150 ms warm-up discarded, '
-        + 'worst sample per surface over a 600 ms headed window',
+      measurementScope: UI_BUDGET_MEASUREMENT_SCOPE,
+      frameTotalScope: UI_FRAME_TOTAL_SCOPE,
+      knownUiRafScope: UI_KNOWN_RAF_SCOPE,
+      auxiliaryRafScope: UI_AUXILIARY_RAF_SCOPE,
+      domLayoutScope: UI_DOM_LAYOUT_SCOPE,
+      measured: 'synchronous registry.get("ui").frame plus authored src/ui requestAnimationFrame '
+        + 'callback CPU bucketed per presentation timestamp, 150 ms warm-up discarded; worst '
+        + 'combined UI sample per surface over a 600 ms headed window',
+      excluded: 'browser layout/paint deferred after the owner callback is outside this CPU window; '
+        + 'unclassified non-game requestAnimationFrame callbacks are reported separately as auxiliaryRaf* diagnostics',
       seed: UI_MATRIX_SEED,
       uiSourceDigest: uiSourceDigest(ROOT),
       surfaces,
@@ -1191,7 +1212,7 @@ async function prepareClaimBase(page) {
     const sf = window.SF;
     const s = sf && sf.state;
     if (!s) return { ok: false, reason: 'no SF state' };
-    const world = sf.ctx && sf.ctx.registry && sf.ctx.registry.get ? sf.ctx.registry.get('world') : null;
+    const world = sf.registry && typeof sf.registry.get === 'function' ? sf.registry.get('world') : null;
 
     const findClaimable = () => (s.entityList || []).find(
       (e) => e && e.alive && e.pos && e.data && e.data.poi && e.data.claimable,
@@ -1521,9 +1542,10 @@ async function captureSurfaceScreenshot({
     }
   };
   // PQ-184.00 budget columns: when the run carries a budgets probe, sample the live surface's
-  // frame cost over BUDGET_SAMPLE_MS of real frames and count its DOM subtree — the two numbers
-  // the grammar's §12.1 budget table names. The probe is only read when asked for, so the
-  // 408-frame reference matrix pays nothing.
+  // combined authored-UI cost over BUDGET_SAMPLE_MS of present frames and count its DOM subtree.
+  // Whole-game and unknown-rAF timings travel alongside it under their own scope tags; neither is
+  // substituted for the 2 ms UI number. The probe is only read when asked for, so the 408-frame
+  // reference matrix pays nothing.
   let budget = null;
   if (BUDGET_PROBE_ACTIVE) {
     const rootHandle = await firstVisibleHandle(page, surface.selectors);
@@ -1531,14 +1553,17 @@ async function captureSurfaceScreenshot({
     await page.waitForTimeout(BUDGET_SAMPLE_MS);
     budget = await page.evaluate(() => {
       const probe = window.__sfBudgetProbe;
-      return probe ? { frameMs: probe.frameMs() } : null;
+      return probe && typeof probe.snapshot === 'function' ? probe.snapshot() : null;
     }).catch(() => null);
     if (budget && rootHandle) {
       // Count on the RESOLVED handle, not a re-run selector: multi-selector roots (the station
       // panels) re-resolve differently in-document and committed a domNodes: 0 lie once already.
       budget.domNodes = await rootHandle
         .evaluate((el) => el.querySelectorAll('*').length + 1)
-        .catch(() => 0);
+        .catch(() => null);
+    } else if (budget) {
+      // A missing DOM root is a named measurement gap, not an empty surface.
+      budget.domNodes = null;
     }
   }
   await shoot(dest);
@@ -1609,45 +1634,238 @@ export async function openBoot({ browser, baseUrl, viewport, locale = null, menu
     await page.addInitScript(() => {
       try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {}
     });
-    // PQ-184.00 budget probe: wrap rAF so every frame's callback execution time (the sim's UI +
-    // presentation work for the live surface) is sampled without changing the cadence — the
-    // callback still runs inside the same animation frame, we just time it. The wrapper is
-    // installed before any page script runs, so the game's own rAF loop is the wrapped one, and
-    // ONLY on budgets runs (BUDGET_PROBE_ACTIVE), so the reference matrix pays nothing.
+    // PQ-184.00 budget probe: retain a diagnostic timing for the game's rAF callback while also
+    // admitting authored UI callbacks from an explicit src/ui scheduling callsite. The actual
+    // UI-owner wrapper is installed after window.SF exposes the initialized registry below. This
+    // early wrapper is budgets-only, so the reference matrix pays nothing; known UI callback work
+    // is bucketed by the browser's presentation timestamp, while unknown callbacks stay diagnostic.
     if (BUDGET_PROBE_ACTIVE) {
-      await page.addInitScript(() => {
+      await page.addInitScript(({ uiScope, frameTotalScope, knownUiRafScope, auxiliaryRafScope, domLayoutScope }) => {
         try {
           const raf = window.requestAnimationFrame.bind(window);
-          // Reset discards a warm-up of 150 ms (compile/GC dust after the surface opens) —
-          // TIME-based, not frame-count-based: on a loaded box 12 slow frames would eat the
-          // whole sampling window and commit a zero-sample row. A hitch after the warm-up is
-          // real but lives in max, not in the mean/p95 the budget uses.
-          const stats = { samples: [], resetAt: 0 };
+          // Reset discards a warm-up of 150 ms (compile/GC dust after the surface opens) — time
+          // based, not frame-count-based. A hitch after warm-up remains real in max, while mean/p95
+          // describe the steady sampling window the UI budget buys.
+          const WARMUP_MS = 150;
+          const MAX_SAMPLES = 900;
+          const stats = {
+            uiSamples: [],
+            uiOwnerSamples: [],
+            knownUiRafSamples: [],
+            frameTotalSamples: [],
+            auxiliaryRafSamples: [],
+            unbucketedUiRafSamples: [],
+            frameBuckets: new Map(),
+            callbackScopes: new WeakMap(),
+            resetAt: 0,
+            activeFrameTimestamp: null,
+            uiOwner: null,
+            uiOriginal: null,
+            uiWrapped: null,
+          };
+          const pushBounded = (samples, value) => {
+            samples.push(value);
+            if (samples.length > MAX_SAMPLES) samples.shift();
+          };
+          const summarize = (samples) => {
+            if (!samples.length) return { mean: 0, p95: 0, max: 0, n: 0 };
+            const sorted = [...samples].sort((a, b) => a - b);
+            return {
+              mean: samples.reduce((sum, value) => sum + value, 0) / samples.length,
+              p95: sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95))],
+              max: sorted[sorted.length - 1],
+              n: samples.length,
+            };
+          };
+          const warmed = (startedAt) => stats.resetAt > 0 && startedAt - stats.resetAt >= WARMUP_MS;
+          const timestampOf = (timestamp) => Number.isFinite(timestamp) ? timestamp : null;
+          const bucketFor = (timestamp) => {
+            if (timestamp == null) return null;
+            let bucket = stats.frameBuckets.get(timestamp);
+            if (!bucket) {
+              bucket = { gameSeen: false, uiMs: 0, uiOwnerMs: 0, knownUiRafMs: 0 };
+              stats.frameBuckets.set(timestamp, bucket);
+              if (stats.frameBuckets.size > MAX_SAMPLES * 2) {
+                const oldest = stats.frameBuckets.keys().next().value;
+                if (oldest !== undefined) stats.frameBuckets.delete(oldest);
+              }
+            }
+            return bucket;
+          };
+          const classifyCallback = (callback) => {
+            if (typeof callback !== 'function') return 'unclassified';
+            const cached = stats.callbackScopes.get(callback);
+            if (cached) return cached;
+            let scope = 'unclassified';
+            try {
+              // The dev server serves authored modules with the current app origin in the call
+              // stack. That path is the evidence boundary: arbitrary non-game callbacks, browser
+              // work, and third-party callbacks do not become UI budget time merely because they
+              // use rAF. Requiring this origin also keeps a dependency path containing `src/ui`
+              // from being mistaken for an authored module.
+              const stack = String(new Error().stack || '').replaceAll('\\', '/');
+              const appOrigin = typeof location === 'object' && location
+                ? String(location.origin || '').replaceAll('\\', '/')
+                : '';
+              if (appOrigin && stack.split('\n').some((line) => {
+                const normalized = line.replaceAll('\\', '/');
+                return normalized.includes(`${appOrigin}/src/ui/`)
+                  && !normalized.includes('/node_modules/');
+              })) scope = 'knownUi';
+            } catch (_) {}
+            stats.callbackScopes.set(callback, scope);
+            return scope;
+          };
+          const finalizeFrameBuckets = () => {
+            for (const bucket of stats.frameBuckets.values()) {
+              if (bucket.gameSeen) {
+                // These are per-presentation-frame values, so a chart/map/sparkline callback that
+                // shares this timestamp is added to the UI owner before the 2 ms budget is judged.
+                pushBounded(stats.uiSamples, bucket.uiMs);
+                pushBounded(stats.uiOwnerSamples, bucket.uiOwnerMs);
+                pushBounded(stats.knownUiRafSamples, bucket.knownUiRafMs);
+              } else if (bucket.knownUiRafMs > 0) {
+                // A UI callback without a matching presentation frame cannot be charged honestly
+                // to a present-frame budget; expose it so the row fails closed instead of hiding it.
+                pushBounded(stats.unbucketedUiRafSamples, bucket.knownUiRafMs);
+              }
+            }
+            stats.frameBuckets.clear();
+          };
+          const readGameFrameCount = () => {
+            try {
+              const diagnostics = window.SF && window.SF.loop && window.SF.loop.getDiagnostics
+                ? window.SF.loop.getDiagnostics()
+                : null;
+              return diagnostics && Number.isFinite(diagnostics.executedFrames)
+                ? diagnostics.executedFrames
+                : null;
+            } catch (_) {
+              return null;
+            }
+          };
           window.__sfBudgetProbe = {
-            stats,
-            reset() { stats.samples.length = 0; stats.resetAt = performance.now(); },
-            frameMs() {
-              const a = stats.samples;
-              if (!a.length) return { mean: 0, p95: 0, max: 0, n: 0 };
-              const sorted = [...a].sort((x, y) => x - y);
+            measurementScope: uiScope,
+            frameTotalScope,
+            knownUiRafScope,
+            auxiliaryRafScope,
+            domLayoutScope,
+            reset() {
+              stats.uiSamples.length = 0;
+              stats.uiOwnerSamples.length = 0;
+              stats.knownUiRafSamples.length = 0;
+              stats.frameTotalSamples.length = 0;
+              stats.auxiliaryRafSamples.length = 0;
+              stats.unbucketedUiRafSamples.length = 0;
+              stats.frameBuckets.clear();
+              stats.activeFrameTimestamp = null;
+              stats.resetAt = performance.now();
+            },
+            installUiOwner() {
+              const registry = window.SF && window.SF.registry;
+              const owner = registry && typeof registry.get === 'function'
+                ? registry.get('ui')
+                : null;
+              if (!owner || typeof owner.frame !== 'function') {
+                return { ok: false, reason: 'window.SF.registry.get("ui").frame is unavailable' };
+              }
+              if (stats.uiOwner === owner && owner.frame === stats.uiWrapped) {
+                return { ok: true, already: true, scope: uiScope };
+              }
+              const original = owner.frame;
+              const wrapped = function budgetUiOwnerFrame(...args) {
+                const startedAt = performance.now();
+                try {
+                  return original.apply(this, args);
+                } finally {
+                  const elapsed = performance.now() - startedAt;
+                  // Do not return from this finally: a return here would replace the wrapped
+                  // owner's value and swallow an owner exception during warm-up. The guard only
+                  // controls whether this capture-only timing is recorded.
+                  if (warmed(startedAt) && Number.isFinite(elapsed)) {
+                    const bucket = bucketFor(stats.activeFrameTimestamp);
+                    if (bucket) {
+                      bucket.uiMs += elapsed;
+                      bucket.uiOwnerMs += elapsed;
+                    } else {
+                      pushBounded(stats.unbucketedUiRafSamples, elapsed);
+                    }
+                  }
+                }
+              };
+              try { owner.frame = wrapped; } catch (_) {
+                return { ok: false, reason: 'registry.get("ui").frame could not be wrapped' };
+              }
+              if (owner.frame !== wrapped) {
+                return { ok: false, reason: 'registry.get("ui").frame wrapper was not retained' };
+              }
+              stats.uiOwner = owner;
+              stats.uiOriginal = original;
+              stats.uiWrapped = wrapped;
+              return { ok: true, scope: uiScope };
+            },
+            snapshot() {
+              finalizeFrameBuckets();
               return {
-                mean: a.reduce((s, v) => s + v, 0) / a.length,
-                p95: sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95))],
-                max: sorted[sorted.length - 1],
-                n: a.length,
+                measurementScope: uiScope,
+                frameTotalScope,
+                knownUiRafScope,
+                auxiliaryRafScope,
+                domLayoutScope,
+                uiFrameMs: summarize(stats.uiSamples),
+                uiOwnerMs: summarize(stats.uiOwnerSamples),
+                knownUiRafMs: summarize(stats.knownUiRafSamples),
+                frameTotalMs: summarize(stats.frameTotalSamples),
+                auxiliaryRafMs: summarize(stats.auxiliaryRafSamples),
+                unbucketedUiRafMs: summarize(stats.unbucketedUiRafSamples),
               };
             },
           };
-          window.requestAnimationFrame = (cb) => raf((t) => {
-            const t0 = performance.now();
-            try { cb(t); } finally {
-              if (t0 - stats.resetAt >= 150) {
-                stats.samples.push(performance.now() - t0);
-                if (stats.samples.length > 900) stats.samples.shift();
+          window.requestAnimationFrame = (cb) => {
+            // Capture the scheduling callsite, not the later browser callback stack. The caller is
+            // where the authored-owner evidence lives; the callback stack only names this probe.
+            const callbackScope = classifyCallback(cb);
+            return raf((t) => {
+              // Diagnostics are read outside the timed interval. The classifier itself must not add
+              // its cost to the whole-game callback number it is identifying.
+              const beforeFrames = readGameFrameCount();
+              const previousTimestamp = stats.activeFrameTimestamp;
+              const timestamp = timestampOf(t);
+              stats.activeFrameTimestamp = timestamp;
+              const t0 = performance.now();
+              try { cb(t); } finally {
+                const elapsed = performance.now() - t0;
+                const afterFrames = readGameFrameCount();
+                stats.activeFrameTimestamp = previousTimestamp;
+                if (warmed(t0) && Number.isFinite(elapsed)) {
+                  if (beforeFrames != null && afterFrames != null && afterFrames > beforeFrames) {
+                    const bucket = bucketFor(timestamp);
+                    if (bucket) bucket.gameSeen = true;
+                    pushBounded(stats.frameTotalSamples, elapsed);
+                  } else if (callbackScope === 'knownUi') {
+                    const bucket = bucketFor(timestamp);
+                    if (bucket) {
+                      bucket.knownUiRafMs += elapsed;
+                      bucket.uiMs += elapsed;
+                    } else {
+                      pushBounded(stats.unbucketedUiRafSamples, elapsed);
+                    }
+                  } else {
+                    // This is a non-game callback outside an authored src/ui scheduling callsite.
+                    // It remains a named diagnostic and is never silently folded into uiFrameMs.
+                    pushBounded(stats.auxiliaryRafSamples, elapsed);
+                  }
+                }
               }
-            }
-          });
+            });
+          };
         } catch (_) {}
+      }, {
+        uiScope: UI_BUDGET_MEASUREMENT_SCOPE,
+        frameTotalScope: UI_FRAME_TOTAL_SCOPE,
+        knownUiRafScope: UI_KNOWN_RAF_SCOPE,
+        auxiliaryRafScope: UI_AUXILIARY_RAF_SCOPE,
+        domLayoutScope: UI_DOM_LAYOUT_SCOPE,
       });
     }
 
@@ -1661,10 +1879,28 @@ export async function openBoot({ browser, baseUrl, viewport, locale = null, menu
     // established at the top of the boot rather than per surface.
     await applyNeutralGround(page);
     await page.waitForFunction(
-      () => !!(window.SF && window.SF.state && window.SF.ctx && window.SF.bus),
+      () => !!(window.SF && window.SF.state && window.SF.bus && window.SF.registry),
       null,
       { timeout: 120_000 },
     );
+    if (BUDGET_PROBE_ACTIVE) {
+      // Registry.init() has run before main.js publishes window.SF. Attach to the public UI owner
+      // only after that boundary; wrapping requestAnimationFrame before it exists measured the
+      // wrong work and could never distinguish the game's callback from chart/effect callbacks.
+      await page.waitForFunction(() => {
+        const registry = window.SF && window.SF.registry;
+        const owner = registry && typeof registry.get === 'function' ? registry.get('ui') : null;
+        return !!(owner && typeof owner.frame === 'function');
+      }, null, { timeout: 120_000 });
+      const attached = await page.evaluate(() => window.__sfBudgetProbe
+        && typeof window.__sfBudgetProbe.installUiOwner === 'function'
+        ? window.__sfBudgetProbe.installUiOwner()
+        : { ok: false, reason: 'budget probe was not installed' });
+      if (!attached || attached.ok !== true) {
+        throw new Error(`UI budget probe could not attach to the live owner: ${attached && attached.reason
+          ? attached.reason : 'unknown reason'}`);
+      }
+    }
     await waitForAnyVisible(page, ['[data-screen="mainMenu"]'], MAIN_MENU_TIMEOUT_MS, 'main menu');
     if (menuPhase) await menuPhase(page, 'title');
 
@@ -1757,7 +1993,10 @@ async function escalateScreenExit(page) {
       if (!sf) return;
       const state = sf.state;
       const bus = sf.bus;
-      const sm = sf.ctx && sf.ctx.screenManager;
+      const uiOwner = sf.registry && typeof sf.registry.get === 'function'
+        ? sf.registry.get('ui')
+        : null;
+      const sm = uiOwner && uiOwner.screenManager;
       if (state && state.ui) {
         state.ui.docked = false;
         state.ui.dockedStationId = null;
@@ -1785,7 +2024,10 @@ async function escalateScreenExit(page) {
   if (status && status.screenOpen && status.top) {
     const popped = await page.evaluate(() => {
       const sf = window.SF;
-      const sm = sf && sf.ctx && sf.ctx.screenManager;
+      const uiOwner = sf && sf.registry && typeof sf.registry.get === 'function'
+        ? sf.registry.get('ui')
+        : null;
+      const sm = uiOwner && uiOwner.screenManager;
       if (!sm || !sm.isOpen()) return false;
       const top = sm.top();
       const def = typeof sm.getActiveScreenDef === 'function' ? sm.getActiveScreenDef() : null;
@@ -1841,6 +2083,8 @@ export async function closeOpenScreens(page) {
 }
 
 async function stabilizeSurfaceForCapture(page, surfaceId) {
+  // Screenshot references may park animation; a CPU budget must measure the live UI work.
+  if (BUDGET_PROBE_ACTIVE && surfaceId !== 'ship') return;
   if (surfaceId === 'ship') {
     await waitForShipPreviewReady(page);
     return;
@@ -1869,7 +2113,11 @@ async function waitForShipPreviewReady(page) {
 
 async function stabilizeRangeScreen(page) {
   await page.evaluate(() => {
-    const sm = window.SF && window.SF.ctx && window.SF.ctx.screenManager;
+    const sf = window.SF;
+    const uiOwner = sf && sf.registry && typeof sf.registry.get === 'function'
+      ? sf.registry.get('ui')
+      : null;
+    const sm = uiOwner && uiOwner.screenManager;
     const def = sm && typeof sm.getActiveScreenDef === 'function' ? sm.getActiveScreenDef() : null;
     if (!def || def.id !== 'range') return false;
     if (def._rafId) {
@@ -1890,7 +2138,11 @@ async function stabilizeRangeScreen(page) {
 
 async function stabilizeChartScreen(page) {
   await page.evaluate(() => {
-    const sm = window.SF && window.SF.ctx && window.SF.ctx.screenManager;
+    const sf = window.SF;
+    const uiOwner = sf && sf.registry && typeof sf.registry.get === 'function'
+      ? sf.registry.get('ui')
+      : null;
+    const sm = uiOwner && uiOwner.screenManager;
     const def = sm && typeof sm.getActiveScreenDef === 'function' ? sm.getActiveScreenDef() : null;
     if (!def || def.id !== 'galaxyMap') return false;
     if (def._animFrame != null) {
@@ -1918,7 +2170,10 @@ async function readUiStatus(page) {
   return page.evaluate(() => {
     const sf = window.SF;
     const state = sf && sf.state;
-    const sm = sf && sf.ctx && sf.ctx.screenManager;
+    const uiOwner = sf && sf.registry && typeof sf.registry.get === 'function'
+      ? sf.registry.get('ui')
+      : null;
+    const sm = uiOwner && uiOwner.screenManager;
     const mode = state && state.mode ? state.mode : null;
     const screenOpen = !!(sm && typeof sm.isOpen === 'function' && sm.isOpen());
     const top = sm && typeof sm.top === 'function' ? sm.top() : null;
