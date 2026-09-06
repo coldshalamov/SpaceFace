@@ -1623,6 +1623,9 @@ export function createHud(ctx, alerts) {
   const progradeScreenB = { x: 0, y: 0, onScreen: false };
   const progradeTransformOptions = { offset: 'translate(-4px,-1px)', rotate: 0 };
   const weaponHeatScratch = { frac: 0, pct: 0, overheated: false, armed: false };
+  const settleMotion = { reducedMotion: false, shieldRegenRate: 0, inertia: 0 };
+  const gaugeScaleLimits = { min: -0.04, max: 1.08 };
+  const defaultFuel = { current: 100, max: 100 };
   const targetPanelUpdateOptions = { slow: false, weakPoint: null };
 
   // Per-weapon heat bars. Built once per ship load, updated per frame.
@@ -4143,15 +4146,13 @@ export function createHud(ctx, alerts) {
       const capFrac = p.capMax ? clamp01(p.cap / p.capMax) : 0;
       const wpnHeat = weaponHeatSummary(p.data && p.data.weapons, weaponHeatScratch);
       const heatFrac = wpnHeat.frac;
-      const settleMotion = {
-        reducedMotion: getMotionReduced(),
-        shieldRegenRate: p.shieldRegenRate,
-        inertia: p.flightModel && p.flightModel.inertia,
-      };
+      settleMotion.reducedMotion = getMotionReduced();
+      settleMotion.shieldRegenRate = p.shieldRegenRate;
+      settleMotion.inertia = p.flightModel && p.flightModel.inertia;
       const shieldVisual = shieldSettle.step(shieldFrac, frameDt, settleMotion);
       const capVisual = energySettle.step(capFrac, frameDt, settleMotion);
       const heatVisual = heatSettle.step(heatFrac, frameDt, settleMotion);
-      const fuelState = state.fuel || { current: 100, max: 100 };
+      const fuelState = state.fuel || defaultFuel;
       const fuelFrac = fuelState.max > 0 ? clamp01(fuelState.current / fuelState.max) : 1;
       const fuelVisual = fuelSettle.step(fuelFrac, frameDt, settleMotion);
 
@@ -4177,9 +4178,9 @@ export function createHud(ctx, alerts) {
       setClass(bars, 'sf-condition-critical', hullFrac < 0.25);
       setClass(bars, 'sf-condition-shield-low', shieldFrac < 0.25 && hullFrac >= 0.25);
 
-      setScaleX(fillEls.energy, capVisual, { min: -0.04, max: 1.08 });
-      setScaleX(fillEls.heat, heatVisual, { min: -0.04, max: 1.08 });
-      if (fillEls.fuel) setScaleX(fillEls.fuel, fuelVisual, { min: -0.04, max: 1.08 });
+      setScaleX(fillEls.energy, capVisual, gaugeScaleLimits);
+      setScaleX(fillEls.heat, heatVisual, gaugeScaleLimits);
+      if (fillEls.fuel) setScaleX(fillEls.fuel, fuelVisual, gaugeScaleLimits);
 
       // Phase 3 boost micro-bar: energy fraction; the row is hidden entirely if the ship can't boost.
       // When a dash is ready (cooldown elapsed + enough energy) the bar gets a 'ready' glow.
@@ -4189,7 +4190,7 @@ export function createHud(ctx, alerts) {
         setStyle(boostRow, 'display', '');
         const bf = clamp01(boost.energy / boost.max);
         const boostVisual = boostSettle.step(bf, frameDt, settleMotion);
-        setScaleX(fillEls.boost, boostVisual, { min: -0.04, max: 1.08 });
+        setScaleX(fillEls.boost, boostVisual, gaugeScaleLimits);
         const dashCost = Number.isFinite(boost.dashCost) ? boost.dashCost : 28;
         const dashReady = boost.dashImpulse > 0 && boost.dashCdT <= 0 && boost.energy >= dashCost;
         setClass(fillEls.boost && fillEls.boost.parentElement, 'sf-bar--ready', dashReady);
@@ -4222,8 +4223,8 @@ export function createHud(ctx, alerts) {
         const showShield = vitalNumericVisible(shieldFrac);
         if (schHullVal) setText(schHullVal, Math.max(0, Math.round(p.hull)) + '');
         if (schShdVal) setText(schShdVal, Math.max(0, Math.round(p.shield)) + '');
-        if (schHullStat) schHullStat.hidden = !showHull;
-        if (schShdStat) schShdStat.hidden = !showShield;
+        setHidden(schHullStat, !showHull);
+        setHidden(schShdStat, !showShield);
         setText(numEls.energy, Math.max(0, Math.round(p.cap)) + '');
         setText(numEls.heat, wpnHeat.pct + '%');
         // Phase 4 fuel gauge: low fuel flashes a warning.
@@ -4283,14 +4284,14 @@ export function createHud(ctx, alerts) {
       const ml = masslineInstrumentReadout(tether);
       const latching = masslineInstrumentVisible(tether);
       if (document.body && document.body.dataset) {
-        document.body.dataset.sfHudJob = hudJobFromState(state, tether);
+        setAttr(document.body, 'data-sf-hud-job', hudJobFromState(state, tether));
       }
       setClass(commandDeck, 'sf-command-deck--latch', latching);
-      if (masslineInstrument) masslineInstrument.hidden = !latching;
+      setHidden(masslineInstrument, !latching);
       if (latching && ml) {
         if (mlFill) setStyle(mlFill, 'transform', `scaleX(${ml.load.toFixed(3)})`);
         if (mlLen) setText(mlLen, Math.round(ml.length) + 'u');
-        if (mlRel) mlRel.hidden = !ml.releaseOpen;
+        setHidden(mlRel, !ml.releaseOpen);
         if (elTetherStat) {
           const tetherStatus = masslineTetherStatus(tether);
           setStyle(elTetherStat, 'display', '');
@@ -4317,13 +4318,13 @@ export function createHud(ctx, alerts) {
             if (rev) parts.push(`${rev} PAY OUT`);
             if (orbit) parts.push(`${orbit} ORBIT`);
             if (pump) parts.push(`${pump} PUMP`);
-            elTetherKeys.textContent = parts.join(' · ');
-            elTetherKeys.hidden = false;
+            setText(elTetherKeys, parts.join(' · '));
+            setHidden(elTetherKeys, false);
           }
         }
       } else if (elTetherStat) {
         setStyle(elTetherStat, 'display', 'none');
-        if (elTetherKeys) elTetherKeys.hidden = true;
+        setHidden(elTetherKeys, true);
       }
       const ws = p.data && p.data.weapons;
       const nGuns = ws ? ws.length : 0;
