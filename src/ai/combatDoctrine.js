@@ -434,6 +434,15 @@ function pointWithin(self, point, rangeWu) {
   return Math.hypot(self.pos.x - point.x, self.pos.z - point.z) <= rangeWu;
 }
 
+// Non-offensive phases the break never fires from. This includes every doctrine's authored egress
+// phase (egressPhaseFor) — the escort's 'regroup' is the one that bit: pressureBreakDue short-
+// circuits updateEscort, so without the exclusion a damaged escort circled in regroup forever and
+// never re-committed. The doctrine's own egress phase is excluded by name so the list cannot drift
+// from egressPhaseFor again.
+const PRESSURE_BREAK_EXCLUDED_PHASES = new Set([
+  'extend', 'breakaway', 'escape', 'recover', 'retreat', 'reform', 'regroup', 'reset', 'broadside_shift',
+]);
+
 /**
  * True when the hull's own state (hull fraction, weapon heat) demands the bounded egress beat.
  * Only fires from an offensive phase — the egress/reform lull is exactly the recovery the break
@@ -442,8 +451,8 @@ function pointWithin(self, point, rangeWu) {
 function pressureBreakDue(record, self, tick) {
   if (!self || !Number.isFinite(self.hullFraction)) return false;
   const phase = record.phase;
-  if (phase === 'extend' || phase === 'breakaway' || phase === 'escape' || phase === 'recover'
-    || phase === 'retreat' || phase === 'reform') return false;
+  if (PRESSURE_BREAK_EXCLUDED_PHASES.has(phase)) return false;
+  if (phase === egressPhaseFor(record.doctrineId)) return false;
   if (tick - record.phaseStartedTick < PRESSURE_MIN_PHASE_TICKS) return false;
   const hull = self.hullFraction;
   const heat = Number.isFinite(self.heatFraction) ? self.heatFraction : 0;

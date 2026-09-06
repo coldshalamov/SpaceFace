@@ -94,6 +94,25 @@ const directive = {};
 }
 
 {
+  const runtime = new CombatDoctrineRuntime({ seed: 47 });
+  runtime.update({ tick: 0, entityId: 'esc', doctrineId: CombatDoctrineId.ESCORT_SCREEN, perception: perception(), directive });
+  const hurt = runtime.update({
+    tick: 120, entityId: 'esc', doctrineId: CombatDoctrineId.ESCORT_SCREEN,
+    perception: perception({ hullFraction: 0.4 }), directive,
+  });
+  assert.equal(hurt.outcome, 'pressure_break', 'a hurt escort breaks off to its regroup lull');
+  assert.equal(hurt.phase, 'regroup');
+  // The regroup lull must be owned by the escort's own phase machine: after ESCORT_REGROUP_TICKS
+  // (45) the escort transitions regroup → reform and re-commits, never circling in regroup forever.
+  const lull = runtime.update({
+    tick: 170, entityId: 'esc', doctrineId: CombatDoctrineId.ESCORT_SCREEN,
+    perception: perception({ hullFraction: 0.4 }), directive,
+  });
+  assert.notEqual(lull.outcome, 'pressure_break', 'the regroup lull never re-triggers the break');
+  assert.notEqual(lull.phase, 'regroup', 'the escort re-commits through its own phase machine, never circling in regroup');
+}
+
+{
   const entity = {
     data: {
       ai: {

@@ -1127,9 +1127,10 @@ export const audio = {
     bus.on('credits:changed', (p) => { if (p && p.delta > 0) this.play('sfx_ui_confirm', { gain: 0.7 }); });
     bus.on('economy:tradeCompleted', () => this.play('sfx_ui_confirm', { gain: 0.6 }));
     // Cargo jettison (HUD cargo panel "JETTISON" → cargo.js dump): previously TOTAL silence for an
-    // audible world act — pods shoved out an airlock. Reuses the authored massline jettison kick
-    // (jettisonImpulse is flag-gated OFF on the default route, so no doubling). The event has no
-    // position; play() resolves the player ship locally and the dump always happens at the hull.
+    // audible world act — pods shoved out an airlock. Reuses the authored massline jettison kick,
+    // but only on routes where jettisonImpulse's own audio:cue is flag-gated OFF; with the flag on
+    // (the production default) that cue already speaks and this handler must stay silent. The
+    // event has no position; play() resolves the player ship locally and the dump happens at the hull.
     bus.on('cargo:jettisoned', (p) => this._onCargoJettisoned(p));
     // Mission accept/complete: previously TOTAL silence on the core progression loop. Accept gets a
     // bright rising stinger; complete gets a triumphant two-note chord + a brief music duck so the
@@ -2132,11 +2133,13 @@ export const audio = {
   },
 
   // Cargo jettison (HUD cargo panel → cargo.dumpCargo): an audible world act that was total
-  // silence. Reuses the authored massline jettison kick; jettisonImpulse's own massline.jettisonKick
-  // cue is flag-gated OFF on the default route, so the two cannot double. The receipt carries no
-  // position — a dump always happens at the dumping ship's hull, and non-positional play() already
-  // reads as ship-local.
+  // silence. Reuses the authored massline jettison kick. jettisonImpulse plays the same recipe
+  // through its own audio:cue whenever its flag is on (the production default), so this handler
+  // only speaks on routes where that flag is off — otherwise the kick plays twice, stacked. The
+  // receipt carries no position — a dump always happens at the dumping ship's hull, and
+  // non-positional play() already reads as ship-local.
   _onCargoJettisoned(p) {
+    if (massline2Flag('jettisonImpulse')) return;
     if (!p || !(p.amount > 0)) return;
     this.play('sfx_massline_jettison', { gain: 0.7 });
   },

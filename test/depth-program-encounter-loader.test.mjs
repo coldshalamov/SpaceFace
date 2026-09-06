@@ -28,6 +28,13 @@ function migrationBaselineCatalog() {
   const catalog = structuredClone(Object.fromEntries(
     fixture.order.map((id) => [id, ENCOUNTERS[id]]),
   ));
+  // The civilian-deck widening (INFERENCE 5/10, 489dce40) later taught salvage_signal and
+  // anomaly_whisper the frontier zone types outlaw_zone / nebula_fog / radiation_field so
+  // frontier-only sectors plan civilian ambient world-life. Reconstruct the migration-era
+  // zone types here — the fixture remains an immutable proof of the module split, while the
+  // intentionalDrift allowlist below documents the live evolution.
+  catalog.salvage_signal.zoneTypes = ['derelict_field'];
+  catalog.anomaly_whisper.zoneTypes = ['anomaly_deep'];
   // The first-hour difficulty pass later kept elite and multi-squad ambient encounters out of the
   // tier-1 Helios neighborhood. Remove those live admission gates when reconstructing the earlier
   // module-split baseline; this test proves that migration, not that gameplay can never evolve.
@@ -93,8 +100,8 @@ test('encounter migration preserves every definition byte-for-byte under JSON se
   const intentionalDrift = fixture.order.filter((id) => hash(ENCOUNTERS[id]) !== fixture.shapeHashes[id]);
   assert.deepEqual(
     intentionalDrift,
-    ['pirate_toll', 'ambush_snare', 'claim_threat', 'named_hunter', 'distress_call'],
-    'only the later claim-defense and first-hour admission gates may differ from the F2 migration baseline',
+    ['pirate_toll', 'ambush_snare', 'claim_threat', 'named_hunter', 'distress_call', 'salvage_signal', 'anomaly_whisper'],
+    'only the later claim-defense, first-hour admission, and civilian-deck frontier-widening gates may differ from the F2 migration baseline',
   );
   assert.equal(ENCOUNTERS.claim_threat.gates.externalOnly, true, 'claim defense is requested by the claims system, never ambient-scheduled');
 });
