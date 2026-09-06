@@ -54,6 +54,18 @@ const ESCORT_REGROUP_TICKS = 45;
 const ESCORT_BREACH_WU = 260;
 const ESCORT_THREAT_RING_WU = 900;
 const RUN_EGRESS_DISTANCE = 960;
+// Pressure break: a hurt or heat-soaked fighter diverts to its authored egress phase instead of
+// grinding one continuous attack_run until death. The break ends through the ordinary
+// egress→reform cycle, so the enemy re-commits on a fresh pass — press, break, re-press — instead
+// of every engagement resolving as a single relentless pursuit. Cornered hulls (< CORNERED
+// hull) never break: the morale/flee layer owns the death spiral.
+const PRESSURE_HULL_FRACTION = 0.45;
+const PRESSURE_HEAT_FRACTION = 0.8;
+const CORNERED_HULL_FRACTION = 0.2;
+// The opening beat is always committed: no break before the current offensive phase has lived a
+// little, so contact never collapses instantly.
+const PRESSURE_MIN_PHASE_TICKS = 45;
+const PRESSURE_BREAK_OUTCOME = 'pressure_break';
 // A contact already on the end of a line is anchored, slowed, and predictable. That reads as a free
 // kill, so it should DRAW the swarm rather than repel it. See targetScore() for why this replaced a
 // flat -100 veto and how the magnitude is derived.
@@ -168,6 +180,10 @@ export class CombatDoctrineRuntime {
           : doctrineId === CombatDoctrineId.ESCORT_SCREEN ? 'regroup'
           : 'retreat';
       if (record.phase !== egressPhase) beginEgress(record, egressPhase, tick, self, target, 'target_disabled');
+      return snapshot(record, target, directive, factionBehavior);
+    }
+    if (pressureBreakDue(record, self, tick)) {
+      beginEgress(record, egressPhaseFor(doctrineId), tick, self, target, PRESSURE_BREAK_OUTCOME);
       return snapshot(record, target, directive, factionBehavior);
     }
     if (doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY) {
@@ -416,6 +432,33 @@ function escortScreenPoint(self, ward, target) {
 function pointWithin(self, point, rangeWu) {
   if (!self || !self.pos || !point) return false;
   return Math.hypot(self.pos.x - point.x, self.pos.z - point.z) <= rangeWu;
+}
+
+/**
+ * True when the hull's own state (hull fraction, weapon heat) demands the bounded egress beat.
+ * Only fires from an offensive phase — the egress/reform lull is exactly the recovery the break
+ * exists to buy — and only after the phase has been lived in, so the opening beat always commits.
+ */
+function pressureBreakDue(record, self, tick) {
+  if (!self || !Number.isFinite(self.hullFraction)) return false;
+  const phase = record.phase;
+  if (phase === 'extend' || phase === 'breakaway' || phase === 'escape' || phase === 'recover'
+    || phase === 'retreat' || phase === 'reform') return false;
+  if (tick - record.phaseStartedTick < PRESSURE_MIN_PHASE_TICKS) return false;
+  const hull = self.hullFraction;
+  const heat = Number.isFinite(self.heatFraction) ? self.heatFraction : 0;
+  if (hull < CORNERED_HULL_FRACTION) return false;
+  return hull <= PRESSURE_HULL_FRACTION || heat >= PRESSURE_HEAT_FRACTION;
+}
+
+/** Each doctrine breaks to its own authored egress phase so the maneuver vocabulary stays coherent. */
+function egressPhaseFor(doctrineId) {
+  if (doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY) return 'extend';
+  if (doctrineId === CombatDoctrineId.BRAWLER_COMMIT) return 'breakaway';
+  if (doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER) return 'escape';
+  if (doctrineId === CombatDoctrineId.FIELD_ANCHOR_CONTROLLER) return 'recover';
+  if (doctrineId === CombatDoctrineId.ESCORT_SCREEN) return 'regroup';
+  return 'retreat';
 }
 
 function updateRanged(record, tick, self, target, distance) {

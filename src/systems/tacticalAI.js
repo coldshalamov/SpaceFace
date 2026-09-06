@@ -270,6 +270,7 @@ export function createTacticalAISystem({
           });
         }
         applyChoreographyFireWindow(liveStack, decision);
+        applyEngagementPosture(entity, decision.combatDoctrine || null, state);
         applyAIFiringIntent(decision, state);
       }
       driveChoreographyMembers(liveStack, state, tick, result.decisions || []);
@@ -311,6 +312,49 @@ export function revalidateCachedAIFiringIntents(liveStack, state, entityRefs = n
     applyAIFiringIntent(decision, state);
   }
   return decisions.length;
+}
+
+/**
+ * Doctrine egress/lull phases during which a weapons-free combatant's live activity reads as
+ * REPOSITION instead of the authored ATTACK_RUN. This is what consumes the reposition cell of the
+ * activity/ROE vocabulary mid-fight: the enemy is factually breaking off, so the behavior gate
+ * layer (fire doctrine, movement classification, telemetry) sees the break, not a stale attack run.
+ * Egress ends through the ordinary reform→recommit cycle, which restores the authored activity.
+ */
+const POSTURE_EGRESS_PHASES = new Set([
+  'extend', 'breakaway', 'escape', 'recover', 'retreat', 'regroup', 'reform', 'reset', 'broadside_shift',
+]);
+const POSTURE_REASON_PREFIX = 'combat_doctrine:';
+
+export function applyEngagementPosture(entity, doctrine, state) {
+  if (!entity || !entity.data) return;
+  const ai = entity.data.ai;
+  if (!ai || ai.passive === true || ai.roe !== 'weapons_free') return;
+  const tick = Number.isInteger(state && state.tick) ? state.tick : 0;
+  const current = ai.activity && typeof ai.activity === 'object' ? ai.activity : null;
+  if (!doctrine || !POSTURE_EGRESS_PHASES.has(doctrine.phase)) {
+    // Re-commit (or doctrine dropped): hand the authored activity back exactly once.
+    const base = ai.postureBaseActivity;
+    if (base && current && String(current.reason || '').startsWith(POSTURE_REASON_PREFIX)) {
+      ai.activity = base;
+    }
+    delete ai.postureBaseActivity;
+    return;
+  }
+  // Survival orders (morale flee / fsm flee) and already-postured activity outrank the break.
+  if (!current || current.kind === 'flee' || current.kind === 'disengage') return;
+  if (String(current.reason || '').startsWith(POSTURE_REASON_PREFIX)) return;
+  const preferred = Number.isFinite(doctrine.preferredRange) && doctrine.preferredRange > 0
+    ? doctrine.preferredRange
+    : (Number.isFinite(current.preferredRange) && current.preferredRange > 0 ? current.preferredRange : 620);
+  ai.postureBaseActivity = current;
+  ai.activity = {
+    ...current,
+    kind: 'reposition',
+    reason: `${POSTURE_REASON_PREFIX}${doctrine.doctrineId}:${doctrine.phase}`,
+    preferredRange: preferred,
+    startedTick: tick,
+  };
 }
 
 function runtimeDecisionInterval(config = {}) {
