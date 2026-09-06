@@ -20,8 +20,16 @@ two of four rock bolts sheared, one vane replaced with an unpainted flat plate a
 That asymmetry is SILHOUETTE, and silhouette is the channel that survives distance. A dent painted
 into a normal map disappears at 200 units; a missing fin does not.
 
+WHAT THE TEXTURES DO CARRY. Damage stays geometry; MANUFACTURE and SERVICE are surfacing, and a
+scalar cannot express either. Every role is backed by deterministic baseColor / packed ORM /
+tangent-space normal images generated in memory and packed into the blend — rolled streaks on
+structural stock, tighter grinding marks across bare steel, coating that loses to bare metal where
+hands and wash have worked, a stencil band and glove polish on identity plates, dry granular soot.
+No external image file is written and no procedural noise wallpaper is applied.
+
 Usage:
     blender --background --python tools/blender/build_lane_furniture.py -- --render
+    blender --background --python tools/blender/build_lane_furniture.py -- --only place_whistle --out-root C:/tmp/lane-candidate
 """
 from __future__ import annotations
 
@@ -30,6 +38,7 @@ import hashlib
 import json
 import math
 import sys
+import tempfile
 from pathlib import Path
 
 import bpy
@@ -55,14 +64,301 @@ PARTS_OUT = ROOT / 'assets' / 'ships' / 'parts' / 'places'
 
 # Material roles, named the way the rest of the asset pipeline names them so a later promotion
 # does not have to invent a mapping.
+#
+# (r, g, b, roughness, METALLIC). Four structural/steel/plate/scorch roles were 0.85 metallic in
+# the rejected pass; the painted shell was 0.22 and the lens 0.0. Roles now reflect substance and
+# retain their authored colour contrast.
 ROLES = {
-    'furniture_painted_shell': (0.42, 0.24, 0.10, 0.62),   # heat-stained orange-brown over steel
-    'furniture_structural_alloy': (0.30, 0.31, 0.33, 0.55),
-    'furniture_bare_steel': (0.44, 0.45, 0.47, 0.38),      # unpainted replacement plate, raw bolts
-    'furniture_signal_lens': (0.90, 0.62, 0.22, 0.30),
-    'furniture_identity_plate': (0.62, 0.60, 0.55, 0.50),
-    'furniture_scorch': (0.11, 0.09, 0.08, 0.78),
+    'furniture_painted_shell': (0.42, 0.24, 0.10, 0.62, 0.0),     # heat-stained coating over steel
+    'furniture_structural_alloy': (0.30, 0.31, 0.33, 0.68, 1.0),  # dulled mill-finish structure
+    'furniture_bare_steel': (0.44, 0.45, 0.47, 0.26, 1.0),        # raw replacement plate and bolts
+    'furniture_signal_lens': (0.90, 0.62, 0.22, 0.30, 0.0),       # optical, unchanged
+    'furniture_identity_plate': (0.62, 0.60, 0.55, 0.58, 0.0),    # coated, stencilled, glove-wiped
+    'furniture_scorch': (0.11, 0.09, 0.08, 0.92, 0.0),            # soot and slag: dry, not chrome
 }
+
+# One small manufactured edge break in metres before FAMILY_SCALE, clamped to a quarter of each
+# part's thinnest dimension so hard-surface silhouettes stay crisp.
+EDGE_BREAK = 0.010
+
+# Image-backed surfacing. The scalar role table above sets the SUBSTANCE CLASS; these maps carry the
+# manufacture and service history that a scalar cannot: a uniform dielectric with one roughness
+# value has no incident at any distance, which is why the candidate stills read as stained timber
+# and plain black drums rather than as coated steel and a scavenged fuel drum.
+#
+# 128 px per role is sized from the part, not from habit. At UV_PER_M one tile covers 0.71 authored
+# metres, so a texel lands on about 5.6 mm of authored surface (19 mm once placed) - fine enough to
+# break a specular highlight on a Tier C prop seen from 20-140 units, coarse enough that nothing
+# here is standing in for geometry. It is also a cost decision: these buffers are built in pure
+# Python and rebuilt for each of the six assets, so 256 would spend minutes per build and quadruple
+# the embedded PNG bytes for detail no supported camera resolves.
+TEX_SIZE = 128
+UV_PER_M = 1.4           # texture tiles per authored metre, before FAMILY_SCALE
+
+
+def _c01(x):
+    return 0.0 if x < 0.0 else (1.0 if x > 1.0 else x)
+
+
+def _hash01(x, y, seed):
+    """Integer hash. Deterministic across platforms and runs; no `random`, no sampling."""
+    n = (x * 374761393 + y * 668265263 + seed * 2246822519) & 0xFFFFFFFF
+    n = ((n ^ (n >> 13)) * 1274126177) & 0xFFFFFFFF
+    return ((n ^ (n >> 16)) & 0xFFFF) / 65535.0
+
+
+def _cell(u, v, cu, cv, seed):
+    """Smoothed value noise on a wrapping integer lattice, with independent per-axis cell counts.
+
+    Coherent patches with a controllable feature size, which is what oxidation, heat stain and
+    coating loss actually look like. Deliberately not per-texel white noise: speckle wallpaper is
+    the failure this is meant to avoid, so every caller sets a feature size and an ANISOTROPY that
+    belongs to that substance's manufacture — a streak is `cu` far above `cv`, or the reverse.
+
+    Both counts stay well under TEX_SIZE/4. A lattice finer than a few texels per cell stops being
+    a grain direction and becomes aliasing, which is the same speckle failure by another route.
+    """
+    fx, fy = u * cu, v * cv
+    x0, y0 = int(fx), int(fy)
+    tx, ty = fx - x0, fy - y0
+    tx = tx * tx * (3.0 - 2.0 * tx)
+    ty = ty * ty * (3.0 - 2.0 * ty)
+    x1, y1 = (x0 + 1) % cu, (y0 + 1) % cv
+    x0, y0 = x0 % cu, y0 % cv
+    a = _hash01(x0, y0, seed) * (1.0 - tx) + _hash01(x1, y0, seed) * tx
+    b = _hash01(x0, y1, seed) * (1.0 - tx) + _hash01(x1, y1, seed) * tx
+    return a * (1.0 - ty) + b * ty
+
+
+def _surface(role, u, v):
+    """One texel of one substance: (r, g, b, occlusion, roughness, metallic, height).
+
+    Each branch is a different material story rather than one recipe recoloured - the failure the
+    material-truth skill names explicitly. The alloy carries wide rolled streaks along one axis;
+    bare steel carries tight grinding marks across the other, so the two metals differ by
+    MICROSURFACE and not merely by grey value. The coating loses to bare substrate at its wear
+    patches, which is the single feature that stops a painted shaft reading as timber. Soot has no
+    direction at all, because nobody manufactured it.
+    """
+    r, g, b, rough, metal = ROLES[role]
+
+    if role == 'furniture_structural_alloy':
+        rolled = _cell(u, v, 48, 6, 11)              # rolled stock: streaks running along v
+        oxide = _cell(u, v, 8, 8, 12)
+        # RESTRAINT. `< 0.62` put oxide over ~38% of every alloy face at a near-black value, which
+        # read as damage rather than as service and sank decks and grates into holes. At 0.90 the
+        # patina is roughly a tenth of the surface and the mill finish is what you see.
+        bare = oxide < 0.90
+        k = 0.88 + 0.26 * rolled
+        col = (r * k, g * k, b * k) if bare else (0.26 + 0.10 * oxide, 0.23 + 0.08 * oxide, 0.20)
+        return (col[0], col[1], col[2],
+                0.82 + 0.18 * rolled,
+                _c01(rough + (rolled - 0.5) * 0.17 + (0.0 if bare else 0.14)),
+                1.0 if bare else 0.0,
+                rolled * 0.6 + oxide * 0.4)
+
+    if role == 'furniture_bare_steel':
+        grind = _cell(u, v, 6, 56, 31)               # ground/cut: tighter, and across the other axis
+        rust = _cell(u, v, 18, 18, 32)
+        # A replacement plate is mostly clean; rust is where the coating has not been renewed yet.
+        clean = rust < 0.88
+        k = 0.90 + 0.22 * grind
+        col = (r * k, g * k, b * k) if clean else (0.34, 0.20, 0.11)
+        return (col[0], col[1], col[2],
+                0.88 + 0.12 * grind,
+                _c01(rough + (grind - 0.5) * 0.20 + (0.0 if clean else 0.52)),
+                1.0 if clean else 0.0,
+                grind * 0.45 + (0.0 if clean else (rust - 0.70) * 2.4))
+
+    if role == 'furniture_painted_shell':
+        wear = _cell(u, v, 9, 9, 21)                 # where hands, straps and wash have worked
+        stain = _cell(u, v, 16, 16, 22)
+        chalk = _cell(u, v, 40, 40, 23)
+        # RESTRAINT. `> 0.74` stripped about a quarter of every painted face back to metal, so the
+        # shaft read as a rusted wreck instead of a maintained post. Wear is where hands, straps and
+        # wash actually work: roughly a tenth of the surface, and the coating is the story.
+        if wear > 0.90:                              # coating gone: substrate, and it is METAL
+            return (0.40, 0.40, 0.42, 0.84 + 0.16 * chalk, 0.42 + (chalk - 0.5) * 0.14, 1.0,
+                    0.30 + wear * 0.70)
+        # A narrower stain swing: heat staining varies the coat, it does not mottle it.
+        k = 0.90 + 0.16 * stain
+        return (r * k, g * k * 0.96, b * k * 0.92,
+                0.86 + 0.14 * wear,
+                _c01(rough + (chalk - 0.5) * 0.18 - stain * 0.06),
+                0.0,
+                chalk * 0.30 + wear * 0.42)
+
+    if role == 'furniture_identity_plate':
+        polish = _cell(u, v, 10, 10, 42)             # glove wear where the read gets rubbed
+        # Two stencil bands per tile, so a 0.3 m plate reliably catches one marking run. World
+        # projection cannot place a mark on a named face, so the band is a repeating machine
+        # marking rather than a specific serial - which is what these plates carry at this range.
+        band = 0.30 < ((v * 2.0) % 1.0) < 0.46
+        tick = band and _hash01(int(u * 24.0) % 24, 0, 41) > 0.46
+        if tick:
+            return (0.13, 0.12, 0.11, 0.78, 0.66, 0.0, 0.86)
+        k = 0.88 + 0.20 * polish
+        return (r * k, g * k, b * k,
+                0.90 + 0.10 * polish,
+                _c01(rough - polish * 0.17),
+                0.0,
+                0.30 + polish * 0.12)
+
+    if role == 'furniture_scorch':
+        grit = _cell(u, v, 52, 52, 51)               # dry and granular; soot has no grain direction
+        crust = _cell(u, v, 14, 14, 52)
+        k = 0.80 + 0.55 * crust
+        return (r * k + 0.012 * grit, g * k, b * k,
+                0.58 + 0.34 * crust,
+                _c01(rough + (grit - 0.5) * 0.07),
+                0.0,
+                grit * 0.62 + crust * 0.38)
+
+    # furniture_signal_lens: optical and serviced, so it stays clean. Only a faint radial falloff so
+    # the gel is not a flat disc. Emission is set on the BSDF and is deliberately untouched here.
+    du, dv = u - 0.5, v - 0.5
+    fall = _c01(1.0 - (du * du + dv * dv) * 1.35)
+    return (r * (0.80 + 0.24 * fall), g * (0.80 + 0.24 * fall), b * (0.82 + 0.22 * fall),
+            1.0, _c01(rough - fall * 0.06), 0.0, 0.5)
+
+
+def _authored_image(name, buf, n, srgb):
+    """Turn an authored pixel buffer into an image datablock the EXPORTER actually reads.
+
+    THE BUG THIS EXISTS FOR (measured 2026-09-06, and it shipped silently). A datablock from
+    `bpy.data.images.new()` has `source == 'GENERATED'`. Writing `pixels` and calling `pack()` looks
+    correct and raises nothing, but a generated image is re-derived from its `generated_color` fill
+    when it is encoded, so the authored buffer is dropped. Every texture in the first surfaced build
+    exported as pure black - baseColor, ORM and normal, six roles, four assets - and the assets
+    rendered as black silhouettes with only the emissive lens visible. The build log said nothing;
+    it took reading channel means back out of the exported GLB to see it.
+
+    `save()` writes the buffer correctly (verified against the PNG on disk: 0.9/0.5/0.2 came back
+    as 230/128/51). What does NOT survive is the datablock: after a save the in-memory buffer of a
+    generated image reads back as zeros in background Blender, and `reload()` does not repair it. So
+    the authored buffer is written once, and the file is then LOADED as an ordinary FILE image. That
+    datablock holds real decoded pixels, packs its exact bytes into the blend, and exports them.
+
+    The scratch file is deleted immediately, so no image file is left in the tree and the GLB still
+    carries every map inline.
+    """
+    scratch = bpy.data.images.new(f'{name}__scratch', width=n, height=n, alpha=False)
+    # COLORSPACE FIRST. Assigning `colorspace_settings` re-derives the buffer of a generated image
+    # from its `generated_color` fill, so setting it AFTER writing pixels silently discards every
+    # authored texel — which is how the whole family exported as solid black 473-byte PNGs.
+    scratch.colorspace_settings.name = 'sRGB' if srgb else 'Non-Color'
+    scratch.pixels.foreach_set(buf)
+    scratch.update()
+    tmp = Path(tempfile.gettempdir()) / f'sf_lane_furniture_{name}.png'
+    scratch.filepath_raw = str(tmp)
+    scratch.file_format = 'PNG'
+    scratch.save()
+    bpy.data.images.remove(scratch)
+
+    img = bpy.data.images.load(str(tmp))
+    img.name = name
+    img.colorspace_settings.name = 'sRGB' if srgb else 'Non-Color'
+    img.file_format = 'PNG'
+    img.pack()
+    # Packed: the bytes now live in the blend, so the scratch file is not needed and no image file
+    # is left in the tree.
+    img.filepath_raw = ''
+    try:
+        tmp.unlink()
+    except OSError:
+        pass
+    return img
+
+
+def role_images(role):
+    """Build (baseColor, ORM, normal) image datablocks for one role and pack them in memory.
+
+    Keyed by name and reused, so a run that touches a role forty times still holds three images.
+    `reset_scene()` clears datablocks between assets, so every asset re-authors identical buffers
+    from the same integer hash - the family shares one surface vocabulary by construction.
+
+    Returns `normal=None` for the lens, which has no meaningful surface relief to encode.
+    """
+    key = f'{role}_baseColor'
+    if key in bpy.data.images:
+        return (bpy.data.images[key], bpy.data.images[f'{role}_orm'],
+                bpy.data.images.get(f'{role}_normal'))
+
+    n = TEX_SIZE
+    base_buf = [0.0] * (n * n * 4)
+    orm_buf = [0.0] * (n * n * 4)
+    height = [0.0] * (n * n)
+    inv = 1.0 / n
+    for y in range(n):
+        for x in range(n):
+            cr, cg, cb, ao, ro, me, h = _surface(role, (x + 0.5) * inv, (y + 0.5) * inv)
+            i = (y * n + x) * 4
+            base_buf[i] = _c01(cr)
+            base_buf[i + 1] = _c01(cg)
+            base_buf[i + 2] = _c01(cb)
+            base_buf[i + 3] = 1.0
+            # glTF packed material texture: R=occlusion, G=roughness, B=metallic.
+            orm_buf[i] = _c01(ao)
+            orm_buf[i + 1] = _c01(ro)
+            orm_buf[i + 2] = _c01(me)
+            orm_buf[i + 3] = 1.0
+            height[y * n + x] = h
+
+    images = {}
+    for suffix, buf, srgb in (('baseColor', base_buf, True), ('orm', orm_buf, False)):
+        # `pixels` is always linear scene-referred, so writing the authored linear values into an
+        # sRGB-tagged image round-trips the colour exactly, and the data maps stay untransformed.
+        images[suffix] = _authored_image(f'{role}_{suffix}', buf, n, srgb)
+
+    if role == 'furniture_signal_lens':
+        return images['baseColor'], images['orm'], None
+
+    # Tangent-space normal derived from the authored height field by central difference on the
+    # buffer itself, so the cost is one cheap pass rather than three evaluations per texel. Green is
+    # UP, matching the OpenGL convention glTF expects, because +y here is +v in the same buffer.
+    strength = 1.7
+    nrm_buf = [0.0] * (n * n * 4)
+    for y in range(n):
+        yn, yp = ((y - 1) % n) * n, ((y + 1) % n) * n
+        row = y * n
+        for x in range(n):
+            xn, xp = (x - 1) % n, (x + 1) % n
+            dx = (height[row + xp] - height[row + xn]) * strength
+            dy = (height[yp + x] - height[yn + x]) * strength
+            inv_len = 1.0 / math.sqrt(dx * dx + dy * dy + 1.0)
+            i = (row + x) * 4
+            nrm_buf[i] = _c01(-dx * inv_len * 0.5 + 0.5)
+            nrm_buf[i + 1] = _c01(-dy * inv_len * 0.5 + 0.5)
+            nrm_buf[i + 2] = _c01(inv_len * 0.5 + 0.5)
+            nrm_buf[i + 3] = 1.0
+    nrm = _authored_image(f'{role}_normal', nrm_buf, n, False)
+    return images['baseColor'], images['orm'], nrm
+
+
+def _occlusion_group():
+    """The node group the glTF exporter reads an `occlusionTexture` from, or None.
+
+    The exporter recognises baseColor and the packed metallic/roughness pair from ordinary
+    Principled links, but occlusion is only exported through a group named `glTF Material Output`
+    with an `Occlusion` input. That group is built through a versioned interface API, so it is
+    attempted rather than assumed: if it cannot be created, the R channel of the ORM image is still
+    authored truthfully and simply is not bound to an exported occlusionTexture.
+    """
+    name = 'glTF Material Output'
+    grp = bpy.data.node_groups.get(name)
+    if grp is not None:
+        return grp
+    try:
+        grp = bpy.data.node_groups.new(name, 'ShaderNodeTree')
+        grp.interface.new_socket('Occlusion', in_out='INPUT', socket_type='NodeSocketFloat')
+        grp.nodes.new('NodeGroupInput')
+        return grp
+    except Exception as exc:                     # pragma: no cover - version-dependent API
+        log(f'occlusion export unavailable ({exc.__class__.__name__}); ORM red channel is '
+            f'authored but will not be bound to an exported occlusionTexture')
+        if grp is not None and grp.name in bpy.data.node_groups:
+            bpy.data.node_groups.remove(grp)
+        return None
 
 
 def log(msg):
@@ -74,24 +370,65 @@ def reset_scene():
 
 
 def material(role):
+    """One material datablock per role, image-backed.
+
+    The scalar values stay set as the honest fallback for anything that loses a texture binding, and
+    the maps are layered on top through the ordinary Principled sockets the glTF exporter reads:
+    Base Color from an sRGB image, and Roughness/Metallic from the G/B channels of one Non-Color
+    packed image, which is the pattern the exporter collapses into a single metallicRoughness
+    texture. Nothing here is a metadata claim - the pixels exist and are packed into the blend.
+    """
     if role in bpy.data.materials:
         return bpy.data.materials[role]
-    r, g, b, rough = ROLES[role]
+    r, g, b, rough, metal = ROLES[role]
     mat = bpy.data.materials.new(role)
     mat.use_nodes = True
-    bsdf = mat.node_tree.nodes.get('Principled BSDF')
+    nt = mat.node_tree
+    bsdf = nt.nodes.get('Principled BSDF')
     bsdf.inputs['Base Color'].default_value = (r, g, b, 1.0)
     bsdf.inputs['Roughness'].default_value = rough
     if 'Metallic' in bsdf.inputs:
-        if role == 'furniture_signal_lens':
-            bsdf.inputs['Metallic'].default_value = 0.0
-        elif role == 'furniture_painted_shell':
-            bsdf.inputs['Metallic'].default_value = 0.22
-        else:
-            bsdf.inputs['Metallic'].default_value = 0.85
+        bsdf.inputs['Metallic'].default_value = metal
     if role == 'furniture_signal_lens' and 'Emission Color' in bsdf.inputs:
         bsdf.inputs['Emission Color'].default_value = (1.0, 0.70, 0.28, 1.0)
         bsdf.inputs['Emission Strength'].default_value = 3.2
+
+    base_img, orm_img, nrm_img = role_images(role)
+
+    tex_base = nt.nodes.new('ShaderNodeTexImage')
+    tex_base.image = base_img
+    tex_base.label = f'{role}_baseColor'
+    tex_base.location = (-620, 240)
+    nt.links.new(tex_base.outputs['Color'], bsdf.inputs['Base Color'])
+
+    tex_orm = nt.nodes.new('ShaderNodeTexImage')
+    tex_orm.image = orm_img
+    tex_orm.label = f'{role}_orm'
+    tex_orm.location = (-620, -40)
+    split = nt.nodes.new('ShaderNodeSeparateColor')
+    split.location = (-360, -40)
+    nt.links.new(tex_orm.outputs['Color'], split.inputs['Color'])
+    nt.links.new(split.outputs['Green'], bsdf.inputs['Roughness'])
+    if 'Metallic' in bsdf.inputs:
+        nt.links.new(split.outputs['Blue'], bsdf.inputs['Metallic'])
+
+    grp = _occlusion_group()
+    if grp is not None:
+        node = nt.nodes.new('ShaderNodeGroup')
+        node.node_tree = grp
+        node.location = (-140, -300)
+        if node.inputs:
+            nt.links.new(split.outputs['Red'], node.inputs[0])
+
+    if nrm_img is not None:
+        tex_n = nt.nodes.new('ShaderNodeTexImage')
+        tex_n.image = nrm_img
+        tex_n.label = f'{role}_normal'
+        tex_n.location = (-620, -330)
+        nmap = nt.nodes.new('ShaderNodeNormalMap')
+        nmap.location = (-360, -330)
+        nt.links.new(tex_n.outputs['Color'], nmap.inputs['Color'])
+        nt.links.new(nmap.outputs['Normal'], bsdf.inputs['Normal'])
     return mat
 
 
@@ -129,7 +466,45 @@ def box(name, size, loc, rot=(0, 0, 0)):
     o.name = name
     o.scale = Vector(size)
     bpy.ops.object.transform_apply(scale=True)
+    edge_break(o, size)
     return o
+
+
+def edge_break(obj, size):
+    """Apply one small angle-limited bevel without rounding the silhouette."""
+    w = min(EDGE_BREAK, min(abs(s) for s in size) * 0.25)
+    if w < 1e-4:
+        return obj
+    bpy.context.view_layer.objects.active = obj
+    mod = obj.modifiers.new('edge_break', 'BEVEL')
+    mod.width = w
+    mod.segments = 1
+    mod.limit_method = 'ANGLE'
+    mod.angle_limit = math.radians(30.0)
+    mod.use_clamp_overlap = True
+    bpy.ops.object.modifier_apply(modifier=mod.name)
+    return obj
+
+
+def cutter(name, size, loc, rot=(0, 0, 0)):
+    """An un-broken cube used only as a boolean tool; edge_break would fight the solver."""
+    bpy.ops.mesh.primitive_cube_add(size=1.0, location=loc, rotation=rot)
+    o = bpy.context.active_object
+    o.name = name
+    o.scale = Vector(size)
+    bpy.ops.object.transform_apply(scale=True)
+    return o
+
+
+def cut(target, tool):
+    """Subtract a damage cutter and remove the temporary tool."""
+    bpy.context.view_layer.objects.active = target
+    mod = target.modifiers.new('cut', 'BOOLEAN')
+    mod.operation = 'DIFFERENCE'
+    mod.object = tool
+    bpy.ops.object.modifier_apply(modifier=mod.name)
+    bpy.data.objects.remove(tool, do_unlink=True)
+    return target
 
 
 def beam(name, a, b, radius, verts=6):
@@ -166,19 +541,32 @@ def ribbon(name, a, b, width, thick, role, parent):
     return o
 
 
-def embed_root(prefix, r, parent, kind='rock', radius=0.55):
-    """The environment bite.
-
-    Review round 2, finding 4: "every root terminates in a clean cylinder or slab rather than an
-    embed plug, welded skirt, clamp jaw, ballast frame, or rock interface. These omissions leave
-    scale, ownership, orientation, and load path dependent on color or prose."
-
-    Nothing in space stands on a disc. A mark is driven into rock, welded to a face, or ballasted —
-    and WHICH of those it is tells you who installed it and how much they cared. The bite is also
-    the only part of these objects that says how big they are, because it is the one feature whose
-    real-world counterpart a viewer already knows the size of.
-    """
-    if kind == 'rock':
+def embed_root(prefix, r, parent, kind='rock', radius=0.55,
+               host_radius=None, host_top=0.0, sill_to=None):
+    """Build the furniture-to-host interface: rock bite, weld, or ballast frame."""
+    if kind == 'rock' and host_radius is not None:
+        # Scale the drive interface to the caller's short host so tabs overlap the flange.
+        span = host_radius
+        put(cyl(f'{prefix}_embed_plug', span * 0.62, 0.14, (0, 0, host_top * 0.5 - 0.04), verts=7),
+            'furniture_bare_steel', parent)
+        # Keep the weld collar on the asset so the root remains self-contained.
+        put(cyl(f'{prefix}_weld_collar', span * 0.76, 0.05, (0, 0, host_top + 0.005), verts=12),
+            'furniture_scorch', parent)
+        for i, (ang, ln, tilt) in enumerate(((0.0, 0.34, 0.5), (1.5, 0.28, 0.42), (2.9, 0.36, 0.58),
+                                             (4.4, 0.25, 0.38), (5.6, 0.31, 0.47))):
+            # The scaled tab overlaps the flange and lifts only slightly from its rim.
+            reach = min(ln, span * 0.9)
+            t = put(box(f'{prefix}_bite_tab_{i}', (reach, 0.09, 0.05),
+                        (math.cos(ang) * span * 0.72, math.sin(ang) * span * 0.72, host_top * 0.45)),
+                    'furniture_bare_steel', parent)
+            t.rotation_euler = (0, tilt * 0.35, ang)
+        for i, (ang, sc) in enumerate(((0.7, 0.17), (2.4, 0.13), (5.1, 0.20))):
+            s = min(sc, span * 0.42)
+            put(box(f'{prefix}_rim_slag_{i}', (s, s * 0.8, s * 0.45),
+                    (math.cos(ang) * span * 0.80, math.sin(ang) * span * 0.80,
+                     host_top + s * 0.10)),
+                'furniture_scorch', parent)
+    elif kind == 'rock':
         # Driven: an irregular skirt of rock-biting tabs splayed around the shaft, plus displaced
         # spoil where the drive pushed material up.
         put(cyl(f'{prefix}_embed_plug', radius * 0.62, 0.20, (0, 0, -0.02), verts=7),
@@ -208,9 +596,11 @@ def embed_root(prefix, r, parent, kind='rock', radius=0.55):
                 'furniture_bare_steel', parent)
     else:  # 'ballast'
         # A ballast frame: four feet on a spread base, one shimmed because the seat was not level.
+        seats = []
         for i in range(4):
             a = i * math.pi / 2 + 0.4
             fx, fy = math.cos(a) * radius * 1.25, math.sin(a) * radius * 1.25
+            seats.append((fx, fy))
             put(box(f'{prefix}_foot_{i}', (0.30, 0.24, 0.09), (fx, fy, 0.045)),
                 'furniture_structural_alloy', parent)
             beam(f'{prefix}_foot_brace_{i}', (fx * 0.35, fy * 0.35, 0.30), (fx, fy, 0.09), 0.035)
@@ -218,6 +608,14 @@ def embed_root(prefix, r, parent, kind='rock', radius=0.55):
             if i == 2:
                 put(box(f'{prefix}_shim', (0.24, 0.18, 0.035), (fx, fy, 0.105)),
                     'furniture_bare_steel', parent)
+        if sill_to is not None:
+            # Bridge raised bodies to the ballast feet with a seated structural sill.
+            rad = 0.055
+            z = sill_to - rad
+            for i in range(4):
+                a0, a1 = seats[i], seats[(i + 1) % 4]
+                beam(f'{prefix}_sill_{i}', (a0[0], a0[1], z), (a1[0], a1[1], z), rad, verts=6)
+                put(bpy.context.active_object, 'furniture_structural_alloy', parent)
 
 
 def root_for(name):
@@ -237,7 +635,8 @@ def build_claim_mark():
     # The lean is authored: "many lean 5-12 degrees after a beam kiss or a bad drive."
     lean = math.radians(8.0)
     put(cyl('claim_flange', 0.30, 0.06, (0, 0, 0.03), verts=12), 'furniture_structural_alloy', r)
-    embed_root('claim', r, r, kind='rock', radius=0.34)   # driven into the seam face
+    # The short flange uses a caller-sized drive interface.
+    embed_root('claim', r, r, kind='rock', radius=0.34, host_radius=0.30, host_top=0.06)
     # Four bolt seats; TWO are modelled as empty torn holes rather than bolts. The absence is the
     # point — a full set of four reads as new, and almost none of these are new.
     for i, present in enumerate([True, False, True, False]):
@@ -365,16 +764,32 @@ def build_lane_pin():
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
 def build_tally_post():
     r = root_for('place_tally_post')
-    # 3 m square deck, 0.25 m thick, with cut voids so it reads as grating rather than a slab.
-    embed_root('tally', r, r, kind='ballast', radius=1.35)  # a deck this size sits on a frame
-    put(box('tally_deck', (3.0, 3.0, 0.25), (0, 0, 0.28)), 'furniture_structural_alloy', r)
-    for i in range(4):
-        put(box(f'tally_grate_{i}', (2.6, 0.12, 0.28), (0, -0.9 + i * 0.6, 0.14)),
-            'furniture_scorch', r)
-    # ONE crumpled deck corner. Directional damage: a lower, tilted wedge on a single corner.
-    c = put(box('tally_deck_crumple', (0.85, 0.85, 0.14), (1.16, -1.16, 0.06)),
-            'furniture_bare_steel', r)
-    c.rotation_euler = (math.radians(-11), math.radians(9), 0)
+    # 3 m square deck, 0.25 m thick: an open perimeter frame carrying spaced grate bars.
+    DECK_Z, DECK_D, HALF, RAIL = 0.28, 0.25, 1.50, 0.28
+    IN = HALF - RAIL                                     # 1.22, inner face of the frame
+    embed_root('tally', r, r, kind='ballast', radius=1.05,
+               sill_to=DECK_Z - DECK_D * 0.5)            # the deck stands on the frame, visibly
+    rails = []
+    for name, size, loc in (
+        ('tally_deck_rail_n', (HALF * 2, RAIL, DECK_D), (0, IN + RAIL * 0.5, DECK_Z)),
+        ('tally_deck_rail_s', (HALF * 2, RAIL, DECK_D), (0, -(IN + RAIL * 0.5), DECK_Z)),
+        ('tally_deck_rail_e', (RAIL, IN * 2 + RAIL, DECK_D), (IN + RAIL * 0.5, 0, DECK_Z)),
+        ('tally_deck_rail_w', (RAIL, IN * 2 + RAIL, DECK_D), (-(IN + RAIL * 0.5), 0, DECK_Z)),
+    ):
+        rails.append((name, put(box(name, size, loc), 'furniture_structural_alloy', r)))
+    # Full interior runs sit inside the deck depth and share its structural alloy.
+    for i in range(8):
+        put(box(f'tally_grate_{i}', (IN * 2 + RAIL * 0.5, 0.14, DECK_D - 0.05),
+                (0, -1.05 + i * 0.30, DECK_Z)),
+            'furniture_structural_alloy', r)
+    # Cut the damaged corner from both rails and replace it as a buckled fold inside the footprint.
+    for name, obj in rails:
+        if name.endswith('_e') or name.endswith('_s'):
+            cut(obj, cutter(f'{name}_corner_bite', (0.50, 0.50, DECK_D * 2.0),
+                            (HALF - 0.08, -(HALF - 0.08), DECK_Z)))
+    c = put(box('tally_deck_crumple', (0.58, 0.58, 0.17), (1.16, -1.16, DECK_Z)),
+            'furniture_structural_alloy', r)
+    c.rotation_euler = (math.radians(-9), math.radians(7), 0)
     # Hexagonal scale house, 1.1 m across, 4 m tall.
     put(cyl('tally_scale_house', 0.55, 4.0, (0, 0, 2.25), verts=6), 'furniture_painted_shell', r)
     # The boom: 3.2 m, one side only, drooping 8 degrees. This is the whole silhouette.
@@ -455,27 +870,44 @@ def build_whistle():
         if i == 1:
             boot_anchor = prev
 
-    # A boot, hanging off the longest chain. Nobody knows whose.
-    # The boot hangs ON the long chain's last link rather than floating beside it.
-    put(box('whistle_boot', (0.28, 0.12, 0.12),
-            (boot_anchor[0], boot_anchor[1], boot_anchor[2] - 0.10)),
+    # The shaft overlaps the last link; derive both z seats from the endpoint so the load path
+    # survives future chain-length changes.
+    bx, by, boot_z = boot_anchor
+    put(box('whistle_boot', (0.20, 0.12, 0.13), (bx, by, boot_z - 0.045)),
         'furniture_painted_shell', r)
+    put(box('whistle_boot_sole', (0.30, 0.13, 0.036), (bx + 0.05, by - 0.02, boot_z - 0.097)),
+        'furniture_bare_steel', r)
     # Jury mast: 0.7 m of welded rebar, three rods that do not agree with each other.
     for i, (dx_, dy_, tilt) in enumerate(((0.0, 0.0, 0.0), (0.06, 0.03, 0.16), (-0.05, 0.05, -0.11))):
         rod = put(cyl(f'whistle_rebar_{i}', 0.018, 0.70, (dx_, dy_, 2.72), verts=4),
                   'furniture_bare_steel', r)
         rod.rotation_euler = (tilt, tilt * 0.6, 0)
-    # Lamp cluster in a basket of wire — an open frame, not a housing. Three lamp blobs inside it.
-    put(cyl('whistle_basket_ring', 0.20, 0.03, (0, 0, 3.32), verts=8), 'furniture_bare_steel', r)
-    for i, (ox, oy) in enumerate(((0.17, 0), (-0.17, 0), (0, 0.17), (0, -0.17))):
-        put(box(f'whistle_basket_bar_{i}', (0.03, 0.03, 0.30), (ox, oy, 3.18)),
+    # Lamp cluster in an open wire basket: hollow rim, round bars, and gather struts root it to the
+    # rebar mast while leaving the three lenses visible.
+    BR = 0.17
+    for name, z in (('whistle_basket_ring_lo', 3.048), ('whistle_basket_ring', 3.318)):
+        bpy.ops.mesh.primitive_torus_add(major_radius=BR, minor_radius=0.014, location=(0, 0, z),
+                                         major_segments=12, minor_segments=4)
+        ring = bpy.context.active_object
+        ring.name = name
+        put(ring, 'furniture_bare_steel', r)
+    for i, (ox, oy) in enumerate(((BR, 0), (-BR, 0), (0, BR), (0, -BR))):
+        # Round section: this is wire, and square-section wire was part of the toy read.
+        put(cyl(f'whistle_basket_bar_{i}', 0.015, 0.30, (ox, oy, 3.18), verts=6),
             'furniture_bare_steel', r)
+    for i in range(3):
+        a = i * (2 * math.pi / 3)
+        beam(f'whistle_basket_gather_{i}', (0.0, 0.0, 3.00),
+             (math.cos(a) * BR, math.sin(a) * BR, 3.048), 0.013, verts=4)
+        put(bpy.context.active_object, 'furniture_bare_steel', r)
     for i, (ox, oy, oz) in enumerate(((0.05, 0.03, 3.14), (-0.06, -0.02, 3.20), (0.01, -0.06, 3.10))):
         put(cyl(f'whistle_lamp_{i}', 0.062, 0.09, (ox, oy, oz), verts=8), 'furniture_signal_lens', r)
-    # Wide-band antenna BENT FROM A SURVEY PADDLE, S-curved: three segments that reverse direction.
+    # Wide-band antenna bent from a survey paddle; the stanchion gives the paddle a real lid root.
     put(box('whistle_paddle_root', (0.45, 0.08, 0.02), (0.30, 0.10, 2.50),
             rot=(0, math.radians(18), math.radians(22))), 'furniture_structural_alloy', r)
-    # S-curve antenna: three members that SHARE ENDPOINTS, rooted in a modelled clamp on the paddle.
+    put(box('whistle_paddle_stanchion', (0.12, 0.10, 0.18), (0.30, 0.10, 2.42)),
+        'furniture_structural_alloy', r)
+    # S-curve antenna members share endpoints and start at the paddle clamp.
     put(box('whistle_antenna_clamp', (0.10, 0.10, 0.08), (0.42, 0.13, 2.56)), 'furniture_bare_steel', r)
     pts = [(0.42, 0.13, 2.56), (0.66, 0.24, 2.84), (0.58, 0.10, 3.12), (0.80, 0.20, 3.40)]
     for i in range(len(pts) - 1):
@@ -486,7 +918,12 @@ def build_whistle():
     put(cyl('whistle_crank_hub', 0.07, 0.10, (-0.52, 0, 1.20), rot=(0, math.pi / 2, 0), verts=8),
         'furniture_structural_alloy', r)
     put(box('whistle_crank_arm', (0.05, 0.26, 0.04), (-0.60, 0.12, 1.20)), 'furniture_bare_steel', r)
+    put(box('whistle_plaque_standoff', (0.18, 0.08, 0.06), (0, -0.47, 1.60)),
+        'furniture_structural_alloy', r)
     put(box('whistle_plaque', (0.30, 0.02, 0.16), (0, -0.51, 1.60)), 'furniture_identity_plate', r)
+    for i, x in enumerate((-0.10, 0.10)):
+        put(cyl(f'whistle_plaque_bolt_{i}', 0.014, 0.025, (x, -0.525, 1.60),
+                rot=(math.pi / 2, 0, 0), verts=6), 'furniture_bare_steel', r)
     # Scorch collar where it was welded to a rock in a hurry.
     # Welded to a rock in a hurry and never dressed back — the fiction's own account of it.
     embed_root('whistle', r, r, kind='weld', radius=0.52)
@@ -612,29 +1049,57 @@ def build_ash_pin():
     # A cut spar, 3.5 m, slender. It is a piece of the dead hull, not a monument someone ordered.
     spar = put(cyl('ash_spar', 0.07, 3.50, (0, 0, 1.95), verts=8), 'furniture_bare_steel', r)
     spar.rotation_euler = (LEAN, 0, 0)
-    # Plate, melt, and empty cage live in SPAR LOCAL space. The old cut-end stub
-    # was a floating brick; the spar tip itself is the ragged end.
-    put(box('ash_name_plate', (0.50, 0.03, 0.30), (0.0, -0.10, -0.23)),
-        'furniture_identity_plate', spar)
-    melt = put(box('ash_plate_melt_corner', (0.14, 0.04, 0.14), (0.20, -0.11, -0.08)),
-               'furniture_scorch', spar)
-    melt.rotation_euler = (0, 0, math.radians(38))
-    for i, (ox, oy) in enumerate(((0.055, 0), (-0.055, 0), (0, 0.055), (0, -0.055))):
-        put(box(f'ash_cage_bar_{i}', (0.016, 0.016, 0.20), (ox, -0.09 + oy, 0.68)),
+    # Plate, melt, and empty cage stay in spar-local space. The plate has a bolted bracket and the
+    # melted corner is a subtraction, so damage reads as loss rather than an added block.
+    plate = box('ash_name_plate', (0.50, 0.03, 0.30), (0.0, -0.112, -0.23))
+    cut(plate, cutter('ash_plate_melt_bite', (0.20, 0.14, 0.20), (0.28, -0.112, -0.055),
+                      rot=(0, 0, math.radians(38))))
+    put(plate, 'furniture_identity_plate', spar)
+    for i, ex in enumerate((0.17, -0.17)):
+        # Two ears span spar face to plate back; the crossbar below carries them into the spar.
+        put(box(f'ash_plate_ear_{i}', (0.07, 0.055, 0.12), (ex, -0.0965, -0.23)),
             'furniture_structural_alloy', spar)
-    put(cyl('ash_cage_ring', 0.075, 0.018, (0, -0.09, 0.80), verts=8),
+        put(cyl(f'ash_plate_bolt_{i}', 0.018, 0.02, (ex, -0.132, -0.23),
+                rot=(math.pi / 2, 0, 0), verts=6), 'furniture_bare_steel', spar)
+    put(box('ash_plate_backing_bar', (0.42, 0.04, 0.06), (0, -0.078, -0.23)),
         'furniture_structural_alloy', spar)
-    # Ballast chain from the foot. ONE LINK IS THE WRONG ALLOY — thicker, and a different material.
+    # Empty lamp cage with an arm into the spar and hollow upper/lower rings.
+    put(box('ash_cage_arm', (0.05, 0.10, 0.05), (0, -0.055, 0.68)),
+        'furniture_structural_alloy', spar)
+    for i, (ox, oy) in enumerate(((0.052, 0), (-0.052, 0), (0, 0.052), (0, -0.052))):
+        put(box(f'ash_cage_bar_{i}', (0.016, 0.016, 0.20), (ox, -0.11 + oy, 0.68)),
+            'furniture_structural_alloy', spar)
+    for name, z in (('ash_cage_ring_lo', 0.585), ('ash_cage_ring', 0.775)):
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.052, minor_radius=0.018,
+                                         location=(0, -0.11, z), major_segments=8, minor_segments=4)
+        ring = bpy.context.active_object
+        ring.name = name
+        put(ring, 'furniture_structural_alloy', spar)
+    # Ballast chain runs between two eyes on the base; one thicker link marks the alloy change.
+    CHAIN_A, CHAIN_B = (0.28, 0.20), (0.46, -0.14)
+    for name, (ex, ey) in (('ash_chain_eye_a', CHAIN_A), ('ash_chain_eye_b', CHAIN_B)):
+        put(cyl(name, 0.034, 0.07, (ex, ey, 0.285), rot=(math.pi / 2, 0, 0), verts=6),
+            'furniture_bare_steel', r)
     for k in range(5):
         wrong = (k == 2)
-        put(cyl(f'ash_ballast_link_{k}', 0.030 if wrong else 0.022, 0.15,
-                (0.30 + k * 0.09, 0.16 - k * 0.05, 0.16),
-                rot=(math.radians(90 if k % 2 else 0), 0, math.radians(24)), verts=5),
+        t = 0.1 + k * 0.2
+        put(cyl(f'ash_ballast_link_{k}', 0.030 if wrong else 0.022, 0.10,
+                (CHAIN_A[0] + (CHAIN_B[0] - CHAIN_A[0]) * t,
+                 CHAIN_A[1] + (CHAIN_B[1] - CHAIN_A[1]) * t, 0.29),
+                rot=(math.radians(90 if k % 2 else 0), 0, math.radians(-62)), verts=5),
             'furniture_bare_steel' if wrong else 'furniture_structural_alloy', r)
-    # Tokens left by passing crews, at the foot, at three angles.
-    for i, (x, y, sz, a) in enumerate(((0.18, 0.16, 0.11, 0.4), (-0.20, 0.12, 0.08, 1.9),
-                                       (0.04, -0.18, 0.09, 3.1))):
-        t = put(box(f'ash_token_{i}', (sz, sz, sz * 0.35), (x, y, 0.28)),
+    # Passing-crew tokens are threaded on an offering wire between two anchored eyes.
+    wire = [(-0.10, 0.36, 0.30), (-0.20, 0.20, 0.272), (-0.28, 0.02, 0.272), (-0.36, -0.14, 0.30)]
+    for name, (ex, ey) in (('ash_offering_eye_a', wire[0][:2]), ('ash_offering_eye_b', wire[-1][:2])):
+        put(cyl(name, 0.030, 0.05, (ex, ey, 0.285), verts=6), 'furniture_bare_steel', r)
+    for i in range(len(wire) - 1):
+        beam(f'ash_offering_wire_{i}', wire[i], wire[i + 1], 0.010, verts=4)
+        put(bpy.context.active_object, 'furniture_bare_steel', r)
+    for i, (sz, a, drop) in enumerate(((0.11, 0.4, 0.008), (0.08, 1.9, 0.006), (0.09, 3.1, 0.012))):
+        a0, a1 = wire[i], wire[i + 1]
+        t = put(box(f'ash_token_{i}', (sz, sz, sz * 0.35),
+                    ((a0[0] + a1[0]) * 0.5, (a0[1] + a1[1]) * 0.5,
+                     (a0[2] + a1[2]) * 0.5 - drop)),
                 'furniture_painted_shell', r)
         t.rotation_euler = (0, 0, a)
     return r
@@ -650,7 +1115,44 @@ BUILDERS = {
 }
 
 
-def export_glb(root, path):
+def project_uvs(obj):
+    """World-space box projection at a fixed texel density.
+
+    Deliberately not `smart_project`: an per-object atlas gives every part its own arbitrary scale,
+    so a 3 m deck and a 20 mm bolt end up with wildly different texel densities and the family stops
+    looking like one shop's stock. Projecting from world position at a constant tiles-per-metre
+    means grain size is a property of the MATERIAL rather than of the part it landed on, and two
+    parts that abut share a continuous surface across the join.
+
+    Runs before the family scale is applied, so the density is in authored metres, and after every
+    bevel and boolean, so cut faces are covered.
+    """
+    me = obj.data
+    if not me.polygons:
+        return
+    uvl = me.uv_layers[0] if me.uv_layers else me.uv_layers.new(name='UVMap')
+    mw = obj.matrix_world
+    rot = mw.to_3x3()
+    co = [mw @ v.co for v in me.vertices]
+    for poly in me.polygons:
+        n = rot @ poly.normal
+        ax, ay, az = abs(n.x), abs(n.y), abs(n.z)
+        for li in poly.loop_indices:
+            p = co[me.loops[li].vertex_index]
+            if az >= ax and az >= ay:
+                u, v = p.x, p.y
+            elif ax >= ay:
+                u, v = p.y, p.z
+            else:
+                u, v = p.x, p.z
+            uvl.data[li].uv = (u * UV_PER_M, v * UV_PER_M)
+
+
+def export_glb(root, path, parts_out=PARTS_OUT):
+    # UVs first, in authored metres and on the final mesh.
+    for child in root.children_recursive:
+        if child.type == 'MESH':
+            project_uvs(child)
     # Scale the whole assembly on the root, so every authored dimension keeps its ratio and the
     # multiplier stays a single reviewable number rather than being baked into 200 literals.
     root.scale = Vector((FAMILY_SCALE, FAMILY_SCALE, FAMILY_SCALE))
@@ -664,13 +1166,14 @@ def export_glb(root, path):
     bpy.ops.export_scene.gltf(
         filepath=str(path), export_format='GLB', use_selection=True,
         export_apply=True, export_yup=True,
-        export_texcoords=False,
+        export_texcoords=True,
     )
     digest = hashlib.sha256(path.read_bytes()).hexdigest()
-    PARTS_OUT.mkdir(parents=True, exist_ok=True)
-    parts_path = PARTS_OUT / path.name
-    if parts_path.resolve() != path.resolve():
-        parts_path.write_bytes(path.read_bytes())
+    if parts_out is not None:
+        parts_out.mkdir(parents=True, exist_ok=True)
+        parts_path = parts_out / path.name
+        if parts_path.resolve() != path.resolve():
+            parts_path.write_bytes(path.read_bytes())
     return digest
 
 
@@ -738,10 +1241,38 @@ def main():
     ap.add_argument('--render', action='store_true')
     ap.add_argument('--distances', action='store_true',
                     help='also render at 20/60/140 world units - the real gameplay band')
+    ap.add_argument('--only', metavar='ID,...',
+                    help='build a comma-separated subset of known asset IDs')
+    ap.add_argument('--out-root', type=Path, metavar='PATH',
+                    help='write source, parts and evidence below an isolated candidate root')
     args = ap.parse_args(argv)
 
+    known = set(BUILDERS)
+    if args.only is None:
+        selected_names = list(BUILDERS)
+    else:
+        requested = [value.strip() for value in args.only.split(',') if value.strip()]
+        unknown = sorted(set(requested) - known)
+        if unknown:
+            ap.error(f"unknown asset ID(s): {', '.join(unknown)}; choose from {', '.join(BUILDERS)}")
+        if not requested:
+            ap.error('--only requires at least one asset ID')
+        selected_names = list(dict.fromkeys(requested))
+
+    out_root = args.out_root.resolve() if args.out_root else None
+    out_source = out_root / 'source' if out_root else OUT_SOURCE
+    out_evidence = out_root / 'evidence' if out_root else OUT_EVIDENCE
+    out_parts = out_root / 'parts' if out_root else PARTS_OUT
+
+    def report_path(path):
+        try:
+            return str(path.relative_to(ROOT)).replace(chr(92), '/')
+        except ValueError:
+            return str(path)
+
     report = {'schema': 'spaceface.laneFurniture.v1', 'assets': []}
-    for name, builder in BUILDERS.items():
+    for name in selected_names:
+        builder = BUILDERS[name]
         reset_scene()
         root = builder()
         bpy.context.view_layer.update()
@@ -760,8 +1291,8 @@ def main():
         else:
             lo = hi = size = Vector((0, 0, 0))
         tris = tri_count(root)
-        glb = OUT_SOURCE / f'{name}.glb'
-        digest = export_glb(root, glb)
+        glb = out_source / f'{name}.glb'
+        digest = export_glb(root, glb, parts_out=out_parts)
         # Re-measure after the family scale so the report describes the PLACED object.
         size = size * FAMILY_SCALE
         entry = {
@@ -773,15 +1304,15 @@ def main():
             'sha256': digest,
         }
         if args.render:
-            OUT_EVIDENCE.mkdir(parents=True, exist_ok=True)
+            out_evidence.mkdir(parents=True, exist_ok=True)
             radius = max(1.2, max(size.x, size.y, size.z))
             target = (0, 0, size.z * 0.45)
             # Turntable view, for judging construction.
             setup_render(target, radius)
-            shot = OUT_EVIDENCE / f'{name}.png'
+            shot = out_evidence / f'{name}.png'
             bpy.context.scene.render.filepath = str(shot)
             bpy.ops.render.render(write_still=True)
-            entry['render'] = str(shot.relative_to(ROOT)).replace(chr(92), '/')
+            entry['render'] = report_path(shot)
             # Matched-distance views at the ranges these are actually seen from in play. The camera
             # bubble is ~45-50 units deep, so 20 and 60 bracket the readable band and 140 is the
             # point past which a prop is radar content.
@@ -789,7 +1320,7 @@ def main():
                 for dist in (20, 60, 140):
                     reset_render_cameras()
                     setup_render(target, radius, distance=float(dist))
-                    dshot = OUT_EVIDENCE / f'{name}@{dist}u.png'
+                    dshot = out_evidence / f'{name}@{dist}u.png'
                     bpy.context.scene.render.filepath = str(dshot)
                     bpy.ops.render.render(write_still=True)
                 entry['distanceViews'] = [20, 60, 140]
@@ -797,9 +1328,9 @@ def main():
         log(f"{name}: {tris} tris, {entry['parts']} parts, "
             f"{entry['sizeM'][0]}x{entry['sizeM'][1]}x{entry['sizeM'][2]} m")
 
-    OUT_EVIDENCE.mkdir(parents=True, exist_ok=True)
-    (OUT_EVIDENCE / 'build-report.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
-    log(f"wrote {len(report['assets'])} source GLBs to {OUT_SOURCE.relative_to(ROOT)}")
+    out_evidence.mkdir(parents=True, exist_ok=True)
+    (out_evidence / 'build-report.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
+    log(f"wrote {len(report['assets'])} source GLBs to {report_path(out_source)}")
 
 
 if __name__ == '__main__':
