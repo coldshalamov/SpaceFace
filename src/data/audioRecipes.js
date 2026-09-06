@@ -560,6 +560,33 @@ export const RECIPES = [
     reverbMix: 0.2, reverbDecay: 1.1,
   },
 
+  // WANTED heat escalation — the law's attention has a voice. A dissonant rising alarm,
+  // urgent and mechanical, distinct from the generic UI alert so a heat climb is never mistaken
+  // for menu feedback. The call site scales rate/gain with the heat band (1..5).
+  {
+    id: 'sfx_wanted_alert',
+    category: 'ui',
+    type: 'oscillator',
+    wave: 'sawtooth',
+    baseFreq: 311, freqSweep: [311, 466], sweepTimeS: 0.16,
+    gainEnvelope: { attack: 0.006, sustain: 0.12, release: 0.14 },
+    filterType: 'bandpass', filterFreq: 900, filterQ: 1.8,
+    repeatCount: 2, repeatIntervalS: 0.18,
+    gainMult: 0.8,
+  },
+  // Search called off — a soft falling resolution when WANTED drops clean. The mirror of the
+  // escalation alarm: relief, not reward, so escaping the heat radius reads as an event.
+  {
+    id: 'sfx_wanted_clear',
+    category: 'ui',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 523, freqSweep: [523, 349], sweepTimeS: 0.28,
+    gainEnvelope: { attack: 0.014, sustain: 0.05, release: 0.3 },
+    gainMult: 0.6,
+    reverbMix: 0.15, reverbDecay: 0.9,
+  },
+
   // --- UI hover (soft tick, higher than click) ---
   {
     id: 'sfx_ui_hover',

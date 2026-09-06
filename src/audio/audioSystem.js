@@ -483,6 +483,8 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   // Gameplay cues with dedicated recipes (drill.js loot/hazard, countermeasures.js, combat shield break).
   loot_collect: 'sfx_loot_collect', mining_core_fizzle: 'sfx_mining_core_fizzle',
   shield_break: 'sfx.shieldBreak', cm_chaff: 'sfx_cm_chaff', cm_ecm: 'sfx_cm_ecm',
+  // WANTED heat escalation/clear — the law's attention speaks in its own voice, not UI chrome.
+  wanted_escalate: 'sfx_wanted_alert', wanted_clear: 'sfx_wanted_clear',
   [FIRST_HOUR_AUDIO_SIGNATURES.masslineLatch.semanticId]: FIRST_HOUR_AUDIO_SIGNATURES.masslineLatch.recipeId,
   [FIRST_HOUR_AUDIO_SIGNATURES.masslineStrain.semanticId]: FIRST_HOUR_AUDIO_SIGNATURES.masslineStrain.recipeId,
   [FIRST_HOUR_AUDIO_SIGNATURES.masslineBreak.semanticId]: FIRST_HOUR_AUDIO_SIGNATURES.masslineBreak.recipeId,
@@ -1121,6 +1123,11 @@ export const audio = {
     bus.on('pickup:collected', (p) => this._onPickupCollected(p));
     bus.on('credits:changed', (p) => { if (p && p.delta > 0) this.play('sfx_ui_confirm', { gain: 0.7 }); });
     bus.on('economy:tradeCompleted', () => this.play('sfx_ui_confirm', { gain: 0.6 }));
+    // Cargo jettison (HUD cargo panel "JETTISON" → cargo.js dump): previously TOTAL silence for an
+    // audible world act — pods shoved out an airlock. Reuses the authored massline jettison kick
+    // (jettisonImpulse is flag-gated OFF on the default route, so no doubling). The event has no
+    // position; play() resolves the player ship locally and the dump always happens at the hull.
+    bus.on('cargo:jettisoned', (p) => this._onCargoJettisoned(p));
     // Mission accept/complete: previously TOTAL silence on the core progression loop. Accept gets a
     // bright rising stinger; complete gets a triumphant two-note chord + a brief music duck so the
     // payoff lands above the bed.
@@ -1154,6 +1161,9 @@ export const audio = {
     // Low-fuel alarm: fuel:empty fired with no sound (no warning before you're stranded). A short
     // alert cue surfaces the emergency. (The continuous low-health alarm is a separate poller.)
     bus.on('fuel:empty', () => this._onCue({ id: 'alert', importance: 0.9, duck: true }));
+    // WANTED heat escalation: heat:changed drove VFX/telemetry but was silent — the player could
+    // become hunted with no sound. The authoritative packet keys the whole family (see handler).
+    bus.on('heat:changed', (p) => this._onHeatChanged(p));
     // Tech research + ship purchase: the two biggest credit sinks were silent. A confirm chime
     // makes the payoff of a major purchase/upgrade land.
     bus.on('tech:researched', () => this.play('sfx_mission_complete', { gain: 0.6 }));
@@ -1265,6 +1275,7 @@ export const audio = {
     bus.on('save:loaded', () => {
       rt._activeCombatEncounters.clear();
       rt._doctrineThreatUntil = -1e9;
+      this._lastHeatLevel = null;
       this._applySettings();
       this._markMusicDirty();
     });
@@ -2118,6 +2129,16 @@ export const audio = {
     this.play('sfx_mining_impact', { position: p && p.pos, gain: 0.8 });
   },
 
+  // Cargo jettison (HUD cargo panel → cargo.dumpCargo): an audible world act that was total
+  // silence. Reuses the authored massline jettison kick; jettisonImpulse's own massline.jettisonKick
+  // cue is flag-gated OFF on the default route, so the two cannot double. The receipt carries no
+  // position — a dump always happens at the dumping ship's hull, and non-positional play() already
+  // reads as ship-local.
+  _onCargoJettisoned(p) {
+    if (!p || !(p.amount > 0)) return;
+    this.play('sfx_massline_jettison', { gain: 0.7 });
+  },
+
   // The rock calving's two audible beats, keyed off the chain's own receipts. One family: groan
   // (the seam flexing before the split) and calve (the split). The chain announces phase 0 through
   // the event_start receipt and later phases through phase transitions, so both kinds map here.
@@ -2829,6 +2850,36 @@ export const audio = {
     // Soft release whoosh then stop station hum — undock is decompress, not another clunk.
     this.play('sfx_undock_release', { gain: 0.55 });
     this._stopStationHum();
+  },
+
+  // WANTED heat family, keyed on the authoritative heat:changed packet (heat.js is the single
+  // writer and already throttles emits). Only edges speak: the WANTED flip and band climbs play
+  // the rising alarm (pitched up per band); dropping clean plays the clear sting. Chips inside a
+  // band and decay-without-clear stay silent. Level tracking is presentation-only transient,
+  // nulled on save:loaded — the first packet after a load speaks only on a real wanted edge, so a
+  // mid-heat load cannot mint a phantom escalation alarm.
+  _onHeatChanged(p) {
+    if (!p) return;
+    const level = Number.isFinite(p.level) ? p.level : 0;
+    const prevLevel = this._lastHeatLevel;
+    this._lastHeatLevel = level;
+    if (p.wantedCrossed && !p.wanted) {
+      this._onCue({ id: 'wanted_clear', gain: 0.7 });
+      return;
+    }
+    const escalated = level > 0
+      && (prevLevel == null ? !!(p.wantedCrossed && p.wanted) : level > prevLevel);
+    if (!escalated) return;
+    const band = Math.max(1, Math.min(5, level));
+    this._onCue({
+      id: 'wanted_escalate',
+      gain: clamp(0.55 + band * 0.06, 0.55, 0.9),
+      rate: clamp(1 + (band - 1) * 0.07, 1, 1.3),
+      // The flip owns the ear (duck, like fuel:empty); climbs inside WANTED speak below the
+      // priority-squelch threshold so a band climb never tramples live combat audio.
+      importance: p.wantedCrossed ? 0.9 : 0.75,
+      duck: !!p.wantedCrossed,
+    });
   },
 
   _startStationHum(p) {
