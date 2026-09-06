@@ -14,7 +14,9 @@ const STORY_IDS = Object.freeze([
   'sector_pallas_drift', 'sector_io_reach', 'sector_charon_expanse', 'sector_sker_haven',
   'sector_veil_nebula', 'sector_ashfall_reach',
 ]);
-const EXPECTED_STORY_ANCHOR_HASH = '701958780956ac5aefaefd87bae5b57bb63f73c8947c2856ac409620c78b04e6';
+// 2766ef05…: ashfall's anchor pois gained the authored landmark poi_vault_maw (INFERENCE 10/10,
+// 752da2f6) — the first story-anchor pois change since the guard was introduced in f4ba6a91.
+const EXPECTED_STORY_ANCHOR_HASH = '2766ef056fab48722e98549df4e0245b74971b1e5616b758d16cd8934295e248';
 const REQUIRED_FRONTIER_IDS = new Set(FRONTIER_SECTOR_IDS);
 const FACTIONS = new Set(FACTION_META.map((entry) => entry.id));
 const ZONES = new Set(Object.keys(ZONE_TYPES));

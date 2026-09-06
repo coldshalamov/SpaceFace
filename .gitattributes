@@ -16,3 +16,4 @@
 # line endings, so a tree that predates this file (or a tool that rewrote a copy with CRLF) still
 # passes; this attribute stops the mismatch happening in the first place.
 *.generated.js text eol=lf
+src/data/frontierRegions/*.js text eol=lf
