@@ -2,6 +2,7 @@
 // Headed Electron runtime witness: fly a few seconds and write what actually happened.
 // Agents should read .devshots/runtime-witness/report.md instead of guessing from source.
 import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import os from 'node:os';
@@ -20,6 +21,12 @@ import {
 import { classifyRuntimeWitness, formatHitchAttributionDetailLines, formatRuntimeWitnessReport } from '../src/core/runtimeWitness.js';
 import { loadPlaywright } from './lib/load-playwright.mjs';
 import { installCspSafePlaywrightPolling } from './lib/playwrightCspPolling.mjs';
+import { digestSourcePaths, listSrcJsSourcePaths } from './lib/validationFingerprint.mjs';
+import {
+  formatRuntimeWitnessProductionMatrix,
+  productionRouteById,
+  summarizeRuntimeWitnessProductionWindow,
+} from './lib/runtimeWitnessProductionMatrix.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const requireCjs = createRequire(import.meta.url);
@@ -60,12 +67,32 @@ const ALLOC_PROBE = process.argv.includes('--alloc-probe');
 // therefore never attributed - it is the largest single allocation event in the session and it sets
 // the heap floor that makes every later major GC expensive.
 const ALLOC_PROBE_BOOT = process.argv.includes('--alloc-probe-boot');
+const PRODUCTION_ROUTE_ID = process.argv.find((arg) => arg.startsWith('--production-route='))?.split('=')[1] || null;
+const PRODUCTION_ROUTE = PRODUCTION_ROUTE_ID ? productionRouteById(PRODUCTION_ROUTE_ID) : null;
+const PRODUCTION_CRUCIBLE_ROUTE = new Set(['warm-dense-combat', 'sustained-swarm']).has(PRODUCTION_ROUTE?.id);
+
+if (PRODUCTION_ROUTE_ID && !PRODUCTION_ROUTE) {
+  throw new Error(`unknown --production-route=${PRODUCTION_ROUTE_ID}`);
+}
+const productionSourcePaths = PRODUCTION_ROUTE ? await listSrcJsSourcePaths(ROOT) : [];
+const productionSourceDigest = PRODUCTION_ROUTE ? await digestSourcePaths(ROOT, productionSourcePaths) : null;
+const productionHarnessDigest = PRODUCTION_ROUTE ? await digestSourcePaths(ROOT, [
+  'scripts/probe-runtime-witness.mjs', 'scripts/lib/runtimeWitnessProductionMatrix.mjs',
+]) : null;
 
 if (OPENING_FIRST_TOUCH_OWNER_DIAGNOSTIC && OPENING_EXACT_OWNER_TOUCH_DIAGNOSTIC) {
   throw new Error('Opening first-touch owner and exact-owner touch diagnostics are mutually exclusive');
 }
 
 await mkdir(OUT, { recursive: true });
+if (PRODUCTION_ROUTE) {
+  // A production-matrix run appends a section to the ordinary witness report. Preserve the prior
+  // baseline before that overwrite.
+  try {
+    const prior = await readFile(path.join(OUT, 'report.md'), 'utf8');
+    await writeFile(path.join(OUT, `report.before-production-matrix-${Date.now()}.md`), prior);
+  } catch (_) {}
+}
 
 const logs = [];
 const consoleHits = [];
@@ -2346,6 +2373,372 @@ function readWitnessInPage() {
   return sample;
 }
 
+function currentCandidateHash() {
+  try {
+    return execFileSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8', windowsHide: true }).trim();
+  } catch (_) {
+    return null;
+  }
+}
+
+async function installProductionMatrixRecorder(targetPage) {
+  return targetPage.evaluate(() => {
+    const prior = window.__SF_PRODUCTION_MATRIX_RECORDER__;
+    prior?.stop?.();
+    const trace = {
+      startedAt: performance.now(),
+      lastAt: null,
+      samples: [],
+      raf: null,
+      stopped: false,
+      inputTimestampKeys: ['lastInputWallMs', 'lastInputAtMs', 'lastActionWallMs', 'lastActionAtMs'],
+    };
+    const readInputAge = (state) => {
+      const input = state?.input;
+      for (const key of trace.inputTimestampKeys) {
+        const value = Number(input?.[key]);
+        if (Number.isFinite(value) && value > 0) return Math.max(0, performance.now() - value);
+      }
+      return null;
+    };
+    const frame = (now) => {
+      if (trace.stopped) return;
+      const state = window.SF?.state;
+      const perf = state?.perfRuntime;
+      const sample = typeof perf?.readFrameSample === 'function' ? perf.readFrameSample({}) : null;
+      if (sample && document.visibilityState === 'visible') {
+        trace.samples.push({
+          elapsedMs: Math.max(0, now - trace.startedAt),
+          intervalMs: trace.lastAt == null ? null : Math.max(0, now - trace.lastAt),
+          inputAgeMs: readInputAge(state),
+          frame: sample,
+        });
+      }
+      trace.lastAt = document.visibilityState === 'visible' ? now : null;
+      trace.raf = requestAnimationFrame(frame);
+    };
+    trace.stop = () => {
+      trace.stopped = true;
+      if (trace.raf != null) cancelAnimationFrame(trace.raf);
+      const timers = window.SF?.state?.render?.gpuTimers;
+      let gpuReport = null;
+      try { gpuReport = typeof timers?.getReport === 'function' ? timers.getReport() : null; } catch (_) {}
+      return { samples: trace.samples.slice(), gpuReport };
+    };
+    window.__SF_PRODUCTION_MATRIX_RECORDER__ = trace;
+    trace.raf = requestAnimationFrame(frame);
+    return { installed: true };
+  });
+}
+
+async function stopProductionMatrixRecorder(targetPage) {
+  return targetPage.evaluate(() => window.__SF_PRODUCTION_MATRIX_RECORDER__?.stop?.() || null);
+}
+
+async function launchProductionCrucible(targetPage, route) {
+  await targetPage.waitForFunction(() => {
+    const button = [...document.querySelectorAll('#screens button')].find((node) => node.textContent.replace(/\s+/g, ' ').trim() === 'Crucible');
+    return !!button && !button.disabled;
+  }, null, { timeout: 30_000 });
+  await targetPage.getByRole('button', { name: 'Crucible', exact: true }).click();
+  const swarm = targetPage.locator('#screens .sf-crd-mode[data-ruleset="swarm"]');
+  await swarm.waitFor({ state: 'visible', timeout: 30_000 });
+  await swarm.click();
+  await targetPage.locator('#screens .sf-crd-seed input').fill(String(FIXED_SEED));
+  await targetPage.getByRole('button', { name: 'Hold the line', exact: true }).click();
+  await targetPage.waitForFunction(() => {
+    const state = window.SF?.state;
+    return state?.mode === 'flight' && state?.run?.kind === 'survival' && state?.run?.ruleset === 'swarm'
+      && state?.run?.phase === 'active' && (state.entityList || []).some((entity) => entity?.alive !== false && entity?.data?.runCohort === 'survival');
+  }, null, { timeout: 120_000 });
+  if (route?.id === 'warm-dense-combat') await targetPage.waitForTimeout(2_500);
+  return targetPage.evaluate(readWitnessInPage);
+}
+
+async function selectNearestAsteroidOnLocalMap(targetPage) {
+  await targetPage.keyboard.press('KeyM');
+  await targetPage.locator('#sf-galaxymap').waitFor({ state: 'visible', timeout: 30_000 });
+  await targetPage.waitForFunction(() => {
+    const screen = window.SF?.registry?.get?.('ui')?.screenManager?.getActiveScreenDef?.();
+    return screen?.id === 'galaxyMap' && (screen._clickTargets || []).some((target) => target.kind === 'asteroid');
+  }, null, { timeout: 20_000 });
+  const target = await targetPage.evaluate(() => {
+    const state = window.SF?.state;
+    const screen = window.SF?.registry?.get?.('ui')?.screenManager?.getActiveScreenDef?.();
+    const player = state?.entities?.get?.(state?.playerId);
+    const candidates = (screen?._clickTargets || []).filter((row) => {
+      const entity = state?.entities?.get?.(row.entityId);
+      return row.kind === 'asteroid' && entity?.alive !== false && entity?.data?.respawnAt == null;
+    }).sort((a, b) => Math.hypot(a.x - player.pos.x, a.z - player.pos.z) - Math.hypot(b.x - player.pos.x, b.z - player.pos.z));
+    const row = candidates[0];
+    return row ? { entityId: row.entityId, sx: row.sx, sy: row.sy, label: row.name || null } : null;
+  });
+  if (!target) throw new Error('visible local map exposed no live asteroid contact');
+  const box = await targetPage.locator('#sf-galaxymap canvas').boundingBox();
+  if (!box) throw new Error('visible local-map canvas had no pointer bounds');
+  await targetPage.mouse.click(box.x + target.sx, box.y + target.sy);
+  await targetPage.waitForFunction((entityId) => {
+    const selected = window.SF?.registry?.get?.('ui')?.screenManager?.getActiveScreenDef?.()?._selectedTarget;
+    return String(selected?.entityId ?? selected?.targetEntityId) === String(entityId);
+  }, target.entityId, { timeout: 10_000 });
+  const course = targetPage.locator('#gm-set-course-btn');
+  await course.waitFor({ state: 'visible', timeout: 10_000 });
+  await course.click();
+  await targetPage.waitForFunction((entityId) => window.SF?.state?.nav?.autopilot?.targetEntityId === entityId, target.entityId, { timeout: 10_000 });
+  await targetPage.waitForFunction((entityId) => {
+    const state = window.SF?.state;
+    const pilot = state?.nav?.autopilot;
+    const player = state?.entities?.get?.(state?.playerId);
+    return pilot?.targetEntityId === entityId && pilot?.active === false && pilot?.status === 'arrived' && player?.alive !== false ? true : null;
+  }, target.entityId, { timeout: 120_000 });
+  return target;
+}
+
+async function enterAsteroidWorksPublic(targetPage, asteroid) {
+  await targetPage.waitForFunction((entityId) => {
+    const state = window.SF?.state;
+    const receipt = state?.masslineAcquisition?.selected;
+    return String(receipt?.targetId) === String(entityId) && receipt?.status === 'ready' && Number(state?.masslineAcquisition?.validUntil) >= Number(state?.simTime) ? true : null;
+  }, asteroid.entityId, { timeout: 10_000 });
+  const startedTick = await targetPage.evaluate(() => Number(window.SF?.state?.tick) || 0);
+  await targetPage.keyboard.down('Space');
+  try {
+    await targetPage.waitForFunction(({ entityId, startedTick }) => {
+      const state = window.SF?.state;
+      return Number(state?.tick) > startedTick && state?.player?.tether?.active === true && String(state.player.tether.targetId) === String(entityId) ? true : null;
+    }, { entityId: asteroid.entityId, startedTick }, { timeout: 8_000 });
+  } finally { await targetPage.keyboard.up('Space').catch(() => {}); }
+  await targetPage.keyboard.press('KeyB');
+  await targetPage.locator('[data-screen="drill"]').waitFor({ state: 'visible', timeout: 20_000 });
+  await targetPage.waitForFunction((entityId) => window.SF?.state?.drill?.active === true && String(window.SF.state.drill.asteroidId) === String(entityId), asteroid.entityId, { timeout: 10_000 });
+}
+
+async function exitAsteroidWorksPublic(targetPage) {
+  const root = targetPage.locator('[data-screen="drill"] .ast-screen');
+  await root.waitFor({ state: 'visible', timeout: 10_000 });
+  if (await root.evaluate((node) => node.dataset.mode === 'build')) await targetPage.keyboard.press('Escape');
+  await targetPage.keyboard.press('Escape');
+  await targetPage.waitForFunction(() => window.SF?.state?.drill == null && window.SF?.state?.mode === 'flight', null, { timeout: 20_000 });
+}
+
+async function dockAtHeliosPublic(targetPage) {
+  await targetPage.keyboard.press('KeyN');
+  await targetPage.locator('#sf-galaxymap').waitFor({ state: 'visible', timeout: 30_000 });
+  await targetPage.keyboard.press('/');
+  const search = targetPage.locator('.gm-search-input');
+  await search.waitFor({ state: 'visible', timeout: 10_000 });
+  await search.fill('Helios Station');
+  const result = targetPage.locator('.gm-search-item-name', { hasText: 'Helios Station' }).first();
+  await result.waitFor({ state: 'visible', timeout: 15_000 });
+  await result.click();
+  const course = targetPage.getByRole('button', { name: 'Set Waypoint', exact: true });
+  await course.waitFor({ state: 'visible', timeout: 15_000 });
+  await course.click();
+  await targetPage.locator('.sf-alert--dock').first().waitFor({ state: 'visible', timeout: 150_000 });
+  await targetPage.locator('#gl-canvas').focus();
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    await targetPage.keyboard.down('KeyE'); await targetPage.waitForTimeout(250); await targetPage.keyboard.up('KeyE').catch(() => {});
+    if (await targetPage.evaluate(() => window.SF?.state?.ui?.docked === true)) break;
+  }
+  await targetPage.waitForFunction(() => window.SF?.state?.ui?.docked === true, null, { timeout: 20_000 });
+  await targetPage.locator('[data-screen="station"]').waitFor({ state: 'visible', timeout: 20_000 });
+}
+
+async function refitAndUndockPublic(targetPage) {
+  const station = targetPage.locator('[data-screen="station"]');
+  const shipworks = station.locator('[data-nav="shipworks"]');
+  await shipworks.waitFor({ state: 'visible', timeout: 20_000 });
+  await shipworks.click();
+  const shipworksRoot = station.locator('.sx-sw');
+  const canvas = shipworksRoot.locator('.sx-sw__canvas');
+  await canvas.waitFor({ state: 'visible', timeout: 30_000 });
+  await targetPage.waitForFunction(() => {
+    const canvas = document.querySelector('[data-screen="station"] .sx-sw__canvas');
+    return canvas?.dataset.previewReady === 'true' && canvas.dataset.previewReveal === 'settled';
+  }, null, { timeout: 30_000 });
+
+  // The dock records the currently fitted build through the public Shipworks preset control.
+  // That gives this route a real, reversible refit rather than inventing credits or inventory.
+  const before = await targetPage.evaluate(() => {
+    const state = window.SF?.state;
+    const shipIndex = Number(state?.player?.activeShipIndex) || 0;
+    const owned = state?.player?.ownedShips?.[shipIndex];
+    const fittings = Array.isArray(owned?.fittings) ? owned.fittings.slice() : [];
+    const slotIndex = fittings.findIndex((defId, index) => String(defId || '').startsWith('mod_')
+      && document.querySelector(`[data-screen="station"] .sx-sw [data-spatial-slot="${index}"]`));
+    const playerEntity = state?.entities?.get?.(state?.playerId);
+    if (!owned || slotIndex < 0 || !fittings[slotIndex]) return null;
+    return {
+      shipIndex,
+      slotIndex,
+      defId: fittings[slotIndex],
+      fittings,
+      inventory: (state?.player?.moduleInventory || []).map((item) => item?.defId || null),
+      entityFittings: Array.isArray(playerEntity?.data?.fittings) ? playerEntity.data.fittings.slice() : null,
+      presetCount: Array.isArray(state?.player?.loadoutPresets) ? state.player.loadoutPresets.length : 0,
+    };
+  });
+  if (!before) throw new Error('Shipworks exposed no fitted non-weapon module with a spatial hardpoint');
+
+  const savePreset = shipworksRoot.locator('.sx-sw-preset--save[data-loadout-preset-save]');
+  await savePreset.waitFor({ state: 'visible', timeout: 10_000 });
+  if (await savePreset.isDisabled()) throw new Error('Shipworks cannot save the current fitted build for a reversible refit');
+  await savePreset.click();
+  const presetId = await targetPage.waitForFunction((snapshot) => {
+    const presets = window.SF?.state?.player?.loadoutPresets || [];
+    const created = presets.slice(snapshot.presetCount).find((preset) => preset?.hullDefId
+      && Array.isArray(preset.fittings)
+      && preset.fittings.length === snapshot.fittings.length
+      && preset.fittings.every((defId, index) => defId === snapshot.fittings[index]));
+    return created?.id || null;
+  }, before, { timeout: 10_000 });
+  const savedPresetId = await presetId.jsonValue();
+  if (!savedPresetId) throw new Error('Shipworks save control did not create an owned loadout preset');
+
+  const hardpoint = shipworksRoot.locator(`[data-spatial-slot="${before.slotIndex}"]`);
+  await hardpoint.waitFor({ state: 'visible', timeout: 10_000 });
+  await hardpoint.click();
+  const unfit = shipworksRoot.locator(`[data-unfit="${before.slotIndex}"]`);
+  await unfit.waitFor({ state: 'visible', timeout: 10_000 });
+  await unfit.click();
+  await targetPage.waitForFunction((snapshot) => {
+    const state = window.SF?.state;
+    const owned = state?.player?.ownedShips?.[snapshot.shipIndex];
+    const playerEntity = state?.entities?.get?.(state?.playerId);
+    return owned?.fittings?.[snapshot.slotIndex] == null
+      && (state?.player?.moduleInventory || []).some((item) => item?.defId === snapshot.defId)
+      && playerEntity?.data?.fittings?.[snapshot.slotIndex] == null;
+  }, before, { timeout: 10_000 });
+
+  const savedPreset = shipworksRoot.locator(`.sx-sw-preset:not(.sx-sw-preset--save)[data-loadout-preset-id="${savedPresetId}"]`);
+  await savedPreset.waitFor({ state: 'visible', timeout: 10_000 });
+  await savedPreset.click();
+  const applyPreset = shipworksRoot.locator('[data-verb="fit"][data-fit-action="apply-preset"]');
+  await applyPreset.waitFor({ state: 'visible', timeout: 10_000 });
+  if (await applyPreset.isDisabled()) throw new Error('Shipworks selected preset is not currently applicable');
+  await applyPreset.click();
+  await targetPage.waitForFunction((snapshot) => {
+    const state = window.SF?.state;
+    const owned = state?.player?.ownedShips?.[snapshot.shipIndex];
+    const playerEntity = state?.entities?.get?.(state?.playerId);
+    const inventory = (state?.player?.moduleInventory || []).map((item) => item?.defId || null);
+    const sameInventory = inventory.length === snapshot.inventory.length
+      && inventory.every((defId, index) => defId === snapshot.inventory[index]);
+    const sameEntityFittings = snapshot.entityFittings == null
+      || (Array.isArray(playerEntity?.data?.fittings)
+        && playerEntity.data.fittings.length === snapshot.entityFittings.length
+        && playerEntity.data.fittings.every((defId, index) => defId === snapshot.entityFittings[index]));
+    return Array.isArray(owned?.fittings)
+      && owned.fittings.length === snapshot.fittings.length
+      && owned.fittings.every((defId, index) => defId === snapshot.fittings[index])
+      && sameInventory && sameEntityFittings;
+  }, before, { timeout: 10_000 });
+
+  const deletePreset = shipworksRoot.locator(`[data-loadout-preset-delete="${savedPresetId}"]`);
+  await deletePreset.waitFor({ state: 'visible', timeout: 10_000 });
+  await deletePreset.click();
+  const confirmDelete = targetPage.locator('#sf-confirm-root .sf-confirm__ok');
+  await confirmDelete.waitFor({ state: 'visible', timeout: 10_000 });
+  await confirmDelete.click();
+  await targetPage.waitForFunction((preset) => !(window.SF?.state?.player?.loadoutPresets || [])
+    .some((row) => row?.id === preset), savedPresetId, { timeout: 10_000 });
+
+  const undock = station.locator('.sxb-launch[data-act="undock"]');
+  await undock.waitFor({ state: 'visible', timeout: 20_000 });
+  await undock.click();
+  const confirm = targetPage.locator('[data-pop-launch]');
+  if (await confirm.isVisible().catch(() => false)) await confirm.click();
+  await targetPage.waitForFunction(() => window.SF?.state?.ui?.docked !== true && window.SF?.state?.mode === 'flight', null, { timeout: 20_000 });
+  return { slotIndex: before.slotIndex, defId: before.defId, operation: 'save-unfit-apply-preset-delete' };
+}
+
+async function driveEarnedSpeedTraversal(targetPage) {
+  await jumpToCeres(targetPage);
+  await targetPage.locator('#gl-canvas').focus();
+  const baseline = await targetPage.evaluate(() => {
+    const player = window.SF?.state?.entities?.get?.(window.SF?.state?.playerId);
+    return { speed: Math.hypot(Number(player?.vel?.x) || 0, Number(player?.vel?.z) || 0), boostEnergy: Number(player?.boost?.energy) || 0 };
+  });
+  await targetPage.keyboard.down('KeyW'); await targetPage.keyboard.down('ShiftLeft');
+  try {
+    const handle = await targetPage.waitForFunction((before) => {
+      const state = window.SF?.state; const player = state?.entities?.get?.(state?.playerId);
+      const speed = Math.hypot(Number(player?.vel?.x) || 0, Number(player?.vel?.z) || 0);
+      const boostEnergy = Number(player?.boost?.energy) || 0;
+      return player?.flags?.boosting === true && boostEnergy < before.boostEnergy && speed > before.speed + 10
+        ? { speed, boostEnergy, baseline: before, maxSpeed: Number(player.maxSpeed) || null } : null;
+    }, baseline, { timeout: 15_000 });
+    return handle.jsonValue();
+  } finally { await targetPage.keyboard.up('ShiftLeft').catch(() => {}); await targetPage.keyboard.up('KeyW').catch(() => {}); }
+}
+
+async function saveReloadBusySitePublic(targetPage) {
+  if (!CONTINUE_ROUTE) throw new Error('busy-site-save-reload requires --continue from a player save with a producing Asteroid Works site');
+  await targetPage.waitForFunction(() => {
+    const sites = window.SF?.state?.sites?.worldById || {};
+    return Object.values(sites).some((site) => site?.survey?.lifecycle === 'producing') ? true : null;
+  }, null, { timeout: 20_000 });
+  await targetPage.evaluate(() => {
+    const trace = { saved: false, loaded: false }; window.__SF_PRODUCTION_SAVE_RELOAD__ = trace;
+    window.SF?.bus?.once?.('save:completed', () => { trace.saved = true; });
+    window.SF?.bus?.once?.('save:loaded', () => { trace.loaded = true; });
+  });
+  await targetPage.keyboard.press('F5');
+  await targetPage.waitForFunction(() => window.__SF_PRODUCTION_SAVE_RELOAD__?.saved === true, null, { timeout: 30_000 });
+  await targetPage.keyboard.press('F9');
+  await targetPage.waitForFunction(() => window.__SF_PRODUCTION_SAVE_RELOAD__?.loaded === true && window.SF?.state?.mode === 'flight', null, { timeout: 30_000 });
+}
+
+async function prepareProductionRoute(targetPage, route) {
+  if (!route) return { status: 'not-requested' };
+  if (route.id === 'cold-opening') return { status: 'ready', driver: 'New Game button through first playable' };
+  if (route.id === 'warm-dense-combat') {
+    await targetPage.waitForFunction(() => (window.SF?.state?.entityList || []).filter((entity) => entity?.alive !== false && entity?.data?.runCohort === 'survival').length >= 3, null, { timeout: 30_000 });
+    return { status: 'ready', driver: 'Crucible Swarm UI; active dense survival cohort' };
+  }
+  if (route.id === 'sustained-swarm') { await targetPage.waitForTimeout(4_000); return { status: 'ready', driver: 'Crucible Swarm UI; sustained active survival cohort' }; }
+  if (route.id === 'earned-speed-traversal') { const earned = await driveEarnedSpeedTraversal(targetPage); return { status: 'ready', driver: 'public Ceres Belt jump then held W + L-Shift, with observed boost drain and velocity gain', earned }; }
+  if (route.id === 'dock-refit-undock') { await dockAtHeliosPublic(targetPage); const refit = await refitAndUndockPublic(targetPage); return { status: 'ready', driver: 'public Helios map waypoint, E dock, Shipworks unfit/refit, visible Undock', refit }; }
+  if (route.id === 'asteroid-works-roundtrip') { const asteroid = await selectNearestAsteroidOnLocalMap(targetPage); await enterAsteroidWorksPublic(targetPage, asteroid); await exitAsteroidWorksPublic(targetPage); return { status: 'ready', driver: 'public local-map asteroid course, Massline, B Asteroid Works, Escape exit', asteroid }; }
+  if (route.id === 'busy-site-save-reload') { await saveReloadBusySitePublic(targetPage); return { status: 'ready', driver: 'Continue producing-site save, F5 quick-save, F9 quick-load' }; }
+  throw new Error('no driver for production route ' + route.id);
+}
+
+function productionManifest(route) {
+  return {
+    candidateHash: currentCandidateHash(),
+    sourceDigest: productionSourceDigest,
+    harnessDigest: productionHarnessDigest,
+    evidenceClass: 'diagnostic',
+    profile: 'production',
+    backend: 'electron-webgl',
+    routeRevision: 'PQ-144.01-r2',
+    route: route?.id || null,
+    seed: FIXED_SEED,
+    tape: route?.id === 'cold-opening'
+      ? 'New Game seed 47; default opening; held KeyW during the foreground window'
+      : route?.id === 'earned-speed-traversal'
+        ? 'New Game seed 47; public Ceres Belt jump, then held W + L-Shift until boost energy and velocity were observed'
+        : route?.id === 'warm-dense-combat'
+          ? 'Main Menu Crucible -> Swarm -> Hold the line -> active cohort warmup'
+          : route?.id === 'sustained-swarm'
+            ? 'Main Menu Crucible -> Swarm -> Hold the line -> sustained active cohort'
+            : route?.id === 'dock-refit-undock'
+              ? 'Helios map waypoint -> E dock -> Shipworks unfit/refit -> visible Undock'
+              : route?.id === 'asteroid-works-roundtrip'
+                ? 'Local-map asteroid course -> Massline -> B Asteroid Works -> Escape exit'
+                : route?.id === 'busy-site-save-reload'
+                  ? 'Continue producing site -> F5 quick-save -> F9 quick-load'
+                  : 'unknown',
+    hull: null,
+    host: { platform: process.platform, arch: process.arch, cpus: os.cpus()?.length || null },
+    runtime: { node: process.version },
+    resolution: null,
+    settings: null,
+    coldWarm: route?.id === 'cold-opening' ? 'cold' : 'warm',
+  };
+}
+
 async function captureCanvasFrame(targetPage, shotPath, elapsedMs) {
   await targetPage.locator('#gl-canvas').screenshot({
     path: shotPath,
@@ -2550,6 +2943,9 @@ let routeInfo = {
   saveDir: null,
   saveSlots: [],
 };
+let productionRoutePreparation = null;
+let productionRecorder = null;
+let productionRouteManifest = null;
 
 try {
   const { _electron: electron } = await loadPlaywright();
@@ -2674,9 +3070,18 @@ try {
       if (noSubmitDiagnostic?.applied !== true) throw new Error('No-submit diagnostic could not install before New Game');
       routeInfo.label += ' [diagnostic: no scene submit]';
     }
-    await page.getByRole('button', { name: 'New Game', exact: true }).click({ timeout: 30_000 });
-    await page.fill('#sf-ng-seed', String(FIXED_SEED));
-    entered = await launchUntilFlight(page);
+    if (PRODUCTION_ROUTE?.id === 'cold-opening') {
+      productionRoutePreparation = { status: 'ready', driver: 'New Game button through first playable' };
+      productionRecorder = await installProductionMatrixRecorder(page);
+      if (productionRecorder?.installed !== true) throw new Error('cold-opening production recorder did not install');
+    }
+    if (PRODUCTION_CRUCIBLE_ROUTE) {
+      entered = await launchProductionCrucible(page, PRODUCTION_ROUTE);
+    } else {
+      await page.getByRole('button', { name: 'New Game', exact: true }).click({ timeout: 30_000 });
+      await page.fill('#sf-ng-seed', String(FIXED_SEED));
+      entered = await launchUntilFlight(page);
+    }
   }
   log(`entered flight ${JSON.stringify({ mode: entered.mode, simTime: entered.simTime })}`);
   openingRenderWork = await page.evaluate(() => (
@@ -2745,6 +3150,38 @@ try {
     await page.waitForTimeout(250);
     await page.evaluate(() => window.SF.state.perfRuntime.reset());
   }
+  // Include the transitions themselves, not just ordinary flight after the route has ended.
+  if (PRODUCTION_ROUTE && !productionRecorder && new Set([
+    'dock-refit-undock', 'asteroid-works-roundtrip', 'busy-site-save-reload',
+  ]).has(PRODUCTION_ROUTE.id)) {
+    await page.bringToFront();
+    productionRecorder = await installProductionMatrixRecorder(page);
+  }
+  productionRoutePreparation ||= await prepareProductionRoute(page, PRODUCTION_ROUTE);
+  if (PRODUCTION_ROUTE && productionRoutePreparation.status === 'ready') {
+    productionRouteManifest = await page.evaluate((base) => {
+      const state = window.SF?.state;
+      const player = state?.entities?.get?.(state?.playerId);
+      const canvas = state?.render?.renderer?.domElement;
+      return {
+        ...base,
+        hull: player?.data?.defId || player?.data?.shipId || player?.data?.hullId || null,
+        resolution: canvas ? { width: canvas.width, height: canvas.height, devicePixelRatio: window.devicePixelRatio || null } : null,
+        settings: state?.settings?.video || null,
+        runtime: { ...base.runtime, userAgent: navigator.userAgent, displayRateHz: null },
+      };
+    }, productionManifest(PRODUCTION_ROUTE));
+    if (!productionRecorder) {
+      productionRecorder = await installProductionMatrixRecorder(page);
+      if (productionRecorder?.installed !== true) throw new Error('production route recorder did not install');
+    }
+    routeInfo.productionRoute = PRODUCTION_ROUTE.id;
+    routeInfo.productionRoutePreparation = productionRoutePreparation;
+  } else if (PRODUCTION_ROUTE) {
+    routeInfo.productionRoute = PRODUCTION_ROUTE.id;
+    routeInfo.productionRoutePreparation = productionRoutePreparation;
+    log(`production route unavailable: ${productionRoutePreparation?.reason || 'public route driver unavailable'}`);
+  }
   let openingInputBaseline = null;
   if (OPENING_FIRST_TOUCH_OWNER_DIAGNOSTIC || OPENING_EXACT_OWNER_TOUCH_DIAGNOSTIC) {
     await page.bringToFront();
@@ -2763,6 +3200,7 @@ try {
     });
   }
   await page.keyboard.down('KeyW');
+  if (PRODUCTION_ROUTE?.id === 'earned-speed-traversal') await page.keyboard.down('ShiftLeft');
   if (OPENING_FIRST_TOUCH_OWNER_DIAGNOSTIC || OPENING_EXACT_OWNER_TOUCH_DIAGNOSTIC) {
     const inputResponded = await page.waitForFunction((baseline) => {
       const state = window.SF?.state;
@@ -2820,7 +3258,7 @@ try {
     }));
     row.elapsedMs = elapsedMs;
     snapshots.push(row);
-    if (!NO_SAMPLE_SHOTS && elapsedMs >= shotIndex * (SAMPLE_MS / 2)) {
+    if (!NO_SAMPLE_SHOTS && !PRODUCTION_ROUTE && elapsedMs >= shotIndex * (SAMPLE_MS / 2)) {
       const shotPath = path.join(OUT, `t${String(shotIndex).padStart(2, '0')}.png`);
       await captureCanvasFrame(page, shotPath, elapsedMs).catch((err) => log(`screenshot failed: ${err}`));
       shotIndex += 1;
@@ -2885,7 +3323,11 @@ try {
   finalHitchAttribution = finalPerfReport.hitchAttribution;
   finalRenderWork = finalPerfReport.renderWork;
   finalSystemTiming = finalPerfReport.systems;
+  if (PRODUCTION_ROUTE && productionRoutePreparation?.status === 'ready') {
+    productionRecorder = await stopProductionMatrixRecorder(page);
+  }
   await page.keyboard.up('KeyW').catch(() => {});
+  await page.keyboard.up('ShiftLeft').catch(() => {});
   const finalShot = path.join(OUT, 't-final.png');
   await captureCanvasFrame(page, finalShot, Date.now() - started).catch(() => {});
 } catch (error) {
@@ -2896,6 +3338,7 @@ try {
     hostLoad = snapshotHostLoadEnd(hostLoadStart);
   }
   await page?.keyboard.up('KeyW').catch(() => {});
+  await page?.keyboard.up('ShiftLeft').catch(() => {});
   if (page && OPENING_FIRST_TOUCH_OWNER_DIAGNOSTIC) {
     const restored = await restoreOpeningFirstTouchOwnerWitness(page).catch(() => null);
     if (restored) openingFirstTouchOwner = restored;
@@ -3093,6 +3536,22 @@ const longTaskWitness = lastSnapshot.longTasks
     textureSeries: snapshots.filter((_, i) => i % 8 === 0).map((x) => (x.gpuResidency ? x.gpuResidency.textures : '?')),
   }
   : null;
+const productionMatrix = PRODUCTION_ROUTE
+  ? (productionRoutePreparation?.status === 'ready'
+    ? summarizeRuntimeWitnessProductionWindow({
+      route: PRODUCTION_ROUTE,
+      samples: productionRecorder?.samples || [],
+      gpuReport: productionRecorder?.gpuReport || null,
+      manifest: productionRouteManifest || productionManifest(PRODUCTION_ROUTE),
+    })
+    : {
+      schema: 'spaceface.runtimeWitness.productionMatrix.v1',
+      status: 'unavailable',
+      route: PRODUCTION_ROUTE,
+      manifest: productionManifest(PRODUCTION_ROUTE),
+      reason: productionRoutePreparation?.reason || 'public route driver unavailable',
+    })
+  : null;
 const markdown = `${formatRuntimeWitnessReport({
   verdict,
   samples: moving,
@@ -3100,7 +3559,7 @@ const markdown = `${formatRuntimeWitnessReport({
   consoleHits,
   pageErrors,
   gpu,
-  })}${formatHostLoadSection(hostLoad)}${formatLoadingReadinessSection(loadingProgressEvents, loadingReadinessSamples)}${formatOpeningRenderWorkSection(openingRenderWork)}${formatOpeningFirstTouchOwnerSection(openingFirstTouchOwner)}${formatOpeningExactOwnerTouchSection(openingExactOwnerTouch)}${formatNoSubmitDiagnosticSection(noSubmitDiagnostic, hitchAttribution)}${formatTableCensusSection(tableCensus, route)}${formatSectorTransitionSection(sectorTransitionTrace)}${formatHitchAttributionSection(hitchAttribution, route)}${formatLongTaskSection(longTaskWitness)}${formatBloomPhaseSection(bloomPhases)}${formatSystemTimingSection(finalSystemTiming)}\n`;
+  })}${formatHostLoadSection(hostLoad)}${formatLoadingReadinessSection(loadingProgressEvents, loadingReadinessSamples)}${formatOpeningRenderWorkSection(openingRenderWork)}${formatOpeningFirstTouchOwnerSection(openingFirstTouchOwner)}${formatOpeningExactOwnerTouchSection(openingExactOwnerTouch)}${formatNoSubmitDiagnosticSection(noSubmitDiagnostic, hitchAttribution)}${formatTableCensusSection(tableCensus, route)}${formatSectorTransitionSection(sectorTransitionTrace)}${formatHitchAttributionSection(hitchAttribution, route)}${formatLongTaskSection(longTaskWitness)}${formatBloomPhaseSection(bloomPhases)}${formatSystemTimingSection(finalSystemTiming)}${productionMatrix ? `\n${formatRuntimeWitnessProductionMatrix(productionMatrix)}\n` : '\n'}`;
 const report = {
   schema: 'spaceface.runtimeWitness.probe.v1',
   longTaskWitness,
@@ -3130,11 +3589,15 @@ const report = {
   hostLoad,
   bloomPhases,
   systemTiming: finalSystemTiming,
+  productionMatrix,
   error: primaryError ? String(primaryError && primaryError.stack || primaryError) : null,
   cleanupError: cleanupError ? String(cleanupError && cleanupError.stack || cleanupError) : null,
 };
 await writeFile(path.join(OUT, 'report.json'), JSON.stringify(report, null, 2));
 await writeFile(path.join(OUT, 'report.md'), markdown);
+if (productionMatrix) {
+  await writeFile(path.join(OUT, `production-matrix-${productionMatrix.route.id}.json`), JSON.stringify(productionMatrix, null, 2));
+}
 log(markdown);
 log(`report ${path.join(OUT, 'report.md')}`);
 
