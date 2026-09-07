@@ -346,3 +346,8 @@ body.k-screen-top #modal-backdrop { background: none; }
 .sf-lab-runtime__hint { margin: calc(8px * var(--k-s)) 0 0; }
 /* §1.1: the door's hull sentence and the arena line sit under their row of words. */
 .sf-crd-settings .k-sentence, .sf-crd-settings .sf-crd-arena { margin: calc(8px * var(--k-s)) 0 0; }
+/* §3.4: the research side column starts under the corner's three hero numbers instead of running beneath them; the zoom badge sits in a strip under the lanes, not on their scrollbar. */
+.k-screen .tt-side { padding-top: calc(80px * var(--k-s)); }
+.k-screen .tt-scroll { height: calc(100% - 28px * var(--k-s)); }
+/* §3.2: the codex search field spans the hang and keeps a gap from the tab words beneath it. */
+.k-screen .sf-codex-search { display: block; width: 100%; margin-bottom: calc(16px * var(--k-s)); }
