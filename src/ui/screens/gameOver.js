@@ -11,6 +11,20 @@
 import { STORY_BEATS } from '../../data/missions.js';
 import { el, settle, cue } from '../kit/index.js';
 
+/** The receipt's fields and their labels. The kicker, the second line, the hero words and the
+ *  coverage sentence are all spelled from this table (the screen-import check reads the pairs). */
+const FIELD_LABELS = [
+  ['cause', 'Loss cause'],
+  ['lifespan', 'Final sortie'],
+  ['damage', 'Final damage'],
+  ['dock', 'Recovery dock'],
+  ['cost', 'Recovery cost'],
+  ['cargo', 'Cargo consequence'],
+  ['insurance', 'Coverage'],
+];
+const LABEL = Object.fromEntries(FIELD_LABELS);
+const lower = (s) => String(s).toLowerCase();
+
 /** A kit hero block (`.k-hero`): the number and its word. Returns the number element for updates. */
 function heroBlock(parent, word) {
   const block = el('div', 'k-hero');
@@ -184,7 +198,7 @@ export const gameOverScreen = {
     const title = el('header', 'k-title');
     // The verdict as a caps kicker over the cause ("Ship lost · loss cause"); the public-route check
     // reads both phrases from the surface, and the cause itself is the display line.
-    const kicker = el('span', 'k-caps', 'Ship lost · loss cause');
+    const kicker = el('span', 'k-caps', 'Ship lost · ' + lower(LABEL.cause));
     this._kickerEl = kicker;
     title.appendChild(kicker);
     const h = el('h1', 'k-display k-t-title', 'Ship Lost');
@@ -206,8 +220,8 @@ export const gameOverScreen = {
     // `.sf-go-grid .v` is what the public-route check reads; the hero numbers carry the class.
     // The sheet's words are "recovery dock", "recovery cost", "cargo"; the public-route check reads
     // "Cargo consequence", so the third word is the nearest phrase that satisfies both.
-    for (const [key, word] of [['dock', 'recovery dock'], ['cost', 'recovery cost'], ['cargo', 'cargo consequence']]) {
-      const n = heroBlock(heroes, word);
+    for (const key of ['dock', 'cost', 'cargo']) {
+      const n = heroBlock(heroes, lower(LABEL[key]));
       n.className += ' v';
       this._summaryEls[key] = n;
     }
@@ -359,13 +373,13 @@ export const gameOverScreen = {
     };
     for (const key in values) {
       if (key === 'cause') continue; // the title carries the cause (below)
-      const text = key === 'insurance' ? 'Coverage: ' + values[key] : values[key];
+      const text = key === 'insurance' ? LABEL.insurance + ': ' + values[key] : values[key];
       if (els[key] && els[key].textContent !== text) els[key].textContent = text;
     }
     // The display line is the cause itself; the caps kicker above it carries the verdict.
     const verdict = ironman ? 'Run Over' : 'Ship Lost';
     if (this._kickerEl) {
-      const kicker = verdict + ' · loss cause';
+      const kicker = verdict + ' · ' + lower(LABEL.cause);
       if (this._kickerEl.textContent !== kicker) this._kickerEl.textContent = kicker;
     }
     if (this._titleEl) {
@@ -375,8 +389,8 @@ export const gameOverScreen = {
     }
     if (this._lineEl) {
       const pairs = [
-        'Final sortie ' + values.lifespan,
-        'final damage ' + String(values.damage || '').toLowerCase(),
+        LABEL.lifespan + ' ' + values.lifespan,
+        lower(LABEL.damage) + ' ' + lower(values.damage || ''),
       ];
       const text = pairs.join(' · ');
       if (this._lineEl.textContent !== text) this._lineEl.textContent = text;
