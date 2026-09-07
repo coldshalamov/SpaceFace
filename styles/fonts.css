@@ -34,3 +34,13 @@
   font-display:swap; src:url("/styles/fonts/spline-sans-mono-500.woff2") format("woff2"); }
 @font-face { font-family:"Bricolage Grotesque"; font-style:normal; font-weight:600;
   font-display:swap; src:url("/styles/fonts/bricolage-grotesque-600.woff2") format("woff2"); }
+
+/* PQ-187.02: verified three-axis Bricolage Grotesque. */
+@font-face {
+  font-family: 'Bricolage Grotesque';
+  font-style: normal;
+  font-weight: 200 800;
+  font-stretch: 75% 100%;
+  font-display: swap;
+  src: url('/styles/fonts/bricolage-grotesque-var.woff2') format('woff2');
+}

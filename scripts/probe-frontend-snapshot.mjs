@@ -201,14 +201,16 @@ if (wantChips) {
     document.documentElement.scrollHeight,
     document.body.scrollHeight,
   )));
-  await page.setViewportSize({ width: 1400, height: Math.max(400, chipH) });
+  // Keep the authored viewport height while taking the full-page sheet. Resizing the viewport
+  // to the current scroll height makes every `min-height: 100vh` fixture expand again, so the
+  // later crops land below the bitmap and collapse to one-pixel placeholders.
   const chips = await measureShots();
   if (chips.lab !== 'shots') {
     await browser.close();
     server.close();
     throw new Error('_uilab.html?lab=shots did not isolate the snapshot board');
   }
-  const sheetBuf = await page.screenshot({ type: 'png', animations: 'disabled' });
+  const sheetBuf = await page.screenshot({ type: 'png', animations: 'disabled', fullPage: true });
   const sheet = PNG.sync.read(sheetBuf);
   for (const item of chips.items) {
     if (!item.name || item.name === 'hud-full' || (onlyShot && item.name !== onlyShot)) continue;
