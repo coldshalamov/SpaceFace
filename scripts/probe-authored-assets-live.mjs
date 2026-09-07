@@ -50,6 +50,14 @@ const CRITICAL_STATION_TIMEOUT_MS = readPositiveIntArg('--critical-station-timeo
 // body, and outside the hub's own footprint so the pose is somewhere a player could actually sit
 // rather than inside the station's collision proxy.
 const HELIOS_APPROACH_STANDOFF_WU = readPositiveIntArg('--helios-standoff', Number(process.env.SF_ASSETS_LIVE_HELIOS_STANDOFF_WU) || 110);
+// The approach leg's own budget, and the reason it is not the ships' 45 s. Measured both ways on
+// 2026-09-06: on a quiet machine Helios reached `authored` inside 45 s and rendered (see
+// APPROACH_SHOT); with four other lanes building, the same route was still `assetState: "loading"`
+// when 45 s expired. `loading` is the streamer working, not a defect -- this is 89.7 MB, four times
+// the next largest package in the tree -- so the budget is sized to the asset rather than inherited
+// from a gate that decodes ships. It is deliberately NOT unbounded: a station the policy never
+// requests stays `missing-mesh` forever and still fails here, which is the regression that matters.
+const HELIOS_APPROACH_TIMEOUT_MS = readPositiveIntArg('--helios-approach-timeout', Number(process.env.SF_ASSETS_LIVE_HELIOS_TIMEOUT_MS) || 150000);
 // How long the debug runtime itself may take to appear. This is a liveness wait on the harness --
 // "has the page booted at all" -- not one of the probe's quality gates, and it was the only timeout
 // here that could not be set from the environment. That asymmetry matters on a slow driver: this
@@ -80,9 +88,9 @@ const PROBE_RELEVANT_EXTRA_FILES = Object.freeze(['src/systems/world.js']);
 
 export async function runAuthoredAssetsLiveProbe() {
 const candidate = collectAuthoredProbeCandidateIdentity();
-if (!process.env.SF_PROBE_UNSAFE_SKIP_PROVENANCE) if (!process.env.SF_PROBE_UNSAFE_SKIP_PROVENANCE) assert.equal(candidate.head, candidate.originMaster,
+assert.equal(candidate.head, candidate.originMaster,
   `authored batching evidence requires HEAD == origin/master: ${JSON.stringify(candidate)}`);
-if (!process.env.SF_PROBE_UNSAFE_SKIP_PROVENANCE) if (!process.env.SF_PROBE_UNSAFE_SKIP_PROVENANCE) assert.deepEqual(candidate.worktreeStatus, [],
+assert.deepEqual(candidate.worktreeStatus, [],
   `authored batching evidence requires a globally clean candidate: ${JSON.stringify(candidate.worktreeStatus)}`);
 
 let server = null;
@@ -234,7 +242,7 @@ try {
   assert.equal(approach.moved, true,
     `probe could not bring the player within streaming reach of Helios: ${JSON.stringify(approach)}`);
   const approachDeadline = await waitForAuthoredAssetDeadline({
-    timeoutMs: CRITICAL_STATION_TIMEOUT_MS,
+    timeoutMs: HELIOS_APPROACH_TIMEOUT_MS,
     pollIntervalMs: 100,
     onPoll: () => forceShipRender(cdp),
     sample: () => collectCriticalStationSnapshot(cdp),
@@ -249,7 +257,7 @@ try {
   report.criticalStationApproach = {
     passed: approachDeadline.passed,
     standoffWu: HELIOS_APPROACH_STANDOFF_WU,
-    timeoutMs: CRITICAL_STATION_TIMEOUT_MS,
+    timeoutMs: HELIOS_APPROACH_TIMEOUT_MS,
     elapsedMs: Math.round((approachDeadline.passedAtMs ?? approachDeadline.deadlineMs) - approachDeadline.gateStartMs),
     approach,
     snapshot: approachSnapshot,
@@ -377,7 +385,7 @@ try { assertAuthoredProbeCleanup(cleanupProof); }
 catch (error) { cleanupError = error; }
 let candidateError = null;
 try {
-  if (!process.env.SF_PROBE_UNSAFE_SKIP_PROVENANCE) assert.deepEqual(collectAuthoredProbeCandidateIdentity(), candidate,
+  assert.deepEqual(collectAuthoredProbeCandidateIdentity(), candidate,
     'authored probe candidate changed between launch and teardown');
 } catch (error) {
   candidateError = error;
