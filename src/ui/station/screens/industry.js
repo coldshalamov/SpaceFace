@@ -1,6 +1,11 @@
-// src/ui/station/screens/industry.js — "Industry" fabrication instrument.
-// Blueprint list · a fabrication schematic (inputs → output with per-material have/need meters) ·
-// a build console. Reuses the crafting system: ctx.crafting.build(bpId, stationId).
+// src/ui/station/screens/industry.js — "Industry" fabrication as a kit panel (Frontend Task C §1.7).
+// Left: the processes under a k-caps per category — each blueprint a row (output × qty, the tier
+// and its one-line readiness as the sub-line, the readiness as the name's colour only). Right: the
+// output's name, the quantity at hero size ("per run"), the time as a hero ("seconds"), the inputs
+// as static rows (have / need at emphasis; a missing input's name in k-bad with a "Source in
+// market" word), the line's state as one sentence, and Fabricate as a word. Reuses the crafting
+// system: ctx.crafting.build(bpId, stationId). `.sx-ind`, `.sx-ind-row[data-bp]`,
+// `.sx-ind-row__name`, `.sx-ind-row__process`, `[data-source-cmdty]`, `[data-build]` are hooks.
 import { BLUEPRINTS } from '../../../data/blueprints.js';
 import { COMMODITIES } from '../../../data/commodities.js';
 import { MODULES } from '../../../data/modules.js';
@@ -8,7 +13,6 @@ import { WEAPONS } from '../../../data/weapons.js';
 import { SHIPS } from '../../../data/ships.js';
 import { SECTORS } from '../../../data/sectors.js';
 import { escapeHtml } from '../../comms.js';
-import { icon } from '../icons.js';
 
 const NAME = new Map();
 for (const c of COMMODITIES) NAME.set('commodity:' + c.id, c.name);
@@ -20,7 +24,6 @@ const STATION_TYPE = new Map();
 for (const sec of SECTORS) for (const s of (sec.stations || [])) STATION_TYPE.set(s.id, s.type);
 
 const CAT_LABEL = { refine: 'Refine', assemble: 'Assemble', augment: 'Augment', ship: 'Shipyard' };
-const CAT_ICON = { refine: 'cargo', assemble: 'industry', augment: 'spark', ship: 'shipworks' };
 const CAT_ORDER = ['refine', 'assemble', 'augment', 'ship'];
 const FACILITY_LABEL = { refinery: 'refinery station', fab: 'fabrication station' };
 
@@ -35,59 +38,19 @@ function stationType(ctx) {
 }
 function facilityName(type) { return FACILITY_LABEL[type] || `${String(type || 'specialist')} station`; }
 
-// Short, single-line readiness reason for the compact slots (rail subline, disabled verb).
-// The full sentence — the industryReadiness label — stays in the console status line and the
-// accessible names, so a blocked requirement is stated once per surface instead of three
-// times in one panel (status + note + button all used to print it).
+// Short, single-line readiness reason for the row sub-line and the disabled verb. The full
+// sentence — the industryReadiness label — is the status sentence and the accessible names, so a
+// blocked requirement is stated once per surface.
 function shortBlockLabel(bp, r) {
-  if (r.state === 'station') return 'NEEDS ' + (bp.stationType === 'fab' ? 'FABRICATOR' : 'REFINERY');
-  if (r.state === 'materials') return 'NEEDS MATERIALS';
+  if (r.state === 'station') return 'Needs ' + (bp.stationType === 'fab' ? 'fabricator' : 'refinery');
+  if (r.state === 'materials') return 'Needs materials';
   return r.label;
 }
 
-const STYLE_ID = 'sf-industry-style';
-
-function injectStyle() {
-  if (typeof document === 'undefined' || typeof document.createElement !== 'function') return;
-  if (typeof document.getElementById === 'function' && document.getElementById(STYLE_ID)) return;
-  if (!document.head || typeof document.head.appendChild !== 'function') return;
-  const s = document.createElement('style');
-  s.id = STYLE_ID;
-  s.textContent = CSS;
-  document.head.appendChild(s);
+/** The readiness as the row name's colour only: a gain · a signal · against you. */
+function toneClass(r) {
+  return r.state === 'ready' ? 'k-good' : (r.state === 'materials' ? 'k-signal' : 'k-bad');
 }
-
-// The station sheets fight over this screen in layers; these rules are stated at
-// three-class specificity so they win regardless of stylesheet load order.
-const CSS = `
-/* The recipe rail clipped cards mid-glyph across every column: the final sheet
-   lets names and tier lines wrap and floors each row at 68px, so a four-row
-   column needed ~280px inside a 125px strip and the overflow just sliced the
-   visible row. Compact single-line rows (ellipsis, never a hard cut) plus a rail
-   tall enough for the tallest column (refine ships 7 blueprints = 4 rows) render
-   every card whole with no scrolling. */
-.sx-app .sx-ind { grid-template-rows: 228px minmax(0, 1fr); }
-.sx-app .sx-ind .sx-ind-process__items { grid-auto-rows: minmax(0, auto); }
-.sx-app .sx-ind .sx-ind-row__name,
-.sx-app .sx-ind .sx-ind-row__tier {
-  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
-}
-/* The augment column holds the longest recipe names but the narrowest track
-   (refine holds the shortest names and the widest); rebalance so names are not
-   ellipsized down to nothing in the one column that cannot spare the pixels. */
-.sx-app .sx-ind .sx-ind-spindle { grid-template-columns: 1.3fr 1fr 1fr .9fr; }
-/* The inputs→output diagram sits directly under the recipe head. Centring it in the leftover
-   stage height (the previous choice) opened a 200px void between the head and the diagram on
-   every 1080p frame; the one void left is below the instrument, where a page's end belongs. */
-.sx-app .sx-ind .sx-ind__stage { justify-content: flex-start; }
-.sx-app .sx-ind .sx-fab-flow {
-  flex: 0 0 auto; align-self: stretch; min-height: 0;
-  align-content: start; margin-top: 18px;
-}
-@media (prefers-reduced-motion: reduce) {
-  .sx-ind, .sx-ind * { animation: none !important; transition: none !important; }
-}
-`;
 
 function ownsModule(state, defId) {
   const player = state && state.player;
@@ -108,40 +71,38 @@ export function industryReadiness(bp, state, stnType) {
 }
 
 export function createIndustryScreen(ctx) {
-  injectStyle();
   const el = document.createElement('div');
-  el.className = 'sx-ind';
+  el.className = 'k-panel sx-ind';
   el.innerHTML =
-    `<nav class="sx-ind__list" aria-label="Blueprints"></nav>` +
-    `<section class="sx-ind__stage"></section>` +
-    `<aside class="sx-ind__console"></aside>`;
+    `<nav class="k-hang sx-ind__list" aria-label="Blueprints"></nav>` +
+    `<section class="k-stage sx-ind__stage"></section>`;
   const listEl = el.querySelector('.sx-ind__list');
   const stageEl = el.querySelector('.sx-ind__stage');
-  const consoleEl = el.querySelector('.sx-ind__console');
   let selectedId = BLUEPRINTS[0] && BLUEPRINTS[0].id;
   let picked = false; // land on a recipe buildable at THIS station on first open
 
   function renderList(state) {
     const stn = stationType(ctx);
     listEl.innerHTML =
-      `<span class="sx-ind-spindle__label" aria-hidden="true">MADE CAPABLE</span>` +
       `<div class="sx-ind-spindle" role="tablist" aria-label="Fabrication process and blueprints">` +
-        CAT_ORDER.map((category, processIndex) => {
+        CAT_ORDER.map((category) => {
           const blueprints = BLUEPRINTS.filter((bp) => bp.category === category);
+          if (!blueprints.length) return '';
           return `<section class="sx-ind-process" data-process="${category}">` +
-            `<header class="sx-ind-process__head"><span>${icon(CAT_ICON[category], 15)}</span><b>${CAT_LABEL[category]}</b><i>${String(processIndex + 1).padStart(2, '0')}</i></header>` +
-            `<div class="sx-ind-process__items">` + blueprints.map((bp) => {
+            `<p class="k-caps sx-ind-process__head">${CAT_LABEL[category]}</p>` +
+            `<ul class="k-rows sx-ind-process__items">` + blueprints.map((bp) => {
               const r = industryReadiness(bp, state, stn);
-              const on = bp.id === selectedId ? ' is-active' : '';
-              const tone = r.state === 'ready' ? 'var(--gain)' : r.state === 'materials' ? 'var(--warn)' : '#60757a';
-              const output = `${niceName(bp.outputs.id, bp.outputs.kind)}${bp.outputs.qty > 1 ? ' ×' + bp.outputs.qty : ''}`;
-              return `<button type="button" class="sx-ind-row${on}" data-bp="${escapeHtml(bp.id)}" role="tab" aria-selected="${bp.id === selectedId}" style="--signal:${tone}" aria-label="${escapeHtml(output)}, ${CAT_LABEL[category]} process, tier ${bp.tier}, ${escapeHtml(r.label)}">` +
-                `<span class="sx-ind-row__dot" aria-hidden="true"></span>` +
-                `<span class="sx-ind-row__process">${CAT_LABEL[category]}</span>` +
-                `<span class="sx-ind-row__name">${escapeHtml(output)}</span>` +
-                `<span class="sx-ind-row__tier">T${bp.tier} · ${escapeHtml(shortBlockLabel(bp, r))}</span>` +
-              `</button>`;
-            }).join('') + `</div>` +
+              const selected = bp.id === selectedId;
+              const output = `${niceName(bp.outputs.id, bp.outputs.kind)}${bp.outputs.qty > 1 ? ' × ' + bp.outputs.qty : ''}`;
+              return `<li><button type="button" class="sx-ind-row k-row${selected ? ' is-active' : ''}" data-bp="${escapeHtml(bp.id)}" role="tab" aria-selected="${selected}" tabindex="${selected ? 0 : -1}"` +
+                ` aria-label="${escapeHtml(output)}, ${CAT_LABEL[category]} process, tier ${bp.tier}, ${escapeHtml(r.label)}">` +
+                `<span class="sx-ind-row__body">` +
+                  `<span class="k-row__name sx-ind-row__name ${toneClass(r)}">${escapeHtml(output)}</span>` +
+                  `<span class="k-row__sub sx-ind-row__tier">T${bp.tier} · ${escapeHtml(shortBlockLabel(bp, r))}</span>` +
+                `</span>` +
+                `<span class="k-row__sub sx-ind-row__process">${CAT_LABEL[category]}</span>` +
+              `</button></li>`;
+            }).join('') + `</ul>` +
           `</section>`;
         }).join('') +
       `</div>`;
@@ -151,87 +112,104 @@ export function createIndustryScreen(ctx) {
     const bp = BLUEPRINTS.find((b) => b.id === selectedId) || BLUEPRINTS[0];
     if (!bp) { stageEl.innerHTML = ''; return; }
     const it = items(state);
-    const inputs = Object.keys(bp.inputs || {}).map((id) => {
-      const need = bp.inputs[id]; const have = Math.floor(it[id] || 0);
-      const ok = have >= need; const frac = Math.max(0, Math.min(1, need ? have / need : 1));
-      const tag = ok ? 'div' : 'button';
-      const source = ok ? '' : ` type="button" data-source-cmdty="${escapeHtml(id)}" aria-label="Find missing ${escapeHtml(matName(id))} in Market"`;
-      return (
-        `<${tag} class="sx-fab-in${ok ? ' is-ok' : ' is-missing'}"${source}>` +
-          `<span class="sx-fab-in__ic">${icon('cargo', 16)}</span>` +
-          `<span class="sx-fab-in__name">${escapeHtml(matName(id))}</span>` +
-          `<span class="sx-fab-in__bar"><span style="width:${(frac * 100).toFixed(0)}%;background:${ok ? 'var(--gain)' : 'var(--warn)'}"></span></span>` +
-          `<span class="sx-fab-in__q">${have}<i>/${need}</i></span>` +
-          (!ok ? `<span class="sx-fab-in__source">SOURCE IN MARKET</span>` : '') +
-        `</${tag}>`
-      );
-    }).join('');
-    stageEl.innerHTML =
-      `<header class="sx-fab-head"><span class="sx-fab-head__cat">${CAT_LABEL[bp.category] || bp.category} · Tier ${bp.tier}</span><h2>${escapeHtml(bp.name)}</h2>` +
-        (bp.desc ? `<p>${escapeHtml(bp.desc)}</p>` : '') + `</header>` +
-      `<div class="sx-fab-flow">` +
-        `<div class="sx-fab-inputs"><span class="sx-fab-col-k">Inputs</span>${inputs || '<p class="sx-muted">No inputs</p>'}</div>` +
-        `<div class="sx-fab-arrow">${icon('chevron', 22)}<span>${bp.timeS ? bp.timeS + 's' : 'instant'}</span></div>` +
-        `<div class="sx-fab-output"><span class="sx-fab-col-k">Output</span>` +
-          `<div class="sx-fab-out-card"><span class="sx-fab-out__kind">${bp.outputs.kind}</span>` +
-            `<span class="sx-fab-out__name">${escapeHtml(niceName(bp.outputs.id, bp.outputs.kind))}</span>` +
-            `<span class="sx-fab-out__qty">×${bp.outputs.qty || 1}</span></div>` +
-        `</div>` +
-      `</div>`;
-  }
-
-  function renderConsole(state) {
-    const bp = BLUEPRINTS.find((b) => b.id === selectedId) || BLUEPRINTS[0];
-    if (!bp) { consoleEl.innerHTML = ''; return; }
     const stn = stationType(ctx);
     const r = industryReadiness(bp, state, stn);
-    const tone = r.state === 'ready' ? 'gain' : r.state === 'materials' ? 'warn' : 'loss';
     const sid = state && state.ui && state.ui.dockedStationId;
     const queue = state && state.crafting && state.crafting.queues && sid && state.crafting.queues[sid];
     const queueBp = queue && BLUEPRINTS.find((item) => item.id === queue.bpId);
     const progress = queue && queue.total > 0 ? Math.max(0, Math.min(1, (Number(queue.elapsed) || 0) / queue.total)) : 0;
+
+    const inputs = Object.keys(bp.inputs || {}).map((id) => {
+      const need = bp.inputs[id]; const have = Math.floor(it[id] || 0);
+      const ok = have >= need;
+      return (
+        `<li class="k-row k-row--static sx-fab-in${ok ? ' is-ok' : ' is-missing'}">` +
+          `<span class="${ok ? 'k-row__name' : 'k-bad'} sx-fab-in__name">${escapeHtml(matName(id))}</span>` +
+          (ok ? '' : `<button type="button" class="k-word k-word--fine sx-fab-in__source" data-source-cmdty="${escapeHtml(id)}" aria-label="Find missing ${escapeHtml(matName(id))} in Market">Source in market</button>`) +
+          `<span class="k-row__num sx-fab-in__q${ok ? '' : ' k-bad'}">${have} <span class="k-62">/ ${need}</span></span>` +
+        `</li>`
+      );
+    }).join('');
+
+    // Notes that confirm a MATCHING facility, owned source or researched tech; a mismatch is already
+    // the status sentence, so the requirement is never printed three times.
     const notes = [];
     if (bp.requiresTech) notes.push({ ok: researched(state).has(bp.requiresTech), text: 'Tech: ' + String(bp.requiresTech).replace(/^tech_/, '').replace(/_/g, ' ') });
-    // A station/source mismatch is already stated once by the status line above
-    // (it prints the readiness label). These notes only confirm a MATCHING
-    // facility or owned source, so the panel never prints the same requirement
-    // three times (status + note + disabled verb).
-    if (bp.stationType) {
-      const matches = !stn || bp.stationType === stn;
-      if (matches) notes.push({ ok: true, text: `${facilityName(bp.stationType)} online` });
+    if (bp.stationType && (!stn || bp.stationType === stn)) notes.push({ ok: true, text: `${facilityName(bp.stationType)} online` });
+    if (bp.category === 'augment' && bp.fromModule && ownsModule(state, bp.fromModule)) {
+      notes.push({ ok: true, text: `${niceName(bp.fromModule, 'module')} ready to augment` });
     }
-    if (bp.category === 'augment' && bp.fromModule) {
-      const sourceName = niceName(bp.fromModule, 'module');
-      if (ownsModule(state, bp.fromModule)) notes.push({ ok: true, text: `${sourceName} ready to augment` });
-    }
-    consoleEl.innerHTML =
-      `<div class="sx-panel">` +
-        `<div class="sx-fab-status sx-fab-status--${queue ? 'warn' : tone}"><span class="sx-fab-status__dot"></span>${queue ? 'Fabricator occupied' : r.label}</div>` +
-        (queue ? `<div class="sx-fab-queue"><span>ACTIVE LINE / ${escapeHtml((queueBp && queueBp.name) || queue.bpId || 'job')}</span><b>${Math.round(progress * 100)}%</b><i><span style="width:${(progress * 100).toFixed(1)}%"></span></i><em>${Math.max(0, Math.ceil((queue.total || 0) - (queue.elapsed || 0)))}s remaining</em></div>` : `<div class="sx-fab-queue is-idle"><span>ACTIVE LINE</span><b>IDLE</b><em>One strategic build slot available</em></div>`) +
-        `<div class="sx-fab-notes">${notes.map((n) => `<div class="sx-fab-note${n.ok ? ' is-ok' : ''}">${icon(n.ok ? 'spark' : 'info', 13)}<span>${escapeHtml(n.text)}</span></div>`).join('')}</div>` +
-        `<button type="button" class="sx-btn-primary" data-build="${escapeHtml(bp.id)}" ${r.state === 'ready' && !queue ? '' : 'disabled'}>${queue ? 'Line occupied' : (r.state === 'ready' ? 'Fabricate' : shortBlockLabel(bp, r))}</button>` +
+
+    const statusClass = queue ? 'k-signal' : (r.state === 'ready' ? 'k-good' : (r.state === 'materials' ? 'k-signal' : 'k-bad'));
+    const status = queue
+      ? `Fabricator occupied — ${escapeHtml((queueBp && queueBp.name) || queue.bpId || 'job')}, ${Math.round(progress * 100)}%, ${Math.max(0, Math.ceil((queue.total || 0) - (queue.elapsed || 0)))} s remaining.`
+      : `${escapeHtml(r.label)}. One build slot, idle.`;
+    const canBuild = r.state === 'ready' && !queue;
+
+    stageEl.innerHTML =
+      `<div class="sx-fab">` +
+        `<p class="k-caps sx-fab-head__cat">${CAT_LABEL[bp.category] || bp.category} · Tier ${bp.tier}</p>` +
+        `<h2 class="k-display k-t-title sx-fab-head__name">${escapeHtml(niceName(bp.outputs.id, bp.outputs.kind))}</h2>` +
+        (bp.desc ? `<p class="k-sentence sx-fab-head__desc">${escapeHtml(bp.desc)}</p>` : '') +
+        `<div class="sx-fab-heroes">` +
+          `<div class="k-hero k-hero--hero sx-fab-out"><span class="k-hero__n">${bp.outputs.qty || 1}</span><span class="k-hero__w">${escapeHtml(bp.outputs.kind)} per run</span></div>` +
+          `<div class="k-hero sx-fab-time"><span class="k-hero__n">${bp.timeS ? bp.timeS : '0'}</span><span class="k-hero__w">seconds</span></div>` +
+        `</div>` +
+        `<p class="k-caps sx-fab-col-k">Needs</p>` +
+        (inputs ? `<ul class="k-rows sx-fab-inputs">${inputs}</ul>` : `<p class="k-sentence sx-muted">No inputs.</p>`) +
+        (notes.length ? `<ul class="k-words k-words--row sx-fab-notes">${notes.map((n) => `<li class="k-t-fine ${n.ok ? 'k-62' : 'k-bad'} sx-fab-note">${escapeHtml(n.text)}</li>`).join('')}</ul>` : '') +
+        `<p class="k-sentence ${statusClass} sx-fab-status">${status}</p>` +
+        `<ul class="k-words k-words--row sx-fab-foot"><li>` +
+          `<button type="button" class="k-word k-word--emph k-word--primary sx-fab-build" data-build="${escapeHtml(bp.id)}"${canBuild ? '' : ' disabled aria-disabled="true"'}>` +
+            `${queue ? 'Line occupied' : (r.state === 'ready' ? 'Fabricate' : escapeHtml(shortBlockLabel(bp, r)))}` +
+          `</button>` +
+        `</li></ul>` +
       `</div>`;
   }
 
-  function renderAll(state) { renderList(state); renderStage(state); renderConsole(state); }
+  function renderAll(state) { renderList(state); renderStage(state); }
+
+  function select(id, focus) {
+    if (!id) return;
+    selectedId = id;
+    const state = ctx.state || {};
+    renderAll(state);
+    if (focus) {
+      const row = listEl.querySelector(`[data-bp="${CSS.escape(id)}"]`);
+      if (row && typeof row.focus === 'function') row.focus();
+    }
+    if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tab' });
+  }
 
   listEl.addEventListener('click', (ev) => {
     const b = ev.target.closest('[data-bp]'); if (!b) return;
-    selectedId = b.getAttribute('data-bp');
-    const state = ctx.state || {};
-    renderList(state); renderStage(state); renderConsole(state);
-    if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tab' });
+    select(b.getAttribute('data-bp'), false);
+  });
+  // Arrow keys walk every blueprint across the categories (one tablist, roving tabindex).
+  listEl.addEventListener('keydown', (ev) => {
+    const rows = [...listEl.querySelectorAll('[data-bp]')];
+    const cur = rows.indexOf(ev.target.closest('[data-bp]'));
+    if (cur < 0 || !rows.length) return;
+    let next = -1;
+    if (ev.key === 'ArrowDown' || ev.key === 'ArrowRight') next = (cur + 1) % rows.length;
+    else if (ev.key === 'ArrowUp' || ev.key === 'ArrowLeft') next = (cur - 1 + rows.length) % rows.length;
+    else if (ev.key === 'Home') next = 0;
+    else if (ev.key === 'End') next = rows.length - 1;
+    else return;
+    ev.preventDefault();
+    select(rows[next].getAttribute('data-bp'), true);
   });
   stageEl.addEventListener('click', (ev) => {
     const source = ev.target.closest('[data-source-cmdty]');
-    if (!source || !ctx.bus) return;
-    ctx.bus.emit('station:navigate', {
-      destination: 'market',
-      options: { tradeMode: 'buy', commodityId: source.getAttribute('data-source-cmdty') },
-    });
-    ctx.bus.emit('audio:cue', { id: 'ui_accept' });
-  });
-  consoleEl.addEventListener('click', (ev) => {
+    if (source) {
+      if (!ctx.bus) return;
+      ctx.bus.emit('station:navigate', {
+        destination: 'market',
+        options: { tradeMode: 'buy', commodityId: source.getAttribute('data-source-cmdty') },
+      });
+      ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+      return;
+    }
     const b = ev.target.closest('[data-build]'); if (!b || b.disabled) return;
     const bpId = b.getAttribute('data-build');
     const sid = ctx.state && ctx.state.ui && ctx.state.ui.dockedStationId;
