@@ -48,8 +48,10 @@ The assertion was demanding precisely the work that commit deliberately removed.
 
 **Measured, not argued.** On the seeded route the probe flies, the player spawns at the origin;
 `station_helios` is **1347 WU** away and `station_tethys` **15855 WU**, against a table camera whose
-default zoom is **144**. A full 45 s wait with forced renders admitted neither, because nothing ever
-requested them. `missing-mesh` + `presented: false` is the **correct** state on this route.
+default zoom is **144**. A full 45 s wait with forced renders admitted neither. The reason is the
+residency rule in `renderer.js` quoted above, which forbids admitting a far Helios — a policy
+reading, not a network trace: this probe does not log asset requests, so the *fetch* was never
+observed either way. `missing-mesh` + `presented: false` is the **correct** state on this route.
 
 A trap worth keeping: **`missing-mesh` is a default, not a diagnosis.** Every probe writes it
 whenever `root.userData.authoredAssetState` is absent, so "policy never asked for it" and "the fetch
