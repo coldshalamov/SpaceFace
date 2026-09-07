@@ -11,14 +11,18 @@ import { NATIVE_TITLE_RE, nativeTitlePropWrites } from '../scripts/check-ui-nati
 import { describeTechNodeReadiness } from '../src/ui/screens/techTree.js';
 import { objectiveText } from '../src/ui/screens/missionLog.js';
 
+// Frontend Task D §3.4 (design/frontend/direction/tasks) moved the tech tree (src/ui/screens/techTree.js)
+// onto the kit: it owns no CSS any more, so the injected-style contracts below (type floor, one
+// DISPLAY, --sf-data-face figures, --sf-* role tokens, crest/stage/apron zones) no longer apply to
+// it. Its type scale, faces and colour law are styles/kit.css; its canvas paints only the kit's
+// colours in the kit's text face; its lock-reason words (describeTechNodeReadiness) and the
+// no-var()-in-ctx.font rule are still asserted below.
+// Task D §3.1 did the same for the mission log (src/ui/screens/missionLog.js): kit markup, no style
+// block; its objectiveText presenter and the no-STYLE_ID rule are asserted below.
 const FILES = [
-  'src/ui/screens/missionLog.js',
-  'src/ui/screens/techTree.js',
   'src/ui/screens/localmap.js',
 ];
 const DISPLAY = new Map([
-  ['src/ui/screens/missionLog.js', '.sf-mlog-rec-title'],
-  ['src/ui/screens/techTree.js', '.tt-title'],
   ['src/ui/screens/localmap.js', '.lm-objective-title'],
 ]);
 const PINNED_FORBIDDEN = /(?:\bpanel\b|sf-menu|sf-mlog-card)/;
@@ -75,10 +79,6 @@ test('every figure binds --sf-data-face', () => {
     assert.match(code, /font-family:\s*var\(--sf-data-face\)/, rel + ' has no --sf-data-face binding');
     assert.match(code, /\.sf-fig/, rel + ' has no .sf-fig figure class');
   }
-  const tech = load('src/ui/screens/techTree.js');
-  assert.match(tech, /#sf-techtree \.tt-res b/);
-  assert.match(tech, /#sf-techtree \.tt-cost/);
-  assert.match(tech, /canvasFontScaled\(500, 13, zoom, 'data'\)/);
   const map = load('src/ui/screens/localmap.js');
   assert.match(map, /#sf-localmap \.lm-route-profit/);
   assert.match(map, /#sf-localmap \.lm-objective-meta/);
@@ -128,8 +128,16 @@ test('canvas text does not pass var() into ctx.font', () => {
   for (const rel of ['src/ui/screens/techTree.js', 'src/ui/screens/localmap.js']) {
     const code = stripComments(load(rel));
     assert.doesNotMatch(code, /\.font\s*=\s*[`'"][^`'"]*var\(--/);
-    assert.match(code, /from '\.\.\/canvasFonts\.js'/);
   }
+  assert.match(stripComments(load('src/ui/screens/localmap.js')), /from '\.\.\/canvasFonts\.js'/);
+  // The kit tech tree spells the kit's --k-text family into its canvas font (kit.css cannot be read by ctx.font).
+  const tech = stripComments(load('src/ui/screens/techTree.js'));
+  assert.match(tech, /"Instrument Sans"/);
+  assert.match(tech, /from '\.\.\/kit\/index\.js'/);
+  assert.doesNotMatch(tech, /STYLE_ID|createElement\('style'\)/);
+  const log = stripComments(load('src/ui/screens/missionLog.js'));
+  assert.match(log, /from '\.\.\/kit\/index\.js'/);
+  assert.doesNotMatch(log, /STYLE_ID|createElement\('style'\)/);
 });
 
 test('describeTechNodeReadiness still names the lock reason in words', () => {

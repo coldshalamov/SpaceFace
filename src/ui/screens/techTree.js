@@ -1,7 +1,14 @@
 // src/ui/screens/techTree.js — Tech-tree progression screen (ARCHITECTURE §5, spec 09).
 // Draws the TECH_NODES DAG to a <canvas>: prereq lines, node state (researched / available /
-// locked), cost (credits + RP). Click an available node -> detail panel -> Unlock button emits
-// ui:unlockTech{nodeId} (ships handles it). READ-ONLY on state; emits intents only.
+// locked), cost (credits + RP). Click a node -> the side column -> Unlock emits ui:unlockTech{nodeId}
+// (ships handles it). READ-ONLY on state; emits intents only.
+//
+// The sheet's line (design/frontend/direction/DIRECTION_SHEET.md, tech tree, Task D §3.4): the lanes
+// drawn as hairline paths on the sky; nodes as words; the selected node's name at screen-title size
+// with its cost as a number and Unlock as a word. Built on the frontend kit (styles/kit.css,
+// src/ui/kit/); this file owns no CSS. The canvas is transparent over the sky and paints only the
+// kit's colours (KIT_INK below — the one place a hex literal is allowed here, because it paints a
+// canvas, not CSS).
 //
 // Export: techTreeScreen  (id 'techTree'). No 'three' import.
 
@@ -11,7 +18,7 @@ import { MODULES } from '../../data/modules.js';
 import { WEAPONS } from '../../data/weapons.js';
 import { BODY_MODULES } from '../../data/claimableBodies.js';
 import { escapeHtml } from '../comms.js';
-import { canvasFontScaled, canvasFonts, invalidateCanvasFonts } from '../canvasFonts.js';
+import { el, hero, settle, cue } from '../kit/index.js';
 
 // Branch -> column index. Colour is by MEANING (researched / available / locked), never by branch.
 const BRANCHES = [
@@ -31,137 +38,41 @@ const UNLOCK_NAME_BY_ID = new Map(
 // prerequisite (drives → flagship command) is the only diagonal. The previous layout put depth on
 // the vertical axis inside each band and siblings across, which drew the combat branch's fan-out
 // as a tangle of curves crossing the whole canvas and left two thirds of the frame empty.
+// NODE_W × NODE_H is each node's word box: the hit-test rectangle and the space its two name lines
+// and cost line occupy. Nothing is drawn around it.
 const NODE_W = 168, NODE_H = 58, COL_GAP = 56, ROW_GAP = 16, PAD_X = 32, PAD_Y = 40;
 const LANE_GAP = 34;          // vertical space between branch lanes (holds the lane label)
 const LANE_LABEL_H = 22;      // label sits inside the lane's top inset
+const NAME_LINE_H = 20;       // canvas line height for the node's name at body size (16 px × 1.25)
 
-const STYLE_ID = 'sf-techtree-style';
-const CSS = `
-#sf-techtree {
-  width: 100%; height: 100%; max-width: var(--sf-stage-max); margin: 0 auto;
-  display: flex; flex-direction: column;
-  background: var(--sf-surface); color: var(--sf-paper);
-  border: 0; border-radius: 0; box-shadow: none; overflow: hidden; pointer-events: auto;
-  font-family: var(--sf-body-face); font-size: 14px;
-  padding-left: var(--sf-safe-inset-x); padding-right: var(--sf-safe-inset-x);
-}
-#sf-techtree .sf-fig,
-#sf-techtree .tt-res b,
-#sf-techtree .tt-cost,
-#sf-techtree .tt-zoom-badge {
-  font-family: var(--sf-data-face); font-weight: 500; font-variant-numeric: tabular-nums;
-  font-size: 13px; letter-spacing: 0;
-}
-#sf-techtree .tt-head {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--sf-edge); background: var(--sf-surface);
-}
-#sf-techtree .tt-title {
-  font-family: var(--sf-display-face); font-weight: 700; font-size: 28px; line-height: 1.1;
-  letter-spacing: 0; text-transform: none; color: var(--sf-paper); overflow-wrap: anywhere;
-}
-#sf-techtree .tt-res { display: flex; gap: var(--sp-4); color: var(--sf-calm); font-size: 13px; }
-#sf-techtree .tt-res .cr, #sf-techtree .tt-res .rp { color: var(--sf-you); }
-#sf-techtree .tt-res .count { color: var(--sf-calm); }
-#sf-techtree .tt-body { flex: 1; display: flex; min-height: 0; }
-#sf-techtree .tt-scroll { flex: 1; overflow: auto; position: relative; min-width: 0; }
-#sf-techtree canvas { display: block; cursor: default; }
-#sf-techtree .tt-side {
-  width: 282px; border-left: 1px solid var(--sf-edge); background: var(--sf-surface);
-  padding: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-3); overflow-y: auto;
-}
-#sf-techtree .tt-sel-name {
-  font-family: var(--sf-subhead-face); font-weight: 600; font-size: 22px; line-height: 1.2; color: var(--sf-paper);
-}
-#sf-techtree .tt-branch {
-  font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
-  letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-calm);
-}
-#sf-techtree .tt-state {
-  font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
-  letter-spacing: var(--sf-track-micro); text-transform: uppercase;
-}
-#sf-techtree .tt-state.is-researched { color: var(--sf-you); }
-#sf-techtree .tt-state.is-available { color: var(--sf-goal); }
-#sf-techtree .tt-state.is-locked { color: var(--sf-calm); }
-#sf-techtree .tt-cost { display: flex; gap: var(--sp-4); }
-#sf-techtree .tt-cost .cr, #sf-techtree .tt-cost .rp { color: var(--sf-you); }
-#sf-techtree .tt-cost .bad { color: var(--sf-foe); }
-#sf-techtree .tt-unlocks { font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-calm); line-height: 1.55; }
-#sf-techtree .tt-unlocks b { color: var(--sf-paper); }
-#sf-techtree .tt-prereq { font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-calm); line-height: 1.5; }
-#sf-techtree .tt-prereq .ok { color: var(--sf-you); }
-#sf-techtree .tt-prereq .no { color: var(--sf-foe); }
-#sf-techtree .tt-actions { margin-top: auto; display: flex; flex-direction: column; gap: var(--sp-2); }
-#sf-techtree .tt-actions button { width: 100%; padding: var(--sp-2); font-family: var(--sf-body-face); font-size: 14px; }
-#sf-techtree .tt-actions button[aria-disabled="true"] { opacity: .55; cursor: not-allowed; }
-#sf-techtree .tt-unlock {
-  background: color-mix(in srgb, var(--sf-goal) 12%, transparent);
-  border-color: var(--sf-goal); color: var(--sf-paper);
-}
-#sf-techtree .tt-foot {
-  display: flex; gap: var(--sp-4); padding: var(--sp-2) var(--sp-4); border-top: 1px solid var(--sf-edge);
-  font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
-  letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-calm);
-}
-#sf-techtree .tt-foot span { display: inline-flex; align-items: center; gap: var(--sp-1); }
-#sf-techtree .tt-sw { width: 12px; height: 12px; border-radius: 2px; display: inline-block; border: 1px solid var(--sf-edge); }
-#sf-techtree .tt-sw--available { background: var(--sf-goal); border-color: var(--sf-goal); }
-#sf-techtree .tt-sw--researched { background: var(--sf-you); border-color: var(--sf-you); }
-#sf-techtree .tt-sw--locked { background: var(--sf-calm); }
-#sf-techtree .tt-hint { font-family: var(--sf-body-face); font-size: 14px; color: var(--sf-calm); }
-#sf-techtree .tt-zoom-badge {
-  position: absolute; bottom: var(--sp-2); right: var(--sp-2); color: var(--sf-calm);
-  background: var(--sf-surface); border: 1px solid var(--sf-edge); border-radius: 2px;
-  padding: var(--sp-1) var(--sp-2); pointer-events: none; z-index: 2;
-}
-@media (prefers-reduced-motion: reduce) {
-  #sf-techtree, #sf-techtree * { animation: none; transition: none; }
-}
-@media (forced-colors: active) {
-  #sf-techtree, #sf-techtree .tt-side, #sf-techtree .tt-zoom-badge {
-    background: Canvas; color: CanvasText; border-color: CanvasText;
-  }
-}
-`;
+// The kit's colours for the canvas (styles/kit.css §3 tokens): bone at 100 / 62 / 38 / 14 %, the
+// signal gold, the wanted red, good, ink. Canvas 2D cannot read a CSS custom property, so the values
+// are spelled here — the only hex allowed in this file. Every fillStyle/strokeStyle below is one of these.
+const KIT_INK = Object.freeze({
+  bone: '#eae6df',
+  bone62: 'rgba(234,230,223,.62)',
+  bone38: 'rgba(234,230,223,.38)',
+  hair: 'rgba(234,230,223,.14)',
+  signal: '#f2b950',
+  red: '#ff4d3d',
+  good: '#9bd8a0',
+  ink: '#0a0b0d',
+});
+// The kit's text face (styles/kit.css --k-text), spelled out because ctx.font cannot resolve var().
+const KIT_TEXT_FACE = '"Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif';
 
-function injectStyle() {
-  if (document.getElementById(STYLE_ID)) return;
-  const el = document.createElement('style');
-  el.id = STYLE_ID;
-  el.textContent = CSS;
-  document.head.appendChild(el);
+/**
+ * A canvas font shorthand in the kit face for a canvas whose element is scaled by `zoom`.
+ * The 12 px floor applies to the size the player sees, then divides (a scaled element draws
+ * `size/zoom` at `size` screen pixels), the same rule canvasFonts.js documents.
+ */
+function kitFont(weight, screenPx, zoom) {
+  const z = Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
+  const size = Math.max(12, Number.isFinite(screenPx) ? screenPx : 12) / z;
+  return weight + ' ' + size + 'px ' + KIT_TEXT_FACE;
 }
 
 function setText(el, text) { if (el && el.textContent !== text) el.textContent = text; }
-
-function canvasRoles() {
-  const fallback = { you: '#4fbf8f', foe: '#ff5470', goal: '#ffb347', calm: '#84a0c8', paper: '#d3e6ff', surface: '#0b1220', edge: '#1d3350' };
-  if (typeof document === 'undefined' || !document.documentElement) return fallback;
-  let cs;
-  try { cs = getComputedStyle(document.documentElement); } catch { return fallback; }
-  const read = (name, fb) => ((cs.getPropertyValue(name) || '').trim() || fb);
-  return {
-    you: read('--sf-you', fallback.you),
-    foe: read('--sf-foe', fallback.foe),
-    goal: read('--sf-goal', fallback.goal),
-    calm: read('--sf-calm', fallback.calm),
-    paper: read('--sf-paper', fallback.paper),
-    surface: read('--sf-surface', fallback.surface),
-    edge: read('--sf-edge', fallback.edge),
-  };
-}
-
-function paint(hex, a) {
-  if (a == null || a >= 1) return hex;
-  const n = String(hex || '').replace('#', '');
-  if (n.length < 6) return hex;
-  const r = parseInt(n.slice(0, 2), 16);
-  const g = parseInt(n.slice(2, 4), 16);
-  const b = parseInt(n.slice(4, 6), 16);
-  if (![r, g, b].every(Number.isFinite)) return hex;
-  return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
-}
 
 function nodeName(id, nodes = TECH_NODES) {
   const node = (nodes || []).find((n) => n && n.id === id);
@@ -279,7 +190,7 @@ function buildLayout(nodes) {
     }
   }
   const branchTop = {};   // lane label y (the lane's top inset)
-  const laneBottom = {};  // last card's bottom edge in the lane
+  const laneBottom = {};  // last word box's bottom edge in the lane
   const positions = {};
   let y = PAD_Y;
   let maxX = 0;
@@ -304,6 +215,15 @@ function buildLayout(nodes) {
   return { byId, positions, width: maxX + PAD_X, height: y - LANE_GAP + PAD_Y, branchTop, laneBottom };
 }
 
+/** A hero block in the corner whose number carries a data hook (`data-cr`, `data-rp`, `data-count`). */
+function cornerHero(parent, word, hook) {
+  const block = hero('0', word);
+  const n = block.querySelector('.k-hero__n');
+  n.setAttribute(hook, '');
+  parent.appendChild(block);
+  return n;
+}
+
 export const techTreeScreen = {
   id: 'techTree',
   _ctx: null,
@@ -319,57 +239,82 @@ export const techTreeScreen = {
   _sidebarSig: '',
   _zoom: 1.0,
   _zoomBadge: null,
+  _regions: null,
 
   mount(rootEl, ctx) {
-    injectStyle();
     this._ctx = ctx;
     this._root = rootEl;
+    // `#sf-techtree` stays as an inert hook (probe-frontend-unblind-capture reads `#sf-techtree canvas`).
     rootEl.id = 'sf-techtree';
-    rootEl.innerHTML = `
-      <div class="tt-head sf-crest">
-        <div class="tt-title">Research &amp; Tech</div>
-        <div class="tt-res">
-          <div class="cr">CR <b class="sf-fig" data-cr>0</b></div>
-          <div class="rp">RP <b class="sf-fig" data-rp>0</b></div>
-          <div class="count">UNLOCKED <b class="sf-fig" data-count>0/${TECH_NODES.length}</b></div>
-        </div>
-      </div>
-      <div class="tt-body">
-        <div class="tt-scroll sf-stage"><canvas></canvas></div>
-        <div class="tt-side sf-apron">
-          <div data-sel><div class="tt-hint">Select a node to inspect its cost, effects and prerequisites.</div></div>
-          <div class="tt-actions" data-actions></div>
-        </div>
-      </div>
-      <div class="tt-foot">
-        <span><i class="tt-sw tt-sw--available"></i>Available</span>
-        <span><i class="tt-sw tt-sw--researched"></i>Researched</span>
-        <span><i class="tt-sw tt-sw--locked"></i>Locked</span>
-      </div>`;
+    rootEl.innerHTML = '';
+    rootEl.classList.remove('panel', 'sf-menu', 'sf-menu-wide', 'sf-techtree');
+    rootEl.classList.add('k-screen');
+    rootEl.dataset.kReady = '0';
+    rootEl.setAttribute('aria-label', 'Research');
 
-    this._canvas = rootEl.querySelector('canvas');
-    this._g = this._canvas.getContext('2d');
-    this._layout = buildLayout(this._nodes());
-    this._els = {
-      cr: rootEl.querySelector('[data-cr]'),
-      rp: rootEl.querySelector('[data-rp]'),
-      count: rootEl.querySelector('[data-count]'),
-      selected: rootEl.querySelector('[data-sel]'),
-      actions: rootEl.querySelector('[data-actions]'),
-    };
+    // .k-title — "Research"; the selected node's branch as the second line.
+    const head = el('header', 'k-title');
+    head.appendChild(el('h1', 'k-display k-t-title', 'Research'));
+    const branchLine = el('p', 'k-t-emph k-62', 'Select a node');
+    head.appendChild(branchLine);
+    rootEl.appendChild(head);
 
-    this._canvas.addEventListener('click', (e) => this._onCanvasClick(e));
-    this._canvas.addEventListener('mousemove', (e) => this._onCanvasMove(e));
-    this._canvas.addEventListener('mouseleave', () => { this._hoverId = null; this._draw(); });
+    // .k-corner — credits, research points, unlocked n/N as three hero numbers in a column.
+    const corner = el('div', 'k-corner');
+    corner.setAttribute('aria-label', 'Research resources');
+    const crEl = cornerHero(corner, 'credits', 'data-cr');
+    const rpEl = cornerHero(corner, 'research points', 'data-rp');
+    const countEl = cornerHero(corner, 'unlocked', 'data-count');
+    setText(countEl, '0/' + TECH_NODES.length);
+    rootEl.appendChild(corner);
 
-    // Zoom badge
-    const scrollEl = rootEl.querySelector('.tt-scroll');
-    const zoomBadge = document.createElement('div');
-    zoomBadge.className = 'tt-zoom-badge';
-    zoomBadge.textContent = '100%';
+    // .k-stage — a two-column kit panel: the canvas (scrolling) on the left, the selected node's
+    // column on the right. `k-span` takes the stage across the hang column too: the DAG wants the width.
+    const stage = el('div', 'k-stage k-span k-panel k-panel--split');
+    const scrollEl = el('div', 'tt-scroll k-stage--scroll');
+    // The kit's scroll rule scrolls one axis (overflow: hidden auto). Panning a zoomed tree needs
+    // both; this is the pan behaviour the screen has always had, not a look.
+    scrollEl.style.overflowX = 'auto';
+    const canvas = el('canvas');
+    canvas.setAttribute('aria-label', 'Tech tree');
+    canvas.style.display = 'block';
+    scrollEl.appendChild(canvas);
+    // The zoom badge pins to the stage's bottom-left (the kit's stage caption slot) and does not scroll.
+    const zoomBadge = el('div', 'tt-zoom-badge k-stage__foot k-t-fine k-38', '100% zoom');
+    zoomBadge.setAttribute('aria-live', 'off');
     scrollEl.appendChild(zoomBadge);
+    stage.appendChild(scrollEl);
+
+    const side = el('div', 'tt-side k-stage--scroll');
+    side.setAttribute('aria-label', 'Selected node');
+    const selected = el('div');
+    selected.setAttribute('data-sel', '');
+    const actions = el('div');
+    actions.setAttribute('data-actions', '');
+    side.appendChild(selected);
+    side.appendChild(actions);
+    stage.appendChild(side);
+    rootEl.appendChild(stage);
+
+    // .k-foot — the legend as three static words in their strengths; no swatches.
+    const foot = el('footer', 'k-foot');
+    foot.setAttribute('aria-label', 'Legend');
+    foot.appendChild(el('span', 'k-word--fine k-62', 'available'));
+    foot.appendChild(el('span', 'k-word--fine', 'researched'));
+    foot.appendChild(el('span', 'k-word--fine k-38', 'locked'));
+    rootEl.appendChild(foot);
+
+    this._regions = { head, corner, stage, foot };
+    this._canvas = canvas;
+    this._g = canvas.getContext('2d');
+    this._layout = buildLayout(this._nodes());
+    this._els = { cr: crEl, rp: rpEl, count: countEl, branch: branchLine, selected, actions };
     this._zoomBadge = zoomBadge;
     this._zoom = 1.0;
+
+    canvas.addEventListener('click', (e) => this._onCanvasClick(e));
+    canvas.addEventListener('mousemove', (e) => this._onCanvasMove(e));
+    canvas.addEventListener('mouseleave', () => { this._hoverId = null; this._draw(); });
 
     // Mouse-wheel zoom
     scrollEl.addEventListener('wheel', (ev) => {
@@ -390,25 +335,37 @@ export const techTreeScreen = {
       // After scaling, adjust scroll to keep cursor-point stable
       scrollEl.scrollLeft = mx * ratio - (ev.clientX - rect.left);
       scrollEl.scrollTop = my * ratio - (ev.clientY - rect.top);
-
-      this._zoomBadge.textContent = Math.round(this._zoom * 100) + '%';
     }, { passive: false });
 
-    this._els.actions.addEventListener('click', (e) => {
+    actions.addEventListener('click', (e) => {
       const btn = e.target.closest('button[data-act]');
       if (btn) this._onAction(btn.dataset.act);
     });
+
+    // Web fonts land after first paint; repaint the words in the real face when they do.
+    if (typeof document !== 'undefined' && document.fonts && document.fonts.addEventListener) {
+      document.fonts.addEventListener('loadingdone', () => this._draw());
+    }
   },
 
   onShow(ctx) {
     if (ctx) this._ctx = ctx;
-    invalidateCanvasFonts();
     this._sizeCanvas();
     this._fitZoom();
     this.refresh(this._ctx);
+    cue('open');
+    if (typeof requestAnimationFrame === 'function' && this._regions) {
+      try {
+        settle(this._regions.head, { from: 'top', state: 'techTree:open' });
+        settle(this._regions.corner, { from: 'top', state: 'techTree:open' });
+        settle(this._regions.stage, { from: 'right', state: 'techTree:open' });
+        settle(this._regions.foot, { from: 'bottom', state: 'techTree:open' });
+      } catch (e) { /* motion is cosmetic */ }
+    }
+    if (this._root) this._root.dataset.kReady = '1';
   },
 
-  onHide() { /* cached DOM retained */ },
+  onHide() { cue('close'); /* cached DOM retained */ },
 
   refresh(ctx, opts = {}) {
     if (ctx) this._ctx = ctx;
@@ -467,7 +424,7 @@ export const techTreeScreen = {
   /**
    * Scale the canvas ELEMENT to the zoom (layout box and paint scale together). The previous CSS
    * transform left the layout box at 100%, so a zoomed-out view scrolled over blank canvas.
-   * Hit-testing already divides by _zoom, and canvasFontScaled compensates the drawn font sizes,
+   * Hit-testing already divides by _zoom, and kitFont compensates the drawn font sizes,
    * so both stay correct under element scaling.
    */
   _applyZoom() {
@@ -475,13 +432,13 @@ export const techTreeScreen = {
     const zoom = this._zoom || 1;
     this._canvas.style.width = Math.round(this._layout.width * zoom) + 'px';
     this._canvas.style.height = Math.round(this._layout.height * zoom) + 'px';
-    if (this._zoomBadge) this._zoomBadge.textContent = Math.round(zoom * 100) + '%';
+    setText(this._zoomBadge, Math.round(zoom * 100) + '% zoom');
   },
 
   /**
    * First paint fits the whole DAG to the scroll viewport when that stays legible, and never goes
    * past 100%. The floor is 0.9: below that the 12px type floor makes canvas fonts physically
-   * wider than the lines the node cards reserve (wrapText lineH 15px), so text would overlap —
+   * wider than the lines the node words reserve (wrapText NAME_LINE_H), so text would overlap —
    * better to keep 100% and scroll. The branch-band layout already fits at 100% in normal windows;
    * this only absorbs slightly narrow ones.
    */
@@ -496,40 +453,49 @@ export const techTreeScreen = {
     this._applyZoom();
   },
 
+  /** The strength a node's name is drawn at: focus is strength, never a frame. */
+  _nodeInk(stt, sel, hov) {
+    if (sel) return KIT_INK.signal;
+    if (stt === 'researched') return KIT_INK.bone;
+    if (stt === 'available') return hov ? KIT_INK.bone : KIT_INK.bone62;
+    return hov ? KIT_INK.bone62 : KIT_INK.bone38;
+  },
+
   _draw() {
     const g = this._g, cv = this._canvas;
     if (!g || !this._layout) return;
     this._drawSig = this._drawSignature();
     g.setTransform(this._dpr, 0, 0, this._dpr, 0, 0);
     const w = cv.width / this._dpr, h = cv.height / this._dpr;
-    g.clearRect(0, 0, w, h);
+    g.clearRect(0, 0, w, h); // transparent: the sky is the ground
 
     const nodes = this._nodes();
     const pos = this._layout.positions;
-    const roles = canvasRoles();
     const zoom = this._zoom || 1;
 
-    // Lane labels sit in each lane's top inset; a hairline closes the lane below its last card.
-    // Branch identity is lane + word, never hue.
+    // Lane labels sit in each lane's top inset at data size, 38 %; a hairline closes the lane below
+    // its last word. Branch identity is lane + word, never hue.
     g.textAlign = 'left'; g.textBaseline = 'top';
+    g.lineWidth = 1;
     for (const b of BRANCHES) {
       const top = this._layout.branchTop[b.id];
       if (top == null) continue;
-      g.fillStyle = roles.calm;
-      g.font = canvasFontScaled(600, 12, zoom, 'subhead');
-      g.fillText(b.label.toUpperCase(), PAD_X, top + 2);
+      g.fillStyle = KIT_INK.bone38;
+      g.font = kitFont(400, 14, zoom);
+      g.fillText(b.label, PAD_X, top + 2);
       const bottom = this._layout.laneBottom[b.id];
       if (bottom != null && bottom + LANE_GAP < this._layout.height - PAD_Y) {
+        const y = Math.round(bottom + LANE_GAP / 2) + 0.5;
         g.beginPath();
-        g.moveTo(PAD_X, bottom + LANE_GAP / 2);
-        g.lineTo(this._layout.width - PAD_X, bottom + LANE_GAP / 2);
-        g.strokeStyle = paint(roles.edge, 0.9);
-        g.lineWidth = 1;
+        g.moveTo(PAD_X, y);
+        g.lineTo(this._layout.width - PAD_X, y);
+        g.strokeStyle = KIT_INK.hair;
         g.stroke();
       }
     }
 
-    // ---- prereq edges: parent's right edge → child's left edge, always pointing right ----
+    // ---- prereq edges: parent's right edge → child's left edge, always pointing right, as hairlines ----
+    g.strokeStyle = KIT_INK.hair;
     for (const n of nodes) {
       if (!n.prereqs) continue;
       const np = pos[n.id];
@@ -539,18 +505,15 @@ export const techTreeScreen = {
         const pp = pos[p];
         if (!pp) continue;
         const parentRight = { x: pp.x + NODE_W, y: pp.y + NODE_H / 2 };
-        const met = this._isResearched(p);
         const reach = Math.max(COL_GAP * 0.55, (childLeft.x - parentRight.x) * 0.5);
         g.beginPath();
         g.moveTo(parentRight.x, parentRight.y);
         g.bezierCurveTo(parentRight.x + reach, parentRight.y, childLeft.x - reach, childLeft.y, childLeft.x, childLeft.y);
-        g.strokeStyle = met ? paint(roles.you, 0.7) : paint(roles.calm, 0.32);
-        g.lineWidth = met ? 2 : 1;
         g.stroke();
       }
     }
 
-    // ---- nodes ----
+    // ---- nodes as words: the name at body size in its strength, the cost (or "researched") at data size, 38 % ----
     for (const n of nodes) {
       const p = pos[n.id];
       if (!p) continue;
@@ -558,36 +521,19 @@ export const techTreeScreen = {
       const sel = n.id === this._selectedId;
       const hov = n.id === this._hoverId;
 
-      g.beginPath();
-      roundRect(g, p.x, p.y, NODE_W, NODE_H, 8);
-      if (stt === 'researched') g.fillStyle = paint(roles.you, 0.16);
-      else if (stt === 'available') g.fillStyle = paint(roles.surface, 0.95);
-      else g.fillStyle = paint(roles.surface, 0.7);
-      g.fill();
-
-      g.lineWidth = sel ? 2.5 : 1.5;
-      if (stt === 'researched') g.strokeStyle = roles.you;
-      else if (stt === 'available') g.strokeStyle = sel || hov ? roles.paper : roles.goal;
-      else g.strokeStyle = paint(roles.edge, 0.8);
-      g.stroke();
-
-      g.fillStyle = stt === 'locked' ? paint(roles.calm, 0.7) : roles.paper;
-      g.font = canvasFontScaled(600, 13, zoom, 'body');
+      g.fillStyle = this._nodeInk(stt, sel, hov);
+      g.font = kitFont(sel ? 500 : 400, 16, zoom);
       g.textAlign = 'left'; g.textBaseline = 'top';
-      wrapText(g, n.name, p.x + 9, p.y + 8, NODE_W - 18, 15, 2);
+      wrapText(g, n.name, p.x, p.y, NODE_W, NAME_LINE_H, 2);
 
-      g.font = canvasFontScaled(500, 13, zoom, 'data');
+      g.font = kitFont(400, 14, zoom);
+      g.fillStyle = KIT_INK.bone38;
+      g.textBaseline = 'bottom';
       if (stt === 'researched') {
-        g.fillStyle = roles.you;
-        g.textAlign = 'right'; g.textBaseline = 'bottom';
-        g.fillText('RESEARCHED', p.x + NODE_W - 8, p.y + NODE_H - 7);
+        g.fillText('researched', p.x, p.y + NODE_H);
       } else {
         const cost = n.cost || {};
-        g.textAlign = 'left'; g.textBaseline = 'bottom';
-        g.fillStyle = roles.paper;
-        g.fillText(fmtCr(cost.credits || 0), p.x + 9, p.y + NODE_H - 7);
-        g.textAlign = 'right';
-        g.fillText((cost.rp || 0) + ' RP', p.x + NODE_W - 8, p.y + NODE_H - 7);
+        g.fillText(fmtCr(cost.credits || 0) + ' cr · ' + (cost.rp || 0) + ' RP', p.x, p.y + NODE_H);
       }
     }
   },
@@ -603,6 +549,7 @@ export const techTreeScreen = {
     const hit = this._hitTest(e);
     if (!hit) return;
     this._selectedId = hit.id;
+    cue('move');
     this._syncSidebar();
     this._draw();
   },
@@ -637,48 +584,45 @@ export const techTreeScreen = {
     if (!sel || !actions) return;
     this._sidebarSig = this._sidebarSignature();
     if (!this._selectedId) {
-      sel.innerHTML = `<div class="tt-hint">Select a node to inspect its cost, effects and prerequisites.</div>`;
+      setText(this._els.branch, 'Select a node');
+      sel.innerHTML = `<p class="k-empty">Select a node to inspect its cost, effects and prerequisites.</p>`;
       actions.innerHTML = '';
       return;
     }
     const n = this._layout.byId[this._selectedId] || this._nodes().find((x) => x.id === this._selectedId);
     if (!n) { sel.innerHTML = ''; actions.innerHTML = ''; return; }
     const st = this._ctx.state;
-    const stt = this._nodeState(n);
     const cost = n.cost || {};
-    const creds = (st.player && st.player.credits) || 0;
-    const rp = (st.player && st.player.researchPoints) || 0;
-    const canAfford = creds >= (cost.credits || 0) && rp >= (cost.rp || 0);
     const readiness = describeTechNodeReadiness(n, st, this._nodes());
+    const branch = BRANCHES.find((b) => b.id === n.branch);
+    setText(this._els.branch, (branch ? branch.label : String(n.branch || '')) + ' branch');
 
     const prereqHtml = (n.prereqs && n.prereqs.length)
-      ? n.prereqs.map((p) => {
+      ? `<ul class="k-rows" aria-label="Prerequisites">` + n.prereqs.map((p) => {
           const pn = (this._layout.byId[p] || {}).name || p;
           const ok = this._isResearched(p);
-          return `<div class="${ok ? 'ok' : 'no'}">${ok ? '✓' : '✗'} ${escapeHtml(pn)}</div>`;
-        }).join('')
-      : `<div class="ok">No prerequisites</div>`;
+          return `<li class="k-row k-row--static"><span class="k-row__name">${escapeHtml(pn)}</span><span class="k-row__sub">${ok ? 'researched' : 'not yet researched'}</span></li>`;
+        }).join('') + `</ul>`
+      : `<p class="k-sentence">No prerequisites.</p>`;
+    const unlockRows = unlockRowsHtml(n.unlocks);
+    const effects = formatUnlocks(n.unlocks);
 
     sel.innerHTML = `
-      <div class="tt-sel-name">${escapeHtml(n.name)}</div>
-      <div class="tt-branch">${escapeHtml(n.branch)} branch</div>
-      <div class="tt-state is-${stt}">${stateLabel(stt)}</div>
-      <div class="tt-cost">
-        <span class="cr${creds >= (cost.credits || 0) ? '' : ' bad'}">${fmtCr(cost.credits || 0)} cr</span>
-        <span class="rp${rp >= (cost.rp || 0) ? '' : ' bad'}">${cost.rp || 0} RP</span>
-      </div>
-      <div class="tt-unlocks">${formatUnlocks(n.unlocks)}</div>
-      <div class="tt-prereq"><b>Prerequisites</b>${prereqHtml}</div>
+      <h2 class="k-display k-t-title">${escapeHtml(n.name)}</h2>
+      <div class="k-hero k-hero--signal"><div class="k-hero__n">${fmtCr(cost.credits || 0)}</div><div class="k-hero__w">credits</div></div>
+      ${cost.rp ? `<p class="k-sentence">and ${escapeHtml(String(cost.rp))} research points</p>` : ''}
+      ${effects || !unlockRows ? `<p class="k-sentence">${effects || 'No listed effects.'}</p>` : ''}
+      <hr class="k-rule">
+      <div class="k-caps">Requires</div>
+      ${prereqHtml}
+      ${unlockRows ? `<div class="k-caps">Unlocks</div><ul class="k-rows" aria-label="Unlocks">${unlockRows}</ul>` : ''}
+      <p class="k-sentence k-sentence--emph">${escapeHtml(stateSentence(readiness))}</p>
     `;
 
-    if (stt === 'researched') {
-      actions.innerHTML = disabledActionHtml(readiness);
-    } else if (stt === 'locked') {
-      actions.innerHTML = disabledActionHtml(readiness);
-    } else if (!canAfford) {
-      actions.innerHTML = disabledActionHtml(readiness);
+    if (readiness.state === 'available') {
+      actions.innerHTML = `<button class="k-word k-word--emph k-word--primary tt-unlock" data-act="unlock" data-why="${escapeHtml(readiness.actionTitle)}" aria-label="${escapeHtml(readiness.actionTitle)}">Unlock</button>`;
     } else {
-      actions.innerHTML = `<button class="tt-unlock" data-act="unlock" data-why="${escapeHtml(readiness.actionTitle)}" aria-label="${escapeHtml(readiness.actionTitle)}">${escapeHtml(readiness.actionLabel)}</button>`;
+      actions.innerHTML = disabledActionHtml(readiness);
     }
   },
 
@@ -686,6 +630,7 @@ export const techTreeScreen = {
     if (act !== 'unlock' || !this._selectedId) return;
     const n = this._nodes().find((x) => x.id === this._selectedId);
     if (!n) return;
+    cue('confirm');
     // ships handles ui:unlockTech (charges credits/RP, sets researchedNodes, emits tech:researched).
     this._ctx.bus.emit('ui:unlockTech', { nodeId: n.id });
     this._ctx.bus.emit('toast', { text: `Researching ${n.name}…`, kind: 'info', ttl: 3000 });
@@ -698,8 +643,7 @@ export const techTreeScreen = {
   },
 
   _drawSignature() {
-    const f = canvasFonts();
-    return [this._researchSignature(), this._selectedId || '', this._hoverId || '', this._dpr, this._nodes().length, this._zoom, f.data, f.body].join('|');
+    return [this._researchSignature(), this._selectedId || '', this._hoverId || '', this._dpr, this._nodes().length, this._zoom].join('|');
   },
 
   _sidebarSignature() {
@@ -716,7 +660,14 @@ export const techTreeScreen = {
 };
 
 // ---- helpers ----------------------------------------------------------------
-function stateLabel(s) { return s === 'researched' ? 'RESEARCHED' : s === 'available' ? 'AVAILABLE' : 'LOCKED'; }
+/** The node's state as one sentence; the disabled word beneath it names the exact blocker. */
+function stateSentence(readiness) {
+  const s = readiness && readiness.state;
+  if (s === 'researched') return 'Researched.';
+  if (s === 'locked') return 'Locked.';
+  if (s === 'funding') return 'Available, not yet affordable.';
+  return 'Available now.';
+}
 
 function disabledActionHtml(readiness) {
   const label = readiness && readiness.actionLabel || 'Unavailable';
@@ -724,24 +675,33 @@ function disabledActionHtml(readiness) {
   // aria-disabled, not disabled: a disabled control cannot take focus, so the reason a locked node
   // is locked would be hover-only — the exact defect this sweep removes. The button carries no
   // data-act, so it stays inert; focus only reveals the why.
-  return `<button aria-disabled="true" tabindex="0" data-why="${escapeHtml(title)}" aria-label="${escapeHtml(title)}">${escapeHtml(label)}</button>`;
+  return `<button class="k-word k-word--emph" aria-disabled="true" tabindex="0" data-why="${escapeHtml(title)}" aria-label="${escapeHtml(title)}">${escapeHtml(label)}</button>`;
 }
 
+/** The ships and modules a node unlocks, as static kit rows (name · kind). */
+function unlockRowsHtml(u) {
+  if (!u) return '';
+  const row = (name, kind) => `<li class="k-row k-row--static"><span class="k-row__name">${name}</span><span class="k-row__sub">${kind}</span></li>`;
+  const rows = [];
+  if (u.ships && u.ships.length) rows.push(...u.ships.map(unlockDisplayName).map((name) => row(name, 'ship')));
+  if (u.modules && u.modules.length) rows.push(...u.modules.map(unlockDisplayName).map((name) => row(name, 'module')));
+  return rows.join('');
+}
+
+/** The node's effects beyond its unlock rows, as one sentence (escaped; '' when there are none). */
 function formatUnlocks(u) {
-  if (!u) return '<b>Effects:</b> —';
+  if (!u) return '';
   const parts = [];
-  if (u.ships && u.ships.length) parts.push(`<b>Ships:</b> ${u.ships.map(unlockDisplayName).join(', ')}`);
-  if (u.modules && u.modules.length) parts.push(`<b>Modules:</b> ${u.modules.map(unlockDisplayName).join(', ')}`);
   if (u.efficiency) {
-    const e = Object.entries(u.efficiency).map(([k, v]) => `${k} ${(v > 0 ? '+' : '') + Math.round(v * 100)}%`);
-    parts.push(`<b>Bonuses:</b> ${e.join(', ')}`);
+    const e = Object.entries(u.efficiency).map(([k, v]) => `${escapeHtml(k)} ${(v > 0 ? '+' : '') + Math.round(v * 100)}%`);
+    parts.push(`Bonuses: ${e.join(', ')}`);
   }
-  if (u.droneTierCap != null) parts.push(`<b>Drone tier cap:</b> ${u.droneTierCap}`);
-  if (u.npcTraderHiring) parts.push(`<b>Unlocks:</b> NPC trader hiring`);
-  if (u.outpostConstruction) parts.push(`<b>Unlocks:</b> outpost construction`);
-  if (u.extraDronePerBay) parts.push(`<b>+${u.extraDronePerBay}</b> drone per bay`);
-  if (u.flags && u.flags.length) parts.push(`<b>Flags:</b> ${u.flags.map(escapeHtml).join(', ')}`);
-  return parts.length ? parts.join('<br>') : '<b>Effects:</b> —';
+  if (u.droneTierCap != null) parts.push(`Drone tier cap ${escapeHtml(String(u.droneTierCap))}`);
+  if (u.npcTraderHiring) parts.push('Unlocks NPC trader hiring');
+  if (u.outpostConstruction) parts.push('Unlocks outpost construction');
+  if (u.extraDronePerBay) parts.push(`+${escapeHtml(String(u.extraDronePerBay))} drone per bay`);
+  if (u.flags && u.flags.length) parts.push(`Flags: ${u.flags.map(escapeHtml).join(', ')}`);
+  return parts.length ? parts.join(' · ') + '.' : '';
 }
 
 function cleanId(id) {
@@ -758,15 +718,6 @@ function fmtCr(v) {
   if (v >= 1e6) return (v / 1e6).toFixed(v >= 1e7 ? 0 : 1) + 'M';
   if (v >= 1e4) return (v / 1e3).toFixed(0) + 'k';
   return v.toLocaleString();
-}
-
-function roundRect(g, x, y, w, h, r) {
-  g.moveTo(x + r, y);
-  g.arcTo(x + w, y, x + w, y + h, r);
-  g.arcTo(x + w, y + h, x, y + h, r);
-  g.arcTo(x, y + h, x, y, r);
-  g.arcTo(x, y, x + w, y, r);
-  g.closePath();
 }
 
 function wrapText(g, text, x, y, maxW, lineH, maxLines) {
