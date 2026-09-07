@@ -441,6 +441,12 @@ export function createShipPreviewMount(canvas, opts) {
     alpha: !useDock,
     powerPreference: 'high-performance',
   });
+  // Three reads getProgramInfoLog + two getShaderInfoLog per program on its first draw when this
+  // flag is on (its default). On ANGLE/D3D11 those reads block the main thread for hundreds of
+  // milliseconds each; profiled at the title, 15 s of a 20 s hull arrival was that read across the
+  // hull's and hangar's programs, and the words could not move. The picture is identical without
+  // it - a program that failed to link still draws nothing - so the preview context leaves it off.
+  renderer.debug.checkShaderErrors = false;
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.setSize(W, H, false);
   renderer.setClearColor(useDock ? 0x05070d : 0x000000, useDock ? 1 : 0);
@@ -670,12 +676,23 @@ export function createShipPreviewMount(canvas, opts) {
       if (record) break;
     }
     if (!record || gen !== dockLoadGen || disposed) return;
+    // Link the hangar's programs and upload its textures before it joins the scene; drawn cold,
+    // its first frame linked every program synchronously (profiled at 6 s on Intel/ANGLE while
+    // the game's own boot compiles were still queued in the GPU process).
+    const nextDock = groupFromBlueprint(record);
+    try {
+      await prepareForFirstDraw(nextDock);
+    } catch (error) {
+      if (disposed) return;
+      console.warn('[shipPreviewMount] hangar preparation failed; drawing it cold', error);
+    }
+    if (gen !== dockLoadGen || disposed) return;
     if (dockRoot) {
       scene.remove(dockRoot);
       dockRoot = null;
       dockBlueprint = null;
     }
-    dockRoot = groupFromBlueprint(record);
+    dockRoot = nextDock;
     dockBlueprint = record;
     dockRoot.position.y = 1.5;
     scene.add(dockRoot);
@@ -719,9 +736,36 @@ export function createShipPreviewMount(canvas, opts) {
     }
     return { compiled, leaves: leaves.length };
   }
+  // Same shape for textures: the first draw otherwise uploads every compressed texture of the
+  // swapped hull inside one render call. One upload per task keeps the words moving.
+  async function uploadPreviewTextures(root) {
+    const textures = new Set();
+    root.traverse((object) => {
+      if (!object.material) return;
+      const materials = Array.isArray(object.material) ? object.material : [object.material];
+      for (const material of materials) {
+        for (const value of Object.values(material)) {
+          if (value && value.isTexture) textures.add(value);
+        }
+      }
+    });
+    let uploaded = 0;
+    for (const texture of textures) {
+      if (disposed) throw new Error('preview disposed during texture upload');
+      renderer.initTexture(texture);
+      uploaded += 1;
+      await yieldToBrowser();
+    }
+    return { uploaded };
+  }
+  async function prepareForFirstDraw(root) {
+    const pipelines = await compilePreviewPipelines(root);
+    const textures = await uploadPreviewTextures(root);
+    return { pipelines, textures };
+  }
   const previewAdmissionOptions = Object.freeze({
     prepareAuthoredPipelines: compilePreviewPipelines,
-    prepareAuthoredGpuResidency: null,
+    prepareAuthoredGpuResidency: uploadPreviewTextures,
     overlapAuthoredPipelineCompile: false,
     yieldBetweenGpuStages: false,
   });
