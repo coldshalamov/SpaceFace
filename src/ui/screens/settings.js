@@ -1,5 +1,9 @@
 // Settings screen (ARCHITECTURE §3.3, §5; design/specs/09).
-// Tabs: Audio / Video / Gameplay / Controls. Every change writes state.settings and
+// The sheet's line (design/frontend/direction/DIRECTION_SHEET.md, settings): the world behind at the
+// menu scrim; a left column of section words; the chosen section's controls as rows with hairlines,
+// each a label and its value; toggles are two words; nothing is a slider unless it is a number.
+// Built on the frontend kit (styles/kit.css, src/ui/kit/); this file owns no CSS.
+// Sections: Audio / Video / Gameplay / Access / Controls. Every change writes state.settings and
 // emits settings:changed {section,key,value,persist?} (audio/render/save listen + live-apply/profile-persist).
 // UI reads state.settings for display; the write to state.settings is the UI/settings
 // module's own owned subtree (§3.3 owner: ui/settings), so writing it here is in-scope.
@@ -12,8 +16,7 @@ import { massline2Flag } from '../../data/featureFlags.js';
 import { MASSLINE_BINDING_PROFILE_SPACE } from '../../core/graphicsProfileBootstrap.js';
 import { DEFAULT_BLOOM_STRENGTH } from '../../render/bloom.js';
 import { BINDINGS } from '../bindings.js';
-
-const STYLE_ID = 'sf-settings-menu-style';
+import { el, words, settle, cue } from '../kit/index.js';
 
 function getManager(ctx) {
   if (ctx && ctx.screenManager) return ctx.screenManager;
@@ -28,54 +31,6 @@ function nav(ctx, method, arg) {
   if (mgr && typeof mgr[method] === 'function') { mgr[method](arg); return; }
   ctx.bus.emit('ui:' + method, { id: arg });
 }
-function injectStyle() {
-  if (document.getElementById(STYLE_ID)) return;
-  const s = document.createElement('style');
-  s.id = STYLE_ID;
-  s.textContent = `
-  .sf-controls-fixed-shortcuts { margin-top:6px; grid-template-columns:1fr 120px 1.5fr !important; }
-  .sf-controls-fixed-shortcuts .k { color:var(--accent); font-family:var(--mono); font-weight:600; }
-  .sf-bind-btn {
-    font-family:var(--mono) !important;
-    letter-spacing:.04em;
-    text-align:center !important;
-    background:rgba(10,16,24,.8) !important;
-    border:1px solid var(--mf-line-2) !important;
-    border-radius:3px !important;
-    padding:6px 12px !important;
-    white-space:nowrap !important; /* "L-SHIFT / R-SHIFT" must not wrap: a two-line key chip breaks the row rhythm */
-    font-size:12px !important;
-    transition:border-color .12s ease, background .12s ease, box-shadow .12s ease, translate .08s ease !important;
-  }
-  .sf-bind-btn:hover:not(:disabled) {
-    border-color:rgba(78,195,230,.45) !important;
-    background:rgba(16,25,36,.95) !important;
-  }
-  .sf-bind-btn:active:not(:disabled) {
-    translate:0 1px !important;
-  }
-  .sf-bind-btn--capture {
-    border-color:var(--accent) !important;
-    color:#04202b !important;
-    background:var(--accent) !important;
-    box-shadow:0 0 14px rgba(78,195,230,.6) !important;
-    animation:sf-bind-pulse 0.9s ease-in-out infinite alternate !important;
-  }
-  .sf-bind-btn--digit { font-family:var(--mf-ui, inherit) !important; letter-spacing:.02em !important; }
-  @keyframes sf-bind-pulse { 0%{opacity:1; transform:scale(1);} 100%{opacity:.75; transform:scale(0.98);} }
-  `;
-  document.head.appendChild(s);
-}
-function shell(rootEl, title, extraClass) {
-  rootEl.innerHTML = '';
-  rootEl.classList.add('panel', 'sf-menu');
-  if (extraClass) rootEl.classList.add(extraClass);
-  // Diegetic fascia stamp (styles/menu.css .sf-menu::before reads it).
-  rootEl.dataset.stamp = 'SYSTEMS / CONFIGURATION';
-  const h = document.createElement('h1'); h.textContent = title; rootEl.appendChild(h);
-  return rootEl;
-}
-function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
 
 const TABS = ['Audio', 'Video', 'Gameplay', 'Access', 'Controls'];
 
@@ -85,7 +40,7 @@ let controlId = 0;
 function nextControlId() { controlId += 1; return `sf-settings-control-${controlId}`; }
 
 export function bindCommittedRange(input, valueLabel, fmt, onValue) {
-  // Track fill: the CSS track reads --sf-range-fill so the value is visible at a glance,
+  // Track fill: a range's CSS may read --sf-range-fill so the value is visible at a glance,
   // not just in the numeric readout.
   const paint = () => {
     const min = Number(input.min) || 0;
@@ -183,72 +138,200 @@ export const CONTROL_SHORTCUTS = Object.freeze([
   { label: 'Pause', key: 'Esc / P', note: 'pause menu: resume, settings, save/load, map review' },
 ]);
 
-// Turn a KeyboardEvent.code into a short, readable label via the live binding formatter.
+/**
+ * The pane's row builders (Task B §1.3). Rows are `k-row k-row--static` in a `k-rows` list: the label
+ * at body size 62 % on the left, the control on the right. A section header is a `k-caps` row; a note
+ * is a sentence between lists.
+ */
+function paneBuilder(pane) {
+  let list = null;
+  const rowsList = () => {
+    if (!list) { list = el('ul', 'k-rows'); pane.appendChild(list); }
+    return list;
+  };
+  const row = () => {
+    const li = el('li', 'k-row k-row--static');
+    rowsList().appendChild(li);
+    return li;
+  };
+  const labelled = (labelText, forId) => {
+    const li = row();
+    const label = el(forId ? 'label' : 'span', 'k-t-body k-62', labelText);
+    if (forId) label.htmlFor = forId;
+    li.appendChild(label);
+    return { li, label };
+  };
+  return {
+    /** A range and its value: the only control that is a slider, because the value is a number. */
+    slider(labelText, get, min, max, step, fmt, onInput) {
+      const id = nextControlId();
+      const { li, label: labelEl } = labelled(labelText, id);
+      labelEl.htmlFor = id;
+      const ctl = el('div', 'k-words k-words--row');
+      const r = el('input', 'k-range'); r.id = id; r.type = 'range'; r.min = min; r.max = max; r.step = step; r.value = get();
+      const v = el('span', 'k-t-emph', fmt(get()));
+      bindCommittedRange(r, v, fmt, onInput);
+      ctl.appendChild(r); ctl.appendChild(v); li.appendChild(ctl);
+      return li;
+    },
+    /** Two words, Off · On, the live one pressed. */
+    toggle(labelText, get, onChange) {
+      const { li, label } = labelled(labelText, null);
+      label.id = nextControlId();
+      const sync = (on) => {
+        for (const b of ctl.querySelectorAll('.k-word')) b.setAttribute('aria-pressed', String((b.dataset.action === 'on') === !!on));
+      };
+      const ctl = words([{ action: 'off', label: 'Off' }, { action: 'on', label: 'On' }], {
+        row: true, size: 'body', ariaLabel: labelText,
+        onPick: (action) => { const nv = action === 'on'; if (nv === !!get()) { sync(nv); return; } onChange(nv); sync(nv); },
+      });
+      ctl.setAttribute('aria-labelledby', label.id);
+      sync(get());
+      li.appendChild(ctl);
+      return li;
+    },
+    /** A tri-state as three words (touch controls: Auto · On · Off). */
+    choice(labelText, options, get, onPick) {
+      const { li, label } = labelled(labelText, null);
+      label.id = nextControlId();
+      const sync = (value) => {
+        for (const b of ctl.querySelectorAll('.k-word')) b.setAttribute('aria-pressed', String(b.dataset.action === 'choice:' + value));
+      };
+      const ctl = words(options.map(([val, txt]) => ({ action: 'choice:' + val, label: txt })), {
+        row: true, size: 'body', ariaLabel: labelText,
+        onPick: (action) => { const val = action.slice('choice:'.length); onPick(val); sync(get()); },
+      });
+      ctl.setAttribute('aria-labelledby', label.id);
+      sync(get());
+      li.appendChild(ctl);
+      return li;
+    },
+    select(labelText, get, options, onChange) {
+      const id = nextControlId();
+      const { li, label: labelEl } = labelled(labelText, id);
+      labelEl.htmlFor = id;
+      const sel = el('select', 'k-select'); sel.id = id;
+      options.forEach(([val, txt]) => { const o = el('option', '', txt); o.value = val; if (val === get()) o.selected = true; sel.appendChild(o); });
+      sel.addEventListener('change', () => { cue('confirm'); onChange(sel.value); });
+      li.appendChild(sel);
+      return li;
+    },
+    /** An action label and its key as a word; pressing the word enters capture. */
+    key(labelText, keyText, onPress, { digit = false } = {}) {
+      const { li } = labelled(labelText, null);
+      const btn = el('button', 'k-word k-word--body sf-bind-btn' + (digit ? ' sf-bind-btn--digit' : ''), keyText);
+      btn.type = 'button';
+      btn.addEventListener('click', () => onPress(btn));
+      li.appendChild(btn);
+      return btn;
+    },
+    /** A fixed shortcut: its label with the note beneath, the key on the right. */
+    shortcut(labelText, keyText, note) {
+      const li = row();
+      const cell = el('div');
+      cell.appendChild(el('span', 'k-row__name', labelText));
+      if (note) cell.appendChild(el('div', 'k-row__sub', note));
+      li.appendChild(cell);
+      li.appendChild(el('span', 'k-t-emph', keyText));
+      return li;
+    },
+    /** A section header inside the rows. */
+    header(text) {
+      const li = row();
+      li.appendChild(el('div', 'k-caps', text));
+      return li;
+    },
+    /** A quiet sentence between lists. */
+    note(text) {
+      list = null;
+      const p = el('p', 'k-sentence k-38 sf-muted', text);
+      pane.appendChild(p);
+      return p;
+    },
+    /** A word that acts (Reset to defaults). */
+    word(labelText, onClick, note) {
+      list = null;
+      const wrap = el('div', 'k-words k-words--row');
+      const b = el('button', 'k-word k-word--body', labelText);
+      b.type = 'button';
+      b.addEventListener('click', () => { cue('confirm'); onClick(); });
+      wrap.appendChild(b);
+      if (note) wrap.appendChild(el('span', 'k-t-fine k-38', note));
+      pane.appendChild(wrap);
+      return b;
+    },
+    /** Start a fresh list (after a note or header block). */
+    break() { list = null; },
+  };
+}
 
 export const settingsScreen = {
   id: 'settings',
 
   mount(rootEl, ctx) {
-    injectStyle();
-    shell(rootEl, 'Settings', 'sf-menu-wide');
+    rootEl.innerHTML = '';
+    rootEl.classList.add('k-screen');
+    rootEl.dataset.kReady = '0';
+    rootEl.setAttribute('aria-label', 'Settings');
 
-    const bar = el('div', 'sf-tabbar');
-    const pane = el('div', 'sf-settings-pane');
-    bar.setAttribute('role', 'tablist');
-    bar.setAttribute('aria-label', 'Settings categories');
+    // Title and the one sentence naming the live profile.
+    const title = el('header', 'k-title');
+    title.appendChild(el('h1', 'k-display k-t-title', 'Settings'));
+    title.appendChild(el('p', 'k-t-emph k-62', 'Saved with your profile.'));
+    rootEl.appendChild(title);
+
+    // The section words down the left. `dom.words` owns the arrow-key roving; the list is the
+    // tablist and each word a tab (`.sf-tabbar` / `.sf-tab` kept as hooks).
+    const pane = el('div', 'k-stage k-stage--scroll sf-settings-pane');
     pane.id = 'sf-settings-pane';
     pane.setAttribute('role', 'tabpanel');
-    rootEl.appendChild(bar);
-    rootEl.appendChild(pane);
-
-    const foot = el('div', 'sf-foot');
-    const back = el('button', 'sf-btn'); back.textContent = 'Back'; back.style.width = 'auto';
-    back.addEventListener('click', () => nav(ctx, 'popScreen'));
-    foot.appendChild(back);
-    rootEl.appendChild(foot);
-
+    const hang = el('div', 'k-hang');
+    const bar = words(TABS.map((t) => ({ action: 'tab:' + t, label: t, current: t === 'Audio' })), {
+      size: 'menu', ariaLabel: 'Settings categories',
+      onPick: (action) => this._select(ctx, action.slice('tab:'.length)),
+    });
+    bar.classList.add('sf-tabbar');
+    bar.setAttribute('role', 'tablist');
     const tabBtns = {};
-    TABS.forEach((t) => {
-      const b = el('button', 'sf-tab', t);
-      b.type = 'button';
+    for (const b of bar.querySelectorAll('.k-word')) {
+      const t = b.dataset.action.slice('tab:'.length);
+      b.classList.add('sf-tab');
       b.id = `sf-settings-tab-${t.toLowerCase()}`;
       b.setAttribute('role', 'tab');
       b.setAttribute('aria-controls', pane.id);
-      b.addEventListener('click', () => this._select(ctx, t));
-      b.addEventListener('keydown', (ev) => {
-        const i = TABS.indexOf(t);
-        let next = -1;
-        if (ev.key === 'ArrowLeft') next = (i - 1 + TABS.length) % TABS.length;
-        else if (ev.key === 'ArrowRight') next = (i + 1) % TABS.length;
-        else if (ev.key === 'Home') next = 0;
-        else if (ev.key === 'End') next = TABS.length - 1;
-        if (next < 0) return;
-        ev.preventDefault();
-        this._select(ctx, TABS[next]);
-        refs.tabBtns[TABS[next]].focus();
-      });
-      bar.appendChild(b);
+      b.parentElement.setAttribute('role', 'presentation');
       tabBtns[t] = b;
-    });
+    }
+    hang.appendChild(bar);
+    rootEl.appendChild(hang);
+    rootEl.appendChild(pane);
 
-    refs = { pane, tabBtns, active: 'Audio' };
-    this._select(ctx, 'Audio');
+    const foot = el('footer', 'k-foot');
+    const back = el('button', 'k-word k-word--emph', 'Back');
+    back.type = 'button'; back.dataset.action = 'back';
+    back.addEventListener('click', () => { cue('confirm'); nav(ctx, 'popScreen'); });
+    foot.appendChild(back);
+    rootEl.appendChild(foot);
+
+    refs = { root: rootEl, title, hang, pane, foot, tabBtns, active: 'Audio' };
+    this._select(ctx, 'Audio', { silent: true });
   },
 
-  _select(ctx, tab) {
-    if (!refs) return;
+  _select(ctx, tab, { silent = false } = {}) {
+    if (!refs || !TABS.includes(tab)) return;
     refs.active = tab;
     Object.entries(refs.tabBtns).forEach(([t, b]) => {
       const active = t === tab;
       b.classList.toggle('active', active);
+      b.setAttribute('aria-current', String(active));
       b.setAttribute('aria-selected', String(active));
       b.tabIndex = active ? 0 : -1;
     });
     refs.pane.setAttribute('aria-labelledby', refs.tabBtns[tab].id);
-    refs.pane.classList.remove('sf-pane-anim');
-    void refs.pane.offsetWidth;
-    refs.pane.classList.add('sf-pane-anim');
     this._render(ctx);
+    if (!silent) {
+      try { settle(refs.pane, { from: 'left', state: 'settings:' + tab }); } catch (e) { /* motion is cosmetic */ }
+    }
   },
 
   _set(ctx, section, key, value, persist = true) {
@@ -265,53 +348,17 @@ export const settingsScreen = {
     const pane = refs.pane;
     pane.innerHTML = '';
     const s = ctx.state.settings;
+    const build = paneBuilder(pane);
 
-    const rowSlider = (label, get, min, max, step, fmt, onInput) => {
-      const row = el('div', 'sf-row');
-      const labelEl = el('label', null, label);
-      const id = nextControlId();
-      labelEl.htmlFor = id;
-      row.appendChild(labelEl);
-      const ctl = el('div', 'sf-ctl');
-      const r = el('input'); r.id = id; r.type = 'range'; r.min = min; r.max = max; r.step = step; r.value = get();
-      const v = el('span', 'sf-val', fmt(get()));
-      bindCommittedRange(r, v, fmt, onInput);
-      ctl.appendChild(r); ctl.appendChild(v); row.appendChild(ctl); pane.appendChild(row);
-    };
-    const rowToggle = (label, get, onChange) => {
-      const row = el('div', 'sf-row');
-      const labelEl = el('label', null, label);
-      const id = nextControlId();
-      labelEl.htmlFor = id;
-      row.appendChild(labelEl);
-      const ctl = el('div', 'sf-ctl');
-      const b = el('button', 'sf-tab', get() ? 'On' : 'Off');
-      b.type = 'button';
-      b.id = id;
-      b.setAttribute('aria-pressed', String(get()));
-      if (get()) b.classList.add('active');
-      b.style.minWidth = '64px';
-      b.addEventListener('click', () => { const nv = !get(); onChange(nv); b.textContent = nv ? 'On' : 'Off'; b.setAttribute('aria-pressed', String(nv)); b.classList.toggle('active', nv); });
-      ctl.appendChild(b); row.appendChild(ctl); pane.appendChild(row);
-    };
-    const rowSelect = (label, get, options, onChange) => {
-      const row = el('div', 'sf-row');
-      const labelEl = el('label', null, label);
-      const id = nextControlId();
-      labelEl.htmlFor = id;
-      row.appendChild(labelEl);
-      const ctl = el('div', 'sf-ctl');
-      const sel = el('select'); sel.id = id;
-      options.forEach(([val, txt]) => { const o = el('option', null, txt); o.value = val; if (val === get()) o.selected = true; sel.appendChild(o); });
-      sel.addEventListener('change', () => onChange(sel.value));
-      ctl.appendChild(sel); row.appendChild(ctl); pane.appendChild(row);
-    };
+    const rowSlider = (label, get, min, max, step, fmt, onInput) => build.slider(label, get, min, max, step, fmt, onInput);
+    const rowToggle = (label, get, onChange) => build.toggle(label, get, onChange);
+    const rowSelect = (label, get, options, onChange) => build.select(label, get, options, onChange);
 
     const pct = (v) => Math.round(v * 100) + '%';
 
     if (refs.active === 'Audio') {
       const a = s.audio;
-      // Prominent first control: a big Mute-all button so silence is always one click away.
+      // First control: Mute all, so silence is always one press away.
       rowToggle('Mute all', () => a.muted, (v) => this._set(ctx, 'audio', 'muted', v));
       rowSlider('Master', () => a.master, 0, 1, 0.01, pct, (v, persist) => this._set(ctx, 'audio', 'master', v, persist));
       rowSlider('SFX', () => a.sfx, 0, 1, 0.01, pct, (v, persist) => this._set(ctx, 'audio', 'sfx', v, persist));
@@ -380,7 +427,7 @@ export const settingsScreen = {
           ['snap', 'Snap window on manual release'],
           ['off', 'Off — raw physics'],
         ], (v) => this._set(ctx, 'gameplay', 'masslineReleaseAssist', v));
-        pane.appendChild(el('p', 'sf-muted', 'The release marker reads RELEASE when the timing window opens; motion and color are optional reinforcement.'));
+        build.note('The release marker reads RELEASE when the timing window opens; motion and color are optional reinforcement.');
       }
       rowSelect('Autosave', () => String(g.autosaveIntervalS), [['0', 'Off'], ['60', '60s'], ['120', '120s'], ['300', '300s']], (v) => this._set(ctx, 'gameplay', 'autosaveIntervalS', parseInt(v, 10)));
       rowToggle('Tutorial hints', () => g.tutorialHints, (v) => this._set(ctx, 'gameplay', 'tutorialHints', v));
@@ -406,7 +453,7 @@ export const settingsScreen = {
         this._set(ctx, null, 'uiScale', v, persist);
         const root = document.getElementById('ui-root'); if (root) root.style.setProperty('--ui-scale', v);
       });
-      pane.appendChild(el('p', 'sf-muted', 'Colorblind mode also recolors radar blips and adds redundant shapes.'));
+      build.note('Colorblind mode also recolors radar blips and adds redundant shapes.');
     } else if (refs.active === 'Controls') {
       rowSelect('Control Scheme', () => s.gameplay.controlScheme || 'pilot',
         [['pilot', 'Pilot (keyboard steers, mouse aims)'], ['helm-assist', 'Helm Assist (mouse steering)'], ['classic', 'Classic Throttle']],
@@ -416,61 +463,38 @@ export const settingsScreen = {
           this._set(ctx, 'gameplay', 'controlSchemeV2', true);
           this._render(ctx);
         });
-      pane.appendChild(el('p', 'sf-muted', 'Click a flight key to rebind it, then press a new key. Fixed ship/system shortcuts are listed below so you do not have to leave Settings to find them.'));
+      build.note('Press a flight key to rebind it, then press a new key. Fixed ship/system shortcuts are listed below so you do not have to leave Settings to find them.');
+      // Each section builds its own lists in order; the pane is one column.
       this._renderControlsRebind(ctx, pane);
       this._renderFixedShortcuts(pane);
       this._renderGamepadSettings(ctx, pane);
     }
   },
 
-  _renderGamepadSettings(ctx, pane) {
-    pane.appendChild(el('h2', null, 'Gamepad'));
+  _renderGamepadSettings(ctx, pane, build = paneBuilder(pane)) {
+    build.break();
+    build.header('Gamepad');
     const s = ctx.state.settings;
     if (!s.controls) s.controls = { bindings: null, flightMode: 'assisted' };
     if (!s.controls.gamepad) s.controls.gamepad = { enabled: true, deadzone: 0.12, invertY: false };
-    const gp = s.controls.gamepad;
+    const gp = () => s.controls.gamepad;
 
-    const rowToggle = (label, get, onChange) => {
-      const row = el('div', 'sf-row');
-      row.appendChild(el('label', null, label));
-      const ctl = el('div', 'sf-ctl');
-      const b = el('button', 'sf-tab', get() ? 'On' : 'Off');
-      b.type = 'button';
-      b.setAttribute('aria-pressed', String(get()));
-      if (get()) b.classList.add('active');
-      b.style.minWidth = '64px';
-      b.addEventListener('click', () => {
-        const nv = !get();
-        onChange(nv);
-        b.textContent = nv ? 'On' : 'Off';
-        b.setAttribute('aria-pressed', String(nv));
-        b.classList.toggle('active', nv);
-      });
-      ctl.appendChild(b); row.appendChild(ctl); pane.appendChild(row);
-    };
-    const rowSlider = (label, get, min, max, step, fmt, onInput) => {
-      const row = el('div', 'sf-row');
-      row.appendChild(el('label', null, label));
-      const ctl = el('div', 'sf-ctl');
-      const r = el('input'); r.type = 'range'; r.min = min; r.max = max; r.step = step; r.value = get();
-      const v = el('span', 'sf-val', fmt(get()));
-      bindCommittedRange(r, v, fmt, onInput);
-      ctl.appendChild(r); ctl.appendChild(v); row.appendChild(ctl); pane.appendChild(row);
-    };
-
-    rowToggle('Gamepad enabled', () => !!gp.enabled, (v) => this._set(ctx, 'controls', 'gamepad', { ...gp, enabled: v }));
-    rowSlider('Stick deadzone', () => gp.deadzone, 0, 0.5, 0.01, (x) => Math.round(x * 100) + '%', (v, persist) => this._set(ctx, 'controls', 'gamepad', { ...gp, deadzone: v }, persist));
-    rowToggle('Invert right-stick Y', () => !!gp.invertY, (v) => this._set(ctx, 'controls', 'gamepad', { ...gp, invertY: v }));
+    build.toggle('Gamepad enabled', () => !!gp().enabled, (v) => this._set(ctx, 'controls', 'gamepad', { ...gp(), enabled: v }));
+    build.slider('Stick deadzone', () => gp().deadzone, 0, 0.5, 0.01, (x) => Math.round(x * 100) + '%', (v, persist) => this._set(ctx, 'controls', 'gamepad', { ...gp(), deadzone: v }, persist));
+    build.toggle('Invert right-stick Y', () => !!gp().invertY, (v) => this._set(ctx, 'controls', 'gamepad', { ...gp(), invertY: v }));
     // Matches src/systems/gamepad.js ACTION_MAP + UI route: Start/menu → pause only;
     // Mission Log is chosen from the Pause menu (no direct gamepad missionLog action).
-    pane.appendChild(el('p', 'sf-muted', 'Default layout: left stick fly, right stick aim, RT fire, LT mine, RB boost, LB brake, R3 countermeasure, A/Cross Massline (dock/accept when prompted), X/Square target, D-pad up auto-target (right stick draw-to-fly), View star map, Y/Triangle codex, Start → Pause → Mission Log.'));
+    build.note('Default layout: left stick fly, right stick aim, RT fire, LT mine, RB boost, LB brake, R3 countermeasure, A/Cross Massline (dock/accept when prompted), X/Square target, D-pad up auto-target (right stick draw-to-fly), View star map, Y/Triangle codex, Start → Pause → Mission Log.');
 
+    // Touch (P1-12): virtual dual-stick + buttons for touchscreens. Auto-detects on touch devices;
+    // this tri-state lets the player force-enable (e.g. a touchscreen laptop), force-disable, or
+    // return to automatic detection.
+    build.header('Touch');
+    if (!s.controls.touch) s.controls.touch = { enabled: null }; // null = auto-detect
     const touchMode = () => {
       const cfg = s.controls.touch || {};
       return cfg.enabled == null ? 'auto' : (cfg.enabled ? 'on' : 'off');
     };
-    const touchModeLabel = (mode) => ({ auto: 'Auto', on: 'On', off: 'Off' }[mode] || 'Auto');
-    const nextTouchValue = (mode) => (mode === 'auto' ? true : (mode === 'on' ? false : null));
     const commitTouchValue = (next) => {
       const tp = ctx.touch;
       if (tp && typeof tp.persistEnabled === 'function') {
@@ -479,109 +503,65 @@ export const settingsScreen = {
         this._set(ctx, 'controls', 'touch', { ...(s.controls.touch || {}), enabled: next });
       }
     };
-    const rowTouchMode = () => {
-      const row = el('div', 'sf-row');
-      row.appendChild(el('label', null, 'Touch controls'));
-      const ctl = el('div', 'sf-ctl');
-      const b = el('button', 'sf-tab');
-      b.type = 'button';
-      b.style.minWidth = '78px';
-      const sync = () => {
-        const mode = touchMode();
-        b.textContent = touchModeLabel(mode);
-        b.setAttribute('aria-pressed', mode === 'auto' ? 'mixed' : String(mode === 'on'));
-        b.classList.toggle('active', mode !== 'off');
-      };
-      b.addEventListener('click', () => {
-        commitTouchValue(nextTouchValue(touchMode()));
-        sync();
-      });
-      sync();
-      ctl.appendChild(b); row.appendChild(ctl); pane.appendChild(row);
-    };
-
-    // Touch (P1-12): virtual dual-stick + buttons for touchscreens. Auto-detects on touch devices;
-    // this tri-state lets the player force-enable (e.g. a touchscreen laptop), force-disable, or
-    // return to automatic detection.
-    pane.appendChild(el('h2', null, 'Touch'));
-    if (!s.controls.touch) s.controls.touch = { enabled: null }; // null = auto-detect
-    rowTouchMode();
+    build.choice('Touch controls', [['auto', 'Auto'], ['on', 'On'], ['off', 'Off']], touchMode,
+      (mode) => commitTouchValue(mode === 'auto' ? null : mode === 'on'));
     // Touch overlay exposes dedicated Dock/Map/Log/Star/Pause buttons (not only flight sticks).
-    pane.appendChild(el('p', 'sf-muted', 'Virtual sticks: left = fly, right = aim; buttons = fire, mine, boost, dock, Map, Log (Mission Log), Star, Pause. Auto-enabled on touch devices.'));
+    build.note('Virtual sticks: left = fly, right = aim; buttons = fire, mine, boost, dock, Map, Log (Mission Log), Star, Pause. Auto-enabled on touch devices.');
   },
 
-  _renderFixedShortcuts(pane) {
-    pane.appendChild(el('h2', null, 'Ship/System Shortcuts'));
-    const grid = el('div', 'sf-grid2 sf-controls-fixed-shortcuts');
+  _renderFixedShortcuts(pane, build = paneBuilder(pane)) {
+    build.break();
+    const header = build.header('Ship/System Shortcuts');
+    header.parentElement.classList.add('sf-controls-fixed-shortcuts');
     CONTROL_SHORTCUTS.forEach((shortcut) => {
-      grid.appendChild(el('div', 'v', shortcut.label));
-      grid.appendChild(el('div', 'k', shortcut.key));
-      grid.appendChild(el('div', 'sf-muted', shortcut.note));
+      build.shortcut(shortcut.label, shortcut.key, shortcut.note);
     });
-    pane.appendChild(grid);
-    pane.appendChild(el('p', 'sf-muted', 'Flight keys above are rebindable here; these interface shortcuts follow the shared binding registry.'));
+    build.note('Flight keys above are rebindable here; these interface shortcuts follow the shared binding registry.');
   },
 
   // Live rebind UI for flight actions. Reads defaults from input.js + any saved overrides in
-  // settings.controls.bindings. Capture-on-click: a clicked button enters "listening" mode and the
+  // settings.controls.bindings. Capture-on-press: a pressed word enters "listening" mode and the
   // next keydown sets the binding (with conflict detection — can't bind the same key to two actions
   // in the movement cluster). Escape cancels capture, Backspace clears the binding to default.
-  _renderControlsRebind(ctx, pane) {
+  _renderControlsRebind(ctx, pane, build = paneBuilder(pane)) {
     const s = ctx.state.settings;
     if (!s.controls) s.controls = { bindings: null };
     const { base, live } = mergedBindingsFor(s);
 
-    const grid = el('div', 'sf-grid2');
-    grid.style.gridTemplateColumns = '1fr 140px';
+    build.break();
     REBINDABLE.forEach((action) => {
-      const label = el('div', 'v', REBIND_LABELS[action] || action);
-      const btn = el('button', 'sf-btn sf-bind-btn');
-      btn.style.minWidth = '120px';
       const codes = live[action] || [];
       const keyText = codes.map((code) => formatBindingCode(code) || '—').join(' / ') || '—';
-      // A bare digit in the mono face reads as "Θ" at this size; use the UI face for digit keys.
-      if (/^\d$/.test(keyText)) btn.classList.add('sf-bind-btn--digit');
-      btn.textContent = keyText;
-      btn.addEventListener('click', () => this._capture(ctx, btn, action, live, grid, base));
-      grid.appendChild(label);
-      grid.appendChild(btn);
+      // `.sf-bind-btn--digit` marks a bare digit key (a hook kept from the legacy chip styling).
+      build.key(REBIND_LABELS[action] || action, keyText,
+        (btn) => this._capture(ctx, btn, action, live, base),
+        { digit: /^\d$/.test(keyText) });
     });
-    pane.appendChild(grid);
 
-    // reset button
-    const resetRow = el('div', 'sf-row');
-    resetRow.style.marginTop = '12px';
-    const reset = el('button', 'sf-btn');
-    reset.textContent = 'Reset to defaults';
-    reset.style.width = 'auto';
-    reset.addEventListener('click', () => {
+    // reset word
+    build.word('Reset to defaults', () => {
       s.controls.bindings = null;
       s.controls.masslineBindingProfile = MASSLINE_BINDING_PROFILE_SPACE;
       ctx.bus.emit('settings:changed', { section: 'controls', key: 'bindings', value: null });
       this._render(ctx);
-    });
-    const note = el('span', 'sf-muted');
-    note.style.marginLeft = '10px';
-    note.style.fontSize = '12px';
-    note.textContent = 'Arrow keys always also work for movement.';
-    resetRow.appendChild(reset);
-    resetRow.appendChild(note);
-    pane.appendChild(resetRow);
+    }, 'Arrow keys always also work for movement.');
   },
 
   // Capture the next keydown as the new binding for `action`. Only ONE code per action in the UI
   // (we keep arrow-cluster compatibility by leaving movement's secondary arrow code alone if the
   // primary is being rebound — simplest mental model: "set the WASD key").
-  _capture(ctx, btn, action, live, grid, base) {
+  _capture(ctx, btn, action, live, base) {
     if (this._capturing) return;
     this._capturing = true;
     const prev = btn.textContent;
     btn.textContent = 'Press a key…';
     btn.classList.add('sf-bind-btn--capture');
+    btn.setAttribute('aria-pressed', 'true'); // the kit lights a pressed word: this one is listening
 
     const done = (commit) => {
       this._capturing = false;
       btn.classList.remove('sf-bind-btn--capture');
+      btn.removeAttribute('aria-pressed');
       window.removeEventListener('keydown', onKey, true);
       window.removeEventListener('mousedown', onClickAway, true);
       this._activeCapture = null;
@@ -592,7 +572,7 @@ export const settingsScreen = {
       // Escape cancels; Backspace resets this action to default.
       if (ev.code === 'Escape') { done(false); return; }
       if (ev.code === 'Backspace' || ev.code === 'Delete') {
-        this._commitBind(ctx, action, null, live, grid, base);
+        this._commitBind(ctx, action, null, live, base);
         done(true);
         return;
       }
@@ -601,11 +581,12 @@ export const settingsScreen = {
         if (other === action) continue;
         if ((live[other] || [])[0] === ev.code) {
           btn.textContent = 'In use: ' + (REBIND_LABELS[other] || other);
+          cue('deny');
           setTimeout(() => done(false), 900);
           return;
         }
       }
-      this._commitBind(ctx, action, ev.code, live, grid, base);
+      this._commitBind(ctx, action, ev.code, live, base);
       done(true);
     };
     const onClickAway = (ev) => { if (ev.target !== btn) done(false); };
@@ -616,7 +597,7 @@ export const settingsScreen = {
 
   // Persist a new primary binding for `action` into settings.controls.bindings. We preserve any
   // secondary code (e.g. ArrowUp alongside KeyW) so arrow players keep working after a rebind.
-  _commitBind(ctx, action, code, live, grid, base) {
+  _commitBind(ctx, action, code, live, base) {
     const s = ctx.state.settings;
     if (!s.controls) s.controls = {};
     if (!s.controls.bindings) s.controls.bindings = {};
@@ -633,16 +614,37 @@ export const settingsScreen = {
       live[action] = arr;
     }
     ctx.bus.emit('settings:changed', { section: 'controls', key: action, value: s.controls.bindings[action] });
-    this._render(ctx); // refresh the grid to show the new label
+    this._render(ctx); // refresh the rows to show the new label
   },
 
-  onShow(ctx) { this._render(ctx); },
+  onShow(ctx) {
+    if (!refs) return;
+    cue('open');
+    this._render(ctx);
+    rootReady(refs.root);
+    try {
+      settle(refs.title, { from: 'top', state: 'settings:open' });
+      settle(refs.hang, { from: 'left', state: 'settings:open' });
+      settle(refs.pane, { from: 'right', state: 'settings:open' });
+      settle(refs.foot, { from: 'bottom', state: 'settings:open' });
+    } catch (e) { /* motion is cosmetic */ }
+    try { refs.tabBtns[refs.active].focus(); } catch (e) {}
+  },
   // If the screen closes mid key-capture, bail out so the global keydown/mousedown listeners
   // don't leak / swallow keys after the player navigates away.
-  onHide() { if (this._capturing && this._activeCapture) this._activeCapture(false); },
+  onHide() {
+    cue('close');
+    if (this._capturing && this._activeCapture) this._activeCapture(false);
+  },
   // IMPORTANT: must be a no-op. uiRoot.frame() calls screenManager.refreshTop() every ~0.3s for
   // any open screen; if this rebuilt the DOM it would destroy a slider/select mid-drag (the
-  // "can't drag below 3% / have to keep the mouse on the line" bug). The panel is fully
+  // "can't drag below 3% / have to keep the mouse on the line" bug). The pane is fully
   // event-driven — its own controls update their own value labels — so there is nothing to refresh.
   refresh() {},
+  dispose() { refs = null; },
 };
+
+/** A screen with no 3D mount is "ready" as soon as it shows (the capture seam's photograph-me signal). */
+function rootReady(rootEl) {
+  if (rootEl) rootEl.dataset.kReady = '1';
+}

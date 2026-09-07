@@ -282,3 +282,5 @@ body.k-photo #hud, body.k-photo #toasts, body.k-photo #alerts { opacity: 0 !impo
 body.k-screen-top #modal-backdrop { background: none; }
 /* §1.1: the live difficulty's sentence sits a small step below its row of words (the row's underline otherwise touches it). */
 .k-words--row + .k-sentence { margin-top: calc(12px * var(--k-s)); }
+/* §1.3: a stage that holds more rows than the frame (settings, credits) scrolls like the hang does. */
+.k-stage--scroll { overflow: hidden auto; scrollbar-width: thin; scrollbar-color: var(--k-hair) transparent; }
