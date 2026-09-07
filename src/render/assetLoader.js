@@ -1180,6 +1180,22 @@ const SOURCE_ROUTE_ALLOWLIST = new Map([
   ['assets/ships/release/parts/fins/fin_crystalline.glb',
     'two nodes share the name fin_crystalline_Material_Accent_Merged; semantic locators resolve by '
     + 'name, so the asset must be re-authored before it can be packaged'],
+  ['assets/ships/release/parts/wholeships/ironback_production_v1.glb',
+    'remastered fleet body has no pilot asset.extras runtime identity; pending fleet package pass'],
+  ['assets/ships/release/parts/wholeships/atlas_production_v1.glb',
+    'remastered fleet body has no pilot asset.extras runtime identity; pending fleet package pass'],
+  ['assets/ships/release/parts/wholeships/colossus_production_v1.glb',
+    'remastered fleet body has no pilot asset.extras runtime identity; pending fleet package pass'],
+  ['assets/ships/release/parts/wholeships/hornet_production_v1.glb',
+    'remastered fleet body has no pilot asset.extras runtime identity; pending fleet package pass'],
+  ['assets/ships/release/parts/wholeships/leviathan_production_v1.glb',
+    'remastered fleet body has no pilot asset.extras runtime identity; pending fleet package pass'],
+  ['assets/ships/release/parts/wholeships/mule_production_v1.glb',
+    'remastered fleet body has no pilot asset.extras runtime identity; pending fleet package pass'],
+  ['assets/ships/release/parts/wholeships/ranger_production_v1.glb',
+    'remastered fleet body has no pilot asset.extras runtime identity; pending fleet package pass'],
+  ['assets/ships/release/parts/wholeships/warden_production_v1.glb',
+    'remastered fleet body has no pilot asset.extras runtime identity; pending fleet package pass'],
 ]);
 
 /**

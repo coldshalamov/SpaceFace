@@ -61,6 +61,7 @@ export function createPq022BillboardBuoyReauthorBrowserManifest(overrides = {}) 
     harnessSourcePaths: [...HARNESS_PATHS],
     runtimeProfile: 'default',
     timeoutMs: 360_000,
+    fastGateTimeoutMs: 360_000,
     maxLaunchesPerCandidate: 1,
     artifactRoot: path.join('.devshots', 'pq022-billboard-buoy-reauthor', 'browser'),
     fixedSeed: PQ022_BILLBOARD_BUOY_REAUTHOR_FIXED_SEED,

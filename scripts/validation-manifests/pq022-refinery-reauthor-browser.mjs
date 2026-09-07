@@ -59,6 +59,7 @@ export function createPq022RefineryReauthorBrowserManifest(overrides = {}) {
     harnessSourcePaths: [...HARNESS_PATHS],
     runtimeProfile: 'default',
     timeoutMs: 360_000,
+    fastGateTimeoutMs: 360_000,
     maxLaunchesPerCandidate: 1,
     artifactRoot: path.join('.devshots', 'pq022-refinery-reauthor', 'browser'),
     fixedSeed: PQ022_REFINERY_REAUTHOR_FIXED_SEED,
