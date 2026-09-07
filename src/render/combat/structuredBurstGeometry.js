@@ -30,15 +30,17 @@ export function createStructuredBurstGeometry(kind = 'glow') {
     }
   }
   if (kind === 'glow' || kind === 'blade') {
-    const count = kind === 'glow' ? 7 : 3;
+    const count = kind === 'glow' ? 9 : 3;
     for (let k = 0; k < count; k++) {
-      const theta = kind === 'glow' ? k * 2.39996323 : (k - 1) * 0.37;
-      const length = kind === 'glow' ? [0.52, 0.36, 0.46, 0.31, 0.49, 0.38, 0.28][k] : [0.78, 1, 0.69][k];
-      const width = kind === 'glow' ? [0.12, 0.15, 0.105, 0.13, 0.10, 0.115, 0.13][k] : [0.25, 0.38, 0.22][k];
+      const theta = kind === 'glow' ? [0,.47,-.60,1.34,-1.28,2.16,-2.48,2.84,-.16][k] : (k - 1) * 0.37;
+      const length = kind === 'glow' ? [0.54,0.41,0.47,0.31,0.36,0.25,0.22,0.18,0.38][k] : [0.78, 1, 0.69][k];
+      const width = kind === 'glow' ? [.12,.070,.087,.066,.074,.054,.045,.063,.070][k] : [0.25, 0.38, 0.22][k];
       sheet(10, 6, k * 0.61803399 % 1, (u, v) => {
-        const taper = Math.pow(Math.sin(Math.PI * Math.min(0.999, u) * 0.94), 0.65) * (1 - 0.76 * u);
-        const sweep = theta + (k % 2 ? -1 : 1) * 0.48 * u * u;
-        const along = kind === 'glow' ? 0.015 + length * u : -0.5 + length * u;
+        const taper = kind === 'glow'
+          ? Math.pow(1-u,1.15)*(0.54+0.46*Math.sin(u*Math.PI))
+          : Math.pow(Math.sin(Math.PI * Math.min(0.999, u) * 0.94), 0.65) * (1 - 0.76 * u);
+        const sweep = theta + (k % 2 ? -1 : 1) * (kind === 'glow' ? .12 : .48) * u * u;
+        const along = kind === 'glow' ? 0.003 + length * u : -0.5 + length * u;
         const cross = width * taper * v;
         const curl = width * taper * (0.8 * v * v - 0.26) + 0.075 * Math.sin(u * Math.PI * 1.4 + k) * u;
         return [along * Math.cos(sweep) - cross * Math.sin(sweep), curl,

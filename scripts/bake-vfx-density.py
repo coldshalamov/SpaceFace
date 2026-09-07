@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Rebuild the embedded transient density/temperature film. No network or source art needed.
 
-A small offline incompressible-flow bake: semi-Lagrangian velocity/density transport,
+A small offline projected-flow authoring bake: semi-Lagrangian velocity/density transport,
 pressure projection, compact impulse injection and thermal dissipation. The runtime
 samples the resulting 3D field, not an animated hash mask. Python + NumPy + SciPy.
 This is cosmetic authoring, not the game's physical simulation.
@@ -13,7 +13,7 @@ import json
 import numpy as np
 from scipy.ndimage import map_coordinates, gaussian_filter
 
-N, FRAMES, STEPS, DT = 32, 12, 108, 0.013
+N, FRAMES, STEPS, DT = 48, 12, 108, 0.013
 ROOT = Path(__file__).resolve().parents[1]
 
 def bake():
@@ -24,13 +24,23 @@ def bake():
     rho = np.zeros((N, N, N), np.float32)
     heat = np.zeros_like(rho)
     velocity = np.zeros((3, N, N, N), np.float32)
-    # A short torn fuel impulse with separated lobes and a central shear cavity.
+    # Seven deliberately unequal compact fuel lobes. Squared-radius falloff preserves
+    # density shoulders; overlapping broad Gaussians made the first bake a featureless ball.
     source = np.zeros_like(rho)
-    for cx, cy, cz, r, amount in [(-.25,0,0,.18,1),(-.18,.16,.08,.13,.85),
-                                 (-.15,-.11,.15,.13,.9),(-.21,-.12,-.14,.13,.8),
-                                 (-.20,.14,-.16,.11,.8)]:
-        source += amount * np.exp(-((x-cx)**2+(y-cy)**2+(z-cz)**2)/(r*r))
-    source = np.minimum(source, 1)
+    lobes = [(-.22,.03,.01,.20,1.0),(-.02,.28,.02,.18,.85),(.11,-.11,.28,.22,.96),
+             (-.16,-.28,-.18,.18,.90),(.10,.19,-.27,.20,.92),(.29,-.12,-.10,.18,.82),
+             (.30,.23,.20,.13,.78)]
+    for cx,cy,cz,r,amount in lobes:
+        radial = ((x-cx)**2+(y-cy)**2+(z-cz)**2)/(r*r)
+        source = np.maximum(source, amount*np.exp(-radial*radial*1.6))
+    # A cold rent separates the dense folds. It is advected with the material, not painted
+    # onto the camera's view or manufactured from runtime hash noise.
+    cavity = np.exp(-(((x-.02)/.27)**2+((y+.01)/.09)**2+((z-.02)/.14)**2))
+    source *= 1-.86*cavity
+    # Impart momentum once. Later forces sustain shear without inflating the whole body.
+    velocity[0] = .47*np.exp(-(y*y+z*z)/.24)
+    velocity[1] = -.74*z*np.exp(-(x*x+y*y+z*z)/.5)
+    velocity[2] = .74*y*np.exp(-(x*x+y*y+z*z)/.5)
     boundary = np.clip((.96 - np.maximum.reduce([abs(x), abs(y), abs(z)])) / .18, 0, 1)
     film = []
     captures = set(np.linspace(8, STEPS-1, FRAMES).round().astype(int).tolist())
@@ -38,8 +48,8 @@ def bake():
         # A localized impulse and swirl seed coherent shear, not render noise.
         radial2 = (y-.035*np.sin(step*.035))**2 + z*z
         ring = np.exp(-((x+.06-step*.0025)**2/.14 + radial2/.14))
-        force_x = 1.9 * np.exp(-radial2/.085) * np.exp(-((x+.22)**2)/.18)
-        swirl = .6 * ring
+        force_x = .85 * np.exp(-radial2/.085) * np.exp(-((x+.22)**2)/.18)
+        swirl = 1.6 * ring
         velocity[0] += DT * (force_x + .35 * (heat - rho*.3))
         velocity[1] += DT * (-z * swirl + .09 * heat)
         velocity[2] += DT * (y * swirl)
@@ -64,8 +74,8 @@ def bake():
             injection = source * (.14 if step < 8 else .08)
             rho += injection
             heat += injection
-        rho = gaussian_filter(rho, .16) * boundary
-        heat = gaussian_filter(heat, .24) * boundary
+        rho = gaussian_filter(rho, .09) * boundary
+        heat = gaussian_filter(heat, .15) * boundary
         if step in captures:
             # Square-root companding preserves tenuous structure in four bits/channel.
             density = np.rint(np.sqrt(np.clip(rho/.85,0,1))*15).astype(np.uint8)

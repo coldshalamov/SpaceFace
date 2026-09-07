@@ -56,7 +56,7 @@ import { ArcadeStructuralFx } from '../src/render/combat/arcadeStructuralFx.js';
 test('density film is an evolving bounded field, not one static mask with scrolling UVs', () => {
   const film = decodeDensityFilm();
   assert.equal(film.length, DENSITY_FILM.textureBytes);
-  const frameBytes = 32 ** 3 * 2;
+  const frameBytes = DENSITY_FILM.grid ** 3 * 2;
   const hashes = new Set();
   for (let f = 0; f < 12; f++) {
     hashes.add(createHash('sha256').update(film.subarray(f*frameBytes, (f+1)*frameBytes)).digest('hex'));
@@ -72,7 +72,8 @@ test('density film is an evolving bounded field, not one static mask with scroll
 test('packed 3D film fits the portable WebGL2 dimension floor and retains every voxel', () => {
   const texture = createTransientDensityTexture();
   const { width, height, depth, data } = texture.image;
-  assert.deepEqual([width,height,depth], [64,64,96]);
+  const n=DENSITY_FILM.grid;
+  assert.deepEqual([width,height,depth], [n*2,n*2,n*3]);
   assert.ok(Math.max(width,height,depth) <= 256);
   assert.equal(data.length, DENSITY_FILM.textureBytes);
   assert.equal(texture.format, THREE.RGFormat);
@@ -80,10 +81,10 @@ test('packed 3D film fits the portable WebGL2 dimension floor and retains every 
   const film = decodeDensityFilm();
   for (let f = 0; f < 12; f++) {
     const cx=f%2,cy=Math.floor(f/2)%2,cz=Math.floor(f/4);
-    for (let z=0;z<32;z++) for (let y=0;y<32;y++) {
-      const source=((f*32+z)*32+y)*64;
-      const target=(((cz*32+z)*64+cy*32+y)*64+cx*32)*2;
-      assert.deepEqual(data.subarray(target,target+64),film.subarray(source,source+64));
+    for (let z=0;z<n;z++) for (let y=0;y<n;y++) {
+      const source=((f*n+z)*n+y)*n*2;
+      const target=(((cz*n+z)*n*2+cy*n+y)*n*2+cx*n)*2;
+      assert.deepEqual(data.subarray(target,target+n*2),film.subarray(source,source+n*2));
     }
   }
   texture.dispose();

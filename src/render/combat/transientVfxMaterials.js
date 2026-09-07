@@ -19,7 +19,8 @@ export function createTransientDensityTexture() {
       }
     }
   }
-  const texture = new THREE.Data3DTexture(decodedFilm, 64, 64, 96);
+  const n = DENSITY_FILM.grid;
+  const texture = new THREE.Data3DTexture(decodedFilm, n * 2, n * 2, n * 3);
   texture.name = 'SF_OfflineDensityFilm_RG8';
   texture.format = THREE.RGFormat;
   texture.type = THREE.UnsignedByteType;
@@ -145,7 +146,7 @@ const VOLUME_FRAGMENT = /* glsl */`
   varying float vSpriteOpacity;
   vec2 frameDensity(vec3 p, float frame) {
     vec3 cell=vec3(mod(frame,2.0),mod(floor(frame/2.0),2.0),floor(frame/4.0));
-    vec3 uvw=(0.5+clamp(p,0.0,1.0)*31.0+cell*32.0)/vec3(64.0,64.0,96.0);
+    vec3 uvw=(0.5+clamp(p,0.0,1.0)*${DENSITY_FILM.grid-1}.0+cell*${DENSITY_FILM.grid}.0)/vec3(${DENSITY_FILM.grid*2}.0,${DENSITY_FILM.grid*2}.0,${DENSITY_FILM.grid*3}.0);
     vec2 d = texture(uDensityFilm,uvw).rg;
     return d*d;
   }
@@ -164,11 +165,11 @@ const VOLUME_FRAGMENT = /* glsl */`
     if (end<=begin) discard;
     float film=clamp(vPhase.x,0.0,1.0)*11.0;
     float f0=floor(film), f1=min(11.0,f0+1.0);
-    float stride=(end-begin)/16.0;
+    float stride=(end-begin)/20.0;
     vec3 sum=vec3(0.0);
     float transmittance=1.0;
     float first=-1.0;
-    for (int i=0;i<16;i++) {
+    for (int i=0;i<20;i++) {
       float distanceAlong=begin+(float(i)+0.5)*stride;
       vec3 p=vLocalCamera+ray*distanceAlong;
       // Roll the internal flow about its force axis, never about the camera. This changes
@@ -179,15 +180,26 @@ const VOLUME_FRAGMENT = /* glsl */`
       vec2 field=mix(frameDensity(filmPoint+0.5,f0),frameDensity(filmPoint+0.5,f1),fract(film));
       float edge=1.0-smoothstep(0.40,0.495,max(abs(p.x),max(abs(p.y),abs(p.z))));
       float density=field.r*edge;
-      float absorb=1.0-exp(-density*stride*13.0);
+      float absorb=1.0-exp(-density*stride*15.0);
       if (first<0.0 && density>0.015) first=distanceAlong;
-      // Simulation temperature opens cavities between hot folds; smoke retains cooler body depth.
-      float hot=clamp(field.g*2.5,0.0,1.0);
-      vec3 soot=vSpriteColor*(0.29+0.57*field.g+0.30*(p.y+0.5));
-      vec3 fire=mix(vSpriteColor*0.28, vSpriteColor*1.55,hot);
-      fire=mix(fire,vec3(1.65,1.17,0.65),pow(hot,4.0)*0.63);
+      // Two samples along a fixed local key light reveal the baked lobes and cavities.
+      // This is bounded single scattering, not a flat grey opacity mask or a hot white ball.
+      vec3 key=vec3(-0.035,0.065,0.025);
+      float blocker=frameDensity(filmPoint+0.5+key,f0).r
+        +frameDensity(filmPoint+0.5+key*2.4,f0).r;
+      float light=exp(-blocker*2.2);
+      float hot=smoothstep(0.02,0.76,field.g);
+      float ridge=clamp(density*2.1,0.0,1.0);
+      vec3 soot=vSpriteColor*(0.14+1.02*light)*(0.64+0.36*ridge);
+      vec3 fire=mix(vSpriteColor*0.14, vSpriteColor*1.75,pow(hot,.75));
+      // Preserve the event's hue; only the hottest, unoccluded shoulders desaturate.
+      float peak=pow(hot,3.0)*(0.25+0.75*light);
+      float familyPeak=max(vSpriteColor.r,max(vSpriteColor.g,vSpriteColor.b));
+      fire=mix(fire,mix(vSpriteColor,vec3(familyPeak),.64)*2.4,peak*.66);
+      fire*=0.32+0.68*light;
       sum+=transmittance*absorb*mix(soot,fire,uCombustion);
       transmittance*=1.0-absorb;
+      if (transmittance<0.018) break;
     }
     float opacity=1.0-transmittance;
     float alpha=opacity*vSpriteOpacity;
