@@ -38,3 +38,12 @@ export {
   requestAttackContinue,
   resolveLiveAttackHit,
 } from './attackHit.js';
+export {
+  createStuntDetector,
+  StuntDetector,
+  STUNT_SCHEMA_VERSION,
+  TrickRarity,
+  TRICK_DEFINITIONS,
+  KNOWN_TRICK_IDS,
+  STUNT_CONSTANTS,
+} from './stuntTaxonomy.js';

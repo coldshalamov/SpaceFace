@@ -6273,7 +6273,7 @@
       "priority": 82,
       "title": "Trick taxonomy and detectors",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -6290,7 +6290,9 @@
         "npm run check:baseline",
         "npm run check:combat"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-146-00-REPORT.md"
+      ],
       "brief": "One pure module turns the receipt stream into named tricks with a cause chain (who threw, what hit, what it hit next): bolas, wrecking ball, clothesline, collateral ×N, near-miss, tow-kill, rock discovery, well golf, dead man's mass, razor release. DONE WHEN: ≥ 12 tricks detected deterministically in scenarios; false-positive rate < 5 % on ordinary flight tapes."
     },
     {

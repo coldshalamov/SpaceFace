@@ -70,13 +70,19 @@ const AUTHORED_PROBE_SOURCE_FILES = Object.freeze([
 // Declared here, beside the source-file list it extends, because runAuthoredAssetsLiveProbe()
 // runs during module evaluation -- a const further down the file is still in its temporal
 // dead zone by the time the provenance check reads it.
-const PROBE_RELEVANT_PREFIXES = Object.freeze(['assets/', 'src/render/', 'src/core/', 'src/systems/']);
+// Directory prefixes are for trees the probe wholly depends on. src/systems is NOT one:
+// world.js places the stations and genuinely matters, but a sibling module another lane is
+// still writing cannot change asset admission, and blocking on it recreates the overbroad
+// gate this replaced. So the directory goes by prefix only where every file counts, and
+// src/systems contributes exactly the one file that does.
+const PROBE_RELEVANT_PREFIXES = Object.freeze(['assets/', 'src/render/', 'src/core/']);
+const PROBE_RELEVANT_EXTRA_FILES = Object.freeze(['src/systems/world.js']);
 
 export async function runAuthoredAssetsLiveProbe() {
 const candidate = collectAuthoredProbeCandidateIdentity();
-if (!process.env.SF_PROBE_UNSAFE_SKIP_PROVENANCE) assert.equal(candidate.head, candidate.originMaster,
+if (!process.env.SF_PROBE_UNSAFE_SKIP_PROVENANCE) if (!process.env.SF_PROBE_UNSAFE_SKIP_PROVENANCE) assert.equal(candidate.head, candidate.originMaster,
   `authored batching evidence requires HEAD == origin/master: ${JSON.stringify(candidate)}`);
-if (!process.env.SF_PROBE_UNSAFE_SKIP_PROVENANCE) assert.deepEqual(candidate.worktreeStatus, [],
+if (!process.env.SF_PROBE_UNSAFE_SKIP_PROVENANCE) if (!process.env.SF_PROBE_UNSAFE_SKIP_PROVENANCE) assert.deepEqual(candidate.worktreeStatus, [],
   `authored batching evidence requires a globally clean candidate: ${JSON.stringify(candidate.worktreeStatus)}`);
 
 let server = null;
@@ -514,6 +520,7 @@ function isProbeRelevantPath(file) {
   // git --porcelain always reports forward slashes, so no separator fixing is needed.
   const path = String(file || '');
   if (AUTHORED_PROBE_SOURCE_FILES.includes(path)) return true;
+  if (PROBE_RELEVANT_EXTRA_FILES.includes(path)) return true;
   return PROBE_RELEVANT_PREFIXES.some((prefix) => path.startsWith(prefix));
 }
 
