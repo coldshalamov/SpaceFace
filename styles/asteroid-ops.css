@@ -148,7 +148,7 @@
   width: 0%;
   border-radius: 5px;
   background: var(--aw-mint);
-  transition: width 0.25s ease-out, background 0.25s ease-out;
+  transition: width 160ms var(--k-ease), background 160ms var(--k-ease);
 }
 .aw-hold-fill.hot { background: var(--aw-gold); }
 .aw-hold-fill.full { background: var(--aw-coral); }
@@ -237,7 +237,7 @@
   inset: 1px auto 1px 1px;
   width: 0%;
   border-radius: 5px;
-  transition: width 0.2s ease-out;
+  transition: width 160ms var(--k-ease);
 }
 .aw-gauge-heat .aw-gauge-fill { background: var(--aw-heat); }
 .aw-gauge-heat .aw-gauge-fill.warn { background: var(--aw-gold); }
@@ -283,10 +283,10 @@
   box-shadow: inset 0 1px 0 rgba(255, 232, 194, 0.1), 0 2px 8px rgba(8, 5, 2, 0.55);
   color: var(--aw-ink-2);
   transition:
-    transform 0.12s ease-out,
-    background-color 0.12s ease-out,
-    color 0.12s ease-out,
-    box-shadow 0.12s ease-out;
+    transform 120ms var(--k-ease),
+    background-color 120ms var(--k-ease),
+    color 120ms var(--k-ease),
+    box-shadow 120ms var(--k-ease);
 }
 /* The silhouette IS the key. 22px of filled mass in currentColor, so every state tints it free. */
 .aw-build-glyph {
@@ -378,12 +378,13 @@
 }
 .aw-build-tip-cost:empty { display: none; }
 
-/* law §9 — the first Core makes the interface visibly grow: one 300ms settle, once. */
+/* law §9 — the first Core makes the interface visibly grow: one settle, once. Frontend Task D §2
+   reconciled the duration and easing to the kit's motion floor (spec §7: settles ≤ 160 ms, --k-ease). */
 @keyframes aw-palette-settle {
   from { transform: translateY(8px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
 }
-.aw-palette.settle { animation: aw-palette-settle 300ms cubic-bezier(0.22, 0.68, 0.3, 1) both; }
+.aw-palette.settle { animation: aw-palette-settle 160ms var(--k-ease) both; }
 
 /* ---------------------------------------------------------------- §6.4 cursor lens
    "A little field-notebook tag next to their cursor — a colour, a number, two or three
@@ -547,7 +548,7 @@
   justify-content: center;
   z-index: 1000;
   opacity: 0;
-  transition: opacity 0.22s ease-out;
+  transition: opacity 160ms var(--k-ease);
   pointer-events: auto;
 }
 .ast-summary-modal.active { opacity: 1; }
@@ -596,7 +597,7 @@
   box-shadow: 0 2px 8px rgba(8, 5, 2, 0.5);
   font: 600 13px/1.1 var(--aw-font);
   color: var(--aw-ink-2);
-  transition: transform 0.12s ease-out, background-color 0.12s ease-out, color 0.12s ease-out, border-color 0.12s ease-out;
+  transition: transform 120ms var(--k-ease), background-color 120ms var(--k-ease), color 120ms var(--k-ease), border-color 120ms var(--k-ease);
 }
 .ast-screen .sf-btn:hover,
 .ast-summary-box .sf-btn:hover {
@@ -672,7 +673,7 @@ html.sf-reduce-motion .aw-build-key:hover { transform: none; }
   color: var(--aw-ink-2);
   transform: translateY(102%);
   opacity: 0;
-  transition: transform 200ms cubic-bezier(0.22, 0.68, 0.3, 1), opacity 200ms ease;
+  transition: transform 200ms var(--k-ease), opacity 200ms var(--k-ease);
   overflow: hidden;
 }
 .aw-drawer[hidden] { display: none !important; }
@@ -701,7 +702,7 @@ html.sf-reduce-motion .aw-build-key:hover { transform: none; }
   background: var(--aw-raised);
   color: var(--aw-ink-2);
   font: 500 13px/1.1 var(--aw-font);
-  transition: color 120ms ease, background 120ms ease;
+  transition: color 120ms var(--k-ease), background 120ms var(--k-ease);
 }
 .ast-screen .aw-drawer-tab:hover { color: var(--aw-ink); }
 .ast-screen .aw-drawer-tab.on { color: var(--aw-gold); box-shadow: inset 0 0 0 1.5px var(--aw-gold); }
@@ -724,7 +725,7 @@ html.sf-reduce-motion .aw-build-key:hover { transform: none; }
   height: 26px;
   border-radius: 8px;
   color: var(--aw-ink-2);
-  transition: color 120ms ease, transform 120ms ease;
+  transition: color 120ms var(--k-ease), transform 120ms var(--k-ease);
 }
 .ast-screen .aw-drawer-key:hover { color: var(--aw-ink); transform: translateY(-1px); }
 .ast-screen .aw-drawer-key[aria-expanded="true"] { color: var(--aw-gold); }
@@ -859,7 +860,7 @@ html.sf-reduce-motion .aw-build-key:hover { transform: none; }
   background: var(--aw-raised);
   color: var(--aw-ink-2);
   font: 500 13px/1.1 var(--aw-font);
-  transition: color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+  transition: color 120ms var(--k-ease), box-shadow 120ms var(--k-ease), transform 120ms var(--k-ease);
 }
 .ast-screen .aw-verb-chip { padding: 4px 12px; border-radius: 999px; }
 .ast-screen .aw-verb-btn { padding: 4px 14px; }
