@@ -86,6 +86,168 @@
 .sx-pop--hold { min-width: calc(480px * var(--k-s)); }
 .sx-pop .k-word--primary { margin-top: calc(8px * var(--k-s)); }
 
+/* ───────────── shared by the destination panels ───────────── */
+
+/* A stage's title-like block keeps the corner column (credits + vitals) clear. */
+.sx-clear-corner { padding-right: calc(420px * var(--k-s)); }
+.k-panel > .k-hang > * + * { margin-top: calc(16px * var(--k-s)); }
+.k-panel > .k-stage > * + * { margin-top: calc(16px * var(--k-s)); }
+.sx-muted { color: var(--k-bone-38); }
+
+/* ───────────── market (§1.3): the dense register ───────────── */
+
+.sx-mkt-browser > * + * { margin-top: calc(16px * var(--k-s)); }
+.sx-mkt-browser__filters { gap: calc(24px * var(--k-s)); }
+.sx-mkt-search { width: 100%; }
+.sx-mkt-browser__empty[hidden] { display: none; }
+.sx-mkt-table th:last-child, .sx-mkt-row__held { text-align: right; }
+.sx-mkt-row__price .sx-mkt-row__tr { margin-left: 0.4em; }
+.sx-mkt-row__held { white-space: nowrap; }
+.sx-mkt__quote > * + *, .sx-mkt__console > * + *, .sx-trade > * + * { margin-top: calc(16px * var(--k-s)); }
+.sx-mkt__quote { padding-right: calc(420px * var(--k-s)); }
+.sx-mkt__hero { margin-top: calc(8px * var(--k-s)); }
+.sx-mkt-chart { display: block; overflow: visible; }
+.sx-mkt-stats, .sx-trade__rows { max-width: var(--k-measure); }
+.sx-mkt-stats .sx-stat__k, .sx-kv > span { color: var(--k-bone-62); }
+.sx-qty { display: flex; align-items: baseline; gap: var(--k-gap); flex-wrap: wrap; }
+.sx-qty__in { width: 6ch; }
+.sx-qty__words { gap: calc(24px * var(--k-s)); }
+.sx-trade__words { gap: calc(48px * var(--k-s)); }
+.sx-trade__note[hidden] { display: none; }
+.sx-adboard[hidden] { display: none; }
+.sx-route-row__body { display: flex; flex-direction: column; min-width: 0; }
+
+/* ───────────── ledger (§1.4) ───────────── */
+
+/* The shared panel's children sit on the split grid: everything left, the evidence detail right. */
+.sx-ledger > .st-ledger { display: contents; }
+.sx-ledger .st-sub-h, .sx-ledger .st-ledger-intro, .sx-ledger .st-ledger-status, .sx-ledger .st-ledger-list,
+.sx-ledger .st-ledger-empty, .sx-ledger .st-ledger-nav { grid-column: 1; }
+.sx-ledger .st-ledger-intro, .sx-ledger .st-ledger-status { margin: calc(12px * var(--k-s)) 0 0; }
+.sx-ledger .st-ledger-list { margin-top: calc(24px * var(--k-s)); }
+.sx-ledger .st-ledger-detail, .sx-ledger__read { grid-column: 2; grid-row: 1 / span 6; align-self: start; padding-right: calc(420px * var(--k-s)); }
+.sx-ledger .st-ledger-detail[hidden], .sx-ledger__read[hidden] { display: none; }
+.sx-ledger__read > * + * { margin-top: calc(16px * var(--k-s)); }
+.sx-ledger .st-ledger-entry { cursor: default; }
+.sx-ledger .st-ledger-entry[aria-selected="true"] { box-shadow: inset 2px 0 0 var(--k-signal); color: var(--k-text-live); }
+
+/* ───────────── missions (§1.5) ───────────── */
+
+/* The hang column: posted jobs as rows (crest · job · payout), then the player's own as static rows. */
+.sx-ct__hang { display: flex; flex-direction: column; min-height: 0; }
+.sx-ct__hang > * + * { margin-top: calc(12px * var(--k-s)); }
+.sx-ct__hang > .sx-ct__yours { margin-top: calc(32px * var(--k-s)); }
+.sx-ct__board { min-height: 0; overflow: hidden auto; scrollbar-width: thin; scrollbar-color: var(--k-hair) transparent; }
+.sx-ct__rows { --k-row-cols: auto minmax(0, 1fr) auto; }
+.sx-ct__rows > li { display: contents; }
+.sx-ct__rows > li:last-child > .k-row { border-bottom: 1px solid var(--k-hair); }
+button.sx-ct-row { width: 100%; background: none; border-left: 0; border-right: 0; border-bottom: 0; font: inherit; text-align: left; }
+.sx-ct-row__crest { display: flex; align-items: center; color: var(--k-bone-62); }
+.sx-ct-row__crest .k-crest { display: block; height: auto; }
+.sx-ct-row.is-active .sx-ct-row__crest, .sx-ct-row:hover .sx-ct-row__crest { color: var(--k-text-live); }
+.sx-ct-row__badge { margin-right: 0.4em; }
+.sx-ct__jobs { --k-row-cols: minmax(0, 1fr) auto auto; }
+.sx-job__meta { white-space: nowrap; }
+.sx-job.is-tracked .sx-job__title { color: var(--k-text-live); }
+
+/* The stage: the dossier reads top-down; the corner column (credits + vitals) stays clear. */
+.sx-ct__dossier { min-height: 0; overflow: hidden auto; scrollbar-width: thin; scrollbar-color: var(--k-hair) transparent; padding-right: calc(420px * var(--k-s)); }
+.sx-dossier > * + * { margin-top: calc(16px * var(--k-s)); }
+.sx-dossier__title { margin: calc(8px * var(--k-s)) 0 0; }
+.sx-dossier__reward { margin-top: calc(24px * var(--k-s)); }
+.sx-dossier__terms { max-width: var(--k-measure); margin-top: calc(24px * var(--k-s)); }
+.sx-term__v { display: flex; flex-direction: column; align-items: flex-end; }
+.sx-term__sub { white-space: nowrap; }
+.sx-dossier__clauses { gap: calc(24px * var(--k-s)); }
+.sx-dossier__foot { margin-top: calc(32px * var(--k-s)); align-items: baseline; }
+.sx-dossier__foot .k-word-sub { display: inline-block; margin: 0 0 0 calc(16px * var(--k-s)); }
+
+/* ───────────── factions (§1.6) ───────────── */
+
+.sx-fac__rail { display: flex; flex-direction: column; min-height: 0; }
+.sx-fac__rail > * + * { margin-top: calc(12px * var(--k-s)); }
+.sx-fac__rows { min-height: 0; overflow: hidden auto; scrollbar-width: thin; scrollbar-color: var(--k-hair) transparent; }
+.sx-fac__rows > li { display: contents; }
+.sx-fac__rows > li:last-child > .k-row { border-bottom: 1px solid var(--k-hair); }
+button.sx-fac-row { width: 100%; background: none; border-left: 0; border-right: 0; border-bottom: 0; font: inherit; text-align: left; padding-top: calc(10px * var(--k-s)); padding-bottom: calc(10px * var(--k-s)); }
+.sx-fac-row__body { display: flex; flex-direction: column; gap: calc(8px * var(--k-s)); min-width: 0; }
+.sx-fac-row__bar { width: calc(160px * var(--k-s)); }
+.sx-fac-row__zero { position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1px; background: var(--k-hair); }
+
+/* The stage: the crest top-right under the corner column, the words down the left. */
+.sx-fac__stage { min-height: 0; overflow: hidden auto; scrollbar-width: thin; scrollbar-color: var(--k-hair) transparent; }
+.sx-fac-overview { position: relative; padding-right: calc(420px * var(--k-s)); }
+.sx-fac-overview > * + * { margin-top: calc(16px * var(--k-s)); }
+.sx-fac-crest { position: absolute; right: calc(420px * var(--k-s)); top: 0; color: var(--k-bone-62); }
+.sx-fac-crest .k-crest { display: block; height: auto; }
+.sx-fac-ident__name { margin: calc(8px * var(--k-s)) 0 0; max-width: 14ch; }
+.sx-fac-heroes { display: flex; flex-wrap: wrap; gap: calc(24px * var(--k-s)) calc(64px * var(--k-s)); margin-top: calc(32px * var(--k-s)); }
+.sx-fac-heroes .k-hero__n { font-size: var(--k-fs-title); }
+.sx-fac-heroes .k-hero__w { max-width: 28ch; }
+.sx-fac__detail { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: calc(32px * var(--k-s)) var(--k-gap); margin-top: calc(40px * var(--k-s)); }
+.sx-fac__detail .k-caps + .k-rows { margin-top: calc(12px * var(--k-s)); }
+.sx-fac__detail .k-caps + .k-sentence { margin-top: calc(12px * var(--k-s)); }
+.sx-fac-network__rows > li { display: contents; }
+button.sx-fac-node { width: 100%; background: none; border-left: 0; border-right: 0; border-bottom: 0; font: inherit; text-align: left; --k-row-cols: minmax(0, 1fr) auto auto; }
+.sx-fac-network__rows > li:last-child > .k-row { border-bottom: 1px solid var(--k-hair); }
+
+/* ───────────── industry (§1.7) ───────────── */
+
+.sx-ind__list { min-height: 0; overflow: hidden auto; scrollbar-width: thin; scrollbar-color: var(--k-hair) transparent; }
+.sx-ind-process + .sx-ind-process { margin-top: calc(32px * var(--k-s)); }
+.sx-ind-process__head { margin: 0 0 calc(12px * var(--k-s)); }
+.sx-ind-process__items > li { display: contents; }
+.sx-ind-process__items > li:last-child > .k-row { border-bottom: 1px solid var(--k-hair); }
+button.sx-ind-row { width: 100%; background: none; border-left: 0; border-right: 0; border-bottom: 0; font: inherit; text-align: left; padding-top: calc(8px * var(--k-s)); padding-bottom: calc(8px * var(--k-s)); }
+.sx-ind-row__body { display: flex; flex-direction: column; min-width: 0; gap: calc(2px * var(--k-s)); }
+.sx-ind-row__process { white-space: nowrap; }
+.sx-ind-row.is-active .sx-ind-row__tier { color: var(--k-bone-62); }
+
+.sx-ind__stage { min-height: 0; overflow: hidden auto; scrollbar-width: thin; scrollbar-color: var(--k-hair) transparent; }
+.sx-fab { padding-right: calc(420px * var(--k-s)); }
+.sx-fab > * + * { margin-top: calc(16px * var(--k-s)); }
+.sx-fab-head__name { margin: calc(8px * var(--k-s)) 0 0; }
+.sx-fab-heroes { display: flex; align-items: flex-end; gap: calc(64px * var(--k-s)); margin-top: calc(24px * var(--k-s)); }
+.sx-fab-col-k { margin-top: calc(32px * var(--k-s)); }
+.sx-fab-inputs { max-width: var(--k-measure); margin-top: calc(12px * var(--k-s)); }
+.sx-fab-in.is-missing { --k-row-cols: minmax(0, 1fr) auto auto; }
+.sx-fab-notes { gap: calc(24px * var(--k-s)); }
+.sx-fab-foot { margin-top: calc(32px * var(--k-s)); }
+
+/* ───────────── bar (§1.8) ───────────── */
+
+/* The world behind stays the berth at the docked scrim — the sheet's "room, lit warm" waits on a
+   room asset; noted in the Task C receipt. */
+.sx-bar__hang { display: flex; flex-direction: column; min-height: 0; overflow: hidden auto; scrollbar-width: thin; scrollbar-color: var(--k-hair) transparent; }
+.sx-bar__rail > .k-caps + .k-words, .sx-bar__leads > .k-caps + .k-rows, .sx-bar__leads > .k-caps + .k-sentence { margin-top: calc(12px * var(--k-s)); }
+.sx-bar__rows { gap: calc(20px * var(--k-s)); }
+.sx-bar-row .k-word-sub { display: block; }
+.sx-bar__leads { margin-top: calc(40px * var(--k-s)); }
+.sx-bar__leads .k-rows { --k-row-cols: minmax(0, 1fr) auto; }
+.sx-lead__body { display: flex; flex-direction: column; min-width: 0; }
+.sx-lead { padding-top: calc(8px * var(--k-s)); padding-bottom: calc(8px * var(--k-s)); }
+.sx-bar__foot { margin-top: calc(16px * var(--k-s)); }
+.sx-intel__head { margin-top: calc(40px * var(--k-s)); }
+.sx-intel { --k-row-cols: auto minmax(0, 1fr); }
+
+.sx-bar__stage { min-height: 0; overflow: hidden auto; scrollbar-width: thin; scrollbar-color: var(--k-hair) transparent; }
+.sx-talk { padding-right: calc(420px * var(--k-s)); }
+.sx-talk > * + * { margin-top: calc(24px * var(--k-s)); }
+.sx-talk__head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--k-gap); }
+.sx-talk__id { min-width: 0; }
+.sx-talk__id > * + * { margin-top: calc(12px * var(--k-s)); }
+.sx-talk__name { margin: 0; }
+/* The one image allowed: the portrait, 240 px tall, no frame, right of the name. */
+.sx-talk__avatar { flex: 0 0 auto; display: block; width: calc(240px * var(--k-s)); height: calc(240px * var(--k-s)); }
+.sx-talk__avatar canvas, .sx-talk__avatar img, .sx-talk__avatar .sx-portrait { display: block; width: 100%; height: 100%; object-fit: cover; border: 0; border-radius: 0; box-shadow: none; }
+.sx-talk__reply { max-width: var(--k-measure); }
+.sx-talk__reply.is-idle { color: var(--k-bone-62); }
+.sx-talk__choices { margin-top: calc(32px * var(--k-s)); }
+.sx-bar-offer { margin-top: calc(32px * var(--k-s)); padding-top: calc(16px * var(--k-s)); border-top: 1px solid var(--k-hair); max-width: var(--k-measure); }
+.sx-bar-offer > * + * { margin-top: calc(12px * var(--k-s)); }
+.sx-bar-offer__chips { gap: calc(24px * var(--k-s)); }
+.sx-bar-offer__foot { margin-top: calc(16px * var(--k-s)); }
+
 /* A destination that does not exist at this berth. */
 .sx-placeholder { align-content: start; }
 

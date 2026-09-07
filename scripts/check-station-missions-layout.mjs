@@ -67,27 +67,29 @@ try {
       };
     };
     return {
-      body: rect('.sx-screen__body'),
-      title: rect('.sx-screen__head'),
+      body: rect('#sx-panel'),
+      title: rect('.sxb-berth'),
       board: rect('.sx-ct__board'),
       dossier: rect('.sx-ct__dossier'),
       active: rect('.sx-ct__active'),
-      handoff: rect('.sx-handoff:not([hidden])'),
+      handoff: rect('.sxb-handoff:not([hidden])'),
       redundantAttention: !!document.querySelector('.sx-ct__attention'),
     };
   });
 
+  // The kit panel (Frontend Task C §1.5): the posted jobs above the player's own missions down the
+  // hang column, the dossier on the stage to their right filling the workspace.
   const overlaps = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
   assert.equal(layout.redundantAttention, false, 'redundant Missions attention banner must not render');
   for (const key of ['body', 'title', 'board', 'dossier', 'active']) {
     assert.ok(layout[key]?.width > 0 && layout[key]?.height > 0, `${key} must have visible geometry`);
   }
-  assert.equal(overlaps(layout.title, layout.board), false, 'shared Missions identity must not cover offer tickets');
-  assert.ok(layout.board.bottom <= layout.dossier.top + 1, 'offer strip must sit above the mission dossier');
-  assert.ok(layout.dossier.bottom <= layout.active.top + 1, 'mission dossier must sit above Active Missions');
+  assert.equal(overlaps(layout.title, layout.board), false, 'the station title block must not cover the posted jobs');
+  assert.ok(layout.board.bottom <= layout.active.top + 1, 'posted jobs must sit above the player\'s own missions');
+  assert.ok(layout.board.right <= layout.dossier.left + 1, 'the dossier must sit on the stage beside the posted jobs');
   assert.ok(layout.dossier.height >= layout.body.height * 0.45,
     `mission dossier must use the main workspace (${layout.dossier.height.toFixed(1)} / ${layout.body.height.toFixed(1)} px)`);
-  assert.ok(layout.active.height >= 64, `Active Missions must remain readable (${layout.active.height.toFixed(1)}px)`);
+  assert.ok(layout.active.height >= 40, `Active Missions must remain readable (${layout.active.height.toFixed(1)}px)`);
   assert.ok(layout.active.bottom <= layout.body.bottom + 1, 'Active Missions must not clip below the workspace');
   await page.screenshot({ path: join(OUT, 'missions.png') });
   if (layout.handoff) {

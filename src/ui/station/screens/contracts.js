@@ -1,11 +1,16 @@
 // src/ui/station/screens/contracts.js — station Missions board (internal id remains contracts).
-// Board list · briefing dossier (centerpiece) · active operations. Progressive disclosure:
-// the list is scannable, the dossier is the full brief, no wall of text. Emits
-// ui:acceptMission / ui:trackMission / ui:abandonMission {missionId}.
+// A kit panel (Frontend Task C §1.5): the posted jobs and the player's own missions as rows down
+// the hang column, the open job's dossier on the stage — its title, client, payout at hero size,
+// the route and the risk each as one sentence, the terms as static rows, Accept as a word. Emits
+// ui:acceptMission / ui:trackMission {missionId}; the trade of words for plates changes nothing
+// about what the board does (the readiness authority is missionPreflight, the map opens through
+// mapAuthority, final-disposition filings still go through their separate confirmation).
 //
 // When the station shell passes attention / missionId (from missionDockAttention), that job is
-// sorted first, selected, and given a glowing "needs action" treatment so turn-in / accept is
-// not a scavenger hunt under an old "Contracts" label.
+// sorted first and selected so turn-in / accept is not a scavenger hunt.
+// `.sx-ct`, `.sx-ct__board`, `.sx-ct__dossier`, `.sx-ct__active`, `.sx-ct-row[data-mid]`,
+// `.sx-job[data-active-mid]`, `.sx-job__track[data-track]`, `.sx-ct-commit[data-accept]`,
+// `.sx-dossier__summary` and `.sx-tag[data-why]` are inert hooks the checks and probes query.
 import { COMMODITIES } from '../../../data/commodities.js';
 import { FACTION_META } from '../../../data/factions.js';
 import { MISSION_TYPES } from '../../../data/missions.js';
@@ -23,7 +28,7 @@ import {
   missionUpfrontCost,
 } from '../../missionPreflight.js';
 import { mountDataState } from '../../uiPrimitives.js';
-import { icon } from '../icons.js';
+import { factionIcon, icon } from '../icons.js';
 import { missionBoardReadiness } from '../stationHubModel.js';
 import { recommendMissionBoardOffer } from '../stationMissionModel.js';
 
@@ -34,19 +39,13 @@ const STATION_DEF = new Map(SECTORS.flatMap((sector) => (
   (sector.stations || []).map((station) => [station.id, station])
 )));
 
-const TYPE_ICON = {
-  cargo_delivery: 'cargo', bulk_trade: 'cargo', passenger_transport: 'cargo', smuggling_run: 'cargo',
-  mining_quota: 'industry', salvage_retrieval: 'industry',
-  bounty_hunt: 'target', patrol_clear: 'target', escort: 'target',
-  recon_scan: 'spark',
-};
 const RISK_LABEL = ['Routine', 'Low', 'Elevated', 'High', 'Severe', 'Severe'];
-const FAC_TINT = { faction_scn: '#5b8dd6', faction_mts: '#d8b25a', faction_dmc: '#d17a4b', faction_reach: '#c1543f', faction_quiet: '#9b8bd0', faction_vael: '#cf5d86', faction_free: '#46b4a4', faction_choir: '#78c6d8' };
 const FIRST_TRADE_SOURCE = 'firstTradeContract';
 const ONBOARDING_CHOICE_SOURCE = 'onboardingChoice';
 
 const mid = (m) => (m && (m.id != null ? m.id : m.missionId));
 const num = (v) => Math.max(0, Math.round(Number(v) || 0));
+const cr = (v) => `${num(v).toLocaleString('en-US')} cr`;
 
 /** Tier-2 "why" for a clause/condition chip, from the ENUMERATED catalog only (grammar §7):
  * CONTRACT_CLAUSES / missionConditions via contractTermById. An unknown id renders NOTHING —
@@ -62,7 +61,12 @@ const reward = (m) => num(m.reward != null ? m.reward : (m.reward_cr != null ? m
 const risk = (m) => num(m.riskTier != null ? m.riskTier : m.risk);
 const typeLabel = (t) => String(t || 'mission').replace(/_/g, ' ');
 const facName = (m) => { const f = FAC.get(m.factionId); return (f && f.name) || (m.factionName) || 'Open mission'; };
-const facTint = (m) => FAC_TINT[m.factionId] || '#4aa8ff';
+
+/** The client's crest at row size (the kit's `.k-crest--row`; a generic mark when unknown). */
+function crestHtml(factionId) {
+  const svg = factionIcon(factionId, 24) || icon('contracts', 24);
+  return svg.replace(/class="sx-ico[^"]*"/, 'class="k-crest k-crest--row sx-ico"');
+}
 
 export function missionOffersFollowUp(mission) {
   const def = mission && MISSION_DEF.get(mission.type);
@@ -94,7 +98,6 @@ export function missionBoardDispatchLabel(state, stationId, offerCount = 0) {
   return `${station.dispatchLabel || 'LIVE DISPATCH'} / ${Math.max(0, offerCount | 0)} LIVE / ${sides.join('–')} FRONT ${phase} · ${tension}/100`;
 }
 
-function riskColor(r) { return r <= 1 ? 'var(--gain)' : r === 2 ? 'var(--warn)' : 'var(--loss)'; }
 function destName(m) {
   const params = (m && m.params) || {};
   return m.destinationName || m.destName || params.destinationName || params.destName
@@ -162,12 +165,6 @@ function cargoRequirement(m) {
     ? footprint.qty
     : num(params.qty || cargo.qty || (m && m.cargoQty));
   return commodityId && qty > 0 ? { commodityId, qty } : null;
-}
-
-function riskPips(r, size) {
-  let s = '';
-  for (let i = 0; i < 5; i++) s += `<i class="${i < r ? 'on' : ''}" style="${i < r ? 'background:' + riskColor(r) : ''}"></i>`;
-  return `<span class="sx-pips${size ? ' sx-pips--' + size : ''}">${s}</span>`;
 }
 
 function sortFocusFirst(list, focusId) {
@@ -264,64 +261,72 @@ export function finalDispositionPresentation(mission) {
   };
 }
 
+/** One static row of the dossier's terms: label · value (· a fine note). */
+function termRow(k, v, sub) {
+  return (
+    `<li class="k-row k-row--static">` +
+      `<span class="k-62">${k}</span>` +
+      `<span class="k-row__num sx-term__v">${v}${sub ? `<span class="k-row__sub sx-term__sub">${sub}</span>` : ''}</span>` +
+    `</li>`
+  );
+}
+
+/** The Accept word (or its final-disposition variant); disabled with its reason while blocked. */
+function commitWordHtml({ id, ready, readyLabel, blockedLabel, aria, focus, reason }) {
+  return (
+    `<ul class="k-words k-words--row sx-dossier__foot">` +
+      `<li><button type="button" class="k-word k-word--emph k-word--primary sx-ct-commit${focus ? ' is-attention' : ''}"` +
+        ` data-accept="${escapeHtml(String(id))}"${ready ? '' : ' disabled'} aria-label="${escapeHtml(aria)}">` +
+        `<span>${ready ? readyLabel : blockedLabel}</span>` +
+      `</button>` +
+      (ready ? '' : `<span class="k-word-sub">${escapeHtml(reason)}</span>`) +
+      `</li>` +
+    `</ul>`
+  );
+}
+
 function finalDispositionDossierHtml(mission, filing, options = {}) {
-  const tint = options.tint || '#4aa8ff';
   const origin = options.origin || 'Ash Cache';
   const blocked = cleanText(options.blockedReason);
   const ready = !blocked;
-  const focus = options.focusAccept && ready ? ' is-attention' : '';
+  const focus = !!(options.focusAccept && ready);
   const title = cleanText(mission && mission.title) || `FINAL DISPOSITION — CHOICE ${filing.choiceId}`;
   const summary = missionDossierSummary(mission) || filing.confirmHint;
   const readiness = ready ? 'Eligibility verified · separate confirmation required' : blocked;
   return (
-    `<div class="sx-dossier${focus}">` +
-      `<header class="sx-dossier__head">` +
-        `<span class="sx-dossier__crest" style="--tint:${tint}">${icon('contracts', 26)}</span>` +
-        `<div class="sx-dossier__id">` +
-          `<span class="sx-dossier__client">${escapeHtml(filing.issuerName)} · final disposition</span>` +
-          `<h2>${escapeHtml(title)}</h2>` +
-        `</div>` +
-      `</header>` +
-      `<p class="sx-dossier__summary">${escapeHtml(summary)}</p>` +
-      `<div class="sx-dossier__topline">` +
-        `<div class="sx-dossier__reward"><span>Filing</span><b>CHOICE ${escapeHtml(filing.choiceId)}</b></div>` +
-        `<div class="sx-dossier__risk"><span>Decision</span><div class="sx-dossier__riskrow"><em style="color:var(--warn)">IRREVERSIBLE AFTER CONFIRMATION</em></div></div>` +
-      `</div>` +
-      `<div class="sx-dossier__route" aria-label="Final disposition filing path">` +
-        `<div class="sx-route">` +
-          `<span class="sx-route__node"><i></i>${escapeHtml(origin)}</span>` +
-          `<span class="sx-route__line"><span class="sx-route__jumps">AT BERTH</span></span>` +
-          `<span class="sx-route__stage"><i></i><b>REVIEW</b><em>no filing yet</em></span>` +
-          `<span class="sx-route__line sx-route__line--short"></span>` +
-          `<span class="sx-route__node sx-route__node--dest"><i></i>CONFIRM</span>` +
-        `</div>` +
-      `</div>` +
-      `<div class="sx-dossier__grid">` +
-        `<div class="sx-brief"><span class="sx-brief__ic">${icon('info', 16)}</span><span class="sx-brief__k">Issuer</span><span class="sx-brief__v">${escapeHtml(filing.issuerName)}</span></div>` +
-        `<div class="sx-brief"><span class="sx-brief__ic">${icon('clock', 16)}</span><span class="sx-brief__k">Confirmation</span><span class="sx-brief__v">Separate prompt</span><span class="sx-brief__sub">nothing files on selection</span></div>` +
-        `<div class="sx-brief"><span class="sx-brief__ic">${icon('spark', 16)}</span><span class="sx-brief__k">Continuity</span><span class="sx-brief__v">${escapeHtml(filing.continuityTitle)}</span><span class="sx-brief__sub">${escapeHtml(filing.continuityObjective)}</span></div>` +
-      `</div>` +
-      `<div class="sx-contract-sim" aria-label="Previewed final disposition consequences">` +
-        `<span class="sx-contract-sim__label">POSITION</span>` +
-        `<div><span>FILED POSITION</span><b>${escapeHtml(filing.resolution)}</b><em>The same world remains playable.</em></div>` +
-        `<div><span>NEXT WORK</span><b>${escapeHtml(filing.continuityTitle)}</b><em>${escapeHtml(filing.continuityObjective)}</em></div>` +
-        `<div class="${ready ? 'is-ready' : 'is-blocked'}"><span>READINESS</span><b>${ready ? 'READY TO REVIEW' : 'BLOCKED'}</b><em>${escapeHtml(readiness)}</em></div>` +
-      `</div>` +
-      `<div class="sx-dossier__foot">` +
-        `<button type="button" class="sx-btn-primary sx-ct-commit${focus}" data-accept="${escapeHtml(String(mid(mission)))}"${ready ? '' : ' disabled'} aria-label="Review final disposition Choice ${escapeHtml(filing.choiceId)}; opens a separate irreversible confirmation">` +
-          `<span>${ready ? 'Review Final Disposition' : 'Resolve Readiness'}</span>` +
-          // The readiness module above already carries this sentence — the verb
-          // must not repeat it at its right end. Kept only when blocked, where
-          // it is the disabled button's reason.
-          (ready ? '' : `<em>${escapeHtml(readiness)}</em>`) +
-        `</button>` +
-      `</div>` +
+    `<div class="sx-dossier sx-dossier--filing${focus ? ' is-attention' : ''}">` +
+      `<p class="k-caps">Final disposition</p>` +
+      `<h2 class="k-display k-t-title sx-dossier__title">${escapeHtml(title)}</h2>` +
+      `<p class="k-sentence k-sentence--emph">${escapeHtml(filing.issuerName)} · filing</p>` +
+      `<div class="k-hero k-hero--hero k-hero--signal"><span class="k-hero__n">Choice ${escapeHtml(filing.choiceId)}</span><span class="k-hero__w">irreversible after confirmation</span></div>` +
+      `<p class="k-sentence sx-dossier__summary">${escapeHtml(summary)}</p>` +
+      `<p class="k-sentence" aria-label="Final disposition filing path">${escapeHtml(origin)} → review → confirm. Nothing files on selection; the confirmation is a separate prompt.</p>` +
+      `<p class="k-sentence">${escapeHtml(filing.resolution)} The same world remains playable.</p>` +
+      `<ul class="k-rows sx-dossier__terms">` +
+        termRow('Issuer', escapeHtml(filing.issuerName)) +
+        termRow('Confirmation', 'Separate prompt', 'nothing files on selection') +
+        termRow('Continuity', escapeHtml(filing.continuityTitle), escapeHtml(filing.continuityObjective)) +
+        termRow('Readiness', ready ? 'Ready to review' : 'Blocked', escapeHtml(readiness)) +
+      `</ul>` +
+      (ready ? '' : `<p class="k-sentence k-bad sx-dossier__gate">${escapeHtml(blocked)}</p>`) +
+      commitWordHtml({
+        id: mid(mission), ready, focus,
+        readyLabel: 'Review Final Disposition', blockedLabel: 'Resolve Readiness',
+        aria: `Review final disposition Choice ${filing.choiceId}; opens a separate irreversible confirmation`,
+        reason: readiness,
+      }) +
     `</div>`
   );
 }
 
-function briefCell(ic, k, v, sub) {
-  return `<div class="sx-brief"><span class="sx-brief__ic">${icon(ic, 16)}</span><span class="sx-brief__k">${k}</span><span class="sx-brief__v">${v}</span>${sub ? `<span class="sx-brief__sub">${sub}</span>` : ''}</div>`;
+/** The risk in one sentence: the tier, then what success and failure do to the account. */
+function riskSentence(m, consequences, facShort) {
+  const r = Math.min(risk(m), 5);
+  const gain = `+${cr(reward(m))}${consequences.repReward > 0 ? ` and +${consequences.repReward} ${facShort} standing` : ''}`;
+  const loss = consequences.collateral
+    ? `costs ${cr(consequences.collateral)} collateral${consequences.repPenalty < 0 ? ` and ${consequences.repPenalty} ${facShort} standing` : ''}`
+    : (consequences.repPenalty < 0 ? `costs ${consequences.repPenalty} ${facShort} standing` : 'costs nothing');
+  return `${RISK_LABEL[r]} risk. Success pays ${gain}; failure ${loss}.`;
 }
 
 /**
@@ -332,10 +337,8 @@ function briefCell(ic, k, v, sub) {
  * confirmation, deliberately ahead of mission accept preflight.
  */
 export function missionDossierHtml(m, state, options = {}) {
-  const tint = options.tint || facTint(m);
   const origin = options.origin || 'This station';
   const focusAccept = !!options.focusAccept;
-  const r = risk(m);
   const cargo = cargoRequirement(m);
   const cargoName = cargo ? ((CMDTY.get(cargo.commodityId) || {}).name || cargo.commodityId) : null;
   const jumps = m.jumps != null ? m.jumps : (m.routeJumps != null ? m.routeJumps : 0);
@@ -359,61 +362,34 @@ export function missionDossierHtml(m, state, options = {}) {
 
   return (
     `<div class="sx-dossier${focusAccept ? ' is-attention' : ''}">` +
-      `<header class="sx-dossier__head">` +
-        `<span class="sx-dossier__crest" style="--tint:${tint}">${icon(TYPE_ICON[m.type] || 'contracts', 26)}</span>` +
-        `<div class="sx-dossier__id">` +
-          `<span class="sx-dossier__client">${clientEntityHtml(m)} · ${escapeHtml(typeLabel(m.type))}</span>` +
-          `<h2>${entitySpanHtml('contract:' + String(mid(m)), escapeHtml(title))}</h2>` +
-        `</div>` +
-      `</header>` +
-      (authoredSummary
-        ? `<p class="sx-dossier__summary">${escapeHtml(authoredSummary)}</p>`
+      `<p class="k-caps">${escapeHtml(typeLabel(m.type))}</p>` +
+      `<h2 class="k-display k-t-title sx-dossier__title">${entitySpanHtml('contract:' + String(mid(m)), escapeHtml(title))}</h2>` +
+      `<p class="k-sentence k-sentence--emph sx-dossier__client">${clientEntityHtml(m)} · ${escapeHtml(typeLabel(m.type))}</p>` +
+      `<div class="k-hero k-hero--hero k-hero--signal sx-dossier__reward"><span class="k-hero__n">${reward(m).toLocaleString('en-US')}</span><span class="k-hero__w">cr on delivery</span></div>` +
+      (authoredSummary ? `<p class="k-sentence sx-dossier__summary">${escapeHtml(authoredSummary)}</p>` : '') +
+      `<p class="k-sentence sx-dossier__route" aria-label="Mission operation route">${originEntityHtml(state, origin)} → ${destEntityHtml(m)} · ${escapeHtml(routeText)}</p>` +
+      `<p class="k-sentence sx-dossier__risk">${riskSentence(m, consequences, facShort)}</p>` +
+      `<ul class="k-rows sx-dossier__terms">` +
+        (cargoName ? termRow('Payload', cargoEntityHtml(cargo, cargoName), cargo.qty ? `${num(cargo.qty)} u` : '') : '') +
+        termRow('Time', escapeHtml(m.timeLabel || (m.timeLimitMin ? m.timeLimitMin + ' min' : 'Flexible'))) +
+        (consequences.collateral ? termRow('Collateral', cr(consequences.collateral), 'on failure') : '') +
+        (upfrontCr ? termRow('Upfront', cr(upfrontCr), 'to accept') : '') +
+        (missionOffersFollowUp(m) ? termRow('Follow-up', 'Posted on success', 'same contract family') : '') +
+        termRow('Readiness', escapeHtml(readiness.label), escapeHtml(readiness.detail)) +
+      `</ul>` +
+      // One gate line. A blocker names what stops the accept; a warning names what to check and
+      // leaves the accept available.
+      (readiness.blocker
+        ? `<p class="k-sentence k-bad sx-dossier__gate">${escapeHtml(readiness.blocker)}</p>`
+        : (readiness.warning ? `<p class="k-sentence sx-dossier__gate">${escapeHtml(readiness.warning)}</p>` : '')) +
+      (clauses.length
+        ? `<ul class="k-words k-words--row sx-dossier__clauses" aria-label="Contract clauses">${clauses.map((c) => `<li class="k-t-fine k-62"><span class="sx-tag"${clauseWhyAttr(c)}>${escapeHtml(c.label || c.id || 'clause')}</span></li>`).join('')}</ul>`
         : '') +
-
-      `<div class="sx-dossier__topline">` +
-        `<div class="sx-dossier__reward"><span>Reward</span><b>${reward(m).toLocaleString('en-US')}<i>cr</i></b></div>` +
-        `<div class="sx-dossier__risk"><span>Risk assessment</span><div class="sx-dossier__riskrow">${riskPips(r, 'lg')}<em style="color:${riskColor(r)}">${RISK_LABEL[Math.min(r, 5)]}</em></div></div>` +
-      `</div>` +
-
-      `<div class="sx-dossier__route" aria-label="Mission operation route">` +
-        `<div class="sx-route">` +
-          `<span class="sx-route__node"><i></i>${originEntityHtml(state, origin)}</span>` +
-          `<span class="sx-route__line"><span class="sx-route__jumps">${escapeHtml(routeText)}</span></span>` +
-          `<span class="sx-route__stage"><i></i><b>PREP</b><em>${cargoName ? `${num(cargo.qty)}u payload` : 'fit + fuel'}</em></span>` +
-          `<span class="sx-route__line sx-route__line--short"></span>` +
-          `<span class="sx-route__node sx-route__node--dest"><i></i>${destEntityHtml(m)}</span>` +
-        `</div>` +
-      `</div>` +
-
-      `<div class="sx-dossier__grid">` +
-        (cargoName ? briefCell('cargo', 'Payload', cargoEntityHtml(cargo, cargoName), (cargo.qty ? cargo.qty + ' u' : '')) : '') +
-        briefCell('clock', 'Time', m.timeLabel || (m.timeLimitMin ? m.timeLimitMin + ' min' : 'Flexible'), '') +
-        (consequences.collateral ? briefCell('info', 'Collateral', consequences.collateral.toLocaleString('en-US') + ' cr', 'on failure') : '') +
-        (upfrontCr ? briefCell('credits', 'Upfront', upfrontCr.toLocaleString('en-US') + ' cr', 'to accept') : '') +
-        (missionOffersFollowUp(m) ? briefCell('spark', 'Follow-up', 'Posted on success', 'same contract family') : '') +
-        // One gate line, in the slot the standing gate already occupied. A blocker names what stops
-        // the accept; a warning names what to check and leaves the accept available.
-        (readiness.blocker || readiness.warning
-          ? `<p class="sx-dossier__gate">${icon(readiness.standingShort ? 'factions' : 'info', 14)}<span>${escapeHtml(readiness.blocker || readiness.warning)}</span></p>`
-          : '') +
-        (clauses.length ? `<div class="sx-dossier__clauses">${clauses.map((c) => `<span class="sx-tag"${clauseWhyAttr(c)}>${escapeHtml(c.label || c.id || 'clause')}</span>`).join('')}</div>` : '') +
-      `</div>` +
-
-      `<div class="sx-contract-sim" aria-label="Previewed mission consequences">` +
-        `<span class="sx-contract-sim__label">OUTCOME</span>` +
-        `<div><span>SUCCESS</span><b>+${reward(m).toLocaleString('en-US')} cr</b><em>${consequences.repReward > 0 ? `+${consequences.repReward} ${facShort} rep` : 'no standing change'}</em></div>` +
-        `<div><span>FAILURE</span><b>${consequences.collateral ? `−${consequences.collateral.toLocaleString('en-US')} cr collateral` : 'No collateral loss'}</b><em>${consequences.repPenalty < 0 ? `${consequences.repPenalty} ${facShort} rep` : 'no standing change'}</em></div>` +
-        `<div class="${ready ? (readiness.warning ? 'is-check' : 'is-ready') : 'is-blocked'}"><span>READINESS</span><b>${readiness.label}</b><em>${escapeHtml(readiness.detail)}</em></div>` +
-      `</div>` +
-      `<div class="sx-dossier__foot">` +
-        `<button type="button" class="sx-btn-primary sx-ct-commit${focusAccept && ready ? ' is-attention' : ''}" data-accept="${escapeHtml(String(mid(m)))}"${ready ? '' : ' disabled'} aria-label="${escapeHtml(acceptAria)}">` +
-          `<span>${ready ? (focusAccept ? 'Accept Mission + Bind Route' : 'Accept + Bind Route') : 'Resolve Readiness'}</span>` +
-          // The OUTCOME readiness module directly above already carries this
-          // sentence ("Ship and account ready"); the verb drops the duplicate
-          // and keeps an <em> only as the reason while blocked.
-          (ready ? '' : `<em>${escapeHtml(readiness.detail)}</em>`) +
-        `</button>` +
-      `</div>` +
+      commitWordHtml({
+        id: mid(m), ready, focus: focusAccept && ready,
+        readyLabel: 'Accept', blockedLabel: 'Resolve Readiness',
+        aria: acceptAria, reason: readiness.detail,
+      }) +
     `</div>`
   );
 }
@@ -422,88 +398,19 @@ function cleanText(value) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
-const STYLE_ID = 'sf-contracts-style';
-
-function injectStyle() {
-  if (typeof document === 'undefined' || typeof document.createElement !== 'function') return;
-  if (typeof document.getElementById === 'function' && document.getElementById(STYLE_ID)) return;
-  if (!document.head || typeof document.head.appendChild !== 'function') return;
-  const s = document.createElement('style');
-  s.id = STYLE_ID;
-  s.textContent = CSS;
-  document.head.appendChild(s);
-}
-
-// Stated at three-class specificity so these rules win regardless of stylesheet
-// load order (the station sheets restyle these same selectors at two classes).
-const CSS = `
-/* The mission ticker used fixed 268px cards: the sixth card ended flush against
-   the frame edge, reading as a hard cut. Flexible cards share the lane instead —
-   every card fits the board, longer copy ellipsizes cleanly inside its card. */
-.sx-app .sx-ct .sx-ct-row {
-  flex: 1 1 236px; width: auto; min-width: 200px; max-width: 340px;
-}
-.sx-app .sx-ct .sx-ct-row .sx-ct-row__title {
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-  white-space: normal; overflow-wrap: anywhere;
-}
-/* OPEN DEFECT (2026-08-30 polish pipeline): the Active Missions attention card still
-   renders clipped inside this band — the card is cut by the .sx-ct grid row budget, not
-   by this strip's own overflow, so band-level sizing cannot reach it. Needs the missions
-   grid row revisited (give the band a content-sized row or move the attention card into
-   the dossier). Documented in review/VISUAL_BUG_SWEEP_2026-08-30.md as open. */
-/* The dossier grid gave the route row minmax(150px,1fr) — on a tall host it
-   stretched into a near-black void between the header and the outcome row — and
-   never gave the authored summary a cell, so it auto-placed BELOW the accept
-   button. Every block now has an explicit placement: the summary reads under the
-   title, the route keeps only its own height, and the brief/simulator sit side
-   by side so the whole brief fits its area (the accept verb stays above the
-   fold). It reads top-down from the offer rail: the earlier "centre vertically when the host is
-   taller" put a 150px void between the rail and the mission title on every 1080p frame, with an
-   equal void under the commit verb, and the screen read as unfinished. */
-.sx-app .sx-ct .sx-ct__dossier { justify-content: flex-start; overflow-y: auto; }
-.sx-app .sx-ct .sx-dossier {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  grid-template-rows: auto auto auto auto auto;
-  gap: 8px 10px;
-  height: auto; min-height: 0; flex-shrink: 0;
-  padding: 14px 18px 10px;
-}
-.sx-app .sx-ct .sx-dossier__head { grid-column: 1; grid-row: 1; }
-.sx-app .sx-ct .sx-dossier__topline { grid-column: 2; grid-row: 1; }
-.sx-app .sx-ct .sx-dossier__summary { grid-column: 1 / -1; grid-row: 2; }
-.sx-app .sx-ct .sx-dossier__route { grid-column: 1 / -1; grid-row: 3; min-height: 0; padding: 8px 16px; }
-.sx-app .sx-ct .sx-dossier__grid { grid-column: 1; grid-row: 4; }
-.sx-app .sx-ct .sx-contract-sim { grid-column: 2; grid-row: 4; min-height: 0; max-height: none; }
-.sx-app .sx-ct .sx-dossier__foot { grid-column: 1 / -1; grid-row: 5; }
-/* ONE interaction accent, flat. The commit verb wore an amber left-to-right
-   gradient (plus a glow) — gradient fills and glows are out of bounds, and amber
-   is reserved for pressable chrome elsewhere on the fascia. */
-.sx-app .sx-ct .sx-ct-commit {
-  background: var(--accent, #4f8fdd); color: #fff; box-shadow: none;
-}
-/* Readiness has three honest states, not two: a CHECK offer is acceptable — the sim takes it —
-   so it must not borrow the blocked row's loss colour. */
-.sx-app .sx-ct .sx-contract-sim > div.is-check b { color: var(--warn); }
-.sx-app .sx-ct .sx-ct-commit:disabled {
-  background: var(--sxb-panel-hi, #232a2f); color: var(--sxb-ink-3, #78838a);
-  border: 1px solid var(--sxb-line-2, rgba(255,255,255,.14));
-  box-shadow: none; cursor: not-allowed;
-}
-@media (prefers-reduced-motion: reduce) {
-  .sx-ct, .sx-ct * { animation: none !important; transition: none !important; }
-}
-`;
-
 export function createContractsScreen(ctx) {
-  injectStyle();
   const el = document.createElement('div');
-  el.className = 'sx-ct';
+  el.className = 'k-panel sx-ct';
   el.innerHTML =
-    `<nav class="sx-ct__board" aria-label="Available missions"></nav>` +
-    `<section class="sx-ct__dossier" aria-live="polite"></section>` +
-    `<aside class="sx-ct__active" aria-label="Active missions"></aside>`;
+    `<div class="k-hang sx-ct__hang">` +
+      `<p class="k-caps">Posted here</p>` +
+      `<p class="k-t-fine k-38 sx-ct-dispatch__label"></p>` +
+      `<nav class="sx-ct__board" aria-label="Available missions"></nav>` +
+      `<p class="k-caps sx-ct__yours">Yours</p>` +
+      `<aside class="sx-ct__active" aria-label="Active missions"></aside>` +
+    `</div>` +
+    `<section class="k-stage sx-ct__dossier" aria-live="polite"></section>`;
+  const dispatchEl = el.querySelector('.sx-ct-dispatch__label');
   const boardEl = el.querySelector('.sx-ct__board');
   const dossierEl = el.querySelector('.sx-ct__dossier');
   const activeEl = el.querySelector('.sx-ct__active');
@@ -536,6 +443,8 @@ export function createContractsScreen(ctx) {
     if (list.length && (!selectedId || !list.some((offer) => String(mid(offer)) === selectedId))) {
       selectedId = String(mid(list[0]));
     }
+    const dispatch = missionBoardDispatchLabel(state, stationId, list.length);
+    if (dispatchEl.textContent !== dispatch) dispatchEl.textContent = dispatch;
     if (!list.length) {
       mountDataState(boardEl, 'empty', {
         code: 'BOARD_EMPTY',
@@ -550,42 +459,37 @@ export function createContractsScreen(ctx) {
     }
     const recommended = boardRecommendedOfferId(list, state);
     boardEl.innerHTML =
-      `<span class="sx-ct-dispatch__label">${escapeHtml(missionBoardDispatchLabel(state, stationId, list.length))}</span>` +
-      list.map((m, index) => {
-      const id = String(mid(m));
-      const active = id === selectedId ? ' is-active' : '';
-      const needs = attention && String(attention.focusMissionId) === id && attention.surface === 'board'
-        ? ' is-attention' : '';
-      const r = risk(m);
-      const filing = finalDispositionPresentation(m);
-      const firstHour = firstHourBoardOfferPresentation(state, m);
-      // Authored first-hour provenance keeps the badge slot when it owns this offer; otherwise the
-      // shared board policy may name one best-next pick. Never both, never a reorder.
-      const badge = firstHour ? firstHour.label
-        : (recommended.label && recommended.missionId === id ? recommended.label : '');
-      const badgePrefix = badge ? `${badge} · ` : '';
-      const rowAria = filing
-        ? `${m.title || `Choice ${filing.choiceId}`}, final disposition from ${filing.issuerName}, separate irreversible confirmation required`
-        : `${badgePrefix}${m.title || typeLabel(m.type)}, ${reward(m).toLocaleString('en-US')} credits, ${RISK_LABEL[Math.min(r, 5)]} risk${missionOffersFollowUp(m) ? ', follow-up available on success' : ''}`;
-      return (
-        `<button type="button" class="sx-ct-row${active}${needs}" data-mid="${escapeHtml(id)}" role="tab" aria-selected="${id === selectedId}"` +
-          ` style="--signal:${facTint(m)}"` +
-          ` aria-label="${escapeHtml(rowAria)}${needs ? ', needs attention' : ''}">` +
-          `<span class="sx-ct-row__seq" aria-hidden="true">${String(index + 1).padStart(2, '0')}</span>` +
-          `<span class="sx-ct-row__ic" style="--tint:${facTint(m)}">${icon(filing ? 'contracts' : (TYPE_ICON[m.type] || 'contracts'), 18)}</span>` +
-          `<span class="sx-ct-row__mid">` +
-            `<span class="sx-ct-row__title">${escapeHtml(m.title || typeLabel(m.type))}</span>` +
-            `<span class="sx-ct-row__meta">${filing
-              ? `${escapeHtml(filing.issuerName)} · FINAL DISPOSITION · ${escapeHtml(filing.destinationName)}`
-              : `${badge ? `<b>${escapeHtml(badge)}</b> · ` : ''}${escapeHtml(facName(m))} · ${escapeHtml(destName(m))}${missionOffersFollowUp(m) ? ' · FOLLOW-UP' : ''}`}</span>` +
-          `</span>` +
-          `<span class="sx-ct-row__route" aria-hidden="true"><i></i><b></b><i></i></span>` +
-          `<span class="sx-ct-row__risk">${filing ? 'FINAL' : riskPips(r, 'xs')}</span>` +
-          `<span class="sx-ct-row__rew">${filing ? `REVIEW<i> choice ${escapeHtml(filing.choiceId)}</i>` : `${reward(m).toLocaleString('en-US')}<i> cr</i>`}</span>` +
-          (needs ? `<span class="sx-ct-row__flag">ACT</span>` : '') +
-        `</button>`
-      );
-    }).join('');
+      `<ul class="k-rows sx-ct__rows">` +
+      list.map((m) => {
+        const id = String(mid(m));
+        const selected = id === selectedId;
+        const rowClasses = ` k-row${selected ? ' is-active' : ''}`;
+        const needs = attention && String(attention.focusMissionId) === id && attention.surface === 'board'
+          ? ' is-attention' : '';
+        const r = risk(m);
+        const filing = finalDispositionPresentation(m);
+        const firstHour = firstHourBoardOfferPresentation(state, m);
+        // Authored first-hour provenance keeps the badge slot when it owns this offer; otherwise the
+        // shared board policy may name one best-next pick. Never both, never a reorder.
+        const badge = firstHour ? firstHour.label
+          : (recommended.label && recommended.missionId === id ? recommended.label : '');
+        const badgePrefix = badge ? `${badge} · ` : '';
+        const rowAria = filing
+          ? `${m.title || `Choice ${filing.choiceId}`}, final disposition from ${filing.issuerName}, separate irreversible confirmation required`
+          : `${badgePrefix}${m.title || typeLabel(m.type)}, ${reward(m).toLocaleString('en-US')} credits, ${RISK_LABEL[Math.min(r, 5)]} risk${missionOffersFollowUp(m) ? ', follow-up available on success' : ''}`;
+        return (
+          `<li><button type="button" class="sx-ct-row${rowClasses}${needs}" data-mid="${escapeHtml(id)}" role="tab" aria-selected="${selected}" tabindex="${selected ? 0 : -1}"` +
+            ` aria-label="${escapeHtml(rowAria)}${needs ? ', needs attention' : ''}">` +
+            `<span class="sx-ct-row__crest" aria-hidden="true">${crestHtml(m.factionId)}</span>` +
+            `<span class="k-row__name sx-ct-row__title">` +
+              (badge ? `<span class="k-t-fine k-signal sx-ct-row__badge">${escapeHtml(badge)}</span> ` : '') +
+              `${escapeHtml(m.title || typeLabel(m.type))}` +
+            `</span>` +
+            `<span class="k-row__num sx-ct-row__rew">${filing ? 'Review' : reward(m).toLocaleString('en-US')}</span>` +
+          `</button></li>`
+        );
+      }).join('') +
+      `</ul>`;
   }
 
   function renderDossier(state) {
@@ -608,7 +512,6 @@ export function createContractsScreen(ctx) {
     const filing = finalDispositionPresentation(m);
     if (filing) {
       dossierEl.innerHTML = finalDispositionDossierHtml(m, filing, {
-        tint: facTint(m),
         origin: (ctx.station && ctx.station.name) || 'Ash Cache',
         focusAccept,
         blockedReason: m.requirementUnmet || m.lockedReason || null,
@@ -616,7 +519,6 @@ export function createContractsScreen(ctx) {
       return;
     }
     dossierEl.innerHTML = missionDossierHtml(m, state, {
-      tint: facTint(m),
       origin: (ctx.station && ctx.station.name) || 'This station',
       focusAccept,
     });
@@ -626,36 +528,27 @@ export function createContractsScreen(ctx) {
     const jobs = sortFocusFirst(activeJobs(state), focusId());
     const trackedId = state && state.ui && state.ui.trackedMissionId;
     const sid = state && state.ui && state.ui.dockedStationId;
-    activeEl.innerHTML =
-      `<div class="sx-panel__head">${icon('spark', 15)}<span>Active Missions</span><em class="sx-ct__count">${jobs.length}</em></div>` +
-      (jobs.length
-        ? jobs.map((m) => {
-            const id = String(mid(m));
-            const tracked = trackedId != null && String(trackedId) === id;
-            const needs = attention && String(attention.focusMissionId) === id
-              && (attention.surface === 'active' || attention.kind === 'turn_in' || attention.kind === 'pickup');
-            const atDest = sid && m.destStationId === sid;
-            const status = needs && attention.kind === 'turn_in'
-              ? 'Ready at this berth'
-              : (needs && attention.kind === 'pickup'
-                ? 'Starts here'
-                : (atDest ? 'Destination berth' : destName(m)));
-            const actionFlag = attention && attention.kind === 'turn_in' ? 'TURN IN'
-              : attention && attention.kind === 'pickup' ? 'PICK UP'
-                : 'ACTIVE';
-            return (
-              `<div class="sx-job${tracked ? ' is-tracked' : ''}${needs ? ' is-attention' : ''}" data-active-mid="${escapeHtml(id)}">` +
-                `<span class="sx-job__ic">${icon(TYPE_ICON[m.type] || 'contracts', 16)}</span>` +
-                `<span class="sx-job__body"><span class="sx-job__title">${escapeHtml(m.title || typeLabel(m.type))}</span>` +
-                  `<span class="sx-job__meta">${reward(m).toLocaleString('en-US')} cr · ${escapeHtml(status)}</span></span>` +
-                (needs ? `<span class="sx-job__flag">${actionFlag}</span>` : '') +
-                `<button type="button" class="sx-job__track" data-track="${escapeHtml(id)}" aria-pressed="${tracked}">` +
-                  `<span aria-hidden="true">${tracked ? '◆' : '◇'}</span><b>${tracked ? 'Tracked' : 'Track'}</b>` +
-                `</button>` +
-              `</div>`
-            );
-          }).join('')
-        : `<p class="sx-muted" style="padding:10px 4px">No active missions. Accept a job from the board to begin.</p>`);
+    activeEl.innerHTML = jobs.length
+      ? `<ul class="k-rows sx-ct__jobs">` + jobs.map((m) => {
+          const id = String(mid(m));
+          const tracked = trackedId != null && String(trackedId) === id;
+          const needs = attention && String(attention.focusMissionId) === id
+            && (attention.surface === 'active' || attention.kind === 'turn_in' || attention.kind === 'pickup');
+          const atDest = sid && m.destStationId === sid;
+          const status = needs && attention.kind === 'turn_in'
+            ? 'Ready at this berth'
+            : (needs && attention.kind === 'pickup'
+              ? 'Starts here'
+              : (atDest ? 'Destination berth' : destName(m)));
+          return (
+            `<li class="k-row k-row--static sx-job${tracked ? ' is-tracked' : ''}${needs ? ' is-attention' : ''}" data-active-mid="${escapeHtml(id)}">` +
+              `<span class="k-row__name sx-job__title">${escapeHtml(m.title || typeLabel(m.type))}</span>` +
+              `<span class="k-row__sub sx-job__meta${needs ? ' k-signal' : ''}">${escapeHtml(status)}</span>` +
+              `<button type="button" class="k-word k-word--fine sx-job__track" data-track="${escapeHtml(id)}" aria-pressed="${tracked}">${tracked ? 'Tracked' : 'Track'}</button>` +
+            `</li>`
+          );
+        }).join('') + `</ul>`
+      : `<p class="k-sentence sx-ct__none">No active missions. Accept a job from the board to begin.</p>`;
   }
 
   function renderAll(state) {
@@ -679,13 +572,37 @@ export function createContractsScreen(ctx) {
     else if (attention && attention.focusMissionId != null) selectedId = String(attention.focusMissionId);
   }
 
+  function select(id, focus) {
+    if (id == null) return;
+    selectedId = String(id);
+    const state = ctx.state || {};
+    renderBoard(state); renderDossier(state);
+    if (focus) {
+      const row = boardEl.querySelector(`[data-mid="${selectedId}"]`);
+      if (row && typeof row.focus === 'function') row.focus();
+    }
+    if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tab' });
+  }
+
   boardEl.addEventListener('click', (ev) => {
     const btn = ev.target.closest('[data-mid]');
     if (!btn) return;
-    selectedId = btn.getAttribute('data-mid');
-    const state = ctx.state || {};
-    renderBoard(state); renderDossier(state);
-    if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tab' });
+    select(btn.getAttribute('data-mid'), false);
+  });
+
+  // Arrow keys walk the posted jobs (a tablist: roving tabindex, selection follows focus).
+  boardEl.addEventListener('keydown', (ev) => {
+    const rows = [...boardEl.querySelectorAll('[data-mid]')];
+    const cur = rows.indexOf(ev.target.closest('[data-mid]'));
+    if (cur < 0 || !rows.length) return;
+    let next = -1;
+    if (ev.key === 'ArrowDown' || ev.key === 'ArrowRight') next = (cur + 1) % rows.length;
+    else if (ev.key === 'ArrowUp' || ev.key === 'ArrowLeft') next = (cur - 1 + rows.length) % rows.length;
+    else if (ev.key === 'Home') next = 0;
+    else if (ev.key === 'End') next = rows.length - 1;
+    else return;
+    ev.preventDefault();
+    select(rows[next].getAttribute('data-mid'), true);
   });
 
   el.addEventListener('click', (ev) => {
