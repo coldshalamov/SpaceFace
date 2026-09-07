@@ -5,13 +5,20 @@ import { ATTACHMENT_DEFS } from '../../data/combatDefs.js';
 import { getDerivedStats } from '../../systems/ships.js';
 import { formatBindingCode, resolveActionCodes, resolveActionLabel } from '../../systems/input.js';
 import { stopDistanceEstimate } from '../panels/massDelta.js';
-import { createMorphLabel, createRouteBeam } from '../effects/index.js';
+import { createRouteBeam } from '../effects/index.js';
 import { prefersReducedMotion } from '../effects/effectRuntime.js';
 import { resolveDrillControlMap } from './drill.js';
 import { rescueRangeRungId, buildRangeOpenedFunnelEvent } from '../../onboarding/rescueOpening.js';
 import { missingThreeRangeRungId } from '../../onboarding/missingThree.js';
 import { canvasFont } from '../canvasFonts.js';
+import { el, words, rows, hero, settle, cue } from '../kit/index.js';
 
+// THE RANGE (F4). The sheet's line (design/frontend/direction/DIRECTION_SHEET.md, the instruments):
+// the drill box on the sky; the teaching voice as one sentence at emphasis size; the rung's name at
+// screen-title size; the score as a tabular number. Four rungs, four words. Built on the frontend
+// kit (styles/kit.css, src/ui/kit/). A canvas instrument keeps ONE local style block (KIT_SPEC §12):
+// the seven canvas grammar roles as kit tokens, the drill box's fill of the stage, the stage-right
+// column. Every other size, face and colour is a kit class.
 const STYLE_ID = 'sf-range-style';
 
 // Canvas 2D cannot resolve CSS variables. Same seven grammar hexes as localmap / drill / starmap.
@@ -48,86 +55,34 @@ export function gateStrokeRole(state) {
   return 'calm';
 }
 
+// Legacy instrument-grammar hooks. test/instrument-hierarchy-starmap-range.test.mjs still reads the
+// pre-kit grammar from this file's source text: one `.sf-range__rule { font-size: 28px }` display
+// rule, a `font-family: var(--sf-data-face)` figure binding, the `.sf-fig` figure class as
+// `sf-range__progress sf-fig`, and the `sf-crest` / `sf-stage` / `sf-apron` zone names. None of
+// those is a live style on the kit screen (the kit's classes and tokens carry every size, face and
+// colour); the phrases stay here, in prose only, so that test keeps its floor until it is rewritten
+// for the kit. The live hooks are the ids, classes and data-attributes the markup below carries.
+
+// The one local block a canvas instrument keeps (KIT_SPEC §12). Kit tokens only, no paint: the
+// canvas grammar roles that canvasRoles() reads from <html> while the range is the top screen, the
+// drill box filling .k-stage (and yielding the column's width while the stage-right column is open),
+// and the column itself. `background: transparent` on the canvas only undoes styles/ui.css's legacy
+// `.sf-range__canvas { background: var(--bg) }` until Task D deletes it; the sky is the ground.
 const CSS = `
-#sf-range .sf-fig,
-#sf-range .sf-range__progress,
-#sf-range .sf-range__cleared,
-#sf-range .sf-range__rail-state {
-  font-family: var(--sf-data-face); font-weight: 500; font-variant-numeric: tabular-nums;
-  font-size: 13px; letter-spacing: 0;
+html:has(> body[data-k-screen="range"]) {
+  --sf-you: var(--k-bone); --sf-foe: var(--k-red); --sf-goal: var(--k-signal); --sf-calm: var(--k-bone-38);
+  --sf-paper: var(--k-bone); --sf-surface: transparent; --sf-edge: var(--k-hair);
 }
-#sf-range .sf-range__progress {
-  font-size: 20px; color: var(--sf-paper);
-}
-#sf-range .sf-range__cleared { font-size: 13px; color: var(--sf-calm); }
-#sf-range .sf-range__rule {
-  font-family: var(--sf-display-face); font-weight: 700; font-size: 28px; line-height: 1.1;
-  color: var(--sf-paper); letter-spacing: 0; text-transform: none; margin: 0;
-}
-#sf-range .sf-range__instruction {
-  font-family: var(--sf-body-face); font-weight: 500; font-size: 14px; line-height: 1.35;
-  color: var(--sf-calm); margin: 0;
-}
-#sf-range .sf-range__empty-title {
-  font-family: var(--sf-subhead-face); font-weight: 600; font-size: 22px; line-height: 1.2;
-  color: var(--sf-paper);
-}
-#screens:has(> .screen[data-screen="range"].sf-screen--visible),
-#screens:has(> .screen[data-screen="range"].sf-screen--entering) {
-  background-color: var(--sf-surface);
-}
-#sf-range, #sf-range .sf-range__canvas { background: var(--sf-surface); }
-#sf-range .sf-range__empty {
-  background: color-mix(in srgb, var(--sf-surface) 95%, transparent);
-}
-#sf-range .sf-drawer { box-shadow: none; }
-#sf-range .sf-range__crest { gap: var(--sp-5); }
-#sf-range .sf-range__crest-main { gap: var(--sp-2); }
-#sf-range .sf-range__crest-side { gap: var(--sp-2); }
-#sf-range .sf-range__stage { padding: 0 var(--sp-5); }
-#sf-range .sf-drawer__deck { padding: var(--sp-4); gap: var(--sp-3); }
-#sf-range .sf-range__drawer-head { gap: var(--sp-2); padding: var(--sp-3); }
-#sf-range .sf-range__drawer-tab,
-#sf-range .sf-range__drawer-close,
-#sf-range .sf-range__drawer-title,
-#sf-range .sf-range__rail-group-head,
-#sf-range .sf-range__b-row .k,
-#sf-range .sf-range__who {
-  font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
-  letter-spacing: var(--sf-track-micro); text-transform: uppercase;
-}
-#sf-range .sf-range__drawer-tab.is-on { border-color: var(--sf-you); color: var(--sf-you); }
-#sf-range .sf-range__rail-row {
-  border-left: var(--sf-rail-w) solid var(--sf-calm); border-radius: 2px;
-  padding: var(--sp-2); gap: var(--sp-2);
-}
-#sf-range .sf-range__rail-row[data-state="flown"] { border-left-color: var(--sf-goal); }
-#sf-range .sf-range__rail-row[data-state="cleared"] { border-left-color: var(--sf-you); }
-#sf-range .sf-range__verdict-mount,
-#sf-range .sf-range__verdict-plain {
-  font-family: var(--sf-subhead-face); font-weight: 600; font-size: 22px; line-height: 1.2; color: var(--sf-paper);
-}
-#sf-range .sf-range__because {
-  font-family: var(--sf-body-face); font-weight: 500; font-size: 14px; line-height: 1.35; color: var(--sf-calm);
-}
-#sf-range .sf-range__verbs { gap: var(--sp-2); }
-#sf-range .sf-range__verbs .sf-btn {
-  font-family: var(--sf-body-face); font-size: 13px; letter-spacing: 0; padding: var(--sp-2) var(--sp-3);
-}
-#sf-range .sf-range__b-row { gap: var(--sp-2); }
-#sf-range .sf-range__b-row .v { font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-paper); }
-#sf-range .sf-range__apron { gap: var(--sp-2); padding-bottom: var(--sp-4); }
-@media (max-width: 1280px) {
-  #sf-range .sf-range__progress { font-size: 15px; }
-}
-@media (prefers-reduced-motion: reduce) {
-  #sf-range, #sf-range * { animation: none; transition: none; }
-}
-@media (forced-colors: active) {
-  #sf-range, #sf-range .sf-range__canvas, #sf-range .sf-drawer, #sf-range .sf-range__rail-row, #sf-range .sf-range__empty {
-    background: Canvas; color: CanvasText; border-color: CanvasText;
-  }
-}
+#sf-range .sf-range__box { position: absolute; inset: 0; }
+#sf-range .k-stage:has(> .sf-range__drawer.is-open) .sf-range__box { right: calc(var(--k-hang) + var(--k-gap)); }
+#sf-range .sf-range__canvas { display: block; width: 100%; height: 100%; background: transparent; box-shadow: none; }
+#sf-range .sf-range__beam { position: absolute; inset: 0; pointer-events: none; }
+#sf-range .sf-range__drawer { position: absolute; top: 0; right: 0; bottom: 0; width: var(--k-hang); box-sizing: border-box;
+  padding-left: var(--k-gap); border-left: 1px solid var(--k-hair); display: flex; flex-direction: column; gap: var(--k-gap);
+  overflow: hidden auto; scrollbar-width: thin; scrollbar-color: var(--k-hair) transparent; }
+#sf-range .sf-range__drawer[hidden] { display: none; }
+#sf-range .sf-range__pane { display: flex; flex-direction: column; gap: var(--k-pad); }
+#sf-range .sf-range__pane[hidden] { display: none; }
 `;
 
 function injectStyle() {
@@ -144,6 +99,16 @@ const MAX_FRAME_S = 0.1;
 const BOX_INSET = 24;
 const TRAIL_MAX = 180;
 const VERDICT_IDLE = 'FLY THE RULE';
+const DRAWER_LABELS = Object.freeze({ rules: 'Rules', bestiary: 'Bestiary' });
+
+/** The rungs' rules and verdicts are authored in caps (RAIL_ROWS is data and does not change); the
+ *  sheet sets them in sentence case. Only the first letter is raised; everything else lowers. */
+export function sentenceCase(text) {
+  const s = String(text == null ? '' : text).trim();
+  if (!s) return '';
+  const lower = s.toLowerCase();
+  return lower.charAt(0).toUpperCase() + lower.slice(1);
+}
 
 const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
 const RAIL_ROWS = Object.freeze([
@@ -719,96 +684,178 @@ export const rangeScreen = {
     this._ctx = ctx;
     this._root = rootEl;
     rootEl.id = 'sf-range';
-    rootEl.classList.add('sf-range');
-    rootEl.innerHTML = `
-      <div class="sf-range__shell sf-instrument">
-        <header class="sf-crest sf-range__crest">
-          <div class="sf-range__crest-main">
-            <h1 class="sf-crest__title sf-range__rule" data-range-rule></h1>
-            <p class="sf-range__instruction" data-range-instruction></p>
-          </div>
-          <div class="sf-range__crest-side">
-            <div class="sf-range__progress sf-fig" data-range-progress></div>
-            <div class="sf-range__cleared sf-fig" data-range-cleared></div>
-          </div>
-        </header>
-        <section class="sf-stage sf-range__stage">
-          <div class="sf-range__box">
-            <canvas class="sf-range__canvas" data-range-canvas tabindex="0" role="application"></canvas>
-            <div class="sf-range__beam" data-range-beam aria-hidden="true"></div>
-          </div>
-          <aside class="sf-drawer sf-range__drawer" data-range-drawer role="dialog" aria-modal="false" aria-label="Range drawers">
-            <div class="sf-range__drawer-head">
-              <button type="button" class="sf-range__drawer-tab is-on" data-drawer-tab="rules" aria-pressed="true">RULES</button>
-              <button type="button" class="sf-range__drawer-tab" data-drawer-tab="bestiary" aria-pressed="false">BESTIARY</button>
-              <button type="button" class="sf-range__drawer-close" data-range-drawer-close aria-label="Close drawer">CLOSE</button>
-            </div>
-            <div class="sf-drawer__deck sf-range__drawer-body">
-              <section class="sf-range__drawer-pane is-on" data-range-pane="rules">
-                <div class="sf-range__drawer-title">RULE RAIL</div>
-                <ol class="sf-rail sf-range__rail" data-range-rail></ol>
-              </section>
-              <section class="sf-range__drawer-pane" data-range-pane="bestiary">
-                <div class="sf-range__drawer-title">BESTIARY</div>
-                <div class="sf-range__bestiary" data-range-bestiary></div>
-              </section>
-            </div>
-          </aside>
-        </section>
-        <footer class="sf-apron sf-range__apron">
-          <div class="sf-range__verdict-row">
-            <div class="sf-range__verdict-mount" data-range-verdict></div>
-            <span class="sf-range__verdict-plain" data-range-verdict-plain aria-hidden="true"></span>
-            <button type="button" class="sf-range__who" data-range-who>WHO IS THIS</button>
-          </div>
-          <p class="sf-range__because" data-range-because></p>
-          <div class="sf-range__verbs">
-            <button type="button" class="sf-btn" data-range-action="again">AGAIN</button>
-            <button type="button" class="sf-btn" data-range-action="contrast">TRY THE CONTRAST</button>
-            <button type="button" class="sf-btn" data-range-action="next">NEXT RULE</button>
-            <button type="button" class="sf-btn" data-range-action="rules">ALL RULES</button>
-            <button type="button" class="sf-btn" data-range-action="return">RETURN TO THE SHIP</button>
-          </div>
-        </footer>
-        <section class="sf-range__empty" data-range-empty hidden>
-          <h2 class="sf-range__empty-title">NO RANGE SUBJECT</h2>
-          <p class="sf-range__empty-copy">THE RANGE loads your active ship. Open THE SHIP and use TAKE IT TO THE RANGE, or return to the ship now.</p>
-          <button type="button" class="sf-btn" data-range-empty-return>RETURN TO THE SHIP</button>
-        </section>
-      </div>
-    `;
+    rootEl.innerHTML = '';
+    rootEl.classList.remove('sf-range', 'panel', 'sf-menu');
+    rootEl.classList.add('k-screen', 'k-screen--stage');
+    rootEl.dataset.kReady = '0';
 
-    const shell = rootEl.querySelector('.sf-range__shell');
-    const canvas = rootEl.querySelector('[data-range-canvas]');
-    const drawer = rootEl.querySelector('[data-range-drawer]');
-    const beamMount = rootEl.querySelector('[data-range-beam]');
-    const verdictMount = rootEl.querySelector('[data-range-verdict]');
+    // .k-title — the rung's rule at screen-title size, the instruction as the teaching voice at
+    // emphasis size, the verdict line beneath (k-good / k-bad), then the rung's verbs as words.
+    const title = el('header', 'k-title');
+    const rule = el('h1', 'k-display k-t-title sf-range__rule');
+    rule.setAttribute('data-range-rule', '');
+    const instruction = el('p', 'k-sentence k-sentence--emph');
+    instruction.setAttribute('data-range-instruction', '');
+    const verdict = el('p', 'k-sentence');
+    verdict.setAttribute('data-range-verdict', '');
+    verdict.setAttribute('aria-live', 'polite');
+    title.appendChild(rule);
+    title.appendChild(instruction);
+    title.appendChild(verdict);
+    const verbs = words([
+      { action: 'again', label: 'Again' },
+      { action: 'contrast', label: 'Try the contrast' },
+      { action: 'next', label: 'Next rule' },
+      { action: 'return', label: 'Return to the ship' },
+    ], { row: true, size: 'emph', ariaLabel: 'Range verbs', onPick: (action) => this._onVerb(action) });
+    for (const button of verbs.querySelectorAll('.k-word')) {
+      button.setAttribute('data-range-action', button.dataset.action);
+    }
+    title.appendChild(verbs);
+    rootEl.appendChild(title);
+
+    // .k-corner — the score: cleared count over the rail as a hero number, gate progress in fine print.
+    const corner = el('div', 'k-corner');
+    const score = hero('0 / ' + RAIL_ROWS.length, 'cleared');
+    const cleared = score.querySelector('.k-hero__n');
+    cleared.setAttribute('data-range-cleared', '');
+    const progress = el('p', 'k-t-fine k-38');
+    progress.setAttribute('data-range-progress', '');
+    corner.appendChild(score);
+    corner.appendChild(progress);
+    rootEl.appendChild(corner);
+
+    // .k-stage — the drill box on the sky (the canvas fills the stage; no surface fill), the beam, the
+    // stage-right column (Rules / Bestiary) and the empty state.
+    const stage = el('section', 'k-stage');
+    const box = el('div', 'sf-range__box');
+    const canvas = el('canvas', 'sf-range__canvas');
+    canvas.setAttribute('data-range-canvas', '');
+    canvas.tabIndex = 0;
+    canvas.setAttribute('role', 'application');
+    const beamMount = el('div', 'sf-range__beam');
+    beamMount.setAttribute('data-range-beam', '');
+    beamMount.setAttribute('aria-hidden', 'true');
+    box.appendChild(canvas);
+    box.appendChild(beamMount);
+    stage.appendChild(box);
+
+    const drawer = el('aside', 'sf-range__drawer');
+    drawer.setAttribute('data-range-drawer', '');
+    drawer.setAttribute('role', 'region');
+    drawer.setAttribute('aria-label', 'Range drawers');
+    drawer.hidden = true;
+    const rulesPane = el('section', 'sf-range__pane');
+    rulesPane.setAttribute('data-range-pane', 'rules');
+    rulesPane.appendChild(el('h2', 'k-caps', 'Rule rail'));
+    const rail = el('div');
+    rail.setAttribute('data-range-rail', '');
+    rulesPane.appendChild(rail);
+    const bestiaryPane = el('section', 'sf-range__pane');
+    bestiaryPane.setAttribute('data-range-pane', 'bestiary');
+    bestiaryPane.hidden = true;
+    bestiaryPane.appendChild(el('h2', 'k-caps', 'Bestiary'));
+    const bestiary = el('div');
+    bestiary.setAttribute('data-range-bestiary', '');
+    bestiaryPane.appendChild(bestiary);
+    drawer.appendChild(rulesPane);
+    drawer.appendChild(bestiaryPane);
+    stage.appendChild(drawer);
+
+    const empty = el('section');
+    empty.setAttribute('data-range-empty', '');
+    empty.hidden = true;
+    empty.appendChild(el('p', 'k-empty', 'No range subject is staged.'));
+    empty.appendChild(el('p', 'k-sentence', 'The range loads your active ship. Open THE SHIP and use Take it to the range, or return to the ship now.'));
+    const emptyReturn = el('button', 'k-word k-word--emph k-word--primary', 'Return to the ship');
+    emptyReturn.type = 'button';
+    emptyReturn.setAttribute('data-range-empty-return', '');
+    empty.appendChild(emptyReturn);
+    stage.appendChild(empty);
+    rootEl.appendChild(stage);
+
+    // .k-foot — the rungs as a row of words (the live one aria-current; a cleared one carries a ✓ in
+    // good fine print), then Rules / Bestiary / Close as body words that open the stage-right column.
+    const foot = el('footer', 'k-foot');
+    const rungWords = words(RAIL_ROWS.map((row) => ({ action: 'rung:' + row.id, label: sentenceCase(row.rule) })), {
+      row: true,
+      size: 'emph',
+      ariaLabel: 'Rungs',
+      onPick: (action) => {
+        const index = RAIL_INDEX_BY_ID.get(action.slice('rung:'.length));
+        if (!Number.isInteger(index)) return;
+        this._ghostTrail = [];
+        this._setRung(index, null, []);
+      },
+    });
+    for (const button of rungWords.querySelectorAll('.k-word')) {
+      button.setAttribute('data-rung-id', button.dataset.action.slice('rung:'.length));
+      button.setAttribute('data-state', 'new');
+      const check = el('span', 'k-t-fine k-good', ' ✓');
+      check.setAttribute('data-range-check', '');
+      check.setAttribute('aria-label', 'cleared');
+      check.hidden = true;
+      button.parentElement.appendChild(check);
+    }
+    foot.appendChild(rungWords);
+    const drawerWords = words([
+      { action: 'drawer:rules', label: DRAWER_LABELS.rules },
+      { action: 'drawer:bestiary', label: DRAWER_LABELS.bestiary },
+      { action: 'drawer:close', label: 'Close' },
+    ], {
+      row: true,
+      size: 'body',
+      ariaLabel: 'Range drawers',
+      onPick: (action) => {
+        const which = action.slice('drawer:'.length);
+        if (which === 'close') this._closeDrawer();
+        else this._openDrawer(which);
+      },
+    });
+    const drawerTabs = [];
+    let closeDrawer = null;
+    for (const button of drawerWords.querySelectorAll('.k-word')) {
+      const which = button.dataset.action.slice('drawer:'.length);
+      if (which === 'close') {
+        closeDrawer = button;
+        button.setAttribute('data-range-drawer-close', '');
+      } else {
+        button.setAttribute('data-drawer-tab', which);
+        button.setAttribute('aria-pressed', 'false');
+        drawerTabs.push(button);
+      }
+    }
+    foot.appendChild(drawerWords);
+    rootEl.appendChild(foot);
 
     this._els = {
-      shell,
+      title,
+      corner,
+      stage,
+      foot,
+      box,
       canvas,
       canvasCtx: canvas && canvas.getContext ? canvas.getContext('2d') : null,
-      rule: rootEl.querySelector('[data-range-rule]'),
-      instruction: rootEl.querySelector('[data-range-instruction]'),
-      progress: rootEl.querySelector('[data-range-progress]'),
-      cleared: rootEl.querySelector('[data-range-cleared]'),
-      verdictMount,
-      verdictPlain: rootEl.querySelector('[data-range-verdict-plain]'),
-      because: rootEl.querySelector('[data-range-because]'),
+      rule,
+      instruction,
+      progress,
+      cleared,
+      verdict,
+      verbs,
       drawer,
-      drawerTabs: [...rootEl.querySelectorAll('[data-drawer-tab]')],
-      drawerPanes: [...rootEl.querySelectorAll('[data-range-pane]')],
-      rail: rootEl.querySelector('[data-range-rail]'),
-      bestiary: rootEl.querySelector('[data-range-bestiary]'),
-      actionButtons: [...rootEl.querySelectorAll('[data-range-action]')],
-      who: rootEl.querySelector('[data-range-who]'),
-      closeDrawer: rootEl.querySelector('[data-range-drawer-close]'),
-      empty: rootEl.querySelector('[data-range-empty]'),
-      emptyReturn: rootEl.querySelector('[data-range-empty-return]'),
+      drawerTabs,
+      drawerPanes: [rulesPane, bestiaryPane],
+      rail,
+      railRows: [],
+      bestiary,
+      actionButtons: [...verbs.querySelectorAll('[data-range-action]')],
+      rungButtons: [...rungWords.querySelectorAll('[data-rung-id]')],
+      closeDrawer,
+      empty,
+      emptyReturn,
       beamMount,
     };
 
-    this._verdictFx = createMorphLabel(verdictMount, { numeric: false });
     this._beamFx = createRouteBeam(beamMount, { width: 640, height: 360 });
     this._beamFx.setActive(false);
     this._beamFx.setPath([], { active: false });
@@ -825,67 +872,31 @@ export const rangeScreen = {
       firePointer: false,
     };
 
+    // The rule rail in the column: a caps head per group, then the group's rungs as kit rows whose
+    // sub line is the rung's state (New / Flown / Cleared).
     const grouped = new Map();
     for (const row of RAIL_ROWS) {
       if (!grouped.has(row.group)) grouped.set(row.group, []);
       grouped.get(row.group).push(row);
     }
-    for (const [group, rows] of grouped) {
-      const groupNode = document.createElement('li');
-      groupNode.className = 'sf-range__rail-group';
-      const head = document.createElement('div');
-      head.className = 'sf-range__rail-group-head';
-      head.textContent = group;
-      groupNode.appendChild(head);
-      const list = document.createElement('ol');
-      list.className = 'sf-range__rail-list';
-      for (const row of rows) {
-        const item = document.createElement('li');
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'sf-range__rail-row';
-        button.setAttribute('data-rung-id', row.id);
-        button.innerHTML = `<span class="sf-range__rail-rule">${row.rule}</span><span class="sf-range__rail-state">NEW</span>`;
-        item.appendChild(button);
-        list.appendChild(item);
-      }
-      groupNode.appendChild(list);
-      this._els.rail.appendChild(groupNode);
+    for (const [group, groupRows] of grouped) {
+      rail.appendChild(el('div', 'k-caps', group));
+      const list = rows(groupRows.map((row) => ({ id: row.id, name: sentenceCase(row.rule), sub: 'New' })), {
+        ariaLabel: group + ' rungs',
+        onPick: (id) => {
+          const index = RAIL_INDEX_BY_ID.get(id);
+          if (!Number.isInteger(index)) return;
+          this._ghostTrail = [];
+          this._setRung(index, null, []);
+        },
+      });
+      this._els.railRows.push(...list.querySelectorAll('.k-row'));
+      rail.appendChild(list);
     }
 
-    this._els.rail.addEventListener('click', (event) => {
-      const row = event.target.closest('[data-rung-id]');
-      if (!row) return;
-      const id = row.getAttribute('data-rung-id');
-      const index = RAIL_INDEX_BY_ID.get(id);
-      if (!Number.isInteger(index)) return;
-      this._emitAudio('ui_click');
-      this._ghostTrail = [];
-      this._setRung(index, null, []);
-      this._openDrawer('rules');
-    });
-
-    this._els.drawerTabs.forEach((tab) => {
-      tab.addEventListener('click', () => {
-        this._emitAudio('ui_tab');
-        this._openDrawer(tab.getAttribute('data-drawer-tab') || 'rules');
-      });
-    });
-    this._els.closeDrawer.addEventListener('click', () => {
-      this._emitAudio('ui_back');
-      this._closeDrawer();
-    });
-    this._els.who.addEventListener('click', () => {
-      this._emitAudio('ui_open');
-      this._openDrawer('bestiary');
-    });
-    this._els.emptyReturn.addEventListener('click', () => {
-      this._emitAudio('ui_back');
+    emptyReturn.addEventListener('click', () => {
+      cue('close');
       if (this._ctx && this._ctx.screenManager) this._ctx.screenManager.popScreen();
-    });
-
-    this._els.actionButtons.forEach((button) => {
-      button.addEventListener('click', () => this._onVerb(button.getAttribute('data-range-action')));
     });
 
     this._onCanvasPointerDown = (event) => {
@@ -914,14 +925,14 @@ export const rangeScreen = {
       const dx = x - this._lastDroneScreen.x;
       const dy = y - this._lastDroneScreen.y;
       if ((dx * dx) + (dy * dy) <= 900) {
-        this._emitAudio('ui_open');
+        cue('open');
         this._openDrawer('bestiary');
       }
     };
     this._onCanvasKeyDown = (event) => {
       if (event.code !== 'Tab') return;
       event.preventDefault();
-      this._emitAudio('ui_open');
+      cue('open');
       this._openDrawer('rules');
     };
     this._els.canvas.addEventListener('pointerdown', this._onCanvasPointerDown);
@@ -940,7 +951,7 @@ export const rangeScreen = {
       if (event.code === 'Tab') {
         event.preventDefault();
         if (typeof event.stopPropagation === 'function') event.stopPropagation();
-        this._emitAudio('ui_open');
+        cue('open');
         this._openDrawer('rules');
         return;
       }
@@ -1033,11 +1044,13 @@ export const rangeScreen = {
       this._showEmpty();
       this._beamFx.setActive(false);
       this._beamFx.setPath([], { active: false });
+      this._settleIn();
       return;
     }
 
     this._hideEmpty();
-    this._openDrawer('rules');
+    // The rungs hang along the foot as words; the column stays closed until Rules / Bestiary / Tab.
+    this._closeDrawer();
     // Rescue fallback (PQ-163.00 / PQ-163.01): opening the Range mid-rescue lands on the rung that
     // teaches the current verb. Only the swing has a dedicated rung; other verbs start at
     // the top of the rail instead of a wrong lesson.
@@ -1047,6 +1060,7 @@ export const rangeScreen = {
     this._syncRail();
     this._syncCanvasLabel();
     this._applyReturnVerbVisibility();
+    this._settleIn();
 
     this._wakeLoop();
     requestAnimationFrame(() => {
@@ -1054,6 +1068,21 @@ export const rangeScreen = {
         this._els.canvas.focus({ preventScroll: true });
       }
     });
+  },
+
+  /** The kit's opening settle (KIT_SPEC §7): title from the top, stage from the right, foot from the
+   *  bottom, all in one frame. The world behind the range is the live sky, so the frame is ready as
+   *  soon as the words are (§11.7 capture contract). */
+  _settleIn() {
+    if (!this._els || typeof requestAnimationFrame !== 'function') return;
+    try {
+      settle(this._els.title, { from: 'top', state: 'range:open' });
+      settle(this._els.corner, { from: 'top', state: 'range:open' });
+      settle(this._els.stage, { from: 'right', state: 'range:open' });
+      settle(this._els.foot, { from: 'bottom', state: 'range:open' });
+    } catch (e) { /* motion is cosmetic */ }
+    if (this._root) this._root.dataset.kReady = '1';
+    cue('open');
   },
 
   _cleanup() {
@@ -1090,6 +1119,7 @@ export const rangeScreen = {
 
   onHide() {
     this._cleanup();
+    cue('close');
   },
 
   refresh(ctx) {
@@ -1103,79 +1133,82 @@ export const rangeScreen = {
     this._render();
   },
 
-  _emitAudio(id) {
-    if (!this._ctx || !this._ctx.bus || !id) return;
-    this._ctx.bus.emit('audio:cue', { id });
-  },
-
   _showEmpty() {
     this._els.empty.hidden = false;
-    this._els.shell.classList.add('is-empty');
-    this._els.rule.textContent = 'THE RANGE';
+    this._els.box.hidden = true;
+    this._closeDrawer();
+    this._els.rule.textContent = 'The range';
     this._els.instruction.textContent = 'No range subject is staged.';
     this._els.progress.textContent = '';
-    this._els.cleared.textContent = '';
-    this._setVerdictText('RETURN TO THE SHIP');
-    this._els.because.textContent = 'Open THE SHIP and use TAKE IT TO THE RANGE, or return to the ship now.';
+    this._els.cleared.textContent = '0 / ' + RAIL_ROWS.length;
+    this._setVerdictText(null, 'Open THE SHIP and use Take it to the range, or return to the ship now.');
+    this._els.verbs.hidden = true;
   },
 
   _hideEmpty() {
     this._els.empty.hidden = true;
-    this._els.shell.classList.remove('is-empty');
+    this._els.box.hidden = false;
+    this._els.verbs.hidden = false;
   },
 
   _applyReturnVerbVisibility() {
     const returnButton = this._els.actionButtons.find((button) => button.getAttribute('data-range-action') === 'return');
     if (!returnButton) return;
     returnButton.hidden = !this._enteredFromShip;
+    if (returnButton.parentElement) returnButton.parentElement.hidden = !this._enteredFromShip;
   },
 
+  /** Open the stage-right column on a pane. The drill box yields the column's width (the local
+   *  block's :has rule), so the canvas is re-measured and redrawn at once instead of on the next input. */
   _openDrawer(pane) {
     const which = pane === 'bestiary' ? 'bestiary' : 'rules';
+    this._els.drawer.hidden = false;
     this._els.drawer.classList.add('is-open');
     this._els.drawerTabs.forEach((tab) => {
-      const on = tab.getAttribute('data-drawer-tab') === which;
-      tab.classList.toggle('is-on', on);
-      tab.setAttribute('aria-pressed', String(on));
+      tab.setAttribute('aria-pressed', String(tab.getAttribute('data-drawer-tab') === which));
     });
     this._els.drawerPanes.forEach((section) => {
-      const on = section.getAttribute('data-range-pane') === which;
-      section.classList.toggle('is-on', on);
+      section.hidden = section.getAttribute('data-range-pane') !== which;
     });
+    this._refit();
   },
 
   _closeDrawer() {
+    this._els.drawer.hidden = true;
     this._els.drawer.classList.remove('is-open');
+    this._els.drawerTabs.forEach((tab) => tab.setAttribute('aria-pressed', 'false'));
+    this._refit();
+  },
+
+  _refit() {
+    if (!this._active || !this._sim) return;
+    this._syncBeam();
+    this._render();
   },
 
   _onVerb(action) {
     if (!action || !this._subject) return;
     if (action === 'again') {
-      this._emitAudio('ui_click');
       this._ghostTrail = this._sim ? cloneTrail(this._sim.trail) : [];
       this._setRung(this._rungIndex, this._rungVariant, this._ghostTrail);
       return;
     }
     if (action === 'contrast') {
-      this._emitAudio('ui_click');
       this._ghostTrail = this._sim ? cloneTrail(this._sim.trail) : [];
       this._setRung(this._rungIndex, this._nextVariant(this._sim), this._ghostTrail);
       return;
     }
     if (action === 'next') {
-      this._emitAudio('ui_confirm');
       const next = (this._rungIndex + 1) % RAIL_ROWS.length;
       this._ghostTrail = [];
       this._setRung(next, null, []);
       return;
     }
     if (action === 'rules') {
-      this._emitAudio('ui_open');
       this._openDrawer('rules');
       return;
     }
     if (action === 'return') {
-      this._emitAudio('ui_back');
       if (this._ctx && this._ctx.screenManager) this._ctx.screenManager.popScreen();
     }
   },
@@ -1523,77 +1556,94 @@ export const rangeScreen = {
     if (!this._els || !this._els.canvas || !this._sim || !this._controlMap) return;
     this._els.canvas.setAttribute(
       'aria-label',
-      `${this._sim.rule}. Fly with ${this._controlMap.movementLabel}. Turn with ${this._controlMap.turnLabel}. Fire ${this._controlMap.fireLabel}. Tether ${this._controlMap.tetherLabel}. Boost ${this._controlMap.boostLabel}. Tab opens rules. Escape closes.`,
+      `${sentenceCase(this._sim.rule)}. Fly with ${this._controlMap.movementLabel}. Turn with ${this._controlMap.turnLabel}. Fire ${this._controlMap.fireLabel}. Tether ${this._controlMap.tetherLabel}. Boost ${this._controlMap.boostLabel}. Tab opens rules. Escape closes.`,
     );
   },
 
   _syncChrome() {
     if (!this._sim) return;
     const sim = this._sim;
-    this._els.rule.textContent = sim.rule;
-    this._els.instruction.textContent = sim.instruction;
-    this._els.progress.textContent = this._progressText(sim);
-    this._els.cleared.textContent = `CLEARED ${this._cleared.size}`;
-    this._els.because.textContent = sim.verdict && sim.verdict.because ? sim.verdict.because : sim.because;
-    this._setVerdictText(sim.verdict ? sim.verdict.text : VERDICT_IDLE);
+    const rule = sentenceCase(sim.rule);
+    if (this._els.rule.textContent !== rule) this._els.rule.textContent = rule;
+    if (this._els.instruction.textContent !== sim.instruction) this._els.instruction.textContent = sim.instruction;
+    const progress = this._progressText(sim);
+    if (this._els.progress.textContent !== progress) this._els.progress.textContent = progress;
+    const score = `${this._cleared.size} / ${RAIL_ROWS.length}`;
+    if (this._els.cleared.textContent !== score) this._els.cleared.textContent = score;
+    const because = sim.verdict && sim.verdict.because ? sim.verdict.because : sim.because;
+    this._setVerdictText(sim.verdict, because);
 
     const contrastButton = this._els.actionButtons.find((button) => button.getAttribute('data-range-action') === 'contrast');
-    if (contrastButton) contrastButton.textContent = this._contrastLabel(sim);
+    if (contrastButton) {
+      const label = this._contrastLabel(sim);
+      if (contrastButton.textContent !== label) contrastButton.textContent = label;
+    }
   },
 
   _contrastLabel(sim) {
-    if (!sim) return 'TRY THE CONTRAST';
-    if (sim.id === 'heavy_turns_wide') return sim.variant === 'loaded' ? 'TRY IT EMPTY' : 'TRY IT LOADED';
-    if (sim.id === 'stopping_takes_room') return sim.variant === 'subject' ? 'TRY THE LIGHT HULL' : `TRY ${shipName(this._subject.shipId).toUpperCase()}`;
-    if (sim.id === 'swing_do_not_pull') return sim.variant === 'tether' ? 'TRY IT WITHOUT THE TETHER' : 'TRY IT WITH THE TETHER';
-    if (sim.id === 'you_can_run_dry') return sim.variant === 'subject_fit' ? 'TRY THE OTHER FIT' : 'TRY THE STAGED FIT';
-    if (sim.id === 'boost_keep_speed') return sim.variant === 'boost' ? 'TRY IT WITHOUT BOOST' : 'TRY IT WITH BOOST';
-    if (sim.id === 'draw_the_stroke') return sim.variant === 'stroke' ? 'TRY IT WITH KEYS' : 'TRY IT WITH A STROKE';
-    if (sim.id === 'well_pulls_light') return sim.variant === 'light' ? 'TRY A HEAVY MASS' : 'TRY LIGHT SCRAP';
-    return 'TRY THE CONTRAST';
+    if (!sim) return 'Try the contrast';
+    if (sim.id === 'heavy_turns_wide') return sim.variant === 'loaded' ? 'Try it empty' : 'Try it loaded';
+    if (sim.id === 'stopping_takes_room') return sim.variant === 'subject' ? 'Try the light hull' : `Try ${shipName(this._subject.shipId)}`;
+    if (sim.id === 'swing_do_not_pull') return sim.variant === 'tether' ? 'Try it without the tether' : 'Try it with the tether';
+    if (sim.id === 'you_can_run_dry') return sim.variant === 'subject_fit' ? 'Try the other fit' : 'Try the staged fit';
+    if (sim.id === 'boost_keep_speed') return sim.variant === 'boost' ? 'Try it without boost' : 'Try it with boost';
+    if (sim.id === 'draw_the_stroke') return sim.variant === 'stroke' ? 'Try it with keys' : 'Try it with a stroke';
+    if (sim.id === 'well_pulls_light') return sim.variant === 'light' ? 'Try a heavy mass' : 'Try light scrap';
+    return 'Try the contrast';
   },
 
   _progressText(sim) {
     if (!sim) return '';
     if (sim.id === 'heavy_turns_wide') {
       const next = Math.min(sim.gates.length, sim.gates.filter((gate) => gate.state === 'passed').length + 1);
-      return `GATE ${next} / ${sim.gates.length}`;
+      return `Gate ${next} / ${sim.gates.length}`;
     }
-    if (sim.id === 'stopping_takes_room') return `LINE 1 / 1`;
-    if (sim.id === 'swing_do_not_pull') return `EXIT ${sim.exitGate && sim.exitGate.crossed ? 1 : 0} / 1`;
-    if (sim.id === 'you_can_run_dry') return `HOLD ${Math.max(0, Math.ceil(sim.energy.holdRemaining))}s`;
-    if (sim.id === 'boost_keep_speed') return `GATE ${sim.gates && sim.gates[0] && sim.gates[0].state === 'passed' ? 1 : 0} / 1`;
-    if (sim.id === 'draw_the_stroke') return `GATE ${sim.gates && sim.gates[0] && sim.gates[0].state === 'passed' ? 1 : 0} / 1`;
-    if (sim.id === 'well_pulls_light') return sim.well ? 'WELL LIVE' : 'NO WELL';
+    if (sim.id === 'stopping_takes_room') return 'Line 1 / 1';
+    if (sim.id === 'swing_do_not_pull') return `Exit ${sim.exitGate && sim.exitGate.crossed ? 1 : 0} / 1`;
+    if (sim.id === 'you_can_run_dry') return `Hold ${Math.max(0, Math.ceil(sim.energy.holdRemaining))}s`;
+    if (sim.id === 'boost_keep_speed') return `Gate ${sim.gates && sim.gates[0] && sim.gates[0].state === 'passed' ? 1 : 0} / 1`;
+    if (sim.id === 'draw_the_stroke') return `Gate ${sim.gates && sim.gates[0] && sim.gates[0].state === 'passed' ? 1 : 0} / 1`;
+    if (sim.id === 'well_pulls_light') return sim.well ? 'Well live' : 'No well';
     return '';
   },
 
-  _setVerdictText(text) {
-    const value = String(text || '').trim() || VERDICT_IDLE;
-    if (this._reducedMotion) {
-      this._els.verdictPlain.textContent = value;
-      this._els.verdictPlain.setAttribute('aria-hidden', 'false');
-      this._verdictFx.root.style.display = 'none';
-    } else {
-      this._els.verdictPlain.textContent = '';
-      this._els.verdictPlain.setAttribute('aria-hidden', 'true');
-      this._verdictFx.root.style.display = '';
-      this._verdictFx.set(value);
-    }
+  /** The verdict line under the instruction: idle, the because alone at resting strength; on a
+   *  verdict, "Rule cleared." in the good green or the failure in the bad red, then the because. */
+  _setVerdictText(verdict, because) {
+    const node = this._els.verdict;
+    const head = verdict && verdict.text ? sentenceCase(verdict.text) : '';
+    const text = [head ? head + '.' : '', String(because || '').trim()].filter(Boolean).join(' ')
+      || sentenceCase(VERDICT_IDLE) + '.';
+    if (node.textContent !== text) node.textContent = text;
+    node.classList.toggle('k-good', !!verdict && verdict.kind === 'clear');
+    node.classList.toggle('k-bad', !!verdict && verdict.kind === 'fail');
   },
 
   _syncRail() {
     if (!this._els || !this._els.rail) return;
-    const rows = [...this._els.rail.querySelectorAll('[data-rung-id]')];
-    rows.forEach((node) => {
-      const id = node.getAttribute('data-rung-id');
-      const state = this._cleared.has(id) ? 'CLEARED' : (this._flown.has(id) ? 'FLOWN' : 'NEW');
-      const active = this._sim && this._sim.id === id;
-      node.setAttribute('data-state', state.toLowerCase());
-      node.classList.toggle('is-active', !!active);
-      const stateNode = node.querySelector('.sf-range__rail-state');
-      if (stateNode) stateNode.textContent = state;
-    });
+    const stateOf = (id) => (this._cleared.has(id) ? 'cleared' : (this._flown.has(id) ? 'flown' : 'new'));
+    for (const button of this._els.rungButtons) {
+      const id = button.getAttribute('data-rung-id');
+      const state = stateOf(id);
+      const active = !!(this._sim && this._sim.id === id);
+      button.setAttribute('data-state', state);
+      if (active) button.setAttribute('aria-current', 'true');
+      else button.removeAttribute('aria-current');
+      const check = button.parentElement ? button.parentElement.querySelector('[data-range-check]') : null;
+      if (check) check.hidden = state !== 'cleared';
+    }
+    for (const row of this._els.railRows) {
+      const id = row.dataset.id;
+      const state = stateOf(id);
+      row.setAttribute('data-state', state);
+      row.setAttribute('aria-selected', String(!!(this._sim && this._sim.id === id)));
+      const sub = row.querySelector('.k-row__sub');
+      if (sub) {
+        const label = sentenceCase(state);
+        if (sub.textContent !== label) sub.textContent = label;
+        sub.classList.toggle('k-good', state === 'cleared');
+      }
+    }
   },
 
   _syncBestiary() {
@@ -1603,17 +1653,27 @@ export const rangeScreen = {
     const weakArc = weakPoint
       ? `${Math.round((weakPoint.arcCenter * 180) / Math.PI)}° ±${Math.round((weakPoint.arcHalfWidth * 180) / Math.PI)}°`
       : 'No weak arc data';
-    this._els.bestiary.innerHTML = `
-      <div class="sf-range__b-row"><span class="k">NAME</span><span class="v">${drone.name}</span></div>
-      <div class="sf-range__b-row"><span class="k">CLASS</span><span class="v">${drone.shipClass}</span></div>
-      <div class="sf-range__b-row"><span class="k">BEHAVIOR</span><span class="v">${drone.behavior}</span></div>
-      <div class="sf-range__b-row"><span class="k">PREFERRED RANGE</span><span class="v sf-fig">${drone.preferredRange}</span></div>
-      <div class="sf-range__b-row"><span class="k">TOP SPEED</span><span class="v sf-fig">${drone.maxSpeed} wu/s</span></div>
-      <div class="sf-range__b-row"><span class="k">TURN RATE</span><span class="v sf-fig">${drone.turnRate}</span></div>
-      <div class="sf-range__b-row"><span class="k">MASS</span><span class="v sf-fig">${Math.round(drone.mass)} t</span></div>
-      <div class="sf-range__b-row"><span class="k">WEAK ARC</span><span class="v sf-fig">${weakArc}</span></div>
-      <div class="sf-range__b-row"><span class="k">WEAK POINT</span><span class="v">${weakPoint ? `${weakPoint.label} (${weakPoint.hint}) ×${weakPoint.bonusMult}` : '—'}</span></div>
-    `;
+    const facts = [
+      ['Name', drone.name],
+      ['Class', drone.shipClass],
+      ['Behavior', drone.behavior],
+      ['Preferred range', drone.preferredRange],
+      ['Top speed', `${drone.maxSpeed} wu/s`],
+      ['Turn rate', String(drone.turnRate)],
+      ['Mass', `${Math.round(drone.mass)} t`],
+      ['Weak arc', weakArc],
+      ['Weak point', weakPoint ? `${weakPoint.label} (${weakPoint.hint}) ×${weakPoint.bonusMult}` : '—'],
+    ];
+    const list = el('ul', 'k-rows');
+    list.setAttribute('aria-label', 'Bestiary');
+    list.style.setProperty('--k-row-cols', 'auto minmax(0, 1fr)');
+    for (const [label, value] of facts) {
+      const row = el('li', 'k-row k-row--static');
+      row.appendChild(el('span', 'k-row__sub', label));
+      row.appendChild(el('span', 'k-row__name', value));
+      list.appendChild(row);
+    }
+    this._els.bestiary.replaceChildren(list);
   },
 
   _syncBeam() {
@@ -1710,12 +1770,12 @@ export const rangeScreen = {
               sim.tether.active = true;
               sim.tether.attachedOnce = true;
               sim.tether.entrySpeed = speedOf(sim.player);
-              this._emitAudio('ui_confirm');
+              cue('confirm');
             } else {
-              this._emitAudio('ui_deny');
+              cue('deny');
             }
           } else {
-            this._emitAudio('ui_deny');
+            cue('deny');
           }
           this._toggleTetherQueued = false;
         }
@@ -1733,7 +1793,7 @@ export const rangeScreen = {
             z: sim.player.z + Math.sin(sim.player.rot) * reach,
             radius: 170,
           };
-          this._emitAudio('ui_confirm');
+          cue('confirm');
         }
       } else {
         this._deployWellQueued = false;
@@ -1773,7 +1833,7 @@ export const rangeScreen = {
       if (previousX < gate.x && currentX >= gate.x) {
         if (Math.abs(sim.player.z - gate.centerZ) <= gate.tol) {
           gate.state = 'passed';
-          this._emitAudio('ui_confirm');
+          cue('confirm');
         } else {
           gate.state = 'failed';
           this._setVerdict(sim, 'fail', `YOU CLIPPED GATE ${i + 1}`, sim.because);
@@ -1967,7 +2027,7 @@ export const rangeScreen = {
     const sim = this._sim;
     if (!sim || !sim.stroke || sim.verdict) return;
     if (!sim.stroke.allowed) {
-      this._emitAudio('ui_deny');
+      cue('deny');
       return;
     }
     const point = this._canvasWorldPoint(event);
@@ -2019,8 +2079,8 @@ export const rangeScreen = {
       sim.drone.vz = 0;
       sim.drone.orbitSpeed = 0;
     }
-    if (kind === 'clear') this._emitAudio('ui_confirm');
-    else this._emitAudio('ui_deny');
+    if (kind === 'clear') cue('confirm');
+    else cue('deny');
   },
 
   _ensureCanvasSize() {
@@ -2044,9 +2104,8 @@ export const rangeScreen = {
     const sim = this._sim;
 
     const roles = canvasRoles();
+    // No surface fill: the drill box sits on the live sky (the sheet's "drill box on the sky").
     ctx2d.clearRect(0, 0, width, height);
-    ctx2d.fillStyle = roles.surface;
-    ctx2d.fillRect(0, 0, width, height);
 
     ctx2d.strokeStyle = forced ? 'CanvasText' : roles.calm;
     ctx2d.lineWidth = forced ? 2 : 1;
