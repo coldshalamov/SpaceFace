@@ -80,3 +80,14 @@ test('the tracked registry resolves all four leaf/runtime manifests', async () =
     assert.equal(registered.runtimeKind, manifest.runtimeKind);
   }
 });
+
+test('probe synchronizes player physics bodies and isolates electron background execution', () => {
+  assert.match(probe, /--disable-background-timer-throttling/);
+  assert.match(probe, /--ignore-gpu-blocklist/);
+  assert.match(probe, /--enable-webgl/);
+  assert.match(probe, /--window-size=/);
+  assert.match(probe, /setViewportSize\(VIEWPORT\)/);
+  assert.match(probe, /_maybeResyncBodyPose/);
+  assert.match(probe, /phys\?._sg02\?\.records/);
+});
+

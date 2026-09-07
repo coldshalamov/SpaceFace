@@ -65,7 +65,7 @@ agent should invent a blocker or stop unrelated work.
 
 | Status | Priority / unit | Player-facing result | Exact next action | Integrate after |
 |---|---|---|---|---|
-| `TODO` | 28 — `PQ-022.refinery-reauthor-h1` | Prove the revised refinery on the real Browser and Electron route. | Run the bounded H1 capture and publish its result. | Existing refinery implementation |
+| `DONE` | 28 — `PQ-022.refinery-reauthor-h1` | Prove the revised refinery on the real Browser and Electron route. | Browser and Electron presentation proven; receipt published. | Existing refinery implementation |
 | `TODO` | 29 — `PQ-022.refinery-reauthor-review` | Decide whether the revised refinery actually fixes the visible defect. | Review the exact H1 candidate and record KEEP or REVISE. | Refinery H1 |
 | `TODO` | 31 — `PQ-022.billboard-buoy-reauthor-h1` | Prove the revised billboard and buoy on the real route. | Run the bounded H1 capture and publish its result. | Existing billboard/buoy implementation |
 | `TODO` | 32 — `PQ-022.billboard-buoy-reauthor-review` | Decide whether the revised billboard and buoy read correctly. | Review the exact H1 candidate and record KEEP or REVISE. | Billboard/buoy H1 |

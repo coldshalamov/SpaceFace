@@ -191,7 +191,7 @@ const brokerGate = await requireBrokerClaimOrDiagnostic({
 });
 
 if (!brokerGate.ok) {
-  console.error(`[${manifest.id}] BROKER_CLAIM_REQUIRED: ${brokerGate.reason}`);
+  console.error(`[${manifest.id}] BROKER_CLAIM_REQUIRED: ${brokerGate.reason} (${brokerGate.detail || 'no detail'})`);
   console.error(`[${manifest.id}] invoke via: node scripts/validation-broker-cli.mjs --manifest ${manifest.id}`);
   console.error(`[${manifest.id}] or pass --diagnostic for non-promoting local inspection`);
   process.exit(2);
@@ -242,7 +242,20 @@ try {
     }
 
     const { _electron: electron } = await loadPlaywright();
-    electronLaunch = createIsolatedElectronLaunch({ root: ROOT, taskId: manifest.id });
+    electronLaunch = createIsolatedElectronLaunch({
+      root: ROOT,
+      taskId: manifest.id,
+      baseEnv: { ...process.env, SPACEFACE_EVIDENCE_ALLOW_BACKGROUND_EXECUTION: '1' },
+    });
+    electronLaunch.options.args.push(
+      '--disable-background-timer-throttling',
+      '--disable-backgrounding-occluded-windows',
+      '--disable-renderer-backgrounding',
+      '--disable-features=CalculateNativeWinOcclusion',
+      '--ignore-gpu-blocklist',
+      '--enable-webgl',
+      `--window-size=${VIEWPORT.width},${VIEWPORT.height}`,
+    );
     electronApp = await electron.launch(electronLaunch.options);
     electronChildProcess = electronApp.process();
     electronProcessMonitor = createElectronProcessMonitor({
@@ -250,6 +263,7 @@ try {
       childProcess: electronChildProcess,
     });
     page = await electronApp.firstWindow({ timeout: 90_000 });
+    await page.setViewportSize(VIEWPORT);
     electronUrlTracker = createElectronCanonicalUrlTracker(page, {
       bootstrapTimeoutMs: 10_000,
       pollIntervalMs: 75,
@@ -572,8 +586,18 @@ async function bootSeededFlight(targetPage, rootUrl, { navigateInitialRoot = tru
     await targetPage.keyboard.press('Space');
     await splash.waitFor({ state: 'hidden', timeout: 10_000 }).catch(() => {});
   }
-  await targetPage.locator('[data-screen="mainMenu"]:visible').waitFor({ timeout: 30_000 });
-  await targetPage.getByRole('button', { name: 'New Game', exact: true }).click({ timeout: 20_000 });
+  const isNewGameVisible = await targetPage.locator('[data-screen="newGame"]:visible').isVisible().catch(() => false);
+  if (!isNewGameVisible) {
+    const newGameButton = targetPage.getByRole('button', { name: 'New Game', exact: true });
+    if (await newGameButton.isVisible().catch(() => false)) {
+      await newGameButton.click({ timeout: 20_000 });
+    } else {
+      await targetPage.locator('[data-screen="mainMenu"]:visible').waitFor({ timeout: 15_000 }).catch(() => {});
+      if (await newGameButton.isVisible().catch(() => false)) {
+        await newGameButton.click({ timeout: 20_000 });
+      }
+    }
+  }
   await targetPage.locator('[data-screen="newGame"]:visible').waitFor({ timeout: 20_000 });
   await targetPage.fill('#sf-ng-seed', String(FIXED_SEED));
   await targetPage.getByRole('button', { name: 'Launch', exact: true }).click({ timeout: 20_000 });
@@ -751,7 +775,7 @@ async function createTrafficOwnerFixtures(targetPage) {
 async function locateSubject(targetPage, query) {
   const handle = await targetPage.waitForFunction((wanted) => {
     const state = window.SF?.state;
-    const render = window.SF?.registry?.get?.('render');
+    const render = window.SF?.state?.render || window.SF?.render || window.SF?.registry?.get?.('render');
     render?.reconcileMeshes?.();
     const entity = (state?.entityList || []).find((candidate) => {
       if (!candidate || candidate.alive === false) return false;
@@ -953,9 +977,34 @@ async function primeSubjectAdmission(targetPage, subjectId) {
     player.prevPos?.copy?.(player.pos);
     player.vel?.set?.(0, 0, 0);
     player.flags = { ...(player.flags || {}), noInterp: true };
+    entity.flags = { ...(entity.flags || {}), forceRender: true, neverCull: true };
     state.player.targetId = entity.id;
+
+    const phys = sf.registry?.get?.('physics');
+    if (phys?._sg02?.records) {
+      const rec = phys._sg02.records.get(player.id);
+      if (rec) {
+        if (typeof phys._sg02._maybeResyncBodyPose === 'function') {
+          phys._sg02._maybeResyncBodyPose(rec, player);
+        } else {
+          const origin = phys._sg02.getFrameOrigin?.() || { x: 0, z: 0 };
+          const localX = x - (origin.x || 0);
+          const localZ = z - (origin.z || 0);
+          if (rec.body?.setTranslation) rec.body.setTranslation({ x: localX, y: 0, z: localZ }, true);
+          if (rec.body?.setLinvel) rec.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+          if (rec.body?.setAngvel) rec.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
+          if (rec.kinematics) { rec.kinematics.x = localX; rec.kinematics.z = localZ; rec.kinematics.vx = 0; rec.kinematics.vz = 0; }
+        }
+      }
+    }
+    if (phys?._rapier?.bodies) {
+      const rec = phys._rapier.bodies.get(player.id);
+      if (rec?.body?.setTranslation) rec.body.setTranslation({ x, y: 0, z }, true);
+      if (rec?.body?.setLinvel) rec.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+    }
+
     state.render?.cameraCtrl?.snapToPlayer?.();
-    const renderSystem = sf.registry.get('render');
+    const renderSystem = state.render || sf.render || sf.registry?.get?.('render');
     renderSystem?.reconcileMeshes?.();
     const root = entity.mesh || entity.view?.root;
     root?.traverse?.((object) => { if (object) object.frustumCulled = false; });

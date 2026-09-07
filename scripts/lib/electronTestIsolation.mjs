@@ -32,12 +32,15 @@ export function buildIsolatedElectronEnv({
   if (parsedPort === PLAYER_ELECTRON_PORT) {
     throw new Error(`isolated Electron evidence cannot use the player port ${PLAYER_ELECTRON_PORT}`);
   }
-  return {
+  const env = {
     ...baseEnv,
     SPACEFACE_ELECTRON_TEST_MODE: ELECTRON_ISOLATED_EVIDENCE_MODE,
     SPACEFACE_ELECTRON_TEST_PORT: String(parsedPort),
     SPACEFACE_ELECTRON_TEST_USER_DATA: profile.resolved,
   };
+  delete env.ELECTRON_RUN_AS_NODE;
+  delete env.ELECTRON_NO_ASAR;
+  return env;
 }
 
 export function assertIsolatedElectronRootUrl(actualUrl) {

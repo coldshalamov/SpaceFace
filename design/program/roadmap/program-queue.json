@@ -4788,7 +4788,7 @@
       "priority": 28,
       "title": "Capture revised refinery Browser and Electron presentation",
       "kind": "acceptance_capture",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-022.refinery-reauthor"
       ],
@@ -4804,8 +4804,12 @@
         "npm run check:pq022:corridor-assets",
         "npm run check:assets:live"
       ],
-      "receiptRefs": [],
-      "brief": "Capture only the revised exact refinery at useful ordinary and diagnostic framings with distinct Electron parity; retain the other nine corridor-asset decisions."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-022-refinery-reauthor-h1-REPORT.md"
+      ],
+      "brief": "Capture only the revised exact refinery at useful ordinary and diagnostic framings with distinct Electron parity; retain the other nine corridor-asset decisions.",
+      "partialIntegration": "2026-09-07 candidate bd648bae retains accepted Browser and source-Electron launches at fixed seed 47, exact source/release identity, default/close LOD1/LOD0 framing, authored-release admission, live Ceres placement, normalized semantic parity, zero page issues, consumed claim ledgers, and clean Electron teardown. Both headed mutexes are released; no performance or causal visual verdict is claimed.",
+      "blocker": null
     },
     {
       "id": "PQ-022.refinery-reauthor-review",
