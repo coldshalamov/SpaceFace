@@ -8,6 +8,13 @@ export const trigger = deepFreeze({
   gates: { externalOnly: true },
 });
 export default defineEncounter(trigger, {
+  shape: {
+    situation: 'follow_on',
+    place: trigger.zoneTypes,
+    twist: 'follow_on',
+    actor: 'faction_vael',
+  },
+  factionId: 'faction_vael',
   title: 'VAEL ENFORCEMENT', follows: 'depth_h6_patrol_ambush', followOnStub: true,
   runtimeReady: false, intendedCadence: 'late_game_unique',
 });

@@ -20,6 +20,12 @@ export const trigger = deepFreeze({
 });
 
 export default defineEncounter(trigger, {
+  shape: {
+    situation: 'patrol',
+    place: trigger.zoneTypes,
+    twist: 'logic',
+    actor: 'faction_scn',
+  },
   motive: 'lawful_inspection',
   engagementTrigger: 'scan_failed_or_wanted',
   factionId: 'faction_scn',

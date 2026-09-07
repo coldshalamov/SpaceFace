@@ -8,6 +8,12 @@ export const trigger = deepFreeze({
   gates: { externalOnly: true },
 });
 export default defineEncounter(trigger, {
+  shape: {
+    situation: 'convoy',
+    place: trigger.zoneTypes,
+    twist: 'k1',
+    actor: 'faction_fulfillment',
+  },
   factionId: 'faction_fulfillment', presenceNodeId: 'presence_fulfillment_route_01',
   routeId: 'fulfillment_tethys_helios', behavior: 'administrative_boarding',
 });

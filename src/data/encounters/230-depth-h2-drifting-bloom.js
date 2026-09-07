@@ -11,6 +11,12 @@ export const trigger = deepFreeze({
 });
 export const runtime = E1_ENCOUNTER_RUNTIMES.h2;
 export default defineEncounter(trigger, {
+  shape: {
+    situation: 'anomaly',
+    place: trigger.zoneTypes,
+    twist: 'depth',
+    actor: 'faction_understory',
+  },
   title: 'FIRST CONTACT: THE DRIFTING BLOOM', factionId: 'faction_understory',
   context: 'encounter', squad: {
     archetypes: ['mule_trader'], size: [1, 1], doctrine: 'balanced', formation: 'loose', passive: true,

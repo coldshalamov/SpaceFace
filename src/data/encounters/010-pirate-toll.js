@@ -25,6 +25,12 @@ export const trigger = deepFreeze({
 });
 
 export default defineEncounter(trigger, {
+  shape: {
+    situation: 'toll',
+    place: trigger.zoneTypes,
+    twist: 'none',
+    actor: 'faction_reach',
+  },
   "motive": "cargo_extortion",
   "engagementTrigger": "demand_pending",
   "factionId": "faction_reach",

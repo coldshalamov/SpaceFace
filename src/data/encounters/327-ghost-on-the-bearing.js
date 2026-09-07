@@ -19,6 +19,12 @@ export const trigger = deepFreeze({
 });
 
 export default defineEncounter(trigger, {
+  shape: {
+    situation: 'ambush',
+    place: trigger.zoneTypes,
+    twist: 'none',
+    actor: 'faction_quiet',
+  },
   motive: 'assassination',
   engagementTrigger: 'player_in_range',
   factionId: 'faction_quiet',

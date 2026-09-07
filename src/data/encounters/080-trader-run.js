@@ -21,6 +21,12 @@ export const trigger = deepFreeze({
 });
 
 export default defineEncounter(trigger, {
+  shape: {
+    situation: 'trade',
+    place: trigger.zoneTypes,
+    twist: 'none',
+    actor: 'faction_mts',
+  },
   "factionId": "faction_mts",
   "context": "convoy_civilian",
   "squad": {

@@ -20,6 +20,12 @@ export const trigger = deepFreeze({
 });
 
 export default defineEncounter(trigger, {
+  shape: {
+    situation: 'convoy',
+    place: trigger.zoneTypes,
+    twist: 'none',
+    actor: 'faction_reach',
+  },
   motive: 'cargo_raid',
   engagementTrigger: 'player_in_range',
   factionId: 'faction_reach',

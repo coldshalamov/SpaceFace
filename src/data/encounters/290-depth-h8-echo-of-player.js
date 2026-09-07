@@ -10,6 +10,12 @@ export const trigger = deepFreeze({
 });
 export const runtime = E1_ENCOUNTER_RUNTIMES.h8;
 export default defineEncounter(trigger, {
+  shape: {
+    situation: 'anomaly',
+    place: trigger.zoneTypes,
+    twist: 'player_echo',
+    actor: 'faction_free',
+  },
   title: 'THE ECHO OF THE PLAYER', factionId: 'faction_free', context: 'convoy_civilian',
   squad: {
     archetypes: ['mule_trader'], size: [1, 1], doctrine: 'balanced', formation: 'loose', passive: true,

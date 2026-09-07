@@ -14,6 +14,12 @@ export const trigger = deepFreeze({
 });
 export const runtime = E1_ENCOUNTER_RUNTIMES.h9;
 export default defineEncounter(trigger, {
+  shape: {
+    situation: 'salvage',
+    place: trigger.zoneTypes,
+    twist: 'depth',
+    actor: 'faction_mts',
+  },
   title: 'THE WRONG LAUGH', factionId: 'faction_mts', noCombat: true,
   primaryLine: 'SALVAGER: Sorry. Sorry. It\'s the manifest. Cargo line says RELIEF SUPPLIES. Fourteen tonnes. The wreck\'s been here six months. Nobody\'s looking for fourteen tonnes of relief. [He laughs. He stops.]',
   choices: [

@@ -19,6 +19,12 @@ export const trigger = deepFreeze({
 });
 
 export default defineEncounter(trigger, {
+  shape: {
+    situation: 'wreck',
+    place: trigger.zoneTypes,
+    twist: 'admirers',
+    actor: 'faction_reach',
+  },
   triggerKind: 'shrine_admirers',
   motive: 'recover_nestbreaker_rack',
   engagementTrigger: 'unique_wreck_hardware_claimed',

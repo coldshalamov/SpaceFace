@@ -14,6 +14,12 @@ export const trigger = deepFreeze({
 });
 export const runtime = E1_ENCOUNTER_RUNTIMES.h9;
 export default defineEncounter(trigger, {
+  shape: {
+    situation: 'escort',
+    place: trigger.zoneTypes,
+    twist: 'none',
+    actor: 'faction_dmc',
+  },
   title: 'THE BACKWATER ESCORT', factionId: 'faction_dmc', noCombat: true,
   context: 'convoy_civilian',
   primaryLine: 'MINER: Appreciate the escort. This belt\'s like the third drawer in my mother\'s kitchen — nobody opens it, everybody scared of what\'s in there, and it\'s where she kept the good cutlery. I\'m the cutlery.',

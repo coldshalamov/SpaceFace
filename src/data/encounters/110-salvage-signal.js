@@ -19,6 +19,12 @@ export const trigger = deepFreeze({
 });
 
 export default defineEncounter(trigger, {
+  shape: {
+    situation: 'salvage',
+    place: trigger.zoneTypes,
+    twist: 'none',
+    actor: 'none',
+  },
   "bark": "salvage_ping",
   "windowS": 300,
   "cachePool": {

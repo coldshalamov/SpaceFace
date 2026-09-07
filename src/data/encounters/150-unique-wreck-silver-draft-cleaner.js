@@ -18,6 +18,12 @@ export const trigger = deepFreeze({
   },
 });
 export default defineEncounter(trigger, {
+  shape: {
+    situation: 'wreck',
+    place: trigger.zoneTypes,
+    twist: 'unique_wreck',
+    actor: 'faction_mts',
+  },
   triggerKind: 'seeded_cleaner',
   motive: 'sanitize_lost_ledger',
   engagementTrigger: 'unique_wreck_cleaner_deadline',

@@ -10,6 +10,12 @@ export const trigger = deepFreeze({
 });
 export const runtime = E1_ENCOUNTER_RUNTIMES.h5;
 export default defineEncounter(trigger, {
+  shape: {
+    situation: 'patrol',
+    place: trigger.zoneTypes,
+    twist: 'depth',
+    actor: 'faction_scn',
+  },
   title: 'THE CORRIDOR MASSACRE', factionId: 'faction_scn', context: 'patrol',
   squad: {
     archetypes: ['lancer_sniper', 'bruiser_brawler'], size: [2, 3], doctrine: 'anchor',

@@ -10,6 +10,12 @@ export const trigger = deepFreeze({
 });
 export const runtime = E1_ENCOUNTER_RUNTIMES.h6;
 export default defineEncounter(trigger, {
+  shape: {
+    situation: 'ambush',
+    place: trigger.zoneTypes,
+    twist: 'depth',
+    actor: 'faction_scn',
+  },
   title: 'THE PATROL AMBUSH', factionId: 'faction_scn', context: 'patrol',
   squad: {
     archetypes: ['lancer_sniper'], size: [2, 2], doctrine: 'anchor', formation: 'wedge', team: 1,

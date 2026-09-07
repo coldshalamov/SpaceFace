@@ -11,6 +11,12 @@ export const trigger = deepFreeze({
 });
 export const runtime = E1_ENCOUNTER_RUNTIMES.h7;
 export default defineEncounter(trigger, {
+  shape: {
+    situation: 'follow_on',
+    place: trigger.zoneTypes,
+    twist: 'depth',
+    actor: 'faction_free',
+  },
   title: 'THE SPARED RETURN', factionId: 'faction_free', noCombat: false,
   primaryLine: 'A spared transponder returns on the seed you gave it.',
   choices: [

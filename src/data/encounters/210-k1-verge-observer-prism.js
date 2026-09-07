@@ -8,6 +8,12 @@ export const trigger = deepFreeze({
   gates: { externalOnly: true },
 });
 export default defineEncounter(trigger, {
+  shape: {
+    situation: 'anomaly',
+    place: trigger.zoneTypes,
+    twist: 'k1',
+    actor: 'faction_verge_layers',
+  },
   factionId: 'faction_verge_layers', presenceNodeId: 'presence_verge_layers',
   phaseGate: 'vergeLayersRevealed', behavior: 'observer_prism',
 });

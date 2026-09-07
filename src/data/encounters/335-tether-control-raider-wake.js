@@ -21,6 +21,12 @@ export const trigger = deepFreeze({
 });
 
 export default defineEncounter(trigger, {
+  shape: {
+    situation: 'wake',
+    place: trigger.zoneTypes,
+    twist: 'none',
+    actor: 'faction_reach',
+  },
   motive: 'wake_control',
   engagementTrigger: 'player_crosses_salvage_wake',
   factionId: 'faction_reach',

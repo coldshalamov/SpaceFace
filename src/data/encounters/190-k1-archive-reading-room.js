@@ -8,6 +8,12 @@ export const trigger = deepFreeze({
   gates: { externalOnly: true },
 });
 export default defineEncounter(trigger, {
+  shape: {
+    situation: 'archive',
+    place: trigger.zoneTypes,
+    twist: 'k1',
+    actor: 'faction_archive',
+  },
   factionId: 'faction_archive', presenceNodeId: 'presence_archive_reading_rooms',
   requiredRep: 25, behavior: 'rep_gated_reading_room',
 });

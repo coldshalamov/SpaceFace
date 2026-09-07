@@ -23,6 +23,12 @@ export const trigger = deepFreeze({
 });
 
 export default defineEncounter(trigger, {
+  shape: {
+    situation: 'hunt',
+    place: trigger.zoneTypes,
+    twist: 'none',
+    actor: 'faction_quiet',
+  },
   "motive": "bounty_collection",
   "engagementTrigger": "active_bounty_contract",
   "factionId": "faction_quiet",

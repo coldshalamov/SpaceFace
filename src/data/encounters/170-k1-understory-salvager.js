@@ -8,6 +8,12 @@ export const trigger = deepFreeze({
   gates: { externalOnly: true },
 });
 export default defineEncounter(trigger, {
+  shape: {
+    situation: 'salvage',
+    place: trigger.zoneTypes,
+    twist: 'k1',
+    actor: 'faction_understory',
+  },
   factionId: 'faction_understory', presenceNodeId: 'presence_understory_charon',
   source: 'lossLedgerOnly', behavior: 'post_loss_salvager',
 });

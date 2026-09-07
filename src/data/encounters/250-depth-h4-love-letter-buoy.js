@@ -11,6 +11,12 @@ export const trigger = deepFreeze({
 });
 export const runtime = E1_ENCOUNTER_RUNTIMES.h4;
 export default defineEncounter(trigger, {
+  shape: {
+    situation: 'anomaly',
+    place: trigger.zoneTypes,
+    twist: 'depth',
+    actor: 'faction_free',
+  },
   title: 'THE LOVE LETTER BUOY', factionId: 'faction_free', noCombat: true, noCredits: true,
   primaryLine: 'BUOY: Nera, I will hold the corridor until your light returns.',
   choices: [

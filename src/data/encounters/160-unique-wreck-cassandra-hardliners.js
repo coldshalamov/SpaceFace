@@ -19,6 +19,12 @@ export const trigger = deepFreeze({
   },
 });
 export default defineEncounter(trigger, {
+  shape: {
+    situation: 'wreck',
+    place: trigger.zoneTypes,
+    twist: 'unique_wreck',
+    actor: 'faction_choir',
+  },
   triggerKind: 'treaty_hardliners',
   motive: 'burn_cassandra_treaty',
   engagementTrigger: 'unique_wreck_treaty_claimed',

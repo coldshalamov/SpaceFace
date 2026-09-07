@@ -63,6 +63,11 @@ function migrationBaselineCatalog() {
   delete catalog.claim_threat.motive;
   delete catalog.claim_threat.engagementTrigger;
   catalog.claim_threat.squad.formation = 'loose';
+  // PQ-171 added four-axis grammar shape ({ situation, place, twist, actor }) to all encounter definitions.
+  // Strip shape when reconstructing the migration-era baseline definitions.
+  for (const id of fixture.order) {
+    delete catalog[id].shape;
+  }
   return catalog;
 }
 
@@ -97,7 +102,11 @@ test('encounter migration preserves every definition byte-for-byte under JSON se
     Object.fromEntries(Object.entries(migrated).map(([id, value]) => [id, hash(value)])),
     fixture.shapeHashes,
   );
-  const intentionalDrift = fixture.order.filter((id) => hash(ENCOUNTERS[id]) !== fixture.shapeHashes[id]);
+  const intentionalDrift = fixture.order.filter((id) => {
+    const copy = { ...ENCOUNTERS[id] };
+    delete copy.shape;
+    return hash(copy) !== fixture.shapeHashes[id];
+  });
   assert.deepEqual(
     intentionalDrift,
     ['pirate_toll', 'ambush_snare', 'claim_threat', 'named_hunter', 'distress_call', 'salvage_signal', 'anomaly_whisper'],

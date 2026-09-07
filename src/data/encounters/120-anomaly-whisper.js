@@ -20,5 +20,11 @@ export const trigger = deepFreeze({
 });
 
 export default defineEncounter(trigger, {
+  shape: {
+    situation: 'anomaly',
+    place: trigger.zoneTypes,
+    twist: 'none',
+    actor: 'none',
+  },
   "bark": null
 });

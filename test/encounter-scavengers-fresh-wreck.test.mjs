@@ -29,11 +29,11 @@ test('scavengers_at_fresh_wreck registers as a reachable derelict-field ambush',
 
 test('the wreck party is an anchored scavenger squad on the ambush spring', () => {
   const encounter = findEncounter(TRIGGER_ID);
-  const shape = encounter && (encounter.shape || encounter);
-  const squad = shape && shape.squad;
+  const body = encounter && (encounter.squad ? encounter : encounter.shape);
+  const squad = body && body.squad;
   assert.ok(squad, 'the encounter authors a squad');
   assert.equal(squad.anchorArchetype, 'reaver_pirate', 'the scavenger boss anchors the party');
   assert.ok(squad.size && squad.size[0] >= 1 && squad.size[1] <= 3,
     'a small cutting crew, not a fleet');
-  assert.equal(shape.bark, 'ambush_tele', 'the spring telegraphs with the house ambush bark');
+  assert.equal(body.bark, 'ambush_tele', 'the spring telegraphs with the house ambush bark');
 });

@@ -18,6 +18,12 @@ export const trigger = deepFreeze({
   },
 });
 export default defineEncounter(trigger, {
+  shape: {
+    situation: 'wreck',
+    place: trigger.zoneTypes,
+    twist: 'unique_wreck',
+    actor: 'faction_vael',
+  },
   triggerKind: 'held_mass',
   motive: 'guard_held_mass',
   engagementTrigger: 'unique_wreck_held_mass_revealed',

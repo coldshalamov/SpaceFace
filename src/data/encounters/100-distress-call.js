@@ -24,6 +24,12 @@ export const trigger = deepFreeze({
 });
 
 export default defineEncounter(trigger, {
+  shape: {
+    situation: 'distress',
+    place: trigger.zoneTypes,
+    twist: 'none',
+    actor: 'faction_reach',
+  },
   "variant": "distress",
   "genuineChance": 0.6,
   "bark": "distress_call",

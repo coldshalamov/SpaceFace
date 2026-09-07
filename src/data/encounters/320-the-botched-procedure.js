@@ -14,6 +14,12 @@ export const trigger = deepFreeze({
 });
 export const runtime = E1_ENCOUNTER_RUNTIMES.h9;
 export default defineEncounter(trigger, {
+  shape: {
+    situation: 'wreck',
+    place: trigger.zoneTypes,
+    twist: 'depth',
+    actor: 'faction_free',
+  },
   title: 'THE BOTCHED PROCEDURE', factionId: 'faction_free', noCombat: true,
   primaryLine: 'DERELICT LOG: Hull breach sealed with sealant compound. Sealant rated: non-reactive atmospheres. Hull atmosphere at breach: hydrogen-sulfide trace. Sealant holding.',
   choices: [

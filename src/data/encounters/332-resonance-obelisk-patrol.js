@@ -15,6 +15,12 @@ export const trigger = deepFreeze({
 });
 
 export default defineEncounter(trigger, {
+  shape: {
+    situation: 'patrol',
+    place: trigger.zoneTypes,
+    twist: 'none',
+    actor: 'faction_vael',
+  },
   title: 'OBELISK WATCH',
   factionId: 'faction_vael',
   context: 'zone_hostile',

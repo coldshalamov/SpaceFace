@@ -12031,7 +12031,7 @@
       "priority": 281,
       "title": "The grammar",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-138.00",
         "PQ-138.01",
@@ -12050,8 +12050,10 @@
         "npm run check:baseline",
         "npm run check:sim:long"
       ],
-      "receiptRefs": [],
-      "brief": "Document + data: axes and constraints; every encounter declares its shape. DONE WHEN: All encounter files carry a shape; validator green."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-171-00-REPORT.md"
+      ],
+      "brief": "ACCEPTED 2026-09-07 (AGY Gemini + controller). All 49 encounter files declare situation x place x twist x actor; 17/10/14 distinct axes; 40 unique tuples; validator rejects missing/illegal shapes; gated wrecks keep empty place matching empty zoneTypes. See receipt."
     },
     {
       "id": "PQ-045.target-motion-late-audit",

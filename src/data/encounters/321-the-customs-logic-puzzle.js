@@ -14,6 +14,12 @@ export const trigger = deepFreeze({
 });
 export const runtime = E1_ENCOUNTER_RUNTIMES.h9;
 export default defineEncounter(trigger, {
+  shape: {
+    situation: 'puzzle',
+    place: trigger.zoneTypes,
+    twist: 'logic',
+    actor: 'faction_scn',
+  },
   title: 'THE CUSTOMS LOGIC PUZZLE', factionId: 'faction_scn', noCombat: true,
   primaryLine: 'CUSTOMS: The manifest says alloy. The scan says 12,400kg. The seal is Concord. I sign the seal. The seal is my department. The weight is not my department.',
   choices: [

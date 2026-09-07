@@ -18,6 +18,12 @@ export const trigger = deepFreeze({
   },
 });
 export default defineEncounter(trigger, {
+  shape: {
+    situation: 'wreck',
+    place: trigger.zoneTypes,
+    twist: 'unique_wreck',
+    actor: 'faction_vael',
+  },
   triggerKind: 'ping_elite',
   motive: 'answer_deep_ping',
   engagementTrigger: 'unique_wreck_repeated_ping',

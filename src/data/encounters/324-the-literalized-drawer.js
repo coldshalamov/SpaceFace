@@ -15,6 +15,12 @@ export const trigger = deepFreeze({
 });
 export const runtime = E1_ENCOUNTER_RUNTIMES.h9;
 export default defineEncounter(trigger, {
+  shape: {
+    situation: 'puzzle',
+    place: trigger.zoneTypes,
+    twist: 'literalized',
+    actor: 'faction_free',
+  },
   title: 'THE LITERALIZED DRAWER', factionId: 'faction_free', noCombat: true, noCredits: true,
   primaryLine: 'STATION: Records annex, second tier. The drawer is third from the left, second row. The tape is yellowed. The label is REF 44-C. The drawer is unlocked. The drawer is full.',
   choices: [

@@ -21,6 +21,12 @@ export const trigger = deepFreeze({
 });
 
 export default defineEncounter(trigger, {
+  shape: {
+    situation: 'hunt',
+    place: trigger.zoneTypes,
+    twist: 'none',
+    actor: 'faction_quiet',
+  },
   motive: 'massline_counter_hunt',
   engagementTrigger: 'player_signature_massline_use',
   factionId: 'faction_quiet',

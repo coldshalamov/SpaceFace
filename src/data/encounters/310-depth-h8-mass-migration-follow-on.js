@@ -8,6 +8,13 @@ export const trigger = deepFreeze({
   gates: { externalOnly: true },
 });
 export default defineEncounter(trigger, {
+  shape: {
+    situation: 'follow_on',
+    place: trigger.zoneTypes,
+    twist: 'follow_on',
+    actor: 'faction_free',
+  },
+  factionId: 'faction_free',
   title: 'MASS MIGRATION', follows: 'depth_h8_echo_of_player', followOnStub: true,
   runtimeReady: false, intendedCadence: 'repeatable_ambient_mandatory_pause',
 });

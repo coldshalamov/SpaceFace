@@ -14,6 +14,12 @@ export const trigger = deepFreeze({
 });
 export const runtime = E1_ENCOUNTER_RUNTIMES.h1;
 export default defineEncounter(trigger, {
+  shape: {
+    situation: 'distress',
+    place: trigger.zoneTypes,
+    twist: 'depth',
+    actor: 'faction_free',
+  },
   title: 'THE DISTRESS FROM INSIDE', factionId: 'faction_free', noCombat: true, noCredits: true,
   primaryLine: 'VOLS: Mayday. Tessera drive gone. Four souls. Anyone receiving.',
   choices: [

@@ -8,6 +8,12 @@ export const trigger = deepFreeze({
   gates: { externalOnly: true },
 });
 export default defineEncounter(trigger, {
+  shape: {
+    situation: 'yard',
+    place: trigger.zoneTypes,
+    twist: 'k1',
+    actor: 'faction_pitborn',
+  },
   factionId: 'faction_pitborn', presenceNodeId: 'presence_pitborn_yards',
   services: ['yard', 'fence'], behavior: 'disable_and_run',
 });
