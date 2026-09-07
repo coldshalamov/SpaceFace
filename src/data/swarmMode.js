@@ -87,6 +87,10 @@ export const SWARM_FULL_PRESSURE_AT = 0.66;
  * rather than something hidden in the spawner.
  *
  * `progress` is killed/quota, 0..1.
+ *
+ * Wave 1's ceiling IS the opening floor (ten hulls). Thinning that pile below ten starved unlucky
+ * seeds more than it stretched lucky ones (PQ-174.01). Raising the kill quota stalled or killed
+ * the run before the 45–90 s band. Later waves still open below their ceiling.
  */
 export function swarmPressureAt(wave, progress) {
   const ceiling = swarmConcurrent(wave);
@@ -175,7 +179,8 @@ export function swarmPressureIsHolding(state = livePressure) {
  * bodies this top-up should admit. Side-effect free — the live wrapper fires telegraph hooks.
  *
  * `alive` is the live cohort census. `null` means unknown (tests that never bound the arena):
- * a hole of SWARM_CONCURRENT_MIN or more is treated as an empty-room emergency.
+ * a hole of SWARM_CONCURRENT_MIN or more is treated as an empty-room emergency. Production
+ * binds the arena, so a wiped board is `alive === 0` regardless of the opening count.
  */
 export function swarmReinforceDecision(state, deficit, opts = {}) {
   const bag = state && typeof state === 'object' ? state : createSwarmPressureState();
@@ -426,10 +431,11 @@ export const SWARM_QUOTA_CAP = 48;
  * The thing that actually matters is an ABSOLUTE margin: you must put down a full room's worth
  * and then some, so the stream always gets to do its work and the wave always has a middle.
  *
- * Wave 1 is the exception: the default physics kit reaches kill 15 at 57–90 s on a 90 s window,
- * and a quota of 22 meant only two of nine cells finished the opener. Opening quota 15 keeps
- * live concurrency, reinforcement, and hull values unchanged; survivors still roll into wave 2.
- * Later waves keep this margin and the 20+2w climb.
+ * Wave 1 is the exception: it must last 45–90 s (PQ-174.01) without inflating hull values.
+ * Quota 15 against a 10-hull pile clears in 23–35 s on the fast kits (.00 bench). Quota 24
+ * put two of nine cells inside 45–90 s and left seven unfinished — a stall after ~22 kills,
+ * or a death on the longer clock. Thinning the opening room starved unlucky seeds worse.
+ * Hull values stay untouched. Later waves keep this margin and the 20+2w climb.
  */
 export const SWARM_QUOTA_MARGIN = 8;
 

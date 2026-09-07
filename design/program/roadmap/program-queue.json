@@ -5657,8 +5657,10 @@
         "npm run check:crucible:run",
         "npm run check:crucible:arc"
       ],
-      "receiptRefs": [],
-      "brief": "First hostile within 8 s of launch, first kill possible within 20 s with the starter kit, waves 45–90 s, cleanup ≤ 4 s, a menu at most every fifth wave, the quota curve rising by count and geometry, never by hit points. DONE WHEN: Time-to-first-kill ≤ 20 s on all seeds; wave durations inside the band; menu frequency ≤ 0.2 per wave."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-174.01-REPORT.md"
+      ],
+      "brief": "READY after 2026-09-07 measure (Grok). First kill already <=12s; menus 0; cleanup 0.77s. Wave 1 at quota 15 clears in 23-52s (6 of 8 finishes under 45s). Quota 24 and thinning/doors cannot put all kits in 45-90s without stalling or starving slow seeds. Do not retry count/geometry/HP. Next pass must change the farm. DONE WHEN: Time-to-first-kill <= 20 s on all seeds; wave durations inside the band; menu frequency <= 0.2 per wave."
     },
     {
       "id": "PQ-174.02",
