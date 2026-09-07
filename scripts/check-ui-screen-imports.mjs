@@ -150,6 +150,7 @@ const menuStyleSources = [
   ['settings', settingsSrc],
   ['saveLoad', saveLoadSrc],
   ['help', helpSrc],
+  ['codex', codexSrc],
 ];
 // A screen built on the frontend kit (imports src/ui/kit/) owns no CSS at all: no STYLE_ID and no
 // injected <style>. Every legacy menu screen still needs a present, unique STYLE_ID.
@@ -180,11 +181,13 @@ if (missingStyleIds.length || duplicateStyleIds.length) {
   console.log('ok   menu screens - injected STYLE_ID values are unique');
   ok++;
 }
-if (!/shell\(rootEl,\s*'Help'/.test(helpSrc)) {
-  console.log('FAIL helpScreen - shell title must be Help, not Codex');
+// Help is a kit screen (Frontend Task D): its title is the kit's `h1.k-display.k-t-title`, not the
+// legacy shell(rootEl, 'Help') plate; the contract is still that the screen is titled Help, not Codex.
+if (!/'k-display k-t-title',\s*'Help'\)/.test(helpSrc)) {
+  console.log('FAIL helpScreen - kit title must be Help, not Codex');
   fail++;
 } else {
-  console.log('ok   helpScreen - shell title is Help');
+  console.log('ok   helpScreen - kit title is Help');
   ok++;
 }
 if (!helpSrc.includes("import { BINDINGS } from '../bindings.js'")
@@ -310,11 +313,12 @@ if (!localmapSrc.includes("import { BINDINGS } from '../bindings.js'")
   console.log('ok   localmapScreen - visible map key labels read the binding registry');
   ok++;
 }
-if (!/shell\(rootEl,\s*'Codex'/.test(codexSrc)) {
-  console.log('FAIL codexScreen - shell title must be Codex');
+// Frontend Task D: the codex is a kit screen; its title is the kit's h1, not the legacy shell().
+if (!/el\('h1',\s*'k-display k-t-title',\s*'Codex'\)/.test(codexSrc)) {
+  console.log('FAIL codexScreen - title must be Codex');
   fail++;
 } else {
-  console.log('ok   codexScreen - shell title is Codex');
+  console.log('ok   codexScreen - title is Codex');
   ok++;
 }
 if (!missionLogSrc.includes("const activeMissions = active.filter((m) => m && m.status === 'active');")

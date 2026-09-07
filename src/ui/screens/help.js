@@ -1,10 +1,15 @@
 // Help / codex screen (ARCHITECTURE §5.6; design/specs/09).
 // Tabbed reference: Controls, Loops, Ships, Commodities, Ores, Factions.
+// The sheet's line (design/frontend/direction/DIRECTION_SHEET.md, help): the controls as hairline
+// rows of action and key; the current profile named; nothing else. Built on the frontend kit
+// (styles/kit.css, src/ui/kit/); this file owns no CSS. The six tab words hang from the left; the
+// chosen tab's reading fills the stage — Controls as static rows (action · key), Loops as sentences,
+// Ships / Commodities / Ores as the dense register, Factions as rows.
 // The Controls tab reads the LIVE keybindings the player set in Settings → Controls
 // (state.settings.controls.bindings), falling back to the input system's DEFAULT_BINDINGS for
 // flight actions and the UI binding registry for fixed interface actions, so the help always
-// reflects what the keys actually do. Dismissed via the Close button or ESC (screen manager handles
-// ESC).
+// reflects what the keys actually do. Dismissed via the Close word or ESC (screen manager handles
+// ESC). `.sf-help-now`, `.sf-tab` and `.sf-lc__search` stay on their elements as inert hooks.
 
 import { SHIPS } from '../../data/ships.js';
 import { COMMODITIES } from '../../data/commodities.js';
@@ -13,8 +18,8 @@ import { FACTION_META } from '../../data/factions.js';
 import { createListControls } from '../listControls.js';
 import { formatBindingCode, resolveActionLabel, resolveActionCodes } from '../../systems/input.js';
 import { BINDINGS } from '../bindings.js';
-
-const STYLE_ID = 'sf-help-menu-style';
+import { icon, factionIcon } from '../station/icons.js';
+import { el, words, settle, cue } from '../kit/index.js';
 
 function getManager(ctx) {
   if (ctx && ctx.screenManager) return ctx.screenManager;
@@ -29,89 +34,22 @@ function nav(ctx, method, arg) {
   if (mgr && typeof mgr[method] === 'function') { mgr[method](arg); return; }
   ctx.bus.emit('ui:' + method, { id: arg });
 }
-function injectStyle() {
-  if (document.getElementById(STYLE_ID)) return;
-  const s = document.createElement('style');
-  s.id = STYLE_ID;
-  // Help-specific table/faction styles only. The shared menu fascia (plate, buttons,
-  // headings, tabs, slot rows, form primitives) lives in styles/menu.css — previously a
-  // copy of that whole block was pasted here and into every other menu screen.
-  s.textContent = `
-  .sf-help { color: var(--sf-paper); font-family: var(--sf-body-face); }
-  .sf-help.sf-menu h1 {
-    font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
-    letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-calm);
-  }
-  /* No accent tick beside the title — hairline only. */
-  .sf-help.sf-menu h1::before { display: none; }
-  /* The crest is a space-between row in ui.css, which flung the tab's display heading to the
-     modal's top-right while the HELP kicker sat top-left. Stack them, left-aligned. */
-  .sf-help .sf-crest { flex-direction: column; align-items: flex-start; gap: 0; }
-  /* Scroll affordance: while more content sits below the fold, the pane's bottom edge fades out.
-     The class is toggled from scroll state, so it clears at the true bottom. */
-  .sf-help .sf-settings-pane.sf-scroll-below {
-    -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 26px), transparent);
-    mask-image: linear-gradient(180deg, #000 calc(100% - 26px), transparent);
-  }
-  .sf-help-now {
-    font-family: var(--sf-display-face); font-weight: 700; font-size: 28px; line-height: 1.1;
-    color: var(--sf-paper); letter-spacing: 0; text-transform: none; margin: 0 0 var(--sp-2);
-  }
-  .sf-help .sf-fig, .sf-codex-table .num {
-    font-family: var(--sf-data-face); font-weight: 500; font-variant-numeric: tabular-nums; letter-spacing: 0;
-  }
-  .sf-codex-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  .sf-codex-table th {
-    text-align: left; color: var(--sf-calm); font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
-    letter-spacing: var(--sf-track-micro); text-transform: uppercase; padding: var(--sp-2);
-    border-bottom: 1px solid var(--sf-edge); position: sticky; top: 0; background: var(--sf-surface);
-  }
-  .sf-codex-table td { padding: var(--sp-1) var(--sp-2); color: var(--sf-paper); border-bottom: 1px solid var(--sf-edge); }
-  .sf-codex-table tr:hover td { background: color-mix(in srgb, var(--sf-goal) 8%, transparent); }
-  .sf-codex-table .num { text-align: right; }
-  .sf-codex-table .is-foe { color: var(--sf-foe); }
-  .sf-codex-table .is-goal { color: var(--sf-goal); }
-  .sf-codex-table .is-you { color: var(--sf-you); }
-  .sf-codex-table .swatch { display: inline-block; width: 14px; height: 14px; border-radius: 2px; vertical-align: middle; }
-  .sf-codex-faction { padding: var(--sp-3) 0; border-bottom: 1px solid var(--sf-edge); }
-  .sf-codex-faction:last-child { border-bottom: none; }
-  .sf-codex-faction .fname { font-size: 14px; color: var(--sf-paper); display: flex; align-items: center; gap: var(--sp-2); }
-  .sf-codex-faction .fshort {
-    font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px; color: var(--sf-calm);
-    letter-spacing: var(--sf-track-micro);
-  }
-  .sf-codex-faction .fdesc { font-size: 13px; color: var(--sf-calm); margin-top: var(--sp-1); line-height: 1.5; }
-  .sf-codex-faction .fdisp { font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px; margin-top: var(--sp-1); color: var(--sf-calm); }
-  @media (forced-colors: active) {
-    .sf-codex-table th, .sf-codex-table td { background: Canvas; color: CanvasText; border-color: CanvasText; }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .sf-help, .sf-help * { animation: none !important; transition: none !important; }
-  }
-  `;
-  document.head.appendChild(s);
-}
-function shell(rootEl, title, extraClass) {
-  rootEl.innerHTML = '';
-  rootEl.classList.add('panel', 'sf-menu', 'sf-help');
-  if (extraClass) rootEl.classList.add(extraClass);
-  // Diegetic fascia stamp (styles/menu.css .sf-menu::before reads it).
-  rootEl.dataset.stamp = 'MANUAL / CONTROLS';
-  const crest = el('div', 'sf-crest');
-  const h = document.createElement('h1'); h.textContent = title; crest.appendChild(h);
-  crest.appendChild(el('div', 'sf-help-now', 'Controls'));
-  rootEl.appendChild(crest);
-  return rootEl;
-}
 
 export function legalityRole(legality) {
   if (legality === 'contraband') return 'foe';
   if (legality === 'restricted') return 'goal';
   return 'calm';
 }
-function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
 
-// action -> default human-readable key. Sections group the grid.
+// The control profile the Controls tab describes (settings.gameplay.controlScheme; the Settings
+// screen offers the same three). Named in the title's second line.
+const SCHEME_NAMES = { pilot: 'Pilot', 'helm-assist': 'Helm Assist', classic: 'Classic Throttle' };
+function profileName(state) {
+  const scheme = state && state.settings && state.settings.gameplay && state.settings.gameplay.controlScheme;
+  return (SCHEME_NAMES[scheme] || SCHEME_NAMES.pilot) + ' profile';
+}
+
+// action -> default human-readable key. Sections group the rows.
 // Each row: [label, actionId (or null for fixed/non-rebindable), documented default text].
 // actionId matches the input system's binding() keys. UI-owned keys (dock/map/tech/…) are
 // handled in src/ui/input.js and are NOT rebindable, so they carry null + a registry label.
@@ -234,41 +172,115 @@ const GAMEPLAY_LOOPS = [
   ['Track objectives', `Mission Log (${BINDINGS.missionLog.label}) -> Track Nav -> HUD marker / local map (${BINDINGS.localmap.label}) / star-map (${BINDINGS.starmap.label})`, 'The log is the active objective home when you forget what the current flight is for.'],
 ];
 
+/** A column-header label above a group (`k-caps` is the kit's one tracked-caps register). */
+function caps(text) {
+  return el('p', 'k-caps', text);
+}
+
+/** A static hairline row: the name (and an optional sub line) at rest, the number at emphasis. */
+function staticRow(name, num, sub) {
+  const row = el('li', 'k-row k-row--static');
+  const left = el('div');
+  left.appendChild(el('span', 'k-62', name));
+  if (sub) left.appendChild(el('div', 'k-row__sub', sub));
+  row.appendChild(left);
+  row.appendChild(el('span', 'k-row__num', num));
+  return row;
+}
+
+/**
+ * The dense register as `k-table` markup. `head`: [{ label, num }], `body`: arrays of cell
+ * [text, extraClass]. `sortedIndex` names the column the fixed sort order follows (aria-sort).
+ * Reference rows are read, not picked, so this is plain markup rather than the kit's selectable grid.
+ */
+function register(head, body, { sortedIndex = 0, ariaLabel = 'Register' } = {}) {
+  const wrap = el('div', 'k-table-wrap');
+  const table = el('table', 'k-table');
+  table.setAttribute('aria-label', ariaLabel);
+  const thead = el('thead');
+  const hr = el('tr');
+  head.forEach((column, index) => {
+    const th = el('th', 'k-caps' + (column.num ? ' k-num' : ''), column.label);
+    th.scope = 'col';
+    if (index === sortedIndex) th.setAttribute('aria-sort', 'ascending');
+    hr.appendChild(th);
+  });
+  thead.appendChild(hr);
+  table.appendChild(thead);
+  const tbody = el('tbody');
+  for (const cells of body) {
+    const tr = el('tr');
+    cells.forEach(([text, extra], index) => {
+      const cls = [head[index].num ? 'k-num' : index === 0 ? 'k-name' : '', extra || ''].filter(Boolean).join(' ');
+      tr.appendChild(el('td', cls, text));
+    });
+    tbody.appendChild(tr);
+  }
+  table.appendChild(tbody);
+  wrap.appendChild(table);
+  return wrap;
+}
+
+/** The power's heraldry at row size (a generic mark when the icon set does not know the id). */
+function crestHtml(factionId) {
+  const svg = factionIcon(factionId, 24) || icon('factions', 24);
+  return svg.replace(/class="sx-ico[^"]*"/, 'class="k-crest k-crest--row sx-ico"');
+}
+
 export const helpScreen = {
   id: 'help',
   _activeTab: 'Controls',
 
   mount(rootEl, ctx) {
-    injectStyle();
-    shell(rootEl, 'Help', 'sf-menu-wide');
-    this._nowEl = rootEl.querySelector('.sf-help-now');
+    rootEl.innerHTML = '';
+    rootEl.classList.remove('panel', 'sf-menu', 'sf-menu-wide', 'sf-help');
+    rootEl.classList.add('k-screen');
+    rootEl.dataset.kReady = '0';
+    rootEl.setAttribute('aria-label', 'Help');
 
-    // Tab bar
-    const bar = el('div', 'sf-tabbar');
-    this._tabBtns = {};
-    TABS.forEach((t) => {
-      const b = el('button', 'sf-tab', t);
-      b.addEventListener('click', () => { this._activeTab = t; this._render(ctx); });
-      bar.appendChild(b);
-      this._tabBtns[t] = b;
+    // Title: "Help" and the control profile the Controls tab describes.
+    const title = el('header', 'k-title');
+    title.appendChild(el('h1', 'k-display k-t-title', 'Help'));
+    const now = el('p', 'k-t-emph k-62 sf-help-now', profileName(ctx.state));
+    title.appendChild(now);
+    rootEl.appendChild(title);
+    this._nowEl = now;
+
+    // The six tab words hang from the left.
+    const hang = el('nav', 'k-hang');
+    const tabs = words(TABS.map((t) => ({ action: t, label: t, current: t === this._activeTab })), {
+      ariaLabel: 'Help sections',
+      onPick: (t) => { this._activeTab = t; this._render(ctx); },
     });
-    rootEl.appendChild(bar);
+    tabs.setAttribute('role', 'tablist');
+    this._tabBtns = {};
+    for (const b of tabs.querySelectorAll('.k-word')) {
+      b.classList.add('sf-tab');
+      b.setAttribute('role', 'tab');
+      b.setAttribute('aria-selected', String(b.dataset.action === this._activeTab));
+      this._tabBtns[b.dataset.action] = b;
+    }
+    hang.appendChild(tabs);
+    rootEl.appendChild(hang);
 
-    const body = el('div', 'sf-settings-pane sf-stage');
-    body.style.overflowY = 'auto';
-    body.style.flex = '1';
-    body.style.minHeight = '0';
-    body.addEventListener('scroll', () => this._syncScrollAffordance(), { passive: true });
+    // The stage: the chosen tab's reading; rebuilt by _render.
+    const body = el('section', 'k-stage k-stage--scroll');
+    body.setAttribute('aria-live', 'polite');
     rootEl.appendChild(body);
 
-    const foot = el('div', 'sf-foot sf-apron');
-    const close = el('button', 'sf-btn'); close.textContent = 'Close'; close.style.width = 'auto';
-    close.addEventListener('click', () => nav(ctx, 'popScreen'));
+    // Foot: Close.
+    const foot = el('footer', 'k-foot');
+    const close = el('button', 'k-word k-word--emph', 'Close');
+    close.type = 'button';
+    close.dataset.action = 'close';
+    close.addEventListener('click', () => { cue('confirm'); nav(ctx, 'popScreen'); });
     foot.appendChild(close);
     rootEl.appendChild(foot);
 
     this._body = body;
+    this._regions = { title, hang, stage: body, foot };
     this._render(ctx);
+    rootEl.dataset.kReady = '1';
   },
 
   _render(ctx) {
@@ -279,12 +291,16 @@ export const helpScreen = {
       ? { start: active.selectionStart, end: active.selectionEnd }
       : null;
     this._body.innerHTML = '';
-    if (this._nowEl) this._nowEl.textContent = this._activeTab;
+    if (this._nowEl) this._nowEl.textContent = profileName(ctx.state);
 
     // Update tab active states
     if (this._tabBtns) {
       for (const t of TABS) {
-        this._tabBtns[t].classList.toggle('active', t === this._activeTab);
+        const b = this._tabBtns[t];
+        if (!b) continue;
+        const on = t === this._activeTab;
+        b.setAttribute('aria-selected', String(on));
+        if (on) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current');
       }
     }
 
@@ -298,7 +314,10 @@ export const helpScreen = {
       });
       // seed the input with the current query so it survives a re-render
       const input = ctrls.el.querySelector('.sf-lc__search');
-      if (input && this._q) input.value = this._q;
+      if (input) {
+        input.classList.add('k-input');
+        if (this._q) input.value = this._q;
+      }
       this._body.appendChild(ctrls.el);
       if (hadSearchFocus && input) {
         try {
@@ -317,43 +336,28 @@ export const helpScreen = {
       case 'Ores':      this._renderOres(); break;
       case 'Factions':  this._renderFactions(); break;
     }
-    this._syncScrollAffordance();
-  },
-
-  /** Fade the pane's bottom edge only while content actually continues below the fold. */
-  _syncScrollAffordance() {
-    const body = this._body;
-    if (!body) return;
-    const moreBelow = body.scrollTop + body.clientHeight < body.scrollHeight - 4;
-    body.classList.toggle('sf-scroll-below', moreBelow);
   },
 
   _renderControls(ctx) {
     const state = ctx.state;
     controlSections(state).forEach(([heading, rows]) => {
-      this._body.appendChild(el('h2', null, heading));
-      const grid = el('div', 'sf-grid2');
+      this._body.appendChild(caps(heading));
+      const list = el('ul', 'k-rows');
+      list.style.setProperty('--k-row-cols', 'minmax(0, 1fr) auto');
+      list.setAttribute('aria-label', heading + ' controls');
       rows.forEach(([label, action, def]) => {
-        const keyText = keyLabel(state, action, def);
-        const keyCls = 'k' + (/^\d$/.test(keyText) ? ' k--digit' : '');
-        grid.appendChild(el('div', keyCls, keyText));
-        grid.appendChild(el('div', 'v', label));
+        list.appendChild(staticRow(label, keyLabel(state, action, def)));
       });
-      this._body.appendChild(grid);
+      this._body.appendChild(list);
     });
-    this._body.appendChild(el('p', 'sf-muted', 'Flight keys can be rebound in Settings → Controls. UI keys are fixed (ARCHITECTURE §5.6).'));
+    this._body.appendChild(el('p', 'k-t-fine k-38', 'Flight keys can be rebound in Settings → Controls. UI keys are fixed (ARCHITECTURE §5.6).'));
   },
 
   _renderLoops() {
-    this._body.appendChild(el('h2', null, 'Interaction Loops'));
     GAMEPLAY_LOOPS.forEach(([name, route, value]) => {
-      const card = el('div', 'sf-slot');
-      const main = el('div', 'sf-slot-main');
-      main.appendChild(el('div', 'sf-slot-name', name));
-      main.appendChild(el('div', 'sf-slot-sub', route));
-      main.appendChild(el('div', 'sf-muted', value));
-      card.appendChild(main);
-      this._body.appendChild(card);
+      this._body.appendChild(caps(name));
+      this._body.appendChild(el('p', 'k-sentence k-sentence--emph', route));
+      this._body.appendChild(el('p', 'k-sentence', value));
     });
   },
 
@@ -362,41 +366,22 @@ export const helpScreen = {
     const sorted = SHIPS.slice()
       .filter((s) => !q || (s.name + ' ' + (s.role || '')).toLowerCase().includes(q))
       .sort((a, b) => a.tier - b.tier || a.name.localeCompare(b.name));
-    const table = document.createElement('table');
-    table.className = 'sf-codex-table';
-    const thead = document.createElement('thead');
-    const hr = document.createElement('tr');
-    ['Name', 'Role', 'Tier', 'Hull', 'Shield', 'Speed', 'Cargo', 'Price'].forEach((h) => {
-      const th = document.createElement('th');
-      th.textContent = h;
-      if (['Tier', 'Hull', 'Shield', 'Speed', 'Cargo', 'Price'].includes(h)) th.className = 'num';
-      hr.appendChild(th);
-    });
-    thead.appendChild(hr);
-    table.appendChild(thead);
-    const tbody = document.createElement('tbody');
-    for (const s of sorted) {
-      const tr = document.createElement('tr');
-      const vals = [
-        [s.name, ''],
-        [s.role.replace(/_/g, ' '), ''],
-        ['T' + s.tier, 'num sf-fig'],
-        [s.hull, 'num sf-fig'],
-        [s.shield, 'num sf-fig'],
-        [s.handling != null ? s.handling.toFixed(1) : '-', 'num sf-fig'],
-        [s.cargo, 'num sf-fig'],
-        [fmtPrice(s.price), 'num sf-fig'],
-      ];
-      vals.forEach(([v, cls]) => {
-        const td = document.createElement('td');
-        td.textContent = v;
-        if (cls) td.className = cls;
-        tr.appendChild(td);
-      });
-      tbody.appendChild(tr);
-    }
-    table.appendChild(tbody);
-    this._body.appendChild(table);
+    const head = [
+      { label: 'Name' }, { label: 'Role' }, { label: 'Tier', num: true }, { label: 'Hull', num: true },
+      { label: 'Shield', num: true }, { label: 'Speed', num: true }, { label: 'Cargo', num: true }, { label: 'Price', num: true },
+    ];
+    const body = sorted.map((s) => [
+      [s.name],
+      [s.role.replace(/_/g, ' ')],
+      ['T' + s.tier],
+      [s.hull],
+      [s.shield],
+      [s.handling != null ? s.handling.toFixed(1) : '-'],
+      [s.cargo],
+      [fmtPrice(s.price)],
+    ]);
+    this._body.appendChild(register(head, body, { sortedIndex: 2, ariaLabel: 'Ships' }));
+    if (!body.length) this._body.appendChild(el('p', 'k-empty', 'No ship matches that search.'));
   },
 
   _renderCommodities() {
@@ -404,39 +389,23 @@ export const helpScreen = {
     const sorted = COMMODITIES.slice()
       .filter((c) => !q || (c.name + ' ' + (c.category || '')).toLowerCase().includes(q))
       .sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name));
-    const table = document.createElement('table');
-    table.className = 'sf-codex-table';
-    const thead = document.createElement('thead');
-    const hr = document.createElement('tr');
-    ['Name', 'Category', 'Base Price', 'Volume', 'Legality'].forEach((h) => {
-      const th = document.createElement('th');
-      th.textContent = h;
-      if (['Base Price', 'Volume'].includes(h)) th.className = 'num';
-      hr.appendChild(th);
-    });
-    thead.appendChild(hr);
-    table.appendChild(thead);
-    const tbody = document.createElement('tbody');
-    for (const c of sorted) {
-      const tr = document.createElement('tr');
+    const head = [
+      { label: 'Name' }, { label: 'Category' }, { label: 'Base Price', num: true }, { label: 'Volume', num: true }, { label: 'Legality' },
+    ];
+    const body = sorted.map((c) => {
+      // The word carries the state; colour only says "against you" (contraband reads in the bad red).
       const legalRole = legalityRole(c.legality);
-      const vals = [
-        [c.name, ''],
-        [c.category, ''],
-        [c.basePrice + ' cr', 'num sf-fig'],
-        [c.volPerU != null ? c.volPerU.toFixed(1) : '-', 'num sf-fig'],
-        [c.legality, legalRole === 'calm' ? '' : 'is-' + legalRole],
+      const legalCls = legalRole === 'calm' ? '' : 'is-' + legalRole + (legalRole === 'foe' ? ' k-bad' : '');
+      return [
+        [c.name],
+        [c.category],
+        [c.basePrice + ' cr'],
+        [c.volPerU != null ? c.volPerU.toFixed(1) : '-'],
+        [c.legality, legalCls],
       ];
-      vals.forEach(([v, cls]) => {
-        const td = document.createElement('td');
-        td.textContent = v;
-        if (cls) td.className = cls;
-        tr.appendChild(td);
-      });
-      tbody.appendChild(tr);
-    }
-    table.appendChild(tbody);
-    this._body.appendChild(table);
+    });
+    this._body.appendChild(register(head, body, { sortedIndex: 1, ariaLabel: 'Commodities' }));
+    if (!body.length) this._body.appendChild(el('p', 'k-empty', 'No commodity matches that search.'));
   },
 
   _renderOres() {
@@ -450,117 +419,80 @@ export const helpScreen = {
       .filter((o) => o.category === 'raw')
       .filter((o) => !q || (o.name + ' ' + (o.id || '')).toLowerCase().includes(q))
       .sort((a, b) => a.tier - b.tier || a.baseValue - b.baseValue);
-    this._body.appendChild(el('h2', null, 'Mineable Ores'));
-    const table = document.createElement('table');
-    table.className = 'sf-codex-table';
-    const thead = document.createElement('thead');
-    const hr = document.createElement('tr');
-    ['Name', 'Tier', 'Value', 'Mass', 'Volume', 'Tags'].forEach((h) => {
-      const th = document.createElement('th');
-      th.textContent = h;
-      if (['Tier', 'Value', 'Mass', 'Volume'].includes(h)) th.className = 'num';
-      hr.appendChild(th);
-    });
-    thead.appendChild(hr);
-    table.appendChild(thead);
-    const tbody = document.createElement('tbody');
-    for (const o of rawOres) {
-      const tr = document.createElement('tr');
-      const vals = [
-        [o.name, ''],
-        ['T' + o.tier, 'num sf-fig'],
-        [o.baseValue + ' cr', 'num sf-fig'],
-        [o.mass.toFixed(1), 'num sf-fig'],
-        [o.vol.toFixed(1), 'num sf-fig'],
-        [o.tags ? o.tags.join(', ') : '', ''],
-      ];
-      vals.forEach(([v, cls]) => {
-        const td = document.createElement('td');
-        td.textContent = v;
-        if (cls) td.className = cls;
-        tr.appendChild(td);
-      });
-      tbody.appendChild(tr);
-    }
-    table.appendChild(tbody);
-    this._body.appendChild(table);
+    this._body.appendChild(caps('Mineable ores'));
+    const oreHead = [
+      { label: 'Name' }, { label: 'Tier', num: true }, { label: 'Value', num: true },
+      { label: 'Mass', num: true }, { label: 'Volume', num: true }, { label: 'Tags' },
+    ];
+    const oreBody = rawOres.map((o) => [
+      [o.name],
+      ['T' + o.tier],
+      [o.baseValue + ' cr'],
+      [o.mass.toFixed(1)],
+      [o.vol.toFixed(1)],
+      [o.tags ? o.tags.join(', ') : ''],
+    ]);
+    this._body.appendChild(register(oreHead, oreBody, { sortedIndex: 1, ariaLabel: 'Mineable ores' }));
+    if (!oreBody.length) this._body.appendChild(el('p', 'k-empty', 'No ore matches that search.'));
 
     // Asteroid types
-    this._body.appendChild(el('h2', null, 'Asteroid Types'));
-    const tAst = document.createElement('table');
-    tAst.className = 'sf-codex-table';
-    const theadA = document.createElement('thead');
-    const hrA = document.createElement('tr');
-    ['Type', 'Tier Cap', 'Spawn Wt', 'Ore Drops'].forEach((h) => {
-      const th = document.createElement('th');
-      th.textContent = h;
-      if (['Tier Cap', 'Spawn Wt'].includes(h)) th.className = 'num';
-      hrA.appendChild(th);
-    });
-    theadA.appendChild(hrA);
-    tAst.appendChild(theadA);
-    const tbodyA = document.createElement('tbody');
-    for (const a of ASTEROIDS) {
-      const tr = document.createElement('tr');
+    this._body.appendChild(caps('Asteroid types'));
+    const astHead = [
+      { label: 'Type' }, { label: 'Tier Cap', num: true }, { label: 'Spawn Wt', num: true }, { label: 'Ore Drops' },
+    ];
+    const astBody = ASTEROIDS.map((a) => {
       const oreDrops = Object.entries(a.oreTable).map(([id, w]) => {
         const ore = ORES.find((o) => o.id === id);
         return (ore ? ore.name : id) + ' ' + Math.round(w * 100) + '%';
       }).join(', ');
-      const vals = [
-        [a.id.replace('ast_', '').replace(/_/g, ' '), ''],
-        ['T' + a.tierCap, 'num sf-fig'],
-        [a.spawnWeight, 'num sf-fig'],
-        [oreDrops, ''],
+      return [
+        [a.id.replace('ast_', '').replace(/_/g, ' ')],
+        ['T' + a.tierCap],
+        [a.spawnWeight],
+        [oreDrops],
       ];
-      vals.forEach(([v, cls]) => {
-        const td = document.createElement('td');
-        td.textContent = v;
-        if (cls) td.className = cls;
-        tr.appendChild(td);
-      });
-      tbodyA.appendChild(tr);
-    }
-    tAst.appendChild(tbodyA);
-    this._body.appendChild(tAst);
+    });
+    this._body.appendChild(register(astHead, astBody, { sortedIndex: 0, ariaLabel: 'Asteroid types' }));
   },
 
   _renderFactions() {
+    const list = el('ul', 'k-rows');
+    list.style.setProperty('--k-row-cols', 'auto minmax(0, 1fr) auto');
+    list.setAttribute('aria-label', 'Factions');
     for (const f of FACTION_META) {
-      const card = el('div', 'sf-codex-faction');
-      const nameRow = el('div', 'fname');
-      const swatch = document.createElement('span');
-      swatch.className = 'swatch';
-      swatch.style.background = f.color;
-      nameRow.appendChild(swatch);
-      nameRow.appendChild(document.createTextNode(f.name));
-      const shortSpan = el('span', 'fshort', ' (' + f.short + ')');
-      nameRow.appendChild(shortSpan);
-      card.appendChild(nameRow);
-
-      if (f.personality) {
-        const disp = el('div', 'fdisp');
-        disp.textContent = f.personality.toUpperCase();
-        card.appendChild(disp);
-      }
-
-      if (f.controls && f.controls.length) {
-        const desc = el('div', 'fdesc');
-        desc.textContent = 'Controls: ' + f.controls.join(', ');
-        card.appendChild(desc);
-      }
-
-      if (f.startingRep != null) {
-        const rep = el('div', 'fdesc');
-        rep.textContent = 'Starting rep: ' + (f.startingRep > 0 ? '+' : '') + f.startingRep;
-        card.appendChild(rep);
-      }
-
-      this._body.appendChild(card);
+      const row = el('li', 'k-row k-row--static');
+      const crest = el('span');
+      crest.setAttribute('aria-hidden', 'true');
+      crest.innerHTML = crestHtml(f.id);
+      row.appendChild(crest);
+      const main = el('div');
+      main.appendChild(el('span', 'k-row__name', f.name + ' (' + f.short + ')'));
+      const sub = [
+        f.controls && f.controls.length ? 'Controls: ' + f.controls.join(', ') : '',
+        f.startingRep != null ? 'Starting rep: ' + (f.startingRep > 0 ? '+' : '') + f.startingRep : '',
+      ].filter(Boolean).join(' · ');
+      if (sub) main.appendChild(el('div', 'k-row__sub', sub));
+      row.appendChild(main);
+      row.appendChild(el('span', 'k-row__num k-62', f.personality ? f.personality.toLowerCase() : ''));
+      list.appendChild(row);
     }
+    this._body.appendChild(list);
   },
 
-  onShow(ctx) { this._render(ctx); },
-  onHide() {},
+  onShow(ctx) {
+    this._render(ctx);
+    const r = this._regions;
+    if (r && typeof requestAnimationFrame === 'function') {
+      try {
+        cue('open');
+        settle(r.title, { from: 'top', state: 'help:open' });
+        settle(r.hang, { from: 'left', state: 'help:open' });
+        settle(r.stage, { from: 'right', state: 'help:open' });
+        settle(r.foot, { from: 'bottom', state: 'help:open' });
+      } catch (e) { /* motion is cosmetic */ }
+    }
+  },
+  onHide() { try { cue('close'); } catch (e) {} },
   refresh(ctx) { this._render(ctx); },
 };
 

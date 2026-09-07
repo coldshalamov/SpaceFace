@@ -22,17 +22,17 @@ import { telemetryHostilesRole } from '../src/ui/screens/crucibleLabTelemetry.js
 // (the sheet's grammar); its meaning roles (slotBadgeRole) and words-beside-colour strings are still
 // asserted below. Frontend Task C §1.3 did the same for the live station market
 // (src/ui/station/screens/market.js): it is styles/kit.css + styles/station.css now; its meaning roles
-// (chartTrendRole, legalityRole) stay exported and asserted.
+// (chartTrendRole, legalityRole) stay exported and asserted. Frontend Task D moved help
+// (src/ui/screens/help.js) onto the kit the same way: no injected CSS, `.sf-help-now` an inert hook on
+// the kit title's profile line; legalityRole and its words-beside-colour strings stay asserted.
 const FILES = [
   'src/ui/screens/sandbox.js',
   'src/ui/screens/crucibleLabControls.js',
-  'src/ui/screens/help.js',
   'src/ui/screens/crucibleLabTelemetry.js',
 ];
 const DISPLAY = new Map([
   ['src/ui/screens/sandbox.js', '.sf-sandbox-now'],
   ['src/ui/screens/crucibleLabControls.js', '.sf-lab-speed-now'],
-  ['src/ui/screens/help.js', '.sf-help-now'],
   ['src/ui/screens/crucibleLabTelemetry.js', '.sf-lab-tel-tick'],
 ]);
 const PINNED_FORBIDDEN = /(?:\bpanel\b|sf-menu|sf-menu-wide|sf-panel|sx-panel)/;
@@ -92,7 +92,6 @@ test('every figure binds --sf-data-face', () => {
   }
   assert.match(load('src/ui/screens/sandbox.js'), /className = 'sf-fig'/);
   assert.match(load('src/ui/screens/crucibleLabControls.js'), /sf-lab-speed-now sf-fig/);
-  assert.match(load('src/ui/screens/help.js'), /num sf-fig/);
   assert.match(load('src/ui/screens/crucibleLabTelemetry.js'), /sf-lab-tel-tick sf-fig/);
 });
 
