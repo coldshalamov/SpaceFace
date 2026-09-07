@@ -1835,6 +1835,11 @@ function spawnChrome(debugPort, profileDir) {
     '--no-first-run',
     '--no-default-browser-check',
     '--disable-extensions',
+    '--disable-background-networking',
+    '--disable-component-update',
+    '--disable-crash-reporter',
+    '--disable-breakpad',
+    '--disable-features=OptimizationGuideModelDownloading,OptimizationHints',
     `--user-data-dir=${profileDir}`,
     `--window-size=${WIDTH},${HEIGHT}`,
     `--remote-debugging-port=${debugPort}`,
@@ -1934,6 +1939,11 @@ async function closeWebSocket(socket) {
 
 async function closeOwnedAuthoredProbeRuntime({ ws, chrome, server, debugPort, profileDir }) {
   const failures = [];
+  try {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ id: 999999, method: 'Browser.close' }));
+    }
+  } catch (_) {}
   await closeWebSocket(ws);
   const chromeProof = await terminateChild(chrome);
   let serverProof;
