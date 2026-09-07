@@ -291,7 +291,13 @@ try {
     'all visibly presented live ships should include a main hull/body-sized authored surface');
   assert.deepEqual(report.ships.filter((ship) => ship.presented && ship.state === 'authored' && ship.mode !== 'release').map(summarizeShip), [],
     'all visibly presented authored ships should use release asset mode');
-  assert.deepEqual(report.ships.filter((ship) => !ship.presented && ship.state !== 'awaiting-authored-admission').map(summarizeShip), [],
+  // A non-presented ship may legitimately be in EITHER state. 'awaiting-authored-admission' is
+  // the one on its way in; 'authored' is one that has fully admitted its authored asset and is
+  // simply outside the spatial runway. Treating the second as a fallback identity had it
+  // backwards -- 'authored' is the state this whole probe exists to require, and ship_atlas was
+  // failing the gate for being in it while off camera. What must never appear here is an actual
+  // fallback: a procedural or placeholder identity standing in for an authored hull.
+  assert.deepEqual(report.ships.filter((ship) => !ship.presented && ship.state !== 'awaiting-authored-admission' && ship.state !== 'authored').map(summarizeShip), [],
     'non-presented ship boundaries may wait for spatial admission but must not expose a fallback identity');
   assert.equal(report.loaderDiagnostics.available, true,
     `authored asset runtime diagnostics should be available: ${JSON.stringify(report.loaderDiagnostics)}`);
