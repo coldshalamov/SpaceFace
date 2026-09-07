@@ -23,15 +23,20 @@ import {
 import { survivalResults } from '../src/systems/survivalResults.js';
 import { planWave } from '../src/systems/survivalWavePlanner.js';
 import {
+  applyWeaponsColdLoadout,
   clearQueuedChallenge,
   compileChallenge,
+  consumeQueuedWeeklyMutatorId,
   foldMutatorsIntoSeed,
   lastQueuedDailyDateKey,
   lastQueuedGhostHash,
+  lastQueuedWeeklyMutatorId,
   normalizeMutators,
   offerDraftForChallenge,
+  peekQueuedChallenge,
   queueGhostPlayback,
   queueSurvivalChallenge,
+  weeklyTelemetry,
 } from '../src/systems/survivalMutators.js';
 import {
   availableOptions,
@@ -67,7 +72,12 @@ import {
   useCrucibleMetaClock,
   useCrucibleMetaStorage,
   utcDateKeyFromIso,
+  utcWeekKeyFromIso,
+  utcWeekKeyNow,
+  weeklyMutatorForNow,
+  weeklyMutatorForWeekKey,
 } from '../src/systems/survivalRecords.js';
+import { CRUCIBLE_WEEKLY_ROTATION } from '../src/data/survivalMutators.js';
 
 const SEED = 47;
 const ARENA = 'helios_core';
@@ -844,4 +854,175 @@ test('a non-survival start does not arm leftover ghost playback', () => {
   assert.equal(getGhostPlaybackTape(), null);
   assert.equal(lastQueuedGhostHash(), hash);
   survivalRun.destroy();
+});
+
+test('same UTC week, two clocks, two storages yield the same weekly mutator id', () => {
+  resetMeta();
+  const storageA = memoryStorage();
+  const storageB = memoryStorage();
+  assert.notEqual(storageA, storageB);
+
+  useCrucibleMetaStorage(storageA);
+  useCrucibleMetaClock(() => '2026-08-31T00:00:00.000Z');
+  const keyA = utcWeekKeyNow();
+  const idA = weeklyMutatorForNow();
+
+  useCrucibleMetaStorage(storageB);
+  useCrucibleMetaClock(() => '2026-09-06T23:59:59.000Z');
+  const keyB = utcWeekKeyNow();
+  const idB = weeklyMutatorForNow();
+
+  assert.equal(keyA, keyB);
+  assert.equal(keyA, utcWeekKeyFromIso('2026-08-31T12:00:00.000Z'));
+  assert.equal(idA, idB);
+  assert.equal(idA, weeklyMutatorForWeekKey(keyA));
+  assert.ok(CRUCIBLE_WEEKLY_ROTATION.includes(idA));
+  console.log(`WEEKLY_EXAMPLE: ${keyA} -> ${idA}`);
+});
+
+test('four consecutive UTC weeks are a permutation of the four weekly mutators', () => {
+  resetMeta();
+  const starts = [
+    '2026-08-31T12:00:00.000Z',
+    '2026-09-07T12:00:00.000Z',
+    '2026-09-14T12:00:00.000Z',
+    '2026-09-21T12:00:00.000Z',
+  ];
+  const ids = [];
+  for (const iso of starts) {
+    useCrucibleMetaClock(() => iso);
+    ids.push(weeklyMutatorForNow());
+  }
+  assert.equal(new Set(ids).size, 4);
+  for (const id of CRUCIBLE_WEEKLY_ROTATION) {
+    assert.equal(ids.filter((row) => row === id).length, 1, id);
+  }
+  console.log(`ROTATION: ${ids.join(', ')}`);
+});
+
+test('weeklyTelemetry on seed 47 wave 1: four mutators, four strategy signatures', () => {
+  resetMeta();
+  const before = compileChallenge(SEED, [], 'swarm');
+  assert.equal(before.wellCount, 0);
+  assert.equal(before.physicsOnly, false);
+  assert.equal(before.reefLayoutId, null);
+  assert.deepEqual(before.mutators, []);
+
+  const rows = {};
+  for (const id of CRUCIBLE_WEEKLY_ROTATION) {
+    rows[id] = weeklyTelemetry(id, SEED, 1);
+  }
+  const slalom = rows.gravity_slalom;
+  const heavies = rows.heavies_only;
+  const cold = rows.weapons_cold;
+  const reef = rows.reef;
+
+  assert.equal(slalom.wellCount, 3);
+  assert.equal(heavies.wellCount, 0);
+  assert.ok(heavies.heavyCount > 0);
+  assert.equal(heavies.fodder, 0);
+  for (const role of heavies.roles) {
+    assert.ok(role === 'anchor' || role === 'elite', role);
+  }
+  const heaviesPlan = planWave({
+    seed: SEED, arenaId: ARENA, wave: 1, mutators: ['heavies_only'], ruleset: 'swarm',
+  });
+  assert.notEqual(heaviesPlan.ok, false);
+  for (const pkg of heaviesPlan.packages) {
+    assert.ok(pkg.role === 'anchor' || pkg.role === 'elite', pkg.role);
+    assert.notEqual(pkg.role, 'mass');
+    assert.notEqual(pkg.enemyId, 'wasp_swarmer');
+  }
+
+  assert.equal(cold.physicsOnly, true);
+  assert.equal(cold.skipDraft, true);
+  assert.equal(cold.weaponLock, 'starting');
+  const coldChallenge = compileChallenge(SEED, ['weapons_cold'], 'swarm');
+  const draftInput = {
+    seed: SEED, wave: 1, pickCount: 0, hullId: 'ship_kestrel',
+    fittings: ['wpn_pulse_laser_s', null, null, null, null, null],
+  };
+  assert.deepEqual(offerDraftForChallenge(draftInput, coldChallenge).offers, []);
+
+  const coldLoadout = applyWeaponsColdLoadout([
+    { slotIndex: 0, defId: 'wpn_concussion_cannon_m' },
+    { slotIndex: 1, defId: 'wpn_gravity_marker_s' },
+    { slotIndex: 7, defId: 'mod_elastic_whip_m' },
+  ]);
+  assert.deepEqual(coldLoadout.map((slot) => slot.defId), ['mod_elastic_whip_m']);
+
+  assert.ok(reef.reefLayoutId);
+  assert.notEqual(reef.reefLayoutId, 'helios_core');
+  assert.notEqual(reef.arenaId === 'helios_core' && !reef.reefLayoutId, true);
+  assert.equal(reef.reefLayoutId, 'crucible_reef');
+
+  const signatures = CRUCIBLE_WEEKLY_ROTATION.map((id) => JSON.stringify({
+    wellCount: rows[id].wellCount,
+    heavyCount: rows[id].heavyCount,
+    fodder: rows[id].fodder,
+    physicsOnly: rows[id].physicsOnly,
+    skipDraft: rows[id].skipDraft,
+    weaponLock: rows[id].weaponLock,
+    reefLayoutId: rows[id].reefLayoutId,
+  }));
+  assert.equal(new Set(signatures).size, 4);
+
+  console.log(
+    'TELEMETRY: '
+    + `gravity_slalom wellCount=${slalom.wellCount}`
+    + ` | heavies_only heavyCount=${heavies.heavyCount} fodder=${heavies.fodder}`
+    + ` | weapons_cold physicsOnly=${cold.physicsOnly} skipDraft=${cold.skipDraft}`
+    + ` | reef arena=${reef.reefLayoutId}`,
+  );
+});
+
+test('a non-weekly Swarm/Gauntlet/Daily launch does not inherit this week\'s mutator', () => {
+  resetMeta();
+  useCrucibleMetaClock(() => '2026-09-06T12:00:00.000Z');
+  const weekId = weeklyMutatorForNow();
+  assert.ok(weekId);
+
+  const swarm = compileChallenge(SEED, [], 'swarm');
+  const gauntlet = compileChallenge(SEED, [], 'scored');
+  assert.equal(swarm.mutators.includes(weekId), false);
+  assert.equal(gauntlet.mutators.includes(weekId), false);
+  assert.equal(swarm.wellCount, 0);
+  assert.equal(gauntlet.wellCount, 0);
+
+  queueSurvivalChallenge({ seed: SEED, ruleset: 'swarm', dailyDateKey: '2026-09-06' });
+  const dailyQueued = peekQueuedChallenge();
+  assert.equal(dailyQueued.weeklyMutatorId, undefined);
+  assert.equal(dailyQueued.mutators.includes(weekId), false);
+  assert.equal(lastQueuedWeeklyMutatorId(), null);
+  clearQueuedChallenge();
+
+  queueSurvivalChallenge({
+    seed: SEED, ruleset: 'swarm', weeklyMutatorId: weekId,
+  });
+  assert.equal(lastQueuedWeeklyMutatorId(), weekId);
+  assert.ok(peekQueuedChallenge().mutators.includes(weekId));
+
+  const state = createGameState(SEED);
+  const raw = createBus();
+  const bus = {
+    on: raw.on.bind(raw),
+    off: raw.off.bind(raw),
+    once: raw.once.bind(raw),
+    emit: raw.emit.bind(raw),
+  };
+  runSession.init({ state, bus });
+  survivalRun.init({ state, bus });
+  bus.emit('run:beginRequested', { kind: 'survival', ruleset: 'swarm', seed: SEED, arenaId: ARENA });
+  assert.ok(state.run.arenaMutators.includes(weekId));
+  assert.equal(lastQueuedWeeklyMutatorId(), null);
+  consumeQueuedWeeklyMutatorId();
+
+  const laterFree = compileChallenge(SEED, [], 'swarm');
+  assert.equal(laterFree.mutators.includes(weekId), false);
+  queueSurvivalChallenge({ seed: SEED, ruleset: 'swarm' });
+  assert.equal(lastQueuedWeeklyMutatorId(), null);
+  assert.equal(peekQueuedChallenge().mutators.includes(weekId), false);
+
+  survivalRun.destroy();
+  runSession.destroy();
 });

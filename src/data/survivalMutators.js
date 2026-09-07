@@ -17,7 +17,23 @@ function freezeDeep(value) {
 }
 
 /** Mutator ids the wave planner already interprets. Unknown ids are recorded and ignored there. */
-export const SURVIVAL_PLANNER_MUTATORS = Object.freeze(['shutter_alternating']);
+export const SURVIVAL_PLANNER_MUTATORS = Object.freeze([
+  'shutter_alternating',
+  'gravity_slalom',
+  'heavies_only',
+  'reef',
+]);
+
+/** PQ-169.02: weekly rotation is a permutation of these four, in this order. Not a hash lottery. */
+export const CRUCIBLE_WEEKLY_ROTATION = Object.freeze([
+  'gravity_slalom',
+  'heavies_only',
+  'weapons_cold',
+  'reef',
+]);
+
+export const CRUCIBLE_REEF_LAYOUT_ID = 'crucible_reef';
+export const CRUCIBLE_SLALOM_WELL_COUNT = 3;
 
 export const SURVIVAL_PHYSICS_VERBS = Object.freeze(['Throw', 'Tag', 'Bind', 'Mine', 'Unsteer']);
 
@@ -87,6 +103,52 @@ export const SURVIVAL_MUTATOR_CATALOG = freezeDeep([
     weaponLock: 'starting',
     physicsOnly: false,
     planner: false,
+  },
+  {
+    id: 'gravity_slalom',
+    label: 'Gravity slalom',
+    blurb: 'Three wells bend the room. Thread them; sitting still is a trap.',
+    skipDraft: false,
+    skipReroll: false,
+    hullLocked: false,
+    weaponLock: null,
+    physicsOnly: false,
+    planner: true,
+    wellCount: 3,
+  },
+  {
+    id: 'heavies_only',
+    label: 'Heavies only',
+    blurb: 'No wasp fodder. Every hull in the plan is a heavy.',
+    skipDraft: false,
+    skipReroll: false,
+    hullLocked: false,
+    weaponLock: null,
+    physicsOnly: false,
+    planner: true,
+  },
+  {
+    id: 'weapons_cold',
+    label: 'Weapons cold',
+    blurb: 'Guns stay cold. Physics verbs are the kit.',
+    skipDraft: true,
+    skipReroll: true,
+    hullLocked: false,
+    weaponLock: 'starting',
+    physicsOnly: true,
+    planner: false,
+  },
+  {
+    id: 'reef',
+    label: 'Reef',
+    blurb: 'The room is a reef, not Helios Core\'s empty floor.',
+    skipDraft: false,
+    skipReroll: false,
+    hullLocked: false,
+    weaponLock: null,
+    physicsOnly: false,
+    planner: true,
+    reefLayoutId: 'crucible_reef',
   },
 ]);
 

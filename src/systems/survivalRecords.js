@@ -31,6 +31,7 @@ import {
 } from '../save/sharedPlayerStore.js';
 import { hash32, wrapAngle } from '../core/rng.js';
 import { evaluateUnlocks } from './survivalUnlocks.js';
+import { CRUCIBLE_WEEKLY_ROTATION } from '../data/survivalMutators.js';
 import { challengeFromRun, consumeQueuedDailyDateKey, lastQueuedDailyDateKey, normalizeMutators } from './survivalMutators.js';
 
 export const CRUCIBLE_META_FMT = 'spaceface-crucible-meta';
@@ -103,6 +104,67 @@ export function dailySeedForDateKey(dateKey) {
 
 export function dailySeedForNow() {
   return dailySeedForDateKey(utcDateKeyNow());
+}
+
+export const CRUCIBLE_WEEKLY_EPOCH_MONDAY_MS = Date.UTC(1970, 0, 5);
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+export function isUtcWeekKey(value) {
+  return typeof value === 'string' && /^\d{4}-W\d{2}$/.test(value);
+}
+
+function padWeek(week) {
+  return `W${String(week).padStart(2, '0')}`;
+}
+
+/** ISO-week `YYYY-Www` in UTC from an ISO timestamp. Never local timezone. */
+export function utcWeekKeyFromIso(iso) {
+  if (typeof iso !== 'string' || iso.length < 10) return '';
+  const ms = Date.parse(iso);
+  if (!Number.isFinite(ms)) return '';
+  const date = new Date(ms);
+  const utc = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const dayNum = utc.getUTCDay() || 7;
+  utc.setUTCDate(utc.getUTCDate() + 4 - dayNum);
+  const isoYear = utc.getUTCFullYear();
+  const yearStart = new Date(Date.UTC(isoYear, 0, 1));
+  const week = Math.ceil((((utc.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  if (!Number.isInteger(week) || week < 1) return '';
+  return `${isoYear}-${padWeek(week)}`;
+}
+
+export function utcWeekKeyNow() {
+  return utcWeekKeyFromIso(nowIso());
+}
+
+function mondayMsForWeekKey(weekKey) {
+  if (!isUtcWeekKey(weekKey)) return null;
+  const year = Number(weekKey.slice(0, 4));
+  const week = Number(weekKey.slice(6));
+  if (!Number.isInteger(year) || !Number.isInteger(week) || week < 1) return null;
+  const jan4 = new Date(Date.UTC(year, 0, 4));
+  const jan4Day = jan4.getUTCDay() || 7;
+  const week1Monday = Date.UTC(year, 0, 4 - (jan4Day - 1));
+  return week1Monday + (week - 1) * WEEK_MS;
+}
+
+function weekIndexFromWeekKey(weekKey) {
+  const mondayMs = mondayMsForWeekKey(weekKey);
+  if (mondayMs == null) return null;
+  return Math.floor((mondayMs - CRUCIBLE_WEEKLY_EPOCH_MONDAY_MS) / WEEK_MS);
+}
+
+/** PQ-169.02: weekly rotation is local. No live-ops feed. Permutation, not hash % 4. */
+export function weeklyMutatorForWeekKey(weekKey) {
+  const index = weekIndexFromWeekKey(weekKey);
+  if (index == null) return '';
+  const n = CRUCIBLE_WEEKLY_ROTATION.length;
+  const slot = ((index % n) + n) % n;
+  return CRUCIBLE_WEEKLY_ROTATION[slot];
+}
+
+export function weeklyMutatorForNow() {
+  return weeklyMutatorForWeekKey(utcWeekKeyNow());
 }
 
 let ghostRecording = null;

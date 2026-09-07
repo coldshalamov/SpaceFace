@@ -10,6 +10,7 @@
 
 import { validateCombatLabSetup } from '../contracts/combatLabSetupSchema.js';
 import { COMBAT_LAB_STARTER_PACKAGES } from '../data/combatLabSetups.js';
+import { applyWeaponsColdLoadout } from '../systems/survivalMutators.js';
 import { buildSandboxLaunchConfig, requestSandboxGame } from './sandbox/sandboxSetup.js';
 import { SWARM_RULESET } from '../data/swarmMode.js';
 
@@ -96,6 +97,9 @@ export function requestCrucibleRun(bus, setup, ruleset = CRUCIBLE_DEFAULT_RULESE
   const dailyDateKey = typeof setup.dailyDateKey === 'string' && setup.dailyDateKey
     ? setup.dailyDateKey
     : null;
+  const weeklyMutatorId = typeof setup.weeklyMutatorId === 'string' && setup.weeklyMutatorId
+    ? setup.weeklyMutatorId
+    : null;
   const ghostHash = Number.isInteger(setup.ghostHash)
     ? (setup.ghostHash >>> 0)
     : (typeof setup.ghostHash === 'string' && /^\d+$/.test(setup.ghostHash)
@@ -103,13 +107,18 @@ export function requestCrucibleRun(bus, setup, ruleset = CRUCIBLE_DEFAULT_RULESE
       : null);
   const launchSetup = { ...setup };
   delete launchSetup.dailyDateKey;
+  delete launchSetup.weeklyMutatorId;
   delete launchSetup.ghostHash;
+  if (weeklyMutatorId === 'weapons_cold') {
+    launchSetup.loadout = applyWeaponsColdLoadout(launchSetup.loadout);
+  }
   lastSetup = {
     ...launchSetup,
     ruleset: resolved,
     loadout: (launchSetup.loadout || []).map((entry) => ({ ...entry })),
   };
   if (dailyDateKey) lastSetup.dailyDateKey = dailyDateKey;
+  if (weeklyMutatorId) lastSetup.weeklyMutatorId = weeklyMutatorId;
   if (ghostHash != null) lastSetup.ghostHash = ghostHash;
   requestSandboxGame(bus, crucibleLaunchConfig(launchSetup, resolved));
   return true;

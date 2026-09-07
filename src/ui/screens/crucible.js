@@ -28,7 +28,9 @@ import {
   ghostRaceOffer,
   loadCrucibleMeta,
   utcDateKeyNow,
+  weeklyMutatorForNow,
 } from '../../systems/survivalRecords.js';
+import { SURVIVAL_MUTATOR_BY_ID } from '../../data/survivalMutators.js';
 import { clearQueuedChallenge, queueGhostPlayback, queueSurvivalChallenge } from '../../systems/survivalMutators.js';
 import { meetsUnlockCondition } from '../../systems/survivalUnlocks.js';
 import { compileAttackSpec } from '../../combat/attackSpec.js';
@@ -59,20 +61,24 @@ function injectStyle() {
     grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); }
   .sf-menu.sf-crucible-door .sf-crd-mode,
   .sf-menu.sf-crucible-door .sf-crd-daily,
+  .sf-menu.sf-crucible-door .sf-crd-weekly,
   .sf-menu.sf-crucible-door .sf-crd-ghost { display:flex; flex-direction:column; gap:5px; text-align:left;
     border:1px solid var(--line); border-radius:2px; background:rgba(255,255,255,.03);
     padding:12px 14px; cursor:pointer; color:var(--ink); font:inherit; }
   .sf-menu.sf-crucible-door .sf-crd-mode[aria-pressed="true"],
   .sf-menu.sf-crucible-door .sf-crd-daily[aria-pressed="true"],
+  .sf-menu.sf-crucible-door .sf-crd-weekly[aria-pressed="true"],
   .sf-menu.sf-crucible-door .sf-crd-ghost[aria-pressed="true"] { border-color:var(--accent-3);
     background:color-mix(in srgb, var(--accent-3) 9%, transparent); }
   .sf-menu.sf-crucible-door .sf-crd-mode .n,
   .sf-menu.sf-crucible-door .sf-crd-daily .n,
+  .sf-menu.sf-crucible-door .sf-crd-weekly .n,
   .sf-menu.sf-crucible-door .sf-crd-ghost .n { font-family:var(--mf-ui); font-weight:600; letter-spacing:.04em;
     font-size:13px; text-transform:uppercase; }
   /* Mode and hull descriptions are sentences: sentence case in the UI face, never tracked caps. */
   .sf-menu.sf-crucible-door .sf-crd-mode .d,
   .sf-menu.sf-crucible-door .sf-crd-daily .d,
+  .sf-menu.sf-crucible-door .sf-crd-weekly .d,
   .sf-menu.sf-crucible-door .sf-crd-ghost .d,
   .sf-menu.sf-crucible-door .sf-crd-hull .d { font-family:var(--mf-ui); font-size:13px; color:var(--ink-dim);
     line-height:1.45; letter-spacing:0; text-transform:none; }
@@ -440,6 +446,20 @@ const GHOST_CARD = Object.freeze({
   blurbOff: 'No ghost for this seed yet.',
 });
 
+function weeklyDoorCard() {
+  const id = weeklyMutatorForNow();
+  const def = id ? SURVIVAL_MUTATOR_BY_ID[id] : null;
+  const name = def && def.label ? def.label : 'Weekly';
+  const blurb = def && def.blurb ? def.blurb : 'This week\'s twist is locked to UTC.';
+  return {
+    id,
+    label: 'Weekly',
+    name,
+    blurb: `${name}. ${blurb}`,
+    sub: `${name}. ${blurb} Locked for this UTC week. Nothing you earn here follows you home.`,
+  };
+}
+
 export const crucibleScreen = {
   id: 'crucible',
 
@@ -457,6 +477,7 @@ export const crucibleScreen = {
     let ruleset = previous ? lastCrucibleRuleset() : CRUCIBLE_DEFAULT_RULESET;
     let daily = !!(previous && previous.dailyDateKey);
     if (daily) ruleset = SWARM_RULESET;
+    let weekly = !!(previous && previous.weeklyMutatorId);
     let freeSeed = previous && !previous.dailyDateKey ? String(previous.seed) : null;
     let doorProfile = null;
     try { doorProfile = loadCrucibleMeta(); } catch { doorProfile = null; }
@@ -471,7 +492,8 @@ export const crucibleScreen = {
     // THE MODE COMES FIRST, because it is the biggest difference between two runs — bigger than
     // the hull and much bigger than the seed. Swarm leads: it is what the Crucible is.
     // Daily sits beside the two rulesets as its own control (not a third .sf-crd-mode) so the
-    // existing two-mode door check still sees Swarm/Gauntlet as the ruleset pair.
+    // existing two-mode door check still sees Swarm/Gauntlet as the ruleset pair. Weekly is the
+    // same kind of sibling: it locks this UTC week's mutator without becoming a fourth ruleset.
     rootEl.appendChild(el('div', 'sf-crd-label', 'Mode'));
     const modes = el('div', 'sf-crd-modes');
     const modeButtons = [];
@@ -514,6 +536,21 @@ export const crucibleScreen = {
       syncMode();
     });
     modes.appendChild(dailyButton);
+    // PQ-169.02: weekly rotation is local. No live-ops feed.
+    const weeklyCard = weeklyDoorCard();
+    const weeklyButton = document.createElement('button');
+    weeklyButton.type = 'button';
+    weeklyButton.className = 'sf-crd-weekly';
+    weeklyButton.setAttribute('aria-pressed', String(weekly));
+    weeklyButton.appendChild(el('div', 'n', weeklyCard.label));
+    const weeklyBlurb = el('div', 'd', weeklyCard.blurb);
+    weeklyButton.appendChild(weeklyBlurb);
+    weeklyButton.addEventListener('click', () => {
+      weekly = !weekly;
+      weeklyButton.setAttribute('aria-pressed', String(weekly));
+      syncMode();
+    });
+    modes.appendChild(weeklyButton);
     const ghostButton = document.createElement('button');
     ghostButton.type = 'button';
     ghostButton.className = 'sf-crd-ghost';
@@ -546,9 +583,13 @@ export const crucibleScreen = {
     }
 
     function syncMode() {
+      const week = weeklyDoorCard();
+      weeklyBlurb.textContent = week.blurb;
       if (daily) {
-        sub.textContent = DAILY_CARD.sub;
-        if (enterButton) enterButton.textContent = DAILY_CARD.verb;
+        sub.textContent = weekly
+          ? `${DAILY_CARD.sub} This week: ${week.name}. ${week.blurb}`
+          : DAILY_CARD.sub;
+        if (enterButton) enterButton.textContent = weekly ? `Play ${week.name}` : DAILY_CARD.verb;
         seedInput.readOnly = true;
         seedInput.setAttribute('aria-readonly', 'true');
         seedInput.value = String(dailySeedForNow());
@@ -557,8 +598,8 @@ export const crucibleScreen = {
         return;
       }
       const entry = CRUCIBLE_MODE_CARDS.find((m) => m.ruleset === ruleset) || CRUCIBLE_MODE_CARDS[0];
-      sub.textContent = entry.sub;
-      if (enterButton) enterButton.textContent = entry.verb;
+      sub.textContent = weekly ? week.sub : entry.sub;
+      if (enterButton) enterButton.textContent = weekly ? `Play ${week.name}` : entry.verb;
       seedInput.readOnly = false;
       seedInput.removeAttribute('aria-readonly');
       reroll.disabled = false;
@@ -634,13 +675,17 @@ export const crucibleScreen = {
       const offer = currentGhostOffer();
       const ghostHash = raceGhost && offer.available ? offer.hash : null;
       if (ghostHash != null) payload.ghostHash = ghostHash;
-      if (daily) {
-        const dateKey = utcDateKeyNow();
-        payload.dailyDateKey = dateKey;
+      const weeklyMutatorId = weekly ? weeklyMutatorForNow() : null;
+      if (weeklyMutatorId) payload.weeklyMutatorId = weeklyMutatorId;
+      if (daily || weeklyMutatorId) {
+        const dateKey = daily ? utcDateKeyNow() : null;
+        if (dateKey) payload.dailyDateKey = dateKey;
         queueSurvivalChallenge({
           seed: payload.seed,
-          ruleset: SWARM_RULESET,
+          ruleset: daily ? SWARM_RULESET : ruleset,
+          mutators: weeklyMutatorId ? [weeklyMutatorId] : [],
           dailyDateKey: dateKey,
+          weeklyMutatorId,
           ghostHash,
         });
       } else if (ghostHash != null) {
@@ -1130,11 +1175,13 @@ export const crucibleResultsScreen = {
       // Restart is a real New Game: runSession.newGame resets the envelope to inactive, so the
       // begin below is accepted exactly as it was the first time.
       // Replay the run as it BEGAN, ruleset included — a swarm death must not restart as a gauntlet.
-      if (setup.dailyDateKey) {
+      if (setup.dailyDateKey || setup.weeklyMutatorId) {
         queueSurvivalChallenge({
           seed: setup.seed,
           ruleset: lastCrucibleRuleset(),
+          mutators: setup.weeklyMutatorId ? [setup.weeklyMutatorId] : [],
           dailyDateKey: setup.dailyDateKey,
+          weeklyMutatorId: setup.weeklyMutatorId,
           ghostHash: setup.ghostHash,
         });
       } else if (setup.ghostHash != null) {

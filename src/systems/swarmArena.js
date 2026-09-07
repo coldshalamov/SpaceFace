@@ -37,6 +37,10 @@
 import { mulberry32 } from '../core/rng.js';
 import { validateRunState } from '../core/runState.js';
 import { SWARM_SPAWN_CAP } from '../data/swarmMode.js';
+import {
+  CRUCIBLE_REEF_LAYOUT_ID,
+  CRUCIBLE_SLALOM_WELL_COUNT,
+} from '../data/survivalMutators.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
 
 /** Marker on every rock this system creates, so teardown and census never touch sector terrain. */
@@ -100,6 +104,23 @@ export const SWARM_DEBRIS_FIGHT_RADIUS = SWARM_DEBRIS_OUTER + 60;
 export const SWARM_DEBRIS_SEPARATION = 34;
 /** Nothing spawns closer than this to the player, whatever the roll says. */
 export const SWARM_DEBRIS_SAFE_RADIUS = 120;
+
+/** Reef is a tighter inner obstacle recipe, not Helios Core's default annulus. */
+export const REEF_DEBRIS_INNER = 58;
+export const REEF_DEBRIS_OUTER = 168;
+export const REEF_DEBRIS_TARGET = 16;
+export const REEF_LAYOUT_ID = CRUCIBLE_REEF_LAYOUT_ID;
+
+export const SLALOM_WELL_COUNT = CRUCIBLE_SLALOM_WELL_COUNT;
+export const SLALOM_WELL_IDS = Object.freeze([
+  'crucible_slalom_well_0',
+  'crucible_slalom_well_1',
+  'crucible_slalom_well_2',
+]);
+export const SLALOM_WELL_RADIUS = 240;
+export const SLALOM_WELL_STRENGTH = 110;
+export const SLALOM_WELL_FALLOFF = 1.2;
+export const SLALOM_WELL_DISTANCE = 205;
 
 /**
  * WRECK HOUSEKEEPING.
@@ -204,6 +225,72 @@ export function planSwarmDebris({ anchor, existing = [], want = 0, rng } = {}) {
   return out;
 }
 
+function runHasMutator(run, id) {
+  return !!(run && Array.isArray(run.arenaMutators) && run.arenaMutators.includes(id));
+}
+
+/** PURE three-well triangle around the fight. Telemetry wellCount is 3; these are the bodies. */
+export function planGravitySlalomWells({ anchor } = {}) {
+  const at = {
+    x: anchor && Number.isFinite(anchor.x) ? anchor.x : 0,
+    z: anchor && Number.isFinite(anchor.z) ? anchor.z : 0,
+  };
+  const wells = [];
+  for (let i = 0; i < SLALOM_WELL_COUNT; i++) {
+    const angle = -Math.PI / 2 + (i * Math.PI * 2) / SLALOM_WELL_COUNT;
+    wells.push({
+      id: SLALOM_WELL_IDS[i],
+      kind: 'well',
+      center: {
+        x: at.x + Math.cos(angle) * SLALOM_WELL_DISTANCE,
+        z: at.z + Math.sin(angle) * SLALOM_WELL_DISTANCE,
+      },
+      radius: SLALOM_WELL_RADIUS,
+      strength: SLALOM_WELL_STRENGTH,
+      falloff: SLALOM_WELL_FALLOFF,
+    });
+  }
+  return wells;
+}
+
+/** PURE reef obstacle recipe. Tighter inner ring than the default swarm debris field. */
+export function planReefLayout({ anchor, existing = [], want = 0, rng } = {}) {
+  const at = {
+    x: anchor && Number.isFinite(anchor.x) ? anchor.x : 0,
+    z: anchor && Number.isFinite(anchor.z) ? anchor.z : 0,
+  };
+  const roll = typeof rng === 'function' ? rng : () => 0.5;
+  const placed = existing.map((e) => ({ x: e.x, z: e.z, radius: e.radius || 0 }));
+  const out = [];
+  const n = Math.max(0, Math.trunc(want));
+  for (let i = 0; i < n; i++) {
+    const size = SWARM_DEBRIS_SIZE_MIN + roll() * (SWARM_DEBRIS_SIZE_MAX - SWARM_DEBRIS_SIZE_MIN);
+    let chosen = null;
+    for (let attempt = 0; attempt < PLACEMENT_TRIES; attempt++) {
+      const angle = (roll() * Math.PI * 2) + i * 2.399963;
+      const span = REEF_DEBRIS_OUTER - REEF_DEBRIS_INNER;
+      const dist = REEF_DEBRIS_INNER + Math.sqrt(roll()) * span;
+      if (dist < SWARM_DEBRIS_SAFE_RADIUS * 0.55 + size) continue;
+      const x = at.x + Math.cos(angle) * dist;
+      const z = at.z + Math.sin(angle) * dist;
+      let clear = true;
+      for (const other of placed) {
+        const dx = x - other.x;
+        const dz = z - other.z;
+        const min = size + (other.radius || 0) + SWARM_DEBRIS_SEPARATION * 0.7;
+        if (dx * dx + dz * dz < min * min) { clear = false; break; }
+      }
+      if (!clear) continue;
+      chosen = { x, z, radius: size, layoutId: REEF_LAYOUT_ID };
+      break;
+    }
+    if (!chosen) continue;
+    placed.push(chosen);
+    out.push(chosen);
+  }
+  return out;
+}
+
 export const swarmArena = {
   name: 'swarmArena',
   id: 'swarmArena',
@@ -213,8 +300,10 @@ export const swarmArena = {
     this.state = ctx.state;
     this.bus = ctx.bus || null;
     this.helpers = ctx.helpers || null;
+    this.registry = ctx.registry || null;
     this._unsubs = [];
     this._ids = [];
+    this._wellIds = [];
     if (!this.bus || typeof this.bus.on !== 'function') return;
     this._priorCap = null;
     this._unsubs.push(this.bus.on('run:wavePlanned', (p) => this._onWavePlanned(p)));
@@ -228,6 +317,7 @@ export const swarmArena = {
 
   newGame() {
     this._ids = [];
+    this._releaseWells();
     this._restoreCapacity();
   },
 
@@ -253,6 +343,7 @@ export const swarmArena = {
     this._raiseCapacity();
     this._cullWrecks();
     this._topUp(run, wave);
+    this._installSlalomWells(run);
   },
 
   /**
@@ -374,14 +465,18 @@ export const swarmArena = {
     }
     this._ids = surviving;
 
-    const want = Math.min(SWARM_DEBRIS_TARGET - mine, SWARM_DEBRIS_MAX - mine);
+    const reef = runHasMutator(run, 'reef');
+    const target = reef ? REEF_DEBRIS_TARGET : SWARM_DEBRIS_TARGET;
+    const want = Math.min(target - mine, SWARM_DEBRIS_MAX - mine);
     if (want <= 0) return;
 
     const rng = mulberry32(debrisStreamSeed(
       Number.isInteger(run.seed) ? run.seed : 1,
       Number.isInteger(wave) ? wave : 1,
     ));
-    const spots = planSwarmDebris({ anchor, existing: nearbySolids, want, rng });
+    const spots = reef
+      ? planReefLayout({ anchor, existing: nearbySolids, want, rng })
+      : planSwarmDebris({ anchor, existing: nearbySolids, want, rng });
     const spawnedIds = [];
     for (const spot of spots) {
       const size = spot.radius;
@@ -411,6 +506,7 @@ export const swarmArena = {
           terrainAnchor: true,
           terrainAnchorEncounterIds: [],
           despawnAt: now + SWARM_DEBRIS_TTL_S,
+          ...(reef ? { reefLayoutId: REEF_LAYOUT_ID } : {}),
         },
       });
       const id = spawned && typeof spawned === 'object' ? spawned.id : spawned;
@@ -422,12 +518,48 @@ export const swarmArena = {
       wave,
       added: spawnedIds.length,
       total: this._ids.length,
+      layoutId: reef ? REEF_LAYOUT_ID : null,
     });
+  },
+
+  _fieldsSystem() {
+    return this.registry && typeof this.registry.get === 'function'
+      ? this.registry.get('fields')
+      : null;
+  },
+
+  _installSlalomWells(run) {
+    this._releaseWells();
+    if (!runHasMutator(run, 'gravity_slalom')) return;
+    const system = this._fieldsSystem();
+    if (!system || typeof system.registerEnvironmental !== 'function') return;
+    const createdAt = this.state && Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    const wells = planGravitySlalomWells({ anchor: playerAnchor(this.state) });
+    const ids = [];
+    for (const spec of wells) {
+      const record = system.registerEnvironmental({ ...spec, createdAt });
+      if (record === null || record === undefined) continue;
+      ids.push(spec.id);
+    }
+    this._wellIds = ids;
+    if (ids.length > 0) {
+      this._emit('swarmArena:slalom', { wellCount: ids.length, wellIds: ids.slice() });
+    }
+  },
+
+  _releaseWells() {
+    const ids = this._wellIds || [];
+    this._wellIds = [];
+    if (ids.length === 0) return;
+    const system = this._fieldsSystem();
+    if (!system || typeof system.unregisterExternal !== 'function') return;
+    for (const id of ids) system.unregisterExternal(id);
   },
 
   /** Hand the field back to the engine's ordinary despawn sweep. Never deletes entities directly. */
   _release(reason) {
     this._restoreCapacity();
+    this._releaseWells();
     const state = this.state;
     const ids = this._ids || [];
     this._ids = [];

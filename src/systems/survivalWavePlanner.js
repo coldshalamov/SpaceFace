@@ -35,6 +35,7 @@ import {
   swarmRewards,
   swarmWaveOf,
 } from '../data/swarmMode.js';
+import { CRUCIBLE_REEF_LAYOUT_ID, CRUCIBLE_SLALOM_WELL_COUNT } from '../data/survivalMutators.js';
 
 // Binding ranges from spaceface.combatLabSetup.v1 (seed 1..0xffffffff, wave 1..999).
 // Authored recipes exist for template waves 1–10 per live arena. The thirty-wave
@@ -52,7 +53,44 @@ for (const recipe of SURVIVAL_WAVES) {
   RECIPE_BY_ARENA_WAVE.set(`${recipe.arenaId}#${recipe.wave}`, recipe);
 }
 
-export const WAVE_PLAN_ERROR = 'invalid_input';
+const HEAVY_ROLES = new Set(['anchor', 'elite']);
+const FODDER_ENEMIES = new Set(['wasp_swarmer', 'choir_zealot']);
+const HEAVIES_ONLY_FALLBACK = Object.freeze({ role: 'anchor', enemyId: 'bruiser_brawler' });
+const HEAVIES_ONLY_ROSTER = Object.freeze([
+  { enemyId: 'bruiser_brawler', role: 'anchor', weight: 6 },
+  { enemyId: 'corsair_raider', role: 'elite', weight: 4 },
+  { enemyId: 'field_anchor_controller', role: 'anchor', weight: 3 },
+]);
+
+function mutatorList(mutators) {
+  return Array.isArray(mutators) ? mutators : [];
+}
+
+function isHeavyPackage(pkg) {
+  if (!pkg) return false;
+  if (pkg.role === 'mass') return false;
+  if (FODDER_ENEMIES.has(pkg.enemyId)) return false;
+  return HEAVY_ROLES.has(pkg.role);
+}
+
+function applyHeaviesOnly(packages) {
+  if (!Array.isArray(packages)) return [];
+  return packages.map((pkg) => {
+    if (isHeavyPackage(pkg)) {
+      return { ...pkg };
+    }
+    const next = { ...pkg, role: HEAVIES_ONLY_FALLBACK.role, enemyId: HEAVIES_ONLY_FALLBACK.enemyId };
+    return next;
+  });
+}
+
+function decorateWeeklyPlan(plan, mutators) {
+  if (!plan || plan.ok === false) return plan;
+  const list = mutatorList(mutators);
+  if (list.includes('gravity_slalom')) plan.wellCount = CRUCIBLE_SLALOM_WELL_COUNT;
+  if (list.includes('reef')) plan.reefLayoutId = CRUCIBLE_REEF_LAYOUT_ID;
+  return plan;
+}
 
 function isPlainObject(value) {
   return value != null && typeof value === 'object' && !Array.isArray(value);
@@ -298,19 +336,28 @@ export function resolvePlanMode(input) {
  * role dead". `requiredPackagesMaterialized` is false and `blockingRoles` is empty on purpose:
  * a swarm wave must never be able to stall on one straggler flying home.
  */
-function planSwarmWave({ seed, wave, rng }) {
+function planSwarmWave({ seed, wave, rng, mutators }) {
   const w = swarmWaveOf(wave);
-  const packages = swarmOpeningPackages(w, rng);
+  const list = mutatorList(mutators);
+  let packages = swarmOpeningPackages(w, rng);
+  if (list.includes('heavies_only')) packages = applyHeaviesOnly(packages);
   const schedule = expandSchedule(packages);
   const opening = swarmOpeningCount(packages);
   const swarm = swarmPlanBlock(w);
+  if (list.includes('heavies_only')) {
+    swarm.roster = HEAVIES_ONLY_ROSTER.map((entry) => ({
+      enemyId: entry.enemyId,
+      role: entry.role,
+      weight: entry.weight,
+    }));
+  }
   if (opening > SPAWN_BUDGET_DEFAULT_MAX) {
     return invalid([issue('packages', `swarm opening burst ${opening} exceeds 24`)]);
   }
   if (swarm.concurrent > SPAWN_BUDGET_HARD_MAX) {
     return invalid([issue('swarm.concurrent', `swarm concurrency ${swarm.concurrent} exceeds 40`)]);
   }
-  return {
+  const plan = {
     id: `swarm:w${w}:${seed.toString(16)}`,
     mode: SWARM_RULESET,
     objective: { kind: swarm.boss ? 'boss' : 'resolve_hostiles' },
@@ -329,6 +376,7 @@ function planSwarmWave({ seed, wave, rng }) {
     swarm,
     level: swarmLevel(w),
   };
+  return decorateWeeklyPlan(plan, list);
 }
 
 function lookupRecipe(arenaId, wave, mode) {
@@ -363,7 +411,10 @@ function planFromRecipe({ recipe, seed, wave, act, difficulty, mutators, buildSu
     objective: recipe.objective,
     wave: mode === 'boss_circuit' ? wave : wave,
   });
-  const packages = applyDifficulty(composed.packages, difficulty);
+  let packages = applyDifficulty(composed.packages, difficulty);
+  if (mutatorList(mutators).includes('heavies_only')) {
+    packages = applyHeaviesOnly(packages);
+  }
   const schedule = expandSchedule(packages);
   const peak = peakConcurrentDemand(packages);
   if (peak > SPAWN_BUDGET_DEFAULT_MAX) {
@@ -404,7 +455,7 @@ function planFromRecipe({ recipe, seed, wave, act, difficulty, mutators, buildSu
     plan.circuitArenaId = recipe.arenaId;
     plan.mode = 'boss_circuit';
   }
-  return plan;
+  return decorateWeeklyPlan(plan, mutators);
 }
 
 export function planWave(input) {
@@ -437,6 +488,8 @@ function planWaveInner(input) {
   if (issues.length > 0) return invalid(issues);
 
   const mode = resolvePlanMode(input);
+  const mutators = Array.isArray(input.mutators) ? input.mutators : [];
+  const buildSummary = input.buildSummary == null ? null : input.buildSummary;
 
   // Swarm waves are generated from the wave number alone, so they short-circuit the recipe
   // lookup entirely — there is no authored ceiling to fall off at wave 31.
@@ -444,6 +497,7 @@ function planWaveInner(input) {
     return planSwarmWave({
       seed,
       wave,
+      mutators,
       rng: mulberry32(wavePlanStreamSeed(seed, arenaId, wave, 0)),
     });
   }
@@ -454,8 +508,6 @@ function planWaveInner(input) {
   const difficulty = Number.isFinite(input.difficulty)
     ? input.difficulty
     : (mode === 'endless' ? 3 : difficultyForWave(wave));
-  const mutators = Array.isArray(input.mutators) ? input.mutators : [];
-  const buildSummary = input.buildSummary == null ? null : input.buildSummary;
 
   const authored = isPlainObject(input.recipe) ? input.recipe : null;
   if (authored && authored.arenaId !== arenaId) {
