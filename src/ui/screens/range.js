@@ -9,6 +9,7 @@ import { createMorphLabel, createRouteBeam } from '../effects/index.js';
 import { prefersReducedMotion } from '../effects/effectRuntime.js';
 import { resolveDrillControlMap } from './drill.js';
 import { rescueRangeRungId, buildRangeOpenedFunnelEvent } from '../../onboarding/rescueOpening.js';
+import { missingThreeRangeRungId } from '../../onboarding/missingThree.js';
 import { canvasFont } from '../canvasFonts.js';
 
 const STYLE_ID = 'sf-range-style';
@@ -150,8 +151,17 @@ const RAIL_ROWS = Object.freeze([
   Object.freeze({ id: 'stopping_takes_room', group: 'MASS', rule: 'STOPPING TAKES ROOM', instruction: 'From flat out, stop before the wall line.' }),
   Object.freeze({ id: 'swing_do_not_pull', group: 'MASSLINE', rule: 'SWING, DO NOT PULL', instruction: 'Hook the anchor, swing, and release through the exit gate.' }),
   Object.freeze({ id: 'you_can_run_dry', group: 'POWER', rule: 'YOU CAN RUN DRY', instruction: 'Hold fire for 20 seconds and keep cap above zero.' }),
+  Object.freeze({ id: 'boost_keep_speed', group: 'SPEED', rule: 'BOOST KEEPS THE SPEED', instruction: 'Hold boost through the far gate. Thrust alone will not make it.' }),
+  Object.freeze({ id: 'draw_the_stroke', group: 'FLIGHT', rule: 'DRAW THE STROKE', instruction: 'Draw a line through the gate. The hull follows your stroke.' }),
+  Object.freeze({ id: 'well_pulls_light', group: 'FIELD', rule: 'THE WELL PULLS LIGHT', instruction: 'Drop a well near the scrap. Let it pull.' }),
 ]);
 const RAIL_INDEX_BY_ID = new Map(RAIL_ROWS.map((row, index) => [row.id, index]));
+export const RANGE_RAIL_ROWS = RAIL_ROWS;
+
+export function rangeRungIndex(rungId) {
+  const index = RAIL_INDEX_BY_ID.get(rungId);
+  return Number.isInteger(index) ? index : -1;
+}
 
 const TETHER_STANDARD = ATTACHMENT_DEFS.find((def) => def && def.id === 'tether_standard');
 const BASE_TETHER_LEN = Math.max(90, finite(TETHER_STANDARD && TETHER_STANDARD.maxLength, 390));
@@ -200,12 +210,14 @@ function controlMapForState(state) {
   const boost = resolveActionCodes(state, 'boost');
   const fire = resolveActionCodes(state, 'fire');
   const tether = resolveActionCodes(state, 'tether');
+  const well = resolveActionCodes(state, 'deployWell');
   return {
     movementLabel: drillMap.movementLabel || 'UNBOUND',
     turnLabel: labelCodes(state, ['yawLeft', 'yawRight']),
     fireLabel: resolveActionLabel(state, 'fire') || 'UNBOUND',
     tetherLabel: resolveActionLabel(state, 'tether', { sep: ' / ' }) || 'UNBOUND',
     boostLabel: resolveActionLabel(state, 'boost') || 'UNBOUND',
+    wellLabel: resolveActionLabel(state, 'deployWell') || 'UNBOUND',
     codeSets: {
       yawLeft: new Set(yawLeft),
       yawRight: new Set(yawRight),
@@ -216,6 +228,7 @@ function controlMapForState(state) {
       boost: new Set(boost),
       fire: new Set(fire),
       tether: new Set(tether),
+      well: new Set(well),
     },
   };
 }
@@ -458,6 +471,17 @@ function mapPoint(bounds, width, height, x, z) {
   };
 }
 
+function unmapPoint(bounds, width, height, sx, sy) {
+  const mapW = Math.max(1, width - (BOX_INSET * 2));
+  const mapH = Math.max(1, height - (BOX_INSET * 2));
+  const nx = clamp((sx - BOX_INSET) / mapW, 0, 1);
+  const nz = clamp((sy - BOX_INSET) / mapH, 0, 1);
+  return {
+    x: bounds.minX + nx * (bounds.maxX - bounds.minX),
+    z: bounds.minZ + nz * (bounds.maxZ - bounds.minZ),
+  };
+}
+
 function drawAsteroid(ctx2d, anchor, bounds, width, height, forced, roles) {
   const ink = roles || canvasRoles();
   const point = mapPoint(bounds, width, height, anchor.x, anchor.z);
@@ -617,11 +641,17 @@ function nowSupportsFlight(model) {
     && Number.isFinite(model.boostMaxSpeedMult);
 }
 
-// Rescue fallback entry (PQ-163.00 / PQ-163.01): a rescue beat with a dedicated rung opens the Range
-// on that rung. Opening from the first-latch prompt lands on SWING, DO NOT PULL ("SWING, DO NOT PULL
-// is the entry rung when that is the lesson"). Anything else (or no rescue/prompt) starts at the top of the rail.
+// Rescue / missing-three fallback entry (PQ-163.00–.02): a beat with a dedicated rung opens the
+// Range on that rung. Opening from the first-latch prompt lands on SWING, DO NOT PULL. Boost,
+// draw-to-fly, and the well land on their own rungs while those verbs are current.
 export function resolveRescueEntryRung(state) {
   const ob = state && state.onboarding;
+  const threeCurrent = ob && ob.missingThree ? ob.missingThree.current : null;
+  if (threeCurrent) {
+    const rungId = missingThreeRangeRungId(threeCurrent);
+    const index = rungId ? RAIL_INDEX_BY_ID.get(rungId) : null;
+    if (Number.isInteger(index)) return index;
+  }
   const current = ob && ob.rescue
     ? ob.rescue.current
     : null;
@@ -632,6 +662,11 @@ export function resolveRescueEntryRung(state) {
     return Number.isInteger(index) ? index : 0;
   }
   if (ob && (ob.rangePromptActive || ob.pointedAtRange)) {
+    const promptRung = ob.rangePromptRungId;
+    if (promptRung) {
+      const promptIndex = RAIL_INDEX_BY_ID.get(promptRung);
+      if (Number.isInteger(promptIndex)) return promptIndex;
+    }
     const swingIndex = RAIL_INDEX_BY_ID.get('swing_do_not_pull');
     return Number.isInteger(swingIndex) ? swingIndex : 0;
   }
@@ -672,6 +707,7 @@ export const rangeScreen = {
   _lastDroneScreen: null,
   _held: null,
   _toggleTetherQueued: false,
+  _deployWellQueued: false,
   _firePointerHeld: false,
   _reducedMotion: false,
   _forcedColors: false,
@@ -854,11 +890,21 @@ export const rangeScreen = {
 
     this._onCanvasPointerDown = (event) => {
       if (event.button !== 0) return;
+      if (this._sim && this._sim.id === 'draw_the_stroke') {
+        this._beginStrokeDraw(event);
+        return;
+      }
       this._held.firePointer = true;
       this._wakeLoop();
     };
+    this._onCanvasPointerMove = (event) => {
+      if (!this._sim || this._sim.id !== 'draw_the_stroke') return;
+      if (!this._sim.stroke || !this._sim.stroke.drawing) return;
+      this._sampleStrokeDraw(event);
+    };
     this._onWindowPointerUp = () => {
       this._held.firePointer = false;
+      this._finishStrokeDraw();
     };
     this._onCanvasClick = (event) => {
       if (!this._lastDroneScreen) return;
@@ -879,6 +925,7 @@ export const rangeScreen = {
       this._openDrawer('rules');
     };
     this._els.canvas.addEventListener('pointerdown', this._onCanvasPointerDown);
+    this._els.canvas.addEventListener('pointermove', this._onCanvasPointerMove);
     this._els.canvas.addEventListener('click', this._onCanvasClick);
     this._els.canvas.addEventListener('keydown', this._onCanvasKeyDown);
 
@@ -909,6 +956,10 @@ export const rangeScreen = {
       if (sets.fire.has(event.code)) { this._held.fireKey = true; handled = true; }
       if (!event.repeat && sets.tether.has(event.code)) {
         this._toggleTetherQueued = true;
+        handled = true;
+      }
+      if (!event.repeat && sets.well && sets.well.has(event.code)) {
+        this._deployWellQueued = true;
         handled = true;
       }
       if (handled) {
@@ -1008,6 +1059,7 @@ export const rangeScreen = {
   _cleanup() {
     this._active = false;
     this._toggleTetherQueued = false;
+    this._deployWellQueued = false;
     if (this._rafId) {
       cancelAnimationFrame(this._rafId);
       this._rafId = 0;
@@ -1134,6 +1186,9 @@ export const rangeScreen = {
     if (sim.id === 'stopping_takes_room') return sim.variant === 'subject' ? 'light' : 'subject';
     if (sim.id === 'swing_do_not_pull') return sim.variant === 'tether' ? 'no_tether' : 'tether';
     if (sim.id === 'you_can_run_dry') return sim.variant === 'subject_fit' ? 'other_fit' : 'subject_fit';
+    if (sim.id === 'boost_keep_speed') return sim.variant === 'boost' ? 'no_boost' : 'boost';
+    if (sim.id === 'draw_the_stroke') return sim.variant === 'stroke' ? 'keys' : 'stroke';
+    if (sim.id === 'well_pulls_light') return sim.variant === 'light' ? 'heavy' : 'light';
     return null;
   },
 
@@ -1335,6 +1390,88 @@ export const rangeScreen = {
       };
     }
 
+    if (row.id === 'boost_keep_speed') {
+      const selected = variantOverride === 'no_boost' ? 'no_boost' : 'boost';
+      const activeDerived = getDerivedStats(shipId, fittings, state.player);
+      const model = activeDerived.flightModel;
+      return {
+        ...base,
+        variant: selected,
+        derived: activeDerived,
+        model,
+        player: makePlayerFromModel(model, {
+          x: -520,
+          z: 0,
+          vx: 0,
+          vz: 0,
+          rot: 0,
+          radius: activeDerived.radius,
+          mass: activeDerived.mass,
+        }),
+        gates: [{ x: 420, centerZ: 0, tol: 110, state: 'pending' }],
+        boostAllowed: selected === 'boost',
+        boosted: false,
+        because: 'Boost raises the speed ceiling. Thrust alone stalls before the gate.',
+      };
+    }
+
+    if (row.id === 'draw_the_stroke') {
+      const selected = variantOverride === 'keys' ? 'keys' : 'stroke';
+      const activeDerived = getDerivedStats(shipId, fittings, state.player);
+      const model = activeDerived.flightModel;
+      return {
+        ...base,
+        variant: selected,
+        derived: activeDerived,
+        model,
+        player: makePlayerFromModel(model, {
+          x: -480,
+          z: 0,
+          vx: 0,
+          vz: 0,
+          rot: 0,
+          radius: activeDerived.radius,
+          mass: activeDerived.mass,
+        }),
+        gates: [{ x: 360, centerZ: 80, tol: 100, state: 'pending' }],
+        stroke: {
+          allowed: selected === 'stroke',
+          drawing: false,
+          flying: false,
+          points: [],
+          followIndex: 0,
+        },
+        because: 'The hull follows the line you draw. Keys do not make this corner.',
+      };
+    }
+
+    if (row.id === 'well_pulls_light') {
+      const selected = variantOverride === 'heavy' ? 'heavy' : 'light';
+      const activeDerived = getDerivedStats(shipId, fittings, state.player);
+      const model = activeDerived.flightModel;
+      const scrapMass = selected === 'heavy' ? 2400 : 12;
+      return {
+        ...base,
+        variant: selected,
+        derived: activeDerived,
+        model,
+        player: makePlayerFromModel(model, {
+          x: -220,
+          z: 40,
+          vx: 0,
+          vz: 0,
+          rot: 0,
+          radius: activeDerived.radius,
+          mass: activeDerived.mass,
+        }),
+        scrap: { x: 220, z: -20, radius: selected === 'heavy' ? 28 : 10, mass: scrapMass, vx: 0, vz: 0 },
+        well: null,
+        because: selected === 'heavy'
+          ? 'A heavy mass shrugs. The well is for light bodies.'
+          : 'Light scrap falls into the well. Heavy hulls shrug.',
+      };
+    }
+
     const selected = variantOverride === 'other_fit' ? 'other_fit' : 'subject_fit';
     const activeFittings = selected === 'other_fit' ? this._otherFittings.slice() : fittings.slice();
     const activeDerived = getDerivedStats(shipId, activeFittings, state.player);
@@ -1410,6 +1547,9 @@ export const rangeScreen = {
     if (sim.id === 'stopping_takes_room') return sim.variant === 'subject' ? 'TRY THE LIGHT HULL' : `TRY ${shipName(this._subject.shipId).toUpperCase()}`;
     if (sim.id === 'swing_do_not_pull') return sim.variant === 'tether' ? 'TRY IT WITHOUT THE TETHER' : 'TRY IT WITH THE TETHER';
     if (sim.id === 'you_can_run_dry') return sim.variant === 'subject_fit' ? 'TRY THE OTHER FIT' : 'TRY THE STAGED FIT';
+    if (sim.id === 'boost_keep_speed') return sim.variant === 'boost' ? 'TRY IT WITHOUT BOOST' : 'TRY IT WITH BOOST';
+    if (sim.id === 'draw_the_stroke') return sim.variant === 'stroke' ? 'TRY IT WITH KEYS' : 'TRY IT WITH A STROKE';
+    if (sim.id === 'well_pulls_light') return sim.variant === 'light' ? 'TRY A HEAVY MASS' : 'TRY LIGHT SCRAP';
     return 'TRY THE CONTRAST';
   },
 
@@ -1422,6 +1562,9 @@ export const rangeScreen = {
     if (sim.id === 'stopping_takes_room') return `LINE 1 / 1`;
     if (sim.id === 'swing_do_not_pull') return `EXIT ${sim.exitGate && sim.exitGate.crossed ? 1 : 0} / 1`;
     if (sim.id === 'you_can_run_dry') return `HOLD ${Math.max(0, Math.ceil(sim.energy.holdRemaining))}s`;
+    if (sim.id === 'boost_keep_speed') return `GATE ${sim.gates && sim.gates[0] && sim.gates[0].state === 'passed' ? 1 : 0} / 1`;
+    if (sim.id === 'draw_the_stroke') return `GATE ${sim.gates && sim.gates[0] && sim.gates[0].state === 'passed' ? 1 : 0} / 1`;
+    if (sim.id === 'well_pulls_light') return sim.well ? 'WELL LIVE' : 'NO WELL';
     return '';
   },
 
@@ -1516,7 +1659,9 @@ export const rangeScreen = {
     const droneStill = this._sim.drone && speedOf(this._sim.drone) > 0.45;
     const inputHeld = this._held.yawLeft || this._held.yawRight || this._held.forward || this._held.reverse
       || this._held.strafeLeft || this._held.strafeRight || this._held.boost || this._held.fireKey || this._held.firePointer;
-    return !(playerStill || droneStill || inputHeld);
+    const strokeLive = this._sim.stroke && (this._sim.stroke.drawing || this._sim.stroke.flying);
+    const wellLive = !!(this._sim.well && this._sim.scrap);
+    return !(playerStill || droneStill || inputHeld || strokeLive || wellLive);
   },
 
   _currentInput() {
@@ -1549,7 +1694,9 @@ export const rangeScreen = {
 
     if (!sim.verdict) {
       const input = this._currentInput();
-      drivePlayerStep(sim.player, sim.model, input, stepS);
+      if (sim.id === 'boost_keep_speed' && sim.boostAllowed === false) input.boost = false;
+      const followStroke = sim.id === 'draw_the_stroke' && sim.stroke && sim.stroke.flying;
+      if (!followStroke) drivePlayerStep(sim.player, sim.model, input, stepS);
       updateDroneMotion(sim, stepS);
 
       if (sim.id === 'swing_do_not_pull' && sim.tether) {
@@ -1577,10 +1724,27 @@ export const rangeScreen = {
         this._toggleTetherQueued = false;
       }
 
+      if (sim.id === 'well_pulls_light') {
+        if (this._deployWellQueued) {
+          this._deployWellQueued = false;
+          const reach = 140;
+          sim.well = {
+            x: sim.player.x + Math.cos(sim.player.rot) * reach,
+            z: sim.player.z + Math.sin(sim.player.rot) * reach,
+            radius: 170,
+          };
+          this._emitAudio('ui_confirm');
+        }
+      } else {
+        this._deployWellQueued = false;
+      }
+
       resolveCircleCollision(sim.player, sim.drone);
       resolveCircleCollision(sim.player, sim.anchor);
+      if (sim.scrap) resolveCircleCollision(sim.player, sim.scrap);
       inBoundsBounce(sim.player, sim.bounds);
       inBoundsBounce(sim.drone, sim.bounds);
+      if (sim.scrap) inBoundsBounce(sim.scrap, sim.bounds);
 
       sim.trail.push({ x: sim.player.x, z: sim.player.z });
       if (sim.trail.length > TRAIL_MAX) sim.trail.splice(0, sim.trail.length - TRAIL_MAX);
@@ -1589,6 +1753,9 @@ export const rangeScreen = {
       else if (sim.id === 'stopping_takes_room') this._stepStoppingRung(sim);
       else if (sim.id === 'swing_do_not_pull') this._stepSwingRung(sim);
       else if (sim.id === 'you_can_run_dry') this._stepEnergyRung(sim, stepS, input);
+      else if (sim.id === 'boost_keep_speed') this._stepBoostRung(sim, input);
+      else if (sim.id === 'draw_the_stroke') this._stepStrokeRung(sim, stepS);
+      else if (sim.id === 'well_pulls_light') this._stepWellRung(sim, stepS);
     }
 
     this._syncChrome();
@@ -1693,6 +1860,147 @@ export const rangeScreen = {
     }
   },
 
+  _stepBoostRung(sim, input) {
+    if (input && input.boost && sim.boostAllowed) sim.boosted = true;
+    const previousX = sim.prevX != null ? sim.prevX : sim.player.x;
+    const currentX = sim.player.x;
+    sim.prevX = currentX;
+    const gate = sim.gates && sim.gates[0];
+    if (!gate || gate.state !== 'pending') return;
+    if (previousX < gate.x && currentX >= gate.x) {
+      if (Math.abs(sim.player.z - gate.centerZ) <= gate.tol && sim.boosted && input && input.boost) {
+        gate.state = 'passed';
+        this._markCleared(sim.id);
+        this._setVerdict(sim, 'clear', 'RULE CLEARED', sim.because);
+        return;
+      }
+      gate.state = 'failed';
+      this._setVerdict(sim, 'fail', 'NO BOOST, NO GATE', sim.because);
+      return;
+    }
+    if (sim.timeS > 16) {
+      this._setVerdict(sim, 'fail', 'YOU STALLED', sim.because);
+    }
+  },
+
+  _stepStrokeRung(sim, stepS) {
+    const stroke = sim.stroke;
+    if (stroke && stroke.flying && stroke.points.length >= 2) {
+      const i = Math.min(stroke.followIndex, stroke.points.length - 1);
+      const target = stroke.points[i];
+      const dx = target.x - sim.player.x;
+      const dz = target.z - sim.player.z;
+      const dist = Math.hypot(dx, dz);
+      const cruise = Math.max(40, finite(sim.model && sim.model.maxSpeed, 80) * 0.7);
+      if (dist <= 8) {
+        stroke.followIndex = Math.min(i + 1, stroke.points.length - 1);
+        sim.player.vx = 0;
+        sim.player.vz = 0;
+      } else {
+        const step = Math.min(dist, cruise * stepS);
+        sim.player.x += (dx / dist) * step;
+        sim.player.z += (dz / dist) * step;
+        sim.player.vx = (dx / dist) * cruise;
+        sim.player.vz = (dz / dist) * cruise;
+        sim.player.rot = Math.atan2(dz, dx);
+      }
+    }
+    const previousX = sim.prevX != null ? sim.prevX : sim.player.x;
+    const currentX = sim.player.x;
+    sim.prevX = currentX;
+    const gate = sim.gates && sim.gates[0];
+    if (!gate || gate.state !== 'pending') return;
+    if (previousX < gate.x && currentX >= gate.x) {
+      const through = Math.abs(sim.player.z - gate.centerZ) <= gate.tol;
+      const drawn = stroke && stroke.points.length >= 2 && stroke.flying;
+      if (through && drawn) {
+        gate.state = 'passed';
+        this._markCleared(sim.id);
+        this._setVerdict(sim, 'clear', 'RULE CLEARED', sim.because);
+        return;
+      }
+      gate.state = 'failed';
+      this._setVerdict(sim, 'fail', 'DRAW, THEN FLY', sim.because);
+      return;
+    }
+    if (sim.timeS > 18) this._setVerdict(sim, 'fail', 'NO STROKE', sim.because);
+  },
+
+  _stepWellRung(sim, stepS) {
+    const scrap = sim.scrap;
+    const well = sim.well;
+    if (scrap && well) {
+      const dx = well.x - scrap.x;
+      const dz = well.z - scrap.z;
+      const dist = Math.hypot(dx, dz);
+      const pull = scrap.mass > 200 ? 0 : 90;
+      if (dist > 0.001 && dist < well.radius && pull > 0) {
+        const step = Math.min(dist, pull * stepS);
+        scrap.x += (dx / dist) * step;
+        scrap.z += (dz / dist) * step;
+      }
+      if (dist <= 36 && pull > 0) {
+        this._markCleared(sim.id);
+        this._setVerdict(sim, 'clear', 'RULE CLEARED', sim.because);
+        return;
+      }
+    }
+    if (sim.timeS > 18) {
+      this._setVerdict(
+        sim,
+        'fail',
+        well ? 'IT SHRUGGED' : 'NO WELL',
+        sim.because,
+      );
+    }
+  },
+
+  _canvasWorldPoint(event) {
+    if (!this._els || !this._els.canvas || !this._sim) return null;
+    const rect = this._els.canvas.getBoundingClientRect();
+    const sx = event.clientX - rect.left;
+    const sy = event.clientY - rect.top;
+    return unmapPoint(this._sim.bounds, rect.width, rect.height, sx, sy);
+  },
+
+  _beginStrokeDraw(event) {
+    const sim = this._sim;
+    if (!sim || !sim.stroke || sim.verdict) return;
+    if (!sim.stroke.allowed) {
+      this._emitAudio('ui_deny');
+      return;
+    }
+    const point = this._canvasWorldPoint(event);
+    if (!point) return;
+    sim.stroke.drawing = true;
+    sim.stroke.flying = false;
+    sim.stroke.followIndex = 0;
+    sim.stroke.points = [{ x: sim.player.x, z: sim.player.z }, point];
+    this._wakeLoop();
+  },
+
+  _sampleStrokeDraw(event) {
+    const sim = this._sim;
+    if (!sim || !sim.stroke || !sim.stroke.drawing) return;
+    const point = this._canvasWorldPoint(event);
+    if (!point) return;
+    const last = sim.stroke.points[sim.stroke.points.length - 1];
+    if (!last || Math.hypot(point.x - last.x, point.z - last.z) < 12) return;
+    sim.stroke.points.push(point);
+    this._wakeLoop();
+  },
+
+  _finishStrokeDraw() {
+    const sim = this._sim;
+    if (!sim || !sim.stroke || !sim.stroke.drawing) return;
+    sim.stroke.drawing = false;
+    if (sim.stroke.points.length >= 2) {
+      sim.stroke.flying = true;
+      sim.stroke.followIndex = 1;
+    }
+    this._wakeLoop();
+  },
+
   _markCleared(id) {
     if (!this._cleared.has(id)) {
       this._cleared.add(id);
@@ -1752,8 +2060,28 @@ export const rangeScreen = {
     if (sim.id === 'heavy_turns_wide') this._drawHeavyGates(ctx2d, sim, width, height, forced, roles);
     if (sim.id === 'stopping_takes_room') this._drawStopLine(ctx2d, sim, width, height, forced, roles);
     if (sim.id === 'swing_do_not_pull') this._drawSwingGate(ctx2d, sim, width, height, forced, roles);
+    if (sim.id === 'boost_keep_speed' || sim.id === 'draw_the_stroke') {
+      this._drawHeavyGates(ctx2d, sim, width, height, forced, roles);
+    }
 
     if (sim.anchor) drawAsteroid(ctx2d, sim.anchor, sim.bounds, width, height, forced, roles);
+    if (sim.scrap) drawAsteroid(ctx2d, sim.scrap, sim.bounds, width, height, forced, roles);
+
+    if (sim.stroke && sim.stroke.points && sim.stroke.points.length > 1) {
+      drawTrail(ctx2d, sim.stroke.points, sim.bounds, width, height, forced ? 'CanvasText' : roles.goal, reduced);
+    }
+
+    if (sim.well) {
+      const center = mapPoint(sim.bounds, width, height, sim.well.x, sim.well.z);
+      const scale = (width - (BOX_INSET * 2)) / Math.max(1, sim.bounds.maxX - sim.bounds.minX);
+      ctx2d.save();
+      ctx2d.strokeStyle = forced ? 'CanvasText' : roles.goal;
+      ctx2d.lineWidth = forced ? 2 : 1.4;
+      ctx2d.beginPath();
+      ctx2d.arc(center.x, center.y, Math.max(10, sim.well.radius * scale), 0, Math.PI * 2);
+      ctx2d.stroke();
+      ctx2d.restore();
+    }
 
     if (sim.id === 'swing_do_not_pull' && sim.tether && sim.tether.active) {
       const a = mapPoint(sim.bounds, width, height, sim.anchor.x, sim.anchor.z);

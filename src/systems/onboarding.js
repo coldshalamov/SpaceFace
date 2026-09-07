@@ -65,6 +65,23 @@ import {
   rescueScoutAtAsteroid,
   rescueScoutEscaped,
 } from '../onboarding/rescueOpening.js';
+import {
+  FIRST_HOUR_S,
+  MISSING_THREE_GATE,
+  MISSING_THREE_ORDER,
+  MISSING_THREE_PREREQ,
+  buildFirstHourBeatEvent,
+  buildFirstHourCompleteEvent,
+  buildFirstHourStartedEvent,
+  buildFirstHourVerbEvent,
+  freshMissingThreeState,
+  makeWellScrapSpec,
+  missingThreeBeatLine,
+  missingThreeBoosting,
+  missingThreeRangeRungId,
+  missingThreeStrokeActive,
+  missingThreeWithinHour,
+} from '../onboarding/missingThree.js';
 
 const PANEL_ID = 'sf-onboarding';
 const STYLE_ID = 'sf-onboarding-style';
@@ -250,6 +267,8 @@ export const onboarding = {
     // ── Range pointer & funnel (PQ-163.01 — "The Range is the door") ─────────────────────
     bus.on('tether:latched', (p) => this._onLatchPointer(p || {}));
     bus.on('range:opened', (p) => this._onRangeOpened(p || {}));
+    bus.on('ship:boostStart', (p) => this._onMissingThreeBoostStart(p || {}));
+    bus.on('fields:deployed', (p) => this._onMissingThreeWell(p || {}));
 
     // ── Contextual first-time hints (fire once per hint, persist across saves) ───────────────
     // These are independent of the tutorial chain: they fire for all players whose
@@ -444,6 +463,8 @@ export const onboarding = {
       rangeOpenedFromPrompt: false,
       rangeOpenedFromPromptAt: null,
       rangeFunnel: null,
+      rangePromptRungId: null,
+      startedAt: st.simTime || 0,
     };
     // A fresh new game starts in tutorial mode (not story mode).
     this._storyMode = false;
@@ -492,6 +513,7 @@ export const onboarding = {
     const ob = this.state.onboarding; if (ob) ob.active = false;
     this._removeTrainingActors();
     this._removeRescueActors();
+    this._removeMissingThreeActors();
     if (this._panel) { this._panel.remove(); this._panel = null; }
     this._bodyEl = null;
     this._titleEl = null;
@@ -564,6 +586,9 @@ export const onboarding = {
     // Inactive rescue (harness boots, opted-out pilots, finished rails) never gates anything.
     const rescueKey = this._rescueCurrentKey();
     if (rescueKey && RESCUE_GATE[rescueKey] === BEATS[nextIndex].key) return;
+    // Missing-three gate (PQ-163.02): boost, stroke, and the well occupy the grab → seam gap.
+    const three = this._missingThree();
+    if (three && !three.completed && (MISSING_THREE_GATE[three.current] || 'seam') === BEATS[nextIndex].key) return;
     ob.currentBeat = nextIndex;
     const beat = BEATS[nextIndex];
     ob.beatAction = beat.line;
@@ -789,7 +814,9 @@ export const onboarding = {
     const ob = this.state.onboarding; if (!ob) return;
     this._removeTrainingActors();
     this._removeRescueActors();
+    this._removeMissingThreeActors();
     if (ob.rescue) ob.rescue.active = false;
+    if (ob.missingThree) ob.missingThree.active = false;
     ob.finished = true;
     ob.active = false; // tutorial mode ends permanently (spec2/03 B5)
     this._clearObjectiveWaypoint();
@@ -836,15 +863,18 @@ export const onboarding = {
 
     // ── First-hour pacing (only while active) ────────────────────────────────────────────
     const ob = state.onboarding;
-    if (!ob || !ob.active) return;
+    if (!ob) return;
     try {
       this._accum = (this._accum || 0) + dt;
       if (this._accum < 0.2) return;
       this._accum = 0;
-      // Advance through the beat gate (silence-gated) + resolve proximity DONE conditions.
+      this._noteMissingThreeUses();
+      if (!ob.active || ob.finished) return;
       this._tryAdvanceBeat();
       this._resolveProximityDone();
       this._resolveRescueDone();
+      this._maybeAdvanceMissingThree();
+      this._resolveMissingThreeDone();
       this._setObjectiveWaypoint(false);
     } catch (_) { /* never let onboarding break the loop */ }
   },
@@ -1105,6 +1135,8 @@ export const onboarding = {
     if (!ob || ob.rescue) return;
     ob.rescue = freshRescueState();
     ob.rescue.startedAt = st.simTime || 0;
+    ob.missingThree = freshMissingThreeState();
+    ob.missingThree.startedAt = st.simTime || 0;
     this._spawnRescueCast();
     this.bus.emit('rescue:started', buildRescueStartedEvent(st.simTime || 0));
   },
@@ -1444,6 +1476,7 @@ export const onboarding = {
     }
     this._setRescueWaypoint(true);
     this._refreshBeatPanel();
+    if (key === 'grab') this._maybeAdvanceMissingThree();
   },
 
   _rescueFail(key, reason) {
@@ -1510,12 +1543,228 @@ export const onboarding = {
     }
   },
 
+  // ── Missing three (PQ-163.02) — boost, stroke, well in the grab → seam gap ───────────────
+  _missingThreeRecord() {
+    const ob = this.state && this.state.onboarding;
+    return ob && ob.missingThree ? ob.missingThree : null;
+  },
+
+  _missingThree() {
+    const ob = this.state && this.state.onboarding;
+    return ob && ob.missingThree && ob.missingThree.active && !ob.finished ? ob.missingThree : null;
+  },
+
+  _missingThreeActor(slot) {
+    const three = this._missingThreeRecord();
+    if (!three) return null;
+    const id = three.ids && three.ids[slot];
+    if (id == null || !this.state.entities) return null;
+    const entity = this.state.entities.get(id);
+    return entity && entity.alive !== false ? entity : null;
+  },
+
+  _maybeAdvanceMissingThree() {
+    const three = this._missingThree();
+    if (!three || three.current || three.completed) return;
+    const next = MISSING_THREE_ORDER.find((key) => three.beats[key].state !== 'done');
+    if (!next) {
+      this._missingThreeAllDone();
+      return;
+    }
+    const prereq = MISSING_THREE_PREREQ[next];
+    if (prereq === 'grab') {
+      const rescue = this.state.onboarding && this.state.onboarding.rescue;
+      if (!rescue || rescue.beats.grab.state !== 'done') return;
+    } else if (!three.beats[prereq] || three.beats[prereq].state !== 'done') {
+      return;
+    }
+    if (prereq !== 'grab') {
+      const now = this.state.simTime || 0;
+      if (now - this._lastTextAtS < SILENCE_S) return;
+    }
+    this._startMissingThreeBeat(next);
+  },
+
+  _startMissingThreeBeat(key) {
+    const three = this._missingThree();
+    const ob = this.state.onboarding;
+    if (!three || !ob || three.beats[key].state === 'done') return;
+    const first = !MISSING_THREE_ORDER.some((k) => three.beats[k].state === 'done' || three.beats[k].state === 'current');
+    three.current = key;
+    three.beats[key].state = 'current';
+    three.lastBoost = false;
+    three.lastStroke = false;
+    if (three.startedAt == null) three.startedAt = this.state.simTime || 0;
+    const line = missingThreeBeatLine(key);
+    ob.beatAction = line;
+    this._sayTutorial(line);
+    ob.rangePromptActive = true;
+    ob.pointedAtRange = true;
+    ob.rangePrompt = RANGE_POINTER_LINE;
+    ob.rangePromptRungId = missingThreeRangeRungId(key);
+    this.bus.emit('onboarding:rangePrompt', {
+      active: true,
+      text: RANGE_POINTER_LINE,
+      rungId: ob.rangePromptRungId,
+      atS: this.state.simTime || 0,
+      beat: key,
+    });
+    if (first) this.bus.emit('firsthour:started', buildFirstHourStartedEvent(this.state.simTime || 0));
+    if (key === 'well') this._spawnWellScrap();
+    this._setMissingThreeWaypoint(true);
+    this._refreshBeatPanel();
+  },
+
+  _spawnWellScrap() {
+    const st = this.state;
+    const three = this._missingThree();
+    if (!three || !this.helpers || !this.helpers.spawnEntity) return;
+    const player = st.entities && st.entities.get(st.playerId);
+    if (!player || !player.pos) return;
+    const oldId = three.ids.scrap;
+    if (oldId != null && typeof this.helpers.removeEntity === 'function') {
+      this.helpers.removeEntity(oldId);
+    }
+    const spawned = this.helpers.spawnEntity(makeWellScrapSpec(player.pos));
+    three.ids.scrap = spawned && spawned.id != null ? spawned.id : null;
+  },
+
+  _removeMissingThreeActors() {
+    const three = this.state && this.state.onboarding && this.state.onboarding.missingThree;
+    if (!three || !three.ids) return;
+    const player = this.state && this.state.player;
+    const id = three.ids.scrap;
+    if (id != null && this.helpers && typeof this.helpers.removeEntity === 'function') {
+      this.helpers.removeEntity(id);
+    }
+    if (player && id != null && player.targetId === id) player.targetId = null;
+    three.ids.scrap = null;
+  },
+
+  _setMissingThreeWaypoint(force) {
+    const st = this.state;
+    const ob = st.onboarding;
+    const three = this._missingThree();
+    if (!three || !three.current || !st.nav) return false;
+    const key = three.current;
+    const line = missingThreeBeatLine(key);
+    let target = null;
+    if (key === 'boost') target = this._findBeacon();
+    else if (key === 'well') {
+      const scrap = this._missingThreeActor('scrap');
+      if (scrap) target = { pos: scrap.pos, label: 'Scrap' };
+    }
+    const existing = st.nav.waypoint;
+    if ((!target || !target.pos)) {
+      if (existing && existing.onboarding && String(existing.markerId || '').startsWith('missingThree:')) {
+        st.nav.waypoint = null;
+      }
+      return true;
+    }
+    if (existing && !existing.onboarding && !force) {
+      const foreignKind = existing.kind;
+      if (foreignKind !== 'mission' && foreignKind !== 'story') return true;
+    }
+    st.nav.waypoint = {
+      onboarding: true,
+      pos: { x: target.pos.x, z: target.pos.z },
+      label: target.label,
+      reason: line,
+      markerId: `missingThree:${key}`,
+      markerKind: ONBOARDING_OBJECTIVE_MARKER.markerKind,
+      mapLabel: ONBOARDING_OBJECTIVE_MARKER.mapLabel,
+    };
+    if (ob) ob.beatAction = line;
+    return true;
+  },
+
+  _noteMissingThreeUses() {
+    const three = this._missingThreeRecord();
+    if (!three) return;
+    const player = this.state.entities && this.state.entities.get(this.state.playerId);
+    const boosting = missingThreeBoosting(this.state, player);
+    if (boosting && !three.lastBoost) this._noteVerbUse('boost');
+    three.lastBoost = boosting;
+    const stroking = missingThreeStrokeActive(this.state.input);
+    if (stroking && !three.lastStroke) this._noteVerbUse('stroke');
+    three.lastStroke = stroking;
+  },
+
+  _noteVerbUse(verb) {
+    const ob = this.state && this.state.onboarding;
+    const three = this._missingThreeRecord();
+    if (!ob || !three || !three.used[verb]) return;
+    const atS = this.state.simTime || 0;
+    const startedAt = three.startedAt != null ? three.startedAt : (ob.startedAt || 0);
+    const withinHour = missingThreeWithinHour(atS, startedAt, FIRST_HOUR_S);
+    const current = three.current === verb;
+    const taught = three.beats[verb].state === 'done';
+    const rec = three.used[verb];
+    rec.count += 1;
+    if (rec.firstAt == null) rec.firstAt = atS;
+    if (current) rec.prompted = true;
+    else rec.unprompted = true;
+    this.bus.emit('firsthour:verb', buildFirstHourVerbEvent(verb, atS, {
+      prompted: current,
+      unprompted: !current,
+      taught,
+      withinHour,
+    }));
+    this.bus.emit('verb:used', { verb, atS, prompted: current });
+    if (current) this._missingThreeDone(verb);
+  },
+
+  _onMissingThreeBoostStart(payload) {
+    if (payload && this.state.playerId != null && payload.shipId != null && payload.shipId !== this.state.playerId) {
+      return;
+    }
+    const three = this._missingThreeRecord();
+    if (!three || three.lastBoost) return;
+    this._noteVerbUse('boost');
+    three.lastBoost = true;
+  },
+
+  _onMissingThreeWell(payload) {
+    if (!payload || payload.kind !== 'well') return;
+    this._noteVerbUse('well');
+  },
+
+  _resolveMissingThreeDone() {
+    const three = this._missingThree();
+    const key = three && three.current;
+    if (!key) return;
+    if (key === 'well' && !this._missingThreeActor('scrap')) this._spawnWellScrap();
+  },
+
+  _missingThreeDone(key) {
+    const three = this._missingThree();
+    if (!three || three.beats[key].state === 'done') return;
+    const atS = this.state.simTime || 0;
+    three.beats[key].state = 'done';
+    three.beats[key].doneAt = atS;
+    if (three.current === key) three.current = null;
+    this.bus.emit('firsthour:beat', { ...buildFirstHourBeatEvent(key, 'complete', atS), fails: three.beats[key].fails });
+    if (MISSING_THREE_ORDER.every((k) => three.beats[k].state === 'done')) this._missingThreeAllDone();
+    this._setMissingThreeWaypoint(true);
+    this._refreshBeatPanel();
+  },
+
+  _missingThreeAllDone() {
+    const three = this._missingThree();
+    if (!three || three.completed) return;
+    three.completed = true;
+    three.completedAt = this.state.simTime || 0;
+    three.current = null;
+    this.bus.emit('firsthour:complete', buildFirstHourCompleteEvent(three.completedAt));
+  },
+
   _setObjectiveWaypoint(force) {
     const st = this.state;
     const ob = st.onboarding;
     if (!ob || !ob.active || ob.finished || !st.nav) return;
     // A current rescue verb owns the marker: one verb, one diamond, same beat-stable identity.
     if (this._setRescueWaypoint(force)) return;
+    if (this._setMissingThreeWaypoint(force)) return;
     const beat = BEATS[ob.currentBeat];
     // The B4 flight lesson ends at acceptance. Keep the tutorial state alive for completion/B5,
     // but never reclaim the real delivery's route with the old Helios docking marker.

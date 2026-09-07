@@ -6678,7 +6678,7 @@
       "priority": 96,
       "title": "Teach the missing three",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -6699,8 +6699,10 @@
         "npm run check:first-15-runtime",
         "npm run check:new-game-first-run"
       ],
-      "receiptRefs": [],
-      "brief": "Boost, draw-to-fly and the well enter the rail in the first hour, each as a verb-then-silence beat with a Range fallback. DONE WHEN: Funnel shows each used unprompted within the hour by ≥ 70 %."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-163.02-REPORT.md"
+      ],
+      "brief": "IMPLEMENTED 2026-09-07 (Grok + controller). After the rescue grab, three verb-then-silence beats teach boost, draw-to-fly, and the well. Range (F4) lands on the current rung. Funnel events record prompted/unprompted uses. Rescue and the 10-beat drill table are untouched. 47-A hash-equal. Not >=70% unaided testers — that clause keeps this implemented, not done. DONE WHEN: Funnel shows each used unprompted within the hour by >= 70%."
     },
     {
       "id": "PQ-163.03",

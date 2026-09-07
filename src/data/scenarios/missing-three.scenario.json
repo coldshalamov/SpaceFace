@@ -1,0 +1,125 @@
+{
+  "schema": "spaceface.scenarioContract.v1",
+  "id": "scenario.missing-three",
+  "scenario": "First-hour missing three: boost, draw-to-fly, well",
+  "version": 1,
+  "sourceSpec": "design/program/roadmap/active/PQ-163.md",
+  "tickRate": 60,
+  "durationSeconds": 3600,
+  "seed": 47,
+  "status": "pq16302-live",
+  "actors": [
+    {
+      "id": "player_tow_rig",
+      "role": "player_ship",
+      "required": true,
+      "assetRef": "ship_kestrel",
+      "factionId": "faction_free",
+      "capabilities": ["flight.force_torque", "flight.boost", "flight.draw_to_fly", "field.well"]
+    },
+    {
+      "id": "well_scrap",
+      "role": "well_mass",
+      "required": true,
+      "assetRef": "asset.rescue.loose_rock",
+      "capabilities": ["field.light_body"]
+    }
+  ],
+  "facts": [
+    {
+      "id": "fact.missing_three.boost_status",
+      "description": "Whether boost was taught by doing, then silence.",
+      "owner": "scenario.missing-three",
+      "initial": "unresolved"
+    },
+    {
+      "id": "fact.missing_three.stroke_status",
+      "description": "Whether draw-to-fly was taught by doing, then silence.",
+      "owner": "scenario.missing-three",
+      "initial": "unresolved"
+    },
+    {
+      "id": "fact.missing_three.well_status",
+      "description": "Whether the well was taught by doing, then silence.",
+      "owner": "scenario.missing-three",
+      "initial": "unresolved"
+    }
+  ],
+  "funnelEventIds": [
+    "firsthour:started",
+    "firsthour:verb",
+    "firsthour:beat",
+    "firsthour:complete",
+    "onboarding:rangePrompt",
+    "range:opened"
+  ],
+  "proofMetrics": [
+    {
+      "id": "missing_three_beats_complete",
+      "target": "boost, stroke, and well complete headless after the rescue grab",
+      "evidence": "test/missing-three.test.mjs + firsthour:beat complete per verb + firsthour:complete",
+      "required": true,
+      "beatIds": ["teach_boost", "teach_stroke", "teach_well"]
+    },
+    {
+      "id": "missing_three_range_fallback",
+      "target": "each verb opens Range on its dedicated rung",
+      "evidence": "test/missing-three.test.mjs resolveRescueEntryRung + RANGE_RAIL_ROWS ids",
+      "required": true,
+      "beatIds": ["teach_boost", "teach_stroke", "teach_well"]
+    },
+    {
+      "id": "missing_three_funnel",
+      "target": "firsthour:verb fires on use with prompted/unprompted flags; no fake 70%",
+      "evidence": "test/missing-three.test.mjs funnel payloads; receipt STATUS NOT DONE on unaided-tester clause",
+      "required": true,
+      "beatIds": ["teach_boost", "teach_stroke", "teach_well"]
+    }
+  ],
+  "beats": [
+    {
+      "id": "teach_boost",
+      "order": 1,
+      "title": "Boost. Keep the speed.",
+      "intent": "After the rescue grab, boost is taught by doing, then silence. Range fallback is BOOST KEEPS THE SPEED.",
+      "requiredActors": ["player_tow_rig"],
+      "requiredMechanics": ["flight.boost"],
+      "funnelEventIds": ["firsthour:verb", "firsthour:beat"],
+      "proofMetricIds": ["missing_three_beats_complete", "missing_three_range_fallback"],
+      "worldFactRefs": ["fact.missing_three.boost_status"],
+      "next": ["teach_stroke"],
+      "branchIds": []
+    },
+    {
+      "id": "teach_stroke",
+      "order": 2,
+      "title": "Draw a line. Fly it.",
+      "intent": "Draw-to-fly is taught by a drawn path, then silence. Range fallback is DRAW THE STROKE.",
+      "requiredActors": ["player_tow_rig"],
+      "requiredMechanics": ["flight.draw_to_fly"],
+      "funnelEventIds": ["firsthour:verb", "firsthour:beat"],
+      "proofMetricIds": ["missing_three_beats_complete", "missing_three_range_fallback"],
+      "worldFactRefs": ["fact.missing_three.stroke_status"],
+      "next": ["teach_well"],
+      "branchIds": []
+    },
+    {
+      "id": "teach_well",
+      "order": 3,
+      "title": "Drop a well. Pull the scrap.",
+      "intent": "The well is taught by deploying it near light scrap, then silence. Range fallback is THE WELL PULLS LIGHT.",
+      "requiredActors": ["player_tow_rig", "well_scrap"],
+      "requiredMechanics": ["field.well"],
+      "funnelEventIds": ["firsthour:verb", "firsthour:beat", "firsthour:complete"],
+      "proofMetricIds": ["missing_three_beats_complete", "missing_three_funnel"],
+      "worldFactRefs": ["fact.missing_three.well_status"],
+      "next": [],
+      "branchIds": []
+    }
+  ],
+  "notes": [
+    "PQ-163.02 leaf .02: boost, draw-to-fly, and the well enter the first-hour rail after the rescue grab, before the seam lesson.",
+    "No mentor, no text walls: each beat is one verb line through the single tutorial voice, then silence. The Range is the fallback.",
+    "Funnel honesty: firsthour:verb records prompted vs unprompted use. No unaided-tester percentages are claimed here."
+  ]
+}

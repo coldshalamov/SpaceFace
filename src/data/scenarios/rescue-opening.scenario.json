@@ -93,7 +93,11 @@
     "rescue:complete",
     "combat:shove",
     "onboarding:rangePrompt",
-    "range:opened"
+    "range:opened",
+    "firsthour:started",
+    "firsthour:verb",
+    "firsthour:beat",
+    "firsthour:complete"
   ],
   "proofMetrics": [
     {

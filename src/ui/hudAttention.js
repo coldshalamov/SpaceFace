@@ -175,6 +175,18 @@ export function rangePointerLine() {
   return RANGE_POINTER_LINE;
 }
 
+// Missing-three verb lines (PQ-163.02). Boost, the stroke, and the well are taught by doing,
+// one line each, then silence. Copy lives here; order/gating live in src/onboarding/missingThree.js.
+export const MISSING_THREE_BEAT_LINES = Object.freeze({
+  boost: 'Boost. Keep the speed.',
+  stroke: 'Draw a line. Fly it.',
+  well: 'Drop a well. Pull the scrap.',
+});
+
+export function missingThreeBeatLine(verbId) {
+  return MISSING_THREE_BEAT_LINES[verbId] || '';
+}
+
 export function firstUseAttachKind(verbId) {
   const key = String(verbId || '');
   if (key === 'firstStation' || key === 'firstHub' || key === 'firstGate') return 'station';
