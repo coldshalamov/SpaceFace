@@ -742,6 +742,16 @@ function measureMenus(menuEvents, waveDurations, wavePlanned, armed) {
   };
 }
 
+function compactFittedIds(fitted) {
+  if (!Array.isArray(fitted)) return [];
+  const ids = [];
+  for (const item of fitted) {
+    if (typeof item === 'string' && item) ids.push(item);
+    else if (item && typeof item.defId === 'string' && item.defId) ids.push(item.defId);
+  }
+  return ids;
+}
+
 function measureBuildIdentity(run) {
   const fit = run.fitReceipt && typeof run.fitReceipt === 'object' ? run.fitReceipt : null;
   const body = run.bodyAdmission && typeof run.bodyAdmission === 'object' ? run.bodyAdmission : null;
@@ -749,20 +759,27 @@ function measureBuildIdentity(run) {
     : (Array.isArray(fit?.slots) ? fit.slots : null);
   const weapons = Array.isArray(fit?.weapons) ? fit.weapons : null;
   const hull = body?.hullId ?? body?.id ?? fit?.hullId ?? run.hullId ?? null;
-  if (!fit && !body && !run.loadoutId) {
+  if (!fit && !body && !run.loadoutId && !run.hullId) {
     return {
       available: false,
       loadoutId: null,
       hullId: null,
       fitted: null,
+      fittedIds: null,
+      code: null,
       reason: 'no fitReceipt / bodyAdmission / loadoutId on this record',
     };
   }
+  const fittedIds = compactFittedIds(fitted ?? weapons);
+  const loadoutId = run.loadoutId ?? null;
+  const codeParts = [loadoutId, hull, fittedIds.length ? fittedIds.join('+') : null].filter(Boolean);
   return {
     available: true,
-    loadoutId: run.loadoutId ?? null,
+    loadoutId,
     hullId: hull,
     fitted: fitted ?? weapons ?? null,
+    fittedIds,
+    code: codeParts.length ? codeParts.join('/') : (loadoutId || hull || null),
     fitReceiptPresent: Boolean(fit),
     bodyAdmissionPresent: Boolean(body),
     reason: null,
@@ -834,45 +851,113 @@ export const SWARM_UNAVAILABLE = Object.freeze({
   telegraph: UNAVAILABLE_TELEGRAPH,
 });
 
+function shortReason(reason, fallback = 'unobserved') {
+  const text = String(reason || fallback).replace(/\s+/g, ' ').trim();
+  if (!text) return fallback;
+  return text.length > 96 ? `${text.slice(0, 93)}...` : text;
+}
+
+function fmtNa(obs, fallback = 'unobserved') {
+  return `n/a(${shortReason(obs?.reason, fallback)})`;
+}
+
 function fmtObs(obs, suffix = 's') {
-  if (!obs || obs.available !== true || obs.seconds == null) return 'n/a';
+  if (!obs || obs.available !== true || obs.seconds == null) return fmtNa(obs);
   return `${obs.seconds}${suffix}`;
 }
 
-/** One-line swarm bars for a live bench run. Unavailable stays n/a, never a fake zero. */
-export function formatSwarmBars(swarm) {
-  if (!swarm) return '[swarm-bars] (none)';
+function formatBuildBar(id) {
+  if (!id || id.available !== true) return fmtNa(id, 'no fitReceipt / bodyAdmission / loadoutId on this record');
+  if (id.code) return id.code;
+  const fitted = Array.isArray(id.fittedIds) && id.fittedIds.length
+    ? id.fittedIds.join('+')
+    : null;
+  const parts = [id.loadoutId, id.hullId, fitted].filter(Boolean);
+  return parts.length ? parts.join('/') : fmtNa({ reason: 'build identity present but empty' });
+}
+
+function formatVerbBar(verbs) {
+  if (!verbs || typeof verbs !== 'object') return 'n/a(verbs were not on this record)';
+  return `${verbs.diversity ?? 0}@${verbs.useRatePerMinute ?? 0}/min`;
+}
+
+function formatMomentBar(swarm) {
+  if (swarm.momentsPerMinute == null && !Array.isArray(swarm.meaningfulMoments)) {
+    return 'n/a(moments were not on this record)';
+  }
+  const count = Array.isArray(swarm.meaningfulMoments) ? swarm.meaningfulMoments.length : 0;
+  const rate = swarm.momentsPerMinute ?? 0;
+  return `${count}@${rate}/min`;
+}
+
+function formatQuietBar(quiet) {
+  if (!quiet || quiet.available !== true) return fmtNa(quiet, 'wave 1 completion was not observed on this trace');
+  return String(quiet.seconds);
+}
+
+function formatMenuBar(menus) {
+  if (!menus || menus.available !== true) return fmtNa(menus, UNAVAILABLE_MENUS);
+  return `${menus.count}@${menus.perWave}/wave`;
+}
+
+function formatDeathBar(swarm) {
   const death = swarm.firstDeath;
-  const deathStr = death?.censored
-    ? `censored@${swarm.simSeconds}s`
-    : (death?.available ? `${death.seconds}s` : 'n/a');
-  const waves = (swarm.waveDurations || []).map((w) => {
+  if (death?.censored) {
+    const at = Number.isFinite(swarm.simSeconds) ? `@${swarm.simSeconds}s` : '';
+    return `censored${at}(${shortReason(death.reason, 'right-censored; not a run-length-to-death')})`;
+  }
+  if (death?.available) return `${death.seconds}s`;
+  return fmtNa(death, 'no player death observed');
+}
+
+function formatCauseBits(playerDeaths) {
+  const pd = Array.isArray(playerDeaths) ? playerDeaths : [];
+  if (pd.length === 0) return 'none';
+  return pd.map((d) => {
+    const cause = d.causeAvailable ? d.cause : fmtNa({ reason: d.causeReason }, UNAVAILABLE_DEATH_CAUSE);
+    const tg = d.telegraphAvailable ? String(d.telegraph) : fmtNa({ reason: d.telegraphReason }, UNAVAILABLE_TELEGRAPH);
+    return `cause=${cause},telegraph=${tg}`;
+  }).join(';');
+}
+
+function formatWaveBar(waveDurations) {
+  if (!Array.isArray(waveDurations) || waveDurations.length === 0) {
+    return 'n/a(no wave duration observed)';
+  }
+  return waveDurations.map((w) => {
     const dur = w.status === 'completed' ? `${w.durationSeconds}s` : `censored:${w.durationSeconds}s`;
     return `w${w.wave}:${w.status}/${dur}`;
-  }).join(',') || 'none';
-  const clean = (swarm.cleanupDurations || []).map((c) => {
-    if (c.status !== 'completed' || c.durationSeconds == null) return `w${c.wave}:censored`;
+  }).join(',');
+}
+
+function formatCleanupBar(cleanupDurations) {
+  if (!Array.isArray(cleanupDurations) || cleanupDurations.length === 0) {
+    return 'n/a(no cleanup interval observed)';
+  }
+  return cleanupDurations.map((c) => {
+    if (c.status !== 'completed' || c.durationSeconds == null) {
+      return `w${c.wave}:n/a(${shortReason(c.reason, 'cleanup still open at run stop (right-censored)')})`;
+    }
     return `w${c.wave}:${c.durationTicks ?? '?'}t/${c.durationSeconds}s`;
-  }).join(',') || 'n/a';
+  }).join(',');
+}
+
+/** One-line swarm bars for a live bench run. Unavailable stays n/a with a reason, never a fake zero. */
+export function formatSwarmBars(swarm) {
+  if (!swarm) return '[swarm-bars] (none)';
   const pd = swarm.playerDeaths || [];
-  const causeBits = pd.map((d) => {
-    const cause = d.causeAvailable ? d.cause : 'n/a';
-    const tg = d.telegraphAvailable ? String(d.telegraph) : 'n/a';
-    return `cause=${cause},telegraph=${tg}`;
-  }).join(';') || 'none';
-  const menus = swarm.menus?.available ? `${swarm.menus.count}@${swarm.menus.perWave}/wave` : 'n/a';
-  const quiet = swarm.quietSecondsAfterWave1?.available
-    ? String(swarm.quietSecondsAfterWave1.seconds)
-    : 'n/a';
-  const fh = swarm.firstHostile?.available ? fmtObs(swarm.firstHostile) : 'n/a';
-  const fk = swarm.firstKill?.available ? fmtObs(swarm.firstKill) : 'n/a';
-  const build = swarm.buildIdentity?.loadoutId || 'n/a';
+  const build = formatBuildBar(swarm.buildIdentity);
+  const loadout = swarm.loadoutId || swarm.buildIdentity?.loadoutId || 'n/a';
   return (
-    `[swarm-bars] loadout=${build} seed=${swarm.seed ?? '?'} `
-    + `firstHostile=${fh} firstKill=${fk} `
-    + `verbs=${swarm.verbs?.diversity ?? 0}@${swarm.verbs?.useRatePerMinute ?? 0}/min `
-    + `moments=${(swarm.meaningfulMoments || []).length}@${swarm.momentsPerMinute ?? 0}/min `
-    + `quietAfterW1=${quiet} deaths=${pd.length}(${causeBits}) `
-    + `waves=${waves} cleanup=${clean} menus=${menus} firstDeath=${deathStr}`
+    `[swarm-bars] loadout=${loadout} build=${build} seed=${swarm.seed ?? '?'} `
+    + `firstHostile=${fmtObs(swarm.firstHostile)} firstKill=${fmtObs(swarm.firstKill)} `
+    + `verbs=${formatVerbBar(swarm.verbs)} `
+    + `moments=${formatMomentBar(swarm)} `
+    + `quietAfterW1=${formatQuietBar(swarm.quietSecondsAfterWave1)} `
+    + `deaths=${pd.length}(${formatCauseBits(pd)}) `
+    + `waves=${formatWaveBar(swarm.waveDurations)} `
+    + `cleanup=${formatCleanupBar(swarm.cleanupDurations)} `
+    + `menus=${formatMenuBar(swarm.menus)} `
+    + `firstDeath=${formatDeathBar(swarm)}`
   );
 }

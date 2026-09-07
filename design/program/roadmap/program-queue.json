@@ -5564,7 +5564,7 @@
       "priority": 57,
       "title": "The swarm bars, printed",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-173.01",
         "PQ-137.03",
@@ -5591,8 +5591,10 @@
         "npm run check:crucible:run",
         "npm run check:crucible:arc"
       ],
-      "receiptRefs": [],
-      "brief": "With PQ-173's bench: time-to-first-kill, verbs per minute, moments per minute, nothing-happened seconds, deaths by cause with telegraph flag, build identity per run, wave duration, menu frequency, run length to first death — printed per seed for the three loadouts. DONE WHEN: Every bar below has a number on three seeds before any tuning; the numbers are committed as the before."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-174.00-SWARM-BARS-REPORT.md"
+      ],
+      "brief": "DONE 2026-09-07 (Grok + controller). Nine Helios Core cells (seeds 4242/8008/13502 x Pulse/physics/massline) print every named bar as a number or honest n/a. First hostile 0.05s every cell; first kill inside 12s; one Pulse death at 16s (wasp, no telegraph); eight of nine right-censored at 90s. Historical incomplete traces kept. Not a pacing tune - PQ-174.01 is still ready. DONE WHEN: Every bar below has a number on three seeds before any tuning; the numbers are committed as the before."
     },
     {
       "id": "PQ-174.08",

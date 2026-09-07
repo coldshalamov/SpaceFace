@@ -379,6 +379,8 @@ export async function simulateCrucibleSwarm({
           + `(notFitted=${JSON.stringify(fitReceipt && fitReceipt.notFitted)})`,
         );
       }
+      // hullId is the identity the swarm bars already read; sandbox receipts only list slots.
+      fitReceipt = { ...fitReceipt, hullId: starter.hullId };
 
       // 11. The loadout IS ready. Without this receipt survivalRun sits in `loadout` forever
       //     and no wave ever plans.
@@ -583,6 +585,7 @@ export async function simulateCrucibleSwarm({
       loadoutId,
       seed,
       arenaId,
+      hullId: starter.hullId,
       swarmTelemetry,
     });
 
@@ -1121,9 +1124,27 @@ function ingestLiveEvent(ev, ctx) {
     const killer = killerId != null && state && state.entities && typeof state.entities.get === 'function'
       ? state.entities.get(killerId)
       : null;
-    const attackerArchetype = killer
-      ? (killer.data && (killer.data.enemyId || killer.data.archetype)) || killer.type || null
-      : (p.killerClass || p.attackerArchetype || null);
+    const fromKillerData = killer && killer.data
+      ? (killer.data.enemyId
+        || killer.data.archetype
+        || killer.data.lootTableId
+        || killer.data.enemyTypeId
+        || killer.data.defId
+        || null)
+      : null;
+    const namedCause = fromKillerData
+      || (p.source && (p.source.label || p.source.kind))
+      || p.attacker
+      || p.killerClass
+      || p.attackerArchetype
+      || (typeof p.cause === 'string' && p.cause !== 'player' ? p.cause : null)
+      || null;
+    const attackerArchetype = fromKillerData
+      || p.killerClass
+      || p.attackerArchetype
+      || (p.source && p.source.label)
+      || null;
+    const sampledTelegraph = killerId != null;
     eventTrace.push({
       tick,
       type: 'entity:killed',
@@ -1135,9 +1156,9 @@ function ingestLiveEvent(ev, ctx) {
         killerId,
         attackerId: killerId,
         attackerArchetype,
-        deathCause: attackerArchetype || null,
-        telegraphed: killerId != null && tg ? inForce : null,
-        telegraphInForce: killerId != null && tg ? inForce : null,
+        deathCause: namedCause,
+        telegraphed: sampledTelegraph ? inForce : null,
+        telegraphInForce: sampledTelegraph ? inForce : null,
         telegraphKind: inForce ? (tg.kind || true) : null,
       },
     });
@@ -2092,6 +2113,7 @@ function toRunRecord(runData, ids) {
       loadoutId: ids.loadoutId,
       seed: ids.seed,
       arenaId: ids.arenaId,
+      hullId: runData.fitReceipt && runData.fitReceipt.hullId,
     }),
   };
 }

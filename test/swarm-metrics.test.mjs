@@ -9,6 +9,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import {
+  formatSwarmBars,
   isHostileKill,
   isPlayerDeathKill,
   isRightCensored,
@@ -309,4 +310,87 @@ test('unavailable reasons are explicit constants, not inferred zeros', () => {
   assert.ok(SWARM_UNAVAILABLE.deathCause);
   assert.ok(SWARM_UNAVAILABLE.menus);
   assert.ok(SWARM_UNAVAILABLE.telegraph);
+});
+
+test('formatSwarmBars prints every named bar; n/a carries a reason, never a bare zero', () => {
+  const swarm = measureSwarmRun(runOf({
+    stopReason: 'player_dead',
+    simSeconds: 16.72,
+    ticks: 1003,
+    eventTrace: [
+      TICK(2, 'run:wavePlanned', { wave: 1 }),
+      TICK(168, 'verb:used', { verb: 'brake' }),
+      TICK(728, 'entity:killed', { cause: 'collision', targetId: 328, archetype: 'fighter', killerId: 328 }),
+      TICK(1004, 'entity:killed', {
+        cause: 'player', targetId: 1, archetype: 'player', killerId: 325,
+      }),
+    ],
+  }));
+  const line = formatSwarmBars(swarm);
+  for (const key of [
+    'loadout=', 'build=', 'seed=', 'firstHostile=', 'firstKill=',
+    'verbs=', 'moments=', 'quietAfterW1=', 'deaths=', 'waves=', 'menus=', 'firstDeath=',
+  ]) {
+    assert.ok(line.includes(key), `missing ${key} in ${line}`);
+  }
+  assert.match(line, /firstHostile=n\/a\(/);
+  assert.match(line, /quietAfterW1=n\/a\(/);
+  assert.match(line, /menus=n\/a\(/);
+  assert.match(line, /build=physics_toolkit\/hornet\/wpn_concussion/);
+  assert.equal(line.includes('firstHostile=0'), false);
+  assert.equal(line.includes('menus=0@'), false);
+});
+
+test('known killer without a telegraph event reports telegraph=false, not n/a', () => {
+  const swarm = measureSwarmRun(runOf({
+    stopReason: 'player_dead',
+    simSeconds: 20,
+    ticks: 1200,
+    eventTrace: [
+      TICK(2, 'run:wavePlanned', { wave: 1, quota: 15 }),
+      TICK(18, 'hostile:spawned', { entityId: 20, archetype: 'wasp_swarmer', wave: 1 }),
+      TICK(1190, 'entity:killed', {
+        cause: 'player',
+        archetype: 'player',
+        targetId: 1,
+        killerId: 44,
+        attackerId: 44,
+        attackerArchetype: 'wasp_swarmer',
+        deathCause: 'wasp_swarmer',
+        telegraphed: false,
+        telegraphInForce: false,
+      }),
+    ],
+  }));
+  assert.equal(swarm.playerDeaths[0].causeAvailable, true);
+  assert.equal(swarm.playerDeaths[0].cause, 'wasp_swarmer');
+  assert.equal(swarm.playerDeaths[0].telegraphAvailable, true);
+  assert.equal(swarm.playerDeaths[0].telegraph, false);
+  const line = formatSwarmBars(swarm);
+  assert.match(line, /telegraph=false/);
+});
+
+test('defeat receipt source.label wins over a generic entity type of ship', () => {
+  const swarm = measureSwarmRun(runOf({
+    stopReason: 'player_dead',
+    simSeconds: 16.27,
+    ticks: 976,
+    eventTrace: [
+      TICK(2, 'run:wavePlanned', { wave: 1, quota: 15 }),
+      TICK(3, 'hostile:spawned', { entityId: 330, archetype: 'wasp_swarmer', wave: 1 }),
+      TICK(976, 'entity:killed', {
+        cause: 'player',
+        archetype: 'player',
+        targetId: 1,
+        killerId: 330,
+        attackerId: 330,
+        attackerArchetype: 'Wasp Swarmer',
+        deathCause: 'Wasp Swarmer',
+        telegraphed: false,
+        telegraphInForce: false,
+      }),
+    ],
+  }));
+  assert.equal(swarm.playerDeaths[0].cause, 'Wasp Swarmer');
+  assert.equal(swarm.playerDeaths[0].telegraph, false);
 });
