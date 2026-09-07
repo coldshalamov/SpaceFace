@@ -63,25 +63,16 @@
   --sf-goal-edge: color-mix(in srgb, var(--sf-goal) 40%, transparent); /* the resting edge of a verb */
   --sf-track-micro: .06em;                                             /* MICRO tracking, one value */
 
-  /* extra from visual bible for pro polish */
-  --nebula-purple: #3a1c6e;
-  --nebula-cyan: #0e4030;
-  --glow-cyan: #9ec9e8;
-
   /* ===== Legacy visor palette, compatibility only =====
      Do not extend these tokens or use them as a visual direction. Values desaturated 2026-08. */
   --visor-cyan: #4f8fdd;
   --visor-cyan-dim: rgba(79, 143, 221, 0.28);
   --visor-amber: #d9a054;
-  --visor-amber-dim: rgba(217, 160, 84, 0.28);
   --visor-red: #d95f6a;
-  --visor-red-dim: rgba(217, 95, 106, 0.28);
 
   /* Text and glows */
   --text-primary: #FFFFFF;
   --text-secondary: rgba(255, 255, 255, 0.7);
-  --visor-glow-cyan: 0px 0px 6px rgba(79, 143, 221, 0.35);
-  --visor-glow-amber: 0px 0px 6px rgba(217, 160, 84, 0.35);
   --visor-glow-red: 0px 0px 8px rgba(217, 95, 106, 0.45);
 
   /* Text shadow for legibility without backgrounds */
@@ -167,87 +158,12 @@ body.ui-modal-open #modal-backdrop { display: block; opacity: 1; visibility: vis
 body.ui-modal-open #sf-onboarding,
 body.ui-modal-open .sf-ob-intro { display: none; }
 
-/* --- Live overlays (FRONTEND_DIRECTION §3.5/§6.1) -------------------------------------
-   Non-pausing screens (galaxy/starmap/localmap, techTree, missionLog, automation) open over a
-   RUNNING sim. The old blanket ui-modal-open zeroed the HUD, reticle and alerts while enemies
-   kept shooting — a blindfold, not a trade-off. Live keeps the world and the player's instruments
-   readable: light ~25% dim, HUD at half opacity (reticle, alerts and toasts are not targeted, so
-   they survive at full strength), pointer input still owned by the screen. */
-body.ui-live-screen #hud { opacity: .5; pointer-events: none; }
-body.ui-live-screen #modal-backdrop {
-  display: block; opacity: 1; visibility: visible; pointer-events: auto;
-  background: radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--bg) 16%, transparent), color-mix(in srgb, var(--bg) 28%, transparent));
-}
-body.ui-live-screen #sf-onboarding,
-body.ui-live-screen .sf-ob-intro { display: none; }
-
-.panel { background: linear-gradient(180deg, var(--panel-2), var(--panel)); border: 1px solid var(--panel-edge); border-radius: 8px; box-shadow: 0 6px 30px rgba(0, 0, 0, .5); }
-button { font-family: inherit; font-size: inherit; color: var(--ink); background: var(--panel-2); border: 1px solid var(--panel-edge); border-radius: 5px; padding: 6px 12px; cursor: pointer; pointer-events: auto; transition: border-color .1s, color .1s; }
-button:hover { border-color: var(--accent); color: #fff; }
 button:disabled { opacity: .4; cursor: default; }
 .mono { font-family: var(--mono); }
 
 /* boot overlay — the intro console styling lives in styles/intro.css (boot + title
    share one sheet). Kept here only: nothing. Hooks other code depends on:
    #boot-overlay(.hidden), [data-loading-label/detail/progress]. */
-
-/* ==================== PROFESSIONAL POLISH (post asset integration) ==================== */
-/* Use generated assets (pilot portrait, bible colors) for beauty and "SpaceFace" identity.
-   Clearer, more fun, less janky UI. Better feedback, modern space-industrial feel, strong readability from the 60° camera game.
-   J05 removed icons_atlas and reticle from this list: both were labelled reference JPEGs with baked
-   caption text, and the UI draws inline stroke SVG (station/icons.js, RETICLE_SVG) instead. */
-
-#screens {
-  /* Clean, label-free cinematic still (C-INTRO-01). Replaces menu_background.jpg, which carried
-     baked "MENU / INTRO BACKGROUND TREATMENT" reference captions that bled through behind menus. */
-  background-image: url('../assets/cinematics/C-INTRO-01.jpg');
-  background-size: cover;
-  background-position: center 34%;
-  background-repeat: no-repeat;
-}
-#screens::before {
-  content: '';
-  position: absolute; inset: 0;
-  /* Readability scrim over the cinematic backdrop: left-weighted so the title menu's
-     bare ledger column stays legible, plus a gentle vertical vignette for centered
-     plates. The ring art stays visible on the right. */
-  background:
-    linear-gradient(90deg, color-mix(in srgb, var(--bg) 74%, transparent) 0%, color-mix(in srgb, var(--bg) 38%, transparent) 32%, color-mix(in srgb, var(--bg) 10%, transparent) 56%, color-mix(in srgb, var(--bg) 26%, transparent) 100%),
-    linear-gradient(180deg, color-mix(in srgb, var(--bg) 50%, transparent) 0%, color-mix(in srgb, var(--bg) 14%, transparent) 30%, color-mix(in srgb, var(--bg) 28%, transparent) 78%, color-mix(in srgb, var(--bg) 68%, transparent) 100%);
-  pointer-events: none;
-}
-
-/* --- In a run: preserve + dim the live rendered frame under EVERY plate ---
-   Title/menu screens keep the cinematic #screens plate. Once a run is live (uiRoot sets
-   body.sf-in-run whenever state.mode !== 'menu'), every screen — pause, and everything opened from
-   it or from flight (Settings, Help, Codex, Save/Load, Mission Log, the instruments) — clears that
-   opaque art and the full-opacity menu vignette so #gl-canvas stays visible under a soft dim. This
-   used to key on data-screen=pause alone, so pressing Settings from the pause plate replaced the
-   player's own frozen sector with the title still: the screens read as one generic room.
-   The pause selectors stay as a belt-and-braces path for the first frame before the body class
-   lands. */
-body.sf-in-run #screens,
-#screens:has(> .screen[data-screen="pause"].sf-screen--visible),
-#screens:has(> .screen[data-screen="pause"].sf-screen--entering) {
-  background-image: none;
-  background-color: transparent;
-}
-body.sf-in-run #screens::before,
-#screens:has(> .screen[data-screen="pause"].sf-screen--visible)::before,
-#screens:has(> .screen[data-screen="pause"].sf-screen--entering)::before {
-  /* Soft dim only — do not replace the world with an opaque plate. */
-  background: radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--bg) 22%, transparent) 0%, color-mix(in srgb, var(--bg) 42%, transparent) 100%);
-  opacity: 1;
-}
-/* The centered pause .screen.panel keeps the shared opaque .panel ground. */
-/* Reduced motion / flash: no extra dim animation; instant state (a11y layer still
-   zeros transitions under prefers-reduced-motion / html.sf-reduce-motion). */
-@media (prefers-reduced-motion: reduce) {
-  #screens:has(> .screen[data-screen="pause"].sf-screen--visible)::before,
-  #screens:has(> .screen[data-screen="pause"].sf-screen--entering)::before {
-    transition: none;
-  }
-}
 
 .panel {
   background: color-mix(in srgb, var(--sf-surface) 92%, transparent);
@@ -385,7 +301,6 @@ button:active, .btn:active {
   /* elevation */
   --sh-1: 0 2px 10px rgba(0,0,0,.35);
   --sh-2: 0 6px 24px rgba(0,0,0,.45);
-  --sh-3: 0 14px 44px rgba(0,0,0,.6);
   /* surface (former "glass" tokens, now plain translucent panel values) */
   --glass: rgba(18,22,28,.82);
   --glass-edge: rgba(255,255,255,.09);
@@ -678,7 +593,6 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
   --console-bg:         rgba(13,16,21,.85);    /* semi-transparent (flight HUD, over the canvas) */
   --console-bg-solid:   #151a21;               /* opaque (screens/modals, over the menu bg) */
   --console-edge:       rgba(255,255,255,.10); /* calm neutral edge */
-  --console-edge-strong:rgba(255,255,255,.22); /* focused/active edge */
 }
 
 /* ---- Current console primitives (additive compatibility variants) ----------------------------
