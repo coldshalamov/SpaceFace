@@ -427,8 +427,50 @@ function assertReleaseBinding(pilot, row) {
   }
 }
 
+/**
+ * Name a pure transform wrapper, rather than refusing the whole asset over it.
+ *
+ * The release optimiser sometimes moves a mesh off its authored node onto an anonymous child that
+ * exists only to carry a transform -- `place_cold_locker` ships one: `locker_drum` is a named,
+ * mesh-less group whose sole unnamed child holds the drum mesh at a 1.025 scale. It is the only
+ * unnamed mesh node in that file. The authored source has no such node; the wrapper is created
+ * downstream, so no artist can fix it and re-running the release export would rewrite every asset's
+ * hash to correct one prop.
+ *
+ * Refusing it also cost more than it protected: the loader fails closed on a released part with no
+ * package, so one anonymous wrapper kept `place_cold_locker` -- wired to the `poi_helios_locker`
+ * anchor on the seeded route -- permanently unpackaged, and with it the whole live-assets gate.
+ *
+ * The rule's purpose is that every addressable node has a unique, stable semantic id. A wrapper
+ * like this has an unambiguous identity: its named parent's. Deriving one preserves exactly what
+ * the rule protects. This is deliberately narrow -- it fires only where the old code threw, so any
+ * asset that already compiled is untouched, byte for byte -- and it still refuses an unnamed node
+ * that is NOT a lone transform wrapper under a named parent, because that is a real authoring
+ * defect with no unambiguous name to give it.
+ */
+function deriveTransformWrapperName(pilot, node, names) {
+  const parent = node.getParentNode ? node.getParentNode() : null;
+  const parentName = parent ? String(parent.getName() || '') : '';
+  if (!parentName || (names.get(parentName) || []).length !== 1) return null;
+  if (parent.getMesh && parent.getMesh()) return null;
+  const anonymousMeshSiblings = parent.listChildren()
+    .filter((child) => child.getMesh() && !String(child.getName() || ''));
+  if (anonymousMeshSiblings.length !== 1 || anonymousMeshSiblings[0] !== node) return null;
+  let candidate = `${parentName}__mesh`;
+  for (let suffix = 2; names.has(candidate); suffix++) candidate = `${parentName}__mesh_${suffix}`;
+  return candidate;
+}
+
 function assertUniqueNodeName(pilot, node, names) {
-  const name = String(node.getName() || '');
+  let name = String(node.getName() || '');
+  if (!name) {
+    const derived = deriveTransformWrapperName(pilot, node, names);
+    if (derived) {
+      node.setName(derived);
+      names.set(derived, [node]);
+      name = derived;
+    }
+  }
   if (!name || (names.get(name) || []).length !== 1) {
     throw new Error(`${pilot.key}: semantic node names must be non-empty and unique (${name || 'unnamed'}).`);
   }

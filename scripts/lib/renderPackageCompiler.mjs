@@ -569,9 +569,46 @@ async function createIo() {
     });
 }
 
+/**
+ * Give anonymous transform wrappers the same derived name the semantic manifest gave them.
+ *
+ * The manifest pass (build-render-package-pilots.mjs) names a mesh-carrying node the release
+ * optimiser left anonymous, deriving <parent>__mesh from its named, mesh-less parent. This pass
+ * re-reads the source GLB from disk, so without repeating the derivation it looks for a name that
+ * exists only in the other pass's memory and fails with 'references missing source node'.
+ *
+ * The two rules must stay identical, which is why the conditions are spelled out the same way in
+ * both: a named, unique, mesh-less parent, and exactly one anonymous mesh child.
+ */
+function nameAnonymousTransformWrappers(document) {
+  const nodes = document.getRoot().listNodes();
+  const names = new Map();
+  for (const node of nodes) {
+    const name = String(node.getName() || '');
+    if (!name) continue;
+    if (!names.has(name)) names.set(name, []);
+    names.get(name).push(node);
+  }
+  for (const node of nodes) {
+    if (String(node.getName() || '') || !node.getMesh()) continue;
+    const parent = node.getParentNode ? node.getParentNode() : null;
+    const parentName = parent ? String(parent.getName() || '') : '';
+    if (!parentName || (names.get(parentName) || []).length !== 1) continue;
+    if (parent.getMesh && parent.getMesh()) continue;
+    const anonymousMeshSiblings = parent.listChildren()
+      .filter((child) => child.getMesh() && !String(child.getName() || ''));
+    if (anonymousMeshSiblings.length !== 1 || anonymousMeshSiblings[0] !== node) continue;
+    let candidate = `${parentName}__mesh`;
+    for (let suffix = 2; names.has(candidate); suffix++) candidate = `${parentName}__mesh_${suffix}`;
+    node.setName(candidate);
+    names.set(candidate, [node]);
+  }
+}
+
 function resolveSourceNodes(document, semanticManifest) {
   const scene = document.getRoot().getDefaultScene() || document.getRoot().listScenes()[0];
   if (!scene) throw new Error('Source GLB must contain a scene.');
+  nameAnonymousTransformWrappers(document);
   const paths = indexScenePaths(scene);
   const byName = new Map();
   for (const [node, path] of paths.entries()) {

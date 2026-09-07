@@ -2111,6 +2111,16 @@ const PILOTS = [
     "slot": "hull",
     "sourceSha256": "61696483540d02b187b19ca86d9bf61df24e7ca6d26adf34eefd09b3055a2a68",
     "sourceUrl": "assets/ships/release/parts/wholeships/drifter_production_v1_lod2.glb"
+  },
+  {
+    "assetId": "sf.render.cold-locker",
+    "expectedContentHash": "d62fc663c8cc30d970fd83bcad6fb8c30adca899a347d21b26b48976c30d07b3",
+    "key": "cold-locker",
+    "metadataUrl": "assets/ships/release/render-packages/cold-locker/render-package.json",
+    "runtimeAssetId": "SF_PLACE_COLD_LOCKER",
+    "slot": "place",
+    "sourceSha256": "fcc05abb5d27ada70146cef9aeab5af23d179253a610da8f38af842473f84d25",
+    "sourceUrl": "assets/ships/release/parts/places/place_cold_locker.glb"
   }
 ];
 

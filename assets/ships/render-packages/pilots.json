@@ -3202,6 +3202,21 @@
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/drifter-production-v1-lod2",
       "metadataUrl": "assets/ships/release/render-packages/drifter-production-v1-lod2/render-package.json"
+    },
+    {
+      "key": "cold-locker",
+      "assetId": "sf.render.cold-locker",
+      "runtimeAssetId": "SF_PLACE_COLD_LOCKER",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "place_cold_locker",
+      "sourceUrl": "assets/ships/release/parts/places/place_cold_locker.glb",
+      "releaseSha256": "fcc05abb5d27ada70146cef9aeab5af23d179253a610da8f38af842473f84d25",
+      "releaseBytes": 54788,
+      "rootNode": "place_cold_locker",
+      "dynamicNameIncludes": [],
+      "outputDir": "assets/ships/release/render-packages/cold-locker",
+      "metadataUrl": "assets/ships/release/render-packages/cold-locker/render-package.json"
     }
   ]
 }
