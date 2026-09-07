@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-07T05:55:00.000Z",
+  "updatedAt": "2026-09-07T23:15:49.000Z",
   "purpose": "Canonical cross-plan priority and dispatch queue. Product completion remains authoritative in design/program/03_LIVE_ACCEPTANCE_MATRIX.md.",
   "stateContract": {
     "allowed": [
@@ -15835,7 +15835,7 @@
       "priority": 413,
       "title": "The door",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-180.00",
         "PQ-174.01",
@@ -15857,8 +15857,10 @@
         "npm run check:crucible:route",
         "npm run check:visual-regression"
       ],
-      "receiptRefs": [],
-      "brief": "Seed, ruleset, arena and hull as one choice a stranger makes in five seconds; the daily seed (PQ-169.00) is the default. DONE WHEN: Matrix green; a new tester launches a run in ≤ 10 s without reading. Task file: design/frontend/direction/tasks/TASK_D_MODES_READING_SWEEP_PROOF.md (spec: design/frontend/direction/KIT_SPEC.md)."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/FRONTEND-D-REPORT.md"
+      ],
+      "brief": "IMPLEMENTED 2026-09-07: the Crucible door is a `k-screen--stage` (crucible.js): Mode and Hull as rows of words with `aria-pressed`, the seed as a numeric kit input with a fine \"New seed\" word, the fixed arena named in fine print, Enter as the mode's verb; style block deleted; temperature `crucible` (white signal, no scrim) with `crucibleRefit` added to the kit's set. Receipt: design/program/roadmap/receipts/FRONTEND-D-REPORT.md. Original: Seed, ruleset, arena and hull as one choice a stranger makes in five seconds; the daily seed (PQ-169.00) is the default. DONE WHEN: Matrix green; a new tester launches a run in ≤ 10 s without reading. Task file: design/frontend/direction/tasks/TASK_D_MODES_READING_SWEEP_PROOF.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-182.01",
@@ -15866,7 +15868,7 @@
       "priority": 414,
       "title": "Draft and refit",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-180.00",
         "PQ-174.01",
@@ -15888,8 +15890,10 @@
         "npm run check:crucible:route",
         "npm run check:visual-regression"
       ],
-      "receiptRefs": [],
-      "brief": "Cards are one line plus one glyph of the verb; refit reuses the ship screen bands. DONE WHEN: Matrix green; a tester describes every card after one use. Task file: design/frontend/direction/tasks/TASK_D_MODES_READING_SWEEP_PROOF.md (spec: design/frontend/direction/KIT_SPEC.md)."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/FRONTEND-D-REPORT.md"
+      ],
+      "brief": "IMPLEMENTED 2026-09-07: draft offers are three `sf-cru-card` buttons across the stage — verb in caps, name at sub-title size, one sentence, slot and hotkey in fine print — the focused one bright, the others at 62 %; refit is hardpoint rows with a kit select and one primary word (crucibleDraft.js; style block deleted). Receipt: design/program/roadmap/receipts/FRONTEND-D-REPORT.md. Original: Cards are one line plus one glyph of the verb; refit reuses the ship screen bands. DONE WHEN: Matrix green; a tester describes every card after one use. Task file: design/frontend/direction/tasks/TASK_D_MODES_READING_SWEEP_PROOF.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-182.02",
@@ -15897,7 +15901,7 @@
       "priority": 415,
       "title": "Results as a story",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-146.01",
         "PQ-180.00",
@@ -15920,8 +15924,10 @@
         "npm run check:crucible:route",
         "npm run check:visual-regression"
       ],
-      "receiptRefs": [],
-      "brief": "Moments, tricks, best chain, cause of death and its telegraph, build code, one-click retry same seed. DONE WHEN: Matrix green; results capture reviewed; retry ≤ 5 s. Task file: design/frontend/direction/tasks/TASK_D_MODES_READING_SWEEP_PROOF.md (spec: design/frontend/direction/KIT_SPEC.md)."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/FRONTEND-D-REPORT.md"
+      ],
+      "brief": "IMPLEMENTED 2026-09-07: results read as a story (crucible.js `crucibleResultsScreen`): the best chain (swarm) or score (gauntlet) at hero size, the ledger as static rows (`k-order-first`: first for the eye, second for a reader), kill chain / last seconds (hit bars) / ledger / build as caps bands of static rows, the build also as one fine-print line; Retry, New run and Main menu as words. Receipt: design/program/roadmap/receipts/FRONTEND-D-REPORT.md. Original: Moments, tricks, best chain, cause of death and its telegraph, build code, one-click retry same seed. DONE WHEN: Matrix green; results capture reviewed; retry ≤ 5 s. Task file: design/frontend/direction/tasks/TASK_D_MODES_READING_SWEEP_PROOF.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-182.03",
@@ -15929,7 +15935,7 @@
       "priority": 416,
       "title": "The lab is a toy",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-180.00",
         "PQ-174.01",
@@ -15951,8 +15957,10 @@
         "npm run check:crucible:route",
         "npm run check:visual-regression"
       ],
-      "receiptRefs": [],
-      "brief": "Lab controls to the grammar with the range's teaching voice; telemetry overlay is an instrument, not a debug dump. DONE WHEN: Matrix green; frame cost ≤ 2 ms. Task file: design/frontend/direction/tasks/TASK_D_MODES_READING_SWEEP_PROOF.md (spec: design/frontend/direction/KIT_SPEC.md)."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/FRONTEND-D-REPORT.md"
+      ],
+      "brief": "IMPLEMENTED 2026-09-07: the lab controls are kit rows — speed as a row of words, invulnerability a two-word toggle, clear/refill as words with the destructive one red — and the telemetry overlay is static rows at data size, 62 %, top-right, no plate, hostiles in red when live (crucibleLabControls.js, crucibleLabTelemetry.js; style blocks and sf-track-micro deleted). Receipt: design/program/roadmap/receipts/FRONTEND-D-REPORT.md. Original: Lab controls to the grammar with the range's teaching voice; telemetry overlay is an instrument, not a debug dump. DONE WHEN: Matrix green; frame cost ≤ 2 ms. Task file: design/frontend/direction/tasks/TASK_D_MODES_READING_SWEEP_PROOF.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-183.00",
@@ -16186,8 +16194,10 @@
         "npm run check:asteroid-works-render",
         "npm run check:visual-regression"
       ],
-      "receiptRefs": [],
-      "brief": "The law's twelve statements become assertions the works capture can verify (word count, board fraction, grid alignment, fog absent, event sound). DONE WHEN: `check:asteroid-works-render` asserts the law; red on the current build where the law is unmet. Task file: design/frontend/direction/tasks/TASK_D_MODES_READING_SWEEP_PROOF.md (spec: design/frontend/direction/KIT_SPEC.md)."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/FRONTEND-D-REPORT.md"
+      ],
+      "brief": "PARTIAL 2026-09-07 (Frontend Task D, motion only): every settle in styles/asteroid-ops.css moved to --k-ease, ≤ 160 ms (the drawer's 200 ms kept); the temperature 'works' verified to derive for the drill screen; the never-list overlap audited (no glow, gradient fill, glass, blur, uppercase or tracked label crept in — the remaining shadow and radii are the Works' own law). The law-as-check assertions this unit names were NOT written; check:asteroid-works-render is unchanged. State stays ready. Receipt: design/program/roadmap/receipts/FRONTEND-D-REPORT.md. Original: The law's twelve statements become assertions the works capture can verify (word count, board fraction, grid alignment, fog absent, event sound). DONE WHEN: `check:asteroid-works-render` asserts the law; red on the current build where the law is unmet. Task file: design/frontend/direction/tasks/TASK_D_MODES_READING_SWEEP_PROOF.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-185.01",
@@ -16213,8 +16223,10 @@
         "npm run check:asteroid-works-render",
         "npm run check:visual-regression"
       ],
-      "receiptRefs": [],
-      "brief": "The surface passes the grammar matrix; PQ-130 acceptance re-run with the owner after PQ-131 art lands. DONE WHEN: Owner verdict KEEP recorded; matrix green. Task file: design/frontend/direction/tasks/TASK_D_MODES_READING_SWEEP_PROOF.md (spec: design/frontend/direction/KIT_SPEC.md)."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/FRONTEND-D-REPORT.md"
+      ],
+      "brief": "PARTIAL 2026-09-07 (Frontend Task D, motion only): every settle in styles/asteroid-ops.css moved to --k-ease, ≤ 160 ms (the drawer's 200 ms kept); the temperature 'works' verified to derive for the drill screen; the never-list overlap audited (no glow, gradient fill, glass, blur, uppercase or tracked label crept in — the remaining shadow and radii are the Works' own law). The grammar-matrix pass and the PQ-130 acceptance re-run were NOT done. State stays ready. Receipt: design/program/roadmap/receipts/FRONTEND-D-REPORT.md. Original: The surface passes the grammar matrix; PQ-130 acceptance re-run with the owner after PQ-131 art lands. DONE WHEN: Owner verdict KEEP recorded; matrix green. Task file: design/frontend/direction/tasks/TASK_D_MODES_READING_SWEEP_PROOF.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-158.00",
@@ -17312,7 +17324,7 @@
       "priority": 464,
       "title": "The proof",
       "kind": "implementation",
-      "state": "ready",
+      "state": "deferred",
       "dependsOn": [
         "PQ-181.03",
         "PQ-188.00",
@@ -17337,8 +17349,10 @@
         "npm run check:visual-regression",
         "node scripts/check-ui-grammar-matrix.mjs --static"
       ],
-      "receiptRefs": [],
-      "brief": "Blind side-by-side against the reference board with a memoryless vision reviewer; the thirteen signature moments each captured as a ten-second clip and reviewed against DIRECTION_SHEET.md by the same reviewer; the regression baseline reshot on the new look; a ninety-second reel the owner watches in place of any sign-off form. DONE WHEN: SpaceFace chosen in >= 50% of pairings and 100% against the genre baselines; thirteen clip reviews on file; matrix and regression green; reel committed. Task file: design/frontend/direction/tasks/TASK_D_MODES_READING_SWEEP_PROOF.md (spec: design/frontend/direction/KIT_SPEC.md)."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/FRONTEND-D-REPORT.md"
+      ],
+      "brief": "DEFERRED 2026-09-07 by owner directive: the thirteen clips, the twenty blind pairs, the reel and its cue sidecar were withdrawn — the owner said they will never look at them; no capture set was produced. The receipt (design/program/roadmap/receipts/FRONTEND-D-REPORT.md) records the sweep and the choices instead. Original: Blind side-by-side against the reference board with a memoryless vision reviewer; the thirteen signature moments each captured as a ten-second clip and reviewed against DIRECTION_SHEET.md by the same reviewer; the regression baseline reshot on the new look; a ninety-second reel the owner watches in place of any sign-off form. DONE WHEN: SpaceFace chosen in >= 50% of pairings and 100% against the genre baselines; thirteen clip reviews on file; matrix and regression green; reel committed. Task file: design/frontend/direction/tasks/TASK_D_MODES_READING_SWEEP_PROOF.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-188.00",
@@ -17486,7 +17500,7 @@
       "priority": 470,
       "title": "Missions log and codex",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-187.03"
       ],
@@ -17503,8 +17517,10 @@
         "node scripts/check-ui-screen-imports.mjs",
         "npm run check:ui-a11y"
       ],
-      "receiptRefs": [],
-      "brief": "The log as one column of sentences with hairlines and the focused mission opened on the right at screen-title size with its next step and reward; the codex as a left column of entry names and a readable measure of text with its plate. Over the sky at the menus scrim; old style blocks deleted. DONE WHEN: captures at 1280/1920/2560 match the sheet under a hash-bound visual review against DIRECTION_SHEET.md; entity links and the four data states still work; check:ui-screen-imports green. Task file: design/frontend/direction/tasks/TASK_D_MODES_READING_SWEEP_PROOF.md (spec: design/frontend/direction/KIT_SPEC.md)."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/FRONTEND-D-REPORT.md"
+      ],
+      "brief": "IMPLEMENTED 2026-09-07: the missions log (missionLog.js) is a `k-screen`: current action, active, career and completed as rows down the hang, the focused mission on the stage with its name at title size, its next step as one sentence, the payout at hero size and Timer / Route and risk / Stake / On failure as static rows, Track / Open on the chart / Abandon as words; the codex (codex.js, `992d2129e`) as tab words, entry names as rows and the entry as a measure of text on the stage; style blocks deleted. Receipt: design/program/roadmap/receipts/FRONTEND-D-REPORT.md. Original: The log as one column of sentences with hairlines and the focused mission opened on the right at screen-title size with its next step and reward; the codex as a left column of entry names and a readable measure of text with its plate. Over the sky at the menus scrim; old style blocks deleted. DONE WHEN: captures at 1280/1920/2560 match the sheet under a hash-bound visual review against DIRECTION_SHEET.md; entity links and the four data states still work; check:ui-screen-imports green. Task file: design/frontend/direction/tasks/TASK_D_MODES_READING_SWEEP_PROOF.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-192.01",
@@ -17512,7 +17528,7 @@
       "priority": 471,
       "title": "Help and tech tree",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-187.03"
       ],
@@ -17529,8 +17545,10 @@
         "node scripts/check-ui-screen-imports.mjs",
         "npm run check:ui-a11y"
       ],
-      "receiptRefs": [],
-      "brief": "Help as hairline rows of action and key with the current profile named; the tech tree's lanes as hairline paths on the sky, nodes as words, the selected node's name at screen-title size with its cost and Unlock as one word. Old style blocks deleted. DONE WHEN: captures at three widths match the sheet under a hash-bound visual review against DIRECTION_SHEET.md; every displayed key still resolves from input.js after a remap; unlocks still apply; check:ui-screen-imports green. Task file: design/frontend/direction/tasks/TASK_D_MODES_READING_SWEEP_PROOF.md (spec: design/frontend/direction/KIT_SPEC.md)."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/FRONTEND-D-REPORT.md"
+      ],
+      "brief": "IMPLEMENTED 2026-09-07: help (help.js, `2345e7d49`) as hairline rows of action and key with the profile named; the tech tree (techTree.js, `cac3adefd`) as hairline lanes on the sky, nodes as words, the selected node at title size with its cost at hero size and Unlock as a word; style blocks deleted. Receipt: design/program/roadmap/receipts/FRONTEND-D-REPORT.md. Original: Help as hairline rows of action and key with the current profile named; the tech tree's lanes as hairline paths on the sky, nodes as words, the selected node's name at screen-title size with its cost and Unlock as one word. Old style blocks deleted. DONE WHEN: captures at three widths match the sheet under a hash-bound visual review against DIRECTION_SHEET.md; every displayed key still resolves from input.js after a remap; unlocks still apply; check:ui-screen-imports green. Task file: design/frontend/direction/tasks/TASK_D_MODES_READING_SWEEP_PROOF.md (spec: design/frontend/direction/KIT_SPEC.md)."
     }
   ]
 }
