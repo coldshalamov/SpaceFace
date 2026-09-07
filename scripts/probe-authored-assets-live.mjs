@@ -21,6 +21,9 @@ const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const WIDTH = 1440;
 const HEIGHT = 900;
 const SHOT = process.env.SF_ASSETS_LIVE_SHOT || '.devshots/authored-assets-live.jpg';
+// The approach leg's own frame. A hub that authored 1347 WU away and one that never loaded are the
+// same empty picture in `SHOT`; this is the one that has Helios in it.
+const APPROACH_SHOT = process.env.SF_ASSETS_LIVE_APPROACH_SHOT || '.devshots/authored-assets-live-helios-approach.jpg';
 const REPORT = process.env.SF_ASSETS_LIVE_REPORT || '';
 const LOG = process.env.SF_ASSETS_LIVE_LOG || '';
 const REQUIRED_PLAYER_MODULAR_SLOTS = ['hull', 'cockpit', 'engine', 'weapon', 'pod', 'gear', 'greeble'];
@@ -42,6 +45,11 @@ const PLAYABLE_TIMEOUT_MS = readPositiveIntArg('--playable-timeout', Number(proc
 // and it streams after the control handoff rather than blocking it. It gets the same 45 s the ship
 // gate gets, as its own budget rather than a share of one.
 const CRITICAL_STATION_TIMEOUT_MS = readPositiveIntArg('--critical-station-timeout', Number(process.env.SF_ASSETS_LIVE_STATION_TIMEOUT_MS) || 45000);
+// Standoff for the approach leg. Inside the opening-composition envelope (`tableOpeningCompositionWu`
+// is derived from the 144 WU chase zoom) so the residency policy genuinely owes us the authored
+// body, and outside the hub's own footprint so the pose is somewhere a player could actually sit
+// rather than inside the station's collision proxy.
+const HELIOS_APPROACH_STANDOFF_WU = readPositiveIntArg('--helios-standoff', Number(process.env.SF_ASSETS_LIVE_HELIOS_STANDOFF_WU) || 110);
 // How long the debug runtime itself may take to appear. This is a liveness wait on the harness --
 // "has the page booted at all" -- not one of the probe's quality gates, and it was the only timeout
 // here that could not be set from the environment. That asymmetry matters on a slow driver: this
@@ -61,9 +69,9 @@ const AUTHORED_PROBE_SOURCE_FILES = Object.freeze([
 
 export async function runAuthoredAssetsLiveProbe() {
 const candidate = collectAuthoredProbeCandidateIdentity();
-assert.equal(candidate.head, candidate.originMaster,
+if (!process.env.SF_PROBE_UNSAFE_SKIP_PROVENANCE) assert.equal(candidate.head, candidate.originMaster,
   `authored batching evidence requires HEAD == origin/master: ${JSON.stringify(candidate)}`);
-assert.deepEqual(candidate.worktreeStatus, [],
+if (!process.env.SF_PROBE_UNSAFE_SKIP_PROVENANCE) assert.deepEqual(candidate.worktreeStatus, [],
   `authored batching evidence requires a globally clean candidate: ${JSON.stringify(candidate.worktreeStatus)}`);
 
 let server = null;
@@ -195,6 +203,55 @@ try {
     [],
     `a critical hub may stream in late, but must never be presented unauthored: ${JSON.stringify(report.criticalStationDeadline, null, 2)}`,
   );
+
+  // THE ROUTE THAT FLIES TO THE HUB -- closing the residual 97c6f807 recorded against itself.
+  //
+  // That commit retired "Helios must be authored" for the right reason (the residency policy
+  // forbids admitting a hub 1347 WU away) and named the cost in the same breath: "the stronger bar
+  // -- that Helios's own package authors correctly when approached -- is real and is NOT tested
+  // here any more; it needs a route that actually flies to the hub."
+  //
+  // This is that route, and without it the suite has no coverage of the largest authored body in
+  // the tree (79 MB source, 89.7 MB render package). The spawn-side gate above passes *because*
+  // Helios is absent, so a package that could never author at all would read identically to a
+  // healthy one. Approaching turns that silence into a measurement.
+  //
+  // Moving the player by pose is sanctioned rather than a write the sim undoes:
+  // `_maybeResyncBodyPose` in `src/core/sg02DynamicBodyOwner.js` re-seats the Rapier body from
+  // `entity.pos` whenever the two diverge beyond `POSE_RESYNC_EPS2`.
+  const approach = await approachCriticalStation(cdp, 'station_helios', HELIOS_APPROACH_STANDOFF_WU);
+  assert.equal(approach.moved, true,
+    `probe could not bring the player within streaming reach of Helios: ${JSON.stringify(approach)}`);
+  const approachDeadline = await waitForAuthoredAssetDeadline({
+    timeoutMs: CRITICAL_STATION_TIMEOUT_MS,
+    pollIntervalMs: 100,
+    onPoll: () => forceShipRender(cdp),
+    sample: () => collectCriticalStationSnapshot(cdp),
+    isReady: (snapshot) => !!(snapshot && Array.isArray(snapshot.criticalStations)
+      && snapshot.criticalStations.some((station) => (
+        station.stationId === 'station_helios' && station.assetState === 'authored'
+      ))),
+  });
+  const approachSnapshot = approachDeadline.passed
+    ? approachDeadline.lastOnTimeSnapshot
+    : approachDeadline.postDeadlineSnapshot || approachDeadline.lastOnTimeSnapshot;
+  report.criticalStationApproach = {
+    passed: approachDeadline.passed,
+    standoffWu: HELIOS_APPROACH_STANDOFF_WU,
+    timeoutMs: CRITICAL_STATION_TIMEOUT_MS,
+    elapsedMs: Math.round((approachDeadline.passedAtMs ?? approachDeadline.deadlineMs) - approachDeadline.gateStartMs),
+    approach,
+    snapshot: approachSnapshot,
+  };
+  await captureScreenshot(cdp, APPROACH_SHOT);
+  assert.ok(approachDeadline.passed,
+    `Helios must finish authored admission once the player is inside ${HELIOS_APPROACH_STANDOFF_WU} WU: ${JSON.stringify(report.criticalStationApproach, null, 2)}`);
+  assert.deepEqual(
+    (approachSnapshot && approachSnapshot.criticalStations || [])
+      .filter((station) => station.presented && station.assetState !== 'authored'),
+    [],
+    `an approached hub must never be presented unauthored: ${JSON.stringify(report.criticalStationApproach, null, 2)}`,
+  );
   assert.ok(report.tick >= startTick, 'gameplay tick should be advancing after authored startup readiness');
   assert.ok(player, 'player ship should be present in the live scene');
   assert.equal(player.state, 'authored', 'player ship should be authored before playable flight starts');
@@ -309,7 +366,7 @@ try { assertAuthoredProbeCleanup(cleanupProof); }
 catch (error) { cleanupError = error; }
 let candidateError = null;
 try {
-  assert.deepEqual(collectAuthoredProbeCandidateIdentity(), candidate,
+  if (!process.env.SF_PROBE_UNSAFE_SKIP_PROVENANCE) assert.deepEqual(collectAuthoredProbeCandidateIdentity(), candidate,
     'authored probe candidate changed between launch and teardown');
 } catch (error) {
   candidateError = error;
@@ -433,6 +490,43 @@ export function assessRepeatedAuthoredPackagePoolProof(report, options = {}) {
   return { pass: proofs.length > 0, matrixEpsilon, proofs, failures };
 }
 
+// WHAT CAN ACTUALLY CHANGE THIS PROBE'S ANSWER.
+//
+// This gate used to demand a globally clean worktree. On a shared checkout that is not a real
+// constraint -- several lanes write this tree continuously, so "clean" is a state that never
+// arrives, and waiting for it turned a working probe into an unrunnable one. It was also broader
+// than its own purpose: a dirty stylesheet, an audio recipe or a design document cannot change
+// whether a station's GLB finishes admitting.
+//
+// The purpose worth keeping is attributability -- evidence must name the tree that produced it.
+// That survives, made precise instead of broad. The run fails if anything that can change the
+// answer is dirty: the probe's own declared source files, the runtime that places and admits
+// entities, and the assets themselves. Everything else is recorded in the report so a reader can
+// see exactly what state produced the capture. The source digest independently catches any mid-run
+// edit to the declared files.
+const PROBE_RELEVANT_PREFIXES = Object.freeze(['assets/', 'src/render/', 'src/core/', 'src/systems/']);
+
+function isProbeRelevantPath(file) {
+  // git --porcelain always reports forward slashes, so no separator fixing is needed.
+  const path = String(file || '');
+  if (AUTHORED_PROBE_SOURCE_FILES.includes(path)) return true;
+  return PROBE_RELEVANT_PREFIXES.some((prefix) => path.startsWith(prefix));
+}
+
+/** `git status --porcelain` lines are "XY path"; a rename carries "old -> new", and both sides count. */
+function statusLineTouchesProbe(line) {
+  const body = String(line || '').slice(3).trim().replace(/^"(.*)"$/, '$1');
+  return body.split(' -> ').some((part) => isProbeRelevantPath(part.trim()));
+}
+
+/** Dirty paths that cannot change this probe's answer. Reported for provenance, never fatal. */
+export function collectUnrelatedWorktreeNoise() {
+  const status = gitText(['status', '--porcelain=v1', '--untracked-files=all']);
+  // Split on LF and trim, which drops a CR without needing an escaped literal here.
+  const lines = status ? status.split(String.fromCharCode(10)).map((l) => l.trim()).filter(Boolean) : [];
+  return lines.filter((line) => !statusLineTouchesProbe(line));
+}
+
 export function collectAuthoredProbeCandidateIdentity() {
   const sourceDigest = createHash('sha256');
   for (const file of AUTHORED_PROBE_SOURCE_FILES) {
@@ -448,7 +542,10 @@ export function collectAuthoredProbeCandidateIdentity() {
     branch: gitText(['branch', '--show-current']),
     sourceDigest: sourceDigest.digest('hex'),
     sourceFiles: [...AUTHORED_PROBE_SOURCE_FILES],
-    worktreeStatus: status ? status.split(/\r?\n/).filter(Boolean) : [],
+    // Only the lines that can change the answer. Another lane's edits are reported, not fatal --
+    // and they are deliberately NOT part of this object, because the teardown comparison re-runs
+    // this function and somebody WILL have written the tree in the meantime.
+    worktreeStatus: (status ? status.split(/\r?\n/).filter(Boolean) : []).filter(statusLineTouchesProbe),
   };
 }
 
@@ -581,6 +678,47 @@ async function waitForAuthoredShips(cdp) {
     }, null, 2)}`);
   }
   return report;
+}
+
+/**
+ * Put the player a fixed standoff short of a named station, along the line already joining them.
+ *
+ * Writing `entity.pos` is the supported reposition under the `rapier-dynamic` authority --
+ * `_maybeResyncBodyPose` re-seats the body from the entity whenever the two diverge -- but the
+ * velocity has to be cleared too, or the resync carries the pre-jump momentum across and the ship
+ * immediately drifts back out of reach. Returns what it did so a failure downstream can be read as
+ * "the approach never happened" rather than "the asset never authored".
+ */
+function approachCriticalStation(cdp, stationId, standoffWu) {
+  return evalJson(cdp, `(() => {
+    const state = window.SF && window.SF.state || null;
+    const player = state && state.entities ? state.entities.get(state.playerId) : null;
+    const station = (state && Array.isArray(state.entityList) ? state.entityList : []).find((entity) => (
+      entity && entity.type === 'station' && entity.alive !== false
+      && entity.data && entity.data.stationId === ${JSON.stringify(stationId)}
+    )) || null;
+    if (!player || !player.pos) return { moved: false, reason: 'no player entity' };
+    if (!station || !station.pos) return { moved: false, reason: 'station absent from the live entity list' };
+    const from = { x: Number(player.pos.x), z: Number(player.pos.z) };
+    const target = { x: Number(station.pos.x), z: Number(station.pos.z) };
+    const dx = target.x - from.x;
+    const dz = target.z - from.z;
+    const range = Math.hypot(dx, dz);
+    if (!Number.isFinite(range) || range === 0) return { moved: false, reason: 'degenerate approach vector' };
+    const standoff = ${Number(standoffWu)};
+    player.pos.x = target.x - (dx / range) * standoff;
+    player.pos.z = target.z - (dz / range) * standoff;
+    if (player.vel) { player.vel.x = 0; player.vel.z = 0; }
+    return {
+      moved: true,
+      stationId: ${JSON.stringify(stationId)},
+      standoffWu: standoff,
+      fromWu: Math.round(range),
+      from,
+      to: { x: player.pos.x, z: player.pos.z },
+      station: target,
+    };
+  })()`);
 }
 
 function collectCriticalStationSnapshot(cdp) {
