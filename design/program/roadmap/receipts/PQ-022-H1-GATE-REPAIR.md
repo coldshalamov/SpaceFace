@@ -173,3 +173,37 @@ One caution for whoever runs the four cells: a diagnostic bypass of the provenan
 tree, was swept onto master from an uncommitted working tree by a concurrent commit and removed in
 071bf0e2. If a probe change ever seems to have committed itself, check for that pattern rather than
 assuming the edit was intended.
+
+## The gate is still red, and this is what is left
+
+Packaging the 77 did **not** unblock the cells. With the provenance gate scoped and the assertion
+retired, the probe now reaches the loader assertion and fails there:
+
+```
+[assetLoader] .../places/place_cold_locker.glb violates the authored-part contract:
+released part has no render package, and the source route is development-only.
+```
+
+`place_cold_locker` is genuinely wired — `src/data/sectorAnchors.js` places it as `poi_helios_locker`
+at (772, -302) in the seeded Helios sector, and `src/render/partsLibrary.js:196` declares it — so the
+loader is right to fail closed. It is **not** among the 77, and no amount of regenerating will add it.
+
+**Root cause, and it is not the authoring.** `generate-render-package-pilots.mjs` skips it with
+"semantic node names must be non-empty and unique (unnamed)". Comparing the two GLBs:
+
+| file | nodes | unnamed |
+|---|---|---|
+| `assets/ships/parts/places/place_cold_locker.glb` (source) | 100 | 0 |
+| `assets/ships/release/parts/places/place_cold_locker.glb` (release) | 101 | **1** |
+
+The authored source is clean. **The release export adds a node and leaves it unnamed**, and the
+package compiler then refuses the asset. `fin_crystalline.glb` is skipped for the neighbouring
+reason (a non-unique name, `fin_crystalline_Material_Accent_Merged`), so this is a narrow
+release-pipeline defect, not a systemic authoring one.
+
+Fixing it means fixing the export (`scripts/build-place-release-assets.mjs` is the likely owner), not
+hand-patching a generated artifact — and it moves the release GLB's hash, which the release manifest
+records, so it wants the asset lane rather than a drive-by.
+
+**Until that node is named, `check:assets:live` cannot pass and the four H1 cells cannot record**,
+independently of render packages, the Helios assertion, or worktree cleanliness.
