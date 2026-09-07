@@ -128,10 +128,9 @@ export const WIRED_SITES = [
   },
   {
     file: 'src/ui/screens/missionLog.js',
-    label: 'recommended-action map whys (body phrase first, title as fallback)',
+    label: 'recommended-action map whys (body phrase first, title as fallback) — one writer (commandWordsHtml) serves the current action and the campaign thread',
     needles: [
       ['data-why="\' + escapeHtml(action.mapAction.body', 1],
-      ['data-why="\' + escapeHtml(a.mapAction.body', 1],
     ],
   },
 ];

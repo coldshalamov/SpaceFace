@@ -142,11 +142,11 @@ assert.match(source, /data-act="openMap"/, 'active mission cards must render map
 assert.match(source, /data-rec-act="openMap"/, 'tracked recommendation must render a map handoff button');
 assert.match(source, /aria-label="' \+ escapeHtml\(isTracked \? 'Tracking ' \+ titleText : 'Track navigation for ' \+ titleText\)/,
   'Mission Log track buttons must expose the concrete mission tracking action to assistive tech');
-assert.match(source, /class="sf-mlog-btn-map" type="button"[\s\S]*aria-label="' \+ escapeHtml\(mapAction\.title\)/,
+assert.match(source, /class="[^"]*sf-mlog-btn-map" type="button"[\s\S]*aria-label="' \+ escapeHtml\(mapAction\.title\)/,
   'Mission Log map handoff buttons must expose the concrete map destination to assistive tech');
-assert.match(source, /class="sf-mlog-btn-abandon" type="button"[\s\S]*aria-label="' \+ escapeHtml\('Abandon ' \+ titleText\)/,
+assert.match(source, /class="[^"]*sf-mlog-btn-abandon" type="button"[\s\S]*aria-label="' \+ escapeHtml\('Abandon ' \+ titleText\)/,
   'Mission Log abandon buttons must expose the concrete mission abandonment action to assistive tech');
-assert.match(source, /aria-controls="sf-mlog-completed-list"/,
+assert.match(source, /aria-controls(?:="|', ')sf-mlog-completed-list/,
   'Mission Log completed toggle must expose its controlled completed-mission list');
 assert.match(source, /toggle\.setAttribute\('aria-expanded'/,
   'Mission Log completed toggle must update aria-expanded with the visible completed list state');

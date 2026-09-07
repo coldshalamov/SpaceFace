@@ -331,7 +331,7 @@ try {
   assert.equal(logReport.top, 'missionLog', 'Bar handoff button should push Mission Log: ' + JSON.stringify(logReport));
   assert(logReport.text.includes('Ready Bar Bounty'),
     'Mission Log should show the Bar-accepted mission: ' + JSON.stringify(logReport));
-  assert(logReport.trackedCard.includes('TRACKING'),
+  assert(/tracked|tracking/i.test(logReport.trackedCard),
     'Mission Log should show the Bar-accepted mission as tracked: ' + JSON.stringify(logReport));
   assert.deepEqual(issues.errorIssues(), [], 'bar live smoke should not record page errors');
 

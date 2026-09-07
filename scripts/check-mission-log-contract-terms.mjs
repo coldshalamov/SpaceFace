@@ -11,7 +11,7 @@ const source = readFileSync(new URL('../src/ui/screens/missionLog.js', import.me
 assert.match(source, /missionConsequenceSummary/, 'Mission Log must reuse shared preflight consequence math');
 assert.match(source, /missionTimePacing/, 'Mission Log must reuse shared timer pacing math');
 assert.match(source, /export function activeMissionContractTerms/, 'accepted contract terms must stay directly testable');
-assert.match(source, /class="sf-mlog-terms mono"/, 'active mission cards must render a contract terms row');
+assert.match(source, /class="k-rows sf-mlog-terms"/, 'the focused mission must render its contract terms as kit rows');
 assert.match(source, /aria-label="Contract terms"/, 'contract terms row must be named for assistive tech');
 assert.match(source, /sf-mlog-term--warn/, 'contract terms must have warning styling for stakes and misses');
 assert.match(source, /sf-mlog-term--bad/, 'contract terms must have danger styling for smuggling heat');

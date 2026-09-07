@@ -208,8 +208,8 @@ test('flight HUD and Mission Log paint one command instead of repeated story/mis
     'Mission Log may paint only the highest-priority action');
   assert.match(log, /this\._storyEl\.hidden = true/,
     'long-form story card must not compete beside current action');
-  assert.match(log, /if \(!isTracked\) card\.appendChild\(el\('div', 'sf-mlog-next'/,
-    'tracked mission verb must not repeat in its detail card');
+  assert.match(log, /if \(!isTracked\) card\.appendChild\(el\('p', 'k-sentence k-sentence--emph sf-mlog-next'/,
+    'tracked mission verb must not repeat on its stage');
   assert.match(log, /BRIGHT AMBER DIAMOND = CURRENT GOAL/,
     'Mission Log must explain the exact goal glyph before opening the map');
   assert.match(target, /dataset\.hudSlot = 'current-threat'/,

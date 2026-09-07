@@ -1,7 +1,12 @@
 // src/ui/screens/missionLog.js — In-flight mission log.
-// Shows all active + recently completed missions with progress, timer, reward, and a TRACK button.
+// Shows all active + recently completed missions with progress, timer, reward, and a Track word.
 // READ-ONLY on state; emits ui:trackMission + ui:abandonMission (+ career origin/ladder intents)
 // intents only (§5, §0.6). No career progression or owner writes from this surface.
+//
+// Frontend kit (design/frontend/direction/KIT_SPEC.md): the root is `k-screen`; the hang holds the
+// current action, the active missions as rows, the career rows and the completed receipts; the
+// focused mission opens on the stage with its name at title size, its next step as one sentence,
+// its payout at hero and its terms as static rows. No style block — styles/kit.css is the only CSS.
 //
 // Export: missionLogScreen  (id 'missionLog').
 
@@ -30,6 +35,7 @@ import {
   buildMissionLogCareerChip,
   buildMissionLogOriginChoiceModel,
 } from '../careerLadderView.js';
+import { el, rows, hero, settle, cue } from '../kit/index.js';
 
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
@@ -44,19 +50,25 @@ for (const sec of SECTORS) {
   }
 }
 
-const STYLE_ID = 'sf-missionlog-style';
 const FUEL_WARN_FRAC = 0.45;
 const FUEL_CRITICAL_FRAC = 0.25;
 const PROTECTION_WARN_FRAC = 0.70;
 const PROTECTION_CRITICAL_FRAC = 0.35;
 const DANGEROUS_MISSION_TYPES = new Set(['bounty_hunt', 'patrol_clear', 'escort', 'smuggling_run']);
 
-function injectStyle() {
-  if (document.getElementById(STYLE_ID)) return;
-  const s = document.createElement('style');
-  s.id = STYLE_ID;
-  s.textContent = CSS;
-  document.head.appendChild(s);
+const EMPTY_TEXT = 'No active missions. Dock at a station, open Missions or the Bar, accept a contract, then undock and follow the tracked nav marker.';
+
+/**
+ * Legacy labels arrive as tracked caps ("TRACK NAV", "START PATH"). The kit never uses all-caps as
+ * decoration (sheet §3), so a purely upper-case label reads as a sentence; mixed-case text is kept.
+ */
+function wordText(label) {
+  const text = String(label == null ? '' : label).trim();
+  if (!text || /[a-z]/.test(text)) return text;
+  return (text.charAt(0).toUpperCase() + text.slice(1).toLowerCase())
+    // Route letters keep their case: "After 47-A", "Ending C".
+    .replace(/-([a-z])(?![a-z0-9])/g, (whole, letter) => '-' + letter.toUpperCase())
+    .replace(/\b(ending|route) ([a-e])(?![a-z0-9])/g, (whole, word, letter) => word + ' ' + letter.toUpperCase());
 }
 
 function getManager(ctx) {
@@ -66,13 +78,6 @@ function getManager(ctx) {
   if (ui && ui.screenManager) return ui.screenManager;
   if (ui && ui.manager) return ui.manager;
   return null;
-}
-
-function el(tag, cls, text) {
-  const e = document.createElement(tag);
-  if (cls) e.className = cls;
-  if (text != null) e.textContent = text;
-  return e;
 }
 
 function cmdtyName(id) {
@@ -577,36 +582,65 @@ export function missionCommandBrief(m, state) {
   });
 }
 
-function commandBriefHtml(brief) {
-  if (!brief) return '';
-  const facts = [
-    ['What', brief.what],
-    ['Where', brief.where],
-    ['How', brief.how],
-    ['Why', brief.why],
-    ['Reward', brief.reward],
-    ['Risk', brief.risk],
-  ];
-  return '<div class="sf-mlog-command-brief" role="list" aria-label="Tracked mission command brief">' +
-    facts.map(([label, value]) => (
-      '<div class="sf-mlog-command-fact" role="listitem">' +
-        '<b>' + escapeHtml(label) + '</b>' +
-        '<span>' + escapeHtml(value || '—') + '</span>' +
-      '</div>'
-    )).join('') +
-  '</div>';
+// Term labels as the stage reads them; the presenter keeps its short keys (tests read those).
+const TERM_LABELS = Object.freeze({
+  Pays: 'Pays',
+  Clock: 'Timer',
+  Risk: 'Route and risk',
+  Stake: 'Stake',
+  Paid: 'Paid up front',
+  Clause: 'Clause',
+  Miss: 'On failure',
+  Heat: 'Heat',
+});
+// Kind → inert hook class (checks read them); only `bad` changes the colour of the value text.
+const TERM_KIND_CLASS = Object.freeze({
+  ok: 'sf-mlog-term--ok',
+  info: 'sf-mlog-term--info',
+  warn: 'sf-mlog-term--warn',
+  bad: 'sf-mlog-term--bad',
+});
+
+/** One static label/value row: the label at 62 %, the value live. */
+function termRowHtml(label, valueHtml, extraClass = '') {
+  return '<li class="k-row k-row--static' + (extraClass ? ' ' + extraClass : '') + '">' +
+    '<span class="k-62">' + escapeHtml(label) + '</span>' +
+    '<span class="k-row__name">' + valueHtml + '</span>' +
+  '</li>';
 }
 
+function destinationHtml(m) {
+  const destStn = m.destStationId ? STATION_INFO.get(m.destStationId) : null;
+  const destSec = m.destSectorId ? SECTOR_BY_ID.get(m.destSectorId) : null;
+  if (destStn) {
+    return entitySpanHtml('station:' + m.destStationId, escapeHtml(destStn.name))
+      + (destSec ? ' (' + entitySpanHtml('sector:' + m.destSectorId, escapeHtml(destSec.name)) + ')' : '');
+  }
+  if (destSec) return entitySpanHtml('sector:' + m.destSectorId, escapeHtml(destSec.name + ' sector'));
+  return escapeHtml(destLabel(m));
+}
+
+/**
+ * The focused mission's terms as static rows: Timer, Route and risk, Stake, On failure (the same
+ * consequence math as the presenter), then the contract, client and destination as entity links.
+ */
 function contractTermsHtml(m, state) {
   const terms = activeMissionContractTerms(m, state);
-  if (!terms.length) return '';
-    return '<div class="sf-mlog-terms" aria-label="Contract terms">' + terms.map((term) => {
+  const fac = m.factionId ? FACTION_BY_ID.get(m.factionId) : null;
+  const termRows = terms.map((term) => {
     const kind = ['ok', 'info', 'warn', 'bad'].includes(term.kind) ? term.kind : 'info';
-    return '<span class="sf-mlog-term sf-mlog-term--' + kind + '">' +
-      '<b>' + escapeHtml(term.label) + '</b>' +
-      '<span>' + escapeHtml(term.text) + '</span>' +
-    '</span>';
-  }).join('') + '</div>';
+    const value = kind === 'bad'
+      ? '<span class="k-bad">' + escapeHtml(term.text) + '</span>'
+      : escapeHtml(term.text);
+    return termRowHtml(TERM_LABELS[term.label] || term.label, value, 'sf-mlog-term ' + TERM_KIND_CLASS[kind]);
+  }).join('');
+  const linkRows =
+    termRowHtml('Contract', m.id ? entitySpanHtml('contract:' + m.id, escapeHtml(prettyType(m.type))) : escapeHtml(prettyType(m.type))) +
+    (fac ? termRowHtml('Client', entitySpanHtml('faction:' + m.factionId, escapeHtml(fac.short || fac.name))) : '') +
+    termRowHtml('Destination', destinationHtml(m));
+  return '<ul class="k-rows sf-mlog-terms" aria-label="Contract terms" style="--k-row-cols: auto minmax(0, 1fr)">' +
+    termRows + linkRows +
+  '</ul>';
 }
 
 function serviceReadinessAction(state, activeMissions) {
@@ -690,6 +724,37 @@ function mapActionButtonAttrs(mapAction, missionId) {
     + (pos && Number.isFinite(pos.z) ? ' data-map-pos-z="' + escapeHtml(String(pos.z)) + '"' : '')
     + (mapAction.source ? ' data-map-source="' + escapeHtml(mapAction.source) + '"' : '')
     + ' data-mid="' + escapeHtml(missionId || mapAction.missionId || '') + '"';
+}
+
+/**
+ * The words under a command (Current action or the campaign thread): Track nav, the endgame
+ * continuations, and the chart handoff. Body-size words; `data-rec-act` is the click contract.
+ */
+function commandWordsHtml(action, mapMissionId) {
+  const word = (cls, attrs, label, sub) => (
+    '<li><button class="k-word k-word--body sf-mlog-rec-action' + (cls ? ' ' + cls : '') + '" type="button"' + attrs + '>'
+      + escapeHtml(wordText(label)) + '</button>'
+      + (sub ? '<div class="k-word-sub">' + escapeHtml(wordText(sub)) + '</div>' : '')
+    + '</li>'
+  );
+  let out = '';
+  if (action.action === 'track' && action.missionId) {
+    out += word('', ' data-rec-act="track" data-mid="' + escapeHtml(action.missionId) + '"', action.actionLabel || 'TRACK NAV');
+  }
+  if (action.action === 'endgameSandbox' || action.action === 'endgameUnfiledJump') {
+    out += word('', ' data-rec-act="' + escapeHtml(action.action) + '"', action.actionLabel || 'CONTINUE OPEN');
+  }
+  if (action.secondaryAction === 'endgameSandbox' && action.action !== 'endgameSandbox') {
+    out += word('sf-mlog-rec-secondary', ' data-rec-act="endgameSandbox"', action.secondaryActionLabel || 'CONTINUE WITHOUT FILING');
+  }
+  if (action.mapAction) {
+    out += word('sf-mlog-rec-map',
+      ' data-rec-act="openMap"' + mapActionButtonAttrs(action.mapAction, mapMissionId)
+        + ' data-why="' + escapeHtml(action.mapAction.body || action.mapAction.title || '') + '"'
+        + ' aria-label="' + escapeHtml(action.mapAction.title || action.mapAction.label || 'Open map') + '"',
+      'Open on the chart', action.mapAction.label);
+  }
+  return out ? '<ul class="k-words k-words--row sf-mlog-rec-actions" aria-label="Current action words">' + out + '</ul>' : '';
 }
 
 /** Resolve named contact + location for a career chip (read-only map + mission join). */
@@ -777,7 +842,18 @@ function careerStatusMod(status) {
   return 'idle';
 }
 
-/** HTML for mission-log career chips (pure presenter → DOM). Emits intents; no owner writes. */
+/** One career word: a `k-word--body` button carrying the legacy `sf-mlog-career-btn*` hooks. */
+function careerWordHtml(kind, attrs, ariaLabel, label) {
+  return '<li><button class="k-word k-word--body sf-mlog-career-btn sf-mlog-career-btn-' + kind + '" type="button"'
+    + attrs
+    + ' aria-label="' + escapeHtml(ariaLabel) + '">' + escapeHtml(wordText(label)) + '</button></li>';
+}
+
+/**
+ * HTML for a mission-log career row (pure presenter → DOM). Career ladder chip on the kit: a static
+ * row with the path name live, its step/place/objective lines beneath at 38 %, the progress at the
+ * number slot, and the decisions and actions as body words. Emits intents; no owner writes.
+ */
 function careerChipHtml(chip, state) {
   if (!chip) return '';
   const careerId = chip.careerId || '';
@@ -806,97 +882,82 @@ function careerChipHtml(chip, state) {
   const placeContact = (place.contact && place.contact !== title) ? place.contact : null;
   const placeLine = [placeContact, place.location].filter(Boolean).join(' · ');
 
+  const idAttr = ' data-career-id="' + escapeHtml(careerId) + '"';
   let actions = '';
   if (chip.canAccept) {
-    actions += '<button class="sf-mlog-career-btn sf-mlog-career-btn-choice" type="button"'
-      + ' data-career-act="ladderAccept" data-career-id="' + escapeHtml(careerId) + '"'
-      + ' aria-label="' + escapeHtml('Start ' + title) + '">START PATH</button>';
+    actions += careerWordHtml('choice', ' data-career-act="ladderAccept"' + idAttr, 'Start ' + title, 'START PATH');
   }
   if (chip.canDecline) {
-    actions += '<button class="sf-mlog-career-btn sf-mlog-career-btn-abandon" type="button"'
-      + ' data-career-act="ladderDecline" data-career-id="' + escapeHtml(careerId) + '"'
-      + ' aria-label="' + escapeHtml('Decline ' + title + ' for now') + '">NOT NOW</button>';
+    actions += careerWordHtml('abandon', ' data-career-act="ladderDecline"' + idAttr, 'Decline ' + title + ' for now', 'NOT NOW');
   }
   if (chip.canOriginAccept) {
     const acceptText = chip.originAcceptLabel || ('START ' + title.toUpperCase());
-    actions += '<button class="sf-mlog-career-btn sf-mlog-career-btn-choice" type="button"'
-      + ' data-career-act="originAccept" data-career-id="' + escapeHtml(careerId) + '"'
-      + ' aria-label="' + escapeHtml(acceptText + ' — ' + title) + '">' + escapeHtml(acceptText) + '</button>';
+    actions += careerWordHtml('choice', ' data-career-act="originAccept"' + idAttr, acceptText + ' — ' + title, acceptText);
   }
   if (chip.canOriginDecline) {
-    actions += '<button class="sf-mlog-career-btn sf-mlog-career-btn-abandon" type="button"'
-      + ' data-career-act="originDecline" data-career-id="' + escapeHtml(careerId) + '"'
-      + ' aria-label="' + escapeHtml('Decline ' + title + ' for now') + '">NOT NOW</button>';
+    actions += careerWordHtml('abandon', ' data-career-act="originDecline"' + idAttr, 'Decline ' + title + ' for now', 'NOT NOW');
   }
   if (chip.canOriginRecover) {
-    actions += '<button class="sf-mlog-career-btn sf-mlog-career-btn-recover" type="button"'
-      + ' data-career-act="originRecover" data-career-id="' + escapeHtml(careerId) + '"'
-      + ' aria-label="' + escapeHtml('Reissue ' + title + ' origin contract') + '">REISSUE</button>';
+    actions += careerWordHtml('recover', ' data-career-act="originRecover"' + idAttr, 'Reissue ' + title + ' origin contract', 'REISSUE');
   }
   if (mapAction) {
-    actions += '<button class="sf-mlog-career-btn sf-mlog-career-btn-map" type="button"'
-      + ' data-career-act="openMap" data-career-id="' + escapeHtml(careerId) + '"'
-      + mapActionButtonAttrs(mapAction, linkedId || mapAction.missionId || '')
-      + ' aria-label="' + escapeHtml(mapTitle) + '">'
-      + escapeHtml(mapLabel) + '</button>';
+    actions += careerWordHtml('map',
+      ' data-career-act="openMap"' + idAttr + mapActionButtonAttrs(mapAction, linkedId || mapAction.missionId || ''),
+      mapTitle, mapLabel);
   }
   if (chip.canRecover) {
-    actions += '<button class="sf-mlog-career-btn sf-mlog-career-btn-recover" type="button"'
-      + ' data-career-act="recover" data-career-id="' + escapeHtml(careerId) + '"'
-      + ' aria-label="' + escapeHtml('Retry ' + (stepTitle || title)) + '">RETRY</button>';
+    actions += careerWordHtml('recover', ' data-career-act="recover"' + idAttr, 'Retry ' + (stepTitle || title), 'RETRY');
   }
   if (linkedId) {
-    actions += '<button class="sf-mlog-career-btn sf-mlog-career-btn-track" type="button"'
-      + ' data-career-act="track" data-career-id="' + escapeHtml(careerId) + '"'
-      + ' data-mid="' + escapeHtml(linkedId) + '"'
-      + ' aria-label="' + escapeHtml('Track navigation for ' + title) + '">TRACK NAV</button>';
+    actions += careerWordHtml('track', ' data-career-act="track"' + idAttr + ' data-mid="' + escapeHtml(linkedId) + '"',
+      'Track navigation for ' + title, 'TRACK NAV');
   }
   if (chip.canAbandon && !collapsed) {
-    actions += '<button class="sf-mlog-career-btn sf-mlog-career-btn-abandon" type="button"'
-      + ' data-career-act="abandon" data-career-id="' + escapeHtml(careerId) + '"'
-      + ' data-career-title="' + escapeHtml(title) + '"'
-      + ' aria-label="' + escapeHtml('Abandon ' + title) + '">ABANDON</button>';
+    actions += careerWordHtml('abandon',
+      ' data-career-act="abandon"' + idAttr + ' data-career-title="' + escapeHtml(title) + '"',
+      'Abandon ' + title, 'ABANDON');
   }
 
   let choiceHtml = '';
   if (choices.length) {
-    choiceHtml = '<div class="sf-mlog-career-choices" role="group" aria-label="Path decisions">'
+    // Decisions are toggles: the chosen one carries aria-pressed (the kit draws its rule).
+    choiceHtml = '<ul class="k-words k-words--row sf-mlog-career-choices" role="group" aria-label="Path decisions">'
       + choices.map((c) => {
         if (!c || !c.id) return '';
         const label = c.label || c.id;
         const blocked = c.enabled === false;
         const selected = c.selected === true;
-        return '<button class="sf-mlog-career-btn sf-mlog-career-btn-choice" type="button"'
-          + ' data-career-act="' + escapeHtml(choiceAction) + '" data-career-id="' + escapeHtml(careerId) + '"'
+        return careerWordHtml('choice',
+          ' data-career-act="' + escapeHtml(choiceAction) + '"' + idAttr
           + ' data-choice-id="' + escapeHtml(c.id) + '"'
           + ' data-choice-selected="' + (selected ? 'true' : 'false') + '"'
           + ' aria-pressed="' + (selected ? 'true' : 'false') + '"'
-          + (blocked ? ' disabled' : '')
-          + ' aria-label="' + escapeHtml(label + ' for ' + (stepTitle || title)) + '">'
-          + escapeHtml((selected ? 'SELECTED · ' : '') + label) + '</button>';
+          + (blocked ? ' disabled' : ''),
+          label + ' for ' + (stepTitle || title), label);
       }).join('')
-      + '</div>';
+      + '</ul>';
   }
 
-  return '<div class="sf-mlog-career'
+  const subLine = (cls, text, attrs = '') => (text
+    ? '<div class="k-row__sub ' + cls + '"' + attrs + '>' + escapeHtml(text) + '</div>'
+    : '');
+
+  return '<div class="k-row k-row--static sf-mlog-career'
     + (collapsed ? ' sf-mlog-career--collapsed' : '')
     + ' sf-mlog-career--' + statusMod + '"'
     + ' data-testid="mission-log-career-chip"'
-    + ' data-career-id="' + escapeHtml(careerId) + '"'
+    + idAttr
     + ' data-career-status="' + escapeHtml(String(chip.status || statusLabel || '')) + '"'
     + ' role="region"'
     + ' aria-label="' + escapeHtml(title + (statusLabel ? (', ' + statusLabel) : '')) + '">'
-    + '<div class="sf-mlog-career-top">'
-    +   '<span class="sf-mlog-career-title">' + escapeHtml(title) + '</span>'
+    + '<div>'
+    +   '<span class="k-row__name sf-mlog-career-title">' + escapeHtml(title) + '</span>'
     +   (statusLabel
-      ? '<span class="sf-mlog-career-status" role="status">' + escapeHtml(String(statusLabel)) + '</span>'
+      ? '<div class="k-row__sub sf-mlog-career-status" role="status">' + escapeHtml(String(statusLabel)) + '</div>'
       : '')
-    + '</div>'
-    + (stepTitle
-      ? '<div class="sf-mlog-career-step">' + escapeHtml(stepTitle) + '</div>'
-      : '')
-    + (placeLine
-      ? '<div class="sf-mlog-career-place" aria-label="'
+    +   subLine('sf-mlog-career-step', stepTitle)
+    +   (placeLine
+      ? '<div class="k-row__sub sf-mlog-career-place" aria-label="'
         + escapeHtml([placeContact ? ('Contact ' + placeContact) : '', place.location ? ('Location ' + place.location) : ''].filter(Boolean).join(', '))
         + '">'
         + (placeContact
@@ -908,28 +969,17 @@ function careerChipHtml(chip, state) {
           : '')
         + '</div>'
       : '')
-    + (chip.objective
-      ? '<div class="sf-mlog-career-objective">' + escapeHtml(chip.objective) + '</div>'
-      : '')
-    + (progressLabel
-      ? '<div class="sf-mlog-career-progress sf-fig" aria-label="' + escapeHtml(progressAria) + '">'
-        + escapeHtml(progressLabel) + '</div>'
-      : '')
-    + (chip.nextAction
-      ? '<div class="sf-mlog-career-next" aria-live="polite">' + escapeHtml(chip.nextAction) + '</div>'
-      : '')
-    + (consequence
-      ? '<div class="sf-mlog-career-consequence" aria-label="Consequence preview">'
-        + escapeHtml(consequence) + '</div>'
-      : '')
-    + (chip.failureLine
-      ? '<div class="sf-mlog-career-fail" aria-live="polite">' + escapeHtml(chip.failureLine) + '</div>'
-      : '')
-    + (chip.receiptLine
-      ? '<div class="sf-mlog-career-receipt" aria-live="polite">' + escapeHtml(chip.receiptLine) + '</div>'
-      : '')
-    + choiceHtml
-    + (actions ? '<div class="sf-mlog-career-actions" role="group" aria-label="Career actions">' + actions + '</div>' : '')
+    +   subLine('sf-mlog-career-objective', chip.objective)
+    +   subLine('sf-mlog-career-next', chip.nextAction, ' aria-live="polite"')
+    +   subLine('sf-mlog-career-consequence', consequence, ' aria-label="Consequence preview"')
+    +   subLine('sf-mlog-career-fail', chip.failureLine, ' aria-live="polite"')
+    +   subLine('sf-mlog-career-receipt', chip.receiptLine, ' aria-live="polite"')
+    +   choiceHtml
+    +   (actions ? '<ul class="k-words k-words--row sf-mlog-career-actions" role="group" aria-label="Career actions">' + actions + '</ul>' : '')
+    + '</div>'
+    + '<span class="k-row__num sf-mlog-career-progress"'
+    +   (progressLabel ? ' aria-label="' + escapeHtml(progressAria) + '"' : '')
+    +   '>' + escapeHtml(progressLabel) + '</span>'
     + '</div>';
 }
 
@@ -1057,17 +1107,20 @@ export function finalDispositionRoutes(state) {
 
 function dispositionRouteRowsHtml(routes) {
   if (!Array.isArray(routes) || !routes.length) return '';
-  return '<div class="sf-mlog-ending-routes" role="list" aria-label="Five final disposition routes">'
+  // Five static rows: the route letter and name live, its interface and reason beneath, its state
+  // at the number slot.
+  return '<ul class="k-rows sf-mlog-ending-routes" aria-label="Five final disposition routes">'
     + routes.map((route) => {
       const status = route.status === 'ready' || route.status === 'declined' ? route.status : 'locked';
-      return '<div class="sf-mlog-ending-route sf-mlog-ending-route--' + status + '" role="listitem" data-ending-route="' + escapeHtml(route.id) + '">' +
-        '<span class="sf-mlog-ending-code">' + escapeHtml(route.id) + '</span>' +
-        '<span class="sf-mlog-ending-title">' + escapeHtml(route.title) + '</span>' +
-        '<span class="sf-mlog-ending-interface">' + escapeHtml(route.interfaceLabel) + '</span>' +
-        '<span class="sf-mlog-ending-reason">' + escapeHtml(route.reason) + '</span>' +
-      '</div>';
+      return '<li class="k-row k-row--static sf-mlog-ending-route sf-mlog-ending-route--' + status + '" data-ending-route="' + escapeHtml(route.id) + '">' +
+        '<div>' +
+          '<span class="k-row__name">' + escapeHtml(route.id) + ' · ' + escapeHtml(route.title) + '</span>' +
+          '<div class="k-row__sub">' + escapeHtml(route.interfaceLabel) + ' · ' + escapeHtml(route.reason) + '</div>' +
+        '</div>' +
+        '<span class="k-row__num">' + escapeHtml(wordText(status.toUpperCase())) + '</span>' +
+      '</li>';
     }).join('')
-    + '</div>';
+    + '</ul>';
 }
 
 export function setPieceContinuationAction(state) {
@@ -1612,111 +1665,134 @@ function destLabel(m) {
   return '—';
 }
 
+/** A hang section header: a static row carrying one `k-caps` label (the kit's caps register). */
+function sectionHeader(text, cls = '') {
+  const header = el('div', 'k-row k-row--static' + (cls ? ' ' + cls : ''));
+  header.appendChild(el('div', 'k-caps', text));
+  return header;
+}
+
 export const missionLogScreen = {
   id: 'missionLog',
   _ctx: null,
+  _rootEl: null,
   _listEl: null,
+  _stageEl: null,
   _compListEl: null,
   _recommendEl: null,
+  _focusedId: null,
   _subbed: false,
 
   mount(rootEl, ctx) {
     this._ctx = ctx;
     this._rootEl = rootEl;
-    injectStyle();
 
+    // The DOM is built from el + appendChild so the gamepad reachability check's minimal fake
+    // document (appendChild only) can mount it; the kit builders (append) run only for content that
+    // exists when a mission is active or focused.
     rootEl.innerHTML = '';
-    rootEl.classList.add('panel', 'sf-menu', 'sf-mlog');
-    // Diegetic fascia stamp (styles/menu.css .sf-menu::before reads it).
-    rootEl.dataset.stamp = 'CONTRACT LEDGER / ACTIVE';
+    rootEl.classList.add('k-screen', 'sf-mlog');
+    rootEl.dataset.kReady = '0';
+    rootEl.setAttribute('aria-label', 'Mission Log');
 
-    // Header
-    const head = el('div', 'sf-mlog-head sf-crest');
-    head.innerHTML =
-      '<span class="sf-mlog-title">MISSION LOG</span>' +
-      '<span class="sf-mlog-hint">' + BINDINGS.missionLog.label + ' to close</span>' +
-      '<button class="sf-mlog-close" type="button" aria-label="Close Mission Log">CLOSE</button>';
+    // Title. The campaign thread's headline, when one exists, is the one sentence under it.
+    const head = el('header', 'k-title');
+    head.appendChild(el('h1', 'k-display k-t-title', 'Missions'));
+    const storySub = el('p', 'k-t-emph k-62 sf-mlog-story-line');
+    storySub.hidden = true;
+    head.appendChild(storySub);
     rootEl.appendChild(head);
-    this._closeBtn = head.querySelector('.sf-mlog-close');
+    this._headEl = head;
+    this._storySub = storySub;
 
-    this._closeBtn.addEventListener('click', () => {
-      const mgr = getManager(ctx);
-      if (mgr) mgr.popScreen();
-    });
-
-    // Scrollable body. Everything below the header scrolls as one ordinary block column. The old
-    // layout left these sections as direct flex children of the fixed-height modal, where the
-    // combined CURRENT ACTION + CAREER LADDER content overflowed: .sf-stage's min-height:0 let the
-    // recommend region collapse to a sliver, so its card painted over the career chips (the "ghost
-    // text"), and overflow:hidden sliced the last career card at the modal's bottom border.
-    const body = el('div', 'sf-mlog-body');
+    // The hang: current action, active missions as rows, career rows, completed receipts.
+    const body = el('div', 'k-hang sf-mlog-body');
     rootEl.appendChild(body);
+    this._hangEl = body;
 
-    // Active missions section
-    const activeH = el('div', 'sf-mlog-section-h', 'ACTIVE MISSIONS');
-    body.appendChild(activeH);
-
-    const list = el('div', 'sf-mlog-list sf-apron');
-    body.appendChild(list);
-    this._listEl = list;
-
-    // Story context is retained in the data model but not painted as a parallel command card.
-    // CURRENT ACTION below owns "what now"; the active list owns contract detail.
-    const storyH = el('div', 'sf-mlog-section-h sf-mlog-section-story', 'STORY OBJECTIVE');
-    storyH.hidden = true;
-    body.insertBefore(storyH, activeH);
+    // Campaign thread (final disposition / post-ending only): its body, routes and words. Earlier
+    // story beats stay folded into Current action so the screen never shows competing commands.
     const storyEl = el('div', 'sf-mlog-story');
     storyEl.hidden = true;
-    body.insertBefore(storyEl, activeH);
-    this._storyHeader = storyH;
+    body.appendChild(storyEl);
     this._storyEl = storyEl;
 
-    // Replaces the equal-weight RECOMMENDED NEXT grid with one explicit command rail.
-    const recH = el('div', 'sf-mlog-section-h sf-mlog-section-rec', 'CURRENT ACTION');
+    // One explicit command: the CURRENT ACTION rail that replaced the equal-weight RECOMMENDED NEXT
+    // grid. Screen-local and on-demand; the HUD's goal line reads the same policy.
+    const recH = sectionHeader('Current action', 'sf-mlog-section-rec');
     recH.id = 'sf-mlog-current-action-heading';
-    body.insertBefore(recH, activeH);
-    const recEl = el('div', 'sf-mlog-recommend sf-stage');
+    body.appendChild(recH);
+    const recEl = el('div', 'sf-mlog-recommend');
     recEl.setAttribute('role', 'region');
     recEl.setAttribute('aria-labelledby', recH.id);
-    body.insertBefore(recEl, activeH);
+    body.appendChild(recEl);
     this._recommendHeader = recH;
     this._recommendEl = recEl;
 
-    // Career ladder chip (CL-UI-03): after story/recommended, before active missions.
-    // Intent-only path strip — start/decline/choose/recover/abandon + map/track; owners transition state.
-    const careerH = el('div', 'sf-mlog-section-h sf-mlog-section-career', 'CAREER LADDER');
+    // Active missions: one row each; picking a row opens that mission on the stage.
+    body.appendChild(sectionHeader('Active', 'sf-mlog-section-active'));
+    const list = el('div', 'sf-mlog-list');
+    body.appendChild(list);
+    this._listEl = list;
+
+    // Career ladder chip (CL-UI-03) rows: start/decline/choose/recover/abandon + map/track words
+    // emit intents; owners transition state. Non-diegetic: no visor, no portrait.
+    const careerH = sectionHeader('Career', 'sf-mlog-section-career');
     careerH.id = 'sf-mlog-career-heading';
     careerH.hidden = true;
-    body.insertBefore(careerH, activeH);
+    body.appendChild(careerH);
     const careerEl = el('div', 'sf-mlog-career-list');
     careerEl.setAttribute('role', 'region');
     careerEl.setAttribute('aria-labelledby', 'sf-mlog-career-heading');
     careerEl.hidden = true;
-    body.insertBefore(careerEl, activeH);
+    body.appendChild(careerEl);
     this._careerHeader = careerH;
     this._careerEl = careerEl;
 
-    // Completed missions section
-    const compH = el('div', 'sf-mlog-section-h sf-mlog-section-comp');
-    compH.innerHTML = '<span>COMPLETED</span><button class="sf-mlog-toggle" type="button" aria-expanded="false" aria-controls="sf-mlog-completed-list">Show</button>';
+    // Completed receipts, folded behind a fine Show/Hide word.
+    const compH = el('div', 'k-row k-row--static sf-mlog-section-comp');
+    compH.appendChild(el('div', 'k-caps', 'Completed'));
+    const toggle = el('button', 'k-word k-word--fine sf-mlog-toggle', 'Show');
+    toggle.type = 'button';
+    toggle.setAttribute('aria-expanded', 'false');
+    toggle.setAttribute('aria-controls', 'sf-mlog-completed-list');
+    compH.appendChild(toggle);
     body.appendChild(compH);
     this._compHeader = compH;
 
     const compList = el('div', 'sf-mlog-comp-list');
     compList.id = 'sf-mlog-completed-list';
-    compList.style.display = 'none';
+    compList.hidden = true;
     body.appendChild(compList);
     this._compListEl = compList;
     this._compVisible = false;
 
-    compH.querySelector('.sf-mlog-toggle').addEventListener('click', () => {
+    toggle.addEventListener('click', () => {
       this._compVisible = !this._compVisible;
-      compList.style.display = this._compVisible ? 'block' : 'none';
-      const toggle = compH.querySelector('.sf-mlog-toggle');
+      compList.hidden = !this._compVisible;
       toggle.textContent = this._compVisible ? 'Hide' : 'Show';
       toggle.setAttribute('aria-expanded', this._compVisible ? 'true' : 'false');
+      cue('confirm');
       if (this._compVisible) this._renderCompleted();
     });
+
+    // The stage: the focused mission.
+    const stage = el('div', 'k-stage k-stage--scroll sf-mlog-stage');
+    rootEl.appendChild(stage);
+    this._stageEl = stage;
+
+    // Back word: the one mouse-reachable way out (Esc / the log key / gamepad B also pop).
+    const foot = el('footer', 'k-foot');
+    const back = el('button', 'k-word k-word--emph sf-mlog-close', 'Back');
+    back.type = 'button';
+    back.setAttribute('aria-label', 'Close Mission Log');
+    back.addEventListener('click', () => {
+      const mgr = getManager(ctx);
+      if (mgr) mgr.popScreen();
+    });
+    foot.appendChild(back);
+    rootEl.appendChild(foot);
+    this._closeBtn = back;
 
     const handleCampaignAction = (ev) => {
       const btn = ev.target.closest('[data-rec-act]');
@@ -1849,8 +1925,8 @@ export const missionLogScreen = {
       if (next) next.focus();
     });
 
-    // Delegated click handler for buttons
-    list.addEventListener('click', async (ev) => {
+    // Delegated click handler for the focused mission's words on the stage.
+    stage.addEventListener('click', async (ev) => {
       const btn = ev.target.closest('[data-mid]');
       if (!btn) return;
       const missionId = btn.getAttribute('data-mid');
@@ -1890,10 +1966,20 @@ export const missionLogScreen = {
   onShow(ctx) {
     if (ctx) this._ctx = ctx;
     this._render();
+    cue('open');
+    // Kit motion: the title and hang settle from the left, the stage from the right. The gamepad
+    // check's fake document has no element styles; settle is best-effort there.
+    try {
+      settle(this._headEl, { from: 'left' });
+      settle(this._hangEl, { from: 'left', delay: 40 });
+      settle(this._stageEl, { from: 'right', delay: 80 });
+    } catch (_) { /* fake DOM */ }
     this._focusPrimaryControl();
   },
 
-  onHide() {},
+  onHide() {
+    cue('close');
+  },
 
   /**
    * Event-driven refresh. Periodic low-cadence ticks from uiRoot must no-op:
@@ -1915,7 +2001,7 @@ export const missionLogScreen = {
     return false;
   },
 
-  /** Focus the current action first, then a career CTA, else CLOSE. */
+  /** Focus the current action first, then a career CTA, then the focused mission's row, else Back. */
   _focusPrimaryControl() {
     const career = this._careerEl;
     let target = this._recommendEl && this._recommendEl.querySelector(
@@ -1931,6 +2017,7 @@ export const missionLogScreen = {
         + 'button[data-career-act]:not([disabled])',
       );
     }
+    if (!target && this._listEl) target = this._listEl.querySelector('.k-row[aria-selected="true"]');
     if (!target) target = this._closeBtn || null;
     if (target && typeof target.focus === 'function') {
       try { target.focus({ preventScroll: true }); } catch (_) {
@@ -1990,98 +2077,168 @@ export const missionLogScreen = {
     this._renderRecommendations(state, activeMissions, tracked);
     this._renderCareerChip(state);
 
+    // Remember where focus was so a repaint (every click repaints) does not drop it.
+    const focusToken = this._captureFocusToken();
+
     this._listEl.innerHTML = '';
 
     if (!activeMissions.length) {
-      this._listEl.innerHTML = '<div class="sf-mlog-empty">No active missions. Dock at a station, open Missions or the Bar, accept a contract, then undock and follow the tracked nav marker.</div>';
+      this._listEl.innerHTML = '<div class="sf-mlog-empty"><p class="k-sentence k-62">No active contracts.</p></div>';
+      this._focusedId = null;
+      this._renderStage(state, null, tracked);
       if (this._compVisible) this._renderCompleted();
+      this._rootEl.dataset.kReady = '1';
       return;
     }
 
-    const frag = document.createDocumentFragment();
-    for (const m of activeMissions) {
-      const isTracked = tracked === m.id;
-      const remaining = Math.max(0, (m.deadline_s || 0) - simTime);
-      const urgent = remaining > 0 && remaining < 120;
-
-      const card = el('div', 'sf-mlog-card' + (isTracked ? ' tracked' : '') + (urgent ? ' urgent' : ''));
-      card.setAttribute('role', 'group');
-      card.setAttribute('aria-label', (isTracked ? 'Tracked mission: ' : 'Mission: ') + missionTitle(m));
-
-      // Top row: title + type badge
-      const top = el('div', 'sf-mlog-card-top');
-      const risk = m.riskTier != null ? m.riskTier : 0;
-      top.innerHTML =
-        '<span class="sf-mlog-card-title">' + escapeHtml(missionTitle(m)) + '</span>' +
-        '<span class="sf-mlog-card-type">' + (m.id ? entitySpanHtml('contract:' + m.id, escapeHtml(prettyType(m.type))) : escapeHtml(prettyType(m.type))) + '</span>' +
-        '<span class="sf-mlog-card-risk sf-fig r' + risk + '">R' + risk + '</span>';
-      card.appendChild(top);
-
-      // Objective progress
-      const objLine = el('div', 'sf-mlog-obj');
-      const prog = m.objectiveProgress || 0;
-      const tgt = m.objectiveTarget || 1;
-      const pct = Math.max(0, Math.min(100, Math.round((prog / tgt) * 100)));
-      objLine.innerHTML =
-        '<span class="sf-mlog-obj-text">' + escapeHtml(objectiveText(m)) + '</span>' +
-        '<span class="sf-mlog-obj-pct sf-fig">' + pct + '%</span>';
-      card.appendChild(objLine);
-
-      // Progress bar
-      const barWrap = el('div', 'sf-mlog-pbar');
-      barWrap.setAttribute('role', 'progressbar');
-      barWrap.setAttribute('aria-label', missionTitle(m) + ' completion');
-      barWrap.setAttribute('aria-valuemin', '0');
-      barWrap.setAttribute('aria-valuemax', '100');
-      barWrap.setAttribute('aria-valuenow', String(pct));
-      const barFill = el('div', 'sf-mlog-pbar-fill');
-      barFill.style.width = pct + '%';
-      barWrap.appendChild(barFill);
-      card.appendChild(barWrap);
-
-      // CURRENT ACTION already owns the tracked mission verb. Repeat next-step prose only for
-      // untracked contracts, where it explains why TRACK NAV is the next interaction.
-      if (!isTracked) card.appendChild(el('div', 'sf-mlog-next', nextStepText(m)));
-
-      // Meta row: destination, time, rewards
-      const meta = el('div', 'sf-mlog-meta');
-      const fac = m.factionId ? FACTION_BY_ID.get(m.factionId) : null;
-      const destStn = m.destStationId ? STATION_INFO.get(m.destStationId) : null;
-      const destSec = m.destSectorId ? SECTOR_BY_ID.get(m.destSectorId) : null;
-      const destHtml = destStn
-        ? entitySpanHtml('station:' + m.destStationId, escapeHtml(destStn.name))
-          + (destSec ? ' (' + entitySpanHtml('sector:' + m.destSectorId, escapeHtml(destSec.name)) + ')' : '')
-        : destSec
-          ? entitySpanHtml('sector:' + m.destSectorId, escapeHtml(destSec.name + ' sector'))
-          : escapeHtml(destLabel(m));
-      const facHtml = fac
-        ? entitySpanHtml('faction:' + m.factionId, escapeHtml(fac.short || fac.name))
-        : '';
-      meta.innerHTML =
-        '<span class="sf-mlog-dest">' + destHtml + '</span>' +
-        (remaining > 0 ? '<span class="sf-mlog-time sf-fig' + (urgent ? ' urgent' : '') + '">' + fmtTime(remaining) + '</span>' : '') +
-        '<span class="sf-mlog-cr sf-fig">+' + (m.reward_cr || 0).toLocaleString() + ' cr</span>' +
-        (facHtml ? '<span class="sf-mlog-fac">' + facHtml + '</span>' : '');
-      card.appendChild(meta);
-      card.insertAdjacentHTML('beforeend', contractTermsHtml(m, state));
-
-      // Buttons: Track / map handoff / abandon
-      const mapAction = missionMapAction(state, m, isTracked);
-      const btns = el('div', 'sf-mlog-btns');
-      const titleText = missionTitle(m);
-      btns.innerHTML =
-        '<button class="sf-mlog-btn-track' + (isTracked ? ' active' : '') + '" type="button" data-act="track" data-mid="' + escapeHtml(m.id) + '" aria-label="' + escapeHtml(isTracked ? 'Tracking ' + titleText : 'Track navigation for ' + titleText) + '">' +
-          (isTracked ? 'TRACKING' : 'TRACK NAV') +
-        '</button>' +
-        (mapAction ? '<button class="sf-mlog-btn-map" type="button" data-act="openMap"' + mapActionButtonAttrs(mapAction, m.id) + ' aria-label="' + escapeHtml(mapAction.title) + '">' + escapeHtml(mapAction.label) + '</button>' : '') +
-        '<button class="sf-mlog-btn-abandon" type="button" data-act="abandon" data-mid="' + escapeHtml(m.id) + '" aria-label="' + escapeHtml('Abandon ' + titleText) + '">ABANDON</button>';
-      card.appendChild(btns);
-
-      frag.appendChild(card);
+    // The focused mission: the one picked in the hang, else the tracked one, else the first.
+    if (!activeMissions.some((m) => m.id === this._focusedId)) {
+      this._focusedId = activeMissions.some((m) => m.id === tracked) ? tracked : activeMissions[0].id;
     }
-    this._listEl.appendChild(frag);
 
+    // One row per active mission: its name, the objective and timer beneath, the payout at the number.
+    const items = [];
+    const urgentIds = new Set();
+    for (const m of activeMissions) {
+      const remaining = Math.max(0, (m.deadline_s || 0) - simTime);
+      if (remaining > 0 && remaining < 120) urgentIds.add(m.id);
+      const reward = Math.max(0, Number(m.reward_cr) || 0);
+      items.push({
+        id: m.id,
+        name: missionTitle(m),
+        sub: [objectiveText(m), remaining > 0 ? fmtTime(remaining) : ''].filter(Boolean).join(' · '),
+        num: reward > 0 ? '+' + reward.toLocaleString() : '',
+        selected: m.id === this._focusedId,
+      });
+    }
+    const list = rows(items, {
+      ariaLabel: 'Active missions',
+      onPick: (id) => this._select(id),
+    });
+    for (const row of list.querySelectorAll('.k-row')) {
+      const m = activeMissions.find((x) => x.id === row.dataset.id);
+      if (!m) continue;
+      row.classList.add('sf-mlog-row');
+      if (m.id === tracked) row.classList.add('tracked');
+      if (urgentIds.has(m.id)) {
+        const sub = row.querySelector('.k-row__sub');
+        if (sub) sub.classList.add('k-bad');
+      }
+    }
+    // The stage follows the arrow keys quietly; Enter/Space (rows' onPick) confirms with the cue.
+    list.addEventListener('focusin', (ev) => {
+      const row = ev.target.closest('.k-row');
+      if (row && row.dataset.id !== this._focusedId) this._select(row.dataset.id, { quiet: true });
+    });
+    this._listEl.appendChild(list);
+
+    this._renderStage(state, activeMissions.find((m) => m.id === this._focusedId) || null, tracked);
     if (this._compVisible) this._renderCompleted();
+    this._restoreFocusToken(focusToken);
+    this._rootEl.dataset.kReady = '1';
+  },
+
+  /** Focus a mission from the hang: mark its row and open it on the stage. */
+  _select(missionId, { quiet = false } = {}) {
+    if (!missionId || missionId === this._focusedId) return;
+    this._focusedId = missionId;
+    if (this._listEl) {
+      for (const row of this._listEl.querySelectorAll('.k-row[aria-selected]')) {
+        row.setAttribute('aria-selected', String(row.dataset.id === missionId));
+      }
+    }
+    const state = this._ctx && this._ctx.state;
+    if (!state) return;
+    const active = (state.missions && state.missions.active) || [];
+    const m = active.find((x) => x && x.id === missionId && x.status === 'active') || null;
+    this._renderStage(state, m, state.ui && state.ui.trackedMissionId);
+    if (!quiet) cue('move');
+  },
+
+  /** Where focus was before a repaint: a stage word, a row, or the current action's word. */
+  _captureFocusToken() {
+    if (typeof document === 'undefined' || !this._rootEl) return null;
+    const active = document.activeElement;
+    if (!active || !active.closest || !this._rootEl.contains(active)) return null;
+    if (this._stageEl && this._stageEl.contains(active)) {
+      const btn = active.closest('[data-act]');
+      return btn ? { where: 'stage', act: btn.getAttribute('data-act') } : { where: 'stage' };
+    }
+    if (this._listEl && this._listEl.contains(active)) return { where: 'list' };
+    if (this._recommendEl && this._recommendEl.contains(active)) {
+      const btn = active.closest('[data-rec-act]');
+      return btn ? { where: 'rec', act: btn.getAttribute('data-rec-act') } : null;
+    }
+    return null;
+  },
+
+  _restoreFocusToken(token) {
+    if (!token) return;
+    let target = null;
+    if (token.where === 'stage' && this._stageEl) {
+      target = (token.act && this._stageEl.querySelector('button[data-act="' + token.act + '"]'))
+        || this._stageEl.querySelector('button[data-act]');
+    } else if (token.where === 'list' && this._listEl) {
+      target = this._listEl.querySelector('.k-row[aria-selected="true"]');
+    } else if (token.where === 'rec' && this._recommendEl) {
+      target = this._recommendEl.querySelector('button[data-rec-act="' + token.act + '"]');
+    }
+    if (!target || typeof target.focus !== 'function') return;
+    try { target.focus({ preventScroll: true }); } catch (_) {
+      try { target.focus(); } catch (__) { /* ignore */ }
+    }
+  },
+
+  /**
+   * The stage: the focused mission's name at title size, its next step as one sentence, its payout
+   * at hero, its terms as static rows, and its words. Current action already owns the tracked
+   * mission's verb, so a tracked mission's sentence is its objective and progress instead; the
+   * next-step prose repeats only for untracked contracts, where it explains why Track is next.
+   */
+  _renderStage(state, m, tracked) {
+    const stage = this._stageEl;
+    if (!stage) return;
+    stage.innerHTML = '';
+    if (!m) {
+      stage.appendChild(el('p', 'k-empty sf-mlog-empty', EMPTY_TEXT));
+      return;
+    }
+    const isTracked = tracked === m.id;
+    const titleText = missionTitle(m);
+    const card = el('article', 'sf-mlog-card' + (isTracked ? ' tracked' : ''));
+    card.setAttribute('role', 'group');
+    card.setAttribute('aria-label', (isTracked ? 'Tracked mission: ' : 'Mission: ') + titleText);
+    card.dataset.mid = m.id;
+
+    card.appendChild(el('h2', 'k-display k-t-title', titleText));
+    if (!isTracked) card.appendChild(el('p', 'k-sentence k-sentence--emph sf-mlog-next', stripNextPrefix(nextStepText(m))));
+    else card.appendChild(el('p', 'k-sentence k-sentence--emph sf-mlog-obj', objectiveText(m) + ' · ' + missionProgressLabel(m)));
+
+    const reward = Math.max(0, Number(m.reward_cr) || 0);
+    card.appendChild(hero(reward.toLocaleString(), reward > 0 ? 'cr on delivery' : 'cr · close cleanly', { size: 'hero', signal: true }));
+
+    const terms = el('div');
+    terms.innerHTML = contractTermsHtml(m, state);
+    card.appendChild(terms);
+
+    // Words: Track/Tracked (aria-pressed), the chart handoff, Abandon (confirm kept). Track is the
+    // screen's one primary while the focused mission is not yet tracked.
+    const mapAction = missionMapAction(state, m, isTracked);
+    const btns = el('div', 'sf-mlog-btns');
+    btns.innerHTML =
+      '<ul class="k-words k-words--row" aria-label="Mission actions">' +
+        '<li><button class="k-word k-word--emph' + (isTracked ? '' : ' k-word--primary') + ' sf-mlog-btn-track" type="button" data-act="track" data-mid="' + escapeHtml(m.id) + '" aria-pressed="' + (isTracked ? 'true' : 'false') + '" aria-label="' + escapeHtml(isTracked ? 'Tracking ' + titleText : 'Track navigation for ' + titleText) + '">' +
+          (isTracked ? 'Tracked' : 'Track') +
+        '</button></li>' +
+        (mapAction
+          ? '<li><button class="k-word k-word--emph sf-mlog-btn-map" type="button" data-act="openMap"' + mapActionButtonAttrs(mapAction, m.id) + ' aria-label="' + escapeHtml(mapAction.title) + '">Open on the chart</button>' +
+            '<div class="k-word-sub">' + escapeHtml(wordText(mapAction.label)) + '</div></li>'
+          : '') +
+        '<li><button class="k-word k-word--emph k-word--danger sf-mlog-btn-abandon" type="button" data-act="abandon" data-mid="' + escapeHtml(m.id) + '" aria-label="' + escapeHtml('Abandon ' + titleText) + '">Abandon</button></li>' +
+      '</ul>';
+    card.appendChild(btns);
+
+    stage.appendChild(card);
   },
 
   // Only final disposition / post-ending continuity persists beside normal work. Earlier story
@@ -2094,55 +2251,52 @@ export const missionLogScreen = {
     if (!action) {
       this._storyEl.innerHTML = '';
       this._storyEl.hidden = true;
-      if (this._storyHeader) this._storyHeader.hidden = true;
+      if (this._storySub) {
+        this._storySub.textContent = '';
+        this._storySub.hidden = true;
+      }
       return;
     }
-    if (this._storyHeader) {
-      this._storyHeader.textContent = 'CAMPAIGN THREAD';
-      this._storyHeader.hidden = false;
+    // The thread's headline is the one sentence under the title; its body, routes and words sit at
+    // the top of the hang under "Campaign".
+    if (this._storySub) {
+      this._storySub.textContent = action.title || 'Campaign continues';
+      this._storySub.hidden = false;
     }
     this._storyEl.hidden = false;
     this._storyEl.innerHTML =
+      '<div class="k-row k-row--static sf-mlog-section-story"><div class="k-caps">' + escapeHtml(wordText(action.label || 'CAMPAIGN')) + '</div></div>' +
       '<div class="sf-mlog-story-tile" data-campaign-thread="true">' +
-        '<div class="sf-mlog-story-beat">' + escapeHtml(action.label || 'STORY') + '</div>' +
-        '<div class="sf-mlog-story-objective">' + escapeHtml(action.title || 'Campaign continues') + '</div>' +
-        '<div class="sf-mlog-story-introduces">' + escapeHtml(action.body || '') + '</div>' +
+        (action.body ? '<p class="k-sentence k-62 sf-mlog-story-introduces">' + escapeHtml(action.body) + '</p>' : '') +
         dispositionRouteRowsHtml(action.routeOptions) +
-        (action.meta ? '<div class="sf-mlog-rec-meta sf-fig">' + escapeHtml(action.meta) + '</div>' : '') +
-        (action.action === 'endgameSandbox' || action.action === 'endgameUnfiledJump' || action.secondaryAction === 'endgameSandbox' || action.mapAction ? '<div class="sf-mlog-rec-actions">' +
-          (action.action === 'endgameSandbox' || action.action === 'endgameUnfiledJump' ? '<button class="sf-mlog-rec-action" type="button" data-rec-act="' + escapeHtml(action.action) + '">' + escapeHtml(action.actionLabel || 'CONTINUE OPEN') + '</button>' : '') +
-          (action.secondaryAction === 'endgameSandbox' && action.action !== 'endgameSandbox' ? '<button class="sf-mlog-rec-action sf-mlog-rec-secondary" type="button" data-rec-act="endgameSandbox">' + escapeHtml(action.secondaryActionLabel || 'CONTINUE WITHOUT FILING') + '</button>' : '') +
-          (action.mapAction ? '<button class="sf-mlog-rec-action sf-mlog-rec-map" type="button" data-rec-act="openMap"' + mapActionButtonAttrs(action.mapAction, action.mapAction.missionId || '') + ' data-why="' + escapeHtml(action.mapAction.body || action.mapAction.title || '') + '">' + escapeHtml(action.mapAction.label) + '</button>' : '') +
-        '</div>' : '') +
+        (action.meta ? '<p class="k-t-fine k-38 sf-mlog-rec-meta">' + escapeHtml(wordText(action.meta)) + '</p>' : '') +
+        commandWordsHtml(action, action.mapAction ? (action.mapAction.missionId || '') : '') +
       '</div>';
   },
 
   _renderRecommendations(state, activeMissions, trackedMissionId) {
     if (!this._recommendEl) return;
     // The policy may produce secondary readiness advice for other consumers, but this screen paints
-    // exactly one command. Readiness and terms remain in the detailed mission cards below.
+    // exactly one command. Readiness and terms live on the focused mission's stage.
     const actions = recommendedActions(state, activeMissions, trackedMissionId).slice(0, 1);
     if (!actions.length) {
       this._recommendEl.innerHTML = '';
       return;
     }
     this._recommendEl.innerHTML = actions.map((a) => (
-      '<div class="sf-mlog-rec-item sf-mlog-rec-item--' + escapeHtml(a.tone || 'info') + '" data-current-action="true">' +
-        '<div class="sf-mlog-rec-label">' + escapeHtml(a.label || 'NEXT') + '</div>' +
-        '<div class="sf-mlog-rec-title">' + escapeHtml(a.title || 'Next action') + '</div>' +
-        (a.brief ? commandBriefHtml(a.brief) : '<div class="sf-mlog-rec-body">' + escapeHtml(a.body || '') + '</div>') +
-        dispositionRouteRowsHtml(a.routeOptions) +
-        (a.meta ? '<div class="sf-mlog-rec-meta sf-fig">' + escapeHtml(a.meta) + '</div>' : '') +
-        '<div class="sf-mlog-rec-marker">' + (a.mapAction
-          ? '◆ BRIGHT AMBER DIAMOND = CURRENT GOAL'
-          : (a.action === 'track' ? 'NO GOAL MARKER · TRACK NAV TO CREATE ONE' : 'NO GOAL MARKER YET')) + '</div>' +
-        ((a.action === 'track' && a.missionId) || a.action === 'endgameSandbox' || a.action === 'endgameUnfiledJump' || a.secondaryAction === 'endgameSandbox' || a.mapAction ? '<div class="sf-mlog-rec-actions">' +
-          (a.action === 'track' && a.missionId ? '<button class="sf-mlog-rec-action" type="button" data-rec-act="track" data-mid="' + escapeHtml(a.missionId) + '">' + escapeHtml(a.actionLabel || 'TRACK NAV') + '</button>' : '') +
-          (a.action === 'endgameSandbox' || a.action === 'endgameUnfiledJump' ? '<button class="sf-mlog-rec-action" type="button" data-rec-act="' + escapeHtml(a.action) + '">' + escapeHtml(a.actionLabel || 'CONTINUE OPEN') + '</button>' : '') +
-          (a.secondaryAction === 'endgameSandbox' && a.action !== 'endgameSandbox' ? '<button class="sf-mlog-rec-action sf-mlog-rec-secondary" type="button" data-rec-act="endgameSandbox">' + escapeHtml(a.secondaryActionLabel || 'CONTINUE WITHOUT FILING') + '</button>' : '') +
-          (a.mapAction ? '<button class="sf-mlog-rec-action sf-mlog-rec-map" type="button" data-rec-act="openMap"' + mapActionButtonAttrs(a.mapAction, a.missionId || a.mapAction.missionId || '') + ' data-why="' + escapeHtml(a.mapAction.body || a.mapAction.title || '') + '">' + escapeHtml(a.mapAction.label) + '</button>' : '') +
-        '</div>' : '') +
-      '</div>'
+      '<div class="k-rows"><div class="k-row k-row--static sf-mlog-rec-item sf-mlog-rec-item--' + escapeHtml(a.tone || 'info') + '" data-current-action="true">' +
+        '<div>' +
+          '<span class="k-row__name sf-mlog-rec-title">' + escapeHtml(a.title || 'Next action') + '</span>' +
+          '<div class="k-row__sub sf-mlog-rec-body">' + escapeHtml((a.brief && a.brief.how) || a.body || '') + '</div>' +
+          (a.meta ? '<div class="k-row__sub sf-mlog-rec-meta">' + escapeHtml(wordText(a.meta)) + '</div>' : '') +
+          '<div class="k-row__sub sf-mlog-rec-marker">' + escapeHtml(wordText(a.mapAction
+            ? '◆ BRIGHT AMBER DIAMOND = CURRENT GOAL'
+            : (a.action === 'track' ? 'NO GOAL MARKER · TRACK NAV TO CREATE ONE' : 'NO GOAL MARKER YET'))) + '</div>' +
+        '</div>' +
+        '<span class="k-row__num sf-mlog-rec-label">' + escapeHtml(wordText(a.label || 'NEXT')) + '</span>' +
+      '</div></div>' +
+      dispositionRouteRowsHtml(a.routeOptions) +
+      commandWordsHtml(a, a.missionId || (a.mapAction && a.mapAction.missionId) || '')
     )).join('');
   },
 
@@ -2237,338 +2391,50 @@ export const missionLogScreen = {
     const receipts = missionReceiptRows(this._ctx.state, 5);
     this._compListEl.innerHTML = '';
     if (!receipts.length && !log.length) {
-      this._compListEl.innerHTML = '<div class="sf-mlog-empty">No settlement receipts yet.</div>';
+      this._compListEl.innerHTML = '<div class="sf-mlog-empty"><p class="k-sentence k-38">No settlement receipts yet.</p></div>';
       return;
     }
+    // Completed rows read at 38 %: plain spans inside static rows (k-row__name would lift them).
     const frag = document.createDocumentFragment();
     if (!receipts.length && log.length) {
-      frag.appendChild(el('div', 'sf-mlog-empty', 'No recent receipts in this save yet. Career totals below were restored from older records.'));
+      const note = el('div', 'sf-mlog-empty');
+      note.appendChild(el('p', 'k-sentence k-38', 'No recent receipts in this save yet. Career totals below were restored from older records.'));
+      frag.appendChild(note);
     }
-    for (const rowData of receipts) {
-      const row = el('div', 'sf-mlog-receipt-row sf-mlog-receipt-row--' + rowData.tone);
-      row.innerHTML =
-        '<div class="sf-mlog-receipt-outcome">' + escapeHtml(rowData.outcome) + '</div>' +
-        '<div class="sf-mlog-receipt-main">' +
-          '<div class="sf-mlog-receipt-title">' + escapeHtml(rowData.title) + '</div>' +
-          '<div class="sf-mlog-receipt-body">' + escapeHtml(rowData.body) + '</div>' +
-          (rowData.meta ? '<div class="sf-mlog-receipt-meta sf-fig">' + escapeHtml(rowData.meta) + '</div>' : '') +
-        '</div>';
-      frag.appendChild(row);
+    if (receipts.length) {
+      const receiptList = el('div', 'k-rows sf-mlog-receipts');
+      for (const rowData of receipts) {
+        const row = el('div', 'k-row k-row--static sf-mlog-receipt-row sf-mlog-receipt-row--' + rowData.tone);
+        row.innerHTML =
+          '<div>' +
+            '<span class="k-38 sf-mlog-receipt-title">' + escapeHtml(rowData.title) + '</span>' +
+            '<div class="k-row__sub sf-mlog-receipt-body">' + escapeHtml(rowData.body) + '</div>' +
+            (rowData.meta ? '<div class="k-row__sub sf-mlog-receipt-meta">' + escapeHtml(rowData.meta) + '</div>' : '') +
+          '</div>' +
+          '<span class="k-38 sf-mlog-receipt-outcome">' + escapeHtml(rowData.outcome) + '</span>';
+        receiptList.appendChild(row);
+      }
+      frag.appendChild(receiptList);
     }
     if (log.length) {
-      frag.appendChild(el('div', 'sf-mlog-comp-subhead', 'CAREER TOTALS'));
-    }
-    for (const rec of log) {
-      const row = el('div', 'sf-mlog-comp-row');
-      const success = Math.max(0, Number(rec.success) || 0);
-      const count = Math.max(success, Number(rec.count) || 0);
-      const failed = Math.max(0, count - success);
-      row.innerHTML =
-        '<span class="sf-mlog-comp-type">' + escapeHtml(prettyType(rec.type)) + '</span>' +
-        '<span class="sf-mlog-comp-count sf-fig">' + success + ' completed · ' + failed + ' failed</span>' +
-        '<span class="sf-mlog-comp-cr sf-fig">+' + (rec.totalCr || 0).toLocaleString() + ' cr paid</span>';
-      frag.appendChild(row);
+      // CAREER TOTALS by contract type.
+      frag.appendChild(sectionHeader('Career totals', 'sf-mlog-comp-subhead'));
+      const totals = el('div', 'k-rows sf-mlog-comp-rows');
+      for (const rec of log) {
+        const row = el('div', 'k-row k-row--static sf-mlog-comp-row');
+        const success = Math.max(0, Number(rec.success) || 0);
+        const count = Math.max(success, Number(rec.count) || 0);
+        const failed = Math.max(0, count - success);
+        row.innerHTML =
+          '<div>' +
+            '<span class="k-38 sf-mlog-comp-type">' + escapeHtml(prettyType(rec.type)) + '</span>' +
+            '<div class="k-row__sub sf-mlog-comp-count">' + success + ' completed · ' + failed + ' failed</div>' +
+          '</div>' +
+          '<span class="k-38 sf-mlog-comp-cr">+' + (rec.totalCr || 0).toLocaleString() + ' cr paid</span>';
+        totals.appendChild(row);
+      }
+      frag.appendChild(totals);
     }
     this._compListEl.appendChild(frag);
   },
 };
-
-// ---- CSS (injected once) ----
-const CSS = `
-/* Contract ledger. styles/menu.css still owns the plate; this sheet is instrument grammar:
-   one DISPLAY (the current-action title), colour by meaning, 12px floor, --sf-data-face on figures.
-   Selectors that have to beat menu.css's (0,2,0) keep .sf-menu so they tie on source order. */
-.sf-menu.sf-mlog {
-  width: min(92vw, 700px); max-height: min(88vh, 720px); display: flex;
-  flex-direction: column; gap: 0; padding: var(--sp-4) 0 var(--sp-1); overflow: hidden;
-  pointer-events: auto; font-family: var(--sf-body-face); font-size: 14px; color: var(--sf-paper);
-  background: var(--sf-surface);
-}
-.sf-menu.sf-mlog button { border-radius: 2px; font-family: var(--sf-body-face); font-size: 13px; }
-.sf-menu.sf-mlog button:hover { box-shadow: none; }
-
-.sf-mlog .sf-fig {
-  font-family: var(--sf-data-face); font-weight: 500; font-variant-numeric: tabular-nums;
-  font-size: 13px; letter-spacing: 0;
-}
-
-.sf-mlog-head {
-  display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3);
-  padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--sf-edge);
-  background: var(--sf-surface);
-}
-/* The one scroll region: header stays fixed, everything below scrolls as a normal block column. */
-.sf-mlog-body { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; }
-.sf-mlog-title, .sf-mlog-section-h, .sf-mlog-rec-label, .sf-mlog-card-type,
-.sf-mlog-story-beat, .sf-mlog-career-status, .sf-mlog-career-step, .sf-mlog-term b,
-.sf-mlog-command-fact b, .sf-mlog-receipt-outcome, .sf-mlog-comp-subhead, .sf-mlog-ending-code {
-  font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
-  letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-calm);
-}
-/* The screen's title reads like every other plate's h1 (19px UI face), not like a section kicker:
-   with the kicker treatment the close hint outweighed the title. */
-.sf-mlog-head .sf-mlog-title {
-  font-family: var(--sf-display-face); font-weight: 600; font-size: 19px; line-height: 1.2;
-  letter-spacing: .04em; color: var(--sf-paper);
-}
-.sf-mlog-hint {
-  font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-calm); letter-spacing: 0;
-  margin-left: auto;
-}
-.sf-mlog-close { font-size: 13px; padding: var(--sp-1) var(--sp-3); color: var(--sf-paper); }
-
-.sf-mlog-section-h { padding: var(--sp-3) var(--sp-4) var(--sp-1); }
-.sf-mlog-section-comp {
-  display: flex; align-items: center; justify-content: space-between;
-  border-top: 1px solid var(--sf-edge); margin-top: var(--sp-1); padding-top: var(--sp-2);
-}
-.sf-mlog-toggle { font-size: 12px; padding: var(--sp-1) var(--sp-2); color: var(--sf-calm); }
-
-.sf-mlog-story { padding: var(--sp-1) var(--sp-4) var(--sp-2); }
-.sf-mlog-story-tile {
-  border: 1px solid var(--sf-edge); border-left: var(--sf-rail-w) solid var(--sf-goal);
-  border-radius: 2px; padding: var(--sp-3);
-  background: color-mix(in srgb, var(--sf-surface) 88%, transparent);
-}
-.sf-mlog-story-beat { margin-bottom: var(--sp-1); color: var(--sf-goal); }
-.sf-mlog-story-objective {
-  font-family: var(--sf-subhead-face); font-weight: 600; font-size: 19px; line-height: 1.25;
-  color: var(--sf-paper);
-}
-.sf-mlog-story-introduces {
-  font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-calm); margin-top: var(--sp-2); line-height: 1.4;
-}
-.sf-mlog-ending-routes { display: grid; gap: var(--sp-1); margin-top: var(--sp-2); }
-.sf-mlog-ending-route {
-  display: grid; grid-template-columns: 24px minmax(96px,.8fr) minmax(120px,1.2fr);
-  gap: var(--sp-1) var(--sp-2); align-items: baseline; padding: var(--sp-1) var(--sp-2);
-  border-left: var(--sf-rail-w) solid var(--sf-edge);
-  background: color-mix(in srgb, var(--sf-surface) 80%, transparent);
-}
-.sf-mlog-ending-route--ready { border-left-color: var(--sf-goal); }
-.sf-mlog-ending-route--declined { opacity: .62; }
-.sf-mlog-ending-title {
-  font-family: var(--sf-subhead-face); font-weight: 600; font-size: 15px; color: var(--sf-paper);
-  overflow-wrap: anywhere;
-}
-.sf-mlog-ending-interface { font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-calm); overflow-wrap: anywhere; }
-.sf-mlog-ending-reason {
-  grid-column: 2 / -1; font-family: var(--sf-body-face); font-size: 13px; line-height: 1.3;
-  color: var(--sf-calm); overflow-wrap: anywhere;
-}
-
-.sf-mlog-recommend { padding: var(--sp-1) var(--sp-4) var(--sp-2); display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-2); }
-.sf-mlog-rec-item {
-  min-width: 0; border: 1px solid var(--sf-edge); border-radius: 2px; padding: var(--sp-3);
-  background: color-mix(in srgb, var(--sf-surface) 88%, transparent);
-}
-.sf-mlog-rec-item--primary { border-color: var(--sf-goal-edge); border-left: var(--sf-rail-w) solid var(--sf-goal); }
-.sf-mlog-rec-item--warn { border-color: var(--sf-goal-edge); border-left: var(--sf-rail-w) solid var(--sf-goal); }
-.sf-mlog-rec-item--bad { border-left: var(--sf-rail-w) solid var(--sf-foe); }
-.sf-mlog-rec-label { margin-bottom: var(--sp-1); overflow-wrap: anywhere; color: var(--sf-goal); }
-.sf-mlog-rec-item--warn .sf-mlog-rec-label { color: var(--sf-goal); }
-.sf-mlog-rec-item--bad .sf-mlog-rec-label { color: var(--sf-foe); }
-.sf-mlog-rec-title {
-  font-family: var(--sf-display-face); font-weight: 700; font-size: 28px; line-height: 1.1;
-  color: var(--sf-paper); letter-spacing: 0; text-transform: none; margin-bottom: var(--sp-1);
-  overflow-wrap: anywhere;
-}
-.sf-mlog-rec-body { font-family: var(--sf-body-face); font-size: 14px; line-height: 1.4; color: var(--sf-calm); overflow-wrap: anywhere; }
-.sf-mlog-command-brief { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-2) var(--sp-3); margin-top: var(--sp-2); }
-.sf-mlog-command-fact {
-  min-width: 0; display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: var(--sp-2);
-  align-items: start; padding-top: var(--sp-1); border-top: 1px solid var(--sf-edge);
-  font-family: var(--sf-body-face); font-size: 13px; line-height: 1.35; color: var(--sf-calm); overflow-wrap: anywhere;
-}
-.sf-mlog-command-fact b { white-space: nowrap; }
-.sf-mlog-command-fact:nth-child(5) span { color: var(--sf-you); font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; }
-.sf-mlog-command-fact:nth-child(6) span { color: var(--sf-foe); }
-.sf-mlog-rec-meta { margin-top: var(--sp-2); color: var(--sf-you); overflow-wrap: anywhere; }
-.sf-mlog-rec-marker {
-  margin-top: var(--sp-2); color: var(--sf-goal); font-family: var(--sf-subhead-face); font-weight: 600;
-  font-size: 12px; letter-spacing: var(--sf-track-micro); text-transform: uppercase; line-height: 1.3;
-}
-.sf-mlog-rec-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-2); }
-.sf-mlog-rec-action {
-  font-size: 13px; padding: var(--sp-1) var(--sp-2); border-color: var(--sf-goal);
-  color: var(--sf-goal); background: color-mix(in srgb, var(--sf-goal) 10%, transparent);
-}
-.sf-mlog-rec-action:hover { border-color: var(--sf-goal); color: var(--sf-paper); background: color-mix(in srgb, var(--sf-goal) 18%, transparent); }
-.sf-mlog-rec-map { border-color: var(--sf-goal-edge); color: var(--sf-goal); background: color-mix(in srgb, var(--sf-goal) 8%, transparent); }
-.sf-mlog-rec-secondary { border-color: var(--sf-edge); color: var(--sf-calm); background: transparent; }
-
-.sf-mlog-section-career { color: var(--sf-calm); }
-.sf-mlog-career-list { padding: var(--sp-1) var(--sp-4) var(--sp-2); display: flex; flex-direction: column; gap: var(--sp-2); }
-.sf-mlog-career-list[hidden], .sf-mlog-section-career[hidden] { display: none; }
-.sf-mlog-career {
-  border: 1px solid var(--sf-edge); border-radius: 2px; padding: var(--sp-3);
-  background: color-mix(in srgb, var(--sf-surface) 88%, transparent);
-}
-.sf-mlog-career--collapsed { opacity: .72; }
-.sf-mlog-career--active { border-left: var(--sf-rail-w) solid var(--sf-you); }
-.sf-mlog-career--offered { border-left: var(--sf-rail-w) solid var(--sf-you); }
-.sf-mlog-career--failed, .sf-mlog-career--recovering { border-left: var(--sf-rail-w) solid var(--sf-foe); }
-.sf-mlog-career--complete { border-left: var(--sf-rail-w) solid var(--sf-you); }
-.sf-mlog-career--abandoned { opacity: .78; }
-.sf-mlog-career-top { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-1); }
-.sf-mlog-career-title {
-  flex: 1; font-family: var(--sf-subhead-face); font-weight: 600; font-size: 19px; color: var(--sf-paper);
-  overflow-wrap: anywhere;
-}
-.sf-mlog-career-status {
-  flex: none; padding: 1px var(--sp-2); border-radius: 2px;
-  background: color-mix(in srgb, var(--sf-calm) 12%, transparent); border: 1px solid var(--sf-edge);
-}
-.sf-mlog-career--failed .sf-mlog-career-status,
-.sf-mlog-career--recovering .sf-mlog-career-status {
-  color: var(--sf-foe); border-color: var(--sf-foe); background: color-mix(in srgb, var(--sf-foe) 10%, transparent);
-}
-.sf-mlog-career--complete .sf-mlog-career-status {
-  color: var(--sf-you); border-color: var(--sf-you); background: color-mix(in srgb, var(--sf-you) 10%, transparent);
-}
-.sf-mlog-career--offered .sf-mlog-career-status {
-  color: var(--sf-you); border-color: var(--sf-you); background: color-mix(in srgb, var(--sf-you) 10%, transparent);
-}
-.sf-mlog-career-step { margin-bottom: var(--sp-1); }
-.sf-mlog-career-place {
-  font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-calm);
-  margin-bottom: var(--sp-1); overflow-wrap: anywhere;
-}
-.sf-mlog-career-contact { color: var(--sf-calm); }
-.sf-mlog-career-location { color: var(--sf-goal); }
-.sf-mlog-career-objective {
-  font-family: var(--sf-subhead-face); font-weight: 600; font-size: 15px; line-height: 1.35;
-  color: var(--sf-paper); margin-bottom: var(--sp-1); overflow-wrap: anywhere;
-}
-.sf-mlog-career-progress { color: var(--sf-calm); margin-bottom: var(--sp-1); }
-.sf-mlog-career-next {
-  font-family: var(--sf-body-face); font-size: 14px; line-height: 1.35; color: var(--sf-calm);
-  margin-bottom: var(--sp-1); overflow-wrap: anywhere;
-}
-.sf-mlog-career-consequence {
-  font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-goal);
-  margin-bottom: var(--sp-1); overflow-wrap: anywhere;
-}
-.sf-mlog-career-fail {
-  font-family: var(--sf-body-face); font-size: 14px; line-height: 1.35; color: var(--sf-foe);
-  margin-bottom: var(--sp-1); overflow-wrap: anywhere;
-}
-.sf-mlog-career-receipt {
-  font-family: var(--sf-body-face); font-size: 13px; line-height: 1.3; color: var(--sf-calm);
-  margin-bottom: var(--sp-1); overflow-wrap: anywhere;
-}
-.sf-mlog-career-choices { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin: var(--sp-2) 0 var(--sp-1); }
-.sf-mlog-career-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-2); }
-.sf-mlog-career-btn {
-  font-size: 13px; padding: var(--sp-2) var(--sp-3); min-height: 44px; min-width: 44px;
-  border-color: var(--sf-edge); color: var(--sf-calm); background: transparent;
-}
-.sf-mlog-career-btn:hover:not(:disabled) { border-color: var(--sf-you); color: var(--sf-you); }
-.sf-mlog-career-btn:focus-visible { outline: 2px solid var(--sf-goal); outline-offset: 2px; }
-.sf-mlog-career-btn:disabled { opacity: .4; cursor: default; }
-.sf-mlog-career-btn-map { border-color: var(--sf-goal-edge); color: var(--sf-goal); background: color-mix(in srgb, var(--sf-goal) 8%, transparent); }
-.sf-mlog-career-btn-recover { border-color: var(--sf-goal-edge); color: var(--sf-goal); background: color-mix(in srgb, var(--sf-goal) 8%, transparent); }
-.sf-mlog-career-btn-track { border-color: var(--sf-edge); }
-.sf-mlog-career-btn-abandon { border-color: var(--sf-edge); color: var(--sf-calm); }
-.sf-mlog-career-btn-abandon:hover:not(:disabled) { border-color: var(--sf-foe); color: var(--sf-foe); }
-.sf-mlog-career-btn-choice { border-color: var(--sf-goal-edge); color: var(--sf-paper); background: color-mix(in srgb, var(--sf-goal) 8%, transparent); }
-
-.sf-mlog-list { padding: var(--sp-2) var(--sp-4) var(--sp-3); display: flex; flex-direction: column; gap: var(--sp-3); }
-.sf-mlog-empty { color: var(--sf-calm); font-size: 14px; padding: var(--sp-4) var(--sp-1); }
-
-.sf-mlog-card {
-  border: 1px solid var(--sf-edge); border-radius: 2px; padding: var(--sp-3);
-  background: color-mix(in srgb, var(--sf-surface) 88%, transparent);
-}
-.sf-mlog-card.tracked { border-left: var(--sf-rail-w) solid var(--sf-you); }
-.sf-mlog-card.urgent { border-color: var(--sf-foe); }
-
-.sf-mlog-card-top { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-2); }
-.sf-mlog-card-title { font-family: var(--sf-subhead-face); font-weight: 600; font-size: 15px; flex: 1; color: var(--sf-paper); overflow-wrap: anywhere; }
-.sf-mlog-card-type { padding: 1px var(--sp-2); border-radius: 2px; background: color-mix(in srgb, var(--sf-calm) 10%, transparent); }
-.sf-mlog-card-risk { padding: 1px var(--sp-1); border-radius: 2px; background: color-mix(in srgb, var(--sf-calm) 10%, transparent); color: var(--sf-calm); }
-.sf-mlog-card-risk.r0 { color: var(--sf-calm); }
-.sf-mlog-card-risk.r1 { color: var(--sf-you); }
-.sf-mlog-card-risk.r2 { color: var(--sf-goal); }
-.sf-mlog-card-risk.r3, .sf-mlog-card-risk.r4 { color: var(--sf-foe); }
-
-.sf-mlog-obj { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2);
-  font-family: var(--sf-body-face); font-size: 14px; margin-bottom: var(--sp-1); }
-.sf-mlog-obj-text { color: var(--sf-calm); }
-.sf-mlog-obj-pct { color: var(--sf-you); min-width: 36px; text-align: right; }
-
-.sf-mlog-pbar { height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--sf-calm) 18%, transparent); overflow: hidden; margin-bottom: var(--sp-2); border: 1px solid var(--sf-edge); }
-.sf-mlog-pbar-fill { height: 100%; background: var(--sf-you); border-radius: 2px; }
-.sf-mlog-next { color: var(--sf-calm); font-family: var(--sf-body-face); font-size: 13px; line-height: 1.35; margin: 0 0 var(--sp-2); }
-
-.sf-mlog-meta { display: flex; flex-wrap: wrap; gap: var(--sp-3); font-family: var(--sf-body-face); font-size: 13px; margin-bottom: var(--sp-2); }
-.sf-mlog-dest { color: var(--sf-calm); }
-.sf-mlog-time { color: var(--sf-calm); }
-.sf-mlog-time.urgent { color: var(--sf-foe); font-weight: 600; }
-.sf-mlog-cr { color: var(--sf-you); }
-.sf-mlog-fac { font-size: 13px; color: var(--sf-calm); }
-.sf-mlog-terms { display: grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap: var(--sp-2); margin: 0 0 var(--sp-2); }
-.sf-mlog-term {
-  min-width: 0; display: flex; flex-direction: column; gap: 2px; padding: var(--sp-1) var(--sp-2);
-  border: 1px solid var(--sf-edge); border-radius: 2px;
-  font-family: var(--sf-body-face); font-size: 13px; line-height: 1.3; color: var(--sf-calm); overflow-wrap: anywhere;
-}
-.sf-mlog-term--ok { border-color: var(--sf-you); color: var(--sf-you); }
-.sf-mlog-term--info { border-color: var(--sf-edge); color: var(--sf-calm); }
-.sf-mlog-term--warn { border-color: var(--sf-goal); color: var(--sf-goal); }
-.sf-mlog-term--bad { border-color: var(--sf-foe); color: var(--sf-foe); }
-
-.sf-mlog-btns { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
-.sf-mlog-btn-track { font-size: 13px; padding: var(--sp-1) var(--sp-3); border-color: var(--sf-edge); color: var(--sf-calm); }
-.sf-mlog-btn-track:hover { border-color: var(--sf-you); color: var(--sf-you); }
-.sf-mlog-btn-track.active { border-color: var(--sf-you); color: var(--sf-you); background: color-mix(in srgb, var(--sf-you) 10%, transparent); }
-.sf-mlog-btn-map { font-size: 13px; padding: var(--sp-1) var(--sp-3); border-color: var(--sf-goal-edge); color: var(--sf-goal); background: color-mix(in srgb, var(--sf-goal) 8%, transparent); }
-.sf-mlog-btn-map:hover { border-color: var(--sf-goal); color: var(--sf-paper); }
-.sf-mlog-btn-abandon { font-size: 13px; padding: var(--sp-1) var(--sp-3); border-color: var(--sf-edge); color: var(--sf-calm); }
-.sf-mlog-btn-abandon:hover { border-color: var(--sf-foe); color: var(--sf-foe); }
-
-.sf-mlog-comp-list { padding: var(--sp-1) var(--sp-4) var(--sp-3); }
-.sf-mlog-receipt-row {
-  display: grid; grid-template-columns: 82px 1fr; gap: var(--sp-2); align-items: start;
-  padding: var(--sp-2); margin-bottom: var(--sp-2); border: 1px solid var(--sf-edge); border-radius: 2px;
-  background: color-mix(in srgb, var(--sf-surface) 88%, transparent);
-}
-.sf-mlog-receipt-row--ok { border-left: var(--sf-rail-w) solid var(--sf-you); }
-.sf-mlog-receipt-row--warn { border-left: var(--sf-rail-w) solid var(--sf-goal); }
-.sf-mlog-receipt-row--bad { border-left: var(--sf-rail-w) solid var(--sf-foe); }
-.sf-mlog-receipt-outcome { overflow-wrap: anywhere; }
-.sf-mlog-receipt-row--ok .sf-mlog-receipt-outcome { color: var(--sf-you); }
-.sf-mlog-receipt-row--warn .sf-mlog-receipt-outcome { color: var(--sf-goal); }
-.sf-mlog-receipt-row--bad .sf-mlog-receipt-outcome { color: var(--sf-foe); }
-.sf-mlog-receipt-main { min-width: 0; }
-.sf-mlog-receipt-title { color: var(--sf-paper); font-family: var(--sf-subhead-face); font-weight: 600; font-size: 15px; line-height: 1.25; overflow-wrap: anywhere; }
-.sf-mlog-receipt-body { color: var(--sf-calm); font-family: var(--sf-body-face); font-size: 13px; line-height: 1.35; margin-top: var(--sp-1); overflow-wrap: anywhere; }
-.sf-mlog-receipt-meta { color: var(--sf-calm); margin-top: var(--sp-1); overflow-wrap: anywhere; }
-.sf-mlog-comp-subhead { margin: var(--sp-3) var(--sp-1) var(--sp-1); }
-.sf-mlog-comp-row {
-  display: flex; gap: var(--sp-4); align-items: center; padding: var(--sp-1) var(--sp-2);
-  border-bottom: 1px solid var(--sf-edge); font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-calm);
-}
-.sf-mlog-comp-type { flex: 1; }
-.sf-mlog-comp-count { color: var(--sf-calm); }
-.sf-mlog-comp-cr { color: var(--sf-you); }
-
-@media (max-width: 700px), (max-height: 620px) {
-  .sf-mlog-command-brief { grid-template-columns: minmax(0, 1fr); }
-  .sf-mlog-command-fact { grid-template-columns: 44px minmax(0, 1fr); }
-  .sf-mlog-list { gap: var(--sp-2); }
-  .sf-mlog-card { padding: var(--sp-2); }
-  .sf-mlog-rec-title { font-size: 28px; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .sf-menu.sf-mlog, .sf-menu.sf-mlog * { animation: none; transition: none; }
-}
-@media (forced-colors: active) {
-  .sf-menu.sf-mlog, .sf-mlog-card, .sf-mlog-rec-item, .sf-mlog-career, .sf-mlog-story-tile, .sf-mlog-receipt-row {
-    background: Canvas; color: CanvasText; border-color: CanvasText;
-  }
-  .sf-mlog-card.tracked, .sf-mlog-rec-item--primary, .sf-mlog-career--active, .sf-mlog-story-tile {
-    border-left-color: CanvasText;
-  }
-}
-`;

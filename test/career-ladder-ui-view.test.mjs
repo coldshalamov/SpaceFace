@@ -468,11 +468,11 @@ test('Mission Log renders an eligible hunter Start beside other origin offers', 
 
   assert.match(
     surface._careerEl.innerHTML,
-    /data-career-id="hunter"[\s\S]*data-career-act="ladderAccept"[\s\S]*START PATH/,
+    /data-career-id="hunter"[\s\S]*data-career-act="ladderAccept"[\s\S]*START PATH/i,
   );
   assert.match(surface._careerEl.innerHTML, /data-career-id="hauler"[\s\S]*data-career-act="originAccept"/);
   assert.match(surface._careerEl.innerHTML, /data-career-id="prospector"[\s\S]*data-career-act="originAccept"/);
-  assert.equal(surface._careerHeader.textContent, 'CHOOSE A FIRST CONTRACT');
+  assert.match(surface._careerHeader.textContent, /^choose a first contract$/i);
 });
 
 test('Mission Log merge drops completed ladder receipts when a current action exists', () => {

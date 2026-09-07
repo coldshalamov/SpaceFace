@@ -181,7 +181,7 @@ try {
   assert.ok(!report.error, report.error || 'mission log runtime error');
   assert.equal(report.starButton, true, 'off-sector tracked mission should render a Star Map button');
   assert.equal(report.recStarButton, true, 'tracked recommendation should render a Star Map button');
-  assert.match(report.starText, /STAR MAP/, 'off-sector Mission Log text should include the Star Map handoff');
+  assert.match(report.starText, /STAR MAP/i, 'off-sector Mission Log text should include the Star Map handoff');
   assert.equal(report.starTop, 'galaxyMap', 'clicking the off-sector handoff should open the unified galaxyMap');
   assert.equal(report.starLevel, 'galaxy', 'off-sector handoff should open galaxyMap at GALAXY focus');
   assert.equal(report.starLocalButton, true, 'Star Map local objective should render a Local Map handoff button');
@@ -191,7 +191,7 @@ try {
   assert.equal(report.starLocalLevel, 'local', 'legacy starmap Local Map CTA should open galaxyMap at LOCAL focus');
   assert.equal(report.localButton, true, 'same-sector tracked mission should render a Local Map button');
   assert.equal(report.recLocalButton, true, 'tracked recommendation should render a Local Map button');
-  assert.match(report.localText, /LOCAL MAP/, 'same-sector Mission Log text should include the Local Map handoff');
+  assert.match(report.localText, /LOCAL MAP/i, 'same-sector Mission Log text should include the Local Map handoff');
   assert.equal(report.localTop, 'galaxyMap', 'clicking the same-sector handoff should open the unified galaxyMap');
   assert.equal(report.localLevel, 'local', 'same-sector handoff should open galaxyMap at LOCAL focus');
   assert.equal(report.galaxyMapVisible, true, 'galaxyMap should be visible after clicking the Mission Log handoff');
