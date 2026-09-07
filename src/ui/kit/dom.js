@@ -55,7 +55,8 @@ export function words(items, { row = false, onPick, onMove, size = 'menu', ariaL
       + (item.primary ? ' k-word--primary' : '') + (item.danger ? ' k-word--danger' : ''), item.label);
     button.type = 'button'; button.dataset.action = String(item.action);
     button.setAttribute('role', 'menuitem');
-    if (item.disabled) { button.disabled = true; button.setAttribute('aria-disabled', 'true'); }
+    // aria-disabled only (spec §6.5): the word stays clickable so a refused pick can sound `deny`.
+    if (item.disabled) button.setAttribute('aria-disabled', 'true');
     if (item.current) button.setAttribute('aria-current', 'true');
     button.addEventListener('click', () => {
       if (!enabled(button)) { cue('deny'); return; }
@@ -106,17 +107,21 @@ export function table({ head, body, onPick, onSort, ariaLabel = 'Register' }) {
   const grid = el('table', 'k-table'); grid.setAttribute('role', 'grid'); grid.setAttribute('aria-label', ariaLabel);
   const thead = el('thead'); const header = el('tr');
   for (const [index, column] of head.entries()) {
-    const th = el('th', `k-caps${column.num ? ' k-num' : ''}`); th.scope = 'col';
+    const th = el('th', `k-caps${column.num ? ' k-num' : ''}`, column.label); th.scope = 'col';
     if (onSort) {
-      th.setAttribute('aria-sort', 'none');
-      const button = el('button', 'k-sort', column.label); button.type = 'button';
-      button.addEventListener('click', () => {
+      // Sorting is a header click (§6.3): the header itself carries aria-sort; no button element.
+      th.tabIndex = 0;
+      const sort = () => {
         const direction = th.getAttribute('aria-sort') === 'ascending' ? 'descending' : 'ascending';
-        for (const other of header.children) other.setAttribute('aria-sort', 'none');
+        for (const other of header.children) other.removeAttribute('aria-sort');
         th.setAttribute('aria-sort', direction); cue('confirm'); onSort(index, direction, tbody);
+      };
+      th.addEventListener('click', sort);
+      th.addEventListener('keydown', (event) => {
+        if (!['Enter', ' '].includes(event.key) || event.repeat) return;
+        event.preventDefault(); sort();
       });
-      th.append(button);
-    } else th.textContent = column.label;
+    }
     header.append(th);
   }
   thead.append(header); const tbody = el('tbody');

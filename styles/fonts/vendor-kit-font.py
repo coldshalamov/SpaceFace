@@ -123,7 +123,7 @@ def main() -> None:
         raise FileNotFoundError(f'NOT DONE: variable font has not been vendored: {FONT}')
     data = FONT.read_bytes() if FONT.exists() else fetch_font()
     # Fail before any write if the license, bytes, axes or existing tabular face are wrong.
-    license_file = FONT.with_name('bricolage-grotesque-OFL.txt')
+    license_file = FONT.with_name('OFL-BricolageGrotesque.txt')
     if not license_file.exists():
         raise FileNotFoundError('The Bricolage OFL must accompany the font')
     report = verify(data)

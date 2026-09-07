@@ -684,7 +684,19 @@ async function waitForAuthoredShips(cdp) {
     ),
   });
   const diagnosticsStartedAtMs = performance.now();
-  const report = await collectAuthoredReport(cdp);
+  // Re-read until the REPORT satisfies the same condition the gate above just proved, not
+  // merely until the lightweight snapshot did. The two are read at different instants and the
+  // sim keeps running between them: ships fall outside the spatial runway, and a gate that
+  // passed at >= 3 presented ships was then asserted against a report showing 1. That is a
+  // race in the probe, not a fault in the game, and it made the whole run non-deterministic.
+  // Bounded, and it keeps the last report either way so a genuine shortfall still fails below.
+  let report = await collectAuthoredReport(cdp);
+  for (let attempt = 0; attempt < 20; attempt++) {
+    if (report.authoredShipCount >= MIN_AUTHORED_SHIPS
+      && report.authoredShipCount === report.presentedShipCount) break;
+    await forceShipRender(cdp);
+    report = await collectAuthoredReport(cdp);
+  }
   const diagnosticsCompletedAtMs = performance.now();
   report.authoredDeadline = {
     ...deadline,

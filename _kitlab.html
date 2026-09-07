@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en" class="k-lab-root" data-k-temp="menu">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SpaceFace · The kit</title>
+  <!-- The kit page (design/frontend/direction/KIT_SPEC.md §10). A dev harness: no game code, no
+       world. Every component in §6 in every state, with real strings from the game. Captured by
+       `npm run capture:kit` at 1280, 1920 and 2560. The ink ground is an isolation ground for a page
+       with no world behind it; it is not a stand-in for a hull or a berth on any game screen. -->
+  <link rel="stylesheet" href="/styles/ui.css">
+  <link rel="stylesheet" href="/styles/fonts.css">
+  <link rel="stylesheet" href="/styles/kit.css">
+  <style>
+    /* Lab geometry only — this block is never loaded by a runtime screen. */
+    /* ui.css pins html/body to 100% and hides overflow for the game; the kit page scrolls. */
+    html.k-lab-root, body.k-lab { height: auto; min-height: 100%; overflow: visible; }
+    body.k-lab { margin: 0; background: var(--k-ink); }
+    .k-lab #kit { display: block; }
+    .k-lab .k-screen { position: relative; inset: auto; min-height: 100vh; grid-template-rows: auto auto auto; }
+    .k-lab .k-screen[hidden] { display: none; }
+    .k-lab .k-hang { overflow: visible; }
+    .k-lab .k-title p { margin: calc(16px * var(--k-s)) 0 0; }
+    .k-lab-stack { display: flex; flex-direction: column; gap: var(--k-gap); align-items: flex-start; }
+    .k-lab-stack > .k-table-wrap, .k-lab-stack > .k-rows { align-self: stretch; }
+    .k-lab-inline { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--k-gap); }
+    .k-lab-field { display: flex; flex-direction: column; gap: var(--k-pad); }
+    .k-lab-pin { position: relative; min-height: calc(160px * var(--k-s)); width: calc(280px * var(--k-s)); }
+    .k-lab-pin .k-pin { left: 35%; top: 55%; }
+    .k-lab-pin .k-pin__lead { left: 35%; top: 55%; width: 40%; transform: rotate(25deg); }
+    .k-lab-types { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: baseline; gap: var(--k-gap); }
+    .k-lab-types > span { overflow-wrap: anywhere; }
+    .k-lab-temps { display: flex; flex-wrap: wrap; gap: var(--k-gap); }
+    .k-lab-temp { min-width: 12ch; }
+    .k-lab-temp[data-preview="wanted"] { color: var(--k-red); }
+    .k-lab-temp[data-preview="crucible"] { color: var(--k-white); }
+  </style>
+</head>
+<body class="k-lab" data-lab="shots">
+  <main id="kit" aria-label="SpaceFace component kit" data-k-ready="0"></main>
+  <noscript>The component kit requires JavaScript. No game simulation runs on this page.</noscript>
+  <script type="module" src="/src/ui/kit/lab.js"></script>
+</body>
+</html>

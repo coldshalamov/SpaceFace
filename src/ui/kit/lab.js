@@ -1,6 +1,6 @@
 // One isolated page using the exported builders. All numbers are fixtures, not market quotes.
 import { el, words, rows, table, hero, title, cut, settle, stamp,
-  TEMPERATURES, setTemperature, bindSound, cue, KIT_SOUND_PALETTE } from './index.js';
+  TEMPERATURES, setTemperature, bindSound, cue } from './index.js';
 
 const root = document.getElementById('kit');
 const format = value => Number(value).toLocaleString('en-US');
@@ -181,7 +181,7 @@ const query = new URLSearchParams(location.search);
 if (query.has('temp')) setTemperature(query.get('temp'));
 if (query.get('motion') === 'reduce') document.documentElement.classList.add('sf-reduce-motion');
 if (query.has('shot')) for (const screen of root.children) screen.hidden = screen.dataset.shot !== query.get('shot');
-window.__kitLab = { cues, palette: KIT_SOUND_PALETTE, temperatures: TEMPERATURES, sizes, setTemperature, dispose() { disposals.splice(0).forEach(dispose => dispose()); } };
+window.__kitLab = { cues, temperatures: TEMPERATURES, sizes, setTemperature, dispose() { disposals.splice(0).forEach(dispose => dispose()); } };
 window.addEventListener('pagehide', () => window.__kitLab.dispose(), { once: true });
 await document.fonts.ready;
 for (const screen of root.children) screen.dataset.kReady = '1';

@@ -21,6 +21,7 @@
     "src/systems/signatureAdapters.js": "Adapter layer for the unwired site signature model; blocked on the same wiring.",
     "src/systems/siteSignatureModel.js": "Asteroid-site signature model. Same shape as siteThermalModel.js — kernel plus tests, no runtime consumer.",
     "src/systems/siteThermalModel.js": "Asteroid-site thermal model. Pure kernel with tests and no runtime consumer; asteroidSites.js does not import it. Bind it to the site runtime or fold it into that system.",
+    "src/ui/kit/lab.js": "Renders the kit page (_kitlab.html, KIT_SPEC.md §10) — a dev harness served from the repo root, not a game screen; the kit itself (index.js) is on the route via src/ui/screens/mainMenu.js and uiRoot.js.",
     "src/ui/dockArrival.js": "Dock-arrival presentation helper with no importer; the arrival beat is currently owned by uiRoot/stationHub.",
     "src/render/backendDecision.js": "PQ-044 (PERF-10 conditional WebGPU/TSL) is DEFERRED, so nothing on the default route selects a backend yet. Gated by scripts/check-backend-decision.mjs and scripts/check-render-path-parity.mjs; landed 2026-08-07.",
     "src/render/webgpuPresent.js": "Present half of the same deferred PQ-044 slice; the WebGL present path is the only one wired. Gated by scripts/check-render-path-parity.mjs; landed 2026-08-21.",

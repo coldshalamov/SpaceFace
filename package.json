@@ -398,6 +398,7 @@
     "check:screen-memory": "node scripts/check-screen-memory.mjs",
     "probe:data-states": "node scripts/probe-data-states.mjs",
     "capture:ui-matrix": "node scripts/capture-ui-matrix.mjs",
+    "capture:kit": "node scripts/capture-kit.mjs",
     "check:visual-regression": "node scripts/check-visual-regression.mjs",
     "optimize:ui-frame-references": "node scripts/optimize-ui-frame-references.mjs",
     "check:ui:grammar-matrix": "node scripts/check-ui-grammar-matrix.mjs --static",

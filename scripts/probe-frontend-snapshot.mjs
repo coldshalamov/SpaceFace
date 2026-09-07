@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // probe-frontend-snapshot.mjs — J04 fast visual snapshot lab (CANONICAL_BUILD_MAP §11.12).
 //
-// Headless Playwright against `_uilab.html` isolation fixtures. No Three.js, no `server.js`.
+// Headless Playwright against `_kitlab.html` isolation fixtures. No Three.js, no `server.js`.
 // Writes `.devshots/frontend/<component>.png` at deviceScaleFactor 2, plus a magenta overlay
 // `<name>.diff.png` when a previous PNG exists and pixels moved.
 //
@@ -47,7 +47,7 @@ function startStaticServer() {
     const server = createServer((req, res) => {
       try {
         let urlPath = decodeURIComponent((req.url || '/').split('?')[0]);
-        if (urlPath === '/') urlPath = '/_uilab.html';
+        if (urlPath === '/') urlPath = '/_kitlab.html';
         const rel = urlPath.replace(/^\/+/, '').replace(/\0/g, '');
         const filePath = join(ROOT, rel);
         if (!filePath.startsWith(ROOT) || !existsSync(filePath)) {
@@ -140,7 +140,7 @@ const context = await browser.newContext({
 });
 const page = await context.newPage();
 const shotQuery = onlyShot ? `&shot=${encodeURIComponent(onlyShot)}` : '';
-await page.goto(`${baseUrl}/_uilab.html?lab=shots${shotQuery}`, { waitUntil: 'domcontentloaded' });
+await page.goto(`${baseUrl}/_kitlab.html?lab=shots${shotQuery}`, { waitUntil: 'domcontentloaded' });
 await page.evaluate(() => (document.fonts && document.fonts.ready) || Promise.resolve());
 const tReady = Date.now();
 
@@ -208,7 +208,7 @@ if (wantChips) {
   if (chips.lab !== 'shots') {
     await browser.close();
     server.close();
-    throw new Error('_uilab.html?lab=shots did not isolate the snapshot board');
+    throw new Error('_kitlab.html?lab=shots did not isolate the snapshot board');
   }
   const sheetBuf = await page.screenshot({ type: 'png', animations: 'disabled', fullPage: true });
   const sheet = PNG.sync.read(sheetBuf);
@@ -226,7 +226,7 @@ if (wantChips) {
 if (!written.length) {
   await browser.close();
   server.close();
-  throw new Error('_uilab.html?lab=shots produced no PNG captures');
+  throw new Error('_kitlab.html?lab=shots produced no PNG captures');
 }
 
 await browser.close();

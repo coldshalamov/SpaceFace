@@ -1,16 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { KIT_SOUND_PALETTE, installKitPalette } from './palette.js';
-import { deriveTemperature, bindTemperature, setTemperature, TEMPERATURE_EVENTS } from './temperature.js';
-import { cut, settle, stamp, SETTLE_MS } from './motion.js';
-
-function registry() {
-  return KIT_SOUND_PALETTE.map(({ recipe }) => ({
-    id: recipe.id, category: 'ui', type: 'noise_burst', repeatCount: 2,
-    reverbMix: 0.4, reverbDecay: 0.8, freqMod: 0.5,
-    gainEnvelope: { attack: 0.1, sustain: 0.3, release: 0.4 },
-  }));
-}
+import { deriveTemperature, bindTemperature, setTemperature, TEMPERATURE_EVENTS } from '../src/ui/kit/temperature.js';
+import { cut, settle, stamp, SETTLE_MS } from '../src/ui/kit/motion.js';
+import { bindSound, cue, CUE_IDS } from '../src/ui/kit/sound.js';
+import { RECIPES } from '../src/data/audioRecipes.js';
 
 function eventBus() {
   const handlers = new Map();
@@ -63,51 +56,43 @@ test('temperature writes only edges and unsubscribes the complete state seam', (
   assert.throws(() => bindTemperature({}, state), TypeError);
 });
 
-test('the palette is exactly eight finite low-pass sine envelopes', () => {
-  assert.equal(KIT_SOUND_PALETTE.length, 8);
-  assert.equal(new Set(KIT_SOUND_PALETTE.map(entry => entry.recipe.id)).size, 8);
-  for (const entry of KIT_SOUND_PALETTE) {
-    assert.equal(entry.recipe.type, 'oscillator');
-    assert.equal(entry.recipe.wave, 'sine');
-    assert.equal(entry.recipe.filterType, 'lowpass');
-    assert.ok(entry.recipe.filterFreq <= 3000);
-    assert.ok(entry.envelopeMs <= entry.maxMs, entry.name);
-    assert.equal(entry.cleanupMs, 20);
-    assert.ok(entry.recipe.gainMult > 0 && entry.recipe.gainMult <= 0.6);
-    assert.equal(entry.recipe.repeatCount, undefined);
-    assert.equal(entry.recipe.reverbMix, undefined);
-    assert.deepEqual(entry.recipe.pitchRange, [1, 1]);
-  }
-  assert.equal(KIT_SOUND_PALETTE.find(entry => entry.name === 'move').envelopeMs, 51);
+test('sound cues emit the mapped ids through audio:cue and nothing before binding', () => {
+  const seen = [];
+  assert.doesNotThrow(() => cue('confirm'));
+  const dispose = bindSound({ emit(name, payload) { seen.push([name, payload]); } });
+  cue('move'); cue('confirm');
+  assert.deepEqual(seen, [
+    ['audio:cue', { id: 'ui_tab', gain: 0.25 }],
+    ['audio:cue', { id: 'ui_confirm', gain: 0.6 }],
+  ]);
+  assert.throws(() => cue('hover'), /unknown cue/);
+  dispose(); cue('open');
+  assert.equal(seen.length, 2);
+  assert.deepEqual(Object.keys(CUE_IDS), ['open', 'close', 'move', 'confirm', 'deny']);
 });
 
-test('palette leases preserve cached object identity, clear old layers and restore originals', () => {
-  const recipes = registry();
-  const unrelated = { id: 'sfx_station_hum', type: 'continuous_oscillator' }; recipes.push(unrelated);
-  const before = structuredClone(recipes), cached = new Map(recipes.map(recipe => [recipe.id, recipe]));
-  const first = installKitPalette(recipes), second = installKitPalette(recipes);
-  for (const entry of KIT_SOUND_PALETTE) {
-    const object = cached.get(entry.recipe.id);
-    assert.equal(recipes.find(recipe => recipe.id === object.id), object);
-    assert.equal(object.type, 'oscillator');
-    assert.equal(object.repeatCount, undefined); assert.equal(object.reverbMix, undefined);
-    assert.equal(object.freqMod, undefined);
+test('the eight UI recipes carry the sheet character: one sine, low-pass, bounded length', () => {
+  const bounds = {
+    sfx_ui_open: [110, 100, 500, 0.25], sfx_ui_back: [82, 74, 420, 0.25], sfx_ui_tab: [660, 640, 2400, 0.06],
+    sfx_ui_confirm: [440, 440, 3000, 0.3], sfx_ui_error: [330, 247, 900, 0.3], sfx_dock_clunk: [48, 62, 600, 0.9],
+    sfx_undock_release: [62, 48, 500, 0.6], sfx_wanted_alert: [196, 196, 800, 1.2],
+  };
+  for (const [id, [from, to, cutoff, maxS]] of Object.entries(bounds)) {
+    const recipe = RECIPES.find((r) => r.id === id);
+    assert.ok(recipe, id);
+    assert.equal(recipe.type, 'oscillator', id);
+    assert.equal(recipe.wave, 'sine', id);
+    assert.equal(recipe.baseFreq, from, id);
+    assert.deepEqual(recipe.freqSweep, [from, to], id);
+    assert.equal(recipe.filterType, 'lowpass', id);
+    assert.equal(recipe.filterFreq, cutoff, id);
+    // synth.js applyEnvelope: attack ramp, a fixed 40 ms decay to the sustain *level*, then release.
+    const { attack = 0.005, release = 0.05 } = recipe.gainEnvelope;
+    const lengthS = attack + 0.04 + release;
+    assert.ok(lengthS <= maxS + 1e-9, `${id} sounds for ${lengthS}s > ${maxS}s`);
+    assert.equal(recipe.repeatCount, undefined, id);
+    assert.equal(recipe.reverbMix, undefined, id);
   }
-  assert.equal(unrelated.type, 'continuous_oscillator');
-  first(); first(); assert.equal(recipes[0].type, 'oscillator');
-  second(); second(); assert.deepEqual(recipes, before);
-});
-
-test('palette installation validates the entire registry before any change', () => {
-  const missing = registry().slice(0, -1), before = structuredClone(missing);
-  assert.throws(() => installKitPalette(missing), /sfx_wanted_alert/);
-  assert.deepEqual(missing, before);
-  const immutable = registry(); Object.freeze(immutable.at(-1));
-  const frozenBefore = structuredClone(immutable);
-  assert.throws(() => installKitPalette(immutable), /immutable/);
-  assert.deepEqual(immutable, frozenBefore);
-  const duplicate = registry(); duplicate.push({ ...duplicate[0] });
-  assert.throws(() => installKitPalette(duplicate), /exactly one/);
 });
 
 function motionEnvironment() {
