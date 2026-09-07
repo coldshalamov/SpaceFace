@@ -6254,7 +6254,7 @@
       "priority": 81,
       "title": "Fodder is ammunition",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.04",
         "PQ-137.05"
@@ -6270,8 +6270,10 @@
         "npm run check:baseline",
         "npm run check:crucible:route"
       ],
-      "receiptRefs": [],
-      "brief": "With the hitstun law and force table in, the twelve-body cohort resolves quickly under physics play; the free gun no longer out-performs the physics kit; median time-to-resolve a light under physics <= under guns."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-140.03-REPORT.md"
+      ],
+      "brief": "DONE 2026-09-07 (Grok + controller). Thrown lights stay ballistic into rock / well / the body ahead; the corridor goes limp so the planner does not dodge. Median TTR a light: physics 2.808 s (11/12) vs Pulse 22.358 s (7/12) on seeds 4242/8008/13502. No HP buff. No survivalSwarm.js. M11 empty-space throwability held. DONE WHEN: median time-to-resolve a light under physics <= under guns."
     },
     {
       "id": "PQ-146.00",

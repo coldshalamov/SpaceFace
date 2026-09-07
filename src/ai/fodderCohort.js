@@ -52,6 +52,13 @@ const FRAME_MAX_ACCEL = 38;
 const FRAME_MAX_YAW = 0.72;
 const EPS = 1e-9;
 const LOOKAHEAD_S = 0.55;
+// Thrown lights stay ballistic toward mass. Lookahead is short enough that an empty-space
+// lateral shove (Motion Lab M11) does not limp the pack, and long enough that a shove into
+// rock / well / the line ahead still reads as ammunition.
+const AMMUNITION_LOOKAHEAD_S = 1.15;
+const AMMUNITION_MIN_SPEED = 18;
+const AMMUNITION_LATERAL_PAD = 6;
+const WELL_KIND = 'well';
 
 let forcedMutation = null;
 
@@ -89,6 +96,7 @@ export class FodderCohortDirector {
     this.queryScratch = [];
     this.fallbackScratch = [];
     this.neighborScratch = [];
+    this.massScratch = [];
     this.componentScratch = {
       flow: { x: 0, z: 0 },
       slot: { x: 0, z: 0 },
@@ -218,6 +226,40 @@ export function meanNeighborSeparation(self, neighbors, radius, membersOnly = fa
   }
   if (!n) return { x: 0, z: 0, neighbors: 0 };
   return { x: x / n, z: z / n, neighbors: n };
+}
+
+/**
+ * True when `origin` closing along `vel` would meet `target` within `lookS`.
+ * Used so a thrown light stays ballistic into rock / well / the body ahead, and so a
+ * body in that corridor goes limp — ammunition, not a dodge.
+ */
+export function isAmmunitionCourse(origin, vel, originRadius, target, targetRadius, lookS = AMMUNITION_LOOKAHEAD_S) {
+  if (!origin || !vel || !target) return false;
+  const spd = Math.hypot(finite(vel.x), finite(vel.z));
+  if (spd < AMMUNITION_MIN_SPEED) return false;
+  const ux = vel.x / spd;
+  const uz = vel.z / spd;
+  const dx = finite(target.x) - finite(origin.x);
+  const dz = finite(target.z) - finite(origin.z);
+  const along = dx * ux + dz * uz;
+  const r0 = originRadius > 0 ? originRadius : 8;
+  const r1 = targetRadius > 0 ? targetRadius : 8;
+  const reach = spd * (lookS > 0 ? lookS : AMMUNITION_LOOKAHEAD_S) + r0 + r1;
+  if (along < -r0 || along > reach) return false;
+  const lat = Math.abs(dx * -uz + dz * ux);
+  return lat <= r0 + r1 + AMMUNITION_LATERAL_PAD;
+}
+
+export function isInsideWell(pos, wells) {
+  if (!pos || !wells || !wells.length) return false;
+  for (let i = 0; i < wells.length; i++) {
+    const well = wells[i];
+    if (!well || well.well !== true) continue;
+    const radius = well.radius > 0 ? well.radius : 0;
+    if (radius <= EPS) continue;
+    if (Math.hypot(finite(pos.x) - well.x, finite(pos.z) - well.z) < radius) return true;
+  }
+  return false;
 }
 
 export function composeDesiredVelocity(components, weights, speedCap) {
@@ -419,6 +461,7 @@ function makeMember(id, index, laneCount, recipe) {
     faceTarget: false,
     neighborCount: 0,
     lastRelV: 0,
+    ammunition: false,
     rejoinTick: null,
     live: { pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, rot: 0, radius: 8, hullFraction: 1 },
     entity: null,
@@ -478,7 +521,8 @@ function stepCohort(director, cohort, recipe, target, tick, dt, state, mutation)
   const step = Number.isFinite(dt) && dt > 0 ? dt : 1 / 60;
   writeShapeSlots(cohort, recipe, target);
   updateIntegrity(cohort);
-  detectDisruption(cohort, recipe, tick, step, mutation);
+  collectMassBodies(director, cohort, state);
+  detectDisruption(cohort, recipe, tick, step, mutation, director.massScratch);
   advancePhase(cohort, recipe, target, tick, step);
   integrateFrame(cohort, recipe, target, step);
   writeShapeSlots(cohort, recipe, target);
@@ -557,20 +601,64 @@ function updateIntegrity(cohort) {
   cohort.disruption.count = disrupted;
 }
 
-function detectDisruption(cohort, recipe, tick, dt, mutation) {
+function collectMassBodies(director, cohort, state) {
+  const scratch = director.massScratch;
+  let n = 0;
+  const list = state && state.entityList;
+  for (let i = 0; i < (list ? list.length : 0); i++) {
+    const entity = list[i];
+    if (!entity || !entity.pos || entity.alive === false) continue;
+    if (cohort.members.has(entity.id)) continue;
+    if (!isHazard(entity, cohort.targetId)) continue;
+    const slot = massSlot(scratch, n++);
+    slot.x = finite(entity.pos.x);
+    slot.z = finite(entity.pos.z);
+    slot.radius = Math.max(4, finite(entity.radius, 8));
+    slot.well = false;
+  }
+  const fields = state && state.fields;
+  const snap = fields && (Array.isArray(fields.active) && fields.active.length
+    ? fields.active
+    : fields.snapshot);
+  for (let i = 0; i < (snap ? snap.length : 0); i++) {
+    const field = snap[i];
+    if (!field || field.kind !== WELL_KIND) continue;
+    const center = field.center || field;
+    if (!Number.isFinite(center.x) || !Number.isFinite(center.z)) continue;
+    const slot = massSlot(scratch, n++);
+    slot.x = center.x;
+    slot.z = center.z;
+    slot.radius = Math.max(8, finite(field.radius, 0));
+    slot.well = true;
+  }
+  scratch.length = n;
+}
+
+function massSlot(scratch, index) {
+  let slot = scratch[index];
+  if (!slot) {
+    slot = { x: 0, z: 0, radius: 8, well: false };
+    scratch[index] = slot;
+  }
+  return slot;
+}
+
+function detectDisruption(cohort, recipe, tick, dt, mutation, masses) {
   const cancel = !!(mutation && mutation.cancelImpulses);
-  const spacing = cohort.spacing || recipe.densityTarget;
   const flowVx = cohort.velocity.x;
   const flowVz = cohort.velocity.z;
   const flowSpd = Math.hypot(flowVx, flowVz) || 1;
   const flowX = flowVx / flowSpd;
   const flowZ = flowVz / flowSpd;
   const settling = tick - (cohort.bornTick || 0) < 24;
+  const massList = masses || [];
+
   for (const rec of cohort.members.values()) {
     if (!rec.alive) {
       rec.disrupted = true;
       rec.coast = false;
       rec.breakFormation = true;
+      rec.ammunition = false;
       continue;
     }
     if (!rec.slotReady) continue;
@@ -591,19 +679,73 @@ function detectDisruption(cohort, recipe, tick, dt, mutation) {
     }
     rec.coast = !cancel && rec.disrupted && tick < rec.disruptedUntil;
     rec.breakFormation = rec.coast;
+    rec.ammunition = false;
+  }
+
+  if (!cancel) {
+    for (const rec of cohort.members.values()) {
+      if (!rec.alive || !rec.slotReady) continue;
+      if (rec.disrupted && massOnCourseOrWell(rec, massList)) {
+        rec.ammunition = true;
+        rec.coast = true;
+        rec.breakFormation = true;
+        rec.disruptedUntil = Math.max(rec.disruptedUntil, tick + 2);
+      }
+    }
+    for (const rec of cohort.members.values()) {
+      if (!rec.alive || !rec.slotReady || rec.disrupted) continue;
+      if (!incomingAmmunitionTowardMass(rec, cohort, massList)) continue;
+      const coastTicks = Math.round(recipe.coastMinS / dt);
+      rec.disrupted = true;
+      rec.disruptedUntil = tick + clamp(coastTicks, 48, 96);
+      rec.coast = true;
+      rec.breakFormation = true;
+      rec.ammunition = true;
+    }
+  }
+
+  for (const rec of cohort.members.values()) {
+    if (!rec.alive || !rec.slotReady) continue;
     const spd = Math.hypot(rec.vel.x, rec.vel.z);
     const align = spd > 0.5 ? (rec.vel.x * flowX + rec.vel.z * flowZ) / spd : 0;
     if (rec.disrupted && !rec.coast && (align > 0.42 || tick >= rec.disruptedUntil + 18)) {
       rec.disrupted = false;
       rec.disruptedUntil = -1;
+      rec.ammunition = false;
       rec.rejoinTick = tick;
     }
   }
+
   let until = cohort.disruption.until;
   for (const rec of cohort.members.values()) {
     if (rec.alive && rec.coast && rec.disruptedUntil > until) until = rec.disruptedUntil;
   }
   cohort.disruption.until = until;
+}
+
+function massOnCourseOrWell(rec, masses) {
+  if (isInsideWell(rec.pos, masses)) return true;
+  for (let i = 0; i < masses.length; i++) {
+    const mass = masses[i];
+    if (isAmmunitionCourse(rec.pos, rec.vel, rec.radius, mass, mass.radius)) return true;
+  }
+  return false;
+}
+
+function incomingAmmunitionTowardMass(rec, cohort, masses) {
+  if (!masses.length) return false;
+  for (const other of cohort.members.values()) {
+    if (!other.alive || other.id === rec.id || !other.coast) continue;
+    if (!isAmmunitionCourse(other.pos, other.vel, other.radius, rec.pos, rec.radius)) continue;
+    if (isInsideWell(rec.pos, masses)) return true;
+    for (let i = 0; i < masses.length; i++) {
+      const mass = masses[i];
+      if (isAmmunitionCourse(other.pos, other.vel, other.radius, mass, mass.radius, AMMUNITION_LOOKAHEAD_S * 1.35)) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 function advancePhase(cohort, recipe, target, tick, dt) {
@@ -804,10 +946,11 @@ function steerMembers(director, cohort, recipe, target, tick, dt, state, mutatio
       if (dist > queryR) continue;
       let slot = neighbors[visits];
       if (!slot) {
-        slot = { id: null, x: 0, z: 0, vx: 0, vz: 0, radius: 8, member: false, hazard: false };
+        slot = { id: null, x: 0, z: 0, vx: 0, vz: 0, radius: 8, member: false, hazard: false, coast: false };
         neighbors[visits] = slot;
       }
       const inCohort = cohort.members.has(other.id);
+      const memberRec = inCohort ? cohort.members.get(other.id) : null;
       slot.id = other.id;
       slot.x = other.pos.x;
       slot.z = other.pos.z;
@@ -815,6 +958,7 @@ function steerMembers(director, cohort, recipe, target, tick, dt, state, mutatio
       slot.vz = finite(other.vel && other.vel.z);
       slot.radius = Math.max(4, finite(other.radius, 8));
       slot.member = inCohort;
+      slot.coast = !!(memberRec && (memberRec.coast || memberRec.ammunition));
       slot.hazard = !inCohort && isHazard(other, cohort.targetId);
       visits++;
     }
@@ -859,6 +1003,24 @@ function isHazard(entity, targetId) {
   if (entity.type === 'asteroid' || entity.type === 'station' || entity.type === 'prop') return true;
   if (entity.type === 'ship' && entity.team !== 1) return false;
   return !!(entity.collides && entity.type !== 'ship');
+}
+
+function skipBallisticSeparation(self, other) {
+  if (!other || !self) return false;
+  if (!other.coast && !self.coast && !self.ammunition) return false;
+  const sx = finite(self.pos && self.pos.x);
+  const sz = finite(self.pos && self.pos.z);
+  const svx = finite(self.vel && self.vel.x);
+  const svz = finite(self.vel && self.vel.z);
+  if (other.coast) {
+    const toward = (sx - other.x) * other.vx + (sz - other.z) * other.vz;
+    if (toward > 0) return true;
+  }
+  if (self.coast || self.ammunition) {
+    const toward = (other.x - sx) * svx + (other.z - sz) * svz;
+    if (toward > 0) return true;
+  }
+  return false;
 }
 
 function weightsFor(phase, mutation) {
@@ -918,12 +1080,36 @@ function desiredForMember(
     comps.separation.x = 0;
     comps.separation.z = 0;
   } else {
-    const sep = meanNeighborSeparation(rec.pos, neighbors, sepR, true);
-    const sepMag = Math.hypot(sep.x, sep.z);
-    if (sepMag > EPS) {
-      const boost = Math.min(1, sepMag) * cruise;
-      comps.separation.x = (sep.x / sepMag) * boost;
-      comps.separation.z = (sep.z / sepMag) * boost;
+    // Do not shove a ballistic body off its line, and do not step off an incoming
+    // thrown neighbor — that is the chain. Empty-space formed neighbors still separate.
+    let sx = 0;
+    let sz = 0;
+    let sn = 0;
+    for (let i = 0; i < neighbors.length; i++) {
+      const other = neighbors[i];
+      if (!other || other.member === false) continue;
+      if (skipBallisticSeparation(rec, other)) continue;
+      const dx = rec.pos.x - other.x;
+      const dz = rec.pos.z - other.z;
+      const dist = Math.hypot(dx, dz);
+      if (dist < EPS || dist >= sepR) continue;
+      const push = (sepR - dist) / sepR;
+      sx += (dx / dist) * push;
+      sz += (dz / dist) * push;
+      sn++;
+    }
+    if (sn > 0) {
+      sx /= sn;
+      sz /= sn;
+      const sepMag = Math.hypot(sx, sz);
+      if (sepMag > EPS) {
+        const boost = Math.min(1, sepMag) * cruise;
+        comps.separation.x = (sx / sepMag) * boost;
+        comps.separation.z = (sz / sepMag) * boost;
+      } else {
+        comps.separation.x = 0;
+        comps.separation.z = 0;
+      }
     } else {
       comps.separation.x = 0;
       comps.separation.z = 0;
@@ -953,21 +1139,24 @@ function desiredForMember(
     comps.alignment.z = comps.flow.z;
   }
 
+  const limp = rec.coast || rec.ammunition || rec.disrupted;
   let hx = 0;
   let hz = 0;
   let hn = 0;
-  for (let i = 0; i < neighbors.length; i++) {
-    const n = neighbors[i];
-    if (!n.hazard) continue;
-    const dx = rec.pos.x - n.x;
-    const dz = rec.pos.z - n.z;
-    const dist = Math.hypot(dx, dz);
-    const clear = sepR + n.radius;
-    if (dist < EPS || dist >= clear) continue;
-    const push = (clear - dist) / clear;
-    hx += (dx / dist) * push;
-    hz += (dz / dist) * push;
-    hn++;
+  if (!limp) {
+    for (let i = 0; i < neighbors.length; i++) {
+      const n = neighbors[i];
+      if (!n.hazard) continue;
+      const dx = rec.pos.x - n.x;
+      const dz = rec.pos.z - n.z;
+      const dist = Math.hypot(dx, dz);
+      const clear = sepR + n.radius;
+      if (dist < EPS || dist >= clear) continue;
+      const push = (clear - dist) / clear;
+      hx += (dx / dist) * push;
+      hz += (dz / dist) * push;
+      hn++;
+    }
   }
   if (hn > 0) {
     hx /= hn;
@@ -1000,6 +1189,7 @@ function desiredForMember(
   for (let i = 0; i < neighbors.length; i++) {
     const n = neighbors[i];
     if (!n.member) continue;
+    if (skipBallisticSeparation(rec, n)) continue;
     const dx = rec.pos.x - n.x;
     const dz = rec.pos.z - n.z;
     const dist = Math.hypot(dx, dz);
@@ -1048,6 +1238,7 @@ function publishPlans(director, cohort, recipe, tick) {
         fireAuthorized: false,
         coast: rec.coast,
         disrupted: rec.disrupted,
+        ammunition: rec.ammunition,
         breakFormation: rec.breakFormation,
         targetId: cohort.targetId,
         slotError: rec.slotError,
@@ -1074,6 +1265,7 @@ function publishPlans(director, cohort, recipe, tick) {
     plan.fireAuthorized = false;
     plan.coast = rec.coast;
     plan.disrupted = rec.disrupted;
+    plan.ammunition = rec.ammunition;
     plan.breakFormation = rec.breakFormation;
     plan.targetId = cohort.targetId;
     plan.slotError = rec.slotError;
@@ -1096,6 +1288,7 @@ function snapshotCohort(cohort) {
       phase: cohort.phase,
       disrupted: rec.disrupted,
       coast: rec.coast,
+      ammunition: rec.ammunition,
       slotError: rec.slotError,
       shapeError: rec.shapeError,
       neighborCount: rec.neighborCount,

@@ -35,7 +35,7 @@ test('the fitted Tractor module admits one independently flagged, player-readabl
   assert.equal(legacy.spring, undefined, 'flag-off retains the ordinary standard spring');
   assert.equal(TIDELINE.mods.masslineHeadId, 'tractor', 'the unique base variant retains its head capability');
   // Tractor head + ore magnet are both live (ships.derived + mining.playerPickupMagnetRange).
-  assert.match(statSnippet(TRACTOR), /tractor head/i);
+  assert.match(statSnippet(TRACTOR), /pick up, spin, throw/i);
   assert.match(statSnippet(TRACTOR), /magnet/i,
     'fitted magnetRange is wired into the scoop; outfitting must advertise the live radius');
 });
