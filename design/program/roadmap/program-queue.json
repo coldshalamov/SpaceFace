@@ -17173,7 +17173,7 @@
       "priority": 462,
       "title": "The kit",
       "kind": "implementation",
-      "state": "claimed",
+      "state": "implemented",
       "dependsOn": [
         "PQ-187.01"
       ],
@@ -17196,7 +17196,7 @@
         "npm run check:wcag-contrast"
       ],
       "receiptRefs": [],
-      "brief": "Tokens and the type scale 12 to 160 px; Bricolage Grotesque vendored as the variable face (weight to 800, opsz and wdth axes, OFL) beside Instrument Sans (tabular figures verified present in the vendored file); no mono on player surfaces; the temperature states (flight, docked, wanted, Crucible, Works); the transition helper (a cut plus a settle of at most 160 ms, state-bound, reduced-motion is a plain cut); the UI sound palette (at most eight low tonal samples through audio:cue); every component rendered on one kit page in the lab and captured at 1280, 1920 and 2560. DONE WHEN: the kit page matches DIRECTION_SHEET.md under a hash-bound visual review by a memoryless vision reviewer; the old stylesheets are untouched (screens migrate in later packets); no owner decision is required. Task file: design/frontend/direction/tasks/TASK_A_KIT_AND_TITLE.md (spec: design/frontend/direction/KIT_SPEC.md)."
+      "brief": "IMPLEMENTED 2026-09-07: delegated kit candidate integrated; the variable Bricolage face is vendored and axis/tabular checks pass, the kit tests, corrected frontend probe, type floor, and WCAG checks pass, and the five kit captures were independently reviewed. The shared full baseline runner hung without output and remains unverified; three-width hash-bound review and final promotion remain open. DONE WHEN: the kit page matches DIRECTION_SHEET.md under a hash-bound visual review by a memoryless vision reviewer; the old stylesheets are untouched (screens migrate in later packets); no owner decision is required. Task file: design/frontend/direction/tasks/TASK_A_KIT_AND_TITLE.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-187.03",
