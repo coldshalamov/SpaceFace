@@ -1,6 +1,6 @@
 // One isolated page using the exported builders. All numbers are fixtures, not market quotes.
 import { el, words, rows, table, hero, title, cut, settle, stamp,
-  TEMPERATURES, setTemperature, bindSound, cue } from './index.js';
+  TEMPERATURES, setTemperature, bindSound, cue, KIT_SOUND_PALETTE } from './index.js';
 
 const root = document.getElementById('kit');
 const format = value => Number(value).toLocaleString('en-US');
@@ -40,7 +40,11 @@ function section(name, heading, subtitle, variant = '') {
 function action(label, onClick, { primary = false, danger = false, size = 'body', action: id } = {}) {
   const button = el('button', `k-word k-word--${size}${primary ? ' k-word--primary' : ''}${danger ? ' k-word--danger' : ''}`, label);
   button.type = 'button'; button.dataset.action = id || label.toLowerCase().replaceAll(' ', '-');
-  button.addEventListener('click', () => { cue('confirm'); onClick?.(button); });
+  button.addEventListener('click', () => {
+    if (button.getAttribute('aria-pressed') === 'true') return;
+    const outcome = onClick?.(button);
+    if (outcome !== false) cue(outcome === 'deny' ? 'deny' : 'confirm');
+  });
   return button;
 }
 function field(label, control) {
@@ -140,7 +144,7 @@ for (const size of ['row', '', 'hero']) {
   const template = document.createElement('template'); template.innerHTML = HELIX;
   const svg = template.content.firstElementChild; svg.setAttribute('class', `k-crest${size ? ` k-crest--${size}` : ''}`); crests.append(svg);
 }
-components.foot.append(crests, action('Abandon', () => cue('deny'), { danger: true, size: 'emph' }));
+components.foot.append(crests, action('Abandon', () => 'deny', { danger: true, size: 'emph' }));
 
 const type = section('kit-type', 'The scale', 'Twelve through one hundred and sixty · tabular figures', 'k-screen--stage');
 const sizes = [['fine', 12], ['data', 14], ['body', 16], ['emph', 20], ['sub', 28], ['menu', 40], ['num', 56], ['title', 80], ['hero', 112], ['name', 160]];
@@ -177,7 +181,7 @@ const query = new URLSearchParams(location.search);
 if (query.has('temp')) setTemperature(query.get('temp'));
 if (query.get('motion') === 'reduce') document.documentElement.classList.add('sf-reduce-motion');
 if (query.has('shot')) for (const screen of root.children) screen.hidden = screen.dataset.shot !== query.get('shot');
-window.__kitLab = { cues, temperatures: TEMPERATURES, sizes, setTemperature, dispose() { disposals.splice(0).forEach(dispose => dispose()); } };
+window.__kitLab = { cues, palette: KIT_SOUND_PALETTE, temperatures: TEMPERATURES, sizes, setTemperature, dispose() { disposals.splice(0).forEach(dispose => dispose()); } };
 window.addEventListener('pagehide', () => window.__kitLab.dispose(), { once: true });
 await document.fonts.ready;
 for (const screen of root.children) screen.dataset.kReady = '1';

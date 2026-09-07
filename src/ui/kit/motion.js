@@ -65,7 +65,7 @@ export function stamp(elements, { gap = 60, state } = {}) {
 }
 
 /** Synchronous visibility change; a later settle is optional, never an exit fade. */
-export function cut(hideElement, showElement, { state = 'kit:screen' } = {}) {
+export function cut(hideElement, showElement, { state } = {}) {
   stateName(state);
   for (const element of new Set([hideElement, showElement])) {
     if (element) { clear(element); element.dataset.kMotionState = state; }
