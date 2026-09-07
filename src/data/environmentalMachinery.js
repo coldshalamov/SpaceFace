@@ -648,3 +648,187 @@ export function weatherHazardZones(sectorId) {
     intensity: 0.55,
   }));
 }
+
+// PQ-027.03 — Ceres Refinery hangar aperture. The door locks on a schedule; stuffing a hull
+// into the mouth jams it. Jam is occupancy plus an inward hold cone — the field moves mass,
+// it is not a spawn-flag aura. Reinforcements burning out the bay stay inside for ≥ 20 s.
+export const APERTURE_SECTOR_ID = CINDER_SLUICE_SECTOR_ID;
+export const APERTURE_STATION_ID = 'station_ceres';
+export const APERTURE_ID = 'ceres_refinery_hangar_aperture';
+export const APERTURE_JAM_HOLD_S = 20;
+export const APERTURE_CYCLE = Object.freeze({ openS: 16, closingS: 2, lockedS: 10 });
+export const APERTURE_LOCAL_POS = Object.freeze({ x: -990, z: 620 });
+const APERTURE_ROT = 0;
+export const APERTURE_DIR = freezeVec(Math.cos(APERTURE_ROT), Math.sin(APERTURE_ROT));
+export const APERTURE_INTERIOR_DIR = freezeVec(-APERTURE_DIR.x, -APERTURE_DIR.z);
+export const APERTURE_PERP = freezeVec(-APERTURE_DIR.z, APERTURE_DIR.x);
+export const APERTURE_GLOBAL_POS = Object.freeze(
+  sectorLocalToGlobalForSector(APERTURE_LOCAL_POS, APERTURE_SECTOR_ID),
+);
+export const APERTURE_MOUTH = Object.freeze({
+  alongMin: -22,
+  alongMax: 16,
+  halfWidth: 34,
+});
+const APERTURE_HOLD_APEX_ALONG = 10;
+export const APERTURE_HOLD_FIELD = Object.freeze({
+  id: 'environment_ceres_hangar_aperture_hold',
+  kind: 'cone',
+  center: freezeVec(
+    APERTURE_GLOBAL_POS.x + APERTURE_INTERIOR_DIR.x * APERTURE_HOLD_APEX_ALONG,
+    APERTURE_GLOBAL_POS.z + APERTURE_INTERIOR_DIR.z * APERTURE_HOLD_APEX_ALONG,
+  ),
+  dir: APERTURE_INTERIOR_DIR,
+  radius: 92,
+  strength: 720,
+  falloff: 1.08,
+  halfAngleRad: 0.62,
+  edgeSoftRad: 0.12,
+  sourceId: APERTURE_ID,
+  team: null,
+});
+export const APERTURE_PINCH_FIELD = Object.freeze({
+  id: 'environment_ceres_hangar_aperture_pinch',
+  kind: 'sheet',
+  center: freezeVec(APERTURE_GLOBAL_POS.x, APERTURE_GLOBAL_POS.z),
+  dir: APERTURE_DIR,
+  radius: 48,
+  strength: 820,
+  falloff: 1.05,
+  halfWidth: 52,
+  sourceId: APERTURE_ID,
+  team: null,
+});
+export const APERTURE_FIELDS = Object.freeze([APERTURE_HOLD_FIELD, APERTURE_PINCH_FIELD]);
+export const APERTURE_PLUG = Object.freeze({
+  id: 'ceres_refinery_hangar_aperture_plug',
+  pos: freezeVec(APERTURE_GLOBAL_POS.x, APERTURE_GLOBAL_POS.z),
+  radius: 30,
+  mass: 11000,
+});
+export const APERTURE_EXIT_ALONG = APERTURE_PLUG.radius + 8;
+const APERTURE_OCCUPANT_TYPES = new Set(['ship', 'wreck', 'asteroid']);
+
+export function aperturePoint(along, across = 0) {
+  return freezeVec(
+    APERTURE_GLOBAL_POS.x + APERTURE_DIR.x * along + APERTURE_PERP.x * across,
+    APERTURE_GLOBAL_POS.z + APERTURE_DIR.z * along + APERTURE_PERP.z * across,
+  );
+}
+
+export function apertureAlong(point) {
+  if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.z)) return NaN;
+  return (point.x - APERTURE_GLOBAL_POS.x) * APERTURE_DIR.x
+    + (point.z - APERTURE_GLOBAL_POS.z) * APERTURE_DIR.z;
+}
+
+export function apertureAcross(point) {
+  if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.z)) return NaN;
+  return (point.x - APERTURE_GLOBAL_POS.x) * APERTURE_PERP.x
+    + (point.z - APERTURE_GLOBAL_POS.z) * APERTURE_PERP.z;
+}
+
+export function pointInsideApertureMouth(point) {
+  const along = apertureAlong(point);
+  if (!Number.isFinite(along)) return false;
+  if (along < APERTURE_MOUTH.alongMin || along > APERTURE_MOUTH.alongMax) return false;
+  return Math.abs(apertureAcross(point)) <= APERTURE_MOUTH.halfWidth;
+}
+
+export function pointInsideApertureHold(point) {
+  if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.z)) return false;
+  const field = APERTURE_HOLD_FIELD;
+  const dx = point.x - field.center.x;
+  const dz = point.z - field.center.z;
+  const distance = Math.hypot(dx, dz);
+  if (distance >= field.radius) return false;
+  if (distance < 1e-6) return true;
+  const forward = (dx * field.dir.x + dz * field.dir.z) / distance;
+  if (forward <= 0) return false;
+  const angle = Math.acos(Math.max(-1, Math.min(1, forward)));
+  return angle < field.halfAngleRad + field.edgeSoftRad;
+}
+
+export function pointInsideAperture(point) {
+  return pointInsideApertureMouth(point) || pointInsideApertureHold(point);
+}
+
+export const APERTURE_SEAT_SPEED = 8;
+
+export function isApertureOccupant(entity) {
+  if (!entity || entity.alive === false) return false;
+  if (entity.collides === false) return false;
+  if (entity.data && entity.data.aperturePlugId) return false;
+  if (!APERTURE_OCCUPANT_TYPES.has(entity.type)) return false;
+  if (!pointInsideApertureMouth(entity.pos)) return false;
+  if (entity.type === 'ship') {
+    const vel = entity.vel;
+    const speed = vel ? Math.hypot(Number(vel.x) || 0, Number(vel.z) || 0) : 0;
+    if (speed > APERTURE_SEAT_SPEED) return false;
+  }
+  return true;
+}
+
+export function aperturePhase(simTime, jamState, out = null) {
+  const result = out || {};
+  const now = finite(simTime);
+  const occupied = !!(jamState && jamState.occupied);
+  let jammedAtS = jamState && Number.isFinite(jamState.jammedAtS) ? jamState.jammedAtS : null;
+  if (occupied && jammedAtS == null) jammedAtS = now;
+  if (jammedAtS != null && (occupied || (now - jammedAtS) < APERTURE_JAM_HOLD_S)) {
+    const heldS = now - jammedAtS;
+    result.phase = 'jam';
+    result.fieldActive = true;
+    result.fieldStrengthScale = 1;
+    result.occupied = occupied;
+    result.heldS = heldS;
+    result.remainingS = occupied
+      ? Math.max(APERTURE_JAM_HOLD_S, APERTURE_JAM_HOLD_S - heldS)
+      : Math.max(0, APERTURE_JAM_HOLD_S - heldS);
+    result.cycleS = APERTURE_CYCLE.openS + APERTURE_CYCLE.closingS + APERTURE_CYCLE.lockedS;
+    result.elapsedS = heldS;
+    return result;
+  }
+  const cycleS = APERTURE_CYCLE.openS + APERTURE_CYCLE.closingS + APERTURE_CYCLE.lockedS;
+  const elapsedS = positiveModulo(now, cycleS);
+  let phase;
+  let remainingS;
+  let fieldActive;
+  let fieldStrengthScale;
+  if (elapsedS < APERTURE_CYCLE.openS) {
+    phase = 'open';
+    remainingS = APERTURE_CYCLE.openS - elapsedS;
+    fieldActive = false;
+    fieldStrengthScale = 0;
+  } else if (elapsedS < APERTURE_CYCLE.openS + APERTURE_CYCLE.closingS) {
+    phase = 'closing';
+    remainingS = APERTURE_CYCLE.openS + APERTURE_CYCLE.closingS - elapsedS;
+    fieldActive = true;
+    fieldStrengthScale = 0;
+  } else {
+    phase = 'locked';
+    remainingS = cycleS - elapsedS;
+    fieldActive = true;
+    fieldStrengthScale = 1;
+  }
+  result.phase = phase;
+  result.fieldActive = fieldActive;
+  result.fieldStrengthScale = fieldStrengthScale;
+  result.occupied = occupied;
+  result.heldS = 0;
+  result.remainingS = remainingS;
+  result.cycleS = cycleS;
+  result.elapsedS = elapsedS;
+  return result;
+}
+
+export function apertureHazardZones(sectorId) {
+  if (sectorId !== APERTURE_SECTOR_ID) return [];
+  return [Object.freeze({
+    id: APERTURE_ID,
+    type: 'debris_current',
+    center: APERTURE_LOCAL_POS,
+    radius: 90,
+    intensity: 0.6,
+  })];
+}

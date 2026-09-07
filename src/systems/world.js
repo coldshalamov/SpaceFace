@@ -66,6 +66,7 @@ import {
 import {
   KILL_MACHINE_SECTOR_ID,
   PALLAS_REEF_SECTOR_ID,
+  apertureHazardZones,
   killMachineHazardZones,
   pallasReefHazardZone,
   weatherHazardZones,
@@ -2222,6 +2223,7 @@ export const world = {
     if (sector.id === KILL_MACHINE_SECTOR_ID) extra.push(...killMachineHazardZones());
     if (sector.id === PALLAS_REEF_SECTOR_ID) extra.push(pallasReefHazardZone());
     extra.push(...weatherHazardZones(sector.id));
+    extra.push(...apertureHazardZones(sector.id));
     for (const zone of extra) {
       if (existing.has(zone.id)) continue;
       const center = this._toGlobal(zone.center, sector.id);

@@ -72,6 +72,9 @@ export const HAZARD_LANGUAGE = {
   // timing the calm is the counterplay. PQ-027.02 weather: the Veil/Vesta storm lane also speaks
   // as `debris_current` (shots and hulls are bent); the radiation belt speaks as `nebula`
   // (sensors shrink) while a well moves the mass — never the `radiation` hull-drain type.
+  // PQ-027.03 hangar jam also speaks as `debris_current`: a stuffed hull seizes the door and
+  // an inward cone holds reinforcements; timing the open window or yanking the wreck is the
+  // counterplay.
 
   // ── hazard zone types (sectorZones.js `hazard:true`; same phenomenon = same glyph, zone color
   //    derived from ZONE_TYPES so the map and the language can never disagree) ──

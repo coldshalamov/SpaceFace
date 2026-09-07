@@ -1,10 +1,11 @@
-// PQ-027 / SF-22 — Cinder Sluice runtime adapter, three Ceres kill machines, and the
-// Pallas Drift debris reef. World Site receipts are the durable Cinder Sluice state. Kill
-// machines and the reef are authored furniture derived from the saved sim clock. This adapter
-// owns no saved timer and no movement state: it registers volumes into the ONE field kernel
-// and emits hazard-language boundaries. The field kernel/physics membrane remains the only
+// PQ-027 / SF-22 — Cinder Sluice runtime adapter, three Ceres kill machines, the
+// Pallas Drift debris reef, Veil/Vesta weather, and the Ceres hangar aperture jam.
+// World Site receipts are the durable Cinder Sluice state. The rest is authored furniture
+// derived from the saved sim clock plus live occupancy for the jam. This adapter owns no
+// saved timer and no movement state: it registers volumes into the ONE field kernel and
+// emits hazard-language boundaries. The field kernel/physics membrane remains the only
 // force writer. Death is the slam-law payoff against anvils or pinballed mass — never a
-// hull-drain aura.
+// hull-drain aura. The hangar jam holds reinforcements by moving mass, not by a spawn flag.
 
 import { fieldsFlag } from '../data/fields.js';
 import {
@@ -15,13 +16,19 @@ import {
   PALLAS_REEF_FIELD,
   PALLAS_REEF_SECTOR_ID,
   PALLAS_REEF_SITE_ID,
+  APERTURE_FIELDS,
+  APERTURE_ID,
+  APERTURE_PLUG,
   WEATHER_SECTOR_IDS,
   WEATHER_VOLUMES,
+  aperturePhase,
   cinderSluicePhase,
+  isApertureOccupant,
   killMachineFieldCenter,
   killMachineFieldDir,
   killMachinePhase,
   pallasReefPhase,
+  pointInsideAperture,
   pointInsideCinderSluice,
   pointInsideKillMachine,
   pointInsidePallasReef,
@@ -67,6 +74,11 @@ export const environmentalMachinery = {
     this._weatherFieldStrength = new Map();
     this._weatherPlayerInside = new Set();
     this._weatherPhaseOut = {};
+    this._aperturePhaseOut = {};
+    this._apertureFieldStrength = new Map();
+    this._aperturePlayerInside = false;
+    this._apertureJammedAtS = null;
+    this._aperturePlugEnsured = false;
     if (this.bus && typeof this.bus.on === 'function') {
       const clear = (why) => this._clear(why);
       this._unsubs = [
@@ -101,9 +113,11 @@ export const environmentalMachinery = {
     if (inCeres) {
       this._updateCinder(state);
       this._updateKillMachines(state);
+      this._updateAperture(state);
     } else {
       this._clearCinder('wrong_sector');
       this._clearKillMachines('wrong_sector');
+      this._clearAperture('wrong_sector');
     }
 
     if (inPallas) this._updateReef(state);
@@ -134,6 +148,7 @@ export const environmentalMachinery = {
         machines,
         reef: this._reefDiagnostics(simTime),
         weather: this._weatherDiagnostics(state, simTime),
+        aperture: this._apertureDiagnostics(state, simTime),
       });
     }
     const phase = cinderSluicePhase(record, simTime);
@@ -147,6 +162,7 @@ export const environmentalMachinery = {
       machines,
       reef: this._reefDiagnostics(simTime),
       weather: this._weatherDiagnostics(state, simTime),
+      aperture: this._apertureDiagnostics(state, simTime),
     });
   },
 
@@ -159,6 +175,23 @@ export const environmentalMachinery = {
       remainingS: phase.remainingS,
       fieldRegistered: this._reefFieldRegistered,
       playerInside: this._reefPlayerInside,
+    });
+  },
+
+  _apertureDiagnostics(state, simTime) {
+    const phase = aperturePhase(simTime, {
+      occupied: this._apertureOccupied(state),
+      jammedAtS: this._apertureJammedAtS,
+    });
+    return Object.freeze({
+      id: APERTURE_ID,
+      phase: phase.phase,
+      fieldActive: phase.fieldActive,
+      remainingS: phase.remainingS,
+      fieldRegistered: this._apertureFieldStrength.size > 0,
+      playerInside: this._aperturePlayerInside,
+      jammedAtS: this._apertureJammedAtS,
+      occupied: phase.occupied,
     });
   },
 
@@ -210,6 +243,108 @@ export const environmentalMachinery = {
       this._ensureAnvil(machine);
       this._updateKillMachinePlayerBoundary(state, machine, player, phase.fieldActive);
     }
+  },
+
+  _updateAperture(state) {
+    const simTime = simTimeOf(state);
+    const occupied = this._apertureOccupied(state);
+    if (occupied) {
+      if (this._apertureJammedAtS == null) this._apertureJammedAtS = simTime;
+    } else if (this._apertureJammedAtS != null) {
+      const hold = aperturePhase(simTime, {
+        occupied: false,
+        jammedAtS: this._apertureJammedAtS,
+      });
+      if (hold.phase !== 'jam') this._apertureJammedAtS = null;
+    }
+    const phase = aperturePhase(simTime, {
+      occupied,
+      jammedAtS: this._apertureJammedAtS,
+    }, this._aperturePhaseOut);
+    if (phase.fieldActive && phase.fieldStrengthScale > 0) this._upsertApertureFields(phase);
+    else this._removeApertureFields();
+    const wantPlug = phase.fieldActive && phase.fieldStrengthScale > 0 && !occupied;
+    if (wantPlug) this._ensureAperturePlug();
+    else this._releaseAperturePlug();
+    this._updateAperturePlayerBoundary(state, phase.fieldActive);
+  },
+
+  _apertureOccupied(state) {
+    const list = state && state.entityList || [];
+    for (const entity of list) {
+      if (isApertureOccupant(entity)) return true;
+    }
+    return false;
+  },
+
+  _upsertApertureFields(phase) {
+    const system = this._fieldsSystem();
+    if (!system || typeof system.registerEnvironmental !== 'function') return;
+    const createdAt = simTimeOf(this.state);
+    for (const field of APERTURE_FIELDS) {
+      const strength = field.strength * phase.fieldStrengthScale;
+      const live = typeof system.hasExternal === 'function'
+        ? system.hasExternal(field.id)
+        : this._apertureFieldStrength.has(field.id);
+      if (!live) {
+        system.registerEnvironmental({
+          ...field,
+          strength,
+          createdAt,
+        });
+        this._apertureFieldStrength.set(field.id, strength);
+        continue;
+      }
+      if (this._apertureFieldStrength.get(field.id) === strength) continue;
+      if (typeof system.updateExternal === 'function') {
+        system.updateExternal(field.id, { strength });
+      }
+      this._apertureFieldStrength.set(field.id, strength);
+    }
+  },
+
+  _removeApertureFields() {
+    const system = this._fieldsSystem();
+    for (const field of APERTURE_FIELDS) {
+      const live = system && typeof system.hasExternal === 'function'
+        ? system.hasExternal(field.id)
+        : this._apertureFieldStrength.has(field.id);
+      if (live && typeof system.unregisterExternal === 'function') {
+        system.unregisterExternal(field.id);
+      }
+      this._apertureFieldStrength.delete(field.id);
+    }
+  },
+
+  _ensureAperturePlug() {
+    if (this._aperturePlugEnsured) return;
+    if (!this.bus || typeof this.bus.emit !== 'function') return;
+    this.bus.emit('environmentalMachinery:ensureAperturePlug', {
+      id: APERTURE_PLUG.id,
+      pos: APERTURE_PLUG.pos,
+      radius: APERTURE_PLUG.radius,
+      mass: APERTURE_PLUG.mass,
+    });
+    this._aperturePlugEnsured = true;
+  },
+
+  _releaseAperturePlug() {
+    if (!this._aperturePlugEnsured) return;
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('environmentalMachinery:releaseAperturePlug', { id: APERTURE_PLUG.id });
+    }
+    this._aperturePlugEnsured = false;
+  },
+
+  _updateAperturePlayerBoundary(state, fieldActive) {
+    const player = state && state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId)
+      : null;
+    const inside = !!(fieldActive && player && player.alive !== false
+      && pointInsideAperture(player.pos));
+    if (inside === this._aperturePlayerInside) return;
+    this._aperturePlayerInside = inside;
+    this._emitHazardBoundary(inside, HAZARD_TYPE, APERTURE_ID, APERTURE_ID);
   },
 
   _updateReef(state) {
@@ -444,6 +579,16 @@ export const environmentalMachinery = {
     this._anvilsEnsured.clear();
   },
 
+  _clearAperture(why) {
+    this._removeApertureFields();
+    this._releaseAperturePlug();
+    if (this._aperturePlayerInside) {
+      this._emitHazardBoundary(false, HAZARD_TYPE, APERTURE_ID, APERTURE_ID, why);
+    }
+    this._aperturePlayerInside = false;
+    this._apertureJammedAtS = null;
+  },
+
   _clearReef(why) {
     this._removeReefField();
     if (this._reefPlayerInside) {
@@ -527,6 +672,7 @@ export const environmentalMachinery = {
   _clear(why) {
     this._clearCinder(why);
     this._clearKillMachines(why);
+    this._clearAperture(why);
     this._clearReef(why);
     this._clearWeather(why);
   },
