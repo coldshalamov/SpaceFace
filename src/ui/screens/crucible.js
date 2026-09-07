@@ -3,6 +3,12 @@
 // The door picks a hull and a seed and launches through the ordinary New Game route
 // (src/ui/crucibleLaunch.js). The results surface explains how the run ended and offers the same
 // seed again. Neither writes state.run, the phase, or a fitting.
+//
+// Both are built on the frontend kit (styles/kit.css, src/ui/kit/) — Frontend Task D §1. This file
+// owns no CSS. The door is three words with their values and one verb (sheet §2, "The modes"); the
+// results are the run as a story: a hero number, a column of sentences, the build as fine print.
+// The DOM is built with `el` + appendChild only, because the results unit test mounts the plate
+// against a minimal fake document.
 
 import { COMBAT_LAB_STARTER_PACKAGES } from '../../data/combatLabSetups.js';
 import { WEAPONS } from '../../data/weapons.js';
@@ -22,6 +28,7 @@ import {
   SWARM_REFIT_EVERY,
   SWARM_RULESET,
 } from '../../data/swarmMode.js';
+import { survivalArenaById } from '../../data/survivalArenas.js';
 import { SURVIVAL_RUN_WAVE_COUNT } from '../../systems/survivalRun.js';
 import {
   dailySeedForNow,
@@ -36,190 +43,38 @@ import { meetsUnlockCondition } from '../../systems/survivalUnlocks.js';
 import { compileAttackSpec } from '../../combat/attackSpec.js';
 import { causalKindsFromSpec } from '../../systems/adventureMigration.js';
 import { comboSummary } from '../../systems/stuntCombo.js';
+import { el, settle, stamp, cue } from '../kit/index.js';
 
-const STYLE_ID = 'sf-crucible-door-style';
-
-function injectStyle() {
-  if (typeof document === 'undefined' || document.getElementById(STYLE_ID)) return;
-  const s = document.createElement('style');
-  s.id = STYLE_ID;
-  s.textContent = `
-  .sf-menu.sf-crucible-door { gap:16px; padding:32px 36px; min-width:400px; max-width:min(92vw,720px); }
-  #screens .sf-menu.sf-crucible-door h1 { justify-content:center; margin:0; padding-bottom:10px;
-    font-family:var(--mf-display); font-weight:700; letter-spacing:.04em; font-size:24px; text-transform:uppercase; }
-  .sf-menu.sf-crucible-door .sf-crd-sub { text-align:center; color:var(--ink-dim); font-size:13px;
-    line-height:1.55; margin-top:-8px; }
-  .sf-menu.sf-crucible-door .sf-crd-hulls { display:grid; gap:10px;
-    grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); }
-  .sf-menu.sf-crucible-door .sf-crd-hull { display:flex; flex-direction:column; gap:5px; text-align:left;
-    border:1px solid var(--line); border-radius:2px; background:rgba(255,255,255,.03);
-    padding:12px 14px; cursor:pointer; color:var(--ink); font:inherit; }
-  .sf-menu.sf-crucible-door .sf-crd-hull[aria-pressed="true"] { border-color:var(--accent-3); }
-  .sf-menu.sf-crucible-door .sf-crd-hull .n { font-family:var(--mf-ui); font-weight:600; letter-spacing:.04em;
-    font-size:13px; text-transform:uppercase; }
-  .sf-menu.sf-crucible-door .sf-crd-hull .d { font-size:12px; color:var(--ink-dim); }
-  .sf-menu.sf-crucible-door .sf-crd-modes { display:grid; gap:10px;
-    grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); }
-  .sf-menu.sf-crucible-door .sf-crd-mode,
-  .sf-menu.sf-crucible-door .sf-crd-daily,
-  .sf-menu.sf-crucible-door .sf-crd-weekly,
-  .sf-menu.sf-crucible-door .sf-crd-ghost { display:flex; flex-direction:column; gap:5px; text-align:left;
-    border:1px solid var(--line); border-radius:2px; background:rgba(255,255,255,.03);
-    padding:12px 14px; cursor:pointer; color:var(--ink); font:inherit; }
-  .sf-menu.sf-crucible-door .sf-crd-mode[aria-pressed="true"],
-  .sf-menu.sf-crucible-door .sf-crd-daily[aria-pressed="true"],
-  .sf-menu.sf-crucible-door .sf-crd-weekly[aria-pressed="true"],
-  .sf-menu.sf-crucible-door .sf-crd-ghost[aria-pressed="true"] { border-color:var(--accent-3);
-    background:color-mix(in srgb, var(--accent-3) 9%, transparent); }
-  .sf-menu.sf-crucible-door .sf-crd-mode .n,
-  .sf-menu.sf-crucible-door .sf-crd-daily .n,
-  .sf-menu.sf-crucible-door .sf-crd-weekly .n,
-  .sf-menu.sf-crucible-door .sf-crd-ghost .n { font-family:var(--mf-ui); font-weight:600; letter-spacing:.04em;
-    font-size:13px; text-transform:uppercase; }
-  /* Mode and hull descriptions are sentences: sentence case in the UI face, never tracked caps. */
-  .sf-menu.sf-crucible-door .sf-crd-mode .d,
-  .sf-menu.sf-crucible-door .sf-crd-daily .d,
-  .sf-menu.sf-crucible-door .sf-crd-weekly .d,
-  .sf-menu.sf-crucible-door .sf-crd-ghost .d,
-  .sf-menu.sf-crucible-door .sf-crd-hull .d { font-family:var(--mf-ui); font-size:13px; color:var(--ink-dim);
-    line-height:1.45; letter-spacing:0; text-transform:none; }
-  .sf-menu.sf-crucible-door .sf-crd-label { font-family:var(--mf-ui); font-weight:600; font-size:12px;
-    letter-spacing:.06em; text-transform:uppercase; color:var(--ink-dim); }
-  .sf-menu.sf-crucible-door .sf-crd-seed { display:flex; gap:10px; align-items:center;
-    justify-content:center; font-family:var(--mf-ui); font-size:13px; color:var(--ink-dim); }
-  .sf-menu.sf-crucible-door .sf-crd-seed input { font-family:var(--mono); font-variant-numeric:tabular-nums; }
-  .sf-menu.sf-crucible-door .sf-crd-seed input { width:130px; background:rgba(0,0,0,.3);
-    border:1px solid var(--line); color:var(--ink); font:inherit; padding:6px 8px; border-radius:2px; }
-  .sf-menu.sf-crucible-door .sf-crd-seed input[readonly] { cursor:default; opacity:.9; }
-  .sf-menu.sf-crucible-door .sf-crd-foot { display:flex; gap:10px; justify-content:center; margin-top:4px; }
-  .sf-menu.sf-crucible-results .sf-crd-headline { text-align:center; font-size:15px; line-height:1.6;
-    color:var(--sf-paper); border:1px solid var(--line); border-radius:2px; padding:12px 14px;
-    background:rgba(255,255,255,.03); }
-  .sf-menu.sf-crucible-results .sf-crd-grid { display:grid; grid-template-columns:auto 1fr;
-    gap:6px 22px; align-items:baseline; }
-  .sf-menu.sf-crucible-results .sf-crd-grid .k { font-family:var(--sf-subhead-face); font-weight:600;
-    font-size:12px; letter-spacing:.06em; color:var(--sf-calm); }
-  .sf-menu.sf-crucible-results .sf-crd-grid .v { text-align:right; font-family:var(--sf-data-face);
-    font-weight:500; font-size:13px; font-variant-numeric:tabular-nums; color:var(--sf-paper); }
-
-  /* The flight record. Bands, not a second styling system: the plate differs between a clear and a
-     death by WHICH bands exist and which one leads, never by re-skinning the same rows.
-     No animation anywhere in this block, so reduced-motion needs no variant. */
-  .sf-menu.sf-crucible-results .sf-crres__band { display:flex; flex-direction:column; gap:7px;
-    padding:10px 0 0; border-top:1px solid var(--line); }
-  .sf-menu.sf-crucible-results .sf-crres__band-title { font-family:var(--sf-subhead-face);
-    font-weight:600; font-size:12px; letter-spacing:.06em; text-transform:uppercase;
-    color:var(--sf-calm); }
-  .sf-menu.sf-crucible-results .sf-crres__lead { font-size:13px; line-height:1.55;
-    color:var(--sf-paper); }
-  .sf-menu.sf-crucible-results .sf-crres__empty { text-align:center; font-size:13px;
-    line-height:1.55; color:var(--sf-calm); }
-  .sf-menu.sf-crucible-results .sf-crres__chain { display:grid; grid-template-columns:auto 1fr;
-    gap:5px 18px; align-items:baseline; }
-  .sf-menu.sf-crucible-results .sf-crres__chain-k { font-family:var(--sf-subhead-face);
-    font-weight:600; font-size:12px; letter-spacing:.06em; color:var(--sf-calm); }
-  .sf-menu.sf-crucible-results .sf-crres__chain-v { font-size:13px; line-height:1.45;
-    color:var(--sf-paper); }
-  .sf-menu.sf-crucible-results .sf-crres__chain-v[data-role="foe"] { color:var(--sf-foe); }
-  .sf-menu.sf-crucible-results .sf-crres__vitals { display:flex; flex-wrap:wrap; gap:4px 14px;
-    align-items:baseline; }
-  .sf-menu.sf-crucible-results .sf-crres__vital-word { font-family:var(--sf-subhead-face);
-    font-weight:600; font-size:12px; letter-spacing:.06em; color:var(--sf-calm); }
-  .sf-menu.sf-crucible-results .sf-crres__vital-fig { font-family:var(--sf-data-face);
-    font-weight:500; font-size:13px; font-variant-numeric:tabular-nums; color:var(--sf-foe);
-    margin-left:5px; }
-  .sf-menu.sf-crucible-results .sf-crres__hit { display:flex; align-items:center; gap:9px;
-    flex-wrap:wrap; }
-  .sf-menu.sf-crucible-results .sf-crres__hit-name { flex:0 1 auto; font-size:13px;
-    color:var(--sf-paper); }
-  .sf-menu.sf-crucible-results .sf-crres__hit-track { position:relative; flex:1 1 60px;
-    min-width:60px; height:4px; background:rgba(211,230,255,.16); }
-  .sf-menu.sf-crucible-results .sf-crres__hit-fill { position:absolute; inset:0 auto 0 0; width:0;
-    background:var(--sf-foe); }
-  .sf-menu.sf-crucible-results .sf-crres__hit-fig { font-family:var(--sf-data-face); font-weight:500;
-    font-size:12px; font-variant-numeric:tabular-nums; color:var(--sf-foe); white-space:nowrap; }
-  .sf-menu.sf-crucible-results .sf-crres__build { display:flex; flex-wrap:wrap; gap:6px 8px;
-    align-items:baseline; }
-  .sf-menu.sf-crucible-results .sf-crres__step { display:inline-flex; align-items:baseline; gap:5px;
-    border-left:1px solid var(--sf-edge); padding:2px 8px;
-    background:color-mix(in srgb, var(--sf-you) 6%, transparent); }
-  .sf-menu.sf-crucible-results .sf-crres__step-word { font-family:var(--sf-subhead-face);
-    font-weight:600; font-size:12px; letter-spacing:.06em; color:var(--sf-calm); }
-  .sf-menu.sf-crucible-results .sf-crres__step-fig { font-family:var(--sf-data-face); font-weight:500;
-    font-size:12px; font-variant-numeric:tabular-nums; color:var(--sf-calm); }
-  .sf-menu.sf-crucible-results .sf-crres__step-verb { font-family:var(--sf-subhead-face);
-    font-weight:600; font-size:15px; color:var(--sf-you); }
-  /* THE RECORD BAND — the door's answer to "why play again". Per the phase's own rule, nothing
-     here is power: the ladder lists possibilities still closed and the exact condition that opens
-     each, so the reason to return is the shape of the next run, never a bigger number. */
-  .sf-menu.sf-crucible-door .sf-crd-rec { display:grid; gap:10px; padding-top:12px;
-    border-top:1px solid var(--panel-edge); }
-  .sf-menu.sf-crucible-door .sf-crd-rec__figs { display:grid; gap:8px;
-    grid-template-columns:repeat(auto-fit,minmax(84px,1fr)); }
-  .sf-menu.sf-crucible-door .sf-crd-fig { display:flex; flex-direction:column; gap:2px; }
-  .sf-menu.sf-crucible-door .sf-crd-fig b { font-family:var(--mono); font-size:18px; line-height:1;
-    color:var(--ink); font-variant-numeric:tabular-nums; }
-  .sf-menu.sf-crucible-door .sf-crd-fig span { font-size:12px; color:var(--ink-dim);
-    letter-spacing:.06em; text-transform:uppercase; }
-  .sf-menu.sf-crucible-door .sf-crd-rec__head { display:flex; align-items:baseline;
-    justify-content:space-between; gap:12px; font-size:12px; letter-spacing:.06em;
-    text-transform:uppercase; color:var(--ink-dim); }
-  .sf-menu.sf-crucible-door .sf-crd-ladder { display:grid; gap:4px; max-height:196px;
-    overflow-y:auto; overscroll-behavior:contain; }
-  .sf-menu.sf-crucible-door .sf-crd-lock { display:grid; grid-template-columns:14px minmax(0,1fr) auto;
-    gap:9px; align-items:baseline; padding:5px 7px; border-radius:3px; font-size:13px; }
-  .sf-menu.sf-crucible-door .sf-crd-lock__m { font-family:var(--mono); font-size:12px; line-height:1.3; }
-  .sf-menu.sf-crucible-door .sf-crd-lock__n { min-width:0; color:var(--ink); }
-  .sf-menu.sf-crucible-door .sf-crd-lock__c { font-size:12px; color:var(--ink-dim);
-    font-variant-numeric:tabular-nums; text-align:right; }
-  /* Colour by MEANING, not by decoration: open is settled paper, closed is the goal you can still
-     reach. Nothing here is a warning, because nothing here is going wrong. */
-  .sf-menu.sf-crucible-door .sf-crd-lock.is-open { background:color-mix(in srgb, var(--ink) 5%, transparent); }
-  .sf-menu.sf-crucible-door .sf-crd-lock.is-open .sf-crd-lock__m { color:var(--ink-dim); }
-  .sf-menu.sf-crucible-door .sf-crd-lock.is-shut .sf-crd-lock__n { color:var(--ink-dim); }
-  .sf-menu.sf-crucible-door .sf-crd-lock.is-shut .sf-crd-lock__m { color:var(--sf-goal, #e3a13d); }
-  .sf-menu.sf-crucible-door .sf-crd-runs { display:grid; gap:3px; }
-  .sf-menu.sf-crucible-door .sf-crd-run { display:grid;
-    grid-template-columns:auto minmax(0,1fr) auto; gap:9px; align-items:baseline;
-    font-size:12px; font-variant-numeric:tabular-nums; color:var(--ink-dim); }
-  .sf-menu.sf-crucible-door .sf-crd-run b { font-family:var(--mono); color:var(--ink); font-weight:600; }
-  .sf-menu.sf-crucible-door .sf-crd-none { font-size:12px; color:var(--ink-dim); }
-  /* CAUSAL TAGS — how the finished build put damage in. Colour carries MEANING here: the routes
-     that bend or spread a shot read as the live signal, and plain DIRECT stays paper, because
-     "it went where you pointed it" is not a distinction worth heat. */
-  .sf-menu.sf-crucible-results .sf-crres__causal-lead { color:var(--ink-dim); font-size:13px;
-    line-height:1.5; margin-top:6px; }
-  .sf-menu.sf-crucible-results .sf-crres__causal { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
-  .sf-menu.sf-crucible-results .sf-crres__causal-tag {
-    padding:3px 8px; border-radius:2px; font-family:var(--mono); font-size:12px;
-    letter-spacing:.06em; color:var(--ink);
-    background:color-mix(in srgb, var(--sx-cool, #62cfe0) 16%, transparent);
-    box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--sx-cool, #62cfe0) 34%, transparent);
-  }
-  .sf-menu.sf-crucible-results .sf-crres__causal-tag[data-kind="direct"] {
-    background:color-mix(in srgb, var(--ink) 8%, transparent);
-    box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--ink) 18%, transparent);
-  }
-  @media (forced-colors: active) {
-    .sf-menu.sf-crucible-results .sf-crres__causal-tag {
-      border:1px solid CanvasText; background:Canvas; color:CanvasText; forced-color-adjust:none;
-    }
-  }
-  /* forced-colors strips the share bars; the figure beside every bar is the surviving channel. */
-  @media (forced-colors: active) {
-    .sf-menu.sf-crucible-results .sf-crres__hit-track { background:Canvas; border:1px solid CanvasText; }
-    .sf-menu.sf-crucible-results .sf-crres__hit-fill { background:Highlight; forced-color-adjust:none; }
-    .sf-menu.sf-crucible-results .sf-crres__step { border-left:1px solid var(--sf-edge); background:Canvas; }
-  }
-  `;
-  document.head.appendChild(s);
+/** A kit word (`button.k-word`). The caller appends it. */
+function word(label, className) {
+  const button = el('button', 'k-word' + (className ? ' ' + className : ''), label);
+  button.type = 'button';
+  return button;
 }
 
-function el(tag, cls, text) {
-  const node = document.createElement(tag);
-  if (cls) node.className = cls;
-  if (text != null) node.textContent = text;
-  return node;
+/** A kit hero block built without `append` (the results test's fake document has appendChild only). */
+function heroBlock(number, text, className) {
+  const block = el('div', 'k-hero' + (className ? ' ' + className : ''));
+  block.appendChild(el('div', 'k-hero__n', number));
+  if (text) block.appendChild(el('div', 'k-hero__w', text));
+  return block;
+}
+
+/** A static kit row: a name (with an optional sub line) and a number. */
+function staticRow(name, value, { sub = '', valueClass = '', className = '' } = {}) {
+  const row = el('li', 'k-row k-row--static' + (className ? ' ' + className : ''));
+  const left = el('div');
+  left.appendChild(el('span', 'k-row__name', name));
+  if (sub) left.appendChild(el('div', 'k-row__sub', sub));
+  row.appendChild(left);
+  row.appendChild(el('span', 'k-row__num' + (valueClass ? ' ' + valueClass : ''), value));
+  return row;
+}
+
+/** Guarded kit motion: the unit tests mount these screens under a fake document with no frame clock. */
+function canAnimate() {
+  return typeof requestAnimationFrame === 'function' && typeof document !== 'undefined'
+    && typeof document.createElement === 'function' && typeof HTMLElement === 'function';
 }
 
 function hullBlurb(starter) {
@@ -231,6 +86,11 @@ function hullBlurb(starter) {
 function freshSeed() {
   const now = Date.now() >>> 0;
   return normalizeSeed((now ^ (now >>> 13) ^ 0x9e3779b9) >>> 0);
+}
+
+function arenaName() {
+  const arena = survivalArenaById(CRUCIBLE_ARENA_ID);
+  return arena && arena.label ? arena.label : CRUCIBLE_ARENA_ID;
 }
 
 /* --- THE RECORD BAND ------------------------------------------------------------------------
@@ -331,81 +191,63 @@ export function recentRunRows(profile, limit = 5) {
   }));
 }
 
-function renderRecordBand(profile, dateKey) {
-  const band = el('div', 'sf-crd-rec');
-
+/**
+ * The record's figures for the door's corner: today's board when it exists, then the lifetime
+ * figures, each a small hero (number over word).
+ */
+function renderRecordCorner(profile, dateKey) {
+  const corner = el('aside', 'k-corner sf-crd-rec');
+  corner.setAttribute('aria-label', 'Your record');
   const today = todayBoardFigures(profile, dateKey);
   if (today) {
-    const todayHead = el('div', 'sf-crd-rec__head');
-    todayHead.appendChild(el('span', null, today.label));
-    band.appendChild(todayHead);
-    const todayFigs = el('div', 'sf-crd-rec__figs');
-    const scoreCell = el('div', 'sf-crd-fig');
-    scoreCell.appendChild(el('b', null, String(today.score)));
-    scoreCell.appendChild(el('span', null, 'Score'));
-    todayFigs.appendChild(scoreCell);
-    const waveCell = el('div', 'sf-crd-fig');
-    waveCell.appendChild(el('b', null, String(today.wave)));
-    waveCell.appendChild(el('span', null, 'Wave'));
-    todayFigs.appendChild(waveCell);
-    band.appendChild(todayFigs);
+    corner.appendChild(heroBlock(String(today.score), 'today · score', 'sf-crd-fig'));
+    corner.appendChild(heroBlock(String(today.wave), 'today · wave', 'sf-crd-fig'));
   }
-
-  const figs = el('div', 'sf-crd-rec__figs');
   for (const f of lifetimeFigures(profile)) {
-    const cell = el('div', 'sf-crd-fig');
-    cell.appendChild(el('b', null, String(f.value)));
-    cell.appendChild(el('span', null, f.label));
-    figs.appendChild(cell);
+    corner.appendChild(heroBlock(String(f.value), f.label.toLowerCase(), 'sf-crd-fig'));
   }
-  band.appendChild(figs);
+  return corner;
+}
 
+/**
+ * The unlock ladder and the recent runs, as kit rows under the three settings. Closed first — the
+ * band exists to show what is still ahead, so the answer sits at the top.
+ */
+function renderRecordRows(profile) {
+  const band = el('div', 'sf-crd-rec__rows');
   const rows = unlockLadderRows(profile);
   const openCount = rows.filter((r) => r.open).length;
-  const head = el('div', 'sf-crd-rec__head');
   // The heading and the figure must count the same thing. "Still to open" beside "1 / 14" read as
   // one-of-fourteen-remaining when it meant one-of-fourteen-open — the label and the number were
   // describing opposite sets.
-  head.appendChild(el('span', null, 'Unlocks'));
-  head.appendChild(el('span', null, `${openCount} of ${rows.length} open`));
-  band.appendChild(head);
-
-  const ladder = el('div', 'sf-crd-ladder');
+  band.appendChild(el('p', 'k-caps', `Unlocks · ${openCount} of ${rows.length} open`));
+  const ladder = el('ul', 'k-rows sf-crd-ladder');
   ladder.setAttribute('role', 'list');
-  // Closed first — the band exists to show what is still ahead, so the answer sits at the top.
   const ordered = [...rows.filter((r) => !r.open), ...rows.filter((r) => r.open)];
   for (const r of ordered) {
-    const row = el('div', `sf-crd-lock ${r.open ? 'is-open' : 'is-shut'}`);
-    row.setAttribute('role', 'listitem');
     // A glyph, not colour alone: forced-colors and colour-blind readers get the same answer.
-    row.appendChild(el('span', 'sf-crd-lock__m', r.open ? '+' : '·'));
-    const name = el('span', 'sf-crd-lock__n', r.label);
-    name.title = r.blurb || '';
-    row.appendChild(name);
-    row.appendChild(el('span', 'sf-crd-lock__c', r.open ? 'open' : r.condition));
+    const row = staticRow(`${r.open ? '+' : '·'} ${r.label}`, r.open ? 'open' : r.condition, {
+      sub: r.blurb || '',
+      valueClass: 'k-t-fine ' + (r.open ? 'k-38' : 'k-62'),
+      className: `sf-crd-lock ${r.open ? 'is-open' : 'is-shut'}`,
+    });
+    row.setAttribute('role', 'listitem');
     row.setAttribute('aria-label', `${r.label}. ${r.open ? 'Open.' : 'Closed — ' + r.condition + '.'}`);
     ladder.appendChild(row);
   }
   band.appendChild(ladder);
 
   const runs = recentRunRows(profile);
+  band.appendChild(el('p', 'k-caps', 'Recent runs'));
   if (runs.length) {
-    const rhead = el('div', 'sf-crd-rec__head');
-    rhead.appendChild(el('span', null, 'Recent runs'));
-    band.appendChild(rhead);
-    const list = el('div', 'sf-crd-runs');
+    const list = el('ul', 'k-rows sf-crd-runs');
     for (const r of runs) {
-      const row = el('div', 'sf-crd-run');
-      row.appendChild(el('b', null, r.outcome));
-      row.appendChild(el('span', null, `wave ${r.wave}`));
-      row.appendChild(el('span', null, `${r.score}`));
-      list.appendChild(row);
+      list.appendChild(staticRow(`${r.outcome.toLowerCase()} · wave ${r.wave}`, String(r.score), { className: 'sf-crd-run' }));
     }
     band.appendChild(list);
   } else {
-    band.appendChild(el('div', 'sf-crd-none', 'No runs recorded yet. The first one starts the record.'));
+    band.appendChild(el('p', 'k-sentence sf-crd-none', 'No runs recorded yet. The first one starts the record.'));
   }
-
   return band;
 }
 
@@ -466,9 +308,9 @@ export const crucibleScreen = {
 
   mount(rootEl, ctx) {
     let enterButton = null;
-    injectStyle();
     rootEl.innerHTML = '';
-    rootEl.classList.add('panel', 'sf-menu', 'sf-crucible-door');
+    rootEl.classList.add('k-screen', 'k-screen--stage', 'sf-crucible-door');
+    rootEl.dataset.kReady = '0';
     rootEl.dataset.stamp = 'CRUCIBLE / SURVIVAL';
     rootEl.setAttribute('role', 'dialog');
     rootEl.setAttribute('aria-labelledby', 'sf-crucible-title');
@@ -484,29 +326,51 @@ export const crucibleScreen = {
     try { doorProfile = loadCrucibleMeta(); } catch { doorProfile = null; }
     let raceGhost = !!(previous && previous.ghostHash);
 
-    const h = el('h1', null, 'Crucible');
+    // .k-title — the name and the live mode's blurb (syncMode writes it).
+    const title = el('header', 'k-title');
+    const h = el('h1', 'k-display k-t-title', 'Crucible');
     h.id = 'sf-crucible-title';
-    rootEl.appendChild(h);
-    const sub = el('div', 'sf-crd-sub', '');
-    rootEl.appendChild(sub);
+    title.appendChild(h);
+    const sub = el('p', 'k-t-emph k-62 sf-crd-sub', '');
+    title.appendChild(sub);
+    rootEl.appendChild(title);
+
+    // .k-stage — Mode, Hull and Seed as three static rows; each row is the word and its values.
+    const stage = el('section', 'k-stage');
+    const settings = el('ul', 'k-rows sf-crd-settings');
+    settings.style.setProperty('--k-row-cols', 'auto minmax(0, 1fr)');
+    settings.setAttribute('aria-label', 'Run settings');
+    stage.appendChild(settings);
+
+    function settingRow(label, hook) {
+      const row = el('li', 'k-row k-row--static ' + hook);
+      row.appendChild(el('span', 'k-row__name k-62', label));
+      const body = el('div');
+      row.appendChild(body);
+      settings.appendChild(row);
+      return body;
+    }
 
     // THE MODE COMES FIRST, because it is the biggest difference between two runs — bigger than
     // the hull and much bigger than the seed. Swarm leads: it is what the Crucible is.
     // Daily sits beside the two rulesets as its own control (not a third .sf-crd-mode) so the
     // existing two-mode door check still sees Swarm/Gauntlet as the ruleset pair. Weekly is the
     // same kind of sibling: it locks this UTC week's mutator without becoming a fourth ruleset.
-    rootEl.appendChild(el('div', 'sf-crd-label', 'Mode'));
-    const modes = el('div', 'sf-crd-modes');
+    const modeBody = settingRow('Mode', 'sf-crd-row--mode');
+    const modes = el('ul', 'k-words k-words--row sf-crd-modes');
+    modes.setAttribute('aria-label', 'Mode');
     const modeButtons = [];
     let dailyButton = null;
+    const addWord = (list, button) => {
+      const li = el('li');
+      li.appendChild(button);
+      list.appendChild(li);
+      return button;
+    };
     for (const entry of CRUCIBLE_MODE_CARDS) {
-      const card = document.createElement('button');
-      card.type = 'button';
-      card.className = 'sf-crd-mode';
+      const card = word(entry.label, 'k-word--emph sf-crd-mode');
       card.dataset.ruleset = entry.ruleset;
       card.setAttribute('aria-pressed', String(!daily && entry.ruleset === ruleset));
-      card.appendChild(el('div', 'n', entry.label));
-      card.appendChild(el('div', 'd', entry.blurb));
       card.addEventListener('click', () => {
         if (daily) {
           daily = false;
@@ -517,59 +381,55 @@ export const crucibleScreen = {
           other.setAttribute('aria-pressed', String(other.dataset.ruleset === ruleset));
         }
         if (dailyButton) dailyButton.setAttribute('aria-pressed', 'false');
+        cue('confirm');
         syncMode();
       });
       modeButtons.push(card);
-      modes.appendChild(card);
+      addWord(modes, card);
     }
-    dailyButton = document.createElement('button');
-    dailyButton.type = 'button';
-    dailyButton.className = 'sf-crd-daily';
+    dailyButton = word(DAILY_CARD.label, 'k-word--fine sf-crd-daily');
     dailyButton.setAttribute('aria-pressed', String(daily));
-    dailyButton.appendChild(el('div', 'n', DAILY_CARD.label));
-    dailyButton.appendChild(el('div', 'd', DAILY_CARD.blurb));
     dailyButton.addEventListener('click', () => {
       if (!daily) freeSeed = seedInput.value;
       daily = true;
       ruleset = SWARM_RULESET;
       for (const other of modeButtons) other.setAttribute('aria-pressed', 'false');
       dailyButton.setAttribute('aria-pressed', 'true');
+      cue('confirm');
       syncMode();
     });
-    modes.appendChild(dailyButton);
+    addWord(modes, dailyButton);
     // PQ-169.02: weekly rotation is local. No live-ops feed.
     const weeklyCard = weeklyDoorCard();
-    const weeklyButton = document.createElement('button');
-    weeklyButton.type = 'button';
-    weeklyButton.className = 'sf-crd-weekly';
+    const weeklyButton = word(weeklyCard.label, 'k-word--fine sf-crd-weekly');
     weeklyButton.setAttribute('aria-pressed', String(weekly));
-    weeklyButton.appendChild(el('div', 'n', weeklyCard.label));
-    const weeklyBlurb = el('div', 'd', weeklyCard.blurb);
-    weeklyButton.appendChild(weeklyBlurb);
     weeklyButton.addEventListener('click', () => {
       weekly = !weekly;
       weeklyButton.setAttribute('aria-pressed', String(weekly));
+      cue('confirm');
       syncMode();
     });
-    modes.appendChild(weeklyButton);
-    const ghostButton = document.createElement('button');
-    ghostButton.type = 'button';
-    ghostButton.className = 'sf-crd-ghost';
-    ghostButton.appendChild(el('div', 'n', GHOST_CARD.label));
-    const ghostBlurb = el('div', 'd', GHOST_CARD.blurbOff);
-    ghostButton.appendChild(ghostBlurb);
+    addWord(modes, weeklyButton);
+    const ghostButton = word(GHOST_CARD.label, 'k-word--fine sf-crd-ghost');
     ghostButton.addEventListener('click', () => {
       const offer = currentGhostOffer();
       if (!offer.available) {
         raceGhost = false;
+        cue('deny');
         syncGhost();
         return;
       }
       raceGhost = !raceGhost;
+      cue('confirm');
       syncGhost();
     });
-    modes.appendChild(ghostButton);
-    rootEl.appendChild(modes);
+    addWord(modes, ghostButton);
+    modeBody.appendChild(modes);
+    // The mode's sentence, and beneath it the ghost's one line.
+    const modeSentence = el('p', 'k-sentence sf-crd-mode-sub', '');
+    modeBody.appendChild(modeSentence);
+    const ghostBlurb = el('p', 'k-t-fine k-38 sf-crd-ghost-sub', GHOST_CARD.blurbOff);
+    modeBody.appendChild(ghostBlurb);
 
     function currentGhostOffer() {
       return ghostRaceOffer(doorProfile, normalizeSeed(seedInput ? seedInput.value : (daily ? dailySeedForNow() : 1)));
@@ -585,9 +445,9 @@ export const crucibleScreen = {
 
     function syncMode() {
       const week = weeklyDoorCard();
-      weeklyBlurb.textContent = week.blurb;
       if (daily) {
-        sub.textContent = weekly
+        sub.textContent = DAILY_CARD.blurb;
+        modeSentence.textContent = weekly
           ? `${DAILY_CARD.sub} This week: ${week.name}. ${week.blurb}`
           : DAILY_CARD.sub;
         if (enterButton) enterButton.textContent = weekly ? `Play ${week.name}` : DAILY_CARD.verb;
@@ -595,57 +455,65 @@ export const crucibleScreen = {
         seedInput.setAttribute('aria-readonly', 'true');
         seedInput.value = String(dailySeedForNow());
         reroll.disabled = true;
+        reroll.setAttribute('aria-disabled', 'true');
         syncGhost();
         return;
       }
       const entry = CRUCIBLE_MODE_CARDS.find((m) => m.ruleset === ruleset) || CRUCIBLE_MODE_CARDS[0];
-      sub.textContent = weekly ? week.sub : entry.sub;
+      sub.textContent = entry.blurb;
+      modeSentence.textContent = weekly ? week.sub : entry.sub;
       if (enterButton) enterButton.textContent = weekly ? `Play ${week.name}` : entry.verb;
       seedInput.readOnly = false;
       seedInput.removeAttribute('aria-readonly');
       reroll.disabled = false;
+      reroll.removeAttribute('aria-disabled');
       syncGhost();
     }
 
-    rootEl.appendChild(el('div', 'sf-crd-label', 'Hull'));
-    const hulls = el('div', 'sf-crd-hulls');
+    // Hull — the starter names as words, the live one bright, its blurb beneath.
+    const hullBody = settingRow('Hull', 'sf-crd-row--hull');
+    const hulls = el('ul', 'k-words k-words--row sf-crd-hulls');
+    hulls.setAttribute('aria-label', 'Hull');
     const buttons = [];
+    const hullSentence = el('p', 'k-sentence sf-crd-hull-sub', '');
+    function syncHull() {
+      const starter = COMBAT_LAB_STARTER_PACKAGES.find((s) => s.id === starterId) || COMBAT_LAB_STARTER_PACKAGES[0];
+      hullSentence.textContent = starter ? hullBlurb(starter) : '';
+      for (const other of buttons) {
+        other.setAttribute('aria-pressed', String(other.dataset.starterId === starterId));
+      }
+    }
     for (const starter of COMBAT_LAB_STARTER_PACKAGES) {
-      const card = document.createElement('button');
-      card.type = 'button';
-      card.className = 'sf-crd-hull';
+      const card = word(starter.label, 'k-word--emph sf-crd-hull');
       card.dataset.starterId = starter.id;
       card.setAttribute('aria-pressed', String(starter.id === starterId));
-      card.appendChild(el('div', 'n', starter.label));
-      card.appendChild(el('div', 'd', hullBlurb(starter)));
       card.addEventListener('click', () => {
         starterId = starter.id;
-        for (const other of buttons) {
-          other.setAttribute('aria-pressed', String(other.dataset.starterId === starterId));
-        }
+        cue('confirm');
+        syncHull();
       });
       buttons.push(card);
-      hulls.appendChild(card);
+      addWord(hulls, card);
     }
-    rootEl.appendChild(hulls);
+    hullBody.appendChild(hulls);
+    hullBody.appendChild(hullSentence);
 
-    const seedRow = el('div', 'sf-crd-seed');
-    seedRow.appendChild(el('span', null, 'SEED'));
-    const seedInput = document.createElement('input');
+    // Seed — the number as an underlined input, "New seed" as a fine word, the arena in fine print.
+    const seedBody = settingRow('Seed', 'sf-crd-row--seed');
+    const seedRow = el('div', 'k-words k-words--row sf-crd-seed');
+    const seedInput = el('input', 'k-input k-input--num');
     seedInput.type = 'text';
     seedInput.inputMode = 'numeric';
     seedInput.spellcheck = false; seedInput.autocomplete = 'off';
     seedInput.setAttribute('aria-label', 'Run seed');
     seedInput.value = String(daily ? dailySeedForNow() : (previous ? previous.seed : freshSeed()));
     seedRow.appendChild(seedInput);
-    const reroll = document.createElement('button');
-    reroll.type = 'button';
-    reroll.className = 'sf-btn';
-    reroll.textContent = 'New seed';
+    const reroll = word('New seed', 'k-word--fine');
     reroll.addEventListener('click', () => {
-      if (daily) return;
+      if (daily) { cue('deny'); return; }
       seedInput.value = String(freshSeed());
       freeSeed = seedInput.value;
+      cue('confirm');
       syncGhost();
     });
     seedInput.addEventListener('input', () => {
@@ -653,13 +521,33 @@ export const crucibleScreen = {
       syncGhost();
     });
     seedRow.appendChild(reroll);
-    rootEl.appendChild(seedRow);
+    seedBody.appendChild(seedRow);
+    // The arena cannot change, so it is named, not offered.
+    seedBody.appendChild(el('p', 'k-t-fine k-38 sf-crd-arena', `Arena: ${arenaName()}`));
 
-    const foot = el('div', 'sf-crd-foot');
-    const enter = document.createElement('button');
-    enter.type = 'button';
-    enter.className = 'sf-btn sf-btn--primary';
-    enter.textContent = 'Hold the line';
+    // The record goes last, below the three settings: the door's job is to start a run, and the
+    // reason to start another one is context for that, not a competitor for it. Reading the
+    // profile must never be able to stop the door opening, so a broken or absent profile just
+    // omits the record.
+    let corner = null;
+    try {
+      if (doorProfile) {
+        stage.appendChild(renderRecordRows(doorProfile));
+        corner = renderRecordCorner(doorProfile, utcDateKeyNow());
+      }
+    } catch (err) {
+      if (typeof console !== 'undefined' && console.warn) {
+        console.warn('[crucible] record band skipped:', err && err.message ? err.message : err);
+      }
+    }
+    rootEl.appendChild(stage);
+    if (corner) rootEl.appendChild(corner);
+
+    // .k-foot — Enter as one word (the mode's verb), Back.
+    const foot = el('footer', 'k-foot sf-crd-foot');
+    const footWords = el('ul', 'k-words k-words--row');
+    footWords.setAttribute('aria-label', 'Crucible');
+    const enter = word('Hold the line', 'k-word--emph k-word--primary');
     enterButton = enter;
     enter.addEventListener('click', () => {
       const setup = crucibleSetupFor({
@@ -669,9 +557,11 @@ export const crucibleScreen = {
         ruleset,
       });
       if (!setup.ok || !setup.value) {
+        cue('deny');
         ctx.bus.emit('toast', { text: 'Crucible setup invalid', kind: 'error', ttl: 4 });
         return;
       }
+      cue('confirm');
       const payload = { ...setup.value };
       const offer = currentGhostOffer();
       const ghostHash = raceGhost && offer.available ? offer.hash : null;
@@ -697,31 +587,39 @@ export const crucibleScreen = {
       }
       requestCrucibleRun(ctx.bus, payload, ruleset);
     });
-    foot.appendChild(enter);
-    syncMode();
-
-    const back = document.createElement('button');
-    back.type = 'button';
-    back.className = 'sf-btn';
-    back.textContent = 'Back';
-    back.addEventListener('click', () => ctx.bus.emit('ui:popScreen', {}));
-    foot.appendChild(back);
+    addWord(footWords, enter);
+    const back = word('Back', 'k-word--emph');
+    back.addEventListener('click', () => { cue('close'); ctx.bus.emit('ui:popScreen', {}); });
+    addWord(footWords, back);
+    foot.appendChild(footWords);
     rootEl.appendChild(foot);
 
-    // The record band goes last, below the verb: the door's job is to start a run, and the reason
-    // to start another one is context for that, not a competitor for it. Reading the profile must
-    // never be able to stop the door opening, so a broken or absent profile just omits the band.
-    try {
-      if (doorProfile) rootEl.appendChild(renderRecordBand(doorProfile, utcDateKeyNow()));
-    } catch (err) {
-      if (typeof console !== 'undefined' && console.warn) {
-        console.warn('[crucible] record band skipped:', err && err.message ? err.message : err);
-      }
-    }
+    syncMode();
+    syncHull();
+    this._regions = { title, stage, foot, enter };
+    rootEl.dataset.kReady = '1';
 
     if (typeof enter.focus === 'function') {
       try { enter.focus(); } catch { /* focus is best-effort */ }
     }
+  },
+
+  onShow() {
+    const r = this._regions;
+    if (!r || !canAnimate()) return;
+    cue('open');
+    try {
+      settle(r.title, { from: 'top', state: 'crucible:open' });
+      settle(r.stage, { from: 'left', delay: 60, state: 'crucible:open' });
+      settle(r.foot, { from: 'bottom', delay: 120, state: 'crucible:open' });
+    } catch { /* motion is cosmetic */ }
+    if (r.enter && typeof r.enter.focus === 'function') {
+      try { r.enter.focus({ preventScroll: true }); } catch { /* focus is best-effort */ }
+    }
+  },
+
+  onHide() {
+    if (canAnimate()) cue('close');
   },
 };
 
@@ -970,6 +868,16 @@ export function resultSectionOrder(result) {
   return ['last_seconds', 'ledger', 'build'];
 }
 
+/**
+ * The hero number the results lead with (sheet: "the best chain as a hero number"). A swarm run
+ * has a chain; the arc has a score. Null when there is no result to read.
+ */
+export function resultHero(result) {
+  if (!result) return null;
+  if (result.ruleset === SWARM_RULESET) return { number: String(result.bestChain || 0), word: 'best chain' };
+  return { number: String(result.score || 0), word: 'score' };
+}
+
 /* --- the stunt combo band. DOM-free builders over the stunt module's combo snapshot.
  *
  * PQ-146.01: the combo meter lives in the stunt module (state.stunts.combo, single writer
@@ -1043,76 +951,70 @@ export function comboTrickLines(summary) {
 
 /* --- band renderers. DOM assembly only; every word above them is already decided. --- */
 
+/** Label/value pairs as static kit rows. `hook` is the inert class a route check reads. */
+function pairRows(pairs, hook, valueClassFor) {
+  const list = el('ul', 'k-rows' + (hook ? ' ' + hook : ''));
+  for (const [label, value] of pairs) {
+    list.appendChild(staticRow(label, value, { valueClass: valueClassFor ? valueClassFor(label) : '' }));
+  }
+  return list;
+}
+
 function renderCombo(band, summary) {
   const lead = comboLead(summary);
-  if (lead) band.appendChild(el('div', 'sf-crres__lead', lead));
-  const grid = el('div', 'sf-crd-grid');
-  for (const [label, value] of comboRows(summary)) {
-    grid.appendChild(el('div', 'k', label));
-    grid.appendChild(el('div', 'v', value));
-  }
-  band.appendChild(grid);
+  if (lead) band.appendChild(el('p', 'k-sentence sf-crres__lead', lead));
+  band.appendChild(pairRows(comboRows(summary), 'sf-crd-grid'));
   const lines = comboTrickLines(summary);
   if (lines.length) {
-    const chain = el('div', 'sf-crres__chain');
-    for (const line of lines) {
-      chain.appendChild(el('div', 'sf-crres__chain-k', line.name));
-      chain.appendChild(el('div', 'sf-crres__chain-v', line.detail));
-    }
+    const chain = el('ul', 'k-rows sf-crres__chain');
+    for (const line of lines) chain.appendChild(staticRow(line.name, line.detail, { valueClass: 'k-t-fine k-62' }));
     band.appendChild(chain);
   }
 }
 
 function renderKillChain(band, defeat) {
-  const chain = el('div', 'sf-crres__chain');
-  const rows = killChainRows(defeat);
-  for (const [label, value] of rows) {
-    chain.appendChild(el('div', 'sf-crres__chain-k', label));
-    const v = el('div', 'sf-crres__chain-v', value);
-    // Threat colour on the two rows that name the enemy. The label beside each is the channel that
-    // survives forced-colors and colour blindness; the tint is never the only one.
-    if (label === 'Killed by' || label === 'Its weapon') v.dataset.role = 'foe';
-    chain.appendChild(v);
-  }
+  // Threat colour on the two rows that name the enemy. The label beside each is the channel that
+  // survives forced-colors and colour blindness; the tint is never the only one.
+  const chain = pairRows(killChainRows(defeat), 'sf-crres__chain',
+    (label) => (label === 'Killed by' || label === 'Its weapon' ? 'k-bad' : ''));
   band.appendChild(chain);
 
   const vitals = vitalsFigures(defeat);
   if (!vitals.length) return;
-  band.appendChild(el('div', 'sf-crres__lead', 'What was left of you when it landed:'));
-  const row = el('div', 'sf-crres__vitals');
+  band.appendChild(el('p', 'k-sentence sf-crres__lead', 'What was left of you when it landed:'));
+  const row = el('ul', 'k-rows sf-crres__vitals');
   for (const vital of vitals) {
-    const pair = el('span', null);
-    pair.appendChild(el('span', 'sf-crres__vital-word', vital.word));
-    pair.appendChild(el('span', 'sf-crres__vital-fig', vital.text));
-    row.appendChild(pair);
+    row.appendChild(staticRow(vital.word, vital.text, { valueClass: 'k-bad' }));
   }
   band.appendChild(row);
 }
 
 function renderLastSeconds(band, trail) {
-  band.appendChild(el('div', 'sf-crres__lead', lastSecondsLead(trail)));
+  band.appendChild(el('p', 'k-sentence sf-crres__lead', lastSecondsLead(trail)));
   const { rows } = damageBreakdown(trail);
+  if (!rows.length) return;
+  const list = el('ul', 'k-rows sf-crres__hits');
   for (const row of rows) {
-    const line = el('div', 'sf-crres__hit');
-    line.appendChild(el('span', 'sf-crres__hit-name', row.weapon));
-    const track = el('span', 'sf-crres__hit-track');
-    const fill = el('span', 'sf-crres__hit-fill');
+    const line = el('li', 'k-row k-row--static sf-crres__hit');
+    const left = el('div');
+    left.appendChild(el('span', 'k-row__name sf-crres__hit-name', row.weapon));
+    const track = el('div', 'k-bar sf-crres__hit-track');
+    const fill = el('div', 'k-bar__fill sf-crres__hit-fill');
     fill.style.width = `${Math.round(row.share * 100)}%`;
     track.appendChild(fill);
-    line.appendChild(track);
-    line.appendChild(el('span', 'sf-crres__hit-fig', `${row.hits} hit${row.hits === 1 ? '' : 's'}`));
-    line.appendChild(el('span', 'sf-crres__hit-fig', `${row.amount} damage`));
-    band.appendChild(line);
+    left.appendChild(track);
+    line.appendChild(left);
+    const fig = el('span', 'k-row__num');
+    fig.appendChild(el('span', 'k-t-fine k-62 sf-crres__hit-fig', `${row.hits} hit${row.hits === 1 ? '' : 's'}`));
+    fig.appendChild(el('span', 'sf-crres__hit-fig', ` ${row.amount} damage`));
+    line.appendChild(fig);
+    list.appendChild(line);
   }
+  band.appendChild(list);
 }
 
 function renderLedger(band, result) {
-  const grid = el('div', 'sf-crd-grid');
-  for (const [label, value] of resultRows(result)) {
-    grid.appendChild(el('div', 'k', label));
-    grid.appendChild(el('div', 'v', value));
-  }
-  band.appendChild(grid);
+  band.appendChild(pairRows(resultRows(result), 'sf-crd-grid'));
 }
 
 /**
@@ -1171,14 +1073,20 @@ export function causalKindsLead(kinds) {
   return `This build had ${list.length} ways in: ${list.map((k) => k.toLowerCase()).join(', ')}.`;
 }
 
+/** The build as one fine-print line — the sheet's "build code". */
+export function buildCodeLine(picks) {
+  return buildSteps(picks).map((step) => step.text).join(' · ');
+}
+
 function renderBuild(band, picks) {
-  band.appendChild(el('div', 'sf-crres__lead', buildLead(picks)));
+  band.appendChild(el('p', 'k-sentence sf-crres__lead', buildLead(picks)));
   const kinds = causalKindsFromPicks(picks);
   if (kinds.length) {
-    band.appendChild(el('div', 'sf-crres__causal-lead', causalKindsLead(kinds)));
-    const tags = el('div', 'sf-crres__causal');
+    band.appendChild(el('p', 'k-sentence sf-crres__causal-lead', causalKindsLead(kinds)));
+    // The causal tags as fine static words, the plain route at 38 %.
+    const tags = el('div', 'k-words k-words--row sf-crres__causal');
     for (const kind of kinds) {
-      const tag = el('span', 'sf-crres__causal-tag', kind);
+      const tag = el('span', 'k-t-fine sf-crres__causal-tag' + (kind === 'DIRECT' ? ' k-38' : ' k-62'), kind.toLowerCase());
       tag.setAttribute('data-kind', kind.toLowerCase());
       tags.appendChild(tag);
     }
@@ -1186,17 +1094,23 @@ function renderBuild(band, picks) {
   }
   const steps = buildSteps(picks);
   if (!steps.length) return;
-  const chain = el('div', 'sf-crres__build');
+  const chain = el('ul', 'k-rows sf-crres__build');
   for (const step of steps) {
-    const node = el('span', 'sf-crres__step');
+    const node = el('li', 'k-row k-row--static sf-crres__step');
+    const left = el('div');
     if (step.wave != null) {
-      node.appendChild(el('span', 'sf-crres__step-word', 'Wave'));
-      node.appendChild(el('span', 'sf-crres__step-fig', String(step.wave)));
+      const wave = el('span', 'k-row__sub');
+      wave.appendChild(el('span', 'sf-crres__step-word', 'Wave'));
+      wave.appendChild(el('span', 'sf-crres__step-fig', ` ${String(step.wave)}`));
+      left.appendChild(wave);
     }
-    node.appendChild(el('span', 'sf-crres__step-verb', step.verb));
+    left.appendChild(el('span', 'k-row__name sf-crres__step-verb', step.verb));
+    node.appendChild(left);
+    node.appendChild(el('span', 'k-row__num', ''));
     chain.appendChild(node);
   }
   band.appendChild(chain);
+  band.appendChild(el('p', 'k-t-fine k-38 sf-crres__build-code', buildCodeLine(picks)));
 }
 
 export const crucibleResultsScreen = {
@@ -1204,9 +1118,9 @@ export const crucibleResultsScreen = {
   data: { locked: true },
 
   mount(rootEl, ctx) {
-    injectStyle();
     rootEl.innerHTML = '';
-    rootEl.classList.add('panel', 'sf-menu', 'sf-crucible-door', 'sf-crucible-results');
+    rootEl.classList.add('k-screen', 'k-screen--stage', 'sf-crucible-door', 'sf-crucible-results');
+    rootEl.dataset.kReady = '0';
     rootEl.setAttribute('role', 'dialog');
     rootEl.setAttribute('aria-modal', 'true');
     rootEl.setAttribute('aria-labelledby', 'sf-crucible-results-title');
@@ -1215,33 +1129,35 @@ export const crucibleResultsScreen = {
     const result = owner && typeof owner.lastResult === 'function' ? owner.lastResult() : null;
     rootEl.dataset.stamp = resultStamp(result);
 
-    const h = el('h1', null, resultTitle(result));
+    // .k-title — the identity word, and the owner's sentence, verbatim. The structured chain below
+    // re-states it in fielded form; it never rewrites it, because survivalResults owns the wording.
+    const title = el('header', 'k-title');
+    const h = el('h1', 'k-display k-t-title', resultTitle(result));
     h.id = 'sf-crucible-results-title';
-    rootEl.appendChild(h);
+    title.appendChild(h);
+    title.appendChild(el('p', 'k-sentence k-sentence--emph sf-crd-headline',
+      result && result.headline ? result.headline : 'The run ended.'));
+    rootEl.appendChild(title);
 
-    // The owner's sentence, verbatim. The structured chain below re-states it in fielded form; it
-    // never rewrites it, because survivalResults owns the wording of the headline.
-    rootEl.appendChild(el(
-      'div',
-      'sf-crd-headline',
-      result && result.headline ? result.headline : 'The run ended.',
-    ));
+    // .k-stage — two columns: the story (the sections in their order) and the ledger. The story is
+    // first in the DOM so a reader meets "How it ended" before the figures; the ledger column is
+    // ordered to the left of it by the kit (`k-order-first`).
+    const stage = el('section', 'k-stage k-panel sf-crres__stage');
+    const story = el('div', 'k-stage k-stage--scroll sf-crres__story');
+    const ledger = el('div', 'k-hang k-order-first sf-crres__ledger');
+    stage.appendChild(story);
+    stage.appendChild(ledger);
 
     if (!result) {
       // No record kept. Say so — a dead player must never be handed a blank plate — and still
       // offer every way out below.
-      rootEl.appendChild(el(
-        'div',
-        'sf-crres__empty',
-        'No flight record was kept for that run.',
-      ));
+      story.appendChild(el('p', 'k-empty sf-crres__empty', 'No flight record was kept for that run.'));
     }
 
     for (const id of resultSectionOrder(result)) {
       const band = el('div', 'sf-crres__band');
-      // A div carrying heading semantics rather than an <h2>: the shell already styles headings
-      // inside .sf-menu and a real h2 would inherit the h1's flex/tracking rules.
-      const bandTitle = el('div', 'sf-crres__band-title', sectionTitle(id, result.outcome));
+      // A heading role rather than an <h2>, so the sections read as one column of sentences.
+      const bandTitle = el('p', 'k-caps sf-crres__band-title', sectionTitle(id, result.outcome));
       bandTitle.setAttribute('role', 'heading');
       bandTitle.setAttribute('aria-level', '2');
       band.appendChild(bandTitle);
@@ -1249,7 +1165,7 @@ export const crucibleResultsScreen = {
       else if (id === 'last_seconds') renderLastSeconds(band, result.damageTrail);
       else if (id === 'ledger') renderLedger(band, result);
       else if (id === 'build') renderBuild(band, result.picks);
-      rootEl.appendChild(band);
+      (id === 'ledger' ? ledger : story).appendChild(band);
     }
 
     // The stunt combo band reads the stunt module's combo snapshot in parallel with
@@ -1259,23 +1175,38 @@ export const crucibleResultsScreen = {
       const combo = stuntComboFor(ctx);
       if (combo) {
         const band = el('div', 'sf-crres__band');
-        const bandTitle = el('div', 'sf-crres__band-title', 'Stunt combo');
+        const bandTitle = el('p', 'k-caps sf-crres__band-title', 'Stunt combo');
         bandTitle.setAttribute('role', 'heading');
         bandTitle.setAttribute('aria-level', '2');
         band.appendChild(bandTitle);
         renderCombo(band, combo);
-        rootEl.appendChild(band);
+        ledger.appendChild(band);
       }
     } catch {
       // A combo read failure must never take down the results plate.
     }
+    rootEl.appendChild(stage);
 
-    const foot = el('div', 'sf-crd-foot');
+    // .k-corner — the hero number: the best chain (swarm) or the score (gauntlet).
+    const heroSpec = resultHero(result);
+    if (heroSpec) {
+      const corner = el('aside', 'k-corner sf-crres__hero');
+      corner.appendChild(heroBlock(heroSpec.number, heroSpec.word, 'k-hero--hero k-hero--signal'));
+      rootEl.appendChild(corner);
+    }
 
-    const again = document.createElement('button');
-    again.type = 'button';
-    again.className = 'sf-btn sf-btn--primary';
-    again.textContent = 'Run it again — same seed';
+    // .k-foot — the three ways out, as words.
+    const foot = el('footer', 'k-foot sf-crd-foot');
+    const footWords = el('ul', 'k-words k-words--row');
+    footWords.setAttribute('aria-label', 'After the run');
+    const addWord = (button) => {
+      const li = el('li');
+      li.appendChild(button);
+      footWords.appendChild(li);
+      return button;
+    };
+
+    const again = addWord(word('Run it again — same seed', 'k-word--emph k-word--primary'));
     again.addEventListener('click', () => {
       const setup = lastCrucibleSetup();
       if (!setup) {
@@ -1299,19 +1230,11 @@ export const crucibleResultsScreen = {
       }
       requestCrucibleRun(ctx.bus, setup, lastCrucibleRuleset());
     });
-    foot.appendChild(again);
 
-    const newSeed = document.createElement('button');
-    newSeed.type = 'button';
-    newSeed.className = 'sf-btn';
-    newSeed.textContent = 'New run';
+    const newSeed = addWord(word('New run', 'k-word--emph'));
     newSeed.addEventListener('click', () => ctx.bus.emit('ui:replaceScreen', { id: 'crucible' }));
-    foot.appendChild(newSeed);
 
-    const menu = document.createElement('button');
-    menu.type = 'button';
-    menu.className = 'sf-btn';
-    menu.textContent = 'Main menu';
+    const menu = addWord(word('Main menu', 'k-word--emph k-word--danger'));
     menu.addEventListener('click', () => {
       // Same teardown pause uses: main.js consumes game:exitToMenu and returns state.mode to
       // 'menu', runSession aborts and clears the run envelope.
@@ -1320,11 +1243,34 @@ export const crucibleResultsScreen = {
       ctx.bus.emit('ui:closeAll', {});
       ctx.bus.emit('ui:pushScreen', { id: 'mainMenu' });
     });
-    foot.appendChild(menu);
 
+    foot.appendChild(footWords);
     rootEl.appendChild(foot);
+    this._regions = { title: h, story, ledger, foot, again };
+    rootEl.dataset.kReady = '1';
     if (typeof again.focus === 'function') {
       try { again.focus(); } catch { /* focus is best-effort */ }
     }
+  },
+
+  onShow() {
+    const r = this._regions;
+    if (!r || !canAnimate()) return;
+    cue('open');
+    // Under reduced motion nothing settles (the kit's settle is a cut); otherwise the title stamps
+    // and the rows settle from the left.
+    try {
+      stamp([r.title], { state: 'crucibleResults:open' });
+      settle(r.ledger, { from: 'left', delay: 60, state: 'crucibleResults:open' });
+      settle(r.story, { from: 'left', delay: 120, state: 'crucibleResults:open' });
+      settle(r.foot, { from: 'bottom', delay: 180, state: 'crucibleResults:open' });
+    } catch { /* motion is cosmetic */ }
+    if (r.again && typeof r.again.focus === 'function') {
+      try { r.again.focus({ preventScroll: true }); } catch { /* focus is best-effort */ }
+    }
+  },
+
+  onHide() {
+    if (canAnimate()) cue('close');
   },
 };

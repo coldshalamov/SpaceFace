@@ -1,6 +1,6 @@
 // Presentation reads authoritative state; it never writes gameplay heat, dock or run state.
 export const TEMPERATURES = Object.freeze(['flight', 'menu', 'docked', 'wanted', 'crucible', 'works']);
-const CRUCIBLE_SCREENS = new Set(['crucible', 'crucibleDraft', 'crucibleResults', 'crucibleLab']);
+const CRUCIBLE_SCREENS = new Set(['crucible', 'crucibleDraft', 'crucibleRefit', 'crucibleResults', 'crucibleLab']);
 const WORKS_SCREENS = new Set(['drill', 'asteroid']);
 export const TEMPERATURE_EVENTS = Object.freeze([
   'mode:changed', 'heat:changed', 'dock:docked', 'dock:undocked',

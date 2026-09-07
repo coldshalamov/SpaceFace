@@ -24,16 +24,15 @@ import { telemetryHostilesRole } from '../src/ui/screens/crucibleLabTelemetry.js
 // (src/ui/station/screens/market.js): it is styles/kit.css + styles/station.css now; its meaning roles
 // (chartTrendRole, legalityRole) stay exported and asserted. Frontend Task D moved help
 // (src/ui/screens/help.js) onto the kit the same way: no injected CSS, `.sf-help-now` an inert hook on
-// the kit title's profile line; legalityRole and its words-beside-colour strings stay asserted.
+// the kit title's profile line; legalityRole and its words-beside-colour strings stay asserted. Task D
+// §1.4 also moved the Combat Lab controls and telemetry (crucibleLabControls.js, crucibleLabTelemetry.js)
+// onto kit rows: both style blocks are deleted, `.sf-lab-speed-now sf-fig` / `.sf-lab-tel-tick sf-fig`
+// stay as inert hooks, and their meaning roles (labSpeedRole, telemetryHostilesRole) stay asserted.
 const FILES = [
   'src/ui/screens/sandbox.js',
-  'src/ui/screens/crucibleLabControls.js',
-  'src/ui/screens/crucibleLabTelemetry.js',
 ];
 const DISPLAY = new Map([
   ['src/ui/screens/sandbox.js', '.sf-sandbox-now'],
-  ['src/ui/screens/crucibleLabControls.js', '.sf-lab-speed-now'],
-  ['src/ui/screens/crucibleLabTelemetry.js', '.sf-lab-tel-tick'],
 ]);
 const PINNED_FORBIDDEN = /(?:\bpanel\b|sf-menu|sf-menu-wide|sf-panel|sx-panel)/;
 const ALLOWED_PX = new Set([12, 13, 14, 15, 19, 20, 22, 28, 40, 64]);

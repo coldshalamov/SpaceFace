@@ -310,3 +310,39 @@ body.k-screen-top #modal-backdrop { background: none; }
 .k-screen .sf-entity-link:hover, .k-screen .sf-entity-link:focus-visible { border-bottom-color: var(--k-signal); }
 .k-screen .sf-drawer__verb { all: unset; cursor: pointer; font: 500 var(--k-fs-emph) var(--k-text); color: var(--k-signal); }
 .k-screen .sf-drawer__x { all: unset; cursor: pointer; font-size: var(--k-fs-body); color: var(--k-bone-62); }
+
+/* Task D additions */
+/* §4.2: the confirm dialog (src/ui/confirm.js) — a title, a sentence and two words on a dark ground; no plate. */
+#sf-confirm-root { position: fixed; inset: 0; z-index: 5000; display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--k-ink) 82%, transparent); opacity: 0; transition: opacity var(--k-d-settle) var(--k-ease); pointer-events: auto; }
+#sf-confirm-root:empty { display: none; pointer-events: none; }
+#sf-confirm-root.sf-confirm--in { opacity: 1; }
+.sf-confirm { width: min(calc(560px * var(--k-s)), 92vw); display: flex; flex-direction: column; gap: var(--k-gap); }
+.sf-confirm__title { margin: 0; }
+.sf-confirm__title--danger { color: var(--k-red); }
+.sf-confirm__body { margin: 0; white-space: pre-line; }
+.sf-confirm__body:empty { display: none; }
+/* §3: legacy ui.css `.sf-tab:hover` paints an accent tint under any kit tab word that keeps the `.sf-tab` hook (help, codex, settings). */
+.k-screen .sf-tab:hover, .k-screen .sf-tab:focus-visible { background: none; }
+/* §1.3: a panel column ordered before its DOM siblings (the results ledger reads first for the eye, second for a reader). */
+.k-order-first { order: -1; }
+/* §1.2: the draft's three offers across on the sky. The whole block is the button; the focused one is bright, the others 62 %. */
+.sf-cru-cards { display: flex; gap: var(--k-gap); align-items: flex-start; }
+.sf-cru-card { all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex: 1 1 0; min-width: 0; flex-direction: column; gap: calc(8px * var(--k-s)); text-align: left; transition: opacity var(--k-d-focus) var(--k-ease); }
+.sf-cru-card > * { margin: 0; }
+.sf-cru-cards:focus-within .sf-cru-card, .sf-cru-cards:hover .sf-cru-card { opacity: 0.62; }
+.sf-cru-card:focus-visible, .sf-cru-card:hover { opacity: 1; outline: none; }
+.sf-cru-card:focus-visible .sf-cru-verb, .sf-cru-card:hover .sf-cru-verb { color: var(--k-signal); }
+.sf-cru-note { margin: var(--k-gap) 0 0; }
+.sf-cru-note:empty { display: none; }
+.sf-cru-fine { margin: calc(12px * var(--k-s)) 0 0; }
+.sf-cru-fine:empty { display: none; }
+/* §1.3: the results story's bands — a caps header, then rows; a gap between bands, none inside. */
+.sf-crres__band + .sf-crres__band { margin-top: var(--k-gap); }
+.sf-crres__band-title { margin: 0 0 calc(8px * var(--k-s)); }
+/* §1.4: the lab telemetry — static rows at data size, 62 %, no plate; the hostiles figure goes red when any are live. */
+.sf-lab-tel .k-row { min-height: calc(var(--k-row) * 0.62); }
+.sf-lab-tel .k-row__name, .sf-lab-tel .k-row__num { font-size: var(--k-fs-data); color: var(--k-bone-62); }
+.sf-lab-tel .k-row__num.k-bad { color: var(--k-bad); }
+.sf-lab-runtime__hint { margin: calc(8px * var(--k-s)) 0 0; }
+/* §1.1: the door's hull sentence and the arena line sit under their row of words. */
+.sf-crd-settings .k-sentence, .sf-crd-settings .sf-crd-arena { margin: calc(8px * var(--k-s)) 0 0; }

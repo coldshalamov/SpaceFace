@@ -22,58 +22,34 @@
 // beside it — when it cannot be bought. No control here is allowed to look live and do nothing.
 //
 // Both ids are in PAUSING_SCREENS: §12.2 adopts a FULL pause during a draft.
+//
+// Both are built on the frontend kit (styles/kit.css, src/ui/kit/) — Frontend Task D §1.2. This
+// file owns no CSS. The draft is three offers across on the sky, each a verb, a name and one line,
+// with its key in fine print; the focused one bright. The refit is a column of hardpoint rows.
 
 import { SURVIVAL_DRAFT_CHOICES } from '../../data/survivalDraft.js';
 import { canExtract, requestSurvivalExtraction } from '../../systems/survivalExtraction.js';
+import { el, settle, cue } from '../kit/index.js';
 
-const STYLE_ID = 'sf-crucible-draft-style';
+/** A kit word (`button.k-word`). The caller appends it. */
+function word(label, className) {
+  const button = el('button', 'k-word' + (className ? ' ' + className : ''), label);
+  button.type = 'button';
+  return button;
+}
 
-function injectStyle() {
-  if (typeof document === 'undefined' || document.getElementById(STYLE_ID)) return;
-  const s = document.createElement('style');
-  s.id = STYLE_ID;
-  // Sits on the shared menu fascia (styles/menu.css owns plate, buttons, tokens). Only the
-  // three-card row and the slot readout are this screen's own.
-  s.textContent = `
-  .sf-menu.sf-crucible { gap:16px; padding:30px 34px; min-width:420px; max-width:min(94vw,980px); }
-  #screens .sf-menu.sf-crucible h1 { justify-content:center; margin:0; padding-bottom:10px;
-    font-family:var(--mono); letter-spacing:.06em; font-size:20px; text-transform:uppercase; }
-  .sf-menu.sf-crucible .sf-cru-sub { text-align:center; color:var(--ink-dim); font-size:13px;
-    letter-spacing:.06em; margin-top:-8px; }
-  .sf-menu.sf-crucible .sf-cru-cards { display:grid; gap:12px;
-    grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); }
-  .sf-menu.sf-crucible .sf-cru-card { display:flex; flex-direction:column; gap:8px; text-align:left;
-    border:1px solid var(--line); border-radius:2px; background:rgba(255,255,255,.03);
-    padding:14px 15px; cursor:pointer; color:var(--ink); font:inherit; }
-  .sf-menu.sf-crucible .sf-cru-card:hover,
-  .sf-menu.sf-crucible .sf-cru-card:focus-visible { border-color:var(--accent-3); outline:none; }
-  .sf-menu.sf-crucible .sf-cru-verb { font-family:var(--mono); letter-spacing:.06em; font-size:15px;
-    text-transform:uppercase; color:var(--accent-3); }
-  .sf-menu.sf-crucible .sf-cru-name { font-family:var(--mono); font-size:12px; color:var(--ink-dim); }
-  .sf-menu.sf-crucible .sf-cru-blurb { font-size:13px; line-height:1.5; color:var(--ink); }
-  .sf-menu.sf-crucible .sf-cru-slot { font-family:var(--mono); font-size:12px; letter-spacing:.06em;
-    color:var(--ink-dim); border-top:1px solid var(--line); padding-top:7px; margin-top:auto; }
-  .sf-menu.sf-crucible .sf-cru-card { position:relative; }
-  .sf-menu.sf-crucible .sf-cru-key { position:absolute; top:10px; right:11px;
-    font-family:var(--mono); font-size:12px; letter-spacing:.06em; color:var(--ink-dim);
-    border:1px solid var(--line); border-radius:2px; padding:0 5px; line-height:17px; }
-  .sf-menu.sf-crucible .sf-cru-foot { display:flex; gap:10px; justify-content:center; margin-top:6px;
-    align-items:center; flex-wrap:wrap; }
-  .sf-menu.sf-crucible .sf-cru-hint { font-family:var(--mono); font-size:12px; color:var(--ink-dim);
-    letter-spacing:.04em; }
-  .sf-menu.sf-crucible .sf-cru-wallet { font-family:var(--mono); font-size:12px; letter-spacing:.06em;
-    color:var(--ink); }
-  .sf-menu.sf-crucible .sf-cru-note { font-size:13px; line-height:1.45; text-align:center;
-    color:var(--warn, #dfa04e); }
-  .sf-menu.sf-crucible .sf-cru-note:empty { display:none; }
-  .sf-menu.sf-crucible .sf-cru-rows { display:grid; grid-template-columns:auto 1fr auto; gap:6px 16px;
-    align-items:center; font-family:var(--mono); font-size:12px; }
-  .sf-menu.sf-crucible .sf-cru-rows .k { color:var(--ink-dim); letter-spacing:.05em; }
-  .sf-menu.sf-crucible .sf-cru-pick { font:inherit; font-size:12px; color:var(--ink);
-    background:rgba(255,255,255,.04); border:1px solid var(--line); border-radius:2px;
-    padding:4px 6px; max-width:100%; }
-  `;
-  document.head.appendChild(s);
+/** Append a word to a `.k-words` list, in its `li`. */
+function addWord(list, button) {
+  const li = el('li');
+  li.appendChild(button);
+  list.appendChild(li);
+  return button;
+}
+
+/** Guarded kit motion: the unit tests import this module under node with no frame clock. */
+function canAnimate() {
+  return typeof requestAnimationFrame === 'function' && typeof document !== 'undefined'
+    && typeof document.createElement === 'function' && typeof HTMLElement === 'function';
 }
 
 function draftOwner(ctx) {
@@ -172,72 +148,68 @@ export const crucibleDraftScreen = {
   data: { locked: true },
 
   mount(rootEl, ctx) {
-    injectStyle();
     this._ctx = ctx;
     this._root = rootEl;
     rootEl.innerHTML = '';
-    rootEl.classList.add('panel', 'sf-menu', 'sf-crucible');
+    rootEl.classList.add('k-screen', 'k-screen--stage', 'sf-crucible', 'sf-crucible-draft');
+    rootEl.dataset.kReady = '0';
     rootEl.dataset.stamp = 'CRUCIBLE / REARM';
     rootEl.setAttribute('role', 'dialog');
     rootEl.setAttribute('aria-modal', 'true');
     rootEl.setAttribute('aria-labelledby', 'sf-crucible-draft-title');
 
-    const h = document.createElement('h1');
+    // .k-title — "Rearm" and the sub sentence (refresh writes it: which wave, and what a pick does).
+    const title = el('header', 'k-title');
+    const h = el('h1', 'k-display k-t-title', 'Rearm');
     h.id = 'sf-crucible-draft-title';
-    h.textContent = 'Rearm';
-    rootEl.appendChild(h);
-
-    const sub = document.createElement('div');
-    sub.className = 'sf-cru-sub';
-    rootEl.appendChild(sub);
+    title.appendChild(h);
+    const sub = el('p', 'k-t-emph k-62 sf-cru-sub', '');
+    title.appendChild(sub);
+    rootEl.appendChild(title);
     this._sub = sub;
 
-    const cards = document.createElement('div');
-    cards.className = 'sf-cru-cards';
-    rootEl.appendChild(cards);
+    // .k-stage — the three offers across on the sky, then the one status line.
+    const stage = el('section', 'k-stage sf-cru-stage');
+    const cards = el('div', 'sf-cru-cards');
+    cards.setAttribute('role', 'group');
+    cards.setAttribute('aria-label', 'Offers');
+    stage.appendChild(cards);
     this._cards = cards;
 
     // One line for everything that went wrong, announced politely rather than shouted. A refused
     // pick, a refused re-roll and an unaffordable price all land here.
-    const note = document.createElement('div');
-    note.className = 'sf-cru-note';
+    const note = el('p', 'k-sentence sf-cru-note', '');
     note.setAttribute('role', 'status');
     note.setAttribute('aria-live', 'polite');
-    rootEl.appendChild(note);
+    stage.appendChild(note);
     this._note = note;
+    rootEl.appendChild(stage);
 
-    const foot = document.createElement('div');
-    foot.className = 'sf-cru-foot';
-    const skip = document.createElement('button');
-    skip.className = 'sf-btn';
-    skip.type = 'button';
-    skip.textContent = 'Keep current loadout';
+    // .k-foot — Keep current loadout, Re-roll (with the wallet beside it), the keys in fine print.
+    const foot = el('footer', 'k-foot sf-cru-foot');
+    const words = el('ul', 'k-words k-words--row');
+    words.setAttribute('aria-label', 'Rearm');
+    const skip = addWord(words, word('Keep current loadout', 'k-word--emph'));
     skip.addEventListener('click', () => {
       ctx.bus.emit('run:draftPickRequested', { offerId: null });
     });
-    foot.appendChild(skip);
     this._skip = skip;
 
     // The run wallet is filled by physical chips the player chased down. This is the one place it
     // buys something, so this is where the balance has to be legible.
-    const reroll = document.createElement('button');
-    reroll.className = 'sf-btn';
-    reroll.type = 'button';
-    reroll.textContent = 'Re-roll';
+    const reroll = addWord(words, word('Re-roll', 'k-word--emph'));
     reroll.addEventListener('click', () => this._requestReroll(ctx));
-    foot.appendChild(reroll);
     this._rerollBtn = reroll;
+    foot.appendChild(words);
 
-    const wallet = document.createElement('span');
-    wallet.className = 'sf-cru-wallet';
-    foot.appendChild(wallet);
+    const fine = el('p', 'k-t-fine k-38 sf-cru-fine');
+    const wallet = el('span', 'sf-cru-wallet', '');
+    fine.appendChild(wallet);
     this._wallet = wallet;
-
-    const hint = document.createElement('span');
-    hint.className = 'sf-cru-hint';
-    foot.appendChild(hint);
+    const hint = el('span', 'sf-cru-hint', '');
+    fine.appendChild(hint);
     this._hint = hint;
-
+    foot.appendChild(fine);
     rootEl.appendChild(foot);
 
     // The run is fully paused on this choice, so it must be answerable from the keyboard: 1/2/3
@@ -276,7 +248,23 @@ export const crucibleDraftScreen = {
       }
     });
 
+    this._regions = { title: h, stage, foot };
     this.refresh(ctx);
+    rootEl.dataset.kReady = '1';
+  },
+
+  onShow() {
+    const r = this._regions;
+    if (!r || !canAnimate()) return;
+    cue('open');
+    try {
+      settle(r.stage, { from: 'left', delay: 60, state: 'crucibleDraft:open' });
+      settle(r.foot, { from: 'bottom', delay: 120, state: 'crucibleDraft:open' });
+    } catch { /* motion is cosmetic */ }
+  },
+
+  onHide() {
+    if (canAnimate()) cue('close');
   },
 
   _requestReroll(ctx) {
@@ -326,9 +314,10 @@ export const crucibleDraftScreen = {
     this._wallet.textContent = lines.visible
       ? (lines.draw ? `${lines.wallet} · ${lines.draw}` : lines.wallet)
       : '';
-    this._hint.textContent = offers.length
+    const keys = offers.length
       ? (lines.visible ? '1-3 choose · R re-roll · Esc keep' : '1-3 choose · Esc keep')
       : '';
+    this._hint.textContent = keys && this._wallet.textContent ? ` · ${keys}` : keys;
 
     // Only claim focus when it is not already inside this surface. A refused re-roll must not
     // yank the player off the control they just used.
@@ -341,39 +330,22 @@ export const crucibleDraftScreen = {
     }
   },
 
+  // One offer: the key numeral in fine print, the verb as the one permitted caps label, the name
+  // at sub-title size, the blurb as a sentence, the slot in fine print. The whole block is the button.
   _buildCard(ctx, offer, keyNumber) {
     const lines = offerCardLines(offer);
-    const card = document.createElement('button');
+    const card = el('button', 'sf-cru-card');
     card.type = 'button';
-    card.className = 'sf-cru-card';
     card.dataset.offerId = offer.id;
     card.setAttribute('aria-label', `${lines.verb}. ${lines.name}. ${lines.blurb} ${lines.slot}`);
 
-    const verb = document.createElement('div');
-    verb.className = 'sf-cru-verb';
-    verb.textContent = lines.verb;
-    card.appendChild(verb);
-
-    const name = document.createElement('div');
-    name.className = 'sf-cru-name';
-    name.textContent = lines.name;
-    card.appendChild(name);
-
-    const blurb = document.createElement('div');
-    blurb.className = 'sf-cru-blurb';
-    blurb.textContent = lines.blurb;
-    card.appendChild(blurb);
-
-    const slot = document.createElement('div');
-    slot.className = 'sf-cru-slot';
-    slot.textContent = lines.slot;
-    card.appendChild(slot);
-
-    const key = document.createElement('span');
-    key.className = 'sf-cru-key';
-    key.textContent = String(keyNumber);
+    const key = el('p', 'k-t-fine k-38 sf-cru-key', String(keyNumber));
     key.setAttribute('aria-hidden', 'true');
     card.appendChild(key);
+    card.appendChild(el('p', 'k-caps sf-cru-verb', lines.verb));
+    card.appendChild(el('h2', 'k-display k-t-sub sf-cru-name', lines.name));
+    card.appendChild(el('p', 'k-sentence sf-cru-blurb', lines.blurb));
+    card.appendChild(el('p', 'k-t-fine k-38 sf-cru-slot', lines.slot));
 
     card.addEventListener('click', () => {
       ctx.bus.emit('run:draftPickRequested', { offerId: offer.id });
@@ -387,49 +359,48 @@ export const crucibleRefitScreen = {
   data: { locked: true },
 
   mount(rootEl, ctx) {
-    injectStyle();
     rootEl.innerHTML = '';
-    rootEl.classList.add('panel', 'sf-menu', 'sf-crucible');
+    rootEl.classList.add('k-screen', 'k-screen--stage', 'sf-crucible', 'sf-crucible-refit');
+    rootEl.dataset.kReady = '0';
     rootEl.dataset.stamp = 'CRUCIBLE / REFIT';
     rootEl.setAttribute('role', 'dialog');
     rootEl.setAttribute('aria-modal', 'true');
     rootEl.setAttribute('aria-labelledby', 'sf-crucible-refit-title');
 
-    const h = document.createElement('h1');
+    const title = el('header', 'k-title');
+    const h = el('h1', 'k-display k-t-title', 'Refit');
     h.id = 'sf-crucible-refit-title';
-    h.textContent = 'Refit';
-    rootEl.appendChild(h);
+    title.appendChild(h);
+    title.appendChild(el('p', 'k-t-emph k-62 sf-cru-sub',
+      'Strip a hardpoint, or choose any spare the run has earned and fit it.'));
+    rootEl.appendChild(title);
 
-    const sub = document.createElement('div');
-    sub.className = 'sf-cru-sub';
-    sub.textContent = 'Strip a hardpoint, or choose any spare the run has earned and fit it.';
-    rootEl.appendChild(sub);
-
-    const rows = document.createElement('div');
-    rows.className = 'sf-cru-rows';
-    rootEl.appendChild(rows);
+    // .k-stage — one row per hardpoint: its name, what is fitted beneath, the spare picker and the
+    // verb on the right.
+    const stage = el('section', 'k-stage k-stage--scroll sf-cru-stage');
+    const rows = el('ul', 'k-rows sf-cru-rows');
+    rows.style.setProperty('--k-row-cols', 'minmax(0, 1fr) auto');
+    rows.setAttribute('aria-label', 'Hardpoints');
+    stage.appendChild(rows);
     this._rows = rows;
 
-    const note = document.createElement('div');
-    note.className = 'sf-cru-note';
+    const note = el('p', 'k-sentence sf-cru-note', '');
     note.setAttribute('role', 'status');
     note.setAttribute('aria-live', 'polite');
-    rootEl.appendChild(note);
+    stage.appendChild(note);
     this._note = note;
+    rootEl.appendChild(stage);
 
     this._ctx = ctx;
     this.refresh(ctx);
 
-    const foot = document.createElement('div');
-    foot.className = 'sf-cru-foot';
-    const done = document.createElement('button');
-    done.className = 'sf-btn';
-    done.type = 'button';
-    done.textContent = 'Launch next block';
+    const foot = el('footer', 'k-foot sf-cru-foot');
+    const words = el('ul', 'k-words k-words--row');
+    words.setAttribute('aria-label', 'Refit');
+    const done = addWord(words, word('Launch next block', 'k-word--emph k-word--primary'));
     done.addEventListener('click', () => {
       ctx.bus.emit('run:refitCloseRequested', {});
     });
-    foot.appendChild(done);
 
     // WALK AWAY WITH IT (PQ-135). Extraction has existed since PQ-133.10b and was reachable only
     // from a bus event — "No UI", says its own header — so no player has ever been offered it.
@@ -438,21 +409,14 @@ export const crucibleRefitScreen = {
     // is the one surface that is open at a ten-wave boundary, which is exactly the window
     // extraction is legal in, so the offer belongs here and nowhere else.
     if (canExtract(ctx && ctx.state && ctx.state.run)) {
-      const out = document.createElement('button');
-      out.className = 'sf-btn';
-      out.type = 'button';
-      out.textContent = 'Extract — end the run here';
+      const out = addWord(words, word('Extract — end the run here', 'k-word--emph'));
       out.title = 'Bank this run and stop, instead of flying on until something kills you.';
       out.addEventListener('click', () => {
         requestSurvivalExtraction(ctx.bus);
       });
-      foot.appendChild(out);
     }
-
-    const hint = document.createElement('span');
-    hint.className = 'sf-cru-hint';
-    hint.textContent = 'Enter or Esc launch';
-    foot.appendChild(hint);
+    foot.appendChild(words);
+    foot.appendChild(el('p', 'k-t-fine k-38 sf-cru-fine sf-cru-hint', 'Enter or Esc launch'));
     rootEl.appendChild(foot);
 
     // Same reasoning as the draft: the run is paused here, so Escape must mean something.
@@ -463,9 +427,25 @@ export const crucibleRefitScreen = {
       done.click();
     });
 
+    this._regions = { title: h, stage, foot };
+    rootEl.dataset.kReady = '1';
     if (typeof done.focus === 'function') {
       try { done.focus(); } catch { /* focus is best-effort */ }
     }
+  },
+
+  onShow() {
+    const r = this._regions;
+    if (!r || !canAnimate()) return;
+    cue('open');
+    try {
+      settle(r.stage, { from: 'left', delay: 60, state: 'crucibleRefit:open' });
+      settle(r.foot, { from: 'bottom', delay: 120, state: 'crucibleRefit:open' });
+    } catch { /* motion is cosmetic */ }
+  },
+
+  onHide() {
+    if (canAnimate()) cue('close');
   },
 
   refresh(ctx) {
@@ -479,35 +459,29 @@ export const crucibleRefitScreen = {
       const lines = refitRowLines(row);
       if (!lines) continue;
 
-      const k = document.createElement('div');
-      k.className = 'k';
-      k.textContent = lines.label;
-      rows.appendChild(k);
-
-      const v = document.createElement('div');
+      const item = el('li', 'k-row k-row--static sf-cru-row');
+      const left = el('div');
+      left.appendChild(el('span', 'k-row__name', lines.label));
       if (lines.options.length) {
         // Every compatible spare, not just the newest. A select keeps a long inventory answerable
         // from the keyboard without stacking one button per spare per hardpoint.
-        const pick = document.createElement('select');
-        pick.className = 'sf-cru-pick';
+        const pick = el('select', 'k-select sf-cru-pick');
         pick.setAttribute('aria-label', `Spare for ${lines.label.toLowerCase()}`);
         for (const option of lines.options) {
-          const opt = document.createElement('option');
+          const opt = el('option', '', option.label);
           opt.value = String(option.instanceId);
-          opt.textContent = option.label;
           pick.appendChild(opt);
         }
-        v.appendChild(pick);
+        const sub = el('div', 'k-row__sub');
+        sub.appendChild(pick);
+        left.appendChild(sub);
         row._pick = pick;
       } else {
-        v.textContent = lines.value;
+        left.appendChild(el('div', 'k-row__sub', lines.value));
       }
-      rows.appendChild(v);
+      item.appendChild(left);
 
-      const action = document.createElement('button');
-      action.className = 'sf-btn';
-      action.type = 'button';
-      action.textContent = lines.action;
+      const action = word(lines.action, lines.action === 'Strip' ? 'k-word--body k-word--danger' : 'k-word--body');
       action.disabled = !!lines.disabled;
       if (!lines.disabled) {
         action.addEventListener('click', () => {
@@ -527,7 +501,8 @@ export const crucibleRefitScreen = {
           this.refresh(context);
         });
       }
-      rows.appendChild(action);
+      item.appendChild(action);
+      rows.appendChild(item);
     }
 
     const owner = draftOwner(context);
