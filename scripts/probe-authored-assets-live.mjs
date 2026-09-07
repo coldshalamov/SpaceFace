@@ -120,7 +120,12 @@ try {
   const pageIssues = collectPageIssues(cdp);
   const probeRoute = withDebugFlight(server.baseUrl);
   await cdp.send('Page.navigate', { url: probeRoute });
-  await waitFor(cdp, isBootReady, BOOT_READY_TIMEOUT_MS, 'SpaceFace debug runtime');
+  try {
+    await waitFor(cdp, isBootReady, BOOT_READY_TIMEOUT_MS, 'SpaceFace debug runtime');
+  } catch (err) {
+    const issues = pageIssues ? pageIssues.errorIssues() : [];
+    throw new Error(`${err.message}; pageIssues=${JSON.stringify(issues)}`);
+  }
   await installStartupTrace(cdp);
 
   await evalVoid(cdp, `(() => {
@@ -2042,12 +2047,12 @@ function removeOwnedChromeProfile(profileDir, processExited) {
     && basename(target).startsWith(CHROME_PROFILE_PREFIX);
   assert.equal(owned, true, `refusing to remove non-owned Chrome profile path: ${target}`);
   if (!processExited) return false;
-  for (let attempt = 0; attempt < 5; attempt++) {
+  for (let attempt = 0; attempt < 10; attempt++) {
     try {
       rmSync(target, { recursive: true, force: true });
       if (!existsSync(target)) return true;
     } catch (_) {}
-    spawnSync(process.execPath, ['-e', 'setTimeout(() => {}, 200)']);
+    spawnSync(process.execPath, ['-e', 'const end = Date.now() + 500; while (Date.now() < end) {}']);
   }
   return !existsSync(target);
 }
