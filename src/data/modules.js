@@ -141,6 +141,7 @@ export const MODULES = [
   },
   {
     id: 'mod_monofilament_sweep_m', name: 'Monofilament Sweep M', slotType: 'utility', size: 'M', tier: 3, mass: 5, price: 44000, requiresTech: 'tech_fire_control',
+    // A taut swing cuts NPC tethers in one pass and staggers lights. Ordinary rope force is unchanged.
     energyDraw: 6, mods: { masslineHeadId: 'monofilament_sweep' },
   },
   {

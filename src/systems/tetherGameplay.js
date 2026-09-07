@@ -36,6 +36,8 @@ export const TWIN_BRIDLE_HEAD_ID = 'twin_bridle';
 // PQ-031.00: the second latch is the throw, not a lingering setup mode. Keep the A endpoint
 // alive for only the authored combat-range throw window; all elapsed time comes from simTime.
 export const TWIN_BRIDLE_SETUP_S = 2;
+const MONOFILAMENT_HEAD_ID = 'monofilament_sweep';
+const NPC_LINE_CUT_TAUT_RATIO = 0.92;
 const NPC_BRIDLE_CUT_COOLDOWN_TICKS = 90;
 const NPC_BRIDLE_CUT_RANGE_WU = 180;
 const NPC_ACE_BRIDLE_CUT_RANGE_WU = 220;
@@ -115,6 +117,8 @@ export const tetherGameplay = {
     this._bridleSetup = null;
     this._bridleActive = null;
     this._npcBridleCutTicks = new Map();
+    this._monofilamentCutIds = new Set();
+    this._monofilamentLatchId = null;
     this._bridleAdoptionPending = true;
     this._pendingDrillApproach = null;
     this._drillApproach = null;
@@ -129,6 +133,8 @@ export const tetherGameplay = {
       this._ignoreReleaseCutUntilReelIdle = false;
       this._lastStrainT = -Infinity;
       this._npcBridleCutTicks.clear();
+      this._monofilamentCutIds.clear();
+      this._monofilamentLatchId = null;
       this._cancelDrillApproach('save_loaded');
       this._resetAcquisitionRuntime(this.state);
       this._resetTwinBridleRuntime(this.state, 'save_loaded', true);
@@ -136,6 +142,8 @@ export const tetherGameplay = {
     const resetForNewGame = () => {
       this._cancelDrillApproach('new_game');
       this._npcBridleCutTicks.clear();
+      this._monofilamentCutIds.clear();
+      this._monofilamentLatchId = null;
       this._resetAcquisitionRuntime(this.state);
       this._resetTwinBridleRuntime(this.state, 'new_game', false);
     };
@@ -219,6 +227,7 @@ export const tetherGameplay = {
     const now = Number.isFinite(state.simTime) ? state.simTime : state.tick / 60;
     this._reconcileActive(attachments, state);
     this._adoptExisting(attachments, state);
+    this._cutNpcLinesWithMonofilament(attachments, state, player);
     this._startPendingDrillApproach(attachments, state, player);
     this._reconcileTwinBridle(attachments, state, player, now);
     this._adoptTwinBridle(attachments, state, player);
@@ -1381,6 +1390,57 @@ export const tetherGameplay = {
     this._lastLineControlDenial = null;
   },
 
+  // PQ-030.00 — a taut Monofilament line is a blade. Crossing an NPC tether severs that line in
+  // one pass. Hull stagger stays with masslineImpacts; this owner only cuts other attachments.
+  _cutNpcLinesWithMonofilament(attachments, state, player) {
+    if (!this._active || !player || !player.pos || !attachments) return;
+    if (!massline2Flag('masslineHeadMonofilamentSweep', state.runtime && state.runtime.features)) return;
+    const blade = attachments.get(this._active.attachmentId);
+    if (!blade || blade.state !== 'active') return;
+    const headId = blade.tetherPolicy && blade.tetherPolicy.headId
+      || player.data && player.data.derived && player.data.derived.masslineHeadId;
+    if (headId !== MONOFILAMENT_HEAD_ID) return;
+    const mass = state.entities && state.entities.get && state.entities.get(blade.targetId);
+    if (!mass || !mass.pos) return;
+    const span = Math.hypot(mass.pos.x - player.pos.x, mass.pos.z - player.pos.z);
+    const rest = Number.isFinite(blade.restLength) && blade.restLength > 0 ? blade.restLength : span;
+    const phase = state.player && state.player.tether && state.player.tether.phase;
+    const taut = phase === 'loaded' || phase === 'overload' || span >= rest * NPC_LINE_CUT_TAUT_RATIO;
+    if (!taut) return;
+
+    if (this._monofilamentLatchId !== blade.id) {
+      this._monofilamentLatchId = blade.id;
+      this._monofilamentCutIds.clear();
+    }
+
+    const byId = state.combat && state.combat.attachments && state.combat.attachments.byId;
+    if (!byId || typeof byId !== 'object') return;
+    const playerId = state.playerId;
+    for (const other of Object.values(byId)) {
+      if (!other || other.state !== 'active' || other.id === blade.id) continue;
+      if (other.ownerId === playerId || other.targetId === playerId) continue;
+      if (other.controllerId != null && String(other.controllerId) === String(playerId)) continue;
+      if (this._monofilamentCutIds.has(other.id)) continue;
+      const source = state.entities.get(other.ownerId);
+      const target = state.entities.get(other.targetId);
+      if (!source || !source.pos || !target || !target.pos) continue;
+      if (!segmentsProperlyCross(player.pos, mass.pos, source.pos, target.pos)) continue;
+      if (typeof attachments.breakAttachment !== 'function') continue;
+      this._monofilamentCutIds.add(other.id);
+      const result = attachments.breakAttachment(other, 'monofilament_sweep', player.id);
+      if (result && result.ok && this.bus && typeof this.bus.emit === 'function') {
+        this.bus.emit('massline:npcLineCut', {
+          schemaVersion: 1,
+          headId: MONOFILAMENT_HEAD_ID,
+          bladeId: blade.id,
+          attachmentId: other.id,
+          ownerId: other.ownerId,
+          targetId: other.targetId,
+        });
+      }
+    }
+  },
+
   _cutActive(attachments, state, player, now) {
     if (!this._active) return false;
     const targetId = this._active.targetId;
@@ -2505,6 +2565,18 @@ function finitePoint(point) {
 
 function clamp(value, lo, hi) {
   return Math.max(lo, Math.min(hi, value));
+}
+
+function segmentsProperlyCross(a, b, c, d) {
+  const o1 = orient2d(a, b, c);
+  const o2 = orient2d(a, b, d);
+  const o3 = orient2d(c, d, a);
+  const o4 = orient2d(c, d, b);
+  return o1 * o2 < 0 && o3 * o4 < 0;
+}
+
+function orient2d(a, b, p) {
+  return (b.x - a.x) * (p.z - a.z) - (b.z - a.z) * (p.x - a.x);
 }
 
 function positive(value, fallback) {
