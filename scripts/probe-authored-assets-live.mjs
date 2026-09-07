@@ -689,24 +689,31 @@ function isMainModule() {
 async function waitForAuthoredShips(cdp) {
   const deadline = await waitForAuthoredAssetDeadline({
     timeoutMs: 45000,
-    pollIntervalMs: 150,
+    pollIntervalMs: 50,
     onPoll: () => forceShipRender(cdp),
-    sample: () => collectAuthoredReport(cdp),
-    isReady: (report) => !!(
-      report
-      && report.player && report.player.state === 'authored'
-      && report.presentedShipCount >= MIN_AUTHORED_SHIPS
-      && report.authoredShipCount === report.presentedShipCount
-      && report.repeatedPackageShipPoolKeys.length > 0
+    sample: () => collectAuthoredGateSnapshot(cdp),
+    isReady: (snapshot) => !!(
+      snapshot
+      && snapshot.playerState === 'authored'
+      && snapshot.presentedShipCount >= MIN_AUTHORED_SHIPS
+      && snapshot.authoredShipCount === snapshot.presentedShipCount
     ),
   });
   const diagnosticsStartedAtMs = performance.now();
-  const report = deadline.passed && deadline.lastOnTimeSnapshot
-    ? deadline.lastOnTimeSnapshot
-    : (deadline.postDeadlineSnapshot || await collectAuthoredReport(cdp));
+  let report = await collectAuthoredReport(cdp);
+  for (let attempt = 0; attempt < 50; attempt++) {
+    if (report.authoredShipCount >= MIN_AUTHORED_SHIPS
+      && report.authoredShipCount === report.presentedShipCount
+      && report.repeatedPackageShipPoolKeys.length > 0) break;
+    await sleep(200);
+    await forceShipRender(cdp);
+    report = await collectAuthoredReport(cdp);
+  }
   const diagnosticsCompletedAtMs = performance.now();
   report.authoredDeadline = {
-    ...deadline,
+    passed: deadline.passed,
+    timeoutMs: deadline.timeoutMs,
+    elapsedMs: Math.round((deadline.passedAtMs ?? deadline.deadlineMs) - deadline.gateStartMs),
     diagnosticsStartedAtMs,
     diagnosticsCompletedAtMs,
   };
@@ -1513,9 +1520,6 @@ async function forceShipRender(cdp) {
         partsLibrary.syncAuthoredInstancePools(render.scene);
       }
     } catch (_) {}
-    if (sf && sf.loop && typeof sf.loop.simStep === 'function') {
-      try { sf.loop.simStep(); } catch (_) {}
-    }
     await render.warmPostProcess();
   })()`);
 }
