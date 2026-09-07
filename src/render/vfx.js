@@ -1,6 +1,6 @@
 // VFX system (ARCHITECTURE §2.4, §4.4; design/specs/10). A purely-cosmetic presentation layer.
-// It owns a pooled GPU particle cloud, three instanced additive sprite buckets, and one sorted
-// normal-blended smoke bucket, and is
+// It owns a pooled GPU shard cloud, folded impulse sheets, baked density-film transients and
+// a sorted normal-blended smoke bucket, and is
 // driven entirely by event-bus events — it NEVER writes sim state. update(frameDt) is called every
 // animation frame inside renderFrame (after render.draw), so it integrates/ages pools and the new
 // state is drawn on the following frame. Determinism is irrelevant here: VFX may use Math.random()
@@ -1639,15 +1639,11 @@ export const vfx = {
     this._freeParticleCount = cap;
     this._bindParticleDynamicBuffers();
 
-    // ---- discrete sprite pool (flash / ring / smoke / fresnel) ----
-    // Smoke owns an irregular alpha field and ordinary blending; it must not reuse the additive
-    // circular glow card used by energy flashes.
-    const tex = makeGlowTexture();
-    const ringTex = makeRingTexture();
-    const smokeTex = makeSmokeTexture();
-    const combustionTex = makeCombustionTexture();
-    this._glowTex = tex;
-    this._ringTex = ringTex;
+    // ---- bounded transient pool: folded impulse sheets and baked 3D density ----
+    // The admission API keeps its historical sprite names. No camera-facing flash/smoke
+    // textures are generated here; the material owner shares one compact density film.
+    this._glowTex = null;
+    this._ringTex = null;
     this._trailStreakPool = initTrailStreakPool(scene, TRAIL_STREAK_CAP);
     this._ts = [];
     for (let i = 0; i < TRAIL_STREAK_CAP; i++) {
@@ -1668,17 +1664,15 @@ export const vfx = {
     for (let i = 0; i < TRAIL_STREAK_CAP; i++) this._freeTrailStreaks[i] = TRAIL_STREAK_CAP - 1 - i;
     this._freeTrailStreakCount = TRAIL_STREAK_CAP;
 
-    // Thruster flame sprites use the procedural glow texture (makeGlowTexture above). The
-    // assets/fx/*.jpg contact sheets are authoring-only and must not be live-referenced —
-    // check:asset-reachability rejects them outside bundled roots.
+    // Engine jets/history keep their dedicated owners; discrete event effects use this pool.
     this._spr = []; // parallel CPU state
     this._spriteBatches = createInstancedSpriteBuckets(
-      scene, SPRITE_CAP, tex, ringTex, smokeTex, combustionTex,
+      scene, SPRITE_CAP,
     );
     for (let i = 0; i < SPRITE_CAP; i++) {
       this._spr.push({
         alive: false, kind: SPR_FLASH, age: 0, life: 1, size0: 1, size1: 1,
-        op0: 1, op1: 0, x: 0, y: 0, z: 0, vx: 0, vz: 0, roll: 0, aspect: 1,
+        op0: 1, op1: 0, x: 0, y: 0, z: 0, vx: 0, vz: 0, roll: 0, aspect: 1, seed: 0, axis: 0,
         admissionPriority: DEFAULT_VFX_ADMISSION_PRIORITY, admissionSerial: -1,
         ceresJobActionOwner: false,
         r: 1, g: 1, b: 1,
@@ -2213,6 +2207,11 @@ export const vfx = {
     st.size0 = size0; st.size1 = size1; st.op0 = op0; st.op1 = op1;
     st.x = local.x; st.y = y || 0; st.z = local.z; st.vx = vx || 0; st.vz = vz || 0;
     st.roll = Number.isFinite(roll) ? roll : Math.random() * Math.PI * 2;
+    // Preserve an explicit force direction. Isotropic calls retain a stable per-event heading;
+    // neither camera motion nor changing alpha rotates an existing event.
+    st.axis = Number.isFinite(roll) ? roll
+      : (Math.hypot(st.vx, st.vz) > 1e-6 ? Math.atan2(st.vz, st.vx) : st.roll);
+    st.seed = (st.admissionSerial * 0.618033988749895) % 1;
     st.aspect = Math.max(0.35, Math.min(3.5, Number(aspect) || 1));
 
     if (!wasAlive) this._activateSprite(i);
@@ -12480,9 +12479,8 @@ export const vfx = {
         op = s.op0 + (s.op1 - s.op0) * t;
         s.x += s.vx * dt; s.z += s.vz * dt;
       } else if (s.kind === SPR_COMBUSTION) {
-        // Combustion develops quickly, then contracts optically as the hot core cools. The card is
-        // deliberately anisotropic and irregular, so overlapping events form flame volumes rather
-        // than a stack of expanding circular glows.
+        // The expanding support contains an advected 3D density/temperature film. Age selects
+        // the simulation frame; optical energy remains independently accessibility-adjusted.
         const develop = easeOutCubic(Math.min(1, t * 2.4));
         scale = s.size0 + (s.size1 - s.size0) * develop;
         op = s.op0 * Math.max(0, 1 - t * (0.75 + t * 0.25));
@@ -12492,7 +12490,6 @@ export const vfx = {
         scale = s.size0 + (s.size1 - s.size0) * e;
         op = s.op0 * (1 - t * t);
       }
-      s.y += 0; // sprites live on play plane
       if (s.kind === SPR_PUFF) {
         smokeOrder[smokeCount++] = i;
         cursor++;
@@ -12515,6 +12512,9 @@ export const vfx = {
         s.g,
         s.b,
         op,
+        t,
+        s.seed,
+        s.axis,
       );
       cursor++;
     }
@@ -12565,6 +12565,9 @@ export const vfx = {
         s.g,
         s.b,
         s.op0 + (s.op1 - s.op0) * t,
+        t,
+        s.seed,
+        s.axis,
       );
     }
     commitInstancedSpriteBuckets(this._spriteBatches);
@@ -12794,10 +12797,6 @@ export function createVfxPrecompileSalvo() {
   points.frustumCulled = false;
   group.add(points);
 
-  const glow = makeGlowTexture();
-  const ring = makeRingTexture();
-  const smoke = makeSmokeTexture();
-  const combustion = makeCombustionTexture();
   const precompileTrail = createPrecompileTrailSurfaces();
   precompileTrail.ribbon.position.set(-8, 1, -4);
   precompileTrail.streak.position.set(10, 1, -6);
@@ -12813,7 +12812,7 @@ export function createVfxPrecompileSalvo() {
   seamMarkers.mesh.position.set(0, 0.1, -7);
   group.add(seamMarkers.mesh);
 
-  const spriteBatches = createInstancedSpriteBuckets(group, 6, glow, ring, smoke, combustion);
+  const spriteBatches = createInstancedSpriteBuckets(group, 6);
   resetInstancedSpriteBuckets(spriteBatches);
   writeInstancedSprite(spriteBatches, false, {
     x: -3, y: 1.5, z: -6, scale: 5, opacity: 0.8, roll: 0, r: 1, g: 0.85, b: 0.5,
@@ -13313,245 +13312,3 @@ function clearMasslineReleaseTarget(target) {
 // Authored burst card for energy flashes: a compact white-hot core with anisotropic plasma rays
 // over a faint irregular sheath. Not one radial gradient — the silhouette has structure, and the
 // bucket shader's radiance keeps headroom above 1.0 for the bloom bright-pass (VFX standard B8).
-function makeGlowTexture() {
-  const size = 128;
-  const cv = (typeof document !== 'undefined') ? document.createElement('canvas') : null;
-  if (!cv) { const t = new THREE.Texture(); return t; }
-  cv.width = cv.height = size;
-  const g = cv.getContext('2d');
-  const c = size / 2;
-  g.clearRect(0, 0, size, size);
-  g.globalCompositeOperation = 'lighter';
-  // Wide faint sheath first, so the rays sit on a dim body instead of on black.
-  let grd = g.createRadialGradient(c, c, 0, c, c, c);
-  grd.addColorStop(0.0, 'rgba(255,255,255,0.30)');
-  grd.addColorStop(0.35, 'rgba(255,255,255,0.10)');
-  grd.addColorStop(1.0, 'rgba(255,255,255,0)');
-  g.fillStyle = grd;
-  g.fillRect(0, 0, size, size);
-  // Anisotropic rays: authored angles/lengths give the flash directional energy like the
-  // thruster reference sheets, instead of the same falloff in every direction (B6).
-  const rays = [
-    { angle: 0.0, length: 0.98, width: 0.055 },
-    { angle: Math.PI * 0.5, length: 0.80, width: 0.045 },
-    { angle: Math.PI * 0.94, length: 0.86, width: 0.05 },
-    { angle: Math.PI * 1.52, length: 0.70, width: 0.04 },
-    { angle: Math.PI * 0.28, length: 0.52, width: 0.03 },
-    { angle: Math.PI * 1.24, length: 0.46, width: 0.03 },
-  ];
-  for (const ray of rays) {
-    g.save();
-    g.translate(c, c);
-    g.rotate(ray.angle);
-    const len = c * ray.length;
-    grd = g.createLinearGradient(0, 0, len, 0);
-    grd.addColorStop(0.0, 'rgba(255,255,255,0.85)');
-    grd.addColorStop(0.4, 'rgba(255,255,255,0.28)');
-    grd.addColorStop(1.0, 'rgba(255,255,255,0)');
-    g.fillStyle = grd;
-    g.beginPath();
-    g.ellipse(len * 0.5, 0, len * 0.5, c * ray.width, 0, 0, Math.PI * 2);
-    g.fill();
-    g.restore();
-  }
-  // Hot core on top: the flash reads as an energy release, not a translucent disc.
-  grd = g.createRadialGradient(c, c, 0, c, c, c * 0.34);
-  grd.addColorStop(0.0, 'rgba(255,255,255,1)');
-  grd.addColorStop(0.5, 'rgba(255,255,255,0.55)');
-  grd.addColorStop(1.0, 'rgba(255,255,255,0)');
-  g.fillStyle = grd;
-  g.fillRect(0, 0, size, size);
-  const tex = new THREE.CanvasTexture(cv);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.minFilter = THREE.LinearFilter;
-  tex.magFilter = THREE.LinearFilter;
-  return tex;
-}
-
-// Shockwave/shield ripple with a real front: the bright rim varies in thickness around the
-// circumference (deterministic angular modulation), a trailing secondary front follows the main
-// one, and the inner/outer fades stay soft. Reads as an expanding blast wave rather than a smooth
-// annulus cut from a single radial gradient.
-function makeRingTexture() {
-  const size = 128;
-  const cv = (typeof document !== 'undefined') ? document.createElement('canvas') : null;
-  if (!cv) { const t = new THREE.Texture(); return t; }
-  cv.width = cv.height = size;
-  const g = cv.getContext('2d');
-  const c = size / 2;
-  const imageData = g.createImageData(size, size);
-  const data = imageData.data;
-  const mainRadius = 0.36;      // of half-size
-  const mainWidth = 0.055;
-  const trailRadius = 0.27;
-  const trailWidth = 0.10;
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      const u = (x + 0.5 - c) / c;
-      const v = (y + 0.5 - c) / c;
-      const r = Math.sqrt(u * u + v * v);
-      if (r >= 1) continue;
-      const theta = Math.atan2(v, u);
-      // Angular thickness modulation: three gentle waves make the front break like a physical
-      // wave instead of a compass-drawn circle.
-      const thickness = mainWidth * (1
-        + 0.34 * Math.sin(theta * 3.0 + 0.7)
-        + 0.22 * Math.sin(theta * 7.0 + 2.1)
-        + 0.12 * Math.sin(theta * 13.0 + 4.4));
-      // Facing lobes: the front carries more energy on authored arcs, not isotropically.
-      const facing = 0.72 + 0.28 * Math.max(0, Math.cos(theta * 2.0 - 0.5));
-      const mainBand = Math.exp(-((r - mainRadius) ** 2) / (2 * thickness * thickness));
-      const trailBand = Math.exp(-((r - trailRadius) ** 2) / (2 * trailWidth * trailWidth));
-      const inner = Math.max(0, 1 - r / Math.max(0.02, mainRadius - mainWidth * 2.2));
-      const intensity = Math.min(1, mainBand * facing + trailBand * 0.30 * facing + inner * 0.05);
-      if (intensity <= 0.004) continue;
-      const offset = (y * size + x) * 4;
-      data[offset] = 255;
-      data[offset + 1] = 255;
-      data[offset + 2] = 255;
-      data[offset + 3] = Math.round(intensity * 255);
-    }
-  }
-  g.putImageData(imageData, 0, 0);
-  const tex = new THREE.CanvasTexture(cv);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.minFilter = THREE.LinearFilter;
-  tex.magFilter = THREE.LinearFilter;
-  return tex;
-}
-
-// Irregular deterministic smoke/vapor card. Rotated instances break repetition further; ordinary
-// alpha blending preserves dark residue against black space instead of making it disappear under
-// additive blending. The lopsided lobes are deliberately not a circular radial gradient.
-function makeSmokeTexture() {
-  const size = 96;
-  const data = new Uint8Array(size * size * 4);
-  let seed = 0x51f15e;
-  const rnd = () => {
-    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
-    return seed / 4294967296;
-  };
-  const lobes = Array.from({ length: 9 }, () => ({
-    x: 0.22 + rnd() * 0.56,
-    y: 0.22 + rnd() * 0.56,
-    sx: 0.10 + rnd() * 0.19,
-    sy: 0.08 + rnd() * 0.21,
-    weight: 0.45 + rnd() * 0.65,
-  }));
-  const voids = [
-    { x: 0.34, y: 0.38, sx: 0.10, sy: 0.08, weight: 0.72 },
-    { x: 0.61, y: 0.56, sx: 0.13, sy: 0.09, weight: 0.58 },
-    { x: 0.47, y: 0.72, sx: 0.09, sy: 0.12, weight: 0.48 },
-  ];
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      const u = (x + 0.5) / size;
-      const v = (y + 0.5) / size;
-      let density = 0;
-      for (const lobe of lobes) {
-        const dx = (u - lobe.x) / lobe.sx;
-        const dy = (v - lobe.y) / lobe.sy;
-        density += Math.exp(-(dx * dx + dy * dy) * 1.8) * lobe.weight;
-      }
-      for (const pocket of voids) {
-        const dx = (u - pocket.x) / pocket.sx;
-        const dy = (v - pocket.y) / pocket.sy;
-        density -= Math.exp(-(dx * dx + dy * dy) * 1.7) * pocket.weight;
-      }
-      // A warped superellipse clips the lobes without recovering a circular radial-gradient edge.
-      const ux = (u - 0.49) * 1.75 + Math.sin(v * 17) * 0.045;
-      const vy = (v - 0.51) * 1.58 + Math.sin(u * 13 + 0.8) * 0.05;
-      const edge = Math.max(0, 1 - (Math.pow(Math.abs(ux), 2.35) + Math.pow(Math.abs(vy), 1.82)));
-      const turbulence = 0.82 + 0.18 * Math.sin(u * 31 + Math.sin(v * 19) * 2.2)
-        * Math.cos(v * 27 - u * 7);
-      const alpha = Math.max(0, Math.min(1, (density * 0.48 - 0.14) * edge * turbulence));
-      const offset = (y * size + x) * 4;
-      const body = 205 + Math.round(Math.min(1, density * 0.18) * 44);
-      data[offset] = body;
-      data[offset + 1] = body;
-      data[offset + 2] = body;
-      data[offset + 3] = Math.round(alpha * 255);
-    }
-  }
-  const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat, THREE.UnsignedByteType);
-  texture.name = 'SF_VFX_IrregularSmoke';
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.minFilter = THREE.LinearMipmapLinearFilter;
-  texture.magFilter = THREE.LinearFilter;
-  texture.needsUpdate = true;
-  return texture;
-}
-
-// Directional, asymmetric combustion mask. It is built from overlapping advected lobes and eroded
-// pockets, not a radial polar waveform: the latter produced hard five-point flowers at gameplay
-// distance. Multiple rotated instances now merge into a feathered turbulent volume while remaining
-// one bounded draw bucket; there is no expanding circular-disc stage.
-function makeCombustionTexture() {
-  const size = 96;
-  const data = new Uint8Array(size * size * 4);
-  const lobes = [
-    { x: 0.22, y: 0.52, sx: 0.16, sy: 0.21, weight: 1.00 },
-    { x: 0.37, y: 0.42, sx: 0.22, sy: 0.17, weight: 0.83 },
-    { x: 0.48, y: 0.61, sx: 0.25, sy: 0.18, weight: 0.74 },
-    { x: 0.64, y: 0.47, sx: 0.24, sy: 0.14, weight: 0.59 },
-    { x: 0.76, y: 0.57, sx: 0.16, sy: 0.11, weight: 0.38 },
-  ];
-  const pockets = [
-    { x: 0.43, y: 0.50, sx: 0.105, sy: 0.070, weight: 0.34 },
-    { x: 0.62, y: 0.59, sx: 0.125, sy: 0.065, weight: 0.28 },
-    { x: 0.70, y: 0.38, sx: 0.105, sy: 0.070, weight: 0.22 },
-  ];
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      const u = (x + 0.5) / size;
-      const v = (y + 0.5) / size;
-      const shearV = v + Math.sin(u * 15.0 + 0.6) * 0.022 + Math.sin(u * 31.0) * 0.009;
-      let density = 0;
-      for (let i = 0; i < lobes.length; i++) {
-        const lobe = lobes[i];
-        const dx = (u - lobe.x) / lobe.sx;
-        const dy = (shearV - lobe.y) / lobe.sy;
-        density += Math.exp(-(dx * dx + dy * dy) * 1.55) * lobe.weight;
-      }
-      for (let i = 0; i < pockets.length; i++) {
-        const pocket = pockets[i];
-        const dx = (u - pocket.x) / pocket.sx;
-        const dy = (shearV - pocket.y) / pocket.sy;
-        density -= Math.exp(-(dx * dx + dy * dy) * 1.7) * pocket.weight;
-      }
-      const verticalEdge = Math.max(0, 1 - Math.pow(Math.abs((v - 0.51) * 1.78), 2.15));
-      const horizontalEdge = Math.max(0, Math.min(1, u * 8.0))
-        * Math.max(0, Math.min(1, (1 - u) * 7.2));
-      const erosion = 0.88
-        + Math.sin(u * 29.0 + Math.sin(v * 17.0) * 1.8) * 0.07
-        + Math.cos(v * 37.0 - u * 11.0) * 0.05;
-      const internalTurbulence = 0.5 + 0.5 * Math.sin(u * 43.0 + Math.sin(v * 23.0) * 2.1)
-        * Math.cos(v * 39.0 - u * 9.0);
-      const field = Math.max(0, density * verticalEdge * horizontalEdge
-        * erosion * (0.86 + internalTurbulence * 0.14) - 0.075);
-      // Wide feathering is intentional: mipmapping then retains an irregular flame mass instead
-      // of collapsing the alpha edge into a rigid emblem at the normal chase camera.
-      const alpha = Math.max(0, Math.min(1, field * 1.42));
-      const coreDx = (u - 0.27) / 0.28;
-      const coreDy = (v - 0.52) / 0.27;
-      const core = Math.max(0, Math.min(1, Math.exp(-(coreDx * coreDx + coreDy * coreDy) * 1.5)));
-      // Wide luminance range restores an internal hot core and cooler turbulent sheath after the
-      // family tint is applied. A nearly white mask made every lobe read as one flat soft smudge.
-      const luminosity = Math.round(105 + core * 125 + internalTurbulence * 25);
-      const offset = (y * size + x) * 4;
-      // Near-neutral texels let the per-family profile colors remain distinct. The previous baked
-      // orange texture multiplied every tint back into the same red/orange palette.
-      data[offset] = luminosity;
-      data[offset + 1] = luminosity;
-      data[offset + 2] = Math.round(luminosity * (0.94 + core * 0.06));
-      data[offset + 3] = Math.round(alpha * (0.66 + core * 0.34) * 255);
-    }
-  }
-  const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat, THREE.UnsignedByteType);
-  texture.name = 'SF_VFX_IrregularCombustion';
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.minFilter = THREE.LinearMipmapLinearFilter;
-  texture.magFilter = THREE.LinearFilter;
-  texture.needsUpdate = true;
-  return texture;
-}
