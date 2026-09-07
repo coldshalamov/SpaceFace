@@ -734,12 +734,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.mark",
-    "expectedContentHash": "0bd7f0f971895343086adc205846cedb29f48057f9e37b444be105dc7c46830f",
+    "expectedContentHash": "6692565ce8c10366a6319c1131e03e7059d245d424a6d6b94d334776179c2696",
     "key": "mark",
     "metadataUrl": "assets/ships/release/render-packages/mark/render-package.json",
     "runtimeAssetId": "SF_PLACE_CLAIM_MARK",
     "slot": "place",
-    "sourceSha256": "2eddb266ccec8dffd8df52d919f4b446f78701f2627982ce521478245c9b8fb3",
+    "sourceSha256": "80ab3e90ed6aa107504eb77b3c19c524bcac20bee27f8bb45b500bed8772d6ed",
     "sourceUrl": "assets/ships/release/parts/places/place_claim_mark.glb"
   },
   {
@@ -1094,12 +1094,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.whistle",
-    "expectedContentHash": "9cd032940a954a5636ca5cb0244f1e8111d2feccc6efdfe8127c2e1fa76031bd",
+    "expectedContentHash": "46988da1f645177de6604efcf8e62e6f27ed7ba50a64543e988ecf155175ec47",
     "key": "whistle",
     "metadataUrl": "assets/ships/release/render-packages/whistle/render-package.json",
     "runtimeAssetId": "SF_PLACE_WHISTLE",
     "slot": "place",
-    "sourceSha256": "1cfdaa1808da4ce3ca8fe4103352f2457d65cb352caa69a0b03b1a05df6d1071",
+    "sourceSha256": "6338ab320dd00991c08d8eda505c5bc2a507f5acc408ff34f8bdbbc8db58a5dc",
     "sourceUrl": "assets/ships/release/parts/places/place_whistle.glb"
   },
   {
@@ -2121,6 +2121,26 @@ const PILOTS = [
     "slot": "place",
     "sourceSha256": "fcc05abb5d27ada70146cef9aeab5af23d179253a610da8f38af842473f84d25",
     "sourceUrl": "assets/ships/release/parts/places/place_cold_locker.glb"
+  },
+  {
+    "assetId": "sf.render.ash-pin",
+    "expectedContentHash": "70497d345c6e974627f5ac5f13acdc6d97f4beb8653e14ff813bdd7c57363bc4",
+    "key": "ash-pin",
+    "metadataUrl": "assets/ships/release/render-packages/ash-pin/render-package.json",
+    "runtimeAssetId": "SF_PLACE_ASH_PIN",
+    "slot": "place",
+    "sourceSha256": "9a72dfff2e1cc906377a2c036e5a7c3857d2a5f0d3d64cd888cb63a475b283cc",
+    "sourceUrl": "assets/ships/release/parts/places/place_ash_pin.glb"
+  },
+  {
+    "assetId": "sf.render.tally-post",
+    "expectedContentHash": "73371ad7de9fc8de5f4e182e3c5e235c98c4eb31387410eb1c17c970709d4686",
+    "key": "tally-post",
+    "metadataUrl": "assets/ships/release/render-packages/tally-post/render-package.json",
+    "runtimeAssetId": "SF_PLACE_TALLY_POST",
+    "slot": "place",
+    "sourceSha256": "960ee37e000e1e68ec15e917caf37d357692beee401e7e5b2916487a7b2f1320",
+    "sourceUrl": "assets/ships/release/parts/places/place_tally_post.glb"
   }
 ];
 

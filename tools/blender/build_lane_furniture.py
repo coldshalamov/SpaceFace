@@ -37,6 +37,7 @@ import argparse
 import hashlib
 import json
 import math
+import struct
 import sys
 import tempfile
 from pathlib import Path
@@ -1148,6 +1149,74 @@ def project_uvs(obj):
             uvl.data[li].uv = (u * UV_PER_M, v * UV_PER_M)
 
 
+def stamp_asset_identity(path, root):
+    """Write the runtime identity the release pipeline binds against.
+
+    Blender's glTF exporter writes no `asset.extras`, and nothing downstream invents one, so a GLB
+    that leaves here without this block cannot be given a render package at all:
+    `generate-render-package-pilots.mjs` skips it with "no spacefaceAsset.assetId; cannot bind a
+    runtime identity", and the loader then fails CLOSED on the released part rather than drawing
+    something wrong. That is the difference between an asset that ships and one that breaks the
+    live-assets gate for everybody.
+
+    Measured 2026-09-06: all four assets in this family exported with empty extras. place_ash_pin
+    and place_tally_post therefore had no pilot at all, while place_claim_mark and place_whistle
+    kept older pilots whose hash/byte binding this family's re-surfacing had silently made stale
+    (34,900 B recorded against 360,072 B actually on disk).
+
+    The field set mirrors the accepted sibling place_lane_pin so the family stays self-consistent.
+    Written by editing the GLB's JSON chunk in place, because the exporter offers no hook for it.
+    """
+    stem = path.stem
+    data = path.read_bytes()
+    magic, version, _total = struct.unpack_from('<III', data, 0)
+    if magic != 0x46546C67:
+        raise SystemExit(f'{path}: not a GLB')
+    json_len, json_type = struct.unpack_from('<II', data, 12)
+    doc = json.loads(data[20:20 + json_len].decode('utf-8'))
+    tris = tri_count(root)
+    doc.setdefault('asset', {}).setdefault('extras', {})['spacefaceAsset'] = {
+        'contractVersion': 1,
+        'assetId': 'SF_' + stem.upper(),
+        'partId': stem,
+        'liveId': stem,
+        'slot': 'place',
+        'category': 'places',
+        'priority': 'P2',
+        'forward': '+X',
+        'up': '+Y',
+        'starboard': '+Z',
+        'unit': 'metre',
+        'normalConvention': 'OpenGL',
+        'ormChannels': 'R=AO,G=Roughness,B=Metallic',
+        'textureCompression': 'PNG-source',
+        'textureSize': TEX_SIZE,
+        'triangleCount': tris,
+        'sourceProvenance': {
+            'textureRoleContractVersion': 1,
+            'textureRoleMode': 'bound-base-normal-orm',
+            'geometryPipeline': 'tools/blender/build_lane_furniture.py',
+            'texturePipeline': 'tools/blender/build_lane_furniture.py',
+            'packedEditableTextures': True,
+        },
+        'sourceRole': 'place-environment',
+        'family': 'helios_lane_furniture',
+        'role': stem.replace('place_', ''),
+        'deliverableRole': 'production_single_lod_preview',
+        'lods': ['lod0'],
+        'lodTriangles': {'lod0': tris},
+        'drawGroupsPerLod': {'lod0': 0},
+        'wiringStatus': 'promoted_live_place',
+        'mountAtOrigin': False,
+    }
+    body = json.dumps(doc, separators=(',', ':'), ensure_ascii=False).encode('utf-8')
+    body += b' ' * ((4 - len(body) % 4) % 4)
+    rest = data[20 + json_len:]
+    out = struct.pack('<III', magic, version, 12 + 8 + len(body) + len(rest))
+    out += struct.pack('<II', len(body), json_type) + body + rest
+    path.write_bytes(out)
+
+
 def export_glb(root, path, parts_out=PARTS_OUT):
     # UVs first, in authored metres and on the final mesh.
     for child in root.children_recursive:
@@ -1168,6 +1237,10 @@ def export_glb(root, path, parts_out=PARTS_OUT):
         export_apply=True, export_yup=True,
         export_texcoords=True,
     )
+    # Identity BEFORE the digest, so the hash the manifest records is the hash of the file
+    # that actually ships -- stamping afterwards would bind the manifest to a file that no longer
+    # exists on disk.
+    stamp_asset_identity(path, root)
     digest = hashlib.sha256(path.read_bytes()).hexdigest()
     if parts_out is not None:
         parts_out.mkdir(parents=True, exist_ok=True)

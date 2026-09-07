@@ -1,0 +1,4687 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.tally-post",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "73371ad7de9fc8de5f4e182e3c5e235c98c4eb31387410eb1c17c970709d4686",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          9.569306828264558,
+          13.720703519782157,
+          0.3061421837846581
+        ],
+        "min": [
+          -1.299451160854976,
+          11.475446178487564,
+          -0.3061421837846581
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "76bf8f0808e25193e786e4c5882d728ff3a8bf8b5d72acd3e5571d4111468446",
+      "id": "sf.render.tally-post.mesh.tally-boom-mesh.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.020",
+      "nodeId": "sf.render.tally-post.mesh.tally-boom-mesh",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          5.131874657571302,
+          1.612187770526205,
+          4.76026269436619
+        ],
+        "min": [
+          3.0768933920830364,
+          0.5178054746194576,
+          2.7327714852100655
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "384255d1ee4cb227e934e1da0e9e6d06caee3adcf7c777da79e1cd4a5615a441",
+      "id": "sf.render.tally-post.mesh.tally-deck-crumple.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.019",
+      "nodeId": "sf.render.tally-post.mesh.tally-deck-crumple",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          5.100211715704177,
+          1.3767577676705116,
+          3.9779999656677205
+        ],
+        "min": [
+          4.14778864097002,
+          0.527242293841482,
+          -4.6240001783370985
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a460cada7e2c72b5b8ed49400b9439d52f90ea5141dd62e2b8649f45c728c6a2",
+      "id": "sf.render.tally-post.mesh.tally-deck-rail-e.primitive.0",
+      "indexCount": 108,
+      "indexed": true,
+      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.007",
+      "nodeId": "sf.render.tally-post.mesh.tally-deck-rail-e",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          5.1000001430511475,
+          1.3772205321850635,
+          -4.148350808153452
+        ],
+        "min": [
+          -5.1000001430511475,
+          0.5267795293269302,
+          -5.099649548520745
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e7a48fbbbc0f5d203a1a130bf6d760aec1c806c170394c6815763cf554c509fa",
+      "id": "sf.render.tally-post.mesh.tally-deck-rail-n.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.005",
+      "nodeId": "sf.render.tally-post.mesh.tally-deck-rail-n",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          3.9779999656677205,
+          1.3769902138707266,
+          5.0999669075002885
+        ],
+        "min": [
+          -5.1000001430511475,
+          0.527009847641267,
+          4.148033449173909
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "15edc261c0bc5c920555b621881259d0c5ac7b96608db9bd3b0beb18086232ff",
+      "id": "sf.render.tally-post.mesh.tally-deck-rail-s.primitive.0",
+      "indexCount": 108,
+      "indexed": true,
+      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.006",
+      "nodeId": "sf.render.tally-post.mesh.tally-deck-rail-s",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          -4.148151800159894,
+          1.3770462481988517,
+          4.6240001783370985
+        ],
+        "min": [
+          -5.099848556514303,
+          0.526953813313142,
+          -4.6240001783370985
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b5db6dee603e4b6ac1b6e1ca86e055bb3d3507a774b43816bd06a65ab4f033e9",
+      "id": "sf.render.tally-post.mesh.tally-deck-rail-w.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.008",
+      "nodeId": "sf.render.tally-post.mesh.tally-deck-rail-w",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          4.6202348336117325,
+          0.3059828709955177,
+          -1.329757632360952
+        ],
+        "min": [
+          3.6002349671261413,
+          0.00001715379778855202,
+          -2.145801056014818
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "88767d1eab9ad66ae6da134e4e15cbf088289a378012f7fb7ace1c0b2f1daeb6",
+      "id": "sf.render.tally-post.mesh.tally-foot-0.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube",
+      "nodeId": "sf.render.tally-post.mesh.tally-foot-0",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.2277793096171905,
+          0.30598292165946717,
+          -3.702212985886206
+        ],
+        "min": [
+          -2.2477794800864785,
+          0.000017108205181671186,
+          -4.518256814851668
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1d6524bee17842060ff88f95b2eefdb670512b3220baa395de65958dc905d074",
+      "id": "sf.render.tally-post.mesh.tally-foot-1.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.001",
+      "nodeId": "sf.render.tally-post.mesh.tally-foot-1",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.6002349671261413,
+          0.3059828709955177,
+          2.145801056014818
+        ],
+        "min": [
+          -4.6202348336117325,
+          0.00001715379778855202,
+          1.329757632360952
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0c1db599490f938abecbbfcf58e6ae01cd1633b79c5754d7dcd0db067c2feae4",
+      "id": "sf.render.tally-post.mesh.tally-foot-2.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.002",
+      "nodeId": "sf.render.tally-post.mesh.tally-foot-2",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          2.2477794800864785,
+          0.30598292165946717,
+          4.518256814851668
+        ],
+        "min": [
+          1.2277793096171905,
+          0.000017108205181671186,
+          3.702212985886206
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "554e7b704312fc9968a0f3895a351e512e200955a67be94b30b1afb478ae903a",
+      "id": "sf.render.tally-post.mesh.tally-foot-3.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.004",
+      "nodeId": "sf.render.tally-post.mesh.tally-foot-3",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          4.163437316373859,
+          1.135611148739173,
+          -0.5078054749350116
+        ],
+        "min": [
+          1.3853800625767434,
+          0.19038908047049397,
+          -1.8381967106481625
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a070c5c9ad393b5c56d34b7a517e2d999edc0483bd84c74d5fb99c0a963f5a4c",
+      "id": "sf.render.tally-post.mesh.tally-foot-brace-0.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder",
+      "nodeId": "sf.render.tally-post.mesh.tally-foot-brace-0",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.5078055762629106,
+          1.135610642099678,
+          -1.3853799612488444
+        ],
+        "min": [
+          -1.8381967106481625,
+          0.19038954911202666,
+          -4.163437316373859
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b5277e03f5d4d8c642d62e9d5b2ac321dcc75aee4b528be8e69c7cc1416bbc7f",
+      "id": "sf.render.tally-post.mesh.tally-foot-brace-1.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.001",
+      "nodeId": "sf.render.tally-post.mesh.tally-foot-brace-1",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.3853799612488444,
+          1.135610844755476,
+          1.8381967106481625
+        ],
+        "min": [
+          -4.163437316373859,
+          0.190389321124254,
+          0.5078056775908095
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d7d10d60870efed34b1be60a0c4614ca308eb4e1018461b71da9713eb861fe37",
+      "id": "sf.render.tally-post.mesh.tally-foot-brace-2.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.002",
+      "nodeId": "sf.render.tally-post.mesh.tally-foot-brace-2",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          1.8381967106481625,
+          1.135610946083375,
+          4.163437316373859
+        ],
+        "min": [
+          0.50780562692686,
+          0.19038921979635504,
+          1.3853799612488444
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9ad7b1cb7d42eeaef44fffbe1f0f405dcd6f82174703e2443a48cb35700566cf",
+      "id": "sf.render.tally-post.mesh.tally-foot-brace-3.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.003",
+      "nodeId": "sf.render.tally-post.mesh.tally-foot-brace-3",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          4.385999993324276,
+          1.2919896845814662,
+          3.807724916450411
+        ],
+        "min": [
+          -4.385999993324276,
+          0.6120103769305274,
+          3.3322749595719188
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6f056411de4d8a1da4cc0d763fee1e028c373c08d8b442344abce0eccefcc66a",
+      "id": "sf.render.tally-post.mesh.tally-grate-0.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.009",
+      "nodeId": "sf.render.tally-post.mesh.tally-grate-0",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          4.385999993324276,
+          1.2919896845814662,
+          2.78772504996482
+        ],
+        "min": [
+          -4.385999993324276,
+          0.6120103769305274,
+          2.3122750930863276
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0bab90046667dcba06235b44c2a2dd0babb0aa358439f890271e57cdf2fe75cf",
+      "id": "sf.render.tally-post.mesh.tally-grate-1.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.010",
+      "nodeId": "sf.render.tally-post.mesh.tally-grate-1",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          4.385999993324276,
+          1.2919896845814662,
+          1.7677249808234308
+        ],
+        "min": [
+          -4.385999993324276,
+          0.6120103769305274,
+          1.2922750239449385
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1690879cdd12953e9301e36935954c85b9984799e7d23d8cdb5f72b8a97c2573",
+      "id": "sf.render.tally-post.mesh.tally-grate-2.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.011",
+      "nodeId": "sf.render.tally-post.mesh.tally-grate-2",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          4.385999993324276,
+          1.2919896845814662,
+          0.7477250636738901
+        ],
+        "min": [
+          -4.385999993324276,
+          0.6120103769305274,
+          0.27227500546749894
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "595b27dbc14537e8108de926f6d59e6f8c8019764abe55cf4c79fdd4ae2629df",
+      "id": "sf.render.tally-post.mesh.tally-grate-3.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.012",
+      "nodeId": "sf.render.tally-post.mesh.tally-grate-3",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          4.385999993324276,
+          1.2919896845814662,
+          -0.27227500546749894
+        ],
+        "min": [
+          -4.385999993324276,
+          0.6120103769305274,
+          -0.7477250636738901
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a6852b6d9bffcfd47b77d879dce9c9797992059992deb37fac97404fbe5dba06",
+      "id": "sf.render.tally-post.mesh.tally-grate-4.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.013",
+      "nodeId": "sf.render.tally-post.mesh.tally-grate-4",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          4.385999993324276,
+          1.2919896845814662,
+          -1.2922750239449385
+        ],
+        "min": [
+          -4.385999993324276,
+          0.6120103769305274,
+          -1.7677249808234308
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "44a14d7ddf19ef3c56e1caa7599c12d057ba6aaf2714b331d4dc8d55fe9bfca3",
+      "id": "sf.render.tally-post.mesh.tally-grate-5.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.014",
+      "nodeId": "sf.render.tally-post.mesh.tally-grate-5",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          4.385999993324276,
+          1.2919896845814662,
+          -2.3122750930863276
+        ],
+        "min": [
+          -4.385999993324276,
+          0.6120103769305274,
+          -2.78772504996482
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "655b8de339551f1f4c38da452585c89ddf14002794b95627b59b4269b946ff08",
+      "id": "sf.render.tally-post.mesh.tally-grate-6.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.015",
+      "nodeId": "sf.render.tally-post.mesh.tally-grate-6",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          4.385999993324276,
+          1.2919896845814662,
+          -3.3322749595719188
+        ],
+        "min": [
+          -4.385999993324276,
+          0.6120103769305274,
+          -3.807724916450411
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2d0db8280ad5fdc449e49decb478468642168ab12e2bbaea78d2a9317b66e574",
+      "id": "sf.render.tally-post.mesh.tally-grate-7.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.016",
+      "nodeId": "sf.render.tally-post.mesh.tally-grate-7",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          0.3880277161360546,
+          20.366001414299035,
+          0.4080000023245809
+        ],
+        "min": [
+          -0.3880277161360546,
+          19.890003476142965,
+          -0.4080000023245809
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a48d52041e836a624742afad4071a4c105a04a208a430194b721b16f26ebeb97",
+      "id": "sf.render.tally-post.mesh.tally-invoice-lamp.primitive.0",
+      "indexCount": 108,
+      "indexed": true,
+      "materialHash": "b75db6daea4fdcd5ab35e301f6ee7126389d977a371e6df260df7576f0fa389f",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.012",
+      "nodeId": "sf.render.tally-post.mesh.tally-invoice-lamp",
+      "primitiveIndex": 0,
+      "vertexCount": 60
+    },
+    {
+      "bounds": {
+        "max": [
+          0.7820000361204151,
+          8.670005755424654,
+          -1.9210233511931278
+        ],
+        "min": [
+          -0.7820000361204151,
+          7.649995350837571,
+          -2.022976645945846
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "13ea87dee8b06ef21c22c58010b0797cbfd009a18800614d22dd08b518930f3c",
+      "id": "sf.render.tally-post.mesh.tally-ledger-plate.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "d75684dbd82479f6e5eba655326bbd79a563433f2f04833fbfc95fda9bfe6b78",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.026",
+      "nodeId": "sf.render.tally-post.mesh.tally-ledger-plate",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          0.2378246344278736,
+          19.890001854896582,
+          0.2378246344278736
+        ],
+        "min": [
+          -0.2378246344278736,
+          14.790001711845434,
+          -0.2378246344278736
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ba7382b7ce235f0f221c8cc40989a67359125f12ce790ab83e454d008a879ca6",
+      "id": "sf.render.tally-post.mesh.tally-mast.primitive.0",
+      "indexCount": 84,
+      "indexed": true,
+      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.011",
+      "nodeId": "sf.render.tally-post.mesh.tally-mast",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          1.6195319153149512,
+          14.450000405311584,
+          1.8704307365538284
+        ],
+        "min": [
+          -1.6195319153149512,
+          0.8500008344650496,
+          -1.8704307365538284
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bb53cf8cba01a0e10eb2d55e5f11102354923dda6a26c25dde3eed1dda402497",
+      "id": "sf.render.tally-post.mesh.tally-scale-house.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "8a5e28d39fb2ee992c2a391875909206d07fda3063bf7289988feb8bd929b8f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.008",
+      "nodeId": "sf.render.tally-post.mesh.tally-scale-house",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.7022348727123813,
+          0.4165184108024036,
+          2.043763659105963
+        ],
+        "min": [
+          -4.5182349280254925,
+          0.2974815869326193,
+          1.4317948266140093
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ab8265e44bb8ee459fd5a5c43dd2c904a265719658680ae2af331105c6889d2c",
+      "id": "sf.render.tally-post.mesh.tally-shim.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "0713eb6cd2a3219d2d51057cbe6789ea9090ed0d7f2149e0193e58696e5a78eb",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.003",
+      "nodeId": "sf.render.tally-post.mesh.tally-shim",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          4.171054337194505,
+          0.5268224416921399,
+          -1.5878622858064944
+        ],
+        "min": [
+          -1.7985985783576552,
+          0.1531776128461111,
+          -4.260152364061923
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bfda96e0abaab46d3fd1cff4432651b17d09922ea35133b46d1206779a005a79",
+      "id": "sf.render.tally-post.mesh.tally-sill-0.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.004",
+      "nodeId": "sf.render.tally-post.mesh.tally-sill-0",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.5878622858064944,
+          0.5268223403642409,
+          1.7985981730460594
+        ],
+        "min": [
+          -4.260152364061923,
+          0.15317771417401005,
+          -4.171053931882909
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "79711f022316fad34c043ef0a6d5d9a9eea871ccd5611ca453411fc19ecb6cfb",
+      "id": "sf.render.tally-post.mesh.tally-sill-1.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.005",
+      "nodeId": "sf.render.tally-post.mesh.tally-sill-1",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          1.798599186325049,
+          0.5268228976676852,
+          4.260151553438732
+        ],
+        "min": [
+          -4.171054742506101,
+          0.1531771822025405,
+          1.587862995101787
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "be907cf99a7741758d8d1485c0074c3ed3d7c34f94e8107df9650de0b460c449",
+      "id": "sf.render.tally-post.mesh.tally-sill-2.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.006",
+      "nodeId": "sf.render.tally-post.mesh.tally-sill-2",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          4.260152364061923,
+          0.5268223403642409,
+          4.171053931882909
+        ],
+        "min": [
+          1.5878620831506964,
+          0.15317775217197216,
+          -1.7985981730460594
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1418a01d6f3278ad0da0eea303278baf0d1fc6df3edf1b86e045416509e3c768",
+      "id": "sf.render.tally-post.mesh.tally-sill-3.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.007",
+      "nodeId": "sf.render.tally-post.mesh.tally-sill-3",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          2.196331657979954,
+          11.492000711441051,
+          0.10201141263576563
+        ],
+        "min": [
+          2.019668898012185,
+          10.948001214981105,
+          -0.10201141263576563
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e7a4b58b6125bdf171c897c3d8d4138affabbba9b67aa1c0e4485d96cb09c060",
+      "id": "sf.render.tally-post.mesh.tally-tag-link-0.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "0713eb6cd2a3219d2d51057cbe6789ea9090ed0d7f2149e0193e58696e5a78eb",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.013",
+      "nodeId": "sf.render.tally-post.mesh.tally-tag-link-0",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          2.196331657979954,
+          10.812012689590802,
+          0.2720000522136701
+        ],
+        "min": [
+          2.019668898012185,
+          10.607990180968955,
+          -0.2720000522136701
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a4a96fcd4b21965f642cb458428d5e551cf8472de4bc308f7fa076a4a3ec1402",
+      "id": "sf.render.tally-post.mesh.tally-tag-link-1.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "0713eb6cd2a3219d2d51057cbe6789ea9090ed0d7f2149e0193e58696e5a78eb",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.014",
+      "nodeId": "sf.render.tally-post.mesh.tally-tag-link-1",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          2.196331657979954,
+          10.47200084495546,
+          0.10201141263576563
+        ],
+        "min": [
+          2.019668898012185,
+          9.928001348495513,
+          -0.10201141263576563
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "cbc59d5fa0410090fe79831ea212f9f086395de68604e25c04090d1f4873451f",
+      "id": "sf.render.tally-post.mesh.tally-tag-link-2.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "0713eb6cd2a3219d2d51057cbe6789ea9090ed0d7f2149e0193e58696e5a78eb",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.015",
+      "nodeId": "sf.render.tally-post.mesh.tally-tag-link-2",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          1.9434942313781676,
+          15.061985247611574,
+          2.244000152111056
+        ],
+        "min": [
+          -1.9434942313781676,
+          14.450016617775418,
+          -2.244000152111056
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "34be61d48b0bec17a017f7cc0c16f64b7a3b3fbef97a509dc94a7f8d55207547",
+      "id": "sf.render.tally-post.mesh.tally-thermal-hood.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.010",
+      "nodeId": "sf.render.tally-post.mesh.tally-thermal-hood",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          6.397268592790754,
+          0.9589220495566371,
+          -0.35659919636317383
+        ],
+        "min": [
+          5.2038347634098345,
+          0.5341704796890715,
+          -1.1394009134881884
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7a9f0e7d3829452a26db3f77492e8bea12f14496ce93c68e5cf93b4e26f2e0a0",
+      "id": "sf.render.tally-post.mesh.tally-tong-a.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.022",
+      "nodeId": "sf.render.tally-post.mesh.tally-tong-a",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          6.397268592790754,
+          0.9589220495566371,
+          1.1394009134881884
+        ],
+        "min": [
+          5.2038347634098345,
+          0.5341704796890715,
+          0.35659919636317383
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "817e90a6e4cf4ed82e1f8523807a768c7a2556614f5e262f78bf5efccaded51a",
+      "id": "sf.render.tally-post.mesh.tally-tong-b.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.023",
+      "nodeId": "sf.render.tally-post.mesh.tally-tong-b",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          5.833677917630873,
+          1.1458591794558397,
+          0.4760000153779984
+        ],
+        "min": [
+          4.805762765033414,
+          0.349416992923776,
+          -0.4760000153779984
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d076dfc5e5159eea34df851aefe74776bb088940e298e2c05520aa29f7c2c845",
+      "id": "sf.render.tally-post.mesh.tally-yoke-hub.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.021",
+      "nodeId": "sf.render.tally-post.mesh.tally-yoke-hub",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          6.940296374562513,
+          0.8690227423397429,
+          1.717018270969902
+        ],
+        "min": [
+          5.757146387902135,
+          0.6408137218301808,
+          0.8669817690844184
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f5b3a5800f1c13bffab35574001a63a85af596b35dc44d04fab4eaff4df727c9",
+      "id": "sf.render.tally-post.mesh.tally-yoke-pad-replacement.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "0713eb6cd2a3219d2d51057cbe6789ea9090ed0d7f2149e0193e58696e5a78eb",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.025",
+      "nodeId": "sf.render.tally-post.mesh.tally-yoke-pad-replacement",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          6.961587844498032,
+          1.0349849199334475,
+          -0.8669817690844184
+        ],
+        "min": [
+          5.7358549175259235,
+          0.4748515630505603,
+          -1.717018270969902
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "39cb83fbb9432afe82b1185448db6eae4e50edc0723b56a65e9b5ea5ea23307c",
+      "id": "sf.render.tally-post.mesh.tally-yoke-pad-worn.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "8a5e28d39fb2ee992c2a391875909206d07fda3063bf7289988feb8bd929b8f4",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.024",
+      "nodeId": "sf.render.tally-post.mesh.tally-yoke-pad-worn",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          6.677293167090932,
+          1.1747874738247424,
+          -0.9179999608993512
+        ],
+        "min": [
+          5.944438994184328,
+          0.8737548963122465,
+          -1.6660000791549692
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d87a36f5f265f908230116bb16bf1425f9e2c2b6d5dae8a0247098e9d86f316e",
+      "id": "sf.render.tally-post.mesh.tally-yoke-wear-cup.primitive.0",
+      "indexCount": 108,
+      "indexed": true,
+      "materialHash": "b9911f7e367cc37030e5e0cb943aba6f5a8f7df24f0ef1c0d521b35ed82edbbd",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.009",
+      "nodeId": "sf.render.tally-post.mesh.tally-yoke-wear-cup",
+      "primitiveIndex": 0,
+      "vertexCount": 60
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "0713eb6cd2a3219d2d51057cbe6789ea9090ed0d7f2149e0193e58696e5a78eb",
+      "id": "material:0713eb6cd2a3219d2d51057c",
+      "name": "furniture_bare_steel",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "furniture_bare_steel_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "furniture_bare_steel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "furniture_bare_steel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "furniture_bare_steel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "id": "material:2e6f2a403abe2241bf65094a",
+      "name": "furniture_structural_alloy",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "furniture_structural_alloy_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "furniture_structural_alloy_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "furniture_structural_alloy_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "furniture_structural_alloy_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "8a5e28d39fb2ee992c2a391875909206d07fda3063bf7289988feb8bd929b8f4",
+      "id": "material:8a5e28d39fb2ee992c2a3918",
+      "name": "furniture_painted_shell",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "furniture_painted_shell_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "furniture_painted_shell_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "furniture_painted_shell_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "furniture_painted_shell_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "b75db6daea4fdcd5ab35e301f6ee7126389d977a371e6df260df7576f0fa389f",
+      "id": "material:b75db6daea4fdcd5ab35e301",
+      "name": "furniture_signal_lens",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "furniture_signal_lens_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "furniture_signal_lens_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "furniture_signal_lens_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "b9911f7e367cc37030e5e0cb943aba6f5a8f7df24f0ef1c0d521b35ed82edbbd",
+      "id": "material:b9911f7e367cc37030e5e0cb",
+      "name": "furniture_scorch",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "furniture_scorch_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "furniture_scorch_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "furniture_scorch_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "furniture_scorch_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "d75684dbd82479f6e5eba655326bbd79a563433f2f04833fbfc95fda9bfe6b78",
+      "id": "material:d75684dbd82479f6e5eba655",
+      "name": "furniture_identity_plate",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "furniture_identity_plate_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "furniture_identity_plate_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "furniture_identity_plate_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "furniture_identity_plate_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.tally-post.mesh.tally-boom-mesh",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tally_boom__mesh",
+      "nodeName": "tally_boom__mesh",
+      "nodePath": [
+        0,
+        0,
+        6
+      ],
+      "parentId": "sf.render.tally-post.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-post.body",
+      "worldTransform": [
+        3.366911516987327,
+        0.4731886492928823,
+        0,
+        0,
+        -0.4731886492928823,
+        3.366911516987327,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-post.mesh.tally-deck-crumple",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tally_deck_crumple",
+      "nodeName": "tally_deck_crumple",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.tally-post.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-post.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-post.mesh.tally-deck-rail-e",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tally_deck_rail_e",
+      "nodeName": "tally_deck_rail_e",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.tally-post.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-post.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-post.mesh.tally-deck-rail-n",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tally_deck_rail_n",
+      "nodeName": "tally_deck_rail_n",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.tally-post.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-post.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-post.mesh.tally-deck-rail-s",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tally_deck_rail_s",
+      "nodeName": "tally_deck_rail_s",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.tally-post.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-post.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-post.mesh.tally-deck-rail-w",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tally_deck_rail_w",
+      "nodeName": "tally_deck_rail_w",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.tally-post.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-post.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-post.mesh.tally-foot-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tally_foot_0",
+      "nodeName": "tally_foot_0",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.tally-post.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-post.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-post.mesh.tally-foot-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tally_foot_1",
+      "nodeName": "tally_foot_1",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.tally-post.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-post.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-post.mesh.tally-foot-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tally_foot_2",
+      "nodeName": "tally_foot_2",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.tally-post.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-post.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-post.mesh.tally-foot-3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tally_foot_3",
+      "nodeName": "tally_foot_3",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.tally-post.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-post.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-post.mesh.tally-foot-brace-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tally_foot_brace_0",
+      "nodeName": "tally_foot_brace_0",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.tally-post.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-post.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-post.mesh.tally-foot-brace-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tally_foot_brace_1",
+      "nodeName": "tally_foot_brace_1",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.tally-post.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-post.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-post.mesh.tally-foot-brace-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tally_foot_brace_2",
+      "nodeName": "tally_foot_brace_2",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.tally-post.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-post.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-post.mesh.tally-foot-brace-3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tally_foot_brace_3",
+      "nodeName": "tally_foot_brace_3",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.tally-post.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-post.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-post.mesh.tally-grate-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tally_grate_0",
+      "nodeName": "tally_grate_0",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.tally-post.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-post.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-post.mesh.tally-grate-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tally_grate_1",
+      "nodeName": "tally_grate_1",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.tally-post.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-post.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-post.mesh.tally-grate-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tally_grate_2",
+      "nodeName": "tally_grate_2",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.tally-post.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-post.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-post.mesh.tally-grate-3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tally_grate_3",
+      "nodeName": "tally_grate_3",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.tally-post.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-post.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-post.mesh.tally-grate-4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tally_grate_4",
+      "nodeName": "tally_grate_4",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.tally-post.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-post.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-post.mesh.tally-grate-5",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tally_grate_5",
+      "nodeName": "tally_grate_5",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.tally-post.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-post.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-post.mesh.tally-grate-6",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tally_grate_6",
+      "nodeName": "tally_grate_6",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentId": "sf.render.tally-post.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-post.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-post.mesh.tally-grate-7",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tally_grate_7",
+      "nodeName": "tally_grate_7",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentId": "sf.render.tally-post.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-post.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-post.mesh.tally-invoice-lamp",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tally_invoice_lamp",
+      "nodeName": "tally_invoice_lamp",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentId": "sf.render.tally-post.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-post.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-post.mesh.tally-ledger-plate",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tally_ledger_plate",
+      "nodeName": "tally_ledger_plate",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentId": "sf.render.tally-post.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-post.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-post.mesh.tally-mast",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tally_mast",
+      "nodeName": "tally_mast",
+      "nodePath": [
+        0,
+        24
+      ],
+      "parentId": "sf.render.tally-post.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-post.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-post.mesh.tally-scale-house",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tally_scale_house",
+      "nodeName": "tally_scale_house",
+      "nodePath": [
+        0,
+        25
+      ],
+      "parentId": "sf.render.tally-post.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-post.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-post.mesh.tally-shim",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tally_shim",
+      "nodeName": "tally_shim",
+      "nodePath": [
+        0,
+        26
+      ],
+      "parentId": "sf.render.tally-post.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-post.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-post.mesh.tally-sill-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tally_sill_0",
+      "nodeName": "tally_sill_0",
+      "nodePath": [
+        0,
+        27
+      ],
+      "parentId": "sf.render.tally-post.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-post.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-post.mesh.tally-sill-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tally_sill_1",
+      "nodeName": "tally_sill_1",
+      "nodePath": [
+        0,
+        28
+      ],
+      "parentId": "sf.render.tally-post.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-post.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-post.mesh.tally-sill-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tally_sill_2",
+      "nodeName": "tally_sill_2",
+      "nodePath": [
+        0,
+        29
+      ],
+      "parentId": "sf.render.tally-post.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-post.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-post.mesh.tally-sill-3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tally_sill_3",
+      "nodeName": "tally_sill_3",
+      "nodePath": [
+        0,
+        30
+      ],
+      "parentId": "sf.render.tally-post.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-post.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-post.mesh.tally-tag-link-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tally_tag_link_0",
+      "nodeName": "tally_tag_link_0",
+      "nodePath": [
+        0,
+        31
+      ],
+      "parentId": "sf.render.tally-post.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-post.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-post.mesh.tally-tag-link-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tally_tag_link_1",
+      "nodeName": "tally_tag_link_1",
+      "nodePath": [
+        0,
+        32
+      ],
+      "parentId": "sf.render.tally-post.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-post.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-post.mesh.tally-tag-link-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tally_tag_link_2",
+      "nodeName": "tally_tag_link_2",
+      "nodePath": [
+        0,
+        33
+      ],
+      "parentId": "sf.render.tally-post.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-post.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-post.mesh.tally-thermal-hood",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tally_thermal_hood",
+      "nodeName": "tally_thermal_hood",
+      "nodePath": [
+        0,
+        34
+      ],
+      "parentId": "sf.render.tally-post.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-post.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-post.mesh.tally-tong-a",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tally_tong_a",
+      "nodeName": "tally_tong_a",
+      "nodePath": [
+        0,
+        0,
+        0
+      ],
+      "parentId": "sf.render.tally-post.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-post.body",
+      "worldTransform": [
+        3.366911516987327,
+        0.4731886492928823,
+        0,
+        0,
+        -0.4731886492928823,
+        3.366911516987327,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-post.mesh.tally-tong-b",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tally_tong_b",
+      "nodeName": "tally_tong_b",
+      "nodePath": [
+        0,
+        0,
+        1
+      ],
+      "parentId": "sf.render.tally-post.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-post.body",
+      "worldTransform": [
+        3.366911516987327,
+        0.4731886492928823,
+        0,
+        0,
+        -0.4731886492928823,
+        3.366911516987327,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-post.mesh.tally-yoke-hub",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tally_yoke_hub",
+      "nodeName": "tally_yoke_hub",
+      "nodePath": [
+        0,
+        0,
+        2
+      ],
+      "parentId": "sf.render.tally-post.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-post.body",
+      "worldTransform": [
+        3.366911516987327,
+        0.4731886492928823,
+        0,
+        0,
+        -0.4731886492928823,
+        3.366911516987327,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-post.mesh.tally-yoke-pad-replacement",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tally_yoke_pad_replacement",
+      "nodeName": "tally_yoke_pad_replacement",
+      "nodePath": [
+        0,
+        0,
+        3
+      ],
+      "parentId": "sf.render.tally-post.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-post.body",
+      "worldTransform": [
+        3.366911516987327,
+        0.4731886492928823,
+        0,
+        0,
+        -0.4731886492928823,
+        3.366911516987327,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-post.mesh.tally-yoke-pad-worn",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tally_yoke_pad_worn",
+      "nodeName": "tally_yoke_pad_worn",
+      "nodePath": [
+        0,
+        0,
+        4
+      ],
+      "parentId": "sf.render.tally-post.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-post.body",
+      "worldTransform": [
+        3.366911516987327,
+        0.4731886492928823,
+        0,
+        0,
+        -0.4731886492928823,
+        3.366911516987327,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-post.mesh.tally-yoke-wear-cup",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "tally_yoke_wear_cup",
+      "nodeName": "tally_yoke_wear_cup",
+      "nodePath": [
+        0,
+        0,
+        5
+      ],
+      "parentId": "sf.render.tally-post.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-post.body",
+      "worldTransform": [
+        3.366911516987327,
+        0.4731886492928823,
+        0,
+        0,
+        -0.4731886492928823,
+        3.366911516987327,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.tally-post.root",
+      "localTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "place_tally_post",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.tally-post.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "73b5b028688b10223ef04c4cd0030d982ce90547db5db12962a9824d42402321"
+    },
+    "sourceGlb": {
+      "bytes": 370180,
+      "sha256": "960ee37e000e1e68ec15e917caf37d357692beee401e7e5b2916487a7b2f1320",
+      "uri": "place_tally_post.glb"
+    },
+    "sourceManifest": {
+      "bytes": 152211,
+      "sha256": "688f0d64b161f04b6d7e3989f6842a886d28d6dd61ef04b2835f55a13bb44b16",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 420684,
+    "sha256": "b48d8b77bb2af4b8030052689e47aae4bc4cc160b958a32a9a72a345018354db",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        2.2346533426067055,
+        10.183009261252108,
+        0.00015867948977188462
+      ],
+      "max": [
+        9.569306828264558,
+        20.366001414299035,
+        5.0999669075002885
+      ],
+      "min": [
+        -5.1000001430511475,
+        0.000017108205181671186,
+        -5.099649548520745
+      ],
+      "size": [
+        14.669306971315706,
+        20.365984306093853,
+        10.199616456021033
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [],
+    "materialProfileRoles": {
+      "hull": 41
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 24,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 25,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 26,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 27,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 28,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 29,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 30,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 31,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 32,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 33,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 34,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 35,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 36,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 37,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 38,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 39,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 40,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 41,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 42,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 43,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 44,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          3.366911516987327,
+          0.4731886492928823,
+          0,
+          0,
+          -0.4731886492928823,
+          3.366911516987327,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tally_tong_a",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.366911516987327,
+          0.4731886492928823,
+          0,
+          0,
+          -0.4731886492928823,
+          3.366911516987327,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tally_tong_b",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.366911516987327,
+          0.4731886492928823,
+          0,
+          0,
+          -0.4731886492928823,
+          3.366911516987327,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tally_yoke_hub",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.366911516987327,
+          0.4731886492928823,
+          0,
+          0,
+          -0.4731886492928823,
+          3.366911516987327,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tally_yoke_pad_replacement",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.366911516987327,
+          0.4731886492928823,
+          0,
+          0,
+          -0.4731886492928823,
+          3.366911516987327,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tally_yoke_pad_worn",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.366911516987327,
+          0.4731886492928823,
+          0,
+          0,
+          -0.4731886492928823,
+          3.366911516987327,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tally_yoke_wear_cup",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.366911516987327,
+          0.4731886492928823,
+          0,
+          0,
+          -0.4731886492928823,
+          3.366911516987327,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tally_boom__mesh",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tally_deck_crumple",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tally_deck_rail_e",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tally_deck_rail_n",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tally_deck_rail_s",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tally_deck_rail_w",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tally_foot_0",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tally_foot_1",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tally_foot_2",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tally_foot_3",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tally_foot_brace_0",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tally_foot_brace_1",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tally_foot_brace_2",
+        "planIndex": 21,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tally_foot_brace_3",
+        "planIndex": 22,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tally_grate_0",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tally_grate_1",
+        "planIndex": 24,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tally_grate_2",
+        "planIndex": 25,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tally_grate_3",
+        "planIndex": 26,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tally_grate_4",
+        "planIndex": 27,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tally_grate_5",
+        "planIndex": 28,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tally_grate_6",
+        "planIndex": 29,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tally_grate_7",
+        "planIndex": 30,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tally_invoice_lamp",
+        "planIndex": 31,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tally_ledger_plate",
+        "planIndex": 32,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tally_mast",
+        "planIndex": 33,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tally_scale_house",
+        "planIndex": 34,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tally_shim",
+        "planIndex": 35,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tally_sill_0",
+        "planIndex": 36,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tally_sill_1",
+        "planIndex": 37,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tally_sill_2",
+        "planIndex": 38,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tally_sill_3",
+        "planIndex": 39,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tally_tag_link_0",
+        "planIndex": 40,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tally_tag_link_1",
+        "planIndex": 41,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tally_tag_link_2",
+        "planIndex": 42,
+        "tags": {
+          "canopy": false
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "tally_thermal_hood",
+        "planIndex": 43,
+        "tags": {
+          "canopy": false
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_tally_post.glb"
+  },
+  "runtimeHash": "89aa32d51d8c23c5870330cae8ef138d05a4361653531d7ea3bea15fe33379f1",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          9.569306828264558,
+          20.366001414299035,
+          5.0999669075002885
+        ],
+        "min": [
+          -5.1000001430511475,
+          0.000017108205181671186,
+          -5.099649548520745
+        ]
+      },
+      "id": "sf.render.tally-post.body",
+      "nodeIds": [
+        "sf.render.tally-post.mesh.tally-boom-mesh",
+        "sf.render.tally-post.mesh.tally-deck-crumple",
+        "sf.render.tally-post.mesh.tally-deck-rail-e",
+        "sf.render.tally-post.mesh.tally-deck-rail-n",
+        "sf.render.tally-post.mesh.tally-deck-rail-s",
+        "sf.render.tally-post.mesh.tally-deck-rail-w",
+        "sf.render.tally-post.mesh.tally-foot-0",
+        "sf.render.tally-post.mesh.tally-foot-1",
+        "sf.render.tally-post.mesh.tally-foot-2",
+        "sf.render.tally-post.mesh.tally-foot-3",
+        "sf.render.tally-post.mesh.tally-foot-brace-0",
+        "sf.render.tally-post.mesh.tally-foot-brace-1",
+        "sf.render.tally-post.mesh.tally-foot-brace-2",
+        "sf.render.tally-post.mesh.tally-foot-brace-3",
+        "sf.render.tally-post.mesh.tally-grate-0",
+        "sf.render.tally-post.mesh.tally-grate-1",
+        "sf.render.tally-post.mesh.tally-grate-2",
+        "sf.render.tally-post.mesh.tally-grate-3",
+        "sf.render.tally-post.mesh.tally-grate-4",
+        "sf.render.tally-post.mesh.tally-grate-5",
+        "sf.render.tally-post.mesh.tally-grate-6",
+        "sf.render.tally-post.mesh.tally-grate-7",
+        "sf.render.tally-post.mesh.tally-invoice-lamp",
+        "sf.render.tally-post.mesh.tally-ledger-plate",
+        "sf.render.tally-post.mesh.tally-mast",
+        "sf.render.tally-post.mesh.tally-scale-house",
+        "sf.render.tally-post.mesh.tally-shim",
+        "sf.render.tally-post.mesh.tally-sill-0",
+        "sf.render.tally-post.mesh.tally-sill-1",
+        "sf.render.tally-post.mesh.tally-sill-2",
+        "sf.render.tally-post.mesh.tally-sill-3",
+        "sf.render.tally-post.mesh.tally-tag-link-0",
+        "sf.render.tally-post.mesh.tally-tag-link-1",
+        "sf.render.tally-post.mesh.tally-tag-link-2",
+        "sf.render.tally-post.mesh.tally-thermal-hood",
+        "sf.render.tally-post.mesh.tally-tong-a",
+        "sf.render.tally-post.mesh.tally-tong-b",
+        "sf.render.tally-post.mesh.tally-yoke-hub",
+        "sf.render.tally-post.mesh.tally-yoke-pad-replacement",
+        "sf.render.tally-post.mesh.tally-yoke-pad-worn",
+        "sf.render.tally-post.mesh.tally-yoke-wear-cup",
+        "sf.render.tally-post.root"
+      ]
+    }
+  ]
+}

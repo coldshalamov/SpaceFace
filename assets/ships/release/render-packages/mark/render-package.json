@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "0bd7f0f971895343086adc205846cedb29f48057f9e37b444be105dc7c46830f",
+  "contentHash": "6692565ce8c10366a6319c1131e03e7059d245d424a6d6b94d334776179c2696",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -23,141 +23,141 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8e32e2b7d7e1f57441416e183293d6b44ca8ce496455b64deaebca70a5598186",
+      "geometryHash": "11e3bc20b118be35720ef8cb804ad14de61b2b651ebe136f575c65d8fa3005ed",
       "id": "sf.render.mark.mesh.claim-antenna-ring-crushed.primitive.0",
       "indexCount": 648,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
       "materialPipelineKey": "opaque",
       "meshName": "Torus",
       "nodeId": "sf.render.mark.mesh.claim-antenna-ring-crushed",
       "primitiveIndex": 0,
-      "vertexCount": 232
+      "vertexCount": 264
     },
     {
       "bounds": {
         "max": [
-          1.408494982887575,
-          -0.0021363875263770704,
-          0.15298911762207013
+          1.2000335016680737,
+          0.12022912392487584,
+          0.15298132803983755
         ],
         "min": [
-          0.3124847022921813,
-          -0.7055824358486404,
-          -0.15298911762207013
+          0.27829920238043826,
+          -0.19516335975179544,
+          -0.15298132803983755
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0a061bcffe977499de5884300fdf9f4fd4a2b432ac8df9db9efcfb561bbf977c",
+      "geometryHash": "1fd1a4df137a706ceeb447d813c7073ab8d9d63bcf022504f97182c9ea83abe2",
       "id": "sf.render.mark.mesh.claim-bite-tab-0.primitive.0",
-      "indexCount": 36,
+      "indexCount": 132,
       "indexed": true,
-      "materialHash": "51838052dbc372ee373d2e918c95ab52fd48d7e02a4084e82ee7de88fa9869d2",
+      "materialHash": "0713eb6cd2a3219d2d51057cbe6789ea9090ed0d7f2149e0193e58696e5a78eb",
       "materialPipelineKey": "opaque",
       "meshName": "Cube",
       "nodeId": "sf.render.mark.mesh.claim-bite-tab-0",
       "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 96
     },
     {
       "bounds": {
         "max": [
-          -0.7271810348154801,
-          0.33817679638517006,
-          0.3126185057827584
+          -0.5432741406952388,
+          0.22953320044372205,
+          0.35228939150471916
         ],
         "min": [
-          -1.0988294254002682,
-          -0.2052562137896512,
-          -0.6452663453611578
+          -0.9090037660459558,
+          -0.0631315114920703,
+          -0.5852737948550555
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4e1a82591722bc51c021bdcef86ed1e696b4c9f92adda4d27a1d08db73c48ff3",
+      "geometryHash": "5fd0fc7fb4445a7e9650f18681e2d02b054a7119464e23e6c8a21a4e67856d3d",
       "id": "sf.render.mark.mesh.claim-bite-tab-1.primitive.0",
-      "indexCount": 36,
+      "indexCount": 132,
       "indexed": true,
-      "materialHash": "51838052dbc372ee373d2e918c95ab52fd48d7e02a4084e82ee7de88fa9869d2",
+      "materialHash": "0713eb6cd2a3219d2d51057cbe6789ea9090ed0d7f2149e0193e58696e5a78eb",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.001",
       "nodeId": "sf.render.mark.mesh.claim-bite-tab-1",
       "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 96
     },
     {
       "bounds": {
         "max": [
-          1.2009695687986692,
-          0.9839190282237951,
-          0.6633591510158183
+          1.0931157478336928,
+          0.4026129805722789,
+          0.5838611826156495
         ],
         "min": [
-          0.043172701914105716,
-          0.17090689199726405,
-          0.09895547719700826
+          0.14316192000331363,
+          0.06473988289927401,
+          0.08268446483673664
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cd6307322231262c977d5c2f351f90f7bc68f020a151ca66d8523f9aa86452c3",
+      "geometryHash": "81f9cdba5aa46da81461538ba4b1f0f4ef3a481242ba6447900e264074500ffe",
       "id": "sf.render.mark.mesh.claim-bite-tab-2.primitive.0",
-      "indexCount": 36,
+      "indexCount": 132,
       "indexed": true,
-      "materialHash": "51838052dbc372ee373d2e918c95ab52fd48d7e02a4084e82ee7de88fa9869d2",
+      "materialHash": "0713eb6cd2a3219d2d51057cbe6789ea9090ed0d7f2149e0193e58696e5a78eb",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.002",
       "nodeId": "sf.render.mark.mesh.claim-bite-tab-2",
       "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 96
     },
     {
       "bounds": {
         "max": [
-          -0.49136522598449517,
-          0.43670819732604826,
-          -0.03303271773724603
+          -0.3332249779589027,
+          0.2570031431879194,
+          0.027778388035129442
         ],
         "min": [
-          -1.0445501978130949,
-          -0.03641352308605761,
-          -0.9382367635681135
+          -0.8668164019533151,
+          -0.01516384198954257,
+          -0.8599424186157449
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5acc5c7a174c333b56dbf88038669758f2175e9d7182fefb7070cf50b5ad9a33",
+      "geometryHash": "c4ec6ba0f2c8232858596ae0a48cadef3321b232d6366698b967691e3d175091",
       "id": "sf.render.mark.mesh.claim-bite-tab-3.primitive.0",
-      "indexCount": 36,
+      "indexCount": 132,
       "indexed": true,
-      "materialHash": "51838052dbc372ee373d2e918c95ab52fd48d7e02a4084e82ee7de88fa9869d2",
+      "materialHash": "0713eb6cd2a3219d2d51057cbe6789ea9090ed0d7f2149e0193e58696e5a78eb",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.003",
       "nodeId": "sf.render.mark.mesh.claim-bite-tab-3",
       "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 96
     },
     {
       "bounds": {
         "max": [
-          0.6540866856459076,
-          0.08055034095978986,
-          1.3251724436050978
+          0.5875745461288489,
+          0.15073634510843448,
+          1.1123218431142305
         ],
         "min": [
-          -0.32759018416166796,
-          -0.5483297948859658,
-          0.446047235125576
+          -0.2780096579091591,
+          -0.15616128882692237,
+          0.33516662315878065
         ]
       },
       "drawMode": 4,
-      "geometryHash": "318405f14f316fd7be3f30abba17c8db95ee04aa435ada0f288ad43f8c77f6ba",
+      "geometryHash": "cec26ce656468063baab8ac9ca6a6ad8220857099aa08fa0304cd9a19d9125c1",
       "id": "sf.render.mark.mesh.claim-bite-tab-4.primitive.0",
-      "indexCount": 36,
+      "indexCount": 132,
       "indexed": true,
-      "materialHash": "51838052dbc372ee373d2e918c95ab52fd48d7e02a4084e82ee7de88fa9869d2",
+      "materialHash": "0713eb6cd2a3219d2d51057cbe6789ea9090ed0d7f2149e0193e58696e5a78eb",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.004",
       "nodeId": "sf.render.mark.mesh.claim-bite-tab-4",
       "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 96
     },
     {
       "bounds": {
@@ -173,13 +173,13 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f7e810b0b0bda9d4deb9c3a87be277d717479b9a15d588b41e9753c176159d7e",
+      "geometryHash": "a967998cbee576bab9f48e0bed5e5f483873ff8dd57a9c574b17d1d88fc264f1",
       "id": "sf.render.mark.mesh.claim-bolt-0.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "51838052dbc372ee373d2e918c95ab52fd48d7e02a4084e82ee7de88fa9869d2",
+      "materialHash": "0713eb6cd2a3219d2d51057cbe6789ea9090ed0d7f2149e0193e58696e5a78eb",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.002",
+      "meshName": "Cylinder.003",
       "nodeId": "sf.render.mark.mesh.claim-bolt-0",
       "primitiveIndex": 0,
       "vertexCount": 36
@@ -198,13 +198,13 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e1f1ada03cd63044447201729303f99762e049553ca5f957bbf23b418d1a6116",
+      "geometryHash": "e3a417b7feec6d4cb2ef35087c469412b303a1d58043ef623d0d8f15ec3a6774",
       "id": "sf.render.mark.mesh.claim-bolt-2.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "51838052dbc372ee373d2e918c95ab52fd48d7e02a4084e82ee7de88fa9869d2",
+      "materialHash": "0713eb6cd2a3219d2d51057cbe6789ea9090ed0d7f2149e0193e58696e5a78eb",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.004",
+      "meshName": "Cylinder.005",
       "nodeId": "sf.render.mark.mesh.claim-bolt-2",
       "primitiveIndex": 0,
       "vertexCount": 36
@@ -223,16 +223,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "267590f6a57578a4ec0cd9ec6a6415f9e946d25e735055afd147e88998298d9f",
+      "geometryHash": "57f798773f214d9188ce807bf904e4a26d9b0288f87b11acca4ffe586411753f",
       "id": "sf.render.mark.mesh.claim-cage-bar-0.primitive.0",
-      "indexCount": 36,
+      "indexCount": 132,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.009",
       "nodeId": "sf.render.mark.mesh.claim-cage-bar-0",
       "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 96
     },
     {
       "bounds": {
@@ -248,16 +248,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1466baa44c14203a249a080a1ea67d1eda469eb7ab30fb37bd071ac135dba98a",
+      "geometryHash": "e2d2ef8dcb662495de5fcfca90882cbdbe0ef46009b170dd86da8ba2091dab0d",
       "id": "sf.render.mark.mesh.claim-cage-bar-1.primitive.0",
-      "indexCount": 36,
+      "indexCount": 132,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.010",
       "nodeId": "sf.render.mark.mesh.claim-cage-bar-1",
       "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 96
     },
     {
       "bounds": {
@@ -273,16 +273,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0efe58fcd43206f3d7d54c3996161f835f97905a9a68e7d981d38782007a2ec0",
+      "geometryHash": "6eb026716d6346fc1a0048f16f9b853bc82aa9af9cf5428c8846d9856678e1d7",
       "id": "sf.render.mark.mesh.claim-cage-bar-2.primitive.0",
-      "indexCount": 36,
+      "indexCount": 132,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.011",
       "nodeId": "sf.render.mark.mesh.claim-cage-bar-2",
       "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 96
     },
     {
       "bounds": {
@@ -298,36 +298,36 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cf017f615413a7daad44f82096267a43d6f44aa343708344ea95fc0bc776fddc",
+      "geometryHash": "570df91e4b9e717fe7351b4ce88e23dcf46b78cb0e2197730d91f9a8207f7568",
       "id": "sf.render.mark.mesh.claim-cage-bar-3.primitive.0",
-      "indexCount": 36,
+      "indexCount": 132,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.012",
       "nodeId": "sf.render.mark.mesh.claim-cage-bar-3",
       "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 96
     },
     {
       "bounds": {
         "max": [
-          0.6987503515972904,
-          0.2720242189175721,
-          0.6457751634057871
+          0.616544445761356,
+          0.20400380095850146,
+          0.5698016833151556
         ],
         "min": [
-          -0.6987503515972904,
-          -0.40802424502440715,
-          -0.7167527727660783
+          -0.616544445761356,
+          -0.2720038013459316,
+          -0.6324289618500245
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8093ae365fd0944ea6da5b8402ecaa677f5fe7f06f5d3f3a7226d9a2d8127720",
+      "geometryHash": "a0cc06081d382f21a6f9f84279350403c6aaaee931f859afd82a15e92a095572",
       "id": "sf.render.mark.mesh.claim-embed-plug.primitive.0",
       "indexCount": 72,
       "indexed": true,
-      "materialHash": "51838052dbc372ee373d2e918c95ab52fd48d7e02a4084e82ee7de88fa9869d2",
+      "materialHash": "0713eb6cd2a3219d2d51057cbe6789ea9090ed0d7f2149e0193e58696e5a78eb",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.001",
       "nodeId": "sf.render.mark.mesh.claim-embed-plug",
@@ -348,11 +348,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7bb65081b7ee15f323a0d4fce8756d0faa0332ff489e1ea32c17f2503f9c9d01",
+      "geometryHash": "2e2f43245fbdaf4faad5ff7a555ac5cbbf63409dbeee623bc5e78d88ab351b84",
       "id": "sf.render.mark.mesh.claim-flange.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder",
       "nodeId": "sf.render.mark.mesh.claim-flange",
@@ -373,13 +373,13 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f17b82c0f093f1e15c510fe1df968596c3478ea5361611d8a0cbc1cd9f051a5a",
+      "geometryHash": "5fcfae56235728446f620df2bd6bb328f656c94760ac9e9fa6ad36f41a6899f1",
       "id": "sf.render.mark.mesh.claim-lamp-lens.primitive.0",
       "indexCount": 84,
       "indexed": true,
-      "materialHash": "3c10c457611ae6cc9010a82ecb80ae37ca2a8d9b9dda1747cb8abf2587785d2a",
+      "materialHash": "b75db6daea4fdcd5ab35e301f6ee7126389d977a371e6df260df7576f0fa389f",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.008",
+      "meshName": "Cylinder.009",
       "nodeId": "sf.render.mark.mesh.claim-lamp-lens",
       "primitiveIndex": 0,
       "vertexCount": 48
@@ -398,13 +398,13 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1da61a92563e406355d765dd642e1d481ed247cffe6dcadff3af537d24e26b07",
+      "geometryHash": "fb04b585a26f6978f24db693bcf7cf74da5c468cc5fd7f0da45ce4fe784d2824",
       "id": "sf.render.mark.mesh.claim-nozzle-slag.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "6786891c29a6f0dad01d4956426cbcd1fb8cc5f9395ba4376357c573b3db7865",
+      "materialHash": "b9911f7e367cc37030e5e0cb943aba6f5a8f7df24f0ef1c0d521b35ed82edbbd",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.010",
+      "meshName": "Cylinder.011",
       "nodeId": "sf.render.mark.mesh.claim-nozzle-slag",
       "primitiveIndex": 0,
       "vertexCount": 36
@@ -423,13 +423,13 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0d8dd9a976fca8090842d1c8f10c13f2266d56e497349df7e5a67059846e72ab",
+      "geometryHash": "91928bcd8c4e5421e3a7029f324d46cd95b2d093be5046230d011514fb8490fa",
       "id": "sf.render.mark.mesh.claim-paint-nozzle.primitive.0",
       "indexCount": 84,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.009",
+      "meshName": "Cylinder.010",
       "nodeId": "sf.render.mark.mesh.claim-paint-nozzle",
       "primitiveIndex": 0,
       "vertexCount": 48
@@ -437,27 +437,27 @@
     {
       "bounds": {
         "max": [
-          1.318139172810362,
-          5.014981982707468,
-          -0.1259911728972174
+          1.3119701276658589,
+          5.014983603953851,
+          -0.13218286482713815
         ],
         "min": [
-          -0.02613915278320178,
-          4.165018436909236,
-          -0.5540088689750462
+          -0.019970132970673404,
+          4.165016815662852,
+          -0.5478171770451254
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e01e1b29929174387407beac5d10e446269016fa43b23516b160e60fbce09935",
+      "geometryHash": "47cae264df55f8249945d94fbbba0528743201a4982b27af851793723e119002",
       "id": "sf.render.mark.mesh.claim-plate.primitive.0",
-      "indexCount": 36,
+      "indexCount": 132,
       "indexed": true,
-      "materialHash": "393d0b9202c9bce81d29b499076cb115ac2656e8d37a7b0b44c41289479ff99f",
+      "materialHash": "d75684dbd82479f6e5eba655326bbd79a563433f2f04833fbfc95fda9bfe6b78",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.008",
       "nodeId": "sf.render.mark.mesh.claim-plate",
       "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 96
     },
     {
       "bounds": {
@@ -473,16 +473,91 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2dce0db17916bb77a04be65daf53bdbd5abacccbe4a73691a57051006f216f7e",
+      "geometryHash": "61466be366e6ffb21ffd9914ba2f7d0827012480f582fe1c1750fbf6d65f3c4b",
       "id": "sf.render.mark.mesh.claim-puck-tape.primitive.0",
-      "indexCount": 36,
+      "indexCount": 132,
       "indexed": true,
-      "materialHash": "e508700b026f2aa301f724b310b82947e3ebbed3a8e53f2178ded887760cee45",
+      "materialHash": "8a5e28d39fb2ee992c2a391875909206d07fda3063bf7289988feb8bd929b8f4",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.013",
       "nodeId": "sf.render.mark.mesh.claim-puck-tape",
       "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          0.8383112427293895,
+          0.3432290307593071,
+          -0.35431247900338647
+        ],
+        "min": [
+          0.40991124915477073,
+          0.1504509930789748,
+          -0.6970507787480287
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "05591e3ff44fb1480c383237e8f78a3ffee903f29a3b297e163288d5ccc13a76",
+      "id": "sf.render.mark.mesh.claim-rim-slag-0.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "b9911f7e367cc37030e5e0cb943aba6f5a8f7df24f0ef1c0d521b35ed82edbbd",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.005",
+      "nodeId": "sf.render.mark.mesh.claim-rim-slag-0",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.38751327439303296,
+          0.3432290307593071,
+          -0.3798088075955839
+        ],
+        "min": [
+          -0.8159133186316012,
+          0.15045098041298743,
+          -0.7225471580041756
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9a2eb5652f7ebb33a7ebc2a046aa5fcb84d809cf551e679c4fd9a71840ef7f40",
+      "id": "sf.render.mark.mesh.claim-rim-slag-1.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "b9911f7e367cc37030e5e0cb943aba6f5a8f7df24f0ef1c0d521b35ed82edbbd",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.006",
+      "nodeId": "sf.render.mark.mesh.claim-rim-slag-1",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          0.5226298478808076,
+          0.3432290307593071,
+          0.9268339297865111
+        ],
+        "min": [
+          0.09422982897421406,
+          0.1504509930789748,
+          0.5840956047098942
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8fffa99c0cbf59289aec4ed4c2dedeb6e2093b9476313437e431dff6a600537e",
+      "id": "sf.render.mark.mesh.claim-rim-slag-2.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "b9911f7e367cc37030e5e0cb943aba6f5a8f7df24f0ef1c0d521b35ed82edbbd",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cube.007",
+      "nodeId": "sf.render.mark.mesh.claim-rim-slag-2",
+      "primitiveIndex": 0,
+      "vertexCount": 96
     },
     {
       "bounds": {
@@ -498,13 +573,13 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "228411aecd421e73ed3c25087070bab18fccf8aecdf502f963ccca871eec9346",
+      "geometryHash": "05f571351da5e847fb47a262c7a7fd2cd6b1ff56138042827950f3d98555bfa5",
       "id": "sf.render.mark.mesh.claim-shaft.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "e508700b026f2aa301f724b310b82947e3ebbed3a8e53f2178ded887760cee45",
+      "materialHash": "8a5e28d39fb2ee992c2a391875909206d07fda3063bf7289988feb8bd929b8f4",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.006",
+      "meshName": "Cylinder.007",
       "nodeId": "sf.render.mark.mesh.claim-shaft",
       "primitiveIndex": 0,
       "vertexCount": 36
@@ -523,13 +598,13 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4125a684b32db94184fcf3b76e0cc11c50908c721bfbd2a370752d9b80489461",
+      "geometryHash": "761d2419044acc28a4808fd09eda7271c16e11ef26e22ff3d82dfad7bc739991",
       "id": "sf.render.mark.mesh.claim-spare-puck.primitive.0",
       "indexCount": 84,
       "indexed": true,
-      "materialHash": "3c10c457611ae6cc9010a82ecb80ae37ca2a8d9b9dda1747cb8abf2587785d2a",
+      "materialHash": "b75db6daea4fdcd5ab35e301f6ee7126389d977a371e6df260df7576f0fa389f",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.011",
+      "meshName": "Cylinder.012",
       "nodeId": "sf.render.mark.mesh.claim-spare-puck",
       "primitiveIndex": 0,
       "vertexCount": 48
@@ -537,102 +612,27 @@
     {
       "bounds": {
         "max": [
-          1.21736553745734,
-          0.2660486847281085,
-          -0.5507390683395457
+          1.142569436888678,
+          9.149772280798857,
+          1.0339444092847145
         ],
         "min": [
-          0.6393654645012532,
-          0.005951305738873147,
-          -1.0131638811101311
+          0.3534305209708357,
+          8.666227440728221,
+          0.9931953947178158
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fa98d4a25a35b474e51587fe00444de66d9d480489dfb339e8e1db683d45e294",
-      "id": "sf.render.mark.mesh.claim-spoil-0.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "6786891c29a6f0dad01d4956426cbcd1fb8cc5f9395ba4376357c573b3db7865",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.005",
-      "nodeId": "sf.render.mark.mesh.claim-spoil-0",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -0.6740484843968915,
-          0.23544900183674855,
-          -0.6430677832734659
-        ],
-        "min": [
-          -1.1160484805821937,
-          0.0365510187119531,
-          -0.9966866474764942
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "99d05428d37df3ff35de94c64ceacbf72142489f5414d8a71543dd55bcb33ee7",
-      "id": "sf.render.mark.mesh.claim-spoil-1.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "6786891c29a6f0dad01d4956426cbcd1fb8cc5f9395ba4376357c573b3db7865",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.006",
-      "nodeId": "sf.render.mark.mesh.claim-spoil-1",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          0.7987894103467994,
-          0.2889984405636348,
-          1.3957684014339549
-        ],
-        "min": [
-          0.11878940647249792,
-          -0.016998445346907864,
-          0.8517393172275121
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "c71731c9a52e2d009b35d2d1407de554cfb4c32b22aab830721d2a37bcf8c2e7",
-      "id": "sf.render.mark.mesh.claim-spoil-2.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "6786891c29a6f0dad01d4956426cbcd1fb8cc5f9395ba4376357c573b3db7865",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.007",
-      "nodeId": "sf.render.mark.mesh.claim-spoil-2",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          1.1457214438416372,
-          9.152917498782585,
-          1.0339615336996388
-        ],
-        "min": [
-          0.35027856468182605,
-          8.663082222744492,
-          0.9931782703028915
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "b2980b7e7934cb67e429c6e797331af46630e5017206ad48f902fe3c8caead65",
+      "geometryHash": "783ed74880878f0675fe3720b057895d2f7ebf90c832ab8d605e41b34c5dc802",
       "id": "sf.render.mark.mesh.claim-streamer-tab.primitive.0",
-      "indexCount": 36,
+      "indexCount": 132,
       "indexed": true,
-      "materialHash": "e508700b026f2aa301f724b310b82947e3ebbed3a8e53f2178ded887760cee45",
+      "materialHash": "8a5e28d39fb2ee992c2a391875909206d07fda3063bf7289988feb8bd929b8f4",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.014",
       "nodeId": "sf.render.mark.mesh.claim-streamer-tab",
       "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 96
     },
     {
       "bounds": {
@@ -648,13 +648,13 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a45bab6b37858a9d5737429e009fce292f207e9b5afe4c7b3bf8f5755e760c03",
+      "geometryHash": "7388bbee0d9aba800a29de0f5cb564c31f1769aa31d36abef167930cab19846c",
       "id": "sf.render.mark.mesh.claim-tear-1.primitive.0",
       "indexCount": 84,
       "indexed": true,
-      "materialHash": "6786891c29a6f0dad01d4956426cbcd1fb8cc5f9395ba4376357c573b3db7865",
+      "materialHash": "b9911f7e367cc37030e5e0cb943aba6f5a8f7df24f0ef1c0d521b35ed82edbbd",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.003",
+      "meshName": "Cylinder.004",
       "nodeId": "sf.render.mark.mesh.claim-tear-1",
       "primitiveIndex": 0,
       "vertexCount": 48
@@ -673,13 +673,13 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6c9bd1f4d0299c10728e7c01e5359649141bf05da77d29700f8a09859ebfe6fd",
+      "geometryHash": "cb3b37236deeabee71dae6f05e44ed926da81b17c9c776ac853cdd48cad4eb8e",
       "id": "sf.render.mark.mesh.claim-tear-3.primitive.0",
       "indexCount": 84,
       "indexed": true,
-      "materialHash": "6786891c29a6f0dad01d4956426cbcd1fb8cc5f9395ba4376357c573b3db7865",
+      "materialHash": "b9911f7e367cc37030e5e0cb943aba6f5a8f7df24f0ef1c0d521b35ed82edbbd",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.005",
+      "meshName": "Cylinder.006",
       "nodeId": "sf.render.mark.mesh.claim-tear-3",
       "primitiveIndex": 0,
       "vertexCount": 48
@@ -698,16 +698,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9ee99f2b3f25607bcc5c1a0255c8c02f902944c3199e7937a2c214de0fac8069",
+      "geometryHash": "ddbcf0df92a61196032655fb8a3b9c7bd22bbfbf79aaf050dc0f889a1459438a",
       "id": "sf.render.mark.mesh.claim-tether-loop.primitive.0",
       "indexCount": 360,
       "indexed": true,
-      "materialHash": "51838052dbc372ee373d2e918c95ab52fd48d7e02a4084e82ee7de88fa9869d2",
+      "materialHash": "0713eb6cd2a3219d2d51057cbe6789ea9090ed0d7f2149e0193e58696e5a78eb",
       "materialPipelineKey": "opaque",
       "meshName": "Torus.001",
       "nodeId": "sf.render.mark.mesh.claim-tether-loop",
       "primitiveIndex": 0,
-      "vertexCount": 144
+      "vertexCount": 160
     },
     {
       "bounds": {
@@ -723,16 +723,41 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2f0a7c4af337ccd0626a34a8f617b4fb69634ec81196c6505fb918a90cb60383",
+      "geometryHash": "ca8f8b7c5c7af8bd810164b374f8f5b87379d0b2cdac3f6199882c2d39833465",
       "id": "sf.render.mark.mesh.claim-tick-capsule.primitive.0",
       "indexCount": 156,
       "indexed": true,
-      "materialHash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
+      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.007",
+      "meshName": "Cylinder.008",
       "nodeId": "sf.render.mark.mesh.claim-tick-capsule",
       "primitiveIndex": 0,
-      "vertexCount": 56
+      "vertexCount": 64
+    },
+    {
+      "bounds": {
+        "max": [
+          0.775200022149086,
+          0.30597937518300355,
+          0.775200022149086
+        ],
+        "min": [
+          -0.775200022149086,
+          0.1360206716662482,
+          -0.775200022149086
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "173527d6c5f91b82452fb98636e08dcd6467cf78c3e8f69f32f4adad5e438842",
+      "id": "sf.render.mark.mesh.claim-weld-collar.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "b9911f7e367cc37030e5e0cb943aba6f5a8f7df24f0ef1c0d521b35ed82edbbd",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.002",
+      "nodeId": "sf.render.mark.mesh.claim-weld-collar",
+      "primitiveIndex": 0,
+      "vertexCount": 72
     }
   ],
   "hlods": [],
@@ -740,46 +765,190 @@
   "lods": [],
   "materials": [
     {
-      "hash": "393d0b9202c9bce81d29b499076cb115ac2656e8d37a7b0b44c41289479ff99f",
-      "id": "material:393d0b9202c9bce81d29b499",
-      "name": "furniture_identity_plate",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "3c10c457611ae6cc9010a82ecb80ae37ca2a8d9b9dda1747cb8abf2587785d2a",
-      "id": "material:3c10c457611ae6cc9010a82e",
-      "name": "furniture_signal_lens",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "51838052dbc372ee373d2e918c95ab52fd48d7e02a4084e82ee7de88fa9869d2",
-      "id": "material:51838052dbc372ee373d2e91",
+      "hash": "0713eb6cd2a3219d2d51057cbe6789ea9090ed0d7f2149e0193e58696e5a78eb",
+      "id": "material:0713eb6cd2a3219d2d51057c",
       "name": "furniture_bare_steel",
       "pipelineKey": "opaque:double",
-      "textures": []
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "furniture_bare_steel_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "furniture_bare_steel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "furniture_bare_steel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "furniture_bare_steel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     },
     {
-      "hash": "6786891c29a6f0dad01d4956426cbcd1fb8cc5f9395ba4376357c573b3db7865",
-      "id": "material:6786891c29a6f0dad01d4956",
-      "name": "furniture_scorch",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "e508700b026f2aa301f724b310b82947e3ebbed3a8e53f2178ded887760cee45",
-      "id": "material:e508700b026f2aa301f724b3",
-      "name": "furniture_painted_shell",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "e7177974a6bd849c95dc3273349991801b1e20cfd7c70c34083e7350067ec1b1",
-      "id": "material:e7177974a6bd849c95dc3273",
+      "hash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "id": "material:2e6f2a403abe2241bf65094a",
       "name": "furniture_structural_alloy",
       "pipelineKey": "opaque:double",
-      "textures": []
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "furniture_structural_alloy_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "furniture_structural_alloy_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "furniture_structural_alloy_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "furniture_structural_alloy_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "8a5e28d39fb2ee992c2a391875909206d07fda3063bf7289988feb8bd929b8f4",
+      "id": "material:8a5e28d39fb2ee992c2a3918",
+      "name": "furniture_painted_shell",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "furniture_painted_shell_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "furniture_painted_shell_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "furniture_painted_shell_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "furniture_painted_shell_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "b75db6daea4fdcd5ab35e301f6ee7126389d977a371e6df260df7576f0fa389f",
+      "id": "material:b75db6daea4fdcd5ab35e301",
+      "name": "furniture_signal_lens",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "furniture_signal_lens_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "furniture_signal_lens_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "furniture_signal_lens_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "b9911f7e367cc37030e5e0cb943aba6f5a8f7df24f0ef1c0d521b35ed82edbbd",
+      "id": "material:b9911f7e367cc37030e5e0cb",
+      "name": "furniture_scorch",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "furniture_scorch_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "furniture_scorch_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "furniture_scorch_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "furniture_scorch_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "d75684dbd82479f6e5eba655326bbd79a563433f2f04833fbfc95fda9bfe6b78",
+      "id": "material:d75684dbd82479f6e5eba655",
+      "name": "furniture_identity_plate",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "furniture_identity_plate_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "furniture_identity_plate_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "furniture_identity_plate_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "furniture_identity_plate_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     }
   ],
   "nodes": [
@@ -1715,6 +1884,153 @@
       ]
     },
     {
+      "id": "sf.render.mark.mesh.claim-rim-slag-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "claim_rim_slag_0",
+      "nodeName": "claim_rim_slag_0",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.mark.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.mark.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.mark.mesh.claim-rim-slag-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "claim_rim_slag_1",
+      "nodeName": "claim_rim_slag_1",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentId": "sf.render.mark.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.mark.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.mark.mesh.claim-rim-slag-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "claim_rim_slag_2",
+      "nodeName": "claim_rim_slag_2",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentId": "sf.render.mark.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.mark.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
       "id": "sf.render.mark.mesh.claim-shaft",
       "localTransform": [
         1,
@@ -1739,7 +2055,7 @@
       "nodeName": "claim_shaft",
       "nodePath": [
         0,
-        19
+        22
       ],
       "parentId": "sf.render.mark.root",
       "role": "immutable",
@@ -1786,153 +2102,6 @@
       "materialPipelineKey": "opaque",
       "mergeBoundary": "claim_spare_puck",
       "nodeName": "claim_spare_puck",
-      "nodePath": [
-        0,
-        20
-      ],
-      "parentId": "sf.render.mark.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.mark.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.mark.mesh.claim-spoil-0",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "claim_spoil_0",
-      "nodeName": "claim_spoil_0",
-      "nodePath": [
-        0,
-        21
-      ],
-      "parentId": "sf.render.mark.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.mark.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.mark.mesh.claim-spoil-1",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "claim_spoil_1",
-      "nodeName": "claim_spoil_1",
-      "nodePath": [
-        0,
-        22
-      ],
-      "parentId": "sf.render.mark.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.mark.body",
-      "worldTransform": [
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        3.4000000953674316,
-        0,
-        0,
-        0,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.mark.mesh.claim-spoil-2",
-      "localTransform": [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "claim_spoil_2",
-      "nodeName": "claim_spoil_2",
       "nodePath": [
         0,
         23
@@ -2205,6 +2374,55 @@
       ]
     },
     {
+      "id": "sf.render.mark.mesh.claim-weld-collar",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "claim_weld_collar",
+      "nodeName": "claim_weld_collar",
+      "nodePath": [
+        0,
+        29
+      ],
+      "parentId": "sf.render.mark.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.mark.body",
+      "worldTransform": [
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        3.4000000953674316,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
       "id": "sf.render.mark.root",
       "localTransform": [
         3.4000000953674316,
@@ -2255,44 +2473,44 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "e66604afa48cc47ab85df563d3856d12afaaa0f5caf43528bf8210321a30d74a"
+      "sha256": "53854890b57dee52dfb1dac5e2fc1e1018df374bda1eb5dd770842d0c9d885b8"
     },
     "sourceGlb": {
-      "bytes": 34900,
-      "sha256": "2eddb266ccec8dffd8df52d919f4b446f78701f2627982ce521478245c9b8fb3",
+      "bytes": 360996,
+      "sha256": "80ab3e90ed6aa107504eb77b3c19c524bcac20bee27f8bb45b500bed8772d6ed",
       "uri": "place_claim_mark.glb"
     },
     "sourceManifest": {
-      "bytes": 76590,
-      "sha256": "8ba4982f6c2f892e5db93e36155681813d7ca0c75780b2103007ecf1900a111a",
+      "bytes": 152211,
+      "sha256": "688f0d64b161f04b6d7e3989f6842a886d28d6dd61ef04b2835f55a13bb44b16",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 61244,
-    "sha256": "0da162f99234773487d5d4b4a27e07f611f79341ab1243fbd0b87b519e43294d",
+    "bytes": 397696,
+    "sha256": "63a0f4cbf1e86e61cd684b4cecef078bf651de924e1268a1b0fa40f6d4fbdfdd",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        0.14622325115269064,
-        4.529597534631208,
+        0.1085850030838742,
+        4.746386851882562,
         0.29560859138428697
       ],
       "max": [
-        1.408494982887575,
+        1.3119701276658589,
         9.764777505111056,
         1.611217251909963
       ],
       "min": [
-        -1.1160484805821937,
-        -0.7055824358486404,
+        -1.0948001214981105,
+        -0.2720038013459316,
         -1.020000069141389
       ],
       "size": [
-        2.5245434634697688,
-        10.470359940959696,
+        2.4067702491639693,
+        10.036781306456987,
         2.631217321051352
       ]
     },
@@ -2300,156 +2518,161 @@
     "legacyPart": false,
     "markers": [],
     "materialProfileRoles": {
-      "hull": 29
+      "hull": 30
     },
     "materialProfiles": [
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 2,
         "role": "hull"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 3,
         "role": "hull"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 4,
         "role": "hull"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 5,
         "role": "hull"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 6,
         "role": "hull"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 7,
         "role": "hull"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 8,
         "role": "hull"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 9,
         "role": "hull"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 10,
         "role": "hull"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 11,
         "role": "hull"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 12,
         "role": "hull"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 13,
         "role": "hull"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 14,
         "role": "hull"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 15,
         "role": "hull"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 16,
         "role": "hull"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 17,
         "role": "hull"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 18,
         "role": "hull"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 19,
         "role": "hull"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 20,
         "role": "hull"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 21,
         "role": "hull"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 22,
         "role": "hull"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 23,
         "role": "hull"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 24,
         "role": "hull"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 25,
         "role": "hull"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 26,
         "role": "hull"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 27,
         "role": "hull"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 28,
         "role": "hull"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 29,
         "role": "hull"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 30,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 31,
         "role": "hull"
       }
     ],
-    "nodeCount": 31,
+    "nodeCount": 32,
     "primitives": [
       {
         "canopy": false,
@@ -2965,7 +3188,7 @@
           0,
           1
         ],
-        "name": "claim_shaft",
+        "name": "claim_rim_slag_0",
         "planIndex": 21,
         "tags": {
           "canopy": false
@@ -2991,7 +3214,7 @@
           0,
           1
         ],
-        "name": "claim_spare_puck",
+        "name": "claim_rim_slag_1",
         "planIndex": 22,
         "tags": {
           "canopy": false
@@ -3017,7 +3240,7 @@
           0,
           1
         ],
-        "name": "claim_spoil_0",
+        "name": "claim_rim_slag_2",
         "planIndex": 23,
         "tags": {
           "canopy": false
@@ -3043,7 +3266,7 @@
           0,
           1
         ],
-        "name": "claim_spoil_1",
+        "name": "claim_shaft",
         "planIndex": 24,
         "tags": {
           "canopy": false
@@ -3069,7 +3292,7 @@
           0,
           1
         ],
-        "name": "claim_spoil_2",
+        "name": "claim_spare_puck",
         "planIndex": 25,
         "tags": {
           "canopy": false
@@ -3204,24 +3427,51 @@
         "tags": {
           "canopy": false
         }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          3.4000000953674316,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "claim_weld_collar",
+        "planIndex": 31,
+        "tags": {
+          "canopy": false
+        }
       }
     ],
     "schema": "spaceface.renderPackageRuntime.v1",
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_claim_mark.glb"
   },
+  "runtimeHash": "82186b5557dc399770097c34d07bbc15b79d74f0cafb79c168e7283e86448e94",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          1.408494982887575,
+          1.3119701276658589,
           9.764777505111056,
           1.611217251909963
         ],
         "min": [
-          -1.1160484805821937,
-          -0.7055824358486404,
+          -1.0948001214981105,
+          -0.2720038013459316,
           -1.020000069141389
         ]
       },
@@ -3246,16 +3496,17 @@
         "sf.render.mark.mesh.claim-paint-nozzle",
         "sf.render.mark.mesh.claim-plate",
         "sf.render.mark.mesh.claim-puck-tape",
+        "sf.render.mark.mesh.claim-rim-slag-0",
+        "sf.render.mark.mesh.claim-rim-slag-1",
+        "sf.render.mark.mesh.claim-rim-slag-2",
         "sf.render.mark.mesh.claim-shaft",
         "sf.render.mark.mesh.claim-spare-puck",
-        "sf.render.mark.mesh.claim-spoil-0",
-        "sf.render.mark.mesh.claim-spoil-1",
-        "sf.render.mark.mesh.claim-spoil-2",
         "sf.render.mark.mesh.claim-streamer-tab",
         "sf.render.mark.mesh.claim-tear-1",
         "sf.render.mark.mesh.claim-tear-3",
         "sf.render.mark.mesh.claim-tether-loop",
         "sf.render.mark.mesh.claim-tick-capsule",
+        "sf.render.mark.mesh.claim-weld-collar",
         "sf.render.mark.root"
       ]
     }

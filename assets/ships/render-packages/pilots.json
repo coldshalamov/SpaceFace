@@ -1123,8 +1123,8 @@
       "slot": "place",
       "releaseAssetId": "place_claim_mark",
       "sourceUrl": "assets/ships/release/parts/places/place_claim_mark.glb",
-      "releaseSha256": "2eddb266ccec8dffd8df52d919f4b446f78701f2627982ce521478245c9b8fb3",
-      "releaseBytes": 34900,
+      "releaseSha256": "80ab3e90ed6aa107504eb77b3c19c524bcac20bee27f8bb45b500bed8772d6ed",
+      "releaseBytes": 360996,
       "rootNode": "place_claim_mark",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/mark",
@@ -1679,8 +1679,8 @@
       "slot": "place",
       "releaseAssetId": "place_whistle",
       "sourceUrl": "assets/ships/release/parts/places/place_whistle.glb",
-      "releaseSha256": "1cfdaa1808da4ce3ca8fe4103352f2457d65cb352caa69a0b03b1a05df6d1071",
-      "releaseBytes": 41508,
+      "releaseSha256": "6338ab320dd00991c08d8eda505c5bc2a507f5acc408ff34f8bdbbc8db58a5dc",
+      "releaseBytes": 394116,
       "rootNode": "place_whistle",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/whistle",
@@ -3217,6 +3217,36 @@
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/cold-locker",
       "metadataUrl": "assets/ships/release/render-packages/cold-locker/render-package.json"
+    },
+    {
+      "key": "ash-pin",
+      "assetId": "sf.render.ash-pin",
+      "runtimeAssetId": "SF_PLACE_ASH_PIN",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "place_ash_pin",
+      "sourceUrl": "assets/ships/release/parts/places/place_ash_pin.glb",
+      "releaseSha256": "9a72dfff2e1cc906377a2c036e5a7c3857d2a5f0d3d64cd888cb63a475b283cc",
+      "releaseBytes": 287824,
+      "rootNode": "place_ash_pin",
+      "dynamicNameIncludes": [],
+      "outputDir": "assets/ships/release/render-packages/ash-pin",
+      "metadataUrl": "assets/ships/release/render-packages/ash-pin/render-package.json"
+    },
+    {
+      "key": "tally-post",
+      "assetId": "sf.render.tally-post",
+      "runtimeAssetId": "SF_PLACE_TALLY_POST",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "place_tally_post",
+      "sourceUrl": "assets/ships/release/parts/places/place_tally_post.glb",
+      "releaseSha256": "960ee37e000e1e68ec15e917caf37d357692beee401e7e5b2916487a7b2f1320",
+      "releaseBytes": 370180,
+      "rootNode": "place_tally_post",
+      "dynamicNameIncludes": [],
+      "outputDir": "assets/ships/release/render-packages/tally-post",
+      "metadataUrl": "assets/ships/release/render-packages/tally-post/render-package.json"
     }
   ]
 }
