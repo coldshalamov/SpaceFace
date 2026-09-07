@@ -3,8 +3,12 @@
 // cross-owner write from the UI, and never a write to state.run.
 // Speed (timeEffects), clear-enemies (removeEntity + spawnBudget), refill/invulnerable
 // (bus intents owned by combat/weapons), and Step (ctx.simStep).
+//
+// The DOM layer is kit rows (styles/kit.css, src/ui/kit/) — Frontend Task D §1.4. This file owns no
+// CSS. The controls are instruments, not a debug dump: one row per concept, the choice as words.
 
 import { createTimeEffects, LAB_SPEED_MAX } from '../../core/timeEffects.js';
+import { el } from '../kit/index.js';
 
 export const CRUCIBLE_LAB_SPEED_SOURCE = 'crucible-lab:speed';
 export const LAB_BUDGET_OWNER_PREFIX = 'combat-lab:';
@@ -194,113 +198,97 @@ function applyStep(ctx) {
 
 // --- DOM layer ----------------------------------------------------------------
 
-const STYLE_ID = 'sf-lab-controls-style';
-const CSS = `
-.sf-lab-runtime { color: var(--sf-paper); font-family: var(--sf-body-face); font-size: 12px; }
-.sf-lab-runtime .sf-fig, .sf-lab-speed-now {
-  font-family: var(--sf-data-face); font-weight: 500; font-variant-numeric: tabular-nums; letter-spacing: 0;
-}
-.sf-lab-runtime .sf-crest {
-  font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
-  letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-calm);
-}
-.sf-lab-speed-now {
-  font-family: var(--sf-display-face); font-weight: 700; font-size: 28px; line-height: 1.1;
-  color: var(--sf-paper); letter-spacing: 0; text-transform: none;
-}
-.sf-lab-speed-now.is-you { color: var(--sf-you); }
-.sf-lab-speed-now.is-goal { color: var(--sf-goal); }
-.sf-lab-invuln.is-you { border-color: var(--sf-you); color: var(--sf-you); }
-.sf-lab-runtime select {
-  background: color-mix(in srgb, var(--sf-surface) 72%, transparent); color: var(--sf-paper);
-  border: 1px solid var(--sf-edge); border-radius: 2px; padding: var(--sp-1) var(--sp-2);
-  font-family: var(--sf-data-face); font-size: 13px;
-}
-.sf-lab-runtime .sf-apron { color: var(--sf-calm); font-size: 12px; line-height: 1.4; }
-.sf-lab-runtime .sf-btn--danger { color: var(--sf-foe); }
-@media (forced-colors: active) {
-  .sf-lab-runtime select, .sf-lab-invuln.is-you { background: Canvas; color: CanvasText; border-color: CanvasText; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .sf-lab-runtime, .sf-lab-runtime * { animation: none !important; transition: none !important; }
-}
-`;
-
-function injectStyle() {
-  if (typeof document === 'undefined' || typeof document.createElement !== 'function') return;
-  if (typeof document.getElementById !== 'function') return;
-  if (document.getElementById(STYLE_ID)) return;
-  if (!document.head || typeof document.head.appendChild !== 'function') return;
-  const s = document.createElement('style');
-  s.id = STYLE_ID;
-  s.textContent = CSS;
-  document.head.appendChild(s);
-}
-
+/** The speed's meaning role: faster than real time is "you", slower is "goal", real time is calm. */
 export function labSpeedRole(scale) {
   if (scale > 1) return 'you';
   if (scale < 1) return 'goal';
   return 'calm';
 }
 
+function formatScale(scale) {
+  return scale + '\u00d7';
+}
+
+/** A kit word (`button.k-word`), appended to a `.k-words` list inside its `li`. */
+function addWord(list, label, className, why) {
+  const button = el('button', 'k-word ' + className, label);
+  button.type = 'button';
+  button.setAttribute('aria-label', label);
+  if (why) {
+    button.setAttribute('data-why', why);
+    button.setAttribute('data-why-ready', why);
+  }
+  const li = el('li');
+  li.appendChild(button);
+  list.appendChild(li);
+  return button;
+}
+
+/** One static kit row: the concept's name on the left, its words on the right. */
+function controlRow(list, name) {
+  const row = el('li', 'k-row k-row--static');
+  row.appendChild(el('span', 'k-row__name k-62', name));
+  const words = el('ul', 'k-words k-words--row');
+  words.setAttribute('aria-label', name);
+  row.appendChild(words);
+  list.appendChild(row);
+  return words;
+}
+
 export function mountCrucibleLabControls(ctx, hostEl) {
   if (!hostEl || typeof document === 'undefined' || typeof document.createElement !== 'function') {
     return null;
   }
-  injectStyle();
 
-  const row = document.createElement('div');
-  row.className = 'sf-sandbox-lab-actions sf-lab-runtime sf-stage';
-  row.setAttribute('role', 'group');
-  row.setAttribute('aria-label', 'Combat Lab runtime');
-
-  const heading = document.createElement('span');
-  heading.className = 'sf-crest';
-  heading.textContent = 'Runtime';
-  row.appendChild(heading);
-
-  const stepBtn = makeButton(
-    'Step',
-    'Advance one 60 Hz tick while this screen holds the sim',
-  );
-  const refillBtn = makeButton('Refill', 'Restore hull, armor, shields, capacitor, and heat');
-  const invulnBtn = makeButton('Invulnerable: off', 'Toggle player invulnerability');
-  invulnBtn.classList.add('sf-lab-invuln');
-  const clearBtn = makeButton('Clear enemies', 'Remove Lab-spawned enemies without scoring a kill');
-  clearBtn.classList.add('sf-btn--danger');
-
-  const speedLabel = document.createElement('label');
-  speedLabel.textContent = 'Speed';
-  speedLabel.style.display = 'inline-flex';
-  speedLabel.style.alignItems = 'center';
-  speedLabel.style.gap = '8px';
-  const speedSel = document.createElement('select');
-  speedSel.setAttribute('aria-label', 'Simulation speed');
-  speedSel.className = 'sf-fig';
-  for (const scale of LEGAL_TIME_SCALES) {
-    const opt = document.createElement('option');
-    opt.value = String(scale);
-    opt.textContent = scale + '\u00d7';
-    speedSel.appendChild(opt);
+  // The runtime as a column of rows (Speed · Sim · Hull · Arena); `k-span` fills the host's grid.
+  const rows = el('ul', 'k-rows k-span sf-lab-runtime');
+  // (The unit tests mount this under a fake document whose style object has no setProperty.)
+  if (rows.style && typeof rows.style.setProperty === 'function') {
+    rows.style.setProperty('--k-row-cols', 'auto minmax(0, 1fr)');
   }
-  speedSel.value = '1';
-  const speedText = document.createElement('span');
-  speedText.className = 'sf-lab-speed-now sf-fig';
-  speedText.setAttribute('aria-live', 'polite');
-  speedText.textContent = '1\u00d7';
-  speedLabel.appendChild(speedSel);
-  speedLabel.appendChild(speedText);
+  rows.setAttribute('role', 'group');
+  rows.setAttribute('aria-label', 'Combat Lab runtime');
 
-  const hint = document.createElement('div');
-  hint.className = 'sf-sandbox-lab-digest sf-apron';
+  // Speed — the legal time scales as a row of words, the live one pressed, and the live figure.
+  const speedWords = controlRow(rows, 'Speed');
+  speedWords.setAttribute('aria-label', 'Simulation speed');
+  const speedButtons = [];
+  for (const scale of LEGAL_TIME_SCALES) {
+    const button = addWord(speedWords, formatScale(scale), 'k-word--body',
+      'Extra fixed 60 Hz steps, not a bigger step');
+    button.setAttribute('data-scale', String(scale));
+    button.setAttribute('aria-pressed', scale === 1 ? 'true' : 'false');
+    speedButtons.push({ scale, button });
+  }
+  const speedText = el('span', 'sf-lab-speed-now sf-fig k-t-emph', formatScale(1));
+  speedText.setAttribute('aria-live', 'polite');
+  const speedLi = el('li');
+  speedLi.appendChild(speedText);
+  speedWords.appendChild(speedLi);
+  let chosenScale = 1;
+
+  // Sim — Step, live only while this screen holds the sim.
+  const simWords = controlRow(rows, 'Sim');
+  const stepBtn = addWord(simWords, 'Step', 'k-word--body',
+    'Advance one 60 Hz tick while this screen holds the sim');
+
+  // Hull — Refill, and invulnerability as a two-word toggle (the live word pressed).
+  const hullWords = controlRow(rows, 'Hull');
+  const refillBtn = addWord(hullWords, 'Refill', 'k-word--body',
+    'Restore hull, armor, shields, capacitor, and heat');
+  const vulnBtn = addWord(hullWords, 'Vulnerable', 'k-word--body sf-lab-vuln', 'Toggle player invulnerability');
+  const invulnBtn = addWord(hullWords, 'Invulnerable', 'k-word--body sf-lab-invuln', 'Toggle player invulnerability');
+
+  // Arena — the destructive one, in the danger colour.
+  const arenaWords = controlRow(rows, 'Arena');
+  const clearBtn = addWord(arenaWords, 'Clear enemies', 'k-word--body k-word--danger',
+    'Remove Lab-spawned enemies without scoring a kill');
+
+  // One status line in fine print under the rows.
+  const hint = el('p', 'k-span k-t-fine k-38 sf-lab-runtime__hint');
   hint.setAttribute('role', 'status');
 
-  row.appendChild(speedLabel);
-  row.appendChild(stepBtn);
-  row.appendChild(refillBtn);
-  row.appendChild(invulnBtn);
-  row.appendChild(clearBtn);
-  hostEl.appendChild(row);
+  hostEl.appendChild(rows);
   hostEl.appendChild(hint);
 
   function live() {
@@ -316,72 +304,82 @@ export function mountCrucibleLabControls(ctx, hostEl) {
     return !!(player && player.flags && player.flags.invuln);
   }
 
+  function setWhy(button, on, offReason) {
+    button.disabled = !on;
+    button.setAttribute('aria-disabled', on ? 'false' : 'true');
+    button.setAttribute('data-why', on ? (button.getAttribute('data-why-ready') || '') : offReason);
+  }
+
   function refresh() {
     const on = live();
     const session = sessionLive();
     const held = isSimHeld(ctx);
     const stepFn = getSimStep(ctx);
-    const scale = Number(speedSel.value);
-    const shown = LEGAL_TIME_SCALES.includes(scale) ? scale : 1;
-    speedText.textContent = shown + '\u00d7';
+    const shown = LEGAL_TIME_SCALES.includes(chosenScale) ? chosenScale : 1;
+    speedText.textContent = formatScale(shown);
     const speedRole = labSpeedRole(shown);
-    speedText.className = 'sf-lab-speed-now sf-fig'
-      + (speedRole === 'you' ? ' is-you' : '')
-      + (speedRole === 'goal' ? ' is-goal' : '');
+    speedText.className = 'sf-lab-speed-now sf-fig k-t-emph'
+      + (speedRole === 'you' ? ' is-you k-good' : '')
+      + (speedRole === 'goal' ? ' is-goal k-62' : '');
+    for (const { scale, button } of speedButtons) {
+      button.setAttribute('aria-pressed', scale === shown ? 'true' : 'false');
+    }
+
+    // The state is said in words, not only pressed: the row reads "Invulnerable: on" to a reader.
     const invuln = invulnOn();
-    invulnBtn.textContent = invuln ? 'Invulnerable: on' : 'Invulnerable: off';
-    invulnBtn.setAttribute('aria-label', invulnBtn.textContent);
+    vulnBtn.setAttribute('aria-pressed', invuln ? 'false' : 'true');
     invulnBtn.setAttribute('aria-pressed', invuln ? 'true' : 'false');
-    invulnBtn.className = 'sf-btn sf-lab-invuln' + (invuln ? ' is-you' : '');
+    invulnBtn.setAttribute('aria-label', invuln ? 'Invulnerable: on' : 'Invulnerable: off');
+    vulnBtn.setAttribute('aria-label', invuln ? 'Vulnerable: off' : 'Vulnerable: on');
 
     const launchReason = 'Launch a Combat Lab fight first.';
     const stepReason = !session
       ? launchReason
-      : (!held
-        ? 'Step advances one 60 Hz tick while this screen holds the sim.'
-        : (!stepFn ? 'Step advances one 60 Hz tick while this screen holds the sim.' : ''));
+      : (!held || !stepFn ? 'Step advances one 60 Hz tick while this screen holds the sim.' : '');
     hint.textContent = !on
       ? 'Launch a Combat Lab fight first. These controls do nothing in Adventure.'
-      : ('Speed ' + shown + '\u00d7 — extra fixed 60 Hz steps, not a bigger step. '
+      : ('Speed ' + formatScale(shown) + ' — extra fixed 60 Hz steps, not a bigger step. '
         + 'This screen already freezes the world. Step advances one 60 Hz tick while the screen holds the sim. '
         + 'Clear enemies removes Lab-spawned ships without a kill.');
 
-    for (const el of [clearBtn, speedSel]) {
-      el.disabled = !on;
-      el.setAttribute('data-why', on ? (el.getAttribute('data-why-ready') || '') : launchReason);
-    }
-    refillBtn.disabled = !session;
-    refillBtn.setAttribute('data-why', session ? (refillBtn.getAttribute('data-why-ready') || '') : launchReason);
-    invulnBtn.disabled = !session;
-    invulnBtn.setAttribute('data-why', session ? (invulnBtn.getAttribute('data-why-ready') || '') : launchReason);
-    const stepOn = session && held && !!stepFn;
-    stepBtn.disabled = !stepOn;
-    stepBtn.setAttribute('data-why', stepOn ? (stepBtn.getAttribute('data-why-ready') || '') : (stepReason || launchReason));
+    setWhy(clearBtn, on, launchReason);
+    for (const { button } of speedButtons) setWhy(button, on, launchReason);
+    setWhy(refillBtn, session, launchReason);
+    setWhy(invulnBtn, session, launchReason);
+    setWhy(vulnBtn, session, launchReason);
+    setWhy(stepBtn, session && held && !!stepFn, stepReason || launchReason);
   }
 
-  stepBtn.setAttribute('data-why-ready', 'Advance one 60 Hz tick while this screen holds the sim');
-  refillBtn.setAttribute('data-why-ready', 'Restore hull, armor, shields, capacitor, and heat');
-  invulnBtn.setAttribute('data-why-ready', 'Toggle player invulnerability');
-  clearBtn.setAttribute('data-why-ready', 'Remove Lab-spawned enemies without scoring a kill');
-
-  speedSel.addEventListener('change', () => {
-    const scale = Number(speedSel.value);
-    applyCrucibleLabControl(ctx, requestTimeScale(scale));
-    refresh();
-  });
+  for (const { scale, button } of speedButtons) {
+    button.addEventListener('click', () => {
+      if (button.disabled) return;
+      const result = applyCrucibleLabControl(ctx, requestTimeScale(scale));
+      if (result) chosenScale = scale;
+      refresh();
+    });
+  }
   clearBtn.addEventListener('click', () => {
+    if (clearBtn.disabled) return;
     applyCrucibleLabControl(ctx, requestClearEnemies());
     refresh();
   });
   refillBtn.addEventListener('click', () => {
+    if (refillBtn.disabled) return;
     applyCrucibleLabControl(ctx, requestRefill());
     refresh();
   });
   invulnBtn.addEventListener('click', () => {
-    applyCrucibleLabControl(ctx, requestInvulnerable(!invulnOn()));
+    if (invulnBtn.disabled) return;
+    applyCrucibleLabControl(ctx, requestInvulnerable(true));
+    refresh();
+  });
+  vulnBtn.addEventListener('click', () => {
+    if (vulnBtn.disabled) return;
+    applyCrucibleLabControl(ctx, requestInvulnerable(false));
     refresh();
   });
   stepBtn.addEventListener('click', () => {
+    if (stepBtn.disabled) return;
     applyCrucibleLabControl(ctx, requestStep());
     refresh();
   });
@@ -402,14 +400,4 @@ export function mountCrucibleLabControls(ctx, hostEl) {
 
   refresh();
   return { refresh, dispose };
-}
-
-function makeButton(label, why) {
-  const btn = document.createElement('button');
-  btn.className = 'sf-btn';
-  btn.type = 'button';
-  btn.textContent = label;
-  btn.setAttribute('aria-label', label);
-  if (why) btn.setAttribute('data-why', why);
-  return btn;
 }

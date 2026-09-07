@@ -524,12 +524,18 @@ function withFakeDocument(fn) {
   }
 }
 
+// The controls are kit rows (Frontend Task D §1.4): the word sits in its `li` inside a row's
+// `.k-words`, so the finder walks the tree under the first mounted element rather than one level.
 function findRowChild(host, text) {
-  const row = host.children[0];
-  for (const child of row.children) {
-    if (child.textContent === text) return child;
-  }
-  return null;
+  const walk = (node) => {
+    for (const child of node.children || []) {
+      if (child.textContent === text) return child;
+      const found = walk(child);
+      if (found) return found;
+    }
+    return null;
+  };
+  return walk(host.children[0]);
 }
 
 function mountLab(ctx) {

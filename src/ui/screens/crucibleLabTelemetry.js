@@ -11,8 +11,12 @@
 // - queryCandidates / collisionPairs / vfxEmissions: src/core/perfCounters.js totals gated by
 //   perfCountersRequested(); this overlay does not enable them.
 // Spatial-hash queries ship as the always-on cumulative SpatialHash.diagnostics.queries total.
+//
+// The DOM layer is kit rows (styles/kit.css, src/ui/kit/) — Frontend Task D §1.4: static rows at
+// data size, 62 %, no plate. This file owns no CSS. It is an instrument, not a debug dump.
 
 import { isHostileToPlayer } from '../../systems/scanner.js';
+import { el } from '../kit/index.js';
 
 export const CRUCIBLE_LAB_TELEMETRY_REFRESH_MS = 250;
 
@@ -198,53 +202,7 @@ function formatRow(row, snapshot) {
   return formatInt(snapshot[row.key]);
 }
 
-const STYLE_ID = 'sf-lab-tel-style';
-const CSS = `
-.sf-lab-tel {
-  margin-top: var(--sp-3); padding-top: var(--sp-3);
-  border-top: 1px solid var(--sf-edge); color: var(--sf-paper);
-  font-family: var(--sf-body-face); font-size: 12px; line-height: 1.35;
-}
-.sf-lab-tel .sf-crest {
-  font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
-  letter-spacing: var(--sf-track-micro); text-transform: uppercase;
-  color: var(--sf-calm); margin-bottom: var(--sp-2);
-}
-.sf-lab-tel-row {
-  display: grid; grid-template-columns: minmax(0, 1fr) 8ch; column-gap: var(--sp-3); align-items: baseline;
-}
-.sf-lab-tel-k { color: var(--sf-calm); font-size: 12px; min-width: 0; }
-.sf-lab-tel .sf-fig, .sf-lab-tel-v, .sf-lab-tel-tick {
-  font-family: var(--sf-data-face); font-weight: 500; font-variant-numeric: tabular-nums;
-  font-size: 13px; letter-spacing: 0; text-align: right; white-space: nowrap; min-width: 8ch; color: var(--sf-paper);
-}
-.sf-lab-tel-tick {
-  font-family: var(--sf-display-face); font-weight: 700; font-size: 28px; line-height: 1.1;
-  text-transform: none; color: var(--sf-paper);
-}
-.sf-lab-tel-v.is-foe { color: var(--sf-foe); }
-.sf-lab-tel-v.is-you { color: var(--sf-you); }
-.sf-lab-tel-v.is-goal { color: var(--sf-goal); }
-.sf-lab-tel .sf-apron { color: var(--sf-calm); font-size: 12px; margin-top: var(--sp-2); }
-@media (forced-colors: active) {
-  .sf-lab-tel { background: Canvas; color: CanvasText; border-color: CanvasText; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .sf-lab-tel, .sf-lab-tel * { animation: none !important; transition: none !important; }
-}
-`;
-
-function injectStyle() {
-  if (typeof document === 'undefined' || typeof document.createElement !== 'function') return;
-  if (typeof document.getElementById !== 'function') return;
-  if (document.getElementById(STYLE_ID)) return;
-  if (!document.head || typeof document.head.appendChild !== 'function') return;
-  const s = document.createElement('style');
-  s.id = STYLE_ID;
-  s.textContent = CSS;
-  document.head.appendChild(s);
-}
-
+/** The hostiles figure's meaning role: any live hostile is "foe"; none is calm. */
 export function telemetryHostilesRole(count) {
   return count > 0 ? 'foe' : 'calm';
 }
@@ -265,28 +223,23 @@ export function mountCrucibleLabTelemetry(ctx, hostEl) {
     return emptyDispose();
   }
 
-  injectStyle();
-  const root = document.createElement('div');
-  root.className = 'sf-lab-tel sf-stage sf-apron';
+  // A column of static kit rows: the first is the caps label, then one row per figure. The kit's
+  // `k-span` fills the host's grid; `.sf-lab-tel` is the hook that sizes the rows to data size.
+  const root = el('ul', 'k-rows k-span sf-lab-tel');
   root.setAttribute('role', 'group');
   root.setAttribute('aria-label', 'Combat Lab telemetry');
 
-  const heading = document.createElement('div');
-  heading.className = 'sf-crest';
-  heading.textContent = 'Telemetry';
+  const heading = el('li', 'k-row k-row--static sf-lab-tel__head');
+  heading.appendChild(el('span', 'k-caps', 'Telemetry'));
   root.appendChild(heading);
 
   const valueEls = [];
   for (const row of ROWS) {
-    const rowEl = document.createElement('div');
-    rowEl.className = 'sf-lab-tel-row';
-    const labelEl = document.createElement('span');
-    labelEl.className = 'sf-lab-tel-k';
-    labelEl.textContent = row.label;
-    const valueEl = document.createElement('span');
-    valueEl.className = row.key === 'tick' ? 'sf-lab-tel-tick sf-fig' : 'sf-lab-tel-v sf-fig';
-    valueEl.textContent = UNAVAILABLE_MARK;
-    rowEl.appendChild(labelEl);
+    const rowEl = el('li', 'k-row k-row--static sf-lab-tel-row');
+    rowEl.appendChild(el('span', 'k-row__name k-62 sf-lab-tel-k', row.label));
+    const valueEl = el('span', row.key === 'tick'
+      ? 'k-row__num sf-lab-tel-tick sf-fig'
+      : 'k-row__num sf-lab-tel-v sf-fig', UNAVAILABLE_MARK);
     rowEl.appendChild(valueEl);
     root.appendChild(rowEl);
     valueEls.push({ row, valueEl });
@@ -305,7 +258,7 @@ export function mountCrucibleLabTelemetry(ctx, hostEl) {
       valueEl.textContent = formatRow(row, snapshot);
       if (row.key === 'liveHostiles') {
         const foe = telemetryHostilesRole(snapshot.liveHostiles) === 'foe';
-        valueEl.className = 'sf-lab-tel-v sf-fig' + (foe ? ' is-foe' : '');
+        valueEl.className = 'k-row__num sf-lab-tel-v sf-fig' + (foe ? ' is-foe k-bad' : '');
       }
     }
   }
