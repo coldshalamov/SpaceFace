@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { createStructuredBurstGeometry } from './structuredBurstGeometry.js';
+import { createStructuralSurfaceMaterial } from './transientVfxMaterials.js';
 import { worldSizeForPixels } from '../weapons/pixelFloor.js';
 
 export const ARCADE_STRUCTURAL_FX_CAPACITY = Object.freeze({
@@ -30,52 +32,8 @@ function easeOutCubic(value) {
   return 1 - (1 - x) ** 3;
 }
 
-function createBladeGeometry() {
-  // A deliberately graphic five-point blade. It carries a readable silhouette at the chase camera;
-  // there is no radial alpha field and no camera-facing sprite hidden inside the implementation.
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute([
-    -0.50, 0, -0.07,
-    -0.12, 0, -0.50,
-     0.50, 0,  0.00,
-    -0.12, 0,  0.50,
-    -0.50, 0,  0.07,
-  ], 3));
-  geometry.setIndex([0, 1, 2, 0, 2, 4, 2, 3, 4]);
-  geometry.computeVertexNormals();
-  geometry.name = 'SF_ArcadeBladeGeometry';
-  return geometry;
-}
-
-function createBrokenArcGeometry(segments = 10) {
-  // A partial arc rather than a full shock ring. The open ends and asymmetric sweep keep it from
-  // becoming the generic expanding-circle language explicitly rejected by the art direction.
-  const positions = [];
-  const indices = [];
-  const start = -0.72;
-  const sweep = 1.44;
-  const halfWidth = 0.075;
-  for (let i = 0; i <= segments; i++) {
-    const t = i / segments;
-    const angle = start + sweep * t;
-    const taper = 0.35 + Math.sin(Math.PI * t) * 0.65;
-    const inner = 1 - halfWidth * taper;
-    const outer = 1 + halfWidth * taper;
-    const c = Math.cos(angle);
-    const s = Math.sin(angle);
-    positions.push(c * inner, 0, s * inner, c * outer, 0, s * outer);
-    if (i < segments) {
-      const base = i * 2;
-      indices.push(base, base + 1, base + 3, base, base + 3, base + 2);
-    }
-  }
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  geometry.setIndex(indices);
-  geometry.computeVertexNormals();
-  geometry.name = 'SF_ArcadeBrokenArcGeometry';
-  return geometry;
-}
+function createBladeGeometry() { return createStructuredBurstGeometry('blade'); }
+function createBrokenArcGeometry() { return createStructuredBurstGeometry('arc'); }
 
 function createShardGeometry() {
   // An opaque irregular triangular prism. This is matter, not an emissive primitive pretending to
@@ -163,6 +121,12 @@ class StructuralPool {
     this.mesh.frustumCulled = false;
     this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.mesh.instanceColor = makeInstanceColor(capacity);
+    this.phase = kind === 'shard' ? null
+      : new THREE.InstancedBufferAttribute(new Float32Array(capacity * 2), 2);
+    if (this.phase) {
+      this.phase.setUsage(THREE.DynamicDrawUsage);
+      geometry.setAttribute('aStructuralPhase', this.phase);
+    }
     this.mesh.userData.spacefaceArcadeStructuralFx = true;
     this.mesh.renderOrder = kind === 'shard' ? 9 : 13;
     this._matrix = new THREE.Matrix4();
@@ -290,6 +254,7 @@ class StructuralPool {
       slot.roll += slot.rollVelocity * step;
 
       const t = clamp01(slot.age / slot.life);
+      if (this.phase) this.phase.setXY(i, t, (slot.serial * 0.618033988749895) % 1);
       const shaped = easeOutCubic(t);
       const length = slot.length0 + (slot.length1 - slot.length0) * shaped;
       const width = slot.width0 + (slot.width1 - slot.width0) * shaped;
@@ -340,6 +305,7 @@ class StructuralPool {
       changed = true;
     }
     if (changed) {
+      if (this.phase) this.phase.needsUpdate = true;
       this.mesh.instanceMatrix.needsUpdate = true;
       this.mesh.instanceColor.needsUpdate = true;
     }
@@ -383,21 +349,7 @@ class StructuralPool {
   }
 }
 
-function arcadeAdditiveMaterial(name) {
-  const material = new THREE.MeshBasicMaterial({
-    color: 0xffffff,
-    transparent: true,
-    opacity: 1,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-    depthTest: true,
-    side: THREE.DoubleSide,
-    toneMapped: false,
-  });
-  material.name = name;
-  material.userData.spacefaceArcadeVfxMaterial = true;
-  return material;
-}
+function arcadeAdditiveMaterial(name) { return createStructuralSurfaceMaterial(name); }
 
 function arcadeShardMaterial() {
   const material = new THREE.MeshStandardMaterial({
