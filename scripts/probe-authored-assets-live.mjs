@@ -689,32 +689,21 @@ function isMainModule() {
 async function waitForAuthoredShips(cdp) {
   const deadline = await waitForAuthoredAssetDeadline({
     timeoutMs: 45000,
-    pollIntervalMs: 50,
+    pollIntervalMs: 150,
     onPoll: () => forceShipRender(cdp),
-    sample: () => collectAuthoredGateSnapshot(cdp),
-    isReady: (snapshot) => !!(
-      snapshot
-      && snapshot.playerState === 'authored'
-      && snapshot.presentedShipCount >= MIN_AUTHORED_SHIPS
-      && snapshot.authoredShipCount === snapshot.presentedShipCount
+    sample: () => collectAuthoredReport(cdp),
+    isReady: (report) => !!(
+      report
+      && report.player && report.player.state === 'authored'
+      && report.presentedShipCount >= MIN_AUTHORED_SHIPS
+      && report.authoredShipCount === report.presentedShipCount
+      && report.repeatedPackageShipPoolKeys.length > 0
     ),
   });
   const diagnosticsStartedAtMs = performance.now();
-  // Re-read until the REPORT satisfies the same condition the gate above just proved, not
-  // merely until the lightweight snapshot did. The two are read at different instants and the
-  // sim keeps running between them: ships fall outside the spatial runway, and a gate that
-  // passed at >= 3 presented ships was then asserted against a report showing 1. That is a
-  // race in the probe, not a fault in the game, and it made the whole run non-deterministic.
-  // Bounded, and it keeps the last report either way so a genuine shortfall still fails below.
-  let report = await collectAuthoredReport(cdp);
-  for (let attempt = 0; attempt < 100; attempt++) {
-    if (report.authoredShipCount >= MIN_AUTHORED_SHIPS
-      && report.authoredShipCount === report.presentedShipCount
-      && report.repeatedPackageShipPoolKeys.length > 0) break;
-    await sleep(200);
-    await forceShipRender(cdp);
-    report = await collectAuthoredReport(cdp);
-  }
+  const report = deadline.passed && deadline.lastOnTimeSnapshot
+    ? deadline.lastOnTimeSnapshot
+    : (deadline.postDeadlineSnapshot || await collectAuthoredReport(cdp));
   const diagnosticsCompletedAtMs = performance.now();
   report.authoredDeadline = {
     ...deadline,
@@ -1524,6 +1513,9 @@ async function forceShipRender(cdp) {
         partsLibrary.syncAuthoredInstancePools(render.scene);
       }
     } catch (_) {}
+    if (sf && sf.loop && typeof sf.loop.simStep === 'function') {
+      try { sf.loop.simStep(); } catch (_) {}
+    }
     await render.warmPostProcess();
   })()`);
 }
@@ -1851,6 +1843,9 @@ function spawnChrome(debugPort, profileDir) {
     '--disable-crash-reporter',
     '--disable-breakpad',
     '--disable-gpu-shader-disk-cache',
+    '--disable-background-timer-throttling',
+    '--disable-renderer-backgrounding',
+    '--disable-backgrounding-occluded-windows',
     '--disable-features=OptimizationGuideModelDownloading,OptimizationHints',
     `--user-data-dir=${profileDir}`,
     `--window-size=${WIDTH},${HEIGHT}`,
