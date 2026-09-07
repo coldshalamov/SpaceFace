@@ -13,6 +13,7 @@
 // infrastructure keeps its own hex/ring identity rather than masquerading as another arrow.
 
 import { semanticColor, semanticShape } from './accessibility.js';
+import { canvasFont } from './canvasFonts.js';
 import { solveIntercept } from '../core/flight/flightTelemetry.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
 import { resolveWaypointPresentationPosition } from './navigationWaypoint.js';
@@ -363,7 +364,7 @@ export function placeRadarObjectiveLabel(textWidth, markerX, markerY, size, cent
 function drawObjectiveLabel(g, cue) {
   if (!cue) return;
   g.save();
-  g.font = '700 12px "IBM Plex Mono", ui-monospace, monospace';
+  g.font = canvasFont(700, 12, 'data');
   const text = cue.resolved
     ? `${cue.label}  ${formatRadarDistance(cue.distance)}`
     : `${cue.label}  ROUTE`;
@@ -391,7 +392,7 @@ function drawObjectiveLabel(g, cue) {
 function drawRangePlate(g, metrics, range, expanded) {
   g.save();
   const text = `RANGE ${(range / 1000).toFixed(range >= 10000 ? 0 : 1)}K`;
-  g.font = '700 12px "IBM Plex Mono", ui-monospace, monospace';
+  g.font = canvasFont(700, 12, 'data');
   const width = Math.ceil(g.measureText(text).width) + 12;
   const height = 18;
   // The visible radar is a CIRCLE masked out of the square canvas (overflow:hidden on a 50%
@@ -455,7 +456,7 @@ function drawHeatZone(g, zone, playerX, playerZ, scale, center, radius) {
   g.restore();
 
   g.save();
-  g.font = '700 12px "IBM Plex Mono", ui-monospace, monospace';
+  g.font = canvasFont(700, 12, 'data');
   g.textAlign = 'center';
   g.textBaseline = 'bottom';
   g.fillStyle = outside ? 'rgba(255,205,95,0.94)' : 'rgba(255,84,112,0.88)';
@@ -737,7 +738,7 @@ export function createRadar(ctx) {
 
     g.save();
     g.fillStyle = 'rgba(99,243,255,0.72)';
-    g.font = '700 12px "IBM Plex Mono", ui-monospace, monospace';
+    g.font = canvasFont(700, 12, 'data');
     g.textAlign = 'center';
     g.textBaseline = 'bottom';
     g.fillText('N', center, center - radius + 14);
@@ -1011,7 +1012,7 @@ export function createRadar(ctx) {
       entity && entity.alive && entity.data && entity.data.pingedUntil > state.simTime
     ))) {
       g.save();
-      g.font = '700 12px "IBM Plex Mono", ui-monospace, monospace';
+      g.font = canvasFont(700, 12, 'data');
       g.textAlign = 'center';
       g.textBaseline = 'middle';
       g.strokeStyle = '#ffd24a';

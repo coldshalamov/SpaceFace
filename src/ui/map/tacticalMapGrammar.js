@@ -312,7 +312,7 @@ export function drawPlayerHull(g, x, y, rotation = 0, { label = true } = {}) {
   g.lineWidth = 1.25;
   drawOpenCorners(g, x, y, 15, 4.5);
   if (label) {
-    g.font = '700 12px "IBM Plex Mono", ui-monospace, monospace';
+    g.font = canvasFont(700, 12, 'data');
     g.textAlign = 'center';
     g.textBaseline = 'top';
     g.fillStyle = TACTICAL_MAP_PALETTE.ink;
@@ -362,7 +362,7 @@ export function drawObjectiveBracket(g, x, y, {
       g.fillStyle = TACTICAL_MAP_PALETTE.ink;
       g.fillRect(-1, -1, 2, 2);
     } else {
-      g.font = '700 12px "IBM Plex Mono", ui-monospace, monospace';
+      g.font = canvasFont(700, 12, 'data');
       g.textAlign = 'center';
       g.textBaseline = 'middle';
       g.fillStyle = TACTICAL_MAP_PALETTE.objective;
