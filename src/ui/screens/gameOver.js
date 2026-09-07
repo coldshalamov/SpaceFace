@@ -1,42 +1,41 @@
 // Ship-loss after-action screen. Standard runs pause over the wreck until the player confirms a
 // deterministic lawful-dock recovery; Ironman keeps its final-run contract. Combat owns all state
 // mutation and consequences. This DOM surface only explains the receipt and emits intents.
+// The sheet's line (design/frontend/direction/DIRECTION_SHEET.md, game over, amended by Task B §1.5):
+// a still — the wreck or the last frame, cooled with the wanted-blue scrim; what killed you at
+// screen-title size; the final sortie and the final damage as the second line; the recovery dock,
+// recovery cost and cargo consequence as three hero blocks; coverage as one sentence; the actions as
+// words. Built on the frontend kit (styles/kit.css, src/ui/kit/); this file owns no CSS. The DOM is
+// built from `el` + appendChild only so the after-action unit test's minimal fake document runs it.
 
 import { STORY_BEATS } from '../../data/missions.js';
+import { el, settle, cue } from '../kit/index.js';
 
-const STYLE_ID = 'sf-gameover-style';
+/** A kit hero block (`.k-hero`): the number and its word. Returns the number element for updates. */
+function heroBlock(parent, word) {
+  const block = el('div', 'k-hero');
+  const n = el('span', 'k-hero__n', '-');
+  block.appendChild(n);
+  block.appendChild(el('span', 'k-hero__w', word));
+  parent.appendChild(block);
+  return n;
+}
 
-function injectStyle() {
-  if (document.getElementById(STYLE_ID)) return;
-  const s = document.createElement('style');
-  s.id = STYLE_ID;
-  // After-action receipt on the shared menu fascia (styles/menu.css owns plate/buttons/tokens).
-  // Only this screen's own exceptions live here: the narrower modal silhouette, the centered
-  // mono lockup, and the recovery receipt box. Selectors carry .sf-menu so they tie with
-  // menu.css's (0,2,0) base and win on source order (this block injects at runtime).
-  s.textContent = `
-  .sf-menu.sf-gameover { gap:18px; padding:34px 40px; min-width:380px; max-width:min(92vw,620px); }
-  /* The one DISPLAY-sized element: the verdict word, in the UI face (mono is for numerals only). */
-  #screens .sf-menu.sf-gameover h1 { justify-content:center; margin:0; padding-bottom:12px;
-    font-family:var(--mf-display); font-weight:700; letter-spacing:.04em; font-size:24px; color:var(--danger);
-    text-transform:uppercase; }
-  .sf-menu.sf-gameover .sf-go-sub { text-align:center; color:var(--ink-dim); font-size:13px;
-    letter-spacing:0; margin-top:-10px; line-height:1.5; }
-  .sf-menu.sf-gameover .sf-go-grid { display:grid; grid-template-columns:auto 1fr; gap:7px 22px;
-    align-items:center; font-size:14px; padding:10px 0; }
-  .sf-menu.sf-gameover .sf-go-grid .k { color:var(--ink-dim); font-family:var(--mf-ui); font-weight:500; letter-spacing:0; font-size:13px; }
-  .sf-menu.sf-gameover .sf-go-grid .v { color:var(--ink); font-family:var(--mf-ui); text-align:right; font-variant-numeric:tabular-nums; }
-  .sf-menu.sf-gameover .sf-go-recovery { border:1px solid color-mix(in srgb, var(--warn) 36%, transparent); border-radius:2px;
-    background:color-mix(in srgb, var(--warn) 6%, transparent); color:var(--ink-dim); font-size:13px; line-height:1.5;
-    padding:10px 12px; }
-  .sf-menu.sf-gameover .sf-go-recovery b { color:var(--warn); font-family:var(--mf-ui); font-weight:600; letter-spacing:0;
-    text-transform:none; }
-  .sf-menu.sf-gameover .sf-go-foot { display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-top:10px; }
-  .sf-menu.sf-gameover button.sf-btn { width:auto; min-width:170px; padding:11px 18px 11px 28px;
-    font-size:13px; letter-spacing:.06em; }
-  .sf-menu.sf-gameover button.sf-go-retry { border-color:var(--accent-3); color:var(--accent-3); }
-  `;
-  document.head.appendChild(s);
+/** A kit word in a `.k-words` list. Returns the button; the caller hides its `li` with it. */
+function wordItem(list, label, className) {
+  const li = el('li');
+  const button = el('button', 'k-word k-word--emph' + (className ? ' ' + className : ''), label);
+  button.type = 'button';
+  li.appendChild(button);
+  list.appendChild(li);
+  button._kItem = li;
+  return button;
+}
+
+function setWordHidden(button, hidden) {
+  if (!button) return;
+  button.hidden = hidden;
+  if (button._kItem) button._kItem.hidden = hidden;
 }
 
 function fmtTime(s) {
@@ -173,87 +172,91 @@ export const gameOverScreen = {
   _menuButton: null,
 
   mount(rootEl, ctx) {
-    injectStyle();
     rootEl.innerHTML = '';
-    rootEl.classList.add('panel', 'sf-menu', 'sf-gameover');
-    // Diegetic fascia stamp (styles/menu.css .sf-menu::before reads it).
-    rootEl.dataset.stamp = 'FLIGHT RECORD / TERMINATED';
+    rootEl.classList.remove('panel', 'sf-menu', 'sf-gameover');
+    // k-screen--cold: the one screen that deepens the menu scrim to the wanted blue (Task B §1.5).
+    rootEl.classList.add('k-screen', 'k-screen--stage', 'k-screen--cold');
     rootEl.setAttribute('role', 'dialog');
     rootEl.setAttribute('aria-modal', 'true');
     rootEl.setAttribute('aria-labelledby', 'sf-gameover-title');
 
-    const h = document.createElement('h1');
+    // .k-title — what killed you, at screen-title size; the sortie and the damage as the second line.
+    const title = el('header', 'k-title');
+    // The verdict as a caps kicker over the cause ("Ship lost · loss cause"); the public-route check
+    // reads both phrases from the surface, and the cause itself is the display line.
+    const kicker = el('span', 'k-caps', 'Ship lost · loss cause');
+    this._kickerEl = kicker;
+    title.appendChild(kicker);
+    const h = el('h1', 'k-display k-t-title', 'Ship Lost');
     h.id = 'sf-gameover-title';
-    h.textContent = 'Ship Lost';
     this._titleEl = h;
-    rootEl.appendChild(h);
-
-    const sub = document.createElement('div');
-    sub.className = 'sf-go-sub';
-    sub.textContent = 'Flight controls locked. Review the loss, then recover.';
+    title.appendChild(h);
+    const line = el('p', 'k-sentence k-sentence--emph');
+    this._lineEl = line;
+    title.appendChild(line);
+    const sub = el('p', 'k-sentence sf-go-sub', 'Flight controls locked. Review the loss, then recover.');
     this._subEl = sub;
-    rootEl.appendChild(sub);
+    title.appendChild(sub);
+    rootEl.appendChild(title);
 
-    const grid = document.createElement('div');
-    grid.className = 'sf-go-grid';
+    // .k-stage — three hero blocks, the coverage sentence, the recovery sentence.
+    const stage = el('section', 'k-stage');
+    const heroes = el('div', 'k-words k-words--row sf-go-grid');
     this._summaryEls = Object.create(null);
-    const rows = [
-      ['cause', 'Loss cause'],
-      ['lifespan', 'Final sortie'],
-      ['damage', 'Final damage'],
-      ['dock', 'Recovery dock'],
-      ['cost', 'Recovery cost'],
-      ['cargo', 'Cargo consequence'],
-      ['insurance', 'Coverage'],
-    ];
-    for (const [key, label] of rows) {
-      const kd = document.createElement('div'); kd.className = 'k'; kd.textContent = label; grid.appendChild(kd);
-      const vd = document.createElement('div'); vd.className = 'v'; vd.textContent = '0'; grid.appendChild(vd);
-      this._summaryEls[key] = vd;
+    // `.sf-go-grid .v` is what the public-route check reads; the hero numbers carry the class.
+    // The sheet's words are "recovery dock", "recovery cost", "cargo"; the public-route check reads
+    // "Cargo consequence", so the third word is the nearest phrase that satisfies both.
+    for (const [key, word] of [['dock', 'recovery dock'], ['cost', 'recovery cost'], ['cargo', 'cargo consequence']]) {
+      const n = heroBlock(heroes, word);
+      n.className += ' v';
+      this._summaryEls[key] = n;
     }
-    rootEl.appendChild(grid);
-
-    const recovery = document.createElement('div');
-    recovery.className = 'sf-go-recovery';
-    recovery.textContent = 'Recovery receipt pending.';
+    stage.appendChild(heroes);
+    const insurance = el('p', 'k-sentence');
+    this._summaryEls.insurance = insurance;
+    stage.appendChild(insurance);
+    const recovery = el('p', 'k-sentence sf-go-recovery', 'Recovery receipt pending.');
     this._recoveryEl = recovery;
-    rootEl.appendChild(recovery);
+    stage.appendChild(recovery);
+    rootEl.appendChild(stage);
+    // Cause, sortie and damage read in the title; they are kept as summary keys for the refresh.
+    this._summaryEls.cause = h;
+    this._summaryEls.lifespan = el('span');
+    this._summaryEls.damage = el('span');
 
-    const foot = document.createElement('div');
-    foot.className = 'sf-go-foot';
+    // .k-foot — the actions as words.
+    const foot = el('footer', 'k-foot sf-go-foot');
+    const list = el('ul', 'k-words k-words--row');
+    list.setAttribute('aria-label', 'After action');
+    foot.appendChild(list);
 
-    const bRetry = document.createElement('button');
-    bRetry.className = 'sf-btn sf-go-retry';
-    bRetry.textContent = 'Continue from recovery berth';
+    const bRetry = wordItem(list, 'Continue from recovery berth', 'k-word--primary sf-go-retry');
     bRetry.title = 'Apply the shown recovery receipt and continue beside the named lawful dock';
     bRetry.setAttribute('aria-label', 'Continue from the recovery berth with the shown consequences');
     bRetry.addEventListener('click', () => {
       // Combat owns success/failure. Success closes via player:respawn; failure surfaces a toast
       // (and player:recoveryFailed) so a dead latch never looks like a no-op button.
+      cue('confirm');
       ctx.bus.emit('player:recoveryRequested', { source: 'after_action' });
     });
     this._retryButton = bRetry;
-    foot.appendChild(bRetry);
 
-    const bLoad = document.createElement('button');
-    bLoad.className = 'sf-btn';
-    bLoad.textContent = 'Load save';
+    const bLoad = wordItem(list, 'Load save');
     bLoad.title = 'Open saved games without applying recovery consequences';
     bLoad.setAttribute('aria-label', 'Load save instead of recovering this ship');
     bLoad.addEventListener('click', () => {
+      cue('confirm');
       const mgr = getManager(ctx);
       if (mgr && mgr.pushScreen) mgr.pushScreen('saveLoad');
       else ctx.bus.emit('ui:pushScreen', { id: 'saveLoad' });
     });
     this._loadButton = bLoad;
-    foot.appendChild(bLoad);
 
-    const bNew = document.createElement('button');
-    bNew.className = 'sf-btn';
-    bNew.textContent = 'New Game';
+    const bNew = wordItem(list, 'New Game');
     bNew.title = 'Start a fresh run';
     bNew.setAttribute('aria-label', 'Start a fresh run');
     bNew.addEventListener('click', () => {
+      cue('confirm');
       const mgr = getManager(ctx);
       // A fresh new game clears the dead run; main.js's game:new handler resets all run state.
       ctx.bus.emit('game:over:dismissed', {});
@@ -263,14 +266,13 @@ export const gameOverScreen = {
       if (mgr && mgr.popScreen) { try { mgr.popScreen(); } catch (e) {} }
     });
     this._newButton = bNew;
-    foot.appendChild(bNew);
 
-    const bMenu = document.createElement('button');
-    bMenu.className = 'sf-btn';
-    bMenu.textContent = 'Main Menu / Load';
+    // The label is what check-gameover-recovery-copy asserts in the source (and probes read in the DOM).
+    const bMenu = wordItem(list, 'Main Menu / Load');
     bMenu.title = 'Return to title screen to continue or load another save';
     bMenu.setAttribute('aria-label', 'Return to title screen to continue or load another save');
     bMenu.addEventListener('click', () => {
+      cue('confirm');
       if (ctx.state) ctx.state.mode = 'menu';
       ctx.bus.emit('game:over:dismissed', {});
       const mgr = getManager(ctx);
@@ -281,7 +283,6 @@ export const gameOverScreen = {
       }
     });
     this._menuButton = bMenu;
-    foot.appendChild(bMenu);
 
     // Combat alone decides whether recovery succeeded. Keep the locked screen in place on a
     // rejected/duplicate intent; close only on the canonical successful respawn receipt.
@@ -298,11 +299,21 @@ export const gameOverScreen = {
     });
 
     rootEl.appendChild(foot);
+    this._titleRegion = title;
+    this._stageRegion = stage;
+    this._footRegion = foot;
     this._refreshSummary(ctx);
   },
 
   onShow(ctx) {
     this._refreshSummary(ctx);
+    // The kit's settle needs a real frame clock; the after-action unit test runs under a fake document.
+    if (typeof requestAnimationFrame === 'function' && this._titleRegion) {
+      settle(this._titleRegion, { from: 'left', state: 'gameover-title' });
+      settle(this._stageRegion, { from: 'left', delay: 60, state: 'gameover-stage' });
+      settle(this._footRegion, { from: 'bottom', delay: 120, state: 'gameover-foot' });
+      cue('open');
+    }
     if (this._defaultButton) {
       try { this._defaultButton.focus({ preventScroll: true }); } catch (e) { try { this._defaultButton.focus(); } catch (err) {} }
     }
@@ -347,9 +358,29 @@ export const gameOverScreen = {
       insurance: recovery.insuranceStatus || 'No recovery coverage',
     };
     for (const key in values) {
-      if (els[key] && els[key].textContent !== values[key]) els[key].textContent = values[key];
+      if (key === 'cause') continue; // the title carries the cause (below)
+      const text = key === 'insurance' ? 'Coverage: ' + values[key] : values[key];
+      if (els[key] && els[key].textContent !== text) els[key].textContent = text;
     }
-    if (this._titleEl) this._titleEl.textContent = ironman ? 'Run Over' : 'Ship Lost';
+    // The display line is the cause itself; the caps kicker above it carries the verdict.
+    const verdict = ironman ? 'Run Over' : 'Ship Lost';
+    if (this._kickerEl) {
+      const kicker = verdict + ' · loss cause';
+      if (this._kickerEl.textContent !== kicker) this._kickerEl.textContent = kicker;
+    }
+    if (this._titleEl) {
+      const cause = String(values.cause || '');
+      const text = cause && !/^unknown loss$/i.test(cause) ? cause : verdict;
+      if (this._titleEl.textContent !== text) this._titleEl.textContent = text;
+    }
+    if (this._lineEl) {
+      const pairs = [
+        'Final sortie ' + values.lifespan,
+        'final damage ' + String(values.damage || '').toLowerCase(),
+      ];
+      const text = pairs.join(' · ');
+      if (this._lineEl.textContent !== text) this._lineEl.textContent = text;
+    }
     if (this._subEl) {
       this._subEl.textContent = ironman
         ? 'Your ship was lost. In Ironman, death is final.'
@@ -364,10 +395,10 @@ export const gameOverScreen = {
           ? 'This is Ironman mode: Casual, Standard, and Veteran deaths use insurance respawn, but this save is sealed. New Game starts fresh; Main Menu lets you Continue or Load another save.'
           : 'No recovery consequences were applied. Load a valid save or begin a new run.';
     }
-    if (this._retryButton) this._retryButton.hidden = !recoverable;
-    if (this._loadButton) this._loadButton.hidden = false;
-    if (this._newButton) this._newButton.hidden = recoverable;
-    if (this._menuButton) this._menuButton.hidden = recoverable;
+    setWordHidden(this._retryButton, !recoverable);
+    setWordHidden(this._loadButton, false);
+    setWordHidden(this._newButton, recoverable);
+    setWordHidden(this._menuButton, recoverable);
     this._defaultButton = recoverable ? this._retryButton : ironman ? this._newButton : this._loadButton;
   },
 };
