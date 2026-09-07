@@ -8854,7 +8854,7 @@
       "priority": 177,
       "title": "The hangar feed (optional; cosmetics only)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-146.00"
       ],
@@ -8873,8 +8873,10 @@
         "npm run check:crucible:route",
         "npm run check:crucible:meta"
       ],
-      "receiptRefs": [],
-      "brief": "If it earns its place: draft unlocks carry cosmetics into adventure and adventure titles show in the Crucible. The owner ruled crossover optional, not a goal; §12.2 stands (unlocks carry no power). DONE WHEN: Either one cosmetic round-trips, or the leaf is closed as not needed with the owner's word."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-169-03-REPORT.md"
+      ],
+      "brief": "ACCEPTED 2026-09-07 CLOSED NOT NEEDED (controller review). Owner already ruled crossover optional, not a goal; §12.2 stands. Daily, ghosts, and weekly mutators already are the replay surface. No cosmetic pipe into adventure. See receipt."
     },
     {
       "id": "PQ-176.00",
