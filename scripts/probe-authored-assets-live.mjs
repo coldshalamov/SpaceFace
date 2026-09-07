@@ -396,8 +396,17 @@ try { assertAuthoredProbeCleanup(cleanupProof); }
 catch (error) { cleanupError = error; }
 let candidateError = null;
 try {
-  assert.deepEqual(collectAuthoredProbeCandidateIdentity(), candidate,
-    'authored probe candidate changed between launch and teardown');
+  const currentCandidate = collectAuthoredProbeCandidateIdentity();
+  assert.equal(currentCandidate.sourceDigest, candidate.sourceDigest,
+    'authored probe source files changed during execution');
+  assert.deepEqual(currentCandidate.worktreeStatus, candidate.worktreeStatus,
+    'authored probe candidate worktree changed during execution');
+  if (currentCandidate.head !== candidate.head) {
+    const diff = gitText(['diff', '--name-only', candidate.head, currentCandidate.head]);
+    const changedProbeFiles = (diff ? diff.split(/\r?\n/).filter(Boolean) : []).filter(isProbeRelevantPath);
+    assert.deepEqual(changedProbeFiles, [],
+      `authored probe candidate relevant files changed mid-run: ${JSON.stringify(changedProbeFiles)}`);
+  }
 } catch (error) {
   candidateError = error;
 }
@@ -1999,7 +2008,7 @@ async function closeOwnedAuthoredProbeRuntime({ ws, chrome, server, debugPort, p
 
   let profileDeleted = false;
   try {
-    profileDeleted = removeOwnedChromeProfile(profileDir, chromeProof.started !== true || chromeProof.exitConfirmed === true);
+    profileDeleted = await removeOwnedChromeProfile(profileDir, chromeProof.started !== true || chromeProof.exitConfirmed === true);
   } catch (error) {
     failures.push(`Chrome profile cleanup failed: ${error && error.message || error}`);
   }
@@ -2084,7 +2093,7 @@ export function probePortRefusalOnce(port, options = {}) {
   });
 }
 
-function removeOwnedChromeProfile(profileDir, processExited) {
+async function removeOwnedChromeProfile(profileDir, processExited) {
   if (!profileDir) return true;
   const target = resolve(profileDir);
   const tempRoot = resolve(tmpdir());
@@ -2112,7 +2121,7 @@ function removeOwnedChromeProfile(profileDir, processExited) {
         if (!existsSync(target)) return true;
       } catch (_) {}
     }
-    spawnSync(process.execPath, ['-e', 'const end = Date.now() + 500; while (Date.now() < end) {}']);
+    await sleep(500);
   }
   return !existsSync(target);
 }
