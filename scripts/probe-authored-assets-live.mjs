@@ -1850,7 +1850,7 @@ function findChrome() {
 
 async function connectCdp(debugPort) {
   let wsUrl = null;
-  for (let i = 0; i < 80; i++) {
+  for (let i = 0; i < 240; i++) {
     try {
       const tabs = await (await fetch(`http://127.0.0.1:${debugPort}/json`)).json();
       const page = tabs.find((tab) => tab.type === 'page');
