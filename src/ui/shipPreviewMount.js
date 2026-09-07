@@ -18,6 +18,7 @@ import { MODULES } from '../data/modules.js';
 import { disposeAuthoredAssetRuntime, loadAuthoredPart } from '../render/assetLoader.js';
 import { preloadAuthoredPartLibrary } from '../render/partsLibrary.js';
 import { isReleaseAssetMode } from '../render/releaseMode.js';
+import { yieldToBrowser } from '../render/startupGpuResidency.js';
 import { setEnvMapForShips, createVisualFactory } from '../render/visualFactory.js';
 import { installVisualOverrides } from '../render/visualOverrides.js';
 import { buildKestrelHero } from '../render/ships/kestrelHero.js';
@@ -691,10 +692,35 @@ export function createShipPreviewMount(canvas, opts) {
   // paints — at the title screen it never flushes, so the authored hull sat in
   // 'compiling-pipelines' forever and only the hangar drew. Compile here, in this context, and
   // skip the live GPU residency walk; the first draw of the swapped root then links nothing.
+  //
+  // One leaf per task, not the whole root at once: without KHR_parallel_shader_compile (software
+  // GL, older Intel) every program links synchronously the moment its status is read, and one
+  // compileAsync(root) read them all in a single multi-second main-thread stall that starved
+  // requestAnimationFrame - the title's arrival motion, its save summary and every rAF-polled
+  // check froze while the hull compiled. A yield between leaves keeps each stall to one program.
+  async function compilePreviewPipelines(root) {
+    const leaves = [];
+    root.traverse((object) => {
+      if ((object.isMesh || object.isPoints || object.isLine || object.isSprite) && object.material) {
+        leaves.push(object);
+      }
+    });
+    const seen = new Set();
+    let compiled = 0;
+    for (const leaf of leaves) {
+      if (disposed) throw new Error('preview disposed during pipeline compile');
+      const materials = Array.isArray(leaf.material) ? leaf.material : [leaf.material];
+      if (materials.every((material) => seen.has(material))) continue;
+      for (const material of materials) seen.add(material);
+      if (typeof renderer.compileAsync === 'function') await renderer.compileAsync(leaf, cam, scene);
+      else renderer.compile(leaf, cam, scene);
+      compiled += 1;
+      await yieldToBrowser();
+    }
+    return { compiled, leaves: leaves.length };
+  }
   const previewAdmissionOptions = Object.freeze({
-    prepareAuthoredPipelines: (root) => (typeof renderer.compileAsync === 'function'
-      ? renderer.compileAsync(root, cam, scene)
-      : Promise.resolve(renderer.compile(root, cam, scene))),
+    prepareAuthoredPipelines: compilePreviewPipelines,
     prepareAuthoredGpuResidency: null,
     overlapAuthoredPipelineCompile: false,
     yieldBetweenGpuStages: false,

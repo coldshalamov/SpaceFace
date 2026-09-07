@@ -44,17 +44,16 @@ function roving(root, elements, { row = false, onMove } = {}) {
 export function words(items, { row = false, onPick, onMove, size = 'menu', ariaLabel = 'Actions' } = {}) {
   if (!['menu', 'emph', 'body', 'fine'].includes(size)) throw new RangeError('Invalid word size');
   if (items.filter(item => item.primary).length > 1) throw new Error('A words group has at most one primary action');
+  // A labelled list of real buttons, not an ARIA menu: the repo's checks, probes and captures reach the
+  // title by getByRole('button', { name }) (Task A choice over the spec's role=menu/menuitem markup).
   const list = el('ul', row ? 'k-words k-words--row' : 'k-words');
-  list.setAttribute('role', 'menu');
   list.setAttribute('aria-label', ariaLabel);
-  list.setAttribute('aria-orientation', row ? 'horizontal' : 'vertical');
   const buttons = [];
   for (const item of items) {
-    const li = el('li'); li.setAttribute('role', 'none');
+    const li = el('li');
     const button = el('button', 'k-word' + (size === 'menu' ? '' : ` k-word--${size}`)
       + (item.primary ? ' k-word--primary' : '') + (item.danger ? ' k-word--danger' : ''), item.label);
     button.type = 'button'; button.dataset.action = String(item.action);
-    button.setAttribute('role', 'menuitem');
     // aria-disabled only (spec §6.5): the word stays clickable so a refused pick can sound `deny`.
     if (item.disabled) button.setAttribute('aria-disabled', 'true');
     if (item.current) button.setAttribute('aria-current', 'true');

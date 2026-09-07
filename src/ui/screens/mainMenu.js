@@ -293,6 +293,16 @@ export const mainMenuScreen = {
     this._onResize = () => { if (this.mount3d) try { this.mount3d.resize(); } catch (_) {} };
     if (typeof window !== 'undefined') window.addEventListener('resize', this._onResize);
 
+    // Continue follows the save store the moment it settles, not the next periodic refresh: the
+    // shared-store sync and a completed save both re-read the index.
+    this._offBus = [];
+    if (ctx && ctx.bus && typeof ctx.bus.on === 'function') {
+      for (const evt of ['save:store-synced', 'save:completed']) {
+        const off = ctx.bus.on(evt, () => { if (refs) this._render(ctx); });
+        if (typeof off === 'function') this._offBus.push(off);
+      }
+    }
+
     this._render(ctx);
   },
 
@@ -397,6 +407,8 @@ export const mainMenuScreen = {
     this._stopDrift();
     if (typeof window !== 'undefined' && this._onResize) window.removeEventListener('resize', this._onResize);
     this._onResize = null;
+    for (const off of this._offBus || []) { try { off(); } catch (_) {} }
+    this._offBus = [];
     if (this.mount3d) { try { this.mount3d.dispose(); } catch (_) {} this.mount3d = null; }
     refs = null;
   },

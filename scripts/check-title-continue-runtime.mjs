@@ -25,7 +25,11 @@ let browser = null;
 
 try {
   server = await startFreshServer();
-  browser = await chromium.launch({ headless: true });
+  // Ask for the machine's real GPU (same flags as capture-kit.mjs). Plain headless pins SwiftShader,
+  // which has no KHR_parallel_shader_compile and by 2026-09 booted the title past the 30 s budget
+  // below on this machine even before the kit title landed; with ANGLE/D3D11 the same boot reaches
+  // window.SF.ctx in ~5 s. Machines without a GPU still fall back to SwiftShader.
+  browser = await chromium.launch({ headless: true, args: ['--use-gl=angle', '--ignore-gpu-blocklist'] });
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
   const issues = collectPageIssues(page);
 
