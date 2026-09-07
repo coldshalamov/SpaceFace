@@ -284,3 +284,29 @@ body.k-screen-top #modal-backdrop { background: none; }
 .k-words--row + .k-sentence { margin-top: calc(12px * var(--k-s)); }
 /* §1.3: a stage that holds more rows than the frame (settings, credits) scrolls like the hang does. */
 .k-stage--scroll { overflow: hidden auto; scrollbar-width: thin; scrollbar-color: var(--k-hair) transparent; }
+
+/* Task C additions */
+/* Task C: a nested panel grid inside a screen, and a full-width row. */
+.k-span  { grid-column: 1 / -1; min-height: 0; }
+.k-panel { display: grid; grid-template-columns: var(--k-hang) minmax(0, 1fr); column-gap: var(--k-gap); min-height: 0; height: 100%; }
+.k-panel--split { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.k-panel > .k-hang, .k-panel > .k-stage { grid-area: auto; }
+/* Task C: the four data states and the entity drawer in kit clothes (markup owned by uiPrimitives.js / entityLinks.js). */
+.k-screen .sf-state { display: flex; flex-direction: column; gap: calc(12px * var(--k-s)); max-width: var(--k-measure); background: none; border: 0; box-shadow: none; padding: 0; }
+.k-screen .sf-state__glyph { width: calc(24px * var(--k-s)); height: calc(24px * var(--k-s)); color: var(--k-bone-62); }
+.k-screen .sf-state--error .sf-state__glyph, .k-screen .sf-state--denied .sf-state__glyph { color: var(--k-red); }
+.k-screen .sf-state__word { font-size: var(--k-fs-fine); color: var(--k-bone-38); letter-spacing: 0.08em; text-transform: uppercase; }
+.k-screen .sf-state__head { font-size: var(--k-fs-sub); color: var(--k-bone-62); }
+.k-screen .sf-state__fills, .k-screen .sf-state__detail { font-size: var(--k-fs-body); color: var(--k-bone-62); }
+.k-screen .sf-state__verb { all: unset; cursor: pointer; font: 500 var(--k-fs-emph) var(--k-text); color: var(--k-signal); }
+.k-screen .sf-state__skel, .k-screen .sf-state__bar { background: var(--k-hair); height: 2px; }
+.k-screen .sf-drawer { position: absolute; top: var(--k-margin); right: var(--k-margin); bottom: var(--k-margin); width: var(--k-hang); background: none; border: 0; box-shadow: none; border-left: 1px solid var(--k-hair); padding: 0 0 0 var(--k-gap); overflow: hidden auto; }
+.k-screen .sf-drawer__title { font-family: var(--k-display); font-weight: 800; font-variation-settings: "opsz" 96; font-size: var(--k-fs-sub); letter-spacing: -0.03em; line-height: .9; }
+.k-screen .sf-drawer__kicker, .k-screen .sf-deck__label { font-size: var(--k-fs-fine); color: var(--k-bone-38); letter-spacing: 0.08em; text-transform: uppercase; }
+.k-screen .sf-tile { display: flex; justify-content: space-between; min-height: var(--k-row); border-top: 1px solid var(--k-hair); background: none; padding: 0; }
+.k-screen .sf-tile__k { color: var(--k-bone-62); font-size: var(--k-fs-body); }
+.k-screen .sf-tile__v { color: var(--k-text-live); font-size: var(--k-fs-emph); }
+.k-screen .sf-entity-link { all: unset; cursor: pointer; color: var(--k-text-live); border-bottom: 1px solid var(--k-hair); }
+.k-screen .sf-entity-link:hover, .k-screen .sf-entity-link:focus-visible { border-bottom-color: var(--k-signal); }
+.k-screen .sf-drawer__verb { all: unset; cursor: pointer; font: 500 var(--k-fs-emph) var(--k-text); color: var(--k-signal); }
+.k-screen .sf-drawer__x { all: unset; cursor: pointer; font-size: var(--k-fs-body); color: var(--k-bone-62); }
