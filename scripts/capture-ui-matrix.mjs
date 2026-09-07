@@ -34,6 +34,16 @@ const DEFAULT_OUTPUT_DIR = path.join(ROOT, '.devshots', 'ui-matrix');
 // surface's DOM subtree.
 const BUDGET_SAMPLE_MS = 600;
 let BUDGET_PROBE_ACTIVE = false;
+// Frontend Task A (design/frontend/direction/KIT_SPEC.md §11.7, §13): a `--world` run photographs
+// the live 3D picture instead of the neutral ground. Chromium gets real GL flags, the neutral
+// ground is skipped, and every kit screen (`.k-screen[data-screen]`) is waited on until its
+// `data-k-ready="1"` — the attribute a kit screen sets when its 3D mount has drawn a first frame.
+// Without `--world` nothing here changes, so the committed regression baseline stays valid.
+let WORLD_CAPTURE = false;
+const WORLD_GL_ARGS = Object.freeze(['--use-gl=angle', '--ignore-gpu-blocklist', '--mute-audio']);
+const WORLD_READY_TIMEOUT_MS = 15_000;
+/** Surfaces whose kit root never reported `data-k-ready="1"` in this run (review defect list). */
+const HULL_ABSENT = [];
 export const UI_FRAME_REFERENCE_DIR = path.join(ROOT, 'test', 'ui-frame-references');
 /**
  * Which universe each committed reference frame was photographed in.
@@ -352,6 +362,8 @@ export async function captureUiMatrix(options = {}) {
     ? path.resolve(options.budgetsOut)
     : null;
   if (budgetsOut) BUDGET_PROBE_ACTIVE = true;
+  WORLD_CAPTURE = options.world === true;
+  HULL_ABSENT.length = 0;
   const updateReferences = options.updateReferences === true;
   // Fill-missing writes ONLY references that do not exist yet and never prunes. That is what makes
   // it safe to grow the baseline from 60 frames to the full matrix without touching a single one of
@@ -393,7 +405,10 @@ export async function captureUiMatrix(options = {}) {
   const server = await startFreshServer();
   let browser = null;
   try {
-    browser = await chromium.launch({ headless: options.headed !== true });
+    browser = await chromium.launch({
+      headless: options.headed !== true,
+      ...(WORLD_CAPTURE ? { args: [...WORLD_GL_ARGS] } : {}),
+    });
   } catch (error) {
     server.kill();
     throw new Error(`chromium.launch failed (server torn down): ${error.message}`);
@@ -639,6 +654,14 @@ export async function captureUiMatrix(options = {}) {
     });
     printCaptureFailures(failures, plan.length, enriched.length);
   }
+  if (WORLD_CAPTURE && !quiet) {
+    if (HULL_ABSENT.length) {
+      console.warn(`\n--world: ${HULL_ABSENT.length} surface(s) never reported data-k-ready="1" (capture defect, not a frame verdict):`);
+      for (const label of HULL_ABSENT) console.warn(`  hull absent: ${label}`);
+    } else {
+      console.log('\n--world: every kit screen reported data-k-ready="1" before its frame.');
+    }
+  }
 
   const result = {
     outputDir,
@@ -646,6 +669,7 @@ export async function captureUiMatrix(options = {}) {
     totalBytes,
     captures: enriched,
     failures,
+    hullAbsent: [...HULL_ABSENT],
     referencesWritten: uniqueCaptures.filter((c) => c.reference === 'written').length,
     referencesKept: uniqueCaptures.filter((c) => c.reference === 'kept').length,
     referenceDir: UI_FRAME_REFERENCE_DIR,
@@ -1522,6 +1546,25 @@ function makeMenuPhaseCapture({ modes, outputDir, captures, failures, viewport, 
 /** How long the surface is left alone between the frame and its rest twin. */
 const REST_TWIN_BEAT_MS = 400;
 
+/**
+ * `--world` only: wait for the visible kit screen's 3D mount to draw its first frame
+ * (`data-k-ready="1"`). A screen with no kit root resolves at once. A timeout never aborts the
+ * matrix — it is recorded as `hull absent: <surface>` for the receipt and the run continues.
+ */
+async function waitForWorldReady(page, label) {
+  try {
+    await page.waitForFunction(() => {
+      const roots = [...document.querySelectorAll('.k-screen[data-screen]')]
+        .filter((el) => el.style.display !== 'none' && el.getAttribute('aria-hidden') !== 'true');
+      const r = roots[roots.length - 1];
+      return !r || r.dataset.kReady === '1';
+    }, null, { timeout: WORLD_READY_TIMEOUT_MS });
+  } catch (_) {
+    HULL_ABSENT.push(label);
+    console.warn(`hull absent: ${label}`);
+  }
+}
+
 async function captureSurfaceScreenshot({
   page,
   outputDir,
@@ -1541,6 +1584,7 @@ async function captureSurfaceScreenshot({
   };
   const name = frameFileName(entry);
   const dest = path.join(outputDir, name);
+  if (WORLD_CAPTURE) await waitForWorldReady(page, `${surface.id} (${modeId}, ${viewport.width}x${viewport.height})`);
   const shoot = async (target) => {
     if (surface.captureMode === 'element') {
       // Crop to the overlay's own box. Playwright's element screenshot is the honest frame for a
@@ -1887,8 +1931,9 @@ export async function openBoot({ browser, baseUrl, viewport, locale = null, menu
     await page.goto(rootUrl, { waitUntil: 'domcontentloaded', timeout: 120_000 });
     // Before anything is photographed, and before the title screen exists. A frame shot over the
     // live 3D picture is not comparable with one shot over the neutral ground, so the ground is
-    // established at the top of the boot rather than per surface.
-    await applyNeutralGround(page);
+    // established at the top of the boot rather than per surface. A `--world` review run keeps
+    // the live picture: the hull, berth, chart or arena is the thing being reviewed.
+    if (!WORLD_CAPTURE) await applyNeutralGround(page);
     await page.waitForFunction(
       () => !!(window.SF && window.SF.state && window.SF.bus && window.SF.registry),
       null,
@@ -2255,7 +2300,7 @@ async function setUniverseSeed(page, seed) {
 async function clickMainMenuNewGame(page) {
   for (let i = 0; i < 360; i += 1) {
     const clicked = await page.evaluate(() => {
-      const button = document.querySelector('[data-screen="mainMenu"] .sf-col > button');
+      const button = document.querySelector('[data-screen="mainMenu"] [data-action="newGame"]');
       if (!button || button.disabled) return false;
       button.click();
       return true;
@@ -2365,6 +2410,8 @@ export function parseArgs(argv) {
     fillMissingOnly: argv.includes('--fill-missing'),
     headed: argv.includes('--headed'),
     quiet: argv.includes('--quiet'),
+    // Review captures with the live 3D picture (KIT_SPEC §13). Off by default.
+    world: argv.includes('--world'),
     restTwinDir: (argv.find((a) => a.startsWith('--rest-twin=')) || '').slice('--rest-twin='.length) || null,
     outputDir: (argv.find((a) => a.startsWith('--out=')) || '').slice('--out='.length) || null,
     budgetsOut: (argv.find((a) => a.startsWith('--budgets-out=')) || '').slice('--budgets-out='.length) || null,
@@ -2383,6 +2430,7 @@ async function runCli() {
     updateReferences: args.updateReferences,
     fillMissingOnly: args.fillMissingOnly,
     headed: args.headed,
+    world: args.world,
     printTable: true,
     quiet: args.quiet,
     restTwinDir: args.restTwinDir,

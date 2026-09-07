@@ -235,7 +235,7 @@ const RAW_SURFACES = Object.freeze([
     entry: {
       kind: 'boot-nested',
       parent: 'title',
-      selector: '[data-screen="mainMenu"] .sf-col > button',
+      selector: '[data-screen="mainMenu"] [data-action="newGame"]',
       evidence: 'public-route',
       detail: 'title → New Game',
     },
@@ -406,7 +406,7 @@ const RAW_SURFACES = Object.freeze([
     entry: {
       kind: 'boot-nested',
       parent: 'title',
-      selector: '[data-screen="mainMenu"] .sf-col > button',
+      selector: '[data-screen="mainMenu"] [data-action="crucible"]',
       text: 'Crucible',
       evidence: 'public-route',
       detail: 'title → Crucible',
