@@ -1941,12 +1941,35 @@ async function closeWebSocket(socket) {
 async function closeOwnedAuthoredProbeRuntime({ ws, chrome, server, debugPort, profileDir }) {
   const failures = [];
   try {
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ id: 999999, method: 'Browser.close' }));
+    const versionRes = await fetch(`http://127.0.0.1:${debugPort}/json/version`).catch(() => null);
+    if (versionRes && versionRes.ok) {
+      const version = await versionRes.json().catch(() => null);
+      if (version && version.webSocketDebuggerUrl) {
+        const browserWs = new WebSocket(version.webSocketDebuggerUrl);
+        await new Promise((resolve) => {
+          browserWs.addEventListener('open', () => {
+            browserWs.send(JSON.stringify({ id: 999999, method: 'Browser.close' }));
+            setTimeout(resolve, 500);
+          }, { once: true });
+          browserWs.addEventListener('error', resolve, { once: true });
+          setTimeout(resolve, 1000);
+        });
+        try { browserWs.close(); } catch (_) {}
+      }
     }
   } catch (_) {}
   await closeWebSocket(ws);
   const chromeProof = await terminateChild(chrome);
+  if (process.platform === 'win32' && profileDir) {
+    try {
+      const base = basename(profileDir);
+      spawnSync('powershell.exe', [
+        '-NoProfile',
+        '-Command',
+        `Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like "*${base}*" } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }`,
+      ], { stdio: 'ignore' });
+    } catch (_) {}
+  }
   let serverProof;
   if (server && server.child) {
     serverProof = await terminateChild(server.child);
