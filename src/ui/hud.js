@@ -40,6 +40,7 @@ import { contactThreatTier, contactStateWord, isHostileToPlayer, isWreckLike, wr
 import { verbAcceptsType } from '../data/interactionDescriptorCatalog.js';
 import { weaponHeatSummary } from './weaponHeat.js';
 import { createPowerRail, readRailModel } from './powerRail.js';
+import { settle as kitSettle, cue as kitCue, reducedMotion as kitReducedMotion } from './kit/index.js';
 import { createThreatHalo } from './threatHalo.js';
 import { SHIP_SILHOUETTES } from '../data/shipSilhouettes.js';
 import { computeLeadPipOverlay, leadSolution, primaryProjSpeed, hasBallisticWeapon } from '../ai/gunnery.js';
@@ -918,11 +919,10 @@ function injectDeathStyle() {
   .sf-death[hidden] { display:none !important; }
   .sf-death.show { animation:sf-death-seq 2.4s ease forwards; }
   @keyframes sf-death-seq { 0%{opacity:0;} 8%{opacity:1;} 70%{opacity:1;} 100%{opacity:0;} }
-  .sf-death__big { font-family:var(--mono,Consolas,monospace); font-size:46px; letter-spacing:.06em; color:#ff5470;
-    text-shadow:0 0 30px rgba(255,84,112,.7), 0 2px 4px #000; }
-  .sf-death__sub { font-family:var(--mono,Consolas,monospace); font-size:14px; letter-spacing:.06em; color:#ffd2da; text-transform:uppercase; }
+  .sf-death__big { font-family:var(--k-display); font-weight:800; font-size:var(--k-fs-title); line-height:.9; letter-spacing:-.02em; color:var(--k-red); }
+  .sf-death__sub { font-family:var(--k-text); font-size:var(--k-fs-emph); color:var(--k-bone-62); }
   body.sf-deathflash::after { content:''; position:fixed; inset:0; z-index:1400; pointer-events:none;
-    background:radial-gradient(circle at 50% 50%, rgba(255,40,70,0) 30%, rgba(255,30,60,.55) 100%); animation:sf-deathflash .7s ease forwards; }
+    background:rgb(6 8 15 / .35); animation:sf-deathflash .7s ease forwards; }
   @keyframes sf-deathflash { 0%{opacity:0;} 15%{opacity:1;} 100%{opacity:0;} }
   `;
   document.head.appendChild(s);
@@ -941,64 +941,57 @@ function injectTravelTapeStyle() {
   const s = document.createElement('style');
   s.id = 'sf-vtape-style';
   s.textContent = `
-  .sf-vtape { --vt-brass:#c9a227; --vt-amber:#e8a33d; --vt-teal:#5fb6ac; --vt-ink:#0d0b09;
+  .sf-vtape { --vt-brass:var(--k-bone-62); --vt-amber:var(--k-signal); --vt-teal:var(--k-text-live);
     position:relative; width:min(340px,46vw); margin:0 auto 6px; padding:5px 9px 4px;
     display:flex; flex-direction:column; gap:3px; pointer-events:none;
-    background:linear-gradient(180deg, rgba(13,11,9,.82), rgba(13,11,9,.62));
-    border:1px solid color-mix(in srgb, var(--vt-brass) 34%, transparent); border-radius:3px;
-    box-shadow:0 2px 10px rgba(0,0,0,.45); opacity:0; visibility:hidden;
+    opacity:0; visibility:hidden;
     transition:opacity .22s ease, visibility .22s; }
   .sf-vtape.sf-vtape--on { opacity:1; visibility:visible; }
   .sf-vtape__head { display:flex; align-items:baseline; justify-content:space-between; gap:8px;
-    font-family:var(--mono,Consolas,monospace); font-size:12px; letter-spacing:.06em; text-transform:uppercase; }
+    font-family:var(--k-text); font-size:var(--k-fs-data); }
   .sf-vtape__state { color:var(--vt-brass); }
   .sf-vtape[data-state="engaged"] .sf-vtape__state { color:var(--vt-amber); }
-  .sf-vtape[data-state="cooldown"] .sf-vtape__state { color:#a08c6a; }
-  .sf-vtape__spool { color:#8a7a5e; font-family:var(--mono,Consolas,monospace); font-size:12px; letter-spacing:.06em; }
+  .sf-vtape[data-state="cooldown"] .sf-vtape__state { color:var(--k-bone-38); }
+  .sf-vtape__spool { color:var(--k-bone-62); font-family:var(--k-text); font-size:var(--k-fs-data); }
   /* --- the tape itself: a linear 0..headroom scale --- */
-  .sf-vtape__track { position:relative; height:11px; border-radius:2px; overflow:hidden;
-    background:rgba(0,0,0,.55); border:1px solid color-mix(in srgb, var(--vt-brass) 22%, transparent); }
+  .sf-vtape__track { position:relative; height:2px; overflow:visible; background:var(--k-bone-38); }
   /* Surveyor's graticule — the same grid identity the chart uses (D4), not decoration. */
   .sf-vtape__grat { position:absolute; inset:0;
-    background-image:repeating-linear-gradient(90deg, color-mix(in srgb, var(--vt-brass) 26%, transparent) 0 1px, transparent 1px 10%); }
+    display:none; }
   .sf-vtape__fill { position:absolute; left:0; top:0; bottom:0; width:100%;
     transform:scaleX(0); transform-origin:left center;
-    background:linear-gradient(90deg, color-mix(in srgb, var(--vt-teal) 42%, transparent), color-mix(in srgb, var(--vt-teal) 74%, transparent));
+    background:var(--vt-teal);
     transition:transform .1s linear; }
-  .sf-vtape[data-state="engaged"] .sf-vtape__fill {
-    background:linear-gradient(90deg, color-mix(in srgb, var(--vt-teal) 40%, transparent), color-mix(in srgb, var(--vt-amber) 78%, transparent)); }
+  .sf-vtape[data-state="engaged"] .sf-vtape__fill { background:var(--vt-amber); }
   /* Earned-cap caret: how much of the ceiling the ramp has actually unlocked so far. */
   .sf-vtape__cap { position:absolute; top:0; bottom:0; width:2px; left:0; transform:translateX(-1px);
-    background:color-mix(in srgb, var(--vt-amber) 85%, transparent); transition:left .1s linear; }
+    background:var(--vt-amber); transition:left .1s linear; }
   .sf-vtape__caplabel { position:absolute; bottom:calc(100% + 1px); left:50%; transform:translateX(-50%);
-    font-size:12px; letter-spacing:.06em; color:var(--vt-amber); opacity:.9; }
+    font-size:var(--k-fs-fine); color:var(--vt-amber); }
   /* V-MAX: the per-family ceiling from resolveTravelCeiling(). A LABELLED RULE, never a bare tint. */
   .sf-vtape__vmax { position:absolute; top:-2px; bottom:-2px; width:0; left:88%;
     border-left:1px dashed var(--vt-brass); }
   .sf-vtape__vmaxlabel { position:absolute; bottom:calc(100% + 1px); left:2px; white-space:nowrap;
-    font-size:12px; letter-spacing:.06em; color:var(--vt-brass); }
+    font-size:var(--k-fs-fine); color:var(--vt-brass); }
   /* --- approach row: the stopping arc (W1-9) --- */
   .sf-vtape__approach { display:none; flex-direction:column; gap:2px; margin-top:2px; }
   .sf-vtape--approach .sf-vtape__approach { display:flex; }
-  .sf-vtape__arc { position:relative; height:5px; border-radius:2px; background:rgba(0,0,0,.5);
-    border:1px solid color-mix(in srgb, var(--vt-brass) 18%, transparent); }
+  .sf-vtape__arc { position:relative; height:2px; background:var(--k-bone-38); }
   /* Span from the ship to where it would actually come to rest. */
   .sf-vtape__arcstop { position:absolute; left:0; top:0; bottom:0; width:0;
-    background:color-mix(in srgb, var(--vt-teal) 60%, transparent); transition:width .1s linear; }
+    background:var(--vt-teal); transition:width .1s linear; }
   /* The arrival ring. When the stop span runs past it, you are going to overshoot — and that is
      allowed to happen (D9.8): the instrument reports, it never brakes for you. */
   .sf-vtape__arcring { position:absolute; top:-2px; bottom:-2px; width:0; left:50%;
     border-left:1px solid var(--vt-amber); transition:left .1s linear; }
-  .sf-vtape__arclabel { font-family:var(--mono,Consolas,monospace); font-size:12px; letter-spacing:.06em;
-    color:#9a8a6c; text-transform:uppercase; }
-  .sf-vtape--overshoot .sf-vtape__arcstop { background:color-mix(in srgb, #d4573f 70%, transparent); }
-  .sf-vtape--overshoot .sf-vtape__arclabel { color:#e0876f; }
+  .sf-vtape__arclabel { font-family:var(--k-text); font-size:var(--k-fs-data); color:var(--k-bone-62); }
+  .sf-vtape--overshoot .sf-vtape__arcstop { background:var(--k-red); }
+  .sf-vtape--overshoot .sf-vtape__arclabel { color:var(--k-red); }
   /* --- BRAKE NOW --- */
   .sf-vtape__brake { display:none; align-items:center; justify-content:center; gap:5px; margin-top:2px;
-    padding:2px 0; border-top:1px solid color-mix(in srgb, var(--vt-amber) 30%, transparent);
-    font-family:var(--mono,Consolas,monospace); font-size:12px; letter-spacing:.06em; color:var(--vt-amber); }
+    padding:2px 0; font-family:var(--k-text); font-size:var(--k-fs-data); color:var(--vt-amber); }
   .sf-vtape--brake .sf-vtape__brake { display:flex; animation:sf-vtape-brake 1s steps(2,end) infinite; }
-  .sf-vtape__brakeglyph { font-size:12px; }
+  .sf-vtape__brakeglyph { font-size:var(--k-fs-data); }
   @keyframes sf-vtape-brake { 0%,50%{opacity:1;} 51%,100%{opacity:.42;} }
   /* Reduced motion: kill the pulse and the eases, KEEP the information. The cue still appears, it
      just stops blinking — suppressing the animation must never suppress the message. */
@@ -1008,8 +1001,7 @@ function injectTravelTapeStyle() {
   }
   /* The shared DRIVE gauge, while the burn is the consumer using it (W1-4 one-pool-one-gauge).
      The numeric readout also gains a ⟫ marker, so this is never colour-only. */
-  .sf-bar--burn .sf-bar__fill { background:linear-gradient(90deg,
-    color-mix(in srgb, #5fb6ac 50%, transparent), color-mix(in srgb, #e8a33d 85%, transparent)); }
+  .sf-bar--burn .sf-bar__fill { background:var(--k-signal); }
   /* Forced colors: author colours are discarded, so restate every hairline structurally. */
   @media (forced-colors: active) {
     .sf-vtape { border:1px solid CanvasText; background:Canvas; forced-color-adjust:none;
@@ -1052,8 +1044,8 @@ export function createHud(ctx, alerts) {
   conditionHead.className = 'sf-condition-head';
   conditionHead.innerHTML =
     '<div class="sf-condition-metrics mono">' +
-      '<span class="sf-cond-stat" data-vital="hull" hidden>HULL <strong class="sf-cond-hull-val">0</strong></span>' +
-      '<span class="sf-cond-stat" data-vital="shield" hidden>SHD <strong class="sf-cond-shd-val">0</strong></span>' +
+      '<span class="sf-cond-stat" data-vital="hull" hidden>hull <strong class="sf-cond-hull-val">0</strong></span>' +
+      '<span class="sf-cond-stat" data-vital="shield" hidden>shield <strong class="sf-cond-shd-val">0</strong></span>' +
     '</div>';
   bars.appendChild(conditionHead);
 
@@ -1106,16 +1098,16 @@ export function createHud(ctx, alerts) {
 
   // Thin micro-bars. Hull + shield are on the schematic; energy/boost/weapon-heat/fuel live here.
   const barDefs = [
-    ['energy', 'ENGY', 'energy'],
+    ['energy', 'energy', 'energy'],
     // W1-4 "one energy pool, one gauge" (D5: "All three draw one energy pool; one gauge").
     // Dash and boost ALREADY share `p.boost` — there was never a second pool to merge, only a
     // label that named one of its three consumers. Renamed at the READ SITE (the packet's explicit
     // instruction, and gameState.js is quarantined) so the gauge is identified by the resource it
     // measures rather than by whichever verb spends it. Travel burn is the third consumer and is
     // shown on this same gauge; see the honest caveat where it is updated below.
-    ['boost', 'DRIVE', 'boost'],   // shared drive-energy pool: dash + boost + burn (hidden if the ship can't boost)
-    ['heat', 'HEAT', 'heat'],      // weapon-instance heat (max across p.data.weapons), not WANTED heat
-    ['fuel', 'FUEL', 'fuel'],
+    ['boost', 'drive', 'boost'],   // shared drive-energy pool: dash + boost + burn (hidden if the ship can't boost)
+    ['heat', 'heat', 'heat'],      // weapon-instance heat (max across p.data.weapons), not WANTED heat
+    ['fuel', 'fuel', 'fuel'],
   ];
   const fillEls = {}, numEls = {}, rowEls = {};
   for (const [key, label, mod] of barDefs) {
@@ -1249,12 +1241,12 @@ export function createHud(ctx, alerts) {
   const center = document.createElement('div');
   center.className = 'sf-cluster';
   center.innerHTML = `
-    <div class="sf-stat sf-stat--info sf-stat--speed"><span class="sf-stat__k">SPD</span><span class="sf-stat__v mono" data-k="speed">0</span><div class="sf-tip" data-tip="speed"></div></div>
-    <div class="sf-stat sf-stat--info" id="sf-wpnstat"><span class="sf-stat__k">WPN</span><span class="sf-stat__v mono" data-k="weapons">—</span><div class="sf-tip" data-tip="weapons"></div></div>
-    <div class="sf-stat sf-stat--wide" id="sf-tetherstat" style="display:none"><span class="sf-stat__k">TETHER</span><span class="sf-stat__v mono" data-k="tether">LOCKED</span><span class="sf-stat__hint mono" data-k="tetherkeys" hidden></span></div>
-    <div class="sf-stat sf-stat--wide sf-stat--chip" data-chip="cargo"><span class="sf-stat__k">CARGO</span><span class="sf-stat__v mono" data-k="cargo">0 / 40 u</span></div>
-    <div class="sf-stat sf-stat--wide sf-stat--chip" data-chip="credits"><span class="sf-stat__k">CR</span><span class="sf-stat__v mono sf-credits" data-k="credits">0</span></div>
-    <div class="sf-stat sf-stat--wide sf-stat--chip" id="sf-rolestat" data-chip="role"><span class="sf-stat__k">CLASS</span><span class="sf-stat__v mono" data-k="role">—</span></div>`;
+    <div class="sf-stat sf-stat--info sf-stat--speed"><span class="sf-stat__k">speed</span><span class="sf-stat__v mono" data-k="speed">0</span><div class="sf-tip" data-tip="speed"></div></div>
+    <div class="sf-stat sf-stat--info" id="sf-wpnstat"><span class="sf-stat__k">weapons</span><span class="sf-stat__v mono" data-k="weapons">—</span><div class="sf-tip" data-tip="weapons"></div></div>
+    <div class="sf-stat sf-stat--wide" id="sf-tetherstat" style="display:none"><span class="sf-stat__k">tether</span><span class="sf-stat__v mono" data-k="tether">LOCKED</span><span class="sf-stat__hint mono" data-k="tetherkeys" hidden></span></div>
+    <div class="sf-stat sf-stat--wide sf-stat--chip" data-chip="cargo"><span class="sf-stat__k">cargo</span><span class="sf-stat__v mono" data-k="cargo">0 / 40 u</span></div>
+    <div class="sf-stat sf-stat--wide sf-stat--chip" data-chip="credits"><span class="sf-stat__k">credits</span><span class="sf-stat__v mono sf-credits" data-k="credits">0</span></div>
+    <div class="sf-stat sf-stat--wide sf-stat--chip" id="sf-rolestat" data-chip="role"><span class="sf-stat__k">class</span><span class="sf-stat__v mono" data-k="role">—</span></div>`;
   // Massline line-control chips — only while latched. Separate from the status value so the
   // instrument row never overflows with a tutorial paragraph of binds.
   const masslineInstrument = document.createElement('div');
@@ -1263,7 +1255,7 @@ export function createHud(ctx, alerts) {
   masslineInstrument.setAttribute('aria-label', 'Massline');
   masslineInstrument.innerHTML =
     '<div class="sf-ml-instrument__row">' +
-      '<span class="sf-ml-instrument__k">LINE</span>' +
+      '<span class="sf-ml-instrument__k">line</span>' +
       '<span class="sf-ml-instrument__track"><span class="sf-ml-instrument__fill" data-k="mlfill"></span></span>' +
       '<span class="sf-ml-instrument__v mono" data-k="mllen">—</span>' +
     '</div>' +
@@ -1847,14 +1839,12 @@ export function createHud(ctx, alerts) {
     cs.id = 'sf-caption-style';
     cs.textContent = `
     .sf-caption { position:absolute; left:50%; bottom:14%; transform:translate(-50%, 8px);
-      max-width:min(80vw, 640px); padding:9px 16px; border-radius:8px;
-      background:rgba(6,10,20,.82); border:1px solid var(--panel-edge, rgba(120,160,200,.25));
-      color:var(--ink, #d7e6ff); font-size:15px; line-height:1.35; text-align:center;
+      max-width:min(80vw, 640px); padding:0;
+      color:var(--k-text-live); font-family:var(--k-text); font-size:var(--k-fs-body); line-height:1.35; text-align:center;
       pointer-events:none; opacity:0; transition:opacity .18s ease, transform .18s ease;
-      text-shadow:0 1px 6px rgba(0,0,0,.7); z-index:40;
-      letter-spacing:.01em; }
+      z-index:40; }
     .sf-caption.show { opacity:1; transform:translate(-50%, 0); }
-    .sf-caption.assertive { border-color:var(--warn, #d9a054); }
+    .sf-caption.assertive { color:var(--k-signal); }
     @media (prefers-reduced-motion: reduce) { .sf-caption { transition:opacity .18s ease; transform:translate(-50%,0); } }
     `;
     document.head.appendChild(cs);
@@ -1913,23 +1903,18 @@ export function createHud(ctx, alerts) {
     .sf-tells { position:absolute; inset:0; z-index:36; pointer-events:none; overflow:hidden; }
     .sf-tell {
       position:absolute; left:0; top:0; display:none; align-items:center; gap:6px;
-      max-width:min(42vw, 280px); padding:5px 10px 5px 8px; border-radius:4px;
-      background:rgba(5,9,18,.88); border:1px solid rgba(217,95,106,.55);
-      color:var(--ink, #d7e6ff); font-family:var(--mono, Consolas, monospace);
-      font-size:12px; letter-spacing:.04em; line-height:1.2; white-space:nowrap;
+      max-width:min(42vw, 280px); padding:0;
+      color:var(--k-text-live); font-family:var(--k-text);
+      font-size:var(--k-fs-data); line-height:1.2; white-space:nowrap;
       will-change:transform, opacity; opacity:0;
-      box-shadow:0 2px 10px rgba(0,0,0,.35);
     }
     .sf-tell.is-on { display:inline-flex; opacity:1; }
-    .sf-tell--FLYBY { border-color:rgba(217,95,106,.7); }
-    .sf-tell--TETHER { border-color:rgba(217,160,84,.7); }
-    .sf-tell--CHARGE { border-color:rgba(217,95,106,.7); }
-    .sf-tell__icon { font-size:12px; opacity:.95; flex:0 0 auto; }
-    .sf-tell__kind { font-weight:700; letter-spacing:.06em; font-size:12px; color:var(--sf-foe,#d95f6a); }
-    .sf-tell--TETHER .sf-tell__kind { color:var(--sf-goal,#d9a054); }
-    .sf-tell__hint { color:rgba(215,230,255,.82); letter-spacing:.02em; font-size:12px;
-      text-transform:none; overflow:hidden; text-overflow:ellipsis; }
-    .sf-tell__dir { color:rgba(215,230,255,.9); font-size:12px; margin-left:2px; flex:0 0 auto; }
+    .sf-tell__icon { font-size:var(--k-fs-data); flex:0 0 auto; }
+    .sf-tell__kind { font-weight:700; font-size:var(--k-fs-data); color:var(--k-red); }
+    .sf-tell--TETHER .sf-tell__kind { color:var(--k-signal); }
+    .sf-tell__hint { color:var(--k-bone-62); font-size:var(--k-fs-data);
+      overflow:hidden; text-overflow:ellipsis; }
+    .sf-tell__dir { color:var(--k-bone-62); font-size:var(--k-fs-data); margin-left:2px; flex:0 0 auto; }
     .sf-tell.is-offscreen .sf-tell__dir { display:inline; }
     .sf-tell:not(.is-offscreen) .sf-tell__dir { display:none; }
     .sf-tell.is-pulse { animation:sf-tell-pulse .45s ease-out 1; }
@@ -4635,9 +4620,36 @@ export function createHud(ctx, alerts) {
     if (targetPanel.forceRefresh) targetPanel.forceRefresh();
   }
 
+  // Moment 3 (Task B §2.3): the HUD arrives on undock. Four anchors settle 200 ms apart, each with
+  // an `open` cue; under reduced motion they appear at once and one `open` plays. Positions move by
+  // transform only (the kit's .k-in), so the frame-sleep contract holds.
+  let arriveTimers = [];
+  function arrive() {
+    for (const t of arriveTimers) clearTimeout(t);
+    arriveTimers = [];
+    const steps = [
+      [leftStack, 'bottom'],
+      [commandDeck, 'bottom'],
+      [powerRail.el, 'bottom'],
+      [rightDock, 'right'],
+    ];
+    if (kitReducedMotion()) {
+      for (const [el, from] of steps) if (el) kitSettle(el, { from, state: 'hud:arrive' });
+      kitCue('open');
+      return;
+    }
+    steps.forEach(([el, from], i) => {
+      if (!el) return;
+      kitSettle(el, { from, delay: i * 200, state: 'hud:arrive' });
+      if (i === 0) kitCue('open');
+      else arriveTimers.push(setTimeout(() => kitCue('open'), i * 200));
+    });
+  }
+
   return {
-    frame, tickHidden, forceRefresh, setVisible, refreshCredits, refreshCargo, refreshObjectives,
+    frame, tickHidden, forceRefresh, setVisible, refreshCredits, refreshCargo, refreshObjectives, arrive,
     destroy() {
+      for (const t of arriveTimers) clearTimeout(t);
       objectiveHudDrag.destroy();
       if (offSlotClaim) offSlotClaim();
       if (offSlotRelease) offSlotRelease();

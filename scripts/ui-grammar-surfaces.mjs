@@ -348,16 +348,6 @@ const RAW_SURFACES = Object.freeze([
     destructive: true,
   }),
   surface({
-    id: 'credits',
-    title: 'Credits',
-    archetype: 'META-SHELL',
-    ownerFile: null,
-    status: 'missing',
-    entry: none('no credits surface exists on any route (audited 2026-09-04)'),
-    owner: 'PQ-181',
-    ownerLeaf: 'meta-shell',
-  }),
-  surface({
     id: 'statistics',
     title: 'Statistics',
     archetype: 'META-SHELL',

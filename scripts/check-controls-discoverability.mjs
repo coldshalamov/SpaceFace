@@ -56,7 +56,9 @@ assert.match(helpSource, /resolveActionLabel/,
   'Help must resolve rebindable keys from src/systems/input.js');
 assert.match(helpSource, /A \/ X: Massline \(dock\/accept when prompted\)/,
   'Help must teach the gamepad Massline route and its dock priority');
-assert.match(hudSource, /elTetherKeys\.textContent/,
+// aa95391f5 routed the write through the setText(el, text) helper (skip-unchanged writes); either
+// spelling is the same print.
+assert.match(hudSource, /elTetherKeys\.textContent|setText\(elTetherKeys,/,
   'The active tether HUD must print live line-control keys');
 assert.match(hudSource, /resolveActionCodes/,
   'The tether HUD hint must resolve from the live flight bindings');

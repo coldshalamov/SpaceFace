@@ -363,11 +363,11 @@ export function createTargetPanel(ctx) {
       <span class="sf-target__dist mono">0 wu</span>
     </div>
     <div class="sf-target__engaged mono" role="status" aria-live="polite" aria-atomic="true"
-      style="display:none;margin-top:2px;font-size:12px;line-height:1.3;letter-spacing:.05em;color:var(--visor-amber);"><span data-glyph aria-hidden="true"></span><span data-txt></span></div>
+      style="display:none;margin-top:2px;font-size:var(--k-fs-data);line-height:1.3;color:var(--k-signal);"><span data-glyph aria-hidden="true"></span><span data-txt></span></div>
     <div class="sf-target__identity mono" style="display:none"></div>
-    <div class="sf-target__intent mono" style="display:none;margin-top:3px;font-size:12px;line-height:1.3;letter-spacing:.04em;color:var(--text-primary);"></div>
+    <div class="sf-target__intent mono" style="display:none;margin-top:3px;font-size:var(--k-fs-data);line-height:1.3;color:var(--k-bone-62);"></div>
     <div class="sf-target__meta">
-      <span class="sf-target__range mono" style="color:var(--visor-amber);"></span>
+      <span class="sf-target__range mono" style="color:var(--k-bone-62);"></span>
       <span class="sf-target__closing mono"><span data-glyph aria-hidden="true"></span><span data-txt></span></span>
     </div>
     <div class="sf-target__triangle" style="display:none">
@@ -379,7 +379,7 @@ export function createTargetPanel(ctx) {
     </div>
     <div class="sf-target__weak mono" style="display:none"><span data-glyph aria-hidden="true"></span><span data-txt></span></div>
     <div class="sf-target__component mono" role="button" tabindex="0" aria-label="Cycle target component"
-      style="display:none;margin-top:3px;font-size:12px;letter-spacing:.05em;pointer-events:auto;cursor:pointer;padding:2px 6px;border:1px solid var(--console-edge,rgba(120,160,200,.35));border-radius:4px;color:var(--text-primary);"><span data-glyph aria-hidden="true"></span><span data-txt></span></div>
+      style="display:none;margin-top:3px;font-size:var(--k-fs-data);pointer-events:auto;cursor:pointer;padding:0 0 .15em;border:0;border-bottom:1px solid var(--k-hair);color:var(--k-bone-62);"><span data-glyph aria-hidden="true"></span><span data-txt></span></div>
     <div class="sf-target__gimmick mono" style="display:none"></div>`;
 
   const elName = el.querySelector('.sf-target__name');
