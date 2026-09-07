@@ -2215,7 +2215,9 @@ export const missionLogScreen = {
     else card.appendChild(el('p', 'k-sentence k-sentence--emph sf-mlog-obj', objectiveText(m) + ' · ' + missionProgressLabel(m)));
 
     const reward = Math.max(0, Number(m.reward_cr) || 0);
-    card.appendChild(hero(reward.toLocaleString(), reward > 0 ? 'cr on delivery' : 'cr · close cleanly', { size: 'hero', signal: true }));
+    // The hero number is the payout; a contract that pays in a phrase ("close cleanly") has no
+    // number to be about, and its Pays row below already says so — no "0" at hero size.
+    if (reward > 0) card.appendChild(hero(reward.toLocaleString(), 'cr on delivery', { size: 'hero', signal: true }));
 
     const terms = el('div');
     terms.innerHTML = contractTermsHtml(m, state);
