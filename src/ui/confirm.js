@@ -2,51 +2,23 @@
 // sell, module unfit, mission abandon, save-overwrite, load (discards current), Pause→Main Menu,
 // market Max-then-Buy. Returns a Promise<boolean>: resolve(true) on confirm, false on dismiss.
 //
-// Design: renders into a top-level overlay above #screens (z-index 5000) using the existing design
-// tokens (sf-card / sf-btn--primary / sf-btn--ghost) so it inherits the cohesive identity without a
-// new stylesheet. Focus-trapped: Tab cycles within the dialog, Esc cancels, focus moves to the
-// safe default on open, and restores to the opener on close. Accessible (role=dialog, aria-modal,
+// Design (frontend direction sheet, Task D §4.2): the dialog is kit words on a dark ground — a
+// display title, a sentence, and two words in a row (the destructive one `k-word--danger`). No
+// plate, no border, no glow; the rules live in styles/kit.css under "Task D additions".
+// Focus-trapped: Tab cycles within the dialog, Esc cancels, focus moves to the safe default on
+// open, and restores to the opener on close. Accessible (role=dialog, aria-modal,
 // labelled/described). Honors the existing body.ui-modal-open class so the HUD hides underneath.
+// `#sf-confirm-root`, `.sf-confirm`, `.sf-confirm__ok/__cancel`, `#sf-confirm-title/-body` and
+// `sf-confirm__title--danger` are inert hooks the checks and probes query — keep them.
 //
 // Usage:
 //   import { confirm } from './confirm.js';
 //   if (await confirm({ title: 'Sell ship?', body: 'Refund: 12,500 CR (50%).', confirmLabel: 'Sell', danger: true })) { ... }
 
-const STYLE_ID = 'sf-confirm-style';
 let _openResolver = null;   // tracks the currently-open dialog's resolver so only one is live at a time
 // True while the live confirm chain owns body.ui-modal-open (vs. a screen/dock session).
 // Inherited across supersession so B does not steal teardown rights from a screen-owned class.
 let _confirmOwnsModalOpen = false;
-
-function injectStyle() {
-  if (document.getElementById(STYLE_ID)) return;
-  const s = document.createElement('style');
-  s.id = STYLE_ID;
-  s.textContent = `
-  #sf-confirm-root { position:fixed; inset:0; z-index:5000; display:flex; align-items:center;
-    justify-content:center; background:rgba(3,5,10,.82);
-    opacity:0; transition:opacity .16s var(--ease); pointer-events:auto; }
-  #sf-confirm-root:empty { display:none; pointer-events:none; }
-  #sf-confirm-root.sf-confirm--in { opacity:1; }
-  .sf-confirm { width:min(440px, 92vw); background:linear-gradient(180deg,var(--panel-2),var(--panel));
-    border:1px solid var(--panel-edge); border-radius:var(--r-lg); padding:var(--sp-5);
-    box-shadow:var(--sh-3), 0 0 0 1px rgba(79,143,221,.08) inset;
-    animation:sf-fadein var(--dur) var(--ease) both; }
-  .sf-confirm__title { font-family:var(--mono); font-size:var(--t-lg); letter-spacing:.06em;
-    text-transform:uppercase; color:var(--accent); text-shadow:0 0 14px rgba(79,143,221,.4);
-    margin:0 0 var(--sp-2); }
-  .sf-confirm__title.sf-confirm__title--danger { color:var(--danger);
-    text-shadow:0 0 14px rgba(255,84,112,.4); }
-  .sf-confirm__body { color:var(--ink-dim); font-size:var(--t-md); line-height:1.5;
-    margin-bottom:var(--sp-5); white-space:pre-line; }
-  .sf-confirm__body b { color:var(--ink); font-weight:600; }
-  .sf-confirm__btns { display:flex; gap:var(--sp-3); justify-content:flex-end; }
-  .sf-confirm__btns button { min-width:96px; padding:var(--sp-2) var(--sp-4);
-    font-size:var(--t-sm); letter-spacing:.06em; text-transform:uppercase; font-family:inherit;
-    border-radius:var(--r-md); cursor:pointer; pointer-events:auto; }
-  `;
-  document.head.appendChild(s);
-}
 
 function getRoot() {
   let root = document.getElementById('sf-confirm-root');
@@ -117,7 +89,6 @@ function tryFocusActiveScreen() {
  */
 export function confirm(opts) {
   opts = opts || {};
-  injectStyle();
   // If a dialog is already open, reject it as cancelled (only one live at a time — avoids stacking).
   // Capture pre-supersession so a second confirm inherits modal-open ownership from the first
   // when the first still holds ui-modal-open during its delayed close cleanup.
@@ -137,18 +108,18 @@ export function confirm(opts) {
     : document.body.classList.contains('ui-modal-open');
   _confirmOwnsModalOpen = !hadModalOpen;
 
-  const titleCls = 'sf-confirm__title' + (opts.danger ? ' sf-confirm__title--danger' : '');
+  const titleCls = 'k-display k-t-sub sf-confirm__title' + (opts.danger ? ' sf-confirm__title--danger' : '');
   const dialog = document.createElement('div');
   dialog.className = 'sf-confirm';
   dialog.setAttribute('role', 'dialog');
   dialog.setAttribute('aria-modal', 'true');
   dialog.innerHTML =
     `<h2 class="${titleCls}" id="sf-confirm-title"></h2>` +
-    `<div class="sf-confirm__body" id="sf-confirm-body"></div>` +
-    `<div class="sf-confirm__btns">` +
-      `<button class="sf-btn sf-btn--ghost sf-confirm__cancel" type="button"></button>` +
-      `<button class="sf-btn sf-confirm__ok" type="button"></button>` +
-    `</div>`;
+    `<p class="k-sentence sf-confirm__body" id="sf-confirm-body"></p>` +
+    `<ul class="k-words k-words--row sf-confirm__btns">` +
+      `<li><button class="k-word k-word--body sf-confirm__cancel" type="button"></button></li>` +
+      `<li><button class="k-word sf-confirm__ok" type="button"></button></li>` +
+    `</ul>`;
   dialog.setAttribute('aria-labelledby', 'sf-confirm-title');
   dialog.setAttribute('aria-describedby', 'sf-confirm-body');
   dialog.querySelector('#sf-confirm-title').textContent = opts.title || 'Confirm';
@@ -157,8 +128,8 @@ export function confirm(opts) {
   const okBtn = dialog.querySelector('.sf-confirm__ok');
   cancelBtn.textContent = opts.cancelLabel || 'Cancel';
   okBtn.textContent = opts.confirmLabel || 'Confirm';
-  // danger confirm button uses the danger variant
-  okBtn.className = 'sf-btn ' + (opts.danger ? 'sf-btn--danger' : 'sf-btn--primary') + ' sf-confirm__ok';
+  // the destructive word is red; otherwise the confirming word is the primary (signal) one
+  okBtn.className = 'k-word k-word--emph ' + (opts.danger ? 'k-word--danger' : 'k-word--primary') + ' sf-confirm__ok';
 
   root.innerHTML = '';
   root.appendChild(dialog);

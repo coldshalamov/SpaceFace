@@ -383,7 +383,7 @@ function getConfirmDialog() {
   const okBtn = findButton(dialog, 'sf-confirm__ok');
 
   assert.equal(title.classList.contains('sf-confirm__title--danger'), true, 'danger title has danger class');
-  assert.ok(okBtn.classList.contains('sf-btn--danger'), 'danger confirm button uses danger variant');
+  assert.ok(okBtn.classList.contains('k-word--danger'), 'danger confirm word uses the kit danger variant');
   assert.equal(document.activeElement, cancelBtn, 'danger confirm defaults focus to Cancel');
 
   // Stray Enter on default-focused danger must NOT commit.
