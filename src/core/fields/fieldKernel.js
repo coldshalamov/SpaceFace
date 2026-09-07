@@ -115,7 +115,7 @@ export function coneAngularGate(field, angleFromAxis) {
 // Coupling scalar — the heavy-shrug contract. bodyProfile: { mass, type, fieldResponseMult }.
 //   projectile / pickup  → couple above 1 (light + the marquee reads)
 //   everything else       → massCouple = refMass / max(mass, refMass), floored (heavy shrugs)
-//   Gravity Mark response  → boosted but a marked heavy still shrugs (capped under a light body's 1)
+//   Gravity Mark response  → 3× well/sink pull; markedCap ceilings the boost, not a 0.95 clip
 export function couplingScale(bodyProfile) {
   const type = bodyProfile && bodyProfile.type;
   if (type === 'projectile') return FIELD_COUPLING.projectileCouple;
@@ -128,10 +128,11 @@ export function couplingScale(bodyProfile) {
     : 1;
   if (response === 1) return base;
   if (response < 1) return base * response;
-  // Marking boosts a body that would otherwise shrug — up to markedCap — but never reduces a light
-  // body already at full coupling, and a marked heavy still couples below a light body's 1.0.
+  // Gravity Mark: multiply mass-coupling by the earned response (3×). Do not clip back under 1.0 —
+  // that discarded the 3× on a Hornet medium (0.5 → 1.5 became 0.95). A marked heavy still
+  // mass-classes because `base` stays in the product.
   const boosted = Math.min(base * response, FIELD_COUPLING.markedCap);
-  return Math.min(1, Math.max(base, boosted));
+  return Math.max(base, boosted);
 }
 
 // Whether a field couples to a body at all (cheap pre-filter used before the radial math). Reads

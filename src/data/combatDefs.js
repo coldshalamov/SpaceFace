@@ -4,6 +4,9 @@
 export const COMBAT_SCHEMA_VERSION = 1;
 
 export const GRAVITY_MARK_STATUS_ID = 'status_gravity_marked';
+// PQ-026.01: the mark is a 3× field multiplier, not a 1.9× clip into markedCap 0.95.
+// FIELD_COUPLING.markedMult / markedCap in src/data/fields.js must stay in lockstep.
+export const GRAVITY_MARK_FIELD_COUPLING = 3;
 export const MOMENTUM_SINK_STATUS_ID = 'status_momentum_sink';
 export const MOMENTUM_SINK_WEAPON_ID = 'wpn_momentum_sink_s';
 export const PINNED_STATUS_ID = 'status_pinned';
@@ -148,10 +151,11 @@ export const STATUS_DEFS = Object.freeze([
   {
     // PQ-026 Gravity Mark: the weapon earns stronger coupling to the existing field kernel. This is
     // deliberately a response multiplier, not a mass/velocity write: flight, facing, braking, and
-    // ordinary thrust remain wholly owned by their existing systems.
+    // ordinary thrust remain wholly owned by their existing systems. 3× is the well/sink pull;
+    // the kernel must not clip it back under a light body's 1.0.
     id: GRAVITY_MARK_STATUS_ID, version: 1, tags: ['gravity', 'field_coupling'], durationTicks: 360,
     stacking: { mode: 'refresh', maxStacks: 1 }, immunityTags: [],
-    effects: { multipliers: { fieldCoupling: 1.9 } },
+    effects: { multipliers: { fieldCoupling: GRAVITY_MARK_FIELD_COUPLING } },
     interactions: [], periodic: null, cueId: 'combat.status.gravity_marked',
   },
   {

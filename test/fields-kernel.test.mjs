@@ -125,10 +125,11 @@ test('heavy ship Δv is a small fraction of a light body Δv under the same fiel
 
 test('projectiles bend more than light bodies; marked heavy grabs harder but still shrugs', () => {
   assert.ok(couplingScale(PROJ) > couplingScale(LIGHT), 'projectile couples above a light body');
-  const markedHeavy = { ...HEAVY, fieldResponseMult: 1.9 };
+  const markedHeavy = { ...HEAVY, fieldResponseMult: FIELD_COUPLING.markedMult };
   const cHeavy = couplingScale(HEAVY);
   const cMarked = couplingScale(markedHeavy);
   assert.ok(cMarked > cHeavy, 'marked heavy grabs harder than unmarked heavy');
+  assert.ok(Math.abs(cMarked / cHeavy - FIELD_COUPLING.markedMult) < 1e-9, 'marked heavy is 3×');
   assert.ok(cMarked < couplingScale(LIGHT), 'marked heavy still shrugs vs a light body');
   assert.ok(cMarked <= FIELD_COUPLING.markedCap + 1e-9, 'marked coupling capped');
 });

@@ -64,23 +64,20 @@ export function fieldsFlag(name) { return !!FIELD_FLAGS[name]; }
 // proportion (massCouple = refMass / max(mass, refMass)), floored so even a capital ship drifts
 // a little (a shrug, never total immunity). Projectiles and pickups are light + are the marquee
 // "curve the shot / vacuum the loot" reads, so they couple above 1. A Gravity-Marked body carries
-// an earned combat-status response multiplier; the kernel caps that boost so a marked heavy still
-// shrugs versus a light body.
+// an earned combat-status response multiplier (PQ-026.01: 3× well/sink pull).
 //
-// markedCap is the CEILING ON A MARKED BODY'S COUPLING, not a ceiling on the mark's usefulness. It
-// must therefore sit ABOVE the coupling a canonical light hull already has unmarked, or the mark
-// silently does nothing on exactly the tier the arsenal exists to throw. At 0.55 it did: a
-// wasp_swarmer (mass 16, base 12/16 = 0.75) gained 1.00x and a mass-24 hull gained 1.10x, because
-// the kernel's `Math.max(base, boosted)` guard simply discarded a "boost" that landed under the
-// body's own base. 0.95 keeps the authored contract intact — a marked body still couples strictly
-// below a naturally light body's 1.0, a marked heavy still shrugs (mass 150: 0.08 → 0.152) — while
-// the light tier finally reads the mark (mass 16: 0.75 → 0.95).
+// markedMult is the status multiplier the combat kernel writes onto fieldResponseMult.
+// markedCap is the ceiling on boosted coupling — it must sit at/above markedMult, or a Hornet
+// medium (base 0.5 → 1.5) is silently clipped to 0.95 and the 3× well-golf never lands. A marked
+// heavy still mass-classes (the base stays in the product) but is allowed to couple above a tiny
+// unmarked body's 1.0 so the tag is a visible bend, not a shrug.
 export const FIELD_COUPLING = Object.freeze({
   refMass: 12,            // at/under this solver mass → full coupling (1.0)
   minShipCouple: 0.05,    // floor: a heavy body still drifts slightly under a field
   projectileCouple: 1.35, // projectiles bend readily (the "curve the bullet" read)
   pickupCouple: 1.25,     // loose cargo/pickups vacuum in like a Tideline magnet
-  markedCap: 0.95,        // a marked body still couples under a naturally light body's 1.0
+  markedMult: 3,          // Gravity Mark well/sink pull vs the unmarked twin
+  markedCap: 3,           // ceiling on boosted coupling; must not clip markedMult
 });
 
 // Global safety bound on the SUMMED acceleration a single body may receive from all overlapping

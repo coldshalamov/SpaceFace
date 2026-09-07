@@ -7672,7 +7672,7 @@
       "priority": 138,
       "title": "Gravity mark as a field multiplier",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -7691,8 +7691,10 @@
         "npm run check:baseline",
         "npm run check:combat"
       ],
-      "receiptRefs": [],
-      "brief": "A marked target is pulled 3× harder by wells and sinks; marked heavies bend toward wells they would ignore. DONE WHEN: Well golf on a marked medium works in the scenario."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-026.01-REPORT.md"
+      ],
+      "brief": "DONE 2026-09-07 (Grok + controller). Mark is 3x well/sink coupling (Hornet couple 0.50 -> 1.50). Seed 26001 rest 90 WU from well, 1 s: unmarked 16.85 WU vs marked 31.63 WU. Warden 2 s: 12.95 vs 33.33 WU. Unmarked heavies still shrug. Bungee still 2.040x cruise. DONE WHEN: Well golf on a marked medium works in the scenario."
     },
     {
       "id": "PQ-026.02",

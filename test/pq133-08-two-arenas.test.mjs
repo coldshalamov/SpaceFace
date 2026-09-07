@@ -34,6 +34,7 @@ import {
   CINDER_SLUICE_LOCAL_POS,
 } from '../src/data/environmentalMachinery.js';
 import { FIELD_COUPLING, FIELD_MAX_ACCEL } from '../src/data/fields.js';
+import { GRAVITY_MARK_FIELD_COUPLING } from '../src/data/combatDefs.js';
 import { SHIPS } from '../src/data/ships.js';
 import { SURVIVAL_WAVES } from '../src/data/survivalWaves.js';
 import {
@@ -66,7 +67,7 @@ import { planWave } from '../src/systems/survivalWavePlanner.js';
 const SEED = 7;
 const ANCHOR = { x: 400, z: -120 };
 const BEFORE_DIGEST = '0U3BLV9';
-const GRAVITY_MARK_COUPLE = 1.9;
+const GRAVITY_MARK_COUPLE = GRAVITY_MARK_FIELD_COUPLING;
 const HERE = dirname(fileURLToPath(import.meta.url));
 const OLD_WORKED_EXAMPLE = 'SFCR1-0U3B-LV91-*SHI-P_KE-STRE-L*0*-WPN_-PULS-E_LA-SER_-S*PH-YSIC-S_SW-ARM*-HELI-OS_C-ORE*-1*10-7VN1-XO';
 

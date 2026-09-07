@@ -7,6 +7,7 @@ import {
   validateAttackTraitCatalog,
 } from '../src/data/attackTraits.js';
 import {
+  GRAVITY_MARK_FIELD_COUPLING,
   GRAVITY_MARK_STATUS_ID,
   STATUS_DEFS,
 } from '../src/data/combatDefs.js';
@@ -198,7 +199,7 @@ test('Gravity Tag coupling is the existing Gravity Marked multiplier', () => {
   const def = STATUS_DEFS.find((row) => row.id === GRAVITY_MARK_STATUS_ID);
   const authored = def.effects.multipliers.fieldCoupling;
   assert.equal(fieldCouplingForStatusIds([GRAVITY_MARK_STATUS_ID]), authored);
-  assert.equal(authored, 1.9);
+  assert.equal(authored, GRAVITY_MARK_FIELD_COUPLING);
 });
 
 test('Incendiary periodic totals come from the existing Burning definition', () => {

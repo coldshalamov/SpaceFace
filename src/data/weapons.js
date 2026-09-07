@@ -147,9 +147,9 @@ export const WEAPONS = [
   },
   {
     // GRAVITY MARKER — low-damage setup tool for the existing Well/Repulsor/Cone kernel. A landed
-    // shot leaves a six-second simulation status that increases artificial-field coupling; merely
-    // selecting a target does nothing. The cyan disruption projectile and persistent contracting
-    // world marker make the state readable without adding an asset or changing the default fit.
+    // shot leaves a six-second simulation status that triples well/sink coupling; merely selecting
+    // a target does nothing. The cyan disruption projectile and persistent contracting world marker
+    // make the state readable without adding an asset or changing the default fit.
     id: 'wpn_gravity_marker_s', name: 'Gravity Marker S', slotType: 'weapon', size: 'S', tier: 2, mass: 3, price: 18000, requiresTech: 'tech_graviton_drives',
     dmg: 3, rof: 0.25, dps: 0.75, damageType: 'emp', energyCost: 7,
     projSpeed: 520, range: 680, tracking: 'fixed', spreadDeg: 0.5,

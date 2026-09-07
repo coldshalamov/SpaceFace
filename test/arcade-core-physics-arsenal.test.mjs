@@ -4,22 +4,28 @@ import test from 'node:test';
 import { couplingScale } from '../src/core/fields/fieldKernel.js';
 import { consumePhysicsCommand } from '../src/core/physicsAuthority.js';
 import { createBus } from '../src/core/eventBus.js';
+import { GRAVITY_MARK_FIELD_COUPLING } from '../src/data/combatDefs.js';
 import { FIELD_COUPLING } from '../src/data/fields.js';
 import { fieldBodyProfile, fields } from '../src/systems/fields.js';
 
 const DT = 1 / 60;
 
-test('Gravity Mark materially improves light and heavy hull coupling without erasing mass class', () => {
+test('Gravity Mark triples light and heavy hull coupling without erasing mass class', () => {
+  const mark = FIELD_COUPLING.markedMult;
   const light = couplingScale({ type: 'ship', mass: 16, fieldResponseMult: 1 });
-  const markedLight = couplingScale({ type: 'ship', mass: 16, fieldResponseMult: 1.9 });
+  const markedLight = couplingScale({ type: 'ship', mass: 16, fieldResponseMult: mark });
   const heavy = couplingScale({ type: 'ship', mass: 150, fieldResponseMult: 1 });
-  const markedHeavy = couplingScale({ type: 'ship', mass: 150, fieldResponseMult: 1.9 });
+  const markedHeavy = couplingScale({ type: 'ship', mass: 150, fieldResponseMult: mark });
 
+  assert.equal(mark, GRAVITY_MARK_FIELD_COUPLING);
+  assert.equal(mark, 3, 'the mark is a 3× field multiplier');
   assert.ok(markedLight > light, 'the mark must improve the canonical light-hull tier');
-  assert.equal(markedLight, FIELD_COUPLING.markedCap, 'the marked light response stops at the authored cap');
+  assert.ok(Math.abs(markedLight / light - 3) < 1e-9, 'a marked light takes the full 3×');
+  assert.ok(markedLight <= FIELD_COUPLING.markedCap + 1e-9, 'the marked light response stops at the authored cap');
   assert.ok(markedHeavy > heavy, 'the mark must also help a heavy hull');
+  assert.ok(Math.abs(markedHeavy / heavy - 3) < 1e-9, 'a marked heavy takes the full 3×');
   assert.ok(markedHeavy < markedLight, 'a marked heavy hull still shrugs more than a marked light hull');
-  assert.ok(markedLight < 1, 'marked hulls do not inherit the natural full coupling of tiny bodies');
+  assert.ok(markedHeavy < light, 'a marked heavy still shrugs versus an unmarked light body');
 });
 
 test('the field profile reads combat-owned effective mass without changing coupling mass', () => {
@@ -28,7 +34,7 @@ test('the field profile reads combat-owned effective mass without changing coupl
     combat: {
       entities: {
         '7': {
-          multipliers: { fieldCoupling: 1.9 },
+          multipliers: { fieldCoupling: GRAVITY_MARK_FIELD_COUPLING },
           physicsResponse: { massScale: 6 },
         },
       },
@@ -37,7 +43,7 @@ test('the field profile reads combat-owned effective mass without changing coupl
 
   const profile = fieldBodyProfile(entity, state);
   assert.equal(profile.mass, 24, 'coupling continues to classify by authored hull mass');
-  assert.equal(profile.fieldResponseMult, 1.9);
+  assert.equal(profile.fieldResponseMult, GRAVITY_MARK_FIELD_COUPLING);
   assert.equal(profile.physicsMassScale, 6, 'the impulse author sees the mass the solver will use');
 });
 
