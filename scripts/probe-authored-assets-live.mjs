@@ -555,6 +555,7 @@ function isProbeRelevantPath(file) {
   if (/\.(?:md|markdown|txt)$/i.test(path)) return false;
   if (path.startsWith('src/render/') && (path.endsWith('Vfx.js') || path.includes('/vfx/'))) return false;
   if (path.startsWith('src/core/fields/')) return false;
+  if (path.startsWith('src/core/sg02') || path.startsWith('src/core/flight/')) return false;
   if (AUTHORED_PROBE_SOURCE_FILES.includes(path)) return true;
   if (PROBE_RELEVANT_EXTRA_FILES.includes(path)) return true;
   return PROBE_RELEVANT_PREFIXES.some((prefix) => path.startsWith(prefix));
