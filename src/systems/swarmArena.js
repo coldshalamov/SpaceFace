@@ -32,16 +32,26 @@
 //   * Deterministic: a seeded mulberry32 stream mixed off (run.seed, wave, index). No Math.random,
 //     no wall clock.
 //
-// Event-driven: no per-tick work at all. It acts on `run:wavePlanned` and lets go on run end.
+// Event-driven: no per-tick work at all. Debris still only changes when a wave is planned.
+// The pressure-reservoir telegraph is also event-driven: census on destroy / wave start, and
+// callbacks from swarmReinforceCount (which survivalWave already calls on the sim tick).
 
 import { mulberry32 } from '../core/rng.js';
 import { validateRunState } from '../core/runState.js';
-import { SWARM_SPAWN_CAP } from '../data/swarmMode.js';
+import {
+  SWARM_BREATH_SECONDS,
+  SWARM_BREATH_TICKS,
+  SWARM_SPAWN_CAP,
+  bindSwarmPressureContext,
+  noteSwarmPressureKills,
+  resetSwarmPressureState,
+} from '../data/swarmMode.js';
 import {
   CRUCIBLE_REEF_LAYOUT_ID,
   CRUCIBLE_SLALOM_WELL_COUNT,
 } from '../data/survivalMutators.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
+import { SURVIVAL_COHORT_TAG } from './waveMaterialization.js';
 
 /** Marker on every rock this system creates, so teardown and census never touch sector terrain. */
 export const SWARM_DEBRIS_TAG = 'swarmArenaDebris';
@@ -154,6 +164,20 @@ function debrisStreamSeed(seed, wave) {
     h = Math.imul(h ^ label.charCodeAt(i), 0x01000193);
   }
   return (h >>> 0) || 1;
+}
+
+function liveCohortCount(state) {
+  if (!state || !Array.isArray(state.entityList)) return 0;
+  const playerId = state.playerId;
+  let n = 0;
+  for (const entity of state.entityList) {
+    if (!entity || entity.alive === false) continue;
+    if (entity.id === playerId) continue;
+    if (entity.type && entity.type !== 'ship' && entity.type !== 'drone') continue;
+    if (!(entity.data && entity.data.runCohort === SURVIVAL_COHORT_TAG)) continue;
+    n += 1;
+  }
+  return n;
 }
 
 function liveSwarmRun(state) {
@@ -304,21 +328,37 @@ export const swarmArena = {
     this._unsubs = [];
     this._ids = [];
     this._wellIds = [];
+    this._pressureAlive = null;
+    this._pressureWave = 0;
+    resetSwarmPressureState();
+    bindSwarmPressureContext({
+      getAlive: () => liveCohortCount(this.state),
+      onHoldStart: (p) => this._onPressureHoldStart(p),
+      onSpend: (p) => this._onPressureSpend(p),
+    });
     if (!this.bus || typeof this.bus.on !== 'function') return;
     this._priorCap = null;
     this._unsubs.push(this.bus.on('run:wavePlanned', (p) => this._onWavePlanned(p)));
+    this._unsubs.push(this.bus.on('run:waveStarted', (p) => this._onWaveStarted(p)));
+    this._unsubs.push(this.bus.on('entity:destroyed', () => this._onPressureDestroyed()));
     this._unsubs.push(this.bus.on('run:ended', () => this._release('run_ended')));
   },
 
   destroy() {
     for (const off of this._unsubs || []) if (typeof off === 'function') off();
     this._unsubs = [];
+    bindSwarmPressureContext(null);
+    resetSwarmPressureState();
+    this._pressureAlive = null;
   },
 
   newGame() {
     this._ids = [];
     this._releaseWells();
     this._restoreCapacity();
+    this._pressureAlive = null;
+    this._pressureWave = 0;
+    resetSwarmPressureState();
   },
 
   /** No per-tick work: the field only changes when a wave is planned. */
@@ -340,10 +380,59 @@ export const swarmArena = {
     const run = liveSwarmRun(this.state);
     if (!run) return;
     const wave = payload && Number.isInteger(payload.wave) ? payload.wave : run.wave;
+    this._pressureWave = wave;
+    resetSwarmPressureState();
+    this._pressureAlive = liveCohortCount(this.state);
     this._raiseCapacity();
     this._cullWrecks();
     this._topUp(run, wave);
     this._installSlalomWells(run);
+  },
+
+  _onWaveStarted() {
+    if (!liveSwarmRun(this.state)) return;
+    this._pressureAlive = liveCohortCount(this.state);
+  },
+
+  _onPressureDestroyed() {
+    if (!liveSwarmRun(this.state)) return;
+    const alive = liveCohortCount(this.state);
+    const prev = this._pressureAlive;
+    this._pressureAlive = alive;
+    if (Number.isInteger(prev) && alive < prev) {
+      noteSwarmPressureKills(prev - alive);
+    }
+  },
+
+  _onPressureHoldStart(payload) {
+    const run = liveSwarmRun(this.state);
+    const wave = this._pressureWave
+      || (run && Number.isInteger(run.wave) ? run.wave : 0);
+    const stored = payload && Number.isInteger(payload.stored) ? payload.stored : 0;
+    const tick = this.state && Number.isFinite(this.state.tick) ? this.state.tick : null;
+    this._emit('swarm:pressureTelegraph', {
+      wave,
+      etaTicks: SWARM_BREATH_TICKS,
+      etaSeconds: SWARM_BREATH_SECONDS,
+      stored,
+      tick,
+    });
+    // One-voice floor: `alert` with a finite ttl is already routed through the arbiter.
+    this._emit('alert', {
+      key: 'swarm-pressure-inbound',
+      sev: 'warn',
+      text: 'INBOUND — a group is on a bearing',
+      ttl: 4,
+    });
+  },
+
+  _onPressureSpend(payload) {
+    const run = liveSwarmRun(this.state);
+    const wave = this._pressureWave
+      || (run && Number.isInteger(run.wave) ? run.wave : 0);
+    const count = payload && Number.isInteger(payload.count) ? payload.count : 0;
+    const tick = this.state && Number.isFinite(this.state.tick) ? this.state.tick : null;
+    this._emit('swarm:pressureSpend', { wave, count, tick });
   },
 
   /**

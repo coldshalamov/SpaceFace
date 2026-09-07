@@ -97,31 +97,153 @@ export function swarmPressureAt(wave, progress) {
 }
 
 /**
- * Ticks between reinforcement top-ups while the room is under strength (60 ticks = 1 second), and
- * how many bodies each top-up brings.
+ * Ticks between ordinary top-ups while the room is under strength (60 ticks = 1 second), and how
+ * many bodies a small patch or a spent reservoir group brings.
  *
- * Together these set the CEILING on how fast the room can refill: 4 bodies every 20 ticks is 12 a
- * second, comfortably faster than any real clear rate, so a strong player thins the room by being
- * fast rather than by outrunning a slow spawner. Four at a time also reads as a group arriving on
- * a bearing rather than as hulls popping into existence one by one.
+ * Small holes (1–2 bodies) still refill on this gap, as a readable group. A substantial clear does
+ * not: see the pressure reservoir below. An empty room still bypasses the gap in survivalWave —
+ * that emergency is "the room is never idle", not a refill of an earned hole.
  */
 export const SWARM_REINFORCE_GAP_TICKS = 12;
 export const SWARM_REINFORCE_BATCH = 3;
 /**
- * The stream is ADAPTIVE. A small hole is patched with `SWARM_REINFORCE_BATCH`; a big one is
- * patched with half of itself, up to this ceiling. That asymmetry is the whole point: a player who
- * clears fast should feel the room close back in, not out-run the spawner and end the wave alone
- * in an empty arena. A fixed batch could always be beaten by a fast enough clear, and being beaten
- * looks exactly like the dead air this ruleset exists to delete.
+ * Ceiling on ONE telegraphed spend. Not an instant catch-up. The old deficit-adaptive surge
+ * patched a big hole with half of itself the moment the gap elapsed, so a fast player never
+ * outran replacement and never got a visible empty beat. The reservoir keeps this as the size
+ * of the group that arrives AFTER the breath, not as an immediate fill.
  */
 export const SWARM_REINFORCE_SURGE_MAX = 7;
 
-/** How many bodies one top-up brings, given how far under strength the room is. */
-export function swarmReinforceCount(deficit) {
+/**
+ * EARNED BREATHING ROOM (PQ-174.08).
+ *
+ * A ≥3-kill hole (or three unrepaired kills) buys SWARM_BREATH_TICKS of visibly thinner air.
+ * Pressure accumulates in the reservoir for that beat, then one telegraphed group spends it.
+ * Same roster, same concurrent ceiling, same hull values. The empty-room emergency still
+ * returns a batch immediately so the board never sits at zero.
+ */
+export const SWARM_CLEAR_KILLS = 3;
+export const SWARM_BREATH_TICKS = 240;
+export const SWARM_BREATH_SECONDS = SWARM_BREATH_TICKS / 60;
+
+export function createSwarmPressureState() {
+  return {
+    holding: false,
+    holdTicks: 0,
+    stored: 0,
+    killsSinceReinforce: 0,
+    telegraphed: false,
+  };
+}
+
+const livePressure = createSwarmPressureState();
+let livePressureCtx = {
+  getAlive: () => null,
+  onHoldStart: null,
+  onSpend: null,
+};
+
+/** Arena (or a test) binds live census + telegraph callbacks. Unbind with null. */
+export function bindSwarmPressureContext(ctx) {
+  livePressureCtx = ctx && typeof ctx === 'object'
+    ? ctx
+    : { getAlive: () => null, onHoldStart: null, onSpend: null };
+}
+
+export function resetSwarmPressureState(state = livePressure) {
+  state.holding = false;
+  state.holdTicks = 0;
+  state.stored = 0;
+  state.killsSinceReinforce = 0;
+  state.telegraphed = false;
+  return state;
+}
+
+/** Record cohort kills that have not yet been replaced. Used to detect a 3-kill clear. */
+export function noteSwarmPressureKills(count = 1, state = livePressure) {
+  const n = Math.max(0, Math.trunc(Number(count) || 0));
+  if (n > 0) state.killsSinceReinforce += n;
+  return state.killsSinceReinforce;
+}
+
+export function swarmPressureIsHolding(state = livePressure) {
+  return state.holding === true;
+}
+
+/**
+ * Pure decision: given a reservoir state and how far under strength the room is, how many
+ * bodies this top-up should admit. Side-effect free — the live wrapper fires telegraph hooks.
+ *
+ * `alive` is the live cohort census. `null` means unknown (tests that never bound the arena):
+ * a hole of SWARM_CONCURRENT_MIN or more is treated as an empty-room emergency.
+ */
+export function swarmReinforceDecision(state, deficit, opts = {}) {
+  const bag = state && typeof state === 'object' ? state : createSwarmPressureState();
   const d = Math.max(0, Math.trunc(Number(deficit) || 0));
-  if (d <= 0) return 0;
-  const surge = Math.min(SWARM_REINFORCE_SURGE_MAX, Math.ceil(d / 2));
-  return Math.min(d, Math.max(SWARM_REINFORCE_BATCH, surge));
+  const alive = opts.alive;
+  const empty = alive === 0
+    || (alive == null && d >= SWARM_CONCURRENT_MIN);
+  const substantial = d >= SWARM_CLEAR_KILLS
+    || bag.killsSinceReinforce >= SWARM_CLEAR_KILLS;
+
+  if (d <= 0) {
+    resetSwarmPressureState(bag);
+    return { count: 0, telegraph: false, spent: 0 };
+  }
+
+  // AN EMPTY BOARD IS AN EMERGENCY. The breath is "thinner", never "nobody here".
+  if (empty) {
+    resetSwarmPressureState(bag);
+    return { count: Math.min(d, SWARM_REINFORCE_BATCH), telegraph: false, spent: 0 };
+  }
+
+  if (!substantial && !bag.holding) {
+    return { count: Math.min(d, SWARM_REINFORCE_BATCH), telegraph: false, spent: 0 };
+  }
+
+  if (!bag.holding) {
+    bag.holding = true;
+    bag.holdTicks = 0;
+    bag.stored = d;
+    bag.telegraphed = true;
+    return { count: 0, telegraph: true, spent: 0 };
+  }
+
+  bag.holdTicks += 1;
+  bag.stored = Math.max(bag.stored, d);
+  if (bag.holdTicks < SWARM_BREATH_TICKS) {
+    return { count: 0, telegraph: false, spent: 0 };
+  }
+
+  const spend = Math.min(
+    d,
+    Math.max(SWARM_REINFORCE_BATCH, Math.min(SWARM_REINFORCE_SURGE_MAX, bag.stored)),
+  );
+  resetSwarmPressureState(bag);
+  return { count: spend, telegraph: false, spent: spend };
+}
+
+/**
+ * How many bodies one top-up brings. Small holes patch with a readable group. A substantial
+ * clear stores the deficit for SWARM_BREATH_TICKS, then spends it as one group. SurvivalWave
+ * still passes only the deficit — the arena binds census and telegraph.
+ */
+export function swarmReinforceCount(deficit) {
+  const alive = typeof livePressureCtx.getAlive === 'function'
+    ? livePressureCtx.getAlive()
+    : null;
+  const decision = swarmReinforceDecision(livePressure, deficit, { alive });
+  if (decision.telegraph && typeof livePressureCtx.onHoldStart === 'function') {
+    livePressureCtx.onHoldStart({
+      stored: livePressure.stored,
+      breathTicks: SWARM_BREATH_TICKS,
+      breathSeconds: SWARM_BREATH_SECONDS,
+    });
+  }
+  if (decision.spent > 0 && typeof livePressureCtx.onSpend === 'function') {
+    livePressureCtx.onSpend({ count: decision.count });
+  }
+  return decision.count;
 }
 
 /**
@@ -536,6 +658,8 @@ export function swarmPlanBlock(wave) {
     reinforceGapTicks: SWARM_REINFORCE_GAP_TICKS,
     reinforceBatch: SWARM_REINFORCE_BATCH,
     reinforceSurgeMax: SWARM_REINFORCE_SURGE_MAX,
+    clearKills: SWARM_CLEAR_KILLS,
+    breathTicks: SWARM_BREATH_TICKS,
     spawnDistance: SWARM_SPAWN_DISTANCE,
     roster: roster.map((entry) => ({ enemyId: entry.enemyId, role: entry.role, weight: entry.weight })),
     newcomer: newcomer ? { enemyId: newcomer.enemyId, name: newcomer.name } : null,

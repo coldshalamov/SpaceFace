@@ -180,6 +180,15 @@ export function measureSwarmRun(run = {}) {
     simSeconds,
   });
 
+  const occupancy = Array.isArray(run.occupancyTrace) ? run.occupancyTrace : [];
+  const clearBreath = measureClearBreath({
+    events,
+    kills,
+    occupancy,
+    waveDurations,
+    simSeconds,
+  });
+
   const playerDeaths = measurePlayerDeaths(playerDeathsRaw, events, run);
   const firstDeath = measureFirstDeath({
     playerDeaths,
@@ -220,6 +229,7 @@ export function measureSwarmRun(run = {}) {
     meaningfulMoments: moments,
     momentsPerMinute: round6(momentsPerMinute),
     quietSecondsAfterWave1: quietAfterWave1,
+    clearBreath,
     playerDeaths,
     buildIdentity,
     waveDurations,
@@ -523,6 +533,213 @@ function measureCleanupDurations({ planned, complete, cleanup, simSeconds }) {
     });
   }
   return out;
+}
+
+const PRESSURE_TELEGRAPH_TYPES = new Set([
+  'swarm:pressureTelegraph',
+  'swarm:reinforcementTelegraph',
+]);
+const PRESSURE_SPEND_TYPES = new Set([
+  'swarm:pressureSpend',
+  'run:waveMaterialized',
+]);
+
+export const SWARM_CLEAR_BREATH_KILLS = 3;
+export const SWARM_CLEAR_BREATH_SECONDS = 4;
+
+function measureClearBreath({ events, kills, occupancy, waveDurations, simSeconds }) {
+  const waves = Array.isArray(waveDurations) ? waveDurations : [];
+  const occ = Array.isArray(occupancy) ? occupancy : [];
+  const telegraphs = (events || []).filter((e) => PRESSURE_TELEGRAPH_TYPES.has(e.type));
+  const spends = (events || []).filter((e) => {
+    if (PRESSURE_SPEND_TYPES.has(e.type) === false) return false;
+    if (e.type === 'run:waveMaterialized') return e.data?.reinforcement === true && (e.data?.admitted || 0) > 0;
+    return (e.data?.count || 0) > 0 || e.data?.spent > 0;
+  });
+
+  const perWave = [];
+  const waveNums = waves.length
+    ? waves.map((w) => w.wave)
+    : [...new Set([
+      ...kills.map((k) => waveOf(k)).filter((n) => Number.isInteger(n)),
+      ...telegraphs.map((e) => waveOf(e)).filter((n) => Number.isInteger(n)),
+      1,
+    ])];
+
+  for (const wave of [...new Set(waveNums)].sort((a, b) => a - b)) {
+    const waveRow = waves.find((w) => w.wave === wave) || null;
+    const windowStart = waveRow?.startSeconds ?? 0;
+    const windowEnd = waveRow?.endSeconds ?? simSeconds;
+    const breath = findBreathInWave({
+      wave,
+      kills: kills.filter((k) => {
+        const w = waveOf(k);
+        if (Number.isInteger(w)) return w === wave;
+        const t = k.seconds;
+        return Number.isFinite(t) && t >= windowStart && t <= windowEnd;
+      }),
+      occupancy: occ.filter((s) => {
+        if (Number.isInteger(s.wave) && s.wave !== wave) return false;
+        const t = Number.isFinite(s.seconds) ? s.seconds : ticksToSeconds(s.tick);
+        return Number.isFinite(t) && t >= windowStart && t <= windowEnd + 1e-6;
+      }),
+      telegraphs: telegraphs.filter((e) => (waveOf(e) ?? wave) === wave),
+      spends: spends.filter((e) => (waveOf(e) ?? wave) === wave),
+      windowStart,
+      windowEnd,
+    });
+    perWave.push(breath);
+  }
+
+  const hits = perWave.filter((b) => b.met === true);
+  if (hits.length > 0) {
+    return {
+      available: true,
+      met: true,
+      seconds: hits[0].emptierSeconds,
+      wavesMet: hits.map((b) => b.wave),
+      perWave,
+      reason: null,
+    };
+  }
+
+  if (occ.length === 0 && telegraphs.length === 0 && spends.length === 0) {
+    return {
+      available: false,
+      met: false,
+      seconds: null,
+      wavesMet: [],
+      perWave,
+      reason: 'no occupancy samples or pressure-telegraph events on this trace; quiet-after-wave-1 is a different bar',
+    };
+  }
+
+  return {
+    available: true,
+    met: false,
+    seconds: perWave.reduce((best, b) => {
+      const n = b.emptierSeconds;
+      if (!Number.isFinite(n)) return best;
+      return best == null ? n : Math.max(best, n);
+    }, null),
+    wavesMet: [],
+    perWave,
+    reason: null,
+  };
+}
+
+function findBreathInWave({ wave, kills, occupancy, telegraphs, spends, windowStart, windowEnd }) {
+  const burst = findKillBurst(kills, SWARM_CLEAR_BREATH_KILLS, SWARM_MOMENT_BURST_WINDOW_S);
+  if (occupancy.length >= 2 && burst) {
+    const after = burst.untilSeconds;
+    const beforeList = occupancy.filter((s) => sampleSeconds(s) <= burst.seconds);
+    const beforeSample = beforeList.length ? beforeList[beforeList.length - 1] : null;
+    const beforeAlive = beforeSample && Number.isFinite(beforeSample.alive)
+      ? beforeSample.alive
+      : null;
+    const afterAlive = occupancy.find((s) => sampleSeconds(s) >= after);
+    const floor = afterAlive && Number.isFinite(afterAlive.alive)
+      ? afterAlive.alive
+      : (beforeAlive != null ? beforeAlive - burst.killCount : null);
+    if (floor != null && beforeAlive != null && floor < beforeAlive) {
+      const holdEnd = after + SWARM_CLEAR_BREATH_SECONDS;
+      const during = occupancy.filter((s) => {
+        const t = sampleSeconds(s);
+        return t > after && t <= holdEnd;
+      });
+      const maxDuring = during.reduce((m, s) => Math.max(m, s.alive ?? 0), floor);
+      const emptier = maxDuring <= floor + 1;
+      const spent = occupancy.some((s) => {
+        const t = sampleSeconds(s);
+        return t > holdEnd && t <= holdEnd + 1.5 && (s.alive ?? 0) >= floor + 2;
+      });
+      let emptierSeconds = 0;
+      if (during.length) {
+        const thin = during.filter((s) => (s.alive ?? 0) <= floor + 1);
+        const lastThin = thin.length ? thin[thin.length - 1] : null;
+        if (lastThin) emptierSeconds = round6(sampleSeconds(lastThin) - after);
+      }
+      if (emptier && emptierSeconds >= SWARM_CLEAR_BREATH_SECONDS - 0.05) {
+        return {
+          wave,
+          met: true,
+          emptierSeconds: round6(Math.max(emptierSeconds, SWARM_CLEAR_BREATH_SECONDS)),
+          killBurstAt: round6(burst.seconds),
+          spent: spent === true,
+          source: 'occupancy',
+        };
+      }
+      return {
+        wave,
+        met: false,
+        emptierSeconds: round6(emptierSeconds),
+        killBurstAt: round6(burst.seconds),
+        spent: spent === true,
+        source: 'occupancy',
+      };
+    }
+  }
+
+  const tg = telegraphs[0];
+  const spend = spends.find((e) => (e.seconds ?? 0) >= (tg?.seconds ?? 0) + SWARM_CLEAR_BREATH_SECONDS - 0.05);
+  if (tg && spend) {
+    const dt = round6((spend.seconds ?? 0) - (tg.seconds ?? 0));
+    return {
+      wave,
+      met: dt >= SWARM_CLEAR_BREATH_SECONDS - 0.05,
+      emptierSeconds: dt,
+      killBurstAt: round6(tg.seconds),
+      spent: true,
+      source: 'telegraph',
+    };
+  }
+
+  if (tg && !spend) {
+    const open = round6((windowEnd ?? tg.seconds) - tg.seconds);
+    return {
+      wave,
+      met: false,
+      emptierSeconds: open,
+      killBurstAt: round6(tg.seconds),
+      spent: false,
+      source: 'telegraph',
+    };
+  }
+
+  return {
+    wave,
+    met: false,
+    emptierSeconds: null,
+    killBurstAt: burst ? round6(burst.seconds) : null,
+    spent: false,
+    source: occupancy.length ? 'occupancy' : (kills.length ? 'kills' : 'none'),
+  };
+}
+
+function findKillBurst(kills, minKills, windowS) {
+  for (let i = 0; i < kills.length; i++) {
+    const start = kills[i].seconds ?? 0;
+    const cluster = [kills[i]];
+    for (let j = i + 1; j < kills.length; j++) {
+      const t = kills[j].seconds ?? 0;
+      if (t - start <= windowS) cluster.push(kills[j]);
+      else break;
+    }
+    if (cluster.length >= minKills) {
+      const last = cluster[cluster.length - 1];
+      return {
+        seconds: start,
+        untilSeconds: last.seconds ?? start,
+        killCount: cluster.length,
+      };
+    }
+  }
+  return null;
+}
+
+function sampleSeconds(sample) {
+  if (Number.isFinite(sample?.seconds)) return sample.seconds;
+  return ticksToSeconds(sample?.tick) ?? 0;
 }
 
 function measureQuietSecondsAfterWave1({ waveDurations, events, kills, verbs, moments, simSeconds }) {

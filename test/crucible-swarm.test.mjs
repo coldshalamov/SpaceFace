@@ -42,6 +42,8 @@ import {
   swarmOpeningPackages,
   swarmQuota,
   swarmRosterFor,
+  bindSwarmPressureContext,
+  resetSwarmPressureState,
 } from '../src/data/swarmMode.js';
 import { isSwarmRuleset, swarmWaveEndsInMenu } from '../src/systems/survivalSwarm.js';
 import { ENEMY_TYPES } from '../src/data/enemies.js';
@@ -142,6 +144,8 @@ function killOne(h) {
 }
 
 function beginSwarm(h) {
+  resetSwarmPressureState();
+  bindSwarmPressureContext(null);
   h.bus.emit('run:beginRequested', {
     kind: 'survival', ruleset: SWARM_RULESET, seed: SEED, arenaId: ARENA,
   });
@@ -379,7 +383,8 @@ test('the room is never empty across a wave boundary', () => {
 test('an empty room refills on the very next tick, not on the next gap', () => {
   // The gap timer paces ordinary top-ups. A live walk found one empty moment in eighty-six: a fast
   // player clears the last survivor in the beat before the next wave's burst lands, and the timer
-  // made the room wait. Nothing is allowed to make an empty room wait.
+  // made the room wait. Nothing is allowed to make an empty room wait. The pressure reservoir
+  // holds a substantial clear; it does not hold a wiped board.
   const h = boot();
   beginSwarm(h);
   tick(h, 40);
@@ -394,10 +399,10 @@ test('an empty room refills on the very next tick, not on the next gap', () => {
   );
 });
 
-test('a fast clear cannot out-run the stream — the room closes back in', () => {
-  // The browser walk found this: a fixed reinforcement batch is beatable by a quick enough player,
-  // and once it is beaten the wave finishes in an empty room. Kill at 15 a second (far above any
-  // real clear rate) and the room must still never be empty.
+test('a fast clear cannot empty the room — a wiped board still refills immediately', () => {
+  // PQ-174.08 replaced the instant deficit surge with a 4 s breath after a substantial clear.
+  // The empty-room emergency is unchanged: 15 kills a second may thin the room, it may not
+  // leave it at zero, and the wave still ends with survivors rolling forward.
   const h = boot();
   beginSwarm(h);
   let empty = 0;
@@ -513,6 +518,9 @@ test('the live stream honours the crescendo, and never breaches the raised cap',
   // inherits wave N-1's survivors — which is the whole no-lull rule — so the room can already be at
   // its ceiling on the first tick and the ramp is invisible. Starting the wave cold is the only way
   // to watch the room actually build.
+  //
+  // PQ-174.08: live count may dip for 4 s after a substantial clear. The TARGET still closes in.
+  // Peak-over-the-wave is what must still climb; a late sample can land inside a breath.
   const h = boot();
   swarmArena.init(h.ctx);
   beginSwarm(h);
@@ -524,23 +532,19 @@ test('the live stream honours the crescendo, and never breaches the raised cap',
   const ceiling = plan.swarm.concurrent;
   const opening = swarmPressureAt(8, 0);
   assert.ok(opening < ceiling, 'wave 8 has real headroom to build into');
+  assert.equal(swarmPressureAt(8, 0.75), ceiling, 'the TARGET still closes in as the quota burns');
 
   tick(h, 40);
   const atStart = liveHostiles(h).length;
   assert.ok(atStart <= opening, `the room opened at its opening pressure (${atStart} of ${opening})`);
 
   let peak = atStart;
-  let late = 0;
   for (let i = 0; i < 8000 && !this_cleared(h); i++) {
     if (i % 9 === 0) killOne(h);
     tick(h, 1);
-    const alive = liveHostiles(h).length;
-    peak = Math.max(peak, alive);
-    if (h.state.run.resolvedThreat / Math.max(1, h.state.run.threatBudget) > 0.75) {
-      late = Math.max(late, alive);
-    }
+    peak = Math.max(peak, liveHostiles(h).length);
   }
-  assert.ok(late > atStart, `the room was thicker late than it opened (${atStart} -> ${late})`);
+  assert.ok(peak >= opening, `between breaths the room still reached opening strength (peak ${peak})`);
   assert.ok(peak <= ceiling, `peak ${peak} respected the wave ceiling ${ceiling}`);
   assert.ok(h.budget.current() <= h.budget.max(), 'and the raised cap was never breached');
   swarmArena.destroy();
