@@ -1968,7 +1968,7 @@ async function closeOwnedAuthoredProbeRuntime({ ws, chrome, server, debugPort, p
       spawnSync('powershell.exe', [
         '-NoProfile',
         '-Command',
-        `Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like "*${base}*" } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }`,
+        `Get-CimInstance Win32_Process | Where-Object { $_.ProcessId -ne $PID -and $_.Name -like "*chrome*" -and $_.CommandLine -like "*${base}*" } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }`,
       ], { stdio: 'ignore' });
     } catch (_) {}
   }
@@ -2102,7 +2102,13 @@ function removeOwnedChromeProfile(profileDir, processExited) {
     } catch (_) {}
     if (process.platform === 'win32') {
       try {
-        spawnSync('cmd.exe', ['/c', 'rd', '/s', '/q', target], { stdio: 'ignore' });
+        spawnSync('cmd.exe', ['/c', 'rd', '/s', '/q', `"${target}"`], { stdio: 'ignore' });
+        if (!existsSync(target)) return true;
+        spawnSync('powershell.exe', [
+          '-NoProfile',
+          '-Command',
+          `Remove-Item -Recurse -Force -LiteralPath "${target}"`,
+        ], { stdio: 'ignore' });
         if (!existsSync(target)) return true;
       } catch (_) {}
     }
