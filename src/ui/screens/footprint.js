@@ -1,23 +1,37 @@
+// THE FOOTPRINT (F3): the consequence graph as the picture.
+// The sheet's line (design/frontend/direction/DIRECTION_SHEET.md §2, the instruments): "The
+// consequence graph as the picture, drawn in bone hairlines on the sky; the node you trace at full
+// strength, the rest at 38 %; your heat as a hero number; the frame goes wanted-cold when you are
+// wanted." Built on the frontend kit (styles/kit.css, src/ui/kit/) per
+// design/frontend/direction/tasks/TASK_C_STATION_INSTRUMENTS_CHART.md §1.10: the display word and
+// the crest sentence in the title, the heat tier as the corner hero, the chains as rows down the
+// hang, the traced chain's board and its record on the stage, the verbs as words along the foot.
+// The board's layout rules (`fp-*`) live in styles/ui.css with kit tokens only; this file injects
+// no CSS. The temperature (wanted-cold) is the kit's (src/ui/kit/temperature.js), never set here.
+// Reads state.provenance.chains / openIncidents, state.player.heat and bounty; emits intents only.
+
 import { FACTION_META } from '../../data/factions.js';
 import { TITLES } from '../../data/titles.js';
 import { REP_REASON_LABELS } from '../../data/repReasons.js';
 import { bribeCost } from '../../systems/factions.js';
 import { buildShipLedger, formatLedgerCycle, SHIP_LEDGER_PAGE_SIZE } from '../../systems/shipLedger.js';
 import { latestLossLine } from '../../systems/lossLedger.js';
-import { isPlayerWanted, heatLevelFor, heatClearSecondsForLevel, heatRadiusForLevel, THRESHOLD as WANTED_THRESHOLD } from '../../systems/heat.js';
+import { isPlayerWanted, heatLevelFor, heatClearSecondsForLevel, heatRadiusForLevel } from '../../systems/heat.js';
 import { aceById } from '../../data/namedAces.js';
 import { mountDataState, settleDataState } from '../uiPrimitives.js';
 import { openGalaxyMap, MAP_FOCUS } from '../mapAuthority.js';
 import { resolveMapOpenTarget, applyMapOpenIntentToView } from '../galaxyMap.js';
-import { prefersReducedMotion } from '../effects/effectRuntime.js';
+import { el, rows, words, hero, settle, cue } from '../kit/index.js';
 
 const FACTION_BY_ID = new Map(FACTION_META.map((entry) => [entry.id, entry]));
 const TITLE_BY_ID = new Map(TITLES.map((entry) => [entry.id, entry]));
 
+// Sentence case: the display face is never all-caps as decoration (sheet §3). The `fp-display--*`
+// tone classes stay on the word as inert hooks; the colour comes from the temperature, not a tint.
 const DISPLAY_BY_STATE = Object.freeze({
-  clean: { word: 'CLEAN', tone: 'calm' },
-  marked: { word: 'MARKED', tone: 'goal' },
-  wanted: { word: 'WANTED', tone: 'foe' },
+  clean: { word: 'Clean', tone: 'calm' },
+  marked: { word: 'Marked', tone: 'goal' },
+  wanted: { word: 'Wanted', tone: 'foe' },
 });
 
 const OUTCOME_WORDS = Object.freeze({
@@ -33,38 +47,10 @@ const OUTCOME_WORDS = Object.freeze({
   witnessed_only: 'witnessed',
 });
 
-const COLUMN_NAMES = Object.freeze(['ACT', 'INCIDENT', 'STANDING', 'CONSEQUENCE']);
-const INCIDENT_EMPTY_LABEL = 'NO JURISDICTION LOGGED THIS';
-const CONSEQUENCE_EMPTY_LABEL = 'NOTHING HUNTS YOU YET';
-const HEAT_GLYPHS = '░▒▓▣◇';
-const DRAWER_SORTS = Object.freeze(['time', 'delta']);
-
-const STYLE_ID = 'sf-footprint-style';
-
-function injectStyle() {
-  if (document.getElementById(STYLE_ID)) return;
-  const s = document.createElement('style');
-  s.id = STYLE_ID;
-  // Screen-local overrides only (the shared fp- grammar lives in styles/ui.css): the no-selection
-  // readout must size to its content instead of stretching to the apron's full height — the old
-  // full-height box was ~90% dead void — and its inline chart verb stays quiet (hairline + calm).
-  s.textContent = `
-  .fp-apron-grid { align-items: start; }
-  .fp-readout { align-self: start; }
-  .fp-readout-verb {
-    margin-top: 6px; padding: 5px 10px;
-    border: 1px solid var(--sf-edge); border-radius: var(--r-sm, 5px);
-    background: transparent; color: var(--sf-calm);
-    font-family: var(--sf-body-face); font-size: 13px; line-height: 1.3;
-    cursor: pointer; box-shadow: none;
-    transition: border-color var(--sf-t-latch, .12s) var(--sf-ease, ease), color var(--sf-t-latch, .12s) var(--sf-ease, ease);
-  }
-  .fp-readout-verb:hover { border-color: var(--sf-goal); color: var(--sf-paper); }
-  .fp-readout-verb:focus-visible { outline: 2px solid var(--sf-goal); outline-offset: 2px; }
-  .fp-readout-verb:active { transform: none; }
-  `;
-  document.head.appendChild(s);
-}
+const COLUMN_NAMES = Object.freeze(['Act', 'Incident', 'Standing', 'Consequence']);
+const INCIDENT_EMPTY_LABEL = 'No jurisdiction logged this';
+const CONSEQUENCE_EMPTY_LABEL = 'Nothing hunts you yet';
+const RECORD_SORTS = Object.freeze(['time', 'delta']);
 
 function asNumber(value, fallback = 0) {
   const n = Number(value);
@@ -81,6 +67,11 @@ function asString(value) {
   return clean || null;
 }
 
+function sentenceCase(value) {
+  const text = String(value == null ? '' : value);
+  return text ? text.charAt(0).toUpperCase() + text.slice(1) : '';
+}
+
 function creditsText(value) {
   return `${Math.max(0, Math.round(asNumber(value, 0))).toLocaleString('en-US')} cr`;
 }
@@ -92,11 +83,18 @@ function deltaText(value) {
   return n > 0 ? `+${n}` : String(n);
 }
 
-function secText(seconds) {
+/** "6 s", "2 min", "2 min 30 s" — the heat clock as the hero's word reads it. */
+function clearsText(seconds) {
   const whole = Math.max(0, Math.round(asNumber(seconds, 0)));
+  if (whole < 60) return `${whole} s`;
   const mm = Math.floor(whole / 60);
   const ss = whole % 60;
-  return `${mm}:${String(ss).padStart(2, '0')}`;
+  return ss ? `${mm} min ${ss} s` : `${mm} min`;
+}
+
+/** "Cycle 0003" — the ledger's cycle stamp in sentence case (the ledger spells it in caps). */
+function cycleText(t) {
+  return sentenceCase(formatLedgerCycle(asNumber(t, 0)).toLowerCase());
 }
 
 function shortFactionName(factionId) {
@@ -154,8 +152,7 @@ function nodeWord(node) {
     return badge ? `${badge} · ${faction}` : faction;
   }
   if (kind === 'incident') {
-    const label = asString(node.text) || asString(node.cause) || 'jurisdiction log';
-    return label.toUpperCase();
+    return asString(node.text) || asString(node.cause) || 'jurisdiction log';
   }
   if (kind === 'standing') {
     const label = repReasonLabel(node.reason);
@@ -166,7 +163,7 @@ function nodeWord(node) {
   if (kind === 'spillover') {
     const src = shortFactionName(node.srcFaction);
     const delta = deltaText(node.delta);
-    return `SPILLOVER ${delta ? `(${delta})` : ''} · ${src}`;
+    return `spillover${delta ? ` (${delta})` : ''} · ${src}`;
   }
   if (kind === 'consequence') {
     return asString(node.text) || outcomeWord(node.outcome) || 'consequence';
@@ -201,28 +198,26 @@ export function nodeWhy(node) {
   return '';
 }
 
-/** Build the selected-chain readout with every state-derived fragment encoded for innerHTML. */
+/** The traced chain's head of record — kit sentences, every state-derived fragment encoded for innerHTML. */
 export function footprintReadoutHtml(chain, node, state) {
   if (!chain) {
     return `
-      <h3 class="fp-readout-head">Trace a chain</h3>
-      <p class="fp-readout-line">Select an ACT, INCIDENT, STANDING, or CONSEQUENCE node to light its path.</p>
-      <button type="button" class="fp-readout-verb" data-fp-verb="chart-empty">Show on chart</button>`;
+      <p class="k-sentence k-sentence--emph">Trace a chain</p>
+      <p class="k-sentence">Pick a chain from the list, then a node on the board, to light its path.</p>`;
   }
   const why = nodeWhy(node);
   const faction = findChainStandingFaction(chain) || asString(node && node.factionId);
-  const rootKind = escapeHtml(asString(chain.rootKind) || 'chain');
+  const rootKind = escapeHtml(sentenceCase(asString(chain.rootKind) || 'chain'));
   const outcome = escapeHtml(outcomeWord(chain.outcome) || 'witnessed');
-  const reason = escapeHtml(why || 'No additional receipt text for this node.');
+  const reason = escapeHtml(why || (node ? 'No additional receipt text for this node.' : 'Pick a node on the board to read its receipt.'));
   const openState = escapeHtml(chainOpenReason(chain, state));
+  const sector = escapeHtml(asString(chain.sectorId) || 'unfiled');
   const factionLine = faction
-    ? `Faction focus: ${escapeHtml(shortFactionName(faction))}.`
+    ? `Faction focus ${escapeHtml(shortFactionName(faction))}.`
     : 'Faction focus unresolved.';
   return `
-      <h3 class="fp-readout-head">${rootKind} · ${outcome}</h3>
-      <p class="fp-readout-line">${reason}</p>
-      <p class="fp-readout-line">Open state: ${openState}.</p>
-      <p class="fp-readout-line">${factionLine}</p>`;
+      <p class="k-sentence k-sentence--emph">${rootKind} · ${outcome}</p>
+      <p class="k-sentence">${reason} Open state ${openState}. ${factionLine} Sector ${sector}.</p>`;
 }
 
 function collectChainColumns(chain) {
@@ -279,6 +274,16 @@ function findChainStandingFaction(chain) {
   return null;
 }
 
+function findChainAct(chain) {
+  const nodes = Array.isArray(chain && chain.nodes) ? chain.nodes : [];
+  let best = null;
+  for (const node of nodes) {
+    if (!node || node.k !== 'act') continue;
+    if (!best || nodeStamp(node) > nodeStamp(best)) best = node;
+  }
+  return best;
+}
+
 function chainOpenReason(chain, state) {
   if (!chain || chain.open !== true) return 'settled';
   if (chain.bountyPending === true && asNumber(state && state.player && state.player.bounty, 0) > 0) return 'unpaid bounty';
@@ -286,8 +291,39 @@ function chainOpenReason(chain, state) {
   return 'active aggro';
 }
 
-function defaultDrawerFilters() {
-  return { outcome: '', faction: '', sector: '', sort: 'time' };
+/** The hang row's name: the act's word, or the chain's kind and outcome when no act was recorded. */
+function chainWord(chain) {
+  const act = findChainAct(chain);
+  if (act) return nodeWord(act);
+  return `${sentenceCase(asString(chain.rootKind) || 'chain')} · ${outcomeWord(chain.outcome) || 'witnessed'}`;
+}
+
+/** The hang row's sub: the latest stamp on the chain. */
+function chainStampText(chain) {
+  const nodes = Array.isArray(chain && chain.nodes) ? chain.nodes : [];
+  let latest = null;
+  for (const node of nodes) if (node && (!latest || nodeStamp(node) > nodeStamp(latest))) latest = node;
+  const t = latest ? asNumber(latest.t, 0) : asNumber(chain && chain.t, 0);
+  return `${cycleText(t)} · tick ${chainStamp(chain)}`;
+}
+
+/** A hairline row that is read, not picked (`.k-row--static`). */
+function staticRow(name, sub, num) {
+  const row = el('li', 'k-row k-row--static');
+  const body = el('div');
+  body.append(el('span', 'k-row__name', name));
+  if (sub) body.append(el('div', 'k-row__sub', sub));
+  row.append(body, el('span', 'k-row__num', num || ''));
+  return row;
+}
+
+/** A caps heading and its static rows, appended to the record. */
+function appendRecordSection(host, caption, entries) {
+  host.append(el('div', 'k-caps', caption));
+  const list = el('ul', 'k-rows');
+  list.setAttribute('aria-label', caption);
+  for (const [name, sub, num] of entries) list.append(staticRow(name, sub, num));
+  host.append(list);
 }
 
 export const footprintScreen = {
@@ -295,32 +331,30 @@ export const footprintScreen = {
   accessibleName: 'Footprint records board',
   _ctx: null,
   _root: null,
+  _title: null,
+  _titleWord: null,
+  _titleLine: null,
+  _corner: null,
+  _heatN: null,
+  _heatW: null,
+  _hang: null,
+  _hangList: null,
   _stage: null,
   _stateHost: null,
   _board: null,
-  _heatField: null,
   _edges: null,
   _nodes: null,
-  _crestWord: null,
-  _crestLine: null,
-  _crestMeta: null,
   _incidentState: null,
   _consequenceState: null,
-  _readout: null,
-  _verbs: null,
-  _drawer: null,
-  _drawerRows: null,
-  _drawerLedger: null,
-  _drawerMeta: null,
-  _drawerControls: null,
+  _record: null,
+  _foot: null,
+  _chains: [],
   _selectedChainId: null,
   _selectedNodeIndex: null,
-  _drawerOpen: false,
+  _recordSort: 'time',
   _nodeButtons: new Map(),
   _nodeMeta: new Map(),
   _renderedChains: [],
-  _drawerFilters: defaultDrawerFilters(),
-  _loading: true,
   _raf: 0,
   _resizeHandler: null,
   _pendingFocusKey: null,
@@ -328,98 +362,91 @@ export const footprintScreen = {
   mount(rootEl, ctx) {
     this._ctx = ctx;
     this._root = rootEl;
-    rootEl.id = 'sf-footprint';
-    rootEl.classList.add('sf-footprint', 'sf-instrument');
     rootEl.innerHTML = '';
-    injectStyle();
+    rootEl.classList.remove('sf-footprint', 'sf-instrument', 'panel');
+    rootEl.classList.add('k-screen');
+    rootEl.dataset.kReady = '0';
+    rootEl.setAttribute('aria-labelledby', 'sf-footprint-title');
 
-    const crest = document.createElement('section');
-    crest.className = 'sf-crest';
-    crest.innerHTML = `
-      <div class="fp-crest-main">
-        <div class="fp-kicker">FOOTPRINT</div>
-        <div class="sf-crest__title fp-display">CLEAN</div>
-        <div class="sf-crest__line fp-line"></div>
-      </div>
-      <div class="fp-crest-meta"></div>`;
-    this._crestWord = crest.querySelector('.fp-display');
-    this._crestLine = crest.querySelector('.fp-line');
-    this._crestMeta = crest.querySelector('.fp-crest-meta');
+    // .k-title — the display word (Clean / Marked / Wanted) and the crest sentence.
+    const title = el('header', 'k-title');
+    const word = el('h1', 'k-display k-t-title fp-display', DISPLAY_BY_STATE.clean.word);
+    word.id = 'sf-footprint-title';
+    const line = el('p', 'k-t-emph k-62 fp-line', '');
+    title.append(word, line);
+    this._title = title;
+    this._titleWord = word;
+    this._titleLine = line;
 
-    const stage = document.createElement('section');
-    stage.className = 'sf-stage fp-stage';
+    // .k-hang — the chains as rows; rebuilt by _renderHang.
+    const hang = el('div', 'k-hang');
+    this._hang = hang;
+
+    // .k-stage — the traced chain's board above, its record below; the data states in between.
+    const stage = el('div', 'k-stage fp-stage');
     this._stage = stage;
-    const stateHost = document.createElement('div');
-    stateHost.className = 'fp-statehost';
+    const stateHost = el('div', 'fp-statehost');
     stateHost.hidden = true;
     this._stateHost = stateHost;
-    const board = document.createElement('div');
-    board.className = 'fp-board';
+    const board = el('div', 'fp-board');
     board.innerHTML = `
       <div class="fp-head">
-        <div class="fp-col-head"><span>ACT</span></div>
-        <div class="fp-col-head"><span>INCIDENT</span><small class="fp-col-state fp-col-state--incident"></small></div>
-        <div class="fp-col-head"><span>STANDING</span></div>
-        <div class="fp-col-head"><span>CONSEQUENCE</span><small class="fp-col-state fp-col-state--consequence"></small></div>
+        <div class="fp-col-head"><span class="k-caps">${COLUMN_NAMES[0]}</span></div>
+        <div class="fp-col-head"><span class="k-caps">${COLUMN_NAMES[1]}</span><small class="fp-col-state fp-col-state--incident k-t-fine k-38"></small></div>
+        <div class="fp-col-head"><span class="k-caps">${COLUMN_NAMES[2]}</span></div>
+        <div class="fp-col-head"><span class="k-caps">${COLUMN_NAMES[3]}</span><small class="fp-col-state fp-col-state--consequence k-t-fine k-38"></small></div>
       </div>
-      <div class="fp-field" aria-hidden="true"></div>
       <svg class="fp-edges" aria-hidden="true"></svg>
       <div class="fp-nodes" role="list"></div>`;
     this._board = board;
-    this._heatField = board.querySelector('.fp-field');
     this._edges = board.querySelector('.fp-edges');
     this._nodes = board.querySelector('.fp-nodes');
     this._incidentState = board.querySelector('.fp-col-state--incident');
     this._consequenceState = board.querySelector('.fp-col-state--consequence');
-    stage.append(stateHost, board);
+    const record = el('div', 'fp-drawer');
+    record.setAttribute('aria-label', 'Chain record');
+    this._record = record;
+    stage.append(stateHost, board, record);
 
-    const apron = document.createElement('section');
-    apron.className = 'sf-apron fp-apron';
-    apron.innerHTML = `
-      <div class="fp-apron-grid">
-        <section class="fp-readout" aria-live="polite"></section>
-        <section class="fp-verbs"></section>
-      </div>`;
-    this._readout = apron.querySelector('.fp-readout');
-    this._verbs = apron.querySelector('.fp-verbs');
+    // .k-foot — the verbs as words; rebuilt by _renderVerbs.
+    const foot = el('footer', 'k-foot');
+    this._foot = foot;
 
-    const drawer = document.createElement('aside');
-    drawer.className = 'sf-drawer fp-drawer';
-    drawer.setAttribute('aria-modal', 'false');
-    drawer.innerHTML = `
-      <div class="sf-drawer__deck fp-drawer-deck">
-        <div class="fp-drawer-head">
-          <button type="button" class="fp-drawer-close" data-fp-act="drawer-close" aria-label="Close record drawer">×</button>
-          <div class="fp-kicker">RECORD</div>
-          <h2 class="fp-drawer-title">Chain record</h2>
-        </div>
-        <div class="fp-drawer-meta"></div>
-        <div class="fp-drawer-controls"></div>
-        <div class="fp-drawer-rows"></div>
-        <div class="fp-drawer-ledger"></div>
-      </div>`;
-    this._drawer = drawer;
-    this._drawerMeta = drawer.querySelector('.fp-drawer-meta');
-    this._drawerControls = drawer.querySelector('.fp-drawer-controls');
-    this._drawerRows = drawer.querySelector('.fp-drawer-rows');
-    this._drawerLedger = drawer.querySelector('.fp-drawer-ledger');
+    // .k-corner — the heat tier as the signal hero.
+    const corner = el('div', 'k-corner');
+    const heat = hero('T0', 'heat · clears in 0 s', { signal: true });
+    this._heatN = heat.querySelector('.k-hero__n');
+    this._heatW = heat.querySelector('.k-hero__w');
+    corner.append(heat);
+    this._corner = corner;
 
-    rootEl.append(crest, stage, apron, drawer);
+    rootEl.append(title, hang, stage, foot, corner);
 
     rootEl.addEventListener('click', (event) => this._onClick(event));
     rootEl.addEventListener('keydown', (event) => this._onKeydown(event));
-    rootEl.addEventListener('input', (event) => this._onInput(event));
+    this._nodes.addEventListener('scroll', () => this._queueEdgeDraw());
   },
 
   onShow(ctx) {
     if (ctx) this._ctx = ctx;
-    this._loading = false;
     this._restoreMemory();
     this.refresh(this._ctx);
     if (!this._resizeHandler) {
       this._resizeHandler = () => this._queueEdgeDraw();
       window.addEventListener('resize', this._resizeHandler);
     }
+    cue('open');
+    try {
+      settle(this._title, { from: 'top', state: 'footprint:open' });
+      settle(this._hang, { from: 'left', state: 'footprint:open' });
+      settle(this._stage, { from: 'right', state: 'footprint:open' });
+      settle(this._foot, { from: 'bottom', state: 'footprint:open' });
+    } catch (_) { /* motion is cosmetic */ }
+    if (this._root) this._root.dataset.kReady = '1';
+    try {
+      const row = this._hangList && (this._hangList.querySelector('.k-row[aria-selected="true"]') || this._hangList.querySelector('.k-row'));
+      if (row) row.focus({ preventScroll: true });
+    } catch (_) { /* focus is a courtesy */ }
   },
 
   onHide() {
@@ -433,12 +460,14 @@ export const footprintScreen = {
       this._raf = 0;
     }
     this._pendingFocusKey = null;
+    cue('close');
   },
 
   refresh(ctx) {
     if (ctx) this._ctx = ctx;
     const state = this._ctx && this._ctx.state;
     if (!state || !state.player) {
+      this._chains = [];
       this._showDataState('denied', {
         code: 'CLEARANCE_DENIED',
         headline: 'Footprint is unavailable in this context.',
@@ -453,6 +482,7 @@ export const footprintScreen = {
 
     const provenance = state.provenance;
     if (provenance == null) {
+      this._chains = [];
       this._showDataState('loading', {
         code: 'LEDGER_SYNC',
         headline: 'Footprint is indexing your recent activity.',
@@ -469,6 +499,7 @@ export const footprintScreen = {
       && Array.isArray(provenance.chains)
       && provenance.openIncidents && typeof provenance.openIncidents === 'object';
     if (!valid) {
+      this._chains = [];
       this._showDataState('error', {
         code: 'LEDGER_FAULT',
         headline: 'Footprint could not read this ledger snapshot.',
@@ -482,31 +513,25 @@ export const footprintScreen = {
     }
 
     const chains = provenance.chains
-      .filter((entry) => entry && Array.isArray(entry.nodes))
+      .filter((entry) => entry && Array.isArray(entry.nodes) && asString(entry.id))
       .slice()
       .sort((left, right) => chainStamp(right) - chainStamp(left));
+    this._chains = chains;
     const player = state.player;
     const bounty = Math.max(0, asNumber(player.bounty, 0));
     const display = DISPLAY_BY_STATE[wantedState(state)];
     const heatLevel = heatLevelFor(asNumber(player.heat, 0));
     const clearSeconds = heatClearSecondsForLevel(heatLevel);
     const clearRadius = heatRadiusForLevel(heatLevel);
-    const openChains = chains.filter((entry) => entry && entry.open === true).length;
+    const openChains = chains.filter((entry) => entry.open === true).length;
 
-    this._crestWord.textContent = display.word;
-    this._crestWord.classList.toggle('fp-display--foe', display.tone === 'foe');
-    this._crestWord.classList.toggle('fp-display--goal', display.tone === 'goal');
-    this._crestWord.classList.toggle('fp-display--calm', display.tone === 'calm');
-    this._crestLine.textContent = `${creditsText(bounty)} standing · HEAT T${heatLevel} · clears in ${secText(clearSeconds)} · radius ${Math.round(clearRadius)} wu · ${openChains} open chain${openChains === 1 ? '' : 's'}`;
-    this._crestMeta.innerHTML = `
-      <div class="fp-meta-line">Bounty hunters exist while bounty stands. Director pressure rises while it stays unpaid.</div>
-      <div class="fp-meta-line">Threshold: WANTED at heat ${Math.round(WANTED_THRESHOLD * 100)}%.</div>`;
-
-    const reducedMotion = prefersReducedMotion({
-      motionReduce: !!(state.settings && state.settings.video && state.settings.video.motionReduce),
-    });
-    this._root.classList.toggle('fp-reduced', reducedMotion);
-    this._renderHeatField(asNumber(player.heat, 0));
+    this._titleWord.textContent = display.word;
+    this._titleWord.classList.toggle('fp-display--foe', display.tone === 'foe');
+    this._titleWord.classList.toggle('fp-display--goal', display.tone === 'goal');
+    this._titleWord.classList.toggle('fp-display--calm', display.tone === 'calm');
+    this._titleLine.textContent = `${creditsText(bounty)} standing · heat T${heatLevel} · clears in ${clearsText(clearSeconds)} · radius ${Math.round(clearRadius)} wu · ${openChains} open chain${openChains === 1 ? '' : 's'}`;
+    this._heatN.textContent = `T${heatLevel}`;
+    this._heatW.textContent = `heat · clears in ${clearsText(clearSeconds)}`;
 
     if (chains.length === 0 && bounty <= 0 && !isPlayerWanted(state)) {
       this._showDataState('empty', {
@@ -518,19 +543,22 @@ export const footprintScreen = {
           onActivate: () => openGalaxyMap(this._ctx, { focus: MAP_FOCUS.GALAXY, source: 'footprint-empty' }),
         },
       });
-    } else {
-      this._showBoard();
-      this._renderBoard(chains.slice(0, 12));
-      this._renderReadout();
-      this._renderVerbs();
-      this._renderDrawer();
-      this._queueEdgeDraw();
+      return;
     }
+
+    this._showBoard();
+    this._ensureSelection();
+    this._renderHang({ empty: true });
+    this._renderBoard();
+    this._renderRecord();
+    this._renderVerbs({ chart: true });
+    this._queueEdgeDraw();
   },
 
   _showDataState(kind, opts) {
     const stateOpts = opts && typeof opts === 'object' ? opts : {};
     this._board.hidden = true;
+    this._record.hidden = true;
     this._stateHost.hidden = false;
     mountDataState(this._stateHost, kind, {
       code: stateOpts.code,
@@ -539,84 +567,118 @@ export const footprintScreen = {
       verb: stateOpts.verb,
       skeleton: stateOpts.skeleton,
     });
-    this._renderReadout();
-    this._renderVerbs();
-    this._renderDrawer();
+    this._renderHang({ empty: false });
+    // The data state carries the chart verb; the foot does not repeat it.
+    this._renderVerbs({ chart: false });
   },
 
   _showBoard() {
     settleDataState(this._stateHost);
     this._stateHost.hidden = true;
     this._board.hidden = false;
+    this._record.hidden = false;
   },
 
-  _renderHeatField(heatValue) {
-    if (!this._heatField) return;
-    const heat = Math.max(0, Math.min(1, asNumber(heatValue, 0)));
-    const rows = 10;
-    const cols = 48;
-    const glyphCount = Math.max(1, Math.round(heat * 4));
-    const glyph = HEAT_GLYPHS[glyphCount] || HEAT_GLYPHS[0];
-    const denseCols = Math.max(4, Math.round(cols * heat));
-    const lines = [];
-    for (let row = 0; row < rows; row += 1) {
-      const spread = Math.max(2, denseCols - Math.round((row / rows) * 16));
-      const leftPad = Math.max(0, Math.round((cols - spread) / 2));
-      const rightPad = Math.max(0, cols - spread - leftPad);
-      lines.push(`${' '.repeat(leftPad)}${glyph.repeat(spread)}${' '.repeat(rightPad)}`);
+  /** The stage always shows one chain when there is one: the remembered chain, else the newest. */
+  _ensureSelection() {
+    const chains = this._chains || [];
+    if (!chains.some((entry) => entry.id === this._selectedChainId)) {
+      this._selectedChainId = chains.length ? chains[0].id : null;
+      this._selectedNodeIndex = null;
     }
-    this._heatField.textContent = lines.join('\n');
+    const chain = this._selectedChain();
+    if (chain && this._selectedNodeIndex != null && !chain.nodes[this._selectedNodeIndex]) this._selectedNodeIndex = null;
   },
 
-  _renderBoard(chains) {
+  _renderHang({ empty }) {
+    const state = this._ctx && this._ctx.state;
+    const hang = this._hang;
+    hang.textContent = '';
+    hang.append(el('div', 'k-caps', 'Chains'));
+    const chains = this._chains || [];
+    if (!chains.length) {
+      this._hangList = null;
+      if (empty) hang.append(el('p', 'k-empty', 'No chains on this run.'));
+      return;
+    }
+    const items = chains.map((chain) => ({
+      id: chain.id,
+      name: chainWord(chain),
+      sub: `${chainStampText(chain)} · ${chainOpenReason(chain, state)}`,
+      selected: chain.id === this._selectedChainId,
+    }));
+    const list = rows(items, {
+      cols: 'minmax(0, 1fr) auto',
+      ariaLabel: 'Chains',
+      onPick: (id) => this._pickChain(id),
+    });
+    // The stage follows focus, not only a click: arrowing down the rows traces the next chain.
+    list.addEventListener('focusin', (event) => {
+      const row = event.target && event.target.closest ? event.target.closest('.k-row') : null;
+      if (row && row.dataset.id && row.dataset.id !== this._selectedChainId) this._pickChain(row.dataset.id);
+    });
+    hang.append(list);
+    this._hangList = list;
+  },
+
+  _syncHangSelection() {
+    if (!this._hangList) return;
+    for (const row of this._hangList.querySelectorAll('.k-row')) {
+      row.setAttribute('aria-selected', String(row.dataset.id === this._selectedChainId));
+    }
+  },
+
+  _pickChain(chainId) {
+    const id = asString(chainId);
+    if (!id || id === this._selectedChainId) return;
+    if (!(this._chains || []).some((entry) => entry.id === id)) return;
+    this._setSelection(id, null);
+  },
+
+  /** Only the traced chain is on the stage; the rest are rows in the hang. */
+  _renderBoard() {
+    const chain = this._selectedChain();
+    const chains = chain ? [chain] : [];
     this._renderedChains = chains;
     this._nodeButtons = new Map();
     this._nodeMeta = new Map();
     if (this._nodes) this._nodes.textContent = '';
-    const state = this._ctx && this._ctx.state;
     let sawIncident = false;
     let sawConsequence = false;
 
-    for (const chain of chains) {
-      const chainId = asString(chain.id);
+    for (const entry of chains) {
+      const chainId = asString(entry.id);
       if (!chainId) continue;
-      const chainEl = document.createElement('div');
-      chainEl.className = 'fp-chain';
+      const chainEl = el('div', 'fp-chain');
       chainEl.setAttribute('data-chain-id', chainId);
       chainEl.setAttribute('role', 'listitem');
-      const columns = collectChainColumns(chain);
+      const columns = collectChainColumns(entry);
       if (columns[1].length > 0) sawIncident = true;
       if (columns[3].length > 0) sawConsequence = true;
       for (let col = 0; col < columns.length; col += 1) {
-        const cell = document.createElement('div');
-        cell.className = 'fp-cell';
+        const cell = el('div', 'fp-cell');
         cell.setAttribute('data-col', String(col));
         const items = columns[col];
         if (items.length === 0) {
           if (col === 1 || col === 3) {
-            const tag = document.createElement('span');
-            tag.className = 'fp-col-empty';
-            tag.textContent = col === 1 ? INCIDENT_EMPTY_LABEL : CONSEQUENCE_EMPTY_LABEL;
-            cell.appendChild(tag);
+            cell.append(el('span', 'fp-col-empty k-t-fine k-38', col === 1 ? INCIDENT_EMPTY_LABEL : CONSEQUENCE_EMPTY_LABEL));
           }
         } else {
           for (let order = 0; order < items.length; order += 1) {
             const item = items[order];
             const key = `${chainId}:${item.nodeIndex}`;
-            const button = document.createElement('button');
+            const button = el('button', `k-word k-word--body fp-node fp-node--${asString(item.node.k) || 'entry'}`, nodeWord(item.node));
             button.type = 'button';
-            button.className = `fp-node fp-node--${asString(item.node.k) || 'entry'}`;
             button.setAttribute('data-node-key', key);
             button.setAttribute('data-chain-id', chainId);
             button.setAttribute('data-node-index', String(item.nodeIndex));
             button.setAttribute('data-col', String(col));
             button.setAttribute('data-order', String(order));
             button.setAttribute('tabindex', '-1');
-            button.textContent = nodeWord(item.node);
             const why = nodeWhy(item.node);
             if (why) button.setAttribute('data-why', why);
             button.setAttribute('aria-label', `${COLUMN_NAMES[col]} · ${button.textContent}`);
-            cell.appendChild(button);
+            cell.append(button);
             this._nodeButtons.set(key, button);
             this._nodeMeta.set(key, {
               chainId,
@@ -627,13 +689,14 @@ export const footprintScreen = {
             });
           }
         }
-        chainEl.appendChild(cell);
+        chainEl.append(cell);
       }
-      this._nodes.appendChild(chainEl);
+      this._nodes.append(chainEl);
     }
 
-    this._incidentState.textContent = sawIncident ? '' : INCIDENT_EMPTY_LABEL;
-    this._consequenceState.textContent = sawConsequence ? '' : CONSEQUENCE_EMPTY_LABEL;
+    // With no chain on the stage the column heads carry the empty tags; with one, its cells do.
+    this._incidentState.textContent = chain || sawIncident ? '' : INCIDENT_EMPTY_LABEL;
+    this._consequenceState.textContent = chain || sawConsequence ? '' : CONSEQUENCE_EMPTY_LABEL;
     this._applyTraceClasses();
   },
 
@@ -713,7 +776,7 @@ export const footprintScreen = {
   _selectedChain() {
     const id = this._selectedChainId;
     if (!id) return null;
-    return (this._renderedChains || []).find((entry) => entry && entry.id === id) || null;
+    return (this._chains || []).find((entry) => entry && entry.id === id) || null;
   },
 
   _selectedNode() {
@@ -723,20 +786,19 @@ export const footprintScreen = {
   },
 
   _setSelection(chainId, nodeIndex, options = {}) {
+    const previousChain = this._selectedChainId;
     this._selectedChainId = chainId || null;
     this._selectedNodeIndex = Number.isFinite(Number(nodeIndex)) ? Number(nodeIndex) : null;
-    if (options.openDrawer === true) this._drawerOpen = true;
-    if (options.clearDrawer === true) this._drawerOpen = false;
     this._pendingFocusKey = options.focusKey || null;
+    if (previousChain !== this._selectedChainId) {
+      this._syncHangSelection();
+      this._renderBoard();
+      this._queueEdgeDraw();
+    }
     this._applyTraceClasses();
-    this._renderReadout();
-    this._renderVerbs();
-    this._renderDrawer();
+    this._renderRecord();
+    this._renderVerbs({ chart: true });
     this._rememberMemory();
-  },
-
-  _clearTrace() {
-    this._setSelection(null, null, { clearDrawer: true });
   },
 
   _applyTraceClasses() {
@@ -748,6 +810,11 @@ export const footprintScreen = {
       button.classList.toggle('fp-node--live', !!chainId && sameChain);
       button.classList.toggle('fp-node--latch', key === selectedKey);
       button.setAttribute('tabindex', key === (this._pendingFocusKey || selectedKey) ? '0' : '-1');
+    }
+    if (!selectedKey && !this._pendingFocusKey) {
+      // No node traced yet: the newest act is the board's one Tab stop.
+      const first = this._nodeButtons.keys().next();
+      if (!first.done) this._nodeButtons.get(first.value).setAttribute('tabindex', '0');
     }
     if (this._pendingFocusKey) {
       const target = this._nodeButtons.get(this._pendingFocusKey);
@@ -762,14 +829,6 @@ export const footprintScreen = {
       edge.classList.toggle('fp-edge--spent', !!chainId && !sameChain);
       edge.classList.toggle('fp-edge--live', !!chainId && sameChain);
     }
-  },
-
-  _renderReadout() {
-    if (!this._readout) return;
-    const state = this._ctx && this._ctx.state;
-    const chain = this._selectedChain();
-    const node = this._selectedNode();
-    this._readout.innerHTML = footprintReadoutHtml(chain, node, state);
   },
 
   _verbState() {
@@ -789,7 +848,7 @@ export const footprintScreen = {
         : { enabled: true, reason: `Pay ${creditsText(bounty)} and clear standing bounty.` };
 
     const bribeState = (() => {
-      if (!factionId) return { enabled: false, reason: 'Select a standing node first.', cost: 0 };
+      if (!factionId) return { enabled: false, reason: 'Trace a chain with a standing node first.', cost: 0 };
       if (!Number.isFinite(bribe)) return { enabled: false, reason: 'Too hated to bribe.', cost: Infinity };
       if (bribe <= 0) return { enabled: false, reason: 'Not hostile — nothing to clear.', cost: 0 };
       if (credits < bribe) return { enabled: false, reason: `${creditsText(bribe - credits)} short.`, cost: bribe };
@@ -807,70 +866,76 @@ export const footprintScreen = {
         : 'No amends contract on offer — dock with the affected faction to ask.',
     };
 
-    const showChart = chain && asString(chain.sectorId)
-      ? { enabled: true, reason: 'Open Chart framed on this chain.' }
-      : { enabled: false, reason: 'This chain is not tied to a place.' };
+    // One "Show on chart" word: framed on the traced chain when it is tied to a place, unframed when
+    // nothing is traced, and quiet when the traced chain has no place.
+    const showChart = !chain
+      ? { enabled: true, reason: 'Open the chart.' }
+      : asString(chain.sectorId)
+        ? { enabled: true, reason: 'Open Chart framed on this chain.' }
+        : { enabled: false, reason: 'This chain is not tied to a place.' };
 
     return { payBounty, bribeState, accuser, amends, showChart, factionId, incident };
   },
 
-  _renderVerbs() {
-    if (!this._verbs) return;
+  _renderVerbs({ chart }) {
+    if (!this._foot) return;
     const v = this._verbState();
-    const defs = [
-      { id: 'pay-bounty', label: 'PAY BOUNTY', state: v.payBounty },
-      { id: 'bribe', label: 'BRIBE', state: v.bribeState },
-      { id: 'find-accuser', label: 'FIND THE ACCUSER', state: v.accuser },
-      { id: 'take-amends', label: 'TAKE AMENDS CONTRACT', state: v.amends },
+    const items = [
+      { action: 'pay-bounty', label: 'Pay bounty', sub: v.payBounty.reason, primary: true, disabled: !v.payBounty.enabled },
+      { action: 'bribe', label: 'Bribe', sub: v.bribeState.reason, disabled: !v.bribeState.enabled },
+      { action: 'find-accuser', label: 'Find the accuser', sub: v.accuser.reason, disabled: !v.accuser.enabled },
+      { action: 'take-amends', label: 'Take amends contract', sub: v.amends.reason, disabled: !v.amends.enabled },
     ];
-    // Exactly ONE "Show on chart" control at a time: with a chain selected the rail verb carries
-    // it (active when the chain is tied to a place); with no selection the readout's quiet inline
-    // verb is the only route to the chart, so the disabled duplicate card is dropped entirely.
-    if (this._selectedChain()) defs.push({ id: 'show-chart', label: 'SHOW ON CHART', state: v.showChart });
-    const html = defs.map((entry) => {
-      const disabled = entry.state.enabled ? '' : ' disabled';
-      const reason = entry.state.reason || '';
-      const aria = `${entry.label}. ${reason}`;
-      return `
-        <button type="button" class="fp-verb" data-fp-verb="${entry.id}"${disabled} aria-label="${escapeAttr(aria)}">
-          <span class="fp-verb-label">${entry.label}</span>
-          <span class="fp-verb-reason">${escapeHtml(reason)}</span>
-        </button>`;
-    }).join('');
-    this._verbs.innerHTML = html;
+    if (chart) items.push({ action: 'show-chart', label: 'Show on chart', sub: v.showChart.reason, disabled: !v.showChart.enabled });
+    this._foot.textContent = '';
+    this._foot.append(words(items, {
+      row: true,
+      size: 'emph',
+      ariaLabel: 'Footprint actions',
+      onPick: (action) => this._runVerb(action),
+    }));
   },
 
-  _renderDrawer() {
-    if (!this._drawer) return;
-    this._drawer.classList.toggle('is-open', this._drawerOpen === true);
-    const chain = this._selectedChain();
+  /** The stage's lower half: the traced chain's head of record, its nodes as rows, then the ledger. */
+  _renderRecord() {
+    const record = this._record;
+    if (!record) return;
+    record.textContent = '';
     const state = this._ctx && this._ctx.state;
-    if (!this._drawerOpen || !chain || !state) {
-      this._drawerMeta.innerHTML = '<p class="fp-drawer-line">Select a chain and press Enter to open the record drawer.</p>';
-      this._drawerControls.innerHTML = '';
-      this._drawerRows.innerHTML = '';
-      this._drawerLedger.innerHTML = '';
-      return;
+    const chain = this._selectedChain();
+    const node = this._selectedNode();
+    record.append(el('div', 'k-caps', 'Chain record'));
+    const head = el('div');
+    head.innerHTML = footprintReadoutHtml(chain, node, state);
+    record.append(head);
+    if (!chain || !state) return;
+
+    const lossLine = latestLossLine(state, asString(chain.sectorId));
+    if (lossLine) record.append(el('p', 'k-sentence', lossLine));
+
+    const sort = RECORD_SORTS.includes(this._recordSort) ? this._recordSort : 'time';
+    const sortWords = words([
+      { action: 'time', label: 'By time' },
+      { action: 'delta', label: 'By delta' },
+    ], {
+      row: true,
+      size: 'body',
+      ariaLabel: 'Sort the record',
+      onPick: (action) => {
+        this._recordSort = RECORD_SORTS.includes(action) ? action : 'time';
+        this._renderRecord();
+        this._rememberMemory();
+      },
+    });
+    for (const button of sortWords.querySelectorAll('.k-word')) {
+      button.setAttribute('aria-pressed', String(button.dataset.action === sort));
     }
+    record.append(sortWords);
 
-    const outcomeFilter = (this._drawerFilters.outcome || '').toLowerCase();
-    const factionFilter = (this._drawerFilters.faction || '').toLowerCase();
-    const sectorFilter = (this._drawerFilters.sector || '').toLowerCase();
-    const sort = DRAWER_SORTS.includes(this._drawerFilters.sort) ? this._drawerFilters.sort : 'time';
-
-    const rows = (Array.isArray(chain.nodes) ? chain.nodes.slice() : [])
-      .map((node, index) => ({ node, index }))
-      .filter(({ node }) => {
-        const outcome = outcomeWord(node.outcome).toLowerCase();
-        const faction = shortFactionName(asString(node.factionId) || asString(node.srcFaction)).toLowerCase();
-        const sector = (asString(node.sectorId) || asString(chain.sectorId) || '').toLowerCase();
-        if (outcomeFilter && !outcome.includes(outcomeFilter)) return false;
-        if (factionFilter && !faction.includes(factionFilter)) return false;
-        if (sectorFilter && !sector.includes(sectorFilter)) return false;
-        return true;
-      });
-
-    rows.sort((left, right) => {
+    const nodeRows = (Array.isArray(chain.nodes) ? chain.nodes.slice() : [])
+      .map((entry, index) => ({ node: entry, index }))
+      .filter(({ node: entry }) => entry && typeof entry === 'object');
+    nodeRows.sort((left, right) => {
       if (sort === 'delta') {
         const a = Math.abs(asNumber(left.node.delta, 0));
         const b = Math.abs(asNumber(right.node.delta, 0));
@@ -878,95 +943,55 @@ export const footprintScreen = {
       }
       return nodeStamp(right.node) - nodeStamp(left.node);
     });
+    const list = el('ul', 'k-rows');
+    list.setAttribute('aria-label', 'Chain record');
+    if (!nodeRows.length) list.append(staticRow('No nodes on this chain.', '', ''));
+    for (const { node: entry } of nodeRows) {
+      const faction = shortFactionName(asString(entry.factionId) || asString(entry.srcFaction));
+      const tier = asString(entry.newTier);
+      const reason = repReasonLabel(entry.reason);
+      const note = nodeWhy(entry) || asString(entry.text) || '';
+      const name = `${sentenceCase(asString(entry.k) || 'entry')} · ${faction}`;
+      const sub = [`${cycleText(entry.t)} · tick ${asInteger(entry.tick, 0)}`, reason, tier, note].filter(Boolean).join(' · ');
+      list.append(staticRow(name, sub, deltaText(entry.delta)));
+    }
+    record.append(list);
+
+    const ledger = buildShipLedger(state, { page: 0, pageSize: SHIP_LEDGER_PAGE_SIZE });
+    const ledgerRows = (ledger.entries || []).slice(0, SHIP_LEDGER_PAGE_SIZE);
+    appendRecordSection(record, 'Ship ledger', ledgerRows.length
+      ? ledgerRows.map((entry) => [entry.text || '', sentenceCase(String(entry.cycleLabel || '').toLowerCase()), ''])
+      : [['No ship-ledger prose on this run.', '', '']]);
 
     const incident = findChainIncident(chain);
-    const lossLine = latestLossLine(state, asString(chain.sectorId));
-    const aceNode = (chain.nodes || []).find((node) => node && asString(node.aceId));
+    appendRecordSection(record, 'Incident', [[
+      incident ? (asString(incident.text) || asString(incident.cause) || 'Recorded') : 'No incident node on this chain.',
+      incident && asString(incident.stationId) ? `station ${incident.stationId}` : '',
+      '',
+    ]]);
+
+    const aceNode = (chain.nodes || []).find((entry) => entry && asString(entry.aceId));
     const aceRecord = aceNode && state.aceMemory && state.aceMemory[aceNode.aceId]
       ? state.aceMemory[aceNode.aceId]
       : null;
     const aceData = aceNode ? aceById(aceNode.aceId) : null;
+    appendRecordSection(record, 'Ace record', aceRecord
+      ? [[
+        `${aceRecord.name || (aceData && aceData.name) || aceNode.aceId} · ${aceRecord.crew || (aceData && aceData.crew) || 'Unknown crew'} · ${aceRecord.gimmickTag || (aceData && aceData.gimmickTag) || 'ace'}`,
+        `encountered ${aceRecord.encounterCount | 0} · fled ${aceRecord.fleeCount | 0} · flung ${aceRecord.flungCount | 0} · return tier ${aceRecord.returnTier | 0}${aceRecord.returnsBigger ? ' · returns bigger' : ''}`,
+        '',
+      ]]
+      : [['No named ace memory linked to this chain.', '', '']]);
+
     const titleRows = Array.isArray(state.titles && state.titles.history)
       ? state.titles.history.slice(-4).reverse()
       : [];
-
-    this._drawerMeta.innerHTML = `
-      <p class="fp-drawer-line">Sector: ${escapeHtml(asString(chain.sectorId) || 'unfiled')}</p>
-      <p class="fp-drawer-line">Open reason: ${escapeHtml(chainOpenReason(chain, state))}</p>
-      <p class="fp-drawer-line">${lossLine ? escapeHtml(lossLine) : 'No loss-ledger line recorded for this sector.'}</p>`;
-
-    this._drawerControls.innerHTML = `
-      <label class="fp-control">Outcome filter
-        <input type="text" spellcheck="false" autocomplete="off" data-fp-filter="outcome" value="${escapeAttr(this._drawerFilters.outcome || '')}" placeholder="destroyed / surrendered / ...">
-      </label>
-      <label class="fp-control">Faction filter
-        <input type="text" spellcheck="false" autocomplete="off" data-fp-filter="faction" value="${escapeAttr(this._drawerFilters.faction || '')}" placeholder="Concord / Reach / ...">
-      </label>
-      <label class="fp-control">Sector filter
-        <input type="text" spellcheck="false" autocomplete="off" data-fp-filter="sector" value="${escapeAttr(this._drawerFilters.sector || '')}" placeholder="sector id">
-      </label>
-      <button type="button" class="fp-sort" data-fp-act="toggle-sort">Sort: ${sort === 'time' ? 'time' : '|delta|'}</button>`;
-
-    this._drawerRows.innerHTML = rows.length
-      ? rows.map(({ node }) => {
-        const faction = shortFactionName(asString(node.factionId) || asString(node.srcFaction));
-        const tier = asString(node.newTier);
-        const reason = repReasonLabel(node.reason);
-        const note = nodeWhy(node) || asString(node.text) || '';
-        return `
-          <article class="fp-row">
-            <div class="fp-row-head">
-              <span class="fp-row-kind">${escapeHtml((asString(node.k) || 'entry').toUpperCase())}</span>
-              <span class="fp-row-cycle">${escapeHtml(formatLedgerCycle(asNumber(node.t, 0)))}</span>
-              <span class="fp-row-tick">tick ${asInteger(node.tick, 0)}</span>
-            </div>
-            <div class="fp-row-body">
-              <span>${escapeHtml(faction)}</span>
-              ${reason ? `<span>${escapeHtml(reason)}</span>` : ''}
-              ${deltaText(node.delta) ? `<span>${escapeHtml(deltaText(node.delta))}</span>` : ''}
-              ${tier ? `<span>${escapeHtml(tier)}</span>` : ''}
-              ${note ? `<span>${escapeHtml(note)}</span>` : ''}
-            </div>
-          </article>`;
-      }).join('')
-      : '<p class="fp-drawer-line">No rows match the current filters.</p>';
-
-    const ledger = buildShipLedger(state, { page: 0, pageSize: SHIP_LEDGER_PAGE_SIZE });
-    const ledgerRows = (ledger.entries || []).slice(0, SHIP_LEDGER_PAGE_SIZE);
-    const ledgerHtml = ledgerRows.length
-      ? ledgerRows.map((entry) => `<li>${escapeHtml(entry.cycleLabel || '')} · ${escapeHtml(entry.text || '')}</li>`).join('')
-      : '<li>No ship-ledger prose on this run.</li>';
-
-    const aceHtml = aceRecord
-      ? `<p class="fp-drawer-line">Ace: ${escapeHtml(aceRecord.name || (aceData && aceData.name) || aceNode.aceId)} · ${escapeHtml(aceRecord.crew || (aceData && aceData.crew) || 'Unknown crew')} · ${escapeHtml(aceRecord.gimmickTag || (aceData && aceData.gimmickTag) || 'ace')}</p>
-         <p class="fp-drawer-line">encountered ${aceRecord.encounterCount | 0} · fled ${aceRecord.fleeCount | 0} · flung ${aceRecord.flungCount | 0} · return tier ${aceRecord.returnTier | 0}${aceRecord.returnsBigger ? ' · BIGGER' : ''}</p>`
-      : '<p class="fp-drawer-line">No named ace memory linked to this chain.</p>';
-
-    const titleHtml = titleRows.length
+    appendRecordSection(record, 'Titles', titleRows.length
       ? titleRows.map((row) => {
         const meta = TITLE_BY_ID.get(row.titleId);
-        const title = meta ? meta.title : row.titleId;
-        return `<li>${escapeHtml(title)} · ${escapeHtml(row.holderKey || 'vacant')}</li>`;
-      }).join('')
-      : '<li>No title terminals linked on this run.</li>';
-
-    this._drawerLedger.innerHTML = `
-      <section class="fp-ledger-block">
-        <h3>Ship ledger</h3>
-        <ul>${ledgerHtml}</ul>
-      </section>
-      <section class="fp-ledger-block">
-        <h3>Incident</h3>
-        <p>${incident ? escapeHtml(asString(incident.text) || asString(incident.cause) || 'Recorded') : 'No incident node on this chain.'}</p>
-      </section>
-      <section class="fp-ledger-block">
-        <h3>Ace record</h3>
-        ${aceHtml}
-      </section>
-      <section class="fp-ledger-block">
-        <h3>Titles</h3>
-        <ul>${titleHtml}</ul>
-      </section>`;
+        return [meta ? meta.title : row.titleId, row.holderKey || 'vacant', ''];
+      })
+      : [['No title terminals linked on this run.', '', '']]);
   },
 
   _rememberMemory() {
@@ -975,8 +1000,7 @@ export const footprintScreen = {
     mem.set('footprint', {
       selectedChainId: this._selectedChainId || null,
       selectedNodeIndex: Number.isFinite(Number(this._selectedNodeIndex)) ? Number(this._selectedNodeIndex) : null,
-      drawerOpen: this._drawerOpen === true,
-      filters: { ...this._drawerFilters },
+      recordSort: RECORD_SORTS.includes(this._recordSort) ? this._recordSort : 'time',
     });
   },
 
@@ -985,76 +1009,33 @@ export const footprintScreen = {
     if (!mem || typeof mem.get !== 'function') {
       this._selectedChainId = null;
       this._selectedNodeIndex = null;
-      this._drawerOpen = false;
-      this._drawerFilters = defaultDrawerFilters();
+      this._recordSort = 'time';
       return;
     }
-    const bag = mem.get('footprint');
+    const bag = mem.get('footprint') || {};
     this._selectedChainId = asString(bag.selectedChainId);
     this._selectedNodeIndex = Number.isFinite(Number(bag.selectedNodeIndex)) ? Number(bag.selectedNodeIndex) : null;
-    this._drawerOpen = bag.drawerOpen === true;
-    const filters = bag.filters && typeof bag.filters === 'object' ? bag.filters : {};
-    this._drawerFilters = {
-      outcome: asString(filters.outcome) || '',
-      faction: asString(filters.faction) || '',
-      sector: asString(filters.sector) || '',
-      sort: DRAWER_SORTS.includes(filters.sort) ? filters.sort : 'time',
-    };
+    this._recordSort = RECORD_SORTS.includes(bag.recordSort) ? bag.recordSort : 'time';
   },
 
   _onClick(event) {
     const target = event.target;
     const node = target && target.closest && target.closest('.fp-node');
-    if (node) {
-      const chainId = node.getAttribute('data-chain-id');
-      const nodeIndex = asInteger(node.getAttribute('data-node-index'), -1);
-      if (chainId && nodeIndex >= 0) {
-        this._ctx.bus.emit('audio:cue', { id: 'ui_confirm' });
-        this._setSelection(chainId, nodeIndex, { focusKey: `${chainId}:${nodeIndex}` });
-      }
-      return;
+    if (!node) return;
+    const chainId = node.getAttribute('data-chain-id');
+    const nodeIndex = asInteger(node.getAttribute('data-node-index'), -1);
+    if (chainId && nodeIndex >= 0) {
+      cue('confirm');
+      this._setSelection(chainId, nodeIndex, { focusKey: `${chainId}:${nodeIndex}` });
     }
-    const verb = target && target.closest && target.closest('[data-fp-verb]');
-    if (verb && !verb.disabled) {
-      this._runVerb(verb.getAttribute('data-fp-verb'));
-      return;
-    }
-    const action = target && target.closest && target.closest('[data-fp-act]');
-    if (action) {
-      const kind = action.getAttribute('data-fp-act');
-      if (kind === 'drawer-close') {
-        this._drawerOpen = false;
-        this._renderDrawer();
-        this._rememberMemory();
-      } else if (kind === 'toggle-sort') {
-        this._drawerFilters.sort = this._drawerFilters.sort === 'time' ? 'delta' : 'time';
-        this._renderDrawer();
-        this._rememberMemory();
-      }
-    }
-  },
-
-  _onInput(event) {
-    const input = event.target;
-    if (!input || !input.getAttribute) return;
-    const key = input.getAttribute('data-fp-filter');
-    if (!key) return;
-    if (!Object.prototype.hasOwnProperty.call(this._drawerFilters, key)) return;
-    this._drawerFilters[key] = String(input.value || '');
-    this._renderDrawer();
-    this._rememberMemory();
   },
 
   _onKeydown(event) {
     if (event.key === 'Escape') {
+      // Escape lifts the node latch; with nothing latched it falls through to the screen manager.
+      if (this._selectedNodeIndex == null) return;
       event.preventDefault();
-      if (this._drawerOpen) {
-        this._drawerOpen = false;
-        this._renderDrawer();
-        this._rememberMemory();
-      } else {
-        this._clearTrace();
-      }
+      this._setSelection(this._selectedChainId, null);
       return;
     }
     const active = document.activeElement;
@@ -1062,12 +1043,6 @@ export const footprintScreen = {
     const key = active.getAttribute('data-node-key');
     const meta = key && this._nodeMeta.get(key);
     if (!meta) return;
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      this._drawerOpen = true;
-      this._setSelection(meta.chainId, meta.nodeIndex, { openDrawer: true, focusKey: key });
-      return;
-    }
     const deltaByKey = {
       ArrowLeft: { col: -1, row: 0 },
       ArrowRight: { col: 1, row: 0 },
@@ -1079,7 +1054,7 @@ export const footprintScreen = {
     event.preventDefault();
     const candidate = this._nextNode(meta, delta.col, delta.row);
     if (candidate) {
-      this._ctx.bus.emit('audio:cue', { id: 'ui_hover' });
+      cue('move');
       this._setSelection(candidate.chainId, candidate.nodeIndex, { focusKey: `${candidate.chainId}:${candidate.nodeIndex}` });
     }
   },
@@ -1123,24 +1098,15 @@ export const footprintScreen = {
     const chain = this._selectedChain();
     const status = this._verbState();
     if (!state || !bus) return;
-    if (verbId === 'chart-empty') {
-      // No-selection readout verb: open the chart unframed. The rail's chain-framed verb is the
-      // active twin once a chain is selected; this one stays honest about having no target.
-      openGalaxyMap(this._ctx, { focus: MAP_FOCUS.GALAXY, source: 'footprint-readout-empty' });
-      bus.emit('audio:cue', { id: 'ui_open' });
-      return;
-    }
     if (verbId === 'pay-bounty' && status.payBounty.enabled) {
       const payload = { source: 'footprint' };
       bus.emit('economy:payBounty', payload);
-      if (payload.result && payload.result.ok) bus.emit('audio:cue', { id: 'ui_confirm' });
       this.refresh(this._ctx);
       return;
     }
     if (verbId === 'bribe' && status.bribeState.enabled && status.factionId) {
       const payload = { factionId: status.factionId, source: 'footprint' };
       bus.emit('faction:bribe', payload);
-      if (payload.result && payload.result.ok) bus.emit('audio:cue', { id: 'ui_confirm' });
       this.refresh(this._ctx);
       return;
     }
@@ -1168,10 +1134,15 @@ export const footprintScreen = {
         });
       }
       if (manager && typeof manager.popScreen === 'function') manager.popScreen();
-      bus.emit('audio:cue', { id: 'ui_confirm' });
       return;
     }
-    if (verbId === 'show-chart' && status.showChart.enabled && chain) {
+    if (verbId === 'show-chart' && status.showChart.enabled) {
+      if (!chain) {
+        // Nothing traced: open the chart unframed, honest about having no target.
+        openGalaxyMap(this._ctx, { focus: MAP_FOCUS.GALAXY, source: 'footprint-readout-empty' });
+        cue('open');
+        return;
+      }
       const incident = findChainIncident(chain);
       const intent = {
         focus: MAP_FOCUS.GALAXY,
@@ -1194,7 +1165,7 @@ export const footprintScreen = {
       };
       applyMapOpenIntentToView(viewSeed, intent, state);
       openGalaxyMap(this._ctx, intent);
-      bus.emit('audio:cue', { id: 'ui_open' });
+      cue('open');
     }
   },
 };
@@ -1205,8 +1176,4 @@ function escapeHtml(value) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
-}
-
-function escapeAttr(value) {
-  return escapeHtml(value).replace(/'/g, '&#39;');
 }
