@@ -320,8 +320,10 @@ export const newGameScreen = {
     rootEl.appendChild(stage);
     this.hull = createStageHull(stage, { rootEl, zoom: STAGE_ZOOM });
 
-    // Foot: Launch (the one primary word) and Back, each its own Tab stop (the layout probe reaches
-    // both directly). `.sf-ng-footer` / `.sf-ng-launch` are inert hooks.
+    // Foot: Back, then Launch (the one primary word) — Launch stays the LAST footer button because
+    // the capture matrix, the atlas, the review probe and the localization check all reach it as
+    // `.sf-ng-footer button:last`. Each is its own Tab stop. `.sf-ng-footer` / `.sf-ng-launch` are
+    // inert hooks.
     const foot = el('footer', 'k-foot sf-ng-footer');
     const footWord = (action, label, extra) => {
       const b = el('button', 'k-word k-word--emph' + (extra ? ' ' + extra : ''), label);
@@ -329,8 +331,8 @@ export const newGameScreen = {
       foot.appendChild(b);
       return b;
     };
-    const launch = footWord('launch', coreText('launch'), 'k-word--primary sf-ng-launch');
     const back = footWord('back', coreText('back'));
+    const launch = footWord('launch', coreText('launch'), 'k-word--primary sf-ng-launch');
     launch.addEventListener('click', () => {
       if (launch.getAttribute('aria-disabled') === 'true') { cue('deny'); return; }
       cue('confirm'); this._launch(ctx);

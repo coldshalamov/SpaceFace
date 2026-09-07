@@ -93,8 +93,8 @@ try {
       assert.deepEqual(
         result.tabOrder.map((entry) => entry.control),
         // Kit order (Task B §1.1): name, the live difficulty word, seed, New seed, then the foot:
-        // Launch (the one primary word) before Back. Both actions are direct Tab stops.
-        ['pilot-name', 'difficulty', 'universe-seed', 'new seed', 'launch', 'back'],
+        // Back, then Launch (the one primary word, last in the foot). Both actions are direct Tab stops.
+        ['pilot-name', 'difficulty', 'universe-seed', 'new seed', 'back', 'launch'],
         `${viewport.width}x${viewport.height}: New Game tab order must reach both actions directly`,
       );
       assert.equal(
@@ -274,7 +274,7 @@ async function activateLaunchWithoutStartingGame(page) {
       return originalEmit(type, payload);
     };
   });
-  // The traversal ends on Back (the last word of the foot); one Shift+Tab steps back onto Launch.
+  // The traversal ends on Launch (the last word of the foot); Shift+Tab only if focus drifted past it.
   const activeText = async () => page.evaluate(() => document.activeElement?.textContent?.trim());
   for (let i = 0; i < 3 && (await activeText()) !== 'Launch'; i++) await page.keyboard.press('Shift+Tab');
   assert.equal(await activeText(), 'Launch', 'Launch must be focused before keyboard activation');
