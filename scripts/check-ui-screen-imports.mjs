@@ -143,42 +143,43 @@ const saveLoadSrc = readFileSync(new URL('../src/ui/screens/saveLoad.js', import
 const baseSrc = readFileSync(new URL('../src/ui/screens/base.js', import.meta.url), 'utf8');
 const localizedCoreCopySrc = readFileSync(new URL('../src/ui/localizedCoreCopy.js', import.meta.url), 'utf8');
 
-const menuStyleSources = [
-  ['mainMenu', mainMenuSrc],
-  ['newGame', newGameSrc],
-  ['pause', pauseSrc],
-  ['settings', settingsSrc],
-  ['saveLoad', saveLoadSrc],
-  ['help', helpSrc],
-  ['codex', codexSrc],
-];
-// A screen built on the frontend kit (imports src/ui/kit/) owns no CSS at all: no STYLE_ID and no
-// injected <style>. Every legacy menu screen still needs a present, unique STYLE_ID.
-const kitScreens = menuStyleSources.filter(([, src]) => /from '\.\.\/kit\/index\.js'/.test(src)).map(([name]) => name);
-const kitScreensInjectingStyle = menuStyleSources
-  .filter(([name, src]) => kitScreens.includes(name) && (/STYLE_ID/.test(src) || /createElement\('style'\)/.test(src)))
+// Frontend Tasks A–D moved these screens onto the kit (styles/kit.css). A migrated screen owns no
+// CSS: no STYLE_ID, no injectStyle(), no injected <style>. The list is explicit — not derived from a
+// kit import — so the old mechanism cannot come back on a screen that later drops the import.
+// Not listed: range.js (still injects Task C's live stage sheet), and the unmigrated base.js,
+// sandbox.js (dev only), drill.js (Asteroid Works keeps its own law), automationPanel.js,
+// localmap.js and starmap.js.
+const MIGRATED_SCREENS = Object.freeze([
+  ['mainMenu', '../src/ui/screens/mainMenu.js'],
+  ['newGame', '../src/ui/screens/newGame.js'],
+  ['pause', '../src/ui/screens/pause.js'],
+  ['settings', '../src/ui/screens/settings.js'],
+  ['saveLoad', '../src/ui/screens/saveLoad.js'],
+  ['gameOver', '../src/ui/screens/gameOver.js'],
+  ['credits', '../src/ui/screens/credits.js'],
+  ['help', '../src/ui/screens/help.js'],
+  ['codex', '../src/ui/screens/codex.js'],
+  ['techTree', '../src/ui/screens/techTree.js'],
+  ['missionLog', '../src/ui/screens/missionLog.js'],
+  ['footprint', '../src/ui/screens/footprint.js'],
+  ['stageHull', '../src/ui/screens/stageHull.js'],
+  ['crucible', '../src/ui/screens/crucible.js'],
+  ['crucibleDraft', '../src/ui/screens/crucibleDraft.js'],
+  ['crucibleLabControls', '../src/ui/screens/crucibleLabControls.js'],
+  ['crucibleLabTelemetry', '../src/ui/screens/crucibleLabTelemetry.js'],
+  ['confirm', '../src/ui/confirm.js'],
+]);
+const migratedInjectingStyle = MIGRATED_SCREENS
+  .filter(([, rel]) => {
+    const source = readFileSync(new URL(rel, import.meta.url), 'utf8');
+    return /\bSTYLE_ID\b/.test(source) || /createElement\('style'\)/.test(source) || /\binjectStyle\s*\(/.test(source);
+  })
   .map(([name]) => name);
-if (kitScreensInjectingStyle.length) {
-  console.log('FAIL menu screens - kit screens must not inject CSS or declare STYLE_ID: ' + kitScreensInjectingStyle.join(', '));
+if (migratedInjectingStyle.length) {
+  console.log('FAIL menu screens - migrated kit screens must not declare STYLE_ID or inject a <style>: ' + migratedInjectingStyle.join(', '));
   fail++;
 } else {
-  console.log('ok   menu screens - kit screens own no CSS (' + (kitScreens.join(', ') || 'none') + ')');
-  ok++;
-}
-const menuStyleIds = menuStyleSources.filter(([name]) => !kitScreens.includes(name)).map(([name, src]) => {
-  const match = src.match(/const STYLE_ID = '([^']+)'/);
-  return [name, match && match[1]];
-});
-const missingStyleIds = menuStyleIds.filter(([, id]) => !id).map(([name]) => name);
-const duplicateStyleIds = menuStyleIds
-  .filter(([, id], index, all) => id && all.findIndex(([, other]) => other === id) !== index)
-  .map(([name, id]) => `${name}:${id}`);
-if (missingStyleIds.length || duplicateStyleIds.length) {
-  console.log('FAIL menu screens - injected STYLE_ID values must be present and unique (missing: ' +
-    missingStyleIds.join(', ') + '; duplicate: ' + duplicateStyleIds.join(', ') + ')');
-  fail++;
-} else {
-  console.log('ok   menu screens - injected STYLE_ID values are unique');
+  console.log('ok   menu screens - the ' + MIGRATED_SCREENS.length + ' migrated screens own no CSS');
   ok++;
 }
 // Help is a kit screen (Frontend Task D): its title is the kit's `h1.k-display.k-t-title`, not the
