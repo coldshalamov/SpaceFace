@@ -361,3 +361,105 @@ export function killMachineHazardZones() {
     intensity: 0.7,
   }));
 }
+
+// PQ-027.01 — Pallas Drift debris reef. An authored cone carries loose mass; a line of
+// dynamic reef mines/pods ride it. One body slammed through the string pinballs the rest.
+export const PALLAS_REEF_SECTOR_ID = 'sector_pallas_drift';
+export const PALLAS_REEF_SITE_ID = 'pallas_debris_reef';
+export const PALLAS_REEF_LOCAL_POS = Object.freeze({ x: -320, z: -620 });
+export const PALLAS_REEF_ROT = 0.38;
+export const PALLAS_REEF_GLOBAL_POS = Object.freeze(
+  sectorLocalToGlobalForSector(PALLAS_REEF_LOCAL_POS, PALLAS_REEF_SECTOR_ID),
+);
+const PALLAS_REEF_DIR = freezeVec(Math.cos(PALLAS_REEF_ROT), Math.sin(PALLAS_REEF_ROT));
+const PALLAS_REEF_CYCLE = Object.freeze({ warningS: 2, surgeS: 8, calmS: 4 });
+
+export const PALLAS_REEF_FIELD = Object.freeze({
+  id: 'environment_pallas_debris_reef_current',
+  kind: 'cone',
+  center: PALLAS_REEF_GLOBAL_POS,
+  dir: PALLAS_REEF_DIR,
+  radius: 420,
+  strength: 340,
+  falloff: 1.12,
+  halfAngleRad: 0.42,
+  edgeSoftRad: 0.12,
+  sourceId: PALLAS_REEF_SITE_ID,
+  team: null,
+});
+
+// Tight string: along-gap is just over two radii so the upstream body riding the
+// stronger near-apex current actually strikes the next instead of sliding past.
+export const PALLAS_REEF_MINE_BODY = Object.freeze({
+  radius: 16,
+  mass: 8,
+});
+
+export const PALLAS_REEF_MINES = Object.freeze([
+  Object.freeze({ along: 72, across: -4 }),
+  Object.freeze({ along: 108, across: 5 }),
+  Object.freeze({ along: 144, across: -5 }),
+  Object.freeze({ along: 180, across: 4 }),
+  Object.freeze({ along: 216, across: -3 }),
+]);
+
+export function pallasReefPhase(simTime, out = null) {
+  const result = out || {};
+  const cycleS = PALLAS_REEF_CYCLE.warningS + PALLAS_REEF_CYCLE.surgeS + PALLAS_REEF_CYCLE.calmS;
+  const elapsedS = positiveModulo(finite(simTime), cycleS);
+  let phase;
+  let remainingS;
+  if (elapsedS < PALLAS_REEF_CYCLE.warningS) {
+    phase = 'warning';
+    remainingS = PALLAS_REEF_CYCLE.warningS - elapsedS;
+  } else if (elapsedS < PALLAS_REEF_CYCLE.warningS + PALLAS_REEF_CYCLE.surgeS) {
+    phase = 'surge';
+    remainingS = PALLAS_REEF_CYCLE.warningS + PALLAS_REEF_CYCLE.surgeS - elapsedS;
+  } else {
+    phase = 'calm';
+    remainingS = cycleS - elapsedS;
+  }
+  result.phase = phase;
+  result.fieldActive = phase !== 'calm';
+  result.fieldStrength = phase === 'surge' ? PALLAS_REEF_FIELD.strength : 0;
+  result.cycleS = cycleS;
+  result.elapsedS = elapsedS;
+  result.remainingS = remainingS;
+  return result;
+}
+
+export function pallasReefMinePos(slot) {
+  return freezeVec(
+    PALLAS_REEF_GLOBAL_POS.x + PALLAS_REEF_DIR.x * slot.along - PALLAS_REEF_DIR.z * slot.across,
+    PALLAS_REEF_GLOBAL_POS.z + PALLAS_REEF_DIR.z * slot.along + PALLAS_REEF_DIR.x * slot.across,
+  );
+}
+
+export function pallasReefMineId(index) {
+  return `pallas_reef_mine_${index}`;
+}
+
+export function pallasReefHazardZone() {
+  return Object.freeze({
+    id: PALLAS_REEF_SITE_ID,
+    type: 'debris_current',
+    center: PALLAS_REEF_LOCAL_POS,
+    radius: PALLAS_REEF_FIELD.radius,
+    intensity: 0.55,
+  });
+}
+
+export function pointInsidePallasReef(point) {
+  if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.z)) return false;
+  const dx = point.x - PALLAS_REEF_FIELD.center.x;
+  const dz = point.z - PALLAS_REEF_FIELD.center.z;
+  const distance = Math.hypot(dx, dz);
+  if (distance >= PALLAS_REEF_FIELD.radius) return false;
+  if (distance < 1e-6) return true;
+  const forward = (dx * PALLAS_REEF_FIELD.dir.x + dz * PALLAS_REEF_FIELD.dir.z) / distance;
+  if (forward <= 0) return false;
+  const angle = Math.acos(Math.max(-1, Math.min(1, forward)));
+  return angle < PALLAS_REEF_FIELD.halfAngleRad + PALLAS_REEF_FIELD.edgeSoftRad;
+}
+
+export const PALLAS_REEF_CYCLE_S = PALLAS_REEF_CYCLE;

@@ -15,6 +15,13 @@
 // A long TTL remains only as orphan/fizzle insurance. Deterministic: own seeded stream.
 // Flag-gated; not in the sim harness; encounterDirector itself is untouched.
 import { massline2Flag } from '../data/featureFlags.js';
+import { Masks } from '../core/entity.js';
+import {
+  PALLAS_REEF_MINES,
+  PALLAS_REEF_MINE_BODY,
+  pallasReefMineId,
+  pallasReefMinePos,
+} from '../data/environmentalMachinery.js';
 
 // --- Dials (design doc §12) -----------------------------------------------------------------
 const ANCHOR_MIN = 2;            // spawn up to ANCHOR_MAX when fewer than this exist in the bubble
@@ -44,6 +51,8 @@ export const terrainAnchors = {
       this._unsubs.push(this.bus.on('encounter:resolved', (p) => this._onResolved(p || {})));
       this._unsubs.push(this.bus.on('environmentalMachinery:ensureAnvil',
         (p) => this._ensureKillMachineAnvil(p || {})));
+      this._unsubs.push(this.bus.on('environmentalMachinery:ensureReef',
+        (p) => this._ensurePallasReef(p || {})));
     }
   },
 
@@ -175,5 +184,54 @@ export const terrainAnchors = {
         killMachineId: spec.machineId || null,
       },
     });
+  },
+
+  _ensurePallasReef(_spec) {
+    const list = this.state && this.state.entityList || [];
+    const existing = new Set();
+    for (const entity of list) {
+      if (entity && entity.alive !== false && entity.data && entity.data.reefMine === true) {
+        existing.add(entity.data.reefMineSlot);
+      }
+    }
+    if (!this.helpers || typeof this.helpers.spawnEntity !== 'function') return null;
+    const radius = PALLAS_REEF_MINE_BODY.radius;
+    const mass = PALLAS_REEF_MINE_BODY.mass;
+    const hull = Math.round(80 + radius * 4);
+    let spawned = 0;
+    for (let i = 0; i < PALLAS_REEF_MINES.length; i++) {
+      if (existing.has(i)) continue;
+      const pos = pallasReefMinePos(PALLAS_REEF_MINES[i]);
+      this.helpers.spawnEntity({
+        type: 'wreck',
+        pos: { x: pos.x, z: pos.z },
+        vel: { x: 0, z: 0 },
+        radius,
+        mass,
+        angVel: 0,
+        hull,
+        hullMax: hull,
+        collides: true,
+        collisionMask: Masks.SHIP | Masks.ASTEROID | Masks.WRECK | Masks.DRONE | Masks.PAYLOAD,
+        physicsBody: {
+          schemaVersion: 1,
+          radius,
+          mass,
+          inertiaY: Math.max(8, Math.round(mass * radius * radius * 0.4)),
+          dynamic: true,
+          ccd: false,
+          material: 'debris',
+          revision: 0,
+        },
+        data: {
+          majorDebris: true,
+          reefMine: true,
+          reefMineSlot: i,
+          reefMineId: pallasReefMineId(i),
+        },
+      });
+      spawned += 1;
+    }
+    return spawned;
   },
 };

@@ -9,10 +9,15 @@ import {
   CINDER_SLUICE_SITE_ID,
   CINDER_SLUICE_TRAFFIC_STAGING_POS,
   KILL_MACHINES,
+  PALLAS_REEF_FIELD,
+  PALLAS_REEF_SECTOR_ID,
+  PALLAS_REEF_SITE_ID,
   cinderSluicePhase,
   killMachinePhase,
+  pallasReefPhase,
   pointInsideCinderSluice,
   pointInsideKillMachine,
+  pointInsidePallasReef,
 } from '../src/data/environmentalMachinery.js';
 import { worldSiteManifestById } from '../src/data/worldSiteManifests.js';
 import { normalizeField, sampleFieldAcceleration } from '../src/core/fields/fieldKernel.js';
@@ -388,6 +393,77 @@ test('kill machines register surge force and request anvils without a Cinder sit
       && entry.payload.zoneType === 'debris'
       && entry.payload.zoneId === 'excavator_jaws'));
     assert.equal(fields.byId[CINDER_SLUICE_FIELD.id], undefined, 'missing sluice site does not invent a current');
+  } finally {
+    system.destroy();
+    FIELD_FLAGS.enabled = previous;
+  }
+});
+
+test('Pallas reef warning/surge/calm registers in Pallas without a Cinder site', () => {
+  assert.equal(pallasReefPhase(0).phase, 'warning');
+  assert.equal(pallasReefPhase(0).fieldStrength, 0);
+  assert.equal(pallasReefPhase(0).fieldActive, true);
+  assert.equal(pallasReefPhase(2.1).phase, 'surge');
+  assert.equal(pallasReefPhase(2.1).fieldStrength, PALLAS_REEF_FIELD.strength);
+  assert.equal(pallasReefPhase(10.1).phase, 'calm');
+  assert.equal(pallasReefPhase(10.1).fieldActive, false);
+  assert.equal(pallasReefPhase(10.1).fieldStrength, 0);
+
+  const inside = {
+    x: PALLAS_REEF_FIELD.center.x + PALLAS_REEF_FIELD.dir.x * 120,
+    z: PALLAS_REEF_FIELD.center.z + PALLAS_REEF_FIELD.dir.z * 120,
+  };
+  const outside = {
+    x: PALLAS_REEF_FIELD.center.x - PALLAS_REEF_FIELD.dir.x * 120,
+    z: PALLAS_REEF_FIELD.center.z - PALLAS_REEF_FIELD.dir.z * 120,
+  };
+  assert.equal(pointInsidePallasReef(inside), true);
+  assert.equal(pointInsidePallasReef(outside), false);
+
+  const events = [];
+  const fields = {
+    byId: Object.create(null),
+    registerEnvironmental(spec) { this.byId[spec.id] = { ...spec }; return this.byId[spec.id]; },
+    updateExternal(id, patch) { Object.assign(this.byId[id], patch); return this.byId[id]; },
+    unregisterExternal(id) { const had = !!this.byId[id]; delete this.byId[id]; return had; },
+    hasExternal(id) { return !!this.byId[id]; },
+  };
+  const state = {
+    mode: 'flight', tick: 0, simTime: 0, playerId: 1,
+    world: { currentSectorId: PALLAS_REEF_SECTOR_ID },
+    entities: new Map([[1, {
+      id: 1, type: 'ship', alive: true,
+      pos: { x: PALLAS_REEF_FIELD.center.x, z: PALLAS_REEF_FIELD.center.z },
+    }]]),
+    sites: { worldOrder: [], worldById: {} },
+  };
+  const bus = {
+    on() { return () => {}; },
+    emit(name, payload) { events.push({ name, payload }); },
+  };
+  const system = Object.create(environmentalMachinery);
+  const previous = FIELD_FLAGS.enabled;
+  FIELD_FLAGS.enabled = true;
+  try {
+    system.init({ state, bus, registry: { get(name) { return name === 'fields' ? fields : null; } } });
+    system.update(1 / 60, state);
+    const reef = fields.byId[PALLAS_REEF_FIELD.id];
+    assert.ok(reef, 'warning registers the reef cone');
+    assert.equal(reef.strength, 0, 'warning is geometry with no force');
+    assert.equal(fields.byId[CINDER_SLUICE_FIELD.id], undefined, 'Pallas does not invent a Cinder current');
+    assert.equal(events.filter((entry) => entry.name === 'environmentalMachinery:ensureReef').length, 1);
+
+    state.simTime = 2.2;
+    state.tick = 132;
+    system.update(1 / 60, state);
+    assert.equal(fields.byId[PALLAS_REEF_FIELD.id].strength, PALLAS_REEF_FIELD.strength, 'surge writes force');
+    assert.equal(events.filter((entry) => entry.name === 'environmentalMachinery:ensureReef').length, 1,
+      'ensureReef fires once');
+
+    state.simTime = 10.2;
+    state.tick = 612;
+    system.update(1 / 60, state);
+    assert.equal(fields.byId[PALLAS_REEF_FIELD.id], undefined, 'calm unregisters the reef current');
   } finally {
     system.destroy();
     FIELD_FLAGS.enabled = previous;

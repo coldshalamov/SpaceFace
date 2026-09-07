@@ -1,10 +1,10 @@
-// PQ-027 / SF-22 — Cinder Sluice runtime adapter plus three Ceres kill machines.
-//
-// World Site receipts are the durable Cinder Sluice state. Kill machines are authored furniture
-// derived from the saved sim clock. This adapter owns no saved timer and no movement state: it
-// registers volumes into the ONE field kernel and emits hazard-language boundaries. The field
-// kernel/physics membrane remains the only force writer. Death is the slam-law payoff against
-// the anvil rocks terrainAnchors materializes — never a hull-drain aura.
+// PQ-027 / SF-22 — Cinder Sluice runtime adapter, three Ceres kill machines, and the
+// Pallas Drift debris reef. World Site receipts are the durable Cinder Sluice state. Kill
+// machines and the reef are authored furniture derived from the saved sim clock. This adapter
+// owns no saved timer and no movement state: it registers volumes into the ONE field kernel
+// and emits hazard-language boundaries. The field kernel/physics membrane remains the only
+// force writer. Death is the slam-law payoff against anvils or pinballed mass — never a
+// hull-drain aura.
 
 import { fieldsFlag } from '../data/fields.js';
 import {
@@ -12,12 +12,17 @@ import {
   CINDER_SLUICE_SECTOR_ID,
   CINDER_SLUICE_SITE_ID,
   KILL_MACHINES,
+  PALLAS_REEF_FIELD,
+  PALLAS_REEF_SECTOR_ID,
+  PALLAS_REEF_SITE_ID,
   cinderSluicePhase,
   killMachineFieldCenter,
   killMachineFieldDir,
   killMachinePhase,
+  pallasReefPhase,
   pointInsideCinderSluice,
   pointInsideKillMachine,
+  pointInsidePallasReef,
 } from '../data/environmentalMachinery.js';
 
 const HAZARD_TYPE = 'debris_current';
@@ -48,6 +53,12 @@ export const environmentalMachinery = {
     this._killFieldStrength = new Map();
     this._killPlayerInside = new Set();
     this._anvilsEnsured = new Set();
+    this._reefPhaseOut = {};
+    this._reefFieldPatch = { strength: 0 };
+    this._reefFieldRegistered = false;
+    this._reefFieldStrength = null;
+    this._reefPlayerInside = false;
+    this._reefEnsured = false;
     if (this.bus && typeof this.bus.on === 'function') {
       const clear = (why) => this._clear(why);
       this._unsubs = [
@@ -70,15 +81,24 @@ export const environmentalMachinery = {
   },
 
   update(_dt, state) {
-    const inSector = state && state.mode === 'flight'
-      && state.world && state.world.currentSectorId === CINDER_SLUICE_SECTOR_ID;
-    if (!fieldsFlag('enabled') || !inSector) {
-      this._clear(!inSector ? 'inactive_route' : 'fields_disabled');
+    const sectorId = state && state.world && state.world.currentSectorId;
+    const inCeres = !!(state && state.mode === 'flight' && sectorId === CINDER_SLUICE_SECTOR_ID);
+    const inPallas = !!(state && state.mode === 'flight' && sectorId === PALLAS_REEF_SECTOR_ID);
+    if (!fieldsFlag('enabled') || !(inCeres || inPallas)) {
+      this._clear(!(inCeres || inPallas) ? 'inactive_route' : 'fields_disabled');
       return;
     }
 
-    this._updateCinder(state);
-    this._updateKillMachines(state);
+    if (inCeres) {
+      this._updateCinder(state);
+      this._updateKillMachines(state);
+    } else {
+      this._clearCinder('wrong_sector');
+      this._clearKillMachines('wrong_sector');
+    }
+
+    if (inPallas) this._updateReef(state);
+    else this._clearReef('wrong_sector');
   },
 
   diagnostics(state = this.state) {
@@ -100,6 +120,7 @@ export const environmentalMachinery = {
         siteId: null,
         phase: null,
         machines,
+        reef: this._reefDiagnostics(simTime),
       });
     }
     const phase = cinderSluicePhase(record, simTime);
@@ -111,6 +132,19 @@ export const environmentalMachinery = {
       fieldRegistered: this._fieldRegistered,
       playerInside: this._playerInside,
       machines,
+      reef: this._reefDiagnostics(simTime),
+    });
+  },
+
+  _reefDiagnostics(simTime) {
+    const phase = pallasReefPhase(simTime);
+    return Object.freeze({
+      siteId: PALLAS_REEF_SITE_ID,
+      phase: phase.phase,
+      fieldActive: phase.fieldActive,
+      remainingS: phase.remainingS,
+      fieldRegistered: this._reefFieldRegistered,
+      playerInside: this._reefPlayerInside,
     });
   },
 
@@ -147,6 +181,72 @@ export const environmentalMachinery = {
       this._ensureAnvil(machine);
       this._updateKillMachinePlayerBoundary(state, machine, player, phase.fieldActive);
     }
+  },
+
+  _updateReef(state) {
+    const phase = pallasReefPhase(simTimeOf(state), this._reefPhaseOut);
+    if (phase.fieldActive) this._upsertReefField(phase);
+    else this._removeReefField();
+    this._ensureReef();
+    this._updateReefPlayerBoundary(state, phase.fieldActive);
+  },
+
+  _upsertReefField(phase) {
+    const system = this._fieldsSystem();
+    if (!system || typeof system.registerEnvironmental !== 'function') return;
+    const live = typeof system.hasExternal === 'function'
+      ? system.hasExternal(PALLAS_REEF_FIELD.id)
+      : this._reefFieldRegistered;
+    if (!live) {
+      system.registerEnvironmental({
+        ...PALLAS_REEF_FIELD,
+        strength: phase.fieldStrength,
+        createdAt: simTimeOf(this.state),
+      });
+      this._reefFieldRegistered = true;
+      this._reefFieldStrength = phase.fieldStrength;
+      return;
+    }
+    this._reefFieldRegistered = true;
+    if (this._reefFieldStrength === phase.fieldStrength) return;
+    this._reefFieldPatch.strength = phase.fieldStrength;
+    if (typeof system.updateExternal === 'function') {
+      system.updateExternal(PALLAS_REEF_FIELD.id, this._reefFieldPatch);
+    }
+    this._reefFieldStrength = phase.fieldStrength;
+  },
+
+  _removeReefField() {
+    const system = this._fieldsSystem();
+    const live = system && typeof system.hasExternal === 'function'
+      ? system.hasExternal(PALLAS_REEF_FIELD.id)
+      : this._reefFieldRegistered;
+    if (live && typeof system.unregisterExternal === 'function') {
+      system.unregisterExternal(PALLAS_REEF_FIELD.id);
+    }
+    this._reefFieldRegistered = false;
+    this._reefFieldStrength = null;
+  },
+
+  _ensureReef() {
+    if (this._reefEnsured) return;
+    if (!this.bus || typeof this.bus.emit !== 'function') return;
+    this.bus.emit('environmentalMachinery:ensureReef', {
+      siteId: PALLAS_REEF_SITE_ID,
+      sectorId: PALLAS_REEF_SECTOR_ID,
+    });
+    this._reefEnsured = true;
+  },
+
+  _updateReefPlayerBoundary(state, fieldActive) {
+    const player = state && state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId)
+      : null;
+    const inside = !!(fieldActive && player && player.alive !== false
+      && pointInsidePallasReef(player.pos));
+    if (inside === this._reefPlayerInside) return;
+    this._reefPlayerInside = inside;
+    this._emitHazardBoundary(inside, HAZARD_TYPE, PALLAS_REEF_FIELD.id, PALLAS_REEF_SITE_ID);
   },
 
   _upsertField(phase) {
@@ -315,9 +415,19 @@ export const environmentalMachinery = {
     this._anvilsEnsured.clear();
   },
 
+  _clearReef(why) {
+    this._removeReefField();
+    if (this._reefPlayerInside) {
+      this._emitHazardBoundary(false, HAZARD_TYPE, PALLAS_REEF_FIELD.id, PALLAS_REEF_SITE_ID, why);
+    }
+    this._reefPlayerInside = false;
+    this._reefEnsured = false;
+  },
+
   _clear(why) {
     this._clearCinder(why);
     this._clearKillMachines(why);
+    this._clearReef(why);
   },
 };
 

@@ -65,7 +65,9 @@ import {
 } from '../data/sectorActivityPockets.js';
 import {
   KILL_MACHINE_SECTOR_ID,
+  PALLAS_REEF_SECTOR_ID,
   killMachineHazardZones,
+  pallasReefHazardZone,
 } from '../data/environmentalMachinery.js';
 import {
   EVERYDAY_SPACE_KIT_SALT,
@@ -2212,9 +2214,12 @@ export const world = {
   },
 
   _spawnKillMachineHazards(sector, active) {
-    if (!sector || sector.id !== KILL_MACHINE_SECTOR_ID) return;
+    if (!sector) return;
     const existing = new Set((active.hazards || []).map((row) => row && row.id).filter(Boolean));
-    for (const zone of killMachineHazardZones()) {
+    const extra = [];
+    if (sector.id === KILL_MACHINE_SECTOR_ID) extra.push(...killMachineHazardZones());
+    if (sector.id === PALLAS_REEF_SECTOR_ID) extra.push(pallasReefHazardZone());
+    for (const zone of extra) {
       if (existing.has(zone.id)) continue;
       const center = this._toGlobal(zone.center, sector.id);
       active.hazards.push({
