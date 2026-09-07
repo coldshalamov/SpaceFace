@@ -146,6 +146,16 @@ body.sf-flight-cursor #hud { cursor: none; }
 .sf-continue-fade.open { opacity:1; }
 .sf-continue-fade__loc { font-family: var(--k-text, system-ui, sans-serif); font-size: var(--k-fs-fine, 12px);
   color: var(--k-bone-62, rgb(234 230 223 / 0.62)); }
+/* --- First-run splash (spec2/03 §3; src/ui/screens/newGame.js showFirstRunSplash) ---
+   After Launch, a single full-screen line on black for 2.5 s, once per profile. A cinematic, not a
+   screen: it used to ride the New Game screen's injected style block, which Task B deleted when that
+   screen moved onto the kit. The line reads in the kit's text face and body size. */
+.sf-firstrun-splash { position:fixed; inset:0; z-index:3200; background:#000; display:flex;
+  align-items:center; justify-content:center; opacity:0; transition:opacity .5s ease;
+  pointer-events:auto; }
+.sf-firstrun-splash.open { opacity:1; }
+.sf-firstrun-splash__line { font-family: var(--k-text, system-ui, sans-serif); font-size: var(--k-fs-body, 16px);
+  color: var(--k-bone, #eae6df); text-align:center; max-width:80vw; line-height:1.7; }
 /* #toasts is absolutely placed; it is usually re-parented into #hud by toasts.js, so it cannot
    rely on the `#ui-root > div` absolute rule — without an explicit position its left/top are
    inert and the receipt lane renders at the top of #hud's flow. */

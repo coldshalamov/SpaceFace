@@ -26,7 +26,8 @@ export function deriveTemperature(state, top = globalThis.document?.body?.datase
   if (CRUCIBLE_SCREENS.has(top) || inRun) return 'crucible';
   if ((state?.player?.heat ?? 0) >= 0.15) return 'wanted';
   if (state?.ui?.docked === true) return 'docked';
-  if (top === 'mainMenu') return 'flight';
+  // The title has no scrim; the pause holds the world at 0 % (sheet §2, Task B §1.4).
+  if (top === 'mainMenu' || top === 'pause') return 'flight';
   if (top || state?.mode === 'menu') return 'menu';
   return 'flight';
 }

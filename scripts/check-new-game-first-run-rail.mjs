@@ -37,12 +37,15 @@ assert.match(newGame, /mining:\s*'Mining'/,
   'starter loadout must label the mining slot as mining, not stale sampling language');
 assert.doesNotMatch(newGame, /mining:\s*'Sampler'/,
   'New Game starter loadout must not call the mining slot a sampler');
-assert.match(newGame, /body\.appendChild\(route\);[\s\S]*const lore = el\('div', 'sf-ng-lore'\)/,
-  'route rail should sit before lore/footer so it is seen before Launch');
-assert.match(newGame, /body\.appendChild\(route\);[\s\S]*body\.appendChild\(el\('h2', null, 'Starting Ship'\)\)/,
-  'route rail should sit above the starter-ship block so it is visible without scrolling');
-assert.match(newGame, /@media \(max-width:520px\)[\s\S]*sf-ng-route__steps/,
-  'route rail should collapse cleanly on narrow viewports');
+// Since Task B (design/frontend/direction/tasks/TASK_B_SHELL_AND_HUD.md §1.1) the screen is built on
+// the kit: the rail is the last block of the hanging form, before the stage and the Launch foot.
+assert.match(newGame, /body\.appendChild\(route\);[\s\S]*const stage = el\('div', 'k-stage'\)/,
+  'route rail should sit in the form before the stage so it is seen before Launch');
+assert.match(newGame, /body\.appendChild\(route\);[\s\S]*rootEl\.appendChild\(foot\);/,
+  'route rail should be built before the Launch foot so it is read before Launch');
+assert.match(newGame, /route\.appendChild\(steps\)/, 'route rail steps must be rendered inside the rail');
+assert.match(newGame, /steps\.style\.setProperty\('--k-row-cols', 'minmax\(0, 1fr\)'\)/,
+  'route rail rows stack in one column so the rail collapses cleanly on narrow viewports');
 assert.doesNotMatch(newGame, /probe-only|debug-only|launcher-specific/i,
   'route rail must not describe a debug/probe-only launch path');
 

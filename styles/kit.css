@@ -265,3 +265,20 @@ html.sf-high-contrast .k-screen { --k-bone-62: var(--k-bone); --k-bone-38: var(-
   .k-screen::before { background: transparent; }
   .k-row[aria-selected="true"], .k-table tbody tr[aria-selected="true"] { outline: 2px solid Highlight; outline-offset: -2px; }
 }
+
+/* Task B additions */
+/* §1.1/§1.2: a hull bounded to the stage (new game, load) - the title's world canvas clipped to .k-stage. */
+.k-stage > .k-world--stage { left: 0; width: 100%; height: 100%; z-index: -1; }
+/* §1.1/§1.2: the stage's caption block (the hull's name and sentence; the save portrait) hangs from the stage's bottom-left. */
+.k-stage__foot { position: absolute; left: 0; bottom: 0; max-width: 100%; }
+/* §1.4: the HUD dims to 38 % under the pause instead of hiding (ui.css body.ui-modal-open #hud). */
+body.k-screen-top[data-k-screen="pause"] #hud { opacity: 0.38; }
+/* §1.5: game over is the one screen that deepens its scrim to the wanted blue. */
+.k-screen--cold::before { background: rgb(6 8 15 / 0.35); }
+/* §1.7: photo mode - everything gone but the world. !important outranks the pause 38 % above. */
+body.k-photo #hud, body.k-photo #toasts, body.k-photo #alerts { opacity: 0 !important; pointer-events: none !important; }
+/* The legacy modal backdrop (ui.css #modal-backdrop) paints a radial vignette under every screen; a kit
+   screen's scrim (.k-screen::before) is the only darkening the sheet allows, so the vignette goes with the ground. */
+body.k-screen-top #modal-backdrop { background: none; }
+/* §1.1: the live difficulty's sentence sits a small step below its row of words (the row's underline otherwise touches it). */
+.k-words--row + .k-sentence { margin-top: calc(12px * var(--k-s)); }

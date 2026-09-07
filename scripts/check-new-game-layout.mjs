@@ -92,7 +92,9 @@ try {
       result.tabOrder = await verifyNewGameTabOrder(page);
       assert.deepEqual(
         result.tabOrder.map((entry) => entry.control),
-        ['pilot-name', 'difficulty', 'universe-seed', 'back', 'launch'],
+        // Kit order (Task B §1.1): name, the live difficulty word, seed, New seed, then the foot:
+        // Launch (the one primary word) before Back. Both actions are direct Tab stops.
+        ['pilot-name', 'difficulty', 'universe-seed', 'new seed', 'launch', 'back'],
         `${viewport.width}x${viewport.height}: New Game tab order must reach both actions directly`,
       );
       assert.equal(
@@ -223,7 +225,7 @@ async function focusButtonWithKeyboard(page, label) {
 async function verifyNewGameTabOrder(page) {
   const order = [];
   order.push(await focusedControlSnapshot(page));
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 5; i++) {
     await page.keyboard.press('Tab');
     order.push(await focusedControlSnapshot(page));
   }
@@ -237,11 +239,15 @@ async function focusedControlSnapshot(page) {
     const active = document.activeElement;
     const name = panel && panel.querySelector('input[type="text"]');
     const seed = panel && panel.querySelector('#sf-ng-seed');
+    // The difficulty is four kit words in a row (one Tab stop, the live word); a hidden <select>
+    // mirrors the choice. Either the select or a word inside the labelled row counts as 'difficulty'.
     const difficulty = panel && panel.querySelector('select');
+    const difficultyWords = panel && panel.querySelector('[aria-labelledby="sf-ng-difficulty-label"]');
     const buttons = panel ? Array.from(panel.querySelectorAll('button')) : [];
     let control = active === name ? 'pilot-name' : active === difficulty ? 'difficulty' : 'unknown';
     if (active === seed) control = 'universe-seed';
     if (buttons.includes(active)) control = active.textContent.trim().toLowerCase();
+    if (difficultyWords && active && difficultyWords.contains(active)) control = 'difficulty';
     return {
       control,
       panelScrollTop: panel ? panel.scrollTop : -1,
@@ -268,8 +274,10 @@ async function activateLaunchWithoutStartingGame(page) {
       return originalEmit(type, payload);
     };
   });
-  assert.equal(await page.evaluate(() => document.activeElement?.textContent?.trim()), 'Launch',
-    'Launch must be focused before keyboard activation');
+  // The traversal ends on Back (the last word of the foot); one Shift+Tab steps back onto Launch.
+  const activeText = async () => page.evaluate(() => document.activeElement?.textContent?.trim());
+  for (let i = 0; i < 3 && (await activeText()) !== 'Launch'; i++) await page.keyboard.press('Shift+Tab');
+  assert.equal(await activeText(), 'Launch', 'Launch must be focused before keyboard activation');
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => window.__sfLayoutGameNewEvents?.length === 1, null, { timeout: 3000 });
   return page.evaluate(() => {
@@ -422,7 +430,9 @@ function assertLayout(viewport, metrics) {
   const label = `${viewport.width}x${viewport.height}`;
   assert(metrics.panel && metrics.header && metrics.body && metrics.footer,
     `${label}: New Game must expose dedicated header, scrolling body, and action footer regions`);
-  assert.equal(metrics.panel.overflowY, 'hidden', `${label}: the outer New Game panel must not scroll`);
+  // A kit screen (styles/kit.css .k-screen) is a fixed full-viewport grid with no scroll container of
+  // its own; only the hanging form (.k-hang) may scroll.
+  assert(!['auto', 'scroll'].includes(metrics.panel.overflowY), `${label}: the outer New Game panel must not scroll`);
   assert(['auto', 'scroll'].includes(metrics.body.overflowY), `${label}: the form body must own vertical scrolling`);
   assert.equal(metrics.panel.scrollTop, 0, `${label}: the outer panel must remain at scrollTop 0`);
   assert(metrics.body.clientHeight > 0 && metrics.body.scrollHeight >= metrics.body.clientHeight,
