@@ -15,6 +15,8 @@ import {
   PALLAS_REEF_FIELD,
   PALLAS_REEF_SECTOR_ID,
   PALLAS_REEF_SITE_ID,
+  WEATHER_SECTOR_IDS,
+  WEATHER_VOLUMES,
   cinderSluicePhase,
   killMachineFieldCenter,
   killMachineFieldDir,
@@ -23,6 +25,9 @@ import {
   pointInsideCinderSluice,
   pointInsideKillMachine,
   pointInsidePallasReef,
+  pointInsideWeatherVolume,
+  weatherPhase,
+  weatherVolumesForSector,
 } from '../data/environmentalMachinery.js';
 
 const HAZARD_TYPE = 'debris_current';
@@ -59,6 +64,9 @@ export const environmentalMachinery = {
     this._reefFieldStrength = null;
     this._reefPlayerInside = false;
     this._reefEnsured = false;
+    this._weatherFieldStrength = new Map();
+    this._weatherPlayerInside = new Set();
+    this._weatherPhaseOut = {};
     if (this.bus && typeof this.bus.on === 'function') {
       const clear = (why) => this._clear(why);
       this._unsubs = [
@@ -84,8 +92,9 @@ export const environmentalMachinery = {
     const sectorId = state && state.world && state.world.currentSectorId;
     const inCeres = !!(state && state.mode === 'flight' && sectorId === CINDER_SLUICE_SECTOR_ID);
     const inPallas = !!(state && state.mode === 'flight' && sectorId === PALLAS_REEF_SECTOR_ID);
-    if (!fieldsFlag('enabled') || !(inCeres || inPallas)) {
-      this._clear(!(inCeres || inPallas) ? 'inactive_route' : 'fields_disabled');
+    const inWeather = !!(state && state.mode === 'flight' && WEATHER_SECTOR_IDS.has(sectorId));
+    if (!fieldsFlag('enabled') || !(inCeres || inPallas || inWeather)) {
+      this._clear(!(inCeres || inPallas || inWeather) ? 'inactive_route' : 'fields_disabled');
       return;
     }
 
@@ -99,6 +108,9 @@ export const environmentalMachinery = {
 
     if (inPallas) this._updateReef(state);
     else this._clearReef('wrong_sector');
+
+    if (inWeather) this._updateWeather(state);
+    else this._clearWeather('wrong_sector');
   },
 
   diagnostics(state = this.state) {
@@ -121,6 +133,7 @@ export const environmentalMachinery = {
         phase: null,
         machines,
         reef: this._reefDiagnostics(simTime),
+        weather: this._weatherDiagnostics(state, simTime),
       });
     }
     const phase = cinderSluicePhase(record, simTime);
@@ -133,6 +146,7 @@ export const environmentalMachinery = {
       playerInside: this._playerInside,
       machines,
       reef: this._reefDiagnostics(simTime),
+      weather: this._weatherDiagnostics(state, simTime),
     });
   },
 
@@ -146,6 +160,21 @@ export const environmentalMachinery = {
       fieldRegistered: this._reefFieldRegistered,
       playerInside: this._reefPlayerInside,
     });
+  },
+
+  _weatherDiagnostics(state, simTime) {
+    const sectorId = state && state.world && state.world.currentSectorId;
+    return Object.freeze(weatherVolumesForSector(sectorId).map((volume) => {
+      const phase = weatherPhase(volume, simTime);
+      return Object.freeze({
+        id: volume.id,
+        role: volume.role,
+        phase: phase.phase,
+        fieldActive: phase.fieldActive,
+        remainingS: phase.remainingS,
+        playerInside: this._weatherPlayerInside.has(volume.id),
+      });
+    }));
   },
 
   _fieldsSystem() {
@@ -424,10 +453,82 @@ export const environmentalMachinery = {
     this._reefEnsured = false;
   },
 
+  _updateWeather(state) {
+    const simTime = simTimeOf(state);
+    const sectorId = state && state.world && state.world.currentSectorId;
+    const player = state && state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId)
+      : null;
+    for (const volume of weatherVolumesForSector(sectorId)) {
+      const phase = weatherPhase(volume, simTime, this._weatherPhaseOut);
+      if (phase.fieldActive) this._upsertWeatherField(volume, phase);
+      else this._removeWeatherField(volume);
+      this._updateWeatherPlayerBoundary(volume, player, phase.fieldActive);
+    }
+  },
+
+  _upsertWeatherField(volume, phase) {
+    const system = this._fieldsSystem();
+    if (!system || typeof system.registerEnvironmental !== 'function') return;
+    const field = volume.field;
+    const strength = field.strength * phase.fieldStrengthScale;
+    const live = typeof system.hasExternal === 'function'
+      ? system.hasExternal(field.id)
+      : this._weatherFieldStrength.has(field.id);
+    if (!live) {
+      system.registerEnvironmental({
+        ...field,
+        strength,
+        createdAt: simTimeOf(this.state),
+      });
+      this._weatherFieldStrength.set(field.id, strength);
+      return;
+    }
+    if (this._weatherFieldStrength.get(field.id) === strength) return;
+    if (typeof system.updateExternal === 'function') {
+      system.updateExternal(field.id, { strength });
+    }
+    this._weatherFieldStrength.set(field.id, strength);
+  },
+
+  _removeWeatherField(volume) {
+    const system = this._fieldsSystem();
+    const fieldId = volume.field.id;
+    const live = system && typeof system.hasExternal === 'function'
+      ? system.hasExternal(fieldId)
+      : this._weatherFieldStrength.has(fieldId);
+    if (live && typeof system.unregisterExternal === 'function') {
+      system.unregisterExternal(fieldId);
+    }
+    this._weatherFieldStrength.delete(fieldId);
+  },
+
+  _updateWeatherPlayerBoundary(volume, player, fieldActive) {
+    const inside = !!(fieldActive && player && player.alive !== false
+      && pointInsideWeatherVolume(volume, player.pos));
+    const wasInside = this._weatherPlayerInside.has(volume.id);
+    if (inside === wasInside) return;
+    if (inside) this._weatherPlayerInside.add(volume.id);
+    else this._weatherPlayerInside.delete(volume.id);
+    this._emitHazardBoundary(inside, volume.hazardType, volume.id, volume.id);
+  },
+
+  _clearWeather(why) {
+    for (const volume of WEATHER_VOLUMES) {
+      this._removeWeatherField(volume);
+      if (this._weatherPlayerInside.has(volume.id)) {
+        this._emitHazardBoundary(false, volume.hazardType, volume.id, volume.id, why);
+      }
+    }
+    this._weatherPlayerInside.clear();
+    this._weatherFieldStrength.clear();
+  },
+
   _clear(why) {
     this._clearCinder(why);
     this._clearKillMachines(why);
     this._clearReef(why);
+    this._clearWeather(why);
   },
 };
 

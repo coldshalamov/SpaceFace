@@ -68,6 +68,8 @@ import {
   PALLAS_REEF_SECTOR_ID,
   killMachineHazardZones,
   pallasReefHazardZone,
+  weatherHazardZones,
+  weatherScanScale,
 } from '../data/environmentalMachinery.js';
 import {
   EVERYDAY_SPACE_KIT_SALT,
@@ -2219,6 +2221,7 @@ export const world = {
     const extra = [];
     if (sector.id === KILL_MACHINE_SECTOR_ID) extra.push(...killMachineHazardZones());
     if (sector.id === PALLAS_REEF_SECTOR_ID) extra.push(pallasReefHazardZone());
+    extra.push(...weatherHazardZones(sector.id));
     for (const zone of extra) {
       if (existing.has(zone.id)) continue;
       const center = this._toGlobal(zone.center, sector.id);
@@ -3335,7 +3338,8 @@ export const world = {
       if (ent.data && ent.data.requiresTriangulation && !rec.triangulated && !ent.data.anomalyTriangulated) continue;
       const dx = ent.pos.x - player.pos.x, dz = ent.pos.z - player.pos.z;
       const dist = Math.hypot(dx, dz);
-      const sr = ((ent.data && ent.data.scanRange) || SCAN_RANGE) * (1 + 0.25 * scannerTier);
+      const weather = weatherScanScale(state.world.currentSectorId, player.pos, state.simTime);
+      const sr = ((ent.data && ent.data.scanRange) || SCAN_RANGE) * (1 + 0.25 * scannerTier) * weather;
       if (dist <= sr) {
         if (!rec.discovered) { rec.discovered = true; this.bus.emit('poi:discovered', { poiId: p.poiId, type: p.type }); }
         if (dist <= sr * 0.5) {

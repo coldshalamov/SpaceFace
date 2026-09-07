@@ -463,3 +463,188 @@ export function pointInsidePallasReef(point) {
 }
 
 export const PALLAS_REEF_CYCLE_S = PALLAS_REEF_CYCLE;
+
+// PQ-027.02 — weather that shapes fights. One storm sheet and one radiation belt in each
+// affected sector. Both MOVE MASS through the field kernel (shots bend, hulls drift, a stacked
+// well reads louder). The belt also shrinks world POI scan. Neither is a hull-drain aura;
+// `radiation` zone type is forbidden here because world.js would chew hull.
+export const VEIL_WEATHER_SECTOR_ID = 'sector_veil_nebula';
+export const VESTA_WEATHER_SECTOR_ID = 'sector_vesta_forge';
+const WEATHER_CYCLE = Object.freeze({ warningS: 2, surgeS: 6, calmS: 4 });
+export const WEATHER_SCAN_SCALE_INSIDE = 0.4;
+
+function buildWeatherVolume({
+  id, role, sectorId, hazardType, localPos, rot, scanScale, field,
+}) {
+  const dir = freezeVec(Math.cos(finite(rot)), Math.sin(finite(rot)));
+  const globalPos = Object.freeze(sectorLocalToGlobalForSector(localPos, sectorId));
+  return Object.freeze({
+    id,
+    role,
+    sectorId,
+    hazardType,
+    scanScale: Number.isFinite(scanScale) ? scanScale : 1,
+    localPos: Object.freeze({ x: localPos.x, z: localPos.z }),
+    globalPos,
+    dir,
+    cycle: WEATHER_CYCLE,
+    field: Object.freeze({
+      id: `environment_${id}`,
+      kind: field.kind,
+      center: globalPos,
+      dir,
+      radius: positive(field.radius, 220),
+      strength: Math.max(0, finite(field.strength, 0)),
+      falloff: positive(field.falloff, 1.1),
+      halfAngleRad: positive(field.halfAngleRad, 0.4),
+      edgeSoftRad: Math.max(0, finite(field.edgeSoftRad, 0.12)),
+      halfWidth: positive(field.halfWidth, 72),
+      innerRadius: Math.max(0, finite(field.innerRadius, 0)),
+      innerSoft: Math.max(0, finite(field.innerSoft, 0)),
+      sourceId: id,
+      team: null,
+    }),
+  });
+}
+
+export const WEATHER_VOLUMES = Object.freeze([
+  buildWeatherVolume({
+    id: 'veil_storm_lane',
+    role: 'storm',
+    sectorId: VEIL_WEATHER_SECTOR_ID,
+    hazardType: 'debris_current',
+    localPos: { x: -280, z: 640 },
+    rot: 0.42,
+    scanScale: 1,
+    field: {
+      kind: 'sheet',
+      strength: 320,
+      radius: 460,
+      halfWidth: 78,
+      falloff: 1.05,
+    },
+  }),
+  buildWeatherVolume({
+    id: 'veil_radiation_belt',
+    role: 'radiation_belt',
+    sectorId: VEIL_WEATHER_SECTOR_ID,
+    hazardType: 'nebula',
+    localPos: { x: 380, z: -980 },
+    rot: 0,
+    scanScale: WEATHER_SCAN_SCALE_INSIDE,
+    field: {
+      kind: 'well',
+      strength: 210,
+      radius: 260,
+      innerRadius: 78,
+      innerSoft: 24,
+      falloff: 1.2,
+    },
+  }),
+  buildWeatherVolume({
+    id: 'vesta_storm_lane',
+    role: 'storm',
+    sectorId: VESTA_WEATHER_SECTOR_ID,
+    hazardType: 'debris_current',
+    localPos: { x: 680, z: 320 },
+    rot: -0.55,
+    scanScale: 1,
+    field: {
+      kind: 'sheet',
+      strength: 320,
+      radius: 460,
+      halfWidth: 78,
+      falloff: 1.05,
+    },
+  }),
+  buildWeatherVolume({
+    id: 'vesta_radiation_belt',
+    role: 'radiation_belt',
+    sectorId: VESTA_WEATHER_SECTOR_ID,
+    hazardType: 'nebula',
+    localPos: { x: -540, z: -480 },
+    rot: 0,
+    scanScale: WEATHER_SCAN_SCALE_INSIDE,
+    field: {
+      kind: 'well',
+      strength: 210,
+      radius: 260,
+      innerRadius: 78,
+      innerSoft: 24,
+      falloff: 1.2,
+    },
+  }),
+]);
+
+export const WEATHER_SECTOR_IDS = Object.freeze(new Set([
+  VEIL_WEATHER_SECTOR_ID,
+  VESTA_WEATHER_SECTOR_ID,
+]));
+
+export function weatherVolumesForSector(sectorId) {
+  return WEATHER_VOLUMES.filter((volume) => volume.sectorId === sectorId);
+}
+
+export function weatherPhase(volume, simTime, out = null) {
+  const result = out || {};
+  const cycle = volume && volume.cycle || WEATHER_CYCLE;
+  const cycleS = cycle.warningS + cycle.surgeS + cycle.calmS;
+  const elapsedS = positiveModulo(finite(simTime), cycleS);
+  let phase;
+  let remainingS;
+  if (elapsedS < cycle.warningS) {
+    phase = 'warning';
+    remainingS = cycle.warningS - elapsedS;
+  } else if (elapsedS < cycle.warningS + cycle.surgeS) {
+    phase = 'surge';
+    remainingS = cycle.warningS + cycle.surgeS - elapsedS;
+  } else {
+    phase = 'calm';
+    remainingS = cycleS - elapsedS;
+  }
+  result.phase = phase;
+  result.fieldActive = phase !== 'calm';
+  result.fieldStrengthScale = phase === 'surge' ? 1 : 0;
+  result.cycleS = cycleS;
+  result.elapsedS = elapsedS;
+  result.remainingS = remainingS;
+  return result;
+}
+
+export function pointInsideWeatherVolume(volume, point) {
+  if (!volume || !point || !Number.isFinite(point.x) || !Number.isFinite(point.z)) return false;
+  const field = volume.field;
+  const dx = point.x - field.center.x;
+  const dz = point.z - field.center.z;
+  if (field.kind === 'sheet') {
+    const along = dx * field.dir.x + dz * field.dir.z;
+    if (along < 0 || along >= field.radius) return false;
+    const lat = Math.hypot(dx - field.dir.x * along, dz - field.dir.z * along);
+    return lat <= field.halfWidth;
+  }
+  const distance = Math.hypot(dx, dz);
+  if (distance >= field.radius) return false;
+  if (field.innerRadius > 0 && distance < field.innerRadius) return false;
+  return true;
+}
+
+export function weatherScanScale(sectorId, point, simTime) {
+  let scale = 1;
+  for (const volume of weatherVolumesForSector(sectorId)) {
+    const phase = weatherPhase(volume, simTime);
+    if (phase.phase !== 'surge') continue;
+    if (!pointInsideWeatherVolume(volume, point)) continue;
+    if (volume.scanScale < scale) scale = volume.scanScale;
+  }
+  return scale;
+}
+
+export function weatherHazardZones(sectorId) {
+  return weatherVolumesForSector(sectorId).map((volume) => Object.freeze({
+    id: volume.id,
+    type: volume.hazardType,
+    center: volume.localPos,
+    radius: volume.field.radius,
+    intensity: 0.55,
+  }));
+}

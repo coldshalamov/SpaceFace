@@ -69,8 +69,9 @@ export const HAZARD_LANGUAGE = {
   // furnace mouth speak as `debris`; the mass-driver breech speaks as `debris_current`). Their
   // schedule is the counterplay: shove a hull in during the bite, or wait the calm. The Pallas
   // debris reef (PQ-027.01) also speaks as `debris_current` — the current carries loose mass;
-  // timing the calm is the counterplay. New keys would fail the hazard-language totality check,
-  // which only admits HAZARD_TYPES + hazard zones.
+  // timing the calm is the counterplay. PQ-027.02 weather: the Veil/Vesta storm lane also speaks
+  // as `debris_current` (shots and hulls are bent); the radiation belt speaks as `nebula`
+  // (sensors shrink) while a well moves the mass — never the `radiation` hull-drain type.
 
   // ── hazard zone types (sectorZones.js `hazard:true`; same phenomenon = same glyph, zone color
   //    derived from ZONE_TYPES so the map and the language can never disagree) ──
