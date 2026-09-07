@@ -6,7 +6,7 @@
    chrome — with one quiet registry line, one brand lockup, and one honest
    progress bar. The title is "optics online": the gate-ring still bleeds in
    from black and drifts like a slow approach, with an editorial film-title
-   lockup — off-white Saira caps, one hairline rule, letterspaced mono
+   lockup — off-white caps, one hairline rule, a letterspaced line
    telemetry, and a single signal cyan used only for live marks. No glow-heavy
    gamer chrome, no boxes.
 
@@ -77,7 +77,7 @@
   pointer-events: none;
 }
 .boot-meta__registry {
-  font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  font-family: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
   font-weight: 600;
   font-size: 12px;
   letter-spacing:.06em;
@@ -85,7 +85,7 @@
   color: var(--ink-mute);
 }
 .boot-meta__clock {
-  font-family: "IBM Plex Mono", "Consolas", ui-monospace, monospace;
+  font-family: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
   font-size: 12px;
   letter-spacing: .04em;
   font-variant-numeric: tabular-nums;
@@ -108,7 +108,7 @@
   pointer-events: none;
 }
 .boot-wordmark {
-  font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  font-family: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
   font-weight: 700;
   font-size: 40px;
   letter-spacing: .05em;
@@ -117,7 +117,7 @@
 }
 .boot-label {
   margin-top: 10px;
-  font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  font-family: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
   font-weight: 600;
   font-size: 15px;
   letter-spacing: .02em;
@@ -126,7 +126,7 @@
 .boot-detail {
   margin-top: 3px;
   min-height: 1.45em;
-  font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+  font-family: "Instrument Sans", "Segoe UI", sans-serif;
   font-size: 13px;
   line-height: 1.45;
   color: var(--ink-dim);
@@ -154,7 +154,7 @@
   transition: width .25s ease-out;
 }
 .boot-progress-pct {
-  font-family: "IBM Plex Mono", "Consolas", ui-monospace, monospace;
+  font-family: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
   font-size: 12px;
   font-variant-numeric: tabular-nums;
   color: #4ec3e6;
@@ -169,7 +169,7 @@
   right: clamp(18px, 2.8vw, 38px);
   bottom: clamp(14px, 2.4vh, 26px);
   z-index: 2;
-  font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  font-family: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
   font-weight: 600;
   font-size: 12px;
   letter-spacing:.06em;
@@ -185,7 +185,7 @@
 
 .boot-error {
   max-width: 70ch;
-  font-family: "IBM Plex Mono", "Consolas", ui-monospace, monospace;
+  font-family: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
   font-size: 13px;
   line-height: 1.6;
   color: #e0665f;
@@ -261,7 +261,7 @@
   top: clamp(16px, 3vw, 36px);
   left: clamp(18px, 3.4vw, 44px);
   z-index: 1;
-  font: 500 12px/1.6 "IBM Plex Mono", "Consolas", ui-monospace, monospace;
+  font: 500 12px/1.6 "Instrument Sans", "Segoe UI", system-ui, sans-serif;
   letter-spacing: .05em;
   text-transform: uppercase;
   color: #61737f;
@@ -277,7 +277,7 @@
   text-align: center;
 }
 .cine-eyebrow {
-  font: 500 12px/1.7 "IBM Plex Mono", "Consolas", ui-monospace, monospace;
+  font: 500 12px/1.7 "Instrument Sans", "Segoe UI", system-ui, sans-serif;
   letter-spacing: .06em;
   text-indent: .44em;
   text-transform: uppercase;
@@ -288,7 +288,7 @@
 }
 .cine-title {
   margin: 16px 0 0;
-  font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  font-family: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
   font-weight: 600;
   font-size: clamp(52px, 9.5vw, 96px);
   line-height: 1.04;
@@ -322,7 +322,7 @@
   justify-content: center;
   gap: 11px;
   margin-top: 18px;
-  font: 500 12px/1.7 "IBM Plex Mono", "Consolas", ui-monospace, monospace;
+  font: 500 12px/1.7 "Instrument Sans", "Segoe UI", system-ui, sans-serif;
   letter-spacing: .05em;
   text-indent: .3em;
   text-transform: uppercase;
@@ -341,7 +341,7 @@
 }
 .cine-begin {
   margin-top: clamp(38px, 7vh, 64px);
-  font: 500 12px/1.35 "IBM Plex Mono", "Consolas", ui-monospace, monospace;
+  font: 500 12px/1.35 "Instrument Sans", "Segoe UI", system-ui, sans-serif;
   letter-spacing: .06em;
   text-indent: .42em;
   text-transform: uppercase;
@@ -370,7 +370,7 @@
   padding: 12px 18px 13px 16px;
   border-left: 1px solid rgba(94, 205, 235, .5);
   background: linear-gradient(90deg, color-mix(in srgb, var(--bg) 68%, transparent), color-mix(in srgb, var(--bg) 26%, transparent) 82%, transparent);
-  font-family: "IBM Plex Mono", "Consolas", ui-monospace, monospace;
+  font-family: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
   text-align: left;
   opacity: 0;
   animation: cine-rise .7s ease-out 2.6s forwards;

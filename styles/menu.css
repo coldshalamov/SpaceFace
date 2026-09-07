@@ -2,8 +2,8 @@
    SpaceFace · MENU FASCIA — title / pause / system-menu surfaces.
 
    Direction (INSTRUMENT_GRAMMAR §3/§4, 2026-08 revision): a quiet neutral plate.
-   One flat translucent dark surface, 1px hairline edges, IBM Plex Sans for every
-   word, IBM Plex Mono for numerals only, and ONE blue interaction accent spent on
+   One flat translucent dark surface, 1px hairline edges, Instrument Sans for every
+   word and numeral (tabular), and ONE blue interaction accent spent on
    what the player can act on. No glass blur, no glow, no gradient fills, no
    accent rails, no decorative sweeps, no diegetic flavour stamps.
 
@@ -36,9 +36,9 @@
   --warn: #dfa04e;
   --danger: #e0665f;
   /* type */
-  --mono: "IBM Plex Mono", "Consolas", ui-monospace, monospace;
-  --mf-display: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
-  --mf-ui: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "Instrument Sans", "Segoe UI", system-ui, sans-serif; /* no monospace as a look (sheet §3); numerals are tabular */
+  --mf-display: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  --mf-ui: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
   /* fascia-only aliases */
   --mf-line-1: rgba(148, 178, 205, .10);
   --mf-line-2: rgba(148, 178, 205, .18);
@@ -103,7 +103,7 @@
 }
 
 /* ---- 3. Headings --------------------------------------------------------------
-   Plex Sans caps over a hairline divider. */
+   Caps over a hairline divider. */
 
 #screens .sf-menu h1 {
   margin: 4px 0 2px;

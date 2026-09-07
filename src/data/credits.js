@@ -22,24 +22,6 @@ export const CREDITS = {
       "author": "Eben Sorkin, Mirko Velimirović",
       "license": "OFL 1.1",
       "role": "Asteroid Works numerals"
-    },
-    {
-      "name": "IBM Plex Sans",
-      "author": "IBM",
-      "license": "OFL 1.1",
-      "role": "legacy instrument face"
-    },
-    {
-      "name": "IBM Plex Mono",
-      "author": "IBM",
-      "license": "OFL 1.1",
-      "role": "legacy numerals"
-    },
-    {
-      "name": "Saira Semi Condensed",
-      "author": "Omnibus-Type",
-      "license": "OFL 1.1",
-      "role": "legacy display face"
     }
   ],
   "libraries": [
