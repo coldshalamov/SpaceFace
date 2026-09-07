@@ -1859,7 +1859,7 @@
       "priority": "P2",
       "file": "places/place_ash_pin.glb",
       "tris": 1268,
-      "bytes": 296784,
+      "bytes": 297676,
       "textureSize": 128,
       "note": "LANE-FURNITURE-001 2026-08-06 authored from design/fiction/LANE_FURNITURE.md via tools/blender/build_lane_furniture.py; two adversarial review rounds. Surfaced 2026-09-06: 12 packed 128px maps, every material carrying baseColor, metallicRoughness and occlusion plus TEXCOORD_0; world-projected UVs tile past [0,1] by design. Held off the live place selector; G1/G2/G4 open. sha256=52be00c8b6a86615"
     },
@@ -2176,7 +2176,7 @@
       "priority": "P2",
       "file": "places/place_claim_mark.glb",
       "tris": 1380,
-      "bytes": 372104,
+      "bytes": 373004,
       "textureSize": 128,
       "tintable": {
         "accent": "furniture_signal_lens"
@@ -3919,7 +3919,7 @@
       "priority": "P2",
       "file": "places/place_tally_post.glb",
       "tris": 1444,
-      "bytes": 392984,
+      "bytes": 393888,
       "textureSize": 128,
       "tintable": {
         "accent": "furniture_signal_lens"
@@ -4006,7 +4006,7 @@
       "priority": "P2",
       "file": "places/place_whistle.glb",
       "tris": 1720,
-      "bytes": 414028,
+      "bytes": 414916,
       "textureSize": 128,
       "tintable": {
         "accent": "furniture_signal_lens"
