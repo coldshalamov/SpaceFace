@@ -694,8 +694,13 @@ export async function captureUiMatrix(options = {}) {
     // baseline can never quietly shrink. This includes surfaces whose probe simply returned no
     // usable samples on a loaded box — they are named too, with the reason they have no row.
     const budgetedIds = new Set(Object.keys(surfaces));
-    const plannedIds = [...new Set((allPlannedSurfaces || []).map((s) => s.id))]
-      .filter((id) => planIncludes(filter, { surfaceId: id }));
+    // Every surface the filter admits — the shared-boot list AND the own-boot (destructive) surfaces
+    // such as Asteroid Works — so an own-boot failure is named too. Deriving this from
+    // allPlannedSurfaces alone left the Works unmeasured AND unnamed: red in check:ui:budgets with
+    // its reason sitting in this run's own failure table.
+    const plannedIds = [...new Set(MATRIX_SURFACES
+      .filter((surface) => planIncludes(filter, { surfaceId: surface.id }))
+      .map((surface) => surface.id))];
     const reasonFor = (id) => {
       const hit = (failures || []).find((f) => f && f.surface === id);
       return hit

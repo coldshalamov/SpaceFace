@@ -350,4 +350,5 @@ body.k-screen-top #modal-backdrop { background: none; }
 .k-screen .tt-side { padding-top: calc(80px * var(--k-s)); }
 .k-screen .tt-scroll { height: calc(100% - 28px * var(--k-s)); }
 /* §3.2: the codex search field spans the hang and keeps a gap from the tab words beneath it. */
-.k-screen .sf-codex-search { display: block; width: 100%; margin-bottom: calc(16px * var(--k-s)); }
+/* Outranks the kit's own `input.k-input:focus { all: unset }` while the field is focused; the 2 px inset keeps the focus ring inside the hang's clip. */
+.k-screen .k-hang input.sf-codex-search, .k-screen .k-hang input.sf-codex-search:focus { display: block; width: calc(100% - 4px); margin: 2px 2px calc(16px * var(--k-s)); }
