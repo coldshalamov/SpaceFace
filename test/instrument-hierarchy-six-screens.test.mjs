@@ -20,17 +20,17 @@ import { telemetryHostilesRole } from '../src/ui/screens/crucibleLabTelemetry.js
 // screen (src/ui/screens/saveLoad.js) onto the kit: it owns no CSS any more, so the injected-style
 // contracts below no longer apply to it. Its type scale, faces and colour law are styles/kit.css
 // (the sheet's grammar); its meaning roles (slotBadgeRole) and words-beside-colour strings are still
-// asserted below.
+// asserted below. Frontend Task C §1.3 did the same for the live station market
+// (src/ui/station/screens/market.js): it is styles/kit.css + styles/station.css now; its meaning roles
+// (chartTrendRole, legalityRole) stay exported and asserted.
 const FILES = [
   'src/ui/screens/sandbox.js',
-  'src/ui/station/screens/market.js',
   'src/ui/screens/crucibleLabControls.js',
   'src/ui/screens/help.js',
   'src/ui/screens/crucibleLabTelemetry.js',
 ];
 const DISPLAY = new Map([
   ['src/ui/screens/sandbox.js', '.sf-sandbox-now'],
-  ['src/ui/station/screens/market.js', '.sx-mkt-title h2'],
   ['src/ui/screens/crucibleLabControls.js', '.sf-lab-speed-now'],
   ['src/ui/screens/help.js', '.sf-help-now'],
   ['src/ui/screens/crucibleLabTelemetry.js', '.sf-lab-tel-tick'],
@@ -91,7 +91,6 @@ test('every figure binds --sf-data-face', () => {
     assert.match(code, /\.sf-fig/, rel + ' has no .sf-fig figure class');
   }
   assert.match(load('src/ui/screens/sandbox.js'), /className = 'sf-fig'/);
-  assert.match(load('src/ui/station/screens/market.js'), /sx-stat__v sf-fig/);
   assert.match(load('src/ui/screens/crucibleLabControls.js'), /sf-lab-speed-now sf-fig/);
   assert.match(load('src/ui/screens/help.js'), /num sf-fig/);
   assert.match(load('src/ui/screens/crucibleLabTelemetry.js'), /sf-lab-tel-tick sf-fig/);
@@ -142,13 +141,6 @@ test('SVG meaning colours ride inline style, never a presentation attribute', ()
     assert.doesNotMatch(code, /fill="var\(/, rel + ' paints a var() fill presentation attribute');
     assert.doesNotMatch(code, /stop-color="var\(/, rel + ' paints a var() stop-color presentation attribute');
   }
-  const mkt = stripComments(load('src/ui/station/screens/market.js'));
-  assert.match(mkt, /style="stroke:\$\{stroke\}"/,
-    'market chart line must paint stroke from an inline style so CSS variables resolve');
-  assert.match(mkt, /style="fill:\$\{stroke\}"/,
-    'market chart end-dot must paint fill from an inline style so CSS variables resolve');
-  assert.match(mkt, /style="stop-color:\$\{fill0\}"/,
-    'market chart gradient stops must paint stop-color from an inline style so CSS variables resolve');
 });
 
 test('no native title=; naming avoids pulse/blink/flash and card/menu/panel/modal', () => {
@@ -179,9 +171,8 @@ test('no state rests on hue alone: the words sit beside every colour', () => {
   const sandbox = load('src/ui/screens/sandbox.js');
   assert.match(sandbox, /result\.ok \? 'Ready' : 'Invalid'/);
   const mkt = load('src/ui/station/screens/market.js');
-  assert.match(mkt, /▲ UP/);
-  assert.match(mkt, /▼ DOWN/);
-  assert.match(mkt, /HIGH DEMAND/);
+  // The register's trend glyph carries the movement as a number (▲3%); demand is a word.
+  assert.match(mkt, /demandWord/);
   assert.match(mkt, /Tracked contract/);
   assert.match(mkt, /LEGAL_LABEL/);
   const controls = load('src/ui/screens/crucibleLabControls.js');

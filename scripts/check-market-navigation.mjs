@@ -220,10 +220,12 @@ function checkMarketCargoUnitFormatting() {
 }
 
 function checkStationMarketSelectionContract() {
-  assert.match(STATION_MARKET_SOURCE, /selectionFollowsFocus: true/,
-    'the live Station Market rail must move the quote with keyboard focus');
-  assert.match(STATION_MARKET_SOURCE, /onSelect: \(id\) => \{[\s\S]*renderStage\(state\); renderConsole\(state\);/,
-    'selecting a live commodity card must redraw its quote and trade console');
+  // Frontend Task C §1.3: the commodity register is a kit table; arrowing over its rows selects
+  // (selection follows focus) and every selection redraws the quote and the trade console.
+  assert.match(STATION_MARKET_SOURCE, /selectCommodity\(rows\[next\]\.getAttribute\('data-cmdty'\), \{ focus: true \}\)/,
+    'the live Station Market register must move the quote with keyboard focus');
+  assert.match(STATION_MARKET_SOURCE, /function selectCommodity\(id[\s\S]*renderStage\(state\); renderConsole\(state\);/,
+    'selecting a live commodity row must redraw its quote and trade console');
   assert.match(STATION_MARKET_SOURCE, /const go = ev\.target\.closest\('\[data-go\]'\);/,
     'the live Station Market must delegate its visible buy/sell commit control');
 }
