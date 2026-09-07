@@ -95,6 +95,9 @@ const SCREEN_MODULES = [
   { path: './screens/settings.js', load: () => import('./screens/settings.js'), name: 'settingsScreen' },
   { path: './screens/saveLoad.js', load: () => import('./screens/saveLoad.js'), name: 'saveLoadScreen' },
   { path: './screens/help.js', load: () => import('./screens/help.js'), name: 'helpScreen' },
+  // CREDITS (Frontend Task B §1.6): who made SpaceFace and what it is built on; the third-party
+  // notices from PQ-033.00. Reached from the title's fine line.
+  { path: './screens/credits.js', load: () => import('./screens/credits.js'), name: 'creditsScreen' },
   { path: './screens/codex.js', load: () => import('./screens/codex.js'), name: 'codexScreen' },
   { path: './screens/missionLog.js', load: () => import('./screens/missionLog.js'), name: 'missionLogScreen' },
   // DEV ONLY — Sandbox testing harness (src/ui/screens/sandbox.js). Conditionally spread so the

@@ -283,6 +283,25 @@ const RAW_SURFACES = Object.freeze([
     entry: key('F1', 'F1 / H in flight'),
   }),
   surface({
+    id: 'credits',
+    owner: 'PQ-181', // Frontend Task B §1.6; closes the PQ-033.00 third-party-notice obligation
+    title: 'Credits',
+    archetype: 'META-SHELL',
+    ownerFile: 'src/ui/screens/credits.js',
+    screenId: 'credits',
+    root: ['[data-screen="credits"]'],
+    // Pressed on the title before Launch, so a menu-phase surface (the task file's
+    // `nested('mainMenu', …)` names a parent id this set does not have; `title` is the title's id).
+    entry: {
+      kind: 'boot-nested',
+      parent: 'title',
+      selector: '[data-screen="mainMenu"] [data-action="credits"]',
+      text: 'Credits',
+      evidence: 'public-route',
+      detail: 'title → Credits',
+    },
+  }),
+  surface({
     id: 'codex',
     owner: 'PQ-181', // build map §18.2
     title: 'Codex',

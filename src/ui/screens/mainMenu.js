@@ -12,7 +12,7 @@ import { requestQuit } from '../quitGame.js';
 import { IS_DEV } from '../../core/devMode.js';
 import { NEW_GAME } from '../../data/newGameDefaults.js';
 import { createShipPreviewMount, dockInteriorIdForArchetype } from '../shipPreviewMount.js';
-import { el, words, settle, stamp, reducedMotion } from '../kit/index.js';
+import { el, words, settle, stamp, reducedMotion, cue } from '../kit/index.js';
 
 const LS_PREFIX = 'sf.save.';
 // Sheet: the hull drifts, it does not spin. ≈ 3.4° per second.
@@ -257,12 +257,22 @@ export const mainMenuScreen = {
     const saveSummary = bContinue.parentElement.querySelector('.k-word-sub');
     saveSummary.classList.add('sf-menu-save-summary');
 
-    const version = el('div', 'k-fine', 'SpaceFace');
+    // The fine line: "SpaceFace v0.0.0 · " then the Credits word (Task B §1.6). The version text
+    // lives in its own span so _loadVersion can rewrite it without touching the word.
+    const version = el('div', 'k-fine');
     version.dataset.role = 'version';
+    const versionText = el('span', '', 'SpaceFace');
+    version.appendChild(versionText);
+    version.appendChild(el('span', '', ' · '));
+    const bCredits = el('button', 'k-word k-word--fine', 'Credits');
+    bCredits.type = 'button';
+    bCredits.dataset.action = 'credits';
+    bCredits.addEventListener('click', () => { cue('confirm'); this._pick(ctx, 'credits'); });
+    version.appendChild(bCredits);
     rootEl.appendChild(version);
 
     refs = {
-      root: rootEl, canvas, title, list, version, saveSummary,
+      root: rootEl, canvas, title, list, version, versionText, bCredits, saveSummary,
       bNew, bContinue, bLoad, bSettings, bSandbox, bQuit, bCrucible, bArchive,
       buttons: [bContinue, bNew, bLoad, bCrucible, bArchive, bSettings, bSandbox, bQuit].filter(Boolean),
     };
@@ -339,6 +349,7 @@ export const mainMenuScreen = {
       case 'crucible': pushWhenReady(ctx, 'crucible', 'Crucible'); return;
       case 'archive': requestCodexTab('Archive'); pushWhenReady(ctx, 'codex', 'Signal Archive'); return;
       case 'settings': pushWhenReady(ctx, 'settings', 'Settings'); return;
+      case 'credits': pushWhenReady(ctx, 'credits', 'Credits'); return;
       case 'sandbox': pushWhenReady(ctx, 'sandbox', 'Sandbox'); return;
       case 'quit': requestQuit(ctx); return;
       default: return;
@@ -491,11 +502,11 @@ export const mainMenuScreen = {
   // browser and in Electron; anything else leaves the name alone.
   _loadVersion() {
     if (!refs || typeof fetch !== 'function') return;
-    const target = refs.version;
+    const target = refs.versionText;
     fetch('/package.json')
       .then((r) => (r.ok ? r.json() : null))
       .then((p) => {
-        if (p && typeof p.version === 'string' && refs && refs.version === target) target.textContent = 'SpaceFace v' + p.version;
+        if (p && typeof p.version === 'string' && refs && refs.versionText === target) target.textContent = 'SpaceFace v' + p.version;
       })
       .catch(() => {});
   },
