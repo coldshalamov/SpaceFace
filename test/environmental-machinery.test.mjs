@@ -8,8 +8,11 @@ import {
   CINDER_SLUICE_SECTOR_ID,
   CINDER_SLUICE_SITE_ID,
   CINDER_SLUICE_TRAFFIC_STAGING_POS,
+  KILL_MACHINES,
   cinderSluicePhase,
+  killMachinePhase,
   pointInsideCinderSluice,
+  pointInsideKillMachine,
 } from '../src/data/environmentalMachinery.js';
 import { worldSiteManifestById } from '../src/data/worldSiteManifests.js';
 import { normalizeField, sampleFieldAcceleration } from '../src/core/fields/fieldKernel.js';
@@ -148,11 +151,20 @@ test('runtime registers warning before force, exits during calm, and publishes h
   const record = createWorldSiteRecord(manifest, { tick: 0 });
   const events = [];
   const fields = {
-    live: null,
-    registerEnvironmental(spec) { this.live = { ...spec }; return this.live; },
-    updateExternal(id, patch) { assert.equal(id, CINDER_SLUICE_FIELD.id); Object.assign(this.live, patch); return this.live; },
-    unregisterExternal(id) { assert.equal(id, CINDER_SLUICE_FIELD.id); const had = !!this.live; this.live = null; return had; },
-    hasExternal(id) { return id === CINDER_SLUICE_FIELD.id && !!this.live; },
+    byId: Object.create(null),
+    registerEnvironmental(spec) { this.byId[spec.id] = { ...spec }; return this.byId[spec.id]; },
+    updateExternal(id, patch) {
+      assert.ok(this.byId[id], `updateExternal unknown field ${id}`);
+      Object.assign(this.byId[id], patch);
+      return this.byId[id];
+    },
+    unregisterExternal(id) {
+      const had = !!this.byId[id];
+      delete this.byId[id];
+      return had;
+    },
+    hasExternal(id) { return !!this.byId[id]; },
+    get live() { return this.byId[CINDER_SLUICE_FIELD.id] || null; },
   };
   const state = {
     mode: 'flight', tick: 0, simTime: 0, playerId: 1,
@@ -310,4 +322,74 @@ test('Cinder service traffic stages for unsafe inbound phases without physics im
   hauler.pos = { ...site.pos };
   system._stepWorldSiteRoute(hauler, rec, [station], 1 / 60);
   assert.equal(hauler.data.intent.moveZ, 1, 'outbound service may ride the same downstream surge');
+});
+
+test('three Ceres kill machines have a schedule and a shove volume', () => {
+  assert.equal(KILL_MACHINES.length, 3);
+  assert.deepEqual(KILL_MACHINES.map((row) => row.id), [
+    'excavator_jaws', 'furnace_mouth', 'mass_driver_breech',
+  ]);
+  const excavator = KILL_MACHINES[0];
+  assert.equal(killMachinePhase(excavator, 0).phase, 'warning');
+  assert.equal(killMachinePhase(excavator, 0).fieldStrengthScale, 0);
+  assert.equal(killMachinePhase(excavator, 2.1).phase, 'surge');
+  assert.equal(killMachinePhase(excavator, 2.1).fieldStrengthScale, 1);
+  assert.equal(killMachinePhase(excavator, 5.6).phase, 'calm');
+  const pinched = {
+    x: excavator.globalPos.x + excavator.perp.x * 16 + excavator.dir.x * 10,
+    z: excavator.globalPos.z + excavator.perp.z * 16 + excavator.dir.z * 10,
+  };
+  assert.equal(pointInsideKillMachine(excavator, pinched), true);
+  assert.equal(pointInsideKillMachine(excavator, {
+    x: excavator.globalPos.x + excavator.perp.x * 80,
+    z: excavator.globalPos.z + excavator.perp.z * 80,
+  }), false);
+});
+
+test('kill machines register surge force and request anvils without a Cinder site record', () => {
+  const events = [];
+  const fields = {
+    byId: Object.create(null),
+    registerEnvironmental(spec) { this.byId[spec.id] = { ...spec }; return this.byId[spec.id]; },
+    updateExternal(id, patch) { Object.assign(this.byId[id], patch); return this.byId[id]; },
+    unregisterExternal(id) { const had = !!this.byId[id]; delete this.byId[id]; return had; },
+    hasExternal(id) { return !!this.byId[id]; },
+  };
+  const excavator = KILL_MACHINES[0];
+  const state = {
+    mode: 'flight', tick: 0, simTime: 2.2, playerId: 1,
+    world: { currentSectorId: CINDER_SLUICE_SECTOR_ID },
+    entities: new Map([[1, {
+      id: 1, type: 'ship', alive: true,
+      pos: {
+        x: excavator.globalPos.x + excavator.perp.x * 16 + excavator.dir.x * 10,
+        z: excavator.globalPos.z + excavator.perp.z * 16 + excavator.dir.z * 10,
+      },
+    }]]),
+    sites: { worldOrder: [], worldById: {} },
+  };
+  const bus = {
+    on() { return () => {}; },
+    emit(name, payload) { events.push({ name, payload }); },
+  };
+  const system = Object.create(environmentalMachinery);
+  const previous = FIELD_FLAGS.enabled;
+  FIELD_FLAGS.enabled = true;
+  try {
+    system.init({ state, bus, registry: { get(name) { return name === 'fields' ? fields : null; } } });
+    system.update(1 / 60, state);
+    const sheet = fields.byId[excavator.fields[0].id];
+    assert.ok(sheet, 'excavator sheet registers during surge');
+    assert.ok(sheet.strength > 0, 'surge writes force, not a damage aura');
+    assert.equal(sheet.kind, 'sheet');
+    assert.ok(events.some((entry) => entry.name === 'environmentalMachinery:ensureAnvil'
+      && entry.payload.machineId === 'excavator_jaws'));
+    assert.ok(events.some((entry) => entry.name === 'hazard:enter'
+      && entry.payload.zoneType === 'debris'
+      && entry.payload.zoneId === 'excavator_jaws'));
+    assert.equal(fields.byId[CINDER_SLUICE_FIELD.id], undefined, 'missing sluice site does not invent a current');
+  } finally {
+    system.destroy();
+    FIELD_FLAGS.enabled = previous;
+  }
 });

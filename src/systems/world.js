@@ -64,6 +64,10 @@ import {
   CERES_ACTIVITY_SECTOR_ID,
 } from '../data/sectorActivityPockets.js';
 import {
+  KILL_MACHINE_SECTOR_ID,
+  killMachineHazardZones,
+} from '../data/environmentalMachinery.js';
+import {
   EVERYDAY_SPACE_KIT_SALT,
   everydaySpaceKitDressingForSector,
 } from '../data/everydaySpaceKitDressing.js';
@@ -2202,6 +2206,24 @@ export const world = {
         id: hz.id || null,
         type: hz.type, center: { x: center.x, z: center.z },
         radius: hz.radius, intensity, moving: !!hz.moving,
+      });
+    }
+    this._spawnKillMachineHazards(sector, active);
+  },
+
+  _spawnKillMachineHazards(sector, active) {
+    if (!sector || sector.id !== KILL_MACHINE_SECTOR_ID) return;
+    const existing = new Set((active.hazards || []).map((row) => row && row.id).filter(Boolean));
+    for (const zone of killMachineHazardZones()) {
+      if (existing.has(zone.id)) continue;
+      const center = this._toGlobal(zone.center, sector.id);
+      active.hazards.push({
+        id: zone.id,
+        type: zone.type,
+        center: { x: center.x, z: center.z },
+        radius: zone.radius,
+        intensity: zone.intensity,
+        moving: false,
       });
     }
   },

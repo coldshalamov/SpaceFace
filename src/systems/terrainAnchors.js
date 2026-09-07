@@ -42,6 +42,8 @@ export const terrainAnchors = {
     if (this.bus && typeof this.bus.on === 'function') {
       this._unsubs.push(this.bus.on('encounter:telegraph', (p) => this._onTelegraph(p || {})));
       this._unsubs.push(this.bus.on('encounter:resolved', (p) => this._onResolved(p || {})));
+      this._unsubs.push(this.bus.on('environmentalMachinery:ensureAnvil',
+        (p) => this._ensureKillMachineAnvil(p || {})));
     }
   },
 
@@ -124,5 +126,54 @@ export const terrainAnchors = {
           now + ANCHOR_AFTERMATH_S);
       }
     }
+  },
+
+  _ensureKillMachineAnvil(spec) {
+    const id = spec && spec.id;
+    const pos = spec && spec.pos;
+    if (!id || !pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return null;
+    const list = this.state && this.state.entityList || [];
+    for (const entity of list) {
+      if (entity && entity.alive !== false && entity.data && entity.data.killMachineAnvilId === id) {
+        return entity;
+      }
+    }
+    if (!this.helpers || typeof this.helpers.spawnEntity !== 'function') return null;
+    const radius = Number.isFinite(spec.radius) && spec.radius > 0 ? spec.radius : 22;
+    const mass = Number.isFinite(spec.mass) && spec.mass > 0 ? spec.mass : Math.round(radius * radius * 40);
+    const oreHP = Math.round(360 + radius * 14);
+    return this.helpers.spawnEntity({
+      type: 'asteroid',
+      pos: { x: pos.x, z: pos.z },
+      vel: { x: 0, z: 0 },
+      radius,
+      mass,
+      angVel: 0,
+      hull: oreHP,
+      hullMax: oreHP,
+      collides: true,
+      physicsBody: {
+        schemaVersion: 1,
+        radius,
+        mass,
+        inertiaY: Math.max(120, Math.round(mass * 0.08)),
+        dynamic: false,
+        ccd: false,
+        material: 'asteroid',
+        revision: 0,
+      },
+      data: {
+        typeId: ANCHOR_TYPE_ID,
+        tier: 0,
+        tierCap: 0,
+        oreHP,
+        oreHPMax: oreHP,
+        yieldU: Math.round(6 + radius * 0.4),
+        size: radius,
+        terrainAnchor: true,
+        killMachineAnvilId: id,
+        killMachineId: spec.machineId || null,
+      },
+    });
   },
 };

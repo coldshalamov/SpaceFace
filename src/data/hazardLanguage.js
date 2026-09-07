@@ -65,6 +65,10 @@ export const HAZARD_LANGUAGE = {
     counterplay: ['time', 'tether', 'route'],
     hint: 'Debris current: the warning rails precede each surge — time the calm, tether the ballast, or route around.',
   },
+  // PQ-027.00 kill machines reuse the impact / current language above (excavator jaws and the
+  // furnace mouth speak as `debris`; the mass-driver breech speaks as `debris_current`). Their
+  // schedule is the counterplay: shove a hull in during the bite, or wait the calm. New keys
+  // would fail the hazard-language totality check, which only admits HAZARD_TYPES + hazard zones.
 
   // ── hazard zone types (sectorZones.js `hazard:true`; same phenomenon = same glyph, zone color
   //    derived from ZONE_TYPES so the map and the language can never disagree) ──
