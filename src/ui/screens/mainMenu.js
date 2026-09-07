@@ -18,6 +18,10 @@ const LS_PREFIX = 'sf.save.';
 // Sheet: the hull drifts, it does not spin. ≈ 3.4° per second.
 const HULL_DRIFT_RAD_PER_S = 0.06;
 const HULL_ZOOM = 1.25;
+// The words wait for the hull, but never longer than this after the hangar's first frame (or after
+// the show, should the mount never frame at all). The sheet is silent on the wait; the value is
+// generous enough for a warm machine's hull and short enough that a slow one still gets its words.
+const HULL_ARRIVE_GRACE_MS = 3000;
 
 function getManager(ctx) {
   if (ctx && ctx.screenManager) return ctx.screenManager;
@@ -274,16 +278,25 @@ export const mainMenuScreen = {
         authoredWarmup: true,
         fastPreview: false,
         allowFastFallback: false,
-        // The words arrive on the first frame (the sheet: after the hull begins). data-k-ready,
-        // the capture seam's "photograph me" signal, waits for the authored hull itself: a frame of
-        // hangar with the placeholder body would be an honest DOM and a missing picture.
+        // The sheet: "the menu arrives after the hull". The mount's first frame is the hangar; the
+        // authored hull settles into it a moment later, and that is when the words stamp in.
+        // data-k-ready, the capture seam's "photograph me" signal, waits for the same moment: a
+        // frame of hangar with no body would be an honest DOM and a missing picture. If the hull is
+        // slow or never comes (asset error), the words are not held hostage: they arrive on the
+        // settle either way, or HULL_ARRIVE_GRACE_MS after the hangar, whichever is first.
         onFirstFrame: () => {
           this._hullFramed = true;
-          this._arrive();
-          if (this.mount3d && this.mount3d.getAssetState() === 'authored') rootEl.dataset.kReady = '1';
+          if (this.mount3d && this.mount3d.getAssetState() === 'authored') {
+            rootEl.dataset.kReady = '1';
+            this._arrive();
+            return;
+          }
+          this._armArriveGrace(HULL_ARRIVE_GRACE_MS);
         },
         onAssetSettled: ({ state }) => {
           if (state === 'authored') rootEl.dataset.kReady = '1';
+          this._clearArriveGrace();
+          if (this._hullFramed) this._arrive();
         },
       });
     } catch (e) {
@@ -377,6 +390,9 @@ export const mainMenuScreen = {
     this._arrived = false;
     this._ctx = ctx;
     if (this.mount3d) {
+      // Held until the hull: the title and the words sit at their pre-arrival state so the first
+      // thing painted over the hangar is the hull, not words that then blink out and stamp back in.
+      this._hold();
       try {
         this.mount3d.setActive(true);
         this.mount3d.show(NEW_GAME.shipId, { rotating: false, fittings: NEW_GAME.fittedModules, isPlayer: true });
@@ -384,8 +400,10 @@ export const mainMenuScreen = {
       } catch (e) {
         console.warn('[mainMenu] hull show failed; the title renders without it', e);
       }
-      // On a re-show the mount's first frame has already fired (the def id is unchanged).
+      // On a re-show the mount's first frame has already fired (the def id is unchanged). On the
+      // first show the words wait for the hull's settle, bounded by the grace either way.
       if (this._hullFramed) this._arrive();
+      else this._armArriveGrace(HULL_ARRIVE_GRACE_MS);
       this._startDrift(ctx);
     } else {
       // No hull: the words still arrive.
@@ -399,12 +417,14 @@ export const mainMenuScreen = {
   },
   onHide() {
     this._stopDrift();
+    this._clearArriveGrace();
     if (this.mount3d) try { this.mount3d.setActive(false); } catch (_) {}
   },
   refresh(ctx) { this._render(ctx); },
 
   dispose() {
     this._stopDrift();
+    this._clearArriveGrace();
     if (typeof window !== 'undefined' && this._onResize) window.removeEventListener('resize', this._onResize);
     this._onResize = null;
     for (const off of this._offBus || []) { try { off(); } catch (_) {} }
@@ -418,12 +438,29 @@ export const mainMenuScreen = {
   _arrive() {
     if (this._arrived || !refs) return;
     this._arrived = true;
+    this._clearArriveGrace();
     try {
       settle(refs.title, { from: 'top', state: 'title:arrive' });
       stamp(refs.list.children, { gap: 60, state: 'title:arrive' });
     } catch (e) {
       console.warn('[mainMenu] arrival motion skipped', e);
     }
+  },
+
+  // The pre-arrival state (the kit's own `.k-in` start pose, which settle/stamp then release).
+  // Reduced motion never holds: everything is simply there.
+  _hold() {
+    if (!refs || reducedMotion()) return;
+    refs.title.classList.add('k-in', 'k-in--top');
+    for (const li of refs.list.children) li.classList.add('k-in', 'k-in--stamp');
+  },
+  _armArriveGrace(ms) {
+    this._clearArriveGrace();
+    this._arriveGrace = setTimeout(() => { this._arriveGrace = null; this._arrive(); }, ms);
+  },
+  _clearArriveGrace() {
+    if (this._arriveGrace) clearTimeout(this._arriveGrace);
+    this._arriveGrace = null;
   },
 
   // The hull drifts ≈ 3.4° per second while the title is up; never under reduced motion.

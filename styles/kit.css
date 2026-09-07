@@ -144,9 +144,10 @@ body.k-screen-top #screens::before { display: none !important; }
 .k-word--primary:hover, .k-word--primary:focus-visible { color: var(--k-signal); }
 .k-word--danger { color: var(--k-red); }
 .k-word--danger::after { background: var(--k-red); }
-/* Task A choice: the spec's −6 px pulled the sub line up through the word's 2 px underline; 0 sets it
-   directly beneath the underline (see FRONTEND-A-REPORT.md). */
-.k-word-sub { font-size: var(--k-fs-data); color: var(--k-bone-38); margin-top: 0; }
+/* Task A choice: the spec's −6 px pulled the sub line up through the word's 2 px underline, and 0 put
+   it under the focus ring (2 px line at 4 px offset = 6 px below the word). 6 px clears both; the
+   ring is fixed-size, so this is not scaled (see FRONTEND-A-REPORT.md). */
+.k-word-sub { font-size: var(--k-fs-data); color: var(--k-bone-38); margin-top: 6px; }
 
 /* §6.3 rows and the dense register */
 .k-rows { list-style: none; margin: 0; padding: 0; }
