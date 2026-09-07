@@ -3974,7 +3974,7 @@
       "priority": 1,
       "title": "Audit the ten-commit PERF-00 candidate delta against current master",
       "kind": "program_control",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "performance-control"
@@ -3990,9 +3990,10 @@
         "npm run check:baseline"
       ],
       "receiptRefs": [
-        "design/program/roadmap/receipts/PQ-034-candidate-audit-REPORT.md"
+        "design/program/roadmap/receipts/PQ-034-candidate-audit-REPORT.md",
+        "design/program/roadmap/receipts/PQ-034-candidate-audit-CLOSE-REPORT.md"
       ],
-      "brief": "Review commits ed1df0d7..dce03987 one by one against current master, classify accept/revise/reject, selectively integrate only accepted commits, and write the missing PQ-034 terminal or residual receipt. The clean worktree and branch remain protected; no wholesale merge."
+      "brief": "ACCEPTED 2026-09-07 (OpenCode Muse Spark + controller). Ten-commit audit already shipped: only e28082e6 kept, 9b1a2d7f on master, protected claude/perf00-20260727 still at dce03987 (not merged), native-closure already done at 4f602802. Leftover ready row was a queue lie. See close receipt."
     },
     {
       "id": "PQ-019.capsule-capture-repair",
