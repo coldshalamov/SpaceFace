@@ -93,12 +93,18 @@ export function crucibleLaunchConfig(setup, ruleset = CRUCIBLE_DEFAULT_RULESET) 
 export function requestCrucibleRun(bus, setup, ruleset = CRUCIBLE_DEFAULT_RULESET) {
   if (!setup) return false;
   const resolved = normalizeCrucibleRuleset(ruleset);
+  const dailyDateKey = typeof setup.dailyDateKey === 'string' && setup.dailyDateKey
+    ? setup.dailyDateKey
+    : null;
+  const launchSetup = { ...setup };
+  delete launchSetup.dailyDateKey;
   lastSetup = {
-    ...setup,
+    ...launchSetup,
     ruleset: resolved,
-    loadout: (setup.loadout || []).map((entry) => ({ ...entry })),
+    loadout: (launchSetup.loadout || []).map((entry) => ({ ...entry })),
   };
-  requestSandboxGame(bus, crucibleLaunchConfig(setup, resolved));
+  if (dailyDateKey) lastSetup.dailyDateKey = dailyDateKey;
+  requestSandboxGame(bus, crucibleLaunchConfig(launchSetup, resolved));
   return true;
 }
 

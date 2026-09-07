@@ -26,6 +26,7 @@ import {
   clearQueuedChallenge,
   compileChallenge,
   foldMutatorsIntoSeed,
+  lastQueuedDailyDateKey,
   normalizeMutators,
   offerDraftForChallenge,
   queueSurvivalChallenge,
@@ -43,6 +44,8 @@ import {
   CRUCIBLE_META_FMT,
   CRUCIBLE_META_STORAGE_KEY,
   compactRunResult,
+  dailySeedForDateKey,
+  dailySeedForNow,
   emptyCrucibleProfile,
   loadCrucibleMeta,
   parseCrucibleMeta,
@@ -53,6 +56,7 @@ import {
   settleCrucibleRun,
   useCrucibleMetaClock,
   useCrucibleMetaStorage,
+  utcDateKeyFromIso,
 } from '../src/systems/survivalRecords.js';
 
 const SEED = 47;
@@ -435,4 +439,165 @@ test('normalizeMutators is order-insensitive and drops junk', () => {
     normalizeMutators(['draftless', 'one_hull', 'draftless', null, { id: 'physics_only' }]),
     ['draftless', 'one_hull', 'physics_only'],
   );
+});
+
+test('same UTC day, two clocks, two storages yield the same daily uint32 seed', () => {
+  resetMeta();
+  const storageA = memoryStorage();
+  const storageB = memoryStorage();
+  assert.notEqual(storageA, storageB);
+  assert.notEqual(storageA._map, storageB._map);
+
+  useCrucibleMetaStorage(storageA);
+  useCrucibleMetaClock(() => '2026-09-06T23:59:59.000Z');
+  const keyLate = utcDateKeyFromIso('2026-09-06T23:59:59.000Z');
+  const seedA = dailySeedForNow();
+
+  useCrucibleMetaStorage(storageB);
+  useCrucibleMetaClock(() => '2026-09-06T00:00:00.000Z');
+  const keyEarly = utcDateKeyFromIso('2026-09-06T00:00:00.000Z');
+  const seedB = dailySeedForNow();
+
+  assert.equal(keyLate, '2026-09-06');
+  assert.equal(keyEarly, '2026-09-06');
+  assert.equal(seedA, seedB);
+  assert.equal(seedA, dailySeedForDateKey('2026-09-06'));
+  assert.equal(Number.isInteger(seedA), true);
+  assert.ok(seedA >= 1 && seedA <= 0xffffffff);
+  assert.equal(storageA.getItem(CRUCIBLE_META_STORAGE_KEY), null);
+  assert.equal(storageB.getItem(CRUCIBLE_META_STORAGE_KEY), null);
+  console.log(`SEED_TODAY_EXAMPLE: 2026-09-06 -> ${seedA}`);
+});
+
+test('next UTC day produces a different daily seed', () => {
+  resetMeta();
+  const sameDay = dailySeedForDateKey('2026-09-06');
+  const nextDay = dailySeedForDateKey('2026-09-07');
+  assert.notEqual(sameDay, nextDay);
+  useCrucibleMetaClock(() => '2026-09-07T00:00:00.000Z');
+  assert.equal(dailySeedForNow(), nextDay);
+  assert.equal(utcDateKeyFromIso('2026-09-07T00:00:00.000Z'), '2026-09-07');
+});
+
+test('daily board persists across loadCrucibleMeta reload and a second storage JSON', () => {
+  resetMeta();
+  const storage = memoryStorage();
+  useCrucibleMetaClock(() => '2026-09-06T12:00:00.000Z');
+  const dateKey = '2026-09-06';
+  const seed = dailySeedForDateKey(dateKey);
+  const settled = settleCrucibleRun({
+    result: resultFixture({ seed, score: 777, deepestWave: 12, dailyDateKey: dateKey }),
+    run: runFixture({ seed, dailyDateKey: dateKey }),
+    storage,
+  });
+  assert.equal(settled.result.dailyDateKey, dateKey);
+  assert.equal(settled.profile.daily.byDate[dateKey].bestScore, 777);
+  assert.equal(settled.profile.daily.byDate[dateKey].deepestWave, 12);
+  assert.equal(settled.profile.daily.byDate[dateKey].seed, seed);
+
+  const reloaded = loadCrucibleMeta(storage);
+  const row = reloaded.daily.byDate[dateKey];
+  assert.ok(row);
+  assert.equal(row.bestScore, 777);
+  assert.equal(row.deepestWave, 12);
+  assert.equal(row.seed, seed);
+  assert.equal(row.attempts, 1);
+
+  const json = storage.getItem(CRUCIBLE_META_STORAGE_KEY);
+  assert.ok(json);
+  const independent = memoryStorage();
+  independent.setItem(CRUCIBLE_META_STORAGE_KEY, json);
+  const otherProcess = loadCrucibleMeta(independent);
+  assert.equal(otherProcess.daily.byDate[dateKey].bestScore, 777);
+  assert.equal(otherProcess.daily.byDate[dateKey].deepestWave, 12);
+  assert.equal(otherProcess.daily.byDate[dateKey].seed, seed);
+});
+
+test('a non-daily run with a random seed does not write today\'s daily board', () => {
+  resetMeta();
+  const storage = memoryStorage();
+  useCrucibleMetaClock(() => '2026-09-06T12:00:00.000Z');
+  settleCrucibleRun({
+    result: resultFixture({ seed: 99, score: 50, deepestWave: 4 }),
+    run: runFixture({ seed: 99 }),
+    storage,
+  });
+  const profile = loadCrucibleMeta(storage);
+  assert.ok(profile.daily);
+  assert.deepEqual(profile.daily.byDate, {});
+  assert.equal(profile.history.length, 1);
+});
+
+test('migrateProfile of a v1 bag without daily still loads and saving round-trips the field', () => {
+  resetMeta();
+  const storage = memoryStorage();
+  const v1 = {
+    fmt: CRUCIBLE_META_FMT,
+    schemaVersion: 1,
+    savedAt: '2026-08-23T00:00:00.000Z',
+    data: {
+      schemaVersion: 1,
+      unlocks: {},
+      records: {
+        byKey: {},
+        lifetime: { runs: 0, victories: 0, defeats: 0, aborted: 0, deepestWave: 0, bestScore: 0, bestKills: 0 },
+      },
+      history: [],
+    },
+  };
+  storage.setItem(CRUCIBLE_META_STORAGE_KEY, JSON.stringify(v1));
+  const loaded = loadCrucibleMeta(storage);
+  assert.ok(loaded.daily);
+  assert.deepEqual(loaded.daily.byDate, {});
+  assert.equal(loaded.schemaVersion, 1);
+  saveCrucibleMeta(loaded, storage);
+  const roundTrip = loadCrucibleMeta(storage);
+  assert.ok(roundTrip.daily);
+  assert.deepEqual(roundTrip.daily.byDate, {});
+  const envelope = JSON.parse(storage.getItem(CRUCIBLE_META_STORAGE_KEY));
+  assert.ok(envelope.data.daily);
+  assert.deepEqual(envelope.data.daily.byDate, {});
+});
+
+test('queued dailyDateKey writes the board even when the run envelope has no extra field', () => {
+  resetMeta();
+  const storage = memoryStorage();
+  useCrucibleMetaClock(() => '2026-09-06T12:00:00.000Z');
+  const dateKey = '2026-09-06';
+  const seed = dailySeedForDateKey(dateKey);
+  queueSurvivalChallenge({ seed, ruleset: 'swarm', dailyDateKey: dateKey });
+  settleCrucibleRun({
+    result: resultFixture({ seed, score: 321, deepestWave: 8 }),
+    run: runFixture({ seed }),
+    storage,
+  });
+  const row = loadCrucibleMeta(storage).daily.byDate[dateKey];
+  assert.equal(row.bestScore, 321);
+  assert.equal(row.deepestWave, 8);
+  assert.equal(row.seed, seed);
+});
+
+test('a later non-daily settle does not inherit a consumed daily stamp', () => {
+  resetMeta();
+  const storage = memoryStorage();
+  useCrucibleMetaClock(() => '2026-09-06T12:00:00.000Z');
+  const dateKey = '2026-09-06';
+  const seed = dailySeedForDateKey(dateKey);
+  queueSurvivalChallenge({ seed, ruleset: 'swarm', dailyDateKey: dateKey });
+  settleCrucibleRun({
+    result: resultFixture({ seed, score: 10, deepestWave: 2 }),
+    run: runFixture({ seed }),
+    storage,
+  });
+  assert.equal(lastQueuedDailyDateKey(), null);
+  assert.equal(loadCrucibleMeta(storage).daily.byDate[dateKey].attempts, 1);
+  settleCrucibleRun({
+    result: resultFixture({ seed: 99, score: 999, deepestWave: 20 }),
+    run: runFixture({ seed: 99 }),
+    storage,
+  });
+  const row = loadCrucibleMeta(storage).daily.byDate[dateKey];
+  assert.equal(row.attempts, 1);
+  assert.equal(row.bestScore, 10);
+  assert.equal(row.deepestWave, 2);
 });

@@ -23,7 +23,12 @@ import {
   SWARM_RULESET,
 } from '../../data/swarmMode.js';
 import { SURVIVAL_RUN_WAVE_COUNT } from '../../systems/survivalRun.js';
-import { loadCrucibleMeta } from '../../systems/survivalRecords.js';
+import {
+  dailySeedForNow,
+  loadCrucibleMeta,
+  utcDateKeyNow,
+} from '../../systems/survivalRecords.js';
+import { clearQueuedChallenge, queueSurvivalChallenge } from '../../systems/survivalMutators.js';
 import { meetsUnlockCondition } from '../../systems/survivalUnlocks.js';
 import { compileAttackSpec } from '../../combat/attackSpec.js';
 import { causalKindsFromSpec } from '../../systems/adventureMigration.js';
@@ -51,15 +56,19 @@ function injectStyle() {
   .sf-menu.sf-crucible-door .sf-crd-hull .d { font-size:12px; color:var(--ink-dim); }
   .sf-menu.sf-crucible-door .sf-crd-modes { display:grid; gap:10px;
     grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); }
-  .sf-menu.sf-crucible-door .sf-crd-mode { display:flex; flex-direction:column; gap:5px; text-align:left;
+  .sf-menu.sf-crucible-door .sf-crd-mode,
+  .sf-menu.sf-crucible-door .sf-crd-daily { display:flex; flex-direction:column; gap:5px; text-align:left;
     border:1px solid var(--line); border-radius:2px; background:rgba(255,255,255,.03);
     padding:12px 14px; cursor:pointer; color:var(--ink); font:inherit; }
-  .sf-menu.sf-crucible-door .sf-crd-mode[aria-pressed="true"] { border-color:var(--accent-3);
+  .sf-menu.sf-crucible-door .sf-crd-mode[aria-pressed="true"],
+  .sf-menu.sf-crucible-door .sf-crd-daily[aria-pressed="true"] { border-color:var(--accent-3);
     background:color-mix(in srgb, var(--accent-3) 9%, transparent); }
-  .sf-menu.sf-crucible-door .sf-crd-mode .n { font-family:var(--mf-ui); font-weight:600; letter-spacing:.04em;
+  .sf-menu.sf-crucible-door .sf-crd-mode .n,
+  .sf-menu.sf-crucible-door .sf-crd-daily .n { font-family:var(--mf-ui); font-weight:600; letter-spacing:.04em;
     font-size:13px; text-transform:uppercase; }
   /* Mode and hull descriptions are sentences: sentence case in the UI face, never tracked caps. */
   .sf-menu.sf-crucible-door .sf-crd-mode .d,
+  .sf-menu.sf-crucible-door .sf-crd-daily .d,
   .sf-menu.sf-crucible-door .sf-crd-hull .d { font-family:var(--mf-ui); font-size:13px; color:var(--ink-dim);
     line-height:1.45; letter-spacing:0; text-transform:none; }
   .sf-menu.sf-crucible-door .sf-crd-label { font-family:var(--mf-ui); font-weight:600; font-size:12px;
@@ -69,6 +78,7 @@ function injectStyle() {
   .sf-menu.sf-crucible-door .sf-crd-seed input { font-family:var(--mono); font-variant-numeric:tabular-nums; }
   .sf-menu.sf-crucible-door .sf-crd-seed input { width:130px; background:rgba(0,0,0,.3);
     border:1px solid var(--line); color:var(--ink); font:inherit; padding:6px 8px; border-radius:2px; }
+  .sf-menu.sf-crucible-door .sf-crd-seed input[readonly] { cursor:default; opacity:.9; }
   .sf-menu.sf-crucible-door .sf-crd-foot { display:flex; gap:10px; justify-content:center; margin-top:4px; }
   .sf-menu.sf-crucible-results .sf-crd-headline { text-align:center; font-size:15px; line-height:1.6;
     color:var(--sf-paper); border:1px solid var(--line); border-radius:2px; padding:12px 14px;
@@ -282,6 +292,20 @@ export function lifetimeFigures(profile) {
   ];
 }
 
+/** Today's daily board row as the band shows it. Missing row → null (the band omits it). */
+export function todayBoardFigures(profile, dateKey) {
+  const daily = profile && profile.daily && typeof profile.daily === 'object' ? profile.daily : null;
+  const byDate = daily && daily.byDate && typeof daily.byDate === 'object' ? daily.byDate : null;
+  const row = byDate && dateKey ? byDate[dateKey] : null;
+  if (!row || typeof row !== 'object') return null;
+  const n = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+  return {
+    label: 'Today',
+    score: n(row.bestScore),
+    wave: n(row.deepestWave),
+  };
+}
+
 const OUTCOME_WORD = Object.freeze({ victory: 'WON', defeat: 'LOST', aborted: 'LEFT' });
 
 /** The most recent runs, newest first. Reads history as stored; never re-sorts by score. */
@@ -295,8 +319,25 @@ export function recentRunRows(profile, limit = 5) {
   }));
 }
 
-function renderRecordBand(profile) {
+function renderRecordBand(profile, dateKey) {
   const band = el('div', 'sf-crd-rec');
+
+  const today = todayBoardFigures(profile, dateKey);
+  if (today) {
+    const todayHead = el('div', 'sf-crd-rec__head');
+    todayHead.appendChild(el('span', null, today.label));
+    band.appendChild(todayHead);
+    const todayFigs = el('div', 'sf-crd-rec__figs');
+    const scoreCell = el('div', 'sf-crd-fig');
+    scoreCell.appendChild(el('b', null, String(today.score)));
+    scoreCell.appendChild(el('span', null, 'Score'));
+    todayFigs.appendChild(scoreCell);
+    const waveCell = el('div', 'sf-crd-fig');
+    waveCell.appendChild(el('b', null, String(today.wave)));
+    waveCell.appendChild(el('span', null, 'Wave'));
+    todayFigs.appendChild(waveCell);
+    band.appendChild(todayFigs);
+  }
 
   const figs = el('div', 'sf-crd-rec__figs');
   for (const f of lifetimeFigures(profile)) {
@@ -381,6 +422,13 @@ const CRUCIBLE_MODE_CARDS = Object.freeze([
   },
 ]);
 
+const DAILY_CARD = Object.freeze({
+  label: 'Daily',
+  verb: 'Play today',
+  blurb: 'The same seed for everyone, today.',
+  sub: 'One seed for the whole day. Same run on every machine. Nothing you earn here follows you home.',
+});
+
 export const crucibleScreen = {
   id: 'crucible',
 
@@ -396,6 +444,9 @@ export const crucibleScreen = {
     const previous = lastCrucibleSetup();
     let starterId = crucibleStarterIdForSetup(previous);
     let ruleset = previous ? lastCrucibleRuleset() : CRUCIBLE_DEFAULT_RULESET;
+    let daily = !!(previous && previous.dailyDateKey);
+    if (daily) ruleset = SWARM_RULESET;
+    let freeSeed = previous && !previous.dailyDateKey ? String(previous.seed) : null;
 
     const h = el('h1', null, 'Crucible');
     h.id = 'sf-crucible-title';
@@ -405,33 +456,68 @@ export const crucibleScreen = {
 
     // THE MODE COMES FIRST, because it is the biggest difference between two runs — bigger than
     // the hull and much bigger than the seed. Swarm leads: it is what the Crucible is.
+    // Daily sits beside the two rulesets as its own control (not a third .sf-crd-mode) so the
+    // existing two-mode door check still sees Swarm/Gauntlet as the ruleset pair.
     rootEl.appendChild(el('div', 'sf-crd-label', 'Mode'));
     const modes = el('div', 'sf-crd-modes');
     const modeButtons = [];
+    let dailyButton = null;
     for (const entry of CRUCIBLE_MODE_CARDS) {
       const card = document.createElement('button');
       card.type = 'button';
       card.className = 'sf-crd-mode';
       card.dataset.ruleset = entry.ruleset;
-      card.setAttribute('aria-pressed', String(entry.ruleset === ruleset));
+      card.setAttribute('aria-pressed', String(!daily && entry.ruleset === ruleset));
       card.appendChild(el('div', 'n', entry.label));
       card.appendChild(el('div', 'd', entry.blurb));
       card.addEventListener('click', () => {
+        if (daily) {
+          daily = false;
+          if (freeSeed) seedInput.value = freeSeed;
+        }
         ruleset = entry.ruleset;
         for (const other of modeButtons) {
           other.setAttribute('aria-pressed', String(other.dataset.ruleset === ruleset));
         }
+        if (dailyButton) dailyButton.setAttribute('aria-pressed', 'false');
         syncMode();
       });
       modeButtons.push(card);
       modes.appendChild(card);
     }
+    dailyButton = document.createElement('button');
+    dailyButton.type = 'button';
+    dailyButton.className = 'sf-crd-daily';
+    dailyButton.setAttribute('aria-pressed', String(daily));
+    dailyButton.appendChild(el('div', 'n', DAILY_CARD.label));
+    dailyButton.appendChild(el('div', 'd', DAILY_CARD.blurb));
+    dailyButton.addEventListener('click', () => {
+      if (!daily) freeSeed = seedInput.value;
+      daily = true;
+      ruleset = SWARM_RULESET;
+      for (const other of modeButtons) other.setAttribute('aria-pressed', 'false');
+      dailyButton.setAttribute('aria-pressed', 'true');
+      syncMode();
+    });
+    modes.appendChild(dailyButton);
     rootEl.appendChild(modes);
 
     function syncMode() {
+      if (daily) {
+        sub.textContent = DAILY_CARD.sub;
+        if (enterButton) enterButton.textContent = DAILY_CARD.verb;
+        seedInput.readOnly = true;
+        seedInput.setAttribute('aria-readonly', 'true');
+        seedInput.value = String(dailySeedForNow());
+        reroll.disabled = true;
+        return;
+      }
       const entry = CRUCIBLE_MODE_CARDS.find((m) => m.ruleset === ruleset) || CRUCIBLE_MODE_CARDS[0];
       sub.textContent = entry.sub;
       if (enterButton) enterButton.textContent = entry.verb;
+      seedInput.readOnly = false;
+      seedInput.removeAttribute('aria-readonly');
+      reroll.disabled = false;
     }
 
     rootEl.appendChild(el('div', 'sf-crd-label', 'Hull'));
@@ -463,13 +549,17 @@ export const crucibleScreen = {
     seedInput.inputMode = 'numeric';
     seedInput.spellcheck = false; seedInput.autocomplete = 'off';
     seedInput.setAttribute('aria-label', 'Run seed');
-    seedInput.value = String(previous ? previous.seed : freshSeed());
+    seedInput.value = String(daily ? dailySeedForNow() : (previous ? previous.seed : freshSeed()));
     seedRow.appendChild(seedInput);
     const reroll = document.createElement('button');
     reroll.type = 'button';
     reroll.className = 'sf-btn';
     reroll.textContent = 'New seed';
-    reroll.addEventListener('click', () => { seedInput.value = String(freshSeed()); });
+    reroll.addEventListener('click', () => {
+      if (daily) return;
+      seedInput.value = String(freshSeed());
+      freeSeed = seedInput.value;
+    });
     seedRow.appendChild(reroll);
     rootEl.appendChild(seedRow);
 
@@ -490,7 +580,19 @@ export const crucibleScreen = {
         ctx.bus.emit('toast', { text: 'Crucible setup invalid', kind: 'error', ttl: 4 });
         return;
       }
-      requestCrucibleRun(ctx.bus, setup.value, ruleset);
+      const payload = { ...setup.value };
+      if (daily) {
+        const dateKey = utcDateKeyNow();
+        payload.dailyDateKey = dateKey;
+        queueSurvivalChallenge({
+          seed: payload.seed,
+          ruleset: SWARM_RULESET,
+          dailyDateKey: dateKey,
+        });
+      } else {
+        clearQueuedChallenge();
+      }
+      requestCrucibleRun(ctx.bus, payload, ruleset);
     });
     foot.appendChild(enter);
     syncMode();
@@ -508,7 +610,7 @@ export const crucibleScreen = {
     // never be able to stop the door opening, so a broken or absent profile just omits the band.
     try {
       const profile = loadCrucibleMeta();
-      if (profile) rootEl.appendChild(renderRecordBand(profile));
+      if (profile) rootEl.appendChild(renderRecordBand(profile, utcDateKeyNow()));
     } catch (err) {
       if (typeof console !== 'undefined' && console.warn) {
         console.warn('[crucible] record band skipped:', err && err.message ? err.message : err);
@@ -972,6 +1074,13 @@ export const crucibleResultsScreen = {
       // Restart is a real New Game: runSession.newGame resets the envelope to inactive, so the
       // begin below is accepted exactly as it was the first time.
       // Replay the run as it BEGAN, ruleset included — a swarm death must not restart as a gauntlet.
+      if (setup.dailyDateKey) {
+        queueSurvivalChallenge({
+          seed: setup.seed,
+          ruleset: lastCrucibleRuleset(),
+          dailyDateKey: setup.dailyDateKey,
+        });
+      }
       requestCrucibleRun(ctx.bus, setup, lastCrucibleRuleset());
     });
     foot.appendChild(again);

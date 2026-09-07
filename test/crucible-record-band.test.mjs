@@ -13,6 +13,7 @@ import {
   unlockLadderRows,
   lifetimeFigures,
   recentRunRows,
+  todayBoardFigures,
 } from '../src/ui/screens/crucible.js';
 import { SURVIVAL_UNLOCK_CATALOG } from '../src/data/survivalUnlocks.js';
 import { emptyCrucibleProfile } from '../src/systems/survivalRecords.js';
@@ -100,6 +101,26 @@ test('an empty or absent history yields no rows rather than throwing', () => {
   assert.deepEqual(recentRunRows(emptyCrucibleProfile()), []);
   assert.deepEqual(recentRunRows(null), []);
   assert.deepEqual(recentRunRows({ history: 'not an array' }), []);
+});
+
+test('today daily figures surface score and wave when a board row exists', () => {
+  const profile = emptyCrucibleProfile();
+  assert.equal(todayBoardFigures(profile, '2026-09-06'), null);
+  profile.daily.byDate['2026-09-06'] = {
+    dateKey: '2026-09-06',
+    seed: 1,
+    bestScore: 400,
+    deepestWave: 10,
+    attempts: 1,
+    lastOutcome: 'defeat',
+    recordedAt: '2026-09-06T12:00:00.000Z',
+  };
+  const figs = todayBoardFigures(profile, '2026-09-06');
+  assert.equal(figs.label, 'Today');
+  assert.equal(figs.score, 400);
+  assert.equal(figs.wave, 10);
+  assert.equal(todayBoardFigures(profile, '2026-09-07'), null);
+  assert.equal(todayBoardFigures(null, '2026-09-06'), null);
 });
 
 test('every earn kind in the catalog has a readable phrasing', () => {

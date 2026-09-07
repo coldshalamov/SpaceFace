@@ -20,9 +20,14 @@ const PLANNER_SET = new Set(SURVIVAL_PLANNER_MUTATORS);
 const PHYSICS_SET = new Set(SURVIVAL_PHYSICS_VERBS);
 
 let queued = null;
+let queuedDailyDateKey = null;
 
 function isNonEmptyString(value) {
   return typeof value === 'string' && value.length > 0;
+}
+
+function readDailyDateKey(value) {
+  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null;
 }
 
 /** Sorted unique mutator ids. Unknown ids are kept (the planner ignores them; records still label them). */
@@ -113,21 +118,25 @@ export function challengeFromRun(run) {
 export function queueSurvivalChallenge(spec) {
   const src = spec && typeof spec === 'object' ? spec : {};
   const compiled = compileChallenge(src.seed, src.mutators, src.ruleset || src.trialId || 'scored');
+  queuedDailyDateKey = readDailyDateKey(src.dailyDateKey);
   queued = {
     mutators: compiled.mutators.slice(),
     ruleset: compiled.ruleset,
     trialId: compiled.trialId,
+    dailyDateKey: queuedDailyDateKey,
   };
   return compiled;
 }
 
 export function peekQueuedChallenge() {
   if (!queued) return null;
-  return {
+  const out = {
     mutators: queued.mutators.slice(),
     ruleset: queued.ruleset,
     trialId: queued.trialId,
   };
+  if (queued.dailyDateKey) out.dailyDateKey = queued.dailyDateKey;
+  return out;
 }
 
 export function takeQueuedChallenge() {
@@ -136,8 +145,21 @@ export function takeQueuedChallenge() {
   return next;
 }
 
+/** Day the live daily run started. Survives takeQueuedChallenge so midnight cannot re-label it. */
+export function lastQueuedDailyDateKey() {
+  return queuedDailyDateKey;
+}
+
+/** Settlement consumes the stamp so a later free run cannot inherit today's board. */
+export function consumeQueuedDailyDateKey() {
+  const key = queuedDailyDateKey;
+  queuedDailyDateKey = null;
+  return key;
+}
+
 export function clearQueuedChallenge() {
   queued = null;
+  queuedDailyDateKey = null;
 }
 
 export function filterDraftOffers(offers, challenge) {

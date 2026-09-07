@@ -1,7 +1,9 @@
-// Local Crucible records, run history, and unlock settlement (PQ-133.10a / CRU-054).
+// Local Crucible records, run history, unlock settlement, and the daily board
+// (PQ-133.10a / CRU-054 / PQ-169.00).
 //
-// LOCAL only. No network, no leaderboard, no telemetry. Persistence is a side bag,
-// not a fork of the Adventure save:
+// LOCAL only. No network, no telemetry. Persistence is a side bag, not a fork
+// of the Adventure save. The daily board is local too.
+// PQ-033: Steam board lands with the release closeout. Local board is the authority until then.
 //
 //   fmt:            spaceface-crucible-meta
 //   schemaVersion:  1
@@ -26,13 +28,18 @@ import {
   pushSharedPlayerStore,
   sharedPlayerStoreAvailable,
 } from '../save/sharedPlayerStore.js';
+import { hash32 } from '../core/rng.js';
 import { evaluateUnlocks } from './survivalUnlocks.js';
-import { challengeFromRun, normalizeMutators } from './survivalMutators.js';
+import { challengeFromRun, consumeQueuedDailyDateKey, lastQueuedDailyDateKey, normalizeMutators } from './survivalMutators.js';
 
 export const CRUCIBLE_META_FMT = 'spaceface-crucible-meta';
 export const CRUCIBLE_META_SCHEMA_VERSION = 1;
 export const CRUCIBLE_META_STORAGE_KEY = 'sf.save.crucible_meta';
 export const CRUCIBLE_HISTORY_LIMIT = 40;
+export const CRUCIBLE_DAILY_LABEL = 'spaceface-crucible-daily-v1';
+export const CRUCIBLE_DAILY_BOARD_CAP = 60;
+export const CRUCIBLE_DAILY_SEED_MIN = 1;
+export const CRUCIBLE_DAILY_SEED_MAX = 0xffffffff;
 
 const memoryStore = new Map();
 
@@ -60,6 +67,35 @@ function nowIso() {
   } catch {
     return '1970-01-01T00:00:00.000Z';
   }
+}
+
+export function isUtcDateKey(value) {
+  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
+/** UTC calendar day `YYYY-MM-DD` from an ISO timestamp. Never local timezone. */
+export function utcDateKeyFromIso(iso) {
+  if (typeof iso !== 'string' || iso.length < 10) return '';
+  const key = iso.slice(0, 10);
+  return isUtcDateKey(key) ? key : '';
+}
+
+export function utcDateKeyNow() {
+  return utcDateKeyFromIso(nowIso());
+}
+
+/** uint32 in the Crucible launch range (1..0xffffffff). Hash 0 becomes 1. */
+export function dailySeedForDateKey(dateKey) {
+  const key = typeof dateKey === 'string' ? dateKey : '';
+  const seed = hash32(CRUCIBLE_DAILY_LABEL, key);
+  if (seed === 0) return CRUCIBLE_DAILY_SEED_MIN;
+  if (seed < CRUCIBLE_DAILY_SEED_MIN) return CRUCIBLE_DAILY_SEED_MIN;
+  if (seed > CRUCIBLE_DAILY_SEED_MAX) return CRUCIBLE_DAILY_SEED_MAX;
+  return seed;
+}
+
+export function dailySeedForNow() {
+  return dailySeedForDateKey(utcDateKeyNow());
 }
 
 function memoryStorage() {
@@ -98,12 +134,17 @@ function emptyLifetime() {
   };
 }
 
+function emptyDaily() {
+  return { byDate: {} };
+}
+
 export function emptyCrucibleProfile() {
   return {
     schemaVersion: CRUCIBLE_META_SCHEMA_VERSION,
     unlocks: {},
     records: { byKey: {}, lifetime: emptyLifetime() },
     history: [],
+    daily: emptyDaily(),
   };
 }
 
@@ -145,14 +186,60 @@ function migrateProfile(raw) {
     unlocks,
     records: { byKey, lifetime },
     history: history.slice(-CRUCIBLE_HISTORY_LIMIT),
+    daily: migrateDaily(src.daily),
   };
   if (version > CRUCIBLE_META_SCHEMA_VERSION) {
     for (const key of Object.keys(src)) {
-      if (key === 'schemaVersion' || key === 'unlocks' || key === 'records' || key === 'history') continue;
+      if (
+        key === 'schemaVersion'
+        || key === 'unlocks'
+        || key === 'records'
+        || key === 'history'
+        || key === 'daily'
+      ) continue;
       profile[key] = cloneJson(src[key]);
     }
   }
   return profile;
+}
+
+function migrateDailyRow(key, row) {
+  const src = asObject(row);
+  if (!src) return null;
+  const dateKey = isUtcDateKey(src.dateKey) ? src.dateKey : (isUtcDateKey(key) ? key : '');
+  if (!dateKey) return null;
+  const seed = Number.isInteger(src.seed) ? src.seed : 0;
+  return {
+    dateKey,
+    seed: seed === 0 ? 0 : (seed >>> 0) || 1,
+    bestScore: Number.isInteger(src.bestScore) && src.bestScore >= 0 ? src.bestScore : 0,
+    deepestWave: Number.isInteger(src.deepestWave) && src.deepestWave >= 0 ? src.deepestWave : 0,
+    attempts: Number.isInteger(src.attempts) && src.attempts >= 0 ? src.attempts : 0,
+    lastOutcome: typeof src.lastOutcome === 'string' ? src.lastOutcome : null,
+    recordedAt: typeof src.recordedAt === 'string' ? src.recordedAt : null,
+  };
+}
+
+function migrateDaily(rawDaily) {
+  const empty = emptyDaily();
+  const src = asObject(rawDaily);
+  if (!src) return empty;
+  const byDateIn = asObject(src.byDate) ? src.byDate : {};
+  const byDate = {};
+  for (const key of Object.keys(byDateIn)) {
+    const row = migrateDailyRow(key, byDateIn[key]);
+    if (row) byDate[row.dateKey] = row;
+  }
+  return { byDate: pruneDailyByDate(byDate) };
+}
+
+function pruneDailyByDate(byDate, cap = CRUCIBLE_DAILY_BOARD_CAP) {
+  const keys = Object.keys(byDate).sort();
+  if (keys.length <= cap) return byDate;
+  const keep = keys.slice(keys.length - cap);
+  const next = {};
+  for (const key of keep) next[key] = byDate[key];
+  return next;
 }
 
 function unwrapEnvelope(parsed) {
@@ -278,7 +365,8 @@ function applyLifetime(lifetime, compact) {
 
 export function compactRunResult(result, run, newly) {
   const challenge = challengeFromRun(run);
-  return {
+  const dailyDateKey = resolveDailyDateKey(result, run);
+  const compact = {
     schemaVersion: 1,
     outcome: result && result.outcome ? result.outcome : null,
     seed: result && Number.isInteger(result.seed) ? result.seed : (run && Number.isInteger(run.seed) ? run.seed : 0),
@@ -300,6 +388,44 @@ export function compactRunResult(result, run, newly) {
     })) : [],
     unlocksEarned: Array.isArray(newly) ? newly.slice() : [],
   };
+  if (dailyDateKey) compact.dailyDateKey = dailyDateKey;
+  return compact;
+}
+
+function resolveDailyDateKey(result, run) {
+  const candidates = [
+    result && result.dailyDateKey,
+    run && run.dailyDateKey,
+    lastQueuedDailyDateKey(),
+  ];
+  for (const value of candidates) {
+    if (isUtcDateKey(value)) return value;
+  }
+  return null;
+}
+
+function applyDailyBoard(daily, compact, recordedAt) {
+  const dateKey = compact && compact.dailyDateKey;
+  if (!isUtcDateKey(dateKey)) return daily && daily.byDate ? daily : emptyDaily();
+  const prevBag = daily && asObject(daily) ? daily : emptyDaily();
+  const byDate = { ...(asObject(prevBag.byDate) ? prevBag.byDate : {}) };
+  const prev = asObject(byDate[dateKey]) ? byDate[dateKey] : null;
+  const score = Number.isInteger(compact.score) ? compact.score : 0;
+  const deepest = Number.isInteger(compact.deepestWave) ? compact.deepestWave : 0;
+  const seed = Number.isInteger(compact.seed) ? compact.seed : (prev && Number.isInteger(prev.seed) ? prev.seed : 0);
+  const row = {
+    dateKey,
+    seed,
+    bestScore: prev && Number.isInteger(prev.bestScore) ? prev.bestScore : 0,
+    deepestWave: prev && Number.isInteger(prev.deepestWave) ? prev.deepestWave : 0,
+    attempts: (prev && Number.isInteger(prev.attempts) ? prev.attempts : 0) + 1,
+    lastOutcome: compact.outcome || (prev && prev.lastOutcome) || null,
+    recordedAt,
+  };
+  if (score >= row.bestScore) row.bestScore = score;
+  if (deepest > row.deepestWave) row.deepestWave = deepest;
+  byDate[dateKey] = row;
+  return { ...prevBag, byDate: pruneDailyByDate(byDate) };
 }
 
 export function settleCrucibleRun({ result, run, profile = null, storage = liveStorage() } = {}) {
@@ -319,8 +445,10 @@ export function settleCrucibleRun({ result, run, profile = null, storage = liveS
       lifetime: applyLifetime(records.lifetime, compact),
     },
     history: [...(Array.isArray(loaded.history) ? loaded.history : []), compact].slice(-CRUCIBLE_HISTORY_LIMIT),
+    daily: applyDailyBoard(loaded.daily, compact, nowIso()),
   };
   saveCrucibleMeta(next, storage);
+  consumeQueuedDailyDateKey();
   return {
     profile: next,
     result: compact,
