@@ -43,6 +43,27 @@ import {
   isTrainingActor,
   maxWeaponHeatFraction,
 } from '../onboarding/flightDrill.js';
+import {
+  RESCUE_GATE,
+  RESCUE_ORDER,
+  RESCUE_PREREQ,
+  RESCUE_REEL_TIGHT_WU,
+  RESCUE_ROCK_HIT_MIN_SPEED_WU,
+  RESCUE_RUN_MIN_SPEED_WU,
+  RESCUE_SHOVE_PROOF_SPEED_WU,
+  buildRescueCompleteEvent,
+  buildRescueFunnelEvent,
+  buildRescueStartedEvent,
+  freshRescueState,
+  makeRescueCastSpecs,
+  rescueBeatLine,
+  rescuePlayerLatchedTo,
+  rescuePodAtBeacon,
+  rescueRangeRungId,
+  rescueRockHitDerelict,
+  rescueScoutAtAsteroid,
+  rescueScoutEscaped,
+} from '../onboarding/rescueOpening.js';
 
 const PANEL_ID = 'sf-onboarding';
 const STYLE_ID = 'sf-onboarding-style';
@@ -171,7 +192,9 @@ export const onboarding = {
       try { this._tryAdvanceBeat(); } catch (_) { /* never let onboarding break the bus */ }
     });
     // Start only for a fresh game. Loaded saves emit save:loaded (no tutorial for a returning pilot).
-    bus.on('game:started', () => this._begin());
+    // The payload names a scenario slice for harness boots (47a sim, lab scenarios); those own
+    // their cast, so the rescue opening only stages on the default route (no scenario payload).
+    bus.on('game:started', (p) => this._begin(p || {}));
     // On load, a returning pilot doesn't get the tutorial — but they DO get the story objective
     // tracker (P2-14), so they can always see their current beat objective. Tear down any tutorial
     // state, then bring up the story panel.
@@ -207,6 +230,21 @@ export const onboarding = {
       if (p && p.targetId === this._trainerId) this._onBeatEvent('flybyFocus:start', p);
     });
     bus.on('combat:fire', (p) => this._onTrainingFire(p || {}));
+
+    // ── Rescue-opening rail (PQ-163.00) ─────────────────────────────────────────────────
+    // The three rescue verbs ride the production event stream next to the drill handlers.
+    // Every handler below no-ops unless its rescue beat is current, so the drill, the
+    // 47-A slice harness, and the B1 audit scripts observe zero behavior change.
+    bus.on('tether:latched', (p) => this._onRescueLatched(p || {}));
+    bus.on('tether:reel', (p) => this._onRescueReel(p || {}));
+    bus.on('tether:released', (p) => this._onRescueReleased(p || {}));
+    bus.on('tether:cut', (p) => this._onRescueCut(p || {}));
+    bus.on('tether:broke', (p) => this._onRescueBroke(p || {}));
+    bus.on('tether:whipImpact', (p) => this._onRescueWhipImpact(p || {}));
+    bus.on('combat:shove', (p) => this._onRescueShoveEvent(p || {}));
+    bus.on('combat:fire', (p) => this._onRescueFire(p || {}));
+    bus.on('entity:killed', (p) => this._onRescueKilled(p || {}));
+    bus.on('player:death', () => this._onRescuePlayerDeath());
 
     // ── Contextual first-time hints (fire once per hint, persist across saves) ───────────────
     // These are independent of the tutorial chain: they fire for all players whose
@@ -369,7 +407,7 @@ export const onboarding = {
 
   _isOre(id) { return !!id && ORE_PREFIXES.some((p) => String(id).startsWith(p)); },
 
-  _begin() {
+  _begin(payload) {
     const st = this.state;
     this._dockControlInRange = false;
     this._gateControlInRange = false;
@@ -403,6 +441,9 @@ export const onboarding = {
     }
     this._injectStyle();
     this._buildPanel();
+    // The rescue opening stages on the default route only: harness boots that name a scenario
+    // slice (47a sim, lab scenarios) keep their own cast and their golden snapshots.
+    if (!payload || payload.scenario == null) this._beginRescue();
     // No intro modal (spec2/03 B0: "no modal"). The B0 line fires on the first update tick after the
     // 4 s silence gate (no predecessor → fires immediately).
     this._refreshBeatPanel();
@@ -434,6 +475,7 @@ export const onboarding = {
   _teardown() {
     const ob = this.state.onboarding; if (ob) ob.active = false;
     this._removeTrainingActors();
+    this._removeRescueActors();
     if (this._panel) { this._panel.remove(); this._panel = null; }
     this._bodyEl = null;
     this._titleEl = null;
@@ -499,6 +541,12 @@ export const onboarding = {
       const now = this.state.simTime || 0;
       if (now - Math.max(prevDoneAt, this._lastTextAtS) < SILENCE_S) return;
     }
+    // Rescue-opening gate (PQ-163.00): while a rescue verb is current, the drill beat it gates
+    // waits. The rescue speaks through the same one-voice chokepoint, so the ≥4 s cadence the
+    // silence gate enforces below already covers the rescue line — no second timer needed.
+    // Inactive rescue (harness boots, opted-out pilots, finished rails) never gates anything.
+    const rescueKey = this._rescueCurrentKey();
+    if (rescueKey && RESCUE_GATE[rescueKey] === BEATS[nextIndex].key) return;
     ob.currentBeat = nextIndex;
     const beat = BEATS[nextIndex];
     ob.beatAction = beat.line;
@@ -680,6 +728,7 @@ export const onboarding = {
     const ob = this.state.onboarding;
     if (!ob || ob.beatDoneAt[beat.key] != null) return;
     ob.beatDoneAt[beat.key] = this.state.simTime || 0;
+    this._maybeStartRescueBeat(beat.key);
     if (beat.key === 'choice' || BEATS.indexOf(beat) === CHOICE_BEAT_INDEX) {
       this._finish();
     }
@@ -722,6 +771,8 @@ export const onboarding = {
   _finish() {
     const ob = this.state.onboarding; if (!ob) return;
     this._removeTrainingActors();
+    this._removeRescueActors();
+    if (ob.rescue) ob.rescue.active = false;
     ob.finished = true;
     ob.active = false; // tutorial mode ends permanently (spec2/03 B5)
     this._clearObjectiveWaypoint();
@@ -776,6 +827,7 @@ export const onboarding = {
       // Advance through the beat gate (silence-gated) + resolve proximity DONE conditions.
       this._tryAdvanceBeat();
       this._resolveProximityDone();
+      this._resolveRescueDone();
       this._setObjectiveWaypoint(false);
     } catch (_) { /* never let onboarding break the loop */ }
   },
@@ -993,10 +1045,407 @@ export const onboarding = {
     missions.ensureOnboardingChoiceOffers(stationId);
   },
 
+  // B5: surface three side-by-side offers (HAUL/BOUNTY/SURVEY) through the ordinary mission
+  // authority. No parallel tutorial jobs: these offers accept, track, pay, and receipt normally.
+  _openChoice() {
+    const st = this.state;
+    const ob = st.onboarding;
+    const stationId = ob && ob.choiceStationId || st.ui && st.ui.dockedStationId;
+    if (!stationId) return;
+    const missions = this.registry && this.registry.get && this.registry.get('missions');
+    if (!missions || typeof missions.ensureOnboardingChoiceOffers !== 'function') return;
+    missions.ensureOnboardingChoiceOffers(stationId);
+  },
+
+  // ── Rescue opening (PQ-163.00) ────────────────────────────────────────────────────────
+  // Three verbs in the drill's silence gaps: swing (after tether), shove (after burst),
+  // grab-and-run (after disengage). Each is taught by doing through production events, then
+  // silence; the funnel records complete/fail per beat. Fails reset the beat's actors and
+  // retry — never a wall, never a second voice.
+
+  _rescue() {
+    const ob = this.state && this.state.onboarding;
+    return ob && ob.rescue && ob.rescue.active && !ob.finished ? ob.rescue : null;
+  },
+
+  _rescueCurrentKey() {
+    const rescue = this._rescue();
+    return rescue && rescue.current ? rescue.current : null;
+  },
+
+  _rescueActor(slot) {
+    const rescue = this._rescue();
+    if (!rescue) return null;
+    const id = rescue.ids && rescue.ids[slot];
+    if (id == null || !this.state.entities) return null;
+    const entity = this.state.entities.get(id);
+    return entity && entity.alive !== false ? entity : null;
+  },
+
+  _beginRescue() {
+    const st = this.state;
+    const ob = st.onboarding;
+    if (!ob || ob.rescue) return;
+    ob.rescue = freshRescueState();
+    ob.rescue.startedAt = st.simTime || 0;
+    this._spawnRescueCast();
+    this.bus.emit('rescue:started', buildRescueStartedEvent(st.simTime || 0));
+  },
+
+  _spawnRescueCast() {
+    const st = this.state;
+    const rescue = st.onboarding && st.onboarding.rescue;
+    if (!rescue || !rescue.active) return;
+    const player = st.entities && st.entities.get(st.playerId);
+    if (!player || !player.pos || !this.helpers || !this.helpers.spawnEntity) return;
+    // Remove any previous tableau before staging a fresh one (fail recovery, never a dupe).
+    this._removeRescueActors();
+    const specs = makeRescueCastSpecs(player.pos, () => onboardingRandom(st));
+    for (const slot of Object.keys(specs)) {
+      const spawned = this.helpers.spawnEntity(specs[slot]);
+      rescue.ids[slot] = spawned && spawned.id != null ? spawned.id : null;
+      if (spawned && spawned.data && (slot === 'scout' || slot === 'derelict' || slot === 'beacon')) {
+        spawned._invulnUntil = Infinity;
+      }
+    }
+  },
+
+  _removeRescueActors() {
+    const rescue = this.state && this.state.onboarding && this.state.onboarding.rescue;
+    if (!rescue || !rescue.ids) return;
+    const player = this.state && this.state.player;
+    for (const slot of Object.keys(rescue.ids)) {
+      const id = rescue.ids[slot];
+      if (id != null && this.helpers && typeof this.helpers.removeEntity === 'function') {
+        this.helpers.removeEntity(id);
+      }
+      if (player && id != null && player.targetId === id) player.targetId = null;
+      rescue.ids[slot] = null;
+    }
+  },
+
+  // A drill DONE may open the rescue verb that follows it: strict order (swing → shove →
+  // grab), each firing exactly once through the single tutorial voice.
+  _maybeStartRescueBeat(drillKey) {
+    const rescue = this._rescue();
+    if (!rescue || rescue.current || rescue.completed) return;
+    const next = RESCUE_ORDER.find((key) =>
+      rescue.beats[key].state !== 'done' && RESCUE_PREREQ[key] === drillKey);
+    if (!next) return;
+    const idx = RESCUE_ORDER.indexOf(next);
+    if (rescue.beats[next].state === 'done') return;
+    if (idx > 0 && rescue.beats[RESCUE_ORDER[idx - 1]].state !== 'done') return;
+    rescue.current = next;
+    rescue.beats[next].state = 'current';
+    const line = rescueBeatLine(next);
+    this.state.onboarding.beatAction = line;
+    // Adopt a latch the player already holds (grabbed early): the beat must never strand.
+    if (next === 'grab' && rescue.ids.pod != null
+      && rescuePlayerLatchedTo(this.state, this.state.playerId, rescue.ids.pod)) {
+      rescue.podLatched = true;
+    }
+    if (next === 'swing' && rescue.ids.rock != null
+      && rescuePlayerLatchedTo(this.state, this.state.playerId, rescue.ids.rock)) {
+      rescue.rockLatched = true;
+    }
+    this._sayTutorial(line);
+    this._setRescueWaypoint(true);
+    this._refreshBeatPanel();
+  },
+
+  // The marker identity stays beat-stable and onboarding-owned so HUD/radar/map agree.
+  _setRescueWaypoint(force) {
+    const st = this.state;
+    const ob = st.onboarding;
+    const rescue = this._rescue();
+    if (!rescue || !rescue.current || !st.nav) return false;
+    const key = rescue.current;
+    const line = rescueBeatLine(key);
+    let target = null;
+    if (key === 'swing') {
+      const rock = this._rescueActor('rock');
+      if (rock) target = { pos: rock.pos, label: 'Loose Rock' };
+    } else if (key === 'shove') {
+      const scout = this._rescueActor('scout');
+      if (scout) target = { pos: scout.pos, label: 'Scout' };
+    } else if (key === 'grab') {
+      const pod = this._rescueActor('pod');
+      const beacon = this._rescueActor('beacon');
+      const latched = rescue.podLatched
+        || (rescue.ids.pod != null && rescuePlayerLatchedTo(st, st.playerId, rescue.ids.pod));
+      if (latched && beacon) target = { pos: beacon.pos, label: 'Beacon' };
+      else if (pod) target = { pos: pod.pos, label: 'Escape Pod' };
+    }
+    const existing = st.nav.waypoint;
+    if ((!target || !target.pos)) {
+      if (existing && existing.onboarding && String(existing.markerId || '').startsWith('rescue:')) {
+        st.nav.waypoint = null;
+      }
+      return true;
+    }
+    if (existing && !existing.onboarding && !force) {
+      const foreignKind = existing.kind;
+      if (foreignKind !== 'mission' && foreignKind !== 'story') return true;
+    }
+    st.nav.waypoint = {
+      onboarding: true,
+      pos: { x: target.pos.x, z: target.pos.z },
+      label: target.label,
+      reason: line,
+      markerId: `rescue:${key}`,
+      markerKind: ONBOARDING_OBJECTIVE_MARKER.markerKind,
+      mapLabel: ONBOARDING_OBJECTIVE_MARKER.mapLabel,
+    };
+    if (st.onboarding) st.onboarding.beatAction = line;
+    return true;
+  },
+
+  // ── Rescue event handlers (all no-op unless their beat is current) ────────────────────
+  _onRescueLatched(payload) {
+    const rescue = this._rescue();
+    const key = this._rescueCurrentKey();
+    if (!rescue || !key || !payload) return;
+    if (key === 'swing' && payload.targetId === rescue.ids.rock) rescue.rockLatched = true;
+    if (key === 'grab' && payload.targetId === rescue.ids.pod) rescue.podLatched = true;
+  },
+
+  _onRescueReel(payload) {
+    const rescue = this._rescue();
+    if (!rescue || this._rescueCurrentKey() !== 'swing' || !payload) return;
+    if (payload.targetId !== rescue.ids.rock) return;
+    const after = Number(payload.after);
+    if (Number.isFinite(after) && after <= RESCUE_REEL_TIGHT_WU) rescue.rockReeled = true;
+  },
+
+  _onRescueReleased(payload) {
+    const rescue = this._rescue();
+    const key = this._rescueCurrentKey();
+    if (!rescue || !key || !payload) return;
+    if (key === 'swing' && payload.targetId === rescue.ids.rock && rescue.rockReeled === true) {
+      rescue.rockReleasedAfterReel = true;
+    }
+    if (key === 'grab' && payload.targetId === rescue.ids.pod) rescue.podLatched = false;
+  },
+
+  _onRescueCut(payload) {
+    const rescue = this._rescue();
+    const key = this._rescueCurrentKey();
+    if (!rescue || !key || !payload) return;
+    // A cut is a release with intent: same bookkeeping as a release.
+    this._onRescueReleased(payload);
+  },
+
+  _onRescueBroke(payload) {
+    const rescue = this._rescue();
+    const key = this._rescueCurrentKey();
+    if (!rescue || !key || !payload) return;
+    // A snapped line is recovery, not failure: the beat stays current, flags reset.
+    if (key === 'swing' && payload.targetId === rescue.ids.rock) {
+      rescue.rockLatched = false;
+      rescue.rockReeled = false;
+      rescue.rockReleasedAfterReel = false;
+    }
+    if (key === 'grab' && payload.targetId === rescue.ids.pod) rescue.podLatched = false;
+  },
+
+  _onRescueWhipImpact(payload) {
+    const rescue = this._rescue();
+    const key = this._rescueCurrentKey();
+    if (!rescue || !key || !payload) return;
+    // Rock whipped through the derelict: the swing-release payoff, no proximity wait needed.
+    if (key === 'swing' && payload.targetId === rescue.ids.rock
+      && payload.victimId === rescue.ids.derelict) {
+      this._rescueDone('swing');
+      return;
+    }
+    // Any whipped mass that reaches the scout is a shove with a receipt.
+    if (key === 'shove' && payload.victimId === rescue.ids.scout) {
+      this._emitRescueShove(payload.victimId);
+      this._rescueDone('shove');
+    }
+  },
+
+  _onRescueShoveEvent(payload) {
+    const rescue = this._rescue();
+    if (!rescue || this._rescueCurrentKey() !== 'shove' || !payload) return;
+    if (payload.targetId === rescue.ids.scout) this._rescueDone('shove');
+  },
+
+  _onRescueFire(payload) {
+    const rescue = this._rescue();
+    if (!rescue || this._rescueCurrentKey() !== 'shove' || !payload) return;
+    if (payload.ownerId === this.state.playerId) rescue.shoveShots = (rescue.shoveShots || 0) + 1;
+  },
+
+  _onRescueKilled(payload) {
+    const rescue = this._rescue();
+    const key = this._rescueCurrentKey();
+    if (!rescue || !payload || payload.id == null) return;
+    // Destroying a beat's working body fails the attempt and stages a fresh one — retry, not
+    // wall. A kill before its beat is current only restages the body; it never yanks the rail.
+    if (payload.id === rescue.ids.rock) {
+      if (key === 'swing') this._rescueFail('swing', 'rock destroyed');
+      else this._respawnRescueSlot('swing');
+    } else if (payload.id === rescue.ids.pod) {
+      if (key === 'grab') this._rescueFail('grab', 'pod destroyed');
+      else this._respawnRescueSlot('grab');
+    }
+  },
+
+  _onRescuePlayerDeath() {
+    const key = this._rescueCurrentKey();
+    if (!key) return;
+    this._rescueFail(key, 'pilot down');
+  },
+
+  // Proximity/velocity DONE resolution on the 0.2 s tick. Pure-position reads only.
+  _resolveRescueDone() {
+    const rescue = this._rescue();
+    const key = this._rescueCurrentKey();
+    if (!rescue || !key) return;
+    const player = this.state.entities && this.state.entities.get(this.state.playerId);
+    if (!player || !player.pos) return;
+    if (key === 'swing') {
+      if (!rescue.rockReleasedAfterReel) return;
+      const rock = this._rescueActor('rock');
+      const derelict = this._rescueActor('derelict');
+      if (!rock || !derelict) { this._rescueFail('swing', 'rock lost'); return; }
+      if (rescueRockHitDerelict(rock, derelict, RESCUE_ROCK_HIT_MIN_SPEED_WU)) {
+        this._dropRescueScrap(derelict);
+        this._rescueDone('swing');
+      }
+    } else if (key === 'shove') {
+      const scout = this._rescueActor('scout');
+      const asteroid = this._rescueActor('asteroid');
+      if (!scout || !asteroid) { this._rescueFail('shove', 'scout lost'); return; }
+      if (rescueScoutEscaped(scout, player.pos)) { this._rescueFail('shove', 'scout escaped'); return; }
+      if (rescueScoutAtAsteroid(scout, asteroid, RESCUE_SHOVE_PROOF_SPEED_WU)) {
+        this._emitRescueShove(scout.id);
+        this._rescueDone('shove');
+      }
+    } else if (key === 'grab') {
+      const pod = this._rescueActor('pod');
+      const beacon = this._rescueActor('beacon');
+      if (!pod || !beacon) { this._rescueFail('grab', 'pod lost'); return; }
+      const latched = rescue.podLatched
+        || rescuePlayerLatchedTo(this.state, this.state.playerId, rescue.ids.pod);
+      if (latched) rescue.podLatched = true;
+      if (!rescue.podLatched) return;
+      const speed = Math.hypot(Number(player.vel && player.vel.x) || 0, Number(player.vel && player.vel.z) || 0);
+      if (speed >= RESCUE_RUN_MIN_SPEED_WU && rescuePodAtBeacon(pod, beacon)) {
+        this._rescueDone('grab');
+      }
+    }
+  },
+
+  // The honest shove event the telemetry funnel already listens for: a real shove happened,
+  // so firstShoveAt + the shove verb count move like any production shove.
+  _emitRescueShove(targetId) {
+    this.bus.emit('combat:shove', {
+      targetId,
+      sourceId: this.state.playerId,
+      kind: 'rescue-shove',
+      atS: this.state.simTime || 0,
+    });
+  },
+
+  _rescueDone(key) {
+    const rescue = this._rescue();
+    if (!rescue || rescue.beats[key].state === 'done') return;
+    const atS = this.state.simTime || 0;
+    rescue.beats[key].state = 'done';
+    rescue.beats[key].doneAt = atS;
+    if (rescue.current === key) rescue.current = null;
+    rescue.rockLatched = false;
+    rescue.rockReeled = false;
+    rescue.rockReleasedAfterReel = false;
+    if (key !== 'grab') rescue.podLatched = false;
+    this.bus.emit('rescue:beat', { ...buildRescueFunnelEvent(key, 'complete', atS), fails: rescue.beats[key].fails });
+    // The drill's silence gate already keys off the tutorial voice clock, which the rescue
+    // line moved — the next drill verb waits its ≥4 s without any extra timer.
+    if (rescue.beats.swing.state === 'done'
+      && rescue.beats.shove.state === 'done'
+      && rescue.beats.grab.state === 'done'
+      && !rescue.completed) {
+      rescue.completed = true;
+      rescue.completedAt = atS;
+      const fails = RESCUE_ORDER.reduce((n, k) => n + (rescue.beats[k].fails || 0), 0);
+      this.bus.emit('rescue:complete', buildRescueCompleteEvent(atS, fails));
+    }
+    this._setRescueWaypoint(true);
+    this._refreshBeatPanel();
+  },
+
+  _rescueFail(key, reason) {
+    const rescue = this._rescue();
+    if (!rescue || rescue.completed || rescue.beats[key].state === 'done') return;
+    // Never yank a different current verb off the rail.
+    if (rescue.current && rescue.current !== key) return;
+    const atS = this.state.simTime || 0;
+    rescue.beats[key].fails = (rescue.beats[key].fails || 0) + 1;
+    rescue.beats[key].state = 'current';
+    rescue.current = key;
+    rescue.rockLatched = false;
+    rescue.rockReeled = false;
+    rescue.rockReleasedAfterReel = false;
+    rescue.podLatched = false;
+    rescue.shoveShots = 0;
+    this.bus.emit('rescue:beat', {
+      ...buildRescueFunnelEvent(key, 'fail', atS),
+      fails: rescue.beats[key].fails,
+      reason: String(reason || 'lost'),
+    });
+    // Stage a fresh tableau for the failed beat only: the rock, scout, and pod are the
+    // working bodies; the wreck, wall, and beacon stand.
+    this._respawnRescueSlot(key);
+    // Re-speak the verb once (recovery, not a lecture), then silence.
+    const line = rescueBeatLine(key);
+    if (this.state.onboarding) this.state.onboarding.beatAction = line;
+    this._sayTutorial(line);
+    this._setRescueWaypoint(true);
+    this._refreshBeatPanel();
+  },
+
+  _respawnRescueSlot(key) {
+    const st = this.state;
+    const rescue = st.onboarding && st.onboarding.rescue;
+    if (!rescue || !this.helpers || !this.helpers.spawnEntity) return;
+    const player = st.entities && st.entities.get(st.playerId);
+    if (!player || !player.pos) return;
+    const slot = key === 'swing' ? 'rock' : key === 'shove' ? 'scout' : 'pod';
+    const oldId = rescue.ids[slot];
+    if (oldId != null && typeof this.helpers.removeEntity === 'function') {
+      this.helpers.removeEntity(oldId);
+    }
+    const specs = makeRescueCastSpecs(player.pos, () => onboardingRandom(st));
+    const spawned = this.helpers.spawnEntity(specs[slot]);
+    rescue.ids[slot] = spawned && spawned.id != null ? spawned.id : null;
+    if (spawned && slot === 'scout') spawned._invulnUntil = Infinity;
+  },
+
+  // The vacuum shows itself: swinging the rock through the derelict shakes loose scrap.
+  _dropRescueScrap(derelict) {
+    const st = this.state;
+    if (!derelict || !derelict.pos || !this.helpers || !this.helpers.spawnEntity) return;
+    for (let i = 0; i < 2; i++) {
+      const ang = onboardingRandom(st) * Math.PI * 2;
+      const sp = 12;
+      this.helpers.spawnEntity({
+        type: 'pickup',
+        pos: { x: derelict.pos.x + Math.cos(ang) * 10, z: derelict.pos.z + Math.sin(ang) * 10 },
+        vel: { x: Math.cos(ang) * sp, z: Math.sin(ang) * sp },
+        radius: 2.2,
+        data: { kind: 'cargo', commodityId: 'cmdty_salvage_electronics', amount: 1, despawnAt: (st.simTime || 0) + 60 },
+      });
+    }
+  },
+
   _setObjectiveWaypoint(force) {
     const st = this.state;
     const ob = st.onboarding;
     if (!ob || !ob.active || ob.finished || !st.nav) return;
+    // A current rescue verb owns the marker: one verb, one diamond, same beat-stable identity.
+    if (this._setRescueWaypoint(force)) return;
     const beat = BEATS[ob.currentBeat];
     // The B4 flight lesson ends at acceptance. Keep the tutorial state alive for completion/B5,
     // but never reclaim the real delivery's route with the old Helios docking marker.

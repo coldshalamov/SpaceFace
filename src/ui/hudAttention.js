@@ -153,6 +153,20 @@ export function firstUseLine(verbId) {
   return FIRST_USE_LINE[verbId] || '';
 }
 
+// Rescue-opening verb lines (PQ-163.00). The rescue rail teaches its three verbs by doing, one
+// line each, through the single tutorial voice — never as text walls and never as mentor dialogue.
+// Copy lives here (presentation owner); the rail in src/onboarding/rescueOpening.js owns order,
+// gating, and completion. Each line names ONE verb and stays on the ≤12-word drill budget.
+export const RESCUE_BEAT_LINES = Object.freeze({
+  swing: 'Swing the rock through the wreck.',
+  shove: 'Put the scout into the asteroid.',
+  grab: 'Grab the pod. Run for the beacon.',
+});
+
+export function rescueBeatLine(verbId) {
+  return RESCUE_BEAT_LINES[verbId] || '';
+}
+
 export function firstUseAttachKind(verbId) {
   const key = String(verbId || '');
   if (key === 'firstStation' || key === 'firstHub' || key === 'firstGate') return 'station';

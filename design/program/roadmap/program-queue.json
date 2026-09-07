@@ -6604,7 +6604,7 @@
       "priority": 94,
       "title": "The rescue",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-137.05",
         "PQ-137.03",
@@ -6625,8 +6625,10 @@
         "npm run check:first-15-runtime",
         "npm run check:new-game-first-run"
       ],
-      "receiptRefs": [],
-      "brief": "A tow-rig opening at the reference site with one swing-release, one shove, one grab-and-run, in play, no walls. DONE WHEN: ≥ 80 % of unaided testers complete it in ≤ 10 min; telemetry funnel."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-163.00-REPORT.md"
+      ],
+      "brief": "IMPLEMENTED 2026-09-07 (OpenCode Muse Spark + controller). Default New Game stages a six-body tow-rig: swing the rock through the wreck, shove the scout into the asteroid, grab the pod and run for the beacon. Funnel: rescue:started, rescue:beat, rescue:complete. Scout is team 1 so it is not the player's hull. Harness boots with payload.scenario do not stage (47-A golden-safe). Not 80% unaided testers — that clause keeps this implemented, not done. DONE WHEN: ≥ 80 % of unaided testers complete it in ≤ 10 min; telemetry funnel."
     },
     {
       "id": "PQ-163.01",

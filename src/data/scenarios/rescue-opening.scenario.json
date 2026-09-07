@@ -1,0 +1,173 @@
+{
+  "schema": "spaceface.scenarioContract.v1",
+  "id": "scenario.rescue-opening",
+  "scenario": "Rescue opening: swing, shove, grab-and-run",
+  "version": 1,
+  "sourceSpec": "design/program/roadmap/active/PQ-163.md",
+  "tickRate": 60,
+  "durationSeconds": 600,
+  "seed": 47,
+  "status": "pq16300-live",
+  "actors": [
+    {
+      "id": "player_tow_rig",
+      "role": "player_ship",
+      "required": true,
+      "assetRef": "ship_kestrel",
+      "factionId": "faction_free",
+      "capabilities": ["flight.force_torque", "weapon.pulse_laser", "massline.attach", "massline.cut"]
+    },
+    {
+      "id": "rescue_rock",
+      "role": "swing_mass",
+      "required": true,
+      "assetRef": "asset.rescue.loose_rock",
+      "capabilities": ["massline.attachment_target", "throwable.mass"]
+    },
+    {
+      "id": "rescue_derelict",
+      "role": "scrap_target",
+      "required": true,
+      "assetRef": "asset.rescue.derelict",
+      "capabilities": ["massline.attachment_target", "salvage.source"]
+    },
+    {
+      "id": "rescue_scout",
+      "role": "shove_target",
+      "required": true,
+      "assetRef": "enemy_reaver_scout",
+      "factionId": "faction_scn",
+      "capabilities": ["shove.target", "inert.training"]
+    },
+    {
+      "id": "rescue_asteroid",
+      "role": "arena_wall",
+      "required": true,
+      "assetRef": "asset.rescue.wall_rock",
+      "capabilities": ["hazard.solid", "cover.none"]
+    },
+    {
+      "id": "rescue_pod",
+      "role": "grab_target",
+      "required": true,
+      "assetRef": "asset.slice.civilian_pod",
+      "capabilities": ["rescue.priority", "massline.attachment_target"]
+    },
+    {
+      "id": "rescue_beacon",
+      "role": "run_destination",
+      "required": true,
+      "assetRef": "asset.rescue.exit_beacon",
+      "capabilities": ["handoff.zone", "spatial_objective.signal"]
+    }
+  ],
+  "facts": [
+    {
+      "id": "fact.rescue.swing_status",
+      "description": "Whether the loose rock was swung through the derelict for scrap.",
+      "owner": "scenario.rescue-opening",
+      "initial": "unresolved"
+    },
+    {
+      "id": "fact.rescue.shove_status",
+      "description": "Whether the scout was put into the asteroid.",
+      "owner": "scenario.rescue-opening",
+      "initial": "unresolved"
+    },
+    {
+      "id": "fact.rescue.grab_status",
+      "description": "Whether the pod was grabbed and run to the beacon.",
+      "owner": "scenario.rescue-opening",
+      "initial": "unresolved"
+    }
+  ],
+  "funnelEventIds": [
+    "rescue:started",
+    "rescue:beat",
+    "rescue:complete",
+    "combat:shove"
+  ],
+  "proofMetrics": [
+    {
+      "id": "rescue_swing_complete",
+      "target": "swing beat completes on seed 47",
+      "evidence": "test/rescue-opening.test.mjs headless proof + rescue:beat {beat: swing, result: complete}",
+      "required": true,
+      "beatIds": ["rescue_swing"]
+    },
+    {
+      "id": "rescue_shove_complete",
+      "target": "shove beat completes on seed 47",
+      "evidence": "test/rescue-opening.test.mjs headless proof + combat:shove + rescue:beat {beat: shove, result: complete}",
+      "required": true,
+      "beatIds": ["rescue_shove"]
+    },
+    {
+      "id": "rescue_grab_complete",
+      "target": "grab beat completes on seed 47",
+      "evidence": "test/rescue-opening.test.mjs headless proof + rescue:beat {beat: grab, result: complete}",
+      "required": true,
+      "beatIds": ["rescue_grab"]
+    },
+    {
+      "id": "rescue_funnel_complete_fail",
+      "target": "complete and fail funnel events carry the beat",
+      "evidence": "test/rescue-opening.test.mjs asserts rescue:beat payloads for complete + fail paths",
+      "required": true,
+      "beatIds": ["rescue_swing", "rescue_shove", "rescue_grab"]
+    },
+    {
+      "id": "rescue_one_voice",
+      "target": "one verb line per beat, then silence",
+      "evidence": "tutorialLog audit in test/rescue-opening.test.mjs: 3 rescue lines, each the beat verb",
+      "required": true,
+      "beatIds": ["rescue_swing", "rescue_shove", "rescue_grab"]
+    }
+  ],
+  "beats": [
+    {
+      "id": "rescue_swing",
+      "order": 1,
+      "title": "Swing the loose rock through the derelict for scrap",
+      "intent": "The first verb is a swing-release: latch, winch tight, cut through the wreck.",
+      "requiredActors": ["player_tow_rig", "rescue_rock", "rescue_derelict"],
+      "requiredMechanics": ["massline.attach", "massline.reel", "massline.sling"],
+      "funnelEventIds": ["rescue:beat"],
+      "proofMetricIds": ["rescue_swing_complete", "rescue_one_voice"],
+      "worldFactRefs": ["fact.rescue.swing_status"],
+      "next": ["rescue_shove"],
+      "branchIds": []
+    },
+    {
+      "id": "rescue_shove",
+      "order": 2,
+      "title": "Put the scout into the asteroid",
+      "intent": "The starter gun is a shove: move the scout with fire, not damage.",
+      "requiredActors": ["player_tow_rig", "rescue_scout", "rescue_asteroid"],
+      "requiredMechanics": ["weapon.pulse_laser", "shove.impact"],
+      "funnelEventIds": ["rescue:beat", "combat:shove"],
+      "proofMetricIds": ["rescue_shove_complete", "rescue_one_voice"],
+      "worldFactRefs": ["fact.rescue.shove_status"],
+      "next": ["rescue_grab"],
+      "branchIds": []
+    },
+    {
+      "id": "rescue_grab",
+      "order": 3,
+      "title": "Grab the pod and run it to the beacon",
+      "intent": "Latch the escape pod and tow it to the beacon at running speed.",
+      "requiredActors": ["player_tow_rig", "rescue_pod", "rescue_beacon"],
+      "requiredMechanics": ["massline.attach", "tow.carry", "flight.sustain_speed"],
+      "funnelEventIds": ["rescue:beat", "rescue:complete"],
+      "proofMetricIds": ["rescue_grab_complete", "rescue_funnel_complete_fail", "rescue_one_voice"],
+      "worldFactRefs": ["fact.rescue.grab_status"],
+      "next": [],
+      "branchIds": []
+    }
+  ],
+  "notes": [
+    "PQ-163.00 leaf .00: the tow-rig opening on the default New Game route. The 47-A scene past this rail remains the climax.",
+    "No mentor, no text walls: each beat is one verb line through the single tutorial voice, then silence. The Range swing rung is the fallback.",
+    "Funnel honesty: this file records complete/fail per beat. No unaided-tester percentages are claimed here."
+  ]
+}

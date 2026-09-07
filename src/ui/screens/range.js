@@ -8,6 +8,7 @@ import { stopDistanceEstimate } from '../panels/massDelta.js';
 import { createMorphLabel, createRouteBeam } from '../effects/index.js';
 import { prefersReducedMotion } from '../effects/effectRuntime.js';
 import { resolveDrillControlMap } from './drill.js';
+import { rescueRangeRungId } from '../../onboarding/rescueOpening.js';
 import { canvasFont } from '../canvasFonts.js';
 
 const STYLE_ID = 'sf-range-style';
@@ -616,6 +617,19 @@ function nowSupportsFlight(model) {
     && Number.isFinite(model.boostMaxSpeedMult);
 }
 
+// Rescue fallback entry (PQ-163.00): a rescue beat with a dedicated rung opens the Range
+// on that rung; anything else (or no rescue) starts at the top of the rail.
+export function resolveRescueEntryRung(state) {
+  const current = state && state.onboarding && state.onboarding.rescue
+    ? state.onboarding.rescue.current
+    : null;
+  if (!current) return 0;
+  const rungId = rescueRangeRungId(current);
+  if (!rungId) return 0;
+  const index = RAIL_INDEX_BY_ID.get(rungId);
+  return Number.isInteger(index) ? index : 0;
+}
+
 export const rangeScreen = {
   id: 'range',
   _ctx: null,
@@ -951,7 +965,10 @@ export const rangeScreen = {
 
     this._hideEmpty();
     this._openDrawer('rules');
-    this._setRung(0, null, []);
+    // Rescue fallback (PQ-163.00): opening the Range mid-rescue lands on the rung that
+    // teaches the current verb. Only the swing has a dedicated rung; other verbs start at
+    // the top of the rail instead of a wrong lesson.
+    this._setRung(resolveRescueEntryRung(state), null, []);
     this._syncBestiary();
     this._syncRail();
     this._syncCanvasLabel();
