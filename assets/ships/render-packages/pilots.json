@@ -3247,6 +3247,21 @@
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/tally-post",
       "metadataUrl": "assets/ships/release/render-packages/tally-post/render-package.json"
+    },
+    {
+      "key": "pelican-production-v1",
+      "assetId": "sf.render.pelican-production-v1",
+      "runtimeAssetId": "SF_PELICAN_PRODUCTION_V1",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_pelican_production_v1",
+      "sourceUrl": "assets/ships/release/parts/wholeships/pelican_production_v1.glb",
+      "releaseSha256": "e37f2c713ad66166e502afdb507c9716fc66236a95f89b042ac364e231071115",
+      "releaseBytes": 389464,
+      "rootNode": "PELICAN_PRODUCTION_V1_LOD0_ROOT",
+      "dynamicNameIncludes": [],
+      "outputDir": "assets/ships/release/render-packages/pelican-production-v1",
+      "metadataUrl": "assets/ships/release/render-packages/pelican-production-v1/render-package.json"
     }
   ]
 }

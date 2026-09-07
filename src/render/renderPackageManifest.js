@@ -2141,6 +2141,16 @@ const PILOTS = [
     "slot": "place",
     "sourceSha256": "960ee37e000e1e68ec15e917caf37d357692beee401e7e5b2916487a7b2f1320",
     "sourceUrl": "assets/ships/release/parts/places/place_tally_post.glb"
+  },
+  {
+    "assetId": "sf.render.pelican-production-v1",
+    "expectedContentHash": "fc26d5ddc7076bd662f05db32e2248b0366dda2a2b377795dee7327fa764566b",
+    "key": "pelican-production-v1",
+    "metadataUrl": "assets/ships/release/render-packages/pelican-production-v1/render-package.json",
+    "runtimeAssetId": "SF_PELICAN_PRODUCTION_V1",
+    "slot": "hull",
+    "sourceSha256": "e37f2c713ad66166e502afdb507c9716fc66236a95f89b042ac364e231071115",
+    "sourceUrl": "assets/ships/release/parts/wholeships/pelican_production_v1.glb"
   }
 ];
 
