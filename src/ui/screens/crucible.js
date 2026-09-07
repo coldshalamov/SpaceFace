@@ -25,10 +25,11 @@ import {
 import { SURVIVAL_RUN_WAVE_COUNT } from '../../systems/survivalRun.js';
 import {
   dailySeedForNow,
+  ghostRaceOffer,
   loadCrucibleMeta,
   utcDateKeyNow,
 } from '../../systems/survivalRecords.js';
-import { clearQueuedChallenge, queueSurvivalChallenge } from '../../systems/survivalMutators.js';
+import { clearQueuedChallenge, queueGhostPlayback, queueSurvivalChallenge } from '../../systems/survivalMutators.js';
 import { meetsUnlockCondition } from '../../systems/survivalUnlocks.js';
 import { compileAttackSpec } from '../../combat/attackSpec.js';
 import { causalKindsFromSpec } from '../../systems/adventureMigration.js';
@@ -57,18 +58,22 @@ function injectStyle() {
   .sf-menu.sf-crucible-door .sf-crd-modes { display:grid; gap:10px;
     grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); }
   .sf-menu.sf-crucible-door .sf-crd-mode,
-  .sf-menu.sf-crucible-door .sf-crd-daily { display:flex; flex-direction:column; gap:5px; text-align:left;
+  .sf-menu.sf-crucible-door .sf-crd-daily,
+  .sf-menu.sf-crucible-door .sf-crd-ghost { display:flex; flex-direction:column; gap:5px; text-align:left;
     border:1px solid var(--line); border-radius:2px; background:rgba(255,255,255,.03);
     padding:12px 14px; cursor:pointer; color:var(--ink); font:inherit; }
   .sf-menu.sf-crucible-door .sf-crd-mode[aria-pressed="true"],
-  .sf-menu.sf-crucible-door .sf-crd-daily[aria-pressed="true"] { border-color:var(--accent-3);
+  .sf-menu.sf-crucible-door .sf-crd-daily[aria-pressed="true"],
+  .sf-menu.sf-crucible-door .sf-crd-ghost[aria-pressed="true"] { border-color:var(--accent-3);
     background:color-mix(in srgb, var(--accent-3) 9%, transparent); }
   .sf-menu.sf-crucible-door .sf-crd-mode .n,
-  .sf-menu.sf-crucible-door .sf-crd-daily .n { font-family:var(--mf-ui); font-weight:600; letter-spacing:.04em;
+  .sf-menu.sf-crucible-door .sf-crd-daily .n,
+  .sf-menu.sf-crucible-door .sf-crd-ghost .n { font-family:var(--mf-ui); font-weight:600; letter-spacing:.04em;
     font-size:13px; text-transform:uppercase; }
   /* Mode and hull descriptions are sentences: sentence case in the UI face, never tracked caps. */
   .sf-menu.sf-crucible-door .sf-crd-mode .d,
   .sf-menu.sf-crucible-door .sf-crd-daily .d,
+  .sf-menu.sf-crucible-door .sf-crd-ghost .d,
   .sf-menu.sf-crucible-door .sf-crd-hull .d { font-family:var(--mf-ui); font-size:13px; color:var(--ink-dim);
     line-height:1.45; letter-spacing:0; text-transform:none; }
   .sf-menu.sf-crucible-door .sf-crd-label { font-family:var(--mf-ui); font-weight:600; font-size:12px;
@@ -429,6 +434,12 @@ const DAILY_CARD = Object.freeze({
   sub: 'One seed for the whole day. Same run on every machine. Nothing you earn here follows you home.',
 });
 
+const GHOST_CARD = Object.freeze({
+  label: 'Ghost',
+  blurbOn: 'Race the last recorded hull for this seed.',
+  blurbOff: 'No ghost for this seed yet.',
+});
+
 export const crucibleScreen = {
   id: 'crucible',
 
@@ -447,6 +458,9 @@ export const crucibleScreen = {
     let daily = !!(previous && previous.dailyDateKey);
     if (daily) ruleset = SWARM_RULESET;
     let freeSeed = previous && !previous.dailyDateKey ? String(previous.seed) : null;
+    let doorProfile = null;
+    try { doorProfile = loadCrucibleMeta(); } catch { doorProfile = null; }
+    let raceGhost = !!(previous && previous.ghostHash);
 
     const h = el('h1', null, 'Crucible');
     h.id = 'sf-crucible-title';
@@ -500,7 +514,36 @@ export const crucibleScreen = {
       syncMode();
     });
     modes.appendChild(dailyButton);
+    const ghostButton = document.createElement('button');
+    ghostButton.type = 'button';
+    ghostButton.className = 'sf-crd-ghost';
+    ghostButton.appendChild(el('div', 'n', GHOST_CARD.label));
+    const ghostBlurb = el('div', 'd', GHOST_CARD.blurbOff);
+    ghostButton.appendChild(ghostBlurb);
+    ghostButton.addEventListener('click', () => {
+      const offer = currentGhostOffer();
+      if (!offer.available) {
+        raceGhost = false;
+        syncGhost();
+        return;
+      }
+      raceGhost = !raceGhost;
+      syncGhost();
+    });
+    modes.appendChild(ghostButton);
     rootEl.appendChild(modes);
+
+    function currentGhostOffer() {
+      return ghostRaceOffer(doorProfile, normalizeSeed(seedInput ? seedInput.value : (daily ? dailySeedForNow() : 1)));
+    }
+
+    function syncGhost() {
+      const offer = currentGhostOffer();
+      if (!offer.available) raceGhost = false;
+      ghostBlurb.textContent = offer.available ? GHOST_CARD.blurbOn : GHOST_CARD.blurbOff;
+      ghostButton.setAttribute('aria-pressed', String(!!(raceGhost && offer.available)));
+      ghostButton.setAttribute('aria-disabled', String(!offer.available));
+    }
 
     function syncMode() {
       if (daily) {
@@ -510,6 +553,7 @@ export const crucibleScreen = {
         seedInput.setAttribute('aria-readonly', 'true');
         seedInput.value = String(dailySeedForNow());
         reroll.disabled = true;
+        syncGhost();
         return;
       }
       const entry = CRUCIBLE_MODE_CARDS.find((m) => m.ruleset === ruleset) || CRUCIBLE_MODE_CARDS[0];
@@ -518,6 +562,7 @@ export const crucibleScreen = {
       seedInput.readOnly = false;
       seedInput.removeAttribute('aria-readonly');
       reroll.disabled = false;
+      syncGhost();
     }
 
     rootEl.appendChild(el('div', 'sf-crd-label', 'Hull'));
@@ -559,6 +604,11 @@ export const crucibleScreen = {
       if (daily) return;
       seedInput.value = String(freshSeed());
       freeSeed = seedInput.value;
+      syncGhost();
+    });
+    seedInput.addEventListener('input', () => {
+      if (!daily) freeSeed = seedInput.value;
+      syncGhost();
     });
     seedRow.appendChild(reroll);
     rootEl.appendChild(seedRow);
@@ -581,6 +631,9 @@ export const crucibleScreen = {
         return;
       }
       const payload = { ...setup.value };
+      const offer = currentGhostOffer();
+      const ghostHash = raceGhost && offer.available ? offer.hash : null;
+      if (ghostHash != null) payload.ghostHash = ghostHash;
       if (daily) {
         const dateKey = utcDateKeyNow();
         payload.dailyDateKey = dateKey;
@@ -588,7 +641,11 @@ export const crucibleScreen = {
           seed: payload.seed,
           ruleset: SWARM_RULESET,
           dailyDateKey: dateKey,
+          ghostHash,
         });
+      } else if (ghostHash != null) {
+        clearQueuedChallenge();
+        queueGhostPlayback(ghostHash);
       } else {
         clearQueuedChallenge();
       }
@@ -609,8 +666,7 @@ export const crucibleScreen = {
     // to start another one is context for that, not a competitor for it. Reading the profile must
     // never be able to stop the door opening, so a broken or absent profile just omits the band.
     try {
-      const profile = loadCrucibleMeta();
-      if (profile) rootEl.appendChild(renderRecordBand(profile, utcDateKeyNow()));
+      if (doorProfile) rootEl.appendChild(renderRecordBand(doorProfile, utcDateKeyNow()));
     } catch (err) {
       if (typeof console !== 'undefined' && console.warn) {
         console.warn('[crucible] record band skipped:', err && err.message ? err.message : err);
@@ -1079,7 +1135,10 @@ export const crucibleResultsScreen = {
           seed: setup.seed,
           ruleset: lastCrucibleRuleset(),
           dailyDateKey: setup.dailyDateKey,
+          ghostHash: setup.ghostHash,
         });
+      } else if (setup.ghostHash != null) {
+        queueGhostPlayback(setup.ghostHash);
       }
       requestCrucibleRun(ctx.bus, setup, lastCrucibleRuleset());
     });

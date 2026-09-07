@@ -21,6 +21,7 @@ const PHYSICS_SET = new Set(SURVIVAL_PHYSICS_VERBS);
 
 let queued = null;
 let queuedDailyDateKey = null;
+let queuedGhostHash = null;
 
 function isNonEmptyString(value) {
   return typeof value === 'string' && value.length > 0;
@@ -28,6 +29,12 @@ function isNonEmptyString(value) {
 
 function readDailyDateKey(value) {
   return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null;
+}
+
+function readGhostHash(value) {
+  if (Number.isInteger(value) && value >= 0) return value >>> 0;
+  if (typeof value === 'string' && /^\d+$/.test(value)) return Number(value) >>> 0;
+  return null;
 }
 
 /** Sorted unique mutator ids. Unknown ids are kept (the planner ignores them; records still label them). */
@@ -119,11 +126,13 @@ export function queueSurvivalChallenge(spec) {
   const src = spec && typeof spec === 'object' ? spec : {};
   const compiled = compileChallenge(src.seed, src.mutators, src.ruleset || src.trialId || 'scored');
   queuedDailyDateKey = readDailyDateKey(src.dailyDateKey);
+  queuedGhostHash = readGhostHash(src.ghostHash);
   queued = {
     mutators: compiled.mutators.slice(),
     ruleset: compiled.ruleset,
     trialId: compiled.trialId,
     dailyDateKey: queuedDailyDateKey,
+    ghostHash: queuedGhostHash,
   };
   return compiled;
 }
@@ -136,6 +145,7 @@ export function peekQueuedChallenge() {
     trialId: queued.trialId,
   };
   if (queued.dailyDateKey) out.dailyDateKey = queued.dailyDateKey;
+  if (queued.ghostHash != null) out.ghostHash = queued.ghostHash;
   return out;
 }
 
@@ -157,9 +167,28 @@ export function consumeQueuedDailyDateKey() {
   return key;
 }
 
+/** Ghost hash to load for pose playback. Survives takeQueuedChallenge the way the daily stamp does. */
+export function lastQueuedGhostHash() {
+  return queuedGhostHash;
+}
+
+/** Consume after the run has armed playback so a later free run cannot inherit the ghost. */
+export function consumeQueuedGhostHash() {
+  const hash = queuedGhostHash;
+  queuedGhostHash = null;
+  return hash;
+}
+
+/** Queue a ghost without stamping mutators onto the next run. */
+export function queueGhostPlayback(hash) {
+  queuedGhostHash = readGhostHash(hash);
+  return queuedGhostHash;
+}
+
 export function clearQueuedChallenge() {
   queued = null;
   queuedDailyDateKey = null;
+  queuedGhostHash = null;
 }
 
 export function filterDraftOffers(offers, challenge) {

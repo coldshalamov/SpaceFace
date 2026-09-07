@@ -96,14 +96,21 @@ export function requestCrucibleRun(bus, setup, ruleset = CRUCIBLE_DEFAULT_RULESE
   const dailyDateKey = typeof setup.dailyDateKey === 'string' && setup.dailyDateKey
     ? setup.dailyDateKey
     : null;
+  const ghostHash = Number.isInteger(setup.ghostHash)
+    ? (setup.ghostHash >>> 0)
+    : (typeof setup.ghostHash === 'string' && /^\d+$/.test(setup.ghostHash)
+      ? Number(setup.ghostHash) >>> 0
+      : null);
   const launchSetup = { ...setup };
   delete launchSetup.dailyDateKey;
+  delete launchSetup.ghostHash;
   lastSetup = {
     ...launchSetup,
     ruleset: resolved,
     loadout: (launchSetup.loadout || []).map((entry) => ({ ...entry })),
   };
   if (dailyDateKey) lastSetup.dailyDateKey = dailyDateKey;
+  if (ghostHash != null) lastSetup.ghostHash = ghostHash;
   requestSandboxGame(bus, crucibleLaunchConfig(launchSetup, resolved));
   return true;
 }

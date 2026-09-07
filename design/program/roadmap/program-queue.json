@@ -8794,7 +8794,7 @@
       "priority": 175,
       "title": "Ghosts",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-146.00"
       ],
@@ -8813,8 +8813,10 @@
         "npm run check:crucible:route",
         "npm run check:crucible:meta"
       ],
-      "receiptRefs": [],
-      "brief": "A shared run's input tape renders as a translucent ghost hull in your run. DONE WHEN: Ghost matches the shared hash."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-169-01-REPORT.md"
+      ],
+      "brief": "ACCEPTED 2026-09-07 (Grok + controller survival-only arm). Same pose tape two storages hash 1864785429; pose interpolates; ghosts.byHash persists; empty tape writes nothing; ghost is not a combatant; leftover queue cannot arm on ordinary New Game. Daily seed unchanged. See receipt."
     },
     {
       "id": "PQ-169.02",

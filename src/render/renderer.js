@@ -122,6 +122,7 @@ import {
 } from './shadowCasterPolicy.js';
 import { updateShipPitchPresentation } from './shipPitchPresentation.js';
 import { createLivingHullPresentation } from './livingHullPresentation.js';
+import { createCrucibleGhostPresentation } from './crucibleGhost.js';
 import { createRenderFrameMembrane } from './frameCoordinates.js';
 import { projectileSkipsVisualFactoryMesh } from './weapons/recipes.js';
 import { readShieldContacts, SHIELD_HIT_SLOTS } from './weapons/shieldContacts.js';
@@ -2880,10 +2881,12 @@ export function disposeRendererOwnedResources(owner, options = {}) {
   try { owner._dynamicBuffers?.disarm?.(owner._dynamicBuffers.epoch); } catch (_) { /* best effort */ }
   if (disposeGpu) {
     try { owner._livingHullPresentation?.dispose?.(); } catch (_) { /* best effort */ }
+    try { owner._crucibleGhostPresentation?.dispose?.(); } catch (_) { /* best effort */ }
   } else {
     // Detach only: the controller's meshes/materials belong to the lost context and must not emit
     // dispose events through a context that may later be restored or replaced.
     try { owner._livingHullPresentation?.detach?.(); } catch (_) { /* best effort */ }
+    try { owner._crucibleGhostPresentation?.detach?.(); } catch (_) { /* best effort */ }
   }
   disposeRendererMeshRoots(owner, scene, disposeGpu);
   disposeContactShadowPool(owner._contactShadowPool, scene, disposeGpu);
@@ -3016,6 +3019,7 @@ export function disposeRendererOwnedResources(owner, options = {}) {
   owner._shipAuxPool = null;
   owner._asteroidInstancePool = null;
   owner._livingHullPresentation = null;
+  owner._crucibleGhostPresentation = null;
   owner._assetResidency = null;
   owner._sectorBoundaryPreparations = null;
   owner._incomingSectorPrewarm = null;
@@ -3192,6 +3196,8 @@ export const render = {
     const vf = createVisualFactory();
     if (this._livingHullPresentation) this._livingHullPresentation.dispose();
     this._livingHullPresentation = createLivingHullPresentation();
+    if (this._crucibleGhostPresentation) this._crucibleGhostPresentation.dispose();
+    this._crucibleGhostPresentation = createCrucibleGhostPresentation();
     // Hero-asset registry (spec §17.3): wraps the factory's build() so the bespoke player Kestrel is
     // intercepted before the procedural visualFactory. Narrow + failure-isolated — any throw falls
     // back to the original procedural builder, so non-Kestrel entities are completely unaffected.
@@ -3437,6 +3443,7 @@ export const render = {
     { const i = new Image(); i.src = 'assets/cinematics/C-INTRO-01.jpg'; }
 
     this.renderer = renderer; this.scene = scene; this.cam = cam; this.spaceBg = spaceBg; this.vf = vf;
+    if (this._crucibleGhostPresentation) this._crucibleGhostPresentation.attach(scene);
     this._assetResidency = getAssetResidency(renderer);
     if (this._assetResidency) {
       const initialSectorId = state.world && state.world.currentSectorId;
@@ -6388,6 +6395,9 @@ export const render = {
           this.state.simTime,
           entity,
         );
+      }
+      if (entity.id === this.state.playerId && this._crucibleGhostPresentation) {
+        this._crucibleGhostPresentation.sync(this.state, mesh);
       }
       if (runClosures && !farSpeck && userData.updateWorldSitePresentation) {
         userData.updateWorldSitePresentation(entity, this.state.simTime, _worldSiteA11y);

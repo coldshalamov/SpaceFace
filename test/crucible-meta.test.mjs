@@ -27,8 +27,10 @@ import {
   compileChallenge,
   foldMutatorsIntoSeed,
   lastQueuedDailyDateKey,
+  lastQueuedGhostHash,
   normalizeMutators,
   offerDraftForChallenge,
+  queueGhostPlayback,
   queueSurvivalChallenge,
 } from '../src/systems/survivalMutators.js';
 import {
@@ -43,17 +45,25 @@ import {
   CRUCIBLE_HISTORY_LIMIT,
   CRUCIBLE_META_FMT,
   CRUCIBLE_META_STORAGE_KEY,
+  canonicalGhostTape,
   compactRunResult,
   dailySeedForDateKey,
   dailySeedForNow,
   emptyCrucibleProfile,
+  getGhostPlaybackTape,
+  ghostHash,
+  ghostPlaybackContract,
+  ghostPoseAt,
   loadCrucibleMeta,
   parseCrucibleMeta,
+  peekGhostTape,
   recordKey,
   resetCrucibleMetaForTests,
   restorePlayerFromSaveBlob,
+  sampleGhostPose,
   saveCrucibleMeta,
   settleCrucibleRun,
+  beginGhostRecording,
   useCrucibleMetaClock,
   useCrucibleMetaStorage,
   utcDateKeyFromIso,
@@ -554,9 +564,13 @@ test('migrateProfile of a v1 bag without daily still loads and saving round-trip
   const roundTrip = loadCrucibleMeta(storage);
   assert.ok(roundTrip.daily);
   assert.deepEqual(roundTrip.daily.byDate, {});
+  assert.ok(roundTrip.ghosts);
+  assert.deepEqual(roundTrip.ghosts.byHash, {});
   const envelope = JSON.parse(storage.getItem(CRUCIBLE_META_STORAGE_KEY));
   assert.ok(envelope.data.daily);
   assert.deepEqual(envelope.data.daily.byDate, {});
+  assert.ok(envelope.data.ghosts);
+  assert.deepEqual(envelope.data.ghosts.byHash, {});
 });
 
 test('queued dailyDateKey writes the board even when the run envelope has no extra field', () => {
@@ -600,4 +614,234 @@ test('a later non-daily settle does not inherit a consumed daily stamp', () => {
   assert.equal(row.attempts, 1);
   assert.equal(row.bestScore, 10);
   assert.equal(row.deepestWave, 2);
+});
+
+function exampleGhostTape() {
+  return canonicalGhostTape({
+    v: 1,
+    seed: SEED,
+    hullId: 'ship_kestrel',
+    frames: [
+      { t: 0, x: 0, z: 0, r: 0 },
+      { t: 6, x: 6, z: 0, r: 0.5 },
+      { t: 12, x: 12, z: 3, r: 1 },
+    ],
+  });
+}
+
+test('same canonical tape, two storages yield the same ghost uint32 hash', () => {
+  resetMeta();
+  const json = JSON.stringify(exampleGhostTape());
+  const storageA = memoryStorage();
+  const storageB = memoryStorage();
+  assert.notEqual(storageA, storageB);
+  assert.notEqual(storageA._map, storageB._map);
+
+  const tapeA = canonicalGhostTape(JSON.parse(json));
+  const tapeB = canonicalGhostTape(JSON.parse(json));
+  const hashA = ghostHash(tapeA);
+  const hashB = ghostHash(tapeB);
+  assert.equal(hashA, hashB);
+  assert.equal(Number.isInteger(hashA), true);
+  assert.ok(hashA >= 0 && hashA <= 0xffffffff);
+  assert.notEqual(tapeA.frames, tapeB.frames);
+  console.log(`GHOST_HASH_EXAMPLE: kestrel 3-frame seed ${SEED} -> ${hashA}`);
+});
+
+test('changing one sample changes the ghost hash', () => {
+  const tape = exampleGhostTape();
+  const mutated = canonicalGhostTape({
+    ...tape,
+    frames: tape.frames.map((frame, i) => (i === 1 ? { ...frame, x: frame.x + 1 } : frame)),
+  });
+  assert.notEqual(ghostHash(tape), ghostHash(mutated));
+});
+
+test('ghostPoseAt hits a recorded sample and interpolates between samples', () => {
+  const tape = exampleGhostTape();
+  const atSix = ghostPoseAt(tape, 6);
+  assert.equal(atSix.x, 6);
+  assert.equal(atSix.z, 0);
+  assert.equal(atSix.r, 0.5);
+  const mid = ghostPoseAt(tape, 3);
+  assert.equal(mid.x, 3);
+  assert.equal(mid.z, 0);
+  assert.ok(Math.abs(mid.r - 0.25) < 1e-9);
+});
+
+test('settle a recorded run persists ghosts.byHash across reload and a second storage JSON', () => {
+  resetMeta();
+  const storage = memoryStorage();
+  useCrucibleMetaStorage(storage);
+  sampleGhostPose({ tick: 0, x: 0, z: 0, r: 0, seed: SEED, hullId: 'ship_kestrel' });
+  sampleGhostPose({ tick: 6, x: 6, z: 0, r: 0.5, seed: SEED, hullId: 'ship_kestrel' });
+  sampleGhostPose({ tick: 12, x: 12, z: 3, r: 1, seed: SEED, hullId: 'ship_kestrel' });
+  const expected = exampleGhostTape();
+  const hash = ghostHash(expected);
+  const settled = settleCrucibleRun({
+    result: resultFixture(),
+    run: runFixture({ seed: SEED }),
+    storage,
+  });
+  assert.equal(settled.result.ghostHash, hash);
+  const row = settled.profile.ghosts.byHash[String(hash)];
+  assert.ok(row);
+  assert.equal(row.hash, hash);
+  assert.equal(row.frameCount, 3);
+  assert.equal(row.seed, SEED);
+  assert.equal(row.hullId, 'ship_kestrel');
+
+  const reloaded = loadCrucibleMeta(storage);
+  const loadedRow = reloaded.ghosts.byHash[String(hash)];
+  assert.ok(loadedRow);
+  assert.equal(loadedRow.hash, hash);
+  assert.equal(loadedRow.frameCount, 3);
+  assert.equal(ghostHash({
+    v: 1,
+    seed: loadedRow.seed,
+    hullId: loadedRow.hullId,
+    frames: loadedRow.frames,
+  }), hash);
+
+  const json = storage.getItem(CRUCIBLE_META_STORAGE_KEY);
+  assert.ok(json);
+  const independent = memoryStorage();
+  independent.setItem(CRUCIBLE_META_STORAGE_KEY, json);
+  const otherProcess = loadCrucibleMeta(independent);
+  const otherRow = otherProcess.ghosts.byHash[String(hash)];
+  assert.ok(otherRow);
+  assert.equal(otherRow.hash, hash);
+  assert.equal(otherRow.frameCount, 3);
+  assert.equal(ghostHash({
+    v: 1,
+    seed: otherRow.seed,
+    hullId: otherRow.hullId,
+    frames: otherRow.frames,
+  }), hash);
+});
+
+test('empty tape does not write a ghost row', () => {
+  resetMeta();
+  const storage = memoryStorage();
+  useCrucibleMetaStorage(storage);
+  beginGhostRecording({ seed: SEED, hullId: 'ship_kestrel' });
+  settleCrucibleRun({
+    result: resultFixture({ seed: 99, score: 50 }),
+    run: runFixture({ seed: 99 }),
+    storage,
+  });
+  const profile = loadCrucibleMeta(storage);
+  assert.ok(profile.ghosts);
+  assert.deepEqual(profile.ghosts.byHash, {});
+  assert.equal(profile.ghosts.lastHash, null);
+  assert.equal(profile.history.length, 1);
+  assert.equal(Object.prototype.hasOwnProperty.call(profile.history[0], 'ghostHash'), false);
+});
+
+test('ghost is pose playback, not a combatant: no Rapier, no weapons, no campaign credits', () => {
+  resetMeta();
+  const storage = memoryStorage();
+  useCrucibleMetaStorage(storage);
+  const state = createGameState(SEED);
+  const credits = state.player.credits;
+  const entityCount = state.entityList.length;
+  sampleGhostPose({ tick: 0, x: 1, z: 2, r: 0.1, seed: SEED, hullId: 'ship_kestrel' });
+  sampleGhostPose({ tick: 6, x: 4, z: 2, r: 0.2, seed: SEED, hullId: 'ship_kestrel' });
+  const tape = peekGhostTape();
+  const spec = ghostPlaybackContract(tape, 0);
+  assert.equal(spec.kind, 'ghost');
+  assert.equal(spec.hasRapierBody, false);
+  assert.deepEqual(spec.weapons, []);
+  assert.equal(spec.writesCampaignCredits, false);
+  assert.equal(spec.isCombatant, false);
+  assert.equal(spec.pose.x, 1);
+  settleCrucibleRun({
+    result: resultFixture({ credits: 999 }),
+    run: runFixture(),
+    storage,
+  });
+  assert.equal(state.player.credits, credits);
+  assert.equal(state.entityList.length, entityCount);
+  const profile = loadCrucibleMeta(storage);
+  assert.ok(Object.keys(profile.ghosts.byHash).length === 1);
+});
+
+test('survivalRun samples the live player pose onto the ghost tape', () => {
+  resetMeta();
+  const state = createGameState(SEED);
+  state.run.kind = 'survival';
+  state.run.phase = 'active';
+  state.run.seed = SEED;
+  state.run.arenaId = ARENA;
+  const player = {
+    id: 1,
+    alive: true,
+    pos: { x: 0, z: 0 },
+    rot: 0,
+    type: 'ship',
+    data: { defId: 'ship_kestrel' },
+  };
+  state.entities.set(1, player);
+  state.entityList.push(player);
+  state.playerId = 1;
+  const raw = createBus();
+  const bus = {
+    on: raw.on.bind(raw),
+    off: raw.off.bind(raw),
+    once: raw.once.bind(raw),
+    emit: raw.emit.bind(raw),
+  };
+  survivalRun.init({ state, bus });
+  bus.emit('run:started', { kind: 'survival', phase: 'active' });
+  state.tick = 0;
+  survivalRun.update(DT);
+  player.pos.x = 6;
+  player.rot = 0.25;
+  state.tick = 6;
+  survivalRun.update(DT);
+  const tape = peekGhostTape();
+  assert.ok(tape);
+  assert.ok(tape.frames.length >= 2);
+  assert.equal(tape.frames[0].x, 0);
+  assert.equal(tape.frames[1].x, 6);
+  assert.equal(tape.hullId, 'ship_kestrel');
+  survivalRun.destroy();
+});
+
+test('queueGhostPlayback does not stamp mutators onto a later take', () => {
+  resetMeta();
+  queueGhostPlayback(42);
+  assert.equal(lastQueuedGhostHash(), 42);
+  assert.equal(lastQueuedDailyDateKey(), null);
+  clearQueuedChallenge();
+  assert.equal(lastQueuedGhostHash(), null);
+});
+
+test('a non-survival start does not arm leftover ghost playback', () => {
+  resetMeta();
+  const storage = memoryStorage();
+  useCrucibleMetaStorage(storage);
+  sampleGhostPose({ tick: 0, x: 0, z: 0, r: 0, seed: SEED, hullId: 'ship_kestrel' });
+  sampleGhostPose({ tick: 6, x: 6, z: 0, r: 0.5, seed: SEED, hullId: 'ship_kestrel' });
+  const settled = settleCrucibleRun({
+    result: resultFixture(),
+    run: runFixture({ seed: SEED }),
+    storage,
+  });
+  const hash = settled.result.ghostHash;
+  assert.ok(Number.isInteger(hash));
+  queueGhostPlayback(hash);
+  const state = createGameState(SEED);
+  const raw = createBus();
+  const bus = {
+    on: raw.on.bind(raw),
+    off: raw.off.bind(raw),
+    once: raw.once.bind(raw),
+    emit: raw.emit.bind(raw),
+  };
+  survivalRun.init({ state, bus });
+  bus.emit('run:started', { kind: 'campaign' });
+  assert.equal(getGhostPlaybackTape(), null);
+  assert.equal(lastQueuedGhostHash(), hash);
+  survivalRun.destroy();
 });

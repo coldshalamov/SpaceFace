@@ -2,8 +2,9 @@
 // (PQ-133.10a / CRU-054 / PQ-169.00).
 //
 // LOCAL only. No network, no telemetry. Persistence is a side bag, not a fork
-// of the Adventure save. The daily board is local too.
+// of the Adventure save. The daily board is local too. Ghosts are a pose tape on this same bag.
 // PQ-033: Steam board lands with the release closeout. Local board is the authority until then.
+// PQ-160 / PQ-033: file/code share and Steam board land later. Local tape + hash is the authority until then.
 //
 //   fmt:            spaceface-crucible-meta
 //   schemaVersion:  1
@@ -28,7 +29,7 @@ import {
   pushSharedPlayerStore,
   sharedPlayerStoreAvailable,
 } from '../save/sharedPlayerStore.js';
-import { hash32 } from '../core/rng.js';
+import { hash32, wrapAngle } from '../core/rng.js';
 import { evaluateUnlocks } from './survivalUnlocks.js';
 import { challengeFromRun, consumeQueuedDailyDateKey, lastQueuedDailyDateKey, normalizeMutators } from './survivalMutators.js';
 
@@ -40,6 +41,11 @@ export const CRUCIBLE_DAILY_LABEL = 'spaceface-crucible-daily-v1';
 export const CRUCIBLE_DAILY_BOARD_CAP = 60;
 export const CRUCIBLE_DAILY_SEED_MIN = 1;
 export const CRUCIBLE_DAILY_SEED_MAX = 0xffffffff;
+export const CRUCIBLE_GHOST_LABEL = 'spaceface-crucible-ghost-v1';
+export const CRUCIBLE_GHOST_SAMPLE_STRIDE = 6;
+export const CRUCIBLE_GHOST_FRAME_CAP = 3600;
+export const CRUCIBLE_GHOST_RETAIN_CAP = 20;
+export const CRUCIBLE_GHOST_VERSION = 1;
 
 const memoryStore = new Map();
 
@@ -58,6 +64,7 @@ export function resetCrucibleMetaForTests() {
   memoryStore.clear();
   injectedStorage = null;
   injectedNow = null;
+  resetGhostRuntime();
 }
 
 function nowIso() {
@@ -96,6 +103,288 @@ export function dailySeedForDateKey(dateKey) {
 
 export function dailySeedForNow() {
   return dailySeedForDateKey(utcDateKeyNow());
+}
+
+let ghostRecording = null;
+let ghostPlaybackTape = null;
+
+function resetGhostRuntime() {
+  ghostRecording = null;
+  ghostPlaybackTape = null;
+}
+
+function quantize3(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return NaN;
+  const q = Math.round(n * 1000) / 1000;
+  return q === 0 ? 0 : q;
+}
+
+function stableStringify(value) {
+  if (value === null) return 'null';
+  const kind = typeof value;
+  if (kind === 'number') {
+    if (!Number.isFinite(value)) return 'null';
+    return JSON.stringify(value === 0 ? 0 : value);
+  }
+  if (kind === 'string' || kind === 'boolean') return JSON.stringify(value);
+  if (kind !== 'object') return 'null';
+  if (Array.isArray(value)) {
+    let out = '[';
+    for (let i = 0; i < value.length; i += 1) {
+      if (i) out += ',';
+      out += stableStringify(value[i]);
+    }
+    return `${out}]`;
+  }
+  const keys = Object.keys(value).sort();
+  let out = '{';
+  let first = true;
+  for (let i = 0; i < keys.length; i += 1) {
+    const key = keys[i];
+    const child = value[key];
+    if (child === undefined) continue;
+    if (!first) out += ',';
+    first = false;
+    out += `${JSON.stringify(key)}:${stableStringify(child)}`;
+  }
+  return `${out}}`;
+}
+
+function lerpAngle(a, b, t) {
+  return wrapAngle(a + wrapAngle(b - a) * t);
+}
+
+function asHullId(value) {
+  return typeof value === 'string' && value ? value : 'ship_kestrel';
+}
+
+function asSeed(value) {
+  return Number.isInteger(value) ? value >>> 0 : 0;
+}
+
+function canonicalFrame(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const t = Number.isInteger(raw.t) ? raw.t : (Number.isInteger(raw.tick) ? raw.tick : NaN);
+  const x = quantize3(raw.x);
+  const z = quantize3(raw.z);
+  const r = quantize3(raw.r);
+  if (!Number.isInteger(t) || !Number.isFinite(x) || !Number.isFinite(z) || !Number.isFinite(r)) return null;
+  return { r, t, x, z };
+}
+
+/** Canonical pose tape: v/seed/hullId/frames only, quantized, sorted keys, no extra fields. */
+export function canonicalGhostTape(tape) {
+  const src = tape && typeof tape === 'object' && !Array.isArray(tape) ? tape : {};
+  const incoming = Array.isArray(src.frames) ? src.frames : [];
+  const frames = [];
+  const byTick = new Map();
+  for (let i = 0; i < incoming.length; i += 1) {
+    const frame = canonicalFrame(incoming[i]);
+    if (!frame) continue;
+    byTick.set(frame.t, frame);
+  }
+  const ticks = [...byTick.keys()].sort((a, b) => a - b);
+  for (let i = 0; i < ticks.length; i += 1) frames.push(byTick.get(ticks[i]));
+  return {
+    frames,
+    hullId: asHullId(src.hullId),
+    seed: asSeed(src.seed),
+    v: CRUCIBLE_GHOST_VERSION,
+  };
+}
+
+export function canonicalGhostString(tape) {
+  return stableStringify(canonicalGhostTape(tape));
+}
+
+/** uint32 of hash32('spaceface-crucible-ghost-v1', canonical). Two machines, same tape, same hash. */
+export function ghostHash(tape) {
+  return hash32(CRUCIBLE_GHOST_LABEL, canonicalGhostString(tape));
+}
+
+export function ghostPoseAt(tape, tick) {
+  const frames = tape && Array.isArray(tape.frames) ? tape.frames : canonicalGhostTape(tape).frames;
+  if (!frames.length) return null;
+  const t = Number.isInteger(tick) ? tick : Math.trunc(Number(tick));
+  if (!Number.isFinite(t)) return null;
+  let lo = 0;
+  let hi = frames.length - 1;
+  if (t <= frames[0].t) return { x: frames[0].x, z: frames[0].z, r: frames[0].r };
+  if (t >= frames[hi].t) return { x: frames[hi].x, z: frames[hi].z, r: frames[hi].r };
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    const mt = frames[mid].t;
+    if (mt === t) return { x: frames[mid].x, z: frames[mid].z, r: frames[mid].r };
+    if (mt < t) lo = mid + 1;
+    else hi = mid - 1;
+  }
+  const a = frames[hi];
+  const b = frames[lo];
+  const span = b.t - a.t;
+  const u = span === 0 ? 0 : (t - a.t) / span;
+  return {
+    x: a.x + (b.x - a.x) * u,
+    z: a.z + (b.z - a.z) * u,
+    r: lerpAngle(a.r, b.r, u),
+  };
+}
+
+/** Pose playback is never a combatant: no Rapier body, no weapons, no campaign credits. */
+export function ghostPlaybackContract(tape, tick) {
+  return {
+    kind: 'ghost',
+    pose: ghostPoseAt(tape, tick),
+    hasRapierBody: false,
+    weapons: Object.freeze([]),
+    writesCampaignCredits: false,
+    isCombatant: false,
+  };
+}
+
+export function beginGhostRecording({ seed, hullId } = {}) {
+  ghostRecording = {
+    seed: asSeed(seed),
+    hullId: asHullId(hullId),
+    frames: [],
+    lastT: null,
+  };
+  return ghostRecording;
+}
+
+export function sampleGhostPose({ tick, x, z, r, seed, hullId } = {}) {
+  if (!ghostRecording) beginGhostRecording({ seed, hullId });
+  const t = Number.isInteger(tick) ? tick : Math.trunc(Number(tick));
+  if (!Number.isFinite(t)) return false;
+  if (ghostRecording.lastT != null) {
+    if (t === ghostRecording.lastT) return false;
+    if (t - ghostRecording.lastT < CRUCIBLE_GHOST_SAMPLE_STRIDE) return false;
+  }
+  const frame = canonicalFrame({ t, x, z, r });
+  if (!frame) return false;
+  if (seed != null) ghostRecording.seed = asSeed(seed);
+  if (hullId) ghostRecording.hullId = asHullId(hullId);
+  const frames = ghostRecording.frames;
+  if (frames.length >= CRUCIBLE_GHOST_FRAME_CAP) frames.shift();
+  frames.push(frame);
+  ghostRecording.lastT = frame.t;
+  return true;
+}
+
+export function sampleGhostPoseFromState(state) {
+  if (!state) return false;
+  const run = state.run;
+  if (!run || run.kind !== 'survival') return false;
+  const playerId = state.playerId;
+  const player = state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(playerId)
+    : null;
+  if (!player || !player.pos) return false;
+  const hullId = (player.data && player.data.defId) || player.hullId || ghostRecording && ghostRecording.hullId;
+  const tick = Number.isInteger(state.tick) ? state.tick : 0;
+  return sampleGhostPose({
+    tick,
+    x: player.pos.x,
+    z: player.pos.z,
+    r: player.rot,
+    seed: run.seed,
+    hullId,
+  });
+}
+
+export function peekGhostTape() {
+  if (!ghostRecording || !ghostRecording.frames.length) return null;
+  return canonicalGhostTape({
+    v: CRUCIBLE_GHOST_VERSION,
+    seed: ghostRecording.seed,
+    hullId: ghostRecording.hullId,
+    frames: ghostRecording.frames,
+  });
+}
+
+export function takeGhostTape() {
+  const tape = peekGhostTape();
+  ghostRecording = null;
+  return tape;
+}
+
+export function armGhostPlayback(hash) {
+  if (hash == null || hash === '') {
+    ghostPlaybackTape = null;
+    return null;
+  }
+  const n = Number.isInteger(hash) ? (hash >>> 0) : (typeof hash === 'string' && /^\d+$/.test(hash) ? Number(hash) >>> 0 : null);
+  if (n == null) {
+    ghostPlaybackTape = null;
+    return null;
+  }
+  const profile = loadCrucibleMeta();
+  const row = lastGhostRowByHash(profile, n);
+  if (!row || !Array.isArray(row.frames) || !row.frames.length) {
+    ghostPlaybackTape = null;
+    return null;
+  }
+  ghostPlaybackTape = canonicalGhostTape({
+    v: CRUCIBLE_GHOST_VERSION,
+    seed: row.seed,
+    hullId: row.hullId,
+    frames: row.frames,
+  });
+  return ghostPlaybackTape;
+}
+
+export function getGhostPlaybackTape() {
+  return ghostPlaybackTape;
+}
+
+export function lastGhostRowByHash(profile, hash) {
+  const byHash = profile && profile.ghosts && profile.ghosts.byHash && typeof profile.ghosts.byHash === 'object'
+    ? profile.ghosts.byHash
+    : null;
+  if (!byHash) return null;
+  const row = byHash[String(hash >>> 0)];
+  return row && typeof row === 'object' ? row : null;
+}
+
+export function lastGhostForSeed(profile, seed) {
+  const byHash = profile && profile.ghosts && profile.ghosts.byHash && typeof profile.ghosts.byHash === 'object'
+    ? profile.ghosts.byHash
+    : null;
+  if (!byHash) return null;
+  const s = asSeed(seed);
+  let best = null;
+  const keys = Object.keys(byHash);
+  for (let i = 0; i < keys.length; i += 1) {
+    const row = byHash[keys[i]];
+    if (!row || typeof row !== 'object') continue;
+    if (asSeed(row.seed) !== s) continue;
+    if (!best) {
+      best = row;
+      continue;
+    }
+    const a = typeof row.recordedAt === 'string' ? row.recordedAt : '';
+    const b = typeof best.recordedAt === 'string' ? best.recordedAt : '';
+    if (a > b) best = row;
+  }
+  return best;
+}
+
+export function ghostRaceOffer(profile, seed) {
+  const row = lastGhostForSeed(profile, seed);
+  if (!row) {
+    return {
+      available: false,
+      hash: null,
+      label: 'Ghost',
+      blurb: 'No ghost for this seed yet.',
+    };
+  }
+  return {
+    available: true,
+    hash: row.hash >>> 0,
+    label: 'Ghost',
+    blurb: 'Race the last recorded hull for this seed.',
+  };
 }
 
 function memoryStorage() {
@@ -138,6 +427,10 @@ function emptyDaily() {
   return { byDate: {} };
 }
 
+function emptyGhosts() {
+  return { byHash: {}, lastHash: null };
+}
+
 export function emptyCrucibleProfile() {
   return {
     schemaVersion: CRUCIBLE_META_SCHEMA_VERSION,
@@ -145,6 +438,7 @@ export function emptyCrucibleProfile() {
     records: { byKey: {}, lifetime: emptyLifetime() },
     history: [],
     daily: emptyDaily(),
+    ghosts: emptyGhosts(),
   };
 }
 
@@ -187,6 +481,7 @@ function migrateProfile(raw) {
     records: { byKey, lifetime },
     history: history.slice(-CRUCIBLE_HISTORY_LIMIT),
     daily: migrateDaily(src.daily),
+    ghosts: migrateGhosts(src.ghosts),
   };
   if (version > CRUCIBLE_META_SCHEMA_VERSION) {
     for (const key of Object.keys(src)) {
@@ -196,6 +491,7 @@ function migrateProfile(raw) {
         || key === 'records'
         || key === 'history'
         || key === 'daily'
+        || key === 'ghosts'
       ) continue;
       profile[key] = cloneJson(src[key]);
     }
@@ -240,6 +536,78 @@ function pruneDailyByDate(byDate, cap = CRUCIBLE_DAILY_BOARD_CAP) {
   const next = {};
   for (const key of keep) next[key] = byDate[key];
   return next;
+}
+
+function migrateGhostRow(_key, row) {
+  const src = asObject(row);
+  if (!src) return null;
+  const tape = canonicalGhostTape({
+    v: CRUCIBLE_GHOST_VERSION,
+    seed: src.seed,
+    hullId: src.hullId,
+    frames: src.frames,
+  });
+  if (!tape.frames.length) return null;
+  const hash = Number.isInteger(src.hash) ? (src.hash >>> 0) : ghostHash(tape);
+  return {
+    hash,
+    seed: tape.seed,
+    hullId: tape.hullId,
+    frameCount: tape.frames.length,
+    frames: tape.frames,
+    recordedAt: typeof src.recordedAt === 'string' ? src.recordedAt : null,
+  };
+}
+
+function migrateGhosts(rawGhosts) {
+  const empty = emptyGhosts();
+  const src = asObject(rawGhosts);
+  if (!src) return empty;
+  const byHashIn = asObject(src.byHash) ? src.byHash : {};
+  const byHash = {};
+  for (const key of Object.keys(byHashIn)) {
+    const row = migrateGhostRow(key, byHashIn[key]);
+    if (row) byHash[String(row.hash)] = row;
+  }
+  const pruned = pruneGhostsByHash(byHash);
+  let lastHash = null;
+  if (Number.isInteger(src.lastHash)) lastHash = src.lastHash >>> 0;
+  else if (typeof src.lastHash === 'string' && /^\d+$/.test(src.lastHash)) lastHash = Number(src.lastHash) >>> 0;
+  if (lastHash != null && !pruned[String(lastHash)]) lastHash = null;
+  return { byHash: pruned, lastHash };
+}
+
+function pruneGhostsByHash(byHash, cap = CRUCIBLE_GHOST_RETAIN_CAP) {
+  const keys = Object.keys(byHash);
+  if (keys.length <= cap) return byHash;
+  const rows = keys.map((key) => byHash[key]).filter(Boolean);
+  rows.sort((a, b) => {
+    const at = typeof a.recordedAt === 'string' ? a.recordedAt : '';
+    const bt = typeof b.recordedAt === 'string' ? b.recordedAt : '';
+    if (at !== bt) return at < bt ? -1 : 1;
+    return (a.hash >>> 0) - (b.hash >>> 0);
+  });
+  const keep = rows.slice(rows.length - cap);
+  const next = {};
+  for (let i = 0; i < keep.length; i += 1) next[String(keep[i].hash)] = keep[i];
+  return next;
+}
+
+function upsertGhost(ghosts, tape, recordedAt) {
+  const canonical = canonicalGhostTape(tape);
+  if (!canonical.frames.length) return ghosts && ghosts.byHash ? ghosts : emptyGhosts();
+  const hash = ghostHash(canonical);
+  const prevBag = ghosts && asObject(ghosts) ? ghosts : emptyGhosts();
+  const byHash = { ...(asObject(prevBag.byHash) ? prevBag.byHash : {}) };
+  byHash[String(hash)] = {
+    hash,
+    seed: canonical.seed,
+    hullId: canonical.hullId,
+    frameCount: canonical.frames.length,
+    frames: canonical.frames,
+    recordedAt: typeof recordedAt === 'string' ? recordedAt : nowIso(),
+  };
+  return { ...prevBag, byHash: pruneGhostsByHash(byHash), lastHash: hash };
 }
 
 function unwrapEnvelope(parsed) {
@@ -436,6 +804,13 @@ export function settleCrucibleRun({ result, run, profile = null, storage = liveS
   const records = loaded.records || { byKey: {}, lifetime: emptyLifetime() };
   const byKey = { ...(records.byKey || {}) };
   byKey[key] = applyRecord(byKey[key], compact);
+  const recordedAt = nowIso();
+  const tape = takeGhostTape();
+  let ghosts = loaded.ghosts && loaded.ghosts.byHash ? loaded.ghosts : emptyGhosts();
+  if (tape && tape.frames.length) {
+    ghosts = upsertGhost(ghosts, tape, recordedAt);
+    compact.ghostHash = ghosts.lastHash;
+  }
   const next = {
     ...loaded,
     schemaVersion: CRUCIBLE_META_SCHEMA_VERSION,
@@ -445,7 +820,8 @@ export function settleCrucibleRun({ result, run, profile = null, storage = liveS
       lifetime: applyLifetime(records.lifetime, compact),
     },
     history: [...(Array.isArray(loaded.history) ? loaded.history : []), compact].slice(-CRUCIBLE_HISTORY_LIMIT),
-    daily: applyDailyBoard(loaded.daily, compact, nowIso()),
+    daily: applyDailyBoard(loaded.daily, compact, recordedAt),
+    ghosts,
   };
   saveCrucibleMeta(next, storage);
   consumeQueuedDailyDateKey();

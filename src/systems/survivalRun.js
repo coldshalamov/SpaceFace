@@ -20,9 +20,16 @@ import { isExtractionWindow } from './survivalExtraction.js';
 import { planWave } from './survivalWavePlanner.js';
 import {
   compileChallenge,
+  consumeQueuedGhostHash,
+  lastQueuedGhostHash,
   normalizeMutators,
   takeQueuedChallenge,
 } from './survivalMutators.js';
+import {
+  armGhostPlayback,
+  beginGhostRecording,
+  sampleGhostPoseFromState,
+} from './survivalRecords.js';
 
 export const SURVIVAL_RUN_WAVE_COUNT = SURVIVAL_ARC_LENGTH;
 export const SURVIVAL_REFIT_EVERY = 10;
@@ -100,6 +107,7 @@ export const survivalRun = {
 
     this._runTick += 1;
     this._phaseTicks += 1;
+    sampleGhostPoseFromState(this.state);
 
     const phase = run.phase;
     if (phase === 'loadout') {
@@ -172,6 +180,14 @@ export const survivalRun = {
     if (run && queued) {
       run.arenaMutators = queued.mutators.slice();
       if (queued.ruleset) run.ruleset = queued.ruleset;
+    }
+    if (run) {
+      beginGhostRecording({
+        seed: run.seed,
+        hullId: null,
+      });
+      armGhostPlayback(lastQueuedGhostHash());
+      consumeQueuedGhostHash();
     }
     if (payload && payload.kind === 'survival' && payload.phase === 'loadout') {
       this._phaseTicks = 0;
