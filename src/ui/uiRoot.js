@@ -26,6 +26,7 @@ import { createCinematicInputFence } from './cinematicInputFence.js';
 import { isMapScreenId, openGalaxyMap } from './mapAuthority.js';
 import { IS_DEV } from '../core/devMode.js';
 import { installSandboxGameStartedHook } from './sandbox/sandboxSetup.js';
+import { bindSound, bindTemperature } from './kit/index.js';
 
 // Clean inline UI art (replaces the captioned reference-sheet .jpg assets that rendered text).
 const RETICLE_SVG = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;overflow:visible">
@@ -369,6 +370,13 @@ export const ui = {
     this.helpers = ctx.helpers;
 
     injectHudCss();
+    // The frontend kit (design/frontend/direction/KIT_SPEC.md §5, §8, §11.1): one sound binding
+    // onto the existing audio:cue bus and one temperature binding that sets html[data-k-temp]
+    // from the game's state. A screen never sets either itself.
+    if (typeof this._kitSoundDispose === 'function') { try { this._kitSoundDispose(); } catch (_) {} }
+    if (this._kitTemperature && typeof this._kitTemperature.dispose === 'function') { try { this._kitTemperature.dispose(); } catch (_) {} }
+    try { this._kitSoundDispose = bindSound(ctx.bus); } catch (e) { console.warn('[ui] kit sound bind failed', e); }
+    try { this._kitTemperature = bindTemperature(ctx.bus, ctx.state); } catch (e) { console.warn('[ui] kit temperature bind failed', e); }
 
     // UX-4: start the price-history recorder (subscribes to economy:tick; standalone, no sim writes).
     try { initPriceHistory(ctx.bus, ctx.state); } catch (e) { console.warn('[ui] price history init failed', e); }

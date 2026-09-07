@@ -218,7 +218,9 @@ export function createScreenManager(ctx) {
         // A cached screen may be reopened before its previous 200ms exit transition settles.
         // Cancel that stale callback so it cannot hide the newly active screen.
         cancelPendingExit(rec);
-        rec.el.style.display = 'flex';
+        // A kit screen (styles/kit.css `.k-screen`) lays out as a grid; an inline `flex` here
+        // would override it. Every other screen keeps the legacy flex root.
+        rec.el.style.display = rec.el.classList.contains('k-screen') ? 'grid' : 'flex';
         rec.el.removeAttribute('aria-hidden');
         rec.el.setAttribute('aria-modal', 'true');
         rec.el.inert = false;
@@ -238,6 +240,14 @@ export function createScreenManager(ctx) {
       }
     }
     const open = stack.length > 0;
+    // Kit screens (design/frontend/direction/KIT_SPEC.md §11.1): `body.k-screen-top` removes the
+    // legacy #screens still and gradient for a kit root only; `body[data-k-screen]` and the
+    // `ui:screenTop` event let the kit derive the frame's temperature from the top screen.
+    const topRec = topId ? registry.get(topId) : null;
+    const topEl = topRec && topRec.el ? topRec.el : null;
+    document.body.classList.toggle('k-screen-top', !!topEl && topEl.classList.contains('k-screen'));
+    document.body.dataset.kScreen = topEl ? (topEl.dataset.screen || '') : '';
+    if (bus && typeof bus.emit === 'function') bus.emit('ui:screenTop', { id: document.body.dataset.kScreen || null });
     // When no modal is open, hide the #screens container ENTIRELY — it carries a full-screen
     // background image (the menu art) at z-index 100, which would otherwise sit on top of the
     // flight canvas (z-index 10) and blank the screen after New Game even though the sim is live.
