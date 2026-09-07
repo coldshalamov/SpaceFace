@@ -118,6 +118,7 @@ export const tetherGameplay = {
     this._bridleActive = null;
     this._npcBridleCutTicks = new Map();
     this._monofilamentCutIds = new Set();
+    this._hostileSweepCutIds = new Set();
     this._monofilamentLatchId = null;
     this._bridleAdoptionPending = true;
     this._pendingDrillApproach = null;
@@ -134,6 +135,7 @@ export const tetherGameplay = {
       this._lastStrainT = -Infinity;
       this._npcBridleCutTicks.clear();
       this._monofilamentCutIds.clear();
+      this._hostileSweepCutIds.clear();
       this._monofilamentLatchId = null;
       this._cancelDrillApproach('save_loaded');
       this._resetAcquisitionRuntime(this.state);
@@ -143,6 +145,7 @@ export const tetherGameplay = {
       this._cancelDrillApproach('new_game');
       this._npcBridleCutTicks.clear();
       this._monofilamentCutIds.clear();
+      this._hostileSweepCutIds.clear();
       this._monofilamentLatchId = null;
       this._resetAcquisitionRuntime(this.state);
       this._resetTwinBridleRuntime(this.state, 'new_game', false);
@@ -228,6 +231,7 @@ export const tetherGameplay = {
     this._reconcileActive(attachments, state);
     this._adoptExisting(attachments, state);
     this._cutNpcLinesWithMonofilament(attachments, state, player);
+    this._cutPlayerLinesWithHostileSweep(attachments, state, player);
     this._startPendingDrillApproach(attachments, state, player);
     this._reconcileTwinBridle(attachments, state, player, now);
     this._adoptTwinBridle(attachments, state, player);
@@ -1441,6 +1445,55 @@ export const tetherGameplay = {
     }
   },
 
+  // PQ-030.02 — the tether-cutter specialist uses the same taut sweep against the player.
+  // Hornet cannot fit the M module; the specialist plan is the head. Slack does not cut.
+  _cutPlayerLinesWithHostileSweep(attachments, state, player) {
+    if (!player || !player.pos || !attachments) return;
+    if (!massline2Flag('masslineHeadMonofilamentSweep', state.runtime && state.runtime.features)) return;
+    const byId = state.combat && state.combat.attachments && state.combat.attachments.byId;
+    if (!byId || typeof byId !== 'object') return;
+    const playerId = state.playerId;
+    const playerTeam = player.team;
+    for (const blade of Object.values(byId)) {
+      if (!blade || blade.state !== 'active') continue;
+      const owner = state.entities && state.entities.get && state.entities.get(blade.ownerId);
+      if (!owner || owner.alive === false || owner.id === playerId) continue;
+      if (!hostileSweepCutter(owner, state, playerTeam)) continue;
+      ensureCutterSweepHead(owner);
+      const mass = state.entities.get(blade.targetId);
+      if (!mass || !mass.pos || !owner.pos) continue;
+      const span = Math.hypot(mass.pos.x - owner.pos.x, mass.pos.z - owner.pos.z);
+      const rest = Number.isFinite(blade.restLength) && blade.restLength > 0 ? blade.restLength : span;
+      if (!(span >= rest * NPC_LINE_CUT_TAUT_RATIO)) continue;
+      for (const other of Object.values(byId)) {
+        if (!other || other.state !== 'active' || other.id === blade.id) continue;
+        if (this._hostileSweepCutIds.has(other.id)) continue;
+        const playerOwned = other.ownerId === playerId
+          || other.targetId === playerId
+          || (other.controllerId != null && String(other.controllerId) === String(playerId));
+        if (!playerOwned) continue;
+        const source = state.entities.get(other.ownerId);
+        const target = state.entities.get(other.targetId);
+        if (!source || !source.pos || !target || !target.pos) continue;
+        if (!segmentsProperlyCross(owner.pos, mass.pos, source.pos, target.pos)) continue;
+        if (typeof attachments.breakAttachment !== 'function') continue;
+        this._hostileSweepCutIds.add(other.id);
+        const result = attachments.breakAttachment(other, 'monofilament_sweep', owner.id);
+        if (result && result.ok && this.bus && typeof this.bus.emit === 'function') {
+          this.bus.emit('massline:playerLineCut', {
+            schemaVersion: 1,
+            headId: MONOFILAMENT_HEAD_ID,
+            bladeId: blade.id,
+            attachmentId: other.id,
+            cutterId: owner.id,
+            ownerId: other.ownerId,
+            targetId: other.targetId,
+          });
+        }
+      }
+    }
+  },
+
   _cutActive(attachments, state, player, now) {
     if (!this._active) return false;
     const targetId = this._active.targetId;
@@ -2573,6 +2626,28 @@ function segmentsProperlyCross(a, b, c, d) {
   const o3 = orient2d(c, d, a);
   const o4 = orient2d(c, d, b);
   return o1 * o2 < 0 && o3 * o4 < 0;
+}
+
+function cutterEnemyId(entity) {
+  const data = entity && entity.data || {};
+  return data.enemyTypeId || data.lootTableId || data.typeId || null;
+}
+
+function ensureCutterSweepHead(entity) {
+  if (!entity) return;
+  const data = entity.data || (entity.data = {});
+  const derived = data.derived && typeof data.derived === 'object' ? data.derived : (data.derived = {});
+  derived.masslineHeadId = MONOFILAMENT_HEAD_ID;
+}
+
+function hostileSweepCutter(entity, state, playerTeam) {
+  if (!entity || entity.alive === false) return false;
+  if (entity.type !== 'ship' && entity.type !== 'drone') return false;
+  if (!isHostileToPlayer(entity, playerTeam, state)) return false;
+  const plan = specialistPlanByEnemyId(cutterEnemyId(entity));
+  if (plan && plan.verb === 'cut_line') return true;
+  const headId = entity.data && entity.data.derived && entity.data.derived.masslineHeadId;
+  return headId === MONOFILAMENT_HEAD_ID;
 }
 
 function orient2d(a, b, p) {
