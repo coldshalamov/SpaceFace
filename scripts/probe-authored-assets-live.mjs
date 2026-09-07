@@ -67,6 +67,11 @@ const AUTHORED_PROBE_SOURCE_FILES = Object.freeze([
   'scripts/probe-authored-assets-live.mjs',
 ]);
 
+// Declared here, beside the source-file list it extends, because runAuthoredAssetsLiveProbe()
+// runs during module evaluation -- a const further down the file is still in its temporal
+// dead zone by the time the provenance check reads it.
+const PROBE_RELEVANT_PREFIXES = Object.freeze(['assets/', 'src/render/', 'src/core/', 'src/systems/']);
+
 export async function runAuthoredAssetsLiveProbe() {
 const candidate = collectAuthoredProbeCandidateIdentity();
 if (!process.env.SF_PROBE_UNSAFE_SKIP_PROVENANCE) assert.equal(candidate.head, candidate.originMaster,
@@ -504,7 +509,6 @@ export function assessRepeatedAuthoredPackagePoolProof(report, options = {}) {
 // entities, and the assets themselves. Everything else is recorded in the report so a reader can
 // see exactly what state produced the capture. The source digest independently catches any mid-run
 // edit to the declared files.
-const PROBE_RELEVANT_PREFIXES = Object.freeze(['assets/', 'src/render/', 'src/core/', 'src/systems/']);
 
 function isProbeRelevantPath(file) {
   // git --porcelain always reports forward slashes, so no separator fixing is needed.
