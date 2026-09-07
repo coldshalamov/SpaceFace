@@ -417,27 +417,9 @@ export const ui = {
     if (this.whyReveal && typeof this.whyReveal.destroy === 'function') this.whyReveal.destroy();
     this.whyReveal = mountWhyReveal();
 
-    // Grammar §9.10: sound on every state change — one delegated pointerover on #screens,
-    // rate-limited ~40ms, makes every surface feel responsive without per-widget listeners.
-    // Previously only gamepad focus emitted hover.
-    if (typeof this._hoverAudioTeardown === 'function') this._hoverAudioTeardown();
-    this._hoverAudioTeardown = null;
-    {
-      const screensHost = document.getElementById('screens');
-      if (screensHost) {
-        let lastHoverAt = 0;
-        const onHoverOver = (ev) => {
-          const target = ev.target;
-          if (!target || !target.closest || !target.closest('button, [role="option"], [role="tab"], [data-spatial-slot]')) return;
-          const now = performance.now();
-          if (now - lastHoverAt < 40) return;
-          lastHoverAt = now;
-          ctx.bus.emit('audio:cue', { id: 'ui_hover' });
-        };
-        screensHost.addEventListener('pointerover', onHoverOver);
-        this._hoverAudioTeardown = () => screensHost.removeEventListener('pointerover', onHoverOver);
-      }
-    }
+    // No sound on mouse hover (frontend direction sheet §7 / Task D §4.1): the kit's `move` cue
+    // fires on keyboard focus movement only. The `sfx_ui_hover` recipe stays — commsRadial and the
+    // audio system's kill-confirm chirp still play it.
 
     // DEV: arm the sandbox game:started hook (no-op unless a sandbox launch is pending). Resolved via
     // a thunk because ctx continues to be enriched after init(); the hook reads ctx at fire time.
