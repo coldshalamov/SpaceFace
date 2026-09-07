@@ -207,3 +207,49 @@ records, so it wants the asset lane rather than a drive-by.
 
 **Until that node is named, `check:assets:live` cannot pass and the four H1 cells cannot record**,
 independently of render packages, the Helios assertion, or worktree cleanliness.
+
+---
+
+## Addendum, 2026-09-06 — six blockers cleared, and the seventh is bigger than this packet
+
+Every blocker above was real and each hid the next, because the gate aborted at the first one. In
+order, with the commit that cleared each:
+
+| # | Blocker | Cleared by |
+|---|---|---|
+| 1 | Helios assertion superseded by a 2026-08-21 perf decision | `97c6f807` |
+| 2 | The only hardcoded timeout — 15 000 ms boot against a 15 120 ms machine | `071002f6` |
+| 3 | Provenance gate demanding a globally clean tree on a shared checkout | `f85ec003`, `3a1d4f30`, `6ee68849` |
+| 4 | `place_cold_locker` unpackageable — release optimiser leaves one anonymous transform wrapper | `cf39ee6c` |
+| 5 | Lane furniture shipped with no runtime identity; two bindings silently stale | `017138ea` |
+| 6 | `pelican_production_v1` likewise, and its release lod0 had never been through the pipeline | `a7d97fab` |
+| 7 | A non-presented ship failed for being `authored` while off camera | `93b0337c` |
+| 8 | Ship count asserted from a report read at a later instant than the gate that proved it | `2abd17f3` |
+
+### The finding that outgrew this packet
+
+**Nine of the thirteen live fleet hulls have no render package, and the loader fails closed on
+them.** `src/render/partsLibrary.js` maps each playable hull to a `*_production_v1.glb`, and these
+are declared in **neither** `parts_manifest.json` nor `release_manifest.json`, so
+`generate-render-package-pilots.mjs` never sees them:
+
+| hull | body | packaged |
+|---|---|---|
+| kestrel, wasp, pelican, drifter | `kestrel.glb`, `wasp_production_v1.glb`, `pelican_production_v1.glb`, `drifter_production_v1.glb` | yes |
+| **mule, hornet, ironback, bastion, atlas, ranger, warden, colossus, leviathan** | `<name>_production_v1.glb` | **no** |
+
+Counting LOD files, 37 released whole-ship GLBs carry no `spacefaceAsset` identity at all.
+
+This is very likely why the probe reports `expected at least 3 authored live ships; got 1`: on the
+release route most of the fleet cannot admit. The error the loader raises is explicit —
+"released part has no render package, and the source route is development-only".
+
+**Not attempted, deliberately.** Declaring 37 whole-ship assets into both manifests and building
+their packages is a systemic change to the asset declaration set, with real repo-size and
+review consequences, and it is a much larger job than the acceptance capture this packet asks for.
+It should be its own unit, sized and reviewed. Stamping was prototyped and reverted; the tree is
+clean.
+
+**What is now proven to work**, and did not before: the gate reaches the live scene, the Helios
+approach leg flies the player to the hub and requires the 89.7 MB package to author, and every
+asset-side blocker between boot and the fleet check is gone.
