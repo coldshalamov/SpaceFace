@@ -52,10 +52,10 @@
     },
     {
       "id": "vfx-sprite-puffs",
-      "status": "banned-live",
-      "playerSees": "Flashes, smoke puffs, and shock rings as translucent cards",
-      "technique": "Instanced camera-facing quads; glow is an authored starburst with a hot core and anisotropic rays, ring is a modulated blast front with a trailing secondary wave, combustion stays an advected lobe mask; additive buckets carry HDR radiance above 1.0 for bloom",
-      "whyListed": "Quality-uplifted 2026-09 (authored structure + HDR headroom), but the card is still the silhouette carrier for flashes. Listed so it cannot silently spread; the replacement direction is the particleShards streak geometry.",
+      "status": "pending-visual-acceptance",
+      "playerSees": "Shared transient impulses and compression fronts; animated smoke and combustion volumes",
+      "technique": "Instanced swept 3D impulse sheets and bounded ray-marched density/temperature films, with independent event progress, seed and force heading; legacy sprite API names retained",
+      "whyListed": "Candidate migration 2026-09-07 removes the camera-facing silhouette carrier. The scan still finds the compatibility API. Isolated WebGL frames and 140 focused tests are not normal-game or integrated-GPU acceptance; see VFX_UPGRADE_2026-09-07.md. Do not mark accepted from the method name or geometry alone.",
       "files": ["src/render/vfx.js", "src/render/combat/instancedSpritePool.js"]
     },
     {
