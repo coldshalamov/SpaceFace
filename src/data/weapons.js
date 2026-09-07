@@ -12,12 +12,12 @@ export const WEAPONS = [
   {
     id: 'wpn_pulse_laser_s', name: 'Pulse Laser S', slotType: 'weapon', size: 'S', tier: 1, mass: 2, price: 4500,
     // Starter reliability: a long, readable engagement burst rather than five-shot lockout or
-    // infinite fire. At 5.5 rps the authored dissipation yields roughly seven seconds / 35+ shots
-    // before a short forced vent; releasing the trigger for two seconds sheds meaningful heat.
-    // Impulse is 5 % of Wasp cruise (mass 16, governed 105 WU/s) per full hit: 84 momentum.
+    // infinite fire. Heat is the kit-balance lever against the physics kit — Pulse still dumps
+    // a real burst (dmg 8 at 5.5 rps), then a short forced vent, instead of grinding the room
+    // forever. Impulse is 5 % of Wasp cruise (mass 16, governed 105 WU/s) per full hit: 84 momentum.
     dmg: 8, rof: 5.5, dps: 44, damageType: 'energy', energyCost: 2,
     projSpeed: 320, range: 600, tracking: 'fixed', spreadDeg: 0.6,
-    heatPerShot: 5, heatMax: 100, heatDissip: 12,
+    heatPerShot: 8, heatMax: 100, heatDissip: 12,
     impulsePerHit: 84, tumbleTorque: 0.05, impulseProvenance: 'starter_pulse_plink',
   },
   {

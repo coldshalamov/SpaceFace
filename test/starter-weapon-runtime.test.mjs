@@ -150,14 +150,16 @@ function deterministicStarterCycle() {
   };
 }
 
-test('starter Pulse Laser S has a long deterministic burst and a clearly bounded vent/recovery cycle', () => {
+test('starter Pulse Laser S has a readable burst and a clearly bounded vent/recovery cycle', () => {
   const a = deterministicStarterCycle();
   const b = deterministicStarterCycle();
   assert.deepEqual(b, a, 'starter thermal cycle is deterministic across identical runs');
-  assert.ok(a.shotsAtVent >= 32, `starter must fire at least 32 shots before vent, got ${a.shotsAtVent}`);
-  assert.ok(a.shotsAtVent <= 55, `starter must retain meaningful heat management, got ${a.shotsAtVent} shots`);
-  assert.ok(a.ventStart >= 6 && a.ventStart <= 10,
-    `starter vent should begin after a useful 6-10s burst, got ${a.ventStart}s`);
+  // PQ-137.05 kit-balance: heat 8 keeps Pulse a gun (a burst, not a five-shot lockout) and
+  // forces a vent before it can grind a room. Live numbers on this pin: 18 shots / ~3.2 s.
+  assert.ok(a.shotsAtVent >= 14, `starter must fire a real burst before vent, got ${a.shotsAtVent}`);
+  assert.ok(a.shotsAtVent <= 24, `starter must vent before it grinds a room, got ${a.shotsAtVent} shots`);
+  assert.ok(a.ventStart >= 2.5 && a.ventStart <= 4.5,
+    `starter vent should begin after a useful 2.5-4.5s burst, got ${a.ventStart}s`);
   assert.equal(a.shotsDuringVent, 0, 'vent lockout never leaks a projectile');
   assert.ok(a.ventEnd - a.ventStart >= 1.5 && a.ventEnd - a.ventStart <= 2,
     `vent duration must be readable and bounded, got ${a.ventEnd - a.ventStart}s`);
@@ -177,8 +179,8 @@ test('releasing the starter trigger produces predictable cooling and reliable re
   h.state.input.fire = false;
   h.tick(60 * 2);
   const heatAfterCooling = mount._heat || 0;
-  assert.ok(heatAtRelease >= 25 && heatAtRelease <= 60,
-    `three-second burst should build readable partial heat, got ${heatAtRelease}`);
+  assert.ok(heatAtRelease >= 80 && heatAtRelease <= 100,
+    `three-second burst should nearly fill the heat bar, got ${heatAtRelease}`);
   assert.ok(heatAtRelease - heatAfterCooling >= 20,
     `two-second release should shed at least 20 heat, shed ${heatAtRelease - heatAfterCooling}`);
   assert.equal(h.fireTimes.length, shotsAtRelease, 'release never emits a stray shot');

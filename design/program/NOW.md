@@ -42,6 +42,7 @@ working. Product status and remaining tasks live in
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
 | Campaign coordination | controller 01a0768b | MUTATING | `design/program/NOW.md` | keep current ownership and close accepted leaves in existing queue |
+| Finish-game orchestration | Cursor Grok orchestrator (`.codex/agent-checkpoints/ORCH-FINISH.json`) | MUTATING | `design/program/NOW.md` | Land PQ-137.05 kit-balance, then dispatch PQ-174.00 |
 | PQ-187.02 — The kit | ChatGPT Pro 6a9df1b5-1254-83ea-838b-b22d45140dc9 | MUTATING | `styles/fonts/`, `styles/fonts.css`, `styles/kit.css`, `src/ui/kit/`, `assets/audio/ui/`, `_uilab.html`, `scripts/probe-frontend-snapshot.mjs`, `.codex/agent-checkpoints/PQ-187.02.json` | return a pushed remote kit candidate; Codex handles visual/hull capture and acceptance |
 
 The legacy extraction, live Shipworks guidance, Market quantity controls and public career route are

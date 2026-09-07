@@ -25,7 +25,9 @@ import { applyCombatLabSetup } from '../../../src/ui/sandbox/sandboxSetup.js';
 import { COMBAT_LAB_STARTER_PACKAGES, COMBAT_LAB_ARENAS } from '../../../src/data/combatLabSetups.js';
 import { validateCombatLabSetup } from '../../../src/contracts/combatLabSetupSchema.js';
 import { SURVIVAL_COHORT_TAG } from '../../../src/systems/waveMaterialization.js';
+import { SWARM_DEBRIS_TAG } from '../../../src/systems/swarmArena.js';
 import { TECH_NODES } from '../../../src/data/tech.js';
+import { FIELD_FLAGS } from '../../../src/data/fields.js';
 import {
   snapshotFeatureMaps, applyFeatureConfigToMaps, restoreFeatureMaps,
 } from '../../../src/data/featureFlags.js';
@@ -64,6 +66,8 @@ const BIND = {
 const RANGE = 150;
 const VERB_PERIOD = 150;
 const CRUISE_FRAC = 0.72;
+const PHYSICS_STANDOFF = 190;
+const PHYSICS_PROJ_SPEED = 340;
 const KNOCK_EVENTS_PER_MIN_LIMIT = 2.0;
 const KNOCK_MAX_FRACTION_LIMIT = 0.10;
 const KNOCK_FLOOR_FRACTION = 0.005;
@@ -217,6 +221,12 @@ export async function simulateCrucibleSwarm({
   if (!Number.isFinite(seed)) {
     throw new Error('simulateCrucibleSwarm: `seed` must be a finite number (fixed seeds or it did not happen)');
   }
+
+  // Production play has wells/repulsors. FIELD_FLAGS defaults OFF under node for the 47-A
+  // golden; without this opt-in the physics kit's Digit5/6 verbs are silent no-ops and the
+  // kit-order clause would be grading a gun that is missing half its grammar.
+  const prevFieldsEnabled = FIELD_FLAGS.enabled;
+  FIELD_FLAGS.enabled = true;
 
   const log = [];
   const harnessBusEmits = [];
@@ -624,6 +634,7 @@ export async function simulateCrucibleSwarm({
       swarm,
     };
   } finally {
+    FIELD_FLAGS.enabled = prevFieldsEnabled;
     runtime.dispose();
   }
 }
@@ -715,30 +726,56 @@ function drivePilot({ tick, state, player, inputSys, aim, loadoutId, verbCadence
     inputTape.push({ tick, acts });
     return;
   }
-  aim.x = best.pos.x;
-  aim.z = best.pos.z;
-  const toT = Math.atan2(best.pos.z - player.pos.z, best.pos.x - player.pos.x);
-  const err = wrapAngle(toT - player.rot);
-  if (Math.abs(err) > 0.12) {
-    press(inputSys, err > 0 ? BIND.yawRight : BIND.yawLeft);
-    acts.push(err > 0 ? 'yawRight' : 'yawLeft');
+  const physics = loadoutId === 'physics_toolkit';
+  const phase = tick % VERB_PERIOD;
+  const wellTick = physics && phase === verbCadence;
+  const rock = physics ? pickBackstopRock(player, best, liveRocks(state)) : null;
+  const gunPoint = physics ? interceptPoint(player, best, PHYSICS_PROJ_SPEED) : best.pos;
+  // Gun aim stays on the nearest hostile. The well is the one tick that may point at rock —
+  // that is the physics verb's placement, not empty-space gunnery.
+  if (wellTick && rock && rock.pos) {
+    aim.x = rock.pos.x;
+    aim.z = rock.pos.z;
+  } else {
+    aim.x = gunPoint.x;
+    aim.z = gunPoint.z;
   }
-  if (bestD > RANGE) {
-    press(inputSys, BIND.forward);
-    acts.push('thrust');
-  } else if (bestD < RANGE * 0.45) {
-    press(inputSys, BIND.brake);
-    acts.push('brake');
+  const toAim = Math.atan2(aim.z - player.pos.z, aim.x - player.pos.x);
+  const err = wrapAngle(toAim - player.rot);
+  const toHostile = Math.atan2(best.pos.z - player.pos.z, best.pos.x - player.pos.x);
+  const gunErr = wrapAngle(toHostile - player.rot);
+  if (physics && rock && !wellTick) {
+    drivePhysicsStation({
+      player, best, rock, inputSys, acts, bestD, gunErr,
+    });
+  } else {
+    if (Math.abs(err) > 0.12) {
+      press(inputSys, err > 0 ? BIND.yawRight : BIND.yawLeft);
+      acts.push(err > 0 ? 'yawRight' : 'yawLeft');
+    }
+    if (bestD > RANGE) {
+      press(inputSys, BIND.forward);
+      acts.push('thrust');
+    } else if (bestD < RANGE * 0.45) {
+      press(inputSys, BIND.brake);
+      acts.push('brake');
+    }
+    if (bestD > RANGE * 3 && tick % 240 < 60) {
+      press(inputSys, BIND.boost);
+      acts.push('boost');
+    }
   }
-  if (bestD > RANGE * 3 && tick % 240 < 60) {
-    press(inputSys, BIND.boost);
-    acts.push('boost');
-  }
-  if (Math.abs(err) < 0.35 && bestD < 420) {
+  if (physics) {
+    // Player mounts gimbal a full 360°. Hold the trigger on the nearest hostile; do not starve
+    // concussion while the hull strafes onto a slam line.
+    if (!wellTick && bestD < 420) {
+      inputSys._m0 = true;
+      acts.push('fire');
+    }
+  } else if (Math.abs(err) < 0.35 && bestD < 420) {
     inputSys._m0 = true;
     acts.push('fire');
   }
-  const phase = tick % VERB_PERIOD;
   if (loadoutId === 'physics_toolkit') {
     if (phase === verbCadence) { press(inputSys, BIND.deployWell); acts.push('well'); }
     if (phase === verbCadence + 20) { press(inputSys, BIND.deployRepulsor); acts.push('shove'); }
@@ -767,6 +804,94 @@ function liveCohortHostiles(state) {
     out.push(e);
   }
   return out;
+}
+
+function liveRocks(state) {
+  const out = [];
+  const list = state && Array.isArray(state.entityList) ? state.entityList : [];
+  for (const e of list) {
+    if (!e || e.alive === false || !e.pos) continue;
+    if (e.type === 'asteroid' || (e.data && e.data[SWARM_DEBRIS_TAG])) out.push(e);
+  }
+  return out;
+}
+
+function interceptPoint(player, target, projSpeed) {
+  const dx = target.pos.x - player.pos.x;
+  const dz = target.pos.z - player.pos.z;
+  const dist = Math.hypot(dx, dz);
+  const vx = target.vel && Number.isFinite(target.vel.x) ? target.vel.x : 0;
+  const vz = target.vel && Number.isFinite(target.vel.z) ? target.vel.z : 0;
+  const t = dist / Math.max(1, projSpeed);
+  return { x: target.pos.x + vx * t, z: target.pos.z + vz * t };
+}
+
+function pickBackstopRock(player, hostile, rocks) {
+  let best = null;
+  let bestScore = -Infinity;
+  const hx = hostile.pos.x - player.pos.x;
+  const hz = hostile.pos.z - player.pos.z;
+  const hlen = Math.hypot(hx, hz) || 1;
+  const hnx = hx / hlen;
+  const hnz = hz / hlen;
+  for (const rock of rocks) {
+    const rx = rock.pos.x - hostile.pos.x;
+    const rz = rock.pos.z - hostile.pos.z;
+    const rlen = Math.hypot(rx, rz);
+    if (!(rlen > 24) || rlen > 480) continue;
+    const align = (hnx * rx + hnz * rz) / rlen;
+    const score = align - Math.abs(rlen - 180) / 900;
+    if (align > 0.15 && score > bestScore) {
+      bestScore = score;
+      best = rock;
+    }
+  }
+  if (best) return best;
+  let nearest = Infinity;
+  for (const rock of rocks) {
+    const d = Math.hypot(rock.pos.x - hostile.pos.x, rock.pos.z - hostile.pos.z);
+    if (d < nearest) {
+      nearest = d;
+      best = rock;
+    }
+  }
+  return best;
+}
+
+function drivePhysicsStation({ player, best, rock, inputSys, acts, bestD, gunErr }) {
+  if (Math.abs(gunErr) > 0.12) {
+    press(inputSys, gunErr > 0 ? BIND.yawRight : BIND.yawLeft);
+    acts.push(gunErr > 0 ? 'yawRight' : 'yawLeft');
+  }
+  const rdx = best.pos.x - rock.pos.x;
+  const rdz = best.pos.z - rock.pos.z;
+  const rlen = Math.hypot(rdx, rdz) || 1;
+  const desired = {
+    x: best.pos.x + (rdx / rlen) * PHYSICS_STANDOFF,
+    z: best.pos.z + (rdz / rlen) * PHYSICS_STANDOFF,
+  };
+  const dx = desired.x - player.pos.x;
+  const dz = desired.z - player.pos.z;
+  const stationD = Math.hypot(dx, dz);
+  if (stationD > 28) {
+    const toStation = Math.atan2(dz, dx);
+    const rel = wrapAngle(toStation - player.rot);
+    if (Math.cos(rel) > 0.25) {
+      press(inputSys, BIND.forward);
+      acts.push('thrust');
+    }
+    if (Math.sin(rel) > 0.35) {
+      press(inputSys, BIND.strafeRight);
+      acts.push('strafeRight');
+    } else if (Math.sin(rel) < -0.35) {
+      press(inputSys, BIND.strafeLeft);
+      acts.push('strafeLeft');
+    }
+  }
+  if (bestD < 55) {
+    press(inputSys, BIND.brake);
+    acts.push('brake');
+  }
 }
 
 /**

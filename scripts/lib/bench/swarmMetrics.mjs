@@ -394,7 +394,7 @@ function collectMeaningfulMoments(kills) {
   return moments;
 }
 
-function isAttributedPhysicsKill(kill) {
+export function isAttributedPhysicsKill(kill) {
   const d = kill.data || {};
   const cause = String(d.cause || d.killCause || d.via || '').toLowerCase();
   if (PHYSICS_KILL_CAUSES.has(cause)) return true;
@@ -406,6 +406,24 @@ function isAttributedPhysicsKill(kill) {
     return true;
   }
   return false;
+}
+
+/**
+ * Hostile-kill split for the PQ-137.05 kit-order clause. Gun kills are hostile kills that are
+ * not physics-attributed — a Pulse grind cannot hide inside the physics kit's total.
+ */
+export function countKitKills(eventTrace) {
+  const events = (Array.isArray(eventTrace) ? eventTrace : []).map(normalizeEvent).filter(Boolean);
+  const kills = events.filter(isHostileKill);
+  let physics = 0;
+  for (const kill of kills) {
+    if (isAttributedPhysicsKill(kill)) physics += 1;
+  }
+  return {
+    hostile: kills.length,
+    physics,
+    gun: kills.length - physics,
+  };
 }
 
 function measureWaveDurations({ planned, complete, simSeconds, ticks, censoredAtCap, stopReason }) {

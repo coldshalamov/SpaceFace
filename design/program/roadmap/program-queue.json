@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-06T23:01:49.000Z",
+  "updatedAt": "2026-09-07T05:35:00.000Z",
   "purpose": "Canonical cross-plan priority and dispatch queue. Product completion remains authoritative in design/program/03_LIVE_ACCEPTANCE_MATRIX.md.",
   "stateContract": {
     "allowed": [
@@ -5247,7 +5247,7 @@
       "priority": 45,
       "title": "Weapons have force, including the starter; the Crucible starts with a shove",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-137.04"
       ],
@@ -5264,9 +5264,10 @@
         "npm run check:crucible:route"
       ],
       "receiptRefs": [
-        "design/program/roadmap/receipts/PQ-137.05-REPORT.md"
+        "design/program/roadmap/receipts/PQ-137.05-REPORT.md",
+        "design/program/roadmap/receipts/PQ-137.05-KIT-BALANCE-REPORT.md"
       ],
-      "brief": "IMPLEMENTED 2026-09-04: force table and real sensor mine integrated; fresh Crucible starts with the shove kit. B4/B5 focused numbers pass; 20-seed kit ordering and visual route acceptance remain open."
+      "brief": "ACCEPTED 2026-09-07 (Grok 20-seed + controller). Physics kit median hostile kills 21.5 vs Pulse energy_baseline 19 on seeds 4242,8008,13502,17,41,73,128,256,512,777,1024,2048,3331,4096,5000,6502,7777,9001,12321,31415 (helios_core, tickCap 5400). Pulse still wins gun-only (10 vs 7); extra physics kills are attributed (median 13). Pulse stays 8 dmg / 5.5 rps / impulse 84; heat 5→8 is the vent lever. No rail on the Hornet. Shove strip already on disk. Not PQ-174.02."
     },
     {
       "id": "PQ-137.06",
