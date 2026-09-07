@@ -1,5 +1,10 @@
 // Pause menu (ARCHITECTURE §5.4, design/specs/09). Opened by ESC in flight.
-// Resume / Settings / Save / Load / Mission Log / Help / Main Menu.
+// The sheet's line (design/frontend/direction/DIRECTION_SHEET.md, pause, amended by Task B §1.4):
+// the world held, not hidden — the frozen game at 0 % scrim; "Paused" at screen-title size top-left;
+// the flight brief as one sentence beneath it; the actions as a column of words down the left edge;
+// the HUD dims to 38 % rather than disappearing. Photo mode (§1.7) is a sub-state of this screen:
+// the pause root goes invisible under body.k-photo while the stack (and the sim pause) is unchanged.
+// Built on the frontend kit (styles/kit.css, src/ui/kit/); this file owns no CSS.
 // ScreenManager owns aggregate pause/resume events and the time-effects request. This screen owns
 // only pause-mode presentation and navigation intents.
 
@@ -10,9 +15,11 @@ import { MAP_FOCUS, mapHandoffAction, openGalaxyMap } from '../mapAuthority.js';
 import { coreText } from '../localizedCoreCopy.js';
 import { requestQuit } from '../quitGame.js';
 import { IS_DEV } from '../../core/devMode.js';
+import { el, words, settle, cue } from '../kit/index.js';
 
-const STYLE_ID = 'sf-pause-menu-style';
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
+/** The photo-mode hint fades after this long (Task B §1.7: two seconds). */
+const PHOTO_HINT_MS = 2000;
 
 /** Find the screen manager regardless of where uiRoot exposed it. Screens navigate
  *  by asking the manager to push/pop/replace; if it is not reachable we degrade to
@@ -31,60 +38,6 @@ function nav(ctx, method, arg) {
   if (mgr && typeof mgr[method] === 'function') { mgr[method](arg); return; }
   // Fallback: let uiRoot handle navigation via events.
   ctx.bus.emit('ui:' + method, { id: arg });
-}
-
-function injectStyle() {
-  if (document.getElementById(STYLE_ID)) return;
-  const s = document.createElement('style');
-  s.id = STYLE_ID;
-  // Pause-specific identity only. The shared menu fascia (plate, buttons, headings, slot rows)
-  // lives in styles/menu.css — previously a copy of that whole block was pasted here and into
-  // every other menu screen.
-  s.textContent = `
-  /* The FLIGHT BRIEF card is the pause screen's own instrument readout: amber worklight edge
-     plus a dimmed amber wash so the live objective reads first against the frozen world. */
-  .screen.sf-menu .sf-pause-brief {
-    border-left:1px solid var(--sf-edge);
-    background:
-      linear-gradient(90deg, var(--mf-worklight-dim), transparent 42%),
-      #0e1113;
-  }
-  .screen.sf-menu .sf-pause-brief .sf-slot-sub:first-child {
-    color:var(--accent);
-    letter-spacing:.06em;
-  }
-  /* The brief's mono helper lines (next step + save status) read at --ink-mute,
-     which is marginal over the dark wash; raise them to the muted ink level. */
-  .screen.sf-menu .sf-pause-brief .sf-slot-sub,
-  .screen.sf-menu .sf-pause-brief .sf-muted {
-    color:var(--ink-dim);
-  }
-  `;
-  document.head.appendChild(s);
-}
-
-/** Build a centered modal panel inside rootEl; returns {panel, body}. Idempotent-ish:
- *  if called again it clears and rebuilds. */
-function screenShell(rootEl, title, extraClass) {
-  rootEl.innerHTML = '';
-  rootEl.classList.add('panel', 'sf-menu');
-  if (extraClass) rootEl.classList.add(extraClass);
-  // Diegetic fascia stamp (styles/menu.css .sf-menu::before reads it).
-  rootEl.dataset.stamp = 'MISSION CONTROL / STANDBY';
-  const h = document.createElement('h1');
-  h.textContent = title;
-  rootEl.appendChild(h);
-  const body = document.createElement('div');
-  body.className = 'sf-col';
-  rootEl.appendChild(body);
-  return { panel: rootEl, body };
-}
-
-function button(label, cls) {
-  const b = document.createElement('button');
-  b.className = 'sf-btn' + (cls ? ' ' + cls : '');
-  b.textContent = label;
-  return b;
 }
 
 function prettyId(id) {
@@ -349,37 +302,95 @@ function renderFlightBrief(ctx) {
   els.briefSave.textContent = lines.save;
 }
 
+/* ---------- photo mode (Task B §1.7, sheet moment 12) ---------- */
+
+let photo = null;
+
+function photoHintText() {
+  // No photo/pause binding is registered in bindings.js; Esc is the modal-close key uiInput owns.
+  return 'Esc to return';
+}
+
+/** Enter photo mode: the pause root goes invisible, body.k-photo hides the HUD (kit.css), one fine
+ *  hint fades out after two seconds. The screen stack — and so the sim pause — is untouched. */
+function enterPhoto(rootEl, ctx) {
+  if (photo) return;
+  const hint = el('p', 'k-fine sf-photo-hint', photoHintText());
+  hint.setAttribute('role', 'status');
+  // Inside #screens (z-index 100, the pause root's parent) so the hint paints over the world canvas;
+  // a body child at z-auto would sit under it.
+  (rootEl.parentElement || document.body).appendChild(hint);
+  settle(hint, { from: 'bottom', state: 'photo-hint' });
+  const onKey = (ev) => {
+    if (ev.key !== 'Escape') return;
+    ev.preventDefault();
+    ev.stopImmediatePropagation();
+    exitPhoto(rootEl, ctx);
+  };
+  // Capture phase on window: runs ahead of uiInput's document-level handler, which would otherwise
+  // pop the pause screen (and unpause the sim) on the same Esc.
+  window.addEventListener('keydown', onKey, true);
+  const fade = setTimeout(() => { if (photo && photo.hint === hint) hint.classList.add('k-out'); }, PHOTO_HINT_MS);
+  document.body.classList.add('k-photo');
+  rootEl.style.visibility = 'hidden';
+  rootEl.setAttribute('aria-hidden', 'true');
+  photo = { hint, onKey, fade, rootEl };
+  cue('open');
+}
+
+function exitPhoto(rootEl, ctx) {
+  if (!photo) return;
+  clearTimeout(photo.fade);
+  window.removeEventListener('keydown', photo.onKey, true);
+  if (photo.hint && photo.hint.parentNode) photo.hint.parentNode.removeChild(photo.hint);
+  document.body.classList.remove('k-photo');
+  const root = photo.rootEl || rootEl;
+  root.style.removeProperty('visibility');
+  root.removeAttribute('aria-hidden');
+  photo = null;
+  cue('close');
+  if (els && els.bResume) try { els.bResume.focus(); } catch (e) {}
+  renderFlightBrief(ctx);
+}
+
 export const pauseScreen = {
   id: 'pause',
 
   mount(rootEl, ctx) {
-    injectStyle();
-    const { body } = screenShell(rootEl, coreText('paused'), 'sf-menu-narrow');
+    rootEl.innerHTML = '';
+    rootEl.classList.remove('panel', 'sf-menu', 'sf-menu-narrow');
+    rootEl.classList.add('k-screen', 'k-screen--stage');
+    delete rootEl.dataset.stamp;
 
-    const brief = document.createElement('div');
-    brief.className = 'sf-slot sf-pause-brief';
+    // .k-title — "Paused" and the brief beneath it (hooks sf-pause-brief / sf-slot-* kept for checks).
+    const title = el('header', 'k-title');
+    title.appendChild(el('h1', 'k-display k-t-title', coreText('paused')));
+    const brief = el('div', 'sf-pause-brief');
     brief.setAttribute('aria-live', 'polite');
-    const briefMain = document.createElement('div');
-    briefMain.className = 'sf-slot-main';
-    const briefKicker = document.createElement('div');
-    briefKicker.className = 'sf-slot-sub';
+    const briefKicker = el('span', 'k-caps sf-slot-sub');
     briefKicker.textContent = coreText('flightBrief');
-    const briefObjective = document.createElement('div');
-    briefObjective.className = 'sf-slot-name';
-    const briefNext = document.createElement('div');
-    briefNext.className = 'sf-muted';
-    const briefSave = document.createElement('div');
-    briefSave.className = 'sf-slot-sub';
-    briefMain.appendChild(briefKicker);
-    briefMain.appendChild(briefObjective);
-    briefMain.appendChild(briefNext);
-    briefMain.appendChild(briefSave);
-    brief.appendChild(briefMain);
-    body.appendChild(brief);
+    const briefObjective = el('p', 'k-sentence k-sentence--emph sf-slot-name');
+    const briefNext = el('p', 'k-sentence sf-muted');
+    const briefSave = el('p', 'k-t-fine k-38 sf-slot-sub');
+    brief.appendChild(briefKicker);
+    brief.appendChild(briefObjective);
+    brief.appendChild(briefNext);
+    brief.appendChild(briefSave);
+    title.appendChild(brief);
+    rootEl.appendChild(title);
 
-    const mk = (label, fn) => { const b = button(label); b.addEventListener('click', fn); body.appendChild(b); return b; };
-    const bResume = mk(coreText('resume'), () => this._resume(ctx));
-    bResume.classList.add('sf-btn--primary');
+    // .k-stage — the actions as one column of words. `mk` keeps the legacy shape the checks read
+    // (label, handler) and appends a kit word to the column; `words()` is built once at the end.
+    const stage = el('section', 'k-stage');
+    const items = [];
+    const handlers = new Map();
+    const mk = (label, fn, opts = {}) => {
+      const action = 'pause-' + items.length;
+      items.push({ label, action, primary: !!opts.primary, danger: !!opts.danger });
+      handlers.set(action, { fn, dev: !!opts.dev });
+      return action;
+    };
+    const resumeAction = mk(coreText('resume'), () => this._resume(ctx), { primary: true });
     mk(coreText('settings'), () => nav(ctx, 'pushScreen', 'settings'));
     mk(coreText('save'), () => nav(ctx, 'pushScreen', 'saveLoad'));
     // Load discards unsaved current progress after a slot is chosen — confirm with the live run context first.
@@ -404,9 +415,11 @@ export const pauseScreen = {
     if (mapAction) mk('Review ' + mapAction.label, () => openPauseMapReview(ctx, mapAction));
     mk(coreText('helpControls'), () => nav(ctx, 'pushScreen', 'help'));
     mk(coreText('codex'), () => nav(ctx, 'pushScreen', 'codex'));
+    // Photo mode (Task B §1.7): everything gone but the world; Esc returns here.
+    mk('Photo', () => enterPhoto(rootEl, ctx));
     // DEV ONLY — Sandbox testing harness (grant weapon now, spawn enemy now, etc.). IS_DEV-gated so
     // it never appears in packaged builds. Same screen as the main-menu Sandbox button.
-    if (IS_DEV) mk('Sandbox', () => nav(ctx, 'pushScreen', 'sandbox'));
+    if (IS_DEV) mk('Sandbox', () => nav(ctx, 'pushScreen', 'sandbox'), { dev: true });
     // Main Menu discards the current session entirely — confirm with the live run context first.
     mk(coreText('mainMenu'), async () => {
       const ok = await confirm({
@@ -415,7 +428,7 @@ export const pauseScreen = {
         confirmLabel: 'Main Menu', danger: true,
       });
       if (ok) this._toMenu(ctx);
-    });
+    }, { danger: true });
 
     mk(coreText('quitGame'), async () => {
       const lines = pauseStatusLines(ctx && ctx.state);
@@ -425,9 +438,28 @@ export const pauseScreen = {
         confirmLabel: coreText('quitGame'), danger: true,
       });
       if (ok) requestQuit(ctx);
-    });
+    }, { danger: true });
 
-    els = { bResume, briefObjective, briefNext, briefSave };
+    // Recorded choice: the task table says menu size, but thirteen menu-size words under the title
+    // and the three-line brief run past a 1080-tall frame (Main menu and Quit fell below the fold in
+    // the 1920x1080 capture). Emph is the next size down on the words scale; every word stays in
+    // frame at every width.
+    const list = words(items, {
+      size: 'emph',
+      ariaLabel: 'Pause',
+      onPick: (action) => { const h = handlers.get(action); if (h) h.fn(); },
+    });
+    for (const [action, h] of handlers) {
+      if (h.dev) list.querySelector(`[data-action="${action}"]`)?.classList.add('k-38');
+    }
+    stage.appendChild(list);
+    rootEl.appendChild(stage);
+
+    // .k-fine — the resume key. check-ui-screen-imports allows the literal on this screen.
+    rootEl.appendChild(el('p', 'k-fine', 'Esc resumes'));
+
+    const bResume = list.querySelector(`[data-action="${resumeAction}"]`);
+    els = { bResume, title, stage, briefObjective, briefNext, briefSave };
     renderFlightBrief(ctx);
   },
 
@@ -455,9 +487,21 @@ export const pauseScreen = {
   onShow(ctx) {
     if (ctx.state.mode === 'flight') ctx.state.mode = 'paused';
     renderFlightBrief(ctx);
-    if (els && els.bResume) try { els.bResume.focus(); } catch (e) {}
+    if (els) {
+      if (els.title) settle(els.title, { from: 'left', state: 'pause-title' });
+      if (els.stage) settle(els.stage, { from: 'left', delay: 60, state: 'pause-words' });
+      if (els.bResume) try { els.bResume.focus(); } catch (e) {}
+    }
+    // The world behind the pause is the live flight picture, not a mount of its own: the frame is
+    // ready as soon as the words are (KIT_SPEC §11.7 capture contract).
+    if (els && els.title && els.title.parentElement) els.title.parentElement.dataset.kReady = '1';
+    cue('open');
   },
 
-  onHide() {},
+  onHide(ctx) {
+    // Leaving the stack while in photo mode (a bus-driven exit) must not strand body.k-photo.
+    if (photo) exitPhoto(photo.rootEl, ctx);
+    cue('close');
+  },
   refresh(ctx) { renderFlightBrief(ctx); },
 };

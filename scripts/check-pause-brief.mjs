@@ -72,14 +72,15 @@ assert.match(lines.save, /F5 quick-saves/);
 
 let body = pauseExitConfirmBody(trackedState, 'load');
 assert.match(body, /Opening Load lets you review slots/);
-assert.match(body, /TRACKED - Helios Priority Run/);
+// The brief joins its fields with a middle dot (888dbcfa polish pass); either separator is accepted.
+assert.match(body, /TRACKED [-·] Helios Priority Run/);
 assert.match(body, /Helios Gate/);
 assert.match(body, /Save status: Saved .* to Quick/);
 assert.match(body, /If you complete a load, unsaved progress is lost/);
 
 body = pauseExitConfirmBody(trackedState, 'menu');
 assert.match(body, /Returning to main menu closes the current session/);
-assert.match(body, /TRACKED - Helios Priority Run/);
+assert.match(body, /TRACKED [-·] Helios Priority Run/);
 assert.match(body, /Save status: Saved .* to Quick/);
 assert.match(body, /Unsaved progress will be lost/);
 
@@ -171,7 +172,7 @@ body = pauseExitConfirmBody({
   meta: {},
   save: {},
 }, 'menu');
-assert.match(body, /NAV SET - Sell Food at Vesta Exchange/);
+assert.match(body, /NAV SET [-·] Sell Food at Vesta Exchange/);
 assert.match(body, /Save status: Unsaved run/);
 assert.match(body, /Use Save or F5 before quitting/);
 
