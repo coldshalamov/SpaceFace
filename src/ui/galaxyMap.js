@@ -116,31 +116,31 @@ export function factionNameOf(id) {
 }
 
 // ---------------------------------------------------------------------------------------------
-// SURVEY TABLE design tokens — the map's canvas grammar. One warm worklight palette shared with
-// the menu fascia / station workbench; faction hues are the only saturated accents on the table.
-// Action = amber, infrastructure = teal/brass, danger = red, archive/discovery = gold.
+// Canvas ink — the kit's colours (design/frontend/direction/KIT_SPEC.md §3), spelled as literals
+// because a 2D context cannot resolve CSS custom properties. The chart is drawn on the sky, so
+// there is no ground colour and no plate: bone at three strengths, the hairline, gold for the one
+// thing you can act on, red for danger, green for good. The old warm palette (amber / brass / teal
+// / gold / warn) collapses onto those six; each key below names which one it became.
 // ---------------------------------------------------------------------------------------------
 const INK = Object.freeze({
-  bg: '#0c0e10',
-  gridMinor: 'rgba(216, 190, 150, 0.040)',
-  gridMajor: 'rgba(216, 190, 150, 0.075)',
-  ink0: '#ede8d8',
-  ink1: '#b3afa2',
-  ink2: '#8a877d',
-  amber: '#e8a33d',
-  amberHot: '#d9a054',
-  brass: '#d8b26a',
-  teal: '#56bbb2',
-  red: '#ed6961',
-  warn: '#e3a13d',
-  good: '#58c98a',
-  gold: '#e6bf6a',
-  plate: 'rgba(12, 14, 15, 0.92)',
-  plateHard: 'rgba(12, 14, 15, 0.97)',
-  plateEdge: 'rgba(190, 178, 152, 0.30)',
+  ink0: '#eae6df',                       // bone — the selected thing, names, live marks
+  ink1: 'rgba(234, 230, 223, 0.62)',     // bone 62 % — resting text and marks
+  ink2: 'rgba(234, 230, 223, 0.38)',     // bone 38 % — tertiary, stale, muted
+  amber: '#f2b950',                      // signal
+  amberHot: '#f2b950',                   // signal
+  brass: '#f2b950',                      // signal
+  teal: '#eae6df',                       // infrastructure reads in bone, not a second hue
+  red: '#ff4d3d',                        // danger
+  warn: '#f2b950',                       // signal
+  good: '#9bd8a0',                       // good
+  gold: '#f2b950',                       // signal
+  plate: 'rgba(10, 11, 13, 0)',          // no plates: the sky is the ground
+  plateHard: 'rgba(10, 11, 13, 0)',
+  plateEdge: 'rgba(234, 230, 223, 0.14)', // hairline
+  knock: 'rgba(10, 11, 13, 0.9)',          // the kit's ink (--k-ink) as a knockout halo under a mark
 });
 
-// Canvas type trio — mirrors the DOM fascia (self-hosted in styles/fonts.css, loaded at boot).
+// Canvas type — the kit's two faces (self-hosted in styles/fonts.css, loaded at boot).
 // Canvas text is text, and INSTRUMENT_GRAMMAR §3 is binding: "12 px is the floor. Nothing renders
 // below it, ever." The chart was asking these helpers for 8, 8.5, 9, 10 and 11 px across 29 call
 // sites — genuinely unreadable sub-labels on the survey table. Clamping HERE rather than at the call
@@ -149,9 +149,9 @@ const INK = Object.freeze({
 // (setTransform(dpr,0,0,dpr,0,0)), so these numbers are CSS pixels on screen and the clamp is exact.
 const TYPE_FLOOR_PX = 12;
 const floorPx = (px) => Math.max(TYPE_FLOOR_PX, Number.isFinite(px) ? px : TYPE_FLOOR_PX);
-const FONT_MONO = (weight, px) => `${weight} ${floorPx(px)}px "IBM Plex Mono", ui-monospace, monospace`;
-const FONT_UI = (weight, px) => `${weight} ${floorPx(px)}px "IBM Plex Sans", "Segoe UI", system-ui, sans-serif`;
-const FONT_DISPLAY = (weight, px) => `${weight} ${floorPx(px)}px "IBM Plex Sans", "Segoe UI", system-ui, sans-serif`;
+const FONT_MONO = (weight, px) => `${weight} ${floorPx(px)}px "Instrument Sans", system-ui, sans-serif`;
+const FONT_UI = (weight, px) => `${weight} ${floorPx(px)}px "Instrument Sans", system-ui, sans-serif`;
+const FONT_DISPLAY = (weight, px) => `${weight} ${floorPx(px)}px "Bricolage Grotesque", "Instrument Sans", system-ui, sans-serif`;
 
 /** Stable 0..1 hash for cosmetic phase offsets (deterministic, never fed into sim). */
 function cosmeticHash01(text) {
@@ -1169,7 +1169,7 @@ export function describeClaimMapMarker(body = {}, ledger = null, liveEntity = nu
     kind: def ? `claim-${def.id.replace(/^spec_/, '')}` : 'claim',
     role,
     glyph: def ? def.mapGlyph : '◆',
-    color: def ? def.mapColor : '#ffd24a',
+    color: def ? def.mapColor : INK.gold,
     name: `${role} · ${body.name || 'Owned Claim'}`,
     status,
     statusLine: pieces.join(' · '),
@@ -1241,7 +1241,7 @@ export function buildClaimOwnershipMarkers(state, sectorId, claimsSystem = null)
       stage: infrastructure.stage,
       operational,
       lineStyle: operational ? 'solid' : infrastructure.stage === 'aligning' ? 'long-dash' : 'short-dash',
-      color: operational ? '#4f8fdd' : '#87939c',
+      color: operational ? INK.ink0 : INK.ink2,
       from: { x: Number(infrastructure.from.x) || 0, z: Number(infrastructure.from.z) || 0 },
       support: { x: Number(infrastructure.support.x) || 0, z: Number(infrastructure.support.z) || 0 },
       to: { x: Number(infrastructure.to.x) || 0, z: Number(infrastructure.to.z) || 0 },
@@ -1262,7 +1262,7 @@ export function buildClaimOwnershipMarkers(state, sectorId, claimsSystem = null)
         kind: 'claim-throughline',
         role: partDef.role,
         glyph: partDef.glyph,
-        color: operational ? '#4f8fdd' : '#87939c',
+        color: operational ? INK.ink0 : INK.ink2,
         name: `${partDef.role} · ${body.name} ${partDef.name}`,
         status,
         statusLine: `${status} · ${Math.round(infrastructure.distanceWU || 0).toLocaleString('en-US')} WU route · ×${Number(infrastructure.ceilingMult || 1).toFixed(1)} Travel Burn`,
@@ -1483,7 +1483,7 @@ export function buildSystemModel(state, sectorId, options = {}) {
       name: z.name || meta.label,
       type: z.type,
       typeLabel: meta.label,
-      color: meta.color || '#8899AA',
+      color: meta.color || INK.ink1,
       x: Number(c.x) || 0,
       z: Number(c.z) || 0,
       radius: Number(z.radius) || 300,
@@ -2178,1798 +2178,527 @@ export function emitRouteEngageAction(bus, action) {
 
 const HAS_DOC = typeof document !== 'undefined';
 const STYLE_ID = 'sf-galaxymap-style';
+/** The scan ring's whole life, in ms — the kit's `--k-d-temp`; a canvas draw cannot read the token. */
+const SCAN_RING_MS = 400;
 
 const CSS = `
-/* SURVEY TABLE — the map adopts the menu-fascia / station-workbench material (opaque warm
-   near-black, hairline steel edges, amber worklight) as a full-bleed instrument layout.
-   Related, not identical (GDD §9.4). Token values mirror styles/menu.css §1 — keep in sync. */
+/* THE CHART — the frontend kit's stage screen (design/frontend/direction/KIT_SPEC.md; DIRECTION_SHEET
+   §2 "The chart"). This is the chart's one permitted local LAYOUT block: kit tokens only. No plates,
+   cards, borders (hairline rules excepted), radii, gradients, glows, shadows or icons (§12). The
+   sector is drawn on the sky at full bleed by the canvas underneath; every DOM region is transparent
+   words laid on the kit grid — .gm-head is the title, .gm-left-rail the hang, .gm-right-inspector the
+   stage-right column, .gm-apron the foot. Every gm-* class / id / data-attribute stays as an inert
+   hook for the map checks. */
 #sf-galaxymap {
-  /* 2026-08 identity revision: the chart no longer runs a private warm-gold palette.
-     It inherits the global :root tokens so every surface shares one identity; only its
-     map-graphics line/stamp tokens remain local. */
-  --accent: var(--sf-goal);
-  --accent-2: var(--sf-you);
-  --accent-3: var(--sf-goal);
-  --good: var(--sf-you);
-  --warn: var(--sf-goal);
-  --danger: var(--sf-foe);
-  --mono: "IBM Plex Mono", "Consolas", ui-monospace, monospace;
-  --mf-display: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
-  --mf-ui: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
-  --mf-line-1: #292d2e;
-  --mf-line-2: #3b403f;
-  --mf-line-3: #66645d;
-  --mf-stamp: #8a857a;
-  --mf-worklight-dim: rgba(219, 152, 56, .12);
   --gm-apron-h: clamp(168px, 26vh, 232px);
-
+  --gm-rail-w: calc(var(--k-hang) * 0.5);
+  --gm-inspector-w: calc(var(--k-hang) * 0.7);
   position: absolute;
   inset: 0;
-  display: flex;
-  flex-direction: column;
-  background:
-    radial-gradient(ellipse at 50% 118%, rgba(219, 152, 56, .04), transparent 55%),
-    linear-gradient(180deg, #14171a 0%, #0e1113 30%, #0b0d0f 100%);
-  color: var(--ink);
-  font-family: var(--mf-ui);
-  user-select: none;
-}
-
-/* ---- Header: machined strip with worklight edge -------------------------------------------- */
-#sf-galaxymap .gm-head {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 0 16px;
-  border-bottom: 1px solid var(--mf-line-2);
-  background:
-    repeating-linear-gradient(112deg, rgba(255, 255, 255, .008) 0 1px, transparent 1px 7px),
-    linear-gradient(180deg, #191d20 0%, #121518 70%, #101315 100%);
-  min-height: var(--gm-header-h, 58px);
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas: "title" "stage" "foot";
+  row-gap: var(--k-gap);
+  padding: var(--k-margin);
   box-sizing: border-box;
+  background: transparent;
+  color: var(--k-text-live);
+  font-family: var(--k-text);
+  font-weight: 400;
+  font-size: var(--k-fs-body);
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+  overflow: hidden;
 }
-/* The header's old ::before "worklight" (a 3px amber gradient strip pinned to the modal's
-   top-left) read as a stray clipped artifact and is a gradient accent fill — removed; the
-   hairline border-bottom is the header's only rule. */
+#sf-galaxymap *, #sf-galaxymap *::before, #sf-galaxymap *::after { box-sizing: border-box; border-radius: 0; }
+#sf-galaxymap b { font-weight: 500; color: var(--k-text-live); }
+#sf-galaxymap kbd { font: inherit; color: var(--k-text-live); }
+#sf-galaxymap [hidden] { display: none !important; }
+#sf-galaxymap :focus-visible { outline: 2px solid var(--k-bone); outline-offset: 4px; }
 
+/* ---- The canvas: the whole frame, under every word ------------------------------------------ */
+#sf-galaxymap .gm-body-container { position: static; }
+#sf-galaxymap .gm-viewport {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  overflow: hidden;
+}
+#sf-galaxymap .gm-viewport canvas { display: block; width: 100%; height: 100%; }
+
+/* ---- Title block (.gm-head): the selected place's name, one sentence, the corner ------------- */
+#sf-galaxymap .gm-head {
+  grid-area: title;
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-rows: auto auto auto auto;
+  column-gap: var(--k-gap);
+  row-gap: calc(8px * var(--k-s));
+  align-items: start;
+  min-height: 0;
+  pointer-events: none;
+}
+#sf-galaxymap .gm-head > * { pointer-events: auto; min-width: 0; }
 #sf-galaxymap .gm-title-lockup {
+  grid-column: 1;
+  grid-row: 1 / span 3;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  flex: 0 0 auto;
+  gap: calc(6px * var(--k-s));
 }
 #sf-galaxymap .gm-title {
-  font-family: var(--mf-display);
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing:.06em;
-  text-transform: uppercase;
-  color: var(--ink);
+  margin: 0;
+  color: var(--k-text-live);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-#sf-galaxymap .gm-stamp {
-  font-family: var(--mono);
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing:.06em;
-  text-transform: uppercase;
-  color: var(--mf-stamp);
-}
-
+#sf-galaxymap .gm-stamp { margin: 0; max-width: var(--k-measure); }
+#sf-galaxymap .gm-hint-btn { grid-column: 2; grid-row: 1; justify-self: end; }
+#sf-galaxymap .gm-close { grid-column: 3; grid-row: 1; justify-self: end; }
 #sf-galaxymap .gm-search-container {
+  grid-column: 2 / span 2;
+  grid-row: 2;
   position: relative;
-  flex: 1;
-  max-width: 340px;
+  justify-self: end;
+  width: clamp(18ch, 24vw, 40ch);
 }
-#sf-galaxymap .gm-search-input {
-  width: 100%;
-  box-sizing: border-box;
-  background: #0c0e10;
-  border: 1px solid var(--mf-line-2);
-  border-radius: 2px;
-  color: var(--ink);
-  padding: 7px 30px 7px 10px;
-  font-family: var(--mf-ui);
-  font-size: 12px;
-  transition: border-color .12s ease;
-}
-#sf-galaxymap .gm-search-input::placeholder { color: var(--ink-mute); }
-#sf-galaxymap .gm-search-input:focus {
-  outline: none;
-  border-color: var(--accent-3);
-  box-shadow: inset 0 0 0 1px var(--accent-3);
-}
+#sf-galaxymap .gm-search-input { width: 100%; padding-right: 2ch; }
+#sf-galaxymap .gm-search-input::placeholder { color: var(--k-bone-38); }
 #sf-galaxymap .gm-search-kbd {
   position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-family: var(--mono);
-  font-size: 12px;
-  color: var(--ink-mute);
-  border: 1px solid var(--mf-line-2);
-  border-radius: 2px;
-  padding: 1px 5px;
+  right: 0;
+  top: calc(4px * var(--k-s));
+  font-size: var(--k-fs-fine);
+  color: var(--k-bone-38);
   pointer-events: none;
 }
 #sf-galaxymap .gm-search-results {
   position: absolute;
-  top: calc(100% + 6px);
+  top: 100%;
   left: 0;
   right: 0;
-  background:
-    linear-gradient(180deg, #191d20 0%, #121518 60%, #0e1113 100%);
-  border: 1px solid var(--mf-line-2);
-  border-radius: 2px;
-  max-height: 260px;
-  overflow-y: auto;
-  z-index: 100;
-  filter: drop-shadow(0 14px 22px rgba(0, 0, 0, .55));
-  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+  z-index: 3;
+  max-height: 50vh;
+  overflow: hidden auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--k-hair) transparent;
 }
-#sf-galaxymap .gm-search-item {
-  position: relative;
-  padding: 8px 12px 8px 18px;
-  cursor: pointer;
-  border-bottom: 1px solid var(--mf-line-1);
-  transition: background .12s ease;
+#sf-galaxymap .gm-search-item { --k-row-cols: minmax(0, 1fr); row-gap: 0; padding-top: calc(6px * var(--k-s)); padding-bottom: calc(6px * var(--k-s)); }
+#sf-galaxymap .gm-search-item.selected { color: var(--k-text-live); box-shadow: inset 2px 0 0 var(--k-signal); }
+#sf-galaxymap .gm-search-item-name, #sf-galaxymap .gm-search-item-detail { display: block; }
+#sf-galaxymap .gm-search-empty { border: 0; min-height: 0; padding: calc(8px * var(--k-s)) 0; cursor: default; box-shadow: none; }
+#sf-galaxymap .gm-weather {
+  grid-column: 2 / span 2;
+  grid-row: 3;
+  justify-self: end;
+  text-align: right;
+  max-width: 40ch;
 }
-#sf-galaxymap .gm-search-item::before {
-  content: "";
-  position: absolute;
-  left: 7px;
-  top: 50%;
-  width: 6px;
-  height: 2px;
-  transform: translateY(-50%);
-  background: #5a574f;
-}
-#sf-galaxymap .gm-search-item:hover,
-#sf-galaxymap .gm-search-item.selected {
-  background: var(--mf-worklight-dim);
-}
-#sf-galaxymap .gm-search-item:hover::before,
-#sf-galaxymap .gm-search-item.selected::before { background: var(--accent-3); }
-#sf-galaxymap .gm-search-item-name {
-  font-family: var(--mf-ui);
-  font-weight: 600;
-  font-size: 12px;
-  color: var(--ink);
-}
-#sf-galaxymap .gm-search-item-detail {
-  font-family: var(--mono);
-  color: var(--ink-mute);
-  font-size: 12px;
-  margin-top: 2px;
-}
-
-/* ---- Continuity rail: one instrument, three stations --------------------------------------- */
-#sf-galaxymap .gm-rail {
+#sf-galaxymap .gm-weather-head { display: flex; justify-content: flex-end; gap: 1ch; }
+#sf-galaxymap .gm-weather-word { color: var(--k-bone-62); }
+#sf-galaxymap .gm-weather[data-weather-level="working"] .gm-weather-word { color: var(--k-signal); }
+#sf-galaxymap .gm-weather[data-weather-level="hot"] .gm-weather-word { color: var(--k-red); }
+#sf-galaxymap .gm-weather-data, #sf-galaxymap .gm-weather-terms { color: var(--k-bone-38); }
+#sf-galaxymap .gm-weather-bar {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  flex: 0 0 auto;
+  height: 2px;
+  width: 100%;
+  background: var(--k-hair);
+  margin: calc(4px * var(--k-s)) 0;
+}
+#sf-galaxymap .gm-weather-seg { display: block; height: 100%; background: var(--k-bone-62); }
+#sf-galaxymap .gm-weather-seg--combat { background: var(--k-red); }
+#sf-galaxymap .gm-weather-seg--civil { background: var(--k-bone-62); }
+
+/* The scale words and their continuity marker sit under the sentence (the table's "in the foot"
+   would need the node moved out of .gm-head, which is JS restructuring this pass does not do). */
+#sf-galaxymap .gm-rail {
+  grid-column: 1;
+  grid-row: 4;
+  display: flex;
+  align-items: baseline;
+  gap: var(--k-gap);
+  flex-wrap: wrap;
 }
 #sf-galaxymap .gm-rail-track {
   position: relative;
-  width: 96px;
-  height: 2px;
-  background: var(--mf-line-2);
+  display: block;
+  align-self: center;
+  width: calc(96px * var(--k-s));
+  height: 1px;
+  background: var(--k-hair);
 }
-#sf-galaxymap .gm-rail-track::before,
-#sf-galaxymap .gm-rail-track::after {
-  content: "";
-  position: absolute;
-  top: -2px;
-  width: 2px;
-  height: 6px;
-  background: var(--mf-line-3);
-}
-#sf-galaxymap .gm-rail-track::before { left: 0; }
-#sf-galaxymap .gm-rail-track::after { right: 0; }
 #sf-galaxymap .gm-rail-marker {
   position: absolute;
-  top: -3px;
-  left: 100%;
-  width: 8px;
-  height: 8px;
-  transform: translateX(-50%) rotate(45deg);
-  background: var(--accent);
-  transition: left .18s ease;
+  top: -4px;
+  width: 2px;
+  height: 9px;
+  background: var(--k-signal);
+  transform: translateX(-50%);
+  transition: left var(--k-d-settle) var(--k-ease);
 }
-#sf-galaxymap .gm-scale-buttons {
-  display: flex;
-  gap: 4px;
-}
-#sf-galaxymap .gm-scale-btn {
-  min-width: 58px;
-  padding: 5px 9px;
-  background: transparent;
-  border: 1px solid var(--mf-line-1);
-  border-radius: 2px;
-  color: var(--ink-mute);
-  cursor: pointer;
-  font-family: var(--mono);
-  font-size: 12px;
-  letter-spacing:.06em;
-  text-transform: uppercase;
-  transition: border-color .12s ease, color .12s ease, background .12s ease;
-}
-#sf-galaxymap .gm-scale-btn:hover { color: var(--ink); border-color: var(--mf-line-3); }
-#sf-galaxymap .gm-scale-btn:focus-visible {
-  outline: none;
-  border-color: var(--accent-3);
-  box-shadow: inset 0 0 0 1px var(--accent-3);
-  color: var(--ink);
-}
-#sf-galaxymap .gm-scale-btn.is-current,
-#sf-galaxymap .gm-scale-btn[aria-pressed="true"] {
-  color: var(--accent-3);
-  border-color: #8a6a3c;
-  background: var(--mf-worklight-dim);
-  font-weight: 500;
-}
-#sf-galaxymap .gm-level {
-  font-family: var(--mono);
-  font-size: 12px;
-  letter-spacing:.06em;
-  text-transform: uppercase;
-  color: var(--ink-mute);
-  white-space: nowrap;
-}
-#sf-galaxymap .gm-level b { color: var(--accent); font-weight: 500; }
+#sf-galaxymap .gm-scale-buttons { gap: var(--k-gap); }
+#sf-galaxymap .gm-scale-btn.is-current { color: var(--k-text-live); }
+#sf-galaxymap .gm-level b { color: var(--k-bone-62); }
 
-#sf-galaxymap .gm-weather {
-  min-width: 182px;
-  max-width: 300px;
-  display: grid;
-  gap: 3px;
-  align-self: center;
-}
-#sf-galaxymap .gm-weather-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-}
-#sf-galaxymap .gm-weather-word {
-  font-family: var(--mono);
-  font-size: 12px;
-  letter-spacing:.06em;
-  text-transform: uppercase;
-  color: var(--accent-3);
-}
-#sf-galaxymap .gm-weather[data-weather-level="quiet"] .gm-weather-word { color: var(--accent-2); }
-#sf-galaxymap .gm-weather[data-weather-level="working"] .gm-weather-word { color: var(--warn); }
-#sf-galaxymap .gm-weather[data-weather-level="hot"] .gm-weather-word { color: var(--danger); }
-#sf-galaxymap .gm-weather-data {
-  font-family: var(--mono);
-  font-size: 12px;
-  letter-spacing:.06em;
-  color: var(--ink-dim);
-}
-#sf-galaxymap .gm-weather-bar {
-  position: relative;
-  height: 5px;
-  border: 1px solid var(--mf-line-2);
-  background: #0f1214;
-  overflow: hidden;
-}
-#sf-galaxymap .gm-weather-seg {
-  position: absolute;
-  top: 0;
-  left: 0;
-  bottom: 0;
-}
-#sf-galaxymap .gm-weather-seg--combat {
-  background: linear-gradient(90deg, rgba(237, 105, 97, .9), rgba(227, 161, 61, .92));
-}
-#sf-galaxymap .gm-weather-seg--civil {
-  background: linear-gradient(90deg, rgba(86, 187, 178, .52), rgba(86, 187, 178, .18));
-  mix-blend-mode: screen;
-}
-#sf-galaxymap .gm-weather-terms {
-  font-family: var(--mono);
-  font-size: 12px;
-  letter-spacing: .04em;
-  color: var(--ink-mute);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-#sf-galaxymap .gm-hint-btn {
-  flex: 0 0 auto;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  background: transparent;
-  border: 1px solid var(--mf-line-2);
-  border-radius: 2px;
-  color: var(--ink-mute);
-  cursor: pointer;
-  font-family: var(--mono);
-  font-size: 12px;
-  line-height: 1;
-  transition: border-color .12s ease, color .12s ease;
-}
-#sf-galaxymap .gm-hint-btn:hover { border-color: var(--mf-line-3); color: var(--ink); }
-#sf-galaxymap .gm-hint-btn:focus-visible {
-  outline: none;
-  border-color: var(--accent-3);
-  box-shadow: inset 0 0 0 1px var(--accent-3);
-  color: var(--ink);
-}
-#sf-galaxymap .gm-hint-btn[aria-expanded="true"] {
-  color: var(--accent-3);
-  border-color: #8a6a3c;
-  background: var(--mf-worklight-dim);
-}
-#sf-galaxymap .gm-close {
-  flex: 0 0 auto;
-  background: linear-gradient(180deg, #1b1f22, #131618);
-  border: 1px solid var(--mf-line-2);
-  border-radius: 2px;
-  color: var(--ink-dim);
-  padding: 6px 14px;
-  cursor: pointer;
-  font-family: var(--mf-ui);
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing:.06em;
-  text-transform: uppercase;
-  transition: border-color .12s ease, color .12s ease, background .12s ease;
-}
-#sf-galaxymap .gm-close:hover { border-color: #8a6a3c; color: var(--ink); background: linear-gradient(180deg, #23272a, #17191c); }
-#sf-galaxymap .gm-close:focus-visible {
-  outline: none;
-  border-color: var(--accent-3);
-  box-shadow: inset 0 0 0 1px var(--accent-3);
-  color: var(--ink);
-}
-
-/* ---- Hints popover (on demand, never persistent) ------------------------------------------- */
+/* The control key: fine-print rows that drop from the corner word. */
 #sf-galaxymap .gm-hints {
   position: absolute;
-  top: calc(100% + 8px);
-  right: 14px;
-  width: 252px;
-  z-index: 120;
-  background:
-    radial-gradient(ellipse at 50% 112%, rgba(219, 152, 56, .05), transparent 52%),
-    linear-gradient(180deg, #191d20 0%, #121518 60%, #0e1113 100%);
-  border: 1px solid var(--mf-line-2);
-  border-top-color: #4c4a44;
-  border-radius: 2px;
-  padding: 12px 14px;
-  filter: drop-shadow(0 16px 26px rgba(0, 0, 0, .55));
-  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+  right: 0;
+  top: 100%;
+  z-index: 3;
+  width: min(44ch, 90vw);
+  padding-top: var(--k-pad);
 }
-#sf-galaxymap .gm-hints-title {
-  font-family: var(--mono);
-  font-size: 12px;
-  letter-spacing:.06em;
-  text-transform: uppercase;
-  color: var(--ink-mute);
-  margin-bottom: 8px;
-}
-#sf-galaxymap .gm-hint-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 3px 0;
-  font-size: 12px;
-  color: var(--ink-dim);
-}
-#sf-galaxymap .gm-hint-row kbd {
-  font-family: var(--mono);
-  font-size: 12px;
-  color: var(--accent-3);
-  border: 1px solid var(--mf-line-2);
-  border-radius: 2px;
-  padding: 1px 5px;
-  background: #0c0e10;
-}
-#sf-galaxymap .gm-hints-note {
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid var(--mf-line-1);
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--ink-mute);
-}
+#sf-galaxymap .gm-hints-title { margin-bottom: calc(8px * var(--k-s)); }
+#sf-galaxymap .gm-hint-row { --k-row-cols: minmax(0, 1fr) auto; min-height: calc(var(--k-row) * 0.7); font-size: var(--k-fs-data); }
+#sf-galaxymap .gm-hints-note { margin-top: var(--k-pad); max-width: var(--k-measure); }
 
-/* ---- Body ----------------------------------------------------------------------------------- */
+/* ---- The stage row: hang | sky | inspector ---------------------------------------------------- */
 #sf-galaxymap .gm-body-container {
-  display: flex;
-  flex: 1;
-  min-height: 0;
-  width: 100%;
-  max-width: var(--sf-stage-max, 1680px);
-  margin: 0 auto;
-}
-
-/* ---- Left rail: overlays + market intel ----------------------------------------------------- */
-#sf-galaxymap .gm-left-rail {
-  width: 236px;
-  box-sizing: border-box;
-  border-right: 1px solid var(--mf-line-2);
-  background:
-    repeating-linear-gradient(112deg, rgba(255, 255, 255, .006) 0 1px, transparent 1px 7px),
-    linear-gradient(180deg, #14171a 0%, #101315 100%);
-  display: flex;
-  flex-direction: column;
-  padding: 14px;
-  gap: 10px;
-  overflow-y: auto;
-}
-#sf-galaxymap .gm-rail-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-family: var(--mono);
-  font-size: 12px;
-  letter-spacing:.06em;
-  text-transform: uppercase;
-  color: var(--ink-mute);
-  padding-bottom: 2px;
-}
-#sf-galaxymap .gm-rail-title::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: linear-gradient(90deg, var(--mf-line-2), transparent);
-}
-#sf-galaxymap .gm-layer-buttons {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-#sf-galaxymap .gm-layer-bank {
-  border: 1px solid var(--mf-line-1);
-  background: linear-gradient(180deg, rgba(255, 255, 255, .012), rgba(255, 255, 255, 0));
-  padding: 7px 7px 6px;
-}
-#sf-galaxymap .gm-layer-bank-title {
-  font-family: var(--mono);
-  font-size: 12px;
-  letter-spacing:.06em;
-  text-transform: uppercase;
-  color: var(--ink-mute);
-  margin-bottom: 6px;
-  opacity: .95;
-}
-#sf-galaxymap .gm-layer-btn {
+  grid-area: stage;
   display: grid;
-  grid-template-columns: 16px 1fr 12px;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 9px;
-  background: linear-gradient(180deg, #15181b, #101315);
-  border: 1px solid var(--mf-line-1);
-  border-radius: 2px;
-  cursor: pointer;
-  text-align: left;
-  font-family: var(--mf-ui);
-  transition: border-color .12s ease, background .12s ease;
-}
-#sf-galaxymap .gm-layer-btn:hover { border-color: var(--mf-line-3); }
-#sf-galaxymap .gm-layer-btn:focus-visible {
-  outline: none;
-  border-color: var(--accent-3);
-  box-shadow: inset 0 0 0 1px var(--accent-3);
-}
-#sf-galaxymap .gm-layer-btn .gm-layer-ico {
-  display: inline-flex;
-  width: 14px;
-  height: 14px;
-  color: var(--ink-mute);
-  transition: color .12s ease;
-}
-#sf-galaxymap .gm-layer-btn .gm-layer-ico svg { width: 14px; height: 14px; display: block; }
-#sf-galaxymap .gm-layer-btn .gm-layer-name {
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing:.06em;
-  text-transform: uppercase;
-  color: var(--ink-mute);
-  transition: color .12s ease;
-}
-#sf-galaxymap .gm-layer-btn .gm-layer-state {
-  width: 8px;
-  height: 8px;
-  justify-self: end;
-  transform: rotate(45deg);
-  border: 1px solid var(--mf-line-3);
-  background: transparent;
-  transition: background .12s ease, border-color .12s ease;
-}
-#sf-galaxymap .gm-layer-btn.active { border-color: #8a6a3c; background: linear-gradient(180deg, #1a1d20, #131614); }
-#sf-galaxymap .gm-layer-btn.active .gm-layer-ico { color: var(--accent-3); }
-#sf-galaxymap .gm-layer-btn.active .gm-layer-name { color: var(--ink); }
-/* Lens key hues. The bright cyan (services) and bright purple (events/faction) diamonds moved to
-   desaturated identity anchors — blue #5b93d6, violet #a78bca family — matching their canvas
-   marks; the other lenses keep their existing hues. */
-#sf-galaxymap .gm-layer-btn[data-layer="route"] .gm-layer-state    { border-color: #e8a33d; }
-#sf-galaxymap .gm-layer-btn[data-layer="mission"] .gm-layer-state  { border-color: #d9a054; }
-#sf-galaxymap .gm-layer-btn[data-layer="market"] .gm-layer-state   { border-color: #58c98a; }
-#sf-galaxymap .gm-layer-btn[data-layer="events"] .gm-layer-state   { border-color: #a78bca; }
-#sf-galaxymap .gm-layer-btn[data-layer="security"] .gm-layer-state { border-color: #ed6961; }
-#sf-galaxymap .gm-layer-btn[data-layer="faction"] .gm-layer-state  { border-color: #8d83bd; }
-#sf-galaxymap .gm-layer-btn[data-layer="hazard"] .gm-layer-state   { border-color: #e0763d; }
-#sf-galaxymap .gm-layer-btn[data-layer="services"] .gm-layer-state { border-color: #5b93d6; }
-#sf-galaxymap .gm-layer-btn[data-layer="holdings"] .gm-layer-state { border-color: #8ec47a; }
-#sf-galaxymap .gm-layer-btn[data-layer="discovery"] .gm-layer-state{ border-color: #8ea6c8; }
-#sf-galaxymap .gm-layer-btn[data-layer="route"].active .gm-layer-state    { background: #e8a33d; }
-#sf-galaxymap .gm-layer-btn[data-layer="mission"].active .gm-layer-state  { background: #d9a054; }
-#sf-galaxymap .gm-layer-btn[data-layer="market"].active .gm-layer-state   { background: #58c98a; }
-#sf-galaxymap .gm-layer-btn[data-layer="events"].active .gm-layer-state   { background: #a78bca; }
-#sf-galaxymap .gm-layer-btn[data-layer="security"].active .gm-layer-state { background: #ed6961; }
-#sf-galaxymap .gm-layer-btn[data-layer="faction"].active .gm-layer-state  { background: #8d83bd; }
-#sf-galaxymap .gm-layer-btn[data-layer="hazard"].active .gm-layer-state   { background: #e0763d; }
-#sf-galaxymap .gm-layer-btn[data-layer="services"].active .gm-layer-state { background: #5b93d6; }
-#sf-galaxymap .gm-layer-btn[data-layer="holdings"].active .gm-layer-state { background: #8ec47a; }
-#sf-galaxymap .gm-layer-btn[data-layer="discovery"].active .gm-layer-state{ background: #8ea6c8; }
-
-#sf-galaxymap .gm-rail-commodity {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: 6px;
-}
-#sf-galaxymap .gm-rail-commodity label {
-  font-family: var(--mono);
-  font-size: 12px;
-  letter-spacing:.06em;
-  color: var(--ink-mute);
-  text-transform: uppercase;
-}
-#sf-galaxymap .gm-rail-commodity .sf-select__field {
-  background: #0c0e10;
-  border: 1px solid var(--mf-line-2);
-  border-radius: 2px;
-  color: var(--ink);
-  padding: 6px 8px;
-  font-family: var(--mono);
-  font-size: 12px;
-  outline: none;
-}
-#sf-galaxymap .gm-rail-commodity .sf-select__field:focus-visible {
-  border-color: var(--accent-3);
-  box-shadow: inset 0 0 0 1px var(--accent-3);
-}
-
-#sf-galaxymap .gm-rail-legend {
-  border-top: 1px solid var(--mf-line-1);
-  padding-top: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-#sf-galaxymap .gm-legend-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-family: var(--mono);
-  font-size: 12px;
-  letter-spacing:.06em;
-  text-transform: uppercase;
-  color: var(--ink-mute);
-}
-#sf-galaxymap .gm-legend-row .gm-legend-ico {
-  display: inline-flex;
-  width: 13px;
-  height: 13px;
-  color: var(--accent-2);
-  flex: 0 0 auto;
-}
-#sf-galaxymap .gm-legend-row .gm-legend-ico svg { width: 13px; height: 13px; display: block; }
-/* Chart marks are navigation grammar, so they carry the amber action hue, not infrastructure teal. */
-#sf-galaxymap .gm-legend-row .gm-legend-ico--mark { color: var(--accent); }
-
-#sf-galaxymap .gm-rail-footer {
-  margin-top: auto;
-  border-top: 1px solid var(--mf-line-1);
-  padding-top: 10px;
-}
-#sf-galaxymap .gm-hint-title {
-  font-family: var(--mono);
-  font-size: 12px;
-  letter-spacing:.06em;
-  text-transform: uppercase;
-  color: var(--ink-mute);
-  margin-bottom: 5px;
-}
-#sf-galaxymap .gm-hint-text {
-  font-size: 12px;
-  color: var(--ink-mute);
-  line-height: 1.55;
-}
-#sf-galaxymap .gm-hint-text b { color: var(--ink-dim); font-weight: 500; }
-
-/* ---- Viewport -------------------------------------------------------------------------------- */
-#sf-galaxymap .gm-viewport {
-  flex: 1;
-  position: relative;
-  min-width: 0;
+  grid-template-columns: var(--gm-rail-w) minmax(0, 1fr) var(--gm-inspector-w);
+  grid-template-areas: "hang stage inspector";
+  column-gap: var(--k-gap);
   min-height: 0;
-  overflow: hidden;
+  pointer-events: none;
 }
-#sf-galaxymap canvas {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  display: block;
-  cursor: crosshair;
-}
-
-/* ---- Right inspector ------------------------------------------------------------------------- */
+#sf-galaxymap .gm-left-rail,
 #sf-galaxymap .gm-right-inspector {
-  width: 320px;
-  box-sizing: border-box;
-  border-left: 1px solid var(--mf-line-2);
-  background:
-    repeating-linear-gradient(112deg, rgba(255, 255, 255, .006) 0 1px, transparent 1px 7px),
-    linear-gradient(180deg, #14171a 0%, #101315 100%);
-  display: flex;
-  flex-direction: column;
-  padding: 16px;
-  gap: 12px;
-  overflow-y: auto;
-}
-#sf-galaxymap .gm-inspector-header {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  font-family: var(--mf-display);
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing:.06em;
-  text-transform: uppercase;
-  color: var(--ink);
-  border-bottom: 1px solid var(--mf-line-1);
-  padding-bottom: 8px;
-}
-#sf-galaxymap .gm-inspector-header::before {
-  content: "";
-  flex: 0 0 auto;
-  width: 8px;
-  height: 8px;
-  background: var(--accent);
-  clip-path: polygon(0 0, 78% 0, 100% 22%, 100% 100%, 22% 100%, 0 78%);
-}
-#sf-galaxymap .gm-inspector-content {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  font-size: 12px;
-  line-height: 1.45;
-}
-#sf-galaxymap .gm-inspector-details {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-#sf-galaxymap .gm-inspector-empty {
-  color: var(--ink-mute);
-  font-size: 12px;
-  line-height: 1.6;
-}
-#sf-galaxymap .gm-inspector-empty b { color: var(--ink-dim); font-weight: 500; }
-#sf-galaxymap .gm-ins-section {
-  border-bottom: 1px solid var(--mf-line-1);
-  padding-bottom: 10px;
-}
-#sf-galaxymap .gm-ins-section:last-child { border-bottom: none; }
-#sf-galaxymap .gm-ins-title {
-  font-family: var(--mono);
-  font-size: 12px;
-  letter-spacing:.06em;
-  text-transform: uppercase;
-  color: var(--ink-mute);
-  margin-bottom: 6px;
-}
-#sf-galaxymap .gm-ins-kind {
-  font-family: var(--mono);
-  font-size: 12px;
-  letter-spacing:.06em;
-  text-transform: uppercase;
-  color: var(--mf-stamp);
-}
-#sf-galaxymap .gm-ins-target-name {
-  font-family: var(--mf-display);
-  font-size: 16px;
-  font-weight: 600;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  color: var(--ink);
-  margin-bottom: 3px;
-}
-#sf-galaxymap .gm-ins-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 10px;
-  padding: 2px 0;
-  font-size: 12px;
-  color: var(--ink-dim);
-}
-#sf-galaxymap .gm-ins-row-val {
-  font-family: var(--mono);
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--ink);
-  text-align: right;
-}
-#sf-galaxymap .gm-ins-row-val.fresh { color: var(--accent-3); }
-#sf-galaxymap .gm-ins-row-val.mid { color: var(--ink); }
-#sf-galaxymap .gm-ins-row-val.old { color: var(--ink-mute); font-style: italic; }
-#sf-galaxymap .gm-ins-note {
-  color: var(--ink-mute);
-  font-size: 12px;
-  line-height: 1.5;
-}
-#sf-galaxymap .gm-ins-note b { color: var(--ink-dim); }
-
-#sf-galaxymap .gm-ins-btn {
-  position: relative;
-  width: 100%;
-  padding: 10px 14px;
-  margin-top: 2px;
-  background: #d9a054;
-  border: 1px solid #6b4a26;
-  border-radius: 2px;
-  clip-path: polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 9px 100%, 0 calc(100% - 9px));
-  color: #1c1206;
-  cursor: pointer;
-  font-family: var(--mf-ui);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing:.06em;
-  text-transform: uppercase;
-  transition: background .12s ease, transform .1s ease;
-}
-#sf-galaxymap .gm-ins-btn:hover:not(:disabled) { background: linear-gradient(180deg, #ffd284, #e6a643); }
-#sf-galaxymap .gm-ins-btn:focus-visible {
-  outline: none;
-  box-shadow: inset 0 0 0 2px #1c1206;
-}
-#sf-galaxymap .gm-ins-btn:active:not(:disabled) { transform: translateY(1px); }
-#sf-galaxymap .gm-ins-btn:disabled { opacity: .42; cursor: default; }
-
-/* W1-8 engage control. Plot keeps the filled-gold primary; engage sits one step quieter as a
-   brass outline, so the two reads as "look at this route" then "commit to it" rather than as two
-   competing calls to action. Bright gold is reserved for the tracked objective and the ACTIVE
-   route, so the fill only arrives once a route is genuinely engaged (below). */
-#sf-galaxymap #gm-engage-route-btn {
-  background: transparent;
-  border-color: #6b4a26;
-  color: #e2b271;
-}
-#sf-galaxymap #gm-engage-route-btn:hover:not(:disabled) {
-  background: rgba(219, 152, 56, .16);
-  color: #ffd08a;
-}
-/* Engaged: this control now represents the active route, which is what earns the gold. */
-#sf-galaxymap #gm-engage-route-btn[data-engage-state="nav:abortRoute"] {
-  background: #d9a054;
-  color: #1c1206;
-}
-#sf-galaxymap #gm-engage-route-btn[data-engage-state="nav:abortRoute"]:hover:not(:disabled) {
-  background: linear-gradient(180deg, #ffd284, #e6a643);
-  color: #1c1206;
-}
-/* Secondary plot control (ADR D6). It sits BELOW the committing primary and reads quieter than
-   it — a dashed brass outline, no fill — because it is the deliberate, reversible option next to
-   the decisive one. The dash is the load-bearing signal, not the hue: "provisional" survives
-   forced-colors and colour-blindness, where a slightly different brass would not. */
-#sf-galaxymap #gm-plot-course-btn {
-  background: transparent;
-  border: 1px dashed #6b4a26;
-  color: #d8ae74;
-}
-#sf-galaxymap #gm-plot-course-btn:hover:not(:disabled) {
-  background: rgba(219, 152, 56, .12);
-  color: #ffd08a;
-}
-#sf-galaxymap .gm-plot-reason {
+  pointer-events: auto;
   min-height: 0;
-  margin-top: 4px;
-  color: #9a8a72;
-  font-family: var(--mf-ui);
-  font-size: 12px;
-  letter-spacing: .06em;
-  line-height: 1.35;
-  text-align: center;
-}
-#sf-galaxymap .gm-plot-reason:empty { margin-top: 0; }
-@media (prefers-reduced-motion: reduce) {
-  #sf-galaxymap #gm-plot-course-btn { transition: none; }
-}
-
-/* The explanation is never optional: an unavailable action must say why it is unavailable. */
-#sf-galaxymap .gm-engage-reason {
-  min-height: 13px;
-  margin-top: 5px;
-  color: #9a8a72;
-  font-family: var(--mf-ui);
-  font-size: 12px;
-  letter-spacing: .06em;
-  line-height: 1.35;
-  text-align: center;
-}
-@media (prefers-reduced-motion: reduce) {
-  #sf-galaxymap #gm-engage-route-btn { transition: none; }
-}
-
-/* Slice A framing controls. These are NAVIGATION OF THE CHART, not commitments in the world, so
-   they are deliberately the quietest actionable surface in the inspector: steel outline, no gold.
-   Bright gold is reserved for the tracked objective and the active route, and a button that merely
-   recentres the view has not earned it. They sit above the target actions and are never hidden —
-   they are most needed exactly when nothing is selected. */
-#sf-galaxymap .gm-frame-group {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  padding-bottom: 10px;
-  margin-bottom: 10px;
-  border-bottom: 1px solid rgba(190, 178, 152, .16);
-}
-#sf-galaxymap .gm-frame-btn {
-  background: rgba(150, 158, 170, .06);
-  border-color: rgba(178, 186, 198, .34);
-  color: #c3c8d0;
-  font-size: 12px;
-  letter-spacing:.06em;
-  margin-top: 0;
-  padding: 8px 12px;
-}
-#sf-galaxymap .gm-frame-btn:hover:not(:disabled) {
-  background: rgba(170, 180, 196, .14);
-  border-color: rgba(200, 208, 220, .5);
-  color: #e6e9ee;
-}
-/* Unavailable must READ as unavailable, not merely behave that way: the fill drops out, the label
-   dims, and the cursor stops promising a click. The reason line below says why. */
-#sf-galaxymap .gm-frame-btn:disabled {
-  background: transparent;
-  border-color: rgba(178, 186, 198, .18);
-  color: #6f7480;
-  opacity: 1;
-}
-#sf-galaxymap .gm-frame-reason {
-  min-height: 13px;
-  margin-top: 2px;
-  color: #9a8a72;
-  font-family: var(--mf-ui);
-  font-size: 12px;
-  letter-spacing: .05em;
-  line-height: 1.35;
-  text-align: center;
-}
-@media (prefers-reduced-motion: reduce) {
-  #sf-galaxymap .gm-frame-btn { transition: none; }
-}
-@media (forced-colors: active) {
-  #sf-galaxymap #gm-engage-route-btn { border: 1px solid ButtonText; color: ButtonText; }
-  #sf-galaxymap #gm-engage-route-btn[data-engage-state="nav:abortRoute"] { border-width: 3px; }
-  /* The dash is restated explicitly: under forced-colors the brass tint is discarded, so the line
-     STYLE is the only thing left distinguishing the provisional plot from the committing primary. */
-  #sf-galaxymap #gm-plot-course-btn { border: 1px dashed ButtonText; color: ButtonText; }
-}
-
-/* Service chips: pictogram + label, keyed teal */
-#sf-galaxymap .gm-svc-list { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 2px; }
-#sf-galaxymap .gm-svc {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 7px;
-  border: 1px solid var(--mf-line-2);
-  border-radius: 2px;
-  background: #0e1113;
-  font-family: var(--mono);
-  font-size: 12px;
-  letter-spacing:.06em;
-  text-transform: uppercase;
-  color: var(--ink-dim);
-}
-#sf-galaxymap .gm-svc .gm-svc-ico {
-  display: inline-flex;
-  width: 11px;
-  height: 11px;
-  color: var(--accent-2);
-}
-#sf-galaxymap .gm-svc .gm-svc-ico svg { width: 11px; height: 11px; display: block; }
-
-/* Thin meter bars under condition rows */
-#sf-galaxymap .gm-meter {
-  height: 3px;
-  margin: 3px 0 5px;
-  background: var(--mf-line-1);
-  border-radius: 1px;
-  overflow: hidden;
-}
-#sf-galaxymap .gm-meter > i { display: block; height: 100%; }
-
-/* Trade lanes + best-known sell (strategy deck) */
-#sf-galaxymap .gm-tl-row {
-  position: relative;
-  display: block;
-  width: 100%;
-  box-sizing: border-box;
-  text-align: left;
-  padding: 7px 9px 7px 16px;
-  margin-bottom: 4px;
-  background: #0e1113;
-  border: 1px solid var(--mf-line-1);
-  border-radius: 2px;
-  cursor: pointer;
-  font-family: var(--mf-ui);
-  transition: border-color .12s ease, background .12s ease;
-}
-#sf-galaxymap .gm-tl-row::before {
-  content: "";
-  position: absolute;
-  left: 7px;
-  top: 50%;
-  width: 6px;
-  height: 2px;
-  transform: translateY(-50%);
-  background: #5a574f;
-  transition: background .12s ease;
-}
-#sf-galaxymap .gm-tl-row:hover { border-color: #8a6a3c; background: #121518; }
-#sf-galaxymap .gm-tl-row:hover::before { background: var(--accent-3); }
-#sf-galaxymap .gm-tl-row:focus-visible {
-  outline: none;
-  border-color: var(--accent-3);
-  box-shadow: inset 0 0 0 1px var(--accent-3);
-}
-#sf-galaxymap .gm-site-row {
-  display: flex;
-  width: 100%;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 8px 9px;
-  margin: 4px 0;
-  background: #0e1113;
-  color: var(--ink);
-  border: 1px solid var(--mf-line-1);
-  border-radius: 2px;
-  font: 500 12px var(--mf-ui);
-  text-align: left;
-  cursor: pointer;
-}
-#sf-galaxymap .gm-site-row:hover,
-#sf-galaxymap .gm-site-row[aria-pressed="true"] { border-color: var(--accent-3); background: #15191b; }
-#sf-galaxymap .gm-site-row:focus-visible { outline: 2px solid var(--accent-3); outline-offset: 1px; }
-#sf-galaxymap .gm-history-list { margin: 0; padding: 0 0 0 19px; color: var(--ink); }
-#sf-galaxymap .gm-history-list li { padding: 5px 0; border-bottom: 1px solid var(--mf-line-1); }
-#sf-galaxymap .gm-history-list li > span { display: block; }
-#sf-galaxymap .gm-tl-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 8px;
-  font-size: 12px;
-  color: var(--ink);
-  font-weight: 500;
-}
-#sf-galaxymap .gm-tl-profit { font-family: var(--mono); font-size: 12px; font-weight: 500; }
-#sf-galaxymap .gm-tl-sub {
-  margin-top: 2px;
-  font-family: var(--mono);
-  font-size: 12px;
-  color: var(--ink-mute);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-#sf-galaxymap .gm-bk-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 8px;
-  padding: 3px 0;
-  font-size: 12px;
-  color: var(--ink-dim);
-}
-#sf-galaxymap .gm-bk-station {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-#sf-galaxymap .gm-bk-val { font-family: var(--mono); font-size: 12px; }
-
-/* Transit forecast comparison */
-#sf-galaxymap .gm-transit {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-}
-#sf-galaxymap .gm-transit-card {
-  border: 1px solid var(--mf-line-1);
-  border-radius: 2px;
-  background: #0e1113;
-  padding: 7px 8px;
-}
-#sf-galaxymap .gm-transit-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  font-family: var(--mono);
-  font-size: 12px;
-  letter-spacing:.06em;
-  text-transform: uppercase;
-  color: var(--ink-mute);
-  margin-bottom: 5px;
-}
-#sf-galaxymap .gm-transit-head b { font-size: 12px; font-weight: 500; letter-spacing: 0; }
-#sf-galaxymap .gm-transit-row {
-  display: flex;
-  justify-content: space-between;
-  font-family: var(--mono);
-  font-size: 12px;
-  color: var(--ink-mute);
-  padding: 1px 0;
-}
-#sf-galaxymap .gm-transit-row b { color: var(--ink-dim); font-weight: 400; }
-
-/* Route legs */
-#sf-galaxymap .gm-route-leg {
-  font-family: var(--mono);
-  font-size: 12px;
-  color: var(--ink-dim);
-  padding: 2px 0;
-}
-#sf-galaxymap .gm-route-leg b { color: var(--accent-3); font-weight: 500; }
-#sf-galaxymap .gm-route-total {
-  margin-top: 4px;
-  font-family: var(--mono);
-  font-size: 12px;
-  color: var(--ink-mute);
-}
-/* The leg currently under way reads as the live one; the rest are record. */
-#sf-galaxymap .gm-route-leg.is-current {
-  color: var(--ink);
-  border-left:1px solid var(--sf-edge);
-  margin-left: -6px;
-  padding-left: 4px;
-}
-#sf-galaxymap .gm-route-leg-n {
-  display: inline-block;
-  min-width: 12px;
-  margin-right: 5px;
-  color: var(--ink-mute);
-  font-size: 12px;
-}
-#sf-galaxymap .gm-route-leg.is-current .gm-route-leg-n { color: var(--accent); }
-
-/* Mission block — authored leg prose plus a countable-objective meter. */
-#sf-galaxymap .gm-mission-name {
-  font-weight: 600;
-  color: var(--ink);
-  font-size: 12px;
-}
-#sf-galaxymap .gm-mission-brief {
-  color: var(--accent-3);
-  font-size: 12px;
-  margin-top: 2px;
-  font-family: var(--mono);
-  line-height: 1.45;
-}
-#sf-galaxymap .gm-mission-meter {
-  position: relative;
-  height: 3px;
-  margin-top: 7px;
-  background: #0e1113;
-  border: 1px solid var(--mf-line-1);
-  overflow: hidden;
-}
-#sf-galaxymap .gm-mission-meter-fill {
-  position: absolute;
-  inset: 0 auto 0 0;
-  background: linear-gradient(90deg, var(--accent), var(--accent-3));
-}
-
-/* Compact windows keep one canvas and one inspector; layers become a horizontal tool rail. */
-#sf-galaxymap[data-layout="compact"] .gm-head {
-  min-height: var(--gm-header-h, 72px);
-  box-sizing: border-box;
-  gap: 8px;
-  padding: 9px 12px;
-  flex-wrap: wrap;
-}
-#sf-galaxymap[data-layout="compact"] .gm-title { font-size: 13px; }
-#sf-galaxymap[data-layout="compact"] .gm-stamp { display: none; }
-#sf-galaxymap[data-layout="compact"] .gm-search-container { max-width: 220px; }
-#sf-galaxymap[data-layout="compact"] .gm-weather { min-width: 146px; max-width: 200px; }
-#sf-galaxymap[data-layout="compact"] .gm-weather-terms { display: none; }
-#sf-galaxymap[data-layout="compact"] .gm-rail-track { display: none; }
-#sf-galaxymap[data-layout="compact"] .gm-level { display: none; }
-#sf-galaxymap[data-layout="compact"] .gm-body-container {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) var(--gm-inspector-w, 260px);
-  grid-template-rows: var(--gm-rail-h, 58px) minmax(0, 1fr);
-}
-#sf-galaxymap[data-layout="compact"] .gm-left-rail {
-  grid-column: 1 / -1;
-  grid-row: 1;
-  width: auto;
   min-width: 0;
-  padding: 7px 10px;
-  flex-direction: row;
-  align-items: center;
-  gap: 8px;
-  overflow: hidden;
-  border-right: 0;
-  border-bottom: 1px solid var(--mf-line-2);
-}
-#sf-galaxymap[data-layout="compact"] .gm-rail-title { margin: 0; padding: 0; flex: 0 0 auto; }
-#sf-galaxymap[data-layout="compact"] .gm-rail-title::after { display: none; }
-#sf-galaxymap[data-layout="compact"] .gm-layer-buttons {
-  min-width: 0;
-  flex: 1 1 auto;
-  flex-direction: row;
-  align-items: stretch;
-  gap: 6px;
-  overflow-x: auto;
+  overflow: hidden auto;
   scrollbar-width: thin;
+  scrollbar-color: var(--k-hair) transparent;
 }
-#sf-galaxymap[data-layout="compact"] .gm-layer-bank {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 5px 6px;
-  flex: 0 0 auto;
-}
-#sf-galaxymap[data-layout="compact"] .gm-layer-bank-title {
-  margin: 0 4px 0 0;
-  font-size: 12px;
-}
-#sf-galaxymap[data-layout="compact"] .gm-layer-btn { min-width: 96px; padding: 6px 8px; }
-#sf-galaxymap[data-layout="compact"] .gm-rail-commodity { margin: 0; min-width: 132px; }
-#sf-galaxymap[data-layout="compact"] .gm-rail-commodity label,
-#sf-galaxymap[data-layout="compact"] .gm-rail-legend,
-#sf-galaxymap[data-layout="compact"] .gm-rail-footer { display: none; }
-#sf-galaxymap[data-layout="compact"] .gm-viewport { grid-column: 1; grid-row: 2; }
-#sf-galaxymap[data-layout="compact"] .gm-right-inspector {
-  grid-column: 2;
-  grid-row: 2;
-  width: auto;
-  padding: 12px;
-}
+#sf-galaxymap .gm-left-rail { grid-area: hang; }
+#sf-galaxymap .gm-right-inspector { grid-area: inspector; display: flex; flex-direction: column; gap: var(--k-pad); }
 
-/* Very narrow windows stack the same three authorities without overlays or hidden actions. */
-#sf-galaxymap[data-layout="narrow"] .gm-head {
-  min-height: var(--gm-header-h, 104px);
-  box-sizing: border-box;
-  flex-wrap: wrap;
-  gap: 7px;
-  padding: 8px 10px;
-}
-#sf-galaxymap[data-layout="narrow"] .gm-title { font-size: 12px; }
-#sf-galaxymap[data-layout="narrow"] .gm-title-lockup { flex: 1 1 auto; }
-#sf-galaxymap[data-layout="narrow"] .gm-stamp { display: none; }
-#sf-galaxymap[data-layout="narrow"] .gm-rail { order: 3; }
-#sf-galaxymap[data-layout="narrow"] .gm-rail-track { display: none; }
-#sf-galaxymap[data-layout="narrow"] .gm-weather {
-  order: 5;
-  flex: 1 1 100%;
-  max-width: none;
-}
-#sf-galaxymap[data-layout="narrow"] .gm-weather-terms { display: none; }
-#sf-galaxymap[data-layout="narrow"] .gm-hint-btn { order: 2; }
-#sf-galaxymap[data-layout="narrow"] .gm-close { order: 2; }
-#sf-galaxymap[data-layout="narrow"] .gm-search-container { order: 4; flex-basis: 100%; max-width: none; }
-#sf-galaxymap[data-layout="narrow"] .gm-level { display: none; }
-#sf-galaxymap[data-layout="narrow"] .gm-body-container {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: var(--gm-rail-h, 54px) minmax(0, 1fr) var(--gm-inspector-h, 170px);
-}
-#sf-galaxymap[data-layout="narrow"] .gm-left-rail {
-  grid-row: 1;
-  width: auto;
-  min-width: 0;
-  padding: 6px 8px;
-  flex-direction: row;
-  align-items: center;
-  gap: 8px;
-  overflow: hidden;
-  border-right: 0;
-  border-bottom: 1px solid var(--mf-line-2);
-}
-#sf-galaxymap[data-layout="narrow"] .gm-rail-title,
-#sf-galaxymap[data-layout="narrow"] .gm-rail-commodity,
-#sf-galaxymap[data-layout="narrow"] .gm-rail-legend,
-#sf-galaxymap[data-layout="narrow"] .gm-rail-footer { display: none; }
-#sf-galaxymap[data-layout="narrow"] .gm-layer-buttons {
-  min-width: 0;
-  flex: 1;
-  flex-direction: row;
-  align-items: stretch;
-  gap: 6px;
-  overflow-x: auto;
-}
-#sf-galaxymap[data-layout="narrow"] .gm-layer-bank {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 5px 6px;
-  flex: 0 0 auto;
-}
-#sf-galaxymap[data-layout="narrow"] .gm-layer-bank-title { display: none; }
-#sf-galaxymap[data-layout="narrow"] .gm-layer-btn { min-width: 94px; padding: 6px 8px; }
-#sf-galaxymap[data-layout="narrow"] .gm-viewport { grid-row: 2; }
-#sf-galaxymap[data-layout="narrow"] .gm-right-inspector {
-  grid-row: 3;
-  width: auto;
-  padding: 10px 12px;
-  border-left: 0;
-  border-top: 1px solid var(--mf-line-2);
-}
-#sf-galaxymap[data-layout="narrow"] .gm-inspector-content { gap: 7px; }
-
-/* Accessibility hooks: dyslexia swaps proportional stacks; forced colors flattens chamfers. */
-html.sf-dyslexia #sf-galaxymap {
-  --mf-display: "OpenDyslexic", "Atkinson Hyperlegible", "Comic Sans MS", "Verdana", system-ui, sans-serif;
-  --mf-ui: "OpenDyslexic", "Atkinson Hyperlegible", "Comic Sans MS", "Verdana", system-ui, sans-serif;
-}
-@media (forced-colors: active) {
-  html.sf-forced-colors #sf-galaxymap .gm-ins-btn,
-  html.sf-forced-colors #sf-galaxymap .gm-search-results,
-  html.sf-forced-colors #sf-galaxymap .gm-hints { clip-path: none !important; filter: none !important; }
-}
-
-/* ══ SLICE C — information in depth ═══════════════════════════════════════════════════════════
-   Surveyor's Table identity throughout: warm black, brass hairlines, amber worklight, restrained
-   teal. No harsh cyan wireframe, no cramped monospace slab. Bright gold (--accent-3) stays
-   RESERVED for the tracked objective and the live route; nothing else here spends it. */
-
-/* ---- Left rail: collapsible sections -------------------------------------------------------- */
-#sf-galaxymap .gm-rail-sec {
-  border-bottom: 1px solid var(--mf-line-1);
-}
+/* ---- The hang (.gm-left-rail): five disclosures of words -------------------------------------- */
+#sf-galaxymap .gm-rail-sec { border-top: 1px solid var(--k-hair); padding: calc(10px * var(--k-s)) 0; }
+#sf-galaxymap .gm-rail-sec:last-child { border-bottom: 1px solid var(--k-hair); }
 #sf-galaxymap .gm-rail-sum {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
-  gap: 8px;
-  padding: 9px 2px;
-  cursor: pointer;
+  gap: 1ch;
   list-style: none;
-  font-family: var(--mf-display);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing:.06em;
-  text-transform: uppercase;
-  color: var(--ink-dim);
-  transition: color .12s ease;
+  cursor: pointer;
+  color: var(--k-bone-62);
+  transition: color var(--k-d-focus) var(--k-ease);
 }
 #sf-galaxymap .gm-rail-sum::-webkit-details-marker { display: none; }
-#sf-galaxymap .gm-rail-sum:hover { color: var(--ink); }
-#sf-galaxymap .gm-rail-sum:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+#sf-galaxymap .gm-rail-sum::marker { content: ""; }
+#sf-galaxymap .gm-rail-sec[open] > .gm-rail-sum,
+#sf-galaxymap .gm-rail-sum:hover { color: var(--k-text-live); }
+#sf-galaxymap .gm-rail-sum-n { font-size: var(--k-fs-fine); letter-spacing: 0; text-transform: none; color: var(--k-bone-38); }
+#sf-galaxymap .gm-rail-body { padding-top: var(--k-pad); display: flex; flex-direction: column; gap: var(--k-pad); }
+#sf-galaxymap .gm-layer-buttons { display: flex; flex-direction: column; gap: var(--k-pad); }
+#sf-galaxymap .gm-layer-bank { display: flex; flex-direction: column; gap: calc(8px * var(--k-s)); }
+#sf-galaxymap .gm-layer-btn { display: block; width: max-content; max-width: 100%; }
+#sf-galaxymap .gm-layer-btn.active { color: var(--k-text-live); }
+/* No icons and no state chips: the word and its underline carry the lens state (KIT_SPEC §12). */
+#sf-galaxymap .gm-layer-ico, #sf-galaxymap .gm-layer-state { display: none; }
+#sf-galaxymap .gm-rail-commodity { display: flex; flex-direction: column; gap: calc(6px * var(--k-s)); }
+#sf-galaxymap .gm-rail-commodity select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--k-hair);
+  color: var(--k-text-live);
+  font: inherit;
+  font-size: var(--k-fs-body);
+  padding: calc(4px * var(--k-s)) 0;
+  cursor: pointer;
+  transition: border-color var(--k-d-focus) var(--k-ease);
 }
-/* The disclosure caret is a SHAPE, so open/closed never depends on colour alone. */
-#sf-galaxymap .gm-rail-sum-t::before {
-  content: "▸";
-  display: inline-block;
-  margin-right: 7px;
-  color: var(--mf-line-3);
-  transition: transform .14s ease;
-}
-#sf-galaxymap .gm-rail-sec[open] > .gm-rail-sum { color: var(--ink); }
-#sf-galaxymap .gm-rail-sec[open] > .gm-rail-sum .gm-rail-sum-t::before {
-  transform: rotate(90deg);
-  color: var(--accent);
-}
-#sf-galaxymap .gm-rail-sum-n {
-  font-family: var(--mono);
-  font-size: 12px;
-  letter-spacing:.06em;
-  color: var(--mf-stamp);
-}
-#sf-galaxymap .gm-rail-body {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  padding: 2px 0 11px;
-}
+#sf-galaxymap .gm-rail-commodity select:focus { border-bottom-color: var(--k-bone); outline: none; }
+#sf-galaxymap .gm-rail-commodity select option { background: var(--k-ink); color: var(--k-bone); }
 #sf-galaxymap .gm-rail-item {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+  appearance: none;
   width: 100%;
   text-align: left;
-  background: var(--panel-2);
-  border: 1px solid var(--mf-line-2);
-  border-radius: 2px;
-  padding: 7px 9px;
-  color: var(--ink-dim);
-  font-family: var(--mf-ui);
-  cursor: pointer;
-  transition: border-color .12s ease, color .12s ease;
+  font: inherit;
+  background: none;
+  border: 0;
+  border-top: 1px solid var(--k-hair);
+  --k-row-cols: minmax(0, 1fr);
+  row-gap: 0;
+  padding: calc(6px * var(--k-s)) var(--k-pad);
+  align-content: center;
 }
-#sf-galaxymap .gm-rail-item:hover { border-color: var(--mf-line-3); color: var(--ink); }
-#sf-galaxymap .gm-rail-item:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-#sf-galaxymap .gm-rail-item-t { font-size: 12px; color: var(--ink); }
-#sf-galaxymap .gm-rail-item-s { font-size: 12px; color: var(--ink-mute); }
-#sf-galaxymap .gm-rail-item-tag {
-  font-family: var(--mono);
-  font-size: 12px;
-  letter-spacing:.06em;
-  text-transform: uppercase;
-  color: var(--accent-2);
+#sf-galaxymap .gm-rail-item-t, #sf-galaxymap .gm-rail-item-s { display: block; }
+#sf-galaxymap .gm-rail-item.is-tracked,
+#sf-galaxymap .gm-rail-item.is-current { color: var(--k-text-live); box-shadow: inset 2px 0 0 var(--k-signal); }
+#sf-galaxymap .gm-rail-track-g { color: var(--k-signal); margin-right: 0.5ch; }
+#sf-galaxymap .gm-rail-item-tag { font-size: var(--k-fs-fine); color: var(--k-signal); margin-left: 1ch; }
+#sf-galaxymap .gm-rail-add { margin-top: var(--k-pad); align-self: flex-start; }
+#sf-galaxymap .gm-rail-footer { font-size: var(--k-fs-fine); color: var(--k-bone-38); }
+#sf-galaxymap .gm-rail-legend { display: flex; flex-direction: column; }
+#sf-galaxymap .gm-rail-title { margin: calc(6px * var(--k-s)) 0; }
+#sf-galaxymap .gm-legend-row {
+  --k-row-cols: auto minmax(0, 1fr);
+  column-gap: var(--k-pad);
+  min-height: calc(var(--k-row) * 0.7);
+  padding: 0;
+  border: 0;
+  font-size: var(--k-fs-data);
 }
-/* Tracked mission: bright gold is legitimate here — this IS the tracked objective. It carries a
-   glyph and a left rule as well, so the state never rests on hue alone. */
-#sf-galaxymap .gm-rail-item.is-tracked {
-  border-left:1px solid var(--sf-edge);
-  color: var(--ink);
-}
-#sf-galaxymap .gm-rail-track-g { color: var(--accent-3); margin-right: 5px; }
-#sf-galaxymap .gm-rail-item.is-current { border-color: var(--accent-2); }
-#sf-galaxymap .gm-rail-add { margin-top: 2px; }
+#sf-galaxymap .gm-rail-legend > .gm-legend-row:last-child { border: 0; }
+#sf-galaxymap .gm-legend-ico { display: inline-flex; width: 16px; height: 16px; color: var(--k-bone-62); }
+#sf-galaxymap .gm-legend-ico svg { width: 16px; height: 16px; display: block; stroke: var(--k-bone-62); }
+#sf-galaxymap .gm-legend-ico--mark { color: var(--k-bone-62); }
+#sf-galaxymap .gm-hint-text { max-width: var(--k-measure); }
 
-/* ---- Inspector tabs ------------------------------------------------------------------------- */
-#sf-galaxymap .gm-tabs {
+/* ---- The stage-right column (.gm-right-inspector): fine words in a row, then rows ------------ */
+#sf-galaxymap .gm-tabs { flex: 0 0 auto; gap: calc(12px * var(--k-s)) var(--k-gap); }
+#sf-galaxymap .gm-tab[aria-selected="true"] { color: var(--k-text-live); }
+#sf-galaxymap .gm-tab[aria-selected="true"]::after { transform: scaleX(1); }
+#sf-galaxymap .gm-inspector-content { display: flex; flex-direction: column; gap: var(--k-pad); flex: 1 1 auto; min-height: 0; }
+#sf-galaxymap .gm-frame-group { display: flex; flex-wrap: wrap; align-items: baseline; gap: calc(8px * var(--k-s)) var(--k-gap); }
+#sf-galaxymap .gm-frame-reason, #sf-galaxymap .gm-plot-reason, #sf-galaxymap .gm-engage-reason, #sf-galaxymap .gm-ribbon-reason { flex-basis: 100%; max-width: var(--k-measure); }
+#sf-galaxymap .gm-frame-reason:empty, #sf-galaxymap .gm-plot-reason:empty, #sf-galaxymap .gm-engage-reason:empty, #sf-galaxymap .gm-ribbon-reason:empty { display: none; }
+#sf-galaxymap .gm-inspector-details { min-height: 0; }
+#sf-galaxymap .gm-inspector-empty { color: var(--k-bone-62); max-width: var(--k-measure); }
+#sf-galaxymap .gm-ins-section {
+  border-top: 1px solid var(--k-hair);
+  padding: calc(10px * var(--k-s)) 0;
   display: flex;
-  flex-wrap: wrap;
-  gap: 2px;
-  padding: 7px 10px 0;
-  border-bottom: 1px solid var(--mf-line-2);
-  background: linear-gradient(180deg, #15181b, #121518);
+  flex-direction: column;
+  gap: calc(6px * var(--k-s));
 }
-#sf-galaxymap .gm-tab {
-  background: transparent;
-  border: 1px solid transparent;
-  border-bottom: 0;
-  border-radius: 2px 2px 0 0;
-  padding: 6px 9px;
-  color: var(--ink-mute);
-  font-family: var(--mf-ui);
-  font-size: 12px;
-  letter-spacing: .04em;
-  cursor: pointer;
-  transition: color .12s ease, background .12s ease, border-color .12s ease;
+#sf-galaxymap .gm-ins-section:first-child { border-top: 0; padding-top: 0; }
+#sf-galaxymap .gm-ins-kind, #sf-galaxymap .gm-ins-title {
+  font-size: var(--k-fs-fine);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--k-bone-38);
 }
-#sf-galaxymap .gm-tab:hover { color: var(--ink); background: rgba(255, 255, 255, .03); }
-#sf-galaxymap .gm-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; }
-/* Selected tab: colour AND a brass underline AND weight. Three signals, not one. */
-#sf-galaxymap .gm-tab[aria-selected="true"] {
-  color: var(--ink);
-  font-weight: 600;
-  background: var(--panel);
-  border-color: var(--mf-line-2);
-  box-shadow: inset 0 2px 0 var(--accent);
+#sf-galaxymap .gm-ins-target-name {
+  font-family: var(--k-display);
+  font-weight: 800;
+  font-size: var(--k-fs-sub);
+  letter-spacing: -0.03em;
+  line-height: 0.95;
+  color: var(--k-text-live);
+  overflow-wrap: anywhere;
 }
-/* An unavailable tab is dimmed AND dotted-underlined — never dimmed alone. */
-#sf-galaxymap .gm-tab.is-empty {
-  color: var(--mf-stamp);
-  text-decoration: underline dotted var(--mf-line-3) 1px;
-  text-underline-offset: 3px;
-}
-
-/* ---- Nav rows in the Overview tab ----------------------------------------------------------- */
+/* Navigation rows (POSITION / TRACKING / DESTINATION / NEXT LEG): key at body 62 %, value at emphasis,
+   detail as the row's sub line. Tone is an attribute, so state never rides on colour alone. */
 #sf-galaxymap .gm-nav-row {
   display: grid;
-  /* Content-sized label track: "DESTINATION" at the 12px tracked stamp overflows a fixed 78px
-     column and painted straight through the value cell. */
-  grid-template-columns: auto 1fr;
-  gap: 2px 9px;
-  padding: 5px 0;
-  border-top: 1px solid var(--mf-line-1);
-  font-size: 12px;
-}
-#sf-galaxymap .gm-nav-row-k {
-  font-family: var(--mono);
-  font-size: 12px;
-  letter-spacing:.06em;
-  text-transform: uppercase;
-  color: var(--mf-stamp);
-  padding-top: 2px;
-}
-#sf-galaxymap .gm-nav-row-v { color: var(--ink); }
-#sf-galaxymap .gm-nav-row-d { grid-column: 2; color: var(--ink-mute); font-size: 12px; }
-/* TRACKED is the one tone allowed to spend bright gold, and it also gets a left rule. */
-#sf-galaxymap .gm-nav-row[data-tone="tracked"] .gm-nav-row-v {
-  color: var(--accent-3);
-  font-weight: 600;
-}
-#sf-galaxymap .gm-nav-row[data-tone="tracked"] {
-  border-left:1px solid var(--sf-edge);
-  padding-left: 7px;
-}
-#sf-galaxymap .gm-nav-row[data-tone="muted"] .gm-nav-row-v { color: var(--ink-mute); font-style: italic; }
-
-/* ---- Careers (Overview line + Careers tab) --------------------------------------------------- */
-/* New work obeys the grammar floor the panel's older rows predate: nothing here renders below
-   12px, and every figure binds --sf-data-face with tabular numerals (Phase-0 ruling: every figure
-   on every new surface binds the DATA face). Phase state rides on data-career-phase, never colour
-   alone. */
-#sf-galaxymap .gm-career {
-  padding: 6px 0;
-  border-top: 1px solid var(--mf-line-1);
-}
-#sf-galaxymap .gm-career:first-of-type { border-top: 0; }
-#sf-galaxymap .gm-career__head {
-  display: flex;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: var(--k-pad);
   align-items: baseline;
-  gap: 8px;
-  font-size: 12.5px;
+  min-height: var(--k-row);
+  border-top: 1px solid var(--k-hair);
+  padding: calc(4px * var(--k-s)) 0;
 }
-#sf-galaxymap .gm-career__role {
-  font-family: var(--mf-ui);
-  font-weight: 600;
-  color: var(--ink);
-}
-#sf-galaxymap .gm-career__phase { color: var(--ink-dim); font-size: 12px; }
-#sf-galaxymap .gm-career[data-career-phase="Fleeing"] .gm-career__phase { color: var(--danger, #ff5470); }
-#sf-galaxymap .gm-career__fig {
-  margin-left: auto;
-  font-family: var(--sf-data-face);
-  font-variant-numeric: tabular-nums;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--ink-dim);
-  white-space: nowrap;
-}
-#sf-galaxymap .gm-career__place,
-#sf-galaxymap .gm-career__who {
-  color: var(--ink-mute);
-  font-size: 12px;
-  line-height: 1.45;
-  margin-top: 2px;
-}
-#sf-galaxymap .gm-career__who { color: var(--ink-dim); }
-#sf-galaxymap .gm-fig {
-  font-family: var(--sf-data-face);
-  font-variant-numeric: tabular-nums;
-  /* Owns its size: the header figure rides an 11px legacy row-value class, and the grammar floor
-     for new work is 12px — same specificity, but this block is later in the sheet, so it wins. */
-  font-size: 12px;
-}
-
-/* ---- Place context actions ------------------------------------------------------------------ */
-#sf-galaxymap .gm-place-actions { display: flex; flex-wrap: wrap; gap: 5px; }
-#sf-galaxymap .gm-place-actions:empty { display: none; }
-#sf-galaxymap .gm-place-btn {
-  flex: 1 1 auto;
-  background: var(--panel-2);
-  border: 1px solid var(--mf-line-2);
-  border-radius: 2px;
-  padding: 6px 9px;
-  color: var(--ink-dim);
-  font-family: var(--mf-ui);
-  font-size: 12px;
+#sf-galaxymap .gm-nav-row-k { font-size: var(--k-fs-body); color: var(--k-bone-62); }
+#sf-galaxymap .gm-nav-row-v { font-size: var(--k-fs-emph); color: var(--k-text-live); text-align: right; }
+#sf-galaxymap .gm-nav-row-d { grid-column: 1 / span 2; font-size: var(--k-fs-data); color: var(--k-bone-38); }
+#sf-galaxymap .gm-nav-row[data-tone="tracked"] .gm-nav-row-v { color: var(--k-signal); }
+#sf-galaxymap .gm-nav-row[data-tone="tracked"] { box-shadow: inset 2px 0 0 var(--k-signal); padding-left: var(--k-pad); }
+#sf-galaxymap .gm-nav-row[data-tone="muted"] .gm-nav-row-v { color: var(--k-bone-38); font-style: italic; }
+#sf-galaxymap .gm-ins-row { display: flex; justify-content: space-between; gap: var(--k-pad); color: var(--k-bone-62); }
+#sf-galaxymap .gm-ins-row > span:first-child { flex: 1 1 auto; min-width: 0; }
+#sf-galaxymap .gm-ins-row-val { color: var(--k-text-live); text-align: right; }
+#sf-galaxymap .gm-fig { font-variant-numeric: tabular-nums; }
+#sf-galaxymap .gm-ins-note { font-size: var(--k-fs-data); color: var(--k-bone-38); max-width: var(--k-measure); }
+#sf-galaxymap .gm-ins-btn:not(.k-word), #sf-galaxymap .gm-place-btn, #sf-galaxymap .gm-tl-row, #sf-galaxymap .gm-site-row {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0 0 0.15em;
+  font: 500 var(--k-fs-body) var(--k-text);
+  color: var(--k-bone-62);
+  text-align: left;
   cursor: pointer;
-  transition: border-color .12s ease, color .12s ease;
+  transition: color var(--k-d-focus) var(--k-ease);
 }
-#sf-galaxymap .gm-place-btn:hover:not(:disabled):not([aria-disabled="true"]) { border-color: var(--accent); color: var(--ink); }
-#sf-galaxymap .gm-place-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-#sf-galaxymap .gm-place-btn:disabled,
-#sf-galaxymap .gm-place-btn[aria-disabled="true"] {
-  opacity: .45;
-  cursor: not-allowed;
-  border-style: dashed; /* shape, not just opacity */
-}
-
-/* ---- APRON: route ribbon + cargo deck -------------------------------------------------------- */
-#sf-galaxymap .gm-apron {
-  flex: 0 0 auto;
-  min-height: var(--gm-apron-h, 188px);
-  border-top: 1px solid var(--mf-line-2);
-  background:
-    repeating-linear-gradient(112deg, rgba(255, 255, 255, .005) 0 1px, transparent 1px 7px),
-    linear-gradient(180deg, #15191d 0%, #111417 100%);
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  gap: 8px;
-  padding: 9px 14px 10px;
-  box-sizing: border-box;
-}
-#sf-galaxymap .gm-apron-ribbon {
-  min-height: 0;
-}
-#sf-galaxymap .gm-ribbon {
-  position: relative;
-  display: grid;
-  grid-template-columns: 1fr auto;
-  grid-template-areas: "main actions" "reason reason";
-  gap: 6px 14px;
-  align-items: center;
-  padding: 9px 13px;
-  box-sizing: border-box;
-  /* Opaque enough to read over the chart, warm enough to stay in the table's material world. */
-  background: linear-gradient(180deg, rgba(24, 28, 31, .96), rgba(16, 19, 21, .97));
-  border: 1px solid var(--mf-line-2);
-  border-top: 1px solid var(--mf-line-3);
-  border-radius: 2px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, .36);
-  animation: gm-ribbon-in .18s ease-out;
-}
-#sf-galaxymap .gm-ribbon[hidden] { display: none; }
-@keyframes gm-ribbon-in {
-  from { opacity: 0; transform: translateY(7px); }
-  to { opacity: 1; transform: none; }
-}
-#sf-galaxymap .gm-ribbon-main { grid-area: main; min-width: 0; }
-#sf-galaxymap .gm-ribbon-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 5px;
-}
-#sf-galaxymap .gm-ribbon-status {
-  font-family: var(--mf-display);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing:.06em;
-  text-transform: uppercase;
-  color: var(--ink);
-}
-/* Live route earns the reserved gold; plotted-but-not-engaged deliberately does not. Each state
-   also changes the leading rule, so the distinction survives forced-colors and colour blindness. */
-#sf-galaxymap .gm-ribbon-status[data-ribbon-state="live"] { color: var(--accent-3); }
-#sf-galaxymap .gm-ribbon-status[data-ribbon-state="plotted"] { color: var(--ink-dim); }
-#sf-galaxymap .gm-ribbon-status[data-ribbon-state="interrupted"] {
-  color: var(--danger);
-  text-decoration: underline wavy var(--danger) 1px;
-  text-underline-offset: 3px;
-}
-#sf-galaxymap .gm-ribbon-arrival {
-  font-family: var(--mono);
-  font-size: 12px;
-  letter-spacing:.06em;
-  color: var(--ink-dim);
-}
-#sf-galaxymap .gm-ribbon-legs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 6px;
-  margin: 0 0 5px;
-  padding: 0;
-  list-style: none;
-}
-#sf-galaxymap .gm-ribbon-leg {
+#sf-galaxymap .gm-ins-btn:not(.k-word):hover, #sf-galaxymap .gm-place-btn:hover, #sf-galaxymap .gm-tl-row:hover, #sf-galaxymap .gm-site-row:hover,
+#sf-galaxymap .gm-site-row[aria-pressed="true"] { color: var(--k-text-live); }
+#sf-galaxymap .gm-ins-btn:disabled, #sf-galaxymap .gm-ins-btn[aria-disabled="true"],
+#sf-galaxymap .gm-place-btn:disabled, #sf-galaxymap .gm-place-btn[aria-disabled="true"] { color: var(--k-bone-38); cursor: default; }
+#sf-galaxymap #gm-engage-route-btn[data-engage-state="nav:abortRoute"] { color: var(--k-red); }
+#sf-galaxymap #gm-engage-route-btn[data-engage-state="nav:abortRoute"]::after { background: var(--k-red); }
+#sf-galaxymap .gm-place-actions { display: flex; flex-wrap: wrap; gap: calc(8px * var(--k-s)) var(--k-gap); }
+#sf-galaxymap .gm-meter, #sf-galaxymap .gm-mission-meter { position: relative; height: 2px; width: 100%; background: var(--k-hair); overflow: hidden; }
+#sf-galaxymap .gm-meter > i, #sf-galaxymap .gm-mission-meter-fill { display: block; height: 100%; background: var(--k-bone-62); }
+#sf-galaxymap .gm-mission-name { color: var(--k-text-live); }
+#sf-galaxymap .gm-mission-brief { font-size: var(--k-fs-data); color: var(--k-bone-38); }
+#sf-galaxymap .gm-svc-list, #sf-galaxymap .gm-svc-row { display: flex; flex-wrap: wrap; gap: calc(6px * var(--k-s)) var(--k-pad); }
+#sf-galaxymap .gm-svc, #sf-galaxymap .gm-svc-chip {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 3px 8px;
-  border: 1px solid var(--mf-line-2);
-  border-radius: 2px;
-  font-size: 12px;
-  color: var(--ink-mute);
-  background: rgba(255, 255, 255, .015);
+  gap: 0.5ch;
+  font-size: var(--k-fs-fine);
+  font-weight: 400;
+  color: var(--k-bone-62);
+  cursor: default;
+  padding: 0;
 }
-/* Leg state is carried by a glyph (✓ / ▶ / ·) AND border weight AND colour. */
-#sf-galaxymap .gm-ribbon-leg[data-leg-state="done"] { opacity: .55; }
-#sf-galaxymap .gm-ribbon-leg[data-leg-state="active"] {
-  border-color: var(--accent-3);
-  border-left-width: 1px;
-  color: var(--ink);
-}
-#sf-galaxymap .gm-ribbon-leg-g { color: var(--accent); font-size: 12px; }
-#sf-galaxymap .gm-ribbon-leg[data-leg-state="active"] .gm-ribbon-leg-g { color: var(--accent-3); }
-#sf-galaxymap .gm-ribbon-leg-c { font-family: var(--mono); font-size: 12px; color: var(--mf-stamp); }
-#sf-galaxymap .gm-ribbon-haz {
-  font-family: var(--mono);
-  font-size: 12px;
-  letter-spacing:.06em;
-  text-transform: uppercase;
-}
-#sf-galaxymap .gm-ribbon-haz[data-haz="watched"] { color: var(--warn); }
-#sf-galaxymap .gm-ribbon-haz[data-haz="contested"] { color: var(--danger); }
-#sf-galaxymap .gm-ribbon-warn { color: var(--danger); font-size: 12px; }
-#sf-galaxymap .gm-ribbon-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 3px 14px;
-  font-family: var(--mono);
-  font-size: 12px;
-  letter-spacing: .05em;
-  color: var(--ink-mute);
-}
-#sf-galaxymap .gm-ribbon-actions { grid-area: actions; display: flex; gap: 5px; }
-#sf-galaxymap .gm-ribbon-btn {
-  background: var(--panel-2);
-  border: 1px solid var(--mf-line-2);
-  border-radius: 2px;
-  padding: 7px 12px;
-  color: var(--ink-dim);
-  font-family: var(--mf-ui);
-  font-size: 12px;
-  cursor: pointer;
-  transition: border-color .12s ease, color .12s ease;
-}
-#sf-galaxymap .gm-ribbon-btn:hover:not(:disabled):not([aria-disabled="true"]) { border-color: var(--accent); color: var(--ink); }
-#sf-galaxymap .gm-ribbon-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-#sf-galaxymap .gm-ribbon-btn:disabled,
-#sf-galaxymap .gm-ribbon-btn[aria-disabled="true"] {
-  opacity: .42;
-  cursor: not-allowed;
-  border-style: dashed;
-}
-#sf-galaxymap .gm-ribbon-reason {
-  grid-area: reason;
-  font-size: 12px;
-  color: var(--ink-mute);
-  font-style: italic;
-}
-#sf-galaxymap .gm-ribbon-reason:empty { display: none; }
+#sf-galaxymap .gm-svc-chip::after { display: none; }
+#sf-galaxymap .gm-svc-ico { display: inline-flex; width: 16px; height: 16px; color: var(--k-bone-62); }
+#sf-galaxymap .gm-svc-ico svg { width: 16px; height: 16px; display: block; stroke: var(--k-bone-62); }
+#sf-galaxymap .gm-tl-row, #sf-galaxymap .gm-site-row { display: block; width: 100%; border-top: 1px solid var(--k-hair); padding: calc(6px * var(--k-s)) 0; }
+#sf-galaxymap .gm-tl-head { display: flex; justify-content: space-between; gap: var(--k-pad); color: var(--k-text-live); }
+#sf-galaxymap .gm-tl-profit { color: var(--k-text-live); font-weight: 500; }
+#sf-galaxymap .gm-tl-sub { font-size: var(--k-fs-data); color: var(--k-bone-38); font-weight: 400; }
+#sf-galaxymap .gm-bk-row { display: flex; justify-content: space-between; gap: var(--k-pad); border-top: 1px solid var(--k-hair); padding: calc(4px * var(--k-s)) 0; color: var(--k-bone-62); }
+#sf-galaxymap .gm-bk-station { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#sf-galaxymap .gm-bk-val { color: var(--k-text-live); }
+#sf-galaxymap .gm-history-list { margin: 0; padding: 0; list-style: none; color: var(--k-bone-62); }
+#sf-galaxymap .gm-history-list li { padding: calc(4px * var(--k-s)) 0; border-top: 1px solid var(--k-hair); }
+#sf-galaxymap .gm-history-list li > span { display: block; }
+#sf-galaxymap .gm-transit { display: flex; flex-direction: column; gap: calc(6px * var(--k-s)); }
+#sf-galaxymap .gm-transit-card { border-top: 1px solid var(--k-hair); padding-top: calc(6px * var(--k-s)); }
+#sf-galaxymap .gm-transit-head, #sf-galaxymap .gm-transit-row { display: flex; justify-content: space-between; gap: var(--k-pad); color: var(--k-bone-62); }
+#sf-galaxymap .gm-transit-head { color: var(--k-text-live); }
+#sf-galaxymap .gm-transit-row b { font-weight: 400; }
+#sf-galaxymap .gm-route-leg { display: flex; align-items: baseline; gap: 0.5ch; flex-wrap: wrap; color: var(--k-bone-62); }
+#sf-galaxymap .gm-route-leg.is-current { color: var(--k-text-live); }
+#sf-galaxymap .gm-route-leg-n { font-size: var(--k-fs-fine); color: var(--k-bone-38); min-width: 2ch; }
+#sf-galaxymap .gm-route-leg.is-current .gm-route-leg-n { color: var(--k-signal); }
+#sf-galaxymap .gm-route-total { color: var(--k-text-live); padding-top: calc(4px * var(--k-s)); }
+#sf-galaxymap .gm-career { border-top: 1px solid var(--k-hair); padding: calc(6px * var(--k-s)) 0; display: flex; flex-direction: column; gap: calc(2px * var(--k-s)); }
+#sf-galaxymap .gm-career__head { display: flex; justify-content: space-between; gap: var(--k-pad); }
+#sf-galaxymap .gm-career__role { color: var(--k-text-live); }
+#sf-galaxymap .gm-career__fig, #sf-galaxymap .gm-career__phase { font-size: var(--k-fs-fine); color: var(--k-bone-38); }
+#sf-galaxymap .gm-career__place, #sf-galaxymap .gm-career__who { font-size: var(--k-fs-data); color: var(--k-bone-38); }
 
-#sf-galaxymap .gm-deck {
-  border: 1px solid var(--mf-line-1);
-  background: linear-gradient(180deg, rgba(0, 0, 0, .22), rgba(0, 0, 0, .1));
+/* ---- The foot (.gm-apron): the route as one sentence, the cargo deck as six rows ------------- */
+#sf-galaxymap .gm-apron {
+  grid-area: foot;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  column-gap: var(--k-gap);
+  align-items: end;
   min-height: 0;
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  max-height: var(--gm-apron-h);
+  pointer-events: none;
 }
-#sf-galaxymap .gm-deck-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 6px 9px;
-  border-bottom: 1px solid var(--mf-line-1);
-}
-#sf-galaxymap .gm-deck-title {
-  font-family: var(--mono);
-  font-size: 12px;
-  letter-spacing:.06em;
-  text-transform: uppercase;
-  color: var(--ink-mute);
-}
-#sf-galaxymap .gm-deck-sort {
-  border: 1px solid var(--mf-line-2);
-  background: #121519;
-  color: var(--ink-dim);
-  font-family: var(--mono);
-  font-size: 12px;
-  letter-spacing:.06em;
-  text-transform: uppercase;
-  padding: 3px 8px;
-  cursor: pointer;
-}
-#sf-galaxymap .gm-deck-sort:hover { border-color: var(--accent); color: var(--ink); }
-#sf-galaxymap .gm-deck-sort:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-}
+#sf-galaxymap .gm-apron > * { pointer-events: auto; min-width: 0; min-height: 0; }
+#sf-galaxymap .gm-ribbon { display: flex; flex-direction: column; gap: calc(6px * var(--k-s)); }
+#sf-galaxymap .gm-ribbon-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 1ch; }
+#sf-galaxymap .gm-ribbon-arrival:not(:empty)::before { content: "· "; color: var(--k-bone-38); }
+#sf-galaxymap .gm-ribbon-status[data-ribbon-state="live"] { color: var(--k-signal); }
+#sf-galaxymap .gm-ribbon-status[data-ribbon-state="plotted"] { color: var(--k-text-live); }
+#sf-galaxymap .gm-ribbon-status[data-ribbon-state="interrupted"] { color: var(--k-red); }
+#sf-galaxymap .gm-ribbon-legs { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 1ch; }
+#sf-galaxymap .gm-ribbon-leg { display: inline-flex; align-items: baseline; gap: 0.5ch; padding: 0; cursor: default; white-space: normal; color: var(--k-bone-62); }
+#sf-galaxymap .gm-ribbon-leg::after { display: none; }
+#sf-galaxymap .gm-ribbon-leg:hover { color: var(--k-bone-62); }
+#sf-galaxymap .gm-ribbon-leg + .gm-ribbon-leg::before { content: "·"; color: var(--k-bone-38); }
+#sf-galaxymap .gm-ribbon-leg[data-leg-state="done"], #sf-galaxymap .gm-ribbon-leg[data-leg-state="done"]:hover { color: var(--k-bone-38); }
+#sf-galaxymap .gm-ribbon-leg[data-leg-state="active"], #sf-galaxymap .gm-ribbon-leg[data-leg-state="active"]:hover { color: var(--k-text-live); }
+#sf-galaxymap .gm-ribbon-leg-g { color: var(--k-bone-38); }
+#sf-galaxymap .gm-ribbon-leg[data-leg-state="active"] .gm-ribbon-leg-g { color: var(--k-signal); }
+#sf-galaxymap .gm-ribbon-leg-c { color: var(--k-bone-38); }
+#sf-galaxymap .gm-ribbon-haz[data-haz="watched"] { color: var(--k-signal); }
+#sf-galaxymap .gm-ribbon-haz[data-haz="contested"] { color: var(--k-red); }
+#sf-galaxymap .gm-ribbon-warn { color: var(--k-red); }
+#sf-galaxymap .gm-ribbon-actions { gap: calc(8px * var(--k-s)) var(--k-gap); }
+#sf-galaxymap .gm-deck { display: flex; flex-direction: column; gap: calc(6px * var(--k-s)); }
+#sf-galaxymap .gm-deck-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--k-gap); }
 #sf-galaxymap .gm-deck-table {
-  overflow: auto;
-  display: grid;
-  gap: 4px;
-  padding: 6px;
+  display: block;
+  max-height: calc(var(--k-row) * 6 + 2px);
+  overflow: hidden auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--k-hair) transparent;
 }
 #sf-galaxymap .gm-deck-row {
+  appearance: none;
   width: 100%;
-  display: grid;
-  grid-template-columns: minmax(108px, 1.2fr) minmax(180px, 2fr) minmax(160px, 1.55fr) minmax(76px, .9fr);
-  align-items: center;
-  gap: 8px;
   text-align: left;
-  border: 1px solid var(--mf-line-1);
-  background: linear-gradient(180deg, rgba(255, 255, 255, .017), rgba(255, 255, 255, .004));
-  color: var(--ink-dim);
-  padding: 6px 8px;
-  font-family: var(--mono);
-  font-size: 12px;
-  cursor: pointer;
+  font: inherit;
+  font-size: var(--k-fs-data);
+  background: none;
+  border: 0;
+  border-top: 1px solid var(--k-hair);
+  --k-row-cols: minmax(0, 1.1fr) minmax(0, 1.3fr) minmax(0, 2fr) auto;
+  column-gap: var(--k-pad);
+  min-height: var(--k-row);
 }
-#sf-galaxymap .gm-deck-row:hover {
-  border-color: #8a6a3c;
-  color: var(--ink);
-}
-#sf-galaxymap .gm-deck-row:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-}
-#sf-galaxymap .gm-deck-commodity {
-  color: var(--ink);
-  text-transform: uppercase;
-  letter-spacing:.06em;
-}
-#sf-galaxymap .gm-deck-lane {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--ink-dim);
-}
-#sf-galaxymap .gm-deck-metric {
-  color: var(--ink);
-  font-weight: 600;
-}
-#sf-galaxymap .gm-deck-risk { text-transform: uppercase; letter-spacing: .06em; }
-#sf-galaxymap .gm-deck-risk[data-risk="calm"] { color: var(--good); }
-#sf-galaxymap .gm-deck-risk[data-risk="watched"] { color: var(--warn); }
-#sf-galaxymap .gm-deck-risk[data-risk="hot"] { color: var(--danger); }
-#sf-galaxymap .gm-deck-empty {
-  padding: 9px;
-  border: 1px dashed var(--mf-line-1);
-  color: var(--ink-mute);
-}
-#sf-galaxymap .gm-deck-empty-title {
-  font-family: var(--mono);
-  font-size: 12px;
-  letter-spacing:.06em;
-  text-transform: uppercase;
-  color: var(--ink-dim);
-  margin-bottom: 4px;
-}
-#sf-galaxymap .gm-deck-empty-body {
-  font-size: 12px;
-  line-height: 1.4;
-}
+#sf-galaxymap .gm-deck-table > .gm-deck-row:last-child { border-bottom: 1px solid var(--k-hair); }
+#sf-galaxymap .gm-deck-row > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#sf-galaxymap .gm-deck-commodity { color: var(--k-text-live); }
+#sf-galaxymap .gm-deck-lane, #sf-galaxymap .gm-deck-metric { color: var(--k-bone-62); }
+#sf-galaxymap .gm-deck-risk { text-align: right; }
+#sf-galaxymap .gm-deck-risk[data-risk="calm"] { color: var(--k-good); }
+#sf-galaxymap .gm-deck-risk[data-risk="watched"] { color: var(--k-signal); }
+#sf-galaxymap .gm-deck-risk[data-risk="hot"] { color: var(--k-red); }
+#sf-galaxymap .gm-deck-empty { display: flex; flex-direction: column; gap: calc(4px * var(--k-s)); max-width: var(--k-measure); }
+#sf-galaxymap .gm-deck-empty-title { color: var(--k-bone-62); }
+#sf-galaxymap .gm-deck-empty-body { font-size: var(--k-fs-data); color: var(--k-bone-38); }
 
-/* ---- Services chips ------------------------------------------------------------------------- */
-#sf-galaxymap .gm-svc-row { display: flex; flex-wrap: wrap; gap: 5px; }
-#sf-galaxymap .gm-svc-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 8px;
-  border: 1px solid var(--mf-line-2);
-  border-radius: 2px;
-  font-size: 12px;
-  color: var(--ink-dim);
-  text-transform: capitalize;
+/* ---- Compact (760–1180): the hang becomes a band above the sky; the inspector keeps its column - */
+#sf-galaxymap[data-layout="compact"] .gm-body-container {
+  grid-template-columns: minmax(0, 1fr) var(--gm-inspector-w);
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas: "hang inspector" "stage inspector";
 }
+#sf-galaxymap[data-layout="compact"] .gm-left-rail { display: flex; flex-wrap: wrap; align-items: flex-start; gap: calc(8px * var(--k-s)) var(--k-gap); max-height: 40%; }
+#sf-galaxymap[data-layout="compact"] .gm-rail-sec { border: 0; padding: 0; }
+#sf-galaxymap[data-layout="compact"] .gm-rail-sec:last-child { border: 0; }
+#sf-galaxymap[data-layout="compact"] .gm-layer-buttons, #sf-galaxymap[data-layout="compact"] .gm-layer-bank { flex-direction: row; flex-wrap: wrap; align-items: baseline; }
+#sf-galaxymap[data-layout="compact"] .gm-rail-legend, #sf-galaxymap[data-layout="compact"] .gm-hint-text, #sf-galaxymap[data-layout="compact"] .gm-rail-footer { display: none; }
+#sf-galaxymap[data-layout="compact"] .gm-weather-terms { display: none; }
+#sf-galaxymap[data-layout="compact"] .gm-title { font-size: var(--k-fs-sub); }
+#sf-galaxymap[data-layout="compact"] .gm-deck-row { --k-row-cols: minmax(0, 1fr) auto; }
+#sf-galaxymap[data-layout="compact"] .gm-deck-lane, #sf-galaxymap[data-layout="compact"] .gm-deck-metric { display: none; }
 
-/* ---- Narrow layouts: keep the apron readable ------------------------------------------------ */
-@media (max-width: 1100px) {
-  #sf-galaxymap .gm-deck-row {
-    grid-template-columns: minmax(96px, 1fr) minmax(132px, 1.4fr) minmax(120px, 1.2fr) 72px;
-    font-size: 12px;
-  }
+/* ---- Narrow (< 760): everything stacks; the sky stays under it all --------------------------- */
+#sf-galaxymap[data-layout="narrow"] { row-gap: var(--k-pad); }
+#sf-galaxymap[data-layout="narrow"] .gm-head { grid-template-columns: minmax(0, 1fr) auto auto; }
+#sf-galaxymap[data-layout="narrow"] .gm-title { font-size: var(--k-fs-emph); }
+#sf-galaxymap[data-layout="narrow"] .gm-stamp, #sf-galaxymap[data-layout="narrow"] .gm-weather-terms, #sf-galaxymap[data-layout="narrow"] .gm-rail-track, #sf-galaxymap[data-layout="narrow"] .gm-level { display: none; }
+#sf-galaxymap[data-layout="narrow"] .gm-search-container { grid-column: 1 / span 3; grid-row: 2; justify-self: stretch; width: auto; }
+#sf-galaxymap[data-layout="narrow"] .gm-weather { grid-column: 1 / span 3; grid-row: 3; justify-self: start; text-align: left; }
+#sf-galaxymap[data-layout="narrow"] .gm-body-container {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas: "hang" "stage" "inspector";
+  row-gap: var(--k-pad);
 }
-@media (max-width: 900px) {
-  #sf-galaxymap .gm-apron { padding: 8px; gap: 7px; }
-  #sf-galaxymap .gm-ribbon {
-    grid-template-columns: 1fr;
-    grid-template-areas: "main" "actions" "reason";
-  }
-  #sf-galaxymap .gm-ribbon-actions { flex-wrap: wrap; }
-  #sf-galaxymap .gm-deck-row {
-    grid-template-columns: 1fr;
-    gap: 2px;
-  }
-  #sf-galaxymap .gm-weather { max-width: 220px; }
-}
+#sf-galaxymap[data-layout="narrow"] .gm-left-rail { display: flex; flex-wrap: wrap; gap: calc(6px * var(--k-s)) var(--k-gap); max-height: 22%; }
+#sf-galaxymap[data-layout="narrow"] .gm-rail-sec, #sf-galaxymap[data-layout="narrow"] .gm-rail-sec:last-child { border: 0; padding: 0; }
+#sf-galaxymap[data-layout="narrow"] .gm-layer-buttons, #sf-galaxymap[data-layout="narrow"] .gm-layer-bank { flex-direction: row; flex-wrap: wrap; align-items: baseline; }
+#sf-galaxymap[data-layout="narrow"] .gm-rail-legend, #sf-galaxymap[data-layout="narrow"] .gm-hint-text, #sf-galaxymap[data-layout="narrow"] .gm-rail-footer { display: none; }
+#sf-galaxymap[data-layout="narrow"] .gm-right-inspector { max-height: 30%; }
+#sf-galaxymap[data-layout="narrow"] .gm-apron { grid-template-columns: minmax(0, 1fr); max-height: 24%; }
+#sf-galaxymap[data-layout="narrow"] .gm-deck { display: none; }
 
-/* ---- Reduced motion: suppress the ANIMATION, never the INFORMATION -------------------------- */
+/* ---- Motion and contrast --------------------------------------------------------------------- */
 @media (prefers-reduced-motion: reduce) {
+  #sf-galaxymap *, #sf-galaxymap *::before, #sf-galaxymap *::after { transition: none !important; animation: none !important; }
   #sf-galaxymap .gm-ribbon { animation: none; }
-  #sf-galaxymap .gm-rail-sum-t::before,
-  #sf-galaxymap .gm-tab,
-  #sf-galaxymap .gm-rail-item,
-  #sf-galaxymap .gm-place-btn,
-  #sf-galaxymap .gm-ribbon-btn { transition: none; }
+  #sf-galaxymap .gm-rail-marker { transition: none; }
 }
-
-/* ---- Forced colors / high contrast ---------------------------------------------------------- */
 @media (forced-colors: active) {
-  #sf-galaxymap .gm-ribbon,
-  #sf-galaxymap .gm-ribbon-leg,
-  #sf-galaxymap .gm-deck,
-  #sf-galaxymap .gm-deck-row,
-  #sf-galaxymap .gm-rail-item,
-  #sf-galaxymap .gm-svc-chip { border: 1px solid CanvasText; box-shadow: none; }
-  #sf-galaxymap .gm-tab[aria-selected="true"] { border: 2px solid Highlight; }
-  /* Disabled state must survive the palette flattening, so keep it a SHAPE. */
-  #sf-galaxymap .gm-ribbon-btn:disabled,
+  #sf-galaxymap .gm-ribbon, #sf-galaxymap .gm-ribbon-leg, #sf-galaxymap .gm-deck-row, #sf-galaxymap .gm-rail-item,
+  #sf-galaxymap .gm-search-item, #sf-galaxymap .gm-ins-section, #sf-galaxymap .gm-rail-sec, #sf-galaxymap .gm-tl-row,
+  #sf-galaxymap .gm-site-row, #sf-galaxymap .gm-bk-row, #sf-galaxymap .gm-career, #sf-galaxymap .gm-transit-card { border-color: CanvasText; }
+  #sf-galaxymap .gm-ribbon-status, #sf-galaxymap .gm-title, #sf-galaxymap .gm-ins-row-val, #sf-galaxymap .gm-deck-commodity { color: CanvasText; }
+  #sf-galaxymap .gm-tab[aria-selected="true"], #sf-galaxymap .gm-layer-btn[aria-pressed="true"], #sf-galaxymap .gm-scale-btn[aria-pressed="true"],
+  #sf-galaxymap .gm-rail-item.is-tracked, #sf-galaxymap .gm-rail-item.is-current, #sf-galaxymap .gm-search-item.selected { text-decoration: underline; text-decoration-thickness: 2px; }
+  #sf-galaxymap .gm-legend-ico svg, #sf-galaxymap .gm-svc-ico svg { stroke: CanvasText; }
+  #sf-galaxymap .gm-meter, #sf-galaxymap .gm-mission-meter, #sf-galaxymap .gm-weather-bar, #sf-galaxymap .gm-rail-track { background: GrayText; }
+  #sf-galaxymap .gm-meter > i, #sf-galaxymap .gm-mission-meter-fill, #sf-galaxymap .gm-weather-seg, #sf-galaxymap .gm-rail-marker { background: Highlight; }
+  /* Disabled must survive the palette flattening, so keep it a SHAPE — a dashed rule, not a hue. */
+  #sf-galaxymap .gm-ins-btn:disabled, #sf-galaxymap .gm-ins-btn[aria-disabled="true"],
+  #sf-galaxymap .gm-place-btn:disabled, #sf-galaxymap .gm-place-btn[aria-disabled="true"],
   #sf-galaxymap .gm-ribbon-btn[aria-disabled="true"],
-  #sf-galaxymap .gm-place-btn:disabled,
-  #sf-galaxymap .gm-place-btn[aria-disabled="true"] { border-style: dashed; opacity: 1; }
-  #sf-galaxymap .gm-ribbon-leg[data-leg-state="active"] { border-left-width: 1px; }
+  #sf-galaxymap .gm-ribbon-btn:disabled { border: 1px dashed GrayText; border-style: dashed; color: GrayText; }
 }
 `;
 
@@ -4468,13 +3197,13 @@ function missionChartBlockHtml(mission, sectionTitle, geometry) {
 
 function securityPips(sec) {
   if (sec >= 0.7) return `<span style="color:${INK.good}; letter-spacing: 2px;">●●●</span>`;
-  if (sec >= 0.4) return `<span style="color:#e3c25c; letter-spacing: 2px;">●●○</span>`;
+  if (sec >= 0.4) return `<span style="color:${INK.warn}; letter-spacing: 2px;">●●○</span>`;
   if (sec >= 0.15) return `<span style="color:${INK.warn}; letter-spacing: 2px;">●○○</span>`;
   return `<span style="color:${INK.red}; letter-spacing: 2px;">○○○</span>`;
 }
 function dangerColor(v) {
   if (v < 0.28) return INK.good;
-  if (v < 0.50) return '#e3c25c';
+  if (v < 0.50) return INK.warn;
   if (v < 0.72) return INK.warn;
   return INK.red;
 }
@@ -4520,9 +3249,9 @@ function escapeMapHtml(value) {
 export function mapSearchItemHtml(target, index = 0) {
   const t = target || {};
   return `
-    <div class="gm-search-item ${index === 0 ? 'selected' : ''}" data-idx="${index}">
-      <span class="gm-search-item-name">${escapeMapHtml(t.name)}</span>
-      <div class="gm-search-item-detail">${escapeMapHtml(t.detail)}</div>
+    <div class="gm-search-item k-row ${index === 0 ? 'selected' : ''}" data-idx="${index}"${index === 0 ? ' aria-selected="true"' : ''}>
+      <span class="gm-search-item-name k-row__name">${escapeMapHtml(t.name)}</span>
+      <div class="gm-search-item-detail k-row__sub">${escapeMapHtml(t.detail)}</div>
     </div>
   `;
 }
@@ -4541,7 +3270,7 @@ export function claimInspectorHtml(target) {
     <div class="gm-ins-section">
       <div class="gm-ins-title">Operations</div>
       <div class="gm-ins-row"><span class="gm-ins-row-val" style="text-align:left;">${escapeMapHtml(t.statusLine || 'No live operating telemetry.')}</span></div>
-      <div class="gm-ins-note" style="margin-top:7px; color:var(--ink);">${escapeMapHtml(t.playerVerb || 'Fly to the base.')}</div>
+      <div class="gm-ins-note" style="margin-top:7px; color:var(--k-text-live);">${escapeMapHtml(t.playerVerb || 'Fly to the base.')}</div>
       <div class="gm-ins-note" style="margin-top:5px;">${escapeMapHtml(t.consequence || '')}</div>
       <div class="gm-ins-note" style="margin-top:5px; color:${color};">${escapeMapHtml(t.riskLine || '')}</div>
     </div>
@@ -4917,9 +3646,6 @@ export const galaxyMapScreen = {
   _localIntelSectorId: null,
   // Release handle for the entity:killed subscription (see _subscribeKills).
   _killUnsub: null,
-  // Offscreen tile for the static table (see _paintGround); invalidated on resize.
-  _groundTile: null,
-  _groundKey: '',
   // simTime of the last intel sync, so a paused sim does not re-observe identical tracks per frame.
   _localIntelSyncedAtS: -1,
   // LOCAL model cache. The model is state-derived; scan/iris/contact animation remains draw-time
@@ -5252,58 +3978,65 @@ export const galaxyMapScreen = {
     if (!HAS_DOC || !rootEl) return this;
 
     rootEl.id = 'sf-galaxymap';
+    // The kit screen root (KIT_SPEC §6.1): the stage variant, transparent, on the kit grid. The
+    // chart's own `.gm-*` layout rules (the permitted canvas-instrument block) place its regions.
+    // Guarded: headless fixtures hand in roots without classList/dataset.
+    if (rootEl.classList && typeof rootEl.classList.add === 'function') {
+      rootEl.classList.add('k-screen', 'k-screen--stage');
+    }
+    if (rootEl.dataset) rootEl.dataset.kReady = '0';
     if (rootEl.style && typeof rootEl.style.setProperty === 'function') {
       rootEl.style.setProperty('--gm-apron-h', 'clamp(168px, 26vh, 232px)');
     }
     const layerButtonById = new Map(LAYER_DEFS.map((layer) => [layer.id, `
-            <button class="gm-layer-btn${this._layers[layer.id] ? ' active' : ''}" type="button" data-layer="${layer.id}" aria-pressed="${this._layers[layer.id] ? 'true' : 'false'}">
+            <button class="gm-layer-btn k-word k-word--body${this._layers[layer.id] ? ' active' : ''}" type="button" data-layer="${layer.id}" aria-pressed="${this._layers[layer.id] ? 'true' : 'false'}">
               <span class="gm-layer-ico" aria-hidden="true">${strokeSvg(layer.icon)}</span>
               <span class="gm-layer-name">${layer.name}</span>
               <span class="gm-layer-state" aria-hidden="true"></span>
             </button>`]));
     const layerButtonsHtml = LAYER_BANKS.map((bank) => `
               <div class="gm-layer-bank" data-layer-bank="${bank.id}">
-                <div class="gm-layer-bank-title">${bank.label}</div>
+                <div class="gm-layer-bank-title k-caps">${bank.label}</div>
                 ${bank.layers.map((layerId) => layerButtonById.get(layerId) || '').join('')}
               </div>`).join('');
     const legendHtml = LEGEND_SERVICES.map((svc) => `
-            <div class="gm-legend-row">
+            <div class="gm-legend-row k-row k-row--static">
               <span class="gm-legend-ico" aria-hidden="true">${serviceIconSvg(svc)}</span>
               <span>${svc === 'ore_buy' ? 'Ore buy' : svc[0].toUpperCase() + svc.slice(1)}</span>
             </div>`).join('');
     const markLegendHtml = LEGEND_MARKS.map((mark) => `
-            <div class="gm-legend-row">
+            <div class="gm-legend-row k-row k-row--static">
               <span class="gm-legend-ico gm-legend-ico--mark" aria-hidden="true">${mark.svg}</span>
               <span>${mark.name}</span>
             </div>`).join('');
     const hintRowsHtml = HINT_ROWS.map(([label, keys]) => `
-          <div class="gm-hint-row"><span>${label}</span><kbd>${keys}</kbd></div>`).join('');
+          <div class="gm-hint-row k-row k-row--static"><span>${label}</span><kbd>${keys}</kbd></div>`).join('');
     rootEl.innerHTML = `
-      <div class="gm-head">
+      <div class="gm-head k-title">
         <div class="gm-title-lockup">
-          <div class="gm-title">Star Chart</div>
-          <div class="gm-stamp">Nav chart / Survey table</div>
+          <h1 class="gm-title k-display k-t-title">Star Chart</h1>
+          <p class="gm-stamp k-t-emph k-62">Nav chart / Survey table</p>
         </div>
         <div class="gm-search-container">
-          <input type="text" class="gm-search-input" placeholder="Search galaxy… (Press /)" aria-label="Search map" tabindex="-1" spellcheck="false" autocomplete="off" />
+          <input type="text" class="gm-search-input k-input" placeholder="Search galaxy… (Press /)" aria-label="Search map" tabindex="-1" spellcheck="false" autocomplete="off" />
           <span class="gm-search-kbd" aria-hidden="true">/</span>
-          <div class="gm-search-results" hidden></div>
+          <div class="gm-search-results k-rows" hidden></div>
         </div>
         <div class="gm-rail">
           <span class="gm-rail-track" aria-hidden="true"><span class="gm-rail-marker"></span></span>
-          <div class="gm-scale-buttons" role="group" aria-label="Map scale">
-            <button class="gm-scale-btn" type="button" data-focus="local" aria-pressed="false">Local</button>
-            <button class="gm-scale-btn" type="button" data-focus="system" aria-pressed="false">System</button>
-            <button class="gm-scale-btn" type="button" data-focus="galaxy" aria-pressed="false">Galaxy</button>
+          <div class="gm-scale-buttons k-words k-words--row" role="group" aria-label="Map scale">
+            <button class="gm-scale-btn k-word k-word--body" type="button" data-focus="local" aria-pressed="false">Local</button>
+            <button class="gm-scale-btn k-word k-word--body" type="button" data-focus="system" aria-pressed="false">System</button>
+            <button class="gm-scale-btn k-word k-word--body" type="button" data-focus="galaxy" aria-pressed="false">Galaxy</button>
           </div>
-          <span class="gm-level">Scale <b data-level>GALAXY</b></span>
+          <span class="gm-level k-t-fine k-38">Scale <b data-level>GALAXY</b></span>
         </div>
-        <div class="gm-weather" id="gm-crest-weather" role="status" aria-live="polite"></div>
-        <button class="gm-hint-btn" type="button" aria-label="Map controls" aria-expanded="false">?</button>
-        <button class="gm-close" type="button" aria-label="Close Map">Close</button>
+        <div class="gm-weather k-t-fine k-38" id="gm-crest-weather" role="status" aria-live="polite"></div>
+        <button class="gm-hint-btn k-word k-word--fine" type="button" aria-label="Map controls" aria-expanded="false">Controls</button>
+        <button class="gm-close k-word k-word--fine" type="button" aria-label="Close Map">Close</button>
         <div class="gm-hints" hidden>
-          <div class="gm-hints-title">Chart controls</div>${hintRowsHtml}
-          <div class="gm-hints-note">Edge ticks mark stations, gates, claims and hostiles that fall outside the current view. Click a tick to inspect it.</div>
+          <div class="gm-hints-title k-caps">Chart controls</div>${hintRowsHtml}
+          <div class="gm-hints-note k-t-fine k-38">Edge ticks mark stations, gates, claims and hostiles that fall outside the current view. Click a tick to inspect it.</div>
         </div>
       </div>
       <div class="gm-body-container">
@@ -5319,44 +4052,44 @@ export const galaxyMapScreen = {
              they are keyboard-operable, expose expanded/collapsed state to screen readers, and
              survive forced-colors without any JavaScript of ours. The information did not shrink;
              the default view did. -->
-        <div class="gm-left-rail">
+        <div class="gm-left-rail k-hang">
           <details class="gm-rail-sec" data-rail-sec="lenses" open>
-            <summary class="gm-rail-sum"><span class="gm-rail-sum-t">Lenses</span><span class="gm-rail-sum-n" data-lens-count></span></summary>
+            <summary class="gm-rail-sum k-caps"><span class="gm-rail-sum-t">Lenses</span><span class="gm-rail-sum-n" data-lens-count></span></summary>
             <div class="gm-rail-body">
               <div class="gm-layer-buttons">${layerButtonsHtml}
               </div>
               <div class="gm-rail-commodity">
-                <label for="gm-commodity-select">Market lens · commodity</label>
+                <label for="gm-commodity-select" class="k-caps">Market lens · commodity</label>
                 <select id="gm-commodity-select" aria-label="Select Commodity"></select>
               </div>
             </div>
           </details>
 
           <details class="gm-rail-sec" data-rail-sec="missions">
-            <summary class="gm-rail-sum"><span class="gm-rail-sum-t">Missions</span><span class="gm-rail-sum-n" data-mission-count></span></summary>
-            <div class="gm-rail-body" id="gm-rail-missions"></div>
+            <summary class="gm-rail-sum k-caps"><span class="gm-rail-sum-t">Missions</span><span class="gm-rail-sum-n" data-mission-count></span></summary>
+            <div class="gm-rail-body k-rows" id="gm-rail-missions"></div>
           </details>
 
           <details class="gm-rail-sec" data-rail-sec="bookmarks">
-            <summary class="gm-rail-sum"><span class="gm-rail-sum-t">Bookmarks</span><span class="gm-rail-sum-n" data-bookmark-count></span></summary>
-            <div class="gm-rail-body" id="gm-rail-bookmarks"></div>
+            <summary class="gm-rail-sum k-caps"><span class="gm-rail-sum-t">Bookmarks</span><span class="gm-rail-sum-n" data-bookmark-count></span></summary>
+            <div class="gm-rail-body k-rows" id="gm-rail-bookmarks"></div>
           </details>
 
           <details class="gm-rail-sec" data-rail-sec="alternatives">
-            <summary class="gm-rail-sum"><span class="gm-rail-sum-t">Route alternatives</span></summary>
-            <div class="gm-rail-body" id="gm-rail-alternatives"></div>
+            <summary class="gm-rail-sum k-caps"><span class="gm-rail-sum-t">Route alternatives</span></summary>
+            <div class="gm-rail-body k-rows" id="gm-rail-alternatives"></div>
           </details>
 
           <details class="gm-rail-sec" data-rail-sec="key">
-            <summary class="gm-rail-sum"><span class="gm-rail-sum-t">Chart key</span></summary>
+            <summary class="gm-rail-sum k-caps"><span class="gm-rail-sum-t">Chart key</span></summary>
             <div class="gm-rail-body">
-              <div class="gm-rail-legend">
-                <div class="gm-rail-title">Service marks</div>${legendHtml}
+              <div class="gm-rail-legend k-rows">
+                <div class="gm-rail-title k-caps">Service marks</div>${legendHtml}
               </div>
-              <div class="gm-rail-legend">
-                <div class="gm-rail-title">Chart marks</div>${markLegendHtml}
+              <div class="gm-rail-legend k-rows">
+                <div class="gm-rail-title k-caps">Chart marks</div>${markLegendHtml}
               </div>
-              <div class="gm-hint-text">A working instrument, not a picture: <b>double-click any mark to lay a course</b>. The <b>?</b> button in the header shows the full control key.</div>
+              <div class="gm-hint-text k-t-fine k-38">A working instrument, not a picture: <b>double-click any mark to lay a course</b>. <b>Controls</b> in the corner shows the full control key.</div>
             </div>
           </details>
         </div>
@@ -5376,62 +4109,61 @@ export const galaxyMapScreen = {
              The tablist is a real ARIA tablist with roving tabindex and arrow-key traversal — see
              the _onTabKey handler. Tabs are NOT links and NOT divs-with-click. -->
         <div class="gm-right-inspector">
-          <div class="gm-inspector-header">Inspector</div>
-          <div class="gm-tabs" id="gm-tabs" role="tablist" aria-label="Inspector detail"></div>
-          <div class="gm-inspector-content">
+          <div class="gm-tabs k-words k-words--row" id="gm-tabs" role="tablist" aria-label="Inspector detail"></div>
+          <div class="gm-inspector-content k-rows">
             <!-- Slice A: the two "never lost" framing controls. They live ABOVE the target actions
                  and are never hidden, because their whole job is to be reachable at the moment the
                  pilot has lost the thread — which is exactly when nothing is selected. Both follow
                  the shipped engage-button contract: visibly disabled plus a spoken reason, never a
                  silent no-op. -->
             <div class="gm-frame-group" role="group" aria-label="Chart framing">
-              <button class="gm-ins-btn gm-frame-btn" id="gm-return-ship-btn" type="button" data-framing="return-to-ship" disabled aria-disabled="true">Return to ship</button>
-              <button class="gm-ins-btn gm-frame-btn" id="gm-frame-both-btn" type="button" data-framing="frame-both" disabled aria-disabled="true">Frame ship + destination</button>
-              <div class="gm-frame-reason" id="gm-frame-reason" aria-live="polite"></div>
+              <button class="gm-ins-btn gm-frame-btn k-word k-word--body" id="gm-return-ship-btn" type="button" data-framing="return-to-ship" disabled aria-disabled="true">Return to ship</button>
+              <button class="gm-ins-btn gm-frame-btn k-word k-word--body" id="gm-frame-both-btn" type="button" data-framing="frame-both" disabled aria-disabled="true">Frame ship + destination</button>
+              <div class="gm-frame-reason k-t-fine k-38" id="gm-frame-reason" aria-live="polite"></div>
             </div>
             <div class="gm-inspector-details" id="gm-tabpanel" role="tabpanel" tabindex="0">
               <div class="gm-inspector-empty">No target selected. <b>Click</b> a sector, station or contact to inspect it — <b>double-click</b> to lay a course.</div>
             </div>
-            <button class="gm-ins-btn" id="gm-set-course-btn" type="button" hidden disabled>Set Waypoint</button>
+            <button class="gm-ins-btn k-word k-word--emph" id="gm-set-course-btn" type="button" hidden disabled>Set Waypoint</button>
             <!-- SECONDARY PLOT (ADR D6). Contextual, never permanent: it reveals ONLY when the
                  primary action is a commitment — "Set Course & Jump" for an adjacent sector — and
                  stays hidden whenever the primary already IS "Plot Course", so the chart never
                  shows two buttons that do the same thing. Without it, plot-without-committing was
                  unreachable for every neighbouring destination, which is most of them. -->
-            <button class="gm-ins-btn gm-plot-btn" id="gm-plot-course-btn" type="button" hidden disabled>Plot Course</button>
-            <div class="gm-plot-reason" id="gm-plot-reason" aria-live="polite"></div>
+            <button class="gm-ins-btn gm-plot-btn k-word k-word--emph k-word--primary" id="gm-plot-course-btn" type="button" hidden disabled>Plot Course</button>
+            <div class="gm-plot-reason k-t-fine k-38" id="gm-plot-reason" aria-live="polite"></div>
             <!-- W1-8: engage is a SEPARATE control from plot, never the same button. -->
-            <button class="gm-ins-btn" id="gm-engage-route-btn" type="button" hidden disabled>Engage Route</button>
-            <div class="gm-engage-reason" id="gm-engage-reason" aria-live="polite"></div>
+            <button class="gm-ins-btn k-word k-word--emph" id="gm-engage-route-btn" type="button" hidden disabled>Engage Route</button>
+            <div class="gm-engage-reason k-t-fine k-38" id="gm-engage-reason" aria-live="polite"></div>
             <!-- Place context actions for the current selection. Each one is resolved from real
                  state and ships disabled-with-a-reason when it has no consumer. -->
             <div class="gm-place-actions" id="gm-place-actions" role="group" aria-label="Place actions"></div>
           </div>
         </div>
       </div>
-      <div class="gm-apron" id="gm-apron">
+      <div class="gm-apron k-foot" id="gm-apron">
         <div class="gm-apron-ribbon">
           <div class="gm-ribbon" id="gm-route-ribbon" role="region" aria-label="Route" hidden>
             <div class="gm-ribbon-main">
-              <div class="gm-ribbon-head">
+              <p class="gm-ribbon-head k-sentence k-sentence--emph">
                 <span class="gm-ribbon-status" id="gm-ribbon-status"></span>
                 <span class="gm-ribbon-arrival" id="gm-ribbon-arrival"></span>
-              </div>
+              </p>
               <ol class="gm-ribbon-legs" id="gm-ribbon-legs"></ol>
-              <div class="gm-ribbon-meta" id="gm-ribbon-meta"></div>
+              <div class="gm-ribbon-meta k-t-fine k-38" id="gm-ribbon-meta"></div>
             </div>
-            <div class="gm-ribbon-actions" id="gm-ribbon-actions" role="group" aria-label="Route control"></div>
-            <div class="gm-ribbon-reason" id="gm-ribbon-reason" aria-live="polite"></div>
+            <div class="gm-ribbon-actions k-words k-words--row" id="gm-ribbon-actions" role="group" aria-label="Route control"></div>
+            <div class="gm-ribbon-reason k-t-fine k-38" id="gm-ribbon-reason" aria-live="polite"></div>
           </div>
         </div>
         <div class="gm-deck" id="gm-cargo-deck" aria-label="Cargo deck">
           <div class="gm-deck-head">
-            <div class="gm-deck-title">Cargo deck</div>
-            <button class="gm-deck-sort" id="gm-deck-sort" type="button" aria-label="Sort cargo deck routes">
+            <div class="gm-deck-title k-caps">Cargo deck</div>
+            <button class="gm-deck-sort k-word k-word--fine" id="gm-deck-sort" type="button" aria-label="Sort cargo deck routes">
               Sort · best
             </button>
           </div>
-          <div class="gm-deck-table" id="gm-deck-table" role="list"></div>
+          <div class="gm-deck-table k-table" id="gm-deck-table" role="list"></div>
         </div>
       </div>
     `;
@@ -5763,7 +4495,7 @@ export const galaxyMapScreen = {
           || compareMapSearchTargetDistance(a, b, searchAnchor));
 
       if (filtered.length === 0) {
-        resultsContainer.innerHTML = '<div class="gm-search-item" style="color:var(--ink-mute); font-style:italic;">No results found</div>';
+        resultsContainer.innerHTML = '<div class="gm-search-item gm-search-empty k-t-fine k-38">No results found</div>';
         resultsContainer.hidden = false;
         return;
       }
@@ -6167,7 +4899,38 @@ export const galaxyMapScreen = {
     const stamp = this._root.querySelector('.gm-stamp');
     if (!stamp) return;
     const label = mapOperatorLabel(state);
-    const text = label === 'OPERATOR: UNKNOWN' ? `${label} / Quiet routing` : 'Nav chart / Survey table';
+    const identity = label === 'OPERATOR: UNKNOWN' ? `${label} / Quiet routing` : '';
+    // The title block names the SELECTED place — or the sector the ship is in when nothing is
+    // selected — over one sentence: type · authority · distance, then the route's time when a route
+    // is engaged (DIRECTION_SHEET §2 "The chart"; the task table's `.gm-head` row).
+    const t = this._selectedTarget;
+    const curSector = currentSectorId(state);
+    const titleEl = this._root.querySelector('.gm-title');
+    const title = t && t.name ? String(t.name) : (curSector ? sectorNameOf(state, curSector) : 'Star Chart');
+    if (titleEl && titleEl.textContent !== title) titleEl.textContent = title;
+    const bits = [];
+    if (t) {
+      const kind = String(t.kind || 'target');
+      bits.push(kind.charAt(0).toUpperCase() + kind.slice(1));
+      if (t.factionId) bits.push(factionNameOf(t.factionId));
+      const player = playerEntity(state);
+      if (t.kind === 'sector') {
+        bits.push((t.sectorId || t.id) === curSector ? 'current sector' : 'other sector');
+      } else if (player && player.pos && Number.isFinite(t.x) && Number.isFinite(t.z)) {
+        bits.push(formatDistanceWU(Math.hypot(t.x - player.pos.x, t.z - player.pos.z)));
+      }
+    } else {
+      bits.push('Sector');
+      const rec = curSector ? sectorRecordById(state, curSector) : null;
+      if (rec && rec.factionId) bits.push(factionNameOf(rec.factionId));
+      bits.push('you are here');
+    }
+    const arrivalEl = this._root.querySelector('#gm-ribbon-arrival');
+    const ribbonEl = this._root.querySelector('#gm-route-ribbon');
+    const arrival = arrivalEl && ribbonEl && !ribbonEl.hidden ? String(arrivalEl.textContent || '').trim() : '';
+    if (arrival) bits.push(arrival);
+    if (identity) bits.push(identity);
+    const text = bits.join(' · ');
     if (stamp.textContent !== text) stamp.textContent = text;
   },
 
@@ -6245,7 +5008,8 @@ export const galaxyMapScreen = {
       let live = 0;
       for (let i = 0; i < this._scanRings.length; i += 1) {
         const ring = this._scanRings[i];
-        ring.t += 1;
+        // Wall-clock milliseconds, not frames: the ring is one 400 ms fade at any refresh rate.
+        ring.t += dtSec * 1000;
         ring.r = (ring.t / ring.maxT) * ring.maxR;
         if (ring.t < ring.maxT) this._scanRings[live++] = ring;
       }
@@ -6374,9 +5138,11 @@ export const galaxyMapScreen = {
     }
   },
 
+  /** One expanding hairline ring that fades over `--k-d-temp` (400 ms), once. Reduced motion: none. */
   triggerScanRing(x, y, color = INK.amberHot) {
+    if (this._reduceMotion) return;
     this._scanRings.push({
-      x, y, r: 0, maxR: 120, t: 0, maxT: 35, color
+      x, y, r: 0, maxR: 120, t: 0, maxT: SCAN_RING_MS, color
     });
     this._wake();
   },
@@ -6464,6 +5230,8 @@ export const galaxyMapScreen = {
   _updateInspector() {
     if (!HAS_DOC || !this._root) return;
     const state = this._ctx && this._ctx.state;
+    // The title block follows the selection (name + one sentence) — same beat as the inspector.
+    this._syncPublicIdentity(state);
     const player = state ? playerEntity(state) : null;
     const detailsEl = this._inspectorDetails || this._root.querySelector('.gm-inspector-details');
     const btn = this._setCourseButton || this._root.querySelector('#gm-set-course-btn');
@@ -6589,8 +5357,8 @@ export const galaxyMapScreen = {
             <span>Jurisdiction</span>
             <span class="gm-ins-row-val"><span${entityAttr('faction:' + law.factionId)}>${escapeMapHtml(law.authority)}</span></span>
           </div>
-          <div class="gm-ins-note" style="margin-top:6px;"><b style="color:var(--ink);">ILLEGAL:</b> ${law.illegal}</div>
-          <div class="gm-ins-note" style="margin-top:4px;"><b style="color:var(--ink);">RESPONSE:</b> ${law.response}</div>
+          <div class="gm-ins-note" style="margin-top:6px;"><b style="color:var(--k-text-live);">ILLEGAL:</b> ${law.illegal}</div>
+          <div class="gm-ins-note" style="margin-top:4px;"><b style="color:var(--k-text-live);">RESPONSE:</b> ${law.response}</div>
         </div>
 
         <div class="gm-ins-section">
@@ -6954,7 +5722,7 @@ export const galaxyMapScreen = {
         <span class="gm-ins-row-val">${Math.round(leg.fuel)}F · ${escapeMapHtml(leg.hazardLabel)}${leg.resolved ? '' : ' · unresolved'}</span>
       </div>`).join('');
     const interruption = ribbon.interruption
-      ? `<div class="gm-ins-note"><b style="color:var(--ink);">INTERRUPTED:</b> ${escapeMapHtml(ribbon.interruption.label)}. The itinerary is kept — Resume picks it up on the same leg.</div>`
+      ? `<div class="gm-ins-note"><b style="color:var(--k-text-live);">INTERRUPTED:</b> ${escapeMapHtml(ribbon.interruption.label)}. The itinerary is kept — Resume picks it up on the same leg.</div>`
       : '';
     return `
       <div class="gm-ins-section">
@@ -7128,7 +5896,7 @@ export const galaxyMapScreen = {
         <div class="gm-ins-row"><span>Hull</span><span class="gm-ins-row-val">${hull}/${hullMax}</span></div>
         <div class="gm-ins-row"><span>Heat</span><span class="gm-ins-row-val">${heat}% · level ${heatLevel}${wanted ? ' · WANTED' : ''}</span></div>
         <div class="gm-ins-row"><span>Clear ETA</span><span class="gm-ins-row-val">${heatClearS > 0 ? `${Math.ceil(heatClearS)}s` : 'clear'}</span></div>
-        <div class="gm-ins-note"><b style="color:var(--ink);">RESPONSE:</b> ${law.response}</div>
+        <div class="gm-ins-note"><b style="color:var(--k-text-live);">RESPONSE:</b> ${law.response}</div>
       </div>
       <div class="gm-ins-section">
         <div class="gm-ins-title">Regional ecology dossier</div>
@@ -7181,7 +5949,7 @@ export const galaxyMapScreen = {
       <div class="gm-ins-section">
         <div class="gm-ins-title"><span${entityAttr('station:' + s.id)}>${escapeMapHtml(s.name)}</span></div>
         ${s.services.length
-          ? `<div class="gm-svc-row">${s.services.map((svc) => `<span class="gm-svc-chip"><span aria-hidden="true">${serviceIconSvg(svc)}</span>${escapeMapHtml(svc === 'ore_buy' ? 'Ore buy' : svc)}</span>`).join('')}</div>`
+          ? `<div class="gm-svc-row k-words k-words--row">${s.services.map((svc) => `<span class="gm-svc-chip k-word k-word--fine k-word--static"><span class="gm-svc-ico" aria-hidden="true">${serviceIconSvg(svc)}</span>${escapeMapHtml(svc === 'ore_buy' ? 'Ore buy' : svc)}</span>`).join('')}</div>`
           : '<div class="gm-ins-note">No services listed.</div>'}
       </div>`).join('');
   },
@@ -7375,7 +6143,7 @@ export const galaxyMapScreen = {
 
     if (!this._tabButtons.length) {
       host.innerHTML = MAP_INSPECTOR_TABS.map((tab) => `
-        <button class="gm-tab" type="button" role="tab" id="gm-tab-${tab.id}" data-tab="${tab.id}"
+        <button class="gm-tab k-word k-word--fine" type="button" role="tab" id="gm-tab-${tab.id}" data-tab="${tab.id}"
                 aria-controls="gm-tabpanel" aria-selected="false" tabindex="-1">${tab.label}</button>`).join('');
       this._tabButtons = Array.from(host.querySelectorAll('.gm-tab'));
       for (const btn of this._tabButtons) {
@@ -7603,7 +6371,8 @@ export const galaxyMapScreen = {
         </div>`;
       return;
     }
-    this._deckTableEl.innerHTML = this._deckRoutes.slice(0, 12).map((route, index) => {
+    // Six rows, no more: the foot is a glance, not a ledger (task table, `.gm-apron`).
+    this._deckTableEl.innerHTML = this._deckRoutes.slice(0, 6).map((route, index) => {
       const source = route.source || 'MODEL';
       const sourceGlyph = source === 'MEMORY' ? '◍' : source === 'HERE' ? '⌂' : '◇';
       const riskPct = Math.round(clamp01(route.risk) * 100);
@@ -7622,7 +6391,7 @@ export const galaxyMapScreen = {
         ? ` · MODEL ${(route.modelDeltaPct >= 0 ? '+' : '')}${Math.round(route.modelDeltaPct)}%`
         : '';
       return `
-        <button class="gm-deck-row" type="button" data-deck-route="${index}" role="listitem"
+        <button class="gm-deck-row k-row" type="button" data-deck-route="${index}" role="listitem"
                 aria-label="Plot ${escapeMapHtml(route.commodityName)} from ${escapeMapHtml(route.originName)} to ${escapeMapHtml(route.destinationName)}">
           <span class="gm-deck-commodity">${sourceGlyph} ${escapeMapHtml(route.commodityName)}</span>
           <span class="gm-deck-lane">${escapeMapHtml(laneText)}</span>
@@ -7716,7 +6485,7 @@ export const galaxyMapScreen = {
         const unresolved = leg.resolved ? '' : ' <span class="gm-ribbon-warn">no flyable endpoint</span>';
         // The hazard band is a WORD, never only a hue.
         const hazard = leg.hazard === 'calm' ? '' : ` <span class="gm-ribbon-haz" data-haz="${leg.hazard}">${escapeMapHtml(leg.hazardLabel)}</span>`;
-        return `<li class="gm-ribbon-leg" data-leg-state="${leg.state}">
+        return `<li class="gm-ribbon-leg k-word k-word--fine k-word--static" data-leg-state="${leg.state}">
           <span class="gm-ribbon-leg-g" aria-hidden="true">${glyph}</span>
           <span class="gm-ribbon-leg-n">${escapeMapHtml(leg.toName)}</span>
           <span class="gm-ribbon-leg-c">${Math.round(leg.fuel)}F</span>${hazard}${unresolved}
@@ -7754,7 +6523,7 @@ export const galaxyMapScreen = {
         actionsEl.innerHTML = RIBBON_ACTION_IDS.map((id) => {
           const a = ribbon.actions[id];
           if (!a) return '';
-          return `<button class="gm-ribbon-btn" type="button" data-ribbon-action="${a.id}"
+          return `<button class="gm-ribbon-btn k-word k-word--body" type="button" data-ribbon-action="${a.id}"
             ${a.available ? '' : 'tabindex="0"'} aria-disabled="${!a.available}"
             data-why="${escapeMapHtml(a.reason)}">${escapeMapHtml(a.label)}</button>`;
         }).join('');
@@ -7827,9 +6596,9 @@ export const galaxyMapScreen = {
           const tracked = m.id === trackedId;
           const dest = m.destSectorId || (m.params && m.params.sectorId) || null;
           const destName = dest ? escapeMapHtml(sectorNameOf(state, dest)) : 'No fixed destination';
-          return `<button class="gm-rail-item${tracked ? ' is-tracked' : ''}" type="button" data-rail-mission="${escapeMapHtml(m.id)}"${tracked ? ' aria-current="true"' : ''}>
-            <span class="gm-rail-item-t">${tracked ? '<span class="gm-rail-track-g" aria-hidden="true">◆</span>' : ''}${escapeMapHtml(missionSummary(m))}</span>
-            <span class="gm-rail-item-s">${destName}${tracked ? ' · tracked' : ''}</span>
+          return `<button class="gm-rail-item k-row${tracked ? ' is-tracked' : ''}" type="button" data-rail-mission="${escapeMapHtml(m.id)}"${tracked ? ' aria-current="true" aria-selected="true"' : ''}>
+            <span class="gm-rail-item-t k-row__name">${tracked ? '<span class="gm-rail-track-g" aria-hidden="true">◆</span>' : ''}${escapeMapHtml(missionSummary(m))}</span>
+            <span class="gm-rail-item-s k-row__sub">${destName}${tracked ? ' · tracked' : ''}</span>
           </button>`;
         }).join('')
         : '<div class="gm-ins-note">No active missions. Accept one at a station to see its destination on the chart.</div>';
@@ -7839,12 +6608,12 @@ export const galaxyMapScreen = {
     const bmHost = openOf('bookmarks') && this._root.querySelector('#gm-rail-bookmarks');
     if (bmHost) {
       const html = `${this._bookmarks.length
-        ? this._bookmarks.map((b, i) => `<button class="gm-rail-item" type="button" data-rail-bookmark="${i}">
-            <span class="gm-rail-item-t">${escapeMapHtml(b.label)}</span>
-            <span class="gm-rail-item-s">${Math.round(b.focusGlobal.x)}, ${Math.round(b.focusGlobal.z)} · ${escapeMapHtml(formatDistanceWU(b.spanWU))} span</span>
+        ? this._bookmarks.map((b, i) => `<button class="gm-rail-item k-row" type="button" data-rail-bookmark="${i}">
+            <span class="gm-rail-item-t k-row__name">${escapeMapHtml(b.label)}</span>
+            <span class="gm-rail-item-s k-row__sub">${Math.round(b.focusGlobal.x)}, ${Math.round(b.focusGlobal.z)} · ${escapeMapHtml(formatDistanceWU(b.spanWU))} span</span>
           </button>`).join('')
         : '<div class="gm-ins-note">No bookmarks. Bookmark the current view to come back to it.</div>'}
-        <button class="gm-ins-btn gm-rail-add" type="button" data-rail-bookmark-add>Bookmark this view</button>`;
+        <button class="gm-ins-btn gm-rail-add k-word k-word--body" type="button" data-rail-bookmark-add>Bookmark this view</button>`;
       if (bmHost.innerHTML !== html) bmHost.innerHTML = html;
     }
 
@@ -7890,11 +6659,11 @@ export const galaxyMapScreen = {
       // `data-route-option` is the SEMANTIC hook: "this element is one weighable way of getting
       // there". `data-rail-alt` stays as the activation key. Each option states its own cost in
       // words — hops, fuel and worst-leg interdiction — so the comparison never rests on colour.
-      rows.push(`<button class="gm-rail-item${same ? ' is-current' : ''}" type="button"
-        data-rail-alt="${mode}" data-route-option="${mode}"
+      rows.push(`<button class="gm-rail-item k-row${same ? ' is-current' : ''}" type="button"
+        data-rail-alt="${mode}" data-route-option="${mode}"${same ? ' aria-selected="true"' : ''}
         data-route-hops="${alt.legs.length}" data-route-fuel="${Math.round(alt.totalFuel || 0)}">
-        <span class="gm-rail-item-t">${label}${same ? ' <span class="gm-rail-item-tag">plotted</span>' : ''}</span>
-        <span class="gm-rail-item-s">${alt.legs.length} hop${alt.legs.length === 1 ? '' : 's'} · ${Math.round(alt.totalFuel || 0)}F · worst leg ${Math.round(worst * 100)}% interdict · ETA by fuel burn</span>
+        <span class="gm-rail-item-t k-row__name">${label}${same ? ' <span class="gm-rail-item-tag">plotted</span>' : ''}</span>
+        <span class="gm-rail-item-s k-row__sub">${alt.legs.length} hop${alt.legs.length === 1 ? '' : 's'} · ${Math.round(alt.totalFuel || 0)}F · worst leg ${Math.round(worst * 100)}% interdict · ETA by fuel burn</span>
       </button>`);
     }
     if (!rows.length) return '<div class="gm-ins-note">No alternative path to that sector through charted space.</div>';
@@ -8480,94 +7249,18 @@ export const galaxyMapScreen = {
     if (this._g) this._g.setTransform(dpr, 0, 0, dpr, 0, 0);
   },
 
-  /**
-   * Paint the static table: worklight falloff, survey graticule, corner registration.
-   *
-   * Cached to an offscreen canvas keyed by viewport size and invalidated only when that size
-   * changes. Falls back to drawing straight onto the target when no document is available (the
-   * headless model tests) so the pure-render path never depends on a DOM.
-   */
-  _paintGround(target, w, h) {
-    const key = `${Math.round(w)}x${Math.round(h)}`;
-    if (HAS_DOC && this._groundTile && this._groundKey === key) {
-      target.drawImage(this._groundTile, 0, 0, w, h);
-      return;
-    }
-    let g = target;
-    let tile = null;
-    if (HAS_DOC && typeof document !== 'undefined' && typeof document.createElement === 'function') {
-      const dpr = this._dpr || 1;
-      tile = document.createElement('canvas');
-      tile.width = Math.max(1, Math.round(w * dpr));
-      tile.height = Math.max(1, Math.round(h * dpr));
-      const tg = tile.getContext('2d');
-      if (tg) { tg.setTransform(dpr, 0, 0, dpr, 0, 0); g = tg; } else { tile = null; g = target; }
-    }
-
-    // Worklight: a plotting table is lit from a lamp over its middle, so the ground is not one flat
-    // value — it falls off toward the edges. This is what makes marks read as objects sitting ON a
-    // surface instead of shapes floating in a void.
-    const cx0 = w / 2, cy0 = h / 2;
-    const lamp = g.createRadialGradient(cx0, cy0 * 0.92, Math.min(w, h) * 0.05, cx0, cy0, Math.max(w, h) * 0.62);
-    lamp.addColorStop(0, 'rgba(232, 163, 61, 0.050)');
-    lamp.addColorStop(0.55, 'rgba(232, 163, 61, 0.016)');
-    lamp.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    g.fillStyle = lamp;
-    g.fillRect(0, 0, w, h);
-
-    // Survey-table graticule: warm hairlines, a heavier rule every fifth line.
-    const grid = 50;
-    g.lineWidth = 1;
-    for (let gx = 0; gx < w; gx += grid) {
-      g.strokeStyle = (gx % (grid * 5) === 0) ? INK.gridMajor : INK.gridMinor;
-      g.beginPath(); g.moveTo(gx + 0.5, 0); g.lineTo(gx + 0.5, h); g.stroke();
-    }
-    for (let gy = 0; gy < h; gy += grid) {
-      g.strokeStyle = (gy % (grid * 5) === 0) ? INK.gridMajor : INK.gridMinor;
-      g.beginPath(); g.moveTo(0, gy + 0.5); g.lineTo(w, gy + 0.5); g.stroke();
-    }
-
-    // Corner registration marks — drafting-table framing, not a viewport frame.
-    g.strokeStyle = 'rgba(190, 178, 152, 0.32)';
-    g.lineWidth = 1;
-    const markInset = 10;
-    const markLen = 13;
-    for (const [cx, cy, dx, dy] of [
-      [markInset, markInset, 1, 1],
-      [w - markInset, markInset, -1, 1],
-      [markInset, h - markInset, 1, -1],
-      [w - markInset, h - markInset, -1, -1],
-    ]) {
-      g.beginPath();
-      g.moveTo(cx + dx * markLen, cy);
-      g.lineTo(cx, cy);
-      g.lineTo(cx, cy + dy * markLen);
-      g.stroke();
-    }
-
-    if (tile) {
-      this._groundTile = tile;
-      this._groundKey = key;
-      target.drawImage(tile, 0, 0, w, h);
-    }
-  },
-
   _draw() {
     const g = this._g;
     if (!g || !this._canvas) return;
     const state = this._ctx && this._ctx.state;
     const w = this._canvas.width / this._dpr, h = this._canvas.height / this._dpr;
+    // The canvas clears to transparent: the sky behind the screen is the ground (no fillRect, no
+    // worklight gradient, no graticule — KIT_SPEC §12; the sheet's "sector drawn at full bleed").
     g.clearRect(0, 0, w, h);
-    g.fillStyle = INK.bg; g.fillRect(0, 0, w, h);
     this._clickTargets.length = 0;
     if (!state) return;
-
-    // The table itself — worklight, graticule and registration marks — is a pure function of the
-    // viewport, so it is rendered once to an offscreen tile and blitted thereafter. This matters:
-    // `_draw` is the SHARED path and at LOCAL it runs at display refresh, not the 64 ms cadence, so
-    // the alternative is recomputing a full-canvas radial gradient plus ~40 stroke calls every
-    // frame — on a machine that may be running a software renderer.
-    this._paintGround(g, w, h);
+    // The screen has drawn its first frame — the capture protocol (KIT_SPEC §13) waits for this.
+    if (this._root && this._root.dataset && this._root.dataset.kReady !== '1') this._root.dataset.kReady = '1';
 
     const level = levelForZoom(this._zoom);
     if (this._lastDrawLevel !== level) {
@@ -8626,7 +7319,7 @@ export const galaxyMapScreen = {
         for (const target of this._clickTargets) {
           if (!target || target.id !== hoverId) continue;
           g.save();
-          g.strokeStyle = 'rgba(237, 232, 216, 0.40)';
+          g.strokeStyle = hexToRgba(INK.ink0, 0.40);
           g.lineWidth = 1;
           g.setLineDash([2.5, 3]);
           g.beginPath();
@@ -8721,16 +7414,16 @@ export const galaxyMapScreen = {
       const ax = sx(e.ax), ay = sy(e.ay), bx = sx(e.bx), by = sy(e.by);
       if (e.charted) {
         g.save();
-        g.strokeStyle = 'rgba(216, 190, 150, 0.155)';
+        g.strokeStyle = INK.plateEdge;
         g.lineWidth = 2.8;
         g.beginPath(); g.moveTo(ax, ay); g.lineTo(bx, by); g.stroke();
-        g.strokeStyle = 'rgba(10, 12, 13, 0.92)';
+        g.strokeStyle = INK.knock;
         g.lineWidth = 1.15;
         g.beginPath(); g.moveTo(ax, ay); g.lineTo(bx, by); g.stroke();
         g.restore();
       } else {
         g.save();
-        g.strokeStyle = 'rgba(142, 134, 117, 0.09)';
+        g.strokeStyle = hexToRgba(INK.ink0, 0.09);
         g.lineWidth = 0.8;
         g.setLineDash([4, 6]);
         g.beginPath(); g.moveTo(ax, ay); g.lineTo(bx, by); g.stroke();
@@ -8802,7 +7495,7 @@ export const galaxyMapScreen = {
         const previewPath = computePreviewRoute(state, startSector, endSector);
         if (previewPath) {
           g.save();
-          g.strokeStyle = 'rgba(237, 232, 216, 0.6)';
+          g.strokeStyle = hexToRgba(INK.ink0, 0.6);
           g.lineWidth = 1.6;
           g.setLineDash([4, 4]);
           g.beginPath();
@@ -8904,9 +7597,9 @@ export const galaxyMapScreen = {
         if (this._layers.discovery) {
           g.save();
           g.beginPath(); g.arc(x, y, r - 3, 0, Math.PI * 2);
-          g.fillStyle = 'rgba(56, 52, 42, 0.30)'; g.fill();
-          g.strokeStyle = 'rgba(142, 134, 117, 0.30)'; g.lineWidth = 1; g.setLineDash([3, 4]); g.stroke(); g.setLineDash([]);
-          g.fillStyle = n.bearingCount > 0 ? hexToRgba(INK.gold, 0.65) : 'rgba(142, 134, 117, 0.45)';
+          g.fillStyle = INK.plate; g.fill();
+          g.strokeStyle = INK.plateEdge; g.lineWidth = 1; g.setLineDash([3, 4]); g.stroke(); g.setLineDash([]);
+          g.fillStyle = n.bearingCount > 0 ? hexToRgba(INK.gold, 0.65) : INK.ink2;
           g.font = FONT_UI(700, n.bearingCount > 0 ? 9 : 10);
           g.textAlign = 'center'; g.textBaseline = 'middle';
           g.fillText('?', x, y);
@@ -8951,7 +7644,7 @@ export const galaxyMapScreen = {
         g.save();
         g.strokeStyle = eventSignal.wars > 0
           ? hexToRgba(INK.red, 0.74)
-          : 'rgba(167, 139, 202, 0.76)';
+          : INK.ink1;
         g.lineWidth = 1.3 + Math.min(1.2, intensity * 0.22);
         g.setLineDash(eventSignal.wars > 0 ? [2.4, 2.6] : [4.2, 4.5]);
         g.beginPath(); g.arc(x, y, r + 10.5, 0, Math.PI * 2); g.stroke();
@@ -8962,10 +7655,10 @@ export const galaxyMapScreen = {
         const bx = x - r - 7;
         const by = y - r - 9;
         g.fillStyle = INK.plateHard;
-        g.strokeStyle = eventSignal.wars > 0 ? INK.red : '#a78bca';
+        g.strokeStyle = eventSignal.wars > 0 ? INK.red : INK.ink1;
         g.lineWidth = 1;
         g.beginPath(); g.rect(bx, by, bw, 11); g.fill(); g.stroke();
-        g.fillStyle = eventSignal.wars > 0 ? INK.red : '#d5cbee';
+        g.fillStyle = eventSignal.wars > 0 ? INK.red : INK.ink0;
         g.textAlign = 'center';
         g.textBaseline = 'middle';
         g.fillText(badge, bx + bw / 2, by + 5.5);
@@ -8975,7 +7668,7 @@ export const galaxyMapScreen = {
       if (this._layers.holdings && holdingsSignal && holdingsSignal.count > 0) {
         g.save();
         const stable = holdingsSignal.defenseAvg >= 26;
-        const color = stable ? '#8ec47a' : '#d7a86e';
+        const color = stable ? INK.good : INK.warn;
         const hx = x + r + 8;
         const hy = y + r - 1;
         g.strokeStyle = color;
@@ -9017,7 +7710,7 @@ export const galaxyMapScreen = {
         const sig = sectorSignalFor(state, n.id);
         if (sig && sig.contestMargin < 0.16) {
           g.save();
-          g.fillStyle = '#8d83bd';
+          g.fillStyle = INK.ink1;
           const bx = x + r + 7, by = y - r - 5;
           g.beginPath();
           g.moveTo(bx, by - 4); g.lineTo(bx + 4, by); g.lineTo(bx, by + 4); g.lineTo(bx - 4, by);
@@ -9033,7 +7726,7 @@ export const galaxyMapScreen = {
       drawSectorSigil(g, x, y, {
         radius: r,
         seedId: n.id,
-        factionColor: this._layers.faction ? n.color : 'rgba(150,144,126,1)',
+        factionColor: this._layers.faction ? n.color : INK.ink1,
         berths: sectorBerthCount(state, n.id),
         security: n.security != null ? n.security : 1,
         showUnrest: !!this._layers.security,
@@ -9043,10 +7736,10 @@ export const galaxyMapScreen = {
       // Selection: a white double keyline over the sigil — still the only white ring on the table.
       if (this._selectedTarget && this._selectedTarget.id === n.id) {
         g.save();
-        g.strokeStyle = 'rgba(237, 232, 216, 0.94)';
+        g.strokeStyle = hexToRgba(INK.ink0, 0.94);
         g.lineWidth = 1.7;
         g.beginPath(); g.arc(x, y, r + 5.5, 0, Math.PI * 2); g.stroke();
-        g.strokeStyle = 'rgba(237, 232, 216, 0.30)';
+        g.strokeStyle = hexToRgba(INK.ink0, 0.30);
         g.lineWidth = 0.7;
         g.beginPath(); g.arc(x, y, r + 8, 0, Math.PI * 2); g.stroke();
         g.restore();
@@ -9079,7 +7772,7 @@ export const galaxyMapScreen = {
         x,
         y,
         anchorRadius: r + 4,
-        color: n.current ? INK.ink0 : (stale ? INK.ink2 : 'rgba(237, 232, 216, 0.85)'),
+        color: n.current ? INK.ink0 : (stale ? INK.ink2 : INK.ink1),
         // Only the final line can carry its own hue, so give it to the presence row when that row
         // is the last thing in the block — the faction colour is the whole point of that line.
         secondaryColor: (!stale && presenceRows.length === 1) ? presenceRows[0].color : null,
@@ -9281,7 +7974,7 @@ export const galaxyMapScreen = {
     g.beginPath();
     g.moveTo(16, 15); g.lineTo(22, 18); g.lineTo(16, 21); g.closePath();
     g.fill();
-    g.fillStyle = 'rgba(237, 232, 216, 0.85)';
+    g.fillStyle = hexToRgba(INK.ink0, 0.85);
     g.font = FONT_DISPLAY(600, 13);
     g.textAlign = 'left'; g.textBaseline = 'top';
     g.fillText(String(model.sectorName || '').toUpperCase(), 27, 13);
@@ -9345,7 +8038,7 @@ export const galaxyMapScreen = {
         g.strokeStyle = INK.red; g.lineWidth = 1.8; g.setLineDash([8, 6]); g.stroke(); g.setLineDash([]);
         g.fillStyle = hexToRgba(INK.red, 0.05); g.fill();
         const hazardGlyph = HAZARD_CANVAS_GLYPHS[z.type] || 'warn';
-        drawGlyph(g, hazardGlyph, x, y, 14, { color: '#f0908a' });
+        drawGlyph(g, hazardGlyph, x, y, 14, { color: INK.red });
         labelCandidates.push(makeMapLabelCandidate(g, {
           id: `zone:${z.id}`,
           kind: 'hazard',
@@ -9354,7 +8047,7 @@ export const galaxyMapScreen = {
           x,
           y,
           anchorRadius: 5,
-          color: '#ff5c5c',
+          color: INK.red,
         }));
       } else {
         const zoneInk = mutedZoneColor(z.color);
@@ -9363,7 +8056,7 @@ export const galaxyMapScreen = {
           g.fillStyle = hexToRgba(zoneInk, 0.05); g.fill();
           g.strokeStyle = hexToRgba(zoneInk, 0.32);
         } else {
-          g.strokeStyle = 'rgba(142, 134, 117, 0.20)';
+          g.strokeStyle = hexToRgba(INK.ink0, 0.20);
         }
         g.lineWidth = 1.2; g.stroke();
         labelCandidates.push(makeMapLabelCandidate(g, {
@@ -9455,7 +8148,7 @@ export const galaxyMapScreen = {
           x: labelX,
           y,
           anchorRadius: fixed ? 10 : 5,
-          color: '#e6bf6a',
+          color: INK.warn,
           selected,
           named: true,
         }));
@@ -9496,7 +8189,7 @@ export const galaxyMapScreen = {
       // Selection: white keyline, the only selection language on the table.
       if (this._selectedTarget && this._selectedTarget.id === p.id) {
         g.beginPath(); g.arc(x, y, 15, 0, Math.PI * 2);
-        g.strokeStyle = 'rgba(237, 232, 216, 0.9)'; g.lineWidth = 1.8; g.stroke();
+        g.strokeStyle = hexToRgba(INK.ink0, 0.9); g.lineWidth = 1.8; g.stroke();
       }
 
       const col = isGate ? INK.teal : isStation ? INK.brass : INK.amber;
@@ -9750,7 +8443,7 @@ export const galaxyMapScreen = {
     };
 
     // Range rings: warm dashed survey circles.
-    g.strokeStyle = 'rgba(216, 190, 150, 0.10)';
+    g.strokeStyle = hexToRgba(INK.ink0, 0.10);
     g.setLineDash([3, 5]);
     for (const rr of [0.33, 0.66, 1.0]) {
       g.beginPath(); g.arc(w / 2, h / 2, Math.min(w, h) * 0.42 * rr, 0, Math.PI * 2); g.stroke();
@@ -9940,7 +8633,7 @@ export const galaxyMapScreen = {
       // Selection: white keyline.
       if (this._selectedTarget && this._selectedTarget.id === c.id) {
         g.beginPath(); g.arc(x, y, 14, 0, Math.PI * 2);
-        g.strokeStyle = 'rgba(237, 232, 216, 0.9)'; g.lineWidth = 1.8; g.stroke();
+        g.strokeStyle = hexToRgba(INK.ink0, 0.9); g.lineWidth = 1.8; g.stroke();
       }
 
       if (foreignFade) { g.save(); g.globalAlpha = 0.42; }
@@ -10041,7 +8734,7 @@ export const galaxyMapScreen = {
     }
 
     // Range ring labels
-    g.fillStyle = 'rgba(142, 134, 117, 0.75)';
+    g.fillStyle = INK.ink1;
     g.font = FONT_MONO(500, 8);
     g.textAlign = 'left'; g.textBaseline = 'middle';
     const ringUnits = Math.round(span / 2);
@@ -10060,12 +8753,12 @@ export const galaxyMapScreen = {
     const holdingCount = this._layers.holdings ? model.ownership.length : 0;
     if (liveContacts === 0 && holdingCount === 0 && model.bearings.length === 0) {
       g.save();
-      g.fillStyle = 'rgba(142, 134, 117, 0.6)';
+      g.fillStyle = INK.ink1;
       g.font = FONT_UI(500, 11);
       g.textAlign = 'center'; g.textBaseline = 'middle';
       g.fillText('CLEAR SKIES — no local contacts', w / 2, h / 2 + 30);
       if (rememberedContacts > 0) {
-        g.fillStyle = 'rgba(142, 134, 117, 0.42)';
+        g.fillStyle = INK.ink2;
         g.font = FONT_MONO(500, 9);
         g.fillText(`${rememberedContacts} REMEMBERED ${rememberedContacts === 1 ? 'FIX' : 'FIXES'} FADING`, w / 2, h / 2 + 46);
       }
@@ -10269,7 +8962,7 @@ function drawStationMark(g, x, y) {
     g.stroke();
   }
   // Hub: a filled well so the ring reads as a rim, not an outline.
-  g.fillStyle = 'rgba(10, 12, 13, 0.92)';
+  g.fillStyle = INK.knock;
   g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
   g.strokeStyle = INK.brass;
   g.lineWidth = 1.7;
@@ -10433,6 +9126,8 @@ function drawPlayerFixMark(g, x, y, rot, options = {}) {
     g.lineWidth = 1;
     g.beginPath(); g.arc(0, 0, r + 3 + pulse * 3.5, 0, Math.PI * 2); g.stroke();
   }
+  // check:map-never-lost identifies the fix mark by this exact keyline ink (one step off bone at
+  // 92 %) — it stays a literal so the check can find the ring among every other arc on the chart.
   g.strokeStyle = 'rgba(237, 232, 216, 0.92)';
   g.lineWidth = 1.2 * scale;
   g.beginPath(); g.arc(0, 0, r, 0, Math.PI * 2); g.stroke();
@@ -10452,7 +9147,7 @@ function drawPlayerFixMark(g, x, y, rot, options = {}) {
   // Heading triangle. Same `Math.PI + rot` convention as every other oriented mark on this canvas.
   g.rotate(Math.PI + (rot || 0));
   g.fillStyle = INK.ink0;
-  g.strokeStyle = 'rgba(12, 14, 15, 0.85)';
+  g.strokeStyle = INK.knock;
   g.lineWidth = 0.8;
   g.beginPath();
   g.moveTo(6 * scale, 0);
@@ -10662,8 +9357,8 @@ function asteroidGlyphPath(seedId) {
 export function drawAsteroidMark(g, x, y, seedId) {
   const path = asteroidGlyphPath(seedId);
   g.save();
-  g.fillStyle = 'rgba(142, 134, 117, 0.40)';
-  g.strokeStyle = 'rgba(142, 134, 117, 0.70)';
+  g.fillStyle = INK.ink2;
+  g.strokeStyle = INK.ink1;
   g.lineWidth = 0.8;
   if (path && typeof g.translate === 'function'
     && typeof g.fill === 'function' && typeof g.stroke === 'function') {
@@ -10741,12 +9436,10 @@ function drawSectorSigil(g, x, y, opts) {
   // The well. It must sit a value ABOVE the table or the whole sigil dissolves into the ground —
   // a lit dish, not a hole.
   g.save();
-  const dish = g.createRadialGradient(x, y - r * 0.3, 1, x, y, r + 1);
-  dish.addColorStop(0, 'rgba(34, 39, 44, 0.97)');
-  dish.addColorStop(1, 'rgba(22, 26, 29, 0.97)');
-  g.fillStyle = dish;
+  // No gradient (KIT_SPEC §12): one flat knockout so the mark reads over the sky.
+  g.fillStyle = INK.knock;
   g.beginPath(); g.arc(x, y, r + 1, 0, Math.PI * 2); g.fill();
-  g.strokeStyle = 'rgba(190, 178, 152, 0.30)';
+  g.strokeStyle = INK.plateEdge;
   g.lineWidth = 1; g.stroke();
   g.restore();
 
@@ -10759,7 +9452,7 @@ function drawSectorSigil(g, x, y, opts) {
   g.translate(x, y);
   g.rotate(incl);
   // A dark rule under the orbit gives it engraved relief against the dish.
-  g.strokeStyle = 'rgba(6, 8, 9, 0.90)';
+  g.strokeStyle = INK.knock;
   g.lineWidth = 3.3;
   g.beginPath(); g.ellipse(0, 0, orbR, orbR * squash, 0, 0, Math.PI * 2); g.stroke();
   g.strokeStyle = hexToRgba(orbitColor, 0.95 * dim);
@@ -10772,7 +9465,7 @@ function drawSectorSigil(g, x, y, opts) {
     const a = cosmeticHash01(seedId + ':berth' + i) * Math.PI * 2;
     const bx = Math.cos(a) * orbR;
     const by = Math.sin(a) * (orbR * squash);
-    g.fillStyle = 'rgba(6, 8, 9, 0.95)';
+    g.fillStyle = INK.knock;
     g.beginPath(); g.arc(bx, by, 2.6, 0, Math.PI * 2); g.fill();
     g.fillStyle = stale ? hexToRgba(INK.brass, 0.5) : INK.brass;
     g.beginPath(); g.arc(bx, by, 1.7, 0, Math.PI * 2); g.fill();
@@ -10782,9 +9475,9 @@ function drawSectorSigil(g, x, y, opts) {
   // The primary: a dense pip with a hairline corona. Deliberately quiet — the orbit carries the eye,
   // and an oversized starburst here reads as a generic sparkle rather than a sun.
   g.save();
-  g.fillStyle = 'rgba(6, 8, 9, 0.90)';
+  g.fillStyle = INK.plate;
   g.beginPath(); g.arc(x, y, 3.3, 0, Math.PI * 2); g.fill();
-  g.fillStyle = stale ? 'rgba(160, 156, 144, 0.90)' : INK.ink0;
+  g.fillStyle = stale ? INK.ink1 : INK.ink0;
   g.beginPath(); g.arc(x, y, 2.2, 0, Math.PI * 2); g.fill();
   g.strokeStyle = hexToRgba(INK.amberHot, 0.38 * dim);
   g.lineWidth = 0.75;
@@ -10852,11 +9545,11 @@ function drawServicePictograms(g, cx, cy, services) {
   let x = cx - totalW / 2 + size / 2;
   g.save();
   for (const svc of services) {
-    g.strokeStyle = 'rgba(91, 147, 214, 0.55)';
+    g.strokeStyle = hexToRgba(INK.ink0, 0.55);
     g.fillStyle = INK.plateHard;
     g.lineWidth = 0.8;
     g.beginPath(); g.rect(x - size / 2, cy - size / 2, size, size); g.fill(); g.stroke();
-    drawServicePictogram(g, svc, x, cy, 3.4, '#5b93d6');
+    drawServicePictogram(g, svc, x, cy, 3.4, INK.ink0);
     x += size + gap;
   }
   g.restore();
@@ -10975,10 +9668,16 @@ function asteroidOreGlyph(typeId) {
 }
 
 function hexToRgba(hex, alpha) {
+  // The kit's 62 % / 38 % inks are rgba strings, not hex: re-alpha them instead of falling back.
+  const rgba = /^rgba?\(([^)]+)\)$/.exec(String(hex || '').trim());
+  if (rgba) {
+    const p = rgba[1].split(/[\s,/]+/).filter(Boolean);
+    if (p.length >= 3) return 'rgba(' + p[0] + ',' + p[1] + ',' + p[2] + ',' + alpha + ')';
+  }
   const s = String(hex || '').replace('#', '');
-  if (s.length !== 6) return 'rgba(136,153,170,' + alpha + ')';
+  if (s.length !== 6) return 'rgba(234,230,223,' + alpha + ')';
   const r = parseInt(s.slice(0, 2), 16), gg = parseInt(s.slice(2, 4), 16), b = parseInt(s.slice(4, 6), 16);
-  if (![r, gg, b].every(Number.isFinite)) return 'rgba(136,153,170,' + alpha + ')';
+  if (![r, gg, b].every(Number.isFinite)) return 'rgba(234,230,223,' + alpha + ')';
   return 'rgba(' + r + ',' + gg + ',' + b + ',' + alpha + ')';
 }
 
@@ -11046,22 +9745,16 @@ function drawMapLabelBlock(g, placement) {
     : [placement.text];
   const color = placement.color || INK.ink0;
   g.save();
-  g.fillStyle = placement.objective ? INK.plateHard : INK.plate;
-  g.strokeStyle = placement.objective ? 'rgba(237, 232, 216, 0.9)' : hexToRgba(color, 0.55);
-  g.lineWidth = placement.objective ? 1.4 : 1;
-  g.beginPath();
-  g.rect(placement.x, placement.y, placement.width, placement.height);
-  g.fill();
-  g.stroke();
+  // No knockout plate and no box: a label is a pin — text on the sky (KIT_SPEC §12).
   g.textAlign = 'left';
   g.textBaseline = 'top';
   for (let index = 0; index < lines.length; index += 1) {
     g.font = index === 0 ? FONT_MONO(700, 9) : FONT_MONO(400, 8);
     g.fillStyle = index === 0
       ? color
-      : (index === lines.length - 1 && placement.secondaryColor
-        ? placement.secondaryColor
-        : 'rgba(179, 175, 162, 0.85)');
+          : (index === lines.length - 1 && placement.secondaryColor
+            ? placement.secondaryColor
+            : INK.ink1);
     g.fillText(lines[index], placement.x + 5, placement.y + 3 + index * 11);
   }
   g.restore();
@@ -11147,7 +9840,7 @@ function drawMapGoalMarker(g, x, y, label, viewportWidth = Infinity) {
   const by = y - ringR;
   const d = 6.5;
   g.fillStyle = INK.amberHot;
-  g.strokeStyle = 'rgba(237, 232, 216, 0.95)';
+  g.strokeStyle = hexToRgba(INK.ink0, 0.95);
   g.lineWidth = 1.6;
   g.beginPath();
   g.moveTo(x, by - d);
@@ -11191,7 +9884,7 @@ function drawWaypointPin(g, x, y, label, viewportWidth = Infinity, labelPlacemen
   g.strokeStyle = hexToRgba(INK.amberHot, 0.88);
   g.lineWidth = 1;
   g.stroke();
-  g.strokeStyle = 'rgba(237, 232, 216, 0.9)';
+  g.strokeStyle = hexToRgba(INK.ink0, 0.9);
   g.lineWidth = 1;
   g.stroke();
   g.fillStyle = INK.amberHot;
