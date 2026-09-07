@@ -1,0 +1,104 @@
+name: VFX candidate diagnostic
+on:
+  push:
+    branches: [codex/vfx-structured-energy-20260907]
+    paths:
+      - .github/workflows/vfx-candidate-review.yml
+      - src/render/combat/**
+      - scripts/review-structured-vfx.mjs
+      - scripts/bake-vfx-density.py
+      - test/vfx-structured-transients.test.mjs
+permissions:
+  contents: write
+concurrency:
+  group: vfx-structured-candidate
+  cancel-in-progress: false
+jobs:
+  candidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/vfx-structured-energy-20260907
+          filter: blob:none
+          sparse-checkout: |
+            .github
+            src
+            test
+            scripts
+            docs
+            design
+            vendor
+          lfs: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Decode and apply exact reviewed source bundle
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import base64, gzip, hashlib, json, pathlib, subprocess
+          if not pathlib.Path('src/render/combat/transientVfxMaterials.js').exists():
+              encoded = ''.join(pathlib.Path(f'.github/vfx-candidate-{i}.b64').read_text().strip() for i in range(4))
+              raw = base64.b64decode(encoded, validate=True)
+              assert hashlib.sha256(raw).hexdigest() == '5078f9c14ef166b98954cc31a12051c4c40116e05d28dc72216b8a51927f0889'
+              payload = json.loads(gzip.decompress(raw))
+              patch = payload['patch'].encode()
+              subprocess.run(['git','apply','--check','-'],input=patch,check=True)
+              subprocess.run(['git','apply','-'],input=patch,check=True)
+              for name, content in payload['files'].items():
+                  p = pathlib.Path(name)
+                  assert not p.is_absolute() and '..' not in p.parts
+                  assert name.startswith(('src/render/combat/','scripts/','test/'))
+                  p.parent.mkdir(parents=True,exist_ok=True)
+                  p.write_text(content)
+              p = pathlib.Path('src/render/vfx.js')
+              s = p.read_text()
+              if payload.get('trimVfxFactoryTail'):
+                  s = s[:s.index('function makeGlowTexture()')].rstrip()+'\n'
+                  p.write_text(s)
+          PY
+      - name: Install diagnostic and offline-bake dependencies
+        run: |
+          set -euo pipefail
+          python -m pip install numpy==2.3.5 scipy==1.17.0
+          npm install --prefix /tmp/sf-vfx-deps --ignore-scripts --no-audit --no-fund three@0.184.0 playwright@1.61.1 @dimforge/rapier3d-compat@0.19.3
+          ln -s /tmp/sf-vfx-deps/node_modules node_modules
+          /tmp/sf-vfx-deps/node_modules/.bin/playwright install --with-deps chromium
+          git fetch --filter=blob:none --depth=1 origin 15b54cd1536457d8bbd8ddfbc198860909945f2a
+      - name: Bake density film and run regression suites
+        run: |
+          set -euo pipefail
+          mkdir -p .devshots/structured-vfx
+          python scripts/bake-vfx-density.py | tee .devshots/structured-vfx/bake.log
+          node --test test/vfx-*.test.mjs test/arcade-structural-fx-mount.test.mjs test/weapon-vfx-techniques.test.mjs test/plasma-stream-thruster.test.mjs test/causal-vfx-grammar.test.mjs test/physics-spectacle-cause-vfx.test.mjs | tee .devshots/structured-vfx/tests.log
+          node scripts/check-vfx-techniques.mjs | tee .devshots/structured-vfx/techniques.log
+      - name: Publish source candidate on its isolated branch
+        run: |
+          set -euo pipefail
+          git config user.name 'SpaceFace VFX candidate'
+          git config user.email 'vfx-candidate@users.noreply.github.com'
+          git add src/render/vfx.js src/render/combat/instancedSpritePool.js src/render/combat/arcadeStructuralFx.js src/render/combat/structuredBurstGeometry.js src/render/combat/transientVfxMaterials.js src/render/combat/densityVolumeData.js scripts/bake-vfx-density.py scripts/review-structured-vfx.mjs test/vfx-structured-transients.test.mjs
+          if ! git diff --cached --quiet; then
+            git commit -m 'feat(vfx): replace flat transient carriers with folded energy and animated 3D density'
+            git push origin HEAD:codex/vfx-structured-energy-20260907
+          fi
+          git rev-parse HEAD > .devshots/structured-vfx/source-commit.txt
+      - name: Render matched baseline and candidate in software WebGL
+        run: node scripts/review-structured-vfx.mjs
+      - name: Retain raw diagnostic evidence and source
+        if: always()
+        run: |
+          mkdir -p .devshots/structured-vfx/source
+          cp src/render/combat/densityVolumeData.js .devshots/structured-vfx/source/ 2>/dev/null || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: vfx-structured-diagnostic
+          path: .devshots/structured-vfx
+          retention-days: 7
+          if-no-files-found: warn
