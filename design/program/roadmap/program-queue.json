@@ -5188,7 +5188,7 @@
       "priority": 43,
       "title": "The nimble regime: thrust vs fighting speed vs camera",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [
         "PQ-137.10"
       ],
@@ -5209,7 +5209,7 @@
       "receiptRefs": [
         "design/program/roadmap/receipts/PQ-137.03-REPORT.md"
       ],
-      "brief": "IMPLEMENTED 2026-09-04: B2 and all five B3 clauses are met on the production path; the assisted planar governor also closes the weave/lateral exploit without spending physics-earned momentum. Hitch weave ends at 0.997x cruise, diagonals at 1.003x, and a 2x oblique earned exit retains 100%. Headed shipping-camera acceptance remains open. See receipt."
+      "brief": "ACCEPTED 2026-09-07 (controller review of OpenCode Muse Spark verdict + live camera-nimble-regime 3/3). B2 and all five B3 clauses are met; governed-speed re-key (3c4c424a) opens 1.796x at 2x cruise and 2.593x at 3x; weave exploit closed; normal-speed shipping-camera strip on disk. The old 'headed acceptance remains open' sentence was leftover ceremony. See receipt."
     },
     {
       "id": "PQ-137.04",
