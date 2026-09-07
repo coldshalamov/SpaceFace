@@ -2,8 +2,13 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { createAttachmentService, effectiveTetherPolicy } from '../src/combat/attachments.js';
+import { resolveHitstunLaw } from '../src/combat/impulseKernel.js';
+import { createStatusService } from '../src/combat/statuses.js';
+import { readTumbleStatus } from '../src/combat/tumbleStatus.js';
 import { createCombatCatalog, ensureCombatState } from '../src/combat/runtime.js';
+import { resolveGovernedCombatSpeed } from '../src/core/flight/propulsionCatalog.js';
 import { ATTACHMENT_DEFS, DEFAULT_COMBAT_PROFILE_BY_TYPE } from '../src/data/combatDefs.js';
+import { COMBAT_FLAGS } from '../src/data/featureFlags.js';
 import { MODULES } from '../src/data/modules.js';
 import { TECH_NODES } from '../src/data/tech.js';
 import { LEGACY47A_FEATURES, PRODUCTION_FEATURES } from '../src/runtime/runtimeProfiles.js';
@@ -15,6 +20,7 @@ import {
   TWIN_BRIDLE_SETUP_S,
   validateTwinBridlePair,
 } from '../src/systems/tetherGameplay.js';
+import { tumbleStates } from '../src/systems/tumbleStates.js';
 import { masslineTetherStatus } from '../src/ui/hud.js';
 import { MASSLINE_HUD_CSS } from '../src/ui/masslineHud.js';
 import { statSnippet } from '../src/ui/station/outfittingGuidance.js';
@@ -103,6 +109,70 @@ test('two public Massline presses create exactly one A-to-B rope and never write
     'cut preserves the real endpoint motion instead of injecting a release impulse');
 });
 
+test('two lights bridled within 3s of the first latch both lose the helm for a B11 second', (t) => {
+  const previous = COMBAT_FLAGS.weaponImpulseConsequences;
+  COMBAT_FLAGS.weaponImpulseConsequences = true;
+  t.after(() => { COMBAT_FLAGS.weaponImpulseConsequences = previous; });
+
+  assert.ok(TWIN_BRIDLE_SETUP_S <= 2, `the bolas is a throw, setup is ${TWIN_BRIDLE_SETUP_S}s`);
+
+  const h = harness({ twoLights: true });
+  const statuses = createStatusService({
+    state: h.state,
+    catalog: h.catalog,
+    bus: h.bus,
+    helpers: { combatPhysics: h.physics },
+  });
+  const kernel = { attachments: h.attachments, catalog: h.catalog, statuses };
+  h.system.registry = {
+    get(id) { return id === 'actions' || id === 'combat' ? { kernel } : null; },
+  };
+  const tumble = Object.create(tumbleStates);
+  tumble.init({
+    state: h.state,
+    bus: h.bus,
+    helpers: { combatPhysics: h.physics },
+    registry: h.system.registry,
+  });
+  t.after(() => tumble.destroy());
+
+  const firstLatchAt = (() => {
+    step(h, { aim: h.source.pos });
+    step(h, { aim: h.source.pos, latch: true });
+    return h.state.simTime;
+  })();
+  step(h, { aim: h.target.pos, dt: 0.1 });
+  const before = motionSnapshot(h.source, h.target);
+  step(h, { aim: h.target.pos, latch: true });
+  const elapsed = h.state.simTime - firstLatchAt;
+  console.log(`PQ-031.00 bolas elapsedS=${elapsed.toFixed(3)} setupS=${TWIN_BRIDLE_SETUP_S}`);
+
+  const active = Object.values(h.state.combat.attachments.byId).filter((entry) => entry.state === 'active');
+  assert.equal(active.length, 1);
+  assert.ok(elapsed <= 3, `two lights must be bridled within 3s, got ${elapsed}s`);
+  assert.deepEqual(motionSnapshot(h.source, h.target), before,
+    'the throw still never writes velocity; tumble is the B11 hitstun law');
+
+  const cruise = resolveGovernedCombatSpeed(h.source, h.state, 0);
+  const rel = Math.hypot(h.source.vel.x - h.target.vel.x, h.source.vel.z - h.target.vel.z);
+  const law = resolveHitstunLaw({
+    deltaV: rel,
+    victimCruise: cruise,
+    attackerMass: 16,
+    victimMass: 16,
+  });
+  console.log(`PQ-031.00 B11 bolas k=${law.k.toFixed(3)} durationS=${law.durationS.toFixed(3)} rel=${rel} cruise=${cruise}`);
+  assert.ok(law.k >= 0.30, `closing lights k=${law.k} must meet the B11 30% bar`);
+  assert.ok(law.durationS >= 1, `B11 lights lose helm ≥1s, got ${law.durationS}s`);
+
+  const a = readTumbleStatus(h.state, h.source);
+  const b = readTumbleStatus(h.state, h.target);
+  assert.ok(a, 'light A tumbles');
+  assert.ok(b, 'light B tumbles');
+  assert.ok((a.data && a.data.until) - h.state.simTime >= 1 - 1e-6);
+  assert.ok((b.data && b.data.until) - h.state.simTime >= 1 - 1e-6);
+});
+
 test('setup has explicit same-endpoint cancel and simulation-time expiry with no partial line', () => {
   const cancel = harness();
   step(cancel, { aim: cancel.source.pos });
@@ -164,7 +234,8 @@ test('unused system is hash-inert and the HUD names a non-reel A/B linked state'
   );
 });
 
-function harness() {
+function harness(options = {}) {
+  const twoLights = options.twoLights === true;
   const player = entity(1, 'ship', 0, 0, {
     team: 0,
     data: { derived: { masslineHeadId: TWIN_BRIDLE_HEAD_ID } },
@@ -172,14 +243,34 @@ function harness() {
   });
   const source = entity(2, 'ship', 90, 0, {
     team: 1,
-    data: { name: 'Raider A', ai: { forcePlayerTarget: true } },
-    physicsBody: { dynamic: true, mass: 55 },
+    mass: twoLights ? 16 : 55,
+    vel: twoLights ? { x: 80, z: 0 } : { x: 0, z: 0 },
+    data: {
+      name: 'Raider A',
+      role: twoLights ? 'fighter' : undefined,
+      intent: twoLights ? { fire: true, moveX: 1, moveZ: 0 } : undefined,
+      ai: { forcePlayerTarget: true },
+    },
+    physicsBody: { dynamic: true, mass: twoLights ? 16 : 55 },
   });
-  const target = entity(3, 'fieldEmitter', 150, 40, {
-    team: 0,
-    data: { name: 'Repulsor B', fieldEmitter: true },
-    physicsBody: { dynamic: false, mass: 2500 },
-  });
+  const target = twoLights
+    ? entity(3, 'ship', 150, 40, {
+        team: 1,
+        mass: 16,
+        vel: { x: -80, z: 0 },
+        data: {
+          name: 'Raider B',
+          role: 'fighter',
+          intent: { fire: true, moveX: -1, moveZ: 0 },
+          ai: { forcePlayerTarget: true },
+        },
+        physicsBody: { dynamic: true, mass: 16 },
+      })
+    : entity(3, 'fieldEmitter', 150, 40, {
+        team: 0,
+        data: { name: 'Repulsor B', fieldEmitter: true },
+        physicsBody: { dynamic: false, mass: 2500 },
+      });
   const entities = new Map([[player.id, player], [source.id, source], [target.id, target]]);
   const state = {
     mode: 'flight',
@@ -214,7 +305,7 @@ function harness() {
   };
   const system = Object.create(tetherGameplay);
   system.init({ state, bus, helpers: { combatPhysics: physics }, registry });
-  return { state, player, source, target, physics, events, bus, attachments, system };
+  return { state, player, source, target, physics, events, bus, attachments, system, catalog };
 }
 
 function step(h, { aim = null, latch = false, cut = false, dt = DT } = {}) {

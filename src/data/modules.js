@@ -152,6 +152,7 @@ export const MODULES = [
   },
   {
     id: 'mod_twin_bridle_m', name: 'Twin Bridle M', slotType: 'utility', size: 'M', tier: 3, mass: 7, price: 68000, requiresTech: 'tech_fire_control',
+    // Bolas throw: latch A then B within the 2 s combat window; relative speed tumbles both lights (B11).
     energyDraw: 8, mods: { masslineHeadId: 'twin_bridle' },
   },
   {

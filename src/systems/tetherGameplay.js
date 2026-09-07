@@ -18,7 +18,7 @@ import { publishHitstunImpulse, signedHitSide } from '../combat/impulseKernel.js
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { isHostileToPlayer } from './scanner.js';
-import { massline2Flag } from '../data/featureFlags.js';
+import { combatFlag, massline2Flag } from '../data/featureFlags.js';
 import { isMassSeedTetherEligible } from './massSeed.js';
 import { specialistPlanByEnemyId } from '../ai/specialistPlans.js';
 
@@ -650,7 +650,52 @@ export const tetherGameplay = {
       sourceReceiptId,
       targetReceiptId: receiptId,
     });
+    this._tumbleBridledPair(state, source, target);
     return true;
+  },
+
+  // PQ-031.00 — the bolas is a throw. Relative speed at the second latch is the clothesline ΔV;
+  // B11 decides helm-loss. This owner still never writes velocity.
+  _tumbleBridledPair(state, source, target) {
+    if (!combatFlag('weaponImpulseConsequences', state.runtime && state.runtime.features)) return;
+    if (!isBridleTumbleHull(source) || !isBridleTumbleHull(target)) return;
+    const relX = finite(source.vel && source.vel.x) - finite(target.vel && target.vel.x);
+    const relZ = finite(source.vel && source.vel.z) - finite(target.vel && target.vel.z);
+    const deltaV = Math.hypot(relX, relZ);
+    if (!(deltaV > 0)) return;
+    this._publishBridleCatchHitstun(state, source, target, deltaV, relX, relZ);
+    this._publishBridleCatchHitstun(state, target, source, deltaV, -relX, -relZ);
+  },
+
+  _publishBridleCatchHitstun(state, victim, partner, deltaV, dirX, dirZ) {
+    if (!victim || victim.id === state.playerId) return;
+    const victimMass = Math.max(
+      0.1,
+      finite(victim.physicsBody && victim.physicsBody.mass, finite(victim.mass, 1)),
+    );
+    const attackerMass = Math.max(
+      0.1,
+      finite(partner.physicsBody && partner.physicsBody.mass, finite(partner.mass, 1)),
+    );
+    publishHitstunImpulse(this.bus, {
+      source: TETHER_SHARE_SOURCE,
+      victimId: victim.id,
+      attackerId: partner.id,
+      attackerMass,
+      victimMass,
+      deltaV,
+      dirX,
+      dirZ,
+      hitSide: signedHitSide(victim, { dirX, dirZ }, null, victim.id),
+      provenance: Object.freeze({
+        schemaVersion: 1,
+        kind: 'massline',
+        source: 'twin_bridle',
+        tag: 'twin_bridle_catch',
+        partnerId: partner.id,
+      }),
+      tick: state.tick,
+    });
   },
 
   _reconcileTwinBridle(attachments, state, player, now) {
@@ -2638,6 +2683,10 @@ function ensureCutterSweepHead(entity) {
   const data = entity.data || (entity.data = {});
   const derived = data.derived && typeof data.derived === 'object' ? data.derived : (data.derived = {});
   derived.masslineHeadId = MONOFILAMENT_HEAD_ID;
+}
+
+function isBridleTumbleHull(entity) {
+  return !!(entity && entity.alive !== false && (entity.type === 'ship' || entity.type === 'drone'));
 }
 
 function hostileSweepCutter(entity, state, playerTeam) {
