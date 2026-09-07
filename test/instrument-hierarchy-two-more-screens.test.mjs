@@ -16,14 +16,11 @@ import {
   SIGNAL_ARCHIVE,
 } from '../src/ui/screens/codex.js';
 
-// The station Factions screen moved onto the frontend kit (Frontend Task C §1.6): it authors no
-// sizes, faces or colours of its own any more, so only the codex is audited for the legacy grammar.
-const FILES = [
-  'src/ui/screens/codex.js',
-];
-const DISPLAY = new Map([
-  ['src/ui/screens/codex.js', '.sf-codex-now'],
-]);
+// The station Factions screen moved onto the frontend kit (Frontend Task C §1.6) and the codex
+// followed (Frontend Task D): neither authors sizes, faces or colours of its own any more, so the
+// legacy-grammar audits below have no file left to read; the kit-clothes assertions replace them.
+const FILES = [];
+const DISPLAY = new Map();
 const PINNED_FORBIDDEN = /(?:\bpanel\b|sf-menu|sf-menu-wide)/;
 // Same scale the three converted screens pinned (mission log / tech tree / local map).
 const ALLOWED_PX = new Set([12, 13, 14, 15, 19, 20, 22, 28, 40, 64]);
@@ -47,7 +44,9 @@ function pxSizes(src) {
   return out;
 }
 
-test('type floor: nothing in the two screens is authored below 12px', () => {
+// auditTypeFloor reports an infra finding for an empty file list; with every audited screen on the
+// kit (which authors no sizes) the legacy audit has nothing to observe and is skipped, not failed.
+test('type floor: nothing in the two screens is authored below 12px', { skip: FILES.length === 0 && 'every audited screen has moved onto the kit' }, () => {
   const { findings } = auditTypeFloor(FILES);
   assert.deepEqual(findings, [], JSON.stringify(findings, null, 2));
   for (const rel of FILES) {
@@ -80,8 +79,15 @@ test('every figure binds --sf-data-face', () => {
     assert.match(code, /font-family:\s*var\(--sf-data-face\)/, rel + ' has no --sf-data-face binding');
     assert.match(code, /\.sf-fig/, rel + ' has no .sf-fig figure class');
   }
-  const codex = load('src/ui/screens/codex.js');
-  assert.match(codex, /sf-codex-status-v sf-fig/);
+});
+
+test('the codex screen authors no injected styles, legacy tokens or hex of its own', () => {
+  const codex = stripComments(load('src/ui/screens/codex.js'));
+  assert.match(codex, /from '\.\.\/kit\/index\.js'/, 'the codex is built on the frontend kit');
+  assert.doesNotMatch(codex, /injectStyle|STYLE_ID|createElement\('style'\)/, 'no injected style block');
+  assert.doesNotMatch(codex, /var\(--sf-|var\(--ink|var\(--accent/, 'no legacy colour or face token');
+  assert.equal((codex.match(HEX_RE) || []).length, 0, 'no hardcoded hex literal');
+  assert.doesNotMatch(codex, /font-size:\s*[0-9.]+(px|rem|em)/, 'no authored font size');
 });
 
 test('colour is by meaning: role tokens present, zero hardcoded hex, no roleless azure/cyan', () => {

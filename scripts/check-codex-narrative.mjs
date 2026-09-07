@@ -102,13 +102,16 @@ assert.ok(GRAFFITI.GANG_DIDNT_MAKE_IT, 'GRAFFITI.GANG_DIDNT_MAKE_IT must exist (
 
 // Codex browsing: the screen promises a searchable journal. Search must filter already-rendered
 // entries only, so locked future story content stays hidden and the player gets a clear empty state.
-assert.match(codexSource, /el\('input', 'sf-codex-search'\)/, 'Codex must render a search input');
+// Frontend Task D: the search is a kit input (`k-input`); `sf-codex-search` stays as the inert hook.
+assert.match(codexSource, /el\('input', 'k-input sf-codex-search'\)/, 'Codex must render a search input');
 assert.match(codexSource, /placeholder = 'Search Codex'/, 'Codex search must have a stable player-facing placeholder');
 assert.match(codexSource, /setAttribute\('aria-label', 'Search Codex'\)/,
   'Codex search must expose an accessible name');
 assert.match(codexSource, /function normalizeSearch\(value\)/, 'Codex search must normalize case and whitespace');
 assert.match(codexSource, /_applySearchFilter\(\)/, 'Codex must apply search filtering after each tab render');
-assert.match(codexSource, /querySelectorAll\('\.sf-codex-entry'\)/,
+// Frontend Task D: entries are built as `.sf-codex-entry` articles and indexed as rows; the filter
+// reads each built article's text (title, meta, body, note), never the narrative tables.
+assert.match(codexSource, /normalizeSearch\(entry\.article\.textContent\)/,
   'Codex search must filter rendered entries rather than raw narrative data');
 assert.match(codexSource, /No matching unlocked entries\./,
   'Codex search must show an empty state for no unlocked matches');
@@ -128,7 +131,7 @@ assert.match(codexSource, /Locked counts mean future entries are intentionally h
   'Codex status copy must explain that hidden entries are intentionally gated');
 assert.match(codexSource, /this\._renderStatus\(ctx\);[\s\S]*switch \(this\._activeTab\)/,
   'Codex status should render before the active tab entries');
-assert.match(codexSource, /querySelectorAll\('\.sf-codex-entry'\)/,
+assert.match(codexSource, /section\.entries\.filter\(\(entry\) => normalizeSearch\(entry\.article\.textContent\)/,
   'Codex search should continue filtering only entries, not the status strip');
 assert.match(bindingSource, /codex:\s*\{\s*key:\s*'k',\s*code:\s*'KeyK',\s*label:\s*'K'\s*\}/,
   'BINDINGS must expose K as the fixed Codex key');

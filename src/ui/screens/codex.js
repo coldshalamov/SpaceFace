@@ -5,15 +5,20 @@
 // seenComms, graffitiShown), so nothing is spoiled ahead of its beat. Unseen entries show a locked
 // placeholder ("— not yet encountered —") rather than the content.
 //
-// Mirrors the Help screen's shell (sf-menu / tabbar / search) for visual + a11y consistency. Reads
-// state.story + the pure-data narrative tables; never mutates sim state.
+// The sheet's line (design/frontend/direction/DIRECTION_SHEET.md, codex): a left column of entry
+// names; the entry as a readable measure of text at body size with a plate image where one exists;
+// the entry title at screen-title size. A book, not a wiki. Built on the frontend kit
+// (styles/kit.css, src/ui/kit/); this file owns no CSS. The hang holds the search, the eight tab
+// words and the index of entry names as hairline rows; the stage holds the one focused entry.
+// Reads state.story + the pure-data narrative tables; never mutates sim state.
 
-import { SHIP, COLD_START, REFS, FIGURES, COMMS, GRAFFITI, BEAT_CONTENT, ENDGAME_CHOICES, KURTZ, PERSISTENT_CARGO } from '../../data/narrative.js';
+import { SHIP, COLD_START, REFS, FIGURES, COMMS, GRAFFITI, BEAT_CONTENT, ENDGAME_CHOICES, PERSISTENT_CARGO } from '../../data/narrative.js';
 import { TETHYS_BLACK_MARKET_DISCOVERY } from '../../data/frontierRumors.js';
 import { explorationDiscoveryPlates, galaxyExplorationSummary } from '../../world/explorationJournal.js';
 import { decorateEntityNode } from '../entityResolver.js';
 import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
 import { createShipLedgerPanel } from '../shipLedgerPanel.js';
+import { el, words, rows, hero, settle, cue } from '../kit/index.js';
 
 /** Honest org → faction id only. Unknown orgs stay plain text — never invent a door. */
 const FIGURE_FACTION = Object.freeze({
@@ -33,8 +38,6 @@ const FIGURE_FACTION = Object.freeze({
   elroy: 'faction_pitborn',
 });
 
-const STYLE_ID = 'sf-codex-style';
-
 function getManager(ctx) {
   if (ctx && ctx.screenManager) return ctx.screenManager;
   if (ctx && ctx.screens && ctx.screens.pushScreen) return ctx.screens;
@@ -49,167 +52,19 @@ function nav(ctx, method, arg) {
   ctx.bus.emit('ui:' + method, { id: arg });
 }
 
-function injectStyle() {
-  if (document.getElementById(STYLE_ID)) return;
-  const s = document.createElement('style');
-  s.id = STYLE_ID;
-  // Codex-specific entry/archive styles only. The shared menu fascia (plate, buttons,
-  // headings, tabs, form primitives) lives in styles/menu.css. This sheet is instrument
-  // grammar, same system as the mission log: colour by meaning (amber only on the current
-  // beat and replay verbs, mint on your counts, steel structure elsewhere), 12px floor,
-  // --sf-data-face on figures, spacing from the --sp rhythm.
-  s.textContent = `
-  .sf-codex-entry {
-    padding: var(--sp-3) var(--sp-4); border: 1px solid var(--sf-edge); border-radius: 2px;
-    background: color-mix(in srgb, var(--sf-surface) 88%, transparent); margin-bottom: var(--sp-2);
-  }
-  .sf-codex-entry h3 {
-    margin: 0 0 var(--sp-1); font-family: var(--sf-subhead-face); font-weight: 600;
-    font-size: 15px; color: var(--sf-paper); letter-spacing: 0;
-  }
-  .sf-codex-entry .sf-codex-meta {
-    font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
-    letter-spacing: var(--sf-track-micro); text-transform: uppercase;
-    color: var(--sf-calm); margin-bottom: var(--sp-1);
-  }
-  .sf-codex-entry .sf-codex-body {
-    font-family: var(--sf-body-face); font-size: 14px; line-height: 1.5; color: var(--sf-paper);
-  }
-  .sf-codex-entry .sf-codex-note {
-    font-family: var(--sf-body-face); font-size: 12px; line-height: 1.45; color: var(--sf-calm);
-    font-style: italic; margin-top: var(--sp-2); border-top: 1px solid var(--sf-edge);
-    padding-top: var(--sp-1);
-  }
-  .sf-codex-note--cost { color: var(--sf-foe); }
-  .sf-codex-entry:focus {
-    outline: 2px solid var(--sf-goal); outline-offset: 2px; border-color: var(--sf-goal-edge);
-  }
-  .sf-codex-locked { opacity: .55; font-style: italic; color: var(--sf-calm); }
-  .sf-codex-graffiti {
-    font-family: var(--sf-subhead-face); font-weight: 600; letter-spacing:.06em; text-transform: uppercase;
-    font-size: 13px; color: var(--sf-paper);
-  }
-  .sf-codex-empty {
-    color: var(--sf-calm); font-style: italic; font-family: var(--sf-body-face);
-    padding: var(--sp-5); text-align: center;
-  }
-  .sf-codex .sf-fig,
-  .sf-codex-status-v {
-    font-family: var(--sf-data-face); font-weight: 500; font-variant-numeric: tabular-nums;
-    font-size: 13px; letter-spacing: 0;
-  }
-  .sf-codex-beat { border-left: var(--sf-rail-w) solid var(--sf-calm); }
-  .sf-codex-beat.current {
-    border-color: var(--sf-goal-edge); border-left-color: var(--sf-goal);
-    background: color-mix(in srgb, var(--sf-goal) 8%, transparent);
-  }
-  .sf-codex-now {
-    font-family: var(--sf-display-face); font-weight: 700; font-size: 28px; line-height: 1.1;
-    color: var(--sf-paper); letter-spacing: 0;
-  }
-  .sf-codex-entry--filed { border-left: var(--sf-rail-w) solid var(--sf-you); }
-  .sf-codex-entry--filed .sf-codex-meta { color: var(--sf-you); }
-  .sf-codex-section-h {
-    font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
-    letter-spacing: var(--sf-track-micro); text-transform: uppercase;
-    color: var(--sf-calm); margin: var(--sp-3) 0 var(--sp-1);
-  }
-  .sf-codex-status {
-    margin: 0 0 var(--sp-3); padding: var(--sp-2) var(--sp-3); border: 1px solid var(--sf-edge);
-    border-radius: 2px; background: color-mix(in srgb, var(--sf-surface) 88%, transparent);
-  }
-  .sf-codex-status-title {
-    font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
-    letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-calm);
-    margin-bottom: var(--sp-2);
-  }
-  .sf-codex-status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: var(--sp-2); }
-  .sf-codex-status-item {
-    border: 1px solid var(--sf-edge); border-radius: 2px; padding: var(--sp-1) var(--sp-2);
-    background: color-mix(in srgb, var(--sf-surface) 80%, transparent);
-  }
-  .sf-codex-status-k {
-    font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
-    letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-calm);
-  }
-  .sf-codex-status-v { color: var(--sf-paper); margin-top: 2px; }
-  .sf-codex-status-note {
-    font-family: var(--sf-body-face); color: var(--sf-calm); font-size: 12px; line-height: 1.35;
-    margin-top: var(--sp-2);
-  }
-  .sf-codex-search {
-    width: 100%; box-sizing: border-box; margin: var(--sp-2) 0 var(--sp-1); padding: var(--sp-2) var(--sp-3);
-    color: var(--sf-paper); background: color-mix(in srgb, var(--sf-surface) 72%, transparent);
-    border: 1px solid var(--sf-edge); border-radius: 2px;
-    font-family: var(--sf-body-face); font-size: 13px; letter-spacing: 0; pointer-events: auto;
-  }
-  .sf-codex-search:focus {
-    outline: none; border-color: var(--sf-goal);
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--sf-goal) 14%, transparent);
-  }
-  .sf-arch-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--sp-3); }
-  .sf-arch-signal {
-    display: flex; flex-direction: column; padding: 0; text-align: left; overflow: hidden;
-    border: 1px solid var(--sf-edge); border-radius: 2px;
-    background: color-mix(in srgb, var(--sf-surface) 88%, transparent);
-    pointer-events: auto;
-  }
-  .sf-arch-signal:hover, .sf-arch-signal:focus-visible { border-color: var(--sf-goal); outline: none; }
-  .sf-arch-thumb { position: relative; aspect-ratio: 16/9; background-size: cover; background-position: center;
-    background-color: var(--sf-surface); }
-  .sf-arch-play { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-    font-size: 22px; color: var(--sf-paper); opacity: .82;
-    background: radial-gradient(circle at center, transparent, color-mix(in srgb, var(--sf-surface) 55%, transparent)); }
-  .sf-arch-signal:hover .sf-arch-play, .sf-arch-signal:focus-visible .sf-arch-play { opacity: 1; }
-  .sf-arch-meta { padding: var(--sp-2) var(--sp-3); }
-  .sf-arch-title {
-    font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
-    letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-paper);
-  }
-  .sf-arch-cap { font-family: var(--sf-body-face); font-size: 12px; line-height: 1.4; color: var(--sf-calm); margin-top: var(--sp-1); }
-  @media (forced-colors: active) {
-    .sf-codex-entry, .sf-codex-status, .sf-arch-signal, .sf-arch-thumb {
-      background: Canvas; color: CanvasText; border-color: CanvasText;
-    }
-    .sf-codex-beat.current { border-left-color: Highlight; }
-  }
-  .sf-codex.sf-menu h1 { color: var(--sf-paper); }
-  /* No accent tick beside the title — the hairline divider under the crest is the only rule. */
-  .sf-codex.sf-menu h1::before { display: none; }
-  /* The status box is a stacked panel, not the crest's space-between row: as a row it squeezed the
-     stat grid into a one-tile column (sliced at the pane edge) and left the right half empty. */
-  .sf-codex .sf-codex-status.sf-crest {
-    flex-direction: column; align-items: stretch; gap: var(--sp-2);
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .sf-codex, .sf-codex * { animation: none !important; transition: none !important; }
-  }
-  `;
-  document.head.appendChild(s);
-}
-
-function el(tag, cls, text) {
-  const e = document.createElement(tag);
-  if (cls) e.className = cls;
-  if (text != null) e.textContent = text;
-  return e;
-}
-function shell(rootEl, title, extraClass) {
-  rootEl.innerHTML = '';
-  rootEl.classList.add('panel', 'sf-menu');
-  if (extraClass) rootEl.classList.add(extraClass);
-  // Diegetic fascia stamp (styles/menu.css .sf-menu::before reads it).
-  rootEl.dataset.stamp = 'SIGNAL ARCHIVE / CODEX';
-  const h = document.createElement('h1');
-  h.textContent = title;
-  rootEl.appendChild(h);
-  const body = document.createElement('div');
-  body.className = 'sf-col';
-  rootEl.appendChild(body);
-  return { panel: rootEl, body };
-}
-
 const TABS = ['Story', 'Comms', 'Discoveries', 'Graffiti', 'Figures', 'Ship', 'Archive', 'Ledger'];
+
+/** The live tab's one-line description under the title. */
+const TAB_LINES = Object.freeze({
+  Story: 'The eight beats, and what the endgame offers.',
+  Comms: 'Every signal you have received, filed by kind.',
+  Discoveries: 'Plates from the sites you have flown down to.',
+  Graffiti: 'What was written on the walls you passed.',
+  Figures: 'The people whose names keep turning up.',
+  Ship: "The Tessera's sealed history, and what travels with you.",
+  Archive: 'Recovered transmission stills from the Reach corridor.',
+  Ledger: 'The pages the Tessera keeps for itself.',
+});
 
 // Signal Archive — the four authored intro cinematics, exposed as recovered transmission stills the
 // player can replay. Posters (C-INTRO-0N.jpg) are clean full-bleed frames; clips are the 6s mp4s.
@@ -421,27 +276,73 @@ function normalizeSearch(value) {
   return String(value || '').toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
+/**
+ * One codex entry: a name (and its sub line) for the hang's index, and the article the stage shows
+ * when the entry is focused. The article keeps `.sf-codex-entry` as an inert hook; inside it the
+ * title at screen-title size, the meta in fine print, the body as sentences inside a measure, the
+ * note as the emphasised sentence under a hairline. `signal` marks the filed endgame choice.
+ */
+function makeEntry({ id, name, sub = '', title = null, meta = null, body = '', note = '', noteBad = false, signal = false, locked = false, image = null }) {
+  const article = el('article', 'sf-codex-entry');
+  if (typeof image === 'string' && image) {
+    const img = el('img');
+    img.src = image;
+    img.alt = title != null ? title : name;
+    img.style.height = '320px';
+    article.appendChild(img);
+  }
+  const heading = el('h2', 'k-display k-t-title');
+  heading.appendChild(el('span', signal ? 'k-signal' : (locked ? 'k-38' : ''), title != null ? title : name));
+  article.appendChild(heading);
+  if (meta != null && meta !== '') {
+    const metaEl = el('p', 'k-t-fine k-38');
+    if (typeof meta === 'string') metaEl.textContent = meta;
+    else metaEl.appendChild(meta);
+    article.appendChild(metaEl);
+  }
+  const measure = el('div', 'k-measure');
+  for (const para of String(body || '').split('\n')) {
+    if (para.trim()) measure.appendChild(el('p', 'k-sentence' + (locked ? ' k-38' : ''), para));
+  }
+  if (note) {
+    if (measure.childNodes.length) measure.appendChild(el('hr', 'k-rule'));
+    measure.appendChild(el('p', 'k-sentence k-sentence--emph' + (noteBad ? ' k-bad' : ''), note));
+  }
+  article.appendChild(measure);
+  return { id, name, sub, signal, locked, article, measure, requested: false };
+}
+
 export const codexScreen = {
   id: 'codex',
   _activeTab: 'Story',
   _query: '',
 
   mount(rootEl, ctx) {
-    injectStyle();
-    shell(rootEl, 'Codex', 'sf-menu-wide');
-    rootEl.classList.add('sf-codex');
+    rootEl.innerHTML = '';
+    rootEl.classList.remove('panel', 'sf-menu', 'sf-menu-wide', 'sf-codex');
+    rootEl.classList.add('k-screen');
+    rootEl.dataset.kReady = '0';
+    delete rootEl.dataset.stamp;
+    rootEl.setAttribute('aria-label', 'Codex');
 
-    const bar = el('div', 'sf-tabbar');
-    this._tabBtns = {};
-    TABS.forEach((t) => {
-      const b = el('button', 'sf-tab', t);
-      b.addEventListener('click', () => { this._activeTab = t; this._render(ctx); });
-      bar.appendChild(b);
-      this._tabBtns[t] = b;
-    });
-    rootEl.appendChild(bar);
+    // Title: "Codex" and the live tab's one line.
+    const title = el('header', 'k-title');
+    title.appendChild(el('h1', 'k-display k-t-title', 'Codex'));
+    const tabLine = el('p', 'k-t-emph k-62', TAB_LINES[this._activeTab] || '');
+    title.appendChild(tabLine);
+    rootEl.appendChild(title);
+    this._tabLine = tabLine;
 
-    const search = el('input', 'sf-codex-search');
+    // The stage: the focused entry (or the Signal Archive row, or the Ledger panel).
+    const stage = el('div', 'k-stage k-stage--scroll');
+    stage.id = 'sf-codex-stage';
+    stage.setAttribute('role', 'tabpanel');
+
+    // The hang: the search, the eight tab words, then the index of entry names.
+    const hang = el('div', 'k-hang');
+    const searchWrap = el('div');
+    // `k-input` restates the search field in kit clothes; `sf-codex-search` is the inert hook.
+    const search = el('input', 'k-input sf-codex-search');
     search.type = 'search';
     search.placeholder = 'Search Codex';
     search.setAttribute('aria-label', 'Search Codex');
@@ -450,22 +351,52 @@ export const codexScreen = {
       this._query = search.value || '';
       this._render(ctx);
     });
-    rootEl.appendChild(search);
+    searchWrap.appendChild(search);
+    hang.appendChild(searchWrap);
     this._search = search;
+    this._searchWrap = searchWrap;
 
-    const body = el('div', 'sf-settings-pane sf-stage');
-    body.style.overflowY = 'auto';
-    body.style.flex = '1';
-    body.style.minHeight = '0';
-    rootEl.appendChild(body);
-    this._body = body;
+    // `dom.words` owns the arrow-key roving; the list is the tablist and each word a tab
+    // (`.sf-tabbar` / `.sf-tab` kept as hooks — the ledger route harness clicks them by text).
+    const bar = words(TABS.map((t) => ({ action: t, label: t, current: t === this._activeTab })), {
+      row: true, size: 'emph', ariaLabel: 'Codex sections',
+      onPick: (t) => { this._activeTab = t; this._render(ctx); },
+    });
+    bar.classList.add('sf-tabbar');
+    bar.setAttribute('role', 'tablist');
+    this._tabBtns = {};
+    for (const b of bar.querySelectorAll('.k-word')) {
+      const t = b.dataset.action;
+      b.classList.add('sf-tab');
+      b.id = 'sf-codex-tab-' + t.toLowerCase();
+      b.setAttribute('role', 'tab');
+      b.setAttribute('aria-controls', stage.id);
+      b.parentElement.setAttribute('role', 'presentation');
+      this._tabBtns[t] = b;
+    }
+    hang.appendChild(bar);
 
-    const foot = el('div', 'sf-foot sf-apron');
-    const close = el('button', 'sf-btn', 'Close'); close.style.width = 'auto';
-    close.addEventListener('click', () => nav(ctx, 'popScreen'));
+    const index = el('div');
+    hang.appendChild(index);
+    rootEl.appendChild(hang);
+    rootEl.appendChild(stage);
+    this._index = index;
+    this._body = stage;
+
+    // Foot: Close as a word; the unlock-status strip in fine print beside it.
+    const foot = el('footer', 'k-foot');
+    const close = el('button', 'k-word k-word--emph', 'Close');
+    close.type = 'button'; close.dataset.action = 'close';
+    close.addEventListener('click', () => { cue('confirm'); nav(ctx, 'popScreen'); });
     foot.appendChild(close);
+    const statusWrap = el('div');
+    statusWrap.setAttribute('aria-label', 'Codex unlock status');
+    foot.appendChild(statusWrap);
     rootEl.appendChild(foot);
+    this._status = statusWrap;
 
+    this._regions = { title, hang, stage, foot };
+    this._focusByTab = {};
     this._ctx = ctx;
     this._visible = false;
     this._unsubs = [];
@@ -476,6 +407,7 @@ export const codexScreen = {
     this._unsubs.push(ctx.bus.on('discovery:plateUnlocked', refreshIfVisible));
 
     this._render(ctx);
+    rootEl.dataset.kReady = '1';
   },
 
   refresh(ctx) { this._ctx = ctx; if (this._body) this._render(ctx); },
@@ -507,21 +439,45 @@ export const codexScreen = {
     }
     // The Ledger panel owns local page-cursor/evidence-detail state; an explicit show may refresh it.
     if (this._activeTab === 'Ledger' && this._ledgerPanel) { try { this._ledgerPanel.onShow(); } catch (_) {} }
+    // The cut and the settle (sheet §7). The kit's settle needs a real frame clock; the discovery
+    // return test calls onShow without a mounted screen.
+    if (this._regions && typeof requestAnimationFrame === 'function') {
+      try {
+        cue('open');
+        settle(this._regions.title, { from: 'top', state: 'codex:open' });
+        settle(this._regions.hang, { from: 'left', state: 'codex:open' });
+        settle(this._regions.stage, { from: 'right', state: 'codex:open' });
+        settle(this._regions.foot, { from: 'bottom', state: 'codex:open' });
+      } catch (_) { /* motion is cosmetic */ }
+    }
   },
   onHide() {
     this._visible = false;
+    try { cue('close'); } catch (_) {}
     // Release the ledger's image request when the codex hides; no rebuild happens here.
     if (this._ledgerPanel) { try { this._ledgerPanel.onHide(); } catch (_) {} }
+  },
+
+  _syncTabs() {
+    for (const t of TABS) {
+      const b = this._tabBtns && this._tabBtns[t];
+      if (!b) continue;
+      const active = t === this._activeTab;
+      b.setAttribute('aria-current', String(active));
+      b.setAttribute('aria-selected', String(active));
+      b.tabIndex = active ? 0 : -1;
+    }
+    if (this._tabLine) this._tabLine.textContent = TAB_LINES[this._activeTab] || '';
   },
 
   _render(ctx) {
     if (!this._body) return;
     // The Ledger tab owns its own page cursor and evidence-detail subtree. An unrelated refresh
     // (story/comms/graffiti event) must not tear that local state down: if the Ledger panel is
-    // already mounted in the body, only refresh tab-button active styling and return.
+    // already mounted on the stage, only refresh the tab words and return.
     if (this._activeTab === 'Ledger' && this._ledgerPanel && this._ledgerPanel.el
         && this._ledgerPanel.el.parentNode === this._body) {
-      for (const t of TABS) if (this._tabBtns[t]) this._tabBtns[t].classList.toggle('active', t === this._activeTab);
+      this._syncTabs();
       return;
     }
     // Leaving the Ledger tab: destroy its panel so no listener or image lingers off-tab.
@@ -530,15 +486,16 @@ export const codexScreen = {
       this._ledgerPanel = null;
     }
     this._body.innerHTML = '';
-    for (const t of TABS) {
-      if (this._tabBtns[t]) this._tabBtns[t].classList.toggle('active', t === this._activeTab);
-    }
+    this._index.innerHTML = '';
+    this._status.innerHTML = '';
+    this._sections = [];
+    this._entries = [];
+    this._syncTabs();
     // Archive + Ledger are media/panel surfaces, not searchable narrative — hide the chrome.
     const isChromeLess = this._activeTab === 'Archive' || this._activeTab === 'Ledger';
-    if (this._search) {
-      this._search.style.display = isChromeLess ? 'none' : '';
-      if (!isChromeLess && this._search.value !== this._query) this._search.value = this._query;
-    }
+    this._searchWrap.hidden = isChromeLess;
+    this._status.hidden = isChromeLess;
+    if (this._search && !isChromeLess && this._search.value !== this._query) this._search.value = this._query;
     if (!isChromeLess) this._renderStatus(ctx);
     switch (this._activeTab) {
       case 'Story':    this._renderStory(ctx); break;
@@ -553,30 +510,45 @@ export const codexScreen = {
     if (!isChromeLess) this._applySearchFilter();
   },
 
-  // Signal Archive — a grid of poster cards; clicking one plays its 6s clip through the UI system's
-  // shared cinematic player (ui.playCinematic). No new modal machinery; reuses the existing player.
+  /** A tab's section: a caps label, its entries (each a row in the index), or one empty line. */
+  _section(label, entries, empty = '') {
+    this._sections.push({ label, entries, empty });
+    for (const entry of entries) this._entries.push(entry);
+  },
+
+  // Signal Archive — the posters as a row of stills 200 px tall, each with its title, its caption
+  // and Play as a fine word; Play runs the 6s clip through the UI system's shared cinematic player
+  // (ui.playCinematic). No new modal machinery; reuses the existing player.
   _renderArchive() {
-    this._body.appendChild(el('div', 'sf-codex-section-h', 'Signal Archive'));
-    const intro = el('div', 'sf-codex-body', 'Recovered transmission stills from the Reach corridor. Select a signal to replay its clip.');
-    intro.style.marginBottom = 'var(--sp-3)';
-    this._body.appendChild(intro);
-    const grid = el('div', 'sf-arch-grid');
+    const article = el('article', 'sf-codex-entry');
+    article.appendChild(el('h2', 'k-display k-t-title', 'Signal Archive'));
+    article.appendChild(el('p', 'k-t-fine k-38', SIGNAL_ARCHIVE.length + ' recovered signals'));
+    article.appendChild(el('p', 'k-sentence', 'Recovered transmission stills from the Reach corridor. Select a signal to replay its clip.'));
+    const row = el('ul', 'k-words k-words--row');
+    row.setAttribute('aria-label', 'Signal Archive');
     for (const c of SIGNAL_ARCHIVE) {
-      const card = el('button', 'sf-arch-signal');
-      card.type = 'button';
-      card.setAttribute('aria-label', 'Play signal ' + c.id + ': ' + c.title);
-      const thumb = el('div', 'sf-arch-thumb');
-      thumb.style.backgroundImage = "url('" + c.poster + "')";
-      thumb.appendChild(el('div', 'sf-arch-play', '▶'));
-      card.appendChild(thumb);
-      const meta = el('div', 'sf-arch-meta');
-      meta.appendChild(el('div', 'sf-arch-title', c.title));
-      meta.appendChild(el('div', 'sf-arch-cap', c.caption));
-      card.appendChild(meta);
-      card.addEventListener('click', () => this._playCinematic(c.video, c.title));
-      grid.appendChild(card);
+      const item = el('li');
+      const still = el('div');
+      const img = el('img');
+      img.src = c.poster;
+      img.alt = c.title;
+      img.style.height = '200px';
+      still.appendChild(img);
+      item.appendChild(still);
+      item.appendChild(el('div', 'k-t-body', c.title));
+      item.appendChild(el('div', 'k-t-fine k-38', c.caption));
+      const play = el('button', 'k-word k-word--fine', 'Play');
+      play.type = 'button';
+      play.dataset.action = 'play:' + c.id;
+      play.setAttribute('aria-label', 'Play signal ' + c.id + ': ' + c.title);
+      play.addEventListener('click', () => { cue('confirm'); this._playCinematic(c.video, c.title); });
+      const verb = el('div');
+      verb.appendChild(play);
+      item.appendChild(verb);
+      row.appendChild(item);
     }
-    this._body.appendChild(grid);
+    article.appendChild(row);
+    this._body.appendChild(article);
   },
 
   _playCinematic(video, title) {
@@ -600,123 +572,170 @@ export const codexScreen = {
   },
 
   _renderDiscoveries(ctx) {
-    this._body.appendChild(el('div', 'sf-codex-section-h', 'Exploration Plates'));
     const state = ctx && ctx.state;
     const gal = galaxyExplorationSummary(state);
-    const summaryCard = el('div', 'sf-codex-status sf-crest');
-    summaryCard.setAttribute('aria-label', 'Survey and cartography summary');
-    summaryCard.appendChild(el('div', 'sf-codex-status-title', 'Galaxy Cartography & Survey Status'));
-    const summaryGrid = el('div', 'sf-codex-status-grid');
-
-    const item1 = el('div', 'sf-codex-status-item');
-    item1.appendChild(el('div', 'sf-codex-status-k', 'Survey Completion'));
-    item1.appendChild(el('div', 'sf-codex-status-v sf-fig', `${gal.overallPercent}% (${gal.foundPois}/${gal.totalPois} sites)`));
-    summaryGrid.appendChild(item1);
-
-    const item2 = el('div', 'sf-codex-status-item');
-    item2.appendChild(el('div', 'sf-codex-status-k', 'Explored Sectors'));
-    item2.appendChild(el('div', 'sf-codex-status-v sf-fig', `${gal.exploredSectors} / ${gal.totalSectors}`));
-    summaryGrid.appendChild(item2);
-
-    const item3 = el('div', 'sf-codex-status-item');
-    item3.appendChild(el('div', 'sf-codex-status-k', 'Recovered Artifacts'));
-    item3.appendChild(el('div', 'sf-codex-status-v sf-fig', `${gal.trophies}`));
-    summaryGrid.appendChild(item3);
-
-    summaryCard.appendChild(summaryGrid);
-    summaryCard.appendChild(el('div', 'sf-codex-status-note', 'Fly close to unresolved signatures or perform deep triangulations to expand known frontier cartography.'));
-    this._body.appendChild(summaryCard);
+    // The survey as the first entry: three hero numbers with a word each, then the one sentence.
+    const survey = makeEntry({
+      id: 'survey',
+      name: 'Survey status',
+      sub: gal.overallPercent + '% · ' + gal.foundPois + '/' + gal.totalPois + ' sites',
+      title: 'Galaxy Cartography & Survey Status',
+      meta: 'Survey',
+      body: 'Fly close to unresolved signatures or perform deep triangulations to expand known frontier cartography.',
+    });
+    survey.article.setAttribute('aria-label', 'Survey and cartography summary');
+    const heroes = el('div', 'k-words k-words--row');
+    heroes.appendChild(hero(gal.overallPercent + '%', 'survey completion · ' + gal.foundPois + '/' + gal.totalPois + ' sites'));
+    heroes.appendChild(hero(gal.exploredSectors + ' / ' + gal.totalSectors, 'explored sectors'));
+    heroes.appendChild(hero(String(gal.trophies), 'recovered artifacts'));
+    survey.article.insertBefore(heroes, survey.measure);
+    this._section('Survey', [survey]);
 
     const plates = explorationDiscoveryPlates(state);
     if (!plates.length) {
-      this._body.appendChild(el('div', 'sf-codex-empty', 'No physical discoveries logged yet. Earn a fix, then fly down the source.'));
+      this._section('Exploration Plates', [], 'No physical discoveries logged yet. Earn a fix, then fly down the source.');
       return;
     }
+    const entries = [];
     for (const plate of plates) {
-      const entry = el('article', 'sf-codex-entry');
-      const isRequested = plate.id === this._requestedDiscoveryId;
-      entry.dataset.codexDiscoveryId = plate.id;
-      if (isRequested) entry.tabIndex = -1;
-      entry.appendChild(el('h3', null, plate.title));
-      const meta = el('div', 'sf-codex-meta');
       const cut = String(plate.meta || '').indexOf(' · ');
       const sectorName = cut >= 0 ? plate.meta.slice(0, cut) : plate.meta;
       const sectorRest = cut >= 0 ? plate.meta.slice(cut) : '';
+      let meta = plate.meta || '';
       if (plate.sectorId && sectorName) {
+        // The sector as an entity link (the resolver adds data-entity).
+        meta = el('span');
         const linked = el('span', null, sectorName);
         decorateEntityNode(linked, 'sector:' + plate.sectorId);
         meta.appendChild(linked);
         if (sectorRest) meta.appendChild(document.createTextNode(sectorRest));
-      } else {
-        meta.textContent = plate.meta || '';
       }
-      entry.appendChild(meta);
-      entry.appendChild(el('div', 'sf-codex-body', plate.body));
-      entry.appendChild(el('div', 'sf-codex-note', plate.note));
+      const entry = makeEntry({
+        id: 'plate:' + plate.id,
+        name: plate.title,
+        sub: sectorName || '',
+        meta,
+        body: plate.body,
+        note: plate.note,
+        // A plate image, when the world record carries one, sits at the top of the stage.
+        image: typeof plate.image === 'string' ? plate.image : null,
+      });
+      entry.article.dataset.codexDiscoveryId = plate.id;
+      if (plate.id === this._requestedDiscoveryId) {
+        entry.requested = true;
+        this._focusByTab.Discoveries = entry.id;
+      }
       if (tethysCodexReturnIntent(state, plate)) {
-        const returnToTethys = el('button', 'sf-btn', 'Show Tethys Trade Hub');
+        const returnToTethys = el('button', 'k-word k-word--emph k-word--primary', 'Show Tethys Trade Hub');
         returnToTethys.type = 'button';
-        returnToTethys.style.marginTop = 'var(--sp-2)';
+        returnToTethys.dataset.action = 'tethys-return';
         returnToTethys.setAttribute('aria-label', 'Show Tethys Trade Hub on the map');
-        returnToTethys.addEventListener('click', () => openTethysCodexReturn(ctx, plate));
-        entry.appendChild(returnToTethys);
+        returnToTethys.addEventListener('click', () => { cue('confirm'); openTethysCodexReturn(ctx, plate); });
+        entry.article.appendChild(returnToTethys);
       }
-      this._body.appendChild(entry);
-      if (isRequested) focusCodexDiscoveryEntry(entry);
+      entries.push(entry);
     }
+    this._section('Exploration Plates', entries);
   },
 
+  // The unlock-status strip: the heading in caps, the counts in one fine line, the note beneath.
   _renderStatus(ctx) {
     const summary = codexProgressSummary(safeStory(ctx), ctx && ctx.state);
-    const box = el('div', 'sf-codex-status sf-crest');
-    box.setAttribute('aria-label', 'Codex unlock status');
-    box.appendChild(el('div', 'sf-codex-status-title', 'Codex Unlock Status'));
-    const grid = el('div', 'sf-codex-status-grid');
-    for (const item of summary.items) {
-      const row = el('div', 'sf-codex-status-item');
-      row.appendChild(el('div', 'sf-codex-status-k', item.key));
-      row.appendChild(el('div', 'sf-codex-status-v sf-fig', item.value));
-      grid.appendChild(row);
-    }
-    box.appendChild(grid);
-    box.appendChild(el('div', 'sf-codex-status-note', summary.note));
-    this._body.appendChild(box);
+    const box = this._status;
+    box.innerHTML = '';
+    box.appendChild(el('div', 'k-caps', 'Codex Unlock Status'));
+    // "Phase 1" already names its key; every other value is prefixed with its key word.
+    box.appendChild(el('p', 'k-t-fine k-62', summary.items
+      .map((item) => (String(item.value).startsWith(item.key) ? item.value : item.key + ' ' + item.value))
+      .join(' · ')));
+    box.appendChild(el('p', 'k-t-fine k-38 k-measure', summary.note));
   },
 
+  // The index: a caps row per section and a hairline row per entry that matches the search (the
+  // whole entry text, not only its name), then the focused entry on the stage. Locked future
+  // content is never built, so it can never match.
   _applySearchFilter() {
-    if (!this._body) return;
+    if (!this._index || !this._body) return;
     const query = normalizeSearch(this._query);
-    const entries = Array.from(this._body.querySelectorAll('.sf-codex-entry'));
-    const headers = Array.from(this._body.querySelectorAll('.sf-codex-section-h'));
-    const emptyRows = Array.from(this._body.querySelectorAll('.sf-codex-empty'));
-    const oldEmpty = this._body.querySelector('.sf-codex-empty-search');
-    if (oldEmpty) oldEmpty.remove();
-    if (!query) {
-      entries.forEach((entry) => { entry.hidden = false; });
-      headers.forEach((header) => { header.hidden = false; });
-      emptyRows.forEach((row) => { row.hidden = false; });
+    const sections = this._sections.map((section) => ({
+      ...section,
+      entries: query
+        ? section.entries.filter((entry) => normalizeSearch(entry.article.textContent).includes(query))
+        : section.entries,
+    }));
+    const visible = sections.flatMap((section) => section.entries);
+    this._index.innerHTML = '';
+    if (query && !visible.length) {
+      this._index.appendChild(el('p', 'k-empty', 'No matching unlocked entries.'));
+      this._body.innerHTML = '';
       return;
     }
-    let visible = 0;
-    entries.forEach((entry) => {
-      const matched = normalizeSearch(entry.textContent).includes(query);
-      entry.hidden = !matched;
-      if (matched) visible++;
-    });
-    emptyRows.forEach((row) => { row.hidden = true; });
-    headers.forEach((header) => {
-      let hasVisibleEntry = false;
-      let node = header.nextElementSibling;
-      while (node && !node.classList.contains('sf-codex-section-h')) {
-        if (node.classList.contains('sf-codex-entry') && !node.hidden) {
-          hasVisibleEntry = true;
-          break;
-        }
-        node = node.nextElementSibling;
+    const remembered = this._focusByTab[this._activeTab];
+    const focus = visible.find((entry) => entry.id === remembered) || visible[0] || null;
+    if (focus) this._focusByTab[this._activeTab] = focus.id;
+
+    const list = rows(visible.map((entry) => ({
+      id: entry.id, name: entry.name, sub: entry.sub, num: '', selected: focus && entry.id === focus.id,
+    })), { ariaLabel: this._activeTab + ' entries', onPick: (id) => this._focus(id) });
+    // A signal name for the filed choice, a 38 % name for a locked entry: nested spans, since the
+    // row's own name rule outranks the colour classes.
+    for (const row of list.querySelectorAll('.k-row')) {
+      const entry = visible.find((candidate) => candidate.id === row.dataset.id);
+      if (!entry || (!entry.signal && !entry.locked)) continue;
+      const name = row.querySelector('.k-row__name');
+      if (!name) continue;
+      name.textContent = '';
+      name.appendChild(el('span', entry.signal ? 'k-signal' : 'k-38', entry.name));
+    }
+    // Interleave the section rows. Rows are reused (the roving keeps them); a header or an empty
+    // line is a static row the arrow keys skip. A section every row of which is hidden by the
+    // search loses its header, as today.
+    const byId = new Map();
+    for (const row of list.querySelectorAll('.k-row')) byId.set(row.dataset.id, row);
+    list.innerHTML = '';
+    for (const section of sections) {
+      if (query && !section.entries.length) continue;
+      const header = el('li', 'k-row k-row--static');
+      header.setAttribute('role', 'presentation');
+      header.appendChild(el('span', 'k-caps', section.label));
+      list.appendChild(header);
+      if (!section.entries.length) {
+        const empty = el('li', 'k-row k-row--static');
+        empty.setAttribute('role', 'presentation');
+        empty.appendChild(el('span', 'k-38', section.empty || '— nothing encountered yet —'));
+        list.appendChild(empty);
+        continue;
       }
-      header.hidden = !hasVisibleEntry;
+      for (const entry of section.entries) list.appendChild(byId.get(entry.id));
+    }
+    // The stage follows keyboard focus, not only a click: arrowing down the rows turns the pages.
+    list.addEventListener('focusin', (event) => {
+      const row = event.target && event.target.closest ? event.target.closest('.k-row[data-id]') : null;
+      if (row && row.dataset.id !== this._focusByTab[this._activeTab]) this._focus(row.dataset.id);
     });
-    if (!visible) this._body.appendChild(el('div', 'sf-codex-empty sf-codex-empty-search', 'No matching unlocked entries.'));
+    this._index.appendChild(list);
+    this._list = list;
+    if (focus) this._showEntry(focus);
+    else this._body.innerHTML = '';
+  },
+
+  _focus(id) {
+    const entry = (this._entries || []).find((candidate) => candidate.id === id);
+    if (!entry) return;
+    this._focusByTab[this._activeTab] = id;
+    if (this._list) {
+      for (const row of this._list.querySelectorAll('.k-row[data-id]')) row.setAttribute('aria-selected', String(row.dataset.id === id));
+    }
+    this._showEntry(entry);
+  },
+
+  _showEntry(entry) {
+    this._body.innerHTML = '';
+    this._body.appendChild(entry.article);
+    if (entry.requested) {
+      entry.article.tabIndex = -1;
+      focusCodexDiscoveryEntry(entry.article);
+    }
   },
 
   // The 8-beat spine. Beats up to the player's current beatIndex are readable; future beats show
@@ -724,36 +743,38 @@ export const codexScreen = {
   _renderStory(ctx) {
     const s = safeStory(ctx);
     const beat = storyBeatIndex(s);
-    this._body.appendChild(el('div', 'sf-codex-section-h', 'The Eight Beats'));
-    BEAT_CONTENT.forEach((content, i) => {
+    const beats = BEAT_CONTENT.map((content, i) => {
       const reached = i <= beat;
-      const entry = el('div', 'sf-codex-entry sf-codex-beat' + (i === beat ? ' current' : ''));
-      const heading = el('h3', i === beat ? 'sf-codex-now' : null, BEAT_TITLES[i] || ('Beat ' + i));
-      entry.appendChild(heading);
-      entry.appendChild(el('div', 'sf-codex-meta', reached ? ('Phase ' + content.phase) : 'Locked'));
-      if (reached) {
-        entry.appendChild(el('div', 'sf-codex-body', content.hint));
-      } else {
-        entry.appendChild(el('div', 'sf-codex-body sf-codex-locked', '— not yet encountered —'));
-      }
-      this._body.appendChild(entry);
+      const phase = reached ? ('Phase ' + content.phase + (i === beat ? ' · Current beat' : '')) : 'Locked';
+      return makeEntry({
+        id: 'beat:' + i,
+        name: BEAT_TITLES[i] || ('Beat ' + i),
+        sub: phase,
+        meta: phase,
+        body: reached ? content.hint : '— not yet encountered —',
+        locked: !reached,
+      });
     });
+    this._section('The Eight Beats', beats);
 
     // Endgame: the 5 choices. Unlock only after the player has chosen (state.story.endgameChoice),
     // OR reached B7 (so they can see what's on offer). Before B7: locked entirely.
-    this._body.appendChild(el('div', 'sf-codex-section-h', 'Endgame'));
     if (beat >= 7) {
-      ENDGAME_CHOICES.forEach((c) => {
+      this._section('Endgame', ENDGAME_CHOICES.map((c) => {
         const chosen = s.endgameChoice === c.id;
-        const entry = el('div', 'sf-codex-entry' + (chosen ? ' sf-codex-entry--filed' : ''));
-        entry.appendChild(el('h3', null, (chosen ? '✓ ' : '') + 'Choice ' + c.id + ' — ' + c.title));
-        entry.appendChild(el('div', 'sf-codex-meta', c.kind + (chosen ? ' · YOUR CHOICE' : '')));
-        entry.appendChild(el('div', 'sf-codex-body', c.summary));
-        if (c.hiddenCost) entry.appendChild(el('div', 'sf-codex-note sf-codex-note--cost', 'Hidden cost: ' + c.hiddenCost));
-        this._body.appendChild(entry);
-      });
+        return makeEntry({
+          id: 'endgame:' + c.id,
+          name: (chosen ? '✓ ' : '') + 'Choice ' + c.id + ' — ' + c.title,
+          sub: c.kind + (chosen ? ' · YOUR CHOICE' : ''),
+          meta: c.kind + (chosen ? ' · YOUR CHOICE' : ''),
+          body: c.summary,
+          note: c.hiddenCost ? 'Hidden cost: ' + c.hiddenCost : '',
+          noteBad: true,
+          signal: chosen,
+        });
+      }));
     } else {
-      this._body.appendChild(el('div', 'sf-codex-empty', 'The endgame has not revealed itself yet.'));
+      this._section('Endgame', [], 'The endgame has not revealed itself yet.');
     }
   },
 
@@ -768,15 +789,14 @@ export const codexScreen = {
     const beat = storyBeatIndex(s);
 
     // Cold start lines (B0 — always seen once a new game has begun).
-    this._body.appendChild(el('div', 'sf-codex-section-h', 'Cold Start'));
-    COLD_START.forEach((c) => {
-      const entry = el('div', 'sf-codex-entry');
-      entry.appendChild(el('h3', null, c.sender));
-      entry.appendChild(el('div', 'sf-codex-meta', c.category));
-      entry.appendChild(el('div', 'sf-codex-body', c.text));
-      if (c.note) entry.appendChild(el('div', 'sf-codex-note', c.note));
-      this._body.appendChild(entry);
-    });
+    this._section('Cold Start', COLD_START.map((c) => makeEntry({
+      id: 'comm:' + c.id,
+      name: c.sender,
+      sub: c.category,
+      meta: c.category,
+      body: c.text,
+      note: c.note || '',
+    })));
 
     // The full COMMS catalog, gated by seen-or-beat-reached. COMMS category keys → display labels.
     for (const [label, key] of COMMS_CATEGORIES) {
@@ -787,53 +807,47 @@ export const codexScreen = {
         // personal/late/story lines unlock at their beat even if the once-flag hasn't stuck yet.
         return commUnlocked(c, s, beat, key);
       });
-      this._body.appendChild(el('div', 'sf-codex-section-h', label + ' (' + visible.length + '/' + entries.length + ')'));
+      const sectionLabel = label + ' (' + visible.length + '/' + entries.length + ')';
       if (!visible.length) {
-        this._body.appendChild(el('div', 'sf-codex-empty', key === 'traps' ? '— no conditional signals encountered yet —' : '— nothing encountered yet —'));
+        this._section(sectionLabel, [], key === 'traps' ? '— no conditional signals encountered yet —' : '— nothing encountered yet —');
         continue;
       }
-      for (const c of visible) {
-        const entry = el('div', 'sf-codex-entry');
-        entry.appendChild(el('h3', null, c.sender || c.id));
-        entry.appendChild(el('div', 'sf-codex-meta', key.replace(/s$/, '')));
-        entry.appendChild(el('div', 'sf-codex-body', c.text));
-        if (c.note) entry.appendChild(el('div', 'sf-codex-note', c.note));
-        this._body.appendChild(entry);
-      }
+      this._section(sectionLabel, visible.map((c) => makeEntry({
+        id: 'comm:' + key + ':' + c.id,
+        name: c.sender || c.id,
+        sub: key.replace(/s$/, ''),
+        meta: key.replace(/s$/, ''),
+        body: c.text,
+        note: c.note || '',
+      })));
     }
   },
 
   // Graffiti the player has seen (state.story.graffitiShown is keyed by where:line). Plus the
-  // ever-present gang markings on the bulkhead (there from B0).
+  // ever-present gang markings on the bulkhead (there from B0). The line itself is the title.
   _renderGraffiti(ctx) {
     const s = safeStory(ctx);
     const shown = s.graffitiShown || {};
     const beat = storyBeatIndex(s);
 
-    this._body.appendChild(el('div', 'sf-codex-section-h', 'Bulkhead — The Previous Crew'));
-    this._body.appendChild(el('div', 'sf-codex-entry', null)).appendChild(
-      el('div', 'sf-codex-graffiti', GRAFFITI.GANG_DIDNT_MAKE_IT)
-    );
-    this._body.lastElementChild.appendChild(el('div', 'sf-codex-note',
-      "The gang left their mark when they took the Tessera. It's still there. Never coming off."));
+    this._section('Bulkhead — The Previous Crew', [makeEntry({
+      id: 'graffiti:bulkhead',
+      name: GRAFFITI.GANG_DIDNT_MAKE_IT,
+      sub: 'Bulkhead',
+      meta: 'Bulkhead',
+      note: "The gang left their mark when they took the Tessera. It's still there. Never coming off.",
+    })]);
 
-    this._body.appendChild(el('div', 'sf-codex-section-h', 'Encountered'));
-    let any = false;
+    const encountered = [];
     for (const [key, _seen] of Object.entries(shown)) {
       // key is "where:line" — pull the line text after the first colon.
       const line = key.includes(':') ? key.slice(key.indexOf(':') + 1) : key;
       if (!line) continue;
-      any = true;
       const where = key.includes(':') ? key.slice(0, key.indexOf(':')) : '?';
-      const entry = el('div', 'sf-codex-entry');
-      entry.appendChild(el('div', 'sf-codex-meta', where));
-      entry.appendChild(el('div', 'sf-codex-graffiti', line));
-      this._body.appendChild(entry);
+      encountered.push(makeEntry({ id: 'graffiti:' + key, name: line, sub: where, meta: where }));
     }
-    if (!any) {
-      this._body.appendChild(el('div', 'sf-codex-empty',
-        beat > 0 ? 'No location graffiti encountered yet.' : '— nothing encountered yet —'));
-    }
+    this._section('Encountered', encountered,
+      beat > 0 ? 'No location graffiti encountered yet.' : '— nothing encountered yet —');
   },
 
   // Named figures. The protagonist + figures whose org/role is public lore are always shown; others
@@ -841,75 +855,91 @@ export const codexScreen = {
   _renderFigures(ctx) {
     const s = safeStory(ctx);
     const beat = storyBeatIndex(s);
-    this._body.appendChild(el('div', 'sf-codex-section-h', 'Named Figures'));
+    const entries = [];
     const renderFig = (key) => {
       const f = FIGURES[key];
       if (!f) return;
-      const entry = el('div', 'sf-codex-entry');
-      entry.appendChild(el('h3', null, f.name + (key === 'kurtz' ? '' : '')));
-      const meta = el('div', 'sf-codex-meta');
-      if (f.org) {
-        const org = el('span', null, f.org);
-        if (FIGURE_FACTION[key]) decorateEntityNode(org, 'faction:' + FIGURE_FACTION[key]);
-        meta.appendChild(org);
+      let meta = null;
+      if (f.org || f.role) {
+        meta = el('span');
+        if (f.org) {
+          const org = el('span', null, f.org);
+          if (FIGURE_FACTION[key]) decorateEntityNode(org, 'faction:' + FIGURE_FACTION[key]);
+          meta.appendChild(org);
+        }
+        if (f.role) {
+          if (f.org) meta.appendChild(document.createTextNode(' · '));
+          meta.appendChild(document.createTextNode(f.role));
+        }
       }
-      if (f.role) {
-        if (f.org) meta.appendChild(document.createTextNode(' · '));
-        meta.appendChild(document.createTextNode(f.role));
-      }
-      entry.appendChild(meta);
       const dossier = FIGURE_DOSSIERS[key];
-      if (dossier && dossier.body) entry.appendChild(el('div', 'sf-codex-body', dossier.body));
-      if (dossier && dossier.note) entry.appendChild(el('div', 'sf-codex-note', dossier.note));
-      this._body.appendChild(entry);
+      entries.push(makeEntry({
+        id: 'figure:' + key,
+        name: f.name,
+        sub: [f.org, f.role].filter(Boolean).join(' · '),
+        meta,
+        body: dossier && dossier.body || '',
+        note: dossier && dossier.note || '',
+      }));
     };
     for (const k of FIGURE_ALWAYS) renderFig(k);
     for (const [k, unlockBeat] of Object.entries(FIGURE_GATED)) {
       if (beat >= unlockBeat) renderFig(k);
       else {
-        const entry = el('div', 'sf-codex-entry sf-codex-locked');
-        entry.appendChild(el('h3', null, '???'));
-        entry.appendChild(el('div', 'sf-codex-meta', 'Not yet encountered'));
-        this._body.appendChild(entry);
+        entries.push(makeEntry({
+          id: 'figure:' + k,
+          name: '???',
+          sub: 'Not yet encountered',
+          meta: 'Not yet encountered',
+          locked: true,
+        }));
       }
     }
+    this._section('Named Figures', entries);
   },
 
   // The Tessera's sealed history + persistent cargo (the "personal effects" that travel with you).
-  // Always visible — it's the player's own ship.
+  // Always visible — it's the player's own ship. The registry facts are static hairline rows.
   _renderShip(ctx) {
-    this._body.appendChild(el('div', 'sf-codex-section-h', 'The Tessera'));
-    const entry = el('div', 'sf-codex-entry');
-    entry.appendChild(el('h3', null, SHIP.name + ' / ' + SHIP.registration));
-    const grid = el('div', 'sf-grid2');
-    const rows = [
+    const ship = makeEntry({
+      id: 'ship',
+      name: SHIP.name + ' / ' + SHIP.registration,
+      sub: 'Sealed history',
+      meta: 'Sealed history',
+    });
+    const facts = el('ul', 'k-rows');
+    facts.style.setProperty('--k-row-cols', 'minmax(0, 1fr) minmax(0, 2fr)');
+    const pairs = [
       ['Incident', SHIP.incident + ' (' + SHIP.incidentRef + ')'],
       ['Previous operator', SHIP.previousOperator],
       ['Crew status', SHIP.crewStatus],
       ['Impounded', SHIP.impoundMonths + ' months'],
       ['Acquired via', SHIP.friend.callsign + ' — ' + SHIP.friend.debt],
     ];
-    for (const [k, v] of rows) {
-      grid.appendChild(el('div', 'k', k));
-      grid.appendChild(el('div', 'v', v));
+    for (const [k, v] of pairs) {
+      const row = el('li', 'k-row k-row--static');
+      row.appendChild(el('span', null, k));
+      row.appendChild(el('span', 'k-row__name', v));
+      facts.appendChild(row);
     }
-    entry.appendChild(grid);
-    this._body.appendChild(entry);
+    ship.measure.appendChild(facts);
+    this._section('The Tessera', [ship]);
 
-    this._body.appendChild(el('div', 'sf-codex-section-h', 'Reference Codes'));
-    const refs = el('div', 'sf-codex-entry');
-    refs.appendChild(el('div', 'sf-codex-body',
-      REFS.CONTRACT_47A + ' — your first contract. Payment withheld forever.\n' +
-      REFS.REF_44C + ' — the administrative code that governs everything inconvenient.'));
-    this._body.appendChild(refs);
+    this._section('Reference Codes', [makeEntry({
+      id: 'refs',
+      name: 'Reference Codes',
+      sub: REFS.CONTRACT_47A + ' · ' + REFS.REF_44C,
+      meta: 'Two codes that keep coming back',
+      body: REFS.CONTRACT_47A + ' — your first contract. Payment withheld forever.\n' +
+        REFS.REF_44C + ' — the administrative code that governs everything inconvenient.',
+    })]);
 
-    this._body.appendChild(el('div', 'sf-codex-section-h', 'Personal Effects'));
-    PERSISTENT_CARGO.forEach((p) => {
-      const entry = el('div', 'sf-codex-entry');
-      entry.appendChild(el('h3', null, p.name));
-      entry.appendChild(el('div', 'sf-codex-meta sf-fig', p.mass + ' t · unsellable'));
-      entry.appendChild(el('div', 'sf-codex-note', p.note));
-      this._body.appendChild(entry);
-    });
+    this._section('Personal Effects', PERSISTENT_CARGO.map((p) => makeEntry({
+      id: 'effect:' + p.id,
+      name: p.name,
+      sub: p.mass + ' t · unsellable',
+      meta: p.mass + ' t · unsellable',
+      note: p.note,
+    })));
   },
 };
