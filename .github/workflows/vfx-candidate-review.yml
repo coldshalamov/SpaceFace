@@ -37,30 +37,16 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Decode and apply exact reviewed source bundle
+      - name: Apply render-evidence refinement once
         run: |
           set -euo pipefail
           python - <<'PY'
-          import base64, gzip, hashlib, json, pathlib, subprocess
-          if not pathlib.Path('src/render/combat/transientVfxMaterials.js').exists():
-              encoded = ''.join(pathlib.Path(f'.github/vfx-candidate-{i}.b64').read_text().strip() for i in range(4))
-              raw = base64.b64decode(encoded, validate=True)
-              assert hashlib.sha256(raw).hexdigest() == '5078f9c14ef166b98954cc31a12051c4c40116e05d28dc72216b8a51927f0889'
-              payload = json.loads(gzip.decompress(raw))
-              patch = payload['patch'].encode()
+          import pathlib, subprocess
+          path = pathlib.Path('.github/vfx-refinement.patch')
+          if path.exists() and 'N, FRAMES, STEPS, DT = 32,' in pathlib.Path('scripts/bake-vfx-density.py').read_text():
+              patch = path.read_bytes()
               subprocess.run(['git','apply','--check','-'],input=patch,check=True)
               subprocess.run(['git','apply','-'],input=patch,check=True)
-              for name, content in payload['files'].items():
-                  p = pathlib.Path(name)
-                  assert not p.is_absolute() and '..' not in p.parts
-                  assert name.startswith(('src/render/combat/','scripts/','test/'))
-                  p.parent.mkdir(parents=True,exist_ok=True)
-                  p.write_text(content)
-              p = pathlib.Path('src/render/vfx.js')
-              s = p.read_text()
-              if payload.get('trimVfxFactoryTail'):
-                  s = s[:s.index('function makeGlowTexture()')].rstrip()+'\n'
-                  p.write_text(s)
           PY
       - name: Install diagnostic and offline-bake dependencies
         run: |
@@ -84,7 +70,7 @@ jobs:
           git config user.email 'vfx-candidate@users.noreply.github.com'
           git add src/render/vfx.js src/render/combat/instancedSpritePool.js src/render/combat/arcadeStructuralFx.js src/render/combat/structuredBurstGeometry.js src/render/combat/transientVfxMaterials.js src/render/combat/densityVolumeData.js scripts/bake-vfx-density.py scripts/review-structured-vfx.mjs test/vfx-structured-transients.test.mjs
           if ! git diff --cached --quiet; then
-            git commit -m 'feat(vfx): replace flat transient carriers with folded energy and animated 3D density'
+            git commit -m 'art(vfx): carve the density impulse and light its evolving interior'
             git push origin HEAD:codex/vfx-structured-energy-20260907
           fi
           git rev-parse HEAD > .devshots/structured-vfx/source-commit.txt
