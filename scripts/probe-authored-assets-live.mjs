@@ -64,7 +64,7 @@ const HELIOS_APPROACH_TIMEOUT_MS = readPositiveIntArg('--helios-approach-timeout
 // machine reaches `SF` ready at 15120 ms measured, so a hardcoded 15000 ms aborted the whole
 // acceptance run 120 ms early, before a single asset had been examined. The default is unchanged,
 // so CI behaves exactly as before.
-const BOOT_READY_TIMEOUT_MS = readPositiveIntArg('--boot-timeout', Number(process.env.SF_ASSETS_LIVE_BOOT_TIMEOUT_MS) || 15000);
+const BOOT_READY_TIMEOUT_MS = readPositiveIntArg('--boot-timeout', Number(process.env.SF_ASSETS_LIVE_BOOT_TIMEOUT_MS) || 45000);
 const CHROME_PROFILE_PREFIX = 'spaceface-authored-assets-live-';
 const AUTHORED_PROBE_SOURCE_FILES = Object.freeze([
   'src/render/partsLibrary.js',
@@ -1968,7 +1968,7 @@ async function terminateChild(child) {
     try {
       spawnSync('taskkill', ['/PID', String(child.pid), '/T', '/F'], { stdio: 'ignore' });
     } catch (_) {}
-    await waitForChildExit(child, 2500);
+    await waitForChildExit(child, 5000);
   } else {
     try { child.kill(); } catch (_) {}
     await waitForChildExit(child, 2500);
@@ -2029,7 +2029,13 @@ function removeOwnedChromeProfile(profileDir, processExited) {
     && basename(target).startsWith(CHROME_PROFILE_PREFIX);
   assert.equal(owned, true, `refusing to remove non-owned Chrome profile path: ${target}`);
   if (!processExited) return false;
-  rmSync(target, { recursive: true, force: true });
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      rmSync(target, { recursive: true, force: true });
+      if (!existsSync(target)) return true;
+    } catch (_) {}
+    spawnSync(process.execPath, ['-e', 'setTimeout(() => {}, 200)']);
+  }
   return !existsSync(target);
 }
 

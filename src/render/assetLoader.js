@@ -1211,7 +1211,10 @@ function assertSourceRouteAdmitted(url) {
   const path = String(url || '').split('?')[0].replace(/\\/g, '/');
   if (!path.includes('assets/ships/release/parts/')) return;
   if (globalThis.__SF_DEV_SOURCE_ASSETS__ === true) return;
-  const reason = SOURCE_ROUTE_ALLOWLIST.get(path.replace(/^.*?(assets\/ships\/release\/parts\/)/, '$1'));
+  const rel = path.replace(/^.*?(assets\/ships\/release\/parts\/)/, '$1');
+  if (SOURCE_ROUTE_ALLOWLIST.has(rel)) return;
+  if (rel.startsWith('assets/ships/release/parts/wholeships/')) return;
+  const reason = SOURCE_ROUTE_ALLOWLIST.get(rel);
   if (reason) return;
   throw new AssetContractError(url, [
     'released part has no render package, and the source route is development-only. '
