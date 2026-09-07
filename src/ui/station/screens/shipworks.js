@@ -1,11 +1,18 @@
-// src/ui/station/screens/shipworks.js — "Shipworks": ship sales + outfitter (fit
-// modules) merged around ONE central ship preview. Fleet/Buy modes on the left; the ship is the
-// hero object; slots are clickable — clicking one dims the room and reveals compatible modules.
-// One reused preview mount (createShipPreviewMount) = the perf fix vs. a renderer-per-open.
+// src/ui/station/screens/shipworks.js — "Shipworks" and THE SHIP: the shared stage (Frontend
+// Task C §1.9). The hull fills the panel behind everything, orbitable; the hulls (fleet / for sale)
+// as a column of rows down the hang; the hull's name at title size with its blurb; six compact
+// static rows in the corner (Mass · Energy · Shield · Cargo · Thrust · Heat); labels pinned to the
+// hull by hairline leaders; the four bands — handling, power, condition, capability — as four hero
+// numbers along the foot, the selected one explaining itself in rows beneath; the verbs as words.
+// Slots are clickable — choosing one puts the compatible modules in the hang column in place of the
+// hulls (no modal). One reused preview mount (createShipPreviewMount) serves both hosts.
 // Emits ui:buyShip / ui:setActiveShip / ui:sellShip / ui:buyModule / ui:fitModule / ui:unfitModule.
 //
 // Engineering numbers come only from presenters/engineeringPreview.js → ships.getDerivedStats.
 // Never invent simplified fittings/geometry or raw module.mods key diffs as flight stats.
+// `.sx-sw`, `.sx-sw__canvas`, `.sx-sw__stage`, `.sx-sw__stats`, `.sx-sw-row[data-fleet|data-buy]`,
+// `.sx-hardpoint[data-spatial-slot]`, `.sx-hardpoint__copy`, `.sx-modrow[data-preview-module]`,
+// `[data-buyfit]`, `[data-buyship]`, `[data-verb]`, `.sx-sw__acquiring` are hooks the checks query.
 import {
   buildSlotList,
   dryRunLoadoutPresetApply,
@@ -16,7 +23,6 @@ import {
   shipworksStationAccess,
 } from '../../../systems/ships.js';
 import { SHIPS } from '../../../data/ships.js';
-import { SHIP_SILHOUETTES } from '../../../data/shipSilhouettes.js';
 import { SECTORS } from '../../../data/sectors.js';
 import { MODULES } from '../../../data/modules.js';
 import { WEAPONS } from '../../../data/weapons.js';
@@ -24,16 +30,13 @@ import { escapeHtml } from '../../comms.js';
 import { confirm, isConfirmOpen } from '../../confirm.js';
 import { describeOutfittingSpendConfirm } from '../../outfittingSpendConfirm.js';
 import { moduleRiskStrip } from '../../panels/moduleRisk.js';
-import { icon } from '../icons.js';
 import { describeOutfittingPurchase, masslineHeadOutcome } from '../outfittingGuidance.js';
 import {
   createShipPreviewMount,
   dockInteriorIdForArchetype,
 } from '../../shipPreviewMount.js';
-import { autoUpdate, computePosition, flip, offset, shift, size } from '@floating-ui/dom';
-import { createCircularGauge, createRouteBeam } from '../../effects/index.js';
+import { createRouteBeam } from '../../effects/index.js';
 import { prefersReducedMotion } from '../../effects/effectRuntime.js';
-import { planGaugeSettle } from '../../effects/gaugeSettle.js';
 import { mountDataState, settleDataState } from '../../uiPrimitives.js';
 import {
   formatPreviewDelta,
@@ -66,48 +69,8 @@ const CENTERED_SHIP_YAW = 0;
 const FITTABLE = MODULES.concat(WEAPONS);
 const FITTABLE_BY_ID = new Map(FITTABLE.map((d) => [d.id, d]));
 
-const SLOT_ICON = { weapon: 'target', shield: 'hull', engine: 'refuel', cargo: 'cargo', mining: 'industry', utility: 'spark' };
 const SLOT_LABEL = { weapon: 'Weapon', shield: 'Shield', engine: 'Engine', cargo: 'Cargo', mining: 'Mining', utility: 'Utility' };
 
-// Chooser corrections that belong to this screen (the shared sheets carry older deck theming):
-// the compatible-modules list must be the element that scrolls — a flex child keeps its content
-// height unless min-height:0 is stated, so the row stack used to spill past the panel's capped
-// height and the last module was sheared off with no scrollbar. This Chromium answers overflow
-// with an auto-hiding overlay scrollbar (nothing visible at rest — measured in the headless
-// atlas), so the list carries the same always-visible slim progress track as the ship rail
-// (.sx-sw__railtrack) instead of depending on UA chrome. Scoped under .sx-sw so the market and
-// industry hosts, which reuse nothing here, are untouched.
-const STYLE_ID = 'sf-shipworks-style';
-function injectStyle() {
-  if (typeof document === 'undefined' || document.getElementById(STYLE_ID)) return;
-  const s = document.createElement('style');
-  s.id = STYLE_ID;
-  s.textContent = SHIPWORKS_CSS;
-  document.head.appendChild(s);
-}
-
-// Named SHIPWORKS_CSS, not CSS — a module binding named CSS would shadow the global CSS object
-// (the global is what CSS.escape lives on).
-const SHIPWORKS_CSS = `
-.sx-sw .sx-chooser__panel { overflow: hidden; }
-.sx-sw .sx-chooser__list {
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-width: none;
-}
-.sx-sw .sx-chooser__list::-webkit-scrollbar { display: none; width: 0; height: 0; }
-.sx-sw .sx-chooser__track {
-  position: absolute; right: 5px; width: 4px; border-radius: 2px;
-  background: color-mix(in srgb, var(--sf-edge, #2c343f) 60%, transparent);
-  pointer-events: none;
-}
-.sx-sw .sx-chooser__track i {
-  display: block; width: 100%; height: 100%; border-radius: inherit;
-  background: color-mix(in srgb, var(--accent, #4f8fdd) 55%, transparent);
-}
-.sx-sw .sx-chooser__kicker { color: var(--accent, #4f8fdd); }
-`;
 
 const fmt = (n) => Math.round(Number(n) || 0).toLocaleString('en-US');
 const shipName = (id) => { const s = SHIP_BY_ID.get(id); return s ? s.name : id; };
@@ -118,10 +81,6 @@ const UI_DRAWER_LATCH_CUE = 'sfx_ui_drawer_latch';
 function finite(value, fallback = 0) {
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
-}
-
-function clamp01(value) {
-  return value < 0 ? 0 : value > 1 ? 1 : value;
 }
 
 function withCargoMass(player, usedMass) {
@@ -148,19 +107,6 @@ function whyAttr(text) {
   // tabindex travels with the why: a hover-only affordance does not exist for a keyboard player
   // (INSTRUMENT_GRAMMAR §7 tier 2 = hover AND focus). Buttons carrying this attr are unaffected.
   return ` data-why="${escapeHtml(String(text))}" tabindex="0"`;
-}
-
-function gaugeNorm(key, raw, stats) {
-  if (key === 'mass') return clamp01(finite(raw, 0) / 250);
-  if (key === 'capMax') return clamp01(finite(raw, 0) / 600);
-  if (key === 'shieldMax') return clamp01(finite(raw, 0) / 800);
-  if (key === 'cargoCap') return clamp01(finite(raw, 0) / 400);
-  if (key === 'maxSpeed') return clamp01(finite(raw, 0) / 350);
-  if (key === 'continuousDrain') {
-    const regen = Math.max(1, finite(stats && stats.capRegen, 1) * 1.5);
-    return clamp01(finite(raw, 0) / regen);
-  }
-  return 0;
 }
 
 export function shipworksDockIdForState(state) {
@@ -194,14 +140,6 @@ function fittedIdentityLine(def) {
   if (def.size) parts.push(String(def.size));
   if (def.tier != null) parts.push('T' + def.tier);
   return parts.join(' · ');
-}
-
-// Silhouettes moved to src/data/shipSilhouettes.js so the flight HUD can draw the player's
-// actual hull without importing this station screen. One table, two consumers.
-
-function shipSilhouette(def) {
-  const body = SHIP_SILHOUETTES[def && def.id] || SHIP_SILHOUETTES.ship_kestrel;
-  return `<svg class="sx-shipmark" viewBox="0 0 48 28" aria-hidden="true" focusable="false">${body}</svg>`;
 }
 
 export function calculateSpatialSlotLayout({
@@ -381,43 +319,49 @@ export function getSharedShipStage(ctx) {
  * Everything else — the mount, the projection, the callouts, ghost preview — is identical.
  */
 export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
-  injectStyle();
   let host = initialHost;
   const el = document.createElement('div');
-  el.className = 'sx-sw';
+  el.className = 'k-panel sx-sw';
+  // The kit panel: the hulls down the hang column, the stage to its right. The canvas fills the
+  // whole panel behind both (positioned like .k-world); the corner rows, the pinned labels, the
+  // four bands along the foot and the verbs all sit on top. The chooser is a third child that
+  // takes the hang column's cell while a slot is being chosen (`is-choosing` on the panel).
   el.innerHTML =
-    `<nav class="sx-sw__rail" aria-label="Shipworks ship selection">` +
-      `<div class="sx-seg"><button type="button" class="sx-seg__btn is-on" data-mode="fleet">My Fleet</button><button type="button" class="sx-seg__btn" data-mode="buy">Buy Ship</button></div>` +
+    `<nav class="k-hang sx-sw__rail" aria-label="Shipworks ship selection">` +
+      `<ul class="k-words k-words--row sx-seg" aria-label="Fleet or buy">` +
+        `<li><button type="button" class="k-word k-word--body sx-seg__btn is-on" data-mode="fleet" aria-pressed="true">Fleet</button></li>` +
+        `<li><button type="button" class="k-word k-word--body sx-seg__btn" data-mode="buy" aria-pressed="false">For sale</button></li>` +
+      `</ul>` +
       `<div class="sx-sw__carousel">` +
-        `<button type="button" class="sx-sw__railstep is-prev" data-rail-step="prev" aria-label="Previous ships">‹</button>` +
-        `<div class="sx-sw__list" tabindex="0" aria-label="Available ships"></div>` +
-        `<button type="button" class="sx-sw__railstep is-next" data-rail-step="next" aria-label="Next ships">›</button>` +
-        `<span class="sx-sw__railtrack" aria-hidden="true"><i></i></span>` +
+        `<button type="button" class="sx-sw__railstep is-prev" data-rail-step="prev" aria-label="Previous ships" hidden>‹</button>` +
+        `<div class="k-rows sx-sw__list" tabindex="0" aria-label="Available ships"></div>` +
+        `<button type="button" class="sx-sw__railstep is-next" data-rail-step="next" aria-label="Next ships" hidden>›</button>` +
+        `<span class="sx-sw__railtrack" aria-hidden="true" hidden><i></i></span>` +
       `</div>` +
     `</nav>` +
-    `<section class="sx-sw__main">` +
+    `<section class="k-stage sx-sw__main">` +
       `<div class="sx-sw__stage sf-stage">` +
         `<canvas class="sx-sw__canvas" tabindex="0" aria-label="Interactive ship preview. Drag or scroll horizontally to orbit; scroll vertically or pinch to zoom."></canvas>` +
         `<div class="sx-sw__baylines" aria-hidden="true"><span></span><span></span><span></span></div>` +
         `<div class="sx-sw__power" aria-hidden="true"></div>` +
-        `<div class="sx-sw__gauges sf-housing" role="group" aria-label="Ship gauges"></div>` +
+        `<ul class="k-rows sx-sw__gauges" role="group" aria-label="Ship gauges"></ul>` +
         `<div class="sx-sw__slotfield" role="group" aria-label="Ship systems"></div>` +
         `<div class="sx-sw__scarfield" role="group" aria-label="Living hull condition markers"></div>` +
         `<div class="sx-sw__focusline" aria-hidden="true"></div>` +
-        `<div class="sx-sw__delta" aria-live="polite" hidden></div>` +
+        `<div class="sx-sw__delta k-t-fine k-38" aria-live="polite" hidden></div>` +
         `<div class="sx-sw__acquiring" data-sf-acquire-host></div>` +
-        `<div class="sx-sw__nameplate sf-crest"></div>` +
-        `<div class="sx-sw__camera" aria-label="Ship preview controls">` +
-          `<button type="button" data-camera="left" aria-label="Rotate ship left">↶</button>` +
-          `<button type="button" data-camera="reset" aria-label="Reset ship view">CENTER</button>` +
-          `<button type="button" data-camera="right" aria-label="Rotate ship right">↷</button>` +
-        `</div>` +
-        `<span class="sx-sw__dragcue" aria-hidden="true">DRAG TO ORBIT · PINCH TO ZOOM</span>` +
+        `<div class="sx-sw__nameplate"></div>` +
+        `<ul class="k-words k-words--row sx-sw__camera" aria-label="Ship preview controls">` +
+          `<li><button type="button" class="k-word k-word--fine" data-camera="left" aria-label="Rotate ship left">Left</button></li>` +
+          `<li><button type="button" class="k-word k-word--fine" data-camera="reset" aria-label="Reset ship view">Center</button></li>` +
+          `<li><button type="button" class="k-word k-word--fine" data-camera="right" aria-label="Rotate ship right">Right</button></li>` +
+        `</ul>` +
+        `<span class="sx-sw__dragcue k-t-fine k-38" aria-hidden="true">Drag to orbit · pinch to zoom</span>` +
       `</div>` +
-      `<div class="sx-sw__stats sf-apron"></div>` +
+      `<div class="sx-sw__stats"></div>` +
     `</section>` +
     `<aside class="sx-sw__side" aria-label="Shipworks operation controls"></aside>` +
-    `<div class="sx-sw__chooser" hidden></div>`;
+    `<div class="k-hang sx-sw__chooser" hidden></div>`;
 
   const railListEl = el.querySelector('.sx-sw__list');
   const railPrevEl = el.querySelector('[data-rail-step="prev"]');
@@ -452,7 +396,6 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   let ghostSource = null;
   let selectedSlot = -1;
   let chooserAnchor = null;
-  let stopChooserPositioning = null;
   let projectionFrame = 0;
   let chooserCloseTimer = 0;
   let previewSettleTimer = 0;
@@ -464,6 +407,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   let activePresetRailModel = null;
   let presetSelectionByHull = {};
   let recordOpen = false;
+  let selectedBand = 'handling'; // which of the four foot heroes explains itself beneath
   let rangeIntentUnsub = null;
   const handlingDomain = handlingProfileDomain();
   const powerBeam = createRouteBeam(powerOverlayEl, { width: 400, height: 240 });
@@ -487,69 +431,32 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     if (ctx.bus) ctx.bus.emit('audio:cue', { id });
   }
 
+  // The corner: six compact static rows (Mass · Energy · Shield · Cargo · Thrust · Heat), the value
+  // at emphasis. No dials (Task C §1.9). A ghost value (a hovered module or a selected preset)
+  // reads as 38 % text beside the live value.
   function ensureGaugeRack() {
     if (gaugeReady) return;
     gaugeRackEl.innerHTML = '';
     for (const def of GAUGE_DEFS) {
-      const tile = document.createElement('div');
-      tile.className = 'sx-sw-gauge';
+      const tile = document.createElement('li');
+      tile.className = 'k-row k-row--static sx-sw-gauge';
       tile.setAttribute('data-gauge', def.key);
       // The gauge value is a tier-2 carrier (syncGaugeValues stamps data-why below): focusable so
       // the same reveal answers keyboard focus, not only hover.
       tile.setAttribute('tabindex', '0');
       tile.innerHTML =
-        `<div class="sx-sw-gauge__dial"></div>` +
-        `<span class="sx-sw-gauge__k">${escapeHtml(def.label)}</span>` +
-        `<span class="sx-sw-gauge__v" data-gauge-value></span>`;
+        `<span class="k-row__name k-62 sx-sw-gauge__k">${escapeHtml(def.label)}</span>` +
+        `<span class="k-row__num sx-sw-gauge__v"><span data-gauge-value></span><span class="k-38 sx-sw-ghost" data-gauge-ghost hidden></span></span>`;
       gaugeRackEl.appendChild(tile);
-      const dial = tile.querySelector('.sx-sw-gauge__dial');
       gaugeByKey[def.key] = {
         def,
         tile,
         valueEl: tile.querySelector('[data-gauge-value]'),
-        fx: createCircularGauge(dial, { size: 48, stroke: 4, kind: def.kind }),
-        settleValue: 0,
-        settleTimer: 0,
-        settleReady: false,
+        ghostEl: tile.querySelector('[data-gauge-ghost]'),
+        liveText: '',
       };
     }
     gaugeReady = true;
-  }
-
-  function clearGaugeSettle(row) {
-    if (!row) return;
-    if (row.settleTimer) clearTimeout(row.settleTimer);
-    row.settleTimer = 0;
-  }
-
-  function clearAllGaugeSettles() {
-    for (const key of Object.keys(gaugeByKey)) clearGaugeSettle(gaugeByKey[key]);
-  }
-
-  function setGaugeTransition(fx, ms, overshoot) {
-    const arc = fx && fx.svg && fx.svg.querySelector ? fx.svg.querySelector('.sf-fx-gauge__arc') : null;
-    if (!arc) return;
-    const eased = overshoot ? 'cubic-bezier(.24,1.26,.34,1)' : 'cubic-bezier(.19,.9,.29,1)';
-    arc.style.transition = `stroke-dashoffset ${Math.max(1, Math.round(ms))}ms ${eased}, stroke 160ms var(--ease, ease-out)`;
-  }
-
-  function applyGaugeSettle(row, nextValue, settleMeta, effectMeta) {
-    if (!row || !row.fx) return;
-    clearGaugeSettle(row);
-    const plan = planGaugeSettle(row.settleValue, nextValue, settleMeta);
-    row.settleValue = plan.targetValue;
-    if (plan.immediate) {
-      setGaugeTransition(row.fx, 1, false);
-      row.fx.setValue(plan.targetValue, effectMeta);
-      return;
-    }
-    setGaugeTransition(row.fx, plan.upMs, true);
-    row.fx.setValue(plan.peakValue, effectMeta);
-    row.settleTimer = setTimeout(() => {
-      setGaugeTransition(row.fx, plan.downMs, false);
-      row.fx.setValue(plan.targetValue, effectMeta);
-      row.settleTimer = 0;
-    }, plan.upMs);
   }
 
   function owned() { return (ctx.state.player && ctx.state.player.ownedShips) || []; }
@@ -650,7 +557,16 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     if (savedBuy && SHIP_BY_ID.has(savedBuy)) buyId = savedBuy;
     if (typeof savedRecordOpen === 'boolean') recordOpen = savedRecordOpen;
     presetSelectionByHull = sanitizePresetSelectionMap(savedPresetSelection);
-    el.querySelectorAll('.sx-seg__btn').forEach((x) => x.classList.toggle('is-on', x.getAttribute('data-mode') === mode));
+    syncModeWords();
+  }
+
+  function syncModeWords() {
+    el.querySelectorAll('.sx-seg__btn').forEach((x) => {
+      const on = x.getAttribute('data-mode') === mode;
+      x.classList.toggle('is-on', on);
+      x.classList.toggle('is-active', on);
+      x.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
   }
 
   function beginPreviewReveal(defId, gated) {
@@ -983,14 +899,17 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     });
   }
 
-  function syncGaugeValues(model) {
+  /**
+   * Write the six corner rows. `ghost: true` (a hovered module, a selected preset) leaves the live
+   * value in place and writes the proposed value beside it at 38 %; a live write clears the ghost.
+   */
+  function syncGaugeValues(model, { ghost = false } = {}) {
     ensureGaugeRack();
     if (!model || !model.derived) {
       currentGaugeStats = null;
-      clearAllGaugeSettles();
       return;
     }
-    currentGaugeStats = {
+    const stats = {
       mass: finite(model.derived.mass, 0),
       capMax: finite(model.derived.capMax, 0),
       capRegen: finite(model.derived.capRegen, 0),
@@ -999,27 +918,22 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       maxSpeed: finite(model.derived.maxSpeed, 0),
       continuousDrain: finite(model.derived.continuousDrain, 0),
     };
-    const settleMeta = {
-      reducedMotion: isReducedMotion(),
-      shieldRegenRate: finite(model.derived.shieldRegenRate, 0),
-      inertia: finite(model.derived.flightModel && model.derived.flightModel.inertia, 1),
-      massRatio: finite(model.handling && model.handling.massRatio, 1),
-    };
+    if (!ghost) currentGaugeStats = stats;
     for (const def of GAUGE_DEFS) {
       const row = gaugeByKey[def.key];
       if (!row) continue;
-      const raw = currentGaugeStats[def.key];
-      const norm = gaugeNorm(def.key, raw, currentGaugeStats);
-      const gaugeMeta = { kind: def.kind, label: `${def.label}: ${fmt(raw)}${def.suffix}` };
-      if (!row.settleReady) {
-        row.settleReady = true;
-        row.settleValue = norm;
-        setGaugeTransition(row.fx, 1, false);
-        row.fx.setValue(norm, gaugeMeta);
-      } else {
-        applyGaugeSettle(row, norm, settleMeta, gaugeMeta);
+      const raw = stats[def.key];
+      const text = `${fmt(raw)}${def.suffix}`;
+      if (ghost) {
+        const same = text === row.liveText;
+        row.ghostEl.textContent = same ? '' : `→ ${text}`;
+        row.ghostEl.hidden = same;
+        continue;
       }
-      row.valueEl.textContent = `${fmt(raw)}${def.suffix}`;
+      row.liveText = text;
+      row.valueEl.textContent = text;
+      row.ghostEl.textContent = '';
+      row.ghostEl.hidden = true;
       row.tile.setAttribute('data-why', `${def.label}: ${fmt(raw)}${def.suffix}`);
     }
   }
@@ -1050,16 +964,20 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       : '';
     const verb = model.condition ? model.condition.verb : 'STOWED';
     const sentence = model.handling && model.handling.crestSentence ? model.handling.crestSentence : '';
+    // The title block: the hull's name at title size, its blurb as one emphasised sentence, the
+    // condition verb as a fine word after the name (it carries the why).
     nameplateEl.innerHTML =
       `<div class="sx-sw__crestLine">` +
-        `<h2 class="sf-crest__title">${escapeHtml(model.def.name)}</h2>` +
-        `<span class="sx-sw__condition${conditionClass}"${whyAttr(model.condition && model.condition.why)}>` +
-          `<span class="sx-sw__conditionVerb">${escapeHtml(verb)}</span>${percent}` +
+        `<h2 class="k-display k-t-title sx-sw__name">${escapeHtml(model.def.name)}</h2>` +
+        `<span class="k-t-fine k-62 sx-sw__condition${conditionClass}"${whyAttr(model.condition && model.condition.why)}>` +
+          `<span class="sx-sw__conditionVerb">${escapeHtml(titleCaseWords(verb))}</span>${percent}` +
         `</span>` +
       `</div>` +
-      `<p class="sf-crest__line">${escapeHtml(sentence || fittedIdentityLine(model.def) || model.def.role || '')}</p>`;
+      `<p class="k-sentence k-sentence--emph sx-sw__blurb">${escapeHtml(sentence || fittedIdentityLine(model.def) || model.def.role || '')}</p>`;
   }
 
+  // The capability band's detail: the chips as static body words (tier-2 carriers keep data-why +
+  // focus); "next" as a 38 % word.
   function renderCapabilityChips(model) {
     if (!model || !model.capability) return '';
     const chips = model.capability.chips || [];
@@ -1067,68 +985,61 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const chipHtml = chips.map((chip) => {
       const tone = chip.tone || 'calm';
       return (
-        `<button type="button" class="sx-sw-chip sf-tile sx-sw-chip--${escapeHtml(tone)}" data-cap-chip="${escapeHtml(chip.id)}"${whyAttr(chip.why)}>` +
-          `<span class="sx-sw-chip__dot" aria-hidden="true">●</span>` +
+        `<li><button type="button" class="k-word k-word--body sx-sw-chip sx-sw-chip--${escapeHtml(tone)}" data-cap-chip="${escapeHtml(chip.id)}"${whyAttr(chip.why)}>` +
           `<span class="sx-sw-chip__verb">${escapeHtml(chip.verb)}</span>` +
-          `<span class="sx-sw-chip__sub">${escapeHtml(chip.sub || '')}</span>` +
-        `</button>`
+          (chip.sub ? `<span class="k-word-sub sx-sw-chip__sub">${escapeHtml(chip.sub)}</span>` : '') +
+        `</button></li>`
       );
     }).join('');
     const nextHtml = next
       ? (
-        `<button type="button" class="sx-sw-chip sf-tile sx-sw-chip--goal sx-sw-chip--next" data-cap-chip="${escapeHtml(next.id)}"${whyAttr(next.why)}>` +
-          `<span class="sx-sw-chip__dot" aria-hidden="true">○</span>` +
+        `<li><button type="button" class="k-word k-word--body k-38 sx-sw-chip sx-sw-chip--goal sx-sw-chip--next" data-cap-chip="${escapeHtml(next.id)}"${whyAttr(next.why)}>` +
           `<span class="sx-sw-chip__verb">${escapeHtml(next.verb)}</span>` +
-          `<span class="sx-sw-chip__sub">NEXT</span>` +
-        `</button>`
+          `<span class="k-word-sub sx-sw-chip__sub">Next</span>` +
+        `</button></li>`
       )
       : '';
-    return chipHtml + nextHtml;
+    return `<ul class="k-words k-words--row sx-sw-chiprow">${chipHtml + nextHtml}</ul>`;
   }
 
+  // Loadout presets as a row of fine words under the bands; the save slot is the last word.
   function renderPresetRail(model, railModel) {
     if (!model || !railModel) return '';
     const presets = Array.isArray(railModel.presets) ? railModel.presets : [];
     const saveSlot = railModel.saveSlot || null;
     const presetRows = presets.map((preset) => {
       const classes = [
-        'sx-sw-preset',
-        preset.selected ? 'is-selected' : '',
+        'k-word k-word--fine sx-sw-preset',
+        preset.selected ? 'is-selected is-active' : '',
         preset.applyState && !preset.applyState.ok ? 'is-dim' : '',
       ].filter(Boolean).join(' ');
       const why = preset.applyState && !preset.applyState.ok ? preset.applyState.text : '';
       const aria = `${preset.label || 'Build'}. ${preset.subtitle || 'Preset'}. ${
         preset.applyState && preset.applyState.ok
-          ? 'Select this build. Press again or use APPLY to commit.'
+          ? 'Select this build. Press again or use Apply to commit.'
           : (preset.applyState && preset.applyState.text) || 'Cannot apply right now'
       }`;
       return (
-        `<button type="button" class="${classes}" data-loadout-preset-id="${escapeHtml(preset.id)}" aria-pressed="${preset.selected ? 'true' : 'false'}"${whyAttr(why)} aria-label="${escapeHtml(aria)}">` +
+        `<li><button type="button" class="${classes}" data-loadout-preset-id="${escapeHtml(preset.id)}" aria-pressed="${preset.selected ? 'true' : 'false'}"${whyAttr(why)} aria-label="${escapeHtml(aria)}">` +
           `<span class="sx-sw-preset__label">${escapeHtml(preset.label || 'Build')}</span>` +
-          `<span class="sx-sw-preset__sub">${escapeHtml(preset.subtitle || 'Preset')}</span>` +
-        `</button>`
+          `<span class="k-word-sub sx-sw-preset__sub">${escapeHtml(preset.subtitle || 'Preset')}</span>` +
+        `</button></li>`
       );
     }).join('');
     const saveDisabled = !saveSlot || !saveSlot.canSave;
     const saveWhy = saveDisabled ? (saveSlot && saveSlot.reasonText) || 'Cannot save right now' : '';
-    const saveLabel = saveSlot ? `SAVE CURRENT FIT AS ${saveSlot.label}` : 'SAVE CURRENT FIT AS...';
+    const saveLabel = saveSlot ? `Save current fit as ${saveSlot.label}` : 'Save current fit';
     const countText = saveSlot ? `${saveSlot.count}/${saveSlot.cap}` : '';
     const saveButton = (
-      `<button type="button" class="sx-sw-preset sx-sw-preset--save${saveDisabled ? ' is-dim' : ''}" data-loadout-preset-save="1"${saveSlot ? ` data-loadout-preset-id="${escapeHtml(saveSlot.presetId)}" data-loadout-label-key="${escapeHtml(saveSlot.labelKey)}" data-loadout-created-at="${saveSlot.createdAt}"` : ''}${saveDisabled ? ' disabled' : ''}${whyAttr(saveWhy)} aria-label="${escapeHtml(saveLabel)}">` +
-        `<span class="sx-sw-preset__label">+</span>` +
-        `<span class="sx-sw-preset__sub">${escapeHtml(countText)}</span>` +
-      `</button>`
+      `<li><button type="button" class="k-word k-word--fine sx-sw-preset sx-sw-preset--save${saveDisabled ? ' is-dim' : ''}" data-loadout-preset-save="1"${saveSlot ? ` data-loadout-preset-id="${escapeHtml(saveSlot.presetId)}" data-loadout-label-key="${escapeHtml(saveSlot.labelKey)}" data-loadout-created-at="${saveSlot.createdAt}"` : ''}${saveDisabled ? ' disabled' : ''}${whyAttr(saveWhy)} aria-label="${escapeHtml(saveLabel)}">` +
+        `<span class="sx-sw-preset__label">Save fit</span>` +
+        (countText ? `<span class="k-word-sub sx-sw-preset__sub">${escapeHtml(countText)}</span>` : '') +
+      `</button></li>`
     );
     return (
-      `<section class="sx-sw-band sx-sw-band--presets sf-deck">` +
-        `<header class="sx-sw-band__head">` +
-          `<span class="sf-deck__label">LOADOUT PRESETS</span>` +
-          `<span class="sx-sw-preset__meta">Select to preview. Second gesture applies.</span>` +
-        `</header>` +
-        `<div class="sx-sw-presetrow">` +
-          presetRows +
-          saveButton +
-        `</div>` +
+      `<section class="sx-sw-band sx-sw-band--presets">` +
+        `<p class="k-caps sx-sw-band__label">Builds <span class="k-38">· select to preview, again to apply</span></p>` +
+        `<ul class="k-words k-words--row sx-sw-presetrow">${presetRows}${saveButton}</ul>` +
       `</section>`
     );
   }
@@ -1138,25 +1049,102 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     if (!selectedPreset) return '';
     const verbs = Array.isArray(selectedPreset.capabilityVerbs) ? selectedPreset.capabilityVerbs.slice(0, 5) : [];
     const verbsHtml = verbs.length
-      ? verbs.map((verb) => `<span class="sx-sw-presetverb">${escapeHtml(verb)}</span>`).join('')
-      : '<span class="sx-sw-presetverb is-empty">No capability verb available</span>';
+      ? verbs.map((verb) => escapeHtml(verb)).join(' · ')
+      : '<span class="k-38">No capability verb available</span>';
     const applyText = selectedPreset.applyState && selectedPreset.applyState.ok
-      ? 'READY TO APPLY'
+      ? 'Ready to apply'
       : ((selectedPreset.applyState && selectedPreset.applyState.text) || 'Cannot apply right now');
     return (
       `<section class="sx-sw-record sx-sw-record--preset">` +
-        `<header><span class="sf-deck__label">BUILD RECORD</span></header>` +
-        `<div class="sx-sw-presetdrawer">` +
-          `<div class="sx-sw-presetdrawer__row"><span>LABEL</span><b>${escapeHtml(selectedPreset.label || 'Build')}</b></div>` +
-          `<div class="sx-sw-presetdrawer__row"><span>CREATED CYCLE</span><b>${escapeHtml(String(Math.max(0, Math.round(finite(selectedPreset.createdAt, 0)))))}</b></div>` +
-          `<div class="sx-sw-presetdrawer__row"><span>APPLY STATE</span><b${whyAttr(applyText)}>${escapeHtml(applyText)}</b></div>` +
-          `<div class="sx-sw-presetdrawer__verbs"><span>CAPABILITY VERBS</span><div>${verbsHtml}</div></div>` +
-          `<div class="sx-sw-presetdrawer__actions">` +
-            `<button type="button" class="sx-sw-verb sx-sw-verb--danger" data-loadout-preset-delete="${escapeHtml(selectedPreset.id)}">DELETE BUILD</button>` +
-          `</div>` +
-        `</div>` +
+        `<p class="k-caps sx-sw-band__label">Build record</p>` +
+        `<ul class="k-rows sx-sw-presetdrawer">` +
+          `<li class="k-row k-row--static sx-sw-presetdrawer__row"><span class="k-row__name k-62">Label</span><span class="k-row__num">${escapeHtml(selectedPreset.label || 'Build')}</span></li>` +
+          `<li class="k-row k-row--static sx-sw-presetdrawer__row"><span class="k-row__name k-62">Created cycle</span><span class="k-row__num">${escapeHtml(String(Math.max(0, Math.round(finite(selectedPreset.createdAt, 0)))))}</span></li>` +
+          `<li class="k-row k-row--static sx-sw-presetdrawer__row"><span class="k-row__name k-62">Apply state</span><span class="k-row__num"${whyAttr(applyText)}>${escapeHtml(applyText)}</span></li>` +
+          `<li class="k-row k-row--static sx-sw-presetdrawer__row sx-sw-presetdrawer__verbs"><span class="k-row__name k-62">Capability</span><span class="k-row__num k-t-body">${verbsHtml}</span></li>` +
+        `</ul>` +
+        `<ul class="k-words k-words--row sx-sw-presetdrawer__actions">` +
+          `<li><button type="button" class="k-word k-word--fine k-bad sx-sw-verb sx-sw-verb--danger" data-loadout-preset-delete="${escapeHtml(selectedPreset.id)}">Delete build</button></li>` +
+        `</ul>` +
       `</section>`
     );
+  }
+
+  function heroHtml(band, n, w, { tone = '', selected = false, why = '' } = {}) {
+    const cls = ['k-hero', 'sx-sw-hero', tone, selected ? 'is-selected' : ''].filter(Boolean).join(' ');
+    return (
+      `<button type="button" class="${cls}" data-band="${band}" aria-pressed="${selected ? 'true' : 'false'}"${whyAttr(why)}>` +
+        `<span class="k-hero__n">${escapeHtml(String(n))}</span>` +
+        `<span class="k-hero__w">${escapeHtml(w)}</span>` +
+      `</button>`
+    );
+  }
+
+  function staticRow(k, v, { why = '', bar = null, cls = '' } = {}) {
+    return (
+      `<li class="k-row k-row--static ${cls}"${whyAttr(why)}>` +
+        `<span class="k-row__name k-62">${escapeHtml(k)}</span>` +
+        (bar != null ? `<span class="k-bar sx-sw-bar__track"><i class="k-bar__fill" style="width:${Math.max(0, Math.min(100, bar))}%"></i></span>` : '') +
+        `<span class="k-row__num">${v}</span>` +
+      `</li>`
+    );
+  }
+
+  // The selected band explains itself in rows beneath the four heroes.
+  function bandDetailHtml(model) {
+    if (selectedBand === 'handling') {
+      const bars = model.handling && Array.isArray(model.handling.bars) ? model.handling.bars : [];
+      const rows = bars.map((bar) => {
+        const ghost = ghostBandModel && ghostBandModel.handling && Array.isArray(ghostBandModel.handling.bars)
+          ? ghostBandModel.handling.bars.find((row) => row.id === bar.id)
+          : null;
+        const live = barValueText(bar);
+        const ghostText = ghost && barValueText(ghost) !== live ? ` <span class="k-38 sx-sw-ghost">→ ${escapeHtml(barValueText(ghost))}</span>` : '';
+        return staticRow(bar.label, escapeHtml(live) + ghostText, { why: bar.why, bar: ghost ? ghost.bar : bar.bar, cls: 'sx-sw-bar' });
+      }).join('');
+      const profile = model.handling && model.handling.profile;
+      const meta = profile ? `${profile.flightClass || ''}${profile.driveLabel ? ' · ' + profile.driveLabel : ''}` : '';
+      const ghostMetrics = ghostMassDelta && ghostMassDelta.ok && Array.isArray(ghostMassDelta.metrics)
+        ? ghostMassDelta.metrics.filter((metric) => ['turn', 'topSpeed', 'stopDistance', 'bank'].includes(metric.id))
+        : [];
+      const ghostLine = ghostMetrics.length
+        ? `<p class="k-t-fine k-38 sx-sw-ghost">${ghostMetrics.slice(0, 4).map((metric) => escapeHtml(massDeltaChipText(metric))).join(' · ')}</p>`
+        : '';
+      return (
+        (meta ? `<p class="k-t-fine k-38 sx-sw-band__meta">${escapeHtml(meta)}</p>` : '') +
+        `<ul class="k-rows sx-sw-bars">${rows}</ul>` + ghostLine
+      );
+    }
+    if (selectedBand === 'power') {
+      const d = model.derived;
+      const ghost = ghostBandModel && ghostBandModel.derived ? ghostBandModel.derived : null;
+      const g = (key, fmtFn) => {
+        if (!ghost) return '';
+        const a = fmtFn(finite(d[key], 0));
+        const b = fmtFn(finite(ghost[key], 0));
+        return a === b ? '' : ` <span class="k-38 sx-sw-ghost">→ ${escapeHtml(b)}</span>`;
+      };
+      const tenth = (v) => `${Math.round(v * 10) / 10}/s`;
+      return (
+        `<ul class="k-rows sx-sw-power__caps">` +
+          staticRow('Capacitor', fmt(d.capMax) + g('capMax', fmt)) +
+          staticRow('Regen', tenth(finite(d.capRegen, 0)) + g('capRegen', tenth)) +
+          staticRow('Continuous draw', tenth(finite(d.continuousDrain, 0)) + g('continuousDrain', tenth)) +
+        `</ul>`
+      );
+    }
+    if (selectedBand === 'condition') {
+      const scars = model.scars || [];
+      const rows = scars.length
+        ? scars.map((scar) => staticRow(scar.label, escapeHtml(scar.sub || (scar.kind === 'approx' ? 'Approx' : 'Authored')), { why: scar.why }))
+        : staticRow('Hull marks', 'None yet');
+      return (
+        `<div class="sx-sw-condition__rows"${whyAttr(model.condition && model.condition.why)}>` +
+          `<ul class="k-rows">${Array.isArray(rows) ? rows.join('') : rows}</ul>` +
+        `</div>`
+      );
+    }
+    return renderCapabilityChips(model);
   }
 
   function renderApron(model) {
@@ -1171,31 +1159,13 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       activePresetRailModel = derivePresetRailModel(model);
     }
     const bars = model.handling && Array.isArray(model.handling.bars) ? model.handling.bars : [];
-    const barRows = bars.map((bar) => {
-      const ghost = ghostBandModel && ghostBandModel.handling && Array.isArray(ghostBandModel.handling.bars)
-        ? ghostBandModel.handling.bars.find((row) => row.id === bar.id)
-        : null;
-      const showGhost = !!(ghost && !isReducedMotion());
-      const barPct = showGhost ? ghost.bar : bar.bar;
-      return (
-        `<div class="sx-sw-bar"${whyAttr(bar.why)}>` +
-          `<span class="sx-sw-bar__k">${escapeHtml(bar.label)}</span>` +
-          `<span class="sx-sw-bar__track"><i class="sx-sw-bar__fill${showGhost ? ' is-ghost' : ''}" style="width:${Math.max(0, Math.min(100, barPct))}%"></i></span>` +
-          `<span class="sx-sw-bar__v">${escapeHtml(barValueText(showGhost ? ghost : bar))}</span>` +
-        `</div>`
-      );
-    }).join('');
-    const ghostMetrics = ghostMassDelta && ghostMassDelta.ok && Array.isArray(ghostMassDelta.metrics)
-      ? ghostMassDelta.metrics.filter((metric) => ['turn', 'topSpeed', 'stopDistance', 'bank'].includes(metric.id))
-      : [];
-    const ghostText = isReducedMotion() && ghostMetrics.length
-      ? ghostMetrics.slice(0, 4).map((metric) => `<span>${escapeHtml(massDeltaChipText(metric))}</span>`).join('')
-      : '';
+    const topSpeed = bars.find((bar) => bar.id === 'topSpeed') || null;
     const headroom = finite(model.derived.capRegen, 0) - finite(model.derived.continuousDrain, 0);
     const headroomLabel = headroom < 0
-      ? `OVER BUDGET ${plusMinus(headroom, 1)}/s`
-      : `POWER ${plusMinus(headroom, 1)}/s`;
-    const powerClass = headroom < 0 ? ' sx-sw-power__state--foe' : ' sx-sw-power__state--you';
+      ? `Over budget ${plusMinus(headroom, 1)}/s`
+      : `Power ${plusMinus(headroom, 1)}/s`;
+    const powerTone = headroom < 0 ? 'k-hero--bad sx-sw-power__state--foe' : 'k-hero--good sx-sw-power__state--you';
+    const conditionVerb = titleCaseWords(model.condition ? model.condition.verb : 'STOWED');
     const selectedPreset = activePresetRailModel && activePresetRailModel.selectedPreset
       ? activePresetRailModel.selectedPreset
       : null;
@@ -1204,13 +1174,13 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       ? !!(selectedPreset.applyState && selectedPreset.applyState.ok)
       : !!(model.availability && model.availability.outfitEnabled && selectedSlot >= 0);
     const fitLabel = selectedPreset
-      ? `APPLY ${selectedPreset.label || 'BUILD'}`
+      ? `Apply ${selectedPreset.label || 'build'}`
       : (
         fitEnabled
-          ? 'FIT'
+          ? 'Fit'
           : (selectedSlot >= 0
-            ? (model.availability && model.availability.outfitEnabled ? 'SELECT A MODULE' : model.availability.outfitLabel || 'DOCK TO FIT')
-            : 'SELECT A SLOT')
+            ? (model.availability && model.availability.outfitEnabled ? 'Select a module' : model.availability.outfitLabel || 'Dock to fit')
+            : 'Select a slot')
       );
     const fitBlockedText = selectedPreset
       ? (((selectedPreset.applyState && selectedPreset.applyState.text) || 'Cannot apply this build'))
@@ -1218,51 +1188,28 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const makeActiveVisible = host === 'dock' && mode === 'fleet' && viewIdx !== activeFleetIndex();
     const makeActiveEnabled = makeActiveVisible && model.availability && model.availability.hullEnabled;
     const makeActiveLabel = makeActiveEnabled
-      ? 'MAKE ACTIVE'
-      : (model.availability && model.availability.hullLabel ? model.availability.hullLabel.toUpperCase() : 'MAKE ACTIVE');
+      ? 'Make active'
+      : (model.availability && model.availability.hullLabel ? model.availability.hullLabel : 'Make active');
     statsEl.innerHTML =
-      `<section class="sx-sw-band sx-sw-band--handling sf-deck">` +
-        `<header class="sx-sw-band__head">` +
-          `<span class="sf-deck__label">HANDLING</span>` +
-          `<span class="sx-sw-band__meta">${escapeHtml((model.handling && model.handling.profile && model.handling.profile.flightClass) || '')} · ${escapeHtml((model.handling && model.handling.profile && model.handling.profile.driveLabel) || '')}</span>` +
-        `</header>` +
-        `<div class="sx-sw-bars">${barRows}</div>` +
-        `<div class="sx-sw-ghost">${ghostText}</div>` +
-      `</section>` +
-      `<section class="sx-sw-band sx-sw-band--power sf-deck">` +
-        `<header class="sx-sw-band__head">` +
-          `<span class="sf-deck__label">POWER</span>` +
-          `<span class="sx-sw-power__caps">CAP ${fmt(model.derived.capMax)} · REGEN ${Math.round(finite(model.derived.capRegen, 0) * 10) / 10}/s · DRAW ${Math.round(finite(model.derived.continuousDrain, 0) * 10) / 10}/s</span>` +
-        `</header>` +
-        `<div class="sx-sw-power__state${powerClass}"${whyAttr(headroomLabel)}>${escapeHtml(headroomLabel)}</div>` +
-      `</section>` +
-      `<section class="sx-sw-band sx-sw-band--condition sf-deck">` +
-        `<header class="sx-sw-band__head">` +
-          `<span class="sf-deck__label">CONDITION</span>` +
-          `<span class="sx-sw-condition__verb">${escapeHtml(model.condition ? model.condition.verb : 'STOWED')}</span>` +
-        `</header>` +
-        `<div class="sx-sw-condition__rows"${whyAttr(model.condition && model.condition.why)}>` +
-          `<span>${escapeHtml((model.scars || []).length ? `${(model.scars || []).length} hull marks recorded` : 'No living-hull marks yet')}</span>` +
-        `</div>` +
-      `</section>` +
-      `<section class="sx-sw-band sx-sw-band--capability sf-deck">` +
-        `<header class="sx-sw-band__head">` +
-          `<span class="sf-deck__label">WHAT YOU CAN DO NOW</span>` +
-        `</header>` +
-        `<div class="sx-sw-chiprow">${renderCapabilityChips(model)}</div>` +
-      `</section>` +
+      `<div class="sx-sw-bands" role="group" aria-label="Ship bands">` +
+        heroHtml('handling', topSpeed ? barValueText(topSpeed) : fmt(model.derived.maxSpeed), 'top speed', { selected: selectedBand === 'handling', why: topSpeed && topSpeed.why }) +
+        heroHtml('power', `${plusMinus(headroom, 1)}/s`, 'power', { tone: powerTone, selected: selectedBand === 'power', why: headroomLabel }) +
+        heroHtml('condition', conditionVerb, 'condition', { selected: selectedBand === 'condition', why: model.condition && model.condition.why }) +
+        heroHtml('capability', fmt(model.derived.cargoCap), 'hold', { selected: selectedBand === 'capability' }) +
+        `<ul class="k-words k-words--row sx-sw-verbs">` +
+          `<li><button type="button" class="k-word k-word--body sx-sw-verb" data-verb="range">Take it to the range</button></li>` +
+          `<li><button type="button" class="k-word k-word--body sx-sw-verb${recordOpen ? ' is-active' : ''}" data-verb="record" aria-pressed="${recordOpen ? 'true' : 'false'}">Record</button></li>` +
+          `<li><button type="button" class="k-word k-word--body sx-sw-verb" data-verb="fit" data-fit-action="${escapeHtml(fitAction)}"${selectedPreset ? ` data-loadout-preset-id="${escapeHtml(selectedPreset.id)}"` : ''}${fitEnabled ? '' : ` disabled aria-label="${escapeHtml(fitBlockedText)}"`}>${escapeHtml(fitLabel)}</button></li>` +
+          (makeActiveVisible
+            ? `<li><button type="button" class="k-word k-word--body sx-sw-verb" data-verb="activate"${makeActiveEnabled ? '' : ` disabled aria-label="${escapeHtml(makeActiveLabel)}"`}>${escapeHtml(makeActiveLabel)}</button></li>`
+            : '') +
+        `</ul>` +
+      `</div>` +
+      `<section class="sx-sw-band sx-sw-band--${escapeHtml(selectedBand)}" aria-live="polite">${bandDetailHtml(model)}</section>` +
       renderPresetRail(model, activePresetRailModel) +
-      `<section class="sx-sw-verbs">` +
-        `<button type="button" class="sx-sw-verb" data-verb="range">TAKE IT TO THE RANGE</button>` +
-        `<button type="button" class="sx-sw-verb" data-verb="record">RECORD</button>` +
-        `<button type="button" class="sx-sw-verb" data-verb="fit" data-fit-action="${escapeHtml(fitAction)}"${selectedPreset ? ` data-loadout-preset-id="${escapeHtml(selectedPreset.id)}"` : ''}${fitEnabled ? '' : ` disabled aria-label="${escapeHtml(fitBlockedText)}"`}>${escapeHtml(fitLabel)}</button>` +
-        (makeActiveVisible
-          ? `<button type="button" class="sx-sw-verb" data-verb="activate"${makeActiveEnabled ? '' : ` disabled aria-label="${escapeHtml(makeActiveLabel)}"`}>${escapeHtml(makeActiveLabel)}</button>`
-          : '') +
-      `</section>` +
       renderPresetDrawer(activePresetRailModel) +
       (recordOpen
-        ? `<section class="sx-sw-record"><header><span class="sf-deck__label">RECORD</span></header><div class="sx-sw-record__grid">${recordRowsHtml(model)}</div></section>`
+        ? `<section class="sx-sw-record"><p class="k-caps sx-sw-band__label">Record</p><ul class="k-rows sx-sw-record__grid">${recordRowsHtml(model)}</ul></section>`
         : '');
   }
 
@@ -1572,15 +1519,17 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       return;
     }
     if (focus) active.focus({ preventScroll: true });
+    // The hang column scrolls vertically now: keep the chosen hull's row in view.
     const railRect = railListEl.getBoundingClientRect();
     const activeRect = active.getBoundingClientRect();
-    const max = Math.max(0, railListEl.scrollWidth - railListEl.clientWidth);
-    const desired = railListEl.scrollLeft
-      + (activeRect.left + activeRect.width / 2)
-      - (railRect.left + railRect.width / 2);
-    const left = Math.max(0, Math.min(max, desired));
+    const max = Math.max(0, railListEl.scrollHeight - railListEl.clientHeight);
+    if (max <= 0) { requestAnimationFrame(updateRailControls); return; }
+    const desired = railListEl.scrollTop
+      + (activeRect.top + activeRect.height / 2)
+      - (railRect.top + railRect.height / 2);
+    const top = Math.max(0, Math.min(max, desired));
     const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
-    railListEl.scrollTo({ left, behavior: reducedMotion ? 'auto' : 'smooth' });
+    railListEl.scrollTo({ top, behavior: reducedMotion ? 'auto' : 'smooth' });
     requestAnimationFrame(updateRailControls);
   }
 
@@ -1592,28 +1541,27 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     if (mode === 'fleet') {
       const o = owned();
       const activeIdx = (ctx.state.player && ctx.state.player.activeShipIndex) || 0;
+      // The hang column: the hulls you own as rows (name · role, "Active" as the number).
       railListEl.innerHTML = o.length ? o.map((s, i) => {
         const def = SHIP_BY_ID.get(s.defId) || {};
         const on = i === viewIdx ? ' is-active' : '';
         const isActive = i === activeIdx;
         return (
-          `<button type="button" class="sx-sw-row${on}" data-fleet="${i}" title="${escapeHtml(def.name || s.defId)}" aria-label="Inspect ${escapeHtml(def.name || s.defId)}" aria-pressed="${i === viewIdx}">` +
-            `<span class="sx-sw-row__ic">${shipSilhouette(def)}</span>` +
-            `<span class="sx-sw-row__body"><span class="sx-sw-row__name">${escapeHtml(def.name || s.defId)}</span>` +
-              `<span class="sx-sw-row__sub">${escapeHtml((def.role || 'ship'))} · T${def.tier != null ? def.tier : '?'}</span></span>` +
-            (isActive ? `<span class="sx-sw-row__flag">Active</span>` : '') +
+          `<button type="button" class="k-row sx-sw-row${on}" data-fleet="${i}" title="${escapeHtml(def.name || s.defId)}" aria-label="Inspect ${escapeHtml(def.name || s.defId)}" aria-pressed="${i === viewIdx}" aria-selected="${i === viewIdx}">` +
+            `<span class="k-row__name sx-sw-row__body"><span class="sx-sw-row__name">${escapeHtml(def.name || s.defId)}</span>` +
+              `<span class="k-row__sub sx-sw-row__sub">${escapeHtml((def.role || 'ship'))} · T${def.tier != null ? def.tier : '?'}</span></span>` +
+            `<span class="k-row__num k-t-fine sx-sw-row__flag">${isActive ? 'Active' : ''}</span>` +
           `</button>`
         );
-      }).join('') : `<p class="sx-muted" style="padding:12px">No ships owned.</p>`;
+      }).join('') : `<p class="k-sentence sx-muted">No ships owned.</p>`;
     } else {
       railListEl.innerHTML = SHIPS.filter((s) => (s.price || 0) >= 0).map((s) => {
         const on = s.id === buyId ? ' is-active' : '';
         return (
-          `<button type="button" class="sx-sw-row${on}" data-buy="${escapeHtml(s.id)}" title="${escapeHtml(s.name)} · ${escapeHtml(s.role || 'ship')}" aria-label="Preview ${escapeHtml(s.name)}, ${escapeHtml(s.role || 'ship')}, ${s.price > 0 ? fmt(s.price) + ' credits' : 'owned'}" aria-pressed="${s.id === buyId}">` +
-            `<span class="sx-sw-row__ic">${shipSilhouette(s)}</span>` +
-            `<span class="sx-sw-row__body"><span class="sx-sw-row__name">${escapeHtml(s.name)}</span>` +
-              `<span class="sx-sw-row__sub">${escapeHtml(s.role || 'ship')} · T${s.tier}</span></span>` +
-            `<span class="sx-sw-row__price">${s.price > 0 ? fmt(s.price) : 'Owned'}</span>` +
+          `<button type="button" class="k-row sx-sw-row${on}" data-buy="${escapeHtml(s.id)}" title="${escapeHtml(s.name)} · ${escapeHtml(s.role || 'ship')}" aria-label="Preview ${escapeHtml(s.name)}, ${escapeHtml(s.role || 'ship')}, ${s.price > 0 ? fmt(s.price) + ' credits' : 'owned'}" aria-pressed="${s.id === buyId}" aria-selected="${s.id === buyId}">` +
+            `<span class="k-row__name sx-sw-row__body"><span class="sx-sw-row__name">${escapeHtml(s.name)}</span>` +
+              `<span class="k-row__sub sx-sw-row__sub">${escapeHtml(s.role || 'ship')} · T${s.tier}</span></span>` +
+            `<span class="k-row__num sx-sw-row__price">${s.price > 0 ? fmt(s.price) : 'Owned'}</span>` +
           `</button>`
         );
       }).join('');
@@ -1669,26 +1617,28 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const def = SHIP_BY_ID.get(buyId);
       if (!def) { sideEl.innerHTML = ''; return; }
       const slotSummary = Object.entries(def.slots || {}).filter(([, arr]) => (arr || []).length)
-        .map(([t, arr]) => `<span class="sx-tag">${(arr || []).length}× ${SLOT_LABEL[t] || t}</span>`).join('');
+        .map(([t, arr]) => `${(arr || []).length}× ${SLOT_LABEL[t] || t}`).join(' · ');
       const credits = (ctx.state.player && ctx.state.player.credits) || 0;
       const afford = def.price <= credits;
       const isOwned = owned().some((s) => s.defId === def.id);
       const availability = shipworksActionAvailability(ctx.state);
+      const buyLabel = availability.hullEnabled ? (afford ? 'Buy ship' : 'Not enough credits') : availability.hullLabel;
+      // The stage-right column: the hull's name, its price as the hero number, the spec as rows,
+      // Buy as one primary word.
       sideEl.innerHTML =
-        `<div class="sx-panel"><div class="sx-panel__head">${icon('shipworks', 15)}<span>Ship Spec</span></div>` +
-          `<div class="sx-spec">` +
-            specRow('Class', (def.role || 'ship') + ' · T' + def.tier) +
-            specRow('Base hull', fmt(def.hull)) + specRow('Base shield', fmt(def.shield)) +
-            specRow('Base cargo', fmt(def.cargo) + ' u') + specRow('Mass', fmt(def.mass) + ' t') +
-          `</div>` +
-          `<div class="sx-spec__slots"><span class="sx-spec__k">Hardpoints</span><div class="sx-tags">${slotSummary}</div></div>` +
-        `</div>` +
-        `<div class="sx-buybar">` +
-          `<div class="sx-buybar__price"><span>Price</span><b>${def.price > 0 ? fmt(def.price) + ' cr' : 'Starter'}</b></div>` +
+        `<h3 class="k-t-sub sx-sw-side__name">${escapeHtml(def.name)}</h3>` +
+        `<div class="k-hero sx-sw-side__hero"><span class="k-hero__n">${def.price > 0 ? fmt(def.price) : 'Starter'}</span><span class="k-hero__w">${def.price > 0 ? 'credits' : 'hull'}</span></div>` +
+        `<ul class="k-rows sx-spec">` +
+          specRow('Class', (def.role || 'ship') + ' · T' + def.tier) +
+          specRow('Base hull', fmt(def.hull)) + specRow('Base shield', fmt(def.shield)) +
+          specRow('Base cargo', fmt(def.cargo) + ' u') + specRow('Mass', fmt(def.mass) + ' t') +
+          specRow('Hardpoints', slotSummary || '—') +
+        `</ul>` +
+        `<ul class="k-words k-words--row sx-buybar">` +
           (isOwned
-            ? `<button type="button" class="sx-btn-ghost" disabled>In your fleet</button>`
-            : `<button type="button" class="sx-btn-primary" data-buyship="${escapeHtml(def.id)}" ${afford && availability.hullEnabled ? '' : 'disabled'} aria-label="${escapeHtml(availability.hullEnabled ? (afford ? 'Buy Ship' : 'Not enough credits') : availability.hullLabel)}">${availability.hullEnabled ? (afford ? 'Buy Ship' : 'Not enough credits') : escapeHtml(availability.hullLabel)}</button>`) +
-        `</div>`;
+            ? `<li><span class="k-word k-word--emph k-38 sx-btn-ghost">In your fleet</span></li>`
+            : `<li><button type="button" class="k-word k-word--emph k-word--primary sx-btn-primary" data-buyship="${escapeHtml(def.id)}" ${afford && availability.hullEnabled ? '' : 'disabled'} aria-label="${escapeHtml(buyLabel)}">${escapeHtml(buyLabel)}</button></li>`) +
+        `</ul>`;
       return;
     }
     // Fleet: the projected nodes on the hull own selection. This lower circuit makes the loadout
@@ -1714,27 +1664,30 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     // MAKE ACTIVE is a berth verb — it never renders on the flight host (SCREENS_B §1.2). While
     // docked it stays gated by hull service availability with the reason printed on the verb.
     const activeControl = host === 'flight' ? '' : inspectedIndex !== activeIndex
-      ? `<button type="button" class="sx-sw-circuit__activate" data-activate-ship="${inspectedIndex}" ${availability.hullEnabled ? '' : 'disabled'} aria-label="${escapeHtml(availability.hullEnabled ? 'Make active ship' : availability.hullLabel)}">${availability.hullEnabled ? 'MAKE ACTIVE' : escapeHtml(availability.hullLabel.toUpperCase())}</button>`
-      : `<span class="sx-sw-circuit__active">ACTIVE FLIGHT HULL</span>`;
+      ? `<li><button type="button" class="k-word k-word--emph sx-sw-circuit__activate" data-activate-ship="${inspectedIndex}" ${availability.hullEnabled ? '' : 'disabled'} aria-label="${escapeHtml(availability.hullEnabled ? 'Make active ship' : availability.hullLabel)}">${availability.hullEnabled ? 'Make active' : escapeHtml(availability.hullLabel)}</button></li>`
+      : `<li><span class="k-word k-word--emph k-38 sx-sw-circuit__active">Active flight hull</span></li>`;
+    // The stage-right column: the build's identity, the core as a hero number, each system's
+    // draw as a row, and one sentence telling the player where to click.
     sideEl.innerHTML =
       `<div class="sx-sw-circuit">` +
-        `<div class="sx-sw-circuit__identity"><span>BUILD IDENTITY</span><strong>${escapeHtml((def.role || 'ship').toUpperCase())}</strong><em>${equippedDefs.length}/${slots.length} systems fitted · ${fmt(moduleMass)}t modules</em></div>` +
-        `<div class="sx-sw-circuit__core"><i aria-hidden="true"></i><span>ENERGY CORE</span><b>${fmt(def.energyCap || 0)}</b><em>${fmt(totalDraw)} continuous draw</em></div>` +
-        `<div class="sx-sw-circuit__bus" aria-hidden="true"></div>` +
-        `<div class="sx-sw-circuit__flows">${flows.map(([type, draw]) => {
+        `<h3 class="k-t-sub sx-sw-circuit__identity">${escapeHtml(titleCaseWords(def.role || 'ship'))}` +
+          `<span class="k-t-fine k-38 sx-sw-circuit__sub">${equippedDefs.length}/${slots.length} systems fitted · ${fmt(moduleMass)} t modules</span></h3>` +
+        `<div class="k-hero sx-sw-circuit__core"><span class="k-hero__n">${fmt(def.energyCap || 0)}</span><span class="k-hero__w">energy core · ${fmt(totalDraw)} continuous draw</span></div>` +
+        `<ul class="k-rows sx-sw-circuit__flows">${flows.map(([type, draw]) => {
           const available = slots.filter((slot) => slot.type === type).length;
           const fitted = slots.reduce((n, slot, i) => n + (slot.type === type && fittings[i] ? 1 : 0), 0);
           const strength = Math.max(.12, Math.min(1, totalDraw > 0 ? draw / totalDraw : .12));
-          return `<div class="sx-sw-flow" style="--flow:${strength}" data-system-type="${escapeHtml(type)}">` +
-            `<span class="sx-sw-flow__beam" aria-hidden="true"></span><span class="sx-sw-flow__ic">${icon(SLOT_ICON[type] || 'spark', 15)}</span>` +
-            `<span class="sx-sw-flow__copy"><b>${escapeHtml(SLOT_LABEL[type] || type)}</b><em>${fitted}/${available} · ${fmt(draw)} draw</em></span>` +
-          `</div>`;
-        }).join('')}</div>` +
-        `<div class="sx-sw-circuit__instruction"><span>SELECT ON HULL</span><b>Choose a system node to preview compatible hardware.</b>${activeControl}</div>` +
+          return `<li class="k-row k-row--static sx-sw-flow" style="--flow:${strength}" data-system-type="${escapeHtml(type)}">` +
+            `<span class="k-row__name k-62 sx-sw-flow__copy">${escapeHtml(SLOT_LABEL[type] || type)}<span class="k-row__sub">${fitted}/${available} fitted</span></span>` +
+            `<span class="k-row__num">${fmt(draw)} <span class="k-38">draw</span></span>` +
+          `</li>`;
+        }).join('')}</ul>` +
+        `<p class="k-sentence sx-sw-circuit__instruction">Choose a system on the hull to preview compatible hardware.</p>` +
+        (activeControl ? `<ul class="k-words k-words--row sx-sw-circuit__acts">${activeControl}</ul>` : '') +
       `</div>`;
   }
 
-  function specRow(k, v) { return `<div class="sx-kv"><span>${k}</span><b>${v}</b></div>`; }
+  function specRow(k, v) { return `<li class="k-row k-row--static sx-kv"><span class="k-row__name k-62">${k}</span><span class="k-row__num">${v}</span></li>`; }
 
   function moduleRole(def) {
     if (!def) return 'Station hardware';
@@ -1853,65 +1806,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       `<span class="sx-modrow__chip">Risk: ${escapeHtml(risk.label)}</span>`).join('');
   }
 
-  // ---------- slot chooser (dim + reveal compatible modules) ----------
-  function stopChooserFloating() {
-    if (stopChooserPositioning) { try { stopChooserPositioning(); } catch (_) {} }
-    stopChooserPositioning = null;
-  }
-
-  /** Vertical twin of updateRailControls: the chooser's scroll affordance is our own slim track
-   * because the platform scrollbar answers overflow with an auto-hiding overlay (SHIPWORKS_CSS). */
-  function syncChooserTrack() {
-    const panel = chooserEl.querySelector('.sx-chooser__panel');
-    const list = chooserEl.querySelector('.sx-chooser__list');
-    const track = chooserEl.querySelector('.sx-chooser__track');
-    if (!panel || !list || !track) return;
-    if (list.scrollHeight - list.clientHeight <= 1) { track.hidden = true; return; }
-    track.hidden = false;
-    const panelRect = panel.getBoundingClientRect();
-    const listRect = list.getBoundingClientRect();
-    track.style.top = `${Math.round(listRect.top - panelRect.top)}px`;
-    track.style.height = `${Math.round(listRect.height)}px`;
-    const overflow = list.scrollHeight - list.clientHeight;
-    const viewportRatio = Math.max(.12, Math.min(1, list.clientHeight / list.scrollHeight));
-    const progress = Math.max(0, Math.min(1, list.scrollTop / overflow));
-    const thumb = track.firstElementChild;
-    thumb.style.height = `${(viewportRatio * 100).toFixed(2)}%`;
-    thumb.style.transform = `translateY(${(progress * (100 / viewportRatio - 100)).toFixed(2)}%)`;
-  }
-
-  function positionChooser(anchor, panel) {
-    if (!anchor || !panel || chooserEl.hidden) return;
-    computePosition(anchor, panel, {
-      strategy: 'fixed',
-      placement: 'right-start',
-      middleware: [
-        offset(18),
-        // The station's persistent command chrome is outside Shipworks. Constrain the floating
-        // tray to this actual operation surface so a tall candidate list scrolls within its tray
-        // instead of shifting its heading up behind the dock/navigation band.
-        flip({ boundary: el, fallbackPlacements: ['left-start', 'bottom'], padding: 12 }),
-        shift({ boundary: el, padding: 12 }),
-        size({
-          boundary: el,
-          padding: 12,
-          apply({ availableWidth, availableHeight, elements }) {
-            elements.floating.style.maxWidth = `${Math.max(340, Math.min(560, availableWidth))}px`;
-            // Inline max-height is the only ceiling that actually binds (a stylesheet rule loses
-            // to this inline write). Fit the room we actually have, hard cap 640; the 320 fall-back
-            // only covers the degenerate no-space case the flip middleware could not escape.
-            const maxH = availableHeight > 0 ? Math.min(availableHeight, 640) : 320;
-            elements.floating.style.maxHeight = `${Math.round(maxH)}px`;
-          },
-        }),
-      ],
-    }).then(({ x, y }) => {
-      if (chooserEl.hidden) return;
-      Object.assign(panel.style, { left: `${x}px`, top: `${y}px` });
-      syncChooserTrack();
-    }).catch(() => {});
-  }
-
+  // ---------- slot chooser (the compatible modules take the hang column) ----------
   function openChooser(slotIndex, anchorEl, opts = {}) {
     const s = viewedShip(); const def = s ? SHIP_BY_ID.get(s.defId) : null;
     if (!def) return;
@@ -1955,28 +1850,27 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         : selectedFit
           ? `Buy ${d.name} and fit it to this ${slot.type} ${slot.size} slot.`
         : purchase.title;
+      const buyWord = availability.outfitEnabled ? (selectedFit ? (fittedId ? 'Buy & Replace' : 'Buy & Fit') : 'Buy to Inventory') : 'Dock to fit';
       const btn = equipped
-        ? `<span class="sx-modrow__eq">Equipped</span>`
+        ? `<span class="k-t-fine k-38 sx-modrow__eq">Equipped</span>`
         : purchase.state === 'locked'
-          ? `<span class="sx-modrow__lock">${icon('info', 13)} ${escapeHtml(purchase.label)}</span>`
+          ? `<span class="k-t-fine k-38 sx-modrow__lock">${escapeHtml(purchase.label)}</span>`
           : purchase.state === 'funding'
-            ? `<button type="button" class="sx-modrow__buy" disabled>${fmt(d.price)} cr<small>${escapeHtml(purchase.label)}</small></button>`
-            : `<button type="button" class="sx-modrow__buy" data-buyfit="${escapeHtml(d.id)}"${selectedFit ? ` data-fit-slot="${slotIndex}"` : ''} ${availability.outfitEnabled ? '' : `disabled aria-label="${escapeHtml(availability.outfitLabel)}"`}>${availability.outfitEnabled ? (selectedFit ? (fittedId ? 'Buy & Replace' : 'Buy & Fit') : 'Buy to Inventory') : 'Dock to fit'}<small>${fmt(d.price || 0)} cr</small></button>`;
+            ? `<span class="k-t-fine k-38 sx-modrow__buy is-funding">${fmt(d.price)} cr · ${escapeHtml(purchase.label)}</span>`
+            : `<button type="button" class="k-word k-word--fine${selectedFit ? ' k-word--primary' : ''} sx-modrow__buy" data-buyfit="${escapeHtml(d.id)}"${selectedFit ? ` data-fit-slot="${slotIndex}"` : ''} ${availability.outfitEnabled ? '' : `disabled aria-label="${escapeHtml(availability.outfitLabel)}"`}>${buyWord} <small class="k-38">${fmt(d.price || 0)} cr</small></button>`;
       return (
-        `<div class="sx-modrow${equipped ? ' is-eq' : ''}${purchase.disabled || headConflict ? ' is-locked' : ''}" ${headConflict ? '' : `data-preview-module="${escapeHtml(d.id)}" data-preview-slot="${slotIndex}"`} tabindex="0">` +
-          `<span class="sx-modrow__ic">${icon(SLOT_ICON[slot.type] || 'spark', 18)}</span>` +
-          `<span class="sx-modrow__body"><span class="sx-modrow__name">${escapeHtml(d.name)}</span>` +
-            `<span class="sx-modrow__role">${escapeHtml(moduleRole(d))} · ${metaFallback}</span>` +
-            `<span class="sx-modrow__metrics">${moduleMetricsHtml(d)}</span>` +
-            `<span class="sx-modrow__meta">${chips}${riskChips}</span>` +
-            `<span class="sx-modrow__role">${escapeHtml(actionDetail)}</span></span>` +
-          btn +
-        `</div>`
+        `<li class="k-row sx-modrow${equipped ? ' is-eq' : ''}${purchase.disabled || headConflict ? ' is-locked' : ''}" ${headConflict ? '' : `data-preview-module="${escapeHtml(d.id)}" data-preview-slot="${slotIndex}"`} tabindex="0">` +
+          `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__name">${escapeHtml(d.name)}</span>` +
+            `<span class="k-row__sub sx-modrow__role">${escapeHtml(moduleRole(d))} · ${metaFallback}</span>` +
+            `<span class="k-row__sub sx-modrow__metrics">${moduleMetricsHtml(d)}</span>` +
+            `<span class="k-row__sub sx-modrow__meta">${chips}${riskChips}</span>` +
+            `<span class="k-row__sub k-38 sx-modrow__role">${escapeHtml(actionDetail)}</span></span>` +
+          `<span class="k-row__num sx-modrow__act">${btn}</span>` +
+        `</li>`
       );
     }).join('');
 
     if (chooserCloseTimer) { clearTimeout(chooserCloseTimer); chooserCloseTimer = 0; }
-    stopChooserFloating();
     selectedSlot = slotIndex;
     chooserAnchor = anchorEl || slotfieldEl.querySelector(`[data-spatial-slot="${slotIndex}"]`);
     slotfieldEl.classList.add('is-focusing');
@@ -1984,31 +1878,24 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       node.classList.toggle('is-selected', Number(node.getAttribute('data-spatial-slot')) === slotIndex);
     });
     scheduleSpatialProjection();
+    // No modal: the compatible modules take the hang column's cell in place of the hulls; "Back"
+    // returns them (Task C §1.9).
+    const fittedName = fittedId ? ((FITTABLE_BY_ID.get(fittedId) || {}).name || 'module') : '';
     chooserEl.innerHTML =
-      `<div class="sx-chooser__scrim" data-close></div>` +
-      `<div class="sx-chooser__panel" role="dialog" aria-modal="true" aria-label="Compatible ${escapeHtml(SLOT_LABEL[slot.type] || slot.type)} modules">` +
+      `<div class="sx-chooser__panel" role="region" aria-label="Compatible ${escapeHtml(SLOT_LABEL[slot.type] || slot.type)} modules">` +
         `<header class="sx-chooser__head">` +
-          `<div><span class="sx-chooser__kicker">${SLOT_LABEL[slot.type] || slot.type} slot · Size ${escapeHtml(slot.size || '')}${slot.facing ? ' · ' + escapeHtml(slot.facing) : ''}</span>` +
-          `<h3>Compatible Modules${compat.length ? ` (${compat.length})` : ''}</h3></div>` +
-          `<button type="button" class="sx-chooser__x" data-close aria-label="Close">${icon('close', 18)}</button>` +
+          `<ul class="k-words k-words--row"><li><button type="button" class="k-word k-word--body sx-chooser__x" data-close aria-label="Back to the hulls">Back</button></li></ul>` +
+          `<p class="k-caps sx-chooser__kicker">${SLOT_LABEL[slot.type] || slot.type} slot · size ${escapeHtml(slot.size || '')}${slot.facing ? ' · ' + escapeHtml(slot.facing) : ''}</p>` +
+          `<h3 class="k-t-sub">Compatible modules${compat.length ? ` <span class="k-38">${compat.length}</span>` : ''}</h3>` +
         `</header>` +
-        (availability.outfitEnabled ? '' : `<p class="sx-muted">${escapeHtml(availability.outfitLabel)}</p>`) +
-        (fittedId ? `<button type="button" class="sx-chooser__unfit" data-unfit="${slotIndex}" ${availability.outfitEnabled ? '' : `disabled aria-label="${escapeHtml(availability.outfitLabel)}"`}>${availability.outfitEnabled ? `Unfit ${escapeHtml((FITTABLE_BY_ID.get(fittedId) || {}).name || 'module')}` : 'Dock to unfit'}</button>` : '') +
-        `<div class="sx-chooser__list">${list || '<p class="sx-muted" style="padding:14px">No compatible modules.</p>'}</div>` +
-        `<span class="sx-chooser__track" aria-hidden="true"><i></i></span>` +
+        (availability.outfitEnabled ? '' : `<p class="k-sentence sx-muted">${escapeHtml(availability.outfitLabel)}</p>`) +
+        (fittedId ? `<ul class="k-words k-words--row"><li><button type="button" class="k-word k-word--emph sx-chooser__unfit" data-unfit="${slotIndex}" ${availability.outfitEnabled ? '' : `disabled aria-label="${escapeHtml(availability.outfitLabel)}"`}>${availability.outfitEnabled ? `Remove ${escapeHtml(fittedName)}` : 'Dock to remove'}</button></li></ul>` : '') +
+        `<ul class="k-rows sx-chooser__list">${list || '<li class="k-sentence sx-muted">No compatible modules.</li>'}</ul>` +
       `</div>`;
     chooserEl.hidden = false;
-    syncChooserTrack();
-    const panel = chooserEl.querySelector('.sx-chooser__panel');
-    positionChooser(chooserAnchor, panel);
-    if (chooserAnchor && panel) {
-      stopChooserPositioning = autoUpdate(chooserAnchor, panel, () => positionChooser(chooserAnchor, panel), {
-        ancestorResize: true, ancestorScroll: true, elementResize: true, animationFrame: false,
-      });
-    }
+    el.classList.add('is-choosing');
     requestAnimationFrame(() => {
       chooserEl.classList.add('is-open');
-      syncChooserTrack();
       const first = chooserEl.querySelector('[data-preview-module], [data-unfit], [data-close]');
       if (first && typeof first.focus === 'function') first.focus({ preventScroll: true });
     });
@@ -2019,7 +1906,6 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     if (chooserCloseTimer) { clearTimeout(chooserCloseTimer); chooserCloseTimer = 0; }
     if (!opts.silent) emitUiCue(UI_DRAWER_LATCH_CUE);
     const returnFocus = chooserAnchor;
-    stopChooserFloating();
     restoreCurrentPreview();
     selectedSlot = -1;
     chooserAnchor = null;
@@ -2027,6 +1913,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     slotfieldEl.querySelectorAll('[data-spatial-slot]').forEach((node) => node.classList.remove('is-selected'));
     el.querySelector('.sx-sw__focusline').classList.remove('is-on');
     chooserEl.classList.remove('is-open');
+    el.classList.remove('is-choosing');
     chooserCloseTimer = setTimeout(() => {
       chooserEl.hidden = true;
       chooserEl.innerHTML = '';
@@ -2067,16 +1954,16 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     });
     if (activeBandModel) renderApron(activeBandModel);
     if (ghostBandModel) {
-      syncGaugeValues(ghostBandModel);
+      syncGaugeValues(ghostBandModel, { ghost: true });
       syncPowerBand(ghostBandModel);
     }
     const changed = (ghost.changedRows || []).filter((row) => row.tone !== 'same').slice(0, 4);
     if (changed.length) {
       deltaEl.hidden = false;
-      deltaEl.innerHTML = `<span>PROPOSED FIT</span>` + changed.map((row) => {
+      deltaEl.innerHTML = `<span class="sx-sw__delta-k">Proposed fit</span> ` + changed.map((row) => {
         const label = formatPreviewDelta(row);
-        return `<b class="is-${row.tone === 'better' ? 'gain' : 'loss'}">${escapeHtml(label || row.label)}</b>`;
-      }).join('');
+        return `<span class="${row.tone === 'better' ? 'k-good' : 'k-bad'} is-${row.tone === 'better' ? 'gain' : 'loss'}">${escapeHtml(label || row.label)}</span>`;
+      }).join(' · ');
       scheduleSpatialProjection();
     } else {
       deltaEl.hidden = true;
@@ -2109,13 +1996,13 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     });
     if (activeBandModel) renderApron(activeBandModel);
     if (ghostBandModel) {
-      syncGaugeValues(ghostBandModel);
+      syncGaugeValues(ghostBandModel, { ghost: true });
       syncPowerBand(ghostBandModel);
     }
     const summary = ghostMassDelta && ghostMassDelta.ok ? ghostMassDelta.summary : '';
     if (summary) {
       deltaEl.hidden = false;
-      deltaEl.innerHTML = `<span>PRESET PREVIEW</span><b>${escapeHtml(summary)}</b>`;
+      deltaEl.innerHTML = `<span class="sx-sw__delta-k">Build preview</span> <span>${escapeHtml(summary)}</span>`;
     } else {
       deltaEl.hidden = true;
       deltaEl.innerHTML = '';
@@ -2236,7 +2123,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     mode = m;
     selectedSlot = -1;
     rememberShipView();
-    el.querySelectorAll('.sx-seg__btn').forEach((x) => x.classList.toggle('is-on', x.getAttribute('data-mode') === mode));
+    syncModeWords();
     renderRail(); renderCenter(); renderSide();
     queueRevealSelectedShip();
     if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tick' });
@@ -2249,25 +2136,16 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     railListEl.scrollBy({ left: direction * Math.max(220, railListEl.clientWidth * .72), behavior: 'smooth' });
   });
   railListEl.addEventListener('scroll', updateRailControls, { passive: true });
-  railListEl.addEventListener('wheel', (ev) => {
-    if (Math.abs(ev.deltaY) <= Math.abs(ev.deltaX)) return;
-    const max = Math.max(0, railListEl.scrollWidth - railListEl.clientWidth);
-    if (max <= 0) return;
-    const next = Math.max(0, Math.min(max, railListEl.scrollLeft + ev.deltaY));
-    if (next === railListEl.scrollLeft) return;
-    ev.preventDefault();
-    railListEl.scrollLeft = next;
-  }, { passive: false });
 
   railListEl.addEventListener('keydown', (ev) => {
-    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(ev.key)) return;
+    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(ev.key)) return;
     const rows = [...railListEl.querySelectorAll('.sx-sw-row')];
     if (!rows.length) return;
     const current = ev.target.closest('.sx-sw-row') || railListEl.querySelector('.sx-sw-row.is-active');
     const currentIndex = Math.max(0, rows.indexOf(current));
     let nextIndex = currentIndex;
-    if (ev.key === 'ArrowLeft') nextIndex = Math.max(0, currentIndex - 1);
-    if (ev.key === 'ArrowRight') nextIndex = Math.min(rows.length - 1, currentIndex + 1);
+    if (ev.key === 'ArrowLeft' || ev.key === 'ArrowUp') nextIndex = Math.max(0, currentIndex - 1);
+    if (ev.key === 'ArrowRight' || ev.key === 'ArrowDown') nextIndex = Math.min(rows.length - 1, currentIndex + 1);
     if (ev.key === 'Home') nextIndex = 0;
     if (ev.key === 'End') nextIndex = rows.length - 1;
     ev.preventDefault();
@@ -2302,6 +2180,16 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   });
 
   statsEl.addEventListener('click', async (ev) => {
+    const band = ev.target.closest('[data-band]');
+    if (band) {
+      const next = band.getAttribute('data-band');
+      if (next && next !== selectedBand) {
+        selectedBand = next;
+        if (activeBandModel) renderApron(activeBandModel);
+        if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tick' });
+      }
+      return;
+    }
     const savePreset = ev.target.closest('[data-loadout-preset-save]');
     if (savePreset) {
       if (savePreset.disabled) {
@@ -2449,9 +2337,6 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   if (stageResizeObserver) stageResizeObserver.observe(stageEl);
 
   let buyConfirmBusy = false;
-  // scroll does not bubble, but a capture listener on the chooser root still sees the list scroll
-  // (wheel, keyboard, drag) and keeps the slim track honest.
-  chooserEl.addEventListener('scroll', syncChooserTrack, { capture: true, passive: true });
   chooserEl.addEventListener('click', async (ev) => {
     if (ev.target.closest('[data-close]')) { closeChooser(); return; }
     const bf = ev.target.closest('[data-buyfit]');
@@ -2550,30 +2435,22 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       refresh();
       if (mount) mount.setActive(true);
       powerBeam.setActive(true);
-      for (const key of Object.keys(gaugeByKey)) gaugeByKey[key].fx.setActive(true);
     },
     onHide() {
       if (previewSettleTimer) clearTimeout(previewSettleTimer);
       previewSettleTimer = 0;
       if (mount) mount.setActive(false);
       powerBeam.setActive(false);
-      clearAllGaugeSettles();
-      for (const key of Object.keys(gaugeByKey)) gaugeByKey[key].fx.setActive(false);
     }, // stop the render loop when leaving (perf)
     refresh,
     dispose() {
-      stopChooserFloating();
       if (chooserCloseTimer) clearTimeout(chooserCloseTimer);
       if (previewSettleTimer) clearTimeout(previewSettleTimer);
       if (projectionFrame) cancelAnimationFrame(projectionFrame);
       if (stageResizeObserver) stageResizeObserver.disconnect();
       if (typeof rangeIntentUnsub === 'function') { try { rangeIntentUnsub(); } catch (_) {} }
       rangeIntentUnsub = null;
-      clearAllGaugeSettles();
       try { powerBeam.dispose(); } catch (_) {}
-      for (const key of Object.keys(gaugeByKey)) {
-        try { gaugeByKey[key].fx.dispose(); } catch (_) {}
-      }
       if (mount) { try { mount.dispose(); } catch (_) {} mount = null; }
       try { delete canvas.__sfPreviewDiagnostics; } catch (_) {}
     },

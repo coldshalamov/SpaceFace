@@ -33,9 +33,9 @@ export const shipScreen = {
     this._ctx = ctx;
     this._root = rootEl;
     rootEl.id = 'sf-ship';
-    // Per-screen opaque backdrop (grammar §6): a dark bay, not the shared cinematic plate, so
-    // the Ship never reads as the same room as the menu.
-    rootEl.classList.add('sf-ship');
+    // The kit screen with the stage variant: the shared stage's canvas is the world behind the
+    // words; the `.sx-sw--flight` panel fills the screen's middle band (Frontend Task C §1.9).
+    rootEl.classList.add('sf-ship', 'k-screen', 'k-screen--stage');
     ensureStageStyles();
     this._stage = getSharedShipStage(ctx);
     rootEl.appendChild(this._stage.el);
