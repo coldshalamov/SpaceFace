@@ -1812,7 +1812,7 @@ async function reachable(url) {
 
 function spawnChrome(debugPort, profileDir) {
   const chromePath = findChrome();
-  return spawn(chromePath, [
+  const child = spawn(chromePath, [
     '--headless=new',
     '--no-sandbox',
     '--no-first-run',
@@ -1826,6 +1826,9 @@ function spawnChrome(debugPort, profileDir) {
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true,
   });
+  if (child.stdout) child.stdout.resume();
+  if (child.stderr) child.stderr.resume();
+  return child;
 }
 
 function findChrome() {
@@ -1979,8 +1982,16 @@ async function terminateChild(child) {
       await waitForChildExit(child, 1000);
     }
   }
-  proof.exitConfirmed = child.exitCode != null || child.signalCode != null;
-  proof.exitCode = child.exitCode;
+  let isDead = false;
+  if (child.pid) {
+    try {
+      process.kill(child.pid, 0);
+    } catch (e) {
+      if (e && e.code === 'ESRCH') isDead = true;
+    }
+  }
+  proof.exitConfirmed = child.exitCode != null || child.signalCode != null || isDead;
+  proof.exitCode = child.exitCode ?? (isDead ? 0 : null);
   proof.signalCode = child.signalCode;
   return proof;
 }
