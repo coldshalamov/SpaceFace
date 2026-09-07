@@ -274,7 +274,7 @@ function stationTier(stationId) {
 export function masslineHeadOutcome(def) {
   const headId = def && def.mods && def.mods.masslineHeadId;
   const outcomes = {
-    tractor: 'Massline Tractor head',
+    tractor: 'Pick up, spin, throw',
     elastic_whip: 'Massline spring-energy head',
     frame_coupler: 'Massline separation-damping head',
     monofilament_sweep: 'Massline hostile-cut sweep head',

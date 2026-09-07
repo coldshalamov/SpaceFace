@@ -6307,7 +6307,7 @@
       "priority": 83,
       "title": "Combo meter and scoring in the Crucible",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -6325,8 +6325,10 @@
         "npm run check:baseline",
         "npm run check:crucible:route"
       ],
-      "receiptRefs": [],
-      "brief": "Chain window, multiplier by trick rarity and mass ratio, banked on quiet; scoring feeds survivalRecords and the results screen. DONE WHEN: A physics run outscores a gun run of equal kills by ≥ 2×; the free Pulse cannot top the board."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-146.01-REPORT.md"
+      ],
+      "brief": "DONE 2026-09-07 (OpenCode Muse Spark + controller). Combo meter on state.stunts.combo: chain window 5s, rarity x mass x chain, bank-on-quiet. Crucible results show a Stunt combo band. Seed 14601 equal-kill tapes: physics 6772 vs gun 240 (28x) vs Pulse 100. Pulse damage untouched. Does not write survivalRun/survivalResults. DONE WHEN: A physics run outscores a gun run of equal kills by >= 2x; the free Pulse cannot top the board."
     },
     {
       "id": "PQ-146.02",
@@ -7028,7 +7030,7 @@
       "priority": 108,
       "title": "Tractor head as a throw toy",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -7048,8 +7050,10 @@
         "npm run check:baseline",
         "npm run check:massline"
       ],
-      "receiptRefs": [],
-      "brief": "Pick up, spin, throw with the release rating; works on cargo, debris, drones, light hulls. DONE WHEN: A Range drill teaches it in ≤ 60 s; throw speed ≥ 1.2× cruise on a light payload."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-029.00-REPORT.md"
+      ],
+      "brief": "IMPLEMENTED 2026-09-07 (OpenCode Muse Spark + controller). Throw already clears 1.2x cruise on a winched light pod (122.9 vs 95, 1.29x, seed 2900, rated release). Fitting sentence is now 'Pick up, spin, throw'. Drill exists as scenario data, not a Range screen lesson (163.02 owns range.js). Not a Range drill in <=60s on the live Range — that clause keeps this implemented, not done. DONE WHEN: A Range drill teaches it in <= 60 s; throw speed >= 1.2x cruise on a light payload."
     },
     {
       "id": "PQ-007.focused-implementation",

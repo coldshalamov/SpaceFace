@@ -35,6 +35,7 @@ import { clearQueuedChallenge, queueGhostPlayback, queueSurvivalChallenge } from
 import { meetsUnlockCondition } from '../../systems/survivalUnlocks.js';
 import { compileAttackSpec } from '../../combat/attackSpec.js';
 import { causalKindsFromSpec } from '../../systems/adventureMigration.js';
+import { comboSummary } from '../../systems/stuntCombo.js';
 
 const STYLE_ID = 'sf-crucible-door-style';
 
@@ -969,7 +970,98 @@ export function resultSectionOrder(result) {
   return ['last_seconds', 'ledger', 'build'];
 }
 
+/* --- the stunt combo band. DOM-free builders over the stunt module's combo snapshot.
+ *
+ * PQ-146.01: the combo meter lives in the stunt module (state.stunts.combo, single writer
+ * stuntGrammar) and this surface reads it IN PARALLEL with survivalResults — which it never
+ * edits. Everything below takes the snapshot handed back by stuntComboFor() and never touches
+ * a system. Null-safe: a run with no tricks and no kills shows no band at all.
+ * ------------------------------------------------------------------------------------------ */
+
+/**
+ * The live combo snapshot for this run, or null when there is nothing to show. Reads
+ * ctx.state only; a context without state (or a run that never scored) yields null and the
+ * results plate renders exactly as before — existing plates are untouched.
+ */
+export function stuntComboFor(ctx) {
+  const state = ctx && ctx.state;
+  const combo = state && state.stunts && state.stunts.combo;
+  if (!combo || typeof combo !== 'object') return null;
+  try {
+    return comboSummary(combo);
+  } catch {
+    return null;
+  }
+}
+
+/** The sentence over the combo band. Every figure keeps its word. */
+export function comboLead(summary) {
+  if (!summary || typeof summary !== 'object') return '';
+  const n = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+  const best = n(summary.bestChain);
+  const trickKills = n(summary.trickKills);
+  const gun = n(summary.gunKills) + n(summary.pulseKills);
+  if (best <= 0 && trickKills <= 0) {
+    if (gun <= 0) return '';
+    return gun === 1
+      ? 'No chained tricks — 1 flat kill, no multiplier.'
+      : `No chained tricks — ${gun} flat kills, no multiplier.`;
+  }
+  const chainWord = best === 1 ? '1 trick' : `${best} tricks`;
+  const pay = n(summary.bestChainPoints);
+  if (trickKills > 0) return `Best chain ${chainWord} for ${pay} — physics paid, guns never multiply.`;
+  return `Best chain ${chainWord} for ${pay} — chain it, bank it, run it again.`;
+}
+
+/** Rows for the combo grid. Gun rows appear only when that kind of kill happened. */
+export function comboRows(summary) {
+  if (!summary || typeof summary !== 'object') return [];
+  const n = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+  const rows = [['Combo score', String(n(summary.totalScore))]];
+  if (n(summary.bestChain) > 0) {
+    rows.push(['Best chain', `${n(summary.bestChain)} tricks · ${n(summary.bestChainPoints)}`]);
+  }
+  if (n(summary.trickKills) > 0) rows.push(['Trick kills', String(n(summary.trickKills))]);
+  if (n(summary.gunKills) > 0) rows.push(['Gun kills', String(n(summary.gunKills))]);
+  if (n(summary.pulseKills) > 0) rows.push(['Pulse kills', String(n(summary.pulseKills))]);
+  return rows;
+}
+
+/** The recent chained tricks, newest last, as name/detail pairs for the chain list. */
+export function comboTrickLines(summary) {
+  const entries = summary && Array.isArray(summary.lastTricks) ? summary.lastTricks : [];
+  const lines = [];
+  for (const entry of entries) {
+    if (!entry || typeof entry !== 'object') continue;
+    const name = typeof entry.name === 'string' && entry.name ? entry.name : 'Unknown stunt';
+    const points = Number.isFinite(Number(entry.points)) ? Number(entry.points) : 0;
+    const rarity = typeof entry.rarity === 'string' && entry.rarity ? entry.rarity : 'common';
+    lines.push({ name, detail: `${rarity} · ${points}` });
+  }
+  return lines;
+}
+
 /* --- band renderers. DOM assembly only; every word above them is already decided. --- */
+
+function renderCombo(band, summary) {
+  const lead = comboLead(summary);
+  if (lead) band.appendChild(el('div', 'sf-crres__lead', lead));
+  const grid = el('div', 'sf-crd-grid');
+  for (const [label, value] of comboRows(summary)) {
+    grid.appendChild(el('div', 'k', label));
+    grid.appendChild(el('div', 'v', value));
+  }
+  band.appendChild(grid);
+  const lines = comboTrickLines(summary);
+  if (lines.length) {
+    const chain = el('div', 'sf-crres__chain');
+    for (const line of lines) {
+      chain.appendChild(el('div', 'sf-crres__chain-k', line.name));
+      chain.appendChild(el('div', 'sf-crres__chain-v', line.detail));
+    }
+    band.appendChild(chain);
+  }
+}
 
 function renderKillChain(band, defeat) {
   const chain = el('div', 'sf-crres__chain');
@@ -1158,6 +1250,24 @@ export const crucibleResultsScreen = {
       else if (id === 'ledger') renderLedger(band, result);
       else if (id === 'build') renderBuild(band, result.picks);
       rootEl.appendChild(band);
+    }
+
+    // The stunt combo band reads the stunt module's combo snapshot in parallel with
+    // survivalResults (PQ-146.01). Absent state or an empty meter renders nothing, so every
+    // plate that predates the meter reads exactly as before.
+    try {
+      const combo = stuntComboFor(ctx);
+      if (combo) {
+        const band = el('div', 'sf-crres__band');
+        const bandTitle = el('div', 'sf-crres__band-title', 'Stunt combo');
+        bandTitle.setAttribute('role', 'heading');
+        bandTitle.setAttribute('aria-level', '2');
+        band.appendChild(bandTitle);
+        renderCombo(band, combo);
+        rootEl.appendChild(band);
+      }
+    } catch {
+      // A combo read failure must never take down the results plate.
     }
 
     const foot = el('div', 'sf-crd-foot');
