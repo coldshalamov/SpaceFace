@@ -20,7 +20,7 @@ export function shipLedgerEntryAriaLabel(entry) {
 function makeButton(label, action) {
   const button = document.createElement('button');
   button.type = 'button';
-  button.className = 'st-btn st-ledger-page-btn';
+  button.className = 'k-word k-word--body st-btn st-ledger-page-btn';
   button.setAttribute('data-ledger-page', action);
   button.setAttribute('aria-label', label);
   button.textContent = label;
@@ -36,27 +36,24 @@ function removeAttr(node, name) {
   if (node && typeof node.removeAttribute === 'function') node.removeAttribute(name);
 }
 
-// The evidence figure is the ONE place this panel needs its own injected styling. The full
-// `.st-ledger-*` family is now styled in styles/station.css (sx-* tokens), but the Codex host does
-// NOT load station.css — so this scoped injection is the only styling the figure subtree receives
-// there, and it remains the authoritative image-sizing rule in both hosts. Every authored Cathedral
-// image is 1920x1080; left alone the figure renders at natural size and blows out the column
-// (measured: 1920px wide inside a 700px column).
-//
-// Scoped under `.st-ledger` so it cannot reach `.st-ledger-list` / `.st-ledger-row`, which the market
-// screen reuses under `.st-market-ledger`. Sizes in `em` so the figure tracks the shipped `--ui-scale`
-// text-scale path (ui.css:13/45, plus the .sx-app base) instead of pinning its own. Injected lazily,
-// never at import time, so a headless projector-only import stays DOM-free.
+// The panel wears kit classes (styles/kit.css, global in both hosts): rows, words, sentences, caps.
+// The evidence figure is the ONE place it needs its own injected rule — the Codex host does not load
+// styles/station.css, and every authored Cathedral image is 1920x1080; left alone the figure renders
+// at natural size and blows out the column. One image, no frame (Frontend Task C §1.4). Injected
+// lazily, never at import time, so a headless projector-only import stays DOM-free.
 const SHIP_LEDGER_CSS = `
-.st-ledger .st-ledger-figure { margin: 10px 0 0; max-width: 720px; }
-.st-ledger .st-ledger-figure-img {
-  display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover;
-  border-radius: 6px; border: 1px solid var(--panel-edge, #1d3350); background: var(--panel, #0b1220);
-}
-.st-ledger .st-ledger-figure[data-ledger-figure-state="failed"] .st-ledger-figure-img {
-  aspect-ratio: auto; border-style: dashed; padding: 10px;
-}
-.st-ledger .st-ledger-figure-caption { margin-top: 6px; color: var(--ink-dim, #84a0c8); font-size: 0.85em; }
+.st-ledger .st-ledger-figure { margin: calc(16px * var(--k-s, 1)) 0 0; max-width: calc(720px * var(--k-s, 1)); }
+.st-ledger .st-ledger-figure-img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; }
+.st-ledger .st-ledger-figure[data-ledger-figure-state="failed"] .st-ledger-figure-img { aspect-ratio: auto; }
+.st-ledger .st-ledger-figure-caption { margin-top: calc(6px * var(--k-s, 1)); color: var(--k-bone-38); font-size: var(--k-fs-fine); }
+.st-ledger .st-ledger-entry-body { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "time line type" "time note ev"; column-gap: var(--k-gap, 24px); align-items: baseline; }
+.st-ledger .st-ledger-cycle { grid-area: time; }
+.st-ledger .st-ledger-line { grid-area: line; margin: 0; }
+.st-ledger .st-ledger-type { grid-area: type; text-align: right; }
+.st-ledger .st-ledger-annotation { grid-area: note; margin: 0; }
+.st-ledger .st-ledger-evidence-btn { grid-area: ev; justify-self: end; }
+.st-ledger .st-ledger-nav { display: flex; align-items: baseline; gap: var(--k-gap, 24px); margin-top: calc(16px * var(--k-s, 1)); }
+.st-ledger .st-ledger-detail > * + * { margin-top: calc(16px * var(--k-s, 1)); }
 `;
 
 let ledgerCssInjected = false;
@@ -86,25 +83,25 @@ export function createShipLedgerPanel(ctx, options = {}) {
 
   const heading = document.createElement(hTag);
   heading.id = titleId;
-  heading.className = 'st-sub-h';
+  heading.className = 'k-display k-t-title st-sub-h';
   heading.textContent = hostOptions.title || "The Ship's Ledger";
 
   const intro = document.createElement('p');
-  intro.className = 'st-ledger-intro';
+  intro.className = 'k-sentence st-ledger-intro';
   intro.textContent = hostOptions.intro || 'The Tessera keeps what the manifests leave out.';
 
   const status = document.createElement('p');
-  status.className = 'st-ledger-status mono';
+  status.className = 'k-caps st-ledger-status mono';
   status.setAttribute('role', 'status');
   status.setAttribute('aria-live', 'polite');
   status.setAttribute('aria-atomic', 'true');
 
   const list = document.createElement('ol');
-  list.className = 'st-ledger-list';
+  list.className = 'k-rows st-ledger-list';
   list.setAttribute('aria-label', 'Ship ledger entries, newest first');
 
   const empty = document.createElement('p');
-  empty.className = 'st-ledger-empty';
+  empty.className = 'k-empty st-ledger-empty';
   empty.textContent = 'No receipts yet. The first line is still yours.';
   empty.hidden = true;
 
@@ -113,7 +110,7 @@ export function createShipLedgerPanel(ctx, options = {}) {
   nav.setAttribute('aria-label', 'Ship ledger archive pages');
   const newer = makeButton('Newer entries', 'newer');
   const pageReadout = document.createElement('span');
-  pageReadout.className = 'st-ledger-page mono';
+  pageReadout.className = 'k-t-fine k-38 st-ledger-page mono';
   pageReadout.setAttribute('aria-hidden', 'true');
   const older = makeButton('Older entries', 'older');
   nav.append(newer, pageReadout, older);
@@ -126,19 +123,19 @@ export function createShipLedgerPanel(ctx, options = {}) {
 
   const back = document.createElement('button');
   back.type = 'button';
-  back.className = 'st-btn st-ledger-back';
+  back.className = 'k-word k-word--body st-btn st-ledger-back';
   back.setAttribute('data-ledger-back', '1');
   back.textContent = 'Back to entries';
 
   const detailHeading = document.createElement('h3');
   detailHeading.id = detailTitleId;
-  detailHeading.className = 'st-sub-h st-ledger-detail-title';
+  detailHeading.className = 'k-display k-t-title st-sub-h st-ledger-detail-title';
 
   const detailFragment = document.createElement('p');
-  detailFragment.className = 'st-ledger-detail-fragment';
+  detailFragment.className = 'k-sentence k-sentence--emph st-ledger-detail-fragment';
 
   const detailBody = document.createElement('p');
-  detailBody.className = 'st-ledger-detail-body';
+  detailBody.className = 'k-sentence st-ledger-detail-body';
 
   const figure = document.createElement('figure');
   figure.className = 'st-ledger-figure';
@@ -150,7 +147,7 @@ export function createShipLedgerPanel(ctx, options = {}) {
   figure.append(image, caption);
 
   const provenance = document.createElement('p');
-  provenance.className = 'st-ledger-provenance mono';
+  provenance.className = 'k-t-fine k-38 st-ledger-provenance mono';
 
   detail.append(back, detailHeading, detailFragment, detailBody, figure, provenance);
 
@@ -162,29 +159,30 @@ export function createShipLedgerPanel(ctx, options = {}) {
 
   function renderEntry(entry) {
     const item = document.createElement('li');
-    item.className = `st-ledger-entry st-ledger-entry--${entry.type}`;
+    item.className = `k-row k-row--static st-ledger-entry st-ledger-entry--${entry.type}`;
     item.setAttribute('data-ledger-entry-type', entry.type);
+    item.setAttribute('tabindex', '0'); // a row can be rested on by keyboard (the station reads it)
 
     const article = document.createElement('article');
     article.className = 'st-ledger-entry-body';
     article.setAttribute('aria-label', shipLedgerEntryAriaLabel(entry));
 
     const time = document.createElement('time');
-    time.className = 'st-ledger-cycle mono';
+    time.className = 'k-t-data k-38 st-ledger-cycle mono';
     time.textContent = entry.cycleLabel;
 
     const type = document.createElement('span');
-    type.className = 'st-ledger-type mono';
+    type.className = 'k-caps st-ledger-type mono' + (entry.type === 'rumor' ? ' k-signal' : '');
     type.textContent = entry.type.toUpperCase();
 
     const line = document.createElement('p');
-    line.className = 'st-ledger-line';
+    line.className = 'k-t-body st-ledger-line';
     line.textContent = entry.text;
 
     article.append(time, type, line);
     if (entry.annotation) {
       const annotation = document.createElement('aside');
-      annotation.className = 'st-ledger-annotation st-ledger-annotation--vols';
+      annotation.className = 'k-t-fine k-signal st-ledger-annotation st-ledger-annotation--vols';
       annotation.setAttribute('aria-label', 'Captain Vols annotation');
       annotation.setAttribute('data-ledger-hand', 'vols');
       annotation.textContent = entry.annotation;
@@ -194,7 +192,7 @@ export function createShipLedgerPanel(ctx, options = {}) {
     if (entry.evidencePage) {
       const evidenceBtn = document.createElement('button');
       evidenceBtn.type = 'button';
-      evidenceBtn.className = 'st-ledger-evidence-btn';
+      evidenceBtn.className = 'k-word k-word--fine st-ledger-evidence-btn';
       evidenceBtn.setAttribute('data-ledger-evidence', entry.evidencePage.pageId);
       evidenceBtn.setAttribute('aria-label', `Open evidence: ${entry.evidencePage.title}`);
       evidenceBtn.textContent = `Evidence — ${entry.evidencePage.title}`;

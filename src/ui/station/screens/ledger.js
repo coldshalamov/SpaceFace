@@ -3,78 +3,69 @@
 // the station contract (onShow/onHide/refresh/dispose). The panel owns no subscriptions; refresh
 // reads the live state reference the station already holds, so there is no hidden refresh and no
 // listener leak across host-switch or show/hide cycles.
+//
+// Frontend Task C §1.4: the station host is a split kit panel. The shared panel's children sit on
+// the left (its root is `display: contents` under .sx-ledger — see styles/station.css); the right
+// half reads the entry under the pointer or focus: its cycle at title size, the line as an
+// emphasised sentence, the captain's hand as a sentence in the signal colour. The panel's own
+// evidence detail (one image) takes the right half when an evidence row is opened.
 import { createShipLedgerPanel } from '../../shipLedgerPanel.js';
-
-// Station-host corrections that belong to this destination (scoped under .sx-ledger, which only
-// exists here; the Codex host mounts the same panel without this wrap and is untouched):
-//  - the RUMOR tag rendered in the bright azure the shared sheets kept for accents; the archive
-//    reads on the one station accent now;
-//  - one short archive page used to read as a mostly black screen — the panel is bounded into a
-//    hairline card so the desk around it reads as intentional backdrop, not missing layout.
-const STYLE_ID = 'sf-station-ledger-style';
-function injectStyle() {
-  if (typeof document === 'undefined' || document.getElementById(STYLE_ID)) return;
-  const s = document.createElement('style');
-  s.id = STYLE_ID;
-  s.textContent = LEDGER_CSS;
-  document.head.appendChild(s);
-}
-
-// Named LEDGER_CSS, not CSS — a module binding named CSS would shadow the global CSS object
-// (the global is what CSS.escape lives on).
-const LEDGER_CSS = `
-.sx-app .sx-ledger { min-height: 0; height: 100%; padding: 14px 24px 22px; overflow: auto; display: flex; justify-content: center; align-items: stretch; }
-/* The record is laid out like a desk, not a floating card: the crest (title, intro, status) holds
-   the left column and the entries fill the right at full height, so one short archive page no
-   longer reads as a small box at the top of an empty screen. The shared panel's DOM is untouched
-   — this is grid placement of the children it already emits. */
-.sx-app .sx-ledger .st-panel.st-ledger {
-  width: 100%;
-  max-width: 1320px;
-  align-self: stretch;
-  display: grid;
-  grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
-  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
-  column-gap: 32px;
-  row-gap: 10px;
-  padding: 18px 24px 22px;
-  border: 1px solid var(--sf-edge, #2c343f);
-  border-radius: 2px;
-  background: color-mix(in srgb, var(--sf-surface, #12161c) 85%, transparent);
-}
-.sx-app .sx-ledger .st-ledger > .st-sub-h { grid-column: 1; grid-row: 1; }
-.sx-app .sx-ledger .st-ledger > .st-ledger-intro { grid-column: 1; grid-row: 2; }
-.sx-app .sx-ledger .st-ledger > .st-ledger-status { grid-column: 1; grid-row: 3; }
-.sx-app .sx-ledger .st-ledger > .st-ledger-list { grid-column: 2; grid-row: 1 / 5; align-content: start; }
-.sx-app .sx-ledger .st-ledger > .st-ledger-empty { grid-column: 2; grid-row: 1; }
-.sx-app .sx-ledger .st-ledger > .st-ledger-nav { grid-column: 2; grid-row: 5; justify-content: flex-start; }
-.sx-app .sx-ledger .st-ledger > .st-ledger-detail { grid-column: 1 / -1; grid-row: 1 / 6; }
-@media (max-width: 1100px) {
-  .sx-app .sx-ledger .st-panel.st-ledger { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; }
-  .sx-app .sx-ledger .st-ledger > .st-sub-h,
-  .sx-app .sx-ledger .st-ledger > .st-ledger-intro,
-  .sx-app .sx-ledger .st-ledger > .st-ledger-status,
-  .sx-app .sx-ledger .st-ledger > .st-ledger-list,
-  .sx-app .sx-ledger .st-ledger > .st-ledger-empty,
-  .sx-app .sx-ledger .st-ledger > .st-ledger-nav,
-  .sx-app .sx-ledger .st-ledger > .st-ledger-detail { grid-column: 1; grid-row: auto; }
-}
-.sx-app .sx-ledger .st-ledger .st-ledger-entry--rumor .st-ledger-type {
-  color: var(--accent, #4f8fdd);
-  border-color: color-mix(in srgb, var(--accent, #4f8fdd) 40%, transparent);
-}
-`;
+import { el } from '../../kit/index.js';
 
 export function createLedgerScreen(ctx) {
-  injectStyle();
   const wrap = document.createElement('div');
-  wrap.className = 'sx-ledger';
+  wrap.className = 'k-panel k-panel--split sx-ledger';
   const panel = createShipLedgerPanel(ctx, {
     hostId: 'station',
     headingLevel: 2,
     hostOptions: { title: "The Ship's Ledger", intro: 'The Tessera keeps what the manifests leave out.' },
   });
   wrap.appendChild(panel.el);
+
+  // The reading column (station only): the entry the player rests on.
+  const read = el('div', 'sx-ledger__read');
+  read.hidden = true;
+  const readKicker = el('p', 'k-caps sx-ledger__read-kicker');
+  const readTitle = el('h3', 'k-display k-t-title sx-ledger__read-title');
+  const readLine = el('p', 'k-sentence k-sentence--emph sx-ledger__read-line');
+  const readHand = el('p', 'k-sentence k-signal sx-ledger__read-hand');
+  read.append(readKicker, readTitle, readLine, readHand);
+  wrap.appendChild(read);
+
+  function readEntry(item) {
+    const model = panel.model;
+    const detail = panel.el.querySelector('.st-ledger-detail');
+    if (!item || !model || (detail && !detail.hidden)) { read.hidden = true; return; }
+    const entries = model.entries || [];
+    const rows = [...panel.el.querySelectorAll('.st-ledger-entry')];
+    const entry = entries[rows.indexOf(item)];
+    if (!entry) { read.hidden = true; return; }
+    for (const row of rows) row.setAttribute('aria-selected', String(row === item));
+    readKicker.textContent = entry.type ? String(entry.type).toUpperCase() : '';
+    readTitle.textContent = entry.cycleLabel || '';
+    readLine.textContent = entry.text || '';
+    readHand.textContent = entry.annotation || '';
+    readHand.hidden = !entry.annotation;
+    read.hidden = false;
+  }
+  function onPointerOver(ev) {
+    const item = ev.target && ev.target.closest && ev.target.closest('.st-ledger-entry');
+    if (item) readEntry(item);
+  }
+  function onFocusIn(ev) {
+    const item = ev.target && ev.target.closest && ev.target.closest('.st-ledger-entry');
+    if (item) readEntry(item);
+  }
+  // The panel's own evidence detail takes the right half while open; the reading column yields.
+  function onClick(ev) {
+    const t = ev.target && ev.target.closest && ev.target.closest('[data-ledger-evidence], [data-ledger-back]');
+    if (!t) return;
+    if (t.hasAttribute('data-ledger-evidence')) read.hidden = true;
+    else setTimeout(readFirst, 0);
+  }
+  panel.el.addEventListener('pointerover', onPointerOver);
+  panel.el.addEventListener('focusin', onFocusIn);
+  panel.el.addEventListener('click', onClick);
 
   // Presentation fix owned at this layer: the shared panel (also mounted by the Codex host, which
   // is outside this screen's ownership) writes the status line itself and pluralizes "1 entries".
@@ -88,12 +79,18 @@ export function createLedgerScreen(ctx) {
       status.textContent = status.textContent.replace(/\b1 entries\b/g, '1 entry');
     }
   }
+  // After each render the first entry is the one read, so the right half is never blank.
+  function readFirst() {
+    const selected = panel.el.querySelector('.st-ledger-entry[aria-selected="true"]') || panel.el.querySelector('.st-ledger-entry');
+    readEntry(selected);
+  }
 
   return {
     el: wrap,
     onShow() {
       panel.onShow();
       normalizeStatusPlural();
+      readFirst();
     },
     // Declared with no parameter on purpose. The panel closes over the ctx it was built with and
     // reads `ctx.state` live, so it cannot honour a *different* ctx handed to refresh. Accepting one
@@ -101,9 +98,15 @@ export function createLedgerScreen(ctx) {
     refresh() {
       panel.refresh();
       normalizeStatusPlural();
+      readFirst();
     },
     onHide() { panel.onHide(); },
-    dispose() { panel.destroy(); },
+    dispose() {
+      panel.el.removeEventListener('pointerover', onPointerOver);
+      panel.el.removeEventListener('focusin', onFocusIn);
+      panel.el.removeEventListener('click', onClick);
+      panel.destroy();
+    },
   };
 }
 
