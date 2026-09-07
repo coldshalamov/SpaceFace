@@ -195,6 +195,11 @@ Green (this commit set): `node --check` on every edited module; tests `crucible-
 `check:mission-log-contract-terms`, `check:mission-log-map-handoff`, `check:colour-tokens`,
 `check:type-floor` (after every stylesheet commit), `check-ui-screen-imports` (the migrated-screens
 assertion), `extract-localization --check`.
+`check:baseline` on the finished tree: fourteen of its fifteen steps green (`ui-glyphs`,
+`ui-control-labels`, `vfx-techniques`, `pq020-ceres-topology`, `save-schema`, `opening-mesh-defer`,
+`flight-v3`, `m1-tether-mass`, `sim-v3-compare`, `render-package-plan`, `sim-compare`, `sim-v3`,
+`sim`, `massline` via `--only`); the fail-fast chain itself halts at its first step,
+`ui-screen-imports`, on the pre-existing near-dock prompt string below.
 
 Pre-existing on `HEAD`, not chased: `check:asteroid-motion` pins 20 asteroid fields in
 `sectors.js` and other agents have since authored 47 (the check never reads `asteroid-ops.css`);
