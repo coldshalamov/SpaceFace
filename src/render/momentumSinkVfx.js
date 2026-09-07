@@ -57,6 +57,9 @@ export function createMomentumSinkVfxPlanScratch() {
  * The stored attacker-frame velocity is combat-owned truth. This planner never looks up an
  * attacker, writes velocity, or subtracts the render frame origin. Existing VFX spawners own the
  * single global-to-frame conversion.
+ *
+ * PQ-026.00: optional `storedReceding` is the bungee's tension read. When omitted, length still
+ * tracks live relative speed so the damper trail is unchanged.
  */
 export function resolveMomentumSinkVfxPlan(out, input) {
   if (!out) return null;
@@ -82,8 +85,12 @@ export function resolveMomentumSinkVfxPlan(out, input) {
 
   const radiusInput = Number(input.radius);
   const radius = clamp(Number.isFinite(radiusInput) ? radiusInput : 6, 2, 30);
+  const storedReceding = Number(input.storedReceding);
+  const tensionSpeed = Number.isFinite(storedReceding) && storedReceding > relativeSpeed
+    ? storedReceding
+    : relativeSpeed;
   const speedT = clamp01(
-    (relativeSpeed - MOMENTUM_SINK_VFX_DEADBAND_SPEED)
+    (tensionSpeed - MOMENTUM_SINK_VFX_DEADBAND_SPEED)
       / (MAX_AUTHORED_RELATIVE_SPEED - MOMENTUM_SINK_VFX_DEADBAND_SPEED),
   );
   const motionReduce = input.motionReduce === true;

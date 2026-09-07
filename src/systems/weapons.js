@@ -29,7 +29,13 @@ import {
   compileAttackSpec,
   mergeWeaponView,
 } from '../combat/attackSpec.js';
-import { GRAVITY_MARK_STATUS_ID } from '../data/combatDefs.js';
+import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
+import {
+  GRAVITY_MARK_STATUS_ID,
+  MOMENTUM_SINK_BUNGEE,
+  MOMENTUM_SINK_STATUS_ID,
+  MOMENTUM_SINK_WEAPON_ID,
+} from '../data/combatDefs.js';
 import { causalKindsFromSpec, collectAttackModifiers } from './adventureMigration.js';
 import { compactLineageRecord, createLineage } from '../combat/attackLineage.js';
 import { emitVolley } from '../combat/attackPropagation.js';
@@ -168,10 +174,32 @@ export const weapons = {
     this._attackMetrics = emptyAttackMetrics();
     this._attackLive = new Map();
     this._attackQueryScratch = [];
+    this._momentumSinkImpulse = { x: 0, y: 0, z: 0 };
+    this._entityGetter = (id) => {
+      if (id == null) return null;
+      if (this.helpers && typeof this.helpers.getEntity === 'function') return this.helpers.getEntity(id);
+      const state = this.state;
+      return state && state.entities && typeof state.entities.get === 'function'
+        ? state.entities.get(id)
+        : null;
+    };
 
     ctx.bus.on('debug:refillPlayer', () => refillLabPlayerHeat(this.state));
-    ctx.bus.on('projectile:hit', (payload) => this._onAttackHit(payload));
-    ctx.bus.on('sector:enter', () => handlePayloadSectorTransition(this.state, this.helpers));
+    ctx.bus.on('projectile:hit', (payload) => {
+      const planted = tryPlantMomentumSinkFromHit(this.state, payload, this._entityGetter);
+      if (planted && this.bus) {
+        this.bus.emit('weapons:momentumSinkPlanted', {
+          ownerId: payload && payload.ownerId,
+          targetId: payload && payload.targetId,
+          weaponId: MOMENTUM_SINK_WEAPON_ID,
+        });
+      }
+      this._onAttackHit(payload);
+    });
+    ctx.bus.on('sector:enter', () => {
+      handlePayloadSectorTransition(this.state, this.helpers);
+      clearAllMomentumSinkPlants(this.state);
+    });
   },
 
   update(dt, state) {
@@ -284,19 +312,21 @@ export const weapons = {
     for (const e of ships) {
       if (e.type !== 'ship' || !e.alive) continue;
       const ws = e.data && e.data.weapons;
-      if (!ws) continue;
-      for (const w of ws) {
-        const def = this._byId.get(w.defId) || {};
-        if (w._cooldown > 0) w._cooldown = Math.max(0, w._cooldown - dt);
-        const baseDissip = w.heatDissip != null ? w.heatDissip : (def.heatDissip || 0);
-        const dissip = baseDissip * WEAPON_RECHARGE_MULT;
-        if (w._heat > 0 && dissip > 0) w._heat = Math.max(0, w._heat - dissip * dt);
+      if (ws) {
+        for (const w of ws) {
+          const def = this._byId.get(w.defId) || {};
+          if (w._cooldown > 0) w._cooldown = Math.max(0, w._cooldown - dt);
+          const baseDissip = w.heatDissip != null ? w.heatDissip : (def.heatDissip || 0);
+          const dissip = baseDissip * WEAPON_RECHARGE_MULT;
+          if (w._heat > 0 && dissip > 0) w._heat = Math.max(0, w._heat - dissip * dt);
+        }
+        // Forced-vent lockout (player only) — see WEAPON_VENT_S. Runs after the normal cooldown so a
+        // freshly-pegged gun trips the vent this tick.
+        this._tickVent(e, dt, state);
+        // Missile lock build/decay lives on the ship's combat block.
+        this._tickLock(e, dt);
       }
-      // Forced-vent lockout (player only) — see WEAPON_VENT_S. Runs after the normal cooldown so a
-      // freshly-pegged gun trips the vent this tick.
-      this._tickVent(e, dt, state);
-      // Missile lock build/decay lives on the ship's combat block.
-      this._tickLock(e, dt);
+      tickMomentumSinkPlant(state, e, this._momentumSinkImpulse, this._entityGetter);
     }
   },
 
@@ -653,6 +683,7 @@ export const weapons = {
   // Projectile weapon: gate on cooldown/cap/heat (+lock/+arc), spawn a projectile, emit combat:fire.
   _serviceProjectileWeapon(e, w, def, isPlayer, capLeft, dt, state, aimAngle, forceTarget, fireGate = null) {
     if ((w._cooldown || 0) > 0) return capLeft;
+    if (this._releaseMomentumSinkIfReady(e, w, def, state)) return capLeft;
 
     const energyCost = w.energyCost != null ? w.energyCost : def.energyCost || 0;
     if (capLeft < energyCost) return capLeft;
@@ -765,6 +796,25 @@ export const weapons = {
       ownerId: e.id, weaponId: w.defId, hardpointIdx: w.slotIndex, origin, dir,
     });
     return capLeft;
+  },
+
+  _releaseMomentumSinkIfReady(e, w, def, state) {
+    if (!isMomentumSinkWeapon(w, def)) return false;
+    const plant = e && e.data && e.data.momentumSinkPlant;
+    if (!plant || !plant.active) return false;
+    if (!(plant.storedReceding > MOMENTUM_SINK_BUNGEE.deadbandSpeed)) return false;
+    const stored = plant.storedReceding;
+    if (!queueMomentumSinkRelease(e, plant, this._momentumSinkImpulse, state)) return false;
+    const rof = w.rof != null ? w.rof : def.rof || 0;
+    w._cooldown = rof > 0 ? 1 / rof : 0.1;
+    if (this.bus) {
+      this.bus.emit('weapons:momentumSinkReleased', {
+        ownerId: e.id,
+        weaponId: MOMENTUM_SINK_WEAPON_ID,
+        storedReceding: stored,
+      });
+    }
+    return true;
   },
 
   _attackSpecFor(w, def, state, entity) {
@@ -1551,4 +1601,277 @@ export function buildWeaponDamagePacket(w, def, damage, damageType, pos = null) 
     delete packet.source.impulseProvenance;
   }
   return packet;
+}
+
+export const MOMENTUM_SINK_PLANT_PHASE = Object.freeze({
+  idle: 0,
+  planted: 1,
+  tension: 2,
+  released: 3,
+});
+
+export function createMomentumSinkPlantScratch() {
+  return {
+    active: false,
+    phase: MOMENTUM_SINK_PLANT_PHASE.idle,
+    anchorId: null,
+    plantedTick: 0,
+    expiresTick: 0,
+    anchorX: 0,
+    anchorZ: 0,
+    frameVx: 0,
+    frameVz: 0,
+    awayX: 1,
+    awayZ: 0,
+    storedReceding: 0,
+    cruiseSpeed: 0,
+  };
+}
+
+export function isMomentumSinkAnchor(entity, planter) {
+  if (!entity || entity.alive === false) return false;
+  const type = entity.type;
+  if (type === 'asteroid' || type === 'planet' || type === 'station') return true;
+  if (entity.flags && (entity.flags.static === true || entity.flags.anchor === true)) return true;
+  if (entity.physicsBody && entity.physicsBody.dynamic === false) return true;
+  const mass = authoredMass(entity);
+  if (type === 'ship' || type === 'drone') {
+    const planterMass = planter ? authoredMass(planter) : 1;
+    return mass >= Math.max(MOMENTUM_SINK_BUNGEE.minAnchorMass, planterMass * MOMENTUM_SINK_BUNGEE.capitalAnchorMassMult);
+  }
+  return mass >= MOMENTUM_SINK_BUNGEE.minAnchorMass;
+}
+
+export function ensureMomentumSinkPlant(planter) {
+  if (!planter || !planter.data) return null;
+  let plant = planter.data.momentumSinkPlant;
+  if (!plant) {
+    plant = createMomentumSinkPlantScratch();
+    planter.data.momentumSinkPlant = plant;
+  }
+  return plant;
+}
+
+export function plantMomentumSinkBungee(plant, planter, anchor, tick) {
+  if (!plant || !planter || !anchor) return false;
+  if (!isMomentumSinkAnchor(anchor, planter)) return false;
+  const pos = planter.pos;
+  const apos = anchor.pos;
+  if (!pos || !apos) return false;
+
+  let awayX = pos.x - apos.x;
+  let awayZ = pos.z - apos.z;
+  let length = Math.hypot(awayX, awayZ);
+  if (!(length > 1e-6)) {
+    const vel = planter.vel;
+    awayX = vel && Number.isFinite(vel.x) ? vel.x : 1;
+    awayZ = vel && Number.isFinite(vel.z) ? vel.z : 0;
+    length = Math.hypot(awayX, awayZ);
+    if (!(length > 1e-6)) {
+      awayX = 1;
+      awayZ = 0;
+      length = 1;
+    }
+  }
+  awayX /= length;
+  awayZ /= length;
+
+  const frame = anchor.vel;
+  plant.active = true;
+  plant.phase = MOMENTUM_SINK_PLANT_PHASE.planted;
+  plant.anchorId = anchor.id;
+  plant.plantedTick = tick | 0;
+  plant.expiresTick = (tick | 0) + MOMENTUM_SINK_BUNGEE.durationTicks;
+  plant.anchorX = apos.x;
+  plant.anchorZ = apos.z;
+  plant.frameVx = frame && Number.isFinite(frame.x) ? frame.x : 0;
+  plant.frameVz = frame && Number.isFinite(frame.z) ? frame.z : 0;
+  plant.awayX = awayX;
+  plant.awayZ = awayZ;
+  plant.storedReceding = 0;
+  plant.cruiseSpeed = cruiseSpeedFor(planter);
+  return true;
+}
+
+export function tensionMomentumSinkBungee(plant, planter, anchor) {
+  if (!plant || !plant.active || !planter || !planter.pos) return false;
+
+  const aposX = anchor && anchor.pos ? anchor.pos.x : plant.anchorX;
+  const aposZ = anchor && anchor.pos ? anchor.pos.z : plant.anchorZ;
+  let awayX = planter.pos.x - aposX;
+  let awayZ = planter.pos.z - aposZ;
+  const length = Math.hypot(awayX, awayZ);
+  if (length > 1e-6) {
+    awayX /= length;
+    awayZ /= length;
+    plant.awayX = awayX;
+    plant.awayZ = awayZ;
+  } else {
+    awayX = plant.awayX;
+    awayZ = plant.awayZ;
+  }
+
+  if (anchor && anchor.pos) {
+    plant.anchorX = anchor.pos.x;
+    plant.anchorZ = anchor.pos.z;
+  }
+  if (anchor && anchor.vel) {
+    if (Number.isFinite(anchor.vel.x)) plant.frameVx = anchor.vel.x;
+    if (Number.isFinite(anchor.vel.z)) plant.frameVz = anchor.vel.z;
+  }
+
+  const vel = planter.vel;
+  const relVx = (vel && Number.isFinite(vel.x) ? vel.x : 0) - plant.frameVx;
+  const relVz = (vel && Number.isFinite(vel.z) ? vel.z : 0) - plant.frameVz;
+  const receding = relVx * awayX + relVz * awayZ;
+  if (receding > MOMENTUM_SINK_BUNGEE.deadbandSpeed) {
+    plant.phase = MOMENTUM_SINK_PLANT_PHASE.tension;
+    if (receding > plant.storedReceding) plant.storedReceding = receding;
+    return true;
+  }
+  return plant.phase === MOMENTUM_SINK_PLANT_PHASE.tension;
+}
+
+export function fillMomentumSinkReleaseImpulse(out, plant, planter) {
+  if (!out) return false;
+  out.x = 0;
+  out.y = 0;
+  out.z = 0;
+  if (!plant || !plant.active || !planter) return false;
+
+  const peak = plant.storedReceding;
+  if (!(peak > MOMENTUM_SINK_BUNGEE.deadbandSpeed)) return false;
+  const awayLen = Math.hypot(plant.awayX, plant.awayZ);
+  if (!(awayLen > 1e-8)) return false;
+  const awayX = plant.awayX / awayLen;
+  const awayZ = plant.awayZ / awayLen;
+
+  const vel = planter.vel;
+  const relVx = (vel && Number.isFinite(vel.x) ? vel.x : 0) - plant.frameVx;
+  const relVz = (vel && Number.isFinite(vel.z) ? vel.z : 0) - plant.frameVz;
+  const receding = relVx * awayX + relVz * awayZ;
+  const earned = Math.max(peak, receding > 0 ? receding : 0);
+  if (!(earned > MOMENTUM_SINK_BUNGEE.deadbandSpeed)) return false;
+
+  const desiredToward = MOMENTUM_SINK_BUNGEE.releaseSpeedMult
+    * MOMENTUM_SINK_BUNGEE.releaseSpeedMargin
+    * earned;
+  const deltaVAway = (-desiredToward) - receding;
+  const mass = authoredMass(planter);
+  out.x = awayX * mass * deltaVAway;
+  out.z = awayZ * mass * deltaVAway;
+  return Number.isFinite(out.x) && Number.isFinite(out.z);
+}
+
+export function releaseMomentumSinkBungee(out, plant, planter) {
+  if (!fillMomentumSinkReleaseImpulse(out, plant, planter)) return false;
+  plant.phase = MOMENTUM_SINK_PLANT_PHASE.released;
+  plant.active = false;
+  return true;
+}
+
+export function tryPlantMomentumSinkFromHit(state, payload, getEntity) {
+  if (!state || !payload || !hitIsMomentumSink(payload)) return false;
+  const getter = resolveEntityGetter(state, getEntity);
+  const planter = getter(payload.ownerId);
+  const anchor = getter(payload.targetId);
+  if (!planter || planter.alive === false) return false;
+  const plant = ensureMomentumSinkPlant(planter);
+  if (!plant) return false;
+  return plantMomentumSinkBungee(plant, planter, anchor, state.tick || 0);
+}
+
+export function tickMomentumSinkPlant(state, planter, scratchImpulse, getEntity) {
+  const plant = planter && planter.data && planter.data.momentumSinkPlant;
+  if (!plant || !plant.active) return false;
+  const tick = state && Number.isInteger(state.tick) ? state.tick : 0;
+  const getter = resolveEntityGetter(state, getEntity);
+  const anchor = plant.anchorId != null ? getter(plant.anchorId) : null;
+  if (!anchor || anchor.alive === false) {
+    if (queueMomentumSinkRelease(planter, plant, scratchImpulse, state)) return true;
+    clearMomentumSinkPlant(plant);
+    return false;
+  }
+  tensionMomentumSinkBungee(plant, planter, anchor);
+  if (tick >= plant.expiresTick) {
+    if (queueMomentumSinkRelease(planter, plant, scratchImpulse, state)) return true;
+    clearMomentumSinkPlant(plant);
+  }
+  return false;
+}
+
+export function clearMomentumSinkPlant(plant) {
+  if (!plant) return;
+  plant.active = false;
+  plant.phase = MOMENTUM_SINK_PLANT_PHASE.idle;
+  plant.anchorId = null;
+  plant.storedReceding = 0;
+}
+
+export function clearAllMomentumSinkPlants(state) {
+  const list = state && state.entityList;
+  if (!list) return;
+  for (let i = 0; i < list.length; i++) {
+    const plant = list[i] && list[i].data && list[i].data.momentumSinkPlant;
+    if (plant) clearMomentumSinkPlant(plant);
+  }
+}
+
+function queueMomentumSinkRelease(planter, plant, scratchImpulse, state) {
+  if (!fillMomentumSinkReleaseImpulse(scratchImpulse, plant, planter)) return false;
+  queuePhysicsImpulse(planter, scratchImpulse);
+  recordImpulseProvenance(planter, {
+    actorId: planter.id,
+    weaponId: MOMENTUM_SINK_WEAPON_ID,
+    tag: 'momentum_sink_release',
+    appliedTick: state && state.tick || 0,
+    magnitude: Math.hypot(scratchImpulse.x, scratchImpulse.z),
+  });
+  plant.phase = MOMENTUM_SINK_PLANT_PHASE.released;
+  plant.active = false;
+  return true;
+}
+
+function isMomentumSinkWeapon(w, def) {
+  const id = (w && w.defId) || (def && def.id);
+  return id === MOMENTUM_SINK_WEAPON_ID;
+}
+
+function hitIsMomentumSink(payload) {
+  if (!payload) return false;
+  if (payload.weaponId === MOMENTUM_SINK_WEAPON_ID) return true;
+  const packet = payload.damagePacket || payload.packet;
+  const statuses = packet && packet.statuses;
+  if (!Array.isArray(statuses)) return false;
+  for (let i = 0; i < statuses.length; i++) {
+    if (statuses[i] && statuses[i].id === MOMENTUM_SINK_STATUS_ID) return true;
+  }
+  return false;
+}
+
+function resolveEntityGetter(state, getEntity) {
+  if (typeof getEntity === 'function') return getEntity;
+  return (id) => (state && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(id)
+    : null);
+}
+
+function cruiseSpeedFor(entity) {
+  const derived = entity && entity.data && entity.data.derived;
+  return positiveNumber(
+    derived && derived.combatSpeed,
+    positiveNumber(entity && entity.combatSpeed, positiveNumber(entity && entity.maxSpeed, 105)),
+  );
+}
+
+function authoredMass(entity) {
+  return positiveNumber(
+    entity && entity.physicsBody && entity.physicsBody.mass,
+    positiveNumber(entity && entity.mass, 1),
+  );
+}
+
+function positiveNumber(value, fallback) {
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? number : fallback;
 }

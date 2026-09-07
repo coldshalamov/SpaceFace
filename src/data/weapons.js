@@ -157,9 +157,11 @@ export const WEAPONS = [
     statuses: [{ id: 'status_gravity_marked', stacks: 1 }],
   },
   {
-    // MOMENTUM SINK — a landed hit binds the target to the shooter's translational frame for four
-    // seconds. The combat kernel applies a capped opposing impulse; the weapon never writes target
-    // velocity, controls, facing, braking, or speed limits and remains weak as direct damage.
+    // MOMENTUM SINK — two reads from one latch. A landed hit on a ship still binds that target to
+    // the shooter's translational frame (combat kernel damper). A landed hit on a rock plants a
+    // bungee on the shooter: burn away to store receding speed, then release (second trigger or
+    // the four-second window) and slingshot back at ≥ 2× that speed. The setup round stays a ping;
+    // the weapon never writes speed caps, brakes, facing, or controls.
     id: 'wpn_momentum_sink_s', name: 'Momentum Sink S', slotType: 'weapon', size: 'S', tier: 2, mass: 3, price: 21000, requiresTech: 'tech_graviton_drives',
     dmg: 3, rof: 0.2, dps: 0.6, damageType: 'emp', energyCost: 9,
     projSpeed: 500, range: 640, tracking: 'fixed', spreadDeg: 0.45,

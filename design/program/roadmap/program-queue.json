@@ -7638,7 +7638,7 @@
       "priority": 137,
       "title": "Momentum sink as the bungee",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -7657,8 +7657,10 @@
         "npm run check:baseline",
         "npm run check:combat"
       ],
-      "receiptRefs": [],
-      "brief": "Plant, tension, release: the player exits at ≥ 2× cruise (earned speed kept, B1). DONE WHEN: Scenario measures exit speed ≥ 2× cruise; capture."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-026.00-REPORT.md"
+      ],
+      "brief": "DONE 2026-09-07 (Grok + controller). Plant on a rock, burn away, release: snap returns stored receding speed at 2.040× cruise (214.2 / 105, seed 26029). Second trigger and Rapier owner both hold the bar. No speed-cap write. Shared VFX carriers untouched. Headless numbers stand in for capture. DONE WHEN: exit speed >= 2x cruise."
     },
     {
       "id": "PQ-026.01",

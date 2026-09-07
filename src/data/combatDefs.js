@@ -5,7 +5,20 @@ export const COMBAT_SCHEMA_VERSION = 1;
 
 export const GRAVITY_MARK_STATUS_ID = 'status_gravity_marked';
 export const MOMENTUM_SINK_STATUS_ID = 'status_momentum_sink';
+export const MOMENTUM_SINK_WEAPON_ID = 'wpn_momentum_sink_s';
 export const PINNED_STATUS_ID = 'status_pinned';
+
+// PQ-026.00 bungee: plant on a rock, burn away, release. The snap returns stored receding
+// speed toward the plant at ≥ 2× (margin covers Rapier rounding). Weapons.js owns the
+// planter impulse; this table is the shared tuning, not a second physics writer.
+export const MOMENTUM_SINK_BUNGEE = Object.freeze({
+  releaseSpeedMult: 2,
+  releaseSpeedMargin: 1.02,
+  deadbandSpeed: 0.25,
+  durationTicks: 240,
+  minAnchorMass: 120,
+  capitalAnchorMassMult: 8,
+});
 export const UNMOORED_STATUS_ID = 'status_unmoored';
 export const CRYO_LOCK_STATUS_ID = 'status_cryo_lock';
 
@@ -142,10 +155,11 @@ export const STATUS_DEFS = Object.freeze([
     interactions: [], periodic: null, cueId: 'combat.status.gravity_marked',
   },
   {
-    // PQ-026 Momentum Sink is an offensive, frame-relative force effect. The combat kernel binds
-    // this status to its attacker's translational velocity and queues capped impulses through the
-    // physics membrane; this definition deliberately owns no movement/control multiplier.
-    id: MOMENTUM_SINK_STATUS_ID, version: 1, tags: ['gravity', 'momentum', 'frame_relative'], durationTicks: 240,
+    // PQ-026 Momentum Sink: the combat kernel still binds this status to the attacker's
+    // translational frame (the offensive damper). The player-facing bungee — plant on a rock,
+    // store receding speed, release at ≥ 2× cruise — is owned by weapons.js using
+    // MOMENTUM_SINK_BUNGEE. This definition still owns no movement/control multiplier.
+    id: MOMENTUM_SINK_STATUS_ID, version: 1, tags: ['gravity', 'momentum', 'frame_relative', 'bungee'], durationTicks: 240,
     stacking: { mode: 'replace', maxStacks: 1 }, immunityTags: [],
     effects: {}, interactions: [], periodic: null, cueId: 'combat.status.momentum_sink',
   },

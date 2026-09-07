@@ -12,10 +12,24 @@ import { createBus } from '../src/core/eventBus.js';
 import { consumePhysicsCommand, queuePhysicsImpulse } from '../src/core/physicsAuthority.js';
 import { createSg02DynamicBodyOwner } from '../src/core/sg02DynamicBodyOwner.js';
 import { SIM_DT } from '../src/core/sim.js';
-import { MOMENTUM_SINK_STATUS_ID, STATUS_DEFS } from '../src/data/combatDefs.js';
+import {
+  MOMENTUM_SINK_STATUS_ID,
+  MOMENTUM_SINK_WEAPON_ID,
+  STATUS_DEFS,
+} from '../src/data/combatDefs.js';
 import { TECH_NODES } from '../src/data/tech.js';
 import { WEAPONS } from '../src/data/weapons.js';
-import { buildWeaponDamagePacket } from '../src/systems/weapons.js';
+import {
+  buildWeaponDamagePacket,
+  createMomentumSinkPlantScratch,
+  isMomentumSinkAnchor,
+  plantMomentumSinkBungee,
+  releaseMomentumSinkBungee,
+  tensionMomentumSinkBungee,
+  tickMomentumSinkPlant,
+  tryPlantMomentumSinkFromHit,
+  weapons,
+} from '../src/systems/weapons.js';
 import { fillActiveMassCouplingTargets } from '../src/ui/momentumSinkOverlay.js';
 
 const WEAPON_ID = 'wpn_momentum_sink_s';
@@ -161,6 +175,130 @@ test('the explicit frame survives Continue, expires cleanly, and drives a bounde
   assert.equal(restored.combat.entities[String(restoredTarget.id)].statuses[MOMENTUM_SINK_STATUS_ID], undefined);
   assert.equal(consumePhysicsCommand(restoredTarget), null, 'expiry queues no hidden recovery impulse');
 });
+
+test('plant → tension → release exits at ≥ 2× cruise and keeps earned speed', () => {
+  const cruise = 105;
+  const mass = 40;
+  const player = bodyEntity(1, 0, mass, { x: 0, z: 0 });
+  player.combatSpeed = cruise;
+  player.pos = { x: 12, z: 0 };
+  const rock = rockEntity(99, 800);
+  const plant = createMomentumSinkPlantScratch();
+  const flightBefore = structuredClone({
+    input: { axes: { thrust: 1, strafe: 0 }, actions: { brake: false } },
+    maxSpeed: player.maxSpeed,
+    combatSpeed: player.combatSpeed,
+  });
+
+  assert.equal(isMomentumSinkAnchor(rock, player), true);
+  assert.equal(isMomentumSinkAnchor(bodyEntity(2, 1, 40, { x: 0, z: 0 }), player), false,
+    'a light hostile stays an offensive damper target, not a bungee post');
+  assert.equal(plantMomentumSinkBungee(plant, player, rock, 20), true);
+
+  player.vel.x = cruise;
+  player.vel.z = 0;
+  player.pos.x = 90;
+  assert.equal(tensionMomentumSinkBungee(plant, player, rock), true);
+  assert.ok(plant.storedReceding >= cruise - 1e-9, 'tension stores the receding burn, not a nerfed cruise');
+
+  const impulse = { x: 0, y: 0, z: 0 };
+  assert.equal(releaseMomentumSinkBungee(impulse, plant, player), true);
+  player.vel.x += impulse.x / mass;
+  player.vel.z += impulse.z / mass;
+  const exitSpeed = Math.hypot(player.vel.x, player.vel.z);
+  const ratio = exitSpeed / cruise;
+  console.log(`PQ-026.00 plant-tension-release exitSpeed=${exitSpeed.toFixed(3)} cruise=${cruise} ratio=${ratio.toFixed(3)}`);
+  assert.ok(exitSpeed >= 2 * cruise,
+    `If I swing well I EARN speed and I KEEP it: exit ${exitSpeed.toFixed(3)} must be ≥ 2× cruise ${2 * cruise}`);
+  assert.ok(player.vel.x < 0, 'the snap slingshots back through the plant, not further away');
+  assert.equal(player.maxSpeed, flightBefore.maxSpeed, 'the bungee does not write a speed cap');
+  assert.equal(player.combatSpeed, flightBefore.combatSpeed);
+});
+
+test('a rock hit plants the bungee and the second trigger queues the snap', () => {
+  const cruise = 105;
+  const player = bodyEntity(1, 0, 40, { x: 0, z: 0 });
+  player.combatSpeed = cruise;
+  player.pos = { x: 16, z: 0 };
+  player.data.weapons = [{ defId: WEAPON_ID, _cooldown: 0 }];
+  const rock = rockEntity(99, 900);
+  const state = combatState(player, rock);
+  const planted = tryPlantMomentumSinkFromHit(state, {
+    ownerId: player.id,
+    targetId: rock.id,
+    weaponId: MOMENTUM_SINK_WEAPON_ID,
+  }, (id) => state.entities.get(id));
+  assert.equal(planted, true);
+  assert.equal(player.data.momentumSinkPlant.active, true);
+
+  player.vel.x = cruise;
+  player.pos.x = 80;
+  const host = Object.create(weapons);
+  host.state = state;
+  host.bus = createBus();
+  host._momentumSinkImpulse = { x: 0, y: 0, z: 0 };
+  host._entityGetter = (id) => state.entities.get(id);
+  tickMomentumSinkPlant(state, player, host._momentumSinkImpulse, host._entityGetter);
+  assert.ok(player.data.momentumSinkPlant.storedReceding >= cruise - 1e-9);
+
+  const released = host._releaseMomentumSinkIfReady(player, player.data.weapons[0], { id: WEAPON_ID }, state);
+  assert.equal(released, true);
+  const command = consumePhysicsCommand(player);
+  assert.ok(command && command.impulses.length === 1, 'release is one additive impulse, not a velocity write');
+  const impulse = command.impulses[0];
+  player.vel.x += impulse.x / 40;
+  player.vel.z += impulse.z / 40;
+  const exitSpeed = Math.hypot(player.vel.x, player.vel.z);
+  console.log(`PQ-026.00 second-trigger exitSpeed=${exitSpeed.toFixed(3)} cruise=${cruise} ratio=${(exitSpeed / cruise).toFixed(3)}`);
+  assert.ok(exitSpeed >= 2 * cruise);
+  assert.equal(player.data.momentumSinkPlant.active, false);
+  assert.ok(player.data.weapons[0]._cooldown > 0, 'release spends the weapon cadence, not capacitor');
+});
+
+test('Rapier applies the bungee snap without taking over flight state', async () => {
+  const cruise = 105;
+  const player = bodyEntity(1, 0, 40, { x: 0, z: 0 });
+  player.combatSpeed = cruise;
+  player.pos = { x: 20, z: 0 };
+  player.vel.x = cruise;
+  const rock = rockEntity(99, 800);
+  const plant = createMomentumSinkPlantScratch();
+  assert.equal(plantMomentumSinkBungee(plant, player, rock, 20), true);
+  player.pos.x = 100;
+  assert.equal(tensionMomentumSinkBungee(plant, player, rock), true);
+
+  const impulse = { x: 0, y: 0, z: 0 };
+  assert.equal(releaseMomentumSinkBungee(impulse, plant, player), true);
+  const owner = await createSg02DynamicBodyOwner({ fixedDt: SIM_DT, quantum: 1e-5 });
+  const flightBefore = structuredClone({
+    maxSpeed: player.maxSpeed,
+    combatSpeed: player.combatSpeed,
+  });
+  try {
+    owner.syncFromEntities([player, rock]);
+    owner.step(SIM_DT);
+    queuePhysicsImpulse(player, impulse);
+    owner.step(SIM_DT);
+    const exitSpeed = Math.hypot(player.vel.x, player.vel.z);
+    console.log(`PQ-026.00 rapier-release exitSpeed=${exitSpeed.toFixed(3)} cruise=${cruise} ratio=${(exitSpeed / cruise).toFixed(3)}`);
+    assert.ok(exitSpeed >= 2 * cruise, 'the production Rapier owner keeps the returned momentum');
+    assert.deepEqual({
+      maxSpeed: player.maxSpeed,
+      combatSpeed: player.combatSpeed,
+    }, flightBefore, 'Momentum Sink owns no speed-cap state');
+  } finally {
+    owner.dispose();
+  }
+});
+
+function rockEntity(id, mass) {
+  const rock = bodyEntity(id, 1, mass, { x: 0, z: 0 });
+  rock.type = 'asteroid';
+  rock.pos = { x: 0, z: 0 };
+  rock.maxSpeed = 0;
+  rock.combatSpeed = 0;
+  return rock;
+}
 
 function landWeapon(kernel, attackerId, targetId, weaponId = WEAPON_ID) {
   const weapon = WEAPONS.find((entry) => entry.id === weaponId);
