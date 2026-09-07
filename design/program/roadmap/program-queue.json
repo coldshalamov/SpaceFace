@@ -17382,7 +17382,7 @@
       "priority": 469,
       "title": "Senior taste review of the 2026-09-06 flash batch",
       "kind": "acceptance_review",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "landing-passover-flash-2026-09-06"
@@ -17395,8 +17395,10 @@
       "checks": [
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
-      "brief": "Ratify, adjust, or overturn the six named taste calls on PQ-144.00, PQ-186.00, PQ-139.04, PQ-143.02, and PQ-184.00. Implement every adjustment. Do not drop the taste-call list. Stay off PQ-184.01/.02/.03 and PQ-022/PQ-018 capture leaves. DONE WHEN: every call has a verdict in owner words; adopted changes are in the owning files; receipt under design/program/roadmap/receipts/PQ-191-01-REPORT.md."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-191-01-REPORT.md"
+      ],
+      "brief": "ACCEPTED 2026-09-07 (AGY Gemini 3.8 Flash High + controller re-run). All six flash-batch taste calls ratified in owner words; no owning-code adjustment required. Senior-review lines on the five batch receipts. Focused tests 26/26 on primary. See receipt."
     },
     {
       "id": "PQ-192.00",

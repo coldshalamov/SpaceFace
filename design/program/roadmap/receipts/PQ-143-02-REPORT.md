@@ -113,3 +113,8 @@ per world tick for one prop.
   verbatim; a one-off is not dressing noise).
 - Fielding the held-back tug/tanker hulls to traffic to make it "read better": that is an owner
   call (traffic.js note), not this leaf's.
+
+## Senior review (PQ-191.01)
+
+- **Call 2 ratified:** The Cinder Run Courier as a dedicated deterministic express traffic fixture (`_ensureCinderRunCourierFixture` at 247 WU/s) provides reliable starter-route whimsy and scale without seed lotteries or disrupting Ceres's authored cast.
+- **Call 3 ratified:** Reusing packaged props (`place_dead_hulk`, `place_memorial_array`, `place_aftermath_wreck_ore_freighter_bow__derelict`) with unique sector placement, cluster arrangement, and dedicated rotation tick (the tug's 0.32 rad/s spin) creates specific landmark identity without asset bloat or unauthorized hull release.

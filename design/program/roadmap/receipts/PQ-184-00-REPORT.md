@@ -116,3 +116,7 @@ table has ever had, and a regression gate that fires the day a surface gets slow
   a gap in the baseline's `missing` list — a silent shrink is the one thing this instrument
   refuses to do.
 - Letting the debt table become furniture: `--strict` is the debt's teeth — .01/.02 flip it.
+
+## Senior review (PQ-191.01)
+
+- **Call 1 ratified:** Reporting grammar debt as named debt rather than fatal failure allowed the instrument to establish and guide optimization without breaking the build; the debt table was actively read by subsequent leaves (reducing debt from 24 surfaces to 1), and `--strict` is owned as the terminal gate for PQ-184.

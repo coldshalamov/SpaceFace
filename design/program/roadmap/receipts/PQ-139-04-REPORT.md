@@ -116,3 +116,7 @@ game. Reduced motion keeps the directional information at 35 % amplitude per the
 - Retyping the wavenumber into the shader instead of the named constant: the shader test fails.
 - Resetting the ship record's phase every frame: the fleet test's accumulation assertion fails —
   the screw must turn with the hull across frames, not restart.
+
+## Senior review (PQ-191.01)
+
+- **Call 4 ratified:** Plume corkscrew parameters (4.5 WU enemy amplitude, 2.0 rad/s saturation, 0.35 rad/WU wavenumber; 6.0 WU player contrail offset; 0.35 reduce-motion scale) correctly match hull dimensions, plume lengths, camera perspective, and accessibility standards.

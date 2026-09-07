@@ -110,3 +110,7 @@ a known defect red freezes it just as pinning it green does).
   runner).
 - Re-recording anything to pass: there is nothing here to re-record — the verdicts are computed
   from raw numbers by the pre-existing measurer.
+
+## Senior review (PQ-191.01)
+
+- **Call 5 ratified:** B11 correctly avoids pinning the owed collision-source defect red to prevent freezing it against repair while guarding against any second unmet clause; B10 separates the PQ-138.03 wreck-momentum rider into its own assertion to preserve causal attribution in failure messages.

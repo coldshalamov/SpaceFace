@@ -52,3 +52,7 @@ boundary instead of permitting cheaper fake-presence shortcuts.
 - Entry `check:baseline` red (47-A hash drift) — pre-existing on the shared dirty tree from
   foreign in-flight sim work (sg02DynamicBodyOwner.js et al.), recorded not chased
   (`docs/COMMON_BUGS.md` §8 procedure; not my unit's seam).
+
+## Senior review (PQ-191.01)
+
+- **Call 6 ratified:** §8 budget table and honest boundary live in `design/PERF_BUDGET.md` guarded by per-§13C-packet runtime witness evidence rather than brittle static thresholds in code.
