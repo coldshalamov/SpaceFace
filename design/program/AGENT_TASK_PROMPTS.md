@@ -2,8 +2,8 @@
 # Copy-ready prompts for SpaceFace agents
 
 ```yaml
-refreshed: 2026-09-07
-baseCommit: 15b54cd1536457d8bbd8ddfbc198860909945f2a
+refreshed: 2026-08-09
+baseCommit: 8b7b1d3b26181fdc38325a63f5e9d85574bf321b
 expiresAfterCommits: 10
 expiresAfterDays: 2
 ```
@@ -346,80 +346,3 @@ documented continuation for subsequent agents.
 
 The final `PQ-045.human-review` is an independent-agent review task. Use the candidate-bound evidence,
 record KEEP or REVISE with the reviewing thread identity, and do not wait for a human verdict.
-
-## Batch 2026-09-07 — five parallel-safe lanes beside the live rows
-
-Written against `node scripts/program-dispatch.mjs --ready` and the live `NOW.md` rows on
-2026-09-07. Within the same day the finish-game orchestrator launched isolated lanes on
-`PQ-174.01`, `PQ-163.02`, `PQ-026.00`, `PQ-029.00`, `PQ-147.00`, `PQ-161.00`, `PQ-140.03`,
-`PQ-146.01`. So before taking any unit below: run `--ready` and
-`node scripts/check-now-liveness.mjs`. If a live lane owns the unit, take the next unclaimed unit
-of the same sequence; if a lane is stale (untouched ~90 minutes), adopt its diff and finish it —
-never start a parallel copy. Lanes 1, 2, and 4 share `src/ui/screens/range.js` with each other:
-record the NOW row before the first Range edit and keep hunks exact. One thread per lane. The
-stay-off line in every lane is a shortcut for "every exact path in a live `NOW.md` row you do not
-own".
-
-### Lane 1 — the first ten minutes (one thread, sequence)
-
-```text
-Use Prompt B and the checkpoint protocol as a sequence over PQ-163.02 -> PQ-163.03 -> PQ-163.04:
-take the first unit in that order whose paths no live NOW.md lane owns (if a lane on it is stale,
-adopt its diff and continue it), close each checkpoint before starting the next, and stop after
-PQ-163.04. Packet: design/program/roadmap/active/PQ-163.md. Stay off every path in a live NOW.md
-row other than your own, and do not take PQ-174.x, PQ-140.03, PQ-146.01, PQ-147.x, or PQ-191.00.
-src/ui/screens/range.js is shared with two other lanes: add your NOW row before the first Range
-edit and keep hunks exact.
-```
-
-### Lane 2 — Massline heads as toys (one thread, sequence)
-
-```text
-Use Prompt B and the checkpoint protocol as a sequence over PQ-029.00 -> PQ-029.01 -> PQ-029.02 ->
-PQ-029.03 -> PQ-030.00 -> PQ-030.01 -> PQ-030.02 -> PQ-031.00 -> PQ-031.01 -> PQ-031.02: take the
-first unit in that order whose paths no live NOW.md lane owns (if a lane on it is stale, adopt its
-diff and continue it), close each checkpoint before starting the next, and stop after PQ-031.02.
-Packets: design/program/roadmap/active/PQ-029.md, PQ-030.md, PQ-031.md. Stay off every path in a
-live NOW.md row other than your own, and do not take PQ-174.x, PQ-140.03, PQ-146.01, PQ-147.x, or
-PQ-191.00. src/ui/screens/range.js is shared with two other lanes: add your NOW row before the
-first Range edit and keep hunks exact.
-```
-
-### Lane 3 — mass-coupling tools (one thread, sequence)
-
-```text
-Use Prompt B and the checkpoint protocol as a sequence over PQ-026.00 -> PQ-026.01 -> PQ-026.02:
-take the first unit in that order whose paths no live NOW.md lane owns (if a lane on it is stale,
-adopt its diff and continue it), close each checkpoint before starting the next, and stop after
-PQ-026.02. Packet: design/program/roadmap/active/PQ-026.md. Stay off every path in a live NOW.md
-row other than your own, and do not take PQ-174.x, PQ-140.03, PQ-146.01, PQ-147.x, or PQ-191.00.
-Your paths (src/data/weapons.js, src/data/combatDefs.js, src/systems/weapons.js,
-src/render/momentumSinkVfx.js) share no file with any live row or the other batch lanes.
-```
-
-### Lane 4 — readable at max zoom (one thread, sequence)
-
-```text
-Use Prompt B and the checkpoint protocol as a sequence over PQ-161.00 -> PQ-161.01 -> PQ-161.02 ->
-PQ-161.03: take the first unit in that order whose paths no live NOW.md lane owns (if a lane on it
-is stale, adopt its diff and continue it), close each checkpoint before starting the next, and stop
-after PQ-161.03. Packet: design/program/roadmap/active/PQ-161.md. Stay off every path in a live
-NOW.md row other than your own, and do not take PQ-174.x, PQ-140.03, PQ-146.01, PQ-147.x, or
-PQ-191.00. src/ui/screens/range.js is shared with two other lanes: add your NOW row before the
-first Range edit and keep hunks exact.
-```
-
-### Lane 5 — asset acceptance captures (independent threads; the two PQ-022 units serialize)
-
-```text
-Thread 5a: Use Prompt B with UNIT_ID PQ-022.refinery-reauthor-h1; after closing its checkpoint,
-finish PQ-022.billboard-buoy-reauthor-h1 the same way. Serialize these two — they share
-design/program/roadmap/evidence/h1/row7-pq022-asset-leaves/ and design/program/roadmap/active/
-PQ-022.md. Stop after the second unit.
-Thread 5b: Use Prompt B with UNIT_ID PQ-018.cathedral-reauthor-h1. Stop after this unit.
-Thread 5c: Use Prompt B with UNIT_ID PQ-040.native-acceptance. Stop after this unit.
-Thread 5d: Use Prompt B with UNIT_ID PQ-045.five-minute-h1. Stop after this unit.
-Before each unit, confirm with --ready and the liveness check that no live lane owns it; adopt a
-stale lane rather than starting a parallel copy. Stay off every path in a live NOW.md row other
-than your own, and do not take PQ-174.x, PQ-140.03, PQ-146.01, PQ-147.x, or PQ-191.00.
-```
