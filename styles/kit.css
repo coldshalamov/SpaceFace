@@ -231,6 +231,12 @@ html.sf-reduce-motion { --k-d-focus: 0ms; --k-d-settle: 0ms; --k-d-temp: 0ms; }
    screen the kit's face, tracking and rhythm win. Values are the spec's own (§4, §6.1). */
 #screens .k-screen .k-display { font-family: var(--k-display); letter-spacing: -0.03em; color: var(--k-text-live); }
 #screens .k-screen .k-title p { margin: calc(16px * var(--k-s)) 0 0; }
+/* The spec's markup puts k-38 on a word (Sandbox); a class pair so it wins the word's resting 62 %. */
+.k-word.k-38 { color: var(--k-bone-38); }
+/* styles/ui.css declares `*:focus-visible` with !important in the legacy accent; the kit's own
+   §6.4 ring (2 px bone, 4 px offset) must therefore also be !important. Gamepad focus likewise. */
+.k-screen :focus-visible { outline: 2px solid var(--k-bone) !important; outline-offset: 4px !important; }
+html.sf-gamepad-focus .k-screen :is(button, a, input, select, textarea, [tabindex]):focus { outline: 2px solid var(--k-bone); outline-offset: 4px; box-shadow: none; }
 /* styles/ui.css styles `input[type=…]`, `select` and the range track/thumb at element+attribute
    specificity, which outranks a lone class. Restate the kit's own §6.4 values at element+class
    specificity so a kit control renders as written; no new value appears here. */

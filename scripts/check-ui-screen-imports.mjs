@@ -151,7 +151,20 @@ const menuStyleSources = [
   ['saveLoad', saveLoadSrc],
   ['help', helpSrc],
 ];
-const menuStyleIds = menuStyleSources.map(([name, src]) => {
+// A screen built on the frontend kit (imports src/ui/kit/) owns no CSS at all: no STYLE_ID and no
+// injected <style>. Every legacy menu screen still needs a present, unique STYLE_ID.
+const kitScreens = menuStyleSources.filter(([, src]) => /from '\.\.\/kit\/index\.js'/.test(src)).map(([name]) => name);
+const kitScreensInjectingStyle = menuStyleSources
+  .filter(([name, src]) => kitScreens.includes(name) && (/STYLE_ID/.test(src) || /createElement\('style'\)/.test(src)))
+  .map(([name]) => name);
+if (kitScreensInjectingStyle.length) {
+  console.log('FAIL menu screens - kit screens must not inject CSS or declare STYLE_ID: ' + kitScreensInjectingStyle.join(', '));
+  fail++;
+} else {
+  console.log('ok   menu screens - kit screens own no CSS (' + (kitScreens.join(', ') || 'none') + ')');
+  ok++;
+}
+const menuStyleIds = menuStyleSources.filter(([name]) => !kitScreens.includes(name)).map(([name, src]) => {
   const match = src.match(/const STYLE_ID = '([^']+)'/);
   return [name, match && match[1]];
 });

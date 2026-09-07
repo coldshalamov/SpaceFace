@@ -89,7 +89,9 @@ test('canonical game shell and transition wire the shared staged loading present
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
   const newGame = readFileSync(new URL('../src/ui/screens/newGame.js', import.meta.url), 'utf8');
+  // The title screen owns no CSS (frontend kit); the Continue veil's look lives in styles/ui.css.
   const mainMenu = readFileSync(new URL('../src/ui/screens/mainMenu.js', import.meta.url), 'utf8');
+  const uiCss = readFileSync(new URL('../styles/ui.css', import.meta.url), 'utf8');
   const probe = readFileSync(new URL('../scripts/probe-startup-transition.mjs', import.meta.url), 'utf8');
   const precompile = readFileSync(new URL('../src/render/precompile.js', import.meta.url), 'utf8');
   const readiness = readFileSync(new URL('../src/render/pipelineReadiness.js', import.meta.url), 'utf8');
@@ -106,7 +108,9 @@ test('canonical game shell and transition wire the shared staged loading present
     'packaged New Game must not depend on authoring evidence excluded from the retail bundle');
   assert.doesNotMatch(newGame, /createShipPreviewMount/,
     'New Game must not decode a second full Kestrel in another WebGL context');
-  assert.match(mainMenu, /\.sf-continue-fade\s*\{[^}]*z-index:1900/,
+  assert.match(mainMenu, /className = 'sf-continue-fade'/,
+    'Continue must still raise the location veil');
+  assert.match(uiCss, /\.sf-continue-fade\s*\{[^}]*z-index:1900/,
     'Continue location veil must stay below the shared z-index 2000 loading shell');
   assert.doesNotMatch(probe, /fade\.classList\.contains\('open'\)/,
     'Continue proof must capture the visible loader without waiting for an impossible veil gap');

@@ -1,17 +1,23 @@
 // Main Menu / title screen (ARCHITECTURE §1.3 step 6, §5; design/specs/09).
-// New Game / Continue / Load / Settings. Continue is enabled iff a save exists, shows
-// the exact latest slot metadata, and loads that displayed slot so players trust resume before
-// committing to a load.
+// The sheet's title line (design/frontend/direction/DIRECTION_SHEET.md, title screen): the starter
+// hull in its hangar fills the frame, the game's name enormous top-left, a column of words down the
+// left edge, the version in fine print. Built on the frontend kit (styles/kit.css, src/ui/kit/);
+// this file owns no CSS. Continue is enabled iff a save exists, shows the exact latest slot metadata,
+// and loads that displayed slot so players trust resume before committing to a load.
 // Browser, Electron dev, and packaged desktop all arrive here through the same player route.
 
 import { requestCodexTab } from './codex.js';
 import { coreText } from '../localizedCoreCopy.js';
 import { requestQuit } from '../quitGame.js';
 import { IS_DEV } from '../../core/devMode.js';
+import { NEW_GAME } from '../../data/newGameDefaults.js';
+import { createShipPreviewMount, dockInteriorIdForArchetype } from '../shipPreviewMount.js';
+import { el, words, settle, stamp, reducedMotion } from '../kit/index.js';
 
-const STYLE_ID = 'sf-main-menu-style';
 const LS_PREFIX = 'sf.save.';
-const ATTRACT_IDLE_MS = 12_000;
+// Sheet: the hull drifts, it does not spin. ≈ 3.4° per second.
+const HULL_DRIFT_RAD_PER_S = 0.06;
+const HULL_ZOOM = 1.25;
 
 function getManager(ctx) {
   if (ctx && ctx.screenManager) return ctx.screenManager;
@@ -25,11 +31,19 @@ function screenReady(ctx, id) {
   const mgr = getManager(ctx);
   return !!(!mgr || typeof mgr.hasScreen !== 'function' || mgr.hasScreen(id));
 }
+// aria-disabled only (kit spec 6.5): the word stays in the DOM flow and clickable so a refused pick
+// sounds deny; the legacy utton:disabled opacity never applies to a word.
+function setDisabled(button, disabled, title) {
+  if (!button) return;
+  if (disabled) button.setAttribute('aria-disabled', 'true');
+  else button.removeAttribute('aria-disabled');
+  button.title = title || '';
+}
+function isDisabled(button) { return button.getAttribute('aria-disabled') === 'true'; }
 function setScreenButtonReady(button, ctx, id, label) {
   if (!button) return;
   const ready = screenReady(ctx, id);
-  button.disabled = !ready;
-  button.title = ready ? '' : label + ' is initializing';
+  setDisabled(button, !ready, ready ? '' : label + ' is initializing');
 }
 function pushWhenReady(ctx, id, label) {
   if (!screenReady(ctx, id)) {
@@ -45,39 +59,6 @@ function nav(ctx, method, arg) {
   if (mgr && typeof mgr[method] === 'function') { mgr[method](arg); return; }
   ctx.bus.emit('ui:' + method, { id: arg });
 }
-function injectStyle() {
-  if (document.getElementById(STYLE_ID)) return;
-  const s = document.createElement('style');
-  s.id = STYLE_ID;
-  // Title-specific behavior styles only. The shared menu fascia (plate, buttons, headings,
-  // save-summary readout, title lockup) lives in styles/menu.css — previously a copy of that
-  // whole block was pasted here and into every other menu screen.
-  s.textContent = `
-  /* First-show stagger-in (spec2/03 §3): ledger rows slide in from the left 90ms
-     apart, first show only. Reduced-motion users get the global ~0ms compression,
-     which lands these fill-forwards rows on their visible end state. */
-  .sf-menu.sf-stagger .sf-col > button { opacity:0; transform:translateX(-10px);
-    animation:sf-stagger-in .3s cubic-bezier(.2,.8,.2,1) forwards; }
-  .sf-menu.sf-stagger .sf-col > button:nth-child(1) { animation-delay:0ms; }
-  .sf-menu.sf-stagger .sf-col > button:nth-child(2) { animation-delay:90ms; }
-  .sf-menu.sf-stagger .sf-col > button:nth-child(3) { animation-delay:180ms; }
-  .sf-menu.sf-stagger .sf-col > button:nth-child(4) { animation-delay:270ms; }
-  .sf-menu.sf-stagger .sf-col > button:nth-child(5) { animation-delay:360ms; }
-  @keyframes sf-stagger-in { to { opacity:1; transform:translateX(0); } }
-  /* CONTINUE fade-to-game + location label (spec2/03 §3). The veil mounts on #ui-root, outside
-     the .sf-menu token scope, so it carries its own fascia-matched type/color. */
-  .sf-continue-fade { position:fixed; inset:0; z-index:1900; background:#000; opacity:0;
-    pointer-events:auto; transition:opacity 1s ease; display:flex; align-items:flex-end;
-    justify-content:flex-start; padding:0 0 36px 36px; }
-  .sf-continue-fade.open { opacity:1; }
-  .sf-continue-fade__loc { font-family:"IBM Plex Mono","Consolas",ui-monospace,monospace;
-    letter-spacing:.06em; font-size:12px; color:#93a6b3; text-transform:uppercase;
-    border-left:1px solid rgba(148,178,205,.35); padding-left:12px; }
-  `;
-  document.head.appendChild(s);
-}
-function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
-function button(label) { const b = document.createElement('button'); b.className = 'sf-btn'; b.textContent = label; return b; }
 
 function readSaveIndex(ctx) {
   const sys = ctx.registry && ctx.registry.get && ctx.registry.get('save');
@@ -201,88 +182,144 @@ function objectiveSummaryText(meta) {
   return meta.objectiveSummary || meta.navObjectiveSummary || meta.missionSummary || meta.storySummary || '';
 }
 
+function motionReduced(ctx) {
+  const video = ctx && ctx.state && ctx.state.settings && ctx.state.settings.video;
+  return reducedMotion() || !!(video && video.motionReduce);
+}
+
 let refs = null;
 
 export const mainMenuScreen = {
   id: 'mainMenu',
 
   mount(rootEl, ctx) {
-    injectStyle();
     rootEl.innerHTML = '';
-    rootEl.classList.add('panel', 'sf-menu', 'sf-menu-narrow', 'sf-menu--bare');
-    // Diegetic fascia stamp (styles/menu.css .sf-menu::before reads it).
-    rootEl.dataset.stamp = 'PUBLIC TERMINAL / SPACEFACE';
+    rootEl.classList.add('k-screen', 'k-screen--stage');
+    rootEl.dataset.kReady = '0';
 
-    // First-show stagger-in (spec2/03 §3): items fade up 90ms apart, first show only.
-    if (!mainMenuScreen._staggeredOnce) {
-      rootEl.classList.add('sf-stagger');
-      mainMenuScreen._staggeredOnce = true;
-      // Drop the stagger class after the animation so re-shows aren't re-animated.
-      setTimeout(() => rootEl.classList.remove('sf-stagger'), 900);
+    // The hull in its hangar: the kit's world canvas, 150vw wide and shifted left so the mount's
+    // centred hull lands right of centre, behind the words (kit.css .k-world).
+    const canvas = el('canvas', 'k-world');
+    canvas.setAttribute('aria-hidden', 'true');
+    rootEl.appendChild(canvas);
+
+    const title = el('header', 'k-title');
+    title.appendChild(el('h1', 'k-display k-t-name', 'SpaceFace'));
+    title.appendChild(el('p', 'k-t-emph k-62', 'Contract 47-A remains open'));
+    rootEl.appendChild(title);
+
+    const stage = el('div', 'k-stage');
+    rootEl.appendChild(stage);
+
+    // The words. Visible words follow the sheet; the accessible names keep the game's core copy
+    // (coreText) so every route that finds "New Game" / "Continue" / "Quit Game" still does.
+    const items = [
+      { action: 'continue', label: coreText('continue'), sub: 'Checking saves...', current: true },
+      { action: 'newGame', label: coreText('newGame') },
+      { action: 'load', label: 'Load' },
+      // "Crucible" — the scored ten-wave Survival run (PQ-133 §12.2: direct main-menu entry). It
+      // launches through the ordinary New Game path and never touches the Adventure save.
+      { action: 'crucible', label: 'Crucible' },
+      // "Archive" — opens the Codex on its Archive tab, where the authored intro cinematics replay.
+      { action: 'archive', label: 'Archive' },
+      { action: 'settings', label: coreText('settings') },
+    ];
+    // "Sandbox" — DEV ONLY. A testing harness for reaching mid-game features without playing for
+    // an hour. Stripped from production builds via IS_DEV. See src/ui/screens/sandbox.js.
+    if (IS_DEV) items.push({ action: 'sandbox', label: 'Sandbox' });
+    items.push({ action: 'quit', label: 'Quit', danger: true });
+
+    const list = words(items, {
+      ariaLabel: 'Title menu',
+      onPick: (action) => this._pick(ctx, action),
+    });
+    stage.appendChild(list);
+
+    const byAction = (action) => list.querySelector('[data-action="' + action + '"]');
+    const bContinue = byAction('continue');
+    const bNew = byAction('newGame');
+    const bLoad = byAction('load');
+    const bCrucible = byAction('crucible');
+    const bArchive = byAction('archive');
+    const bSettings = byAction('settings');
+    const bSandbox = byAction('sandbox');
+    const bQuit = byAction('quit');
+    bLoad.setAttribute('aria-label', coreText('loadGame'));
+    bArchive.setAttribute('aria-label', coreText('signalArchive'));
+    bQuit.setAttribute('aria-label', coreText('quitGame'));
+    if (bSandbox) bSandbox.classList.add('k-38');
+    // The save summary rides Continue's sub line. `.sf-menu-save-summary` / `has-save` are inert
+    // hooks the boot and title-continue checks query; kit.css styles the sub line.
+    const saveSummary = bContinue.parentElement.querySelector('.k-word-sub');
+    saveSummary.classList.add('sf-menu-save-summary');
+
+    const version = el('div', 'k-fine', 'SpaceFace');
+    version.dataset.role = 'version';
+    rootEl.appendChild(version);
+
+    refs = {
+      root: rootEl, canvas, title, list, version, saveSummary,
+      bNew, bContinue, bLoad, bSettings, bSandbox, bQuit, bCrucible, bArchive,
+      buttons: [bContinue, bNew, bLoad, bCrucible, bArchive, bSettings, bSandbox, bQuit].filter(Boolean),
+    };
+
+    // The starter hull in the accepted hangar bay. Every archetype currently resolves to the
+    // reviewed neutral bay (shipPreviewMount DOCK_INTERIOR_BY_ARCHETYPE is empty), so the starter's
+    // home station needs no lookup here. No WebGL: the words still render over nothing painted.
+    this.mount3d = null;
+    try {
+      this.mount3d = createShipPreviewMount(canvas, {
+        dockId: dockInteriorIdForArchetype(null),
+        authoredShips: true,
+        authoredWarmup: true,
+        fastPreview: false,
+        allowFastFallback: false,
+        // The words arrive on the first frame (the sheet: after the hull begins). data-k-ready,
+        // the capture seam's "photograph me" signal, waits for the authored hull itself: a frame of
+        // hangar with the placeholder body would be an honest DOM and a missing picture.
+        onFirstFrame: () => {
+          this._hullFramed = true;
+          this._arrive();
+          if (this.mount3d && this.mount3d.getAssetState() === 'authored') rootEl.dataset.kReady = '1';
+        },
+        onAssetSettled: ({ state }) => {
+          if (state === 'authored') rootEl.dataset.kReady = '1';
+        },
+      });
+    } catch (e) {
+      rootEl.dataset.kReady = '0';
+      console.warn('[mainMenu] hull mount unavailable; the title renders without it', e);
     }
+    this._onResize = () => { if (this.mount3d) try { this.mount3d.resize(); } catch (_) {} };
+    if (typeof window !== 'undefined') window.addEventListener('resize', this._onResize);
 
-    rootEl.appendChild(el('h1', 'sf-title-logo', 'SPACEFACE'));
-    rootEl.appendChild(el('div', 'sf-title-tag', 'CONTRACT 47-A REMAINS OPEN'));
+    this._render(ctx);
+  },
 
-    const saveSummary = el('div', 'sf-menu-save-summary', 'Checking saves...');
-    rootEl.appendChild(saveSummary);
-
-    const col = el('div', 'sf-col');
-    rootEl.appendChild(col);
-
-    const bNew = button(coreText('newGame'));
-    const bContinue = button(coreText('continue'));
-    bContinue.classList.add('sf-btn--primary');
-    const bLoad = button(coreText('loadGame'));
-    const bSettings = button(coreText('settings'));
-    col.appendChild(bNew); col.appendChild(bContinue); col.appendChild(bLoad); col.appendChild(bSettings);
-
-    // "Crucible" — the scored ten-wave Survival run (PQ-133 §12.2: direct main-menu entry). It
-    // launches through the ordinary New Game path and never touches the Adventure save. This is a
-    // NORMAL menu entry, not the dev-only Sandbox tier.
-    const bCrucible = button('Crucible');
-    col.appendChild(bCrucible);
-    bCrucible.addEventListener('click', () => pushWhenReady(ctx, 'crucible', 'Crucible'));
-
-    // "Signal Archive" — opens the Codex on its Archive tab, where all four authored intro cinematics
-    // replay from poster cards. (Replaces the old single-clip "Watch Intro Cinematic".)
-    const bArchive = button(coreText('signalArchive'));
-    col.appendChild(bArchive);
-    bArchive.addEventListener('click', () => { requestCodexTab('Archive'); pushWhenReady(ctx, 'codex', 'Signal Archive'); });
-
-    // "Sandbox" — DEV ONLY. A testing harness for reaching mid-game features (weapons, drilling,
-    // sectors) without playing for an hour. Stripped from production builds via IS_DEV (which folds
-    // to false when __SPACEFACE_PRODUCTION__ is defined). See src/ui/screens/sandbox.js.
-    let bSandbox = null;
-    if (IS_DEV) {
-      bSandbox = button('Sandbox');
-      col.appendChild(bSandbox);
-      bSandbox.addEventListener('click', () => pushWhenReady(ctx, 'sandbox', 'Sandbox'));
-    }
-
-    bNew.addEventListener('click', () => pushWhenReady(ctx, 'newGame', 'New Game'));
-    bContinue.addEventListener('click', () => {
-      const latest = latestSave(readSaveIndex(ctx));
-      if (!latest) {
-        this._render(ctx);
+  _pick(ctx, action) {
+    switch (action) {
+      case 'continue': {
+        const latest = latestSave(readSaveIndex(ctx));
+        if (!latest) {
+          this._render(ctx);
+          return;
+        }
+        // CONTINUE = black veil with the location name bottom-left (spec2/03 §3). The load proceeds
+        // underneath the veil; the veil lifts when the sector is live.
+        const loc = (latest.meta && (latest.meta.sectorName || latest.meta.sectorSummary)) || 'Helios Belt';
+        this._showContinueFade(ctx, String(loc));
+        ctx.bus.emit('game:load', { slot: latest.slot });
         return;
       }
-      // CONTINUE = 1s black-to-game fade with the location name bottom-left (spec2/03 §3). The load
-      // proceeds underneath the veil; the fade lifts when the sector is live.
-      const loc = (latest.meta && (latest.meta.sectorName || latest.meta.sectorSummary)) || 'HELIOS BELT';
-      this._showContinueFade(ctx, String(loc).toUpperCase());
-      ctx.bus.emit('game:load', { slot: latest.slot });
-    });
-    bLoad.addEventListener('click', () => pushWhenReady(ctx, 'saveLoad', 'Load Game'));
-    bSettings.addEventListener('click', () => pushWhenReady(ctx, 'settings', 'Settings'));
-
-    const bQuit = button(coreText('quitGame'));
-    bQuit.setAttribute('aria-label', 'Quit Game');
-    bQuit.addEventListener('click', () => requestQuit(ctx));
-    col.appendChild(bQuit);
-
-    refs = { bNew, bContinue, bLoad, bSettings, saveSummary, bSandbox, bQuit, bCrucible };
-    this._render(ctx);
+      case 'newGame': pushWhenReady(ctx, 'newGame', 'New Game'); return;
+      case 'load': pushWhenReady(ctx, 'saveLoad', 'Load Game'); return;
+      case 'crucible': pushWhenReady(ctx, 'crucible', 'Crucible'); return;
+      case 'archive': requestCodexTab('Archive'); pushWhenReady(ctx, 'codex', 'Signal Archive'); return;
+      case 'settings': pushWhenReady(ctx, 'settings', 'Settings'); return;
+      case 'sandbox': pushWhenReady(ctx, 'sandbox', 'Sandbox'); return;
+      case 'quit': requestQuit(ctx); return;
+      default: return;
+    }
   },
 
   _render(ctx) {
@@ -294,119 +331,128 @@ export const mainMenuScreen = {
     if (refs.bCrucible) setScreenButtonReady(refs.bCrucible, ctx, 'crucible', 'Crucible');
     const sys = ctx.registry && ctx.registry.get && ctx.registry.get('save');
     if (sys && typeof sys.isSharedStoreSyncPending === 'function' && sys.isSharedStoreSyncPending()) {
-      refs.bContinue.disabled = true;
+      setDisabled(refs.bContinue, true, 'Checking saves');
       refs.saveSummary.classList.remove('has-save');
       refs.saveSummary.textContent = 'Checking saves...';
-      refs.bContinue.title = 'Checking saves';
+      this._syncCurrent();
       return;
     }
     const latest = latestSave(readSaveIndex(ctx));
-    refs.bContinue.disabled = !latest;
     refs.saveSummary.classList.toggle('has-save', !!latest);
     if (latest) {
       const summary = saveSummaryText(latest.slot, latest.meta);
       refs.saveSummary.textContent = coreText('continueSummary', { summary });
-      refs.bContinue.title = 'Load ' + summary;
+      setDisabled(refs.bContinue, false, 'Load ' + summary);
     } else {
       refs.saveSummary.textContent = coreText('noSave');
-      refs.bContinue.title = 'No save found yet';
+      setDisabled(refs.bContinue, true, 'No save found yet');
+    }
+    this._syncCurrent();
+  },
+
+  // The default word (Continue when it can load, else New Game) carries aria-current and the
+  // list's single Tab stop; the kit's roving focus takes over once focus is inside the list.
+  _syncCurrent() {
+    if (!refs) return;
+    const target = refs.buttons.find((b) => !isDisabled(b)) || null;
+    for (const b of refs.buttons) {
+      const current = b === target;
+      if (current) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current');
+      b.tabIndex = current ? 0 : -1;
     }
   },
 
   onShow(ctx) {
     this._render(ctx);
-    if (refs && refs.bContinue && !refs.bContinue.disabled) try { refs.bContinue.focus(); } catch (e) {}
-    this._startIdleAttract(ctx);
+    this._arrived = false;
+    this._ctx = ctx;
+    if (this.mount3d) {
+      try {
+        this.mount3d.setActive(true);
+        this.mount3d.show(NEW_GAME.shipId, { rotating: false, fittings: NEW_GAME.fittedModules, isPlayer: true });
+        this.mount3d.setZoom(HULL_ZOOM);
+      } catch (e) {
+        console.warn('[mainMenu] hull show failed; the title renders without it', e);
+      }
+      // On a re-show the mount's first frame has already fired (the def id is unchanged).
+      if (this._hullFramed) this._arrive();
+      this._startDrift(ctx);
+    } else {
+      // No hull: the words still arrive.
+      this._arrive();
+    }
+    if (refs) {
+      const target = refs.buttons.find((b) => !isDisabled(b));
+      if (target) try { target.focus(); } catch (e) {}
+    }
+    this._loadVersion();
   },
   onHide() {
-    this._stopIdleAttract();
+    this._stopDrift();
+    if (this.mount3d) try { this.mount3d.setActive(false); } catch (_) {}
   },
   refresh(ctx) { this._render(ctx); },
 
-  // 12s idle attract (spec2/03 §3): after 12s of no input at the title, the camera drifts through a
-  // live background sector (render-only — the sim stays frozen, timeScale 0). Any input resets it.
-  _startIdleAttract(ctx) {
-    this._stopIdleAttract();
-    if (!ctx || !ctx.state) return;
-    const state = ctx.state;
-    let idleStartedAtMs = null;
-    let drifting = false;
-    const reducedMotion = () => !!(
-      state.settings && state.settings.video && state.settings.video.motionReduce
-    );
-    const reset = () => {
-      idleStartedAtMs = null;
-      if (drifting) this._setAttractDrift(state, false);
-      drifting = false;
-    };
-    this._attractState = state;
-    this._attractReset = reset;
-    if (typeof window !== 'undefined') {
-      window.addEventListener('keydown', reset);
-      window.addEventListener('pointerdown', reset);
-      window.addEventListener('mousemove', reset);
-      window.addEventListener('wheel', reset);
-    }
-    if (typeof document !== 'undefined' && document.addEventListener) {
-      this._attractVisibilityReset = reset;
-      document.addEventListener('visibilitychange', reset);
-    }
-    this._attractRaf = (typeof requestAnimationFrame === 'function')
-      ? requestAnimationFrame(function tick(frameNowMs) {
-          const nowMs = Number.isFinite(frameNowMs) ? frameNowMs : Date.now();
-          if (idleStartedAtMs == null) idleStartedAtMs = nowMs;
-          if (reducedMotion()) {
-            idleStartedAtMs = nowMs;
-            if (drifting) mainMenuScreen._setAttractDrift(state, false);
-            drifting = false;
-          } else if (nowMs - idleStartedAtMs >= ATTRACT_IDLE_MS && !drifting) {
-            drifting = true;
-            mainMenuScreen._setAttractDrift(state, true);
-          }
-          mainMenuScreen._attractRaf = requestAnimationFrame(tick);
-        })
-      : null;
+  dispose() {
+    this._stopDrift();
+    if (typeof window !== 'undefined' && this._onResize) window.removeEventListener('resize', this._onResize);
+    this._onResize = null;
+    if (this.mount3d) { try { this.mount3d.dispose(); } catch (_) {} this.mount3d = null; }
+    refs = null;
   },
-  _stopIdleAttract() {
-    const reset = this._attractReset;
-    const state = this._attractState;
-    this._attractReset = null;
-    this._attractState = null;
-    if (this._attractRaf && typeof cancelAnimationFrame === 'function') {
-      cancelAnimationFrame(this._attractRaf);
-      this._attractRaf = null;
-    }
-    if (reset && typeof window !== 'undefined') {
-      window.removeEventListener('keydown', reset);
-      window.removeEventListener('pointerdown', reset);
-      window.removeEventListener('mousemove', reset);
-      window.removeEventListener('wheel', reset);
-    }
-    if (this._attractVisibilityReset && typeof document !== 'undefined' && document.removeEventListener) {
-      document.removeEventListener('visibilitychange', this._attractVisibilityReset);
-    }
-    this._attractVisibilityReset = null;
-    // Best-effort: clear the drift flag on whatever render/camera the app exposes.
+
+  // Arrival (sheet: "the menu arrives after the hull"): the title settles from the top, then the
+  // words stamp in 60 ms apart. Once per show; reduced motion shows everything at once (kit motion).
+  _arrive() {
+    if (this._arrived || !refs) return;
+    this._arrived = true;
     try {
-      const sf = !state && typeof window !== 'undefined' && window.SF;
-      const st = state || (sf && sf.state);
-      if (st && st.render) this._setAttractDrift(st, false);
-    } catch (e) { /* non-critical */ }
-  },
-  // Nudge the camera controller into a slow render-only drift orbit. timeScale stays 0 (no sim).
-  _setAttractDrift(state, on) {
-    const cam = state.render && state.render.cameraCtrl;
-    if (!cam) return;
-    if (on) {
-      if (typeof cam.setAttract === 'function') cam.setAttract(true);
-      else if (cam.attract != null) cam.attract = true;
-    } else {
-      if (typeof cam.setAttract === 'function') cam.setAttract(false);
-      else if (cam.attract != null) cam.attract = false;
+      settle(refs.title, { from: 'top', state: 'title:arrive' });
+      stamp(refs.list.children, { gap: 60, state: 'title:arrive' });
+    } catch (e) {
+      console.warn('[mainMenu] arrival motion skipped', e);
     }
   },
 
-  // CONTINUE: 1s black-to-game fade with the location name bottom-left (spec2/03 §3).
+  // The hull drifts ≈ 3.4° per second while the title is up; never under reduced motion.
+  _startDrift(ctx) {
+    this._stopDrift();
+    if (!this.mount3d || motionReduced(ctx) || typeof requestAnimationFrame !== 'function') {
+      if (this.mount3d) try { this.mount3d.frame(); } catch (_) {}
+      return;
+    }
+    let last = null;
+    const tick = (nowMs) => {
+      if (!this.mount3d) { this._driftRaf = 0; return; }
+      const now = Number.isFinite(nowMs) ? nowMs : performance.now();
+      const dt = last == null ? 0 : Math.min(0.1, Math.max(0, (now - last) / 1000));
+      last = now;
+      if (motionReduced(this._ctx)) { this._driftRaf = 0; return; }
+      try { this.mount3d.rotateBy(dt * HULL_DRIFT_RAD_PER_S); } catch (_) {}
+      this._driftRaf = requestAnimationFrame(tick);
+    };
+    this._driftRaf = requestAnimationFrame(tick);
+  },
+  _stopDrift() {
+    if (this._driftRaf && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(this._driftRaf);
+    this._driftRaf = 0;
+  },
+
+  // Version in fine print. The server serves the repo root, so package.json is reachable in the
+  // browser and in Electron; anything else leaves the name alone.
+  _loadVersion() {
+    if (!refs || typeof fetch !== 'function') return;
+    const target = refs.version;
+    fetch('/package.json')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((p) => {
+        if (p && typeof p.version === 'string' && refs && refs.version === target) target.textContent = 'SpaceFace v' + p.version;
+      })
+      .catch(() => {});
+  },
+
+  // CONTINUE: the black veil with the location name bottom-left (spec2/03 §3). It mounts on
+  // #ui-root, above the title; styles/ui.css owns its look. The load runs underneath it.
   _showContinueFade(ctx, locationName) {
     if (typeof document === 'undefined') return;
     let fade = document.querySelector('.sf-continue-fade');
@@ -418,7 +464,7 @@ export const mainMenuScreen = {
       fade.appendChild(loc);
       (document.getElementById('ui-root') || document.body).appendChild(fade);
     }
-    fade.querySelector('.sf-continue-fade__loc').textContent = locationName || 'HELIOS BELT';
+    fade.querySelector('.sf-continue-fade__loc').textContent = locationName || 'Helios Belt';
     // Force reflow so the transition runs from 0 → 1.
     void fade.offsetWidth;
     fade.classList.add('open');

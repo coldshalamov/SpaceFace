@@ -136,6 +136,16 @@ body.sf-flight-cursor #hud { cursor: none; }
   opacity: 0; transition: opacity 0.4s ease-in-out; }
 #sf-dock-overlay[hidden] { display: none !important; }
 #sf-dock-overlay.active { opacity: 1; }
+/* --- Continue veil (title screen -> game; src/ui/screens/mainMenu.js _showContinueFade) ---
+   Black to game with the location name bottom-left. It mounts on #ui-root above the title and
+   below the loading shell (z-index 1900 < 2000: test/startup-loading-presentation.test.mjs). The
+   label reads in the frontend kit's text face and fine size (styles/kit.css tokens). */
+.sf-continue-fade { position:fixed; inset:0; z-index:1900; background:#000; opacity:0;
+  pointer-events:auto; transition:opacity 1s ease; display:flex; align-items:flex-end;
+  justify-content:flex-start; padding:0 0 calc(var(--k-margin, 5vw) * 0.42) var(--k-margin, 5vw); }
+.sf-continue-fade.open { opacity:1; }
+.sf-continue-fade__loc { font-family: var(--k-text, system-ui, sans-serif); font-size: var(--k-fs-fine, 12px);
+  color: var(--k-bone-62, rgb(234 230 223 / 0.62)); }
 /* #toasts is absolutely placed; it is usually re-parented into #hud by toasts.js, so it cannot
    rely on the `#ui-root > div` absolute rule — without an explicit position its left/top are
    inert and the receipt lane renders at the top of #hud's flow. */

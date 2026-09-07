@@ -103,23 +103,6 @@
   overflow: hidden;
 }
 
-/* Bare variant (title main menu): no plate at all — a left-anchored ledger
-   column over the full-bleed cinematic. The #screens scrim carries readability. */
-.screen.sf-menu.sf-menu--bare {
-  min-width: 0;
-  width: min(400px, calc(100vw - 40px));
-  height: auto;
-  max-height: 88vh;
-  margin-left: clamp(20px, 7vw, 120px);
-  margin-right: auto;
-  padding: 0;
-  background: none;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-  backdrop-filter: none;
-}
-
 /* ---- 3. Headings --------------------------------------------------------------
    Plex Sans caps over a hairline divider. */
 
@@ -567,76 +550,8 @@
   flex-shrink: 0;
 }
 
-/* ---- 6. Title-screen continue readout ------------------------------------------
-   Latest save as a telemetry line: hairline left rule, mono, no box. */
-
-.screen.sf-menu .sf-menu-save-summary {
-  border: 0;
-  border-left: 1px solid var(--mf-line-3);
-  border-radius: 0;
-  padding: 3px 0 3px 12px;
-  background: transparent;
-  color: var(--ink-dim);
-  font-family: var(--mf-ui);
-  font-size: 13px;
-  line-height: 1.5;
-  letter-spacing: 0;
-}
-.screen.sf-menu .sf-menu-save-summary.has-save {
-  color: var(--ink-dim);
-}
-
-/* ---- 7. Title lockup ------------------------------------------------------------
-   Left-aligned Plex Sans wordmark with a hairline rule and a live contract tag. */
-
-#screens .sf-menu h1.sf-title-logo {
-  margin: 0;
-  padding-bottom: 0;
-  border-bottom: 0;
-  font-family: var(--mf-display);
-  font-weight: 700;
-  font-size: clamp(38px, 4.8vw, 54px);
-  letter-spacing: .04em;
-  text-transform: uppercase;
-  text-align: left;
-  color: var(--ink);
-  text-shadow: var(--text-shadow-hard);
-}
-#screens .sf-menu h1.sf-title-logo::after {
-  content: "";
-  display: block;
-  height: 1px;
-  width: 100%;
-  margin: 14px 0 0;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 65%, transparent), color-mix(in srgb, var(--accent) 12%, transparent) 58%, transparent);
-}
-.screen.sf-menu .sf-title-tag {
-  margin: 12px 0 20px;
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  align-self: flex-start;
-  font-family: var(--mf-ui);
-  font-weight: 500;
-  font-size: 12px;
-  letter-spacing: .05em;
-  text-transform: uppercase;
-  text-align: left;
-  /* Lighter ink plus a subtle dark plate: the tag sits directly on the nebula
-     backdrop (bare menu has no panel behind it) and --ink-mute dropped below
-     legible contrast there. */
-  color: var(--ink-dim);
-  background: color-mix(in srgb, var(--panel) 72%, transparent);
-  padding: 5px 12px 5px 9px;
-  border-radius: 2px;
-}
-.screen.sf-menu .sf-title-tag::before {
-  content: "";
-  flex: 0 0 auto;
-  width: 6px;
-  height: 6px;
-  background: var(--accent);
-}
+/* ---- 6.-7. (retired) The title screen's continue readout and title lockup moved to the
+   frontend kit (styles/kit.css; src/ui/screens/mainMenu.js owns no CSS). ---- */
 
 /* ---- 8. Confirm dialog -----------------------------------------------------------
    Irreversible action modal with high contrast and explicit choices. */

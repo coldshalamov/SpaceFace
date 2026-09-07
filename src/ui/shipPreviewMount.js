@@ -685,10 +685,24 @@ export function createShipPreviewMount(canvas, opts) {
 
   if (dockId) loadDockBackdrop(dockId).catch(() => {});
 
+  // The preview owns its own WebGL context. The boundary's default admission borrows the live
+  // renderer's pipeline queue (window.SF.state.render.compileObjectPipelines), which compiles
+  // programs this context can never use and is deliberately held until the first playable frame
+  // paints — at the title screen it never flushes, so the authored hull sat in
+  // 'compiling-pipelines' forever and only the hangar drew. Compile here, in this context, and
+  // skip the live GPU residency walk; the first draw of the swapped root then links nothing.
+  const previewAdmissionOptions = Object.freeze({
+    prepareAuthoredPipelines: (root) => (typeof renderer.compileAsync === 'function'
+      ? renderer.compileAsync(root, cam, scene)
+      : Promise.resolve(renderer.compile(root, cam, scene))),
+    prepareAuthoredGpuResidency: null,
+    overlapAuthoredPipelineCompile: false,
+    yieldBetweenGpuStages: false,
+  });
   function requestCurrentAuthoredUpgrade() {
     if (!authoredShips) return;
     const request = current && current.userData && current.userData.requestAuthoredUpgrade;
-    if (typeof request === 'function') request(renderer, scene);
+    if (typeof request === 'function') request(renderer, scene, previewAdmissionOptions);
   }
 
   function warmAssets() {
