@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-07T05:35:00.000Z",
+  "updatedAt": "2026-09-07T05:17:36.218Z",
   "purpose": "Canonical cross-plan priority and dispatch queue. Product completion remains authoritative in design/program/03_LIVE_ACCEPTANCE_MATRIX.md.",
   "stateContract": {
     "allowed": [
@@ -17209,8 +17209,10 @@
         "npm run check:type-floor",
         "npm run check:wcag-contrast"
       ],
-      "receiptRefs": [],
-      "brief": "IMPLEMENTED 2026-09-07: delegated kit candidate integrated; the variable Bricolage face is vendored and axis/tabular checks pass, the kit tests, corrected frontend probe, type floor, and WCAG checks pass, and the five kit captures were independently reviewed. The shared full baseline runner hung without output and remains unverified; three-width hash-bound review and final promotion remain open. DONE WHEN: the kit page matches DIRECTION_SHEET.md under a hash-bound visual review by a memoryless vision reviewer; the old stylesheets are untouched (screens migrate in later packets); no owner decision is required. Task file: design/frontend/direction/tasks/TASK_A_KIT_AND_TITLE.md (spec: design/frontend/direction/KIT_SPEC.md)."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/FRONTEND-A-REPORT.md"
+      ],
+      "brief": "IMPLEMENTED 2026-09-07: Task A reconciled the kit to KIT_SPEC.md verbatim (styles/kit.css, src/ui/kit/{motion,temperature,sound,dom,index}.js; palette.js removed; sound emits audio:cue), vendored the three-axis Bricolage (opsz 12-96, wght 200-800, wdth 75-100, OFL), re-tuned the eight UI recipes, put the kit page at _kitlab.html (capture:kit at 1280/1920/2560, _uilab.html forwards) and passed check:baseline, kit tests and probe:frontend-snapshot; receipt FRONTEND-A-REPORT.md. Hash-bound three-width visual review and promotion remain the reviewer's. DONE WHEN: the kit page matches DIRECTION_SHEET.md under a hash-bound visual review by a memoryless vision reviewer; the old stylesheets are untouched (screens migrate in later packets); no owner decision is required. Task file: design/frontend/direction/tasks/TASK_A_KIT_AND_TITLE.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-187.03",
@@ -17218,7 +17220,7 @@
       "priority": 463,
       "title": "The title and main menu live on the kit",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-187.02"
       ],
@@ -17241,8 +17243,10 @@
         "npm run check:responsive",
         "npm run probe:frontend-snapshot"
       ],
-      "receiptRefs": [],
-      "brief": "The first real screen in the direction, on the default route: the starter hull in the hangar rig fills the frame against the sky, the game's name at hero scale top-left, the menu as a column of words down the left edge with the focused word at full strength, version bottom-left; the menu plate and its CSS deleted; the transition helper and the open/confirm sounds live. DONE WHEN: booting the game shows it; frames at 1280, 1920 and 2560 match DIRECTION_SHEET.md under a hash-bound visual review; check:title-continue-runtime green; the owner sees it in the game and has not vetoed. This is the gate every surface packet depends on. Task file: design/frontend/direction/tasks/TASK_A_KIT_AND_TITLE.md (spec: design/frontend/direction/KIT_SPEC.md)."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/FRONTEND-A-REPORT.md"
+      ],
+      "brief": "IMPLEMENTED 2026-09-07: the title is live on the default route on the kit (c360cd16, 2202ba6c, ac11eb0e, 28f0ab32): the starter hull in its hangar fills the frame, the name at hero scale top-left, the words down the left edge with the focused word full-strength and a gold rule, the latest save in one fine line under Continue, the version bottom-left; the menu plate CSS and the injected style block are deleted; words hold and stamp in after the hull (3 s grace); hull-visible frames at 1280/1920/2560 and reduced-motion 1920 plus a boot clip under .devshots/frontend/A; check:title-continue-runtime, check:ui-a11y, check:responsive, check-ui-screen-imports, check:baseline (15/15) and the --world matrix boot green; receipt FRONTEND-A-REPORT.md. Hash-bound visual review and the owner seeing it in the game remain. The first real screen in the direction, on the default route: the starter hull in the hangar rig fills the frame against the sky, the game's name at hero scale top-left, the menu as a column of words down the left edge with the focused word at full strength, version bottom-left; the menu plate and its CSS deleted; the transition helper and the open/confirm sounds live. DONE WHEN: booting the game shows it; frames at 1280, 1920 and 2560 match DIRECTION_SHEET.md under a hash-bound visual review; check:title-continue-runtime green; the owner sees it in the game and has not vetoed. This is the gate every surface packet depends on. Task file: design/frontend/direction/tasks/TASK_A_KIT_AND_TITLE.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-187.04",
