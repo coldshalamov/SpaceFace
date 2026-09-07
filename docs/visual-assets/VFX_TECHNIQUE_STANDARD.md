@@ -57,9 +57,10 @@ their own rows below. In particular, a nozzle's jet and its recorded history are
 
 The live owner routing is visible in `src/render/vfx.js` (navigation index and event handlers),
 `src/render/vfxProfiles.js`, and its imported thruster, weapon, energy and presentation owners.
-Reference IDs come from `src/vfxnext/index.js` and `src/vfxnext/families/`; they are classified even
-where the library remains unwired. This register is **not** a declaration that every listed
-implementation passes §4 or has been promoted to the default route.
+Reference IDs such as `thruster_boost`, `impact_normal`, `reentry` and `massline_latch` date from the
+retired `src/vfxnext/` reference library — unwired billboard work, deleted 2026-09-07 — and now live
+only in this register. This register is **not** a declaration that every listed implementation passes
+§4 or has been promoted to the default route.
 
 | Existing family / aliases or variants | Primary class | Owner / boundary |
 |---|---|---|
@@ -95,9 +96,10 @@ implementation passes §4 or has been promoted to the default route.
 ### Inventory is evidence, not a second family register
 
 [`SOFT_CARD_INVENTORY.json`](./SOFT_CARD_INVENTORY.json) continues to record the actual constructions,
-files and status. Its `vfx-sprite-puffs` and `vfxnext-billboards` entries cover shared multi-family
-substrates; neither is a newly approved effect family. Their `banned-live` / `library-unwired`
-statuses remain. The star/flare allowlist and distant-impostor records are not broadened.
+files and status. Its `vfx-sprite-puffs` entry covers a shared multi-family substrate; it is not a
+newly approved effect family, and its status remains subject to visual acceptance. The former
+`vfxnext-billboards` entry was retired when the library was deleted on 2026-09-07. The star/flare
+allowlist and distant-impostor records are not broadened.
 
 `star-texture-factory`, `startup-gpu-residency-proxy`, `graphics-lab-sprites` and
 `asteroid-tier-badges` describe a factory, an offscreen upload mechanism, lab examples and UI chrome,

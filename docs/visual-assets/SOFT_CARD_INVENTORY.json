@@ -3,7 +3,7 @@
   "title": "Soft-card / blurry-square inventory",
   "rule": "A camera-facing soft square or disc may not stand in for a designed object. Distant background stars are the only exception, and only while they stay tiny, bright, and at sky depth. If the player can fly past it, it is not a star.",
   "exceptionIds": ["bg-l3-stars", "bg-l4-flares"],
-  "scanRoots": ["src/render", "src/vfxnext", "src/ui/asteroid"],
+  "scanRoots": ["src/render", "src/ui/asteroid"],
   "scanPatterns": [
     "new THREE\\.Points\\b",
     "new THREE\\.Sprite\\b",
@@ -97,14 +97,6 @@
       "technique": "Camera-facing sprites with an authored badge texture",
       "whyListed": "UI chrome, not the rock. Keep off the world-object list.",
       "files": ["src/ui/asteroid/asteroidRenderer3d.js"]
-    },
-    {
-      "id": "vfxnext-billboards",
-      "status": "library-unwired",
-      "playerSees": "Nothing on the live route yet",
-      "technique": "Camera-facing billboard sparks, flashes, and smoke",
-      "whyListed": "The next VFX library still builds sparks and smoke from the same cards. Do not promote it as-is.",
-      "files": ["src/vfxnext/core/gpuAged.js"]
     }
   ]
 }

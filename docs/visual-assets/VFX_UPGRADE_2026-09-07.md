@@ -16,7 +16,7 @@ The problem is not a blanket lack of rendering machinery. The repository already
 
 At the audited base, `combat/instancedSpritePool.js` rendered four broad classes through camera-facing quads. The inventory correctly labelled that path `banned-live` even though its procedural masks had previously been described as an uplift. `combat/arcadeStructuralFx.js` had directional event grammar but flat, uniformly filled blades and arcs. Those shared carriers were the highest-leverage place to change actual gameplay rendering.
 
-There is also a separate, intentionally unwired `src/vfxnext/` library. Its `core/gpuAged.js` still uses billboard carriers. Enabling it wholesale would create a second owner without curing the central visual defect. Likewise, a procedural eight-frame atlas is not automatically high-quality animated source art merely because it is called a flipbook.
+There is also a separate, intentionally unwired `src/vfxnext/` library. Its `core/gpuAged.js` still uses billboard carriers. Enabling it wholesale would create a second owner without curing the central visual defect. Likewise, a procedural eight-frame atlas is not automatically high-quality animated source art merely because it is called a flipbook. *(Retired the same day: the library, its capture harness and its dedicated tests were deleted as unwired billboard work, and the `vfxnext-billboards` inventory entry was removed with them.)*
 
 ## Family-level audit
 
