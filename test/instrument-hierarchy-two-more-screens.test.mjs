@@ -16,12 +16,12 @@ import {
   SIGNAL_ARCHIVE,
 } from '../src/ui/screens/codex.js';
 
+// The station Factions screen moved onto the frontend kit (Frontend Task C §1.6): it authors no
+// sizes, faces or colours of its own any more, so only the codex is audited for the legacy grammar.
 const FILES = [
-  'src/ui/station/screens/factions.js',
   'src/ui/screens/codex.js',
 ];
 const DISPLAY = new Map([
-  ['src/ui/station/screens/factions.js', '.sx-fac-ident h2'],
   ['src/ui/screens/codex.js', '.sf-codex-now'],
 ]);
 const PINNED_FORBIDDEN = /(?:\bpanel\b|sf-menu|sf-menu-wide)/;
@@ -80,9 +80,6 @@ test('every figure binds --sf-data-face', () => {
     assert.match(code, /font-family:\s*var\(--sf-data-face\)/, rel + ' has no --sf-data-face binding');
     assert.match(code, /\.sf-fig/, rel + ' has no .sf-fig figure class');
   }
-  const fac = load('src/ui/station/screens/factions.js');
-  assert.match(fac, /class="sx-dial-rep sf-fig"/);
-  assert.match(fac, /class="sf-fig" style="color:\$\{col\}"/);
   const codex = load('src/ui/screens/codex.js');
   assert.match(codex, /sf-codex-status-v sf-fig/);
 });
@@ -102,22 +99,22 @@ test('colour is by meaning: role tokens present, zero hardcoded hex, no roleless
 });
 
 test('standing colour is a meaning role indexed by tier, not a rainbow', () => {
-  assert.equal(standingColorAt(0), 'var(--sf-foe)');
-  assert.equal(standingColorAt(3), 'var(--sf-foe)');
-  assert.equal(standingColorAt(4), 'var(--sf-calm)');
-  assert.equal(standingColorAt(5), 'var(--sf-you)');
-  assert.equal(standingColorAt(8), 'var(--sf-you)');
-  assert.equal(standingColor(-800), 'var(--sf-foe)');
-  assert.equal(standingColor(0), 'var(--sf-calm)');
-  assert.equal(standingColor(500), 'var(--sf-you)');
+  // The kit's three meaning words: against you (--k-bad), at rest (the 62% bone), a gain (--k-good).
+  assert.equal(standingColorAt(0), 'var(--k-bad)');
+  assert.equal(standingColorAt(3), 'var(--k-bad)');
+  assert.equal(standingColorAt(4), 'var(--k-bone-62)');
+  assert.equal(standingColorAt(5), 'var(--k-good)');
+  assert.equal(standingColorAt(8), 'var(--k-good)');
+  assert.equal(standingColor(-800), 'var(--k-bad)');
+  assert.equal(standingColor(0), 'var(--k-bone-62)');
+  assert.equal(standingColor(500), 'var(--k-good)');
 });
 
-test('SVG meaning colours ride inline style, never a presentation attribute', () => {
+test('the factions screen authors no dial SVG, tints or injected styles of its own', () => {
   const fac = stripComments(load('src/ui/station/screens/factions.js'));
-  assert.match(fac, /style="stroke:\$\{standingColorAt\(i\)\}"/,
-    'dial segments must paint stroke from an inline style so CSS variables resolve');
-  assert.doesNotMatch(fac, /stroke="var\(/,
-    'a var() stroke presentation attribute silently paints nothing');
+  assert.doesNotMatch(fac, /sx-dial|buildDialSvg|<svg/, 'the standing dial is gone; the words carry the state');
+  assert.doesNotMatch(fac, /injectStyle|FACTIONS_CSS|--tint:|--relation:/, 'no injected style block or per-faction tints');
+  assert.equal((fac.match(HEX_RE) || []).length, 0, 'no hardcoded hex literal');
 });
 
 test('no native title=; naming avoids pulse/blink/flash and card/menu/panel/modal', () => {
@@ -146,10 +143,10 @@ test('crest / stage / apron zones are named on each screen', () => {
 
 test('no state rests on hue alone: the words sit beside every colour', () => {
   const fac = load('src/ui/station/screens/factions.js');
-  // Tier name + signed rep always accompany the standing colour, in rail, dial and decisions.
-  assert.match(fac, /AUTHORITY · /);
-  assert.match(fac, /'ALIGN' : 'RIVAL'/);
-  assert.match(fac, /PEAK HELD/);
+  // Tier name + signed rep always accompany the standing colour, in the rows and the heroes.
+  assert.match(fac, /Authority · /);
+  assert.match(fac, /'Align' : 'Rival'/);
+  assert.match(fac, /Peak held/);
   assert.match(fac, /escapeHtml\(tier\.name\)\} \$\{signed\(rep\)\}/);
   const codex = load('src/ui/screens/codex.js');
   // Locked, current and filed states each carry a word or glyph, never hue alone.
