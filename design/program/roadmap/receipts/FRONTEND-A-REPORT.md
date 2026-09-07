@@ -43,7 +43,7 @@ every other surface's frames in the same folder.
 | `npm run check:ui-a11y` | OK (all rows `ok`) |
 | `npm run check:responsive` | OK — safe-box anchors and stage clamp contract verified |
 | `node scripts/check-ui-screen-imports.mjs` | 53 UI screen imports ok, 0 fail |
-| `npm run check:baseline` | 15/15 green. Wall 91.5 s against the 90 s budget under the other agents' load ("BUDGET EXCEEDED", no link red). |
+| `npm run check:baseline` | 15/15 green, twice (before the receipt and on the final head). Wall 91.5 s and then 126 s against the 90 s budget with three other agents' node/Playwright work on the machine (CPU 50 %+) — "BUDGET EXCEEDED", no link red. |
 | `npm run probe:frontend-snapshot` | OK — 5 captures, 5 PNGs, 5 diffs (through the `_uilab.html` → `_kitlab.html` shim) |
 | `node --test test/kit.test.mjs` | 6 pass |
 | `node --test test/startup-loading-presentation.test.mjs` | 11 pass |
