@@ -1,0 +1,100 @@
+{
+  "schema": "spaceface.scenarioContract.v1",
+  "id": "scenario.frame-coupler-tow-drill",
+  "scenario": "Frame coupler drill: hitch a 200-mass tow and turn 180 at 60% cruise",
+  "version": 1,
+  "sourceSpec": "design/program/roadmap/active/PQ-029.md",
+  "tickRate": 60,
+  "durationSeconds": 60,
+  "seed": 2902,
+  "status": "pq02902-live",
+  "actors": [
+    {
+      "id": "player_drifter",
+      "role": "player_ship",
+      "required": true,
+      "assetRef": "ship_drifter",
+      "factionId": "faction_free",
+      "capabilities": ["flight.force_torque", "massline.attach", "massline.reel", "massline.coupler"]
+    },
+    {
+      "id": "drill_tow",
+      "role": "heavy_tow",
+      "required": true,
+      "assetRef": "asset.drill.200_mass_hulk",
+      "capabilities": ["massline.attachment_target", "tow.heavy"]
+    }
+  ],
+  "facts": [
+    {
+      "id": "fact.coupler.hitch_status",
+      "description": "Whether the coupler latched the 200-mass tow at the winched hitch length.",
+      "owner": "scenario.frame-coupler-tow-drill",
+      "initial": "unresolved"
+    },
+    {
+      "id": "fact.coupler.turn_status",
+      "description": "Whether a 180-degree turn at 60% cruise kept the hitch from accordioning.",
+      "owner": "scenario.frame-coupler-tow-drill",
+      "initial": "unresolved"
+    }
+  ],
+  "funnelEventIds": [
+    "tether:latched"
+  ],
+  "proofMetrics": [
+    {
+      "id": "coupler_hitch_complete",
+      "target": "the coupler latches a 200-mass body on the Drifter",
+      "evidence": "test/massline-frame-coupler-tow.test.mjs head policy + latch",
+      "required": true,
+      "beatIds": ["coupler_hitch"]
+    },
+    {
+      "id": "coupler_turn_hold",
+      "target": "180° at 60% Hitch cruise keeps hitch length swing under 20 WU",
+      "evidence": "test/massline-frame-coupler-tow.test.mjs prints DIST_SWING",
+      "required": true,
+      "beatIds": ["coupler_turn"]
+    },
+    {
+      "id": "coupler_drill_under_sixty",
+      "target": "the drill runs inside 60 seconds",
+      "evidence": "durationSeconds 60 + two beats",
+      "required": true,
+      "beatIds": ["coupler_hitch", "coupler_turn"]
+    }
+  ],
+  "beats": [
+    {
+      "id": "coupler_hitch",
+      "order": 1,
+      "title": "Latch the hulk and winch the hitch",
+      "intent": "The coupler is a hitch: catch 200 tons and set the rest length. Hitch cannot fit the M head — use the Drifter.",
+      "requiredActors": ["player_drifter", "drill_tow"],
+      "requiredMechanics": ["massline.attach", "massline.reel"],
+      "funnelEventIds": ["tether:latched"],
+      "proofMetricIds": ["coupler_hitch_complete", "coupler_drill_under_sixty"],
+      "worldFactRefs": ["fact.coupler.hitch_status"],
+      "next": ["coupler_turn"],
+      "branchIds": []
+    },
+    {
+      "id": "coupler_turn",
+      "order": 2,
+      "title": "Turn 180 at 60% cruise without the line accordioning",
+      "intent": "Burn the turn. The hitch length holds; the pair does not ping-pong on the rope.",
+      "requiredActors": ["player_drifter", "drill_tow"],
+      "requiredMechanics": ["flight.force_torque", "massline.coupler"],
+      "funnelEventIds": [],
+      "proofMetricIds": ["coupler_turn_hold", "coupler_drill_under_sixty"],
+      "worldFactRefs": ["fact.coupler.turn_status"],
+      "next": [],
+      "branchIds": []
+    }
+  ],
+  "notes": [
+    "PQ-029.02: frame coupler as the tow you can trust. Range file untouched.",
+    "Oscillation here is hitch-length accordion, not a welded second hull. Sideways slide stays legal."
+  ]
+}

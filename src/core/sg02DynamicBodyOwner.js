@@ -1700,7 +1700,12 @@ export class Sg02DynamicBodyOwner {
     const captureX = inCapture && captureS > 0 ? clamp(state.captureT / captureS, 0, 1) : 1;
     const gain = spring.velocityGain * smoothstep(captureX);
     const mu = reducedMass(attachment.owner, attachment.target);
-    const force = Math.min(spring.maxForce, mu * gain * openingSpeed);
+    // PQ-029.02: the winched rest length is the hitch. A taut coupler is a unilateral
+    // damped spring to that length — tension only, still no sideways frame match.
+    const restore = positive(spring.K, 0) * stretch;
+    const dashpot = 2 * positive(spring.zeta, 0) * Math.sqrt(positive(spring.K, 0) * mu) * relativeSpeed;
+    const openingDamper = mu * gain * openingSpeed;
+    const force = Math.min(spring.maxForce, Math.max(0, restore + dashpot + openingDamper));
     const forceImpulse = force * this.fixedDt;
     const impulse = forceImpulse * clamp(finite(attachment.forceScale, 1), 0, 4);
     if (impulse > 0) {
@@ -1720,7 +1725,11 @@ export class Sg02DynamicBodyOwner {
     const geometricOverloadRatio = restLength > 0
       ? stretch / Math.max(restLength * maxStretchRatio, STRETCH_EPSILON)
       : 0;
-    state.breakRequested = geometricOverloadRatio > 1;
+    const tensionRating = finite(attachment.break.maxTension, Infinity);
+    const loadRatio = Number.isFinite(tensionRating) && tensionRating > 0 ? force / tensionRating : 0;
+    // Same law as the ordinary rope (PQ-137.07): the hitch breaks by load, not by how far
+    // a 200-mass tow happens to be stretched in a turn.
+    state.breakRequested = loadRatio >= 1;
     state.lastTension = force;
     state.lastImpulse = forceImpulse;
     state.lastRelativeSpeed = relativeSpeed;

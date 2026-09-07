@@ -37,9 +37,11 @@ const ELASTIC_WHIP_TETHER_SPRING = Object.freeze({
 // exchange while the line is taut. It never seeks a position, assigns velocity, or steers a body.
 const FRAME_COUPLER_TETHER_SPRING = Object.freeze({
   mode: 'frame_coupler',
-  velocityGain: 1.6,
+  K: 640,
+  zeta: 1.05,
+  velocityGain: 8,
   captureS: 0.35,
-  maxForce: 5_200,
+  maxForce: 24_000,
 });
 const SPECIALIZED_TETHER_HEADS = Object.freeze({
   tractor: Object.freeze({ flag: 'masslineHeadTractor', spring: TRACTOR_TETHER_SPRING }),

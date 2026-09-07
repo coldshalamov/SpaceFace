@@ -132,6 +132,7 @@ export const MODULES = [
     energyDraw: 4, mods: { masslineHeadId: 'elastic_whip' },
   },
   {
+    // FRAME COUPLER — the winched rest length is the hitch. A 200-mass tow turns with you.
     id: 'mod_frame_coupler_m', name: 'Frame Coupler M', slotType: 'utility', size: 'M', tier: 2, mass: 5, price: 22000, requiresTech: 'tech_tractor_systems',
     energyDraw: 5, mods: { masslineHeadId: 'frame_coupler' },
   },

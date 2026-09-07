@@ -33,8 +33,8 @@ test('Frame Coupler is a reachable, exclusive, independently flagged separation-
   assert.equal(LEGACY47A_FEATURES.massline2.masslineHeadFrameCoupler, false);
   assert.equal(production.headId, 'frame_coupler');
   assert.deepEqual(
-    [production.spring.mode, production.spring.velocityGain, production.spring.captureS, production.spring.maxForce],
-    ['frame_coupler', 1.6, 0.35, 5_200],
+    [production.spring.mode, production.spring.K, production.spring.velocityGain, production.spring.captureS, production.spring.maxForce],
+    ['frame_coupler', 640, 8, 0.35, 24_000],
   );
   assert.equal(legacy.headId, undefined);
   assert.equal(legacy.spring, undefined, 'flag-off preserves the ordinary standard line');
@@ -213,15 +213,15 @@ test('Frame Coupler has no center-seeking or slack-line authority', async () => 
       targetId: matchedB.id,
       sourceWorld: matchedA.pos,
       targetWorld: matchedB.pos,
-      restLength: 80,
+      restLength: 160,
       spring: policy.spring,
       tick: 0,
     });
     for (let tick = 0; tick < 120; tick += 1) matchedRuntime.step(DT);
     const telemetry = matchedRuntime.getAttachmentTelemetry({ attachmentId: handle.attachmentId });
     assert.ok(Math.abs(telemetry.distance - 160) < 0.02,
-      `matching frames must retain their player-chosen offset, got ${telemetry.distance}`);
-    assert.equal(telemetry.tension, 0, 'extension alone must not create a center-seeking pull');
+      `matching frames must retain the winched hitch length, got ${telemetry.distance}`);
+    assert.equal(telemetry.tension, 0, 'a taut hitch at rest length must not seek a shorter center');
     assert.deepEqual(matchedA.vel, { x: 90, z: -30 });
     assert.deepEqual(matchedB.vel, { x: 90, z: -30 });
   } finally {
