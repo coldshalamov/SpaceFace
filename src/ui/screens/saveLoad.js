@@ -1,14 +1,21 @@
-// Save / Load screen (ARCHITECTURE §4.5, §5; design/specs/09).
-// Lists save slots, Save/Load/Export/Import. UI emits game:save/game:load {slot}; the
-// save system owns persistence. Slot index is read defensively from the save system's
-// public API if present, else from localStorage (manifest: SaveLoadScreen reads sf.save.index).
+// Load screen (ARCHITECTURE §4.5, §5; design/specs/09).
+// The sheet's line (design/frontend/direction/DIRECTION_SHEET.md, load, amended by Task B §1.2):
+// saves as portraits — the focused save's hull on the stage as it is in that save, its name huge,
+// the sector and date in fine print, the credits as a hero number; the saves as hairline rows down
+// the left. Built on the frontend kit (styles/kit.css, src/ui/kit/); this file owns no CSS.
+// UI emits game:save/game:load {slot}; the save system owns persistence. Slot index is read
+// defensively from the save system's public API if present, else from localStorage (manifest:
+// SaveLoadScreen reads sf.save.index).
 
 import { confirm } from '../confirm.js';
+import { NEW_GAME } from '../../data/newGameDefaults.js';
 import { SAVE_IMPORT_MAX_BYTES, saveImportByteLength } from '../../save/saveSystem.js';
+import { el, rows, words, hero, settle, cue } from '../kit/index.js';
+import { createStageHull } from './stageHull.js';
 
-const STYLE_ID = 'sf-save-load-style';
 const SLOT_COUNT = 5;        // quick + 4 manual slots shown
 const LS_PREFIX = 'sf.save.';
+const COUNT_WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve'];
 
 function getManager(ctx) {
   if (ctx && ctx.screenManager) return ctx.screenManager;
@@ -24,123 +31,6 @@ function nav(ctx, method, arg) {
   if (mgr && typeof mgr[method] === 'function') { mgr[method](arg); return; }
   ctx.bus.emit('ui:' + method, { id: arg });
 }
-
-function injectStyle() {
-  if (document.getElementById(STYLE_ID)) return;
-  const s = document.createElement('style');
-  s.id = STYLE_ID;
-  s.textContent = `
-  .sf-saveload { color: var(--sf-paper); font-family: var(--sf-body-face); }
-  .sf-saveload.sf-menu h1 {
-    font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
-    letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-calm);
-  }
-  .sf-saveload.sf-menu h1::before { background: var(--sf-calm); box-shadow: none; }
-  .sf-slot-list { display: flex; flex-direction: column; gap: var(--sp-2); }
-  .screen.sf-menu .sf-slot {
-    display: flex; align-items: center; justify-content: space-between;
-    /* Never shrink: with six populated slots on a 720p plate the flex column crushed each row to
-       ~44px and the detail line printed across the next slot's border. The list scrolls instead. */
-    flex: 0 0 auto;
-    gap: var(--sp-4); padding: var(--sp-3) var(--sp-4);
-    background: color-mix(in srgb, var(--sf-surface) 88%, transparent);
-    border: 1px solid var(--sf-edge); border-radius: 2px;
-    box-sizing: border-box; width: 100%; min-height: 56px;
-    transition: background-color var(--sf-t-latch) var(--sf-ease), border-color var(--sf-t-latch) var(--sf-ease);
-  }
-  .screen.sf-menu .sf-slot:hover {
-    background: color-mix(in srgb, var(--sf-surface) 72%, transparent);
-    border-color: var(--sf-calm);
-  }
-  .screen.sf-menu .sf-slot.empty {
-    background: color-mix(in srgb, var(--sf-surface) 55%, transparent);
-    border-style: dashed; border-color: var(--sf-edge);
-  }
-  .screen.sf-menu .sf-slot.empty:hover {
-    background: color-mix(in srgb, var(--sf-surface) 72%, transparent);
-    border-color: var(--sf-calm);
-  }
-  .screen.sf-menu .sf-slot.sel {
-    border-color: var(--sf-goal-edge);
-    background: color-mix(in srgb, var(--sf-goal) 8%, transparent);
-    box-shadow: none;
-    border-left: var(--sf-rail-w) solid var(--sf-goal);
-  }
-  .sf-slot .sf-slot-main { flex: 1 1 auto; min-width: 0; }
-  .sf-slot .sf-slot-head { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2); margin-bottom: var(--sp-1); }
-  .sf-slot .sf-slot-name {
-    font-family: var(--sf-subhead-face); font-weight: 600; font-size: 15px; color: var(--sf-paper);
-  }
-  /* The selected row's name is the screen's ONE display-size element (grammar test
-     instrument-hierarchy-six-screens pins this selector); unselected rows stay at 15px,
-     so no two rows ever render at competing large sizes. */
-  .sf-slot.sel .sf-slot-name {
-    font-family: var(--sf-display-face); font-weight: 700; font-size: 28px; line-height: 1.1;
-    letter-spacing: 0; text-transform: none; color: var(--sf-paper);
-  }
-  .sf-slot.empty .sf-slot-name { font-weight: 500; color: var(--sf-calm); }
-  .sf-slot .sf-slot-badge {
-    font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
-    letter-spacing: var(--sf-track-micro); text-transform: uppercase;
-    color: var(--sf-calm); border: 1px solid var(--sf-edge); border-radius: 2px;
-    padding: 1px var(--sp-2); background: transparent;
-  }
-  .sf-slot-badge--you { color: var(--sf-you); border-color: color-mix(in srgb, var(--sf-you) 45%, transparent); }
-  .sf-slot-badge--goal { color: var(--sf-goal); border-color: var(--sf-goal-edge); }
-  .sf-slot-badge--foe { color: var(--sf-foe); border-color: color-mix(in srgb, var(--sf-foe) 45%, transparent); }
-  .sf-slot .sf-slot-context { font-size: 13px; color: var(--sf-calm); margin-top: 2px; }
-  .sf-slot.empty .sf-slot-context { color: var(--sf-calm); }
-  /* Meta lines stay on fixed bounds so a wrapped timestamp can never spill across a
-     row's border into the next row's title. Context is one clean ellipsized line;
-     the detail line clamps at two with a real ellipsis — never a raw mid-word cut. */
-  .sf-slot .sf-slot-context {
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
-  /* The detail line is a sentence with numbers in it, so it reads in the UI face with tabular
-     numerals; only bare figures (.sf-fig) wear the DATA face. */
-  .sf-slot .sf-fig { font-family: var(--sf-data-face); font-weight: 500; }
-  .sf-slot .sf-slot-detail, .sf-slot .sf-fig {
-    font-size: 13px; color: var(--sf-calm); font-family: var(--sf-body-face);
-    font-weight: 400; font-variant-numeric: tabular-nums; margin-top: var(--sp-1);
-    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
-    overflow: hidden; overflow-wrap: anywhere;
-  }
-  .sf-slot .sf-slot-actions { display: flex; align-items: center; gap: var(--sp-2); flex-shrink: 0; }
-  .sf-slot .sf-slot-actions button.sf-tab { min-width: 68px; padding: var(--sp-1) var(--sp-3); cursor: pointer; }
-  /* The row's verb is an interaction, so it wears the accent — not --sf-you, which means "a gain"
-     everywhere else and made SAVE the only green primary button in the game. */
-  .sf-slot .sf-slot-actions button.sf-tab--primary {
-    color: var(--bg); background: var(--accent); border-color: var(--accent); font-weight: 600;
-  }
-  .sf-slot .sf-slot-actions button.sf-tab--primary:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--accent) 84%, white); border-color: var(--accent); color: var(--bg);
-  }
-  @media (forced-colors: active) {
-    .screen.sf-menu .sf-slot, .sf-slot .sf-slot-actions button.sf-tab--primary {
-      background: Canvas; color: CanvasText; border-color: CanvasText; box-shadow: none;
-    }
-    .screen.sf-menu .sf-slot.sel { border-left-color: Highlight; }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .sf-saveload, .sf-saveload * { animation: none !important; transition: none !important; }
-  }
-  `;
-  document.head.appendChild(s);
-}
-
-function shell(rootEl, title, extraClass) {
-  rootEl.innerHTML = '';
-  rootEl.classList.add('panel', 'sf-menu', 'sf-saveload');
-  if (extraClass) rootEl.classList.add(extraClass);
-  // Diegetic fascia stamp (styles/menu.css .sf-menu::before reads it).
-  rootEl.dataset.stamp = 'FLIGHT RECORDER / SAVE-LOAD';
-  const crest = el('div', 'sf-crest');
-  const h = document.createElement('h1'); h.textContent = title; crest.appendChild(h);
-  rootEl.appendChild(crest);
-  return rootEl;
-}
-
-function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
 
 /** Read the save index. Prefer the save system's API; fall back to localStorage scan. */
 function readSlots(ctx) {
@@ -215,6 +105,29 @@ function fmtSavedAt(meta) {
   return 'saved ' + d.toLocaleString();
 }
 
+/** "today", "yesterday", "3 days ago", else the date — the title's "last flown" phrase. */
+export function fmtLastFlown(savedAt, now = Date.now()) {
+  const t = Date.parse(savedAt || '');
+  if (!t) return '';
+  const days = Math.floor((now - t) / 86400000);
+  if (days <= 0) return 'today';
+  if (days === 1) return 'yesterday';
+  if (days < 30) return days + ' days ago';
+  return new Date(t).toLocaleDateString();
+}
+
+/** The title's sub: "Four saves · last flown yesterday", "One save · last flown today", "No saves yet". */
+export function saveCountLine(slots, now = Date.now()) {
+  const occupied = Object.keys(slots || {}).filter((slot) => isOccupied(slots[slot]));
+  if (!occupied.length) return 'No saves yet';
+  const n = occupied.length;
+  const count = n < COUNT_WORDS.length ? COUNT_WORDS[n] : String(n);
+  const latest = latestOccupiedSlot(slots);
+  const meta = latest ? slots[latest] : null;
+  const flown = fmtLastFlown(meta && (meta.savedAt || meta.lastSavedAt), now);
+  return count + (n === 1 ? ' save' : ' saves') + (flown ? ' · last flown ' + flown : '');
+}
+
 export function slotSummaryLines(meta) {
   if (!isOccupied(meta)) return { context: 'Empty slot', detail: 'No save data yet' };
   const context = [
@@ -244,6 +157,10 @@ function loadConfirmBody(id, meta) {
 
 function overwriteConfirmBody(id, meta) {
   return 'This will replace the existing save in ' + slotLabel(id) + ': ' + slotConfirmSummary(meta) + '. This cannot be undone.';
+}
+
+function deleteConfirmBody(id, meta) {
+  return 'This will delete ' + slotLabel(id) + ': ' + slotConfirmSummary(meta) + '. This cannot be undone.';
 }
 
 export function importConfirmBody(file) {
@@ -316,35 +233,85 @@ export function shouldOfferNewGameShortcut(meta, saveAllowed) {
   return !isOccupied(meta) && !saveAllowed;
 }
 
+/** The save's hull id (the index stores the def id under shipName); the starter when a save has none. */
+function slotShipId(meta) {
+  const id = meta && typeof meta.shipName === 'string' && /^ship_/.test(meta.shipName) ? meta.shipName : null;
+  return id || NEW_GAME.shipId;
+}
+
+function shipDisplayName(ctx, defId) {
+  const ships = ctx && ctx.state && ctx.state.content && ctx.state.content.ships;
+  let def = null;
+  if (Array.isArray(ships)) def = ships.find((s) => s && s.id === defId) || null;
+  else if (ships && typeof ships === 'object') def = ships[defId] || null;
+  return (def && def.name) || shipLabel(defId);
+}
+
 let refs = null;
 
 export const saveLoadScreen = {
   id: 'saveLoad',
 
   mount(rootEl, ctx) {
-    injectStyle();
-    shell(rootEl, 'Save / Load', 'sf-menu-wide');
+    rootEl.innerHTML = '';
+    rootEl.classList.add('k-screen');
+    rootEl.dataset.kReady = '0';
+    rootEl.setAttribute('aria-label', 'Load');
 
-    const list = el('div', 'sf-slot-list sf-stage');
-    rootEl.appendChild(list);
+    // Title: "Load" and the count.
+    const title = el('header', 'k-title');
+    title.appendChild(el('h1', 'k-display k-t-title', 'Load'));
+    const sub = el('p', 'k-t-emph k-62', '');
+    title.appendChild(sub);
+    rootEl.appendChild(title);
 
-    const ioRow = el('div', 'sf-foot sf-apron');
-    ioRow.style.justifyContent = 'space-between';
-    const left = el('div'); left.style.display = 'flex'; left.style.gap = '10px';
-    const bExport = el('button', 'sf-btn'); bExport.textContent = 'Export'; bExport.style.width = 'auto';
-    const bImport = el('button', 'sf-btn'); bImport.textContent = 'Import'; bImport.style.width = 'auto';
-    const fileIn = el('input'); fileIn.type = 'file'; fileIn.accept = '.json,application/json'; fileIn.style.display = 'none';
-    left.appendChild(bExport); left.appendChild(bImport); left.appendChild(fileIn);
-    const back = el('button', 'sf-btn'); back.textContent = 'Back'; back.style.width = 'auto';
-    back.addEventListener('click', () => nav(ctx, 'popScreen'));
-    ioRow.appendChild(left); ioRow.appendChild(back);
-    rootEl.appendChild(ioRow);
+    // The saves as hairline rows down the left; rebuilt by _render.
+    const hang = el('div', 'k-hang');
+    rootEl.appendChild(hang);
 
-    bExport.addEventListener('click', () => this._export(ctx));
-    bImport.addEventListener('click', () => fileIn.click());
+    // The stage: the focused save's hull, its name huge, the objective, the credits as a hero
+    // number, sector · saved-at · playtime in fine print, then the save's words.
+    const stage = el('div', 'k-stage');
+    const caption = el('div', 'k-stage__foot');
+    const shipName = el('h2', 'k-display k-t-title', '');
+    const objective = el('p', 'k-sentence k-sentence--emph sf-slot-detail', '');
+    const credits = hero('', 'credits', { size: 'hero' });
+    const fine = el('p', 'k-t-fine k-38 sf-slot-context', '');
+    const actions = el('div');
+    caption.appendChild(shipName);
+    caption.appendChild(objective);
+    caption.appendChild(credits);
+    caption.appendChild(fine);
+    caption.appendChild(actions);
+    stage.appendChild(caption);
+    rootEl.appendChild(stage);
+    this.hull = createStageHull(stage, { rootEl });
+
+    // Foot: Export, Import (the hidden file input stays), Back.
+    const foot = el('footer', 'k-foot');
+    const footWord = (label) => {
+      const b = el('button', 'k-word k-word--emph', label);
+      b.type = 'button'; b.dataset.action = label.toLowerCase();
+      foot.appendChild(b);
+      return b;
+    };
+    const bExport = footWord('Export');
+    const bImport = footWord('Import');
+    const fileIn = el('input'); fileIn.type = 'file'; fileIn.accept = '.json,application/json'; fileIn.hidden = true;
+    foot.appendChild(fileIn);
+    const back = footWord('Back');
+    rootEl.appendChild(foot);
+
+    bExport.addEventListener('click', () => { cue('confirm'); this._export(ctx); });
+    bImport.addEventListener('click', () => { cue('confirm'); fileIn.click(); });
     fileIn.addEventListener('change', () => this._import(ctx, fileIn));
+    back.addEventListener('click', () => { cue('confirm'); nav(ctx, 'popScreen'); });
 
-    refs = { list, selected: null };
+    refs = {
+      root: rootEl, title, sub, hang, stage, foot, list: null,
+      caption, shipName, objective, credits, fine, actions,
+      selected: null, shownShipId: null, ids: [], slots: {},
+    };
     this._render(ctx);
   },
 
@@ -352,7 +319,6 @@ export const saveLoadScreen = {
     if (!refs) return;
     const slots = readSlots(ctx);
     const saveAllowed = canSave(ctx);
-    refs.list.innerHTML = '';
     const ids = ['quick'];
     if (slots.autosave || slots.auto) ids.push(slots.autosave ? 'autosave' : 'auto');
     for (let i = 1; i <= SLOT_COUNT - 1; i++) ids.push(String(i));
@@ -367,94 +333,172 @@ export const saveLoadScreen = {
         ? ctx.state.save.currentSlot
         : (latestOccupiedSlot(slots) || 'quick');
     }
+    refs.ids = ids;
+    refs.slots = slots;
+    refs.saveAllowed = saveAllowed;
+    refs.sub.textContent = saveCountLine(slots);
+
     const currentSlot = ctx.state.save && ctx.state.save.currentSlot;
     const latestSlot = latestOccupiedSlot(slots);
 
-    ids.forEach((id) => {
+    const items = ids.map((id) => {
       const meta = slots[id];
       const occupied = isOccupied(meta);
       const summary = slotSummaryLines(meta);
-      const row = el('div', 'sf-slot' + (occupied ? '' : ' empty') + (refs.selected === id ? ' sel' : ''));
-      const main = el('div', 'sf-slot-main');
-      const head = el('div', 'sf-slot-head');
-      head.appendChild(el('div', 'sf-slot-name', slotLabel(id)));
-      for (const badge of slotBadges(id, meta, currentSlot, latestSlot)) {
-        head.appendChild(el('span', 'sf-slot-badge sf-slot-badge--' + slotBadgeRole(badge), badge));
-      }
-      main.appendChild(head);
-      main.appendChild(el('div', 'sf-slot-context', summary.context));
-      main.appendChild(el('div', 'sf-slot-detail sf-fig', summary.detail));
-      row.appendChild(main);
-
-      const actions = el('div', 'sf-slot-actions');
-
-      if (occupied) {
-        const bSave = el('button', 'sf-tab', 'Save');
-        bSave.disabled = !saveAllowed;
-        bSave.setAttribute('data-why', saveAllowed ? 'Save to ' + slotLabel(id) : 'Start or load a game before saving');
-        bSave.addEventListener('click', async () => {
-          if (!canSave(ctx)) {
-            ctx.bus.emit('toast', { text: 'Start or load a game before saving', kind: 'warn', ttl: 2500 });
-            this._render(ctx);
-            return;
-          }
-          // Overwrite confirmation if the slot is already occupied (UX-2) — saving clobbers the
-          // previous save irreversibly. Empty slots save without a prompt.
-          if (occupied) {
-            const ok = await confirm({
-              title: 'Overwrite save?',
-              body: overwriteConfirmBody(id, meta),
-              confirmLabel: 'Overwrite', danger: true,
-            });
-            if (!ok) return;
-          }
-          refs.selected = id;
-          ctx.bus.emit('game:save', { slot: id });
-          setTimeout(() => this._render(ctx), 120);
-        });
-
-        const bLoad = el('button', 'sf-tab sf-tab--primary', 'Load');
-        bLoad.setAttribute('data-why', 'Load ' + slotLabel(id));
-        bLoad.addEventListener('click', async () => {
-          const ok = await confirm({
-            title: 'Load this save?',
-            body: loadConfirmBody(id, meta),
-            confirmLabel: 'Load', danger: true,
-          });
-          if (!ok) return;
-          refs.selected = id;
-          ctx.bus.emit('game:load', { slot: id });
-        });
-
-        actions.appendChild(bSave);
-        actions.appendChild(bLoad);
-      } else {
-        if (saveAllowed) {
-          const bSave = el('button', 'sf-tab sf-tab--primary', 'Save');
-          bSave.setAttribute('data-why', 'Save to ' + slotLabel(id));
-          bSave.addEventListener('click', async () => {
-            if (!canSave(ctx)) {
-              ctx.bus.emit('toast', { text: 'Start or load a game before saving', kind: 'warn', ttl: 2500 });
-              this._render(ctx);
-              return;
-            }
-            refs.selected = id;
-            ctx.bus.emit('game:save', { slot: id });
-            setTimeout(() => this._render(ctx), 120);
-          });
-          actions.appendChild(bSave);
-        } else if (shouldOfferNewGameShortcut(meta, saveAllowed)) {
-          const bNew = el('button', 'sf-tab sf-tab--primary', 'New Game');
-          bNew.style.minWidth = '90px';
-          bNew.setAttribute('data-why', 'Start a new game in ' + slotLabel(id));
-          bNew.addEventListener('click', () => { refs.selected = id; this._render(ctx); nav(ctx, 'pushScreen', 'newGame'); });
-          actions.appendChild(bNew);
+      return {
+        id,
+        name: slotLabel(id),
+        sub: occupied
+          ? [meta.sectorName, shipLabel(meta.shipName), fmtPlaytime(meta.playtimeS)].filter(Boolean).join(' · ') || 'Saved game'
+          : summary.context,
+        num: occupied ? fmtCredits(meta.credits) : '',
+        selected: refs.selected === id,
+        occupied,
+        badges: slotBadges(id, meta, currentSlot, latestSlot),
+      };
+    });
+    const list = rows(items, {
+      cols: 'minmax(0, 1fr) auto',
+      ariaLabel: 'Saves',
+      onPick: (id) => this._select(ctx, id, { quiet: true }), // rows() already cued the pick
+    });
+    // Hooks the checks and the localization probe read (`.sf-slot`, `.sf-slot-name`, `.sf-slot-sub`,
+    // `.sf-slot-badge`); an empty slot's name reads at 38 %; the badges ride the sub line.
+    for (const row of list.querySelectorAll('.k-row')) {
+      const item = items.find((entry) => entry.id === row.dataset.id);
+      row.classList.add('sf-slot');
+      if (!item.occupied) row.classList.add('empty');
+      const name = row.querySelector('.k-row__name');
+      if (name) { name.classList.add('sf-slot-name'); if (!item.occupied) name.classList.add('k-38'); }
+      const subLine = row.querySelector('.k-row__sub');
+      if (subLine) {
+        subLine.classList.add('sf-slot-sub');
+        for (const badge of item.badges) {
+          subLine.appendChild(document.createTextNode(' · '));
+          subLine.appendChild(el('span', 'sf-slot-badge sf-slot-badge--' + slotBadgeRole(badge), badge));
         }
       }
-
-      row.appendChild(actions);
-      refs.list.appendChild(row);
+    }
+    // The stage follows focus, not only a click: arrowing down the rows turns the portraits.
+    list.addEventListener('focusin', (event) => {
+      const row = event.target && event.target.closest ? event.target.closest('.k-row') : null;
+      if (row && row.dataset.id && row.dataset.id !== refs.selected) this._select(ctx, row.dataset.id, { quiet: true });
     });
+    refs.hang.innerHTML = '';
+    refs.hang.appendChild(list);
+    refs.list = list;
+    this._renderStage(ctx);
+  },
+
+  _select(ctx, id, { quiet = false } = {}) {
+    if (!refs || !refs.ids.includes(id)) return;
+    refs.selected = id;
+    if (refs.list) {
+      for (const row of refs.list.querySelectorAll('.k-row')) row.setAttribute('aria-selected', String(row.dataset.id === id));
+    }
+    if (!quiet) cue('move');
+    this._renderStage(ctx);
+  },
+
+  _renderStage(ctx) {
+    if (!refs) return;
+    const id = refs.selected;
+    const meta = refs.slots[id];
+    const occupied = isOccupied(meta);
+    const saveAllowed = refs.saveAllowed;
+    const defId = occupied ? slotShipId(meta) : NEW_GAME.shipId;
+
+    refs.shipName.textContent = occupied ? shipDisplayName(ctx, defId) : slotLabel(id);
+    const objective = occupied ? slotObjectiveSummary(meta) : '';
+    refs.objective.textContent = occupied ? (objective || 'Saved game') : 'Empty slot';
+    const creditsText = occupied ? fmtCredits(meta.credits) : '';
+    // The hero block leaves the caption on an empty slot (the kit's display:flex outranks [hidden]).
+    if (creditsText) {
+      refs.credits.querySelector('.k-hero__n').textContent = creditsText.replace(/ CR$/, '');
+      if (!refs.credits.parentNode) refs.caption.insertBefore(refs.credits, refs.fine);
+    } else if (refs.credits.parentNode) {
+      refs.credits.remove();
+    }
+    refs.fine.textContent = occupied
+      ? [meta.sectorName, fmtSavedAt(meta), fmtPlaytime(meta.playtimeS)].filter(Boolean).join(' · ')
+      : 'No save data yet';
+
+    // The hull as it is in that save (the index carries the def id; the fittings stay the hull's own).
+    if (this.hull && this.hull.hasMount() && refs.shownShipId !== defId) {
+      refs.shownShipId = defId;
+      this.hull.show(defId, { fittings: defId === NEW_GAME.shipId ? NEW_GAME.fittedModules : null });
+    }
+
+    // The save's words: Load, Save here, Delete — or New game on an empty slot at the title.
+    const items = [];
+    if (occupied) {
+      items.push({ action: 'load', label: 'Load', primary: true });
+      if (saveAllowed) items.push({ action: 'save', label: 'Save here' });
+      items.push({ action: 'delete', label: 'Delete', danger: true });
+    } else if (saveAllowed) {
+      items.push({ action: 'save', label: 'Save here', primary: true });
+    } else if (shouldOfferNewGameShortcut(meta, saveAllowed)) {
+      items.push({ action: 'newGame', label: 'New game', primary: true });
+    }
+    refs.actions.innerHTML = '';
+    if (!items.length) return;
+    const list = words(items, {
+      row: true, size: 'emph', ariaLabel: slotLabel(id) + ' actions',
+      onPick: (action) => this._act(ctx, action, id, meta, occupied),
+    });
+    refs.actions.appendChild(list);
+  },
+
+  async _act(ctx, action, id, meta, occupied) {
+    if (action === 'newGame') { nav(ctx, 'pushScreen', 'newGame'); return; }
+    if (action === 'load') {
+      const ok = await confirm({
+        title: 'Load this save?',
+        body: loadConfirmBody(id, meta),
+        confirmLabel: 'Load', danger: true,
+      });
+      if (!ok) return;
+      refs.selected = id;
+      ctx.bus.emit('game:load', { slot: id });
+      return;
+    }
+    if (action === 'save') {
+      if (!canSave(ctx)) {
+        ctx.bus.emit('toast', { text: 'Start or load a game before saving', kind: 'warn', ttl: 2500 });
+        this._render(ctx);
+        return;
+      }
+      // Overwrite confirmation if the slot is already occupied (UX-2) — saving clobbers the
+      // previous save irreversibly. Empty slots save without a prompt.
+      if (occupied) {
+        const ok = await confirm({
+          title: 'Overwrite save?',
+          body: overwriteConfirmBody(id, meta),
+          confirmLabel: 'Overwrite', danger: true,
+        });
+        if (!ok) return;
+      }
+      refs.selected = id;
+      ctx.bus.emit('game:save', { slot: id });
+      setTimeout(() => this._render(ctx), 120);
+      return;
+    }
+    if (action === 'delete') {
+      const ok = await confirm({
+        title: 'Delete this save?',
+        body: deleteConfirmBody(id, meta),
+        confirmLabel: 'Delete', danger: true,
+      });
+      if (!ok) return;
+      const sys = ctx.registry && ctx.registry.get && ctx.registry.get('save');
+      let deleted = false;
+      if (sys && typeof sys.deleteSlot === 'function') { try { sys.deleteSlot(id); deleted = true; } catch (e) {} }
+      if (!deleted) {
+        try { if (typeof localStorage !== 'undefined') { localStorage.removeItem(LS_PREFIX + id); deleted = true; } } catch (e) {}
+      }
+      ctx.bus.emit('toast', { text: deleted ? slotLabel(id) + ' deleted' : 'Delete failed', kind: deleted ? 'info' : 'warn', ttl: 2500 });
+      this._render(ctx);
+    }
   },
 
   _export(ctx) {
@@ -545,7 +589,32 @@ export const saveLoadScreen = {
     reader.readAsText(f);
   },
 
-  onShow(ctx) { this._render(ctx); },
-  onHide() {},
+  onShow(ctx) {
+    if (!refs) return;
+    cue('open');
+    this._render(ctx);
+    try {
+      settle(refs.title, { from: 'top', state: 'saveLoad:open' });
+      settle(refs.hang, { from: 'left', state: 'saveLoad:open' });
+      settle(refs.stage, { from: 'right', state: 'saveLoad:open' });
+      settle(refs.foot, { from: 'bottom', state: 'saveLoad:open' });
+    } catch (e) { /* motion is cosmetic */ }
+    if (this.hull && this.hull.hasMount()) {
+      this.hull.activate(ctx);
+      // _render already showed the selected save's hull; activating starts its slow yaw.
+    }
+    try {
+      const selectedRow = refs.list && refs.list.querySelector('.k-row[aria-selected="true"]');
+      (selectedRow || refs.list.querySelector('.k-row')).focus();
+    } catch (e) {}
+  },
+  onHide() {
+    cue('close');
+    if (this.hull) this.hull.deactivate();
+  },
   refresh(ctx) { this._render(ctx); },
+  dispose() {
+    if (this.hull) { this.hull.dispose(); this.hull = null; }
+    refs = null;
+  },
 };

@@ -16,11 +16,15 @@ import { slotBadgeRole } from '../src/ui/screens/saveLoad.js';
 import { labSpeedRole } from '../src/ui/screens/crucibleLabControls.js';
 import { telemetryHostilesRole } from '../src/ui/screens/crucibleLabTelemetry.js';
 
+// Frontend Task B (design/frontend/direction/tasks/TASK_B_SHELL_AND_HUD.md §1.2) moved the load
+// screen (src/ui/screens/saveLoad.js) onto the kit: it owns no CSS any more, so the injected-style
+// contracts below no longer apply to it. Its type scale, faces and colour law are styles/kit.css
+// (the sheet's grammar); its meaning roles (slotBadgeRole) and words-beside-colour strings are still
+// asserted below.
 const FILES = [
   'src/ui/screens/sandbox.js',
   'src/ui/station/screens/market.js',
   'src/ui/screens/crucibleLabControls.js',
-  'src/ui/screens/saveLoad.js',
   'src/ui/screens/help.js',
   'src/ui/screens/crucibleLabTelemetry.js',
 ];
@@ -28,7 +32,6 @@ const DISPLAY = new Map([
   ['src/ui/screens/sandbox.js', '.sf-sandbox-now'],
   ['src/ui/station/screens/market.js', '.sx-mkt-title h2'],
   ['src/ui/screens/crucibleLabControls.js', '.sf-lab-speed-now'],
-  ['src/ui/screens/saveLoad.js', '.sf-slot.sel .sf-slot-name'],
   ['src/ui/screens/help.js', '.sf-help-now'],
   ['src/ui/screens/crucibleLabTelemetry.js', '.sf-lab-tel-tick'],
 ]);
@@ -90,7 +93,6 @@ test('every figure binds --sf-data-face', () => {
   assert.match(load('src/ui/screens/sandbox.js'), /className = 'sf-fig'/);
   assert.match(load('src/ui/station/screens/market.js'), /sx-stat__v sf-fig/);
   assert.match(load('src/ui/screens/crucibleLabControls.js'), /sf-lab-speed-now sf-fig/);
-  assert.match(load('src/ui/screens/saveLoad.js'), /sf-slot-detail sf-fig/);
   assert.match(load('src/ui/screens/help.js'), /num sf-fig/);
   assert.match(load('src/ui/screens/crucibleLabTelemetry.js'), /sf-lab-tel-tick sf-fig/);
 });
