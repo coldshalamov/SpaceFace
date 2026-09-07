@@ -15675,7 +15675,7 @@
       "priority": 409,
       "title": "Credits, version, the title's remaining states",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-180.00",
         "PQ-187.03"
@@ -15699,8 +15699,10 @@
         "npm run check:settings-profile",
         "npm run check:visual-regression"
       ],
-      "receiptRefs": [],
-      "brief": "The title itself lands in PQ-187.03; this leaf adds the credits screen with third-party notices (PQ-033.00), the visible version and build hash, and the title's continue/attract states on the kit. DONE WHEN: credits and version visible in a capture that matches DIRECTION_SHEET.md under a hash-bound visual review; check:title-continue-runtime green. Task file: design/frontend/direction/tasks/TASK_B_SHELL_AND_HUD.md (spec: design/frontend/direction/KIT_SPEC.md)."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/FRONTEND-B-REPORT.md"
+      ],
+      "brief": "IMPLEMENTED 2026-09-07: the Credits screen (src/ui/screens/credits.js, data from scripts/write-credits.mjs, third-party notices included) reached from the title fine line \"SpaceFace v0.1.0 · Credits\"; the version is the fine line; credits registered in ui-grammar-surfaces. Receipt: design/program/roadmap/receipts/FRONTEND-B-REPORT.md. The title itself lands in PQ-187.03; this leaf adds the credits screen with third-party notices (PQ-033.00), the visible version and build hash, and the title's continue/attract states on the kit. DONE WHEN: credits and version visible in a capture that matches DIRECTION_SHEET.md under a hash-bound visual review; check:title-continue-runtime green. Task file: design/frontend/direction/tasks/TASK_B_SHELL_AND_HUD.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-181.01",
@@ -15708,7 +15710,7 @@
       "priority": 410,
       "title": "New Game and Load",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-156.00",
         "PQ-180.00",
@@ -15733,8 +15735,10 @@
         "npm run check:settings-profile",
         "npm run check:visual-regression"
       ],
-      "receiptRefs": [],
-      "brief": "Three starters as three ways to play with a sentence each (PQ-156); Load renders save portraits (hull, scars, titles, rap sheet, grudge). DONE WHEN: Matrix green; save round-trip; capture. Task file: design/frontend/direction/tasks/TASK_B_SHELL_AND_HUD.md (spec: design/frontend/direction/KIT_SPEC.md)."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/FRONTEND-B-REPORT.md"
+      ],
+      "brief": "IMPLEMENTED 2026-09-07: New Game and Load rebuilt on the kit (stageHull.js bounds the 3D hull to the stage; difficulty as words; saves as rows with the focused hull and a portrait), injected style blocks deleted. Receipt: design/program/roadmap/receipts/FRONTEND-B-REPORT.md. Three starters as three ways to play with a sentence each (PQ-156); Load renders save portraits (hull, scars, titles, rap sheet, grudge). DONE WHEN: Matrix green; save round-trip; capture. Task file: design/frontend/direction/tasks/TASK_B_SHELL_AND_HUD.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-181.02",
@@ -15742,7 +15746,7 @@
       "priority": 411,
       "title": "Settings depth",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-165.00",
         "PQ-180.00",
@@ -15767,8 +15771,10 @@
         "npm run check:settings-profile",
         "npm run check:visual-regression"
       ],
-      "receiptRefs": [],
-      "brief": "Presets, frame cap, pad remap, language, accessibility statement (PQ-164/165/166 leaves land here). DONE WHEN: Matrix green; every setting round-trips through the profile check. Task file: design/frontend/direction/tasks/TASK_B_SHELL_AND_HUD.md (spec: design/frontend/direction/KIT_SPEC.md)."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/FRONTEND-B-REPORT.md"
+      ],
+      "brief": "IMPLEMENTED 2026-09-07: Settings on the kit (sections as words, rows, toggles as words, rebind keys), injected style block deleted, k-stage--scroll added. Receipt: design/program/roadmap/receipts/FRONTEND-B-REPORT.md. Presets, frame cap, pad remap, language, accessibility statement (PQ-164/165/166 leaves land here). DONE WHEN: Matrix green; every setting round-trips through the profile check. Task file: design/frontend/direction/tasks/TASK_B_SHELL_AND_HUD.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-181.03",
@@ -15776,7 +15782,7 @@
       "priority": 412,
       "title": "Pause, Game Over, digest, statistics",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-180.00",
         "PQ-187.03"
@@ -15800,8 +15806,10 @@
         "npm run check:settings-profile",
         "npm run check:visual-regression"
       ],
-      "receiptRefs": [],
-      "brief": "Pause with photo mode entry; Game Over that names the cause and the telegraph; returning-player digest; lifetime statistics from aggregates. DONE WHEN: Matrix green; digest appears after a day-old save; statistics match telemetry. Task file: design/frontend/direction/tasks/TASK_B_SHELL_AND_HUD.md (spec: design/frontend/direction/KIT_SPEC.md)."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/FRONTEND-B-REPORT.md"
+      ],
+      "brief": "IMPLEMENTED 2026-09-07: Pause on the kit over the world at 0 % scrim with the HUD at 38 %; Photo mode as a pause sub-state (body.k-photo); Game Over on the kit with the cold scrim and the loss as hero numbers. Digest and statistics not in Task B. Receipt: design/program/roadmap/receipts/FRONTEND-B-REPORT.md. Pause with photo mode entry; Game Over that names the cause and the telegraph; returning-player digest; lifetime statistics from aggregates. DONE WHEN: Matrix green; digest appears after a day-old save; statistics match telemetry. Task file: design/frontend/direction/tasks/TASK_B_SHELL_AND_HUD.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-182.00",
@@ -17320,7 +17328,7 @@
       "priority": 465,
       "title": "The flight HUD to the direction",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-187.03"
       ],
@@ -17342,8 +17350,10 @@
         "npm run check:ui-a11y",
         "npm run check:responsive"
       ],
-      "receiptRefs": [],
-      "brief": "The HUD on the kit: hero scale where it matters, the arrival choreography on first undock, the temperature change on wanted; the attention rules kept. DONE WHEN: contact sheet at three widths with a hash-bound visual review against DIRECTION_SHEET.md; two ten-second clips; hud-j07 and one-voice green. Task file: design/frontend/direction/tasks/TASK_B_SHELL_AND_HUD.md (spec: design/frontend/direction/KIT_SPEC.md)."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/FRONTEND-B-REPORT.md"
+      ],
+      "brief": "IMPLEMENTED 2026-09-07: the flight HUD in the kit faces and tokens with no plates (injectHudCss + hud.js blocks swept; neighbouring law/comms/band/onboarding/massline instruments de-plated under #hud); speed as the hero number; the Power Rail as words; hud.arrive() on undock; heat/alert on --k-signal so the frame goes cold when wanted; budgets re-baselined. Receipt: design/program/roadmap/receipts/FRONTEND-B-REPORT.md. The HUD on the kit: hero scale where it matters, the arrival choreography on first undock, the temperature change on wanted; the attention rules kept. DONE WHEN: contact sheet at three widths with a hash-bound visual review against DIRECTION_SHEET.md; two ten-second clips; hud-j07 and one-voice green. Task file: design/frontend/direction/tasks/TASK_B_SHELL_AND_HUD.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-188.01",
