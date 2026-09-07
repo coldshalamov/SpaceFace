@@ -527,6 +527,12 @@ export function assessRepeatedAuthoredPackagePoolProof(report, options = {}) {
 function isProbeRelevantPath(file) {
   // git --porcelain always reports forward slashes, so no separator fixing is needed.
   const path = String(file || '');
+  // Prose is never a runtime input. Instruction files live inside these very trees --
+  // assets/AGENTS.md, src/render/AGENTS.md and their siblings are edited constantly by other
+  // lanes -- and no Markdown has ever decided whether a GLB finishes admitting. Excluding
+  // documentation keeps the gate about the thing it measures rather than about who happened
+  // to be writing notes when it ran.
+  if (/\.(?:md|markdown|txt)$/i.test(path)) return false;
   if (AUTHORED_PROBE_SOURCE_FILES.includes(path)) return true;
   if (PROBE_RELEVANT_EXTRA_FILES.includes(path)) return true;
   return PROBE_RELEVANT_PREFIXES.some((prefix) => path.startsWith(prefix));
