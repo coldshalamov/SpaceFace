@@ -42,6 +42,13 @@ const PLAYABLE_TIMEOUT_MS = readPositiveIntArg('--playable-timeout', Number(proc
 // and it streams after the control handoff rather than blocking it. It gets the same 45 s the ship
 // gate gets, as its own budget rather than a share of one.
 const CRITICAL_STATION_TIMEOUT_MS = readPositiveIntArg('--critical-station-timeout', Number(process.env.SF_ASSETS_LIVE_STATION_TIMEOUT_MS) || 45000);
+// How long the debug runtime itself may take to appear. This is a liveness wait on the harness --
+// "has the page booted at all" -- not one of the probe's quality gates, and it was the only timeout
+// here that could not be set from the environment. That asymmetry matters on a slow driver: this
+// machine reaches `SF` ready at 15120 ms measured, so a hardcoded 15000 ms aborted the whole
+// acceptance run 120 ms early, before a single asset had been examined. The default is unchanged,
+// so CI behaves exactly as before.
+const BOOT_READY_TIMEOUT_MS = readPositiveIntArg('--boot-timeout', Number(process.env.SF_ASSETS_LIVE_BOOT_TIMEOUT_MS) || 15000);
 const CHROME_PROFILE_PREFIX = 'spaceface-authored-assets-live-';
 const AUTHORED_PROBE_SOURCE_FILES = Object.freeze([
   'src/render/partsLibrary.js',
@@ -86,7 +93,7 @@ try {
   const pageIssues = collectPageIssues(cdp);
   const probeRoute = withDebugFlight(server.baseUrl);
   await cdp.send('Page.navigate', { url: probeRoute });
-  await waitFor(cdp, isBootReady, 15000, 'SpaceFace debug runtime');
+  await waitFor(cdp, isBootReady, BOOT_READY_TIMEOUT_MS, 'SpaceFace debug runtime');
   await installStartupTrace(cdp);
 
   await evalVoid(cdp, `(() => {
