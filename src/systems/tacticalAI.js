@@ -22,6 +22,7 @@ import {
 import { ensureActivityClassified, entityNeedsAiThink } from '../world/activityRuntime.js';
 import { applySpecialistCounterplay } from '../ai/specialistCounterplay.js';
 import { specialistPlanByEnemyId } from '../ai/specialistPlans.js';
+import { applyNpcFieldDeploy } from '../ai/npcFieldDeploy.js';
 import { getCombatKernel } from '../combat/kernel.js';
 
 const OWNERSHIP_REFRESH_TICKS = 3;
@@ -361,11 +362,11 @@ export function createTacticalAISystem({
         applyEngagementPosture(entity, decision.combatDoctrine || null, state);
         applyAIFiringIntent(decision, state);
         const enemyId = entity && entity.data && (entity.data.lootTableId || entity.data.enemyTypeId);
+        const fieldsSys = ctxRef && ctxRef.registry && typeof ctxRef.registry.get === 'function'
+          ? ctxRef.registry.get('fields')
+          : null;
         if (entity && specialistPlanByEnemyId(enemyId) && ctxRef) {
           const kernel = getCombatKernel(ctxRef);
-          const fields = ctxRef.registry && typeof ctxRef.registry.get === 'function'
-            ? ctxRef.registry.get('fields')
-            : null;
           applySpecialistCounterplay({
             state,
             specialist: entity,
@@ -373,9 +374,10 @@ export function createTacticalAISystem({
             doctrinePhase: doctrine && doctrine.phase,
             tick,
             attachments: kernel && kernel.attachments,
-            fields,
+            fields: fieldsSys,
           });
         }
+        if (entity && fieldsSys) applyNpcFieldDeploy(entity, state, fieldsSys);
       }
       driveChoreographyMembers(liveStack, state, tick, result.decisions || []);
       driveCohortMembers(liveStack, state, tick);

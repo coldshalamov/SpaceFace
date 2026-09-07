@@ -7765,7 +7765,7 @@
       "priority": 141,
       "title": "Fields participate in physics for everyone",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -7789,8 +7789,10 @@
         "npm run check:combat",
         "npm run check:vfx-techniques"
       ],
-      "receiptRefs": [],
-      "brief": "NPCs, cargo, debris and wrecks obey fields; NPCs deploy them (an anchor specialist wells, a scavenger cones). DONE WHEN: A well bends ≥ 5 bodies in the scenario; one NPC role deploys a field in ordinary traffic."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-147.01-REPORT.md"
+      ],
+      "brief": "DONE 2026-09-07 (Grok + controller). Seed 14701 well bends 5/5 bodies in 0.67 s including collides:false cargo. Scavenger deploys a clearing cone (tag npc, volume cone). Anchors do not double-well. DONE WHEN: A well bends ≥ 5 bodies in the scenario; one NPC role deploys a field in ordinary traffic."
     },
     {
       "id": "PQ-147.02",

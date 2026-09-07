@@ -38,9 +38,14 @@ import {
   resetOrbitWorld,
   syncOrbitRuntime,
 } from './orbitNodeRuntime.js';
+import { planNpcFieldDeploy } from '../ai/npcFieldDeploy.js';
 
 const EMITTER_TYPE = 'fieldEmitter';
 const EMITTER_MATERIAL = 'projectile'; // ghost collider: projectile sweeps can hit it, ships don't broadphase against it
+// PQ-147.01 — NPC tools share the kernel but not the player's four-slot cap.
+const FIELD_NPC_MAX_ACTIVE = 4;
+const NPC_CONE_HOLD_TICKS = 180;
+const FIELD_LOOSE_TYPES = new Set(['pickup', 'wreck', 'payload']);
 // PQ-137.09 — the well's convergence term is velocity-dependent (see FIELD_DEFS.well.damping),
 // and the leaf that authored it says what it is for: "wells converge SHIPS to 30-60 WU/s
 // relative". Craft are the subject. The kernel applies the term only when a velocity sample is
@@ -74,6 +79,7 @@ function defaultRuntime() {
     snapshot: [],   // id-sorted normalized field records — the PURE predictor seam consumer input
     active: [],     // per-field presentation records for VFX/HUD
     anchored: {},   // hull-anchored fields: fieldId -> { fieldId, sourceId, defKey, activateTick }
+    npcFields: {},  // sourceId -> { fieldId, kind, holdUntilTick }
     orbit: { count: 0, nodes: [] },
     telemetry: { fields: 0, queries: 0, affected: 0, appliedAccelSum: 0, orbitNodes: 0 },
   };
@@ -89,6 +95,7 @@ function ensureRuntime(state) {
     }
     if (f.skimActive == null) f.skimActive = false;
     if (!Object.prototype.hasOwnProperty.call(f, 'skimFieldId')) f.skimFieldId = null;
+    if (!f.npcFields || typeof f.npcFields !== 'object') f.npcFields = {};
     return f;
   }
   state.fields = defaultRuntime();
@@ -123,8 +130,18 @@ function playerOwnedFieldCount(kernel) {
   let n = 0;
   for (let i = 0; i < list.length; i++) {
     const tag = list[i] && list[i].tag;
-    if (tag === 'external' || tag === 'environmental' || tag === ORBIT_NODE_TYPE) continue;
+    if (tag === 'external' || tag === 'environmental' || tag === 'npc' || tag === ORBIT_NODE_TYPE) continue;
     n++;
+  }
+  return n;
+}
+
+function npcOwnedFieldCount(kernel) {
+  if (!kernel || typeof kernel.list !== 'function') return 0;
+  const list = kernel.list();
+  let n = 0;
+  for (let i = 0; i < list.length; i++) {
+    if (list[i] && list[i].tag === 'npc') n++;
   }
   return n;
 }
@@ -269,6 +286,7 @@ export const fields = {
     }
     this._handleInput(state, rt);
     this._syncCone(state, rt);
+    this._syncNpcFields(state, rt);
     this._syncSkimSheet(state, rt);
     this._syncAnchoredFields(state, rt);
     this._syncOrbit(state);
@@ -540,6 +558,126 @@ export const fields = {
     this._kernel.update(rt.coneFieldId, { center: this._coneCenter, dir: this._coneDir });
   },
 
+  /**
+   * PQ-147.01 — scavenger-doctrine NPCs hold a clearing cone when loose mass is nearby.
+   * Same kernel, same wedge volume as the player cone. Not a damage aura.
+   */
+  applyNpcFieldPlan(state, entity) {
+    if (!fieldsFlag('enabled')) return null;
+    if (!entity || entity.alive === false || entity.type !== 'ship') return null;
+    if (state && entity.id === state.playerId) return null;
+    const rt = ensureRuntime(state || this.state);
+    const plan = planNpcFieldDeploy(entity, state || this.state, { radius: FIELD_DEFS.cone.radius });
+    const live = rt.npcFields[entity.id];
+    const tick = (state && state.tick) | 0;
+    let wantOn = !!(plan && plan.action === 'on' && plan.kind === 'cone');
+    if (!wantOn && live && live.kind === 'cone' && tick < live.holdUntilTick) wantOn = true;
+    if (wantOn && entity.flags && entity.flags.docked) wantOn = false;
+    if (wantOn) {
+      if (live && live.kind === 'cone' && this._kernel && this._kernel.has(live.fieldId)) {
+        if (plan && plan.action === 'on') live.holdUntilTick = tick + NPC_CONE_HOLD_TICKS;
+        return live.fieldId;
+      }
+      return this._setNpcCone(state || this.state, rt, entity, true);
+    }
+    if (live) this._setNpcCone(state || this.state, rt, entity, false);
+    return null;
+  },
+
+  _setNpcCone(state, rt, entity, active) {
+    if (!entity || !this._kernel) return null;
+    const live = rt.npcFields[entity.id];
+    if (active) {
+      if (live && live.kind === 'cone' && this._kernel.has(live.fieldId)) return live.fieldId;
+      if (npcOwnedFieldCount(this._kernel) >= FIELD_NPC_MAX_ACTIVE) return null;
+      const def = FIELD_DEFS.cone;
+      const now = nowOf(state);
+      const rot = finite(entity.rot);
+      const dir = { x: Math.cos(rot), z: Math.sin(rot) };
+      const center = { x: entity.pos.x + dir.x * def.originGap, z: entity.pos.z + dir.z * def.originGap };
+      const fieldId = `field_cone_npc_${entity.id}`;
+      this._kernel.register({
+        id: fieldId,
+        kind: def.kind,
+        center,
+        dir,
+        radius: def.radius,
+        strength: def.strength,
+        falloff: def.falloff,
+        halfAngleRad: def.halfAngleRad,
+        edgeSoftRad: def.edgeSoftRad,
+        volume: fieldVolumeOf(def),
+        durationS: Infinity,
+        sourceId: entity.id,
+        ownerId: entity.id,
+        team: entity.team,
+        createdAt: now,
+        tag: 'npc',
+        filters: { excludeId: entity.id },
+      });
+      rt.npcFields[entity.id] = {
+        fieldId,
+        kind: 'cone',
+        sourceId: entity.id,
+        holdUntilTick: (state.tick | 0) + NPC_CONE_HOLD_TICKS,
+      };
+      this.bus.emit('fields:deployed', {
+        fieldId,
+        kind: 'cone',
+        sourceId: entity.id,
+        npc: true,
+        role: 'scavenger',
+        center,
+        radius: def.radius,
+      });
+      this.bus.emit('fields:coneToggled', { active: true, fieldId, sourceId: entity.id, npc: true });
+      this._emitDeployCue('cone', center.x, center.z, def.radius);
+      return fieldId;
+    }
+    if (!live) return null;
+    if (live.fieldId) this._kernel.unregister(live.fieldId);
+    delete rt.npcFields[entity.id];
+    this.bus.emit('fields:ended', { fieldId: live.fieldId, kind: live.kind, reason: FIELD_END_REASONS.toggledOff });
+    this.bus.emit('fields:coneToggled', { active: false, fieldId: live.fieldId, sourceId: entity.id, npc: true });
+    return null;
+  },
+
+  _syncNpcFields(state, rt) {
+    const ids = Object.keys(rt.npcFields || {});
+    for (let i = 0; i < ids.length; i++) {
+      const sourceId = ids[i];
+      const rec = rt.npcFields[sourceId];
+      const entity = state.entities && state.entities.get ? state.entities.get(Number(sourceId) || sourceId) : null;
+      const live = entity && entity.alive !== false ? entity : null;
+      const resolved = live || (state.entities && typeof state.entities.get === 'function'
+        ? state.entities.get(sourceId)
+        : null);
+      const hull = resolved && resolved.alive !== false ? resolved : null;
+      if (!hull) {
+        if (rec && rec.fieldId && this._kernel) this._kernel.unregister(rec.fieldId);
+        delete rt.npcFields[sourceId];
+        if (rec) this.bus.emit('fields:ended', { fieldId: rec.fieldId, kind: rec.kind, reason: FIELD_END_REASONS.destroyed });
+        continue;
+      }
+      if (rec.kind !== 'cone' || !rec.fieldId) continue;
+      const def = FIELD_DEFS.cone;
+      const rot = finite(hull.rot);
+      this._coneDir.x = Math.cos(rot); this._coneDir.z = Math.sin(rot);
+      this._coneCenter.x = hull.pos.x + this._coneDir.x * def.originGap;
+      this._coneCenter.z = hull.pos.z + this._coneDir.z * def.originGap;
+      this._kernel.update(rec.fieldId, { center: this._coneCenter, dir: this._coneDir });
+    }
+    const ships = (state.entityIndex && state.entityIndex.aiShips)
+      || (state.entityIndex && state.entityIndex.ships)
+      || state.entityList
+      || [];
+    for (let i = 0; i < ships.length; i++) {
+      const entity = ships[i];
+      if (!entity || entity.type !== 'ship' || entity.id === state.playerId) continue;
+      this.applyNpcFieldPlan(state, entity);
+    }
+  },
+
   // PQ-147.00 — Skim Collector is a ship-attached scoop SHEET. PlanetRuntime owns collectorOn;
   // this system only mirrors that latch into the kernel so the volume bends loose mass.
   _syncSkimSheet(state, rt) {
@@ -711,6 +849,40 @@ export const fields = {
     return isDynamicPhysicsBodyEntity(e);
   },
 
+  _collectFieldCandidates(field, state, out) {
+    const queryRadius = this.helpers && this.helpers.queryRadius;
+    if (typeof queryRadius === 'function') {
+      queryRadius(field.center, field.radius, out);
+    } else {
+      out.length = 0;
+    }
+    const seen = this._candidateSeen || (this._candidateSeen = new Set());
+    seen.clear();
+    for (let i = 0; i < out.length; i++) seen.add(out[i]);
+    const r2 = field.radius * field.radius;
+    const cx = field.center.x;
+    const cz = field.center.z;
+    const index = state && state.entityIndex;
+    const lists = index && index.__spacefaceEntityIndexV1
+      ? [index.pickups, index.wrecks, index.payloads]
+      : [state && state.entityList];
+    for (let i = 0; i < lists.length; i++) {
+      const list = lists[i];
+      if (!list) continue;
+      for (let j = 0; j < list.length; j++) {
+        const e = list[j];
+        if (!e || seen.has(e) || e.alive === false || !e.pos) continue;
+        if (!FIELD_LOOSE_TYPES.has(e.type) && !(e.data && e.data.majorDebris)) continue;
+        const dx = e.pos.x - cx;
+        const dz = e.pos.z - cz;
+        if (dx * dx + dz * dz > r2) continue;
+        out.push(e);
+        seen.add(e);
+      }
+    }
+    return out;
+  },
+
   _profileFor(e, state) {
     return fieldBodyProfile(e, state, this._bodyProfile);
   },
@@ -765,25 +937,24 @@ export const fields = {
     this._massStateFields.clear();
     this._massStateStrengths.clear();
     let queries = 0;
-    // One bounded spatial-hash query per active field (dormant = zero queries). Union the candidates
-    // so a body inside two fields is force-summed once, then capped once.
+    // One bounded spatial-hash query per active field, then union cargo/debris/wrecks that the
+    // hash never stored because they spawn with collides:false (jettisoned cargo). A well that
+    // only tugs colliding hulls is a toy for ships, not a pile-maker.
     for (let i = 0; i < fieldsList.length; i++) {
       const field = fieldsList[i];
-      if (typeof queryRadius === 'function') {
-        queryRadius(field.center, field.radius, this._queryOut);
-        queries++;
-        let fieldAffected = 0;
-        const maxAffected = Number.isFinite(field.maxAffected) ? field.maxAffected : Infinity;
-        for (let j = 0; j < this._queryOut.length; j++) {
-          const e = this._queryOut[j];
-          if (this._forceableBody(e)) {
-            const profile = this._profileFor(e, state);
-            if (!fieldAffectsBody(field, profile)) continue;
-            affected.set(e, true);
-            this._considerMassState(field, e);
-            fieldAffected++;
-            if (fieldAffected >= maxAffected) break;
-          }
+      this._collectFieldCandidates(field, state, this._queryOut);
+      if (typeof queryRadius === 'function') queries++;
+      let fieldAffected = 0;
+      const maxAffected = Number.isFinite(field.maxAffected) ? field.maxAffected : Infinity;
+      for (let j = 0; j < this._queryOut.length; j++) {
+        const e = this._queryOut[j];
+        if (this._forceableBody(e)) {
+          const profile = this._profileFor(e, state);
+          if (!fieldAffectsBody(field, profile)) continue;
+          affected.set(e, true);
+          this._considerMassState(field, e);
+          fieldAffected++;
+          if (fieldAffected >= maxAffected) break;
         }
       }
     }
