@@ -91,3 +91,13 @@ test('probe synchronizes player physics bodies and isolates electron background 
   assert.match(probe, /phys\?._sg02\?\.records/);
 });
 
+test('probe configures billboard and buoy shot plan and subjects', () => {
+  assert.match(probe, /01-core-station-billboard-ordinary\.png/);
+  assert.match(probe, /02-tethys-customs-buoy-ordinary\.png/);
+  assert.match(probe, /BILLBOARD_BUOY_REAUTHOR_SHOT_PLAN/);
+  assert.match(probe, /places\/place_station_billboard\.glb/);
+  assert.match(probe, /places\/place_nav_buoy\.glb/);
+});
+
+
+

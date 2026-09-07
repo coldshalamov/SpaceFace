@@ -4892,7 +4892,7 @@
       "priority": 31,
       "title": "Capture revised billboard and buoy Browser and Electron presentation",
       "kind": "acceptance_capture",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-022.billboard-buoy-reauthor"
       ],
@@ -4908,8 +4908,12 @@
         "npm run check:pq022:corridor-assets",
         "npm run check:assets:live"
       ],
-      "receiptRefs": [],
-      "brief": "Capture only the revised billboard and navigation buoy at useful game-camera framings with distinct Electron parity; retain all unaffected Row 7 evidence."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-022-billboard-buoy-reauthor-h1-REPORT.md"
+      ],
+      "brief": "Capture only the revised billboard and navigation buoy at useful game-camera framings with distinct Electron parity; retain all unaffected Row 7 evidence.",
+      "partialIntegration": "2026-09-07 candidate 5b1ee35e retains accepted Browser and source-Electron launches at fixed seed 47, exact source/release identity, default framing, authored-release admission, live Helios/Tethys placements, normalized semantic parity, zero page issues, consumed claim ledgers, and clean Electron teardown. Both headed mutexes are released; no performance or causal visual verdict is claimed.",
+      "blocker": null
     },
     {
       "id": "PQ-022.billboard-buoy-reauthor-review",

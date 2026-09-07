@@ -1,0 +1,40 @@
+{
+  "schema": "spaceface.validation-broker-claim.v1",
+  "claimId": "29056-6da9a9d4d365d0d80d33ed60",
+  "manifestId": "pq022-billboard-buoy-reauthor-browser",
+  "mode": "acceptance",
+  "runtimeKind": "browser",
+  "issuedAt": "2026-09-07T14:14:51.149Z",
+  "expiresAt": "2026-09-07T14:44:51.149Z",
+  "consumed": false,
+  "receipt": {
+    "routeDigest": "0bac902d599f8bd72e211a8087578180217f592be5622aa1b6de3b12fd146f09",
+    "regressionDigest": "ed92eb048128133aeaaa0e2b183c75e7999ea2f4c936538f6fb0032af40e0826",
+    "candidateDigest": "8f24488c8d9eede626d45560b65ecfeef96ee3d69148ad4ff015b5709da450c0",
+    "productionDigest": "0bac902d599f8bd72e211a8087578180217f592be5622aa1b6de3b12fd146f09",
+    "acknowledgesFailureFingerprint": null
+  },
+  "digests": {
+    "routeDigest": "0bac902d599f8bd72e211a8087578180217f592be5622aa1b6de3b12fd146f09",
+    "regressionDigest": "ed92eb048128133aeaaa0e2b183c75e7999ea2f4c936538f6fb0032af40e0826",
+    "productionDigest": "0bac902d599f8bd72e211a8087578180217f592be5622aa1b6de3b12fd146f09",
+    "harnessDigest": "0240fe9b5c3db9b7785cba8372584276359f2336ac2b9d9f89d69557d2c228c9",
+    "scenarioDigest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "inputDigest": "8abf98d22289855c1b238060dc487e656e26e4a5f14efd347d018e169e5da338",
+    "profileDigest": "4648d249bc847fee3eebc6392a6b05cd910508cc51b578e75f1cfe18a46cba78",
+    "manifestDigest": "e330ff2e9d65e8bc5265f64a3623db81b09b6a7bb6474f02d4b89fba2d1e1a2f",
+    "candidateDigest": "8f24488c8d9eede626d45560b65ecfeef96ee3d69148ad4ff015b5709da450c0",
+    "buildDigest": "cdd523a24578c280983f59a98f0439201a07e1136dcf24686b379de8a74671dd",
+    "sourceCandidateDigest": null,
+    "worktreeDigest": null,
+    "worktreeHead": null,
+    "worktreeBranch": null,
+    "worktreeChangedFileCount": null,
+    "scenarioManifestDigest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "saveDigest": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+    "inputTapeDigest": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+    "cameraManifestDigest": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+    "candidateSourceDigestMode": "all-src-js",
+    "candidateSourcePathCount": 1017
+  }
+}

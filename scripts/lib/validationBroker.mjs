@@ -2301,6 +2301,7 @@ export async function requireBrokerClaimOrDiagnostic({
         ? STATUS.BLOCKED_STALE_CANDIDATE
         : STATUS.BLOCKED_MISSING_FAST_RECEIPT,
       reason: check.reason,
+      detail: check.detail,
       diagnostic: false,
     };
   }
@@ -2404,6 +2405,8 @@ async function authorizeAndMaybeRun({
         exitCode: fastGates.exitCode,
       };
     }
+
+    Object.assign(digests, await computeGateDigestsFromManifest({ root, manifest }));
 
     let receipt = await readFastGateReceipt({ outputRoot });
 
