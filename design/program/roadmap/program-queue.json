@@ -12317,7 +12317,7 @@
       "priority": 289,
       "title": "Skeleton and data states adopted",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -12338,8 +12338,10 @@
         "npm run check:command-deck-ui",
         "npm run check:ui-effects"
       ],
-      "receiptRefs": [],
-      "brief": "All seven station screens render through CREST/STAGE/APRON/DRAWER with the four data states and entity links; the legacy stationHub helpers are lifted out (Phase 7 as a refactor). DONE WHEN: check:data-states and check:entity-links cover the station; zero legacy imports from stationHub.js. Task file: design/frontend/direction/tasks/TASK_C_STATION_INSTRUMENTS_CHART.md (spec: design/frontend/direction/KIT_SPEC.md)."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/FRONTEND-C-REPORT.md"
+      ],
+      "brief": "IMPLEMENTED 2026-09-07: the station shell is the kit screen (stationApp.js, dock.js, stationScreen.js): the berth hull mount behind the words, the destinations as words along the foot, the four data states and entity drawer in kit clothes (kit.css Task C additions); three station sheets became one styles/station.css. Receipt: design/program/roadmap/receipts/FRONTEND-C-REPORT.md. All seven station screens render through CREST/STAGE/APRON/DRAWER with the four data states and entity links; the legacy stationHub helpers are lifted out (Phase 7 as a refactor). DONE WHEN: check:data-states and check:entity-links cover the station; zero legacy imports from stationHub.js. Task file: design/frontend/direction/tasks/TASK_C_STATION_INSTRUMENTS_CHART.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-162.01",
@@ -12347,7 +12349,7 @@
       "priority": 290,
       "title": "Hierarchy and colour discipline",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -12368,8 +12370,10 @@
         "npm run check:command-deck-ui",
         "npm run check:ui-effects"
       ],
-      "receiptRefs": [],
-      "brief": "One primary per screen, orange means one thing, italics never outrank data, the bar has a transcript, industry tiers read. DONE WHEN: A cold reviewer verdict per screen; the Kimi findings closed one by one in the receipt. Task file: design/frontend/direction/tasks/TASK_C_STATION_INSTRUMENTS_CHART.md (spec: design/frontend/direction/KIT_SPEC.md)."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/FRONTEND-C-REPORT.md"
+      ],
+      "brief": "IMPLEMENTED 2026-09-07: market and ledger as the dense register (twelve rows, half width, the selected number at hero size); missions, factions, industry, bar on kit classes and tokens only; every injected station style block deleted; colour by token (check:colour-tokens, check:type-floor green). Receipt: design/program/roadmap/receipts/FRONTEND-C-REPORT.md. One primary per screen, orange means one thing, italics never outrank data, the bar has a transcript, industry tiers read. DONE WHEN: A cold reviewer verdict per screen; the Kimi findings closed one by one in the receipt. Task file: design/frontend/direction/tasks/TASK_C_STATION_INSTRUMENTS_CHART.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-162.02",
@@ -12377,7 +12381,7 @@
       "priority": 291,
       "title": "Arriving somewhere",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -12398,8 +12402,10 @@
         "npm run check:command-deck-ui",
         "npm run check:ui-effects"
       ],
-      "receiptRefs": [],
-      "brief": "Docking is a place: the berth with your hull, the mechanic, ambient work, one line of local news; screens open from the place, not from a tab strip. DONE WHEN: Blind reviewer names the station from the docked view; capture. Task file: design/frontend/direction/tasks/TASK_C_STATION_INSTRUMENTS_CHART.md (spec: design/frontend/direction/KIT_SPEC.md)."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/FRONTEND-C-REPORT.md"
+      ],
+      "brief": "IMPLEMENTED 2026-09-07: docking is an arrival: the station name stamps, the news line and the foot words settle, the berth hull is the picture; the duplicate ui_confirm dock chime removed (audioSystem owns sfx_dock_clunk). Receipt: design/program/roadmap/receipts/FRONTEND-C-REPORT.md. Docking is a place: the berth with your hull, the mechanic, ambient work, one line of local news; screens open from the place, not from a tab strip. DONE WHEN: Blind reviewer names the station from the docked view; capture. Task file: design/frontend/direction/tasks/TASK_C_STATION_INSTRUMENTS_CHART.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-048.01",
@@ -15623,7 +15629,7 @@
       "priority": 407,
       "title": "Traffic and heat layers",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -15644,8 +15650,10 @@
         "npm run check:map-authority",
         "npm run check:starmap-objective"
       ],
-      "receiptRefs": [],
-      "brief": "Convoys, traffic density and patrol presence from state.traffic; heat tiers from PQ-151; contract pins as a layer. DONE WHEN: Toggling layers shows live traffic; layer state persists (screen memory). Task file: design/frontend/direction/tasks/TASK_C_STATION_INSTRUMENTS_CHART.md (spec: design/frontend/direction/KIT_SPEC.md)."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/FRONTEND-C-REPORT.md"
+      ],
+      "brief": "IMPLEMENTED 2026-09-07: the chart on the kit (5b1ee35e0): the ink palette mapped to the six kit values, no plates, the canvas clears to the sky; lens words with aria-pressed; layers unchanged in behaviour. Receipt: design/program/roadmap/receipts/FRONTEND-C-REPORT.md. Convoys, traffic density and patrol presence from state.traffic; heat tiers from PQ-151; contract pins as a layer. DONE WHEN: Toggling layers shows live traffic; layer state persists (screen memory). Task file: design/frontend/direction/tasks/TASK_C_STATION_INSTRUMENTS_CHART.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-168.01",
@@ -15653,7 +15661,7 @@
       "priority": 408,
       "title": "One answer per question",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -15674,8 +15682,10 @@
         "npm run check:map-authority",
         "npm run check:starmap-objective"
       ],
-      "receiptRefs": [],
-      "brief": "Merge mapNavContext and the Overview inspector; nine tabs get primary/secondary tiers; sub-12 px nodes to the floor by layout. DONE WHEN: Zero duplicated answers; smallest text 12 px; cold review verdict. Task file: design/frontend/direction/tasks/TASK_C_STATION_INSTRUMENTS_CHART.md (spec: design/frontend/direction/KIT_SPEC.md)."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/FRONTEND-C-REPORT.md"
+      ],
+      "brief": "IMPLEMENTED 2026-09-07: the chart's inspector, rail and apron as kit words and rows — one title block, one sentence per state, the route ribbon as a sentence; the map's authority and every guarding check unchanged. Receipt: design/program/roadmap/receipts/FRONTEND-C-REPORT.md. Merge mapNavContext and the Overview inspector; nine tabs get primary/secondary tiers; sub-12 px nodes to the floor by layout. DONE WHEN: Zero duplicated answers; smallest text 12 px; cold review verdict. Task file: design/frontend/direction/tasks/TASK_C_STATION_INSTRUMENTS_CHART.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-181.00",
@@ -17369,7 +17379,7 @@
       "priority": 466,
       "title": "THE SHIP to the direction",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-187.03"
       ],
@@ -17386,8 +17396,10 @@
         "npm run check:baseline",
         "npm run check:ui-a11y"
       ],
-      "receiptRefs": [],
-      "brief": "The hull as the picture at full bleed with labels pinned to it; the four bands re-set on the kit; orbit kept. DONE WHEN: contact sheet with a hash-bound visual review against DIRECTION_SHEET.md; every band still answers why the ship flies like this. Task file: design/frontend/direction/tasks/TASK_C_STATION_INSTRUMENTS_CHART.md (spec: design/frontend/direction/KIT_SPEC.md)."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/FRONTEND-C-REPORT.md"
+      ],
+      "brief": "IMPLEMENTED 2026-09-07: THE SHIP and Shipworks share one kit-panel stage (shipworks.js): hull at full bleed and orbitable, six static corner rows instead of dials, pins by hairline leaders, four hero bands along the foot with the selected band explaining itself in rows, verbs as words, the module chooser takes the hang column instead of a modal; shipScreen.js host root is k-screen--stage. Receipt: design/program/roadmap/receipts/FRONTEND-C-REPORT.md. The hull as the picture at full bleed with labels pinned to it; the four bands re-set on the kit; orbit kept. DONE WHEN: contact sheet with a hash-bound visual review against DIRECTION_SHEET.md; every band still answers why the ship flies like this. Task file: design/frontend/direction/tasks/TASK_C_STATION_INSTRUMENTS_CHART.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-188.02",
@@ -17395,7 +17407,7 @@
       "priority": 467,
       "title": "THE FOOTPRINT and THE RANGE to the direction",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-187.03"
       ],
@@ -17412,8 +17424,10 @@
         "npm run check:baseline",
         "npm run check:ui-a11y"
       ],
-      "receiptRefs": [],
-      "brief": "The consequence board with its wanted temperature; the Range's teaching voice on the kit without changing the drills. DONE WHEN: contact sheet with a hash-bound visual review against DIRECTION_SHEET.md; the four rungs still complete under real input. Task file: design/frontend/direction/tasks/TASK_C_STATION_INSTRUMENTS_CHART.md (spec: design/frontend/direction/KIT_SPEC.md)."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/FRONTEND-C-REPORT.md"
+      ],
+      "brief": "IMPLEMENTED 2026-09-07: THE FOOTPRINT (1b8f79e3b) and THE RANGE (052b06f47) on the kit: k-screen regions, chains/marks as rows, hero figures in the corner, verbs as foot words; injected style blocks and legacy fp-* rules deleted. Receipt: design/program/roadmap/receipts/FRONTEND-C-REPORT.md. The consequence board with its wanted temperature; the Range's teaching voice on the kit without changing the drills. DONE WHEN: contact sheet with a hash-bound visual review against DIRECTION_SHEET.md; the four rungs still complete under real input. Task file: design/frontend/direction/tasks/TASK_C_STATION_INSTRUMENTS_CHART.md (spec: design/frontend/direction/KIT_SPEC.md)."
     },
     {
       "id": "PQ-191.00",
