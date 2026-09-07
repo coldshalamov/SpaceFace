@@ -1,0 +1,14 @@
+{
+  "schema": "spaceface.rangeDrill.v1",
+  "id": "drill.power.repulsor",
+  "powerId": "repulsor",
+  "action": "deployRepulsor",
+  "railSlot": 6,
+  "volume": "ring",
+  "title": "Gravity bowling",
+  "rule": "A RING SHOVES MASS OUT TO A BERM",
+  "sentence": "Drop a ring under you that shoves everything out to a berm you can bowl into.",
+  "instruction": "Drop the Repulsor under the chase and let the berm throw the wrecks outward. Cut the emitter if you get pinned.",
+  "seed": 14706,
+  "ticks": 90
+}

@@ -165,6 +165,7 @@ function controlSections(state) {
       ['Deploy attractive Well (at aim; pulls light bodies & shots — heavy ships shrug)', 'deployWell'],
       ['Deploy Repulsor (drops at ship; shoves bodies outward)', 'deployRepulsor'],
       ['Toggle Clearing Cone (forward gravitic snowplow; toggle on/off)', 'toggleClearingCone'],
+      ['Open a scoop sheet and harvest by grazing a planet band', 'toggleSkimCollector'],
     ]],
     ['Interface (fixed keys)', [
       ['Aim weapons', null, 'Mouse'],

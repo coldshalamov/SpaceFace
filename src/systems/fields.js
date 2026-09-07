@@ -22,7 +22,7 @@
 // cleared on save:loaded/sector:exit/game:new — which deliberately sidesteps the save-schema mutex
 // (a save/reload legitimately clears an in-flight field cooldown).
 
-import { FIELD_DEFS, FIELD_KINDS, FIELD_MAX_ACTIVE, FIELD_END_REASONS, FIELD_PALETTE, WELL_GRIND, fieldsFlag } from '../data/fields.js';
+import { FIELD_DEFS, FIELD_KINDS, FIELD_MAX_ACTIVE, FIELD_END_REASONS, FIELD_PALETTE, WELL_GRIND, fieldsFlag, fieldVolumeOf } from '../data/fields.js';
 import { createFieldKernel, fieldAffectsBody, fieldRawAcceleration, sampleFieldAcceleration } from '../core/fields/fieldKernel.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
@@ -65,6 +65,8 @@ function defaultRuntime() {
     deployed: {},
     coneActive: false,
     coneFieldId: null,
+    skimActive: false,
+    skimFieldId: null,
     // Runtime-only deploy cooldowns (NON-serialized). Cleared on lifecycle boundaries.
     cooldowns: { well: 0, repulsor: 0 },
     lastDenial: null,
@@ -85,10 +87,34 @@ function ensureRuntime(state) {
     if (f.telemetry && typeof f.telemetry === 'object' && f.telemetry.orbitNodes == null) {
       f.telemetry.orbitNodes = 0;
     }
+    if (f.skimActive == null) f.skimActive = false;
+    if (!Object.prototype.hasOwnProperty.call(f, 'skimFieldId')) f.skimFieldId = null;
     return f;
   }
   state.fields = defaultRuntime();
   return state.fields;
+}
+
+// powerRail.js already reads slot 8 from planetRuntime.record.collectorOn or planet.collectorOn.
+// PlanetRuntime writes collectorOn under planet.player only — feed the existing hook, do not
+// restyle the rail.
+function feedRailHooks(state, rt) {
+  if (!state) return;
+  const planet = state.planet;
+  const playerPlanet = planet && planet.player;
+  if (playerPlanet && typeof playerPlanet.collectorOn === 'boolean') {
+    planet.collectorOn = !!playerPlanet.collectorOn;
+    if (!state.planetRuntime || state.planetRuntime.fieldsRailMirror) {
+      state.planetRuntime = {
+        fieldsRailMirror: true,
+        collectorOn: planet.collectorOn,
+        record: { collectorOn: planet.collectorOn },
+      };
+    }
+  }
+  if (rt) {
+    rt.skimActive = !!(rt.skimFieldId);
+  }
 }
 
 function playerOwnedFieldCount(kernel) {
@@ -236,12 +262,14 @@ export const fields = {
       // Not flying (docked / station): apply no forces, but still tick expiry + destruction so a
       // field never outlives its bounded lifetime while the player is away, and keep the cone off.
       if (rt.coneActive) this._setConeActive(state, rt, false, FIELD_END_REASONS.toggledOff);
+      this._syncSkimSheet(state, rt);
       this._syncEmitters(state, rt, /*applyForces*/ false, dt);
       this._publish(state, rt, 0, 0, 0);
       return;
     }
     this._handleInput(state, rt);
     this._syncCone(state, rt);
+    this._syncSkimSheet(state, rt);
     this._syncAnchoredFields(state, rt);
     this._syncOrbit(state);
     this._syncEmitters(state, rt, /*applyForces*/ true, dt);
@@ -433,6 +461,9 @@ export const fields = {
       // does not exist on the default route and a body just falls faster and faster.
       damping: def.damping,
       falloff: def.falloff,
+      volume: fieldVolumeOf(def),
+      innerRadius: def.innerRadius || 0,
+      innerSoft: def.innerSoft || 0,
       durationS: def.durationS,
       sourceId: emitter.id,
       ownerId: player.id,
@@ -473,6 +504,7 @@ export const fields = {
       this._kernel.register({
         id: fieldId, kind: def.kind, center, dir, radius: def.radius, strength: def.strength,
         falloff: def.falloff, halfAngleRad: def.halfAngleRad, edgeSoftRad: def.edgeSoftRad,
+        volume: fieldVolumeOf(def),
         durationS: Infinity, sourceId: player.id, team: player.team, createdAt: now,
         // Owner exclusion, same rule as the deployed tools: the rig never pushes its own hull.
         // The wedge apex sits ahead of the nose so geometry already keeps the player out; this
@@ -506,6 +538,57 @@ export const fields = {
     this._coneCenter.x = player.pos.x + this._coneDir.x * def.originGap;
     this._coneCenter.z = player.pos.z + this._coneDir.z * def.originGap;
     this._kernel.update(rt.coneFieldId, { center: this._coneCenter, dir: this._coneDir });
+  },
+
+  // PQ-147.00 — Skim Collector is a ship-attached scoop SHEET. PlanetRuntime owns collectorOn;
+  // this system only mirrors that latch into the kernel so the volume bends loose mass.
+  _syncSkimSheet(state, rt) {
+    const player = this._player(state);
+    const planet = state.planet;
+    const collectorOn = !!(planet && planet.player && planet.player.collectorOn);
+    const want = collectorOn
+      && state.mode === 'flight'
+      && player
+      && player.alive
+      && !(player.flags && player.flags.docked);
+    if (!want) {
+      if (rt.skimFieldId && this._kernel) this._kernel.unregister(rt.skimFieldId);
+      rt.skimActive = false;
+      rt.skimFieldId = null;
+      return;
+    }
+    const def = FIELD_DEFS.skim;
+    const rot = finite(player.rot);
+    const dir = { x: Math.cos(rot), z: Math.sin(rot) };
+    const center = {
+      x: player.pos.x + dir.x * def.originGap,
+      z: player.pos.z + dir.z * def.originGap,
+    };
+    const fieldId = rt.skimFieldId || `field_skim_${player.id}`;
+    if (!this._kernel.has(fieldId)) {
+      this._kernel.register({
+        id: fieldId,
+        kind: def.kind,
+        volume: fieldVolumeOf(def),
+        center,
+        dir,
+        radius: def.radius,
+        halfWidth: def.halfWidth,
+        strength: def.strength,
+        falloff: def.falloff,
+        durationS: Infinity,
+        sourceId: player.id,
+        ownerId: player.id,
+        team: player.team,
+        createdAt: nowOf(state),
+        filters: { excludeId: player.id },
+      });
+      rt.skimFieldId = fieldId;
+      this._emitDeployCue('sheet', center.x, center.z, def.radius);
+    } else {
+      this._kernel.update(fieldId, { center, dir });
+    }
+    rt.skimActive = true;
   },
 
   // ── lifecycle: expiry + destruction cleanup (brief req 8) ────────────────────────────────────
@@ -910,7 +993,9 @@ export const fields = {
       rec.center.x = f.center.x; rec.center.z = f.center.z;
       rec.dir.x = f.dir.x; rec.dir.z = f.dir.z;
       rec.radius = f.radius; rec.strength = f.strength; rec.falloff = f.falloff;
-      rec.halfAngleRad = f.halfAngleRad; rec.palette = FIELD_PALETTE[f.kind];
+      rec.halfAngleRad = f.halfAngleRad; rec.halfWidth = f.halfWidth;
+      rec.volume = f.volume || fieldVolumeOf(f);
+      rec.palette = FIELD_PALETTE[f.kind] || FIELD_PALETTE[rec.volume] || null;
       rec.expireAt = f.expireAt;  // Infinity for the sustained cone; the HUD countdown chip reads it
       // engaged = this tick actually pulled/pushed a body (state-driven; drives the world-space
       // engagement tell — no affected body, no articulation, per bible §4).
@@ -923,26 +1008,72 @@ export const fields = {
       rec.distortionRadius = isWell ? finite(f.radius, 0) : 0;
       rec.distortionStrength = isWell ? Math.max(0, finite(f.strength, 0)) : 0;
     }
+    n = this._publishSeedVolume(state, active, n);
     active.length = n; // trim retired fields
+    feedRailHooks(state, rt);
     const tel = rt.telemetry;
     tel.fields = fieldsList.length; tel.queries = queries; tel.affected = affected; tel.appliedAccelSum = accelSum;
     tel.orbitNodes = rt.orbit && Number.isInteger(rt.orbit.count) ? rt.orbit.count : 0;
   },
 
+  // Mass Seed is a Rapier lock, not a gravity well. Publish a RING volume so the rail/drills/VFX
+  // grammar can name the shape without drawing a sphere or inventing a second force owner.
+  _publishSeedVolume(state, active, n) {
+    const ms = state && state.massSeed;
+    const phase = ms && ms.phase;
+    const live = phase === 'travel' || phase === 'locking' || phase === 'active' || phase === 'warning';
+    if (!live) return n;
+    const def = FIELD_DEFS.seed;
+    let sx = finite(ms.lockPos && ms.lockPos.x);
+    let sz = finite(ms.lockPos && ms.lockPos.z);
+    const seedEnt = ms.seedId != null && state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(ms.seedId)
+      : null;
+    if (seedEnt && seedEnt.pos) {
+      sx = finite(seedEnt.pos.x, sx);
+      sz = finite(seedEnt.pos.z, sz);
+    }
+    let rec = active[n];
+    if (!rec) rec = active[n] = { center: { x: 0, z: 0 }, dir: { x: 1, z: 0 } };
+    rec.id = 'field_seed_present';
+    rec.kind = 'seed';
+    rec.tag = 'power';
+    rec.volume = fieldVolumeOf(def);
+    rec.center.x = sx; rec.center.z = sz;
+    rec.dir.x = 1; rec.dir.z = 0;
+    rec.radius = def.radius;
+    rec.strength = 0;
+    rec.falloff = 1;
+    rec.halfAngleRad = 0;
+    rec.halfWidth = 0;
+    rec.palette = FIELD_PALETTE.seed;
+    rec.expireAt = Infinity;
+    rec.engaged = true;
+    rec.distortionRadius = 0;
+    rec.distortionStrength = 0;
+    return n + 1;
+  },
+
   // ── VFX cues (presentation bus; renderer consumes — no renderer fork) ─────────────────────────
 
   _emitDeployCue(kind, x, z, radius) {
-    const pal = FIELD_PALETTE[kind];
+    const pal = FIELD_PALETTE[kind] || FIELD_PALETTE.well;
+    const color = kind === 'repulsor'
+      ? pal.coreWarm
+      : (pal.core || pal.scoop || pal.ring || pal.filament || '#39d0ff');
     this.bus.emit('presentation:vfxCue', {
       id: `field.${kind}.deploy`,
       lane: 'field',
+      family: 'field',
+      field: true,
+      volume: fieldVolumeOf(kind),
       particles: 20,
       lights: 1,
       magnitude: 0.9,
       radius,
       position: { x, z },
       material: 'energy',
-      color: kind === 'repulsor' ? pal.coreWarm : pal.core,
+      color,
       flashReduced: true,
     });
   },

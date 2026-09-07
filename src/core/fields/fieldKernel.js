@@ -18,6 +18,7 @@ import {
   FIELD_KINDS,
   FIELD_COUPLING,
   FIELD_MAX_ACCEL,
+  fieldVolumeOf,
 } from '../../data/fields.js';
 
 function finite(value, fallback = 0) {
@@ -30,19 +31,27 @@ function clamp(value, lo, hi) {
   return Math.max(lo, Math.min(hi, value));
 }
 
+function isKnownKind(kind) {
+  return kind === FIELD_KINDS.WELL
+    || kind === FIELD_KINDS.REPULSOR
+    || kind === FIELD_KINDS.CONE
+    || kind === FIELD_KINDS.SHEET;
+}
+
 // Normalize a raw register() spec into a frozen-shape live record. Pure; allocates one record.
 export function normalizeField(spec = {}) {
-  const kind = spec.kind === FIELD_KINDS.WELL || spec.kind === FIELD_KINDS.REPULSOR || spec.kind === FIELD_KINDS.CONE
-    ? spec.kind : FIELD_KINDS.WELL;
+  const kind = isKnownKind(spec.kind) ? spec.kind : FIELD_KINDS.WELL;
   const center = spec.center || {};
   const dir = spec.dir || {};
-  let dx = finite(dir.x, kind === FIELD_KINDS.CONE ? 1 : 0);
+  const needsDir = kind === FIELD_KINDS.CONE || kind === FIELD_KINDS.SHEET;
+  let dx = finite(dir.x, needsDir ? 1 : 0);
   let dz = finite(dir.z, 0);
   const dlen = Math.hypot(dx, dz);
   if (dlen > 1e-6) { dx /= dlen; dz /= dlen; } else { dx = 1; dz = 0; }
   return {
     id: String(spec.id != null ? spec.id : `field_${kind}`),
     kind,
+    volume: fieldVolumeOf(spec),
     center: { x: finite(center.x), z: finite(center.z) },
     dir: { x: dx, z: dz },
     radius: positive(spec.radius, 120),
@@ -56,6 +65,8 @@ export function normalizeField(spec = {}) {
     // math bit-identical, and the pure predictor seam picks the shape up with no further wiring.
     innerRadius: Math.max(0, finite(spec.innerRadius, 0)),
     innerSoft: Math.max(0, finite(spec.innerSoft, 0)),
+    // PQ-147.00: scoop-sheet half-width (WU). Unused by well/repulsor/cone.
+    halfWidth: positive(spec.halfWidth, 48),
     // PQ-013: presentation tag passthrough ('external' = authored world profile, not a player
     // deploy — the fields system keeps it out of the deploy cap and the Intake-funnel VFX).
     tag: typeof spec.tag === 'string' ? spec.tag : null,
@@ -146,6 +157,29 @@ export function fieldRawAcceleration(field, x, z, out, vel = null) {
   if (!field || field.strength <= 0 || !(field.radius > 0)) return o;
   const dx = x - field.center.x;
   const dz = z - field.center.z;
+
+  if (field.kind === FIELD_KINDS.SHEET) {
+    // Scoop sheet: a finite slab along dir × halfWidth. Bodies in the slab are collected onto
+    // the centerline (lateral squeeze) — a ribbon, never a sphere.
+    const along = dx * field.dir.x + dz * field.dir.z;
+    if (along < 0 || along >= field.radius) return o;
+    const latX = dx - field.dir.x * along;
+    const latZ = dz - field.dir.z * along;
+    const lat = Math.hypot(latX, latZ);
+    const halfW = positive(field.halfWidth, 48);
+    if (lat > halfW) return o;
+    const alongFall = 1 - along / field.radius;
+    const latFall = 1 - lat / halfW;
+    const sheetFall = Math.pow(clamp(alongFall * latFall, 0, 1), field.falloff);
+    if (sheetFall <= 0) return o;
+    const a = field.strength * sheetFall;
+    if (lat > 1e-4) {
+      o.ax = -(latX / lat) * a;
+      o.az = -(latZ / lat) * a;
+    }
+    return o;
+  }
+
   const r = Math.hypot(dx, dz);
   if (r >= field.radius) return o;
   const fall = fieldFalloff(field, r);

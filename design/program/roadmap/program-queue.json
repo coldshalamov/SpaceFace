@@ -7724,7 +7724,7 @@
       "priority": 140,
       "title": "Five powers, five sentences, five drills",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -7748,8 +7748,10 @@
         "npm run check:combat",
         "npm run check:vfx-techniques"
       ],
-      "receiptRefs": [],
-      "brief": "Each power gets its fitting-screen sentence, a Range drill, and a legible field volume (cone/ring/sheet, never a sphere). DONE WHEN: All five appear on the rail with real state; drills exist; VFX grammar test covers them."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-147.00-REPORT.md"
+      ],
+      "brief": "DONE 2026-09-07 (Grok + controller). Well/Repulsor/Cone/Skim/Seed each have a fitting sentence, a cone/ring/sheet volume, and a headless drill. Rail slots 4-8 already bind; skim now feeds planet.collectorOn / planetRuntime so slot 8 can arm. No sphere volumes. No powerRail.js or range.js edits (those lanes were live). Help Controls names the skim scoop. VFX grammar classifies the five deploy cues as field. DONE WHEN: All five appear on the rail with real state; drills exist; VFX grammar test covers them."
     },
     {
       "id": "PQ-147.01",

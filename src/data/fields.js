@@ -1,11 +1,11 @@
 // PQ-012 / SF-12 — Continuous field kernel (data contract).
 //
-// ONE deterministic, finite-radius continuous-field primitive powers three consumers: an
-// attractive Well (pull), a Repulsor (outward push), and a directional Clearing Cone (the
-// "gravitic snowplow"). Every tuning number a reviewer needs lives here; the kernel
+// ONE deterministic, finite-radius continuous-field primitive powers the five number-key
+// powers (PQ-147.00): Well (pull), Repulsor (shove), Clearing Cone, Skim Collector (sheet),
+// and Mass Seed (lock-ring). Every tuning number a reviewer needs lives here; the kernel
 // (src/core/fields/fieldKernel.js) owns the pure math and the system (src/systems/fields.js)
-// owns lifecycle/input/VFX. No continuous gravity is invented per-weapon — all three go through
-// the single kernel (BUILD_PLAN_CORRECTED STEP 11 / SF-12).
+// owns lifecycle/input/VFX. Volumes are cone, ring, or sheet — never a sphere. No continuous
+// gravity is invented per-weapon — every power goes through the single kernel.
 //
 // Coupling & the "heavy ships must shrug" contract (brief req 2/13):
 //   Δv per tick = impulse/mass = (a·mass·dt)/mass = a·dt — MASS-INDEPENDENT. So a bare acceleration
@@ -13,7 +13,37 @@
 //   term, which scales the effective acceleration DOWN with mass (a_effective = a_raw · couple(mass)).
 //   The acceleration cap is a SEPARATE safety bound on the summed total, never the shrug mechanism.
 
-export const FIELD_KINDS = Object.freeze({ WELL: 'well', REPULSOR: 'repulsor', CONE: 'cone' });
+export const FIELD_KINDS = Object.freeze({
+  WELL: 'well',
+  REPULSOR: 'repulsor',
+  CONE: 'cone',
+  SHEET: 'sheet',
+});
+
+// PQ-147.00 — field volumes are machines, not orbs. A sphere is a forbidden construction.
+export const FIELD_VOLUMES = Object.freeze({ RING: 'ring', CONE: 'cone', SHEET: 'sheet' });
+export const FIELD_VOLUME_IDS = Object.freeze([FIELD_VOLUMES.RING, FIELD_VOLUMES.CONE, FIELD_VOLUMES.SHEET]);
+
+const VOLUME_BY_KIND = Object.freeze({
+  [FIELD_KINDS.WELL]: FIELD_VOLUMES.RING,
+  [FIELD_KINDS.REPULSOR]: FIELD_VOLUMES.RING,
+  [FIELD_KINDS.CONE]: FIELD_VOLUMES.CONE,
+  [FIELD_KINDS.SHEET]: FIELD_VOLUMES.SHEET,
+  seed: FIELD_VOLUMES.RING,
+  skim: FIELD_VOLUMES.SHEET,
+});
+
+/** Resolve a field's authored volume. Unknown kinds default to ring; never sphere. */
+export function fieldVolumeOf(defOrKind) {
+  if (defOrKind && typeof defOrKind === 'object') {
+    const authored = defOrKind.volume;
+    if (authored === FIELD_VOLUMES.RING || authored === FIELD_VOLUMES.CONE || authored === FIELD_VOLUMES.SHEET) {
+      return authored;
+    }
+    return fieldVolumeOf(defOrKind.kind);
+  }
+  return VOLUME_BY_KIND[defOrKind] || FIELD_VOLUMES.RING;
+}
 
 // FIELD_FLAGS — Tier-B determinism gate (same idiom as src/data/featureFlags.js:15-45, but
 // co-located with the feature to respect that file's "orchestrator-owned, lanes never add their
@@ -75,9 +105,15 @@ export const FIELD_PALETTE = Object.freeze({
   cone: Object.freeze({
     bank: '#39d0ff', chevron: '#39d0ff', pulse: '#eaffff', hazard: '#ffb35c',
   }),
+  sheet: Object.freeze({
+    bank: '#39d0ff', scoop: '#a6f0ff', pulse: '#eaffff', band: '#d7e6ff',
+  }),
+  seed: Object.freeze({
+    ring: '#9fe8ff', core: '#2fc4ef', warning: '#ffc35c', pulse: '#eaffff',
+  }),
 });
 
-// The three consumer definitions. radius R, strength = peak raw acceleration at the center
+// The five power definitions plus the enemy snare. radius R, strength = peak raw acceleration at the center
 // (wu/s^2) before coupling, falloff = exponent on the (1 - r/R) ramp (>1 eases toward the edge;
 // the outer band is the readable commitment margin), durationS = bounded lifetime, cooldownS =
 // deploy recharge (runtime-only, non-serialized — a save/reload legitimately clears it).
@@ -87,6 +123,8 @@ export const FIELD_DEFS = Object.freeze({
   well: Object.freeze({
     id: 'field_well_standard',
     kind: FIELD_KINDS.WELL,
+    volume: FIELD_VOLUMES.RING,
+    sentence: 'Drop a ring that pulls loose mass and shots into one pile; heavy hulls shrug it off.',
     radius: 190,
     strength: 240,
     // PQ-137.09 — CONVERGENCE, not a clamp. The kernel's radial term is `strength * fall` inward
@@ -113,6 +151,8 @@ export const FIELD_DEFS = Object.freeze({
   repulsor: Object.freeze({
     id: 'field_repulsor_standard',
     kind: FIELD_KINDS.REPULSOR,
+    volume: FIELD_VOLUMES.RING,
+    sentence: 'Drop a ring under you that shoves everything out to a berm you can bowl into.',
     radius: 170,
     strength: 300,
     damping: 0,
@@ -129,6 +169,8 @@ export const FIELD_DEFS = Object.freeze({
   cone: Object.freeze({
     id: 'field_cone_standard',
     kind: FIELD_KINDS.CONE,
+    volume: FIELD_VOLUMES.CONE,
+    sentence: 'Hold a forward wedge that plows a lane ahead of the nose.',
     radius: 260,
     strength: 260,
     damping: 0,
@@ -139,6 +181,37 @@ export const FIELD_DEFS = Object.freeze({
     cooldownS: 0,
     originGap: 10,        // wedge apex sits just ahead of the hull nose
   }),
+  // SKIM COLLECTOR — Digit8. A ship-attached scoop SHEET (toggle). Harvests by grazing; pulls
+  // loose mass onto the flight line. Not a spawned entity. PlanetRuntime owns collectorOn;
+  // this def is the field volume + fitting sentence the rail and drills read.
+  skim: Object.freeze({
+    id: 'field_skim_standard',
+    kind: FIELD_KINDS.SHEET,
+    volume: FIELD_VOLUMES.SHEET,
+    sentence: 'Open a scoop sheet and harvest by grazing a planet band.',
+    radius: 220,
+    halfWidth: 52,
+    strength: 200,
+    damping: 0,
+    falloff: 1.15,
+    durationS: Infinity,
+    cooldownS: 0,
+    originGap: 14,
+  }),
+  // MASS SEED — Digit4. A lock-RING around the thrown anchor. No continuous gravity (the seed
+  // is a Rapier fixed body); the ring is the legible volume so it never reads as a glowing orb.
+  seed: Object.freeze({
+    id: 'field_seed_standard',
+    kind: FIELD_KINDS.WELL,
+    volume: FIELD_VOLUMES.RING,
+    sentence: 'Throw a lock-ring that becomes an anchor you can hitch, then it collapses.',
+    radius: 42,
+    strength: 0,
+    damping: 0,
+    falloff: 1,
+    durationS: Infinity,
+    cooldownS: 8,
+  }),
   // ANCHOR SNARE — an enemy-hull anchored area-control field. It deliberately reuses the Well
   // kind/presentation and the same force owner, but adds bounded velocity damping to make the
   // radius feel like a drag/snare instead of a pure gravity well. The source hull is excluded;
@@ -146,6 +219,7 @@ export const FIELD_DEFS = Object.freeze({
   anchorSnare: Object.freeze({
     id: 'field_anchor_snare_standard',
     kind: FIELD_KINDS.WELL,
+    volume: FIELD_VOLUMES.RING,
     radius: 235,
     strength: 185,
     damping: 3.2,
@@ -180,4 +254,76 @@ export const FIELD_END_REASONS = Object.freeze({
   cleared: 'field_cleared',
   toggledOff: 'field_toggled_off',
   disrupted: 'field_disrupted',
+});
+
+// PQ-147.00 — the five number-key powers. Fitting-screen `sentence` answers "what can I do now?"
+// Rail slots 4–8 already bind; this roster is the data the rail and drills read. Volume is never
+// a sphere.
+export const POWER_ROSTER = Object.freeze([
+  Object.freeze({
+    id: 'seed',
+    defKey: 'seed',
+    name: 'Mass Seed',
+    action: 'deployMassSeed',
+    railSlot: 4,
+    volume: FIELD_VOLUMES.RING,
+    sentence: FIELD_DEFS.seed.sentence,
+    drillId: 'drill.power.seed',
+  }),
+  Object.freeze({
+    id: 'well',
+    defKey: 'well',
+    name: 'Well',
+    action: 'deployWell',
+    railSlot: 5,
+    volume: FIELD_VOLUMES.RING,
+    sentence: FIELD_DEFS.well.sentence,
+    drillId: 'drill.power.well',
+  }),
+  Object.freeze({
+    id: 'repulsor',
+    defKey: 'repulsor',
+    name: 'Repulsor',
+    action: 'deployRepulsor',
+    railSlot: 6,
+    volume: FIELD_VOLUMES.RING,
+    sentence: FIELD_DEFS.repulsor.sentence,
+    drillId: 'drill.power.repulsor',
+  }),
+  Object.freeze({
+    id: 'cone',
+    defKey: 'cone',
+    name: 'Clearing Cone',
+    action: 'toggleClearingCone',
+    railSlot: 7,
+    volume: FIELD_VOLUMES.CONE,
+    sentence: FIELD_DEFS.cone.sentence,
+    drillId: 'drill.power.cone',
+  }),
+  Object.freeze({
+    id: 'skim',
+    defKey: 'skim',
+    name: 'Skim Collector',
+    action: 'toggleSkimCollector',
+    railSlot: 8,
+    volume: FIELD_VOLUMES.SHEET,
+    sentence: FIELD_DEFS.skim.sentence,
+    drillId: 'drill.power.skim',
+  }),
+]);
+
+/** Fitting-screen sentence for a power id (`well`, `seed`, …) or action name. */
+export function fittingSentence(powerId) {
+  const key = String(powerId || '');
+  const row = POWER_ROSTER.find((p) => p.id === key || p.action === key || p.defKey === key);
+  return row ? row.sentence : '';
+}
+
+// Non-colour identity for the five powers. Shape + motion carry the verb; never a sphere.
+export const FIELD_VOLUME_GRAMMAR = Object.freeze({
+  seed: Object.freeze({ volume: FIELD_VOLUMES.RING, silhouette: 'lock-ring', motion: 'pulse-lock' }),
+  well: Object.freeze({ volume: FIELD_VOLUMES.RING, silhouette: 'contracting-rings', motion: 'inward-spiral' }),
+  repulsor: Object.freeze({ volume: FIELD_VOLUMES.RING, silhouette: 'expanding-berm', motion: 'outward-ribs' }),
+  cone: Object.freeze({ volume: FIELD_VOLUMES.CONE, silhouette: 'forward-wedge', motion: 'through-flow' }),
+  skim: Object.freeze({ volume: FIELD_VOLUMES.SHEET, silhouette: 'scoop-band', motion: 'lateral-collect' }),
 });
