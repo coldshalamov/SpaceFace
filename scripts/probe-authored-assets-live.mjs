@@ -1649,7 +1649,7 @@ function collectPageIssues(cdp) {
   cdp.onMessage((msg) => {
     if (msg.method === 'Runtime.exceptionThrown') {
       const text = msg.params && msg.params.exceptionDetails
-        ? (msg.params.exceptionDetails.text || msg.params.exceptionDetails.exception?.description || 'exception')
+        ? (msg.params.exceptionDetails.exception?.description || msg.params.exceptionDetails.text || 'exception')
         : 'exception';
       issues.push({ type: 'pageerror', text });
     } else if (msg.method === 'Runtime.consoleAPICalled' && msg.params && msg.params.type === 'error') {
