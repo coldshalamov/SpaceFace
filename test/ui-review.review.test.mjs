@@ -157,32 +157,8 @@ test('Market cards omit station-wide and neutral driver repetition', () => {
   assert.deepEqual(marketCardDrivers(drivers).map((driver) => driver.id), ['role', 'conflict', 'cycle']);
 });
 
-test('the final station cascade lets the named static-grid labels wrap without ellipses', () => {
-  const css = readFileSync(new URL('../styles/station-berth.css', import.meta.url), 'utf8');
-  for (const selector of [
-    '.sx-app .sx-ind-row__name',
-    '.sx-app .sx-ind-row__tier',
-    '.sx-app .sx-fac-row__name',
-    '.sx-app .sx-fac-node__copy b',
-    '.sx-app .sx-fac-node__copy em',
-  ]) {
-    const rule = ruleBody(css, selector);
-    assert.match(rule, /white-space:\s*normal/);
-    assert.match(rule, /text-overflow:\s*clip/);
-    assert.match(rule, /overflow-wrap:\s*anywhere/);
-  }
-});
-
-test('ship blueprints and disabled fabrication controls have distinct final-cascade treatments', () => {
-  const css = readFileSync(new URL('../styles/station-berth.css', import.meta.url), 'utf8');
-  assert.match(ruleBody(css, '.sx-app .sx-ind-process[data-process="ship"] .sx-ind-process__items'), /grid-template-columns:\s*1fr/);
-  const shipName = ruleBody(css, '.sx-app .sx-ind-process[data-process="ship"] .sx-ind-row__name');
-  assert.match(shipName, /font-size:\s*var\(--sxb-t-body\)/);
-  assert.match(shipName, /font-weight:\s*700/);
-  const disabled = ruleBody(css, '.sx-app .sx-ind__console .sx-btn-primary:disabled');
-  assert.match(disabled, /background:\s*var\(--sxb-panel-hi\)/);
-  assert.match(disabled, /color:\s*var\(--sxb-ink-3\)/);
-});
+// The station's "final cascade" sheet (station-berth.css) is gone: the station sits on the kit
+// (styles/kit.css + styles/station.css, Frontend Task C). Its rule-shape tests went with it.
 
 test('the Market transaction console does not repeat the selected unit quote', () => {
   const source = readFileSync(new URL('../src/ui/station/screens/market.js', import.meta.url), 'utf8');

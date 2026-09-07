@@ -1,31 +1,30 @@
-// src/ui/station/dock.js — the station's kinetic command instrument.
-// Destinations and immediate service verbs share one physical rail, but they do not share
-// semantics. Pointer proximity bends the whole field; selection returns to equilibrium and
-// latches into the rail. This is deliberately not a row of hover-scaling tabs.
-import { icon } from './icons.js';
+// src/ui/station/dock.js — the station's destinations as words along the bottom edge (Task C §1.2).
+// A real ARIA tablist of kit words: role=tab, roving tabindex, arrow keys, aria-current on the live
+// one. The pointer/keyboard distance field still writes --dock-scale / --dock-lift / --dock-near on
+// each word (the tab-navigation check reads them); the sheet no longer applies them — words do not
+// grow. `.sx-dock`, `.sx-dock__group--nav`, `.sx-tile`, `.sx-tile__seat`, `data-nav`, `sx-tab-<id>`
+// are inert hooks the station checks query.
 
 function tileHtml(item, kind) {
   const isNav = kind === 'nav';
-  // Nav tiles are a real ARIA tablist: role=tab + roving tabindex + arrow-key navigation.
   const dataAttr = isNav
     ? `data-nav="${item.id}" role="tab" id="sx-tab-${item.id}" aria-controls="sx-panel" aria-selected="false" tabindex="-1"`
     : `data-act="${item.id}"`;
   const extra = isNav ? '' : ' sx-tile--act';
   return (
-    `<button type="button" class="sx-tile${extra}" ${dataAttr} aria-label="${item.aria || item.label}">` +
+    `<li><button type="button" class="k-word k-word--body sx-tile${extra}" ${dataAttr} aria-label="${item.aria || item.label}">` +
       `<span class="sx-tile__seat" aria-hidden="true"></span>` +
-      `<span class="sx-tile__badge" data-badge="${item.id}" hidden></span>` +
-      `<span class="sx-tile__icon">${icon(item.icon, 26)}</span>` +
+      `<span class="sx-tile__badge k-t-fine k-signal" data-badge="${item.id}" hidden></span>` +
       `<span class="sx-tile__label">${item.label}</span>` +
-      (kind === 'act' ? `<span class="sx-tile__cost" data-cost="${item.id}">—</span>` : '') +
-    `</button>`
+      (kind === 'act' ? `<span class="sx-tile__cost k-t-fine k-38" data-cost="${item.id}">—</span>` : '') +
+    `</button></li>`
   );
 }
 
 /**
  * @param {object} cfg
- * @param {Array} cfg.destinations [{id,label,icon,title}]
- * @param {Array} cfg.actions      [{id,label,icon,title}]
+ * @param {Array} cfg.destinations [{id,label,title}]
+ * @param {Array} cfg.actions      [{id,label,title}]
  * @param {(id:string)=>void} cfg.onNavigate
  * @param {(id:string)=>void} cfg.onAction
  */
@@ -34,16 +33,15 @@ export function createCommandDock(cfg) {
   const el = document.createElement('div');
   el.className = 'sx-dock';
   el.setAttribute('role', 'toolbar');
-  el.setAttribute('aria-label', 'Station command dock');
+  el.setAttribute('aria-label', 'Station destinations');
   el.setAttribute('aria-orientation', 'horizontal');
   el.innerHTML =
-    `<div class="sx-dock__group sx-dock__group--nav" role="tablist">` +
+    `<ul class="k-words k-words--row sx-dock__group sx-dock__group--nav" role="tablist" aria-label="Destinations">` +
       destinations.map((d) => tileHtml(d, 'nav')).join('') +
-    `</div>` +
-    `<div class="sx-dock__rule" aria-hidden="true"></div>` +
-    `<div class="sx-dock__group sx-dock__group--act">` +
-      actions.map((a) => tileHtml(a, 'act')).join('') +
-    `</div>`;
+    `</ul>` +
+    (actions.length
+      ? `<ul class="k-words k-words--row sx-dock__group sx-dock__group--act">${actions.map((a) => tileHtml(a, 'act')).join('')}</ul>`
+      : '');
 
   el.addEventListener('click', (ev) => {
     const nav = ev.target.closest('[data-nav]');
@@ -57,6 +55,7 @@ export function createCommandDock(cfg) {
       const on = t.getAttribute('data-nav') === id;
       t.classList.toggle('is-active', on);
       t.setAttribute('aria-selected', on ? 'true' : 'false');
+      if (on) t.setAttribute('aria-current', 'true'); else t.removeAttribute('aria-current');
       t.setAttribute('tabindex', on ? '0' : '-1'); // roving tab stop
     });
   }
@@ -78,9 +77,8 @@ export function createCommandDock(cfg) {
     onNavigate && onNavigate(tabs[next].getAttribute('data-nav'));
   });
 
-  // A distance field gives the dock its physical legibility: the item under the pointer responds
-  // most, its neighbours yield less, and the rest remain seated. Work is event-bound, not an idle
-  // animation loop. Keyboard focus gets an equivalent (and calmer) neighbour response.
+  // The distance field: event-bound, writes custom properties only. The sheet ignores them (words
+  // do not grow); the values remain a legible, testable record of pointer proximity.
   const motionQuery = typeof matchMedia === 'function'
     ? matchMedia('(prefers-reduced-motion: reduce)') : null;
   const tiles = [...el.querySelectorAll('.sx-tile')];
@@ -103,8 +101,6 @@ export function createCommandDock(cfg) {
       const rect = tile.getBoundingClientRect();
       const distance = Math.abs(clientX - (rect.left + rect.width / 2));
       const proximity = Math.max(0, 1 - distance / radius);
-      // Cosine easing keeps the field smooth at the radius edge. Service verbs move less than
-      // destinations so cost labels remain easy to read while the rail is alive.
       const eased = (1 - Math.cos(proximity * Math.PI)) / 2;
       const peak = tile.hasAttribute('data-act') ? 0.18 : 0.30;
       tile.style.setProperty('--dock-scale', (1 + peak * eased).toFixed(4));
@@ -169,7 +165,8 @@ export function createCommandDock(cfg) {
   }
 
   /**
-   * Pulse + badge a destination tile so the player knows which rail to open.
+   * Badge a destination word so the player knows which one needs them (a fine-print signal mark
+   * before the word; no pulse).
    * @param {string|null} id destination id, or null to clear all
    * @param {{ badge?: string|number, title?: string }|null} opts
    */

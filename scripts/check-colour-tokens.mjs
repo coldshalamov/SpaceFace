@@ -56,7 +56,7 @@ const ROOT_TOKENS = {
 // of scope -- gating a lab tool on the product's grammar buys nothing.
 const LIVE = [
   'ui.css', 'menu.css', 'intro.css', 'asteroid-ops.css',
-  'station-workbench.css', 'station.css', 'station-berth.css', 'commsradial.css',
+  'station.css', 'commsradial.css',
 ];
 
 // A configured stylesheet may be absent only if named here. An empty allowlist means every

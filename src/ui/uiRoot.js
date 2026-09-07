@@ -916,8 +916,9 @@ export const ui = {
       // Dock fly-in: drive a scripted push-zoom via the camera controller instead of the old
       // hard-set on state.camera.zoom (which fought the dynamic-zoom damping and snapped). The
       // pushZoom widens the view ~25% over the fade so the approach reads as a committed fly-in,
-      // then eases back on its own. A docking-permission comm beep precedes the clunk.
-      this.bus.emit('audio:cue', { id: 'ui_confirm' });
+      // then eases back on its own. The dock sound is the audio system's own on dock:docked
+      // (audioSystem._onDocked: the re-tuned sfx_dock_clunk swell, then a low confirm); no UI cue
+      // here, or the chime plays twice (Frontend Task C §1.2).
       const camCtrl = this.state.render && this.state.render.cameraCtrl;
       if (camCtrl && typeof camCtrl.pushZoom === 'function') camCtrl.pushZoom(0.25, 0.9);
 

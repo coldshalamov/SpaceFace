@@ -90,7 +90,7 @@ try {
     bodyClasses: document.body.className,
     paused: window.SF.state.mode,
     hostClass: !!document.querySelector('.sx-sw--flight'),
-    stationSheets: ['sx-station-css', 'sx-station-workbench-css', 'sx-station-berth-css']
+    stationSheets: ['sx-station-css']
       .every((id) => !!document.getElementById(id)),
     rects: (() => {
       const r = (sel) => { const el = document.querySelector(sel); if (!el) return null; const b = el.getBoundingClientRect(); return { t: Math.round(b.top), b: Math.round(b.bottom), h: Math.round(b.height), w: Math.round(b.width) }; };
