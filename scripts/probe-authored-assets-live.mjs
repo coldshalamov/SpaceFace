@@ -127,9 +127,13 @@ try {
     pollIntervalMs: 100,
     onPoll: () => forceShipRender(cdp),
     sample: () => collectCriticalStationSnapshot(cdp),
+    // Settle, rather than wait out an admission the residency policy forbids: hold only while a
+    // station is on screen without its authored body, which is the transient this probe exists to
+    // catch. On a route where the hubs are out of reach this returns on the first poll.
     isReady: (snapshot) => !!(snapshot && Array.isArray(snapshot.criticalStations)
-      && snapshot.criticalStations.some((station) => (
-        station.stationId === 'station_helios' && station.assetState === 'authored'
+      && snapshot.criticalStations.length > 0
+      && snapshot.criticalStations.every((station) => (
+        !station.presented || station.assetState === 'authored'
       ))),
   });
   const stationSnapshot = stationDeadline.passed
@@ -159,9 +163,38 @@ try {
   assert.equal(report.mode, 'flight', 'live probe should be in playable flight mode');
   assert.deepEqual(badFlightSnapshots, [],
     `flight handoff may stream off-camera boundaries, but must never present unauthored ships or stations: ${JSON.stringify(badFlightSnapshots)}`);
-  assert.ok(report.criticalStations.some((station) => (
-    station.stationId === 'station_helios' && station.assetState === 'authored'
-  )), `Helios must finish authored admission on the live route within ${CRITICAL_STATION_TIMEOUT_MS} ms: ${JSON.stringify(report.criticalStationDeadline, null, 2)}`);
+  // WHY THIS IS NO LONGER "Helios must be authored".
+  //
+  // That assertion was written on 2026-07-19 (828db683) and was superseded by a deliberate
+  // performance decision on 2026-08-21 (a5b5f587, "Eliminate first-picture render discovery
+  // hitches"), which left this exact rule in `src/render/renderer.js` naming this station: the
+  // loading path "no longer admits a far Helios place merely because it is the critical hub, so
+  // shell-first startup does not pay its detail decode before flight". The residency helper it
+  // leans on, `shouldKeepPersistentLandmarkResident`, arrived a week earlier in eae98414 ("draw and
+  // mesh only the table plus a short approach runway").
+  //
+  // So on the seeded route the probe flies, the player spawns at the origin while Helios sits
+  // 1347 WU away and Tethys 15855 WU away, against a table camera whose default zoom is 144. Both
+  // are correctly unadmitted, and the old assertion was demanding that an 89.7 MB package be
+  // decoded for a hub nobody can see -- the precise cost that commit removed. Measured here: a full
+  // 45 s wait with forced renders never admitted either, because nothing ever asked for them.
+  //
+  // The guarantee worth keeping is the one about what the PLAYER SEES, and it survives intact: a
+  // critical hub may be absent, but it may never stand on screen as a fallback box. Asserting that
+  // also pins the residency rule in the other direction -- a regression that starts eagerly
+  // admitting a far Helios re-introduces the startup hitch, and shows up here as a presented
+  // station that has not finished authoring.
+  //
+  // The stronger bar -- that Helios's own package authors correctly when approached -- is real and
+  // is NOT tested here any more; it needs a route that actually flies to the hub. Recorded rather
+  // than quietly dropped.
+  assert.ok(report.criticalStations.length > 0,
+    `the live route must still carry the critical trade hubs: ${JSON.stringify(report.criticalStationDeadline, null, 2)}`);
+  assert.deepEqual(
+    report.criticalStations.filter((station) => station.presented && station.assetState !== 'authored'),
+    [],
+    `a critical hub may stream in late, but must never be presented unauthored: ${JSON.stringify(report.criticalStationDeadline, null, 2)}`,
+  );
   assert.ok(report.tick >= startTick, 'gameplay tick should be advancing after authored startup readiness');
   assert.ok(player, 'player ship should be present in the live scene');
   assert.equal(player.state, 'authored', 'player ship should be authored before playable flight starts');
