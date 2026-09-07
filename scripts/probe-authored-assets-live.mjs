@@ -38,6 +38,10 @@ const AUTHORED_BODY_PROOF = Object.freeze({
 // Must exceed main.js' authored-visual startup wait so this probe observes the same no-fallback
 // default path instead of racing the loading gate.
 const PLAYABLE_TIMEOUT_MS = readPositiveIntArg('--playable-timeout', Number(process.env.SF_ASSETS_LIVE_TIMEOUT_MS) || 90000);
+// Helios is a 79 MB source place (89.7 MB render package), the largest authored body in the tree,
+// and it streams after the control handoff rather than blocking it. It gets the same 45 s the ship
+// gate gets, as its own budget rather than a share of one.
+const CRITICAL_STATION_TIMEOUT_MS = readPositiveIntArg('--critical-station-timeout', Number(process.env.SF_ASSETS_LIVE_STATION_TIMEOUT_MS) || 45000);
 const CHROME_PROFILE_PREFIX = 'spaceface-authored-assets-live-';
 const AUTHORED_PROBE_SOURCE_FILES = Object.freeze([
   'src/render/partsLibrary.js',
@@ -102,6 +106,37 @@ try {
   const startTick = playable.tick;
 
   const report = await waitForAuthoredShips(cdp);
+  // The starting hub is the only station that blocks flight readiness (`flightReadySet.js`:
+  // `selectPlacePackageLayer` -> GAMEPLAY_SHELL, and `isPlaceLayerBlockingFlightReady` blocks on
+  // that layer alone). Every other place — Helios among them on this route — streams AFTER control
+  // is handed over, by design: "far place detail streams afterward". So the ship gate returning is
+  // not evidence that Helios has admitted, and asserting it in the same breath raced the streamer
+  // rather than testing it. Helios gets its own budget, not a share of the ships'.
+  //
+  // This does not relax the bar: the assertion below still requires `authored`. It only stops the
+  // probe from reading the clock before the work it is measuring can have happened.
+  const stationDeadline = await waitForAuthoredAssetDeadline({
+    timeoutMs: CRITICAL_STATION_TIMEOUT_MS,
+    pollIntervalMs: 100,
+    onPoll: () => forceShipRender(cdp),
+    sample: () => collectCriticalStationSnapshot(cdp),
+    isReady: (snapshot) => !!(snapshot && Array.isArray(snapshot.criticalStations)
+      && snapshot.criticalStations.some((station) => (
+        station.stationId === 'station_helios' && station.assetState === 'authored'
+      ))),
+  });
+  const stationSnapshot = stationDeadline.passed
+    ? stationDeadline.lastOnTimeSnapshot
+    : stationDeadline.postDeadlineSnapshot || stationDeadline.lastOnTimeSnapshot;
+  report.criticalStationDeadline = {
+    passed: stationDeadline.passed,
+    timeoutMs: CRITICAL_STATION_TIMEOUT_MS,
+    elapsedMs: Math.round((stationDeadline.passedAtMs ?? stationDeadline.deadlineMs) - stationDeadline.gateStartMs),
+    snapshot: stationSnapshot,
+  };
+  if (stationSnapshot && Array.isArray(stationSnapshot.criticalStations)) {
+    report.criticalStations = stationSnapshot.criticalStations;
+  }
   await waitFor(cdp, () => getTick(cdp, startTick + 2), 10000, 'advancing gameplay ticks');
 
   await captureScreenshot(cdp, SHOT);
@@ -119,7 +154,7 @@ try {
     `flight handoff may stream off-camera boundaries, but must never present unauthored ships or stations: ${JSON.stringify(badFlightSnapshots)}`);
   assert.ok(report.criticalStations.some((station) => (
     station.stationId === 'station_helios' && station.assetState === 'authored'
-  )), `Helios must finish authored admission on the live route: ${JSON.stringify(report.criticalStations)}`);
+  )), `Helios must finish authored admission on the live route within ${CRITICAL_STATION_TIMEOUT_MS} ms: ${JSON.stringify(report.criticalStationDeadline, null, 2)}`);
   assert.ok(report.tick >= startTick, 'gameplay tick should be advancing after authored startup readiness');
   assert.ok(player, 'player ship should be present in the live scene');
   assert.equal(player.state, 'authored', 'player ship should be authored before playable flight starts');
@@ -506,6 +541,56 @@ async function waitForAuthoredShips(cdp) {
     }, null, 2)}`);
   }
   return report;
+}
+
+function collectCriticalStationSnapshot(cdp) {
+  // The station-side twin of `collectAuthoredGateSnapshot`. It carries positions and the distance
+  // to the player because the two ways this gate can fail look identical in `assetState` alone:
+  // a package that is still streaming, and a station that is simply outside the seeded route's
+  // streaming reach. Only the geometry tells them apart, so a timeout here reports both.
+  return evalJson(cdp, `(() => {
+    const state = window.SF && window.SF.state || null;
+    const player = state && state.entities ? state.entities.get(state.playerId) : null;
+    const px = player && player.pos ? Number(player.pos.x) : null;
+    const pz = player && player.pos ? Number(player.pos.z) : null;
+    function hasPresentedSurface(root) {
+      let presented = false;
+      if (!root) return false;
+      root.traverse((object) => {
+        const poolProxy = object?.userData?.spacefaceRenderPackagePooled === true
+          && object?.userData?.spacefaceInstanceProxy === true;
+        if (presented || !object || !(object.isMesh || object.isLine || object.isPoints || object.isSprite || poolProxy)) return;
+        let cursor = object;
+        while (cursor) {
+          if (cursor.visible === false) return;
+          if (cursor === root) break;
+          cursor = cursor.parent;
+        }
+        if (cursor === root && object.geometry && object.material) presented = true;
+      });
+      return presented;
+    }
+    const stations = state && Array.isArray(state.entityList)
+      ? state.entityList.filter((entity) => entity && entity.type === 'station' && entity.alive !== false)
+        .map((entity) => {
+          const root = entity.mesh || entity.view && entity.view.root || null;
+          const x = entity.pos ? Number(entity.pos.x) : null;
+          const z = entity.pos ? Number(entity.pos.z) : null;
+          return {
+            id: entity.id,
+            stationId: entity.data && entity.data.stationId || null,
+            archetypeGlb: entity.data && entity.data.archetypeGlb || null,
+            assetState: root && root.userData && root.userData.authoredAssetState || 'missing-mesh',
+            presented: hasPresentedSurface(root),
+            x, z,
+            distanceFromPlayerWU: (x === null || px === null) ? null
+              : Math.round(Math.hypot(x - px, z - pz)),
+          };
+        })
+        .filter((station) => station.stationId === 'station_helios' || station.archetypeGlb === 'place_station_trade_hub')
+      : [];
+    return { player: { x: px, z: pz }, criticalStations: stations };
+  })()`);
 }
 
 function collectAuthoredGateSnapshot(cdp) {
