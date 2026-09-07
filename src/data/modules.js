@@ -117,6 +117,7 @@ export const MODULES = [
   {
     id: 'mod_tractor_beam_m', name: 'Tractor Beam M', slotType: 'utility', size: 'M', tier: 2, mass: 4, price: 12000, requiresTech: 'tech_tractor_systems',
     // magnetRange must beat mining.MAGNET_RANGE floor (420) so the fitted tractor is player-felt.
+    // Salvage cutters snapshot this head onto their wreck latch so the player sees the pick-up verb.
     energyDraw: 3, mods: { magnetRange: 560, masslineHeadId: 'tractor' },
   },
   {
@@ -128,11 +129,13 @@ export const MODULES = [
   {
     // ELASTIC WHIP — stretch stores the burn, the return stroke snaps the light end.
     // M utility: it fits the Drifter, not Hitch. Cutting keeps earned speed; the snap is the spring.
+    // Scrap sweepers (and patrols netting a raider) snapshot this head on their occupational line.
     id: 'mod_elastic_whip_m', name: 'Elastic Whip M', slotType: 'utility', size: 'M', tier: 2, mass: 4, price: 16000, requiresTech: 'tech_tractor_systems',
     energyDraw: 4, mods: { masslineHeadId: 'elastic_whip' },
   },
   {
     // FRAME COUPLER — the winched rest length is the hitch. A 200-mass tow turns with you.
+    // Yard tugs snapshot this hitch onto the existing npc_tow line; they do not need the M slot.
     id: 'mod_frame_coupler_m', name: 'Frame Coupler M', slotType: 'utility', size: 'M', tier: 2, mass: 5, price: 22000, requiresTech: 'tech_tractor_systems',
     energyDraw: 5, mods: { masslineHeadId: 'frame_coupler' },
   },

@@ -109,6 +109,25 @@ const NPC_TOW_PHASES = new Set([
   NPC_JOB_PHASE.APPROACH,
   NPC_JOB_PHASE.UNLOAD,
 ]);
+const NPC_LINE_CONTROL_MODE = 'npc_tow';
+// Salvors keep the tractor on through the haul home so the wreck is visibly wrangled, not
+// teleported into the hold. Sweepers only stretch the whip while they are on the rock.
+const NPC_SALVOR_LINE_PHASES = new Set([
+  NPC_JOB_PHASE.TRANSIT,
+  NPC_JOB_PHASE.APPROACH,
+  NPC_JOB_PHASE.WORK,
+  NPC_JOB_PHASE.LOAD,
+  NPC_JOB_PHASE.RETURN,
+]);
+const NPC_SWEEPER_LINE_PHASES = new Set([
+  NPC_JOB_PHASE.TRANSIT,
+  NPC_JOB_PHASE.APPROACH,
+  NPC_JOB_PHASE.WORK,
+]);
+const NPC_PATROL_LINE_PHASES = new Set([
+  NPC_JOB_PHASE.APPROACH,
+  NPC_JOB_PHASE.HOLD,
+]);
 
 // R6 escort formation is deliberately one exact authored relationship, not a generic targetRef
 // movement language. Stable record/job ids remain the authority across rematerialization; live
@@ -385,12 +404,56 @@ function finiteSalvageQuantity(pool) {
   return Math.floor(total);
 }
 
-function isTugJob(entry, entity) {
+function occupationalRole(entity, entry) {
   const data = entity && entity.data;
   const payload = entry && entry.job && entry.job.payload;
+  if (data && typeof data.trafficRole === 'string' && data.trafficRole) return data.trafficRole;
+  if (data && typeof data.role === 'string' && data.role) return data.role;
+  if (payload && typeof payload.role === 'string' && payload.role) return payload.role;
+  if (payload && typeof payload.freightRole === 'string' && payload.freightRole) return payload.freightRole;
+  return '';
+}
+
+function isTugJob(entry, entity) {
   return !!entry && !!entry.job && entry.job.kind === NPC_JOB_KIND.HAULER
-    && (data && (data.trafficRole === 'tug' || data.role === 'tug')
-      || payload && (payload.role === 'tug' || payload.freightRole === 'tug'));
+    && occupationalRole(entity, entry) === 'tug';
+}
+
+function isSalvorJob(entry, entity) {
+  return !!entry && !!entry.job && (
+    entry.job.kind === NPC_JOB_KIND.SALVOR || occupationalRole(entity, entry) === 'salvor'
+  );
+}
+
+function isSweeperJob(entry, entity) {
+  return !!entry && !!entry.job && entry.job.kind === NPC_JOB_KIND.MINER
+    && occupationalRole(entity, entry) === 'sweeper';
+}
+
+function isPatrolJob(entry) {
+  return !!entry && !!entry.job && entry.job.kind === NPC_JOB_KIND.PATROL;
+}
+
+function isPatrolNetTarget(candidate, patrol, playerId) {
+  if (!candidate || candidate === patrol || candidate.alive === false || candidate.type !== 'ship') {
+    return false;
+  }
+  if (playerId != null && candidate.id === playerId) return false;
+  const data = candidate.data || {};
+  const role = data.trafficRole || data.role;
+  if (role === 'pirate' || role === 'smuggler') return true;
+  return !!(data.ai && data.ai.pirate === true);
+}
+
+// Snapshot the head onto derived immediately before attachments.create. ships.js will recompute
+// derived later this tick from fittings, but the line policy is snapshotted at create time.
+function stampNpcMasslineHead(entity, headId) {
+  if (!entity || typeof headId !== 'string' || !headId) return;
+  const data = entity.data || (entity.data = {});
+  const derived = data.derived && typeof data.derived === 'object' ? data.derived : {};
+  data.derived = derived;
+  derived.masslineHeadId = headId;
+  data.npcMasslineHeadId = headId;
 }
 
 // `ownerRecordId` is the stable world-record id of the tug asking. A body reserved by the cleanup
@@ -1603,6 +1666,108 @@ export const npcJobsRuntime = {
     return best;
   },
 
+  _findSalvorTractorTarget(entry, entity) {
+    const data = entity && entity.data;
+    const ownerRecordId = data && typeof data.worldRecordId === 'string' ? data.worldRecordId : null;
+    const payload = entry && entry.job && entry.job.payload;
+    const explicitId = data && data.towTargetId != null && data.towTargetId !== ''
+      ? data.towTargetId
+      : payload && payload.targetId != null && payload.targetId !== ''
+        ? payload.targetId
+        : payload && payload.towTargetId != null && payload.towTargetId !== ''
+          ? payload.towTargetId
+          : null;
+    const entities = this.state && this.state.entities;
+    if (explicitId != null) {
+      const explicit = entities && typeof entities.get === 'function' ? entities.get(explicitId) : null;
+      if (!explicit || !isTowableCargoTarget(explicit, ownerRecordId)
+        || !explicit.pos || !entity.pos
+        || Math.hypot(explicit.pos.x - entity.pos.x, explicit.pos.z - entity.pos.z) > NPC_TOW_MAX_RANGE_WU) {
+        return null;
+      }
+      const targetSector = explicit.data && explicit.data.sectorId;
+      if (targetSector && entry.sectorId && targetSector !== entry.sectorId) return null;
+      return explicit;
+    }
+    return this._findTugTowTarget(entry, entity);
+  },
+
+  _findSweeperWhipTarget(entry, entity) {
+    // Scrap sweepers yank loose debris, not the belt's authored rock. Asteroids often have no
+    // tether socket, and a line to a 1e6-mass face is scenery, not the whip verb.
+    return this._findTugTowTarget(entry, entity);
+  },
+
+  _findPatrolNetTarget(entry, entity) {
+    const list = this.state && this.state.entityList;
+    const entities = this.state && this.state.entities;
+    if (!Array.isArray(list) || !entity || !entity.pos) return null;
+    const playerId = this.state.playerId;
+    let best = null;
+    let bestDistance = Infinity;
+    let bestId = '';
+    const maxDistanceSq = NPC_TOW_MAX_RANGE_WU * NPC_TOW_MAX_RANGE_WU;
+    for (const candidate of list) {
+      if (!isPatrolNetTarget(candidate, entity, playerId)
+        || !candidate.pos
+        || !entities || entities.get(candidate.id) !== candidate) continue;
+      const targetSector = candidate.data && candidate.data.sectorId;
+      if (targetSector && entry.sectorId && targetSector !== entry.sectorId) continue;
+      const dx = candidate.pos.x - entity.pos.x;
+      const dz = candidate.pos.z - entity.pos.z;
+      const distanceSq = dx * dx + dz * dz;
+      if (!Number.isFinite(distanceSq) || distanceSq > maxDistanceSq) continue;
+      const candidateId = String(candidate.id);
+      if (distanceSq < bestDistance
+        || (distanceSq === bestDistance && candidateId < bestId)) {
+        best = candidate;
+        bestDistance = distanceSq;
+        bestId = candidateId;
+      }
+    }
+    return best;
+  },
+
+  _occupationalLinePlan(entry, entity) {
+    if (isTugJob(entry, entity)) {
+      return {
+        headId: 'frame_coupler',
+        phases: NPC_TOW_PHASES,
+        requireManifest: true,
+        clearOffPhase: false,
+        findTarget: () => this._findTugTowTarget(entry, entity),
+      };
+    }
+    if (isSalvorJob(entry, entity)) {
+      return {
+        headId: 'tractor',
+        phases: NPC_SALVOR_LINE_PHASES,
+        requireManifest: false,
+        clearOffPhase: true,
+        findTarget: () => this._findSalvorTractorTarget(entry, entity),
+      };
+    }
+    if (isSweeperJob(entry, entity)) {
+      return {
+        headId: 'elastic_whip',
+        phases: NPC_SWEEPER_LINE_PHASES,
+        requireManifest: false,
+        clearOffPhase: true,
+        findTarget: () => this._findSweeperWhipTarget(entry, entity),
+      };
+    }
+    if (isPatrolJob(entry)) {
+      return {
+        headId: 'elastic_whip',
+        phases: NPC_PATROL_LINE_PHASES,
+        requireManifest: false,
+        clearOffPhase: true,
+        findTarget: () => this._findPatrolNetTarget(entry, entity),
+      };
+    }
+    return null;
+  },
+
   _clearTugAttachment(entry, reason = 'npc_tow_cleanup') {
     if (!entry) return false;
     const attachmentId = entry.towAttachmentId;
@@ -1635,24 +1800,34 @@ export const npcJobsRuntime = {
     return !!attachment || attachmentId != null;
   },
 
-  _tryAttachTug(entry, entity, simT = finite(this.state && this.state.simTime, 0)) {
-    if (!isTugJob(entry, entity) || !NPC_TOW_PHASES.has(entry.job.phase)) return false;
-    const manifest = entity.data && entity.data.cargoManifest
-      || entry.job.payload && entry.job.payload.manifest;
-    if (finiteManifestQuantity(manifest) <= 0) return false;
+  _tryAttachOccupationalLine(entry, entity, simT = finite(this.state && this.state.simTime, 0)) {
+    const plan = this._occupationalLinePlan(entry, entity);
+    if (!plan) return false;
+    if (!plan.phases.has(entry.job.phase)) {
+      if (plan.clearOffPhase && entry.towAttachmentId != null) {
+        this._clearTugAttachment(entry, `npc_${plan.headId}_phase`);
+      }
+      return false;
+    }
+    if (plan.requireManifest) {
+      const manifest = entity.data && entity.data.cargoManifest
+        || entry.job.payload && entry.job.payload.manifest;
+      if (finiteManifestQuantity(manifest) <= 0) return false;
+    }
     const attachments = this._combatAttachments();
     if (!attachments) return false;
 
     if (entry.towAttachmentId != null) {
       const existing = attachments.get(entry.towAttachmentId);
       if (existing && existing.state === 'active' && existing.ownerId === entity.id
-        && existing.controlMode === 'npc_tow') {
+        && existing.controlMode === NPC_LINE_CONTROL_MODE) {
         // Re-stamp the owner markers rather than returning bare. They are observer-facing joins, and
         // they do NOT survive on their own: `deserialize` deletes them by design, and a hull that
         // rematerializes arrives with a fresh `data`. Measured 2026-09-06 on the Ceres reference
         // pocket — a five-minute capture found the load carrying `npcTowedByJobId` for 33 samples
         // while the tug towing it reported no attachment at all, because this path never wrote the
         // marker back. The live attachment stays the authority; this only keeps the join honest.
+        stampNpcMasslineHead(entity, plan.headId);
         if (entity.data) {
           entity.data.npcTowAttachmentId = existing.id;
           entity.data.npcTowJobId = `job:${entry.worldRecordId}`;
@@ -1670,11 +1845,13 @@ export const npcJobsRuntime = {
     }
 
     // Save/reload may restore the combat attachment before this runtime has re-linked its transient
-    // sidecar. Adopt only an active line owned by this tug and explicitly created for NPC towing.
+    // sidecar. Adopt only an active line owned by this hull and explicitly created for NPC towing.
     if (typeof attachments.listForEntity === 'function') {
       const restored = attachments.listForEntity(entity.id, true)
-        .find((candidate) => candidate.ownerId === entity.id && candidate.controlMode === 'npc_tow');
+        .find((candidate) => candidate.ownerId === entity.id
+          && candidate.controlMode === NPC_LINE_CONTROL_MODE);
       if (restored) {
+        stampNpcMasslineHead(entity, plan.headId);
         entry.towAttachmentId = restored.id;
         entry.towTargetId = restored.targetId;
         entry.towOwnerRef = entity;
@@ -1695,13 +1872,14 @@ export const npcJobsRuntime = {
     const explicitTarget = data && data.towTargetId != null && data.towTargetId !== '';
     if (!explicitTarget && simT < finite(entry.towNextScanSimT, 0)) return false;
     entry.towNextScanSimT = simT + NPC_TOW_SCAN_INTERVAL_S;
-    const target = this._findTugTowTarget(entry, entity);
+    const target = plan.findTarget();
     if (!target || !entity.pos || !target.pos) return false;
+    stampNpcMasslineHead(entity, plan.headId);
     const created = attachments.create({
       defId: NPC_TOW_ATTACHMENT_DEF_ID,
       ownerId: entity.id,
       targetId: target.id,
-      controlMode: 'npc_tow',
+      controlMode: NPC_LINE_CONTROL_MODE,
       sourceWorld: { x: entity.pos.x, y: 0, z: entity.pos.z },
       targetWorld: { x: target.pos.x, y: 0, z: target.pos.z },
     });
@@ -2276,7 +2454,7 @@ export const npcJobsRuntime = {
       // the finite freight job has left loading, and never while a controller lease owns the hull.
       // The movement writer below remains the sole intent producer; SG-02 pulls the target body.
       if (!claimed && entry.job.phase !== NPC_JOB_PHASE.COMPLETE) {
-        this._tryAttachTug(entry, entity, simT);
+        this._tryAttachOccupationalLine(entry, entity, simT);
       }
 
       // Terminal hauler: hand the hull back to its ambient stepper (ruling 5: job ends with entity).
