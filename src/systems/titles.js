@@ -26,6 +26,15 @@ function cleanText(value, fallback = '') {
   return text || fallback;
 }
 
+function humanizeId(value, fallback = 'Stunt') {
+  const str = typeof value === 'string' ? value.trim() : '';
+  if (!str) return fallback;
+  return str
+    .replace(/^title_/, '')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 function cloneHolder(holder) {
   if (!holder || typeof holder !== 'object') return null;
   return {
@@ -136,6 +145,7 @@ function ensureState(state) {
       title: cleanText(record.title, THUNDERCHILD.title),
       seenAt: finiteInteger(record.seenAt),
       holderKey: cleanText(record.holderKey),
+      ...(record.trickId ? { trickId: cleanText(record.trickId) } : {}),
     }))
     .filter((record) => record.id && record.holderKey);
   return own;
@@ -366,6 +376,7 @@ export function createTitlesSystem() {
       this._onSpawned = (payload) => this._onEntitySpawned(payload || {});
       this._onSaveLoaded = () => this._rebindSilently();
       this._onNewGame = () => this.newGame();
+      this._onTrickDetected = (payload) => this._onStuntTrick(payload || {});
       if (this.bus && typeof this.bus.on === 'function') {
         this.bus.on('title:holdResolved', this._onHold);
         this.bus.on('combat:damage', this._onDamage);
@@ -373,6 +384,7 @@ export function createTitlesSystem() {
         this.bus.on('entity:spawned', this._onSpawned);
         this.bus.on('save:loaded', this._onSaveLoaded);
         this.bus.on('game:newGame', this._onNewGame);
+        this.bus.on('stunt:trickDetected', this._onTrickDetected);
       }
       this._rebindSilently();
     },
@@ -440,6 +452,19 @@ export function createTitlesSystem() {
         }
       }
       syncTitleStamp(this.state, own);
+
+      const playerId = this.state && this.state.playerId;
+      const playerEntity = entityFor(this.state, playerId) || entityFor(this.state, 'player');
+      if (playerEntity && !playerEntity.data?.titleId && this.state.story && this.state.story.titles && this.state.story.titles.byId) {
+        for (const [tId, tRec] of Object.entries(this.state.story.titles.byId)) {
+          if (tId !== THUNDERCHILD_TITLE_ID && tRec && tRec.status === 'held') {
+            playerEntity.data = playerEntity.data || {};
+            playerEntity.data.titleId = tId;
+            playerEntity.data.titleName = tRec.title;
+            break;
+          }
+        }
+      }
     },
 
     _onCombatDamage(payload) {
@@ -693,6 +718,66 @@ export function createTitlesSystem() {
       return succession;
     },
 
+    _onStuntTrick(trick) {
+      if (!trick || typeof trick !== 'object') return null;
+      const trickId = cleanText(trick.trickId);
+      if (!trickId) return null;
+
+      const playerId = this.state && this.state.playerId;
+      const isPlayer = trick.actorId === 'player'
+        || (playerId != null && trick.actorId === playerId);
+      if (!isPlayer) return null;
+
+      if (!Array.isArray(trick.causeChain) || trick.causeChain.length === 0) return null;
+
+      const titleId = `title_${trickId}`;
+      const titleName = cleanText(trick.name || humanizeId(trickId, 'Stunt'));
+      const tick = finiteInteger(trick.tick != null ? trick.tick : (this.state && this.state.tick));
+
+      const playerEntity = entityFor(this.state, playerId) || entityFor(this.state, 'player');
+      const holderKey = holderKeyOf(playerEntity) || 'player';
+
+      ensureState(this.state);
+      const story = this.state.story;
+      const titles = story.titles;
+
+      const titleRecord = {
+        schemaVersion: TITLES_SCHEMA_VERSION,
+        titleId,
+        trickId,
+        title: titleName,
+        status: 'held',
+        holderKey,
+        earnedTick: tick,
+      };
+      titles.byId[titleId] = titleRecord;
+
+      const seenId = `${titleId}:${holderKey}:${tick}`;
+      appendBounded(story.titlesSeen, {
+        id: seenId,
+        title: titleName,
+        seenAt: tick,
+        holderKey,
+        trickId,
+      }, TITLES_SEEN_LIMIT);
+
+      if (playerEntity) {
+        playerEntity.data = playerEntity.data || {};
+        playerEntity.data.titleId = titleId;
+        playerEntity.data.titleName = titleName;
+      }
+
+      const event = {
+        titleId,
+        trickId,
+        title: titleName,
+        holderKey,
+        tick,
+      };
+      emit(this.bus, 'title:earned', event);
+      return event;
+    },
+
     destroy() {
       if (this.bus && typeof this.bus.off === 'function') {
         if (this._onHold) this.bus.off('title:holdResolved', this._onHold);
@@ -701,8 +786,9 @@ export function createTitlesSystem() {
         if (this._onSpawned) this.bus.off('entity:spawned', this._onSpawned);
         if (this._onSaveLoaded) this.bus.off('save:loaded', this._onSaveLoaded);
         if (this._onNewGame) this.bus.off('game:newGame', this._onNewGame);
+        if (this._onTrickDetected) this.bus.off('stunt:trickDetected', this._onTrickDetected);
       }
-      this._onHold = this._onDamage = this._onKilled = this._onSpawned = this._onSaveLoaded = this._onNewGame = null;
+      this._onHold = this._onDamage = this._onKilled = this._onSpawned = this._onSaveLoaded = this._onNewGame = this._onTrickDetected = null;
       this._activeEntityIds.clear();
     },
   };

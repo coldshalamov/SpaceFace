@@ -347,6 +347,8 @@ function makeCandidate(seed, input, gateOpen) {
     annotation: annotationTemplate && annotationTemplate.text || null,
   };
   if (input.type === 'loss') candidate.playerCaused = input.playerCaused === true;
+  if (input.trickId) candidate.trickId = input.trickId;
+  if (input.tokens) candidate.tokens = { ...input.tokens };
   return candidate;
 }
 
@@ -562,6 +564,7 @@ function collectCandidates(state) {
       sourceKind: 'story.titlesSeen',
       at: typeof record === 'object' ? record.seenAt == null ? record.at : record.seenAt : 0,
       tokens: { title: text(title) },
+      trickId: record && record.trickId,
     });
   }
 

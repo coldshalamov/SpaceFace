@@ -31,6 +31,7 @@ import { surrenderRecovery } from '../systems/surrenderRecovery.js';
 import { custodyConsequences } from '../systems/custodyConsequences.js';
 import { aceMemory } from '../systems/aceMemory.js';
 import { barkDirector } from '../systems/barkDirector.js';
+import { stuntGrammar } from '../systems/stuntGrammar.js';
 import { aiPorts } from '../systems/aiPorts.js';
 import { ai } from '../systems/ai.js';
 import { createTacticalAISystem } from '../systems/tacticalAI.js';
@@ -368,6 +369,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['aiPorts', aiPorts],
     ['tumbleStates', tumbleStates],
     ['collisionConsequences', collisionConsequences],
+    ['stuntGrammar', stuntGrammar],
     ['aiEncounter', aiEncounter],
     ['actions', actions],
     ['cruise', cruise],

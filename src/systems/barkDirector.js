@@ -34,6 +34,76 @@ export const HULL_RECOGNITION_TTL_S = 3.0;
 /** No witness, no recognition: a hull is only known by somebody who was close enough to see it. */
 export const HULL_RECOGNITION_FALLBACK_RANGE_WU = 900;
 
+// PQ-146.02 stunt recognition: an NPC witness speaks the title of a witnessed trick.
+// Like hull recognition, exempt from post-combat silence.
+export const STUNT_RECOGNITION_GAP_S = 8.0;
+export const STUNT_RECOGNITION_TTL_S = 3.0;
+
+export const STUNT_BARKS = Object.freeze({
+  faction_scn: Object.freeze([
+    'Concord advisory: telemetry confirms {title} maneuver. Incident logged. Ref 44-C.',
+    'Maneuver classified as {title}. File the citation under non-standard kinetics.',
+    'Visual confirmation: {title}. The incident log has been updated.',
+    'That was a {title}. Ref 44-C citation pending review.',
+  ]),
+  faction_mts: Object.freeze([
+    'Meridian floor: that {title} just moved the salvage spread.',
+    'A clean {title}. That kind of flying carries a premium.',
+    'Did you see that {title}? Put a price on that pilot.',
+    'That {title} is going to cost somebody a fortune.',
+  ]),
+  faction_dmc: Object.freeze([
+    'Looked like a {title} from here. Glad I am off-shift.',
+    'A {title}... just what this shift needed.',
+    'Saw that {title}. Somebody else can clean up the scrap.',
+    'Drift channel: caught that {title}. Messy work, but it holds.',
+  ]),
+  faction_reach: Object.freeze([
+    'Did you see that? A real {title} out in the black!',
+    'Holy shit, that was a {title}! They actually pulled it off!',
+    'That {title} was wicked! Watch your flank!',
+    'Broke them with a {title}! That pilot does not play!',
+  ]),
+  faction_quiet: Object.freeze([
+    '{title}. Clean.',
+    'Witnessed: {title}.',
+    '{title}. Done.',
+    'Seen. {title}.',
+  ]),
+  faction_choir: Object.freeze([
+    'The Pattern sings the {title}. A violent geometry.',
+    'Witness the {title}: the arc completes itself.',
+    'A {title} offered to the void. The chorus widens.',
+    'Behold the {title}. The Pattern weaves the rupture.',
+  ]),
+  faction_free: Object.freeze([
+    'Now that was a proper {title}! Hell of a throw!',
+    'Never seen a {title} pulled off like that out here.',
+    'Frontier net: somebody just landed a {title}. Good shooting.',
+    'That was a {title} if I ever saw one. Clear the lane for them.',
+  ]),
+  faction_vael: Object.freeze([
+    'Clause seven observed: the kinetics fulfill the definition of {title}.',
+    'Maneuver registered as {title}. Accord terms acknowledged.',
+    'The {title} is entered into the record without dispute.',
+    'Kinetic clause satisfied: {title}. The terms stand amended.',
+  ]),
+});
+
+export function stuntRecognitionBarkFor(factionId, rng, tokens = {}) {
+  const faction = (factionId && STUNT_BARKS[factionId]) ? STUNT_BARKS[factionId] : STUNT_BARKS.faction_free;
+  let idx = 0;
+  if (typeof rng === 'number' && Number.isFinite(rng)) {
+    idx = ((Math.floor(rng) % faction.length) + faction.length) % faction.length;
+  } else if (typeof rng === 'function') {
+    const v = rng();
+    const f = (typeof v === 'number' && Number.isFinite(v)) ? v : 0;
+    idx = Math.floor(Math.max(0, Math.min(0.9999999, f)) * faction.length);
+  }
+  const line = faction[idx] || faction[0];
+  return line.replace(/\{title\}/g, String(tokens.title || 'Stunt'));
+}
+
 const FLEE_FSMS = new Set(['flee', 'retreat', 'withdraw']);
 const ATTACK_FSMS = new Set(['attack', 'strafe', 'engage', 'fight']);
 const SCAN_FSMS = new Set(['scan', 'inspect', 'intercept', 'pursue', 'approach', 'patrol']);
@@ -54,11 +124,13 @@ export const barkDirector = {
     // republishes it whenever a witnessed act attaches to the hull. Listening to that receipt keeps
     // this observer independent of system init order.
     this._onHullHistory = (payload) => this._speakHullRecognition(payload || {});
+    this._onStuntTrick = (payload) => this._speakStunt(payload || {});
     if (this.bus && typeof this.bus.on === 'function') {
       this.bus.on('ai:flee', this._onFlee);
       this.bus.on('ai:reinforcementScheduled', this._onReinforcement);
       this.bus.on('combat:outcome', this._onCombatOutcome);
       this.bus.on('ship:livingHullChanged', this._onHullHistory);
+      this.bus.on('stunt:trickDetected', this._onStuntTrick);
     }
   },
 
@@ -198,17 +270,100 @@ export const barkDirector = {
     return receipt;
   },
 
+  /**
+   * One NPC witness reacts to a witnessed trick with a faction-specific line using the earned title.
+   * Deliberately exempt from post-combat silence.
+   */
+  _speakStunt(payload) {
+    const state = this.state;
+    if (!state || !payload) return null;
+    if (state.mode && state.mode !== 'flight') return null;
+
+    const playerId = state.playerId;
+    const isPlayer = payload.actorId === 'player'
+      || (playerId != null && payload.actorId === playerId);
+    if (!isPlayer) return null;
+
+    if (!Array.isArray(payload.causeChain) || payload.causeChain.length === 0) return null;
+
+    const own = ensureState(state);
+    const now = Number(state.simTime) || 0;
+    const record = stuntRecognitionRecord(own);
+    if (Number(record.nextAt) > now) return null;
+
+    const witness = this._nearestWitness();
+    if (!witness) return null;
+
+    const factionId = factionFor(witness);
+    const trickId = String(payload.trickId || payload.id || 'bolas');
+    const title = String(payload.title || payload.name || humanizeId(trickId, 'Stunt'));
+
+    const seed = state.meta && state.meta.seed;
+    const rng = typeof state.rng === 'function'
+      ? state.rng
+      : hash32(seed == null ? 0 : seed, 'stuntRecognition', String(witness.id), trickId);
+    const text = stuntRecognitionBarkFor(factionId, rng, { title });
+
+    const voice = this.helpers && this.helpers.voice;
+    let accepted = true;
+    if (voice && typeof voice.say === 'function') {
+      accepted = voice.say({
+        channel: 'bark',
+        text,
+        kind: 'stuntRecognition',
+        ttl: STUNT_RECOGNITION_TTL_S,
+        id: `stuntRecognition:${witness.id}:${trickId}:${now}`,
+        factionId,
+      });
+    }
+    if (!accepted) return null;
+
+    record.lastAt = now;
+    record.nextAt = now + STUNT_RECOGNITION_GAP_S;
+    record.lastEntityId = witness.id;
+    record.count = Math.min(Number.MAX_SAFE_INTEGER, (Number(record.count) || 0) + 1);
+
+    const receipt = {
+      entityId: witness.id,
+      factionId,
+      trickId,
+      title,
+      text,
+      t: now,
+    };
+    this._emit('barkDirector:voice', {
+      entityId: witness.id,
+      situation: 'stunt-recognition',
+      reason: trickId,
+      text,
+      factionId,
+      t: now,
+      trickId,
+      title,
+    });
+    this._emit('barkDirector:stuntRecognition', receipt);
+    return receipt;
+  },
+
   /** Closest eligible NPC hull inside the live authority radius; ties break on the lower id. */
   _nearestWitness() {
     const state = this.state;
-    const player = state.entities && state.entities.get && state.entities.get(state.playerId);
+    if (!state) return null;
+    const player = (state.entities && typeof state.entities.get === 'function' ? state.entities.get(state.playerId) : null)
+      || (Array.isArray(state.entityList) ? state.entityList.find((e) => e && e.id === state.playerId) : null)
+      || (state.entities && typeof state.entities === 'object' ? state.entities[state.playerId] : null);
     if (!player || !player.pos) return null;
     let radius = Number(tableSimAuthorityWuFromState(state));
     if (!Number.isFinite(radius) || radius <= 0) radius = HULL_RECOGNITION_FALLBACK_RANGE_WU;
     const limit = radius * radius;
     let best = null;
     let bestDistance = Infinity;
-    for (const entity of state.entityList || []) {
+    const entities = Array.isArray(state.entityList) && state.entityList.length
+      ? state.entityList
+      : (state.entities && typeof state.entities.values === 'function'
+        ? [...state.entities.values()]
+        : (state.entities && typeof state.entities === 'object' ? Object.values(state.entities) : []));
+    for (const entity of entities) {
       if (!eligibleShip(entity, state) || !entity.pos) continue;
       const dx = Number(entity.pos.x) - Number(player.pos.x);
       const dz = Number(entity.pos.z) - Number(player.pos.z);
@@ -273,11 +428,13 @@ export const barkDirector = {
       if (this._onReinforcement) this.bus.off('ai:reinforcementScheduled', this._onReinforcement);
       if (this._onCombatOutcome) this.bus.off('combat:outcome', this._onCombatOutcome);
       if (this._onHullHistory) this.bus.off('ship:livingHullChanged', this._onHullHistory);
+      if (this._onStuntTrick) this.bus.off('stunt:trickDetected', this._onStuntTrick);
     }
     this._onFlee = null;
     this._onReinforcement = null;
     this._onCombatOutcome = null;
     this._onHullHistory = null;
+    this._onStuntTrick = null;
   },
 };
 
@@ -320,6 +477,7 @@ function freshState() {
     ambientBySector: {},
     suppressed: [],
     hullRecognition: freshHullRecognition(),
+    stuntRecognition: freshStuntRecognition(),
   };
 }
 
@@ -338,12 +496,24 @@ function hullRecognitionRecord(own) {
   return own.hullRecognition;
 }
 
+function freshStuntRecognition() {
+  return { lastAt: 0, nextAt: 0, lastEntityId: null, count: 0 };
+}
+
+function stuntRecognitionRecord(own) {
+  if (!own.stuntRecognition || typeof own.stuntRecognition !== 'object') {
+    own.stuntRecognition = freshStuntRecognition();
+  }
+  return own.stuntRecognition;
+}
+
 function ensureState(state) {
   if (!state.barkDirector || typeof state.barkDirector !== 'object') state.barkDirector = freshState();
   if (!state.barkDirector.entities || typeof state.barkDirector.entities !== 'object') state.barkDirector.entities = {};
   if (!state.barkDirector.ambientBySector || typeof state.barkDirector.ambientBySector !== 'object') state.barkDirector.ambientBySector = {};
   if (!Array.isArray(state.barkDirector.suppressed)) state.barkDirector.suppressed = [];
   hullRecognitionRecord(state.barkDirector);
+  stuntRecognitionRecord(state.barkDirector);
   return state.barkDirector;
 }
 
@@ -367,6 +537,11 @@ function eligibleShip(entity, state) {
   const ai = data.ai || {};
   if (data.barkDirectorSuppressed || ai.barkDirectorSuppressed) return false;
   return !!(data.ai || data.combat || data.intent || data.barkSituation || data.radioSituation);
+}
+
+function humanizeId(value, fallback = 'Stunt') {
+  const s = String(value || fallback).replace(/^(?:trick_|title_)/, '').replace(/_/g, ' ').trim();
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : fallback;
 }
 
 function normalizeSituation(value) {

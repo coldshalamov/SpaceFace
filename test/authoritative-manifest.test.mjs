@@ -30,8 +30,8 @@ test('production init + update order lengths match the live browser baseline', (
   // both are event-driven and never tick. crucibleFocus watches the run phase to hide campaign
   // chrome, and swarmChain ticks only to notice a kill chain lapsing — so those two are the ones
   // in the update order, and the two figures move by different amounts on purpose.
-  assert.equal(PRODUCTION_INIT_ORDER.length, 146);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 105);
+  assert.equal(PRODUCTION_INIT_ORDER.length, 147);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 106);
   assert.equal(PRODUCTION_INIT_ORDER[0], 'core');
   assert.ok(PRODUCTION_INIT_ORDER.includes('render'));
   assert.ok(PRODUCTION_INIT_ORDER.includes('save'));
@@ -40,8 +40,9 @@ test('production init + update order lengths match the live browser baseline', (
   assert.ok(PRODUCTION_UPDATE_ORDER.includes('flightSlot'));
   assert.ok(PRODUCTION_UPDATE_ORDER.includes('masslineSnares'));
   assert.ok(PRODUCTION_UPDATE_ORDER.includes('massSeedHud'));
-  assert.ok(PRODUCTION_UPDATE_ORDER.indexOf('titles')
-    < PRODUCTION_UPDATE_ORDER.indexOf('wingMorale'));
+  assert.ok(PRODUCTION_UPDATE_ORDER.includes('stuntGrammar'));
+  assert.ok(PRODUCTION_UPDATE_ORDER.indexOf('collisionConsequences')
+    < PRODUCTION_UPDATE_ORDER.indexOf('stuntGrammar'));
   assert.ok(PRODUCTION_UPDATE_ORDER.indexOf('environmentalMachinery')
     < PRODUCTION_UPDATE_ORDER.indexOf('fields'));
   const worldIndex = PRODUCTION_UPDATE_ORDER.indexOf('world');
@@ -143,10 +144,9 @@ test('browser production system set is unchanged vs production manifest constant
   const state = createGameState(13);
   const registry = createRegistry({ state, bus: createBus(), helpers: {} });
 
-  // Full init list length and terminal platform systems preserved. 146 since PQ-135 added
-  // swarmArena (the debris field), swarmSupply (repair cells), crucibleFocus (the chrome gate) and
-  // swarmChain (the kill chain).
-  assert.equal(registry.systems.length, 146);
+  // Full init list length and terminal platform systems preserved. 147 since PQ-146.02 registered
+  // the existing stuntGrammar observer so trick receipts reach titles and barks.
+  assert.equal(registry.systems.length, 147);
   const names = registry.systems.map((s) => s.name);
   assert.ok(names.includes('render') || registry.runtimeManifest.authoritativeSystemIds.includes('render'));
   assert.ok(registry.runtimeManifest.authoritativeSystemIds.includes('ui'));

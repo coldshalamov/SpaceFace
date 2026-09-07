@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-07T05:17:36.218Z",
+  "updatedAt": "2026-09-07T05:55:00.000Z",
   "purpose": "Canonical cross-plan priority and dispatch queue. Product completion remains authoritative in design/program/03_LIVE_ACCEPTANCE_MATRIX.md.",
   "stateContract": {
     "allowed": [
@@ -6330,7 +6330,7 @@
       "priority": 84,
       "title": "Titles and ledger entries in adventure",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -6348,8 +6348,10 @@
         "npm run check:baseline",
         "npm run check:save-schema"
       ],
-      "receiptRefs": [],
-      "brief": "Tricks write ledger lines and earn titles NPCs use in barks; the rap sheet cites them. DONE WHEN: A witnessed bolas kill produces a ledger line and a bark within one session; save round-trips."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-146.02-REPORT.md"
+      ],
+      "brief": "ACCEPTED 2026-09-07 (AGY Gemini + controller). A witnessed bolas stunt:trickDetected writes title_bolas into story.titlesSeen, projects a ship-ledger title row, and a nearby NPC barks a faction line in the same session; JSON story round-trip keeps trickId. stuntGrammar is now on the production registry (it was unwired). Not PQ-146.01 combo scoring."
     },
     {
       "id": "PQ-146.03",
