@@ -9,6 +9,7 @@ export const GRAVITY_MARK_STATUS_ID = 'status_gravity_marked';
 export const GRAVITY_MARK_FIELD_COUPLING = 3;
 export const MOMENTUM_SINK_STATUS_ID = 'status_momentum_sink';
 export const MOMENTUM_SINK_WEAPON_ID = 'wpn_momentum_sink_s';
+export const INERTIAL_SHUNT_WEAPON_ID = 'wpn_inertial_shunt_s';
 export const PINNED_STATUS_ID = 'status_pinned';
 
 // PQ-026.00 bungee: plant on a rock, burn away, release. The snap returns stored receding
@@ -21,6 +22,17 @@ export const MOMENTUM_SINK_BUNGEE = Object.freeze({
   durationTicks: 240,
   minAnchorMass: 120,
   capitalAnchorMassMult: 8,
+});
+
+// PQ-026.02 ram plate: dump closing speed into the other hull. Light hostiles fly;
+// heavies shrug. FEEL_CONTRACT B3 screen depth is 126 WU.
+export const INERTIAL_SHUNT_TUNING = Object.freeze({
+  minClosingSpeed: 40,
+  dumpVsLight: 0.95,
+  refMass: 24,
+  cooldownTicks: 45,
+  screenDepthWu: 126,
+  playerStopWu: 20,
 });
 export const UNMOORED_STATUS_ID = 'status_unmoored';
 export const CRYO_LOCK_STATUS_ID = 'status_cryo_lock';

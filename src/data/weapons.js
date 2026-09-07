@@ -168,6 +168,15 @@ export const WEAPONS = [
     impulsePerHit: 1, tumbleTorque: 0.08, impulseProvenance: 'momentum_sink_latch',
     statuses: [{ id: 'status_momentum_sink', stacks: 1 }],
   },
+  {
+    // INERTIAL SHUNT — the ram plate. A fitted hull that hits another ship dumps its closing
+    // speed into them, mass-bounded: a wasp flies a screen, you stop; a gunship shrugs. The
+    // ping is only a catalog hit-confirm; the payoff is the contact, never a DPS grind.
+    id: 'wpn_inertial_shunt_s', name: 'Inertial Shunt S', slotType: 'weapon', size: 'S', tier: 2, mass: 4, price: 24000, requiresTech: 'tech_graviton_drives',
+    dmg: 3, rof: 0.2, dps: 0.6, damageType: 'kinetic', energyCost: 8,
+    projSpeed: 480, range: 520, tracking: 'fixed', spreadDeg: 0.6,
+    impulsePerHit: 1, tumbleTorque: 0.08, impulseProvenance: 'inertial_shunt_ping',
+  },
 
   // --- PHYSICS-FIRST FAMILY (SF-10 / STEP 9): three setup/payoff verbs on the PQ-009 impulse
   // kernel. They read mechanically distinct in flight (see src/render/vfxProfiles.js) and are the

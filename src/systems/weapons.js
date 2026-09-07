@@ -30,6 +30,7 @@ import {
   mergeWeaponView,
 } from '../combat/attackSpec.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
+import { tryApplyInertialShuntFromImpact } from '../combat/inertialShunt.js';
 import {
   GRAVITY_MARK_STATUS_ID,
   MOMENTUM_SINK_BUNGEE,
@@ -175,6 +176,9 @@ export const weapons = {
     this._attackLive = new Map();
     this._attackQueryScratch = [];
     this._momentumSinkImpulse = { x: 0, y: 0, z: 0 };
+    this._shuntImpulseA = { x: 0, y: 0, z: 0 };
+    this._shuntImpulseB = { x: 0, y: 0, z: 0 };
+    this._shuntCooldown = new Map();
     this._entityGetter = (id) => {
       if (id == null) return null;
       if (this.helpers && typeof this.helpers.getEntity === 'function') return this.helpers.getEntity(id);
@@ -196,9 +200,23 @@ export const weapons = {
       }
       this._onAttackHit(payload);
     });
+    ctx.bus.on('physics:impact', (payload) => {
+      const applied = tryApplyInertialShuntFromImpact(
+        this.state,
+        payload,
+        this._entityGetter,
+        this._shuntImpulseA,
+        this._shuntImpulseB,
+        this._shuntCooldown,
+      );
+      if (applied && this.bus) {
+        this.bus.emit('weapons:inertialShunt', applied);
+      }
+    });
     ctx.bus.on('sector:enter', () => {
       handlePayloadSectorTransition(this.state, this.helpers);
       clearAllMomentumSinkPlants(this.state);
+      if (this._shuntCooldown) this._shuntCooldown.clear();
     });
   },
 
