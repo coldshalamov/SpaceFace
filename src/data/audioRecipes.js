@@ -499,11 +499,15 @@ export const RECIPES = [
     gainMult: 0.58,
   },
   {
+    // Kit "confirm" (design/frontend/direction/DIRECTION_SHEET.md §8): one clear tone, no sweep,
+    // ≤ 300 ms (attack 5 + decay 40 + release 200).
     id: 'sfx_ui_confirm',
     category: 'ui',
     type: 'oscillator',
-    baseFreq: 660, freqSweep: [660, 880], sweepTimeS: 0.12,
-    gainEnvelope: { attack: 0.01, sustain: 0.0, release: 0.12 },
+    wave: 'sine',
+    baseFreq: 440, freqSweep: [440, 440], sweepTimeS: 0.01,
+    gainEnvelope: { attack: 0.005, sustain: 0.0, release: 0.2 },
+    filterType: 'lowpass', filterFreq: 3000,
   },
   {
     id: 'sfx_ui_alert',
@@ -563,15 +567,16 @@ export const RECIPES = [
   // WANTED heat escalation — the law's attention has a voice. A dissonant rising alarm,
   // urgent and mechanical, distinct from the generic UI alert so a heat climb is never mistaken
   // for menu feedback. The call site scales rate/gain with the heat band (1..5).
+  // Kit "wanted" (design/frontend/direction/DIRECTION_SHEET.md §8): one sustained cold tone, slow
+  // attack, held, ≤ 1.2 s (attack 250 + decay 40 + release 850). No alarm sweep, no repeat.
   {
     id: 'sfx_wanted_alert',
     category: 'ui',
     type: 'oscillator',
-    wave: 'sawtooth',
-    baseFreq: 311, freqSweep: [311, 466], sweepTimeS: 0.16,
-    gainEnvelope: { attack: 0.006, sustain: 0.12, release: 0.14 },
-    filterType: 'bandpass', filterFreq: 900, filterQ: 1.8,
-    repeatCount: 2, repeatIntervalS: 0.18,
+    wave: 'sine',
+    baseFreq: 196, freqSweep: [196, 196], sweepTimeS: 0.01,
+    gainEnvelope: { attack: 0.25, sustain: 0.85, release: 0.85 },
+    filterType: 'lowpass', filterFreq: 800,
     gainMult: 0.8,
   },
   // Search called off — a soft falling resolution when WANTED drops clean. The mirror of the
@@ -598,42 +603,48 @@ export const RECIPES = [
 
   // --- Panel open: soft rising two-tone (a surface appears). Quieter than confirm. ---
   {
+    // Kit "open" (design/frontend/direction/DIRECTION_SHEET.md §8): a soft low thud, ≤ 250 ms
+    // (attack 4 + decay 40 + release 180).
     id: 'sfx_ui_open',
     category: 'ui',
     type: 'oscillator',
-    baseFreq: 520, freqSweep: [520, 780], sweepTimeS: 0.09,
-    gainEnvelope: { attack: 0.004, sustain: 0.0, release: 0.09 },
-    filterType: 'highpass', filterFreq: 360,
+    wave: 'sine',
+    baseFreq: 110, freqSweep: [110, 100], sweepTimeS: 0.12,
+    gainEnvelope: { attack: 0.004, sustain: 0.0, release: 0.18 },
+    filterType: 'lowpass', filterFreq: 500,
     gainMult: 0.75,
   },
-  // --- Panel back/close: soft falling two-tone (a surface dismisses). Mirror of open. ---
+  // --- Kit "close": the same thud, lower. ≤ 250 ms. ---
   {
     id: 'sfx_ui_back',
     category: 'ui',
     type: 'oscillator',
-    baseFreq: 660, freqSweep: [660, 440], sweepTimeS: 0.09,
-    gainEnvelope: { attack: 0.004, sustain: 0.0, release: 0.09 },
-    filterType: 'highpass', filterFreq: 300,
+    wave: 'sine',
+    baseFreq: 82, freqSweep: [82, 74], sweepTimeS: 0.12,
+    gainEnvelope: { attack: 0.004, sustain: 0.0, release: 0.18 },
+    filterType: 'lowpass', filterFreq: 420,
     gainMult: 0.7,
   },
-  // --- Tab switch: a very short muted tick. Subtler than click so rapid tabbing never fatigues. ---
+  // --- Kit "move" (focus): a barely-there tick, ≤ 60 ms (attack 1 + decay 40 + release 15). ---
   {
     id: 'sfx_ui_tab',
     category: 'ui',
     type: 'oscillator',
-    baseFreq: 940, freqSweep: [940, 900], sweepTimeS: 0.02,
-    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.028 },
-    filterType: 'highpass', filterFreq: 700,
+    wave: 'sine',
+    baseFreq: 660, freqSweep: [660, 640], sweepTimeS: 0.02,
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.015 },
+    filterType: 'lowpass', filterFreq: 2400,
     gainMult: 0.55,
   },
-  // --- Denied/invalid action: a short low buzz (unambiguously negative, distinct from alert). ---
+  // --- Kit "deny": a dull two-note fall over 120 ms, ≤ 300 ms (attack 3 + decay 40 + release 200). ---
   {
     id: 'sfx_ui_error',
     category: 'ui',
     type: 'oscillator',
-    baseFreq: 220, freqSweep: [220, 160], sweepTimeS: 0.12,
-    gainEnvelope: { attack: 0.003, sustain: 0.04, release: 0.12 },
-    filterType: 'bandpass', filterFreq: 300, filterQ: 2.2,
+    wave: 'sine',
+    baseFreq: 330, freqSweep: [330, 247], sweepTimeS: 0.12,
+    gainEnvelope: { attack: 0.003, sustain: 0.04, release: 0.2 },
+    filterType: 'lowpass', filterFreq: 900,
     gainMult: 0.85,
   },
   // --- Loot collected: a bright ascending pickup chime (positive reward feedback). ---
@@ -657,15 +668,16 @@ export const RECIPES = [
     gainMult: 0.7,
   },
 
-  // --- Docking thud/clunk (metallic impact on successful dock) ---
+  // --- Kit "dock" (design/frontend/direction/DIRECTION_SHEET.md §8): a low swell, slow attack,
+  //     ≤ 900 ms (attack 180 + decay 40 + release 650). ---
   {
     id: 'sfx_dock_clunk',
     category: 'ui',
-    type: 'noise_burst',
-    noiseColor: 'white',
-    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.25 },
-    filterType: 'bandpass', filterFreq: 350, filterQ: 1.5,
-    reverbMix: 0.4, reverbDecay: 0.8,
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 48, freqSweep: [48, 62], sweepTimeS: 0.5,
+    gainEnvelope: { attack: 0.18, sustain: 0.6, release: 0.65 },
+    filterType: 'lowpass', filterFreq: 600,
   },
 
   // --- Station ambient hum (low continuous hum when docked) ---
@@ -1229,14 +1241,16 @@ export const RECIPES = [
     gainMult: 0.55,
     gainEnvelope: { attack: 0.008, sustain: 0.0, release: 0.18 },
   },
-  // Undock release: soft airy decompress (dock is clunk; undock is release).
+  // Kit "undock" (design/frontend/direction/DIRECTION_SHEET.md §8): the dock swell reversed,
+  // faster, ≤ 600 ms (attack 60 + decay 40 + release 450).
   {
     id: 'sfx_undock_release',
     category: 'engine',
-    type: 'noise_filtered',
-    noiseColor: 'pink',
-    gainEnvelope: { attack: 0.03, sustain: 0.0, release: 0.45 },
-    filterType: 'bandpass', filterFreq: 380, filterQ: 0.55,
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 62, freqSweep: [62, 48], sweepTimeS: 0.35,
+    gainEnvelope: { attack: 0.06, sustain: 0.5, release: 0.45 },
+    filterType: 'lowpass', filterFreq: 500,
   },
   // Scan pulse / Focus transition — soft ascending fifth pair (distinct from lock_acquired).
   {
