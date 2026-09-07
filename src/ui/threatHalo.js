@@ -1,4 +1,47 @@
 import { contactThreatTier, isHostileToPlayer } from '../systems/scanner.js';
+import {
+  OCCUPATIONAL_ROLE_IDS,
+  OCCUPATIONAL_SILHOUETTE_TOKENS,
+  OCCUPATIONAL_SILHOUETTE_RULES,
+  getOccupationalSilhouetteRule,
+} from '../data/palettes.js';
+
+export {
+  OCCUPATIONAL_ROLE_IDS,
+  OCCUPATIONAL_SILHOUETTE_TOKENS,
+  OCCUPATIONAL_SILHOUETTE_RULES,
+  getOccupationalSilhouetteRule,
+};
+
+export function resolveEntityOccupationalRule(entity) {
+  if (!entity) return null;
+  const data = entity.data || {};
+  const candidates = [
+    entity.occupationalRole,
+    data.occupationalRole,
+    entity.role,
+    data.role,
+    data.trafficRole,
+    data.jobRole,
+    data.craftId,
+    entity.ship,
+    data.ship,
+  ];
+  for (let i = 0; i < candidates.length; i++) {
+    const c = candidates[i];
+    if (c && typeof c === 'string') {
+      const rule = getOccupationalSilhouetteRule(c);
+      if (rule) return rule;
+    }
+  }
+  return null;
+}
+
+export function getThreatHaloSilhouetteToken(entity) {
+  const rule = resolveEntityOccupationalRule(entity);
+  return rule ? rule.silhouetteToken : 'token_silhouette_standard';
+}
+
 
 const HOSTILE_LIMIT = 4;
 const MISSILE_LIMIT = 3;
@@ -119,7 +162,11 @@ export function createThreatHalo(root) {
   const hostileTier = new Int16Array(HOSTILE_LIMIT);
   const hostileDist = new Float64Array(HOSTILE_LIMIT);
   const hostileOpacity = new Float64Array(HOSTILE_LIMIT);
+  const hostileRole = new Array(HOSTILE_LIMIT);
+  const hostileToken = new Array(HOSTILE_LIMIT);
+  const hostileFaction = new Array(HOSTILE_LIMIT);
   let hostileCount = 0;
+
 
   const missileX = new Float64Array(MISSILE_LIMIT);
   const missileY = new Float64Array(MISSILE_LIMIT);
@@ -355,7 +402,7 @@ export function createThreatHalo(root) {
     setDisplay(layer, false);
   }
 
-  function pushHostileCandidate(x, y, tier, dist, opacity) {
+  function pushHostileCandidate(x, y, tier, dist, opacity, role = 'unknown', token = 'token_silhouette_standard', faction = null) {
     if (hostileCount < HOSTILE_LIMIT) {
       const i = hostileCount++;
       hostileX[i] = x;
@@ -363,6 +410,9 @@ export function createThreatHalo(root) {
       hostileTier[i] = tier;
       hostileDist[i] = dist;
       hostileOpacity[i] = opacity;
+      hostileRole[i] = role;
+      hostileToken[i] = token;
+      hostileFaction[i] = faction;
       return;
     }
 
@@ -377,6 +427,9 @@ export function createThreatHalo(root) {
     hostileTier[worst] = tier;
     hostileDist[worst] = dist;
     hostileOpacity[worst] = opacity;
+    hostileRole[worst] = role;
+    hostileToken[worst] = token;
+    hostileFaction[worst] = faction;
   }
 
   function pushMissileCandidate(x, y, dist) {
@@ -411,16 +464,25 @@ export function createThreatHalo(root) {
       const tt = hostileTier[i];
       const td = hostileDist[i];
       const to = hostileOpacity[i];
+      const tr = hostileRole[i];
+      const tk = hostileToken[i];
+      const tf = hostileFaction[i];
       hostileX[i] = hostileX[best];
       hostileY[i] = hostileY[best];
       hostileTier[i] = hostileTier[best];
       hostileDist[i] = hostileDist[best];
       hostileOpacity[i] = hostileOpacity[best];
+      hostileRole[i] = hostileRole[best];
+      hostileToken[i] = hostileToken[best];
+      hostileFaction[i] = hostileFaction[best];
       hostileX[best] = tx;
       hostileY[best] = ty;
       hostileTier[best] = tt;
       hostileDist[best] = td;
       hostileOpacity[best] = to;
+      hostileRole[best] = tr;
+      hostileToken[best] = tk;
+      hostileFaction[best] = tf;
     }
   }
 
@@ -476,7 +538,11 @@ export function createThreatHalo(root) {
       const closing = -((relX * dx + relZ * dz) / Math.max(1, dist));
       const closure = clamp(closing / HOSTILE_CLOSING_FOR_MAX, 0, 1);
       const opacity = HOSTILE_OPACITY_BASE + closure * (HOSTILE_OPACITY_MAX - HOSTILE_OPACITY_BASE);
-      pushHostileCandidate(projected.x, projected.y, tier, dist, opacity);
+      const occRule = resolveEntityOccupationalRule(entity);
+      const role = occRule ? occRule.role : (entity.role || (entity.data && (entity.data.role || entity.data.trafficRole)) || 'unknown');
+      const token = occRule ? occRule.silhouetteToken : 'token_silhouette_standard';
+      const faction = entity.factionId || (entity.data && entity.data.factionId) || null;
+      pushHostileCandidate(projected.x, projected.y, tier, dist, opacity, role, token, faction);
     }
 
     sortHostileCandidates();
@@ -523,6 +589,13 @@ export function createThreatHalo(root) {
       setEdge(slot, placement.edge);
       setHudTransform(slot, placement.x, placement.y);
       setOpacity(slot, hostileOpacity[i].toFixed(2));
+      slot.setAttribute('data-role', hostileRole[i] || 'unknown');
+      slot.setAttribute('data-silhouette-token', hostileToken[i] || 'token_silhouette_standard');
+      if (hostileFaction[i]) {
+        slot.setAttribute('data-faction', hostileFaction[i]);
+      } else {
+        slot.removeAttribute('data-faction');
+      }
       shown++;
     }
 

@@ -375,3 +375,18 @@ export const SHIP_RECIPES = {
     detailLevel: 5, panelCount: 60, antennaCount: 8,
   },
 };
+
+export {
+  OCCUPATIONAL_ROLE_IDS,
+  OCCUPATIONAL_SILHOUETTE_TOKENS,
+  OCCUPATIONAL_SILHOUETTE_RULES,
+  ROLE_ALIASES as OCCUPATIONAL_ROLE_ALIASES,
+  normalizeOccupationalRole,
+  getOccupationalSilhouetteRule,
+} from './occupationalSilhouettes.js';
+import { getRoleFactionLivery as resolveRoleFactionLivery } from './occupationalSilhouettes.js';
+
+export function getRoleFactionLivery(role, factionId) {
+  return resolveRoleFactionLivery(role, factionId, FACTION_PALETTES);
+}
+

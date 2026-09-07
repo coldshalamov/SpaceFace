@@ -8668,7 +8668,7 @@
       "priority": 170,
       "title": "Role silhouettes",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -8690,8 +8690,10 @@
         "npm run check:colour-tokens",
         "npm run check:art"
       ],
-      "receiptRefs": [],
-      "brief": "Nine occupational roles with distinct silhouette rules checked at the shipping camera; livery per faction. DONE WHEN: Blind reviewer names 8 of 9 roles from stills."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-161.00-REPORT.md"
+      ],
+      "brief": "IMPLEMENTED 2026-09-07 (AGY + controller). Nine occupational silhouette rules with unique tokens; faction livery across 14 factions; threatHalo stamps data-role and data-silhouette-token. Headless 7/7 and colour-tokens green. No GPU stills — the 8-of-9 blind-reviewer clause keeps this implemented, not done. No range.js. DONE WHEN: Blind reviewer names 8 of 9 roles from stills."
     },
     {
       "id": "PQ-161.01",

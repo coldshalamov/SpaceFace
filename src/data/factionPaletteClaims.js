@@ -59,3 +59,105 @@ export const FACTION_PALETTE_COLLISIONS = Object.freeze([
     reason: 'Meridian gold stays bright and saturated; DMC copper is materially duller.',
   }),
 ]);
+
+// Nine occupational silhouette and livery claims (PQ-161.00).
+// Each occupational role maps to its distinct silhouette token, functional light code,
+// and livery application pattern across faction liveries.
+import {
+  OCCUPATIONAL_ROLE_IDS,
+  OCCUPATIONAL_SILHOUETTE_TOKENS,
+  OCCUPATIONAL_SILHOUETTE_RULES,
+  getOccupationalSilhouetteRule,
+  getRoleFactionLivery,
+} from './palettes.js';
+
+export const OCCUPATIONAL_PALETTE_CLAIMS = Object.freeze([
+  Object.freeze({
+    id: 'occupational.miner',
+    role: 'miner',
+    silhouetteToken: 'token_silhouette_miner',
+    lightCodeHex: '#F2B233',
+    pattern: 'workwear-chassis-hazard-stripes',
+    distinction: 'Asymmetric extraction arms forward, amber work floods, dust hopper silhouette.',
+  }),
+  Object.freeze({
+    id: 'occupational.customs',
+    role: 'customs',
+    silhouetteToken: 'token_silhouette_customs',
+    lightCodeHex: '#3A78FF',
+    pattern: 'clean-authority-collar',
+    distinction: 'Judge\'s collar emitter frame around bow, dorsal sensor fin, arc-blue inspection bar.',
+  }),
+  Object.freeze({
+    id: 'occupational.heavy',
+    role: 'heavy',
+    silhouetteToken: 'token_silhouette_heavy',
+    lightCodeHex: '#FFB347',
+    pattern: 'industrial-spine-modular-truss',
+    distinction: 'Stepped rectangular truss spine, modular external cargo pods, amber load-strobe heartbeat.',
+  }),
+  Object.freeze({
+    id: 'occupational.courier',
+    role: 'courier',
+    silhouetteToken: 'token_silhouette_courier',
+    lightCodeHex: '#A0EEF8',
+    pattern: 'sleek-speed-stripes',
+    distinction: 'Acute delta dart, needle nose, flush enclosed envelope, cyan clean-burn strobe.',
+  }),
+  Object.freeze({
+    id: 'occupational.salvor',
+    role: 'salvor',
+    silhouetteToken: 'token_silhouette_salvor',
+    lightCodeHex: '#D87838',
+    pattern: 'patchwork-soot-hooded-scorch',
+    distinction: 'Starboard hydraulic plate-shears, three downward hooded umbrella lamps, aft scrap cradle.',
+  }),
+  Object.freeze({
+    id: 'occupational.surveyor',
+    role: 'surveyor',
+    silhouetteToken: 'token_silhouette_surveyor',
+    lightCodeHex: '#80EED0',
+    pattern: 'sensor-spine-matte-paddles',
+    distinction: 'Extended dorsal sensor spine, high moth-wing array paddles, 90° crab survey pin.',
+  }),
+  Object.freeze({
+    id: 'occupational.tender',
+    role: 'tender',
+    silhouetteToken: 'token_silhouette_tender',
+    lightCodeHex: '#FF4455',
+    pattern: 'primer-safety-yellow-corners',
+    distinction: 'Port vertical curved plate rack, starboard articulated welding crane, static red work corners.',
+  }),
+  Object.freeze({
+    id: 'occupational.tug',
+    role: 'tug',
+    silhouetteToken: 'token_silhouette_tug',
+    lightCodeHex: '#FFF4D4',
+    pattern: 'apron-highvis-scuffed-cradle',
+    distinction: 'Blunt bow push-cradle with vertical scuffed pads, low hip nudge-keels, warm white apron beacon.',
+  }),
+  Object.freeze({
+    id: 'occupational.rescue',
+    role: 'rescue',
+    silhouetteToken: 'token_silhouette_rescue',
+    lightCodeHex: '#FF3344',
+    pattern: 'emergency-red-white-identity-bars',
+    distinction: 'Flared casualty intake mouth, dorsal stretcher grapple, steady red-white flank identity bars.',
+  }),
+]);
+
+export {
+  OCCUPATIONAL_ROLE_IDS,
+  OCCUPATIONAL_SILHOUETTE_TOKENS,
+  OCCUPATIONAL_SILHOUETTE_RULES,
+  getOccupationalSilhouetteRule,
+  getRoleFactionLivery,
+};
+
+export function getOccupationalPaletteClaim(role) {
+  const norm = typeof role === 'string' ? role.toLowerCase().trim() : '';
+  const rule = getOccupationalSilhouetteRule(norm);
+  const targetRole = rule ? rule.role : norm;
+  return OCCUPATIONAL_PALETTE_CLAIMS.find((claim) => claim.role === targetRole) || null;
+}
+
