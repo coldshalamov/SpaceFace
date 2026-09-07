@@ -212,6 +212,47 @@ test('pair admission rejects loops and two heavy anchors while allowing one fixe
   assert.equal(validateTwinBridlePair(h.system, h.state, h.player, h.source, h.target, BRIDLE_DEF), 'attachment_cycle');
 });
 
+test('a specialist cuts a player bridle and a heavy NPC ignores the throw', () => {
+  const ignore = harness();
+  const heavyNpc = entity(12, 'ship', 200, 0, {
+    team: 1,
+    mass: 180,
+    physicsBody: { dynamic: true, mass: 180 },
+    data: { enemyTypeId: 'field_anchor_controller' },
+  });
+  assert.equal(
+    validateTwinBridlePair(ignore.system, ignore.state, ignore.player, ignore.source, heavyNpc, BRIDLE_DEF),
+    'heavy_endpoint_resists',
+    'moving terrain does not take a bridle as a control surface',
+  );
+
+  const h = harness({ twoLights: true });
+  step(h, { aim: h.source.pos });
+  step(h, { aim: h.source.pos, latch: true });
+  step(h, { aim: h.target.pos, dt: 0.1 });
+  step(h, { aim: h.target.pos, latch: true });
+  const active = Object.values(h.state.combat.attachments.byId).find((entry) => entry.state === 'active');
+  assert.ok(active, 'the throw still makes one player-controlled line');
+
+  const cutter = entity(9, 'ship', 120, 20, {
+    team: 1,
+    data: { lootTableId: 'tether_control_raider', enemyTypeId: 'tether_control_raider' },
+  });
+  h.state.entities.set(cutter.id, cutter);
+  h.state.entityList.push(cutter);
+  h.bus.emit('ai:doctrinePhase', {
+    entityId: cutter.id,
+    phase: 'attach_window',
+    doctrineId: 'tether_control_raider',
+    tick: h.state.tick,
+  });
+  assert.equal(active.state, 'broken');
+  assert.equal(active.breakReason, 'specialist_cut');
+  assert.ok(h.events.some((entry) => entry.type === 'massline:npcCounterplay'
+    && entry.payload.verb === 'cut_bridle'
+    && entry.payload.role === 'specialist'));
+});
+
 test('unused system is hash-inert and the HUD names a non-reel A/B linked state', () => {
   const state = { player: {}, entities: new Map(), playerId: null };
   const system = Object.create(tetherGameplay);
