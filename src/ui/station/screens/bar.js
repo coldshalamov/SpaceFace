@@ -1,8 +1,12 @@
-// src/ui/station/screens/bar.js — "Bar": the conversation instrument.
-// Contact rail · a real conversation centrepiece (portrait, what they remember of you, what they
-// just said, what you can ask) · leads column (survey data + mission leads).
-// Reuses the existing contact engine in screens/bar.js — no gameplay reinvented.
+// src/ui/station/screens/bar.js — "Bar": the conversation as a kit panel (Frontend Task C §1.8).
+// Left: who is here tonight as a column of words, then the leads as rows (survey data and board
+// jobs with a priced / named verb). Right: the contact's role, name and portrait (the one image
+// allowed, 240 px, no frame), what they remember of you, what they just said as the emphasised
+// sentence, what you can ask as words, and any offer their reply produced as sentences and a word.
+// Reuses the existing contact engine in ../barContacts.js — no gameplay reinvented.
 // Emits ui:talkContact / ui:purchaseSurveyData / ui:acceptMission / ui:pushScreen.
+// `.sx-bar`, `.sx-bar-row[data-contact]`, `.sx-bar-row__role`, `.sx-talk`, `.sx-talk__reply`,
+// `.sx-choice[data-choice]`, `.sx-bar-offer*`, `[data-inspect]`, `[data-bigpic]` are hooks.
 import {
   generateContacts,
   getChoices,
@@ -20,7 +24,6 @@ import { mountContactPortrait } from '../../portraitArt.js';
 import { escapeHtml } from '../../comms.js';
 import { BINDINGS } from '../../bindings.js';
 import { missionConsequenceSummary, missionPreflight } from '../../missionPreflight.js';
-import { icon } from '../icons.js';
 import {
   frontierRumorOffer,
   frontierRumorOwned,
@@ -36,53 +39,6 @@ const mid = (m) => (m && (m.id != null ? m.id : m.missionId));
 const rewardOf = (m) => Math.max(0, Math.round(Number(
   m && (m.reward != null ? m.reward : (m.reward_cr != null ? m.reward_cr : (m.rewardCr != null ? m.rewardCr : m.payout))),
 ) || 0));
-
-// Bar corrections that belong to this screen (scoped under .sx-bar; no other host reuses these
-// classes inside the station): contact tabs size to their name instead of shearing it mid-word,
-// the leads panels get a visible slim scrollbar for their overflow, procedural placeholder
-// portraits are neutralized (one hashes to bright purple), and an untouched transcript collapses
-// to its content instead of holding one prompt line in a tall dark panel.
-// Named BAR_CSS, not CSS — this module calls the global CSS.escape, and a module binding named
-// CSS would shadow it (that threw "CSS.escape is not a function" and blanked the stage).
-const STYLE_ID = 'sf-bar-style';
-function injectStyle() {
-  if (typeof document === 'undefined' || document.getElementById(STYLE_ID)) return;
-  const s = document.createElement('style');
-  s.id = STYLE_ID;
-  s.textContent = BAR_CSS;
-  document.head.appendChild(s);
-}
-
-const BAR_CSS = `
-.sx-bar .sx-bar-row { flex: 0 1 auto; min-width: 178px; max-width: 264px; }
-.sx-bar .sx-bar__leads > .sx-panel {
-  position: relative;
-  min-height: 0;
-  overflow-y: auto;
-  scrollbar-width: none;
-}
-.sx-bar .sx-bar__leads > .sx-panel::-webkit-scrollbar { display: none; width: 0; height: 0; }
-/* This Chromium answers overflow with an auto-hiding overlay scrollbar — nothing visible at
-   rest — so each leads panel carries the same always-visible slim progress track as the
-   shipworks chooser list. */
-.sx-bar .sx-leadtrack {
-  position: absolute; right: 4px; top: 8px; bottom: 5px; width: 3px; border-radius: 2px;
-  background: color-mix(in srgb, var(--sf-edge, #2c343f) 60%, transparent);
-  pointer-events: none;
-}
-.sx-bar .sx-leadtrack i {
-  display: block; width: 100%; height: 100%; border-radius: inherit;
-  background: color-mix(in srgb, var(--accent, #4f8fdd) 55%, transparent);
-}
-.sx-bar canvas.sx-portrait { filter: grayscale(1) contrast(1.05) brightness(.94); }
-/* Idle stage keeps the live layout (tall reply area, prompts anchored below): the old
-   auto/1fr swap shrank the reply to its content, overlapping the kicker and leaving a
-   dead band under the prompts. */
-.sx-bar .sx-talk__reply.is-idle { padding: 40px clamp(30px, 5vw, 78px) 18px; align-content: center; }
-.sx-bar .sx-talk__reply.is-idle::before { content: "TRANSCRIPT / NO LINES YET"; }
-.sx-bar .sx-talk__reply.is-idle .sx-talk__quote { font-size: 44px; opacity: .2; }
-.sx-bar .sx-talk__reply.is-idle p { color: var(--sf-calm, #9aa4b0); font-size: clamp(16px, 1.35vw, 19px); }
-`;
 
 /** Durable, optional station handoff for the authored first purchased Tethys rumor. */
 export function tethysRumorGuidance(state, stationId) {
@@ -109,14 +65,20 @@ export function openTethysRumorGuidanceMap(ctx, stationId) {
   });
 }
 
+/** An offer's one verb as a primary word (the `sx-btn-primary` of old, in kit clothes). */
+function offerWord(attrs, label) {
+  return `<ul class="k-words k-words--row sx-bar-offer__foot"><li><button type="button" class="k-word k-word--emph k-word--primary sx-bar-offer__verb" ${attrs}>${label}</button></li></ul>`;
+}
+
 export function createBarScreen(ctx) {
-  injectStyle();
   const el = document.createElement('div');
-  el.className = 'sx-bar';
+  el.className = 'k-panel sx-bar';
   el.innerHTML =
-    `<nav class="sx-bar__rail" aria-label="Contacts"></nav>` +
-    `<section class="sx-bar__stage" aria-live="polite"></section>` +
-    `<aside class="sx-bar__leads"></aside>`;
+    `<div class="k-hang sx-bar__hang">` +
+      `<nav class="sx-bar__rail" aria-label="Contacts"></nav>` +
+      `<aside class="sx-bar__leads" aria-label="Leads"></aside>` +
+    `</div>` +
+    `<section class="k-stage sx-bar__stage" aria-live="polite"></section>`;
   const railEl = el.querySelector('.sx-bar__rail');
   const stageEl = el.querySelector('.sx-bar__stage');
   const leadsEl = el.querySelector('.sx-bar__leads');
@@ -158,8 +120,8 @@ export function createBarScreen(ctx) {
     if (acceptedMissionId) {
       const label = `Mission Log (${BINDINGS.missionLog.label})`;
       return `<section class="sx-bar-offer is-accepted" aria-label="Accepted mission handoff">` +
-        `<div class="sx-bar-offer__state"><b>ACCEPTED + TRACKED</b><span>${escapeHtml(label)} carries the route, timer, and progress. Launch when Departure Check is green.</span></div>` +
-        `<button type="button" class="sx-btn-primary" data-open-mission-log="${escapeHtml(String(acceptedMissionId))}">OPEN ${escapeHtml(label.toUpperCase())}</button>` +
+        `<p class="k-sentence sx-bar-offer__state"><span class="k-good">Accepted and tracked.</span> ${escapeHtml(label)} carries the route, timer, and progress. Launch when Departure Check is green.</p>` +
+        offerWord(`data-open-mission-log="${escapeHtml(String(acceptedMissionId))}"`, `Open ${escapeHtml(label)}`) +
       `</section>`;
     }
     const offer = pendingMissionOffer;
@@ -168,13 +130,13 @@ export function createBarScreen(ctx) {
     const consequences = missionConsequenceSummary(offer);
     const unmet = offer.requirementUnmet || offer.lockedReason || preflight.blocker || null;
     return `<section class="sx-bar-offer" aria-label="Mission readiness">` +
-      `<div class="sx-bar-offer__chips">${preflight.chips.map((chip) =>
-        `<span class="sx-bar-offer__chip is-${escapeHtml(chip.kind)}">${escapeHtml(chip.text)}</span>`).join('')}</div>` +
-      `<div class="sx-bar-offer__stakes">${consequences.chips.map((chip) =>
-        `<span class="sx-bar-offer__stake is-${escapeHtml(chip.kind)}"><b>${escapeHtml(chip.label)}</b>${escapeHtml(chip.text)}</span>`).join('')}</div>` +
-      (preflight.warning ? `<p class="sx-bar-offer__warning">${escapeHtml(preflight.warning)}</p>` : '') +
-      (unmet ? `<p class="sx-bar-offer__blocker">${escapeHtml(unmet)}</p>` : '') +
-      `<button type="button" class="sx-btn-primary" data-accept-mission="${escapeHtml(String(offer.id))}"${unmet ? ' disabled' : ''}>ACCEPT + TRACK</button>` +
+      `<ul class="k-words k-words--row sx-bar-offer__chips">${preflight.chips.map((chip) =>
+        `<li class="k-t-fine sx-bar-offer__chip is-${escapeHtml(chip.kind)} ${chip.kind === 'bad' || chip.kind === 'loss' ? 'k-bad' : (chip.kind === 'good' || chip.kind === 'gain' ? 'k-good' : 'k-62')}">${escapeHtml(chip.text)}</li>`).join('')}</ul>` +
+      `<ul class="k-rows sx-bar-offer__stakes">${consequences.chips.map((chip) =>
+        `<li class="k-row k-row--static sx-bar-offer__stake is-${escapeHtml(chip.kind)}"><span class="k-62">${escapeHtml(chip.label)}</span><span class="k-row__num ${chip.kind === 'loss' || chip.kind === 'bad' ? 'k-bad' : ''}">${escapeHtml(chip.text)}</span></li>`).join('')}</ul>` +
+      (preflight.warning ? `<p class="k-sentence sx-bar-offer__warning">${escapeHtml(preflight.warning)}</p>` : '') +
+      (unmet ? `<p class="k-sentence k-bad sx-bar-offer__blocker">${escapeHtml(unmet)}</p>` : '') +
+      offerWord(`data-accept-mission="${escapeHtml(String(offer.id))}"${unmet ? ' disabled' : ''}`, 'Accept + track') +
     `</section>`;
   }
 
@@ -182,13 +144,9 @@ export function createBarScreen(ctx) {
     const offer = pendingFrontierRumorOffer;
     if (!offer) return '';
     return `<section class="sx-bar-offer" aria-label="Frontier rumor card">` +
-      `<div class="sx-bar-offer__chips">` +
-        `<span class="sx-bar-offer__chip is-warn">${escapeHtml(offer.kindLabel)}</span>` +
-        `<span class="sx-bar-offer__chip is-info">${escapeHtml(offer.sectorName)} search area</span>` +
-        `<span class="sx-bar-offer__chip is-info">${fmt(offer.price)} cr</span>` +
-      `</div>` +
-      `<p class="sx-bar-offer__warning">Approximate bearing only — no waypoint or automatic discovery.</p>` +
-      `<button type="button" class="sx-btn-primary" data-buy-frontier-rumor="${escapeHtml(offer.id)}">BUY RUMOR CARD · ${fmt(offer.price)} CR</button>` +
+      `<p class="k-sentence sx-bar-offer__state">${escapeHtml(offer.kindLabel)} · ${escapeHtml(offer.sectorName)} search area · ${fmt(offer.price)} cr.</p>` +
+      `<p class="k-sentence sx-bar-offer__warning">Approximate bearing only — no waypoint or automatic discovery.</p>` +
+      offerWord(`data-buy-frontier-rumor="${escapeHtml(offer.id)}"`, `Buy rumor card · ${fmt(offer.price)} cr`) +
     `</section>`;
   }
 
@@ -196,16 +154,16 @@ export function createBarScreen(ctx) {
     const guidance = tethysRumorGuidance(state, sid());
     if (!guidance) return '';
     return `<section class="sx-bar-offer" aria-label="Quiet Traffic Lead guidance">` +
-      `<div class="sx-bar-offer__state"><b>QUIET TRAFFIC LEAD ADDED</b><span>Tethys holds a broad amber search area. Select the ring, fly it manually, and pulse the scanner.</span></div>` +
-      `<button type="button" class="sx-btn-primary" data-open-tethys-rumor-map aria-label="Open Tethys search map for the Quiet Traffic Lead">OPEN TETHYS SEARCH MAP</button>` +
+      `<p class="k-sentence sx-bar-offer__state"><span class="k-good">Quiet Traffic Lead added.</span> Tethys holds a broad amber search area. Select the ring, fly it manually, and pulse the scanner.</p>` +
+      offerWord('data-open-tethys-rumor-map aria-label="Open Tethys search map for the Quiet Traffic Lead"', 'Open Tethys search map') +
     `</section>`;
   }
 
   function dossArchiveMapOfferHtml(state, contact) {
     if (!contact || contact.id !== DOSS_ARCHIVE_CONTACT_ID || !dossArchiveMapOffer(state)) return '';
     return `<section class="sx-bar-offer" aria-label="Doss archive cross-reference">` +
-      `<div class="sx-bar-offer__state"><b>ARCHIVE CROSS-REFERENCE</b><span>The Candle Fleet is a map reference only. It does not set a course or create a mission.</span></div>` +
-      `<button type="button" class="sx-btn-primary" data-open-doss-archive-map aria-label="Open the system map at The Candle Fleet archive cross-reference">OPEN CANDLE FLEET MAP</button>` +
+      `<p class="k-sentence sx-bar-offer__state"><span class="k-good">Archive cross-reference.</span> The Candle Fleet is a map reference only. It does not set a course or create a mission.</p>` +
+      offerWord('data-open-doss-archive-map aria-label="Open the system map at The Candle Fleet archive cross-reference"', 'Open Candle Fleet map') +
     `</section>`;
   }
 
@@ -219,51 +177,56 @@ export function createBarScreen(ctx) {
     offer.className = 'sx-bar-offer';
     offer.setAttribute('data-vonn-freight-loss-map-offer', '');
     offer.setAttribute('aria-label', 'Sker-Run freight wreck');
-    const stateLine = document.createElement('div');
-    stateLine.className = 'sx-bar-offer__state';
-    const heading = document.createElement('b');
-    heading.textContent = 'VERIFIED WRECK MARKER';
+    const stateLine = document.createElement('p');
+    stateLine.className = 'k-sentence sx-bar-offer__state';
+    const heading = document.createElement('span');
+    heading.className = 'k-good';
+    heading.textContent = 'Verified wreck marker. ';
     const copy = document.createElement('span');
     copy.textContent = 'Evidence marker only — opens the system map and does not set a course or create a mission.';
     stateLine.append(heading, copy);
+    const foot = document.createElement('ul');
+    foot.className = 'k-words k-words--row sx-bar-offer__foot';
+    const item = document.createElement('li');
     const button = document.createElement('button');
     button.type = 'button';
-    button.className = 'sx-btn-primary';
+    button.className = 'k-word k-word--emph k-word--primary sx-bar-offer__verb';
     button.setAttribute('data-open-vonn-freight-loss-map', '');
-    button.textContent = 'OPEN SKER-RUN WRECK MAP';
+    button.textContent = 'Open Sker-Run wreck map';
     button.setAttribute('aria-label', 'Open the system map at the verified Sker-Run freight wreck.');
-    offer.append(stateLine, button);
+    item.append(button);
+    foot.append(item);
+    offer.append(stateLine, foot);
     mount.appendChild(offer);
   }
 
-  // ---------- rail ----------
+  // ---------- rail: who is here tonight ----------
   function renderRail(state) {
     const list = contacts(state);
     if (!list.length) {
-      railEl.innerHTML = `<div class="sx-empty">${icon('bar', 28)}<h4>Nobody here</h4><p>No contacts at this berth right now.</p></div>`;
+      railEl.innerHTML = `<p class="k-caps">Here tonight</p><p class="k-empty sx-empty">Nobody here.</p>`;
       return;
     }
     if (!selectedId) selectedId = list[0].id;
-    railEl.innerHTML = list.map((c) => (
-      `<button type="button" class="sx-bar-row${c.id === selectedId ? ' is-active' : ''}" data-contact="${escapeHtml(c.id)}" role="tab" aria-selected="${c.id === selectedId}">` +
-        `<span class="sx-bar-row__pic" data-pic="${escapeHtml(c.id)}"></span>` +
-        `<span class="sx-bar-row__body">` +
-          `<span class="sx-bar-row__name">${escapeHtml(c.name || 'Contact')}</span>` +
-          `<span class="sx-bar-row__role">${escapeHtml(roleLabel(c.role))}</span>` +
-        `</span>` +
-      `</button>`
-    )).join('');
-    // real portrait art (thumbnails)
-    for (const c of list) {
-      const host = railEl.querySelector(`[data-pic="${CSS.escape(c.id)}"]`);
-      if (host) { try { mountContactPortrait(host, c, { className: 'sx-portrait', size: 38 }); } catch (_) {} }
-    }
+    railEl.innerHTML =
+      `<p class="k-caps">Here tonight</p>` +
+      `<ul class="k-words sx-bar__rows">` +
+      list.map((c) => {
+        const on = c.id === selectedId;
+        return (
+          `<li><button type="button" class="k-word k-word--emph sx-bar-row${on ? ' is-active' : ''}" data-contact="${escapeHtml(c.id)}" role="tab" aria-selected="${on}"${on ? ' aria-current="true"' : ''} tabindex="${on ? 0 : -1}">` +
+            `${escapeHtml(c.name || 'Contact')}` +
+            `<span class="k-word-sub sx-bar-row__role">${escapeHtml(roleLabel(c.role))}</span>` +
+          `</button></li>`
+        );
+      }).join('') +
+      `</ul>`;
   }
 
   // ---------- stage: the conversation ----------
   function renderStage(state) {
     const c = selected(state);
-    if (!c) { stageEl.innerHTML = `<div class="sx-empty">${icon('bar', 34)}<h4>The bar is empty</h4><p>Try a larger station.</p></div>`; return; }
+    if (!c) { stageEl.innerHTML = `<p class="k-empty sx-empty">The bar is empty. Try a larger station.</p>`; return; }
     const memory = stationContactMemoryFor(state, c.id);
     let memLine = '';
     try { memLine = stationContactMemoryLine(memory, c.line) || c.line || ''; } catch (_) { memLine = c.line || ''; }
@@ -272,31 +235,30 @@ export function createBarScreen(ctx) {
     stageEl.innerHTML =
       `<div class="sx-talk">` +
         `<header class="sx-talk__head">` +
-          `<span class="sx-talk__avatar" data-bigpic></span>` +
           `<div class="sx-talk__id">` +
-            `<span class="sx-talk__role">${escapeHtml(roleLabel(c.role))}</span>` +
-            `<h2>${escapeHtml(c.name || 'Contact')}</h2>` +
-            (memLine ? `<p class="sx-talk__memory">${escapeHtml(memLine)}</p>` : '') +
+            `<p class="k-caps sx-talk__role">${escapeHtml(roleLabel(c.role))}</p>` +
+            `<h2 class="k-display k-t-title sx-talk__name">${escapeHtml(c.name || 'Contact')}</h2>` +
+            (memLine ? `<p class="k-sentence sx-talk__memory">${escapeHtml(memLine)}</p>` : '') +
           `</div>` +
+          `<span class="sx-talk__avatar" data-bigpic aria-hidden="true"></span>` +
         `</header>` +
-        `<div class="sx-talk__reply${saidText ? ' is-said' : ' is-idle'}">` +
-          `<span class="sx-talk__quote">&ldquo;</span>` +
-          `<p>${escapeHtml(saidText || 'They look up as you approach. Ask them something.')}</p>` +
-        `</div>` +
-        `<div class="sx-talk__choices">` +
+        `<p class="k-sentence k-sentence--emph sx-talk__reply${saidText ? ' is-said' : ' is-idle'}">` +
+          `${escapeHtml(saidText || 'They look up as you approach. Ask them something.')}` +
+        `</p>` +
+        `<ul class="k-words sx-talk__choices" aria-label="What you can ask">` +
           (choices.length
-            ? choices.map((ch) => `<button type="button" class="sx-choice" data-choice="${escapeHtml(ch.id)}">${escapeHtml(ch.label)}</button>`).join('')
-            : `<p class="sx-muted">They have nothing to say.</p>`) +
-        `</div>` + missionOfferHtml(state) + frontierRumorOfferHtml() + tethysRumorGuidanceHtml(state) + dossArchiveMapOfferHtml(state, c) +
+            ? choices.map((ch) => `<li><button type="button" class="k-word k-word--emph sx-choice" data-choice="${escapeHtml(ch.id)}">${escapeHtml(ch.label)}</button></li>`).join('')
+            : `<li class="k-sentence sx-muted">They have nothing to say.</li>`) +
+        `</ul>` + missionOfferHtml(state) + frontierRumorOfferHtml() + tethysRumorGuidanceHtml(state) + dossArchiveMapOfferHtml(state, c) +
       `</div>`;
 
     appendVonnFreightLossMapOffer(state, c);
 
     const big = stageEl.querySelector('[data-bigpic]');
-    if (big) { try { mountContactPortrait(big, c, { className: 'sx-portrait sx-portrait--lg', size: 160 }); } catch (_) {} }
+    if (big) { try { mountContactPortrait(big, c, { className: 'sx-portrait sx-portrait--lg', size: 240 }); } catch (_) {} }
   }
 
-  // ---------- leads: intel + survey + mission leads ----------
+  // ---------- leads: intel + survey + board jobs ----------
   function renderLeads(state) {
     const c = selected(state);
     const stationId = sid();
@@ -309,61 +271,65 @@ export function createBarScreen(ctx) {
     const credits = Math.max(0, Math.floor(Number(state && state.player && state.player.credits) || 0));
 
     const intelHtml = tags.length
-      ? tags.map((t) => `<span class="sx-intel sx-intel--${escapeHtml(t.kind || 'info')}"><b>${escapeHtml(t.label)}</b>${escapeHtml(t.text)}</span>`).join('')
-      : `<p class="sx-muted">Nothing worth repeating yet.</p>`;
+      ? `<ul class="k-rows sx-intel__rows">${tags.map((t) =>
+          `<li class="k-row k-row--static sx-intel sx-intel--${escapeHtml(t.kind || 'info')}"><span class="k-row__name">${escapeHtml(t.label)}</span><span class="k-row__sub">${escapeHtml(t.text)}</span></li>`).join('')}</ul>`
+      : `<p class="k-sentence sx-muted">Nothing worth repeating yet.</p>`;
 
-    const surveyHtml = survey
-      ? `<div class="sx-lead">` +
-          `<div class="sx-lead__body"><span class="sx-lead__t">${escapeHtml(survey.sectorName)}</span>` +
-            `<span class="sx-lead__s">${escapeHtml(surveyOfferLabel ? (surveyOfferLabel(survey) || 'Nav data') : 'Nav data')}</span></div>` +
-          `<button type="button" class="sx-lead__go" data-survey="${escapeHtml(survey.sectorId)}" ${credits >= survey.price ? '' : 'disabled'}>${fmt(survey.price)} cr</button>` +
-        `</div>`
-      : `<p class="sx-muted">No survey data for sale here.</p>`;
+    const surveyRow = survey
+      ? `<li class="k-row k-row--static sx-lead sx-lead--survey">` +
+          `<span class="sx-lead__body"><span class="k-row__name sx-lead__t">${escapeHtml(survey.sectorName)}</span>` +
+            `<span class="k-row__sub sx-lead__s">${escapeHtml(surveyOfferLabel ? (surveyOfferLabel(survey) || 'Nav data') : 'Nav data')}</span></span>` +
+          `<button type="button" class="k-word k-word--fine sx-lead__go" data-survey="${escapeHtml(survey.sectorId)}"${credits >= survey.price ? '' : ' disabled'}>Buy · ${fmt(survey.price)} cr</button>` +
+        `</li>`
+      : '';
 
-    const leadsHtml = leads.length
-      ? leads.map((m) => `<div class="sx-lead">` +
-          `<div class="sx-lead__body"><span class="sx-lead__t">${escapeHtml(m.title || 'Contract')}</span>` +
-            `<span class="sx-lead__s">${fmt(rewardOf(m))} cr</span></div>` +
-          `<button type="button" class="sx-lead__go" data-inspect="${escapeHtml(String(mid(m)))}">Inspect</button>` +
-        `</div>`).join('')
-      : `<p class="sx-muted">No leads on the board.</p>`;
+    const leadRows = leads.map((m) => `<li class="k-row k-row--static sx-lead">` +
+        `<span class="sx-lead__body"><span class="k-row__name sx-lead__t">${escapeHtml(m.title || 'Contract')}</span>` +
+          `<span class="k-row__sub sx-lead__s">${fmt(rewardOf(m))} cr</span></span>` +
+        `<button type="button" class="k-word k-word--fine sx-lead__go" data-inspect="${escapeHtml(String(mid(m)))}">Inspect</button>` +
+      `</li>`).join('');
 
     leadsEl.innerHTML =
-      `<div class="sx-panel"><div class="sx-panel__head">${icon('spark', 15)}<span>Intel</span></div>${intelHtml}<span class="sx-leadtrack" aria-hidden="true"><i></i></span></div>` +
-      `<div class="sx-panel"><div class="sx-panel__head">${icon('route', 15)}<span>Survey Data</span></div>${surveyHtml}<span class="sx-leadtrack" aria-hidden="true"><i></i></span></div>` +
-      `<div class="sx-panel"><div class="sx-panel__head">${icon('contracts', 15)}<span>Leads</span></div>${leadsHtml}` +
-        `<button type="button" class="sx-btn-ghost sx-bar__log" data-log>Open Mission Log</button><span class="sx-leadtrack" aria-hidden="true"><i></i></span></div>`;
-    syncLeadTracks();
-  }
-
-  // The platform scrollbar is an auto-hiding overlay here (nothing visible at rest), so each
-  // leads panel carries a slim always-visible progress track mirroring its scrollTop.
-  function syncLeadTracks() {
-    for (const panel of leadsEl.querySelectorAll(':scope > .sx-panel')) {
-      const track = panel.querySelector('.sx-leadtrack');
-      if (!track) continue;
-      const overflow = panel.scrollHeight - panel.clientHeight;
-      if (overflow <= 1) { track.hidden = true; continue; }
-      track.hidden = false;
-      const ratio = Math.max(.15, Math.min(1, panel.clientHeight / panel.scrollHeight));
-      const progress = Math.max(0, Math.min(1, panel.scrollTop / overflow));
-      const thumb = track.firstElementChild;
-      thumb.style.height = `${(ratio * 100).toFixed(2)}%`;
-      thumb.style.transform = `translateY(${(progress * (100 / ratio - 100)).toFixed(2)}%)`;
-    }
+      `<p class="k-caps">Leads</p>` +
+      (surveyRow || leadRows
+        ? `<ul class="k-rows sx-lead__rows">${surveyRow}${leadRows}</ul>`
+        : `<p class="k-sentence sx-muted">No leads on the board${survey ? '' : ' and no survey data for sale here'}.</p>`) +
+      `<ul class="k-words k-words--row sx-bar__foot"><li><button type="button" class="k-word k-word--fine sx-bar__log" data-log>Open the board</button></li></ul>` +
+      `<p class="k-caps sx-intel__head">Intel</p>` +
+      intelHtml;
   }
 
   function renderAll(state) { renderRail(state); renderStage(state); renderLeads(state); }
 
   // ---------- interactions ----------
-  railEl.addEventListener('click', (ev) => {
-    const b = ev.target.closest('[data-contact]'); if (!b) return;
-    const id = b.getAttribute('data-contact');
-    if (id === selectedId) return;
+  function selectContact(id, focus) {
+    if (!id || id === selectedId) return;
     selectedId = id; saidText = null; pendingMissionOffer = null; pendingFrontierRumorOffer = null; acceptedMissionId = null;
     const st = ctx.state || {};
     renderRail(st); renderStage(st); renderLeads(st);
+    if (focus) {
+      const word = railEl.querySelector(`[data-contact="${CSS.escape(id)}"]`);
+      if (word && typeof word.focus === 'function') word.focus();
+    }
     if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tab' });
+  }
+
+  railEl.addEventListener('click', (ev) => {
+    const b = ev.target.closest('[data-contact]'); if (!b) return;
+    selectContact(b.getAttribute('data-contact'), false);
+  });
+  railEl.addEventListener('keydown', (ev) => {
+    const words = [...railEl.querySelectorAll('[data-contact]')];
+    const cur = words.indexOf(ev.target.closest('[data-contact]'));
+    if (cur < 0 || !words.length) return;
+    let next = -1;
+    if (ev.key === 'ArrowDown' || ev.key === 'ArrowRight') next = (cur + 1) % words.length;
+    else if (ev.key === 'ArrowUp' || ev.key === 'ArrowLeft') next = (cur - 1 + words.length) % words.length;
+    else if (ev.key === 'Home') next = 0;
+    else if (ev.key === 'End') next = words.length - 1;
+    else return;
+    ev.preventDefault();
+    selectContact(words[next].getAttribute('data-contact'), true);
   });
 
   stageEl.addEventListener('click', (ev) => {
@@ -462,9 +428,7 @@ export function createBarScreen(ctx) {
     renderLeads(ctx.state || {});
   });
 
-  // scroll does not bubble, but a capture listener on the leads root still sees any panel scroll
-  leadsEl.addEventListener('scroll', syncLeadTracks, { capture: true, passive: true });
-  leadsEl.addEventListener('click', (ev) => {    const st = ctx.state || {};
+  leadsEl.addEventListener('click', (ev) => {
     const sv = ev.target.closest('[data-survey]');
     if (sv && !sv.disabled) {
       if (ctx.bus) {

@@ -48,7 +48,7 @@ assert.ok(stationBarSource.includes('missionConsequenceSummary'), 'the live Stat
 assert.ok(stationBarSource.includes('sx-bar-offer'), 'the live Station Bar must render a mission readiness/action block');
 assert.ok(stationBarSource.includes('sx-bar-offer__stakes'), 'the live Station Bar must render visible consequence stakes');
 assert.ok(stationBarSource.includes('sx-bar-offer__blocker'), 'the live Station Bar must show visible readiness blockers');
-assert.ok(stationBarSource.includes('ACCEPT + TRACK'), 'the live Station Bar accept button must use the board tracking language');
+assert.ok(stationBarSource.includes('Accept + track'), 'the live Station Bar accept word must use the board tracking language');
 assert.ok(stationBarSource.includes('offer.requirementUnmet || offer.lockedReason || preflight.blocker'), 'live bar offers must respect shared readiness blockers');
 assert.ok(stationBarSource.includes("acceptedMissionId = missionId"), 'the live Station Bar must mark a mission accepted only after its intent resolves');
 assert.ok(contactSource.includes('export function barContactIntelTags'), 'bar contact intel tags must remain directly testable pure logic');
