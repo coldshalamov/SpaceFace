@@ -1518,9 +1518,21 @@ async function forceShipRender(cdp) {
 }
 
 function isBootReady(cdp) {
-  return evalJson(cdp, `(() => ({
-    ready: !!(window.SF && window.SF.state && window.SF.bus && window.SF.state.render && window.SF.state.render.renderer),
-  }))()`).then((value) => value.ready === true);
+  return evalJson(cdp, `(() => {
+    const sf = window.SF || null;
+    const state = sf?.state || null;
+    const render = state?.render || null;
+    return {
+      ready: !!(sf && state && sf.bus && render && render.renderer),
+      href: window.location.href,
+      readyState: document.readyState,
+      hasSF: !!sf,
+      hasState: !!state,
+      hasBus: !!(sf && sf.bus),
+      hasRender: !!render,
+      hasRenderer: !!(render && render.renderer),
+    };
+  })()`);
 }
 
 async function installStartupTrace(cdp) {
