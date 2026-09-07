@@ -4,13 +4,16 @@
 // The player chooses its center and orientation with the existing aim point; this owner spawns two
 // fixed, shootable endpoints and asks SG-02 to connect them. A sufficiently fast eligible body must
 // physically cross the visible segment before one endpoint is atomically rebound to that body.
-// There is no radius slow, aim lock, velocity write, steering assist, brake, or hidden pilot.
+// Catch publishes the existing B11 hitstun law so the crosser tumbles; this owner still never
+// writes position, velocity, facing, thrust, or a hidden gyro. There is no radius slow, aim lock,
+// steering assist, or brake.
 
+import { publishHitstunImpulse, signedHitSide } from '../combat/impulseKernel.js';
+import { Masks } from '../core/entity.js';
+import { queryNearbyEntities } from '../core/spatialQuery.js';
+import { combatFlag, massline2Flag } from '../data/featureFlags.js';
 import { lineSweepContact } from './masslineImpacts.js';
 import { isHostileToPlayer } from './scanner.js';
-import { queryNearbyEntities } from '../core/spatialQuery.js';
-import { Masks } from '../core/entity.js';
-import { massline2Flag } from '../data/featureFlags.js';
 
 export const TRANSVERSE_SNARE_DEF_ID = 'attachment_transverse_snare';
 export const TRANSVERSE_SNARE_HEAD_ID = 'transverse_snare';
@@ -410,6 +413,41 @@ export const masslineSnares = {
       targetId: victim.id,
       transverseSpeed: contact.transverseSpeed,
       pos: contact.pos,
+    });
+    this._tumbleCaughtPursuer(state, victim, keptAnchor, contact);
+  },
+
+  _tumbleCaughtPursuer(state, victim, keptAnchor, contact) {
+    if (!victim || (victim.type !== 'ship' && victim.type !== 'drone')) return;
+    if (victim.id === state.playerId) return;
+    if (!combatFlag('weaponImpulseConsequences', state.runtime && state.runtime.features)) return;
+    const deltaV = finite(contact && contact.transverseSpeed);
+    if (!(deltaV > 0)) return;
+    const dirX = finite(keptAnchor && keptAnchor.pos && keptAnchor.pos.x) - finite(contact && contact.pos && contact.pos.x);
+    const dirZ = finite(keptAnchor && keptAnchor.pos && keptAnchor.pos.z) - finite(contact && contact.pos && contact.pos.z);
+    const victimMass = Math.max(
+      0.1,
+      finite(victim.physicsBody && victim.physicsBody.mass, finite(victim.mass, 1)),
+    );
+    publishHitstunImpulse(this.bus, {
+      source: 'transverse_snare',
+      victimId: victim.id,
+      attackerId: state.playerId,
+      attackerMass: finite(keptAnchor && keptAnchor.mass, SNARE_ANCHOR_BODY_MASS),
+      victimMass,
+      deltaV,
+      dirX,
+      dirZ,
+      hitSide: signedHitSide(victim, { dirX, dirZ }, contact, victim.id),
+      worldBody: true,
+      provenance: Object.freeze({
+        schemaVersion: 1,
+        kind: 'massline',
+        source: 'transverse_snare',
+        tag: 'transverse_snare_catch',
+        victimId: victim.id,
+      }),
+      tick: state.tick,
     });
   },
 

@@ -146,6 +146,7 @@ export const MODULES = [
   },
   {
     id: 'mod_transverse_snare_m', name: 'Transverse Snare M', slotType: 'utility', size: 'M', tier: 3, mass: 6, price: 52000, requiresTech: 'tech_fire_control',
+    // Clothesline: the first fast hostile crossing rebinds onto the kept anchor and tumbles (B11).
     energyDraw: 7, mods: { masslineHeadId: 'transverse_snare' },
   },
   {

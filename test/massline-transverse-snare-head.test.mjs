@@ -2,8 +2,13 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { effectiveTetherPolicy } from '../src/combat/attachments.js';
+import { resolveHitstunLaw } from '../src/combat/impulseKernel.js';
+import { createCombatKernel } from '../src/combat/kernel.js';
+import { readTumbleStatus } from '../src/combat/tumbleStatus.js';
 import { makeEntity } from '../src/core/entity.js';
+import { resolveGovernedCombatSpeed } from '../src/core/flight/propulsionCatalog.js';
 import { ATTACHMENT_DEFS } from '../src/data/combatDefs.js';
+import { COMBAT_FLAGS } from '../src/data/featureFlags.js';
 import { MODULES } from '../src/data/modules.js';
 import { TECH_NODES } from '../src/data/tech.js';
 import { LEGACY47A_FEATURES, PRODUCTION_FEATURES } from '../src/runtime/runtimeProfiles.js';
@@ -14,6 +19,7 @@ import {
   TRANSVERSE_SNARE_DEF_ID,
 } from '../src/systems/masslineSnares.js';
 import { fittingsFromDefaultModules, getDerivedStats } from '../src/systems/ships.js';
+import { tumbleStates } from '../src/systems/tumbleStates.js';
 import { masslineTetherStatus } from '../src/ui/hud.js';
 import { MASSLINE_HUD_CSS } from '../src/ui/masslineHud.js';
 import { statSnippet } from '../src/ui/station/outfittingGuidance.js';
@@ -91,6 +97,73 @@ test('one press deploys one physical remote line and only a real hostile crossin
   assert.deepEqual(motionSnapshot(h.player, h.victim), before,
     'snare targeting never writes position, velocity, facing, thrust, speed, or braking');
   assert.equal(h.attachments.activeCount(), 1, 'catch reuses one attachment rather than stacking lines');
+});
+
+test('a full-burn pursuer caught by the clothesline loses the helm for the B11 second', (t) => {
+  const previous = COMBAT_FLAGS.weaponImpulseConsequences;
+  COMBAT_FLAGS.weaponImpulseConsequences = true;
+  t.after(() => { COMBAT_FLAGS.weaponImpulseConsequences = previous; });
+
+  const h = createHarness({
+    victim: {
+      mass: 16,
+      vel: { x: 105, z: 0 },
+      data: {
+        role: 'fighter',
+        intent: { fire: true, moveX: 1, moveZ: 0 },
+        ai: { forcePlayerTarget: true },
+      },
+    },
+  });
+  const kernel = createCombatKernel({
+    state: h.state,
+    bus: h.bus,
+    helpers: h.helpers,
+    registry: { get: () => null },
+  });
+  const tumble = Object.create(tumbleStates);
+  tumble.init({
+    state: h.state,
+    bus: h.bus,
+    helpers: h.helpers,
+    registry: { get: (name) => (name === 'combat' ? { kernel } : null) },
+  });
+  t.after(() => tumble.destroy());
+
+  const tumbled = [];
+  h.bus.on('combat:tumbled', (payload) => tumbled.push(payload));
+
+  publishThenDeploy(h);
+  stepToArmed(h);
+  const before = motionSnapshot(h.player, h.victim);
+  h.system.update(DT, h.state);
+
+  assert.equal(h.attachments.rebindCalls.length, 1, 'the clothesline still catches by rebind, not a velocity write');
+  assert.deepEqual(motionSnapshot(h.player, h.victim), before,
+    'snare targeting never writes position or velocity; tumble is the B11 hitstun law');
+
+  const cruise = resolveGovernedCombatSpeed(h.victim, h.state, 0);
+  const law = resolveHitstunLaw({
+    deltaV: 105,
+    victimCruise: cruise,
+    victimMass: 16,
+    worldBody: true,
+  });
+  console.log(`PQ-030.01 B11 clothesline k=${law.k.toFixed(3)} durationS=${law.durationS.toFixed(3)} cruise=${cruise}`);
+  assert.ok(cruise >= 105 - 1e-9, `wasp-class full burn is 105 wu/s, got ${cruise}`);
+  assert.ok(law.k >= 0.30, `full-burn clothesline k=${law.k} must meet the B11 30% bar`);
+  assert.ok(law.durationS >= 1, `B11 lights lose helm ≥1s, got ${law.durationS}s`);
+
+  const status = readTumbleStatus(h.state, h.victim);
+  assert.ok(status, 'the caught pursuer is tumbling');
+  assert.ok(
+    (status.data && status.data.until) - h.state.simTime >= 1 - 1e-6,
+    `scheduled helm-loss ${status.data && status.data.until} must last a B11 second from ${h.state.simTime}`,
+  );
+  assert.equal(tumbled.length, 1);
+  assert.equal(tumbled[0].deltaV, 105);
+  assert.equal(h.victim.data.intent.moveX, 0);
+  assert.equal(h.victim.data.intent.fire, false);
 });
 
 test('slow, along-line, friendly, neutral, and station contacts pass through', () => {
