@@ -17,6 +17,19 @@ import { describeTechNodeReadiness } from '../screens/techTree.js';
 const SHIP_BY_ID = new Map(SHIPS.map((shipDef) => [shipDef.id, shipDef]));
 const MODULE_BY_ID = new Map(MODULES.map((moduleDef) => [moduleDef.id, moduleDef]));
 
+/**
+ * The six derived figures the shipworks gauge rack shows, in rack order. Moved here from the
+ * the retired engineering-stage module (Frontend Task D §4.5); the rack itself is kit rows now.
+ */
+export const SHIP_ENGINEERING_GAUGE_DEFS = Object.freeze([
+  { key: 'mass', label: 'Mass', kind: 'warn', suffix: 't' },
+  { key: 'capMax', label: 'Energy', kind: 'energy', suffix: '' },
+  { key: 'shieldMax', label: 'Shield', kind: 'shield', suffix: '' },
+  { key: 'cargoCap', label: 'Cargo', kind: 'cargo', suffix: 'u' },
+  { key: 'maxSpeed', label: 'Thrust', kind: 'accent', suffix: '' },
+  { key: 'continuousDrain', label: 'Heat', kind: 'heat', suffix: '' },
+]);
+
 const MASSLINE_BANK = Object.freeze({
   tractor: Object.freeze({ id: 'tractor', verb: 'Tow things that do not want to be towed', sub: 'TRACTOR' }),
   elastic_whip: Object.freeze({ id: 'elastic_whip', verb: 'Store a swing and give it back', sub: 'SPRING' }),

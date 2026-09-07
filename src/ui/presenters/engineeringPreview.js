@@ -140,7 +140,7 @@ export function presentDerivedReadout(defId, fittings = [], player = null) {
   });
 }
 
-/** Gauge payload for shipEngineeringStage.setGauges — derived only. */
+/** Gauge payload for the shipworks gauge rack (SHIP_ENGINEERING_GAUGE_DEFS) — derived only. */
 export function presentGaugePacket(defId, fittings = [], player = null) {
   const readout = presentDerivedReadout(defId, fittings, player);
   if (!readout.ok) {

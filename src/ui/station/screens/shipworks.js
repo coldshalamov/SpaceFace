@@ -46,8 +46,8 @@ import {
 } from '../../presenters/engineeringPreview.js';
 import { buildMassDelta } from '../../panels/massDelta.js';
 import { handlingProfileDomain } from '../../panels/handlingProfile.js';
-import { SHIP_ENGINEERING_GAUGE_DEFS } from '../../shipEngineeringStage.js';
 import {
+  SHIP_ENGINEERING_GAUGE_DEFS,
   capabilityBandModel,
   conditionFromEntity,
   handlingBandModel,
