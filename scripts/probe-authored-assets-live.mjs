@@ -1839,6 +1839,7 @@ function spawnChrome(debugPort, profileDir) {
     '--disable-component-update',
     '--disable-crash-reporter',
     '--disable-breakpad',
+    '--disable-gpu-shader-disk-cache',
     '--disable-features=OptimizationGuideModelDownloading,OptimizationHints',
     `--user-data-dir=${profileDir}`,
     `--window-size=${WIDTH},${HEIGHT}`,
@@ -2069,11 +2070,17 @@ function removeOwnedChromeProfile(profileDir, processExited) {
     && basename(target).startsWith(CHROME_PROFILE_PREFIX);
   assert.equal(owned, true, `refusing to remove non-owned Chrome profile path: ${target}`);
   if (!processExited) return false;
-  for (let attempt = 0; attempt < 10; attempt++) {
+  for (let attempt = 0; attempt < 25; attempt++) {
     try {
-      rmSync(target, { recursive: true, force: true });
+      rmSync(target, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
       if (!existsSync(target)) return true;
     } catch (_) {}
+    if (process.platform === 'win32') {
+      try {
+        spawnSync('cmd.exe', ['/c', 'rd', '/s', '/q', target], { stdio: 'ignore' });
+        if (!existsSync(target)) return true;
+      } catch (_) {}
+    }
     spawnSync(process.execPath, ['-e', 'const end = Date.now() + 500; while (Date.now() < end) {}']);
   }
   return !existsSync(target);
