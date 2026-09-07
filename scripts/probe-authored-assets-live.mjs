@@ -691,9 +691,11 @@ async function waitForAuthoredShips(cdp) {
   // race in the probe, not a fault in the game, and it made the whole run non-deterministic.
   // Bounded, and it keeps the last report either way so a genuine shortfall still fails below.
   let report = await collectAuthoredReport(cdp);
-  for (let attempt = 0; attempt < 20; attempt++) {
+  for (let attempt = 0; attempt < 30; attempt++) {
     if (report.authoredShipCount >= MIN_AUTHORED_SHIPS
-      && report.authoredShipCount === report.presentedShipCount) break;
+      && report.authoredShipCount === report.presentedShipCount
+      && report.repeatedPackageShipPoolKeys.length > 0) break;
+    await sleep(200);
     await forceShipRender(cdp);
     report = await collectAuthoredReport(cdp);
   }
