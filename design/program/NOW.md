@@ -42,7 +42,7 @@ working. Product status and remaining tasks live in
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
 | Campaign coordination | controller 01a0768b | MUTATING | `design/program/NOW.md` | keep current ownership and close accepted leaves in existing queue |
-| Finish-game orchestration | Cursor Grok orchestrator (`.codex/agent-checkpoints/ORCH-FINISH.json`) | MUTATING | `design/program/NOW.md` | Landed 163.01; wait 174.08 / 146.03 |
+| Finish-game orchestration | Cursor Grok orchestrator (`.codex/agent-checkpoints/ORCH-FINISH.json`) | MUTATING | `design/program/NOW.md` | Landed 146.03; wait 174.08 |
 | Frontend Task B — shell screens + flight HUD (PQ-181.00–.03, PQ-188.00) | Cursor Claude (`.codex/agent-checkpoints/FRONTEND-B.json`) | MUTATING | `src/ui/screens/newGame.js`, `src/ui/screens/saveLoad.js`, `src/ui/screens/settings.js`, `src/ui/screens/pause.js`, `src/ui/screens/gameOver.js`, `src/ui/screens/credits.js` (new), `src/ui/screens/stageHull.js` (new), `src/ui/hud.js`, `src/ui/uiRoot.js` (injectHudCss, undock hook, arrival call, SCREEN_MODULES), `src/ui/powerRail.js`, `src/ui/toasts.js`, `src/ui/alerts.js`, `src/ui/targetPanel.js`, `src/data/audioRecipes.js` (wanted recipe), `styles/kit.css` (Task B additions only), `src/ui/kit/temperature.js` (pause line), `styles/menu.css`, `styles/ui.css` (first-run splash rules), `scripts/write-credits.mjs`, `src/data/credits.js`, `scripts/ui-grammar-surfaces.mjs` (credits entry), `scripts/check-new-game-layout.mjs`, `scripts/check-new-game-first-run-rail.mjs` | migrate screens one by one, commit per screen, then the HUD |
 
 The legacy extraction, live Shipworks guidance, Market quantity controls and public career route are

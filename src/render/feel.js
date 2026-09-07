@@ -114,6 +114,15 @@ const HS_CAPITAL_KILL = 0.80; // s — capital-kill hit-stop window (≤ 800 ms,
 const HS_DEATH = 0.90;        // s — dip duration for the player dying (the biggest beat)
 const HS_RAMP_TIME = 0.25;    // s — cinematic ease-IN for the death dip (1 -> floor over this window)
 const HS_DEPTH = 0.12;        // timeScale floor during a normal dip
+// Rated-moment feel (PQ-146.03). A `moment:holyShit` bus event carries the rated score; the
+// feel layer answers with a brief hit-stop kiss (which min-wins with the moment slow-mo pulse
+// owned by bulletTime), a score-scaled FOV punch and a fixed trauma kick. Never score text:
+// adventure HUD stays quiet (the HUD attention pass stands); tricks go to ledger/titles.
+const MOMENT_FEEL_HS = 0.06;      // s — hit-stop kiss on a rated moment
+const MOMENT_FOV_BASE = 2.5;      // deg — FOV punch base for a threshold moment
+const MOMENT_FOV_PER_SCORE = 0.15;// deg per rated score point above threshold
+const MOMENT_FOV_MAX = 6.0;       // deg — moment FOV ceiling (below the 7° death punch)
+const MOMENT_TRAUMA = 0.25;       // camera trauma kick on a rated moment
 const FOV_PUNCH_HEAVY = 2.2;   // deg additive on heavy hit
 const FOV_PUNCH_KILL  = 4.0;   // deg additive on kill
 const FOV_PUNCH_DEATH = 7.0;   // deg additive on player death
@@ -881,6 +890,11 @@ export const feel = {
     // this is the missing feel subscriber. Rate-limited in frame() so a grind cannot stack.
     bus.on('physics:impact', (p) => this._onPhysicsImpact(p));
 
+    // Rated holy-shit moments (PQ-146.03). bulletTime rates `stunt:trickDetected` receipts and
+    // publishes `moment:holyShit`; this is the camera/punch consumer — slow-mo, audio stingers
+    // and the clip recorder consume the same bus event directly. No score text is ever popped.
+    bus.on('moment:holyShit', (p) => this._onMoment(p));
+
     // Massline UVP fling feel — pure resolveMasslineFeelPunch; motionReduce suppresses vestibular.
     bus.on('tether:releaseRated', (p) => {
       const classification = p && (p.classification || p.tier || p.rating);
@@ -997,6 +1011,21 @@ export const feel = {
     if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(pending.trauma);
     this._collisionHitstopCooldown = COLLISION_HITSTOP_COOLDOWN;
     this._armedCollisionDeltaV = pending.deltaV;
+  },
+
+  _onMoment(p) {
+    if (!p) return;
+    if (this.state.mode !== 'flight' || !this._modalClear()) return;
+    const mr = this.state.settings && this.state.settings.video && this.state.settings.video.motionReduce;
+    if (mr) return;
+    const score = Number.isFinite(Number(p.score)) ? Number(p.score) : 0;
+    const fov = Math.min(
+      MOMENT_FOV_MAX,
+      MOMENT_FOV_BASE + Math.max(0, score) * MOMENT_FOV_PER_SCORE,
+    );
+    this._trigger(MOMENT_FEEL_HS, fov, 0, null);
+    const ctrl = this.state.render && this.state.render.cameraCtrl;
+    if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(MOMENT_TRAUMA);
   },
 
   _applyMasslineFeelPunch(event, raw) {

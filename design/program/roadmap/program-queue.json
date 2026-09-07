@@ -6361,7 +6361,7 @@
       "priority": 85,
       "title": "The moment detector",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-139.00",
         "PQ-137.03",
@@ -6378,8 +6378,10 @@
       "checks": [
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
-      "brief": "A rated 'holy shit' event (rarity × momentum × collateral) exposed on the bus for slow-mo (bulletTime), camera, audio stingers and the clip recorder. DONE WHEN: Fires on ≥ 3 distinct moments in the 60-second proof scenario and never on ordinary traffic."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-146.03-REPORT.md"
+      ],
+      "brief": "DONE 2026-09-07 (OpenCode Muse Spark + controller). A wrecking-ball, clothesline, rock discovery, collateral, well golf or tow kill fires moment:holyShit: a beat of slow-mo, a camera punch, a stinger. Commons never qualify. Held bullet-time meter is untouched. 60s seed-47 proof: 6 distinct moments; ordinary traffic: 0. DONE WHEN: Fires on >= 3 distinct moments in the 60-second proof scenario and never on ordinary traffic."
     },
     {
       "id": "PQ-186.00",
