@@ -1389,7 +1389,7 @@ async function collectAuthoredReport(cdp) {
       try {
         return [...new Set(partsLibrary.shipArchetypesForPrecompile()
           .map((entry) => entry && entry.wholeShipFile)
-          .filter(Boolean))];
+          .filter((file) => file && (typeof partsLibrary.isPackagedLiveWholeShipFile !== 'function' || partsLibrary.isPackagedLiveWholeShipFile(file))))];
       } catch (_) {
         return [];
       }
