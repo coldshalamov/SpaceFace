@@ -8,7 +8,7 @@ import { stopDistanceEstimate } from '../panels/massDelta.js';
 import { createMorphLabel, createRouteBeam } from '../effects/index.js';
 import { prefersReducedMotion } from '../effects/effectRuntime.js';
 import { resolveDrillControlMap } from './drill.js';
-import { rescueRangeRungId } from '../../onboarding/rescueOpening.js';
+import { rescueRangeRungId, buildRangeOpenedFunnelEvent } from '../../onboarding/rescueOpening.js';
 import { canvasFont } from '../canvasFonts.js';
 
 const STYLE_ID = 'sf-range-style';
@@ -617,17 +617,39 @@ function nowSupportsFlight(model) {
     && Number.isFinite(model.boostMaxSpeedMult);
 }
 
-// Rescue fallback entry (PQ-163.00): a rescue beat with a dedicated rung opens the Range
-// on that rung; anything else (or no rescue) starts at the top of the rail.
+// Rescue fallback entry (PQ-163.00 / PQ-163.01): a rescue beat with a dedicated rung opens the Range
+// on that rung. Opening from the first-latch prompt lands on SWING, DO NOT PULL ("SWING, DO NOT PULL
+// is the entry rung when that is the lesson"). Anything else (or no rescue/prompt) starts at the top of the rail.
 export function resolveRescueEntryRung(state) {
-  const current = state && state.onboarding && state.onboarding.rescue
-    ? state.onboarding.rescue.current
+  const ob = state && state.onboarding;
+  const current = ob && ob.rescue
+    ? ob.rescue.current
     : null;
-  if (!current) return 0;
-  const rungId = rescueRangeRungId(current);
-  if (!rungId) return 0;
-  const index = RAIL_INDEX_BY_ID.get(rungId);
-  return Number.isInteger(index) ? index : 0;
+  if (current) {
+    const rungId = rescueRangeRungId(current);
+    if (!rungId) return 0;
+    const index = RAIL_INDEX_BY_ID.get(rungId);
+    return Number.isInteger(index) ? index : 0;
+  }
+  if (ob && (ob.rangePromptActive || ob.pointedAtRange)) {
+    const swingIndex = RAIL_INDEX_BY_ID.get('swing_do_not_pull');
+    return Number.isInteger(swingIndex) ? swingIndex : 0;
+  }
+  return 0;
+}
+
+export function recordRangeOpened(bus, state) {
+  const ob = state && state.onboarding;
+  const fromPrompt = Boolean(ob && ob.rangePromptActive);
+  const rungIndex = resolveRescueEntryRung(state);
+  const rung = RAIL_ROWS[rungIndex];
+  const rungId = rung ? rung.id : null;
+  const atS = Number.isFinite(state && state.simTime) ? state.simTime : 0;
+  const event = buildRangeOpenedFunnelEvent(atS, { fromPrompt, rungId, rungIndex });
+  if (bus && typeof bus.emit === 'function') {
+    bus.emit('range:opened', event);
+  }
+  return event;
 }
 
 export const rangeScreen = {
@@ -965,10 +987,11 @@ export const rangeScreen = {
 
     this._hideEmpty();
     this._openDrawer('rules');
-    // Rescue fallback (PQ-163.00): opening the Range mid-rescue lands on the rung that
+    // Rescue fallback (PQ-163.00 / PQ-163.01): opening the Range mid-rescue lands on the rung that
     // teaches the current verb. Only the swing has a dedicated rung; other verbs start at
     // the top of the rail instead of a wrong lesson.
     this._setRung(resolveRescueEntryRung(state), null, []);
+    recordRangeOpened(this._ctx && this._ctx.bus, state);
     this._syncBestiary();
     this._syncRail();
     this._syncCanvasLabel();

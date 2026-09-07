@@ -6638,7 +6638,7 @@
       "priority": 95,
       "title": "The Range is the door",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -6659,8 +6659,10 @@
         "npm run check:first-15-runtime",
         "npm run check:new-game-first-run"
       ],
-      "receiptRefs": [],
-      "brief": "Onboarding points at the Range (F4) after the first latch; the SWING, DO NOT PULL rung is the first drill; the empty Power Rail slots explain themselves. DONE WHEN: Funnel shows ≥ 60 % of new players open the Range in hour one."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-163.01-REPORT.md"
+      ],
+      "brief": "IMPLEMENTED 2026-09-07 (AGY Gemini + controller). After the first latch, onboarding points at Range (F4); opening from that prompt records range:opened and lands on SWING, DO NOT PULL. Funnel fromPrompt is the live prompt only. Power Rail left to FRONTEND-B. Not 60% unaided players - that clause keeps this implemented, not done. DONE WHEN: Funnel shows >= 60 % of new players open the Range in hour one."
     },
     {
       "id": "PQ-163.02",

@@ -13,7 +13,7 @@
 // Sim-safe by construction: the 47-A slice harness (game:started with a scenario payload)
 // never activates this rail, so its golden snapshot is untouched.
 
-import { RESCUE_BEAT_LINES } from '../ui/hudAttention.js';
+import { RESCUE_BEAT_LINES, RANGE_POINTER_LINE } from '../ui/hudAttention.js';
 
 export const RESCUE_SEED_SALT = 'rescue-opening';
 
@@ -226,6 +226,11 @@ export function freshRescueState() {
     rockLatched: false,
     podLatched: false,
     shoveShots: 0,
+    firstLatchDone: false,
+    rangePromptActive: false,
+    rangeOpened: false,
+    rangeOpenedFromPrompt: false,
+    rangeOpenedAt: null,
   };
 }
 
@@ -290,5 +295,17 @@ export function buildRescueCompleteEvent(atS, fails) {
     beats: [...RESCUE_ORDER],
     atS: Number.isFinite(Number(atS)) ? Number(atS) : 0,
     fails: Number.isFinite(Number(fails)) ? Number(fails) : 0,
+  };
+}
+
+// Range funnel event (PQ-163.01 — "The Range is the door"). Opening Range from the first-latch prompt
+// is recorded in the telemetry stream. Honest counts only, no fake playtest percentages.
+export function buildRangeOpenedFunnelEvent(atS, { fromPrompt = false, rungId = null, rungIndex = 0 } = {}) {
+  return {
+    type: 'range:opened',
+    fromPrompt: Boolean(fromPrompt),
+    rungId: rungId ? String(rungId) : null,
+    rungIndex: Number.isInteger(rungIndex) ? rungIndex : 0,
+    atS: Number.isFinite(Number(atS)) ? Number(atS) : 0,
   };
 }

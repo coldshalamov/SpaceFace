@@ -167,6 +167,14 @@ export function rescueBeatLine(verbId) {
   return RESCUE_BEAT_LINES[verbId] || '';
 }
 
+// Range pointer copy (PQ-163.01 — "The Range is the door"). After the first latch, onboarding points
+// at the Range (F4). SWING, DO NOT PULL is the first drill rung. Under the ≤12-word budget.
+export const RANGE_POINTER_LINE = 'Range (F4)';
+
+export function rangePointerLine() {
+  return RANGE_POINTER_LINE;
+}
+
 export function firstUseAttachKind(verbId) {
   const key = String(verbId || '');
   if (key === 'firstStation' || key === 'firstHub' || key === 'firstGate') return 'station';

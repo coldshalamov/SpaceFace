@@ -79,15 +79,30 @@
       "description": "Whether the pod was grabbed and run to the beacon.",
       "owner": "scenario.rescue-opening",
       "initial": "unresolved"
+    },
+    {
+      "id": "fact.rescue.range_door_status",
+      "description": "Whether Range was pointed to after the first latch and opened on SWING, DO NOT PULL.",
+      "owner": "scenario.rescue-opening",
+      "initial": "unresolved"
     }
   ],
   "funnelEventIds": [
     "rescue:started",
     "rescue:beat",
     "rescue:complete",
-    "combat:shove"
+    "combat:shove",
+    "onboarding:rangePrompt",
+    "range:opened"
   ],
   "proofMetrics": [
+    {
+      "id": "range_door_funnel",
+      "target": "opening Range from the first latch prompt is recorded as a funnel event with SWING, DO NOT PULL entry rung",
+      "evidence": "test/range-door-funnel.test.mjs + range:opened {fromPrompt: true, rungId: 'swing_do_not_pull'}",
+      "required": true,
+      "beatIds": ["rescue_swing"]
+    },
     {
       "id": "rescue_swing_complete",
       "target": "swing beat completes on seed 47",

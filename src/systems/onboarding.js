@@ -23,7 +23,7 @@
 import { drawSeeded, hash32 } from '../core/rng.js';
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 import { Masks } from '../core/entity.js';
-import { firstUseLine, resolveFirstUseEntityId } from '../ui/hudAttention.js';
+import { firstUseLine, resolveFirstUseEntityId, RANGE_POINTER_LINE } from '../ui/hudAttention.js';
 import { deboxCss, INK_SHADOW } from '../ui/hudBrackets.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import { ONBOARDING_CHOICE_SOURCE } from './missions.js';
@@ -51,6 +51,7 @@ import {
   RESCUE_ROCK_HIT_MIN_SPEED_WU,
   RESCUE_RUN_MIN_SPEED_WU,
   RESCUE_SHOVE_PROOF_SPEED_WU,
+  buildRangeOpenedFunnelEvent,
   buildRescueCompleteEvent,
   buildRescueFunnelEvent,
   buildRescueStartedEvent,
@@ -246,6 +247,10 @@ export const onboarding = {
     bus.on('entity:killed', (p) => this._onRescueKilled(p || {}));
     bus.on('player:death', () => this._onRescuePlayerDeath());
 
+    // ── Range pointer & funnel (PQ-163.01 — "The Range is the door") ─────────────────────
+    bus.on('tether:latched', (p) => this._onLatchPointer(p || {}));
+    bus.on('range:opened', (p) => this._onRangeOpened(p || {}));
+
     // ── Contextual first-time hints (fire once per hint, persist across saves) ───────────────
     // These are independent of the tutorial chain: they fire for all players whose
     // settings.gameplay.tutorialHints is not explicitly false, including players who
@@ -429,6 +434,16 @@ export const onboarding = {
       burstShots: 0,
       burstPeakHeat: 0,
       burstCooling: false,
+      firstLatchDone: false,
+      firstLatchAt: null,
+      rangePromptActive: false,
+      rangePrompt: null,
+      pointedAtRange: false,
+      rangeOpened: false,
+      rangeOpenedAt: null,
+      rangeOpenedFromPrompt: false,
+      rangeOpenedFromPromptAt: null,
+      rangeFunnel: null,
     };
     // A fresh new game starts in tutorial mode (not story mode).
     this._storyMode = false;
@@ -468,6 +483,7 @@ export const onboarding = {
     this._countEl = null;
     this._stepsEl = null;
     this._progressEl = null;
+    this._rangePromptEl = null;
     this._flavorEl = null;
     this._kickerLabelEl = null;
   },
@@ -482,6 +498,7 @@ export const onboarding = {
     this._countEl = null;
     this._stepsEl = null;
     this._progressEl = null;
+    this._rangePromptEl = null;
     this._flavorEl = null;
     this._kickerLabelEl = null;
     this._modalAriaHidden = null;
@@ -1248,6 +1265,59 @@ export const onboarding = {
     if (key === 'grab' && payload.targetId === rescue.ids.pod) rescue.podLatched = false;
   },
 
+  // ── Range pointer & funnel (PQ-163.01 — "The Range is the door") ─────────────────────
+  _onLatchPointer(payload) {
+    const ob = this.state && this.state.onboarding;
+    if (!ob || ob.finished) return;
+    if (!ob.firstLatchDone) {
+      ob.firstLatchDone = true;
+      ob.firstLatchAt = this.state.simTime || 0;
+      ob.rangePromptActive = true;
+      ob.pointedAtRange = true;
+      ob.rangePrompt = RANGE_POINTER_LINE;
+      if (ob.rescue) {
+        ob.rescue.firstLatchDone = true;
+        ob.rescue.rangePromptActive = true;
+      }
+      this.bus.emit('onboarding:rangePrompt', {
+        active: true,
+        text: RANGE_POINTER_LINE,
+        atS: ob.firstLatchAt,
+        targetId: payload && payload.targetId,
+      });
+      this._refreshBeatPanel();
+    }
+  },
+
+  _onRangeOpened(payload) {
+    const ob = this.state && this.state.onboarding;
+    if (!ob) return;
+    const atS = Number.isFinite(payload && payload.atS) ? payload.atS : (this.state.simTime || 0);
+    const fromPrompt = Boolean(payload && payload.fromPrompt);
+    ob.rangeOpened = true;
+    ob.rangeOpenedAt = atS;
+    if (fromPrompt) {
+      ob.rangeOpenedFromPrompt = true;
+      ob.rangeOpenedFromPromptAt = atS;
+      ob.rangePromptActive = false;
+      ob.pointedAtRange = false;
+    }
+    ob.rangeFunnel = {
+      opened: true,
+      openedAt: atS,
+      fromPrompt,
+      rungId: (payload && payload.rungId) || null,
+      rungIndex: payload && payload.rungIndex != null ? payload.rungIndex : 0,
+    };
+    if (ob.rescue) {
+      ob.rescue.rangeOpened = true;
+      ob.rescue.rangeOpenedFromPrompt = fromPrompt;
+      ob.rescue.rangeOpenedAt = atS;
+      ob.rescue.rangePromptActive = false;
+    }
+    this._refreshBeatPanel();
+  },
+
   _onRescueWhipImpact(payload) {
     const rescue = this._rescue();
     const key = this._rescueCurrentKey();
@@ -1683,6 +1753,24 @@ export const onboarding = {
         d.className = 'sf-ob-dot' + (isDone ? ' done' : (i === idx ? ' curr' : ''));
         this._stepsEl.appendChild(d);
       });
+    }
+
+    // Range pointer affordance (PQ-163.01 — "The Range is the door").
+    // After the first latch, onboarding points at the Range (F4).
+    if (ob.rangePromptActive) {
+      if (!this._rangePromptEl && this._bodyEl) {
+        this._rangePromptEl = document.createElement('div');
+        this._rangePromptEl.className = 'sf-ob-range-prompt';
+        this._rangePromptEl.setAttribute('data-action', 'range');
+        this._bodyEl.appendChild(this._rangePromptEl);
+      }
+      const promptText = ob.rangePrompt || RANGE_POINTER_LINE;
+      if (this._rangePromptEl && this._rangePromptEl.textContent !== promptText) {
+        this._rangePromptEl.textContent = promptText;
+      }
+    } else if (this._rangePromptEl) {
+      this._rangePromptEl.remove();
+      this._rangePromptEl = null;
     }
   },
 };
