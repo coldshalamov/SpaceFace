@@ -135,6 +135,8 @@ export const lawSecurity = {
     this._onPlayerDeath = () => this._interruptInspection('interrupted_player_death');
     this._onAftermathWreckSpawned = (payload) => this._handleAftermathWreckSpawned(payload);
     this._onSurvivorPodEjected = (payload) => this._handleSurvivorPodEjected(payload);
+    this._onStolenCargoPodCollect = (payload) => this._handleStolenCargoPodCollect(payload);
+    this._onStolenCargoPodLatch = (payload) => this._handleStolenCargoPodLatch(payload);
     if (this.bus && typeof this.bus.on === 'function') {
       this.bus.on('combat:damage', this._onDamage);
       this.bus.on('combat:fire', this._onFire);
@@ -149,6 +151,8 @@ export const lawSecurity = {
       this.bus.on('lawfulInspection:choose', this._onInspectionChoice);
       this.bus.on('contraband:scanned', this._onInspectionScanned);
       this.bus.on('player:death', this._onPlayerDeath);
+      this.bus.on('pickup:collected', this._onStolenCargoPodCollect);
+      this.bus.on('tether:latched', this._onStolenCargoPodLatch);
     }
   },
 
@@ -1550,7 +1554,14 @@ export const lawSecurity = {
     }
 
     // Jurisdiction: the live authority owner decides, from the incident position.
-    const jurisdiction = protectedStationAt(state, { pos });
+    // Ceres/Ambush theft sits outside the station protection ring; reuse the same
+    // ceresDistressJurisdiction helper npc_piracy already uses for pirate→loaded hauler.
+    const victim = resolveIncidentVictim(state, request);
+    const jurisdiction = protectedStationAt(state, { pos })
+      || ceresDistressJurisdiction(state, victim)
+      || (kind === 'payload_theft'
+        ? ceresDistressJurisdiction(state, findCivilianHauler(state))
+        : null);
     if (!jurisdiction) {
       return this._denyIncidentReport('no_jurisdiction', { reportId, kind, causalTick });
     }
@@ -1636,6 +1647,53 @@ export const lawSecurity = {
     });
     this._emit('law:reportIncidentReceipt', denial);
     return denial;
+  },
+
+  // ── PQ-WANTED-steal-pod: jettisoned payload whose owner is not the player ──────────────────
+  //
+  // EncounterDirector freight-custody theft already reports through reportIncident. This path is
+  // only jettisoned `payload` pods (`spawnJettisonedCargoPod`). Own-jettison never enters intake.
+
+  _handleStolenCargoPodCollect(payload) {
+    if (!payload) return null;
+    const state = this.state;
+    if (!state || state.playerId == null) return null;
+    if (!sameLawEntityId(payload.collectorId, state.playerId)) return null;
+    if (payload.acceptedAmount != null && !(Number(payload.acceptedAmount) > 0)) return null;
+    return this._reportStolenCargoPod(
+      entityById(state, payload.pickupId ?? payload.entityId ?? payload.targetId),
+    );
+  },
+
+  _handleStolenCargoPodLatch(payload) {
+    if (!payload) return null;
+    const state = this.state;
+    if (!state || state.playerId == null) return null;
+    return this._reportStolenCargoPod(entityById(state, payload.targetId));
+  },
+
+  _reportStolenCargoPod(entity) {
+    const state = this.state;
+    if (!isJettisonedCargoPod(entity) || (entity.data && entity.data.freightCustodyPod)) return null;
+    const ownerId = cargoPodOwnerId(entity);
+    if (ownerId == null || sameLawEntityId(ownerId, state.playerId)) return null;
+    const pos = finiteLawPoint(entity.pos);
+    if (!pos) return null;
+    const payloadStableId = cleanLawId(`jettisoned-${entity.id}`);
+    const reportId = cleanLawId(`pod-theft:${payloadStableId}`);
+    if (!payloadStableId || !reportId) return null;
+    const causalTick = Number.isInteger(state.tick) && state.tick >= 0 ? state.tick : 0;
+    return this.reportIncident({
+      reportId,
+      kind: 'payload_theft',
+      offenderStableId: 'player',
+      offenderEntityId: state.playerId,
+      payloadStableId,
+      causalTick,
+      pos,
+      victim: entity,
+      victimEntityId: ownerId,
+    });
   },
 
   // ── PQ-148.02: physical customs cone over a field pod ─────────────────────────────────────
@@ -1743,6 +1801,8 @@ export const lawSecurity = {
       if (this._onSurvivorPodEjected) this.bus.off('survivorPod:ejected', this._onSurvivorPodEjected);
       if (this._onSectorExit) this.bus.off('sector:exit', this._onSectorExit);
       if (this._onSaveRestoring) this.bus.off('save:restoring', this._onSaveRestoring);
+      if (this._onStolenCargoPodCollect) this.bus.off('pickup:collected', this._onStolenCargoPodCollect);
+      if (this._onStolenCargoPodLatch) this.bus.off('tether:latched', this._onStolenCargoPodLatch);
     }
     this._onDamage = null;
     this._onFire = null;
@@ -1752,6 +1812,8 @@ export const lawSecurity = {
     this._onSurvivorPodEjected = null;
     this._onSectorExit = null;
     this._onSaveRestoring = null;
+    this._onStolenCargoPodCollect = null;
+    this._onStolenCargoPodLatch = null;
     if (this._podConeDwell) this._podConeDwell.clear();
   },
 };
@@ -2184,7 +2246,7 @@ function isCivilianHauler(entity) {
 }
 
 function ceresDistressJurisdiction(state, victim) {
-  if (!state || !victim || !isCivilianHauler(victim)) return null;
+  if (!state || !victim || !isCeresDistressSubject(state, victim)) return null;
   if (currentSectorId(state) !== CERES_ACTIVITY_SECTOR_ID) return null;
   const station = stationByPublicId(state, CERES_DISTRESS_STATION_ID);
   if (!station || station.alive === false) return null;
@@ -2195,6 +2257,47 @@ function ceresDistressJurisdiction(state, victim) {
     radius: CERES_POCKET_DISTRESS_RADIUS,
     rankFromVictim: true,
   };
+}
+
+function isCeresDistressSubject(state, victim) {
+  if (isCivilianHauler(victim)) return true;
+  if (isJettisonedCargoPod(victim)) return true;
+  return isCivilianHauler(entityById(state, cargoPodOwnerId(victim)));
+}
+
+function resolveIncidentVictim(state, request) {
+  if (!request) return null;
+  if (request.victim && typeof request.victim === 'object') return request.victim;
+  return entityById(state, request.victimEntityId ?? request.victimId ?? request.ownerId);
+}
+
+function findCivilianHauler(state) {
+  const list = state && state.entityList;
+  if (!Array.isArray(list)) return null;
+  let fallback = null;
+  for (let i = 0; i < list.length; i++) {
+    const entity = list[i];
+    if (!entity || entity.alive === false || !isCivilianHauler(entity)) continue;
+    if (entity.data && entity.data.activityActorSlotId === CERES_AMBUSH_HAULER_SLOT) return entity;
+    if (!fallback) fallback = entity;
+  }
+  return fallback;
+}
+
+function cargoPodOwnerId(entity) {
+  if (!entity) return null;
+  const data = entity.data || {};
+  const identity = data.cargoIdentity && typeof data.cargoIdentity === 'object' ? data.cargoIdentity : null;
+  const ownership = data.ownership && typeof data.ownership === 'object' ? data.ownership : null;
+  const ownerId = data.ownerId
+    ?? entity.ownerId
+    ?? (ownership && ownership.ownerId)
+    ?? (identity && identity.ownerId);
+  return ownerId == null || ownerId === '' ? null : ownerId;
+}
+
+function sameLawEntityId(a, b) {
+  return a != null && b != null && String(a) === String(b);
 }
 
 function incidentRingOrigin(incident, victim, station) {
