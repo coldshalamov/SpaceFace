@@ -8,13 +8,14 @@ import {
   finiteWholePickupAmount,
   PICKUP_ACCEPTANCE_RETRY_S,
 } from '../core/pickupAcceptance.js';
+import { spawnJettisonedCargoPod } from './lootShards.js';
 
 // commodityId -> { volPerU, massPerU } lookup, built once from the static registry.
 const VOL = Object.create(null);
 const MASS = Object.create(null);
 for (const c of COMMODITIES) { VOL[c.id] = c.volPerU; MASS[c.id] = c.massPerU; }
 const PERSISTENT_FOOTPRINT = new Map(PERSISTENT_CARGO.map((c) => [c.id, { vol: 0, mass: c.mass, persistent: true }]));
-const JETTISON_PICKUP_RADIUS = 1.5;
+const JETTISON_POD_RADIUS = 3;
 const JETTISON_EJECT_SPEED = 60;
 const JETTISON_CLEARANCE = 4;
 const JETTISON_PICKUP_EMBARGO_S = 2;
@@ -427,7 +428,7 @@ export const cargo = {
     this._massDirty = false;
   },
 
-  /** Dump up to `qty` units of `commodityId` into space as recoverable pickups. Returns amount dumped. */
+  /** Dump up to `qty` units of `commodityId` as a colliding persistent cargo pod. Returns amount dumped. */
   jettison(commodityId, qty) {
     const state = this.state;
     const richSources = richLotSourcesForQty(state.player.cargo, commodityId, qty);
@@ -438,36 +439,33 @@ export const cargo = {
       const px = player.pos.x, pz = player.pos.z;
       const rot = Number.isFinite(player.rot) ? player.rot : 0;
       const fx = Math.cos(rot), fz = Math.sin(rot);
-      const r = Math.max(0, Number(player.radius) || 0) + JETTISON_PICKUP_RADIUS + JETTISON_CLEARANCE;
+      const r = Math.max(0, Number(player.radius) || 0) + JETTISON_POD_RADIUS + JETTISON_CLEARANCE;
       const vx = Number.isFinite(player.vel && player.vel.x) ? player.vel.x : 0;
       const vz = Number.isFinite(player.vel && player.vel.z) ? player.vel.z : 0;
-      const spawnJettisonPickup = (amount, richSource = null) => {
+      const def = defOf(state, commodityId);
+      const unitMass = def && Number.isFinite(def.mass) ? def.mass : 0.5;
+      const spawnJettisonPod = (amount, richSource = null) => {
         if (!(amount > 0)) return;
-        this.helpers.spawnEntity({
-          type: 'pickup',
-          // Reaction mass leaves directly aft, already outside both hull contact and the mining
-          // collector. A short sim-time embargo lets it establish separation before magnetism can
-          // reclaim it; after that it is ordinary recoverable cargo again.
+        // Industrial-beam payload body: mass, collides, tetherable, flags.persistent. Not a TTL pickup.
+        spawnJettisonedCargoPod(state, {
           pos: { x: px - fx * r, z: pz - fz * r },
           vel: { x: vx - fx * JETTISON_EJECT_SPEED, z: vz - fz * JETTISON_EJECT_SPEED },
-          radius: JETTISON_PICKUP_RADIUS,
-          collides: false,
-          data: {
-            kind: 'cargo', commodityId, amount,
-            ...(richSource ? { richLotSource: { ...richSource, richQty: amount } } : {}),
-            jettisonedCargo: true,
-            pickupEmbargoUntil: state.simTime + JETTISON_PICKUP_EMBARGO_S,
-            despawnAt: state.simTime + 180,
-          },
-        });
+          radius: JETTISON_POD_RADIUS,
+          commodityId,
+          amount,
+          unitMass,
+          richSource,
+          pickupEmbargoUntil: state.simTime + JETTISON_PICKUP_EMBARGO_S,
+          factionId: player.factionId || 'player',
+        }, this.helpers);
       };
       let allocated = 0;
       for (const richSource of richSources) {
         const amount = Math.min(dumped - allocated, richSource.richQty);
-        spawnJettisonPickup(amount, richSource);
+        spawnJettisonPod(amount, richSource);
         allocated += amount;
       }
-      spawnJettisonPickup(Math.max(0, dumped - allocated));
+      spawnJettisonPod(Math.max(0, dumped - allocated));
     }
     // Receipt seam (Wave M2 §5.3): the dump is announced so reaction-impulse/heat/AI layers can
     // observe it without owning cargo. Emitting is not a state write — the 47-A harness has no

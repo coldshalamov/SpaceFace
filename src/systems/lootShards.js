@@ -28,6 +28,9 @@
 //   despawns un-anchored transient payloads via handlePayloadSectorTransition; these bodies set
 //   transientSector:false so a claimed/persistent body survives sector change while the cap still
 //   bounds total residency.
+//
+// PQ-148.00 — jettisoned hold pods use the same spawnPayloadEntity body (JETTISONED_CARGO_PAYLOAD_TYPE),
+// mass by contents, flags.persistent, cap MAX_JETTISONED_CARGO_PODS. Cargo.js remains the inventory writer.
 import { spawnPayloadEntity } from '../combat/industrialBeam.js';
 import { createVictimRewardRng, missionOwnsReward, runOwnsReward } from '../combat/rewardEligibility.js';
 import { massline2Flag } from '../data/featureFlags.js';
@@ -39,6 +42,15 @@ const SHARD_REWARD_SALT = 'loot_shards_reward_v3';
 /** Live-resident cap for civilian-manifest cargo bodies (see file header). */
 export const MAX_CIVILIAN_MANIFEST_PAYLOADS = 6;
 export const CIVILIAN_MANIFEST_PAYLOAD_TYPE = 'civilian_manifest';
+
+/**
+ * PQ-148.00 — player-jettisoned / spilled hold pods reuse the industrial-beam payload body.
+ * Cap matches the packet budget (≤ 48 live pods per sector). TTL is not applied; residency is
+ * `flags.persistent` plus this eviction bound. Cargo inventory stays cargo-owned.
+ */
+export const MAX_JETTISONED_CARGO_PODS = 48;
+export const JETTISONED_CARGO_PAYLOAD_TYPE = 'jettisoned_cargo';
+export const JETTISONED_CARGO_MASS_FLOOR = 20;
 
 export function lootShardItemsFor(seed, victim) {
   const rng = createVictimRewardRng(seed, victim, SHARD_REWARD_SALT);
@@ -94,6 +106,97 @@ function isCivilianManifestPayload(entity) {
     && entity.data.payloadType === CIVILIAN_MANIFEST_PAYLOAD_TYPE);
 }
 
+function isJettisonedCargoPod(entity) {
+  return !!(entity
+    && entity.alive !== false
+    && entity.type === 'payload'
+    && entity.data
+    && entity.data.payloadType === JETTISONED_CARGO_PAYLOAD_TYPE);
+}
+
+/** Mass of a cargo pod body: contents × unit mass, never below the payload floor. */
+export function cargoPodMassForContents(unitMass, amount) {
+  const qty = Math.max(0, Number(amount) || 0);
+  const per = Number.isFinite(unitMass) ? unitMass : 0.5;
+  return Math.max(JETTISONED_CARGO_MASS_FLOOR, qty * per);
+}
+
+/**
+ * Stamp cargo-collection fields onto a payload spec/entity without inventing a second cargo writer.
+ * `pickup:collected` still reads kind/commodityId/amount/richLotSource from the body.
+ */
+function applyJettisonedCargoData(target, spec) {
+  if (!target) return target;
+  const amount = Math.max(0, Math.floor(Number(spec.amount) || 0));
+  const commodityId = spec.commodityId;
+  const richSource = spec.richSource;
+  target.kind = 'cargo';
+  target.commodityId = commodityId;
+  target.amount = amount;
+  target.jettisonedCargo = true;
+  if (richSource) target.richLotSource = { ...richSource, richQty: amount };
+  if (spec.pickupEmbargoUntil != null) target.pickupEmbargoUntil = spec.pickupEmbargoUntil;
+  if (target.despawnAt != null) delete target.despawnAt;
+  return target;
+}
+
+/**
+ * Spawn one tetherable colliding cargo pod via spawnPayloadEntity (same path as civilian manifests).
+ * Save/Continue residency is `flags.persistent`. Does not write player cargo.
+ */
+export function spawnJettisonedCargoPod(state, spec = {}, helpers = null) {
+  const amount = Math.max(0, Math.floor(Number(spec.amount) || 0));
+  if (!(amount > 0) || typeof spec.commodityId !== 'string' || !spec.commodityId) return null;
+
+  const mass = cargoPodMassForContents(spec.unitMass, amount);
+  const radius = Math.max(3, Math.min(25, Number(spec.radius) || 3));
+  const cargoStamp = {
+    commodityId: spec.commodityId,
+    amount,
+    richSource: spec.richSource || null,
+    pickupEmbargoUntil: spec.pickupEmbargoUntil,
+  };
+
+  const spawnHelpers = helpers && typeof helpers.spawnEntity === 'function'
+    ? {
+      spawnEntity(payloadSpec) {
+        if (payloadSpec && payloadSpec.data) applyJettisonedCargoData(payloadSpec.data, cargoStamp);
+        payloadSpec.flags = Object.assign({}, payloadSpec.flags, { persistent: true });
+        return helpers.spawnEntity(payloadSpec);
+      },
+    }
+    : helpers;
+
+  const entity = spawnPayloadEntity(state, {
+    pos: spec.pos ? { x: spec.pos.x, z: spec.pos.z } : { x: 0, z: 0 },
+    vel: spec.vel ? { x: spec.vel.x, z: spec.vel.z } : { x: 0, z: 0 },
+    radius,
+    mass,
+    hull: 100,
+    hullMax: 100,
+    ownerId: null,
+    factionId: spec.factionId || 'player',
+    salvagePool: { [spec.commodityId]: amount },
+    payloadType: JETTISONED_CARGO_PAYLOAD_TYPE,
+    worldRecordId: null,
+    transientSector: false,
+  }, spawnHelpers);
+
+  if (entity) {
+    entity.data = entity.data || {};
+    applyJettisonedCargoData(entity.data, cargoStamp);
+    entity.flags = Object.assign({}, entity.flags, { persistent: true });
+    if (entity.data.despawnAt != null) delete entity.data.despawnAt;
+  }
+
+  enforceJettisonedCargoPodCap(
+    state,
+    helpers && helpers.removeEntity,
+    MAX_JETTISONED_CARGO_PODS,
+  );
+  return entity || null;
+}
+
 /**
  * Bound live civilian-manifest payloads. Disposes oldest (lowest id) first — mirrors the
  * aftermath-wreck MAX_PER_SECTOR bounded eviction pattern without inventing a new ledger.
@@ -124,6 +227,42 @@ export function enforceCivilianManifestPayloadCap(
     if (!entity) continue;
     if (typeof removeEntity === 'function') {
       removeEntity(entity.id, { immediate: true, reason: 'manifest_payload_cap' });
+    } else entity.alive = false;
+    removed += 1;
+  }
+  return removed;
+}
+
+/**
+ * Bound live jettisoned-cargo pods. Disposes oldest (lowest id) first — same eviction as
+ * civilian-manifest payloads. Unowned scraps are not given a TTL here; the cap is the bound.
+ */
+export function enforceJettisonedCargoPodCap(
+  state,
+  removeEntity,
+  max = MAX_JETTISONED_CARGO_PODS,
+) {
+  if (!state || !Number.isFinite(max) || max < 0) return 0;
+  const found = [];
+  const list = state.entityList;
+  if (Array.isArray(list)) {
+    for (let i = 0; i < list.length; i++) {
+      if (isJettisonedCargoPod(list[i])) found.push(list[i]);
+    }
+  } else if (state.entities && typeof state.entities.values === 'function') {
+    for (const entity of state.entities.values()) {
+      if (isJettisonedCargoPod(entity)) found.push(entity);
+    }
+  }
+  if (found.length <= max) return 0;
+  found.sort((a, b) => (a.id | 0) - (b.id | 0));
+  const drop = found.length - max;
+  let removed = 0;
+  for (let i = 0; i < drop; i++) {
+    const entity = found[i];
+    if (!entity) continue;
+    if (typeof removeEntity === 'function') {
+      removeEntity(entity.id, { immediate: true, reason: 'jettisoned_cargo_pod_cap' });
     } else entity.alive = false;
     removed += 1;
   }
