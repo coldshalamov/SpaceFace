@@ -79,6 +79,8 @@ export function normalizeField(spec = {}) {
     filters: spec.filters && typeof spec.filters === 'object' ? { ...spec.filters } : null,
     createdAt: finite(spec.createdAt, 0),
     expireAt: spec.durationS === Infinity ? Infinity : finite(spec.createdAt, 0) + Math.max(0, finite(spec.durationS, 0)),
+    // PQ-147.02 — hitch lock (Mass Seed). Zero unless a body is latched to sourceId.
+    lockStrength: Math.max(0, finite(spec.lockStrength, 0)),
   };
 }
 
@@ -126,13 +128,21 @@ export function couplingScale(bodyProfile) {
   const response = Number.isFinite(bodyProfile && bodyProfile.fieldResponseMult)
     ? Math.max(0, bodyProfile.fieldResponseMult)
     : 1;
-  if (response === 1) return base;
-  if (response < 1) return base * response;
-  // Gravity Mark: multiply mass-coupling by the earned response (3×). Do not clip back under 1.0 —
-  // that discarded the 3× on a Hornet medium (0.5 → 1.5 became 0.95). A marked heavy still
-  // mass-classes because `base` stays in the product.
-  const boosted = Math.min(base * response, FIELD_COUPLING.markedCap);
-  return Math.max(base, boosted);
+  let scale;
+  if (response === 1) scale = base;
+  else if (response < 1) scale = base * response;
+  else {
+    // Gravity Mark: multiply mass-coupling by the earned response (3×). Do not clip back under 1.0 —
+    // that discarded the 3× on a Hornet medium (0.5 → 1.5 became 0.95). A marked heavy still
+    // mass-classes because `base` stays in the product.
+    const boosted = Math.min(base * response, FIELD_COUPLING.markedCap);
+    scale = Math.max(base, boosted);
+  }
+  if (bodyProfile && bodyProfile.boosting) {
+    const boostCouple = Number.isFinite(FIELD_COUPLING.boostCouple) ? FIELD_COUPLING.boostCouple : 0.28;
+    scale = Math.max(FIELD_COUPLING.minShipCouple, scale * boostCouple);
+  }
+  return scale;
 }
 
 // Whether a field couples to a body at all (cheap pre-filter used before the radial math). Reads
@@ -147,6 +157,58 @@ export function fieldAffectsBody(field, bodyProfile) {
     if (filters.excludeId != null && bodyProfile.id === filters.excludeId) return false;
   }
   return true;
+}
+
+/**
+ * Geometric membership — ring, cone wedge, or scoop sheet. Never a sphere.
+ * Soft cone edge counts as inside (the gate is still on).
+ */
+export function fieldContainsPoint(field, x, z) {
+  if (!field || !(field.radius > 0)) return false;
+  const dx = x - field.center.x;
+  const dz = z - field.center.z;
+  if (field.kind === FIELD_KINDS.SHEET) {
+    const along = dx * field.dir.x + dz * field.dir.z;
+    if (along < 0 || along >= field.radius) return false;
+    const latX = dx - field.dir.x * along;
+    const latZ = dz - field.dir.z * along;
+    return Math.hypot(latX, latZ) <= positive(field.halfWidth, 48);
+  }
+  const r = Math.hypot(dx, dz);
+  if (r >= field.radius) return false;
+  if (field.innerRadius > 0 && r <= field.innerRadius) return false;
+  if (field.kind === FIELD_KINDS.CONE) {
+    let angle = 0;
+    if (r > 1e-4) {
+      const bearing = Math.atan2(dz, dx);
+      const axis = Math.atan2(field.dir.z, field.dir.x);
+      angle = Math.atan2(Math.sin(bearing - axis), Math.cos(bearing - axis));
+    }
+    return coneAngularGate(field, angle) > 0;
+  }
+  return true;
+}
+
+const _lockScratch = { ax: 0, az: 0 };
+
+// Hitch lock pull — uncoupled well-inward force. A frame lock, not a standing gravity well.
+function hitchLockAcceleration(field, x, z, out) {
+  const o = out || { ax: 0, az: 0 };
+  o.ax = 0;
+  o.az = 0;
+  const lock = field && field.lockStrength;
+  if (!(lock > 0) || !(field.radius > 0)) return o;
+  const dx = x - field.center.x;
+  const dz = z - field.center.z;
+  const r = Math.hypot(dx, dz);
+  if (r >= field.radius || r < 1e-4) return o;
+  const fall = fieldFalloff(field, r);
+  if (fall <= 0) return o;
+  const a = lock * fall;
+  const inv = 1 / r;
+  o.ax = -dx * inv * a;
+  o.az = -dz * inv * a;
+  return o;
 }
 
 // Raw (pre-coupling) acceleration vector a single field applies at a world point. Writes into
@@ -248,18 +310,31 @@ export function sampleFieldAcceleration(pos, vel, fields, simTime, bodyProfile, 
   if (!pos || !Array.isArray(fields) || fields.length === 0) return o;
   const profile = bodyProfile || DEFAULT_PROFILE;
   const couple = couplingScale(profile);
-  if (couple <= 0) return o;
   let sx = 0, sz = 0;
   // Stable-order summation (fields are id-sorted) keeps the float result identical across runs.
-  for (let i = 0; i < fields.length; i++) {
-    const field = fields[i];
-    if (!fieldAffectsBody(field, profile)) continue;
-    fieldRawAcceleration(field, pos.x, pos.z, _rawScratch, vel);
-    sx += _rawScratch.ax;
-    sz += _rawScratch.az;
+  if (couple > 0) {
+    for (let i = 0; i < fields.length; i++) {
+      const field = fields[i];
+      if (!fieldAffectsBody(field, profile)) continue;
+      fieldRawAcceleration(field, pos.x, pos.z, _rawScratch, vel);
+      sx += _rawScratch.ax;
+      sz += _rawScratch.az;
+    }
+    sx *= couple;
+    sz *= couple;
   }
-  sx *= couple;
-  sz *= couple;
+  // PQ-147.02 — hitch lock is a frame lock. It does not shrug with boost or mass.
+  if (profile.hitchedTo != null) {
+    const hitchId = String(profile.hitchedTo);
+    for (let i = 0; i < fields.length; i++) {
+      const field = fields[i];
+      if (!(field.lockStrength > 0)) continue;
+      if (field.sourceId == null || String(field.sourceId) !== hitchId) continue;
+      hitchLockAcceleration(field, pos.x, pos.z, _lockScratch);
+      sx += _lockScratch.ax;
+      sz += _lockScratch.az;
+    }
+  }
   const mag = Math.hypot(sx, sz);
   if (mag > FIELD_MAX_ACCEL) {
     const k = FIELD_MAX_ACCEL / mag;
@@ -312,6 +387,50 @@ export function projectFieldTrajectory(pos, vel, fields, bodyProfile, opts = {})
     }
   }
   return { points, end: { x: px, z: pz }, endVel: { x: vx, z: vz }, closest: { x: cX, z: cZ, dist: cDist, t: cT }, hit, hitT };
+}
+
+const _escP = { x: 0, z: 0 };
+const _escV = { x: 0, z: 0 };
+const _escA = { ax: 0, az: 0 };
+
+/**
+ * PQ-147.02 — integrate a body under fields plus an optional extraAccel (boost / strafe)
+ * until it is outside every volume or the clock runs out. Same Euler as the sim.
+ */
+export function integrateFieldEscape(pos, vel, fields, bodyProfile, opts = {}) {
+  const dt = positive(opts.dt, 1 / 60);
+  const maxTimeS = positive(opts.maxTimeS, 8);
+  const extraX = finite(opts.extraAccel && opts.extraAccel.x);
+  const extraZ = finite(opts.extraAccel && opts.extraAccel.z);
+  const steps = Math.max(1, Math.min(1200, Math.ceil(maxTimeS / dt)));
+  const list = Array.isArray(fields) ? fields : [];
+  const profile = bodyProfile || DEFAULT_PROFILE;
+  let px = finite(pos && pos.x);
+  let pz = finite(pos && pos.z);
+  let vx = finite(vel && vel.x);
+  let vz = finite(vel && vel.z);
+  for (let i = 1; i <= steps; i++) {
+    _escP.x = px;
+    _escP.z = pz;
+    _escV.x = vx;
+    _escV.z = vz;
+    sampleFieldAcceleration(_escP, _escV, list, 0, profile, _escA);
+    vx += (_escA.ax + extraX) * dt;
+    vz += (_escA.az + extraZ) * dt;
+    px += vx * dt;
+    pz += vz * dt;
+    let inside = false;
+    for (let j = 0; j < list.length; j++) {
+      if (fieldContainsPoint(list[j], px, pz)) {
+        inside = true;
+        break;
+      }
+    }
+    if (!inside) {
+      return { free: true, timeS: i * dt, ticks: i, pos: { x: px, z: pz }, vel: { x: vx, z: vz } };
+    }
+  }
+  return { free: false, timeS: steps * dt, ticks: steps, pos: { x: px, z: pz }, vel: { x: vx, z: vz } };
 }
 
 /**

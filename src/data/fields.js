@@ -78,7 +78,12 @@ export const FIELD_COUPLING = Object.freeze({
   pickupCouple: 1.25,     // loose cargo/pickups vacuum in like a Tideline magnet
   markedMult: 3,          // Gravity Mark well/sink pull vs the unmarked twin
   markedCap: 3,           // ceiling on boosted coupling; must not clip markedMult
+  boostCouple: 0.28,      // PQ-147.02 — Boost out: a boosting hull shrugs the field
 });
+
+// Conservative Hitch boost extra accel (wu/s^2) used by kernel escape proofs. Live flight may
+// push harder; this is the floor the well/cone/sheet cannot beat when the Boost-out verb is on.
+export const FIELD_ESCAPE_BOOST_ACCEL = 200;
 
 // Global safety bound on the SUMMED acceleration a single body may receive from all overlapping
 // fields in one tick. This is the "capped acceleration" of req 1 — a bound, not the shrug. Sits
@@ -208,6 +213,11 @@ export const FIELD_DEFS = Object.freeze({
     falloff: 1,
     durationS: Infinity,
     cooldownS: 8,
+    hull: 60,
+    emitterRadius: 7,
+    // Hitch lock only — not standing gravity. A body latched to the seed is pulled into the
+    // ring until the hitch is cut. Un-hitched bodies feel strength 0.
+    lockStrength: 400,
   }),
   // ANCHOR SNARE — an enemy-hull anchored area-control field. It deliberately reuses the Well
   // kind/presentation and the same force owner, but adds bounded velocity damping to make the
@@ -324,3 +334,45 @@ export const FIELD_VOLUME_GRAMMAR = Object.freeze({
   cone: Object.freeze({ volume: FIELD_VOLUMES.CONE, silhouette: 'forward-wedge', motion: 'through-flow' }),
   skim: Object.freeze({ volume: FIELD_VOLUMES.SHEET, silhouette: 'scoop-band', motion: 'lateral-collect' }),
 });
+
+// PQ-147.02 — one named escape verb per power. The player is never trapped without a verb.
+export const FIELD_ESCAPES = Object.freeze({
+  well: Object.freeze({
+    id: 'well',
+    verb: 'boost_out',
+    name: 'Boost out',
+    sentence: 'Hold boost and fly out of the ring; a well cannot keep a boosting hull.',
+  }),
+  repulsor: Object.freeze({
+    id: 'repulsor',
+    verb: 'cut_emitter',
+    name: 'Cut the emitter',
+    sentence: 'Shoot the plow emitter; the shove dies the same tick.',
+  }),
+  cone: Object.freeze({
+    id: 'cone',
+    verb: 'sidestep',
+    name: 'Sidestep',
+    sentence: 'Strafe out of the wedge; a cone only owns the lane ahead.',
+  }),
+  skim: Object.freeze({
+    id: 'skim',
+    verb: 'out_mass',
+    name: 'Out-mass',
+    sentence: 'Hitch heavy mass and the scoop shrugs; a light hull stays glued to the sheet.',
+  }),
+  seed: Object.freeze({
+    id: 'seed',
+    verb: 'cut_hitch',
+    name: 'Cut the hitch',
+    sentence: 'Cut the lock-ring hitch; the Hitch is free the moment the line goes.',
+  }),
+});
+
+/** Named escape for a power id (`well`, `seed`, …) or action name. */
+export function fieldEscapeOf(powerId) {
+  const key = String(powerId || '');
+  if (FIELD_ESCAPES[key]) return FIELD_ESCAPES[key];
+  const row = POWER_ROSTER.find((p) => p.id === key || p.action === key || p.defKey === key);
+  return row ? FIELD_ESCAPES[row.id] || null : null;
+}

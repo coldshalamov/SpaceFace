@@ -80,6 +80,7 @@ function defaultRuntime() {
     active: [],     // per-field presentation records for VFX/HUD
     anchored: {},   // hull-anchored fields: fieldId -> { fieldId, sourceId, defKey, activateTick }
     npcFields: {},  // sourceId -> { fieldId, kind, holdUntilTick }
+    hitches: {},    // entityId -> { fieldId, sourceId } — PQ-147.02 seed lock
     orbit: { count: 0, nodes: [] },
     telemetry: { fields: 0, queries: 0, affected: 0, appliedAccelSum: 0, orbitNodes: 0 },
   };
@@ -96,6 +97,7 @@ function ensureRuntime(state) {
     if (f.skimActive == null) f.skimActive = false;
     if (!Object.prototype.hasOwnProperty.call(f, 'skimFieldId')) f.skimFieldId = null;
     if (!f.npcFields || typeof f.npcFields !== 'object') f.npcFields = {};
+    if (!f.hitches || typeof f.hitches !== 'object') f.hitches = {};
     return f;
   }
   state.fields = defaultRuntime();
@@ -173,11 +175,21 @@ export function fieldBodyProfile(entity, state, out = null) {
     : null;
   const fieldResponse = runtime && runtime.multipliers && runtime.multipliers.fieldCoupling;
   const massScale = runtime && runtime.physicsResponse && runtime.physicsResponse.massScale;
-  profile.mass = positive(entity && entity.physicsBody && entity.physicsBody.mass, positive(entity && entity.mass, 1));
+  const hullMass = positive(entity && entity.physicsBody && entity.physicsBody.mass, positive(entity && entity.mass, 1));
+  const hitchMass = entity && entity.data && Number.isFinite(entity.data.hitchMass) && entity.data.hitchMass > 0
+    ? entity.data.hitchMass
+    : 0;
+  profile.mass = hullMass + hitchMass;
   profile.type = entity && entity.type;
   profile.team = entity && entity.team;
   profile.id = entity && entity.id;
   profile.fieldResponseMult = Number.isFinite(fieldResponse) ? Math.max(0, fieldResponse) : 1;
+  profile.boosting = !!(entity && entity.flags && entity.flags.boosting);
+  profile.hitchedTo = null;
+  if (entity && entity.id != null && state && state.fields && state.fields.hitches) {
+    const hitch = state.fields.hitches[entity.id] || state.fields.hitches[String(entity.id)];
+    if (hitch && hitch.sourceId != null) profile.hitchedTo = hitch.sourceId;
+  }
   // The transient mass/inertia scale the physics owner will solve this body at (Pinned = 6x,
   // Unmoored = 0.3x). Coupling never reads it — it is not a mass CLASS, it is the effective solver
   // mass the queued impulse has to be authored against. See _applyForces.
@@ -211,7 +223,7 @@ export const fields = {
     // PQ-137.09 grind ledger: pairKey -> { aId, bId, fieldId, ticks, lastTick, announced }
     this._grindPairs = new Map();
     this._grindScratch = [];
-    this._bodyProfile ={ mass: 1, type: null, team: null, id: null, fieldResponseMult: 1, physicsMassScale: 1 };
+    this._bodyProfile ={ mass: 1, type: null, team: null, id: null, fieldResponseMult: 1, physicsMassScale: 1, boosting: false, hitchedTo: null };
     this._coneCenter = { x: 0, z: 0 };
     this._coneDir = { x: 1, z: 0 };
     ensureRuntime(ctx.state);
@@ -269,6 +281,126 @@ export const fields = {
       this.bus.emit('fields:specialistDisrupt', { sourceId, count: n, radius: r });
     }
     return n;
+  },
+
+  /**
+   * PQ-147.02 — plant a hostile/environmental field that can trap the player.
+   * tag npc/environmental so it does not eat the player deploy cap. No owner exclude
+   * unless the caller passes filters. Well/repulsor/seed spawn a shootable emitter.
+   */
+  plantField(state, spec = {}) {
+    const s = state && state.entities ? state : this.state;
+    if (!this._kernel || !s) return null;
+    const defKey = String(spec.defKey || spec.kind || 'well');
+    const def = FIELD_DEFS[defKey];
+    if (!def) return null;
+    const rt = ensureRuntime(s);
+    const now = nowOf(s);
+    const fieldId = String(spec.id || `field_plant_${defKey}_${s.tick}`);
+    const cx = finite(spec.center && spec.center.x);
+    const cz = finite(spec.center && spec.center.z);
+    let sourceId = spec.sourceId != null ? spec.sourceId : null;
+    let emitter = null;
+    const wantEmitter = spec.emitter !== false
+      && (defKey === 'well' || defKey === 'repulsor' || defKey === 'seed');
+    if (wantEmitter) {
+      const spawnEntity = this.helpers && this.helpers.spawnEntity;
+      if (typeof spawnEntity === 'function') {
+        const hull = positive(def.hull, 42);
+        const rad = positive(def.emitterRadius, 6);
+        emitter = spawnEntity({
+          type: EMITTER_TYPE,
+          pos: { x: cx, z: cz },
+          vel: { x: 0, z: 0 },
+          rot: 0,
+          radius: rad,
+          hull,
+          hullMax: hull,
+          collides: true,
+          collisionMask: Masks.PROJECTILE,
+          physicsBody: { dynamic: false, ccd: false, material: EMITTER_MATERIAL, mass: 20, radius: rad },
+          team: spec.team != null ? spec.team : 1,
+          ownerId: spec.ownerId != null ? spec.ownerId : null,
+          ttl: Infinity,
+          data: {
+            kind: 'field_emitter',
+            fieldEmitter: true,
+            fieldKind: defKey,
+            fieldId,
+            planted: true,
+            radius: def.radius,
+          },
+        });
+        if (emitter) sourceId = emitter.id;
+      }
+    }
+    const dir = spec.dir || { x: 1, z: 0 };
+    const record = this._kernel.register({
+      id: fieldId,
+      kind: def.kind,
+      volume: fieldVolumeOf(def),
+      center: { x: cx, z: cz },
+      dir,
+      radius: positive(spec.radius, def.radius),
+      strength: spec.strength != null ? spec.strength : def.strength,
+      damping: spec.damping != null ? spec.damping : (def.damping || 0),
+      falloff: positive(spec.falloff, def.falloff),
+      halfAngleRad: def.halfAngleRad,
+      edgeSoftRad: def.edgeSoftRad,
+      halfWidth: def.halfWidth,
+      lockStrength: spec.lockStrength != null ? spec.lockStrength : (def.lockStrength || 0),
+      durationS: spec.durationS != null ? spec.durationS : Infinity,
+      sourceId,
+      ownerId: spec.ownerId != null ? spec.ownerId : sourceId,
+      team: spec.team,
+      createdAt: now,
+      tag: spec.tag || 'npc',
+      maxAffected: spec.maxAffected,
+      filters: spec.filters === undefined ? null : spec.filters,
+    });
+    if (emitter) {
+      rt.deployed[fieldId] = {
+        fieldId,
+        kind: defKey,
+        emitterId: emitter.id,
+        deployedAt: now,
+        expireAt: Infinity,
+        planted: true,
+      };
+    }
+    this.bus.emit('fields:deployed', {
+      fieldId,
+      kind: defKey,
+      sourceId,
+      planted: true,
+      center: { x: cx, z: cz },
+      radius: record.radius,
+    });
+    return { fieldId: record.id, emitterId: emitter && emitter.id, record };
+  },
+
+  latchFieldHitch(state, entityId, fieldId) {
+    const s = state && state.entities ? state : this.state;
+    if (!this._kernel || entityId == null || !fieldId) return null;
+    const field = this._kernel.get(fieldId);
+    if (!field) return null;
+    const rt = ensureRuntime(s);
+    const rec = { fieldId, sourceId: field.sourceId, attachedAt: nowOf(s) };
+    rt.hitches[entityId] = rec;
+    this.bus.emit('fields:hitchLatched', { entityId, fieldId, sourceId: rec.sourceId });
+    return rec;
+  },
+
+  cutFieldHitch(state, entityId) {
+    const s = state && state.entities ? state : this.state;
+    if (entityId == null) return false;
+    const rt = ensureRuntime(s);
+    const hitch = rt.hitches[entityId] || rt.hitches[String(entityId)];
+    if (!hitch) return false;
+    delete rt.hitches[entityId];
+    delete rt.hitches[String(entityId)];
+    this.bus.emit('fields:hitchCut', { entityId, fieldId: hitch.fieldId, sourceId: hitch.sourceId });
+    return true;
   },
 
   update(dt, state) {
@@ -775,8 +907,14 @@ export const fields = {
     const entity = state.entities && state.entities.get ? state.entities.get(rec.emitterId) : null;
     if (entity && entity.alive !== false && reason !== FIELD_END_REASONS.expired) entity.alive = false;
     // Cooldown starts when a deployed field actually leaves the field (not on a replacement).
-    if (reason !== FIELD_END_REASONS.replaced && rt.cooldowns[rec.kind] != null) {
+    // Planted hostile fields must not write the player's well/repulsor cooldown.
+    if (reason !== FIELD_END_REASONS.replaced && !rec.planted && rt.cooldowns[rec.kind] != null && FIELD_DEFS[rec.kind]) {
       rt.cooldowns[rec.kind] = nowOf(state) + FIELD_DEFS[rec.kind].cooldownS;
+    }
+    if (rt.hitches) {
+      for (const id of Object.keys(rt.hitches)) {
+        if (rt.hitches[id] && rt.hitches[id].fieldId === rec.fieldId) delete rt.hitches[id];
+      }
     }
     const pos = entity && entity.pos ? { x: entity.pos.x, z: entity.pos.z } : null;
     this._emitCollapseCue(rec.kind, pos);
