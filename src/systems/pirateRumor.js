@@ -134,6 +134,11 @@ export const pirateRumor = {
       detail: entity.data && entity.data.trafficRole || 'civilian',
       count: 1,
     });
+    if (payload.killerId != null && payload.killerId === this.state.playerId) {
+      const key = rumorKey(sectorId, zone.id);
+      const rec = zoneRecordFor(this.state, sectorId, zone);
+      this._maybeSurface(key, rec, this.state.simTime || 0, { force: true });
+    }
   },
 
   _onEncounterResolved(payload) {
@@ -227,9 +232,9 @@ export const pirateRumor = {
     if (source === 'encounter') this._maybeRaiseRouteDanger(rec);
   },
 
-  _maybeSurface(key, rec, now) {
+  _maybeSurface(key, rec, now, opts = {}) {
     const hottest = hottestRumor(this.state);
-    if (!hottest || hottest.key !== key || hottest.heat < PIRATE_RUMOR_THRESHOLD) return;
+    if (!opts.force && (!hottest || hottest.key !== key || hottest.heat < PIRATE_RUMOR_THRESHOLD)) return;
     if (Number.isFinite(rec.lastHeadlineAt) && (now - rec.lastHeadlineAt) < PIRATE_RUMOR_COOLDOWN_S) return;
     const headline = headlineFor(rec, this.state);
     rec.lastHeadlineAt = now;

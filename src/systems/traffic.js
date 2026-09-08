@@ -8341,6 +8341,10 @@ export const traffic = {
       t.appliedLossIds = mergeAppliedFreightIds(t.appliedLossIds, fresh);
     }
 
+    if (p.killerId != null && p.killerId === this.state.playerId) {
+      this._markRouteDisrupted(stationId, p.id);
+    }
+
     if (idx >= 0) list.splice(idx, 1);
     const activeIdx = this._active.indexOf(p.id);
     if (activeIdx >= 0) this._active.splice(activeIdx, 1);
@@ -8350,6 +8354,28 @@ export const traffic = {
     if (lostClaimTravelRoute) {
       this._applyClaimTravelHooks(this.state.world && this.state.world.currentSectorId);
     }
+  },
+
+  _markRouteDisrupted(stationId, victimId) {
+    if (!stationId) return 0;
+    const list = this.state.traffic && this.state.traffic.freighters;
+    if (!Array.isArray(list)) return 0;
+    let marked = 0;
+    for (let i = 0; i < list.length; i++) {
+      const rec = list[i];
+      if (!rec || rec.id === victimId) continue;
+      const ent = this.state.entities && this.state.entities.get && this.state.entities.get(rec.id);
+      const recStation = (rec.targetId != null && this._stationIdForEntity(rec.targetId))
+        || this._nearestStationId(ent && ent.pos);
+      if (recStation !== stationId) continue;
+      rec.routeDisrupted = true;
+      if (ent) {
+        const data = ent.data || (ent.data = {});
+        data.routeDisrupted = true;
+      }
+      marked += 1;
+    }
+    return marked;
   },
 
   _nearestStationId(pos) {

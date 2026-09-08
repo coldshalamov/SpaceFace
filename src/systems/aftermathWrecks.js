@@ -25,6 +25,7 @@ const MAX_WRECK_TUMBLE = 3.0;
 const WRECK_RADIUS = 9;
 const WRECK_SALVAGE_TIME = 8;
 const FREIGHT_IDENTITY_TEXT_MAX = 160;
+const STRUCTURE_PATCH_RANGE_WU = 2400;
 const SHIPLIKE_TYPES = new Set(['ship', 'drone']);
 const DEFAULT_POOL = Object.freeze({ cmdty_scrap_metal: 3, cmdty_salvage_electronics: 1 });
 const STATION_INFO = new Map();
@@ -197,6 +198,44 @@ function newsLine(marker) {
   return `Aftermath reported in ${zone}: ${victim} wreckage now drifting on the lane.`;
 }
 
+function normalizeStructurePatch(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return null;
+  const receiptId = boundedIdentityText(input.receiptId || (input.data && input.data.receiptId));
+  const text = boundedIdentityText(input.text);
+  if (!receiptId || !text) return null;
+  const markerId = boundedIdentityText(input.markerId || (input.data && input.data.markerId));
+  const stationId = boundedIdentityText(input.stationId || (input.data && input.data.stationId));
+  const placeId = boundedIdentityText(input.placeId || (input.data && input.data.placeId));
+  return {
+    t: Number.isFinite(input.t) ? input.t : 0,
+    kind: boundedIdentityText(input.kind) || 'patched',
+    text,
+    receiptId,
+    markerId,
+    stationId,
+    placeId,
+    data: { receiptId, markerId, stationId, placeId },
+  };
+}
+
+function nearestStructure(state, pos) {
+  if (!pos || !state) return null;
+  let best = null;
+  let bestD = Infinity;
+  for (const entity of state.entityList || []) {
+    if (!entity || entity.alive === false || !entity.pos) continue;
+    const data = entity.data || {};
+    const isStation = entity.type === 'station' && !!data.stationId;
+    const isPlace = !!(data.placeId || data.worldOneOff);
+    if (!isStation && !isPlace) continue;
+    const d = Math.hypot(entity.pos.x - pos.x, entity.pos.z - pos.z);
+    if (!(d < bestD) || d > STRUCTURE_PATCH_RANGE_WU) continue;
+    bestD = d;
+    best = entity;
+  }
+  return best;
+}
+
 function makeMarker(state, payload, entity) {
   const sectorId = sectorIdFrom(state, payload);
   if (!sectorId) return null;
@@ -246,6 +285,8 @@ function makeMarker(state, payload, entity) {
     motiveId: encounterCausality && encounterCausality.motiveId || null,
     freightIdentity: freightIdentityFor(data.cargoManifest),
     cause: null,
+    headline: null,
+    structurePatch: null,
   };
   marker.salvagePool = initialPoolForMarker(marker);
   return marker;
@@ -308,7 +349,8 @@ function rememberMarker(state, bus, marker, onEvicted = null) {
     if (typeof onEvicted === 'function') onEvicted(evicted);
   }
   if (bus && typeof bus.emit === 'function') {
-    const headline = newsLine(marker);
+    const headline = marker.headline || newsLine(marker);
+    marker.headline = headline;
     bus.emit('aftermathWreck:recorded', clonePlain(marker));
     bus.emit('news:headline', {
       headline,
@@ -356,6 +398,8 @@ function normalizeMarker(input) {
     motiveId: input.motiveId || null,
     freightIdentity: freightIdentityFor(input.freightIdentity),
     cause: normalizeCausalAftermath(input.cause),
+    headline: boundedIdentityText(input.headline),
+    structurePatch: normalizeStructurePatch(input.structurePatch),
   };
   const savedPool = normalizeSalvagePool(input.salvagePool);
   marker.salvagePool = savedPool == null ? initialPoolForMarker(marker) : savedPool;
@@ -431,12 +475,51 @@ export const aftermathWrecks = {
   _recordKill(payload) {
     const entity = entityFor(this.state, payload.id);
     const marker = makeMarker(this.state, payload, entity);
-    return rememberMarker(this.state, this.bus, marker, (evicted) => {
+    if (marker) marker.headline = newsLine(marker);
+    const remembered = rememberMarker(this.state, this.bus, marker, (evicted) => {
       if (!this._spawned) return;
       for (const item of evicted) {
         if (item && item.markerId) this._spawned.delete(item.markerId);
       }
     });
+    if (remembered) {
+      this._stampNearbyStructurePatch(remembered, payload);
+      const current = this.state && this.state.world && this.state.world.currentSectorId;
+      if (remembered.sectorId && remembered.sectorId === current) this._spawnForSector(remembered.sectorId);
+    }
+    return remembered;
+  },
+
+  // Claims already keep `{ t, kind, text, data }` receipts on a body. A player-caused kill
+  // near a station or place writes that same receipt onto the nearest structure so the yard
+  // patch is world state, not a checklist flag.
+  _stampNearbyStructurePatch(marker, payload) {
+    if (!marker || !this.state) return null;
+    const killerId = payload && payload.killerId;
+    if (killerId == null || killerId !== this.state.playerId) return null;
+    if (marker.structurePatch && marker.structurePatch.receiptId) return marker.structurePatch;
+    const structure = nearestStructure(this.state, marker.pos);
+    if (!structure) return null;
+    const data = structure.data || (structure.data = {});
+    const receiptId = `aft_patch:${marker.markerId}`;
+    const label = data.name || data.stationId || data.placeId || 'the structure';
+    const receipt = normalizeStructurePatch({
+      t: marker.t,
+      kind: 'patched',
+      text: `Yard crews patch ${label} after the ${marker.zoneName || 'local'} loss.`,
+      receiptId,
+      markerId: marker.markerId,
+      stationId: data.stationId || null,
+      placeId: data.placeId || null,
+    });
+    if (!receipt) return null;
+    marker.structurePatch = receipt;
+    if (!Array.isArray(data.receipts)) data.receipts = [];
+    if (!data.receipts.some((row) => row && row.data && row.data.receiptId === receiptId)) {
+      data.receipts.push(receipt);
+    }
+    data.structurePatch = receipt;
+    return receipt;
   },
 
   // Production init order registers this system before mining. By the time mining observes the same
