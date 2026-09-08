@@ -59,6 +59,9 @@ const CERES_LAW_JOB_SLOTS_BY_ID = new Map(CERES_ACTIVITY_ACTOR_SLOTS
   .filter((slot) => slot.lawful === true && slot.jobKind === 'patrol')
   .map((slot) => [slot.id, slot]));
 const CERES_ACTIVITY_SLOT_IDS = new Set(CERES_ACTIVITY_ACTOR_SLOTS.map((slot) => slot.id));
+const CERES_AMBUSH_HAULER_SLOT = 'ceres_ambush_loaded_hauler';
+const CERES_DISTRESS_STATION_ID = 'station_ceres';
+const CERES_POCKET_DISTRESS_RADIUS = 2200;
 const LAW_JOB_RESPONSE_CLAIM_CAP = CERES_LAW_JOB_SLOTS_BY_ID.size;
 const LAW_RESPONSE_AI_FIELDS = Object.freeze([
   'lawful',
@@ -109,6 +112,7 @@ export const lawSecurity = {
     this._inspectionRebindPasses = 0;
     ensureState(this.state);
     this._onDamage = (payload) => this._handleDamage(payload);
+    this._onFire = (payload) => this._handleFire(payload);
     this._onSpawned = (payload) => this._stampAmbient(payload && payload.entity);
     this._onResponderGone = (payload) => {
       this._releaseJobResponsesForEntity(eventEntityId(payload), 'responder_gone');
@@ -133,6 +137,7 @@ export const lawSecurity = {
     this._onSurvivorPodEjected = (payload) => this._handleSurvivorPodEjected(payload);
     if (this.bus && typeof this.bus.on === 'function') {
       this.bus.on('combat:damage', this._onDamage);
+      this.bus.on('combat:fire', this._onFire);
       this.bus.on('entity:spawned', this._onSpawned);
       this.bus.on('entity:killed', this._onResponderGone);
       this.bus.on('entity:destroyed', this._onResponderGone);
@@ -534,7 +539,9 @@ export const lawSecurity = {
     }
 
     if (attacker.id === state.playerId && target.id !== state.playerId) {
-      const jurisdiction = protectedStationAt(state, target) || (player && protectedStationAt(state, player));
+      const jurisdiction = protectedStationAt(state, target)
+        || (player && protectedStationAt(state, player))
+        || ceresDistressJurisdiction(state, target);
       if (jurisdiction && (isLawful(target) || isProtectedCivilian(target))) {
         this._openIncident(attacker, target, jurisdiction, isLawful(target) ? 'player_assault' : 'player_piracy');
         return;
@@ -550,10 +557,34 @@ export const lawSecurity = {
 
     const targetProtected = target.id === state.playerId || isLawful(target) || isProtectedCivilian(target);
     if (!targetProtected || isLawful(attacker)) return;
-    const jurisdiction = protectedStationAt(state, target);
+    const jurisdiction = protectedStationAt(state, target) || ceresDistressJurisdiction(state, target);
     if (jurisdiction) this._openIncident(attacker, target, jurisdiction,
       target.id === state.playerId || isLawful(target) ? 'hostile_fire' : 'npc_piracy');
     else if (isLawful(target) && target.type !== 'station') this._authorizeResponder(target, attacker, null, 'self_defense');
+  },
+
+  _handleFire(payload) {
+    const state = this.state;
+    if (!state || !payload) return;
+    const ownerId = payload.ownerId ?? payload.attackerId ?? payload.sourceId;
+    const attacker = entityById(state, ownerId);
+    if (!attacker || attacker.alive === false) return;
+    const targetId = payload.targetId
+      ?? (attacker.data && attacker.data.combat && attacker.data.combat.targetId)
+      ?? (attacker.data && attacker.data.ai && attacker.data.ai.activity && attacker.data.ai.activity.targetId);
+    const target = entityById(state, targetId);
+    if (!target || target.alive === false || attacker.id === target.id) return;
+    if (isLawful(attacker) || !isCivilianHauler(target)) return;
+    const slotHauler = target.data && target.data.activityActorSlotId === CERES_AMBUSH_HAULER_SLOT;
+    const pocket = ceresDistressJurisdiction(state, target);
+    const jurisdiction = pocket
+      || (slotHauler && (protectedStationAt(state, target)
+        || (attacker.id === state.playerId && protectedStationAt(state, attacker))));
+    if (!jurisdiction) return;
+    this._openIncident(attacker, target, jurisdiction,
+      attacker.id === state.playerId
+        ? (isLawful(target) ? 'player_assault' : 'player_piracy')
+        : (isLawful(target) ? 'hostile_fire' : 'npc_piracy'));
   },
 
   _retaliate(victim, attacker) {
@@ -638,7 +669,8 @@ export const lawSecurity = {
     incident.dispatchDelayS = policy.dispatchDelayS;
     incident.dispatchAt = incident.startedAt + policy.dispatchDelayS;
     incident.responderCap = policy.responderCap;
-    incident.reserveAllowed = policy.reserveAllowed;
+    incident.reserveAllowed = jurisdiction.rankFromVictim === true ? false : policy.reserveAllowed;
+    incident.rankFromVictim = jurisdiction.rankFromVictim === true;
     incident.challengeWindowS = policy.challengeWindowS;
     own.incidents[key] = incident;
     this._say('alert', `CONTROL: distress logged. Patrol ETA ${policy.dispatchDelayS.toFixed(2)} seconds.`, `law:distress:${incident.id}`, jurisdiction.factionId);
@@ -882,7 +914,9 @@ export const lawSecurity = {
   _respondersFor(incident, victim) {
     const state = this.state;
     const station = entityById(state, incident.stationEntityId) || stationByPublicId(state, incident.stationId);
-    const anchor = station && station.pos || victim.pos;
+    const anchor = incident.rankFromVictim && victim && victim.pos
+      ? victim.pos
+      : (station && station.pos || victim && victim.pos);
     const unfilteredCandidates = isLawful(victim) && victim.type === 'ship'
       ? [victim, ...(state.entityList || [])]
       : (state.entityList || []);
@@ -1031,8 +1065,12 @@ export const lawSecurity = {
     ai.approachTelegraph = 'patrol_challenge';
     ai.noFireResponseWindowS = incident ? incident.challengeWindowS : 1;
     ai.roe = RulesOfEngagement.WEAPONS_FREE;
+    const stationPos = incident && (stationByPublicId(state, incident.stationId)?.pos);
+    const victimPos = incident && entityById(state, incident.victimId)?.pos;
     const anchor = incident
-      ? (stationByPublicId(state, incident.stationId)?.pos || responder.pos)
+      ? (incident.rankFromVictim
+        ? (victimPos || responder.pos)
+        : (stationPos || responder.pos))
       : responder.pos;
     ai.activity = normalizeActivity({
       kind: ActivityKind.ATTACK_RUN,
@@ -1063,7 +1101,7 @@ export const lawSecurity = {
       && now >= incident.dispatchAt) {
       this._dispatchIncident(incident, victim || station, attacker);
     }
-    else if (station && distance2(attacker.pos, station.pos) > Math.pow(incident.radius + RESPONSE_CLEARANCE, 2)
+    else if (station && distance2(attacker.pos, incidentRingOrigin(incident, victim, station)) > Math.pow(incident.radius + RESPONSE_CLEARANCE, 2)
       && now - incident.lastDamageAt >= RESPONSE_GRACE_S
       && !(attacker.id === state.playerId && isPlayerWanted(state))) {
       outcome = 'disengaged';
@@ -1695,6 +1733,7 @@ export const lawSecurity = {
     this._releaseAllJobResponses('destroy');
     if (this.bus && typeof this.bus.off === 'function') {
       if (this._onDamage) this.bus.off('combat:damage', this._onDamage);
+      if (this._onFire) this.bus.off('combat:fire', this._onFire);
       if (this._onSpawned) this.bus.off('entity:spawned', this._onSpawned);
       if (this._onResponderGone) {
         this.bus.off('entity:killed', this._onResponderGone);
@@ -1706,6 +1745,7 @@ export const lawSecurity = {
       if (this._onSaveRestoring) this.bus.off('save:restoring', this._onSaveRestoring);
     }
     this._onDamage = null;
+    this._onFire = null;
     this._onSpawned = null;
     this._onResponderGone = null;
     this._onAftermathWreckSpawned = null;
@@ -2127,10 +2167,39 @@ function isLawful(entity) {
 function isProtectedCivilian(entity) {
   if (!entity || entity.type !== 'ship') return false;
   const data = entity.data || {};
+  if (data.activityActorSlotId === CERES_AMBUSH_HAULER_SLOT) return true;
   const ai = data.ai || {};
-  const role = String(data.trafficRole || ai.role || ai.archetype || '').toLowerCase();
+  const role = String(data.trafficRole || data.role || ai.role || ai.archetype || '').toLowerCase();
   return entity.team === 2 || ai.spawnContext === 'convoy_civilian'
     || ['hauler', 'courier', 'miner', 'trader', 'civilian', 'fleeing_trader'].some((word) => role.includes(word));
+}
+
+function isCivilianHauler(entity) {
+  if (!entity || entity.type !== 'ship') return false;
+  const data = entity.data || {};
+  if (data.activityActorSlotId === CERES_AMBUSH_HAULER_SLOT) return true;
+  const ai = data.ai || {};
+  const role = String(data.trafficRole || data.role || data.presentationRole || ai.role || ai.archetype || '').toLowerCase();
+  return role.includes('hauler');
+}
+
+function ceresDistressJurisdiction(state, victim) {
+  if (!state || !victim || !isCivilianHauler(victim)) return null;
+  if (currentSectorId(state) !== CERES_ACTIVITY_SECTOR_ID) return null;
+  const station = stationByPublicId(state, CERES_DISTRESS_STATION_ID);
+  if (!station || station.alive === false) return null;
+  return {
+    stationId: CERES_DISTRESS_STATION_ID,
+    entityId: station.id == null ? null : station.id,
+    factionId: station.factionId || station.data && station.data.factionId || 'faction_dmc',
+    radius: CERES_POCKET_DISTRESS_RADIUS,
+    rankFromVictim: true,
+  };
+}
+
+function incidentRingOrigin(incident, victim, station) {
+  if (incident && incident.rankFromVictim && victim && victim.pos) return victim.pos;
+  return station && station.pos || victim && victim.pos || { x: 0, z: 0 };
 }
 
 function entityById(state, id) {
