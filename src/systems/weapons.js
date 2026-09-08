@@ -148,6 +148,14 @@ function stampHitCausal(payload, live, result) {
   }
 }
 
+// Full-azimuth precision belongs only to a live G-mode hostile lock. Ordinary player aim,
+// friendly selections, NPCs, missile locks and the non-G Massline gun contract keep their arcs.
+function arcadeGunTarget(e, target, state) {
+  return !!(e && target && target.alive !== false && target.pos && e.id === state.playerId
+    && state.input?.autoFire && state.input.autoAim?.targetId === target.id
+    && isHostileToPlayer(target, e.team, state));
+}
+
 export const weapons = {
   name: 'weapons',
 
@@ -247,9 +255,8 @@ export const weapons = {
       const cruise = state.player && state.player.cruise;
       const playerFireBlocked = cruise && (cruise.phase === 'charging' || cruise.phase === 'cruising');
 
-      // Manual fire (LMB/Space) and the independent weapon cursor are the only default player
-      // trigger/aim inputs. PQ-007 retired G's persistent locked-target aim; an old snapshot with
-      // `input.autoFire=true` is deliberately inert here.
+      // LMB is still the trigger. G supplies a transient hostile lock and per-mount lead,
+      // independently of the steering ribbon; the mode does not fire without a trigger.
       // Cruise charge/cruise forces firing=false but still services the ship so beams release and
       // cooldowns/heat tick down (spec2/02 §1).
       let firing = false;
@@ -619,6 +626,8 @@ export const weapons = {
     const range = w.range != null ? w.range : def.range || 0;
     const overheated = (w._heat || 0) >= heatMax;
     let beamAim = aimAngle;
+    const arcadeTarget = fireGate?.target || forceTarget;
+    const arcadeAim = arcadeGunTarget(e, arcadeTarget, state);
     let solutionBlocked = false;
     if (!fireGate && forceTarget && forceTarget.pos) {
       // Hitscan has no travel time. A mixed battery may have computed the ship-level aim angle for
@@ -627,8 +636,9 @@ export const weapons = {
     } else if (fireGate && fireGate.target && fireGate.target.pos) {
       beamAim = Math.atan2(fireGate.target.pos.z - e.pos.z, fireGate.target.pos.x - e.pos.x);
       const bareDir = this._hardpointDir(e, w, beamAim, 0);
-      solutionBlocked = Math.abs(wrapAngle(bareDir - beamAim)) > fireGate.tolRad;
+      solutionBlocked = !arcadeAim && Math.abs(wrapAngle(bareDir - beamAim)) > fireGate.tolRad;
     }
+    if (arcadeAim) beamAim = this._arcadeMountAngle(e, w, arcadeTarget, 0);
     const canFire = firing && !solutionBlocked && !overheated && capLeft >= energyCost * dt;
     if (!canFire) {
       // cool while not firing
@@ -644,7 +654,7 @@ export const weapons = {
     if (w._heat >= heatMax) w._heat = heatMax;
 
     // A continuous beam still originates from its hardpoint facing and gimbal-assists toward aim.
-    const dir = this._hardpointDir(e, w, beamAim != null ? beamAim : e.rot, 0);
+    const dir = arcadeAim ? beamAim : this._hardpointDir(e, w, beamAim != null ? beamAim : e.rot, 0);
     const origin = this._muzzle(e, w, dir);
     const to = { x: origin.x + Math.cos(dir) * range, z: origin.z + Math.sin(dir) * range };
     const damage = (w.dmg != null ? w.dmg : def.dmg || 0) * dt;
@@ -747,6 +757,8 @@ export const weapons = {
       tgt = { pos: { x: e.pos.x + Math.cos(aimAngle) * r, z: e.pos.z + Math.sin(aimAngle) * r }, vel: { x: 0, z: 0 } };
     }
 
+    const arcadeTarget = fireGate?.target || forceTarget;
+    const arcadeAim = isPlayer && !isMissile && arcadeGunTarget(e, arcadeTarget, state);
     let dir;
     if (isMissile) {
       // Missiles require a lock before launch.
@@ -763,8 +775,8 @@ export const weapons = {
         : this._leadAngle(e, tgt, w.projSpeed != null ? w.projSpeed : def.projSpeed || 1);
       const arc = w.gimbalArc != null ? w.gimbalArc : (def.turretArcDeg ? def.turretArcDeg * RAD : Math.PI);
       // turret arc is measured about the hull centre; outside it the mount can't bear.
-      if (Math.abs(wrapAngle(aim - e.rot)) > arc / 2) return capLeft;
-      dir = aim;
+      if (!arcadeAim && Math.abs(wrapAngle(aim - e.rot)) > arc / 2) return capLeft;
+      dir = arcadeAim && !mountGate ? this._arcadeMountAngle(e, w, arcadeTarget, mountProjSpeed) : aim;
     } else {
       // Tether-lock solution gate (massline2.fireControl, player only): withhold the round unless
       // the barrel — after gimbal clamp, before spread — can actually lie on the solution this
@@ -772,7 +784,7 @@ export const weapons = {
       // released round is a hit candidate. Tolerance is the target-size-honest solution window
       // widened to at least the mount's own spread (a gate tighter than the spread would starve
       // fire without improving hits).
-      if (mountGate) {
+      if (mountGate && !arcadeAim) {
         const spreadRad = (def.spreadDeg != null ? def.spreadDeg : 0) * RAD;
         const gateTol = Math.max(mountGate.tolRad, spreadRad + 0.5 * RAD);
         const bareDir = this._hardpointDir(e, w, mountGate.angle, 0);
@@ -785,7 +797,11 @@ export const weapons = {
       if (!mountGate && forceTarget && forceTarget.pos) {
         fixedAim = this._leadAngle(e, forceTarget, mountProjSpeed);
       }
-      dir = this._hardpointDir(e, w, fixedAim, def.spreadDeg != null ? def.spreadDeg : 0);
+      // G trades manual barrel alignment for independent dodging. Use the same physical shot
+      // model, but no cone clamp or random aim error on this explicit hostile solution.
+      dir = arcadeAim
+        ? (mountGate ? fixedAim : this._arcadeMountAngle(e, w, arcadeTarget, mountProjSpeed))
+        : this._hardpointDir(e, w, fixedAim, def.spreadDeg != null ? def.spreadDeg : 0);
     }
 
     const spec = this._attackSpecFor(w, def, state, e);
@@ -1247,6 +1263,20 @@ export const weapons = {
   // pip (via src/ai/gunnery.js) — one solver, never two (a second would drift from the sim and lie).
   _leadAngle(shooter, tgt, projSpeed) {
     return solveLeadAngle(shooter, tgt, projSpeed);
+  },
+
+  // The hull centre is NOT the launch point. Resolve each battery member at its own speed
+  // and real muzzle; fixed iteration count also accounts for the radial muzzle offset changing
+  // with aim. speed=0 is hitscan and intentionally carries no projectile lead.
+  _arcadeMountAngle(e, w, target, speed) {
+    let angle = speed > 0 ? this._leadAngle(e, target, speed)
+      : Math.atan2(target.pos.z - e.pos.z, target.pos.x - e.pos.x);
+    for (let i = 0; i < 3; i++) {
+      const origin = this._muzzle(e, w, angle);
+      angle = speed > 0 ? this._leadAngle({ pos: origin, vel: e.vel }, target, speed)
+        : Math.atan2(target.pos.z - origin.z, target.pos.x - origin.x);
+    }
+    return angle;
   },
 
   // Approx gaussian spread (sum of two uniforms) in radians, from our own deterministic stream.

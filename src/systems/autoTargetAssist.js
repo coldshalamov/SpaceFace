@@ -1,5 +1,5 @@
 // Registry shell for auto-target combat mode (runs immediately after input).
-import { DEFAULTS } from './input.js';
+import { DEFAULTS, shouldNeutralizeFlightInput } from './input.js';
 import {
   createAutoTargetRuntime,
   toggleAutoTarget,
@@ -51,8 +51,10 @@ function setPointerLock(enabled) {
   const canvas = document.getElementById && document.getElementById('gl-canvas');
   if (enabled) {
     if (!canvas || document.pointerLockElement === canvas || typeof canvas.requestPointerLock !== 'function') return;
-    const request = canvas.requestPointerLock();
-    if (request && typeof request.catch === 'function') request.catch(() => {});
+    try {
+      const request = canvas.requestPointerLock();
+      if (request && typeof request.catch === 'function') request.catch(() => {});
+    } catch { /* Unlocked relative mouse motion remains a supported path. */ }
     return;
   }
   if (canvas && document.pointerLockElement === canvas && typeof document.exitPointerLock === 'function') {
@@ -81,8 +83,9 @@ export const autoTargetAssist = {
     };
     // Re-arm pointer lock from the click's user activation while the mode is on. mousedown
     // (capture) runs before the fire handler and does not consume the event.
-    this._onPointerDown = () => {
-      if (!this.state?.input?.autoFire || this._pointerLockAcquired) return;
+    this._onPointerDown = (e) => {
+      if (!this.state?.input?.autoFire || this._pointerLockAcquired
+        || shouldNeutralizeFlightInput(this.state, modalInputActive()) || isUiCommandTarget(e?.target)) return;
       setPointerLock(true);
     };
     if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
@@ -99,11 +102,13 @@ export const autoTargetAssist = {
       : null;
 
     this._onKeyDown = (e) => {
-      if (modalInputActive() || isTextEntryTarget(e.target) || isUiCommandTarget(e.target)) return;
+      if (shouldNeutralizeFlightInput(this.state, modalInputActive())
+        || isTextEntryTarget(e.target) || isUiCommandTarget(e.target)) return;
       const code = eventCode(e);
       if (!isAutoFireCode(this.state, code)) return;
       e.preventDefault();
       e.stopImmediatePropagation();
+      if (e.repeat) return;
       if (!this._gHeld) {
         const enabled = toggleAutoTarget(this.state, this.bus, this._runtime);
         setPointerLock(enabled);
@@ -116,6 +121,11 @@ export const autoTargetAssist = {
         this._gHeld = true;
       }
     };
+    this._onBlur = () => {
+      this._gHeld = false;
+      if (this.state?.input?.drawFlight) delete this.state.input.drawFlight;
+      if (this.state?.input?.autoTargetPath) this.state.input.autoTargetPath.active = false;
+    };
     this._onKeyUp = (e) => {
       const code = eventCode(e);
       if (isAutoFireCode(this.state, code)) this._gHeld = false;
@@ -123,14 +133,20 @@ export const autoTargetAssist = {
     if (typeof addEventListener === 'function') {
       addEventListener('keydown', this._onKeyDown, { capture: true });
       addEventListener('keyup', this._onKeyUp, { capture: true });
+      addEventListener('blur', this._onBlur);
     }
   },
 
   reset({ toast = false } = {}) {
     const inp = this.state && this.state.input;
     const wasEnabled = !!(inp && inp.autoFire);
-    if (inp) inp.autoFire = false;
-    if (this._runtime) this._runtime.refreshT = 0;
+    if (inp) {
+      inp.autoFire = false;
+      if (inp.autoAim) inp.autoAim = null;
+      if (inp.drawFlight) delete inp.drawFlight;
+      if (inp.autoTargetPath) inp.autoTargetPath.active = false;
+    }
+    this._runtime = createAutoTargetRuntime();
     this._gHeld = false;
     setPointerLock(false);
     this._pointerLockAcquired = false;
@@ -154,9 +170,11 @@ export const autoTargetAssist = {
     if (typeof removeEventListener === 'function') {
       if (this._onKeyDown) removeEventListener('keydown', this._onKeyDown, { capture: true });
       if (this._onKeyUp) removeEventListener('keyup', this._onKeyUp, { capture: true });
+      if (this._onBlur) removeEventListener('blur', this._onBlur);
     }
     this._onKeyDown = null;
     this._onKeyUp = null;
+    this._onBlur = null;
     this._onPointerLockChange = null;
     this._onPointerDown = null;
     this._unsubMode = null;
@@ -166,6 +184,14 @@ export const autoTargetAssist = {
 
   update(dt, state) {
     const live = state || this.state;
+    if (shouldNeutralizeFlightInput(live, modalInputActive())) {
+      if (live?.input?.drawFlight) delete live.input.drawFlight;
+      if (live?.input?.autoAim) live.input.autoAim = null;
+      if (live?.input?.autoTargetPath) live.input.autoTargetPath.active = false;
+      this._runtime = createAutoTargetRuntime();
+      setPointerLock(false);
+      return;
+    }
     const controllerToggle = live && live.input && live.input.actions
       && live.input.actions.autoTargetToggle === true;
     if (controllerToggle) {

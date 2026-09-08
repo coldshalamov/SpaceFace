@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { emptyDrawFlightPath } from '../src/systems/drawFlightInput.js';
 
 const ROOT = new URL('../', import.meta.url);
 const inputSource = readFileSync(new URL('src/systems/input.js', ROOT), 'utf8');
@@ -17,8 +18,12 @@ check('G remains the auto-target toggle', () => {
 check('trackpad gestures create a clutchable world-space flight path', () => {
   assertSource(/recordAutoTargetPath/, inputSource,
     'relative pointer motion must record the draw-to-fly path');
-  assertSource(/autoTargetPath[\s\S]*points/, inputSource,
-    'the input contract must retain path points');
+  assertSource(/recordDrawFlightGesture/, inputSource,
+    'input must call the relative stroke recorder');
+  const path = emptyDrawFlightPath();
+  if (path.active !== false || !Array.isArray(path.points) || path.pointIndex !== 1) {
+    throw new Error('the input contract must retain neutral world-space path points');
+  }
   assertSource(/followAutoTargetPath/, modeSource,
     'auto-target mode must consume the recorded path');
 });

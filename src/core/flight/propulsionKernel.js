@@ -15,7 +15,8 @@
 //      modes keep the raw ungoverned model — slingshots, massline tricks and expert flying
 //      accumulate speed without interference.
 //   2. Assisted flight brakes by spending real counter-thruster authority.
-//   3. Turning the nose does not rotate the velocity vector.
+//   3. Turning the nose alone does not rotate velocity. Explicit draw-flight steering
+//      uses finite-rate vectoring forces; manual yaw and all NPC flight remain inertial.
 //   4. Gravimetric drives are explicitly non-Newtonian and trade cumulative speed for control.
 //   5. Pulse-plate boost is a charged discrete momentum impulse.
 //   6. Every result is deterministic for the same input stream.
@@ -25,6 +26,7 @@
 //      as `input.travelDrive` and only ever SHAPES the governor's cap. The kernel stays pure —
 //      the latch, its timers and its bindings live with the input owner.
 
+import { drawFlightAcceleration, validDrawFlight } from './drawFlightControl.js';
 import { DRIVE_FAMILIES, normalizeProfile } from './propulsionCatalog.js';
 import { travelFlag } from '../../data/featureFlags.js';
 
@@ -108,6 +110,10 @@ export function stepPropulsion(args = {}) {
   const environment = normalizeEnvironment(args.environment);
 
   if (!(dt > 0)) return idleResult(body, profile, runtime, input);
+
+  if (validDrawFlight(input.drawFlight) && !input.brake) {
+    return stepDrawFlight(body, input, profile, runtime, environment, dt);
+  }
 
   switch (profile.family) {
     case DRIVE_FAMILIES.GRAVIMETRIC:
@@ -213,6 +219,29 @@ function advanceTravelDrive(drive, profile, baseCap, forwardSpeed, dt) {
   const decayed = drive.cap > 0 ? drive.cap * Math.exp(-step / TRAVEL_DISENGAGE_DECAY_TAU_S) : 0;
   const cap = decayed > baseCap ? decayed : 0;
   return { state: drive.state, cap, ceiling, ramping: false, physicsEarnedMomentum: cap > 0 };
+}
+
+// Owner-selected arcade mode: finite-rate vectoring, constant combat-speed command. Normal
+// manual/AI thrust, brake, collisions, boost resource gating and environmental forces are unchanged.
+function stepDrawFlight(body, input, profile, runtime, environment, dt) {
+  const motion = drawFlightAcceleration(body, input.drawFlight, profile, dt, input.boost);
+  const environmental = environmentalDragAcceleration(body, environment);
+  const accel = add2(motion, environmental);
+  const yaw = computeHeadingControl(body, motion.targetHeading, profile, dt, input);
+  const demand = resourceDemand(profile, accel, input.boost, dt);
+  const nextRuntime = coolRuntime({ ...runtime, family: profile.family }, profile, demand, dt);
+  return makeResult({
+    body, profile, input, runtime: nextRuntime, acceleration: accel,
+    angularAcceleration: yaw.angularAcceleration,
+    // The authority clamps only control-made speed, never an impact/sling already above it.
+    maxSpeed: motion.cap, demand, events: transitionEvents(runtime, nextRuntime, input, profile),
+    telemetry: { driveState: 'draw-flight', desiredHeading: motion.targetHeading,
+      targetYawRate: yaw.targetYawRate, boostFraction: input.boost ? 1 : 0,
+      environmentalAcceleration: environmental,
+      drawFlight: { speedCommand: motion.cap, turnRate: motion.turnRate,
+        exhausted: !!input.drawFlight.exhausted },
+    },
+  });
 }
 
 function stepReaction(body, input, profile, runtime, environment, dt) {
@@ -998,6 +1027,7 @@ function normalizeBody(body = {}) {
 
 function normalizeInput(input = {}) {
   return {
+    drawFlight: validDrawFlight(input.drawFlight) ? input.drawFlight : null,
     throttle: clamp(finite(input.throttle ?? input.moveZ, 0), -1, 1),
     strafe: clamp(finite(input.strafe ?? input.moveX, 0), -1, 1),
     turn: clamp(finite(input.turn ?? input.turnIntent, 0), -1, 1),
