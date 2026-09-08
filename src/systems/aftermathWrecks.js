@@ -106,6 +106,18 @@ function boundedVictimMass(mass) {
   return Number.isFinite(m) && m > 0 ? m : null;
 }
 
+// Pose is inherited as-is. Finite-or-zero only — not a new clamp, not drag.
+function boundedPoseAngle(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function poseIsFlat(entity) {
+  const pitch = Number(entity && entity.pitch) || 0;
+  const bank = Number(entity && entity.bank) || 0;
+  return !(Math.abs(pitch) > 1e-6 || Math.abs(bank) > 1e-6);
+}
+
 function sectorIdFrom(state, payload) {
   return payload && payload.sectorId || state && state.world && state.world.currentSectorId || null;
 }
@@ -272,6 +284,9 @@ function makeMarker(state, payload, entity) {
     victimVel: boundedDriftVel(entity && entity.vel),
     victimAngVel: boundedTumble(entity && entity.angVel),
     victimMass: boundedVictimMass(entity && entity.mass),
+    victimRot: boundedPoseAngle(entity && entity.rot),
+    victimPitch: boundedPoseAngle(entity && entity.pitch),
+    victimBank: boundedPoseAngle(entity && entity.bank),
     victimLabel: victimLabelFor(entity, payload),
     victimFactionId: entity && entity.factionId || payload && payload.factionId || null,
     killerId: payload && payload.killerId != null ? payload.killerId : null,
@@ -385,6 +400,9 @@ function normalizeMarker(input) {
     victimVel: boundedDriftVel(input.victimVel),
     victimAngVel: boundedTumble(input.victimAngVel),
     victimMass: boundedVictimMass(input.victimMass),
+    victimRot: boundedPoseAngle(input.victimRot),
+    victimPitch: boundedPoseAngle(input.victimPitch),
+    victimBank: boundedPoseAngle(input.victimBank),
     victimLabel: input.victimLabel || input.victimClass || 'ship',
     victimFactionId: input.victimFactionId || null,
     killerId: input.killerId == null ? null : input.killerId,
@@ -562,6 +580,13 @@ export const aftermathWrecks = {
       entity.angVel = identity.angVel;
       entity.mass = identity.mass;
     }
+    // Same rule for pose: a parked-flat wreck may take the inherited tilt; a wreck that already
+    // left the plane keeps the pose it spawned with.
+    if (poseIsFlat(entity)) {
+      entity.rot = identity.rot;
+      entity.pitch = identity.pitch;
+      entity.bank = identity.bank;
+    }
     return this._bindLiveMarker(marker, entity) ? entity : null;
   },
 
@@ -720,11 +745,17 @@ export const aftermathWrecks = {
     const vel = boundedDriftVel(marker.victimVel);
     const angVel = boundedTumble(marker.victimAngVel);
     const mass = boundedVictimMass(marker.victimMass);
+    const rot = boundedPoseAngle(marker.victimRot);
+    const pitch = boundedPoseAngle(marker.victimPitch);
+    const bank = boundedPoseAngle(marker.victimBank);
     return {
       type: 'wreck',
       pos: { x: marker.pos.x, z: marker.pos.z },
       vel: { x: vel.x, z: vel.z },
       angVel,
+      rot,
+      pitch,
+      bank,
       radius: WRECK_RADIUS,
       // Dead man's mass: the victim's real mass so the wreck is shoveable. 1e6 only when no mass
       // was ever recorded (legacy markers).
@@ -785,8 +816,9 @@ export const aftermathWrecks = {
   },
 
   // Unbind/save-time marker refresh (never per-tick): the marker remembers the live body's current
-  // global position and momentum so rematerialization continues the drift instead of restarting it.
-  // vel/angVel are frame-independent translations and are never offset by a sector origin.
+  // global position, momentum, and off-plane pose so rematerialization continues the drift instead
+  // of restarting it. vel/angVel are frame-independent translations and are never offset by a
+  // sector origin.
   _writeBackBoundWreck(marker) {
     if (!marker || !marker.markerId) return false;
     const entity = this._resolveBoundWreck(marker.markerId);
@@ -796,6 +828,9 @@ export const aftermathWrecks = {
     }
     marker.victimVel = boundedDriftVel(entity.vel);
     marker.victimAngVel = boundedTumble(entity.angVel);
+    marker.victimRot = boundedPoseAngle(entity.rot);
+    marker.victimPitch = boundedPoseAngle(entity.pitch);
+    marker.victimBank = boundedPoseAngle(entity.bank);
     return true;
   },
 
