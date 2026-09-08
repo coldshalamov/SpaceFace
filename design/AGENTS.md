@@ -14,7 +14,8 @@ Do not read this directory wholesale. Start at `design/program/README.md` for cu
 6. Current code, checks, and player-route evidence — implementation truth.
 
 Archived documents, handoffs, reviews, worker packets, transcripts, and tool plans are history, not
-current authority. Superseded ADRs live under `_ARCHIVE/adr/`.
+current authority. Superseded ADRs and retired plan suites live in git history — retrieve by commit,
+never by keeping them in the working tree.
 
 ## Plan families
 

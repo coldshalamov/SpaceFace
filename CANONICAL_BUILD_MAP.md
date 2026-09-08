@@ -3203,8 +3203,7 @@ this build lacks, the funnest toys, the collisions, the session shape, and what 
 
 ### 15.9b The Studio Recovery Audit (2026-09-05), graded
 
-An independent ~22,000-word source-grounded review of `571659e8` (stored under
-[`docs/handoffs/STUDIO_RECOVERY_AUDIT_2026-09-05/`](./docs/handoffs/STUDIO_RECOVERY_AUDIT_2026-09-05/README.md);
+An independent ~22,000-word source-grounded review of `571659e8` (full text in git history;
 its four analytical reference modules live under `tools/reference/`, diagnostic only). Its thesis —
 that the repo keeps promoting an implementation, a diagnosis or a convenient surrogate into binding law
 and then optimises the law — is right, and it is the failure §1.3 law 9 and §19 exist to catch. Graded
