@@ -21,7 +21,7 @@
 //     (the claim-beacon pattern, beacons.js:147) — used for convoy/trader route life.
 
 import { ENCOUNTERS, NAMED_CAPTAINS, CONVOY_CARGO, WHISPER_LINES, FACTION_LABELS, tollAmountFor, barkText } from '../data/encounters.js';
-import { aceById } from '../data/namedAces.js';
+import { aceById, escalatedStyleFromMemory, styleEscalationBark, styleLoadoutForAce } from '../data/namedAces.js';
 import { reachCultureDoctrineById } from '../data/pirateDoctrines.js';
 import { massline2Flag } from '../data/featureFlags.js';
 import {
@@ -2276,16 +2276,22 @@ const namedHunter = {
     const authoredAce = live.data && aceById(live.data.aceId) || null;
     const culture = authoredAce && reachCultureDoctrineById(authoredAce.cultureId);
     const cultureProfile = culture && culture.factionPresenceDoctrine || null;
+    const style = authoredAce
+      ? escalatedStyleFromMemory(state && state.aceMemory, authoredAce)
+      : null;
+    const styleLoadout = authoredAce ? styleLoadoutForAce(authoredAce, style) : null;
     let cap;
     if (authoredAce) {
       cap = {
         ...authoredAce,
-        archetype: authoredAce.returnArchetype,
-        combatDoctrineId: cultureProfile && cultureProfile.combatDoctrineId,
+        archetype: styleLoadout.bossArchetype,
+        combatDoctrineId: styleLoadout.doctrineId
+          || (cultureProfile && cultureProfile.combatDoctrineId),
+        gimmickTag: styleLoadout.gimmickTag,
         levelBonus: 2,
         bountyCr: 500,
         escort: {
-          archetypes: [authoredAce.escortArchetype],
+          archetypes: [styleLoadout.escortArchetype],
           size: [1, 1],
           doctrine: 'scavenger',
           formation: cultureProfile ? cultureProfile.liveFormation : 'wedge',
@@ -2353,12 +2359,14 @@ const namedHunter = {
     live.data.engaged = false;
     live.deadlineAt = d.now() + 300;
     if (authoredAce) {
+      const styleLine = style ? styleEscalationBark(authoredAce, style) : '';
       d.say(
         live,
         'alert',
-        culture
-          ? `${cap.name}, ${culture.label}: This lane answers to ${cap.crew}.`
-          : (cap.signatureBark || `${cap.name}: this lane has your name on it.`),
+        styleLine
+          || (culture
+            ? `${cap.name}, ${culture.label}: This lane answers to ${cap.crew}.`
+            : (cap.signatureBark || `${cap.name}: this lane has your name on it.`)),
         live.vars,
         { primary: true, literal: true },
       );

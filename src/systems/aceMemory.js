@@ -4,26 +4,37 @@
 // spawns only its established promoted-return crews, and emits the station-news seam. It never
 // owns first-contact entities or changes hostility.
 import {
+  ACE_STYLE_ESCALATE_AT,
   PIRATE_PROMOTION_MAX_TIER,
   REACH_CULTURE_ACES,
   aceById,
   aceByName,
   aceFromText,
+  aceKillStyleFromHints,
+  escalatedStyleFromMemory,
+  knownAces,
   newsForAceTransition,
   returnCrewForAce,
   returnLevelBandsForAce,
   returnPlanForAce,
+  styleEscalationBark,
+  styleLoadoutForAce,
 } from '../data/namedAces.js';
 import { barkFor } from '../data/barks.js';
 import { reachCultureDoctrineById } from '../data/pirateDoctrines.js';
 import { planetStatesForSector } from '../data/planetStates.js';
+import { WEAPONS } from '../data/weapons.js';
 import { hash32 } from '../core/rng.js';
 import { normalizeFactionBehaviorProfile } from '../ai/factionBehavior.js';
 import { makeEnemySpawnSpec } from './combat.js';
 
 export const ACE_MEMORY_VERSION = 2;
 
-const META_KEYS = new Set(['schemaVersion', 'news', 'activeReturns', 'cultureIntros', 'planetChallenges']);
+const META_KEYS = new Set([
+  'schemaVersion', 'news', 'activeReturns', 'cultureIntros', 'planetChallenges', 'playerStyle',
+]);
+const FLING_STYLE_WINDOW_S = 8;
+const MAX_RECENT_FLINGS = 32;
 const RETURN_CHECK_S = 0.5;
 const CULTURE_INTRO_RETRY_S = 10;
 const PLANET_CHALLENGE_RETRY_S = 10;
@@ -70,7 +81,10 @@ export const aceMemory = {
       this._rearmPlanetChallengesAfterLoad();
     });
     this._listen('entity:destroyed', (p) => this._entityDestroyed(p));
+    this._listen('entity:killed', (p) => this._playerKill(p));
+    this._listen('combat:kill', (p) => this._playerKill(p));
     this._listen('massline:tumbled', (p) => this._flung(p));
+    this._recentFlung = new Map();
   },
 
   newGame() {
@@ -152,7 +166,12 @@ export const aceMemory = {
     this._completePlanetChallenge(ace.id, 'appeared', payload);
     if (first) this._emitTransition('encountered', ace, rec);
     if (payload && payload.signatureSpoken === true) rec.signatureSpoken = true;
-    if (!rec.signatureSpoken) {
+    const style = escalatedStyleFromMemory(ensureMemory(this.state), ace);
+    if (style && rec.styleTauntSpoken !== true) {
+      rec.escalatedStyle = rec.escalatedStyle || style;
+      rec.styleTauntSpoken = true;
+      this._speakStyleTaunt(ace, style);
+    } else if (!rec.signatureSpoken) {
       rec.signatureSpoken = true;
       this._speakSignature(ace);
     }
@@ -405,6 +424,8 @@ export const aceMemory = {
 
   _flung(payload) {
     const victimId = payload && payload.victimId;
+    const now = nowOf(this.state, payload);
+    rememberRecentFlung(this._recentFlung, victimId, now);
     const entity = victimId != null && this.state && this.state.entities
       ? this.state.entities.get(victimId)
       : null;
@@ -413,12 +434,56 @@ export const aceMemory = {
     const rec = recordFor(ensureMemory(this.state), ace);
     rec.encountered = true;
     rec.flungCount = (rec.flungCount | 0) + 1;
-    rec.lastFlungAt = nowOf(this.state, payload);
+    rec.lastFlungAt = now;
     rec.lastFlungCause = String(payload.cause || 'massline');
     rec.lastFlungSpin = Number.isFinite(payload.spin) ? payload.spin : 0;
     rec.lastSeenAt = rec.lastFlungAt;
     rec.lastSectorId = sectorOf(this.state, payload);
     this._emitTransition('flung', ace, rec);
+  },
+
+  _playerKill(payload) {
+    if (!payload || !this.state) return;
+    const playerId = this.state.playerId;
+    if (playerId == null) return;
+    const presentation = payload.presentation && typeof payload.presentation === 'object'
+      ? payload.presentation
+      : null;
+    const playerCaused = presentation && typeof presentation.playerCaused === 'boolean'
+      ? presentation.playerCaused
+      : payload.killerId === playerId;
+    if (!playerCaused) return;
+    const victimId = payload.id != null ? payload.id : payload.victimId;
+    if (victimId === playerId) return;
+    if (payload.type && payload.type !== 'ship') return;
+    const now = nowOf(this.state, payload);
+    const flung = wasRecentlyFlung(this._recentFlung, victimId, now);
+    const trick = matchingRecentTrick(this.state.stunts, victimId);
+    const style = aceKillStyleFromHints({
+      style: payload.killStyle || payload.style,
+      killStyle: payload.killStyle,
+      explicit: payload.explicitStyle,
+      trickId: trick && trick.trickId,
+      cause: presentation && presentation.cause || payload.cause,
+      surface: presentation && presentation.surface,
+      flung,
+    });
+    const entity = victimId != null && this.state.entities
+      ? this.state.entities.get(victimId)
+      : null;
+    const factionId = payload.factionId
+      || (entity && entity.factionId)
+      || (entity && entity.data && entity.data.factionId)
+      || null;
+    const ace = resolveAce(payload) || resolveAceFromEntity(entity);
+    const memory = ensureMemory(this.state);
+    recordPlayerStyleKill(memory, {
+      style,
+      factionId,
+      aceId: ace && ace.id,
+      now,
+    });
+    forgetRecentFlung(this._recentFlung, victimId);
   },
 
   _processReturns(state) {
@@ -439,7 +504,9 @@ export const aceMemory = {
     const spawnEntity = this.helpers && this.helpers.spawnEntity;
     const budget = this.helpers && this.helpers.spawnBudget;
     const requestId = `aceReturn:${ace.id}:${rec.returnSeed || 0}:${rec.returnTier || 1}`;
-    const crew = returnCrewForAce(ace, rec.returnTier || 1);
+    const style = escalatedStyleFromMemory(ensureMemory(this.state), ace);
+    if (style) rec.escalatedStyle = rec.escalatedStyle || style;
+    const crew = returnCrewForAce(ace, rec.returnTier || 1, style);
     const bands = returnLevelBandsForAce(ace, rec.returnTier || 1);
     const wanted = crew.length;
     emit(this.bus, 'aceMemory:returnRequested', {
@@ -508,6 +575,8 @@ export const aceMemory = {
 
   _returnShipSpec(ace, rec, requestId, ship, index) {
     const pos = returnPosition(this.state, ace, rec, index);
+    const style = rec.escalatedStyle || escalatedStyleFromMemory(ensureMemory(this.state), ace);
+    const loadout = styleLoadoutForAce(ace, style);
     const spec = makeEnemySpawnSpec(ship.archetype, ship.level, pos, {
       factionId: ace.factionId || 'faction_reach',
       startedTick: this.state.tick,
@@ -537,6 +606,7 @@ export const aceMemory = {
         label: culture.label,
       };
     }
+    applyStyleLoadoutToSpec(spec, loadout);
     if (ship.role === 'boss') {
       ai.name = ace.name;
       spec.data.encounterBoss = true;
@@ -550,7 +620,8 @@ export const aceMemory = {
       promoted: true,
       returnTier: rec.returnTier || 1,
       level: ship.level,
-      gimmickTag: ace.gimmickTag || 'ace',
+      gimmickTag: loadout.gimmickTag || ace.gimmickTag || 'ace',
+      style: loadout.style || null,
     };
     if (culture) returnTag.cultureId = culture.id;
     spec.data.aceMemory = returnTag;
@@ -560,19 +631,41 @@ export const aceMemory = {
   _speakReturnTaunt(ace, rec, requestId) {
     if (rec.lastTauntRequestId === requestId) return;
     rec.lastTauntRequestId = requestId;
+    const style = rec.escalatedStyle || escalatedStyleFromMemory(ensureMemory(this.state), ace);
+    if (style) {
+      rec.styleTauntSpoken = true;
+      this._speakStyleTaunt(ace, style, requestId);
+      return;
+    }
     const bark = barkFor(
       ace.factionId || 'faction_reach',
       'taunt',
       hash32(seedOf(this.state), ace.id, requestId, 'taunt'),
     );
     const text = `${ace.name}: you should have finished me. ${bark}`;
+    this._speakAceLine(ace, text, 'taunt', `aceMemory:${ace.id}:return-taunt`);
+  },
+
+  _speakStyleTaunt(ace, style, requestId = null) {
+    const text = styleEscalationBark(ace, style);
+    if (!text) return;
+    this._speakAceLine(
+      ace,
+      text,
+      'style-taunt',
+      requestId ? `aceMemory:${ace.id}:style:${style}:${requestId}` : `aceMemory:${ace.id}:style:${style}`,
+      style,
+    );
+  },
+
+  _speakAceLine(ace, text, situation, id, style = null) {
     const voice = this.helpers && this.helpers.voice;
     if (voice && typeof voice.say === 'function') {
       voice.say({
         channel: 'bark',
         text,
         kind: 'aceMemory',
-        id: `aceMemory:${ace.id}:return-taunt`,
+        id,
         factionId: ace.factionId || 'faction_reach',
         ttl: 2,
       });
@@ -580,7 +673,8 @@ export const aceMemory = {
     emit(this.bus, 'aceMemory:voice', {
       aceId: ace.id,
       aceName: ace.name,
-      situation: 'taunt',
+      situation,
+      style,
       text,
     });
   },
@@ -652,6 +746,163 @@ export const aceMemory = {
   },
 };
 
+function freshPlayerStyle() {
+  return {
+    counts: { fling: 0, gun: 0, rock: 0 },
+    factions: {},
+    lastStyle: null,
+    lastAt: 0,
+    escalatedStyle: null,
+  };
+}
+
+function normalizeStyleCounts(input) {
+  const out = { fling: 0, gun: 0, rock: 0 };
+  if (!input || typeof input !== 'object') return out;
+  out.fling = input.fling | 0;
+  out.gun = input.gun | 0;
+  out.rock = input.rock | 0;
+  return out;
+}
+
+function isStyleValue(value) {
+  return value === 'fling' || value === 'gun' || value === 'rock';
+}
+
+function normalizePlayerStyle(input) {
+  const out = freshPlayerStyle();
+  if (!input || typeof input !== 'object') return out;
+  out.counts = normalizeStyleCounts(input.counts);
+  out.lastStyle = isStyleValue(input.lastStyle) ? input.lastStyle : null;
+  out.lastAt = Number.isFinite(input.lastAt) ? Number(input.lastAt) : 0;
+  out.escalatedStyle = isStyleValue(input.escalatedStyle) ? input.escalatedStyle : null;
+  out.factions = {};
+  const factions = input.factions && typeof input.factions === 'object' ? input.factions : {};
+  for (const [factionId, raw] of Object.entries(factions)) {
+    if (!raw || typeof raw !== 'object') continue;
+    const row = normalizeStyleCounts(raw);
+    row.escalated = isStyleValue(raw.escalated) ? raw.escalated : null;
+    out.factions[factionId] = row;
+  }
+  return out;
+}
+
+function recordPlayerStyleKill(memory, { style, factionId, aceId, now }) {
+  if (!isStyleValue(style) || !memory) return null;
+  const playerStyle = memory.playerStyle && typeof memory.playerStyle === 'object'
+    ? memory.playerStyle
+    : (memory.playerStyle = freshPlayerStyle());
+  if (!playerStyle.counts || typeof playerStyle.counts !== 'object') {
+    playerStyle.counts = { fling: 0, gun: 0, rock: 0 };
+  }
+  if (!playerStyle.factions || typeof playerStyle.factions !== 'object') playerStyle.factions = {};
+  playerStyle.counts[style] = (playerStyle.counts[style] | 0) + 1;
+  playerStyle.lastStyle = style;
+  playerStyle.lastAt = Number.isFinite(now) ? now : 0;
+  if (factionId) {
+    const row = playerStyle.factions[factionId] || (playerStyle.factions[factionId] = {
+      fling: 0, gun: 0, rock: 0, escalated: null,
+    });
+    row[style] = (row[style] | 0) + 1;
+    if (!row.escalated && (row[style] | 0) >= ACE_STYLE_ESCALATE_AT) {
+      row.escalated = style;
+      playerStyle.escalatedStyle = playerStyle.escalatedStyle || style;
+      for (const ace of knownAces()) {
+        if (ace.factionId !== factionId) continue;
+        const rec = recordFor(memory, ace);
+        if (!rec.escalatedStyle) rec.escalatedStyle = style;
+      }
+    }
+  } else if (!playerStyle.escalatedStyle && (playerStyle.counts[style] | 0) >= ACE_STYLE_ESCALATE_AT) {
+    playerStyle.escalatedStyle = style;
+  }
+  if (aceId) {
+    const ace = aceById(aceId);
+    if (ace) {
+      const rec = recordFor(memory, ace);
+      rec.styleKills = normalizeStyleCounts(rec.styleKills);
+      rec.styleKills[style] = (rec.styleKills[style] | 0) + 1;
+      if (!rec.escalatedStyle && rec.styleKills[style] >= ACE_STYLE_ESCALATE_AT) {
+        rec.escalatedStyle = style;
+      }
+    }
+  }
+  return playerStyle;
+}
+
+function rememberRecentFlung(map, victimId, now) {
+  if (!map || victimId == null) return;
+  map.set(victimId, Number.isFinite(now) ? now : 0);
+  while (map.size > MAX_RECENT_FLINGS) {
+    const oldest = map.keys().next().value;
+    map.delete(oldest);
+  }
+}
+
+function wasRecentlyFlung(map, victimId, now) {
+  if (!map || victimId == null || !map.has(victimId)) return false;
+  const at = map.get(victimId);
+  return (Number.isFinite(now) ? now : 0) - at <= FLING_STYLE_WINDOW_S;
+}
+
+function forgetRecentFlung(map, victimId) {
+  if (map && victimId != null) map.delete(victimId);
+}
+
+function matchingRecentTrick(stunts, victimId) {
+  const recent = stunts && Array.isArray(stunts.recentTricks) ? stunts.recentTricks : null;
+  if (!recent || victimId == null) return null;
+  for (let i = recent.length - 1; i >= 0; i -= 1) {
+    const trick = recent[i];
+    if (!trick) continue;
+    if (trick.targetId === victimId) return trick;
+    const secondary = trick.secondaryIds;
+    if (Array.isArray(secondary) && secondary.includes(victimId)) return trick;
+  }
+  return null;
+}
+
+function applyStyleLoadoutToSpec(spec, loadout) {
+  if (!spec || !loadout || !loadout.style) return;
+  spec.data = spec.data || {};
+  spec.data.ai = spec.data.ai || {};
+  spec.data.styleKit = {
+    style: loadout.style,
+    gimmickTag: loadout.gimmickTag,
+    doctrineId: loadout.doctrineId,
+    weapons: Array.isArray(loadout.weapons) ? loadout.weapons.slice() : [],
+    bossArchetype: loadout.bossArchetype,
+    escortArchetype: loadout.escortArchetype,
+  };
+  spec.data.gimmickTag = loadout.gimmickTag;
+  if (loadout.doctrineId) spec.data.ai.combatDoctrineId = loadout.doctrineId;
+  if (Array.isArray(loadout.capabilities) && loadout.capabilities.length) {
+    const caps = new Set(Array.isArray(spec.data.ai.capabilities) ? spec.data.ai.capabilities : []);
+    for (const cap of loadout.capabilities) caps.add(cap);
+    spec.data.ai.capabilities = [...caps];
+  }
+  if (Array.isArray(loadout.weapons) && loadout.weapons.length) {
+    spec.data.styleWeapons = loadout.weapons.slice();
+    const weapons = Array.isArray(spec.data.weapons) ? spec.data.weapons : (spec.data.weapons = []);
+    for (const defId of loadout.weapons) {
+      if (!defId || weapons.some((entry) => entry && entry.defId === defId)) continue;
+      const base = WEAPONS.find((entry) => entry.id === defId);
+      if (!base) continue;
+      weapons.push({
+        ...base,
+        slotIndex: weapons.length,
+        defId,
+        facing: 'front',
+        facingAngle: 0,
+        gimbalArc: 22 * Math.PI / 180,
+        muzzleOffset: [0.8, 0],
+        _cooldown: 0,
+        _heat: 0,
+      });
+    }
+  }
+}
+
 function resolveAce(payload) {
   if (!payload) return null;
   return aceById(payload.aceId || payload.id || payload.captainId)
@@ -676,6 +927,7 @@ function freshMemory() {
     activeReturns: {},
     cultureIntros: {},
     planetChallenges: {},
+    playerStyle: freshPlayerStyle(),
   };
 }
 
@@ -692,6 +944,7 @@ function normalizeMemory(input) {
   out.activeReturns = clonePlain(input.activeReturns || {});
   out.cultureIntros = clonePlain(input.cultureIntros || {});
   out.planetChallenges = clonePlain(input.planetChallenges || {});
+  out.playerStyle = normalizePlayerStyle(input.playerStyle);
   if (input.aces && typeof input.aces === 'object') {
     for (const [id, rec] of Object.entries(input.aces)) out[id] = normalizeRecord(id, rec);
   }
@@ -726,6 +979,9 @@ function normalizeRecord(id, input, ace = null) {
   rec.fleeCount = rec.fleeCount | 0;
   rec.flungCount = rec.flungCount | 0;
   rec.returnTier = rec.returnTier | 0;
+  rec.styleTauntSpoken = rec.styleTauntSpoken === true;
+  rec.escalatedStyle = isStyleValue(rec.escalatedStyle) ? rec.escalatedStyle : null;
+  rec.styleKills = normalizeStyleCounts(rec.styleKills);
   return rec;
 }
 

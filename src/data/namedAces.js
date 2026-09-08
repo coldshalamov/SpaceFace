@@ -243,22 +243,138 @@ export function returnLevelBandsForAce(ace, returnTier = 1) {
   };
 }
 
-export function returnCrewForAce(ace, returnTier = 1) {
+export const ACE_KILL_STYLES = Object.freeze(['fling', 'gun', 'rock']);
+export const ACE_STYLE_ESCALATE_AT = 3;
+
+// Stunt-grammar trick ids that name a fling-kill or a rock-kill. Gun is the residual.
+export const ACE_FLING_TRICKS = Object.freeze([
+  'tow_kill', 'clothesline', 'collateral', 'wrecking_ball', 'well_golf',
+  'bolas', 'dead_mans_mass', 'shove_bowling',
+]);
+export const ACE_ROCK_TRICKS = Object.freeze(['rock_discovery']);
+
+const FLING_TRICK_SET = new Set(ACE_FLING_TRICKS);
+const ROCK_TRICK_SET = new Set(ACE_ROCK_TRICKS);
+const STYLE_SET = new Set(ACE_KILL_STYLES);
+
+// Kit and behaviour against the habit — never a +HP bump on the same hull.
+export const ACE_STYLE_COUNTERS = Object.freeze({
+  fling: Object.freeze({
+    style: 'fling',
+    act: 'fling',
+    bossArchetype: 'tether_control_raider',
+    escortArchetype: 'field_anchor_controller',
+    gimmickTag: 'tether-cutter',
+    doctrineId: 'tether_control_raider',
+    capabilities: Object.freeze(['counter_tether_cut', 'tug']),
+    weapons: Object.freeze(['wpn_momentum_sink_s']),
+    barkAct: 'flung',
+  }),
+  gun: Object.freeze({
+    style: 'gun',
+    act: 'gun',
+    bossArchetype: 'bruiser_brawler',
+    escortArchetype: 'pd_screen_escort',
+    gimmickTag: 'shield-turtle',
+    doctrineId: 'brawler_commit',
+    capabilities: Object.freeze(['disable', 'ranged']),
+    weapons: Object.freeze([]),
+    barkAct: 'gunned',
+  }),
+  rock: Object.freeze({
+    style: 'rock',
+    act: 'rock',
+    bossArchetype: 'lancer_sniper',
+    escortArchetype: 'quiet_ghost',
+    gimmickTag: 'masked-disengager',
+    doctrineId: 'ranged_disengager',
+    capabilities: Object.freeze(['ranged']),
+    weapons: Object.freeze([]),
+    barkAct: 'rocked',
+  }),
+});
+
+const STYLE_BARK = Object.freeze({
+  fling: '{name}: three times you flung our hulls. We brought line-cutters.',
+  gun: '{name}: you gunned three of ours. We came in armour.',
+  rock: '{name}: three times you threw us into the rocks. We stay off the stones.',
+});
+
+export function isAceKillStyle(value) {
+  return typeof value === 'string' && STYLE_SET.has(value);
+}
+
+export function styleCounterFor(style) {
+  return isAceKillStyle(style) ? ACE_STYLE_COUNTERS[style] : null;
+}
+
+export function styleLoadoutForAce(ace, style = null) {
+  const counter = styleCounterFor(style);
+  return Object.freeze({
+    style: counter ? counter.style : null,
+    bossArchetype: counter ? counter.bossArchetype : (ace && ace.returnArchetype || 'corsair_raider'),
+    escortArchetype: counter ? counter.escortArchetype : (ace && ace.escortArchetype || 'wasp_swarmer'),
+    gimmickTag: counter ? counter.gimmickTag : (ace && ace.gimmickTag || 'ace'),
+    doctrineId: counter ? counter.doctrineId : null,
+    capabilities: counter ? counter.capabilities : Object.freeze([]),
+    weapons: counter ? counter.weapons : Object.freeze([]),
+    barkAct: counter ? counter.barkAct : null,
+  });
+}
+
+export function styleEscalationBark(ace, style) {
+  const template = isAceKillStyle(style) ? STYLE_BARK[style] : '';
+  if (!template) return '';
+  const name = ace && ace.name ? ace.name : 'Ace';
+  return template.replace(/\{name\}/g, name);
+}
+
+export function escalatedStyleFromMemory(memory, ace) {
+  if (!ace) return null;
+  const rec = memory && memory[ace.id];
+  if (rec && isAceKillStyle(rec.escalatedStyle)) return rec.escalatedStyle;
+  const factionId = ace.factionId;
+  const row = memory && memory.playerStyle && memory.playerStyle.factions
+    ? memory.playerStyle.factions[factionId]
+    : null;
+  if (row && isAceKillStyle(row.escalated)) return row.escalated;
+  const global = memory && memory.playerStyle && memory.playerStyle.escalatedStyle;
+  return isAceKillStyle(global) ? global : null;
+}
+
+export function aceKillStyleFromHints(hints = {}) {
+  if (isAceKillStyle(hints.style) || isAceKillStyle(hints.killStyle) || isAceKillStyle(hints.explicit)) {
+    return hints.style || hints.killStyle || hints.explicit;
+  }
+  const trickId = typeof hints.trickId === 'string' ? hints.trickId : '';
+  if (ROCK_TRICK_SET.has(trickId)) return 'rock';
+  if (FLING_TRICK_SET.has(trickId)) return 'fling';
+  const cause = typeof hints.cause === 'string' ? hints.cause : '';
+  const surface = typeof hints.surface === 'string' ? hints.surface : '';
+  if (cause === 'terrain_collision' || surface === 'terrain') return 'rock';
+  if (hints.flung === true || cause === 'massline' || hints.lastFlung === true) return 'fling';
+  return 'gun';
+}
+
+export function returnCrewForAce(ace, returnTier = 1, style = null) {
   const tier = Math.max(1, Math.min(PIRATE_PROMOTION_MAX_TIER, returnTier | 0));
   const bands = returnLevelBandsForAce(ace, tier);
-  const bossArchetype = ace && ace.returnArchetype || 'corsair_raider';
-  const escortArchetype = ace && ace.escortArchetype || 'wasp_swarmer';
+  const loadout = styleLoadoutForAce(ace, style);
   const escorts = 1 + Math.min(2, tier);
   const out = [{
     role: 'boss',
-    archetype: bossArchetype,
+    archetype: loadout.bossArchetype,
     level: bands.current[1],
+    style: loadout.style,
+    gimmickTag: loadout.gimmickTag,
   }];
   for (let i = 0; i < escorts; i++) {
     out.push({
       role: 'escort',
-      archetype: escortArchetype,
+      archetype: loadout.escortArchetype,
       level: bands.current[0],
+      style: loadout.style,
+      gimmickTag: loadout.gimmickTag,
     });
   }
   return Object.freeze(out.map((ship) => Object.freeze(ship)));
