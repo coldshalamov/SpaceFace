@@ -132,7 +132,7 @@ export const MISSION_CONDITIONS = Object.freeze({
     // 35% premium for ignoring the rope — the exact inverse of the point. bulk_haul is the one type
     // whose objective cannot be met without towing. Types where the rope is optional get the
     // `clean_release` REQUIRE instead, which has to be earned.
-    appliesTo: ['bulk_haul'],
+    appliesTo: ['bulk_haul', 'tow_recovery'],
     minRisk: 0,
     tickSample(ctx) {
       const t = ctx.tether;
@@ -158,7 +158,7 @@ export const MISSION_CONDITIONS = Object.freeze({
     brief: `Arrive under ${BERTH_SPEED} wu/s.`,
     pendingText: `Hold alongside under ${BERTH_SPEED} wu/s before they will sign for it.`,
     satisfiedText: 'Alongside and under control — they will sign for it.',
-    appliesTo: ['cargo_delivery', 'passenger_transport', 'bulk_trade', 'salvage_retrieval', 'bulk_haul'],
+    appliesTo: ['cargo_delivery', 'passenger_transport', 'bulk_trade', 'salvage_retrieval', 'bulk_haul', 'tow_recovery', 'rescue_under_fire'],
     minRisk: 0,
     tickSample(ctx) {
       if ((ctx.speed || 0) >= BERTH_SPEED) return false;
@@ -307,7 +307,7 @@ export const MISSION_CONDITIONS = Object.freeze({
     brief: 'Land one clean Massline release.',
     pendingText: 'They want one clean release on the line before they sign. Swing something and let go on the tangent.',
     satisfiedText: 'Clean release logged.',
-    appliesTo: ['salvage_retrieval', 'bulk_haul', 'bounty_hunt', 'patrol_clear', 'mining_quota'],
+    appliesTo: ['salvage_retrieval', 'bulk_haul', 'bounty_hunt', 'patrol_clear', 'mining_quota', 'tow_recovery'],
     minRisk: 0,
     match(payload, ctx) {
       if (!payload || !isPlayerOf(payload.sourceId, ctx)) return false;
@@ -331,7 +331,7 @@ export const MISSION_CONDITIONS = Object.freeze({
     brief: 'Land one solid mass strike.',
     pendingText: 'The bonus wanted mass on the target. Tether something heavy and swing it into them.',
     satisfiedText: 'Solid mass strike logged.',
-    appliesTo: ['patrol_clear', 'bounty_hunt', 'escort'],
+    appliesTo: ['patrol_clear', 'bounty_hunt', 'escort', 'demolition'],
     minRisk: 1,
     match(payload) {
       return !!payload && SOLID_WHIP_RATINGS.includes(payload.rating);
@@ -355,7 +355,7 @@ export const MISSION_CONDITIONS = Object.freeze({
     brief: 'Land one Massline throw.',
     pendingText: 'They are paying for a thrown mass. Grab something and sling it.',
     satisfiedText: 'Throw logged.',
-    appliesTo: ['patrol_clear', 'bounty_hunt'],
+    appliesTo: ['patrol_clear', 'bounty_hunt', 'demolition'],
     minRisk: 2,
     match(payload) {
       return !!payload && payload.payloadId != null;
