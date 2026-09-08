@@ -1,6 +1,7 @@
 // Kit presentation builders. Keyboard navigation is scoped to each component root.
 // No global keyboard listener, network request, or gameplay-state mutation occurs here.
 import { cue } from './sound.js';
+import { instrumentControl } from './insignia.js';
 
 export function el(tag, className = '', text = '') {
   const element = document.createElement(tag);
@@ -54,6 +55,7 @@ export function words(items, { row = false, onPick, onMove, size = 'menu', ariaL
     const button = el('button', 'k-word' + (size === 'menu' ? '' : ` k-word--${size}`)
       + (item.primary ? ' k-word--primary' : '') + (item.danger ? ' k-word--danger' : ''), item.label);
     button.type = 'button'; button.dataset.action = String(item.action);
+    if (size === 'menu' || size === 'emph') instrumentControl(button, item);
     // aria-disabled only (spec §6.5): the word stays clickable so a refused pick can sound `deny`.
     if (item.disabled) button.setAttribute('aria-disabled', 'true');
     if (item.current) button.setAttribute('aria-current', 'true');
