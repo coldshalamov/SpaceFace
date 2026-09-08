@@ -1,3 +1,7 @@
+<!-- LIFETIME: HISTORICAL -->
+
+> Archived 2026-09-08 from `design/spec2/` — superseded by `design/program/AGENT_TASK_PROMPTS.md`. Archaeology only.
+
 # SPEC2 — Agent Dispatch Prompts
 
 > **Manual prompt library — explicit activation required.** These lane briefs apply only when a

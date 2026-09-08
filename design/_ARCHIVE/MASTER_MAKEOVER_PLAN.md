@@ -1,3 +1,7 @@
+<!-- LIFETIME: HISTORICAL -->
+
+> Archived 2026-09-08 from `docs/Spec/` — superseded by the `design/program/` control plane. Archaeology only (POLICY_MANIFEST HISTORICAL class); dispatches nothing.
+
 # SpaceFace Master Makeover Build Plan
 
 > **Current status:** Historical foundation/commissioning plan. Do not treat this as the live build
