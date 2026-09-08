@@ -35,11 +35,15 @@
 // PQ-148.01 — volatile classes (agy catalog: src/data/commodityVolatileClasses.js). Explosive slam
 // publishes a radial impulse; corrosive contact ticks hull (not a distance aura); superdense couples
 // harder to fields and cannot be thrown far. Silhouette/lamp live on the pod for render to read later.
+//
+// PQ-148.02 — field pods stamp legality/owner for a customs scan cone (lawSecurity). An outlaw
+// catch-net body can stop a flying pod; heat still rises only via contraband:scanned → heat.js.
 import { spawnPayloadEntity } from '../combat/industrialBeam.js';
 import { createVictimRewardRng, missionOwnsReward, runOwnsReward } from '../combat/rewardEligibility.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { sampleFieldAcceleration } from '../core/fields/fieldKernel.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
+import { COMMODITIES } from '../data/commodities.js';
 import { volatileClassOf } from '../data/commodityVolatileClasses.js';
 import { massline2Flag } from '../data/featureFlags.js';
 import { rollKillRewardItems } from '../data/killRewards.js';
@@ -69,9 +73,16 @@ export const CORROSIVE_TICK_COOLDOWN_S = 0.35;
 /** Extra fieldResponseMult on top of mass-shrug; fields.js still applies the unmarked pull. */
 export const SUPERDENSE_FIELD_RESPONSE = 2.5;
 
+/** PQ-148.02 — outlaw catch-net body that stops a flying pod past a customs cone. */
+export const OUTLAW_CATCH_NET_TYPE = 'outlaw_catch_net';
+
+const LEGALITY_BY_ID = new Map((COMMODITIES || []).map((row) => [row.id, row.legality || 'legal']));
+
 const VOLATILE_BLAST_TYPES = new Set(['ship', 'drone', 'payload']);
 const VOLATILE_HULL_TYPES = new Set(['ship', 'drone']);
 const _nearbyScratch = [];
+const _catchNetScratch = [];
+const _catchPodScratch = [];
 const _fieldDense = { ax: 0, az: 0 };
 const _fieldBase = { ax: 0, az: 0 };
 const _denseProfile = { mass: 1, type: 'payload', id: null, fieldResponseMult: 1 };
@@ -131,12 +142,24 @@ function isCivilianManifestPayload(entity) {
     && entity.data.payloadType === CIVILIAN_MANIFEST_PAYLOAD_TYPE);
 }
 
-function isJettisonedCargoPod(entity) {
+export function isJettisonedCargoPod(entity) {
   return !!(entity
     && entity.alive !== false
     && entity.type === 'payload'
     && entity.data
     && entity.data.payloadType === JETTISONED_CARGO_PAYLOAD_TYPE);
+}
+
+export function isOutlawCatchNet(entity) {
+  return !!(entity
+    && entity.alive !== false
+    && entity.data
+    && (entity.data.outlawCatchNet === true || entity.data.payloadType === OUTLAW_CATCH_NET_TYPE));
+}
+
+export function commodityLegality(commodityId) {
+  if (typeof commodityId !== 'string' || !commodityId) return 'legal';
+  return LEGALITY_BY_ID.get(commodityId) || 'legal';
 }
 
 /** Mass of a cargo pod body: contents × unit mass, never below the payload floor. */
@@ -282,6 +305,8 @@ function applyJettisonedCargoData(target, spec) {
   if (richSource) target.richLotSource = { ...richSource, richQty: amount };
   if (spec.pickupEmbargoUntil != null) target.pickupEmbargoUntil = spec.pickupEmbargoUntil;
   if (target.despawnAt != null) delete target.despawnAt;
+  target.legality = commodityLegality(commodityId);
+  if (spec.ownerId != null) target.ownerId = spec.ownerId;
   stampVolatilePresentation(target, commodityId);
   return target;
 }
@@ -301,6 +326,7 @@ export function spawnJettisonedCargoPod(state, spec = {}, helpers = null) {
     amount,
     richSource: spec.richSource || null,
     pickupEmbargoUntil: spec.pickupEmbargoUntil,
+    ownerId: spec.ownerId,
   };
 
   const spawnHelpers = helpers && typeof helpers.spawnEntity === 'function'
@@ -320,7 +346,7 @@ export function spawnJettisonedCargoPod(state, spec = {}, helpers = null) {
     mass,
     hull: 100,
     hullMax: 100,
-    ownerId: null,
+    ownerId: spec.ownerId != null ? spec.ownerId : null,
     factionId: spec.factionId || 'player',
     salvagePool: { [spec.commodityId]: amount },
     payloadType: JETTISONED_CARGO_PAYLOAD_TYPE,
@@ -427,7 +453,7 @@ export const lootShards = {
     this._unsubs = [];
     if (this.bus && typeof this.bus.on === 'function') {
       this._unsubs.push(this.bus.on('entity:killed', (p) => this._onKilled(p || {})));
-      this._unsubs.push(this.bus.on('physics:impact', (p) => this._onVolatileImpact(p || {})));
+      this._unsubs.push(this.bus.on('physics:impact', (p) => this._onPodImpact(p || {})));
     }
   },
 
@@ -437,7 +463,79 @@ export const lootShards = {
   },
 
   update(dt, state) {
-    this._pullSuperdensePods(dt, state || this.state);
+    const live = state || this.state;
+    this._catchPodsInNets(live);
+    this._pullSuperdensePods(dt, live);
+  },
+
+  _catchPodsInNets(state) {
+    if (!state || state.mode !== 'flight') return;
+    const list = state.entityList;
+    if (!Array.isArray(list)) return;
+    const nets = _catchNetScratch;
+    const pods = _catchPodScratch;
+    nets.length = 0;
+    pods.length = 0;
+    for (let i = 0; i < list.length; i++) {
+      const entity = list[i];
+      if (isOutlawCatchNet(entity) && entity.pos) nets.push(entity);
+      else if (isJettisonedCargoPod(entity) && entity.pos && entity.data && !entity.data.caughtByNet) {
+        pods.push(entity);
+      }
+    }
+    if (nets.length === 0 || pods.length === 0) return;
+    for (let n = 0; n < nets.length; n++) {
+      const net = nets[n];
+      const netR = Math.max(1, Number(net.radius) || 8);
+      for (let p = 0; p < pods.length; p++) {
+        const pod = pods[p];
+        if (pod.data.caughtByNet) continue;
+        const dx = pod.pos.x - net.pos.x;
+        const dz = pod.pos.z - net.pos.z;
+        const reach = netR + Math.max(1, Number(pod.radius) || 3);
+        if (dx * dx + dz * dz > reach * reach) continue;
+        this._markCaughtByNet(pod, net);
+      }
+    }
+  },
+
+  _markCaughtByNet(pod, net) {
+    if (!pod || !pod.data || pod.data.caughtByNet) return;
+    const state = this.state;
+    pod.data.caughtByNet = true;
+    pod.data.caughtByNetId = net && net.id;
+    const physics = this.helpers && this.helpers.combatPhysics;
+    const vx = Number(pod.vel && pod.vel.x) || 0;
+    const vz = Number(pod.vel && pod.vel.z) || 0;
+    const mass = Number.isFinite(pod.mass) && pod.mass > 0 ? pod.mass : JETTISONED_CARGO_MASS_FLOOR;
+    if (physics && typeof physics.applyImpulse === 'function' && (vx || vz)) {
+      physics.applyImpulse({
+        entityId: pod.id,
+        impulse: { x: -vx * mass, z: -vz * mass },
+        point: null,
+        reason: 'outlaw_catch_net',
+        tick: state && state.tick,
+      });
+    }
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('cargo:caughtByNet', { podId: pod.id, netId: net && net.id });
+    }
+  },
+
+  _onPodImpact(payload) {
+    this._onCatchNetImpact(payload);
+    this._onVolatileImpact(payload);
+  },
+
+  _onCatchNetImpact(payload) {
+    const state = this.state;
+    if (!state || !payload) return;
+    const a = entityById(state, payload.aId);
+    const b = entityById(state, payload.bId);
+    const pod = isJettisonedCargoPod(a) ? a : (isJettisonedCargoPod(b) ? b : null);
+    const net = isOutlawCatchNet(a) ? a : (isOutlawCatchNet(b) ? b : null);
+    if (!pod || !net) return;
+    this._markCaughtByNet(pod, net);
   },
 
   _onVolatileImpact(payload) {

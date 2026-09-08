@@ -13,6 +13,32 @@ import { COMMODITIES } from '../data/commodities.js';
 const JETTISON_EJECT_SPEED = 60;   // wu/s the dumped mass is "pushed" backward at
 const JETTISON_DV_MAX = 45;        // wu/s cap so a full-hold dump is a kick, not a teleport
 
+/** Hitch governed cruise — the drop-kick bar for a pod thrown through a customs cone. */
+export const DROP_KICK_CRUISE_SPEED = 95;
+
+/**
+ * Published impulse that brings a field pod up to `speed` along `heading`.
+ * Used to drop-kick a crate through a scan cone at cruise; never a direct vel write.
+ */
+export function dropKickCargoPod(helpers, state, pod, heading, speed = DROP_KICK_CRUISE_SPEED) {
+  const physics = helpers && helpers.combatPhysics;
+  if (!physics || typeof physics.applyImpulse !== 'function' || !pod) return false;
+  const mass = Number.isFinite(pod.mass) && pod.mass > 0 ? pod.mass : 20;
+  const spd = Number.isFinite(speed) ? speed : DROP_KICK_CRUISE_SPEED;
+  const hx = Math.cos(heading);
+  const hz = Math.sin(heading);
+  const vx = Number(pod.vel && pod.vel.x) || 0;
+  const vz = Number(pod.vel && pod.vel.z) || 0;
+  const accepted = physics.applyImpulse({
+    entityId: pod.id,
+    impulse: { x: (hx * spd - vx) * mass, z: (hz * spd - vz) * mass },
+    point: null,
+    reason: 'cargo_drop_kick',
+    tick: state && state.tick,
+  });
+  return accepted !== false;
+}
+
 const MASS_BY_ID = new Map((COMMODITIES || []).map((c) => [c.id, c]));
 
 export const jettisonImpulse = {

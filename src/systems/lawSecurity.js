@@ -21,6 +21,10 @@ import {
 } from '../ai/engagementAuthority.js';
 import { hotUntilActive } from '../economy/customsRisk.js';
 import { isPlayerWanted } from './heat.js';
+import {
+  commodityLegality,
+  isJettisonedCargoPod,
+} from './lootShards.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import { patrolCanInitiateScan } from './encounterScripts.js';
 import { effectiveRegionalSecurity } from './regionalEcology.js';
@@ -33,6 +37,11 @@ import { RECORD_KIND, stableRecordId } from '../world/worldRecords.js';
 
 export const LAW_SECURITY_VERSION = 2;
 export const AMBIENT_TOLL_VALUE_FLOOR = 120;
+
+/** PQ-148.02 — physical customs scan cone over a flying pod (heading + half-angle + range). */
+export const CUSTOMS_SCAN_RANGE = 90;
+export const CUSTOMS_SCAN_HALF_ANGLE = 0.55;
+export const CUSTOMS_SCAN_DWELL_S = 0.70;
 
 const RESPONSE_GRACE_S = 6;
 const RESPONSE_CLEARANCE = 320;
@@ -92,6 +101,10 @@ export const lawSecurity = {
     this.helpers = ctx.helpers || {};
     this.registry = ctx.registry || null;
     this._jobResponseClaims = new Map();
+    this._podConeDwell = new Map();
+    this._coneScratchPods = [];
+    this._coneScratchOccluders = [];
+    this._coneScratchScanners = [];
     this._nextInspectionTick = 0;
     this._inspectionRebindPasses = 0;
     ensureState(this.state);
@@ -147,6 +160,7 @@ export const lawSecurity = {
     const own = ensureState(state);
     this._enforceSanctuaryWithdrawals(state);
     this._updateLawfulInspection(state);
+    this._updateCustomsScanCones(_dt, state);
     if ((state.tick | 0) >= (own.nextAmbientScanTick | 0)) {
       own.nextAmbientScanTick = (state.tick | 0) + AMBIENT_SCAN_INTERVAL_TICKS;
       for (const entity of state.entityList || []) this._stampAmbient(entity);
@@ -1586,6 +1600,86 @@ export const lawSecurity = {
     return denial;
   },
 
+  // ── PQ-148.02: physical customs cone over a field pod ─────────────────────────────────────
+
+  _updateCustomsScanCones(dt, state) {
+    const step = Number(dt);
+    if (!(step > 0) || !state) return;
+    const list = state.entityList;
+    if (!Array.isArray(list) || list.length === 0) return;
+
+    const pods = this._coneScratchPods;
+    const occluders = this._coneScratchOccluders;
+    const scanners = this._coneScratchScanners;
+    pods.length = 0;
+    occluders.length = 0;
+    scanners.length = 0;
+    for (let i = 0; i < list.length; i++) {
+      const entity = list[i];
+      if (!entity || entity.alive === false || !entity.pos) continue;
+      if (isJettisonedCargoPod(entity)) pods.push(entity);
+      if (customsScanConeOf(entity)) scanners.push(entity);
+      if (entity.type === 'ship' && entity.collides !== false) occluders.push(entity);
+    }
+    if (scanners.length === 0 || pods.length === 0) return;
+
+    const dwell = this._podConeDwell || (this._podConeDwell = new Map());
+    for (let s = 0; s < scanners.length; s++) {
+      const scanner = scanners[s];
+      const cone = customsScanConeOf(scanner);
+      if (!cone) continue;
+      for (let p = 0; p < pods.length; p++) {
+        const pod = pods[p];
+        if (!pod.data) continue;
+        const key = `${scanner.id}:${pod.id}`;
+        const inside = pointInScanCone(cone.origin, cone.heading, cone.range, cone.halfAngle, pod.pos);
+        if (!inside) {
+          dwell.delete(key);
+          continue;
+        }
+        pod.data.customsConeEntered = true;
+        if (pod.data.customsScanned) continue;
+        let hidden = false;
+        for (let o = 0; o < occluders.length; o++) {
+          const hull = occluders[o];
+          if (!hull || hull.id === scanner.id || hull.id === pod.id) continue;
+          if (scanLineOccluded(cone.origin, pod.pos, hull)) {
+            hidden = true;
+            break;
+          }
+        }
+        if (hidden) {
+          dwell.delete(key);
+          continue;
+        }
+        const next = (Number(dwell.get(key)) || 0) + step;
+        dwell.set(key, next);
+        if (next < cone.dwellS) continue;
+        const legality = pod.data.legality || commodityLegality(pod.data.commodityId);
+        if (legality !== 'contraband') continue;
+        this._emitPodCustomsScan(scanner, pod);
+      }
+    }
+  },
+
+  _emitPodCustomsScan(scanner, pod) {
+    if (!pod || !pod.data || pod.data.customsScanned) return;
+    const commodityId = pod.data.commodityId;
+    const units = Math.max(0, Number(pod.data.amount) || 0);
+    pod.data.customsScanned = true;
+    pod.data.customsScannedAt = inspectionNow(this.state);
+    this._emit('contraband:scanned', {
+      found: true,
+      source: 'customs_scan_cone',
+      podId: pod.id,
+      commodityId,
+      units,
+      factionId: scanner && scanner.factionId ? scanner.factionId : 'faction_scn',
+      patrolId: scanner && scanner.id,
+      confiscated: commodityId ? [{ commodityId, qty: units }] : [],
+    });
+  },
+
   _say(channel, text, id, factionId) {
     // The sector-law presenter owns the single visible authority surface from the public lifecycle
     // and receipt events emitted immediately after these calls. Keep the authored line available to
@@ -1618,8 +1712,72 @@ export const lawSecurity = {
     this._onSurvivorPodEjected = null;
     this._onSectorExit = null;
     this._onSaveRestoring = null;
+    if (this._podConeDwell) this._podConeDwell.clear();
   },
 };
+
+export function pointInScanCone(origin, heading, range, halfAngle, point) {
+  if (!origin || !point) return false;
+  const dx = point.x - origin.x;
+  const dz = point.z - origin.z;
+  const dist = Math.hypot(dx, dz);
+  if (!(dist > 1e-6) || dist > range) return false;
+  const hx = Math.cos(heading);
+  const hz = Math.sin(heading);
+  const ang = Math.acos(Math.max(-1, Math.min(1, (dx * hx + dz * hz) / dist)));
+  return ang <= halfAngle;
+}
+
+export function scanLineOccluded(origin, target, occluder) {
+  if (!origin || !target || !occluder || !occluder.pos) return false;
+  const r = Math.max(0, Number(occluder.radius) || 0);
+  if (!(r > 0)) return false;
+  const ax = origin.x;
+  const az = origin.z;
+  const bx = target.x;
+  const bz = target.z;
+  const cx = occluder.pos.x;
+  const cz = occluder.pos.z;
+  const abx = bx - ax;
+  const abz = bz - az;
+  const acx = cx - ax;
+  const acz = cz - az;
+  const abLen2 = abx * abx + abz * abz;
+  if (!(abLen2 > 1e-8)) return Math.hypot(acx, acz) <= r;
+  let t = (acx * abx + acz * abz) / abLen2;
+  if (t < 0) t = 0;
+  else if (t > 1) t = 1;
+  const dx = ax + abx * t - cx;
+  const dz = az + abz * t - cz;
+  return (dx * dx + dz * dz) <= r * r;
+}
+
+export function customsScanConeOf(entity) {
+  if (!entity || entity.alive === false || !entity.pos) return null;
+  const data = entity.data || {};
+  const explicit = data.customsScanCone && typeof data.customsScanCone === 'object'
+    ? data.customsScanCone
+    : null;
+  const isScanner = data.customsScanner === true
+    || !!explicit
+    || data.defId === 'customs_cutter'
+    || data.enemyId === 'customs_cutter'
+    || data.role === 'customs';
+  if (!isScanner) return null;
+  const heading = Number.isFinite(explicit && explicit.heading)
+    ? explicit.heading
+    : (Number.isFinite(entity.rot) ? entity.rot : 0);
+  const halfAngle = Number.isFinite(explicit && explicit.halfAngle)
+    ? explicit.halfAngle
+    : CUSTOMS_SCAN_HALF_ANGLE;
+  const range = Number.isFinite(explicit && explicit.range)
+    ? explicit.range
+    : CUSTOMS_SCAN_RANGE;
+  const dwellS = Number.isFinite(explicit && explicit.dwellS)
+    ? explicit.dwellS
+    : CUSTOMS_SCAN_DWELL_S;
+  return { origin: entity.pos, heading, halfAngle, range, dwellS, scanner: entity };
+}
 
 export function aggressionCauseFor(state, attacker, target) {
   const ai = attacker && attacker.data && attacker.data.ai || {};

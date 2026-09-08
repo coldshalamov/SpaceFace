@@ -458,6 +458,7 @@ export const cargo = {
           richSource,
           pickupEmbargoUntil: state.simTime + JETTISON_PICKUP_EMBARGO_S,
           factionId: player.factionId || 'player',
+          ownerId: player.id,
         }, this.helpers);
       };
       let allocated = 0;
