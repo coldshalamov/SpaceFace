@@ -11,8 +11,14 @@
 //      derives from mulberry32(hash32(seed, sectorId, dayIndex)); same inputs → same schedule.
 //   2. PACING GATE (1 Hz): accrues per-deck pressure from deterministic state (zone threat,
 //      sector security, cargo value, WANTED heat, mining noise, standing bounty) and releases
-//      due schedule items only when pressure, spacing caps, gates, and zone proximity allow.
-//      Spending pressure IS the pacing valve — a fired encounter buys quiet time after it.
+//      due schedule items only when pressure, spacing caps, gates, zone proximity, and the
+//      session-rhythm phase allow. Spending pressure IS the pacing valve — a fired encounter
+//      buys quiet time after it. Combat shapes defer with reason `'rhythm'` in work / aftermath
+//      / quiet. The eight-phase model is exported pure functions plus live-only
+//      `state.encounterDirector.sessionRhythm` (never saved).
+//      PQ-138 witness / spill / flee tokens append a bounded escalation-seed queue (≤ 16). Each
+//      seed is a future beat (bounty, ace, shortage, rumor) with a delay, a place, and a cause.
+//      Seeds never spawn on the player.
 //   3. PHASE SCRIPTS (encounterScripts.js): telegraph → offer/choice → conflict/resolution →
 //      outcome → receipt. Choices arrive via the bus (`encounter:choose`) or PHYSICAL verbs
 //      (brake to pay, fly off to run, open fire to refuse); timeout defaults are deterministic.
@@ -79,6 +85,7 @@ import {
   buildLossIntent,
   filterNewFreightIntents,
 } from '../economy/freightCausality.js';
+import { publishEscalationSeeds, publishSessionRhythmPhase } from '../ai/director.js';
 
 const ENEMY_BY_ID = new Map(ENEMY_TYPES.map((entry) => [entry.id, entry]));
 const SELF_REGISTERED_RUNTIME_BY_ID = new Map(
@@ -106,6 +113,12 @@ const POOL_MAX = 140;              // pressure pool cap per deck
 const ENTRY_GRACE_COMBAT = 22;     // pressure seeded on sector entry (first beats land ~40-90s in)
 const ENTRY_GRACE_CIVIL = 30;
 const RECEIPT_CAP = 12;            // receipts ring buffer length (saved)
+export const ESCALATION_SEED_CAP = 16;
+export const ESCALATION_MIN_DELAY_S = 8;
+export const ESCALATION_MAX_DELAY_S = 16;
+export const ESCALATION_CAUSES = Object.freeze(['witness', 'spill', 'flee']);
+export const ESCALATION_BEATS = Object.freeze(['bounty', 'ace', 'shortage', 'rumor']);
+const ESCALATION_MIN_PLACE_DIST = 400;
 const BARK_MIN_GAP_S = 4;          // per-encounter bark spacing (danger 'alert' exempt)
 const NOISE_DECAY_PER_S = 0.02;    // mining-noise half-life ~35s
 const PROX_SLACK = 600;            // "on the zone" slack for proximity-gated shapes
@@ -189,6 +202,11 @@ export const encounterDirector = {
       // Mining noise attracts predators (decaying accumulator; player yields only).
       this.bus.on('mining:yield', (p) => this._onMiningYield(p));
       this.bus.on('resonance:scanCompleted', (p) => this._onResonanceScan(p));
+      this.bus.on('law:witnessChoice', (p) => this._onEscalationToken('witness', p));
+      this.bus.on('freight:cargoSpilled', (p) => this._onEscalationToken('spill', p));
+      this.bus.on('freight:loss', (p) => this._onEscalationToken('spill', p));
+      this.bus.on('ai:flee', (p) => this._onEscalationToken('flee', p));
+      this.bus.on('namedAce:fled', (p) => this._onEscalationToken('flee', p));
     }
   },
 
@@ -198,6 +216,7 @@ export const encounterDirector = {
     clearAllPredationBindings(this.state, 'new_game');
     this.state.encounterDirector = freshState();
     ensureNamed(this.state.encounterDirector);
+    publishEscalationSeeds([]);
   },
 
   update(dt, state) {
@@ -215,9 +234,48 @@ export const encounterDirector = {
     dir._accum = 0;
     const now = state.simTime || 0;
     this._accrue(dir, state, step);
+    this._tickSessionRhythm(dir, state, now);
+    this._tickEscalationSeeds(dir, state, now);
     if (!isDocked(state) && !isTutorialActive(state)) this._pump(dir, state, now);
     this._tickLive(dir, state, now);
     this._springCeresActivityAmbushOnPrey();
+  },
+
+  _tickSessionRhythm(dir, state, now) {
+    const next = advanceSessionRhythm(dir, state, now);
+    publishSessionRhythmPhase(next.phase);
+    if (!next.changed) return next;
+    this.emit('rhythm:phase', {
+      simTime: now,
+      phase: next.phase,
+      dwellS: next.dwellS,
+      previous: next.previous,
+    });
+    return next;
+  },
+
+  _onEscalationToken(cause, payload) {
+    if (this._saveRestoring) return;
+    const dir = ensureDirectorState(this.state);
+    const seed = seedEscalationFromAct(dir, this.state, cause, payload || {});
+    if (!seed) return;
+    persistEscalationLedger(dir);
+    publishEscalationSeeds(dir.escalationSeeds);
+    this.emit('escalation:seeded', publicEscalationSeed(seed));
+  },
+
+  _tickEscalationSeeds(dir, state, now) {
+    const arrived = advanceEscalationSeeds(dir, state, now);
+    persistEscalationLedger(dir);
+    publishEscalationSeeds(dir.escalationSeeds);
+    for (const seed of arrived) {
+      if (seed.beat === 'shortage') {
+        const stationId = seed.place && seed.place.stationId;
+        const commodityId = seed.commodityId;
+        if (stationId && commodityId) this.tradePressure(stationId, commodityId, -3);
+      }
+      this.emit('escalation:arrived', publicEscalationSeed(seed));
+    }
   },
 
   // ═══ SCHEDULING ═══════════════════════════════════════════════════════════════════════════════
@@ -2662,6 +2720,7 @@ function freshState() {
     lastAmbientAt: -1e9,
     lastMajorAt: -1e9,
     lastEndAt: -1e9,
+    escalationSeeds: [],
     _accum: 0,
   };
 }
@@ -2802,6 +2861,18 @@ function ensureDirectorState(state) {
   if (!Number.isFinite(d.lastMajorAt)) d.lastMajorAt = -1e9;
   if (!Number.isFinite(d.lastEndAt)) d.lastEndAt = -1e9;
   if (!Number.isFinite(d._accum)) d._accum = 0;
+  if (d.sessionRhythm != null && (typeof d.sessionRhythm !== 'object' || Array.isArray(d.sessionRhythm)
+    || !SESSION_RHYTHM_PHASES.includes(d.sessionRhythm.phase))) {
+    d.sessionRhythm = null;
+  }
+  if (!Array.isArray(d.escalationSeeds)) d.escalationSeeds = [];
+  const savedLedger = Array.isArray(d.stats.escalationLedger) ? d.stats.escalationLedger : null;
+  if (d.escalationSeeds.length === 0 && savedLedger && savedLedger.length) {
+    d.escalationSeeds = savedLedger.map(sanitizeEscalationSeed).filter(Boolean);
+  }
+  d.escalationSeeds = d.escalationSeeds.map(sanitizeEscalationSeed).filter(Boolean)
+    .slice(-ESCALATION_SEED_CAP);
+  persistEscalationLedger(d);
   ensureNamed(d);
   return d;
 }
@@ -2854,9 +2925,118 @@ function encounterAdmissionMinimum(item, shape) {
 
 // ── small read-only helpers ───────────────────────────────────────────────────────────────────────
 
-function encounterPacingBlockReason(dir, state, shape, now) {
+export const SESSION_RHYTHM_PHASES = Object.freeze([
+  'work', 'travel', 'curiosity', 'opportunity', 'tension', 'violence', 'aftermath', 'quiet',
+]);
+export const SESSION_RHYTHM_MAX_DWELL_S = 12 * 60;
+
+const SESSION_RHYTHM_NEXT = Object.freeze({
+  work: 'travel',
+  travel: 'curiosity',
+  curiosity: 'opportunity',
+  opportunity: 'tension',
+  tension: 'violence',
+  violence: 'aftermath',
+  aftermath: 'quiet',
+  quiet: 'work',
+});
+
+const SESSION_RHYTHM_SOFT_DWELL_S = Object.freeze({
+  work: 90,
+  travel: 75,
+  curiosity: 75,
+  opportunity: 75,
+  tension: 60,
+  violence: 45,
+  aftermath: 60,
+  quiet: 90,
+});
+
+const SESSION_RHYTHM_COMBAT_FORBIDDEN = new Set(['work', 'aftermath', 'quiet']);
+
+function sessionRhythmHasLiveCombat(dir) {
+  const live = dir && dir.live && typeof dir.live === 'object' ? Object.values(dir.live) : [];
+  return live.some((row) => row && row.deck === 'combat' && row.phase !== 'done');
+}
+
+export function sessionRhythmAllowsCombat(phase) {
+  return !SESSION_RHYTHM_COMBAT_FORBIDDEN.has(phase);
+}
+
+export function sessionRhythmBlockReason(phase, shape) {
+  if (!shape || shape.deck !== 'combat') return null;
+  if (phase && !sessionRhythmAllowsCombat(phase)) return 'rhythm';
+  return null;
+}
+
+export function sessionRhythmOf(stateOrDir) {
+  if (!stateOrDir || typeof stateOrDir !== 'object') return null;
+  const direct = stateOrDir.sessionRhythm;
+  const nested = stateOrDir.encounterDirector && stateOrDir.encounterDirector.sessionRhythm;
+  const rhythm = direct && typeof direct === 'object' && !Array.isArray(direct) && SESSION_RHYTHM_PHASES.includes(direct.phase)
+    ? direct
+    : (nested && typeof nested === 'object' && !Array.isArray(nested) && SESSION_RHYTHM_PHASES.includes(nested.phase)
+      ? nested
+      : null);
+  return rhythm;
+}
+
+function writeSessionRhythm(dir, phase, now, previous) {
+  const rhythm = { phase, enteredAt: now, dwellS: 0 };
+  dir.sessionRhythm = rhythm;
+  return { ...rhythm, changed: true, previous: previous || null };
+}
+
+export function advanceSessionRhythm(dir, state, now) {
+  const host = dir && typeof dir === 'object' ? dir : {};
+  const t = Number.isFinite(now) ? now : 0;
+  const current = host.sessionRhythm && typeof host.sessionRhythm === 'object' && !Array.isArray(host.sessionRhythm)
+    && SESSION_RHYTHM_PHASES.includes(host.sessionRhythm.phase)
+    ? host.sessionRhythm
+    : null;
+  const playerDocked = isDocked(state);
+  if (!current) {
+    return writeSessionRhythm(host, playerDocked ? 'work' : 'travel', t, null);
+  }
+
+  const enteredAt = Number.isFinite(current.enteredAt) ? current.enteredAt : t;
+  const dwellS = Math.max(0, t - enteredAt);
+  current.dwellS = dwellS;
+  host.sessionRhythm = current;
+
+  const combatLive = sessionRhythmHasLiveCombat(host);
+  const endedAt = Number.isFinite(host.lastEndAt) ? host.lastEndAt : -1e9;
+  const combatEndedHere = endedAt >= enteredAt && !combatLive;
+  const phase = current.phase;
+  let next = phase;
+
+  if (dwellS >= SESSION_RHYTHM_MAX_DWELL_S) {
+    next = SESSION_RHYTHM_NEXT[phase] || 'travel';
+  } else if (phase === 'violence' && combatEndedHere) {
+    next = 'aftermath';
+  } else if (phase === 'violence' && combatLive) {
+    next = 'violence';
+  } else if (combatLive && sessionRhythmAllowsCombat(phase) && phase !== 'violence') {
+    next = 'violence';
+  } else if (phase === 'work' && !playerDocked && dwellS >= 20) {
+    next = 'travel';
+  } else if (playerDocked && (phase === 'travel' || phase === 'curiosity' || phase === 'opportunity') && dwellS >= 20) {
+    next = 'work';
+  } else if (dwellS >= (SESSION_RHYTHM_SOFT_DWELL_S[phase] || 90)) {
+    next = SESSION_RHYTHM_NEXT[phase] || 'travel';
+  }
+
+  if (next === phase) {
+    return { phase, enteredAt, dwellS, changed: false, previous: phase };
+  }
+  return writeSessionRhythm(host, next, t, phase);
+}
+
+export function encounterPacingBlockReason(dir, state, shape, now) {
   if (isDocked(state)) return 'docked';
   if (isTutorialActive(state)) return 'tutorial';
+  const rhythmReason = sessionRhythmBlockReason(dir && dir.sessionRhythm && dir.sessionRhythm.phase, shape);
+  if (rhythmReason) return rhythmReason;
   if (now < (dir.cooldowns[shape.id] || 0)) return 'cooldown';
   if ((dir.pressure[shape.deck] || 0) < shape.pressureCost) return 'pressure';
 
@@ -2903,4 +3083,264 @@ function sectorSecurityOf(state) {
   const def = SECTORS.find((s) => s.id === sid);
   const baseline = def && Number.isFinite(def.security) ? def.security : 0.5;
   return effectiveRegionalSecurity(state, sid, baseline);
+}
+
+function finiteEscalationNumber(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function escalationText(value) {
+  if (typeof value !== 'string') return null;
+  const clean = value.trim();
+  return clean || null;
+}
+
+function beatForCause(cause, payload) {
+  if (cause === 'witness') return 'bounty';
+  if (cause === 'spill') return 'shortage';
+  if (cause === 'flee' && escalationText(payload && (payload.aceId || payload.namedAceId))) return 'ace';
+  if (cause === 'flee') return 'rumor';
+  return null;
+}
+
+function escalationCauseId(cause, payload) {
+  if (!payload || typeof payload !== 'object') return `${cause}:anon`;
+  if (cause === 'witness') {
+    return escalationText(payload.incidentId) || escalationText(payload.causeId) || `witness:${payload.holderId || 'hold'}`;
+  }
+  if (cause === 'spill') {
+    return escalationText(payload.intentId)
+      || escalationText(payload.custodyId)
+      || escalationText(payload.manifestId)
+      || escalationText(payload.encounterId)
+      || escalationText(payload.causeId)
+      || `spill:${payload.carrierId || payload.t || 'lot'}`;
+  }
+  return escalationText(payload.aceId)
+    || escalationText(payload.namedAceId)
+    || escalationText(payload.causeId)
+    || `flee:${payload.entityId || 'npc'}:${payload.reason || 'flee'}`;
+}
+
+function isPlayerEscalationAct(state, cause, payload) {
+  const playerId = state && state.playerId;
+  if (payload && payload.playerCaused === true) return true;
+  if (playerId != null && (payload.attackerId === playerId || payload.killerId === playerId)) return true;
+  if (cause === 'witness') return true;
+  if (cause === 'flee' && (payload.aceId || payload.namedAceId || payload.reason === 'civilian-violence')) return true;
+  return false;
+}
+
+function firstManifestCommodity(payload) {
+  const lines = payload && payload.manifest && Array.isArray(payload.manifest.lines)
+    ? payload.manifest.lines
+    : null;
+  if (lines) {
+    for (const line of lines) {
+      if (line && escalationText(line.commodityId)) return line.commodityId;
+    }
+  }
+  return escalationText(payload && payload.commodityId);
+}
+
+function placeFarFromPlayer(state, payload, sectorId) {
+  const player = state && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId)
+    : null;
+  const px = player && player.pos ? Number(player.pos.x) || 0 : 0;
+  const pz = player && player.pos ? Number(player.pos.z) || 0 : 0;
+  const zones = sectorId ? zonesForSector(sectorId) : [];
+  const wantedZoneId = escalationText(payload && payload.zoneId);
+  let chosen = wantedZoneId ? zones.find((zone) => zone && zone.id === wantedZoneId) : null;
+
+  if (!chosen && payload && payload.anchor && Number.isFinite(payload.anchor.x) && sectorId) {
+    const local = globalToSectorLocalForSector(payload.anchor, sectorId);
+    chosen = zoneAt(sectorId, local.x, local.z);
+  }
+
+  const scored = [];
+  for (const zone of zones) {
+    if (!zone || !zone.center) continue;
+    const global = sectorLocalToGlobalForSector(zone.center, sectorId);
+    const dist = Math.hypot(global.x - px, global.z - pz);
+    scored.push({ zone, global, dist });
+  }
+  scored.sort((a, b) => b.dist - a.dist || a.zone.id.localeCompare(b.zone.id));
+
+  let pick = chosen
+    ? scored.find((row) => row.zone.id === chosen.id)
+    : null;
+  if (!pick || pick.dist < ESCALATION_MIN_PLACE_DIST) {
+    pick = scored.find((row) => row.dist >= ESCALATION_MIN_PLACE_DIST) || scored[0] || null;
+  }
+
+  if (pick) {
+    return {
+      x: pick.global.x,
+      z: pick.global.z,
+      sectorId,
+      zoneId: pick.zone.id,
+      stationId: escalationText(payload && payload.stationId),
+      name: pick.zone.name || pick.zone.id,
+    };
+  }
+
+  const seed = (state && state.meta && state.meta.seed) || 1;
+  const angle = (hash32(seed, sectorId || 'no-sector', 'escalation-place') % 360) * (Math.PI / 180);
+  return {
+    x: px + Math.cos(angle) * 900,
+    z: pz + Math.sin(angle) * 900,
+    sectorId: sectorId || null,
+    zoneId: null,
+    stationId: escalationText(payload && payload.stationId),
+    name: 'the far lane',
+  };
+}
+
+function sanitizeEscalationPlace(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const x = finiteEscalationNumber(raw.x);
+  const z = finiteEscalationNumber(raw.z);
+  if (x == null || z == null) return null;
+  return {
+    x,
+    z,
+    sectorId: escalationText(raw.sectorId),
+    zoneId: escalationText(raw.zoneId),
+    stationId: escalationText(raw.stationId),
+    name: escalationText(raw.name),
+  };
+}
+
+function sanitizeEscalationSeed(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const cause = escalationText(raw.cause);
+  const beat = escalationText(raw.beat);
+  if (!ESCALATION_CAUSES.includes(cause) || !ESCALATION_BEATS.includes(beat)) return null;
+  const place = sanitizeEscalationPlace(raw.place);
+  if (!place) return null;
+  const delayS = finiteEscalationNumber(raw.delayS);
+  if (delayS == null || delayS <= 0) return null;
+  const seededAt = finiteEscalationNumber(raw.seededAt) || 0;
+  return {
+    id: escalationText(raw.id) || `esc:${cause}:${raw.causeId || seededAt}`,
+    cause,
+    beat,
+    causeId: escalationText(raw.causeId) || raw.id,
+    seededAt,
+    dueAt: finiteEscalationNumber(raw.dueAt) != null ? Number(raw.dueAt) : seededAt + delayS,
+    delayS,
+    arrived: raw.arrived === true,
+    arrivedAt: finiteEscalationNumber(raw.arrivedAt),
+    place,
+    commodityId: escalationText(raw.commodityId),
+    aceId: escalationText(raw.aceId),
+    playerAct: raw.playerAct !== false,
+  };
+}
+
+function persistEscalationLedger(dir) {
+  if (!dir || !dir.stats) return;
+  const rows = (dir.escalationSeeds || []).map(sanitizeEscalationSeed).filter(Boolean)
+    .slice(-ESCALATION_SEED_CAP);
+  if (rows.length) dir.stats.escalationLedger = rows;
+  else delete dir.stats.escalationLedger;
+}
+
+export function publicEscalationSeed(seed) {
+  const row = sanitizeEscalationSeed(seed);
+  return row ? { ...row, place: { ...row.place } } : null;
+}
+
+export function escalationSeedsOf(stateOrDir) {
+  if (!stateOrDir || typeof stateOrDir !== 'object') return [];
+  const direct = Array.isArray(stateOrDir.escalationSeeds) ? stateOrDir.escalationSeeds : null;
+  const nested = stateOrDir.encounterDirector && Array.isArray(stateOrDir.encounterDirector.escalationSeeds)
+    ? stateOrDir.encounterDirector.escalationSeeds
+    : null;
+  const stats = (stateOrDir.stats && Array.isArray(stateOrDir.stats.escalationLedger) && stateOrDir.stats.escalationLedger)
+    || (stateOrDir.encounterDirector && stateOrDir.encounterDirector.stats
+      && Array.isArray(stateOrDir.encounterDirector.stats.escalationLedger)
+      && stateOrDir.encounterDirector.stats.escalationLedger)
+    || [];
+  const rows = direct || nested || stats;
+  return rows.map(sanitizeEscalationSeed).filter(Boolean);
+}
+
+export function citedEscalationSeeds(stateOrDir) {
+  return escalationSeedsOf(stateOrDir).filter((seed) => (
+    seed
+    && seed.playerAct !== false
+    && ESCALATION_CAUSES.includes(seed.cause)
+    && ESCALATION_BEATS.includes(seed.beat)
+    && seed.place
+    && Number.isFinite(seed.place.x)
+    && Number.isFinite(seed.place.z)
+    && seed.delayS > 0
+  ));
+}
+
+export function seedEscalationFromAct(dir, state, cause, payload) {
+  const host = dir && typeof dir === 'object' ? dir : {};
+  if (!Array.isArray(host.escalationSeeds)) host.escalationSeeds = [];
+  if (!ESCALATION_CAUSES.includes(cause)) return null;
+  const act = payload && typeof payload === 'object' ? payload : {};
+  if (!isPlayerEscalationAct(state, cause, act)) return null;
+  const beat = beatForCause(cause, act);
+  if (!beat) return null;
+  const causeId = escalationCauseId(cause, act);
+  if (host.escalationSeeds.some((row) => row && row.causeId === causeId)) return null;
+
+  const now = Number.isFinite(state && state.simTime) ? state.simTime : 0;
+  const sectorId = escalationText(act.sectorId)
+    || (state && state.world && state.world.currentSectorId)
+    || null;
+  const seedKey = (state && state.meta && state.meta.seed) || 1;
+  const span = ESCALATION_MAX_DELAY_S - ESCALATION_MIN_DELAY_S + 1;
+  const delayS = ESCALATION_MIN_DELAY_S + (hash32(seedKey, cause, causeId, 'pq14901-delay') % span);
+  const place = placeFarFromPlayer(state, act, sectorId);
+  const player = state && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId)
+    : null;
+  if (player && player.pos) {
+    const dist = Math.hypot(place.x - player.pos.x, place.z - player.pos.z);
+    if (dist < ESCALATION_MIN_PLACE_DIST) return null;
+  }
+
+  const seed = sanitizeEscalationSeed({
+    id: `esc:${cause}:${causeId}`,
+    cause,
+    beat,
+    causeId,
+    seededAt: now,
+    dueAt: now + delayS,
+    delayS,
+    arrived: false,
+    place,
+    commodityId: firstManifestCommodity(act),
+    aceId: escalationText(act.aceId) || escalationText(act.namedAceId),
+    playerAct: true,
+  });
+  if (!seed) return null;
+  host.escalationSeeds.push(seed);
+  if (host.escalationSeeds.length > ESCALATION_SEED_CAP) {
+    host.escalationSeeds.splice(0, host.escalationSeeds.length - ESCALATION_SEED_CAP);
+  }
+  return seed;
+}
+
+export function advanceEscalationSeeds(dir, state, now) {
+  const host = dir && typeof dir === 'object' ? dir : {};
+  if (!Array.isArray(host.escalationSeeds)) host.escalationSeeds = [];
+  const t = Number.isFinite(now) ? now : 0;
+  const arrived = [];
+  for (const seed of host.escalationSeeds) {
+    if (!seed || seed.arrived === true) continue;
+    if (t < seed.dueAt) continue;
+    seed.arrived = true;
+    seed.arrivedAt = t;
+    arrived.push(seed);
+  }
+  return arrived;
 }
