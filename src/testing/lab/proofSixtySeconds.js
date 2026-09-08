@@ -5,10 +5,10 @@
 // (boost, fire, Massline), and detects the eleven VISION / FEEL B12 beats from bus receipts that
 // already exist.
 //
-// Census/boot/camera look at authored pockets. The default 60s run still parks the player at the
-// refinery so the mining op stays in view; Ambush Run is in the same pocket set so the existing
-// Throughline pirates and loaded hauler are counted in that window. It does not script NPC combat,
-// emit beat events, or loosen a miss into "any collision". A red table is a valid reading.
+// Census/boot/camera look at authored pockets. The default 60s run boots at Ambush Run so
+// intercept/spill/patrol can fire; Refinery and Seam job receipts stay on the sector bus.
+// It does not script NPC combat, emit beat events, or loosen a miss into "any collision".
+// A red table is a valid reading.
 
 import { SIM_DT } from '../../core/sim.js';
 import {
@@ -39,6 +39,8 @@ export const PROOF_PLAYER_HULL_ID = 'ship_hornet';
 export const PROOF_SHOVE_WEAPON_ID = 'wpn_concussion_cannon_m';
 export const PROOF_REFINERY_POCKET_ID = CERES_REFERENCE_ACCEPTANCE_ENTRY.pocketId;
 export const PROOF_AMBUSH_POCKET_ID = 'ceres_ambush_run';
+/** Default 60s tape boot. Census still covers the Refinery + Ambush pocket set. */
+export const PROOF_SIXTY_SECONDS_BOOT_POCKET_ID = PROOF_AMBUSH_POCKET_ID;
 export const PROOF_POCKET_IDS = Object.freeze([
   PROOF_REFINERY_POCKET_ID,
   PROOF_AMBUSH_POCKET_ID,
@@ -222,6 +224,14 @@ export function isCargoPickup(entity, payload) {
     || String(data.commodityId || payload && payload.commodityId || '').startsWith('cmdty_');
 }
 
+/** Spilled pods are type:'payload' via spawnJettisonedCargoPod; pickups still count. */
+export function isGrabCargoTarget(entity, payload) {
+  if (!entity && !payload) return false;
+  const type = entity && entity.type;
+  if (type && type !== 'pickup' && type !== 'payload') return false;
+  return isCargoPickup(entity, payload);
+}
+
 function entityById(state, id) {
   if (id == null || !state || !state.entities) return null;
   return state.entities.get(id) || null;
@@ -332,10 +342,10 @@ function nearest(state, player, predicate) {
   return best;
 }
 
-function aimTargetForTick(state, player, tick) {
+export function aimTargetForTick(state, player, tick) {
   if (tick >= 2400 && tick < 3000) {
-    return nearest(state, player, (e) => e.type === 'pickup' && isCargoPickup(e))
-      || nearest(state, player, (e) => e.type === 'pickup');
+    return nearest(state, player, (e) => isGrabCargoTarget(e))
+      || nearest(state, player, (e) => e.type === 'pickup' || e.type === 'payload');
   }
   if (tick >= 900 && tick < 1500) {
     return nearest(state, player, isPirateEntity)
@@ -374,7 +384,7 @@ export function censusAround(state, origin) {
     haulers: here.filter(isHaulerEntity).length,
     pirates: here.filter(isPirateEntity).length,
     patrols: here.filter(isPatrolEntity).length,
-    cargoPods: here.filter((e) => e.type === 'pickup' && isCargoPickup(e)).length,
+    cargoPods: here.filter((e) => isGrabCargoTarget(e)).length,
   };
 }
 
@@ -500,8 +510,8 @@ export function classifyReceipt(name, payload, ctx) {
   if (name === 'tether:latched') {
     const target = entity(payload && payload.targetId);
     if (target && target.id !== playerId) ctx.latchedIds.add(target.id);
-    if (target && target.type === 'pickup' && isCargoPickup(target, payload)) {
-      return { beat: 'grab_pod', detail: `tether latch pickup#${target.id}` };
+    if (target && isGrabCargoTarget(target, payload)) {
+      return { beat: 'grab_pod', detail: `tether latch ${target.type}#${target.id}` };
     }
   }
 
@@ -644,7 +654,7 @@ async function bootCeresPocket(seed, options = {}) {
   if (typeof world.relocatePlayerInSector !== 'function') {
     throw new Error('proof.sixty_seconds: world.relocatePlayerInSector missing');
   }
-  const pocketId = options.pocketId || PROOF_REFINERY_POCKET_ID;
+  const pocketId = options.pocketId || PROOF_SIXTY_SECONDS_BOOT_POCKET_ID;
   const at = pocketEntryGlobal(pocketId);
   world.relocatePlayerInSector({ x: at.x, z: at.z, heading: 0 }, { reason: 'proof:sixty_seconds' });
   player.vel.x = 0;
@@ -719,11 +729,28 @@ export async function runProofPocketCensus(seed, options = {}) {
  * Run one seeded proof. Returns beat times in seconds, setup census, and real-path proof.
  * Stops early when all 11 beats are seen. Hard-aborts at 90 s of sim time.
  */
+function relocatePlayerToPocket(runtime, player, pocketId, reason) {
+  const world = runtime && typeof runtime.getSystem === 'function' ? runtime.getSystem('world') : null;
+  if (!world || typeof world.relocatePlayerInSector !== 'function') {
+    throw new Error('proof.sixty_seconds: relocatePlayerInSector missing');
+  }
+  const at = pocketEntryGlobal(pocketId);
+  world.relocatePlayerInSector({ x: at.x, z: at.z, heading: 0 }, { reason });
+  if (player && player.vel) {
+    player.vel.x = 0;
+    player.vel.z = 0;
+  }
+}
+
 export async function runProofSixtySeconds(seed, options = {}) {
   const windowTicks = Number.isFinite(options.windowTicks) ? options.windowTicks : WINDOW_TICKS;
   const hardCapTicks = Number.isFinite(options.hardCapTicks) ? options.hardCapTicks : HARD_CAP_TICKS;
-  const bootPocketId = options.pocketId || PROOF_REFINERY_POCKET_ID;
+  const bootPocketId = options.pocketId || PROOF_SIXTY_SECONDS_BOOT_POCKET_ID;
   const censusPocketIds = options.pocketIds || PROOF_POCKET_IDS;
+  const relocateAfterTicks = Number.isFinite(options.relocateAfterTicks)
+    ? options.relocateAfterTicks
+    : null;
+  const relocatePocketId = options.relocatePocketId || PROOF_AMBUSH_POCKET_ID;
   const host = await bootCeresPocket(seed, { pocketId: bootPocketId });
   const { runtime, state, bus, player } = host;
   const driver = createInputTapeDriver(options.tape || buildProofInputTape());
@@ -762,6 +789,9 @@ export async function runProofSixtySeconds(seed, options = {}) {
     const limit = Math.min(windowTicks, hardCapTicks);
     for (let i = 0; i < limit; i++) {
       const tick = state.tick | 0;
+      if (relocateAfterTicks != null && ticks === relocateAfterTicks && bootPocketId !== relocatePocketId) {
+        relocatePlayerToPocket(runtime, player, relocatePocketId, 'proof:sixty_seconds:relocate');
+      }
       const tether = !!(player && player.tether && player.tether.active);
       driver.apply(state, tick, SIM_DT, { playerEntity: player, tetherAttached: tether });
       const aim = aimTargetForTick(state, player, tick);
@@ -787,7 +817,9 @@ export async function runProofSixtySeconds(seed, options = {}) {
       scenarioId: PROOF_SCENARIO_ID,
       seed,
       sectorId: PROOF_SECTOR_ID,
-      pocketId: bootPocketId,
+      pocketId: relocateAfterTicks != null ? relocatePocketId : bootPocketId,
+      bootPocketId,
+      relocatedAtTick: relocateAfterTicks,
       pocketIds: censusPocketIds.slice(),
       simS: Number(simS.toFixed(3)),
       ticks,
@@ -863,6 +895,7 @@ export function formatBeatTable(runs) {
       + `playerLocal.pirates=${local.pirates ?? '?'} `
       + `refinery.pirates=${refinery ? refinery.pirates : '?'} `
       + `ambush.pirates=${ambush ? ambush.pirates : '?'} `
+      + `boot=${run.bootPocketId || run.pocketId || '?'} `
       + `pockets=${(run.pocketIds || PROOF_POCKET_IDS).join('+')} `
       + `realPath=${run.realPath && run.realPath.backend}/${run.realPath && run.realPath.sg02Ready}`,
     );

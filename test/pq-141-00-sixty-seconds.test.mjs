@@ -11,10 +11,15 @@ import {
   PROOF_REFINERY_POCKET_ID,
   PROOF_SCENARIO_ID,
   PROOF_SEEDS,
+  PROOF_SIXTY_SECONDS_BOOT_POCKET_ID,
   SIXTY_SECOND_BEATS,
+  aimTargetForTick,
+  censusAround,
   classifyReceipt,
   emptyBeatTimes,
   formatBeatTable,
+  isCargoPickup,
+  isGrabCargoTarget,
   runProofPocketCensus,
   runProofSixtySecondsSuite,
 } from '../src/testing/lab/proofSixtySeconds.js';
@@ -80,10 +85,81 @@ test('PQ-141.00 scenario id is proof.sixty_seconds', () => {
 test('PQ-141.00 default proof pocket set includes Ambush Run', () => {
   assert.equal(PROOF_REFINERY_POCKET_ID, 'ceres_refinery_pocket');
   assert.equal(PROOF_AMBUSH_POCKET_ID, 'ceres_ambush_run');
+  assert.equal(PROOF_SIXTY_SECONDS_BOOT_POCKET_ID, PROOF_AMBUSH_POCKET_ID);
   assert.deepEqual([...PROOF_POCKET_IDS], [
     'ceres_refinery_pocket',
     'ceres_ambush_run',
   ]);
+});
+
+test('PQ-141.00 grab/aim/census accept payload cargo pods, and a real cargo latch counts', () => {
+  const payloadPod = {
+    id: 9,
+    type: 'payload',
+    alive: true,
+    pos: { x: 12, z: 0 },
+    data: { kind: 'cargo', commodityId: 'cmdty_iron', jettisonedCargo: true },
+  };
+  const pickupPod = {
+    id: 8,
+    type: 'pickup',
+    alive: true,
+    pos: { x: 40, z: 0 },
+    data: { kind: 'cargo', commodityId: 'cmdty_ore' },
+  };
+  const cutPanel = {
+    id: 7,
+    type: 'payload',
+    alive: true,
+    pos: { x: 4, z: 0 },
+    data: { kind: 'payload', payloadType: 'cut_panel' },
+  };
+  const player = { id: 1, type: 'ship', alive: true, pos: { x: 0, z: 0 }, data: {} };
+  const state = {
+    playerId: 1,
+    entityList: [player, cutPanel, payloadPod, pickupPod],
+    entities: new Map([
+      [1, player],
+      [7, cutPanel],
+      [8, pickupPod],
+      [9, payloadPod],
+    ]),
+  };
+
+  assert.equal(isCargoPickup(payloadPod), true);
+  assert.equal(isGrabCargoTarget(payloadPod), true);
+  assert.equal(isGrabCargoTarget(pickupPod), true);
+  assert.equal(isGrabCargoTarget(cutPanel), false);
+  assert.equal(isGrabCargoTarget(player), false);
+
+  const census = censusAround(state, player.pos);
+  assert.equal(census.cargoPods, 2);
+
+  const grabAim = aimTargetForTick(state, player, 2500);
+  assert.equal(grabAim && grabAim.id, payloadPod.id, 'grab window must prefer the nearer cargo payload pod');
+
+  const ctx = {
+    state,
+    spunIds: new Set(),
+    projectileIds: new Set(),
+    latchedIds: new Set(),
+  };
+  assert.equal(classifyReceipt('tether:latched', { targetId: 7 }, ctx), null,
+    'a cut-panel payload latch is not a cargo grab');
+  assert.deepEqual(classifyReceipt('tether:latched', { targetId: 9 }, ctx), {
+    beat: 'grab_pod',
+    detail: 'tether latch payload#9',
+  });
+  assert.deepEqual(classifyReceipt('tether:latched', { targetId: 8 }, ctx), {
+    beat: 'grab_pod',
+    detail: 'tether latch pickup#8',
+  });
+  assert.deepEqual(classifyReceipt('pickup:collected', {
+    collectorId: 1, kind: 'cargo', commodityId: 'cmdty_iron',
+  }, ctx), {
+    beat: 'grab_pod',
+    detail: 'collect cmdty_iron',
+  });
 });
 
 test('PQ-141.00 census sees pirates when pointed at Ambush Run', { timeout: 120_000 }, async () => {
@@ -113,8 +189,8 @@ test('PQ-141.00 census sees pirates when pointed at Ambush Run', { timeout: 120_
   assert.equal(ambush.pirates, pointed.pirates);
 });
 
-// Five-seed Rapier suite is the alpha-gate measurement. It is honest and currently
-// 2–3/11. Do not assert 9/11 here — that would fail CI for a known world gap.
+// Five-seed Rapier suite is the alpha-gate measurement. Ambush boot last printed
+// 8/11 on seed 47. Do not assert 9/11 here — a red table is a valid NOT DONE.
 // Run: PROOF_SIXTY_SECONDS=1 node --test test/pq-141-00-sixty-seconds.test.mjs
 test('PQ-141.00 runs five seeds at the Ceres pocket and prints the beat table', {
   ...LONG,
