@@ -49,7 +49,15 @@ try{
     assert.ok(Math.abs(events.reduce((n,e)=>n+e.dy,0)-dy)<=1,'actual vertical device delta');
   };
   if(!locked)await page.evaluate(()=>{document.getElementById('gl-canvas').requestPointerLock=()=>Promise.reject(new Error('denied for unlocked-path test'))});
-  await page.mouse.move(500,400);await page.keyboard.press('g');
+  if(locked){
+    await page.bringToFront();
+    const before=await page.evaluate(()=>drawFlightMouseEvents.length);
+    // Establish the OS cursor position before locking. Mixing a CDP cursor position with
+    // the first native event would manufacture a jump from two different coordinate histories.
+    await exec('xdotool',['mousemove','580','500'],{timeout:5000});
+    await page.waitForFunction(n=>drawFlightMouseEvents.length>n,before,{timeout:5000});
+  }else await page.mouse.move(500,400);
+  await page.keyboard.press('g');
   await page.evaluate(()=>drawFlightFixture.step(1));
   assert.equal((await page.evaluate(()=>drawFlightFixture.snapshot())).auto,true,'G toggles through production owner');
   if(locked)await page.waitForFunction(()=>document.pointerLockElement===document.getElementById('gl-canvas'));
