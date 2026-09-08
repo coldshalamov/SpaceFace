@@ -90,6 +90,7 @@ import {
   reserveRichSeamOpportunity,
   richSeamOpportunityForEntity,
 } from './fieldDepletion.js';
+import { spawnJettisonedCargoPod } from './lootShards.js';
 
 const FREIGHTER_SHIP = 'ship_mule'; // a freighter hull from data/ships.js (cargo-capable, slow)
 // Core pocket density (spec2/04 §4: core 6–9 concurrent). Cap keeps perf predictable.
@@ -224,6 +225,10 @@ const CIVILIAN_ALARM_TTL_S = 5;
 const CIVILIAN_VIOLENCE_RING_CAP = 8;
 const CIVILIAN_ALARM_FLEE_ROLES = new Set(['hauler', 'courier', 'ore_carrier', 'shuttle', 'tug']);
 const CIVILIAN_ALARM_HOLD_ROLES = new Set(['miner', 'surveyor', 'tender', 'salvor']);
+const AMBUSH_LOADED_HAULER_COMMODITY_ID = 'cmdty_ore_iron';
+const AMBUSH_LOADED_HAULER_QTY = 16;
+const HAULER_SPILL_VEL_FRACTION = 0.45;
+const HAULER_SPILL_POD_RADIUS = 6;
 const CERES_LAW_RESPONSE_SLOT_IDS = new Set([
   'ceres_ambush_escort',
   'ceres_cathedral_patrol',
@@ -1136,8 +1141,10 @@ export const traffic = {
     this.bus.on('freight:recoveryAbandoned', (p) => this._onCeresDisabledHaulerAbandoned(p || {}));
     this.bus.on('pickup:collected', (p) => this._onCeresDisabledHaulerPickup(p || {}));
     this.bus.on('freight:cargoSpilled', (p) => this._onFreightCargoSpilled(p || {}));
-    // Nearby violence: production hits and opened incidents, never permissive combat:fire.
+    // Nearby violence: production hits, aimed ship-to-ship combat:fire (Ambush first shots often
+    // apply 0), and opened incidents. Bare/mining fire without a live ship victim is ignored.
     this.bus.on('combat:damage', (p) => this._onCombatDamage(p || {}));
+    this.bus.on('combat:fire', (p) => this._onCombatFire(p || {}));
     this.bus.on('law:incidentOpened', (p) => this._onLawIncidentOpened(p || {}));
     this.bus.on('save:restoring', () => {
       // Invalidate before the save owner starts destructive restore. Old synchronous owner stacks
@@ -1587,6 +1594,14 @@ export const traffic = {
           spec.payload.handoffId = manifest.custody && manifest.custody.handoffId || null;
         }
       }
+      if (entry.slot.id === CERES_AMBUSH_HAULER_SLOT_ID) {
+        const rec = this.state.traffic && Array.isArray(this.state.traffic.freighters)
+          ? this.state.traffic.freighters.find((candidate) => candidate && candidate.id === entity.id)
+          : null;
+        this._ensureAmbushLoadedHaulerManifest(entity, rec);
+        const loaded = entity.data.cargoManifest;
+        if (validCausalManifest(loaded)) spec.payload.manifest = loaded;
+      }
     }
     if (entry.slot.id === CERES_SEAM_MINER_SLOT_ID
       && entry.slot.presentationRole === 'ore_carrier') {
@@ -1605,6 +1620,29 @@ export const traffic = {
       }
     }
     return assign(entity, spec);
+  },
+
+  _ensureAmbushLoadedHaulerManifest(entity, rec) {
+    if (!entity || entity.alive === false || !entity.data) return false;
+    if (entity.data.activityActorSlotId !== CERES_AMBUSH_HAULER_SLOT_ID) return false;
+    const current = entity.data.cargoManifest || (rec && rec.manifest) || null;
+    if (validCausalManifest(current)) {
+      if (entity.data.cargoManifest !== current) this._setTrafficManifest(entity, rec, current);
+      return true;
+    }
+    const runSeq = Number.isSafeInteger(entity.data.freightDockSeq) && entity.data.freightDockSeq >= 0
+      ? entity.data.freightDockSeq
+      : 0;
+    const manifest = this._buildMinerManifest(
+      entity,
+      runSeq,
+      AMBUSH_LOADED_HAULER_COMMODITY_ID,
+      AMBUSH_LOADED_HAULER_QTY,
+      'hauler',
+    );
+    if (!validCausalManifest(manifest)) return false;
+    this._setTrafficManifest(entity, rec, manifest);
+    return true;
   },
 
   _materializeCeresActivityCast(sector) {
@@ -3419,6 +3457,9 @@ export const traffic = {
       const activityEntry = e.data
         && CERES_ACTIVITY_CAST_BY_SLOT_ID.get(e.data.activityActorSlotId);
       if (activityEntry && !activityEntry.service) {
+        if (e.data.activityActorSlotId === CERES_AMBUSH_HAULER_SLOT_ID) {
+          this._ensureAmbushLoadedHaulerManifest(e, rec);
+        }
         if (!e.data.jobId) this._assignCeresActivityJob(e, activityEntry);
         this._reactCivilianViolence(e, rec, stations, state);
         continue;
@@ -3690,6 +3731,144 @@ export const traffic = {
       z = from.z;
     }
     this._recordViolence(x, z, attackerId, victimId, Number.isFinite(state && state.simTime) ? state.simTime : 0);
+    this._spillHaulerCargoFromViolence(victim, attacker);
+  },
+
+  _combatAimedShipVictim(shooter, payload) {
+    const p = payload || {};
+    const data = shooter && shooter.data || {};
+    const combatId = data.combat && data.combat.targetId;
+    const activityId = data.ai && data.ai.activity && data.ai.activity.targetId;
+    const raw = combatId != null ? combatId
+      : activityId != null ? activityId
+        : (p.targetId != null ? p.targetId : null);
+    if (raw == null) return null;
+    const state = this.state;
+    const victim = state && state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(raw)
+      : null;
+    if (!victim || victim.alive === false || victim.type !== 'ship') return null;
+    return victim;
+  },
+
+  _onCombatFire(payload) {
+    const p = payload || {};
+    // Real weapons fire carries ownerId + muzzle origin. Synthetic empty-space fire does not.
+    const ownerId = p.ownerId != null ? p.ownerId : null;
+    const origin = p.origin || p.from;
+    if (ownerId == null || !origin || !Number.isFinite(origin.x) || !Number.isFinite(origin.z)) return;
+    const state = this.state;
+    const shooter = state && state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(ownerId)
+      : null;
+    if (!shooter || shooter.type !== 'ship') return;
+    const victim = this._combatAimedShipVictim(shooter, p);
+    if (!victim) return;
+    if (isSurvivalCohort(shooter) || isSurvivalCohort(victim)) return;
+    // Stamp the threatened hull, not the muzzle: witnesses (including the hull) sit in the 300 WU
+    // bubble. Leave victimId empty so the existing combatant-skip still applies only to confirmed hits.
+    const at = entityPos(victim) || origin;
+    this._recordViolence(
+      at.x,
+      at.z,
+      ownerId,
+      null,
+      Number.isFinite(state && state.simTime) ? state.simTime : 0,
+    );
+    this._spillHaulerCargoFromViolence(victim, shooter);
+  },
+
+  _civilianHaulerRole(entity, rec) {
+    const role = (rec && rec.role)
+      || (entity && entity.data && (entity.data.trafficRole || entity.data.jobKind || entity.data.role))
+      || '';
+    if (CIVILIAN_ALARM_FLEE_ROLES.has(role)) return role;
+    if (entity && entity.data && entity.data.activityActorSlotId === CERES_AMBUSH_HAULER_SLOT_ID) {
+      return 'hauler';
+    }
+    return '';
+  },
+
+  _trafficRecordFor(entity) {
+    if (!entity) return null;
+    const list = this.state && this.state.traffic && this.state.traffic.freighters;
+    if (!Array.isArray(list)) return null;
+    for (let i = 0; i < list.length; i++) {
+      const rec = list[i];
+      if (rec && rec.id === entity.id) return rec;
+    }
+    return null;
+  },
+
+  _spillHaulerCargoFromViolence(hauler, attacker) {
+    if (!hauler || hauler.alive === false || hauler.type !== 'ship') return null;
+    if (attacker && attacker.id === hauler.id) return null;
+    if (isSurvivalCohort(hauler) || isSurvivalCohort(attacker)) return null;
+    const data = hauler.data || (hauler.data = {});
+    if (data.violenceCargoSpilled === true) return null;
+    const rec = this._trafficRecordFor(hauler);
+    if (!this._civilianHaulerRole(hauler, rec)) return null;
+    const current = data.cargoManifest || (rec && rec.manifest) || null;
+    if (!validCausalManifest(current)) return null;
+    const line = current.lines.find((row) => row && row.qty > 0);
+    if (!line) return null;
+    const dump = Math.min(line.qty, Math.max(1, Math.floor(line.qty * 0.25) || 1));
+    const pos = entityPos(hauler);
+    if (!pos) return null;
+    const rot = Number.isFinite(hauler.rot) ? hauler.rot : 0;
+    const clear = Math.max(0, Number(hauler.radius) || 0) + HAULER_SPILL_POD_RADIUS;
+    const vx = Number.isFinite(hauler.vel && hauler.vel.x) ? hauler.vel.x : 0;
+    const vz = Number.isFinite(hauler.vel && hauler.vel.z) ? hauler.vel.z : 0;
+    const pod = spawnJettisonedCargoPod(this.state, {
+      pos: { x: pos.x - Math.cos(rot) * clear, z: pos.z - Math.sin(rot) * clear },
+      vel: { x: vx * HAULER_SPILL_VEL_FRACTION, z: vz * HAULER_SPILL_VEL_FRACTION },
+      radius: HAULER_SPILL_POD_RADIUS,
+      commodityId: line.commodityId,
+      amount: dump,
+      unitMass: 0.8,
+      factionId: hauler.factionId || data.factionId || 'faction_free',
+      ownerId: hauler.id,
+    }, this.helpers);
+    if (!pod) return null;
+    data.violenceCargoSpilled = true;
+    const nextLines = current.lines
+      .map((row) => {
+        if (row !== line) return { ...row };
+        return { ...row, qty: row.qty - dump };
+      })
+      .filter((row) => row.qty > 0);
+    let totalQty = 0;
+    for (let i = 0; i < nextLines.length; i++) totalQty += nextLines[i].qty;
+    this._setTrafficManifest(hauler, rec, { ...current, lines: nextLines, totalQty });
+    const t = Number.isFinite(this.state && this.state.simTime) ? this.state.simTime : 0;
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('freight:cargoSpilled', {
+        carrierId: hauler.id,
+        ownerId: hauler.id,
+        entityId: hauler.id,
+        manifestId: current.manifestId || null,
+        cause: 'combat_fire',
+        commodityId: line.commodityId,
+        qty: dump,
+        podCount: 1,
+        podIds: [pod.id],
+        t,
+      });
+    }
+    return pod;
+  },
+
+  _emitCivilianViolenceFlee(entity) {
+    if (!entity || !entity.data) return false;
+    if (entity.data.violenceFleeEmitted === true) return false;
+    entity.data.violenceFleeEmitted = true;
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('ai:flee', {
+        entityId: entity.id,
+        reason: 'civilian-violence',
+      });
+    }
+    return true;
   },
 
   _onLawIncidentOpened(payload) {
@@ -3789,7 +3968,10 @@ export const traffic = {
       const alarmed = (rec && rec.violenceAlarmed) || (e.data && e.data.violenceAlarmed);
       if (alarmed) {
         if (rec) rec.violenceAlarmed = false;
-        if (e.data) e.data.violenceAlarmed = false;
+        if (e.data) {
+          e.data.violenceAlarmed = false;
+          e.data.violenceFleeEmitted = false;
+        }
         if (jobId && jobs && typeof jobs.resume === 'function') jobs.resume(jobId);
         const resumeId = rec ? rec.violenceResumeTargetId : null;
         if (rec) rec.violenceResumeTargetId = null;
@@ -3805,13 +3987,21 @@ export const traffic = {
     }
 
     const hold = doesHold && !carrying;
+    const alreadyAlarmed = (rec && rec.violenceAlarmed) || (e.data && e.data.violenceAlarmed);
+    if (doesFlee && !hold && !alreadyAlarmed) this._emitCivilianViolenceFlee(e);
+    const threatEnt = hit.attackerId != null && state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(hit.attackerId)
+      : null;
+    const threatPos = entityPos(threatEnt);
+    const hx = threatPos ? threatPos.x : hit.x;
+    const hz = threatPos ? threatPos.z : hit.z;
     const untilSimT = now + CIVILIAN_ALARM_TTL_S;
     if (jobId) {
       if (jobs && typeof jobs.interrupt === 'function') {
         const threat = this._violenceThreatScratch;
         threat.entityId = hit.attackerId != null ? hit.attackerId : hit.victimId;
-        threat.x = hit.x;
-        threat.z = hit.z;
+        threat.x = hx;
+        threat.z = hz;
         threat.untilSimT = untilSimT;
         threat.hold = hold;
         threat.slow = carrying;
@@ -3833,8 +4023,8 @@ export const traffic = {
       return true;
     }
 
-    const dx = (e.pos && e.pos.x || 0) - hit.x;
-    const dz = (e.pos && e.pos.z || 0) - hit.z;
+    const dx = (e.pos && e.pos.x || 0) - hx;
+    const dz = (e.pos && e.pos.z || 0) - hz;
     let aim = Math.atan2(dz, dx);
     if (!Number.isFinite(aim) || (dx === 0 && dz === 0)) {
       aim = ((hash32(e.id, 'civilian-alarm') >>> 0) / 4294967296) * Math.PI * 2;
