@@ -1,0 +1,46 @@
+name: Draw-flight regression
+on:
+  push:
+    branches: [fix/arcade-draw-to-fly]
+  pull_request:
+    paths:
+      - 'src/combat/autoTargetMode.js'
+      - 'src/combat/drawFlight*.js'
+      - 'src/systems/input.js'
+      - 'src/systems/flightV3.js'
+      - 'src/core/flight/**'
+      - 'test/*draw*flight*'
+      - '.github/workflows/draw-flight.yml'
+permissions:
+  contents: read
+jobs:
+  draw-flight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+          sparse-checkout: |
+            src
+            vendor
+            test
+            scripts
+            styles
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Existing auto-target wiring baseline
+        run: node scripts/check-autopursuit.mjs
+      - name: Exact source for deterministic local regression work
+        run: |
+          mkdir -p .devshots/draw-flight
+          git rev-parse HEAD > .devshots/draw-flight/source-sha.txt
+          tar -czf .devshots/draw-flight/source.tar.gz src vendor test scripts styles package.json package-lock.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: draw-flight-evidence
+          path: .devshots/draw-flight
+          retention-days: 7
