@@ -49,6 +49,7 @@ import {
   KILL_BURST_EJECT_SPEED_MIN,
   KILL_BURST_VEL_INHERIT,
 } from '../data/killRewards.js';
+import { consumePendingSlam, peekPendingSlam, spawnFracturePieces } from './hullFracture.js';
 
 export const MAGNET_RANGE = 420; // wu pull radius for Mining 2.0's stronger ore vacuum
 export const MAGNET_ACCEL = 900; // wu/s² authority toward the seek velocity (not absolute thrust)
@@ -1011,7 +1012,23 @@ export const mining = {
     // A duplicate kill notification for a marker whose wreck is already live must not mint a second
     // salvage pool. The durable owner has already checked entity liveness for this exact marker.
     if (aftermathPlan && aftermathPlan.entityId != null) {
+      consumePendingSlam(p.id);
       return this.state.entities && this.state.entities.get(aftermathPlan.entityId) || null;
+    }
+
+    if (peekPendingSlam(p.id) && this.helpers && typeof this.helpers.spawnEntity === 'function') {
+      const pending = consumePendingSlam(p.id);
+      const salvagePool = aftermathPlan && aftermathPlan.spec && aftermathPlan.spec.data
+        && aftermathPlan.spec.data.salvagePool
+        || this._lootToPool();
+      const fractured = spawnFracturePieces(this, pending, {
+        salvagePool,
+        bindAftermath: aftermathPlan && aftermathOwner
+          && typeof aftermathOwner.bindImmediateWreck === 'function'
+          ? (entity) => aftermathOwner.bindImmediateWreck(aftermathPlan.markerId, entity)
+          : null,
+      });
+      if (fractured && fractured.pieces && fractured.pieces.length >= 2) return fractured.pieces;
     }
 
     const spec = aftermathPlan && aftermathPlan.spec || {

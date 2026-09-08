@@ -15,6 +15,13 @@ import {
 } from '../combat/impulseKernel.js';
 import { appendCombatTrace } from '../combat/trace.js';
 import { combatFlag, massline2Flag } from '../data/featureFlags.js';
+import {
+  clearPendingSlam,
+  closingSpeedFromImpact,
+  isSlamFractureCandidate,
+  notePendingSlam,
+  resetPendingSlams,
+} from './hullFracture.js';
 
 export const COLLISION_CONSEQUENCE_PAIR_COOLDOWN_TICKS = 12;
 
@@ -181,7 +188,12 @@ export const collisionConsequences = {
       provenance: receipt.provenance,
       tick,
     });
+    const closingSpeed = closingSpeedFromImpact(payload);
+    if (isSlamFractureCandidate(target, closingSpeed)) {
+      notePendingSlam(target, { closingSpeed, tick });
+    }
     const damageResult = receipt.impactDamage > 0 ? this._routeImpactDamage(target, other, receipt) : null;
+    if (target.alive !== false) clearPendingSlam(target.id);
 
     appendCombatTrace(state.combat, tick, 'collision.consequence', {
       actorId: receipt.provenance.actorId,
@@ -265,6 +277,7 @@ export const collisionConsequences = {
   _resetTransientState() {
     this._pairTicks = new Map();
     this._pendingCraftContacts = new Map();
+    resetPendingSlams();
   },
 };
 
