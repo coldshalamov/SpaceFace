@@ -5,23 +5,18 @@
 // this file owns no CSS. Continue is enabled iff a save exists, shows the exact latest slot metadata,
 // and loads that displayed slot so players trust resume before committing to a load.
 // Browser, Electron dev, and packaged desktop all arrive here through the same player route.
+// The hangar picture is an authored still (assets/cinematics/menu_hangar_bg.jpg): the same bay and
+// hull the old live preview framed, pre-rendered at cutscene quality. A photograph that never
+// changes should not own a render loop.
 
 import { requestCodexTab } from './codex.js';
 import { coreText } from '../localizedCoreCopy.js';
 import { requestQuit } from '../quitGame.js';
 import { IS_DEV } from '../../core/devMode.js';
-import { NEW_GAME } from '../../data/newGameDefaults.js';
-import { createShipPreviewMount, dockInteriorIdForArchetype } from '../shipPreviewMount.js';
 import { el, words, settle, stamp, reducedMotion, cue } from '../kit/index.js';
 
 const LS_PREFIX = 'sf.save.';
-// Sheet: the hull drifts, it does not spin. ≈ 3.4° per second.
-const HULL_DRIFT_RAD_PER_S = 0.06;
-const HULL_ZOOM = 1.25;
-// The words wait for the hull, but never longer than this after the hangar's first frame (or after
-// the show, should the mount never frame at all). The sheet is silent on the wait; the value is
-// generous enough for a warm machine's hull and short enough that a slow one still gets its words.
-const HULL_ARRIVE_GRACE_MS = 3000;
+const MENU_BACKDROP_SRC = 'assets/cinematics/menu_hangar_bg.jpg';
 
 function getManager(ctx) {
   if (ctx && ctx.screenManager) return ctx.screenManager;
@@ -186,11 +181,6 @@ function objectiveSummaryText(meta) {
   return meta.objectiveSummary || meta.navObjectiveSummary || meta.missionSummary || meta.storySummary || '';
 }
 
-function motionReduced(ctx) {
-  const video = ctx && ctx.state && ctx.state.settings && ctx.state.settings.video;
-  return reducedMotion() || !!(video && video.motionReduce);
-}
-
 let refs = null;
 
 export const mainMenuScreen = {
@@ -201,11 +191,11 @@ export const mainMenuScreen = {
     rootEl.classList.add('k-screen', 'k-screen--stage');
     rootEl.dataset.kReady = '0';
 
-    // The hull in its hangar: the kit's world canvas, 150vw wide and shifted left so the mount's
-    // centred hull lands right of centre, behind the words (kit.css .k-world).
-    const canvas = el('canvas', 'k-world');
-    canvas.setAttribute('aria-hidden', 'true');
-    rootEl.appendChild(canvas);
+    // The hangar still: the kit's world canvas slot, filled with the authored plate instead of a
+    // live WebGL mount (kit.css .k-world; the --still variant frames the plate to the viewport).
+    const backdrop = el('div', 'k-world k-world--still');
+    backdrop.setAttribute('aria-hidden', 'true');
+    rootEl.appendChild(backdrop);
 
     const title = el('header', 'k-title');
     title.appendChild(el('h1', 'k-display k-t-name', 'SpaceFace'));
@@ -272,49 +262,18 @@ export const mainMenuScreen = {
     rootEl.appendChild(version);
 
     refs = {
-      root: rootEl, canvas, title, list, version, versionText, bCredits, saveSummary,
+      root: rootEl, backdrop, title, list, version, versionText, bCredits, saveSummary,
       bNew, bContinue, bLoad, bSettings, bSandbox, bQuit, bCrucible, bArchive,
       buttons: [bContinue, bNew, bLoad, bCrucible, bArchive, bSettings, bSandbox, bQuit].filter(Boolean),
     };
 
-    // The starter hull in the accepted hangar bay. Every archetype currently resolves to the
-    // reviewed neutral bay (shipPreviewMount DOCK_INTERIOR_BY_ARCHETYPE is empty), so the starter's
-    // home station needs no lookup here. No WebGL: the words still render over nothing painted.
-    this.mount3d = null;
-    try {
-      this.mount3d = createShipPreviewMount(canvas, {
-        dockId: dockInteriorIdForArchetype(null),
-        authoredShips: true,
-        authoredWarmup: true,
-        fastPreview: false,
-        allowFastFallback: false,
-        // The sheet: "the menu arrives after the hull". The mount's first frame is the hangar; the
-        // authored hull settles into it a moment later, and that is when the words stamp in.
-        // data-k-ready, the capture seam's "photograph me" signal, waits for the same moment: a
-        // frame of hangar with no body would be an honest DOM and a missing picture. If the hull is
-        // slow or never comes (asset error), the words are not held hostage: they arrive on the
-        // settle either way, or HULL_ARRIVE_GRACE_MS after the hangar, whichever is first.
-        onFirstFrame: () => {
-          this._hullFramed = true;
-          if (this.mount3d && this.mount3d.getAssetState() === 'authored') {
-            rootEl.dataset.kReady = '1';
-            this._arrive();
-            return;
-          }
-          this._armArriveGrace(HULL_ARRIVE_GRACE_MS);
-        },
-        onAssetSettled: ({ state }) => {
-          if (state === 'authored') rootEl.dataset.kReady = '1';
-          this._clearArriveGrace();
-          if (this._hullFramed) this._arrive();
-        },
-      });
-    } catch (e) {
-      rootEl.dataset.kReady = '0';
-      console.warn('[mainMenu] hull mount unavailable; the title renders without it', e);
-    }
-    this._onResize = () => { if (this.mount3d) try { this.mount3d.resize(); } catch (_) {} };
-    if (typeof window !== 'undefined') window.addEventListener('resize', this._onResize);
+    // data-k-ready is the capture seam's "photograph me" signal. The picture is a static asset:
+    // ready when it has loaded (or immediately when it has failed — the words never hang on it).
+    rootEl.dataset.kReady = '0';
+    const plate = new Image();
+    plate.onload = () => { rootEl.dataset.kReady = '1'; };
+    plate.onerror = () => { rootEl.dataset.kReady = '1'; };
+    plate.src = MENU_BACKDROP_SRC;
 
     // Continue follows the save store the moment it settles, not the next periodic refresh: the
     // shared-store sync and a completed save both re-read the index.
@@ -400,47 +359,21 @@ export const mainMenuScreen = {
     this._render(ctx);
     this._arrived = false;
     this._ctx = ctx;
-    if (this.mount3d) {
-      // Held until the hull: the title and the words sit at their pre-arrival state so the first
-      // thing painted over the hangar is the hull, not words that then blink out and stamp back in.
-      this._hold();
-      try {
-        this.mount3d.setActive(true);
-        this.mount3d.show(NEW_GAME.shipId, { rotating: false, fittings: NEW_GAME.fittedModules, isPlayer: true });
-        this.mount3d.setZoom(HULL_ZOOM);
-      } catch (e) {
-        console.warn('[mainMenu] hull show failed; the title renders without it', e);
-      }
-      // On a re-show the mount's first frame has already fired (the def id is unchanged). On the
-      // first show the words wait for the hull's settle, bounded by the grace either way.
-      if (this._hullFramed) this._arrive();
-      else this._armArriveGrace(HULL_ARRIVE_GRACE_MS);
-      this._startDrift(ctx);
-    } else {
-      // No hull: the words still arrive.
-      this._arrive();
-    }
+    // The still is already on the wall, so the words arrive at once (reduced motion included).
+    this._hold();
+    this._arrive();
     if (refs) {
       const target = refs.buttons.find((b) => !isDisabled(b));
       if (target) try { target.focus(); } catch (e) {}
     }
     this._loadVersion();
   },
-  onHide() {
-    this._stopDrift();
-    this._clearArriveGrace();
-    if (this.mount3d) try { this.mount3d.setActive(false); } catch (_) {}
-  },
+  onHide() {},
   refresh(ctx) { this._render(ctx); },
 
   dispose() {
-    this._stopDrift();
-    this._clearArriveGrace();
-    if (typeof window !== 'undefined' && this._onResize) window.removeEventListener('resize', this._onResize);
-    this._onResize = null;
     for (const off of this._offBus || []) { try { off(); } catch (_) {} }
     this._offBus = [];
-    if (this.mount3d) { try { this.mount3d.dispose(); } catch (_) {} this.mount3d = null; }
     refs = null;
   },
 
@@ -449,7 +382,6 @@ export const mainMenuScreen = {
   _arrive() {
     if (this._arrived || !refs) return;
     this._arrived = true;
-    this._clearArriveGrace();
     try {
       settle(refs.title, { from: 'top', state: 'title:arrive' });
       stamp(refs.list.children, { gap: 60, state: 'title:arrive' });
@@ -464,38 +396,6 @@ export const mainMenuScreen = {
     if (!refs || reducedMotion()) return;
     refs.title.classList.add('k-in', 'k-in--top');
     for (const li of refs.list.children) li.classList.add('k-in', 'k-in--stamp');
-  },
-  _armArriveGrace(ms) {
-    this._clearArriveGrace();
-    this._arriveGrace = setTimeout(() => { this._arriveGrace = null; this._arrive(); }, ms);
-  },
-  _clearArriveGrace() {
-    if (this._arriveGrace) clearTimeout(this._arriveGrace);
-    this._arriveGrace = null;
-  },
-
-  // The hull drifts ≈ 3.4° per second while the title is up; never under reduced motion.
-  _startDrift(ctx) {
-    this._stopDrift();
-    if (!this.mount3d || motionReduced(ctx) || typeof requestAnimationFrame !== 'function') {
-      if (this.mount3d) try { this.mount3d.frame(); } catch (_) {}
-      return;
-    }
-    let last = null;
-    const tick = (nowMs) => {
-      if (!this.mount3d) { this._driftRaf = 0; return; }
-      const now = Number.isFinite(nowMs) ? nowMs : performance.now();
-      const dt = last == null ? 0 : Math.min(0.1, Math.max(0, (now - last) / 1000));
-      last = now;
-      if (motionReduced(this._ctx)) { this._driftRaf = 0; return; }
-      try { this.mount3d.rotateBy(dt * HULL_DRIFT_RAD_PER_S); } catch (_) {}
-      this._driftRaf = requestAnimationFrame(tick);
-    };
-    this._driftRaf = requestAnimationFrame(tick);
-  },
-  _stopDrift() {
-    if (this._driftRaf && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(this._driftRaf);
-    this._driftRaf = 0;
   },
 
   // Version in fine print. The server serves the repo root, so package.json is reachable in the

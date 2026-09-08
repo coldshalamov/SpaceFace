@@ -113,6 +113,10 @@ html[data-k-temp="works"]    { /* Asteroid Works keeps its own law; the kit sets
   font-size: var(--k-fs-fine); color: var(--k-bone-38); }
 .k-corner { position: absolute; right: var(--k-margin); top: var(--k-margin); text-align: right; }
 .k-world { position: absolute; top: 0; left: -9vw; width: 150vw; height: 100%; z-index: -2; display: block; }
+/* The title screen's authored hangar plate: a 16:9 photograph, not a live scene, so it frames to
+   the viewport like a stage floor (no 150vw camera bleed) and covers any aspect by cropping. */
+.k-world--still { left: 0; width: 100%;
+  background: url('../assets/cinematics/menu_hangar_bg.jpg') center / cover no-repeat; }
 
 /* A kit screen replaces the legacy screen ground and the screen manager's fade (§11.1). */
 .screen.k-screen { transition: none; transform: none; }
