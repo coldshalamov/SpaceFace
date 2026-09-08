@@ -178,6 +178,7 @@ procedure:
 | "it's hitching / stuttering" | §8.4 → `--id PQ-129`; measure first, never cut quality |
 | "the mining board is unreadable / ugly" | `--id PQ-130` (board law) and `PQ-131` (authored objects); `PQ-185` accepts |
 | "the ships / objects look like toys" | §1B graphics doors → `PQ-050`, `PQ-045`, `PQ-136` |
+| "NPC ships look like another game / floating parts / reverse jets are needles" | §1B → [`design/program/VISUAL_WORLD_CLEANUP.md`](./design/program/VISUAL_WORLD_CLEANUP.md) (operator [`VISUAL_WORLD_CLEANUP_GOAL.txt`](./design/program/VISUAL_WORLD_CLEANUP_GOAL.txt)). Taste model chooses among options. Hitch stays frozen. |
 | "the world feels dead / nobody reacts" | §13C `PQ-138`, then §15 `PQ-149`–`PQ-151` |
 | "I can't tell what anything is" | `PQ-161` readable at zoom, `PQ-153` sectors, `PQ-162` station |
 | "the sound is bad / there's no music" | `PQ-158` (after the ALPHA gate) |
@@ -252,6 +253,10 @@ units; open the door below only when the owner names the campaign.
   technique contract, the review workflow and the one-ship-at-a-time rule. Hitch stays frozen.
   A factory loft with boxes, a zoomed gray crop, or a seat nobody can see from the chase camera
   does not close a ship.
+- **Live-route visual cleanup (mixed-game NPCs, floating parts, needle retros)** →
+  [`design/program/VISUAL_WORLD_CLEANUP.md`](./design/program/VISUAL_WORLD_CLEANUP.md). Taste-led.
+  Do not pre-solve the look. Hitch stays frozen. `PQ-190` remains the style-slice owner;
+  this door is the opening flyby the player already has.
 
 
 ### 1B.1 Retained campaign laws (verbatim from the previous front door)

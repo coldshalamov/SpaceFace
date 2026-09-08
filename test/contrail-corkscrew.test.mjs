@@ -5,18 +5,40 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 
 import {
-  ContrailTrail, spinHelixOffset, SPIN_HELIX_AMP_WU, SPIN_HELIX_REF_RAD_S, MIN_STEP_WU,
+  ContrailTrail,
+  spinHelixOffset,
+  resolveContrailSpin,
+  SPIN_HELIX_AMP_WU,
+  SPIN_HELIX_REF_RAD_S,
+  SPIN_HELIX_HELM_DEADZONE_RAD_S,
+  MIN_STEP_WU,
 } from '../src/render/thruster/ribbon/contrailTrail.js';
 
-test('the helix offset is zero at rest, grows with spin, and saturates at a hard tumble', () => {
+const HELM_YAW_CAP = 3.8;
+const COAST_HELM_YAW_MULT = 1.2;
+const MAX_HELM_YAW = HELM_YAW_CAP * COAST_HELM_YAW_MULT;
+
+test('the helix offset is zero at rest and for every legal helm yaw, and saturates at a hard tumble', () => {
   assert.equal(spinHelixOffset(0, 1.0), 0, 'a ship that is not spinning leaves the trail exactly where it was');
   assert.equal(spinHelixOffset(NaN, 1.0), 0);
-  const half = Math.abs(spinHelixOffset(SPIN_HELIX_REF_RAD_S / 2, Math.PI / 2));
-  const full = Math.abs(spinHelixOffset(SPIN_HELIX_REF_RAD_S, Math.PI / 2));
+  assert.ok(SPIN_HELIX_HELM_DEADZONE_RAD_S > MAX_HELM_YAW,
+    `deadzone ${SPIN_HELIX_HELM_DEADZONE_RAD_S} must sit above coast-helm yaw ${MAX_HELM_YAW}`);
+  for (const rate of [0.5, 1, SPIN_HELIX_REF_RAD_S, HELM_YAW_CAP, MAX_HELM_YAW]) {
+    assert.equal(spinHelixOffset(rate, Math.PI / 2), 0, `helm rate ${rate} must not corkscrew`);
+    assert.equal(spinHelixOffset(-rate, Math.PI / 2), 0, `opposite helm rate ${rate} must not corkscrew`);
+  }
+  const tumble = Math.abs(spinHelixOffset(SPIN_HELIX_HELM_DEADZONE_RAD_S + 0.5, Math.PI / 2));
   const over = Math.abs(spinHelixOffset(SPIN_HELIX_REF_RAD_S * 5, Math.PI / 2));
-  assert.ok(half > 0 && half < full, 'a slower spin draws a narrower helix');
-  assert.equal(full, SPIN_HELIX_AMP_WU);
+  assert.equal(tumble, SPIN_HELIX_AMP_WU, 'a rate just above helm is already a violent tumble');
   assert.equal(over, SPIN_HELIX_AMP_WU, 'a wild tumble does not fling the trail off the screen');
+});
+
+test('only tumble/drift presentation may forward owner.angVel into the helix', () => {
+  assert.equal(resolveContrailSpin({ angVel: 2.4 }), 0);
+  assert.equal(resolveContrailSpin({ angVel: 2.4, presentation: { tumble: { mode: 'idle' } } }), 0);
+  assert.equal(resolveContrailSpin({ angVel: 12, presentation: { tumble: { mode: 'tumbling' } } }), 12);
+  assert.equal(resolveContrailSpin({ angVel: -8, presentation: { tumble: { mode: 'drifting' } } }), -8);
+  assert.equal(resolveContrailSpin(null), 0);
 });
 
 function flyStraight(trail, { spin, ticks = 240, speed = 60, dt = 1 / 60 }) {

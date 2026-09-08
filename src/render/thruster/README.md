@@ -70,6 +70,10 @@ Tests in `test/plasma-stream-thruster.test.mjs` enforce these semantics directly
 - **The throttle moves live-plume length, heat and reach.** It does not rewrite recorded history.
 - **Sheets must be wide enough to overlap.** Narrow sheets read as bright wires with gaps between them; overlap builds a volume.
 - **One authority for “is the drive firing”**: `EMIT_FLOOR` in `ribbon/driveEnvelope.js`.
+- **Ordinary helm yaw may not move the jet or its history off the bell.** The tumble corkscrew
+  (`spinHelixOffset`) is dead below 4.75 rad/s and `resolveContrailSpin` only forwards
+  tumble/drift presentation. Arrow-key turns are not tumble. The live ribbon stays on the
+  current socket; recorded samples stay on the positions that socket actually occupied.
 - `recipes/plasmaStreamRecipe.js` — live recipe id `player_liquid_plasma_v26.*`
 - Wired from `src/render/vfx.js` (player plasmaStream, not NPC card plume)
 

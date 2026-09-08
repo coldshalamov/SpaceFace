@@ -10,6 +10,7 @@ a dated sprint prompt, an old automation script, or a runtime folder.
 | Portrait/contact art | `assets/portraits/AGENTS.md` and its canonical character/capture direction |
 | Concept or generated construction/material reference | `assets/concept/AGENTS.md`; component handoff contract in `AGENT_PROMPTS.md` § E |
 | Cinematic, key art, runtime VFX, compositor, or presentation imagery | `VFX_TECHNIQUE_STANDARD.md` first (bans the blurry-square stand-in; distant background stars are the only exception), then `design/graphics-sprints/VISUAL_ITERATION_PROTOCOL.md`, then the owning `src/render/AGENTS.md`, `src/ui/AGENTS.md`, or asset registry. Live cheap-card instances: `SOFT_CARD_INVENTORY.json` |
+| Live-route mixed-game NPCs, floating hull parts, or needle reverse jets | `design/program/VISUAL_WORLD_CLEANUP.md` (operator `VISUAL_WORLD_CLEANUP_GOAL.txt`). Taste-led; Hitch frozen; do not execute a pixel recipe |
 | Repository-wide inventory/prioritization | `design/graphics-sprints/VISUAL_ASSET_CATALOG.md` plus live manifests/runtime maps |
 
 Across every class:

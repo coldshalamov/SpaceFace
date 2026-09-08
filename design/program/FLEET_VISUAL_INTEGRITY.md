@@ -11,6 +11,9 @@ This packet owns the cross-cutting proof. It does not replace the visual quality
 `src/render/partsLibrary.js`. It makes those systems converge on one non-negotiable player result:
 **every live visual is complete when published and spatially continuous while visible.**
 
+Live-route mixed-game hulls, floating parts, and needle reverse jets are the taste campaign
+[`VISUAL_WORLD_CLEANUP.md`](./VISUAL_WORLD_CLEANUP.md), not a second integrity census.
+
 ## Why this packet exists
 
 The repository already had several correct pieces, but no single gate joined them:

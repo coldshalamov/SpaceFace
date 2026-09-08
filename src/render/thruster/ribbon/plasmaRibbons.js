@@ -578,6 +578,7 @@ export class PlasmaRibbonPlume {
   }
 
   inspect() {
+    const nozzle = this.material.uniforms.uNozzlePos.value;
     return {
       construction: 'swept-ribbon-sheets',
       element: 'plume',
@@ -586,6 +587,9 @@ export class PlasmaRibbonPlume {
       // Nozzle-local and short by construction. A plume that carries flight history is the mistake
       // this split exists to prevent, so there is deliberately no history here to report.
       jetLength: this.material.uniforms.uJetLength.value,
+      nozzleX: nozzle.x,
+      nozzleY: nozzle.y,
+      nozzleZ: nozzle.z,
       animated: 'travelling-wave',
       grazing: true,
       visible: !!this.mesh.visible,

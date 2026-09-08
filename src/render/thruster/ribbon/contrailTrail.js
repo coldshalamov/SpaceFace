@@ -47,15 +47,35 @@ export const MIN_STEP_WU = 0.12;
  * screen has the period of the spin a viewer sees. Only the RECORDED point moves; the nozzle that
  * gates sampling (B14) and the plume root are untouched, so a corkscrew never puts the mouth off
  * the bell. Brightness already follows drive (each sample records the drive it was born with).
+ *
+ * Helm yaw is not tumble. Player turn is capped at 3.8 rad/s (4.56 with coast helm). The old
+ * 2 rad/s saturation sat *below* that cap, so pressing either turn key fully opened a 6 WU
+ * lateral shove. Opposite yaw signs also flip the flown-line perpendicular, so both arrows
+ * offset the same world-X / screen-right way from a +X rest heading. Ordinary flight must
+ * record the bell itself; only a real tumble/drift may corkscrew.
  */
 export const SPIN_HELIX_REF_RAD_S = 2.0;
 export const SPIN_HELIX_AMP_WU = 6.0;
+/** Above `PLAYER_TURN_RATE_CAP * COAST_HELM_YAW_MULT` (3.8 * 1.2 = 4.56). */
+export const SPIN_HELIX_HELM_DEADZONE_RAD_S = 4.75;
 
 /** Lateral offset (WU) of the recorded point for a spin rate and the accumulated phase. Pure. */
 export function spinHelixOffset(spin, phase) {
   const s = Number.isFinite(spin) ? Math.abs(spin) : 0;
+  if (!(s > SPIN_HELIX_HELM_DEADZONE_RAD_S)) return 0;
   const amp = Math.min(1, s / SPIN_HELIX_REF_RAD_S) * SPIN_HELIX_AMP_WU;
   return amp > 0 ? amp * Math.sin(phase) : 0;
+}
+
+/**
+ * Spin the contrail helix is allowed to see. Ordinary owner.angVel is helm yaw and must stay 0.
+ * Tumble/drift presentation is the only live caller that may pass a rate through.
+ */
+export function resolveContrailSpin(owner) {
+  if (!owner || !Number.isFinite(owner.angVel)) return 0;
+  const mode = owner.presentation && owner.presentation.tumble && owner.presentation.tumble.mode;
+  if (mode !== 'tumbling' && mode !== 'drifting') return 0;
+  return owner.angVel;
 }
 /** A teleport/sector jump starts another disconnected history segment; it never erases the old one. */
 export const DISCONTINUITY_WU = 160;

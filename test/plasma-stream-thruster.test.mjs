@@ -446,6 +446,42 @@ test('idle glows and speed contributes a bounded share throttle cannot swallow',
   assert.ok(resolveDriveTarget(0, 1) < 0.5, 'coasting is residual heat, not full burn');
 });
 
+test('ordinary helm yaw keeps the live jet and its history on the yawing nozzle', () => {
+  const scene = new THREE.Scene();
+  const stream = new PlasmaStreamSystem(THREE, PLAYER_PLASMA_STREAM_RECIPE);
+  stream.attach(scene);
+  const sock = { x: -14, y: 0, z: 0, ax: 1, ay: 0, az: 0 };
+  const owner = { id: 'player', angVel: 2.4 };
+  const aftR = 14;
+
+  for (const sign of [1, -1]) {
+    stream.reset();
+    owner.angVel = 2.4 * sign;
+    for (let i = 0; i < 90; i++) {
+      const rot = sign * i * (2.4 / 60);
+      sock.x = -aftR * Math.cos(rot);
+      sock.z = -aftR * Math.sin(rot);
+      sock.ax = Math.cos(rot);
+      sock.az = Math.sin(rot);
+      stream.update(1 / 60, [sock], THRUST, { reducedMotion: false }, owner);
+
+      const jet = stream.inspect().ribbon;
+      assert.ok(close(jet.nozzleX, sock.x), `live jet x left the bell at frame ${i} (turn ${sign})`);
+      assert.ok(close(jet.nozzleZ, sock.z), `live jet z left the bell at frame ${i} (turn ${sign})`);
+
+      const samples = stream._contrail.samplePositions();
+      for (let s = 0; s < samples.length; s++) {
+        const r = Math.hypot(samples[s].x, samples[s].z);
+        assert.ok(
+          Math.abs(r - aftR) < 0.35,
+          `helm yaw shoved history off the bell: sample ${s} radius ${r.toFixed(2)} (turn ${sign})`,
+        );
+      }
+    }
+  }
+  stream.dispose();
+});
+
 test('dash is a one-shot supernova with a long cooling tail', () => {
   assert.equal(sampleDashFlare(-1), 0);
   assert.ok(sampleDashFlare(0.05) > 0.9);

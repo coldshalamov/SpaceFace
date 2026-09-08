@@ -579,7 +579,7 @@
     "check:perf-counters": "node --test test/perf-counters.test.mjs",
     "probe:shader-timeline": "node scripts/probe-shader-compile-timeline.mjs",
     "check:thruster:lookdev": "node scripts/check-thruster-lookdev.mjs",
-    "check:thruster:plasma-unit": "node --test test/plasma-stream-thruster.test.mjs",
+    "check:thruster:plasma-unit": "node --test test/plasma-stream-thruster.test.mjs test/contrail-corkscrew.test.mjs",
     "check:screens:overflow": "node scripts/probe-screen-overflow.mjs",
     "check:station:overflow": "node scripts/probe-station-overflow.mjs",
     "check:station:tabstate": "node scripts/probe-station-tab-state.mjs",

@@ -346,3 +346,15 @@ documented continuation for subsequent agents.
 
 The final `PQ-045.human-review` is an independent-agent review task. Use the candidate-bound evidence,
 record KEEP or REVISE with the reviewing thread identity, and do not wait for a human verdict.
+
+### 10. Live-route visual cleanup (taste model)
+
+Copy `VISUAL_WORLD_CLEANUP_GOAL.txt` as the whole prompt. Do not paraphrase it into a mesh or
+shader recipe. Claude Opus 5 max (or equal) owns the look; the controller reviews stills.
+
+```text
+This is a campaign: make the Kessler / Helios opening look like one game, and make reverse thrust
+read as a jet. Copy design/program/VISUAL_WORLD_CLEANUP_GOAL.txt as the prompt. Read
+design/program/VISUAL_WORLD_CLEANUP.md first. Name your options before you edit. Hitch stays frozen.
+Do not mark program-queue.json.
+```
