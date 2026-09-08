@@ -1,93 +1,49 @@
 # assets/ agent orientation
 
-This file routes asset work. It deliberately avoids hand-maintained inventories: manifests, runtime
-maps, report commands, and current player-route captures are the status authority.
+Routes asset work. Manifests, runtime maps, report commands, and current player-route captures are
+the status authority — not copied inventories.
 
-## 0. Start by asset type
+## Start by asset type
 
 | Work | Read |
 |---|---|
-| Any player-facing visual asset | `docs/visual-assets/README.md` first; follow its asset-class route |
+| Any player-facing visual asset | `docs/visual-assets/README.md` first |
 | Ship, station, gate, place, Blender/export | `assets/ships/AGENTS.md` |
-| Craft / acceptance (G0–G7, states, evidence) | `docs/visual-assets/README.md` |
-| Any 3D form or surfacing, including new assets and remasters | `.grok/skills/spaceface-blender-material-truth/SKILL.md` **and** `docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md`; Tier C/D may group repeated manufactured families |
+| Craft / acceptance (G0–G7) | `docs/visual-assets/README.md` |
+| Any 3D form or surfacing | `.grok/skills/spaceface-blender-material-truth/SKILL.md` **and** `docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md`; complete the **preflight**. A technical receipt cannot close G1/G2/G4. A **component-scoped** pass never implies a **whole-asset** pass. |
 | Station-bar portraits | `assets/portraits/AGENTS.md` |
 | Concept/reference art | `assets/concept/AGENTS.md` |
-| Visual program and priorities | `design/graphics-sprints/README.md` and `design/program/` |
 | Runtime render integration | `src/render/AGENTS.md` |
 | Recurring load/fallback failure | `docs/COMMON_BUGS.md` asset sections |
 
-## 1. Asset classes and truth
+## Classes and truth
 
 - **Runtime:** referenced by live source and included by the bundle/release path.
-- **Authoring:** editable source used to produce runtime output; not loaded directly in default play.
-- **Reference:** mood, concept, or donor material; never wire directly unless promoted through the
-  runtime contract.
-- **Generated evidence:** captures, reports, logs, and intermediate outputs; not source or policy.
-- **Procedural/code-native:** intentionally built at runtime. This is a technique, not a quality
-  requirement or substitute for missing authored hero assets.
+- **Authoring:** editable source used to produce runtime output.
+- **Reference:** mood/concept/donor; never wire unless promoted.
+- **Generated evidence:** captures and reports; not source or policy.
+- **Procedural/code-native:** a technique, not a substitute for missing authored hero assets.
 
-The current bundle roots are defined by `scripts/build-bundle.mjs` and `package.json`. Do not copy a
-folder list into new policy; inspect those owners.
-
-### 1.1 Sources of truth
+Bundle roots are defined by `scripts/build-bundle.mjs` and `package.json`. Do not copy a folder list
+into policy.
 
 | Question | Authority |
 |---|---|
-| Is a ship/place candidate accepted or blocked? | Exact entry in `assets/ships/parts/parts_manifest.json` |
-| Was it promoted to release? | Generated release manifest and release build report |
-| Can runtime select it? | Exact maps/registries in `src/render/partsLibrary.js` |
-| Does it load and validate? | Asset diagnostics plus `check:assets:live` / `check:asset-status` |
-| Is it bundled and reachable? | `check:asset-reachability` |
-| Does it look good in the game? | Current normal-route captures and independent review |
-| Is third-party material usable? | Provenance record, origin license, hashes, and adaptation notes |
+| Accepted or blocked? | Exact entry in `assets/ships/parts/parts_manifest.json` |
+| Promoted to release? | Generated release manifest and release build report |
+| Can runtime select it? | Exact maps in `src/render/partsLibrary.js` |
+| Load / bundle / look right? | `check:assets:live`, `check:asset-status`, `check:asset-reachability`, current normal-route captures |
+| Third-party usable? | Provenance, license, hashes, adaptation notes |
 
-Never infer validity or quality from filename, family name, age, file size, triangle count, or an old
-queue sentence.
+Never infer validity from filename, family, age, size, triangle count, or an old queue sentence.
 
-## 2. Ship and place routing
+## Promotion and coordination
 
-Use `assets/ships/AGENTS.md` for the authoring/release/runtime pipeline.
+Do not impose global triangle/texture/technique quotas. Optimize mesh roles, batching, LOD,
+compression, culling, and residency — not by replacing authored quality with primitives. Coordinate
+with a current lock/build/Blender process on the same output; a historical lane is not ownership.
+Never hand-edit generated release metadata. A visible entity does not prove the authored asset
+loaded — inspect diagnostics.
 
-### 2.1 Candidate status
-
-Status is per exact manifest ID. Inspect the manifest and runtime maps; do not copy a current
-accepted/blocked roster into policy.
-
-## 3. Promotion, quality, and performance
-
-- Do not impose global triangle, texture, material, technique, iteration, or deficiency quotas.
-- Choose geometry/texture/LOD from screen-space contribution and measured residency/draw cost.
-- Optimize through sensible mesh roles, batching/instancing, LOD/HLOD, compression, culling, and
-  residency. Do not solve performance by replacing authored quality with primitives.
-- Require coherent silhouette, materials, scale, sockets, transforms, provenance, reproducible
-  source, and player-camera evidence appropriate to the asset's role.
-- A 3D form/surfacing pass is not allowed to wait for a material-truth complaint. Load the focused
-  skill and complete its proportional material-truth preflight before authoring, classify changed
-  camera-visible zones as `billed`, `retained_reviewed`, `outside_supported_view`, or `blocked`,
-  repair the earliest failed form/construction gate, and keep exact-source evidence fail-closed.
-- A technical receipt may mark `evidence_ready`; it cannot close G1, G2, or G4. A component-scoped
-  pass never implies a whole-asset pass. Whole-asset G1/G2/G4 requires a hash-bound visual review of
-  original-resolution matched views, including dominant inherited/retained zones; missing review
-  keeps the gate open.
-
-### 3.1 Coordination
-
-- Treat active release locks/building directories, authoring locks, Blender/export processes, and
-  concurrent edits as current ownership signals. Coordinate before touching the same output.
-- A historical lane assignment is not permanent ownership.
-- Never hand-edit generated release metadata or promote over a live build.
-- The runtime asset path may retain a procedural fallback on load failure; inspect diagnostics rather
-  than assuming a visible entity proves the authored asset loaded.
-
-## 4. UI placement
-
-- Flight HUD remains non-diegetic; do not wire helmet/visor pilot art as HUD framing.
-- Station bar/comms may use the portrait registry.
-- Concept boards and labeled sheets are reference material, not runtime textures.
-
-## 5. Verification
-
-Use the narrow set relevant to the change, normally including asset status, reachability, live load,
-visual stability, and a representative normal-route capture. Run the release build only when the task
-owns promotion and no conflicting lock is active.
+Flight HUD stays non-diegetic. Station bar/comms may use the portrait registry. Concept boards are
+not runtime textures.
