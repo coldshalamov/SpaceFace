@@ -17,6 +17,8 @@ import {
   buildProofInputTape,
   censusAround,
   classifyReceipt,
+  installProofAimPassthrough,
+  syncTapeKeysToInput,
   emptyBeatTimes,
   formatBeatTable,
   isCargoPickup,
@@ -173,6 +175,21 @@ function tapeKeyDownAt(tape, code, tick) {
   }
   return down;
 }
+
+test('PQ-141.00 tape keys reach the live input bag and aim survives a headless raycast', () => {
+  const inputSys = { _keys: { KeyW: true }, helpers: {} };
+  const state = { input: { aimWorld: { x: 12, z: -4 } } };
+  const tape = buildProofInputTape();
+  const keys = {};
+  for (const event of tape.events) {
+    if (event.tick <= 300 && event.code) keys[event.code] = !!event.pressed;
+  }
+  assert.equal(syncTapeKeysToInput(inputSys, keys), true);
+  assert.equal(inputSys._keys.KeyF, true);
+  assert.equal(inputSys._keys.KeyW, false);
+  assert.equal(installProofAimPassthrough(inputSys, state), true);
+  assert.deepEqual(inputSys.helpers.raycastToPlane(), { x: 12, z: -4 });
+});
 
 test('PQ-141.00 Massline (KeyF) is held during both cargo-grab aim windows', () => {
   const tape = buildProofInputTape();

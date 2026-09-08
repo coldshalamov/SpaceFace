@@ -377,6 +377,34 @@ function pointAt(state, player, target) {
   state.input.aimWorld = { x: target.pos.x, z: target.pos.z };
 }
 
+// Node input.js owns this._keys and rebuilds tetherFire from them. The tape driver keeps a
+// private keybag; without this copy, KeyF never becomes the Massline and grab/WANTED stay dark.
+export function syncTapeKeysToInput(inputSys, tapeKeys) {
+  if (!inputSys || !inputSys._keys) return false;
+  const live = inputSys._keys;
+  const next = tapeKeys && typeof tapeKeys === 'object' ? tapeKeys : {};
+  for (const code of Object.keys(live)) {
+    if (!Object.prototype.hasOwnProperty.call(next, code)) live[code] = false;
+  }
+  for (const code of Object.keys(next)) {
+    live[code] = !!next[code];
+  }
+  return true;
+}
+
+// Headless input.update raycasts a dead NDC and writes aimWorld to (0,0). Return the tape's
+// last pointAt so a latch aims at the pod, not the sector origin.
+export function installProofAimPassthrough(inputSys, state) {
+  if (!inputSys) return false;
+  const helpers = inputSys.helpers || (inputSys.helpers = {});
+  helpers.raycastToPlane = function proofAimPassthrough() {
+    const aim = state && state.input && state.input.aimWorld;
+    if (aim && Number.isFinite(aim.x) && Number.isFinite(aim.z)) return { x: aim.x, z: aim.z };
+    return { x: 0, z: 0 };
+  };
+  return true;
+}
+
 function emptyCensus() {
   return { ships: 0, workers: 0, haulers: 0, pirates: 0, patrols: 0, cargoPods: 0 };
 }
@@ -641,6 +669,7 @@ async function bootCeresPocket(seed, options = {}) {
   state.settings.gameplay.flightBackend = 'v3';
   state.settings.gameplay.aiBackend = 'sg06-tactical';
   if (!state.input.actions) state.input.actions = { brake: false, autopursuit: false };
+  installProofAimPassthrough(runtime.getSystem('input'), state);
 
   const player = runtime.spawn(makeShipEntitySpec(PROOF_PLAYER_HULL_ID, {
     isPlayer: true,
@@ -799,6 +828,7 @@ export async function runProofSixtySeconds(seed, options = {}) {
       }
       const tether = !!(player && player.tether && player.tether.active);
       driver.apply(state, tick, SIM_DT, { playerEntity: player, tetherAttached: tether });
+      syncTapeKeysToInput(runtime.getSystem('input'), driver.snapshotKeys());
       const aim = aimTargetForTick(state, player, tick);
       pointAt(state, player, aim);
       runtime.step(SIM_DT);
