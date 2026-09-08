@@ -115,6 +115,8 @@ const CERES_ACTIVITY_AMBUSH_ZONE_ID = 'zone_ceres_ambush';
 const CERES_ACTIVITY_AMBUSH_ENCOUNTER_ID = 'ceres:activity:throughline-ambush';
 const CERES_ACTIVITY_AMBUSH_INNER_R = 125;
 const CERES_ACTIVITY_AMBUSH_OUTER_R = 165;
+const CERES_ACTIVITY_AMBUSH_PREY_R = 900;
+const CERES_ACTIVITY_AMBUSH_HAULER_SLOT = 'ceres_ambush_loaded_hauler';
 const CERES_ACTIVITY_AMBUSH_MARKER = 'ceresActivityAmbushPhase';
 const CERES_ACTIVITY_AMBUSH_RESTORE = 'ceresActivityAmbushRestore';
 
@@ -214,6 +216,7 @@ export const encounterDirector = {
     this._accrue(dir, state, step);
     if (!isDocked(state) && !isTutorialActive(state)) this._pump(dir, state, now);
     this._tickLive(dir, state, now);
+    this._springCeresActivityAmbushOnPrey();
   },
 
   // ═══ SCHEDULING ═══════════════════════════════════════════════════════════════════════════════
@@ -428,9 +431,17 @@ export const encounterDirector = {
       defer();
     };
 
-    if (encounterPacingBlockReason(dir, state, shape, now)) return defer();
-
     const ceresActivityAmbush = isCeresActivityAmbushItem(item);
+    const preyInReach = ceresActivityAmbush && this._ceresAmbushPreyInReach();
+    const pacingReason = encounterPacingBlockReason(dir, state, shape, now);
+    // The authored Throughline crossing is still a normal paced ambush when only the player is in
+    // the killbox. When the loaded pocket hauler is already inside the snare, the sector-entry
+    // breath and pressure cost are what used to hold the cohort on hold-fire until the prey had
+    // already left the lane.
+    if (pacingReason && !(preyInReach && (pacingReason === 'pacing_gap' || pacingReason === 'pressure'))) {
+      return defer();
+    }
+
     // The R5 Ceres squad is a normal paced ambush_snare in a tier-1 authored pocket. Its authored
     // crossing is the eligibility proof for only the catalog's generic min-sector-tier rule. Every
     // other current/future authored gate remains enforced through the same fail-closed evaluator.
@@ -1062,8 +1073,10 @@ export const encounterDirector = {
         passive: !!passive,
       };
       if (!passive && live.data && live.data.ceresActivityAmbush === true) {
+        const prey = findCeresLoadedHauler(this.state);
         const player = this.player();
-        if (player && player.id != null) spawn.targetId = player.id;
+        if (prey && prey.id != null) spawn.targetId = prey.id;
+        else if (player && player.id != null) spawn.targetId = player.id;
       }
       setEntityDoctrine(e, {
         activity: activityForEncounterSpawn(live, spawn, { now: this.now(), passive: !!passive }),
@@ -1589,6 +1602,7 @@ export const encounterDirector = {
     for (const entity of cohort) parkCeresActivityAmbushEntity(entity, sampler, this.now());
 
     if (phase === 'queued') this._queueCeresActivityAmbush({ preservePhase: true });
+    else if (this._ceresAmbushActorInKillbox(player)) this._queueCeresActivityAmbush();
     return true;
   },
 
@@ -1600,16 +1614,49 @@ export const encounterDirector = {
     const player = this.player();
     if (!sampler || !player || !player.pos) return;
     const current = { x: player.pos.x, z: player.pos.z };
+    const anchor = ceresActivityAmbushAnchorGlobal();
+    const inKillbox = this._ceresAmbushActorInKillbox(player);
     if (!sampler.lastPos) {
       sampler.lastPos = current;
+      if (inKillbox) this._queueCeresActivityAmbush();
       return;
     }
     const previous = sampler.lastPos;
     sampler.lastPos = current;
-    if (previous.x === current.x && previous.z === current.z) return;
-    const anchor = ceresActivityAmbushAnchorGlobal();
-    if (!segmentCrossesCeresAmbushBand(previous, current, anchor)) return;
-    this._queueCeresActivityAmbush();
+    if (inKillbox || segmentCrossesCeresAmbushBand(previous, current, anchor)) {
+      this._queueCeresActivityAmbush();
+    }
+  },
+
+  _ceresAmbushActorInKillbox(entity) {
+    if (!entity || !entity.pos) return false;
+    return ceresAmbushRangeBand(entity.pos, ceresActivityAmbushAnchorGlobal()) !== 'outer';
+  },
+
+  _ceresAmbushPreyInReach() {
+    const hauler = findCeresLoadedHauler(this.state);
+    if (!hauler || !hauler.pos) return false;
+    const cohort = this._ceresActivityAmbushCohort();
+    const r2 = CERES_ACTIVITY_AMBUSH_PREY_R * CERES_ACTIVITY_AMBUSH_PREY_R;
+    if (!cohort.length) return this._ceresAmbushActorInKillbox(hauler);
+    for (const pirate of cohort) {
+      if (!pirate || !pirate.pos) continue;
+      const dx = hauler.pos.x - pirate.pos.x;
+      const dz = hauler.pos.z - pirate.pos.z;
+      if (dx * dx + dz * dz <= r2) return true;
+    }
+    return false;
+  },
+
+  _springCeresActivityAmbushOnPrey() {
+    const dir = ensureDirectorState(this.state);
+    const live = dir.live[CERES_ACTIVITY_AMBUSH_ENCOUNTER_ID];
+    if (!live || live.phase !== 'offer') return;
+    if (!(live.data && live.data.ceresActivityAmbush === true)) return;
+    if (!this._ceresAmbushPreyInReach()) return;
+    this.setPassive(live, false);
+    live.phase = 'conflict';
+    this.say(live, 'alert', 'ambush_spring');
   },
 
   _queueCeresActivityAmbush(options = {}) {
@@ -1697,6 +1744,18 @@ export const encounterDirector = {
 
 function ceresActivityAmbushAnchorGlobal() {
   return sectorLocalToGlobalForSector(ZONE_CERES_THROUGHLINE.center, CERES_ACTIVITY_SECTOR_ID);
+}
+
+function findCeresLoadedHauler(state) {
+  const list = state && state.entityList;
+  if (!Array.isArray(list)) return null;
+  for (const entity of list) {
+    if (!entity || entity.alive === false || entity.type !== 'ship') continue;
+    if (entity.data && entity.data.activityActorSlotId === CERES_ACTIVITY_AMBUSH_HAULER_SLOT) {
+      return entity;
+    }
+  }
+  return null;
 }
 
 function isCeresActivityAmbushItem(item) {
