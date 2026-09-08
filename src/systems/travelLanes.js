@@ -36,9 +36,11 @@
 //     (`ambush_snare`, whose authored `zoneTypes` literally include `ambush_lane`) and an anchor.
 //
 //   • The sling ring. `queuePhysicsImpulse` is the same membrane dockingCorridor / fields already
-//     use (a·mass·dt, never a velocity write). The drive ceiling is lifted so the governor can
-//     hold 2× cruise; on exit we seed `travelDrive.cap` while the latch is not Engaged so the
-//     kernel's decay branch reports `physicsEarnedMomentum` and the speed is kept, not confiscated.
+//     use (a·mass·dt, never a velocity write). Aligned bodies get along-axis accel and a ceiling
+//     lift so the governor can hold 2× cruise; on that exit we seed `travelDrive.cap` while the
+//     latch is not Engaged so the kernel's decay branch reports `physicsEarnedMomentum` and the
+//     speed is kept, not confiscated. Off-axis bodies get a perpendicular kick (PQ-028.01) that
+//     turns a thrown light into a long-range projectile — still an impulse, never a pos write.
 //
 // ─── Why this system remains a read model, not a save writer ─────────────────────────────────────
 //
@@ -101,7 +103,8 @@ function finite(v, fallback = 0) {
 // A short finite cylinder on the station_ceres Helios-approach corridor. Inside means the tube,
 // not a sphere around the ring. Aligned means forward along the axis. Geometry is authored
 // here; the catapult applies along-axis impulse and a drive-ceiling lift to aligned bodies
-// inside the cylinder. It does not write player.pos and does not multiply the Helios–Tethys lane.
+// inside the cylinder. Off-axis bodies are flung on a perpendicular throw. It does not write
+// player.pos and does not multiply the Helios–Tethys lane.
 
 const STATION_CERES_LOCAL = Object.freeze({ x: -1100, z: 620 });
 const CERES_HELIOS_GATE_LOCAL = Object.freeze({ x: 2866, z: -1910 });
@@ -114,6 +117,10 @@ const SLING_ALIGN_DOT_MIN = 0.85;
 const SLING_EXIT_MULT = 2;
 /** Along-axis catapult acceleration inside the tube (WU/s²). Impulse is a·mass·dt. */
 const SLING_ACCEL_WU_S2 = 240;
+/** Off-axis throw: exit at least 3× the hull's governed combat cruise. */
+const SLING_THROW_EXIT_MULT = 3;
+/** Sustain accel while an off-axis body is still below the throw bar. */
+const SLING_THROW_ACCEL_WU_S2 = 720;
 /** Ramp override so a 96 WU tube can unlock the 2× ceiling before the ship exits. */
 const SLING_RAMP_MULT = 24;
 const SLING_HAULER_SPAWN_RANGE_WU = 4200;
@@ -133,6 +140,11 @@ const CERES_SLING_AXIS = Object.freeze(unitXZ(
   CERES_HELIOS_GATE_LOCAL.z - STATION_CERES_LOCAL.z,
 ));
 
+const CERES_SLING_THROW_PERP = Object.freeze({
+  x: -CERES_SLING_AXIS.z,
+  z: CERES_SLING_AXIS.x,
+});
+
 const CERES_SLING_LOCAL_POS = Object.freeze({
   x: STATION_CERES_LOCAL.x + CERES_SLING_AXIS.x * SLING_RING_STANDOFF_WU,
   z: STATION_CERES_LOCAL.z + CERES_SLING_AXIS.z * SLING_RING_STANDOFF_WU,
@@ -144,6 +156,7 @@ export const CERES_SLING_RING = Object.freeze({
   localPos: CERES_SLING_LOCAL_POS,
   globalPos: Object.freeze(sectorLocalToGlobalForSector(CERES_SLING_LOCAL_POS, 'sector_ceres_belt')),
   axis: CERES_SLING_AXIS,
+  throwPerp: CERES_SLING_THROW_PERP,
   length: SLING_RING_LENGTH_WU,
   radius: SLING_RING_RADIUS_WU,
 });
@@ -332,6 +345,8 @@ export const travelLanes = {
     this._trafficIds = [];         // entity ids, index-aligned with the deterministic roster
     this._slingHaulerId = null;
     this._slingPlayerActive = false;
+    this._slingThrownIds = new Set();
+    this._throwDirScratch = { x: 0, z: 0 };
     this._slingHaulerHeading = Math.atan2(CERES_SLING_AXIS.z, CERES_SLING_AXIS.x);
     this._lastPublishedStatus = {  // scalar change detection; avoids a signature string each tick
       laneId: null,
@@ -420,6 +435,7 @@ export const travelLanes = {
         this._trafficIds.length = 0;
         this._slingHaulerId = null;
         this._slingPlayerActive = false;
+        this._slingThrownIds.clear();
         this._ambushRequested.clear();
         this._lastPublishedStatus.laneId = null;
         this._lastPublishedStatus.inLane = null;
@@ -561,11 +577,13 @@ export const travelLanes = {
 
   /**
    * Accelerate aligned bodies inside the Ceres tube and keep the exit speed as earned momentum.
+   * Off-axis bodies get a perpendicular kick instead — a thrown light becomes a projectile.
    *
    * The Helios–Tethys lane stays a drive-ceiling modifier. This toy is the exception named in
-   * the file header: along-axis `queuePhysicsImpulse` (a·mass·dt) plus a ceiling lift so the
-   * governor can hold 2× cruise. On exit, if the travel latch is not Engaged, we seed `cap` so
-   * the kernel's decay branch reports `physicsEarnedMomentum` instead of clamping back to cruise.
+   * the file header: `queuePhysicsImpulse` (never a velocity or pos write). Aligned: along-axis
+   * a·mass·dt plus a ceiling lift so the governor can hold 2× cruise; on that exit we seed `cap`
+   * so the kernel reports `physicsEarnedMomentum`. Off-axis: a one-sojourn kick to 3× cruise
+   * along the authored throw perp.
    */
   _applySlingRing(dt, state, player) {
     const inside = pointInsideSlingRing(player.pos);
@@ -575,10 +593,14 @@ export const travelLanes = {
       const cruise = resolveCombatCruise(player, state);
       this._boostSlingBody(player, dt, cruise);
       this._applySlingDriveCeiling(state, cruise);
-    } else if (this._slingPlayerActive) {
-      this._seedSlingEarnedCap(state, player);
+    } else if (inside) {
+      this._flingSlingBody(player, dt, resolveCombatCruise(player, state));
+    } else {
+      if (player.id != null) this._slingThrownIds.delete(player.id);
+      if (this._slingPlayerActive) this._seedSlingEarnedCap(state, player);
     }
     this._slingPlayerActive = active;
+    this._updateSlingThrows(dt, state, player);
     this._updateSlingHauler(dt, state, player);
   },
 
@@ -611,6 +633,82 @@ export const travelLanes = {
     const axis = CERES_SLING_RING.axis;
     queuePhysicsImpulse(entity, { x: axis.x * impulse, y: 0, z: axis.z * impulse });
     return true;
+  },
+
+  /**
+   * Perpendicular throw direction: the authored ring perp, signed so the kick continues the
+   * body's existing off-axis motion instead of bouncing it back into the approach.
+   */
+  _slingThrowDirInto(entity, out) {
+    const perp = CERES_SLING_RING.throwPerp;
+    const alongPerp = finite(entity && entity.vel && entity.vel.x) * perp.x
+      + finite(entity && entity.vel && entity.vel.z) * perp.z;
+    if (alongPerp < 0) {
+      out.x = -perp.x;
+      out.z = -perp.z;
+    } else {
+      out.x = perp.x;
+      out.z = perp.z;
+    }
+    return out;
+  },
+
+  /**
+   * Fling an off-axis body. First tick inside this sojourn: a catch-up impulse that brings the
+   * throw-axis speed to 3× cruise. Later ticks only sustain with a·mass·dt if still below the bar.
+   */
+  _flingSlingBody(entity, dt, cruise) {
+    if (!entity || !entity.pos || !(dt > 0)) return false;
+    if (!pointInsideSlingRing(entity.pos)) return false;
+    if (alignmentDot(entity.vel, CERES_SLING_RING.axis) >= SLING_ALIGN_DOT_MIN) return false;
+    const target = Math.max(0, finite(cruise, 0)) * SLING_THROW_EXIT_MULT;
+    if (!(target > 0)) return false;
+    const dir = this._slingThrowDirInto(entity, this._throwDirScratch);
+    const along = finite(entity.vel && entity.vel.x) * dir.x
+      + finite(entity.vel && entity.vel.z) * dir.z;
+    const mass = bodyMass(entity);
+    const id = entity.id;
+    if (id != null && !this._slingThrownIds.has(id)) {
+      this._slingThrownIds.add(id);
+      const need = target - along;
+      if (need > 0) {
+        const impulse = need * mass;
+        queuePhysicsImpulse(entity, { x: dir.x * impulse, y: 0, z: dir.z * impulse });
+      }
+      return true;
+    }
+    if (along >= target) return true;
+    const impulse = SLING_THROW_ACCEL_WU_S2 * mass * dt;
+    queuePhysicsImpulse(entity, { x: dir.x * impulse, y: 0, z: dir.z * impulse });
+    return true;
+  },
+
+  /**
+   * Off-axis ships near the Ceres tube (not the player, not the scheduled hauler). Walks the
+   * existing entityList; no per-tick allocation.
+   */
+  _updateSlingThrows(dt, state, player) {
+    const origin = CERES_SLING_RING.globalPos;
+    const dx = origin.x - finite(player.pos.x);
+    const dz = origin.z - finite(player.pos.z);
+    if (dx * dx + dz * dz > SLING_HAULER_SPAWN_RANGE_WU * SLING_HAULER_SPAWN_RANGE_WU) return;
+    const list = state.entityList;
+    if (!list || !list.length) return;
+    const playerId = state.playerId;
+    const haulerId = this._slingHaulerId;
+    const thrown = this._slingThrownIds;
+    for (let i = 0; i < list.length; i++) {
+      const entity = list[i];
+      if (!entity || entity.alive === false) continue;
+      if (entity.type !== 'ship') continue;
+      if (entity.id === playerId || entity.id === haulerId) continue;
+      if (!pointInsideSlingRing(entity.pos)) {
+        if (entity.id != null) thrown.delete(entity.id);
+        continue;
+      }
+      if (alignmentDot(entity.vel, CERES_SLING_RING.axis) >= SLING_ALIGN_DOT_MIN) continue;
+      this._flingSlingBody(entity, dt, resolveCombatCruise(entity, state));
+    }
   },
 
   /**
