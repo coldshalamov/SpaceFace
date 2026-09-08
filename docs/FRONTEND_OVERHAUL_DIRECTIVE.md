@@ -1,229 +1,204 @@
-# SpaceFace Frontend Master Architecture & Rescue Directive
+# SpaceFace Frontend Master Architecture & Overhaul Directive
 
-**The Definitive Context, Design Research, and Technical Implementation Dossier for Incoming Frontend Agents**  
+**The Definitive Context, Design Research, and Gameplay Systems Dossier for Incoming Frontend Agents**  
 *Document Authority: Explicitly overrides and supersedes `design/frontend/direction/DIRECTION_SHEET.md` ("Cinematic Minimal") and all legacy "0% scrim / borderless / unboxed" instructions.*
 
 ---
 
-## 1. Executive Briefing: The Core Mission
+## 1. Executive Charter: Mandate to Burn Down & Rebuild
 
-SpaceFace has suffered from two consecutive, polar-opposite frontend failures across previous development cycles:
-1. **The 1995 Cheesy Dashboard Era (Pre-Sep 5):** Garish neon-cyan gradients, laser-sweep animations, heavy outer glows, and fake military corner stamps (`[SYS.01]`, `// SEC_CLEARANCE`). It felt like a cheap 1990s Geocities fan game.
-2. **The "Cinematic Minimal" Blank Google Doc Over-Correction (Sep 5–7):** An agent reacted by banning all standard game UI. It declared: *"Nothing is boxed. No cards, plates, borders, buttons, or scrim."* Subsequent agents systematically stripped every container, background, and button from the game—including all station facility terminals (Market, Shipworks, Bar, Contracts) and the Pause menu.
+If you are an incoming high-capability frontend agent, you have **full authority and license to burn down, replace, or heavily refactor the existing frontend**. 
 
-**The Current State of the Game:**
-The Pause menu is naked white text floating over the 3D space scene. The in-game flight HUD is kept visible at 38% opacity directly behind it, causing horrifying text collisions (flight telemetry numbers like `drive 100` collide with `Esc resumes`). The station Market has no buy/sell buttons or tables—just bare words on hairlines. The center flight HUD collides with tool badges. The minimap is a confetti storm of 30+ asteroid dots.
+You do **not** need to preserve the broken DOM structures, CSS hackery, or flawed layout coordinates left behind by previous low-tier agents. An earlier agent created an ideological manifesto (`DIRECTION_SHEET.md`) that banned standard game UI patterns ("no cards, no plates, no borders, no buttons, 0% scrim"), and subsequent agents mechanically stripped all buttons, cards, and containers from the game—turning menus and station facilities into naked white text floating illegibly over a 38% transparent flight HUD and the 3D space scene.
 
-**Your Mission:**
-Transform SpaceFace's frontend into a sleek, tactile, modern 2026 indie space game interface (*Everspace 2*, *Starsector*, *Homeworld 3*, *Helldivers 2*). Provide precision vector HUDs, physical dark-chassis container panels with frosted glass scrim, responsive interactive button blocks, and deconflicted telemetry layouts.
-
-This document contains **everything** you need: complete git history analysis, industry case studies, concrete CSS/SVG design recipes, a full file-and-line repository inventory, and screenshot verification scripts. **You do not need to search git logs or grep the codebase.**
-
----
-
-## 2. The History of What Went Wrong (Git Archeology)
-
-To ensure you don't repeat past mistakes, here is the exact autopsy of how the frontend broke:
-
-### Era 1: The Cheesy Sci-Fi Dashboard (Commit `e86f4be81` and earlier)
-* **What it did:**
-  - Placed 3px solid neon-cyan accent stripes on the left edge of every single container.
-  - Used saturated cyan-to-purple CSS linear gradients on button backgrounds.
-  - Added fake military jargon subtitles beneath every action (e.g. `SETTINGS // SYS.OP.EXECUTE`, `RESUME // KINETIC_SIM_INIT`).
-  - Pulsing animated scanlines and laser sweeps across panel borders.
-* **Why it failed:** It looked juvenile, noisy, and dated. It screamed amateur Web 1.0 rather than a polished tactical simulator.
-
-### Era 2: The "Cinematic Minimal" Over-Correction (Commits `c360cd16c` through `a63068658`)
-* **What it did:**
-  - An agent authored `design/frontend/direction/DIRECTION_SHEET.md` mandating:
-    - *"Nothing is boxed. There are no panels, cards, plates, chips or borders."*
-    - *"No plate, no logo lockup, no buttons."*
-    - *"The frozen game at 0% scrim."*
-    - *"The HUD dims to 38% rather than disappearing."*
-  - In commit `5516b3500`, `0513b050a`, `785efe51b`, and `cac3adefd` (Tasks C & D), agents stripped all UI styling:
-    - `styles/station.css` lines 4–5 were changed to: *"No plates, borders, radii, gradients, glows or shadows anywhere."*
-    - Station Market, Shipworks, Bar, Contracts, and Factions had all cards, tables, and buttons removed.
-    - `styles/kit.css` line 279 forced `#hud` to stay at `opacity: 0.38` during pause, and line 286 set modal backdrops to `background: none;`.
-* **Why it failed:** It turned the game into a broken, unstyled text document. When you pause or open a station terminal, white words float illegibly over brightly lit planets, stars, and flight telemetry numbers. Clicking words feels unresponsive and ambiguous because there are no button hitboxes, hovers, or boundaries.
-
-**The Golden Middle (Where We Are Going):**
-A real game UI is neither a 90s neon arcade nor a blank text document. It is an **aerospace instrument**: dark, quiet, structured, frosted, and tactile.
+**We do not prescribe rigid layout coordinates, fixed widths, or exact button positions.** We trust your superior reasoning, architectural judgment, and visual taste to synthesize the optimal frontend. This dossier gives you everything you need:
+- The complete breakdown of what the game is and how all gameplay systems work.
+- Everything the player can control or would want to control.
+- Everything the player needs to see, monitor, and feel across flight, combat, docking, and trading.
+- The autopsy of past failures so you don't repeat them.
+- Deep case studies of premier 2026 space games (*Everspace 2*, *Starsector*, *Homeworld 3*, *Helldivers 2*, *Chorus*).
+- Ambitious architectural options you may choose to implement.
+- A zero-grep code map of every relevant file, line range, and data contract in the codebase.
 
 ---
 
-## 3. Industry Case Studies: How Great Space Game UI is Built
+## 2. Gameplay Systems Matrix: What SpaceFace Actually Is
 
-Do not guess or search the web. Top-tier space games in 2026 follow these proven visual systems:
+SpaceFace is a Three.js browser/Electron space combat, mining, trading, and RPG sim built on a flat `GameState`, an event bus, and a fixed 60 Hz simulation loop running on the XZ plane decoupled from rendering.
 
-### Case 1: *Everspace 2* (Fast Aerospace & Clean Glass)
-* **Visual Identity:** Sleek, high-tech civilian/mercenary cockpit OS.
-* **Containers & Surfaces:** Dark smoked glass panels (`rgba(10, 14, 22, 0.85)`) with 12px backdrop blur. 45-degree chamfered panel corners (aerospace structural plates). Subtle 1px borders in low-opacity silver/slate (`rgba(140, 170, 210, 0.2)`).
-* **Buttons & Tabs:** Wide, tactile rectangular blocks. Idle state is dark with high-contrast text; hover triggers a fast 100ms brightening with a crisp cyan or amber edge highlight; click provides instant audio and tactile depress.
-* **Flight HUD:** Curved vector arcs hugging the crosshair for shields and hull; peripheral telemetry is pushed to the lower thirds, keeping the flight center completely uncluttered.
+Here is the complete inventory of what the game does and how its systems behave:
 
-### Case 2: *Starsector* (Tactical Military & Station Registers)
-* **Visual Identity:** Industrial, tactical military command interface.
-* **Station Facilities & Markets:** Dense, functional registers. The Market is a structured data table with subtle alternating row striping (`rgba(255, 255, 255, 0.03)`), clear quantity sliders, profit-margin indicators (+% green, -% red), and prominent "BUY" and "SELL" action buttons.
-* **Radar Hierarchy:** Asteroids are not individually tracked with bright icons unless targeted. Radar prioritizes hostile ship silhouettes, missile signatures, and warp gates.
+### A. Flight & Piloting Mechanics
+- **Physics Engine:** Runs fixed-step simulation in `src/systems/flightV3.js` and `src/core/flight/` via Rapier dynamic physics on the XZ plane.
+- **Flight Modes:**
+  - *Assisted Mode:* Thrusters automatically damp lateral drift and angular velocity, behaving like an atmospheric aerospace craft.
+  - *Newtonian / Drift Mode:* Disables inertial damping; forward thrust creates continuous momentum while the ship can decouple its heading and spin freely.
+- **Ship Dynamics:** Handled via ship hulls (`src/data/ships.js`) with stats for `maxSpeed`, `accel`, `reverseAccel`, `angularSpeed`, `boostMultiplier`, and `mass`.
+- **Autopilot & Navigation:** Players can engage autopilot to travel toward nav waypoints, stations, or jump gates (`state.nav.autopilot`).
+- **Jump Gates:** Travel between sectors involves approaching jump gates, initiating a charge cycle (`state.jump`), and jumping to target sectors.
 
-### Case 3: *Homeworld 3* & *Deserts of Kharak* (Precision Vectors)
-* **Visual Identity:** Crisp monochromatic vector graphics with clinical typographic restraint.
-* **Typography:** Clean grotesque sans (DIN / Inter style) for labels; tabular monospaced numbers for speeds, distances, and coordinates.
-* **Atmosphere:** When paused or entering the tactical view, a deep 70% dark scrim with gaussian blur covers the 3D scene, creating an immediate sense of focus and calm.
+### B. Combat & Weapons Systems
+- **Weapons:** Managed in `src/data/weapons.js` and `src/systems/combat/`. Includes:
+  - Kinetic Cannons / Autocannons (projectile speed, spread, physical impulse).
+  - Mining & Combat Pulse/Beam Lasers (continuous raycast damage, armor burn).
+  - Seeking Missiles & Torpedoes (lock-on acquisition, homing physics).
+- **Fire Groups:** Players configure weapons into Primary (Group 1) and Secondary (Group 2) firing groups (`state.player.fireGroups`).
+- **Targeting & Aim Assist:**
+  - Lead-Aim Reticle: Calculates target lead based on target velocity, player velocity, and projectile speed.
+  - Target Lock Diamond: Centers on selected enemy or poi (`state.player.targetId`).
+  - Target Cycling: Keys to cycle nearest hostile, next target, or objective.
+- **Combat Feedback:** Responsive crosshair ticks for shield hits (cyan), armor hits (amber), and kill flashes (white/gold), backed by pure synth audio cues.
+- **Kinetic Collisions:** Devastating lethality when ramming or flinging enemies into asteroids or other hulls, while the player hull has collision shielding.
 
-### Case 4: *Helldivers 2* (High-Contrast Tactical Utility)
-* **Visual Identity:** Bold, high-contrast, physical terminal blocks.
-* **Affordance:** You never wonder if something is clickable. Interactive elements have clear physical boundaries, bold uppercase typography, and distinct keycap shortcuts (`[ESC]`, `[E]`, `[SPACE]`).
+### C. Defense & Survival
+- **Shields:** Dynamic shield capacity (`state.player.efficiencyMods.shieldRegenMult`). Shields absorb incoming energy/kinetic damage before collapsing.
+- **Armor & Hull Integrity:** Once shields drop, damage directly degrades ship hull HP.
+- **Emergency Boost & Countermeasures:** Rapid burst boost to escape missile locks or disengage.
+
+### D. Mining, Salvage & Cargo Attractor
+- **Asteroid Mining:** Mining lasers fracture asteroids into valuable ore chunks (`src/systems/mining.js`).
+- **Magnetic Vacuum Scoop:** Ships possess a wide magnetic attractor (`state.player.magnetRange`, 800+ WU) that vacuums floating ore chunks, salvage crates, and debris directly into the cargo hold.
+- **Cargo Management:** `state.player.cargo` tracks `usedVolume`, `capVolume`, `usedMass`, and `capMass`. Different commodities have varied density and volume.
+
+### E. Law, Heat & WANTED System
+- **WANTED Heat:** `state.player.heat` is a 0..1 scalar driven by piracy, contraband smuggling, and attacking lawful ships (`src/systems/heat.js`).
+- **Police & Bounty Hunters:** As heat crosses thresholds, lawful patrols perform cargo scans, and persistent bounty hunter aces are dispatched to hunt the player.
+- **Heat Zones:** Evading patrols in high-security space requires breaking contact and jumping to unregulated or frontier sectors.
+
+### F. Dynamic Economy & Station Facilities
+- **Trading & Markets:** Each station features dynamic supply and demand for commodities (`state.economy.markets`). Prices fluctuate based on economic events, piracy, and player trade runs.
+- **Docking Procedure:** Flying within docking radius of a station transitions the game into the docked state (`state.ui.docked = true`), opening the Station Terminal Hub.
+- **Station Facilities (`src/ui/station/`):**
+  - *Commodity Market:* Register table for buying/selling goods, cargo hold visualization, profit margins.
+  - *Shipworks / Outfitting:* Buying new ship hulls, swapping weapons, fitting shield generators, upgraded cargo bays, thrusters, and scanners.
+  - *The Bar / Lounge:* NPC dialogue, gossip, local sector rumors, hiring wingmen/mercenaries, bribing corrupt officials.
+  - *Contracts / Mission Board:* Bounty hunting contracts, cargo delivery runs, patrol jobs, and story missions.
+  - *Industry / Fabrication:* Refining raw minerals into manufactured alloys and advanced tech.
+  - *Factions:* Tracking standing, faction wars, reputation rewards, and territorial ownership.
+
+### G. Meta Progression & Secondary Systems
+- **Tech Tree / Research:** Unlocking passive and active ship modifications (`state.player.researchedNodes`).
+- **Codex & Sector Atlas:** Lore records, enemy ship blueprints, commodity histories, and galactic history.
+- **Save / Load System:** Persistent game state slots with playtime, sector stamp, and auto-save intervals.
 
 ---
 
-## 4. Advanced Technical Recipes for SpaceFace
+## 3. The Player Control Envelope & Information Hierarchy
 
-You can implement these patterns directly using modern CSS and SVG:
+To design a brilliant UI, you must understand what the player wants to do and what they need to see at every moment.
 
-### Recipe A: The Smoked Glass Aerospace Chassis
-Every modal, pause menu, and station terminal needs a container panel:
-```css
-.sf-chassis {
-  background: rgba(9, 13, 22, 0.88);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(130, 165, 210, 0.22);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7), 0 0 1px 1px rgba(255, 255, 255, 0.05) inset;
-  border-radius: 4px;
-}
+### A. What the Player Controls (Actions & Inputs)
+| Context | Actions Controlled by Player |
+|---|---|
+| **Flight & Piloting** | Pitch, yaw, steering, forward throttle, reverse brake, lateral strafing, boost sprint, toggle flight-assist (drift mode), engage autopilot. |
+| **Combat** | Fire primary weapon, fire secondary weapon, toggle auto-fire, cycle target locks, deploy countermeasures, trigger active field abilities. |
+| **Mining & Utility** | Fire mining beam, deploy tractor vacuum, cycle cargo manifest, jettison unwanted mass. |
+| **Navigation & Traversal** | Open/zoom galaxy starmap, select jump gate, engage hyperjump drive, lock nav waypoints. |
+| **Station Terminal** | Switch facility tabs, select commodities, set transaction volume (`-`, `+`, `Max`), execute Buy/Sell, inspect modules, fit/strip hardpoints, accept contracts, choose dialogue lines. |
+| **System & Menus** | Pause/resume simulation, quicksave, quickload, adjust audio/video/controls in settings, browse codex, inspect tech tree. |
 
-/* Optional Aerospace Chamfered Silhouette */
-.sf-chassis-chamfer {
-  clip-path: polygon(
-    0 8px, 8px 0,
-    calc(100% - 8px) 0, 100% 8px,
-    100% calc(100% - 8px), calc(100% - 8px) 100%,
-    8px 100%, 0 calc(100% - 8px)
-  );
-}
+### B. What the Player Needs to See & Feel (The 5-Tier Sensory Hierarchy)
+
+When flying at 1000 m/s in combat, screen real estate is life or death. Information must be organized into strict priority tiers:
+
+```
++-----------------------------------------------------------------------+
+| TOP BAR: Navigation Breadcrumb, Credits, WANTED Heat, Active Quest     |
++-----------------------------------------------------------------------+
+|                                                                       |
+|                          [TARGET LEAD PIP]                            |
+|                                                                       |
+|                                  + (Aim Reticle)                      |
+|                      [SHIELD]  /   \  [HULL]                          |
+|                                                                       |
+|                                                                       |
+| LEFT: Warnings, Comms,       BOTTOM CENTER:             RIGHT: Radar, |
+| Target Info Inspector         [SPEED / THROTTLE]        Hostile Wedge |
+|                              [WEAPON HEAT / COOL]       Blips, Docking|
+|                              [DEPLOYABLE TOOL BADGE]                  |
++-----------------------------------------------------------------------+
 ```
 
-### Recipe B: Tactile Interactive Button Blocks
-Replace bare text links with distinct, satisfying button components:
-```css
-.sf-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 40px;
-  padding: 8px 20px;
-  background: rgba(22, 32, 50, 0.75);
-  border: 1px solid rgba(130, 165, 210, 0.28);
-  border-radius: 3px;
-  color: #e2eaf5;
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: background 120ms ease, border-color 120ms ease, transform 60ms ease;
-  user-select: none;
-}
-
-.sf-btn:hover {
-  background: rgba(35, 52, 82, 0.9);
-  border-color: rgba(160, 205, 255, 0.55);
-  color: #ffffff;
-}
-
-.sf-btn:active {
-  transform: translateY(1px);
-  background: rgba(18, 26, 42, 0.95);
-}
-
-.sf-btn-primary {
-  background: rgba(30, 60, 100, 0.85);
-  border-color: rgba(100, 170, 255, 0.6);
-}
-
-.sf-btn-primary:hover {
-  background: rgba(40, 80, 135, 0.95);
-  border-color: #88c0ff;
-}
-
-.sf-btn-danger {
-  background: rgba(65, 20, 25, 0.75);
-  border-color: rgba(220, 80, 90, 0.4);
-}
-
-.sf-btn-danger:hover {
-  background: rgba(90, 25, 32, 0.9);
-  border-color: rgba(255, 100, 110, 0.7);
-}
-```
-
-### Recipe C: Vector SVG Precision for Flight HUD
-Do not use chunky CSS boxes for crosshairs or radial meters. Use inline SVGs:
-```html
-<!-- Reticle with Shield/Armor Arcs -->
-<svg class="sf-reticle-svg" viewBox="-50 -50 100 100" width="100" height="100">
-  <!-- Center Aim Pip -->
-  <circle cx="0" cy="0" r="2" fill="rgba(255, 255, 255, 0.85)" />
-  <!-- Left Shield Arc -->
-  <path d="M -24 -20 A 30 30 0 0 0 -24 20" fill="none" stroke="#4aa8ff" stroke-width="2.5" stroke-linecap="round" />
-  <!-- Right Hull Arc -->
-  <path d="M 24 -20 A 30 30 0 0 1 24 20" fill="none" stroke="#e6a030" stroke-width="2.5" stroke-linecap="round" />
-</svg>
-```
+1. **Tier 1: Immediate Survival (Center Reticle Zone - Zero Eye Travel)**
+   - Aim reticle, target lead pip, target lock diamond.
+   - Shield integrity and hull health (ideally curved vector arcs or compact bars hugging the reticle periphery).
+   - Incoming missile lock warning, collision alert.
+2. **Tier 2: Tactical Awareness (Peripheral Cockpit Zone)**
+   - Radar/Minimap: Directional bearing of hostiles (red chevrons/wedges), stations, gates. Asteroid noise is suppressed.
+   - Selected target status card (target ship name, shield/hull %, distance).
+   - Weapon group status, capacitor heat/energy, reload progress.
+3. **Tier 3: Flight Telemetry (Bottom Center)**
+   - Current velocity, throttle %, boost capacitor.
+   - Active field deployable / tool badge (`CONE — CLEARING`), placed with distinct vertical clearance above the speedometer.
+4. **Tier 4: Navigation & Logistics (Top & Edges)**
+   - Sector zone name, jump gate alignment indicator.
+   - Active mission objective tracker (clean, compact text).
+   - Credits and cargo fill percentage (`usedVolume / capVolume`).
+5. **Tier 5: Modal Interfaces (Pause, Station, Menus)**
+   - When opened, the simulation pauses and the in-flight HUD is **100% hidden**.
+   - A deep frosted glass scrim dims and blurs the 3D scene behind.
+   - All interactive controls are housed inside structured, physical container chassis with distinct clickable button blocks.
 
 ---
 
-## 5. Complete File Inventory & Technical Map
+## 4. The Autopsy: Why Earlier Frontend Passes Failed
 
-Here are the exact files, line numbers, and responsibilities across the codebase:
+You must understand what went wrong previously so you can decisively avoid both traps:
 
-### Layer A: Pause Menu & Scrim
-| File Path | Lines | Responsibilities & Required Fixes |
-|---|---|---|
-| [`styles/kit.css`](file:///c:/Users/93rob/Documents/GitHub/SpaceFace/styles/kit.css) | 279, 286 | **Lines 279 & 286:** Sets `#hud` to `opacity: 0.38` on pause and modal backdrop to `background: none;`. Fix: Set `#hud { display: none !important; opacity: 0 !important; }` and restore backdrop to `rgba(6, 10, 18, 0.75); backdrop-filter: blur(8px);`. |
-| [`src/ui/screens/pause.js`](file:///c:/Users/93rob/Documents/GitHub/SpaceFace/src/ui/screens/pause.js) | 1–450 | Pause menu DOM construction. Replace the bare list of words down the screen edge with a structured modal card container (`width: 340px;`), title header, and distinct styled button blocks. |
-| [`styles/menu.css`](file:///c:/Users/93rob/Documents/GitHub/SpaceFace/styles/menu.css) | 50–140 | Styling for menu fascias. Remove flat text rules (Line 68); apply the smoked glass chassis and button styles. |
-| [`src/ui/screenManager.js`](file:///c:/Users/93rob/Documents/GitHub/SpaceFace/src/ui/screenManager.js) | 50–150 | Screen stack lifecycle manager. Handles `pushScreen`, `popScreen`, and modal state classes. |
+### Trap 1: The 1995 Cheesy Sci-Fi Dashboard (Pre-Sep 5, Commit `e86f4be81`)
+* **What it looked like:** 3px neon-cyan accent lines on the left edge of every div; saturated cyan-to-purple CSS linear gradients; animated scanlines and pulsing laser sweeps across borders; cringe fake-military subtitle spam under every button (`SETTINGS // SYS.OP.EXECUTE`, `RESUME // KINETIC_SIM_INIT`).
+* **Why it failed:** It felt like a cheap 1990s Geocities arcade fan game. It was visually exhausting, juvenile, and amateur.
 
-### Layer B: In-Flight HUD & Center Cluster Deconfliction
-| File Path | Lines | Responsibilities & Required Fixes |
-|---|---|---|
-| [`src/ui/hud.js`](file:///c:/Users/93rob/Documents/GitHub/SpaceFace/src/ui/hud.js) | 1241–1260 | Center cluster (`.sf-cluster`). Houses the speedometer, throttle bar, and weapon status. Positioned at bottom center. |
-| [`src/ui/fieldHud.js`](file:///c:/Users/93rob/Documents/GitHub/SpaceFace/src/ui/fieldHud.js) | 19–34, 105–128 | Active field / deployable tool badge (`CONE — CLEARING`). Injected at `left: 50%; bottom: 146px;` which collides directly with the speedometer. **Fix:** Reposition to `bottom: 86px;` or anchor above the flight reticle with clear vertical margins. |
-| [`styles/ui.css`](file:///c:/Users/93rob/Documents/GitHub/SpaceFace/styles/ui.css) | 530–650, 1200–1250 | Flight telemetry styles. Controls `.sf-cluster`, `.sf-stat`, instrument bars, and screen positioning. |
-| [`src/data/sectorZones.js`](file:///c:/Users/93rob/Documents/GitHub/SpaceFace/src/data/sectorZones.js) | 94 | Sector zone label definition (`Concord Core`). Ensure in-world projected zone text does not duplicate or render over the center crosshairs. |
+### Trap 2: The "Cinematic Minimal" Blank Google Doc (Sep 5–7, Commits `c360cd16c` to `a63068658`)
+* **What it looked like:** An agent reacted to Trap 1 by writing `DIRECTION_SHEET.md`, mandating: *"Nothing is boxed. No cards, plates, borders, buttons, or scrim. Frozen game at 0% scrim. HUD dims to 38%."*
+* **Why it failed:** Agents ripped out every container, table, and button. When you pause, bare white text floats illegibly over brightly lit 3D stars and planets while the flight HUD remains at 38% opacity directly behind it—causing flight telemetry (`drive 100`) to collide with menu text (`Esc resumes`). The station Market was stripped of tables and buttons, leaving bare words floating on hairlines.
 
-### Layer C: Tactical Radar & Minimap
-| File Path | Lines | Responsibilities & Required Fixes |
-|---|---|---|
-| [`src/ui/radar.js`](file:///c:/Users/93rob/Documents/GitHub/SpaceFace/src/ui/radar.js) | 39–61, 800–1150 | Minimap rendering. Lines 39–61 set `ASTEROID_DOT_LIMIT = 14`. The radar is cluttered with dozens of minor asteroid and debris dots. **Fix:** Suppress ambient asteroid blips entirely from the radar dial. Reserve bright, crisp glyphs exclusively for hostiles, jump gates, stations, and tracked targets. |
-| [`src/ui/map/tacticalMapGrammar.js`](file:///c:/Users/93rob/Documents/GitHub/SpaceFace/src/ui/map/tacticalMapGrammar.js) | 20–70 | Radar and map glyph drawing functions (`drawHostileGlyph`, `drawStationGlyph`, `drawGateGlyph`). Ensure sharp geometry and high-contrast color coding. |
-
-### Layer D: Station Facility Terminals
-| File Path | Lines | Responsibilities & Required Fixes |
-|---|---|---|
-| [`styles/station.css`](file:///c:/Users/93rob/Documents/GitHub/SpaceFace/styles/station.css) | 1–300 | Station terminal styles. Lines 4–5 currently ban all plates, cards, borders, and shadows. **Fix:** Restore the dark aerospace chassis, tabbed facility navigation, and framed content areas. |
-| [`src/ui/station/stationApp.js`](file:///c:/Users/93rob/Documents/GitHub/SpaceFace/src/ui/station/stationApp.js) | 40–180 | Root station UI coordinator. Manages facility tabs: Market, Shipworks, Bar, Contracts, Industry, Factions. Tabs must be interactive, styled pills or tabs with clear active state. |
-| [`src/ui/station/screens/market.js`](file:///c:/Users/93rob/Documents/GitHub/SpaceFace/src/ui/station/screens/market.js) | 50–320 | Station commodity trading. Needs a structured register table with subtle alternating row contrast, quantity adjustment controls (`-`, `+`, `Max`), and physical **BUY** and **SELL** button blocks. |
-| [`src/ui/station/screens/shipworks.js`](file:///c:/Users/93rob/Documents/GitHub/SpaceFace/src/ui/station/screens/shipworks.js) | 40–280 | Outfitting and ship customization. Needs module fitting slot cards with stats (energy, mass, DPS, shield HP) and install/uninstall button components. |
-| [`src/ui/station/screens/contracts.js`](file:///c:/Users/93rob/Documents/GitHub/SpaceFace/src/ui/station/screens/contracts.js) | 30–220 | Missions board. Render contracts as framed mission dossiers with faction logos, reward payouts, and an "Accept Contract" button. |
-| [`src/ui/station/screens/bar.js`](file:///c:/Users/93rob/Documents/GitHub/SpaceFace/src/ui/station/screens/bar.js) | 30–180 | Station lounge / NPC dialogue. Framed dialogue panel with distinct, selectable conversation choices. |
-
-### Layer E: Secondary Screens
-| File Path | Lines | Responsibilities & Required Fixes |
-|---|---|---|
-| [`src/ui/screens/techtree.js`](file:///c:/Users/93rob/Documents/GitHub/SpaceFace/src/ui/screens/techtree.js) | 30–250 | Research tree. Replace raw words with research node cards and unlock buttons. |
-| [`src/ui/screens/codex.js`](file:///c:/Users/93rob/Documents/GitHub/SpaceFace/src/ui/screens/codex.js) | 30–200 | Lore and database entries. Structured reading dossier panel with category navigation. |
-| [`src/ui/screens/saveLoad.js`](file:///c:/Users/93rob/Documents/GitHub/SpaceFace/src/ui/screens/saveLoad.js) | 30–220 | Save/Load slots. Structured save cards showing sector, timestamp, playtime, and "Save"/"Load"/"Delete" buttons. |
-| [`src/ui/screens/settings.js`](file:///c:/Users/93rob/Documents/GitHub/SpaceFace/src/ui/screens/settings.js) | 30–350 | Game settings & keybind remapping. Real segmented controls, checkboxes, and interactive keycap binding capture blocks. |
+### The Golden Middle (Where Modern Games Live)
+Modern games do not choose between a 90s neon arcade and a naked Google doc. They build **precision aerospace instruments**: dark, quiet, structured, tactile, and surgical.
 
 ---
 
-## 6. Strict Guardrails & LLM Anti-Patterns
+## 5. 2026 Space Game Case Studies & Ambitious Options
 
-Incoming LLM agents frequently fall into predictable traps when asked to design sci-fi UI. You are strictly forbidden from the following anti-patterns:
+Here is how the world's best space games solve these problems. You can use these as your direct creative and technical baseline:
+
+### Case Study A: *Everspace 2* (Fast Aerospace & Smoked Glass)
+- **Aesthetic:** High-tech civilian/mercenary cockpit OS.
+- **Surfaces:** Dark smoked acrylic panels (`rgba(10, 14, 22, 0.88)` + 12px backdrop blur). 45-degree chamfered corner cuts (`clip-path: polygon(...)`). Hairline borders in low-opacity slate (`rgba(130, 165, 210, 0.22)`).
+- **Buttons & Tabs:** Wide, physical rectangular blocks with clear hitboxes (`min-height: 40px`). Idle is dark slate; hover triggers an instant 100ms brightening with an accent highlight; click gives tactile audio and physical depress.
+- **Flight HUD:** Curved vector arcs hugging the crosshair for shield and hull; peripheral instruments pushed to lower thirds.
+
+### Case Study B: *Starsector* (Tactical Military & Station Registers)
+- **Aesthetic:** Industrial tactical command computer.
+- **Station Market:** Dense, functional register table. Alternating row shading (`rgba(255, 255, 255, 0.03)`), clear quantity sliders, green/red profit margins, and prominent "BUY" and "SELL" button blocks.
+- **Radar Hierarchy:** Asteroids are not tracked with individual bright dots. Only hostile ship wedges, missile signatures, and stations are shown.
+
+### Case Study C: *Homeworld 3* (Vector Precision & Typographic Restraint)
+- **Aesthetic:** Clinical, high-contrast vector design.
+- **Typography:** Grotesque sans (Inter/DIN style) for labels; tabular monospaced numbers for speeds, credits, and coordinates.
+- **Pause Atmosphere:** When opening tactical or system menus, a deep 70% dark scrim with gaussian blur covers the 3D scene, instantly focusing the eye on the interface.
+
+### Case Study D: *Helldivers 2* (Tactical Affordance)
+- **Aesthetic:** Bold physical terminals. Every interactive element has unmistakable affordance: thick borders, bold uppercase typography, and distinct keycap shortcuts (`[ESC]`, `[E]`, `[SPACE]`).
+
+---
+
+## 6. Ambitious Architectural Paradigms for You to Consider
+
+As the lead frontend architect, you have the freedom to pick or synthesize any of these modern approaches:
+
+- **Option 1: The Smoked Glass Aerospace Chassis**
+  Dark translucent container panels with backdrop blur, 45° chamfered structural corners, fine 1px border lighting, and tactile physical button blocks with micro-elevation and edge glow.
+- **Option 2: The Tactical Military Command Slate**
+  Minimalist, high-density dark slate panels, hairline dividers, monospace telemetry grids, clear segmented controls, and deep focus scrims.
+- **Option 3: The Integrated Modular Station Dock**
+  A unified station console where ship outfitting, commodity trading, and missions share a cohesive, responsive modular multi-column grid with smooth tab switching.
+
+---
+
+## 7. Strict Guardrails & LLM Anti-Patterns (The Red Lines)
+
+While you have complete creative freedom over layout, styling, and color grading, you are strictly forbidden from these specific anti-patterns:
 
 1. **NO Subtitle / Lore Vomit:**
    - Never write pseudo-code or cringe military sub-labels beneath buttons (e.g. `SETTINGS // CONFIG_V2.0`, `RESUME // EXECUTE_SIM`, `MARKET // COMMODITY_REG_INIT`).
@@ -234,20 +209,70 @@ Incoming LLM agents frequently fall into predictable traps when asked to design 
    - Every interactive menu or terminal MUST sit inside a physical container chassis with a dark frosted background and border. Never render bare text directly over the 3D game scene.
 4. **NO Radar Confetti:**
    - Do not draw dozens of tiny dots for every space rock on the minimap. Asteroids are environmental; radar contacts are tactical.
-
-### Creative Freedom Granted
-Within these guardrails, you have full creative authority to decide:
-- The exact accent color hierarchy (e.g. crisp aerospace amber `#e6a030`, high-tech cobalt `#4aa8ff`, or emerald `#40d090`).
-- Panel silhouettes, corner bevels, and structural framing brackets.
-- Sound effects triggers on button hover/click (using `src/audio/synth.js`).
+5. **100% Modal Occlusion:**
+   - When paused or when any modal screen is active, `#hud` MUST have `display: none !important; opacity: 0 !important; pointer-events: none !important;`. No flight telemetry may bleed through.
 
 ---
 
-## 7. Verification Workflow & Screenshot Proof
+## 8. Complete Code Map & Architecture Guide (Zero-Grep Reference)
 
-Never conclude your work without visual confirmation. Automated headless capture scripts are provided:
+To save you from grepping or scouring the repository, here is the exact code map:
 
-### Verification Commands
+### A. Core State Contracts (`src/core/gameState.js`)
+- `state.mode`: `'flight'` | `'paused'` | `'menu'`.
+- `state.player`:
+  - `credits`, `debt`, `bounty`, `heat` (0..1 WANTED scalar).
+  - `cargo`: `{ items: {}, usedVolume, usedMass, capVolume, capMass }`.
+  - `ownedShips`, `activeShipIndex`, `moduleInventory`, `researchedNodes`.
+  - `targetId`, `fireGroups: { 1: [], 2: [] }`, `boostActive`, `magnetRange`.
+- `state.ui`:
+  - `screenStack: string[]` (managed by `src/ui/screenManager.js`).
+  - `docked: boolean`, `activeStationTab: string`, `radarRange: number`.
+- `state.world`: `currentSectorId`, `activeSector: { stations, fields, hazards, pois, gates }`.
+- `state.economy`: `markets: { [stationId]: { catalog, inventory, prices } }`.
+
+### B. Screen Stack & Modal Framework
+| File Path | Responsibility & Key Locations |
+|---|---|
+| [`src/ui/screenManager.js`](file:///c:/Users/93rob/Documents/GitHub/SpaceFace/src/ui/screenManager.js) | Manages modal screen stack (`state.ui.screenStack`), emits pause/resume events, caches screen DOMs in `#screens`, manages `#modal-backdrop`. |
+| [`src/ui/uiRoot.js`](file:///c:/Users/93rob/Documents/GitHub/SpaceFace/src/ui/uiRoot.js) | Mounts root DOM (`#hud`, `#screens`), dynamically registers all screens (lines 74–115), updates flight HUD every frame. |
+| [`styles/kit.css`](file:///c:/Users/93rob/Documents/GitHub/SpaceFace/styles/kit.css) | **Line 279:** Sets HUD opacity to 0.38 on pause (FIX: hide HUD completely). **Line 286:** Sets modal backdrop background to none (FIX: restore dark frosted scrim). |
+
+### C. In-Flight HUD & Telemetry
+| File Path | Responsibility & Key Locations |
+|---|---|
+| [`src/ui/hud.js`](file:///c:/Users/93rob/Documents/GitHub/SpaceFace/src/ui/hud.js) | Primary flight HUD. Lines 1241–1260 house `.sf-cluster` (speedometer, throttle bar, weapon firing status). |
+| [`src/ui/fieldHud.js`](file:///c:/Users/93rob/Documents/GitHub/SpaceFace/src/ui/fieldHud.js) | Lines 19–34 inject `.sf-field-pill` at `bottom: 146px; left: 50%;`, which collides directly with the speedometer numbers. Separate these coordinates. |
+| [`styles/ui.css`](file:///c:/Users/93rob/Documents/GitHub/SpaceFace/styles/ui.css) | Telemetry styling, flight cluster styles, health meters, coordinate badges. |
+| [`src/ui/commandBar.js`](file:///c:/Users/93rob/Documents/GitHub/SpaceFace/src/ui/commandBar.js) | Top RTS-style strip: resources, credits, cargo load, and time controls. |
+| [`src/ui/radar.js`](file:///c:/Users/93rob/Documents/GitHub/SpaceFace/src/ui/radar.js) | Minimap radar dial. Lines 39–61 set `ASTEROID_DOT_LIMIT = 14`. Suppress ambient asteroid dots to clear the confetti. |
+
+### D. Station Facility Terminals
+| File Path | Responsibility & Key Locations |
+|---|---|
+| [`src/ui/station/stationApp.js`](file:///c:/Users/93rob/Documents/GitHub/SpaceFace/src/ui/station/stationApp.js) | Root station UI shell. Manages facility tabs (Market, Shipworks, Bar, Contracts, Industry, Factions). |
+| [`styles/station.css`](file:///c:/Users/93rob/Documents/GitHub/SpaceFace/styles/station.css) | Station styles. Lines 4–5 currently ban cards, borders, buttons, and shadows. Restore structured chassis panels and tactile buttons. |
+| [`src/ui/station/screens/market.js`](file:///c:/Users/93rob/Documents/GitHub/SpaceFace/src/ui/station/screens/market.js) | Commodity market. Needs structured register tables, volume sliders/buttons, and BUY/SELL button blocks. |
+| [`src/ui/station/screens/shipworks.js`](file:///c:/Users/93rob/Documents/GitHub/SpaceFace/src/ui/station/screens/shipworks.js) | Shipyard and outfitting. Module cards, slot hardpoints, energy/mass comparison tooltips. |
+| [`src/ui/station/screens/contracts.js`](file:///c:/Users/93rob/Documents/GitHub/SpaceFace/src/ui/station/screens/contracts.js) | Mission board. Contract dossiers with faction logos, objectives, rewards, and Accept buttons. |
+| [`src/ui/station/screens/bar.js`](file:///c:/Users/93rob/Documents/GitHub/SpaceFace/src/ui/station/screens/bar.js) | Station lounge. Framed dialogue panel with selectable conversation branches. |
+
+### E. Pause Menu & Secondary Screens
+| File Path | Responsibility & Key Locations |
+|---|---|
+| [`src/ui/screens/pause.js`](file:///c:/Users/93rob/Documents/GitHub/SpaceFace/src/ui/screens/pause.js) | Pause menu DOM. Wrap actions in an aerospace card container with styled interactive buttons. |
+| [`styles/menu.css`](file:///c:/Users/93rob/Documents/GitHub/SpaceFace/styles/menu.css) | Menu styles. Remove the flat text rules (Line 68); apply container chassis and button styles. |
+| [`src/ui/screens/settings.js`](file:///c:/Users/93rob/Documents/GitHub/SpaceFace/src/ui/screens/settings.js) | Audio, video, and controls settings. Interactive segmented controls, checkboxes, and keybinding capture blocks. |
+| [`src/ui/screens/saveLoad.js`](file:///c:/Users/93rob/Documents/GitHub/SpaceFace/src/ui/screens/saveLoad.js) | Save slots. Save cards showing sector, timestamp, playtime, and Save/Load/Delete action buttons. |
+| [`src/ui/screens/techtree.js`](file:///c:/Users/93rob/Documents/GitHub/SpaceFace/src/ui/screens/techtree.js) | Research tree node cards and unlock buttons. |
+| [`src/ui/screens/codex.js`](file:///c:/Users/93rob/Documents/GitHub/SpaceFace/src/ui/screens/codex.js) | Database and lore reader with categorized navigation. |
+
+---
+
+## 9. Verification & Visual Screenshot Workflow
+
+Never conclude a frontend overhaul without visual confirmation. Headless browser screenshot scripts are pre-wired:
+
 ```bash
 # 1. Capture pause menu, modal screens, and UI overlays
 node scripts/capture-menu-overhaul.mjs
@@ -258,14 +283,13 @@ node scripts/capture-gameplay.mjs
 # 3. Capture UI kit components
 node scripts/capture-kit.mjs
 
-# 4. Run automated baseline test suite to ensure no regressions
+# 4. Run automated baseline test suite to ensure no code regressions
 npm run check:baseline
 ```
 
-### Visual Quality Checklist
-Inspect the resulting PNG images in the `.devshots/` directory:
-- [ ] Is the in-game flight HUD 100% hidden when the game is paused?
-- [ ] Does the pause screen have a dark frosted scrim with a clean aerospace card container and physical buttons?
-- [ ] Are the speedometer numbers and field deployable badges separated with zero overlap?
-- [ ] Is the radar clear of asteroid confetti, cleanly highlighting threats and gates?
-- [ ] Do station terminals (Market, Shipworks, Bar, Contracts) have structured panels and real interactive button blocks?
+Inspect the resulting PNG screenshots in the `.devshots/` directory:
+- Confirm that the flight HUD is 100% occluded when paused.
+- Confirm that menus and station facilities have physical, framed containers with dark frosted scrim.
+- Confirm that buttons look physical, clickable, and responsive.
+- Confirm zero text collisions between speedometer readouts and field deployable badges.
+- Confirm that radar contacts are clean, high-priority tactical markers without asteroid noise.
