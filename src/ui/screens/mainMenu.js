@@ -9,6 +9,7 @@
 // hull the old live preview framed, pre-rendered at cutscene quality. A photograph that never
 // changes should not own a render loop.
 
+import { instrumentGlyph } from '../kit/insignia.js';
 import { requestCodexTab } from './codex.js';
 import { coreText } from '../localizedCoreCopy.js';
 import { requestQuit } from '../quitGame.js';
@@ -31,7 +32,7 @@ function screenReady(ctx, id) {
   return !!(!mgr || typeof mgr.hasScreen !== 'function' || mgr.hasScreen(id));
 }
 // aria-disabled only (kit spec 6.5): the word stays in the DOM flow and clickable so a refused pick
-// sounds deny; the legacy utton:disabled opacity never applies to a word.
+// sounds deny; the legacy button:disabled opacity never applies to a word.
 function setDisabled(button, disabled, title) {
   if (!button) return;
   if (disabled) button.setAttribute('aria-disabled', 'true');
@@ -198,8 +199,12 @@ export const mainMenuScreen = {
     rootEl.appendChild(backdrop);
 
     const title = el('header', 'k-title');
+    const mark = el('div', 'cd-title-mark');
+    mark.innerHTML = instrumentGlyph('launch');
+    mark.appendChild(el('span', '', 'SpaceFace'));
+    title.appendChild(mark);
     title.appendChild(el('h1', 'k-display k-t-name', 'SpaceFace'));
-    title.appendChild(el('p', 'k-t-emph k-62', 'Contract 47-A remains open'));
+    title.appendChild(el('p', 'k-t-emph k-62', 'Fly. Trade. Fight. Make it yours.'));
     rootEl.appendChild(title);
 
     const stage = el('div', 'k-stage');
@@ -337,7 +342,7 @@ export const mainMenuScreen = {
       refs.saveSummary.textContent = coreText('continueSummary', { summary });
       setDisabled(refs.bContinue, false, 'Load ' + summary);
     } else {
-      refs.saveSummary.textContent = coreText('noSave');
+      refs.saveSummary.textContent = 'No flight record. Start your first voyage.';
       setDisabled(refs.bContinue, true, 'No save found yet');
     }
     this._syncCurrent();
@@ -348,10 +353,12 @@ export const mainMenuScreen = {
   _syncCurrent() {
     if (!refs) return;
     const target = refs.buttons.find((b) => !isDisabled(b)) || null;
+    const focused = refs.buttons.find((b) => b === document.activeElement && !isDisabled(b));
     for (const b of refs.buttons) {
       const current = b === target;
       if (current) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current');
-      b.tabIndex = current ? 0 : -1;
+      b.classList.toggle('k-word--primary', current);
+      b.tabIndex = b === (focused || target) ? 0 : -1;
     }
   },
 

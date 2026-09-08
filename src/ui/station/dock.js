@@ -1,3 +1,5 @@
+import { instrumentGlyph } from '../kit/insignia.js';
+
 // src/ui/station/dock.js — the station's destinations as words along the bottom edge (Task C §1.2).
 // A real ARIA tablist of kit words: role=tab, roving tabindex, arrow keys, aria-current on the live
 // one. The pointer/keyboard distance field still writes --dock-scale / --dock-lift / --dock-near on
@@ -13,7 +15,7 @@ function tileHtml(item, kind) {
   const extra = isNav ? '' : ' sx-tile--act';
   return (
     `<li><button type="button" class="k-word k-word--body sx-tile${extra}" ${dataAttr} aria-label="${item.aria || item.label}">` +
-      `<span class="sx-tile__seat" aria-hidden="true"></span>` +
+      `<span class="sx-tile__seat" aria-hidden="true">${instrumentGlyph(item.id)}</span>` +
       `<span class="sx-tile__badge k-t-fine k-signal" data-badge="${item.id}" hidden></span>` +
       `<span class="sx-tile__label">${item.label}</span>` +
       (kind === 'act' ? `<span class="sx-tile__cost k-t-fine k-38" data-cost="${item.id}">—</span>` : '') +

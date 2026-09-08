@@ -1,12 +1,8 @@
+import { createVesselDossier } from '../panels/vesselDossier.js';
 // Pause menu (ARCHITECTURE §5.4, design/specs/09). Opened by ESC in flight.
-// The sheet's line (design/frontend/direction/DIRECTION_SHEET.md, pause, amended by Task B §1.4):
-// the world held, not hidden — the frozen game at 0 % scrim; "Paused" at screen-title size top-left;
-// the flight brief as one sentence beneath it; the actions as a column of words down the left edge;
-// the HUD dims to 38 % rather than disappearing. Photo mode (§1.7) is a sub-state of this screen:
-// the pause root goes invisible under body.k-photo while the stack (and the sim pause) is unchanged.
-// Built on the frontend kit (styles/kit.css, src/ui/kit/); this file owns no CSS.
 // ScreenManager owns aggregate pause/resume events and the time-effects request. This screen owns
-// only pause-mode presentation and navigation intents.
+// only pause-mode presentation and navigation intents. The vessel plate reads current telemetry;
+// photo mode hides presentation without changing the screen stack or simulation ownership.
 
 import { confirm } from '../confirm.js';
 import { BINDINGS } from '../bindings.js';
@@ -300,6 +296,7 @@ function renderFlightBrief(ctx) {
   els.briefObjective.textContent = lines.objective;
   els.briefNext.textContent = lines.next;
   els.briefSave.textContent = lines.save;
+  els.vessel?.update(ctx && ctx.state);
 }
 
 /* ---------- photo mode (Task B §1.7, sheet moment 12) ---------- */
@@ -362,7 +359,7 @@ export const pauseScreen = {
     rootEl.classList.add('k-screen', 'k-screen--stage');
     delete rootEl.dataset.stamp;
 
-    // .k-title — "Paused" and the brief beneath it (hooks sf-pause-brief / sf-slot-* kept for checks).
+    // Title, vessel instruments, and the actual flight commitment share one interruption surface.
     const title = el('header', 'k-title');
     title.appendChild(el('h1', 'k-display k-t-title', coreText('paused')));
     const brief = el('div', 'sf-pause-brief');
@@ -376,11 +373,13 @@ export const pauseScreen = {
     brief.appendChild(briefObjective);
     brief.appendChild(briefNext);
     brief.appendChild(briefSave);
-    title.appendChild(brief);
-    rootEl.appendChild(title);
+    const dossier = el('aside', 'cd-pause-dossier');
+    dossier.setAttribute('aria-label', 'Ship and flight commitment');
+    const vessel = createVesselDossier(ctx && ctx.state);
+    dossier.append(vessel.element, brief);
+    rootEl.append(title, dossier);
 
-    // .k-stage — the actions as one column of words. `mk` keeps the legacy shape the checks read
-    // (label, handler) and appends a kit word to the column; `words()` is built once at the end.
+    // Native controls retain their existing navigation handlers and keyboard activation.
     const stage = el('section', 'k-stage');
     const items = [];
     const handlers = new Map();
@@ -403,24 +402,15 @@ export const pauseScreen = {
       if (ok) nav(ctx, 'pushScreen', 'saveLoad');
     });
     mk(coreText('missionLog', { key: BINDINGS.missionLog.label }), () => nav(ctx, 'pushScreen', 'missionLog'));
-    // THE SHIP (F2 in flight; SCREENS_B §1.2 route wiring). From pause the same instrument opens
-    // with its pause-menu entry; the key case lives in the flight-only key router.
     mk('My Ship', () => nav(ctx, 'pushScreen', 'ship'));
-    // Operations = the Automation ops board (drones / traders / outposts / fleet). Reachable from
-    // pause anywhere in flight — fleet orders are a flight-time action ("recall to cash out"), so
-    // the pause route fits better than a docked-only station tab (GDD 2.0 §12 keeps automation at
-    // UI-polish scope this cycle; a first-class station tab would be promotion).
     mk(coreText('operations'), () => nav(ctx, 'pushScreen', 'automation'));
     const mapAction = pauseMapAction(ctx && ctx.state);
     if (mapAction) mk('Review ' + mapAction.label, () => openPauseMapReview(ctx, mapAction));
     mk(coreText('helpControls'), () => nav(ctx, 'pushScreen', 'help'));
     mk(coreText('codex'), () => nav(ctx, 'pushScreen', 'codex'));
-    // Photo mode (Task B §1.7): everything gone but the world; Esc returns here.
     mk('Photo', () => enterPhoto(rootEl, ctx));
-    // DEV ONLY — Sandbox testing harness (grant weapon now, spawn enemy now, etc.). IS_DEV-gated so
-    // it never appears in packaged builds. Same screen as the main-menu Sandbox button.
+    // Sandbox stays development-only, never an advertised packaged-game destination.
     if (IS_DEV) mk('Sandbox', () => nav(ctx, 'pushScreen', 'sandbox'), { dev: true });
-    // Main Menu discards the current session entirely — confirm with the live run context first.
     mk(coreText('mainMenu'), async () => {
       const ok = await confirm({
         title: 'Return to main menu?',
@@ -440,10 +430,6 @@ export const pauseScreen = {
       if (ok) requestQuit(ctx);
     }, { danger: true });
 
-    // Recorded choice: the task table says menu size, but thirteen menu-size words under the title
-    // and the three-line brief run past a 1080-tall frame (Main menu and Quit fell below the fold in
-    // the 1920x1080 capture). Emph is the next size down on the words scale; every word stays in
-    // frame at every width.
     const list = words(items, {
       size: 'emph',
       ariaLabel: 'Pause',
@@ -455,11 +441,10 @@ export const pauseScreen = {
     stage.appendChild(list);
     rootEl.appendChild(stage);
 
-    // .k-fine — the resume key. check-ui-screen-imports allows the literal on this screen.
     rootEl.appendChild(el('p', 'k-fine', 'Esc resumes'));
 
     const bResume = list.querySelector(`[data-action="${resumeAction}"]`);
-    els = { bResume, title, stage, briefObjective, briefNext, briefSave };
+    els = { bResume, title, stage, briefObjective, briefNext, briefSave, vessel };
     renderFlightBrief(ctx);
   },
 
@@ -492,8 +477,7 @@ export const pauseScreen = {
       if (els.stage) settle(els.stage, { from: 'left', delay: 60, state: 'pause-words' });
       if (els.bResume) try { els.bResume.focus(); } catch (e) {}
     }
-    // The world behind the pause is the live flight picture, not a mount of its own: the frame is
-    // ready as soon as the words are (KIT_SPEC §11.7 capture contract).
+    // The world behind pause is the current flight picture, not another renderer.
     if (els && els.title && els.title.parentElement) els.title.parentElement.dataset.kReady = '1';
     cue('open');
   },
