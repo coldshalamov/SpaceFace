@@ -22,8 +22,13 @@
 // cleared on save:loaded/sector:exit/game:new — which deliberately sidesteps the save-schema mutex
 // (a save/reload legitimately clears an in-flight field cooldown).
 
-import { FIELD_DEFS, FIELD_KINDS, FIELD_MAX_ACTIVE, FIELD_END_REASONS, FIELD_PALETTE, WELL_GRIND, fieldsFlag, fieldVolumeOf } from '../data/fields.js';
-import { createFieldKernel, fieldAffectsBody, fieldRawAcceleration, sampleFieldAcceleration } from '../core/fields/fieldKernel.js';
+import { FIELD_DEFS, FIELD_KINDS, FIELD_MAX_ACTIVE, FIELD_END_REASONS, FIELD_PALETTE, WELL_CLUSTER, WELL_GRIND, fieldsFlag, fieldVolumeOf } from '../data/fields.js';
+import { createFieldKernel, fieldAffectsBody, fieldRawAcceleration, sampleFieldAcceleration, wellUsesVelocityTerm } from '../core/fields/fieldKernel.js';
+import {
+  classifyClusterReceipt,
+  mergeClusterSecondaries,
+  rateClusterMoment,
+} from '../core/fields/clusterDetonate.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
 import { Masks } from '../core/entity.js';
@@ -82,6 +87,8 @@ function defaultRuntime() {
     npcFields: {},  // sourceId -> { fieldId, kind, holdUntilTick }
     hitches: {},    // entityId -> { fieldId, sourceId } — PQ-147.02 seed lock
     orbit: { count: 0, nodes: [] },
+    // PQ-147.03 — last rated cluster-and-detonate moment (receipts, not a scripted explode).
+    cluster: { fieldId: null, primedId: null, actionTick: null, count: 0, kinds: [], rated: false },
     telemetry: { fields: 0, queries: 0, affected: 0, appliedAccelSum: 0, orbitNodes: 0 },
   };
 }
@@ -98,6 +105,9 @@ function ensureRuntime(state) {
     if (!Object.prototype.hasOwnProperty.call(f, 'skimFieldId')) f.skimFieldId = null;
     if (!f.npcFields || typeof f.npcFields !== 'object') f.npcFields = {};
     if (!f.hitches || typeof f.hitches !== 'object') f.hitches = {};
+    if (!f.cluster || typeof f.cluster !== 'object') {
+      f.cluster = { fieldId: null, primedId: null, actionTick: null, count: 0, kinds: [], rated: false };
+    }
     return f;
   }
   state.fields = defaultRuntime();
@@ -223,7 +233,21 @@ export const fields = {
     // PQ-137.09 grind ledger: pairKey -> { aId, bId, fieldId, ticks, lastTick, announced }
     this._grindPairs = new Map();
     this._grindScratch = [];
-    this._bodyProfile ={ mass: 1, type: null, team: null, id: null, fieldResponseMult: 1, physicsMassScale: 1, boosting: false, hitchedTo: null };
+    this._flingPairs = new Map();
+    this._clusterCargo = new Set();
+    this._clusterTerrain = new Set();
+    this._clusterSecondaries = [];
+    this._clusterCtx = {
+      primedId: null,
+      playerId: null,
+      actionTick: 0,
+      cargoIds: this._clusterCargo,
+      terrainIds: this._clusterTerrain,
+      primedTumbled: false,
+      chainStarted: false,
+      entityOf: null,
+    };
+    this._bodyProfile ={ mass: 1, type: null, team: null, id: null, fieldResponseMult: 1, physicsMassScale: 1, boosting: false, hitchedTo: null, primed: false };
     this._coneCenter = { x: 0, z: 0 };
     this._coneDir = { x: 1, z: 0 };
     ensureRuntime(ctx.state);
@@ -237,6 +261,13 @@ export const fields = {
           this._rebuildAnchoredFieldsFromEntities();
         }),
         this.bus.on('entity:spawned', (payload) => this._onEntitySpawned(payload)),
+        this.bus.on('fields:deployed', (p) => this._onWellDeployed(p)),
+        this.bus.on('chain:slam', (p) => this._onClusterReceipt('chain:slam', p)),
+        this.bus.on('chain:detonated', (p) => this._onClusterReceipt('chain:detonated', p)),
+        this.bus.on('charge:detonated', (p) => this._onClusterReceipt('charge:detonated', p)),
+        this.bus.on('combat:tumbled', (p) => this._onClusterReceipt('combat:tumbled', p)),
+        this.bus.on('combat:collisionConsequence', (p) => this._onClusterReceipt('combat:collisionConsequence', p)),
+        this.bus.on('physics:impact', (p) => this._onClusterReceipt('physics:impact', p)),
       ];
     }
   },
@@ -938,6 +969,16 @@ export const fields = {
     this._wellAccum = new WeakMap();
     this._wellBodies = new Set();
     if (this._grindPairs) this._grindPairs.clear();
+    if (this._flingPairs) this._flingPairs.clear();
+    if (this._clusterCargo) this._clusterCargo.clear();
+    if (this._clusterTerrain) this._clusterTerrain.clear();
+    this._clusterSecondaries = [];
+    if (this._clusterCtx) {
+      this._clusterCtx.primedId = null;
+      this._clusterCtx.actionTick = 0;
+      this._clusterCtx.primedTumbled = false;
+      this._clusterCtx.chainStarted = false;
+    }
     this.bus && this.bus.emit && this.bus.emit('fields:cleared', { reason, why });
     state.fields = defaultRuntime();
   },
@@ -1022,13 +1063,17 @@ export const fields = {
   },
 
   _profileFor(e, state) {
-    return fieldBodyProfile(e, state, this._bodyProfile);
+    const profile = fieldBodyProfile(e, state, this._bodyProfile);
+    profile.primed = this._isPrimedLight(e, state);
+    return profile;
   },
 
   _considerMassState(field, entity) {
     if (!field || field.tag != null || field.ownerId == null) return;
     if (field.kind !== FIELD_KINDS.WELL && field.kind !== FIELD_KINDS.REPULSOR) return;
     if (!MASS_STATE_TYPES.has(entity.type) || String(entity.id) === String(field.ownerId)) return;
+    // PQ-147.03 — a primed light is ammunition. Pinning it would park the detonator in the clump.
+    if (field.kind === FIELD_KINDS.WELL && this._isPrimedLight(entity, this.state)) return;
     fieldRawAcceleration(field, entity.pos.x, entity.pos.z, this._massStateAccel);
     const strength = this._massStateAccel.ax * this._massStateAccel.ax
       + this._massStateAccel.az * this._massStateAccel.az;
@@ -1102,7 +1147,9 @@ export const fields = {
       const massStateField = this._massStateFields.get(e);
       if (massStateField) this._refreshMassState(state, e, massStateField);
       const profile = this._profileFor(e, state);
-      const velSample = FIELD_VELOCITY_TERM_TYPES.has(e.type) ? e.vel : null;
+      const velSample = (FIELD_VELOCITY_TERM_TYPES.has(e.type) && wellUsesVelocityTerm(profile))
+        ? e.vel
+        : null;
       sampleFieldAcceleration(e.pos, velSample, fieldsList, now, profile, accel);
       if (accel.ax === 0 && accel.az === 0) continue;
       // p = a·m·dt, where m must be the mass the SOLVER will use this tick — not the authored one.
@@ -1117,11 +1164,13 @@ export const fields = {
         * positive(profile.physicsMassScale, 1);
       queuePhysicsImpulse(e, { x: accel.ax * mass * dt, y: 0, z: accel.az * mass * dt });
       this._accumulateWellDelta(e, fieldsList, profile, accel, dt, state);
+      this._noteWellClusterBody(e, fieldsList, profile, accel, state);
       affectedCount++;
       accelSum += Math.hypot(accel.ax, accel.az);
     }
     this._detectWellGrind(state);
     this._flushEndedWells(state);
+    this._publishClusterWatch(state);
     return { queries, affected: affectedCount, accelSum };
   },
 
@@ -1275,6 +1324,180 @@ export const fields = {
         },
       }, entity.id),
       tick: state && state.tick,
+    });
+  },
+
+  // ── PQ-147.03 cluster and detonate (observe the 137.09 primed-light seam) ────────────────────
+
+  _isPrimedLight(entity, state) {
+    if (!entity || entity.alive === false) return false;
+    if (entity.type !== 'ship' && entity.type !== 'drone') return false;
+    if (state && entity.id === state.playerId) return false;
+    const charges = this.registry && this.registry.get && this.registry.get('impulseCharges');
+    if (charges && typeof charges.isPrimed === 'function' && charges.isPrimed(entity, state || this.state)) {
+      return true;
+    }
+    if (charges && typeof charges._armedChargeOn === 'function') {
+      if (charges._armedChargeOn(state || this.state, entity.id)) return true;
+    }
+    const list = state && state.entityList;
+    if (!list) return false;
+    for (let i = 0; i < list.length; i++) {
+      const charge = list[i];
+      if (!charge || charge.alive === false || charge.type !== 'charge') continue;
+      const data = charge.data;
+      if (data && data.armed && data.hostId === entity.id) return true;
+    }
+    return false;
+  },
+
+  _onWellDeployed(payload) {
+    if (!payload || payload.kind !== 'well') return;
+    const state = this.state;
+    if (!state) return;
+    const rt = ensureRuntime(state);
+    this._beginClusterWatch(state, rt, payload.fieldId, payload.sourceId);
+  },
+
+  _beginClusterWatch(state, rt, fieldId, sourceId) {
+    const tick = state.tick | 0;
+    this._clusterSecondaries = [];
+    this._clusterCargo.clear();
+    this._clusterTerrain.clear();
+    const ctx = this._clusterCtx;
+    ctx.primedId = null;
+    ctx.playerId = state.playerId;
+    ctx.actionTick = tick;
+    ctx.primedTumbled = false;
+    ctx.chainStarted = false;
+    ctx.entityOf = (id) => (state.entities && state.entities.get ? state.entities.get(id) : null);
+    rt.cluster = {
+      fieldId: fieldId || null,
+      primedId: null,
+      actionTick: tick,
+      sourceId: sourceId != null ? sourceId : null,
+      count: 0,
+      kinds: [],
+      rated: false,
+    };
+    if (this._flingPairs) this._flingPairs.clear();
+  },
+
+  _noteWellClusterBody(entity, fieldsList, profile, accel, state) {
+    if (!entity || !entity.pos) return;
+    if (entity.type === 'pickup' || entity.type === 'payload' || entity.type === 'wreck') {
+      this._clusterCargo.add(entity.id);
+    }
+    if (entity.type === 'asteroid' || entity.type === 'station') {
+      this._clusterTerrain.add(entity.id);
+    }
+    let well = null;
+    for (let i = 0; i < fieldsList.length; i++) {
+      const field = fieldsList[i];
+      if (!field || field.kind !== FIELD_KINDS.WELL) continue;
+      if (!fieldAffectsBody(field, profile)) continue;
+      well = field;
+      break;
+    }
+    if (!well) return;
+    const rt = ensureRuntime(state);
+    if (!rt.cluster || rt.cluster.actionTick == null) {
+      this._beginClusterWatch(state, rt, well.id, well.ownerId);
+    }
+    const primed = profile.primed === true || this._isPrimedLight(entity, state);
+    if (primed && rt.cluster.primedId == null) {
+      rt.cluster.primedId = entity.id;
+      this._clusterCtx.primedId = entity.id;
+    }
+    if (!primed) return;
+    const mag = Math.hypot(finite(accel && accel.ax), finite(accel && accel.az));
+    if (!(mag >= WELL_CLUSTER.flingMinAccel)) return;
+    const key = `${well.id}|${entity.id}`;
+    let rec = this._flingPairs.get(key);
+    if (!rec) {
+      rec = { ticks: 0, announced: false, fieldId: well.id, targetId: entity.id, ownerId: well.ownerId };
+      this._flingPairs.set(key, rec);
+    }
+    rec.ticks += 1;
+    if (rec.announced || rec.ticks < WELL_CLUSTER.flingTicks) return;
+    rec.announced = true;
+    this.bus.emit('well:fling', {
+      schemaVersion: 1,
+      actorId: rec.ownerId != null ? rec.ownerId : state.playerId,
+      playerId: state.playerId,
+      wellId: rec.fieldId,
+      sourceId: rec.fieldId,
+      targetId: rec.targetId,
+      victimId: rec.targetId,
+      primed: true,
+      tick: state.tick | 0,
+    });
+  },
+
+  _onClusterReceipt(eventName, payload) {
+    const state = this.state;
+    if (!state || !payload) return;
+    const rt = state.fields;
+    if (!rt || !rt.cluster || rt.cluster.actionTick == null) return;
+    const ctx = this._clusterCtx;
+    ctx.playerId = state.playerId;
+    ctx.actionTick = rt.cluster.actionTick;
+    ctx.primedId = rt.cluster.primedId;
+    ctx.nowTick = state.tick | 0;
+    if (payload.tick == null) payload.tick = ctx.nowTick;
+    const incoming = classifyClusterReceipt(eventName, payload, ctx);
+    if (!incoming.length) return;
+    this._clusterSecondaries = mergeClusterSecondaries(this._clusterSecondaries, incoming);
+    const rating = rateClusterMoment(this._clusterSecondaries);
+    rt.cluster.count = rating.count;
+    rt.cluster.kinds = rating.kinds;
+    rt.cluster.rated = rating.rated;
+    if (rating.rated && !rt.cluster.published) {
+      rt.cluster.published = true;
+      this.bus.emit('fields:clusterDetonate', {
+        schemaVersion: 1,
+        fieldId: rt.cluster.fieldId,
+        primedId: rt.cluster.primedId,
+        secondaries: this._clusterSecondaries.slice(),
+        count: rating.count,
+        kinds: rating.kinds,
+        rated: true,
+        tick: state.tick | 0,
+      });
+    }
+  },
+
+  _publishClusterWatch(state) {
+    const rt = state && state.fields;
+    if (!rt || !rt.cluster || rt.cluster.actionTick == null) return;
+    if (rt.cluster.captureAnnounced) return;
+    let primed = null;
+    let neighbors = 0;
+    for (const entity of this._wellBodies) {
+      if (!entity || entity.alive === false) continue;
+      if (this._isPrimedLight(entity, state)) {
+        primed = entity;
+        if (rt.cluster.primedId == null) {
+          rt.cluster.primedId = entity.id;
+          this._clusterCtx.primedId = entity.id;
+        }
+      } else {
+        neighbors += 1;
+      }
+    }
+    neighbors += this._clusterCargo.size;
+    if (!primed || neighbors < WELL_CLUSTER.minNeighbors) return;
+    rt.cluster.captureAnnounced = true;
+    this.bus.emit('well:capture', {
+      schemaVersion: 1,
+      actorId: state.playerId,
+      playerId: state.playerId,
+      wellId: rt.cluster.fieldId,
+      sourceId: rt.cluster.fieldId,
+      targetId: primed.id,
+      victimId: primed.id,
+      bodies: neighbors + 1,
+      tick: state.tick | 0,
     });
   },
 

@@ -252,6 +252,17 @@ export const WELL_GRIND = Object.freeze({
   maxPairBodies: 12,
 });
 
+// PQ-147.03 — cluster and detonate. A well plus a primed light (PQ-137.09) is one action; the
+// well piles mass, the primed light is ammunition, and the moment is rated from receipts.
+// Unmarked craft still converge in the 30–60 WU/s band. A primed light skips that velocity
+// term so it arrives as a slam instead of parking in the clump.
+export const WELL_CLUSTER = Object.freeze({
+  flingTicks: 8,
+  flingMinAccel: 18,
+  minNeighbors: 2,
+  secondaryKinds: Object.freeze(['other_body_hit', 'cargo_thrown', 'second_tumble', 'terrain_slam']),
+});
+
 // Exact lifecycle reasons a field teardown can carry (mirrors MASS_SEED_CUT_REASONS shape so the
 // VFX/telemetry consumers speak one vocabulary).
 export const FIELD_END_REASONS = Object.freeze({

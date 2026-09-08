@@ -346,6 +346,15 @@ export function sampleFieldAcceleration(pos, vel, fields, simTime, bodyProfile, 
 
 const DEFAULT_PROFILE = Object.freeze({ mass: 1, type: 'ship', team: null, fieldResponseMult: 1, id: null });
 
+/**
+ * PQ-147.03 — a primed light in a well is ammunition. The kernel still accepts a velocity
+ * sample; the owner withholds it so the inbound fall is a slam, not a 45 WU/s parked clump.
+ * Unmarked craft keep the 137.09 convergence term.
+ */
+export function wellUsesVelocityTerm(bodyProfile) {
+  return !(bodyProfile && bodyProfile.primed);
+}
+
 const _projP = { x: 0, z: 0 };
 const _projV = { x: 0, z: 0 };
 const _projA = { ax: 0, az: 0 };
