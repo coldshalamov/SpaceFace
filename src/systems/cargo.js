@@ -8,7 +8,7 @@ import {
   finiteWholePickupAmount,
   PICKUP_ACCEPTANCE_RETRY_S,
 } from '../core/pickupAcceptance.js';
-import { spawnJettisonedCargoPod } from './lootShards.js';
+import { spawnJettisonedCargoPod, volatileThrowSpeedScale } from './lootShards.js';
 
 // commodityId -> { volPerU, massPerU } lookup, built once from the static registry.
 const VOL = Object.create(null);
@@ -444,12 +444,13 @@ export const cargo = {
       const vz = Number.isFinite(player.vel && player.vel.z) ? player.vel.z : 0;
       const def = defOf(state, commodityId);
       const unitMass = def && Number.isFinite(def.mass) ? def.mass : 0.5;
+      const eject = JETTISON_EJECT_SPEED * volatileThrowSpeedScale(commodityId);
       const spawnJettisonPod = (amount, richSource = null) => {
         if (!(amount > 0)) return;
         // Industrial-beam payload body: mass, collides, tetherable, flags.persistent. Not a TTL pickup.
         spawnJettisonedCargoPod(state, {
           pos: { x: px - fx * r, z: pz - fz * r },
-          vel: { x: vx - fx * JETTISON_EJECT_SPEED, z: vz - fz * JETTISON_EJECT_SPEED },
+          vel: { x: vx - fx * eject, z: vz - fz * eject },
           radius: JETTISON_POD_RADIUS,
           commodityId,
           amount,

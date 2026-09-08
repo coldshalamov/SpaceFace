@@ -31,8 +31,16 @@
 //
 // PQ-148.00 — jettisoned hold pods use the same spawnPayloadEntity body (JETTISONED_CARGO_PAYLOAD_TYPE),
 // mass by contents, flags.persistent, cap MAX_JETTISONED_CARGO_PODS. Cargo.js remains the inventory writer.
+//
+// PQ-148.01 — volatile classes (agy catalog: src/data/commodityVolatileClasses.js). Explosive slam
+// publishes a radial impulse; corrosive contact ticks hull (not a distance aura); superdense couples
+// harder to fields and cannot be thrown far. Silhouette/lamp live on the pod for render to read later.
 import { spawnPayloadEntity } from '../combat/industrialBeam.js';
 import { createVictimRewardRng, missionOwnsReward, runOwnsReward } from '../combat/rewardEligibility.js';
+import { scalarHitToDamagePacket } from '../combat/damage.js';
+import { sampleFieldAcceleration } from '../core/fields/fieldKernel.js';
+import { queryNearbyEntities } from '../core/spatialQuery.js';
+import { volatileClassOf } from '../data/commodityVolatileClasses.js';
 import { massline2Flag } from '../data/featureFlags.js';
 import { rollKillRewardItems } from '../data/killRewards.js';
 import { isHostileToPlayer } from './scanner.js';
@@ -51,6 +59,23 @@ export const CIVILIAN_MANIFEST_PAYLOAD_TYPE = 'civilian_manifest';
 export const MAX_JETTISONED_CARGO_PODS = 48;
 export const JETTISONED_CARGO_PAYLOAD_TYPE = 'jettisoned_cargo';
 export const JETTISONED_CARGO_MASS_FLOOR = 20;
+
+/** PQ-148.01 — slam bar (WU/s closing) before an explosive pod cooks off a radial shove. */
+export const EXPLOSIVE_SLAM_CLOSING_SPEED = 12;
+export const EXPLOSIVE_BLAST_RADIUS = 80;
+export const EXPLOSIVE_BLAST_IMPULSE = 900;
+export const CORROSIVE_HULL_TICK = 8;
+export const CORROSIVE_TICK_COOLDOWN_S = 0.35;
+/** Extra fieldResponseMult on top of mass-shrug; fields.js still applies the unmarked pull. */
+export const SUPERDENSE_FIELD_RESPONSE = 2.5;
+
+const VOLATILE_BLAST_TYPES = new Set(['ship', 'drone', 'payload']);
+const VOLATILE_HULL_TYPES = new Set(['ship', 'drone']);
+const _nearbyScratch = [];
+const _fieldDense = { ax: 0, az: 0 };
+const _fieldBase = { ax: 0, az: 0 };
+const _denseProfile = { mass: 1, type: 'payload', id: null, fieldResponseMult: 1 };
+const _baseProfile = { mass: 1, type: 'payload', id: null, fieldResponseMult: 1 };
 
 export function lootShardItemsFor(seed, victim) {
   const rng = createVictimRewardRng(seed, victim, SHARD_REWARD_SALT);
@@ -121,6 +146,126 @@ export function cargoPodMassForContents(unitMass, amount) {
   return Math.max(JETTISONED_CARGO_MASS_FLOOR, qty * per);
 }
 
+/** Jettison eject scale from the volatile catalog (superdense throwRangeMult = 0.5). */
+export function volatileThrowSpeedScale(commodityId) {
+  const klass = volatileClassOf(commodityId);
+  const mult = klass && Number(klass.throwRangeMult);
+  return Number.isFinite(mult) && mult > 0 ? mult : 1;
+}
+
+/** Lamp + silhouette the render can read later. Does not import src/render. */
+export function stampVolatilePresentation(target, commodityId) {
+  if (!target) return target;
+  const klass = volatileClassOf(commodityId);
+  if (!klass) return target;
+  target.volatileClass = klass.id;
+  target.volatileLamp = klass.lamp;
+  target.volatileSilhouette = klass.silhouetteNote;
+  return target;
+}
+
+export function fieldProfileForVolatilePod(pod, out = null) {
+  const klass = volatileClassOf(pod && pod.data);
+  const body = pod && pod.physicsBody;
+  const mass = Number.isFinite(body && body.mass) && body.mass > 0
+    ? body.mass
+    : (Number.isFinite(pod && pod.mass) && pod.mass > 0 ? pod.mass : JETTISONED_CARGO_MASS_FLOOR);
+  const profile = out || {};
+  profile.mass = mass;
+  profile.type = (pod && pod.type) || 'payload';
+  profile.id = pod && pod.id;
+  profile.fieldResponseMult = (klass && klass.fieldPull) ? SUPERDENSE_FIELD_RESPONSE : 1;
+  return profile;
+}
+
+function simNow(state) {
+  if (!state) return 0;
+  return Number.isFinite(state.simTime) ? state.simTime : (state.tick || 0) / 60;
+}
+
+function entityById(state, id) {
+  if (id == null || !state || !state.entities || typeof state.entities.get !== 'function') return null;
+  return state.entities.get(id) || null;
+}
+
+function impactClosingSpeed(payload) {
+  if (Number.isFinite(payload && payload.preSolveClosingSpeed)) {
+    return Math.abs(payload.preSolveClosingSpeed);
+  }
+  if (Number.isFinite(payload && payload.playerDeltaV)) {
+    return Math.abs(payload.playerDeltaV);
+  }
+  return Math.max(0, Number(payload && payload.dp) || Number(payload && payload.impulse) || 0);
+}
+
+function combatKernelOf(host) {
+  const combat = host.registry && host.registry.get && host.registry.get('combat');
+  if (combat && combat.kernel) return combat.kernel;
+  if (combat && typeof combat.ensureKernel === 'function') return combat.ensureKernel();
+  const actions = host.registry && host.registry.get && host.registry.get('actions');
+  return actions && actions.kernel ? actions.kernel : null;
+}
+
+function applyRadialPublishedImpulse(host, origin, skipId, magnitude, radius, reason, tick) {
+  const physics = host.helpers && host.helpers.combatPhysics;
+  if (!physics || typeof physics.applyImpulse !== 'function' || !origin) return 0;
+  const state = host.state;
+  const nearby = queryNearbyEntities(state, origin, radius, _nearbyScratch, state && state.entityList);
+  let applied = 0;
+  for (let i = 0; i < nearby.length; i++) {
+    const entity = nearby[i];
+    if (!entity || entity.alive === false || entity.id === skipId || !entity.pos) continue;
+    if (!VOLATILE_BLAST_TYPES.has(entity.type)) continue;
+    const dx = entity.pos.x - origin.x;
+    const dz = entity.pos.z - origin.z;
+    const dist = Math.hypot(dx, dz);
+    if (!(dist > 1e-4) || dist > radius) continue;
+    const fall = 1 - dist / radius;
+    const mag = magnitude * fall;
+    if (!(mag > 0)) continue;
+    const inv = 1 / dist;
+    const accepted = physics.applyImpulse({
+      entityId: entity.id,
+      impulse: { x: dx * inv * mag, z: dz * inv * mag },
+      point: null,
+      reason,
+      tick,
+    });
+    if (accepted !== false) applied += mag;
+  }
+  return applied;
+}
+
+function routeCorrosiveHullTick(host, target, damage, pos) {
+  const packet = scalarHitToDamagePacket({
+    damage,
+    damageType: 'thermal',
+    pos: pos && Number.isFinite(pos.x) ? { x: pos.x, z: pos.z } : (target.pos || null),
+    source: { kind: 'volatile_corrosive' },
+    shieldBypass: 1,
+  });
+  packet.flags = { ignoreFriendlyFire: true, allowAnyTarget: true };
+  const helpers = host.helpers;
+  if (helpers && typeof helpers.routeCombatDamage === 'function') {
+    return helpers.routeCombatDamage({
+      attackerId: host.state && host.state.playerId,
+      targetId: target.id,
+      packet,
+      origin: { kind: 'volatile_corrosive', id: target.id },
+    });
+  }
+  const kernel = combatKernelOf(host);
+  if (kernel && typeof kernel.routeDamage === 'function') {
+    return kernel.routeDamage({
+      attackerId: host.state && host.state.playerId,
+      targetId: target.id,
+      packet,
+      origin: { kind: 'volatile_corrosive', id: target.id },
+    });
+  }
+  return null;
+}
+
 /**
  * Stamp cargo-collection fields onto a payload spec/entity without inventing a second cargo writer.
  * `pickup:collected` still reads kind/commodityId/amount/richLotSource from the body.
@@ -137,6 +282,7 @@ function applyJettisonedCargoData(target, spec) {
   if (richSource) target.richLotSource = { ...richSource, richQty: amount };
   if (spec.pickupEmbargoUntil != null) target.pickupEmbargoUntil = spec.pickupEmbargoUntil;
   if (target.despawnAt != null) delete target.despawnAt;
+  stampVolatilePresentation(target, commodityId);
   return target;
 }
 
@@ -277,9 +423,11 @@ export const lootShards = {
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
+    this.registry = ctx.registry || null;
     this._unsubs = [];
     if (this.bus && typeof this.bus.on === 'function') {
       this._unsubs.push(this.bus.on('entity:killed', (p) => this._onKilled(p || {})));
+      this._unsubs.push(this.bus.on('physics:impact', (p) => this._onVolatileImpact(p || {})));
     }
   },
 
@@ -288,7 +436,124 @@ export const lootShards = {
     this._unsubs = [];
   },
 
-  update() {},
+  update(dt, state) {
+    this._pullSuperdensePods(dt, state || this.state);
+  },
+
+  _onVolatileImpact(payload) {
+    const state = this.state;
+    if (!state || !payload) return;
+    const a = entityById(state, payload.aId);
+    const b = entityById(state, payload.bId);
+    const pod = isJettisonedCargoPod(a) ? a : (isJettisonedCargoPod(b) ? b : null);
+    if (!pod || !pod.data) return;
+    const klass = volatileClassOf(pod.data) || volatileClassOf(pod.data.volatileClass);
+    if (!klass) return;
+    const other = pod === a ? b : a;
+    if (klass.slam === 'radial_impulse') {
+      this._detonateExplosiveSlam(pod, payload, klass);
+      return;
+    }
+    if (klass.slam === 'hull_tick') {
+      this._tickCorrosiveContact(pod, other, payload, klass);
+    }
+  },
+
+  _detonateExplosiveSlam(pod, payload, klass) {
+    if (pod.data.volatileDetonated) return;
+    const closing = impactClosingSpeed(payload);
+    const dp = Math.max(0, Number(payload.dp) || Number(payload.impulse) || 0);
+    if (closing < EXPLOSIVE_SLAM_CLOSING_SPEED && dp < 80) return;
+    const amount = Math.max(1, Number(pod.data.amount) || 1);
+    const magnitude = EXPLOSIVE_BLAST_IMPULSE * Math.min(2, 0.5 + amount / 16);
+    const origin = payload.pos && Number.isFinite(payload.pos.x)
+      ? payload.pos
+      : pod.pos;
+    const applied = applyRadialPublishedImpulse(
+      this,
+      origin,
+      pod.id,
+      magnitude,
+      EXPLOSIVE_BLAST_RADIUS,
+      'volatile_explosive_slam',
+      this.state && this.state.tick,
+    );
+    if (!(applied > 0)) return;
+    pod.data.volatileDetonated = true;
+    pod.data.volatileSlamImpulse = applied;
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('cargo:volatileSlam', {
+        class: klass.id,
+        podId: pod.id,
+        appliedImpulse: applied,
+        closingSpeed: closing,
+      });
+    }
+  },
+
+  _tickCorrosiveContact(pod, other, payload, klass) {
+    if (!other || other.alive === false || !VOLATILE_HULL_TYPES.has(other.type)) return;
+    const now = simNow(this.state);
+    const last = Number(pod.data.volatileCorrosiveAt);
+    if (Number.isFinite(last) && now - last < CORROSIVE_TICK_COOLDOWN_S) return;
+    const hullBefore = Number(other.hull);
+    const result = routeCorrosiveHullTick(this, other, CORROSIVE_HULL_TICK, payload.pos || pod.pos);
+    const hullAfter = Number(other.hull);
+    const lost = Number.isFinite(hullBefore) && Number.isFinite(hullAfter)
+      ? Math.max(0, hullBefore - hullAfter)
+      : CORROSIVE_HULL_TICK;
+    if (!(lost > 0) && !result) return;
+    pod.data.volatileCorrosiveAt = now;
+    pod.data.volatileCorrosiveTick = lost > 0 ? lost : CORROSIVE_HULL_TICK;
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('cargo:volatileCorrosive', {
+        class: klass.id,
+        podId: pod.id,
+        targetId: other.id,
+        hullTick: pod.data.volatileCorrosiveTick,
+      });
+    }
+  },
+
+  _pullSuperdensePods(dt, state) {
+    if (!state || state.mode !== 'flight') return;
+    const step = Number(dt);
+    if (!(step > 0)) return;
+    const snapshot = state.fields && Array.isArray(state.fields.snapshot) ? state.fields.snapshot : null;
+    if (!snapshot || snapshot.length === 0) return;
+    const physics = this.helpers && this.helpers.combatPhysics;
+    if (!physics || typeof physics.applyImpulse !== 'function') return;
+    const index = state.entityIndex;
+    const list = index && index.__spacefaceEntityIndexV1 && Array.isArray(index.payloads)
+      ? index.payloads
+      : state.entityList;
+    if (!Array.isArray(list)) return;
+    const now = simNow(state);
+    for (let i = 0; i < list.length; i++) {
+      const pod = list[i];
+      if (!isJettisonedCargoPod(pod) || !pod.pos) continue;
+      const klass = volatileClassOf(pod.data);
+      if (!klass || !klass.fieldPull) continue;
+      const dense = fieldProfileForVolatilePod(pod, _denseProfile);
+      _baseProfile.mass = dense.mass;
+      _baseProfile.type = dense.type;
+      _baseProfile.id = dense.id;
+      _baseProfile.fieldResponseMult = 1;
+      sampleFieldAcceleration(pod.pos, pod.vel, snapshot, now, dense, _fieldDense);
+      sampleFieldAcceleration(pod.pos, pod.vel, snapshot, now, _baseProfile, _fieldBase);
+      const ax = _fieldDense.ax - _fieldBase.ax;
+      const az = _fieldDense.az - _fieldBase.az;
+      if (ax === 0 && az === 0) continue;
+      const mass = dense.mass;
+      physics.applyImpulse({
+        entityId: pod.id,
+        impulse: { x: ax * mass * step, z: az * mass * step },
+        point: null,
+        reason: 'volatile_superdense_field',
+        tick: state.tick,
+      });
+    }
+  },
 
   _onKilled(payload) {
     if (!massline2Flag('lootShards')) return;
