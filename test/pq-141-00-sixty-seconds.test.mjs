@@ -174,11 +174,12 @@ function tapeKeyDownAt(tape, code, tick) {
   return down;
 }
 
-test('PQ-141.00 Massline is held during both cargo-grab aim windows', () => {
+test('PQ-141.00 Massline (KeyF) is held during both cargo-grab aim windows', () => {
   const tape = buildProofInputTape();
-  assert.equal(tapeKeyDownAt(tape, 'KeyJ', 300), true, 'early killbox grab must hold KeyJ');
-  assert.equal(tapeKeyDownAt(tape, 'KeyJ', 2500), true, 'late grab window must hold KeyJ');
-  assert.equal(tapeKeyDownAt(tape, 'KeyJ', 2410), false, 'relatch gap after the 40 s pirate window');
+  assert.equal(tapeKeyDownAt(tape, 'KeyF', 300), true, 'early killbox grab must hold KeyF, not KeyJ');
+  assert.equal(tapeKeyDownAt(tape, 'KeyJ', 300), false, 'KeyJ is fire in the tape driver');
+  assert.equal(tapeKeyDownAt(tape, 'KeyF', 2500), true, 'late grab window must hold KeyF');
+  assert.equal(tapeKeyDownAt(tape, 'KeyW', 300), false, 'do not cruise away from the spilled pod');
 });
 
 test('PQ-141.00 census sees pirates when pointed at Ambush Run', { timeout: 120_000 }, async () => {

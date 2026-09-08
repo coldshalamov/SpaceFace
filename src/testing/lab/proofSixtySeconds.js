@@ -297,14 +297,17 @@ export function buildProofInputTape() {
   const press = (tick, code, pressed) => {
     events.push({ tick: tick | 0, device: 'keyboard', code, pressed: !!pressed });
   };
-  press(0, 'KeyW', true);
+  // inputTape.js: KeyJ is fire. KeyF / Space is the Massline. Do not invert them.
 
-  press(180, 'ShiftLeft', true);
-  press(480, 'ShiftLeft', false);
+  // Sit in the killbox through the ~1.5 s spill, then latch the pod (aim window 200–480).
+  press(120, 'KeyF', true);
+  press(480, 'KeyF', false);
 
-  // Spill is at ~1.5 s. Hold the Massline on the pod while still in the killbox;
-  // the 40 s grab window used to aim at cargo with KeyJ already released.
-  press(200, 'KeyJ', true);
+  press(480, 'KeyW', true);
+  press(480, 'ShiftLeft', true);
+  press(780, 'ShiftLeft', false);
+
+  press(480, 'KeyJ', true);
   press(900, 'KeyJ', false);
 
   press(900, 'KeyF', true);
@@ -314,8 +317,6 @@ export function buildProofInputTape() {
 
   press(1680, 'KeyJ', true);
   press(2400, 'KeyJ', false);
-  press(2420, 'KeyJ', true);
-  press(3000, 'KeyJ', false);
 
   press(2400, 'KeyF', true);
   press(3000, 'KeyF', false);
