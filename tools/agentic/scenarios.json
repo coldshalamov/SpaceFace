@@ -529,6 +529,33 @@
       "metrics": [
         "reactionsWithin3s"
       ]
+    },
+    {
+      "id": "proof.sixty_seconds",
+      "seconds": 60,
+      "purpose": "Ceres reference pocket: seeded 60s proof of the VISION 11-beat chain from shipping bus receipts. Player input tape only; NPCs are not scripted.",
+      "bar": "B12",
+      "bench": "lab (src/testing/lab/proofSixtySeconds.js)",
+      "run": "node --test test/pq-141-00-sixty-seconds.test.mjs",
+      "checkpoints": [
+        "real-path-ready",
+        "op-working",
+        "hauler-leaves",
+        "pirates-intercept",
+        "shove-spins-one",
+        "rope-projectile",
+        "collateral",
+        "cargo-spills",
+        "hauler-flees",
+        "patrol-arrives",
+        "grab-pod",
+        "run-wanted"
+      ],
+      "metrics": [
+        "beatsDetected",
+        "worstSeedBeats",
+        "simSeconds"
+      ]
     }
   ]
 }

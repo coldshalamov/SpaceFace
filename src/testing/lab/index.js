@@ -69,3 +69,17 @@ export {
   applyParameterOverlay,
   listRegisteredParameters,
 } from './parameterOverlay.js';
+export {
+  PROOF_SCENARIO_ID,
+  PROOF_SEEDS,
+  PROOF_WINDOW_S,
+  PROOF_HARD_CAP_S,
+  PROOF_REQUIRED_BEATS,
+  SIXTY_SECOND_BEATS,
+  buildProofInputTape,
+  classifyReceipt,
+  emptyBeatTimes,
+  runProofSixtySeconds,
+  runProofSixtySecondsSuite,
+  formatBeatTable,
+} from './proofSixtySeconds.js';
