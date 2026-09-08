@@ -402,7 +402,7 @@ additional guardrail, never a relaxation. Pair the brief with
 which preserves a historical plan/literal-source-reference screen and withdrawn-claim evidence.
 Refresh its named manifest, bundle, catalog, route, and ownership checks before treating any captured
 disposition as current. The current research ranking is
-[`design/graphics-sprints/TOP10_ROI_ASSET_PLAN.md`](./design/graphics-sprints/TOP10_ROI_ASSET_PLAN.md).
+`design/graphics-sprints/TOP10_ROI_ASSET_PLAN.md` (removed 2026-09-08; expired VOLATILE, superseded by the DURABLE ledgers in the same dir; see git history).
 It grants no lease, priority, or dispatch authority: implementation still requires an admitted
 packet from the queue, and any overlapping Physics-as-Spectacle row remains downstream of that
 packet's R5/five-minute-Ceres/R8 gates. Craft and acceptance still belong to

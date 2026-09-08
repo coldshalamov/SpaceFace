@@ -1,6 +1,6 @@
 # Phase 0 Authority Audit
 
-Source of truth: `docs/Spec/MASTER_MAKEOVER_PLAN.md`.
+Source of truth: `design/_ARCHIVE/MASTER_MAKEOVER_PLAN.md` (archived 2026-09-08).
 
 This audit separates authoritative simulation sources from presentation, tooling, and telemetry
 sources. Phase 0 does not require removing every browser timer or cosmetic random draw; it requires

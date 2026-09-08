@@ -46,7 +46,6 @@ When two prescriptions about 2D surfaces disagree, use this table rather than av
 | [`COMMAND_DECK_EFFECTS_AND_GAMEPLAY_BIBLE.md`](./COMMAND_DECK_EFFECTS_AND_GAMEPLAY_BIBLE.md) | 2026-07-08 doctrine + the `src/ui/effects/` contract | **Retained, narrowed.** It self-demotes in its own header ("a quarry, not automatic rules"). Its `src/ui/effects/` contract and eight built primitives remain in force. Its invitation to expand the palette yields to token-only. See §5.1. |
 | [`design/HUD_FLIGHT_ATTENTION.md`](../HUD_FLIGHT_ATTENTION.md) | **Activated execution plan, user-authorized 2026-08-13** | **CONTROLS THE FLIGHT HUD.** Layout law for `#hud`. This document does **not** restate or override it — see §0. |
 | [`FRONTEND_REBOOT_AUDIT.md`](./FRONTEND_REBOOT_AUDIT.md), [`HUD_THREE_ANCHOR.md`](./HUD_THREE_ANCHOR.md) | Surface inventory; flight anchor budget | Dated receipts. `HUD_FLIGHT_ATTENTION.md` supersedes `HUD_THREE_ANCHOR.md` as layout law. |
-| [`STATION_UI_REFACTOR_BRAINSTORM.md`](../STATION_UI_REFACTOR_BRAINSTORM.md) | 2026-08-12 station stylesheet diagnosis | **Retained.** Its Stage 0 → 1 → 2 ruling is engaged directly in §6. |
 | [`MENU_OVERHAUL_BRIEF.md`](../MENU_OVERHAUL_BRIEF.md) | 2026-07-17 handoff | **Closed/archived.** Not resumed. |
 
 **Not active requirements:** first-person visor/cockpit framing in a third-person game; the

@@ -47,3 +47,12 @@ _recovery/
 
 # Fun-loop frame strips are capture evidence (hundreds of MB of PNG); they live in .devshots/fun-loop/ like every other capture.
 design/program/roadmap/receipts/fun-loop/strips/
+
+# Agent iteration evidence: capture media are disposable (owner ruling 2026-09-08);
+# verdict reports (.md/.json) in evidence/ dirs stay trackable.
+assets/**/evidence/*.png
+assets/**/evidence/*.jpg
+assets/**/evidence/*.jpeg
+assets/**/evidence/*.webm
+assets/**/evidence/*.mp4
+assets/**/evidence/*.gif

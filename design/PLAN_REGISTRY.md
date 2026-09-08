@@ -66,10 +66,9 @@ folder indexes.
 |---|---|---|
 | [`BUILD_PLAN_2_0.md`](./BUILD_PLAN_2_0.md) | **HISTORY / OWNERSHIP REFERENCE** | Useful for lane/ownership archaeology only. It is not current status or implementation authority; route any still-valuable outcome through [`program/06_RETAINED_FUTURE_BACKLOG.md`](./program/06_RETAINED_FUTURE_BACKLOG.md) before admission. |
 | [`revamp/HUD_THREE_ANCHOR.md`](./revamp/HUD_THREE_ANCHOR.md), [`revamp/GEMINI_HUD_BRIEF.md`](./revamp/GEMINI_HUD_BRIEF.md) | **DATED HUD RECEIPTS** | Useful for why the command bar left flight. They are not current layout law. Execute [`HUD_FLIGHT_ATTENTION.md`](./HUD_FLIGHT_ATTENTION.md). |
-| [`CURRENT_BUILD_STATUS.md`](./CURRENT_BUILD_STATUS.md) | **HISTORICAL SPEC2 CHECK SNAPSHOT** | A dated check map, not current status or authority. Re-run live checks and retain any uncovered outcome through the retained backlog. |
 | [`vision/ASSET_DEPTH_AND_PIPELINE_PLAN.md`](./vision/ASSET_DEPTH_AND_PIPELINE_PLAN.md) | **LEGACY ASSET-DEPTH REFERENCE** | Preserve useful asset-depth reasoning only; it is not the active asset plan, status surface, budget, or quality authority. Route viable outcomes through the retained backlog. |
 | [`VISUAL_ASSET_PLAN.md`](../VISUAL_ASSET_PLAN.md) | **HISTORICAL GENERATION LEDGER** | Generation history and provenance clues only. It does not prove a runtime asset is current or accepted; route useful unbuilt outcomes through the retained backlog. |
-| [`docs/Spec/MASTER_MAKEOVER_PLAN.md`](../docs/Spec/MASTER_MAKEOVER_PLAN.md) | **HISTORICAL MAKEOVER PLAN** | Historical makeover intent, not current design/status authority. Deduplicate worthwhile outcomes against live plans and route them through the retained backlog. |
+| [`design/_ARCHIVE/MASTER_MAKEOVER_PLAN.md`](./_ARCHIVE/MASTER_MAKEOVER_PLAN.md) | **HISTORICAL MAKEOVER PLAN (archived 2026-09-08)** | Historical makeover intent, not current design/status authority. Deduplicate worthwhile outcomes against live plans and route them through the retained backlog. |
 | [`production/ORCHESTRATOR_GOAL.md`](./production/ORCHESTRATOR_GOAL.md) | **PROCEDURE** | A campaign/orchestration procedure, not product status, scope authority, or evidence of completion. Preserve any unscheduled product outcome through the retained backlog. |
 
 ## Status vocabulary

@@ -53,8 +53,7 @@ SpaceFace_Sequential_Agent_Prompt_System/
 ├── plans/                 # Paste exactly one next prompt into a fresh implementation thread
 ├── review/                # Completed prompt moves here; reviewer prompt and template live here
 ├── receipts/              # One machine-readable YAML receipt per task
-├── machine/               # Sequence JSON and receipt schema
-└── reference/             # Supplied planning source material, copied for context
+└── machine/               # Sequence JSON and receipt schema
 ```
 
 ## The dependency spine

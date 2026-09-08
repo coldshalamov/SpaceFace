@@ -129,7 +129,7 @@ test/47a.inputs.json if the tutorial rock now fractures first), then freeze with
 
 **Historical status snapshot (2026-07-04; do not dispatch from this list):** C1/C2/C3, D3/D4, E1/E2/E3, B3/B4, SPEC2/01, SPEC2/03 static,
 SPEC2/05 mining/economy slices, SPEC2/06, and SPEC2/07 all have passing targeted checks as listed in
-`design/CURRENT_BUILD_STATUS.md`. Do not re-brief those as unstarted work. Current red/missing gates
+that snapshot's git history (`design/CURRENT_BUILD_STATUS.md`, removed 2026-09-08). Do not re-brief those as unstarted work. Current red/missing gates
 are: `check:cruise` (missing script), `check:first-15-runtime` (timeout),
 `check:market-first-loop` (timeout), `check:claim-base` (C-key fallthrough), `check-ui-screen-imports`
 (4 failures in the dirty tree), `check:perf` (strict 60fps p95 16.9 ms vs 16.7 ms target),

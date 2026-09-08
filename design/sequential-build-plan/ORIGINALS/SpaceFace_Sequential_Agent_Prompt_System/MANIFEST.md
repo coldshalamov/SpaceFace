@@ -7,6 +7,8 @@
 - Prompt bytes: **882,974**
 - Approximate prompt words: **110,857**
 - Included reference files: **43**
+- 2026-09-08: the `reference/` copy was removed from the repo as a byte-identical duplicate of the
+  `spaceface_*` originals shipped beside it; the hash rows remain as provenance.
 
 Hashes below are SHA-256 and bind the generated package before ZIP creation.
 

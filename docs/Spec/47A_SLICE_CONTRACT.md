@@ -1,6 +1,6 @@
 # 47-A Slice Contract
 
-Source of truth: `docs/Spec/MASTER_MAKEOVER_PLAN.md`. This file freezes the first resident
+Source of truth: `design/_ARCHIVE/MASTER_MAKEOVER_PLAN.md` (archived 2026-09-08). This file freezes the first resident
 contract for the gold vertical slice so implementation, agent review, replay, and telemetry work
 against one measurable target instead of a loose feature wish list.
 
