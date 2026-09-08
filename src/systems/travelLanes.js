@@ -41,6 +41,7 @@
 //     latch is not Engaged so the kernel's decay branch reports `physicsEarnedMomentum` and the
 //     speed is kept, not confiscated. Off-axis bodies get a perpendicular kick (PQ-028.01) that
 //     turns a thrown light into a long-range projectile — still an impulse, never a pos write.
+//     An operational claim Throughline (`from`/`to`) becomes this same cylinder (PQ-028.02).
 //
 // ─── Why this system remains a read model, not a save writer ─────────────────────────────────────
 //
@@ -128,6 +129,16 @@ const SLING_HAULER_RECYCLE_ALONG_WU = 280;
 const SLING_HAULER_CRUISE_WU_S = 85;
 const SLING_HAULER_MASS = 55;
 const SLING_HAULER_RADIUS = 18;
+/** Solid manufactured ring at infrastructure.from. The claim catapult sits just past it. */
+const MANUFACTURED_RING_RADIUS_WU = 32;
+/**
+ * Claim-ring center along from→to, measured from `from`. Near face clears the 32 WU ring
+ * body plus a Mule-sized rider; length/radius stay the Ceres 96×48 cylinder.
+ */
+const CLAIM_SLING_ORIGIN_ALONG_WU = MANUFACTURED_RING_RADIUS_WU
+  + SLING_RING_LENGTH_WU * 0.5
+  + SLING_HAULER_RADIUS
+  + 6;
 
 function unitXZ(dx, dz) {
   const length = Math.hypot(dx, dz);
@@ -161,27 +172,63 @@ export const CERES_SLING_RING = Object.freeze({
   radius: SLING_RING_RADIUS_WU,
 });
 
-/** Signed distance of a global point along the authored ring axis, from the ring center. */
-export function ringAlong(point) {
-  const origin = CERES_SLING_RING.globalPos;
-  const axis = CERES_SLING_RING.axis;
+/** Signed distance of a global point along a ring axis, from that ring's center. */
+export function ringAlong(point, ring = CERES_SLING_RING) {
+  const origin = ring.globalPos;
+  const axis = ring.axis;
   const dx = finite(point && point.x) - origin.x;
   const dz = finite(point && point.z) - origin.z;
   return dx * axis.x + dz * axis.z;
 }
 
 /** True when the global point is inside the finite cylinder, not a sphere around the ring. */
-export function pointInsideSlingRing(point) {
-  const along = ringAlong(point);
-  const half = CERES_SLING_RING.length * 0.5;
+export function pointInsideSlingRing(point, ring = CERES_SLING_RING) {
+  const along = ringAlong(point, ring);
+  const half = ring.length * 0.5;
   if (along < -half || along > half) return false;
-  const origin = CERES_SLING_RING.globalPos;
-  const axis = CERES_SLING_RING.axis;
+  const origin = ring.globalPos;
+  const axis = ring.axis;
   const dx = finite(point && point.x) - origin.x;
   const dz = finite(point && point.z) - origin.z;
   const ox = dx - axis.x * along;
   const oz = dz - axis.z * along;
-  return (ox * ox + oz * oz) <= CERES_SLING_RING.radius * CERES_SLING_RING.radius;
+  return (ox * ox + oz * oz) <= ring.radius * ring.radius;
+}
+
+/**
+ * Same 96×48 impulse cylinder as the authored Ceres ring, seated on an operational
+ * Throughline's saved from→to axis just past the solid manufactured ring body.
+ */
+export function buildClaimSlingRing(infrastructure) {
+  const from = infrastructure && infrastructure.from;
+  const to = infrastructure && infrastructure.to;
+  if (!from || !to) return null;
+  const dx = finite(to.x) - finite(from.x);
+  const dz = finite(to.z) - finite(from.z);
+  if (!(Math.hypot(dx, dz) > 0)) return null;
+  const axis = unitXZ(dx, dz);
+  return {
+    id: typeof infrastructure.id === 'string' && infrastructure.id
+      ? infrastructure.id
+      : 'claim_sling',
+    sectorId: infrastructure.sectorId || null,
+    globalPos: {
+      x: finite(from.x) + axis.x * CLAIM_SLING_ORIGIN_ALONG_WU,
+      z: finite(from.z) + axis.z * CLAIM_SLING_ORIGIN_ALONG_WU,
+    },
+    axis,
+    throwPerp: { x: -axis.z, z: axis.x },
+    length: SLING_RING_LENGTH_WU,
+    radius: SLING_RING_RADIUS_WU,
+  };
+}
+
+function isClaimRouteRider(entity, ringId) {
+  const data = entity && entity.data;
+  if (!data || !ringId) return false;
+  return data.claimTravelTrafficHookId === ringId
+    || data.claimTravelInfrastructureId === ringId
+    || (data.parentType === 'claim_sling_traffic' && data.slingRingId === ringId);
 }
 
 /** Unit-velocity · unit-axis. Forward along the axis is +1; a nearby sphere is irrelevant. */
@@ -201,8 +248,8 @@ function bodyPlanarSpeed(entity) {
   return Math.hypot(finite(entity && entity.vel && entity.vel.x), finite(entity && entity.vel && entity.vel.z));
 }
 
-function bodyAlongSpeed(entity) {
-  const axis = CERES_SLING_RING.axis;
+function bodyAlongSpeed(entity, ring = CERES_SLING_RING) {
+  const axis = ring.axis;
   return finite(entity && entity.vel && entity.vel.x) * axis.x
     + finite(entity && entity.vel && entity.vel.z) * axis.z;
 }
@@ -345,6 +392,7 @@ export const travelLanes = {
     this._trafficIds = [];         // entity ids, index-aligned with the deterministic roster
     this._slingHaulerId = null;
     this._slingPlayerActive = false;
+    this._claimSlingPlayerActive = false;
     this._slingThrownIds = new Set();
     this._throwDirScratch = { x: 0, z: 0 };
     this._slingHaulerHeading = Math.atan2(CERES_SLING_AXIS.z, CERES_SLING_AXIS.x);
@@ -406,6 +454,7 @@ export const travelLanes = {
         cached = {
           infrastructureRef: infrastructure,
           geometry,
+          slingRing: buildClaimSlingRing(infrastructure),
           fixScratch: {},
           ringKey: `${infrastructure.id}:ring`,
           relayKey: `${infrastructure.id}:relay`,
@@ -435,6 +484,7 @@ export const travelLanes = {
         this._trafficIds.length = 0;
         this._slingHaulerId = null;
         this._slingPlayerActive = false;
+        this._claimSlingPlayerActive = false;
         this._slingThrownIds.clear();
         this._ambushRequested.clear();
         this._lastPublishedStatus.laneId = null;
@@ -504,6 +554,7 @@ export const travelLanes = {
 
     this._applyDriveModifier(state, player, boosting ? boostLane : null);
     this._applySlingRing(dt, state, player);
+    this._applyClaimSlingRings(dt, state, player);
     this._applyDisruption(state, disrupted);
     if (disrupted) this._requestAmbush(state, authoredFix.segment);
     this._updateBeacons(state, player);
@@ -621,26 +672,26 @@ export const travelLanes = {
     drive.cap = Math.max(finite(drive.cap, 0), speed);
   },
 
-  _boostSlingBody(entity, dt, cruise) {
+  _boostSlingBody(entity, dt, cruise, ring = CERES_SLING_RING) {
     if (!entity || !entity.pos || !(dt > 0)) return false;
-    if (!pointInsideSlingRing(entity.pos)) return false;
-    if (alignmentDot(entity.vel, CERES_SLING_RING.axis) < SLING_ALIGN_DOT_MIN) return false;
+    if (!pointInsideSlingRing(entity.pos, ring)) return false;
+    if (alignmentDot(entity.vel, ring.axis) < SLING_ALIGN_DOT_MIN) return false;
     const target = Math.max(0, finite(cruise, 0)) * SLING_EXIT_MULT;
     if (!(target > 0)) return false;
-    if (bodyAlongSpeed(entity) >= target * 1.05) return true;
+    if (bodyAlongSpeed(entity, ring) >= target * 1.05) return true;
     const mass = bodyMass(entity);
     const impulse = SLING_ACCEL_WU_S2 * mass * dt;
-    const axis = CERES_SLING_RING.axis;
+    const axis = ring.axis;
     queuePhysicsImpulse(entity, { x: axis.x * impulse, y: 0, z: axis.z * impulse });
     return true;
   },
 
   /**
-   * Perpendicular throw direction: the authored ring perp, signed so the kick continues the
+   * Perpendicular throw direction: the ring perp, signed so the kick continues the
    * body's existing off-axis motion instead of bouncing it back into the approach.
    */
-  _slingThrowDirInto(entity, out) {
-    const perp = CERES_SLING_RING.throwPerp;
+  _slingThrowDirInto(entity, out, ring = CERES_SLING_RING) {
+    const perp = ring.throwPerp;
     const alongPerp = finite(entity && entity.vel && entity.vel.x) * perp.x
       + finite(entity && entity.vel && entity.vel.z) * perp.z;
     if (alongPerp < 0) {
@@ -657,13 +708,13 @@ export const travelLanes = {
    * Fling an off-axis body. First tick inside this sojourn: a catch-up impulse that brings the
    * throw-axis speed to 3× cruise. Later ticks only sustain with a·mass·dt if still below the bar.
    */
-  _flingSlingBody(entity, dt, cruise) {
+  _flingSlingBody(entity, dt, cruise, ring = CERES_SLING_RING) {
     if (!entity || !entity.pos || !(dt > 0)) return false;
-    if (!pointInsideSlingRing(entity.pos)) return false;
-    if (alignmentDot(entity.vel, CERES_SLING_RING.axis) >= SLING_ALIGN_DOT_MIN) return false;
+    if (!pointInsideSlingRing(entity.pos, ring)) return false;
+    if (alignmentDot(entity.vel, ring.axis) >= SLING_ALIGN_DOT_MIN) return false;
     const target = Math.max(0, finite(cruise, 0)) * SLING_THROW_EXIT_MULT;
     if (!(target > 0)) return false;
-    const dir = this._slingThrowDirInto(entity, this._throwDirScratch);
+    const dir = this._slingThrowDirInto(entity, this._throwDirScratch, ring);
     const along = finite(entity.vel && entity.vel.x) * dir.x
       + finite(entity.vel && entity.vel.z) * dir.z;
     const mass = bodyMass(entity);
@@ -681,6 +732,65 @@ export const travelLanes = {
     const impulse = SLING_THROW_ACCEL_WU_S2 * mass * dt;
     queuePhysicsImpulse(entity, { x: dir.x * impulse, y: 0, z: dir.z * impulse });
     return true;
+  },
+
+  /**
+   * Operational player-built Throughlines become the same impulse cylinder as Ceres.
+   * Claim-route haulers are boosted when aligned and never flung inbound.
+   */
+  _applyClaimSlingRings(dt, state, player) {
+    const routes = this._manufacturedRoutes;
+    if (!routes.length) {
+      if (this._claimSlingPlayerActive) this._seedSlingEarnedCap(state, player);
+      this._claimSlingPlayerActive = false;
+      return;
+    }
+    const playerId = state.playerId;
+    let playerActive = false;
+    for (let r = 0; r < routes.length; r++) {
+      const route = routes[r];
+      const ring = route.slingRing;
+      const infrastructure = route.infrastructure;
+      if (!ring || infrastructure.operational !== true) continue;
+
+      const origin = ring.globalPos;
+      const pdx = origin.x - finite(player.pos.x);
+      const pdz = origin.z - finite(player.pos.z);
+      const near = pdx * pdx + pdz * pdz
+        <= SLING_HAULER_SPAWN_RANGE_WU * SLING_HAULER_SPAWN_RANGE_WU;
+
+      if (pointInsideSlingRing(player.pos, ring)) {
+        const aligned = alignmentDot(player.vel, ring.axis) >= SLING_ALIGN_DOT_MIN;
+        const cruise = resolveCombatCruise(player, state);
+        if (aligned) {
+          this._boostSlingBody(player, dt, cruise, ring);
+          this._applySlingDriveCeiling(state, cruise);
+        } else {
+          this._flingSlingBody(player, dt, cruise, ring);
+        }
+        playerActive = true;
+      }
+
+      if (!near) continue;
+      const list = state.entityList;
+      if (!list || !list.length) continue;
+      for (let i = 0; i < list.length; i++) {
+        const entity = list[i];
+        if (!entity || entity.alive === false) continue;
+        if (entity.type !== 'ship') continue;
+        if (entity.id === playerId) continue;
+        if (!pointInsideSlingRing(entity.pos, ring)) continue;
+        const aligned = alignmentDot(entity.vel, ring.axis) >= SLING_ALIGN_DOT_MIN;
+        const cruise = resolveCombatCruise(entity, state);
+        if (aligned) {
+          this._boostSlingBody(entity, dt, cruise, ring);
+        } else if (!isClaimRouteRider(entity, ring.id)) {
+          this._flingSlingBody(entity, dt, cruise, ring);
+        }
+      }
+    }
+    if (!playerActive && this._claimSlingPlayerActive) this._seedSlingEarnedCap(state, player);
+    this._claimSlingPlayerActive = playerActive;
   },
 
   /**
@@ -1033,7 +1143,7 @@ export const travelLanes = {
       }
       spawned = this._ensureManufacturedStructure(
         state, player, spawnEntity, entities, route, body,
-        route.ringKey, 'ring', infrastructure.from, 'place_gate_jump_ring', 0.72, 32, route.ringLabel, spawned,
+        route.ringKey, 'ring', infrastructure.from, 'place_gate_jump_ring', 0.72, MANUFACTURED_RING_RADIUS_WU, route.ringLabel, spawned,
       );
       spawned = this._ensureManufacturedStructure(
         state, player, spawnEntity, entities, route, body,
