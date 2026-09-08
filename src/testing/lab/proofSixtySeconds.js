@@ -299,24 +299,41 @@ export function buildProofInputTape() {
   };
   // inputTape.js: KeyJ is fire. KeyF / Space is the Massline. Do not invert them.
 
-  // Sit through the spill. The shove at ~1.6 s glues pirate 399 to the nose; latching
-  // on the KeyF edge then grabs that hull. Reverse off it, then latch the pod.
+  // Sit through the spill. Reverse, then latch the spilled pod (grab_pod). KeyF-down
+  // while unattached does not cut on release — tap again with no line intent to free
+  // the line before seed-47 pirate #131 reaches the nose (~8 s, inside 390 WU).
   press(160, 'KeyS', true);
   press(230, 'KeyS', false);
   press(240, 'KeyF', true);
   press(480, 'KeyF', false);
 
-  press(480, 'KeyW', true);
-  press(480, 'ShiftLeft', true);
-  press(780, 'ShiftLeft', false);
+  // Clean cut tap (attached, > MASSLINE_HOLD_S, no boost/strafe/reel).
+  press(500, 'KeyF', true);
+  press(512, 'KeyF', false);
 
+  // Shove the incoming pirate. Do not cruise away — the old KeyW/Shift here left the pocket.
   press(480, 'KeyJ', true);
   press(900, 'KeyJ', false);
 
-  press(900, 'KeyF', true);
-  press(960, 'KeyA', true);
-  press(1500, 'KeyA', false);
-  press(1500, 'KeyF', false);
+  // Relatch the pirate on the nose, pay out, then fly a left circle so the hull is a real
+  // swing (KeyA without KeyW just spins the parked Hornet). Arm the throw once that orbit
+  // is live. Headless RMB: input.js maps _m2 + a latched ship to throwArm.
+  press(530, 'KeyF', true);
+  press(540, 'KeyE', true);
+  press(680, 'KeyE', false);
+  // Short spin-up in the melee — a long boost walks 131 into rocks before the aim ship.
+  press(680, 'KeyW', true);
+  press(680, 'KeyA', true);
+  press(680, 'ShiftLeft', true);
+  press(780, 'Mouse2', true);
+  press(800, 'KeyA', false);
+  press(800, 'KeyD', true);
+  press(1100, 'KeyD', false);
+  press(1100, 'KeyA', true);
+  press(1560, 'ShiftLeft', false);
+  press(1680, 'KeyA', false);
+  press(1680, 'Mouse2', false);
+  press(1680, 'KeyF', false);
 
   press(1680, 'KeyJ', true);
   press(2400, 'KeyJ', false);
@@ -355,10 +372,15 @@ export function aimTargetForTick(state, player, tick) {
     return nearest(state, player, (e) => isGrabCargoTarget(e))
       || nearest(state, player, (e) => e.type === 'pickup' || e.type === 'payload');
   }
-  if (tick >= 900 && tick < 1500) {
+  if (tick >= 900 && tick < 1020) {
     return nearest(state, player, isPirateEntity)
       || nearest(state, player, (e) => e.type === 'asteroid')
       || nearest(state, player, (e) => e.type === 'ship' && e.id !== state.playerId);
+  }
+  if ((tick >= 780 && tick < 900) || (tick >= 1020 && tick < 1680)) {
+    const pirate = nearest(state, player, isPirateEntity);
+    return nearest(state, player, (e) => e !== pirate && e.type === 'ship' && e.id !== state.playerId)
+      || nearest(state, player, (e) => e !== pirate && (isHaulerEntity(e) || isPatrolEntity(e)));
   }
   if ((tick >= 480 && tick < 900) || (tick >= 1680 && tick < 2400) || (tick >= 3720 && tick < 4200)) {
     return nearest(state, player, isPirateEntity)
@@ -392,6 +414,7 @@ export function markProofPointerActive(inputSys) {
 
 // Node input.js owns this._keys and rebuilds tetherFire from them. The tape driver keeps a
 // private keybag; without this copy, KeyF never becomes the Massline and grab/WANTED stay dark.
+// Mouse2 must also become _m2 — headless input never sees RMB, so throwArm stays dark otherwise.
 export function syncTapeKeysToInput(inputSys, tapeKeys) {
   if (!inputSys || !inputSys._keys) return false;
   const live = inputSys._keys;
@@ -402,6 +425,7 @@ export function syncTapeKeysToInput(inputSys, tapeKeys) {
   for (const code of Object.keys(next)) {
     live[code] = !!next[code];
   }
+  inputSys._m2 = !!next.Mouse2;
   return true;
 }
 
@@ -562,10 +586,16 @@ export function classifyReceipt(name, payload, ctx) {
   }
 
   if (name === 'massline:throw') {
-    const target = entity(payload && (payload.targetId || payload.victimId || payload.id));
+    const target = entity(payload && (
+      payload.payloadId || payload.targetId || payload.victimId || payload.id
+    ));
     if (target && target.id !== playerId) {
       ctx.projectileIds.add(target.id);
       return { beat: 'rope_projectile', detail: `massline:throw #${target.id}` };
+    }
+    if (payload && payload.payloadId != null && payload.payloadId !== playerId) {
+      ctx.projectileIds.add(payload.payloadId);
+      return { beat: 'rope_projectile', detail: `massline:throw #${payload.payloadId}` };
     }
   }
 
@@ -716,7 +746,7 @@ async function bootCeresPocket(seed, options = {}) {
 
   for (const name of [
     'traffic', 'npcJobsRuntime', 'lawSecurity', 'heat',
-    'collisionConsequences', 'tetherGameplay', 'weapons',
+    'collisionConsequences', 'tetherGameplay', 'weapons', 'masslineThrow',
   ]) {
     if (!runtime.getSystem(name)) {
       throw new Error(`proof.sixty_seconds: system "${name}" is not registered`);
@@ -732,6 +762,14 @@ function takeSetupCensus(state, player, pocketIds) {
     ...pockets,
     playerLocal: censusPocket(state, player),
   };
+}
+
+function applyProofTapeTick(state, player, driver, inputSys, tick) {
+  const tether = !!(state.player && state.player.tether && state.player.tether.active);
+  driver.apply(state, tick, SIM_DT, { playerEntity: player, tetherAttached: tether });
+  syncTapeKeysToInput(inputSys, driver.snapshotKeys());
+  pointAt(state, player, aimTargetForTick(state, player, tick));
+  markProofPointerActive(inputSys);
 }
 
 /**
@@ -788,13 +826,7 @@ export async function runProofGrabProbe(seed = 47, options = {}) {
     let sawTetherFire = false;
     let sawKeyF = false;
     for (let i = 0; i < probeTicks; i++) {
-      const tick = state.tick | 0;
-      const tether = !!(player && player.tether && player.tether.active);
-      driver.apply(state, tick, SIM_DT, { playerEntity: player, tetherAttached: tether });
-      syncTapeKeysToInput(inputSys, driver.snapshotKeys());
-      const aim = aimTargetForTick(state, player, tick);
-      pointAt(state, player, aim);
-      markProofPointerActive(inputSys);
+      applyProofTapeTick(state, player, driver, inputSys, state.tick | 0);
       runtime.step(SIM_DT);
       if (inputSys && inputSys._keys && inputSys._keys.KeyF) sawKeyF = true;
       if (state.input && state.input.actions && state.input.actions.tetherFire) sawTetherFire = true;
@@ -910,19 +942,13 @@ export async function runProofSixtySeconds(seed, options = {}) {
       throw new Error(`proof.sixty_seconds: not the real path (sg02Ready=${proof.sg02Ready}, backend=${proof.backend})`);
     }
 
+    const inputSys = runtime.getSystem('input');
     const limit = Math.min(windowTicks, hardCapTicks);
     for (let i = 0; i < limit; i++) {
-      const tick = state.tick | 0;
       if (relocateAfterTicks != null && ticks === relocateAfterTicks && bootPocketId !== relocatePocketId) {
         relocatePlayerToPocket(runtime, player, relocatePocketId, 'proof:sixty_seconds:relocate');
       }
-      const tether = !!(player && player.tether && player.tether.active);
-      driver.apply(state, tick, SIM_DT, { playerEntity: player, tetherAttached: tether });
-      const inputSys = runtime.getSystem('input');
-      syncTapeKeysToInput(inputSys, driver.snapshotKeys());
-      const aim = aimTargetForTick(state, player, tick);
-      pointAt(state, player, aim);
-      markProofPointerActive(inputSys);
+      applyProofTapeTick(state, player, driver, inputSys, state.tick | 0);
       runtime.step(SIM_DT);
       ticks += 1;
       if (ticks === PROOF_CENSUS_SETTLE_TICKS) setup = takeSetupCensus(state, player, censusPocketIds);
