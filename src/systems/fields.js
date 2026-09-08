@@ -68,6 +68,15 @@ function finite(value, fallback = 0) { return Number.isFinite(value) ? value : f
 function positive(value, fallback) { return Number.isFinite(value) && value > 0 ? value : fallback; }
 function nowOf(state) { return Number.isFinite(state.simTime) ? state.simTime : state.tick / 60; }
 
+function npcConeRoleLabel(entity) {
+  const data = entity && entity.data || {};
+  const ai = data.ai || {};
+  const role = data.trafficRole || data.role || ai.role;
+  if (role) return String(role);
+  if (ai.doctrine === 'scavenger') return 'scavenger';
+  return 'scavenger';
+}
+
 function defaultRuntime() {
   return {
     schemaVersion: 1,
@@ -778,10 +787,12 @@ export const fields = {
         tag: 'npc',
         filters: { excludeId: entity.id },
       });
+      const deployRole = npcConeRoleLabel(entity);
       rt.npcFields[entity.id] = {
         fieldId,
         kind: 'cone',
         sourceId: entity.id,
+        role: deployRole,
         holdUntilTick: (state.tick | 0) + NPC_CONE_HOLD_TICKS,
       };
       this.bus.emit('fields:deployed', {
@@ -789,7 +800,7 @@ export const fields = {
         kind: 'cone',
         sourceId: entity.id,
         npc: true,
-        role: 'scavenger',
+        role: deployRole,
         center,
         radius: def.radius,
       });

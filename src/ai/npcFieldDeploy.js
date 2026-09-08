@@ -8,6 +8,10 @@ export const NPC_FIELD_ROLES = Object.freeze({
   ANCHOR_WELL: 'anchor_well',
 });
 
+// Ordinary-traffic wreck workers share the player's clearing cone. Combat scavenger
+// doctrine stays on the same tool. Sweeper / salvor already exist in TRAFFIC_ROLES.
+const CONE_TRAFFIC_ROLES = new Set(['scavenger', 'scavengers', 'sweeper', 'salvor']);
+
 const LOOSE_MASS_TYPES = new Set(['pickup', 'wreck', 'payload']);
 
 function finite(value, fallback = 0) {
@@ -24,8 +28,8 @@ export function npcFieldRole(entity) {
     return NPC_FIELD_ROLES.ANCHOR_WELL;
   }
   const doctrine = String(ai.doctrine || '');
-  const role = String(data.trafficRole || data.role || ai.role || '');
-  if (doctrine === 'scavenger' || role === 'scavenger' || role === 'scavengers') {
+  const role = String(data.trafficRole || data.role || ai.role || '').toLowerCase();
+  if (doctrine === 'scavenger' || CONE_TRAFFIC_ROLES.has(role)) {
     return NPC_FIELD_ROLES.SCAVENGER_CONE;
   }
   return null;
