@@ -80,15 +80,35 @@ To prevent unnecessary repository grepping, here are all the exact file paths, l
   - `bottom: 24px`: Primary flight instruments (Speed readout, Weapon firing group / cooling bars).
   - `bottom: 90px`: Active tool / Deployable field pill (`fieldHud.js` - `CONE — CLEARING`). Must be neatly centered above the speed bar with fixed vertical clearance so it never overlaps text.
   - `bottom: 130px`: Proximity warnings / Critical alerts (`alerts.js`).
-* **Zone & Nav Guidance Placement:**
-  - Sector zone identification (e.g. `Concord Core`) belongs on the upper navigation banner or sector arrival postcard, NOT anchored to the center flight reticle or bottom speedometer.
-
 ### 3. Minimap / Radar Decluttering
 * **Sensory Hierarchy:**
   - **Level 1 (Dominant):** Hostile craft (bright red/amber blips with directional heading indicators), active missile locks, and current navigated objective/waypoint (high-contrast gold bracket).
   - **Level 2 (Persistent Infrastructure):** Stations and jump gates (clean, distinct geometric icons; never masked by traffic).
   - **Level 3 (Ambient Traffic):** Neutral freighters and allies within 600 WU.
   - **Cull Ambient Clutter:** Remove individual glowing icons for every minor asteroid rock. Represent asteroid belts as a subtle texture or background density curve rather than 20 individual cyan/purple circles that drown out combat contacts.
+
+### 4. Station UI Overhaul (`styles/station.css`, `src/ui/station/`)
+The station UI was completely gutted by commits `5516b3500`, `0513b050a`, `785efe51b`, and `a63068658`. The comment in `styles/station.css` lines 4–5 explicitly states: *"No plates, borders, radii, gradients, glows or shadows anywhere"*. This stripped all buttons, cards, and backgrounds, turning the station interface into naked text floating over the 3D dock.
+
+* **Station Shell & Terminal Hub (`styles/station.css`, `src/ui/station/stationApp.js`):**
+  - The station interface must look like a high-tech spaceport terminal (*Starsector*, *Everspace*, *Rebel Galaxy*).
+  - Give the station UI structured container cards (`background: rgba(10, 15, 26, 0.88); border: 1px solid rgba(132, 160, 200, 0.22); backdrop-filter: blur(10px);`).
+  - Facility tabs (Market, Shipworks, Bar, Missions, Industry, Factions) must be distinct, clickable navigation tabs with clear active/selected highlights—not plain words.
+* **The Market (`src/ui/station/screens/market.js`):**
+  - Commodity list must sit inside a structured, scrollable register table with subtle alternating row contrast.
+  - Selected commodity inspector needs a dedicated card container showing price, stock, volume, and profit margins.
+  - **Restore Buy & Sell Buttons:** Replace naked text words with proper interactive button blocks, quantity adjustment controls (`-`, `+`, `Max`), and clear credit totals.
+* **Shipworks & Outfitting (`src/ui/station/screens/shipworks.js`):**
+  - Restore module fitting cards and hardpoint slots with clean borders and stat readouts (energy draw, mass, damage/shield rating).
+* **Missions Board & Bar (`src/ui/station/screens/contracts.js`, `src/ui/station/screens/bar.js`):**
+  - Missions must be presented as distinct contract dossiers/cards with clear objective descriptions, payout values, and an interactive "Accept Contract" button.
+  - Bar contacts need framed dialogue boxes with clear, clickable conversation choices.
+
+### 5. Secondary Screens Rescue (`src/ui/screens/`)
+* **Tech Tree (`src/ui/screens/techtree.js`):** Replace raw words on hairlines with styled research node cards, clear unlock pathways, and a distinct "Research / Unlock" action button.
+* **Codex & Help (`src/ui/screens/codex.js`, `src/ui/screens/help.js`):** Give entries structured reading panels with clean section dividers.
+* **Save / Load (`src/ui/screens/saveLoad.js`):** Restore save slot cards with thumbnail previews, sector location, timestamp, and clear "Save" / "Load" / "Delete" buttons.
+* **Settings (`src/ui/screens/settings.js`):** Rebind keys and toggles must look like interactive settings controls (segmented pills, checkboxes, keybind capture boxes), not two raw words on a line.
 
 ---
 
