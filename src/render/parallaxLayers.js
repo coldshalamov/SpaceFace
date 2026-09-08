@@ -18,23 +18,54 @@ const ROCK_BASE = 0xb4aea3;
 // Opaque geology chips, not glow cards. One instanced draw per band. Counts are sized so the
 // chase camera sees a readable belt of matter between the sky and the play plane — the previous
 // additive tetrahedra / point sprites could only fake density by lighting up.
-const FAR = { count: 80, factor: 0.22, tile: 3000, y: -96, yJitter: 36, radius0: 7, radius1: 28 };
-const MID = { count: 1400, factor: 0.55, tile: 560, y: -28, yJitter: 18, radius0: 0.28, radius1: 3.4 };
-const NEAR = { count: 96, factor: 1.18, tile: 460, y: 4, yJitter: 9, radius0: 0.07, radius1: 0.42 };
-
-// The wrap cell must always be wider than the visible frustum footprint at the band's plane, or
-// the cell edge itself becomes an on-screen line: chips pop across it and empty sky shows outside
-// it. The authored tile is sized for the default chase view; when the player zooms out (or widens
-// FOV) the effective tile grows in discrete steps so the edge stays off-screen. Instance counts
-// never change — the same authored chips spread over the larger cell.
+//
+// The wrap tile is frozen for the life of the field. Growing it at runtime (the old 1.2× zoom
+// steps) scaled every chip and changed the wrap period, so the whole belt vanished and came back
+// in a new arrangement the instant speed-zoom crossed a step — both arrow-key cruise and idle
+// sit on opposite sides of that line. Size the cell for CAMERA_ZOOM_MAX up front instead.
+export const PARALLAX_WRAP_ZOOM_CAP = 330;
+export const PARALLAX_WRAP_FOV_DEG = 50;
+export const PARALLAX_WRAP_TILT_DEG = 60;
+export const PARALLAX_WRAP_ASPECT = 16 / 9;
 const PARALLAX_TILE_MARGIN = 1.12;
-const PARALLAX_TILE_MAX_SCALE = 4;
-const PARALLAX_TILE_STEP = 1.2;
+
+export function requiredParallaxWrapTile({
+  y = 0,
+  zoom = PARALLAX_WRAP_ZOOM_CAP,
+  fov = PARALLAX_WRAP_FOV_DEG,
+  tilt = PARALLAX_WRAP_TILT_DEG,
+  aspect = PARALLAX_WRAP_ASPECT,
+  margin = PARALLAX_TILE_MARGIN,
+} = {}) {
+  const z = Number.isFinite(zoom) && zoom > 0 ? zoom : PARALLAX_WRAP_ZOOM_CAP;
+  const planeDist = z + Math.abs(Number(y) || 0);
+  const planeScale = planeDist / z;
+  const fovDeg = Number.isFinite(fov) ? fov : PARALLAX_WRAP_FOV_DEG;
+  const tiltDeg = Number.isFinite(tilt) ? tilt : PARALLAX_WRAP_TILT_DEG;
+  const asp = Number.isFinite(aspect) && aspect > 0 ? aspect : PARALLAX_WRAP_ASPECT;
+  const halfFovRad = Math.max(4, fovDeg * 0.5) * Math.PI / 180;
+  const lookTan = Math.tan(Math.max(6, tiltDeg - fovDeg * 0.5) * Math.PI / 180);
+  const sideTan = Math.tan(halfFovRad);
+  const halfSide = sideTan * z * asp * planeScale;
+  const lookReach = planeDist / lookTan;
+  return Math.max(halfSide, lookReach) * (Number.isFinite(margin) && margin > 0 ? margin : PARALLAX_TILE_MARGIN) * 2;
+}
+
+function freezeWrapTile(authored, y) {
+  const need = requiredParallaxWrapTile({ y, zoom: PARALLAX_WRAP_ZOOM_CAP });
+  return Math.max(authored, Math.ceil(need / 40) * 40);
+}
+
+const FAR = { count: 80, factor: 0.22, tile: freezeWrapTile(3000, -96), y: -96, yJitter: 36, radius0: 7, radius1: 28 };
+const MID = { count: 1400, factor: 0.55, tile: freezeWrapTile(560, -28), y: -28, yJitter: 18, radius0: 0.28, radius1: 3.4 };
+const NEAR = { count: 96, factor: 1.18, tile: freezeWrapTile(460, 4), y: 4, yJitter: 9, radius0: 0.07, radius1: 0.42 };
+export const PARALLAX_BANDS = { far: FAR, mid: MID, near: NEAR };
+
 const MID_LOW_COUNT = Math.max(1, Math.floor(MID.count * 0.5));
 const MID_SPIN_AXIS_ATTRIBUTE = 'aParallaxSpinAxis';
 const MID_SPIN_PARAMS_ATTRIBUTE = 'aParallaxSpinParams';
 const MID_SPIN_SHADER_KEY = 'spaceface-parallax-mid-debris-gpu-spin-v2';
-const INSTANCE_WRAP_SHADER_KEY = 'spaceface-parallax-instance-wrap-v1';
+const INSTANCE_WRAP_SHADER_KEY = 'spaceface-parallax-instance-wrap-v2';
 const EMPTY_OBJECT = {};
 
 let active = null;
@@ -64,11 +95,11 @@ export function wrapParallaxCoordinate(base, globalFocus, factor, tile) {
   return ((value + half) % period + period) % period - half;
 }
 
-/** Scale an authored instance center into the currently effective wrap cell. */
+/** Authored centers already live in the frozen wrap cell. Kept so older callers stay identity. */
 export function parallaxDistributionCoordinate(base, authoredTile, effectiveTile) {
-  const source = Number.isFinite(authoredTile) && authoredTile > 0 ? authoredTile : 1;
-  const target = Number.isFinite(effectiveTile) && effectiveTile > 0 ? effectiveTile : source;
-  return (Number.isFinite(base) ? base : 0) * target / source;
+  void authoredTile;
+  void effectiveTile;
+  return Number.isFinite(base) ? base : 0;
 }
 
 class ParallaxLayers {
@@ -145,7 +176,6 @@ class ParallaxLayers {
     }
 
     this._updatePalette(frameDt);
-    this._updateWrapTiles();
     this._updateDebris(frameDt);
   }
 
@@ -339,11 +369,12 @@ class ParallaxLayers {
       stampOpeningSubmissionPackage(group, {
         schema: 'spaceface.parallaxProducerManifest.v1',
         producer: `parallax:${group.name}`,
-        version: 3,
+        version: 4,
         layer: group.userData.layer || group.name,
         factor: Number(group.userData.factor) || 0,
         tileSize: Number(group.userData.tileSize) || 0,
         wrapMode: 'per-instance-global-focus',
+        tileFrozen: true,
         baseCount: Number(group.userData.baseCount) || 0,
         activeCount: Number(group.userData.activeCount) || 0,
         geometryAttributes: geometry ? Object.keys(geometry.attributes || {}).sort() : [],
@@ -409,45 +440,6 @@ class ParallaxLayers {
     }
   }
 
-  /**
-   * Keep each band's wrap cell wider than the visible frustum footprint at the band's plane.
-   * The effective tile only changes in discrete PARALLAX_TILE_STEP multiples of the authored tile,
-   * so between steps the wrap is bit-identical (no reflow) and a step boundary is a single instant
-   * re-layout instead of continuous churn. Instance counts are untouched.
-   */
-  _updateWrapTiles() {
-    const camera = this.state.camera || EMPTY_OBJECT;
-    const camObj = camera.obj || EMPTY_OBJECT;
-    const zoom = Number.isFinite(camera.liveZoom) ? camera.liveZoom
-      : Number.isFinite(camera.zoom) ? camera.zoom : 144;
-    const fovDeg = Number.isFinite(camera.fov) ? camera.fov : 50;
-    const aspect = Number.isFinite(camObj.aspect) && camObj.aspect > 0 ? camObj.aspect : 16 / 9;
-    const tiltDeg = Number.isFinite(camera.tilt) ? camera.tilt : 60;
-    const halfFovRad = Math.max(4, fovDeg * 0.5) * Math.PI / 180;
-    // Steepest ray still inside the frustum (tilt − half fov above the camera axis) — where it
-    // hits the band plane is the far edge of the visible footprint along the look direction.
-    const lookTan = Math.tan(Math.max(6, tiltDeg - fovDeg * 0.5) * Math.PI / 180);
-    const sideTan = Math.tan(halfFovRad);
-    for (let i = 0; i < this._layers.length; i++) {
-      const layer = this._layers[i];
-      const planeDist = zoom + Math.abs(Number(layer.y) || 0);
-      const planeScale = zoom > 0 ? planeDist / zoom : 1;
-      const halfSide = sideTan * zoom * aspect * planeScale;
-      const lookReach = planeDist / lookTan;
-      const scaled = Math.max(halfSide, lookReach) * PARALLAX_TILE_MARGIN * 2;
-      const base = layer.tile;
-      const capped = Math.min(scaled, base * PARALLAX_TILE_MAX_SCALE);
-      const steps = capped > base
-        ? Math.ceil(Math.log(capped / base) / Math.log(PARALLAX_TILE_STEP))
-        : 0;
-      const effTile = steps > 0 ? Math.min(base * Math.pow(PARALLAX_TILE_STEP, steps), base * PARALLAX_TILE_MAX_SCALE) : base;
-      if (effTile !== layer.effTile) {
-        layer.effTile = effTile;
-        layer.motionUniforms.tile.value = effTile;
-      }
-    }
-  }
-
   _updateDebris(dt) {
     const uniforms = this._debrisSpinUniforms;
     if (!uniforms || dt <= 0) return;
@@ -486,7 +478,6 @@ function configureParallaxBandGpuMotion(material, motionUniforms, spinUniforms =
 
     shader.uniforms.uParallaxWorldFocus = motionUniforms.worldFocus;
     shader.uniforms.uParallaxFactor = motionUniforms.factor;
-    shader.uniforms.uParallaxAuthoredTile = motionUniforms.authoredTile;
     shader.uniforms.uParallaxTile = motionUniforms.tile;
     if (spin) {
       shader.uniforms.uParallaxPrimaryTime = spinUniforms.primaryTime;
@@ -497,7 +488,6 @@ function configureParallaxBandGpuMotion(material, motionUniforms, spinUniforms =
       '#include <common>',
       'uniform vec2 uParallaxWorldFocus;',
       'uniform float uParallaxFactor;',
-      'uniform float uParallaxAuthoredTile;',
       'uniform float uParallaxTile;',
     ];
     if (spin) {
@@ -543,10 +533,8 @@ function configureParallaxBandGpuMotion(material, motionUniforms, spinUniforms =
       [
         '#include <begin_vertex>',
         'vec2 sfParallaxBaseCenter = instanceMatrix[3].xz;',
-        'vec2 sfParallaxDistributionCenter = sfParallaxBaseCenter',
-        '  * (uParallaxTile / max(0.0001, uParallaxAuthoredTile));',
         'vec2 sfParallaxWrappedCenter = mod(',
-        '  sfParallaxDistributionCenter - uParallaxWorldFocus * uParallaxFactor + uParallaxTile * 0.5,',
+        '  sfParallaxBaseCenter - uParallaxWorldFocus * uParallaxFactor + uParallaxTile * 0.5,',
         '  uParallaxTile',
         ') - uParallaxTile * 0.5;',
         'vec2 sfParallaxDelta = sfParallaxWrappedCenter - sfParallaxBaseCenter;',
@@ -577,8 +565,9 @@ function configureParallaxBandGpuMotion(material, motionUniforms, spinUniforms =
   material.userData = {
     ...(material.userData || {}),
     spacefaceParallaxInstanceWrap: {
-      version: 1,
+      version: 2,
       mode: 'per-instance-global-focus',
+      tileFrozen: true,
       uniforms: motionUniforms,
     },
     ...(spin ? {

@@ -30,6 +30,7 @@
 11. [Chrome Continue is empty after playing in the desktop app](#11-chrome-continue-is-empty-after-playing-in-the-desktop-app)
 12. ["check:assets:live is just red" — sometimes it is not](#12-checkassetslive-is-just-red--sometimes-it-is-not)
 13. [NPC and enemy ships are empty space that targeting still locks](#13-npc-and-enemy-ships-are-empty-space-that-targeting-still-locks)
+14. [Background rocks blip out and come back in a new arrangement](#14-background-rocks-blip-out-and-come-back-in-a-new-arrangement-fixed-2026-09-08)
 
 ---
 
@@ -629,22 +630,25 @@ the hold after 15 s if the paint callback never fires. Lock: `test/opening-mesh-
 
 ---
 
-## 14. A curved on-screen line where background rocks pop in/out at high zoom-out (fixed 2026-08-28)
+## 14. Background rocks blip out and come back in a new arrangement (fixed 2026-09-08)
 
-**Symptom:** Zoomed out, a curved boundary (four cell edges under perspective) crosses the screen:
-parallax debris chips render inside it, empty sky outside it, and chips appear/disappear along the
-line as the player drifts.
+**Symptom:** While piloting, the suspended background rock / debris field vanishes for a frame and
+reappears somewhere else. It is not tied to turn direction. Speeding up, slowing down, or any
+camera pullback can do it. A related older shape was a curved empty-sky line at high zoom-out
+where chips popped along the wrap-cell edge.
 
-**Cause:** `parallaxLayers` wraps every instance into one `tile × tile` cell centered on the
-camera (FAR 3000, MID 560, NEAR 460 WU). The authored tiles assumed the default chase view. At
-high zoom-out the visible frustum footprint at the band plane exceeds the cell, so the wrap-cell
-edge is on-screen and the wrap teleports chips across it. Which band owns the arc is provable by
-hiding `Parallax_MidDebris` on the live page and watching the whole field vanish.
+**Cause:** `parallaxLayers` wraps every chip into one `tile × tile` cell. The mid band used to
+author a 560 WU cell sized for the parked 144 WU chase view. Ordinary speed-zoom
+(`144 × 1.35 ≈ 194`) already needs ~710 WU, so the first 1.2× grow step fired on every cruise.
+Growing the cell scaled every authored center (`base * tile / authoredTile`) and changed the wrap
+period, so the whole belt teleported. Slowing down stepped the tile back and teleported it again.
+The wrap shader's edge-shrink made the old layout wink out first.
 
-**Fix:** the effective tile grows in discrete 1.2× steps (capped at 4× authored) so the cell edge
-stays outside the visible footprint at any zoom/FOV within the cap; the wrap shader also shrinks
-chips to zero near the cell edge so a boundary can never pop a chip on-screen. Instance counts are
-unchanged and the ordinary-zoom look is bit-identical (tile stays authored below the first step).
-Lock: `scripts/check-parallax-layers.mjs` (`checkWrapCellGrowsWithZoomOut`).
+**Fix:** size each band's wrap cell for `CAMERA_ZOOM_MAX` (330) at construction and never change
+it. Chip centers are spawned in that frozen cell; the shader wraps them in place and does not
+rescale. Edge-shrink still hides the off-screen seam. Lock: `npm run check:parallax`
+(`test/parallax-wrap-density.test.mjs` + `scripts/check-parallax-layers.mjs`
+`checkWrapCellFrozenAcrossZoom`). Do not re-introduce runtime tile stepping or
+`uParallaxAuthoredTile` scaling.
 
 *Found a bug that took multiple prompts to diagnose? Add a section here so the next agent doesn't repeat the hunt. Verify claims against the working tree (`git diff`) before writing them — HEAD drifts behind.*

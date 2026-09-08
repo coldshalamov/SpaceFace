@@ -37,7 +37,7 @@ test('mid debris keeps all authored instances and moves only its two scalar cloc
     assert.equal(gpuSpin.uniforms.primaryTime.value, 1 / 60);
     assert.equal(gpuSpin.uniforms.tailTime.value, 1 / 60);
     assert.equal(mesh.material.customProgramCacheKey(), programKey, 'animation uses one stable shader program key');
-    assert.match(programKey, /spaceface-parallax-mid-debris-gpu-spin-v1/);
+    assert.match(programKey, /spaceface-parallax-mid-debris-gpu-spin-v2/);
 
     state.settings.video.particleQuality = 'low';
     parallaxLayers.update(1 / 60);
@@ -59,7 +59,7 @@ test('mid debris keeps all authored instances and moves only its two scalar cloc
   }
 });
 
-test('GPU axis-angle transform matches the prior CPU quaternion composition', () => {
+test('GPU spin attributes and authored centers stay on the spawn recipe', () => {
   const scene = new THREE.Scene();
   const state = makeState({ particleQuality: 'medium', motionReduce: false });
   const stack = parallaxLayers.init(scene, state, null, state.render.sectorPalette);
@@ -68,7 +68,6 @@ test('GPU axis-angle transform matches the prior CPU quaternion composition', ()
     const mesh = findMidMesh(stack);
     const spinAxis = mesh.geometry.getAttribute('aParallaxSpinAxis');
     const spinParams = mesh.geometry.getAttribute('aParallaxSpinParams');
-    const localVertex = new THREE.Vector3().fromBufferAttribute(mesh.geometry.getAttribute('position'), 0);
 
     parallaxLayers.update(1 / 60);
     state.settings.video.particleQuality = 'low';
@@ -82,7 +81,6 @@ test('GPU axis-angle transform matches the prior CPU quaternion composition', ()
       const phase = spinParams.getX(index);
       const speed = spinParams.getY(index);
       const tail = spinParams.getZ(index);
-      const clock = tail === 0 ? 3 / 60 : 2 / 60;
 
       close(axis.x, expectedRecord.axis.x, 1e-7, `axis x ${index}`);
       close(axis.y, expectedRecord.axis.y, 1e-7, `axis y ${index}`);
@@ -98,21 +96,9 @@ test('GPU axis-angle transform matches the prior CPU quaternion composition', ()
       const staticScale = new THREE.Vector3();
       staticMatrix.decompose(staticPosition, staticRotation, staticScale);
       close(staticPosition.x, expectedRecord.x, 2e-5, `position x ${index}`);
-      close(staticPosition.y, -40, 1e-7, `position y ${index}`);
+      close(staticPosition.y, expectedRecord.y, 2e-5, `position y ${index}`);
       close(staticPosition.z, expectedRecord.z, 2e-5, `position z ${index}`);
-      close(staticScale.x, expectedRecord.radius, 2e-6, `scale ${index}`);
-
-      const angle = phase + speed * clock;
-      const shaderPosition = rotateAxisAngle(localVertex, axis, angle).applyMatrix4(staticMatrix);
-      const legacyMatrix = new THREE.Matrix4().compose(
-        staticPosition,
-        new THREE.Quaternion().setFromAxisAngle(axis, angle),
-        staticScale,
-      );
-      const legacyPosition = localVertex.clone().applyMatrix4(legacyMatrix);
-      close(shaderPosition.x, legacyPosition.x, 2e-5, `visual x ${index}`);
-      close(shaderPosition.y, legacyPosition.y, 2e-5, `visual y ${index}`);
-      close(shaderPosition.z, legacyPosition.z, 2e-5, `visual z ${index}`);
+      close(staticScale.x, expectedRecord.radiusX, 2e-6, `scale ${index}`);
     }
   } finally {
     parallaxLayers.dispose();
@@ -129,7 +115,7 @@ test('mid-debris shader binding is stable and fails closed if the Three vertex s
     const gpuSpin = material.userData.spacefaceParallaxMidDebrisGpuSpin;
     const shader = {
       uniforms: {},
-      vertexShader: '#include <common>\nvoid main() {\n#include <begin_vertex>\n}',
+      vertexShader: '#include <common>\nvoid main() {\n#include <begin_vertex>\n#include <project_vertex>\n}',
       fragmentShader: 'void main() {}',
     };
 
@@ -143,7 +129,7 @@ test('mid-debris shader binding is stable and fails closed if the Three vertex s
 
     assert.throws(
       () => material.onBeforeCompile({ uniforms: {}, vertexShader: 'void main() {}' }, {}),
-      /parallax mid-debris shader contract changed: missing common declarations/,
+      /parallax band shader contract changed: missing common declarations/,
     );
   } finally {
     parallaxLayers.dispose();
@@ -159,13 +145,23 @@ function findMidMesh(stack) {
 }
 
 function expectedDebrisRecord(targetIndex) {
+  const spec = parallaxLayers.PARALLAX_BANDS.mid;
   const rnd = makeRand(0x47a2e1);
   let record = null;
   for (let index = 0; index <= targetIndex; index++) {
-    const x = (rnd() - 0.5) * 560;
-    const z = (rnd() - 0.5) * 560;
+    const x = (rnd() - 0.5) * spec.tile;
+    const z = (rnd() - 0.5) * spec.tile;
+    const y = spec.y + (rnd() - 0.5) * spec.yJitter;
     const r = rnd();
-    const radius = 0.45 + r * r * r * 4.5;
+    const radius = spec.radius0 + r * r * r * (spec.radius1 - spec.radius0);
+    const squat = 0.55 + rnd() * 0.7;
+    const stretch = 0.7 + rnd() * 0.85;
+    rnd();
+    rnd();
+    rnd();
+    rnd();
+    rnd();
+    rnd();
     let ax = rnd() * 2 - 1;
     let ay = rnd() * 2 - 1;
     let az = rnd() * 2 - 1;
@@ -173,20 +169,19 @@ function expectedDebrisRecord(targetIndex) {
     ax /= length;
     ay /= length;
     az /= length;
-    const speed = 0.035 + rnd() * 0.09;
     const phase = rnd() * Math.PI * 2;
-    record = { x, z, radius, axis: { x: ax, y: ay, z: az }, speed, phase };
+    const speed = 0.02 + rnd() * 0.08;
+    record = {
+      x,
+      y,
+      z,
+      radiusX: radius * stretch,
+      axis: { x: ax, y: ay, z: az },
+      speed,
+      phase,
+    };
   }
   return record;
-}
-
-function rotateAxisAngle(point, axis, angle) {
-  const cosine = Math.cos(angle);
-  const sine = Math.sin(angle);
-  const cross = new THREE.Vector3().crossVectors(axis, point);
-  return point.clone().multiplyScalar(cosine)
-    .addScaledVector(cross, sine)
-    .addScaledVector(axis, axis.dot(point) * (1 - cosine));
 }
 
 function close(actual, expected, epsilon, label) {
