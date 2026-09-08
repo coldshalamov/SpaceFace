@@ -164,6 +164,36 @@ function withTravelFlags(fn) {
   }
 }
 
+function validTravelInfrastructureRaw(overrides = {}) {
+  return {
+    from: { x: 0, z: 0 },
+    to: { x: 800, z: 0 },
+    support: { x: 400, z: 80 },
+    stationId: STATION_ID,
+    stage: 'aligning',
+    ...overrides,
+  };
+}
+
+test('_normalizeTravelInfrastructure keeps only a sling with a complete from/to/support record', () => {
+  const raw = validTravelInfrastructureRaw();
+  const withoutModule = { id: 'claim_1', name: 'Pallas', sectorId: SECTOR_ID, modules: ['mod_depot'] };
+  assert.equal(claimsBase._normalizeTravelInfrastructure(raw, withoutModule), null);
+
+  const withSling = { id: 'claim_1', name: 'Pallas', sectorId: SECTOR_ID, modules: ['mod_throughline_sling'] };
+  assert.equal(claimsBase._normalizeTravelInfrastructure({ ...raw, from: null }, withSling), null);
+  assert.equal(claimsBase._normalizeTravelInfrastructure({ ...raw, to: { x: NaN, z: 0 } }, withSling), null);
+  assert.equal(claimsBase._normalizeTravelInfrastructure({ ...raw, support: undefined }, withSling), null);
+
+  const aligning = claimsBase._normalizeTravelInfrastructure(raw, withSling);
+  assert.equal(aligning.schema, CLAIM_TRAVEL_INFRASTRUCTURE_SCHEMA);
+  assert.equal(aligning.stage, 'aligning');
+
+  const active = claimsBase._normalizeTravelInfrastructure(validTravelInfrastructureRaw({ stage: 'active' }), withSling);
+  assert.equal(active.schema, CLAIM_TRAVEL_INFRASTRUCTURE_SCHEMA);
+  assert.equal(active.stage, 'active');
+});
+
 test('Throughline Sling is a material-built Industrial Refinery route, not a credit-only teleport', () => {
   const def = BODY_MODULE_BY_ID.get('mod_throughline_sling');
   assert.ok(def, 'Throughline Sling module is registered');

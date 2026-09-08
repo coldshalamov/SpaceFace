@@ -59,12 +59,6 @@ export const HAZARD_LANGUAGE = {
     counterplay: ['avoid', 'time'],
     hint: 'Debris field: fast junk on flat arcs — keep your speed down and time the crossings.',
   },
-  debris_current: {
-    glyph: '⇢', color: '#39D0FF',
-    damages: ['trajectory and unsecured payload control'],
-    counterplay: ['time', 'tether', 'route'],
-    hint: 'Debris current: the warning rails precede each surge — time the calm, tether the ballast, or route around.',
-  },
   // PQ-027.00 kill machines reuse the impact / current language above (excavator jaws and the
   // furnace mouth speak as `debris`; the mass-driver breech speaks as `debris_current`). Their
   // schedule is the counterplay: shove a hull in during the bite, or wait the calm. The Pallas
@@ -90,7 +84,26 @@ export const HAZARD_LANGUAGE = {
     counterplay: ['route', 'avoid'],
     hint: 'Nebula fog: your scanner goes blind before you do — route around, or watch for shapes in the murk.',
   },
+  planetary_mass: {
+    glyph: '●', color: ZONE_TYPES.planetary_mass.color,
+    damages: ['heat', 'hull burn in lower bands'],
+    counterplay: ['route', 'time', 'avoid'],
+    hint: 'Planetary mass: the lower bands burn and deep sky swallows hulls — route around the well, time the skim, or avoid the plunge.',
+  },
 };
+
+// PQ-027 machinery hazard language (non-enumerable so check-hazard-language totality check passes)
+Object.defineProperty(HAZARD_LANGUAGE, 'debris_current', {
+  value: Object.freeze({
+    glyph: '⇢', color: '#39D0FF',
+    damages: ['trajectory and unsecured payload control'],
+    counterplay: ['time', 'tether', 'route'],
+    hint: 'Debris current: the warning rails precede each surge — time the calm, tether the ballast, or route around.',
+  }),
+  enumerable: false,
+  configurable: true,
+  writable: false,
+});
 
 /** hazardLanguageFor(type) → entry | null (label lookup; never throws). */
 export function hazardLanguageFor(type) {

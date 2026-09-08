@@ -86,8 +86,12 @@ function heavyMotionForEntity(entity) {
   if (!entity || typeof entity !== 'object') return null;
   const hull = SHIP_BY_ID.get(hullIdFromEntity(entity));
   const authored = hull && hull.heavyMotion;
-  const mass = finite(entity.mass, finite(entity.data && entity.data.derived && entity.data.derived.mass));
-  if (!authored && mass < HEAVY_MASS_THRESHOLD) return null;
+  const derived = entity.data && entity.data.derived;
+  const mass = finite(
+    entity.physicsBody && entity.physicsBody.mass,
+    finite(entity.mass, finite(derived && (derived.operationalMass ?? derived.mass), hull && hull.mass)),
+  );
+  if (mass < HEAVY_MASS_THRESHOLD) return null;
   return authored || DEFAULT_HEAVY_MOTION;
 }
 

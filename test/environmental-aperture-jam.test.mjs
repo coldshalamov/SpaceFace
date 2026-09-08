@@ -12,6 +12,7 @@ import {
   APERTURE_HOLD_FIELD,
   APERTURE_JAM_HOLD_S,
   APERTURE_PINCH_FIELD,
+  APERTURE_SEAT_SPEED,
   APERTURE_SECTOR_ID,
   apertureAlong,
   aperturePhase,
@@ -90,6 +91,14 @@ test('the hangar door locks on a schedule and a stuffed hull jams the open windo
     type: 'ship', alive: true, collides: true, pos: aperturePoint(0, 0),
     vel: { x: APERTURE_DIR.x * 40, z: APERTURE_DIR.z * 40 },
   }), false, 'a launching fighter is traffic, not a jammed hull');
+  assert.equal(isApertureOccupant({
+    type: 'wreck', alive: true, collides: true, pos: aperturePoint(0, 0),
+  }), true);
+  assert.equal(isApertureOccupant({
+    type: 'ship', alive: true, collides: true, pos: aperturePoint(0, 0),
+    vel: { x: APERTURE_SEAT_SPEED + 1, z: 0 },
+  }), false,
+  'a ship in the mouth with speed > APERTURE_SEAT_SPEED is not an occupant');
 
   const hold = normalizeField({ ...APERTURE_HOLD_FIELD });
   const inside = aperturePoint(-48, 0);

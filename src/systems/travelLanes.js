@@ -58,7 +58,7 @@
 import { travelFlag } from '../data/featureFlags.js';
 import { resolveTravelCeiling } from '../core/flight/propulsionKernel.js';
 import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
-import { sectorMembershipAtGlobal } from '../data/sectorCoordinates.js';
+import { sectorLocalToGlobalForSector, sectorMembershipAtGlobal } from '../data/sectorCoordinates.js';
 import { LANE_HELIOS_TETHYS, buildLaneGeometry } from '../data/travelLaneRoutes.js';
 
 export const TRAVEL_LANE_SCHEMA = 'travel_lane_v1';
@@ -85,6 +85,81 @@ const TRAFFIC_SPAWN_RANGE_WU = 4200;
 
 function finite(v, fallback = 0) {
   return Number.isFinite(v) ? v : fallback;
+}
+
+// ─── PQ-028.00 first slice: one authored Ceres sling ring (geometry only) ─────────────────────────
+//
+// A short finite cylinder on the station_ceres Helios-approach corridor. Inside means the tube,
+// not a sphere around the ring. Aligned means forward along the axis. This slice authors the
+// ring and the three predicates. It does not write player.vel, does not multiply the
+// Helios–Tethys lane, and does not capture or boot Rapier.
+
+const STATION_CERES_LOCAL = Object.freeze({ x: -1100, z: 620 });
+const CERES_HELIOS_GATE_LOCAL = Object.freeze({ x: 2866, z: -1910 });
+const SLING_RING_STANDOFF_WU = 320;
+const SLING_RING_LENGTH_WU = 96;
+const SLING_RING_RADIUS_WU = 48;
+
+function unitXZ(dx, dz) {
+  const length = Math.hypot(dx, dz);
+  if (!(length > 0)) return { x: 1, z: 0 };
+  return { x: dx / length, z: dz / length };
+}
+
+const CERES_SLING_AXIS = Object.freeze(unitXZ(
+  CERES_HELIOS_GATE_LOCAL.x - STATION_CERES_LOCAL.x,
+  CERES_HELIOS_GATE_LOCAL.z - STATION_CERES_LOCAL.z,
+));
+
+const CERES_SLING_LOCAL_POS = Object.freeze({
+  x: STATION_CERES_LOCAL.x + CERES_SLING_AXIS.x * SLING_RING_STANDOFF_WU,
+  z: STATION_CERES_LOCAL.z + CERES_SLING_AXIS.z * SLING_RING_STANDOFF_WU,
+});
+
+export const CERES_SLING_RING = Object.freeze({
+  id: 'sling_ring_ceres_approach',
+  sectorId: 'sector_ceres_belt',
+  localPos: CERES_SLING_LOCAL_POS,
+  globalPos: Object.freeze(sectorLocalToGlobalForSector(CERES_SLING_LOCAL_POS, 'sector_ceres_belt')),
+  axis: CERES_SLING_AXIS,
+  length: SLING_RING_LENGTH_WU,
+  radius: SLING_RING_RADIUS_WU,
+});
+
+/** Signed distance of a global point along the authored ring axis, from the ring center. */
+export function ringAlong(point) {
+  const origin = CERES_SLING_RING.globalPos;
+  const axis = CERES_SLING_RING.axis;
+  const dx = finite(point && point.x) - origin.x;
+  const dz = finite(point && point.z) - origin.z;
+  return dx * axis.x + dz * axis.z;
+}
+
+/** True when the global point is inside the finite cylinder, not a sphere around the ring. */
+export function pointInsideSlingRing(point) {
+  const along = ringAlong(point);
+  const half = CERES_SLING_RING.length * 0.5;
+  if (along < -half || along > half) return false;
+  const origin = CERES_SLING_RING.globalPos;
+  const axis = CERES_SLING_RING.axis;
+  const dx = finite(point && point.x) - origin.x;
+  const dz = finite(point && point.z) - origin.z;
+  const ox = dx - axis.x * along;
+  const oz = dz - axis.z * along;
+  return (ox * ox + oz * oz) <= CERES_SLING_RING.radius * CERES_SLING_RING.radius;
+}
+
+/** Unit-velocity · unit-axis. Forward along the axis is +1; a nearby sphere is irrelevant. */
+export function alignmentDot(vel, axis) {
+  const vx = finite(vel && vel.x);
+  const vz = finite(vel && vel.z);
+  const speed = Math.hypot(vx, vz);
+  if (!(speed > 0)) return 0;
+  const ax = finite(axis && axis.x);
+  const az = finite(axis && axis.z);
+  const axisLen = Math.hypot(ax, az);
+  if (!(axisLen > 0)) return 0;
+  return (vx * ax + vz * az) / (speed * axisLen);
 }
 
 function playerEntity(state) {
