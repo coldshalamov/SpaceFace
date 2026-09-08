@@ -33,8 +33,7 @@ jobs:
           assert os.environ['GITHUB_REF'] == 'refs/heads/fix/arcade-draw-to-fly'
           root = pathlib.Path.cwd()
           parts = [(root / '.github/arcade-draw-transfer' / ('part%d.gzpart' % i)).read_bytes() for i in (1,2,3)]
-          # Repair a known duplicated five-character transfer packet before validating its hash.
-          # This is transport normalization only: the pinned complete source hash below is authoritative.
+          # Normalize the known transport duplicate; the complete source hash is authoritative.
           middle = base64.b64encode(parts[1]).decode() + '0'
           middle = middle.replace('NB4tgvhhOBvhhOBv1', 'NB4tgvhhOBv1', 1)
           parts[1] = base64.b64decode(middle, validate=True)
@@ -71,7 +70,7 @@ jobs:
           cp vendor/three.module.js vendor/three.core.js node_modules/three/
           ln -s ../../vendor/addons node_modules/three/addons
           printf '%s' '{"type":"module","exports":{".":"./three.module.js","./addons/*":"./addons/*"}}' > node_modules/three/package.json
-          cp vendor/rapier.mjs node_modules/@dimforge/rapier3d-compat/rapier.mjs
+          cp vendor/rapier3d-compat/rapier.mjs node_modules/@dimforge/rapier3d-compat/rapier.mjs
           printf '%s' '{"type":"module","exports":"./rapier.mjs"}' > node_modules/@dimforge/rapier3d-compat/package.json
       - name: Reject a candidate that fails focused flight, aim or input regression
         shell: bash
