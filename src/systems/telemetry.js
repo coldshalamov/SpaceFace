@@ -575,6 +575,33 @@ export function createTelemetry(bus, state) {
     scheduleSave();
   });
 
+  // Session rhythm timeline (PQ-149.00). Live-only ring print: simTime, phase, dwellS.
+  sub('rhythm:phase', (p) => {
+    p = p || {};
+    const simTime = Number.isFinite(p.simTime) ? p.simTime : simNow();
+    const phase = typeof p.phase === 'string' ? p.phase : 'unknown';
+    const dwellS = Number.isFinite(p.dwellS) ? p.dwellS : 0;
+    pushRing('rhythm:phase', { simTime, phase, dwellS });
+  });
+
+  // Escalation seeds (PQ-149.01). Cause-cited future beats: delay, place, never on the player.
+  sub('escalation:seeded', (p) => {
+    p = p || {};
+    pushRing('escalation:seeded', {
+      simTime: Number.isFinite(p.seededAt) ? p.seededAt : simNow(),
+      cause: p.cause, beat: p.beat, causeId: p.causeId, delayS: p.delayS,
+      place: p.place ? { x: p.place.x, z: p.place.z, zoneId: p.place.zoneId } : null,
+    });
+  });
+  sub('escalation:arrived', (p) => {
+    p = p || {};
+    pushRing('escalation:arrived', {
+      simTime: Number.isFinite(p.arrivedAt) ? p.arrivedAt : simNow(),
+      cause: p.cause, beat: p.beat, causeId: p.causeId,
+      place: p.place ? { x: p.place.x, z: p.place.z, zoneId: p.place.zoneId } : null,
+    });
+  });
+
   // ----------------------------------------------------------------------------------------------
   // page-lifecycle flush — there is NO session-end gameplay event (see EVENT_TAXONOMY gaps), so we
   // lean on the browser to flush a final snapshot. These are browser listeners, not file edits.

@@ -349,6 +349,8 @@ function makeCandidate(seed, input, gateOpen) {
   if (input.type === 'loss') candidate.playerCaused = input.playerCaused === true;
   if (input.trickId) candidate.trickId = input.trickId;
   if (input.tokens) candidate.tokens = { ...input.tokens };
+  if (input.cause) candidate.cause = text(input.cause, '');
+  if (input.beat) candidate.beat = text(input.beat, '');
   return candidate;
 }
 
@@ -522,6 +524,27 @@ function collectCandidates(state) {
         wreck: 'Black-Wake Weapons Cache',
         choice: humanizeId(pallasReceipt.choiceId, 'recorded'),
         outcome: humanizeId(pallasReceipt.outcome, 'recorded'),
+      },
+    });
+  }
+
+  const escalationSeeds = sourceArray(state && state.encounterDirector && state.encounterDirector.escalationSeeds);
+  for (const record of escalationSeeds) {
+    if (!record || !record.cause || !record.beat) continue;
+    const placeName = record.place && (record.place.name || record.place.zoneId || record.place.stationId)
+      || 'a named place';
+    add({
+      type: 'witness',
+      sourceId: `escalation:${record.id || record.causeId || record.cause}`,
+      sourceKind: 'encounterDirector.escalationSeeds',
+      at: record.arrivedAt != null ? record.arrivedAt : record.seededAt,
+      cause: record.cause,
+      beat: record.beat,
+      tokens: {
+        event: `a ${record.beat} from ${placeName}`,
+        outcome: `because of the ${record.cause}`,
+        cause: record.cause,
+        beat: record.beat,
       },
     });
   }
