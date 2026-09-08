@@ -18,10 +18,10 @@ const scene=new THREE.Scene();scene.background=new THREE.Color(0x081019);
 const scale=.6;
 const camera=new THREE.OrthographicCamera(-innerWidth*scale/2,innerWidth*scale/2,innerHeight*scale/2,-innerHeight*scale/2,.1,2000);
 camera.up.set(0,0,-1);camera.position.set(0,600,0);camera.lookAt(0,0,0);camera.updateMatrixWorld();
-const ray=new THREE.Raycaster(), plane=new THREE.Plane(new THREE.Vector3(0,1,0),0),hit=new THREE.Vector3(),screen=new THREE.Vector3();
+const ray=new THREE.Raycaster(), plane=new THREE.Plane(new THREE.Vector3(0,1,0),0),hit=new THREE.Vector3(),screen=new THREE.Vector3(),globalHit={x:0,z:0};
 const helpers={
  worldToScreen(p){screen.set(p.x,0,p.z).project(camera);return{x:(screen.x+1)*innerWidth/2,y:(1-screen.y)*innerHeight/2,onScreen:true}},
- raycastToPlane(ndc){ray.setFromCamera(ndc,camera);const p=ray.ray.intersectPlane(plane,hit);return p?{x:p.x,z:p.z}:null}
+ raycastToPlane(ndc){ray.setFromCamera(ndc,camera);const p=ray.ray.intersectPlane(plane,hit);return p?Object.assign(globalHit,{x:p.x,z:p.z}):null}
 };
 const host=await bootRealPath({seed:4242,systems:[input,autoTargetAssist,'actions','flightV3','physics'],
  hulls:[{hullId:'ship_kestrel',isPlayer:true,pos:{x:0,z:0},rot:0,factionId:'faction_free'}]});

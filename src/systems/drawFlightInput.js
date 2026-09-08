@@ -30,10 +30,19 @@ export function recordDrawFlightGesture(host, dx, dy, now, width, height) {
   const sx = Number.isFinite(screen?.x) ? screen.x : width * 0.5;
   const sy = Number.isFinite(screen?.y) ? screen.y : height * 0.5;
   const at = (x, y) => raycast({ x: x / width * 2 - 1, y: 1 - y / height * 2 });
-  const center = at(sx, sy), right = at(sx + 1, sy), down = at(sx, sy + 1);
-  if (!valid(center) || !valid(right) || !valid(down)) return false;
-  const wx = (right.x - center.x) * dx + (down.x - center.x) * dy;
-  const wz = (right.z - center.z) * dx + (down.z - center.z) * dy;
+  // The production frame membrane returns a shared _rayGlobalXZ scratch object.
+  // Snapshot scalar components BEFORE the next cast; retaining three result references
+  // would alias them all to `down` and silently turn every mouse delta into zero.
+  const center = at(sx, sy);
+  if (!valid(center)) return false;
+  const cx = center.x, cz = center.z;
+  const right = at(sx + 1, sy);
+  if (!valid(right)) return false;
+  const rx = right.x - cx, rz = right.z - cz;
+  const down = at(sx, sy + 1);
+  if (!valid(down)) return false;
+  const wx = rx * dx + (down.x - cx) * dy;
+  const wz = rz * dx + (down.z - cz) * dy;
   if (!Number.isFinite(wx) || !Number.isFinite(wz) || Math.hypot(wx, wz) > 100000) return false;
 
   const g = host._autoTargetGesture || (host._autoTargetGesture = emptyDrawFlightGesture());

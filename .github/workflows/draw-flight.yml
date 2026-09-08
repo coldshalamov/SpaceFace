@@ -77,8 +77,9 @@ jobs:
           npm install --prefix "$RUNNER_TEMP/draw-flight-browser" --ignore-scripts --no-audit --no-fund playwright@1.61.1
           ln -s "$RUNNER_TEMP/draw-flight-browser/node_modules/playwright" node_modules/playwright
           node "$RUNNER_TEMP/draw-flight-browser/node_modules/playwright/cli.js" install --with-deps chromium
+          sudo apt-get install -y xvfb xdotool
       - name: Real browser mouse motion and pointer-lock acceptance
-        run: node scripts/check-draw-flight-browser.mjs
+        run: xvfb-run -a node scripts/check-draw-flight-browser.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
