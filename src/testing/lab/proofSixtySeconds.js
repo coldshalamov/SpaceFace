@@ -299,8 +299,11 @@ export function buildProofInputTape() {
   };
   // inputTape.js: KeyJ is fire. KeyF / Space is the Massline. Do not invert them.
 
-  // Sit in the killbox through the ~1.5 s spill, then latch the pod (aim window 200–480).
-  press(120, 'KeyF', true);
+  // Sit through the spill. The shove at ~1.6 s glues pirate 399 to the nose; latching
+  // on the KeyF edge then grabs that hull. Reverse off it, then latch the pod.
+  press(160, 'KeyS', true);
+  press(230, 'KeyS', false);
+  press(240, 'KeyF', true);
   press(480, 'KeyF', false);
 
   press(480, 'KeyW', true);
@@ -348,7 +351,7 @@ function nearest(state, player, predicate) {
 }
 
 export function aimTargetForTick(state, player, tick) {
-  if ((tick >= 200 && tick < 480) || (tick >= 2400 && tick < 3000)) {
+  if ((tick >= 90 && tick < 480) || (tick >= 2400 && tick < 3000)) {
     return nearest(state, player, (e) => isGrabCargoTarget(e))
       || nearest(state, player, (e) => e.type === 'pickup' || e.type === 'payload');
   }
@@ -375,6 +378,16 @@ function pointAt(state, player, target) {
   state.input = state.input || {};
   state.input.aimAngle = angle;
   state.input.aimWorld = { x: target.pos.x, z: target.pos.z };
+}
+
+// Headless input.js never sees a mouse-down, so aimIntentActive stays false and Massline
+// acquisition ignores aimWorld (steering / nearest-body). Mark the live pointer so the
+// tape's pointAt is scored as a real cursor paint.
+export function markProofPointerActive(inputSys) {
+  if (!inputSys) return false;
+  const screen = inputSys._screen || (inputSys._screen = { x: 0, y: 0, active: false });
+  screen.active = true;
+  return true;
 }
 
 // Node input.js owns this._keys and rebuilds tetherFire from them. The tape driver keeps a
@@ -759,6 +772,83 @@ export async function runProofPocketCensus(seed, options = {}) {
   }
 }
 
+export async function runProofGrabProbe(seed = 47, options = {}) {
+  const probeTicks = Number.isFinite(options.ticks) ? options.ticks : 360;
+  const host = await bootCeresPocket(seed, { pocketId: PROOF_AMBUSH_POCKET_ID });
+  const { runtime, state, bus, player } = host;
+  const driver = createInputTapeDriver(options.tape || buildProofInputTape());
+  const denials = [];
+  const latches = [];
+  const off = [
+    bus.on('tether:latchDenied', (p) => denials.push({ t: state.simTime, ...(p || {}) })),
+    bus.on('tether:latched', (p) => latches.push({ t: state.simTime, targetId: p && p.targetId })),
+  ];
+  try {
+    const inputSys = runtime.getSystem('input');
+    let sawTetherFire = false;
+    let sawKeyF = false;
+    for (let i = 0; i < probeTicks; i++) {
+      const tick = state.tick | 0;
+      const tether = !!(player && player.tether && player.tether.active);
+      driver.apply(state, tick, SIM_DT, { playerEntity: player, tetherAttached: tether });
+      syncTapeKeysToInput(inputSys, driver.snapshotKeys());
+      const aim = aimTargetForTick(state, player, tick);
+      pointAt(state, player, aim);
+      markProofPointerActive(inputSys);
+      runtime.step(SIM_DT);
+      if (inputSys && inputSys._keys && inputSys._keys.KeyF) sawKeyF = true;
+      if (state.input && state.input.actions && state.input.actions.tetherFire) sawTetherFire = true;
+    }
+    const cargo = [];
+    for (const entity of live(state)) {
+      if (!isGrabCargoTarget(entity)) continue;
+      cargo.push({
+        id: entity.id,
+        type: entity.type,
+        kind: entity.data && entity.data.kind,
+        commodityId: entity.data && entity.data.commodityId,
+        dist: Number(dist(player.pos, entity.pos).toFixed(1)),
+      });
+    }
+    const aimTarget = aimTargetForTick(state, player, 300);
+    const latchTargets = latches.map((row) => {
+      const entity = entityById(state, row.targetId);
+      return {
+        ...row,
+        type: entity && entity.type,
+        role: entity && roleOf(entity),
+        kind: entity && entity.data && entity.data.kind,
+        dist: entity ? Number(dist(player.pos, entity.pos).toFixed(1)) : null,
+      };
+    });
+    return {
+      seed,
+      ticks: probeTicks,
+      hasInputKeys: !!(inputSys && inputSys._keys),
+      keyF: sawKeyF,
+      tetherFire: sawTetherFire,
+      aimIntentActive: !!(state.input && state.input.aimIntentActive),
+      masslineLatch: !!(state.input && state.input.actions && state.input.actions.massline
+        && state.input.actions.massline.latch),
+      aimWorld: state.input && state.input.aimWorld,
+      aimTargetId: aimTarget && aimTarget.id,
+      aimTargetType: aimTarget && aimTarget.type,
+      acquisitionId: state.masslineAcquisition && state.masslineAcquisition.selected
+        && state.masslineAcquisition.selected.targetId,
+      acquisitionType: state.masslineAcquisition && state.masslineAcquisition.selected
+        && state.masslineAcquisition.selected.targetType,
+      playerPos: { x: Number(player.pos.x.toFixed(1)), z: Number(player.pos.z.toFixed(1)) },
+      cargo,
+      latches: latchTargets,
+      denials: denials.slice(0, 12),
+      denialReasons: [...new Set(denials.map((row) => row.reason).filter(Boolean))],
+    };
+  } finally {
+    for (const unsub of off) if (typeof unsub === 'function') unsub();
+    runtime.dispose();
+  }
+}
+
 /**
  * Run one seeded proof. Returns beat times in seconds, setup census, and real-path proof.
  * Stops early when all 11 beats are seen. Hard-aborts at 90 s of sim time.
@@ -828,9 +918,11 @@ export async function runProofSixtySeconds(seed, options = {}) {
       }
       const tether = !!(player && player.tether && player.tether.active);
       driver.apply(state, tick, SIM_DT, { playerEntity: player, tetherAttached: tether });
-      syncTapeKeysToInput(runtime.getSystem('input'), driver.snapshotKeys());
+      const inputSys = runtime.getSystem('input');
+      syncTapeKeysToInput(inputSys, driver.snapshotKeys());
       const aim = aimTargetForTick(state, player, tick);
       pointAt(state, player, aim);
+      markProofPointerActive(inputSys);
       runtime.step(SIM_DT);
       ticks += 1;
       if (ticks === PROOF_CENSUS_SETTLE_TICKS) setup = takeSetupCensus(state, player, censusPocketIds);

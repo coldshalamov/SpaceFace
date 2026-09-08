@@ -18,6 +18,7 @@ import {
   censusAround,
   classifyReceipt,
   installProofAimPassthrough,
+  markProofPointerActive,
   syncTapeKeysToInput,
   emptyBeatTimes,
   formatBeatTable,
@@ -140,8 +141,8 @@ test('PQ-141.00 grab/aim/census accept payload cargo pods, and a real cargo latc
 
   const grabAim = aimTargetForTick(state, player, 2500);
   assert.equal(grabAim && grabAim.id, payloadPod.id, 'grab window must prefer the nearer cargo payload pod');
-  const earlyGrab = aimTargetForTick(state, player, 300);
-  assert.equal(earlyGrab && earlyGrab.id, payloadPod.id, 'early killbox grab window must also prefer the cargo pod');
+  const earlyGrab = aimTargetForTick(state, player, 120);
+  assert.equal(earlyGrab && earlyGrab.id, payloadPod.id, 'KeyF-down tick must already prefer the cargo pod');
 
   const ctx = {
     state,
@@ -177,7 +178,7 @@ function tapeKeyDownAt(tape, code, tick) {
 }
 
 test('PQ-141.00 tape keys reach the live input bag and aim survives a headless raycast', () => {
-  const inputSys = { _keys: { KeyW: true }, helpers: {} };
+  const inputSys = { _keys: { KeyW: true }, helpers: {}, _screen: { x: 0, y: 0, active: false } };
   const state = { input: { aimWorld: { x: 12, z: -4 } } };
   const tape = buildProofInputTape();
   const keys = {};
@@ -189,10 +190,13 @@ test('PQ-141.00 tape keys reach the live input bag and aim survives a headless r
   assert.equal(inputSys._keys.KeyW, false);
   assert.equal(installProofAimPassthrough(inputSys, state), true);
   assert.deepEqual(inputSys.helpers.raycastToPlane(), { x: 12, z: -4 });
+  assert.equal(markProofPointerActive(inputSys), true);
+  assert.equal(inputSys._screen.active, true);
 });
 
 test('PQ-141.00 Massline (KeyF) is held during both cargo-grab aim windows', () => {
   const tape = buildProofInputTape();
+  assert.equal(tapeKeyDownAt(tape, 'KeyF', 200), false, 'do not latch during the shove — that grabs the pirate');
   assert.equal(tapeKeyDownAt(tape, 'KeyF', 300), true, 'early killbox grab must hold KeyF, not KeyJ');
   assert.equal(tapeKeyDownAt(tape, 'KeyJ', 300), false, 'KeyJ is fire in the tape driver');
   assert.equal(tapeKeyDownAt(tape, 'KeyF', 2500), true, 'late grab window must hold KeyF');
