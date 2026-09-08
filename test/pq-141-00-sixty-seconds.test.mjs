@@ -1,17 +1,21 @@
 // PQ-141.00 — B12 sixty-second proof INSTRUMENT.
-// Detects the 11 VISION beats from shipping bus receipts at the Ceres reference pocket.
-// Does not script NPC behaviour. A red table is a valid NOT DONE.
+// Detects the 11 VISION beats from shipping bus receipts on the Ceres proof pocket set
+// (Refinery + Ambush Run). Does not script NPC behaviour. A red table is a valid NOT DONE.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  PROOF_AMBUSH_POCKET_ID,
   PROOF_HARD_CAP_S,
+  PROOF_POCKET_IDS,
+  PROOF_REFINERY_POCKET_ID,
   PROOF_SCENARIO_ID,
   PROOF_SEEDS,
   SIXTY_SECOND_BEATS,
   classifyReceipt,
   emptyBeatTimes,
   formatBeatTable,
+  runProofPocketCensus,
   runProofSixtySecondsSuite,
 } from '../src/testing/lab/proofSixtySeconds.js';
 
@@ -71,6 +75,42 @@ test('PQ-141.00 scenario id is proof.sixty_seconds', () => {
   assert.equal(PROOF_SCENARIO_ID, 'proof.sixty_seconds');
   assert.equal(PROOF_SEEDS.length, 5);
   assert.equal(emptyBeatTimes().op_working, null);
+});
+
+test('PQ-141.00 default proof pocket set includes Ambush Run', () => {
+  assert.equal(PROOF_REFINERY_POCKET_ID, 'ceres_refinery_pocket');
+  assert.equal(PROOF_AMBUSH_POCKET_ID, 'ceres_ambush_run');
+  assert.deepEqual([...PROOF_POCKET_IDS], [
+    'ceres_refinery_pocket',
+    'ceres_ambush_run',
+  ]);
+});
+
+test('PQ-141.00 census sees pirates when pointed at Ambush Run', { timeout: 120_000 }, async () => {
+  const run = await runProofPocketCensus(47, { pocketId: PROOF_AMBUSH_POCKET_ID });
+  assert.equal(run.pocketId, PROOF_AMBUSH_POCKET_ID);
+  assert.ok(run.realPath && run.realPath.sg02Ready === true, 'census must use the real path');
+  assert.equal(run.realPath.backend, 'rapier-dynamic');
+
+  const pointed = run.setup || {};
+  const pockets = run.pockets && run.pockets.byPocket || {};
+  const refinery = pockets[PROOF_REFINERY_POCKET_ID] || {};
+  const ambush = pockets[PROOF_AMBUSH_POCKET_ID] || {};
+  const playerLocal = run.playerLocal || {};
+  console.log(
+    'PQ-141.00 pirate census seed 47: '
+    + `before/refinery=${refinery.pirates ?? '?'} `
+    + `after/ambush=${pointed.pirates ?? '?'} `
+    + `playerLocal=${playerLocal.pirates ?? '?'} `
+    + `ambush.haulers=${ambush.haulers ?? '?'} `
+    + `combined.pirates=${run.pockets && run.pockets.pirates}`,
+  );
+
+  assert.ok(
+    pointed.pirates > 0,
+    `Ambush Run pirate census must be > 0 when the instrument looks there, got ${pointed.pirates}`,
+  );
+  assert.equal(ambush.pirates, pointed.pirates);
 });
 
 // Five-seed Rapier suite is the alpha-gate measurement. It is honest and currently

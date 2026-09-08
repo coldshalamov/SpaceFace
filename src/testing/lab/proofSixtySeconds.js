@@ -1,11 +1,14 @@
 // PQ-141.00 — deterministic 60-second proof instrument (B12).
 //
-// This module is an INSTRUMENT. It boots the shipping Node-safe production runtime at the Ceres
-// reference pocket, plays a short player input tape of already-wired verbs (boost, fire, Massline),
-// and detects the eleven VISION / FEEL B12 beats from bus receipts that already exist.
+// This module is an INSTRUMENT. It boots the shipping Node-safe production runtime on the Ceres
+// proof pocket set (Refinery + Ambush Run), plays a short player input tape of already-wired verbs
+// (boost, fire, Massline), and detects the eleven VISION / FEEL B12 beats from bus receipts that
+// already exist.
 //
-// It does not script NPC behaviour, emit the beats itself, or loosen a miss into "any collision".
-// A red table with missing beats is a valid reading. The packet that owns a miss is named.
+// Census/boot/camera look at authored pockets. The default 60s run still parks the player at the
+// refinery so the mining op stays in view; Ambush Run is in the same pocket set so the existing
+// Throughline pirates and loaded hauler are counted in that window. It does not script NPC combat,
+// emit beat events, or loosen a miss into "any collision". A red table is a valid reading.
 
 import { SIM_DT } from '../../core/sim.js';
 import {
@@ -34,6 +37,13 @@ export const PROOF_HARD_CAP_S = 90;
 export const PROOF_REQUIRED_BEATS = 9;
 export const PROOF_PLAYER_HULL_ID = 'ship_hornet';
 export const PROOF_SHOVE_WEAPON_ID = 'wpn_concussion_cannon_m';
+export const PROOF_REFINERY_POCKET_ID = CERES_REFERENCE_ACCEPTANCE_ENTRY.pocketId;
+export const PROOF_AMBUSH_POCKET_ID = 'ceres_ambush_run';
+export const PROOF_POCKET_IDS = Object.freeze([
+  PROOF_REFINERY_POCKET_ID,
+  PROOF_AMBUSH_POCKET_ID,
+]);
+export const PROOF_CENSUS_SETTLE_TICKS = 120;
 
 const TICKS_PER_S = 60;
 const HARD_CAP_TICKS = PROOF_HARD_CAP_S * TICKS_PER_S;
@@ -245,12 +255,22 @@ function realPathProof(runtime) {
   };
 }
 
-function pocketEntryGlobal() {
-  const pocket = CERES_ACTIVITY_POCKETS_BY_ID[CERES_REFERENCE_ACCEPTANCE_ENTRY.pocketId];
+export function pocketAnchorGlobal(pocketId) {
+  const pocket = CERES_ACTIVITY_POCKETS_BY_ID[pocketId];
   if (!pocket || !pocket.activityAnchor || !pocket.activityAnchor.localPos) {
-    throw new Error('proof.sixty_seconds: Ceres reference pocket has no activity anchor');
+    throw new Error(`proof.sixty_seconds: pocket "${pocketId}" has no activity anchor`);
   }
-  const offset = CERES_REFERENCE_ACCEPTANCE_ENTRY.entryOffset || { x: 0, z: 0 };
+  return sectorLocalToGlobalForSector(pocket.activityAnchor.localPos, CERES_ACTIVITY_SECTOR_ID);
+}
+
+export function pocketEntryGlobal(pocketId = PROOF_REFINERY_POCKET_ID) {
+  const pocket = CERES_ACTIVITY_POCKETS_BY_ID[pocketId];
+  if (!pocket || !pocket.activityAnchor || !pocket.activityAnchor.localPos) {
+    throw new Error(`proof.sixty_seconds: pocket "${pocketId}" has no activity anchor`);
+  }
+  const offset = pocketId === CERES_REFERENCE_ACCEPTANCE_ENTRY.pocketId
+    ? (CERES_REFERENCE_ACCEPTANCE_ENTRY.entryOffset || { x: 0, z: 0 })
+    : { x: 0, z: 0 };
   const local = {
     x: finite(pocket.activityAnchor.localPos.x) + finite(offset.x),
     z: finite(pocket.activityAnchor.localPos.z) + finite(offset.z),
@@ -342,8 +362,12 @@ function pointAt(state, player, target) {
   state.input.aimWorld = { x: target.pos.x, z: target.pos.z };
 }
 
-function censusPocket(state, player) {
-  const here = live(state).filter((e) => dist(e.pos, player.pos) <= POCKET_RADIUS_WU);
+function emptyCensus() {
+  return { ships: 0, workers: 0, haulers: 0, pirates: 0, patrols: 0, cargoPods: 0 };
+}
+
+export function censusAround(state, origin) {
+  const here = live(state).filter((e) => dist(e.pos, origin) <= POCKET_RADIUS_WU);
   return {
     ships: here.filter((e) => e.type === 'ship').length,
     workers: here.filter(isWorkEntity).length,
@@ -352,6 +376,35 @@ function censusPocket(state, player) {
     patrols: here.filter(isPatrolEntity).length,
     cargoPods: here.filter((e) => e.type === 'pickup' && isCargoPickup(e)).length,
   };
+}
+
+function addCensus(into, part) {
+  into.ships += part.ships;
+  into.workers += part.workers;
+  into.haulers += part.haulers;
+  into.pirates += part.pirates;
+  into.patrols += part.patrols;
+  into.cargoPods += part.cargoPods;
+  return into;
+}
+
+export function censusProofPocket(state, pocketId) {
+  return censusAround(state, pocketAnchorGlobal(pocketId));
+}
+
+export function censusProofPockets(state, pocketIds = PROOF_POCKET_IDS) {
+  const byPocket = {};
+  const combined = emptyCensus();
+  for (const pocketId of pocketIds) {
+    const row = censusProofPocket(state, pocketId);
+    byPocket[pocketId] = row;
+    addCensus(combined, row);
+  }
+  return { ...combined, byPocket };
+}
+
+function censusPocket(state, player) {
+  return censusAround(state, player && player.pos);
 }
 
 function jobKindOf(payload) {
@@ -552,7 +605,7 @@ function productionNodeLookup() {
   return table;
 }
 
-async function bootCeresPocket(seed) {
+async function bootCeresPocket(seed, options = {}) {
   const systemLookup = productionNodeLookup();
   const runtime = createAuthoritativeRuntime({
     profileId: 'production',
@@ -591,7 +644,8 @@ async function bootCeresPocket(seed) {
   if (typeof world.relocatePlayerInSector !== 'function') {
     throw new Error('proof.sixty_seconds: world.relocatePlayerInSector missing');
   }
-  const at = pocketEntryGlobal();
+  const pocketId = options.pocketId || PROOF_REFINERY_POCKET_ID;
+  const at = pocketEntryGlobal(pocketId);
   world.relocatePlayerInSector({ x: at.x, z: at.z, heading: 0 }, { reason: 'proof:sixty_seconds' });
   player.vel.x = 0;
   player.vel.z = 0;
@@ -612,7 +666,53 @@ async function bootCeresPocket(seed) {
     }
   }
 
-  return { runtime, state, bus: runtime.bus, player };
+  return { runtime, state, bus: runtime.bus, player, pocketId };
+}
+
+function takeSetupCensus(state, player, pocketIds) {
+  const pockets = censusProofPockets(state, pocketIds);
+  return {
+    ...pockets,
+    playerLocal: censusPocket(state, player),
+  };
+}
+
+/**
+ * Short real-path boot pointed at one pocket. Settles just long enough for the authored
+ * census to exist. Does not play the 60s tape or invent combat receipts.
+ */
+export async function runProofPocketCensus(seed, options = {}) {
+  const pocketId = options.pocketId || PROOF_AMBUSH_POCKET_ID;
+  const pocketIds = options.pocketIds || PROOF_POCKET_IDS;
+  const settleTicks = Number.isFinite(options.settleTicks)
+    ? options.settleTicks
+    : PROOF_CENSUS_SETTLE_TICKS;
+  const host = await bootCeresPocket(seed, { pocketId });
+  const { runtime, state, player } = host;
+  try {
+    const proof = realPathProof(runtime);
+    if (proof.sg02Ready !== true || proof.backend !== 'rapier-dynamic') {
+      throw new Error(`proof.sixty_seconds: not the real path (sg02Ready=${proof.sg02Ready}, backend=${proof.backend})`);
+    }
+    for (let i = 0; i < settleTicks; i++) {
+      runtime.step(SIM_DT);
+    }
+    const pockets = censusProofPockets(state, pocketIds);
+    return {
+      scenarioId: PROOF_SCENARIO_ID,
+      seed,
+      sectorId: PROOF_SECTOR_ID,
+      pocketId,
+      pocketIds: pocketIds.slice(),
+      ticks: settleTicks,
+      setup: censusProofPocket(state, pocketId),
+      pockets,
+      playerLocal: censusPocket(state, player),
+      realPath: proof,
+    };
+  } finally {
+    runtime.dispose();
+  }
 }
 
 /**
@@ -622,7 +722,9 @@ async function bootCeresPocket(seed) {
 export async function runProofSixtySeconds(seed, options = {}) {
   const windowTicks = Number.isFinite(options.windowTicks) ? options.windowTicks : WINDOW_TICKS;
   const hardCapTicks = Number.isFinite(options.hardCapTicks) ? options.hardCapTicks : HARD_CAP_TICKS;
-  const host = await bootCeresPocket(seed);
+  const bootPocketId = options.pocketId || PROOF_REFINERY_POCKET_ID;
+  const censusPocketIds = options.pocketIds || PROOF_POCKET_IDS;
+  const host = await bootCeresPocket(seed, { pocketId: bootPocketId });
   const { runtime, state, bus, player } = host;
   const driver = createInputTapeDriver(options.tape || buildProofInputTape());
   const times = emptyBeatTimes();
@@ -666,11 +768,11 @@ export async function runProofSixtySeconds(seed, options = {}) {
       pointAt(state, player, aim);
       runtime.step(SIM_DT);
       ticks += 1;
-      if (ticks === 120) setup = censusPocket(state, player);
+      if (ticks === PROOF_CENSUS_SETTLE_TICKS) setup = takeSetupCensus(state, player, censusPocketIds);
       if (countDetected(times) >= SIXTY_SECOND_BEATS.length) break;
       if (finite(state.simTime) >= PROOF_HARD_CAP_S) break;
     }
-    if (!setup) setup = censusPocket(state, player);
+    if (!setup) setup = takeSetupCensus(state, player, censusPocketIds);
 
     const simS = finite(state.simTime);
     const detected = countDetected(times);
@@ -685,7 +787,8 @@ export async function runProofSixtySeconds(seed, options = {}) {
       scenarioId: PROOF_SCENARIO_ID,
       seed,
       sectorId: PROOF_SECTOR_ID,
-      pocketId: CERES_REFERENCE_ACCEPTANCE_ENTRY.pocketId,
+      pocketId: bootPocketId,
+      pocketIds: censusPocketIds.slice(),
       simS: Number(simS.toFixed(3)),
       ticks,
       exceededHardCap: simS > PROOF_HARD_CAP_S + 1e-6,
@@ -751,9 +854,16 @@ export function formatBeatTable(runs) {
     const hits = SIXTY_SECOND_BEATS
       .filter((b) => run.times[b.id] != null)
       .map((b) => `${b.id}=${(run.details && run.details[b.id]) || run.times[b.id]}`);
+    const local = s.playerLocal || {};
+    const refinery = s.byPocket && s.byPocket[PROOF_REFINERY_POCKET_ID];
+    const ambush = s.byPocket && s.byPocket[PROOF_AMBUSH_POCKET_ID];
     lines.push(
       `  setup seed ${run.seed}: workers=${s.workers ?? '?'} haulers=${s.haulers ?? '?'} `
       + `pirates=${s.pirates ?? '?'} patrols=${s.patrols ?? '?'} pods=${s.cargoPods ?? '?'} `
+      + `playerLocal.pirates=${local.pirates ?? '?'} `
+      + `refinery.pirates=${refinery ? refinery.pirates : '?'} `
+      + `ambush.pirates=${ambush ? ambush.pirates : '?'} `
+      + `pockets=${(run.pocketIds || PROOF_POCKET_IDS).join('+')} `
       + `realPath=${run.realPath && run.realPath.backend}/${run.realPath && run.realPath.sg02Ready}`,
     );
     if (hits.length) lines.push(`  hits seed ${run.seed}: ${hits.join('; ')}`);
