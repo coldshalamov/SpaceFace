@@ -38,11 +38,15 @@
 //
 // PQ-148.02 — field pods stamp legality/owner for a customs scan cone (lawSecurity). An outlaw
 // catch-net body can stop a flying pod; heat still rises only via contraband:scanned → heat.js.
+//
+// PQ-148.03 — pods carry origin/destination/owner. A spilled named pod's owner reacts
+// (restitution / bounty / thanks) through barkDirector + comms:log.
 import { spawnPayloadEntity } from '../combat/industrialBeam.js';
 import { createVictimRewardRng, missionOwnsReward, runOwnsReward } from '../combat/rewardEligibility.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { sampleFieldAcceleration } from '../core/fields/fieldKernel.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
+import { cargoIdentityOf, identityFromManifest } from '../data/cargoIdentity.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { volatileClassOf } from '../data/commodityVolatileClasses.js';
 import { massline2Flag } from '../data/featureFlags.js';
@@ -176,6 +180,31 @@ export function volatileThrowSpeedScale(commodityId) {
   return Number.isFinite(mult) && mult > 0 ? mult : 1;
 }
 
+/** PQ-148.03 — copy origin/destination/owner onto pod data without inventing a second cargo writer. */
+export function stampCargoIdentity(target, spec = {}) {
+  if (!target || !spec || typeof spec !== 'object') return target;
+  const identity = spec.cargoIdentity && typeof spec.cargoIdentity === 'object'
+    ? spec.cargoIdentity
+    : (identityFromManifest(spec, spec) || cargoIdentityOf(spec));
+  const originId = spec.originId ?? spec.originStationId ?? (identity && identity.originId);
+  const destinationId = spec.destinationId ?? spec.destStationId ?? (identity && identity.destinationId);
+  const ownerId = spec.ownerId != null ? spec.ownerId : (identity && identity.ownerId);
+  const ownerName = spec.ownerName != null ? spec.ownerName : (identity && identity.ownerName);
+  if (originId != null) target.originId = originId;
+  if (destinationId != null) target.destinationId = destinationId;
+  if (ownerId != null) target.ownerId = ownerId;
+  if (ownerName != null) target.ownerName = ownerName;
+  const stamped = cargoIdentityOf(target);
+  if (stamped) target.cargoIdentity = stamped;
+  return target;
+}
+
+function displayNameOf(entity) {
+  if (!entity) return null;
+  const data = entity.data || {};
+  return data.displayName || data.name || data.freighterLabel || data.freighterName || entity.name || null;
+}
+
 /** Lamp + silhouette the render can read later. Does not import src/render. */
 export function stampVolatilePresentation(target, commodityId) {
   if (!target) return target;
@@ -306,7 +335,7 @@ function applyJettisonedCargoData(target, spec) {
   if (spec.pickupEmbargoUntil != null) target.pickupEmbargoUntil = spec.pickupEmbargoUntil;
   if (target.despawnAt != null) delete target.despawnAt;
   target.legality = commodityLegality(commodityId);
-  if (spec.ownerId != null) target.ownerId = spec.ownerId;
+  stampCargoIdentity(target, spec);
   stampVolatilePresentation(target, commodityId);
   return target;
 }
@@ -327,6 +356,10 @@ export function spawnJettisonedCargoPod(state, spec = {}, helpers = null) {
     richSource: spec.richSource || null,
     pickupEmbargoUntil: spec.pickupEmbargoUntil,
     ownerId: spec.ownerId,
+    ownerName: spec.ownerName,
+    originId: spec.originId ?? spec.originStationId,
+    destinationId: spec.destinationId ?? spec.destStationId,
+    cargoIdentity: spec.cargoIdentity,
   };
 
   const spawnHelpers = helpers && typeof helpers.spawnEntity === 'function'
@@ -454,6 +487,7 @@ export const lootShards = {
     if (this.bus && typeof this.bus.on === 'function') {
       this._unsubs.push(this.bus.on('entity:killed', (p) => this._onKilled(p || {})));
       this._unsubs.push(this.bus.on('physics:impact', (p) => this._onPodImpact(p || {})));
+      this._unsubs.push(this.bus.on('freight:cargoSpilled', (p) => this._onFreightCargoSpilled(p || {})));
     }
   },
 
@@ -752,6 +786,19 @@ export const lootShards = {
     }, this.helpers);
     entity.data.sourceVictimId = victim.id;
     entity.data.manifestId = typeof manifest.manifestId === 'string' ? manifest.manifestId : null;
+    stampCargoIdentity(entity.data, identityFromManifest(manifest, {
+      ownerId: manifest.ownerId || victim.id,
+      ownerName: manifest.ownerName || displayNameOf(victim),
+      originId: manifest.originId || manifest.originStationId,
+      destinationId: manifest.destinationId || manifest.destStationId,
+      role: manifest.role || 'civilian',
+      isCivilian: true,
+    }) || {
+      ownerId: victim.id,
+      ownerName: displayNameOf(victim),
+      originId: manifest.originId || manifest.originStationId || null,
+      destinationId: manifest.destinationId || manifest.destStationId || null,
+    });
     // Save/Continue: payloads are not world-record candidates; persist via entity flags.
     entity.flags = Object.assign({}, entity.flags, { persistent: true });
     victim.data.manifestPayloadDropped = true;
@@ -769,5 +816,47 @@ export const lootShards = {
       });
     }
     return entity;
+  },
+
+  /**
+   * Freight pods spawn in encounterScripts (pickup + freightCustodyPod). Stamp the named
+   * origin/destination/owner onto those bodies when the existing spill event fires.
+   */
+  _onFreightCargoSpilled(payload) {
+    const state = this.state;
+    if (!state || !payload) return 0;
+    const carrier = entityById(state, payload.carrierId);
+    const manifest = (carrier && carrier.data && carrier.data.cargoManifest)
+      || payload.manifest
+      || null;
+    const identity = identityFromManifest(manifest || payload, {
+      ownerId: payload.ownerId || (manifest && manifest.ownerId) || (carrier && carrier.id),
+      ownerName: payload.ownerName || (manifest && manifest.ownerName) || displayNameOf(carrier),
+      originId: payload.originId,
+      destinationId: payload.destinationId,
+      role: (manifest && manifest.role) || payload.role || 'civilian',
+      isCivilian: true,
+    });
+    if (!identity) return 0;
+    const list = state.entityList || [];
+    let stamped = 0;
+    for (let i = 0; i < list.length; i++) {
+      const entity = list[i];
+      const data = entity && entity.data;
+      if (!data) continue;
+      const freight = data.freightCustodyPod;
+      const freightMatch = freight && typeof freight === 'object'
+        && (freight.custodyId === payload.custodyId
+          || freight.manifestId === payload.manifestId
+          || freight.encounterId === payload.encounterId);
+      const payloadMatch = entity.type === 'payload'
+        && (data.sourceVictimId === payload.carrierId
+          || (data.jettisonedCargo === true
+            && (data.ownerId == null || String(data.ownerId) === String(identity.ownerId))));
+      if (!freightMatch && !payloadMatch) continue;
+      stampCargoIdentity(data, identity);
+      stamped += 1;
+    }
+    return stamped;
   },
 };

@@ -4,6 +4,12 @@
 // routes faction-specific lines through voiceArbiter's bark channel, and writes only its own
 // state.barkDirector receipt cache so combat/AI/economy behavior stays unchanged.
 import { BARK_SITUATIONS, barkFor, hullRecognitionBarkFor } from '../data/barks.js';
+import {
+  CARGO_OWNER_REACTIONS,
+  cargoIdentityOf,
+  identityFromManifest,
+  reactionForSpill,
+} from '../data/cargoIdentity.js';
 import { contactGrammarFor } from '../data/factionContactGrammar.js';
 import { hash32 } from '../core/rng.js';
 import { isHostileToPlayer } from './scanner.js';
@@ -90,6 +96,42 @@ export const STUNT_BARKS = Object.freeze({
   ]),
 });
 
+export const CARGO_SPILL_BARKS = Object.freeze({
+  restitution: '{owner} demands restitution for the spilled cargo.',
+  bounty: '{owner} posted a bounty. That cargo had a name.',
+  thanks: '{owner} sends thanks. The cargo is home.',
+});
+
+/** Map a live spill/jettison/kill seam onto a reactionForSpill cause. */
+export function cargoSpillCauseOf(eventName, payload = {}) {
+  const raw = payload && (payload.cause || payload.reason || payload.kind) || '';
+  const c = String(raw).toLowerCase();
+  if (c.includes('return') || c.includes('help') || c.includes('thanks') || c.includes('assist')) {
+    return 'return';
+  }
+  if (eventName === 'entity:killed'
+    || c.includes('kill')
+    || c.includes('destroy')
+    || c.includes('death')
+    || c === 'carrier_destroyed') {
+    return 'killed';
+  }
+  if (eventName === 'cargo:jettisoned' || c.includes('jettison')) return 'jettison';
+  return 'spill';
+}
+
+export function cargoSpillBarkText(ownerName, reaction) {
+  const template = CARGO_SPILL_BARKS[reaction] || '{owner} marked the spill.';
+  return template.replace(/\{owner\}/g, String(ownerName || 'Unknown owner'));
+}
+
+export function cargoSpillLedgerText(ownerName, reaction) {
+  const verb = (CARGO_OWNER_REACTIONS[reaction] && CARGO_OWNER_REACTIONS[reaction].ledgerVerb)
+    || reaction
+    || 'spill';
+  return `${ownerName || 'Unknown owner'} — ${verb} after the spill.`;
+}
+
 export function stuntRecognitionBarkFor(factionId, rng, tokens = {}) {
   const faction = (factionId && STUNT_BARKS[factionId]) ? STUNT_BARKS[factionId] : STUNT_BARKS.faction_free;
   let idx = 0;
@@ -125,12 +167,18 @@ export const barkDirector = {
     // this observer independent of system init order.
     this._onHullHistory = (payload) => this._speakHullRecognition(payload || {});
     this._onStuntTrick = (payload) => this._speakStunt(payload || {});
+    this._onCargoSpilled = (payload) => this._speakCargoSpill(payload || {}, 'freight:cargoSpilled');
+    this._onCargoJettisoned = (payload) => this._speakCargoSpill(payload || {}, 'cargo:jettisoned');
+    this._onCargoKilled = (payload) => this._speakCargoSpill(payload || {}, 'entity:killed');
     if (this.bus && typeof this.bus.on === 'function') {
       this.bus.on('ai:flee', this._onFlee);
       this.bus.on('ai:reinforcementScheduled', this._onReinforcement);
       this.bus.on('combat:outcome', this._onCombatOutcome);
       this.bus.on('ship:livingHullChanged', this._onHullHistory);
       this.bus.on('stunt:trickDetected', this._onStuntTrick);
+      this.bus.on('freight:cargoSpilled', this._onCargoSpilled);
+      this.bus.on('cargo:jettisoned', this._onCargoJettisoned);
+      this.bus.on('entity:killed', this._onCargoKilled);
     }
   },
 
@@ -422,6 +470,74 @@ export const barkDirector = {
     if (this.bus && typeof this.bus.emit === 'function') this.bus.emit(event, payload);
   },
 
+  /**
+   * PQ-148.03 — one bark + ledger citation when a named pod spills, is jettisoned, or drops on kill.
+   * Player jettison of their own hold is a null reaction (no self-bounty).
+   */
+  _speakCargoSpill(payload, eventName) {
+    const state = this.state;
+    if (!state || !payload) return null;
+
+    const resolved = resolveNamedCargoIncident(state, payload, eventName);
+    if (!resolved || !resolved.ownerName) return null;
+
+    const reaction = resolved.reaction;
+    if (!reaction || !CARGO_OWNER_REACTIONS[reaction]) return null;
+
+    const own = ensureState(state);
+    const now = Number(state.simTime) || 0;
+    const record = cargoSpillRecord(own);
+    const key = `${resolved.ownerId}|${reaction}|${state.tick || 0}`;
+    if (record.lastKey === key) return null;
+
+    const barkText = cargoSpillBarkText(resolved.ownerName, reaction);
+    const ledgerText = cargoSpillLedgerText(resolved.ownerName, reaction);
+    const barkKey = CARGO_OWNER_REACTIONS[reaction].barkKey;
+    const voice = this.helpers && this.helpers.voice;
+    let accepted = true;
+    if (voice && typeof voice.say === 'function') {
+      accepted = voice.say({
+        channel: 'bark',
+        text: barkText,
+        kind: 'cargoSpill',
+        ttl: VOICE_TTL_S,
+        id: `cargoSpill:${resolved.ownerId}:${reaction}:${now}`,
+        factionId: resolved.factionId,
+      });
+    }
+    if (!accepted) return null;
+
+    record.lastKey = key;
+    record.lastAt = now;
+    record.lastOwnerId = resolved.ownerId;
+    record.count = Math.min(Number.MAX_SAFE_INTEGER, (Number(record.count) || 0) + 1);
+
+    const receipt = {
+      entityId: resolved.ownerId,
+      situation: barkKey,
+      reason: eventName,
+      text: barkText,
+      ledgerText,
+      factionId: resolved.factionId,
+      t: now,
+      ownerId: resolved.ownerId,
+      ownerName: resolved.ownerName,
+      reaction,
+      originId: resolved.originId,
+      destinationId: resolved.destinationId,
+    };
+    this._emit('barkDirector:voice', receipt);
+    this._emit('comms:log', {
+      from: resolved.ownerName,
+      text: ledgerText,
+      kind: 'cargo',
+      reaction,
+      ownerId: resolved.ownerId,
+      ownerName: resolved.ownerName,
+    });
+    return receipt;
+  },
+
   destroy() {
     if (this.bus && typeof this.bus.off === 'function') {
       if (this._onFlee) this.bus.off('ai:flee', this._onFlee);
@@ -429,12 +545,18 @@ export const barkDirector = {
       if (this._onCombatOutcome) this.bus.off('combat:outcome', this._onCombatOutcome);
       if (this._onHullHistory) this.bus.off('ship:livingHullChanged', this._onHullHistory);
       if (this._onStuntTrick) this.bus.off('stunt:trickDetected', this._onStuntTrick);
+      if (this._onCargoSpilled) this.bus.off('freight:cargoSpilled', this._onCargoSpilled);
+      if (this._onCargoJettisoned) this.bus.off('cargo:jettisoned', this._onCargoJettisoned);
+      if (this._onCargoKilled) this.bus.off('entity:killed', this._onCargoKilled);
     }
     this._onFlee = null;
     this._onReinforcement = null;
     this._onCombatOutcome = null;
     this._onHullHistory = null;
     this._onStuntTrick = null;
+    this._onCargoSpilled = null;
+    this._onCargoJettisoned = null;
+    this._onCargoKilled = null;
   },
 };
 
@@ -478,6 +600,144 @@ function freshState() {
     suppressed: [],
     hullRecognition: freshHullRecognition(),
     stuntRecognition: freshStuntRecognition(),
+    cargoSpill: freshCargoSpill(),
+  };
+}
+
+function freshCargoSpill() {
+  return { lastKey: null, lastAt: 0, lastOwnerId: null, count: 0 };
+}
+
+function cargoSpillRecord(own) {
+  if (!own.cargoSpill || typeof own.cargoSpill !== 'object') {
+    own.cargoSpill = freshCargoSpill();
+  }
+  return own.cargoSpill;
+}
+
+function entityFromState(state, id) {
+  if (id == null || !state) return null;
+  if (state.entities && typeof state.entities.get === 'function') {
+    const found = state.entities.get(id);
+    if (found) return found;
+  }
+  if (Array.isArray(state.entityList)) {
+    for (let i = 0; i < state.entityList.length; i++) {
+      const entity = state.entityList[i];
+      if (entity && entity.id === id) return entity;
+    }
+  }
+  return null;
+}
+
+function namedPodIdentity(entity) {
+  if (!entity) return null;
+  const identity = cargoIdentityOf(entity) || cargoIdentityOf(entity.data);
+  if (!identity || !identity.ownerName) return null;
+  return identity;
+}
+
+function resolveNamedCargoIncident(state, payload, eventName) {
+  const playerId = state.playerId;
+  const cause = cargoSpillCauseOf(eventName, payload);
+  let identity = cargoIdentityOf(payload)
+    || identityFromManifest(payload.manifest || payload, {
+      ownerId: payload.ownerId,
+      ownerName: payload.ownerName,
+      originId: payload.originId,
+      destinationId: payload.destinationId,
+      playerId,
+      cause,
+      role: payload.role,
+      isCivilian: payload.isCivilian,
+    });
+
+  if (eventName === 'cargo:jettisoned' && (!identity || identity.ownerId == null)) {
+    identity = identityFromManifest({
+      ownerId: payload.ownerId != null ? payload.ownerId : playerId,
+      ownerName: payload.ownerName || null,
+      originId: payload.originId,
+      destinationId: payload.destinationId,
+    }, { playerId, cause });
+  }
+
+  if ((!identity || !identity.ownerName) && eventName === 'entity:killed') {
+    const victim = entityFromState(state, payload.id != null ? payload.id : payload.entityId);
+    const manifest = victim && victim.data && victim.data.cargoManifest;
+    identity = namedPodIdentity(victim)
+      || identityFromManifest(manifest || {}, {
+        ownerId: (manifest && manifest.ownerId) || (victim && victim.id),
+        ownerName: (manifest && manifest.ownerName)
+          || (victim && victim.data && (victim.data.displayName || victim.data.name)),
+        playerId,
+        cause,
+        role: (manifest && manifest.role) || 'civilian',
+        isCivilian: true,
+      });
+    if (!identity || !identity.ownerName) {
+      const list = state.entityList || [];
+      for (let i = 0; i < list.length; i++) {
+        const pod = namedPodIdentity(list[i]);
+        if (pod && (list[i].data && list[i].data.sourceVictimId === (victim && victim.id))) {
+          identity = pod;
+          break;
+        }
+      }
+    }
+  }
+
+  if ((!identity || !identity.ownerName) && eventName === 'freight:cargoSpilled') {
+    const carrier = entityFromState(state, payload.carrierId);
+    const manifest = (carrier && carrier.data && carrier.data.cargoManifest) || payload.manifest;
+    identity = identityFromManifest(manifest || {}, {
+      ownerId: payload.ownerId || (manifest && manifest.ownerId) || (carrier && carrier.id),
+      ownerName: payload.ownerName
+        || (manifest && manifest.ownerName)
+        || (carrier && carrier.data && (carrier.data.displayName || carrier.data.name)),
+      originId: payload.originId,
+      destinationId: payload.destinationId,
+      playerId,
+      cause,
+      role: (manifest && manifest.role) || payload.role || 'civilian',
+      isCivilian: true,
+    });
+    if (!identity || !identity.ownerName) {
+      const list = state.entityList || [];
+      for (let i = 0; i < list.length; i++) {
+        const pod = namedPodIdentity(list[i]);
+        if (!pod) continue;
+        const data = list[i].data || {};
+        const freight = data.freightCustodyPod;
+        if ((freight && freight.custodyId === payload.custodyId)
+          || data.sourceVictimId === payload.carrierId
+          || String(pod.ownerId) === String(payload.ownerId || (carrier && carrier.id))) {
+          identity = pod;
+          break;
+        }
+      }
+    }
+  }
+
+  if (!identity || !identity.ownerName) return null;
+
+  const ownerId = identity.ownerId;
+  const reaction = identity.reaction || reactionForSpill({
+    ownerId,
+    playerId,
+    legality: payload.legality || identity.legality,
+    cause,
+    role: payload.role || identity.role,
+    isCivilian: payload.isCivilian,
+  });
+  const ownerEntity = entityFromState(state, ownerId);
+  return {
+    ownerId,
+    ownerName: identity.ownerName,
+    originId: identity.originId || null,
+    destinationId: identity.destinationId || null,
+    reaction,
+    factionId: (ownerEntity && (ownerEntity.factionId || (ownerEntity.data && ownerEntity.data.factionId)))
+      || 'faction_free',
   };
 }
 
@@ -514,6 +774,7 @@ function ensureState(state) {
   if (!Array.isArray(state.barkDirector.suppressed)) state.barkDirector.suppressed = [];
   hullRecognitionRecord(state.barkDirector);
   stuntRecognitionRecord(state.barkDirector);
+  cargoSpillRecord(state.barkDirector);
   return state.barkDirector;
 }
 
