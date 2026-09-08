@@ -123,17 +123,12 @@ List missing owner seams, semantic collisions, lease conflicts, unbounded work, 
 
 For iterative debugging, add this finite rule when applicable: after two failed repair cycles with the same causal model, do not run a third ornamental variation. Record the falsified assumption and reduce the problem to a narrower scenario or choose a different causal model.
 
-## Checkoff and receipt
+## Checkoff
 
-- [ ] All entry conditions recorded.
-- [ ] Diff stays inside approved write budget.
-- [ ] L0–L2 receipt green at exact candidate.
+- [ ] Diff stays inside the approved write budget.
 - [ ] Exit `npm run check:baseline` passes; nothing green at entry is now red.
-- [ ] Independent discovery review complete when it can materially change the verdict.
-- [ ] Validated findings repaired.
-- [ ] Causal re-review terminal; no recursive fresh audit.
-- [ ] Required L3/L4 evidence complete or honestly unproven.
-- [ ] Active packet checklist and packet receipt updated.
+- [ ] You ran the game, looked at what you built, and would ship it: the player-visible outcome is real on the ordinary route, and every defect you found on the way is fixed or honestly named.
+- [ ] Independent review when it could materially change the verdict; findings repaired; no recursive fresh audits.
 - [ ] Integrator notified; no worker-owned global status promotion.
 
 ## References
