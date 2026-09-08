@@ -4,8 +4,9 @@ import { createServer } from 'node:http';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { resolve, extname, sep } from 'node:path';
 import assert from 'node:assert/strict';
+import { fileURLToPath } from 'node:url';
 
-const root=resolve(new URL('..',import.meta.url).pathname);
+const root=resolve(fileURLToPath(new URL('..',import.meta.url)));
 const out=resolve(process.argv[2] || '.devshots/draw-flight/browser');
 await mkdir(out,{recursive:true});
 const server=createServer(async(req,res)=>{
@@ -18,12 +19,14 @@ const server=createServer(async(req,res)=>{
 await new Promise(r=>server.listen(0,'127.0.0.1',r));
 const browser=await chromium.launch({headless:true,args:['--enable-unsafe-swiftshader','--use-angle=swiftshader']});
 const errors=[],results=[];
+let currentPage=null,currentCase=null;
 try{
  for(const locked of [false,true]){
   const page=await browser.newPage({viewport:{width:1200,height:800}});
+  currentPage=page;currentCase=locked?'locked':'unlocked';
   page.on('pageerror',e=>errors.push(e.message));
   await page.goto(`http://127.0.0.1:${server.address().port}/test/fixtures/draw-flight.html`);
-  await page.waitForFunction(()=>window.fixtureReady===true,{timeout:30000});
+  await page.waitForFunction(()=>window.fixtureReady===true,null,{timeout:30000});
   if(!locked)await page.evaluate(()=>{document.getElementById('gl-canvas').requestPointerLock=()=>Promise.reject(new Error('denied for unlocked-path test'))});
   await page.mouse.move(500,400);await page.keyboard.press('g');
   await page.evaluate(()=>drawFlightFixture.step(1));
@@ -63,9 +66,17 @@ try{
   await page.keyboard.press('g');s=await page.evaluate(()=>drawFlightFixture.step(1));
   assert.equal(s.auto,false);assert.equal(s.command,null);
   results.push({locked,proof:s.proof,turnMin:Math.min(...turn.map(p=>p.speed)),turnMax:Math.max(...turn.map(p=>p.speed)),assertions:'passed'});
-  await page.close();
+  await page.close();currentPage=null;
  }
  assert.deepEqual(errors,[],'no browser runtime exceptions');
  await writeFile(resolve(out,'results.json'),JSON.stringify({results,errors},null,2));
  console.log(JSON.stringify({results,errors},null,2));
+}catch(error){
+ const failure={case:currentCase,error:error.stack||String(error),errors,results};
+ if(currentPage){
+  failure.snapshot=await currentPage.evaluate(()=>window.drawFlightFixture?.snapshot()).catch(()=>null);
+  await currentPage.screenshot({path:resolve(out,`${currentCase}-failure.png`)}).catch(()=>{});
+ }
+ await writeFile(resolve(out,'failure.json'),JSON.stringify(failure,null,2));
+ throw error;
 }finally{await browser.close();server.close()}
