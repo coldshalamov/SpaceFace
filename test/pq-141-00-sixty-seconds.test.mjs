@@ -14,6 +14,7 @@ import {
   PROOF_SIXTY_SECONDS_BOOT_POCKET_ID,
   SIXTY_SECOND_BEATS,
   aimTargetForTick,
+  buildProofInputTape,
   censusAround,
   classifyReceipt,
   emptyBeatTimes,
@@ -137,6 +138,8 @@ test('PQ-141.00 grab/aim/census accept payload cargo pods, and a real cargo latc
 
   const grabAim = aimTargetForTick(state, player, 2500);
   assert.equal(grabAim && grabAim.id, payloadPod.id, 'grab window must prefer the nearer cargo payload pod');
+  const earlyGrab = aimTargetForTick(state, player, 300);
+  assert.equal(earlyGrab && earlyGrab.id, payloadPod.id, 'early killbox grab window must also prefer the cargo pod');
 
   const ctx = {
     state,
@@ -160,6 +163,22 @@ test('PQ-141.00 grab/aim/census accept payload cargo pods, and a real cargo latc
     beat: 'grab_pod',
     detail: 'collect cmdty_iron',
   });
+});
+
+function tapeKeyDownAt(tape, code, tick) {
+  let down = false;
+  for (const event of tape.events) {
+    if (event.tick > tick) continue;
+    if (event.code === code) down = !!event.pressed;
+  }
+  return down;
+}
+
+test('PQ-141.00 Massline is held during both cargo-grab aim windows', () => {
+  const tape = buildProofInputTape();
+  assert.equal(tapeKeyDownAt(tape, 'KeyJ', 300), true, 'early killbox grab must hold KeyJ');
+  assert.equal(tapeKeyDownAt(tape, 'KeyJ', 2500), true, 'late grab window must hold KeyJ');
+  assert.equal(tapeKeyDownAt(tape, 'KeyJ', 2410), false, 'relatch gap after the 40 s pirate window');
 });
 
 test('PQ-141.00 census sees pirates when pointed at Ambush Run', { timeout: 120_000 }, async () => {

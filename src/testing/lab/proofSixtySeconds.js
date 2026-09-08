@@ -302,7 +302,9 @@ export function buildProofInputTape() {
   press(180, 'ShiftLeft', true);
   press(480, 'ShiftLeft', false);
 
-  press(480, 'KeyJ', true);
+  // Spill is at ~1.5 s. Hold the Massline on the pod while still in the killbox;
+  // the 40 s grab window used to aim at cargo with KeyJ already released.
+  press(200, 'KeyJ', true);
   press(900, 'KeyJ', false);
 
   press(900, 'KeyF', true);
@@ -312,6 +314,8 @@ export function buildProofInputTape() {
 
   press(1680, 'KeyJ', true);
   press(2400, 'KeyJ', false);
+  press(2420, 'KeyJ', true);
+  press(3000, 'KeyJ', false);
 
   press(2400, 'KeyF', true);
   press(3000, 'KeyF', false);
@@ -343,7 +347,7 @@ function nearest(state, player, predicate) {
 }
 
 export function aimTargetForTick(state, player, tick) {
-  if (tick >= 2400 && tick < 3000) {
+  if ((tick >= 200 && tick < 480) || (tick >= 2400 && tick < 3000)) {
     return nearest(state, player, (e) => isGrabCargoTarget(e))
       || nearest(state, player, (e) => e.type === 'pickup' || e.type === 'payload');
   }
