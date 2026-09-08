@@ -43,6 +43,7 @@
 // DETERMINISM (§0.5): board offers + spawn rolls use mulberry32(hash32(seed, …)); never Math.random.
 import {
   MISSION_TYPES, STORY_BEATS, OFFER_MIX, MISSION_TUNING, ONE_LOAD_CARGO_TYPES,
+  PHYSICAL_MISSION_TYPES,
   missionMinRepForRisk,
   STORY_BRANCH_INTROS,
   STORY_BRANCH_INTRO_MIN_REP,
@@ -164,6 +165,14 @@ const BULK_HAUL_TYPE = 'bulk_haul';
 const BULK_HAUL_MIN_MASS_U = 25;
 const BULK_HAUL_PAY_MULT = 0.8;
 const BULK_HAUL_FEE = 0.06;
+const PHYSICAL_TYPE_SET = new Set(PHYSICAL_MISSION_TYPES);
+const PHYSICAL_ROLE = Object.freeze({
+  SLAG_CORE: 'slag_core',
+  TOWER: 'demolition_tower',
+  POD: 'life_pod',
+  ESCORT: 'rescue_escort',
+});
+const PHYSICAL_BERTH_WU = 700;
 // A tick condition may only re-warn this often. The warning is the grace window made visible, not a
 // nag: crossing the speed ceiling repeatedly in a dogfight must not bury the rest of the alert lane.
 const CONDITION_WARN_COOLDOWN_S = 8;
@@ -534,6 +543,9 @@ function missionNavReason(m, station, sector) {
     case 'bounty_hunt': return `Find the bounty near ${sectorName}`;
     case 'patrol_clear': return `Clear hostiles in ${sectorName}`;
     case 'recon_scan': return `Scan sites in ${sectorName}`;
+    case 'tow_recovery': return `Tow the slag core to ${stationName}, or sling it into the yard`;
+    case 'demolition': return `Knock down the marked tower in ${sectorName}`;
+    case 'rescue_under_fire': return `Pull the life pods out of ${sectorName}`;
     default: return stationName || sectorName;
   }
 }
@@ -635,7 +647,10 @@ export const missions = {
     // bulk_haul: tethered bulk chunks delivered at refinery docks.
     bus.on('mining:bulkHaulDelivered', (p) => this._onBulkHaulDelivered(p));
     // bounty_hunt / patrol_clear: a tagged hostile died to the player.
-    bus.on('entity:killed', (p) => this._onKill(p));
+    bus.on('entity:killed', (p) => {
+      this._onKill(p);
+      this._onPhysicalKill(p);
+    });
     // escort fail: escortee destroyed.
     bus.on('entity:destroyed', (p) => this._onEntityDestroyed(p));
     // recon_scan: a scan target (or sector scan) completed.
@@ -649,7 +664,14 @@ export const missions = {
     // Causal POI follow-ups settle only when scanner physically investigates their exact live
     // entity. Generic scan pulses remain valid for ordinary recon_scan contracts.
     bus.on('signal:investigated', (p) => this._onSignalInvestigated(p));
-    bus.on('tether:reel', (p) => this._onContract47aB2TetherReel(p));
+    bus.on('tether:reel', (p) => {
+      this._onContract47aB2TetherReel(p);
+      this._onPhysicalTetherReel(p);
+    });
+    bus.on('tether:latched', (p) => this._onPhysicalTetherLatched(p));
+    bus.on('tether:releaseRated', (p) => this._onPhysicalReleaseRated(p));
+    bus.on('tether:whipImpact', (p) => this._onPhysicalWhipImpact(p));
+    bus.on('massline:throw', (p) => this._onPhysicalThrow(p));
 
     // ── PQ-019C: physical capsule heist ──────────────────────────────────────────────────────
     // Possession is read from the EXISTING Massline/tether latch rather than owned here — the
@@ -1488,7 +1510,8 @@ export const missions = {
     let total = 0;
     const w = new Array(TYPE_ORDER.length);
     for (let i = 0; i < TYPE_ORDER.length; i++) {
-      let weight = weights[i] || 0;
+      const named = weights && TYPE_ORDER[i] != null ? weights[TYPE_ORDER[i]] : null;
+      let weight = Number.isFinite(named) ? named : (weights[i] || 0);
       // signature types (weight>=3) get the friendly-rep boost.
       if (weight >= 3) weight *= repBoost;
       w[i] = weight; total += weight;
@@ -1771,6 +1794,31 @@ export const missions = {
         const scanTargets = 1 + Math.floor(rng() * 3); // 1..3 beacons
         return { scanTargets, progress: 0, fValue: 1 + scanTargets * 0.25, taskTime: scanTargets * 25 };
       }
+      case 'tow_recovery': {
+        const massU = 28 + Math.floor(rng() * 18);
+        const cargoValue = massU * 22;
+        return {
+          massU, cargoValue, fValue: 1 + cargoValue / 8000, taskTime: 40,
+          physicalVerb: 'tow', completionMethods: ['tow_in', 'sling_in'],
+        };
+      }
+      case 'demolition': {
+        const targetStrength = 1.1 + riskTier * 0.35 + rng() * 0.4;
+        return {
+          targetStrength, fValue: targetStrength, taskTime: 50,
+          physicalVerb: 'knock_down', completionMethods: ['wrecking_ball', 'cut_down'],
+        };
+      }
+      case 'rescue_under_fire': {
+        const podCount = 2;
+        const escortCount = 2;
+        const targetStrength = 1.0 + riskTier * 0.35 + rng() * 0.4;
+        return {
+          podCount, escortCount, escortsDown: 0, podsLost: 0,
+          targetStrength, fValue: targetStrength, taskTime: 70,
+          physicalVerb: 'pull', completionMethods: ['stage_tow', 'corridor_pull'],
+        };
+      }
       default:
         return { fValue: 1, taskTime: 30 };
     }
@@ -1790,6 +1838,9 @@ export const missions = {
       case 'patrol_clear': return `Clear ${p.clearCount} hostiles near ${destName}`;
       case 'recon_scan': return `Scan ${p.scanTargets} site(s) near ${destName}`;
       case 'passenger_transport': return `Transport a passenger to ${destName}`;
+      case 'tow_recovery': return `Tow the slag core to ${destName}`;
+      case 'demolition': return `Knock down the tower near ${destName}`;
+      case 'rescue_under_fire': return `Pull the pods out of ${destName}`;
       default: return `Contract at ${destName}`;
     }
   },
@@ -1836,6 +1887,15 @@ export const missions = {
         break;
       case 'passenger_transport':
         line = `One passenger to ${destName}. Quiet trip, quiet fee.`;
+        break;
+      case 'tow_recovery':
+        line = `Tow the slag core into ${destName}, or sling it in on a clean release.`;
+        break;
+      case 'demolition':
+        line = `Knock the dead tower down near ${destName}. Swing mass, or cut it.`;
+        break;
+      case 'rescue_under_fire':
+        line = `Pull the pods out of the field near ${destName}. Tow one, or open a corridor.`;
         break;
       default:
         line = `Work out of ${fromName}. Terms are on the contract.`;
@@ -2200,12 +2260,17 @@ export const missions = {
       case 'recon_scan': return params.originSurveySample
         ? Math.max(1, params.scanTargets || 1) + Math.max(1, params.sampleQty || 1)
         : params.scanTargets;
+      case 'tow_recovery':
+      case 'demolition':
+      case 'rescue_under_fire':
+        return 1;
       default: return 1; // boolean-at-dest types
     }
   },
 
   _typeSpawnsTargets(typeId, params = null) {
     return typeId === 'bounty_hunt' || typeId === 'patrol_clear' || typeId === 'escort'
+      || PHYSICAL_TYPE_SET.has(typeId)
       || !!(params && params.poiSignalFollowup);
   },
 
@@ -2496,6 +2561,19 @@ export const missions = {
       return base;
     }
 
+    if (PHYSICAL_TYPE_SET.has(m.type)) {
+      const target = this._firstLivePhysicalTarget(m);
+      if (target) {
+        const reason = m.type === 'tow_recovery'
+          ? 'Tow the slag core, or sling it into the yard'
+          : m.type === 'demolition'
+            ? 'Knock the tower down — swing mass, or cut it'
+            : 'Pull a pod out, or open a corridor and reel';
+        return { ...base, targetEntityId: target.id, pos: { x: target.pos.x, z: target.pos.z }, reason };
+      }
+      return base;
+    }
+
     if (m.type === 'escort') {
       const targetStation = this._liveStation(m.destStationId);
       if (targetStation) return { ...base, pos: { x: targetStation.pos.x, z: targetStation.pos.z }, reason: 'Escort the convoy to dock' };
@@ -2537,6 +2615,22 @@ export const missions = {
       if (e && e.alive !== false && e.pos) return e;
     }
     return null;
+  },
+
+  _firstLivePhysicalTarget(m) {
+    const prefer = m && m.type === 'tow_recovery'
+      ? PHYSICAL_ROLE.SLAG_CORE
+      : m && m.type === 'demolition'
+        ? PHYSICAL_ROLE.TOWER
+        : PHYSICAL_ROLE.POD;
+    let fallback = null;
+    for (const id of m.targetEntityIds || []) {
+      const e = this.state.entities.get(id);
+      if (!e || e.alive === false || !e.pos) continue;
+      if (physicalRoleOf(e) === prefer) return e;
+      if (!fallback) fallback = e;
+    }
+    return fallback;
   },
 
   _liveStation(stationId) {
@@ -2907,6 +3001,7 @@ export const missions = {
         this._failMission(m, i, 'escortee_lost');
       }
     }
+    this._onPhysicalEntityDestroyed(p);
   },
 
   _onScan(p) {
@@ -3549,6 +3644,334 @@ export const missions = {
     return true;
   },
 
+  _spawnPhysicalTargetsFor(m, nextRng, px, pz) {
+    const helpers = this.helpers;
+    if (!helpers || !helpers.spawnEntity || !m) return;
+    const have = this._countPhysicalRoles(m);
+    const wantCore = m.type === 'tow_recovery' ? 1 : 0;
+    const wantTower = m.type === 'demolition' ? 1 : 0;
+    const wantPods = m.type === 'rescue_under_fire' ? Math.max(1, m.params && m.params.podCount || 2) : 0;
+    const wantEscorts = m.type === 'rescue_under_fire' ? Math.max(0, m.params && m.params.escortCount || 2) : 0;
+    const need = Math.max(0, wantCore - have.core)
+      + Math.max(0, wantTower - have.tower)
+      + Math.max(0, wantPods - have.pods)
+      + Math.max(0, wantEscorts - have.escorts);
+    if (need <= 0) return;
+    const occupied = new Set((m.targetEntityIds || []).map((id) => (
+      missionTargetSlotOf(this.state.entities.get(id), m.id)
+    )).filter((slot) => slot != null));
+    const nextSlot = () => {
+      let slot = 0;
+      while (occupied.has(slot)) slot += 1;
+      occupied.add(slot);
+      return slot;
+    };
+    const spawnAt = (durableSlot, spec) => {
+      const ent = helpers.spawnEntity(spec);
+      if (!ent) return null;
+      this._stampMissionTargetIdentity(ent, m, durableSlot);
+      m.targetEntityIds.push(ent.id);
+      return ent;
+    };
+    if (m.type === 'tow_recovery' && have.core < wantCore) {
+      const durableSlot = nextSlot();
+      const rng = nextRng(durableSlot);
+      const ang = rng() * Math.PI * 2;
+      const r = 220 + rng() * 80;
+      spawnAt(durableSlot, {
+        type: 'asteroid',
+        team: 2,
+        pos: { x: px + Math.cos(ang) * r, z: pz + Math.sin(ang) * r },
+        vel: { x: 0, z: 0 },
+        rot: rng() * Math.PI * 2,
+        radius: 16,
+        mass: Math.max(40, m.params && m.params.massU || 36),
+        hull: 220,
+        hullMax: 220,
+        collides: true,
+        data: {
+          missionTag: m.id,
+          physicalRole: PHYSICAL_ROLE.SLAG_CORE,
+          scanLabel: 'SLAG CORE',
+          tetherable: true,
+        },
+      });
+    }
+    if (m.type === 'demolition' && have.tower < wantTower) {
+      const durableSlot = nextSlot();
+      const rng = nextRng(durableSlot);
+      const ang = rng() * Math.PI * 2;
+      const r = 260 + rng() * 90;
+      spawnAt(durableSlot, {
+        type: 'wreck',
+        team: 2,
+        pos: { x: px + Math.cos(ang) * r, z: pz + Math.sin(ang) * r },
+        vel: { x: 0, z: 0 },
+        rot: rng() * Math.PI * 2,
+        radius: 26,
+        mass: 180,
+        hull: 160,
+        hullMax: 160,
+        collides: true,
+        data: {
+          missionTag: m.id,
+          physicalRole: PHYSICAL_ROLE.TOWER,
+          scanLabel: 'DEAD TOWER',
+          tetherable: true,
+        },
+      });
+    }
+    if (m.type === 'rescue_under_fire') {
+      for (let i = have.pods; i < wantPods; i++) {
+        const durableSlot = nextSlot();
+        const rng = nextRng(durableSlot);
+        const ang = rng() * Math.PI * 2;
+        const r = 180 + rng() * 70;
+        spawnAt(durableSlot, {
+          type: 'wreck',
+          team: 2,
+          pos: { x: px + Math.cos(ang) * r, z: pz + Math.sin(ang) * r },
+          vel: { x: 0, z: 0 },
+          rot: rng() * Math.PI * 2,
+          radius: 7,
+          mass: 10,
+          hull: 36,
+          hullMax: 36,
+          collides: true,
+          data: {
+            missionTag: m.id,
+            physicalRole: PHYSICAL_ROLE.POD,
+            scanLabel: 'LIFE POD',
+            tetherable: true,
+          },
+        });
+      }
+      const sector = SECTOR_BY_ID.get(m.destSectorId);
+      const [lvLo, lvHi] = sector ? (sector.enemyLevel || [2, 4]) : [2, 4];
+      for (let i = have.escorts; i < wantEscorts; i++) {
+        const durableSlot = nextSlot();
+        const rng = nextRng(durableSlot);
+        const pos = missionHostileSpawnPos(this.state, { x: px, z: pz }, rng) || {
+          x: px + 400, z: pz + 200,
+        };
+        const spec = makeEnemySpawnSpec('wasp_swarmer', Math.round((lvLo + lvHi) / 2), pos, {
+          startedTick: this.state.tick,
+        });
+        spec.data = spec.data || {};
+        spec.data.missionTag = m.id;
+        spec.data.physicalRole = PHYSICAL_ROLE.ESCORT;
+        spec.data.scanLabel = 'RESCUE ESCORT';
+        spawnAt(durableSlot, spec);
+      }
+    }
+  },
+
+  _countPhysicalRoles(m) {
+    const counts = { core: 0, tower: 0, pods: 0, escorts: 0 };
+    for (const id of m && m.targetEntityIds || []) {
+      const e = this.state.entities.get(id);
+      if (!e || e.alive === false) continue;
+      const role = physicalRoleOf(e);
+      if (role === PHYSICAL_ROLE.SLAG_CORE) counts.core += 1;
+      else if (role === PHYSICAL_ROLE.TOWER) counts.tower += 1;
+      else if (role === PHYSICAL_ROLE.POD) counts.pods += 1;
+      else if (role === PHYSICAL_ROLE.ESCORT) counts.escorts += 1;
+    }
+    return counts;
+  },
+
+  _physicalTargetOf(m, role) {
+    for (const id of m && m.targetEntityIds || []) {
+      const e = this.state.entities.get(id);
+      if (e && e.alive !== false && physicalRoleOf(e) === role) return e;
+    }
+    return null;
+  },
+
+  _playerLatchedTo(m, role) {
+    const tether = this.state.player && this.state.player.tether;
+    const fromTether = tether && tether.targetId != null ? tether.targetId : null;
+    const fromMission = m.params && m.params.latchedTargetId;
+    const targetId = fromTether != null ? fromTether : fromMission;
+    if (targetId == null) return null;
+    const e = this.state.entities.get(targetId);
+    if (!e || e.alive === false || physicalRoleOf(e) !== role) return null;
+    if (!m.targetEntityIds || !m.targetEntityIds.includes(e.id)) return null;
+    return e;
+  },
+
+  _entityNearDestBerth(entity, m) {
+    if (!entity || !entity.pos) return false;
+    const berth = this._missionBerthPos(m);
+    if (!berth) return this.state.world && this.state.world.currentSectorId === m.destSectorId;
+    return Math.hypot((entity.pos.x || 0) - (berth.x || 0), (entity.pos.z || 0) - (berth.z || 0))
+      <= PHYSICAL_BERTH_WU;
+  },
+
+  _completePhysical(m, index, method) {
+    if (!m || m.status !== 'active') return false;
+    m.params = m.params || {};
+    m.params.completionMethod = method;
+    m.objectiveProgress = m.objectiveTarget;
+    this._completeMission(m, index);
+    return true;
+  },
+
+  _tryPhysicalDockComplete(m, index) {
+    if (m.type === 'tow_recovery') {
+      const core = this._playerLatchedTo(m, PHYSICAL_ROLE.SLAG_CORE);
+      if (core) return this._completePhysical(m, index, 'tow_in');
+      const loose = this._physicalTargetOf(m, PHYSICAL_ROLE.SLAG_CORE);
+      if (loose && this._entityNearDestBerth(loose, m)) {
+        return this._completePhysical(m, index, 'sling_in');
+      }
+      return false;
+    }
+    if (m.type === 'rescue_under_fire') {
+      const pod = this._playerLatchedTo(m, PHYSICAL_ROLE.POD);
+      if (pod) return this._completePhysical(m, index, 'stage_tow');
+      return false;
+    }
+    return false;
+  },
+
+  _onPhysicalTetherLatched(p) {
+    if (!p || p.targetId == null) return;
+    const target = this.state.entities.get(p.targetId);
+    const role = physicalRoleOf(target);
+    if (!role) return;
+    for (const m of this.state.missions.active || []) {
+      if (!m || m.status !== 'active' || !PHYSICAL_TYPE_SET.has(m.type)) continue;
+      if (!m.targetEntityIds || !m.targetEntityIds.includes(p.targetId)) continue;
+      m.params = m.params || {};
+      m.params.latchedRole = role;
+      m.params.latchedTargetId = p.targetId;
+      this._refreshTrackedMissionNav(m);
+      this.bus.emit('mission:updated', { missionId: m.id, latchedRole: role });
+    }
+  },
+
+  _onPhysicalReleaseRated(p) {
+    if (!p) return;
+    const targetId = p.targetId != null ? p.targetId : p.sourceId;
+    for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
+      const m = this.state.missions.active[i];
+      if (!m || m.status !== 'active' || m.type !== 'tow_recovery') continue;
+      if (!m.targetEntityIds || !m.targetEntityIds.includes(targetId)) continue;
+      const core = this.state.entities.get(targetId);
+      if (!core || physicalRoleOf(core) !== PHYSICAL_ROLE.SLAG_CORE) continue;
+      const clean = !p.classification || CLEAN_PHYSICAL_RELEASE.has(p.classification);
+      if (clean && this._entityNearDestBerth(core, m)) {
+        this._completePhysical(m, i, 'sling_in');
+      }
+    }
+  },
+
+  _onPhysicalThrow(p) {
+    if (!p || p.payloadId == null) return;
+    for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
+      const m = this.state.missions.active[i];
+      if (!m || m.status !== 'active') continue;
+      if (m.type === 'tow_recovery') {
+        if (!m.targetEntityIds || !m.targetEntityIds.includes(p.payloadId)) continue;
+        const core = this.state.entities.get(p.payloadId);
+        if (!core || physicalRoleOf(core) !== PHYSICAL_ROLE.SLAG_CORE) continue;
+        if (this._entityNearDestBerth(core, m) || this.state.world.currentSectorId === m.destSectorId) {
+          this._completePhysical(m, i, 'sling_in');
+        }
+        continue;
+      }
+      if (m.type === 'demolition') {
+        const towerId = this._physicalTargetOf(m, PHYSICAL_ROLE.TOWER);
+        if (!towerId) continue;
+        if (p.aimTargetId === towerId.id || p.payloadId === towerId.id) {
+          this._completePhysical(m, i, 'wrecking_ball');
+        }
+      }
+    }
+  },
+
+  _onPhysicalWhipImpact(p) {
+    if (!p || p.victimId == null) return;
+    const rating = p.rating;
+    if (rating && rating !== 'solid' && rating !== 'crushing') return;
+    for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
+      const m = this.state.missions.active[i];
+      if (!m || m.status !== 'active' || m.type !== 'demolition') continue;
+      if (!m.targetEntityIds || !m.targetEntityIds.includes(p.victimId)) continue;
+      const tower = this.state.entities.get(p.victimId);
+      if (!tower || physicalRoleOf(tower) !== PHYSICAL_ROLE.TOWER) continue;
+      this._completePhysical(m, i, 'wrecking_ball');
+    }
+  },
+
+  _onPhysicalTetherReel(p) {
+    if (!p || p.targetId == null) return;
+    if (p.actorId != null && p.actorId !== this.state.playerId) return;
+    for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
+      const m = this.state.missions.active[i];
+      if (!m || m.status !== 'active' || m.type !== 'rescue_under_fire') continue;
+      if (!m.targetEntityIds || !m.targetEntityIds.includes(p.targetId)) continue;
+      const pod = this.state.entities.get(p.targetId);
+      if (!pod || physicalRoleOf(pod) !== PHYSICAL_ROLE.POD) continue;
+      if (!this._rescueEscortsClear(m)) continue;
+      this._completePhysical(m, i, 'corridor_pull');
+    }
+  },
+
+  _rescueEscortsClear(m) {
+    for (const id of m.targetEntityIds || []) {
+      const e = this.state.entities.get(id);
+      if (e && e.alive !== false && physicalRoleOf(e) === PHYSICAL_ROLE.ESCORT) return false;
+    }
+    return true;
+  },
+
+  _onPhysicalKill(p) {
+    if (!p || p.id == null) return;
+    const byPlayer = p.killerId === this.state.playerId;
+    for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
+      const m = this.state.missions.active[i];
+      if (!m || m.status !== 'active' || !PHYSICAL_TYPE_SET.has(m.type)) continue;
+      if (!m.targetEntityIds || !m.targetEntityIds.includes(p.id)) continue;
+      const victim = this.state.entities.get(p.id);
+      const role = physicalRoleOf(victim) || p.physicalRole || null;
+      if (m.type === 'demolition' && byPlayer) {
+        this._completePhysical(m, i, 'cut_down');
+        continue;
+      }
+      if (m.type === 'rescue_under_fire' && role === PHYSICAL_ROLE.ESCORT) {
+        m.params = m.params || {};
+        m.params.escortsDown = (m.params.escortsDown || 0) + 1;
+        m.targetEntityIds = m.targetEntityIds.filter((id) => id !== p.id);
+        this._refreshTrackedMissionNav(m);
+        this.bus.emit('mission:updated', { missionId: m.id, escortsDown: m.params.escortsDown });
+      }
+    }
+  },
+
+  _onPhysicalEntityDestroyed(p) {
+    if (!p || p.id == null) return;
+    for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
+      const m = this.state.missions.active[i];
+      if (!m || m.status !== 'active' || !PHYSICAL_TYPE_SET.has(m.type)) continue;
+      if (!m.targetEntityIds || !m.targetEntityIds.includes(p.id)) continue;
+      const victim = this.state.entities.get(p.id);
+      const role = physicalRoleOf(victim);
+      if (m.type === 'tow_recovery' && role === PHYSICAL_ROLE.SLAG_CORE) {
+        this._failMission(m, i, 'core_lost');
+        continue;
+      }
+      if (m.type === 'rescue_under_fire' && role === PHYSICAL_ROLE.POD) {
+        m.params = m.params || {};
+        m.params.podsLost = (m.params.podsLost || 0) + 1;
+        m.targetEntityIds = m.targetEntityIds.filter((id) => id !== p.id);
+        const remaining = this._countPhysicalRoles(m).pods;
+        if (remaining <= 0) this._failMission(m, i, 'pods_lost');
+      }
+    }
+  },
+
   /** Dock-at-destination objectives: delivery / passenger / salvage / smuggling / escort. These are
    *  boolean-at-dest (no cargo.delivered event exists; cargo is single-writer so we don't inspect it). */
   _onDockedObjectives(stationId) {
@@ -3583,6 +4006,18 @@ export const missions = {
         const ok = this._escorteeArrivedOk(m);
         if (ok) this._completeMission(m, i);
         else this.bus.emit('toast', { text: 'Escort: wait for the convoy to dock', kind: 'warn', ttl: 3 });
+        continue;
+      }
+
+      if (t === 'tow_recovery' || t === 'rescue_under_fire') {
+        if (this._tryPhysicalDockComplete(m, i)) continue;
+        this.bus.emit('toast', {
+          text: t === 'tow_recovery'
+            ? 'Yard: latch the slag core and tow it in, or sling it into the berth'
+            : 'Dock: a life pod has to be on the line',
+          kind: 'warn',
+          ttl: 3,
+        });
         continue;
       }
 
@@ -3703,6 +4138,18 @@ export const missions = {
         return 'Scan packet received. The map is now less wrong where it matters.';
       case 'passenger_transport':
         return 'Passenger transferred at ' + dest + '. Their name stays boring on the manifest.';
+      case 'tow_recovery':
+        return p.completionMethod === 'sling_in'
+          ? 'Slag core slung into ' + dest + '. The yard logged the throw, not the dock.'
+          : 'Slag core towed into ' + dest + '. The line did the work.';
+      case 'demolition':
+        return p.completionMethod === 'wrecking_ball'
+          ? 'Tower came down to thrown mass near ' + dest + '.'
+          : 'Tower cut down near ' + dest + '. Guns were the slow way.';
+      case 'rescue_under_fire':
+        return p.completionMethod === 'corridor_pull'
+          ? 'Corridor opened. Pods reeled out of the field near ' + dest + '.'
+          : 'Pod towed out of the field and signed in at ' + dest + '.';
       default:
         return 'Contract closed. The board released payment and filed the work as routine.';
     }
@@ -3842,6 +4289,9 @@ export const missions = {
       ...setPieceEventFields(m, setPieceTransition),
     };
     if (storyOutcome !== undefined) completedPayload.storyOutcome = storyOutcome;
+    if (m.params && m.params.completionMethod) {
+      completedPayload.completionMethod = m.params.completionMethod;
+    }
 
     // ── research points for cerebral mission types (recon/salvage) — missions is a legit RP writer.
     // Combat fieldwork RP for bounty_hunt is intentionally NOT granted here: early auto-RP + a
@@ -4291,10 +4741,11 @@ export const missions = {
     ent.data.missionId = m.id;
     ent.data.missionPinned = true;
     const combatTarget = m.type === 'bounty_hunt' || m.type === 'patrol_clear';
-    const durableSlot = combatTarget
+    const physicalTarget = PHYSICAL_TYPE_SET.has(m.type);
+    const durableSlot = (combatTarget || physicalTarget)
       ? Math.max(0, seq | 0)
       : (missionTargetSlotOf(ent, m.id) ?? Math.max(0, seq | 0));
-    if (combatTarget) {
+    if (combatTarget || physicalTarget) {
       ent.data.missionTargetSlot = durableSlot;
     }
     // Accepted combat contracts are the authored authority that makes their tagged quarry a
@@ -4565,6 +5016,8 @@ export const missions = {
       } else if (budget && typeof budget.releaseSome === 'function') {
         budget.releaseSome(requester, 1);
       }
+    } else if (PHYSICAL_TYPE_SET.has(m.type)) {
+      this._spawnPhysicalTargetsFor(m, nextRng, px, pz);
     }
     if (m.targetEntityIds.length) this.bus.emit('mission:updated', { missionId: m.id });
   },
@@ -5501,6 +5954,12 @@ export function missionReceiptFor(m, outcome, reason, settlement = {}) {
       mutationTag: settlement.mutationTag || null,
     } : {}),
   };
+}
+
+const CLEAN_PHYSICAL_RELEASE = new Set(['clean', 'razor']);
+
+function physicalRoleOf(entity) {
+  return entity && entity.data && entity.data.physicalRole || null;
 }
 
 function missionHostileSpawnPos(state, origin, rng) {

@@ -1,5 +1,5 @@
 // src/data/missions.js – mission system canonical data.
-// Exports: MISSION_TYPES (10), SET_PIECE_MISSIONS (5), STORY_BEATS (8), OFFER_MIX, MISSION_TUNING.
+// Exports: MISSION_TYPES (14), SET_PIECE_MISSIONS (5), STORY_BEATS (8), OFFER_MIX, MISSION_TUNING.
 // Pure data, no imports.
 
 export const MISSION_TUNING = {
@@ -14,12 +14,14 @@ export const MISSION_TUNING = {
     cargo_delivery: 600, bulk_trade: 550, bounty_hunt: 110, mining_quota: 130,
     salvage_retrieval: 160, escort: 180, patrol_clear: 220, smuggling_run: 250,
     passenger_transport: 160, recon_scan: 140,
+    tow_recovery: 170, demolition: 200, rescue_under_fire: 210,
   },
   RISK_MULT: [1.0, 1.3, 1.7, 2.2, 3.0],
   BASE_REP: {
     cargo_delivery: 3, bulk_trade: 3, bounty_hunt: 5, mining_quota: 2,
     salvage_retrieval: 3, escort: 4, patrol_clear: 5, smuggling_run: 4,
     passenger_transport: 2, recon_scan: 4,
+    tow_recovery: 3, demolition: 4, rescue_under_fire: 5,
   },
   distDivisor: 2000,
   valueDivisor: 8000,
@@ -209,13 +211,43 @@ export const MISSION_TYPES = [
     constraints: { fValueIsScanTargets: true },
   },
   {
+    // PQ-152.00 — long tow. Headline is TOW, not fly-there. Two solutions: keep the slag core
+    // on the line into the yard, or sling it in with a throw / clean release.
+    type: 'tow_recovery', riskTierRange: [1, 3], chainable: true,
+    completionEvent: 'dock:docked@dest while latched (tow_in) OR massline:throw / clean release of the core (sling_in)',
+    rewardFormula: 'round(170 * (1 + distance/2000) * RISK_MULT[riskTier] * (1 + cargoValue/8000) * f_faction * f_time)',
+    timeFormula: 'round((distance/140 + 40) * slack)', taskTime: 40,
+    failureCondition: 'timer OR slag core destroyed',
+    constraints: { physicalVerb: 'tow' },
+  },
+  {
+    // PQ-152.00 — wrecking-ball demolition. Headline is KNOCK DOWN. Two solutions: put mass
+    // through the tower, or cut it down with guns.
+    type: 'demolition', riskTierRange: [1, 3], chainable: true,
+    completionEvent: 'tether:whipImpact / massline:throw on the tower (wrecking_ball) OR entity:killed (cut_down)',
+    rewardFormula: 'round(200 * (1 + distance/2000) * RISK_MULT[riskTier] * targetStrength * f_faction * f_time)',
+    timeFormula: 'round((distance/140 + 50) * slack)', taskTime: 50,
+    failureCondition: 'timer',
+    constraints: { physicalVerb: 'knock_down', fValueIsTargetStrength: true },
+  },
+  {
+    // PQ-152.00 — pod rescue under fire. Headline is PULL. Two solutions: tow a pod home through
+    // the field, or open a corridor then reel the group from stand-off.
+    type: 'rescue_under_fire', riskTierRange: [2, 4], chainable: false,
+    completionEvent: 'dock:docked@dest while latched to a pod (stage_tow) OR escorts down + tether:reel on a pod (corridor_pull)',
+    rewardFormula: 'round(210 * (1 + distance/2000) * RISK_MULT[riskTier] * targetStrength * f_faction * f_time)',
+    timeFormula: 'round((distance/140 + 70) * slack)', taskTime: 70,
+    failureCondition: 'timer OR all life pods destroyed',
+    constraints: { physicalVerb: 'pull', fValueIsTargetStrength: true },
+  },
+  {
     // PQ-019C — the authored physical capsule heist. AUTHORED-ONLY, never procedurally rolled.
     //
     // Procedural weight is zero STRUCTURALLY rather than by a table entry: every OFFER_MIX row is
-    // 10 long and this is the 11th type, so `missions._pickType` reads `weights[10] || 0` = 0 for
-    // every station type. Because 0 does not change the weight total, adding this entry leaves the
-    // procedural offer RNG stream byte-identical. `missions._syncHeistOffer` is the only thing that
-    // ever puts it on a board.
+    // 10 long (the original procedural columns). PQ-152.00's three types ride as *named* keys on
+    // the same row so the positional hunter/junction pins stay valid. This remains the last type,
+    // so `missions._pickType` reads `weights[last] || 0` = 0. `missions._syncHeistOffer` is the
+    // only thing that ever puts it on a board.
     //
     // `chainable: false` keeps `_instanceFromOffer` from minting a chainNextSeed, so completing a
     // heist cannot auto-offer a procedural sequel. No `collateral`: see src/data/heistMission.js.
@@ -983,24 +1015,42 @@ export function validateSetPieceMissionCatalog(catalog = SET_PIECE_MISSIONS) {
   };
 }
 
-// Offer-mix weights by station type (order matches MISSION_TYPES array above).
+// Offer-mix weights by station type.
+// Positional columns stay 10 long and match the original TYPE_ORDER:
 // [cargo, trade, bounty, mining, salvage, escort, patrol, smuggling, passenger, recon]
+// PQ-152.00 physical types join the SAME row as named keys so hunter/junction length pins
+// (Charon / Tethys) keep their first-ten identity. `_pickType` reads named keys first.
 // Bounty column raised on civilian hubs/refineries so Hunter boards refresh with real writs
 // without waiting a full refreshSec idle beat (military already bounty-heavy).
+function withPhysicalMix(row, tow, demolition, rescue) {
+  row.tow_recovery = tow;
+  row.demolition = demolition;
+  row.rescue_under_fire = rescue;
+  return row;
+}
+
+export const PHYSICAL_MISSION_TYPES = Object.freeze([
+  'tow_recovery',
+  'demolition',
+  'rescue_under_fire',
+]);
+
 export const OFFER_MIX = {
-  mining:      [3, 2, 2, 4, 2, 1, 1, 0, 1, 1],
-  refinery:    [3, 2, 2, 4, 2, 1, 1, 0, 1, 1],
-  fab:         [3, 2, 2, 2, 2, 1, 1, 0, 1, 1],
-  trade_hub:   [4, 4, 2, 1, 1, 2, 1, 1, 3, 1],
-  military:    [1, 1, 4, 0, 1, 2, 4, 0, 1, 2],
-  research:    [2, 1, 1, 1, 2, 1, 1, 0, 1, 4],
-  blackmarket: [2, 1, 3, 2, 3, 1, 2, 2, 1, 2],
+  mining:       withPhysicalMix([3, 2, 2, 4, 2, 1, 1, 0, 1, 1], 3, 2, 1),
+  refinery:     withPhysicalMix([3, 2, 2, 4, 2, 1, 1, 0, 1, 1], 0, 0, 0),
+  fab:          withPhysicalMix([3, 2, 2, 2, 2, 1, 1, 0, 1, 1], 1, 3, 1),
+  trade_hub:    withPhysicalMix([4, 4, 2, 1, 1, 2, 1, 1, 3, 1], 0, 0, 0),
+  military:     withPhysicalMix([1, 1, 4, 0, 1, 2, 4, 0, 1, 2], 0, 0, 0),
+  research:     withPhysicalMix([2, 1, 1, 1, 2, 1, 1, 0, 1, 4], 1, 1, 2),
+  blackmarket:  withPhysicalMix([2, 1, 3, 2, 3, 1, 2, 2, 1, 2], 2, 2, 2),
   // Charon's refinery remains an economic refinery; this mission-only profile gives its writ wall
   // the intended hunter identity without changing commodity roles, station art, or facility access.
-  bounty_board:[1, 0, 7, 0, 4, 1, 5, 1, 0, 3],
+  // Physical columns stay 0 so the hunter-ratio pin is not diluted.
+  bounty_board: withPhysicalMix([1, 0, 7, 0, 4, 1, 5, 1, 0, 3], 0, 0, 0),
   // Tethys is the freight-and-front junction: cargo, trade, convoy, patrol, passenger, and recon
   // work dominate its ordinary rolls while the physical station remains a normal trade hub.
-  contracts_hub:[5, 4, 2, 0, 1, 5, 3, 1, 3, 3],
+  // Physical columns stay 0 so the junction-ratio pin is not diluted.
+  contracts_hub: withPhysicalMix([5, 4, 2, 0, 1, 5, 3, 1, 3, 3], 0, 0, 0),
 };
 
 // 8-beat story spine FSM.
