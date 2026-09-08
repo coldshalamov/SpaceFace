@@ -23,6 +23,21 @@ import { resolveRuntimeManifest } from './resolveRuntimeManifest.js';
 import { freezeFeatureConfig, getRuntimeProfile } from './runtimeProfiles.js';
 import { getNodeSystemFactoryTable } from './nodeSystemFactoryTable.js';
 
+function destroySimulationSystems(systems) {
+  const seen = new Set();
+  for (const system of [...(systems || [])].reverse()) {
+    if (!system || seen.has(system) || typeof system.destroy !== 'function') continue;
+    seen.add(system);
+    try {
+      system.destroy();
+    } catch (error) {
+      // Teardown is best-effort per system. One optional cleanup hook must not strand later
+      // systems or prevent the simulation bus from being cleared.
+      console.error('[authoritative-runtime] system destroy failed', system.name || 'unnamed', error);
+    }
+  }
+}
+
 /**
  * @param {object} options
  * @param {string} [options.profileId]
@@ -107,6 +122,7 @@ export function createAuthoritativeRuntime(options = {}) {
   // production seed cannot leak into legacy global-flag readers. Explicit
   // seedProcessMaps:false always wins (test isolation / multi-runtime hosts).
   const seedMaps = options.seedProcessMaps !== false;
+  let disposed = false;
 
   function withFeatureMaps(fn) {
     if (!seedMaps) return fn();
@@ -117,6 +133,13 @@ export function createAuthoritativeRuntime(options = {}) {
     } finally {
       restoreFeatureMaps(previous);
     }
+  }
+
+  function assertRuntimeActive(action) {
+    if (!disposed) return;
+    const error = new Error(`Authoritative runtime is disposed; cannot ${action}`);
+    error.code = 'AUTHORITATIVE_RUNTIME_DISPOSED';
+    throw error;
   }
 
   const profile = getRuntimeProfile(resolved.profileId);
@@ -176,6 +199,7 @@ export function createAuthoritativeRuntime(options = {}) {
     /** Controlled setup ports for the lab (no unwrapped step). */
     spawn(spec) {
       if (!sim) throw new Error('Authoritative runtime has no simulation host');
+      assertRuntimeActive('spawn');
       return sim.spawn(spec);
     },
     getSystem(name) {
@@ -188,19 +212,24 @@ export function createAuthoritativeRuntime(options = {}) {
     },
     step(dt) {
       if (!sim) throw new Error('Authoritative runtime has no simulation host');
+      assertRuntimeActive('step');
       return withFeatureMaps(() => sim.step(dt));
     },
     runTicks(count, dt) {
       if (!sim) throw new Error('Authoritative runtime has no simulation host');
+      assertRuntimeActive('run ticks');
       return withFeatureMaps(() => sim.runTicks(count, dt));
     },
     dispose() {
+      if (disposed) return;
+      disposed = true;
       // sim.dispose only clears the bus — free the Rapier world to prevent WASM leaks.
       if (sim && sim.registry) {
         const physicsSys = sim.registry.get('physics');
         if (physicsSys && typeof physicsSys._disableSg02DynamicAuthority === 'function') {
           try { physicsSys._disableSg02DynamicAuthority(); } catch (_) { /* best-effort */ }
         }
+        destroySimulationSystems(sim.registry.systems);
       }
       if (sim && typeof sim.dispose === 'function') sim.dispose();
       // MAPS are restored after every step/init; nothing permanent to undo here.

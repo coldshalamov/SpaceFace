@@ -1287,7 +1287,7 @@ export const economy = {
     const intentId = opts && typeof opts.intentId === 'string' && opts.intentId
       ? opts.intentId
       : null;
-    const intents = ensureCommittedIntents(state);
+    const intents = intentId ? ensureCommittedIntents(state) : null;
     if (intentId && intents && intents[intentId]) {
       const prior = intents[intentId];
       return { ...(prior.result || {}), duplicate: true, receipt: prior.receipt };

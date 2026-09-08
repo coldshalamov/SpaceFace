@@ -68,6 +68,7 @@ import { masslineThrow } from '../systems/masslineThrow.js';
 import { bulletTime } from '../systems/bulletTime.js';
 import { tumbleStates } from '../systems/tumbleStates.js';
 import { collisionConsequences } from '../systems/collisionConsequences.js';
+import { stuntGrammar } from '../systems/stuntGrammar.js';
 import { masslineImpactDamage } from '../systems/masslineImpactDamage.js';
 import { cloak } from '../systems/cloak.js';
 import { lootShards } from '../systems/lootShards.js';
@@ -194,6 +195,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['aiPorts', aiPorts],
     ['tumbleStates', tumbleStates],
     ['collisionConsequences', collisionConsequences],
+    ['stuntGrammar', stuntGrammar],
     ['aiEncounter', aiEncounter],
     ['actions', actions],
     ['cruise', cruise],

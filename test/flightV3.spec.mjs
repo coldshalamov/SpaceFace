@@ -571,4 +571,22 @@ function simulate({ profile, b, input, ticks, runtime }) {
     `"${vision}" — an oblique 2x physics-earned vector keeps >=99% after 1 s of held thrust (got ${earned1.toFixed(2)} from ${earned0.toFixed(2)})`);
 }
 
+// 12g. Planar speed governance must not deadlock a ship moving backward at the exact cap.
+{
+  const profile = PROPULSION_PROFILES.drive_reaction_m;
+  const b = body({ vel: { x: -profile.combatSpeed, z: 0 } });
+  const step = stepPropulsion({
+    dt: DT,
+    body: b,
+    input: { throttle: 1, assistMode: 'assisted' },
+    profile,
+    runtime: createPropulsionRuntime(profile),
+  });
+  assert.ok(step.force.x > 0,
+    'forward thrust must remain available to cancel backward motion at the planar speed cap');
+  advance(b, step);
+  assert.ok(b.vel.x > -profile.combatSpeed,
+    'the first fixed step must move the ship out of the reverse-cap equilibrium');
+}
+
 console.log('SpaceFace Flight V3 generated checks: PASS');

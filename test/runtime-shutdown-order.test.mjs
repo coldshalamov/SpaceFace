@@ -240,7 +240,7 @@ test('VFX destroy retires owned roots once and is safe after renderer state disa
   const spriteBucket = system._spriteBatches.glow;
   const spriteGeometry = spriteBucket.mesh.geometry;
   const spriteMaterial = spriteBucket.mesh.material;
-  const spriteTexture = spriteMaterial.uniforms.uSpriteMap.value;
+  const densityTexture = system._spriteBatches.smoke.mesh.material.uniforms.uDensityFilm.value;
   const disposed = new Map();
   const watch = (resource) => {
     let count = 0;
@@ -249,7 +249,7 @@ test('VFX destroy retires owned roots once and is safe after renderer state disa
   };
   for (const resource of [
     particleGeometry, particleMaterial, trailGeometry, trailMaterial,
-    spriteGeometry, spriteMaterial, spriteTexture,
+    spriteGeometry, spriteMaterial, densityTexture,
   ]) watch(resource);
 
   assert.equal(system.destroy(), true);

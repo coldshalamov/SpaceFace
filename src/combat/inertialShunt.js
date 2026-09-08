@@ -48,9 +48,18 @@ function authoredMass(entity) {
 
 /**
  * Plan equal-and-opposite impulses that dump the shunter's closing speed into the target,
- * scaled by mass so a light flies and a heavy shrugs.
+ * scaled by mass so a light flies and a heavy shrugs. A physics impact may supply the
+ * authoritative radial closure and contact normal; without that receipt, retain the pure
+ * planner's relative-velocity fallback for direct callers.
  */
-export function fillInertialShuntImpulses(shunterOut, targetOut, shunter, target, tuning = INERTIAL_SHUNT_TUNING) {
+export function fillInertialShuntImpulses(
+  shunterOut,
+  targetOut,
+  shunter,
+  target,
+  tuning = INERTIAL_SHUNT_TUNING,
+  contact = null,
+) {
   if (!shunterOut || !targetOut || !shunter || !target) return false;
   shunterOut.x = 0;
   shunterOut.y = 0;
@@ -61,14 +70,36 @@ export function fillInertialShuntImpulses(shunterOut, targetOut, shunter, target
 
   const mS = authoredMass(shunter);
   const mT = authoredMass(target);
-  const dvx = finite(shunter.vel && shunter.vel.x) - finite(target.vel && target.vel.x);
-  const dvz = finite(shunter.vel && shunter.vel.z) - finite(target.vel && target.vel.z);
-  const closing = Math.hypot(dvx, dvz);
+  let nx;
+  let nz;
+  let closing;
+  if (contact) {
+    const rawNx = finite(contact.normal && contact.normal.x);
+    const rawNz = finite(contact.normal && contact.normal.z);
+    const normalLength = Math.hypot(rawNx, rawNz);
+    if (!(normalLength > 1e-6)) return false;
+    const orientation = contact.shunterIsA === false ? -1 : 1;
+    nx = orientation * rawNx / normalLength;
+    nz = orientation * rawNz / normalLength;
+    if (Number.isFinite(contact.closingSpeed)) {
+      closing = Math.max(0, contact.closingSpeed);
+    } else {
+      const dvx = finite(shunter.vel && shunter.vel.x) - finite(target.vel && target.vel.x);
+      const dvz = finite(shunter.vel && shunter.vel.z) - finite(target.vel && target.vel.z);
+      closing = Math.max(0, dvx * nx + dvz * nz);
+    }
+  } else {
+    const dvx = finite(shunter.vel && shunter.vel.x) - finite(target.vel && target.vel.x);
+    const dvz = finite(shunter.vel && shunter.vel.z) - finite(target.vel && target.vel.z);
+    closing = Math.hypot(dvx, dvz);
+    if (closing > 0) {
+      nx = dvx / closing;
+      nz = dvz / closing;
+    }
+  }
   const minClosing = positive(tuning && tuning.minClosingSpeed, 40);
   if (!(closing >= minClosing)) return false;
 
-  const nx = dvx / closing;
-  const nz = dvz / closing;
   const refMass = positive(tuning && tuning.refMass, 24);
   const dump = clamp(finite(tuning && tuning.dumpVsLight, 0.95), 0, 1);
   const couple = clamp(refMass / Math.max(mT, refMass), 0.08, 1);
@@ -116,7 +147,14 @@ export function tryApplyInertialShuntFromImpact(state, payload, getEntity, shunt
     if (Number.isInteger(until)) cooldown.delete(key);
   }
 
-  if (!fillInertialShuntImpulses(shunterOut, targetOut, shunter, target)) return null;
+  const contact = payload.normal || Number.isFinite(payload.preSolveClosingSpeed)
+    ? {
+      normal: payload.normal,
+      closingSpeed: payload.preSolveClosingSpeed,
+      shunterIsA: shunter === a,
+    }
+    : null;
+  if (!fillInertialShuntImpulses(shunterOut, targetOut, shunter, target, INERTIAL_SHUNT_TUNING, contact)) return null;
   queuePhysicsImpulse(shunter, shunterOut);
   queuePhysicsImpulse(target, targetOut);
   if (cooldown && typeof cooldown.set === 'function') {

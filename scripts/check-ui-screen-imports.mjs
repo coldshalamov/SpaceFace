@@ -132,6 +132,7 @@ const uiRootSrc = readFileSync(new URL('../src/ui/uiRoot.js', import.meta.url), 
 const mainSrc = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
 const controlPromptsSrc = readFileSync(new URL('../src/ui/controlPrompts.js', import.meta.url), 'utf8');
 const onboardingSrc = readFileSync(new URL('../src/systems/onboarding.js', import.meta.url), 'utf8');
+const onboardingHudAttentionImport = /import\s*\{(?=[^}]*\bfirstUseLine\b)(?=[^}]*\bresolveFirstUseEntityId\b)[^}]*\}\s*from\s*['"]\.\.\/ui\/hudAttention\.js['"]/.test(onboardingSrc);
 const mainMenuSrc = readFileSync(new URL('../src/ui/screens/mainMenu.js', import.meta.url), 'utf8');
 const newGameSrc = readFileSync(new URL('../src/ui/screens/newGame.js', import.meta.url), 'utf8');
 const gameOverSrc = readFileSync(new URL('../src/ui/screens/gameOver.js', import.meta.url), 'utf8');
@@ -351,7 +352,7 @@ if (!hudSrc.includes("import { BINDINGS } from './bindings.js'")
   ok++;
 }
 const stationKbmPrompt = controlPrompt('station', 'kbm');
-if (!onboardingSrc.includes("import { firstUseLine, resolveFirstUseEntityId } from '../ui/hudAttention.js'")
+if (!onboardingHudAttentionImport
   || !onboardingSrc.includes("firstUseLine('firstStation'")
   || !onboardingSrc.includes('_dockControlInRange')
   || onboardingSrc.includes('el.textContent = controlPrompt(mode, modality)')

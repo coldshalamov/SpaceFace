@@ -1847,10 +1847,15 @@ export const missions = {
   // ACCEPT / ABANDON
   // =========================================================================================
   /** Move an offer from a board to active. Charges collateral, enforces maxActive, emits accepted. */
-  acceptMission(missionId) {
+  acceptMission(missionId, options = {}) {
     const state = this.state, cfg = state.missions.config || MISSION_TUNING;
     if (!missionId) return false;
-    if (state.missions.active.length >= (cfg.maxActive || 8)) {
+    const retiringMissionId = options && options.retiringMissionId;
+    const retiringActive = retiringMissionId != null
+      && state.missions.active.some((mission) => (
+        mission && mission.id === retiringMissionId && mission.status === 'active'
+      ));
+    if (state.missions.active.length - (retiringActive ? 1 : 0) >= (cfg.maxActive || 8)) {
       this.bus.emit('toast', { text: 'Too many active missions', kind: 'error', ttl: 3 });
       return false;
     }
@@ -2010,7 +2015,7 @@ export const missions = {
    * The caller supplies a normal board offer; this method alone inserts and accepts it so
    * collateral, active ids, mission navigation, rewards, and receipts keep one authority.
    */
-  postAndAcceptAuthoredOffer(rawOffer) {
+  postAndAcceptAuthoredOffer(rawOffer, options = {}) {
     if (!rawOffer || typeof rawOffer !== 'object') return { ok: false, reason: 'bad_offer' };
     const offer = JSON.parse(JSON.stringify(rawOffer));
     if (!offer.id || !offer.type || !offer.stationId || !offer.params) {
@@ -2034,7 +2039,7 @@ export const missions = {
     board.slots = board.slots.filter((candidate) => candidate && candidate.id !== offer.id);
     board.slots.unshift(offer);
 
-    if (!this.acceptMission(offer.id)) {
+    if (!this.acceptMission(offer.id, options)) {
       board.slots = board.slots.filter((candidate) => candidate && candidate.id !== offer.id);
       return { ok: false, reason: 'accept_failed', offerId: offer.id };
     }
@@ -3933,7 +3938,7 @@ export const missions = {
     // Quiet preflight first: a refusal here must not spend the player's error-toast attention on a
     // successor that was never going to post (acceptMission re-runs the same gate loudly).
     if (!this._acceptPreflight(offer).ok) return null;
-    const posted = this.postAndAcceptAuthoredOffer(offer);
+    const posted = this.postAndAcceptAuthoredOffer(offer, { retiringMissionId: m.id });
     if (!posted || !posted.ok || posted.reused) return null;
     const successor = (this.state.missions.active || []).find((candidate) => (
       candidate && candidate.status === 'active' && candidate.id === posted.missionId

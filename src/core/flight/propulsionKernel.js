@@ -312,15 +312,23 @@ function applySpeedGovernor(manualLocal, input, limits, localVelocity, profile, 
     ? advanceTravelDrive(normalizeTravelDrive(input.travelDrive), profile, baseCap, speed, dt)
     : null;
   const cap = Math.max(baseCap, earnedCap, burn ? burn.cap : 0);
-  const err = cap - speed;
+  // A positive-forward command must still be allowed to reverse motion carried opposite the
+  // nose. Comparing only scalar speed makes the exact cap a dead equilibrium for a ship travelling
+  // backward: `err` becomes zero, the governor removes all forward thrust, and the ship can never
+  // cross through zero. Reverse travel is not speed spent against the cap — forward thrust is
+  // counter-thrust against that motion — so give it enough error to cancel the backward component.
+  const err = localVelocity.forward < -EPS
+    ? Math.max(cap, -localVelocity.forward)
+    : cap - speed;
   const responseS = positive(settings.governorResponseS, 0.9);
   // The governor bounds what THRUST may produce. It never spends speed the pilot earned: above
-  // the cap the forward command floors at coast (0), never at reverse thrust. History: the shipped
-  // governor braked at overspeedBrakeFraction of reverse authority whenever the throttle was held
-  // above the cap, so pressing FORWARD after a slingshot slowed the ship down — the exact
-  // confiscation design/VISION.md forbids. RC-4 (`boostNeverBrakes`) had lifted the floor to
-  // coast while boosting only; the rule is now unconditional. Spending speed above the cap is the
-  // pilot brake's job (reactionAssistAcceleration keeps full brake authority).
+  // the cap the forward command floors at coast (0), never at reverse thrust, unless it is
+  // counter-thrust against local reverse motion. History: the shipped governor braked at
+  // overspeedBrakeFraction of reverse authority whenever the throttle was held above the cap, so
+  // pressing FORWARD after a slingshot slowed the ship down — the exact confiscation
+  // design/VISION.md forbids. RC-4 (`boostNeverBrakes`) had lifted the floor to coast while
+  // boosting only; the rule is now unconditional. Spending forward-travel speed above the cap is
+  // the pilot brake's job (reactionAssistAcceleration keeps full brake authority).
   const brakeFloor = 0;
   // The axial servo only ever reduces POSITIVE forward. Reverse/brake stays the reverse path even
   // if strafe caused the governor to engage.
