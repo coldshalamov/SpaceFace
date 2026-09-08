@@ -36,11 +36,6 @@ export const TWIN_BRIDLE_HEAD_ID = 'twin_bridle';
 // PQ-031.00: the second latch is the throw, not a lingering setup mode. Keep the A endpoint
 // alive for only the authored combat-range throw window; all elapsed time comes from simTime.
 export const TWIN_BRIDLE_SETUP_S = 2;
-export const ELASTIC_WHIP_HEAD_ID = 'elastic_whip';
-export const ELASTIC_WHIP_SPRING_K = 260;
-export const ELASTIC_WHIP_SPRING_ZETA = 0.28;
-export const ELASTIC_WHIP_MAX_STRETCH_RATIO = 1.44;
-export const ELASTIC_WHIP_GLOW_STRETCH_RATIO = 0.28;
 const MONOFILAMENT_HEAD_ID = 'monofilament_sweep';
 const NPC_LINE_CUT_TAUT_RATIO = 0.92;
 const NPC_BRIDLE_CUT_COOLDOWN_TICKS = 90;
@@ -1739,17 +1734,6 @@ export const tetherGameplay = {
     t.headId = t.active && typeof headId === 'string' ? headId : null;
     t.slingshotT = Math.max(0, finite(t.slingshotT, 0));
     t.slingshot = t.slingshotT > 0;
-    const telemetry = t.active && this._active
-      ? attachmentTelemetry(this.helpers, { id: this._active.attachmentId }, state)
-      : null;
-    const storedEnergy = t.active ? finite(telemetry && telemetry.storedEnergy, 0) : 0;
-    const stretch = t.active ? finite(telemetry && telemetry.stretch, 0) : 0;
-    const strainGlow = t.active ? whipStrainGlow(stretch, t.restLength) : 0;
-    t.storedEnergy = storedEnergy;
-    t.strainGlow = strainGlow;
-    if (t.active && t.headId === ELASTIC_WHIP_HEAD_ID) {
-      t.load = Math.max(t.load, strainGlow);
-    }
   },
 };
 
@@ -2371,22 +2355,6 @@ function normalizePhase(value) {
 // load = clamp(max(strain * LOAD_STRAIN_GAIN, LOAD_BASE_BY_PHASE[phase]), 0, 1)
 // Guarantees: inactive/slack ≈ 0 (no floor, strain ~0), capture ≥ 0.35 the moment the line goes
 // taut, loaded ≥ 0.55 even at low strain, overload ≥ 0.9. Never mutates strain.
-export function whipStoredEnergy(stretch, k = ELASTIC_WHIP_SPRING_K) {
-  const s = Number.isFinite(stretch) && stretch > 0 ? stretch : 0;
-  const stiffness = Number.isFinite(k) && k > 0 ? k : ELASTIC_WHIP_SPRING_K;
-  return 0.5 * stiffness * s * s;
-}
-
-export function whipStrainGlow(stretch, restLength, readableStretchRatio = ELASTIC_WHIP_GLOW_STRETCH_RATIO) {
-  const s = Number.isFinite(stretch) && stretch > 0 ? stretch : 0;
-  const rest = Number.isFinite(restLength) && restLength > 0 ? restLength : 0;
-  const ratio = Number.isFinite(readableStretchRatio) && readableStretchRatio > 0
-    ? readableStretchRatio
-    : ELASTIC_WHIP_GLOW_STRETCH_RATIO;
-  if (!(rest > 0)) return 0;
-  return clamp(s / (rest * ratio), 0, 1);
-}
-
 export function computeTetherLoad(phase, strain) {
   const base = LOAD_BASE_BY_PHASE[normalizePhase(phase)] || 0;
   const s = Number.isFinite(strain) && strain > 0 ? strain : 0;

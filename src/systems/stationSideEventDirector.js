@@ -32,7 +32,6 @@ import { planStationSideEvents, SIDE_EVENTS, SIDE_EVENT_IDS } from '../data/stat
 import { bubblesFor } from '../data/stationBubbles.js';
 import { tableSimAuthorityWuFromState } from '../render/tabletopPolicy.js';
 import { makeShipEntitySpec } from './ships.js';
-import { sessionRhythmAllowsCombat, sessionRhythmOf } from './encounterDirector.js';
 
 const DAY_SECONDS = 600;        // sector-day contract (mirrors encounterDirector)
 const MIN_SPACING_S = 25;       // min gap between fired side-events at a station
@@ -183,12 +182,6 @@ export const stationSideEventDirector = {
     const item = s.pending[idx];
     if ((item.budget | 0) > 0 && countActive(s) >= MAX_BUDGETED) {
       item.dueAt = now + DEFER_S;                          // budgeted cap reached → defer, don't drop
-      return;
-    }
-    const rhythm = sessionRhythmOf(state);
-    const phase = rhythm && rhythm.phase;
-    if ((item.budget | 0) > 0 && phase && !sessionRhythmAllowsCombat(phase)) {
-      item.dueAt = now + DEFER_S;
       return;
     }
     s.pending.splice(idx, 1);

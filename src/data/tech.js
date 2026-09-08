@@ -2,10 +2,6 @@
 // IDs use tech_ prefix per ARCHITECTURE §0.4.
 // unlock ship IDs use ship_ prefix; module IDs use mod_ (weapons: wpn_).
 // prereqs[] reference other tech_ IDs. Pure data, no imports.
-//
-// PQ-155.00 verb ladder (hour → verb → cost → gate): ./techVerbLadder.js.
-// Costs in this file stay live. Do not retune them here to fake the 15-minute
-// first-upgrade gate — that faucet work is PQ-155.01.
 
 export const TECH_NODES = [
   // ---------------- COMBAT branch ----------------
@@ -188,4 +184,3 @@ export function techDisplayName(id) {
   const node = TECH_NODES.find((entry) => entry.id === id);
   return (node && node.name) || String(id || 'required tech').replace(/^tech_/, '').replace(/_/g, ' ');
 }
-

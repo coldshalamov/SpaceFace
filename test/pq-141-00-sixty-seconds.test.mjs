@@ -25,7 +25,6 @@ import {
   isCargoPickup,
   isGrabCargoTarget,
   runProofPocketCensus,
-  runProofSixtySeconds,
   runProofSixtySecondsSuite,
 } from '../src/testing/lab/proofSixtySeconds.js';
 
@@ -79,11 +78,6 @@ test('PQ-141.00 does not count a player-rock scrape as collateral or a shove-spi
   assert.equal(classifyReceipt('traffic:jobActionReceipt', {
     actorSlotId: 'ceres_seam_surveyor', action: 'work', jobKind: 'surveyor',
   }, ctx), null, 'surveyor choreography is not the mining op');
-  assert.deepEqual(classifyReceipt('massline:throw', { payloadId: 3 }, ctx), {
-    beat: 'rope_projectile',
-    detail: 'massline:throw #3',
-  }, 'live massline:throw names payloadId, not targetId');
-  assert.ok(ctx.projectileIds.has(3));
 });
 
 test('PQ-141.00 scenario id is proof.sixty_seconds', () => {
@@ -150,31 +144,6 @@ test('PQ-141.00 grab/aim/census accept payload cargo pods, and a real cargo latc
   const earlyGrab = aimTargetForTick(state, player, 120);
   assert.equal(earlyGrab && earlyGrab.id, payloadPod.id, 'KeyF-down tick must already prefer the cargo pod');
 
-  const pirate = {
-    id: 4,
-    type: 'ship',
-    alive: true,
-    pos: { x: 8, z: 0 },
-    data: { trafficRole: 'pirate' },
-    factionId: 'faction_reach',
-  };
-  const hauler = {
-    id: 5,
-    type: 'ship',
-    alive: true,
-    pos: { x: 30, z: 0 },
-    data: { trafficRole: 'hauler' },
-  };
-  state.entityList.push(pirate, hauler);
-  state.entities.set(4, pirate);
-  state.entities.set(5, hauler);
-  const latchAim = aimTargetForTick(state, player, 950);
-  assert.equal(latchAim && latchAim.id, pirate.id, 'latch window aims the nearest pirate');
-  const earlyThrowAim = aimTargetForTick(state, player, 800);
-  assert.equal(earlyThrowAim && earlyThrowAim.id, hauler.id, 'melee throw-arm window aims past that pirate');
-  const throwAim = aimTargetForTick(state, player, 1100);
-  assert.equal(throwAim && throwAim.id, hauler.id, 'throw-arm window aims past that pirate');
-
   const ctx = {
     state,
     spunIds: new Set(),
@@ -223,11 +192,6 @@ test('PQ-141.00 tape keys reach the live input bag and aim survives a headless r
   assert.deepEqual(inputSys.helpers.raycastToPlane(), { x: 12, z: -4 });
   assert.equal(markProofPointerActive(inputSys), true);
   assert.equal(inputSys._screen.active, true);
-  assert.equal(inputSys._m2, false);
-  assert.equal(syncTapeKeysToInput(inputSys, { Mouse2: true }), true);
-  assert.equal(inputSys._m2, true);
-  assert.equal(syncTapeKeysToInput(inputSys, {}), true);
-  assert.equal(inputSys._m2, false);
 });
 
 test('PQ-141.00 Massline (KeyF) is held during both cargo-grab aim windows', () => {
@@ -237,9 +201,6 @@ test('PQ-141.00 Massline (KeyF) is held during both cargo-grab aim windows', () 
   assert.equal(tapeKeyDownAt(tape, 'KeyJ', 300), false, 'KeyJ is fire in the tape driver');
   assert.equal(tapeKeyDownAt(tape, 'KeyF', 2500), true, 'late grab window must hold KeyF');
   assert.equal(tapeKeyDownAt(tape, 'KeyW', 300), false, 'do not cruise away from the spilled pod');
-  assert.equal(tapeKeyDownAt(tape, 'Mouse2', 800), true, 'arm the throw while the melee ships are still close');
-  assert.equal(tapeKeyDownAt(tape, 'Mouse2', 1100), true, 'RMB throw-arm while the pirate is latched');
-  assert.equal(tapeKeyDownAt(tape, 'KeyF', 1100), true, 'stay latched while the throw is armed');
 });
 
 test('PQ-141.00 census sees pirates when pointed at Ambush Run', { timeout: 120_000 }, async () => {
@@ -269,22 +230,9 @@ test('PQ-141.00 census sees pirates when pointed at Ambush Run', { timeout: 120_
   assert.equal(ambush.pirates, pointed.pirates);
 });
 
-// Seed 47 FAST rope/collateral lock. Does not assert the five-seed 9/11 gate.
-test('PQ-141.00 seed 47 fires rope_projectile and collateral before 90s', {
-  timeout: 180_000,
-  skip: process.env.PROOF_SEED47 !== '1' && process.env.PROOF_SIXTY_SECONDS !== '1'
-    && 'set PROOF_SEED47=1 to measure the seed-47 rope pass',
-}, async () => {
-  const run = await runProofSixtySeconds(47);
-  assert.ok(run.times.rope_projectile != null, `rope_projectile missing (${run.details && run.details.rope_projectile})`);
-  assert.ok(run.times.collateral != null, `collateral missing (${run.details && run.details.collateral})`);
-  assert.ok(run.times.rope_projectile < PROOF_HARD_CAP_S, `rope_projectile at ${run.times.rope_projectile}s`);
-  assert.ok(run.times.collateral < PROOF_HARD_CAP_S, `collateral at ${run.times.collateral}s`);
-  assert.ok(run.simS <= PROOF_HARD_CAP_S + 1e-6, `seed 47 exceeded 90s (${run.simS})`);
-});
-
-// Five-seed Rapier suite is the alpha-gate measurement. Do not assert 9/11 here —
-// a red table is a valid NOT DONE. Run: PROOF_SIXTY_SECONDS=1 node --test test/pq-141-00-sixty-seconds.test.mjs
+// Five-seed Rapier suite is the alpha-gate measurement. Ambush boot last printed
+// 8/11 on seed 47. Do not assert 9/11 here — a red table is a valid NOT DONE.
+// Run: PROOF_SIXTY_SECONDS=1 node --test test/pq-141-00-sixty-seconds.test.mjs
 test('PQ-141.00 runs five seeds at the Ceres pocket and prints the beat table', {
   ...LONG,
   skip: process.env.PROOF_SIXTY_SECONDS !== '1' && 'set PROOF_SIXTY_SECONDS=1 to measure the alpha gate',

@@ -349,8 +349,6 @@ function makeCandidate(seed, input, gateOpen) {
   if (input.type === 'loss') candidate.playerCaused = input.playerCaused === true;
   if (input.trickId) candidate.trickId = input.trickId;
   if (input.tokens) candidate.tokens = { ...input.tokens };
-  if (input.cause) candidate.cause = text(input.cause, '');
-  if (input.beat) candidate.beat = text(input.beat, '');
   return candidate;
 }
 
@@ -528,27 +526,6 @@ function collectCandidates(state) {
     });
   }
 
-  const escalationSeeds = sourceArray(state && state.encounterDirector && state.encounterDirector.escalationSeeds);
-  for (const record of escalationSeeds) {
-    if (!record || !record.cause || !record.beat) continue;
-    const placeName = record.place && (record.place.name || record.place.zoneId || record.place.stationId)
-      || 'a named place';
-    add({
-      type: 'witness',
-      sourceId: `escalation:${record.id || record.causeId || record.cause}`,
-      sourceKind: 'encounterDirector.escalationSeeds',
-      at: record.arrivedAt != null ? record.arrivedAt : record.seededAt,
-      cause: record.cause,
-      beat: record.beat,
-      tokens: {
-        event: `a ${record.beat} from ${placeName}`,
-        outcome: `because of the ${record.cause}`,
-        cause: record.cause,
-        beat: record.beat,
-      },
-    });
-  }
-
   const encounterHistory = sourceArray(state && state.story && state.story.depthProgramEncounters
     && state.story.depthProgramEncounters.history);
   for (const [index, record] of encounterHistory.entries()) {
@@ -645,113 +622,6 @@ function quoteCandidates(entries, enabled) {
     }));
 }
 
-// PQ-149.03 — story so far. Pure sentence over receipts already on the page: rhythm (what you
-// were doing), the first cited escalation beat (what arrived), and the cause token 149.01 already
-// files as `because of the ${cause}`. No writer. No dialogue tree.
-const STORY_SO_FAR_PHASES = Object.freeze([
-  'work', 'travel', 'curiosity', 'opportunity', 'tension', 'violence', 'aftermath', 'quiet',
-]);
-const STORY_SO_FAR_DOING = Object.freeze({
-  work: 'ordinary work',
-  travel: 'travel',
-  curiosity: 'looking around',
-  opportunity: 'chasing an opening',
-  tension: 'holding tension',
-  violence: 'fighting',
-  aftermath: 'the aftermath',
-  quiet: 'quiet work',
-});
-
-function storyPhaseName(value) {
-  return STORY_SO_FAR_PHASES.includes(value) ? value : '';
-}
-
-function rhythmPhaseOf(state) {
-  if (!isRecord(state)) return '';
-  const direct = isRecord(state.sessionRhythm) ? state.sessionRhythm : null;
-  const nested = isRecord(state.encounterDirector) && isRecord(state.encounterDirector.sessionRhythm)
-    ? state.encounterDirector.sessionRhythm
-    : null;
-  if (direct && storyPhaseName(direct.phase)) return direct.phase;
-  if (nested && storyPhaseName(nested.phase)) return nested.phase;
-  return '';
-}
-
-function citedStoryTurns(rows, fromSeed) {
-  const out = [];
-  for (const row of sourceArray(rows)) {
-    if (!row) continue;
-    const cause = text(row.cause, '');
-    const beat = text(row.beat, '');
-    if (!cause || !beat) continue;
-    const at = fromSeed
-      ? (row.arrivedAt != null ? finite(row.arrivedAt, 0)
-        : row.seededAt != null ? finite(row.seededAt, 0)
-        : finite(row.at, 0))
-      : finite(row.at, 0);
-    out.push({ cause, beat, at: Math.max(0, at) });
-  }
-  return out;
-}
-
-export function formatStorySoFarProse(doing, then, so) {
-  return `I was doing ${text(doing, 'ordinary work')}, then ${text(then, 'nothing turned')}, so I ${text(so, 'kept the book')}.`;
-}
-
-/**
- * Deterministic { doing, then, so, prose } from already-projected receipts.
- * A caller who only has a ledger page or a telemetry ring can use this without the sim.
- */
-export function projectStorySoFar(input = {}) {
-  const phase = storyPhaseName(input && input.phase) || '';
-  let turns = citedStoryTurns(input && input.entries, false);
-  if (!turns.length) turns = citedStoryTurns(input && input.escalations, true);
-  turns.sort((a, b) => a.at - b.at || a.cause.localeCompare(b.cause) || a.beat.localeCompare(b.beat));
-  const turn = turns[0] || null;
-  const doing = STORY_SO_FAR_DOING[phase] || STORY_SO_FAR_DOING.work;
-  const then = turn ? `a ${turn.beat} arrived` : 'nothing turned';
-  const so = turn ? `carry the ${turn.beat} because of the ${turn.cause}` : 'kept the book';
-  return {
-    doing,
-    then,
-    so,
-    prose: formatStorySoFarProse(doing, then, so),
-    phase: phase || 'work',
-    cause: turn ? turn.cause : '',
-    beat: turn ? turn.beat : '',
-  };
-}
-
-/**
- * Blind reader: the three retell fields from a ledger page or a story snapshot.
- * Does not read `state` or the sim.
- */
-export function readStorySoFar(ledgerOrStory) {
-  const story = isRecord(ledgerOrStory) && isRecord(ledgerOrStory.storySoFar)
-    ? ledgerOrStory.storySoFar
-    : (isRecord(ledgerOrStory) ? ledgerOrStory : null);
-  if (!story) return { doing: '', then: '', so: '' };
-  return {
-    doing: text(story.doing, ''),
-    then: text(story.then, ''),
-    so: text(story.so, ''),
-  };
-}
-
-/**
- * Same projection the dock UI calls via `buildShipLedger`. Read-only. No registry slot.
- */
-export function renderStorySoFar(state, options = {}) {
-  const entries = Array.isArray(options.entries)
-    ? options.entries
-    : collectCandidates(state || {}).candidates;
-  const escalations = Array.isArray(options.escalations)
-    ? options.escalations
-    : sourceArray(state && state.encounterDirector && state.encounterDirector.escalationSeeds);
-  const phase = options.phase != null ? options.phase : rhythmPhaseOf(state);
-  return projectStorySoFar({ phase, entries, escalations });
-}
-
 /**
  * Build one bounded ledger page without writing to `state` or any source slice.
  * Page 0 is newest; older entries live in archive pages. The UI never receives more than 24 rows.
@@ -766,7 +636,6 @@ export function buildShipLedger(state, options = {}) {
   const story = state && state.story || {};
   const flags = story.flags && typeof story.flags === 'object' ? story.flags : {};
   const endgameOpen = !!(story.endgameResolved || story.endgameChoice || flags.sandboxContinued);
-  const storySoFar = renderStorySoFar(state, { entries: bounded });
   return deepFreeze({
     schemaVersion: SHIP_LEDGER_SCHEMA_VERSION,
     page,
@@ -782,7 +651,6 @@ export function buildShipLedger(state, options = {}) {
     entries: bounded.slice(start, start + pageSize),
     evidenceConflicts,
     endgameQuotes: quoteCandidates(bounded, endgameOpen),
-    storySoFar,
   });
 }
 

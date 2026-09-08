@@ -1,24 +1,5 @@
 import { DirectorPhase, TraceLayer, clamp, finiteInt, saturate } from './contracts.js';
 
-let publishedSessionRhythmPhase = null;
-let publishedEscalationSeeds = [];
-
-export function publishSessionRhythmPhase(phase) {
-  publishedSessionRhythmPhase = typeof phase === 'string' ? phase : null;
-}
-
-export function peekSessionRhythmPhase() {
-  return publishedSessionRhythmPhase;
-}
-
-export function publishEscalationSeeds(seeds) {
-  publishedEscalationSeeds = Array.isArray(seeds) ? seeds.slice(0, 16) : [];
-}
-
-export function peekEscalationSeeds() {
-  return publishedEscalationSeeds;
-}
-
 const DEFAULT_CONFIG = Object.freeze({
   minPressure: 0.12,
   maxPressure: 0.82,
@@ -80,12 +61,6 @@ export class EncounterDirector {
       (telemetry.objectiveProgress || 0) * 0.2 +
       Math.min(1, (telemetry.tetherThreats || 0) / 2) * 0.1,
     );
-    const sessionPhase = sessionRhythmPhaseOf(authored, telemetry);
-    const holdRespite = sessionRhythmHoldsRespite(sessionPhase);
-    if (holdRespite && s.phase !== DirectorPhase.RESPITE) {
-      this._setPhase(DirectorPhase.RESPITE);
-    }
-
     const authoredBias = clamp(Number(authored.pressureBias) || 0, -0.35, 0.35);
     const target = clamp(0.22 + dominance * 0.62 - distress * 0.48 + authoredBias, envelope.min, envelope.max);
     s.targetPressure = target;
@@ -97,9 +72,7 @@ export class EncounterDirector {
     const push = (id, utility, reason) => candidates.push({ id, utility: saturate(utility), reason });
     push('hold_phase', 0.35, 'minimum phase dwell or no stronger transition');
 
-    if (holdRespite) {
-      push('hold_phase', 1, 'session rhythm quiet/aftermath holds respite');
-    } else if (s.phase === DirectorPhase.RESPITE) {
+    if (s.phase === DirectorPhase.RESPITE) {
       push('begin_build', s.phaseTick >= cfg.respiteMinTicks ? saturate((target - cfg.respiteThreshold) * 1.8) : 0, 'pressure target recovered');
       if (s.phaseTick >= cfg.respiteMaxTicks) push('begin_build', 1, 'maximum respite elapsed');
     } else if (s.phase === DirectorPhase.BUILD) {
@@ -114,9 +87,7 @@ export class EncounterDirector {
       push('begin_respite', s.phaseTick >= cfg.retreatMinTicks ? 0.8 : 0, 'retreat window complete');
     }
 
-    const huntAlreadySeeded = sessionHasHuntEscalation(authored, telemetry);
-    if (!holdRespite && !huntAlreadySeeded && s.phase === DirectorPhase.BUILD
-      && s.reinforcementBudget > 0 && s.reinforcementCooldown === 0) {
+    if (s.phase === DirectorPhase.BUILD && s.reinforcementBudget > 0 && s.reinforcementCooldown === 0) {
       push('reinforce', dominance >= cfg.reinforceThreshold && distress < 0.45 ? dominance : 0, 'visible opposition supports escalation');
     }
     if (authored.narrativeBeatReady && s.narrativeCooldown === 0 && s.phase !== DirectorPhase.PEAK) {
@@ -191,27 +162,6 @@ export class EncounterDirector {
   inspect() {
     return Object.freeze({ version: 1, config: Object.freeze({ ...this.config }), state: Object.freeze({ ...this.state }) });
   }
-}
-
-function sessionRhythmPhaseOf(authored, telemetry) {
-  const raw = (authored && (authored.sessionPhase
-    || (authored.sessionRhythm && authored.sessionRhythm.phase)))
-    || (telemetry && (telemetry.sessionPhase
-      || (telemetry.sessionRhythm && telemetry.sessionRhythm.phase)))
-    || publishedSessionRhythmPhase;
-  return typeof raw === 'string' ? raw : null;
-}
-
-function sessionRhythmHoldsRespite(phase) {
-  return phase === 'quiet' || phase === 'aftermath';
-}
-
-function sessionHasHuntEscalation(authored, telemetry) {
-  const rows = (authored && Array.isArray(authored.escalationSeeds) && authored.escalationSeeds)
-    || (telemetry && Array.isArray(telemetry.escalationSeeds) && telemetry.escalationSeeds)
-    || publishedEscalationSeeds;
-  if (!Array.isArray(rows) || rows.length === 0) return false;
-  return rows.some((row) => row && (row.beat === 'bounty' || row.beat === 'ace'));
 }
 
 function validateConfig(config) {

@@ -23,15 +23,6 @@ const MAX_CAUSES = 24;
 const MAX_WRECK_DRIFT_SPEED = 400;
 const MAX_WRECK_TUMBLE = 3.0;
 const WRECK_RADIUS = 9;
-// Same 10-sim-minute day as coreSystem / sectorSim / encounterDirector. Wreck fields age on
-// this clock, never wall time. Ecology is a finite budget that decays — never a respawn loop.
-export const WRECK_ECOLOGY_DAY_S = 600;
-export const WRECK_ECOLOGY_BUDGET = 2;
-export const WRECK_ECOLOGY_DECAY_S = WRECK_ECOLOGY_DAY_S * 4;
-export const PLAYER_WRECK_KIND = 'player_wreck';
-export const PLAYER_WRECK_ENCOUNTER_ID = 'scavengers_fresh_wreck';
-const ECOLOGY_SCAVENGER_ARCHETYPES = Object.freeze(['wasp_swarmer', 'reaver_pirate']);
-const ECOLOGY_ROLES = Object.freeze(['scavenger', 'squatter', 'trap']);
 const WRECK_SALVAGE_TIME = 8;
 const FREIGHT_IDENTITY_TEXT_MAX = 160;
 const STRUCTURE_PATCH_RANGE_WU = 2400;
@@ -55,13 +46,12 @@ function clonePlain(value) {
 export function ensureAftermathState(state) {
   if (!state) return null;
   if (!state.aftermathWrecks || typeof state.aftermathWrecks !== 'object') {
-    state.aftermathWrecks = { schemaVersion: STATE_VERSION, bySector: {}, causes: {}, ecology: {}, seed: seedOf(state) };
+    state.aftermathWrecks = { schemaVersion: STATE_VERSION, bySector: {}, causes: {}, seed: seedOf(state) };
   }
   const own = state.aftermathWrecks;
   own.schemaVersion = STATE_VERSION;
   if (!own.bySector || typeof own.bySector !== 'object' || Array.isArray(own.bySector)) own.bySector = {};
   if (!own.causes || typeof own.causes !== 'object' || Array.isArray(own.causes)) own.causes = {};
-  if (!own.ecology || typeof own.ecology !== 'object' || Array.isArray(own.ecology)) own.ecology = {};
   if (typeof own.seed !== 'number') own.seed = seedOf(state);
   return own;
 }
@@ -70,125 +60,6 @@ export function aftermathForSector(state, sectorId) {
   const own = ensureAftermathState(state);
   if (!own || !sectorId || !Array.isArray(own.bySector[sectorId])) return [];
   return own.bySector[sectorId].slice();
-}
-
-export function isPlayerWreckMarker(marker) {
-  return !!(marker && (marker.playerWreck === true || marker.kind === PLAYER_WRECK_KIND));
-}
-
-export function playerWreckMarker(state) {
-  const own = ensureAftermathState(state);
-  if (!own) return null;
-  const sectorIds = Object.keys(own.bySector);
-  for (let i = 0; i < sectorIds.length; i++) {
-    const list = own.bySector[sectorIds[i]];
-    if (!Array.isArray(list)) continue;
-    for (let j = 0; j < list.length; j++) {
-      if (isPlayerWreckMarker(list[j])) return list[j];
-    }
-  }
-  return null;
-}
-
-export function aftermathFieldId(sectorId, zoneId) {
-  return `aft:${sectorId || 'unknown'}:${zoneId || 'zone'}`;
-}
-
-export function isWreckEcologyInhabitant(entity, fieldId = null) {
-  const data = entity && entity.data;
-  if (!entity || entity.alive === false || !data) return false;
-  if (!data.wreckFieldId || !ECOLOGY_ROLES.includes(data.wreckEcologyRole)) return false;
-  return fieldId == null || data.wreckFieldId === fieldId;
-}
-
-export function wreckFieldEcology(state, fieldId) {
-  const own = ensureAftermathState(state);
-  if (!own || !fieldId || !own.ecology[fieldId]) return null;
-  return own.ecology[fieldId];
-}
-
-export function listWreckFieldInhabitants(state, fieldId = null) {
-  const out = [];
-  const list = state && state.entityList || [];
-  for (let i = 0; i < list.length; i++) {
-    const entity = list[i];
-    if (isWreckEcologyInhabitant(entity, fieldId)) out.push(entity);
-  }
-  return out;
-}
-
-export function countWreckFieldInhabitants(state, fieldId = null) {
-  return listWreckFieldInhabitants(state, fieldId).length;
-}
-
-function ecologySlotKey(fieldId, slotId) {
-  return `${fieldId}::${slotId}`;
-}
-
-function normalizeEcologyPos(input) {
-  if (!input || typeof input !== 'object') return null;
-  const x = Number(input.x);
-  const z = Number(input.z);
-  if (!Number.isFinite(x) || !Number.isFinite(z)) return null;
-  return { x, z };
-}
-
-function inhabitantOffset(seed, fieldId, slotId, role) {
-  const ang = (hash32(seed, fieldId, slotId, role, 'ang') % 360) * (Math.PI / 180);
-  const radius = 32 + (hash32(seed, fieldId, slotId, role, 'r') % 28);
-  return { x: Math.cos(ang) * radius, z: Math.sin(ang) * radius };
-}
-
-function secondEcologyRole(seed, fieldId) {
-  return (hash32(seed, fieldId, 'wreckEcologySecond') % 2) === 0 ? 'squatter' : 'trap';
-}
-
-function normalizeEcologySlot(input) {
-  if (!input || typeof input !== 'object') return null;
-  const role = ECOLOGY_ROLES.includes(input.role) ? input.role : null;
-  if (!role || !input.id) return null;
-  const status = input.status === 'gone' ? 'gone' : 'live';
-  return {
-    id: String(input.id),
-    role,
-    status,
-    spawnedAt: Number.isFinite(input.spawnedAt) ? input.spawnedAt : 0,
-  };
-}
-
-function normalizeEcologyField(input) {
-  if (!input || typeof input !== 'object' || !input.fieldId || !input.sectorId) return null;
-  const pos = normalizeEcologyPos(input.pos) || { x: 0, z: 0 };
-  const roster = (Array.isArray(input.roster) ? input.roster : [])
-    .map(normalizeEcologySlot)
-    .filter(Boolean)
-    .slice(0, WRECK_ECOLOGY_BUDGET);
-  const spent = Math.max(0, Math.floor(Number(input.spent) || roster.length));
-  const budget = Math.max(0, Math.min(WRECK_ECOLOGY_BUDGET, Math.floor(
-    Number.isFinite(input.budget) ? input.budget : Math.max(0, WRECK_ECOLOGY_BUDGET - spent),
-  )));
-  return {
-    fieldId: String(input.fieldId),
-    sectorId: String(input.sectorId),
-    zoneId: input.zoneId == null ? null : String(input.zoneId),
-    kind: typeof input.kind === 'string' ? input.kind : 'aftermath',
-    pos,
-    bornAt: Number.isFinite(input.bornAt) ? input.bornAt : 0,
-    inhabitedAt: Number.isFinite(input.inhabitedAt) ? input.inhabitedAt : null,
-    decayed: input.decayed === true,
-    budget,
-    spent,
-    roster,
-  };
-}
-
-function serializeEcology(ecology) {
-  const out = {};
-  for (const fieldId of Object.keys(ecology || {}).sort((a, b) => a.localeCompare(b))) {
-    const field = normalizeEcologyField(ecology[fieldId]);
-    if (field) out[fieldId] = field;
-  }
-  return out;
 }
 
 function seedOf(state) {
@@ -327,7 +198,6 @@ function poolForMarker(marker) {
 
 function aftermathLine(marker) {
   const zone = marker.zoneName || 'a local zone';
-  if (isPlayerWreckMarker(marker)) return `Your wreck and pod remain in ${zone}.`;
   const victim = marker.victimLabel || marker.victimClass || 'ship';
   const cause = marker.cause;
   if (cause && cause.actor) return `${victim} destroyed in ${zone}; evidence links ${cause.actor} to ${cause.motiveId}.`;
@@ -336,7 +206,6 @@ function aftermathLine(marker) {
 
 function newsLine(marker) {
   const zone = marker.zoneName || 'a local zone';
-  if (isPlayerWreckMarker(marker)) return `Your hull still drifts in ${zone}.`;
   const victim = marker.victimClass || 'ship';
   return `Aftermath reported in ${zone}: ${victim} wreckage now drifting on the lane.`;
 }
@@ -438,59 +307,6 @@ function makeMarker(state, payload, entity) {
   return marker;
 }
 
-function playerWreckMarkerId(state) {
-  return 'pwreck_' + hash32(seedOf(state), 'player_wreck').toString(36);
-}
-
-function makePlayerWreckMarker(state, payload, entity) {
-  const sectorId = sectorIdFrom(state, payload);
-  if (!sectorId) return null;
-  const pos = posFrom(payload, entity);
-  if (!pos) return null;
-  const local = globalToSectorLocalForSector(pos, sectorId);
-  const zone = zoneAt(sectorId, local.x, local.z);
-  const victimClass = victimClassFor(entity, payload);
-  const wreckClass = classForVictim(victimClass);
-  const cls = wreckClassById(wreckClass) || wreckClassById('fresh');
-  const marker = {
-    schemaVersion: STATE_VERSION,
-    markerId: playerWreckMarkerId(state),
-    sectorId,
-    zoneId: zone && zone.id || null,
-    zoneName: zone && (zone.name || zone.id) || 'open space',
-    zoneType: zone && zone.type || null,
-    zoneThreat: zone ? zoneThreat(zone) : 0,
-    pos,
-    victimId: state.playerId,
-    victimClass,
-    victimVel: boundedDriftVel(entity && entity.vel),
-    victimAngVel: boundedTumble(entity && entity.angVel),
-    victimMass: boundedVictimMass(entity && entity.mass),
-    victimRot: boundedPoseAngle(entity && entity.rot),
-    victimPitch: boundedPoseAngle(entity && entity.pitch),
-    victimBank: boundedPoseAngle(entity && entity.bank),
-    victimLabel: victimLabelFor(entity, payload) || 'Your Hull',
-    victimFactionId: entity && entity.factionId || payload && payload.factionId || null,
-    killerId: payload && payload.killerId != null ? payload.killerId : null,
-    tick: state.tick || 0,
-    t: Number(state.simTime || 0),
-    wreckClass: cls ? cls.id : 'fresh',
-    wreckClassLabel: cls ? cls.label : 'Your Hull',
-    source: 'player:death',
-    encounterId: PLAYER_WRECK_ENCOUNTER_ID,
-    encounterFingerprint: null,
-    motiveId: null,
-    freightIdentity: null,
-    cause: null,
-    headline: null,
-    structurePatch: null,
-    playerWreck: true,
-    kind: PLAYER_WRECK_KIND,
-  };
-  marker.salvagePool = initialPoolForMarker(marker);
-  return marker;
-}
-
 function trimCauses(causes) {
   const priority = { active: 5, offered: 4, open: 3, contained: 2, remedied: 1, exhausted: 0 };
   const list = Object.values(causes || {})
@@ -544,19 +360,8 @@ function rememberMarker(state, bus, marker, onEvicted = null) {
   }
   arr.unshift(marker);
   if (arr.length > MAX_PER_SECTOR) {
-    const evicted = [];
-    while (arr.length > MAX_PER_SECTOR) {
-      let idx = -1;
-      for (let i = arr.length - 1; i >= 0; i--) {
-        if (!isPlayerWreckMarker(arr[i])) {
-          idx = i;
-          break;
-        }
-      }
-      if (idx < 0) break;
-      evicted.push(arr.splice(idx, 1)[0]);
-    }
-    if (evicted.length && typeof onEvicted === 'function') onEvicted(evicted);
+    const evicted = arr.splice(MAX_PER_SECTOR);
+    if (typeof onEvicted === 'function') onEvicted(evicted);
   }
   if (bus && typeof bus.emit === 'function') {
     const headline = marker.headline || newsLine(marker);
@@ -614,25 +419,17 @@ function normalizeMarker(input) {
     headline: boundedIdentityText(input.headline),
     structurePatch: normalizeStructurePatch(input.structurePatch),
   };
-  if (input.playerWreck === true || input.kind === PLAYER_WRECK_KIND) {
-    marker.playerWreck = true;
-    marker.kind = PLAYER_WRECK_KIND;
-    if (!marker.encounterId) marker.encounterId = PLAYER_WRECK_ENCOUNTER_ID;
-  }
   const savedPool = normalizeSalvagePool(input.salvagePool);
   marker.salvagePool = savedPool == null ? initialPoolForMarker(marker) : savedPool;
   return marker;
 }
 
 function trimAndSort(markers) {
-  const normalized = markers.map(normalizeMarker).filter(Boolean);
-  const player = normalized.filter(isPlayerWreckMarker);
-  const rest = normalized
-    .filter((marker) => !isPlayerWreckMarker(marker))
+  return markers
+    .map(normalizeMarker)
+    .filter(Boolean)
     .sort((a, b) => (b.tick - a.tick) || (b.t - a.t) || String(a.markerId).localeCompare(String(b.markerId)))
-    .slice(0, Math.max(0, MAX_PER_SECTOR - player.length));
-  return [...player, ...rest].sort((a, b) => (b.tick - a.tick) || (b.t - a.t)
-    || String(a.markerId).localeCompare(String(b.markerId)));
+    .slice(0, MAX_PER_SECTOR);
 }
 
 export const aftermathWrecks = {
@@ -642,20 +439,12 @@ export const aftermathWrecks = {
     this.state = ctx && ctx.state;
     this.bus = ctx && ctx.bus;
     this.helpers = ctx && ctx.helpers || {};
-    this.registry = ctx && ctx.registry || null;
     this._spawned = new Map();
-    this._ecologySpawned = new Map();
     this._pendingOffers = new Map();
     this._saveRestoring = false;
     ensureAftermathState(this.state);
 
-    this._onKilled = (payload) => {
-      this._noteInhabitantGone(payload && payload.id);
-      this._recordKill(payload || {});
-    };
-    this._onPlayerDeath = (payload) => this._recordPlayerDeath(payload || {});
-    this._onDestroyed = (payload) => this._noteInhabitantGone(payload && payload.id);
-    this._onFieldSource = (payload) => this.registerWreckFieldSource(payload || {});
+    this._onKilled = (payload) => this._recordKill(payload || {});
     this._onSectorEnter = (payload) => this._spawnForSector(payload && payload.sectorId);
     this._onSectorExit = (payload) => this._clearLiveRefs(payload && payload.sectorId);
     this._onSalvageCompleted = (payload) => this._completeByEntity(payload || {});
@@ -676,9 +465,6 @@ export const aftermathWrecks = {
 
     if (this.bus && typeof this.bus.on === 'function') {
       this.bus.on('entity:killed', this._onKilled);
-      this.bus.on('player:death', this._onPlayerDeath);
-      this.bus.on('entity:destroyed', this._onDestroyed);
-      this.bus.on('wreckField:source', this._onFieldSource);
       this.bus.on('sector:enter', this._onSectorEnter);
       this.bus.on('sector:exit', this._onSectorExit);
       this.bus.on('salvage:completed', this._onSalvageCompleted);
@@ -699,20 +485,9 @@ export const aftermathWrecks = {
 
   newGame() {
     this._saveRestoring = false;
-    if (this.state) {
-      this.state.aftermathWrecks = {
-        schemaVersion: STATE_VERSION, bySector: {}, causes: {}, ecology: {}, seed: seedOf(this.state),
-      };
-    }
+    if (this.state) this.state.aftermathWrecks = { schemaVersion: STATE_VERSION, bySector: {}, causes: {}, seed: seedOf(this.state) };
     if (this._spawned) this._spawned.clear();
-    if (this._ecologySpawned) this._ecologySpawned.clear();
     if (this._pendingOffers) this._pendingOffers.clear();
-  },
-
-  update(_dt, state) {
-    const sectorId = state && state.world && state.world.currentSectorId;
-    if (!sectorId || this._saveRestoring) return;
-    this._syncEcologyForSector(sectorId);
   },
 
   _recordKill(payload) {
@@ -728,48 +503,7 @@ export const aftermathWrecks = {
     if (remembered) {
       this._stampNearbyStructurePatch(remembered, payload);
       const current = this.state && this.state.world && this.state.world.currentSectorId;
-      if (remembered.sectorId && remembered.sectorId === current) {
-        this._spawnForSector(remembered.sectorId);
-        this._syncEcologyForSector(remembered.sectorId);
-      }
-    }
-    return remembered;
-  },
-
-  _forgetPlayerWrecks() {
-    const own = ensureAftermathState(this.state);
-    if (!own) return;
-    for (const sectorId of Object.keys(own.bySector)) {
-      const before = own.bySector[sectorId] || [];
-      const after = before.filter((marker) => !isPlayerWreckMarker(marker));
-      if (after.length === before.length) continue;
-      if (this._spawned) {
-        for (const marker of before) {
-          if (isPlayerWreckMarker(marker) && marker.markerId) this._spawned.delete(marker.markerId);
-        }
-      }
-      own.bySector[sectorId] = after;
-    }
-  },
-
-  _recordPlayerDeath(payload) {
-    const entity = entityFor(this.state, this.state && this.state.playerId);
-    const marker = makePlayerWreckMarker(this.state, payload || {}, entity);
-    if (!marker) return null;
-    this._forgetPlayerWrecks();
-    marker.headline = newsLine(marker);
-    const remembered = rememberMarker(this.state, this.bus, marker, (evicted) => {
-      if (!this._spawned) return;
-      for (const item of evicted) {
-        if (item && item.markerId) this._spawned.delete(item.markerId);
-      }
-    });
-    if (remembered) {
-      const current = this.state && this.state.world && this.state.world.currentSectorId;
-      if (remembered.sectorId && remembered.sectorId === current) {
-        this._spawnForSector(remembered.sectorId);
-        this._syncEcologyForSector(remembered.sectorId);
-      }
+      if (remembered.sectorId && remembered.sectorId === current) this._spawnForSector(remembered.sectorId);
     }
     return remembered;
   },
@@ -977,11 +711,7 @@ export const aftermathWrecks = {
     // as orphaned, salvageable wrecks. The save:loaded edge below owns the one post-deserialize spawn.
     if (this._saveRestoring) return 0;
     if (!state || !sectorId || !this.helpers || typeof this.helpers.spawnEntity !== 'function') return 0;
-    const listed = aftermathForSector(state, sectorId);
-    const player = listed.filter(isPlayerWreckMarker);
-    const rest = listed.filter((marker) => !isPlayerWreckMarker(marker))
-      .slice(0, Math.max(0, MAX_SPAWNED_PER_SECTOR - player.length));
-    const markers = [...player, ...rest];
+    const markers = aftermathForSector(state, sectorId).slice(0, MAX_SPAWNED_PER_SECTOR);
     let count = 0;
     for (const marker of markers) {
       if (this._resolveBoundWreck(marker.markerId)) continue;
@@ -990,7 +720,6 @@ export const aftermathWrecks = {
       this._bindLiveMarker(marker, entity);
       count++;
     }
-    this._syncEcologyForSector(sectorId);
     return count;
   },
 
@@ -1038,16 +767,13 @@ export const aftermathWrecks = {
         loot: [],
         salvagePool: poolForMarker(marker),
         salvageTimeLeft: WRECK_SALVAGE_TIME,
-        scanLabel: isPlayerWreckMarker(marker) ? 'Your Hull' : (cls ? cls.scanLabel : 'Battle-scarred Hulk'),
+        scanLabel: cls ? cls.scanLabel : 'Battle-scarred Hulk',
         wreckClass: marker.wreckClass || 'battlefield',
-        wreckClassLabel: isPlayerWreckMarker(marker)
-          ? (marker.wreckClassLabel || 'Your Hull')
-          : (cls ? cls.label : marker.wreckClassLabel || 'Battlefield Wreck'),
-        playerWreck: isPlayerWreckMarker(marker),
+        wreckClassLabel: cls ? cls.label : marker.wreckClassLabel || 'Battlefield Wreck',
         wreckClassBlurb: cls ? cls.blurb : null,
         provenanceLine: line,
         provenance: {
-          source: isPlayerWreckMarker(marker) ? PLAYER_WRECK_KIND : 'battle-aftermath',
+          source: 'battle-aftermath',
           markerId: marker.markerId,
           sectorId: marker.sectorId,
           zoneId: marker.zoneId,
@@ -1078,7 +804,6 @@ export const aftermathWrecks = {
         this._writeBackAllBound();
         this._spawned.clear();
       }
-      if (this._ecologySpawned) this._ecologySpawned.clear();
       return;
     }
     const markers = aftermathForSector(this.state, sectorId);
@@ -1088,7 +813,6 @@ export const aftermathWrecks = {
       if (marker && this._spawned.has(marker.markerId)) this._writeBackBoundWreck(marker);
       this._spawned.delete(marker.markerId);
     }
-    this._clearEcologyLiveRefs(sectorId);
   },
 
   // Unbind/save-time marker refresh (never per-tick): the marker remembers the live body's current
@@ -1157,13 +881,7 @@ export const aftermathWrecks = {
       const markers = trimAndSort(Array.isArray(own.bySector[sectorId]) ? own.bySector[sectorId] : []);
       if (markers.length) bySector[sectorId] = markers;
     }
-    return {
-      schemaVersion: STATE_VERSION,
-      seed: own.seed,
-      bySector,
-      causes: trimCauses(own.causes),
-      ecology: serializeEcology(own.ecology),
-    };
+    return { schemaVersion: STATE_VERSION, seed: own.seed, bySector, causes: trimCauses(own.causes) };
   },
 
   deserialize(data) {
@@ -1171,7 +889,6 @@ export const aftermathWrecks = {
     own.seed = data && typeof data.seed === 'number' ? data.seed >>> 0 : seedOf(this.state);
     own.bySector = {};
     own.causes = trimCauses(data && data.causes);
-    own.ecology = serializeEcology(data && data.ecology);
     const bySector = data && data.bySector && typeof data.bySector === 'object' ? data.bySector : {};
     for (const sectorId of Object.keys(bySector)) {
       const markers = trimAndSort(Array.isArray(bySector[sectorId]) ? bySector[sectorId] : []);
@@ -1183,364 +900,12 @@ export const aftermathWrecks = {
       if (markers.length) own.bySector[sectorId] = markers;
     }
     if (this._spawned) this._spawned.clear();
-    if (this._ecologySpawned) this._ecologySpawned.clear();
     if (this._pendingOffers) this._pendingOffers.clear();
-  },
-
-  registerWreckFieldSource(source) {
-    const state = this.state;
-    const own = ensureAftermathState(state);
-    if (!own || !source || !source.fieldId || !source.sectorId) return null;
-    const pos = normalizeEcologyPos(source.pos);
-    if (!pos) return null;
-    const existing = own.ecology[source.fieldId];
-    if (existing) {
-      existing.pos = pos;
-      if (source.zoneId && !existing.zoneId) existing.zoneId = String(source.zoneId);
-      this._populateField(existing);
-      return existing;
-    }
-    const field = normalizeEcologyField({
-      fieldId: source.fieldId,
-      sectorId: source.sectorId,
-      zoneId: source.zoneId || null,
-      kind: source.kind || 'aftermath',
-      pos,
-      bornAt: Number.isFinite(source.bornAt) ? source.bornAt : (Number(state && state.simTime) || 0),
-      inhabitedAt: null,
-      decayed: false,
-      budget: WRECK_ECOLOGY_BUDGET,
-      spent: 0,
-      roster: [],
-    });
-    own.ecology[field.fieldId] = field;
-    this._populateField(field);
-    return field;
-  },
-
-  _syncEcologyForSector(sectorId) {
-    if (!sectorId || this._saveRestoring) return 0;
-    this._registerAftermathFields(sectorId);
-    const own = ensureAftermathState(this.state);
-    let live = 0;
-    for (const field of Object.values(own.ecology || {})) {
-      if (!field || field.sectorId !== sectorId) continue;
-      live += this._populateField(field);
-    }
-    return live;
-  },
-
-  _registerAftermathFields(sectorId) {
-    const markers = aftermathForSector(this.state, sectorId);
-    if (!markers.length) return;
-    const groups = new Map();
-    for (const marker of markers) {
-      if (!marker || !marker.zoneId) continue;
-      const key = aftermathFieldId(marker.sectorId, marker.zoneId);
-      const group = groups.get(key) || [];
-      group.push(marker);
-      groups.set(key, group);
-    }
-    for (const [fieldId, group] of groups) {
-      let bornAt = Infinity;
-      let pos = null;
-      for (const marker of group) {
-        const t = Number(marker.t);
-        if (Number.isFinite(t) && t < bornAt) bornAt = t;
-        if (!pos && marker.pos) pos = marker.pos;
-      }
-      if (!Number.isFinite(bornAt)) bornAt = Number(this.state && this.state.simTime) || 0;
-      this.registerWreckFieldSource({
-        fieldId,
-        sectorId,
-        zoneId: group[0].zoneId,
-        kind: 'aftermath',
-        pos,
-        bornAt,
-      });
-    }
-  },
-
-  _populateField(field) {
-    if (!field || this._saveRestoring) return 0;
-    const now = Number(this.state && this.state.simTime) || 0;
-    const age = now - (Number.isFinite(field.bornAt) ? field.bornAt : 0);
-    if (field.decayed || age >= WRECK_ECOLOGY_DECAY_S) {
-      this._decayField(field);
-      return 0;
-    }
-    if (age < WRECK_ECOLOGY_DAY_S) return 0;
-    if (!field.roster.length && field.spent === 0 && field.budget > 0 && !field.decayed) {
-      this._seedRoster(field, now);
-    }
-    return this._materializeRoster(field);
-  },
-
-  _seedRoster(field, now) {
-    const seed = seedOf(this.state);
-    const roles = ['scavenger', secondEcologyRole(seed, field.fieldId)];
-    field.roster = roles.slice(0, field.budget).map((role, index) => ({
-      id: `${role}:${index}`,
-      role,
-      status: 'live',
-      spawnedAt: now,
-    }));
-    field.spent = field.roster.length;
-    field.budget = 0;
-    field.inhabitedAt = now;
-    if (this.bus && typeof this.bus.emit === 'function') {
-      this.bus.emit('wreckEcology:seeded', {
-        fieldId: field.fieldId,
-        sectorId: field.sectorId,
-        zoneId: field.zoneId,
-        roles: field.roster.map((slot) => slot.role),
-        bornAt: field.bornAt,
-        inhabitedAt: field.inhabitedAt,
-      });
-    }
-  },
-
-  _materializeRoster(field) {
-    if (!field || !this.helpers || typeof this.helpers.spawnEntity !== 'function') return 0;
-    const current = this.state && this.state.world && this.state.world.currentSectorId;
-    if (field.sectorId !== current) return 0;
-    let live = 0;
-    for (const slot of field.roster) {
-      if (!slot || slot.status !== 'live') continue;
-      if (this._resolveEcologySlot(field, slot)) {
-        live += 1;
-        continue;
-      }
-      const entity = this._spawnInhabitant(field, slot);
-      if (!entity) continue;
-      this._bindEcologySlot(field, slot, entity);
-      live += 1;
-    }
-    return live;
-  },
-
-  _spawnInhabitant(field, slot) {
-    const seed = seedOf(this.state);
-    const offset = inhabitantOffset(seed, field.fieldId, slot.id, slot.role);
-    const pos = {
-      x: field.pos.x + offset.x,
-      z: field.pos.z + offset.z,
-    };
-    if (slot.role === 'scavenger') return this._spawnScavenger(field, pos);
-    if (slot.role === 'squatter') return this._spawnSquatter(field, pos);
-    if (slot.role === 'trap') return this._spawnTrap(field, pos);
-    return null;
-  },
-
-  _stampEcologyData(entity, field, role) {
-    if (!entity) return null;
-    const data = entity.data || (entity.data = {});
-    data.wreckFieldId = field.fieldId;
-    data.wreckEcologyRole = role;
-    data.wreckEcology = { fieldId: field.fieldId, role, sectorId: field.sectorId, zoneId: field.zoneId };
-    return entity;
-  },
-
-  _spawnScavenger(field, pos) {
-    const seed = seedOf(this.state);
-    const pick = hash32(seed, field.fieldId, 'scavengerArchetype') % ECOLOGY_SCAVENGER_ARCHETYPES.length;
-    const archetype = ECOLOGY_SCAVENGER_ARCHETYPES[pick];
-    const entity = this.helpers.spawnEntity({
-      type: 'ship',
-      team: 1,
-      pos: { x: pos.x, z: pos.z },
-      vel: { x: 0, z: 0 },
-      rot: 0,
-      radius: 8,
-      mass: 14,
-      hull: 48,
-      hullMax: 48,
-      factionId: 'faction_reach',
-      data: {
-        defId: archetype === 'reaver_pirate' ? 'ship_corsair' : 'ship_wasp',
-        shipClass: 'fighter',
-        trafficRole: 'scavenger',
-        ai: {
-          doctrine: 'scavenger',
-          archetype: 'reaver',
-          motive: 'wreck_scavenge',
-          engagementTrigger: 'wreck_field_claim',
-          zoneId: field.zoneId,
-          passive: true,
-        },
-      },
-    });
-    return this._stampEcologyData(entity, field, 'scavenger');
-  },
-
-  _spawnSquatter(field, pos) {
-    const pods = this.registry && this.registry.get && this.registry.get('survivorPod');
-    if (pods && typeof pods.spawnWreckSquatter === 'function') {
-      const entity = pods.spawnWreckSquatter({
-        fieldId: field.fieldId,
-        sectorId: field.sectorId,
-        zoneId: field.zoneId,
-        pos,
-        factionId: 'faction_reach',
-      });
-      return this._stampEcologyData(entity, field, 'squatter');
-    }
-    const entity = this.helpers.spawnEntity({
-      type: 'ship',
-      team: 1,
-      pos: { x: pos.x, z: pos.z },
-      vel: { x: 0, z: 0 },
-      rot: 0,
-      radius: 7,
-      mass: 16,
-      hull: 36,
-      hullMax: 36,
-      factionId: 'faction_reach',
-      data: {
-        defId: 'ship_wasp',
-        shipClass: 'fighter',
-        trafficRole: 'squatter',
-        ai: {
-          doctrine: 'scavenger',
-          archetype: 'reaver',
-          motive: 'wreck_squat',
-          engagementTrigger: 'wreck_field_claim',
-          zoneId: field.zoneId,
-          passive: true,
-        },
-      },
-    });
-    return this._stampEcologyData(entity, field, 'squatter');
-  },
-
-  _spawnTrap(field, pos) {
-    const placeMine = this.helpers && this.helpers.placeMine;
-    let entity = null;
-    if (typeof placeMine === 'function') {
-      entity = placeMine({
-        pos: { x: pos.x, z: pos.z },
-        team: 1,
-        factionId: 'faction_reach',
-        armDelayS: 0,
-        telegraph: false,
-      });
-    }
-    if (!entity) {
-      entity = this.helpers.spawnEntity({
-        type: 'mine',
-        pos: { x: pos.x, z: pos.z },
-        vel: { x: 0, z: 0 },
-        radius: 6,
-        mass: 8,
-        hull: 28,
-        hullMax: 28,
-        team: 1,
-        factionId: 'faction_reach',
-        data: {
-          kind: 'mine',
-          mine: true,
-          armed: true,
-          armedAt: 0,
-          triggerRadius: 55,
-        },
-      });
-    }
-    return this._stampEcologyData(entity, field, 'trap');
-  },
-
-  _bindEcologySlot(field, slot, entity) {
-    if (!field || !slot || !entity || !this._ecologySpawned) return false;
-    slot.status = 'live';
-    this._ecologySpawned.set(ecologySlotKey(field.fieldId, slot.id), entity.id);
-    if (this.bus && typeof this.bus.emit === 'function') {
-      this.bus.emit('wreckEcology:spawned', {
-        fieldId: field.fieldId,
-        slotId: slot.id,
-        role: slot.role,
-        entityId: entity.id,
-        sectorId: field.sectorId,
-        zoneId: field.zoneId,
-      });
-    }
-    return true;
-  },
-
-  _resolveEcologySlot(field, slot) {
-    if (!field || !slot || !this._ecologySpawned) return null;
-    const entityId = this._ecologySpawned.get(ecologySlotKey(field.fieldId, slot.id));
-    if (entityId == null) return null;
-    const entity = entityFor(this.state, entityId);
-    if (!isWreckEcologyInhabitant(entity, field.fieldId)) {
-      this._ecologySpawned.delete(ecologySlotKey(field.fieldId, slot.id));
-      return null;
-    }
-    return entity;
-  },
-
-  _noteInhabitantGone(entityId) {
-    if (entityId == null || !this._ecologySpawned) return false;
-    const own = ensureAftermathState(this.state);
-    for (const [key, liveId] of this._ecologySpawned) {
-      if (liveId !== entityId) continue;
-      this._ecologySpawned.delete(key);
-      const sep = key.indexOf('::');
-      const fieldId = key.slice(0, sep);
-      const slotId = key.slice(sep + 2);
-      const field = own.ecology[fieldId];
-      if (!field) return true;
-      const slot = (field.roster || []).find((row) => row && row.id === slotId);
-      if (slot) slot.status = 'gone';
-      return true;
-    }
-    return false;
-  },
-
-  _clearEcologyLiveRefs(sectorId) {
-    const own = ensureAftermathState(this.state);
-    if (!this._ecologySpawned) return;
-    for (const field of Object.values(own.ecology || {})) {
-      if (!field || (sectorId && field.sectorId !== sectorId)) continue;
-      for (const slot of field.roster || []) {
-        this._ecologySpawned.delete(ecologySlotKey(field.fieldId, slot.id));
-      }
-    }
-  },
-
-  _decayField(field) {
-    if (!field || field.decayed) {
-      if (field) field.budget = 0;
-      return 0;
-    }
-    field.decayed = true;
-    field.budget = 0;
-    let removed = 0;
-    for (const slot of field.roster || []) {
-      if (!slot || slot.status !== 'live') continue;
-      const entity = this._resolveEcologySlot(field, slot);
-      slot.status = 'gone';
-      if (entity) {
-        entity.alive = false;
-        removed += 1;
-      }
-      this._ecologySpawned.delete(ecologySlotKey(field.fieldId, slot.id));
-    }
-    if (this.bus && typeof this.bus.emit === 'function') {
-      this.bus.emit('wreckEcology:decayed', {
-        fieldId: field.fieldId,
-        sectorId: field.sectorId,
-        zoneId: field.zoneId,
-        removed,
-      });
-    }
-    return removed;
   },
 
   destroy() {
     if (this.bus && typeof this.bus.off === 'function') {
       if (this._onKilled) this.bus.off('entity:killed', this._onKilled);
-      if (this._onPlayerDeath) this.bus.off('player:death', this._onPlayerDeath);
-      if (this._onDestroyed) this.bus.off('entity:destroyed', this._onDestroyed);
-      if (this._onFieldSource) this.bus.off('wreckField:source', this._onFieldSource);
       if (this._onSectorEnter) this.bus.off('sector:enter', this._onSectorEnter);
       if (this._onSectorExit) this.bus.off('sector:exit', this._onSectorExit);
       if (this._onSalvageCompleted) this.bus.off('salvage:completed', this._onSalvageCompleted);
@@ -1557,13 +922,12 @@ export const aftermathWrecks = {
       if (this._onSaveLoaded) this.bus.off('save:loaded', this._onSaveLoaded);
       if (this._onSaveError) this.bus.off('save:error', this._onSaveError);
     }
-    this._onKilled = this._onPlayerDeath = this._onDestroyed = this._onFieldSource = this._onSectorEnter = this._onSectorExit = null;
+    this._onKilled = this._onSectorEnter = this._onSectorExit = null;
     this._onSalvageCompleted = this._onEncounterResolved = this._onDocked = null;
     this._onOfferBoarded = this._onMissionAccepted = this._onMissionCompleted = this._onMissionFailed = null;
     this._onNewGame = this._onSaveRestoring = this._onSaveLoaded = this._onSaveError = null;
     this._saveRestoring = false;
     if (this._spawned) this._spawned.clear();
-    if (this._ecologySpawned) this._ecologySpawned.clear();
     if (this._pendingOffers) this._pendingOffers.clear();
   },
 };

@@ -27,10 +27,6 @@ import {
   uniqueWreckForSource,
 } from '../data/uniqueWrecks.js';
 import { planEncounterShape } from './encounterDirector.js';
-import {
-  isPlayerWreckMarker,
-  PLAYER_WRECK_ENCOUNTER_ID,
-} from './aftermathWrecks.js';
 
 const VALID_PHASES = new Set(['rumored', 'fixed', 'decision', 'salvaged']);
 
@@ -200,36 +196,7 @@ export function normalizeUniqueWreckState(value, metaSeed) {
     wreckId: uniqueWreckById(receipt && receipt.wreckId) ? receipt.wreckId : null,
     t: Math.max(0, finite(receipt && receipt.t, 0)),
   }));
-  const playerWreck = normalizePlayerWreckRecord(input.playerWreck);
-  if (playerWreck) out.playerWreck = playerWreck;
   return out;
-}
-
-function normalizePlayerWreckRecord(input) {
-  if (!input || typeof input !== 'object') return null;
-  const markerId = typeof input.markerId === 'string' ? input.markerId : null;
-  const sectorId = typeof input.sectorId === 'string' ? input.sectorId : null;
-  if (!markerId || !sectorId) return null;
-  const pos = copyPoint(input.pos);
-  if (!Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return null;
-  const encounterId = typeof input.encounterId === 'string' && input.encounterId
-    ? input.encounterId
-    : PLAYER_WRECK_ENCOUNTER_ID;
-  return {
-    wreckId: 'player_wreck',
-    playerWreck: true,
-    markerId,
-    sectorId,
-    pos,
-    victimLabel: typeof input.victimLabel === 'string' ? input.victimLabel : 'Your Hull',
-    encounterId,
-    citedAt: Math.max(0, finite(input.citedAt, 0)),
-  };
-}
-
-export function playerWreckCitation(state) {
-  const own = state && state.player && state.player.uniqueWrecks;
-  return own && own.playerWreck ? clonePlain(own.playerWreck) : null;
 }
 
 function ensurePlayer(state) {
@@ -303,7 +270,6 @@ export const uniqueWrecks = {
     this._listen('band:bearingRequest', (payload) => this._onBandBearingRequest(payload));
     this._listen('encounter:resolved', (payload) => this._onEncounterResolved(payload));
     this._listen('entity:destroyed', (payload) => this._onEntityDestroyed(payload));
-    this._listen('aftermathWreck:recorded', (payload) => this._onPlayerWreckRecorded(payload));
   },
 
   _listen(event, handler) {
@@ -404,41 +370,6 @@ export const uniqueWrecks = {
     for (const record of Object.values(this._ensureState().bearings)) {
       if (record && record.phase === 'decision') this._publishDecision(record.wreckId, 'continue');
     }
-    if (this._ensureState().playerWreck) this._citePlayerWreckEncounter(this._ensureState().playerWreck);
-  },
-
-  _onPlayerWreckRecorded(payload) {
-    if (!isPlayerWreckMarker(payload)) return null;
-    const own = this._ensureState();
-    const record = normalizePlayerWreckRecord({
-      markerId: payload.markerId,
-      sectorId: payload.sectorId,
-      pos: payload.pos,
-      victimLabel: payload.victimLabel,
-      encounterId: payload.encounterId || PLAYER_WRECK_ENCOUNTER_ID,
-      citedAt: Math.max(0, finite(this.state.simTime, 0)),
-    });
-    if (!record) return null;
-    own.playerWreck = record;
-    return this._citePlayerWreckEncounter(record);
-  },
-
-  _citePlayerWreckEncounter(record) {
-    const citation = normalizePlayerWreckRecord(record);
-    if (!citation || !this.bus || typeof this.bus.emit !== 'function') return null;
-    const payload = {
-      wreckId: 'player_wreck',
-      playerWreck: true,
-      markerId: citation.markerId,
-      sectorId: citation.sectorId,
-      encounterId: citation.encounterId,
-      pos: copyPoint(citation.pos),
-      kind: 'player_wreck',
-      trigger: 'player_wreck_cited',
-      requestedAt: Math.max(0, finite(this.state.simTime, 0)),
-    };
-    this.bus.emit('uniqueWreck:encounterRequested', payload);
-    return payload;
   },
 
   _onNewsHeadline(payload) {
@@ -1128,25 +1059,7 @@ export const uniqueWrecks = {
       });
     }
     this._bindEntity(def, record, entity);
-    this._publishWreckFieldSource(def, record, entity);
     return entity;
-  },
-
-  _publishWreckFieldSource(def, record, entity) {
-    if (!def || !record || !this.bus || typeof this.bus.emit !== 'function') return null;
-    const pos = copyPoint(entity && entity.pos || record.exactPos || record.fixedPos);
-    if (!Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return null;
-    const payload = {
-      fieldId: `unique:${def.id}`,
-      sectorId: def.sectorId,
-      zoneId: (def.hazardContext && def.hazardContext.zoneId) || `unique:${def.id}`,
-      kind: 'unique',
-      wreckId: def.id,
-      pos,
-      bornAt: Math.max(0, finite(record.heardAtS, 0)),
-    };
-    this.bus.emit('wreckField:source', payload);
-    return payload;
   },
 
   _bindEntity(def, record, entity) {

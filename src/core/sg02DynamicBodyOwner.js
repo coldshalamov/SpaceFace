@@ -592,9 +592,6 @@ export class Sg02DynamicBodyOwner {
       stiffness: legacyRope || frameCoupler ? null : Math.max(0, finite(springState.lastStiffness, spring.K)),
       loadStiffness: legacyRope || frameCoupler ? null : Math.max(0, finite(springState.lastLoadStiffness, 0)),
       overloadRatio: legacyRope || frameCoupler ? null : Math.max(0, finite(springState.lastOverloadRatio, 0)),
-      storedEnergy: legacyRope || frameCoupler
-        ? 0
-        : Math.max(0, finite(springState.lastStoredEnergy, 0.5 * (spring && spring.K ? spring.K : 0) * stretch * stretch)),
       breakRequested: legacyRope ? false : !!springState.breakRequested,
       springState: legacyRope ? null : Object.freeze(cloneSpringState(springState)),
       sourceWorld: Object.freeze(source),
@@ -1545,7 +1542,6 @@ export class Sg02DynamicBodyOwner {
       state.lastImpulse = 0;
       state.lastRelativeSpeed = 0;
       state.lastYank = 0;
-      state.lastStoredEnergy = 0;
       return;
     }
 
@@ -1630,8 +1626,7 @@ export class Sg02DynamicBodyOwner {
       : 0;
     const tensionRating = finite(attachment.break.maxTension, Infinity);
     const loadRatio = Number.isFinite(tensionRating) && tensionRating > 0 ? force / tensionRating : 0;
-    state.breakRequested = loadRatio >= 1
-      || (usesElasticWhipSpring(spring) && geometricOverloadRatio >= 1);
+    state.breakRequested = loadRatio >= 1;
 
     const forceImpulse = force * this.fixedDt;
     const impulse = forceImpulse * clamp(finite(attachment.forceScale, 1), 0, 4);
@@ -1651,7 +1646,6 @@ export class Sg02DynamicBodyOwner {
     state.lastImpulse = forceImpulse;
     state.lastRelativeSpeed = relativeSpeed;
     state.lastYank = yank;
-    state.lastStoredEnergy = 0.5 * spring.K * stretch * stretch;
     state.lastOverloadRatio = Math.max(geometricOverloadRatio, loadRatio);
     state.phase = geometricOverloadRatio > 1 ? 'overload'
       : inCapture ? 'capture'
@@ -1860,10 +1854,6 @@ function usesFrameCoupler(spring) {
   return spring && spring.mode === 'frame_coupler';
 }
 
-function usesElasticWhipSpring(spring) {
-  return !!(spring && spring.K >= 240 && spring.K <= 280 && spring.zeta > 0 && spring.zeta < 0.4);
-}
-
 function createSpringState() {
   return {
     slackS: CAPTURE_SLACK_S,
@@ -1879,7 +1869,6 @@ function createSpringState() {
     lastYank: 0,
     lastTension: 0,
     lastImpulse: 0,
-    lastStoredEnergy: 0,
   };
 }
 
@@ -1899,7 +1888,6 @@ function normalizeSpringState(value = null) {
   state.lastYank = finite(value.lastYank);
   state.lastTension = Math.max(0, finite(value.lastTension));
   state.lastImpulse = Math.max(0, finite(value.lastImpulse));
-  state.lastStoredEnergy = Math.max(0, finite(value.lastStoredEnergy));
   return state;
 }
 
@@ -1919,7 +1907,6 @@ function cloneSpringState(value = null) {
     lastYank: state.lastYank,
     lastTension: state.lastTension,
     lastImpulse: state.lastImpulse,
-    lastStoredEnergy: state.lastStoredEnergy,
   };
 }
 

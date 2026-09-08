@@ -1,6 +1,5 @@
 // src/data/missions.js – mission system canonical data.
-// Exports: MISSION_TYPES (16), SET_PIECE_MISSIONS (5), AUTHORED_SET_PIECES (10),
-// STORY_BEATS (8), OFFER_MIX, MISSION_TUNING. Capital boss is its own type, not an 11th authored row.
+// Exports: MISSION_TYPES (10), SET_PIECE_MISSIONS (5), STORY_BEATS (8), OFFER_MIX, MISSION_TUNING.
 // Pure data, no imports.
 
 export const MISSION_TUNING = {
@@ -15,16 +14,12 @@ export const MISSION_TUNING = {
     cargo_delivery: 600, bulk_trade: 550, bounty_hunt: 110, mining_quota: 130,
     salvage_retrieval: 160, escort: 180, patrol_clear: 220, smuggling_run: 250,
     passenger_transport: 160, recon_scan: 140,
-    tow_recovery: 170, demolition: 200, rescue_under_fire: 210,
-    authored_set_piece: 220, capital_boss: 360,
   },
   RISK_MULT: [1.0, 1.3, 1.7, 2.2, 3.0],
   BASE_REP: {
     cargo_delivery: 3, bulk_trade: 3, bounty_hunt: 5, mining_quota: 2,
     salvage_retrieval: 3, escort: 4, patrol_clear: 5, smuggling_run: 4,
     passenger_transport: 2, recon_scan: 4,
-    tow_recovery: 3, demolition: 4, rescue_under_fire: 5,
-    authored_set_piece: 5, capital_boss: 6,
   },
   distDivisor: 2000,
   valueDivisor: 8000,
@@ -214,65 +209,13 @@ export const MISSION_TYPES = [
     constraints: { fValueIsScanTargets: true },
   },
   {
-    // PQ-152.00 — long tow. Headline is TOW, not fly-there. Two solutions: keep the slag core
-    // on the line into the yard, or sling it in with a throw / clean release.
-    type: 'tow_recovery', riskTierRange: [1, 3], chainable: true,
-    completionEvent: 'dock:docked@dest while latched (tow_in) OR massline:throw / clean release of the core (sling_in)',
-    rewardFormula: 'round(170 * (1 + distance/2000) * RISK_MULT[riskTier] * (1 + cargoValue/8000) * f_faction * f_time)',
-    timeFormula: 'round((distance/140 + 40) * slack)', taskTime: 40,
-    failureCondition: 'timer OR slag core destroyed',
-    constraints: { physicalVerb: 'tow' },
-  },
-  {
-    // PQ-152.00 — wrecking-ball demolition. Headline is KNOCK DOWN. Two solutions: put mass
-    // through the tower, or cut it down with guns.
-    type: 'demolition', riskTierRange: [1, 3], chainable: true,
-    completionEvent: 'tether:whipImpact / massline:throw on the tower (wrecking_ball) OR entity:killed (cut_down)',
-    rewardFormula: 'round(200 * (1 + distance/2000) * RISK_MULT[riskTier] * targetStrength * f_faction * f_time)',
-    timeFormula: 'round((distance/140 + 50) * slack)', taskTime: 50,
-    failureCondition: 'timer',
-    constraints: { physicalVerb: 'knock_down', fValueIsTargetStrength: true },
-  },
-  {
-    // PQ-152.00 — pod rescue under fire. Headline is PULL. Two solutions: tow a pod home through
-    // the field, or open a corridor then reel the group from stand-off.
-    type: 'rescue_under_fire', riskTierRange: [2, 4], chainable: false,
-    completionEvent: 'dock:docked@dest while latched to a pod (stage_tow) OR escorts down + tether:reel on a pod (corridor_pull)',
-    rewardFormula: 'round(210 * (1 + distance/2000) * RISK_MULT[riskTier] * targetStrength * f_faction * f_time)',
-    timeFormula: 'round((distance/140 + 70) * slack)', taskTime: 70,
-    failureCondition: 'timer OR all life pods destroyed',
-    constraints: { physicalVerb: 'pull', fValueIsTargetStrength: true },
-  },
-  {
-    // PQ-152.01 — ten authored physical set pieces. AUTHORED-ONLY, never procedurally rolled.
-    // Weight is structural zero the same way heist is: OFFER_MIX positional rows stay 10 long,
-    // named physical keys stay on those rows, and `_pickType` reads `weights[last] || 0`.
-    // `missions._syncAuthoredSetPieceOffers` is the only poster. heist_intercept stays last.
-    type: 'authored_set_piece', riskTierRange: [1, 3], chainable: false, proceduralWeight: 0,
-    completionEvent: 'physical method receipt (two reachable solutions per piece)',
-    rewardFormula: 'authored flat payout (AUTHORED_SET_PIECES.rewardCr)',
-    timeFormula: 'round((distance/140 + 60) * slack)', taskTime: 60,
-    failureCondition: 'timer OR the named physical target is lost',
-    constraints: { authoredOnly: true, physicalVerb: 'authored' },
-  },
-  {
-    // PQ-152.02 — capital boss. Own type + encounter, not an 11th AUTHORED_SET_PIECES row.
-    // Authored-only / structural zero. heist_intercept stays last.
-    type: 'capital_boss', riskTierRange: [2, 4], chainable: false, proceduralWeight: 0,
-    completionEvent: 'entity:killed on the capital (throw_the_capital from thrown mass, or outgun_the_capital)',
-    rewardFormula: 'authored flat payout (CAPITAL_BOSS.rewardCr)',
-    timeFormula: 'round((distance/140 + 80) * slack)', taskTime: 80,
-    failureCondition: 'timer OR the capital hull is lost without a player kill',
-    constraints: { authoredOnly: true, physicalVerb: 'throw' },
-  },
-  {
     // PQ-019C — the authored physical capsule heist. AUTHORED-ONLY, never procedurally rolled.
     //
     // Procedural weight is zero STRUCTURALLY rather than by a table entry: every OFFER_MIX row is
-    // 10 long (the original procedural columns). PQ-152.00's three types ride as *named* keys on
-    // the same row so the positional hunter/junction pins stay valid. This remains the last type,
-    // so `missions._pickType` reads `weights[last] || 0` = 0. `missions._syncHeistOffer` is the
-    // only thing that ever puts it on a board.
+    // 10 long and this is the 11th type, so `missions._pickType` reads `weights[10] || 0` = 0 for
+    // every station type. Because 0 does not change the weight total, adding this entry leaves the
+    // procedural offer RNG stream byte-identical. `missions._syncHeistOffer` is the only thing that
+    // ever puts it on a board.
     //
     // `chainable: false` keeps `_instanceFromOffer` from minting a chainNextSeed, so completing a
     // heist cannot auto-offer a procedural sequel. No `collateral`: see src/data/heistMission.js.
@@ -1040,470 +983,24 @@ export function validateSetPieceMissionCatalog(catalog = SET_PIECE_MISSIONS) {
   };
 }
 
-// Offer-mix weights by station type.
-// Positional columns stay 10 long and match the original TYPE_ORDER:
+// Offer-mix weights by station type (order matches MISSION_TYPES array above).
 // [cargo, trade, bounty, mining, salvage, escort, patrol, smuggling, passenger, recon]
-// PQ-152.00 physical types join the SAME row as named keys so hunter/junction length pins
-// (Charon / Tethys) keep their first-ten identity. `_pickType` reads named keys first.
 // Bounty column raised on civilian hubs/refineries so Hunter boards refresh with real writs
 // without waiting a full refreshSec idle beat (military already bounty-heavy).
-function withPhysicalMix(row, tow, demolition, rescue) {
-  row.tow_recovery = tow;
-  row.demolition = demolition;
-  row.rescue_under_fire = rescue;
-  return row;
-}
-
-export const PHYSICAL_MISSION_TYPES = Object.freeze([
-  'tow_recovery',
-  'demolition',
-  'rescue_under_fire',
-]);
-
-export const AUTHORED_SET_PIECE_TYPE = 'authored_set_piece';
-export const AUTHORED_SET_PIECE_SOURCE = 'authoredSetPiece';
-export const AUTHORED_SET_PIECE_HEADLINE = /^(Knock|Pull|Tow|Catch|Jam|Slip|Throw|Bowl|Yank|Feed)\b/;
-
-const AUTHORED_SET_PIECE_ROWS = [
-  {
-    id: 'wrecking_ball',
-    title: 'Knock the dead tower',
-    brief: 'Swing mass through the tower, or cut it down.',
-    physicalVerb: 'knock_down',
-    startStationId: 'station_forge',
-    destStationId: 'station_forge',
-    destSectorId: 'sector_vesta_forge',
-    factionId: 'faction_dmc',
-    riskTier: 2,
-    rewardCr: 2100,
-    collateralCr: 280,
-    durationS: 1800,
-    distance: 800,
-    twistClauseId: 'mass_on_target',
-    encounterId: 'set_piece_wrecking_ball',
-    methods: ['wrecking_ball', 'cut_down'],
-    primaryRole: 'demolition_tower',
-    methodHooks: {
-      wrecking_ball: { on: ['whip', 'throw'], role: 'demolition_tower' },
-      cut_down: { on: ['kill'], role: 'demolition_tower' },
-    },
-  },
-  {
-    id: 'pod_rescue',
-    title: 'Pull the pods off the hauler',
-    brief: 'Tow a pod home, or open a corridor and reel from stand-off.',
-    physicalVerb: 'pull',
-    startStationId: 'station_beltout',
-    destStationId: 'station_beltout',
-    destSectorId: 'sector_ceres_belt',
-    factionId: 'faction_dmc',
-    riskTier: 2,
-    rewardCr: 1980,
-    collateralCr: 260,
-    durationS: 1800,
-    distance: 700,
-    twistClauseId: 'clean_release',
-    encounterId: 'set_piece_pod_rescue',
-    methods: ['stage_tow', 'corridor_pull'],
-    primaryRole: 'life_pod',
-    methodHooks: {
-      stage_tow: { on: ['latch_dock'], role: 'life_pod' },
-      corridor_pull: { on: ['reel_clear'], role: 'life_pod', clearRole: 'rescue_escort' },
-    },
-  },
-  {
-    id: 'long_tow',
-    title: 'Tow the slag core',
-    brief: 'Keep the core on the line into the yard, or sling it in.',
-    physicalVerb: 'tow',
-    startStationId: 'station_beltout',
-    destStationId: 'station_ceres',
-    destSectorId: 'sector_ceres_belt',
-    factionId: 'faction_dmc',
-    riskTier: 1,
-    rewardCr: 1720,
-    collateralCr: 220,
-    durationS: 1800,
-    distance: 900,
-    twistClauseId: 'no_slack',
-    encounterId: 'set_piece_long_tow',
-    methods: ['tow_in', 'sling_in'],
-    primaryRole: 'slag_core',
-    methodHooks: {
-      tow_in: { on: ['latch_dock'], role: 'slag_core' },
-      sling_in: { on: ['throw_berth', 'release_berth'], role: 'slag_core' },
-    },
-  },
-  {
-    id: 'convoy_defence',
-    title: 'Catch the stolen cargo',
-    brief: 'Recatch the stripped pod, or drive the raiders off the lane.',
-    physicalVerb: 'catch',
-    startStationId: 'station_tethys',
-    destStationId: 'station_tethys',
-    destSectorId: 'sector_tethys_junction',
-    factionId: 'faction_mts',
-    riskTier: 2,
-    rewardCr: 2240,
-    collateralCr: 320,
-    durationS: 1800,
-    distance: 1100,
-    twistClauseId: 'mass_on_target',
-    encounterId: 'set_piece_convoy_defence',
-    methods: ['recatch_pods', 'drive_off'],
-    primaryRole: 'cargo_pod',
-    methodHooks: {
-      recatch_pods: { on: ['latch_dock'], role: 'cargo_pod' },
-      drive_off: { on: ['hostiles_clear'], role: 'convoy_raider' },
-    },
-  },
-  {
-    id: 'station_door_jam',
-    title: 'Jam the docking ring',
-    brief: 'Park the hulk on the approach, or swing it through the wedge.',
-    physicalVerb: 'jam',
-    startStationId: 'station_tethys',
-    destStationId: 'station_tethys',
-    destSectorId: 'sector_tethys_junction',
-    factionId: 'faction_scn',
-    riskTier: 2,
-    rewardCr: 2060,
-    collateralCr: 280,
-    durationS: 1800,
-    distance: 900,
-    twistClauseId: 'throw_it',
-    encounterId: 'set_piece_station_door_jam',
-    facilityRole: 'jam_hulk',
-    methods: ['park_the_hulk', 'swing_the_wedge'],
-    primaryRole: 'jam_hulk',
-    methodHooks: {
-      park_the_hulk: { on: ['throw_berth', 'latch_dock'], role: 'jam_hulk' },
-      swing_the_wedge: { on: ['whip'], role: 'jam_hulk' },
-    },
-  },
-  {
-    id: 'impound_break',
-    title: 'Slip the locked hull',
-    brief: 'Reel the cradle quiet, or put mass through the lock.',
-    physicalVerb: 'slip',
-    startStationId: 'station_smuggler',
-    destStationId: 'station_tethys',
-    destSectorId: 'sector_tethys_junction',
-    factionId: 'faction_quiet',
-    riskTier: 2,
-    rewardCr: 2480,
-    collateralCr: 360,
-    durationS: 1800,
-    distance: 1800,
-    twistClauseId: 'quiet_approach',
-    encounterId: 'set_piece_impound_break',
-    facilityRole: 'cradle_lock',
-    methods: ['slip_the_gap', 'breach_the_lock'],
-    primaryRole: 'cradle_lock',
-    methodHooks: {
-      slip_the_gap: { on: ['reel'], role: 'cradle_lock' },
-      breach_the_lock: { on: ['whip', 'throw'], role: 'cradle_lock' },
-    },
-  },
-  {
-    id: 'ace_duel',
-    title: 'Throw the ace off the lane',
-    brief: 'Put mass on the ace, or outgun the ace. No immunity.',
-    physicalVerb: 'throw',
-    startStationId: 'station_coalition',
-    destStationId: 'station_coalition',
-    destSectorId: 'sector_helios_prime',
-    factionId: 'faction_scn',
-    riskTier: 2,
-    rewardCr: 2360,
-    collateralCr: 340,
-    durationS: 1600,
-    distance: 700,
-    twistClauseId: 'throw_it',
-    encounterId: 'set_piece_ace_duel',
-    methods: ['throw_the_ace', 'outgun_the_ace'],
-    primaryRole: 'ace_pilot',
-    methodHooks: {
-      throw_the_ace: { on: ['whip', 'throw'], role: 'ace_pilot' },
-      outgun_the_ace: { on: ['kill'], role: 'ace_pilot' },
-    },
-  },
-  {
-    id: 'reef_clearance',
-    title: 'Bowl the mine reef',
-    brief: 'Bowl mass through the mines, or reel the line open.',
-    physicalVerb: 'bowl',
-    startStationId: 'station_veil',
-    destStationId: 'station_veil',
-    destSectorId: 'sector_veil_nebula',
-    factionId: 'faction_free',
-    riskTier: 2,
-    rewardCr: 2180,
-    collateralCr: 300,
-    durationS: 1800,
-    distance: 800,
-    twistClauseId: 'throw_it',
-    encounterId: 'set_piece_reef_clearance',
-    methods: ['bowl_the_chain', 'reel_the_line'],
-    primaryRole: 'reef_mine',
-    methodHooks: {
-      bowl_the_chain: { on: ['throw'], role: 'reef_mine' },
-      reel_the_line: { on: ['reel'], role: 'reef_mine' },
-    },
-  },
-  {
-    id: 'loud_heist',
-    title: 'Yank the vault hatch',
-    brief: 'Yank the hatch off its pins, or smash it with thrown mass.',
-    physicalVerb: 'yank',
-    startStationId: 'station_smuggler',
-    destStationId: 'station_tethys',
-    destSectorId: 'sector_tethys_junction',
-    factionId: 'faction_quiet',
-    riskTier: 2,
-    rewardCr: 2680,
-    collateralCr: 400,
-    durationS: 1800,
-    distance: 1800,
-    twistClauseId: 'weapons_cold',
-    encounterId: 'set_piece_loud_heist',
-    facilityRole: 'vault_hatch',
-    methods: ['yank_the_hatch', 'smash_the_door'],
-    primaryRole: 'vault_hatch',
-    methodHooks: {
-      yank_the_hatch: { on: ['reel', 'latch'], role: 'vault_hatch' },
-      smash_the_door: { on: ['whip', 'throw'], role: 'vault_hatch' },
-    },
-  },
-  {
-    id: 'ore_crusher',
-    title: 'Feed the crusher jaws',
-    brief: 'Throw the charge into the jaws, or cut the feed belt.',
-    physicalVerb: 'feed',
-    startStationId: 'station_forge',
-    destStationId: 'station_forge',
-    destSectorId: 'sector_vesta_forge',
-    factionId: 'faction_dmc',
-    riskTier: 1,
-    rewardCr: 1880,
-    collateralCr: 240,
-    durationS: 1600,
-    distance: 700,
-    twistClauseId: 'mass_on_target',
-    encounterId: 'set_piece_ore_crusher',
-    methods: ['feed_the_jaws', 'cut_the_belt'],
-    primaryRole: 'crusher_jaws',
-    methodHooks: {
-      feed_the_jaws: { on: ['throw'], role: 'crusher_jaws' },
-      cut_the_belt: { on: ['whip', 'kill'], role: 'crusher_belt' },
-    },
-  },
-];
-
-export const AUTHORED_SET_PIECES = AUTHORED_SET_PIECE_ROWS.map((row) => Object.freeze({
-  ...row,
-  methods: Object.freeze([...row.methods]),
-  methodHooks: Object.freeze(Object.fromEntries(
-    Object.entries(row.methodHooks).map(([method, hook]) => [method, Object.freeze({
-      ...hook,
-      on: Object.freeze([...hook.on]),
-    })]),
-  )),
-}));
-
-const AUTHORED_SET_PIECE_BY_ID = new Map(AUTHORED_SET_PIECES.map((row) => [row.id, row]));
-
-export function authoredSetPieceById(id) {
-  return AUTHORED_SET_PIECE_BY_ID.get(id) || null;
-}
-
-export function buildAuthoredSetPieceOffer(definition, epoch = 0) {
-  const def = typeof definition === 'string' ? authoredSetPieceById(definition) : definition;
-  if (!def) return null;
-  const fingerprint = `asp:${def.id}:${Math.max(0, Math.trunc(Number(epoch) || 0))}`;
-  return {
-    id: `offer_${fingerprint.replace(/[^a-zA-Z0-9_-]+/g, '_')}`,
-    type: AUTHORED_SET_PIECE_TYPE,
-    source: AUTHORED_SET_PIECE_SOURCE,
-    stationId: def.startStationId,
-    factionId: def.factionId,
-    reward_cr: def.rewardCr,
-    collateral_cr: def.collateralCr,
-    riskTier: def.riskTier,
-    destStationId: def.destStationId,
-    destSectorId: def.destSectorId,
-    distance: def.distance,
-    duration_s: def.durationS,
-    title: def.title,
-    brief: def.brief,
-    summary: def.brief,
-    stageId: def.id,
-    params: {
-      authoredSetPieceId: def.id,
-      physicalVerb: def.physicalVerb,
-      completionMethods: [...def.methods],
-      twistClauseId: def.twistClauseId,
-      encounterId: def.encounterId,
-      primaryRole: def.primaryRole,
-      facilityRole: def.facilityRole || null,
-      fValue: 1,
-      taskTime: 60,
-    },
-    expiresAtEpoch: null,
-    storyTag: null,
-    epochPosted: Math.max(0, Math.trunc(Number(epoch) || 0)),
-    cause: {
-      tag: 'pq152-authored-set-piece',
-      archetypeId: def.id,
-      encounterId: def.encounterId,
-      fingerprint,
-    },
-  };
-}
-
-export function validateAuthoredSetPieceCatalog(catalog = AUTHORED_SET_PIECES) {
-  const errors = [];
-  const rows = Array.isArray(catalog) ? catalog : [];
-  const ids = new Set();
-  if (rows.length !== 10) errors.push(`Expected 10 authored set pieces; found ${rows.length}.`);
-  for (const row of rows) {
-    const root = row && row.id || '<missing>';
-    if (!row || typeof row !== 'object') {
-      errors.push('Every authored set piece must be an object.');
-      continue;
-    }
-    if (!row.id || ids.has(row.id)) errors.push(`${root}: unique id required.`);
-    ids.add(row.id);
-    if (!AUTHORED_SET_PIECE_HEADLINE.test(row.title || '')) {
-      errors.push(`${root}: headline verb must be physical (${row.title}).`);
-    }
-    if (!Array.isArray(row.methods) || row.methods.length !== 2) {
-      errors.push(`${root}: exactly two solutions required.`);
-    }
-    if (!row.methodHooks || row.methods.some((method) => !row.methodHooks[method])) {
-      errors.push(`${root}: both methods need reachable hooks.`);
-    }
-    if (!row.startStationId || !String(row.startStationId).startsWith('station_')) {
-      errors.push(`${root}: canonical startStationId required.`);
-    }
-    if (row.startStationId === 'station_helios') {
-      errors.push(`${root}: do not post on Helios; 47-A owns that board.`);
-    }
-    if (!row.twistClauseId) errors.push(`${root}: twist clause required.`);
-    if (!row.encounterId) errors.push(`${root}: encounter id required.`);
-    if (!row.primaryRole) errors.push(`${root}: primary physical role required.`);
-  }
-  return { ok: errors.length === 0, errors, count: rows.length };
-}
-
-export const CAPITAL_BOSS_TYPE = 'capital_boss';
-export const CAPITAL_BOSS_SOURCE = 'capitalBoss';
-export const CAPITAL_BOSS_ENCOUNTER_ID = 'capital_boss_hulk';
-
-export const CAPITAL_BOSS = Object.freeze({
-  id: 'capital_boss',
-  title: 'Throw the capital down',
-  brief: 'Put mass through the heavy. Guns are the slow way. No immunity.',
-  physicalVerb: 'throw',
-  startStationId: 'station_coalition',
-  destStationId: 'station_coalition',
-  destSectorId: 'sector_helios_prime',
-  factionId: 'faction_scn',
-  riskTier: 2,
-  rewardCr: 4200,
-  collateralCr: 480,
-  durationS: 1800,
-  distance: 900,
-  twistClauseId: 'throw_it',
-  encounterId: CAPITAL_BOSS_ENCOUNTER_ID,
-  methods: Object.freeze(['throw_the_capital', 'outgun_the_capital']),
-  primaryRole: 'capital_hull',
-  subsystemRoles: Object.freeze({
-    thrusters: 'subsystem_drive',
-    turrets: 'subsystem_weapon',
-    bays: 'subsystem_tether_spool',
-  }),
-  methodHooks: Object.freeze({
-    throw_the_capital: Object.freeze({ on: Object.freeze(['whip', 'throw', 'kill']), role: 'capital_hull' }),
-    outgun_the_capital: Object.freeze({ on: Object.freeze(['kill']), role: 'capital_hull' }),
-  }),
-});
-
-export function buildCapitalBossOffer(definition = CAPITAL_BOSS, epoch = 0) {
-  const def = definition && definition.id ? definition : CAPITAL_BOSS;
-  const fingerprint = `cboss:${def.id}:${Math.max(0, Math.trunc(Number(epoch) || 0))}`;
-  return {
-    id: `offer_${fingerprint.replace(/[^a-zA-Z0-9_-]+/g, '_')}`,
-    type: CAPITAL_BOSS_TYPE,
-    source: CAPITAL_BOSS_SOURCE,
-    stationId: def.startStationId,
-    factionId: def.factionId,
-    reward_cr: def.rewardCr,
-    collateral_cr: def.collateralCr,
-    riskTier: def.riskTier,
-    destStationId: def.destStationId,
-    destSectorId: def.destSectorId,
-    distance: def.distance,
-    duration_s: def.durationS,
-    title: def.title,
-    brief: def.brief,
-    summary: def.brief,
-    stageId: def.id,
-    params: {
-      capitalBossId: def.id,
-      physicalVerb: def.physicalVerb,
-      completionMethods: [...def.methods],
-      twistClauseId: def.twistClauseId,
-      encounterId: def.encounterId,
-      primaryRole: def.primaryRole,
-      subsystemRoles: { ...def.subsystemRoles },
-      fValue: 1,
-      taskTime: 80,
-    },
-    expiresAtEpoch: null,
-    storyTag: null,
-    epochPosted: Math.max(0, Math.trunc(Number(epoch) || 0)),
-    cause: {
-      tag: 'pq152-capital-boss',
-      archetypeId: def.id,
-      encounterId: def.encounterId,
-      fingerprint,
-    },
-  };
-}
-
-export function validateCapitalBossCatalog(row = CAPITAL_BOSS) {
-  const errors = [];
-  if (!row || typeof row !== 'object') errors.push('Capital boss definition required.');
-  if (row && row.id !== 'capital_boss') errors.push('Capital boss id must stay capital_boss.');
-  if (row && row.encounterId !== CAPITAL_BOSS_ENCOUNTER_ID) {
-    errors.push('Capital boss encounter id mismatch.');
-  }
-  if (row && (!Array.isArray(row.methods) || row.methods.length !== 2)) {
-    errors.push('Capital boss needs exactly two solutions.');
-  }
-  if (row && row.startStationId === 'station_helios') {
-    errors.push('Do not post the capital boss on Helios.');
-  }
-  return { ok: errors.length === 0, errors };
-}
-
 export const OFFER_MIX = {
-  mining:       withPhysicalMix([3, 2, 2, 4, 2, 1, 1, 0, 1, 1], 3, 2, 1),
-  refinery:     withPhysicalMix([3, 2, 2, 4, 2, 1, 1, 0, 1, 1], 0, 0, 0),
-  fab:          withPhysicalMix([3, 2, 2, 2, 2, 1, 1, 0, 1, 1], 1, 3, 1),
-  trade_hub:    withPhysicalMix([4, 4, 2, 1, 1, 2, 1, 1, 3, 1], 0, 0, 0),
-  military:     withPhysicalMix([1, 1, 4, 0, 1, 2, 4, 0, 1, 2], 0, 0, 0),
-  research:     withPhysicalMix([2, 1, 1, 1, 2, 1, 1, 0, 1, 4], 1, 1, 2),
-  blackmarket:  withPhysicalMix([2, 1, 3, 2, 3, 1, 2, 2, 1, 2], 2, 2, 2),
+  mining:      [3, 2, 2, 4, 2, 1, 1, 0, 1, 1],
+  refinery:    [3, 2, 2, 4, 2, 1, 1, 0, 1, 1],
+  fab:         [3, 2, 2, 2, 2, 1, 1, 0, 1, 1],
+  trade_hub:   [4, 4, 2, 1, 1, 2, 1, 1, 3, 1],
+  military:    [1, 1, 4, 0, 1, 2, 4, 0, 1, 2],
+  research:    [2, 1, 1, 1, 2, 1, 1, 0, 1, 4],
+  blackmarket: [2, 1, 3, 2, 3, 1, 2, 2, 1, 2],
   // Charon's refinery remains an economic refinery; this mission-only profile gives its writ wall
   // the intended hunter identity without changing commodity roles, station art, or facility access.
-  // Physical columns stay 0 so the hunter-ratio pin is not diluted.
-  bounty_board: withPhysicalMix([1, 0, 7, 0, 4, 1, 5, 1, 0, 3], 0, 0, 0),
+  bounty_board:[1, 0, 7, 0, 4, 1, 5, 1, 0, 3],
   // Tethys is the freight-and-front junction: cargo, trade, convoy, patrol, passenger, and recon
   // work dominate its ordinary rolls while the physical station remains a normal trade hub.
-  // Physical columns stay 0 so the junction-ratio pin is not diluted.
-  contracts_hub: withPhysicalMix([5, 4, 2, 0, 1, 5, 3, 1, 3, 3], 0, 0, 0),
+  contracts_hub:[5, 4, 2, 0, 1, 5, 3, 1, 3, 3],
 };
 
 // 8-beat story spine FSM.

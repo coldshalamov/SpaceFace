@@ -25,7 +25,6 @@ import {
   renderSessionReportMarkdown,
   exportSessionReportJson,
 } from '../observability/sessionReport.js';
-import { projectStorySoFar } from './shipLedger.js';
 
 const STORAGE_KEY = 'sf_telemetry_v1';
 const SCHEMA_VERSION = 1;
@@ -576,33 +575,6 @@ export function createTelemetry(bus, state) {
     scheduleSave();
   });
 
-  // Session rhythm timeline (PQ-149.00). Live-only ring print: simTime, phase, dwellS.
-  sub('rhythm:phase', (p) => {
-    p = p || {};
-    const simTime = Number.isFinite(p.simTime) ? p.simTime : simNow();
-    const phase = typeof p.phase === 'string' ? p.phase : 'unknown';
-    const dwellS = Number.isFinite(p.dwellS) ? p.dwellS : 0;
-    pushRing('rhythm:phase', { simTime, phase, dwellS });
-  });
-
-  // Escalation seeds (PQ-149.01). Cause-cited future beats: delay, place, never on the player.
-  sub('escalation:seeded', (p) => {
-    p = p || {};
-    pushRing('escalation:seeded', {
-      simTime: Number.isFinite(p.seededAt) ? p.seededAt : simNow(),
-      cause: p.cause, beat: p.beat, causeId: p.causeId, delayS: p.delayS,
-      place: p.place ? { x: p.place.x, z: p.place.z, zoneId: p.place.zoneId } : null,
-    });
-  });
-  sub('escalation:arrived', (p) => {
-    p = p || {};
-    pushRing('escalation:arrived', {
-      simTime: Number.isFinite(p.arrivedAt) ? p.arrivedAt : simNow(),
-      cause: p.cause, beat: p.beat, causeId: p.causeId,
-      place: p.place ? { x: p.place.x, z: p.place.z, zoneId: p.place.zoneId } : null,
-    });
-  });
-
   // ----------------------------------------------------------------------------------------------
   // page-lifecycle flush — there is NO session-end gameplay event (see EVENT_TAXONOMY gaps), so we
   // lean on the browser to flush a final snapshot. These are browser listeners, not file edits.
@@ -717,10 +689,6 @@ export function createTelemetry(bus, state) {
     return ring.slice(ring.length - n);
   }
 
-  function getStorySoFar() {
-    return renderStorySoFarFromRing(ring);
-  }
-
   // Explicitly record a player verb activation (PQ-167 / PQ-173).
   function recordVerb(verb, amount = 1) {
     if (!verb) return;
@@ -793,7 +761,7 @@ export function createTelemetry(bus, state) {
   const api = {
     name: 'telemetry',
     getSessionStats, getCareerStats, getFunnel, getDeathHeatmap,
-    getRecentEvents, getStorySoFar, reset, dispose,
+    getRecentEvents, reset, dispose,
     recordVerb, getSessionReport, exportSessionReport,
     getAllSessions: () => readAllSessions().filter((s) => s && s.sessionId !== session.sessionId).concat([serializeSession()]),
     // live handles for dev inspection
@@ -805,33 +773,6 @@ export function createTelemetry(bus, state) {
     try { window.__SF_TELEMETRY__ = api; } catch (_err) { /* ignore */ }
   }
   return api;
-}
-
-const STORY_SO_FAR_ORDINARY = new Set(['work', 'travel', 'quiet']);
-
-/**
- * Blind story-so-far from the live rhythm / escalation ring. Same { doing, then, so, prose }
- * shape as the ledger projection. Does not read the sim.
- */
-export function renderStorySoFarFromRing(events) {
-  let phase = '';
-  let ordinary = '';
-  const escalations = [];
-  const rows = Array.isArray(events) ? events : [];
-  for (const event of rows) {
-    if (!event || typeof event !== 'object') continue;
-    const data = event.data && typeof event.data === 'object' ? event.data : {};
-    if (event.type === 'rhythm:phase' && typeof data.phase === 'string') {
-      phase = data.phase;
-      if (STORY_SO_FAR_ORDINARY.has(data.phase)) ordinary = data.phase;
-      continue;
-    }
-    if (event.type !== 'escalation:seeded' && event.type !== 'escalation:arrived') continue;
-    if (!data.cause || !data.beat) continue;
-    const at = Number.isFinite(data.simTime) ? data.simTime : 0;
-    escalations.push({ cause: data.cause, beat: data.beat, at, arrivedAt: at, seededAt: at });
-  }
-  return projectStorySoFar({ phase: ordinary || phase, escalations });
 }
 
 export default createTelemetry;
