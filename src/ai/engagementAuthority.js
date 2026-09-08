@@ -47,6 +47,10 @@ const DOCTRINE_FIRE_PHASES = Object.freeze({
   escort_screen: new Set(['screen_hold', 'shield_dart']),
 });
 const ROBBERY_ESCALATION_TRIGGERS = new Set(['explicit_refusal', 'ignored_demand', 'player_attack']);
+const CERES_ACTIVITY_AMBUSH_ENCOUNTER_ID = 'ceres:activity:throughline-ambush';
+const CERES_ACTIVITY_AMBUSH_ZONE_ID = 'zone_ceres_ambush';
+const CERES_ACTIVITY_AMBUSH_HAULER_SLOT = 'ceres_ambush_loaded_hauler';
+const CERES_ACTIVITY_AMBUSH_MARKER = 'ceresActivityAmbushPhase';
 const SCENARIO_47A_SCAVENGERS = new Map([
   ['scavenger_interceptor', Object.freeze({
     motive: 'break_claim_screen',
@@ -187,6 +191,36 @@ export function is47aScavengerCounterplayAuthorized(state, self, target) {
 }
 
 /**
+ * Authored Ceres Throughline ambush: the sprung zone cohort may treat the loaded
+ * pocket hauler as a fire target. One-way (pirate → hauler) so the civilian flee
+ * reflex does not get a new hostility oracle.
+ */
+export function isAuthorizedCeresAmbushPreyRelation(state, self, other) {
+  if (!state || !self || !other || self === other) return false;
+  if (self.alive === false || other.alive === false) return false;
+  if (self.type !== 'ship' || other.type !== 'ship') return false;
+  if (other.team !== 2) return false;
+  if (other.data?.activityActorSlotId !== CERES_ACTIVITY_AMBUSH_HAULER_SLOT) return false;
+  if (self.id === state.playerId || other.id === state.playerId) return false;
+
+  const ai = self.data && self.data.ai;
+  if (!ai || ai.passive === true) return false;
+  if (ai.zoneId !== CERES_ACTIVITY_AMBUSH_ZONE_ID || ai.squadId !== CERES_ACTIVITY_AMBUSH_ZONE_ID) return false;
+  if (ai[CERES_ACTIVITY_AMBUSH_MARKER] !== 'conflict') return false;
+  if (normalizeRoe(ai.roe) === RulesOfEngagement.HOLD_FIRE) return false;
+
+  const live = state.encounterDirector && state.encounterDirector.live
+    && state.encounterDirector.live[CERES_ACTIVITY_AMBUSH_ENCOUNTER_ID];
+  if (!live || live.phase !== 'conflict' || live.data?.ceresActivityAmbush !== true) return false;
+  if (!Array.isArray(live.ids) || !live.ids.includes(self.id)) return false;
+
+  const locked = (ai.activity && ai.activity.targetId != null)
+    ? ai.activity.targetId
+    : (self.data && self.data.combat && self.data.combat.targetId);
+  return locked == null || locked === other.id;
+}
+
+/**
  * Target-specific authority for the authored curtain-convoy crime.
  *
  * Team 2 remains neutral everywhere else. The relation is live only while the director owns the
@@ -266,6 +300,10 @@ export function isHostileForAI(state, self, other) {
       || selfAi.predationStatus === 'active')) {
     return isAuthorizedPredationRelation(state, self, other);
   }
+  // Throughline ambush prey is a civilian hauler. Team 2 is otherwise never hostile, so the
+  // sprung cohort would close to contact and never get a fire bit. This is the only sanctioned
+  // pirate→loaded-hauler hostility path, and only while the authored encounter is in conflict.
+  if (isAuthorizedCeresAmbushPreyRelation(state, self, other)) return true;
   // A named incident target outranks the coarse team number. This is the only sanctioned
   // same-team hostility path: lawful patrol response or direct self-defense, both explicit and
   // inspectable. It prevents team 1 from making patrols blind to team-1 raiders.

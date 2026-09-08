@@ -119,6 +119,7 @@ const CERES_ACTIVITY_AMBUSH_PREY_R = 900;
 const CERES_ACTIVITY_AMBUSH_HAULER_SLOT = 'ceres_ambush_loaded_hauler';
 const CERES_ACTIVITY_AMBUSH_MARKER = 'ceresActivityAmbushPhase';
 const CERES_ACTIVITY_AMBUSH_RESTORE = 'ceresActivityAmbushRestore';
+const CERES_ACTIVITY_AMBUSH_GUN_RANGE = 180;
 
 const CMDTY = new Map(COMMODITIES.map((c) => [c.id, c]));
 const LEGALITY_FINE_MULT = { restricted: 0.8, illegal: 1.2, contraband: 1.5 };
@@ -1072,14 +1073,30 @@ export const encounterDirector = {
         pos: e.pos,
         passive: !!passive,
       };
+      let doctrineLive = live;
+      let activityNow = this.now();
       if (!passive && live.data && live.data.ceresActivityAmbush === true) {
         const prey = findCeresLoadedHauler(this.state);
         const player = this.player();
-        if (prey && prey.id != null) spawn.targetId = prey.id;
-        else if (player && player.id != null) spawn.targetId = player.id;
+        if (prey && prey.id != null) {
+          spawn.targetId = prey.id;
+          // Hold gun range so the interceptor strike window opens before hull contact yeets the
+          // loaded hauler off the lane. Contact flee is owned elsewhere; we fire first.
+          spawn.preferredRange = ceresAmbushGunRange(e);
+        } else if (player && player.id != null) {
+          spawn.targetId = player.id;
+        }
+        const combat = e.data.combat || (e.data.combat = {});
+        if (spawn.targetId != null) combat.targetId = spawn.targetId;
+        // Script tick still flips live.phase after setPassive. Stamp conflict here so the
+        // activity reason is ambush_snare:conflict and the squad keeps the loaded hauler.
+        // The encounter telegraph already spent the no-fire second; start the activity then
+        // so the first strike window can fire at range instead of ramming.
+        doctrineLive = { ...live, phase: 'conflict' };
+        activityNow = Math.max(0, this.now() - 1);
       }
       setEntityDoctrine(e, {
-        activity: activityForEncounterSpawn(live, spawn, { now: this.now(), passive: !!passive }),
+        activity: activityForEncounterSpawn(doctrineLive, spawn, { now: activityNow, passive: !!passive }),
       });
       if (live.data && live.data.ceresActivityAmbush === true) {
         ai[CERES_ACTIVITY_AMBUSH_MARKER] = passive ? 'offer' : 'conflict';
@@ -1654,8 +1671,8 @@ export const encounterDirector = {
     if (!live || live.phase !== 'offer') return;
     if (!(live.data && live.data.ceresActivityAmbush === true)) return;
     if (!this._ceresAmbushPreyInReach()) return;
-    this.setPassive(live, false);
     live.phase = 'conflict';
+    this.setPassive(live, false);
     this.say(live, 'alert', 'ambush_spring');
   },
 
@@ -1756,6 +1773,19 @@ function findCeresLoadedHauler(state) {
     }
   }
   return null;
+}
+
+function ceresAmbushGunRange(entity) {
+  const weapons = entity && entity.data && entity.data.weapons;
+  let best = 0;
+  if (Array.isArray(weapons)) {
+    for (const weapon of weapons) {
+      const range = Number(weapon && weapon.range);
+      if (Number.isFinite(range) && range > best) best = range;
+    }
+  }
+  if (best > 0) return Math.max(140, Math.min(CERES_ACTIVITY_AMBUSH_GUN_RANGE, best * 0.4));
+  return CERES_ACTIVITY_AMBUSH_GUN_RANGE;
 }
 
 function isCeresActivityAmbushItem(item) {

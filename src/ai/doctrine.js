@@ -151,8 +151,22 @@ export function overrideDirectiveForWingOrder(directive, perception, freeze = Ob
   if (!directive || !directive.objective) return directive;
   if (directive.objective.kind === ObjectiveKind.RETREAT) return directive;
   const activity = normalizeActivity(perception && perception.self && perception.self.activity);
-  if (!activity || !String(activity.reason || '').startsWith('wing_order:')) return directive;
-  const order = String(activity.reason).slice('wing_order:'.length);
+  if (!activity) return directive;
+  const reason = String(activity.reason || '');
+  if (reason.startsWith('ambush_snare:') && activity.kind === ActivityKind.ATTACK_RUN && activity.targetId != null) {
+    return freeze({
+      ...directive,
+      focusTargetId: activity.targetId,
+      objective: freeze({ kind: ObjectiveKind.FOCUS, targetId: activity.targetId, reason }),
+      formation: freeze({
+        ...(directive.formation || {}),
+        breakFormation: true,
+        breakReason: 'ambush_snare_prey',
+      }),
+    });
+  }
+  if (!reason.startsWith('wing_order:')) return directive;
+  const order = reason.slice('wing_order:'.length);
   let kind = ObjectiveKind.REFORM;
   let targetId = null;
   if (order === 'attack') {
@@ -184,7 +198,9 @@ export function perceptionForWingOrderCombatDoctrine(perception, directive, free
   if (!perception || !directive || !directive.objective) return perception;
   const activity = normalizeActivity(perception.self && perception.self.activity);
   const exactTargetId = directive.objective.targetId;
-  if (!activity || activity.reason !== 'wing_order:attack' || exactTargetId == null) return perception;
+  if (!activity || exactTargetId == null) return perception;
+  const reason = String(activity.reason || '');
+  if (reason !== 'wing_order:attack' && !reason.startsWith('ambush_snare:')) return perception;
   const contacts = Array.isArray(perception.contacts) ? perception.contacts : [];
   const filtered = contacts.filter((contact) => contact && (contact.kind !== 'ship' || contact.id === exactTargetId));
   return freeze({ ...perception, contacts: freeze(filtered) });
