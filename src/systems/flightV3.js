@@ -293,7 +293,7 @@ export const flightV3 = {
         profile,
         strength: state.settings && state.settings.gameplay
           && state.settings.gameplay.orbitAssistStrength,
-        controlsBlocked: !playerFlightControlsActive(state, entity),
+        controlsBlocked: !playerFlightControlsActive(state, entity) || !!input.drawFlight,
       });
       if (orbitAssist.active) input = orbitAssist.input;
     }
@@ -646,8 +646,10 @@ function normalizeCraftInput(entity, raw = {}, runtime, state, isPlayer, dt = SG
     boost,
     boostPressed: boost && !previousBoost,
     boostReleased: !boost && previousBoost,
-    brake: !!(raw.brake || raw.fullStop || raw.flipBurn || (isPlayer && throttle < -0.55)),
+    brake: !!(raw.brake || raw.fullStop || raw.flipBurn || (isPlayer && !raw.drawFlight?.active && throttle < -0.55)),
     assistMode: resolveAssistMode(entity, state, raw),
+    ...(isPlayer && raw.drawFlight?.active && state.input?.autoFire
+      ? { drawFlight: raw.drawFlight } : {}),
   };
 }
 

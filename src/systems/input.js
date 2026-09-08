@@ -41,6 +41,7 @@
 // both KeyW and ArrowUp) so WASD-and-arrows both work out of the box. The settings layer stores an
 // array per action; the UI lets the player set a primary + keeps the arrow-cluster as a secondary
 // for movement so arrow-key players aren't stranded.
+import { DRAW_GESTURE_IDLE_MS, emptyDrawFlightPath, emptyDrawFlightGesture, recordDrawFlightGesture } from './drawFlightInput.js';
 import { createGamepad } from './gamepad.js';
 import { createTouch } from './touch.js';
 import { createMasslineInputGrammar } from './masslineInputGrammar.js';
@@ -55,10 +56,7 @@ const HELM_DEADBAND = 0.012;   // rad — below this the nose is "on" the cursor
 const BRAKE_SOFT_SPEED = 24;   // wu/s — counter-thrust ramps down below this for a smooth settle
 const PILOT_CARVE_TURN = 0.35; // pilot scheme: fraction of yaw blended in while strafing under
                                // forward thrust — the ship banks and carves instead of crab-sliding
-const AUTO_TARGET_GESTURE_IDLE_MS = 110;
-const AUTO_TARGET_PATH_MIN_SCREEN_PX = 8;
-const AUTO_TARGET_PATH_SOFT_MAX_POINTS = 256;
-const AUTO_TARGET_PATH_EDGE_MARGIN = 24;
+
 
 // ---- Travel Burn latch (atlas D5 / W1-5) ------------------------------------------------------
 // The kernel is PURE and only ever shapes the governor cap; the state machine, its timers and its
@@ -592,127 +590,17 @@ function writeAutoTargetVector(inp, worldX = 0, worldZ = 0, active = false) {
   return vector;
 }
 
-function neutralAutoTargetPath() {
-  return {
-    active: false,
-    drawing: false,
-    cursorX: 0,
-    cursorY: 0,
-    pointIndex: 1,
-    points: [],
-  };
-}
-
 function resetAutoTargetPath(host, state = host && host.state) {
-  host._autoTargetGesture = {
-    cursorX: 0,
-    cursorY: 0,
-    lastSampleX: 0,
-    lastSampleY: 0,
-    lastMs: -Infinity,
-    lastSimMs: -Infinity,
-  };
-  if (state && state.input) state.input.autoTargetPath = neutralAutoTargetPath();
-}
-
-function worldScreenPoint(host, point) {
-  const project = host.helpers && host.helpers.worldToScreen;
-  if (point && typeof project === 'function') {
-    const screen = project({ x: point.x, y: 0, z: point.z });
-    if (screen && Number.isFinite(screen.x) && Number.isFinite(screen.y)) {
-      return { x: screen.x, y: screen.y };
-    }
+  host._autoTargetGesture = emptyDrawFlightGesture();
+  if (state?.input) {
+    state.input.autoTargetPath = emptyDrawFlightPath();
+    if (state.input.drawFlight) delete state.input.drawFlight;
   }
-  return null;
-}
-
-function playerScreenOrigin(host, state, width, height) {
-  const player = state && state.entities && state.entities.get
-    ? state.entities.get(state.playerId)
-    : null;
-  return worldScreenPoint(host, player && player.pos) || { x: width * 0.5, y: height * 0.5 };
-}
-
-function screenPointToWorld(host, x, y, width, height) {
-  const raycast = host.helpers && host.helpers.raycastToPlane;
-  if (typeof raycast !== 'function') return null;
-  const point = raycast({
-    x: (x / Math.max(1, width)) * 2 - 1,
-    y: -(y / Math.max(1, height)) * 2 + 1,
-  });
-  if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.z)) return null;
-  return { x: point.x, z: point.z };
 }
 
 function recordAutoTargetPath(host, movementX, movementY, now) {
-  const state = host.state;
-  const inp = state && state.input;
-  if (!inp) return;
   const { width, height } = viewportSize();
-  const gesture = host._autoTargetGesture || (host._autoTargetGesture = {
-    cursorX: 0,
-    cursorY: 0,
-    lastSampleX: 0,
-    lastSampleY: 0,
-    lastMs: -Infinity,
-    lastSimMs: -Infinity,
-  });
-  // N2: sim-clock stamps keep path drawing deterministic (updateAutoTargetPathDrawing reads them
-  // for the cosmetic is-drawing pulse). A pause is NOT a gesture boundary: the trail is one
-  // continuous line for as long as the mode is on, and the virtual pen stays exactly where the
-  // hand left it. The old idle rule teleported the pen back to the trail's endpoint after 110 ms
-  // of stillness, silently gluing every stroke into one growing scribble with jump segments the
-  // player never drew — the "drawing all over the screen while the ship flies elsewhere" failure.
-  const simMs = simClockMs(state);
-  let route = inp.autoTargetPath;
-  if (!route || !route.active) {
-    const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
-    const origin = playerScreenOrigin(host, state, width, height);
-    const start = player && player.pos
-      ? { x: player.pos.x, z: player.pos.z }
-      : screenPointToWorld(host, origin.x, origin.y, width, height);
-    route = inp.autoTargetPath = neutralAutoTargetPath();
-    route.active = !!start;
-    route.drawing = !!start;
-    route.points = start ? [start] : [];
-    route.pointIndex = 1;
-    gesture.cursorX = origin.x;
-    gesture.cursorY = origin.y;
-    gesture.lastSampleX = origin.x;
-    gesture.lastSampleY = origin.y;
-  }
-
-  const marginX = Math.min(AUTO_TARGET_PATH_EDGE_MARGIN, width * 0.2);
-  const marginY = Math.min(AUTO_TARGET_PATH_EDGE_MARGIN, height * 0.2);
-  gesture.cursorX = Math.max(marginX, Math.min(width - marginX, gesture.cursorX + movementX));
-  gesture.cursorY = Math.max(marginY, Math.min(height - marginY, gesture.cursorY + movementY));
-  // Wall stamp: DOM device-priority only. Sim stamp: gameplay idle / path continuity (N2).
-  gesture.lastMs = now;
-  gesture.lastSimMs = simMs;
-  route.active = true;
-  route.drawing = true;
-  route.cursorX = gesture.cursorX;
-  route.cursorY = gesture.cursorY;
-
-  const sampleDistance = Math.hypot(
-    gesture.cursorX - gesture.lastSampleX,
-    gesture.cursorY - gesture.lastSampleY,
-  );
-  if (sampleDistance >= AUTO_TARGET_PATH_MIN_SCREEN_PX || route.points.length < 2) {
-    const point = screenPointToWorld(host, gesture.cursorX, gesture.cursorY, width, height);
-    if (point) {
-      route.points.push(point);
-      if (route.points.length > AUTO_TARGET_PATH_SOFT_MAX_POINTS && route.pointIndex > 1) {
-        const excess = route.points.length - AUTO_TARGET_PATH_SOFT_MAX_POINTS;
-        const completed = Math.max(0, route.pointIndex - 1);
-        const pruneCount = Math.min(excess, completed);
-        route.points.splice(0, pruneCount);
-        route.pointIndex -= pruneCount;
-      }
-      gesture.lastSampleX = gesture.cursorX;
-      gesture.lastSampleY = gesture.cursorY;
-    }
-  }
+  return recordDrawFlightGesture(host, movementX, movementY, now, width, height);
 }
 
 function updateAutoTargetPathDrawing(host, now) {
@@ -721,7 +609,7 @@ function updateAutoTargetPathDrawing(host, now) {
   if (!route || !route.active || !route.drawing || !gesture) return;
   // Prefer sim-clock stamp when present (N2); fall back to wall stamp from DOM path samples.
   const last = Number.isFinite(gesture.lastSimMs) ? gesture.lastSimMs : gesture.lastMs;
-  if (!Number.isFinite(last) || now - last > AUTO_TARGET_GESTURE_IDLE_MS) {
+  if (!Number.isFinite(last) || now - last > DRAW_GESTURE_IDLE_MS) {
     route.drawing = false;
   }
 }
@@ -829,6 +717,7 @@ export const input = {
       if (!Number.isFinite(e.clientX) || !Number.isFinite(e.clientY)) return;
       const geometry = centeredPointer();
       if (this.state && this.state.input && this.state.input.autoFire) {
+        if (shouldNeutralizeFlightInput(this.state, modalInputActive()) || isUiCommandTarget(e.target)) return;
         // Draw-to-fly records from the mousemove stream ONLY. Browsers dispatch a compatibility
         // mousemove for every pointermove, so accepting both counted each hand movement twice
         // whenever pointer lock was absent — the drawn trail ran at 2x the hand and landed where
@@ -925,6 +814,7 @@ export const input = {
     this._prevM1 = false;
     if (this._screen) this._screen.active = false;
     const committedInput = this.state && this.state.input;
+    if (committedInput?.autoFire || committedInput?.drawFlight) resetAutoTargetPath(this);
     if (committedInput && committedInput.pointerScreen) {
       committedInput.pointerScreen.active = false;
     }
@@ -1059,7 +949,7 @@ export const input = {
       this._screen.active = autoTargetPointer;
       this._ndc.x = 0;
       this._ndc.y = 0;
-      resetAutoTargetPath(this, state);
+      if (!autoTargetPointer || !inp.autoTargetPath?.active) resetAutoTargetPath(this, state);
       syncPointerScreen(state, this._screen.x, this._screen.y);
       inp.pointerScreen.active = autoTargetPointer;
       writeAutoTargetVector(inp);
@@ -1224,6 +1114,13 @@ export const input = {
       ? ((pilotProjection ? pilotProjection.brake : (down || kbdBrakeHeld)) || gpBrake)
       : (down || gpBrake || gpMoveZ < -0.55 || tpMoveZ < -0.55);
     inp.fire = kbdFire || gpFire || tpFire;
+    // Explicit device input interrupts the drawn route without switching off gun targeting.
+    // Do not infer this from the auto pilot's axes one system later: those include reverse
+    // components while turning and used to silently press the player's brake.
+    if (inp.autoFire || Object.prototype.hasOwnProperty.call(inp, 'drawFlightManual')) {
+      inp.drawFlightManual = !!(inp.brake || kbdTurn || kbdMoveX || kbdMoveZ
+        || gpTurn || gpMoveZ || tpTurn || tpMoveX || tpMoveZ);
+    }
     // Massline throw-arm (§3.3, flag massline2.throw): while latched to a throwable payload
     // (hostile ship/drone, fracture chunk, cargo mass), RMB is throwArm — mining yields and
     // masslineThrow owns the solution/auto-cut. While latched to a mineable asteroid or wreck,

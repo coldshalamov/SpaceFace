@@ -297,10 +297,12 @@ async function flyNamedStroke(seed, name, buildInk, turn, eventTrace, options) {
           stalled += 1;
         }
 
-        const arrived = orderedIdx >= nodes.length && speed < Math.max(8, hullWidthWu * 0.25);
-        const parkedNearEnd = endDist <= coverRadius && speed < Math.max(8, hullWidthWu * 0.25)
-          && orderedIdx >= nodes.length * 0.9;
-        if (arrived || parkedNearEnd) return false;
+        // Owner contract 2026-09-08: crossing the ink's exit completes the measured
+        // maneuver; it must NOT park. Measuring another 15 seconds of outbound cruise
+        // as "deviation" would punish the required continue-at-speed behavior.
+        const flownThrough = state.input.drawFlight?.exhausted === true
+          && orderedIdx >= nodes.length * COVERAGE_FLOOR;
+        if (flownThrough) return false;
         if (stalled > STALL_TICKS) return false;
       },
     });
