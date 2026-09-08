@@ -7,7 +7,10 @@
 // WHAT THIS IS NOT — and D9.8 is binding here: not a warp, not a tunnel, not a disguised loading
 // screen, not an instanced system. SpaceFace is ONE CONTINUOUS PLANE. A lane segment is a real route
 // edge in the same world the player is already flying. Search this file for a position assignment on
-// the player and you will find none: it never writes `player.pos`, `player.vel`, or any impulse.
+// the player and you will find none: it never writes `player.pos`. The Helios–Tethys LANE never
+// writes `player.vel` or any impulse. The Ceres sling ring is a local catapult toy: aligned bodies
+// inside the cylinder get along-axis acceleration through the physics-authority membrane and a
+// drive-ceiling lift. It does not teleport.
 //
 // ─── ZERO NEW PHYSICS. This is the point of the packet ────────────────────────────────────────────
 //
@@ -31,6 +34,11 @@
 //
 //   • The ambush. `encounterDirector.requestAuthoredEncounter` places the pirates. We choose a shape
 //     (`ambush_snare`, whose authored `zoneTypes` literally include `ambush_lane`) and an anchor.
+//
+//   • The sling ring. `queuePhysicsImpulse` is the same membrane dockingCorridor / fields already
+//     use (a·mass·dt, never a velocity write). The drive ceiling is lifted so the governor can
+//     hold 2× cruise; on exit we seed `travelDrive.cap` while the latch is not Engaged so the
+//     kernel's decay branch reports `physicsEarnedMomentum` and the speed is kept, not confiscated.
 //
 // ─── Why this system remains a read model, not a save writer ─────────────────────────────────────
 //
@@ -58,6 +66,7 @@
 import { travelFlag } from '../data/featureFlags.js';
 import { resolveTravelCeiling } from '../core/flight/propulsionKernel.js';
 import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
+import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { sectorLocalToGlobalForSector, sectorMembershipAtGlobal } from '../data/sectorCoordinates.js';
 import { LANE_HELIOS_TETHYS, buildLaneGeometry } from '../data/travelLaneRoutes.js';
 
@@ -90,15 +99,28 @@ function finite(v, fallback = 0) {
 // ─── PQ-028.00 first slice: one authored Ceres sling ring (geometry only) ─────────────────────────
 //
 // A short finite cylinder on the station_ceres Helios-approach corridor. Inside means the tube,
-// not a sphere around the ring. Aligned means forward along the axis. This slice authors the
-// ring and the three predicates. It does not write player.vel, does not multiply the
-// Helios–Tethys lane, and does not capture or boot Rapier.
+// not a sphere around the ring. Aligned means forward along the axis. Geometry is authored
+// here; the catapult applies along-axis impulse and a drive-ceiling lift to aligned bodies
+// inside the cylinder. It does not write player.pos and does not multiply the Helios–Tethys lane.
 
 const STATION_CERES_LOCAL = Object.freeze({ x: -1100, z: 620 });
 const CERES_HELIOS_GATE_LOCAL = Object.freeze({ x: 2866, z: -1910 });
 const SLING_RING_STANDOFF_WU = 320;
 const SLING_RING_LENGTH_WU = 96;
 const SLING_RING_RADIUS_WU = 48;
+/** Forward alignment required before the catapult spends impulse. Off-axis is PQ-028.01. */
+const SLING_ALIGN_DOT_MIN = 0.85;
+/** Exit bar: at least twice the hull's governed combat cruise. */
+const SLING_EXIT_MULT = 2;
+/** Along-axis catapult acceleration inside the tube (WU/s²). Impulse is a·mass·dt. */
+const SLING_ACCEL_WU_S2 = 240;
+/** Ramp override so a 96 WU tube can unlock the 2× ceiling before the ship exits. */
+const SLING_RAMP_MULT = 24;
+const SLING_HAULER_SPAWN_RANGE_WU = 4200;
+const SLING_HAULER_RECYCLE_ALONG_WU = 280;
+const SLING_HAULER_CRUISE_WU_S = 85;
+const SLING_HAULER_MASS = 55;
+const SLING_HAULER_RADIUS = 18;
 
 function unitXZ(dx, dz) {
   const length = Math.hypot(dx, dz);
@@ -160,6 +182,34 @@ export function alignmentDot(vel, axis) {
   const axisLen = Math.hypot(ax, az);
   if (!(axisLen > 0)) return 0;
   return (vx * ax + vz * az) / (speed * axisLen);
+}
+
+function bodyPlanarSpeed(entity) {
+  return Math.hypot(finite(entity && entity.vel && entity.vel.x), finite(entity && entity.vel && entity.vel.z));
+}
+
+function bodyAlongSpeed(entity) {
+  const axis = CERES_SLING_RING.axis;
+  return finite(entity && entity.vel && entity.vel.x) * axis.x
+    + finite(entity && entity.vel && entity.vel.z) * axis.z;
+}
+
+function bodyMass(entity) {
+  const authored = finite(entity && entity.physicsBody && entity.physicsBody.mass, 0);
+  if (authored > 0) return authored;
+  const mass = finite(entity && entity.mass, 0);
+  return mass > 0 ? mass : 1;
+}
+
+function resolveCombatCruise(entity, state) {
+  try {
+    const profile = resolvePropulsionProfile(entity, state);
+    const cruise = finite(profile && profile.combatSpeed, 0);
+    if (cruise > 0) return cruise;
+  } catch {
+    // Catalogue miss: fall through to the Hitch teaching-hull number.
+  }
+  return 95;
 }
 
 function playerEntity(state) {
@@ -280,6 +330,9 @@ export const travelLanes = {
     // ("never live encounters/squads/entity ids").
     this._beaconIds = new Map();   // beacon index -> entity id
     this._trafficIds = [];         // entity ids, index-aligned with the deterministic roster
+    this._slingHaulerId = null;
+    this._slingPlayerActive = false;
+    this._slingHaulerHeading = Math.atan2(CERES_SLING_AXIS.z, CERES_SLING_AXIS.x);
     this._lastPublishedStatus = {  // scalar change detection; avoids a signature string each tick
       laneId: null,
       inLane: null,
@@ -317,6 +370,8 @@ export const travelLanes = {
       recoveryBeaconPos: null,
       beaconsActive: 0,
       trafficActive: 0,
+      slingBoosted: false,
+      slingHaulerActive: 0,
     };
     this._recoveryPosScratch = { x: 0, z: 0 };
     this._driveProfileRef = null;
@@ -363,6 +418,8 @@ export const travelLanes = {
       bus.on('save:loaded', () => {
         this._beaconIds.clear();
         this._trafficIds.length = 0;
+        this._slingHaulerId = null;
+        this._slingPlayerActive = false;
         this._ambushRequested.clear();
         this._lastPublishedStatus.laneId = null;
         this._lastPublishedStatus.inLane = null;
@@ -430,6 +487,7 @@ export const travelLanes = {
     const boosting = !!boostLane && !disrupted;
 
     this._applyDriveModifier(state, player, boosting ? boostLane : null);
+    this._applySlingRing(dt, state, player);
     this._applyDisruption(state, disrupted);
     if (disrupted) this._requestAmbush(state, authoredFix.segment);
     this._updateBeacons(state, player);
@@ -495,6 +553,126 @@ export const travelLanes = {
     const rampMult = boostLane ? Math.max(1, finite(boostLane.rampMult, 1)) : 1;
     drive.ceiling = base * ceilingMult;
     drive.rampMult = rampMult;
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────────────────────────
+  // the sling ring — local catapult, impulse + ceiling, never a teleport
+  // ─────────────────────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Accelerate aligned bodies inside the Ceres tube and keep the exit speed as earned momentum.
+   *
+   * The Helios–Tethys lane stays a drive-ceiling modifier. This toy is the exception named in
+   * the file header: along-axis `queuePhysicsImpulse` (a·mass·dt) plus a ceiling lift so the
+   * governor can hold 2× cruise. On exit, if the travel latch is not Engaged, we seed `cap` so
+   * the kernel's decay branch reports `physicsEarnedMomentum` instead of clamping back to cruise.
+   */
+  _applySlingRing(dt, state, player) {
+    const inside = pointInsideSlingRing(player.pos);
+    const aligned = alignmentDot(player.vel, CERES_SLING_RING.axis) >= SLING_ALIGN_DOT_MIN;
+    const active = inside && aligned;
+    if (active) {
+      const cruise = resolveCombatCruise(player, state);
+      this._boostSlingBody(player, dt, cruise);
+      this._applySlingDriveCeiling(state, cruise);
+    } else if (this._slingPlayerActive) {
+      this._seedSlingEarnedCap(state, player);
+    }
+    this._slingPlayerActive = active;
+    this._updateSlingHauler(dt, state, player);
+  },
+
+  _applySlingDriveCeiling(state, cruise) {
+    const drive = state.input && state.input.travelDrive;
+    if (!drive || typeof drive !== 'object') return;
+    const target = Math.max(0, finite(cruise, 0)) * SLING_EXIT_MULT;
+    if (target > finite(drive.ceiling, 0)) drive.ceiling = target;
+    if (finite(drive.rampMult, 1) < SLING_RAMP_MULT) drive.rampMult = SLING_RAMP_MULT;
+  },
+
+  _seedSlingEarnedCap(state, player) {
+    const drive = state.input && state.input.travelDrive;
+    if (!drive || typeof drive !== 'object') return;
+    if (drive.state === 'engaged') return;
+    const speed = bodyPlanarSpeed(player);
+    if (!(speed > 0)) return;
+    drive.cap = Math.max(finite(drive.cap, 0), speed);
+  },
+
+  _boostSlingBody(entity, dt, cruise) {
+    if (!entity || !entity.pos || !(dt > 0)) return false;
+    if (!pointInsideSlingRing(entity.pos)) return false;
+    if (alignmentDot(entity.vel, CERES_SLING_RING.axis) < SLING_ALIGN_DOT_MIN) return false;
+    const target = Math.max(0, finite(cruise, 0)) * SLING_EXIT_MULT;
+    if (!(target > 0)) return false;
+    if (bodyAlongSpeed(entity) >= target * 1.05) return true;
+    const mass = bodyMass(entity);
+    const impulse = SLING_ACCEL_WU_S2 * mass * dt;
+    const axis = CERES_SLING_RING.axis;
+    queuePhysicsImpulse(entity, { x: axis.x * impulse, y: 0, z: axis.z * impulse });
+    return true;
+  },
+
+  /**
+   * One real collides:true hauler on the Ceres tube. Spawned at the ring, steered by ordinary
+   * V3 intent, accelerated by the same impulse as the player. Position is never written after
+   * spawn — closed-form lane ghosts stay on the Helios–Tethys chord.
+   */
+  _updateSlingHauler(dt, state, player) {
+    const spawnEntity = this.helpers && this.helpers.spawnEntity;
+    if (typeof spawnEntity !== 'function') return;
+    const entities = state.entities;
+    if (!entities || !entities.get) return;
+
+    const origin = CERES_SLING_RING.globalPos;
+    const dx = origin.x - finite(player.pos.x);
+    const dz = origin.z - finite(player.pos.z);
+    const near = dx * dx + dz * dz <= SLING_HAULER_SPAWN_RANGE_WU * SLING_HAULER_SPAWN_RANGE_WU;
+
+    const existingId = this._slingHaulerId;
+    const existing = existingId != null ? entities.get(existingId) : null;
+    if (existing && existing.alive !== false) {
+      if (ringAlong(existing.pos) > SLING_HAULER_RECYCLE_ALONG_WU) {
+        existing.alive = false;
+        this._slingHaulerId = null;
+      } else {
+        const data = existing.data || (existing.data = {});
+        const intent = data.intent || (data.intent = {});
+        intent.moveZ = 1;
+        intent.aimAngle = this._slingHaulerHeading;
+        this._boostSlingBody(existing, dt, SLING_HAULER_CRUISE_WU_S);
+        return;
+      }
+    } else if (existingId != null) {
+      this._slingHaulerId = null;
+    }
+
+    if (!near || this._slingHaulerId != null) return;
+
+    const axis = CERES_SLING_RING.axis;
+    const cruise = SLING_HAULER_CRUISE_WU_S;
+    const spawnAlong = 12;
+    const entity = spawnEntity({
+      type: 'ship',
+      pos: { x: origin.x + axis.x * spawnAlong, z: origin.z + axis.z * spawnAlong },
+      vel: { x: axis.x * cruise, z: axis.z * cruise },
+      rot: this._slingHaulerHeading,
+      radius: SLING_HAULER_RADIUS,
+      mass: SLING_HAULER_MASS,
+      collides: true,
+      hull: 200,
+      hullMax: 200,
+      propulsion: { id: 'drive_reaction_l' },
+      data: {
+        defId: 'ship_mule',
+        role: 'hauler',
+        parentType: 'sling_ring_traffic',
+        slingRingId: CERES_SLING_RING.id,
+        scanLabel: 'Ceres sling hauler',
+        intent: { moveZ: 1, aimAngle: this._slingHaulerHeading },
+      },
+    });
+    if (entity && entity.id != null) this._slingHaulerId = entity.id;
   },
 
   // ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -893,6 +1071,8 @@ export const travelLanes = {
       if (this._trafficIds[i] != null) trafficActive += 1;
     }
     status.trafficActive = trafficActive;
+    status.slingBoosted = this._slingPlayerActive === true;
+    status.slingHaulerActive = this._slingHaulerId != null ? 1 : 0;
     state.travelLanes = status;
 
     const last = this._lastPublishedStatus;
