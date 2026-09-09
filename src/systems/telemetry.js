@@ -25,6 +25,7 @@ import {
   renderSessionReportMarkdown,
   exportSessionReportJson,
 } from '../observability/sessionReport.js';
+import { projectStorySoFar } from './shipLedger.js';
 
 const STORAGE_KEY = 'sf_telemetry_v1';
 const SCHEMA_VERSION = 1;
@@ -716,6 +717,10 @@ export function createTelemetry(bus, state) {
     return ring.slice(ring.length - n);
   }
 
+  function getStorySoFar() {
+    return renderStorySoFarFromRing(ring);
+  }
+
   // Explicitly record a player verb activation (PQ-167 / PQ-173).
   function recordVerb(verb, amount = 1) {
     if (!verb) return;
@@ -788,7 +793,7 @@ export function createTelemetry(bus, state) {
   const api = {
     name: 'telemetry',
     getSessionStats, getCareerStats, getFunnel, getDeathHeatmap,
-    getRecentEvents, reset, dispose,
+    getRecentEvents, getStorySoFar, reset, dispose,
     recordVerb, getSessionReport, exportSessionReport,
     getAllSessions: () => readAllSessions().filter((s) => s && s.sessionId !== session.sessionId).concat([serializeSession()]),
     // live handles for dev inspection
@@ -800,6 +805,33 @@ export function createTelemetry(bus, state) {
     try { window.__SF_TELEMETRY__ = api; } catch (_err) { /* ignore */ }
   }
   return api;
+}
+
+const STORY_SO_FAR_ORDINARY = new Set(['work', 'travel', 'quiet']);
+
+/**
+ * Blind story-so-far from the live rhythm / escalation ring. Same { doing, then, so, prose }
+ * shape as the ledger projection. Does not read the sim.
+ */
+export function renderStorySoFarFromRing(events) {
+  let phase = '';
+  let ordinary = '';
+  const escalations = [];
+  const rows = Array.isArray(events) ? events : [];
+  for (const event of rows) {
+    if (!event || typeof event !== 'object') continue;
+    const data = event.data && typeof event.data === 'object' ? event.data : {};
+    if (event.type === 'rhythm:phase' && typeof data.phase === 'string') {
+      phase = data.phase;
+      if (STORY_SO_FAR_ORDINARY.has(data.phase)) ordinary = data.phase;
+      continue;
+    }
+    if (event.type !== 'escalation:seeded' && event.type !== 'escalation:arrived') continue;
+    if (!data.cause || !data.beat) continue;
+    const at = Number.isFinite(data.simTime) ? data.simTime : 0;
+    escalations.push({ cause: data.cause, beat: data.beat, at, arrivedAt: at, seededAt: at });
+  }
+  return projectStorySoFar({ phase: ordinary || phase, escalations });
 }
 
 export default createTelemetry;
