@@ -4,7 +4,10 @@ import test from 'node:test';
 import {
   advanceFixedTimestep,
   createSimulationRunner,
+  LATE_PRESENT_CATCHUP_STEPS,
+  leftoverSimStepCap,
   LOOP_FIXED_DT,
+  MAX_CATCHUP_STEPS,
 } from '../src/core/simulationRunner.js';
 import { createPresentationJournal } from '../src/core/presentationJournal.js';
 
@@ -175,6 +178,29 @@ test('prepareWithoutAdvance and interpolationAlpha retain the existing accumulat
   assert.ok(Math.abs(result.accumulator - state.accumulator) < 1e-12);
   assert.ok(Math.abs(runner.interpolationAlpha() - 0.375) < 1e-12);
   assert.equal(state.tick, 0);
+});
+
+test('leftover sim after a late present allows one extra catch-up step and keeps the 60 Hz ceiling', () => {
+  assert.equal(MAX_CATCHUP_STEPS, 4, 'flight catch-up ceiling must stay four 60 Hz steps');
+  assert.equal(LATE_PRESENT_CATCHUP_STEPS, 1);
+  assert.equal(leftoverSimStepCap({ latePresent: false }), MAX_CATCHUP_STEPS);
+  assert.equal(leftoverSimStepCap({ latePresent: true }), LATE_PRESENT_CATCHUP_STEPS);
+  assert.equal(leftoverSimStepCap({ latePresent: true, maxSteps: 4 }), 1);
+
+  const state = createState();
+  state.accumulator = LOOP_FIXED_DT * 0.25;
+  const runner = createSimulationRunner(state, createRegistry(state));
+  const leftover = runner.advance(LOOP_FIXED_DT * 10.25, 1, leftoverSimStepCap({ latePresent: true }));
+  assert.equal(leftover.stepCap, 1);
+  assert.equal(leftover.steps, 1);
+  assert.equal(leftover.shedBacklog, true);
+  assert.equal(leftover.shedSteps, 9);
+  assert.ok(Math.abs(leftover.accumulator - LOOP_FIXED_DT * 0.5) < 1e-12);
+
+  state.accumulator = 0;
+  const healthy = runner.advance(LOOP_FIXED_DT * 4.5, 1, leftoverSimStepCap({ latePresent: false }));
+  assert.equal(healthy.stepCap, MAX_CATCHUP_STEPS);
+  assert.equal(healthy.steps, 4);
 });
 
 test('per-call recovery cap executes one step, sheds whole debt, and preserves phase', () => {

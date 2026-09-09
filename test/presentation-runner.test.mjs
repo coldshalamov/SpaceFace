@@ -27,7 +27,7 @@ function createRaf() {
   };
 }
 
-test('a presentation overrun arms exactly one recovery-capped late callback', () => {
+test('a late present caps leftover sim on this callback and the next hitch', () => {
   const raf = createRaf();
   const state = {
     accumulator: 0,
@@ -37,9 +37,11 @@ test('a presentation overrun arms exactly one recovery-capped late callback', ()
     input: { actions: {} },
   };
   const caps = [];
+  const order = [];
   const simulationRunner = {
     fixedDt: LOOP_FIXED_DT,
     advance(frameDt, timeScale, cap) {
+      order.push('advance');
       caps.push(cap);
       return { steps: 0, shedBacklog: false, shedSteps: 0, accumulator: 0 };
     },
@@ -55,7 +57,10 @@ test('a presentation overrun arms exactly one recovery-capped late callback', ()
   let clockMs = 0;
   const presentationCosts = [40, 0, 0];
   const registry = {
-    renderUpdate() { clockMs += presentationCosts.shift() || 0; },
+    renderUpdate() {
+      order.push('render');
+      clockMs += presentationCosts.shift() || 0;
+    },
     get() { return null; },
   };
   const controller = startLoop(state, registry, {
@@ -72,9 +77,15 @@ test('a presentation overrun arms exactly one recovery-capped late callback', ()
   raf.flushOne(1000 + LOOP_FIXED_DT * 1000 + 50);
   raf.flushOne(1000 + LOOP_FIXED_DT * 1000 + 100);
 
-  assert.deepEqual(caps, [undefined, 1, undefined],
-    'external lateness alone cannot keep the recovery fuse armed');
-  assert.equal(controller.getDiagnostics().recoveryCappedFrameCount, 1);
+  assert.deepEqual(order, [
+    'render', 'advance',
+    'render', 'advance',
+    'render', 'advance',
+  ], 'each callback must present the last snapshot before leftover sim');
+  assert.deepEqual(caps, [1, 1, undefined],
+    'a late present caps leftover sim now; external lateness alone cannot keep the fuse armed');
+  assert.equal(controller.getDiagnostics().recoveryCappedFrameCount, 2);
+  assert.equal(controller.getDiagnostics().presentFirst, true);
   controller.destroy();
 });
 
@@ -124,19 +135,79 @@ test('PresentationRunner consumes completed ticks without owning simulation orde
   });
 
   raf.flushOne(1000 + LOOP_FIXED_DT * 1000 * 3.25);
-  assert.deepEqual(order, ['step:1', 'step:2', 'step:3', 'render:3']);
-  assert.equal(frames[0].completedTickCount, 3);
-  assert.equal(frames[0].completedTick.tick, 3);
-  assert.equal(frames[0].completedTick.inputSequence, 3);
-  assert.equal(controller.getDiagnostics().skippedPresentationTicks, 2);
+  assert.deepEqual(order, ['render:0', 'step:1', 'step:2', 'step:3'],
+    'a hitch must present the last snapshot before leftover catch-up');
+  assert.equal(frames[0].completedTickCount, 0);
+  assert.equal(frames[0].completedTick, null);
+  assert.equal(controller.getDiagnostics().skippedPresentationTicks, 0);
+  assert.equal(controller.getDiagnostics().stepsThisFrame, 3);
+  assert.equal(controller.getDiagnostics().lastLeftoverStepCap, 4);
 
   order.length = 0;
   raf.flushOne(1000 + LOOP_FIXED_DT * 1000 * 3.25 + 4);
   assert.deepEqual(order, ['render:3']);
-  assert.equal(frames[1].completedTickCount, 0);
-  assert.equal(frames[1].completedTick.tick, 3,
-    'presentation retains the latest completed-tick identity across no-step callbacks');
+  assert.equal(frames[1].completedTickCount, 3);
+  assert.equal(frames[1].completedTick.tick, 3);
+  assert.equal(frames[1].completedTick.inputSequence, 3,
+    'the next picture presents leftover ticks from the previous callback');
+  assert.equal(controller.getDiagnostics().skippedPresentationTicks, 2);
   assert.equal(raf.count(), 1);
+  controller.destroy();
+});
+
+test('a late hitch presents first and leftover sim takes at most one extra catch-up step', () => {
+  const raf = createRaf();
+  const state = {
+    accumulator: 0,
+    timeScale: 1,
+    tick: 0,
+    simTime: 0,
+    input: { actions: {} },
+  };
+  const caps = [];
+  const order = [];
+  const simulationRunner = {
+    fixedDt: LOOP_FIXED_DT,
+    maxSteps: 4,
+    advance(frameDt, timeScale, cap) {
+      order.push(`advance:${cap === undefined ? 'full' : cap}`);
+      caps.push(cap);
+      return { steps: cap === 1 ? 1 : 4, shedBacklog: cap === 1, shedSteps: cap === 1 ? 3 : 0, accumulator: 0 };
+    },
+    prepareWithoutAdvance() {
+      return { steps: 0, shedBacklog: false, shedSteps: 0, accumulator: 0 };
+    },
+    consumeLatestCompletedTick() { return 0; },
+    interpolationAlpha() { return 0; },
+    setLifecycleGeneration() {},
+    close() { return true; },
+    getDiagnostics() { return {}; },
+  };
+  let clockMs = 0;
+  const registry = {
+    renderUpdate() {
+      order.push('render');
+      clockMs += 40;
+    },
+    get() { return null; },
+  };
+  const controller = startLoop(state, registry, {
+    simulationRunner,
+    requestFrame: raf.requestFrame,
+    cancelFrame: raf.cancelFrame,
+    nowMs: () => 1000,
+    perfNow: () => clockMs,
+    visibilityTarget: null,
+    lifecyclePort: null,
+  });
+
+  raf.flushOne(1000 + LOOP_FIXED_DT * 1000 * 4);
+  assert.deepEqual(order, ['render', 'advance:1'],
+    'a late present must not run 4 leftover ticks before the next picture');
+  assert.deepEqual(caps, [1]);
+  assert.equal(controller.getDiagnostics().stepsThisFrame, 1);
+  assert.equal(controller.getDiagnostics().recoveryCappedFrameCount, 1);
+  assert.equal(controller.getDiagnostics().lastLeftoverStepCap, 1);
   controller.destroy();
 });
 
@@ -185,7 +256,7 @@ test('PresentationRunner retains an unacknowledged journal range across render f
         records: presentationFrame.journalRecordCount,
         valid: presentationFrame.journalValid,
       });
-      if (renderCalls === 1) throw new Error('intentional render failure');
+      if (renderCalls === 2) throw new Error('intentional render failure');
     },
     get() { return null; },
   };
@@ -198,18 +269,22 @@ test('PresentationRunner retains an unacknowledged journal range across render f
     lifecyclePort: null,
   });
 
+  raf.flushOne(1000 + LOOP_FIXED_DT * 1000 * 1.1);
+  assert.equal(frames.length, 1, 'the first picture is the last snapshot before leftover sim');
+  assert.equal(journal.getPendingCount(), 1);
+
   const originalError = console.error;
   console.error = () => {};
   try {
-    raf.flushOne(1000 + LOOP_FIXED_DT * 1000 * 1.1);
+    raf.flushOne(1000 + LOOP_FIXED_DT * 1000 * 1.1 + 4);
   } finally {
     console.error = originalError;
   }
   assert.equal(journal.getPendingCount(), 1);
-  assert.deepEqual(frames[0], { start: 0, end: 1, records: 1, valid: true });
+  assert.deepEqual(frames[1], { start: 0, end: 1, records: 1, valid: true });
 
-  raf.flushOne(1000 + LOOP_FIXED_DT * 1000 * 1.1 + 4);
-  assert.deepEqual(frames[1], frames[0]);
+  raf.flushOne(1000 + LOOP_FIXED_DT * 1000 * 1.1 + 8);
+  assert.deepEqual(frames[2], frames[1]);
   assert.equal(journal.getPendingCount(), 0);
   assert.equal(controller.getDiagnostics().journalRetainedFrameCount, 1);
   assert.equal(controller.getDiagnostics().journalAcknowledgementCount, 1);
@@ -257,6 +332,7 @@ test('consecutive render throws still schedule the next 3D frame', () => {
     console.error = originalError;
   }
   assert.equal(renderCalls, 5);
+  assert.ok(state.tick > 0, 'a draw throw must not skip leftover 60 Hz simulation');
   assert.equal(raf.count(), 1, 'the loop must still be alive after repeated draw failures');
   controller.destroy();
 });

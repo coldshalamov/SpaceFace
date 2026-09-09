@@ -336,7 +336,7 @@ test('clicking the frozen HUD restarts frames when the Electron window is still 
   h.controller.destroy();
 });
 
-test('a hide fired during simulation aborts presentation and rescheduling', () => {
+test('a hide fired during leftover sim keeps the last picture and aborts the next one', () => {
   const h = createHarness();
   h.registry.step = (dt, tickBoundary) => {
     h.state.tick++;
@@ -348,7 +348,8 @@ test('a hide fired during simulation aborts presentation and rescheduling', () =
 
   h.raf.flushOne(h.clock.advance(16.667));
 
-  assert.deepEqual(h.calls.map((call) => call.type), ['step']);
+  assert.deepEqual(h.calls.map((call) => call.type), ['render', 'step'],
+    'present-first still draws the last snapshot; hide during leftover sim cancels the next rAF');
   assert.equal(h.controller.isSuspended(), true);
   assert.equal(h.raf.count(), 0);
   h.controller.destroy();

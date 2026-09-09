@@ -4,6 +4,22 @@ import { createInputCommandSnapshotQueue } from './inputCommandSnapshot.js';
 
 export const LOOP_FIXED_DT = 1 / 60;
 export const MAX_CATCHUP_STEPS = 4;
+// After a late present, leftover sim may take at most one extra TABLE catch-up step.
+// This is a per-call leftover cap. It does not lower MAX_CATCHUP_STEPS or 60 Hz flight.
+export const LATE_PRESENT_CATCHUP_STEPS = 1;
+
+/**
+ * Step cap for leftover simulation after the last snapshot has already been presented.
+ * A late present sheds extra catch-up; a healthy present keeps the 60 Hz ceiling.
+ */
+export function leftoverSimStepCap({
+  latePresent = false,
+  maxSteps = MAX_CATCHUP_STEPS,
+} = {}) {
+  const configured = Math.max(1, Math.floor(Number.isFinite(maxSteps) ? maxSteps : MAX_CATCHUP_STEPS));
+  if (latePresent) return Math.min(configured, LATE_PRESENT_CATCHUP_STEPS);
+  return configured;
+}
 
 const DEFAULT_COMPLETED_TICK_CAPACITY = 8;
 

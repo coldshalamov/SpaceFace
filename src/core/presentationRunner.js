@@ -1,8 +1,13 @@
 // Presentation owner: requestAnimationFrame, interpolation, Browser/Electron lifecycle, and restore.
-// Simulation remains on the main thread, but presentation no longer owns fixed-step advancement.
+// Each rAF presents the last completed snapshot first. Leftover callback time then advances
+// simulation. After a late present, leftover catch-up is at most one extra TABLE step.
 import { ensurePerfRuntime, perfNow } from './perfRuntime.js';
 import { createRuntimeWitness, collectRuntimeWitnessSample } from './runtimeWitness.js';
-import { LOOP_FIXED_DT } from './simulationRunner.js';
+import {
+  LATE_PRESENT_CATCHUP_STEPS,
+  LOOP_FIXED_DT,
+  leftoverSimStepCap,
+} from './simulationRunner.js';
 import { mustRescheduleAfterFrame } from './frameLiveness.js';
 import { collectJournalPresentationEntities } from '../world/presentationSources.js';
 
@@ -273,6 +278,10 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     maxStepsObserved: 0,
     shedBacklogFrames: 0,
     recoveryCappedFrameCount: 0,
+    presentFirst: true,
+    lastPresentMs: 0,
+    lastLeftoverMs: 0,
+    lastLeftoverStepCap: 0,
     journalAvailable: presentationJournal !== null,
     journalRangeMergeCount: 0,
     journalRangeErrorCount: 0,
@@ -657,6 +666,81 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     resetPendingJournal();
   }
 
+  function presentLastCompletedSnapshot(frameDt, restoring, perf, fixedDt) {
+    const completedTickCount = simulationRunner.consumeLatestCompletedTick(latestCompletedTick);
+    if (completedTickCount > 0) hasCompletedTick = true;
+    diagnostics.completedTicksConsumed += completedTickCount;
+    if (completedTickCount > 1) diagnostics.skippedPresentationTicks += completedTickCount - 1;
+
+    const rebuiltJournal = rebuildJournalIfNeeded();
+    if (!rebuiltJournal && presentationJournal?.needsRebuild?.() !== true
+      && completedTickCount > 0) {
+      mergeJournalRange(latestCompletedTick.journalStart, latestCompletedTick.journalEnd);
+    }
+
+    const alpha = simulationRunner.interpolationAlpha();
+    presentationFrame.sequence++;
+    presentationFrame.frameDt = frameDt;
+    if (state && state.render) state.render.lastPresentDtMs = frameDt * 1000;
+    presentationFrame.alpha = alpha;
+    presentationFrame.lifecycleState = lifecycleState;
+    presentationFrame.lifecycleGeneration = lifecycleGeneration;
+    presentationFrame.completedTickCount = completedTickCount;
+    presentationFrame.completedTick = hasCompletedTick ? latestCompletedTick : null;
+    populateJournalFrame();
+    const presentationStart = measureNow();
+    let presentationAccepted = false;
+    let presentationMs = 0;
+    try {
+      presentationAccepted = registry.renderUpdate(alpha, frameDt, presentationFrame) !== false;
+    } finally {
+      presentationMs = measureNow() - presentationStart;
+      diagnostics.lastPresentMs = presentationMs;
+      perf.recordPresentationFrame?.(presentationMs);
+      previousPresentationOverrun = !restoring && presentationMs > fixedDt * 2000;
+    }
+    diagnostics.renderUpdates++;
+    diagnostics.consecutiveFrameErrors = 0;
+    if (diagnostics.presentationStalled) {
+      diagnostics.presentationStalled = false;
+      console.warn('[loop] presentation recovered after '
+        + `${diagnostics.presentationStallFrames || 0} frozen frame(s)`);
+      diagnostics.presentationStallFrames = 0;
+      frame._errs = 0;
+    }
+    if (presentationJournal?.isClosed?.() === true) resetPendingJournal();
+    else if (presentationAccepted) acknowledgePresentedJournal();
+    else if (hasPendingJournal) diagnostics.journalRetainedFrameCount++;
+    return presentationMs;
+  }
+
+  function advanceLeftoverSimulation(frameDt, restoring, leftoverStepCap, perf) {
+    const simFrameStart = measureNow();
+    const stepResult = restoring
+      ? simulationRunner.prepareWithoutAdvance()
+      : simulationRunner.advance(frameDt, state.timeScale, leftoverStepCap);
+    if (leftoverStepCap === LATE_PRESENT_CATCHUP_STEPS) diagnostics.recoveryCappedFrameCount++;
+
+    if (!restoring && postRestoreFramePending) {
+      diagnostics.postRestoreFrameCount++;
+      diagnostics.lastPostRestoreFrameDt = frameDt;
+      diagnostics.postRestoreMaxStepsObserved = Math.max(
+        diagnostics.postRestoreMaxStepsObserved,
+        stepResult.steps,
+      );
+      if (stepResult.shedBacklog) diagnostics.postRestoreShedBacklogCount++;
+      postRestoreFramePending = false;
+    }
+
+    diagnostics.stepsThisFrame = stepResult.steps;
+    diagnostics.maxStepsObserved = Math.max(diagnostics.maxStepsObserved, stepResult.steps);
+    if (stepResult.shedBacklog) diagnostics.shedBacklogFrames++;
+    perf.recordSimFrame(measureNow() - simFrameStart);
+    perf.recordLoop(stepResult.steps, stepResult.shedBacklog, state.accumulator, stepResult.shedSteps);
+    perf.tier1?.recordStepsThisFrame(stepResult.steps);
+    return stepResult;
+  }
+
   function frame(now) {
     frameHandle = null;
     if (destroyed || suspended || !isPresentingState(lifecycleState)) return;
@@ -686,98 +770,51 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       // case is a no-op — a throw here would escape into the rAF loop's catch and be logged
       // every frame (handoff §9 trap 8).
       perf.tier1?.sampleHeap(globalThis.performance?.memory?.usedJSHeapSize);
+      const fixedDt = Number.isFinite(simulationRunner.fixedDt)
+        ? simulationRunner.fixedDt
+        : LOOP_FIXED_DT;
+      const frameBudgetMs = fixedDt * 1000;
       perf.beginFrame(
         frameDt,
         callbackStart,
         now,
-        (Number.isFinite(simulationRunner.fixedDt) ? simulationRunner.fixedDt : LOOP_FIXED_DT) * 1000,
+        frameBudgetMs,
       );
-      const simFrameStart = measureNow();
-      const fixedDt = Number.isFinite(simulationRunner.fixedDt)
-        ? simulationRunner.fixedDt
-        : LOOP_FIXED_DT;
-      const recoveryStepCap = recoverFromPresentationOverrun && frameDt > fixedDt * 2
-        ? 1
-        : undefined;
-      const stepResult = restoring
-        ? simulationRunner.prepareWithoutAdvance()
-        : simulationRunner.advance(frameDt, state.timeScale, recoveryStepCap);
-      if (recoveryStepCap === 1) diagnostics.recoveryCappedFrameCount++;
 
-      if (!restoring && postRestoreFramePending) {
-        diagnostics.postRestoreFrameCount++;
-        diagnostics.lastPostRestoreFrameDt = frameDt;
-        diagnostics.postRestoreMaxStepsObserved = Math.max(
-          diagnostics.postRestoreMaxStepsObserved,
-          stepResult.steps,
-        );
-        if (stepResult.shedBacklog) diagnostics.postRestoreShedBacklogCount++;
-        postRestoreFramePending = false;
-      }
-
-      diagnostics.stepsThisFrame = stepResult.steps;
-      diagnostics.maxStepsObserved = Math.max(diagnostics.maxStepsObserved, stepResult.steps);
-      if (stepResult.shedBacklog) diagnostics.shedBacklogFrames++;
-      perf.recordSimFrame(measureNow() - simFrameStart);
-      perf.recordLoop(stepResult.steps, stepResult.shedBacklog, state.accumulator, stepResult.shedSteps);
-      // perfRuntime keeps a max and a multi-step frame count; a histogram is what distinguishes
-      // "occasionally 2 steps" from "routinely 4", and only the latter means the sim is starving
-      // everything downstream.
-      perf.tier1?.recordStepsThisFrame(stepResult.steps);
-
-      // A lifecycle event may synchronously fire from a system step. Do not submit a frame after it
-      // has transferred ownership to a non-presenting state or a newly scheduled restore callback.
-      // Do not `return` here: that used to skip the trailing schedule() and leave the 3D canvas
-      // frozen on the last picture while the HTML HUD still accepted input.
+      // Present the last completed snapshot first so a hitch does not spend 2–4 ticks before
+      // the next picture. Leftover callback time then goes to simulation. A draw throw must
+      // not skip leftover sim or the 60 Hz clock stalls while the HUD keeps moving.
+      let presentationMs = 0;
+      let presentationError = null;
       const skipPresentation = destroyed || suspended
         || (!restoring && lifecycleState === LOOP_LIFECYCLE_STATES.RESTORING);
       if (!skipPresentation) {
-        const completedTickCount = simulationRunner.consumeLatestCompletedTick(latestCompletedTick);
-        if (completedTickCount > 0) hasCompletedTick = true;
-        diagnostics.completedTicksConsumed += completedTickCount;
-        if (completedTickCount > 1) diagnostics.skippedPresentationTicks += completedTickCount - 1;
-
-        const rebuiltJournal = rebuildJournalIfNeeded();
-        if (!rebuiltJournal && presentationJournal?.needsRebuild?.() !== true
-          && completedTickCount > 0) {
-          mergeJournalRange(latestCompletedTick.journalStart, latestCompletedTick.journalEnd);
-        }
-
-        const alpha = simulationRunner.interpolationAlpha();
-        presentationFrame.sequence++;
-        presentationFrame.frameDt = frameDt;
-        if (state && state.render) state.render.lastPresentDtMs = frameDt * 1000;
-        presentationFrame.alpha = alpha;
-        presentationFrame.lifecycleState = lifecycleState;
-        presentationFrame.lifecycleGeneration = lifecycleGeneration;
-        presentationFrame.completedTickCount = completedTickCount;
-        presentationFrame.completedTick = hasCompletedTick ? latestCompletedTick : null;
-        populateJournalFrame();
-        const presentationStart = measureNow();
-        let presentationAccepted = false;
         try {
-          presentationAccepted = registry.renderUpdate(alpha, frameDt, presentationFrame) !== false;
-        } finally {
-          const presentationMs = measureNow() - presentationStart;
-          perf.recordPresentationFrame?.(presentationMs);
-          previousPresentationOverrun = !restoring && presentationMs > fixedDt * 2000;
+          presentationMs = presentLastCompletedSnapshot(frameDt, restoring, perf, fixedDt);
+          renderedSnapshot = true;
+        } catch (error) {
+          presentationError = error;
+          presentationMs = diagnostics.lastPresentMs || 0;
         }
-        diagnostics.renderUpdates++;
-        renderedSnapshot = true;
-        // A frame reached the canvas, so whatever was wrong is not wrong now. Clear the run and
-        // the stall; leave the cumulative count alone, because it is the record that it happened.
-        diagnostics.consecutiveFrameErrors = 0;
-        if (diagnostics.presentationStalled) {
-          diagnostics.presentationStalled = false;
-          console.warn('[loop] presentation recovered after '
-            + `${diagnostics.presentationStallFrames || 0} frozen frame(s)`);
-          diagnostics.presentationStallFrames = 0;
-          frame._errs = 0;
-        }
-        if (presentationJournal?.isClosed?.() === true) resetPendingJournal();
-        else if (presentationAccepted) acknowledgePresentedJournal();
-        else if (hasPendingJournal) diagnostics.journalRetainedFrameCount++;
       }
+
+      const latePresent = !restoring && (
+        (recoverFromPresentationOverrun && frameDt > fixedDt * 2)
+        || presentationMs > fixedDt * 2000
+      );
+      const leftoverStepCap = latePresent
+        ? leftoverSimStepCap({ latePresent: true })
+        : undefined;
+      diagnostics.lastLeftoverMs = Math.max(0, frameBudgetMs - presentationMs);
+      diagnostics.lastLeftoverStepCap = leftoverStepCap
+        ?? leftoverSimStepCap({ latePresent: false });
+
+      // Leftover sim may still fire a lifecycle event. The picture already went out; do not
+      // present again in this callback.
+      if (!destroyed && !suspended) {
+        advanceLeftoverSimulation(frameDt, restoring, leftoverStepCap, perf);
+      }
+      if (presentationError) throw presentationError;
     } catch (err) {
       if (hasPendingJournal) diagnostics.journalRetainedFrameCount++;
       // One bad frame must never kill the whole loop; log a bounded number and keep running.
