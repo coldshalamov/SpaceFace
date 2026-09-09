@@ -503,21 +503,21 @@ function decalMaterial(pal, kind) {
           makeGreebleDetailTexture({ size: 256, seed, density: 1.0, accent: pal.accent }))
       : getTexture(`decal:${pal.hull}:${pal.accent}`, () =>
           makeDecalSheet({ size: 256, seed: seed + 3, accent: pal.accent, stripe: true, chevron: kind !== 'scout', warning: true }));
-    return new THREE.MeshStandardMaterial({
+    return stampSharedMaterialRole(new THREE.MeshStandardMaterial({
       map: tex, transparent: true, depthWrite: false,
       color: 0xffffff, roughness: 0.7, metalness: 0.2,
       emissive: new THREE.Color(pal.emissive), emissiveIntensity: 0.04,
-    });
+    }), SHARED_MATERIAL_ROLE.HULL);
   });
 }
 
 // Additive-ish emissive material for accent strips / cockpit / weapon ports.
-function emissiveMaterial(color, intensity = 1.6) {
-  const key = `emis:${color}:${intensity}`;
-  return getMaterial(key, () => new THREE.MeshStandardMaterial({
+function emissiveMaterial(color, intensity = 1.6, role = SHARED_MATERIAL_ROLE.HULL) {
+  const key = `emis:${color}:${intensity}:${role}`;
+  return getMaterial(key, () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
     color: 0x070709, emissive: new THREE.Color(color), emissiveIntensity: intensity,
     roughness: 1, metalness: 0,
-  }));
+  }), role));
 }
 
 // Cockpit glass: dark tinted, semi-transparent, with a soft interior glow (the lit flight deck) and
@@ -553,9 +553,9 @@ function lampFixture(color, scale, intensity = 3.2) {
   const root = new THREE.Group();
   const cup = new THREE.Mesh(
     getGeometry('lamp:cup', () => new THREE.CylinderGeometry(0.38, 0.52, 0.28, 8)),
-    getMaterial('lamp:cup', () => new THREE.MeshStandardMaterial({
+    getMaterial('lamp:cup', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
       color: 0x16191e, roughness: 0.4, metalness: 0.82,
-    })),
+    }), SHARED_MATERIAL_ROLE.HULL)),
   );
   const lens = new THREE.Mesh(
     getGeometry('lamp:lens', () => new THREE.SphereGeometry(0.34, 12, 10)),
@@ -621,10 +621,10 @@ function boltMesh(geometryKey, geometryFactory, color, fringe, variant, scale) {
 // ---------------------------------------------------------------------------------------------
 // Additive flame material for the exhaust plume (directional, NOT a giant round halo).
 function plumeMaterial(color) {
-  return getMaterial(`plume:${color}`, () => new THREE.MeshBasicMaterial({
+  return getMaterial(`plume:${color}`, () => stampSharedMaterialRole(new THREE.MeshBasicMaterial({
     color: new THREE.Color(color), blending: THREE.AdditiveBlending,
     transparent: true, opacity: 0.55, depthWrite: false,
-  }));
+  }), SHARED_MATERIAL_ROLE.PLUME));
 }
 function engineGlow(pal, x, z, scale) {
   const g = new THREE.Group();
@@ -632,7 +632,7 @@ function engineGlow(pal, x, z, scale) {
   // bright nozzle ring at the hull
   const nozzle = new THREE.Mesh(
     getGeometry('eng:nozzle', () => new THREE.CylinderGeometry(0.34, 0.22, 0.32, 12).rotateZ(Math.PI / 2)),
-    emissiveMaterial(pal.thruster, 2.4),
+    emissiveMaterial(pal.thruster, 2.4, SHARED_MATERIAL_ROLE.PLUME),
   );
   nozzle.scale.setScalar(scale);
   nozzle.userData.spacefaceTags = { vfxRole: 'driveNozzleGlow' };
@@ -818,7 +818,9 @@ function weaponProp(wdefId, facing, size, pal, R, tier) {
 
 // dark machinery material for weapon internals (breech blocks, tube mouths, ammo belts)
 function darkWpnMat() {
-  return getMaterial('wpn:dark', () => new THREE.MeshStandardMaterial({ color: 0x10141a, roughness: 0.7, metalness: 0.66 }));
+  return getMaterial('wpn:dark', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+    color: 0x10141a, roughness: 0.7, metalness: 0.66,
+  }), SHARED_MATERIAL_ROLE.HULL));
 }
 
 // ---- engine props ----------------------------------------------------------------------------
@@ -828,8 +830,10 @@ function engineProp(pal, R, scaleK, engineClass) {
   const g = new THREE.Group();
   const s = R * 0.22 * scaleK * (0.85 + Math.min(0.5, (engineClass || 60) / 240));
   const housingMat = hullMaterial(pal, 8);
-  const nozzleMat = emissiveMaterial(pal.thruster, 2.4);
-  const darkMat = getMaterial('eng:dark', () => new THREE.MeshStandardMaterial({ color: 0x0c1016, roughness: 0.72, metalness: 0.68 }));
+  const nozzleMat = emissiveMaterial(pal.thruster, 2.4, SHARED_MATERIAL_ROLE.PLUME);
+  const darkMat = getMaterial('eng:dark', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+    color: 0x0c1016, roughness: 0.72, metalness: 0.68,
+  }), SHARED_MATERIAL_ROLE.HULL));
   // engine nacelle housing (cylinder lying along X) with an intake lip at the front
   const nacelle = new THREE.Mesh(getGeometry('eng:nacelle', () => new THREE.CylinderGeometry(0.3, 0.34, 0.7, 12).rotateZ(Math.PI / 2)), housingMat);
   nacelle.scale.set(s, s, s); g.add(nacelle);
@@ -960,8 +964,10 @@ function surfaceDetail(ctx) {
   const rcsGeo = getGeometry('greeb:rcs', () => new THREE.CylinderGeometry(0.035, 0.05, 0.06, 6));
   const finGeo = getGeometry('greeb:fin', () => new THREE.BoxGeometry(0.04, 0.12, 0.08));
   const ventMat = hm;
-  const darkMat = getMaterial('greeb:dark', () => new THREE.MeshStandardMaterial({ color: 0x14181f, roughness: 0.74, metalness: 0.62 }));
-  const glowMat = emissiveMaterial(pal.accent, 0.85);
+  const darkMat = getMaterial('greeb:dark', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+    color: 0x14181f, roughness: 0.74, metalness: 0.62,
+  }), SHARED_MATERIAL_ROLE.HULL));
+  const glowMat = emissiveMaterial(pal.accent, 0.85, SHARED_MATERIAL_ROLE.PLUME);
 
   // walk the grid; each cell has a probability of hosting a cluster, gated by density
   for (let ix = 0; ix < cellsX; ix++) {
@@ -1021,7 +1027,9 @@ function surfaceDetail(ctx) {
     const scorchGeo = getGeometry('greeb:scorch', () => new THREE.CircleGeometry(0.08, 8));
     for (let i = 0; i < 3; i++) {
       const s = new THREE.Mesh(scorchGeo, getMaterial('greeb:scorch', () =>
-        new THREE.MeshStandardMaterial({ color: 0x0a0a0a, emissive: 0x000000, roughness: 1, transparent: true, opacity: 0.85 })));
+        stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+          color: 0x0a0a0a, emissive: 0x000000, roughness: 1, transparent: true, opacity: 0.85,
+        }), SHARED_MATERIAL_ROLE.HULL)));
       s.position.set((xMin + 0.2 + i * 0.3 + rnd() * 0.1) * R, H * 0.51 * R, (rnd() - 0.5) * W * R);
       s.rotation.x = -Math.PI / 2; s.scale.setScalar(R); g.add(s);
     }
@@ -1069,7 +1077,7 @@ function applyPaintProfile(ctx, e) {
         transparent: true, opacity: 0.55 + profile.chrome * 0.35,
         depthWrite: false,
       });
-      return m;
+      return stampSharedMaterialRole(m, SHARED_MATERIAL_ROLE.HULL);
     });
     const foil = new THREE.Mesh(hullSlabGeo(L, H, W * 1.5), foilMat);
     foil.scale.setScalar(R); g.add(foil);
@@ -1080,10 +1088,10 @@ function applyPaintProfile(ctx, e) {
     const grimeMat = getMaterial(`grime:${q(profile.grime)}:${pal.hull}`, () => {
       const tex = getTexture(`grime:${pal.hull}:${q(profile.grime)}`, () =>
         makeGrimeTexture({ size: 256, seed: (seed ^ 0x51) & 0xffff, intensity: profile.grime }));
-      return new THREE.MeshStandardMaterial({
+      return stampSharedMaterialRole(new THREE.MeshStandardMaterial({
         map: tex, transparent: true, depthWrite: false,
         color: 0xffffff, roughness: 0.9, metalness: 0.0,
-      });
+      }), SHARED_MATERIAL_ROLE.HULL);
     });
     const grime = new THREE.Mesh(hullSlabGeo(L * 1.01, H * 1.01, W * 1.51), grimeMat);
     grime.scale.setScalar(R); g.add(grime);
@@ -1094,10 +1102,10 @@ function applyPaintProfile(ctx, e) {
     const patchMat = getMaterial(`patch:${q(profile.patches)}:${pal.hull}`, () => {
       const tex = getTexture(`patch:${pal.hull}:${q(profile.patches)}`, () =>
         makePatchTexture({ size: 256, seed: (seed ^ 0x73) & 0xffff, density: profile.patches }));
-      return new THREE.MeshStandardMaterial({
+      return stampSharedMaterialRole(new THREE.MeshStandardMaterial({
         map: tex, transparent: true, depthWrite: false,
         color: 0xffffff, roughness: 0.85, metalness: 0.3,
-      });
+      }), SHARED_MATERIAL_ROLE.HULL);
     });
     const patch = new THREE.Mesh(hullSlabGeo(L, H, W * 1.5), patchMat);
     patch.scale.setScalar(R); g.add(patch);
@@ -1117,12 +1125,12 @@ function applyPaintProfile(ctx, e) {
           size: 256, seed: (seed ^ 0x99) & 0xffff, style, accent: pal.accent,
           motto, mascot, tally,
         }));
-      return new THREE.MeshStandardMaterial({
+      return stampSharedMaterialRole(new THREE.MeshStandardMaterial({
         map: tex, transparent: true, depthWrite: false,
         color: 0xffffff, roughness: 0.6, metalness: 0.1,
         emissive: new THREE.Color(pal.emissive), emissiveIntensity: 0.05,
         side: THREE.DoubleSide,
-      });
+      }), SHARED_MATERIAL_ROLE.HULL);
     });
     // place a flank decal panel on each side, facing outward (±Z), roughly amidships
     const panelGeo = getGeometry('nose:panel', () => new THREE.PlaneGeometry(0.5, 0.32));
@@ -1331,7 +1339,7 @@ function buildCapital(ctx) {
   // disappearance is an independent authored-preview transition and is traced at the mount boundary.
   const ring = new THREE.Mesh(
     getGeometry(`cap:ring:${q(W)}`, () => new THREE.TorusGeometry(W * 0.6, Math.max(0.012, W * 0.018), 8, 48)),
-    getMaterial(`cap:ring-mat:${pal.accent}`, () => new THREE.MeshStandardMaterial({
+    getMaterial(`cap:ring-mat:${pal.accent}`, () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
       color: new THREE.Color(pal.accent),
       emissive: new THREE.Color(pal.accent),
       emissiveIntensity: 0.78,
@@ -1340,7 +1348,7 @@ function buildCapital(ctx) {
       transparent: true,
       opacity: 0.72,
       depthWrite: false,
-    })),
+    }), SHARED_MATERIAL_ROLE.HULL)),
   );
   ring.rotation.x = Math.PI / 2; ring.position.set(L * 0.08 * R, H * 0.9 * R, 0); ring.scale.setScalar(R); g.add(ring);
   ctx.sensorRing = ring;
@@ -2102,7 +2110,7 @@ function astMaterial(typeId, def, tint) {
     else if (t.includes('xenium') || t.includes('exotic') || def.variant === 'exotic') eiBoost = Math.max(eiBoost, 0.75);
 
     if (def.variant === 'ice') {
-      return new THREE.MeshPhysicalMaterial({
+      return stampSharedMaterialRole(new THREE.MeshPhysicalMaterial({
         color,
         roughness: 0.06,
         metalness: 0.0,
@@ -2117,7 +2125,7 @@ function astMaterial(typeId, def, tint) {
         clearcoatRoughness: 0.08,
         envMapIntensity: 1.15,
         fog: true,
-      });
+      }), SHARED_MATERIAL_ROLE.ROCK);
     }
 
     const material = new THREE.MeshStandardMaterial({
@@ -2136,7 +2144,9 @@ function astMaterial(typeId, def, tint) {
       emissive: new THREE.Color(def.emissive), emissiveIntensity: eiBoost,
       flatShading: def.flat,
     });
-    return commonSurface ? configureCommonRockPbr(material) : material;
+    return commonSurface
+      ? configureCommonRockPbr(material)
+      : stampSharedMaterialRole(material, SHARED_MATERIAL_ROLE.ROCK);
   });
 }
 
@@ -2165,7 +2175,7 @@ function buildAsteroid(e) {
   }
   if (def.variant === 'crystal') {
     const rnd = mulberryLite(hashId(e.id));
-    const shardMat = emissiveMaterial('#c878ff', 1.1);
+    const shardMat = emissiveMaterial('#c878ff', 1.1, SHARED_MATERIAL_ROLE.ROCK);
     for (let i = 0; i < 6; i++) {
       const shard = new THREE.Mesh(getGeometry('ast:shard', () => new THREE.OctahedronGeometry(0.18, 0)), shardMat);
       const a = rnd() * Math.PI * 2, e2 = (rnd() - 0.5) * 1.4;
@@ -2178,7 +2188,7 @@ function buildAsteroid(e) {
   } else if (def.variant === 'gas') {
     const hull = new THREE.Mesh(
       geo,
-      getMaterial('ast:gashull', () => new THREE.MeshPhysicalMaterial({
+      getMaterial('ast:gashull', () => stampSharedMaterialRole(new THREE.MeshPhysicalMaterial({
         color: new THREE.Color('#2d6a52'),
         roughness: 0.42,
         metalness: 0,
@@ -2193,7 +2203,7 @@ function buildAsteroid(e) {
         depthWrite: false,
         side: THREE.DoubleSide,
         fog: true,
-      })),
+      }), SHARED_MATERIAL_ROLE.ROCK)),
     );
     hull.scale.setScalar(R * 1.22);
     hull.userData.spacefaceTags = { greeble: true };
@@ -2205,7 +2215,7 @@ function buildAsteroid(e) {
   // mining fantasy). Each vein is a thin additive capsule sunk slightly into the surface.
   if (def.veinColor) {
     const rnd = mulberryLite(hashId(e.id) ^ 0xbeef);
-    const veinMat = emissiveMaterial(def.veinColor, 1.6);
+    const veinMat = emissiveMaterial(def.veinColor, 1.6, SHARED_MATERIAL_ROLE.ROCK);
     const veinGeo = getGeometry('ast:vein', () => new THREE.CapsuleGeometry(0.025, 0.5, 3, 5).rotateZ(Math.PI / 2));
     const veinCount = def.variant === 'crystal' || def.variant === 'exotic' ? 5 : 3;
     for (let i = 0; i < veinCount; i++) {
@@ -2250,9 +2260,9 @@ function blinkerFixture(color, scale, phase, blinkers) {
   const root = new THREE.Group();
   const cup = new THREE.Mesh(
     getGeometry('nav:cup', () => new THREE.CylinderGeometry(0.46, 0.58, 0.32, 8)),
-    getMaterial('nav:cup', () => new THREE.MeshStandardMaterial({
+    getMaterial('nav:cup', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
       color: 0x171a1f, roughness: 0.42, metalness: 0.78,
-    })),
+    }), SHARED_MATERIAL_ROLE.HULL)),
   );
   const lens = new THREE.Mesh(
     getGeometry('nav:lens', () => new THREE.SphereGeometry(0.36, 12, 10)),
@@ -2491,7 +2501,7 @@ function buildStation(e) {
   r2.receiveShadow = true; r2.castShadow = true;
   for (const arm of spars) { arm.receiveShadow = true; arm.castShadow = true; }
   // window strips
-  const winMat = emissiveMaterial('#ffd98a', 1.2);
+  const winMat = emissiveMaterial('#ffd98a', 1.2, SHARED_MATERIAL_ROLE.STATION);
   for (let i = 0; i < 3; i++) {
     const w = new THREE.Mesh(getGeometry('stat:win', () => new THREE.BoxGeometry(0.5, 0.04, 0.04)), winMat);
     w.position.set(0, R * (-0.2 + i * 0.18), R * 0.44); w.scale.setScalar(R); g.add(w);
@@ -2526,10 +2536,10 @@ function applyStructureProfile(g, pal, R, seed) {
     const naMat = getMaterial(`nose:struct:${profile.noseArt}:${pal.accent}`, () => {
       const tex = getTexture(`nose:struct:${profile.noseArt}:${pal.accent}`, () =>
         makeNoseArtTexture({ size: 256, seed: (seed ^ 0x99) & 0xffff, style: profile.noseArt, accent: pal.accent }));
-      return new THREE.MeshStandardMaterial({
+      return stampSharedMaterialRole(new THREE.MeshStandardMaterial({
         map: tex, transparent: true, depthWrite: false, color: 0xffffff, roughness: 0.6, metalness: 0.1,
         emissive: new THREE.Color(pal.emissive), emissiveIntensity: 0.08, side: THREE.DoubleSide,
-      });
+      }), SHARED_MATERIAL_ROLE.STATION);
     });
     const banner = new THREE.Mesh(getGeometry('stat:banner', () => new THREE.PlaneGeometry(0.6, 0.4)), naMat);
     banner.position.set(0, R * 0.1, R * 0.92); banner.scale.setScalar(R); g.add(banner);
@@ -2569,34 +2579,34 @@ function isCreditChipEntity(e) {
 function buildCreditChip(e) {
   const R = Math.max(1.4, Number(e && e.radius) || 2.2);
   const g = new THREE.Group();
-  const bodyMat = getMaterial('creditchip:body', () => new THREE.MeshStandardMaterial({
+  const bodyMat = getMaterial('creditchip:body', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
     color: 0xc9a24a,
     emissive: 0x3a2508,
     emissiveIntensity: 0.28,
     metalness: 0.86,
     roughness: 0.28,
-  }));
-  const rimMat = getMaterial('creditchip:rim', () => new THREE.MeshStandardMaterial({
+  }), SHARED_MATERIAL_ROLE.HULL));
+  const rimMat = getMaterial('creditchip:rim', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
     color: 0x5a4220,
     emissive: 0x1a1004,
     emissiveIntensity: 0.12,
     metalness: 0.78,
     roughness: 0.42,
-  }));
-  const stampMat = getMaterial('creditchip:stamp', () => new THREE.MeshStandardMaterial({
+  }), SHARED_MATERIAL_ROLE.HULL));
+  const stampMat = getMaterial('creditchip:stamp', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
     color: 0xf2d27a,
     emissive: 0x8a5a14,
     emissiveIntensity: 0.55,
     metalness: 0.7,
     roughness: 0.22,
-  }));
-  const insetMat = getMaterial('creditchip:inset', () => new THREE.MeshStandardMaterial({
+  }), SHARED_MATERIAL_ROLE.HULL));
+  const insetMat = getMaterial('creditchip:inset', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
     color: 0x2a2112,
     emissive: 0x6a4810,
     emissiveIntensity: 0.35,
     metalness: 0.55,
     roughness: 0.38,
-  }));
+  }), SHARED_MATERIAL_ROLE.HULL));
 
   const stack = new THREE.Group();
   stack.name = 'CreditChipStack';
@@ -2670,9 +2680,9 @@ function buildPickup(e) {
   const g = new THREE.Group();
   const gem = new THREE.Mesh(
     getGeometry('pickup:gem', () => new THREE.OctahedronGeometry(1, 0)),
-    getMaterial(`gemmat:${color}`, () => new THREE.MeshStandardMaterial({
+    getMaterial(`gemmat:${color}`, () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
       color: 0x101014, emissive: new THREE.Color(color), emissiveIntensity: 1.5, metalness: 0.9, roughness: 0.15,
-    })),
+    }), SHARED_MATERIAL_ROLE.HULL)),
   );
   gem.scale.setScalar(R);
   gem.material = gem.material.clone();
@@ -2706,11 +2716,15 @@ function buildProjectile(e) {
   const g = new THREE.Group();
   if (isMissile) {
     const body = new THREE.Mesh(getGeometry('proj:mbody', () => new THREE.CylinderGeometry(0.4, 0.4, 2.0, 6).rotateZ(Math.PI / 2)),
-      getMaterial('proj:mmat', () => new THREE.MeshStandardMaterial({ color: 0x3a3f4a, roughness: 0.6, metalness: 0.4 })));
+      getMaterial('proj:mmat', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+        color: 0x3a3f4a, roughness: 0.6, metalness: 0.4,
+      }), SHARED_MATERIAL_ROLE.HULL)));
     body.scale.setScalar(R); g.add(body);
     body.name = 'ProjectileMissileBody';
     const tip = new THREE.Mesh(getGeometry('proj:mtip', () => new THREE.ConeGeometry(0.4, 0.8, 8).rotateZ(-Math.PI / 2)),
-      getMaterial('proj:warhead', () => new THREE.MeshStandardMaterial({ color: 0x747b86, roughness: 0.46, metalness: 0.52 })));
+      getMaterial('proj:warhead', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+        color: 0x747b86, roughness: 0.46, metalness: 0.52,
+      }), SHARED_MATERIAL_ROLE.HULL)));
     tip.position.x = R * 1.4; tip.scale.setScalar(R); g.add(tip);
     tip.name = 'ProjectileMissileWarhead';
     const exhaust = boltMesh('proj:missile:exhaust',
@@ -2847,12 +2861,11 @@ function wreckRoleMaterial(key, role, options = {}) {
       emissiveIntensity: options.emissiveIntensity || 0,
     });
     material.name = key;
-    // Structure / plate / cut-edge keep distinct families: different maps and shading roles.
-    material.userData.spacefaceProgramFamily = `SF_Wreck_${role}`;
+    // Maps stay per wreck role; the GPU program family is the shared hull.
     material.userData.spacefaceMaterialRole = options.materialRole || `wreck-${role}`;
     material.userData.spacefaceSurfaceSource = 'deterministic-role-texture-v2';
     material.userData.spacefaceSharedMaterial = true;
-    return material;
+    return stampSharedMaterialRole(material, SHARED_MATERIAL_ROLE.HULL);
   });
 }
 
@@ -2922,13 +2935,13 @@ function buildWreck(e) {
   }
 
   if (identity.hazardous) {
-    const coreMaterial = getMaterial('wreck:reactor-core', () => new THREE.MeshStandardMaterial({
+    const coreMaterial = getMaterial('wreck:reactor-core', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
       color: 0xffd0a0,
       emissive: 0xff4b0b,
       emissiveIntensity: 1.35,
       roughness: 0.32,
       metalness: 0.12,
-    }));
+    }), SHARED_MATERIAL_ROLE.HULL));
     const core = new THREE.Mesh(
       getGeometry('wreck:reactor-core-v2', () => new THREE.CylinderGeometry(0.16, 0.16, 0.48, 12).rotateZ(Math.PI / 2)),
       coreMaterial,
@@ -3054,22 +3067,22 @@ function consolidateWreckDrawCalls(group) {
 function buildMine(e) {
   const R = Math.max(1, Number(e && e.radius) || 6);
   const g = new THREE.Group();
-  const casing = getMaterial('mine:casing', () => new THREE.MeshStandardMaterial({
+  const casing = getMaterial('mine:casing', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
     color: 0x252d31, roughness: 0.68, metalness: 0.58,
-  }));
-  const exposed = getMaterial('mine:exposed-alloy', () => new THREE.MeshStandardMaterial({
+  }), SHARED_MATERIAL_ROLE.HULL));
+  const exposed = getMaterial('mine:exposed-alloy', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
     color: 0x747b7f, roughness: 0.39, metalness: 0.82,
-  }));
-  const warningSafe = getMaterial('mine:warning-lens:safe', () => new THREE.MeshStandardMaterial({
+  }), SHARED_MATERIAL_ROLE.HULL));
+  const warningSafe = getMaterial('mine:warning-lens:safe', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
     name: 'MineWarningLensSafe',
     color: 0x421d17, emissive: 0x160300, emissiveIntensity: 0.08,
     roughness: 0.51, metalness: 0.12,
-  }));
-  const warningArmed = getMaterial('mine:warning-lens:armed', () => new THREE.MeshStandardMaterial({
+  }), SHARED_MATERIAL_ROLE.HULL));
+  const warningArmed = getMaterial('mine:warning-lens:armed', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
     name: 'MineWarningLensArmed',
     color: 0xff7b28, emissive: 0xff2e08, emissiveIntensity: 1.35,
     roughness: 0.24, metalness: 0.12,
-  }));
+  }), SHARED_MATERIAL_ROLE.HULL));
 
   const hull = new THREE.Mesh(
     getGeometry('mine:disc-hull', () => new THREE.CylinderGeometry(0.5, 0.56, 0.24, 16)),
@@ -3130,17 +3143,17 @@ function buildMine(e) {
 function buildVectorMine(e) {
   const R = Math.max(0.8, Number(e && e.radius) || 1.6);
   const g = new THREE.Group();
-  const shell = getMaterial('vmine:shell', () => new THREE.MeshStandardMaterial({
+  const shell = getMaterial('vmine:shell', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
     color: 0x1c2a3a, roughness: 0.5, metalness: 0.66,
-  }));
-  const emitterSafe = getMaterial('vmine:emitter:safe', () => new THREE.MeshStandardMaterial({
+  }), SHARED_MATERIAL_ROLE.HULL));
+  const emitterSafe = getMaterial('vmine:emitter:safe', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
     name: 'VectorMineEmitterSafe',
     color: 0x27506e, emissive: 0x0a2038, emissiveIntensity: 0.22, roughness: 0.4, metalness: 0.3,
-  }));
-  const emitterArmed = getMaterial('vmine:emitter:armed', () => new THREE.MeshStandardMaterial({
+  }), SHARED_MATERIAL_ROLE.HULL));
+  const emitterArmed = getMaterial('vmine:emitter:armed', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
     name: 'VectorMineEmitterArmed',
     color: 0x5ab4ff, emissive: 0x2a8cff, emissiveIntensity: 1.5, roughness: 0.28, metalness: 0.2,
-  }));
+  }), SHARED_MATERIAL_ROLE.HULL));
   const core = new THREE.Mesh(getGeometry('vmine:core', () => new THREE.OctahedronGeometry(0.5, 0)), shell);
   core.name = 'VectorMineCore';
   g.add(core);
@@ -3179,22 +3192,22 @@ function buildVectorMine(e) {
 function buildImpulseCharge(e) {
   const R = Math.max(0.4, Number(e && e.radius) || 1.2);
   const g = new THREE.Group();
-  const shell = getMaterial('charge:shell', () => new THREE.MeshStandardMaterial({
+  const shell = getMaterial('charge:shell', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
     color: 0x31393e, roughness: 0.54, metalness: 0.64,
-  }));
-  const ceramic = getMaterial('charge:ceramic-band', () => new THREE.MeshStandardMaterial({
+  }), SHARED_MATERIAL_ROLE.HULL));
+  const ceramic = getMaterial('charge:ceramic-band', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
     color: 0xd1c6ab, roughness: 0.77, metalness: 0.04,
-  }));
-  const safe = getMaterial('charge:status-strip:safe', () => new THREE.MeshStandardMaterial({
+  }), SHARED_MATERIAL_ROLE.HULL));
+  const safe = getMaterial('charge:status-strip:safe', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
     name: 'ImpulseChargeStatusSafe',
     color: 0x293331, emissive: 0x00100b, emissiveIntensity: 0.06,
     roughness: 0.58, metalness: 0.18,
-  }));
-  const armed = getMaterial('charge:status-strip:armed', () => new THREE.MeshStandardMaterial({
+  }), SHARED_MATERIAL_ROLE.HULL));
+  const armed = getMaterial('charge:status-strip:armed', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
     name: 'ImpulseChargeStatusArmed',
     color: 0xffa23a, emissive: 0xff4a08, emissiveIntensity: 1.1,
     roughness: 0.31, metalness: 0.18,
-  }));
+  }), SHARED_MATERIAL_ROLE.HULL));
 
   const body = new THREE.Mesh(
     getGeometry('charge:body', () => new THREE.CylinderGeometry(0.34, 0.4, 1.15, 12).rotateZ(Math.PI / 2)),
@@ -3250,31 +3263,31 @@ function buildImpulseCharge(e) {
 function buildMassSeed(e) {
   const R = Math.max(0.8, Number(e && e.radius) || 1.6);
   const g = new THREE.Group();
-  const frame = getMaterial('mseed:frame', () => new THREE.MeshStandardMaterial({
+  const frame = getMaterial('mseed:frame', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
     color: 0x2b3138, roughness: 0.48, metalness: 0.72,
-  }));
-  const coreMat = getMaterial('mseed:core', () => new THREE.MeshStandardMaterial({
+  }), SHARED_MATERIAL_ROLE.HULL));
+  const coreMat = getMaterial('mseed:core', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
     color: 0x14181f, emissive: 0x0a1626, emissiveIntensity: 0.35, roughness: 0.3, metalness: 0.85,
-  }));
-  const ringMat = getMaterial('mseed:gyro', () => new THREE.MeshStandardMaterial({
+  }), SHARED_MATERIAL_ROLE.HULL));
+  const ringMat = getMaterial('mseed:gyro', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
     color: 0x3d4a57, emissive: 0x1a2c40, emissiveIntensity: 0.5, roughness: 0.36, metalness: 0.7,
-  }));
-  const beaconDim = getMaterial('mseed:beacon:dim', () => new THREE.MeshStandardMaterial({
+  }), SHARED_MATERIAL_ROLE.HULL));
+  const beaconDim = getMaterial('mseed:beacon:dim', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
     name: 'MassSeedBeaconDim',
     color: 0x2a3438, emissive: 0x062026, emissiveIntensity: 0.25, roughness: 0.4, metalness: 0.3,
-  }));
-  const beaconActive = getMaterial('mseed:beacon:active', () => new THREE.MeshStandardMaterial({
+  }), SHARED_MATERIAL_ROLE.HULL));
+  const beaconActive = getMaterial('mseed:beacon:active', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
     name: 'MassSeedBeaconActive',
     color: 0x9fe8ff, emissive: 0x2fc4ef, emissiveIntensity: 1.2, roughness: 0.3, metalness: 0.2,
-  }));
-  const beaconWarning = getMaterial('mseed:beacon:warning', () => new THREE.MeshStandardMaterial({
+  }), SHARED_MATERIAL_ROLE.HULL));
+  const beaconWarning = getMaterial('mseed:beacon:warning', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
     name: 'MassSeedBeaconWarning',
     color: 0xffc35c, emissive: 0xef8a1e, emissiveIntensity: 1.35, roughness: 0.32, metalness: 0.18,
-  }));
-  const chevronMat = getMaterial('mseed:chevron', () => new THREE.MeshStandardMaterial({
+  }), SHARED_MATERIAL_ROLE.HULL));
+  const chevronMat = getMaterial('mseed:chevron', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
     name: 'MassSeedChevron',
     color: 0x6fb7d8, emissive: 0x1f7ea8, emissiveIntensity: 0.8, roughness: 0.4, metalness: 0.25,
-  }));
+  }), SHARED_MATERIAL_ROLE.HULL));
 
   const core = new THREE.Mesh(getGeometry('mseed:core', () => new THREE.OctahedronGeometry(0.42, 0)), coreMat);
   core.name = 'MassSeedContainmentCore';
@@ -3380,12 +3393,12 @@ function buildMasslineSnareAnchor(e) {
   const endpoint = String(e && e.data && e.data.endpoint || 'A');
   const accent = endpoint === 'B' ? 0xffb45f : 0x7de0ff;
   const g = new THREE.Group();
-  const frame = getMaterial('snare-anchor:frame', () => new THREE.MeshStandardMaterial({
+  const frame = getMaterial('snare-anchor:frame', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
     color: 0x28323a, roughness: 0.5, metalness: 0.78,
-  }));
-  const glow = getMaterial(`snare-anchor:glow:${endpoint}`, () => new THREE.MeshStandardMaterial({
+  }), SHARED_MATERIAL_ROLE.HULL));
+  const glow = getMaterial(`snare-anchor:glow:${endpoint}`, () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
     color: accent, emissive: accent, emissiveIntensity: 1.7, roughness: 0.24, metalness: 0.45,
-  }));
+  }), SHARED_MATERIAL_ROLE.HULL));
   const core = new THREE.Mesh(
     getGeometry('snare-anchor:core', () => new THREE.CylinderGeometry(0.42, 0.5, 0.28, 8)),
     frame,
@@ -3426,12 +3439,12 @@ function buildFallback(e) {
 function buildPayload(e) {
   const R = Math.max(1, (e && e.radius) || 3);
   const g = new THREE.Group();
-  const shell = getMaterial('payload:shell', () => new THREE.MeshStandardMaterial({
+  const shell = getMaterial('payload:shell', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
     color: 0x46515a, roughness: 0.64, metalness: 0.58,
-  }));
-  const band = getMaterial('payload:band', () => new THREE.MeshStandardMaterial({
+  }), SHARED_MATERIAL_ROLE.HULL));
+  const band = getMaterial('payload:band', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
     color: 0xd7862c, roughness: 0.5, metalness: 0.34,
-  }));
+  }), SHARED_MATERIAL_ROLE.HULL));
   const body = new THREE.Mesh(
     getGeometry('payload:body', () => new THREE.CylinderGeometry(0.42, 0.48, 1.25, 10).rotateZ(Math.PI / 2)),
     shell,
@@ -3447,9 +3460,9 @@ function buildPayload(e) {
   }
   const transponder = new THREE.Mesh(
     getGeometry('payload:transponder', () => new THREE.OctahedronGeometry(0.16, 0)),
-    getMaterial('payload:transponder', () => new THREE.MeshStandardMaterial({
+    getMaterial('payload:transponder', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
       color: 0x8eeaff, emissive: 0x2abbd8, emissiveIntensity: 0.8, roughness: 0.38, metalness: 0.16,
-    })),
+    }), SHARED_MATERIAL_ROLE.HULL)),
   );
   transponder.position.y = 0.47;
   g.add(transponder);
