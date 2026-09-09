@@ -1,6 +1,6 @@
 // src/data/missions.js – mission system canonical data.
-// Exports: MISSION_TYPES (15), SET_PIECE_MISSIONS (5), AUTHORED_SET_PIECES (10),
-// STORY_BEATS (8), OFFER_MIX, MISSION_TUNING.
+// Exports: MISSION_TYPES (16), SET_PIECE_MISSIONS (5), AUTHORED_SET_PIECES (10),
+// STORY_BEATS (8), OFFER_MIX, MISSION_TUNING. Capital boss is its own type, not an 11th authored row.
 // Pure data, no imports.
 
 export const MISSION_TUNING = {
@@ -16,7 +16,7 @@ export const MISSION_TUNING = {
     salvage_retrieval: 160, escort: 180, patrol_clear: 220, smuggling_run: 250,
     passenger_transport: 160, recon_scan: 140,
     tow_recovery: 170, demolition: 200, rescue_under_fire: 210,
-    authored_set_piece: 220,
+    authored_set_piece: 220, capital_boss: 360,
   },
   RISK_MULT: [1.0, 1.3, 1.7, 2.2, 3.0],
   BASE_REP: {
@@ -24,7 +24,7 @@ export const MISSION_TUNING = {
     salvage_retrieval: 3, escort: 4, patrol_clear: 5, smuggling_run: 4,
     passenger_transport: 2, recon_scan: 4,
     tow_recovery: 3, demolition: 4, rescue_under_fire: 5,
-    authored_set_piece: 5,
+    authored_set_piece: 5, capital_boss: 6,
   },
   distDivisor: 2000,
   valueDivisor: 8000,
@@ -254,6 +254,16 @@ export const MISSION_TYPES = [
     timeFormula: 'round((distance/140 + 60) * slack)', taskTime: 60,
     failureCondition: 'timer OR the named physical target is lost',
     constraints: { authoredOnly: true, physicalVerb: 'authored' },
+  },
+  {
+    // PQ-152.02 — capital boss. Own type + encounter, not an 11th AUTHORED_SET_PIECES row.
+    // Authored-only / structural zero. heist_intercept stays last.
+    type: 'capital_boss', riskTierRange: [2, 4], chainable: false, proceduralWeight: 0,
+    completionEvent: 'entity:killed on the capital (throw_the_capital from thrown mass, or outgun_the_capital)',
+    rewardFormula: 'authored flat payout (CAPITAL_BOSS.rewardCr)',
+    timeFormula: 'round((distance/140 + 80) * slack)', taskTime: 80,
+    failureCondition: 'timer OR the capital hull is lost without a player kill',
+    constraints: { authoredOnly: true, physicalVerb: 'throw' },
   },
   {
     // PQ-019C — the authored physical capsule heist. AUTHORED-ONLY, never procedurally rolled.
@@ -1384,6 +1394,98 @@ export function validateAuthoredSetPieceCatalog(catalog = AUTHORED_SET_PIECES) {
     if (!row.primaryRole) errors.push(`${root}: primary physical role required.`);
   }
   return { ok: errors.length === 0, errors, count: rows.length };
+}
+
+export const CAPITAL_BOSS_TYPE = 'capital_boss';
+export const CAPITAL_BOSS_SOURCE = 'capitalBoss';
+export const CAPITAL_BOSS_ENCOUNTER_ID = 'capital_boss_hulk';
+
+export const CAPITAL_BOSS = Object.freeze({
+  id: 'capital_boss',
+  title: 'Throw the capital down',
+  brief: 'Put mass through the heavy. Guns are the slow way. No immunity.',
+  physicalVerb: 'throw',
+  startStationId: 'station_coalition',
+  destStationId: 'station_coalition',
+  destSectorId: 'sector_helios_prime',
+  factionId: 'faction_scn',
+  riskTier: 2,
+  rewardCr: 4200,
+  collateralCr: 480,
+  durationS: 1800,
+  distance: 900,
+  twistClauseId: 'throw_it',
+  encounterId: CAPITAL_BOSS_ENCOUNTER_ID,
+  methods: Object.freeze(['throw_the_capital', 'outgun_the_capital']),
+  primaryRole: 'capital_hull',
+  subsystemRoles: Object.freeze({
+    thrusters: 'subsystem_drive',
+    turrets: 'subsystem_weapon',
+    bays: 'subsystem_tether_spool',
+  }),
+  methodHooks: Object.freeze({
+    throw_the_capital: Object.freeze({ on: Object.freeze(['whip', 'throw', 'kill']), role: 'capital_hull' }),
+    outgun_the_capital: Object.freeze({ on: Object.freeze(['kill']), role: 'capital_hull' }),
+  }),
+});
+
+export function buildCapitalBossOffer(definition = CAPITAL_BOSS, epoch = 0) {
+  const def = definition && definition.id ? definition : CAPITAL_BOSS;
+  const fingerprint = `cboss:${def.id}:${Math.max(0, Math.trunc(Number(epoch) || 0))}`;
+  return {
+    id: `offer_${fingerprint.replace(/[^a-zA-Z0-9_-]+/g, '_')}`,
+    type: CAPITAL_BOSS_TYPE,
+    source: CAPITAL_BOSS_SOURCE,
+    stationId: def.startStationId,
+    factionId: def.factionId,
+    reward_cr: def.rewardCr,
+    collateral_cr: def.collateralCr,
+    riskTier: def.riskTier,
+    destStationId: def.destStationId,
+    destSectorId: def.destSectorId,
+    distance: def.distance,
+    duration_s: def.durationS,
+    title: def.title,
+    brief: def.brief,
+    summary: def.brief,
+    stageId: def.id,
+    params: {
+      capitalBossId: def.id,
+      physicalVerb: def.physicalVerb,
+      completionMethods: [...def.methods],
+      twistClauseId: def.twistClauseId,
+      encounterId: def.encounterId,
+      primaryRole: def.primaryRole,
+      subsystemRoles: { ...def.subsystemRoles },
+      fValue: 1,
+      taskTime: 80,
+    },
+    expiresAtEpoch: null,
+    storyTag: null,
+    epochPosted: Math.max(0, Math.trunc(Number(epoch) || 0)),
+    cause: {
+      tag: 'pq152-capital-boss',
+      archetypeId: def.id,
+      encounterId: def.encounterId,
+      fingerprint,
+    },
+  };
+}
+
+export function validateCapitalBossCatalog(row = CAPITAL_BOSS) {
+  const errors = [];
+  if (!row || typeof row !== 'object') errors.push('Capital boss definition required.');
+  if (row && row.id !== 'capital_boss') errors.push('Capital boss id must stay capital_boss.');
+  if (row && row.encounterId !== CAPITAL_BOSS_ENCOUNTER_ID) {
+    errors.push('Capital boss encounter id mismatch.');
+  }
+  if (row && (!Array.isArray(row.methods) || row.methods.length !== 2)) {
+    errors.push('Capital boss needs exactly two solutions.');
+  }
+  if (row && row.startStationId === 'station_helios') {
+    errors.push('Do not post the capital boss on Helios.');
+  }
+  return { ok: errors.length === 0, errors };
 }
 
 export const OFFER_MIX = {
