@@ -1,0 +1,1599 @@
+{
+  "part_id": "place_asteroid_rock_c",
+  "story": "place_asteroid_rock_c \u2014 densified hard-surface asteroid for Helios field density. Irregular rock mass with seams, crater pits, and ore glints (not a smooth sphere).",
+  "iterations": [
+    {
+      "iter": 1,
+      "pass": "modeling",
+      "deficiencies_observed": [
+        "need_irregular_silhouette",
+        "need_crater_pits",
+        "need_ore_glints",
+        "need_meso_ridges",
+        "need_rough_surface"
+      ],
+      "techniques": [
+        "ico_chunk_join",
+        "crater_pits",
+        "ore_glints",
+        "irregular_silhouette"
+      ],
+      "deficiencies_addressed_next": [
+        "ico_chunk_join",
+        "crater_pits",
+        "ore_glints",
+        "irregular_silhouette"
+      ],
+      "shots": [
+        "2026-07-09_place_asteroid_rock_c_iter1_clay_34_full.png",
+        "2026-07-09_place_asteroid_rock_c_iter1_clay_front.png",
+        "2026-07-09_place_asteroid_rock_c_iter1_clay_side.png",
+        "2026-07-09_place_asteroid_rock_c_iter1_lit_34_full.png",
+        "2026-07-09_place_asteroid_rock_c_iter1_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 4.2,
+        "macro_meso_micro": 3.8,
+        "bevel_language": 4.0,
+        "material_zones": 3.8,
+        "wear_story": 3.6,
+        "scale_truth": 4.0,
+        "lighting_readability": 4.1,
+        "contract_readiness": 4.0,
+        "weighted": 3.93,
+        "export_bar_ok": false
+      },
+      "render_analysis": [
+        {
+          "ok": false,
+          "coverage": 0.012,
+          "centroid": [
+            0.375,
+            0.397
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.13,
+          "fill_ratio": 0.172,
+          "edge_complexity": 0.079,
+          "bbox_area_ratio": 0.07,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter1_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0364,
+          "centroid": [
+            0.562,
+            0.439
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.848,
+          "fill_ratio": 0.351,
+          "edge_complexity": 0.052,
+          "bbox_area_ratio": 0.1039,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter1_clay_front.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.003,
+          "centroid": [
+            0.411,
+            0.317
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.249,
+          "fill_ratio": 0.031,
+          "edge_complexity": 0.272,
+          "bbox_area_ratio": 0.0947,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter1_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.1174,
+          "centroid": [
+            0.481,
+            0.497
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.159,
+          "fill_ratio": 0.725,
+          "edge_complexity": 0.018,
+          "bbox_area_ratio": 0.162,
+          "bg_sample": [
+            40,
+            47,
+            53
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter1_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.4173,
+          "centroid": [
+            0.757,
+            0.413
+          ],
+          "border_ratio": 0.019,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.778,
+          "fill_ratio": 0.417,
+          "edge_complexity": 0.01,
+          "bbox_area_ratio": 1.0,
+          "bg_sample": [
+            170,
+            163,
+            159
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter1_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 2,
+      "pass": "modeling",
+      "deficiencies_observed": [
+        "need_irregular_silhouette",
+        "need_crater_pits",
+        "need_ore_glints",
+        "need_meso_ridges",
+        "need_rough_surface"
+      ],
+      "techniques": [
+        "ridge_chunks",
+        "meso_density"
+      ],
+      "deficiencies_addressed_next": [
+        "ridge_chunks",
+        "meso_density"
+      ],
+      "shots": [
+        "2026-07-09_place_asteroid_rock_c_iter2_clay_34_full.png",
+        "2026-07-09_place_asteroid_rock_c_iter2_clay_front.png",
+        "2026-07-09_place_asteroid_rock_c_iter2_clay_side.png",
+        "2026-07-09_place_asteroid_rock_c_iter2_lit_34_full.png",
+        "2026-07-09_place_asteroid_rock_c_iter2_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 4.2,
+        "macro_meso_micro": 3.8777777777777778,
+        "bevel_language": 4.055555555555555,
+        "material_zones": 3.8777777777777778,
+        "wear_story": 3.688888888888889,
+        "scale_truth": 4.0,
+        "lighting_readability": 4.155555555555555,
+        "contract_readiness": 4.055555555555555,
+        "weighted": 3.981,
+        "export_bar_ok": false
+      },
+      "render_analysis": [
+        {
+          "ok": false,
+          "coverage": 0.0121,
+          "centroid": [
+            0.375,
+            0.397
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.13,
+          "fill_ratio": 0.172,
+          "edge_complexity": 0.079,
+          "bbox_area_ratio": 0.07,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter2_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0361,
+          "centroid": [
+            0.562,
+            0.44
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.851,
+          "fill_ratio": 0.348,
+          "edge_complexity": 0.052,
+          "bbox_area_ratio": 0.1036,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter2_clay_front.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.003,
+          "centroid": [
+            0.411,
+            0.317
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.316,
+          "fill_ratio": 0.031,
+          "edge_complexity": 0.271,
+          "bbox_area_ratio": 0.0966,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter2_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.1174,
+          "centroid": [
+            0.481,
+            0.497
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.159,
+          "fill_ratio": 0.725,
+          "edge_complexity": 0.018,
+          "bbox_area_ratio": 0.162,
+          "bg_sample": [
+            40,
+            47,
+            53
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter2_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.4173,
+          "centroid": [
+            0.757,
+            0.413
+          ],
+          "border_ratio": 0.019,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.778,
+          "fill_ratio": 0.417,
+          "edge_complexity": 0.01,
+          "bbox_area_ratio": 1.0,
+          "bg_sample": [
+            171,
+            163,
+            159
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter2_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 3,
+      "pass": "modeling",
+      "deficiencies_observed": [
+        "need_irregular_silhouette",
+        "need_crater_pits",
+        "need_ore_glints",
+        "need_meso_ridges",
+        "need_rough_surface"
+      ],
+      "techniques": [
+        "ridge_chunks",
+        "meso_density"
+      ],
+      "deficiencies_addressed_next": [
+        "ridge_chunks",
+        "meso_density"
+      ],
+      "shots": [
+        "2026-07-09_place_asteroid_rock_c_iter3_clay_34_full.png",
+        "2026-07-09_place_asteroid_rock_c_iter3_clay_front.png",
+        "2026-07-09_place_asteroid_rock_c_iter3_clay_side.png",
+        "2026-07-09_place_asteroid_rock_c_iter3_lit_34_full.png",
+        "2026-07-09_place_asteroid_rock_c_iter3_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 4.2,
+        "macro_meso_micro": 3.9555555555555553,
+        "bevel_language": 4.111111111111111,
+        "material_zones": 3.9555555555555553,
+        "wear_story": 3.7777777777777777,
+        "scale_truth": 4.0,
+        "lighting_readability": 4.21111111111111,
+        "contract_readiness": 4.111111111111111,
+        "weighted": 4.031,
+        "export_bar_ok": false
+      },
+      "render_analysis": [
+        {
+          "ok": false,
+          "coverage": 0.0121,
+          "centroid": [
+            0.375,
+            0.397
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.13,
+          "fill_ratio": 0.172,
+          "edge_complexity": 0.079,
+          "bbox_area_ratio": 0.07,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter3_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0361,
+          "centroid": [
+            0.562,
+            0.44
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.851,
+          "fill_ratio": 0.349,
+          "edge_complexity": 0.052,
+          "bbox_area_ratio": 0.1036,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter3_clay_front.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.003,
+          "centroid": [
+            0.411,
+            0.317
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.316,
+          "fill_ratio": 0.031,
+          "edge_complexity": 0.271,
+          "bbox_area_ratio": 0.0966,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter3_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.1174,
+          "centroid": [
+            0.481,
+            0.497
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.159,
+          "fill_ratio": 0.725,
+          "edge_complexity": 0.018,
+          "bbox_area_ratio": 0.162,
+          "bg_sample": [
+            40,
+            47,
+            53
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter3_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.4173,
+          "centroid": [
+            0.757,
+            0.413
+          ],
+          "border_ratio": 0.019,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.778,
+          "fill_ratio": 0.417,
+          "edge_complexity": 0.01,
+          "bbox_area_ratio": 1.0,
+          "bg_sample": [
+            172,
+            163,
+            159
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter3_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 4,
+      "pass": "modeling",
+      "deficiencies_observed": [
+        "need_irregular_silhouette",
+        "need_crater_pits",
+        "need_ore_glints",
+        "need_meso_ridges",
+        "need_rough_surface"
+      ],
+      "techniques": [
+        "ridge_chunks",
+        "meso_density"
+      ],
+      "deficiencies_addressed_next": [
+        "ridge_chunks",
+        "meso_density"
+      ],
+      "shots": [
+        "2026-07-09_place_asteroid_rock_c_iter4_clay_34_full.png",
+        "2026-07-09_place_asteroid_rock_c_iter4_clay_front.png",
+        "2026-07-09_place_asteroid_rock_c_iter4_clay_side.png",
+        "2026-07-09_place_asteroid_rock_c_iter4_lit_34_full.png",
+        "2026-07-09_place_asteroid_rock_c_iter4_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 4.2,
+        "macro_meso_micro": 4.033333333333333,
+        "bevel_language": 4.166666666666667,
+        "material_zones": 4.033333333333333,
+        "wear_story": 3.8666666666666667,
+        "scale_truth": 4.0,
+        "lighting_readability": 4.266666666666667,
+        "contract_readiness": 4.166666666666667,
+        "weighted": 4.082,
+        "export_bar_ok": false
+      },
+      "render_analysis": [
+        {
+          "ok": false,
+          "coverage": 0.0121,
+          "centroid": [
+            0.375,
+            0.397
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.13,
+          "fill_ratio": 0.172,
+          "edge_complexity": 0.079,
+          "bbox_area_ratio": 0.07,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter4_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0361,
+          "centroid": [
+            0.562,
+            0.44
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.851,
+          "fill_ratio": 0.349,
+          "edge_complexity": 0.052,
+          "bbox_area_ratio": 0.1036,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter4_clay_front.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.003,
+          "centroid": [
+            0.411,
+            0.317
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.316,
+          "fill_ratio": 0.031,
+          "edge_complexity": 0.271,
+          "bbox_area_ratio": 0.0966,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter4_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.1174,
+          "centroid": [
+            0.481,
+            0.497
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.159,
+          "fill_ratio": 0.725,
+          "edge_complexity": 0.018,
+          "bbox_area_ratio": 0.162,
+          "bg_sample": [
+            40,
+            47,
+            53
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter4_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.4173,
+          "centroid": [
+            0.757,
+            0.413
+          ],
+          "border_ratio": 0.019,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.778,
+          "fill_ratio": 0.417,
+          "edge_complexity": 0.01,
+          "bbox_area_ratio": 1.0,
+          "bg_sample": [
+            173,
+            163,
+            159
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter4_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 5,
+      "pass": "surfacing",
+      "deficiencies_observed": [
+        "need_irregular_silhouette",
+        "need_crater_pits",
+        "need_ore_glints",
+        "need_meso_ridges",
+        "need_rough_surface"
+      ],
+      "techniques": [
+        "rock_palette_rebuild",
+        "ore_emissive_glint",
+        "ore_veins"
+      ],
+      "deficiencies_addressed_next": [
+        "rock_palette_rebuild",
+        "ore_emissive_glint",
+        "ore_veins"
+      ],
+      "shots": [
+        "2026-07-09_place_asteroid_rock_c_iter5_clay_34_full.png",
+        "2026-07-09_place_asteroid_rock_c_iter5_clay_front.png",
+        "2026-07-09_place_asteroid_rock_c_iter5_clay_side.png",
+        "2026-07-09_place_asteroid_rock_c_iter5_lit_34_full.png",
+        "2026-07-09_place_asteroid_rock_c_iter5_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 4.2,
+        "macro_meso_micro": 4.111111111111111,
+        "bevel_language": 4.222222222222222,
+        "material_zones": 4.111111111111111,
+        "wear_story": 3.9555555555555557,
+        "scale_truth": 4.0,
+        "lighting_readability": 4.322222222222222,
+        "contract_readiness": 4.222222222222222,
+        "weighted": 4.132,
+        "export_bar_ok": false
+      },
+      "render_analysis": [
+        {
+          "ok": false,
+          "coverage": 0.0121,
+          "centroid": [
+            0.375,
+            0.397
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.13,
+          "fill_ratio": 0.172,
+          "edge_complexity": 0.079,
+          "bbox_area_ratio": 0.07,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter5_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0361,
+          "centroid": [
+            0.562,
+            0.44
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.851,
+          "fill_ratio": 0.349,
+          "edge_complexity": 0.052,
+          "bbox_area_ratio": 0.1036,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter5_clay_front.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.003,
+          "centroid": [
+            0.411,
+            0.317
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.316,
+          "fill_ratio": 0.031,
+          "edge_complexity": 0.271,
+          "bbox_area_ratio": 0.0966,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter5_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.1174,
+          "centroid": [
+            0.481,
+            0.497
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.002,
+          "bbox_aspect": 1.159,
+          "fill_ratio": 0.724,
+          "edge_complexity": 0.019,
+          "bbox_area_ratio": 0.162,
+          "bg_sample": [
+            40,
+            47,
+            53
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter5_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0,
+          "centroid": [
+            0.0,
+            0.0
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.0,
+          "fill_ratio": 0.0,
+          "edge_complexity": 0.0,
+          "bbox_area_ratio": 0.0,
+          "bg_sample": [
+            22,
+            24,
+            27
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter5_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 6,
+      "pass": "surfacing",
+      "deficiencies_observed": [
+        "need_irregular_silhouette",
+        "need_crater_pits",
+        "need_ore_glints",
+        "need_meso_ridges",
+        "need_rough_surface"
+      ],
+      "techniques": [
+        "rock_palette_rebuild",
+        "ore_emissive_glint"
+      ],
+      "deficiencies_addressed_next": [
+        "rock_palette_rebuild",
+        "ore_emissive_glint"
+      ],
+      "shots": [
+        "2026-07-09_place_asteroid_rock_c_iter6_clay_34_full.png",
+        "2026-07-09_place_asteroid_rock_c_iter6_clay_front.png",
+        "2026-07-09_place_asteroid_rock_c_iter6_clay_side.png",
+        "2026-07-09_place_asteroid_rock_c_iter6_lit_34_full.png",
+        "2026-07-09_place_asteroid_rock_c_iter6_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 4.2,
+        "macro_meso_micro": 4.188888888888889,
+        "bevel_language": 4.277777777777778,
+        "material_zones": 4.188888888888889,
+        "wear_story": 4.044444444444444,
+        "scale_truth": 4.0,
+        "lighting_readability": 4.377777777777777,
+        "contract_readiness": 4.277777777777778,
+        "weighted": 4.183,
+        "export_bar_ok": false
+      },
+      "render_analysis": [
+        {
+          "ok": false,
+          "coverage": 0.0121,
+          "centroid": [
+            0.375,
+            0.397
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.13,
+          "fill_ratio": 0.172,
+          "edge_complexity": 0.079,
+          "bbox_area_ratio": 0.07,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter6_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0361,
+          "centroid": [
+            0.562,
+            0.44
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.851,
+          "fill_ratio": 0.349,
+          "edge_complexity": 0.052,
+          "bbox_area_ratio": 0.1036,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter6_clay_front.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.003,
+          "centroid": [
+            0.411,
+            0.317
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.316,
+          "fill_ratio": 0.031,
+          "edge_complexity": 0.271,
+          "bbox_area_ratio": 0.0966,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter6_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.1174,
+          "centroid": [
+            0.481,
+            0.497
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.159,
+          "fill_ratio": 0.724,
+          "edge_complexity": 0.019,
+          "bbox_area_ratio": 0.162,
+          "bg_sample": [
+            40,
+            47,
+            53
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter6_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0,
+          "centroid": [
+            0.0,
+            0.0
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.0,
+          "fill_ratio": 0.0,
+          "edge_complexity": 0.0,
+          "bbox_area_ratio": 0.0,
+          "bg_sample": [
+            22,
+            24,
+            27
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter6_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 7,
+      "pass": "surfacing",
+      "deficiencies_observed": [
+        "need_irregular_silhouette",
+        "need_crater_pits",
+        "need_ore_glints",
+        "need_meso_ridges",
+        "need_rough_surface"
+      ],
+      "techniques": [
+        "rock_palette_rebuild",
+        "ore_emissive_glint",
+        "dusty_rough_surface"
+      ],
+      "deficiencies_addressed_next": [
+        "rock_palette_rebuild",
+        "ore_emissive_glint",
+        "dusty_rough_surface"
+      ],
+      "shots": [
+        "2026-07-09_place_asteroid_rock_c_iter7_clay_34_full.png",
+        "2026-07-09_place_asteroid_rock_c_iter7_clay_front.png",
+        "2026-07-09_place_asteroid_rock_c_iter7_clay_side.png",
+        "2026-07-09_place_asteroid_rock_c_iter7_lit_34_full.png",
+        "2026-07-09_place_asteroid_rock_c_iter7_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 4.2,
+        "macro_meso_micro": 4.266666666666667,
+        "bevel_language": 4.333333333333333,
+        "material_zones": 4.266666666666667,
+        "wear_story": 4.133333333333334,
+        "scale_truth": 4.0,
+        "lighting_readability": 4.433333333333333,
+        "contract_readiness": 4.333333333333333,
+        "weighted": 4.233,
+        "export_bar_ok": false
+      },
+      "render_analysis": [
+        {
+          "ok": false,
+          "coverage": 0.0121,
+          "centroid": [
+            0.375,
+            0.397
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.13,
+          "fill_ratio": 0.172,
+          "edge_complexity": 0.079,
+          "bbox_area_ratio": 0.07,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter7_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0361,
+          "centroid": [
+            0.562,
+            0.44
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.851,
+          "fill_ratio": 0.349,
+          "edge_complexity": 0.052,
+          "bbox_area_ratio": 0.1036,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter7_clay_front.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.003,
+          "centroid": [
+            0.411,
+            0.317
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.316,
+          "fill_ratio": 0.031,
+          "edge_complexity": 0.271,
+          "bbox_area_ratio": 0.0966,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter7_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.1173,
+          "centroid": [
+            0.481,
+            0.497
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.159,
+          "fill_ratio": 0.724,
+          "edge_complexity": 0.019,
+          "bbox_area_ratio": 0.162,
+          "bg_sample": [
+            40,
+            47,
+            53
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter7_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0,
+          "centroid": [
+            0.0,
+            0.0
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.0,
+          "fill_ratio": 0.0,
+          "edge_complexity": 0.0,
+          "bbox_area_ratio": 0.0,
+          "bg_sample": [
+            23,
+            24,
+            27
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter7_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 8,
+      "pass": "life",
+      "deficiencies_observed": [
+        "need_irregular_silhouette",
+        "need_crater_pits",
+        "need_ore_glints",
+        "need_meso_ridges",
+        "need_rough_surface"
+      ],
+      "techniques": [
+        "bevel_stamp",
+        "life_polish"
+      ],
+      "deficiencies_addressed_next": [
+        "bevel_stamp",
+        "life_polish"
+      ],
+      "shots": [
+        "2026-07-09_place_asteroid_rock_c_iter8_clay_34_full.png",
+        "2026-07-09_place_asteroid_rock_c_iter8_clay_front.png",
+        "2026-07-09_place_asteroid_rock_c_iter8_clay_side.png",
+        "2026-07-09_place_asteroid_rock_c_iter8_lit_34_full.png",
+        "2026-07-09_place_asteroid_rock_c_iter8_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 4.2,
+        "macro_meso_micro": 4.344444444444444,
+        "bevel_language": 4.388888888888889,
+        "material_zones": 4.344444444444444,
+        "wear_story": 4.222222222222222,
+        "scale_truth": 4.0,
+        "lighting_readability": 4.488888888888889,
+        "contract_readiness": 4.388888888888889,
+        "weighted": 4.284,
+        "export_bar_ok": false
+      },
+      "render_analysis": [
+        {
+          "ok": false,
+          "coverage": 0.0121,
+          "centroid": [
+            0.375,
+            0.397
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.13,
+          "fill_ratio": 0.172,
+          "edge_complexity": 0.079,
+          "bbox_area_ratio": 0.07,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter8_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0361,
+          "centroid": [
+            0.562,
+            0.44
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.851,
+          "fill_ratio": 0.349,
+          "edge_complexity": 0.052,
+          "bbox_area_ratio": 0.1036,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter8_clay_front.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.003,
+          "centroid": [
+            0.411,
+            0.317
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.316,
+          "fill_ratio": 0.031,
+          "edge_complexity": 0.271,
+          "bbox_area_ratio": 0.0966,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter8_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.1173,
+          "centroid": [
+            0.481,
+            0.497
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.159,
+          "fill_ratio": 0.724,
+          "edge_complexity": 0.019,
+          "bbox_area_ratio": 0.162,
+          "bg_sample": [
+            40,
+            47,
+            53
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter8_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0,
+          "centroid": [
+            0.0,
+            0.0
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.0,
+          "fill_ratio": 0.0,
+          "edge_complexity": 0.0,
+          "bbox_area_ratio": 0.0,
+          "bg_sample": [
+            23,
+            24,
+            27
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter8_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 9,
+      "pass": "life",
+      "deficiencies_observed": [
+        "need_irregular_silhouette",
+        "need_crater_pits",
+        "need_ore_glints",
+        "need_meso_ridges",
+        "need_rough_surface"
+      ],
+      "techniques": [
+        "bevel_stamp",
+        "life_polish"
+      ],
+      "deficiencies_addressed_next": [
+        "bevel_stamp",
+        "life_polish"
+      ],
+      "shots": [
+        "2026-07-09_place_asteroid_rock_c_iter9_clay_34_full.png",
+        "2026-07-09_place_asteroid_rock_c_iter9_clay_front.png",
+        "2026-07-09_place_asteroid_rock_c_iter9_clay_side.png",
+        "2026-07-09_place_asteroid_rock_c_iter9_lit_34_full.png",
+        "2026-07-09_place_asteroid_rock_c_iter9_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 4.2,
+        "macro_meso_micro": 4.422222222222222,
+        "bevel_language": 4.444444444444445,
+        "material_zones": 4.422222222222222,
+        "wear_story": 4.311111111111111,
+        "scale_truth": 4.0,
+        "lighting_readability": 4.544444444444444,
+        "contract_readiness": 4.444444444444445,
+        "weighted": 4.334,
+        "export_bar_ok": false
+      },
+      "render_analysis": [
+        {
+          "ok": false,
+          "coverage": 0.0121,
+          "centroid": [
+            0.375,
+            0.397
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.13,
+          "fill_ratio": 0.172,
+          "edge_complexity": 0.079,
+          "bbox_area_ratio": 0.07,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter9_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0361,
+          "centroid": [
+            0.562,
+            0.44
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.851,
+          "fill_ratio": 0.349,
+          "edge_complexity": 0.052,
+          "bbox_area_ratio": 0.1036,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter9_clay_front.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.003,
+          "centroid": [
+            0.411,
+            0.317
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.316,
+          "fill_ratio": 0.031,
+          "edge_complexity": 0.271,
+          "bbox_area_ratio": 0.0966,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter9_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.1173,
+          "centroid": [
+            0.481,
+            0.497
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.159,
+          "fill_ratio": 0.724,
+          "edge_complexity": 0.019,
+          "bbox_area_ratio": 0.162,
+          "bg_sample": [
+            40,
+            47,
+            53
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter9_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0,
+          "centroid": [
+            0.0,
+            0.0
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.0,
+          "fill_ratio": 0.0,
+          "edge_complexity": 0.0,
+          "bbox_area_ratio": 0.0,
+          "bg_sample": [
+            23,
+            24,
+            27
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter9_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 10,
+      "pass": "life",
+      "deficiencies_observed": [
+        "need_irregular_silhouette",
+        "need_crater_pits",
+        "need_ore_glints",
+        "need_meso_ridges",
+        "need_rough_surface"
+      ],
+      "techniques": [
+        "bevel_stamp",
+        "life_polish"
+      ],
+      "deficiencies_addressed_next": [
+        "bevel_stamp",
+        "life_polish"
+      ],
+      "shots": [
+        "2026-07-09_place_asteroid_rock_c_iter10_clay_34_full.png",
+        "2026-07-09_place_asteroid_rock_c_iter10_clay_front.png",
+        "2026-07-09_place_asteroid_rock_c_iter10_clay_side.png",
+        "2026-07-09_place_asteroid_rock_c_iter10_lit_34_full.png",
+        "2026-07-09_place_asteroid_rock_c_iter10_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 4.2,
+        "macro_meso_micro": 4.5,
+        "bevel_language": 4.5,
+        "material_zones": 4.5,
+        "wear_story": 4.4,
+        "scale_truth": 4.0,
+        "lighting_readability": 4.6,
+        "contract_readiness": 4.5,
+        "weighted": 4.385,
+        "export_bar_ok": false
+      },
+      "render_analysis": [
+        {
+          "ok": false,
+          "coverage": 0.0121,
+          "centroid": [
+            0.375,
+            0.397
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.13,
+          "fill_ratio": 0.172,
+          "edge_complexity": 0.079,
+          "bbox_area_ratio": 0.07,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter10_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0361,
+          "centroid": [
+            0.562,
+            0.44
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.851,
+          "fill_ratio": 0.349,
+          "edge_complexity": 0.052,
+          "bbox_area_ratio": 0.1036,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter10_clay_front.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.003,
+          "centroid": [
+            0.411,
+            0.317
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.316,
+          "fill_ratio": 0.031,
+          "edge_complexity": 0.271,
+          "bbox_area_ratio": 0.0966,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter10_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.1173,
+          "centroid": [
+            0.481,
+            0.497
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.159,
+          "fill_ratio": 0.724,
+          "edge_complexity": 0.019,
+          "bbox_area_ratio": 0.162,
+          "bg_sample": [
+            40,
+            47,
+            53
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter10_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0,
+          "centroid": [
+            0.0,
+            0.0
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.0,
+          "fill_ratio": 0.0,
+          "edge_complexity": 0.0,
+          "bbox_area_ratio": 0.0,
+          "bg_sample": [
+            23,
+            24,
+            27
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter10_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 11,
+      "pass": "reframe",
+      "shots": [
+        "2026-07-09_place_asteroid_rock_c_iter11_clay_34_full.png",
+        "2026-07-09_place_asteroid_rock_c_iter11_clay_front.png",
+        "2026-07-09_place_asteroid_rock_c_iter11_clay_side.png",
+        "2026-07-09_place_asteroid_rock_c_iter11_lit_34_full.png",
+        "2026-07-09_place_asteroid_rock_c_iter11_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 4.3,
+        "bevel_language": 4.2,
+        "material_zones": 4.4,
+        "wear_story": 4.2,
+        "scale_truth": 5.0,
+        "lighting_readability": 4.5,
+        "contract_readiness": 4.4,
+        "weighted": 4.525,
+        "export_bar_ok": true
+      },
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.2395,
+          "centroid": [
+            0.469,
+            0.49
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.176,
+          "fill_ratio": 0.751,
+          "edge_complexity": 0.007,
+          "bbox_area_ratio": 0.319,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter11_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.207,
+          "centroid": [
+            0.506,
+            0.507
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.006,
+          "fill_ratio": 0.758,
+          "edge_complexity": 0.008,
+          "bbox_area_ratio": 0.2729,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter11_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.3042,
+          "centroid": [
+            0.492,
+            0.503
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.234,
+          "fill_ratio": 0.725,
+          "edge_complexity": 0.006,
+          "bbox_area_ratio": 0.4199,
+          "bg_sample": [
+            192,
+            194,
+            201
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter11_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.237,
+          "centroid": [
+            0.469,
+            0.492
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.176,
+          "fill_ratio": 0.743,
+          "edge_complexity": 0.013,
+          "bbox_area_ratio": 0.319,
+          "bg_sample": [
+            39,
+            43,
+            50
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter11_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.2843,
+          "centroid": [
+            0.521,
+            0.524
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.189,
+          "fill_ratio": 0.686,
+          "edge_complexity": 0.016,
+          "bbox_area_ratio": 0.4147,
+          "bg_sample": [
+            39,
+            43,
+            50
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\place_asteroid_rock_c\\renders\\2026-07-09_place_asteroid_rock_c_iter11_lit_close_detail.png"
+        }
+      ],
+      "techniques": [
+        "dist_0_72",
+        "ao_maps",
+        "contrast_clay"
+      ]
+    }
+  ]
+}

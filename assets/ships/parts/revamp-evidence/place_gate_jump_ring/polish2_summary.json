@@ -1,0 +1,23 @@
+{
+  "part_id": "place_gate_jump_ring",
+  "pass": "polish2",
+  "date": "2026-07-10",
+  "tris": 6816,
+  "mesh_count": 74,
+  "extents": [
+    21.04,
+    20.45,
+    22.67
+  ],
+  "blend": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets/ships/parts/blender\\place_gate_jump_ring_authored.blend",
+  "renders": [
+    "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets/ships/parts/revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-10_place_gate_jump_ring_polish2_clay_34_full.png",
+    "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets/ships/parts/revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-10_place_gate_jump_ring_polish2_clay_front.png",
+    "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets/ships/parts/revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-10_place_gate_jump_ring_polish2_clay_side.png",
+    "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets/ships/parts/revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-10_place_gate_jump_ring_polish2_lit_34_full.png",
+    "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets/ships/parts/revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-10_place_gate_jump_ring_polish2_lit_close_detail.png",
+    "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets/ships/parts/revamp-evidence\\place_gate_jump_ring\\renders\\2026-07-10_place_gate_jump_ring_final_lit_34_full.png"
+  ],
+  "export": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets/ships/parts/revamp-evidence\\place_gate_jump_ring\\_export_tmp.glb",
+  "export_ok": true
+}

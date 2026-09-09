@@ -1,0 +1,149 @@
+{
+  "part_id": "place_station_trade_hub",
+  "iters_run": [
+    {
+      "iter": 2,
+      "pass": "modeling",
+      "weighted": 3.825,
+      "export_bar_ok": false,
+      "shots_ok": true
+    },
+    {
+      "iter": 3,
+      "pass": "modeling",
+      "weighted": 3.885,
+      "export_bar_ok": false,
+      "shots_ok": true
+    },
+    {
+      "iter": 4,
+      "pass": "modeling",
+      "weighted": 3.945,
+      "export_bar_ok": false,
+      "shots_ok": true
+    },
+    {
+      "iter": 5,
+      "pass": "modeling",
+      "weighted": 3.998,
+      "export_bar_ok": false,
+      "shots_ok": true
+    },
+    {
+      "iter": 6,
+      "pass": "modeling",
+      "weighted": 4.055,
+      "export_bar_ok": false,
+      "shots_ok": true
+    },
+    {
+      "iter": 7,
+      "pass": "modeling",
+      "weighted": 4.115,
+      "export_bar_ok": false,
+      "shots_ok": true
+    },
+    {
+      "iter": 8,
+      "pass": "modeling",
+      "weighted": 4.175,
+      "export_bar_ok": false,
+      "shots_ok": true
+    },
+    {
+      "iter": 9,
+      "pass": "surfacing",
+      "weighted": 4.365,
+      "export_bar_ok": true,
+      "shots_ok": true
+    },
+    {
+      "iter": 10,
+      "pass": "surfacing",
+      "weighted": 4.435,
+      "export_bar_ok": true,
+      "shots_ok": true
+    },
+    {
+      "iter": 11,
+      "pass": "surfacing",
+      "weighted": 4.505,
+      "export_bar_ok": true,
+      "shots_ok": true
+    },
+    {
+      "iter": 12,
+      "pass": "surfacing",
+      "weighted": 4.575,
+      "export_bar_ok": true,
+      "shots_ok": true
+    },
+    {
+      "iter": 13,
+      "pass": "surfacing",
+      "weighted": 4.645,
+      "export_bar_ok": true,
+      "shots_ok": true
+    },
+    {
+      "iter": 14,
+      "pass": "surfacing",
+      "weighted": 4.705,
+      "export_bar_ok": true,
+      "shots_ok": true
+    },
+    {
+      "iter": 15,
+      "pass": "life",
+      "weighted": 4.635,
+      "export_bar_ok": true,
+      "shots_ok": true
+    },
+    {
+      "iter": 16,
+      "pass": "life",
+      "weighted": 4.691,
+      "export_bar_ok": true,
+      "shots_ok": true
+    },
+    {
+      "iter": 17,
+      "pass": "life",
+      "weighted": 4.747,
+      "export_bar_ok": true,
+      "shots_ok": true
+    },
+    {
+      "iter": 18,
+      "pass": "life",
+      "weighted": 4.802,
+      "export_bar_ok": true,
+      "shots_ok": true
+    },
+    {
+      "iter": 19,
+      "pass": "life",
+      "weighted": 4.851,
+      "export_bar_ok": true,
+      "shots_ok": true
+    },
+    {
+      "iter": 20,
+      "pass": "life",
+      "weighted": 4.9,
+      "export_bar_ok": true,
+      "shots_ok": true
+    }
+  ],
+  "final_scores": {
+    "iter": 20,
+    "pass": "life",
+    "weighted": 4.9,
+    "export_bar_ok": true,
+    "shots_ok": true
+  },
+  "export_err": null,
+  "export_bytes": 1835380,
+  "tris_eval": 4652,
+  "mesh_count": 84
+}

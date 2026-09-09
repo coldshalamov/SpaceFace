@@ -1,0 +1,66 @@
+{
+  "schema": "spaceface.pq018SourceValidationReceipt.v1",
+  "assetId": "place_landmark_wreck_cathedral",
+  "validatedAt": "2026-07-20T10:29:00Z",
+  "commands": [
+    {
+      "command": "python tools/blender/spaceface_export.py --validate-only assets/ships/parts/places/place_landmark_wreck_cathedral.glb --kind landmark --id place_landmark_wreck_cathedral --asset-id SF_LANDMARK_PLACE_LANDMARK_WRECK_CATHEDRAL --slot place",
+      "exitCode": 0,
+      "result": "spaceface.export.v1 ok=true; diagnostics=[]"
+    },
+    {
+      "command": "node tools/art/validate_gltf_assets.mjs --input C:/Users/93rob/sf-pq018/assets/ships/parts/places/place_landmark_wreck_cathedral.glb --out C:/Users/93rob/sf-pq018/assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/reports/gltf-validator",
+      "exitCode": 0,
+      "result": "Khronos glTF Validator 2.0.0-dev.3.10: 0 errors, 0 warnings, 0 infos, 0 hints"
+    },
+    {
+      "command": "ffprobe -v error -select_streams v:0 -count_frames -show_entries stream=codec_name,width,height,r_frame_rate,nb_read_frames,pix_fmt -show_entries format=duration,size -of json assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/turntable/place_landmark_wreck_cathedral_turntable.mp4",
+      "exitCode": 0,
+      "result": "H.264 yuv420p, 1280x720, 30 fps, 60 frames, 2.0 seconds"
+    },
+    {
+      "command": "python AST parse author_wreck_cathedral.py and render_wreck_cathedral_evidence.py",
+      "exitCode": 0,
+      "result": "both authoring scripts parse"
+    },
+    {
+      "command": "node --check generate_hash_manifest.cjs && node --check validate_gltf.cjs",
+      "exitCode": 0,
+      "result": "both evidence helpers parse"
+    },
+    {
+      "command": "recompute SHA-256 for every reports/sha256-manifest.json entry",
+      "exitCode": 0,
+      "result": "45 entries checked; 0 mismatches"
+    },
+    {
+      "command": "parse every JSON file below the PQ-018 reports directory",
+      "exitCode": 0,
+      "result": "10 reports checked before this receipt; 0 parse failures"
+    },
+    {
+      "command": "git diff --check",
+      "exitCode": 0,
+      "result": "no whitespace errors"
+    }
+  ],
+  "geometry": {
+    "lod0Triangles": 91908,
+    "lod1Triangles": 34164,
+    "lod2Triangles": 8364,
+    "materials": 8,
+    "textures": 26,
+    "estimatedTextureMemoryMiB": 26.667
+  },
+  "flythrough": {
+    "samples": 75,
+    "hits": 0,
+    "pass": true
+  },
+  "sourceAudit": {
+    "saved": true,
+    "dirty": false,
+    "missingExternalFiles": 0,
+    "backupSidecars": 0
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "schema": "spaceface.shipMaterialContract.v1",
+  "assetId": "SF_PELICAN_PRODUCTION_V1",
+  "normalConvention": "OpenGL",
+  "ormChannels": "R=AO,G=Roughness,B=Metallic",
+  "roles": {
+    "Material_Hull": "heat-stained orange-brown coated pressure-shell plates, dielectric",
+    "Material_Armor": "dark brake-formed armor and cutter drums",
+    "Material_Mechanical": "machined booms, frames, service steel",
+    "Material_Accent": "cyan scuff and identification",
+    "Material_Warning": "hand-painted return chevron and drum tags",
+    "Material_Canopy": "laminated dark ceramic glass in a pressure frame",
+    "Material_Thruster": "recessed twin drive throats; no plume mesh",
+    "Material_Ceramic": "drive isolator collar",
+    "Material_Radiator": "recessed shoulder heat cassettes"
+  },
+  "runtimeRules": {
+    "embeddedPlume": false,
+    "canopyDominatesSilhouette": false,
+    "staticMerge": "one mesh per material per LOD"
+  }
+}

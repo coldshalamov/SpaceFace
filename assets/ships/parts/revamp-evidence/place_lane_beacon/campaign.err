@@ -1,0 +1,12 @@
+C:\Users\93rob\Documents\GitHub\SpaceFace\tools\art\blender\place_lane_beacon_campaign.py:88: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+C:\Users\93rob\Documents\GitHub\SpaceFace\tools\art\blender\place_lane_beacon_campaign.py:446: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  if clay_m.use_nodes:
+C:\Users\93rob\Documents\GitHub\SpaceFace\tools\art\blender\place_lane_beacon_campaign.py:356: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\Documents\GitHub\SpaceFace\tools\art\blender\place_lane_beacon_campaign.py:280: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  if acc and acc.use_nodes:
+C:\Users\93rob\Documents\GitHub\SpaceFace\tools\art\blender\place_lane_beacon_campaign.py:291: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  if hull and hull.use_nodes:
+C:\Users\93rob\Documents\GitHub\SpaceFace\tools\art\blender\place_lane_beacon_campaign.py:299: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  if mech and mech.use_nodes:

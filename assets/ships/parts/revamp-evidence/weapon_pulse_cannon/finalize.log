@@ -1,0 +1,8 @@
+{
+  "partId": "weapon_pulse_cannon",
+  "file": "weapons/weapon_pulse_cannon.glb",
+  "tris": 1944,
+  "bytes": 239152,
+  "images": 4,
+  "materials": "Material_Mechanical"
+}

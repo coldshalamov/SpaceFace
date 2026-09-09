@@ -1,0 +1,124 @@
+{
+  "schema": "spaceface.pq022.bastionReport.v1",
+  "assetId": "place_station_military",
+  "sourceGlb": {
+    "path": "assets/ships/parts/places/place_station_military.glb",
+    "bytes": 6761824,
+    "sha256": "fe2676f628c8a7382e6827883128d63c53407c9a828493cac8ccb65a9ed2491e"
+  },
+  "releaseGlb": {
+    "path": "assets/ships/release/parts/places/place_station_military.glb",
+    "bytes": 4232404,
+    "sha256": "b37e51a4a57d57f53a2fe5e30ea5b2914b2d239e82d9fdf702ee526fd5a5dff2"
+  },
+  "triangles": {
+    "lod0": 65192,
+    "lod1": 27302,
+    "lod2": 5932,
+    "collision": 44,
+    "drawCallMeshes": 31
+  },
+  "materials": [
+    {
+      "name": "Material_Machinery",
+      "roughness": 1,
+      "metalness": 1,
+      "emissive": "000000",
+      "map": false,
+      "normal": false,
+      "aoMap": false
+    },
+    {
+      "name": "Material_Accent",
+      "roughness": 1,
+      "metalness": 1,
+      "emissive": "45adff",
+      "map": false,
+      "normal": false,
+      "aoMap": false
+    },
+    {
+      "name": "Material_Alloy",
+      "roughness": 1,
+      "metalness": 1,
+      "emissive": "000000",
+      "map": false,
+      "normal": false,
+      "aoMap": false
+    },
+    {
+      "name": "Material_Blast",
+      "roughness": 1,
+      "metalness": 1,
+      "emissive": "000000",
+      "map": false,
+      "normal": false,
+      "aoMap": false
+    },
+    {
+      "name": "Material_Dock",
+      "roughness": 1,
+      "metalness": 1,
+      "emissive": "000000",
+      "map": false,
+      "normal": false,
+      "aoMap": false
+    },
+    {
+      "name": "Material_Glass",
+      "roughness": 1,
+      "metalness": 1,
+      "emissive": "ffd7a6",
+      "map": false,
+      "normal": false,
+      "aoMap": false
+    },
+    {
+      "name": "Material_Hull",
+      "roughness": 1,
+      "metalness": 1,
+      "emissive": "000000",
+      "map": false,
+      "normal": false,
+      "aoMap": false
+    },
+    {
+      "name": "Material_Radiator",
+      "roughness": 1,
+      "metalness": 1,
+      "emissive": "000000",
+      "map": false,
+      "normal": false,
+      "aoMap": false
+    },
+    {
+      "name": "Material_Warm",
+      "roughness": 1,
+      "metalness": 1,
+      "emissive": "000000",
+      "map": false,
+      "normal": false,
+      "aoMap": false
+    },
+    {
+      "name": "Material_Warning",
+      "roughness": 1,
+      "metalness": 1,
+      "emissive": "000000",
+      "map": false,
+      "normal": false,
+      "aoMap": false
+    }
+  ],
+  "textures": {
+    "embeddedImages": 30,
+    "embeddedBytes": 2880009,
+    "srcPngFiles": 30,
+    "srcPngBytes": 2880009
+  },
+  "sockets": [
+    "SOCKET_Dock_Approach",
+    "SOCKET_Emissive",
+    "SOCKET_Structure_Core"
+  ]
+}

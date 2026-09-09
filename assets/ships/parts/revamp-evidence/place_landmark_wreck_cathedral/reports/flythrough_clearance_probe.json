@@ -1,0 +1,7 @@
+{
+  "method": "75 deterministic BVH ray samples across a 64 m x 50 m inset of the 72 m x 58 m envelope",
+  "sampleCount": 75,
+  "hitCount": 0,
+  "pass": true,
+  "hits": []
+}

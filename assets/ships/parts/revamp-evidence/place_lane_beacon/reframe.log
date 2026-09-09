@@ -1,0 +1,174 @@
+00:04.422  blend            | Read blend: "C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\blender\place_lane_beacon_authored.blend"
+C:\Users\93rob\Documents\GitHub\SpaceFace\tools\art\blender\place_lane_beacon_reframe.py:66: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\Documents\GitHub\SpaceFace\tools\art\blender\place_lane_beacon_reframe.py:114: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:10.953  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter21_clay_34_full.png'
+00:18.781  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter21_clay_front.png'
+00:25.453  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter21_clay_side.png'
+00:30.469  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter21_lit_34_full.png'
+00:38.984  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\place_lane_beacon\renders\2026-07-09_place_lane_beacon_iter21_lit_close_detail.png'
+Reloading external rigs...
+Reloading external metarigs...
+SHOT clay_34_full True cov 0.0378 fill 0.338 edge 0.139 accent 0.0 ba 0.204
+SHOT clay_front True cov 0.0384 fill 0.33 edge 0.109 accent 0.0 ba 0.207
+SHOT clay_side True cov 0.0316 fill 0.332 edge 0.128 accent 0.0 ba 0.175
+SHOT lit_34_full True cov 0.0319 fill 0.287 edge 0.25 accent 0.007 ba 0.203
+SHOT lit_close_detail False cov 0.2601 fill 0.441 edge 0.019 accent 0.006 ba 1.401
+INFO Draco mesh compression is available, use library at C:\Program Files\Blender Foundation\Blender 5.1\5.1\scripts\addons_core\io_scene_gltf2\extern_draco.dll
+15:05:31 | INFO: Starting glTF 2.0 export
+15:05:31 | INFO: Extracting primitive: Cube
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cube.001
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cylinder
+15:05:31 | WARNING: Cylinder: Could not calculate tangents. Please try to triangulate the mesh first.
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cylinder.001
+15:05:31 | WARNING: Cylinder.001: Could not calculate tangents. Please try to triangulate the mesh first.
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cylinder.002
+15:05:31 | WARNING: Cylinder.002: Could not calculate tangents. Please try to triangulate the mesh first.
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cylinder.003
+15:05:31 | WARNING: Cylinder.003: Could not calculate tangents. Please try to triangulate the mesh first.
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cylinder.004
+15:05:31 | WARNING: Cylinder.004: Could not calculate tangents. Please try to triangulate the mesh first.
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cube.002
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cylinder.005
+15:05:31 | WARNING: Cylinder.005: Could not calculate tangents. Please try to triangulate the mesh first.
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cylinder.006
+15:05:31 | WARNING: Cylinder.006: Could not calculate tangents. Please try to triangulate the mesh first.
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cube.003
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cube.004
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cube.005
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cube.006
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cube.007
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cube.008
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cube.009
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cube.010
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cube.011
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cube.012
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cube.013
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cube.014
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cube.015
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cube.016
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cylinder.007
+15:05:31 | WARNING: Cylinder.007: Could not calculate tangents. Please try to triangulate the mesh first.
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cylinder.008
+15:05:31 | WARNING: Cylinder.008: Could not calculate tangents. Please try to triangulate the mesh first.
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cylinder.009
+15:05:31 | WARNING: Cylinder.009: Could not calculate tangents. Please try to triangulate the mesh first.
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cylinder.010
+15:05:31 | WARNING: Cylinder.010: Could not calculate tangents. Please try to triangulate the mesh first.
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cube.017
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cube.018
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cylinder.011
+15:05:31 | WARNING: Cylinder.011: Could not calculate tangents. Please try to triangulate the mesh first.
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cylinder.012
+15:05:31 | WARNING: Cylinder.012: Could not calculate tangents. Please try to triangulate the mesh first.
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cylinder.013
+15:05:31 | WARNING: Cylinder.013: Could not calculate tangents. Please try to triangulate the mesh first.
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cube.019
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cube.020
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cube.021
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cube.022
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cube.023
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cube.024
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cube.025
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cube.026
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cube.027
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cube.028
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cube.029
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cube.030
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cube.031
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cube.032
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cube.033
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cube.034
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cube.035
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cube.036
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cube.037
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cube.038
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cylinder.014
+15:05:31 | WARNING: Cylinder.014: Could not calculate tangents. Please try to triangulate the mesh first.
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cube.039
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cube.040
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cube.041
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cube.042
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Extracting primitive: Cube.043
+15:05:31 | INFO: Primitives created: 1
+15:05:31 | INFO: Finished glTF 2.0 export in 0.48897552490234375 s
+
+Warning: Cylinder: Could not calculate tangents. Please try to triangulate the mesh first.
+Warning: Cylinder.001: Could not calculate tangents. Please try to triangulate the mesh first.
+Warning: Cylinder.002: Could not calculate tangents. Please try to triangulate the mesh first.
+Warning: Cylinder.003: Could not calculate tangents. Please try to triangulate the mesh first.
+Warning: Cylinder.004: Could not calculate tangents. Please try to triangulate the mesh first.
+Warning: Cylinder.005: Could not calculate tangents. Please try to triangulate the mesh first.
+Warning: Cylinder.006: Could not calculate tangents. Please try to triangulate the mesh first.
+Warning: Cylinder.007: Could not calculate tangents. Please try to triangulate the mesh first.
+Warning: Cylinder.008: Could not calculate tangents. Please try to triangulate the mesh first.
+Warning: Cylinder.009: Could not calculate tangents. Please try to triangulate the mesh first.
+Warning: Cylinder.010: Could not calculate tangents. Please try to triangulate the mesh first.
+Warning: Cylinder.011: Could not calculate tangents. Please try to triangulate the mesh first.
+Warning: Cylinder.012: Could not calculate tangents. Please try to triangulate the mesh first.
+Warning: Cylinder.013: Could not calculate tangents. Please try to triangulate the mesh first.
+Warning: Cylinder.014: Could not calculate tangents. Please try to triangulate the mesh first.
+Info: Saved as "place_lane_beacon_authored.blend"
+RESULT {"weighted": 4.79, "export_bar_ok": true, "ok_full": true, "export_err": null, "export_bytes": 740868, "analyses_ok": [true, true, true, true, false]}
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit

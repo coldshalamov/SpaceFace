@@ -1,0 +1,229 @@
+{
+  "schema": "spaceface.wreckCathedralRenderEvidence.v1",
+  "assetId": "place_landmark_wreck_cathedral",
+  "sourceBlend": "assets/ships/parts/blender/place_landmark_wreck_cathedral.blend",
+  "renderEngine": "BLENDER_EEVEE",
+  "colorManagement": {
+    "viewTransform": "AgX",
+    "look": "AgX - Medium High Contrast"
+  },
+  "neutralLighting": "three sun keys plus three broad area sources; dark neutral world",
+  "inspectionPasses": "emission-only source maps; no bloom or compositor glare",
+  "cameras": {
+    "close_3q": {
+      "location": [
+        360,
+        -1050,
+        620
+      ],
+      "target": [
+        0,
+        0,
+        12
+      ],
+      "lens": 58
+    },
+    "gameplay_distance": {
+      "location": [
+        780,
+        -1860,
+        1020
+      ],
+      "target": [
+        0,
+        0,
+        15
+      ],
+      "lens": 65
+    },
+    "side": {
+      "location": [
+        0,
+        -1120,
+        220
+      ],
+      "target": [
+        0,
+        0,
+        8
+      ],
+      "lens": 58
+    },
+    "upper_side": {
+      "location": [
+        -210,
+        -1110,
+        590
+      ],
+      "target": [
+        0,
+        0,
+        15
+      ],
+      "lens": 60
+    },
+    "flythrough": {
+      "location": [
+        -500,
+        70,
+        30
+      ],
+      "target": [
+        155,
+        20,
+        15
+      ],
+      "lens": 48
+    },
+    "propulsion": {
+      "location": [
+        -535,
+        -260,
+        160
+      ],
+      "target": [
+        -220,
+        22,
+        4
+      ],
+      "lens": 54
+    }
+  },
+  "outputs": [
+    {
+      "kind": "neutral",
+      "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/neutral_close_3q.png",
+      "camera": "close_3q",
+      "bytes": 1474418,
+      "sha256": "fe96d565735ac9d94c9db661ad88ed93c08aff6469945577d966384965e7ce18"
+    },
+    {
+      "kind": "neutral",
+      "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/neutral_gameplay_distance.png",
+      "camera": "gameplay_distance",
+      "bytes": 1111661,
+      "sha256": "a7e8d6f00afc543b86c2c45f685c77ad40b8c25b483cb4b1dbd8d0e0ba5c82ed"
+    },
+    {
+      "kind": "neutral",
+      "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/neutral_flythrough_cavity.png",
+      "camera": "flythrough",
+      "bytes": 2028119,
+      "sha256": "3720ed053d690a160cd5f1993bb7915cd30dd0da45fd734d79a0530849253e4c"
+    },
+    {
+      "kind": "neutral",
+      "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/neutral_propulsion_zone.png",
+      "camera": "propulsion",
+      "bytes": 2138176,
+      "sha256": "24a2d884eb7f4e5848c50aed92d3e75b6195698352dbbc6c3372235974b0a33b"
+    },
+    {
+      "kind": "wireframe",
+      "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/wireframe_side.png",
+      "camera": "side",
+      "bytes": 1570073,
+      "sha256": "42fc1a708d90ccc3582ad1bc1bb8c60c8606f502b9d94569eeac899d0e5be4f4"
+    },
+    {
+      "kind": "wireframe",
+      "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/wireframe_3q.png",
+      "camera": "close_3q",
+      "bytes": 1585265,
+      "sha256": "1bf87ac875316cbf00fc5fa50edea91bd94f8f1a9424ed05ed487c59fcb70ec7"
+    },
+    {
+      "kind": "wireframe",
+      "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/wireframe_flythrough.png",
+      "camera": "flythrough",
+      "bytes": 2645393,
+      "sha256": "6f677d02831bd3bc969c5920efec98d2368894e8a5fdee5390e2beb149d51eca"
+    },
+    {
+      "kind": "pbr_basecolor",
+      "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/pbr_basecolor_no_bloom.png",
+      "camera": "upper_side",
+      "bloom": false,
+      "bytes": 1276546,
+      "sha256": "b36e9e6a197052ac1b6d8266a88741fe45235d8ca60bf50b13c0e1edb2776570"
+    },
+    {
+      "kind": "pbr_normal",
+      "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/pbr_normal_no_bloom.png",
+      "camera": "close_3q",
+      "bloom": false,
+      "bytes": 1198241,
+      "sha256": "094570fbf1b218b299017373b84320eeacf7f73ed3b35746199dbadda6f96a5b"
+    },
+    {
+      "kind": "pbr_roughness",
+      "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/pbr_roughness_no_bloom.png",
+      "camera": "upper_side",
+      "bloom": false,
+      "bytes": 1026295,
+      "sha256": "00afad693b5f36799e7d8b335d2dd236293ba4238ea6c651c1f15b5c67c7122e"
+    },
+    {
+      "kind": "pbr_metallic",
+      "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/pbr_metallic_no_bloom.png",
+      "camera": "upper_side",
+      "bloom": false,
+      "bytes": 1002333,
+      "sha256": "4f6a8a90515800e313852b7ca4fbd59917af9c964742c8b4b62525d01b8eb88e"
+    },
+    {
+      "kind": "pbr_ao",
+      "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/pbr_ao_no_bloom.png",
+      "camera": "upper_side",
+      "bloom": false,
+      "bytes": 990684,
+      "sha256": "951aeb936564bd5db0841e78279b22dfc5f2b631597e520615276596e09662b3"
+    },
+    {
+      "kind": "pbr_emissive",
+      "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/pbr_emissive_no_bloom.png",
+      "camera": "side",
+      "bloom": false,
+      "bytes": 683433,
+      "sha256": "0502215488be31dfe340cfd7536a748612e7c8cb90e1ca79250625770ea61e21"
+    },
+    {
+      "kind": "lod_silhouette",
+      "lod": 0,
+      "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/silhouette_lod0.png",
+      "camera": "side",
+      "bytes": 1187694,
+      "sha256": "b379d8020efe857913ed0ca92d9ddaa8152e9db8004ab8b3c2211556ac2b5cef"
+    },
+    {
+      "kind": "lod_silhouette",
+      "lod": 1,
+      "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/silhouette_lod1.png",
+      "camera": "side",
+      "bytes": 1189361,
+      "sha256": "011ab45bdf9c7ee8c9d0974e9db86d12e386da4fcc4cb50d6b98d3a20f4d1c4b"
+    },
+    {
+      "kind": "lod_silhouette",
+      "lod": 2,
+      "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/silhouette_lod2.png",
+      "camera": "side",
+      "bytes": 1178573,
+      "sha256": "070592768b64374f6984fe0ec20ff14b7d46cf497830a0dacd6ab0cae9c219f8"
+    },
+    {
+      "kind": "turntable",
+      "path": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/turntable/place_landmark_wreck_cathedral_turntable.mp4",
+      "frames": 60,
+      "fps": 30,
+      "resolution": [
+        1280,
+        720
+      ],
+      "bytes": 1547783,
+      "sha256": "2c29d44512c5ea2c851b3144296a62be755fe53d3210b8e0e018dd01b293d9ad"
+    }
+  ],
+  "elapsedSeconds": 1501.95,
+  "createdAt": "2026-08-11T04:42:56Z"
+}

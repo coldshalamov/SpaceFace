@@ -1,0 +1,36 @@
+{
+  "silhouette": 5.0,
+  "macro_meso_micro": 4.2,
+  "bevel_language": 4.0,
+  "material_zones": 4.5,
+  "wear_story": 4.3,
+  "scale_truth": 4.5,
+  "lighting_readability": 4.4,
+  "contract_readiness": 4.3,
+  "weighted": 4.455,
+  "export_bar_ok": true,
+  "shots": [
+    "2026-07-09_place_station_trade_hub_iter1_clay_34_full.png",
+    "2026-07-09_place_station_trade_hub_iter1_clay_front.png",
+    "2026-07-09_place_station_trade_hub_iter1_clay_side.png",
+    "2026-07-09_place_station_trade_hub_iter1_lit_34_full.png",
+    "2026-07-09_place_station_trade_hub_iter1_lit_close_detail.png"
+  ],
+  "analyses_ok": [
+    true,
+    true,
+    true,
+    true,
+    false
+  ],
+  "tris": 2808,
+  "pass": "meridian_trade_hub_identity_v1",
+  "techniques": [
+    "deck_tower_ring_macro",
+    "meridian_gold_trim_crown",
+    "lie_billboard_signage",
+    "dock_collar_interfaces",
+    "antenna_cargo_ribs",
+    "material_role_zoning"
+  ]
+}

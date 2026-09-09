@@ -1,0 +1,541 @@
+{
+  "schema": "spaceface.wreckCathedralUvMaterialRoleReport.v1",
+  "assetId": "place_landmark_wreck_cathedral",
+  "uvContract": "UVMap smart-project, unit-square bounded, OpenGL tangent normal maps",
+  "objects": {
+    "LOD0_Hull": {
+      "uvLayers": 1,
+      "activeUv": "UVMap",
+      "uvLoops": 51240,
+      "nonFiniteUvLoops": 0,
+      "outOfUnitRangeUvLoops": 0,
+      "uvMin": [
+        0.009462099522352219,
+        0.009462092071771622
+      ],
+      "uvMax": [
+        0.9721226096153259,
+        0.9905378222465515
+      ]
+    },
+    "LOD0_ArmorScorched": {
+      "uvLayers": 1,
+      "activeUv": "UVMap",
+      "uvLoops": 90384,
+      "nonFiniteUvLoops": 0,
+      "outOfUnitRangeUvLoops": 0,
+      "uvMin": [
+        0.007505050860345364,
+        0.0075050415471196175
+      ],
+      "uvMax": [
+        0.988046407699585,
+        0.9924948811531067
+      ]
+    },
+    "LOD0_AccentConcordBlueBurned": {
+      "uvLayers": 1,
+      "activeUv": "UVMap",
+      "uvLoops": 5640,
+      "nonFiniteUvLoops": 0,
+      "outOfUnitRangeUvLoops": 0,
+      "uvMin": [
+        0.006791796535253525,
+        0.006791700609028339
+      ],
+      "uvMax": [
+        0.9857136607170105,
+        0.9932079315185547
+      ]
+    },
+    "LOD0_MechanicalExposed": {
+      "uvLayers": 1,
+      "activeUv": "UVMap",
+      "uvLoops": 152796,
+      "nonFiniteUvLoops": 0,
+      "outOfUnitRangeUvLoops": 0,
+      "uvMin": [
+        0.005060059018433094,
+        0.005060093477368355
+      ],
+      "uvMax": [
+        0.9949399828910828,
+        0.9860413074493408
+      ]
+    },
+    "LOD0_InteriorExposedAlloy": {
+      "uvLayers": 1,
+      "activeUv": "UVMap",
+      "uvLoops": 171888,
+      "nonFiniteUvLoops": 0,
+      "outOfUnitRangeUvLoops": 0,
+      "uvMin": [
+        0.005937226116657257,
+        0.0059372237883508205
+      ],
+      "uvMax": [
+        0.9902847409248352,
+        0.9940627813339233
+      ]
+    },
+    "LOD0_ConduitCopper": {
+      "uvLayers": 1,
+      "activeUv": "UVMap",
+      "uvLoops": 12672,
+      "nonFiniteUvLoops": 0,
+      "outOfUnitRangeUvLoops": 0,
+      "uvMin": [
+        0.008074728772044182,
+        0.008074633777141571
+      ],
+      "uvMax": [
+        0.985266387462616,
+        0.9919253587722778
+      ]
+    },
+    "LOD0_EmissiveColdEmergency": {
+      "uvLayers": 1,
+      "activeUv": "UVMap",
+      "uvLoops": 9588,
+      "nonFiniteUvLoops": 0,
+      "outOfUnitRangeUvLoops": 0,
+      "uvMin": [
+        0.00853544007986784,
+        0.0085348105058074
+      ],
+      "uvMax": [
+        0.9914644360542297,
+        0.9631583094596863
+      ]
+    },
+    "LOD0_EmissiveMarkerAmber": {
+      "uvLayers": 1,
+      "activeUv": "UVMap",
+      "uvLoops": 6624,
+      "nonFiniteUvLoops": 0,
+      "outOfUnitRangeUvLoops": 0,
+      "uvMin": [
+        0.002528448821976781,
+        0.0025284173898398876
+      ],
+      "uvMax": [
+        0.9712324142456055,
+        0.9974715709686279
+      ]
+    },
+    "LOD1_Hull": {
+      "uvLayers": 1,
+      "activeUv": "UVMap",
+      "uvLoops": 28176,
+      "nonFiniteUvLoops": 0,
+      "outOfUnitRangeUvLoops": 0,
+      "uvMin": [
+        0.009542063809931278,
+        0.009542039595544338
+      ],
+      "uvMax": [
+        0.9904578924179077,
+        0.9879890084266663
+      ]
+    },
+    "LOD1_ArmorScorched": {
+      "uvLayers": 1,
+      "activeUv": "UVMap",
+      "uvLoops": 41088,
+      "nonFiniteUvLoops": 0,
+      "outOfUnitRangeUvLoops": 0,
+      "uvMin": [
+        0.007646018173545599,
+        0.007646008860319853
+      ],
+      "uvMax": [
+        0.9909147620201111,
+        0.9923539757728577
+      ]
+    },
+    "LOD1_AccentConcordBlueBurned": {
+      "uvLayers": 1,
+      "activeUv": "UVMap",
+      "uvLoops": 3240,
+      "nonFiniteUvLoops": 0,
+      "outOfUnitRangeUvLoops": 0,
+      "uvMin": [
+        0.00652577867731452,
+        0.006525617092847824
+      ],
+      "uvMax": [
+        0.9672735929489136,
+        0.9934741258621216
+      ]
+    },
+    "LOD1_MechanicalExposed": {
+      "uvLayers": 1,
+      "activeUv": "UVMap",
+      "uvLoops": 68508,
+      "nonFiniteUvLoops": 0,
+      "outOfUnitRangeUvLoops": 0,
+      "uvMin": [
+        0.005647014360874891,
+        0.005647010635584593
+      ],
+      "uvMax": [
+        0.9915334582328796,
+        0.9943529367446899
+      ]
+    },
+    "LOD1_InteriorExposedAlloy": {
+      "uvLayers": 1,
+      "activeUv": "UVMap",
+      "uvLoops": 54804,
+      "nonFiniteUvLoops": 0,
+      "outOfUnitRangeUvLoops": 0,
+      "uvMin": [
+        0.006471588741987944,
+        0.006471583619713783
+      ],
+      "uvMax": [
+        0.9863871335983276,
+        0.9935284852981567
+      ]
+    },
+    "LOD1_ConduitCopper": {
+      "uvLayers": 1,
+      "activeUv": "UVMap",
+      "uvLoops": 4164,
+      "nonFiniteUvLoops": 0,
+      "outOfUnitRangeUvLoops": 0,
+      "uvMin": [
+        0.0069658481515944,
+        0.0069657014682888985
+      ],
+      "uvMax": [
+        0.9930340647697449,
+        0.9919037818908691
+      ]
+    },
+    "LOD1_EmissiveColdEmergency": {
+      "uvLayers": 1,
+      "activeUv": "UVMap",
+      "uvLoops": 3888,
+      "nonFiniteUvLoops": 0,
+      "outOfUnitRangeUvLoops": 0,
+      "uvMin": [
+        0.007683051284402609,
+        0.007682970259338617
+      ],
+      "uvMax": [
+        0.9646936058998108,
+        0.992316722869873
+      ]
+    },
+    "LOD1_EmissiveMarkerAmber": {
+      "uvLayers": 1,
+      "activeUv": "UVMap",
+      "uvLoops": 2184,
+      "nonFiniteUvLoops": 0,
+      "outOfUnitRangeUvLoops": 0,
+      "uvMin": [
+        0.0024840282276272774,
+        0.0024840449914336205
+      ],
+      "uvMax": [
+        0.9011675715446472,
+        0.9975159764289856
+      ]
+    },
+    "LOD2_Hull": {
+      "uvLayers": 1,
+      "activeUv": "UVMap",
+      "uvLoops": 10356,
+      "nonFiniteUvLoops": 0,
+      "outOfUnitRangeUvLoops": 0,
+      "uvMin": [
+        0.009747795760631561,
+        0.009747819975018501
+      ],
+      "uvMax": [
+        0.9861312508583069,
+        0.9902522563934326
+      ]
+    },
+    "LOD2_ArmorScorched": {
+      "uvLayers": 1,
+      "activeUv": "UVMap",
+      "uvLoops": 11388,
+      "nonFiniteUvLoops": 0,
+      "outOfUnitRangeUvLoops": 0,
+      "uvMin": [
+        0.008423341438174248,
+        0.00842339638620615
+      ],
+      "uvMax": [
+        0.9903604984283447,
+        0.9915765523910522
+      ]
+    },
+    "LOD2_AccentConcordBlueBurned": {
+      "uvLayers": 1,
+      "activeUv": "UVMap",
+      "uvLoops": 1320,
+      "nonFiniteUvLoops": 0,
+      "outOfUnitRangeUvLoops": 0,
+      "uvMin": [
+        0.006504823453724384,
+        0.0065046437084674835
+      ],
+      "uvMax": [
+        0.9934953451156616,
+        0.9934428334236145
+      ]
+    },
+    "LOD2_MechanicalExposed": {
+      "uvLayers": 1,
+      "activeUv": "UVMap",
+      "uvLoops": 17352,
+      "nonFiniteUvLoops": 0,
+      "outOfUnitRangeUvLoops": 0,
+      "uvMin": [
+        0.0067067937925457954,
+        0.006706814281642437
+      ],
+      "uvMax": [
+        0.9932931661605835,
+        0.9839458465576172
+      ]
+    },
+    "LOD2_InteriorExposedAlloy": {
+      "uvLayers": 1,
+      "activeUv": "UVMap",
+      "uvLoops": 11604,
+      "nonFiniteUvLoops": 0,
+      "outOfUnitRangeUvLoops": 0,
+      "uvMin": [
+        0.007256411015987396,
+        0.007256377954035997
+      ],
+      "uvMax": [
+        0.9927435517311096,
+        0.9926779270172119
+      ]
+    },
+    "LOD2_ConduitCopper": {
+      "uvLayers": 1,
+      "activeUv": "UVMap",
+      "uvLoops": 324,
+      "nonFiniteUvLoops": 0,
+      "outOfUnitRangeUvLoops": 0,
+      "uvMin": [
+        0.004285011440515518,
+        0.004284852184355259
+      ],
+      "uvMax": [
+        0.941085159778595,
+        0.9957150220870972
+      ]
+    },
+    "LOD2_EmissiveColdEmergency": {
+      "uvLayers": 1,
+      "activeUv": "UVMap",
+      "uvLoops": 1056,
+      "nonFiniteUvLoops": 0,
+      "outOfUnitRangeUvLoops": 0,
+      "uvMin": [
+        0.0066926488652825356,
+        0.0066914805211126804
+      ],
+      "uvMax": [
+        0.9879041910171509,
+        0.99330735206604
+      ]
+    },
+    "LOD2_EmissiveMarkerAmber": {
+      "uvLayers": 1,
+      "activeUv": "UVMap",
+      "uvLoops": 672,
+      "nonFiniteUvLoops": 0,
+      "outOfUnitRangeUvLoops": 0,
+      "uvMin": [
+        0.002647226909175515,
+        0.0026472434401512146
+      ],
+      "uvMax": [
+        0.9964197874069214,
+        0.9973527789115906
+      ]
+    }
+  },
+  "materials": [
+    {
+      "name": "Material_Hull_ConcordGray",
+      "semanticRole": "hull",
+      "paletteTint": "none",
+      "surfaceIntent": "panel",
+      "textures": {
+        "basecolor": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Hull_ConcordGray_basecolor.png",
+        "normal": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Hull_ConcordGray_normal.png",
+        "orm": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Hull_ConcordGray_orm.png"
+      },
+      "authoredPbr": {
+        "baseColor": true,
+        "normal": true,
+        "ao": true,
+        "roughness": true,
+        "metallic": true,
+        "emissive": false
+      }
+    },
+    {
+      "name": "Material_Armor_Scorched",
+      "semanticRole": "heat_affected_alloy",
+      "paletteTint": "none",
+      "surfaceIntent": "scorch",
+      "textures": {
+        "basecolor": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Armor_Scorched_basecolor.png",
+        "normal": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Armor_Scorched_normal.png",
+        "orm": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Armor_Scorched_orm.png"
+      },
+      "authoredPbr": {
+        "baseColor": true,
+        "normal": true,
+        "ao": true,
+        "roughness": true,
+        "metallic": true,
+        "emissive": false
+      }
+    },
+    {
+      "name": "Material_Accent_ConcordBlue_Burned",
+      "semanticRole": "maintenance_mark",
+      "paletteTint": "none",
+      "surfaceIntent": "burned_paint",
+      "textures": {
+        "basecolor": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Accent_ConcordBlue_Burned_basecolor.png",
+        "normal": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Accent_ConcordBlue_Burned_normal.png",
+        "orm": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Accent_ConcordBlue_Burned_orm.png"
+      },
+      "authoredPbr": {
+        "baseColor": true,
+        "normal": true,
+        "ao": true,
+        "roughness": true,
+        "metallic": true,
+        "emissive": false
+      }
+    },
+    {
+      "name": "Material_Mechanical_Exposed",
+      "semanticRole": "mechanical",
+      "paletteTint": "none",
+      "surfaceIntent": "machinery",
+      "textures": {
+        "basecolor": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Mechanical_Exposed_basecolor.png",
+        "normal": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Mechanical_Exposed_normal.png",
+        "orm": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Mechanical_Exposed_orm.png"
+      },
+      "authoredPbr": {
+        "baseColor": true,
+        "normal": true,
+        "ao": true,
+        "roughness": true,
+        "metallic": true,
+        "emissive": false
+      }
+    },
+    {
+      "name": "Material_Interior_ExposedAlloy",
+      "semanticRole": "exposed_alloy",
+      "paletteTint": "none",
+      "surfaceIntent": "brushed",
+      "textures": {
+        "basecolor": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Interior_ExposedAlloy_basecolor.png",
+        "normal": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Interior_ExposedAlloy_normal.png",
+        "orm": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Interior_ExposedAlloy_orm.png"
+      },
+      "authoredPbr": {
+        "baseColor": true,
+        "normal": true,
+        "ao": true,
+        "roughness": true,
+        "metallic": true,
+        "emissive": false
+      }
+    },
+    {
+      "name": "Material_Conduit_Copper",
+      "semanticRole": "copper_coil",
+      "paletteTint": "none",
+      "surfaceIntent": "conduit",
+      "textures": {
+        "basecolor": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Conduit_Copper_basecolor.png",
+        "normal": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Conduit_Copper_normal.png",
+        "orm": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Conduit_Copper_orm.png"
+      },
+      "authoredPbr": {
+        "baseColor": true,
+        "normal": true,
+        "ao": true,
+        "roughness": true,
+        "metallic": true,
+        "emissive": false
+      }
+    },
+    {
+      "name": "Material_Emissive_ColdEmergency",
+      "semanticRole": "signal",
+      "paletteTint": "none",
+      "surfaceIntent": "lamp",
+      "textures": {
+        "basecolor": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Emissive_ColdEmergency_basecolor.png",
+        "normal": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Emissive_ColdEmergency_normal.png",
+        "orm": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Emissive_ColdEmergency_orm.png",
+        "emissive": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Emissive_ColdEmergency_emissive.png"
+      },
+      "authoredPbr": {
+        "baseColor": true,
+        "normal": true,
+        "ao": true,
+        "roughness": true,
+        "metallic": true,
+        "emissive": true
+      }
+    },
+    {
+      "name": "Material_Emissive_MarkerAmber",
+      "semanticRole": "warning",
+      "paletteTint": "none",
+      "surfaceIntent": "marker",
+      "textures": {
+        "basecolor": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Emissive_MarkerAmber_basecolor.png",
+        "normal": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Emissive_MarkerAmber_normal.png",
+        "orm": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Emissive_MarkerAmber_orm.png",
+        "emissive": "assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Emissive_MarkerAmber_emissive.png"
+      },
+      "authoredPbr": {
+        "baseColor": true,
+        "normal": true,
+        "ao": true,
+        "roughness": true,
+        "metallic": true,
+        "emissive": true
+      }
+    }
+  ],
+  "semanticMarkers": [
+    "INTERACTION_HangarCavity",
+    "LOD0_ROOT",
+    "LOD1_ROOT",
+    "LOD2_ROOT",
+    "SALVAGE_ConduitBank",
+    "SALVAGE_EngineMachinery",
+    "SALVAGE_ServiceRack",
+    "SOCKET_Flythrough_Entry",
+    "SOCKET_Flythrough_Exit",
+    "SOCKET_TheMarker",
+    "ZONE_Bridge",
+    "ZONE_BrokenKeel",
+    "ZONE_Propulsion",
+    "ZONE_Service_Port",
+    "ZONE_Service_Starboard"
+  ],
+  "failures": []
+}

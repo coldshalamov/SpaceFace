@@ -1,0 +1,272 @@
+{
+  "schema": "spaceface.goldenReusableModules.recipeSpec.v1",
+  "recipeId": "golden-reusable-modules-v1",
+  "coordinateContract": {
+    "source": "glTF right-handed +X forward, +Y up, +Z starboard, metres",
+    "blenderConversion": "(x, y, z) glTF -> (x, -z, y) Blender",
+    "mount": "origin",
+    "boundsPolicy": "Added geometry must remain inside the measured source bounds; pivots and semantic nodes are immutable."
+  },
+  "lodPolicy": {
+    "lod0": ["macro", "meso", "micro"],
+    "lod1": ["macro", "meso"],
+    "lod2": ["macro"],
+    "note": "LOD tags are authored for later release integration. They do not imply that the current runtime selects separate modular-part LOD files."
+  },
+  "materialProfiles": {
+    "painted_armor": {
+      "baseRgb": [0.31, 0.36, 0.4],
+      "macroTintRgb": [0.055, 0.035, 0.012],
+      "roughnessRange": [0.34, 0.56],
+      "metallicRange": [0.0, 0.035],
+      "aoRange": [0.82, 0.98],
+      "macroScale": 2.7,
+      "microScale": 83.0,
+      "normalStrength": 0.42,
+      "pattern": "paint_orange_peel"
+    },
+    "exposed_alloy": {
+      "baseRgb": [0.24, 0.27, 0.29],
+      "macroTintRgb": [0.045, 0.05, 0.055],
+      "roughnessRange": [0.22, 0.46],
+      "metallicRange": [0.82, 0.96],
+      "aoRange": [0.84, 0.99],
+      "macroScale": 4.2,
+      "microScale": 118.0,
+      "normalStrength": 0.3,
+      "pattern": "directional_brush"
+    },
+    "dark_composite": {
+      "baseRgb": [0.035, 0.048, 0.06],
+      "macroTintRgb": [0.016, 0.02, 0.025],
+      "roughnessRange": [0.56, 0.76],
+      "metallicRange": [0.0, 0.018],
+      "aoRange": [0.8, 0.96],
+      "macroScale": 3.4,
+      "microScale": 61.0,
+      "normalStrength": 0.34,
+      "pattern": "composite_weave"
+    },
+    "canopy_glass": {
+      "baseRgb": [0.018, 0.055, 0.078],
+      "macroTintRgb": [0.008, 0.025, 0.034],
+      "roughnessRange": [0.11, 0.24],
+      "metallicRange": [0.0, 0.012],
+      "aoRange": [0.94, 1.0],
+      "macroScale": 1.6,
+      "microScale": 37.0,
+      "normalStrength": 0.08,
+      "pattern": "optical_waviness",
+      "ior": 1.47,
+      "transmissionWeight": 0.62,
+      "thicknessM": 0.018,
+      "attenuationColorRgb": [0.42, 0.78, 0.92],
+      "attenuationDistanceM": 1.8,
+      "runtimeSinglePassTransmission": 0.0
+    },
+    "recessed_mechanical": {
+      "baseRgb": [0.055, 0.061, 0.067],
+      "macroTintRgb": [0.025, 0.023, 0.02],
+      "roughnessRange": [0.48, 0.72],
+      "metallicRange": [0.48, 0.72],
+      "aoRange": [0.68, 0.92],
+      "macroScale": 5.6,
+      "microScale": 96.0,
+      "normalStrength": 0.48,
+      "pattern": "machined_grime"
+    },
+    "sensor_lens": {
+      "baseRgb": [0.025, 0.13, 0.18],
+      "macroTintRgb": [0.0, 0.045, 0.065],
+      "roughnessRange": [0.16, 0.3],
+      "metallicRange": [0.0, 0.015],
+      "aoRange": [0.9, 1.0],
+      "macroScale": 2.1,
+      "microScale": 42.0,
+      "normalStrength": 0.1,
+      "pattern": "optical_waviness",
+      "ior": 1.5,
+      "transmissionWeight": 0.16,
+      "thicknessM": 0.006,
+      "attenuationColorRgb": [0.32, 0.82, 1.0],
+      "attenuationDistanceM": 0.42,
+      "runtimeSinglePassTransmission": 0.0,
+      "emissionRgb": [0.08, 0.72, 1.0],
+      "emissionStrength": 1.4
+    },
+    "maintenance_mark": {
+      "baseRgb": [0.72, 0.27, 0.035],
+      "macroTintRgb": [0.07, 0.035, 0.0],
+      "roughnessRange": [0.42, 0.62],
+      "metallicRange": [0.0, 0.02],
+      "aoRange": [0.88, 0.99],
+      "macroScale": 6.8,
+      "microScale": 74.0,
+      "normalStrength": 0.24,
+      "pattern": "worn_marking"
+    },
+    "engine_ceramic": {
+      "baseRgb": [0.31, 0.285, 0.255],
+      "macroTintRgb": [0.09, 0.035, -0.015],
+      "roughnessRange": [0.38, 0.66],
+      "metallicRange": [0.0, 0.025],
+      "aoRange": [0.76, 0.96],
+      "macroScale": 3.1,
+      "microScale": 69.0,
+      "normalStrength": 0.4,
+      "pattern": "thermal_ceramic"
+    },
+    "heat_affected_alloy": {
+      "baseRgb": [0.19, 0.17, 0.16],
+      "macroTintRgb": [0.075, 0.028, 0.055],
+      "roughnessRange": [0.3, 0.62],
+      "metallicRange": [0.78, 0.94],
+      "aoRange": [0.75, 0.96],
+      "macroScale": 2.3,
+      "microScale": 104.0,
+      "normalStrength": 0.36,
+      "pattern": "thermal_oxidation"
+    },
+    "copper_coil": {
+      "baseRgb": [0.36, 0.135, 0.045],
+      "macroTintRgb": [0.1, 0.04, 0.012],
+      "roughnessRange": [0.24, 0.5],
+      "metallicRange": [0.86, 0.98],
+      "aoRange": [0.8, 0.97],
+      "macroScale": 4.9,
+      "microScale": 126.0,
+      "normalStrength": 0.32,
+      "pattern": "directional_brush"
+    }
+  },
+  "modules": {
+    "cockpit_slab": {
+      "input": "cockpits/cockpit_slab.glb",
+      "sourceSnapshot": {
+        "bytes": 1522876,
+        "sha256": "896BA2488FC32F3A66638EBD84513883BA89666AE6AC25EEDC4906F8524C2482"
+      },
+      "baseline": {
+        "triangles": 1564,
+        "boundsMin": [-0.8, -0.045, -1.85],
+        "boundsMax": [4.055, 1.81, 1.85],
+        "hooks": ["HOOK_Emissive"],
+        "sockets": []
+      },
+      "requiredMaterials": ["painted_armor", "exposed_alloy", "dark_composite", "canopy_glass", "recessed_mechanical", "sensor_lens", "maintenance_mark"],
+      "expectedCandidateBand": {
+        "addedObjects": 19,
+        "addedTrianglesMin": 1800,
+        "addedTrianglesMax": 7500,
+        "note": "Measured Blender output must replace this planning band before promotion; the band is not a fleet-wide ceiling."
+      },
+      "details": [
+        {"name": "DorsalArmorLayer", "tier": "macro", "role": "painted_armor"},
+        {"name": "PortCheekArmor", "tier": "macro", "role": "painted_armor"},
+        {"name": "StarboardCheekArmor", "tier": "macro", "role": "painted_armor"},
+        {"name": "CanopyGlazingBank", "tier": "macro", "role": "canopy_glass"},
+        {"name": "ServiceSpine", "tier": "macro", "role": "exposed_alloy"},
+        {"name": "CanopyTopRail", "tier": "meso", "role": "exposed_alloy"},
+        {"name": "CanopyBottomRail", "tier": "meso", "role": "exposed_alloy"},
+        {"name": "CanopyFramePort", "tier": "meso", "role": "exposed_alloy"},
+        {"name": "CanopyFrameStarboard", "tier": "meso", "role": "exposed_alloy"},
+        {"name": "CanopyMullionCluster", "tier": "meso", "role": "exposed_alloy"},
+        {"name": "DorsalAccessRecess", "tier": "meso", "role": "recessed_mechanical"},
+        {"name": "DorsalAccessHatch", "tier": "meso", "role": "painted_armor"},
+        {"name": "SensorBar", "tier": "meso", "role": "sensor_lens"},
+        {"name": "SensorPodPair", "tier": "meso", "role": "sensor_lens"},
+        {"name": "SideServicePanelPair", "tier": "meso", "role": "dark_composite"},
+        {"name": "HatchLatchPair", "tier": "micro", "role": "exposed_alloy"},
+        {"name": "FrameFastenerBank", "tier": "micro", "role": "exposed_alloy"},
+        {"name": "MaintenanceStripePair", "tier": "micro", "role": "maintenance_mark"},
+        {"name": "ServiceStencilPlate", "tier": "micro", "role": "maintenance_mark"}
+      ]
+    },
+    "engine_industrial": {
+      "input": "engines/engine_industrial.glb",
+      "sourceSnapshot": {
+        "bytes": 1635844,
+        "sha256": "1A9BA24FEAF6DC8E041BC6D557BA34625F31FA80AB80C628AD9DD2F6E1AC57A5"
+      },
+      "baseline": {
+        "triangles": 4000,
+        "boundsMin": [-0.22, -1.4396, -1.4396],
+        "boundsMax": [3.3, 1.47102, 1.4396],
+        "hooks": ["HOOK_DRIVE_CORE", "HOOK_DRIVE_FAN", "HOOK_DRIVE_PLUME"],
+        "sockets": []
+      },
+      "requiredMaterials": ["painted_armor", "exposed_alloy", "recessed_mechanical", "maintenance_mark", "engine_ceramic", "heat_affected_alloy"],
+      "expectedCandidateBand": {
+        "addedObjects": 20,
+        "addedTrianglesMin": 2600,
+        "addedTrianglesMax": 9500,
+        "note": "Measured Blender output must replace this planning band before promotion; the band is not a fleet-wide ceiling."
+      },
+      "details": [
+        {"name": "NozzleThroat", "tier": "macro", "role": "recessed_mechanical"},
+        {"name": "CeramicThroatRing", "tier": "macro", "role": "engine_ceramic"},
+        {"name": "HeatShieldDorsal", "tier": "macro", "role": "engine_ceramic"},
+        {"name": "HeatShieldVentral", "tier": "macro", "role": "engine_ceramic"},
+        {"name": "HeatShieldPort", "tier": "macro", "role": "engine_ceramic"},
+        {"name": "HeatShieldStarboard", "tier": "macro", "role": "engine_ceramic"},
+        {"name": "StructuralCradle", "tier": "macro", "role": "exposed_alloy"},
+        {"name": "InjectorCluster", "tier": "meso", "role": "heat_affected_alloy"},
+        {"name": "InjectorManifold", "tier": "meso", "role": "exposed_alloy"},
+        {"name": "ServiceHatchRecess", "tier": "meso", "role": "recessed_mechanical"},
+        {"name": "ServiceHatch", "tier": "meso", "role": "painted_armor"},
+        {"name": "MaintenanceRailPair", "tier": "meso", "role": "exposed_alloy"},
+        {"name": "CableTrunkPair", "tier": "meso", "role": "recessed_mechanical"},
+        {"name": "HeatBandAft", "tier": "meso", "role": "heat_affected_alloy"},
+        {"name": "HeatBandFore", "tier": "meso", "role": "heat_affected_alloy"},
+        {"name": "InjectorClampBank", "tier": "micro", "role": "exposed_alloy"},
+        {"name": "HeatShieldFastenerBank", "tier": "micro", "role": "exposed_alloy"},
+        {"name": "PipeClampBank", "tier": "micro", "role": "maintenance_mark"},
+        {"name": "WarningStripePair", "tier": "micro", "role": "maintenance_mark"},
+        {"name": "ServiceStencilPlate", "tier": "micro", "role": "maintenance_mark"}
+      ]
+    },
+    "weapon_railgun": {
+      "input": "weapons/weapon_railgun.glb",
+      "sourceSnapshot": {
+        "bytes": 1531008,
+        "sha256": "792AED12C3359391357D8B12B80E729EFADE58F800B9FF16BD1A4D9239FFF170"
+      },
+      "baseline": {
+        "triangles": 1788,
+        "boundsMin": [-0.2, -0.45, -0.4628],
+        "boundsMax": [6.1, 0.52, 0.4628],
+        "hooks": ["HOOK_Emissive"],
+        "sockets": ["SOCKET_Muzzle"]
+      },
+      "requiredMaterials": ["painted_armor", "exposed_alloy", "dark_composite", "recessed_mechanical", "sensor_lens", "maintenance_mark", "engine_ceramic", "heat_affected_alloy", "copper_coil"],
+      "expectedCandidateBand": {
+        "addedObjects": 20,
+        "addedTrianglesMin": 1900,
+        "addedTrianglesMax": 7800,
+        "note": "Measured Blender output must replace this planning band before promotion; the band is not a fleet-wide ceiling."
+      },
+      "details": [
+        {"name": "PortRail", "tier": "macro", "role": "exposed_alloy"},
+        {"name": "StarboardRail", "tier": "macro", "role": "exposed_alloy"},
+        {"name": "ChannelRecess", "tier": "macro", "role": "dark_composite"},
+        {"name": "BreechArmorLayer", "tier": "macro", "role": "painted_armor"},
+        {"name": "MountShoe", "tier": "macro", "role": "recessed_mechanical"},
+        {"name": "MuzzleBridge", "tier": "macro", "role": "heat_affected_alloy"},
+        {"name": "PortInnerWearFace", "tier": "meso", "role": "heat_affected_alloy"},
+        {"name": "StarboardInnerWearFace", "tier": "meso", "role": "heat_affected_alloy"},
+        {"name": "PortCapacitorBank", "tier": "meso", "role": "dark_composite"},
+        {"name": "StarboardCapacitorBank", "tier": "meso", "role": "dark_composite"},
+        {"name": "CopperBusPair", "tier": "meso", "role": "copper_coil"},
+        {"name": "BreechAccessPair", "tier": "meso", "role": "painted_armor"},
+        {"name": "RecoilBracePair", "tier": "meso", "role": "exposed_alloy"},
+        {"name": "ChargeConduit", "tier": "meso", "role": "copper_coil"},
+        {"name": "ThermalBreakPair", "tier": "meso", "role": "engine_ceramic"},
+        {"name": "AbrasionStripPair", "tier": "micro", "role": "heat_affected_alloy"},
+        {"name": "FastenerBank", "tier": "micro", "role": "exposed_alloy"},
+        {"name": "ServiceStripe", "tier": "micro", "role": "maintenance_mark"},
+        {"name": "ChargeIndicator", "tier": "micro", "role": "sensor_lens"},
+        {"name": "SerialPlate", "tier": "micro", "role": "maintenance_mark"}
+      ]
+    }
+  }
+}
