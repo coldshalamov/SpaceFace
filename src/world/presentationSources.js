@@ -79,6 +79,21 @@ export function collectMeshPresentationEntities(state, out = []) {
  * (TABLE_AUTHORED_DECODE_SECONDS × current top speed). Does not invent membership.
  * Field rocks already draw from the ledger — mass-promoting them would refill entityList.
  */
+function admitPromotedToRunwayFrame(state, id) {
+  const frame = state && state.render && state.render.activityFrame;
+  if (!frame || id == null) return;
+  let runway = frame.renderRunwayIds;
+  if (!runway) {
+    runway = [];
+    frame.renderRunwayIds = runway;
+  }
+  if (typeof runway.add === 'function') {
+    runway.add(id);
+    return;
+  }
+  if (Array.isArray(runway) && !runway.includes(id)) runway.push(id);
+}
+
 export function requestDecodeRunwayPromote(state, helpers) {
   const result = {
     farSeen: 0,
@@ -103,7 +118,10 @@ export function requestDecodeRunwayPromote(state, helpers) {
   }
   if (!result.helpersMissing) {
     for (let i = 0; i < _farPromoteIds.length; i++) {
-      if (promoteFarActor(state, _farPromoteIds[i], helpers)) result.farPromoted += 1;
+      const ent = promoteFarActor(state, _farPromoteIds[i], helpers);
+      if (!ent) continue;
+      result.farPromoted += 1;
+      admitPromotedToRunwayFrame(state, ent.id);
     }
   }
   const rockHits = queryAsteroidField(state, origin, decodeR, _rockQueryScratch);

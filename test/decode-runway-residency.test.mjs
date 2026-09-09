@@ -153,6 +153,53 @@ test('a mesh already on the lip is kept when the live body is shelved', () => {
     'a new create does not start in the hysteresis band');
 });
 
+test('a promoted inbound hull stays render-relevant when the last activity frame omitted it', () => {
+  const player = {
+    id: 1, type: 'ship', alive: true, isPlayer: true,
+    pos: { x: -13945, z: 9019 }, vel: { x: 0, z: 0 },
+    maxSpeed: 160, radius: 8, data: {},
+  };
+  const inbound = {
+    id: 313, type: 'ship', alive: true,
+    pos: { x: -13525, z: 9019 }, vel: { x: 0, z: 0 },
+    radius: 8, data: {},
+  };
+  const state = {
+    mode: 'flight',
+    playerId: 1,
+    player: { targetId: null },
+    entities: new Map([[1, player], [313, inbound]]),
+    entityList: [player, inbound],
+    world: { frameOrigin: { x: 0, z: 0 } },
+    camera: {
+      zoom: 144, tilt: 60, fov: 50, aspect: 16 / 9,
+      // Leftover chase look-at after a relocate. Decode must not wait for it.
+      focus: { x: 80, z: 40 },
+    },
+    settings: { video: { fov: 50 } },
+    render: {
+      activityFrame: {
+        complete: true,
+        renderGlassIds: new Set([1]),
+        renderRunwayIds: new Set(),
+      },
+    },
+  };
+  assert.equal(isEntityRenderRelevant(inbound, state), true,
+    'promote must still queue a mesh on the 420 WU decode runway');
+  assert.equal(isEntityAuthoredUpgradeRelevant(inbound, state), true,
+    'a parked inbound hull still starts authored work on the decode circle');
+  const beyond = {
+    id: 314, type: 'ship', alive: true, pos: { x: 4000, z: 0 }, vel: { x: 0, z: 0 },
+    radius: 8, data: {},
+    activity: { presentationTier: 'R2_METADATA' },
+  };
+  state.entities.set(314, beyond);
+  state.entityList.push(beyond);
+  assert.equal(isEntityRenderRelevant(beyond, state), false,
+    'a far omitted hull stays out of the mesh queue');
+});
+
 test('flight first-render does not compose an ordinary on-glass hull', () => {
   const scene = { name: 'main' };
   const npc = { id: 9, type: 'ship', alive: true, mesh: { visible: true } };

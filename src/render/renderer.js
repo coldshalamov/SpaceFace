@@ -217,6 +217,7 @@ import {
   willEntityEnterAuthoredUpgradeRunway,
 } from './authoredAdmissionPolicy.js';
 import {
+  authoredPrefetchRadius,
   censusTableBands,
   classifyTableBand,
   glassHalfExtents,
@@ -574,6 +575,32 @@ function entityHasAuthoredResidentRoot(entity) {
   return typeof authoredState === 'string' && authoredState.startsWith('authored');
 }
 
+function inboundDecodeRadius(state, radius = null) {
+  const numeric = Number(radius);
+  if (radius != null && Number.isFinite(numeric)) return numeric;
+  return authoredPrefetchRadius(tableTravelSpeed(state));
+}
+
+function playerPlanarDistance(entity, state) {
+  const player = playerEntityForRenderState(state);
+  if (!player || !player.pos || !entity || !entity.pos) return Infinity;
+  const dx = (Number(entity.pos.x) || 0) - (Number(player.pos.x) || 0);
+  const dz = (Number(entity.pos.z) || 0) - (Number(player.pos.z) || 0);
+  return Math.hypot(dx, dz);
+}
+
+/** True when a live inbound hull is already inside the authored decode circle. */
+function isInboundDecodeHull(entity, state, radius = null) {
+  if (!entity || entity.alive === false) return false;
+  if (entity.isPlayer === true || (state && entity.id === state.playerId)) return false;
+  if (entity.type !== 'ship' && entity.type !== 'wreck') return false;
+  // Promote and catch-up are player-centered. tableLookAtDelta follows the
+  // leftover chase focus, so a relocate leaves the hull "beyond the table"
+  // until the camera crawls 10k+ WU. Cook from the player, not the look-at.
+  const visual = Math.max(0, Number(entity.radius) || 0);
+  return (playerPlanarDistance(entity, state) - visual) <= inboundDecodeRadius(state, radius);
+}
+
 /** Pure render-streaming policy used by reconciliation and focused tests. */
 export function isEntityRenderRelevant(entity, state, radius = null) {
   if (!entity || entity.alive === false || entity._noMesh) return false;
@@ -581,6 +608,7 @@ export function isEntityRenderRelevant(entity, state, radius = null) {
   if (entityIsExplicitRenderFocus(entity, state)) return true;
   const tier = entity.activity && entity.activity.presentationTier;
   const activityFrame = state && state.render && state.render.activityFrame;
+  const inboundDecode = isInboundDecodeHull(entity, state, radius);
   if (activityFrame && activityFrame.complete === true) {
     const has = (collection) => collection && typeof collection.has === 'function'
       ? collection.has(entity.id)
@@ -589,6 +617,9 @@ export function isEntityRenderRelevant(entity, state, radius = null) {
     if (has(activityFrame.renderRunwayIds)) return true;
     // Ledger rows are not combat-list members, so the activity frame never
     // names them. Distance policy still owns their mesh so the rim cannot pop.
+    // A just-promoted inbound hull has the same hole: requestDecodeRunwayPromote
+    // puts it on entityList, then a stale or incremental frame omits it.
+    if (inboundDecode) return true;
     if (!isPresentationLedgerRow(entity)) {
       // The activity owner has explicitly classified this entity outside the
       // presentation runway. Do not recreate an Object3D for a metadata-only or
@@ -596,6 +627,7 @@ export function isEntityRenderRelevant(entity, state, radius = null) {
       return false;
     }
   }
+  if (inboundDecode) return true;
   if (tier === PRESENTATION_TIER.R2_METADATA || tier === PRESENTATION_TIER.R3_UNLOADED) {
     return false;
   }
@@ -624,7 +656,8 @@ export function isEntityRenderRelevant(entity, state, radius = null) {
 export function isEntityAuthoredUpgradeRelevant(entity, state, radius = null) {
   if (!entity || entity.alive === false) return false;
   if (state && state.mode === 'loading') return isInitialAuthoredCompositionEntity(entity, state);
-  return willEntityEnterAuthoredUpgradeRunway(entity, state, { radius });
+  if (willEntityEnterAuthoredUpgradeRunway(entity, state, { radius })) return true;
+  return isInboundDecodeHull(entity, state, radius);
 }
 
 /**
