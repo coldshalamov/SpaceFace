@@ -1,0 +1,43 @@
+{
+  "schema": "spaceface.beatStandard.v1",
+  "kind": "template",
+  "id": "beat.template",
+  "title": "",
+  "leftoverSource": {
+    "scenario": "",
+    "scenarioId": "",
+    "notTheOpener": "docs/worldbuilding/sheets/chapters/B0.md"
+  },
+  "canon": {
+    "whoWantsWhat": []
+  },
+  "register": {
+    "speakers": []
+  },
+  "setPiece": {
+    "place": "",
+    "actors": [],
+    "headlineVerb": "",
+    "twist": "",
+    "solutions": [],
+    "provingFrame": ""
+  },
+  "barks": [],
+  "voiceNotes": {
+    "synthesis": "",
+    "direction": ""
+  },
+  "seedCapture": {
+    "seed": null,
+    "scenarioId": "",
+    "durationSeconds": null,
+    "inputTape": "",
+    "captureContract": "",
+    "headedCapture": "peeled"
+  },
+  "forbidden": {
+    "dialogueTree": false,
+    "choiceMenu": false,
+    "cutsceneTakesStick": false
+  }
+}

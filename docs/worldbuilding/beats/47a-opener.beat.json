@@ -1,0 +1,214 @@
+{
+  "schema": "spaceface.beatStandard.v1",
+  "kind": "opener",
+  "id": "beat.47a.opener",
+  "title": "47-A: The Mass Discrepancy",
+  "leftoverSource": {
+    "scenario": "src/data/scenarios/47a.scenario.json",
+    "scenarioId": "scenario.47a.mass-discrepancy",
+    "liveScene": "src/data/scenarios/47aLiveScene.js",
+    "campaignSidecar": "src/story/campaign47a/",
+    "notTheOpener": "docs/worldbuilding/sheets/chapters/B0.md",
+    "barksCite": "src/data/barks.js",
+    "narrativeCite": "src/data/narrative.js"
+  },
+  "canon": {
+    "whoWantsWhat": [
+      {
+        "actorId": "player_kestrel",
+        "wants": "Hitch the sealed spindle and leave the wreck field with the contract still open.",
+        "because": "Contract 47-A is leftover as the player's first unpaid job. The leftover sample-and-dock chapter sheet is not this slice."
+      },
+      {
+        "actorId": "evidence_spindle_47a",
+        "wants": "Stay sealed. The spool, not the manifest, is the truth.",
+        "because": "Leftover false-mass body: 960 kg inertia against a 480 kg manifest."
+      },
+      {
+        "actorId": "carrier_wreck_bourse",
+        "wants": "Hold as cover until the mass answers the frame.",
+        "because": "Leftover Bourse carrier wreck is the arena landmark and later fracture hazard."
+      },
+      {
+        "actorId": "scavenger_interceptor",
+        "wants": "Break the player's claim screen on a flyby.",
+        "because": "Leftover Reaver intercept: they want the sealed spindle and hold fire until the demand window closes."
+      },
+      {
+        "actorId": "scavenger_harasser",
+        "wants": "Cut the line from standoff.",
+        "because": "Leftover counter-tether cut on the harasser."
+      },
+      {
+        "actorId": "scavenger_thief",
+        "wants": "Attach and steal the spindle.",
+        "because": "Leftover screen-tug steal. Same Massline verb as the player."
+      },
+      {
+        "actorId": "official_recovery_tug",
+        "wants": "Kill thrust and transfer the sealed object.",
+        "because": "Leftover Concord recovery: contain, disable, attach. The channel is recorded."
+      },
+      {
+        "actorId": "civilian_pod",
+        "wants": "A hitch before the suit goes flat.",
+        "because": "Leftover rescue priority. One Massline. Two bodies. The pod is not cargo."
+      },
+      {
+        "actorId": "contact_kessler",
+        "wants": "The sealed mass tagged and unopened, then diverted off the official board.",
+        "because": "Leftover remote contact. Payment stays withheld if the ledger stays blind."
+      },
+      {
+        "actorId": "kessler_handoff_beacon",
+        "wants": "A sling or reel into the covert zone with the seal intact.",
+        "because": "Leftover deliver-to-contact predicate. Not a menu."
+      }
+    ]
+  },
+  "register": {
+    "speakers": [
+      {
+        "id": "contact_kessler",
+        "factionId": null,
+        "rule": "Clerk voice: name the mass, forbid opening, never explain the job.",
+        "example": "Massline only. If the spool lies, believe the spool.",
+        "cite": "src/data/scenarios/47a.scenario.json#dialogue.47a.kessler.spindle"
+      },
+      {
+        "id": "official_recovery_tug",
+        "factionId": "faction_scn",
+        "rule": "Concord: procedural, cites the record, no slang, no contractions.",
+        "example": "Contractor, kill thrust and transfer the sealed object. This channel is recorded.",
+        "cite": "src/data/barks.js#faction_scn"
+      },
+      {
+        "id": "civilian_pod",
+        "factionId": null,
+        "rule": "Distress only. One physical fact, then the refusal to be cargo.",
+        "example": "Suit pressure is falling. Whoever can hear this, I am not cargo.",
+        "cite": "src/data/scenarios/47a.scenario.json#dialogue.47a.civilian.pod"
+      },
+      {
+        "id": "scavenger_wing",
+        "factionId": "faction_reavers",
+        "rule": "Leftover scavenger demand is a comms popup, not a Reaver bark register. Do not invent one.",
+        "example": "Cut the line and drift clear. Refuse, and we close in after twelve seconds.",
+        "cite": "src/systems/scenarioRuntime.js#scenario.47a.scavenger_demand"
+      },
+      {
+        "id": "player_kestrel",
+        "factionId": "faction_free",
+        "rule": "Frontier: plainspoken, live-and-let-live. Player hull, not a talking tree.",
+        "example": "Frontier relay. Just seeing who's out here. No hassle.",
+        "cite": "src/data/barks.js#faction_free"
+      }
+    ]
+  },
+  "setPiece": {
+    "place": "Shattered freight lane around the fractured Bourse carrier wreck. Helios-adjacent wreck field, not a mining claim.",
+    "actors": [
+      { "id": "player_kestrel", "role": "player_ship", "leftover": true },
+      { "id": "evidence_spindle_47a", "role": "tether_payload", "leftover": true },
+      { "id": "carrier_wreck_bourse", "role": "arena_landmark", "leftover": true },
+      { "id": "scavenger_interceptor", "role": "enemy_light_intercept", "leftover": true },
+      { "id": "scavenger_harasser", "role": "enemy_light_harass", "leftover": true },
+      { "id": "scavenger_thief", "role": "enemy_light_steal", "leftover": true },
+      { "id": "official_recovery_tug", "role": "faction_pressure_tug", "leftover": true },
+      { "id": "civilian_pod", "role": "narrative_priority_conflict", "leftover": true },
+      { "id": "contact_kessler", "role": "remote_contact", "leftover": true },
+      { "id": "kessler_handoff_beacon", "role": "covert_handoff_zone", "leftover": true }
+    ],
+    "headlineVerb": "hitch",
+    "twist": "The spindle's inertia is twice the manifest. Hitch it and the spool lies. Then scavengers, an official tug, and a civilian pod all claim the same line.",
+    "solutions": [
+      {
+        "id": "hitch_spindle",
+        "verb": "hitch",
+        "leftoverMechanic": "massline.attach",
+        "how": "Attach and reel the sealed spindle. Player leftover capability massline.attach. First hitch is leftover beat stabilize_spindle."
+      },
+      {
+        "id": "cut_and_pod",
+        "verb": "cut",
+        "leftoverMechanic": "massline.cut",
+        "alsoLeftover": "massline.cut_or_reanchor",
+        "how": "Cut the spindle line and reanchor to the civilian pod. Player leftover capability massline.cut. Leftover beat civilian_pod_choice is rescue.priority plus cut-or-reanchor, not a menu."
+      }
+    ],
+    "provingFrame": "Seed 47 leftover tape test/47a.inputs.json: first steering by 5s, first hitch by 60s, first hostile shot by 90s, then the dual-objective frame where the pod beacon and the spindle share the camera. Headed GPU strip is peeled this leaf."
+  },
+  "barks": [
+    {
+      "id": "dialogue.47a.kessler.drop",
+      "speaker": "KESSLER",
+      "line": "Kestrel, that pulse is the job. Tag the sealed mass. Do not open it.",
+      "consequence": "Player steers to the pulse. No tutorial wall.",
+      "cite": "src/data/scenarios/47a.scenario.json#dialogue.47a.kessler.drop"
+    },
+    {
+      "id": "dialogue.47a.kessler.spindle",
+      "speaker": "KESSLER",
+      "line": "Massline only. If the spool lies, believe the spool.",
+      "consequence": "Player hitches. False mass loads the spool.",
+      "cite": "src/data/scenarios/47a.scenario.json#dialogue.47a.kessler.spindle"
+    },
+    {
+      "id": "dialogue.47a.kessler.scavengers",
+      "speaker": "KESSLER",
+      "line": "Scavengers are shadowing the wreck. They want the sealed spindle. They are holding fire.",
+      "consequence": "Demand window, then intercept / harass / steal.",
+      "cite": "src/data/scenarios/47a.scenario.json#dialogue.47a.kessler.scavengers"
+    },
+    {
+      "id": "scenario.47a.scavenger_demand",
+      "speaker": "SCAVENGER WING",
+      "line": "Cut the line and drift clear. Refuse, and we close in after twelve seconds.",
+      "consequence": "Refuse and the wing closes. Comply and the claim is lost.",
+      "cite": "src/systems/scenarioRuntime.js#scenario.47a.scavenger_demand"
+    },
+    {
+      "id": "dialogue.47a.concord.recovery",
+      "speaker": "CONCORD RECOVERY",
+      "line": "Contractor, kill thrust and transfer the sealed object. This channel is recorded.",
+      "consequence": "Official tug attaches. Subsystems get painted.",
+      "cite": "src/data/scenarios/47a.scenario.json#dialogue.47a.concord.recovery"
+    },
+    {
+      "id": "dialogue.47a.civilian.pod",
+      "speaker": "CIVILIAN POD",
+      "line": "Suit pressure is falling. Whoever can hear this, I am not cargo.",
+      "consequence": "One line, two bodies. Hitch the pod or keep the spindle.",
+      "cite": "src/data/scenarios/47a.scenario.json#dialogue.47a.civilian.pod"
+    }
+  ],
+  "voiceNotes": {
+    "synthesis": "Directed leftover radio. One voice at a time. Cite FACT_Voice_Bible and leftover barks.js registers. Do not rewrite the corpus.",
+    "direction": "Kessler: dry clerk, mass and seal only. Concord tug: bloodless Ref-and-record. Pod: distress, no thesis. Scavenger wing: leftover popup only — faction_reavers has no leftover bark table. Frontier lines stay in barks.js for the player hull."
+  },
+  "seedCapture": {
+    "seed": 47,
+    "scenarioId": "scenario.47a.mass-discrepancy",
+    "durationSeconds": 720,
+    "inputTape": "test/47a.inputs.json",
+    "captureContract": "Headless leftover: same seed + tape as test/47a.inputs.json. Proof metrics stay on 47a.scenario.json. Headed shipping-camera strip is peeled this leaf.",
+    "headedCapture": "peeled"
+  },
+  "forbidden": {
+    "dialogueTree": false,
+    "choiceMenu": false,
+    "cutsceneTakesStick": false
+  },
+  "honesty": {
+    "notB0MineAndDock": true,
+    "doesNotRecutBeats1to3": true,
+    "leftoverResolutionBranchesCitedNotRequired": [
+      "escape_with_evidence",
+      "surrender_evidence",
+      "destroy_evidence",
+      "deliver_to_contact"
+    ],
+    "leftoverArenaVerbNotARequiredSolution": "massline.sling",
+    "campaignSidecarB0StillMineThenDock": "src/story/campaign47a/embodiedMissions.js#cold_start remains mining:yield then dock:docked. That sidecar is leftover chapter wiring, not this opener."
+  }
+}

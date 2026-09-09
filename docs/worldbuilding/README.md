@@ -64,6 +64,9 @@ Two deliberate implementation gaps remain visible instead of being papered over:
 
 - Place identity and fixed geography: [`design/world-identity/README.md`](../../design/world-identity/README.md)
 - Unified implementation status: [`design/program/README.md`](../../design/program/README.md)
+- Playable beat production: [`BEAT-STANDARD.md`](BEAT-STANDARD.md) and
+  `beats/*.beat.json`. The leftover opener is `src/data/scenarios/47a.scenario.json`,
+  not [`sheets/chapters/B0.md`](sheets/chapters/B0.md).
 - Story implementation: `src/story/campaign47a/`, `src/systems/story.js`, and
   `src/data/narrative.js`
 - Mission implementation: `src/data/missions.js` and `src/systems/missions.js`

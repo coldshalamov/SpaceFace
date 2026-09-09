@@ -18,13 +18,19 @@
    STORY-STRUCTURE · STORY-SPINE-NARRATIVE-OVERLAY · chapter-00..07
    ENDGAME-B7-REDESIGN · THE-WORLD-AFTER · SIDE-STORIES
 
-4. MISSIONS               derived from storyline (never invented first)
+4. PLAYABLE BEAT          same craft as leftover 47-A (PQ-178)
+   BEAT-STANDARD.md · beats/*.beat.json
+   Playable opener: src/data/scenarios/47a.scenario.json + src/story/campaign47a/
+   Chapter sheet B0.md is prose. It is not the playable opener.
+
+5. MISSIONS               derived from storyline (never invented first)
    SIDE-STORIES mission slate · src/story/campaign47a/ · src/data/missions.js
 
-5. CUTSCENES & ART        derived from storyline
+6. CUTSCENES & ART        derived from storyline
    production/CUTSCENE-SCRIPTS.md · production/ART-PROMPTS.md
+   A cutscene that takes the stick is not a beat. See BEAT-STANDARD.md.
 
-6. PLAYER-FACING TEXT     the last mile the player actually reads
+7. PLAYER-FACING TEXT     the last mile the player actually reads
    src/data/narrative.js · barks · flavor · endings · HUD · graffiti
 ```
 
@@ -40,6 +46,7 @@ layer that contradicts a higher one — fix the higher layer, or file the lower 
 | Worldbuilding → History | **NEW** | CONTEMPORARY-HISTORY.md added; was the missing layer |
 | History → Storyline | Strong | Chapters B0–B7 authored; dual-thread intact |
 | Storyline → Side stories | **NEW** | SIDE-STORIES.md formalizes 8 threads + mission slate |
+| Storyline → Playable beat | **NEW** | BEAT-STANDARD.md; leftover opener is 47a.scenario.json, not B0.md |
 | Storyline → Missions (runtime) | **PARTIAL** | campaign47a wires B0–B7; many design beats DESIGN_ONLY |
 | Storyline → Cutscenes/Art | **NEW** | production/ prompts ready for gen models |
 | Canon prose → Player-facing | **DIVERGENT** | See CREATIVE-DIRECTION R14–R15; runtime vs prose gaps listed in audit |
@@ -54,6 +61,12 @@ layer that contradicts a higher one — fix the higher layer, or file the lower 
 2. Sheet in sheets/ with schema; INDEX row.
 3. CONTEMPORARY-HISTORY one-liner if they act in the present.
 4. Player-facing only after prose is stable.
+
+### New playable beat
+1. Read `BEAT-STANDARD.md`. Fill `beats/<id>.beat.json` from `beats/TEMPLATE.beat.json`.
+2. Cite leftover place, actors, and two leftover physical solutions. Do not invent a second opener.
+3. B0.md is chapter prose. The playable 47-A opener is `src/data/scenarios/47a.scenario.json`.
+4. Run `node scripts/check-beat-standard.mjs`. Do not add a choice menu or a cutscene that takes the stick.
 
 ### New mission
 1. Name the chapter beat + side-story thread (SIDE-STORIES slate).
@@ -79,6 +92,7 @@ layer that contradicts a higher one — fix the higher layer, or file the lower 
 | Changed | Minimum proof |
 |---|---|
 | Prose only (docs/worldbuilding) | Links resolve; `git diff --check -- docs/worldbuilding` |
+| Playable beat sheet (`beats/*.beat.json`) | `node scripts/check-beat-standard.mjs` |
 | narrative.js / endings / barks / flavor | Parse JS; focused story/data tests if present; do not touch expected.json |
 | story.js gates / triggers | Focused story system test + manual route note |
 | Mission data | campaign/mission checks + play-route smoke |
