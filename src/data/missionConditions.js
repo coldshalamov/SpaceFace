@@ -331,7 +331,7 @@ export const MISSION_CONDITIONS = Object.freeze({
     brief: 'Land one solid mass strike.',
     pendingText: 'The bonus wanted mass on the target. Tether something heavy and swing it into them.',
     satisfiedText: 'Solid mass strike logged.',
-    appliesTo: ['patrol_clear', 'bounty_hunt', 'escort', 'demolition', 'authored_set_piece'],
+    appliesTo: ['patrol_clear', 'bounty_hunt', 'escort', 'demolition', 'authored_set_piece', 'capital_boss'],
     minRisk: 1,
     match(payload) {
       return !!payload && SOLID_WHIP_RATINGS.includes(payload.rating);
@@ -355,7 +355,7 @@ export const MISSION_CONDITIONS = Object.freeze({
     brief: 'Land one Massline throw.',
     pendingText: 'They are paying for a thrown mass. Grab something and sling it.',
     satisfiedText: 'Throw logged.',
-    appliesTo: ['patrol_clear', 'bounty_hunt', 'demolition', 'authored_set_piece'],
+    appliesTo: ['patrol_clear', 'bounty_hunt', 'demolition', 'authored_set_piece', 'capital_boss'],
     minRisk: 2,
     match(payload) {
       return !!payload && payload.payloadId != null;
