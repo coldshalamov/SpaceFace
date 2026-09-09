@@ -10,6 +10,7 @@ import { resolveGovernedCombatSpeed } from '../src/core/flight/propulsionCatalog
 import { ATTACHMENT_DEFS } from '../src/data/combatDefs.js';
 import { COMBAT_FLAGS } from '../src/data/featureFlags.js';
 import { MODULES } from '../src/data/modules.js';
+import { SHIPS } from '../src/data/ships.js';
 import { TECH_NODES } from '../src/data/tech.js';
 import { LEGACY47A_FEATURES, PRODUCTION_FEATURES } from '../src/runtime/runtimeProfiles.js';
 import { PRODUCTION_UPDATE_ORDER } from '../src/runtime/authoritativeSystemManifest.js';
@@ -18,7 +19,7 @@ import {
   resolveTransverseSnarePreview,
   TRANSVERSE_SNARE_DEF_ID,
 } from '../src/systems/masslineSnares.js';
-import { fittingsFromDefaultModules, getDerivedStats } from '../src/systems/ships.js';
+import { buildSlotList, fittingsFromDefaultModules, fits, getDerivedStats } from '../src/systems/ships.js';
 import { tumbleStates } from '../src/systems/tumbleStates.js';
 import { masslineTetherStatus } from '../src/ui/hud.js';
 import { MASSLINE_HUD_CSS } from '../src/ui/masslineHud.js';
@@ -28,6 +29,7 @@ const DT = 1 / 60;
 const STANDARD = ATTACHMENT_DEFS.find((def) => def.id === 'tether_standard');
 const SNARE_DEF = ATTACHMENT_DEFS.find((def) => def.id === TRANSVERSE_SNARE_DEF_ID);
 const SNARE_MODULE = MODULES.find((def) => def.id === 'mod_transverse_snare_m');
+const HITCH = SHIPS.find((def) => def.id === 'ship_kestrel');
 
 test('Transverse Snare is reachable, exclusive, default-on, and ordered after settled line observers', () => {
   const fittings = fittingsFromDefaultModules('ship_drifter', [SNARE_MODULE.id]);
@@ -48,6 +50,16 @@ test('Transverse Snare is reachable, exclusive, default-on, and ordered after se
   assert.match(statSnippet(SNARE_MODULE), /free-target crossing snare/i);
   assert.ok(PRODUCTION_UPDATE_ORDER.indexOf('masslineSnares') > PRODUCTION_UPDATE_ORDER.indexOf('masslineImpacts'));
   assert.ok(PRODUCTION_UPDATE_ORDER.indexOf('masslineSnares') < PRODUCTION_UPDATE_ORDER.indexOf('masslineThrow'));
+});
+
+test('Hitch cannot fit the Transverse Snare M head', () => {
+  assert.equal(HITCH.name, 'Hitch');
+  const utility = buildSlotList(HITCH).find((slot) => slot.type === 'utility');
+  assert.equal(utility.size, 'S');
+  assert.equal(fits(utility, SNARE_MODULE), false, 'an S utility cannot take the M snare');
+  const fittings = fittingsFromDefaultModules(HITCH.id, [SNARE_MODULE.id]);
+  assert.ok(!fittings.includes(SNARE_MODULE.id), 'the starter loadout must not receive the snare');
+  assert.equal(getDerivedStats(HITCH.id, fittings, null).masslineHeadId, null);
 });
 
 test('free-target preview is deterministic, clamped, perpendicular, and names the exact deploy line', () => {
