@@ -11,8 +11,162 @@
 .k-screen .sx-mkt__trade .sx-qty__k { letter-spacing:.04em; }
 .k-screen .sx-mkt__trade .sx-trade__note { margin:12px 0 0; color:var(--cd-danger); line-height:1.5; }
 .k-screen .cd-trade-commit .k-word:disabled::before { background:#1b252a; border-color:#38474d; }
-@media(max-height:760px) {
-  .k-screen .cd-trade-mode { margin-bottom:12px; }
-  .k-screen .sx-mkt__trade .cd-hold { margin-bottom:10px; padding-bottom:10px; }
-  .k-screen .cd-trade-commit { margin-top:10px; }
+
+/* The station is an operation, not a 230px status header. Vitals remain actionable and
+   visible, but occupy a horizontal service strip; each destination owns the working area. */
+.k-screen:has(> .sx-app) {
+  grid-template-columns:minmax(230px,.6fr) minmax(0,1.6fr);
+  grid-template-rows:auto minmax(0,1fr) auto;
+  gap:16px;
+  padding:20px 24px;
+}
+.k-screen .sxb-berth { min-width:0; align-self:center; padding:0; }
+.k-screen .sxb-berth__name { font-size:clamp(28px,2.7vw,48px); line-height:1.04; overflow-wrap:anywhere; }
+.k-screen .sxb-berth__news { margin:8px 0 0; font-size:12px; line-height:1.4; }
+.k-screen .sxb-crown {
+  display:grid; grid-template-columns:max-content minmax(0,1fr); align-items:center;
+  gap:18px; margin:0; padding:12px 14px; min-width:0;
+  border-width:0 0 1px; background:#142026;
+}
+.k-screen .sxb-crown .sxb-purse { display:block; min-width:100px; text-align:left; }
+.k-screen .sxb-purse__value { font-size:clamp(26px,2.1vw,38px); line-height:1; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+.k-screen .sxb-purse__label { margin-top:5px; font-size:12px; color:var(--cd-muted); }
+.k-screen .sxb-vitals { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin:0; min-width:0; }
+.k-screen .sxb-vitals .sxb-vital {
+  display:grid; grid-template-columns:minmax(0,1fr) auto; align-content:start;
+  gap:7px 5px; min-width:0; min-height:0; margin:0; padding:0 0 0 10px;
+  background:none; border:0; border-left:1px solid #3b4b50;
+}
+.k-screen .sxb-vital__head { min-width:0; }
+.k-screen .sxb-vital__label { font-size:12px; }
+.k-screen .sxb-vital__value { font-size:13px; line-height:1.5; }
+.k-screen .sxb-vital__track { width:100%; height:3px; margin-top:5px; }
+.k-screen .sxb-vital__acts { grid-column:1/-1; justify-content:flex-start; flex-wrap:wrap; gap:4px; min-width:0; }
+.k-screen .sxb-vital__acts .k-word { min-height:26px; padding:5px 7px; font-size:12px; max-width:100%; line-height:1.3; }
+.k-screen .sxb-vital__ok { font-size:12px; }
+.k-screen .sxb-vital__head[data-hold] {
+  display:block; min-height:0; padding:0; border:0; box-shadow:none; background:none;
+  color:var(--cd-text); cursor:pointer;
+}
+.k-screen .sxb-vital__head[data-hold]:hover { color:var(--cd-accent); }
+.k-screen .sxb-vital__head[data-hold]:focus-visible { outline:2px solid var(--cd-accent); outline-offset:3px; }
+.k-screen #sx-panel { grid-column:1/-1; margin:0; min-width:0; min-height:0; }
+.k-screen .sxb-ops { gap:14px; padding-top:12px; align-items:stretch; }
+.k-screen .sxb-ops__dock { flex:1; min-width:0; }
+.k-screen .sx-dock__group--nav { gap:6px; }
+.k-screen .sx-tile {
+  position:relative; flex-direction:row; align-items:center; justify-content:flex-start;
+  min-height:52px; height:100%; padding:10px; gap:8px; font-size:13px;
+}
+.k-screen .sx-tile__seat { display:flex; flex:0 0 auto; }
+.k-screen .sx-tile__seat .cd-glyph { width:21px; height:21px; }
+.k-screen .sx-tile__badge { position:absolute; right:5px; top:3px; margin:0; font-size:12px; }
+.k-screen .sx-tile__label { overflow-wrap:anywhere; }
+.k-screen .sx-comms { flex-basis:68px; gap:5px; justify-content:center; }
+.k-screen .sx-comms__toggle, .k-screen .sxb-help { margin:0; }
+.k-screen .sxb-launch { min-height:52px; min-width:112px; padding:8px 14px; }
+.k-screen .sxb-launch__state { font-size:12px; }
+
+/* A three-part exchange: stock register / commodity / transfer. The transfer must not
+   be buried beneath price commentary. Independent scroll wells preserve all information. */
+.k-screen .sx-mkt { grid-template-columns:minmax(340px,.95fr) minmax(0,1.65fr); gap:14px; }
+.k-screen .sx-mkt__list { min-width:0; overflow:hidden; }
+.k-screen .sx-mkt-browser { padding:14px; }
+.k-screen .sx-mkt-browser > * + * { margin-top:10px; }
+.k-screen .sx-mkt-browser__filters { flex-wrap:nowrap; overflow-x:auto; gap:5px; padding-bottom:4px; scrollbar-width:thin; }
+.k-screen .sx-mkt-browser__filters > li { flex:0 0 auto; }
+.k-screen .sx-mkt-browser__filters .k-word { min-height:32px; white-space:nowrap; padding:6px 9px; font-size:12px; }
+.k-screen .sx-mkt-browser__rail { overflow:auto; overscroll-behavior:contain; }
+.k-screen .sx-mkt-table { min-width:330px; }
+.k-screen .sx-mkt-table th, .k-screen .sx-mkt-table td { padding:11px 8px; }
+.k-screen .sx-mkt-table th { font-size:11px; letter-spacing:.04em; }
+.k-screen .sx-mkt-row__name { font-size:13px; }
+.k-screen .sx-mkt__stage {
+  display:grid; grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);
+  gap:14px; overflow:visible; align-content:stretch; min-width:0; min-height:0;
+}
+.k-screen .sx-mkt__stage > .sx-mkt__quote,
+.k-screen .sx-mkt__stage > .sx-mkt__console {
+  margin:0; padding:16px; min-width:0; min-height:0; overflow:auto;
+  overscroll-behavior:contain; scrollbar-width:thin;
+}
+.k-screen .cd-cargo-mast { grid-template-columns:minmax(0,1fr); gap:0; }
+.k-screen .cd-cargo-mast__specimen { grid-row:1; }
+.k-screen .cd-cargo-art { height:clamp(92px,15vh,168px); }
+.k-screen .sx-mkt-title { margin:8px 0; font-size:clamp(23px,2vw,34px); line-height:1.08; }
+.k-screen .sx-mkt__hero .k-hero__n { font-size:clamp(34px,3vw,52px); }
+.k-screen .sx-mkt__quote > #sx-market-driver-summary { max-height:5.5em; overflow:auto; font-size:12px; line-height:1.5; }
+.k-screen .sx-mkt-stats { grid-template-columns:minmax(0,1fr); }
+.k-screen .sx-mkt-chart { width:100%; height:54px; }
+.k-screen .sx-mkt__quote > * + *, .k-screen .sx-mkt__console > * + * { margin-top:12px; }
+.k-screen .cd-trade-mode { margin:0 0 12px; }
+.k-screen .sx-mkt__trade .cd-hold { padding-bottom:10px; margin-bottom:10px; }
+.k-screen .cd-hold__labels { gap:6px; flex-wrap:wrap; }
+.k-screen .cd-hold__labels strong { font-size:16px; }
+.k-screen .cd-hold__track { height:9px; margin-top:7px; }
+.k-screen .sx-qty { gap:8px; flex-wrap:wrap; }
+.k-screen .sx-qty__in { width:78px; font-size:20px; }
+.k-screen .sx-qty__words { gap:4px; }
+.k-screen .sx-qty__words .k-word { min-width:32px; min-height:36px; padding:6px; }
+.k-screen .sx-trade__rows .k-row { font-size:12px; min-height:29px; padding:5px 0; }
+.k-screen .cd-trade-commit { position:sticky; bottom:0; z-index:2; margin:10px 0 0; padding:9px 0 2px; background:#111d21; }
+.k-screen .cd-trade-commit .k-word { min-height:48px; }
+.k-screen .sx-mkt__routes { border-top:1px solid var(--cd-soft-edge); padding-top:12px; }
+.k-screen .cd-trade-receipt { padding:10px; gap:9px; }
+.k-screen .cd-trade-receipt strong { font-size:14px; }
+.k-screen .cd-trade-receipt p { font-size:12px; line-height:1.45; }
+
+/* Shipworks uses the recovered working height rather than a postage-stamp viewport. */
+.k-screen .sx-sw { grid-template-columns:clamp(238px,23vw,360px) minmax(0,1fr); grid-template-rows:minmax(0,1fr) auto; gap:12px; }
+.k-screen .sx-sw__main { min-height:0; display:flex; flex-direction:column; }
+.k-screen .sx-sw__stage { min-height:210px; flex:1 1 auto; }
+.k-screen .sx-sw__side { max-height:150px; margin:0; }
+.k-screen .sx-sw__rail, .k-screen .sx-sw__chooser { min-height:0; overflow:auto; scrollbar-width:thin; }
+
+@media(min-width:1700px) {
+  .k-screen:has(> .sx-app) { padding:28px 38px; gap:22px; }
+  .k-screen .sx-mkt { grid-template-columns:minmax(410px,.95fr) minmax(0,1.65fr); gap:22px; }
+  .k-screen .sx-mkt__stage { gap:20px; }
+  .k-screen .sx-mkt__stage > .sx-mkt__quote, .k-screen .sx-mkt__stage > .sx-mkt__console { padding:24px; }
+  .k-screen .sx-mkt-table th, .k-screen .sx-mkt-table td { padding:14px 12px; font-size:14px; }
+  .k-screen .sx-mkt-row__name { font-size:16px; }
+  .k-screen .sx-tile { min-height:62px; font-size:16px; gap:12px; padding:12px 16px; }
+}
+@media(max-width:1100px) {
+  .k-screen:has(> .sx-app) { grid-template-columns:230px minmax(0,1fr); gap:12px; padding:18px; }
+  .k-screen .sxb-crown { gap:10px; padding:10px; }
+  .k-screen .sxb-crown .sxb-purse { min-width:80px; }
+  .k-screen .sxb-vitals { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+  .k-screen .sxb-vital__acts { grid-column:2; }
+  .k-screen .sxb-vital__value { font-size:12px; }
+  .k-screen .sx-mkt { grid-template-columns:minmax(310px,.9fr) minmax(0,1.1fr); }
+  .k-screen .sx-mkt__stage { display:flex; flex-direction:column; overflow:auto; }
+  .k-screen .sx-mkt__stage > .sx-mkt__console { order:-1; flex-shrink:0; overflow:visible; }
+  .k-screen .sx-mkt__stage > .sx-mkt__quote { flex-shrink:0; overflow:visible; }
+  .k-screen .cd-cargo-mast { grid-template-columns:1fr 120px; gap:10px; }
+  .k-screen .cd-cargo-mast__specimen { grid-column:2; }
+  .k-screen .sx-mkt-row__sell, .k-screen .sx-mkt-table th:nth-child(3) { display:table-cell; }
+  .k-screen .sx-tile { flex-direction:column; justify-content:center; gap:5px; padding:8px 5px; font-size:12px; }
+}
+@media(max-width:760px) {
+  .k-screen:has(> .sx-app) { grid-template-columns:minmax(0,1fr); grid-template-rows:auto auto minmax(240px,1fr) auto; overflow:auto; }
+  .k-screen .sxb-berth { grid-column:1; grid-row:1; }
+  .k-screen .sxb-crown { grid-column:1; grid-row:2; }
+  .k-screen #sx-panel { grid-row:3; overflow:auto; }
+  .k-screen .sxb-ops { grid-column:1; grid-row:4; position:sticky; bottom:0; background:var(--cd-ground); padding-bottom:4px; }
+  .k-screen .sx-dock__group--nav { overflow-x:auto; padding:4px; }
+  .k-screen .sx-dock__group--nav > li { min-width:78px; }
+  .k-screen .sx-mkt { display:flex; flex-direction:column; height:auto; }
+  .k-screen .sx-mkt__list { min-height:290px; max-height:42vh; }
+  .k-screen .sx-mkt__stage { overflow:visible; }
+  .k-screen .sx-sw { grid-template-columns:minmax(0,1fr); height:auto; }
+  .k-screen .sx-sw__rail, .k-screen .sx-sw__chooser, .k-screen .sx-sw__main, .k-screen .sx-sw__side { grid-column:1; grid-row:auto; }
+  .k-screen .sx-sw__side { max-height:none; }
+  .k-screen .sx-sw__stage { min-height:280px; }
+}
+@media(max-height:620px) and (min-width:1101px) {
+  .k-screen:has(> .sx-app) { gap:10px; padding:12px 18px; }
+  .k-screen .sxb-crown { padding:8px 10px; }
+  .k-screen .sx-tile, .k-screen .sxb-launch { min-height:44px; }
+  .k-screen .cd-cargo-art { height:78px; }
 }
