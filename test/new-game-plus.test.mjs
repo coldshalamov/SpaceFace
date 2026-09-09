@@ -3,10 +3,12 @@ import test from 'node:test';
 
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
+import { livingHullScars } from '../src/core/livingHull.js';
 import {
   NEW_GAME_PLUS_SCHEMA,
   buildNewGamePlusCandidate,
   buildNewGamePlusOverlay,
+  leftoverNewRunLine,
   normalizeStoryNewGamePlusRecord,
 } from '../src/core/newGamePlus.js';
 import { FRESH_RUN_SYSTEMS, resetFreshRunSystems } from '../src/core/runReset.js';
@@ -16,6 +18,7 @@ import { fnv1a } from '../src/save/checksum.js';
 import { save } from '../src/save/saveSystem.js';
 import { aceMemory as aceMemoryProto } from '../src/systems/aceMemory.js';
 import { story as storyProto } from '../src/systems/story.js';
+import { createTitlesSystem } from '../src/systems/titles.js';
 
 function completedRunData() {
   return {
@@ -27,7 +30,23 @@ function completedRunData() {
         { instanceId: 'relic', defId: 'unique_veil_cutter' },
         { instanceId: 'spare', defId: 'mod_market_data_s' },
       ],
-      ownedShips: [{ defId: 'ship_kestrel', fittings: ['wpn_pulse_laser_s', 'mod_engine_ion_m'] }],
+      ownedShips: [{
+        defId: 'ship_kestrel',
+        fittings: ['wpn_pulse_laser_s', 'mod_engine_ion_m'],
+        livingHull: {
+          schema: 'spaceface.livingHull.v1',
+          scars: [{
+            id: 'weapon:54000:bow',
+            cause: 'weapon',
+            surface: 'weapon',
+            band: 'hard',
+            facing: 'bow',
+            atT: 880,
+            tick: 54000,
+            patchedAtT: null,
+          }],
+        },
+      }],
     },
     cargo: { items: {}, capVolume: 40, capMass: 60 },
     economy: {},
@@ -46,7 +65,35 @@ function completedRunData() {
     },
     missions: {
       boards: {}, active: [], completedLog: [], receipts: [], nextId: 1,
-      story: { beatIndex: 7, flags: {}, endgameChoice: 'E', endgameResolved: true },
+      story: {
+        beatIndex: 7,
+        flags: { contract_47a_closed: true, contract_47b_pending: true },
+        endgameChoice: 'E',
+        endgameResolved: true,
+        titlesSeen: [{
+          id: 'title_thunderchild',
+          title: 'Thunderchild',
+          holderKey: 'player',
+        }],
+        titles: {
+          byId: {
+            title_thunderchild: {
+              id: 'title_thunderchild',
+              title: 'Thunderchild',
+              status: 'held',
+              holderKey: 'player',
+            },
+          },
+        },
+        postEnding: {
+          choiceId: 'E',
+          endingId: 'E',
+          directiveId: 'contract_47b',
+          title: 'CONTRACT 47-B',
+          sandboxMode: 'working_pilot',
+          replayHookId: 'post47a_next_manifest',
+        },
+      },
     },
     automation: {},
     aceMemory: {
@@ -102,6 +149,14 @@ test('completed run projects one selectable keepsake and only unresolved named-h
     'unique_veil_cutter', 'mod_market_data_s', 'wpn_pulse_laser_s', 'mod_engine_ion_m',
   ]));
   assert.equal(candidate.grudgeCount, 1, 'defeated and unknown hunters do not carry');
+  assert.equal(candidate.scarCount, 1, 'leftover living-hull scars carry');
+  assert.equal(candidate.titleCount, 1, 'leftover Thunderchild carries');
+  assert.equal(candidate.worldFactCount, 1);
+  assert.equal(candidate.worldFactTitle, 'CONTRACT 47-B');
+  assert.equal(
+    leftoverNewRunLine(candidate),
+    'THE NEXT RUN · keep one item · 1 unresolved hunter grudge · 1 scar · 1 title · CONTRACT 47-B',
+  );
 
   const overlay = buildNewGamePlusOverlay(data, { keepsakeId: 'mod_market_data_s' }, { slot: 'legacy' });
   assert.equal(overlay.keepsake.defId, 'mod_market_data_s');
@@ -224,4 +279,49 @@ test('the legacy receipt rides the real save carrier, and a pre-New-Run+ save st
   older.state.story = preLegacy.story;
   older.story.deserialize(preLegacy);
   assert.equal(older.state.story.newGamePlus, null, 'an absent receipt stays absent');
+});
+
+test('leftover New Run+ writes scars, Thunderchild, and CONTRACT 47-B onto the fresh run', () => {
+  const overlay = buildNewGamePlusOverlay(
+    completedRunData(),
+    { keepsakeId: 'unique_veil_cutter' },
+    { slot: 'legacy', savedAt: '2026-08-06T12:00:00.000Z' },
+  );
+  assert.equal(overlay.scars[0].id, 'weapon:54000:bow');
+  assert.equal(overlay.titles[0].id, 'title_thunderchild');
+  assert.equal(overlay.worldFacts.title, 'CONTRACT 47-B');
+  assert.deepEqual(overlay.worldFacts.flags, ['contract_47a_closed', 'contract_47b_pending']);
+
+  const state = createGameState(7711);
+  state.onboarding = { active: true, finished: false };
+  state.player.ownedShips = [{ defId: 'ship_kestrel', fittings: [] }];
+  state.player.activeShipIndex = 0;
+  state.entities.set(state.playerId, {
+    id: state.playerId,
+    type: 'ship',
+    data: {},
+  });
+  const bus = createBus();
+  const hullEvents = [];
+  bus.on('ship:livingHullChanged', (payload) => hullEvents.push(payload));
+  const titles = createTitlesSystem();
+  titles.init({ state, bus, helpers: {}, registry: { get: () => null } });
+  titles.newGame();
+  assert.equal(state.story.titles.byId.title_thunderchild.status, 'vacant');
+
+  const story = Object.assign({}, storyProto);
+  story.init({ state, bus, helpers: { voice: { say() {} } }, registry: { get: () => null } });
+  bus.emit('game:started', { newGamePlus: overlay });
+
+  assert.equal(state.story.newGamePlus.scars[0].id, 'weapon:54000:bow');
+  assert.equal(state.story.flags.contract_47b_pending, true);
+  assert.equal(state.story.flags.contract47bPending, true);
+  assert.equal(state.story.postEnding && state.story.postEnding.directiveId, 'contract_47b');
+  assert.equal(state.story.titles.byId.title_thunderchild.status, 'held');
+  assert.equal(
+    livingHullScars(state.player.ownedShips[0].livingHull).some((scar) => scar.id === 'weapon:54000:bow'),
+    true,
+    'leftover scar lands on the new hull without editing ships.js',
+  );
+  assert.equal(hullEvents[0] && hullEvents[0].source, 'new_game_plus');
 });

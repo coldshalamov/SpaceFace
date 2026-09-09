@@ -7,6 +7,7 @@
 // Built on the frontend kit (styles/kit.css, src/ui/kit/); this file owns no CSS.
 // Pilot name + starter ship (Hitch / id ship_kestrel) + difficulty -> emit game:new. The save system
 // handles game:new (newGame()), seeds GameState and switches to flight.
+import { leftoverNewRunLine } from '../../core/newGamePlus.js';
 import { MODULES } from '../../data/modules.js';
 import { NEW_GAME } from '../../data/newGameDefaults.js';
 import { WEAPONS } from '../../data/weapons.js';
@@ -255,9 +256,7 @@ export const newGameScreen = {
       legacyWords.setAttribute('aria-labelledby', legacyField.label.id);
       for (const b of legacyWords.querySelectorAll('.k-word')) b.setAttribute('aria-pressed', String(b.dataset.action === 'legacy:off'));
       legacyField.wrap.appendChild(legacyWords);
-      const grudgeCount = Number(newGamePlusCandidate.grudgeCount) || 0;
-      const meta = el('p', 'k-t-fine k-38',
-        `${newGamePlusCandidate.sourceEndingTitle} · keep one item · ${grudgeCount} unresolved hunter ${grudgeCount === 1 ? 'grudge' : 'grudges'}`);
+      const meta = el('p', 'k-t-fine k-38', leftoverNewRunLine(newGamePlusCandidate));
       meta.id = 'sf-ng-legacy-desc';
       legacyField.wrap.appendChild(meta);
       const keepsakeLabel = el('label', 'k-t-fine k-38', 'Carried keepsake');

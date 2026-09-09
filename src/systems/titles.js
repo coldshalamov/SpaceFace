@@ -377,6 +377,7 @@ export function createTitlesSystem() {
       this._onSaveLoaded = () => this._rebindSilently();
       this._onNewGame = () => this.newGame();
       this._onTrickDetected = (payload) => this._onStuntTrick(payload || {});
+      this._onNewGamePlus = (payload) => this.applyNewGamePlusTitles(payload && payload.titles);
       if (this.bus && typeof this.bus.on === 'function') {
         this.bus.on('title:holdResolved', this._onHold);
         this.bus.on('combat:damage', this._onDamage);
@@ -385,6 +386,7 @@ export function createTitlesSystem() {
         this.bus.on('save:loaded', this._onSaveLoaded);
         this.bus.on('game:newGame', this._onNewGame);
         this.bus.on('stunt:trickDetected', this._onTrickDetected);
+        this.bus.on('story:newGamePlusStarted', this._onNewGamePlus);
       }
       this._rebindSilently();
     },
@@ -400,6 +402,58 @@ export function createTitlesSystem() {
       this._holderEntityId = null;
       this._activeEntityIds.clear();
       syncTitleStamp(this.state, ensureState(this.state));
+    },
+
+    applyNewGamePlusTitles(titles) {
+      if (!this.state || !Array.isArray(titles) || !titles.length) return 0;
+      ensureState(this.state);
+      const story = this.state.story;
+      if (!Array.isArray(story.titlesSeen)) story.titlesSeen = [];
+      let applied = 0;
+      for (const carried of titles) {
+        if (!carried || typeof carried !== 'object') continue;
+        const titleId = cleanText(carried.id || carried.titleId);
+        const titleName = cleanText(carried.title, titleId === THUNDERCHILD_TITLE_ID ? THUNDERCHILD.title : '');
+        const holderKey = cleanText(carried.holderKey, 'player');
+        if (!titleId || !titleName) continue;
+        const seenId = cleanText(carried.seenId, `${titleId}:${holderKey}:legacy`);
+        if (!story.titlesSeen.some((record) => record && record.id === seenId)) {
+          appendBounded(story.titlesSeen, {
+            id: seenId,
+            title: titleName,
+            seenAt: 0,
+            holderKey,
+            ...(carried.trickId ? { trickId: cleanText(carried.trickId) } : {}),
+          }, TITLES_SEEN_LIMIT);
+        }
+        if (titleId === THUNDERCHILD_TITLE_ID) {
+          const own = story.titles.byId[THUNDERCHILD_TITLE_ID];
+          if (own && own.status !== 'held') {
+            own.status = 'held';
+            own.holderKey = holderKey;
+            own.holder = {
+              shipDefId: 'ship_kestrel',
+              factionId: 'faction_player',
+              displayName: 'you',
+            };
+            own.earnedTick = 0;
+          }
+        } else if (carried.trickId || titleId.startsWith('title_')) {
+          story.titles.byId[titleId] = {
+            schemaVersion: TITLES_SCHEMA_VERSION,
+            titleId,
+            trickId: cleanText(carried.trickId),
+            title: titleName,
+            status: 'held',
+            holderKey,
+            earnedTick: 0,
+          };
+        }
+        applied += 1;
+      }
+      syncTitleStamp(this.state, ensureState(this.state));
+      emit(this.bus, 'title:newGamePlusApplied', { count: applied });
+      return applied;
     },
 
     update(_dt, state = this.state) {
@@ -787,8 +841,9 @@ export function createTitlesSystem() {
         if (this._onSaveLoaded) this.bus.off('save:loaded', this._onSaveLoaded);
         if (this._onNewGame) this.bus.off('game:newGame', this._onNewGame);
         if (this._onTrickDetected) this.bus.off('stunt:trickDetected', this._onTrickDetected);
+        if (this._onNewGamePlus) this.bus.off('story:newGamePlusStarted', this._onNewGamePlus);
       }
-      this._onHold = this._onDamage = this._onKilled = this._onSpawned = this._onSaveLoaded = this._onNewGame = this._onTrickDetected = null;
+      this._onHold = this._onDamage = this._onKilled = this._onSpawned = this._onSaveLoaded = this._onNewGame = this._onTrickDetected = this._onNewGamePlus = null;
       this._activeEntityIds.clear();
     },
   };

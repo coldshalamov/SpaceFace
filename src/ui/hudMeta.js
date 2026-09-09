@@ -78,7 +78,14 @@ export function createHudMeta(ctx) {
   function syncLegacyReadout() {
     const legacy = state.story && state.story.newGamePlus;
     const key = legacy
-      ? [legacy.sourceEnding, legacy.keepsakeId, legacy.hunterGrudgeCount].join('|')
+      ? [
+        legacy.sourceEnding,
+        legacy.keepsakeId,
+        legacy.hunterGrudgeCount,
+        (legacy.scars && legacy.scars.length) || 0,
+        (legacy.titles && legacy.titles[0] && legacy.titles[0].title) || '',
+        legacy.worldFacts && legacy.worldFacts.title || '',
+      ].join('|')
       : '';
     if (key === legacyKey) return;
     legacyKey = key;
@@ -89,7 +96,19 @@ export function createHudMeta(ctx) {
       return;
     }
     const count = Number(legacy.hunterGrudgeCount) || 0;
-    legacyReadout.textContent = `LEGACY ${legacy.sourceEnding} · ${legacy.sourceEndingTitle} · ${legacy.keepsakeName} · ${count} ${count === 1 ? 'GRUDGE' : 'GRUDGES'}`;
+    const scarCount = Array.isArray(legacy.scars) ? legacy.scars.length : 0;
+    const leftoverTitle = legacy.titles && legacy.titles[0] && legacy.titles[0].title;
+    const leftoverFact = legacy.worldFacts && legacy.worldFacts.title;
+    const clauses = [
+      `LEGACY ${legacy.sourceEnding}`,
+      legacy.sourceEndingTitle,
+      legacy.keepsakeName,
+      `${count} ${count === 1 ? 'GRUDGE' : 'GRUDGES'}`,
+    ];
+    if (scarCount) clauses.push(`${scarCount} ${scarCount === 1 ? 'SCAR' : 'SCARS'}`);
+    if (leftoverTitle) clauses.push(leftoverTitle);
+    if (leftoverFact) clauses.push(leftoverFact);
+    legacyReadout.textContent = clauses.join(' · ');
     legacyReadout.style.display = metaVisible ? '' : 'none';
   }
   bus.on('story:newGamePlusStarted', syncLegacyReadout);

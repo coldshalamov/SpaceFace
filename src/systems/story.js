@@ -54,6 +54,10 @@ import {
   selectConflictReaction,
 } from '../data/conflictReactions.js';
 import {
+  livingHullWithScar,
+  normalizeLivingHull,
+} from '../core/livingHull.js';
+import {
   normalizeStoryNewGamePlusRecord,
   storyNewGamePlusRecord,
 } from '../core/newGamePlus.js';
@@ -1469,6 +1473,8 @@ export const story = {
     const legacy = storyNewGamePlusRecord(payload.newGamePlus, this.state.meta && this.state.meta.seed);
     if (legacy) {
       this.state.story.newGamePlus = legacy;
+      this._applyLeftoverWorldFacts(legacy.worldFacts);
+      this._applyLeftoverScars(legacy.scars);
       this.bus.emit('story:newGamePlusStarted', { ...legacy });
     }
     // Re-install Thread-B fragment after narrative reset clears persistentCargo.
@@ -1483,6 +1489,71 @@ export const story = {
     } else {
       this._fireColdStart();
     }
+  },
+
+  _applyLeftoverWorldFacts(facts) {
+    if (!facts || typeof facts !== 'object') return;
+    const s = this.state && this.state.story;
+    if (!s) return;
+    s.flags = s.flags && typeof s.flags === 'object' ? s.flags : {};
+    for (const flag of Array.isArray(facts.flags) ? facts.flags : []) {
+      if (typeof flag !== 'string' || !flag) continue;
+      s.flags[flag] = true;
+    }
+    if (facts.endingId === 'B' || (Array.isArray(facts.flags) && facts.flags.includes('identity_erased'))) {
+      s.flags.identityErased = true;
+    }
+    if (facts.endingId === 'D' || (Array.isArray(facts.flags) && facts.flags.includes('stayed_at_ashfall'))) {
+      s.flags.stayedAtAshfall = true;
+    }
+    if (facts.endingId === 'E' || (Array.isArray(facts.flags) && facts.flags.includes('contract_47b_pending'))) {
+      s.flags.contract47bPending = true;
+    }
+    // Fresh leftover continuity of the same ending — old progress does not carry.
+    if (facts.endingId && !s.postEnding) {
+      s.postEnding = createPostEndingContinuity(
+        facts.endingId,
+        this.state.simTime || 0,
+        this.state.meta && this.state.meta.seed,
+      );
+    }
+  },
+
+  _applyLeftoverScars(scars) {
+    if (!Array.isArray(scars) || !scars.length) return 0;
+    const player = this.state && this.state.player;
+    const owned = player && Array.isArray(player.ownedShips)
+      ? player.ownedShips[Number.isInteger(player.activeShipIndex) ? player.activeShipIndex : 0]
+        || player.ownedShips[0]
+      : null;
+    if (!owned) return 0;
+    const now = Number(this.state && this.state.simTime) || 0;
+    let hull = normalizeLivingHull(owned.livingHull, now);
+    let applied = 0;
+    for (const scar of scars) {
+      const next = livingHullWithScar(hull, scar, now);
+      if (next !== hull) {
+        hull = next;
+        applied += 1;
+      }
+    }
+    if (!applied) return 0;
+    owned.livingHull = hull;
+    const entities = this.state && this.state.entities;
+    const entity = entities && typeof entities.get === 'function'
+      ? entities.get(this.state.playerId)
+      : null;
+    if (entity && entity.data) entity.data.livingHull = hull;
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('ship:livingHullChanged', {
+        id: entity && entity.id,
+        shipIndex: Number.isInteger(player.activeShipIndex) ? player.activeShipIndex : 0,
+        defId: owned.defId,
+        source: 'new_game_plus',
+        livingHull: hull,
+      });
+    }
+    return applied;
   },
 
   _ensureThreadBFragment() {
