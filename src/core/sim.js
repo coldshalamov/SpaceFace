@@ -13,7 +13,7 @@
 import { createBus } from './eventBus.js';
 import { createGameState } from './gameState.js';
 import { core as coreDefinition } from './coreSystem.js';
-import { shouldSkipSystemThisStep } from './catchupPolicy.js';
+import { partitionUpdateSystems, updateQueueForThisStep } from './catchupPolicy.js';
 
 export const SIM_DT = 1 / 60;
 
@@ -108,6 +108,7 @@ export function createSimulation(options = {}) {
 
   let initialized = false;
   let stepping = false;
+  const updatePartitions = partitionUpdateSystems(updates);
 
   const explicitSystemIds = Object.freeze(
     (options.systems || []).map((s) => (s && s.name) || null).filter(Boolean),
@@ -171,9 +172,8 @@ export function createSimulation(options = {}) {
           if (countSystems) tier1.countSystemInvocation('core.preStep');
           core.preStep(dt, state);
         }
-        for (const system of updates) {
-          if (!system.update) continue;
-          if (shouldSkipSystemThisStep(system.name, state)) continue;
+        const queue = updateQueueForThisStep(updatePartitions, state);
+        for (const system of queue) {
           if (countSystems) tier1.countSystemInvocation(system.name);
           system.update(dt, state);
         }

@@ -165,7 +165,7 @@ import { resolveRuntimeManifest } from '../runtime/resolveRuntimeManifest.js';
 import { DEFAULT_RUNTIME_PROFILE_ID } from '../runtime/runtimeProfiles.js';
 import { applyFeatureConfigToMaps } from '../data/featureFlags.js';
 import { bindRuntimeToState } from '../runtime/createAuthoritativeRuntime.js';
-import { shouldSkipSystemThisStep } from './catchupPolicy.js';
+import { partitionUpdateSystems, updateQueueForThisStep } from './catchupPolicy.js';
 
 /**
  * Teardown dependencies are expressed as [dependent, owner] pairs. Dependents release their
@@ -651,6 +651,7 @@ export function createRegistry(ctx) {
     throw new Error('Runtime manifest must publish input from the first fixed-tick update slot');
   }
   const POST_INPUT_UPDATE_ORDER = UPDATE_ORDER.slice(1);
+  const postInputPartitions = partitionUpdateSystems(POST_INPUT_UPDATE_ORDER);
   // masslineTelemetry runs immediately after tetherGameplay, which mirrors state.player.tether
   // after combat/physics have settled. It is read-only telemetry — it writes only its own
   // state.player.masslineTelemetry subtree, never entities or SG-02 attachments, and emits only the
@@ -754,9 +755,7 @@ export function createRegistry(ctx) {
           if (tickBoundary && typeof tickBoundary.publishInputCommand === 'function') {
             tickBoundary.publishInputCommand(state.input, state.tick);
           }
-          for (const s of POST_INPUT_UPDATE_ORDER) {
-            if (!s.update) continue;
-            if (shouldSkipSystemThisStep(s.name, state)) continue;
+          for (const s of updateQueueForThisStep(postInputPartitions, state)) {
             if (countSystems) tier1.countSystemInvocation(s.name);
             s.update(dt, state);
           }
@@ -781,9 +780,7 @@ export function createRegistry(ctx) {
       if (tickBoundary && typeof tickBoundary.publishInputCommand === 'function') {
         tickBoundary.publishInputCommand(state.input, state.tick);
       }
-      for (const s of POST_INPUT_UPDATE_ORDER) {
-        if (!s.update) continue;
-        if (shouldSkipSystemThisStep(s.name, state)) continue;
+      for (const s of updateQueueForThisStep(postInputPartitions, state)) {
         if (countSystems) tier1.countSystemInvocation(s.name);
         t = perfNow();
         try { s.update(dt, state); }

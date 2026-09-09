@@ -46,6 +46,36 @@ export function shouldSkipSystemThisStep(systemName, state) {
   return false;
 }
 
+/**
+ * Partition an update list once at host init. Production primary ticks iterate `combat`
+ * (table + near + glass) so calendar names are not even visited. Calendar ticks and
+ * non-production profiles keep `all`. Catch-up extra steps keep `table`.
+ */
+export function partitionUpdateSystems(systems) {
+  const all = [];
+  const table = [];
+  const combat = [];
+  const calendar = [];
+  const list = Array.isArray(systems) ? systems : [];
+  for (let i = 0; i < list.length; i++) {
+    const system = list[i];
+    if (!system || typeof system.update !== 'function') continue;
+    all.push(system);
+    const clock = getSystemClock(system.name);
+    if (clock === SYSTEM_CLOCK.TABLE) table.push(system);
+    if (clock === SYSTEM_CLOCK.CALENDAR) calendar.push(system);
+    else combat.push(system);
+  }
+  return { all, table, combat, calendar };
+}
+
+export function updateQueueForThisStep(partitions, state) {
+  if (!partitions) return [];
+  if (isCatchupPresentationSkip(state)) return partitions.table;
+  if (isProductionClockState(state) && !isCalendarTick(state)) return partitions.combat;
+  return partitions.all;
+}
+
 export function shouldRunSystemThisStep(systemName, state) {
   return !shouldSkipSystemThisStep(systemName, state);
 }

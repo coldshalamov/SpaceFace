@@ -178,6 +178,16 @@ export function getSystemClock(id) {
   return SYSTEM_CLOCK.TABLE;
 }
 
+/** 60 Hz combat island: table + near + glass. Calendar owners are not in this list. */
+export const PRODUCTION_COMBAT_UPDATE_ORDER = Object.freeze(
+  PRODUCTION_UPDATE_ORDER.filter((id) => getSystemClock(id) !== SYSTEM_CLOCK.CALENDAR),
+);
+
+/** 1–2 Hz / event calendar pass, original relative order preserved. */
+export const PRODUCTION_CALENDAR_UPDATE_ORDER = Object.freeze(
+  PRODUCTION_UPDATE_ORDER.filter((id) => getSystemClock(id) === SYSTEM_CLOCK.CALENDAR),
+);
+
 /**
  * Authoritative init IDs for a named system set.
  * @param {'production'|'legacy47a'} systemSet
