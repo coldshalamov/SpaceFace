@@ -18,6 +18,7 @@
 // the DOM ticker itself is cosmetic and may use timers/rAF freely (guarded by typeof window).
 
 import { COMMODITIES } from '../data/commodities.js';
+import { SECTORS } from '../data/sectors.js';
 import { hash32 } from '../core/rng.js';
 import {
   HEADLINE_TEMPLATES, REGIME_TEMPLATES, CARD_TEMPLATES, COMMODITY_FLAVOR,
@@ -25,6 +26,12 @@ import {
 } from '../data/newsTemplates.js';
 
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
+const STATION_NAME_BY_ID = new Map();
+for (const sector of SECTORS) {
+  for (const station of sector.stations || []) {
+    if (station && station.id && station.name) STATION_NAME_BY_ID.set(station.id, station.name);
+  }
+}
 const MAX_LOG = 12;            // rolling headlines kept on state.ui.marketNews.log
 const MAX_TICKER_ITEMS = 8;    // DOM ticker cap
 
@@ -49,6 +56,8 @@ function commodityNoun(commodityId, catalog) {
 export function stationLabel(stationId, stationName) {
   if (stationName) return stationName;
   if (!stationId) return 'the station';
+  const named = STATION_NAME_BY_ID.get(stationId);
+  if (named) return named;
   return String(stationId).replace(/^station_/, '').replace(/_/g, ' ');
 }
 
@@ -101,7 +110,44 @@ export function generateHeadline(ev, opts = {}) {
 }
 
 /**
- * buildEventCard(ev, opts) -> { badge, tone, title, body, headline, kind } | null
+ * Citation from a ticker/log record (or raw event) back to the sim event that produced it.
+ * Economy lines use eventId; freight uses intentId; authored publish uses sourceRef.
+ * Returns null when the line cannot be traced — those lines must not stay on the ticker.
+ */
+export function tickerEventRef(rec) {
+  if (!rec || typeof rec !== 'object') return null;
+  const eventId = rec.eventId || rec.id || rec.intentId || rec.sourceRef || rec.receiptId || null;
+  if (!eventId) return null;
+  const source = rec.source
+    || (rec.intentId && rec.encounterId ? 'freight_causality' : null)
+    || (rec.sourceRef || rec.receiptId ? 'news:publish' : null)
+    || 'economy:eventStarted';
+  return {
+    source,
+    eventId: String(eventId),
+    intentId: rec.intentId ? String(rec.intentId) : null,
+    encounterId: rec.encounterId ? String(rec.encounterId) : null,
+    sourceRef: rec.sourceRef ? String(rec.sourceRef) : rec.receiptId ? String(rec.receiptId) : null,
+  };
+}
+
+function stampTickerProvenance(rec, ev) {
+  if (!rec) return rec;
+  const src = ev || {};
+  if (rec.eventId == null && (src.eventId || src.id)) rec.eventId = src.eventId || src.id;
+  if (rec.intentId == null && src.intentId) rec.intentId = src.intentId;
+  if (rec.encounterId == null && src.encounterId) rec.encounterId = src.encounterId;
+  if (rec.sourceRef == null && src.sourceRef) rec.sourceRef = src.sourceRef;
+  if (rec.source == null && src.source) rec.source = src.source;
+  const ref = tickerEventRef(rec);
+  if (!ref) return rec;
+  if (rec.eventId == null) rec.eventId = ref.eventId;
+  if (rec.source == null) rec.source = ref.source;
+  return rec;
+}
+
+/**
+ * buildEventCard(ev, opts) -> { badge, tone, title, body, headline, kind, eventId } | null
  * A dock event card for shortage/boom/etc, shown on arrival. PURE + deterministic.
  */
 export function buildEventCard(ev, opts = {}) {
@@ -111,6 +157,7 @@ export function buildEventCard(ev, opts = {}) {
   const kind = ev.kind || normalizeKind(ev.type);
   const card = CARD_TEMPLATES[kind] || CARD_TEMPLATES.event;
   const tokens = tokensFor(ev, catalog);
+  const eventId = ev.eventId || ev.id || ev.intentId || ev.sourceRef || null;
   return {
     kind,
     badge: card.badge,
@@ -120,6 +167,8 @@ export function buildEventCard(ev, opts = {}) {
     headline: generateHeadline({ ...ev, kind }, { seed, catalog }),
     stationId: ev.stationId || null,
     commodityId: ev.commodityId || null,
+    eventId,
+    source: ev.source || (eventId ? 'economy' : null),
   };
 }
 
@@ -178,6 +227,8 @@ export function createMarketNews(ctx) {
     const rec = metadata
       ? { ...metadata, text: headline, kind, t: (state.simTime || 0), stationId }
       : { text: headline, kind, t: (state.simTime || 0), stationId };
+    stampTickerProvenance(rec, ev);
+    if (!tickerEventRef(rec)) return null;
     model.log.unshift(rec);
     if (model.log.length > MAX_LOG) model.log.length = MAX_LOG;
 
