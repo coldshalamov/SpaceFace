@@ -1191,7 +1191,7 @@ export const onboarding = {
     for (const slot of Object.keys(specs)) {
       const spawned = this.helpers.spawnEntity(specs[slot]);
       rescue.ids[slot] = spawned && spawned.id != null ? spawned.id : null;
-      if (spawned && spawned.data && (slot === 'scout' || slot === 'derelict' || slot === 'beacon')) {
+      if (spawned && spawned.data && (slot === 'derelict' || slot === 'beacon')) {
         spawned._invulnUntil = Infinity;
       }
     }
@@ -1562,7 +1562,6 @@ export const onboarding = {
     const specs = makeRescueCastSpecs(player.pos, () => onboardingRandom(st));
     const spawned = this.helpers.spawnEntity(specs[slot]);
     rescue.ids[slot] = spawned && spawned.id != null ? spawned.id : null;
-    if (spawned && slot === 'scout') spawned._invulnUntil = Infinity;
   },
 
   // The vacuum shows itself: swinging the rock through the derelict shakes loose scrap.

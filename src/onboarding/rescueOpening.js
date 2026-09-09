@@ -150,10 +150,10 @@ export function makeRescueCastSpecs(playerPos, rng) {
       vel: { x: Math.cos(drift) * RESCUE_SCOUT_DRIFT_WU, z: Math.sin(drift) * RESCUE_SCOUT_DRIFT_WU },
       radius: 8,
       mass: 16,
-      hull: 100,
-      hullMax: 100,
-      flags: { invuln: true },
-      _invulnUntil: Infinity,
+      // Lesson body: hittable so starter-gun impulse can land. Hull is high enough
+      // that a ~20-shot Pulse Laser S burst cannot kill the shove target.
+      hull: 500,
+      hullMax: 500,
       data: {
         weapons: [],
         ai: {
