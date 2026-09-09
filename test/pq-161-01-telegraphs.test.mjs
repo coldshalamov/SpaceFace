@@ -216,6 +216,14 @@ function doctrineState(combatDoctrineId, targetX) {
   };
 }
 
+// HONESTY NOTE (review 2026-09-09) — this fixture is NOT a sim kill and its lead is NOT a
+// measurement. It ticks tacticalAI only; weapons.js is never registered, so nothing consumes the
+// intent.fire it waits on. The lethal packet below is injected, which removes projectile flight
+// time and multi-shot time-to-kill from the lead. Worse, the injection gate reads the same
+// TELEGRAPH_PAIR_MIN_TICKS that pairLeftoverDeathTelegraph enforces, so these rows cannot fail the
+// window's lower bound — they are self-fulfilling. Do not read the printed percent as a live mix,
+// and do not add an assertion pinning it; the done-when needs a real instrument (telemetry.js has
+// no telegraph field) before any leaf can claim it.
 function leftoverDoctrineDeath(combatDoctrineId, targetX, ticks = 120) {
   const state = doctrineState(combatDoctrineId, targetX);
   const telegraphs = [];
@@ -352,6 +360,9 @@ function leftoverDoctrineDeath(combatDoctrineId, targetX, ticks = 120) {
     const firing = !!(npc.data.intent && npc.data.intent.fire);
     if (firing && firstFireTick == null) firstFireTick = tick;
     const telegraphTick = telegraphs.length ? telegraphs[0].tick : null;
+    // Circular by construction: the kill waits for the pairing window to open, then lands on the
+    // first admissible tick. Both doctrine rows therefore sit exactly on a window edge (60 = max,
+    // 30 = min) with zero margin. See the HONESTY NOTE above.
     if (firing && telegraphTick != null && tick - telegraphTick >= TELEGRAPH_PAIR_MIN_TICKS && !routedAfterTelegraph) {
       routedAfterTelegraph = true;
       combat.ensureKernel().routeDamage({
