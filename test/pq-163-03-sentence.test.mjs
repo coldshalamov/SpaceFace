@@ -25,6 +25,7 @@ import {
   storeSentenceLine,
 } from '../src/onboarding/storeSentence.js';
 import { onboarding } from '../src/systems/onboarding.js';
+import { voiceArbiter } from '../src/ui/voiceArbiter.js';
 
 function stubElement() {
   return {
@@ -129,6 +130,40 @@ function boot() {
   bus.on('toast', (p) => seen.toast.push(p));
   sys.init({ state, bus, helpers, registry: null });
   return { bus, state, sys, helpers, spawned, seen };
+}
+
+// The live default route carries `helpers.voice` (voiceArbiter, registry slot 352 — before
+// onboarding at 459). boot() above has no voice helper, so it only exercises the raw-toast
+// fallback. This second harness wires the real arbiter in registry init + update order so the
+// branch a player actually takes is the one under test.
+function bootLive() {
+  const bus = createBus();
+  const state = makeState();
+  const helpers = {
+    spawnEntity(spec) {
+      const entity = makeEntity(spec);
+      entity.id = state.nextEntityId++;
+      state.entities.set(entity.id, entity);
+      state.entityList.push(entity);
+      return entity;
+    },
+    removeEntity(id) {
+      const entity = state.entities.get(id);
+      if (entity) entity.alive = false;
+    },
+  };
+  const arb = Object.create(voiceArbiter);
+  const sys = Object.create(onboarding);
+  const ctx = { state, bus, helpers, registry: null };
+  arb.init(ctx);
+  sys.init(ctx);
+  const seen = { surface: [], clear: [], toast: [] };
+  bus.on('voice:surface', (p) => seen.surface.push({ atS: state.simTime, ...p }));
+  bus.on('voice:clear', (p) => seen.clear.push({ atS: state.simTime, ...p }));
+  bus.on('toast', (p) => seen.toast.push({ atS: state.simTime, ...p }));
+  // Registry update order: the arbiter steps first, then onboarding may enqueue.
+  const step = (dt = 0.25) => { state.simTime += dt; arb.update(dt, state); sys.update(dt, state); };
+  return { bus, state, sys, arb, helpers, seen, step };
 }
 
 function launchDefaultRoute(h) {
@@ -369,4 +404,32 @@ test('47-A scenario payload still skips the rail and never shows the sentence', 
   assert.deepEqual(h.seen.sentence, []);
   assert.equal(tutorialLines(h).includes(STORE_SENTENCE), false);
   assert.equal(h.seen.toast.some((t) => t && t.text === STORE_SENTENCE), false);
+});
+
+test('with the live voice arbiter wired, the sentence reaches the floor exactly once', () => {
+  const h = bootLive();
+  assert.equal(typeof h.helpers.voice.say, 'function', 'the live route hands onboarding a voice helper');
+  launchDefaultRoute(h);
+  // say() only ENQUEUES (it returns true on accept, not on display), so the raw-toast fallback is
+  // skipped on this route. Nothing is shown until the arbiter promotes the entry to the floor.
+  assert.equal(h.seen.toast.filter((t) => t.text === STORE_SENTENCE && !t._fromVoice).length, 0,
+    'the fallback toast must not fire when the arbiter accepted the line');
+
+  for (let i = 0; i < 120; i++) h.step();   // 30 s of sim past a ttl-8 line
+
+  const shown = h.seen.surface.filter((s) => s.text === STORE_SENTENCE);
+  assert.equal(shown.length, 1, 'the sentence takes the one-voice floor exactly once');
+  assert.equal(shown[0].id, 'firsthour:sentence');
+  assert.equal(shown[0].channel, 'tutorial', 'tutorial channel survives the tutorialProtect policy');
+  const mirrored = h.seen.toast.filter((t) => t.text === STORE_SENTENCE);
+  assert.equal(mirrored.length, 1, 'one visible surface, not two');
+  assert.equal(mirrored[0]._fromVoice, true, 'the shown copy is the arbiter mirror');
+  assert.ok(h.seen.clear.some((c) => c.id === 'firsthour:sentence'),
+    'the floor is released again — one line, then silence');
+
+  // Silence: a second rescue:started must not re-take the floor.
+  h.bus.emit('rescue:started', { type: 'rescue:started', beats: ['swing', 'shove', 'grab'], atS: h.state.simTime });
+  for (let i = 0; i < 40; i++) h.step();
+  assert.equal(h.seen.surface.filter((s) => s.text === STORE_SENTENCE).length, 1);
+  assert.equal(h.seen.toast.filter((t) => t.text === STORE_SENTENCE).length, 1);
 });
