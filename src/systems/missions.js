@@ -286,7 +286,7 @@ function capitalSubsystemWorldPos(entity, subsystemId) {
   };
 }
 const PHYSICAL_BERTH_WU = 700;
-// Story B2/B3 latch-dock only. Leftover authored / sling_in keep PHYSICAL_BERTH_WU.
+// Story B2/B3 dest-dock (latch-dock, throw, sling). Leftover authored / sling_in keep PHYSICAL_BERTH_WU.
 // Live limit is dest station hull or dock radius + cargo radius + this slack.
 const STORY_LATCH_DOCK_SLACK_WU = 24;
 // Mission wrecks stay type `wreck` (DEFAULT_MASK.wreck === 0) but must be solid to ships,
@@ -4239,6 +4239,10 @@ export const missions = {
     return dist <= limit;
   },
 
+  _usesStoryDestDock(m) {
+    return !!(m && (m.storyTag === CONTRACT_47A_B2_TAG || m.storyTag === CONTRACT_47A_B3_TAG));
+  },
+
   _completePhysical(m, index, method) {
     if (!m || m.status !== 'active') return false;
     m.params = m.params || {};
@@ -4284,8 +4288,13 @@ export const missions = {
     if (on === 'throw' || on === 'release_berth') {
       const berthMethod = authoredMethodFor(definition, 'throw_berth', role)
         || authoredMethodFor(definition, 'release_berth', role);
-      if (berthMethod && entity && this._entityNearDestBerth(entity, m)) {
-        return this._completePhysical(m, index, berthMethod);
+      if (berthMethod && entity) {
+        const storyDock = this._usesStoryDestDock(m);
+        const atBerth = storyDock
+          ? this._entityAtStoryDestDock(entity, m)
+          : this._entityNearDestBerth(entity, m);
+        if (atBerth) return this._completePhysical(m, index, berthMethod);
+        if (storyDock) return false;
       }
     }
 
@@ -4396,7 +4405,9 @@ export const missions = {
         if (storyDock) return false;
       }
       const loose = this._physicalTargetOf(m, PHYSICAL_ROLE.SLAG_CORE);
-      if (loose && this._entityNearDestBerth(loose, m)) {
+      if (loose && (storyDock
+        ? this._entityAtStoryDestDock(loose, m)
+        : this._entityNearDestBerth(loose, m))) {
         return this._completePhysical(m, index, 'sling_in');
       }
       return false;
@@ -4447,7 +4458,11 @@ export const missions = {
       const core = this.state.entities.get(targetId);
       if (!core || physicalRoleOf(core) !== PHYSICAL_ROLE.SLAG_CORE) continue;
       const clean = !p.classification || CLEAN_PHYSICAL_RELEASE.has(p.classification);
-      if (clean && this._entityNearDestBerth(core, m)) {
+      const storyDock = m.storyTag === CONTRACT_47A_B3_TAG;
+      const atBerth = storyDock
+        ? this._entityAtStoryDestDock(core, m)
+        : this._entityNearDestBerth(core, m);
+      if (clean && atBerth) {
         this._completePhysical(m, i, 'sling_in');
       }
     }
@@ -4483,6 +4498,11 @@ export const missions = {
         if (!m.targetEntityIds || !m.targetEntityIds.includes(p.payloadId)) continue;
         const core = this.state.entities.get(p.payloadId);
         if (!core || physicalRoleOf(core) !== PHYSICAL_ROLE.SLAG_CORE) continue;
+        const storyDock = m.storyTag === CONTRACT_47A_B3_TAG;
+        if (storyDock) {
+          if (this._entityAtStoryDestDock(core, m)) this._completePhysical(m, i, 'sling_in');
+          continue;
+        }
         if (this._entityNearDestBerth(core, m) || this.state.world.currentSectorId === m.destSectorId) {
           this._completePhysical(m, i, 'sling_in');
         }

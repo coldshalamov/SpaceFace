@@ -225,6 +225,30 @@ function knockTheTower(h, mission) {
     `contact pose ${gap.toFixed(1)} WU must not be inside the tower (hulls touch at ${solid})`);
 }
 
+// B3 leftover throw door: one massline:throw in the dest sector used to pay sling_in with no
+// dest-dock test. Story B3 must refuse that sector-scale throw; leftover authored sling_in may
+// still use PHYSICAL_BERTH_WU 700.
+function throwFromTheField(h, mission, role) {
+  const cargo = targetsByRole(h.state, mission, role)[0];
+  assert.ok(cargo, `${mission.type} needs a ${role}`);
+  const berth = liveStation(h, mission.destStationId);
+  assert.ok(berth, `${mission.type} needs the live ${mission.destStationId}`);
+  const far = wuBetween(cargo, berth);
+  const beatBefore = h.state.story.beatIndex;
+  h.sim.bus.emit('massline:throw', {
+    releaseId: `massline:throw:${h.state.tick}:${cargo.id}`,
+    payloadId: cargo.id, aimTargetId: berth.id, aimSynthetic: false, mode: 'aimed',
+  });
+  const paid = h.state.story.beatIndex > beatBefore;
+  console.log(`PQ-032.00 ${mission.type} ${role} one leftover throw at ${Math.round(far)} WU `
+    + `— paid: ${paid ? 'yes' : 'no'}`);
+  assert.ok(far > PHYSICAL_BERTH_WU,
+    `the ${role} throw must start outside the leftover ${PHYSICAL_BERTH_WU} WU berth`);
+  assert.equal(paid, false,
+    `${role} throw at ${Math.round(far)} WU must not settle ${mission.type}`);
+  return far;
+}
+
 // B2/B3: the tow. Latch a live tether mirror, prove a turn-in with the mass still out in the field
 // does not pay, then reel to a tight carry and fly the package to the hull before docking.
 function towToTheDock(h, mission, role, method) {
@@ -325,6 +349,24 @@ function towToTheDock(h, mission, role, method) {
   assert.ok(shipToBerth <= dockRange,
     'the ship must be inside the live docking range for dock:docked to be reachable');
 
+  // Leftover throw at the dest dock still pays. Story B3 used to treat any in-sector throw as
+  // sling_in; the dest-dock gate is what closed that. B2 stays latch-dock (no throw settle).
+  if (method === 'tow_in') {
+    h.sim.bus.emit('massline:throw', {
+      releaseId: `massline:throw:${h.state.tick}:${cargo.id}`,
+      payloadId: cargo.id, aimTargetId: berth.id, aimSynthetic: false, mode: 'aimed',
+    });
+    const paidThrow = h.state.story.beatIndex > beatBefore;
+    console.log(`PQ-032.00 ${mission.type} ${role} leftover throw at dest dock `
+      + `${Math.round(cargoToBerth)} WU — paid: ${paidThrow ? 'yes' : 'no'}`);
+    assert.equal(paidThrow, true, `${role} leftover throw at the dest dock must settle`);
+    const thrown = h.completed[h.completed.length - 1];
+    assert.equal(thrown && thrown.completionMethod, 'sling_in',
+      `${mission.type} dest-dock throw must pay sling_in`);
+    setLiveTether(h, null, 0);
+    return;
+  }
+
   h.sim.bus.emit('dock:docked', { stationId: mission.destStationId });
   const paidNear = h.state.story.beatIndex > beatBefore;
   console.log(`PQ-032.00 ${mission.type} ${role} towed to ${Math.round(cargoToBerth)} WU `
@@ -420,13 +462,15 @@ test('PQ-032.00 seed 3200 plays the three set pieces as one linear spine', () =>
   assert.equal(b3.type, 'tow_recovery');
   assert.equal(b3.params.physicalVerb, 'tow');
   flyToDestSector(h, b3);
+  throwFromTheField(h, b3, 'slag_core');
   towToTheDock(h, b3, 'slag_core', 'tow_in');
   assert.equal(h.state.story.beatIndex, 4, 'the long tow advances Bigger Boat');
 
   // Name the methods the spine actually settled on, with no `||` fallback to the mission TYPE —
-  // a type is what was posted, a completionMethod is what the player did.
+  // a type is what was posted, a completionMethod is what the player did. B3 dest-dock leftover
+  // throw pays sling_in; dest-dock latch-dock tow_in is the same pose via dock:docked (B2).
   assert.deepEqual(h.completed.map((row) => row.completionMethod), [
-    'wrecking_ball', 'stage_tow', 'tow_in',
+    'wrecking_ball', 'stage_tow', 'sling_in',
   ]);
   h.sim.dispose();
 });
