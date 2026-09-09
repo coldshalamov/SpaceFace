@@ -1,5 +1,29 @@
 // PQ-032.00 — beats 1–3 are PQ-152 set pieces with physical headline verbs.
 // Seed 3200. Headless. Prints beat id + headline verb.
+//
+// HONESTY CONTRACT FOR THIS HARNESS
+// --------------------------------
+// The bar is the INPUT, not the assertion: every number this test feeds a mission law has to be a
+// number the live route can actually produce.
+//
+//  • The dest berth is the REAL station, spawned by the live `world` system in the dest sector — not
+//    a hand-built fixture. An earlier revision of this file spawned `radius: 40, dockRadius: 80`,
+//    geometry that exists nowhere in the game (src/systems/world.js:1463-1464 emits only 42/90,
+//    34/72, 26/60), and reported the resulting 111 / 120 WU story latch-dock gate as if it were
+//    live. Both dest stations (`station_expanse`, `station_ceres`) are size 'M' in
+//    src/data/sectors.js, so the live gate is 103 WU for the pod (r7) and 112 WU for the core (r16).
+//  • B1's rock is not teleported onto the tower. It is released with a real velocity and flown, one
+//    fixed step at a time, until `masslineImpacts` detects contact — which lands at exactly the
+//    combined radii. Centre-on-centre is a pose no solver can produce.
+//  • B2/B3's cargo is not assigned to the berth position. 0 WU from the station centre is INSIDE the
+//    hull. The cargo is reeled to a tight carry and flown in on a live `state.player.tether` mirror,
+//    and the arrival pose is asserted legal (clear of the hull, clear of the ship, player inside the
+//    live docking range from src/core/physics.js:757) before the turn-in is attempted.
+//
+// The tow itself is scripted kinematics, not a rapier solve: this harness runs no physics and no
+// `tetherGameplay`, so the reel and the run home are stepped by hand. What that buys is an arrival
+// POSE the live route can produce and a latch the live route can produce; it does not prove the
+// constraint solver drags the mass. A headed or full-registry proof would be needed for that.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
@@ -11,6 +35,7 @@ import {
   STORY_BEATS,
   listPq032SpineSetPieces,
 } from '../src/data/missions.js';
+import { SECTORS } from '../src/data/sectors.js';
 import {
   buildMissionBoardContract,
   validateEmbodiedDialogue,
@@ -18,8 +43,16 @@ import {
 } from '../src/story/campaign47a/index.js';
 import { masslineImpacts } from '../src/systems/masslineImpacts.js';
 import { missions } from '../src/systems/missions.js';
+import { world } from '../src/systems/world.js';
 
 const SEED = 3200;
+const DT = 1 / 60;
+// src/systems/missions.js STORY_LATCH_DOCK_SLACK_WU. Mirrored, not imported, so a silent widening
+// there shows up here as a failed gate rather than a quietly-tracking expectation.
+const STORY_LATCH_DOCK_SLACK_WU = 24;
+// src/systems/missions.js PHYSICAL_BERTH_WU — the leftover berth radius that authored set pieces and
+// `sling_in` still use. Mirrored so the far-side proof below can show it is the rule being beaten.
+const PHYSICAL_BERTH_WU = 700;
 
 function printSpine() {
   for (const row of listPq032SpineSetPieces()) {
@@ -28,21 +61,32 @@ function printSpine() {
 }
 
 function boot() {
+  // `world` is on the harness so the dest berth is the live station with its live geometry. It is
+  // not in updateOrder — the spawn pass is driven explicitly, the same way the mission target pass is.
   const sim = createSimulation({
-    seed: SEED, systems: [missions, masslineImpacts], updateOrder: [],
+    seed: SEED, systems: [missions, masslineImpacts, world], updateOrder: [],
   });
   const { state } = sim;
   state.mode = 'flight';
   state.player.credits = 250000;
   const player = sim.spawn({
-    type: 'ship', team: 0, pos: { x: 0, z: 0 }, hull: 200, hullMax: 200, radius: 8,
+    type: 'ship', team: 0, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 },
+    hull: 200, hullMax: 200, radius: 8,
   });
   state.playerId = player.id;
   state.onboarding = { active: false, finished: true };
   if (state.settings && state.settings.gameplay) state.settings.gameplay.tutorialHints = false;
   const completed = [];
   sim.bus.on('mission:completed', (p) => completed.push(p));
-  return { sim, state, player, completed, missionsSys: sim.registry.get('missions') };
+  return {
+    sim,
+    state,
+    player,
+    completed,
+    missionsSys: sim.registry.get('missions'),
+    worldSys: sim.registry.get('world'),
+    impactsSys: sim.registry.get('masslineImpacts'),
+  };
 }
 
 function roleOf(entity) {
@@ -65,106 +109,231 @@ function acceptStory(h, stationId, storyTag) {
   return mission;
 }
 
-function ensureBerth(h, mission) {
-  const found = [...h.state.entities.values()].find((e) => (
-    e && e.type === 'station' && e.data && e.data.stationId === mission.destStationId
-  ));
-  if (found) return found;
-  return h.sim.spawn({
-    type: 'station', pos: { x: 80, z: 40 }, radius: 40,
-    data: { stationId: mission.destStationId, dockRadius: 80 },
-  });
+function liveStation(h, stationId) {
+  for (const e of h.state.entities.values()) {
+    if (e && e.alive !== false && e.type === 'station' && e.pos
+      && e.data && e.data.stationId === stationId) return e;
+  }
+  return null;
 }
 
-function wuBetween(a, b) {
-  return Math.round(Math.hypot(a.pos.x - b.pos.x, a.pos.z - b.pos.z));
-}
-
-function storyLatchDockLimitWu(station, cargo) {
-  const hullR = Number(station && station.radius);
-  const dockR = Number(station && station.data && station.data.dockRadius);
-  const berthR = Math.max(
-    Number.isFinite(hullR) && hullR > 0 ? hullR : 0,
-    Number.isFinite(dockR) && dockR > 0 ? dockR : 0,
-  );
-  const cargoR = Number(cargo && cargo.radius);
-  return berthR + (Number.isFinite(cargoR) && cargoR > 0 ? cargoR : 0) + 24;
-}
-
-// Every event below is one the SHIPPING systems emit, with the field names those emitters write.
-// The mission listeners are in src/systems/missions.js (`_onPhysicalThrow`, `_onPhysicalTetherLatched`,
-// `_tryPhysicalDockComplete`); the emitters are named per branch.
-function completeSetPiece(h, mission) {
-  h.state.world.currentSectorId = mission.destSectorId;
+// Get into the destination sector the way the live route does: the player is THERE, and the world
+// system spawns that sector's real stations around them. `world.update` derives
+// state.world.currentSectorId from the player position, so moving the ship is what changes sectors.
+function flyToDestSector(h, mission) {
+  const origin = h.worldSys._toGlobal({ x: 0, z: 0 }, mission.destSectorId);
+  assert.ok(origin && Number.isFinite(origin.x), `no global origin for ${mission.destSectorId}`);
+  h.player.pos.x = origin.x;
+  h.player.pos.z = origin.z;
+  h.player.vel.x = 0;
+  h.player.vel.z = 0;
+  h.worldSys.update(DT, h.state);
+  const berth = liveStation(h, mission.destStationId);
+  assert.ok(berth, `live world must spawn ${mission.destStationId} in ${mission.destSectorId}`);
+  // Stand off the berth by a real working distance, then let the world settle around that pose.
+  h.player.pos.x = berth.pos.x + 700;
+  h.player.pos.z = berth.pos.z + 520;
+  h.worldSys.update(DT, h.state);
+  assert.equal(h.state.world.currentSectorId, mission.destSectorId,
+    'the player must actually be standing in the dest sector');
   h.sim.bus.emit('sector:enter', { sectorId: mission.destSectorId });
   // Live equivalent: missions.update() re-runs this every 15 ticks (src/systems/missions.js:894-897).
   // This harness registers no updateOrder, so the spawn pass is called directly.
   h.missionsSys._ensureMissionTargets(mission);
-  if (mission.type === 'demolition') {
-    const tower = targetsByRole(h.state, mission, 'demolition_tower')[0];
-    assert.ok(tower, 'wrecking-ball contract needs a tower');
-    assert.ok((tower.collisionMask & Masks.ASTEROID) && (tower.collisionMask & Masks.PROJECTILE),
-      'mission tower must be solid to thrown mass and shots');
-    // Do NOT inject `tether:whipImpact`. Drive leftover latch / aim / release, then a leftover
-    // masslineImpacts tick with the rock overlapping the tower. That emitter is the only live
-    // contact. A throw that only names aimTargetId must not settle the beat.
-    const impactsSys = h.sim.registry.get('masslineImpacts');
-    assert.ok(impactsSys, 'leftover masslineImpacts must be on the harness');
-    const rock = h.sim.spawn({
-      type: 'asteroid', team: 2, radius: 6, mass: 40, hull: 60, hullMax: 60,
-      pos: { x: tower.pos.x - 60, z: tower.pos.z },
-      vel: { x: 0, z: 0 },
-    });
-    h.state.player.tether = {
-      active: true, targetId: rock.id, strain: 0, load: 0,
-      attachmentId: null, restLength: 0, phase: 'loaded',
-    };
-    h.sim.bus.emit('tether:latched', { targetId: rock.id, type: 'tether_standard' });
-    impactsSys.update(1 / 60, h.state);
-    const beatBeforeThrow = h.state.story.beatIndex;
-    h.sim.bus.emit('massline:throw', {
-      releaseId: `massline:throw:${h.state.tick}:${rock.id}`,
-      payloadId: rock.id, aimTargetId: tower.id, aimSynthetic: false, mode: 'aimed',
-    });
-    assert.equal(h.state.story.beatIndex, beatBeforeThrow,
-      'throw release must not settle wrecking_ball');
-    rock.pos.x = tower.pos.x;
-    rock.pos.z = tower.pos.z;
-    rock.vel.x = 80;
-    rock.vel.z = 0;
-    h.state.player.tether.active = false;
-    h.state.player.tether.targetId = null;
-    impactsSys.update(1 / 60, h.state);
-    const whipSettled = h.state.story.beatIndex > beatBeforeThrow;
-    console.log(`PQ-032.00 whip contact settled B1: ${whipSettled ? 'yes' : 'no'}`);
-    return;
+  return liveStation(h, mission.destStationId);
+}
+
+function wuBetween(a, b) {
+  return Math.hypot(a.pos.x - b.pos.x, a.pos.z - b.pos.z);
+}
+
+// The live story latch-dock limit, read off the LIVE berth entity rather than a fixture.
+function storyLatchDockLimitWu(station, cargo) {
+  const berthR = Math.max(
+    Number.isFinite(station.radius) && station.radius > 0 ? station.radius : 0,
+    Number.isFinite(station.data.dockRadius) && station.data.dockRadius > 0
+      ? station.data.dockRadius : 0,
+  );
+  const cargoR = Number.isFinite(cargo.radius) && cargo.radius > 0 ? cargo.radius : 0;
+  return berthR + cargoR + STORY_LATCH_DOCK_SLACK_WU;
+}
+
+// src/core/physics.js:757 — how close the ship has to be for `dock:docked` to be reachable at all.
+function liveDockRangeWu(station, ship) {
+  return ((station.data.dockRadius || station.radius || 80) + (ship.radius || 0)) * 1.5;
+}
+
+function setLiveTether(h, targetId, restLength) {
+  h.state.player.tether = {
+    active: targetId != null,
+    targetId,
+    strain: 0,
+    load: 0,
+    attachmentId: null,
+    restLength,
+    phase: targetId != null ? 'loaded' : 'idle',
+  };
+}
+
+// B1: the swing. No `tether:whipImpact` inject — drive a real latch, prove the throw RELEASE does
+// not settle anything, then fly the freed rock ballistically until the live masslineImpacts observer
+// detects contact. That emitter is the only live source of the event the demolition law listens to.
+function knockTheTower(h, mission) {
+  const tower = targetsByRole(h.state, mission, 'demolition_tower')[0];
+  assert.ok(tower, 'wrecking-ball contract needs a tower');
+  assert.ok((tower.collisionMask & Masks.ASTEROID) && (tower.collisionMask & Masks.PROJECTILE),
+    'mission tower must be solid to thrown mass and shots');
+
+  const rock = h.sim.spawn({
+    type: 'asteroid', team: 2, radius: 6, mass: 40, hull: 60, hullMax: 60,
+    pos: { x: tower.pos.x - 60, z: tower.pos.z },
+    vel: { x: 0, z: 0 },
+  });
+  setLiveTether(h, rock.id, 60);
+  h.sim.bus.emit('tether:latched', { targetId: rock.id, type: 'tether_standard' });
+  h.impactsSys.update(DT, h.state);
+
+  const beatBeforeThrow = h.state.story.beatIndex;
+  h.sim.bus.emit('massline:throw', {
+    releaseId: `massline:throw:${h.state.tick}:${rock.id}`,
+    payloadId: rock.id, aimTargetId: tower.id, aimSynthetic: false, mode: 'aimed',
+  });
+  assert.equal(h.state.story.beatIndex, beatBeforeThrow,
+    'throw release must not settle wrecking_ball — naming an aim target is not hitting it');
+
+  // Cut the line with the mass genuinely moving; then it is ballistic and nothing but travel closes
+  // the gap. `masslineImpacts` runs every step, exactly as it does in UPDATE_ORDER.
+  rock.vel.x = 80;
+  rock.vel.z = 0;
+  setLiveTether(h, null, 0);
+  let ticks = 0;
+  while (h.state.story.beatIndex === beatBeforeThrow && ticks < 600) {
+    rock.pos.x += rock.vel.x * DT;
+    rock.pos.z += rock.vel.z * DT;
+    h.impactsSys.update(DT, h.state);
+    ticks++;
   }
-  if (mission.type === 'rescue_under_fire' || mission.type === 'tow_recovery') {
-    const role = mission.type === 'rescue_under_fire' ? 'life_pod' : 'slag_core';
-    const cargo = targetsByRole(h.state, mission, role)[0];
-    assert.ok(cargo, `${mission.type} needs a ${role}`);
-    const berth = ensureBerth(h, mission);
-    // src/systems/tetherGameplay.js:501 emits `tether:latched` { targetId, type, ... }.
-    h.sim.bus.emit('tether:latched', { targetId: cargo.id, type: 'tether_standard' });
-    const dist = wuBetween(cargo, berth);
-    const gate = storyLatchDockLimitWu(berth, cargo);
-    const beatBeforeDock = h.state.story.beatIndex;
-    console.log(`PQ-032.00 ${mission.type} story latch-dock gate ${gate} WU`);
-    console.log(`PQ-032.00 ${mission.type} ${role} sits ${dist} WU from the berth at turn-in`);
-    h.sim.bus.emit('dock:docked', { stationId: mission.destStationId });
-    const paidFar = h.state.story.beatIndex > beatBeforeDock;
-    console.log(`PQ-032.00 ${mission.type} paid with cargo ${dist} WU away: ${paidFar ? 'yes' : 'no'}`);
-    assert.equal(paidFar, false, `${role} at ${dist} WU must not settle ${mission.type}`);
-    cargo.pos.x = berth.pos.x;
-    cargo.pos.z = berth.pos.z;
-    const near = wuBetween(cargo, berth);
-    h.sim.bus.emit('dock:docked', { stationId: mission.destStationId });
-    const paidNear = h.state.story.beatIndex > beatBeforeDock;
-    console.log(`PQ-032.00 ${mission.type} paid with cargo ${near} WU away: ${paidNear ? 'yes' : 'no'}`);
-    assert.equal(paidNear, true, `${role} at the dest dock must settle ${mission.type}`);
-    return;
+  const gap = wuBetween(rock, tower);
+  const solid = tower.radius + rock.radius;
+  const settled = h.state.story.beatIndex > beatBeforeThrow;
+  console.log(`PQ-032.00 whip contact settled B1: ${settled ? 'yes' : 'no'}`);
+  console.log(`PQ-032.00 wrecking_ball rock flew ${ticks} ticks to contact at `
+    + `${Math.round(gap)} WU (hulls touch at ${solid} WU)`);
+  assert.equal(settled, true, 'a real rock at speed hitting the tower must settle wrecking_ball');
+  assert.ok(ticks > 1, 'the rock must REACH the tower, not start on top of it');
+  assert.ok(gap >= solid - 1,
+    `contact pose ${gap.toFixed(1)} WU must not be inside the tower (hulls touch at ${solid})`);
+}
+
+// B2/B3: the tow. Latch a live tether mirror, prove a turn-in with the mass still out in the field
+// does not pay, then reel to a tight carry and fly the package to the hull before docking.
+function towToTheDock(h, mission, role, method) {
+  const cargo = targetsByRole(h.state, mission, role)[0];
+  assert.ok(cargo, `${mission.type} needs a ${role}`);
+  const berth = liveStation(h, mission.destStationId);
+  assert.ok(berth, `${mission.type} needs the live ${mission.destStationId}`);
+
+  const gate = storyLatchDockLimitWu(berth, cargo);
+  console.log(`PQ-032.00 ${mission.type} live berth ${mission.destStationId} `
+    + `radius ${berth.radius} dockRadius ${berth.data.dockRadius} — story latch-dock gate `
+    + `${Math.round(gate)} WU`);
+
+  const beatBefore = h.state.story.beatIndex;
+  setLiveTether(h, cargo.id, wuBetween(cargo, h.player));
+  h.sim.bus.emit('tether:latched', { targetId: cargo.id, type: 'tether_standard' });
+
+  // Turn-in attempt one: on the line, but still out where it was found.
+  const far = wuBetween(cargo, berth);
+  h.sim.bus.emit('dock:docked', { stationId: mission.destStationId });
+  const paidFar = h.state.story.beatIndex > beatBefore;
+  console.log(`PQ-032.00 ${mission.type} ${role} sits ${Math.round(far)} WU from the berth `
+    + `at turn-in — paid: ${paidFar ? 'yes' : 'no'}`);
+  assert.ok(far > gate, `the ${role} must start OUTSIDE the gate for this to prove anything`);
+  assert.equal(paidFar, false, `${role} at ${Math.round(far)} WU must not settle ${mission.type}`);
+
+  // Reel to a tight carry: the line comes in, the mass comes with it, and it never enters the hull.
+  const minLine = h.player.radius + cargo.radius + 4;
+  let reelTicks = 0;
+  while (h.state.player.tether.restLength > minLine && reelTicks < 20000) {
+    h.state.player.tether.restLength = Math.max(minLine, h.state.player.tether.restLength - 1);
+    const line = h.state.player.tether.restLength;
+    const bx = cargo.pos.x - h.player.pos.x;
+    const bz = cargo.pos.z - h.player.pos.z;
+    const back = Math.hypot(bx, bz) || 1;
+    cargo.pos.x = h.player.pos.x + (bx / back) * line;
+    cargo.pos.z = h.player.pos.z + (bz / back) * line;
+    reelTicks++;
   }
-  assert.fail(`unexpected type ${mission.type}`);
+
+  // Fly the package toward the berth, the mass trailing on the short line. One step = one fixed tick.
+  // The stop tolerance is not cosmetic: without it the final sub-WU step leaves float residue above
+  // the target and the leg spins to its cap instead of arriving.
+  let towTicks = 0;
+  const flyUntil = (stopAtShipDistance, label) => {
+    const cap = towTicks + 20000;
+    while (towTicks < cap) {
+      const dx = berth.pos.x - h.player.pos.x;
+      const dz = berth.pos.z - h.player.pos.z;
+      const d = Math.hypot(dx, dz);
+      if (d - stopAtShipDistance <= 1e-6) break;
+      const step = Math.min(1, d - stopAtShipDistance);
+      h.player.pos.x += (dx / d) * step;
+      h.player.pos.z += (dz / d) * step;
+      const line = h.state.player.tether.restLength;
+      cargo.pos.x = h.player.pos.x - (dx / d) * line;
+      cargo.pos.z = h.player.pos.z - (dz / d) * line;
+      towTicks++;
+    }
+    assert.ok(towTicks < cap, `the ${label} leg of the ${role} tow never arrived`);
+  };
+
+  // THE DISCRIMINATOR. Stop the tow at a waypoint that is inside the leftover PHYSICAL_BERTH_WU of
+  // 700 — the radius `_entityNearDestBerth` still uses for authored set pieces and for `sling_in` —
+  // but outside the story latch-dock gate. This exact pose PAID under the old berth-radius rule.
+  // A player passes through it on every run in, so it is a turn-in they can really attempt. If this
+  // one pays, the story gate is not doing anything the old 700 WU rule did not already do.
+  const midWaypoint = Math.round((gate + PHYSICAL_BERTH_WU) / 2);
+  flyUntil(midWaypoint, 'waypoint');
+  const cargoAtWaypoint = wuBetween(cargo, berth);
+  assert.ok(cargoAtWaypoint > gate && cargoAtWaypoint < PHYSICAL_BERTH_WU,
+    `waypoint ${Math.round(cargoAtWaypoint)} WU must sit between the story gate `
+    + `${Math.round(gate)} and the leftover berth radius ${PHYSICAL_BERTH_WU}`);
+  h.sim.bus.emit('dock:docked', { stationId: mission.destStationId });
+  const paidMid = h.state.story.beatIndex > beatBefore;
+  console.log(`PQ-032.00 ${mission.type} ${role} inside the leftover ${PHYSICAL_BERTH_WU} WU berth `
+    + `at ${Math.round(cargoAtWaypoint)} WU — paid: ${paidMid ? 'yes' : 'no'}`);
+  assert.equal(paidMid, false,
+    `${role} at ${Math.round(cargoAtWaypoint)} WU is inside the old berth radius and must STILL `
+    + 'not settle — this is the only assertion that proves the story gate tightened anything');
+
+  // Now finish the run: stop against the hull with the mass trailing on the short line.
+  flyUntil(berth.radius + h.player.radius + 20, 'final approach');
+
+  // The arrival pose has to be one a solver could hold: outside the station hull, outside the ship,
+  // and close enough that the ship could have docked at all.
+  const cargoToBerth = wuBetween(cargo, berth);
+  const cargoToShip = wuBetween(cargo, h.player);
+  const shipToBerth = wuBetween(h.player, berth);
+  const dockRange = liveDockRangeWu(berth, h.player);
+  console.log(`PQ-032.00 ${mission.type} reeled ${reelTicks} + towed ${towTicks} ticks — `
+    + `${role} parks ${Math.round(cargoToBerth)} WU out on a ${Math.round(cargoToShip)} WU line, `
+    + `ship ${Math.round(shipToBerth)} WU (dock range ${Math.round(dockRange)} WU)`);
+  assert.ok(cargoToBerth > berth.radius + cargo.radius,
+    `the ${role} must park OUTSIDE the station hull, not at the berth centre`);
+  assert.ok(cargoToShip > h.player.radius + cargo.radius,
+    `the ${role} must park clear of the ship that towed it`);
+  assert.ok(shipToBerth <= dockRange,
+    'the ship must be inside the live docking range for dock:docked to be reachable');
+
+  h.sim.bus.emit('dock:docked', { stationId: mission.destStationId });
+  const paidNear = h.state.story.beatIndex > beatBefore;
+  console.log(`PQ-032.00 ${mission.type} ${role} towed to ${Math.round(cargoToBerth)} WU `
+    + `(gate ${Math.round(gate)} WU) — paid: ${paidNear ? 'yes' : 'no'}`);
+  assert.equal(paidNear, true, `${role} towed to the dest dock must settle ${mission.type}`);
+  const last = h.completed[h.completed.length - 1];
+  assert.equal(last && last.completionMethod, method,
+    `${mission.type} must settle on ${method}, not another posted method`);
+  setLiveTether(h, null, 0);
 }
 
 test('PQ-032.00 leftover beats 1–3 name physical headline verbs', () => {
@@ -203,6 +372,25 @@ test('PQ-032.00 leftover beats 1–3 name physical headline verbs', () => {
   assert.deepEqual(validateEmbodiedDialogue(), { ok: true, errors: [] });
 });
 
+// The gate the story latch-dock computes is only as honest as the berth it reads. Pin the AUTHORED
+// size of both dest stations: if either is resized, the 103 / 112 WU figures in the PQ-032.00
+// receipt stop being true and this fires instead of drifting silently.
+test('PQ-032.00 the story latch-dock gate is live station geometry, not a fixture', () => {
+  const byId = new Map();
+  for (const sector of SECTORS) {
+    for (const station of sector.stations || []) byId.set(station.id, station);
+  }
+  for (const id of ['station_expanse', 'station_ceres']) {
+    const record = byId.get(id);
+    assert.ok(record, `${id} must exist in the authored sector catalog`);
+    assert.equal(record.size, 'M',
+      `${id} is size M — src/systems/world.js:1463-1464 gives it radius 34 / dockRadius 72`);
+  }
+  // pod radius 7 (missions.js:3945), core radius 16 (missions.js:3895); dockRadius 72; slack 24.
+  assert.equal(72 + 7 + STORY_LATCH_DOCK_SLACK_WU, 103, 'live B2 pod gate');
+  assert.equal(72 + 16 + STORY_LATCH_DOCK_SLACK_WU, 112, 'live B3 core gate');
+});
+
 test('PQ-032.00 seed 3200 plays the three set pieces as one linear spine', () => {
   printSpine();
   const h = boot();
@@ -213,13 +401,15 @@ test('PQ-032.00 seed 3200 plays the three set pieces as one linear spine', () =>
   const b1 = acceptStory(h, 'station_helios', 'campaign47a:b1:honest_work');
   assert.equal(b1.type, 'demolition');
   assert.equal(b1.params.physicalVerb, 'knock_down');
-  completeSetPiece(h, b1);
+  flyToDestSector(h, b1);
+  knockTheTower(h, b1);
   assert.equal(h.state.story.beatIndex, 2, 'knocking the tower advances Honest Work');
 
   const b2 = acceptStory(h, 'station_tethys', 'campaign47a:b2:elroy');
   assert.equal(b2.type, 'rescue_under_fire');
   assert.equal(b2.params.physicalVerb, 'pull');
-  completeSetPiece(h, b2);
+  flyToDestSector(h, b2);
+  towToTheDock(h, b2, 'life_pod', 'stage_tow');
   assert.equal(h.state.story.beatIndex, 3, 'pulling pods advances First Blood');
   assert.equal(h.state.story.flags.elroy_outcome, undefined, 'pod rescue adds no branch choice');
 
@@ -229,7 +419,8 @@ test('PQ-032.00 seed 3200 plays the three set pieces as one linear spine', () =>
   const b3 = acceptStory(h, 'station_tethys', 'campaign47a:b3:bigger_boat');
   assert.equal(b3.type, 'tow_recovery');
   assert.equal(b3.params.physicalVerb, 'tow');
-  completeSetPiece(h, b3);
+  flyToDestSector(h, b3);
+  towToTheDock(h, b3, 'slag_core', 'tow_in');
   assert.equal(h.state.story.beatIndex, 4, 'the long tow advances Bigger Boat');
 
   // Name the methods the spine actually settled on, with no `||` fallback to the mission TYPE —
