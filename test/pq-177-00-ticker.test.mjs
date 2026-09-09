@@ -36,6 +36,8 @@ const SEED = 17700;
 const STATION = 'station_helios';
 const STATION_NAME = 'Helios Station';
 const CMDTY = 'cmdty_ore_iron';
+// A second real catalog berth, for the stored-card-belongs-elsewhere case in test 4.
+const OTHER_STATION = 'station_ceres';
 
 function boot({ stepEconomy = false } = {}) {
   const sim = createSimulation({
@@ -247,9 +249,32 @@ test('a leftover dock paints leftover card fields the berth actually writes', ()
     assert.match(frame, /sxb-event__badge/);
     assert.match(frame, /sxb-event__title/);
     assert.match(frame, /sxb-event__body/);
+    // The live-route binding, pinned rather than name-matched. A bare /writeBerthArrival/ would
+    // also pass on a comment or a dead import, which is not evidence that the berth paints. These
+    // pin the exact element the station app caches from the frame above, the writer it hands that
+    // element to as `cardEl`, and the fact that the call sits inside renderStatus() — which the
+    // app runs at mount (stationApp.js:1120), on every onShow, and on the periodic UI refresh.
     const appSrc = readFileSync(join(ROOT, 'src/ui/station/stationApp.js'), 'utf8');
-    assert.match(appSrc, /writeBerthArrival/);
-    assert.match(appSrc, /eventCard/);
+    assert.match(
+      appSrc,
+      /const eventEl = app\.querySelector\('\.sxb-event'\);/,
+      'the berth caches the same frame article this test paints',
+    );
+    assert.match(
+      appSrc,
+      /arrival = buildDockArrival\(s, \{ id: stationId\(\)/,
+      'the view is built for state.ui.dockedStationId, the id uiRoot writes on dock:docked',
+    );
+    assert.match(
+      appSrc,
+      /writeBerthArrival\(\s*\{ newsEl, cardEl: eventEl \}\s*,\s*arrival\s*,/,
+      'renderStatus hands that cached article to this writer as cardEl',
+    );
+    assert.match(
+      appSrc,
+      /function renderStatus\(\)[\s\S]*?writeBerthArrival\(/,
+      'the paint is inside renderStatus, not an unreachable helper',
+    );
 
     const cardEl = berthCardHost();
     const newsEl = { textContent: '' };
@@ -274,6 +299,58 @@ test('a leftover dock paints leftover card fields the berth actually writes', ()
     console.log(`PQ-177.00 berth line (live, rendered): ${painted.news}`);
     console.log(`PQ-177.00 berth card (live, rendered): ${painted.eventCard.badge} | ${painted.eventCard.title} | ${painted.eventCard.body}`);
     console.log(`PQ-177.00 berth card event: ${painted.eventCard.eventId}`);
+  } finally {
+    dispose(t);
+  }
+});
+
+test('the second leftover source paints too: a live event with no stored card for this berth', () => {
+  // Honesty (review 2026-09-09, second pass). leftoverEventCard reads stored lastCard *else*
+  // leftover cardsForStation. Tests 1 and 3 only ever drove the stored branch, so the receipt
+  // claimed a path nothing exercised. This drives the else with two production facts:
+  //   • the stored card belongs to a DIFFERENT berth (the player's last dock was elsewhere), and
+  //   • this berth's own event is live on state.economy.econEvents with no dock:docked of its own.
+  // marketNews only refreshes lastCard on dock:docked, so this is the ordinary state of the berth
+  // whenever an event starts while the player is already sitting in it.
+  const t = boot();
+  try {
+    t.econ.ensureMarket(OTHER_STATION);
+    const otherCmdty = Object.keys(t.state.economy.markets[OTHER_STATION] || {})[0];
+    assert.ok(otherCmdty, 'the other berth trades a real catalog commodity');
+    const otherEv = t.econ.injectEvent({
+      type: 'shortage', stationId: OTHER_STATION, commodityId: otherCmdty, duration: 120,
+    });
+    t.bus.emit('dock:docked', { stationId: OTHER_STATION });
+    const stored = t.state.ui.marketNews.lastCard;
+    assert.ok(stored, 'the previous dock stored a card');
+    assert.equal(stored.stationId, OTHER_STATION, 'the stored card belongs to the other berth');
+
+    // Helios' blockade starts with the player already docked: no dock:docked fires for it, so
+    // lastCard cannot supply this card. Only cardsForStation can.
+    t.econ.ensureMarket(STATION);
+    const ev = t.econ.injectEvent({
+      type: 'blockade', stationId: STATION, commodityId: CMDTY, duration: 120,
+    });
+    assert.equal(t.state.ui.marketNews.lastCard.stationId, OTHER_STATION, 'lastCard did not move');
+
+    const view = buildDockArrival(t.state, { id: STATION, name: STATION_NAME, services: [] });
+    assert.ok(view.eventCard, 'a live event at this berth paints with no stored card of its own');
+    assert.equal(view.eventCard.badge, 'BLOCKADE');
+    assert.equal(view.eventCard.eventId, ev.id);
+    assert.notEqual(view.eventCard.eventId, otherEv.id, "the other berth's card must not leak here");
+    assert.match(view.eventCard.body, /iron ore is frozen/i);
+
+    const cardEl = berthCardHost();
+    const painted = writeBerthArrival({ newsEl: { textContent: '' }, cardEl }, view);
+    assert.equal(cardEl.hidden, false, 'the berth article is shown on the fallback path too');
+    assert.equal(cardEl.querySelector('.sxb-event__badge').textContent, 'BLOCKADE');
+    assert.equal(cardEl.querySelector('.sxb-event__title').textContent, view.eventCard.title);
+    assert.equal(cardEl.getAttribute('data-event-id'), ev.id);
+
+    console.log(
+      `PQ-177.00 fallback card (no stored card for this berth): ${painted.eventCard.badge} | `
+      + `${painted.eventCard.title} | ${painted.eventCard.eventId}`,
+    );
   } finally {
     dispose(t);
   }
