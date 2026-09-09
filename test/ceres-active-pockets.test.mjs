@@ -514,10 +514,10 @@ test('R5B materializes six inert object slots and two existing-budget collision 
   assert.deepEqual(repeat.fullCeresSignature, first.fullCeresSignature,
     'same-seed rebuild must retain the complete live Ceres entity signature');
   assert.deepEqual(first.census, {
-    total: 43,
-    byType: { asteroid: 6, fx: 11, ship: 2, station: 6, wreck: 18 },
-    collidable: 23,
-    colliders: 23,
+    total: 42,
+    byType: { asteroid: 6, fx: 11, ship: 1, station: 6, wreck: 18 },
+    collidable: 22,
+    colliders: 22,
   }, 'a sixth logical object must still add no entity, type, or collider cost to full Ceres');
 
   assert.deepEqual(first.activity.map((row) => row.slotId).sort(), [...EXPECTED_OBJECT_SLOTS].sort());

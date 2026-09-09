@@ -34,6 +34,7 @@ import {
   forEachLivingWorldActor,
 } from '../world/livingWorldViews.js';
 import { getAsteroidFieldRock, promoteAsteroidFieldRock } from '../world/asteroidField.js';
+import { getFarActor } from '../world/farActorTable.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from './ships.js';
 import { CombatDoctrineId } from '../ai/combatDoctrine.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
@@ -1131,6 +1132,8 @@ export const traffic = {
     this.bus.on('sector:exit', (p) => this._onSectorExit(p));
     // ECON-P2: freighter loss → owner-safe scarcity intents + named news (no wallet writes).
     this.bus.on('entity:killed', (p) => this._onEntityKilled(p));
+    this.bus.on('world:farActorShelved', (p) => this._onFarActorShelved(p || {}));
+    this.bus.on('world:farActorRestored', (p) => this._onFarActorRestored(p || {}));
     // Working freight is driven by npcJobsRuntime, so the ambient traffic stepper never reaches
     // its own work/dock branches. Consume only materialized kernel intents here and keep field and
     // economy authority on their existing event seams.
@@ -3369,12 +3372,39 @@ export const traffic = {
   },
 
   /** Drop tracking for freighters already despawned by residency demotion (continuous handoff). */
+  _onFarActorShelved(p) {
+    if (!p || p.id == null) return;
+    const list = this.state.traffic && this.state.traffic.freighters || [];
+    for (const rec of list) {
+      if (rec.id !== p.id) continue;
+      rec.virtualized = true;
+      rec.farActorId = p.id;
+      return;
+    }
+  },
+
+  _onFarActorRestored(p) {
+    if (!p || p.id == null) return;
+    const list = this.state.traffic && this.state.traffic.freighters || [];
+    for (const rec of list) {
+      if (rec.id !== p.id && rec.farActorId !== p.id) continue;
+      rec.virtualized = false;
+      rec.id = p.id;
+      rec.farActorId = null;
+      return;
+    }
+  },
+
   _pruneDead() {
     this._ensureState();
     const list = this.state.traffic.freighters || [];
     const aliveIds = [];
     for (let i = list.length - 1; i >= 0; i--) {
       const rec = list[i];
+      if (rec.virtualized && getFarActor(this.state, rec.farActorId || rec.id)) {
+        aliveIds.push(rec.id);
+        continue;
+      }
       const e = this.state.entities && this.state.entities.get(rec.id);
       if (!e || !e.alive) list.splice(i, 1);
       else aliveIds.push(rec.id);

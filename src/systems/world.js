@@ -128,6 +128,7 @@ import {
   getDressingRow,
 } from '../world/dressingTable.js';
 import { resetWorldPresentationTables } from '../world/presentationSources.js';
+import { dropFarActorSector, resetFarActors, tickFarActors } from '../world/farActorTable.js';
 import {
   applyResourceBodyToEntity,
   captureResourceBodyRecord,
@@ -1341,6 +1342,7 @@ export const world = {
   _despawnEntitiesForSector(sectorId) {
     dropAsteroidFieldSector(this.state, sectorId);
     dropDressingSector(this.state, sectorId);
+    dropFarActorSector(this.state, sectorId);
     const state = this.state;
     const list = state.entityList;
     for (let i = list.length - 1; i >= 0; i--) {
@@ -2817,6 +2819,7 @@ export const world = {
     this._tickPOIScan(state);
     this._tickWorldOneOffSpin(dt, state);
     this._tickAsteroidFieldInteractions(state);
+    tickFarActors(state, this.helpers, this.bus);
     gcExpiredRecentMemory(ensureWorldRecords(state.world), state.simTime);
   },
 
@@ -4234,6 +4237,7 @@ export const world = {
     state.world.sectorContents = {};
     state.world.activeSector = this._emptySectorBag();
     resetWorldPresentationTables(state);
+    resetFarActors(state);
     if (data.discovery) state.world.discovery = data.discovery;
     state.world.scanPings = (data.scanPings && typeof data.scanPings === 'object') ? data.scanPings : {};
     state.world.pendingSpawns = (data.pendingSpawns && typeof data.pendingSpawns === 'object') ? data.pendingSpawns : {};
@@ -4307,6 +4311,7 @@ export const world = {
     state.world.sectorContents = {};
     state.world.activeSector = this._emptySectorBag();
     resetWorldPresentationTables(state);
+    resetFarActors(state);
     state.world.currentSectorId = null;
     this._nextCriticalSpawnTick = 0;
     this._vestaDecisionSignature = null;

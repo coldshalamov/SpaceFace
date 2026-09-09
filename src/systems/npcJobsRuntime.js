@@ -614,6 +614,8 @@ export const npcJobsRuntime = {
       // place. On re-entry the sector's jobs advance by the away time and re-link to the hull.
       this.bus.on('sector:exit', (p) => this._onSectorExit(p || {}));
       this.bus.on('sector:enter', (p) => this._onSectorEnter(p || {}));
+      this.bus.on('world:farActorShelved', (p) => this._onFarActorShelved(p || {}));
+      this.bus.on('world:farActorRestored', (p) => this._onFarActorRestored(p || {}));
       // Continue rematerializes the saved sector before this system's deserialize() restores the
       // job bag (saveSystem restore step 9 versus step 13). The earlier sector:enter therefore
       // cannot see those freshly restored virtual jobs. Re-run the same bounded relink pass after
@@ -3201,6 +3203,24 @@ export const npcJobsRuntime = {
     if (request.resultId == null || d2 < request.bestDistanceSq) return player.id;
     if (d2 === request.bestDistanceSq && String(player.id) < String(request.resultId)) return player.id;
     return request.resultId;
+  },
+
+  _onFarActorShelved(p) {
+    if (!p || p.jobId == null) return;
+    const byId = this._byId();
+    const entry = byId[p.jobId] || byId['job:' + p.jobId];
+    if (!entry || !entry.job) return;
+    virtualize(entry.job);
+    entry.entityId = null;
+    entry.threatId = null;
+  },
+
+  _onFarActorRestored(p) {
+    if (!p || (p.jobId == null && !p.entity)) return;
+    const simT = finite(this.state.simTime, 0);
+    const byId = this._byId();
+    const entry = (p.jobId && (byId[p.jobId] || byId['job:' + p.jobId])) || null;
+    if (entry) this._tryRelink(entry, simT);
   },
 
   // ── sector transitions: virtualize on exit, re-link + advance on enter ───────────────────────
