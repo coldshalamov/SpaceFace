@@ -1,4 +1,4 @@
-// PQ-141.00 — deterministic 60-second proof instrument (B12).
+// PQ-141.00 / PQ-141.01 — deterministic 60-second proof instrument (B12).
 //
 // This module is an INSTRUMENT. It boots the shipping Node-safe production runtime on the Ceres
 // proof pocket set (Refinery + Ambush Run), plays a short player input tape of already-wired verbs
@@ -10,6 +10,8 @@
 // It does not script NPC combat, emit beat events, or loosen a miss into "any collision".
 // A red table is a valid reading.
 
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { SIM_DT } from '../../core/sim.js';
 import {
   applyFeatureConfigToMaps,
@@ -682,6 +684,136 @@ export function missingBeats(times) {
   return SIXTY_SECOND_BEATS.filter((beat) => times[beat.id] == null);
 }
 
+/** Dark cells across a suite, each still named by the packet that owns the beat. */
+export function leftoverCells(runs) {
+  const cells = [];
+  for (const run of runs || []) {
+    const times = (run && run.times) || emptyBeatTimes();
+    for (const beat of missingBeats(times)) {
+      const ropeDark = times.rope_projectile == null;
+      cells.push({
+        seed: run.seed,
+        id: beat.id,
+        label: beat.label,
+        owner: beat.owner,
+        receipts: beat.receipts.slice(),
+        note: beat.id === 'collateral' && ropeDark
+          ? 'downstream of dark rope_projectile on this seed; classifyReceipt still needs a thrown/spun hull'
+          : null,
+      });
+    }
+  }
+  return cells;
+}
+
+/** Group leftover cells by owning packet so a dark cell is a ticket, not a fake. */
+export function leftoverRoutes(runs) {
+  const cells = leftoverCells(runs);
+  const byOwner = new Map();
+  for (const cell of cells) {
+    if (!byOwner.has(cell.owner)) {
+      byOwner.set(cell.owner, { owner: cell.owner, beats: new Map() });
+    }
+    const group = byOwner.get(cell.owner);
+    if (!group.beats.has(cell.id)) {
+      group.beats.set(cell.id, {
+        id: cell.id,
+        label: cell.label,
+        seeds: [],
+        receipts: cell.receipts,
+        notes: [],
+      });
+    }
+    const beat = group.beats.get(cell.id);
+    beat.seeds.push(cell.seed);
+    if (cell.note) beat.notes.push(`seed ${cell.seed}: ${cell.note}`);
+  }
+  return {
+    cells,
+    dark: cells.length,
+    routes: [...byOwner.values()].map((group) => ({
+      owner: group.owner,
+      beats: [...group.beats.values()],
+    })),
+  };
+}
+
+/** Detected beats whose first receipt is after the 60 s window. Dark cells are not late. */
+export function listedBeatsOutsideWindow(runs, windowS = PROOF_WINDOW_S) {
+  const late = [];
+  for (const run of runs || []) {
+    const times = (run && run.times) || emptyBeatTimes();
+    for (const beat of SIXTY_SECOND_BEATS) {
+      const t = times[beat.id];
+      if (t != null && Number(t) > windowS + 1e-6) {
+        late.push({
+          seed: run.seed,
+          id: beat.id,
+          label: beat.label,
+          owner: beat.owner,
+          t: Number(t),
+        });
+      }
+    }
+  }
+  return late;
+}
+
+export function elevenOfElevenClaim(runs) {
+  const dark = leftoverCells(runs).length;
+  return { allowed: dark === 0, dark };
+}
+
+export function formatLeftoverRoutes(runs) {
+  const leftover = leftoverRoutes(runs);
+  const late = listedBeatsOutsideWindow(runs);
+  const lines = [];
+  lines.push('PQ-141.01 leftover routes (dark cell → owning packet; classifyReceipt unchanged)');
+  if (!leftover.cells.length) {
+    lines.push('  no dark cells');
+  } else {
+    for (const route of leftover.routes) {
+      for (const beat of route.beats) {
+        lines.push(
+          `  ${beat.label} (${beat.id}) dark on seeds ${beat.seeds.join(', ')} → ${route.owner}`,
+        );
+        for (const note of beat.notes) lines.push(`    ${note}`);
+      }
+    }
+    lines.push(`Do not claim 11/11: ${leftover.dark} cell${leftover.dark === 1 ? '' : 's'} remain dark.`);
+  }
+  if (late.length) {
+    lines.push('LISTED BEATS AFTER 60s (not inside the window):');
+    for (const row of late) {
+      lines.push(`  seed ${row.seed}: ${row.label} (${row.id}) at ${row.t.toFixed(2)}s — owner ${row.owner}`);
+    }
+  } else {
+    lines.push('Listed (detected) beats are all inside 60 seconds.');
+  }
+  const tableReady = (runs || []).length > 0;
+  const routed = leftover.cells.every((cell) => cell.owner && cell.owner.length > 0);
+  const leafDone = tableReady && routed && late.length === 0;
+  lines.push(`PQ-141.01 RESULT: ${leafDone ? 'DONE' : 'NOT DONE'} (table printed; leftovers routed; no 11/11 claim while cells are dark)`);
+  return lines.join('\n');
+}
+
+export function formatBeatMarkdownTable(runs) {
+  const header = ['seed', ...SIXTY_SECOND_BEATS.map((b) => b.id), 'n/11', 'simS'];
+  const sep = header.map(() => '---');
+  const rows = [header.join(' | '), sep.join(' | ')];
+  for (const run of runs || []) {
+    const cells = [String(run.seed)];
+    for (const beat of SIXTY_SECOND_BEATS) {
+      const t = run.times && run.times[beat.id];
+      cells.push(t == null ? '—' : Number(t).toFixed(2));
+    }
+    cells.push(`${run.detected}/11`);
+    cells.push(Number(run.simS).toFixed(2));
+    rows.push(cells.join(' | '));
+  }
+  return rows.join('\n');
+}
+
 function productionNodeLookup() {
   const table = getNodeSystemFactoryTable({ tacticalAI: true, flightBackend: 'v3' });
   // Production init/update name stuntGrammar; the Node factory table does not yet
@@ -1004,7 +1136,7 @@ export function formatBeatTable(runs) {
     'gate',
   ];
   const lines = [];
-  lines.push('PQ-141.00 proof.sixty_seconds — B12 60-second proof (receipts only, no NPC scripting)');
+  lines.push('PQ-141.01 proof.sixty_seconds — B12 beat table (receipts only, no NPC scripting)');
   lines.push(header.join('\t'));
   for (const run of runs) {
     const cells = [String(run.seed)];
@@ -1020,20 +1152,16 @@ export function formatBeatTable(runs) {
   const worst = runs.reduce((m, r) => Math.min(m, r.detected), 11);
   const allCap = runs.every((r) => r.exceededHardCap !== true && r.simS <= PROOF_HARD_CAP_S);
   const gate = worst >= PROOF_REQUIRED_BEATS && allCap;
+  const claim = elevenOfElevenClaim(runs);
   lines.push('');
   lines.push(`ALPHA GATE: ≥ ${PROOF_REQUIRED_BEATS} of 11 on each of ${runs.length} seeds; sim ≤ ${PROOF_HARD_CAP_S}s.`);
   lines.push(`Worst seed: ${worst}/11. Hard-cap honored: ${allCap ? 'yes' : 'NO'}.`);
-  lines.push(`RESULT: ${gate ? 'DONE' : 'NOT DONE'}`);
-  const missingRows = [];
-  for (const run of runs) {
-    for (const miss of run.missing || []) {
-      missingRows.push(`  seed ${run.seed}: ${miss.label} (${miss.id}) — owner ${miss.owner}`);
-    }
+  lines.push(`ALPHA RESULT: ${gate ? 'DONE' : 'NOT DONE'}`);
+  if (!claim.allowed) {
+    lines.push(`Do not claim 11/11: ${claim.dark} cell${claim.dark === 1 ? '' : 's'} remain dark.`);
   }
-  if (missingRows.length) {
-    lines.push('MISSING BEATS (packet that owns the gap):');
-    lines.push(...missingRows);
-  }
+  lines.push('');
+  lines.push(formatLeftoverRoutes(runs));
   for (const run of runs) {
     const s = run.setup || {};
     const hits = SIXTY_SECOND_BEATS
@@ -1064,14 +1192,81 @@ export async function runProofSixtySecondsSuite(seeds = PROOF_SEEDS, options = {
     runs.push(await runProofSixtySeconds(seed, options));
   }
   const table = formatBeatTable(runs);
+  const leftover = leftoverRoutes(runs);
+  const late = listedBeatsOutsideWindow(runs);
   const worst = runs.reduce((m, r) => Math.min(m, r.detected), 11);
   const allCap = runs.every((r) => r.exceededHardCap !== true && r.simS <= PROOF_HARD_CAP_S);
+  const claim = elevenOfElevenClaim(runs);
   return {
     scenarioId: PROOF_SCENARIO_ID,
     runs,
     table,
+    markdownTable: formatBeatMarkdownTable(runs),
+    leftover,
+    late,
     worst,
     required: PROOF_REQUIRED_BEATS,
     gateMet: worst >= PROOF_REQUIRED_BEATS && allCap,
+    claimElevenOfEleven: claim.allowed,
+    leafDone: runs.length > 0 && leftover.cells.every((c) => c.owner) && late.length === 0,
   };
+}
+
+function launchedAsCli() {
+  const invoked = process.argv[1];
+  if (!invoked) return false;
+  try {
+    return resolve(invoked) === fileURLToPath(import.meta.url);
+  } catch {
+    return /proofSixtySeconds\.js$/i.test(invoked);
+  }
+}
+
+function parseCliSeeds(argv) {
+  const out = [];
+  for (let i = 0; i < argv.length; i += 1) {
+    const token = argv[i];
+    if (token === '--seed' && argv[i + 1]) {
+      out.push(Number(argv[++i]));
+      continue;
+    }
+    if (token.startsWith('--seed=')) out.push(Number(token.slice('--seed='.length)));
+  }
+  return out.filter((n) => Number.isFinite(n));
+}
+
+export async function printProofBeatTableCli(argv = process.argv.slice(2)) {
+  const asJson = argv.includes('--json');
+  const seeds = parseCliSeeds(argv);
+  if (seeds.length === 1) {
+    const run = await runProofSixtySeconds(seeds[0]);
+    if (asJson) process.stdout.write(`${JSON.stringify(run)}\n`);
+    else process.stdout.write(`${formatBeatTable([run])}\n`);
+    return run;
+  }
+  const suite = await runProofSixtySecondsSuite(seeds.length ? seeds : PROOF_SEEDS);
+  if (asJson) {
+    process.stdout.write(`${JSON.stringify({
+      scenarioId: suite.scenarioId,
+      worst: suite.worst,
+      gateMet: suite.gateMet,
+      claimElevenOfEleven: suite.claimElevenOfEleven,
+      leafDone: suite.leafDone,
+      leftover: suite.leftover,
+      late: suite.late,
+      markdownTable: suite.markdownTable,
+      table: suite.table,
+      runs: suite.runs,
+    })}\n`);
+  } else {
+    process.stdout.write(`${suite.table}\n`);
+  }
+  return suite;
+}
+
+if (launchedAsCli()) {
+  printProofBeatTableCli().catch((err) => {
+    console.error(err);
+    process.exitCode = 1;
+  });
 }
