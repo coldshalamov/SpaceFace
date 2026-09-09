@@ -28,6 +28,11 @@ import {
   entityNeedsAiThink,
   getActivityOwnerEntities,
 } from '../world/activityRuntime.js';
+import {
+  forEachFieldRock,
+  forEachJobInteractable,
+  forEachLivingWorldActor,
+} from '../world/livingWorldViews.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from './ships.js';
 import { CombatDoctrineId } from '../ai/combatDoctrine.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
@@ -1429,16 +1434,16 @@ export const traffic = {
     }
 
     const retiredEntityIds = new Set();
-    for (const entity of this.state.entityList || []) {
-      if (!entity || entity.alive === false || !entity.data || !entity.data.trafficRole) continue;
+    forEachLivingWorldActor(this.state, (entity) => {
+      if (!entity.data || !entity.data.trafficRole) return;
       const home = entity.homeSectorId || entity.data.homeSectorId || entity.data.sectorId;
       if (home !== CERES_ACTIVITY_SECTOR_ID
-        || !retiredRecordIds.has(entity.data.worldRecordId)) continue;
+        || !retiredRecordIds.has(entity.data.worldRecordId)) return;
       retiredEntityIds.add(entity.id);
       const remove = this.helpers && (this.helpers.removeEntity || this.helpers.despawnEntity);
       if (typeof remove === 'function') remove(entity.id);
       else entity.alive = false;
-    }
+    });
     if (!retiredEntityIds.size) return;
     this.state.traffic.freighters = this.state.traffic.freighters
       .filter((record) => record && !retiredEntityIds.has(record.id));
@@ -3200,19 +3205,17 @@ export const traffic = {
   _adoptRematerializedTraffic(sectorId, stations) {
     if (!sectorId) return;
     const tracked = new Set((this.state.traffic.freighters || []).map((f) => f && f.id));
-    const list = this.state.entityList || [];
     let adoptIdx = 0;
-    for (let i = 0; i < list.length; i++) {
-      const e = list[i];
-      if (!e || !e.alive || e.type !== 'ship' || e.isPlayer) continue;
+    forEachLivingWorldActor(this.state, (e) => {
+      if (e.type !== 'ship' || e.isPlayer) return;
       const d = e.data || {};
-      if (!d.trafficRole && !d.worldRecordId) continue;
+      if (!d.trafficRole && !d.worldRecordId) return;
       // Only adopt freighters that look like traffic/convoy.
-      if (!d.trafficRole && !(d.durable && d.worldRecordId)) continue;
-      if (!d.trafficRole) continue;
+      if (!d.trafficRole && !(d.durable && d.worldRecordId)) return;
+      if (!d.trafficRole) return;
       const home = e.homeSectorId || d.homeSectorId || d.sectorId;
-      if (home && home !== sectorId) continue;
-      if (tracked.has(e.id)) continue;
+      if (home && home !== sectorId) return;
+      if (tracked.has(e.id)) return;
       // Ensure durable stamps survive even if rematerialize omitted a field.
       if (!e.homeSectorId && !d.homeSectorId) {
         e.homeSectorId = sectorId;
@@ -3275,7 +3278,7 @@ export const traffic = {
       if (priorityItinerary) this._stampPriorityCourierService(e, rec, stations);
       this.state.traffic.freighters.push(rec);
       adoptIdx++;
-    }
+    });
   },
 
   _sectorStations() {
@@ -3285,10 +3288,9 @@ export const traffic = {
     }
     const out = this._stationScratch || (this._stationScratch = []);
     out.length = 0;
-    const stations = this.state.entityList || [];
-    for (const e of stations) {
-      if (e.type === 'station' && e.alive && !(e.data && e.data.isGate)) out.push(e);
-    }
+    forEachLivingWorldActor(this.state, (e) => {
+      if (e.type === 'station' && !(e.data && e.data.isGate)) out.push(e);
+    });
     return out;
   },
 
@@ -4110,11 +4112,10 @@ export const traffic = {
     }
     let picked = null;
     let seen = 0;
-    for (const e of state.entityList || []) {
-      if (!e || e.type !== 'asteroid' || !e.alive) continue;
+    forEachFieldRock(state, (e) => {
       seen += 1;
       if (this._rng() < 1 / seen) picked = e;
-    }
+    });
     return picked ? picked.id : null;
   },
 
@@ -4139,17 +4140,11 @@ export const traffic = {
    */
   _pickWorkableAsteroidNear(state, home, spread = 0) {
     if (!home || !home.pos) return this._pickAsteroid(state);
-    const indexed = state.entityIndex && state.entityIndex.__spacefaceEntityIndexV1
-      ? state.entityIndex.asteroids
-      : null;
-    const source = indexed && indexed.length ? indexed : (state.entityList || []);
-    // Keep the best (spread + 1) by distance without sorting the whole field. The candidate count is
-    // tiny and bounded, so this stays a single linear pass over the index.
     const wanted = Math.max(1, Math.min(MINER_FIELD_SPREAD_CAP, (spread | 0) + 1));
     const bestId = new Array(wanted).fill(null);
     const bestD2 = new Array(wanted).fill(Infinity);
-    for (const rock of source) {
-      if (!rock || rock.type !== 'asteroid' || !rock.alive || !rock.pos) continue;
+    forEachFieldRock(state, (rock) => {
+      if (!rock.pos) return;
       const dx = rock.pos.x - home.pos.x;
       const dz = rock.pos.z - home.pos.z;
       const d2 = dx * dx + dz * dz;
@@ -4160,7 +4155,7 @@ export const traffic = {
         bestId[i] = rock.id;
         break;
       }
-    }
+    });
     // Fewer rocks than the requested rank: fall back down the list rather than returning null, so a
     // thin field still yields a job instead of silently dropping the barge to its ambient stepper.
     for (let i = wanted - 1; i >= 0; i--) if (bestId[i] != null) return bestId[i];
@@ -4199,13 +4194,18 @@ export const traffic = {
     if (!anchor || !anchor.pos || !state) return null;
     let best = null;
     let bestD2 = Infinity;
-    for (const e of state.entityList || []) {
-      if (!e || e.type !== type || e.alive === false || !e.pos) continue;
+    const visit = type === 'asteroid'
+      ? forEachFieldRock
+      : (type === 'pickup' || type === 'payload')
+        ? forEachJobInteractable
+        : forEachLivingWorldActor;
+    visit(state, (e) => {
+      if (e.type !== type || !e.pos) return;
       const dx = e.pos.x - anchor.pos.x;
       const dz = e.pos.z - anchor.pos.z;
       const d2 = dx * dx + dz * dz;
       if (d2 < bestD2) { bestD2 = d2; best = e; }
-    }
+    });
     return best;
   },
 
@@ -4291,19 +4291,19 @@ export const traffic = {
 
     const encounterPods = [];
     const nearbyPods = [];
-    for (const entity of state.entityList || []) {
-      if (!entity || entity.alive === false || entity.type !== 'pickup' || !entity.pos) continue;
+    forEachJobInteractable(state, (entity) => {
+      if (entity.type !== 'pickup' || !entity.pos) return;
       const data = entity.data || {};
-      if (!data.freightCustodyPod || typeof data.freightCustodyPod !== 'object') continue;
+      if (!data.freightCustodyPod || typeof data.freightCustodyPod !== 'object') return;
       if (matchByEncounter && data.encounterId === encounterId) {
         encounterPods.push(entity);
-        continue;
+        return;
       }
-      if (!carrierLive) continue;
+      if (!carrierLive) return;
       const dx = entity.pos.x - carrier.pos.x;
       const dz = entity.pos.z - carrier.pos.z;
       if (dx * dx + dz * dz <= r2) nearbyPods.push(entity);
-    }
+    });
     const pods = encounterPods.length ? encounterPods : nearbyPods;
     if (!pods.length) return;
 
@@ -4412,9 +4412,9 @@ export const traffic = {
       return this._salvageTargetCache;
     }
     const out = [];
-    for (const e of this.state.entityList || []) {
+    forEachJobInteractable(this.state, (e) => {
       if (this._isSalvageableBody(e)) out.push(e);
-    }
+    });
     // Stable order for deterministic assignment under the concurrent cap.
     out.sort((a, b) => {
       const ta = a.type === 'payload' ? 0 : 1;
@@ -4998,12 +4998,12 @@ export const traffic = {
   // (its pool already opened) is left alone — that is their salvage now, not the yard's freight.
   _retireDeliveredYardTugLots() {
     const byId = this.state.npcJobs && this.state.npcJobs.byId;
-    for (const ent of this.state.entityList || []) {
-      if (!ent || ent.alive === false || !ent.data || ent.data.yardTugLot !== true) continue;
+    forEachJobInteractable(this.state, (ent) => {
+      if (!ent.data || ent.data.yardTugLot !== true) return;
       if (ent.data.npcTowedByJobId != null) {
         // Under tow: alive by definition, and its owning job is the authority.
         const owner = ent.data.npcTowedByJobId;
-        if (byId && byId[owner]) continue;
+        if (byId && byId[owner]) return;
       }
       let owned = false;
       for (const rec of this.state.traffic.freighters || []) {
@@ -5014,9 +5014,9 @@ export const traffic = {
         const payload = entry && entry.job && entry.job.payload;
         if (payload && payload.towTargetId === ent.id) { owned = true; break; }
       }
-      if (owned) continue;
+      if (owned) return;
       this._despawnYardTugLot(ent);
-    }
+    });
   },
 
   _dispatchGeneralSalvors(sectorId) {
@@ -7342,11 +7342,10 @@ export const traffic = {
         if (entity && entity.data) this._wipeCeresCausalDataKeys(entity.data);
       }
     }
-    if (this.state && Array.isArray(this.state.entityList)) {
-      for (let i = 0; i < this.state.entityList.length; i++) {
-        const candidate = this.state.entityList[i];
+    if (this.state) {
+      forEachLivingWorldActor(this.state, (candidate) => {
         const data = candidate && candidate.data;
-        if (!data) continue;
+        if (!data) return;
         let stamped = data.activityActorSlotId != null;
         if (!stamped) {
           const keys = Object.keys(data);
@@ -7358,7 +7357,7 @@ export const traffic = {
           }
         }
         if (stamped) this._wipeCeresCausalDataKeys(data);
-      }
+      });
     }
   },
 
@@ -7462,15 +7461,12 @@ export const traffic = {
         `ceres:activity:${CERES_TENDER_SLOT_ID}`,
       );
       let entity = entityWithWorldRecord(this.state, worldRecordId);
-      if (!entity && this.state && this.state.entityList) {
-        for (let i = 0; i < this.state.entityList.length; i++) {
-          const candidate = this.state.entityList[i];
-          if (candidate && candidate.alive !== false && candidate.data
-            && candidate.data.activityActorSlotId === CERES_TENDER_SLOT_ID) {
-            entity = candidate;
-            break;
-          }
-        }
+      if (!entity) {
+        forEachLivingWorldActor(this.state, (candidate) => {
+          if (entity || !candidate.data
+            || candidate.data.activityActorSlotId !== CERES_TENDER_SLOT_ID) return;
+          entity = candidate;
+        });
       }
       if (entity && entity.alive !== false) {
         scratch.entity = entity;
@@ -8387,11 +8383,11 @@ export const traffic = {
     // Release any wreck/payload reservation so another cutter (or the player) can take it.
     if (ent && ent.data && ent.data.worldRecordId) {
       const claimId = ent.data.worldRecordId;
-      for (const body of this.state.entityList || []) {
-        if (body && body.data && body.data.salvorClaimedBy === claimId) {
+      forEachJobInteractable(this.state, (body) => {
+        if (body.data && body.data.salvorClaimedBy === claimId) {
           this._clearSalvorClaim(body, claimId);
         }
-      }
+      });
     }
     if (!rec && !(ent && ent.data && ent.data.trafficRole)) return;
     // The civic liner is passenger custody, never freight. Its loss stops the one durable

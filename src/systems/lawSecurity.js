@@ -34,6 +34,13 @@ import {
   reserveArrivalPoint,
 } from '../law/authorityResponse.js';
 import { RECORD_KIND, stableRecordId } from '../world/worldRecords.js';
+import {
+  collectLivingWorldActors,
+  findLivingWorldActor,
+  forEachExplicitWitnessMarker,
+  forEachJobInteractable,
+  forEachLivingWorldActor,
+} from '../world/livingWorldViews.js';
 
 export const LAW_SECURITY_VERSION = 2;
 export const AMBIENT_TOLL_VALUE_FLOOR = 120;
@@ -172,7 +179,7 @@ export const lawSecurity = {
     this._updateCustomsScanCones(_dt, state);
     if ((state.tick | 0) >= (own.nextAmbientScanTick | 0)) {
       own.nextAmbientScanTick = (state.tick | 0) + AMBIENT_SCAN_INTERVAL_TICKS;
-      for (const entity of state.entityList || []) this._stampAmbient(entity);
+      forEachLivingWorldActor(state, (entity) => this._stampAmbient(entity));
     }
     if ((state.tick | 0) < (own.nextIncidentTick | 0)) return;
     own.nextIncidentTick = (state.tick | 0) + 15;
@@ -455,8 +462,8 @@ export const lawSecurity = {
    * from encounters and sector promotion before the weapon system can consume it.
   */
   _enforceSanctuaryWithdrawals(state) {
-    for (const entity of state.entityList || []) {
-      if (!isArmedNpc(entity, state) || isLawful(entity)) continue;
+    forEachLivingWorldActor(state, (entity) => {
+      if (!isArmedNpc(entity, state) || isLawful(entity)) return;
       const data = entity.data || (entity.data = {});
       const ai = data.ai || (data.ai = {});
       const combat = data.combat || (data.combat = {});
@@ -468,12 +475,12 @@ export const lawSecurity = {
         targetId = state.playerId;
       }
       const target = entityById(state, targetId);
-      if (!target) continue;
-      if (is47aScavengerCounterplayAuthorized(state, entity, target)) continue;
+      if (!target) return;
+      if (is47aScavengerCounterplayAuthorized(state, entity, target)) return;
       const jurisdiction = protectedStationAt(state, target) || protectedStationAt(state, entity);
-      if (!jurisdiction) continue;
+      if (!jurisdiction) return;
       this._withdrawFromSanctuary(entity, target, jurisdiction);
-    }
+    });
   },
 
   _withdrawFromSanctuary(entity, target, jurisdiction) {
@@ -921,9 +928,10 @@ export const lawSecurity = {
     const anchor = incident.rankFromVictim && victim && victim.pos
       ? victim.pos
       : (station && station.pos || victim && victim.pos);
+    const actors = collectLivingWorldActors(state);
     const unfilteredCandidates = isLawful(victim) && victim.type === 'ship'
-      ? [victim, ...(state.entityList || [])]
-      : (state.entityList || []);
+      ? [victim, ...actors]
+      : actors;
     const candidates = unfilteredCandidates.filter((entity) => this._responseCandidateEligible(entity, incident));
     const out = rankLawfulResponders(candidates, anchor, {
       aggressorId: incident.attackerId,
@@ -1580,7 +1588,7 @@ export const lawSecurity = {
     // the live entity list; it cannot create a hull. An empty result is a first-class recorded
     // outcome, not a reason to manufacture a patrol.
     const policy = authorityResponsePolicy(effectiveLawSecurity(state));
-    const responders = rankLawfulResponders(state.entityList || [], pos, {
+    const responders = rankLawfulResponders(collectLivingWorldActors(state), pos, {
       aggressorId: request.offenderEntityId,
       cap: policy.responderCap,
       radius: jurisdiction.radius + LAW_INCIDENT_RESPONDER_MARGIN,
@@ -1701,22 +1709,18 @@ export const lawSecurity = {
   _updateCustomsScanCones(dt, state) {
     const step = Number(dt);
     if (!(step > 0) || !state) return;
-    const list = state.entityList;
-    if (!Array.isArray(list) || list.length === 0) return;
-
     const pods = this._coneScratchPods;
     const occluders = this._coneScratchOccluders;
     const scanners = this._coneScratchScanners;
     pods.length = 0;
     occluders.length = 0;
     scanners.length = 0;
-    for (let i = 0; i < list.length; i++) {
-      const entity = list[i];
-      if (!entity || entity.alive === false || !entity.pos) continue;
+    forEachJobInteractable(state, (entity) => {
+      if (!entity.pos) return;
       if (isJettisonedCargoPod(entity)) pods.push(entity);
       if (customsScanConeOf(entity)) scanners.push(entity);
       if (entity.type === 'ship' && entity.collides !== false) occluders.push(entity);
-    }
+    });
     if (scanners.length === 0 || pods.length === 0) return;
 
     const dwell = this._podConeDwell || (this._podConeDwell = new Map());
@@ -2127,14 +2131,14 @@ function hasLivePatrolScan(state) {
 function selectHeliosInspectionPatrol(state, player, alreadySettled = new Set()) {
   if (!player || !player.pos) return null;
   const candidates = [];
-  for (const entity of state.entityList || []) {
+  forEachLivingWorldActor(state, (entity) => {
     const worldRecordId = entity && entity.data && entity.data.worldRecordId;
     if (!alreadySettled.has(worldRecordId)
       && isEligibleHeliosInspectionPatrol(state, entity, player)
       && distance2(player.pos, entity.pos) <= LAWFUL_INSPECTION_SCAN_RANGE * LAWFUL_INSPECTION_SCAN_RANGE) {
       candidates.push(entity);
     }
-  }
+  });
   candidates.sort((a, b) => {
     const d = distance2(a.pos, player.pos) - distance2(b.pos, player.pos);
     if (d) return d;
@@ -2161,14 +2165,16 @@ function isEligibleHeliosInspectionPatrol(state, patrol, player) {
 function inspectionPatrolByWorldRecord(state, worldRecordId) {
   if (!durableInspectionWorldRecordId(worldRecordId)) return null;
   let match = null;
-  for (const entity of state?.entityList || []) {
-    if (!entity || entity.alive === false || entity.type !== 'ship'
-      || entity.data?.worldRecordId !== worldRecordId) continue;
-    // A duplicate stable record is a corrupted/ambiguous rebind, never permission to inspect an
-    // arbitrary numeric entity. Wait for the small restore pass and then terminate cleanly.
-    if (match) return null;
+  let duplicate = false;
+  forEachLivingWorldActor(state, (entity) => {
+    if (duplicate || entity.type !== 'ship' || entity.data?.worldRecordId !== worldRecordId) return;
+    if (match) {
+      duplicate = true;
+      return;
+    }
     match = entity;
-  }
+  });
+  if (duplicate) return null;
   return match;
 }
 
@@ -2272,16 +2278,17 @@ function resolveIncidentVictim(state, request) {
 }
 
 function findCivilianHauler(state) {
-  const list = state && state.entityList;
-  if (!Array.isArray(list)) return null;
   let fallback = null;
-  for (let i = 0; i < list.length; i++) {
-    const entity = list[i];
-    if (!entity || entity.alive === false || !isCivilianHauler(entity)) continue;
-    if (entity.data && entity.data.activityActorSlotId === CERES_AMBUSH_HAULER_SLOT) return entity;
+  let preferred = null;
+  forEachLivingWorldActor(state, (entity) => {
+    if (preferred || !isCivilianHauler(entity)) return;
+    if (entity.data && entity.data.activityActorSlotId === CERES_AMBUSH_HAULER_SLOT) {
+      preferred = entity;
+      return;
+    }
     if (!fallback) fallback = entity;
-  }
-  return fallback;
+  });
+  return preferred || fallback;
 }
 
 function cargoPodOwnerId(entity) {
@@ -2310,12 +2317,15 @@ function entityById(state, id) {
 }
 
 function stationByPublicId(state, stationId) {
-  for (const entity of state.entityList || []) {
-    if (!entity || entity.type !== 'station') continue;
-    const id = entity.data && entity.data.stationId || entity.stationId || entity.id;
-    if (String(id) === String(stationId)) return entity;
+  const indexed = state && state.entityIndex && state.entityIndex.byStationId;
+  if (indexed && typeof indexed.get === 'function' && indexed.has(stationId)) {
+    return indexed.get(stationId);
   }
-  return null;
+  return findLivingWorldActor(state, (entity) => {
+    if (entity.type !== 'station') return false;
+    const id = entity.data && entity.data.stationId || entity.stationId || entity.id;
+    return String(id) === String(stationId);
+  });
 }
 
 function clearTarget(entity, targetId) {
@@ -2488,13 +2498,13 @@ export function lawWitnessesNear(state, { pos, offenderEntityId = null, radius =
   if (!state || !anchor) return [];
   const limitSq = Math.max(0, Number(radius) || 0) ** 2;
   const out = [];
-  for (const entity of state.entityList || []) {
-    if (!entity || entity.alive === false || !entity.pos) continue;
-    if (offenderEntityId != null && entity.id === offenderEntityId) continue;
-    if (entity.id === state.playerId) continue; // the thief is not a witness against themselves
-    if (!isLawful(entity) && entity.data?.lawWitness !== true) continue;
+  const consider = (entity) => {
+    if (!entity.pos) return;
+    if (offenderEntityId != null && entity.id === offenderEntityId) return;
+    if (entity.id === state.playerId) return;
+    if (!isLawful(entity) && entity.data?.lawWitness !== true) return;
     const d2 = distance2(entity.pos, anchor);
-    if (d2 > limitSq) continue;
+    if (d2 > limitSq) return;
     out.push({
       stableId: String(entity.data?.worldRecordId
         || entity.data?.stationId
@@ -2504,7 +2514,9 @@ export function lawWitnessesNear(state, { pos, offenderEntityId = null, radius =
       distanceSq: d2,
       lawful: isLawful(entity),
     });
-  }
+  };
+  forEachLivingWorldActor(state, consider);
+  forEachExplicitWitnessMarker(state, consider);
   return out
     .sort((a, b) => a.distanceSq - b.distanceSq || a.stableId.localeCompare(b.stableId))
     .slice(0, LAW_INCIDENT_WITNESS_CAP);

@@ -44,6 +44,19 @@ function hasEntityIndex(state) {
  * Call `fn` for every living-world actor. Never yields asteroids or dressing FX.
  * Returns the source used so tests can assert the fat list was not the iterator.
  */
+/** Heist/facility dressing marked as a witness. Never asteroids. */
+export function forEachExplicitWitnessMarker(state, fn) {
+  if (typeof fn !== 'function') return 'none';
+  const list = (state && state.entityList) || [];
+  for (let i = 0; i < list.length; i++) {
+    const entity = list[i];
+    if (!entity || entity.alive === false || entity.type !== 'fx') continue;
+    if (!entity.data || entity.data.lawWitness !== true) continue;
+    fn(entity);
+  }
+  return 'filter';
+}
+
 export function forEachLivingWorldActor(state, fn) {
   if (typeof fn !== 'function') return 'none';
   if (hasEntityIndex(state)) {
