@@ -51,6 +51,7 @@ import { COMMODITIES } from '../data/commodities.js';
 import { volatileClassOf } from '../data/commodityVolatileClasses.js';
 import { massline2Flag } from '../data/featureFlags.js';
 import { rollKillRewardItems } from '../data/killRewards.js';
+import { forEachJobInteractable } from '../world/livingWorldViews.js';
 import { isHostileToPlayer } from './scanner.js';
 
 const SHARD_REWARD_SALT = 'loot_shards_reward_v3';
@@ -508,19 +509,22 @@ export const lootShards = {
 
   _catchPodsInNets(state) {
     if (!state || state.mode !== 'flight') return;
-    const list = state.entityList;
-    if (!Array.isArray(list)) return;
+    const index = state.entityIndex;
+    // Pods are payloads. No payload bucket means no pods to catch.
+    if (index && index.__spacefaceEntityIndexV1 && Array.isArray(index.payloads)
+      && index.payloads.length === 0) {
+      return;
+    }
     const nets = _catchNetScratch;
     const pods = _catchPodScratch;
     nets.length = 0;
     pods.length = 0;
-    for (let i = 0; i < list.length; i++) {
-      const entity = list[i];
+    forEachJobInteractable(state, (entity) => {
       if (isOutlawCatchNet(entity) && entity.pos) nets.push(entity);
       else if (isJettisonedCargoPod(entity) && entity.pos && entity.data && !entity.data.caughtByNet) {
         pods.push(entity);
       }
-    }
+    });
     if (nets.length === 0 || pods.length === 0) return;
     for (let n = 0; n < nets.length; n++) {
       const net = nets[n];

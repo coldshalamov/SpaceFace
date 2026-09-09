@@ -32,6 +32,7 @@ import {
   createContactHailResponse,
   pirateParleyDemandForHandoff,
 } from '../data/contactHail.js';
+import { forEachLivingWorldActor } from '../world/livingWorldViews.js';
 
 export const SCANNER_CONTACT_RANGE = CONTACT_HAIL_RANGE;
 
@@ -51,6 +52,8 @@ const ANOMALY_TRIANGULATION_REQUIRED = 3;
 const ANOMALY_TRIANGULATION_MIN_BASELINE_WU = 350;
 const ANOMALY_TRIANGULATION_MIN_BEARING_DEG = 8;
 const CONTACT_HAIL_POLL_TICKS = 12; // 5 Hz at the fixed 60 Hz sim cadence.
+/** Ghost escape/decay is time-based; skipping rocks between checks is enough. */
+export const GHOST_CONTACT_CADENCE_TICKS = 8;
 const UNSAFE_PLAYER_SECURITY = 0.45;
 const LANE_CONTEXT_INNER_R = 900;
 const LANE_CONTEXT_OUTER_R = 2200;
@@ -862,11 +865,12 @@ export const scanner = {
 
   /** Escape / decay for unrevealed ghosts (deception consequence). */
   _tickGhostContacts(state) {
-    const list = state.entityList || [];
+    const tick = Number.isInteger(state.tick) ? state.tick : 0;
+    if (tick % GHOST_CONTACT_CADENCE_TICKS !== 0) return;
     const now = state.simTime || 0;
-    for (const entity of list) {
-      if (!entity || !entity.alive || !entity.data) continue;
-      if (!entity.data.isGhost && !entity.data.ghost) continue;
+    forEachLivingWorldActor(state, (entity) => {
+      if (!entity.data) return;
+      if (!entity.data.isGhost && !entity.data.ghost) return;
       const result = tickGhostEscape(entity, state, now);
       if (result.escaped) {
         this.bus.emit('scanner:ghostEscaped', {
@@ -876,7 +880,7 @@ export const scanner = {
           simTime: now,
         });
       }
-    }
+    });
   },
 
   _pulse(state, player, now) {

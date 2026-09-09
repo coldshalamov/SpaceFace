@@ -8,6 +8,7 @@
 // and encounter state remain with their canonical owners through events.
 import { protectedStationAt } from '../ai/engagementAuthority.js';
 import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../ai/doctrine.js';
+import { forEachLivingWorldActor } from '../world/livingWorldViews.js';
 import { isHostileToPlayer } from './scanner.js';
 
 export const SURRENDER_SECURE_REEL_WU = 60;
@@ -27,6 +28,8 @@ const RECOVERY_SURRENDERED = 'surrendered';
 const RECOVERY_DRIVE_DISABLED = 'drive_disabled';
 const RECOVERY_CIVILIAN_DISABLED = 'civilian_disabled';
 const RECOVERY_ENTITY_INSTANCE = Symbol('surrenderRecoveryEntityInstance');
+/** Re-adopt saved surrender/custody annotations; record timers still run every tick. */
+export const SURRENDER_READOPT_CADENCE_TICKS = 8;
 
 export const surrenderRecovery = {
   name: 'surrenderRecovery',
@@ -87,25 +90,30 @@ export const surrenderRecovery = {
     const own = ensureState(state);
     // Re-adopt an open saved recovery even though this deliberately transient coordinator is not
     // serialized separately. The entity annotation is part of the normal entity save surface.
-    for (const entity of state.entityList || []) {
-      const ai = entity && entity.data && entity.data.ai || {};
-      const annotation = entity && entity.data && entity.data.surrenderRecovery;
-      if (!entity || entity.alive === false || recordForEntity(own, entity.id) || terminalAnnotation(annotation)) continue;
-      if (annotation && annotation.recoveryKind === RECOVERY_CIVILIAN_DISABLED
-        && driveDisabled(state, entity.id)) {
-        this._register({
-          entityId: entity.id,
-          reason: 'saved_civilian_disabled',
-          factionId: entity.factionId,
-          type: entity.type,
-          savedAnnotation: annotation,
-        }, RECOVERY_CIVILIAN_DISABLED, false);
-      } else if (annotation && annotation.recoveryKind === RECOVERY_DRIVE_DISABLED
-        && driveDisabled(state, entity.id)) {
-        this._register({ entityId: entity.id, reason: 'saved_drive_disabled', factionId: entity.factionId, type: entity.type }, RECOVERY_DRIVE_DISABLED, false);
-      } else if (ai.fsm === 'surrender') {
-        this._register({ entityId: entity.id, reason: 'saved_surrender', factionId: entity.factionId, type: entity.type }, RECOVERY_SURRENDERED);
-      }
+    // Ships/drones only — living-world views never yield rocks or dressing FX.
+    const tick = Number.isInteger(state.tick) ? state.tick : 0;
+    if (tick % SURRENDER_READOPT_CADENCE_TICKS === 0) {
+      forEachLivingWorldActor(state, (entity) => {
+        if (!entity || (entity.type !== 'ship' && entity.type !== 'drone')) return;
+        const ai = entity.data && entity.data.ai || {};
+        const annotation = entity.data && entity.data.surrenderRecovery;
+        if (recordForEntity(own, entity.id) || terminalAnnotation(annotation)) return;
+        if (annotation && annotation.recoveryKind === RECOVERY_CIVILIAN_DISABLED
+          && driveDisabled(state, entity.id)) {
+          this._register({
+            entityId: entity.id,
+            reason: 'saved_civilian_disabled',
+            factionId: entity.factionId,
+            type: entity.type,
+            savedAnnotation: annotation,
+          }, RECOVERY_CIVILIAN_DISABLED, false);
+        } else if (annotation && annotation.recoveryKind === RECOVERY_DRIVE_DISABLED
+          && driveDisabled(state, entity.id)) {
+          this._register({ entityId: entity.id, reason: 'saved_drive_disabled', factionId: entity.factionId, type: entity.type }, RECOVERY_DRIVE_DISABLED, false);
+        } else if (ai.fsm === 'surrender') {
+          this._register({ entityId: entity.id, reason: 'saved_surrender', factionId: entity.factionId, type: entity.type }, RECOVERY_SURRENDERED);
+        }
+      });
     }
 
     const now = Number(state.simTime) || 0;

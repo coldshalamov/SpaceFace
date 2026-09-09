@@ -8,6 +8,7 @@ import { applyPendingSubsystemTransitions, recomputeCombatantModifiers, repairSu
 import { appendCombatTrace, canonicalize, readCombatTrace } from './trace.js';
 import { assertValidCombatCatalog } from './validate.js';
 import { isDynamicPhysicsBodyEntity, writePhysicsBodyResponse } from '../core/physicsAuthority.js';
+import { forEachLivingWorldActor } from '../world/livingWorldViews.js';
 
 const KERNELS = new WeakMap();
 
@@ -50,7 +51,7 @@ export function createCombatKernel(ctx, options = {}) {
   let sortedCacheTick = -1;
   let sortedCacheRevision = 0;
   let sortedCacheSeenRevision = -1;
-  let sortedCacheSource = null;
+  let sortedCacheIndexVersion = -2;
   let sortedCacheLength = -1;
   let sortedCache = null;
   const momentumSinkImpulse = { x: 0, y: 0, z: 0 };
@@ -232,13 +233,14 @@ export function createCombatKernel(ctx, options = {}) {
   }
 
   function sortedEntitiesForTick() {
-    const source = entitySource(state);
+    const source = combatTickEntitySource(state);
     const length = source.length;
+    const indexVersion = combatTickIndexVersion(state);
     if (
       sortedCache &&
       sortedCacheTick === state.tick &&
       sortedCacheSeenRevision === sortedCacheRevision &&
-      sortedCacheSource === source &&
+      sortedCacheIndexVersion === indexVersion &&
       sortedCacheLength === length
     ) {
       return sortedCache;
@@ -246,7 +248,7 @@ export function createCombatKernel(ctx, options = {}) {
     sortedCache = sortedEntitiesFromSource(source);
     sortedCacheTick = state.tick;
     sortedCacheSeenRevision = sortedCacheRevision;
-    sortedCacheSource = source;
+    sortedCacheIndexVersion = indexVersion;
     sortedCacheLength = length;
     return sortedCache;
   }
@@ -263,10 +265,30 @@ export function createCombatKernel(ctx, options = {}) {
   }
 }
 
-function entitySource(state) {
-  if (Array.isArray(state.entityList)) return state.entityList;
-  if (state.entities && typeof state.entities.values === 'function') return [...state.entities.values()];
-  return [];
+function combatTickIndexVersion(state) {
+  const index = state && state.entityIndex;
+  return index && index.__spacefaceEntityIndexV1 ? (Number(index.version) || 0) : -1;
+}
+
+/**
+ * Combat pre/post physics candidates: living-world actors (ship/drone/station/wreck) via
+ * entityIndex when present. Never asteroids or dressing FX.
+ */
+export function combatTickEntitySource(state) {
+  const out = [];
+  forEachLivingWorldActor(state, (entity) => {
+    out.push(entity);
+  });
+  return out;
+}
+
+export function combatTickEntitySourceKind(state) {
+  if (!state) return 'none';
+  if (state.entityIndex && state.entityIndex.__spacefaceEntityIndexV1) return 'index';
+  if (Array.isArray(state.entityList) || (state.entities && typeof state.entities.values === 'function')) {
+    return 'filter';
+  }
+  return 'none';
 }
 
 function sortedEntitiesFromSource(list) {
