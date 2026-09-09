@@ -2,13 +2,13 @@
 // Headless. No soak. No headed capture. Live settle remains PQ-032.00.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-import { EMBODIED_MISSIONS } from '../src/story/campaign47a/embodiedMissions.js';
+import { EMBODIED_MISSIONS, buildMissionBoardContract } from '../src/story/campaign47a/embodiedMissions.js';
 import { BEAT_COMMS } from '../src/story/campaign47a/embodiedDialogue.js';
 import {
   BEAT_SCHEMA,
@@ -31,6 +31,12 @@ import {
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const CHECK = join(ROOT, 'scripts', 'check-beat-standard.mjs');
 const TEMPLATE_PATH = join(BEAT_SHEET_DIR, 'TEMPLATE.beat.json');
+// The live settle owner. A sheet describes what the player can actually finish, so the
+// only input that proves a named solution is the system that pays it — not the sidecar
+// declaration the sheet was copied from.
+const MISSIONS_PATH = join(ROOT, 'src', 'systems', 'missions.js');
+// How far back from a settle call to look for the gate that gates it. Chars, not WU.
+const GATE_WINDOW_CHARS = 800;
 
 const SHEET_FILES = Object.freeze({
   honest_work: join(BEAT_SHEET_DIR, '47a-honest-work.beat.json'),
@@ -106,7 +112,15 @@ test('leftover beats 1–3 are written, staged on the leftover template, and nam
 
     const embodied = EMBODIED_MISSIONS.find((row) => row.id === beatId);
     assert.ok(embodied, `leftover ${beatId} exists on leftover sidecar`);
-    assert.deepEqual(embodied.missionBoardContract.params.completionMethods, leftoverMethods);
+    // This used to deepEqual embodied.missionBoardContract.params.completionMethods against
+    // leftoverMethods — which IS that array's own .slice() (beatStandard.js leftoverSpineMethods).
+    // A self-comparison cannot fail, so it never proved a method was reachable. Compare the
+    // POSTED offer instead (the builder the board actually calls), and prove liveness against
+    // src/systems/missions.js in the next test.
+    const posted = buildMissionBoardContract(embodied.beat, { seed: LEFTOVER_SPINE_SEED });
+    assert.ok(posted, `leftover ${beatId} must post a board offer`);
+    assert.deepEqual(posted.params.completionMethods, leftoverMethods,
+      `leftover ${beatId}: the posted offer must carry the two solutions the sheet names`);
 
     const issues = validateBeatSheet(sheet);
     assert.deepEqual(issues, [], `${beatId}: ${JSON.stringify(issues)}`);
@@ -127,6 +141,95 @@ test('leftover beats 1–3 are written, staged on the leftover template, and nam
   assert.ok(bigger.setPiece.actors.some((row) => row.id === 'slag_core'));
   assert.ok(bigger.setPiece.solutions.some((row) => row.leftoverMechanic === 'tow_in'));
   assert.ok(bigger.setPiece.solutions.some((row) => row.leftoverMechanic === 'sling_in'));
+});
+
+// ── The live settle, read from the system that pays it ──────────────────────────────────
+// Everything above compares a sheet to a declaration, and a declaration is not a route.
+// These helpers take their inputs from src/systems/missions.js, the settle owner, so a
+// sheet cannot pass by agreeing with the sidecar it was copied from.
+
+function readMissionsSrc() {
+  return readFileSync(MISSIONS_PATH, 'utf8');
+}
+
+/** Offsets of every live call that pays this completion method. */
+function settleSites(src, method) {
+  const pattern = new RegExp(`_completePhysical\\(\\s*m,\\s*\\w+,\\s*'${method}'`, 'g');
+  return [...src.matchAll(pattern)].map((match) => match.index);
+}
+
+/** True when a live settle site for this method sits behind the story dest-dock gate. */
+function isStoryDockSettled(src, method) {
+  return settleSites(src, method).some((at) => src
+    .slice(Math.max(0, at - GATE_WINDOW_CHARS), at + method.length + 40)
+    .includes('_entityAtStoryDestDock'));
+}
+
+test('the two solutions per sheet are live settle methods, and no sheet sells a gate the live route refuses', () => {
+  const src = readMissionsSrc();
+  const berthWu = Number((src.match(/^const PHYSICAL_BERTH_WU = (\d+);$/m) || [])[1]);
+  assert.ok(Number.isFinite(berthWu), 'PHYSICAL_BERTH_WU must be readable from the live settle owner');
+
+  // 1. Every named solution is a method the live route can actually pay, on the live type.
+  for (const beatId of LEFTOVER_SPINE_BEAT_IDS) {
+    const sheet = loadBeatSheet(SHEET_FILES[beatId]);
+    const liveType = sheet.leftoverSource.liveMissionType;
+    assert.ok(
+      src.includes(`m.type === '${liveType}'`),
+      `leftover ${beatId} names live mission type ${liveType}; missions.js must handle it`,
+    );
+    for (const method of leftoverSpineMethods(beatId)) {
+      assert.ok(
+        settleSites(src, method).length > 0,
+        `leftover ${beatId} solution ${method} must be a method src/systems/missions.js can settle`,
+      );
+    }
+  }
+
+  // 2. The story dest-dock gate is live for B2/B3 (d9bef7f94). Story throw, clean release,
+  //    loose dock sling and authored throw_berth all resolve through _entityAtStoryDestDock,
+  //    and a failed story settle is REFUSED rather than falling through to the wide berth.
+  assert.match(
+    src, /_usesStoryDestDock\(m\)\s*{[\s\S]{0,240}CONTRACT_47A_B3_TAG/,
+    'the story dest-dock gate must still cover the B3 tag',
+  );
+  assert.match(
+    src, /const storyDock = this\._usesStoryDestDock\(m\);[\s\S]{0,320}if \(storyDock\) return false;/,
+    'authored throw_berth must refuse on a story beat, not fall through to the wide berth',
+  );
+
+  // 3. So a sheet may not sell the PHYSICAL_BERTH_WU berth as the gate for a method the
+  //    live route settles at the story dest dock. Which methods those are is read from the
+  //    live source, not listed here, so this stays a law and not a spelling check.
+  for (const beatId of LEFTOVER_SPINE_BEAT_IDS) {
+    const sheet = loadBeatSheet(SHEET_FILES[beatId]);
+    for (const row of sheet.setPiece.solutions) {
+      const method = row.leftoverMechanic;
+      if (!isStoryDockSettled(src, method)) continue;
+      assert.match(
+        row.how, /_entityAtStoryDestDock/,
+        `${beatId} solution ${method} settles at the story dest dock in live missions.js; its how must cite that gate`,
+      );
+      assert.doesNotMatch(
+        row.how, /not dest-?\s?dock/i,
+        `${beatId} solution ${method} IS dest-dock gated on the live story route`,
+      );
+      assert.doesNotMatch(
+        row.how, new RegExp(`${berthWu}\\s*WU\\s*berth|still uses?\\s*PHYSICAL_BERTH_WU`, 'i'),
+        `${beatId} solution ${method} does not settle from the ${berthWu} WU berth on the story route`,
+      );
+    }
+  }
+
+  // 4. And the sheet's honesty block may not assert it either.
+  const bigger = loadBeatSheet(SHEET_FILES.bigger_boat);
+  assert.notEqual(
+    bigger.honesty.leftoverSlingInStill700Wu, true,
+    `bigger_boat asserts sling_in still uses the ${berthWu} WU berth. The live story B3 route gates`
+    + ' every sling site on _entityAtStoryDestDock (d9bef7f94, the parent of the sheets commit),'
+    + ' and PQ-032.00-REPORT.md — the receipt this sheet cites as liveSettle — records the refusal'
+    + ' at 434 WU and the pay at 90 WU. Fix the sheet, not this assertion.',
+  );
 });
 
 test('47-A opener stays without-loss; leftover corpus and CLI pass; hollow leftover sheet still fails', () => {

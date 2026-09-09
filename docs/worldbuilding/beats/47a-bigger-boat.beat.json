@@ -26,7 +26,7 @@
       {
         "actorId": "slag_core",
         "wants": "Stay on leftover line into leftover Ceres yard. Slack in the field is not arrival.",
-        "because": "Leftover physicalRole slag_core. Scan label SLAG CORE. Leftover story tow_in is dest-dock. Leftover sling_in still uses 700 WU."
+        "because": "Leftover physicalRole slag_core. Scan label SLAG CORE. Leftover story tow_in and leftover story sling_in are dest-dock."
       },
       {
         "actorId": "contact_slate",
@@ -74,7 +74,7 @@
       { "id": "station_ceres", "role": "dest_station", "leftover": true }
     ],
     "headlineVerb": "tow",
-    "twist": "Latch leftover slag_core once and leave it a field away does not pay. Leftover story tow_in is dest-dock (station + cargo + 24 WU). Leftover sling_in still uses leftover PHYSICAL_BERTH_WU 700.",
+    "twist": "Latch leftover slag_core once and leave it a field away does not pay. Leftover story tow_in and leftover story sling_in are dest-dock (station + cargo + 24 WU). Authored leftover sling_in may still use PHYSICAL_BERTH_WU 700; story B3 does not.",
     "solutions": [
       {
         "id": "tow_in",
@@ -86,10 +86,10 @@
         "id": "sling_in",
         "verb": "sling",
         "leftoverMechanic": "sling_in",
-        "how": "Leftover throw or leftover clean release of leftover slag_core into leftover 700 WU berth. Leftover authored / sling_in still use PHYSICAL_BERTH_WU. Not dest-dock."
+        "how": "Leftover throw or leftover clean release of leftover slag_core at leftover dest dock station_ceres. Leftover story settle is _entityAtStoryDestDock. A leftover throw 1,471 WU off the dock does not pay."
       }
     ],
-    "provingFrame": "Seed 3200 leftover headless test/pq-032-00-set-pieces.test.mjs: leftover core at dest dock pays. Leftover core 201 WU from the berth does not. Leftover sling_in still 700 WU. Headed GPU strip is peeled this leaf. Live settle is PQ-032.00, not this sheet."
+    "provingFrame": "Seed 3200 leftover headless test/pq-032-00-set-pieces.test.mjs: leftover core at dest dock pays. Leftover core 201 WU from the berth does not. Leftover story sling_in is dest-dock. Headed GPU strip is peeled this leaf. Live settle is PQ-032.00, not this sheet."
   },
   "barks": [
     {
@@ -129,7 +129,7 @@
     "liveSettleIsPq03200": true,
     "doesNotRecutLiveSettle": true,
     "leftoverStoryTowInIsDestDock": true,
-    "leftoverSlingInStill700Wu": true,
+    "leftoverSlingInStill700Wu": false,
     "chapterSheetIsProse": "docs/worldbuilding/sheets/chapters/B3.md"
   }
 }
