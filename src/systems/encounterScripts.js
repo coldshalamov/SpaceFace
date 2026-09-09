@@ -2517,23 +2517,182 @@ const claimThreat = {
   },
 };
 
+// ── PQ-171.01 encounter-shape repetition meter ──────────────────────────────────────────────────
+// Counts grammar shapes (situation × place × twist × actor), not encounter file ids.
+// Live place is the zone the beat actually landed in so combination depth is visible.
+// Sightings are event-time only (script fire) — no per-tick allocation.
+
+export const ENCOUNTER_SHAPE_BUDGET_PER_HOUR = 4;
+export const ENCOUNTER_REPETITION_HOURS = 10;
+export const ENCOUNTER_REPETITION_SEED = 17101;
+export const ENCOUNTER_REPETITION_SECTOR_ID = 'sector_ceres_belt';
+export const ENCOUNTER_SHAPE_HOUR_SECONDS = 3600;
+export const ENCOUNTER_REPETITION_DAY_SECONDS = 600;
+
+export function encounterGrammarKey(shape, placeOverride = null) {
+  const grammar = shape && shape.shape && typeof shape.shape === 'object' && !Array.isArray(shape.shape)
+    ? shape.shape
+    : shape;
+  if (!grammar || typeof grammar !== 'object') return 'unknown|unknown|unknown|unknown';
+  const situation = typeof grammar.situation === 'string' && grammar.situation ? grammar.situation : 'unknown';
+  const twist = typeof grammar.twist === 'string' && grammar.twist ? grammar.twist : 'unknown';
+  const actor = typeof grammar.actor === 'string' && grammar.actor ? grammar.actor : 'unknown';
+  let place = placeOverride;
+  if (typeof place !== 'string' || !place) {
+    if (typeof grammar.place === 'string' && grammar.place) place = grammar.place;
+    else if (Array.isArray(grammar.place) && grammar.place.length) {
+      place = grammar.place.filter((entry) => typeof entry === 'string' && entry).slice().sort().join('+');
+    } else place = 'unknown';
+  }
+  return `${situation}|${place}|${twist}|${actor}`;
+}
+
+export function encounterGrammarKeyFromLive(live, placeOverride = null) {
+  const encounter = live && live.shape ? live.shape : live;
+  const place = placeOverride
+    || (live && live.plan && live.plan.zoneType)
+    || (live && live.causality && live.causality.topology)
+    || null;
+  return encounterGrammarKey(encounter, place);
+}
+
+export function createEncounterShapeMeter() {
+  return { sightings: [], counts: Object.create(null) };
+}
+
+export function ensureEncounterShapeMeter(state) {
+  if (!state || typeof state !== 'object') return createEncounterShapeMeter();
+  const existing = state.encounterShapeMeter;
+  if (existing && Array.isArray(existing.sightings) && existing.counts && typeof existing.counts === 'object') {
+    return existing;
+  }
+  state.encounterShapeMeter = createEncounterShapeMeter();
+  return state.encounterShapeMeter;
+}
+
+export function recordEncounterShapeSighting(state, liveOrShape, simTime, placeOverride = null) {
+  const t = Number.isFinite(simTime)
+    ? simTime
+    : (state && Number.isFinite(state.simTime) ? state.simTime : 0);
+  const key = liveOrShape && (liveOrShape.shapeId || liveOrShape.plan || liveOrShape.causality)
+    ? encounterGrammarKeyFromLive(liveOrShape, placeOverride)
+    : encounterGrammarKey(liveOrShape, placeOverride);
+  const meter = ensureEncounterShapeMeter(state);
+  meter.sightings.push({ t, key });
+  meter.counts[key] = (meter.counts[key] || 0) + 1;
+  return key;
+}
+
+export function summarizeEncounterShapeMeter(meter, hours = ENCOUNTER_REPETITION_HOURS) {
+  const windowHours = Number.isFinite(hours) && hours > 0 ? hours : ENCOUNTER_REPETITION_HOURS;
+  const sightings = meter && Array.isArray(meter.sightings) ? meter.sightings : [];
+  const totals = new Map();
+  const hourCount = Math.max(1, Math.ceil(windowHours));
+  const buckets = Array.from({ length: hourCount }, () => new Map());
+  for (const row of sightings) {
+    const key = row && typeof row.key === 'string' ? row.key : 'unknown|unknown|unknown|unknown';
+    totals.set(key, (totals.get(key) || 0) + 1);
+    const hour = Math.min(hourCount - 1, Math.max(0, Math.floor((Number(row.t) || 0) / ENCOUNTER_SHAPE_HOUR_SECONDS)));
+    buckets[hour].set(key, (buckets[hour].get(key) || 0) + 1);
+  }
+  const rows = [...totals.entries()].map(([key, total]) => {
+    let peakHour = 0;
+    for (const bucket of buckets) peakHour = Math.max(peakHour, bucket.get(key) || 0);
+    return { key, total, perHour: total / windowHours, peakHour };
+  }).sort((a, b) => b.perHour - a.perHour || a.key.localeCompare(b.key, 'en'));
+  return {
+    hours: windowHours,
+    sightingCount: sightings.length,
+    distinctShapes: rows.length,
+    rows,
+  };
+}
+
+export function evaluateEncounterRepetition(meter, options = {}) {
+  const hours = Number.isFinite(options.hours) && options.hours > 0
+    ? options.hours
+    : ENCOUNTER_REPETITION_HOURS;
+  const budget = Number.isFinite(options.budget) && options.budget > 0
+    ? options.budget
+    : ENCOUNTER_SHAPE_BUDGET_PER_HOUR;
+  const summary = summarizeEncounterShapeMeter(meter, hours);
+  const violations = summary.rows.filter((row) => row.perHour > budget);
+  const errors = [];
+  if (summary.sightingCount < 1) {
+    errors.push('repetition meter recorded no encounter shapes over the sim window');
+  }
+  if (summary.distinctShapes < 2 && summary.sightingCount > 0) {
+    errors.push(`repetition meter saw only ${summary.distinctShapes} distinct grammar shape(s)`);
+  }
+  for (const row of violations) {
+    errors.push(
+      `${row.key} at ${row.perHour.toFixed(2)}/h exceeds budget ${budget}/h (${row.total} over ${hours}h, peak hour ${row.peakHour})`,
+    );
+  }
+  return {
+    ok: errors.length === 0,
+    hours,
+    budget,
+    seed: options.seed,
+    sectorId: options.sectorId,
+    violations,
+    errors,
+    ...summary,
+  };
+}
+
+export function formatEncounterRepetitionReport(result) {
+  const lines = [
+    'check:content:repetition',
+    `  seed ${result.seed ?? ENCOUNTER_REPETITION_SEED}  sector ${result.sectorId ?? ENCOUNTER_REPETITION_SECTOR_ID}  hours ${result.hours}  budget ${result.budget}/h`,
+    `  scheduled ${result.sightingCount}  distinct shapes ${result.distinctShapes}  ${result.ok ? 'PASS' : 'FAIL'}`,
+  ];
+  const top = (result.rows || []).slice(0, 8);
+  for (const row of top) {
+    const mark = row.perHour > result.budget ? 'EXCEED' : 'ok';
+    lines.push(`  ${mark}  ${row.perHour.toFixed(2)}/h  peak ${row.peakHour}  ${row.key}`);
+  }
+  if (!result.ok) {
+    lines.push('  errors:');
+    for (const error of result.errors || []) lines.push(`    - ${error}`);
+  }
+  return lines.join('\n');
+}
+
+function recordShapeOnScriptFire(d, live, state) {
+  const simTime = d && typeof d.now === 'function' ? d.now() : undefined;
+  recordEncounterShapeSighting(state, live, simTime);
+}
+
+function withShapeMeter(script) {
+  if (!script || typeof script.fire !== 'function') return script;
+  const fire = script.fire.bind(script);
+  return Object.freeze({
+    ...script,
+    fire(d, live, state) {
+      recordShapeOnScriptFire(d, live, state);
+      return fire(d, live, state);
+    },
+  });
+}
+
 /** Script registry, keyed by the `script` field on encounter shapes. */
 export const ENCOUNTER_SCRIPTS = Object.freeze({
-  toll,
-  patrolScan,
-  ambush,
-  distress,
-  convoy,
-  traderRun,
-  patrolBeat,
-  salvageSignal,
-  whisper,
-  namedHunter,
-  bountyHunter,
-  claimThreat,
-  uniqueWreckHeldMass,
-  uniqueWreckPingElite,
-  uniqueWreckSilverDraftCleaner,
-  uniqueWreckCassandraHardliners,
-  uniqueWreckNestbreakerAdmirers,
+  toll: withShapeMeter(toll),
+  patrolScan: withShapeMeter(patrolScan),
+  ambush: withShapeMeter(ambush),
+  distress: withShapeMeter(distress),
+  convoy: withShapeMeter(convoy),
+  traderRun: withShapeMeter(traderRun),
+  patrolBeat: withShapeMeter(patrolBeat),
+  salvageSignal: withShapeMeter(salvageSignal),
+  whisper: withShapeMeter(whisper),
+  namedHunter: withShapeMeter(namedHunter),
+  bountyHunter: withShapeMeter(bountyHunter),
+  claimThreat: withShapeMeter(claimThreat),
+  uniqueWreckHeldMass: withShapeMeter(uniqueWreckHeldMass),
+  uniqueWreckPingElite: withShapeMeter(uniqueWreckPingElite),
+  uniqueWreckSilverDraftCleaner: withShapeMeter(uniqueWreckSilverDraftCleaner),
+  uniqueWreckCassandraHardliners: withShapeMeter(uniqueWreckCassandraHardliners),
+  uniqueWreckNestbreakerAdmirers: withShapeMeter(uniqueWreckNestbreakerAdmirers),
 });
