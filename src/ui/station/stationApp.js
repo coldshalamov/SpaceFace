@@ -10,6 +10,7 @@
 //     Departure Check with the actual issues + jump-to-fix, then "Launch anyway".
 //   · Cargo hold manifest  → the Hold vital opens the manifest (qty + what the station pays).
 //   · First-dock handoff   → the opening docked route shows the 3-step guidance as a row of words.
+import { stationOperationToSurface } from '../commandDeckRefitHooks.js';
 import { createCommandDock } from './dock.js';
 import { autoUpdate, computePosition, flip, offset, shift, size } from '@floating-ui/dom';
 import { el, settle, stamp, reducedMotion } from '../kit/index.js';
@@ -612,7 +613,12 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     if (prev && typeof prev.onHide === 'function') { try { prev.onHide(); } catch (_) {} }
     activeId = id;
     app.dataset.operation = id;
-    if (rootEl && rootEl.dataset) rootEl.dataset.operation = id;
+    const view = stationOperationToSurface(id) || id;
+    app.dataset.view = view;
+    if (rootEl && rootEl.dataset) {
+      rootEl.dataset.operation = id;
+      rootEl.dataset.view = view;
+    }
     dock.setActive(id);
     bodyEl.setAttribute('aria-labelledby', 'sx-tab-' + id);
     applyDestinationRegister(id);

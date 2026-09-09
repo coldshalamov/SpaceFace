@@ -14,8 +14,11 @@
   <link rel="stylesheet" href="./styles/asteroid-ops.css" />
   <link rel="stylesheet" href="styles/accessibility.css">
   <!-- The frontend kit (design/frontend/direction/KIT_SPEC.md §1): tokens, temperature and the
-       k- components. Loaded LAST so its rules win over the legacy sheets on migrated screens. -->
+       k- components. Loaded after the legacy sheets so its rules win on migrated screens. -->
   <link rel="stylesheet" href="./styles/kit.css" />
+  <!-- Additive command-deck presentation (PR #113). After the kit so identified
+       surfaces can regain plates and control treatment without replacing handlers. -->
+  <link rel="stylesheet" href="./styles/command-deck-refit.css" />
   <script type="importmap">
   {
     "imports": {
@@ -64,6 +67,7 @@
     import { bootstrapLoadingTerminal } from './src/ui/loadingTerminalArt.js';
     bootstrapLoadingTerminal();
   </script>
+  <script type="module" src="./src/ui/commandDeckRefit.js"></script>
   <script type="module" src="./src/main.js"></script>
 </body>
 </html>

@@ -405,6 +405,7 @@
     "check:ui-a11y": "node scripts/check-ui-a11y.mjs",
     "check:ui-effects": "node scripts/check-ui-effects.mjs",
     "check:command-deck-ui": "node scripts/check-command-deck-ui.mjs",
+    "test:command-deck-refit": "node --test test/command-deck-refit.test.mjs",
     "check:wcag-contrast": "node scripts/check-wcag-contrast.mjs",
     "check:boot-resilience": "node --test test/loading-boot-resilience.test.mjs",
     "check:playable": "node scripts/check-game-playable.mjs",
