@@ -44,6 +44,11 @@
 import {
   MISSION_TYPES, STORY_BEATS, OFFER_MIX, MISSION_TUNING, ONE_LOAD_CARGO_TYPES,
   PHYSICAL_MISSION_TYPES,
+  AUTHORED_SET_PIECE_TYPE,
+  AUTHORED_SET_PIECE_SOURCE,
+  AUTHORED_SET_PIECES,
+  authoredSetPieceById,
+  buildAuthoredSetPieceOffer,
   missionMinRepForRisk,
   STORY_BRANCH_INTROS,
   STORY_BRANCH_INTRO_MIN_REP,
@@ -57,9 +62,11 @@ import {
   TICK_CONDITION_IDS,
   isMissionConditionRow,
   missionConditionById,
+  serializableMissionCondition,
   tallyMissionCondition,
   conditionRemaining,
 } from '../data/missionConditions.js';
+import { AUTHORED_SET_PIECE_ENCOUNTERS } from '../data/encounters/set-piece-authored.js';
 import { attachConditions } from './contractClauses.js';
 import { isFragileCommodity } from './fragileCargo.js';
 // PQ-019C — the authored physical capsule heist. The offer and its tuned scalars are data; the run
@@ -72,6 +79,7 @@ import {
   buildHeistOffer,
 } from '../data/heistMission.js';
 import { PQ019_FACILITIES, projectPq019FacilitySocket } from '../data/heistFacilities.js';
+import { setPieceFacilityWorldPos } from './heistFacilities.js';
 import {
   heistMissionRuntime,
   createHeistRecord,
@@ -165,13 +173,54 @@ const BULK_HAUL_TYPE = 'bulk_haul';
 const BULK_HAUL_MIN_MASS_U = 25;
 const BULK_HAUL_PAY_MULT = 0.8;
 const BULK_HAUL_FEE = 0.06;
-const PHYSICAL_TYPE_SET = new Set(PHYSICAL_MISSION_TYPES);
+const PHYSICAL_TYPE_SET = new Set([...PHYSICAL_MISSION_TYPES, AUTHORED_SET_PIECE_TYPE]);
 const PHYSICAL_ROLE = Object.freeze({
   SLAG_CORE: 'slag_core',
   TOWER: 'demolition_tower',
   POD: 'life_pod',
   ESCORT: 'rescue_escort',
+  CARGO_POD: 'cargo_pod',
+  RAIDER: 'convoy_raider',
+  HULK: 'jam_hulk',
+  CRADLE: 'cradle_lock',
+  ACE: 'ace_pilot',
+  MINE: 'reef_mine',
+  VAULT: 'vault_hatch',
+  JAWS: 'crusher_jaws',
+  BELT: 'crusher_belt',
 });
+
+function authoredDefinitionOf(mission) {
+  return authoredSetPieceById(mission && mission.params && mission.params.authoredSetPieceId);
+}
+
+function authoredMethodFor(definition, on, role) {
+  if (!definition || !definition.methodHooks || !role) return null;
+  for (const [method, hook] of Object.entries(definition.methodHooks)) {
+    if (hook && hook.role === role && Array.isArray(hook.on) && hook.on.includes(on)) return method;
+  }
+  return null;
+}
+
+function stampAuthoredTwist(offer) {
+  if (!offer || offer.source !== AUTHORED_SET_PIECE_SOURCE) return offer;
+  const twistId = offer.params && offer.params.twistClauseId;
+  const row = twistId ? serializableMissionCondition(twistId) : null;
+  if (!row) return offer;
+  const existing = Array.isArray(offer.clauses) ? offer.clauses : [];
+  if (existing.some((clause) => clause && (clause.id === row.id || clause.conditionId === row.id))) {
+    return offer;
+  }
+  const condition = missionConditionById(twistId);
+  const next = { ...offer, clauses: [...existing, row] };
+  if (condition && condition.brief) {
+    const base = String(next.brief || '').trim();
+    const line = base ? `${base} ${condition.brief}` : condition.brief;
+    next.brief = line.length <= CONDITION_BRIEF_MAX ? line
+      : `${line.slice(0, CONDITION_BRIEF_MAX - 3).trimEnd()}...`;
+  }
+  return next;
+}
 const PHYSICAL_BERTH_WU = 700;
 // A tick condition may only re-warn this often. The warning is the grace window made visible, not a
 // nag: crossing the speed ceiling repeatedly in a dogfight must not bury the rest of the alert lane.
@@ -546,6 +595,7 @@ function missionNavReason(m, station, sector) {
     case 'tow_recovery': return `Tow the slag core to ${stationName}, or sling it into the yard`;
     case 'demolition': return `Knock down the marked tower in ${sectorName}`;
     case 'rescue_under_fire': return `Pull the life pods out of ${sectorName}`;
+    case AUTHORED_SET_PIECE_TYPE: return m.title || `Finish the physical job in ${sectorName}`;
     default: return stationName || sectorName;
   }
 }
@@ -965,7 +1015,8 @@ export const missions = {
       const storyChanged = this._syncEmbodiedStoryOffer(info, board, epoch);
       const setPieceChanged = this._syncSetPieceOpeningOffers(info, board, epoch);
       const heistChanged = this._syncHeistOffer(info, board, epoch);
-      if (storyChanged || setPieceChanged || heistChanged) {
+      const authoredChanged = this._syncAuthoredSetPieceOffers(info, board, epoch);
+      if (storyChanged || setPieceChanged || heistChanged || authoredChanged) {
         this.bus.emit('mission:updated', { missionId: null, stationId });
       }
       return board;
@@ -1005,6 +1056,9 @@ export const missions = {
     const retainedHeistOffers = previousSlots.filter((offer) => (
       offer && offer.type === PQ019C_HEIST_TYPE
     )).slice(0, 1);
+    const retainedAuthoredSetPieces = previousSlots.filter((offer) => (
+      offer && offer.source === AUTHORED_SET_PIECE_SOURCE
+    ));
     board = {
       refreshEpoch: epoch,
       slots: [
@@ -1020,12 +1074,14 @@ export const missions = {
         // on a fresh board and on a same-epoch cached board after story advancement. Any retained
         // row placed before the generated block pushes the intro off the head.
         ...retainedHeistOffers,
+        ...retainedAuthoredSetPieces,
       ],
     };
     state.missions.boards[stationId] = board;
     this._syncEmbodiedStoryOffer(info, board, epoch);
     this._syncSetPieceOpeningOffers(info, board, epoch);
     this._syncHeistOffer(info, board, epoch);
+    this._syncAuthoredSetPieceOffers(info, board, epoch);
     this.bus.emit('mission:updated', { missionId: null });
     return board;
   },
@@ -1260,6 +1316,31 @@ export const missions = {
       ));
       if (activeOrPosted || alreadySettledThisEpoch) continue;
       board.slots.unshift(opening);
+      changed = true;
+    }
+    return changed;
+  },
+
+  /** Post each authored physical set piece on its home board. Append, never unshift, so
+   * branch-intro and board-anchor rows keep the head (same reason the heist appends). */
+  _syncAuthoredSetPieceOffers(info, board, epoch = this._epoch()) {
+    if (!info || !board || !Array.isArray(board.slots)) return false;
+    let changed = false;
+    for (const definition of AUTHORED_SET_PIECES) {
+      if (!definition || definition.startStationId !== info.id) continue;
+      const already = (this.state.missions.active || []).some((mission) => (
+        mission && mission.status === 'active'
+        && mission.params && mission.params.authoredSetPieceId === definition.id
+      )) || Object.values(this.state.missions.boards || {}).some((candidateBoard) => (
+        (candidateBoard && candidateBoard.slots || []).some((offer) => (
+          offer && offer.source === AUTHORED_SET_PIECE_SOURCE
+          && offer.params && offer.params.authoredSetPieceId === definition.id
+        ))
+      ));
+      if (already) continue;
+      const offer = stampAuthoredTwist(buildAuthoredSetPieceOffer(definition, epoch));
+      if (!offer) continue;
+      board.slots.push(offer);
       changed = true;
     }
     return changed;
@@ -1841,6 +1922,7 @@ export const missions = {
       case 'tow_recovery': return `Tow the slag core to ${destName}`;
       case 'demolition': return `Knock down the tower near ${destName}`;
       case 'rescue_under_fire': return `Pull the pods out of ${destName}`;
+      case AUTHORED_SET_PIECE_TYPE: return p.title || `Physical set piece at ${destName}`;
       default: return `Contract at ${destName}`;
     }
   },
@@ -1896,6 +1978,9 @@ export const missions = {
         break;
       case 'rescue_under_fire':
         line = `Pull the pods out of the field near ${destName}. Tow one, or open a corridor.`;
+        break;
+      case AUTHORED_SET_PIECE_TYPE:
+        line = p.brief || `Physical job at ${destName}. Two ways through.`;
         break;
       default:
         line = `Work out of ${fromName}. Terms are on the contract.`;
@@ -2263,6 +2348,7 @@ export const missions = {
       case 'tow_recovery':
       case 'demolition':
       case 'rescue_under_fire':
+      case AUTHORED_SET_PIECE_TYPE:
         return 1;
       default: return 1; // boolean-at-dest types
     }
@@ -2564,11 +2650,14 @@ export const missions = {
     if (PHYSICAL_TYPE_SET.has(m.type)) {
       const target = this._firstLivePhysicalTarget(m);
       if (target) {
-        const reason = m.type === 'tow_recovery'
-          ? 'Tow the slag core, or sling it into the yard'
-          : m.type === 'demolition'
-            ? 'Knock the tower down — swing mass, or cut it'
-            : 'Pull a pod out, or open a corridor and reel';
+        const authored = authoredDefinitionOf(m);
+        const reason = authored
+          ? (m.brief || authored.brief)
+          : m.type === 'tow_recovery'
+            ? 'Tow the slag core, or sling it into the yard'
+            : m.type === 'demolition'
+              ? 'Knock the tower down — swing mass, or cut it'
+              : 'Pull a pod out, or open a corridor and reel';
         return { ...base, targetEntityId: target.id, pos: { x: target.pos.x, z: target.pos.z }, reason };
       }
       return base;
@@ -2618,11 +2707,14 @@ export const missions = {
   },
 
   _firstLivePhysicalTarget(m) {
-    const prefer = m && m.type === 'tow_recovery'
-      ? PHYSICAL_ROLE.SLAG_CORE
-      : m && m.type === 'demolition'
-        ? PHYSICAL_ROLE.TOWER
-        : PHYSICAL_ROLE.POD;
+    const authored = authoredDefinitionOf(m);
+    const prefer = authored && authored.primaryRole
+      ? authored.primaryRole
+      : m && m.type === 'tow_recovery'
+        ? PHYSICAL_ROLE.SLAG_CORE
+        : m && m.type === 'demolition'
+          ? PHYSICAL_ROLE.TOWER
+          : PHYSICAL_ROLE.POD;
     let fallback = null;
     for (const id of m.targetEntityIds || []) {
       const e = this.state.entities.get(id);
@@ -3766,6 +3858,95 @@ export const missions = {
     }
   },
 
+  _spawnAuthoredSetPieceTargets(m, nextRng, px, pz) {
+    const helpers = this.helpers;
+    const definition = authoredDefinitionOf(m);
+    const encounter = definition && AUTHORED_SET_PIECE_ENCOUNTERS[definition.id];
+    if (!helpers || !helpers.spawnEntity || !encounter) return;
+    const have = this._countAuthoredRoles(m);
+    const occupied = new Set((m.targetEntityIds || []).map((id) => (
+      missionTargetSlotOf(this.state.entities.get(id), m.id)
+    )).filter((slot) => slot != null));
+    const nextSlot = () => {
+      let slot = 0;
+      while (occupied.has(slot)) slot += 1;
+      occupied.add(slot);
+      return slot;
+    };
+    const facilityPos = definition.facilityRole
+      && this.state.world && this.state.world.currentSectorId === 'sector_tethys_junction'
+      ? setPieceFacilityWorldPos(definition.facilityRole)
+      : null;
+    const sector = SECTOR_BY_ID.get(m.destSectorId);
+    const [lvLo, lvHi] = sector ? (sector.enemyLevel || [2, 4]) : [2, 4];
+    for (const actor of encounter.actors || []) {
+      const want = Math.max(1, actor.count || 1);
+      const haveCount = have[actor.role] || 0;
+      for (let i = haveCount; i < want; i++) {
+        const durableSlot = nextSlot();
+        const rng = nextRng(durableSlot);
+        const ang = rng() * Math.PI * 2;
+        const r = 180 + rng() * 90;
+        const pos = facilityPos && actor.role === definition.primaryRole
+          ? {
+            x: facilityPos.x + Math.cos(ang) * 40,
+            z: facilityPos.z + Math.sin(ang) * 40,
+          }
+          : actor.hostile
+            ? (missionHostileSpawnPos(this.state, { x: px, z: pz }, rng) || {
+              x: px + 400, z: pz + 200,
+            })
+            : { x: px + Math.cos(ang) * r, z: pz + Math.sin(ang) * r };
+        let spec;
+        if (actor.kind === 'ship') {
+          spec = makeEnemySpawnSpec(actor.archetype || 'wasp_swarmer', Math.round((lvLo + lvHi) / 2), pos, {
+            startedTick: this.state.tick,
+          });
+          spec.data = spec.data || {};
+          if (Number.isFinite(actor.hull)) {
+            spec.hull = actor.hull;
+            spec.hullMax = actor.hull;
+          }
+        } else {
+          spec = {
+            type: actor.kind === 'asteroid' ? 'asteroid' : 'wreck',
+            team: 2,
+            pos,
+            vel: { x: 0, z: 0 },
+            rot: rng() * Math.PI * 2,
+            radius: actor.radius || 12,
+            mass: actor.mass || 40,
+            hull: actor.hull || 80,
+            hullMax: actor.hull || 80,
+            collides: true,
+            data: { tetherable: actor.tetherable !== false },
+          };
+        }
+        spec.data = spec.data || {};
+        spec.data.missionTag = m.id;
+        spec.data.physicalRole = actor.role;
+        spec.data.scanLabel = actor.scanLabel || actor.role;
+        if (actor.tetherable) spec.data.tetherable = true;
+        const ent = helpers.spawnEntity(spec);
+        if (!ent) continue;
+        this._stampMissionTargetIdentity(ent, m, durableSlot);
+        m.targetEntityIds.push(ent.id);
+      }
+    }
+  },
+
+  _countAuthoredRoles(m) {
+    const counts = {};
+    for (const id of m && m.targetEntityIds || []) {
+      const e = this.state.entities.get(id);
+      if (!e || e.alive === false) continue;
+      const role = physicalRoleOf(e);
+      if (!role) continue;
+      counts[role] = (counts[role] || 0) + 1;
+    }
+    return counts;
+  },
+
   _countPhysicalRoles(m) {
     const counts = { core: 0, tower: 0, pods: 0, escorts: 0 };
     for (const id of m && m.targetEntityIds || []) {
@@ -3817,7 +3998,60 @@ export const missions = {
     return true;
   },
 
+  _authoredRoleClear(m, role, ignoreId = null) {
+    if (!role) return true;
+    for (const id of m.targetEntityIds || []) {
+      if (id === ignoreId) continue;
+      const e = this.state.entities.get(id);
+      if (e && e.alive !== false && physicalRoleOf(e) === role) return false;
+    }
+    return true;
+  },
+
+  _tryCompleteAuthored(m, index, on, role, entity = null) {
+    if (!m || m.type !== AUTHORED_SET_PIECE_TYPE || m.status !== 'active') return false;
+    const definition = authoredDefinitionOf(m);
+    if (!definition) return false;
+    if (entity && m.targetEntityIds && !m.targetEntityIds.includes(entity.id)) return false;
+
+    const reelClear = authoredMethodFor(definition, 'reel_clear', role);
+    if (on === 'reel' && reelClear) {
+      const hook = definition.methodHooks[reelClear];
+      if (this._authoredRoleClear(m, hook && hook.clearRole)) {
+        return this._completePhysical(m, index, reelClear);
+      }
+      return false;
+    }
+
+    const hostiles = authoredMethodFor(definition, 'hostiles_clear', role);
+    if ((on === 'kill' || on === 'whip') && hostiles) {
+      if (this._authoredRoleClear(m, role, entity && entity.id)) {
+        return this._completePhysical(m, index, hostiles);
+      }
+      return false;
+    }
+
+    if (on === 'throw' || on === 'release_berth') {
+      const berthMethod = authoredMethodFor(definition, 'throw_berth', role)
+        || authoredMethodFor(definition, 'release_berth', role);
+      if (berthMethod && entity && this._entityNearDestBerth(entity, m)) {
+        return this._completePhysical(m, index, berthMethod);
+      }
+    }
+
+    const method = authoredMethodFor(definition, on, role);
+    if (!method) return false;
+    if (on === 'latch_dock' && !this._playerLatchedTo(m, role)) return false;
+    return this._completePhysical(m, index, method);
+  },
+
   _tryPhysicalDockComplete(m, index) {
+    if (m.type === AUTHORED_SET_PIECE_TYPE) {
+      const definition = authoredDefinitionOf(m);
+      const role = definition && definition.primaryRole;
+      if (!role) return false;
+      return this._tryCompleteAuthored(m, index, 'latch_dock', role, this._playerLatchedTo(m, role));
+    }
     if (m.type === 'tow_recovery') {
       const core = this._playerLatchedTo(m, PHYSICAL_ROLE.SLAG_CORE);
       if (core) return this._completePhysical(m, index, 'tow_in');
@@ -3848,6 +4082,10 @@ export const missions = {
       m.params.latchedTargetId = p.targetId;
       this._refreshTrackedMissionNav(m);
       this.bus.emit('mission:updated', { missionId: m.id, latchedRole: role });
+      if (m.type === AUTHORED_SET_PIECE_TYPE) {
+        const index = this.state.missions.active.indexOf(m);
+        if (index >= 0) this._tryCompleteAuthored(m, index, 'latch', role, target);
+      }
     }
   },
 
@@ -3856,7 +4094,12 @@ export const missions = {
     const targetId = p.targetId != null ? p.targetId : p.sourceId;
     for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
       const m = this.state.missions.active[i];
-      if (!m || m.status !== 'active' || m.type !== 'tow_recovery') continue;
+      if (!m || m.status !== 'active') continue;
+      if (m.type === AUTHORED_SET_PIECE_TYPE) {
+        const target = this.state.entities.get(targetId);
+        if (this._tryCompleteAuthored(m, i, 'release_berth', physicalRoleOf(target), target)) continue;
+      }
+      if (m.type !== 'tow_recovery') continue;
       if (!m.targetEntityIds || !m.targetEntityIds.includes(targetId)) continue;
       const core = this.state.entities.get(targetId);
       if (!core || physicalRoleOf(core) !== PHYSICAL_ROLE.SLAG_CORE) continue;
@@ -3872,6 +4115,14 @@ export const missions = {
     for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
       const m = this.state.missions.active[i];
       if (!m || m.status !== 'active') continue;
+      if (m.type === AUTHORED_SET_PIECE_TYPE) {
+        const payload = this.state.entities.get(p.payloadId);
+        const aim = p.aimTargetId != null ? this.state.entities.get(p.aimTargetId) : null;
+        const payloadRole = physicalRoleOf(payload);
+        const aimRole = physicalRoleOf(aim);
+        if (this._tryCompleteAuthored(m, i, 'throw', payloadRole, payload)) continue;
+        if (aim && this._tryCompleteAuthored(m, i, 'throw', aimRole, aim)) continue;
+      }
       if (m.type === 'tow_recovery') {
         if (!m.targetEntityIds || !m.targetEntityIds.includes(p.payloadId)) continue;
         const core = this.state.entities.get(p.payloadId);
@@ -3897,7 +4148,12 @@ export const missions = {
     if (rating && rating !== 'solid' && rating !== 'crushing') return;
     for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
       const m = this.state.missions.active[i];
-      if (!m || m.status !== 'active' || m.type !== 'demolition') continue;
+      if (!m || m.status !== 'active') continue;
+      if (m.type === AUTHORED_SET_PIECE_TYPE) {
+        const victim = this.state.entities.get(p.victimId);
+        if (this._tryCompleteAuthored(m, i, 'whip', physicalRoleOf(victim), victim)) continue;
+      }
+      if (m.type !== 'demolition') continue;
       if (!m.targetEntityIds || !m.targetEntityIds.includes(p.victimId)) continue;
       const tower = this.state.entities.get(p.victimId);
       if (!tower || physicalRoleOf(tower) !== PHYSICAL_ROLE.TOWER) continue;
@@ -3910,7 +4166,12 @@ export const missions = {
     if (p.actorId != null && p.actorId !== this.state.playerId) return;
     for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
       const m = this.state.missions.active[i];
-      if (!m || m.status !== 'active' || m.type !== 'rescue_under_fire') continue;
+      if (!m || m.status !== 'active') continue;
+      if (m.type === AUTHORED_SET_PIECE_TYPE) {
+        const target = this.state.entities.get(p.targetId);
+        if (this._tryCompleteAuthored(m, i, 'reel', physicalRoleOf(target), target)) continue;
+      }
+      if (m.type !== 'rescue_under_fire') continue;
       if (!m.targetEntityIds || !m.targetEntityIds.includes(p.targetId)) continue;
       const pod = this.state.entities.get(p.targetId);
       if (!pod || physicalRoleOf(pod) !== PHYSICAL_ROLE.POD) continue;
@@ -3936,6 +4197,10 @@ export const missions = {
       if (!m.targetEntityIds || !m.targetEntityIds.includes(p.id)) continue;
       const victim = this.state.entities.get(p.id);
       const role = physicalRoleOf(victim) || p.physicalRole || null;
+      if (m.type === AUTHORED_SET_PIECE_TYPE) {
+        this._tryCompleteAuthored(m, i, 'kill', role, victim);
+        continue;
+      }
       if (m.type === 'demolition' && byPlayer) {
         this._completePhysical(m, i, 'cut_down');
         continue;
@@ -3958,15 +4223,18 @@ export const missions = {
       if (!m.targetEntityIds || !m.targetEntityIds.includes(p.id)) continue;
       const victim = this.state.entities.get(p.id);
       const role = physicalRoleOf(victim);
-      if (m.type === 'tow_recovery' && role === PHYSICAL_ROLE.SLAG_CORE) {
+      if ((m.type === 'tow_recovery' || (m.type === AUTHORED_SET_PIECE_TYPE && role === PHYSICAL_ROLE.SLAG_CORE))
+        && role === PHYSICAL_ROLE.SLAG_CORE) {
         this._failMission(m, i, 'core_lost');
         continue;
       }
-      if (m.type === 'rescue_under_fire' && role === PHYSICAL_ROLE.POD) {
+      if ((m.type === 'rescue_under_fire' || m.type === AUTHORED_SET_PIECE_TYPE) && role === PHYSICAL_ROLE.POD) {
         m.params = m.params || {};
         m.params.podsLost = (m.params.podsLost || 0) + 1;
         m.targetEntityIds = m.targetEntityIds.filter((id) => id !== p.id);
-        const remaining = this._countPhysicalRoles(m).pods;
+        const remaining = m.type === AUTHORED_SET_PIECE_TYPE
+          ? (this._countAuthoredRoles(m).life_pod || 0)
+          : this._countPhysicalRoles(m).pods;
         if (remaining <= 0) this._failMission(m, i, 'pods_lost');
       }
     }
@@ -4009,12 +4277,15 @@ export const missions = {
         continue;
       }
 
-      if (t === 'tow_recovery' || t === 'rescue_under_fire') {
+      if (t === 'tow_recovery' || t === 'rescue_under_fire' || t === AUTHORED_SET_PIECE_TYPE) {
         if (this._tryPhysicalDockComplete(m, i)) continue;
+        const authored = authoredDefinitionOf(m);
         this.bus.emit('toast', {
-          text: t === 'tow_recovery'
-            ? 'Yard: latch the slag core and tow it in, or sling it into the berth'
-            : 'Dock: a life pod has to be on the line',
+          text: authored
+            ? (authored.brief || 'Finish the physical job — two ways through')
+            : t === 'tow_recovery'
+              ? 'Yard: latch the slag core and tow it in, or sling it into the berth'
+              : 'Dock: a life pod has to be on the line',
           kind: 'warn',
           ttl: 3,
         });
@@ -4150,6 +4421,8 @@ export const missions = {
         return p.completionMethod === 'corridor_pull'
           ? 'Corridor opened. Pods reeled out of the field near ' + dest + '.'
           : 'Pod towed out of the field and signed in at ' + dest + '.';
+      case AUTHORED_SET_PIECE_TYPE:
+        return (m.title || 'Set piece') + ' closed by ' + (p.completionMethod || 'physics') + ' near ' + dest + '.';
       default:
         return 'Contract closed. The board released payment and filed the work as routine.';
     }
@@ -5016,6 +5289,8 @@ export const missions = {
       } else if (budget && typeof budget.releaseSome === 'function') {
         budget.releaseSome(requester, 1);
       }
+    } else if (m.type === AUTHORED_SET_PIECE_TYPE) {
+      this._spawnAuthoredSetPieceTargets(m, nextRng, px, pz);
     } else if (PHYSICAL_TYPE_SET.has(m.type)) {
       this._spawnPhysicalTargetsFor(m, nextRng, px, pz);
     }

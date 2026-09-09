@@ -1,5 +1,6 @@
 // src/data/missions.js – mission system canonical data.
-// Exports: MISSION_TYPES (14), SET_PIECE_MISSIONS (5), STORY_BEATS (8), OFFER_MIX, MISSION_TUNING.
+// Exports: MISSION_TYPES (15), SET_PIECE_MISSIONS (5), AUTHORED_SET_PIECES (10),
+// STORY_BEATS (8), OFFER_MIX, MISSION_TUNING.
 // Pure data, no imports.
 
 export const MISSION_TUNING = {
@@ -15,6 +16,7 @@ export const MISSION_TUNING = {
     salvage_retrieval: 160, escort: 180, patrol_clear: 220, smuggling_run: 250,
     passenger_transport: 160, recon_scan: 140,
     tow_recovery: 170, demolition: 200, rescue_under_fire: 210,
+    authored_set_piece: 220,
   },
   RISK_MULT: [1.0, 1.3, 1.7, 2.2, 3.0],
   BASE_REP: {
@@ -22,6 +24,7 @@ export const MISSION_TUNING = {
     salvage_retrieval: 3, escort: 4, patrol_clear: 5, smuggling_run: 4,
     passenger_transport: 2, recon_scan: 4,
     tow_recovery: 3, demolition: 4, rescue_under_fire: 5,
+    authored_set_piece: 5,
   },
   distDivisor: 2000,
   valueDivisor: 8000,
@@ -239,6 +242,18 @@ export const MISSION_TYPES = [
     timeFormula: 'round((distance/140 + 70) * slack)', taskTime: 70,
     failureCondition: 'timer OR all life pods destroyed',
     constraints: { physicalVerb: 'pull', fValueIsTargetStrength: true },
+  },
+  {
+    // PQ-152.01 — ten authored physical set pieces. AUTHORED-ONLY, never procedurally rolled.
+    // Weight is structural zero the same way heist is: OFFER_MIX positional rows stay 10 long,
+    // named physical keys stay on those rows, and `_pickType` reads `weights[last] || 0`.
+    // `missions._syncAuthoredSetPieceOffers` is the only poster. heist_intercept stays last.
+    type: 'authored_set_piece', riskTierRange: [1, 3], chainable: false, proceduralWeight: 0,
+    completionEvent: 'physical method receipt (two reachable solutions per piece)',
+    rewardFormula: 'authored flat payout (AUTHORED_SET_PIECES.rewardCr)',
+    timeFormula: 'round((distance/140 + 60) * slack)', taskTime: 60,
+    failureCondition: 'timer OR the named physical target is lost',
+    constraints: { authoredOnly: true, physicalVerb: 'authored' },
   },
   {
     // PQ-019C — the authored physical capsule heist. AUTHORED-ONLY, never procedurally rolled.
@@ -1034,6 +1049,342 @@ export const PHYSICAL_MISSION_TYPES = Object.freeze([
   'demolition',
   'rescue_under_fire',
 ]);
+
+export const AUTHORED_SET_PIECE_TYPE = 'authored_set_piece';
+export const AUTHORED_SET_PIECE_SOURCE = 'authoredSetPiece';
+export const AUTHORED_SET_PIECE_HEADLINE = /^(Knock|Pull|Tow|Catch|Jam|Slip|Throw|Bowl|Yank|Feed)\b/;
+
+const AUTHORED_SET_PIECE_ROWS = [
+  {
+    id: 'wrecking_ball',
+    title: 'Knock the dead tower',
+    brief: 'Swing mass through the tower, or cut it down.',
+    physicalVerb: 'knock_down',
+    startStationId: 'station_forge',
+    destStationId: 'station_forge',
+    destSectorId: 'sector_vesta_forge',
+    factionId: 'faction_dmc',
+    riskTier: 2,
+    rewardCr: 2100,
+    collateralCr: 280,
+    durationS: 1800,
+    distance: 800,
+    twistClauseId: 'mass_on_target',
+    encounterId: 'set_piece_wrecking_ball',
+    methods: ['wrecking_ball', 'cut_down'],
+    primaryRole: 'demolition_tower',
+    methodHooks: {
+      wrecking_ball: { on: ['whip', 'throw'], role: 'demolition_tower' },
+      cut_down: { on: ['kill'], role: 'demolition_tower' },
+    },
+  },
+  {
+    id: 'pod_rescue',
+    title: 'Pull the pods off the hauler',
+    brief: 'Tow a pod home, or open a corridor and reel from stand-off.',
+    physicalVerb: 'pull',
+    startStationId: 'station_beltout',
+    destStationId: 'station_beltout',
+    destSectorId: 'sector_ceres_belt',
+    factionId: 'faction_dmc',
+    riskTier: 2,
+    rewardCr: 1980,
+    collateralCr: 260,
+    durationS: 1800,
+    distance: 700,
+    twistClauseId: 'clean_release',
+    encounterId: 'set_piece_pod_rescue',
+    methods: ['stage_tow', 'corridor_pull'],
+    primaryRole: 'life_pod',
+    methodHooks: {
+      stage_tow: { on: ['latch_dock'], role: 'life_pod' },
+      corridor_pull: { on: ['reel_clear'], role: 'life_pod', clearRole: 'rescue_escort' },
+    },
+  },
+  {
+    id: 'long_tow',
+    title: 'Tow the slag core',
+    brief: 'Keep the core on the line into the yard, or sling it in.',
+    physicalVerb: 'tow',
+    startStationId: 'station_beltout',
+    destStationId: 'station_ceres',
+    destSectorId: 'sector_ceres_belt',
+    factionId: 'faction_dmc',
+    riskTier: 1,
+    rewardCr: 1720,
+    collateralCr: 220,
+    durationS: 1800,
+    distance: 900,
+    twistClauseId: 'no_slack',
+    encounterId: 'set_piece_long_tow',
+    methods: ['tow_in', 'sling_in'],
+    primaryRole: 'slag_core',
+    methodHooks: {
+      tow_in: { on: ['latch_dock'], role: 'slag_core' },
+      sling_in: { on: ['throw_berth', 'release_berth'], role: 'slag_core' },
+    },
+  },
+  {
+    id: 'convoy_defence',
+    title: 'Catch the stolen cargo',
+    brief: 'Recatch the stripped pod, or drive the raiders off the lane.',
+    physicalVerb: 'catch',
+    startStationId: 'station_tethys',
+    destStationId: 'station_tethys',
+    destSectorId: 'sector_tethys_junction',
+    factionId: 'faction_mts',
+    riskTier: 2,
+    rewardCr: 2240,
+    collateralCr: 320,
+    durationS: 1800,
+    distance: 1100,
+    twistClauseId: 'mass_on_target',
+    encounterId: 'set_piece_convoy_defence',
+    methods: ['recatch_pods', 'drive_off'],
+    primaryRole: 'cargo_pod',
+    methodHooks: {
+      recatch_pods: { on: ['latch_dock'], role: 'cargo_pod' },
+      drive_off: { on: ['hostiles_clear'], role: 'convoy_raider' },
+    },
+  },
+  {
+    id: 'station_door_jam',
+    title: 'Jam the docking ring',
+    brief: 'Park the hulk on the approach, or swing it through the wedge.',
+    physicalVerb: 'jam',
+    startStationId: 'station_tethys',
+    destStationId: 'station_tethys',
+    destSectorId: 'sector_tethys_junction',
+    factionId: 'faction_scn',
+    riskTier: 2,
+    rewardCr: 2060,
+    collateralCr: 280,
+    durationS: 1800,
+    distance: 900,
+    twistClauseId: 'throw_it',
+    encounterId: 'set_piece_station_door_jam',
+    facilityRole: 'jam_hulk',
+    methods: ['park_the_hulk', 'swing_the_wedge'],
+    primaryRole: 'jam_hulk',
+    methodHooks: {
+      park_the_hulk: { on: ['throw_berth', 'latch_dock'], role: 'jam_hulk' },
+      swing_the_wedge: { on: ['whip'], role: 'jam_hulk' },
+    },
+  },
+  {
+    id: 'impound_break',
+    title: 'Slip the locked hull',
+    brief: 'Reel the cradle quiet, or put mass through the lock.',
+    physicalVerb: 'slip',
+    startStationId: 'station_smuggler',
+    destStationId: 'station_tethys',
+    destSectorId: 'sector_tethys_junction',
+    factionId: 'faction_quiet',
+    riskTier: 2,
+    rewardCr: 2480,
+    collateralCr: 360,
+    durationS: 1800,
+    distance: 1800,
+    twistClauseId: 'quiet_approach',
+    encounterId: 'set_piece_impound_break',
+    facilityRole: 'cradle_lock',
+    methods: ['slip_the_gap', 'breach_the_lock'],
+    primaryRole: 'cradle_lock',
+    methodHooks: {
+      slip_the_gap: { on: ['reel'], role: 'cradle_lock' },
+      breach_the_lock: { on: ['whip', 'throw'], role: 'cradle_lock' },
+    },
+  },
+  {
+    id: 'ace_duel',
+    title: 'Throw the ace off the lane',
+    brief: 'Put mass on the ace, or outgun the ace. No immunity.',
+    physicalVerb: 'throw',
+    startStationId: 'station_coalition',
+    destStationId: 'station_coalition',
+    destSectorId: 'sector_helios_prime',
+    factionId: 'faction_scn',
+    riskTier: 2,
+    rewardCr: 2360,
+    collateralCr: 340,
+    durationS: 1600,
+    distance: 700,
+    twistClauseId: 'throw_it',
+    encounterId: 'set_piece_ace_duel',
+    methods: ['throw_the_ace', 'outgun_the_ace'],
+    primaryRole: 'ace_pilot',
+    methodHooks: {
+      throw_the_ace: { on: ['whip', 'throw'], role: 'ace_pilot' },
+      outgun_the_ace: { on: ['kill'], role: 'ace_pilot' },
+    },
+  },
+  {
+    id: 'reef_clearance',
+    title: 'Bowl the mine reef',
+    brief: 'Bowl mass through the mines, or reel the line open.',
+    physicalVerb: 'bowl',
+    startStationId: 'station_veil',
+    destStationId: 'station_veil',
+    destSectorId: 'sector_veil_nebula',
+    factionId: 'faction_free',
+    riskTier: 2,
+    rewardCr: 2180,
+    collateralCr: 300,
+    durationS: 1800,
+    distance: 800,
+    twistClauseId: 'throw_it',
+    encounterId: 'set_piece_reef_clearance',
+    methods: ['bowl_the_chain', 'reel_the_line'],
+    primaryRole: 'reef_mine',
+    methodHooks: {
+      bowl_the_chain: { on: ['throw'], role: 'reef_mine' },
+      reel_the_line: { on: ['reel'], role: 'reef_mine' },
+    },
+  },
+  {
+    id: 'loud_heist',
+    title: 'Yank the vault hatch',
+    brief: 'Yank the hatch off its pins, or smash it with thrown mass.',
+    physicalVerb: 'yank',
+    startStationId: 'station_smuggler',
+    destStationId: 'station_tethys',
+    destSectorId: 'sector_tethys_junction',
+    factionId: 'faction_quiet',
+    riskTier: 2,
+    rewardCr: 2680,
+    collateralCr: 400,
+    durationS: 1800,
+    distance: 1800,
+    twistClauseId: 'weapons_cold',
+    encounterId: 'set_piece_loud_heist',
+    facilityRole: 'vault_hatch',
+    methods: ['yank_the_hatch', 'smash_the_door'],
+    primaryRole: 'vault_hatch',
+    methodHooks: {
+      yank_the_hatch: { on: ['reel', 'latch'], role: 'vault_hatch' },
+      smash_the_door: { on: ['whip', 'throw'], role: 'vault_hatch' },
+    },
+  },
+  {
+    id: 'ore_crusher',
+    title: 'Feed the crusher jaws',
+    brief: 'Throw the charge into the jaws, or cut the feed belt.',
+    physicalVerb: 'feed',
+    startStationId: 'station_forge',
+    destStationId: 'station_forge',
+    destSectorId: 'sector_vesta_forge',
+    factionId: 'faction_dmc',
+    riskTier: 1,
+    rewardCr: 1880,
+    collateralCr: 240,
+    durationS: 1600,
+    distance: 700,
+    twistClauseId: 'mass_on_target',
+    encounterId: 'set_piece_ore_crusher',
+    methods: ['feed_the_jaws', 'cut_the_belt'],
+    primaryRole: 'crusher_jaws',
+    methodHooks: {
+      feed_the_jaws: { on: ['throw'], role: 'crusher_jaws' },
+      cut_the_belt: { on: ['whip', 'kill'], role: 'crusher_belt' },
+    },
+  },
+];
+
+export const AUTHORED_SET_PIECES = AUTHORED_SET_PIECE_ROWS.map((row) => Object.freeze({
+  ...row,
+  methods: Object.freeze([...row.methods]),
+  methodHooks: Object.freeze(Object.fromEntries(
+    Object.entries(row.methodHooks).map(([method, hook]) => [method, Object.freeze({
+      ...hook,
+      on: Object.freeze([...hook.on]),
+    })]),
+  )),
+}));
+
+const AUTHORED_SET_PIECE_BY_ID = new Map(AUTHORED_SET_PIECES.map((row) => [row.id, row]));
+
+export function authoredSetPieceById(id) {
+  return AUTHORED_SET_PIECE_BY_ID.get(id) || null;
+}
+
+export function buildAuthoredSetPieceOffer(definition, epoch = 0) {
+  const def = typeof definition === 'string' ? authoredSetPieceById(definition) : definition;
+  if (!def) return null;
+  const fingerprint = `asp:${def.id}:${Math.max(0, Math.trunc(Number(epoch) || 0))}`;
+  return {
+    id: `offer_${fingerprint.replace(/[^a-zA-Z0-9_-]+/g, '_')}`,
+    type: AUTHORED_SET_PIECE_TYPE,
+    source: AUTHORED_SET_PIECE_SOURCE,
+    stationId: def.startStationId,
+    factionId: def.factionId,
+    reward_cr: def.rewardCr,
+    collateral_cr: def.collateralCr,
+    riskTier: def.riskTier,
+    destStationId: def.destStationId,
+    destSectorId: def.destSectorId,
+    distance: def.distance,
+    duration_s: def.durationS,
+    title: def.title,
+    brief: def.brief,
+    summary: def.brief,
+    stageId: def.id,
+    params: {
+      authoredSetPieceId: def.id,
+      physicalVerb: def.physicalVerb,
+      completionMethods: [...def.methods],
+      twistClauseId: def.twistClauseId,
+      encounterId: def.encounterId,
+      primaryRole: def.primaryRole,
+      facilityRole: def.facilityRole || null,
+      fValue: 1,
+      taskTime: 60,
+    },
+    expiresAtEpoch: null,
+    storyTag: null,
+    epochPosted: Math.max(0, Math.trunc(Number(epoch) || 0)),
+    cause: {
+      tag: 'pq152-authored-set-piece',
+      archetypeId: def.id,
+      encounterId: def.encounterId,
+      fingerprint,
+    },
+  };
+}
+
+export function validateAuthoredSetPieceCatalog(catalog = AUTHORED_SET_PIECES) {
+  const errors = [];
+  const rows = Array.isArray(catalog) ? catalog : [];
+  const ids = new Set();
+  if (rows.length !== 10) errors.push(`Expected 10 authored set pieces; found ${rows.length}.`);
+  for (const row of rows) {
+    const root = row && row.id || '<missing>';
+    if (!row || typeof row !== 'object') {
+      errors.push('Every authored set piece must be an object.');
+      continue;
+    }
+    if (!row.id || ids.has(row.id)) errors.push(`${root}: unique id required.`);
+    ids.add(row.id);
+    if (!AUTHORED_SET_PIECE_HEADLINE.test(row.title || '')) {
+      errors.push(`${root}: headline verb must be physical (${row.title}).`);
+    }
+    if (!Array.isArray(row.methods) || row.methods.length !== 2) {
+      errors.push(`${root}: exactly two solutions required.`);
+    }
+    if (!row.methodHooks || row.methods.some((method) => !row.methodHooks[method])) {
+      errors.push(`${root}: both methods need reachable hooks.`);
+    }
+    if (!row.startStationId || !String(row.startStationId).startsWith('station_')) {
+      errors.push(`${root}: canonical startStationId required.`);
+    }
+    if (row.startStationId === 'station_helios') {
+      errors.push(`${root}: do not post on Helios; 47-A owns that board.`);
+    }
+    if (!row.twistClauseId) errors.push(`${root}: twist clause required.`);
+    if (!row.encounterId) errors.push(`${root}: encounter id required.`);
+    if (!row.primaryRole) errors.push(`${root}: primary physical role required.`);
+  }
+  return { ok: errors.length === 0, errors, count: rows.length };
+}
 
 export const OFFER_MIX = {
   mining:       withPhysicalMix([3, 2, 2, 4, 2, 1, 1, 0, 1, 1], 3, 2, 1),

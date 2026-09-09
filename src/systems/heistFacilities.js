@@ -801,6 +801,28 @@ export const heistFacilities = {
 /** Only the two RECEIVER facilities can take custody. The launcher is not a destination. */
 export const RECEIVER_FACILITY_IDS = new Set(['lawful_catcher', 'fence_receiver']);
 
+// PQ-152.01 reuses the three embodied Tethys facilities as places: the launcher approach
+// for the door jam, the lawful catcher as the impound cradle, the fence as the loud vault.
+export const SET_PIECE_FACILITY_BY_ROLE = Object.freeze({
+  jam_hulk: 'heist_launcher',
+  cradle_lock: 'lawful_catcher',
+  vault_hatch: 'fence_receiver',
+});
+
+export function setPieceFacilityWorldPos(role) {
+  const facilityId = SET_PIECE_FACILITY_BY_ROLE[role];
+  const facility = facilityId ? PQ019_FACILITIES[facilityId] : null;
+  if (!facility) return null;
+  try {
+    return sectorLocalToGlobalForSector(
+      projectPq019FacilitySocket(facility),
+      PQ019_HEIST_SECTOR_ID,
+    );
+  } catch {
+    return sectorLocalToGlobalForSector(facility.localPos, PQ019_HEIST_SECTOR_ID);
+  }
+}
+
 function receiverDenial(reason, receiptId) {
   return { prepared: false, reason, receiptId: receiptId || null, handoff: null };
 }
