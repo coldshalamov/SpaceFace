@@ -374,6 +374,20 @@ html[data-k-temp='crucible'] { --k-signal: var(--of-accent); }
 #hud .sf-commtape { border-bottom: 1px solid #6a7a5a; background: #14231ade; padding: 6px 10px; }
 #hud .sf-nav-readout { padding: 8px 12px; }
 #hud .sf-threat-halo { opacity: .7; }
+#hud .sf-threat-halo__slot--telegraph { opacity: 1; }
+#hud .sf-threat-halo__slot--telegraph .sf-threat-halo__arc {
+  border-color: var(--of-accent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--of-accent) 65%, transparent);
+}
+#hud .sf-threat-halo__slot--telegraph[data-telegraph-kind="weapon_charge"] .sf-threat-halo__arc {
+  border-color: var(--of-accent);
+}
+#hud .sf-threat-halo__slot--telegraph[data-telegraph-kind="attach_spool"] .sf-threat-halo__arc {
+  border-color: var(--of-good);
+}
+#hud .sf-threat-halo__slot--telegraph[data-telegraph-kind="wake_mines"] .sf-threat-halo__arc {
+  border-color: var(--of-danger);
+}
 #hud :is(.sf-death,.sf-warning) { background: #311c19ed; border-left: 3px solid var(--of-danger); color: #ffd5be; }
 #hud .sf-wpn-heat__fill { background: var(--of-accent); }
 #hud :is(button,.sf-link) { font-family: var(--of-text); }

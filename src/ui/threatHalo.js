@@ -42,6 +42,104 @@ export function getThreatHaloSilhouetteToken(entity) {
   return rule ? rule.silhouetteToken : 'token_silhouette_standard';
 }
 
+/** Leftover doctrine / mine / snare kinds the halo may paint. One cue, then it expires. */
+export const LEFTOVER_TELEGRAPH_KINDS = Object.freeze([
+  'engine_flare',
+  'weapon_charge',
+  'attach_spool',
+  'wake_mines',
+]);
+
+export const TELEGRAPH_CUE_TICKS = 30;
+export const TELEGRAPH_PAIR_MIN_TICKS = 30;
+export const TELEGRAPH_PAIR_MAX_TICKS = 60;
+
+const TELEGRAPH_KIND_SET = new Set(LEFTOVER_TELEGRAPH_KINDS);
+const COMPAT_ATTACK_KINDS = new Set(['attackRun', 'alphaStrike']);
+const SLOT_TELEGRAPH_CLASS = 'sf-threat-halo__slot--telegraph';
+
+export function leftoverTelegraphKind(payload) {
+  if (!payload) return null;
+  const raw = String(payload.kind || payload.cue || '');
+  if (TELEGRAPH_KIND_SET.has(raw)) return raw;
+  if (raw === 'mine') return 'wake_mines';
+  if (raw === 'transverse_snare') return 'attach_spool';
+  if (COMPAT_ATTACK_KINDS.has(raw)) return 'engine_flare';
+  const doctrineId = String(payload.doctrineId || '');
+  if (doctrineId === 'interceptor_flyby' || doctrineId === 'brawler_commit' || doctrineId === 'escort_screen'
+      || doctrineId === 'capital_broadside') {
+    return 'engine_flare';
+  }
+  if (doctrineId === 'tether_control_raider' || doctrineId === 'field_anchor_controller') return 'attach_spool';
+  if (doctrineId === 'ranged_disengager') return 'weapon_charge';
+  return null;
+}
+
+function telegraphIdsOf(payload) {
+  if (!payload) return [];
+  const ids = [];
+  if (payload.entityId != null) ids.push(payload.entityId);
+  if (payload.mineId != null) ids.push(payload.mineId);
+  if (payload.actorId != null) ids.push(payload.actorId);
+  if (payload.sourceId != null) ids.push(payload.sourceId);
+  if (payload.ownerId != null) ids.push(payload.ownerId);
+  return ids;
+}
+
+/**
+ * Pair a leftover player death with a leftover ai:telegraph 30–60 ticks earlier
+ * whose entityId / mineId matches the killer. Same-breath inject does not pair.
+ */
+export function pairLeftoverDeathTelegraph(death, telegraphs, opts = {}) {
+  if (!death || !Array.isArray(telegraphs) || telegraphs.length === 0) return null;
+  const minLead = Number.isFinite(opts.minLeadTicks) ? opts.minLeadTicks : TELEGRAPH_PAIR_MIN_TICKS;
+  const maxLead = Number.isFinite(opts.maxLeadTicks) ? opts.maxLeadTicks : TELEGRAPH_PAIR_MAX_TICKS;
+  const deathTick = Number.isInteger(death.tick) ? death.tick : (death.tick | 0);
+  const killerId = death.killerId != null ? death.killerId
+    : (death.attackerId != null ? death.attackerId : null);
+  const mineId = death.mineId != null ? death.mineId
+    : (death.origin && death.origin.kind === 'mine' ? death.origin.id : null);
+  if (killerId == null && mineId == null) return null;
+
+  let best = null;
+  for (let i = 0; i < telegraphs.length; i++) {
+    const tg = telegraphs[i];
+    if (!tg) continue;
+    const tgTick = Number.isInteger(tg.tick) ? tg.tick : (Number.isFinite(tg.tick) ? (tg.tick | 0) : NaN);
+    if (!Number.isInteger(tgTick)) continue;
+    const lead = deathTick - tgTick;
+    if (lead < minLead || lead > maxLead) continue;
+    const ids = telegraphIdsOf(tg);
+    const matched = (killerId != null && ids.includes(killerId))
+      || (mineId != null && ids.includes(mineId));
+    if (!matched) continue;
+    if (!best || tgTick > best.tick) {
+      best = {
+        kind: leftoverTelegraphKind(tg),
+        tick: tgTick,
+        leadTicks: lead,
+        entityId: tg.entityId != null ? tg.entityId : null,
+        mineId: tg.mineId != null ? tg.mineId : null,
+      };
+    }
+  }
+  return best;
+}
+
+function telegraphDurationTicks(payload) {
+  const raw = Number(payload && payload.durationTicks);
+  if (Number.isFinite(raw) && raw > 0) return Math.max(TELEGRAPH_CUE_TICKS, Math.floor(raw));
+  return TELEGRAPH_CUE_TICKS;
+}
+
+function placedTickFromSimTime(state, placedAt) {
+  const tick = Number.isInteger(state && state.tick) ? state.tick : 0;
+  const now = Number.isFinite(state && state.simTime) ? state.simTime : 0;
+  if (!Number.isFinite(placedAt)) return tick;
+  const ageTicks = Math.round((now - placedAt) * 60);
+  return tick - Math.max(0, ageTicks);
+}
+
 
 const HOSTILE_LIMIT = 4;
 const MISSILE_LIMIT = 3;
@@ -135,9 +233,12 @@ function createSlot(className, innerHtml) {
   return el;
 }
 
-export function createThreatHalo(root) {
-  const noop = { update: () => {}, destroy: () => {} };
+export function createThreatHalo(root, busOrOpts) {
+  const noop = { update: () => {}, destroy: () => {}, noteTelegraph() {} };
   if (!root) return noop;
+  const bus = busOrOpts && typeof busOrOpts.on === 'function'
+    ? busOrOpts
+    : (busOrOpts && busOrOpts.bus && typeof busOrOpts.bus.on === 'function' ? busOrOpts.bus : null);
 
   const layer = document.createElement('div');
   layer.className = 'sf-threat-halo';
@@ -167,7 +268,10 @@ export function createThreatHalo(root) {
   const hostileRole = new Array(HOSTILE_LIMIT);
   const hostileToken = new Array(HOSTILE_LIMIT);
   const hostileFaction = new Array(HOSTILE_LIMIT);
+  const hostileId = new Array(HOSTILE_LIMIT);
   let hostileCount = 0;
+  const telegraphCues = [];
+  let busUnsub = null;
 
 
   const missileX = new Float64Array(MISSILE_LIMIT);
@@ -214,6 +318,99 @@ export function createThreatHalo(root) {
     along: 0,
     halfAlong: 0,
   };
+
+  function expireTelegraphCues(tick) {
+    let write = 0;
+    for (let i = 0; i < telegraphCues.length; i++) {
+      const cue = telegraphCues[i];
+      if (!cue || tick > cue.expiresAtTick) continue;
+      telegraphCues[write++] = cue;
+    }
+    telegraphCues.length = write;
+  }
+
+  function noteTelegraph(payload, tick) {
+    const kind = leftoverTelegraphKind(payload);
+    if (!kind) return null;
+    const entityId = payload.entityId != null ? payload.entityId
+      : (payload.actorId != null ? payload.actorId
+        : (payload.sourceId != null ? payload.sourceId
+          : (payload.ownerId != null ? payload.ownerId : null)));
+    const mineId = payload.mineId != null ? payload.mineId : null;
+    if (entityId == null && mineId == null) return null;
+    const startedTick = Number.isInteger(payload.tick) ? payload.tick
+      : (Number.isInteger(tick) ? tick : 0);
+    const expiresAtTick = startedTick + telegraphDurationTicks(payload);
+    if (Number.isInteger(tick) && tick > expiresAtTick) return null;
+
+    for (let i = 0; i < telegraphCues.length; i++) {
+      const cue = telegraphCues[i];
+      if (!cue) continue;
+      const sameEntity = entityId != null && cue.entityId === entityId;
+      const sameMine = mineId != null && cue.mineId === mineId;
+      if (sameEntity || sameMine) {
+        cue.kind = kind;
+        cue.entityId = entityId;
+        cue.mineId = mineId;
+        cue.startedTick = startedTick;
+        cue.expiresAtTick = expiresAtTick;
+        return cue;
+      }
+    }
+
+    const next = { kind, entityId, mineId, startedTick, expiresAtTick };
+    telegraphCues.push(next);
+    return next;
+  }
+
+  function cueForIds(entityId, mineId) {
+    for (let i = 0; i < telegraphCues.length; i++) {
+      const cue = telegraphCues[i];
+      if (!cue) continue;
+      if (entityId != null && cue.entityId === entityId) return cue;
+      if (mineId != null && cue.mineId === mineId) return cue;
+    }
+    return null;
+  }
+
+  function harvestLeftoverTelegraphs(state, tick) {
+    const list = state && state.entityList;
+    if (!Array.isArray(list)) return;
+    for (let i = 0; i < list.length; i++) {
+      const entity = list[i];
+      if (!entity || entity.alive === false) continue;
+      const data = entity.data || {};
+      if (entity.type === 'mine' || data.kind === 'mine' || data.mine === true) {
+        if (data.triggered) continue;
+        const placedTick = placedTickFromSimTime(state, data.placedAt);
+        noteTelegraph({
+          entityId: data.ownerId != null ? data.ownerId : entity.ownerId,
+          mineId: entity.id,
+          kind: 'wake_mines',
+          durationTicks: TELEGRAPH_CUE_TICKS,
+          tick: placedTick,
+        }, tick);
+        continue;
+      }
+      const pending = data.ai && data.ai._attackTelegraph;
+      if (pending && Number.isFinite(pending.until) && Number.isFinite(state.simTime)
+          && state.simTime < pending.until) {
+        noteTelegraph({
+          entityId: entity.id,
+          kind: pending.kind || 'engine_flare',
+          durationTicks: TELEGRAPH_CUE_TICKS,
+          tick,
+        }, tick);
+      }
+    }
+  }
+
+  if (bus) {
+    busUnsub = bus.on('ai:telegraph', (payload) => {
+      const tick = payload && Number.isInteger(payload.tick) ? payload.tick : 0;
+      noteTelegraph(payload || {}, tick);
+    });
+  }
 
   function refreshLayout(width, height) {
     if (width === viewportW && height === viewportH) return;
@@ -398,13 +595,25 @@ export function createThreatHalo(root) {
     return true;
   }
 
+  function clearSlotTelegraph(slot) {
+    if (!slot) return;
+    slot.removeAttribute('data-telegraph-kind');
+    slot.removeAttribute('data-entity-id');
+    if (slot.className && slot.className.indexOf(SLOT_TELEGRAPH_CLASS) !== -1) {
+      slot.className = slot.className.replace(` ${SLOT_TELEGRAPH_CLASS}`, '').replace(SLOT_TELEGRAPH_CLASS, '');
+    }
+  }
+
   function hideAllSlots() {
-    for (let i = 0; i < HOSTILE_LIMIT; i++) setDisplay(hostileSlots[i], false);
+    for (let i = 0; i < HOSTILE_LIMIT; i++) {
+      clearSlotTelegraph(hostileSlots[i]);
+      setDisplay(hostileSlots[i], false);
+    }
     for (let i = 0; i < MISSILE_LIMIT; i++) setDisplay(missileSlots[i], false);
     setDisplay(layer, false);
   }
 
-  function pushHostileCandidate(x, y, tier, dist, opacity, role = 'unknown', token = 'token_silhouette_standard', faction = null) {
+  function pushHostileCandidate(x, y, tier, dist, opacity, role = 'unknown', token = 'token_silhouette_standard', faction = null, id = null) {
     if (hostileCount < HOSTILE_LIMIT) {
       const i = hostileCount++;
       hostileX[i] = x;
@@ -415,6 +624,7 @@ export function createThreatHalo(root) {
       hostileRole[i] = role;
       hostileToken[i] = token;
       hostileFaction[i] = faction;
+      hostileId[i] = id;
       return;
     }
 
@@ -432,6 +642,7 @@ export function createThreatHalo(root) {
     hostileRole[worst] = role;
     hostileToken[worst] = token;
     hostileFaction[worst] = faction;
+    hostileId[worst] = id;
   }
 
   function pushMissileCandidate(x, y, dist) {
@@ -469,6 +680,7 @@ export function createThreatHalo(root) {
       const tr = hostileRole[i];
       const tk = hostileToken[i];
       const tf = hostileFaction[i];
+      const tid = hostileId[i];
       hostileX[i] = hostileX[best];
       hostileY[i] = hostileY[best];
       hostileTier[i] = hostileTier[best];
@@ -477,6 +689,7 @@ export function createThreatHalo(root) {
       hostileRole[i] = hostileRole[best];
       hostileToken[i] = hostileToken[best];
       hostileFaction[i] = hostileFaction[best];
+      hostileId[i] = hostileId[best];
       hostileX[best] = tx;
       hostileY[best] = ty;
       hostileTier[best] = tt;
@@ -485,6 +698,7 @@ export function createThreatHalo(root) {
       hostileRole[best] = tr;
       hostileToken[best] = tk;
       hostileFaction[best] = tf;
+      hostileId[best] = tid;
     }
   }
 
@@ -531,7 +745,8 @@ export function createThreatHalo(root) {
       projectionWorld.y = 0;
       projectionWorld.z = entity.pos.z;
       const projected = worldToScreen(projectionWorld, projectionScreen);
-      if (!projected || projected.onScreen) continue;
+      const telegraphed = !!cueForIds(entity.id, null);
+      if (!projected || (projected.onScreen && !telegraphed)) continue;
 
       const dist = Math.sqrt(distSq);
       const tier = contactThreatTier(entity, true);
@@ -546,7 +761,7 @@ export function createThreatHalo(root) {
       const role = occRule ? occRule.role : (entity.role || (entity.data && (entity.data.role || entity.data.trafficRole)) || 'unknown');
       const token = occRule ? occRule.silhouetteToken : 'token_silhouette_standard';
       const faction = entity.factionId || (entity.data && entity.data.factionId) || null;
-      pushHostileCandidate(projected.x, projected.y, tier, dist, opacity, role, token, faction);
+      pushHostileCandidate(projected.x, projected.y, tier, dist, opacity, role, token, faction, entity.id);
     }
 
     sortHostileCandidates();
@@ -586,15 +801,30 @@ export function createThreatHalo(root) {
     for (let i = 0; i < HOSTILE_LIMIT; i++) {
       const slot = hostileSlots[i];
       if (i >= hostileCount || !resolvePlacement(hostileX[i], hostileY[i], false)) {
+        clearSlotTelegraph(slot);
         setDisplay(slot, false);
         continue;
       }
       setDisplay(slot, true, 'block');
       setEdge(slot, placement.edge);
       setHudTransform(slot, placement.x, placement.y);
-      setOpacity(slot, hostileOpacity[i].toFixed(2));
       slot.setAttribute('data-role', hostileRole[i] || 'unknown');
       slot.setAttribute('data-silhouette-token', hostileToken[i] || 'token_silhouette_standard');
+      if (hostileId[i] != null) slot.setAttribute('data-entity-id', String(hostileId[i]));
+      else slot.removeAttribute('data-entity-id');
+      const cue = cueForIds(hostileId[i], null);
+      setOpacity(slot, cue ? '1' : hostileOpacity[i].toFixed(2));
+      if (cue) {
+        slot.setAttribute('data-telegraph-kind', cue.kind);
+        if (slot.className.indexOf(SLOT_TELEGRAPH_CLASS) === -1) {
+          slot.className = `${slot.className} ${SLOT_TELEGRAPH_CLASS}`;
+        }
+      } else {
+        slot.removeAttribute('data-telegraph-kind');
+        if (slot.className.indexOf(SLOT_TELEGRAPH_CLASS) !== -1) {
+          slot.className = slot.className.replace(` ${SLOT_TELEGRAPH_CLASS}`, '').replace(SLOT_TELEGRAPH_CLASS, '');
+        }
+      }
       if (hostileFaction[i]) {
         slot.setAttribute('data-faction', hostileFaction[i]);
       } else {
@@ -620,11 +850,16 @@ export function createThreatHalo(root) {
   }
 
   return {
+    noteTelegraph,
     update(player, state, worldToScreen) {
       if (!player || !state || typeof worldToScreen !== 'function' || !player.pos) {
         hideAllSlots();
         return;
       }
+      const tick = Number.isInteger(state.tick) ? state.tick : 0;
+      expireTelegraphCues(tick);
+      harvestLeftoverTelegraphs(state, tick);
+      expireTelegraphCues(tick);
       const width = (typeof window !== 'undefined' && Number.isFinite(window.innerWidth))
         ? window.innerWidth
         : 1280;
@@ -638,6 +873,11 @@ export function createThreatHalo(root) {
       applySlots();
     },
     destroy() {
+      if (typeof busUnsub === 'function') {
+        busUnsub();
+        busUnsub = null;
+      }
+      telegraphCues.length = 0;
       if (layer && layer.parentNode) layer.parentNode.removeChild(layer);
     },
   };

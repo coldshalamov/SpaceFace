@@ -1785,7 +1785,7 @@ export function createHud(ctx, alerts) {
     `</svg>`;
   root.appendChild(leadPip);
   const leadPipArc = leadPip.querySelector('.sf-leadpip__arc');
-  const threatHalo = createThreatHalo(root);
+  const threatHalo = createThreatHalo(root, ctx.bus);
 
   // ---- death / respawn feedback banner ----
   injectDeathStyle();

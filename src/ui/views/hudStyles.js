@@ -401,6 +401,29 @@ export function injectHudCss() {
   .sf-threat-halo__slot--missile[data-edge="right"] .sf-threat-halo__chev { transform:rotate(90deg); }
   .sf-threat-halo__slot--missile[data-edge="bottom"] .sf-threat-halo__chev { transform:rotate(180deg); }
   .sf-threat-halo__slot--missile[data-edge="left"] .sf-threat-halo__chev { transform:rotate(-90deg); }
+  .sf-threat-halo__slot--telegraph .sf-threat-halo__arc {
+    border-color: var(--k-gold, #e6b478);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--k-gold, #e6b478) 70%, transparent);
+  }
+  .sf-threat-halo__slot--telegraph[data-telegraph-kind="weapon_charge"] .sf-threat-halo__arc {
+    border-color: var(--k-signal, #e6b478);
+  }
+  .sf-threat-halo__slot--telegraph[data-telegraph-kind="attach_spool"] .sf-threat-halo__arc {
+    border-color: var(--k-good, #a5d2b0);
+  }
+  .sf-threat-halo__slot--telegraph[data-telegraph-kind="wake_mines"] .sf-threat-halo__arc {
+    border-color: var(--k-red, #ff9a89);
+  }
+  .sf-threat-halo__slot--telegraph {
+    animation: sf-threat-halo-telegraph 0.5s steps(2, end) infinite;
+  }
+  @keyframes sf-threat-halo-telegraph {
+    0%, 100% { filter: brightness(1.15); }
+    50% { filter: brightness(1.55); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .sf-threat-halo__slot--telegraph { animation: none; filter: brightness(1.35); }
+  }
   @media (forced-colors: active) {
     .sf-leadpip__svg { filter:none; }
     .sf-leadpip__full, .sf-leadpip__arc, .sf-leadpip__tick { stroke:CanvasText; }
