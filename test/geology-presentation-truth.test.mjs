@@ -7,6 +7,7 @@ import { core as coreSystem } from '../src/core/coreSystem.js';
 import { mulberry32 } from '../src/core/rng.js';
 import { mining } from '../src/systems/mining.js';
 import { world as worldSystem } from '../src/systems/world.js';
+import { resolveWorldPresentationEntity } from '../src/world/presentationSources.js';
 
 const ROCK_PLACE_IDS = new Set([
   'place_asteroid_seamed',
@@ -92,7 +93,7 @@ test('each material-matched field promotes one real asteroid while unmatched typ
 
   assert.equal(active.fields.length, 6);
   for (const field of active.fields) {
-    const asteroids = field.asteroidIds.map((id) => state.entities.get(id));
+    const asteroids = field.asteroidIds.map((id) => resolveWorldPresentationEntity(state, id));
     const authored = asteroids.filter((entity) => entity.data.authoredGeologySkin === true);
     if (!EXPECTED_AUTHORED_PLACE_BY_TYPE[field.type]) {
       assert.equal(authored.length, 0,
@@ -195,7 +196,7 @@ test('rock-shaped dressing is replaced one-for-one with non-colliding infrastruc
   assert.equal(rng.calls, 19, 'anomaly replacement consumes the legacy RNG cadence');
 
   const dressing = [...belt.dressing, ...fringe.dressing, ...anomaly.dressing]
-    .map((entry) => state.entities.get(entry.id));
+    .map((entry) => resolveWorldPresentationEntity(state, entry.id));
   assert.equal(dressing.length, 14);
   assert.equal(dressing.some((entity) => ROCK_PLACE_IDS.has(entity.data.placeId)), false,
     'no world-dressing FX entity may masquerade as a mineable rock');

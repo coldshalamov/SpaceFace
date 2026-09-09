@@ -50,7 +50,10 @@ export const core = {
       reconcileEntityIndexSource(index, state.entityList);
       const e = makeEntity(spec);
       initializePresentationAdmission(e);
-      const id = allocateEntityId(state);
+      const reserved = Number.isSafeInteger(spec && spec.id) && spec.id > 0 ? spec.id : 0;
+      const id = reserved && !state.entities.has(reserved)
+        ? reserved
+        : allocateEntityId(state);
       e.id = id;
       state.entities.set(id, e);
       state.entityList.push(e);
@@ -109,6 +112,7 @@ export const core = {
       spawnEntity, getEntity, removeEntity, queryRadius, player,
       entityIndex: () => ensureEntityIndex(state),
       markEntityVisualChanged,
+      requestPresentationRebuild,
       mulberry32, hash32, wrapAngle,
     });
     this.helpers = ctx.helpers;

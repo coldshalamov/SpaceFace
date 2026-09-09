@@ -75,6 +75,10 @@ import {
 import { createPresentationPublisher } from './presentationPublisher.js';
 import { createPresentationQueries } from './presentationQueries.js';
 import {
+  collectMeshPresentationEntities,
+  resolveWorldPresentationEntity,
+} from '../world/presentationSources.js';
+import {
   applySnapshotPoseToMesh,
   createSnapshotFence,
   packPresentationWorldToFence,
@@ -125,7 +129,7 @@ import { createLivingHullPresentation } from './livingHullPresentation.js';
 import { createCrucibleGhostPresentation } from './crucibleGhost.js';
 import { createRenderFrameMembrane } from './frameCoordinates.js';
 import { projectileSkipsVisualFactoryMesh } from './weapons/recipes.js';
-import { readShieldContacts, SHIELD_HIT_SLOTS } from './weapons/shieldContacts.js';
+import { hasShieldContact, readShieldContacts, SHIELD_HIT_SLOTS } from './weapons/shieldContacts.js';
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
 import { resolveSectorVisualProfile } from '../data/sectorVisualProfiles.js';
 import { SHIPS } from '../data/ships.js';
@@ -990,8 +994,8 @@ const SHIELD_POOL_FRAG = /* glsl */`
 const SHIELD_PRESENTATION_EPSILON = 0.015;
 
 /** Shields read on impact instead of coating every healthy ship in a permanent translucent sphere. */
-export function shouldPresentShieldBubble(shield, flash) {
-  return Number(shield) > 0 && Number(flash) > SHIELD_PRESENTATION_EPSILON;
+export function shouldPresentShieldBubble(shield, flash, hasContact = false) {
+  return Number(shield) > 0 && (Number(flash) > SHIELD_PRESENTATION_EPSILON || Boolean(hasContact));
 }
 
 export function createShipAuxPool(scene, options = {}) {
@@ -1193,7 +1197,7 @@ function shipAuxCapacityDemand(frameOrEntities, meshes) {
     if (bubble) {
       const uniforms = bubble.material && bubble.material.uniforms;
       const flash = uniforms && uniforms.uFlash ? uniforms.uFlash.value || 0 : 0;
-      if (shouldPresentShieldBubble(entity.shield, flash)) shield++;
+      if (shouldPresentShieldBubble(entity.shield, flash, hasShieldContact(entity.id))) shield++;
     }
     for (const source of getPooledNavLightSources(root)) {
       nav += Math.max(0, Number(source && source.count) || 0);
@@ -1379,7 +1383,7 @@ export function syncShipAuxPools(pool, frameOrEntities, meshes) {
       bubble.visible = false;
       const uniforms = bubble.material && bubble.material.uniforms;
       const flash = uniforms && uniforms.uFlash ? uniforms.uFlash.value || 0 : 0;
-      if (shouldPresentShieldBubble(entity.shield, flash)) {
+      if (shouldPresentShieldBubble(entity.shield, flash, hasShieldContact(entity.id))) {
         if (pool.deferGrowth !== true) {
           ensureShieldAuxCapacity(pool.shield, shieldCount + 1, pool.scene, shieldCount);
         }
@@ -1403,7 +1407,7 @@ export function syncShipAuxPools(pool, frameOrEntities, meshes) {
             pool.shield.dynamicBufferOwner, SHIP_AUX_SHIELD_FLASH,
           )) shieldFlashDirty = true;
           if (writeScalarAttributeIfChanged(
-            baseAttr, shieldIndex, uniforms && uniforms.uBase ? uniforms.uBase.value || 0.22 : 0.22,
+            baseAttr, shieldIndex, uniforms && uniforms.uBase ? uniforms.uBase.value || 0.0 : 0.0,
             pool.shield.dynamicBufferOwner, SHIP_AUX_SHIELD_BASE,
           )) shieldBaseDirty = true;
           const hits = readShieldContacts(entity.id, SHIELD_HIT_SCRATCH) || SHIELD_HIT_SCRATCH;
@@ -5768,7 +5772,7 @@ export const render = {
     if (!this._presentationWorld || !this._meshes) return;
     this._presentationQueries?.reset?.();
     for (const [id, mesh] of this._meshes) {
-      const entity = this.state.entities.get(id);
+      const entity = resolveWorldPresentationEntity(this.state, id);
       if (entity && entity.alive !== false) this._bindPresentationMesh(entity, mesh);
     }
   },
@@ -5780,7 +5784,7 @@ export const render = {
       const slot = publication.spawnedSlots[index];
       if (world.alive[slot] !== 1) continue;
       const entityId = world.entityIds[slot];
-      const entity = this.state.entities.get(entityId);
+      const entity = resolveWorldPresentationEntity(this.state, entityId);
       const mesh = this._meshes.get(entityId);
       if (entity && entity.alive !== false && mesh) this._bindPresentationMesh(entity, mesh);
     }
@@ -5860,7 +5864,7 @@ export const render = {
     // Remove dead ownership and evict distant reduced-sector views. Simulation residency remains
     // untouched; only the render-owned Object3D boundary and its authored residency are released.
     for (const [id, m] of this._meshes) {
-      const e = state.entities.get(id);
+      const e = resolveWorldPresentationEntity(state, id);
       if (!e || e.alive === false || !isEntityRenderRelevant(e, state, renderResidencyRadius(state, 'evict'))) {
         this._unbindPresentationMesh(id, m);
         releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
@@ -5870,8 +5874,10 @@ export const render = {
     }
     // Queue relevant ships first, then relevant world geometry. Distant reduced-sector entities
     // continue to exist in state and are admitted automatically as the player approaches.
+    const presentationList = this._presentationMeshScratch || (this._presentationMeshScratch = []);
+    collectMeshPresentationEntities(state, presentationList);
     enqueueMissingMeshBuilds(
-      state.entityList,
+      presentationList,
       this._meshes,
       this._meshBuildQueuedIds,
       this._meshBuildQueue,
@@ -5882,7 +5888,7 @@ export const render = {
     // Existing fallback boundaries may have crossed the authored prefetch radius since the last
     // reconciliation. Requesting is idempotent; resolved bootstrap assets install synchronously.
     for (const [id, mesh] of this._meshes) {
-      const entity = state.entities.get(id);
+      const entity = resolveWorldPresentationEntity(state, id);
       if (!entity || entity.alive === false) continue;
       this._bindPresentationMesh(entity, mesh);
       if (canRequestAuthoredUpgrade(entity, state, this._authoredSectorPrewarmPendingId)) {
@@ -5919,7 +5925,7 @@ export const render = {
 
     for (const [id, mesh] of this._meshes) {
       stats.meshVisits++;
-      const entity = state.entities.get(id);
+      const entity = resolveWorldPresentationEntity(state, id);
       if (!entity || entity.alive === false
           || !isEntityRenderRelevant(entity, state, renderResidencyRadius(state, 'evict'))) {
         this._unbindPresentationMesh(id, mesh);
@@ -5937,9 +5943,10 @@ export const render = {
       }
     }
 
-    const entities = state.entityList;
-    for (let index = 0; index < entities.length; index++) {
-      const entity = entities[index];
+    const presentationList = this._presentationMeshScratch || (this._presentationMeshScratch = []);
+    collectMeshPresentationEntities(state, presentationList);
+    for (let index = 0; index < presentationList.length; index++) {
+      const entity = presentationList[index];
       stats.entityVisits++;
       if (!entity || this._meshes.has(entity.id)
           || this._sectorBoundaryPreparations?.has(entity.id)
@@ -6006,7 +6013,7 @@ export const render = {
       })) break;
       const id = this._meshBuildQueue[this._meshBuildQueueHead++];
       this._meshBuildQueuedIds.delete(id);
-      const e = this.state.entities.get(id);
+      const e = resolveWorldPresentationEntity(this.state, id);
       if (!e || e.alive === false || e._noMesh || this._meshes.has(id)
           || this._sectorBoundaryPreparations?.has(id)
           || !isEntityRenderRelevant(e, this.state)) continue;
@@ -6434,7 +6441,7 @@ export const render = {
           uniforms.uFlash.value *= Math.pow(0.05, dt);
           flash = uniforms.uFlash.value;
         }
-        const visible = shouldPresentShieldBubble(entity.shield, flash);
+        const visible = shouldPresentShieldBubble(entity.shield, flash, hasShieldContact(entity.id));
         if (shieldBubble.visible !== visible) shieldBubble.visible = visible;
       }
 
@@ -6636,7 +6643,38 @@ export const render = {
     return syncAuthoredInstancePools(this.scene, options);
   },
 
+  _syncWorldPresentationTableMeshes() {
+    const field = this.state && this.state.world && this.state.world.asteroidField;
+    const dressing = this.state && this.state.world && this.state.world.dressing;
+    const originSeq = (this.state.world && this.state.world.frameOriginSeq) | 0;
+    const fieldVersion = field && Number.isFinite(field.version) ? field.version : 0;
+    const fieldCount = field && Array.isArray(field.rocks) ? field.rocks.length : 0;
+    const fieldKey = `${originSeq}:${fieldVersion}:${fieldCount}`;
+    let posedField = 0;
+    const poseRow = (row) => {
+      if (!row || row.alive === false || !row.pos) return false;
+      const mesh = this._meshes && this._meshes.get(row.id);
+      if (!mesh) return false;
+      const local = this._frameMembrane.toLocal(row.pos, _meshLocalXZ);
+      mesh.position.set(local.x, 0, local.z);
+      mesh.rotation.y = -(row.rot || 0);
+      return true;
+    };
+    if (this._worldFieldPoseKey !== fieldKey && field && Array.isArray(field.rocks)) {
+      for (let i = 0; i < field.rocks.length; i++) {
+        if (poseRow(field.rocks[i])) posedField++;
+      }
+      this._worldFieldPoseKey = fieldKey;
+      if (posedField) invalidateAsteroidInstancePool(this._asteroidInstancePool);
+    }
+    if (dressing && Array.isArray(dressing.rows)) {
+      for (let i = 0; i < dressing.rows.length; i++) poseRow(dressing.rows[i]);
+    }
+    return posedField;
+  },
+
   _syncAsteroidInstanceSubmission(shadowCamera) {
+    this._syncWorldPresentationTableMeshes();
     const options = this._asteroidInstanceSyncOptions;
     options.camera = this.cam.obj;
     options.shadowCamera = shadowCamera || null;

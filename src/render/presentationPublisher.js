@@ -4,15 +4,17 @@ import {
   createPresentationJournalRecord,
   PRESENTATION_JOURNAL_KINDS,
 } from '../core/presentationJournal.js';
+import {
+  collectJournalPresentationEntities,
+  resolveWorldPresentationEntity,
+} from '../world/presentationSources.js';
 
 function aliveEntities(state) {
-  return state && Array.isArray(state.entityList) ? state.entityList : [];
+  return collectJournalPresentationEntities(state);
 }
 
 function entityForId(state, entityId) {
-  return state && state.entities && typeof state.entities.get === 'function'
-    ? state.entities.get(entityId) || null
-    : null;
+  return resolveWorldPresentationEntity(state, entityId);
 }
 
 /**

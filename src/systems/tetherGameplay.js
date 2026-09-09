@@ -17,6 +17,7 @@ import { entityLocalPointToWorld } from '../combat/geometry.js';
 import { publishHitstunImpulse, signedHitSide } from '../combat/impulseKernel.js';
 import { createMasslineRuntime } from '../core/constraints/masslineController.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
+import { promoteAsteroidFieldRock, queryAsteroidField } from '../world/asteroidField.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { isHostileToPlayer } from './scanner.js';
 import { combatFlag, massline2Flag } from '../data/featureFlags.js';
@@ -113,6 +114,7 @@ export const tetherGameplay = {
     this.registry = ctx.registry;
     this._targetScratch = [];
     this._nonCollidingTargetScratch = [];
+    this._fieldTargetScratch = [];
     this._active = null;
     this._lastStrainT = -Infinity;
     this._noRelatchUntil = -Infinity;
@@ -455,11 +457,14 @@ export const tetherGameplay = {
     const latch = nearestOnly
       ? this._acquireCommandTarget(player, def, state)
       : this._consumeAcquisitionReceipt(player, def, state, now);
-    const target = latch && latch.entity;
+    let target = latch && latch.entity;
     if (!target) {
       const denial = this._lastLatchDenial || { reason: 'no-target' };
       this.bus.emit('tether:latchDenied', denial);
       return;
+    }
+    if (target.fieldResident) {
+      target = promoteAsteroidFieldRock(state, target.id, this.helpers, 'tether') || target;
     }
 
     // The line always leaves the player's center of mass. A physical constraint attached to a
@@ -578,10 +583,13 @@ export const tetherGameplay = {
     const latch = nearestOnly
       ? this._acquireCommandTarget(player, def, state)
       : this._consumeAcquisitionReceipt(player, def, state, now);
-    const target = latch && latch.entity;
+    let target = latch && latch.entity;
     if (!target) {
       this._denyTwinBridle(state, (this._lastLatchDenial && this._lastLatchDenial.reason) || 'no-target');
       return true;
+    }
+    if (target.fieldResident) {
+      target = promoteAsteroidFieldRock(state, target.id, this.helpers, 'tether') || target;
     }
 
     const receiptId = nearestOnly ? null : (state.masslineAcquisition && state.masslineAcquisition.id) || null;
@@ -2061,6 +2069,13 @@ function buildAcquisitionSnapshot(host, player, def, state, intent) {
     maxLength,
     host._nonCollidingTargetScratch || (host._nonCollidingTargetScratch = []),
   );
+  const fieldHits = queryAsteroidField(
+    state,
+    player.pos,
+    maxLength + CURSOR_LATCH_GRACE_MAX,
+    host._fieldTargetScratch || (host._fieldTargetScratch = []),
+  );
+  for (let i = 0; i < fieldHits.length; i++) appendExactCandidate(candidates, fieldHits[i]);
   appendExactCandidate(candidates, selectedPayloadId != null && state.entities?.get
     ? state.entities.get(selectedPayloadId) : null);
   appendExactCandidate(candidates, focusTarget);

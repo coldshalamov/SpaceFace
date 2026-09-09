@@ -65,7 +65,8 @@ import {
 } from '../data/sectorActivityPockets.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { RECORD_KIND, stableRecordId } from '../world/worldRecords.js';
-import { findLivingWorldActor, forEachJobInteractable, forEachLivingWorldActor } from '../world/livingWorldViews.js';
+import { findLivingWorldActor, forEachFieldRock, forEachJobInteractable, forEachLivingWorldActor } from '../world/livingWorldViews.js';
+import { getAsteroidFieldRock } from '../world/asteroidField.js';
 import {
   PRIORITY_COURIER_JOB_SCHEMA,
   PRIORITY_COURIER_SERVICE,
@@ -2405,10 +2406,12 @@ export const npcJobsRuntime = {
     if (!waypoint || typeof waypoint.id !== 'string' || !waypoint.id.startsWith('field:')) return null;
     const raw = waypoint.id.slice(6);
     const numeric = Number(raw);
-    return this.state.entities && this.state.entities.get
+    const live = this.state.entities && this.state.entities.get
       ? (this.state.entities.get(raw)
         || (Number.isFinite(numeric) ? this.state.entities.get(numeric) : null))
       : null;
+    if (live && live.alive !== false) return live;
+    return getAsteroidFieldRock(this.state, Number.isFinite(numeric) ? numeric : raw);
   },
 
   _minerFieldRetargetSafe(job) {
@@ -2429,23 +2432,19 @@ export const npcJobsRuntime = {
   },
 
   _selectFreshMinerFieldTarget({ oldFieldId, oldAsteroidId, anchor, jobId }) {
-    const indexed = this.state.entityIndex && this.state.entityIndex.__spacefaceEntityIndexV1
-      ? this.state.entityIndex.asteroids
-      : null;
-    const source = indexed && indexed.length ? indexed : (this.state.entityList || []);
     const seed = (this.state.meta && this.state.meta.seed) || 1;
     const ax = anchor && Number.isFinite(anchor.x) ? anchor.x : 0;
     const az = anchor && Number.isFinite(anchor.z) ? anchor.z : 0;
     const candidates = [];
-    for (const asteroid of source) {
-      if (!asteroid || asteroid.type !== 'asteroid' || asteroid.alive === false || !asteroid.pos) continue;
-      if (oldAsteroidId != null && asteroid.id === oldAsteroidId) continue;
+    forEachFieldRock(this.state, (asteroid) => {
+      if (!asteroid || asteroid.type !== 'asteroid' || asteroid.alive === false || !asteroid.pos) return;
+      if (oldAsteroidId != null && asteroid.id === oldAsteroidId) return;
       const data = asteroid.data || {};
-      if (data.siteAnchored || data.respawnAt != null) continue;
+      if (data.siteAnchored || data.respawnAt != null) return;
       const fieldId = cleanFieldId(data.fieldId);
-      if (!fieldId || fieldId === oldFieldId) continue;
+      if (!fieldId || fieldId === oldFieldId) return;
       const depletion = this._fieldDepletionValue(fieldId);
-      if (depletion >= NPC_MINER_SEAM_EXHAUSTED_DEPLETION) continue;
+      if (depletion >= NPC_MINER_SEAM_EXHAUSTED_DEPLETION) return;
       const dx = asteroid.pos.x - ax;
       const dz = asteroid.pos.z - az;
       candidates.push({
@@ -2455,7 +2454,7 @@ export const npcJobsRuntime = {
         fieldId,
         tie: hash32(seed, 'miner-field-retarget', oldFieldId, jobId, fieldId, asteroid.id),
       });
-    }
+    });
     if (!candidates.length) return null;
     candidates.sort((a, b) => (a.depletion - b.depletion)
       || (a.d2 - b.d2)

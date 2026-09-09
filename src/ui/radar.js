@@ -589,6 +589,10 @@ export function createRadar(ctx) {
   let cachedEntityList = null;
   let cachedLength = -1;
   let cachedPlayerId = null;
+  let mergedAsteroids = null;
+  let cachedFieldVersion = -1;
+  let cachedLiveAsteroids = null;
+  let cachedLiveLen = -1;
   const radarQueryScratch = [];
   const fieldCellCounts = new Uint16Array(ASTEROID_FIELD_CELLS * ASTEROID_FIELD_CELLS);
   const nearRockSlots = Array.from({ length: ASTEROID_DOT_LIMIT }, () => ({ x: 0, y: 0, distanceSq: Infinity }));
@@ -666,9 +670,26 @@ export function createRadar(ctx) {
 
   function asteroidsFor(player) {
     const index = indexedRadarContacts();
-    if (index) return index.radarAsteroids;
-    refreshContacts(player);
-    return asteroidList;
+    const live = index ? index.radarAsteroids : (refreshContacts(player), asteroidList);
+    const field = state.world && state.world.asteroidField;
+    const rocks = field && Array.isArray(field.rocks) ? field.rocks : null;
+    if (!rocks || rocks.length === 0) return live;
+    if (
+      mergedAsteroids
+      && cachedFieldVersion === field.version
+      && cachedLiveAsteroids === live
+      && cachedLiveLen === live.length
+    ) return mergedAsteroids;
+    mergedAsteroids = live.slice();
+    for (let i = 0; i < rocks.length; i++) {
+      const rec = rocks[i];
+      if (!rec || rec.alive === false || rec.liveEntityId != null) continue;
+      mergedAsteroids.push(rec);
+    }
+    cachedFieldVersion = field.version;
+    cachedLiveAsteroids = live;
+    cachedLiveLen = live.length;
+    return mergedAsteroids;
   }
 
   function nearbyAsteroidCandidates(playerX, playerZ, range, asteroidCount) {
@@ -811,8 +832,10 @@ export function createRadar(ctx) {
         || !entity.alive
         || entity === player
         || entity.type !== 'asteroid'
-        || (state.entities && state.entities.get && state.entities.get(entity.id) !== entity)
       ) continue;
+      const liveRock = state.entities && state.entities.get && state.entities.get(entity.id);
+      if (liveRock && liveRock !== entity) continue;
+      if (!liveRock && !entity.fieldResident) continue;
       const dx = entity.pos.x - playerX;
       const dz = entity.pos.z - playerZ;
       const distanceSq = dx * dx + dz * dz;

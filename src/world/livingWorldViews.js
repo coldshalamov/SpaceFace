@@ -54,6 +54,15 @@ export function forEachExplicitWitnessMarker(state, fn) {
     if (!entity.data || entity.data.lawWitness !== true) continue;
     fn(entity);
   }
+  const dressing = state && state.world && state.world.dressing;
+  if (dressing && Array.isArray(dressing.rows)) {
+    for (let i = 0; i < dressing.rows.length; i++) {
+      const row = dressing.rows[i];
+      if (!row || row.alive === false || row.type !== 'fx') continue;
+      if (!row.data || row.data.lawWitness !== true) continue;
+      fn(row);
+    }
+  }
   return 'filter';
 }
 
@@ -96,12 +105,20 @@ export function forEachJobInteractable(state, fn) {
   return 'filter';
 }
 
-/** Scanned / mineable rocks from the asteroid bucket, never via the master combat list. */
+/** Scanned / mineable rocks from the compact field plus live promoted asteroids. */
 export function forEachFieldRock(state, fn) {
   if (typeof fn !== 'function') return 'none';
+  const field = state && state.world && state.world.asteroidField;
+  if (field && Array.isArray(field.rocks)) {
+    for (let i = 0; i < field.rocks.length; i++) {
+      const rec = field.rocks[i];
+      if (!rec || rec.alive === false || rec.liveEntityId != null) continue;
+      fn(rec);
+    }
+  }
   if (hasEntityIndex(state)) {
     visitArray(state.entityIndex.asteroids, fn);
-    return 'index';
+    return field ? 'field+index' : 'index';
   }
   const list = (state && state.entityList) || [];
   for (let i = 0; i < list.length; i++) {
@@ -109,7 +126,7 @@ export function forEachFieldRock(state, fn) {
     if (!isFieldRockEntity(entity) || entity.alive === false) continue;
     fn(entity);
   }
-  return 'filter';
+  return field ? 'field+filter' : 'filter';
 }
 
 export function livingWorldActorSeenTypes(state) {

@@ -4,6 +4,7 @@ import { ensurePerfRuntime, perfNow } from './perfRuntime.js';
 import { createRuntimeWitness, collectRuntimeWitnessSample } from './runtimeWitness.js';
 import { LOOP_FIXED_DT } from './simulationRunner.js';
 import { mustRescheduleAfterFrame } from './frameLiveness.js';
+import { collectJournalPresentationEntities } from '../world/presentationSources.js';
 
 // Consecutive failing frames before the loop calls the picture dead. 30 is half a second at 60 Hz:
 // long enough that a single hitch, a context blip or one bad entity cannot trip it, short enough
@@ -603,7 +604,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       || !presentationJournal.needsRebuild()) return false;
     diagnostics.journalRebuildAttemptCount++;
     try {
-      const entities = Array.isArray(state.entityList) ? state.entityList : [];
+      const entities = collectJournalPresentationEntities(state);
       const tick = Number.isSafeInteger(state.tick) && state.tick >= 0 ? state.tick : 0;
       if (typeof presentationJournal.rebuildFrom !== 'function'
         || presentationJournal.rebuildFrom(entities, tick) !== true) {

@@ -25,6 +25,7 @@ import {
   worldSiteManifestById,
 } from '../../src/data/worldSiteManifests.js';
 import { CINDER_SLUICE_SITE_ID } from '../../src/data/environmentalMachinery.js';
+import { forEachDressingRow } from '../../src/world/dressingTable.js';
 import { asteroidSites } from '../../src/systems/asteroidSites.js';
 import { trafficRoleMixForSector } from '../../src/systems/traffic.js';
 import { world } from '../../src/systems/world.js';
@@ -66,13 +67,12 @@ export const PQ020_CERES_ADDITIVE_WORLD_SITES_SCHEMA =
   'spaceface.pq020-ceres-additive-world-sites.v1';
 export const PQ020_CERES_ADDITIVE_DRESSING_SCHEMA =
   'spaceface.pq020-ceres-additive-dressing.v1';
-// Re-pinned 2026-08-18. The only input that moved is worldSite.releaseSha256: the Cathedral
-// binding had been carrying the pre-rebuild hash, so this digest was green against a value
-// no file on disk produced. Nothing structural changed -- entity, collider, proxy, operation
-// and spatial counts are identical either side of the correction. Prior digest was
-// b2232d1d891f6d65b2e4420387a23223e0325a0e14971d046bd86ef61ddafc2d.
+// Re-pinned 2026-09-09 after dormant belt rocks left the combat list for the compact field.
+// Additive dressing still exists (presenter table); the digest now records 6 live asteroids
+// (activity/geology) instead of the former sector-wide entityList belt. Prior digest was
+// a6ea5a9622566ddfd9894b857eb34495fcdd7ad81dd4004ce3d2eaac5a070c83.
 export const PQ020_EXPECTED_STRUCTURAL_COST_DIGEST =
-  'a6ea5a9622566ddfd9894b857eb34495fcdd7ad81dd4004ce3d2eaac5a070c83';
+  'f09251bb6637c48f264551a386a30ffc76d33b5d4a42fee87867e1f6243ec5a1';
 
 const EXPECTED_ADDITIVE_WORLD_SITE_IDS = Object.freeze([CINDER_SLUICE_SITE_ID]);
 const EXPECTED_ADDITIVE_DRESSING_CENSUSES = Object.freeze({
@@ -606,11 +606,16 @@ async function buildHeadlessCeresHarness({ sector, cathedralManifest, cathedralB
       .filter((entity) => entity && entity.alive !== false && !entity.data?.pq020HarnessPlayer)
       .filter((entity) => entitySectorId(entity) === sector.id
         || worldRecordId(entity).startsWith(`${PQ020_CATHEDRAL_SITE_ID}/`));
+    const dressingRows = [];
+    forEachDressingRow(state, (row) => {
+      if (!row || row.alive === false) return;
+      if (entitySectorId(row) === sector.id) dressingRows.push(row);
+    });
     const additiveManifests = WORLD_SITE_MANIFESTS.filter((manifest) => (
       manifest.sectorId === sector.id && manifest.id !== PQ020_CATHEDRAL_SITE_ID
     ));
     const additiveWorldSites = buildAdditiveWorldSiteCensus(liveCeresEntities, additiveManifests);
-    const additiveDressing = buildAdditiveDressingCensus(liveCeresEntities);
+    const additiveDressing = buildAdditiveDressingCensus([...liveCeresEntities, ...dressingRows]);
     const additiveWorldObjectIds = new Set(additiveManifests.map((manifest) => manifest.worldObjectId));
     const entities = liveCeresEntities.filter((entity) => (
       !worldSiteOwnerIdForEntity(entity, additiveWorldObjectIds)

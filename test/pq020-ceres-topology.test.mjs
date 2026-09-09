@@ -10,7 +10,7 @@ import {
 const SITE_ID = 'world_site_wreck_cathedral';
 const PLACE_ID = 'place_landmark_wreck_cathedral';
 const EXPECTED_STRUCTURAL_COST_DIGEST =
-  'a6ea5a9622566ddfd9894b857eb34495fcdd7ad81dd4004ce3d2eaac5a070c83';
+  'f09251bb6637c48f264551a386a30ffc76d33b5d4a42fee87867e1f6243ec5a1';
 
 function pocket(receipt, id) {
   const value = receipt.topology.pockets.find((candidate) => candidate.id === id);
@@ -122,11 +122,11 @@ test('PQ-020 structural-cost fingerprint is deterministic and headed-only fields
 
   assert.equal(first.structuralCost.scope, 'sector_ceres_belt:seed47:one-fixed-tick');
   assert.deepEqual(first.structuralCost.entities, {
-    total: 124,
-    byType: { asteroid: 90, fx: 12, ship: 2, station: 6, wreck: 14 },
-    collidable: 105,
+    total: 38,
+    byType: { asteroid: 6, fx: 10, ship: 2, station: 6, wreck: 14 },
+    collidable: 21,
   });
-  assert.equal(first.structuralCost.colliders, 105);
+  assert.equal(first.structuralCost.colliders, 21);
   assert.equal(first.structuralCost.worldSite.siteId, SITE_ID);
   assert.equal(first.structuralCost.worldSite.materializedEntities, 15);
   assert.equal(first.structuralCost.residencyTier, 'FULL');
@@ -164,10 +164,12 @@ test('PQ-020 structural-cost fingerprint is deterministic and headed-only fields
     first.additiveDressing.exclusionPolicy,
     'explicit_world_dressing_data_flags',
   );
-  assert.deepEqual(first.additiveDressing.groupIds, ['everydaySpaceKit', 'wreckAftermath']);
+  assert.deepEqual(first.additiveDressing.groupIds, [
+    'everydaySpaceKit', 'worldOneOff', 'wreckAftermath',
+  ]);
   assert.deepEqual(first.additiveDressing.totals, {
-    entities: 10,
-    byType: { fx: 10 },
+    entities: 21,
+    byType: { fx: 21 },
     collidable: 0,
     colliders: 0,
   });
@@ -177,6 +179,11 @@ test('PQ-020 structural-cost fingerprint is deterministic and headed-only fields
       id: 'everydaySpaceKit',
       dataFlag: 'everydaySpaceKit',
       live: { entities: 6, byType: { fx: 6 }, collidable: 0, colliders: 0 },
+    },
+    {
+      id: 'worldOneOff',
+      dataFlag: 'worldOneOff',
+      live: { entities: 11, byType: { fx: 11 }, collidable: 0, colliders: 0 },
     },
     {
       id: 'wreckAftermath',

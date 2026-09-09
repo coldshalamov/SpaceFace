@@ -116,6 +116,19 @@ import {
 } from '../world/worldRecords.js';
 import { forEachLivingWorldActor } from '../world/livingWorldViews.js';
 import {
+  dropAsteroidFieldSector,
+  insertAsteroidFieldRock,
+  promoteAsteroidFieldRock,
+  queryAsteroidField,
+  shouldKeepLiveAsteroid,
+} from '../world/asteroidField.js';
+import {
+  dropDressingSector,
+  insertDressingRow,
+  getDressingRow,
+} from '../world/dressingTable.js';
+import { resetWorldPresentationTables } from '../world/presentationSources.js';
+import {
   applyResourceBodyToEntity,
   captureResourceBodyRecord,
   createEmptyResourceBodyBag,
@@ -852,6 +865,7 @@ export const world = {
     rec.tier = tier;
     rec.epoch = epoch;
     rec.materializedAtTick = state.tick | 0;
+    this.helpers.requestPresentationRebuild?.('sector-materialize');
   },
 
   /** Promote/demote live content between FULL and REDUCED without rematerializing anchors. */
@@ -889,6 +903,7 @@ export const world = {
         const epoch = Number.isFinite(rec.epoch) ? rec.epoch : 0;
         state.world.rng = this.helpers.mulberry32(this.helpers.hash32(state.meta.seed, sectorId, epoch, 'full_extra'));
         this._spawnDressing(sector, active, state.world.rng);
+        this.helpers.requestPresentationRebuild?.('sector-full-dressing');
       }
       return;
     }
@@ -904,6 +919,7 @@ export const world = {
     } else if (!rematerialized.spawnedBoss) {
       this._spawnBossIfDue(sector, active, rng);
     }
+    this.helpers.requestPresentationRebuild?.('sector-full');
   },
 
   _stripSectorFullExtras(sectorId) {
@@ -918,6 +934,7 @@ export const world = {
     // entity-list walk. Sector entry used to scan the full population twice here (capture, then
     // despawn), making outgoing retirement a measurable arrival-frame cost.
     this._captureSectorDurableRecords(sectorId, { reason: 'strip_full', despawnIds: kill });
+    dropDressingSector(this.state, sectorId);
     active.enemies = [];
     active.dressing = [];
     active.worldOneOffSpins = [];
@@ -1322,6 +1339,8 @@ export const world = {
 
   /** Scoped despawn: only entities owned by homeSectorId. Never player / persistent / mission-pinned. */
   _despawnEntitiesForSector(sectorId) {
+    dropAsteroidFieldSector(this.state, sectorId);
+    dropDressingSector(this.state, sectorId);
     const state = this.state;
     const list = state.entityList;
     for (let i = list.length - 1; i >= 0; i--) {
@@ -1594,32 +1613,50 @@ export const world = {
       ? { x: positionBinding.pos.x, z: positionBinding.pos.z }
       : scatteredPos;
 
-    const ent = this.helpers.spawnEntity({
-      type: 'asteroid', pos,
-      radius: size, mass: 200 + size * 40, angVel,
-      hull: oreHP, hullMax: oreHP, collides: true,
-      data: {
-        typeId: def.id, tier: def.tierCap, tierCap,
-        oreHP, oreHPMax: oreHP, yieldU,
-        ecologyFingerprint: params && params._ecologyFingerprint
-          || regionalEcologyReadout(this.state, params && params._homeSectorId)?.fingerprint
-          || null,
-        size, pctEjected: 0, respawnSec: params.respawnSec || 120,
-        fieldId: fdef.id,
-        asteroidSlotId: String(slotIndex),
-        ...(authoredGeologyPlaceId ? {
-          authoredGeologySkin: true,
-          placeId: authoredGeologyPlaceId,
-          placeTargetRadius: size,
-        } : {}),
-        ...(activityBinding && activityBinding.id
-          ? { activityObjectSlotId: activityBinding.id }
-          : {}),
-        ...(collisionAnchorBinding && collisionAnchorBinding.id
-          ? { activityCollisionAnchorSlotId: collisionAnchorBinding.id }
-          : {}),
-      },
+    const data = {
+      typeId: def.id, tier: def.tierCap, tierCap,
+      oreHP, oreHPMax: oreHP, yieldU,
+      ecologyFingerprint: params && params._ecologyFingerprint
+        || regionalEcologyReadout(this.state, params && params._homeSectorId)?.fingerprint
+        || null,
+      size, pctEjected: 0, respawnSec: params.respawnSec || 120,
+      fieldId: fdef.id,
+      asteroidSlotId: String(slotIndex),
+      ...(authoredGeologyPlaceId ? {
+        authoredGeologySkin: true,
+        placeId: authoredGeologyPlaceId,
+        placeTargetRadius: size,
+      } : {}),
+      ...(activityBinding && activityBinding.id
+        ? { activityObjectSlotId: activityBinding.id }
+        : {}),
+      ...(collisionAnchorBinding && collisionAnchorBinding.id
+        ? { activityCollisionAnchorSlotId: collisionAnchorBinding.id }
+        : {}),
+    };
+    const keepLive = shouldKeepLiveAsteroid({
+      activityBinding,
+      collisionAnchorBinding,
+      authoredGeologyPlaceId,
     });
+    const ent = keepLive
+      ? this.helpers.spawnEntity({
+        type: 'asteroid', pos,
+        radius: size, mass: 200 + size * 40, angVel,
+        hull: oreHP, hullMax: oreHP, collides: true,
+        data,
+      })
+      : insertAsteroidFieldRock(this.state, {
+        pos,
+        rot: 0,
+        angVel,
+        radius: size,
+        mass: 200 + size * 40,
+        hull: oreHP,
+        hullMax: oreHP,
+        data,
+        homeSectorId: params && params._homeSectorId,
+      });
     // Asteroid fields are always spawned for a concrete sector bag — recover id from field center bag via caller.
     // homeSectorId is stamped by _spawnAsteroidInSector when available; fallback leaves data open.
     if (params && params._homeSectorId) this._stampHomeSector(ent, params._homeSectorId);
@@ -1759,43 +1796,43 @@ export const world = {
         : null;
       const anomalyTriangulated = disc.pois[poi.id] && disc.pois[poi.id].triangulated === true;
       const hidden = !!poi.hidden && disc.pois[poi.id].discovered !== true;
+      const poiData = {
+        poi: true, poiId: poi.id, poiType: poi.type, name: poi.name,
+        hidden, gatedBy: poi.gatedBy || null,
+        requiresTriangulation: !!triangulation,
+        triangulation,
+        anomalyTriangulated,
+        scanRange: poi.scanRange || SCAN_RANGE, sectorId: sector.id,
+        claimable: !!poi.claimable, size: poi.size || 'M',
+        landmark: !!poi.landmark,
+        landmarkGlb: poi.landmarkGlb || null,
+        placeId,
+        visualRadius,
+        placeRadius: visualRadius,
+        homeSectorId: sector.id,
+        ...(poi.flavorTargetRef ? { flavorTargetRef: String(poi.flavorTargetRef) } : {}),
+        ...(poi.flavorSourceId ? { flavorSourceId: String(poi.flavorSourceId) } : {}),
+        ...(poi.scannerSignalKind ? { scannerSignalKind: String(poi.scannerSignalKind) } : {}),
+        ...(finitePositive(poi.scannerSignalPriority)
+          ? { scannerSignalPriority: Number(poi.scannerSignalPriority) }
+          : {}),
+        ...(poi.repeatableScannerSignal === true ? { repeatableScannerSignal: true } : {}),
+        ...(poi.manualInvestigation === true ? { manualInvestigation: true } : {}),
+        ...(poi.requiresActiveScan === true ? { requiresActiveScan: true } : {}),
+        ...(poi.resonanceScanResponse === true ? { resonanceScanResponse: true } : {}),
+        ...(poi.recoveryEncounter === true ? { salvagePointId: String(poi.id) } : {}),
+        ...(poi.survivorPod === true ? { survivorPod: true } : {}),
+        ...(finitePositive(poi.bandProximityRadius)
+          ? { bandProximityRadius: Number(poi.bandProximityRadius) }
+          : {}),
+        ...(finitePositive(poi.dressingExclusionRadius)
+          ? { dressingExclusionRadius: Number(poi.dressingExclusionRadius) }
+          : {}),
+      };
       const ent = this.helpers.spawnEntity({
         type: 'fx', factionId: poi.factionId || null, pos,
         radius: visualRadius, mass: 0, collides: false, ttl: Infinity,
-        data: {
-          poi: true, poiId: poi.id, poiType: poi.type, name: poi.name,
-          hidden, gatedBy: poi.gatedBy || null,
-          requiresTriangulation: !!triangulation,
-          triangulation,
-          anomalyTriangulated,
-          scanRange: poi.scanRange || SCAN_RANGE, sectorId: sector.id,
-          // V2 §6 / M3: claimable bodies carry their claim flag + size so the player can claim them.
-          claimable: !!poi.claimable, size: poi.size || 'M',
-          landmark: !!poi.landmark,
-          landmarkGlb: poi.landmarkGlb || null,
-          placeId,
-          visualRadius,
-          placeRadius: visualRadius,
-          homeSectorId: sector.id,
-          ...(poi.flavorTargetRef ? { flavorTargetRef: String(poi.flavorTargetRef) } : {}),
-          ...(poi.flavorSourceId ? { flavorSourceId: String(poi.flavorSourceId) } : {}),
-          ...(poi.scannerSignalKind ? { scannerSignalKind: String(poi.scannerSignalKind) } : {}),
-          ...(finitePositive(poi.scannerSignalPriority)
-            ? { scannerSignalPriority: Number(poi.scannerSignalPriority) }
-            : {}),
-          ...(poi.repeatableScannerSignal === true ? { repeatableScannerSignal: true } : {}),
-          ...(poi.manualInvestigation === true ? { manualInvestigation: true } : {}),
-          ...(poi.requiresActiveScan === true ? { requiresActiveScan: true } : {}),
-          ...(poi.resonanceScanResponse === true ? { resonanceScanResponse: true } : {}),
-          ...(poi.recoveryEncounter === true ? { salvagePointId: String(poi.id) } : {}),
-          ...(poi.survivorPod === true ? { survivorPod: true } : {}),
-          ...(finitePositive(poi.bandProximityRadius)
-            ? { bandProximityRadius: Number(poi.bandProximityRadius) }
-            : {}),
-          ...(finitePositive(poi.dressingExclusionRadius)
-            ? { dressingExclusionRadius: Number(poi.dressingExclusionRadius) }
-            : {}),
-        },
+        data: poiData,
       });
       this._stampHomeSector(ent, sector.id);
       active.pois.push({
@@ -1820,19 +1857,13 @@ export const world = {
         for (let shipIndex = 1; shipIndex <= fleetCount; shipIndex += 1) {
           const angle = (shipIndex / fleetCount) * Math.PI * 2;
           const ring = 120 + (shipIndex % 5) * 28;
-          const hull = this.helpers.spawnEntity({
-            type: 'fx',
-            factionId: poi.factionId || null,
+          const hull = insertDressingRow(this.state, {
             pos: {
               x: pos.x + Math.cos(angle) * ring,
               z: pos.z + Math.sin(angle) * ring,
             },
             radius: 14,
-            mass: 0,
-            collides: false,
-            physicsBody: false,
-            ttl: Infinity,
-            flags: { noInterp: true },
+            homeSectorId: sector.id,
             data: {
               poi: true,
               poiId: `${poi.id}_hull_${shipIndex}`,
@@ -1942,9 +1973,9 @@ export const world = {
     const spins = active && active.worldOneOffSpins;
     if (!spins || !spins.length) return;
     const entities = this.state.entities;
-    if (!entities) return;
     for (const row of spins) {
-      const ent = entities.get(row.id);
+      const ent = (entities && entities.get && entities.get(row.id))
+        || getDressingRow(this.state, row.id);
       if (ent) ent.rot += row.spin * dt;
     }
   },
@@ -2162,41 +2193,53 @@ export const world = {
   _spawnPlaceProp(active, sector, placeId, pos, options = {}) {
     if (!placeId || !pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return null;
     for (const poi of active.pois || []) {
-      const carrier = this.state.entities && this.state.entities.get(poi && poi.id);
+      const carrier = this._poiCarrier(poi && poi.id);
       const exclusionRadius = Number(carrier && carrier.data && carrier.data.dressingExclusionRadius);
       if (Number.isFinite(exclusionRadius) && exclusionRadius > 0 && carrier.pos
           && dist2(pos, carrier.pos) < exclusionRadius * exclusionRadius) return null;
     }
     const paletteClass = options.paletteClass || paletteClassForSector(sector);
     const radius = finitePositive(options.radius) ? Number(options.radius) : (DRESSING_RADIUS[placeId] || 12);
-    const ent = this.helpers.spawnEntity({
-      type: 'fx',
-      factionId: sector.factionId || null,
+    const activityObjectSlotId = typeof options.activityObjectSlotId === 'string'
+      && options.activityObjectSlotId.length > 0
+      ? options.activityObjectSlotId
+      : null;
+    const data = {
+      placeId,
+      placeScale: finitePositive(options.placeScale) ? Number(options.placeScale) : 1,
+      worldDressing: true,
+      paletteClass,
+      sectorId: sector.id,
+      homeSectorId: sector.id,
+      name: options.name || placeId,
+      visualRadius: radius,
+      placeRadius: radius,
+      ...(activityObjectSlotId ? { activityObjectSlotId } : {}),
+      ...(options.everydaySpaceKit === true ? { everydaySpaceKit: true } : {}),
+      ...(options.wreckAftermath === true ? { wreckAftermath: true } : {}),
+      ...(options.worldOneOff === true ? { worldOneOff: true } : {}),
+    };
+    const spec = {
       pos,
       rot: Number.isFinite(options.rot) ? options.rot : 0,
       radius,
-      mass: 0,
-      collides: false,
-      ttl: Infinity,
-      flags: { noInterp: true },
-      data: {
-        placeId,
-        placeScale: finitePositive(options.placeScale) ? Number(options.placeScale) : 1,
-        worldDressing: true,
-        paletteClass,
-        sectorId: sector.id,
-        homeSectorId: sector.id,
-        name: options.name || placeId,
-        visualRadius: radius,
-        placeRadius: radius,
-        ...(typeof options.activityObjectSlotId === 'string' && options.activityObjectSlotId.length > 0
-          ? { activityObjectSlotId: options.activityObjectSlotId }
-          : {}),
-        ...(options.everydaySpaceKit === true ? { everydaySpaceKit: true } : {}),
-        ...(options.wreckAftermath === true ? { wreckAftermath: true } : {}),
-        ...(options.worldOneOff === true ? { worldOneOff: true } : {}),
-      },
-    });
+      homeSectorId: sector.id,
+      data,
+    };
+    const ent = activityObjectSlotId
+      ? this.helpers.spawnEntity({
+        type: 'fx',
+        factionId: sector.factionId || null,
+        pos: spec.pos,
+        rot: spec.rot,
+        radius: spec.radius,
+        mass: 0,
+        collides: false,
+        ttl: Infinity,
+        flags: { noInterp: true },
+        data,
+      })
+      : insertDressingRow(this.state, spec);
     this._stampHomeSector(ent, sector.id);
     active.dressing.push({ id: ent.id, placeId, pos: { x: pos.x, z: pos.z }, paletteClass });
     return ent;
@@ -2773,7 +2816,25 @@ export const world = {
     this._tickZoneLabel(state);
     this._tickPOIScan(state);
     this._tickWorldOneOffSpin(dt, state);
+    this._tickAsteroidFieldInteractions(state);
     gcExpiredRecentMemory(ensureWorldRecords(state.world), state.simTime);
+  },
+
+  _tickAsteroidFieldInteractions(state) {
+    const player = state.entities && state.entities.get && state.entities.get(state.playerId);
+    if (!player || !player.pos) return;
+    const reach = (player.radius || 8) + 36;
+    const hits = queryAsteroidField(state, player.pos, reach, this._fieldHitScratch || (this._fieldHitScratch = []));
+    for (let i = 0; i < hits.length; i++) {
+      const rec = hits[i];
+      if (!rec || !rec.pos) continue;
+      const dx = rec.pos.x - player.pos.x;
+      const dz = rec.pos.z - player.pos.z;
+      const rad = (player.radius || 8) + (rec.radius || 8);
+      if (dx * dx + dz * dz <= rad * rad) {
+        promoteAsteroidFieldRock(state, rec.id, this.helpers, 'ram');
+      }
+    }
   },
 
   _tickDeferredCriticalSpawns(state) {
@@ -3330,14 +3391,20 @@ export const world = {
   },
 
   // continuous proximity reveal: detect/identify POIs the player flies near (design 05 scanReveal)
+  _poiCarrier(id) {
+    if (id == null) return null;
+    return (this.state.entities && this.state.entities.get && this.state.entities.get(id))
+      || getDressingRow(this.state, id);
+  },
+
   _tickPOIScan(state) {
     const player = state.entities.get(state.playerId);
     if (!player) return;
     const disc = this._discoveryFor(state.world.currentSectorId);
     const scannerTier = this._scannerTier();
     for (const p of (state.world.activeSector.pois || [])) {
-      const ent = state.entities.get(p.id);
-      if (!ent || !ent.alive) continue;
+      const ent = this._poiCarrier(p.id);
+      if (!ent || ent.alive === false) continue;
       const rec = disc.pois[p.poiId] || (disc.pois[p.poiId] = { discovered: false, identified: false });
       if (rec.identified) continue;
       // A concealed layer marked this way is an active-scanner verb, never a proximity freebie.
@@ -4166,6 +4233,7 @@ export const world = {
     state.world.residentSectors = {};
     state.world.sectorContents = {};
     state.world.activeSector = this._emptySectorBag();
+    resetWorldPresentationTables(state);
     if (data.discovery) state.world.discovery = data.discovery;
     state.world.scanPings = (data.scanPings && typeof data.scanPings === 'object') ? data.scanPings : {};
     state.world.pendingSpawns = (data.pendingSpawns && typeof data.pendingSpawns === 'object') ? data.pendingSpawns : {};
@@ -4238,6 +4306,7 @@ export const world = {
     state.world.residentSectors = {};
     state.world.sectorContents = {};
     state.world.activeSector = this._emptySectorBag();
+    resetWorldPresentationTables(state);
     state.world.currentSectorId = null;
     this._nextCriticalSpawnTick = 0;
     this._vestaDecisionSignature = null;

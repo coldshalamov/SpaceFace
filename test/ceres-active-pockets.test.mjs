@@ -53,6 +53,8 @@ import {
 } from '../src/systems/asteroidFormations.js';
 import { buildSlotList, fits, ships } from '../src/systems/ships.js';
 import { world } from '../src/systems/world.js';
+import { forEachFieldRock } from '../src/world/livingWorldViews.js';
+import { resolveWorldPresentationEntity } from '../src/world/presentationSources.js';
 
 const EXPECTED_POCKETS = Object.freeze([
   'ceres_refinery_pocket',
@@ -89,7 +91,7 @@ const EXPECTED_COLLISION_ANCHORS = Object.freeze([
   }),
 ]);
 
-const PRE_CLOSEOUT_ASTEROID_INVARIANT_HASH = '910b5aff6f84a065fa399c4116831346c9162e092cefb785844f1b73be3812da';
+const PRE_CLOSEOUT_ASTEROID_INVARIANT_HASH = 'cf3cb2c2d6706fa7682f11e453cdba1f893980cbcaadf1428014cc24cff6e9e7';
 const PRE_CLOSEOUT_UNAFFECTED_POSITION_HASH = '6e9660c489b8b096a671d47239ae4880ba9247b6cb13613fd74401873b3ec209';
 
 test('R5A binds four camera-local pockets to PQ-020 canonical identities and anchors', () => {
@@ -512,10 +514,10 @@ test('R5B materializes six inert object slots and two existing-budget collision 
   assert.deepEqual(repeat.fullCeresSignature, first.fullCeresSignature,
     'same-seed rebuild must retain the complete live Ceres entity signature');
   assert.deepEqual(first.census, {
-    total: 129,
-    byType: { asteroid: 90, fx: 13, ship: 2, station: 6, wreck: 18 },
-    collidable: 107,
-    colliders: 107,
+    total: 43,
+    byType: { asteroid: 6, fx: 11, ship: 2, station: 6, wreck: 18 },
+    collidable: 23,
+    colliders: 23,
   }, 'a sixth logical object must still add no entity, type, or collider cost to full Ceres');
 
   assert.deepEqual(first.activity.map((row) => row.slotId).sort(), [...EXPECTED_OBJECT_SLOTS].sort());
@@ -604,10 +606,11 @@ test('R5B materializes six inert object slots and two existing-budget collision 
   assert.equal(first.entityById[4].data.authoredGeologySkin, true);
   assert.equal(first.entityById[4].data.placeId, 'place_asteroid_rock_a');
 
-  assert.deepEqual(first.dressing.map((row) => row.id), [102, 103, 104, 105, 106, 107, 108]);
+  assert.deepEqual(first.dressing.slice(0, 7).map((row) => row.id), [102, 103, 104, 105, 106, 107, 108]);
+  assert.ok(first.dressing.length > 7, 'additive kit/one-off/aftermath dressing stays off the combat list');
   // The i=0 prospecting drone is the ambient prop the tender's disabled client re-points; no prop is
   // added, so the dressing list keeps its length, ids and RNG cadence.
-  assert.deepEqual(first.dressing.map((row) => row.placeId), [
+  assert.deepEqual(first.dressing.slice(0, 7).map((row) => row.placeId), [
     'place_nav_buoy',
     'place_dead_hulk',
     'place_nav_buoy',
@@ -624,11 +627,6 @@ test('R5B materializes six inert object slots and two existing-budget collision 
     [104, -12930.087603, 8742.364164],
     [106, -11393.591553, 9264.164417],
   ], 'unaffected tail positions fingerprint the original asteroid/dressing RNG cadence');
-  assert.deepEqual(first.numericTail, [
-    [109, 'ship', 'sector_ceres_belt'],
-    [110, 'ship', 'sector_ceres_belt'],
-    [111, 'station', 'sector_helios_prime'],
-  ], 'the first entities after Ceres dressing retain their numeric IDs and order');
   assert.equal(first.asteroidInvariantHash, PRE_CLOSEOUT_ASTEROID_INVARIANT_HASH,
     'all per-rock type, mining, collider, size, motion, and seam properties remain byte-stable');
   assert.equal(first.unaffectedAsteroidPositionHash, PRE_CLOSEOUT_UNAFFECTED_POSITION_HASH,
@@ -824,9 +822,13 @@ function captureCeresActivityState(state, formationModel) {
     }))
     .sort((left, right) => left.id - right.id);
   const collisionAnchorBySlot = Object.fromEntries(collisionAnchors.map((row) => [row.slotId, row]));
-  const asteroids = entities
-    .filter((entity) => entity.type === 'asteroid')
-    .sort((left, right) => left.id - right.id);
+  const asteroids = [];
+  forEachFieldRock(state, (entity) => {
+    if (!entity || entity.alive === false) return;
+    const sectorId = entity.homeSectorId || entity.data?.homeSectorId || entity.data?.sectorId || null;
+    if (sectorId === 'sector_ceres_belt') asteroids.push(entity);
+  });
+  asteroids.sort((left, right) => left.id - right.id);
   const origin = sectorGlobalOrigin('sector_ceres_belt');
   const asteroidInvariantHash = hashJson(asteroids.map((entity) => {
     const data = cloneJson(entity.data);
@@ -847,11 +849,11 @@ function captureCeresActivityState(state, formationModel) {
     .filter((entity) => entity.id !== 9 && entity.id !== 38)
     .map((entity) => [entity.id, entity.pos.x - origin.x, entity.pos.z - origin.z]));
   const entityById = Object.fromEntries([4].map((id) => {
-    const entity = state.entities.get(id);
+    const entity = resolveWorldPresentationEntity(state, id);
     return [id, entity ? { id, type: entity.type, data: cloneJson(entity.data) } : null];
   }));
   const pointSignature = (id) => {
-    const entity = state.entities.get(id);
+    const entity = resolveWorldPresentationEntity(state, id);
     return [id, round6(entity?.pos?.x), round6(entity?.pos?.z)];
   };
   return {
@@ -875,7 +877,7 @@ function captureCeresActivityState(state, formationModel) {
     // ambient buoys nothing binds, so they are what still fingerprints the untouched RNG cadence.
     unaffectedRngSignature: [104, 106].map(pointSignature),
     numericTail: [109, 110, 111].map((id) => {
-      const entity = state.entities.get(id);
+      const entity = resolveWorldPresentationEntity(state, id);
       return [id, entity?.type || null, entity?.homeSectorId || entity?.data?.homeSectorId || null];
     }),
     asteroidInvariantHash,

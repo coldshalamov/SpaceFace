@@ -18,6 +18,7 @@ import { ORES, ASTEROIDS, BEAMS, deriveAsteroidSeams } from '../data/mining.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { MODULES } from '../data/modules.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
+import { promoteAsteroidFieldRock, queryAsteroidField } from '../world/asteroidField.js';
 import {
   clearPickupAcceptanceRetry,
   finiteWholePickupAmount,
@@ -51,11 +52,11 @@ import {
 } from '../data/killRewards.js';
 import { consumePendingSlam, peekPendingSlam, spawnFracturePieces } from './hullFracture.js';
 
-export const MAGNET_RANGE = 420; // wu pull radius for Mining 2.0's stronger ore vacuum
-export const MAGNET_ACCEL = 900; // wu/s² authority toward the seek velocity (not absolute thrust)
+export const MAGNET_RANGE = 800; // wu pull radius for Super-Wide Vacuum Cargo Attractor
+export const MAGNET_ACCEL = 2400; // wu/s² snappy authority toward the seek velocity
 // Relative approach speed while magnetized (added on top of the player's velocity so flybys collect).
-export const MAGNET_APPROACH_MIN = 100;
-export const MAGNET_APPROACH_MAX = 280;
+export const MAGNET_APPROACH_MIN = 260;
+export const MAGNET_APPROACH_MAX = 620;
 export const RICH_CORE_CHANCE = 0.15;
 export const RICH_CORE_DURATION_S = 3.5;
 export const RICH_CORE_WINDOW_LO = 0.12;
@@ -637,6 +638,9 @@ export const mining = {
       const score = dot * 2 - dist / Math.max(1, range);
       if (score > bestScore) { bestScore = score; best = e; }
     }
+    if (best && best.fieldResident) {
+      best = promoteAsteroidFieldRock(this.state, best.id, this.helpers, 'mine') || best;
+    }
     return best;
   },
 
@@ -907,8 +911,10 @@ export const mining = {
     const pvx = finiteNum(player.vel && player.vel.x);
     const pvz = finiteNum(player.vel && player.vel.z);
     for (const e of pickups) {
-      if (!e.alive || e.type !== 'pickup') continue;
+      if (!e.alive || (e.type !== 'pickup' && e.type !== 'payload')) continue;
       const pickupData = e.data || {};
+      if (pickupData.anchored) continue;
+      if (state.player && state.player.tether && state.player.tether.targetId === e.id) continue;
       const embargoUntil = Number(pickupData.pickupEmbargoUntil);
       if (Number.isFinite(embargoUntil) && state.simTime < embargoUntil) {
         // Jettison reaction mass must establish real separation before the generic magnet/direct
@@ -923,10 +929,12 @@ export const mining = {
         state.simTime,
       )) continue;
       if (pickupData.jettisonedCargo && e.collides === false) e.collides = true;
-      const beamCollection = this._collectPickupOnBeamLine(e, player);
-      if (beamCollection) {
-        if (beamCollection.accepted > 0 || beamCollection.legacyFullConsume) this._diag.pickupsCollected++;
-        continue;
+      if (e.type === 'pickup') {
+        const beamCollection = this._collectPickupOnBeamLine(e, player);
+        if (beamCollection) {
+          if (beamCollection.accepted > 0 || beamCollection.legacyFullConsume) this._diag.pickupsCollected++;
+          continue;
+        }
       }
       const dx = player.pos.x - e.pos.x, dz = player.pos.z - e.pos.z;
       const dist = Math.hypot(dx, dz) || 1e-4;
@@ -938,13 +946,13 @@ export const mining = {
         const rangeT = clamp01(dist / Math.max(1, magnet));
         const approach = MAGNET_APPROACH_MIN + (MAGNET_APPROACH_MAX - MAGNET_APPROACH_MIN) * rangeT;
         // Closer scrap rushes in harder so final scoop doesn't feel floaty.
-        const closeBoost = dist < collectRadius * 2.5 ? 1.35 : 1;
+        const closeBoost = dist < collectRadius * 2.5 ? 1.4 : 1;
         const desiredVx = pvx + nx * approach * closeBoost;
         const desiredVz = pvz + nz * approach * closeBoost;
         const dvx = desiredVx - finiteNum(e.vel && e.vel.x);
         const dvz = desiredVz - finiteNum(e.vel && e.vel.z);
         const need = Math.hypot(dvx, dvz);
-        const maxDv = MAGNET_ACCEL * dt * (closeBoost > 1 ? 1.6 : 1);
+        const maxDv = MAGNET_ACCEL * dt * (closeBoost > 1 ? 1.8 : 1);
         if (!(e.vel)) e.vel = { x: 0, z: 0 };
         if (need <= maxDv || need < 1e-6) {
           e.vel.x = desiredVx;
@@ -957,13 +965,56 @@ export const mining = {
         this._diag.pickupsMagnetized++;
       }
       // direct collect on overlap (physics also emits pickup:collected on contact; idempotent via alive guard)
-      if (dist <= collectRadius) {
-        const acceptance = this._collectPickupViaEvent(e, player);
-        if (acceptance.accepted > 0 || acceptance.legacyFullConsume) this._diag.pickupsCollected++;
+      const effectiveRadius = collectRadius + (e.radius || 0);
+      if (dist <= effectiveRadius) {
+        if (e.type === 'payload') {
+          const collected = this._collectPayload(e, player);
+          if (collected) this._diag.pickupsCollected++;
+        } else {
+          const acceptance = this._collectPickupViaEvent(e, player);
+          if (acceptance.accepted > 0 || acceptance.legacyFullConsume) this._diag.pickupsCollected++;
+        }
       }
     }
     state.miningRuntime = state.miningRuntime || {};
     state.miningRuntime.diagnostics = this._diag;
+  },
+
+  _collectPayload(payloadEntity, player) {
+    if (!payloadEntity || !payloadEntity.alive || !player) return false;
+    const data = payloadEntity.data || {};
+    let collectedAny = false;
+    if (data.salvagePool && typeof data.salvagePool === 'object' && Object.keys(data.salvagePool).length > 0) {
+      const pool = data.salvagePool;
+      for (const [commodityId, qty] of Object.entries(pool)) {
+        const requested = finiteWholePickupAmount(qty);
+        if (requested <= 0) continue;
+        const eventPayload = {
+          pickupId: payloadEntity.id,
+          collectorId: player.id,
+          kind: 'cargo',
+          amount: requested,
+          commodityId,
+          pos: { x: payloadEntity.pos.x, z: payloadEntity.pos.z },
+          ...(data.richLotSource ? { richLotSource: data.richLotSource } : {}),
+        };
+        this.bus.emit('pickup:collected', eventPayload);
+        const acceptance = resolvePickupAcceptance(eventPayload, requested);
+        if (acceptance.accepted > 0) {
+          collectedAny = true;
+          pool[commodityId] = acceptance.rejected;
+          if (acceptance.rejected <= 0) delete pool[commodityId];
+        }
+      }
+      if (Object.keys(pool).length === 0) {
+        payloadEntity.alive = false;
+        clearPickupAcceptanceRetry(data);
+      }
+    } else if (data.commodityId && data.amount > 0) {
+      const acceptance = this._collectPickupViaEvent(payloadEntity, player);
+      if (acceptance.accepted > 0 || acceptance.legacyFullConsume) collectedAny = true;
+    }
+    return collectedAny;
   },
 
   _onPickupCollected(p) {
@@ -1031,9 +1082,33 @@ export const mining = {
       if (fractured && fractured.pieces && fractured.pieces.length >= 2) return fractured.pieces;
     }
 
+    const victim = (this.state.entities && typeof this.state.entities.get === 'function')
+      ? this.state.entities.get(p.id)
+      : null;
+    const vx = Number(victim?.vel?.x ?? p?.vel?.x) || 0;
+    const vz = Number(victim?.vel?.z ?? p?.vel?.z) || 0;
+    const victimAngVel = Number(victim?.angVel ?? p?.angVel);
+    const angVel = Number.isFinite(victimAngVel) && Math.abs(victimAngVel) > 0.05
+      ? victimAngVel
+      : (((p.id || 1) * 9301 + 49297) % 233280 / 233280 - 0.5) * 1.5;
+    const rot = Number(victim?.rot ?? p?.rot) || 0;
+    const pitch = Number(victim?.pitch ?? p?.pitch) || 0;
+    const bank = Number(victim?.bank ?? p?.bank) || 0;
+    const rawMass = Number(victim?.mass ?? p?.mass);
+    const mass = Number.isFinite(rawMass) && rawMass > 0 ? rawMass : 24;
+
     const spec = aftermathPlan && aftermathPlan.spec || {
-      type: 'wreck', pos: { x: pos.x, z: pos.z }, radius: 7, mass: 1e6,
-      hull: 1, hullMax: 1,
+      type: 'wreck',
+      pos: { x: pos.x, z: pos.z },
+      vel: { x: vx, z: vz },
+      angVel,
+      rot,
+      pitch,
+      bank,
+      radius: 7,
+      mass,
+      hull: 1,
+      hullMax: 1,
       data: {
         parentType: 'ship',
         kind: 'wreck',
@@ -1696,14 +1771,19 @@ export const mining = {
 };
 
 function pickupsNearPlayer(state, player, radius, out) {
-  return queryNearbyEntities(state, player.pos, radius, out,
-    (state.entityIndex && state.entityIndex.pickups) || state.entityList);
+  const fallback = (state && state.entityIndex && (state.entityIndex.pickups || state.entityIndex.payloads))
+    ? (state.entityIndex.payloads && state.entityIndex.payloads.length > 0
+        ? state.entityIndex.pickups.concat(state.entityIndex.payloads)
+        : state.entityIndex.pickups)
+    : (state && state.entityList);
+  return queryNearbyEntities(state, player && player.pos, radius, out, fallback);
 }
 
 function hasAuthoritativeEmptyPickupIndex(state) {
   const index = state && state.entityIndex;
   return !!(index && index.__spacefaceEntityIndexV1 && index.ready &&
-    Array.isArray(index.pickups) && index.pickups.length === 0);
+    Array.isArray(index.pickups) && index.pickups.length === 0 &&
+    (!Array.isArray(index.payloads) || index.payloads.length === 0));
 }
 
 function clearScratch(out) {
@@ -1711,9 +1791,20 @@ function clearScratch(out) {
   return out;
 }
 
+const miningFieldScratch = [];
+
 function mineablesNearShip(state, ship, radius, out) {
-  return queryNearbyEntities(state, ship.pos, radius, out,
+  const nearby = queryNearbyEntities(state, ship.pos, radius, out,
     (state.entityIndex && state.entityIndex.mineables) || state.entityList);
+  const fieldHits = queryAsteroidField(state, ship.pos, radius, miningFieldScratch);
+  if (!fieldHits.length) return nearby;
+  if (nearby === out) {
+    for (let i = 0; i < fieldHits.length; i++) nearby.push(fieldHits[i]);
+    return nearby;
+  }
+  const merged = nearby.slice();
+  for (let i = 0; i < fieldHits.length; i++) merged.push(fieldHits[i]);
+  return merged;
 }
 
 function activeMineableTetherTarget(state, ship, range) {

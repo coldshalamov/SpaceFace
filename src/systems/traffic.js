@@ -33,6 +33,7 @@ import {
   forEachJobInteractable,
   forEachLivingWorldActor,
 } from '../world/livingWorldViews.js';
+import { getAsteroidFieldRock, promoteAsteroidFieldRock } from '../world/asteroidField.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from './ships.js';
 import { CombatDoctrineId } from '../ai/combatDoctrine.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
@@ -4087,29 +4088,30 @@ export const traffic = {
       }
       rec.targetId = this._pickStation(stations).id; return;
     }
-    let rock = state.entities.get(rec.targetId);
-    if (!rock || rock.type !== 'asteroid' || !rock.alive) { rec.targetId = this._pickAsteroid(state) || this._pickStation(stations).id; rock = state.entities.get(rec.targetId); }
+    let rock = this._resolveAsteroid(state, rec.targetId);
+    if (!rock || rock.type !== 'asteroid' || !rock.alive) {
+      rec.targetId = this._pickAsteroid(state) || this._pickStation(stations).id;
+      rock = this._resolveAsteroid(state, rec.targetId);
+    }
     if (!rock) { setIntent(e, 0, 0, false, false, null, e.rot); return; }
     const dist = Math.hypot(rock.pos.x - e.pos.x, rock.pos.z - e.pos.z);
-    if (dist < 40) { rec.carrying = true; rec.targetId = this._pickStation(stations).id; rec.waitT = 1.5; setIntent(e, 0, 0, false, false, null, e.rot); return; }
+    if (dist < 40) {
+      if (rock.fieldResident) {
+        promoteAsteroidFieldRock(state, rock.id, this.helpers, 'npc-mine');
+      }
+      rec.carrying = true; rec.targetId = this._pickStation(stations).id; rec.waitT = 1.5; setIntent(e, 0, 0, false, false, null, e.rot); return;
+    }
     setIntent(e, 0, 1, false, false, null, Math.atan2(rock.pos.z - e.pos.z, rock.pos.x - e.pos.x));
   },
 
+  _resolveAsteroid(state, id) {
+    if (id == null) return null;
+    const live = state.entities && state.entities.get && state.entities.get(id);
+    if (live && live.type === 'asteroid' && live.alive !== false) return live;
+    return getAsteroidFieldRock(state, id);
+  },
+
   _pickAsteroid(state) {
-    const indexed = state.entityIndex && state.entityIndex.__spacefaceEntityIndexV1
-      ? state.entityIndex.asteroids
-      : null;
-    if (indexed && indexed.length) {
-      const tries = Math.min(indexed.length, 8);
-      for (let i = 0; i < tries; i++) {
-        const rock = indexed[Math.floor(this._rng() * indexed.length)];
-        if (rock && rock.type === 'asteroid' && rock.alive) return rock.id;
-      }
-      for (const rock of indexed) {
-        if (rock && rock.type === 'asteroid' && rock.alive) return rock.id;
-      }
-      return null;
-    }
     let picked = null;
     let seen = 0;
     forEachFieldRock(state, (e) => {
