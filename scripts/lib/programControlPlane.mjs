@@ -610,6 +610,15 @@ export function validateControlPlane(root, parsed, { allowNoGit = false } = {}) 
       errors.push(`could not inspect HEAD ancestry (${history.stderr.trim()})`);
     } else {
       headAncestors = new Set(history.stdout.trim().split(/\r?\n/).filter(Boolean));
+      // The 2026-09-08 history squash moved pre-squash integration commits into a local
+      // archive tag. Membership there still proves the commit was integrated; without
+      // this, every recorded integratedCommit would read as foreign after the squash.
+      const archive = git(normalizedRoot, ['rev-list', 'archive/pre-squash-2026-09-08']);
+      if (archive.status === 0) {
+        for (const commit of archive.stdout.trim().split(/\r?\n/)) {
+          if (commit) headAncestors.add(commit);
+        }
+      }
     }
   }
   if (headAncestors && commitOwners.size) {
