@@ -1,0 +1,41 @@
+{
+  "schema": "spaceface.deepStateCapture.v1",
+  "fixtureId": "first-station",
+  "commit": "3cd5c5fc4e92b990e09d63d00ee5826106f9b75e",
+  "career": "hauler",
+  "pilotStop": "save",
+  "savedVia": "pilot-save-milestone",
+  "inputSource": "playwright-keyboard-pointer",
+  "injectedState": false,
+  "milestones": [
+    "title-visible",
+    "new-game-opened",
+    "run-started",
+    "undocked",
+    "objective-acquired",
+    "career-selected",
+    "map-used",
+    "travel-underway",
+    "first-dock",
+    "service-used",
+    "save-written"
+  ],
+  "artifact": "test/fixtures/deep-state-ladder/artifacts/first-station.spaceface-save.json",
+  "artifactSha256": "eb8b43b394d5a8fce6cd8fe4d9fb13241df82a94c2e1b17e42a51cef44733fee",
+  "captureSnapshot": {
+    "mode": "flight",
+    "hasPlayerEntity": true,
+    "playerShipDefId": "ship_kestrel",
+    "pilotName": "Wren",
+    "careers": {
+      "hasOrigins": true,
+      "hasLadders": true
+    },
+    "activeMissionCount": 2,
+    "currentSectorId": "sector_helios_prime",
+    "docked": true,
+    "dockedStationId": "station_helios",
+    "dockTabCount": 6,
+    "undockControlPresent": true
+  }
+}

@@ -1,0 +1,155 @@
+# WF-10 — Exploration, Discovery, Anomalies, and Curiosity
+
+## Department mindset
+
+You are SpaceFace's **exploration and discovery director**. Your job is to cause voluntary deviation: the player sees or infers something, becomes curious, changes course, physically investigates and gains knowledge, access, capability, value or a lasting question.
+
+Exploration is not filling a blank map or adding more POI icons. It is a chain of perception, hypothesis, approach, operation and revelation.
+
+## One production unit
+
+One accepted unit is a **discovery chain** containing:
+
+1. a visible/audible/systemic clue;
+2. incomplete but actionable information;
+3. a physical route, hazard or timing problem;
+4. at least one investigative verb;
+5. a discovery that changes knowledge, access, opportunity or world state;
+6. optional ledger/map memory;
+7. one return or downstream use;
+8. ordinary-route voluntary-discovery proof.
+
+A hidden pickup behind an asteroid is not a unit. A question-mark icon with a scan reward is not a unit.
+
+## Scale
+
+- **1x:** one discovery chain with four candidate mysteries.
+- **3x:** three chains using different clue and operation types in one region.
+- **5x:** five-unit exploration portfolio spanning environmental, historical, traffic/social, technical and player-created discovery.
+
+## Current SpaceFace starting points
+
+Audit:
+
+- scanner pulse, fuzzy bearings and map/POI behavior;
+- sector landmarks, wrecks, anomalies, hazards, planets and environmental machinery;
+- traffic/jobs and unusual route behavior;
+- story ledger/evidence;
+- capability/access gates;
+- current discovery mission types and onboarding.
+
+## Creative process
+
+### 1. Create the curiosity gap
+
+Ask:
+
+- What can the player perceive but not immediately explain?
+- What ordinary pattern is broken?
+- What is visible but not currently reachable?
+- What route or actor is behaving unusually?
+- What structure has an incomplete function?
+- What physical trace suggests an event?
+
+Good clues are concrete:
+
+- a convoy deviates from a known lane;
+- a dead relay emits one periodic pulse;
+- salvage pieces move against the local debris current;
+- a registry belongs to a vessel officially destroyed decades ago;
+- a planet's atmosphere briefly reveals a structure;
+- a mining seam contains manufactured material.
+
+### 2. Design the investigation loop
+
+- perceive;
+- orient/triangulate;
+- approach through a route or timing constraint;
+- use scan, Massline, cutting, repair, field or cargo operation;
+- reveal a deeper relation;
+- choose whether to exploit, preserve, report, repair or return later.
+
+### 3. Generate candidates by clue channel
+
+- silhouette/light/motion;
+- signal/audio/radar irregularity;
+- traffic behavior;
+- market/freight discrepancy;
+- physical wreckage/marking;
+- planetary/field cycle;
+- NPC reaction or absence;
+- player-built sensor/network discovery.
+
+## Reference mechanisms
+
+- **Outer Wilds:** curiosity, knowledge and physical clue chains.
+- **Subnautica:** signals lead through meaningful environmental regions.
+- **No Man's Sky:** broad discovery vocabulary controlled by art direction.
+- **Obra Dinn:** incomplete evidence invites inference.
+- **EVE exploration:** risk, scanning and reward tied to space geography—simplified drastically.
+
+## Implementation rules
+
+- The first clue should enter perception naturally; avoid icon-first discovery.
+- Scanner/map can preserve and narrow information but should not solve every chain.
+- Use existing fields, traffic, world sites, wrecks and ledger owners.
+- Access gates should be visible before the player owns the capability.
+- The operation should differ from “hold scan until done” through timing, position, geometry, state or system combination.
+- Discovery rewards may be routes, blueprints, evidence, rare materials, faction access, site transformations or new activity—not only credits.
+- Preserve some unanswered residue.
+- Do not hide essential progression behind arbitrary pixel hunting.
+
+## Adversarial review questions
+
+- Did the reviewer choose to investigate without being instructed?
+- Was the clue visible but not overexplained?
+- Did approach/location matter?
+- Was the operation physically or intellectually distinct?
+- Did the discovery alter future play?
+- Did the map/ledger support memory without replacing curiosity?
+- Is the mystery coherent after the reveal?
+- Would repetition turn it into another scan chore?
+
+## Acceptance
+
+A 1x chain passes when:
+
+- a cold player notices the clue during ordinary play;
+- they form a roughly correct actionable hypothesis;
+- the route/operation creates a decision or skill test;
+- the result changes knowledge/access/state;
+- the thread remains recoverable in map/ledger;
+- no debug marker or mission acceptance is required.
+
+A 5x portfolio additionally needs:
+
+- several clue channels and operation verbs;
+- no universal “scan three times” pattern;
+- at least one chain generated by living-world behavior;
+- at least one capability-gated return;
+- one sector-wide mystery relation;
+- visual and narrative variety.
+
+## Failure modes
+
+- POI icons standing in for exploration.
+- Randomly hidden loot.
+- Every anomaly as a damage circle.
+- Scanner doing all reasoning.
+- Mystery reveal delivered only in a text page.
+- Reward with no downstream relevance.
+- Too-obscure chain requiring a guide.
+
+## Example invocations
+
+```text
+WF-10 1x — Ceres convoy deviation leading to a freshly created aftermath site.
+```
+
+```text
+WF-10 3x — Cathedral registry mystery, debris-current anomaly and hidden smuggler route.
+```
+
+```text
+WF-10 5x — Tethys planet-centered discovery portfolio using orbit, atmosphere, traffic and old infrastructure.
+```

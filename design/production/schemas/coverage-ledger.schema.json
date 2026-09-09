@@ -1,0 +1,84 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "spaceface://production/coverage-ledger.schema.json",
+  "title": "SpaceFace Derived Coverage Ledger",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "generatedByRole", "generatedAt", "sourceHashes", "rows"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "generatedByRole": { "const": "controller" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "sourceHashes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "sha256"],
+        "properties": {
+          "path": { "type": "string", "minLength": 1 },
+          "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+        }
+      }
+    },
+    "rows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "alphaIds",
+          "sourceRefs",
+          "kind",
+          "family",
+          "playerImportance",
+          "maturity",
+          "status",
+          "canonicalOwner",
+          "evidencePaths",
+          "openCriticalMajorCount",
+          "nextGate"
+        ],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "alphaIds": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 },
+            "minItems": 1
+          },
+          "sourceRefs": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 },
+            "minItems": 1
+          },
+          "kind": { "enum": ["gameplay", "visual", "ui", "audio", "content", "operation"] },
+          "family": { "type": "string", "minLength": 1 },
+          "playerImportance": { "enum": ["critical", "high", "medium", "low"] },
+          "maturity": { "type": "integer", "minimum": 0, "maximum": 7 },
+          "status": { "enum": ["unassessed", "candidate", "rejected", "blocked", "accepted"] },
+          "canonicalOwner": { "type": "string", "minLength": 1 },
+          "evidencePaths": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "openCriticalMajorCount": { "type": "integer", "minimum": 0 },
+          "nextGate": { "type": "string", "minLength": 1 }
+        },
+        "allOf": [
+          {
+            "if": { "properties": { "status": { "const": "accepted" } } },
+            "then": {
+              "properties": {
+                "maturity": { "const": 7 },
+                "evidencePaths": { "minItems": 1 },
+                "openCriticalMajorCount": { "const": 0 }
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

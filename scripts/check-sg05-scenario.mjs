@@ -1,0 +1,242 @@
+import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { resolve } from 'node:path';
+
+import {
+  REQUIRED_47A_BEAT_IDS,
+  REQUIRED_47A_BRANCH_IDS,
+  formatScenarioIssue,
+  validateScenarioDocument,
+} from '../src/contracts/scenarioSchemas.js';
+import { CRITICAL_SLICE_EVENT_IDS } from '../src/presentation/cueSchema.js';
+
+const ROOT = fileURLToPath(new URL('../', import.meta.url));
+const SCENARIO_PATH = 'src/data/scenarios/47a.scenario.json';
+const BRANCH_LIFECYCLE_KEYS = ['abandon', 'active', 'aftermath', 'complete', 'fail', 'offer', 'reminder'];
+const REQUIRED_DIALOGUE_BEATS = ['drop_wreck_field', 'stabilize_spindle', 'scavenger_arrival'];
+const VISIBLE_DIALOGUE_BUDGET = Object.freeze({
+  maxChars: 96,
+  maxWords: 18,
+  wrapColumn: 48,
+  maxWrappedLines: 2,
+});
+const FORBIDDEN_VISIBLE_TUTORIAL_TERMS = /\b(tutorial|press|click|wasd|arrow keys|left mouse|right mouse|spacebar|hotkey)\b/i;
+
+const scenario = readJson(SCENARIO_PATH);
+const report = validateScenarioDocument(scenario, { file: SCENARIO_PATH });
+assert(report.ok, report.issues.map(formatScenarioIssue).join('\n'));
+
+assert.equal(scenario.scenario, '47-A: The Mass Discrepancy', 'scenario contract must name the 47-A slice');
+assert.equal(scenario.durationSeconds, 720, '47-A scenario should cover the 10-12 minute slice window');
+assert.deepEqual(scenario.beats.map((beat) => beat.id), REQUIRED_47A_BEAT_IDS, '47-A beat order should stay pinned');
+for (const branchId of REQUIRED_47A_BRANCH_IDS) {
+  assert(scenario.branches.some((branch) => branch.id === branchId), `scenario missing required branch ${branchId}`);
+}
+
+const cueIds = new Set(scenario.presentationEventIds);
+for (const cueId of CRITICAL_SLICE_EVENT_IDS) {
+  assert(cueIds.has(cueId), `scenario must reserve critical SG-08 cue ${cueId}`);
+}
+
+for (const beat of scenario.beats) {
+  assert(beat.requiredMechanics.length > 0, `${beat.id} must name the mechanics it needs`);
+  assert(beat.requiredPresentation.length >= 5, `${beat.id} must reserve audio/VFX/camera/UI/accessibility presentation lanes`);
+  assert(beat.proofMetricIds.length > 0, `${beat.id} must map to proof metrics`);
+  assert(beat.worldFactRefs.length > 0, `${beat.id} must touch declared world facts`);
+}
+
+const dialogueByBeat = new Map();
+for (const line of scenario.dialogue) {
+  assert(line.id.startsWith('dialogue.47a.'), `${line.id} should live in the 47-A dialogue namespace`);
+  assert(line.text.length <= 150, `${line.id} should stay inside the dialogue text budget`);
+  assert(cueIds.has(line.presentationEventId), `${line.id} should reference a reserved presentation cue`);
+  dialogueByBeat.set(line.beatId, (dialogueByBeat.get(line.beatId) || 0) + 1);
+}
+for (const beatId of REQUIRED_DIALOGUE_BEATS) {
+  assert((dialogueByBeat.get(beatId) || 0) >= 1, `${beatId} should execute at least one authored dialogue line`);
+}
+const dialogueBudgetIssues = collectDialogueBudgetIssues(scenario.dialogue);
+assert.deepEqual(dialogueBudgetIssues, [], `47-A visible dialogue violates the tutorial line-cap budget:\n${dialogueBudgetIssues.join('\n')}`);
+
+for (const branch of scenario.branches) {
+  assert(branch.policyId.startsWith('policy.47a.'), `${branch.id} should have a 47-A policy id`);
+  assert.deepEqual(Object.keys(branch.lifecycle || {}).sort(), BRANCH_LIFECYCLE_KEYS, `${branch.id} should supply complete branch lifecycle text`);
+  for (const key of BRANCH_LIFECYCLE_KEYS) {
+    assert(branch.lifecycle[key].length <= 220, `${branch.id}.${key} should stay inside the lifecycle text budget`);
+  }
+  assert(branch.worldFactEffects.length >= 1, `${branch.id} must change an immediate world fact`);
+}
+const deliverBranch = scenario.branches.find((branch) => branch.id === 'deliver_to_contact');
+assertLivePredicate(
+  deliverBranch,
+  'deliver_to_contact',
+  'predicate.47a.deliver_to_contact.live_state',
+  'action_sling',
+  'kessler_handoff_beacon',
+);
+const surrenderBranch = scenario.branches.find((branch) => branch.id === 'surrender_evidence');
+assertLivePredicate(
+  surrenderBranch,
+  'surrender_evidence',
+  'predicate.47a.surrender_evidence.live_state',
+  'action_reel',
+  'official_recovery_tug',
+);
+assert(surrenderBranch.resolutionPredicate.all.some((condition) =>
+  condition.kind === 'eventCount' && condition.eventType === 'combat:actionStarted' && condition.actionId === 'action_sling' && condition.maxCount === 0),
+'surrender_evidence predicate should reject covert sling delivery');
+assert(surrenderBranch.resolutionPredicate.all.some((condition) =>
+  condition.kind === 'eventCount' && condition.eventType === 'combat:actionStarted' && condition.actionId === 'action_cut' && condition.maxCount === 0),
+'surrender_evidence predicate should reject destructive cut-away tactics');
+
+const metricIds = new Set(scenario.proofMetrics.map((metric) => metric.id));
+for (const requiredMetric of [
+  'first_meaningful_steering',
+  'first_tether_attach',
+  'first_hostile_shot',
+  'policy_completion_count',
+  'enemy_counter_tether_count',
+  'branch_world_fact_delta',
+  'death_to_retry',
+  'critical_beat_presentation',
+]) {
+  assert(metricIds.has(requiredMetric), `scenario missing proof metric ${requiredMetric}`);
+}
+
+assertRejectsMalformedScenario();
+assertCliValidation();
+
+console.log('SG-05 scenario contract checks OK');
+
+function assertLivePredicate(branch, branchId, predicateId, actionId, distanceTargetActorId) {
+  assert(branch, `${branchId} should exist`);
+  assert(branch.resolutionPredicate, `${branchId} should expose a schema-backed live-state predicate`);
+  assert.equal(branch.resolutionPredicate.id, predicateId, `${branchId} should name its live-state predicate`);
+  assert.equal(branch.resolutionPredicate.source, 'live-state',
+    `${branchId} predicate should not rely on tape branch injection`);
+  assert.deepEqual(new Set(branch.resolutionPredicate.all.map((condition) => condition.kind)),
+    new Set(['beatEntered', 'actionStarted', 'attachmentActive', 'actorDistance', 'eventCount']),
+    `${branchId} predicate should require beat, action, tether, handoff distance, and no-break evidence`);
+  assert(branch.resolutionPredicate.all.some((condition) =>
+    condition.kind === 'actionStarted' && condition.actionId === actionId && condition.targetActorId === 'evidence_spindle_47a'),
+  `${branchId} predicate should require ${actionId} against the evidence spindle`);
+  assert(branch.resolutionPredicate.all.some((condition) =>
+    condition.kind === 'actorDistance' && condition.actorId === 'evidence_spindle_47a' && condition.targetActorId === distanceTargetActorId),
+  `${branchId} predicate should require final proximity to ${distanceTargetActorId}`);
+  assert(branch.resolutionPredicate.all.some((condition) =>
+    condition.kind === 'eventCount' && condition.eventType === 'tether:broken' && condition.maxCount === 0),
+  `${branchId} predicate should reject broken-tether outcomes`);
+}
+
+function assertRejectsMalformedScenario() {
+  const missingBranchEffects = clone(scenario);
+  missingBranchEffects.branches[0].worldFactEffects = [];
+  assertIssue(missingBranchEffects, 'minItems', 'branch without world fact effects should fail');
+
+  const missingBranchLifecycle = clone(scenario);
+  delete missingBranchLifecycle.branches[0].lifecycle.aftermath;
+  assertIssue(missingBranchLifecycle, 'type', 'branch without aftermath lifecycle text should fail');
+
+  const missingActorRef = clone(scenario);
+  missingActorRef.beats[0].requiredActors.push('actor_missing');
+  assertIssue(missingActorRef, 'actorRef', 'beat actor references should resolve');
+
+  const missingRequiredBeat = clone(scenario);
+  missingRequiredBeat.beats = missingRequiredBeat.beats.filter((beat) => beat.id !== 'civilian_pod_choice');
+  assertIssue(missingRequiredBeat, 'requiredBeat', 'required 47-A beats should be mandatory');
+
+  const badCue = clone(scenario);
+  badCue.presentationEventIds.push('bad');
+  assertIssue(badCue, 'cueId', 'presentation event ids should use dotted semantic syntax');
+
+  const badDialogueActor = clone(scenario);
+  badDialogueActor.dialogue[0].speakerActorId = 'actor_missing';
+  assertIssue(badDialogueActor, 'actorRef', 'dialogue speaker references should resolve');
+
+  const badDialogueCue = clone(scenario);
+  badDialogueCue.dialogue[0].presentationEventId = 'scenario.comms.missing';
+  assertIssue(badDialogueCue, 'cueRef', 'dialogue presentation cue references should resolve');
+
+  const emptyPredicate = clone(scenario);
+  emptyPredicate.branches.find((branch) => branch.id === 'deliver_to_contact').resolutionPredicate.all = [];
+  assertIssue(emptyPredicate, 'minItems', 'branch predicates should require at least one condition');
+
+  const badPredicateActor = clone(scenario);
+  badPredicateActor.branches.find((branch) => branch.id === 'deliver_to_contact')
+    .resolutionPredicate.all.find((condition) => condition.kind === 'actorDistance')
+    .targetActorId = 'missing_handoff_beacon';
+  assertIssue(badPredicateActor, 'actorRef', 'branch predicate actor references should resolve');
+
+  const paragraphDialogue = clone(scenario);
+  paragraphDialogue.dialogue[0].text = 'Press W to move toward the objective marker, then hold the interact key when the tutorial prompt tells you to attach the tether.';
+  assert(collectDialogueBudgetIssues(paragraphDialogue.dialogue).length >= 1,
+    'visible dialogue budget should reject paragraph/tutorial-control copy');
+}
+
+function assertCliValidation() {
+  const out = JSON.parse(execFileSync(process.execPath, [
+    'scripts/sf.mjs',
+    'validate',
+    'scenario',
+    SCENARIO_PATH,
+  ], { cwd: ROOT, encoding: 'utf8', maxBuffer: 5 * 1024 * 1024 }));
+  assert.equal(out.schema, 'spaceface.sfCliResult.v1', 'sf validate scenario should emit the canonical CLI result');
+  assert.equal(out.ok, true, 'sf validate scenario should pass for the canonical 47-A scenario');
+  assert.equal(out.validateKind, 'scenario', 'sf validate scenario should identify scenario validation');
+  assert.equal(out.result.schema, 'spaceface.scenarioValidationResult.v1', 'scenario validation result should be versioned');
+}
+
+function assertIssue(doc, rule, message) {
+  const result = validateScenarioDocument(doc, { file: 'bad.scenario.json' });
+  assert.equal(result.ok, false, message);
+  assert(result.issues.some((issue) => issue.rule === rule), `${message}: expected rule ${rule}`);
+}
+
+function readJson(rel) {
+  return JSON.parse(readFileSync(resolve(ROOT, rel), 'utf8'));
+}
+
+function clone(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function collectDialogueBudgetIssues(dialogue = []) {
+  const issues = [];
+  for (const line of dialogue || []) {
+    const id = line && line.id || '<unknown>';
+    const text = String(line && line.text || '').trim().replace(/\s+/g, ' ');
+    const words = text ? text.split(/\s+/).length : 0;
+    const wrappedLines = countWrappedLines(text, VISIBLE_DIALOGUE_BUDGET.wrapColumn);
+    if (text.length > VISIBLE_DIALOGUE_BUDGET.maxChars) {
+      issues.push(`${id}: ${text.length} chars exceeds ${VISIBLE_DIALOGUE_BUDGET.maxChars}`);
+    }
+    if (words > VISIBLE_DIALOGUE_BUDGET.maxWords) {
+      issues.push(`${id}: ${words} words exceeds ${VISIBLE_DIALOGUE_BUDGET.maxWords}`);
+    }
+    if (wrappedLines > VISIBLE_DIALOGUE_BUDGET.maxWrappedLines) {
+      issues.push(`${id}: wraps to ${wrappedLines} lines at ${VISIBLE_DIALOGUE_BUDGET.wrapColumn} cols`);
+    }
+    if (FORBIDDEN_VISIBLE_TUTORIAL_TERMS.test(text)) {
+      issues.push(`${id}: visible 47-A copy must stay in-world, not tutorial/control language`);
+    }
+  }
+  return issues;
+}
+
+function countWrappedLines(text, width) {
+  if (!text) return 0;
+  let lines = 1;
+  let col = 0;
+  for (const word of text.split(/\s+/)) {
+    const extra = col === 0 ? word.length : word.length + 1;
+    if (col > 0 && col + extra > width) {
+      lines += 1;
+      col = word.length;
+    } else {
+      col += extra;
+    }
+  }
+  return lines;
+}

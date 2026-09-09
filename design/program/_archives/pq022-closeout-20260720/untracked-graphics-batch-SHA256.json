@@ -1,0 +1,1495 @@
+{
+  "archive_purpose": "Hash-bound recovery record for untracked graphics-batch outputs removed from the primary checkout during the 2026-07-20 PQ-022 closeout. These are reproducible procedural outputs (Blender _export_tmp.glb intermediates, auto-baked Material_*_ao_1k.png / trim_sheet / wear_mask textures) whose canonical sources (.blend files, embedded release-GLB textures, and the tracked authoring pipeline) remain on master. They are NOT referenced by any tracked manifest or source.",
+  "archive_date": "2026-07-20",
+  "total_files": 247,
+  "total_bytes": 68462005,
+  "reproducibility": {
+    "tmp_glbs": "Reproduce via tools/art/blender/revamp_full_finish.py with SF_PART_ID=<part> SF_PHASE=export (canonical .blend sources committed under assets/ships/parts/blender/).",
+    "ao_textures": "Reproduce via tools/art/blender/gen_revamp_textures.py (the auto-baked Material_Hull/Accent/Mechanical_ao_1k.png outputs).",
+    "trim_sheets_wear_masks": "Reproduce via revamp_full_finish.py bake phases."
+  },
+  "files": [
+    {
+      "path": "assets/ships/parts/blender/hull_corvette_export_tmp.glb",
+      "sha256": "8c1d9c0a4c4eb2a023acde48dd2765975479c5fde5f1eaa7f441896c8fda4832",
+      "bytes": 1556500,
+      "mtime": 1784557684
+    },
+    {
+      "path": "assets/ships/parts/blender/hull_fighter_export_tmp.glb",
+      "sha256": "6f2d4c2cb9dc37bfa621bba3e1f1c2188c816670073377323f998e4f0179cda6",
+      "bytes": 1869148,
+      "mtime": 1784557684
+    },
+    {
+      "path": "assets/ships/parts/blender/hull_freighter_export_tmp.glb",
+      "sha256": "d71128378ba9b48da141cbab90d3dfde29262b80bd842b075c780cbaef292b13",
+      "bytes": 2012400,
+      "mtime": 1784557684
+    },
+    {
+      "path": "assets/ships/parts/blender/hull_interceptor_export_tmp.glb",
+      "sha256": "44e674eab11e53001e4015ce9ff4d8d3b955dac1c41723aadfa3c69680c171e9",
+      "bytes": 1427620,
+      "mtime": 1784557684
+    },
+    {
+      "path": "assets/ships/parts/blender/hull_miner_export_tmp.glb",
+      "sha256": "337dc9d5cec1b24cab5311dca7c7f58dc4fcb0406f84586f1436049d2d9f0362",
+      "bytes": 3350488,
+      "mtime": 1784557684
+    },
+    {
+      "path": "assets/ships/parts/blender/place_asteroid_graffiti_export_tmp.glb",
+      "sha256": "ef39e8af06a000355b9b0488f1d03c3cc5465755b8a4787b3d56779aaaa44895",
+      "bytes": 620088,
+      "mtime": 1784557684
+    },
+    {
+      "path": "assets/ships/parts/blender/place_asteroid_rock_b_export_tmp.glb",
+      "sha256": "d1f9d47ebb6aad2e20e065c4fe904b06e7ba9d0df4a256219fa3473db200125d",
+      "bytes": 868616,
+      "mtime": 1784557684
+    },
+    {
+      "path": "assets/ships/parts/blender/place_asteroid_rock_c_export_tmp.glb",
+      "sha256": "e66dff1b06a7ab559e48bee27debe4c22b579c7c0e06625116d8b3720d94d36e",
+      "bytes": 902960,
+      "mtime": 1784557684
+    },
+    {
+      "path": "assets/ships/parts/blender/place_asteroid_seamed_export_tmp.glb",
+      "sha256": "f8df59a9db22d7d2bbd7edcf3ec5f369734789e3e8fb32b49ab6609fd9144d5e",
+      "bytes": 307532,
+      "mtime": 1784557684
+    },
+    {
+      "path": "assets/ships/parts/blender/place_conveyor_barge_export_tmp.glb",
+      "sha256": "feb91f4dd09905e2e0200f1540c3f9cff9b0b7a8f63861bc644f4f157b388bc0",
+      "bytes": 346444,
+      "mtime": 1784557684
+    },
+    {
+      "path": "assets/ships/parts/blender/place_dead_hulk_export_tmp.glb",
+      "sha256": "2d49b27ac257d2a7e9eb18a8c45c46700b1520fbe274e5ba907f6a4a89b4bfb8",
+      "bytes": 635404,
+      "mtime": 1784557684
+    },
+    {
+      "path": "assets/ships/parts/blender/place_debris_chunk_export_tmp.glb",
+      "sha256": "caf8becf414f6fdd620e6941827fa4070598598acefded31df1dfd652933bf19",
+      "bytes": 285984,
+      "mtime": 1784557684
+    },
+    {
+      "path": "assets/ships/parts/blender/place_gate_jump_ring_export_tmp.glb",
+      "sha256": "0de48d390df57be681e0477a679d29f71b2a0f8841a83d2e89169d268d1ef47f",
+      "bytes": 1220284,
+      "mtime": 1784557684
+    },
+    {
+      "path": "assets/ships/parts/blender/place_lane_beacon_export_tmp.glb",
+      "sha256": "874463265f3fa132b8c96e9da72a3ed257c6a81ab615ef3b0a774f89983683d5",
+      "bytes": 265328,
+      "mtime": 1784557684
+    },
+    {
+      "path": "assets/ships/parts/blender/place_mining_drone_export_tmp.glb",
+      "sha256": "b0b16a3673749fd88e51260322ca13596c88b6d0b9fce21112d9cf4caf59bd5d",
+      "bytes": 340412,
+      "mtime": 1784557684
+    },
+    {
+      "path": "assets/ships/parts/blender/place_nav_buoy_export_tmp.glb",
+      "sha256": "353b8f51da31a8b89a031b201d20aae862b64cfd0c7a2ce0071a32c1371ffd9a",
+      "bytes": 349172,
+      "mtime": 1784557684
+    },
+    {
+      "path": "assets/ships/parts/blender/place_station_billboard_export_tmp.glb",
+      "sha256": "141e796f2e03452a242571b0397f3aa0dadd310dd48d7637757edfdcbf5d60f3",
+      "bytes": 284364,
+      "mtime": 1784557684
+    },
+    {
+      "path": "assets/ships/parts/blender/place_station_blackmarket_export_tmp.glb",
+      "sha256": "b449b7bdca36a952272fa3c5503074c23894504332cfd6ec0ddc361d66589c04",
+      "bytes": 1130184,
+      "mtime": 1784557684
+    },
+    {
+      "path": "assets/ships/parts/blender/place_station_fab_export_tmp.glb",
+      "sha256": "a99dab646fba9bbcb251e5ac49a4a498cfb7d7ccbcbde69f7812dcbedd9b7bea",
+      "bytes": 794556,
+      "mtime": 1784557684
+    },
+    {
+      "path": "assets/ships/parts/blender/place_station_military_export_tmp.glb",
+      "sha256": "abbc3a5a1476ecbf69a9ee451119274d9387aed0842f77cff14d720535c00a58",
+      "bytes": 1052912,
+      "mtime": 1784557684
+    },
+    {
+      "path": "assets/ships/parts/blender/place_station_mining_export_tmp.glb",
+      "sha256": "3391408c262a8f5715ecf7c4593230a81d8ff48e68a6939607aa3e232b2d53fb",
+      "bytes": 791692,
+      "mtime": 1784557684
+    },
+    {
+      "path": "assets/ships/parts/blender/place_station_refinery_export_tmp.glb",
+      "sha256": "ce946204f5aae75fb3e93cd6f63ec4e728b619122970abd0b179f0f5cbb653f5",
+      "bytes": 1027716,
+      "mtime": 1784557684
+    },
+    {
+      "path": "assets/ships/parts/blender/place_station_research_export_tmp.glb",
+      "sha256": "60b1a21bfe9290b368afd83f519cdd67c8f2f84b83db75462ee50d48c1880ebf",
+      "bytes": 751380,
+      "mtime": 1784557684
+    },
+    {
+      "path": "assets/ships/parts/textures/cockpit_slab/Material_Accent_ao_1k.png",
+      "sha256": "b423c3205b957f68b072235b9343520f84b1adde4b216bd44893a20e9398f704",
+      "bytes": 20726,
+      "mtime": 1784557684
+    },
+    {
+      "path": "assets/ships/parts/textures/engine_plasma_ring/Material_Accent_ao_1k.png",
+      "sha256": "c92d5f51caf1257ecbdb372ad5044bf2862a9e60b0eccf87f72d4bf97bd2eb6a",
+      "bytes": 35048,
+      "mtime": 1784557684
+    },
+    {
+      "path": "assets/ships/parts/textures/engine_plasma_ring/Material_Hull_ao_1k.png",
+      "sha256": "51b2c7c4ad337a115bd1955d0f6e9626efc50ee8bcaac0ebd217521dbbd9ef8c",
+      "bytes": 21019,
+      "mtime": 1784557684
+    },
+    {
+      "path": "assets/ships/parts/textures/engine_plasma_ring/Material_Mechanical_ao_1k.png",
+      "sha256": "51b2c7c4ad337a115bd1955d0f6e9626efc50ee8bcaac0ebd217521dbbd9ef8c",
+      "bytes": 21019,
+      "mtime": 1784557684
+    },
+    {
+      "path": "assets/ships/parts/textures/engine_plasma_ring/engine_plasma_ring_trim_sheet_1k.jpg",
+      "sha256": "3c872064714d29c5ed4025974dbbef8c53ee1224d6c406320590a03cfe9be1d8",
+      "bytes": 69045,
+      "mtime": 1784557684
+    },
+    {
+      "path": "assets/ships/parts/textures/engine_plasma_ring/engine_plasma_ring_wear_mask_1k.jpg",
+      "sha256": "9c2e5c45ad7c3b466996a867754347a155e39d32acf5368294faa714cc2fd921",
+      "bytes": 26432,
+      "mtime": 1784557684
+    },
+    {
+      "path": "assets/ships/parts/textures/fin_crystalline/Material_Accent_ao_1k.png",
+      "sha256": "9de63043a5ed77f2104c19c32776d67bd8fb83d9a9e95aa40531dc9b95fcc901",
+      "bytes": 339181,
+      "mtime": 1784557684
+    },
+    {
+      "path": "assets/ships/parts/textures/fin_crystalline/Material_Hull_ao_1k.png",
+      "sha256": "baf11300d7afa54cd06f4a1867e5d2f52558aa233bd3b43604b686262d0afd68",
+      "bytes": 260537,
+      "mtime": 1784557684
+    },
+    {
+      "path": "assets/ships/parts/textures/fin_crystalline/Material_Mechanical_ao_1k.png",
+      "sha256": "0111059d2b0ec4a8c10fe5d4da54700cd7b5aebf6959255eb9e9005985304a6b",
+      "bytes": 23613,
+      "mtime": 1784557684
+    },
+    {
+      "path": "assets/ships/parts/textures/fin_crystalline/fin_crystalline_trim_sheet_1k.jpg",
+      "sha256": "faa5b6a7e5f084cf1f3fa50bccf636f192651133d521c40be764f139b9f8f7f4",
+      "bytes": 468304,
+      "mtime": 1784557684
+    },
+    {
+      "path": "assets/ships/parts/textures/fin_crystalline/fin_crystalline_wear_mask_1k.jpg",
+      "sha256": "e969d457ca30c1a7a5b48c82ba2a8bdfe36ddf158e2a62915399ad3d57d53914",
+      "bytes": 269657,
+      "mtime": 1784557684
+    },
+    {
+      "path": "assets/ships/parts/textures/fin_delta/Material_Accent_ao_1k.png",
+      "sha256": "84676bf280d787e3c9eec3ca18692b8150358aa8c3e6ab18ecb7795b76e2b7b2",
+      "bytes": 513724,
+      "mtime": 1784557684
+    },
+    {
+      "path": "assets/ships/parts/textures/fin_delta/Material_Hull_ao_1k.png",
+      "sha256": "2d383b85613e0e51dd3297358d5230d7e4f5bab565f752b83dafce2ef6aad93e",
+      "bytes": 221312,
+      "mtime": 1784557684
+    },
+    {
+      "path": "assets/ships/parts/textures/fin_delta/Material_Mechanical_ao_1k.png",
+      "sha256": "3843f4c6f45edf417537d5efa4f39caa1f2984c3c91b989d866face7e46cc773",
+      "bytes": 160265,
+      "mtime": 1784557684
+    },
+    {
+      "path": "assets/ships/parts/textures/fin_delta/fin_delta_trim_sheet_1k.jpg",
+      "sha256": "0b99d14941ef5d4fa04525ef4eb218f2ae43483634d715b6159cc055563887ad",
+      "bytes": 354821,
+      "mtime": 1784557684
+    },
+    {
+      "path": "assets/ships/parts/textures/fin_delta/fin_delta_wear_mask_1k.jpg",
+      "sha256": "6b5ae717d96a7d9d670580cb7ac825e8ae4ac19ecd91a53d2deeade125fd8a42",
+      "bytes": 252909,
+      "mtime": 1784557684
+    },
+    {
+      "path": "assets/ships/parts/textures/fin_radiator_grid/Material_Accent_ao_1k.png",
+      "sha256": "649859807d30f0c033cf20601d35959dcc2a0b5309f232fde2d3c69e43c95bd4",
+      "bytes": 56801,
+      "mtime": 1784557684
+    },
+    {
+      "path": "assets/ships/parts/textures/fin_radiator_grid/Material_Hull_ao_1k.png",
+      "sha256": "bf748ab803372a66b2c717a302aeb5ac7b68d20e162e8818b6c3b7b631b3b07a",
+      "bytes": 345827,
+      "mtime": 1784557684
+    },
+    {
+      "path": "assets/ships/parts/textures/fin_radiator_grid/Material_Mechanical_ao_1k.png",
+      "sha256": "6104d138e3d0512f4eab971beab562134615e9104eea64c1fa86ee90de85a181",
+      "bytes": 223472,
+      "mtime": 1784557684
+    },
+    {
+      "path": "assets/ships/parts/textures/fin_radiator_grid/fin_radiator_grid_trim_sheet_1k.jpg",
+      "sha256": "c2beb3838707f04a020bbc8ebb978f70d140904a1adbc44198a69bd359f2af89",
+      "bytes": 468210,
+      "mtime": 1784557684
+    },
+    {
+      "path": "assets/ships/parts/textures/fin_radiator_grid/fin_radiator_grid_wear_mask_1k.jpg",
+      "sha256": "c9a9ed4a6ccad1375779ca5e7bc9edaf619845ef5baea4a5613f87ada7f276f4",
+      "bytes": 556564,
+      "mtime": 1784557684
+    },
+    {
+      "path": "assets/ships/parts/textures/fin_stabilator/Material_Accent_ao_1k.png",
+      "sha256": "b563cbce0226d6d46479540030a314fb98f8f6c2c9fc072d2202ad5e49750034",
+      "bytes": 134213,
+      "mtime": 1784557684
+    },
+    {
+      "path": "assets/ships/parts/textures/fin_stabilator/Material_Hull_ao_1k.png",
+      "sha256": "cd5af19974279ff7f3c9660a527fa1aaafdb4ae658d41a73e7912d293c150b01",
+      "bytes": 293239,
+      "mtime": 1784557684
+    },
+    {
+      "path": "assets/ships/parts/textures/fin_stabilator/Material_Mechanical_ao_1k.png",
+      "sha256": "22d94544d646c9397c595c15327da26f9c5aad2ebd25371fd694c77dd93e902c",
+      "bytes": 262839,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/fin_stabilator/fin_stabilator_trim_sheet_1k.jpg",
+      "sha256": "c2beb3838707f04a020bbc8ebb978f70d140904a1adbc44198a69bd359f2af89",
+      "bytes": 468210,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/fin_stabilator/fin_stabilator_wear_mask_1k.jpg",
+      "sha256": "c9a9ed4a6ccad1375779ca5e7bc9edaf619845ef5baea4a5613f87ada7f276f4",
+      "bytes": 556564,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/fin_swept_smuggler/Material_Accent_ao_1k.png",
+      "sha256": "847ae4152b4b1e4d11b3e78cd23e078069524693358a4434c1757caed541eb89",
+      "bytes": 664571,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/fin_swept_smuggler/Material_Hull_ao_1k.png",
+      "sha256": "8bb2a759facd1293e6ae0d91bd9a7817cc247d7e5aa5e5af5fee9d93c863cae5",
+      "bytes": 897791,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/fin_swept_smuggler/Material_Mechanical_ao_1k.png",
+      "sha256": "fe2ddb045f740fafcea8b715ef48951f2a08a5b4c6fa493634a730d4f8d85923",
+      "bytes": 166449,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/fin_swept_smuggler/fin_swept_smuggler_trim_sheet_1k.jpg",
+      "sha256": "0b99d14941ef5d4fa04525ef4eb218f2ae43483634d715b6159cc055563887ad",
+      "bytes": 354821,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/fin_swept_smuggler/fin_swept_smuggler_wear_mask_1k.jpg",
+      "sha256": "6b5ae717d96a7d9d670580cb7ac825e8ae4ac19ecd91a53d2deeade125fd8a42",
+      "bytes": 252909,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/greeble_antennas/Material_Accent_ao_1k.png",
+      "sha256": "04569f7aa9d471695a21866b00f29f598f63615ed51d1f7f3562ee67632265f7",
+      "bytes": 260252,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/greeble_antennas/Material_Hull_ao_1k.png",
+      "sha256": "4af711ba2101d3cc2c37813b9c2eeeed1b48def64663ea619c4ef9a08706bc51",
+      "bytes": 434586,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/greeble_antennas/Material_Mechanical_ao_1k.png",
+      "sha256": "1f9fe5523505fd86136a59900335ab1f7438cdc4384bb6a10d4764f9f7f698f0",
+      "bytes": 368954,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/greeble_antennas/greeble_antennas_trim_sheet_1k.jpg",
+      "sha256": "0b99d14941ef5d4fa04525ef4eb218f2ae43483634d715b6159cc055563887ad",
+      "bytes": 354821,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/greeble_antennas/greeble_antennas_wear_mask_1k.jpg",
+      "sha256": "6b5ae717d96a7d9d670580cb7ac825e8ae4ac19ecd91a53d2deeade125fd8a42",
+      "bytes": 252909,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/greeble_armor_plates/Material_Accent_ao_1k.png",
+      "sha256": "016d96a907f5478b730bf4ca842048236ad68f1c4c672aa8707f5d2faad250e3",
+      "bytes": 24092,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/greeble_armor_plates/Material_Hull_ao_1k.png",
+      "sha256": "ccae9a7618186da7e1f62a03146e65ac420a163fb6aeffb70d9cd78933c36fee",
+      "bytes": 14505,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/greeble_armor_plates/Material_Mechanical_ao_1k.png",
+      "sha256": "53fa7020b0a23b830e7e63fe8291a98051bcdaa425f9e8daac4a4fd7d0452a63",
+      "bytes": 15459,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/greeble_armor_plates/greeble_armor_plates_trim_sheet_1k.jpg",
+      "sha256": "147e48ead6de430ee3f3f20749372d8ed34ef0a2a85caafebde83cb5db2cc42d",
+      "bytes": 50913,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/greeble_armor_plates/greeble_armor_plates_wear_mask_1k.jpg",
+      "sha256": "6b9407478ae5b90d577ead7b08bad3f2121daed2d0a50e07344b214da2ea495b",
+      "bytes": 49847,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/greeble_hatches/Material_Accent_ao_1k.png",
+      "sha256": "c73d8f49a0f006efcd55a53d8c2cb3c3521e427d0070272b4804e9a4acf50d48",
+      "bytes": 616296,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/greeble_hatches/Material_Hull_ao_1k.png",
+      "sha256": "dcd26305a2cb2407a426b1d9a793b7437bdd7568415c7be1fed60582ea2cfc38",
+      "bytes": 356498,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/greeble_hatches/Material_Mechanical_ao_1k.png",
+      "sha256": "a1f6af683c535efadcb665781b59ea6ce9f2aae5f0be9064e5e01ee8a3241a96",
+      "bytes": 370822,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/greeble_hatches/greeble_hatches_trim_sheet_1k.jpg",
+      "sha256": "0b99d14941ef5d4fa04525ef4eb218f2ae43483634d715b6159cc055563887ad",
+      "bytes": 354821,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/greeble_hatches/greeble_hatches_wear_mask_1k.jpg",
+      "sha256": "6b5ae717d96a7d9d670580cb7ac825e8ae4ac19ecd91a53d2deeade125fd8a42",
+      "bytes": 252909,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/greeble_nav_lights/Material_Accent_ao_1k.png",
+      "sha256": "ccb2222a53fb8fd5dd5879ef1f9e2de0907335cab9873ffa00aa694e3f259a9b",
+      "bytes": 303072,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/greeble_nav_lights/Material_Hull_ao_1k.png",
+      "sha256": "677d7e3a6bacd552125fbbdcef759b9985fba789265ebc5c21e9fae70401974d",
+      "bytes": 15959,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/greeble_nav_lights/Material_Mechanical_ao_1k.png",
+      "sha256": "458dd16460a007f44ccbe7c99d0771eac61595c172582385b6eca9e46d7b0785",
+      "bytes": 201269,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/greeble_nav_lights/greeble_nav_lights_trim_sheet_1k.jpg",
+      "sha256": "0573fb0a4798cab8832202db812962e862c1db3fcfc8c4c84626425700cc4df9",
+      "bytes": 426873,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/greeble_nav_lights/greeble_nav_lights_wear_mask_1k.jpg",
+      "sha256": "aee95538f9b26f9a9376075a8539aef86a92d187ffe9276b82111bc88aa781d4",
+      "bytes": 377571,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/greeble_pipes/Material_Accent_ao_1k.png",
+      "sha256": "c4813d6840b27273f515b01275b26790ef51dc2b5cede1484047f483e1907182",
+      "bytes": 250373,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/greeble_pipes/Material_Hull_ao_1k.png",
+      "sha256": "94be027c9176f37d6ea3eb06ebfc070afa9a72753db14ad4d3040104be0c3118",
+      "bytes": 235021,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/greeble_pipes/Material_Mechanical_ao_1k.png",
+      "sha256": "5d933f31344c75b406f09c866ebd4d09b1540b2ab7f30361697f946ddea9e087",
+      "bytes": 266987,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/greeble_pipes/greeble_pipes_trim_sheet_1k.jpg",
+      "sha256": "c2beb3838707f04a020bbc8ebb978f70d140904a1adbc44198a69bd359f2af89",
+      "bytes": 468210,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/greeble_pipes/greeble_pipes_wear_mask_1k.jpg",
+      "sha256": "c9a9ed4a6ccad1375779ca5e7bc9edaf619845ef5baea4a5613f87ada7f276f4",
+      "bytes": 556564,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/greeble_rcs/Material_Accent_ao_1k.png",
+      "sha256": "c01677d434046fc574d48c89ecff954cc0f9aca1c4b979465e90b48dc541faf8",
+      "bytes": 264798,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/greeble_rcs/Material_Hull_ao_1k.png",
+      "sha256": "1170d8ba9f676777fed48917cf558548ede126c82e8ba66a4b26ace7e76e9358",
+      "bytes": 161878,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/greeble_rcs/Material_Mechanical_ao_1k.png",
+      "sha256": "3f393c22d0c42d1d19cf4c4818559d06ea6b8c0958b9c82d2857761a5f7257a3",
+      "bytes": 58403,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/greeble_rcs/greeble_rcs_trim_sheet_1k.jpg",
+      "sha256": "c2beb3838707f04a020bbc8ebb978f70d140904a1adbc44198a69bd359f2af89",
+      "bytes": 468210,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/greeble_rcs/greeble_rcs_wear_mask_1k.jpg",
+      "sha256": "c9a9ed4a6ccad1375779ca5e7bc9edaf619845ef5baea4a5613f87ada7f276f4",
+      "bytes": 556564,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/greeble_vents/Material_Accent_ao_1k.png",
+      "sha256": "677d7e3a6bacd552125fbbdcef759b9985fba789265ebc5c21e9fae70401974d",
+      "bytes": 15959,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/greeble_vents/Material_Hull_ao_1k.png",
+      "sha256": "ffa743f58b0d783d189a004f8c8b9ed7d3ec84f3752bf25674e5dbc5dfd49b4e",
+      "bytes": 392111,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/greeble_vents/Material_Mechanical_ao_1k.png",
+      "sha256": "15d5a348df960c7ab753b3aac5a299ecc055c9dd3ade4db301043f17281b06d9",
+      "bytes": 337673,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/greeble_vents/greeble_vents_trim_sheet_1k.jpg",
+      "sha256": "c2beb3838707f04a020bbc8ebb978f70d140904a1adbc44198a69bd359f2af89",
+      "bytes": 468210,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/greeble_vents/greeble_vents_wear_mask_1k.jpg",
+      "sha256": "c9a9ed4a6ccad1375779ca5e7bc9edaf619845ef5baea4a5613f87ada7f276f4",
+      "bytes": 556564,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/hull_corvette/Material_Accent_ao_1k.png",
+      "sha256": "da48044d546abe8c4f96d2d29c04593f3c6768581f363efd61e420e52b9dc0ed",
+      "bytes": 297530,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/hull_corvette/Material_Hull_ao_1k.png",
+      "sha256": "625eb0831874b9b79c9b349d82fd530625412b7b587e07bea56604b251478066",
+      "bytes": 827159,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/hull_corvette/Material_Mechanical_ao_1k.png",
+      "sha256": "f56094c0f9b02bbd1caac9ae36df9662b12d278b59225bf87d76a57ad7289b5e",
+      "bytes": 334522,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/hull_fighter/Material_Accent_ao_1k.png",
+      "sha256": "1ce1786282df494386bb7f831a14d4fd767f3adae8ceb551980c375d5d4e6996",
+      "bytes": 250567,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/hull_fighter/Material_Hull_ao_1k.png",
+      "sha256": "c3aa9c5c5191e2358f975e6b96a9f28e0662c332f95ac147d8f9c8fc020446c2",
+      "bytes": 580488,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/hull_fighter/Material_Mechanical_ao_1k.png",
+      "sha256": "fd3b8b5f3c1c4b69bda271f1dd4c0ec3e97c4a344c90ac88aec36e361b07ee23",
+      "bytes": 29852,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/hull_freighter/Material_Accent_ao_1k.png",
+      "sha256": "eabd76649998f89a53d62f91be610e4aa4d8410d6017aa7a070eecedd467bb9d",
+      "bytes": 17228,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/hull_freighter/Material_Hull_ao_1k.png",
+      "sha256": "6567eb1d6e19e8c677cadca9d2424af6fc92b5cfa8f0aa837b26dd1ab3e49ecd",
+      "bytes": 717554,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/hull_freighter/Material_Mechanical_ao_1k.png",
+      "sha256": "06966d55cb9e9e3f12169e962825011d58892b5e3f243f055e843851ac16db79",
+      "bytes": 532146,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/hull_interceptor/Material_Accent_ao_1k.png",
+      "sha256": "c59c67192a21791ff7e54f484883383a2e9db15f7374047344bdb7338ecd730f",
+      "bytes": 17544,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/hull_interceptor/Material_Hull_ao_1k.png",
+      "sha256": "6d8cb84d223fe0c989f4bd7dc5cc87c3bf98c94416abdfce23bb3f5724ecf391",
+      "bytes": 908640,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/hull_interceptor/Material_Mechanical_ao_1k.png",
+      "sha256": "94bb172d1d4247f237b2254843e384e07c81cfa2d9d784c60210bc814f7b358f",
+      "bytes": 315224,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/hull_miner/Material_Accent_ao_1k.png",
+      "sha256": "8b1eeb492f4f74dc89c4e863ed82c3c65f859a6e4d8824a998d4e14209b46eb6",
+      "bytes": 36641,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/hull_miner/Material_Hull_ao_1k.png",
+      "sha256": "89636593991a380253b9fcf5e1fc92c8980d643c0a0b6a903ebecd226b9e70da",
+      "bytes": 538098,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/hull_miner/Material_Mechanical_ao_1k.png",
+      "sha256": "783e3a51b448ef11387c79c2685bf0731056ac497247ab46a8ee88dc4d3aa3e5",
+      "bytes": 164057,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_asteroid_graffiti/Material_Accent_ao_1k.png",
+      "sha256": "e27625a64b5955fb90a1e9f9f00877d37a86eb861cf9bfd4c5d3adeefc540a00",
+      "bytes": 808556,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_asteroid_graffiti/Material_Hull_ao_1k.png",
+      "sha256": "d45f41f21d633e1295e7602da6a62601f41a3f71b469e972db52a52e79dadb50",
+      "bytes": 34442,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_asteroid_graffiti/Material_Mechanical_ao_1k.png",
+      "sha256": "a4fd8f930e4e9407b5bf76729fdeaa6c122cafca8ec6548bf20c33ac487e37b7",
+      "bytes": 17714,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_asteroid_graffiti/place_asteroid_graffiti_trim_sheet_1k.jpg",
+      "sha256": "0a469602527013cf1411849cce1ae90cbdf65db5cd512c659ceb52b4abc202dd",
+      "bytes": 135895,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_asteroid_graffiti/place_asteroid_graffiti_wear_mask_1k.jpg",
+      "sha256": "06fd1220e1c5abb743590b32f9883703c56a61e1c66e70a587d85e1247a24c37",
+      "bytes": 66911,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_asteroid_rock_b/Material_Accent_ao_1k.png",
+      "sha256": "d7cb681e78bb13ecfe9a30ec647eb1fc2f2c95ece06f30278d96541aa8ca9e06",
+      "bytes": 16084,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_asteroid_rock_b/Material_Hull_ao_1k.png",
+      "sha256": "952dc44967ff916cd6522306eac463d9d0b7c152127ac25fd837e146acc542bb",
+      "bytes": 157001,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_asteroid_rock_b/Material_Mechanical_ao_1k.png",
+      "sha256": "931c188f25144afb3702c12967f6655aa630405fcf60c47ccef9beec2a28ff62",
+      "bytes": 263860,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_asteroid_rock_b/place_asteroid_rock_b_trim_sheet_1k.jpg",
+      "sha256": "8246c15b77fa128e535ecff53d688be325d4734728f52e3d86ecb08dc20398a2",
+      "bytes": 182430,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_asteroid_rock_b/place_asteroid_rock_b_wear_mask_1k.jpg",
+      "sha256": "fb0d1382fc6217aca870629bdeed7e401b5e198853c43a2285071c151438a024",
+      "bytes": 104345,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_asteroid_rock_c/Material_Accent_ao_1k.png",
+      "sha256": "150a3287cda4da270df1db58526fc2a72effc60374f2364e7b491cdb1e54b8e9",
+      "bytes": 17038,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_asteroid_rock_c/Material_Hull_ao_1k.png",
+      "sha256": "1a5e57350822bcd0cdb03f4dc88a26b4a281ba170756106cf0e2df2b298a2cd2",
+      "bytes": 13995,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_asteroid_rock_c/Material_Mechanical_ao_1k.png",
+      "sha256": "514e8f13dafbaad26af7c16980d999a48a701eeb548a9d40654785bcfd5c55cc",
+      "bytes": 53676,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_asteroid_rock_c/place_asteroid_rock_c_trim_sheet_1k.jpg",
+      "sha256": "127d673e69893f81618ad2df9a77e66f9bd9d17bfc241f504649e0e64516477b",
+      "bytes": 182292,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_asteroid_rock_c/place_asteroid_rock_c_wear_mask_1k.jpg",
+      "sha256": "4134034ee03c64b111bc685cf2e5d815455daca7f3608639e6455cb9e71fb550",
+      "bytes": 103953,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_asteroid_seamed/Material_Accent_ao_1k.png",
+      "sha256": "b423c3205b957f68b072235b9343520f84b1adde4b216bd44893a20e9398f704",
+      "bytes": 20726,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_asteroid_seamed/Material_Hull_ao_1k.png",
+      "sha256": "7c92573acd7cc458099517a08e8d1917b5bf587221eecbed0eae1592f30064c7",
+      "bytes": 618824,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_asteroid_seamed/Material_Mechanical_ao_1k.png",
+      "sha256": "b423c3205b957f68b072235b9343520f84b1adde4b216bd44893a20e9398f704",
+      "bytes": 20726,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_asteroid_seamed/place_asteroid_seamed_trim_sheet_1k.jpg",
+      "sha256": "400132634172776be49442b2e79753244d084acef6fba8664b958b334b58a705",
+      "bytes": 31359,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_asteroid_seamed/place_asteroid_seamed_wear_mask_1k.jpg",
+      "sha256": "a33dc51bdad0a1d592e705ef99f64d4d8fbfbd6eb695f7ed5dcce1532abd9b50",
+      "bytes": 64468,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_conveyor_barge/Material_Accent_ao_1k.png",
+      "sha256": "cd20bb6ac9000c1e38abf4002b2a35b63e582e7b192612c16e03e6b3b2352e51",
+      "bytes": 17430,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_conveyor_barge/Material_Hull_ao_1k.png",
+      "sha256": "3d24ce175c5bd72c4ab5d9db2756f697317e5a5d783b0f2d26656e3cebe65889",
+      "bytes": 41062,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_conveyor_barge/Material_Mechanical_ao_1k.png",
+      "sha256": "86edc14514f8ada34471a5b3852adf4cf13d73710156b9fe95072c9266b778b8",
+      "bytes": 270118,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_conveyor_barge/place_conveyor_barge_trim_sheet_1k.jpg",
+      "sha256": "dca09245ff4bd2629ff39f60cc9c1bd307d07847efdffebc7636e3071cb4ec92",
+      "bytes": 84231,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_conveyor_barge/place_conveyor_barge_wear_mask_1k.jpg",
+      "sha256": "ec9dd1c063fa113e78d6795782d1029d58e90b7147827085a63bf09c6d46c942",
+      "bytes": 50901,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_dead_hulk/Material_Accent_ao_1k.png",
+      "sha256": "f67acfa1e34c26a57b91ae92656ce8df57430f26c5f39aa5cb6d7b81a41596b1",
+      "bytes": 554191,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_dead_hulk/Material_Hull_ao_1k.png",
+      "sha256": "50a515150684076fab8ab5373db852a1eb1552707268810876ebdcb4939f4caf",
+      "bytes": 476267,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_dead_hulk/Material_Mechanical_ao_1k.png",
+      "sha256": "73644dbe0703cafc9025abecc4dd69f70329e7786682841de9e66fc3e169d57e",
+      "bytes": 715700,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_dead_hulk/place_dead_hulk_trim_sheet_1k.jpg",
+      "sha256": "d7bf07790813c6fc846db8139fdd4cc08c7273cce90577b1e49ea8cee1214084",
+      "bytes": 55966,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_dead_hulk/place_dead_hulk_wear_mask_1k.jpg",
+      "sha256": "131fbd1edbcd3a343bac29e5a1b1d95e6dd849c1eeaa0bd6acc017c59ef60456",
+      "bytes": 167284,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_debris_chunk/Material_Accent_ao_1k.png",
+      "sha256": "b423c3205b957f68b072235b9343520f84b1adde4b216bd44893a20e9398f704",
+      "bytes": 20726,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_debris_chunk/Material_Hull_ao_1k.png",
+      "sha256": "bc08ff7be05b4a0bdae183486b7ae6aec9a14a7fdf8a2f276dc85dd7b757283e",
+      "bytes": 846623,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_debris_chunk/Material_Mechanical_ao_1k.png",
+      "sha256": "b423c3205b957f68b072235b9343520f84b1adde4b216bd44893a20e9398f704",
+      "bytes": 20726,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_debris_chunk/place_debris_chunk_trim_sheet_1k.jpg",
+      "sha256": "71aee0304235e91a1ecc50d0a5d82206db13a04585bb1675cc7fe92b2b0ce51f",
+      "bytes": 18515,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_debris_chunk/place_debris_chunk_wear_mask_1k.jpg",
+      "sha256": "5b80b344b196518ab12fe115738677ca79edd04c5f39b0191a0c471a38f99853",
+      "bytes": 56760,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_gate_jump_ring/Material_Accent_ao_1k.png",
+      "sha256": "5e3fb52359fa345794d92d846b0ee160b638fe8bb0e0eb6283df1160b27d9e69",
+      "bytes": 207927,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_gate_jump_ring/Material_Hull_ao_1k.png",
+      "sha256": "ed15fce69a78f2b4b509018349f7d688005e0659f76ef7d160df8613f664de33",
+      "bytes": 362684,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_gate_jump_ring/Material_Mechanical_ao_1k.png",
+      "sha256": "6a5251b4b8d9c48c1c097e70d8faa954bf56daa26cb436512d65ae5490612ba4",
+      "bytes": 292074,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_gate_jump_ring/place_gate_jump_ring_trim_sheet_1k.jpg",
+      "sha256": "20c97cbcc8752c38485afe027d3d3e48f4fac8526200d5926f5713093b580e1f",
+      "bytes": 53209,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_gate_jump_ring/place_gate_jump_ring_wear_mask_1k.jpg",
+      "sha256": "a6b735600b32ba124ac7b997b0c5e0af8a0557fe76193923a1f3a4b103229950",
+      "bytes": 79712,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_lane_beacon/Material_Accent_ao_1k.png",
+      "sha256": "8b95ed07ed49cbe6ab7a23e46147e51404a3dfb15430251b530eb711a6226601",
+      "bytes": 400919,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_lane_beacon/Material_Hull_ao_1k.png",
+      "sha256": "a23a7af318265f16d29ae67a3cd628c38e2dab2ea036bf3c044dd9f810f58839",
+      "bytes": 98736,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_lane_beacon/Material_Mechanical_ao_1k.png",
+      "sha256": "7f7ab8fbfb7442cefc76b29b1a68b6a698d0b2d2e01c7460739c47cf586c8178",
+      "bytes": 884012,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_lane_beacon/place_lane_beacon_trim_sheet_1k.jpg",
+      "sha256": "461c2ae3077f795c9062dc54674b13f4b2af09ccb3f212d683a076e1fee1082d",
+      "bytes": 41629,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_lane_beacon/place_lane_beacon_wear_mask_1k.jpg",
+      "sha256": "5b433c83443c71ea53e7925d07610cbcdd0b7e56120d6936941e610083fbb29d",
+      "bytes": 27261,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_mining_drone/Material_Accent_ao_1k.png",
+      "sha256": "a4d9fc1af6f50b29def5e45b1696ab3c675379ed68d79c6481ea36dad8cc87c7",
+      "bytes": 904560,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_mining_drone/Material_Hull_ao_1k.png",
+      "sha256": "f5b0de2d85b50166b1e4c3337fb305c9274a4f2c192e6ce62db8a3293b26508f",
+      "bytes": 25441,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_mining_drone/Material_Mechanical_ao_1k.png",
+      "sha256": "00f940f1237932fcacbb6e1fe465ae21c16bb29b2de8d67568295fb087c4f85b",
+      "bytes": 130065,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_mining_drone/place_mining_drone_trim_sheet_1k.jpg",
+      "sha256": "ee5955fe056712aacd3e9a22d5d59e5b32e857b35327df8d4f0fbc615fc61201",
+      "bytes": 74744,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_mining_drone/place_mining_drone_wear_mask_1k.jpg",
+      "sha256": "5ec82cc121cb547564655b63d473ff798ec8c47fdc866524d26c59aecec5270e",
+      "bytes": 50067,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_nav_buoy/Material_Accent_ao_1k.png",
+      "sha256": "b84207b22bf004c6bd02643c96dddcf4e28751eca5e82398e64b35977b398b50",
+      "bytes": 38384,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_nav_buoy/Material_Hull_ao_1k.png",
+      "sha256": "0344810f463726f421316d9196dd7526bd97bed533393b0ebc1d92c86f3ad4dc",
+      "bytes": 243113,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_nav_buoy/Material_Mechanical_ao_1k.png",
+      "sha256": "19fde3709e03e931ad88bbc0ea5528f75f5243003a069611d18191a33554d7a6",
+      "bytes": 43502,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_nav_buoy/place_nav_buoy_trim_sheet_1k.jpg",
+      "sha256": "d2c8b1ce6d0ced615c0bcc14df9ec3f1958509eb53a25b4af5fd18613f4c228d",
+      "bytes": 46127,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_nav_buoy/place_nav_buoy_wear_mask_1k.jpg",
+      "sha256": "98da1c3e6e112673bdbf74a8aaabd9cd985c6d15e6b72d9b433b4729ce6ee08c",
+      "bytes": 37952,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_station_billboard/Material_Accent_ao_1k.png",
+      "sha256": "983f5f12f8e68415c18cacf2a7e59c4ad53ca775034a5e904cfb85e3691b0d4e",
+      "bytes": 46718,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_station_billboard/Material_Hull_ao_1k.png",
+      "sha256": "5a62202e42a0c7ade5cddc13fc4c358524073e285bd0d98377373401138593ef",
+      "bytes": 335019,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_station_billboard/Material_Mechanical_ao_1k.png",
+      "sha256": "ad631783207436b908f33c22725d86d02c95e443d0c4eacdaa0e4e753fea16c7",
+      "bytes": 101958,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_station_billboard/place_station_billboard_trim_sheet_1k.jpg",
+      "sha256": "21792c1eaa6cc21116bfa63d45933ad8de39a15e762c19ba4512dd36ee692826",
+      "bytes": 72344,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_station_billboard/place_station_billboard_wear_mask_1k.jpg",
+      "sha256": "43aa6362ca7573d27e7f0379a9ab2f3e540e560ac6a164ac7f66d45e2fda1c20",
+      "bytes": 26994,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_station_blackmarket/Material_Accent_ao_1k.png",
+      "sha256": "195d85ed4dcd0e6acb95dd30fcbe9a07921507e86bc522d9672952c729acffd1",
+      "bytes": 150877,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_station_blackmarket/Material_Hull_ao_1k.png",
+      "sha256": "7c8d026f62395e7797b78060b1cd2aa7b9732f80090edb880e5bad54afa2a853",
+      "bytes": 17452,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_station_blackmarket/Material_Mechanical_ao_1k.png",
+      "sha256": "f83cae99943e41c526117f2a9c8b613a9aede9bf21eb441e30e8a6fdc46085f4",
+      "bytes": 35048,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_station_blackmarket/place_station_blackmarket_trim_sheet_1k.jpg",
+      "sha256": "8f905499282676815b3512f6b4e701f89daf6c78d68048b27bb0f296e3a7d6a3",
+      "bytes": 43264,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_station_blackmarket/place_station_blackmarket_wear_mask_1k.jpg",
+      "sha256": "5b2d926b66fb138161c13593be667184d7a7af846bdea2faac1603d7c2e74e0c",
+      "bytes": 76951,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_station_fab/Material_Accent_ao_1k.png",
+      "sha256": "86a95addc88538d008b4c3c4adfa2dfa670212c86a05994089e1e179e87586b0",
+      "bytes": 33606,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_station_fab/Material_Hull_ao_1k.png",
+      "sha256": "014ce66a4596a9a380fbe0d488b86ab539e3a317f011c5ce9a0b1afc3808b00d",
+      "bytes": 28748,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_station_fab/Material_Mechanical_ao_1k.png",
+      "sha256": "324b4d649cf6de65c9c69606c49fdbcf4817c49f4a25084982961d159841db7a",
+      "bytes": 98576,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_station_fab/place_station_fab_trim_sheet_1k.jpg",
+      "sha256": "8d78bbed1ed25fff0a0a772be14efd4c582922a3db5ebad4cb595ae526b91911",
+      "bytes": 56193,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_station_fab/place_station_fab_wear_mask_1k.jpg",
+      "sha256": "9a169af348960c67c016348207b642d31abc1dd6866ce2dc78762f41e7bef124",
+      "bytes": 77183,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_station_military/Material_Accent_ao_1k.png",
+      "sha256": "4250bd6229e7511c5e4936bfe6e22592d12811c64a57df0132e5f81045ec55ff",
+      "bytes": 373616,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_station_military/Material_Hull_ao_1k.png",
+      "sha256": "1dcd9b7694ed4ce0e57a097775705f544b4528582b55a555cb3bcc55232a5109",
+      "bytes": 334782,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_station_military/Material_Mechanical_ao_1k.png",
+      "sha256": "ca5f2b31eaddaa3e23dc4ff0ace494ddde8f6b5222aa57eadea1421d6d060477",
+      "bytes": 98653,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_station_military/place_station_military_trim_sheet_1k.jpg",
+      "sha256": "e47f9a0f9e31493bce928e5d4c0b5822d9987829b1ecd528d121b02e2d0ae9d1",
+      "bytes": 51498,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_station_military/place_station_military_wear_mask_1k.jpg",
+      "sha256": "f51fb5ff0e470167e3444a2f9883024660ae84a7bce012e61866ba6b89210778",
+      "bytes": 79721,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_station_mining/Material_Accent_ao_1k.png",
+      "sha256": "ab91c8bda6b2649fe18eda88a4a1bde5c0ee7f6fab8ce000002ffd473fac8c86",
+      "bytes": 219649,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_station_mining/Material_Hull_ao_1k.png",
+      "sha256": "d4bc51fcbaa69b1fef35c15cd5fabddc1bef097a77afb2940c1395d0f27f9bab",
+      "bytes": 21786,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_station_mining/Material_Mechanical_ao_1k.png",
+      "sha256": "3107266cec739724447e8019b796cb334c53d6c5a9629c7ea8b63b3bf6be3fda",
+      "bytes": 581536,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_station_mining/place_station_mining_trim_sheet_1k.jpg",
+      "sha256": "372be2bf21308e60fedabe747cbe95b3408d855fedf1e285cb649c43515fadd3",
+      "bytes": 56689,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_station_mining/place_station_mining_wear_mask_1k.jpg",
+      "sha256": "130ca37e55ae39b1f25613ea358caa658ca0022576c7a6065dfad66ef8b39bc3",
+      "bytes": 76499,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_station_refinery/Material_Accent_ao_1k.png",
+      "sha256": "986ba25abc13c0166e0098f62bb114f7fb52d37ba79f8dfe485bae0bac71a6d7",
+      "bytes": 16027,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_station_refinery/Material_Hull_ao_1k.png",
+      "sha256": "90907fcbd257637abfdabff405776ad217c7d9c829fb2c9a903b2504bd2acb57",
+      "bytes": 34569,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_station_refinery/Material_Mechanical_ao_1k.png",
+      "sha256": "7548ae510b46dfd0f33514f256a3da582e1cad856d954894abd92d385c6a7c7d",
+      "bytes": 229395,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_station_refinery/place_station_refinery_trim_sheet_1k.jpg",
+      "sha256": "98b20cc03f4ba885af8a3359ca9e536806916acb34dacd5af8402449df74d69c",
+      "bytes": 58955,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_station_refinery/place_station_refinery_wear_mask_1k.jpg",
+      "sha256": "287e0011a57b2721399e34579abb849dd0c924a906664c81b8de737847ded910",
+      "bytes": 77464,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_station_research/Material_Accent_ao_1k.png",
+      "sha256": "79ddba4504b8884751715b4f711c210a72d247d5615b3ec5b0523adbd3e3ea0b",
+      "bytes": 20286,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_station_research/Material_Hull_ao_1k.png",
+      "sha256": "971b8115d56c4873575f75a08df94172785fad42ab7aabaeb7b97d74e84ac97a",
+      "bytes": 415221,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_station_research/Material_Mechanical_ao_1k.png",
+      "sha256": "b2233f45d6d074e335b93e3df9d624536266309e0bb4f7ab93114e66d533944f",
+      "bytes": 17964,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_station_research/place_station_research_trim_sheet_1k.jpg",
+      "sha256": "6864d1ddd6ec91fa04f094875589bfc122d0e16ec6cb58cef17a591a4911aeda",
+      "bytes": 62046,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/place_station_research/place_station_research_wear_mask_1k.jpg",
+      "sha256": "20df331d94875f693e37957d9937b3f769032a7da82806d72a92cbe391d3f488",
+      "bytes": 78771,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/pod_cargo_container/Material_Accent_ao_1k.png",
+      "sha256": "54724a9872d87a860986181ff726441aa803067dfc107873051770941985a527",
+      "bytes": 26581,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/pod_cargo_container/Material_Hull_ao_1k.png",
+      "sha256": "7f53cb9740635a4202c5d835edeb2b0e0b0d15bffe440989cecd54d93cee1fdb",
+      "bytes": 20116,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/pod_cargo_container/Material_Mechanical_ao_1k.png",
+      "sha256": "1a5e57350822bcd0cdb03f4dc88a26b4a281ba170756106cf0e2df2b298a2cd2",
+      "bytes": 13995,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/pod_cargo_container/pod_cargo_container_trim_sheet_1k.jpg",
+      "sha256": "f9cefeb4e546cf7eb47a8044355e46690afdd77bed067005a9f54f618c39f598",
+      "bytes": 38824,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/pod_cargo_container/pod_cargo_container_wear_mask_1k.jpg",
+      "sha256": "e5c3d726e6d631f7f44f585f72b0a8c905565bd312e65087ef862d2a93e25bee",
+      "bytes": 44140,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/pod_repair_patch/Material_Accent_ao_1k.png",
+      "sha256": "1a5e57350822bcd0cdb03f4dc88a26b4a281ba170756106cf0e2df2b298a2cd2",
+      "bytes": 13995,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/pod_repair_patch/Material_Hull_ao_1k.png",
+      "sha256": "1a5e57350822bcd0cdb03f4dc88a26b4a281ba170756106cf0e2df2b298a2cd2",
+      "bytes": 13995,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/pod_repair_patch/Material_Mechanical_ao_1k.png",
+      "sha256": "111749d1044ca9b09eba1777fc5d3d0a82bea4393be96dc30ec4c6371f1b5dd0",
+      "bytes": 34667,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/pod_repair_patch/pod_repair_patch_trim_sheet_1k.jpg",
+      "sha256": "fd947eb4b1da8fef63e956e51131503753e894a0b7f4aaeac74a34b97103998b",
+      "bytes": 45293,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/pod_repair_patch/pod_repair_patch_wear_mask_1k.jpg",
+      "sha256": "1ccc7bb8a6e9958f41e29d9c5ca31cf28721d02e594143226ea05edaf1427a3e",
+      "bytes": 39954,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/pod_utility/Material_Accent_ao_1k.png",
+      "sha256": "3062581c07abcda8d720fdf56a9cf134b26f92ad4119a9c69fa27a070fc2a357",
+      "bytes": 21600,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/pod_utility/Material_Hull_ao_1k.png",
+      "sha256": "0e6b7f95db3b3b18577baa9a8550f8a22556d6e9b07866859bf4f805cc09f769",
+      "bytes": 23066,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/pod_utility/Material_Mechanical_ao_1k.png",
+      "sha256": "c791b18a67496c5a1c5aef6ae47b2fa562a0ab1294b1ab52d4881752e3883f36",
+      "bytes": 14245,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/pod_utility/pod_utility_trim_sheet_1k.jpg",
+      "sha256": "694c4a80ca62aca760760021bd8140884ef68d255cf72976f4e235b05a4fe349",
+      "bytes": 43312,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/pod_utility/pod_utility_wear_mask_1k.jpg",
+      "sha256": "4d271acee3f0eb65ff78f5dc20e2d03ca5c2db8f6e9d2ec53020cbb639cfb62f",
+      "bytes": 34058,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/skid_quad/Material_Accent_ao_1k.png",
+      "sha256": "d1d01bd096ae00b30ff06785ae3a78dc170a6d142701ed352e7364122553525b",
+      "bytes": 39524,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/skid_quad/Material_Hull_ao_1k.png",
+      "sha256": "1a5e57350822bcd0cdb03f4dc88a26b4a281ba170756106cf0e2df2b298a2cd2",
+      "bytes": 13995,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/skid_quad/Material_Mechanical_ao_1k.png",
+      "sha256": "4adef9aa1713e343570e1d92adbcea485c4c609c7e9a84e02d3cec9327bde6d8",
+      "bytes": 23349,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/skid_quad/skid_quad_trim_sheet_1k.jpg",
+      "sha256": "f2518005a99dd99b207dc5f771f2151715baf04eb9455bf4e9dea73195a4f206",
+      "bytes": 44763,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/skid_quad/skid_quad_wear_mask_1k.jpg",
+      "sha256": "1ab63fe9409dcacd3a7864a050793891e93400658d6e4763fec392b312483adc",
+      "bytes": 47071,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/skid_trio/Material_Accent_ao_1k.png",
+      "sha256": "98bf291c4f6938f3473a4e08366a139b91d71c91ec35c69f1c70d16242f7fbee",
+      "bytes": 26894,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/skid_trio/Material_Hull_ao_1k.png",
+      "sha256": "7e2ff4681c4df1c920faf85992d0281bfd3cb1da73861f0e898f866e332faa4e",
+      "bytes": 25185,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/skid_trio/Material_Mechanical_ao_1k.png",
+      "sha256": "e5fedff778a85519b763a1b0e6fcb166fea3b58671e27a874d32c7d6f82d7aa3",
+      "bytes": 32316,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/skid_trio/skid_trio_trim_sheet_1k.jpg",
+      "sha256": "d5f4b5036f7ca3535f65dfc24def534514ffab9a3293df303dea1b513b9fed3f",
+      "bytes": 47425,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/skid_trio/skid_trio_wear_mask_1k.jpg",
+      "sha256": "788a0ae9a9acba20c0f99d6309e15d4b5a3c7378ad8dbcfc9c7de380d82f4738",
+      "bytes": 34671,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/weapon_gatling/Material_Hull_ao_1k.png",
+      "sha256": "80f9299fd069b4e87eadf584df32f482c97de05d249bf8653c0acf095661c662",
+      "bytes": 59313,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/weapon_heavy_cannon/Material_Accent_ao_1k.png",
+      "sha256": "81305e3788926929c56e6f6454f3ff4aff6dd976e7ce39f5f3555813eb58edbf",
+      "bytes": 265386,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/weapon_heavy_cannon/Material_Hull_ao_1k.png",
+      "sha256": "b5e6771f20b3395efc6a6a1796232a3adeeef95f12a160cefcab2ffa43f0322b",
+      "bytes": 350161,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/weapon_heavy_cannon/Material_Mechanical_ao_1k.png",
+      "sha256": "05f7e9b495d96ea16be4635960d3db7f9348ed53bb9e2c8adb6a008429c98905",
+      "bytes": 501502,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/weapon_heavy_cannon/weapon_heavy_cannon_trim_sheet_1k.jpg",
+      "sha256": "b885d3f9ae346dab07df3d9248323ba24f561bc579ea330fefae9c0ceb8b3afd",
+      "bytes": 385636,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/weapon_heavy_cannon/weapon_heavy_cannon_wear_mask_1k.jpg",
+      "sha256": "cf5efad9306bf64e4acfb52787bbc00b49dcc17d4a9db57354b822c5b2bca908",
+      "bytes": 325283,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/weapon_lance/Material_Accent_ao_1k.png",
+      "sha256": "b0fa91365604592e187121e98ca4a3f82f71edfe1257dfc21b1f3cdf6273e5d0",
+      "bytes": 331411,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/weapon_lance/Material_Hull_ao_1k.png",
+      "sha256": "efb5c2a5fcfcf4b24c6e350ae0a5f7aa2b2c87c15fb87d6e672d3f313d7d0933",
+      "bytes": 47355,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/weapon_lance/Material_Mechanical_ao_1k.png",
+      "sha256": "ec9ca5fbcb7cc0a2054b4d325a85ad90d1ed4ef44afb1749a46d3515bd7c7f0a",
+      "bytes": 209211,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/weapon_lance/weapon_lance_trim_sheet_1k.jpg",
+      "sha256": "0f8d4ba2237ae5b59a44e9348fbf8e12824d0f37cf55157131f941cc1e490af8",
+      "bytes": 346641,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/weapon_lance/weapon_lance_wear_mask_1k.jpg",
+      "sha256": "7d57979b0c3e8ddd0ce325a729e89b2d43451f38a0d5e7ea43b6c257d8294611",
+      "bytes": 121521,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/weapon_pulse_cannon/Material_Accent_ao_1k.png",
+      "sha256": "a77b038f7fa5117d5595655615b1d1dc37a46a304f3d802daa9dbd5c59e8eba4",
+      "bytes": 22145,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/weapon_pulse_cannon/Material_Hull_ao_1k.png",
+      "sha256": "a77b038f7fa5117d5595655615b1d1dc37a46a304f3d802daa9dbd5c59e8eba4",
+      "bytes": 22145,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/weapon_pulse_cannon/Material_Mechanical_ao_1k.png",
+      "sha256": "a77b038f7fa5117d5595655615b1d1dc37a46a304f3d802daa9dbd5c59e8eba4",
+      "bytes": 22145,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/weapon_pulse_cannon/weapon_pulse_cannon_trim_sheet_1k.jpg",
+      "sha256": "9f30d4659381e14f0f36982d06a77005df95391682517e3ae45361b086941ca8",
+      "bytes": 41149,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/weapon_pulse_cannon/weapon_pulse_cannon_wear_mask_1k.jpg",
+      "sha256": "3bf41b1f2e15ec9f7ad56fd0c7ddd7d004885833f3900e0d518e9f407c4170ce",
+      "bytes": 26285,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/weapon_railgun/Material_Accent_ao_1k.png",
+      "sha256": "98ee878a6251db6c378c7428af9dd459fc2a4cf00bb658be4ee748aacfce5b73",
+      "bytes": 445689,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/weapon_railgun/Material_Hull_ao_1k.png",
+      "sha256": "3793d88a84183360ea3652f70abaa17e9b7bffc52115ec060364d945a0da5cd3",
+      "bytes": 306684,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/weapon_railgun/Material_Mechanical_ao_1k.png",
+      "sha256": "b0443d994dddfd0f5706dd3ed443203e8ee4eb895ee5dd6b3b162bd6c0d9270e",
+      "bytes": 330336,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/weapon_railgun/weapon_railgun_trim_sheet_1k.jpg",
+      "sha256": "f8e64aca48b7f5e56f3760dbe137b1aaee69645379ac4f32eb2b58c0e6638ce3",
+      "bytes": 417013,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/weapon_railgun/weapon_railgun_wear_mask_1k.jpg",
+      "sha256": "110f49ec9331b92d1b95ae5f8b2fcda529ccafa1af0927faf622fbbc57fcb8ac",
+      "bytes": 324217,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/weapon_turret_dual/Material_Accent_ao_1k.png",
+      "sha256": "e65226483d5098dfc5b1f30a723a148e96a5e2105a4450378004d6834cb105a9",
+      "bytes": 210032,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/weapon_turret_dual/Material_Hull_ao_1k.png",
+      "sha256": "d6b987c01648f6c2e06a7c8b244683b828d781595110b10f741cb0dca999e108",
+      "bytes": 247081,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/weapon_turret_dual/Material_Mechanical_ao_1k.png",
+      "sha256": "2b93f8b545959e8ddd27915fec06f3fcd9037ddd76c24088e9edbfe4464d69ce",
+      "bytes": 708829,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/weapon_turret_dual/weapon_turret_dual_trim_sheet_1k.jpg",
+      "sha256": "3532de62160a333b1affb32a152fa2c5aedb3e8ab3560935a7cfffc9ca288c03",
+      "bytes": 278235,
+      "mtime": 1784557685
+    },
+    {
+      "path": "assets/ships/parts/textures/weapon_turret_dual/weapon_turret_dual_wear_mask_1k.jpg",
+      "sha256": "2c3da8c93265720782116f12b90dbed2db522219e8322320d36075fa3e3d25cd",
+      "bytes": 175009,
+      "mtime": 1784557685
+    },
+    {
+      "path": "tools/art/blender/batch_full_finish.log",
+      "sha256": "e785f654c78445a99c0fc9fc73e498a8e0b06360711c75392fb79a10b8f692d8",
+      "bytes": 23069,
+      "mtime": 1784557685
+    },
+    {
+      "path": "tools/art/blender/batch_remaining.log",
+      "sha256": "b4a5f1d01bba74f2a85e01267861b9314e9f57b37fd5ef0143235108dbc20f1b",
+      "bytes": 18038,
+      "mtime": 1784557685
+    }
+  ]
+}

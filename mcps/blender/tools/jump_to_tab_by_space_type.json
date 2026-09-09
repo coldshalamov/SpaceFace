@@ -1,0 +1,22 @@
+{
+  "name": "jump_to_tab_by_space_type",
+  "description": "\nSwitch to a workspace whose main area matches *space_type*.\n\nIf *allow_edits* is True and no matching workspace exists, a new one\nis created by duplicating the current workspace.\n",
+  "inputSchema": {
+    "properties": {
+      "space_type": {
+        "title": "Space Type",
+        "type": "string"
+      },
+      "allow_edits": {
+        "default": false,
+        "title": "Allow Edits",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "space_type"
+    ],
+    "title": "jump_to_tab_by_space_typeArguments",
+    "type": "object"
+  }
+}

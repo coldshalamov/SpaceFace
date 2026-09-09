@@ -1,0 +1,6 @@
+[validation-broker] status: fail
+[validation-broker] fixedSeed: 19019
+[validation-broker] pid: 15464 exit=1 signal=null
+[validation-broker] launchCounts global=1 browser=1 electron=0
+[pq019-surface-heist] FAIL in heist-plus-fence
+  - page.waitForFunction: Timeout 20000ms exceeded.

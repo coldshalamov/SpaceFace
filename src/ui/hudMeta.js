@@ -1,0 +1,277 @@
+// src/ui/hudMeta.js — the HUD meta-arc (the three phases of complicity).
+//
+// CANONICAL SOURCE: docs/worldbuilding/story/HUD-META-ARC.md + STORY-SPINE-NARRATIVE-OVERLAY.
+//   Phase 1 (Protective, B0–B3): the HUD's lies read as malfunctions. CARGO shows "STABLE LOAD"
+//     after the cargo is gone. The civilian tag flickers 0.5s before the kill feed overwrites it.
+//   Phase 2 (Complicit, B4–B5): manifest self-corrects silently. No announcement.
+//   Phase 3 (Absent, B6–B7): tags freeze on last-known state. CONTRACT 47-A shows PENDING forever.
+//
+// This is a HUD SUB-COMPONENT: createHud() mounts it (like the death banner / cargo panel). It
+// listens to events the story system emits (hud:phase, hud:tagFlicker) and renders:
+//   - the persistent "STABLE LOAD" cargo lie line (top of the cargo stat / a dedicated HUD line)
+//   - a transient "CIVILIAN VESSEL — REGISTERED" tag that flickers, then gets overwritten
+//   - a small "PHASE n" readout in the corner that the player learns to distrust
+//
+// Pure DOM. Reads ctx.state. Never mutates sim state.
+
+import { COMMODITIES } from '../data/commodities.js';
+import { PERSISTENT_CARGO } from '../data/narrative.js';
+
+const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
+const PERSISTENT_CARGO_BY_ID = new Map(PERSISTENT_CARGO.map((c) => [c.id, c]));
+
+function manifestCargoLabel(id) {
+  const authored = COMMODITY_BY_ID.get(id) || PERSISTENT_CARGO_BY_ID.get(id);
+  if (authored && authored.name) return authored.name.toUpperCase();
+  return String(id || 'cargo').replace(/^cmdty_/, '').replace(/_/g, ' ').toUpperCase();
+}
+
+export function createHudMeta(ctx) {
+  const { bus, state } = ctx;
+
+  // ── the STABLE LOAD line (the Chapter-01 prototype that stays on after cargo is gone) ─────
+  // Mounted into #hud. Hidden until Phase 1 begins (B0). Once shown, it PERSISTS — toggling it
+  // off hides it momentarily but the line returns. This is the HUD's first and most persistent lie.
+  const stableLoad = document.createElement('div');
+  stableLoad.className = 'sf-stableload';
+  stableLoad.id = 'sf-stableload';
+  stableLoad.setAttribute('aria-hidden', 'true');
+  stableLoad.innerHTML =
+    '<span class="sf-stableload__k mono">CARGO</span>' +
+    '<span class="sf-stableload__v mono">STABLE LOAD</span>';
+  document.getElementById('hud').appendChild(stableLoad);
+  let stableLoadArmed = false;     // Phase 1+ has begun → the line exists
+  let stableLoadHidden = false;    // player toggled it off (it returns)
+
+  // ── the civilian-tag flicker (B2 / Elroy) ─────────────────────────────────────────────────
+  const tagFlicker = document.createElement('div');
+  tagFlicker.className = 'sf-tagflicker';
+  tagFlicker.id = 'sf-tagflicker';
+  tagFlicker.setAttribute('aria-hidden', 'true');
+  tagFlicker.innerHTML = '<span class="sf-tagflicker__tag mono"></span>';
+  document.getElementById('hud').appendChild(tagFlicker);
+  const tagFlickerLabel = tagFlicker.querySelector('.sf-tagflicker__tag');
+  let tagFlickerTimer = 0;
+
+  // ── the phase readout (small, corner, distrustful) ────────────────────────────────────────
+  const phaseReadout = document.createElement('div');
+  phaseReadout.className = 'sf-hudphase';
+  phaseReadout.id = 'sf-hudphase';
+  phaseReadout.setAttribute('aria-hidden', 'true');
+  phaseReadout.innerHTML = '<span class="sf-hudphase__k mono">SYS</span><span class="sf-hudphase__v mono">NOMINAL</span>';
+  phaseReadout.style.display = 'none';
+  document.getElementById('hud').appendChild(phaseReadout);
+  const phaseValue = phaseReadout.querySelector('.sf-hudphase__v');
+
+  // New Run+ receipt: the prior ending remains legible throughout the carried run. It is a quiet
+  // provenance line, not a second progression meter or an objective.
+  const legacyReadout = document.createElement('div');
+  legacyReadout.className = 'sf-hudlegacy mono';
+  legacyReadout.id = 'sf-hudlegacy';
+  legacyReadout.setAttribute('aria-hidden', 'true');
+  legacyReadout.style.display = 'none';
+  document.getElementById('hud').appendChild(legacyReadout);
+  let legacyKey = '';
+  let legacyPresent = false;
+  let metaVisible = true;
+
+  function syncLegacyReadout() {
+    const legacy = state.story && state.story.newGamePlus;
+    const key = legacy
+      ? [legacy.sourceEnding, legacy.keepsakeId, legacy.hunterGrudgeCount].join('|')
+      : '';
+    if (key === legacyKey) return;
+    legacyKey = key;
+    legacyPresent = !!legacy;
+    if (!legacy) {
+      legacyReadout.textContent = '';
+      legacyReadout.style.display = 'none';
+      return;
+    }
+    const count = Number(legacy.hunterGrudgeCount) || 0;
+    legacyReadout.textContent = `LEGACY ${legacy.sourceEnding} · ${legacy.sourceEndingTitle} · ${legacy.keepsakeName} · ${count} ${count === 1 ? 'GRUDGE' : 'GRUDGES'}`;
+    legacyReadout.style.display = metaVisible ? '' : 'none';
+  }
+  bus.on('story:newGamePlusStarted', syncLegacyReadout);
+
+  // ── the manifest self-correction log (Phase 2+) ───────────────────────────────────────────
+  // When the cargo manifest "silently corrects", we surface a one-line ghost of the old value that
+  // fades — the player notices the discrepancy only if they're paying attention. No notification.
+  const manifestGhost = document.createElement('div');
+  manifestGhost.className = 'sf-manifest-ghost';
+  manifestGhost.id = 'sf-manifest-ghost';
+  manifestGhost.setAttribute('aria-hidden', 'true');
+  document.getElementById('hud').appendChild(manifestGhost);
+  const lastCargoSnapshot = new Map();
+  let ghostTimer = 0;
+  syncCargoSnapshot(lastCargoSnapshot);
+
+  function cargoItems() {
+    return (state.player && state.player.cargo && state.player.cargo.items) || {};
+  }
+
+  function syncCargoSnapshot(snapshot) {
+    snapshot.clear();
+    const items = cargoItems();
+    for (const k in items) {
+      const qty = items[k] || 0;
+      if (qty > 0) snapshot.set(k, qty);
+    }
+  }
+
+  function maybeShowManifestGhost() {
+    const phase = (state.story && state.story.phase) || 1;
+    const diff = phase >= 2 ? diffCargo(lastCargoSnapshot, cargoItems()) : null;
+    syncCargoSnapshot(lastCargoSnapshot);
+    if (!diff) return;
+    manifestGhost.textContent = diff;
+    manifestGhost.classList.add('sf-manifest-ghost--show');
+    ghostTimer = 1.6;
+  }
+
+  // ── hud:phase handler ─────────────────────────────────────────────────────────────────────
+  bus.on('hud:phase', ({ phase, beat, lie }) => {
+    // Phase readout: Phase 1 = "NOMINAL" (the lie), Phase 2 = "OPTIMIZED", Phase 3 = "STABLE".
+    const phaseLabel = phase >= 3 ? 'STABLE' : (phase === 2 ? 'OPTIMIZED' : 'NOMINAL');
+    phaseValue.textContent = phaseLabel;
+    phaseReadout.classList.toggle('sf-hudphase--p2', phase === 2);
+    phaseReadout.classList.toggle('sf-hudphase--p3', phase >= 3);
+    phaseReadout.style.display = phase > 1 ? '' : 'none';
+
+    if (phase >= 1) {
+      stableLoadArmed = true;
+      if (!stableLoadHidden) stableLoad.classList.add('sf-stableload--visible');
+    }
+
+    // specific lies
+    if (lie === 'stable_load') {
+      // ensure the STABLE LOAD line is showing even if the player toggled it off earlier — the HUD
+      // re-asserts its courtesy. (The doc: "The line stays.")
+      stableLoadHidden = false;
+      stableLoad.classList.add('sf-stableload--visible');
+    }
+    if (lie === 'civilian_tag_flicker') {
+      // armed; the actual flicker fires on hud:tagFlicker (the kill)
+    }
+    if (lie === 'manifest_silent_correct') {
+      // armed; the ghost fires when cargo contents change (detected in tick)
+    }
+    if (lie === 'phase3_freeze') {
+      // CONTRACT 47-A shows PENDING forever — surface a permanent HUD line.
+      stableLoad.classList.add('sf-stableload--p3');
+      stableLoad.querySelector('.sf-stableload__v').textContent = '47-A: PENDING';
+    }
+  });
+
+  // ── hud:tagFlicker handler (B2 kill) ──────────────────────────────────────────────────────
+  bus.on('hud:tagFlicker', ({ tag, durationMs, note }) => {
+    tagFlickerLabel.textContent = tag || 'CIVILIAN VESSEL \u2014 REGISTERED';
+    tagFlicker.classList.add('sf-tagflicker--show');
+    tagFlickerTimer = durationMs || 500;
+    // The note is the truth the HUD won't show — stash it as the title so an inspecting player finds it.
+    tagFlicker.title = note || '';
+  });
+
+  // ── player can toggle the STABLE LOAD line off (it returns) ───────────────────────────────
+  stableLoad.addEventListener('click', () => {
+    if (!stableLoadArmed) return;
+    stableLoadHidden = true;
+    stableLoad.classList.remove('sf-stableload--visible');
+    // per the doc: "The player can toggle it off. The line stays." It returns on next cargo change.
+  });
+
+  bus.on('cargo:changed', maybeShowManifestGhost);
+
+  // ── per-frame tick (called from hud.frame via the returned api) ───────────────────────────
+  function tick(dt) {
+    syncLegacyReadout();
+    // tag flicker countdown
+    if (tagFlickerTimer > 0) {
+      tagFlickerTimer -= (dt || 0.016) * 1000;
+      if (tagFlickerTimer <= 0) {
+        // the kill feed overwrites it — snap to the "neutralized" state then hide
+        tagFlickerLabel.textContent = 'THREAT NEUTRALIZED';
+        tagFlicker.classList.remove('sf-tagflicker--show');
+        tagFlicker.classList.add('sf-tagflicker--overwrite');
+        setTimeout(() => tagFlicker.classList.remove('sf-tagflicker--overwrite'), 600);
+      }
+    }
+
+    if (ghostTimer > 0) {
+      ghostTimer -= dt || 0.016;
+      if (ghostTimer <= 0) manifestGhost.classList.remove('sf-manifest-ghost--show');
+    }
+  }
+
+  function diffCargo(prev, cur) {
+    // returns a one-line "old → new" ghost if a key's qty dropped to 0 or a key was renamed-ish;
+    // else null. Deliberately subtle — the player notices only if watching.
+    for (const [k, qty] of prev) {
+      if ((qty || 0) > 0 && !(cur[k] > 0)) {
+        return `MANIFEST: ${labelOf(k)} \u2014 RECONCILED`;
+      }
+    }
+    return null;
+  }
+  function labelOf(id) {
+    return manifestCargoLabel(id);
+  }
+
+  function setVisible(v) {
+    metaVisible = !!v;
+    stableLoad.style.display = v ? '' : 'none';
+    tagFlicker.style.display = v ? '' : 'none';
+    const phase = (state.story && state.story.phase) || 1;
+    phaseReadout.style.display = (v && phase > 1) ? '' : 'none';
+    manifestGhost.style.display = v ? '' : 'none';
+    legacyReadout.style.display = v && legacyPresent ? '' : 'none';
+  }
+
+  return { tick, setVisible };
+}
+
+// CSS is injected by uiRoot's HUD stylesheet block (added there to keep all HUD CSS in one place).
+// The classes used: .sf-stableload, .sf-tagflicker, .sf-hudphase, .sf-manifest-ghost.
+export const HUD_META_CSS = `
+  /* STABLE LOAD — the persistent cargo lie (Phase 1+). Chromeless, glowing-edge marker. */
+  .sf-stableload { position:absolute; left:22px; bottom:210px; display:none; align-items:center; gap:8px;
+    padding-left:8px; border-left:1px solid var(--sf-edge);
+    pointer-events:auto; cursor:pointer; opacity:0; transition:opacity .5s ease; }
+  .sf-stableload--visible { display:flex; opacity:1; }
+  .sf-stableload__k { font-size:12px; letter-spacing:.06em; color:var(--text-secondary); text-shadow:var(--text-shadow-hard); }
+  .sf-stableload__v { font-size:12px; letter-spacing:.06em; color:var(--text-secondary); text-shadow:var(--text-shadow-hard); }
+  .sf-stableload--p3 { border-left-color:var(--visor-red); }
+  .sf-stableload--p3 .sf-stableload__v { color:var(--visor-red); text-shadow:var(--text-shadow-hard), var(--visor-glow-red);
+    animation:sf-stablepulse 2.5s ease-in-out infinite alternate; }
+  @keyframes sf-stablepulse { from { opacity:.7; } to { opacity:1; } }
+  /* civilian tag flicker (B2) */
+  .sf-tagflicker { position:absolute; left:50%; top:42%; transform:translate(-50%,-50%); pointer-events:none;
+    opacity:0; transition:opacity .12s ease; z-index:12; }
+  .sf-tagflicker--show { opacity:1; }
+  .sf-tagflicker__tag { font-family:var(--mono); font-size:12px; letter-spacing:.06em; color:var(--good);
+    padding:4px 12px; border:1px solid var(--good); border-radius:4px;
+    text-shadow:var(--text-shadow-hard), 0 0 8px rgba(98,224,138,.5); }
+  .sf-tagflicker--overwrite .sf-tagflicker__tag { color:var(--visor-red); border-color:var(--visor-red);
+    text-shadow:var(--text-shadow-hard), 0 0 8px rgba(255,42,42,.5); }
+  /* phase readout — general ship-status line, just under the top-center target lock (§3E).
+     (Chromeless: stays clear of the now-borderless bottom-right radar/target dock.) */
+  .sf-hudphase { position:absolute; top:96px; left:50%; transform:translateX(-50%);
+    display:flex; align-items:center; gap:7px; pointer-events:none; opacity:.85; }
+  .sf-hudphase__k { font-size:12px; letter-spacing:.06em; color:var(--text-secondary); text-shadow:var(--text-shadow-hard); }
+  .sf-hudphase__v { font-size:12px; letter-spacing:.06em; color:var(--text-secondary); text-shadow:var(--text-shadow-hard); }
+  .sf-hudphase--p2 .sf-hudphase__v { color:var(--accent-2); text-shadow:var(--text-shadow-hard); }
+  .sf-hudphase--p3 .sf-hudphase__v { color:var(--text-secondary); text-shadow:var(--text-shadow-hard); }
+  .sf-hudlegacy { position:absolute; top:116px; left:50%; transform:translateX(-50%); max-width:min(680px,72vw);
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; pointer-events:none; font-size:12px;
+    letter-spacing:.06em; color:var(--text-secondary); opacity:.72; text-shadow:var(--text-shadow-hard); }
+  /* manifest ghost (Phase 2 silent correction) */
+  .sf-manifest-ghost { position:absolute; left:50%; top:54%; transform:translateX(-50%); pointer-events:none;
+    font-family:var(--mono); font-size:12px; letter-spacing:.06em; color:var(--text-secondary); opacity:0;
+    transition:opacity .4s ease; text-shadow:var(--text-shadow-hard), 0 0 8px rgba(0,0,0,.8); }
+  .sf-manifest-ghost--show { opacity:.6; }
+  @media (max-width: 760px) {
+    .sf-stableload { left:8px; bottom:210px; }
+    .sf-hudphase { top:48px; }
+    .sf-hudlegacy { top:68px; max-width:88vw; }
+  }
+`;

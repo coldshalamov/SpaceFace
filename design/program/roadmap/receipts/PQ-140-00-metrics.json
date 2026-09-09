@@ -1,0 +1,10 @@
+{
+  "queueId": "PQ-140.00",
+  "title": "Interceptor is a positioning problem",
+  "ticksTotal": 180,
+  "ticksPlayerOffLine": 165,
+  "ticksPlayerOnLine": 15,
+  "offLineRatio": 91.7,
+  "status": "PASS",
+  "targetOffLineRatio": 75
+}

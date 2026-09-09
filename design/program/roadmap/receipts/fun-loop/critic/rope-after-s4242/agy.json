@@ -1,0 +1,944 @@
+{
+  "schema": "spaceface.funCritic.v1",
+  "strip": {
+    "bench": "crucible",
+    "scenarioId": "rope_swing",
+    "seed": 4242,
+    "arenaId": "helios_core",
+    "loadoutId": "massline_rig",
+    "framesCount": 135,
+    "framesShown": 16,
+    "framesShownIndices": [
+      0,
+      3,
+      4,
+      7,
+      11,
+      34,
+      56,
+      78,
+      79,
+      80,
+      83,
+      84,
+      87,
+      101,
+      123,
+      134
+    ],
+    "hullDrawn": {
+      "medianPartsPerFrame": 11,
+      "framesWithHull": 135,
+      "framesTotal": 135
+    },
+    "normalSpeed": true,
+    "webglRenderer": "ANGLE (Intel, Intel(R) Graphics (0x00007D45) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "frameFormat": "jpeg",
+    "contactSheet": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\design\\program\\roadmap\\receipts\\fun-loop\\manifests\\crucible\\57a31390-dirty-57d83eea\\rope_swing-massline_rig-s4242\\contact-sheet.png",
+    "receiptDir": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\design\\program\\roadmap\\receipts\\fun-loop\\manifests\\crucible\\57a31390-dirty-57d83eea\\rope_swing-massline_rig-s4242",
+    "sourceIdentity": {
+      "gitHead": "57a31390fb1be4bab0a16e6aae4988c593e389c5",
+      "gitTree": "e56d2985d0b2b76e13e1b3c5203e09144188dee7",
+      "productionDirty": true,
+      "productionDiffHash": "57d83eea77da35253266e626fa1c0c253587c8129123f9750f02c84327fd23c4"
+    },
+    "harnessDigest": "afd4a3c918bb481f9cacd91d8703b159c34c1a8b25e24d381d12466155df0306",
+    "frames": [
+      {
+        "index": 0,
+        "file": "frame_000.jpg",
+        "tick": 2682,
+        "simTime": 45.2667
+      },
+      {
+        "index": 1,
+        "file": "frame_001.jpg",
+        "tick": 2700,
+        "simTime": 45.5667
+      },
+      {
+        "index": 2,
+        "file": "frame_002.jpg",
+        "tick": 2702,
+        "simTime": 45.6
+      },
+      {
+        "index": 3,
+        "file": "frame_003.jpg",
+        "tick": 2715,
+        "simTime": 45.8167
+      },
+      {
+        "index": 4,
+        "file": "frame_004.jpg",
+        "tick": 2719,
+        "simTime": 45.8833
+      },
+      {
+        "index": 5,
+        "file": "frame_005.jpg",
+        "tick": 2727,
+        "simTime": 46.0167
+      },
+      {
+        "index": 6,
+        "file": "frame_006.jpg",
+        "tick": 2739,
+        "simTime": 46.2167
+      },
+      {
+        "index": 7,
+        "file": "frame_007.jpg",
+        "tick": 2748,
+        "simTime": 46.3667
+      },
+      {
+        "index": 8,
+        "file": "frame_008.jpg",
+        "tick": 2758,
+        "simTime": 46.5333
+      },
+      {
+        "index": 9,
+        "file": "frame_009.jpg",
+        "tick": 2768,
+        "simTime": 46.7
+      },
+      {
+        "index": 10,
+        "file": "frame_010.jpg",
+        "tick": 2775,
+        "simTime": 46.8167
+      },
+      {
+        "index": 11,
+        "file": "frame_011.jpg",
+        "tick": 2782,
+        "simTime": 46.9333
+      },
+      {
+        "index": 12,
+        "file": "frame_012.jpg",
+        "tick": 2789,
+        "simTime": 47.05
+      },
+      {
+        "index": 13,
+        "file": "frame_013.jpg",
+        "tick": 2797,
+        "simTime": 47.1833
+      },
+      {
+        "index": 14,
+        "file": "frame_014.jpg",
+        "tick": 2804,
+        "simTime": 47.3
+      },
+      {
+        "index": 15,
+        "file": "frame_015.jpg",
+        "tick": 2811,
+        "simTime": 47.4167
+      },
+      {
+        "index": 16,
+        "file": "frame_016.jpg",
+        "tick": 2820,
+        "simTime": 47.5667
+      },
+      {
+        "index": 17,
+        "file": "frame_017.jpg",
+        "tick": 2826,
+        "simTime": 47.6667
+      },
+      {
+        "index": 18,
+        "file": "frame_018.jpg",
+        "tick": 2836,
+        "simTime": 47.8333
+      },
+      {
+        "index": 19,
+        "file": "frame_019.jpg",
+        "tick": 2843,
+        "simTime": 47.95
+      },
+      {
+        "index": 20,
+        "file": "frame_020.jpg",
+        "tick": 2850,
+        "simTime": 48.0667
+      },
+      {
+        "index": 21,
+        "file": "frame_021.jpg",
+        "tick": 2856,
+        "simTime": 48.1667
+      },
+      {
+        "index": 22,
+        "file": "frame_022.jpg",
+        "tick": 2864,
+        "simTime": 48.3
+      },
+      {
+        "index": 23,
+        "file": "frame_023.jpg",
+        "tick": 2872,
+        "simTime": 48.4333
+      },
+      {
+        "index": 24,
+        "file": "frame_024.jpg",
+        "tick": 2878,
+        "simTime": 48.5333
+      },
+      {
+        "index": 25,
+        "file": "frame_025.jpg",
+        "tick": 2890,
+        "simTime": 48.7333
+      },
+      {
+        "index": 26,
+        "file": "frame_026.jpg",
+        "tick": 2896,
+        "simTime": 48.8333
+      },
+      {
+        "index": 27,
+        "file": "frame_027.jpg",
+        "tick": 2902,
+        "simTime": 48.9333
+      },
+      {
+        "index": 28,
+        "file": "frame_028.jpg",
+        "tick": 2908,
+        "simTime": 49.0333
+      },
+      {
+        "index": 29,
+        "file": "frame_029.jpg",
+        "tick": 2916,
+        "simTime": 49.1667
+      },
+      {
+        "index": 30,
+        "file": "frame_030.jpg",
+        "tick": 2924,
+        "simTime": 49.3
+      },
+      {
+        "index": 31,
+        "file": "frame_031.jpg",
+        "tick": 2934,
+        "simTime": 49.4667
+      },
+      {
+        "index": 32,
+        "file": "frame_032.jpg",
+        "tick": 2938,
+        "simTime": 49.5333
+      },
+      {
+        "index": 33,
+        "file": "frame_033.jpg",
+        "tick": 2952,
+        "simTime": 49.7667
+      },
+      {
+        "index": 34,
+        "file": "frame_034.jpg",
+        "tick": 2954,
+        "simTime": 49.8
+      },
+      {
+        "index": 35,
+        "file": "frame_035.jpg",
+        "tick": 2965,
+        "simTime": 49.9833
+      },
+      {
+        "index": 36,
+        "file": "frame_036.jpg",
+        "tick": 2972,
+        "simTime": 50.1
+      },
+      {
+        "index": 37,
+        "file": "frame_037.jpg",
+        "tick": 2979,
+        "simTime": 50.2167
+      },
+      {
+        "index": 38,
+        "file": "frame_038.jpg",
+        "tick": 2985,
+        "simTime": 50.3167
+      },
+      {
+        "index": 39,
+        "file": "frame_039.jpg",
+        "tick": 2996,
+        "simTime": 50.5
+      },
+      {
+        "index": 40,
+        "file": "frame_040.jpg",
+        "tick": 3008,
+        "simTime": 50.7
+      },
+      {
+        "index": 41,
+        "file": "frame_041.jpg",
+        "tick": 3018,
+        "simTime": 50.8667
+      },
+      {
+        "index": 42,
+        "file": "frame_042.jpg",
+        "tick": 3024,
+        "simTime": 50.9667
+      },
+      {
+        "index": 43,
+        "file": "frame_043.jpg",
+        "tick": 3034,
+        "simTime": 51.1333
+      },
+      {
+        "index": 44,
+        "file": "frame_044.jpg",
+        "tick": 3039,
+        "simTime": 51.2167
+      },
+      {
+        "index": 45,
+        "file": "frame_045.jpg",
+        "tick": 3049,
+        "simTime": 51.3833
+      },
+      {
+        "index": 46,
+        "file": "frame_046.jpg",
+        "tick": 3051,
+        "simTime": 51.4167
+      },
+      {
+        "index": 47,
+        "file": "frame_047.jpg",
+        "tick": 3057,
+        "simTime": 51.5167
+      },
+      {
+        "index": 48,
+        "file": "frame_048.jpg",
+        "tick": 3062,
+        "simTime": 51.6
+      },
+      {
+        "index": 49,
+        "file": "frame_049.jpg",
+        "tick": 3070,
+        "simTime": 51.7333
+      },
+      {
+        "index": 50,
+        "file": "frame_050.jpg",
+        "tick": 3076,
+        "simTime": 51.8333
+      },
+      {
+        "index": 51,
+        "file": "frame_051.jpg",
+        "tick": 3087,
+        "simTime": 52.0167
+      },
+      {
+        "index": 52,
+        "file": "frame_052.jpg",
+        "tick": 3094,
+        "simTime": 52.1333
+      },
+      {
+        "index": 53,
+        "file": "frame_053.jpg",
+        "tick": 3103,
+        "simTime": 52.2833
+      },
+      {
+        "index": 54,
+        "file": "frame_054.jpg",
+        "tick": 3109,
+        "simTime": 52.3833
+      },
+      {
+        "index": 55,
+        "file": "frame_055.jpg",
+        "tick": 3119,
+        "simTime": 52.55
+      },
+      {
+        "index": 56,
+        "file": "frame_056.jpg",
+        "tick": 3125,
+        "simTime": 52.65
+      },
+      {
+        "index": 57,
+        "file": "frame_057.jpg",
+        "tick": 3130,
+        "simTime": 52.7333
+      },
+      {
+        "index": 58,
+        "file": "frame_058.jpg",
+        "tick": 3134,
+        "simTime": 52.8
+      },
+      {
+        "index": 59,
+        "file": "frame_059.jpg",
+        "tick": 3141,
+        "simTime": 52.9167
+      },
+      {
+        "index": 60,
+        "file": "frame_060.jpg",
+        "tick": 3153,
+        "simTime": 53.1167
+      },
+      {
+        "index": 61,
+        "file": "frame_061.jpg",
+        "tick": 3156,
+        "simTime": 53.1667
+      },
+      {
+        "index": 62,
+        "file": "frame_062.jpg",
+        "tick": 3163,
+        "simTime": 53.2833
+      },
+      {
+        "index": 63,
+        "file": "frame_063.jpg",
+        "tick": 3177,
+        "simTime": 53.5167
+      },
+      {
+        "index": 64,
+        "file": "frame_064.jpg",
+        "tick": 3178,
+        "simTime": 53.5333
+      },
+      {
+        "index": 65,
+        "file": "frame_065.jpg",
+        "tick": 3191,
+        "simTime": 53.75
+      },
+      {
+        "index": 66,
+        "file": "frame_066.jpg",
+        "tick": 3194,
+        "simTime": 53.8
+      },
+      {
+        "index": 67,
+        "file": "frame_067.jpg",
+        "tick": 3202,
+        "simTime": 53.9333
+      },
+      {
+        "index": 68,
+        "file": "frame_068.jpg",
+        "tick": 3209,
+        "simTime": 54.05
+      },
+      {
+        "index": 69,
+        "file": "frame_069.jpg",
+        "tick": 3216,
+        "simTime": 54.1667
+      },
+      {
+        "index": 70,
+        "file": "frame_070.jpg",
+        "tick": 3226,
+        "simTime": 54.3333
+      },
+      {
+        "index": 71,
+        "file": "frame_071.jpg",
+        "tick": 3232,
+        "simTime": 54.4333
+      },
+      {
+        "index": 72,
+        "file": "frame_072.jpg",
+        "tick": 3238,
+        "simTime": 54.5333
+      },
+      {
+        "index": 73,
+        "file": "frame_073.jpg",
+        "tick": 3246,
+        "simTime": 54.6667
+      },
+      {
+        "index": 74,
+        "file": "frame_074.jpg",
+        "tick": 3253,
+        "simTime": 54.7833
+      },
+      {
+        "index": 75,
+        "file": "frame_075.jpg",
+        "tick": 3263,
+        "simTime": 54.95
+      },
+      {
+        "index": 76,
+        "file": "frame_076.jpg",
+        "tick": 3270,
+        "simTime": 55.0667
+      },
+      {
+        "index": 77,
+        "file": "frame_077.jpg",
+        "tick": 3277,
+        "simTime": 55.1833
+      },
+      {
+        "index": 78,
+        "file": "frame_078.jpg",
+        "tick": 3283,
+        "simTime": 55.2833
+      },
+      {
+        "index": 79,
+        "file": "frame_079.jpg",
+        "tick": 3293,
+        "simTime": 55.45
+      },
+      {
+        "index": 80,
+        "file": "frame_080.jpg",
+        "tick": 3298,
+        "simTime": 55.5333
+      },
+      {
+        "index": 81,
+        "file": "frame_081.jpg",
+        "tick": 3307,
+        "simTime": 55.6833
+      },
+      {
+        "index": 82,
+        "file": "frame_082.jpg",
+        "tick": 3314,
+        "simTime": 55.8
+      },
+      {
+        "index": 83,
+        "file": "frame_083.jpg",
+        "tick": 3321,
+        "simTime": 55.9167
+      },
+      {
+        "index": 84,
+        "file": "frame_084.jpg",
+        "tick": 3329,
+        "simTime": 56.05
+      },
+      {
+        "index": 85,
+        "file": "frame_085.jpg",
+        "tick": 3336,
+        "simTime": 56.1667
+      },
+      {
+        "index": 86,
+        "file": "frame_086.jpg",
+        "tick": 3344,
+        "simTime": 56.3
+      },
+      {
+        "index": 87,
+        "file": "frame_087.jpg",
+        "tick": 3353,
+        "simTime": 56.45
+      },
+      {
+        "index": 88,
+        "file": "frame_088.jpg",
+        "tick": 3359,
+        "simTime": 56.55
+      },
+      {
+        "index": 89,
+        "file": "frame_089.jpg",
+        "tick": 3367,
+        "simTime": 56.6833
+      },
+      {
+        "index": 90,
+        "file": "frame_090.jpg",
+        "tick": 3374,
+        "simTime": 56.8
+      },
+      {
+        "index": 91,
+        "file": "frame_091.jpg",
+        "tick": 3382,
+        "simTime": 56.9333
+      },
+      {
+        "index": 92,
+        "file": "frame_092.jpg",
+        "tick": 3388,
+        "simTime": 57.0333
+      },
+      {
+        "index": 93,
+        "file": "frame_093.jpg",
+        "tick": 3397,
+        "simTime": 57.1833
+      },
+      {
+        "index": 94,
+        "file": "frame_094.jpg",
+        "tick": 3403,
+        "simTime": 57.2833
+      },
+      {
+        "index": 95,
+        "file": "frame_095.jpg",
+        "tick": 3412,
+        "simTime": 57.4333
+      },
+      {
+        "index": 96,
+        "file": "frame_096.jpg",
+        "tick": 3419,
+        "simTime": 57.55
+      },
+      {
+        "index": 97,
+        "file": "frame_097.jpg",
+        "tick": 3430,
+        "simTime": 57.7333
+      },
+      {
+        "index": 98,
+        "file": "frame_098.jpg",
+        "tick": 3436,
+        "simTime": 57.8333
+      },
+      {
+        "index": 99,
+        "file": "frame_099.jpg",
+        "tick": 3445,
+        "simTime": 57.9833
+      },
+      {
+        "index": 100,
+        "file": "frame_100.jpg",
+        "tick": 3455,
+        "simTime": 58.15
+      },
+      {
+        "index": 101,
+        "file": "frame_101.jpg",
+        "tick": 3464,
+        "simTime": 58.3
+      },
+      {
+        "index": 102,
+        "file": "frame_102.jpg",
+        "tick": 3470,
+        "simTime": 58.4
+      },
+      {
+        "index": 103,
+        "file": "frame_103.jpg",
+        "tick": 3476,
+        "simTime": 58.5
+      },
+      {
+        "index": 104,
+        "file": "frame_104.jpg",
+        "tick": 3485,
+        "simTime": 58.65
+      },
+      {
+        "index": 105,
+        "file": "frame_105.jpg",
+        "tick": 3494,
+        "simTime": 58.8
+      },
+      {
+        "index": 106,
+        "file": "frame_106.jpg",
+        "tick": 3502,
+        "simTime": 58.9333
+      },
+      {
+        "index": 107,
+        "file": "frame_107.jpg",
+        "tick": 3511,
+        "simTime": 59.0833
+      },
+      {
+        "index": 108,
+        "file": "frame_108.jpg",
+        "tick": 3521,
+        "simTime": 59.25
+      },
+      {
+        "index": 109,
+        "file": "frame_109.jpg",
+        "tick": 3531,
+        "simTime": 59.4167
+      },
+      {
+        "index": 110,
+        "file": "frame_110.jpg",
+        "tick": 3541,
+        "simTime": 59.5833
+      },
+      {
+        "index": 111,
+        "file": "frame_111.jpg",
+        "tick": 3550,
+        "simTime": 59.7333
+      },
+      {
+        "index": 112,
+        "file": "frame_112.jpg",
+        "tick": 3556,
+        "simTime": 59.8333
+      },
+      {
+        "index": 113,
+        "file": "frame_113.jpg",
+        "tick": 3561,
+        "simTime": 59.9167
+      },
+      {
+        "index": 114,
+        "file": "frame_114.jpg",
+        "tick": 3573,
+        "simTime": 60.1167
+      },
+      {
+        "index": 115,
+        "file": "frame_115.jpg",
+        "tick": 3581,
+        "simTime": 60.25
+      },
+      {
+        "index": 116,
+        "file": "frame_116.jpg",
+        "tick": 3585,
+        "simTime": 60.3167
+      },
+      {
+        "index": 117,
+        "file": "frame_117.jpg",
+        "tick": 3593,
+        "simTime": 60.45
+      },
+      {
+        "index": 118,
+        "file": "frame_118.jpg",
+        "tick": 3601,
+        "simTime": 60.5833
+      },
+      {
+        "index": 119,
+        "file": "frame_119.jpg",
+        "tick": 3612,
+        "simTime": 60.7667
+      },
+      {
+        "index": 120,
+        "file": "frame_120.jpg",
+        "tick": 3622,
+        "simTime": 60.9333
+      },
+      {
+        "index": 121,
+        "file": "frame_121.jpg",
+        "tick": 3630,
+        "simTime": 61.0667
+      },
+      {
+        "index": 122,
+        "file": "frame_122.jpg",
+        "tick": 3638,
+        "simTime": 61.2
+      },
+      {
+        "index": 123,
+        "file": "frame_123.jpg",
+        "tick": 3646,
+        "simTime": 61.3333
+      },
+      {
+        "index": 124,
+        "file": "frame_124.jpg",
+        "tick": 3652,
+        "simTime": 61.4333
+      },
+      {
+        "index": 125,
+        "file": "frame_125.jpg",
+        "tick": 3655,
+        "simTime": 61.4833
+      },
+      {
+        "index": 126,
+        "file": "frame_126.jpg",
+        "tick": 3663,
+        "simTime": 61.6167
+      },
+      {
+        "index": 127,
+        "file": "frame_127.jpg",
+        "tick": 3671,
+        "simTime": 61.75
+      },
+      {
+        "index": 128,
+        "file": "frame_128.jpg",
+        "tick": 3676,
+        "simTime": 61.8333
+      },
+      {
+        "index": 129,
+        "file": "frame_129.jpg",
+        "tick": 3683,
+        "simTime": 61.95
+      },
+      {
+        "index": 130,
+        "file": "frame_130.jpg",
+        "tick": 3689,
+        "simTime": 62.05
+      },
+      {
+        "index": 131,
+        "file": "frame_131.jpg",
+        "tick": 3701,
+        "simTime": 62.25
+      },
+      {
+        "index": 132,
+        "file": "frame_132.jpg",
+        "tick": 3706,
+        "simTime": 62.3333
+      },
+      {
+        "index": 133,
+        "file": "frame_133.jpg",
+        "tick": 3711,
+        "simTime": 62.4167
+      },
+      {
+        "index": 134,
+        "file": "frame_134.jpg",
+        "tick": 3722,
+        "simTime": 62.6
+      }
+    ],
+    "stripDir": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\fun-loop\\strips\\crucible\\57a31390-dirty-57d83eea\\rope_swing-massline_rig-s4242",
+    "manifestPath": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\design\\program\\roadmap\\receipts\\fun-loop\\manifests\\crucible\\57a31390-dirty-57d83eea\\rope_swing-massline_rig-s4242\\strip-manifest.json"
+  },
+  "model": {
+    "route": "agy/gemini-3.8-flash-high",
+    "label": "Gemini 3.8 Flash High",
+    "wallMs": 520816
+  },
+  "answers": [
+    {
+      "q": 1,
+      "question": "Can I tell what the player did from the frames alone?",
+      "answer": "yes",
+      "frameIndex": 56,
+      "note": "A glowing Massline tether anchored to the asteroid and the curved blue engine trail clearly show the player latched onto the rock and swung around it."
+    },
+    {
+      "q": 2,
+      "question": "Did the world answer within a third of a second (motion, light, or a visible receipt)?",
+      "answer": "yes",
+      "frameIndex": 7,
+      "note": "Within a third of a second of forward input at 46.02s, bright blue engine plumes flare and velocity surges from 13.75 to 57.33 WU/s."
+    },
+    {
+      "q": 3,
+      "question": "Did something the player did not directly touch change because of it?",
+      "answer": "yes",
+      "frameIndex": 78,
+      "note": "Hostile ships collide with debris and each other, detonating in large fireball explosions across the arena without direct player contact."
+    },
+    {
+      "q": 4,
+      "question": "Would the vision's sentence for this verb be true here? (quote the sentence)",
+      "answer": "no",
+      "frameIndex": 123,
+      "note": "\"Thrusters have a cap; physics-earned speed does not get eaten by the brakes.\" fails as speed decays from 65.51 to 2.90 WU/s after release with hands off."
+    },
+    {
+      "q": 5,
+      "question": "Is the ship a controllable mass (turns inside the screen, stops when braked, keeps earned speed)?",
+      "answer": "no",
+      "frameIndex": 123,
+      "note": "The ship fails to keep earned speed, braking to a near-halt at 2.90 WU/s after rope release with hands off instead of coasting on earned momentum."
+    },
+    {
+      "q": 6,
+      "question": "Are the light ships ammunition here, rather than only targets?",
+      "answer": "no",
+      "frameIndex": 123,
+      "note": "Light hostiles remain swarm targets rather than projectiles; hostilesAlive stays at 10 across all frames and none are flung as ammunition."
+    },
+    {
+      "q": 7,
+      "question": "Is anything on screen a glowing sphere standing in for a designed event?",
+      "answer": "no",
+      "frameIndex": 78,
+      "note": "Spherical elements on screen are authored Fresnel shield bubbles around ships with shield generators, not placeholder spheres standing in for events."
+    },
+    {
+      "q": 8,
+      "question": "Did anyone flee, choose, or arrive because of the violence?",
+      "answer": "no",
+      "frameIndex": 134,
+      "note": "No NPCs flee, choose, or arrive in reaction to the violence; all 10 hostile swarmers persist on their default swarm trajectories through frame 134."
+    },
+    {
+      "q": 9,
+      "question": "Would a stranger tell a \"so then\" story about these twelve seconds?",
+      "answer": "yes",
+      "frameIndex": 56,
+      "note": "A stranger would describe latching a giant asteroid with the Massline, swinging in a high-speed arc through the swarm, and releasing as hostiles exploded behind."
+    }
+  ],
+  "fundamental": {
+    "rule": "reactionAssistAcceleration neutral-counterthrust",
+    "file": "src/core/flight/propulsionKernel.js",
+    "does": "applies reverse counter-thrust when hands off in assisted flight, braking the ship to a dead stop and eating momentum earned from the Massline swing",
+    "breaksSentence": "Thrusters have a cap; physics-earned speed does not get eaten by the brakes.",
+    "frameIndex": 123
+  },
+  "passCount": 5,
+  "pass": false,
+  "rejected": false,
+  "rejectReasons": [],
+  "rawResponsePath": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\design\\program\\roadmap\\receipts\\fun-loop\\critic\\rope-after-s4242\\agy.raw.txt",
+  "sourceTree": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace"
+}

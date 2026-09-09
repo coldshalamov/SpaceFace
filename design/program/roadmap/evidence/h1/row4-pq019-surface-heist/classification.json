@@ -1,0 +1,42 @@
+{
+  "schema": "spaceface.h1-row-classification.v1",
+  "row": 4,
+  "subject": "pq019-surface-heist broker manifest",
+  "result": "FAIL",
+  "classification": "HARNESS",
+  "attemptsConsumed": 1,
+  "retryPerformed": false,
+  "manifestId": "pq019-surface-heist",
+  "fixedSeed": 19019,
+  "candidateDigest": "21afdc13a66d0cb6fa3b729921203e814b98e5115139e949572a7dc7e3896474",
+  "failure": {
+    "phase": "heist-plus-fence",
+    "message": "page.waitForFunction: Timeout 20000ms exceeded.",
+    "site": "scripts/probe-pq019-surface-heist.mjs:633 waitForCapsule",
+    "predicate": "live cargo_capsule through state.heistFacilities.capsuleEntityId"
+  },
+  "classificationBasis": [
+    "The fixed wall-clock wait did not prove or record simulation-time progress.",
+    "The failure artifact omitted simTime, tick, timeScale, schedule status, launch receipt, mission heist state, and competing terminal outcome.",
+    "The same Browser attempt completed DOM abandonment and a live lawful-arrival capsule route first.",
+    "The hardware WebGL environment remained available on Intel ANGLE D3D11 and completed contexts had zero page errors."
+  ],
+  "survivingClaims": [
+    "station DOM acceptance",
+    "Mission Log danger confirmation semantics and safe initial focus",
+    "abandoned terminal route",
+    "lawful_arrival_observed terminal route",
+    "lawful-arrival one-voice floor and toast suppression"
+  ],
+  "unprovenClaims": [
+    "witnessed theft and composed WANTED pursuit line",
+    "fenced_success",
+    "lawful_confiscation",
+    "payload_destroyed through production combat damage",
+    "reduced-stake recovery",
+    "reduced-motion recovery route",
+    "full five-route normal-camera acceptance"
+  ],
+  "noPerformanceEvidence": true,
+  "matchedPerformancePhase": "H3"
+}

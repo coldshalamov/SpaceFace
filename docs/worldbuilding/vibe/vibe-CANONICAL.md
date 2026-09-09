@@ -1,0 +1,85 @@
+**SPACEFACE — CANONICAL VIBE DOCUMENT (v03 + v02 fusion)**
+
+**Core Tone**
+A bulkhead that still smells like cordite and coolant, with something scratched into the paint that management keeps covering and the paint keeps giving back. The game lives in the gap between "the contract was clean" and "we took it anyway." Every sector is a demilitarized zone that someone already lost. The player is a pilot flying a ship that remembers every body it used to carry. The ship is haunted. The player is the ghost.
+
+**Origin — The Pit**
+SpaceFace starts in the armpit of the solar system: a half-abandoned prison-colony called The Pit, where the last generation of "unreformable" debtors, hackers, and political embarrassments got dumped. Your ship is a repossessed tug with a reactor that has been "fine" for three owners. Your crew is whoever will still talk to you after the last job went sideways. You are the pilot who knows which airlock the inspectors never check.
+
+**Voice**
+Eleven months on a Pit survey crew and five years of contracts that paid what they paid. Short sentences. Silence as punctuation. "They said the contract was clean. They lied. We still took it." No inspirational speeches. No "we can do this." No performance for an audience that doesn't exist. Just hands on the controls when the reactor screams, because that's what you do with your hands.
+
+**Dialog Register — What the Pit Survivor Actually Says**
+
+Not silence. Not quips. Flat, unyielding declaratives of physical and economic reality. The Pit survivor speaks in the register of inventory, log entries, and physical friction. They do not perform for an audience that doesn't exist.
+
+*Combat (three contacts remaining):* "Three left." To nobody. Status is not commentary.
+
+*Finding a body they recognize:* Just the name. The identification is the statement. If the body is a stranger: "Another mouth closed. Log the air." Not gallows humor. Operational accounting.
+
+*Getting stiffed:* "You will pay the difference to someone else. The sector does not leave ledgers open." The debt is a physical asset. The client will pay it to the next contractor who buys the ledger. The player is not threatening. They are stating the math.
+
+*Getting paid correctly after being stiffed before:* "Correct." Not "thank you." Verification that the number matches.
+
+*Customs interception:* "The seal is Concord. If the weight is off, talk to Tycho." Bureaucratic defense — passing administrative liability back to the relay where the cargo was logged.
+
+*Asked to justify a contract that ruined a colony:* "The fuel was already in the tanks. We had to go somewhere." A moral choice reframed as inventory calculation. The ship has a vector determined by fuel and cargo. The player is the operator executing the math.
+
+*Late game — realizing what B0's cargo was:* "The air in Shaft 7 was heavy when I left. Now I know the weight." Flat testimony. Somatic memory (breathing degraded Silt) connected to manifest accounting (12.4t). No moral crisis. No vow.
+
+*Being in a fully-lit Core station:* Nothing said. The player doesn't comment on luxury. They experience warm air and full-spectrum light as sensory friction — feels like an interrogation room because that's what fully-lit rooms felt like in the Pit.
+
+Lines that fail the register test: any line that names the character's own emotional state, signals awareness of irony, performs toughness for an absent audience, or implies the character is narrating their own story.
+
+**Humor Style**
+Dark, fast, zero sentiment. Killing is a line item on the after-action report. "Target neutralized. Also the guy next to him. And the wall behind them. Kill feed took a second to catch up."
+
+When the reactor redlines and the ship AI—voice like a bored hangman—says "Power failure in three… two… probably," you don't answer. There's nothing useful to say. You keep your hands on the controls and wait to find out which fails first. When a bounty hunter hails you mid-fight with "Stand down or be destroyed," you close the channel. The kill feed resolves it. You open the channel again when it's done: "Tell your employer the rate went up." Nobody answers. That's fine.
+
+**Visual Storytelling — HUD as Unreliable Narrator**
+Mr Robot paranoia rendered in three dimensions. Static on every long-range scan. Flickering HUD tags that sometimes read "FRIENDLY" and sometimes read "WAS FRIENDLY." Graffiti that moves when you're not looking. Ship interiors that look like someone started redecorating with a flamethrower and lost interest halfway through. Lighting is always either too bright (interrogation) or too dark (ambush). No clean hero shots. Every frame should feel like it was pulled from a body-cam that survived the operator.
+
+The HUD stutters—range numbers flip to question marks, then to "???" that lingers like it's judging you. A targeting reticle blooms red across a hauler that's already venting atmosphere; the IFF tag tries to load, fails, and settles on "UNKNOWN / PROBABLY FUCKED." You fire anyway. The kill feed prints in clean white: +1 Bounty. Then, beneath it, smaller, almost apologetic: *They were carrying medicine.* The text glitches, rewrites itself to *Contraband detected*, then dies. You laugh once, short and ugly, because that's what you do when the universe lies to your face and you lie right back.
+
+The game never shows you becoming the villain. It simply stops correcting the HUD when it lies in your favor.
+
+**Graffiti as the Only Honest Narrator**
+Graffiti is the only honest newsfeed left. Every docking bay bulkhead is a palimpsest of last week's lies: "DON'T TRADE WITH GANYMEDE—THEY'RE EATING THE HYDROPONICS TECH," "CAPTAIN VOSS STILL OWES ME 400 CRED AND A KIDNEY," "THE BELT IS WATCHING." These messages update between visits. Sometimes they argue with each other. Sometimes they know things you haven't done yet.
+
+Every station bulkhead you dock at carries fresh paint from crews who won't live long enough to see it fade. *"This sector eats captains twice as mean as you."* *"Rook called. He wants his cut back."* *"The last honest trader hanged himself in airlock 3."*
+
+Then it escalates. A new piece of graffiti appears on your own bulkhead, painted in your own hand while you slept: *They all do.* You don't remember writing it. You don't paint over it either. One day the graffiti on your airlock reads *Welcome home, Captain.* You don't know whose hand wrote it. You don't ask.
+
+**Emotional Register — Moral Rot Without Redemption**
+Every faction is simultaneously right and monstrous. The player is never allowed to feel noble; at best they feel competent. Loneliness is the default state. The rare moments of warmth (a good haul, a quiet bar, a ship that doesn't hate you today) are deliberately brief and immediately undercut by the next contract. Hope is a debuff.
+
+Moral descent doesn't arrive with violins. It arrives in the cargo hold after you vent three boarders who were only trying to steal the same ore you just stole from someone else. The bodies tumble, freeze, and the HUD helpfully tags them *Threat neutralized* before a second line flickers in: *They had families.* You close the log. The next time you check, that second line is gone.
+
+**Comms Micro-Popups**
+Comms are a constant low-grade migraine. Micro-popups slide in from every direction—corporate debt collectors, exes, rival smugglers, your own increasingly unhinged nav AI. Most are noise. Some are traps. A few are the only warning you'll get before a "routine" customs scan turns into a boarding action. The best pilots learn to read the popups the way old sailors read clouds.
+
+**Story Escalation — Small Crimes to Systemic Rot**
+The story begins small and stays small for as long as it can. First jobs are the usual: smuggle a crate of vat-meat that definitely isn't human, rig a dock auction, plant a virus that makes a rival's ore scanner hallucinate gold. You're just trying to keep the reactor fueled and the hull patched. Then the jobs start arriving with names attached — mid-level bureaucrats, minor corporate officers, one actual Concord inspector who should not be talking to someone like you. The money gets better. The bodies get harder to hide. The graffiti starts mentioning you by callsign.
+
+What escalates isn't your ambition. It's the realization that the entire system is already rotting from the inside and everyone with a clean uniform is either complicit or will be soon. The gray men in clean stations sign the orders that get your friends spaced — and sleep well because the orders were authorized and the paperwork was filed correctly. The priest blesses the smuggling hold because the orphanage needs new filters, and knows exactly what he's blessing. The air recyclers fail first on the lowest decks; the rich buy bottled atmosphere while everyone else learns to ignore the smell. The journey goes outward from the lit core to the dark frontier, and the thing at the end of it has been waiting for something that looks exactly like you. Bodies accumulate not because anyone chose it but because the math of the situation resolves to bodies. Whoever controls the information layer — the HUD, the manifests, the after-action logs — controls what happened, regardless of what happened. Everyone is in each other's story without knowing it. One job, seen from eight different angles, all of them wrong about who was in charge.
+
+You never fight the system head-on. You skim it, sell the skim back to it at markup, and use the proceeds to buy into the next layer of rot. The only way to stay human is to keep being a criminal, and eventually even the criminals start acting like the institutions they hate — with worse bookkeeping.
+
+**The Player — Cipher and Person**
+The game's surface treats the player as interchangeable. The contracts don't care who you are. The NPCs don't ask about your childhood. The HUD doesn't know your name. On the surface you're a cipher: any pilot, any ship, any debt. Thread A works on anyone.
+
+Underneath, the player is someone specific. He has a name. He has a reason for being in this part of the galaxy that is not the same reason everyone else is here. He carries cargo the manifest doesn't list and a memory the game never asks about. The specificity comes out in details — a flinch at a sound, a reaction to a material, a search query run on a data terminal between contract jobs. Not exposition. Not flashback. Details that cost the character nothing to reveal and cost the attentive player everything to notice.
+
+The ghost is haunted. The cipher has a backstory. The ex-gangster has ink under the scars and some of the scars are from a place that doesn't appear on any chart. The game treats him as fungible. He is not.
+
+**Non-Negotiables**
+- Never let the player feel like the good guy.
+- Never let the player feel like the only bad guy.
+- Every joke about death must also be a confession.
+- Every pretty vista must contain at least one thing that died ugly.
+- The ship is haunted. The player is the ghost.
+- The player is someone specific. The game doesn't care.
+- Graffiti is the only honest narrator.
+- The HUD lies. Eventually it stops correcting itself in your favor.
+
+**Welcome to the Pit.**

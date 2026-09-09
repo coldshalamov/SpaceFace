@@ -1,0 +1,61 @@
+{
+  "schema": "spaceface.sliceScope.v1",
+  "scenarioContract": "src/data/scenarios/47a.scenario.json",
+  "sourceSpec": "docs/Spec/MASTER_MAKEOVER_PLAN.md",
+  "sliceContract": "docs/Spec/47A_SLICE_CONTRACT.md",
+  "requiredProofMetricIds": [
+    "first_meaningful_steering",
+    "first_tether_attach",
+    "first_hostile_shot",
+    "tutorial_line_cap",
+    "policy_completion_count",
+    "enemy_counter_tether_count",
+    "branch_world_fact_delta",
+    "death_to_retry",
+    "critical_beat_presentation"
+  ],
+  "acceptanceEvidence": [
+    {
+      "proofMetricId": "first_meaningful_steering",
+      "commands": ["npm run check:sim"]
+    },
+    {
+      "proofMetricId": "first_tether_attach",
+      "commands": ["npm run check:sim", "node scripts/check-phase0-slice-contract.mjs"]
+    },
+    {
+      "proofMetricId": "first_hostile_shot",
+      "commands": ["npm run check:sg05", "npm run check:sim:long"]
+    },
+    {
+      "proofMetricId": "tutorial_line_cap",
+      "commands": ["npm run check:sg05", "node scripts/check-phase0-slice-contract.mjs"]
+    },
+    {
+      "proofMetricId": "policy_completion_count",
+      "commands": ["npm run check:47a:tactics", "npm run check:sg05"]
+    },
+    {
+      "proofMetricId": "enemy_counter_tether_count",
+      "commands": ["npm run check:47a:counterplay", "npm run check:sg06"]
+    },
+    {
+      "proofMetricId": "branch_world_fact_delta",
+      "commands": ["npm run check:47a:live-branch", "npm run check:sg05"]
+    },
+    {
+      "proofMetricId": "death_to_retry",
+      "commands": ["npm run check:47a:death-retry"]
+    },
+    {
+      "proofMetricId": "critical_beat_presentation",
+      "commands": ["npm run check:presentation", "npm run check:camera"]
+    }
+  ],
+  "guardrails": [
+    "No temporary physics, mission, UI, or asset formats.",
+    "No feature expansion before the 47-A slice is shippable.",
+    "Every merge must name the slice metric it improves.",
+    "Evidence bundle passes, not compile-only status, define completion."
+  ]
+}

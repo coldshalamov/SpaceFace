@@ -1,0 +1,88 @@
+name: Arcade draw-flight regression
+on:
+  push:
+    branches: [master, fix/arcade-draw-to-fly]
+    paths:
+      - 'src/combat/autoTargetMode.js'
+      - 'src/combat/drawFlight*.js'
+      - 'src/systems/drawFlight*.js'
+      - 'src/systems/autoTargetAssist.js'
+      - 'src/systems/input.js'
+      - 'src/systems/flightV3.js'
+      - 'src/systems/weapons.js'
+      - 'src/core/flight/**'
+      - 'test/arcade-draw-*'
+      - 'test/draw-to-fly-*'
+      - 'test/fixtures/draw-flight.html'
+      - 'scripts/check-draw-flight-browser.mjs'
+      - 'scripts/check-autopursuit.mjs'
+      - 'scripts/lib/bench/scenarios/feel.stroke_speed.mjs'
+      - '.github/workflows/draw-flight.yml'
+  pull_request:
+    paths:
+      - 'src/combat/autoTargetMode.js'
+      - 'src/combat/drawFlight*.js'
+      - 'src/systems/drawFlight*.js'
+      - 'src/systems/autoTargetAssist.js'
+      - 'src/systems/input.js'
+      - 'src/systems/flightV3.js'
+      - 'src/systems/weapons.js'
+      - 'src/core/flight/**'
+      - 'test/arcade-draw-*'
+      - 'test/draw-to-fly-*'
+      - 'test/fixtures/draw-flight.html'
+      - 'scripts/check-draw-flight-browser.mjs'
+      - 'scripts/check-autopursuit.mjs'
+      - 'scripts/lib/bench/scenarios/feel.stroke_speed.mjs'
+      - '.github/workflows/draw-flight.yml'
+permissions:
+  contents: read
+concurrency:
+  group: draw-flight-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  draw-flight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+          sparse-checkout: |
+            src
+            vendor
+            test
+            scripts
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Exact runtime dependencies without installing the game toolchain
+        run: |
+          mkdir -p node_modules/three node_modules/@dimforge/rapier3d-compat .devshots/draw-flight
+          cp vendor/three.module.js vendor/three.core.js node_modules/three/
+          ln -s ../../vendor/addons node_modules/three/addons
+          printf '%s' '{"type":"module","exports":{".":"./three.module.js","./addons/*":"./addons/*"}}' > node_modules/three/package.json
+          cp vendor/rapier3d-compat/rapier.mjs node_modules/@dimforge/rapier3d-compat/rapier.mjs
+          printf '%s' '{"type":"module","exports":"./rapier.mjs"}' > node_modules/@dimforge/rapier3d-compat/package.json
+          git rev-parse HEAD > .devshots/draw-flight/source-sha.txt
+      - name: Sustained speed, actual collision authority, gun lead and lifecycle regression
+        run: |
+          set -o pipefail
+          node --test test/arcade-draw-*.test.mjs test/draw-to-fly-path-tracking.test.mjs test/draw-to-fly-stroke-speed.test.mjs test/flightV3.spec.mjs test/input-lifecycle.test.mjs test/seam-gunnery.test.mjs test/starter-weapon-runtime.test.mjs | tee .devshots/draw-flight/tests.txt
+          node scripts/check-autopursuit.mjs | tee .devshots/draw-flight/wiring.txt
+          node scripts/check-input-modalities.mjs | tee .devshots/draw-flight/input.txt
+      - name: Install browser test dependencies
+        run: |
+          npm install --prefix "$RUNNER_TEMP/draw-flight-browser" --ignore-scripts --no-audit --no-fund playwright@1.61.1
+          ln -s "$RUNNER_TEMP/draw-flight-browser/node_modules/playwright" node_modules/playwright
+          node "$RUNNER_TEMP/draw-flight-browser/node_modules/playwright/cli.js" install --with-deps chromium
+          sudo apt-get install -y xvfb xdotool
+      - name: Real browser mouse motion and pointer-lock acceptance
+        run: xvfb-run -a node scripts/check-draw-flight-browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: draw-flight-evidence-${{ github.event_name }}-${{ github.run_id }}
+          path: .devshots/draw-flight
+          retention-days: 14

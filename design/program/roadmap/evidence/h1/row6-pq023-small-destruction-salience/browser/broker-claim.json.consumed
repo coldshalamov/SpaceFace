@@ -1,0 +1,7 @@
+{
+  "schema": "spaceface.validation-broker-claim-consumed.v1",
+  "claimId": "27440-9da9c44669eff50157e38fbd",
+  "consumedAt": "2026-08-01T09:02:35.383Z",
+  "candidateDigest": "fbabadf8cf040e799bccf440baae61efd36725994cfb6a716c4d5b0bf2c3b1bb",
+  "runtimeKind": "browser"
+}

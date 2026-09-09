@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spaceface.game/schemas/combat/damage-packet.schema.json",
+  "title": "SpaceFace DamagePacket",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["channels", "penetration", "heat", "statuses"],
+  "properties": {
+    "channels": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kinetic", "thermal", "ion", "plasma", "phase"],
+      "properties": {
+        "kinetic": { "type": "number", "minimum": 0 },
+        "thermal": { "type": "number", "minimum": 0 },
+        "ion": { "type": "number", "minimum": 0 },
+        "plasma": { "type": "number", "minimum": 0 },
+        "phase": { "type": "number", "minimum": 0 }
+      }
+    },
+    "penetration": { "type": "number", "minimum": 0, "maximum": 1 },
+    "impulse": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object", "additionalProperties": false,
+          "properties": {
+            "x": { "type": "number" }, "z": { "type": "number" },
+            "magnitude": { "type": "number", "minimum": 0 },
+            "dirX": { "type": "number" }, "dirZ": { "type": "number" }
+          }
+        }
+      ]
+    },
+    "heat": { "type": "number", "minimum": 0 },
+    "statuses": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["id"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^status_" },
+          "stacks": { "type": "integer", "minimum": 1 },
+          "durationTicks": { "type": "integer", "minimum": 1 },
+          "applyTick": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "hit": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object", "additionalProperties": false,
+          "properties": {
+            "pos": {
+              "type": "object", "additionalProperties": false,
+              "required": ["x", "z"], "properties": { "x": { "type": "number" }, "z": { "type": "number" } }
+            },
+            "subsystemId": { "type": "string", "pattern": "^subsystem_" }
+          }
+        }
+      ]
+    },
+    "subsystemShare": { "type": "number", "minimum": 0, "maximum": 1 },
+    "flags": { "type": "object", "additionalProperties": { "type": "boolean" } },
+    "source": { "type": ["object", "null"] }
+  }
+}

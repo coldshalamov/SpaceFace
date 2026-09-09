@@ -1,0 +1,33 @@
+handoff_version: 1
+thread: A
+sprint_id: 2026-07-09-top50-sliceA-gate
+agent: top50-wonder-goal-session
+completed_at: 2026-07-09T19:47:00Z
+assets:
+  - id: place_gate_jump_ring
+    source_glb: assets/ships/parts/places/place_gate_jump_ring.glb
+    blend_path: assets/ships/parts/blender/place_gate_jump_ring_authored.blend
+    art_status: full_finish
+    iteration_count: 20
+    weighted_score: 4.99
+    evidence: assets/ships/parts/revamp-evidence/place_gate_jump_ring/
+    lifecycle: RELEASE_BUILT
+    manifest_row: exists
+    runtimeSlots: place
+    blocked: false
+    notes: >
+      Helios jump gate (rank 8) — torus aperture + paired pylons + charge rail + emitters.
+      Campaign 1–20 modeling→surfacing→life. export_bar_ok true, shots_ok true, weighted 4.99.
+      finalize 15932 tris / 1.52MB / dims ~10×41×51. Release rebuild 2026-07-09.
+integrator_actions:
+  - finalize_part.mjs DONE
+  - build:sg04:release-assets DONE (70 assets)
+  - re-promote silhouette IoU if station-glb-load fails
+thread_c_actions: []
+checks_required:
+  - check:asset-reachability
+  - check:station-archetype-glb-load
+screenshots_proven:
+  - assets/ships/parts/revamp-evidence/place_gate_jump_ring/renders/2026-07-09_place_gate_jump_ring_iter20_lit_34_full.png
+  - .devshots/slice-A/gate-approach.png
+  - .devshots/slice-A/gate-close.png

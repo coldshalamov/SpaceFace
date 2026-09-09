@@ -1,0 +1,101 @@
+{
+  "schema": "spaceface.h1-electron-e2e-failure.v1",
+  "row": 8,
+  "phase": "dock-input",
+  "error": {
+    "name": "AssertionError",
+    "message": "Station screen must be visible\n\nfalse !== true\n",
+    "stack": "AssertionError [ERR_ASSERTION]: Station screen must be visible\n\nfalse !== true\n\n    at file:///C:/Users/93rob/Documents/GitHub/SpaceFace/scripts/check-h1-electron-e2e.mjs:253:10"
+  },
+  "progress": [
+    {
+      "name": "electron-canonical-root",
+      "at": "2026-07-31T16:43:40.554Z",
+      "rootUrl": "http://127.0.0.1:59672/"
+    },
+    {
+      "name": "intro-dismissed",
+      "at": "2026-07-31T16:43:45.026Z"
+    },
+    {
+      "name": "main-menu-visible",
+      "at": "2026-07-31T16:43:46.265Z",
+      "mode": "menu",
+      "title": "SpaceFace",
+      "focusedText": "New Game",
+      "visible": true,
+      "visibilityAuthority": "role:button[name=\"New Game\"]"
+    },
+    {
+      "name": "new-game-visible",
+      "at": "2026-07-31T16:43:47.462Z",
+      "visible": true,
+      "seed": "47",
+      "launchVisible": true
+    },
+    {
+      "name": "authored-flight-visible",
+      "at": "2026-07-31T16:44:07.505Z",
+      "mode": "flight",
+      "tick": 13,
+      "playerAlive": true,
+      "playerId": 1,
+      "sectorId": "sector_helios_prime",
+      "shipCount": 16,
+      "gpu": {
+        "available": true,
+        "vendor": "Google Inc. (Intel)",
+        "renderer": "ANGLE (Intel, Intel(R) Graphics (0x00007D45) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+        "software": false
+      }
+    },
+    {
+      "name": "helios-waypoint-armed",
+      "at": "2026-07-31T16:44:09.821Z",
+      "waypoint": {
+        "kind": "nav",
+        "label": "Helios Station"
+      },
+      "autopilot": {
+        "active": true,
+        "label": "Helios Station",
+        "status": "boosting",
+        "targetEntityId": 2
+      }
+    },
+    {
+      "name": "physical-dock-prompt",
+      "at": "2026-07-31T16:45:00.881Z",
+      "text": "[ E ] DOCK AT STATION",
+      "approach": {
+        "tick": 2807,
+        "playerAlive": true,
+        "position": {
+          "x": 1218.2113037109375,
+          "z": -373.08538818359375
+        },
+        "autopilot": {
+          "active": false,
+          "status": "arrived",
+          "label": "Helios Station",
+          "distance": 38.043451453382914
+        }
+      }
+    }
+  ],
+  "snapshot": {
+    "url": "http://127.0.0.1:59672/",
+    "mode": "flight",
+    "sectorId": "sector_helios_prime",
+    "docked": true,
+    "dockedStationId": "station_helios",
+    "visibleScreens": [
+      "station"
+    ],
+    "dockPromptVisible": false,
+    "ledgerVisible": false,
+    "activeElement": "<button type=\"button\" class=\"sx-readout sx-readout--cargo sx-readout--btn\" data-hold=\"\" title=\"Cargo hold 0% — open manifest\" aria-label=\"Cargo hold 0 of 40 units, 0 percent. Open manifest.\"><span class=\"sx-readout__ico\"><svg class=\"sx-ico\" viewBox=\"0 0 24 24\" width=\"16\" height=\"16\" aria-hidden=\"true\" focusable=\"false\"><path fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M4 8.5 12 5l8 3.5-8 3.5Z\"></path><path fill=\"none\" stroke=\"currentColo"
+  },
+  "informational_contended": true,
+  "noPerformanceEvidence": true
+}

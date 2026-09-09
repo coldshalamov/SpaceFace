@@ -1,0 +1,32 @@
+{
+  "schema": "spaceface.srcReachability.baseline.v1",
+  "note": "Ratchet, not a cleanup mandate. knownOrphans records what was already unreachable under ratchetRoots when this gate landed; each needs a concrete reason, and an entry that becomes reachable is STALE and must be deleted. New orphans under ratchetRoots fail the build.",
+  "toolingRoots": [
+    "src/testing/",
+    "src/contracts/",
+    "src/balance/",
+    "src/observability/"
+  ],
+  "ratchetRoots": [
+    "src/systems/",
+    "src/ui/",
+    "src/render/"
+  ],
+  "knownOrphans": {
+    "src/render/graphicsLab.js": "Developer technique gap-map served on its own route; intentionally not part of the game bundle graph.",
+    "src/render/renderCapabilityProfile.js": "Capability classifier superseded on the live route by adaptiveQuality's detectGpu; retained for its tests. Retire or route it.",
+    "src/render/starfield.js": "Standalone parallax starfield superseded by spaceBackground.js's L3_stars layer. Retire once nothing references it in docs/tests.",
+    "src/render/thruster/textures/encodePng.js": "Build-time PNG encoder for thruster atlas generation; not a runtime path.",
+    "src/render/thruster/textures/sample.js": "Build-time CPU texture sampler for thruster/RCS atlases; not a runtime path.",
+    "src/systems/signatureAdapters.js": "Adapter layer for the unwired site signature model; blocked on the same wiring.",
+    "src/systems/siteSignatureModel.js": "Asteroid-site signature model. Same shape as siteThermalModel.js — kernel plus tests, no runtime consumer.",
+    "src/systems/siteThermalModel.js": "Asteroid-site thermal model. Pure kernel with tests and no runtime consumer; asteroidSites.js does not import it. Bind it to the site runtime or fold it into that system.",
+    "src/ui/kit/lab.js": "Renders the kit page (_kitlab.html, KIT_SPEC.md §10) — a dev harness served from the repo root, not a game screen; the kit itself (index.js) is on the route via src/ui/screens/mainMenu.js and uiRoot.js.",
+    "src/ui/dockArrival.js": "Dock-arrival presentation helper with no importer; the arrival beat is currently owned by uiRoot/stationHub.",
+    "src/render/backendDecision.js": "PQ-044 (PERF-10 conditional WebGPU/TSL) is DEFERRED, so nothing on the default route selects a backend yet. Gated by scripts/check-backend-decision.mjs and scripts/check-render-path-parity.mjs; landed 2026-08-07.",
+    "src/render/webgpuPresent.js": "Present half of the same deferred PQ-044 slice; the WebGL present path is the only one wired. Gated by scripts/check-render-path-parity.mjs; landed 2026-08-21.",
+    "src/render/batchedInstanceRenderer.js": "Perf-rescue candidate held out of the default route until its own acceptance runs. Gated by scripts/check-batched-instance-renderer.mjs; landed 2026-08-07.",
+    "src/render/presentPhaseTimers.js": "Instrumentation staged for the hitch campaign, not yet on the player path. Gated by test/present-phase-timers.test.mjs; landed 2026-08-14."
+  },
+  "recordedAt": "2026-07-26"
+}

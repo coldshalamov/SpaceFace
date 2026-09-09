@@ -1,0 +1,302 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spaceface.local/schemas/jules-task-bank-v1.json",
+  "title": "SpaceFace Jules Directed Task Bank",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "bankId",
+    "generatedAt",
+    "baseRef",
+    "baseCommitAtGeneration",
+    "purpose",
+    "counts",
+    "modelStrategy",
+    "globalContract",
+    "lanes",
+    "tasks"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "bankId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date"
+    },
+    "baseRef": {
+      "type": "string",
+      "minLength": 1
+    },
+    "baseCommitAtGeneration": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "purpose": {
+      "type": "string",
+      "minLength": 40
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "total",
+        "byLane",
+        "byModel",
+        "byRisk",
+        "byExpectedSize"
+      ],
+      "properties": {
+        "total": {
+          "const": 1000
+        },
+        "byLane": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "byModel": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "byRisk": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "byExpectedSize": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "modelStrategy": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "globalContract": {
+      "type": "object"
+    },
+    "lanes": {
+      "type": "array",
+      "minItems": 10,
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "label",
+          "count",
+          "description",
+          "catalog"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$"
+          },
+          "label": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "description": {
+            "type": "string"
+          },
+          "catalog": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "tasks": {
+      "type": "array",
+      "minItems": 1000,
+      "maxItems": 1000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "title",
+          "slug",
+          "lane",
+          "model",
+          "mode",
+          "priority",
+          "risk",
+          "expectedSize",
+          "collisionKey",
+          "branchHint",
+          "inspectPaths",
+          "readFirst",
+          "objective",
+          "context",
+          "work",
+          "acceptance",
+          "suggestedChecks",
+          "tags",
+          "allowedResults",
+          "negativeResult",
+          "localMergeGate"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^JULES-[0-9]{4}$"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 10
+          },
+          "slug": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$"
+          },
+          "lane": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$"
+          },
+          "model": {
+            "enum": [
+              "gemini-3.6-flash",
+              "gemini-3.1-pro"
+            ]
+          },
+          "mode": {
+            "type": "string",
+            "minLength": 1
+          },
+          "priority": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4
+          },
+          "risk": {
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "critical"
+            ]
+          },
+          "expectedSize": {
+            "enum": [
+              "xs",
+              "s",
+              "m",
+              "l"
+            ]
+          },
+          "collisionKey": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$"
+          },
+          "branchHint": {
+            "type": "string",
+            "pattern": "^jules/"
+          },
+          "inspectPaths": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          },
+          "readFirst": {
+            "type": "array",
+            "minItems": 2,
+            "items": {
+              "type": "string"
+            }
+          },
+          "objective": {
+            "type": "string",
+            "minLength": 40
+          },
+          "context": {
+            "type": "string",
+            "minLength": 20
+          },
+          "work": {
+            "type": "array",
+            "minItems": 4,
+            "items": {
+              "type": "string",
+              "minLength": 20
+            }
+          },
+          "acceptance": {
+            "type": "array",
+            "minItems": 4,
+            "items": {
+              "type": "string",
+              "minLength": 20
+            }
+          },
+          "suggestedChecks": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          },
+          "tags": {
+            "type": "array",
+            "minItems": 4,
+            "items": {
+              "type": "string"
+            }
+          },
+          "allowedResults": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "const": "PR_READY"
+              },
+              {
+                "const": "NO_CHANGE"
+              },
+              {
+                "const": "BLOCKED"
+              }
+            ],
+            "minItems": 3,
+            "maxItems": 3
+          },
+          "negativeResult": {
+            "type": "string",
+            "minLength": 40
+          },
+          "localMergeGate": {
+            "type": "string",
+            "minLength": 40
+          }
+        }
+      }
+    }
+  }
+}

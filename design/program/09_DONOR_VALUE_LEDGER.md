@@ -1,0 +1,192 @@
+# Donor Value and Cleanup Ledger
+
+**Audit date:** 2026-07-21 closeout
+
+**Authority boundary:** `master` is the product authority. This ledger records selective donor value
+and cleanup decisions; it does not make any donor branch current, accepted, or safe to merge whole.
+Dirty-path counts and ahead/behind counts are audit snapshots and must be refreshed before removal.
+`design/program/_review/` was not read or classified in the July 21 audit; it was
+moved unread to `SpaceFace-archives/primary-review-quarantine-20260719`. The
+2026-08-17 closeout read those notes, found no remaining player-facing work, and
+deleted that folder with the rest of `SpaceFace-archives`.
+
+## 1. Rules
+
+1. Never use broad `ours`/`theirs` conflict resolution to collapse a donor.
+2. Compare each candidate with current `master` at the real gameplay camera and owning runtime seam.
+3. Port only a coherent vertical whose dependencies, tests, generated data, and player route are known.
+4. Preserve unrelated dirty work. A physical worktree may be removed only after every product-bearing
+   dirty/untracked path is promoted, preserved by branch/tag/archive, or deliberately rejected.
+5. A branch can remain as recoverable history after its physical worktree is removed.
+6. Final visual candidates require reproducible source plus current browser/Electron motion and measured
+   cost; attractive standalone renders do not win by themselves.
+
+## 2. Registered worktree disposition
+
+| Worktree / branch | Audit snapshot | Product ruling | Physical cleanup condition |
+|---|---|---|---|
+| `SpaceFace` / `master` | Product authority at `54548e09`; HUD `ea698805`; Helios civilian family `54548e09`; PQ-001..PQ-016 integrated. | Sole registered worktree and product authority. | Never remove. |
+| `SpaceFace-graphics-closeout` / `codex/graphics-closeout-20260719` | Physical worktree removed; clean tip `8e860439` is reachable from `master`. | No unique product work. | Complete. |
+| Rejected performance experiment / `archive/performance-pooling-experiment-20260720` | Base tip `99cad5b5` is integrated; evidence hardening is replayed. Physical worktree removed at clean tip `9d626fd8`; rejected implementation preserved by annotated tag and obsolete local branch retired. | Reject post-synthesis range `04805924..9d626fd8`. The measured primitive, merged, corrected exact-key, and BatchedMesh implementations all lost to current ship-local batching on target Intel hardware; the final run measured 250.1/616.8/433.3 ms p95 for 10/25/50 ships and had correctness/PBR blockers. This rejects those implementations, not every possible hybrid design. The bounded hybrid hypothesis is retained in `06_RETAINED_FUTURE_BACKLOG.md` at `1074c078`. | Complete. Never replay the rejected range; retain the tag/evidence for archaeology only. |
+| Former `SpaceFace-graphics-overhaul` / `codex/graphics-overhaul` | Tip `cab2d122`; 241 existing dirty/untracked files plus 3 tracked deletions were inventoried. External tarball deleted 2026-08-17 (was SHA-256 `D3FC1FD5455DDD3EC575DC063000DEDEF9B959B770A3A3990F22F37EDA28BAA6`). Recovery tag `archive/graphics-overhaul-donor-20260721` remains. | No whole replay. Accepted runtime concepts were already synthesized; the reviewed Helios civilian family was promoted separately at `54548e09`; mixed code/process residue was rejected. | Complete. Physical worktree, obsolete branch, and external tarball removed; use the git tag only for selective archaeology. |
+| Grok family-depth scratch | Complete scratch repository was archived at `SpaceFace-archives/grok-family-depth-20260721/scratch-repository-complete.tar.gz`, SHA-256 `F71C283EA5779C2AE053902E2A5C25BF0DDC47ED5517C3A6835412CEB781FA31`. External tarball deleted 2026-08-17. | Helios civilian accepted and promoted at `54548e09` and is byte-identical to the scratch. Ashline runtime promotion rejected because it polishes the older silhouette family while the stronger Ashline V2 source foundation exists. Unique rejected hashes are in the 2026-08-17 receipt; they were not copied. | Complete. Not a registered worktree. Do not recreate the scratch. Remaster Ashline via `PQ-050.13`–`PQ-050.15`. |
+| `SpaceFace-oc-helios-golden` / `opencode/helios-golden-station` | Physical worktree removed after a 101-behind / 0-unique / 2.53 GB audit. | Full replacement rejected. The useful builder, precursor receipt, editable blend, three-LOD source, and release asset are on `master`. | Complete. |
+| `SpaceFace-depth-actualization` / `grok/depth-player-route-actualization` | Physical worktree removed. Branch `bf1dfce2` and annotated archive tag remain; 17 raw artifacts are hash-archived externally. | Selective product donor only; the remaining black-box candidate is recorded below. | Complete; never whole-merge the branch. |
+| Four orchestration satellites | Physical worktrees removed after individual dirt/process audits. | Superseded station shell, incorrect Helix faction edit, old natural-route harness, and defective recovery variant rejected. Branch refs remain. | Complete. |
+| `SpaceFace-orch-kimi-v2-present` / `orch/kimi-v2-present` | Physical worktree removed after product-only donor commit `0e2f2e51` (focused test 4/4). | Never whole-merge. Only the station-presentation slices below remain candidate value. | Complete; selectively port or reject from the donor commit later. |
+
+The 2026-07-20 closeout found no completed, reviewed graphics implementation commit waiting off
+`master`. The 24 commits unique to `codex/graphics-overhaul` are historical donor history whose
+accepted concepts were manually synthesized into the promoted graphics commits; Git patch IDs are
+not equivalent because the integration was semantic rather than a branch replay. The remaining dirty
+worktree is mixed source/WIP, not another finished vertical. `0e2f2e51` likewise remains a candidate
+station-presentation donor, not accepted graphics implementation.
+
+## 3. Helios/OpenCode ruling
+
+The accepted live station remains the three-LOD Helios on `master`.
+
+Rejected full replacement facts:
+
+- zero of the donor's 30 changed station-map hashes match the current accepted payload; six inherited
+  accent/glass maps are byte-identical and add no donor value;
+- its map set is older/heavier than the accepted iteration-2 surfaces;
+- its release shortcut removes `LOD1`, `LOD2`, and `SOCKET_Structure_Core`;
+- roughly 1.02 million triangles would remain active at every distance;
+- it has no evidence that the replacement beats the live station in a natural game camera.
+
+Preserved recipe, not accepted replacement:
+
+- the newline-normalized builder is already tracked at
+  `assets/ships/m4_helios_hub/scripts/build_station_golden02.py`; the exact precursor hash is in the
+  production receipt, and the authoritative editable blend plus accepted three-LOD source remain on
+  `master`;
+- the rejected worktree instead wires a 68-primitive / 1,021,872-triangle LOD-stripped asset and an
+  obsolete map set that is 29% heavier at the same resolution;
+- any future batching optimization starts from the accepted asset and must retain real LOD geometry,
+  current compression, matched approach/undock captures, and measured draw-call, residency, and
+  frame-time improvement. It does not depend on this worktree.
+
+Do not cherry-pick the donor loader, manifest, release GLB, or texture replacement.
+
+## 4. Depth donor: selected value and rejected value
+
+Never merge `bf1dfce2` as a branch. Review and port these bounded slices against current owners:
+
+1. **Station correctness:** concepts/changes from `adbd0fb2`, `a92d0f0b`, and `f78cf484`.
+2. **Game Over recovery:** the buried recovery slice from `2a3b504d`.
+3. **Ship Ledger/title reachability:** the player-route slice from `52f464de`.
+4. **Station identity/readability:** selected work from `fc0aa726`, `65650121`, `a67b0a2e`, and
+   `67dd87a2`, preserving current station UI hierarchy.
+5. **Physical world actors:** Quiessence/Hush/Candle landmark ideas from `52f464de` and `a57aa00d`.
+6. **Flavor presentation:** only the V2 ad-board/scanner subset of `0580a007` that still beats
+   current producers and localization.
+7. **Flight/HUD/mining concepts:** compare `0580a007` and `156aec66` with final current routes; port
+   only demonstrably superior bounded behavior and do not overwrite the active mining owner.
+8. **Investigation-chain docking:** selectively re-evaluate only the `src/data/missions.js` hunk from
+   `1735d640` that assigns `recover_the_black_box.destStationId = station_reach`. Current mission
+   completion skips a docked mission whose `destStationId` is null. Keep rejecting that commit's
+   unrelated 96-damage EMP shortcut.
+
+Reject:
+
+- renderer-radius change `3312b5c7`;
+- the 96-damage weapon/runtime shortcut `1735d640`;
+- superficial doctrine tags `55c04163`;
+- unique-wreck harness production APIs;
+- glow/pulse styling `108f139d`;
+- natural-route/claim compiler infrastructure and stale process documentation;
+- the 17 untracked raw log/evidence artifacts unless a current owner proves unique durable value.
+
+## 5. Kimi station-presentation donor
+
+Candidate selective ports:
+
+- CRLF hardening in `scripts/build-flavor-index.mjs` (low priority);
+- the unique-wreck rumor before the stock Quinn reply in `src/ui/screens/bar.js`;
+- `src/ui/station/adBoard.js`;
+- `src/ui/station/stationIdentity.js`;
+- `test/station-ad-board.test.mjs`;
+- the rumor receipt/wreck lead from the station bar;
+- the dockside notice/wreck lead from contracts while preserving the current stronger summary
+  fallback;
+- only the supporting CSS required by accepted behavior.
+
+No candidate has current UI screenshot proof. Any port requires the owning focused checks plus a normal
+station-route browser/Electron capture. Prompt, log, cache, and worker-return artifacts are not product.
+
+## 6. Performance synthesis contract
+
+The performance branch was resolved semantically at `b235f062` using this contract:
+
+| Seam | Preserve from current graphics/Atlas | Preserve from performance closure |
+|---|---|---|
+| `src/render/partsLibrary.js` | Semantic PBR tint/maps and authored identity/admission contracts. | Measured opening-admission/culling behavior, currently described as the 2,400-WU admission slice. |
+| `src/render/renderer.js` | Rock preload/final maps, authored bounds, stable runtime material state, fail-closed admission. | Relative-velocity prefetch/precompile and context-recovery/resource-lifetime work. |
+| `src/render/spaceBackground.js` | Atlas velocity smear and reduced-motion truth. | Exported wormhole pipeline factory/precompile and measured pass/resource work. |
+| `src/render/precompile.js`, `src/render/bloom.js` | Retain black-space/de-haze and current visual contracts. | Preserve reviewed performance improvements that do not lower default authored quality. |
+
+After synthesis, all 167 performance-modified tests and 49 graphics receipt/admission/material/
+visual-family tests pass together; camera, AI-telegraph, and exact receipt checks also pass.
+`check:sim:compare`, asset/live/visual-stability/flight checks, and one owned browser plus Electron/GPU
+acceptance route remain the final combined evidence. Old performance evidence alone is not final.
+
+Post-geology visual stability passed 360 frames with 45 warmup, 315 inspected, and zero failures.
+Fresh normal-settings hardware Electron propulsion evidence after `3d2dc765` also passed with four
+plume layers, two opposed RCS jets, and zero reported frame allocations. Neither result closes the
+strict frame-time promotion gate or the broader natural-route continuity packet.
+
+The later `04805924..9d626fd8` experiment is not a continuation of that accepted synthesis. Its four
+pooling implementations were measured and rejected. In addition to the target-hardware frame regression,
+review found missed child-hull transform invalidation, a non-exact geometry collision signature,
+zero-reference geometry retained in partially occupied pages, and no proof that master PBR/appearance
+semantics survived. Current `master` intentionally keeps ship-local static batching.
+
+## 7. Cleanup order
+
+1. Run the strict three-profile/three-matrix combined acceptance contract on one exact clean current
+   master revision. Do not replay the rejected authored-pooling range to pursue that evidence.
+2. The mixed graphics donor is retired. Do not recreate or whole-merge it. Recover only a named,
+   independently reviewed slice from the recorded tag/archive, then adapt it to current `master`.
+
+Completed 2026-07-19: graphics-closeout, rejected Helios, four superseded orchestration satellites,
+the product-preserved Kimi donor, the tagged/hash-archived Depth donor, and the clean rejected
+performance experiment were removed through Git.
+
+## 8. 2026-07-20 closeout — PQ-014 / PQ-018 / PQ-022 donor cleanup
+
+Three donor worktrees were removed during the 2026-07-20 closeout after their accepted content was
+verified byte-identical on master (binary assets via `cmp`; yaml/text via git blob hash). Each
+donor branch is deleted; its history is preserved by an annotated recovery tag that records the
+cherry-pick mapping and the acceptance state. None of these donors was whole-merged; each was
+integrated through narrow cherry-picks of the feature commits only.
+
+| Removed worktree | Former branch | Recovery tag | Master commits | State |
+|---|---|---|---|---|
+| `sf-pq014` | `codex/pq014-npc-job-kernel-20260720` | `archive/pq014-npc-job-kernel-20260720` | `d6d5278c` (kernel) + `73159e05` (r2 defect repairs) + `fffe57db` (receipt) | FOCUSED_GREEN + INTEGRATED_KERNEL, runtime-UNWIRED (48/48 focused suite; zero live importers; queue row stays `planned`) |
+| `sf-pq018` | `codex/pq018-wreck-cathedral-source-20260720` | `archive/pq018-wreck-cathedral-source-20260720` | `6df5a210` (author) + `a31554fa` + `6b24baad` + `7330a85b` (handoff/provenance/validation) | SOURCE candidate preserved; PQ-017-dependent; NOT route-accepted (queue row stays `planned`) |
+| `sf-pq022` | `codex/pq022-military-station-remaster-20260720` | `archive/pq022-military-station-remaster-20260720` | `3ea2fe99` (remaster) | INTEGRATED + Helios/Tethys ROUTE_ACCEPTED subslice (queue row stays `planned`; PQ-022 covers many families) |
+
+**Untracked-batch classification (same closeout):** 263 foreign untracked files in the primary
+checkout classified and disposed. 17 durable canon/spec/tooling files committed (`a418c111`); 247
+reproducible category 3+4+5 files removed after a hash-bound SHA-256 recovery manifest was
+committed (`eb8ed839`). Recovery procedure and full disposition:
+`design/program/_archives/pq022-closeout-20260720/DISPOSITION.md`. Primary checkout untracked
+count is now 0.
+
+Use `git worktree remove` only after verifying the resolved absolute target and clean/disposition state.
+Do not recursively delete computed paths, prune branches merely because a folder looks stale, or remove a
+worktree while an owner process is active.
+
+## 9. 2026-08-17 closeout — external `SpaceFace-archives`
+
+The July 21 parking lot at `C:\Users\93rob\Documents\GitHub\SpaceFace-archives` is
+classified `DROP` and deleted. Receipt:
+[`roadmap/receipts/SPACEFACE-ARCHIVES-2026-08-17-REPORT.md`](./roadmap/receipts/SPACEFACE-ARCHIVES-2026-08-17-REPORT.md).
+
+This supersedes the "use tag/archive only for selective archaeology" holding pattern
+in §2 for those exact external tarballs. Git tags still keep the committed donor
+tips. The family-depth scratch had no tag; its only unique bytes were a rejected
+Ashline v1 polish of the old silhouette, recorded by hash in the receipt and not
+copied into the product tree. Do not recreate the folder. Remaining polish is
+`PQ-050` / `PQ-049` / the place remaster handoff, not a new donor lane.

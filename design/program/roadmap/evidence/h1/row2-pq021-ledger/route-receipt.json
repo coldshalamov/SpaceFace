@@ -1,0 +1,316 @@
+{
+  "schema": "spaceface.pq021-ledger-route.v1",
+  "runtime": "browser-chromium-headless",
+  "disposition": "PASS",
+  "problems": [],
+  "earning": {
+    "method": "in-runtime ordinary operation API (asteroidSites.applyWorldSiteBeamOperation)",
+    "declaredShortcut": "travel only: the player is placed in sector_ceres_belt rather than flown there",
+    "operations": 9,
+    "pageIds": [
+      "wreck_cathedral.capital_hull_located",
+      "wreck_cathedral.clock_stopped_first",
+      "wreck_cathedral.missing_convoy",
+      "wreck_cathedral.released_from_inside",
+      "wreck_cathedral.what_was_carried"
+    ],
+    "stageId": "archived",
+    "evidenceRevision": 5
+  },
+  "hosts": {
+    "station": {
+      "stationId": "station_helios",
+      "host": "station",
+      "labelledBy": "st-ledger-station-title",
+      "rows": [
+        {
+          "type": "witness",
+          "cycle": "CYCLE 0001",
+          "line": "What Was Carried",
+          "pageId": "wreck_cathedral.what_was_carried"
+        },
+        {
+          "type": "witness",
+          "cycle": "CYCLE 0001",
+          "line": "Released From Inside",
+          "pageId": "wreck_cathedral.released_from_inside"
+        },
+        {
+          "type": "witness",
+          "cycle": "CYCLE 0001",
+          "line": "The Clock Stopped First",
+          "pageId": "wreck_cathedral.clock_stopped_first"
+        },
+        {
+          "type": "witness",
+          "cycle": "CYCLE 0001",
+          "line": "Capital Hull Located",
+          "pageId": "wreck_cathedral.capital_hull_located"
+        },
+        {
+          "type": "witness",
+          "cycle": "CYCLE 0001",
+          "line": "The Missing Convoy",
+          "pageId": "wreck_cathedral.missing_convoy"
+        },
+        {
+          "type": "rumor",
+          "cycle": "CYCLE 0001",
+          "line": "Rumor carried a name: Relief-Freighter Choir-Tender. The dark kept the rest.",
+          "pageId": null
+        }
+      ],
+      "pages": [
+        {
+          "pageId": "wreck_cathedral.missing_convoy",
+          "settled": "load",
+          "src": "assets/ships/release/media/wreck-cathedral/neutral_gameplay_distance.png",
+          "alt": "The broken bow and stern of the Concord Vigilant separated around a wide black cavity.",
+          "caption": "Long-range reconstruction from the recovered navigation record.",
+          "provenance": "Provenance: wreck_cathedral/c1_01",
+          "title": "The Missing Convoy",
+          "fragment": "Concord Vigilant held the lane nine hours. Civilians jumped behind her.",
+          "body": "The navigation record terminates inside Ceres without a gate-exit acknowledgment. Its final vectors converge on the split capital hull now catalogued as the Wreck Cathedral.",
+          "figureState": "admitted",
+          "naturalWidth": 1920,
+          "naturalHeight": 1080,
+          "renderedWidth": 720,
+          "renderedHeight": 405,
+          "objectFit": "cover",
+          "focusOnBack": true,
+          "focusReturnedToOpener": true
+        },
+        {
+          "pageId": "wreck_cathedral.capital_hull_located",
+          "settled": "load",
+          "src": "assets/ships/release/media/wreck-cathedral/silhouette_lod0.png",
+          "alt": "Registry silhouette of a capital hull split immediately aft of its bridge.",
+          "caption": "Registry geometry match: Concord Vigilant.",
+          "provenance": "Provenance: wreck_cathedral/c1_02",
+          "title": "Capital Hull Located",
+          "fragment": "The hull broke aft of the bridge. The Marker survived.",
+          "body": "Registry geometry identifies the wreck as the Concord Vigilant despite the missing transponder core. The surviving frame spacing and bridge profile exclude every other hull in the convoy manifest.",
+          "figureState": "admitted",
+          "naturalWidth": 1920,
+          "naturalHeight": 1080,
+          "renderedWidth": 720,
+          "renderedHeight": 405,
+          "objectFit": "cover",
+          "focusOnBack": true,
+          "focusReturnedToOpener": true
+        },
+        {
+          "pageId": "wreck_cathedral.clock_stopped_first",
+          "settled": "load",
+          "src": "assets/ships/release/media/wreck-cathedral/neutral_close_3q.png",
+          "alt": "Close view of exposed frames, cold blue emergency lights, and the surviving amber Marker.",
+          "caption": "Emergency relay timing recovered beside the surviving Marker.",
+          "provenance": "Provenance: wreck_cathedral/c1_03",
+          "title": "The Clock Stopped First",
+          "fragment": "Concord claims the bow. Frontier claims the stern.",
+          "body": "The emergency relay clock lost synchronization before the structural breakup recorded by the hull sensors. Whatever stopped the convoy interrupted its coordination channel before it tore the Vigilant apart.",
+          "figureState": "admitted",
+          "naturalWidth": 1920,
+          "naturalHeight": 1080,
+          "renderedWidth": 720,
+          "renderedHeight": 405,
+          "objectFit": "cover",
+          "focusOnBack": true,
+          "focusReturnedToOpener": true
+        },
+        {
+          "pageId": "wreck_cathedral.released_from_inside",
+          "settled": "load",
+          "src": "assets/ships/release/media/wreck-cathedral/neutral_flythrough_cavity.png",
+          "alt": "View through the capital wreck cavity past torn frames, engine bells, and exposed service structure.",
+          "caption": "The clamp fracture faces outward from the traversable cavity.",
+          "provenance": "Provenance: wreck_cathedral/c1_04",
+          "title": "Released From Inside",
+          "fragment": "Neither tows it. Scavengers nest inside the engine bells.",
+          "body": "Clamp scoring and displaced fasteners face outward from the fly-through cavity. The carried device was released from inside the Vigilant rather than torn away by an external collision.",
+          "figureState": "admitted",
+          "naturalWidth": 1920,
+          "naturalHeight": 1080,
+          "renderedWidth": 720,
+          "renderedHeight": 405,
+          "objectFit": "cover",
+          "focusOnBack": true,
+          "focusReturnedToOpener": true
+        },
+        {
+          "pageId": "wreck_cathedral.what_was_carried",
+          "settled": "load",
+          "src": "assets/ships/release/media/wreck-cathedral/wireframe_flythrough.png",
+          "alt": "Forensic wireframe through the wreck cavity showing the black-box cradle and surrounding structure.",
+          "caption": "Receiver reconstruction after physical black-box delivery.",
+          "provenance": "Provenance: wreck_cathedral/c1_05",
+          "title": "What Was Carried",
+          "fragment": "Vigilant’s nine-hour hold is a Concord training case. The civilians are a footnote in the same case file.",
+          "body": "The recovered black box binds the convoy route, relay clock, and internal release to one custody record. Its final entry identifies a classified archive package, but not the party that ordered the transfer.",
+          "figureState": "admitted",
+          "naturalWidth": 1920,
+          "naturalHeight": 1080,
+          "renderedWidth": 720,
+          "renderedHeight": 405,
+          "objectFit": "cover",
+          "focusOnBack": true,
+          "focusReturnedToOpener": true
+        }
+      ],
+      "images": 1
+    },
+    "flight": {
+      "host": "codex",
+      "labelledBy": "st-ledger-codex-title",
+      "rows": [
+        {
+          "type": "witness",
+          "cycle": "CYCLE 0001",
+          "line": "What Was Carried",
+          "pageId": "wreck_cathedral.what_was_carried"
+        },
+        {
+          "type": "witness",
+          "cycle": "CYCLE 0001",
+          "line": "Released From Inside",
+          "pageId": "wreck_cathedral.released_from_inside"
+        },
+        {
+          "type": "witness",
+          "cycle": "CYCLE 0001",
+          "line": "The Clock Stopped First",
+          "pageId": "wreck_cathedral.clock_stopped_first"
+        },
+        {
+          "type": "witness",
+          "cycle": "CYCLE 0001",
+          "line": "Capital Hull Located",
+          "pageId": "wreck_cathedral.capital_hull_located"
+        },
+        {
+          "type": "witness",
+          "cycle": "CYCLE 0001",
+          "line": "The Missing Convoy",
+          "pageId": "wreck_cathedral.missing_convoy"
+        },
+        {
+          "type": "rumor",
+          "cycle": "CYCLE 0001",
+          "line": "Rumor carried a name: Relief-Freighter Choir-Tender. The dark kept the rest.",
+          "pageId": null
+        }
+      ],
+      "pages": [
+        {
+          "pageId": "wreck_cathedral.missing_convoy",
+          "settled": "complete",
+          "src": "assets/ships/release/media/wreck-cathedral/neutral_gameplay_distance.png",
+          "alt": "The broken bow and stern of the Concord Vigilant separated around a wide black cavity.",
+          "caption": "Long-range reconstruction from the recovered navigation record.",
+          "provenance": "Provenance: wreck_cathedral/c1_01",
+          "title": "The Missing Convoy",
+          "fragment": "Concord Vigilant held the lane nine hours. Civilians jumped behind her.",
+          "body": "The navigation record terminates inside Ceres without a gate-exit acknowledgment. Its final vectors converge on the split capital hull now catalogued as the Wreck Cathedral.",
+          "figureState": "admitted",
+          "naturalWidth": 1920,
+          "naturalHeight": 1080,
+          "renderedWidth": 720,
+          "renderedHeight": 405,
+          "objectFit": "cover",
+          "focusOnBack": true,
+          "focusReturnedToOpener": true
+        },
+        {
+          "pageId": "wreck_cathedral.capital_hull_located",
+          "settled": "complete",
+          "src": "assets/ships/release/media/wreck-cathedral/silhouette_lod0.png",
+          "alt": "Registry silhouette of a capital hull split immediately aft of its bridge.",
+          "caption": "Registry geometry match: Concord Vigilant.",
+          "provenance": "Provenance: wreck_cathedral/c1_02",
+          "title": "Capital Hull Located",
+          "fragment": "The hull broke aft of the bridge. The Marker survived.",
+          "body": "Registry geometry identifies the wreck as the Concord Vigilant despite the missing transponder core. The surviving frame spacing and bridge profile exclude every other hull in the convoy manifest.",
+          "figureState": "admitted",
+          "naturalWidth": 1920,
+          "naturalHeight": 1080,
+          "renderedWidth": 720,
+          "renderedHeight": 405,
+          "objectFit": "cover",
+          "focusOnBack": true,
+          "focusReturnedToOpener": true
+        },
+        {
+          "pageId": "wreck_cathedral.clock_stopped_first",
+          "settled": "complete",
+          "src": "assets/ships/release/media/wreck-cathedral/neutral_close_3q.png",
+          "alt": "Close view of exposed frames, cold blue emergency lights, and the surviving amber Marker.",
+          "caption": "Emergency relay timing recovered beside the surviving Marker.",
+          "provenance": "Provenance: wreck_cathedral/c1_03",
+          "title": "The Clock Stopped First",
+          "fragment": "Concord claims the bow. Frontier claims the stern.",
+          "body": "The emergency relay clock lost synchronization before the structural breakup recorded by the hull sensors. Whatever stopped the convoy interrupted its coordination channel before it tore the Vigilant apart.",
+          "figureState": "admitted",
+          "naturalWidth": 1920,
+          "naturalHeight": 1080,
+          "renderedWidth": 720,
+          "renderedHeight": 405,
+          "objectFit": "cover",
+          "focusOnBack": true,
+          "focusReturnedToOpener": true
+        },
+        {
+          "pageId": "wreck_cathedral.released_from_inside",
+          "settled": "complete",
+          "src": "assets/ships/release/media/wreck-cathedral/neutral_flythrough_cavity.png",
+          "alt": "View through the capital wreck cavity past torn frames, engine bells, and exposed service structure.",
+          "caption": "The clamp fracture faces outward from the traversable cavity.",
+          "provenance": "Provenance: wreck_cathedral/c1_04",
+          "title": "Released From Inside",
+          "fragment": "Neither tows it. Scavengers nest inside the engine bells.",
+          "body": "Clamp scoring and displaced fasteners face outward from the fly-through cavity. The carried device was released from inside the Vigilant rather than torn away by an external collision.",
+          "figureState": "admitted",
+          "naturalWidth": 1920,
+          "naturalHeight": 1080,
+          "renderedWidth": 720,
+          "renderedHeight": 405,
+          "objectFit": "cover",
+          "focusOnBack": true,
+          "focusReturnedToOpener": true
+        },
+        {
+          "pageId": "wreck_cathedral.what_was_carried",
+          "settled": "complete",
+          "src": "assets/ships/release/media/wreck-cathedral/wireframe_flythrough.png",
+          "alt": "Forensic wireframe through the wreck cavity showing the black-box cradle and surrounding structure.",
+          "caption": "Receiver reconstruction after physical black-box delivery.",
+          "provenance": "Provenance: wreck_cathedral/c1_05",
+          "title": "What Was Carried",
+          "fragment": "Vigilant’s nine-hour hold is a Concord training case. The civilians are a footnote in the same case file.",
+          "body": "The recovered black box binds the convoy route, relay clock, and internal release to one custody record. Its final entry identifies a classified archive package, but not the party that ordered the transfer.",
+          "figureState": "admitted",
+          "naturalWidth": 1920,
+          "naturalHeight": 1080,
+          "renderedWidth": 720,
+          "renderedHeight": 405,
+          "objectFit": "cover",
+          "focusOnBack": true,
+          "focusReturnedToOpener": true
+        }
+      ],
+      "images": 1
+    }
+  },
+  "screenshots": [
+    ".devshots/pq021-ledger-route/station-ledger-list.png",
+    ".devshots/pq021-ledger-route/station-ledger-evidence.png",
+    ".devshots/pq021-ledger-route/flight-codex-ledger-list.png",
+    ".devshots/pq021-ledger-route/flight-codex-ledger-evidence.png"
+  ],
+  "expectedScreenshots": [
+    "station-ledger-list.png",
+    "station-ledger-evidence.png",
+    "flight-codex-ledger-list.png",
+    "flight-codex-ledger-evidence.png"
+  ],
+  "pageIssues": []
+}

@@ -1,0 +1,235 @@
+{
+  "schema": "spaceface.microevent.v1",
+  "category": "logistics",
+  "events": [
+    {
+      "id": "ev_haulers_rendezvous",
+      "title": "Two haulers swap loads mid-lane",
+      "category": "logistics",
+      "durationS": [50, 100],
+      "participants": [{ "role": "hauler", "count": 2 }],
+      "environment": ["lane midpoint marker (lane_furniture lane pin as dressing, optional)"],
+      "arrangement": "Two haulers converge on a point between stations, park bow-to-stern 8 wu apart, offset like trucks in a layby",
+      "startConditions": "Two hauler jobs whose origin/destination pairs cross; midpoint within a traveled pocket",
+      "visibleCue": "Two heavy hulls leaving their lanes for the same empty spot - freight does not sightsee",
+      "phases": [
+        { "name": "converge", "durationS": 25, "visible": "Both fly visible straight legs to the same point, one loaded (amber heartbeat) one empty (dim bar)", "signals": ["heavy_burn", "clean_burn"] },
+        { "name": "park", "durationS": 10, "visible": "Nose-to-tail hold; running lights only", "signals": ["on_the_pin"] },
+        { "name": "swap", "durationS": 25, "visible": "Loaded one runs spilling_the_count, empty one mouth_open; the strobes visibly TRADE - one dims as the other warms", "signals": ["spilling_the_count", "mouth_open"] },
+        { "name": "split", "durationS": 15, "visible": "They depart on each other's original headings - the load changed trucks", "signals": ["heavy_burn", "clean_burn"] }
+      ],
+      "completion": "Both reach their (swapped) destinations; manifests transferred",
+      "interruptions": [
+        { "trigger": "One hauler lost pre-swap", "outcome": "Survivor completes its original run - no swap, no stall" }
+      ],
+      "playerInterference": ["Scan mid-swap: two manifests in motion", "Rob the layby - both hulls parked", "Park in the layby spot first and they hold off, waiting visibly"],
+      "criminalOpportunity": "A scheduled layby is a pattern: watch it twice and you know where freight parks",
+      "aftermath": "None beyond the swapped manifests",
+      "systems": ["npcJobs.phaseGraph", "traffic.manifest", "signatureVfx"],
+      "fallback": "Rendezvous point unreachable: both keep original runs (the swap is opportunistic, never load-bearing)",
+      "tier": "next20",
+      "blockedOn": null,
+      "notes": "Demoted from first15: the manifest handover between two live jobs needs a small ownership-transfer helper the kernel does not have yet."
+    },
+    {
+      "id": "ev_courier_overtakes",
+      "title": "Courier threads past bulk traffic",
+      "category": "logistics",
+      "durationS": [15, 30],
+      "participants": [{ "role": "courier", "count": 1 }, { "role": "hauler", "count": 1 }],
+      "environment": ["shared lane segment"],
+      "arrangement": "Hauler plodding the lane; courier approaching from astern at 2x speed, offset one hull-width",
+      "startConditions": "Courier and loaded hauler on the same lane heading with closing speed",
+      "visibleCue": "A fast dim-bar hull closing on a slow amber-heartbeat one - empty overtakes heavy, always",
+      "phases": [
+        { "name": "close", "durationS": 10, "visible": "Courier holds lane offset, closing fast", "signals": ["clean_burn"] },
+        { "name": "pass", "durationS": 6, "visible": "Overtake one hull-width abeam; hauler holds course exactly - right of way by mass", "signals": ["clean_burn", "heavy_burn"] },
+        { "name": "pull_away", "durationS": 8, "visible": "Courier rejoins the lane centre ahead and shrinks toward the speed-revealed band", "signals": ["clean_burn"] }
+      ],
+      "completion": "Courier gone up-lane; hauler unchanged - a five-second story about who hurries and who cannot",
+      "interruptions": [
+        { "trigger": "Player blocks the offset side", "outcome": "Courier swaps to the other side - one lateral step, no drama" }
+      ],
+      "playerInterference": ["Draft the courier", "Interdict it (couriers are the classic toll target)", "Nothing - this event exists to be scenery"],
+      "criminalOpportunity": "A courier that ALWAYS overtakes on the same side is a courier a pirate can plan around",
+      "aftermath": null,
+      "systems": ["traffic.spawnRole", "signatureVfx"],
+      "fallback": "Either despawns: the other just continues its lane",
+      "tier": "first15",
+      "blockedOn": null,
+      "notes": "Pure traffic steering - an overtake offset when closing on same-heading slower traffic. The cheapest event in the library and among the most world-selling."
+    },
+    {
+      "id": "ev_cargo_capsule_launch",
+      "title": "Station launches a cargo capsule",
+      "category": "logistics",
+      "durationS": [30, 60],
+      "participants": [{ "role": "station", "count": 1 }, { "role": "hauler", "count": 1, "optional": true }],
+      "environment": ["station with a launch face", "capsule object (pickup class, everyday_space_kit pod as dressing)"],
+      "arrangement": "Capsule emerges from the station's cargo face and boosts down-lane on a fixed ballistic leg",
+      "startConditions": "Station economy tick emits an outbound batch; existing cargo_tractor station-side profile available",
+      "visibleCue": "The station's cargo face runs the tractor-tether pod profile (existing station-side VFX) - then something actually LEAVES",
+      "phases": [
+        { "name": "stage", "durationS": 12, "visible": "cargo_tractor profile: pod rails + tether, capsule sliding to the launch point", "signals": [] },
+        { "name": "launch", "durationS": 8, "visible": "Capsule boosts away on a straight leg with a small clean plume - unmanned, unlit cabin, one strobe", "signals": [] },
+        { "name": "coast", "durationS": 25, "visible": "Capsule coasts down-lane, strobing; optionally a hauler alters to parallel it (informal escort)", "signals": ["clean_burn"] },
+        { "name": "exit", "durationS": 10, "visible": "Capsule leaves the pocket toward the neighbor sector (despawn at boundary)", "signals": [] }
+      ],
+      "completion": "Capsule exits; the station face goes quiet",
+      "interruptions": [
+        { "trigger": "Capsule destroyed", "outcome": "Cargo pickups scatter on its vector; station launches no replacement this cycle" }
+      ],
+      "playerInterference": ["Chase and crack the capsule (it is cargo with a strobe)", "Follow it to the sector boundary", "Tether-catch it - it is just mass"],
+      "criminalOpportunity": "An unmanned launcher on a schedule is the belt's ATM: the crime writes itself, the response (patrol launch profile) already exists",
+      "aftermath": "Cracked capsules leave a pickup field mid-lane that sweeper events can later clean",
+      "systems": ["stationSideEvents.cargo_tractor", "stationSideEvents.patrol_launch", "pickups.spawn", "signatureVfx", "vfx.substrate"],
+      "fallback": "No launch face resolvable: the tractor profile plays without a capsule (today's behavior, unchanged)",
+      "tier": "next20",
+      "blockedOn": null,
+      "notes": "Extends the existing station-side profile with one real spawned object flying one straight line. The capsule is a pickup with velocity."
+    },
+    {
+      "id": "ev_convoy_forms_up",
+      "title": "Convoy forms before departure",
+      "category": "logistics",
+      "durationS": [60, 120],
+      "participants": [{ "role": "hauler", "count": 3 }, { "role": "escort", "count": 1 }],
+      "environment": ["station approach apron"],
+      "arrangement": "Haulers arrive singly and park in a visible line abreast 10 wu apart off the apron; escort takes the flank slot last",
+      "startConditions": "Existing convoy encounter script scheduled; departure T minus ~90 s",
+      "visibleCue": "Parked heavy hulls ACCUMULATING in a line - one is a wait, two is a queue, three is a convoy forming",
+      "phases": [
+        { "name": "gather", "durationS": 45, "visible": "Haulers arrive at intervals and slot into line, each with the parked load strobe", "signals": ["heavy_burn", "on_the_pin"] },
+        { "name": "escort_arrives", "durationS": 15, "visible": "Escort takes position ahead-flank, pin facing the CLIENTS (borrowed-shadow geometry: guns out, pin in)", "signals": ["on_the_pin"] },
+        { "name": "spine_up", "durationS": 10, "visible": "All hulls light spine_wake in sequence down the line - the visible ignition ripple", "signals": ["spine_wake"] },
+        { "name": "depart", "durationS": 20, "visible": "Line rolls out in order, escort holding relative station", "signals": ["heavy_burn"] }
+      ],
+      "completion": "Convoy leaves as the existing convoy encounter; the formation event is its visible prologue",
+      "interruptions": [
+        { "trigger": "Escort never arrives", "outcome": "Convoy departs unescorted after timeout - visibly more vulnerable, and pirate events key on exactly this" }
+      ],
+      "playerInterference": ["Join the line (the game already tracks convoy adjacency)", "Note the cargo and sell the tip (future contraband/rumor)", "Attack during spine_up - the one moment all engines are lit but nobody is moving"],
+      "criminalOpportunity": "Formation broadcasts the convoy's size, wealth and escort count to everyone watching for free",
+      "aftermath": "The departing convoy is the existing convoy encounter - this event chains into it",
+      "systems": ["encounterDirector.convoy", "encounterDirector.squad", "traffic.escort", "signatureVfx"],
+      "fallback": "A hauler despawns in line: gap closes, convoy departs smaller",
+      "tier": "first15",
+      "blockedOn": null,
+      "diagramMermaid": "sequenceDiagram\n  participant H1 as Hauler 1\n  participant H2 as Hauler 2\n  participant H3 as Hauler 3\n  participant E as Escort\n  H1->>H1: parks at apron (heavy_burn idle)\n  H2->>H1: slots in line abreast\n  H3->>H2: slots in line abreast\n  E->>E: takes flank, pin toward clients\n  Note over H1,E: spine_wake ripples down the line\n  H1->>H1: rolls out\n  H2->>H1: follows in order\n  E->>E: holds relative station"
+    },
+    {
+      "id": "ev_construction_delivery",
+      "title": "Truss delivery arrives at the build site",
+      "category": "logistics",
+      "durationS": [60, 110],
+      "participants": [{ "role": "hauler", "count": 1 }, { "role": "construction_rig", "count": 1, "note": "runs as a static site prop until donor hull promoted" }],
+      "environment": ["construction site (world site or everyday_space_kit truss composition)"],
+      "arrangement": "Rig holds over the frame; hauler approaches the marked delivery point 20 wu off the rig's crane side",
+      "startConditions": "Construction site active in-sector; hauler job with the site as destination",
+      "visibleCue": "A loaded hauler heading somewhere that is NOT a station - freight off the lanes means a site is eating materials",
+      "phases": [
+        { "name": "inbound", "durationS": 30, "visible": "Hauler's loaded leg to the site, wide stacking approach", "signals": ["heavy_burn", "stacking"] },
+        { "name": "handoff", "durationS": 25, "visible": "Hauler holds; rig's crane traverses toward it; spilling_the_count on one side, hoist line paying out on the other", "signals": ["spilling_the_count"] },
+        { "name": "hoist", "durationS": 20, "visible": "A truss segment (prop) rides the hook from hauler to frame - the one object visibly changing hands", "signals": [] },
+        { "name": "outbound", "durationS": 15, "visible": "Hauler departs empty; rig swings back over the frame", "signals": ["clean_burn"] }
+      ],
+      "completion": "Site inventory ticks up; the frame gains one visible segment (prop instanced at the next frame slot)",
+      "interruptions": [
+        { "trigger": "Hauler killed inbound", "outcome": "Truss pickups spawn at the kill; the site's next delivery window doubles - visible starvation" }
+      ],
+      "playerInterference": ["Deliver salvaged truss yourself (sell at the site)", "Rob the inbound leg", "Watch the frame actually grow - the reward for paying attention"],
+      "criminalOpportunity": "Site deliveries run on a visible schedule with a fixed route - the textbook interdiction setup",
+      "aftermath": "PERSISTENT: the frame keeps its added segments across the session - construction that visibly progresses",
+      "systems": ["npcJobs.phaseGraph", "traffic.manifest", "signatureVfx", "donor.everydaySpaceProp", "donor.activityPackHull", "sectorZones.slot"],
+      "fallback": "Site absent/complete: hauler reroutes to the nearest station (ordinary run)",
+      "tier": "next20",
+      "blockedOn": null
+    },
+    {
+      "id": "ev_tanker_holds_for_berth",
+      "title": "Tanker waits out a red berth",
+      "category": "logistics",
+      "durationS": [45, 120],
+      "participants": [{ "role": "tanker", "count": 1, "note": "ship_mule + manifest until donor promoted" }, { "role": "hauler", "count": 1, "optional": true }],
+      "environment": ["station with one marked hazmat berth (everyday_space_kit berth props as dressing)"],
+      "arrangement": "Tanker parks at a marked hold point 60 wu off the dock face, nose at the berth, NOT approaching",
+      "startConditions": "Tanker arrives while another ship occupies the berth window",
+      "visibleCue": "A heavy hull parked in the open pointing at a station and refusing to close - the pose IS the queue",
+      "phases": [
+        { "name": "arrive_hold", "durationS": 20, "visible": "Tanker takes the hold point and station-keeps, mass strobe idling", "signals": ["heavy_burn", "on_the_pin"] },
+        { "name": "queue_visible", "durationS": 40, "visible": "The occupying ship finishes its dock cycle (existing hauler_dock profile) and departs past the waiting tanker", "signals": [] },
+        { "name": "cleared", "durationS": 10, "visible": "Tanker lights spine_wake the moment the departing hull crosses its bow - the courtesy nobody wrote down", "signals": ["spine_wake"] },
+        { "name": "approach", "durationS": 25, "visible": "The long careful volatile approach, wide and slow", "signals": ["stacking"] }
+      ],
+      "completion": "Tanker docks (existing dock verb); the hold point empties",
+      "interruptions": [
+        { "trigger": "Berth stays blocked past timeout", "outcome": "Tanker gives up and departs for the alternate station - fuel goes elsewhere, visibly" }
+      ],
+      "playerInterference": ["Take the berth first and the tanker WAITS on you - the world queues behind the player", "Scan the parked tanker: full volatile manifest, zero escort"],
+      "criminalOpportunity": "A queue point is a schedule: the same hold spot fills at the same times",
+      "aftermath": "If the tanker diverts, station fuel price ticks up (market news blip)",
+      "systems": ["traffic.spawnRole", "stationSideEvents.hauler_dock", "signatureVfx", "donor.everydaySpaceProp", "comms.ambientToast"],
+      "fallback": "Occupier never departs (stuck): tanker's timeout diverts it - the queue never deadlocks",
+      "tier": "next20",
+      "blockedOn": null,
+      "notes": "Berth occupancy is one boolean on the station slot, not a full berth-queue system; the FULL queue (multiple waiters, priorities) is the future.berthQueue mechanic and stays out of scope here."
+    },
+    {
+      "id": "ev_barge_tops_off",
+      "title": "Ore barge tops off from two miners",
+      "category": "logistics",
+      "durationS": [80, 150],
+      "participants": [{ "role": "ore_barge", "count": 1, "note": "ship_mule heavy variant until donor promoted" }, { "role": "miner", "count": 2 }],
+      "environment": ["asteroid field with two active miner slots"],
+      "arrangement": "Barge parks central to both rocks; miners shuttle to it alternately instead of flying home",
+      "startConditions": "Two miners working the same field while a barge-class hauler is unassigned",
+      "visibleCue": "A big hull parking in the MIDDLE of a field, doing nothing - a mother ship pose, and the miners' return legs suddenly shorten",
+      "phases": [
+        { "name": "anchor", "durationS": 15, "visible": "Barge takes station central, floods on over its baskets", "signals": ["on_the_pin"] },
+        { "name": "shuttle_1", "durationS": 35, "visible": "Miner A runs its loaded leg to the barge instead of home; count-spill between them", "signals": ["home_under_rock", "spilling_the_count"] },
+        { "name": "shuttle_2", "durationS": 35, "visible": "Miner B does the same from the other side - the barge becomes the field's visible center of gravity", "signals": ["home_under_rock", "spilling_the_count"] },
+        { "name": "haul_home", "durationS": 30, "visible": "Barge departs very heavy, very slow; miners keep cutting with their commutes halved", "signals": ["heavy_burn"] }
+      ],
+      "completion": "Barge delivers a double load to the refinery; the field keeps producing without pause",
+      "interruptions": [
+        { "trigger": "Barge killed at anchor", "outcome": "Miners revert to their own home legs; huge spill field at the wreck" }
+      ],
+      "playerInterference": ["The anchored barge is a fixed fat target - guarding it or robbing it are both obvious", "Sell your own ore to it (it is a mobile buyer)"],
+      "criminalOpportunity": "One hull now carries two crews' shifts - the raid math improves every minute it sits",
+      "aftermath": "Refinery inventory jump on delivery; miners' cycle continues",
+      "systems": ["npcJobs.phaseGraph", "npcJobsRuntime.assign", "traffic.manifest", "signatureVfx", "donor.activityPackHull"],
+      "fallback": "One miner lost: the barge waits one extra window then hauls half-full",
+      "tier": "standard",
+      "blockedOn": null,
+      "notes": "Retargets the miners' home waypoint to the barge's position while anchored - the same route-retarget trick the miner-calls-hauler event uses, doubled."
+    },
+    {
+      "id": "ev_liner_schedule_pass",
+      "title": "Express liner passes through on schedule",
+      "category": "logistics",
+      "durationS": [25, 45],
+      "participants": [{ "role": "express", "count": 1, "note": "liner_shuttle donor hull when promoted; window-row is the read" }],
+      "environment": ["lane crossing the pocket end to end"],
+      "arrangement": "High-speed straight transit at lane center, never deviating, entering and leaving at the speed-revealed band",
+      "startConditions": "Express spawn timer (the role exists with speed 247 and a boost-lane path already)",
+      "visibleCue": "Every other hull gives way a lane-width - the wake of deference arrives before the liner does",
+      "phases": [
+        { "name": "herald", "durationS": 8, "visible": "Traffic ahead side-steps in sequence; the empty corridor forms", "signals": [] },
+        { "name": "pass", "durationS": 12, "visible": "The liner crosses the whole pocket at V3 boost speed, cabin rows lit, dead straight", "signals": ["clean_burn"] },
+        { "name": "wake", "durationS": 15, "visible": "Traffic drifts back to lane center behind it; the corridor heals", "signals": [] }
+      ],
+      "completion": "Gone. The event is the punctuation mark of a working day",
+      "interruptions": [
+        { "trigger": "Anything blocks the lane center", "outcome": "The liner shifts one width and does NOT slow - schedule beats courtesy" }
+      ],
+      "playerInterference": ["Race it (you will need physics-earned overspeed)", "Interdict it - the highest-profile crime the region offers (patrol response is immediate)"],
+      "criminalOpportunity": "Its schedule is exact; that is the entire vulnerability",
+      "aftermath": null,
+      "systems": ["traffic.spawnRole", "signatureVfx", "ai.passive"],
+      "fallback": "No liner spawn available: the event simply does not fire (it is pure texture)",
+      "tier": "first15",
+      "blockedOn": null,
+      "notes": "The express role, its 247 speed and boost-lane pathing already exist; the give-way ripple is the passive-avoidance radius briefly enlarged for the liner."
+    }
+  ]
+}

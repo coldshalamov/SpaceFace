@@ -1,0 +1,74 @@
+{
+  "answers": [
+    {
+      "q": 1,
+      "question": "Can I tell what the player did from the frames alone?",
+      "answer": "yes",
+      "frameIndex": 25,
+      "note": "The player aimed at the upper-left hostile and fired the shove cannon, visible as an aligned projectile line and impact flash."
+    },
+    {
+      "q": 2,
+      "question": "Did the world answer within a third of a second (motion, light, or a visible receipt)?",
+      "answer": "yes",
+      "frameIndex": 25,
+      "note": "Within 0.38s of firing at tick 2709, frame 25 shows an impact flash and shield flare on the targeted ship."
+    },
+    {
+      "q": 3,
+      "question": "Did something the player did not directly touch change because of it?",
+      "answer": "no",
+      "frameIndex": 26,
+      "note": "Striking the light ship does not impart impulse into adjacent craft or debris; nearby ships remain completely undisturbed."
+    },
+    {
+      "q": 4,
+      "question": "Would the vision's sentence for this verb be true here? (quote the sentence)",
+      "answer": "no",
+      "frameIndex": 26,
+      "note": "No: \"Light enemies are almost ammunition.\" The shoved craft absorbs the blow on its shield and does not become a projectile."
+    },
+    {
+      "q": 5,
+      "question": "Is the ship a controllable mass (turns inside the screen, stops when braked, keeps earned speed)?",
+      "answer": "yes",
+      "frameIndex": 22,
+      "note": "The ship turns cleanly within screen bounds and maintains steady control during maneuvers at 0.46 speed."
+    },
+    {
+      "q": 6,
+      "question": "Are the light ships ammunition here, rather than only targets?",
+      "answer": "no",
+      "frameIndex": 26,
+      "note": "The light ship hit by the shove cannon absorbs the impulse on its shield and does not become a projectile against other hostiles."
+    },
+    {
+      "q": 7,
+      "question": "Is anything on screen a glowing sphere standing in for a designed event?",
+      "answer": "yes",
+      "frameIndex": 137,
+      "note": "Multiple ships are encased in large, featureless colored glowing spheres serving as shield hit/bubble stand-ins."
+    },
+    {
+      "q": 8,
+      "question": "Did anyone flee, choose, or arrive because of the violence?",
+      "answer": "no",
+      "frameIndex": 159,
+      "note": "All 10 hostiles persist in their default attack patterns; no ships flee, break off, or alter their tactical choice."
+    },
+    {
+      "q": 9,
+      "question": "Would a stranger tell a \"so then\" story about these twelve seconds?",
+      "answer": "no",
+      "frameIndex": 108,
+      "note": "No emergent chain of events occurs; the player hovers centrally firing at damage sponges with no kinetic escalation."
+    }
+  ],
+  "fundamental": {
+    "rule": "_clampSpeed NPC velocity clamp",
+    "file": "unknown",
+    "does": "Truncates NPC velocity each tick to a speed limit, clamping speed so imparted shove momentum is deleted and light ships cannot become projectiles.",
+    "breaksSentence": "Light enemies are almost ammunition.",
+    "frameIndex": 26
+  }
+}

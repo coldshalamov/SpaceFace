@@ -1,0 +1,41 @@
+{
+  "schema": "spaceface.validation-broker-claim.v1",
+  "claimId": "25068-5f75ea9c6a14de2404bb4bf3",
+  "manifestId": "pq022-relay-reauthor-browser",
+  "mode": "acceptance",
+  "runtimeKind": "browser",
+  "issuedAt": "2026-08-04T08:23:07.268Z",
+  "expiresAt": "2026-08-04T08:53:07.268Z",
+  "consumed": true,
+  "receipt": {
+    "routeDigest": "de12c7c5d6dd7c950371459f04f6211e7f4c3711bbe1946cc2ca2a38167eb98f",
+    "regressionDigest": "9025a3e7828990ca23cc191e8e1d9cbf78b39ad1a90fae09949f9a19b4b38dfb",
+    "candidateDigest": "11b25335771caf612bfd9cf944737848d0144c7b96e4e369be318f68fc098cff",
+    "productionDigest": "de12c7c5d6dd7c950371459f04f6211e7f4c3711bbe1946cc2ca2a38167eb98f",
+    "acknowledgesFailureFingerprint": null
+  },
+  "digests": {
+    "routeDigest": "de12c7c5d6dd7c950371459f04f6211e7f4c3711bbe1946cc2ca2a38167eb98f",
+    "regressionDigest": "9025a3e7828990ca23cc191e8e1d9cbf78b39ad1a90fae09949f9a19b4b38dfb",
+    "productionDigest": "de12c7c5d6dd7c950371459f04f6211e7f4c3711bbe1946cc2ca2a38167eb98f",
+    "harnessDigest": "05cb72ea9570f6c89ee0c769135819b7fdc37a2a2887715c6d18a51c117de142",
+    "scenarioDigest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "inputDigest": "d35b317be10a073766b7faf405389f1fef516cce95745af1c21927aefff22358",
+    "profileDigest": "4648d249bc847fee3eebc6392a6b05cd910508cc51b578e75f1cfe18a46cba78",
+    "manifestDigest": "bcfdbd9dd1f1fd5bb1cdd1b77cf0558f676093750751007d78a00bf469ae7425",
+    "candidateDigest": "11b25335771caf612bfd9cf944737848d0144c7b96e4e369be318f68fc098cff",
+    "buildDigest": "cdd523a24578c280983f59a98f0439201a07e1136dcf24686b379de8a74671dd",
+    "sourceCandidateDigest": null,
+    "worktreeDigest": null,
+    "worktreeHead": null,
+    "worktreeBranch": null,
+    "worktreeChangedFileCount": null,
+    "scenarioManifestDigest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "saveDigest": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+    "inputTapeDigest": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+    "cameraManifestDigest": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+    "candidateSourceDigestMode": "all-src-js",
+    "candidateSourcePathCount": 736
+  },
+  "consumedAt": "2026-08-04T08:23:08.192Z"
+}

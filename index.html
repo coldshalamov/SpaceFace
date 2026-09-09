@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Browser chrome (tab strip / mobile bar) tints to the game background instead of default white. -->
+  <meta name="theme-color" content="#05070d" />
+  <title>SpaceFace</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%2305070d'/%3E%3Ccircle cx='32' cy='32' r='18' fill='none' stroke='%2339d0ff' stroke-width='4'/%3E%3Cpath d='M32 10v14M32 40v14M10 32h14M40 32h14' stroke='%237af7d0' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="./styles/ui.css" />
+  <link rel="stylesheet" href="./styles/fonts.css" />
+  <link rel="stylesheet" href="./styles/menu.css" />
+  <link rel="stylesheet" href="./styles/intro.css" />
+  <link rel="stylesheet" href="./styles/asteroid-ops.css" />
+  <link rel="stylesheet" href="styles/accessibility.css">
+  <!-- The frontend kit (design/frontend/direction/KIT_SPEC.md §1): tokens, temperature and the
+       k- components. Loaded LAST so its rules win over the legacy sheets on migrated screens. -->
+  <link rel="stylesheet" href="./styles/kit.css" />
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./vendor/three.module.js",
+      "three/addons/": "./vendor/addons/",
+      "@dimforge/rapier3d-compat": "./vendor/rapier3d-compat/rapier.mjs",
+      "@floating-ui/dom": "./node_modules/@floating-ui/dom/dist/floating-ui.dom.browser.mjs",
+      "@floating-ui/core": "./node_modules/@floating-ui/core/dist/floating-ui.core.browser.mjs",
+      "@floating-ui/utils": "./node_modules/@floating-ui/utils/dist/floating-ui.utils.mjs"
+    }
+  }
+  </script>
+</head>
+<body>
+  <canvas id="gl-canvas"></canvas>
+  <div id="ui-root">
+    <div id="hud"></div>
+    <div id="modal-backdrop"></div>
+    <div id="screens"></div>
+    <div id="toasts">
+      <!-- Status-only polite live region: toasts stack as interactive dismiss controls;
+           announcing pure text here once avoids re-reading the whole stack and the "dismiss" name. -->
+      <div id="toast-live" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+    </div>
+    <div id="alerts"></div>
+    <div id="boot-overlay" role="status" aria-live="polite" aria-busy="true">
+      <canvas id="boot-terminal-canvas" class="boot-canvas" width="640" height="380"></canvas>
+      <div class="boot-scrim" aria-hidden="true"></div>
+      <header class="boot-meta" aria-hidden="true">
+        <span class="boot-meta__registry">VHL-4471-T · TESSERA // COLD RESTART</span>
+        <span class="boot-meta__clock" data-loading-clock>00:00:00.0</span>
+      </header>
+      <div class="boot-lockup">
+        <span class="boot-wordmark">SPACEFACE</span>
+        <span class="boot-label" data-loading-label>Initializing systems…</span>
+        <span class="boot-detail" data-loading-detail>Preparing the command deck</span>
+        <div class="boot-progress-row" aria-hidden="true">
+          <span class="boot-progress"><span data-loading-progress></span></span>
+          <span class="boot-progress-pct" data-loading-pct>0%</span>
+        </div>
+      </div>
+      <span class="boot-skip" aria-hidden="true">Press any key to skip</span>
+    </div>
+  </div>
+  <script type="module">
+    import { bootstrapLoadingTerminal } from './src/ui/loadingTerminalArt.js';
+    bootstrapLoadingTerminal();
+  </script>
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>

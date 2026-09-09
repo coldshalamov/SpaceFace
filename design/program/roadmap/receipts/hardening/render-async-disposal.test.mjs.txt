@@ -1,0 +1,432 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+
+import * as THREE from 'three';
+import {
+  createGpuResidencyAdmissionTracker,
+  createPipelineAdmissionTracker,
+} from '../src/render/pipelineReadiness.js';
+import * as assetLoader from '../src/render/assetLoader.js';
+import { createAssetResidencyRegistry } from '../src/render/assetResidency.js';
+import {
+  disposeAuthoredUpgradeQueue,
+  enqueueBoundaryUpgrade,
+} from '../src/render/partsLibrary.js';
+
+function deferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((onResolve, onReject) => {
+    resolve = onResolve;
+    reject = onReject;
+  });
+  return { promise, resolve, reject };
+}
+
+async function turns(count = 2) {
+  for (let index = 0; index < count; index++) await Promise.resolve();
+}
+
+test('pipeline admission disposal cancels receipts, clears timers, and ignores late compile completion', async () => {
+  const callbacks = [];
+  const cancelledHandles = new Set();
+  const previousRaf = globalThis.requestAnimationFrame;
+  const previousCancelRaf = globalThis.cancelAnimationFrame;
+  globalThis.requestAnimationFrame = (callback) => {
+    const handle = callbacks.length + 1;
+    callbacks.push({ handle, callback, fired: false });
+    return handle;
+  };
+  globalThis.cancelAnimationFrame = (handle) => { cancelledHandles.add(handle); };
+  try {
+    let compileCalls = 0;
+    const compiling = deferred();
+    const tracker = createPipelineAdmissionTracker(() => {
+      compileCalls++;
+      return compiling.promise;
+    }, { quietMs: 0, maxWaitMs: 0 });
+    const queued = tracker.compile({ id: 'queued' });
+    assert.equal(tracker.pendingCount, 1);
+    assert.equal(tracker.dispose('renderer-destroyed'), true);
+    assert.equal(tracker.dispose('renderer-destroyed-again'), false);
+    assert.equal(tracker.pendingCount, 0);
+    assert.equal(cancelledHandles.size, 0, 'timer-backed queue admission did not need an rAF handle');
+    assert.deepEqual(await queued, {
+      skipped: true,
+      cancelled: true,
+      reason: 'renderer-destroyed',
+    });
+    assert.equal(compileCalls, 0, 'a queued compile never reaches the disposed driver');
+
+    const inFlightTracker = createPipelineAdmissionTracker(() => {
+      compileCalls++;
+      return compiling.promise;
+    }, { quietMs: 0, maxWaitMs: 0 });
+    const inFlight = inFlightTracker.compile({ id: 'in-flight' });
+    const wait = inFlightTracker.waitForPending();
+    await turns(3);
+    assert.equal(compileCalls, 1);
+    assert.equal(inFlightTracker.dispose(), true);
+    assert.deepEqual(await inFlight, {
+      skipped: true,
+      cancelled: true,
+      reason: 'pipeline-admission-disposed',
+    });
+    compiling.resolve({ stale: true });
+    await wait;
+    assert.equal(inFlightTracker.pendingCount, 0);
+    assert.deepEqual(await inFlightTracker.compile({ id: 'late' }), {
+      skipped: true,
+      cancelled: true,
+      reason: 'pipeline-admission-disposed',
+    });
+  } finally {
+    if (previousRaf === undefined) delete globalThis.requestAnimationFrame;
+    else globalThis.requestAnimationFrame = previousRaf;
+    if (previousCancelRaf === undefined) delete globalThis.cancelAnimationFrame;
+    else globalThis.cancelAnimationFrame = previousCancelRaf;
+  }
+});
+
+test('GPU residency admission disposal aborts owned work and permits a fresh tracker', async () => {
+  const upload = deferred();
+  const externalController = new AbortController();
+  let signal = null;
+  let calls = 0;
+  const tracker = createGpuResidencyAdmissionTracker((subject, options) => {
+    calls++;
+    signal = options.signal;
+    return upload.promise.then(() => ({ subject }));
+  });
+  const pending = tracker.prepare('old-root', { signal: externalController.signal });
+  await turns(2);
+  assert.equal(calls, 1);
+  assert.notStrictEqual(signal, externalController.signal, 'caller and admission signals are composed');
+  assert.equal(signal?.aborted, false);
+  externalController.abort('caller-cancelled');
+  assert.equal(signal.aborted, true, 'external cancellation reaches the effective upload signal');
+  assert.equal(tracker.dispose('context-replaced'), true);
+  assert.equal(signal.aborted, true);
+  assert.equal(tracker.dispose('context-replaced-again'), false);
+  assert.equal(tracker.pendingCount, 0);
+  assert.deepEqual(await pending, {
+    skipped: true,
+    cancelled: true,
+    reason: 'context-replaced',
+  });
+  upload.resolve({ stale: true });
+  await turns(2);
+
+  const ownerUpload = deferred();
+  const ownerExternalController = new AbortController();
+  let ownerSignal = null;
+  const ownerTracker = createGpuResidencyAdmissionTracker((subject, options) => {
+    ownerSignal = options.signal;
+    return ownerUpload.promise.then(() => ({ subject }));
+  });
+  const ownerPending = ownerTracker.prepare('owner-only-root', { signal: ownerExternalController.signal });
+  await turns(2);
+  assert.notStrictEqual(ownerSignal, ownerExternalController.signal);
+  assert.equal(ownerSignal?.aborted, false);
+  ownerTracker.dispose('owner-disposed');
+  assert.equal(ownerSignal.aborted, true, 'owner disposal reaches the effective upload signal');
+  assert.equal(ownerExternalController.signal.aborted, false,
+    'owner disposal does not abort the independent caller signal');
+  ownerUpload.resolve({ stale: true });
+  assert.deepEqual(await ownerPending, {
+    skipped: true,
+    cancelled: true,
+    reason: 'owner-disposed',
+  });
+
+  const fresh = createGpuResidencyAdmissionTracker(async (subject) => ({ subject }));
+  assert.deepEqual(await fresh.prepare('new-root'), { subject: 'new-root' });
+  assert.equal(fresh.pendingCount, 0);
+});
+
+test('asset runtime retirement aborts owned fetch work, closes package ownership, and is idempotent', async () => {
+  const work = deferred();
+  const decoder = { disposals: 0, dispose() { this.disposals++; } };
+  const packageLoader = { disposals: 0, dispose() { this.disposals++; } };
+  const controller = new AbortController();
+  const runtime = {
+    assets: new Map(),
+    pendingAssetTasks: new Set(),
+    failures: new Map([['stale', new Error('stale')]]),
+    abortController: controller,
+    signal: controller.signal,
+    generation: 1,
+    retiring: false,
+    retirementPromise: null,
+    packageDisposalStarted: false,
+    renderPackages: packageLoader,
+    disposableDecoders: [decoder],
+  };
+  const task = assetLoader.admitAuthoredAssetTask(runtime, 'old', () => work.promise);
+  const retirement = assetLoader.retireAuthoredAssetRuntime(runtime);
+  assert.strictEqual(assetLoader.retireAuthoredAssetRuntime(runtime), retirement);
+  assert.equal(controller.signal.aborted, true);
+  assert.equal(packageLoader.disposals, 1, 'package cache visibility closes synchronously');
+  assert.equal(runtime.assets.size, 0);
+  assert.equal(runtime.failures.size, 0);
+  assert.equal(decoder.disposals, 0, 'decoder remains owned until its admitted task settles');
+  work.resolve('late');
+  assert.equal(await task, 'late');
+  await retirement;
+  assert.equal(decoder.disposals, 1);
+  assert.deepEqual(runtime.disposableDecoders, []);
+});
+
+test('asset package admission combines caller and runtime cancellation signals', async () => {
+  const pilot = {
+    metadataUrl: 'assets/ships/release/render-packages/signal/render-package.json',
+    expectedContentHash: 'signal-content-hash',
+  };
+  const url = 'assets/ships/release/parts/wholeships/signal.glb';
+  const makeRuntime = () => {
+    const controller = new AbortController();
+    const pending = deferred();
+    let effectiveSignal = null;
+    const runtime = {
+      assets: new Map(),
+      pendingAssetTasks: new Set(),
+      failures: new Map(),
+      abortController: controller,
+      signal: controller.signal,
+      generation: 1,
+      retiring: false,
+      retirementPromise: null,
+      packageDisposalStarted: false,
+      renderPackages: {
+        load(_metadataUrl, options) {
+          effectiveSignal = options.signal;
+          return pending.promise;
+        },
+        dispose() {},
+      },
+    };
+    return { runtime, pending, controller, get effectiveSignal() { return effectiveSignal; } };
+  };
+
+  const caller = makeRuntime();
+  const external = new AbortController();
+  const callerLoad = assetLoader.loadAuthoredRenderPackagePilot(
+    caller.runtime,
+    pilot,
+    url,
+    { slot: 'hull', optional: true, signal: external.signal },
+  );
+  await turns(3);
+  assert.ok(caller.effectiveSignal);
+  assert.notStrictEqual(caller.effectiveSignal, external.signal,
+    'caller and runtime signals use a composed underlying signal');
+  assert.equal(caller.effectiveSignal.aborted, false);
+  external.abort('caller-cancelled');
+  assert.equal(caller.effectiveSignal.aborted, true,
+    'external cancellation reaches the package loader');
+  caller.pending.resolve(null);
+  assert.equal(await callerLoad, null, 'aborted optional package admission remains a fallback');
+  assert.equal(caller.controller.signal.aborted, false, 'external cancellation does not own runtime retirement');
+
+  const owner = makeRuntime();
+  const ownerExternal = new AbortController();
+  const ownerLoad = assetLoader.loadAuthoredRenderPackagePilot(
+    owner.runtime,
+    pilot,
+    `${url}?owner`,
+    { slot: 'hull', optional: true, signal: ownerExternal.signal },
+  );
+  await turns(3);
+  assert.notStrictEqual(owner.effectiveSignal, ownerExternal.signal);
+  assert.equal(owner.effectiveSignal?.aborted, false);
+  const retirement = assetLoader.retireAuthoredAssetRuntime(owner.runtime);
+  assert.equal(owner.controller.signal.aborted, true);
+  assert.equal(owner.effectiveSignal.aborted, true,
+    'runtime retirement reaches the package loader effective signal');
+  assert.equal(ownerExternal.signal.aborted, false,
+    'runtime retirement does not abort the independent caller signal');
+  owner.pending.resolve(null);
+  assert.equal(await ownerLoad, null);
+  await retirement;
+});
+
+test('owned GLB fetch signal turns a late whole-ship response into a no-op', async () => {
+  const response = deferred();
+  const controller = new AbortController();
+  let seenSignal = null;
+  let parseCalls = 0;
+  const loader = {
+    parseAsync() {
+      parseCalls++;
+      return Promise.resolve({ scene: { isObject3D: true } });
+    },
+  };
+  const pending = assetLoader.loadGltfDocument(
+    'assets/ships/release/parts/wholeships/late.glb',
+    loader,
+    (_url, options) => {
+      seenSignal = options.signal;
+      return response.promise;
+    },
+    { signal: controller.signal },
+  );
+  controller.abort('renderer-destroyed');
+  response.resolve({ ok: true, status: 200, async arrayBuffer() { return new ArrayBuffer(0); } });
+  await assert.rejects(pending, (error) => error && error.name === 'AbortError');
+  assert.strictEqual(seenSignal, controller.signal);
+  assert.equal(parseCalls, 0, 'a response arriving after disposal never enters the decoder');
+});
+
+test('residency generation rejects late registration and a new registry starts clean', () => {
+  const registry = createAssetResidencyRegistry();
+  const owner = {};
+  const request = registry.beginRequest('late', owner, { role: 'test' });
+  assert.equal(request.shouldDecode(), true);
+  assert.equal(registry.disposeAll('renderer-destroyed'), true);
+  assert.equal(registry.disposeAll('renderer-destroyed-again'), false);
+  assert.equal(request.shouldDecode(), false);
+  assert.equal(request.commit(), false);
+  assert.throws(() => registry.registerAsset('late', [{ dispose() {} }]), /disposed/i);
+  assert.equal(registry.diagnostics().disposed, true);
+
+  const fresh = createAssetResidencyRegistry();
+  assert.doesNotThrow(() => fresh.registerAsset('fresh', [{ dispose() {} }]));
+  assert.equal(fresh.diagnostics().residentAssets, 1);
+});
+
+test('parts upgrade queue cancels queued and in-flight work and can be recreated', async () => {
+  const callbacks = [];
+  const cancelled = new Set();
+  const previousRaf = globalThis.requestAnimationFrame;
+  const previousCancelRaf = globalThis.cancelAnimationFrame;
+  globalThis.requestAnimationFrame = (callback) => {
+    const handle = callbacks.length + 1;
+    callbacks.push({ handle, callback, fired: false });
+    return handle;
+  };
+  globalThis.cancelAnimationFrame = (handle) => {
+    cancelled.add(handle);
+    const entry = callbacks.find((candidate) => candidate.handle === handle);
+    if (entry) entry.cancelled = true;
+  };
+  try {
+    const scene = new THREE.Scene();
+    const boundary = new THREE.Group();
+    scene.add(boundary);
+    const renderer = {};
+    const gate = deferred();
+    const externalController = new AbortController();
+    let inFlightSignal = null;
+    let handlerCalls = 0;
+    const queued = enqueueBoundaryUpgrade(scene, {
+      key: 'dispose-queued',
+      boundary,
+      entity: { id: 'dispose-queued', type: 'ship', alive: true },
+      renderer,
+      assetUrls: [],
+      options: {},
+      run: () => {
+        handlerCalls++;
+        return true;
+      },
+    });
+    assert.equal(disposeAuthoredUpgradeQueue(scene, 'scene-destroyed'), true);
+    assert.equal(cancelled.has(1), true);
+    assert.equal((await queued).status, 'cancelled-before-load');
+    assert.equal(handlerCalls, 0);
+    assert.equal(disposeAuthoredUpgradeQueue(scene, 'scene-destroyed-again'), false);
+
+    const inFlight = enqueueBoundaryUpgrade(scene, {
+      key: 'dispose-in-flight',
+      boundary,
+      entity: { id: 'dispose-in-flight', type: 'ship', alive: true },
+      renderer,
+      assetUrls: [],
+      options: { signal: externalController.signal },
+      run: ({ isActive, signal }) => {
+        handlerCalls++;
+        inFlightSignal = signal;
+        return gate.promise.then(() => {
+          if (isActive()) boundary.userData.lateMutation = true;
+          return true;
+        });
+      },
+    });
+    const nextFrame = callbacks.find((entry) => !entry.cancelled && !entry.fired);
+    assert.ok(nextFrame, 'recreated queue schedules a fresh frame callback');
+    nextFrame.fired = true;
+    nextFrame.callback();
+    await turns(3);
+    assert.equal(handlerCalls, 1);
+    assert.ok(inFlightSignal);
+    assert.equal(inFlightSignal.aborted, false);
+    externalController.abort('caller-cancelled');
+    assert.equal(inFlightSignal.aborted, true, 'external queue cancellation reaches the run signal');
+    gate.resolve();
+    assert.equal((await inFlight).status, 'cancelled-after-dispose');
+    await turns(3);
+    assert.equal(boundary.userData.lateMutation, undefined);
+
+    const ownerBoundary = new THREE.Group();
+    scene.add(ownerBoundary);
+    const ownerGate = deferred();
+    const ownerExternalController = new AbortController();
+    let ownerSignal = null;
+    const ownerInFlight = enqueueBoundaryUpgrade(scene, {
+      key: 'dispose-owner-signal',
+      boundary: ownerBoundary,
+      entity: { id: 'dispose-owner-signal', type: 'ship', alive: true },
+      renderer,
+      assetUrls: [],
+      options: { signal: ownerExternalController.signal },
+      run: ({ signal, isActive }) => {
+        handlerCalls++;
+        ownerSignal = signal;
+        return ownerGate.promise.then(() => {
+          if (isActive()) ownerBoundary.userData.lateMutation = true;
+          return true;
+        });
+      },
+    });
+    const ownerFrame = callbacks.find((entry) => !entry.cancelled && !entry.fired);
+    assert.ok(ownerFrame, 'queue schedules an owner-signal frame after caller cancellation');
+    ownerFrame.fired = true;
+    ownerFrame.callback();
+    await turns(3);
+    assert.equal(handlerCalls, 2);
+    assert.notStrictEqual(ownerSignal, ownerExternalController.signal);
+    assert.equal(ownerSignal?.aborted, false);
+    assert.equal(disposeAuthoredUpgradeQueue(scene, 'scene-destroyed'), true);
+    assert.equal(ownerSignal.aborted, true, 'queue disposal reaches the effective run signal');
+    assert.equal(ownerExternalController.signal.aborted, false,
+      'queue disposal does not abort the independent caller signal');
+    assert.equal((await ownerInFlight).status, 'cancelled-after-dispose');
+    ownerGate.resolve();
+    await turns(3);
+    assert.equal(ownerBoundary.userData.lateMutation, undefined);
+
+    const freshBoundary = new THREE.Group();
+    scene.add(freshBoundary);
+    const fresh = enqueueBoundaryUpgrade(scene, {
+      key: 'dispose-recreated',
+      boundary: freshBoundary,
+      entity: { id: 'dispose-recreated', type: 'ship', alive: true },
+      renderer,
+      assetUrls: [],
+      options: {},
+      run: () => { handlerCalls++; return true; },
+    });
+    const freshFrame = callbacks.find((entry) => !entry.cancelled && !entry.fired);
+    assert.ok(freshFrame, 'a subsequent initialization gets a new queue frame');
+    freshFrame.fired = true;
+    freshFrame.callback();
+    assert.equal((await fresh).status, 'completed');
+    assert.equal(handlerCalls, 3);
+    disposeAuthoredUpgradeQueue(scene, 'test-cleanup');
+  } finally {
+    if (previousRaf === undefined) delete globalThis.requestAnimationFrame;
+    else globalThis.requestAnimationFrame = previousRaf;
+    if (previousCancelRaf === undefined) delete globalThis.cancelAnimationFrame;
+    else globalThis.cancelAnimationFrame = previousCancelRaf;
+  }
+});

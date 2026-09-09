@@ -1,0 +1,157 @@
+{
+  "schema": "spaceface.scenarioContract.v1",
+  "id": "scenario.tractor-throw-drill",
+  "scenario": "Tractor throw drill: pick up, spin, throw for a rated release",
+  "version": 1,
+  "sourceSpec": "design/program/roadmap/active/PQ-029.md",
+  "tickRate": 60,
+  "durationSeconds": 60,
+  "seed": 2900,
+  "status": "pq02900-live",
+  "actors": [
+    {
+      "id": "player_hitch",
+      "role": "player_ship",
+      "required": true,
+      "assetRef": "ship_kestrel",
+      "factionId": "faction_free",
+      "capabilities": ["flight.force_torque", "massline.attach", "massline.reel", "massline.cut", "massline.throw"]
+    },
+    {
+      "id": "drill_pod",
+      "role": "throw_payload",
+      "required": true,
+      "assetRef": "asset.drill.light_cargo_pod",
+      "capabilities": ["massline.attachment_target", "throwable.light", "throwable.mass"]
+    },
+    {
+      "id": "drill_drone",
+      "role": "catchable_drone",
+      "required": true,
+      "assetRef": "asset.drill.target_drone",
+      "capabilities": ["massline.attachment_target", "throwable.light"]
+    },
+    {
+      "id": "drill_debris",
+      "role": "catchable_debris",
+      "required": true,
+      "assetRef": "asset.drill.debris_chunk",
+      "capabilities": ["massline.attachment_target", "throwable.light"]
+    },
+    {
+      "id": "drill_skiff",
+      "role": "catchable_light_hull",
+      "required": true,
+      "assetRef": "asset.drill.light_skiff",
+      "capabilities": ["massline.attachment_target", "throwable.light"]
+    },
+    {
+      "id": "drill_gate",
+      "role": "throw_destination",
+      "required": true,
+      "assetRef": "asset.drill.throw_gate",
+      "capabilities": ["handoff.zone", "spatial_objective.signal"]
+    }
+  ],
+  "facts": [
+    {
+      "id": "fact.tractor.pickup_status",
+      "description": "Whether the pod was latched with the tractor head.",
+      "owner": "scenario.tractor-throw-drill",
+      "initial": "unresolved"
+    },
+    {
+      "id": "fact.tractor.spin_status",
+      "description": "Whether the line was winched tight into a loaded swing.",
+      "owner": "scenario.tractor-throw-drill",
+      "initial": "unresolved"
+    },
+    {
+      "id": "fact.tractor.throw_status",
+      "description": "Whether the cut threw the pod at 1.2x cruise or better with a release rating.",
+      "owner": "scenario.tractor-throw-drill",
+      "initial": "unresolved"
+    }
+  ],
+  "funnelEventIds": [
+    "tether:latched",
+    "tether:cut",
+    "tether:releaseRated"
+  ],
+  "proofMetrics": [
+    {
+      "id": "tractor_pickup_complete",
+      "target": "pickup beat completes: the tractor head latches cargo, debris, drone, and light-hull class bodies",
+      "evidence": "test/massline-tractor-throw-drill.test.mjs latch eligibility + tether:latched",
+      "required": true,
+      "beatIds": ["tractor_pickup"]
+    },
+    {
+      "id": "tractor_throw_speed",
+      "target": "throw speed >= 1.2x Hitch cruise (114 wu/s) on a light payload with the tractor head",
+      "evidence": "test/massline-tractor-throw-drill.test.mjs SG-02 swing prints THROW_SPEED/RATIO",
+      "required": true,
+      "beatIds": ["tractor_throw"]
+    },
+    {
+      "id": "tractor_release_rated",
+      "target": "every throw ends in a tether:releaseRated classification, never a silent cut",
+      "evidence": "test/massline-tractor-throw-drill.test.mjs rateRelease classification print",
+      "required": true,
+      "beatIds": ["tractor_throw"]
+    },
+    {
+      "id": "tractor_drill_under_sixty",
+      "target": "the drill runs inside 60 seconds end to end",
+      "evidence": "durationSeconds 60 + three beats, one verb line each",
+      "required": true,
+      "beatIds": ["tractor_pickup", "tractor_spin", "tractor_throw"]
+    }
+  ],
+  "beats": [
+    {
+      "id": "tractor_pickup",
+      "order": 1,
+      "title": "Grab the pod with the tractor head",
+      "intent": "The head is a hand: latch the light cargo pod. Drones, debris, and light hulls catch the same way.",
+      "requiredActors": ["player_hitch", "drill_pod"],
+      "requiredMechanics": ["massline.attach"],
+      "funnelEventIds": ["tether:latched"],
+      "proofMetricIds": ["tractor_pickup_complete", "tractor_drill_under_sixty"],
+      "worldFactRefs": ["fact.tractor.pickup_status"],
+      "next": ["tractor_spin"],
+      "branchIds": []
+    },
+    {
+      "id": "tractor_spin",
+      "order": 2,
+      "title": "Winch tight and swing it up to speed",
+      "intent": "Reeling is the wind-up: shorten the line and let the orbit do the throwing for you.",
+      "requiredActors": ["player_hitch", "drill_pod"],
+      "requiredMechanics": ["massline.reel"],
+      "funnelEventIds": [],
+      "proofMetricIds": ["tractor_drill_under_sixty"],
+      "worldFactRefs": ["fact.tractor.spin_status"],
+      "next": ["tractor_throw"],
+      "branchIds": []
+    },
+    {
+      "id": "tractor_throw",
+      "order": 3,
+      "title": "Cut on the swing and throw it through the gate",
+      "intent": "Cut while the line is loaded and the pod keeps its swing: the release rating grades the throw.",
+      "requiredActors": ["player_hitch", "drill_pod", "drill_gate"],
+      "requiredMechanics": ["massline.cut", "massline.throw"],
+      "funnelEventIds": ["tether:cut", "tether:releaseRated"],
+      "proofMetricIds": ["tractor_throw_speed", "tractor_release_rated", "tractor_drill_under_sixty"],
+      "worldFactRefs": ["fact.tractor.throw_status"],
+      "next": [],
+      "branchIds": []
+    }
+  ],
+  "notes": [
+    "PQ-029.00 leaf .00: the tractor head as a throw toy. Three beats, one verb line each, inside 60 seconds.",
+    "Range file untouched by lane rule: this drill lives as data and is proven headless, not as a Range screen edit.",
+    "The throw is earned swing speed, never a flat launch: the winch shortens the line and the cut preserves velocity."
+  ]
+}

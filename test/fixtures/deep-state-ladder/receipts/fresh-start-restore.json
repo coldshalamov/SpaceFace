@@ -1,0 +1,94 @@
+{
+  "schema": "spaceface.deepStateRestore.v1",
+  "fixtureId": "fresh-start",
+  "commit": "3cd5c5fc4e92b990e09d63d00ee5826106f9b75e",
+  "seededKey": "sf.save.quick",
+  "restoredThrough": "public-menu-continue",
+  "steps": [
+    {
+      "name": "boot",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "name": "menu-visible",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "name": "continue-clicked",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "name": "restored",
+      "ok": true,
+      "note": "playable mode reached"
+    }
+  ],
+  "restoreSnapshot": {
+    "mode": "flight",
+    "hasPlayerEntity": true,
+    "playerShipDefId": "ship_kestrel",
+    "pilotName": "Wren",
+    "careers": {
+      "hasOrigins": true,
+      "hasLadders": true
+    },
+    "activeMissionCount": 1,
+    "currentSectorId": "sector_helios_prime",
+    "docked": false,
+    "dockedStationId": null,
+    "dockTabCount": 0,
+    "undockControlPresent": false
+  },
+  "claims": [
+    {
+      "text": "player entity and career-progression state are restorable",
+      "ok": true,
+      "evidence": {
+        "restoredPlayer": true,
+        "careers": [
+          {
+            "hasOrigins": true,
+            "hasLadders": true
+          },
+          {
+            "hasOrigins": true,
+            "hasLadders": true
+          }
+        ],
+        "pilotName": [
+          "Wren",
+          "Wren"
+        ],
+        "ship": [
+          "ship_kestrel",
+          "ship_kestrel"
+        ]
+      }
+    },
+    {
+      "text": "starter objective is reachable",
+      "ok": true,
+      "evidence": {
+        "restoredActiveMissions": 1
+      }
+    },
+    {
+      "text": "save contains no injected support state",
+      "ok": true,
+      "evidence": {
+        "producer": "runGoldCorridorPublicPilot (static no-injection contract over its own source)",
+        "milestones": [
+          "title-visible",
+          "new-game-opened",
+          "run-started"
+        ],
+        "publicActionCount": 3,
+        "blocker": null
+      }
+    }
+  ],
+  "claimsOk": true
+}

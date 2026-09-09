@@ -1,0 +1,37 @@
+{
+  "schema": "spaceface.validation-run-result.v1",
+  "recordedAt": "2026-07-31T07:10:31.595Z",
+  "status": "pass",
+  "exitCode": 0,
+  "signal": null,
+  "timedOut": false,
+  "durationMs": 77287,
+  "pidRecord": {
+    "pid": 22524,
+    "command": "C:\\Program Files\\nodejs\\node.exe",
+    "args": [
+      "scripts/capture-pq019a-acceptance.mjs",
+      "--capsule-only"
+    ],
+    "startedAt": "2026-07-31T07:09:14.308Z",
+    "platform": "win32",
+    "finishedAt": "2026-07-31T07:10:31.595Z",
+    "exitCode": 0,
+    "signal": null,
+    "timedOut": false,
+    "killResult": null
+  },
+  "ownership": {
+    "probeId": "pq019a-capsule-presentation",
+    "runtimeKind": "browser",
+    "browserOwned": true,
+    "serverOwned": true,
+    "pid": 22524
+  },
+  "fixedSeed": 1347498297,
+  "failureFingerprint": null,
+  "family": null,
+  "routeDigest": "39d8ce2d3977cb01ec18d9d1e7374916ac1a4f29280392ce73b94552577779e9",
+  "regressionDigest": "4a10a1874a250d808b650f9a5e4a2eb924e291a7ca6c61b9579cff3edc1945ec",
+  "candidateDigest": "530315c2db88bb92502e6f602bd1e4d690a30ef137aa2e88be514da3e509d992"
+}

@@ -1,0 +1,2650 @@
+{
+  "schema": "spaceface.pq019-surface-heist.v1",
+  "runtime": "browser-chromium-headed",
+  "disposition": "PASS",
+  "problems": [],
+  "continuationOnly": true,
+  "retainedEvidenceReferences": [
+    "design/program/roadmap/evidence/h1/row4-pq019-surface-heist/EVIDENCE.md#functional-evidence-that-survived"
+  ],
+  "skippedAcceptedContexts": [
+    "dom-abandon",
+    "lawful-observe"
+  ],
+  "fixedSeed": 19019,
+  "recordedSeeds": [
+    {
+      "id": "heist-plus-fence",
+      "seed": 19019
+    },
+    {
+      "id": "confiscation",
+      "seed": 19019
+    },
+    {
+      "id": "destruction",
+      "seed": 19019
+    },
+    {
+      "id": "reduced-stake-recovery",
+      "seed": 19019
+    }
+  ],
+  "gpu": {
+    "available": true,
+    "vendor": "Google Inc. (Intel)",
+    "renderer": "ANGLE (Intel, Intel(R) Graphics (0x00007D45) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+  },
+  "brokerManifestId": "pq019-surface-heist",
+  "launchContract": "one headed browser process; four missing isolated route contexts run sequentially",
+  "noPerformanceEvidence": true,
+  "noPerformanceEvidenceNote": "This continuation contains functional states, DOM facts, counts, booleans, and screenshots only. It records no frame timing, percentile, hitch, or speed measurement; matched performance remains Phase H3.",
+  "routes": {
+    "fenced": {
+      "id": "heist-plus-fence",
+      "fixture": {
+        "recordedSeed": 19019,
+        "sectorId": "sector_tethys_junction",
+        "offer": {
+          "id": "heist_tethys_capsule_run",
+          "title": "Capsule Run — Tethys Surface Launcher",
+          "type": "heist_intercept",
+          "stationId": "station_tethys",
+          "rewardCr": 1800,
+          "launchWindowS": 4,
+          "recoveryEnabled": false
+        },
+        "witnessStationId": 104,
+        "patrolEntityId": 105,
+        "patrolJobId": "job:h1_pq019_patrol",
+        "launcherHeadId": 84,
+        "setup": "live station witness + live npcJobsRuntime patrol; no law receipt or heist state injected"
+      },
+      "recordedSeed": 19019,
+      "accepted": {
+        "acceptedThroughDom": true,
+        "stationNavSelector": "[data-nav=\"contracts\"]",
+        "acceptSelector": "[data-accept=\"heist_tethys_capsule_run\"]",
+        "focusOnCommit": true,
+        "boardTextIncludesAuthoredTitle": true,
+        "mission": {
+          "id": "m_2",
+          "sourceOfferId": "heist_tethys_capsule_run",
+          "title": "Capsule Run — Tethys Surface Launcher",
+          "attempt": 0,
+          "recoveryAllowed": false,
+          "trackedMissionId": "m_2"
+        }
+      },
+      "terminal": {
+        "missionId": "m_2",
+        "outcome": "fenced_success",
+        "status": "committed",
+        "winner": null,
+        "terminalReceiptCount": 1,
+        "missionSettlementCount": 1,
+        "economyRewardCount": 1,
+        "factionOutcomeCount": 1,
+        "heatApplicationCount": 1,
+        "lawIncidentCount": 1,
+        "attempt": 0,
+        "recoveryAllowed": false
+      },
+      "floor": {
+        "count": 1,
+        "text": "Capsule fenced — the Quiet paid and forgot your face",
+        "role": "group",
+        "matchingToastCount": 0,
+        "latestSurface": {
+          "id": "pq019c:capsule-run",
+          "channel": "objective",
+          "priority": 100,
+          "text": "Capsule fenced — the Quiet paid and forgot your face",
+          "kind": "info",
+          "ttl": 5
+        },
+        "heistSurfaceCount": 2,
+        "queue": {
+          "activeId": "pq019c:capsule-run",
+          "activeText": "Capsule fenced — the Quiet paid and forgot your face",
+          "pendingCount": 2,
+          "pendingIds": [
+            "tutorial:hint:masslineThrow",
+            "tutorial:hint:firstStation"
+          ],
+          "pendingHeistCount": 0,
+          "size": 3
+        }
+      },
+      "cueMoments": [
+        "accepted",
+        "launched",
+        "possessed",
+        "theft_witnessed_pursuit",
+        "fenced"
+      ],
+      "cueRunMoments": [
+        "m_2:accepted",
+        "m_2:launched",
+        "m_2:possessed",
+        "m_2:theft_witnessed_pursuit",
+        "m_2:fenced"
+      ],
+      "payouts": [
+        {
+          "amount": 1800,
+          "reason": "mission:m_2"
+        }
+      ],
+      "trace": {
+        "cues": [
+          {
+            "cueId": "pq019c:cue:m_2:accepted",
+            "missionId": "m_2",
+            "moment": "accepted",
+            "text": "Capsule run accepted — launcher arming, stay in Tethys Junction",
+            "voiceId": "pq019c:capsule-run",
+            "channel": "objective",
+            "source": "heistMissionRuntime"
+          },
+          {
+            "cueId": "pq019c:cue:m_2:launched",
+            "missionId": "m_2",
+            "moment": "launched",
+            "text": "Capsule away — intercept it before the Concord catcher takes it",
+            "voiceId": "pq019c:capsule-run",
+            "channel": "objective",
+            "source": "heistMissionRuntime"
+          },
+          {
+            "cueId": "pq019c:cue:m_2:possessed",
+            "missionId": "m_2",
+            "moment": "possessed",
+            "text": "Capsule in tow — the Quiet fence is your only buyer now",
+            "voiceId": "pq019c:capsule-run",
+            "channel": "objective",
+            "source": "heistMissionRuntime"
+          },
+          {
+            "cueId": "pq019c:cue:m_2:theft_witnessed_pursuit",
+            "missionId": "m_2",
+            "moment": "theft_witnessed_pursuit",
+            "text": "Theft witnessed — WANTED, and Concord patrol units are inbound",
+            "voiceId": "pq019c:capsule-run",
+            "channel": "objective",
+            "source": "heistMissionRuntime"
+          },
+          {
+            "cueId": "pq019c:cue:m_2:fenced",
+            "missionId": "m_2",
+            "moment": "fenced",
+            "text": "Capsule fenced — the Quiet paid and forgot your face",
+            "voiceId": "pq019c:capsule-run",
+            "channel": "objective",
+            "source": "heistMissionRuntime"
+          }
+        ],
+        "surfaces": [
+          {
+            "id": "barkDirector:92:scan",
+            "channel": "bark",
+            "priority": 50,
+            "text": "Transponder query logged under your registry. Your prior operator already answered this one.",
+            "kind": "barkDirector",
+            "ttl": 1.2
+          },
+          {
+            "id": "tutorial:hint:firstHub",
+            "channel": "tutorial",
+            "priority": 70,
+            "text": "Use the left rail. Departure Check owns undock.",
+            "kind": "info",
+            "ttl": 7
+          },
+          {
+            "id": "pq019c:capsule-run",
+            "channel": "objective",
+            "priority": 80,
+            "text": "Theft witnessed — WANTED, and Concord patrol units are inbound",
+            "kind": "info",
+            "ttl": 5
+          },
+          {
+            "id": "planet_commit",
+            "channel": "alert",
+            "priority": 110,
+            "text": "BURN NOW OR BREAK UP",
+            "kind": "danger",
+            "ttl": 3.5
+          },
+          {
+            "id": "pq019c:capsule-run",
+            "channel": "objective",
+            "priority": 100,
+            "text": "Capsule fenced — the Quiet paid and forgot your face",
+            "kind": "info",
+            "ttl": 5
+          }
+        ],
+        "clears": [
+          {
+            "id": "barkDirector:92:scan"
+          },
+          {},
+          {
+            "id": "pq019c:capsule-run"
+          },
+          {
+            "id": "planet_commit"
+          }
+        ],
+        "settlements": [
+          {
+            "kind": "completed",
+            "missionId": "m_2",
+            "type": "heist_intercept",
+            "factionId": "faction_quiet",
+            "repMult": 0.4666666666666667,
+            "source": "heistContract",
+            "rewardCr": 1800
+          }
+        ],
+        "grants": [
+          {
+            "amount": 1800,
+            "reason": "mission:m_2"
+          }
+        ],
+        "accepts": [
+          {
+            "missionId": "heist_tethys_capsule_run"
+          }
+        ],
+        "vfxCues": [
+          {
+            "id": "mission.accept",
+            "lane": "objective",
+            "material": "objective",
+            "particles": 24,
+            "lights": 1,
+            "magnitude": 1,
+            "position": {
+              "x": 9484.1552734375,
+              "z": 6823.47802734375
+            },
+            "targetId": 1
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13987.3017578125,
+              "z": 6251.07177734375
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13983.7900390625,
+              "z": 6254.083984375
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13980.2783203125,
+              "z": 6257.09619140625
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13976.7666015625,
+              "z": 6260.1083984375
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 1333.3623046875,
+              "z": -365.4912109375
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13973.2548828125,
+              "z": 6263.12060546875
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 1335.1953125,
+              "z": -471.95703125
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 1311.76171875,
+              "z": -351.2412109375
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13969.7431640625,
+              "z": 6266.1328125
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "mission.complete",
+            "lane": "branch",
+            "material": "branch",
+            "particles": 48,
+            "lights": 2,
+            "magnitude": 1.4,
+            "position": {
+              "x": 13845.79443359375,
+              "z": 6233.8985595703125
+            },
+            "targetId": 1
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13966.2314453125,
+              "z": 6269.14501953125
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13962.7197265625,
+              "z": 6272.1572265625
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 1251.87646484375,
+              "z": -491.1025390625
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13959.2080078125,
+              "z": 6275.16943359375
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13955.6962890625,
+              "z": 6278.181640625
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13952.1845703125,
+              "z": 6281.19384765625
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13948.6728515625,
+              "z": 6284.2060546875
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          }
+        ],
+        "capsuleWaits": [
+          {
+            "missionId": "m_2",
+            "verdict": {
+              "status": "ready",
+              "reason": "live_capsule",
+              "simElapsedS": 4,
+              "launchLagS": 0
+            },
+            "snapshot": {
+              "missionId": "m_2",
+              "startedAtSimT": 0.3833333333333333,
+              "simTime": 4.383333333333323,
+              "tick": 263,
+              "timeScale": 1,
+              "mode": "flight",
+              "schedule": {
+                "scheduleId": "pq019c:m_2",
+                "status": "launched",
+                "launchAtSimT": 4.383333,
+                "launchedAtTick": 263,
+                "capsuleEntityId": 292,
+                "receipt": {
+                  "accepted": true,
+                  "receiptId": "pq019a:schedule:pq019c:m_2:4.383333",
+                  "scheduleId": "pq019c:m_2",
+                  "launchAtSimT": 4.383333,
+                  "source": "heistFacilities"
+                }
+              },
+              "mission": {
+                "found": true,
+                "status": "active",
+                "heist": {
+                  "scheduleId": "pq019c:m_2",
+                  "scheduleRequested": true,
+                  "launchAtSimT": 4.383333,
+                  "launchTick": 263,
+                  "capsuleEntityId": 292,
+                  "capsuleSeen": true,
+                  "settled": false,
+                  "settledOutcome": null,
+                  "terminalReceipt": null
+                }
+              },
+              "capsule": {
+                "id": 292,
+                "role": "cargo_capsule",
+                "hull": 160
+              }
+            }
+          }
+        ]
+      },
+      "declaredRoute": "production tether:latched -> witnessed WANTED pursuit -> physics:impact at fence",
+      "theft": {
+        "simTime": 4.39999999999999,
+        "capsuleId": 292,
+        "possessed": true,
+        "lawIncidentReceiptId": "law:incident:1gv3e8k",
+        "responderAvailability": "available",
+        "leaseCount": 1,
+        "heat": 0.22,
+        "patrolJobs": [
+          {
+            "jobId": "job:wr_convoy_f26d2d46",
+            "entityId": null,
+            "phase": "commission",
+            "controlled": false,
+            "controlClaimId": null
+          },
+          {
+            "jobId": "job:wr_convoy_b69ec3d1",
+            "entityId": null,
+            "phase": "commission",
+            "controlled": false,
+            "controlClaimId": null
+          },
+          {
+            "jobId": "job:wr_convoy_8d55953c",
+            "entityId": null,
+            "phase": "commission",
+            "controlled": false,
+            "controlClaimId": null
+          },
+          {
+            "jobId": "job:h1_pq019_patrol",
+            "entityId": 105,
+            "phase": "commission",
+            "controlled": true,
+            "controlClaimId": "pq019c:m_2:job:h1_pq019_patrol"
+          }
+        ],
+        "fixturePatrol": {
+          "id": 105,
+          "alive": true,
+          "hull": 1000000,
+          "shield": 999944.8000000003,
+          "jobId": "job:h1_pq019_patrol"
+        }
+      },
+      "composedFloor": {
+        "count": 1,
+        "text": "Theft witnessed — WANTED, and Concord patrol units are inbound",
+        "role": "group",
+        "matchingToastCount": 0,
+        "latestSurface": {
+          "id": "pq019c:capsule-run",
+          "channel": "objective",
+          "priority": 80,
+          "text": "Theft witnessed — WANTED, and Concord patrol units are inbound",
+          "kind": "info",
+          "ttl": 5
+        },
+        "heistSurfaceCount": 1,
+        "queue": {
+          "activeId": "pq019c:capsule-run",
+          "activeText": "Theft witnessed — WANTED, and Concord patrol units are inbound",
+          "pendingCount": 1,
+          "pendingIds": [
+            "tutorial:hint:masslineThrow"
+          ],
+          "pendingHeistCount": 0,
+          "size": 2
+        }
+      },
+      "pageIssues": [],
+      "screenshots": [
+        {
+          "path": ".devshots/pq019-surface-heist/fenced-composed-wanted.png",
+          "bytes": 657546,
+          "sha256": "7aa3d3669f1c417e53392564b13751f96c3770acd36c7068b15faa8bdb5eb7a9"
+        },
+        {
+          "path": ".devshots/pq019-surface-heist/fenced-success.png",
+          "bytes": 684689,
+          "sha256": "1943d5c1662d18abd93a193dfd2bd9323d461bf9e24d6ab8265a38bed2df6e5e"
+        }
+      ]
+    },
+    "confiscated": {
+      "id": "confiscation",
+      "fixture": {
+        "recordedSeed": 19019,
+        "sectorId": "sector_tethys_junction",
+        "offer": {
+          "id": "heist_tethys_capsule_run",
+          "title": "Capsule Run — Tethys Surface Launcher",
+          "type": "heist_intercept",
+          "stationId": "station_tethys",
+          "rewardCr": 1800,
+          "launchWindowS": 4,
+          "recoveryEnabled": false
+        },
+        "witnessStationId": 105,
+        "patrolEntityId": 106,
+        "patrolJobId": "job:h1_pq019_patrol",
+        "launcherHeadId": 84,
+        "setup": "live station witness + live npcJobsRuntime patrol; no law receipt or heist state injected"
+      },
+      "recordedSeed": 19019,
+      "accepted": {
+        "acceptedThroughDom": true,
+        "stationNavSelector": "[data-nav=\"contracts\"]",
+        "acceptSelector": "[data-accept=\"heist_tethys_capsule_run\"]",
+        "focusOnCommit": true,
+        "boardTextIncludesAuthoredTitle": true,
+        "mission": {
+          "id": "m_2",
+          "sourceOfferId": "heist_tethys_capsule_run",
+          "title": "Capsule Run — Tethys Surface Launcher",
+          "attempt": 0,
+          "recoveryAllowed": false,
+          "trackedMissionId": "m_2"
+        }
+      },
+      "terminal": {
+        "missionId": "m_2",
+        "outcome": "lawful_confiscation",
+        "status": "committed",
+        "winner": null,
+        "terminalReceiptCount": 1,
+        "missionSettlementCount": 1,
+        "economyRewardCount": 0,
+        "factionOutcomeCount": 1,
+        "heatApplicationCount": 1,
+        "lawIncidentCount": 1,
+        "attempt": 0,
+        "recoveryAllowed": false
+      },
+      "floor": {
+        "count": 1,
+        "text": "Capsule confiscated — Concord recovered its cargo",
+        "role": "group",
+        "matchingToastCount": 0,
+        "latestSurface": {
+          "id": "pq019c:capsule-run",
+          "channel": "objective",
+          "priority": 100,
+          "text": "Capsule confiscated — Concord recovered its cargo",
+          "kind": "info",
+          "ttl": 5
+        },
+        "heistSurfaceCount": 3,
+        "queue": {
+          "activeId": "pq019c:capsule-run",
+          "activeText": "Capsule confiscated — Concord recovered its cargo",
+          "pendingCount": 2,
+          "pendingIds": [
+            "tutorial:hint:masslineThrow",
+            "tutorial:hint:firstStation"
+          ],
+          "pendingHeistCount": 0,
+          "size": 3
+        }
+      },
+      "cueMoments": [
+        "accepted",
+        "launched",
+        "possessed",
+        "theft_witnessed_pursuit",
+        "confiscated"
+      ],
+      "cueRunMoments": [
+        "m_2:accepted",
+        "m_2:launched",
+        "m_2:possessed",
+        "m_2:theft_witnessed_pursuit",
+        "m_2:confiscated"
+      ],
+      "payouts": [],
+      "trace": {
+        "cues": [
+          {
+            "cueId": "pq019c:cue:m_2:accepted",
+            "missionId": "m_2",
+            "moment": "accepted",
+            "text": "Capsule run accepted — launcher arming, stay in Tethys Junction",
+            "voiceId": "pq019c:capsule-run",
+            "channel": "objective",
+            "source": "heistMissionRuntime"
+          },
+          {
+            "cueId": "pq019c:cue:m_2:launched",
+            "missionId": "m_2",
+            "moment": "launched",
+            "text": "Capsule away — intercept it before the Concord catcher takes it",
+            "voiceId": "pq019c:capsule-run",
+            "channel": "objective",
+            "source": "heistMissionRuntime"
+          },
+          {
+            "cueId": "pq019c:cue:m_2:possessed",
+            "missionId": "m_2",
+            "moment": "possessed",
+            "text": "Capsule in tow — the Quiet fence is your only buyer now",
+            "voiceId": "pq019c:capsule-run",
+            "channel": "objective",
+            "source": "heistMissionRuntime"
+          },
+          {
+            "cueId": "pq019c:cue:m_2:theft_witnessed_pursuit",
+            "missionId": "m_2",
+            "moment": "theft_witnessed_pursuit",
+            "text": "Theft witnessed — WANTED, and Concord patrol units are inbound",
+            "voiceId": "pq019c:capsule-run",
+            "channel": "objective",
+            "source": "heistMissionRuntime"
+          },
+          {
+            "cueId": "pq019c:cue:m_2:confiscated",
+            "missionId": "m_2",
+            "moment": "confiscated",
+            "text": "Capsule confiscated — Concord recovered its cargo",
+            "voiceId": "pq019c:capsule-run",
+            "channel": "objective",
+            "source": "heistMissionRuntime"
+          }
+        ],
+        "surfaces": [
+          {
+            "id": "barkDirector:92:scan",
+            "channel": "bark",
+            "priority": 50,
+            "text": "Transponder query logged under your registry. Your prior operator already answered this one.",
+            "kind": "barkDirector",
+            "ttl": 1.2
+          },
+          {
+            "id": "tutorial:hint:firstHub",
+            "channel": "tutorial",
+            "priority": 70,
+            "text": "Use the left rail. Departure Check owns undock.",
+            "kind": "info",
+            "ttl": 7
+          },
+          {
+            "id": "pq019c:capsule-run",
+            "channel": "objective",
+            "priority": 80,
+            "text": "Theft witnessed — WANTED, and Concord patrol units are inbound",
+            "kind": "info",
+            "ttl": 5
+          },
+          {
+            "id": "planet_commit",
+            "channel": "alert",
+            "priority": 110,
+            "text": "BURN NOW OR BREAK UP",
+            "kind": "danger",
+            "ttl": 3.5
+          },
+          {
+            "id": "pq019c:capsule-run",
+            "channel": "objective",
+            "priority": 80,
+            "text": "Theft witnessed — WANTED, and Concord patrol units are inbound",
+            "kind": "info",
+            "ttl": 5
+          },
+          {
+            "id": "pq019c:capsule-run",
+            "channel": "objective",
+            "priority": 100,
+            "text": "Capsule confiscated — Concord recovered its cargo",
+            "kind": "info",
+            "ttl": 5
+          }
+        ],
+        "clears": [
+          {
+            "id": "barkDirector:92:scan"
+          },
+          {},
+          {
+            "id": "pq019c:capsule-run"
+          },
+          {
+            "id": "planet_commit"
+          }
+        ],
+        "settlements": [
+          {
+            "kind": "failed",
+            "missionId": "m_2",
+            "reason": "confiscated",
+            "source": "heistContract"
+          }
+        ],
+        "grants": [],
+        "accepts": [
+          {
+            "missionId": "heist_tethys_capsule_run"
+          }
+        ],
+        "vfxCues": [
+          {
+            "id": "mission.accept",
+            "lane": "objective",
+            "material": "objective",
+            "particles": 24,
+            "lights": 1,
+            "magnitude": 1,
+            "position": {
+              "x": 9484.1552734375,
+              "z": 6823.47802734375
+            },
+            "targetId": 1
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13987.3017578125,
+              "z": 6251.07177734375
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13983.7900390625,
+              "z": 6254.083984375
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13980.2783203125,
+              "z": 6257.09619140625
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13976.7666015625,
+              "z": 6260.1083984375
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 1227.26953125,
+              "z": -475.09765625
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13973.2548828125,
+              "z": 6263.12060546875
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13969.7431640625,
+              "z": 6266.1328125
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13966.2314453125,
+              "z": 6269.14501953125
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13962.7197265625,
+              "z": 6272.1572265625
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 1247.8427734375,
+              "z": -487.57421875
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13959.2080078125,
+              "z": 6275.16943359375
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13955.6962890625,
+              "z": 6278.181640625
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13952.1845703125,
+              "z": 6281.19384765625
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13948.6728515625,
+              "z": 6284.2060546875
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13945.2744140625,
+              "z": 6287.12109375
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          }
+        ],
+        "capsuleWaits": [
+          {
+            "missionId": "m_2",
+            "verdict": {
+              "status": "ready",
+              "reason": "live_capsule",
+              "simElapsedS": 4.05,
+              "launchLagS": 0.05
+            },
+            "snapshot": {
+              "missionId": "m_2",
+              "startedAtSimT": 0.6833333333333338,
+              "simTime": 4.733333333333322,
+              "tick": 284,
+              "timeScale": 1,
+              "mode": "flight",
+              "schedule": {
+                "scheduleId": "pq019c:m_2",
+                "status": "launched",
+                "launchAtSimT": 4.683333,
+                "launchedAtTick": 281,
+                "capsuleEntityId": 292,
+                "receipt": {
+                  "accepted": true,
+                  "receiptId": "pq019a:schedule:pq019c:m_2:4.683333",
+                  "scheduleId": "pq019c:m_2",
+                  "launchAtSimT": 4.683333,
+                  "source": "heistFacilities"
+                }
+              },
+              "mission": {
+                "found": true,
+                "status": "active",
+                "heist": {
+                  "scheduleId": "pq019c:m_2",
+                  "scheduleRequested": true,
+                  "launchAtSimT": 4.683333,
+                  "launchTick": 281,
+                  "capsuleEntityId": 292,
+                  "capsuleSeen": true,
+                  "settled": false,
+                  "settledOutcome": null,
+                  "terminalReceipt": null
+                }
+              },
+              "capsule": {
+                "id": 292,
+                "role": "cargo_capsule",
+                "hull": 160
+              }
+            }
+          }
+        ]
+      },
+      "declaredRoute": "production tether:latched -> physics:impact at lawful catcher",
+      "theft": {
+        "simTime": 4.733333333333322,
+        "capsuleId": 292,
+        "possessed": true,
+        "lawIncidentReceiptId": "law:incident:1dj1uwy",
+        "responderAvailability": "available",
+        "leaseCount": 1,
+        "heat": 0.22,
+        "patrolJobs": [
+          {
+            "jobId": "job:wr_convoy_f26d2d46",
+            "entityId": null,
+            "phase": "commission",
+            "controlled": false,
+            "controlClaimId": null
+          },
+          {
+            "jobId": "job:wr_convoy_b69ec3d1",
+            "entityId": null,
+            "phase": "commission",
+            "controlled": false,
+            "controlClaimId": null
+          },
+          {
+            "jobId": "job:wr_convoy_8d55953c",
+            "entityId": null,
+            "phase": "commission",
+            "controlled": false,
+            "controlClaimId": null
+          },
+          {
+            "jobId": "job:wr_convoy_574eb62d",
+            "entityId": 99,
+            "phase": "transit",
+            "controlled": false,
+            "controlClaimId": null
+          },
+          {
+            "jobId": "job:wr_convoy_419979ab",
+            "entityId": 100,
+            "phase": "transit",
+            "controlled": false,
+            "controlClaimId": null
+          },
+          {
+            "jobId": "job:wr_convoy_d9a6f2bc",
+            "entityId": 103,
+            "phase": "transit",
+            "controlled": false,
+            "controlClaimId": null
+          },
+          {
+            "jobId": "job:h1_pq019_patrol",
+            "entityId": 106,
+            "phase": "commission",
+            "controlled": true,
+            "controlClaimId": "pq019c:m_2:job:h1_pq019_patrol"
+          }
+        ],
+        "fixturePatrol": {
+          "id": 106,
+          "alive": true,
+          "hull": 1000000,
+          "shield": 999944.8000000003,
+          "jobId": "job:h1_pq019_patrol"
+        }
+      },
+      "pageIssues": [],
+      "screenshots": [
+        {
+          "path": ".devshots/pq019-surface-heist/confiscation.png",
+          "bytes": 668741,
+          "sha256": "2400795d1e9a1b45309a5f9f90948798a2c4252b9f65d8308c18f03e79936d3c"
+        }
+      ]
+    },
+    "destroyed": {
+      "id": "destruction",
+      "fixture": {
+        "recordedSeed": 19019,
+        "sectorId": "sector_tethys_junction",
+        "offer": {
+          "id": "heist_tethys_capsule_run",
+          "title": "Capsule Run — Tethys Surface Launcher",
+          "type": "heist_intercept",
+          "stationId": "station_tethys",
+          "rewardCr": 1800,
+          "launchWindowS": 4,
+          "recoveryEnabled": false
+        },
+        "witnessStationId": 104,
+        "patrolEntityId": 105,
+        "patrolJobId": "job:h1_pq019_patrol",
+        "launcherHeadId": 84,
+        "setup": "live station witness + live npcJobsRuntime patrol; no law receipt or heist state injected"
+      },
+      "recordedSeed": 19019,
+      "accepted": {
+        "acceptedThroughDom": true,
+        "stationNavSelector": "[data-nav=\"contracts\"]",
+        "acceptSelector": "[data-accept=\"heist_tethys_capsule_run\"]",
+        "focusOnCommit": true,
+        "boardTextIncludesAuthoredTitle": true,
+        "mission": {
+          "id": "m_2",
+          "sourceOfferId": "heist_tethys_capsule_run",
+          "title": "Capsule Run — Tethys Surface Launcher",
+          "attempt": 0,
+          "recoveryAllowed": false,
+          "trackedMissionId": "m_2"
+        }
+      },
+      "terminal": {
+        "missionId": "m_2",
+        "outcome": "payload_destroyed",
+        "status": "committed",
+        "winner": null,
+        "terminalReceiptCount": 1,
+        "missionSettlementCount": 1,
+        "economyRewardCount": 0,
+        "factionOutcomeCount": 1,
+        "heatApplicationCount": 1,
+        "lawIncidentCount": 1,
+        "attempt": 0,
+        "recoveryAllowed": false
+      },
+      "floor": {
+        "count": 1,
+        "text": "Capsule destroyed — there is nothing left to sell",
+        "role": "group",
+        "matchingToastCount": 0,
+        "latestSurface": {
+          "id": "pq019c:capsule-run",
+          "channel": "objective",
+          "priority": 100,
+          "text": "Capsule destroyed — there is nothing left to sell",
+          "kind": "info",
+          "ttl": 5
+        },
+        "heistSurfaceCount": 3,
+        "queue": {
+          "activeId": "pq019c:capsule-run",
+          "activeText": "Capsule destroyed — there is nothing left to sell",
+          "pendingCount": 3,
+          "pendingIds": [
+            "tutorial:hint:masslineThrow",
+            "tutorial:hint:firstStation",
+            "alert:presentation:combat:player-kill"
+          ],
+          "pendingHeistCount": 0,
+          "size": 4
+        }
+      },
+      "cueMoments": [
+        "accepted",
+        "launched",
+        "possessed",
+        "theft_witnessed_pursuit",
+        "destroyed"
+      ],
+      "cueRunMoments": [
+        "m_2:accepted",
+        "m_2:launched",
+        "m_2:possessed",
+        "m_2:theft_witnessed_pursuit",
+        "m_2:destroyed"
+      ],
+      "payouts": [],
+      "trace": {
+        "cues": [
+          {
+            "cueId": "pq019c:cue:m_2:accepted",
+            "missionId": "m_2",
+            "moment": "accepted",
+            "text": "Capsule run accepted — launcher arming, stay in Tethys Junction",
+            "voiceId": "pq019c:capsule-run",
+            "channel": "objective",
+            "source": "heistMissionRuntime"
+          },
+          {
+            "cueId": "pq019c:cue:m_2:launched",
+            "missionId": "m_2",
+            "moment": "launched",
+            "text": "Capsule away — intercept it before the Concord catcher takes it",
+            "voiceId": "pq019c:capsule-run",
+            "channel": "objective",
+            "source": "heistMissionRuntime"
+          },
+          {
+            "cueId": "pq019c:cue:m_2:possessed",
+            "missionId": "m_2",
+            "moment": "possessed",
+            "text": "Capsule in tow — the Quiet fence is your only buyer now",
+            "voiceId": "pq019c:capsule-run",
+            "channel": "objective",
+            "source": "heistMissionRuntime"
+          },
+          {
+            "cueId": "pq019c:cue:m_2:theft_witnessed_pursuit",
+            "missionId": "m_2",
+            "moment": "theft_witnessed_pursuit",
+            "text": "Theft witnessed — WANTED, and Concord patrol units are inbound",
+            "voiceId": "pq019c:capsule-run",
+            "channel": "objective",
+            "source": "heistMissionRuntime"
+          },
+          {
+            "cueId": "pq019c:cue:m_2:destroyed",
+            "missionId": "m_2",
+            "moment": "destroyed",
+            "text": "Capsule destroyed — there is nothing left to sell",
+            "voiceId": "pq019c:capsule-run",
+            "channel": "objective",
+            "source": "heistMissionRuntime"
+          }
+        ],
+        "surfaces": [
+          {
+            "id": "barkDirector:92:scan",
+            "channel": "bark",
+            "priority": 50,
+            "text": "Transponder query logged under your registry. Your prior operator already answered this one.",
+            "kind": "barkDirector",
+            "ttl": 1.2
+          },
+          {
+            "id": "tutorial:hint:firstHub",
+            "channel": "tutorial",
+            "priority": 70,
+            "text": "Use the left rail. Departure Check owns undock.",
+            "kind": "info",
+            "ttl": 7
+          },
+          {
+            "id": "pq019c:capsule-run",
+            "channel": "objective",
+            "priority": 80,
+            "text": "Theft witnessed — WANTED, and Concord patrol units are inbound",
+            "kind": "info",
+            "ttl": 5
+          },
+          {
+            "id": "planet_commit",
+            "channel": "alert",
+            "priority": 110,
+            "text": "BURN NOW OR BREAK UP",
+            "kind": "danger",
+            "ttl": 3.5
+          },
+          {
+            "id": "pq019c:capsule-run",
+            "channel": "objective",
+            "priority": 80,
+            "text": "Theft witnessed — WANTED, and Concord patrol units are inbound",
+            "kind": "info",
+            "ttl": 5
+          },
+          {
+            "id": "pq019c:capsule-run",
+            "channel": "objective",
+            "priority": 100,
+            "text": "Capsule destroyed — there is nothing left to sell",
+            "kind": "info",
+            "ttl": 5
+          }
+        ],
+        "clears": [
+          {
+            "id": "barkDirector:92:scan"
+          },
+          {},
+          {
+            "id": "pq019c:capsule-run"
+          },
+          {
+            "id": "planet_commit"
+          }
+        ],
+        "settlements": [
+          {
+            "kind": "failed",
+            "missionId": "m_2",
+            "reason": "payload_destroyed",
+            "source": "heistContract"
+          }
+        ],
+        "grants": [],
+        "accepts": [
+          {
+            "missionId": "heist_tethys_capsule_run"
+          }
+        ],
+        "vfxCues": [
+          {
+            "id": "mission.accept",
+            "lane": "objective",
+            "material": "objective",
+            "particles": 24,
+            "lights": 1,
+            "magnitude": 1,
+            "position": {
+              "x": 9484.1552734375,
+              "z": 6823.47802734375
+            },
+            "targetId": 1
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13987.3017578125,
+              "z": 6251.07177734375
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13983.7900390625,
+              "z": 6254.083984375
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13980.2783203125,
+              "z": 6257.09619140625
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13976.7666015625,
+              "z": 6260.1083984375
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13973.2548828125,
+              "z": 6263.12060546875
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13969.7431640625,
+              "z": 6266.1328125
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13966.2314453125,
+              "z": 6269.14501953125
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13962.7197265625,
+              "z": 6272.1572265625
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13959.2080078125,
+              "z": 6275.16943359375
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13955.6962890625,
+              "z": 6278.181640625
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13952.1845703125,
+              "z": 6281.19384765625
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 1335.5546875,
+              "z": -367.8818359375
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13948.6728515625,
+              "z": 6284.2060546875
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13945.2744140625,
+              "z": 6287.12109375
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": -268.38671875,
+              "z": 16250.1796875
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.hull",
+            "lane": "combat",
+            "pos": {
+              "x": 13449.64599609375,
+              "z": 6317.0313720703125
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.kill",
+            "lane": "combat",
+            "pos": {
+              "x": 13449.64599609375,
+              "z": 6317.0313720703125
+            },
+            "magnitude": 2,
+            "flashReduced": false
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": -297.6328125,
+              "z": 16238.875
+            },
+            "magnitude": 1,
+            "flashReduced": false
+          }
+        ],
+        "capsuleWaits": [
+          {
+            "missionId": "m_2",
+            "verdict": {
+              "status": "ready",
+              "reason": "live_capsule",
+              "simElapsedS": 4.033,
+              "launchLagS": 0.033
+            },
+            "snapshot": {
+              "missionId": "m_2",
+              "startedAtSimT": 0.7000000000000005,
+              "simTime": 4.733333333333322,
+              "tick": 284,
+              "timeScale": 1,
+              "mode": "flight",
+              "schedule": {
+                "scheduleId": "pq019c:m_2",
+                "status": "launched",
+                "launchAtSimT": 4.7,
+                "launchedAtTick": 282,
+                "capsuleEntityId": 292,
+                "receipt": {
+                  "accepted": true,
+                  "receiptId": "pq019a:schedule:pq019c:m_2:4.700000",
+                  "scheduleId": "pq019c:m_2",
+                  "launchAtSimT": 4.7,
+                  "source": "heistFacilities"
+                }
+              },
+              "mission": {
+                "found": true,
+                "status": "active",
+                "heist": {
+                  "scheduleId": "pq019c:m_2",
+                  "scheduleRequested": true,
+                  "launchAtSimT": 4.7,
+                  "launchTick": 282,
+                  "capsuleEntityId": 292,
+                  "capsuleSeen": true,
+                  "settled": false,
+                  "settledOutcome": null,
+                  "terminalReceipt": null
+                }
+              },
+              "capsule": {
+                "id": 292,
+                "role": "cargo_capsule",
+                "hull": 160
+              }
+            }
+          }
+        ]
+      },
+      "declaredRoute": "production tether:latched -> production combat damage -> entity:destroyed",
+      "theft": {
+        "simTime": 4.733333333333322,
+        "capsuleId": 292,
+        "possessed": true,
+        "lawIncidentReceiptId": "law:incident:1dj1uwy",
+        "responderAvailability": "available",
+        "leaseCount": 1,
+        "heat": 0.22,
+        "patrolJobs": [
+          {
+            "jobId": "job:wr_convoy_f26d2d46",
+            "entityId": null,
+            "phase": "commission",
+            "controlled": false,
+            "controlClaimId": null
+          },
+          {
+            "jobId": "job:wr_convoy_b69ec3d1",
+            "entityId": null,
+            "phase": "commission",
+            "controlled": false,
+            "controlClaimId": null
+          },
+          {
+            "jobId": "job:wr_convoy_8d55953c",
+            "entityId": null,
+            "phase": "commission",
+            "controlled": false,
+            "controlClaimId": null
+          },
+          {
+            "jobId": "job:wr_convoy_24cdd0f",
+            "entityId": 101,
+            "phase": "transit",
+            "controlled": false,
+            "controlClaimId": null
+          },
+          {
+            "jobId": "job:h1_pq019_patrol",
+            "entityId": 105,
+            "phase": "commission",
+            "controlled": true,
+            "controlClaimId": "pq019c:m_2:job:h1_pq019_patrol"
+          }
+        ],
+        "fixturePatrol": {
+          "id": 105,
+          "alive": true,
+          "hull": 1000000,
+          "shield": 999944.8000000003,
+          "jobId": "job:h1_pq019_patrol"
+        }
+      },
+      "damage": {
+        "ok": true,
+        "targetId": 292,
+        "totalApplied": -9270,
+        "hullBefore": 160,
+        "hullAfter": 0,
+        "aliveAfterRoute": false,
+        "source": "production combat kernel"
+      },
+      "pageIssues": [],
+      "screenshots": [
+        {
+          "path": ".devshots/pq019-surface-heist/destruction.png",
+          "bytes": 673461,
+          "sha256": "c7e0311fed35d35a95cee8ded550dfd2464f4223a036361f21ff52ca0a653aed"
+        }
+      ]
+    },
+    "recovery": {
+      "id": "reduced-stake-recovery",
+      "fixture": {
+        "recordedSeed": 19019,
+        "sectorId": "sector_tethys_junction",
+        "offer": {
+          "id": "heist_tethys_capsule_run",
+          "title": "Capsule Run — Tethys Surface Launcher",
+          "type": "heist_intercept",
+          "stationId": "station_tethys",
+          "rewardCr": 1800,
+          "launchWindowS": 4,
+          "recoveryEnabled": true
+        },
+        "witnessStationId": 105,
+        "patrolEntityId": 106,
+        "patrolJobId": "job:h1_pq019_patrol",
+        "launcherHeadId": 84,
+        "setup": "live station witness + live npcJobsRuntime patrol; no law receipt or heist state injected"
+      },
+      "recordedSeed": 19019,
+      "accepted": {
+        "acceptedThroughDom": true,
+        "stationNavSelector": "[data-nav=\"contracts\"]",
+        "acceptSelector": "[data-accept=\"heist_tethys_capsule_run\"]",
+        "focusOnCommit": true,
+        "boardTextIncludesAuthoredTitle": true,
+        "mission": {
+          "id": "m_2",
+          "sourceOfferId": "heist_tethys_capsule_run",
+          "title": "Capsule Run — Tethys Surface Launcher",
+          "attempt": 0,
+          "recoveryAllowed": true,
+          "trackedMissionId": "m_2"
+        }
+      },
+      "terminal": {
+        "missionId": "m_3",
+        "outcome": "fenced_success",
+        "status": "committed",
+        "winner": null,
+        "terminalReceiptCount": 1,
+        "missionSettlementCount": 1,
+        "economyRewardCount": 1,
+        "factionOutcomeCount": 1,
+        "heatApplicationCount": 1,
+        "lawIncidentCount": 1,
+        "attempt": 1,
+        "recoveryAllowed": false
+      },
+      "floor": {
+        "count": 1,
+        "text": "Capsule fenced — the Quiet paid and forgot your face",
+        "role": "group",
+        "matchingToastCount": 0,
+        "latestSurface": {
+          "id": "pq019c:capsule-run",
+          "channel": "objective",
+          "priority": 100,
+          "text": "Capsule fenced — the Quiet paid and forgot your face",
+          "kind": "info",
+          "ttl": 5
+        },
+        "heistSurfaceCount": 9,
+        "queue": {
+          "activeId": "pq019c:capsule-run",
+          "activeText": "Capsule fenced — the Quiet paid and forgot your face",
+          "pendingCount": 0,
+          "pendingIds": [],
+          "pendingHeistCount": 0,
+          "size": 1
+        }
+      },
+      "cueMoments": [
+        "accepted",
+        "launched",
+        "possessed",
+        "theft_witnessed_pursuit",
+        "destroyed",
+        "recovery",
+        "accepted",
+        "launched",
+        "possessed",
+        "theft_witnessed_pursuit",
+        "fenced"
+      ],
+      "cueRunMoments": [
+        "m_2:accepted",
+        "m_2:launched",
+        "m_2:possessed",
+        "m_2:theft_witnessed_pursuit",
+        "m_2:destroyed",
+        "m_2:recovery",
+        "m_3:accepted",
+        "m_3:launched",
+        "m_3:possessed",
+        "m_3:theft_witnessed_pursuit",
+        "m_3:fenced"
+      ],
+      "payouts": [
+        {
+          "amount": 900,
+          "reason": "mission:m_3"
+        }
+      ],
+      "trace": {
+        "cues": [
+          {
+            "cueId": "pq019c:cue:m_2:accepted",
+            "missionId": "m_2",
+            "moment": "accepted",
+            "text": "Capsule run accepted — launcher arming, stay in Tethys Junction",
+            "voiceId": "pq019c:capsule-run",
+            "channel": "objective",
+            "source": "heistMissionRuntime"
+          },
+          {
+            "cueId": "pq019c:cue:m_2:launched",
+            "missionId": "m_2",
+            "moment": "launched",
+            "text": "Capsule away — intercept it before the Concord catcher takes it",
+            "voiceId": "pq019c:capsule-run",
+            "channel": "objective",
+            "source": "heistMissionRuntime"
+          },
+          {
+            "cueId": "pq019c:cue:m_2:possessed",
+            "missionId": "m_2",
+            "moment": "possessed",
+            "text": "Capsule in tow — the Quiet fence is your only buyer now",
+            "voiceId": "pq019c:capsule-run",
+            "channel": "objective",
+            "source": "heistMissionRuntime"
+          },
+          {
+            "cueId": "pq019c:cue:m_2:theft_witnessed_pursuit",
+            "missionId": "m_2",
+            "moment": "theft_witnessed_pursuit",
+            "text": "Theft witnessed — WANTED, and Concord patrol units are inbound",
+            "voiceId": "pq019c:capsule-run",
+            "channel": "objective",
+            "source": "heistMissionRuntime"
+          },
+          {
+            "cueId": "pq019c:cue:m_2:destroyed",
+            "missionId": "m_2",
+            "moment": "destroyed",
+            "text": "Capsule destroyed — there is nothing left to sell",
+            "voiceId": "pq019c:capsule-run",
+            "channel": "objective",
+            "source": "heistMissionRuntime"
+          },
+          {
+            "cueId": "pq019c:cue:m_2:recovery",
+            "missionId": "m_2",
+            "moment": "recovery",
+            "text": "The Quiet will fund one more pass at a reduced rate — check the Tethys board",
+            "voiceId": "pq019c:capsule-run",
+            "channel": "objective",
+            "source": "heistMissionRuntime"
+          },
+          {
+            "cueId": "pq019c:cue:m_3:accepted",
+            "missionId": "m_3",
+            "moment": "accepted",
+            "text": "Capsule run accepted — launcher arming, stay in Tethys Junction",
+            "voiceId": "pq019c:capsule-run",
+            "channel": "objective",
+            "source": "heistMissionRuntime"
+          },
+          {
+            "cueId": "pq019c:cue:m_3:launched",
+            "missionId": "m_3",
+            "moment": "launched",
+            "text": "Capsule away — intercept it before the Concord catcher takes it",
+            "voiceId": "pq019c:capsule-run",
+            "channel": "objective",
+            "source": "heistMissionRuntime"
+          },
+          {
+            "cueId": "pq019c:cue:m_3:possessed",
+            "missionId": "m_3",
+            "moment": "possessed",
+            "text": "Capsule in tow — the Quiet fence is your only buyer now",
+            "voiceId": "pq019c:capsule-run",
+            "channel": "objective",
+            "source": "heistMissionRuntime"
+          },
+          {
+            "cueId": "pq019c:cue:m_3:theft_witnessed_pursuit",
+            "missionId": "m_3",
+            "moment": "theft_witnessed_pursuit",
+            "text": "Theft witnessed — WANTED, and Concord patrol units are inbound",
+            "voiceId": "pq019c:capsule-run",
+            "channel": "objective",
+            "source": "heistMissionRuntime"
+          },
+          {
+            "cueId": "pq019c:cue:m_3:fenced",
+            "missionId": "m_3",
+            "moment": "fenced",
+            "text": "Capsule fenced — the Quiet paid and forgot your face",
+            "voiceId": "pq019c:capsule-run",
+            "channel": "objective",
+            "source": "heistMissionRuntime"
+          }
+        ],
+        "surfaces": [
+          {
+            "id": "barkDirector:92:scan",
+            "channel": "bark",
+            "priority": 50,
+            "text": "Transponder query logged under your registry. Your prior operator already answered this one.",
+            "kind": "barkDirector",
+            "ttl": 1.2
+          },
+          {
+            "id": "tutorial:hint:firstHub",
+            "channel": "tutorial",
+            "priority": 70,
+            "text": "Use the left rail. Departure Check owns undock.",
+            "kind": "info",
+            "ttl": 7
+          },
+          {
+            "id": "pq019c:capsule-run",
+            "channel": "objective",
+            "priority": 80,
+            "text": "Theft witnessed — WANTED, and Concord patrol units are inbound",
+            "kind": "info",
+            "ttl": 5
+          },
+          {
+            "id": "planet_commit",
+            "channel": "alert",
+            "priority": 110,
+            "text": "BURN NOW OR BREAK UP",
+            "kind": "danger",
+            "ttl": 3.5
+          },
+          {
+            "id": "pq019c:capsule-run",
+            "channel": "objective",
+            "priority": 80,
+            "text": "Theft witnessed — WANTED, and Concord patrol units are inbound",
+            "kind": "info",
+            "ttl": 5
+          },
+          {
+            "id": "pq019c:capsule-run",
+            "channel": "objective",
+            "priority": 100,
+            "text": "Capsule destroyed — there is nothing left to sell",
+            "kind": "info",
+            "ttl": 5
+          },
+          {
+            "id": "pq019c:capsule-run",
+            "channel": "objective",
+            "priority": 100,
+            "text": "The Quiet will fund one more pass at a reduced rate — check the Tethys board",
+            "kind": "info",
+            "ttl": 5
+          },
+          {
+            "id": "pq019c:capsule-run",
+            "channel": "objective",
+            "priority": 60,
+            "text": "Capsule run accepted — launcher arming, stay in Tethys Junction",
+            "kind": "info",
+            "ttl": 5
+          },
+          {
+            "id": "tutorial:hint:masslineThrow",
+            "channel": "tutorial",
+            "priority": 70,
+            "text": "Hold RIGHT MOUSE; release waits for the white diamond.",
+            "kind": "info",
+            "ttl": 7
+          },
+          {
+            "id": "tutorial:hint:firstStation",
+            "channel": "tutorial",
+            "priority": 70,
+            "text": "Review Departure Check before E or Escape undocks.",
+            "kind": "info",
+            "ttl": 7
+          },
+          {
+            "id": "pq019c:capsule-run",
+            "channel": "objective",
+            "priority": 60,
+            "text": "Capsule run accepted — launcher arming, stay in Tethys Junction",
+            "kind": "info",
+            "ttl": 5
+          },
+          {
+            "id": "pq019c:capsule-run",
+            "channel": "objective",
+            "priority": 60,
+            "text": "Capsule away — intercept it before the Concord catcher takes it",
+            "kind": "info",
+            "ttl": 5
+          },
+          {
+            "id": "pq019c:capsule-run",
+            "channel": "objective",
+            "priority": 80,
+            "text": "Theft witnessed — WANTED, and Concord patrol units are inbound",
+            "kind": "info",
+            "ttl": 5
+          },
+          {
+            "id": "pq019c:capsule-run",
+            "channel": "objective",
+            "priority": 100,
+            "text": "Capsule fenced — the Quiet paid and forgot your face",
+            "kind": "info",
+            "ttl": 5
+          }
+        ],
+        "clears": [
+          {
+            "id": "barkDirector:92:scan"
+          },
+          {},
+          {
+            "id": "pq019c:capsule-run"
+          },
+          {
+            "id": "planet_commit"
+          },
+          {
+            "id": "pq019c:capsule-run"
+          },
+          {
+            "id": "tutorial:hint:masslineThrow"
+          },
+          {
+            "id": "tutorial:hint:firstStation"
+          },
+          {}
+        ],
+        "settlements": [
+          {
+            "kind": "failed",
+            "missionId": "m_2",
+            "reason": "payload_destroyed",
+            "source": "heistContract"
+          },
+          {
+            "kind": "completed",
+            "missionId": "m_3",
+            "type": "heist_intercept",
+            "factionId": "faction_quiet",
+            "repMult": 0.4666666666666667,
+            "source": "heistContract",
+            "rewardCr": 900
+          }
+        ],
+        "grants": [
+          {
+            "amount": 900,
+            "reason": "mission:m_3"
+          }
+        ],
+        "accepts": [
+          {
+            "missionId": "heist_tethys_capsule_run"
+          },
+          {
+            "missionId": "heist_tethys_capsule_run_recovery_1_m_2"
+          }
+        ],
+        "vfxCues": [
+          {
+            "id": "mission.accept",
+            "lane": "objective",
+            "material": "objective",
+            "particles": 24,
+            "lights": 1,
+            "magnitude": 1,
+            "position": {
+              "x": 9484.1552734375,
+              "z": 6823.47802734375
+            },
+            "targetId": 1
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13987.3017578125,
+              "z": 6251.07177734375
+            },
+            "magnitude": 1,
+            "flashReduced": true
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13983.7900390625,
+              "z": 6254.083984375
+            },
+            "magnitude": 1,
+            "flashReduced": true
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13980.2783203125,
+              "z": 6257.09619140625
+            },
+            "magnitude": 1,
+            "flashReduced": true
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13976.7666015625,
+              "z": 6260.1083984375
+            },
+            "magnitude": 1,
+            "flashReduced": true
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 1227.26953125,
+              "z": -475.09765625
+            },
+            "magnitude": 1,
+            "flashReduced": true
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13973.2548828125,
+              "z": 6263.12060546875
+            },
+            "magnitude": 1,
+            "flashReduced": true
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13969.7431640625,
+              "z": 6266.1328125
+            },
+            "magnitude": 1,
+            "flashReduced": true
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13966.2314453125,
+              "z": 6269.14501953125
+            },
+            "magnitude": 1,
+            "flashReduced": true
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13962.7197265625,
+              "z": 6272.1572265625
+            },
+            "magnitude": 1,
+            "flashReduced": true
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 1247.8427734375,
+              "z": -487.57421875
+            },
+            "magnitude": 1,
+            "flashReduced": true
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13959.2080078125,
+              "z": 6275.16943359375
+            },
+            "magnitude": 1,
+            "flashReduced": true
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13955.6962890625,
+              "z": 6278.181640625
+            },
+            "magnitude": 1,
+            "flashReduced": true
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13952.1845703125,
+              "z": 6281.19384765625
+            },
+            "magnitude": 1,
+            "flashReduced": true
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13948.6728515625,
+              "z": 6284.2060546875
+            },
+            "magnitude": 1,
+            "flashReduced": true
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13945.2744140625,
+              "z": 6287.12109375
+            },
+            "magnitude": 1,
+            "flashReduced": true
+          },
+          {
+            "id": "combat.damage.hull",
+            "lane": "combat",
+            "pos": {
+              "x": 13452.75537109375,
+              "z": 6315.8282470703125
+            },
+            "magnitude": 1,
+            "flashReduced": true
+          },
+          {
+            "id": "combat.damage.kill",
+            "lane": "combat",
+            "pos": {
+              "x": 13452.75537109375,
+              "z": 6315.8282470703125
+            },
+            "magnitude": 2,
+            "flashReduced": true
+          },
+          {
+            "id": "mission.accept",
+            "lane": "objective",
+            "material": "objective",
+            "particles": 24,
+            "lights": 1,
+            "magnitude": 1,
+            "position": {
+              "x": 13845.79443359375,
+              "z": 6233.8985595703125
+            },
+            "targetId": 1
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13941.8759765625,
+              "z": 6290.0361328125
+            },
+            "magnitude": 1,
+            "flashReduced": true
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13938.4775390625,
+              "z": 6292.951171875
+            },
+            "magnitude": 1,
+            "flashReduced": true
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13935.0791015625,
+              "z": 6295.8662109375
+            },
+            "magnitude": 1,
+            "flashReduced": true
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13931.6806640625,
+              "z": 6298.78125
+            },
+            "magnitude": 1,
+            "flashReduced": true
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13928.2822265625,
+              "z": 6301.6962890625
+            },
+            "magnitude": 1,
+            "flashReduced": true
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13925.11328125,
+              "z": 6304.414794921875
+            },
+            "magnitude": 1,
+            "flashReduced": true
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13924.99755859375,
+              "z": 6304.5189208984375
+            },
+            "magnitude": 1,
+            "flashReduced": true
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13924.99755859375,
+              "z": 6304.51904296875
+            },
+            "magnitude": 1,
+            "flashReduced": true
+          },
+          {
+            "id": "combat.damage.shield",
+            "lane": "combat",
+            "pos": {
+              "x": 13924.99755859375,
+              "z": 6304.5191650390625
+            },
+            "magnitude": 1,
+            "flashReduced": true
+          },
+          {
+            "id": "mission.complete",
+            "lane": "branch",
+            "material": "branch",
+            "particles": 48,
+            "lights": 2,
+            "magnitude": 1.4,
+            "position": {
+              "x": 13838.02099609375,
+              "z": 6236.9063720703125
+            },
+            "targetId": 1
+          }
+        ],
+        "capsuleWaits": [
+          {
+            "missionId": "m_2",
+            "verdict": {
+              "status": "ready",
+              "reason": "live_capsule",
+              "simElapsedS": 4.033,
+              "launchLagS": 0.017
+            },
+            "snapshot": {
+              "missionId": "m_2",
+              "startedAtSimT": 0.6500000000000004,
+              "simTime": 4.683333333333322,
+              "tick": 281,
+              "timeScale": 1,
+              "mode": "flight",
+              "schedule": {
+                "scheduleId": "pq019c:m_2",
+                "status": "launched",
+                "launchAtSimT": 4.666667,
+                "launchedAtTick": 281,
+                "capsuleEntityId": 292,
+                "receipt": {
+                  "accepted": true,
+                  "receiptId": "pq019a:schedule:pq019c:m_2:4.666667",
+                  "scheduleId": "pq019c:m_2",
+                  "launchAtSimT": 4.666667,
+                  "source": "heistFacilities"
+                }
+              },
+              "mission": {
+                "found": true,
+                "status": "active",
+                "heist": {
+                  "scheduleId": "pq019c:m_2",
+                  "scheduleRequested": true,
+                  "launchAtSimT": 4.666667,
+                  "launchTick": 281,
+                  "capsuleEntityId": 292,
+                  "capsuleSeen": true,
+                  "settled": false,
+                  "settledOutcome": null,
+                  "terminalReceipt": null
+                }
+              },
+              "capsule": {
+                "id": 292,
+                "role": "cargo_capsule",
+                "hull": 160
+              }
+            }
+          },
+          {
+            "missionId": "m_3",
+            "verdict": {
+              "status": "ready",
+              "reason": "live_capsule",
+              "simElapsedS": 4.017,
+              "launchLagS": 0.017
+            },
+            "snapshot": {
+              "missionId": "m_3",
+              "startedAtSimT": 8.366666666666662,
+              "simTime": 12.383333333333528,
+              "tick": 743,
+              "timeScale": 1,
+              "mode": "flight",
+              "schedule": {
+                "scheduleId": "pq019c:m_3",
+                "status": "launched",
+                "launchAtSimT": 12.366667,
+                "launchedAtTick": 743,
+                "capsuleEntityId": 292,
+                "receipt": {
+                  "accepted": true,
+                  "receiptId": "pq019a:schedule:pq019c:m_3:12.366667",
+                  "scheduleId": "pq019c:m_3",
+                  "launchAtSimT": 12.366667,
+                  "source": "heistFacilities"
+                }
+              },
+              "mission": {
+                "found": true,
+                "status": "active",
+                "heist": {
+                  "scheduleId": "pq019c:m_3",
+                  "scheduleRequested": true,
+                  "launchAtSimT": 12.366667,
+                  "launchTick": 743,
+                  "capsuleEntityId": 292,
+                  "capsuleSeen": true,
+                  "settled": false,
+                  "settledOutcome": null,
+                  "terminalReceipt": null
+                }
+              },
+              "capsule": {
+                "id": 292,
+                "role": "cargo_capsule",
+                "hull": 160
+              }
+            }
+          }
+        ]
+      },
+      "declaredRoute": "recovery-enabled authored fixture -> destroyed attempt 0 -> DOM-accepted half-stake attempt 1 -> fence",
+      "firstTheft": {
+        "simTime": 4.699999999999989,
+        "capsuleId": 292,
+        "possessed": true,
+        "lawIncidentReceiptId": "law:incident:1bv48r4",
+        "responderAvailability": "available",
+        "leaseCount": 1,
+        "heat": 0.22,
+        "patrolJobs": [
+          {
+            "jobId": "job:wr_convoy_f26d2d46",
+            "entityId": null,
+            "phase": "commission",
+            "controlled": false,
+            "controlClaimId": null
+          },
+          {
+            "jobId": "job:wr_convoy_b69ec3d1",
+            "entityId": null,
+            "phase": "commission",
+            "controlled": false,
+            "controlClaimId": null
+          },
+          {
+            "jobId": "job:wr_convoy_8d55953c",
+            "entityId": null,
+            "phase": "commission",
+            "controlled": false,
+            "controlClaimId": null
+          },
+          {
+            "jobId": "job:wr_convoy_574eb62d",
+            "entityId": 99,
+            "phase": "transit",
+            "controlled": false,
+            "controlClaimId": null
+          },
+          {
+            "jobId": "job:wr_convoy_419979ab",
+            "entityId": 100,
+            "phase": "transit",
+            "controlled": false,
+            "controlClaimId": null
+          },
+          {
+            "jobId": "job:wr_convoy_d9a6f2bc",
+            "entityId": 103,
+            "phase": "transit",
+            "controlled": false,
+            "controlClaimId": null
+          },
+          {
+            "jobId": "job:h1_pq019_patrol",
+            "entityId": 106,
+            "phase": "commission",
+            "controlled": true,
+            "controlClaimId": "pq019c:m_2:job:h1_pq019_patrol"
+          }
+        ],
+        "fixturePatrol": {
+          "id": 106,
+          "alive": true,
+          "hull": 1000000,
+          "shield": 999944.8000000003,
+          "jobId": "job:h1_pq019_patrol"
+        }
+      },
+      "firstTerminal": {
+        "missionId": "m_2",
+        "outcome": "payload_destroyed",
+        "status": "committed",
+        "winner": null,
+        "terminalReceiptCount": 1,
+        "missionSettlementCount": 1,
+        "economyRewardCount": 0,
+        "factionOutcomeCount": 1,
+        "heatApplicationCount": 1,
+        "lawIncidentCount": 1,
+        "attempt": 0,
+        "recoveryAllowed": true
+      },
+      "damage": {
+        "ok": true,
+        "targetId": 292,
+        "totalApplied": -9270,
+        "hullBefore": 160,
+        "hullAfter": 0,
+        "aliveAfterRoute": false,
+        "source": "production combat kernel"
+      },
+      "recoveryOffer": {
+        "id": "heist_tethys_capsule_run_recovery_1_m_2",
+        "title": "Capsule Run — Second Pass",
+        "heistAttempt": 1,
+        "rewardCr": 900,
+        "recoveryFromMissionId": "m_2"
+      },
+      "retryAccepted": {
+        "acceptedThroughDom": true,
+        "stationNavSelector": "[data-nav=\"contracts\"]",
+        "acceptSelector": "[data-accept=\"heist_tethys_capsule_run_recovery_1_m_2\"]",
+        "focusOnCommit": true,
+        "boardTextIncludesAuthoredTitle": true,
+        "mission": {
+          "id": "m_3",
+          "sourceOfferId": "heist_tethys_capsule_run_recovery_1_m_2",
+          "title": "Capsule Run — Second Pass",
+          "attempt": 1,
+          "recoveryAllowed": false,
+          "trackedMissionId": "m_3"
+        }
+      },
+      "retryTheft": {
+        "simTime": 12.483333333333533,
+        "capsuleId": 292,
+        "possessed": true,
+        "lawIncidentReceiptId": "law:incident:jlyirn",
+        "responderAvailability": "available",
+        "leaseCount": 1,
+        "heat": 0.494,
+        "patrolJobs": [
+          {
+            "jobId": "job:wr_convoy_f26d2d46",
+            "entityId": null,
+            "phase": "commission",
+            "controlled": false,
+            "controlClaimId": null
+          },
+          {
+            "jobId": "job:wr_convoy_b69ec3d1",
+            "entityId": null,
+            "phase": "commission",
+            "controlled": false,
+            "controlClaimId": null
+          },
+          {
+            "jobId": "job:wr_convoy_8d55953c",
+            "entityId": null,
+            "phase": "commission",
+            "controlled": false,
+            "controlClaimId": null
+          },
+          {
+            "jobId": "job:wr_convoy_574eb62d",
+            "entityId": 99,
+            "phase": "hold",
+            "controlled": false,
+            "controlClaimId": null
+          },
+          {
+            "jobId": "job:wr_convoy_419979ab",
+            "entityId": 100,
+            "phase": "hold",
+            "controlled": false,
+            "controlClaimId": null
+          },
+          {
+            "jobId": "job:wr_convoy_d9a6f2bc",
+            "entityId": 103,
+            "phase": "hold",
+            "controlled": false,
+            "controlClaimId": null
+          },
+          {
+            "jobId": "job:h1_pq019_patrol",
+            "entityId": 106,
+            "phase": "commission",
+            "controlled": true,
+            "controlClaimId": "pq019c:m_3:job:h1_pq019_patrol"
+          }
+        ],
+        "fixturePatrol": {
+          "id": 106,
+          "alive": true,
+          "hull": 1000000,
+          "shield": 999806.800000001,
+          "jobId": "job:h1_pq019_patrol"
+        }
+      },
+      "accessibility": {
+        "reducedMotion": true,
+        "floorCarriesMeaningInText": true
+      },
+      "pageIssues": [],
+      "screenshots": [
+        {
+          "path": ".devshots/pq019-surface-heist/recovery-offer-reduced-motion.png",
+          "bytes": 597328,
+          "sha256": "d4b1fc3aac5419792e98e8f081b7118d46b72fd121a62ed3bfe2e70ad0f561c0"
+        },
+        {
+          "path": ".devshots/pq019-surface-heist/recovery-success-reduced-motion.png",
+          "bytes": 699317,
+          "sha256": "1418c20b4d5c0097883b931e9b875921575111c0ace29a1db0ae130edfd2c193"
+        }
+      ]
+    }
+  },
+  "screenshots": [
+    {
+      "path": ".devshots/pq019-surface-heist/fenced-composed-wanted.png",
+      "bytes": 657546,
+      "sha256": "7aa3d3669f1c417e53392564b13751f96c3770acd36c7068b15faa8bdb5eb7a9"
+    },
+    {
+      "path": ".devshots/pq019-surface-heist/fenced-success.png",
+      "bytes": 684689,
+      "sha256": "1943d5c1662d18abd93a193dfd2bd9323d461bf9e24d6ab8265a38bed2df6e5e"
+    },
+    {
+      "path": ".devshots/pq019-surface-heist/confiscation.png",
+      "bytes": 668741,
+      "sha256": "2400795d1e9a1b45309a5f9f90948798a2c4252b9f65d8308c18f03e79936d3c"
+    },
+    {
+      "path": ".devshots/pq019-surface-heist/destruction.png",
+      "bytes": 673461,
+      "sha256": "c7e0311fed35d35a95cee8ded550dfd2464f4223a036361f21ff52ca0a653aed"
+    },
+    {
+      "path": ".devshots/pq019-surface-heist/recovery-offer-reduced-motion.png",
+      "bytes": 597328,
+      "sha256": "d4b1fc3aac5419792e98e8f081b7118d46b72fd121a62ed3bfe2e70ad0f561c0"
+    },
+    {
+      "path": ".devshots/pq019-surface-heist/recovery-success-reduced-motion.png",
+      "bytes": 699317,
+      "sha256": "1418c20b4d5c0097883b931e9b875921575111c0ace29a1db0ae130edfd2c193"
+    }
+  ]
+}

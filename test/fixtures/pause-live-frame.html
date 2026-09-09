@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SpaceFace — pause live-frame fixture</title>
+  <!-- Same styles as the public game route (index.html). Browser and Electron share this CSS. -->
+  <link rel="stylesheet" href="/styles/ui.css" />
+  <link rel="stylesheet" href="/styles/accessibility.css" />
+  <style>
+    /* Fixture-only: guarantee canvas has a readable solid fill under dim (not WebGL). */
+    html, body { margin: 0; width: 100%; height: 100%; background: #000; overflow: hidden; }
+    #gl-canvas { background: transparent; }
+  </style>
+</head>
+<body>
+  <!-- Mirrors index.html z-layer shell: canvas under #ui-root chrome. -->
+  <canvas id="gl-canvas" width="1280" height="720"></canvas>
+  <div id="ui-root">
+    <div id="hud"><div class="fixture-hud">FLIGHT HUD</div></div>
+    <div id="modal-backdrop" hidden></div>
+    <div id="screens" style="display: none;"></div>
+    <div id="toasts"></div>
+    <div id="alerts"></div>
+  </div>
+  <script>
+    // Paint a high-contrast world sample the check can sample at screen corners.
+    (function paintWorld() {
+      const c = document.getElementById('gl-canvas');
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#1a6b4a';
+      ctx.fillRect(0, 0, c.width, c.height);
+      ctx.fillStyle = '#39d0ff';
+      ctx.fillRect(40, 40, 220, 140);
+      ctx.fillStyle = '#ffb35c';
+      ctx.fillRect(c.width - 280, c.height - 200, 200, 120);
+      window.__SF_FIXTURE_WORLD__ = true;
+    })();
+
+    /**
+     * Mirror screenManager.syncVisibility for a single pause push:
+     * - show #screens, unhide #modal-backdrop, body.ui-modal-open
+     * - mount .screen[data-screen=pause] with sf-screen--visible
+     */
+    window.__SF_openPauseFixture = function openPauseFixture() {
+      const screens = document.getElementById('screens');
+      const backdrop = document.getElementById('modal-backdrop');
+      screens.innerHTML = '';
+      const el = document.createElement('div');
+      el.className = 'screen panel sf-menu sf-menu-narrow sf-screen--visible';
+      el.dataset.screen = 'pause';
+      el.style.display = 'flex';
+      el.innerHTML = [
+        '<h1>PAUSED</h1>',
+        '<div class="sf-col">',
+        '  <button type="button" class="sf-btn" id="fixture-resume">Resume</button>',
+        '  <button type="button" class="sf-btn">Settings</button>',
+        '</div>',
+      ].join('');
+      screens.appendChild(el);
+      screens.style.display = 'flex';
+      backdrop.hidden = false;
+      backdrop.style.pointerEvents = 'auto';
+      document.body.classList.add('ui-modal-open');
+      return el;
+    };
+
+    window.__SF_closePauseFixture = function closePauseFixture() {
+      const screens = document.getElementById('screens');
+      const backdrop = document.getElementById('modal-backdrop');
+      screens.innerHTML = '';
+      screens.style.display = 'none';
+      backdrop.hidden = true;
+      backdrop.style.pointerEvents = 'none';
+      document.body.classList.remove('ui-modal-open');
+    };
+
+    window.__SF_fixtureReady = true;
+  </script>
+</body>
+</html>

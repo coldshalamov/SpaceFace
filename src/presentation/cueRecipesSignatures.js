@@ -1,0 +1,338 @@
+// Additive presentation-audio signature recipes. These are pure data/helpers for
+// backend checks and future adapters; shipped SG-08 recipes stay untouched.
+
+export const SIGNATURE_RECIPE_VERSION = 1;
+
+export const SIGNATURE_AUDIO_CUE_BY_ID = Object.freeze({
+  'tether.strain': 'presentation.tether.strain',
+  'tether.cut_whipcrack': 'presentation.tether.cut_whipcrack',
+  'mass.groan': 'presentation.mass.groan',
+  'mining.seam_chime': 'presentation.mining.seam_chime',
+  'mining.vent_bonus': 'presentation.mining.vent_bonus',
+  'sensor.scan': 'presentation.sensor.scan',
+  'sensor.lock': 'presentation.sensor.lock',
+  'customs.scan': 'presentation.customs.scan',
+});
+
+export const TETHER_STRAIN_BUCKETS = Object.freeze([
+  Object.freeze({
+    id: 'low',
+    minDerivativePerSecond: -Infinity,
+    maxDerivativePerSecond: 0.18,
+    playbackRate: 0.92,
+    gain: 0.18,
+    importance: 0.42,
+  }),
+  Object.freeze({
+    id: 'medium',
+    minDerivativePerSecond: 0.18,
+    maxDerivativePerSecond: 0.45,
+    playbackRate: 1.08,
+    gain: 0.31,
+    importance: 0.56,
+  }),
+  Object.freeze({
+    id: 'high',
+    minDerivativePerSecond: 0.45,
+    maxDerivativePerSecond: Infinity,
+    playbackRate: 1.26,
+    gain: 0.46,
+    importance: 0.68,
+  }),
+]);
+
+export const SIGNATURE_RECIPES = Object.freeze({
+  'tether.strain': freezeSignature({
+    id: 'tether.strain',
+    audioId: SIGNATURE_AUDIO_CUE_BY_ID['tether.strain'],
+    material: 'massline',
+    mode: 'continuous',
+    sourceEvent: 'tether:strain',
+    importance: 0.64,
+    playerRelevance: 0.88,
+    budgets: { voices: 1, draw: 0, voice: 0, spawn: 0 },
+    tags: ['tether', 'strain', 'signature'],
+    buckets: TETHER_STRAIN_BUCKETS,
+    layersWith: ['tether.near_break'],
+  }),
+  'tether.cut_whipcrack': freezeSignature({
+    id: 'tether.cut_whipcrack',
+    audioId: SIGNATURE_AUDIO_CUE_BY_ID['tether.cut_whipcrack'],
+    material: 'massline',
+    mode: 'one-shot',
+    sourceEvent: 'tether:released',
+    sourceEvents: ['tether:released', 'tether:broke'],
+    extends: 'tether.break',
+    importance: 0.76,
+    playerRelevance: 0.9,
+    budgets: { voices: 1, draw: 0, voice: 0, spawn: 0 },
+    tags: ['tether', 'cut', 'signature', 'warning'],
+    tensionThreshold: 0.72,
+    reuses: ['sfx.tetherSnap'],
+    tones: [
+      { offsetMs: 0, playbackRate: 1.22, gain: 0.34, shape: 'click' },
+      { offsetMs: 18, playbackRate: 1.44, gain: 0.48, shape: 'noise' },
+      { offsetMs: 78, playbackRate: 0.86, gain: 0.18, shape: 'twang' },
+    ],
+    layersWith: ['tether.break'],
+  }),
+  'mass.groan': freezeSignature({
+    id: 'mass.groan',
+    audioId: SIGNATURE_AUDIO_CUE_BY_ID['mass.groan'],
+    material: 'massline',
+    mode: 'continuous',
+    sourceEvent: 'tether:strain',
+    importance: 0.58,
+    playerRelevance: 0.82,
+    budgets: { voices: 1, draw: 0, voice: 0, spawn: 0 },
+    tags: ['mass', 'groan', 'tether', 'signature'],
+    gainCurve: { minMass: 250, fullMass: 2000, minGain: 0.08, maxGain: 0.44 },
+    releaseFadeMs: 260,
+    tones: [
+      { offsetMs: 0, playbackRate: 0.54, gain: 0.16, shape: 'sub' },
+      { offsetMs: 180, playbackRate: 0.42, gain: 0.22, shape: 'groan' },
+    ],
+    layersWith: ['tether.strain'],
+  }),
+  'mining.seam_chime': freezeSignature({
+    id: 'mining.seam_chime',
+    audioId: SIGNATURE_AUDIO_CUE_BY_ID['mining.seam_chime'],
+    material: 'mining',
+    mode: 'one-shot',
+    sourceEvent: 'mining:seamHit',
+    importance: 0.54,
+    playerRelevance: 0.74,
+    budgets: { voices: 1, draw: 0, voice: 0, spawn: 0 },
+    tags: ['mining', 'seam', 'signature', 'reward'],
+    richnessThreshold: 0.45,
+    baselineYieldMult: 0.35,
+    throttleMs: 500,
+    reuses: ['sfx_mining_impact', 'sfx_core_bell'],
+    tones: [
+      { offsetMs: 0, playbackRate: 1.04, gain: 0.16, shape: 'impact' },
+      { offsetMs: 72, playbackRate: 1.22, gain: 0.2, shape: 'bell' },
+      { offsetMs: 144, playbackRate: 1.44, gain: 0.16, shape: 'bell' },
+    ],
+  }),
+  'mining.vent_bonus': freezeSignature({
+    id: 'mining.vent_bonus',
+    audioId: SIGNATURE_AUDIO_CUE_BY_ID['mining.vent_bonus'],
+    material: 'mining',
+    mode: 'one-shot',
+    sourceEvent: 'weapons:vent',
+    requiresPhase: 'end',
+    importance: 0.62,
+    playerRelevance: 0.78,
+    budgets: { voices: 1, draw: 0, voice: 0, spawn: 0 },
+    tags: ['mining', 'vent', 'signature', 'reward'],
+    reuses: ['sfx_vent_chime'],
+    tones: [
+      { offsetMs: 0, playbackRate: 1.0, gain: 0.28, shape: 'chime' },
+      { offsetMs: 90, playbackRate: 1.25, gain: 0.24, shape: 'chime' },
+      { offsetMs: 180, playbackRate: 1.5, gain: 0.18, shape: 'chime' },
+    ],
+  }),
+  'sensor.scan': freezeSignature({
+    id: 'sensor.scan',
+    audioId: SIGNATURE_AUDIO_CUE_BY_ID['sensor.scan'],
+    material: 'sensor',
+    mode: 'one-shot',
+    sourceEvent: 'scan:pulse',
+    importance: 0.5,
+    playerRelevance: 0.62,
+    budgets: { voices: 1, draw: 0, voice: 0, spawn: 0 },
+    tags: ['sensor', 'scan', 'signature'],
+    tones: [
+      { offsetMs: 0, playbackRate: 0.86, gain: 0.18 },
+      { offsetMs: 120, playbackRate: 1.02, gain: 0.14 },
+    ],
+  }),
+  'sensor.lock': freezeSignature({
+    id: 'sensor.lock',
+    audioId: SIGNATURE_AUDIO_CUE_BY_ID['sensor.lock'],
+    material: 'sensor',
+    mode: 'one-shot',
+    sourceEvent: 'scan:pulse',
+    importance: 0.82,
+    playerRelevance: 0.95,
+    budgets: { voices: 1, draw: 0, voice: 0, spawn: 0 },
+    tags: ['sensor', 'lock', 'signature', 'warning'],
+    tones: [
+      { offsetMs: 0, playbackRate: 1.08, gain: 0.28 },
+      { offsetMs: 90, playbackRate: 1.38, gain: 0.36 },
+    ],
+  }),
+  'customs.scan': freezeSignature({
+    id: 'customs.scan',
+    audioId: SIGNATURE_AUDIO_CUE_BY_ID['customs.scan'],
+    material: 'customs',
+    mode: 'one-shot',
+    sourceEvent: 'player:scannedByPatrol',
+    extends: 'sensor.scan',
+    importance: 0.7,
+    playerRelevance: 0.92,
+    budgets: { voices: 1, draw: 0, voice: 0, spawn: 0 },
+    tags: ['sensor', 'customs', 'signature', 'warning'],
+    tones: [
+      { offsetMs: 0, playbackRate: 0.74, gain: 0.22 },
+      { offsetMs: 140, playbackRate: 0.82, gain: 0.28 },
+      { offsetMs: 420, playbackRate: 0.78, gain: 0.18 },
+    ],
+  }),
+});
+
+export function getSignatureRecipe(id) {
+  return SIGNATURE_RECIPES[id] || null;
+}
+
+export function tetherStrainDerivative(previousStrain, currentStrain, dtSeconds) {
+  const dt = Math.max(1 / 60, finite(dtSeconds, 1 / 60));
+  return (clampStrain(currentStrain) - clampStrain(previousStrain)) / dt;
+}
+
+export function bucketTetherStrainDerivative(derivativePerSecond) {
+  const derivative = finite(derivativePerSecond, 0);
+  for (const bucket of TETHER_STRAIN_BUCKETS) {
+    if (derivative >= bucket.minDerivativePerSecond && derivative < bucket.maxDerivativePerSecond) {
+      return bucket;
+    }
+  }
+  return TETHER_STRAIN_BUCKETS[TETHER_STRAIN_BUCKETS.length - 1];
+}
+
+export function buildTetherStrainCue(sample = {}) {
+  if (sample.active === false) return null;
+  const currentStrain = clampStrain(sample.currentStrain ?? sample.strain);
+  const previousStrain = clampStrain(sample.previousStrain ?? currentStrain);
+  const derivative = Number.isFinite(sample.derivativePerSecond)
+    ? finite(sample.derivativePerSecond, 0)
+    : tetherStrainDerivative(previousStrain, currentStrain, sample.dtSeconds);
+  const bucket = bucketTetherStrainDerivative(derivative);
+  const recipe = SIGNATURE_RECIPES['tether.strain'];
+  return Object.freeze({
+    id: recipe.id,
+    audioId: recipe.audioId,
+    sourceEvent: recipe.sourceEvent,
+    material: recipe.material,
+    mode: recipe.mode,
+    bucket: bucket.id,
+    importance: Math.max(recipe.importance, bucket.importance),
+    playerRelevance: recipe.playerRelevance,
+    gain: bucket.gain,
+    playbackRate: bucket.playbackRate,
+    derivativePerSecond: round4(derivative),
+    strain: round4(currentStrain),
+    previousStrain: round4(previousStrain),
+    targetId: sample.targetId ?? null,
+    sourceId: sample.sourceId ?? null,
+    simTimeMs: Math.max(0, finite(sample.simTimeMs, 0)),
+    tags: recipe.tags,
+    layersWith: recipe.layersWith,
+  });
+}
+
+export function validateSignatureRecipes(recipes = SIGNATURE_RECIPES) {
+  const issues = [];
+  for (const [id, recipe] of Object.entries(recipes || {})) {
+    const path = `$.${id}`;
+    if (!recipe || typeof recipe !== 'object' || Array.isArray(recipe)) {
+      issues.push(`${path} must be an object`);
+      continue;
+    }
+    if (recipe.version !== SIGNATURE_RECIPE_VERSION) issues.push(`${path}.version must be ${SIGNATURE_RECIPE_VERSION}`);
+    if (recipe.id !== id) issues.push(`${path}.id must match its key`);
+    if (!SIGNATURE_AUDIO_CUE_BY_ID[id] || recipe.audioId !== SIGNATURE_AUDIO_CUE_BY_ID[id]) {
+      issues.push(`${path}.audioId must match SIGNATURE_AUDIO_CUE_BY_ID`);
+    }
+    if (!Number.isFinite(recipe.importance) || recipe.importance < 0 || recipe.importance > 1) {
+      issues.push(`${path}.importance must be in [0,1]`);
+    }
+    if (id === 'tether.strain' && (!Array.isArray(recipe.buckets) || recipe.buckets.length !== 3)) {
+      issues.push(`${path}.buckets must contain exactly three derivative steps`);
+    }
+    if (
+      (
+        id.startsWith('sensor.')
+        || id === 'customs.scan'
+        || id === 'tether.cut_whipcrack'
+        || id === 'mass.groan'
+        || id.startsWith('mining.')
+      )
+      && (!Array.isArray(recipe.tones) || recipe.tones.length < 2)
+    ) {
+      issues.push(`${path}.tones must contain the scan/lock tone steps`);
+    }
+    if (id === 'tether.cut_whipcrack') {
+      if (!Array.isArray(recipe.sourceEvents) || !recipe.sourceEvents.includes('tether:released') || !recipe.sourceEvents.includes('tether:broke')) {
+        issues.push(`${path}.sourceEvents must cover tether release and break events`);
+      }
+      if (!Number.isFinite(recipe.tensionThreshold) || recipe.tensionThreshold <= 0 || recipe.tensionThreshold >= 1) {
+        issues.push(`${path}.tensionThreshold must gate only taut cuts`);
+      }
+      if (!Array.isArray(recipe.reuses) || !recipe.reuses.includes('sfx.tetherSnap')) {
+        issues.push(`${path}.reuses must include the shipped tether snap SFX`);
+      }
+    }
+    if (id === 'mass.groan') {
+      const curve = recipe.gainCurve || {};
+      if (!Number.isFinite(curve.minMass) || !Number.isFinite(curve.fullMass) || curve.fullMass <= curve.minMass) {
+        issues.push(`${path}.gainCurve must define an increasing mass range`);
+      }
+      if (!Number.isFinite(curve.minGain) || !Number.isFinite(curve.maxGain) || curve.maxGain <= curve.minGain) {
+        issues.push(`${path}.gainCurve must define an increasing gain range`);
+      }
+      if (!Number.isFinite(recipe.releaseFadeMs) || recipe.releaseFadeMs <= 0) {
+        issues.push(`${path}.releaseFadeMs must define the release fade`);
+      }
+    }
+    if (id === 'mining.seam_chime') {
+      if (!Number.isFinite(recipe.richnessThreshold) || recipe.richnessThreshold <= 0 || recipe.richnessThreshold >= 1) {
+        issues.push(`${path}.richnessThreshold must gate rich seams`);
+      }
+      if (!Number.isFinite(recipe.baselineYieldMult) || recipe.baselineYieldMult <= 0 || recipe.baselineYieldMult >= 1) {
+        issues.push(`${path}.baselineYieldMult must match the dull-rock baseline`);
+      }
+      if (!Number.isFinite(recipe.throttleMs) || recipe.throttleMs < 500) {
+        issues.push(`${path}.throttleMs must preserve the seam-hit throttle`);
+      }
+      if (!Array.isArray(recipe.reuses) || !recipe.reuses.includes('sfx_mining_impact') || !recipe.reuses.includes('sfx_core_bell')) {
+        issues.push(`${path}.reuses must include shipped mining impact and core bell SFX`);
+      }
+    }
+    if (id === 'mining.vent_bonus') {
+      if (recipe.requiresPhase !== 'end') issues.push(`${path}.requiresPhase must be the clean vent end phase`);
+      if (!Array.isArray(recipe.reuses) || !recipe.reuses.includes('sfx_vent_chime')) {
+        issues.push(`${path}.reuses must include the shipped vent chime SFX`);
+      }
+    }
+  }
+  return { ok: issues.length === 0, issues };
+}
+
+function freezeSignature(value) {
+  return Object.freeze({
+    version: SIGNATURE_RECIPE_VERSION,
+    ...value,
+    budgets: Object.freeze({ ...(value.budgets || {}) }),
+    tags: Object.freeze([...(value.tags || [])]),
+    buckets: Object.freeze([...(value.buckets || [])]),
+    tones: Object.freeze([...(value.tones || [])].map((tone) => Object.freeze({ ...tone }))),
+    layersWith: Object.freeze([...(value.layersWith || [])]),
+    sourceEvents: Object.freeze([...(value.sourceEvents || [])]),
+    reuses: Object.freeze([...(value.reuses || [])]),
+    gainCurve: Object.freeze({ ...(value.gainCurve || {}) }),
+  });
+}
+
+function clampStrain(value) {
+  const n = finite(value, 0);
+  return n < 0 ? 0 : n > 1.25 ? 1.25 : n;
+}
+
+function finite(value, fallback = 0) {
+  return Number.isFinite(value) ? value : fallback;
+}
+
+function round4(value) {
+  return Math.round(finite(value, 0) * 10000) / 10000;
+}

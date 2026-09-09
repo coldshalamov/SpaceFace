@@ -1,0 +1,58 @@
+.devshots/
+node_modules/
+build/
+dist/
+/nul
+.campaign/
+
+# Root-local agent scratch, transcripts, diagnostics, and temporary comparison trees.
+# Durable conclusions belong in maintained docs/evidence records; prior tracked copies remain in Git history.
+/.tmp*
+/.dev/
+/.grok-scratch/
+/terminals/
+/agent-tools/
+/advisor-artifacts/
+/scratch/
+/check-assets-live.log
+/tools/agy-*
+/tools/antigravity-state*.jpg
+
+# Local agent/tool scratch artifacts (never production source)
+/-
+/.zcode/
+/scripts/_*.mjs
+/scripts/lib/_*.mjs
+/scripts/check-test-temp.mjs
+*.bak
+*.locked
+*.prev
+*.repair
+*.pre_repair_bak
+*.rewrite
+
+# Reproducible Blender/export intermediates and pre-promotion backups
+*.blend1
+**/*_export_tmp.glb
+tools/art/blender/batch_*.log
+tools/blender/_patch_*.py
+**/__pycache__/
+/assets/ships/m4_helios_hub/evidence/pre_promote_backups/
+
+# Local worktree recovery / triage (do not commit bulky exports)
+_recovery/
+
+# Cursor editor hook state — per-machine mutable bookkeeping (session ids, timestamps).
+.cursor/
+
+# Fun-loop frame strips are capture evidence (hundreds of MB of PNG); they live in .devshots/fun-loop/ like every other capture.
+design/program/roadmap/receipts/fun-loop/strips/
+
+# Agent iteration evidence: capture media are disposable (owner ruling 2026-09-08);
+# verdict reports (.md/.json) in evidence/ dirs stay trackable.
+assets/**/evidence/*.png
+assets/**/evidence/*.jpg
+assets/**/evidence/*.jpeg
+assets/**/evidence/*.webm
+assets/**/evidence/*.mp4
+assets/**/evidence/*.gif

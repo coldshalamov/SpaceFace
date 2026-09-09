@@ -1,0 +1,50 @@
+{
+  "schema": "spaceface.pq024-committed-transition-evidence.v1",
+  "dispatchUnits": [
+    "PQ-024.committed-transition-h1",
+    "PQ-024.committed-transition-review"
+  ],
+  "disposition": "PASS",
+  "fixedSeed": 24024,
+  "candidateHead": "d02f0cf50f12e123783b67e0419186e9cd4ed30b",
+  "browser": {
+    "runtime": "browser-chromium-headed",
+    "claimId": "33664-f9675c3395d754504988f263",
+    "candidateDigest": "965e0b46cee6bc1042cd663627d0664a7ae486f8d5ff1de219b496c1556a8f4c",
+    "routeDigest": "833fc2572e93d42e129d2b87dc068f4edd71e1c4119e54efdef063f61d18bc7c",
+    "regressionDigest": "5649f6ffe562c0badf66b03b8af83c06c36cece622f22babece3fa4c4c5203dd",
+    "manifestDigest": "3ceca7a550e563a01b9cbdb7def435285dcbc6eec6b1efdc3360173270dcf8dd",
+    "routeReceiptSha256": "c9e16b89482b8140ce04a37d57aafd3ce3d440bf1f089bc9cded4b757205da5e",
+    "screenshotSha256": "0e04354e48d6bc0be6155433d4429bb1c83d1a3e67df0d0ce0f92ea7b34ce731",
+    "pageIssueCount": 0,
+    "gpu": "ANGLE Intel Graphics Direct3D11"
+  },
+  "electron": {
+    "runtime": "electron",
+    "routeReceiptSha256": "0f1dcdc31b1198414d9ba7704752c35206dfc87d23ed6c3f3ec7f8e3e9ee1995",
+    "screenshotSha256": "4a9cc74198f872dd1c08ed6a5af107f34d23a0b8439355bdde20d8262430a8ad",
+    "semanticProjectionEqual": true,
+    "pageIssueCount": 0,
+    "gpu": "ANGLE Intel Graphics Direct3D11",
+    "ownedRuntimeClosed": true
+  },
+  "review": {
+    "mode": "solo-integrator-causal-review",
+    "disposition": "APPROVE",
+    "coreTransitionDisposition": "KEEP",
+    "visibleContract": [
+      "ANCHORED claim chip",
+      "ASSAY 3 CELLS",
+      "Site overview and ANCHORED CLAIM inspector",
+      "durable three-cell Survey record",
+      "Awaiting first real output consequence",
+      "no placement-preview or occupied-cell contradiction"
+    ]
+  },
+  "excluded": [
+    "matched performance",
+    "relay visual promotion",
+    "physical-controller acceptance",
+    "screen-reader acceptance"
+  ]
+}

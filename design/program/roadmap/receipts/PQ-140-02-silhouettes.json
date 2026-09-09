@@ -1,0 +1,211 @@
+{
+  "schema": "spaceface.pq14002Silhouettes.v1",
+  "seed": 14002,
+  "camera": "shipping_chase",
+  "hudText": "off",
+  "shots": [
+    {
+      "id": "tether_cutter",
+      "enemyId": "tether_control_raider",
+      "silhouette": "corsair_blade",
+      "playerPlan": "keep a loaded Massline on a rock",
+      "file": "PQ-140-02-tether_cutter.png",
+      "spawnedId": 331,
+      "radius": 18,
+      "mass": 78,
+      "defId": "ship_hornet",
+      "frame": {
+        "authored": "authored",
+        "admission": "ready",
+        "radius": 18,
+        "mass": 78,
+        "defId": "ship_hornet",
+        "dx": 48,
+        "dz": 12,
+        "meshDx": 48,
+        "meshDz": 12,
+        "nearby": [
+          {
+            "id": 1,
+            "type": "ship",
+            "defId": "ship_kestrel",
+            "loot": null,
+            "dx": 0,
+            "dz": 0,
+            "radius": 14
+          },
+          {
+            "id": 81,
+            "type": "fx",
+            "dx": 120,
+            "dz": 180,
+            "radius": 9
+          },
+          {
+            "id": 331,
+            "type": "ship",
+            "defId": "ship_hornet",
+            "loot": "tether_control_raider",
+            "dx": 48,
+            "dz": 12,
+            "radius": 18
+          }
+        ]
+      }
+    },
+    {
+      "id": "field_disruptor",
+      "enemyId": "quiet_ghost",
+      "silhouette": "sniper_lance",
+      "playerPlan": "park a well or cone and fight inside it",
+      "file": "PQ-140-02-field_disruptor.png",
+      "spawnedId": 325,
+      "radius": 13,
+      "mass": 22,
+      "defId": "ship_wasp",
+      "frame": {
+        "authored": "authored",
+        "admission": "ready",
+        "radius": 13,
+        "mass": 22,
+        "defId": "ship_wasp",
+        "dx": 48,
+        "dz": 12,
+        "meshDx": 48,
+        "meshDz": 12,
+        "nearby": [
+          {
+            "id": 1,
+            "type": "ship",
+            "defId": "ship_kestrel",
+            "loot": null,
+            "dx": 0,
+            "dz": 0,
+            "radius": 14
+          },
+          {
+            "id": 81,
+            "type": "fx",
+            "dx": 120,
+            "dz": 180,
+            "radius": 9
+          },
+          {
+            "id": 325,
+            "type": "ship",
+            "defId": "ship_wasp",
+            "loot": "quiet_ghost",
+            "dx": 48,
+            "dz": 12,
+            "radius": 13
+          }
+        ]
+      }
+    },
+    {
+      "id": "anchor",
+      "enemyId": "field_anchor_controller",
+      "silhouette": "bruiser_armor",
+      "playerPlan": "kite freely around the room",
+      "file": "PQ-140-02-anchor.png",
+      "spawnedId": 331,
+      "radius": 32,
+      "mass": 420,
+      "defId": "ship_bastion",
+      "frame": {
+        "authored": "authored",
+        "admission": "ready",
+        "radius": 32,
+        "mass": 420,
+        "defId": "ship_bastion",
+        "dx": 70,
+        "dz": 18,
+        "meshDx": 47,
+        "meshDz": 12,
+        "nearby": [
+          {
+            "id": 1,
+            "type": "ship",
+            "defId": "ship_kestrel",
+            "loot": null,
+            "dx": 0,
+            "dz": 0,
+            "radius": 14
+          },
+          {
+            "id": 81,
+            "type": "fx",
+            "dx": 118,
+            "dz": 180,
+            "radius": 9
+          },
+          {
+            "id": 331,
+            "type": "ship",
+            "defId": "ship_bastion",
+            "loot": "field_anchor_controller",
+            "dx": 70,
+            "dz": 18,
+            "radius": 32
+          }
+        ]
+      }
+    },
+    {
+      "id": "cargo_protector",
+      "enemyId": "warden_escort",
+      "silhouette": "bruiser_armor",
+      "playerPlan": "snipe the mule / pack without fighting the screen",
+      "file": "PQ-140-02-cargo_protector.png",
+      "spawnedId": 323,
+      "radius": 21,
+      "mass": 96,
+      "defId": "ship_bastion",
+      "frame": {
+        "authored": "authored",
+        "admission": "ready",
+        "radius": 21,
+        "mass": 96,
+        "defId": "ship_bastion",
+        "dx": 44,
+        "dz": 9,
+        "meshDx": 44,
+        "meshDz": 9,
+        "nearby": [
+          {
+            "id": 1,
+            "type": "ship",
+            "defId": "ship_kestrel",
+            "loot": null,
+            "dx": 0,
+            "dz": 0,
+            "radius": 14
+          },
+          {
+            "id": 80,
+            "type": "fx",
+            "dx": 184,
+            "dz": -78,
+            "radius": 10
+          },
+          {
+            "id": 81,
+            "type": "fx",
+            "dx": 89,
+            "dz": 172,
+            "radius": 9
+          },
+          {
+            "id": 323,
+            "type": "ship",
+            "defId": "ship_bastion",
+            "loot": "warden_escort",
+            "dx": 44,
+            "dz": 9,
+            "radius": 21
+          }
+        ]
+      }
+    }
+  ]
+}

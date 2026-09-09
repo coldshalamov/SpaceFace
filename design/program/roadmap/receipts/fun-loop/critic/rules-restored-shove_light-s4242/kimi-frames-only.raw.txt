@@ -1,0 +1,76 @@
+```json
+{
+  "answers": [
+    {
+      "q": 1,
+      "question": "Can I tell what the player did from the frames alone?",
+      "answer": "yes",
+      "frameIndex": 102,
+      "note": "Player ship visibly rotated vs earlier frames and is firing a blue beam/tracer toward the swarm by the planet; turns and fire holds read clearly on screen."
+    },
+    {
+      "q": 2,
+      "question": "Did the world answer within a third of a second (motion, light, or a visible receipt)?",
+      "answer": "yes",
+      "frameIndex": 34,
+      "note": "Fire was held at 30.83s; by this frame (31.28s) there is a pink impact burst on the planet edge and a red target flash left — a visible receipt inside one sample window."
+    },
+    {
+      "q": 3,
+      "question": "Did something the player did not directly touch change because of it?",
+      "answer": "yes",
+      "frameIndex": 184,
+      "note": "Three light ships the player is not aiming at erupt in orange explosions against the big asteroid in a chain — secondary carnage beyond the direct line of fire."
+    },
+    {
+      "q": 4,
+      "question": "Would the vision's sentence for this verb be true here? (quote the sentence)",
+      "answer": "yes",
+      "frameIndex": 184,
+      "note": "\"Slam them into asteroids.\" Frame 184 shows exactly that: shoved light ships detonating in a row against the asteroid face, kills landing on terrain."
+    },
+    {
+      "q": 5,
+      "question": "Is the ship a controllable mass (turns inside the screen, stops when braked, keeps earned speed)?",
+      "answer": "yes",
+      "frameIndex": 48,
+      "note": "After the turn-right hold the ship's heading and engine glow visibly change (frame 48 vs 61 vs 75); it turns on demand. No thrust was taped, so holding near-zero speed is correct."
+    },
+    {
+      "q": 6,
+      "question": "Are the light ships ammunition here, rather than only targets?",
+      "answer": "yes",
+      "frameIndex": 184,
+      "note": "The light ships become projectiles: they are thrown into each other and the asteroid and die as a volley of explosions, not as isolated hitpoint trades."
+    },
+    {
+      "q": 7,
+      "question": "Is anything on screen a glowing sphere standing in for a designed event?",
+      "answer": "yes",
+      "frameIndex": 130,
+      "note": "The shove receipt is a translucent red glowing bubble over the target (and a second one on the planet) — a soft glow disc substituting for a designed kinetic throw effect."
+    },
+    {
+      "q": 8,
+      "question": "Did anyone flee, choose, or arrive because of the violence?",
+      "answer": "no",
+      "frameIndex": 157,
+      "note": "After ~13s of fire and multiple kills the swarm still mills around the planet in the same positions; nobody scatters, flees, or commits. Count stays pinned at 10."
+    },
+    {
+      "q": 9,
+      "question": "Would a stranger tell a \"so then\" story about these twelve seconds?",
+      "answer": "no",
+      "frameIndex": 191,
+      "note": "The end state mirrors the start: ship parked at ~0.45 speed, swarm intact over the planet. The one burst of drama (184) reads as ambient, not authored by the player's line."
+    }
+  ],
+  "fundamental": {
+    "rule": "The shove cannon applies no visible knockback displacement: shoved light ships stay parked in their swarm slots and the game draws a red glow bubble as the receipt instead of throwing the target",
+    "file": "unknown",
+    "does": "When the player fires, the target gets a translucent red sphere flash but its position barely changes; the swarm holds formation around the planet for the entire 24s despite ~13s of held fire, so light ships never fly as thrown mass",
+    "breaksSentence": "Light ships are ammunition.",
+    "frameIndex": 130
+  }
+}
+```

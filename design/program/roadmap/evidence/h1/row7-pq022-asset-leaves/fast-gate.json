@@ -1,0 +1,17 @@
+{
+  "schema": "spaceface.validation-fast-gate.v1",
+  "generatedAt": "2026-07-29T16:36:01.060Z",
+  "routeDigest": "710ee97b6b072ea9df7588214ddfc416ae704e1899002fc41193be1d8613e5fb",
+  "regressionDigest": "4fe1256e4776ed0fe06c235922d01dd11e846759ae7487f2a1b20fc6db88907f",
+  "productionDigest": "710ee97b6b072ea9df7588214ddfc416ae704e1899002fc41193be1d8613e5fb",
+  "candidateDigest": "22100055717522d0a493ffd048d25f326636f25fce4a7855a3e2edcae639b689",
+  "buildDigest": "cdd523a24578c280983f59a98f0439201a07e1136dcf24686b379de8a74671dd",
+  "scenarioDigest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+  "inputDigest": "bcc2615baa4cdd8f45612aa482b220dee0e62825dbde7ba4d4668b6991693c3b",
+  "profileDigest": "4648d249bc847fee3eebc6392a6b05cd910508cc51b578e75f1cfe18a46cba78",
+  "manifestDigest": "3e4cc75d75322811eda2b491a21618c349dab434b2a6897dfe44c8131b7aec63",
+  "acknowledgesFailureFingerprint": null,
+  "informational_contended": true,
+  "informational_contended_note": "generatedAt is broker control metadata, not performance evidence.",
+  "noPerformanceEvidence": true
+}

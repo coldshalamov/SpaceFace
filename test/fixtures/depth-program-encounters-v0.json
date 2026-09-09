@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "order": [
+    "pirate_toll",
+    "ambush_snare",
+    "patrol_scan",
+    "bounty_hunter",
+    "claim_threat",
+    "named_hunter",
+    "convoy_departure",
+    "trader_run",
+    "patrol_beat",
+    "distress_call",
+    "salvage_signal",
+    "anomaly_whisper"
+  ],
+  "catalogHash": "2cf9c55c0abe1476c30a0df2b8c68b7474fd11f5c1cadca65b96cabe5e8492c6",
+  "shapeHashes": {
+    "pirate_toll": "1db8ce40dba16650c1e65acd69ba60f31a544cf6da1e4de29d6168de8527aa93",
+    "ambush_snare": "b120bbc9c57dbd9f16c343ec67d6fe4de6c5508a636e26b072cd07ee5c850b5b",
+    "patrol_scan": "ef2a7843a7107b08f2d0393aa7e36d94d1ae7959157ce419d5a0b5c5ffb94946",
+    "bounty_hunter": "7f2c519937d71b34b2c72e6ccc0bd500b6204345a681fc523b038077c527417d",
+    "claim_threat": "3fcef68fc368f90755588f68491e97f0ec0fa747b23a7aa62f73efefeebc7e6e",
+    "named_hunter": "8fcbc2776535cc4027f7b86243696eeea32c0fa112d177abc662a0411b5d9d1b",
+    "convoy_departure": "f8fc8e67f8a879a2707e36999837acea4b1544292a1dcca2c5114a158e4ce5f0",
+    "trader_run": "0aec136375c5888e74219572266bf1efd996f49b8b4fb254d0b2e718431c38be",
+    "patrol_beat": "87af806b94731395324d09411df534b3c57c78d6c4d661907476d60086374d4f",
+    "distress_call": "bdfe1d6276d72d9ea564039500206caf8290fb76f6fdd3eaaa5f4a0722d857ad",
+    "salvage_signal": "1e507b23ace6cf1b2f30e413a17e5b5d015fa145365bdeb09e36240ad3fcd407",
+    "anomaly_whisper": "939fb3bbd88e580aa9bf496e63a2e5122ea3441a39fb483247f14f85de332aed"
+  },
+  "scheduleMatrix": {
+    "sectors": [
+      "sector_helios_prime",
+      "sector_ceres_belt",
+      "sector_tethys_junction",
+      "sector_sker_haven",
+      "sector_veil_nebula"
+    ],
+    "seeds": [1, 7, 47, 1234],
+    "days": [0, 1, 2],
+    "hash": "332c517a9bb41dda8629aa9038a87aff4dd4dc2545d6e14d128883c81417e1d2"
+  }
+}

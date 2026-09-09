@@ -1,0 +1,69 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "spaceface://production/blind-review-payload.schema.json",
+  "title": "SpaceFace Reviewer-Writable Verdict Payload",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "packetId",
+    "candidateHash",
+    "verdict",
+    "defects",
+    "missingEvidence",
+    "requiredNextEvidence"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "packetId": { "type": "string", "minLength": 1 },
+    "candidateHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "verdict": { "enum": ["PASS", "REVISE", "REJECT"] },
+    "defects": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "severity", "class", "evidenceRefs", "requiredRepair"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "severity": { "enum": ["critical", "major", "minor"] },
+          "class": {
+            "enum": ["scope", "technical", "runtime", "temporal", "quality", "operational"]
+          },
+          "evidenceRefs": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "requiredRepair": { "type": "string", "minLength": 10 }
+        }
+      }
+    },
+    "missingEvidence": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "requiredNextEvidence": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "verdict": { "const": "PASS" } } },
+      "then": {
+        "properties": {
+          "defects": {
+            "items": { "properties": { "severity": { "const": "minor" } } }
+          },
+          "missingEvidence": { "maxItems": 0 },
+          "requiredNextEvidence": { "maxItems": 0 }
+        }
+      }
+    }
+  ]
+}

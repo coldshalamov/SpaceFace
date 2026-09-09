@@ -1,0 +1,14 @@
+{
+  "schema": "spaceface.rangeDrill.v1",
+  "id": "drill.power.skim",
+  "powerId": "skim",
+  "action": "toggleSkimCollector",
+  "railSlot": 8,
+  "volume": "sheet",
+  "title": "Skim scoop",
+  "rule": "A SHEET COLLECTS LOOSE MASS ONTO THE FLIGHT LINE",
+  "sentence": "Open a scoop sheet and harvest by grazing a planet band.",
+  "instruction": "Open the Skim Collector on the band and fly so the scoop sheet pulls debris onto your line.",
+  "seed": 14708,
+  "ticks": 90
+}

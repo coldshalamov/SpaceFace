@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>Draw-flight integration fixture</title>
+<style>
+html,body{margin:0;background:#081019;color:#daedf2;font:14px system-ui;overflow:hidden}canvas{display:block;width:100vw;height:100vh}
+#readout{position:fixed;left:20px;top:18px;pointer-events:none;line-height:1.6;background:#081019dc;padding:14px 18px;border:1px solid #476275}
+strong{font-size:24px}small{color:#90a8b5}#menu{display:none;position:fixed;right:20px;top:20px}
+</style>
+<script type="importmap">{"imports":{"three":"/vendor/three.module.js","three/addons/":"/vendor/addons/","@dimforge/rapier3d-compat":"/vendor/rapier3d-compat/rapier.mjs"}}</script>
+<canvas id="gl-canvas"></canvas><div id="readout">Booting actual flight systems…</div><button id="menu">UI input fence</button>
+<script type="module">
+import * as THREE from 'three';
+import { bootRealPath } from '/scripts/lib/bench/realPath.mjs';
+import { input } from '/src/systems/input.js';
+import { autoTargetAssist } from '/src/systems/autoTargetAssist.js';
+const canvas=document.getElementById('gl-canvas');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true});renderer.setSize(innerWidth,innerHeight);
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x081019);
+const scale=.6;
+const camera=new THREE.OrthographicCamera(-innerWidth*scale/2,innerWidth*scale/2,innerHeight*scale/2,-innerHeight*scale/2,.1,2000);
+camera.up.set(0,0,-1);camera.position.set(0,600,0);camera.lookAt(0,0,0);camera.updateMatrixWorld();
+const ray=new THREE.Raycaster(), plane=new THREE.Plane(new THREE.Vector3(0,1,0),0),hit=new THREE.Vector3(),screen=new THREE.Vector3(),globalHit={x:0,z:0};
+const helpers={
+ worldToScreen(p){screen.set(p.x,0,p.z).project(camera);return{x:(screen.x+1)*innerWidth/2,y:(1-screen.y)*innerHeight/2,onScreen:true}},
+ raycastToPlane(ndc){ray.setFromCamera(ndc,camera);const p=ray.ray.intersectPlane(plane,hit);return p?Object.assign(globalHit,{x:p.x,z:p.z}):null}
+};
+const host=await bootRealPath({seed:4242,systems:[input,autoTargetAssist,'actions','flightV3','physics'],
+ hulls:[{hullId:'ship_kestrel',isPlayer:true,pos:{x:0,z:0},rot:0,factionId:'faction_free'}]});
+// The production DOM owner receives real projection helpers; no synthetic flight command writer.
+host.runtime.getSystem('input').helpers={...host.runtime.getSystem('input').helpers,...helpers};
+const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.Float32BufferAttribute([14,0,0,-9,0,8,-4,0,0,-9,0,-8],3));geometry.setIndex([0,1,2,0,2,3]);
+const hull=new THREE.Mesh(geometry,new THREE.MeshBasicMaterial({color:0xe7eff2,side:THREE.DoubleSide}));scene.add(hull);
+const grid=new THREE.GridHelper(4000,80,0x26394b,0x142331);scene.add(grid);
+const trailGeometry=new THREE.BufferGeometry(),trail=new THREE.Line(trailGeometry,new THREE.LineBasicMaterial({color:0x599fc0}));scene.add(trail);
+const inkGeometry=new THREE.BufferGeometry(),ink=new THREE.Line(inkGeometry,new THREE.LineBasicMaterial({color:0xf0bc65}));scene.add(ink);
+// Stable bounded buffers: setFromPoints cannot grow a previously uploaded empty buffer.
+for(const line of [trail,ink]){
+ line.geometry.setAttribute('position',new THREE.BufferAttribute(new Float32Array(2000*3),3).setUsage(THREE.DynamicDrawUsage));
+ line.geometry.setDrawRange(0,0);line.frustumCulled=false;
+}
+function syncLine(geometry,points,y){
+ const attr=geometry.getAttribute('position'),count=Math.min(points.length,attr.count);
+ for(let i=0;i<count;i++)attr.setXYZ(i,points[i].x,y,points[i].z);
+ attr.needsUpdate=true;geometry.setDrawRange(0,count);
+}
+const history=[],trace=[];
+let panX=0,panZ=0,follow=true;
+function draw(){
+ const p=host.player;
+ hull.position.set(p.pos.x,1,p.pos.z);hull.rotation.y=-p.rot;
+ if(follow){camera.position.set(p.pos.x+panX,600,p.pos.z+panZ);camera.lookAt(p.pos.x+panX,0,p.pos.z+panZ);camera.updateMatrixWorld()}
+ syncLine(trailGeometry,history,.5);
+ const points=host.state.input.autoTargetPath?.points||[];
+ syncLine(inkGeometry,points,2);
+ renderer.render(scene,camera);
+ const speed=Math.hypot(p.vel.x,p.vel.z);
+ document.getElementById('readout').innerHTML=`<small>ACTUAL INPUT → FLIGHT V3 → RAPIER · COMPONENT FIXTURE</small><br><strong>${speed.toFixed(1)} WU/s</strong> &nbsp; ${host.state.input.autoFire?'G ACTIVE':'G OFF'}<br>G toggle · Move to draw · S brake · LMB fire in game<br><small>Gold: current ink. Blue: actual motion. No production art in this fixture.</small>`;
+}
+function step(n=1){for(let i=0;i<n;i++){host.step(1);const p=host.player;history.push({x:p.pos.x,z:p.pos.z});if(history.length>2000)history.shift();trace.push({tick:host.state.tick,x:p.pos.x,z:p.pos.z,speed:Math.hypot(p.vel.x,p.vel.z),heading:Math.atan2(p.vel.z,p.vel.x),draw:!!host.state.input.drawFlight,exhausted:!!host.state.input.drawFlight?.exhausted,brake:!!host.state.input.brake});}draw();return snapshot()}
+function snapshot(){return{state:host.state.mode,auto:host.state.input.autoFire,points:host.state.input.autoTargetPath?.points?.map(p=>({...p})),active:host.state.input.autoTargetPath?.active,command:host.state.input.drawFlight?{...host.state.input.drawFlight}:null,pos:{...host.player.pos},vel:{...host.player.vel},speed:Math.hypot(host.player.vel.x,host.player.vel.z),proof:host.proof(),trace:trace.slice(-600),pointerLocked:document.pointerLockElement===canvas}}
+window.drawFlightFixture={step,snapshot,pan(x,z){panX=x;panZ=z;draw()},block(on){host.state.ui.screenStack=on?['test-menu']:[];document.getElementById('menu').style.display=on?'block':'none';draw()},destroy(){host.dispose();renderer.dispose()},get host(){return host}};
+draw();window.fixtureReady=true;
+</script></html>

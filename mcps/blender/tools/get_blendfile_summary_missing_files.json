@@ -1,0 +1,9 @@
+{
+  "name": "get_blendfile_summary_missing_files",
+  "description": "\nReport external file references that are missing from disk\n(images, libraries, fonts, sounds, movie clips, caches, sequences).\n",
+  "inputSchema": {
+    "properties": {},
+    "title": "get_blendfile_summary_missing_filesArguments",
+    "type": "object"
+  }
+}

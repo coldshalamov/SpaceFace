@@ -1,0 +1,40 @@
+{
+  "schema": "spaceface.validation-broker-claim.v1",
+  "claimId": "15888-03244e7a6f27ff4bc837fdc1",
+  "manifestId": "pq022-refinery-reauthor-electron",
+  "mode": "acceptance",
+  "runtimeKind": "electron",
+  "issuedAt": "2026-09-07T13:44:28.166Z",
+  "expiresAt": "2026-09-07T14:14:28.166Z",
+  "consumed": false,
+  "receipt": {
+    "routeDigest": "51f73c8e96d2a075828450d50f5eaff488c680dfd3179cb648ecf8b83844ee0a",
+    "regressionDigest": "7d0f89ec73fa38fedd2de607bd6a8f0245ef3bda537bc85554b8c5d561470a74",
+    "candidateDigest": "b1f7d87bfc60e3614e85bb19d5ab580b02bfe36816bd070ab53eeea75ce3985f",
+    "productionDigest": "51f73c8e96d2a075828450d50f5eaff488c680dfd3179cb648ecf8b83844ee0a",
+    "acknowledgesFailureFingerprint": "3a48989299f67c2dacd07217d62b67f42afeead3798ac78b8d2bb6cd39f84288"
+  },
+  "digests": {
+    "routeDigest": "51f73c8e96d2a075828450d50f5eaff488c680dfd3179cb648ecf8b83844ee0a",
+    "regressionDigest": "7d0f89ec73fa38fedd2de607bd6a8f0245ef3bda537bc85554b8c5d561470a74",
+    "productionDigest": "51f73c8e96d2a075828450d50f5eaff488c680dfd3179cb648ecf8b83844ee0a",
+    "harnessDigest": "879c770e98b5d06c573a0a367c4262775b72801673aa27d7af64f808573dce53",
+    "scenarioDigest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "inputDigest": "ef8165803fa37f3d2c92ff72bbf74c3a9eeaafa14a85f73cba9db89f2764fc4a",
+    "profileDigest": "072927bc0e9e7479124b45825e433d4d335cb12ba61909219e77b8e7d177d9aa",
+    "manifestDigest": "dbb373345954160aa76dd352af2ab422f6736198b229e086998ea9cdac2f9c81",
+    "candidateDigest": "b1f7d87bfc60e3614e85bb19d5ab580b02bfe36816bd070ab53eeea75ce3985f",
+    "buildDigest": "cdd523a24578c280983f59a98f0439201a07e1136dcf24686b379de8a74671dd",
+    "sourceCandidateDigest": null,
+    "worktreeDigest": null,
+    "worktreeHead": null,
+    "worktreeBranch": null,
+    "worktreeChangedFileCount": null,
+    "scenarioManifestDigest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "saveDigest": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+    "inputTapeDigest": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+    "cameraManifestDigest": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+    "candidateSourceDigestMode": "all-src-js",
+    "candidateSourcePathCount": 1015
+  }
+}

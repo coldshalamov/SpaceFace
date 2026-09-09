@@ -1,0 +1,49 @@
+// Self-registering encounter. Trigger metadata is the complete planner/pacing header.
+import { deepFreeze, defineEncounter } from './catalog.js';
+
+export const encounterOrder = 50;
+export const trigger = deepFreeze({
+  "id": "claim_threat",
+  "tier": "minor",
+  "deck": "combat",
+  "weight": 1,
+  "zoneTypes": [
+    "mining_belt",
+    "derelict_field"
+  ],
+  "script": "claimThreat",
+  "pressureCost": 30,
+  "cooldownS": 600,
+  "proximity": false,
+  "gates": {
+    "claimsOnly": true,
+    "externalOnly": true
+  }
+});
+
+export default defineEncounter(trigger, {
+  shape: {
+    situation: 'claim',
+    place: trigger.zoneTypes,
+    twist: 'none',
+    actor: 'faction_reach',
+  },
+  "factionId": "faction_reach",
+  "context": "encounter",
+  "motive": "strip_player_claim_storage",
+  "engagementTrigger": "claim_defense_arrival",
+  "squad": {
+    // Exactly one storage-raider controller, then light-ammunition claim pressure.
+    "anchorArchetype": "reaver_pirate",
+    "archetypes": [
+      "wasp_swarmer"
+    ],
+    "size": [
+      4,
+      6
+    ],
+    "doctrine": "scavenger",
+    "formation": "wedge"
+  },
+  "bark": "claim_ping"
+});

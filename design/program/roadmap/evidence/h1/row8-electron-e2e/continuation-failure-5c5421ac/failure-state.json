@@ -1,0 +1,80 @@
+{
+  "schema": "spaceface.h1-electron-e2e-failure.v1",
+  "row": 8,
+  "phase": "dock-prompt",
+  "error": {
+    "name": "AssertionError",
+    "message": "autopilot did not reach a physical dock prompt; last={\"tick\":7281,\"playerAlive\":true,\"position\":{\"x\":1353.900146484375,\"z\":-355.0405578613281},\"autopilot\":{\"active\":false,\"status\":\"arrived\",\"label\":\"Helios Station\",\"distance\":90.06014303629895}}\n\nfalse !== true\n",
+    "stack": "AssertionError [ERR_ASSERTION]: autopilot did not reach a physical dock prompt; last={\"tick\":7281,\"playerAlive\":true,\"position\":{\"x\":1353.900146484375,\"z\":-355.0405578613281},\"autopilot\":{\"active\":false,\"status\":\"arrived\",\"label\":\"Helios Station\",\"distance\":90.06014303629895}}\n\nfalse !== true\n\n    at file:///C:/Users/93rob/Documents/GitHub/SpaceFace/scripts/check-h1-electron-e2e.mjs:215:10"
+  },
+  "progress": [
+    {
+      "name": "electron-canonical-root",
+      "at": "2026-07-31T16:14:17.738Z",
+      "rootUrl": "http://127.0.0.1:61761/"
+    },
+    {
+      "name": "intro-dismissed",
+      "at": "2026-07-31T16:14:21.914Z"
+    },
+    {
+      "name": "main-menu-visible",
+      "at": "2026-07-31T16:14:23.246Z",
+      "mode": "menu",
+      "title": "SpaceFace",
+      "focusedText": "New Game",
+      "visible": true,
+      "visibilityAuthority": "role:button[name=\"New Game\"]"
+    },
+    {
+      "name": "new-game-visible",
+      "at": "2026-07-31T16:14:24.312Z",
+      "visible": true,
+      "seed": "47",
+      "launchVisible": true
+    },
+    {
+      "name": "authored-flight-visible",
+      "at": "2026-07-31T16:14:38.655Z",
+      "mode": "flight",
+      "tick": 11,
+      "playerAlive": true,
+      "playerId": 1,
+      "sectorId": "sector_helios_prime",
+      "shipCount": 16,
+      "gpu": {
+        "available": true,
+        "vendor": "Google Inc. (Intel)",
+        "renderer": "ANGLE (Intel, Intel(R) Graphics (0x00007D45) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+        "software": false
+      }
+    },
+    {
+      "name": "helios-waypoint-armed",
+      "at": "2026-07-31T16:14:44.984Z",
+      "waypoint": {
+        "kind": "nav",
+        "label": "Helios Station"
+      },
+      "autopilot": {
+        "active": true,
+        "label": "Helios Station",
+        "status": "boosting",
+        "targetEntityId": 2
+      }
+    }
+  ],
+  "snapshot": {
+    "url": "http://127.0.0.1:61761/",
+    "mode": "flight",
+    "sectorId": "sector_helios_prime",
+    "docked": false,
+    "dockedStationId": null,
+    "visibleScreens": [],
+    "dockPromptVisible": false,
+    "ledgerVisible": false,
+    "activeElement": "<body class=\"sf-flight-cursor\">\n  <canvas id=\"gl-canvas\" data-engine=\"three.js r184\" width=\"1557\" height=\"827\" style=\"width: 1466px; height: 779px;\"></canvas>\n  <div id=\"ui-root\">\n    <div id=\"hud\" data-objective-hierarchy=\"one-objective-one-action-one-threat\"><div class=\"sf-leftstack\"><div class=\"sf-leftcontext\"><div id=\"sf-onboarding\" role=\"region\" aria-label=\"Objective tracker\"><div class=\"sf-ob-card\"><div class=\"sf-ob-kicker\"><span>Status</span><span class=\"sf-ob-count\" aria-label=\"step 3 of"
+  },
+  "informational_contended": true,
+  "noPerformanceEvidence": true
+}

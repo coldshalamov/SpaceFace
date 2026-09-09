@@ -1,0 +1,134 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "spaceface://production/generated-media-manifest.schema.json",
+  "title": "SpaceFace Generated Media Manifest Record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "generationId",
+    "packetId",
+    "provider",
+    "model",
+    "toolVersion",
+    "mediaType",
+    "targetKind",
+    "role",
+    "lifecycle",
+    "recordAuthority",
+    "promptHash",
+    "promptPath",
+    "seed",
+    "settingsPath",
+    "sourceRecords",
+    "providerTermsRecord",
+    "outputPath",
+    "outputHash",
+    "colorSpace",
+    "channelContract",
+    "generatedAt",
+    "editHistory",
+    "downstreamConsumer",
+    "evidencePaths",
+    "controllerDecisionPath",
+    "verdict"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "generationId": { "type": "string", "minLength": 1 },
+    "packetId": { "type": "string", "minLength": 1 },
+    "provider": { "type": "string", "minLength": 1 },
+    "model": { "type": "string", "minLength": 1 },
+    "toolVersion": { "type": "string", "minLength": 1 },
+    "mediaType": { "enum": ["image", "video"] },
+    "targetKind": {
+      "enum": ["concept", "three_d_material", "two_d_ui", "environment_plate", "motion_reference", "cinematic"]
+    },
+    "role": {
+      "enum": [
+        "concept_reference",
+        "orthographic_reference",
+        "base_color_input",
+        "ao_input",
+        "roughness_input",
+        "metallic_input",
+        "orm_input",
+        "normal_input",
+        "decal_mask",
+        "trim_mask",
+        "icon",
+        "portrait",
+        "environment_plate",
+        "motion_reference",
+        "cinematic_candidate"
+      ]
+    },
+    "lifecycle": { "enum": ["concept_only", "production_input", "production_final"] },
+    "recordAuthority": { "enum": ["generator", "controller"] },
+    "promptHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "promptPath": { "type": "string", "minLength": 1 },
+    "seed": { "type": ["string", "integer", "null"] },
+    "settingsPath": { "type": "string", "minLength": 1 },
+    "sourceRecords": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["source", "license", "purpose"],
+        "properties": {
+          "source": { "type": "string", "minLength": 1 },
+          "license": { "type": "string", "minLength": 1 },
+          "purpose": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "providerTermsRecord": { "type": "string", "minLength": 1 },
+    "outputPath": { "type": "string", "minLength": 1 },
+    "outputHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "colorSpace": { "enum": ["srgb", "linear", "hdr_linear", "not_applicable"] },
+    "channelContract": { "type": "string", "minLength": 10 },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "editHistory": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "downstreamConsumer": { "type": "string", "minLength": 1 },
+    "evidencePaths": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "controllerDecisionPath": { "type": ["string", "null"] },
+    "verdict": { "enum": ["unreviewed", "rejected", "accepted_as_input", "accepted_final"] }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "targetKind": { "const": "three_d_material" } } },
+      "then": {
+        "not": { "properties": { "lifecycle": { "const": "production_final" } } }
+      }
+    },
+    {
+      "if": { "properties": { "recordAuthority": { "const": "generator" } } },
+      "then": {
+        "properties": {
+          "lifecycle": { "enum": ["concept_only", "production_input"] },
+          "controllerDecisionPath": { "type": "null" },
+          "verdict": { "enum": ["unreviewed", "rejected"] }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "lifecycle": { "const": "production_final" } } },
+      "then": {
+        "properties": {
+          "recordAuthority": { "const": "controller" },
+          "sourceRecords": { "minItems": 1 },
+          "editHistory": { "minItems": 1 },
+          "evidencePaths": { "minItems": 1 },
+          "controllerDecisionPath": { "type": "string", "minLength": 1 },
+          "verdict": { "const": "accepted_final" }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,437 @@
+/* ============================================================================
+   SpaceFace · INTRO SEQUENCE — boot → cinematic title.
+
+   Concept: the Tessera wakes after 14 months impounded. The boot is a cold open
+   on the signal-field engine at full bleed — no window frame, no terminal
+   chrome — with one quiet registry line, one brand lockup, and one honest
+   progress bar. The title is "optics online": the gate-ring still bleeds in
+   from black and drifts like a slow approach, with an editorial film-title
+   lockup — off-white caps, one hairline rule, a letterspaced line
+   telemetry, and a single signal cyan used only for live marks. No glow-heavy
+   gamer chrome, no boxes.
+
+   Behavior hooks other code depends on (do not rename):
+     #boot-overlay (+ .hidden), #boot-terminal-canvas, [data-loading-clock],
+     [data-loading-label], [data-loading-detail], [data-loading-progress],
+     [data-loading-pct], .boot-error
+     #cinematic-splash, #cinematic-title, #cinematic-summary, #cinematic-signal
+   ============================================================================ */
+
+/* ---- 1. Boot — cold open -----------------------------------------------------
+   The signal-field engine IS the screen (design/LOADING_TERMINAL_HANDOFF.md):
+   it fills the frame edge to edge, and the UI sits on it as a quiet annotation
+   layer. What was removed from the old boot console, and why:
+     - the framed "terminal window" — a centred box floating over black is the
+       cheap-web-game read the instrument grammar bans (grammar §6, full-bleed);
+     - SYS_DIAGNOSTICS / HEAP_DUMP / SUBSYSTEM_STATUS / CARRIER_SIGNAL_WAVE —
+       flavour chrome and bracket punctuation, banned by grammar §9;
+     - the ASCII segment meter and phase-name prompt line — a second,
+       redundant progress encoding competing with the real one.
+   What remains is all real: the registry of the ship you're waking, the
+   elapsed clock, the live stage label, and one progress track. */
+
+#boot-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  transition: opacity .8s ease;
+  overflow: hidden;
+}
+#boot-overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+
+.boot-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Legibility scrim: the edges fall to black so the meta line and the lockup
+   read over any phase of the field, brightest TEMPEST included. */
+.boot-scrim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--bg) 78%, transparent) 0%, transparent 16%),
+    linear-gradient(0deg, color-mix(in srgb, var(--bg) 94%, transparent) 0%, color-mix(in srgb, var(--bg) 62%, transparent) 24%, transparent 52%),
+    radial-gradient(120% 90% at 50% 46%, transparent 55%, color-mix(in srgb, var(--bg) 55%, transparent) 100%);
+}
+
+/* Top edge: the ship's registry tag + the one real instrument (elapsed clock). */
+.boot-meta {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: clamp(14px, 2.2vw, 26px) clamp(18px, 2.8vw, 38px);
+  pointer-events: none;
+}
+.boot-meta__registry {
+  font-family: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing:.06em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+}
+.boot-meta__clock {
+  font-family: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  font-size: 12px;
+  letter-spacing: .04em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-mute);
+}
+
+/* Bottom-center lockup: the screen's one DISPLAY element (the wordmark), the
+   live stage sentence, and the progress track. */
+.boot-lockup {
+  position: absolute;
+  left: 50%;
+  bottom: clamp(30px, 7vh, 76px);
+  transform: translateX(-50%);
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: min(92vw, 560px);
+  text-align: center;
+  pointer-events: none;
+}
+.boot-wordmark {
+  font-family: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 40px;
+  letter-spacing: .05em;
+  text-indent: .26em;
+  color: var(--ink);
+}
+.boot-label {
+  margin-top: 10px;
+  font-family: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: .02em;
+  color: var(--ink);
+}
+.boot-detail {
+  margin-top: 3px;
+  min-height: 1.45em;
+  font-family: "Instrument Sans", "Segoe UI", sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-dim);
+}
+.boot-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+  width: min(56vw, 380px);
+}
+.boot-progress {
+  flex: 1;
+  height: 2px;
+  border-radius: 1px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--ink) 14%, transparent);
+}
+.boot-progress > span {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: #4ec3e6;
+  box-shadow: 0 0 8px rgba(78, 195, 230, .55);
+  transition: width .25s ease-out;
+}
+.boot-progress-pct {
+  font-family: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: #4ec3e6;
+  min-width: 4ch;
+  text-align: left;
+}
+
+/* Skip hint — honest (loadingPresenter skips the min-display on any key), and
+   deliberately late: it appears only once the boot has had its first moment. */
+.boot-skip {
+  position: absolute;
+  right: clamp(18px, 2.8vw, 38px);
+  bottom: clamp(14px, 2.4vh, 26px);
+  z-index: 2;
+  font-family: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing:.06em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  /* The glitch-art field behind it is loud; without a scrim the hint drowned. */
+  text-shadow: 0 1px 3px color-mix(in srgb, var(--bg) 95%, transparent), 0 0 8px color-mix(in srgb, var(--bg) 90%, transparent);
+  opacity: 0;
+  animation: boot-skip-in .6s ease-out 4s forwards;
+  pointer-events: none;
+}
+@keyframes boot-skip-in { to { opacity: 1; } }
+
+.boot-error {
+  max-width: 70ch;
+  font-family: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #e0665f;
+  white-space: pre-wrap;
+  text-align: left;
+  text-shadow: none;
+}
+
+/* ---- 2. Cinematic title ------------------------------------------------------
+   "Optics online." The still fades up from black and keeps a very slow approach
+   drift; the lockup choreographs in after it. All motion is transform/opacity
+   only, and every layer starts invisible so nothing ever snaps. */
+
+#cinematic-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  overflow: hidden;
+  pointer-events: auto;
+  opacity: 1;
+  transition: opacity .65s ease;
+}
+#cinematic-splash.is-closing { opacity: 0; pointer-events: none; }
+
+.cine-bg {
+  position: absolute;
+  inset: -3%; /* bleed so the drift never exposes an edge */
+  background-image: url('../assets/cinematics/C-INTRO-01.jpg');
+  background-size: cover;
+  background-position: center 34%;
+  opacity: 0;
+  will-change: transform, opacity;
+  animation:
+    cine-bg-in 1.7s ease-out .1s forwards,
+    cine-drift 68s ease-in-out 1.9s infinite alternate;
+}
+@keyframes cine-bg-in { to { opacity: .94; } }
+@keyframes cine-drift {
+  from { transform: scale(1.02) translate3d(0, 0, 0); }
+  to   { transform: scale(1.09) translate3d(-.7%, .8%, 0); }
+}
+
+.cine-scrim {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--bg) 58%, transparent) 0%,
+      color-mix(in srgb, var(--bg) 10%, transparent) 26%,
+      color-mix(in srgb, var(--bg) 4%, transparent) 52%,
+      color-mix(in srgb, var(--bg) 46%, transparent) 80%,
+      color-mix(in srgb, var(--bg) 86%, transparent) 100%);
+  pointer-events: none;
+}
+
+/* Fine film grain — static (no repaint cost), just enough to kill banding. */
+.cine-grain {
+  position: absolute;
+  inset: 0;
+  opacity: .05;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+}
+
+/* Top-left registry tag — balances the signal card bottom-right. */
+.cine-tag {
+  position: absolute;
+  top: clamp(16px, 3vw, 36px);
+  left: clamp(18px, 3.4vw, 44px);
+  z-index: 1;
+  font: 500 12px/1.6 "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: #61737f;
+  opacity: 0;
+  animation: cine-rise .7s ease-out 2.4s forwards;
+}
+
+.cine-lockup {
+  position: relative;
+  z-index: 1;
+  max-width: 92vw;
+  padding: 0 24px;
+  text-align: center;
+}
+.cine-eyebrow {
+  font: 500 12px/1.7 "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  letter-spacing: .06em;
+  text-indent: .44em;
+  text-transform: uppercase;
+  color: #a7bac7;
+  text-shadow: 0 1px 10px color-mix(in srgb, var(--bg) 80%, transparent);
+  opacity: 0;
+  animation: cine-rise .7s ease-out .6s forwards;
+}
+.cine-title {
+  margin: 16px 0 0;
+  font-family: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  font-weight: 600;
+  font-size: clamp(52px, 9.5vw, 96px);
+  line-height: 1.04;
+  letter-spacing: .05em;
+  text-indent: .3em;
+  color: #edf3f7;
+  text-shadow: 0 2px 26px color-mix(in srgb, var(--bg) 70%, transparent);
+  opacity: 0;
+  animation: cine-title-in 1.15s cubic-bezier(.2, .7, .2, 1) .85s forwards;
+}
+@keyframes cine-title-in {
+  from { opacity: 0; letter-spacing: .06em; transform: translateY(12px); }
+  to   { opacity: 1; letter-spacing: .05em; transform: translateY(0); }
+}
+.cine-rule {
+  width: min(46vw, 340px);
+  height: 1px;
+  margin: 24px auto 0;
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(94, 205, 235, .7) 28%,
+    rgba(94, 205, 235, .7) 72%,
+    transparent);
+  transform: scaleX(0);
+  animation: cine-rule-in .85s cubic-bezier(.2, .8, .2, 1) 1.55s forwards;
+}
+@keyframes cine-rule-in { to { transform: scaleX(1); } }
+.cine-contract {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 11px;
+  margin-top: 18px;
+  font: 500 12px/1.7 "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  letter-spacing: .05em;
+  text-indent: .3em;
+  text-transform: uppercase;
+  color: #b8c7d2;
+  opacity: 0;
+  animation: cine-rise .7s ease-out 1.85s forwards;
+}
+.cine-contract::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 5px;
+  height: 5px;
+  background: #4ec3e6;
+  box-shadow: 0 0 9px rgba(78, 195, 230, .8);
+  animation: sf-intro-blink 1.5s steps(2, end) infinite;
+}
+.cine-begin {
+  margin-top: clamp(38px, 7vh, 64px);
+  font: 500 12px/1.35 "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  letter-spacing: .06em;
+  text-indent: .42em;
+  text-transform: uppercase;
+  color: #a9bfcd;
+  /* The prompt sits over the bright stargate art; without a scrim it vanished at the
+     dim end of its pulse. */
+  text-shadow: 0 1px 3px color-mix(in srgb, var(--bg) 95%, transparent), 0 0 10px color-mix(in srgb, var(--bg) 85%, transparent);
+  opacity: 0;
+  animation:
+    cine-rise .8s ease-out 2.35s forwards,
+    cine-begin-pulse 2.9s ease-in-out 3.3s infinite;
+}
+@keyframes cine-begin-pulse { 0%, 100% { opacity: .72; } 50% { opacity: 1; } }
+
+@keyframes cine-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Inbound-signal readout — a quiet corner annotation, not a glowing card. */
+.cine-signal {
+  position: absolute;
+  right: clamp(18px, 3.4vw, 44px);
+  bottom: clamp(18px, 3.4vw, 40px);
+  z-index: 1;
+  padding: 12px 18px 13px 16px;
+  border-left: 1px solid rgba(94, 205, 235, .5);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--bg) 68%, transparent), color-mix(in srgb, var(--bg) 26%, transparent) 82%, transparent);
+  font-family: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  text-align: left;
+  opacity: 0;
+  animation: cine-rise .7s ease-out 2.6s forwards;
+}
+.cine-signal__k {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: #74879a;
+}
+.cine-signal__k::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  background: #4ec3e6;
+  box-shadow: 0 0 8px rgba(78, 195, 230, .8);
+  animation: sf-intro-blink 1.5s steps(2, end) infinite;
+}
+.cine-signal__t {
+  margin-top: 7px;
+  font-size: 14px;
+  letter-spacing: .05em;
+  color: #dce8ef;
+}
+.cine-signal__s {
+  margin-top: 6px;
+  font-size: 12px;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: #61737f;
+}
+
+@keyframes sf-intro-blink { 50% { opacity: .12; } }
+
+/* ---- 3. Reduced motion ---------------------------------------------------------
+   The global a11y layer already compresses durations to ~0ms, which lands these
+   fill-forwards reveals on their end state. These rules make the resting state
+   explicit so nothing depends on animation timing, and stills the drift/blink. */
+
+@media (prefers-reduced-motion: reduce) {
+  #boot-overlay, .boot-progress > span, #cinematic-splash { transition: none; }
+  .boot-skip,
+  .cine-contract::before,
+  .cine-signal__k::before { animation: none; }
+  .boot-skip { opacity: 1; }
+  .cine-bg { animation: none; opacity: .94; transform: none; }
+  .cine-tag, .cine-eyebrow, .cine-title, .cine-rule,
+  .cine-contract, .cine-begin, .cine-signal { animation: none; opacity: 1; transform: none; }
+}
+html.sf-reduce-motion .boot-skip,
+html.sf-reduce-motion .cine-contract::before,
+html.sf-reduce-motion .cine-signal__k::before { animation: none !important; }
+html.sf-reduce-motion .boot-skip { opacity: 1; }
+html.sf-reduce-motion .cine-bg { animation: none !important; opacity: .94; transform: none; }
+html.sf-reduce-motion .cine-tag,
+html.sf-reduce-motion .cine-eyebrow,
+html.sf-reduce-motion .cine-title,
+html.sf-reduce-motion .cine-rule,
+html.sf-reduce-motion .cine-contract,
+html.sf-reduce-motion .cine-begin,
+html.sf-reduce-motion .cine-signal { animation: none !important; opacity: 1 !important; transform: none !important; }

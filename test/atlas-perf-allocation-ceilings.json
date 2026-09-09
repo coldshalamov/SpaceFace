@@ -1,0 +1,43 @@
+{
+  "schema": "spaceface.atlasPerfAllocationCeilings.v1",
+  "recordedAt": "2026-07-19",
+  "method": "node --expose-gc scripts/probe-atlas-perf-baseline.mjs — median of 5 forced-GC rounds",
+  "why": [
+    "Wall-clock is machine-relative and is never gated. Allocation per operation is a property of",
+    "the code rather than the host, so it is the axis that can be enforced across CI and dev machines.",
+    "Ceilings are set only on the PER-FRAME paths, where allocation churn is what produces hitches",
+    "and where the measurement is most stable (the three verification runs agreed exactly on all",
+    "three per-frame numbers).",
+    "A ceiling carries headroom above the measured value so a normal recompile does not flake it.",
+    "Headroom is NOT a target: 'measuredBytesPerOp' is the number to compare against when judging a",
+    "change, and raising a ceiling to make a regression pass requires a recorded justification."
+  ],
+  "ceilings": {
+    "interaction/pickMapTargetAt@500": {
+      "maxBytesPerOp": 64,
+      "measuredBytesPerOp": 0,
+      "why": "Runs on every pointer move over the map. It allocates nothing today and must keep allocating nothing — this is the input-to-highlight critical path."
+    },
+    "lane/projectOntoLane": {
+      "maxBytesPerOp": 160,
+      "measuredBytesPerOp": 72,
+      "why": "Public convenience helper. The fixed-step runtime projects into retained output storage, but this ceiling still catches accidental growth for external callers."
+    },
+    "lane/resolveLaneSegment": {
+      "maxBytesPerOp": 256,
+      "measuredBytesPerOp": 144,
+      "why": "Public convenience helper. The fixed-step runtime calls resolveLaneSegmentInto with retained output; this ceiling covers non-runtime callers."
+    },
+    "lane/travelLanes.update@steady": {
+      "maxBytesPerOp": 256,
+      "measuredBytesPerOp": 696,
+      "measuredBeforeBytesPerOp": 2537,
+      "why": "The actual fixed-step lane path with resident beacons and six traffic entities. Retained status/traffic storage measured 2537 -> 696 B/op; the remaining measured allocation was traced to resolveTravelCeiling normalizing the same immutable profile, then removed by an identity-keyed cache after the one-after-run budget. The ceiling was fixed before that measurement and remains strict."
+    },
+    "markerLayout/layoutMapLabels@400": {
+      "maxBytesPerOp": 65536,
+      "measuredBytesPerOp": 44337,
+      "why": "The declutter/collision pass. Not per-frame today (it runs on map model rebuild), so the ceiling is generous and exists to catch a step change in the algorithm rather than to enforce a tight budget. Its WALL-CLOCK cost is the more interesting number and is recorded, not gated — see the P2 finding on superlinear growth."
+    }
+  }
+}

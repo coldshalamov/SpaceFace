@@ -1,0 +1,40 @@
+{
+  "schema": "spaceface.h1-row-classification.v1",
+  "row": 7,
+  "subject": "PQ-022 relay, corridor stations, lane furniture, and traffic hull presentation",
+  "result": "PASS",
+  "classification": "PASS",
+  "attemptsConsumed": 1,
+  "retryPerformed": false,
+  "manifestId": "pq022-corridor-asset-leaves",
+  "fixedSeed": 47,
+  "candidateDigest": "22100055717522d0a493ffd048d25f326636f25fce4a7855a3e2edcae639b689",
+  "routeDigest": "710ee97b6b072ea9df7588214ddfc416ae704e1899002fc41193be1d8613e5fb",
+  "regressionDigest": "4fe1256e4776ed0fe06c235922d01dd11e846759ae7487f2a1b20fc6db88907f",
+  "manifestDigest": "3e4cc75d75322811eda2b491a21618c349dab434b2a6897dfe44c8131b7aec63",
+  "launches": {
+    "browser": 1,
+    "electron": 0
+  },
+  "survivingClaims": [
+    "fixed-seed 47 visible New Game on the canonical Browser route",
+    "real Intel ANGLE D3D11 WebGL path, not a software renderer",
+    "eleven exact production asset identities admitted from release artifacts",
+    "thirteen game-renderer stills with ready authored admission and no readable fallback",
+    "relay close, default, and far presentation on a live Helios asteroid",
+    "four corridor station archetypes",
+    "jump ring, station billboard, and nav buoy lane furniture",
+    "courier, hauler, and miner production whole-ship identities"
+  ],
+  "boundedClaims": [
+    "station and lane-furniture travel was compressed through the registered world.enterSector owner; this is presentation evidence, not route-completion evidence",
+    "courier, hauler, and miner roles were selected deterministically while production ship, traffic, rendering, and admission owners remained authoritative; no ambient-role distribution claim is made",
+    "traffic targets are admitted and readable, but the player ship remains prominent in the foreground of those stills",
+    "the relay visual verdict remains a Phase H2 accept-versus-re-author decision",
+    "parts_manifest source-byte metadata remains stale for place_nav_buoy and place_station_billboard; live source bytes and release-manifest identity bind"
+  ],
+  "informational_contended": true,
+  "informational_contended_note": "Phase H1 ran contended by design. Broker timestamps and process duration are controls/diagnostics only and are not performance evidence.",
+  "noPerformanceEvidence": true,
+  "matchedPerformancePhase": "H3"
+}

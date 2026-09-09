@@ -1,0 +1,17 @@
+{
+  "name": "render_viewport_to_path",
+  "description": "\nRender the current scene to *output_path* using current render settings.\n",
+  "inputSchema": {
+    "properties": {
+      "output_path": {
+        "title": "Output Path",
+        "type": "string"
+      }
+    },
+    "required": [
+      "output_path"
+    ],
+    "title": "render_viewport_to_pathArguments",
+    "type": "object"
+  }
+}

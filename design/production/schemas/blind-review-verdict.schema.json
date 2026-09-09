@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "spaceface://production/blind-review-verdict.schema.json",
+  "title": "SpaceFace Controller-Wrapped Independent Review Verdict",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "controllerEnvelope",
+    "payload",
+    "payloadSha256",
+    "evidenceArtifacts"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 2 },
+    "controllerEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runId",
+        "servedModel",
+        "modelFamily",
+        "sessionId",
+        "authorSessionId",
+        "packetId",
+        "candidateHash",
+        "briefHash",
+        "processReceiptHash"
+      ],
+      "properties": {
+        "runId": { "type": "string", "minLength": 1 },
+        "servedModel": { "type": "string", "minLength": 1 },
+        "modelFamily": { "type": "string", "minLength": 1 },
+        "sessionId": { "type": "string", "minLength": 1 },
+        "authorSessionId": { "type": "string", "minLength": 1 },
+        "packetId": { "type": "string", "minLength": 1 },
+        "candidateHash": { "$ref": "#/definitions/digest" },
+        "briefHash": { "$ref": "#/definitions/digest" },
+        "processReceiptHash": { "$ref": "#/definitions/digest" }
+      }
+    },
+    "payload": {
+      "$ref": "spaceface://production/blind-review-payload.schema.json"
+    },
+    "payloadSha256": { "$ref": "#/definitions/digest" },
+    "evidenceArtifacts": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/artifact" },
+      "uniqueItems": true
+    }
+  },
+  "definitions": {
+    "digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifactId",
+        "relativePath",
+        "sha256",
+        "bytes",
+        "candidateHash",
+        "producerReceiptHash"
+      ],
+      "properties": {
+        "artifactId": { "type": "string", "minLength": 1 },
+        "relativePath": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/definitions/digest" },
+        "bytes": { "type": "integer", "minimum": 1 },
+        "candidateHash": { "$ref": "#/definitions/digest" },
+        "producerReceiptHash": { "$ref": "#/definitions/digest" }
+      }
+    }
+  }
+}

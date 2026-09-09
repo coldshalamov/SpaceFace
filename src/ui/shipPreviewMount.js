@@ -1,0 +1,1105 @@
+// Player-facing ship preview mount (UX-1). A self-contained mini 3D renderer that builds a ship mesh
+// via the visualFactory and rotates it inside a small <canvas> — used by the Shipyard (on row
+// hover/select) and the New Game screen (static starter pose). The hard part (mesh building) is
+// already solved by visualFactory + shipPreview's framing/texture-warmup; this is a thin, safe,
+// player-facing wrapper with its own WebGLRenderer so it never touches the live game scene/camera.
+//
+// Why a separate renderer: the main renderer/scene/camera are owned by the sim loop and continuously
+// mutated. Rendering a ship turntable through them would fight the game's render. A dedicated
+// offscreen renderer + scene + camera is cheap (one ship, low-res RT) and isolated.
+//
+// Resource discipline: each mount owns its renderer and disposes it on `dispose()`. The mesh's
+// textures/materials are shared with the visualFactory (procedural canvas textures) — we do NOT
+// dispose those (the factory may reuse them); we only dispose our renderer + RT + geometry we add.
+import * as THREE from 'three';
+import { SHIPS } from '../data/ships.js';
+import { WEAPONS } from '../data/weapons.js';
+import { MODULES } from '../data/modules.js';
+import { disposeAuthoredAssetRuntime, loadAuthoredPart } from '../render/assetLoader.js';
+import { preloadAuthoredPartLibrary } from '../render/partsLibrary.js';
+import { isReleaseAssetMode } from '../render/releaseMode.js';
+import { yieldToBrowser } from '../render/startupGpuResidency.js';
+import { setEnvMapForShips, createVisualFactory } from '../render/visualFactory.js';
+import { installVisualOverrides } from '../render/visualOverrides.js';
+import { buildKestrelHero } from '../render/ships/kestrelHero.js';
+
+const PART_ROOT = 'assets/ships/parts/';
+const PART_RELEASE_ROOT = 'assets/ships/release/parts/';
+const SHIP_PREVIEW_CACHE_LIMIT = 16;
+const FAST_PREVIEW_MATERIALS = new Map();
+const DEFAULT_DOCK_PREVIEW_MOUNT = Object.freeze({
+  floorLocalY: -3.44,
+  referenceShipSpan: 24.08,
+  minimumScale: 0.8,
+  maximumScale: 12.5,
+  minimumFloorClearance: 0.45,
+  maximumFloorClearance: 2,
+  floorClearanceHeightRatio: 0.12,
+});
+
+/**
+ * Station archetype → accepted Shipworks dock interior.
+ *
+ * The historical military/grit variants remain authored assets, but their sealed foreground
+ * geometry obscures the selected ship under the current preview camera. Keep every player-facing
+ * preview on the reviewed neutral H-04 bay until a variant earns the same composition gate.
+ */
+export const DOCK_INTERIOR_BY_ARCHETYPE = Object.freeze({});
+
+export function dockInteriorIdForArchetype(archetypeGlb) {
+  if (typeof archetypeGlb === 'string' && DOCK_INTERIOR_BY_ARCHETYPE[archetypeGlb]) {
+    return DOCK_INTERIOR_BY_ARCHETYPE[archetypeGlb];
+  }
+  return 'place_dock_interior';
+}
+
+function finiteBoundsPoint(value) {
+  return !!value
+    && Number.isFinite(Number(value.x))
+    && Number.isFinite(Number(value.y))
+    && Number.isFinite(Number(value.z));
+}
+
+function finiteOr(value, fallback) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+}
+
+/**
+ * Place and scale the Shipworks backdrop around a yaw-zero ship envelope.
+ *
+ * The dock is decorative presentation, while each ship keeps its authored/procedural world scale.
+ * Adapting the backdrop prevents medium hulls from intersecting the service floor and keeps capital
+ * previews from dwarfing a fixed 52 m room. The camera remains ship-owned.
+ */
+export function dockTransformForShipBounds(shipBounds, metadata = {}, dockBounds = null) {
+  const minimum = shipBounds && shipBounds.min;
+  const maximum = shipBounds && shipBounds.max;
+  if (!finiteBoundsPoint(minimum) || !finiteBoundsPoint(maximum)) return null;
+
+  const size = {
+    x: Number(maximum.x) - Number(minimum.x),
+    y: Number(maximum.y) - Number(minimum.y),
+    z: Number(maximum.z) - Number(minimum.z),
+  };
+  if (!(size.x > 0) || !(size.y > 0) || !(size.z > 0)) return null;
+
+  const authored = metadata && typeof metadata.previewMount === 'object'
+    ? metadata.previewMount
+    : {};
+  const referenceShipSpan = Math.max(
+    1,
+    finiteOr(authored.referenceShipSpan, DEFAULT_DOCK_PREVIEW_MOUNT.referenceShipSpan),
+  );
+  const minimumScale = Math.max(
+    0.1,
+    finiteOr(authored.minimumScale, DEFAULT_DOCK_PREVIEW_MOUNT.minimumScale),
+  );
+  const maximumScale = Math.max(
+    minimumScale,
+    finiteOr(authored.maximumScale, DEFAULT_DOCK_PREVIEW_MOUNT.maximumScale),
+  );
+  const shipSpan = Math.max(size.x, size.z);
+  const scale = Math.max(minimumScale, Math.min(maximumScale, shipSpan / referenceShipSpan));
+
+  const fallbackFloorY = Array.isArray(dockBounds && dockBounds.min)
+    && Number.isFinite(Number(dockBounds.min[1]))
+    ? Number(dockBounds.min[1]) + 0.985
+    : DEFAULT_DOCK_PREVIEW_MOUNT.floorLocalY;
+  const floorLocalY = finiteOr(authored.floorLocalY, fallbackFloorY);
+  const minimumClearance = Math.max(
+    0,
+    finiteOr(authored.minimumFloorClearance, DEFAULT_DOCK_PREVIEW_MOUNT.minimumFloorClearance),
+  );
+  const maximumClearance = Math.max(
+    minimumClearance,
+    finiteOr(authored.maximumFloorClearance, DEFAULT_DOCK_PREVIEW_MOUNT.maximumFloorClearance),
+  );
+  const clearanceRatio = Math.max(
+    0,
+    finiteOr(
+      authored.floorClearanceHeightRatio,
+      DEFAULT_DOCK_PREVIEW_MOUNT.floorClearanceHeightRatio,
+    ),
+  );
+  const floorClearance = Math.max(
+    minimumClearance,
+    Math.min(maximumClearance, size.y * clearanceRatio),
+  );
+  const floorWorldY = Number(minimum.y) - floorClearance;
+  const position = {
+    x: (Number(minimum.x) + Number(maximum.x)) * 0.5,
+    y: floorWorldY - floorLocalY * scale,
+    z: (Number(minimum.z) + Number(maximum.z)) * 0.5,
+  };
+
+  return Object.freeze({
+    scale,
+    position: Object.freeze(position),
+    shipSpan,
+    floorLocalY,
+    floorWorldY,
+    floorClearance,
+    intersectsFloor: floorWorldY >= Number(minimum.y),
+  });
+}
+
+/**
+ * Measure preview geometry in its authored yaw-zero frame and restore the displayed yaw.
+ *
+ * Shipworks can preserve turntable yaw while swapping fittings or admitting authored geometry.
+ * Measuring the rotated world AABB would make the dock rescale and recenter as the ship turns.
+ */
+export function visiblePreviewBoundsAtNeutralYaw(root, excludeObject = () => false) {
+  const box = new THREE.Box3().makeEmpty();
+  if (!root || typeof root.traverse !== 'function' || !root.rotation) return box;
+  const objectBox = new THREE.Box3();
+  const priorYaw = Number(root.rotation.y) || 0;
+  root.rotation.y = 0;
+  try {
+    root.updateWorldMatrix(true, true);
+    root.traverse((object) => {
+      if (!object || !object.geometry || excludeObject(object)) return;
+      const geometry = object.geometry;
+      if (!geometry.boundingBox && typeof geometry.computeBoundingBox === 'function') {
+        geometry.computeBoundingBox();
+      }
+      if (!geometry.boundingBox) return;
+      objectBox.copy(geometry.boundingBox).applyMatrix4(object.matrixWorld);
+      box.union(objectBox);
+    });
+  } finally {
+    root.rotation.y = priorYaw;
+    root.updateWorldMatrix(true, true);
+  }
+  return box;
+}
+
+function dockPartUrls(id) {
+  const file = `places/${id}.glb`;
+  if (!isReleaseAssetMode()) return [`${PART_ROOT}${file}`];
+  return [`${PART_RELEASE_ROOT}${file}`, `${PART_ROOT}${file}`];
+}
+
+function groupFromBlueprint(record) {
+  const root = new THREE.Group();
+  root.name = 'DockInterior';
+  for (const prim of record.primitives) {
+    const mesh = new THREE.Mesh(prim.geometry, prim.material);
+    mesh.name = prim.name;
+    const pos = new THREE.Vector3();
+    const quat = new THREE.Quaternion();
+    const scl = new THREE.Vector3();
+    prim.matrix.decompose(pos, quat, scl);
+    mesh.position.copy(pos);
+    mesh.quaternion.copy(quat);
+    mesh.scale.copy(scl);
+    root.add(mesh);
+  }
+  return root;
+}
+
+const WPN_BY_ID = new Map(WEAPONS.map((w) => [w.id, w]));
+const MOD_BY_ID = new Map(MODULES.map((m) => [m.id, m]));
+const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
+
+function fastPreviewMaterial(key, color, opts = {}) {
+  let material = FAST_PREVIEW_MATERIALS.get(key);
+  if (!material) {
+    material = new THREE.MeshStandardMaterial({
+      color,
+      roughness: opts.roughness == null ? 0.52 : opts.roughness,
+      metalness: opts.metalness == null ? 0.34 : opts.metalness,
+      emissive: opts.emissive || 0x000000,
+      emissiveIntensity: opts.emissiveIntensity || 0,
+      transparent: !!opts.transparent,
+      opacity: opts.opacity == null ? 1 : opts.opacity,
+      depthWrite: opts.depthWrite !== false,
+    });
+    FAST_PREVIEW_MATERIALS.set(key, material);
+  }
+  return material;
+}
+
+function addFastMesh(parent, geometry, material, name, position, rotation, scale) {
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.name = name;
+  if (position) mesh.position.set(position[0], position[1], position[2]);
+  if (rotation) mesh.rotation.set(rotation[0], rotation[1], rotation[2]);
+  if (scale) mesh.scale.set(scale[0], scale[1], scale[2]);
+  parent.add(mesh);
+  return mesh;
+}
+
+function addFastEngine(root, x, y, z, size, materials) {
+  addFastMesh(
+    root,
+    new THREE.CylinderGeometry(size * 0.26, size * 0.34, size * 0.5, 10),
+    materials.dark,
+    'PreviewEngineNozzle',
+    [x, y, z],
+    [0, 0, Math.PI / 2],
+  );
+  addFastMesh(
+    root,
+    new THREE.ConeGeometry(size * 0.34, size * 0.9, 14),
+    materials.glow,
+    'PreviewEnginePlume',
+    [x - size * 0.45, y, z],
+    [0, 0, Math.PI / 2],
+  );
+}
+
+function buildFastPreviewMesh(defId) {
+  const def = SHIP_BY_ID.get(defId);
+  if (!def) return null;
+  const root = new THREE.Group();
+  root.name = `FastPreview_${defId}`;
+  root.userData.kind = 'ship';
+
+  const radius = def.collisionRadius || 14;
+  const visuals = def.visuals || {};
+  const props = visuals.proportions || {};
+  const role = String(def.role || '').toLowerCase();
+  const length = Math.max(1.05, props.length || (role.includes('capital') ? 2.1 : role.includes('freighter') ? 1.75 : 1.35)) * radius;
+  const halfWidth = Math.max(0.32, props.halfWidth || (role.includes('capital') ? 0.82 : role.includes('freighter') ? 0.72 : 0.48)) * radius;
+  const height = Math.max(0.18, props.height || 0.32) * radius;
+  const isCargo = role.includes('freighter') || role.includes('hauler') || role.includes('barge');
+  const isCapital = role.includes('capital') || role.includes('battle') || role.includes('corvette') || role.includes('gunship');
+  const isMiner = role.includes('mining') || role.includes('miner');
+
+  const materials = {
+    hull: fastPreviewMaterial('fast:hull', 0x8fa3bb, { metalness: 0.28, roughness: 0.56 }),
+    trim: fastPreviewMaterial('fast:trim', 0x263246, { metalness: 0.48, roughness: 0.44 }),
+    dark: fastPreviewMaterial('fast:dark', 0x101722, { metalness: 0.72, roughness: 0.38 }),
+    glass: fastPreviewMaterial('fast:glass', 0x73d8ff, {
+      metalness: 0.05, roughness: 0.18, emissive: 0x39d0ff, emissiveIntensity: 0.16,
+      transparent: true, opacity: 0.82, depthWrite: false,
+    }),
+    glow: fastPreviewMaterial('fast:glow', 0x57dfff, {
+      metalness: 0.02, roughness: 0.22, emissive: 0x39d0ff, emissiveIntensity: 1.25,
+      transparent: true, opacity: 0.72, depthWrite: false,
+    }),
+  };
+
+  addFastMesh(
+    root,
+    new THREE.BoxGeometry(length * (isCargo ? 0.78 : 0.62), height, halfWidth * 1.35),
+    materials.hull,
+    'PreviewHullCore',
+    [-length * 0.06, 0, 0],
+  );
+  addFastMesh(
+    root,
+    new THREE.ConeGeometry(halfWidth * (isCapital ? 0.75 : 0.58), length * 0.42, isCapital ? 6 : 4),
+    materials.hull,
+    'PreviewProw',
+    [length * 0.42, 0, 0],
+    [0, 0, -Math.PI / 2],
+  );
+  addFastMesh(
+    root,
+    new THREE.BoxGeometry(length * 0.32, height * 0.58, Math.max(halfWidth * 0.2, 1.4)),
+    materials.trim,
+    'PreviewKeel',
+    [-length * 0.18, -height * 0.08, 0],
+  );
+
+  if (isCargo || isCapital) {
+    const podCount = isCapital ? 4 : 3;
+    for (let i = 0; i < podCount; i++) {
+      const x = -length * 0.25 + (i - (podCount - 1) / 2) * length * 0.16;
+      addFastMesh(root, new THREE.BoxGeometry(length * 0.14, height * 0.85, halfWidth * 0.34), materials.trim, 'PreviewCargoPodPort', [x, 0, -halfWidth * 0.98]);
+      addFastMesh(root, new THREE.BoxGeometry(length * 0.14, height * 0.85, halfWidth * 0.34), materials.trim, 'PreviewCargoPodStarboard', [x, 0, halfWidth * 0.98]);
+    }
+  } else {
+    addFastMesh(root, new THREE.BoxGeometry(length * 0.42, height * 0.32, halfWidth * 1.1), materials.trim, 'PreviewWingPort', [-length * 0.05, -height * 0.18, -halfWidth * 0.72]);
+    addFastMesh(root, new THREE.BoxGeometry(length * 0.42, height * 0.32, halfWidth * 1.1), materials.trim, 'PreviewWingStarboard', [-length * 0.05, -height * 0.18, halfWidth * 0.72]);
+  }
+
+  if (isMiner) {
+    addFastMesh(root, new THREE.CylinderGeometry(height * 0.18, height * 0.24, length * 0.28, 8), materials.dark, 'PreviewMiningDrill', [length * 0.64, -height * 0.1, 0], [0, 0, Math.PI / 2]);
+    addFastMesh(root, new THREE.ConeGeometry(height * 0.28, length * 0.16, 8), materials.glow, 'PreviewMiningTip', [length * 0.82, -height * 0.1, 0], [0, 0, -Math.PI / 2]);
+  }
+
+  addFastMesh(root, new THREE.SphereGeometry(Math.max(height * 0.32, 1.4), 16, 8), materials.glass, 'PreviewCanopy', [length * 0.12, height * 0.58, 0], [0, 0, 0], [1.4, 0.65, 0.9]);
+  const mounts = visuals.engineMounts && visuals.engineMounts.length
+    ? visuals.engineMounts
+    : [{ pos: [-0.68, 0, -0.24], scaleK: 1 }, { pos: [-0.68, 0, 0.24], scaleK: 1 }];
+  for (const mount of mounts.slice(0, 6)) {
+    const p = mount.pos || [-0.68, 0, 0];
+    addFastEngine(root, p[0] * radius, p[1] * radius, p[2] * radius, Math.max(1.5, radius * 0.18 * (mount.scaleK || 1)), materials);
+  }
+
+  const hardpoints = visuals.hardpoints || [];
+  for (const hp of hardpoints.slice(0, 8)) {
+    const p = hp.pos || [0, 0, 0];
+    addFastMesh(root, new THREE.CylinderGeometry(radius * 0.035, radius * 0.045, radius * 0.28, 8), materials.dark, 'PreviewHardpoint', [p[0] * radius, p[1] * radius + height * 0.15, p[2] * radius], [0, 0, Math.PI / 2]);
+  }
+
+  root.userData.previewFastLod = true;
+  return root;
+}
+
+/**
+ * Build a ship entity the visual factory can consume.
+ * When `loadout.fittings` is provided (outfitting / player's active hull), use that exact
+ * loadout so the pad shows the same ship you fly. Otherwise fill stock demo modules so
+ * catalog hull previews still show weapons/engines.
+ */
+function makeEntity(defId, seedId, loadout = null) {
+  const def = SHIP_BY_ID.get(defId);
+  if (!def) return null;
+
+  let fittings;
+  let weapons;
+
+  if (loadout && Array.isArray(loadout.fittings)) {
+    // Player/outfitting path: fittings[] is parallel to buildSlotList (weapon, shield, …).
+    // visualFactory reads that array directly for barrels, engines, shield ring, mining drill.
+    fittings = loadout.fittings.slice();
+    weapons = Array.isArray(loadout.weapons) ? loadout.weapons.slice() : [];
+  } else {
+    // Stock catalog demo loadout — parallel to visualFactory slot order:
+    // weapon → shield → engine → cargo → mining → utility.
+    fittings = [];
+    weapons = [];
+    const slots = def.slots || {};
+    const order = ['weapon', 'shield', 'engine', 'cargo', 'mining', 'utility'];
+    let slotIndex = 0;
+    for (const type of order) {
+      const arr = slots[type] || [];
+      for (let i = 0; i < arr.length; i++) {
+        const entry = arr[i];
+        const size = (typeof entry === 'object' && entry.size) || (typeof entry === 'string' ? entry : 'S');
+        let pick = null;
+        if (type === 'weapon') {
+          pick = WEAPONS.find((x) => x.size === size) || WEAPONS[0] || null;
+          if (pick) {
+            weapons.push({
+              slotIndex,
+              defId: pick.id,
+              facing: (entry && entry.facing) || 'front',
+              tracking: pick.tracking || 'fixed',
+            });
+          }
+        } else {
+          pick = MODULES.find((m) => m.slotType === type && (!m.size || m.size === size))
+            || MODULES.find((m) => m.slotType === type)
+            || null;
+        }
+        fittings.push(pick ? pick.id : null);
+        slotIndex++;
+      }
+    }
+  }
+
+  return {
+    id: seedId, type: 'ship', team: 0, factionId: 'faction_free',
+    // isPlayer unlocks the Hitch/Kestrel hero visual (same mesh as flight). Catalog stock previews stay false.
+    isPlayer: !!(loadout && loadout.isPlayer),
+    pos: { x: 0, z: 0 }, rot: Math.PI * 0.15, prevPos: { x: 0, z: 0 }, prevRot: 0, bank: 0,
+    radius: def.collisionRadius || 14,
+    data: { defId, fittings, weapons, miningBeam: null },
+  };
+}
+
+function meshCacheKey(defId, loadout) {
+  if (!defId) return null;
+  if (!loadout || !Array.isArray(loadout.fittings)) return defId;
+  return defId + '::' + loadout.fittings.map((id) => (id == null ? '-' : String(id))).join('|');
+}
+
+/**
+ * Create a ship preview mount attached to a canvas element.
+ * @param {HTMLCanvasElement} canvas
+ * @param {object} opts
+ * @param {object} [opts.envMap]  - the main scene's PMREM envMap (for chrome); optional
+ * @param {string} [opts.dockId]  - place_dock_interior* part id for station hangar backdrop; optional
+ * @returns {{ show(defId, opts):void, setRotating(boolean):void, setYaw(number):void, rotateBy(number):void, setZoom(number):void, zoomBy(number):void, getView():object, setDockId(string):void, setActive(boolean):void, warmAssets():Promise<boolean>, resize():void, frame():void, dispose():void }}
+ */
+export function createShipPreviewMount(canvas, opts) {
+  opts = opts || {};
+  let W = canvas.clientWidth || canvas.width || 320;
+  let H = canvas.clientHeight || canvas.height || 200;
+  const useDock = typeof opts.dockId === 'string' && opts.dockId.length > 0;
+  const onFirstFrame = typeof opts.onFirstFrame === 'function' ? opts.onFirstFrame : null;
+  const onAssetSettled = typeof opts.onAssetSettled === 'function' ? opts.onAssetSettled : null;
+  const authoredShips = opts.authoredShips !== false && opts.authoredWarmup !== false;
+  const authoredLibraryOptions = Object.freeze({
+    libraryScope: 'ship-preview',
+    bootstrapPlan: Object.freeze({}),
+  });
+  // Station/menu pads must never silently sit on the box LOD. Only allow it if the caller
+  // explicitly opts in (devtools). Outfitting/shipyard/new-game pass allowFastFallback:false.
+  const fastPreview = opts.fastPreview === true;
+  const allowFastFallback = opts.allowFastFallback === true || fastPreview === true;
+
+  const renderer = new THREE.WebGLRenderer({
+    canvas,
+    antialias: true,
+    alpha: !useDock,
+    powerPreference: 'high-performance',
+  });
+  // Three reads getProgramInfoLog + two getShaderInfoLog per program on its first draw when this
+  // flag is on (its default). On ANGLE/D3D11 those reads block the main thread for hundreds of
+  // milliseconds each; profiled at the title, 15 s of a 20 s hull arrival was that read across the
+  // hull's and hangar's programs, and the words could not move. The picture is identical without
+  // it - a program that failed to link still draws nothing - so the preview context leaves it off.
+  renderer.debug.checkShaderErrors = false;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(W, H, false);
+  renderer.setClearColor(useDock ? 0x05070d : 0x000000, useDock ? 1 : 0);
+  // Match flight: tone-map so materials don't read as flat gray slabs.
+  if ('outputColorSpace' in renderer) renderer.outputColorSpace = THREE.SRGBColorSpace;
+  if ('toneMapping' in renderer) {
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.0;
+  }
+
+  const scene = new THREE.Scene();
+  if (useDock) scene.fog = new THREE.FogExp2(0x0a1426, 0.012);
+  // Hangar rig: warmer key from dock lamps + cool rim from bay glass when a dock shell is present.
+  scene.add(new THREE.AmbientLight(0x607087, useDock ? 0.34 : 0.38));
+  scene.add(new THREE.HemisphereLight(useDock ? 0xb9d8df : 0xbcdde6, 0x24170f, useDock ? 0.36 : 0.48));
+  const key = new THREE.DirectionalLight(useDock ? 0xffd9b0 : 0xf2e0c6, useDock ? 1.85 : 2.05);
+  key.position.set(-0.55, 1.1, 0.75); scene.add(key);
+  const rim = new THREE.DirectionalLight(0x69cde0, useDock ? 0.88 : 1.05);
+  rim.position.set(0.75, 0.35, -0.55); scene.add(rim);
+  const fill = new THREE.DirectionalLight(0x7193b2, useDock ? 0.38 : 0.48);
+  fill.position.set(0.5, -0.25, 0.45); scene.add(fill);
+  if (useDock) {
+    const pad = new THREE.PointLight(0xf0a94d, 0.62, 80);
+    pad.position.set(0, -1, 0); scene.add(pad);
+  }
+
+  const cam = new THREE.PerspectiveCamera(38, W / H, 0.1, 2000);
+  cam.position.set(0, 0, 50);
+
+  // hand the main scene's envMap to the factory so chrome/authority hulls mirror the nebula
+  if (opts.envMap) setEnvMapForShips(opts.envMap);
+  // Always create the factory for real ship meshes (even if a caller set fastPreview by mistake).
+  const vf = createVisualFactory();
+  if (vf) {
+      installVisualOverrides(vf, {
+        authoredShips,
+        authoredLibraryScope: authoredLibraryOptions.libraryScope,
+        authoredBootstrapPlan: authoredLibraryOptions.bootstrapPlan,
+        // A player-facing turntable keeps one coherent body. Catalog ships without a validated
+        // complete asset remain on their readable procedural model instead of hot-swapping into
+        // the loose modular flight assembly several seconds after selection.
+        authoredWholeShipsOnly: true,
+        onWarning: (message, error) => console.warn(message, error),
+      onAuthoredAssetSwap: ({ boundary } = {}) => {
+        if (disposed || !current || boundary !== current) return;
+        // The complete authored payload can have very different bounds from its immediate fallback.
+        // Reframe and render atomically when it settles; input must never be required to reveal it.
+        hidePreviewOnlySurfaces(current);
+        fitCameraToCurrent();
+        renderNow();
+        if (onAssetSettled) onAssetSettled({ defId: getDefId(), state: 'authored' });
+      },
+    });
+  }
+
+  let current = null;     // the displayed THREE.Object3D
+  let dockRoot = null;
+  let dockBlueprint = null;
+  let dockId = useDock ? opts.dockId : null;
+  let dockLoadGen = 0;
+  let rotating = true;
+  let active = true;
+  let yaw = 0;
+  let zoom = 1;
+  let rafId = 0;
+  let disposed = false;
+  let renderedDefId = null;
+  let warmupPromise = null;
+  const meshCache = new Map(); // defId -> THREE.Object3D, retained to avoid rebuilding on hover.
+  const meshCacheOrder = [];
+
+  function disposePreviewMesh(mesh) {
+    if (!mesh) return;
+    mesh.traverse((c) => { if (c.geometry) c.geometry.dispose(); });
+  }
+
+  function touchCachedMesh(defId, mesh) {
+    if (!defId || !mesh) return;
+    if (!meshCache.has(defId)) meshCache.set(defId, mesh);
+    const idx = meshCacheOrder.indexOf(defId);
+    if (idx >= 0) meshCacheOrder.splice(idx, 1);
+    meshCacheOrder.push(defId);
+    while (meshCacheOrder.length > SHIP_PREVIEW_CACHE_LIMIT) {
+      const evictId = meshCacheOrder.shift();
+      if (!evictId || evictId === defId) continue;
+      const evicted = meshCache.get(evictId);
+      meshCache.delete(evictId);
+      if (evicted && evicted !== current) disposePreviewMesh(evicted);
+    }
+  }
+
+  function tagAndCache(mesh, defId, cacheId) {
+    if (!mesh) return null;
+    mesh.userData.previewDefId = defId;
+    mesh.userData.previewCacheId = cacheId;
+    // Preview-owned material clones let the hangar use restrained, directional PBR response
+    // without mutating the flight scene's shared material pool. Lower ambient light now reveals
+    // authored panel changes instead of flattening the hull into a single clay value.
+    if (!mesh.userData.previewMaterialsPrepared) {
+      const materialClones = new Map();
+      const tuneMaterial = (material) => {
+        if (!material || (!material.isMeshStandardMaterial && !material.isMeshPhysicalMaterial)) return material;
+        if (materialClones.has(material)) return materialClones.get(material);
+        const clone = material.clone();
+        clone.dithering = true;
+        if ('envMapIntensity' in clone) clone.envMapIntensity = Math.max(.72, Number(clone.envMapIntensity) || 0);
+        if (!clone.transparent || clone.opacity >= .98) {
+          const metalness = Number(clone.metalness) || 0;
+          const roughness = Number.isFinite(Number(clone.roughness)) ? Number(clone.roughness) : .6;
+          clone.roughness = metalness >= .45
+            ? Math.max(.32, Math.min(.58, roughness))
+            : Math.max(.48, Math.min(.76, roughness));
+        }
+        clone.needsUpdate = true;
+        materialClones.set(material, clone);
+        return clone;
+      };
+      mesh.traverse((object) => {
+        if (!object || !object.material) return;
+        object.material = Array.isArray(object.material)
+          ? object.material.map(tuneMaterial)
+          : tuneMaterial(object.material);
+      });
+      mesh.userData.previewMaterialsPrepared = true;
+    }
+    // Warm procedural canvas textures so the first frame isn't black.
+    mesh.traverse((c) => {
+      const m = c.material;
+      if (!m) return;
+      for (const k in m) {
+        const v = m[k];
+        if (v && v.isTexture && v.image && typeof v.needsUpdate !== 'undefined') v.needsUpdate = true;
+      }
+    });
+    touchCachedMesh(cacheId, mesh);
+    return mesh;
+  }
+
+  function isGrayFallbackBox(mesh) {
+    if (!mesh) return true;
+    if (mesh.userData && mesh.userData.kind === 'fallback') return true;
+    // visualFactory's last-resort is a single BoxGeometry mesh with no children.
+    return !!(mesh.isMesh
+      && mesh.geometry
+      && mesh.geometry.type === 'BoxGeometry'
+      && (!mesh.children || mesh.children.length === 0));
+  }
+
+  function buildPreviewMesh(defId, loadout = null) {
+    const cacheId = (meshCacheKey(defId, loadout) || defId)
+      + (loadout && loadout.isPlayer ? '::player' : '');
+
+    const ent = makeEntity(defId, 1, loadout) || makeEntity(defId, 1, { isPlayer: true });
+    if (ent) ent.isPlayer = !!(loadout && loadout.isPlayer) || defId === 'ship_kestrel';
+
+    // 1) Full visual factory, including the authored whole-ship boundary for Hitch. The procedural
+    // hero is an immediate readable fallback, not the permanent settled station model.
+    if (ent && vf) {
+      let mesh = null;
+      try {
+        // Ensure factory hero override also fires for Hitch if path (1) was skipped.
+        if (defId === 'ship_kestrel') ent.isPlayer = true;
+        mesh = vf.build(ent);
+      } catch (e) {
+        console.error('[shipPreviewMount] visualFactory.build failed', defId, e);
+        mesh = null;
+      }
+      if (mesh && !isGrayFallbackBox(mesh) && !mesh.userData.previewFastLod) {
+        mesh.userData.previewFastLod = false;
+        return tagAndCache(mesh, defId, cacheId);
+      }
+    }
+
+    // 2) Emergency Hitch fallback if the authored factory path itself failed to construct.
+    if (defId === 'ship_kestrel') {
+      try {
+        const hero = buildKestrelHero(ent);
+        if (hero && !isGrayFallbackBox(hero)) {
+          hero.userData.previewFastLod = false;
+          return tagAndCache(hero, defId, cacheId);
+        }
+        console.error('[shipPreviewMount] Hitch hero returned unusable mesh');
+      } catch (err) {
+        console.error('[shipPreviewMount] Hitch hero preview FAILED', err);
+      }
+    }
+
+    // 3) Explicit box LOD only if allowed (devtools). Station UI does NOT allow this.
+    if (allowFastFallback || fastPreview) {
+      console.warn('[shipPreviewMount] using fast box silhouette for', defId);
+      const fastMesh = buildFastPreviewMesh(defId);
+      if (fastMesh) fastMesh.userData.previewFastLod = true;
+      return tagAndCache(fastMesh, defId, cacheId);
+    }
+
+    console.error('[shipPreviewMount] NO MESH for', defId, '— refusing box LOD');
+    return null;
+  }
+
+  function resize() {
+    const nextW = Math.max(1, Math.floor(canvas.clientWidth || canvas.width || W || 320));
+    const nextH = Math.max(1, Math.floor(canvas.clientHeight || canvas.height || H || 200));
+    if (nextW === W && nextH === H) return;
+    W = nextW; H = nextH;
+    renderer.setSize(W, H, false);
+    cam.aspect = W / H;
+    cam.updateProjectionMatrix();
+  }
+
+  // The settled engineering view is event-rendered. A ResizeObserver prevents a stale 1x-sized
+  // backing store when the workspace morphs without paying for a permanent animation loop.
+  const resizeObserver = typeof ResizeObserver !== 'undefined'
+    ? new ResizeObserver(() => {
+      if (disposed || !active) return;
+      resize();
+      renderer.render(scene, cam);
+    })
+    : null;
+  if (resizeObserver) resizeObserver.observe(canvas);
+
+  async function loadDockBackdrop(id) {
+    if (!id || disposed) return;
+    const gen = ++dockLoadGen;
+    let record = null;
+    for (const url of dockPartUrls(id)) {
+      record = await loadAuthoredPart(url, { renderer, slot: 'place', optional: true });
+      if (record) break;
+    }
+    if (!record || gen !== dockLoadGen || disposed) return;
+    // Link the hangar's programs and upload its textures before it joins the scene; drawn cold,
+    // its first frame linked every program synchronously (profiled at 6 s on Intel/ANGLE while
+    // the game's own boot compiles were still queued in the GPU process).
+    const nextDock = groupFromBlueprint(record);
+    try {
+      await prepareForFirstDraw(nextDock);
+    } catch (error) {
+      if (disposed) return;
+      console.warn('[shipPreviewMount] hangar preparation failed; drawing it cold', error);
+    }
+    if (gen !== dockLoadGen || disposed) return;
+    if (dockRoot) {
+      scene.remove(dockRoot);
+      dockRoot = null;
+      dockBlueprint = null;
+    }
+    dockRoot = nextDock;
+    dockBlueprint = record;
+    dockRoot.position.y = 1.5;
+    scene.add(dockRoot);
+    alignDockToCurrent();
+    renderNow();
+    if (active && rotating && !rafId) requestLoop();
+  }
+
+  if (dockId) loadDockBackdrop(dockId).catch(() => {});
+
+  // The preview owns its own WebGL context. The boundary's default admission borrows the live
+  // renderer's pipeline queue (window.SF.state.render.compileObjectPipelines), which compiles
+  // programs this context can never use and is deliberately held until the first playable frame
+  // paints — at the title screen it never flushes, so the authored hull sat in
+  // 'compiling-pipelines' forever and only the hangar drew. Compile here, in this context, and
+  // skip the live GPU residency walk; the first draw of the swapped root then links nothing.
+  //
+  // One leaf per task, not the whole root at once: without KHR_parallel_shader_compile (software
+  // GL, older Intel) every program links synchronously the moment its status is read, and one
+  // compileAsync(root) read them all in a single multi-second main-thread stall that starved
+  // requestAnimationFrame - the title's arrival motion, its save summary and every rAF-polled
+  // check froze while the hull compiled. A yield between leaves keeps each stall to one program.
+  async function compilePreviewPipelines(root) {
+    const leaves = [];
+    root.traverse((object) => {
+      if ((object.isMesh || object.isPoints || object.isLine || object.isSprite) && object.material) {
+        leaves.push(object);
+      }
+    });
+    const seen = new Set();
+    let compiled = 0;
+    for (const leaf of leaves) {
+      if (disposed) throw new Error('preview disposed during pipeline compile');
+      const materials = Array.isArray(leaf.material) ? leaf.material : [leaf.material];
+      if (materials.every((material) => seen.has(material))) continue;
+      for (const material of materials) seen.add(material);
+      if (typeof renderer.compileAsync === 'function') await renderer.compileAsync(leaf, cam, scene);
+      else renderer.compile(leaf, cam, scene);
+      compiled += 1;
+      await yieldToBrowser();
+    }
+    return { compiled, leaves: leaves.length };
+  }
+  // Same shape for textures: the first draw otherwise uploads every compressed texture of the
+  // swapped hull inside one render call. One upload per task keeps the words moving.
+  async function uploadPreviewTextures(root) {
+    const textures = new Set();
+    root.traverse((object) => {
+      if (!object.material) return;
+      const materials = Array.isArray(object.material) ? object.material : [object.material];
+      for (const material of materials) {
+        for (const value of Object.values(material)) {
+          if (value && value.isTexture) textures.add(value);
+        }
+      }
+    });
+    let uploaded = 0;
+    for (const texture of textures) {
+      if (disposed) throw new Error('preview disposed during texture upload');
+      renderer.initTexture(texture);
+      uploaded += 1;
+      await yieldToBrowser();
+    }
+    return { uploaded };
+  }
+  async function prepareForFirstDraw(root) {
+    const pipelines = await compilePreviewPipelines(root);
+    const textures = await uploadPreviewTextures(root);
+    return { pipelines, textures };
+  }
+  const previewAdmissionOptions = Object.freeze({
+    prepareAuthoredPipelines: compilePreviewPipelines,
+    prepareAuthoredGpuResidency: uploadPreviewTextures,
+    overlapAuthoredPipelineCompile: false,
+    yieldBetweenGpuStages: false,
+  });
+  function requestCurrentAuthoredUpgrade() {
+    if (!authoredShips) return;
+    const request = current && current.userData && current.userData.requestAuthoredUpgrade;
+    if (typeof request === 'function') request(renderer, scene, previewAdmissionOptions);
+  }
+
+  function warmAssets() {
+    if (!authoredShips) return Promise.resolve(false);
+    if (!warmupPromise) {
+      warmupPromise = preloadAuthoredPartLibrary(renderer, authoredLibraryOptions)
+        .then(() => {
+          if (disposed) return false;
+          requestCurrentAuthoredUpgrade();
+          renderNow();
+          if (active && rotating && !rafId) requestLoop();
+          return true;
+        })
+        .catch((error) => {
+          console.warn('[shipPreviewMount] authored preview warmup failed', error);
+          return false;
+        });
+    }
+    return warmupPromise;
+  }
+
+  function renderNow() {
+    if (disposed) return;
+    resize();
+    if (current && rotating) {
+      yaw += 0.012;
+      current.rotation.y = yaw;
+    }
+    renderer.render(scene, cam);
+    const defId = current && current.userData && current.userData.previewDefId;
+    if (defId && defId !== renderedDefId) {
+      renderedDefId = defId;
+      if (onFirstFrame) onFirstFrame({ defId });
+    }
+  }
+
+  function requestLoop() {
+    if (disposed || !active || rafId) return;
+    rafId = requestAnimationFrame(frame);
+  }
+
+  function frame() {
+    rafId = 0;
+    if (disposed) return;
+    if (!active) return;
+    renderNow();
+    requestLoop();
+  }
+
+  /**
+   * Project a point in the current ship's local space to canvas client coordinates.
+   * Useful for overlay highlights (hardpoints, power beams) that track the turntable.
+   * Returns null if no ship is currently displayed or the renderer is not ready.
+   * @param {{x:number,y:number,z:number}} localPos
+   * @returns {{x:number,y:number}|null}
+   */
+  function projectLocalPoint(localPos) {
+    if (!current || !cam || !renderer || !canvas) return null;
+    const pos = new THREE.Vector3(localPos.x || 0, localPos.y || 0, localPos.z || 0);
+    current.updateWorldMatrix(true, false);
+    pos.applyMatrix4(current.matrixWorld);
+    pos.project(cam);
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: (pos.x * 0.5 + 0.5) * rect.width + rect.left,
+      y: (-pos.y * 0.5 + 0.5) * rect.height + rect.top,
+    };
+  }
+
+  /** @returns {string|null} current displayed defId, or null. */
+  function getDefId() { return current && current.userData && current.userData.previewDefId; }
+
+  /**
+   * Expose the preview boundary's real asset state for live UI diagnostics and browser probes.
+   * This is deliberately read-only: the authored-asset owner remains partsLibrary/visualOverrides.
+   * @returns {string}
+   */
+  function getAssetState() {
+    if (!current || !current.userData) return 'empty';
+    return current.userData.authoredAssetState || (current.userData.previewFastLod ? 'fast-fallback' : 'procedural-fallback');
+  }
+
+  /** Read-only live evidence for visual probes; never mutates scene ownership. */
+  function getVisualDiagnostics() {
+    if (!current) return [];
+    const entries = [];
+    const currentObjects = new Set();
+    current.traverse((object) => currentObjects.add(object));
+    scene.updateWorldMatrix(true, true);
+    scene.traverse((object) => {
+      if (!object || (!object.isMesh && !object.isSprite && !object.isInstancedMesh && !object.isBatchedMesh)) return;
+      let displayed = object.visible !== false;
+      for (let parent = object.parent; displayed && parent; parent = parent.parent) displayed = parent.visible !== false;
+      const tags = object.userData && object.userData.spacefaceTags;
+      const geometry = object.geometry;
+      if (geometry && !geometry.boundingSphere && typeof geometry.computeBoundingSphere === 'function') geometry.computeBoundingSphere();
+      const worldScale = new THREE.Vector3();
+      const worldPosition = new THREE.Vector3();
+      object.getWorldScale(worldScale);
+      object.getWorldPosition(worldPosition);
+      const worldRadius = (geometry && geometry.boundingSphere && geometry.boundingSphere.radius || 0)
+        * Math.max(Math.abs(worldScale.x), Math.abs(worldScale.y), Math.abs(worldScale.z));
+      entries.push({
+        name: object.name || '',
+        type: object.type || '',
+        geometry: geometry && geometry.type || '',
+        geometryRadius: Number((geometry && geometry.boundingSphere && geometry.boundingSphere.radius || 0).toFixed(3)),
+        worldRadius: Number(worldRadius.toFixed(3)),
+        worldPosition: [worldPosition.x, worldPosition.y, worldPosition.z].map((value) => Number(value.toFixed(3))),
+        material: object.material && object.material.name || object.material && object.material.type || '',
+        displayed,
+        inCurrent: currentObjects.has(object),
+        count: Number(object.count || 0),
+        scale: [object.scale.x, object.scale.y, object.scale.z].map((value) => Number(value.toFixed(3))),
+        position: [object.position.x, object.position.y, object.position.z].map((value) => Number(value.toFixed(3))),
+        tags: tags || null,
+      });
+    });
+    return entries;
+  }
+
+  function isPreviewOnlySurface(object) {
+    const tags = object && object.userData && object.userData.spacefaceTags;
+    const vfxRole = tags && tags.vfxRole;
+    return !!(object && (
+      // Halo and navigation sprites are useful at flight scale but read as detached white balls in
+      // a close inspection turntable. The station uses its own DOM hardpoint projection instead.
+      object.isSprite
+      ||
+      object.name === 'Ship_Shield_Bubble'
+      || object.name === 'GLTFKit_Nav_Lights'
+      || (tags && tags.vfxRole === 'shieldBubble')
+      || (tags && tags.damageRole === 'navLight')
+      || vfxRole === 'drivePlume'
+      || vfxRole === 'driveCore'
+      || vfxRole === 'driveHalo'
+      || vfxRole === 'driveNozzleGlow'
+      || vfxRole === 'navBlinker'
+    ));
+  }
+
+  function hidePreviewOnlySurfaces(root) {
+    if (!root || typeof root.traverse !== 'function') return;
+    root.traverse((object) => {
+      if (isPreviewOnlySurface(object)) object.visible = false;
+    });
+  }
+
+  function visibleShipBounds(root) {
+    return visiblePreviewBoundsAtNeutralYaw(root, isPreviewOnlySurface);
+  }
+
+  function alignDockToCurrent(box = null) {
+    if (!dockRoot || !dockBlueprint || !current) return false;
+    const shipBox = box || visibleShipBounds(current);
+    if (!shipBox || shipBox.isEmpty()) return false;
+    const transform = dockTransformForShipBounds(
+      shipBox,
+      dockBlueprint.metadata,
+      dockBlueprint.bounds,
+    );
+    if (!transform) return false;
+    dockRoot.scale.setScalar(transform.scale);
+    dockRoot.position.set(
+      transform.position.x,
+      transform.position.y,
+      transform.position.z,
+    );
+    dockRoot.userData.previewAlignment = transform;
+    dockRoot.updateWorldMatrix(true, true);
+    return true;
+  }
+
+  function fitCameraToCurrent() {
+    if (!current) return false;
+    hidePreviewOnlySurfaces(current);
+    const box = visibleShipBounds(current);
+    if (box.isEmpty()) return false;
+    alignDockToCurrent(box);
+    const sphere = new THREE.Sphere();
+    box.getBoundingSphere(sphere);
+    const cx = sphere.center.x;
+    const cy = sphere.center.y;
+    const cz = sphere.center.z;
+    const R = Math.max(1, sphere.radius);
+    const D = R * 2.85;
+    cam.position.set(cx - D * 0.42, cy + D * 0.38, cz + D * 0.72);
+    cam.lookAt(cx, cy * 0.2, cz);
+    cam.near = Math.max(0.05, R * 0.02);
+    cam.far = Math.max(2000, R * 40);
+    cam.updateProjectionMatrix();
+    return true;
+  }
+
+  /**
+   * Show a ship by defId. Rebuilds the mesh + reframes the camera around its bounding sphere.
+   * @param {string} defId
+   * @param {object} [o] - { rotating?: boolean, fittings?: Array, weapons?: Array }
+   */
+  function show(defId, o) {
+    o = o || {};
+    const preserveView = o.preserveView === true && !!current;
+    const priorYaw = yaw;
+    const priorZoom = zoom;
+    if (current) {
+      scene.remove(current);
+      current = null;
+    }
+    if (o.rotating != null) rotating = !!o.rotating;
+    const loadout = (Array.isArray(o.fittings) || Array.isArray(o.weapons) || o.isPlayer)
+      ? {
+        fittings: Array.isArray(o.fittings) ? o.fittings : null,
+        weapons: Array.isArray(o.weapons) ? o.weapons : null,
+        isPlayer: o.isPlayer === true || defId === 'ship_kestrel',
+      }
+      : (defId === 'ship_kestrel' ? { fittings: null, weapons: null, isPlayer: true } : null);
+    // Player loadouts cache separately from stock demos (hero mesh + real modules).
+    const cacheId = (meshCacheKey(defId, loadout) || defId) + (loadout && loadout.isPlayer ? '::player' : '');
+    let mesh = meshCache.get(cacheId) || null;
+    // Never reuse a cached box LOD when real ships are required.
+    if (mesh && mesh.userData && mesh.userData.previewFastLod && !allowFastFallback) {
+      meshCache.delete(cacheId);
+      const idx = meshCacheOrder.indexOf(cacheId);
+      if (idx >= 0) meshCacheOrder.splice(idx, 1);
+      try { disposePreviewMesh(mesh); } catch (_) {}
+      mesh = null;
+    }
+    if (mesh) touchCachedMesh(cacheId, mesh);
+    else mesh = buildPreviewMesh(defId, loadout);
+    if (!mesh) {
+      renderedDefId = null;
+      console.error('[shipPreviewMount] show() has no mesh for', defId);
+      return;
+    }
+    current = mesh;
+    // The camera is already offset into a three-quarter view. Adding another +40deg here aligned
+    // long hulls almost directly with the camera: capitals became a giant aft cross-section and
+    // Hitch became an engine face. Zero yaw is the authored centered composition.
+    yaw = preserveView ? priorYaw : 0;
+    zoom = preserveView ? priorZoom : 1;
+    cam.zoom = zoom;
+    mesh.rotation.y = yaw;
+    scene.add(mesh);
+    fitCameraToCurrent();
+    renderNow();
+    requestCurrentAuthoredUpgrade();
+    warmAssets();
+    if (rotating) requestLoop();
+    else renderNow();
+  }
+
+  function setRotating(v) {
+    rotating = !!v;
+    if (rotating) {
+      requestLoop();
+    } else if (rafId) {
+      cancelAnimationFrame(rafId);
+      rafId = 0;
+    }
+  }
+  function setYaw(v) {
+    if (!Number.isFinite(Number(v))) return;
+    yaw = Number(v);
+    if (current) current.rotation.y = yaw;
+    renderNow();
+  }
+  function rotateBy(delta) {
+    if (!Number.isFinite(Number(delta))) return;
+    setYaw(yaw + Number(delta));
+  }
+  function setZoom(v) {
+    if (!Number.isFinite(Number(v))) return;
+    zoom = Math.max(0.72, Math.min(2.1, Number(v)));
+    cam.zoom = zoom;
+    cam.updateProjectionMatrix();
+    renderNow();
+  }
+  function zoomBy(delta) {
+    if (!Number.isFinite(Number(delta))) return;
+    setZoom(zoom + Number(delta));
+  }
+  function getView() { return { yaw, zoom }; }
+  function setDockId(id) {
+    const next = typeof id === 'string' && id.length > 0 ? id : null;
+    if (next === dockId) return;
+    dockId = next;
+    renderer.setClearColor(dockId ? 0x05070d : 0x000000, dockId ? 1 : 0);
+    if (!dockId) {
+      dockLoadGen++;
+      if (dockRoot) { scene.remove(dockRoot); dockRoot = null; }
+      dockBlueprint = null;
+      renderNow();
+      return;
+    }
+    loadDockBackdrop(dockId).catch(() => {});
+  }
+  function setActive(v) {
+    active = !!v;
+    if (!active) {
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = 0;
+      return;
+    }
+    if (current) {
+      renderNow();
+      if (rotating) requestLoop();
+    }
+  }
+
+  function dispose() {
+    disposed = true;
+    if (resizeObserver) resizeObserver.disconnect();
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = 0;
+    dockLoadGen++;
+    if (dockRoot) { scene.remove(dockRoot); dockRoot = null; }
+    dockBlueprint = null;
+    if (current) { scene.remove(current); current = null; }
+    for (const mesh of meshCache.values()) disposePreviewMesh(mesh);
+    meshCache.clear();
+    meshCacheOrder.length = 0;
+    disposeAuthoredAssetRuntime(renderer);
+    renderer.dispose();
+  }
+
+  return {
+    show, setRotating, setYaw, rotateBy, setZoom, zoomBy, getView, setDockId, setActive,
+    warmAssets, resize, frame, dispose, projectLocalPoint, getDefId, getAssetState, getVisualDiagnostics,
+  };
+}

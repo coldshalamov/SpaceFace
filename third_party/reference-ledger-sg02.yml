@@ -1,0 +1,15 @@
+schema: spaceface.referenceLedger.v1
+contract: SG-02
+accepted_sources:
+  - name: Rapier dynamic bodies and constraints
+    upstream: "@dimforge/rapier3d-compat"
+    version: "0.19.3"
+    usage: "Dynamic/fixed rigid bodies, CCD flags, rope joints, plane locks, impulse application."
+  - name: SpaceFace recovered SG-02 partial source
+    upstream: "C:/Users/93rob/Downloads/SpaceFace-SG02-recovered-source-partial.zip"
+    sha256: "6D3FE3CFC805A6454459E220D24225BE2989C4B3DE3E572BD74EAA4456E474AF"
+    usage: "Membrane and body-owner direction only; not accepted as a complete handoff."
+clean_room_notes:
+  - "No upstream game code was copied from external commercial references."
+  - "The runtime contract is expressed through local SpaceFace schemas and acceptance scripts."
+  - "Rapier runtime handles, colliders, worlds, event queues, and joints are transient implementation details."

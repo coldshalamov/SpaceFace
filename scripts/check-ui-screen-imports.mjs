@@ -1,0 +1,511 @@
+// Verifies browser-facing UI screen modules import cleanly and expose valid screen definitions.
+// This catches broken relative imports before the dynamic browser registry silently skips a screen.
+import { readFileSync } from 'node:fs';
+import { BINDINGS } from '../src/ui/bindings.js';
+import { controlPrompt } from '../src/ui/controlPrompts.js';
+
+const checks = [
+  // Live docked station ("Orbital Command") — the registered station screen def (wraps
+  // src/ui/station/stationApp.js); legacy screens/stationHub.js no longer registers a screen.
+  ['../src/ui/station/stationScreen.js', 'stationScreen'],
+  ['../src/ui/screens/starmap.js', 'starmapScreen'],
+  ['../src/ui/screens/localmap.js', 'localmapScreen'],
+  ['../src/ui/screens/techTree.js', 'techTreeScreen'],
+  ['../src/ui/screens/automationPanel.js', 'automationScreen'],
+  ['../src/ui/screens/drill.js', 'drillScreen'],
+  ['../src/ui/screens/base.js', 'baseScreen'],
+  ['../src/ui/screens/mainMenu.js', 'mainMenuScreen'],
+  ['../src/ui/screens/newGame.js', 'newGameScreen'],
+  ['../src/ui/screens/pause.js', 'pauseScreen'],
+  ['../src/ui/screens/gameOver.js', 'gameOverScreen'],
+  ['../src/ui/screens/settings.js', 'settingsScreen'],
+  ['../src/ui/screens/saveLoad.js', 'saveLoadScreen'],
+  ['../src/ui/screens/help.js', 'helpScreen'],
+  ['../src/ui/screens/codex.js', 'codexScreen'],
+  ['../src/ui/screens/missionLog.js', 'missionLogScreen'],
+  // DEV ONLY — Sandbox harness. The check loads it like any other screen so a broken import fails
+  // fast here rather than silently skipping registration in dev builds. (The module self-guards on
+  // IS_DEV and is only registered when IS_DEV is true; this assertion is dev-tooling only.)
+  ['../src/ui/screens/sandbox.js', 'sandboxScreen'],
+];
+
+let ok = 0;
+let fail = 0;
+const loaded = new Map();
+
+for (const [path, exportName] of checks) {
+  try {
+    const mod = await import(path);
+    const def = mod[exportName];
+    loaded.set(exportName, def);
+    const missing = [];
+    if (!def) missing.push(exportName);
+    if (def && !def.id) missing.push(`${exportName}.id`);
+    if (def && typeof def.mount !== 'function') missing.push(`${exportName}.mount`);
+    if (missing.length) {
+      console.log(`FAIL ${path} - missing ${missing.join(', ')}`);
+      fail++;
+      continue;
+    }
+    console.log(`ok   ${path} - ${exportName}:${def.id}`);
+    ok++;
+  } catch (err) {
+    console.log(`ERR  ${path} - ${err.message}`);
+    fail++;
+  }
+}
+
+// Live docked station screens are FACTORIES (create<Name>Screen(ctx)), not screen defs — they mount
+// through stationScreen/stationApp, so the id+mount def assertions above do not fit them. Assert
+// each named factory export is a function so a broken import or a renamed export fails here instead
+// of silently blanking a station tab at dock time.
+const factoryChecks = [
+  ['../src/ui/station/screens/market.js',       'createMarketScreen'],
+  ['../src/ui/station/screens/shipworks.js',    'createShipworksScreen'],
+  ['../src/ui/station/screens/industry.js',     'createIndustryScreen'],
+  ['../src/ui/station/screens/contracts.js',    'createContractsScreen'],
+  ['../src/ui/station/screens/factions.js',     'createFactionsScreen'],
+  ['../src/ui/station/screens/bar.js',          'createBarScreen'],
+  ['../src/ui/station/screens/ledger.js',       'createLedgerScreen'],
+  ['../src/ui/station/stationApp.js',           'createStationApp'],
+  ['../src/ui/station/dock.js',                 'createCommandDock'],
+];
+
+for (const [path, exportName] of factoryChecks) {
+  try {
+    const mod = await import(path);
+    if (typeof mod[exportName] !== 'function') {
+      console.log(`FAIL ${path} - missing ${exportName}`);
+      fail++;
+      continue;
+    }
+    console.log(`ok   ${path} - ${exportName}`);
+    ok++;
+  } catch (err) {
+    console.log(`ERR  ${path} - ${err.message}`);
+    fail++;
+  }
+}
+
+const starmap = loaded.get('starmapScreen');
+if (starmap) {
+  let popped = 0;
+  // Live binding: starmap = N (M is local near-field).
+  const handled = typeof starmap.onKey === 'function' &&
+    starmap.onKey({ key: 'N' }, { screenManager: { popScreen() { popped++; } } });
+  if (!handled || popped !== 1) {
+    console.log('FAIL starmapScreen - N shortcut must close the starmap');
+    fail++;
+  } else {
+    console.log('ok   starmapScreen - N shortcut closes');
+    ok++;
+  }
+}
+
+const localmap = loaded.get('localmapScreen');
+if (localmap) {
+  let popped = 0;
+  // Live binding: localmap = M (primary map key opens near-field).
+  const handled = typeof localmap.onKey === 'function' &&
+    localmap.onKey({ key: 'M' }, { screenManager: { popScreen() { popped++; } } });
+  if (!handled || popped !== 1) {
+    console.log('FAIL localmapScreen - M shortcut must close the local map');
+    fail++;
+  } else {
+    console.log('ok   localmapScreen - M shortcut closes');
+    ok++;
+  }
+}
+
+const helpSrc = readFileSync(new URL('../src/ui/screens/help.js', import.meta.url), 'utf8');
+const bindingsSrc = readFileSync(new URL('../src/ui/bindings.js', import.meta.url), 'utf8');
+const inputSrc = readFileSync(new URL('../src/ui/input.js', import.meta.url), 'utf8');
+const localmapSrc = readFileSync(new URL('../src/ui/screens/localmap.js', import.meta.url), 'utf8');
+const codexSrc = readFileSync(new URL('../src/ui/screens/codex.js', import.meta.url), 'utf8');
+const missionLogSrc = readFileSync(new URL('../src/ui/screens/missionLog.js', import.meta.url), 'utf8');
+// The docked station surfaces the Mission Log key on its Bar screen (src/ui/station/screens/bar.js).
+const stationBarSrc = readFileSync(new URL('../src/ui/station/screens/bar.js', import.meta.url), 'utf8');
+const hudSrc = readFileSync(new URL('../src/ui/hud.js', import.meta.url), 'utf8');
+const alertsSrc = readFileSync(new URL('../src/ui/alerts.js', import.meta.url), 'utf8');
+const commsSrc = readFileSync(new URL('../src/ui/comms.js', import.meta.url), 'utf8');
+const uiRootSrc = readFileSync(new URL('../src/ui/uiRoot.js', import.meta.url), 'utf8');
+const mainSrc = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+const controlPromptsSrc = readFileSync(new URL('../src/ui/controlPrompts.js', import.meta.url), 'utf8');
+const onboardingSrc = readFileSync(new URL('../src/systems/onboarding.js', import.meta.url), 'utf8');
+const onboardingHudAttentionImport = /import\s*\{(?=[^}]*\bfirstUseLine\b)(?=[^}]*\bresolveFirstUseEntityId\b)[^}]*\}\s*from\s*['"]\.\.\/ui\/hudAttention\.js['"]/.test(onboardingSrc);
+const mainMenuSrc = readFileSync(new URL('../src/ui/screens/mainMenu.js', import.meta.url), 'utf8');
+const newGameSrc = readFileSync(new URL('../src/ui/screens/newGame.js', import.meta.url), 'utf8');
+const gameOverSrc = readFileSync(new URL('../src/ui/screens/gameOver.js', import.meta.url), 'utf8');
+const factionsSrc = readFileSync(new URL('../src/ui/factionStanding.js', import.meta.url), 'utf8');
+const automationSrc = readFileSync(new URL('../src/ui/screens/automationPanel.js', import.meta.url), 'utf8');
+const pauseSrc = readFileSync(new URL('../src/ui/screens/pause.js', import.meta.url), 'utf8');
+const settingsSrc = readFileSync(new URL('../src/ui/screens/settings.js', import.meta.url), 'utf8');
+const saveLoadSrc = readFileSync(new URL('../src/ui/screens/saveLoad.js', import.meta.url), 'utf8');
+const baseSrc = readFileSync(new URL('../src/ui/screens/base.js', import.meta.url), 'utf8');
+const localizedCoreCopySrc = readFileSync(new URL('../src/ui/localizedCoreCopy.js', import.meta.url), 'utf8');
+
+// Frontend Tasks A–D moved these screens onto the kit (styles/kit.css). A migrated screen owns no
+// CSS: no STYLE_ID, no injectStyle(), no injected <style>. The list is explicit — not derived from a
+// kit import — so the old mechanism cannot come back on a screen that later drops the import.
+// Not listed: range.js (still injects Task C's live stage sheet), and the unmigrated base.js,
+// sandbox.js (dev only), drill.js (Asteroid Works keeps its own law), automationPanel.js,
+// localmap.js and starmap.js.
+const MIGRATED_SCREENS = Object.freeze([
+  ['mainMenu', '../src/ui/screens/mainMenu.js'],
+  ['newGame', '../src/ui/screens/newGame.js'],
+  ['pause', '../src/ui/screens/pause.js'],
+  ['settings', '../src/ui/screens/settings.js'],
+  ['saveLoad', '../src/ui/screens/saveLoad.js'],
+  ['gameOver', '../src/ui/screens/gameOver.js'],
+  ['credits', '../src/ui/screens/credits.js'],
+  ['help', '../src/ui/screens/help.js'],
+  ['codex', '../src/ui/screens/codex.js'],
+  ['techTree', '../src/ui/screens/techTree.js'],
+  ['missionLog', '../src/ui/screens/missionLog.js'],
+  ['footprint', '../src/ui/screens/footprint.js'],
+  ['stageHull', '../src/ui/screens/stageHull.js'],
+  ['crucible', '../src/ui/screens/crucible.js'],
+  ['crucibleDraft', '../src/ui/screens/crucibleDraft.js'],
+  ['crucibleLabControls', '../src/ui/screens/crucibleLabControls.js'],
+  ['crucibleLabTelemetry', '../src/ui/screens/crucibleLabTelemetry.js'],
+  ['confirm', '../src/ui/confirm.js'],
+]);
+const migratedInjectingStyle = MIGRATED_SCREENS
+  .filter(([, rel]) => {
+    const source = readFileSync(new URL(rel, import.meta.url), 'utf8');
+    return /\bSTYLE_ID\b/.test(source) || /createElement\('style'\)/.test(source) || /\binjectStyle\s*\(/.test(source);
+  })
+  .map(([name]) => name);
+if (migratedInjectingStyle.length) {
+  console.log('FAIL menu screens - migrated kit screens must not declare STYLE_ID or inject a <style>: ' + migratedInjectingStyle.join(', '));
+  fail++;
+} else {
+  console.log('ok   menu screens - the ' + MIGRATED_SCREENS.length + ' migrated screens own no CSS');
+  ok++;
+}
+// Help is a kit screen (Frontend Task D): its title is the kit's `h1.k-display.k-t-title`, not the
+// legacy shell(rootEl, 'Help') plate; the contract is still that the screen is titled Help, not Codex.
+if (!/'k-display k-t-title',\s*'Help'\)/.test(helpSrc)) {
+  console.log('FAIL helpScreen - kit title must be Help, not Codex');
+  fail++;
+} else {
+  console.log('ok   helpScreen - kit title is Help');
+  ok++;
+}
+if (!helpSrc.includes("import { BINDINGS } from '../bindings.js'")
+  || !helpSrc.includes('BINDINGS.dock.label')
+  || !helpSrc.includes('BINDINGS.localmap.label')
+  || !helpSrc.includes('BINDINGS.starmap.label')
+  || !helpSrc.includes('BINDINGS.techTree.label')
+  || !helpSrc.includes('BINDINGS.missionLog.label')
+  || !helpSrc.includes('BINDINGS.drill.label')
+  || !helpSrc.includes('BINDINGS.claimBase.label')
+  || !helpSrc.includes('BINDINGS.cargo.label')
+  || !helpSrc.includes('BINDINGS.comms.label')
+  || !helpSrc.includes('BINDINGS.codex.label')) {
+  console.log('FAIL helpScreen - fixed UI key labels must read src/ui/bindings.js');
+  fail++;
+} else if (/'E \(when prompted\)'|'E near a station|local map \(N\) \/ star-map \(M\)|Tech tree', null, 'T'|Deep-drill \(ant-farm\)', null, 'B|Claim body \/ open base', null, 'C|Mission Log \(J\)|'J'|'I'|'L'|'K'/.test(helpSrc)) {
+  console.log('FAIL helpScreen - fixed UI key labels must not hard-code dock/localmap/starmap/tech/drill/claim/missionLog/cargo/comms/codex keys');
+  fail++;
+} else {
+  console.log('ok   helpScreen - fixed UI key labels read the binding registry');
+  ok++;
+}
+if (!bindingsSrc.includes("missionLog: { key: 'j', code: 'KeyJ', label: 'J' }")
+  || BINDINGS.missionLog.key !== 'j'
+  || BINDINGS.missionLog.label !== 'J'
+  || !inputSrc.includes('BINDINGS.missionLog.key')
+  || !inputSrc.includes('BINDINGS.missionLog.label')
+  || !hudSrc.includes('BINDINGS.missionLog.label')
+  || !helpSrc.includes('BINDINGS.missionLog.label')
+  || !missionLogSrc.includes("import { BINDINGS } from '../bindings.js'")
+  || !missionLogSrc.includes('BINDINGS.missionLog.label')
+  || !stationBarSrc.includes('BINDINGS.missionLog.label')) {
+  console.log('FAIL missionLog binding - mission log key must read src/ui/bindings.js across input and UI copy');
+  fail++;
+} else if (/case 'j'|key === 'j'|J Mission Log|Mission Log \(J\)|J to close|Mission log', null, 'J'/.test(inputSrc + hudSrc + helpSrc + missionLogSrc + stationBarSrc)) {
+  console.log('FAIL missionLog binding - visible mission log key text must not hard-code J');
+  fail++;
+} else {
+  console.log('ok   missionLog binding - input and visible copy read the binding registry');
+  ok++;
+}
+if (!bindingsSrc.includes("cargo: { key: 'i', code: 'KeyI', label: 'I' }")
+  || !bindingsSrc.includes("comms: { key: 'l', code: 'KeyL', label: 'L' }")
+  || BINDINGS.cargo.key !== 'i'
+  || BINDINGS.comms.key !== 'l'
+  || !inputSrc.includes('BINDINGS.cargo.key')
+  || !inputSrc.includes('BINDINGS.comms.key')
+  || !helpSrc.includes('BINDINGS.cargo.label')
+  || !helpSrc.includes('BINDINGS.comms.label')
+  || !controlPromptsSrc.includes('BINDINGS.cargo.label')
+  || !controlPromptsSrc.includes('BINDINGS.comms.label')
+  || !commsSrc.includes("import { BINDINGS } from './bindings.js'")
+  || !commsSrc.includes('BINDINGS.comms.label')) {
+  console.log('FAIL cargo/comms binding - cargo and comms keys must read src/ui/bindings.js across input, Help, HUD prompt, and backlog button');
+  fail++;
+} else if (/case 'i'|case 'l'|I cargo|L comms|Comms log \(L\)|Cargo hold', null, 'I'|Comms log', null, 'L'/.test(inputSrc + helpSrc + controlPromptsSrc + commsSrc)) {
+  console.log('FAIL cargo/comms binding - visible cargo/comms key text must not hard-code I/L');
+  fail++;
+} else {
+  console.log('ok   cargo/comms binding - input and visible copy read the binding registry');
+  ok++;
+}
+// claimBase is deliberately on U (not C): C is the scanner-pulse flight verb in the 2.0 input
+// contract (systems/input.js VERB_BINDINGS), so claim-base yields the key to avoid a collision.
+// This assertion tracks the shipped binding — the check verifies keys are centralized in bindings.js.
+if (!bindingsSrc.includes("techTree: { key: 't', code: 'KeyT', label: 'T' }")
+  || !bindingsSrc.includes("drill: { key: 'b', code: 'KeyB', label: 'B' }")
+  || !bindingsSrc.includes("claimBase: { key: 'u', code: 'KeyU', label: 'U' }")
+  || BINDINGS.techTree.key !== 't'
+  || BINDINGS.drill.key !== 'b'
+  || BINDINGS.claimBase.key !== 'u'
+  || !inputSrc.includes('BINDINGS.techTree.key')
+  || !inputSrc.includes('BINDINGS.drill.key')
+  || !inputSrc.includes('BINDINGS.claimBase.key')
+  || !helpSrc.includes('BINDINGS.techTree.label')
+  || !helpSrc.includes('BINDINGS.drill.label')
+  || !helpSrc.includes('BINDINGS.claimBase.label')
+  || !controlPromptsSrc.includes('BINDINGS.drill.label')
+  || !baseSrc.includes("import { BINDINGS } from '../bindings.js'")
+  || !baseSrc.includes('BINDINGS.claimBase.label')) {
+  console.log('FAIL tech/drill/claim binding - fixed action keys must read src/ui/bindings.js across input, Help, prompts, and base fallback copy');
+  fail++;
+} else if (/case 't'|case 'b'|case 'u'|B drill view|press B|press U|Press U|Tech tree', null, 'T'|Deep-drill \(ant-farm\)', null, 'B|Claim body \/ open base', null, 'U'/.test(inputSrc + helpSrc + controlPromptsSrc + baseSrc)) {
+  console.log('FAIL tech/drill/claim binding - visible tech/drill/claim key text must not hard-code T/B/C');
+  fail++;
+} else {
+  console.log('ok   tech/drill/claim binding - input and visible copy read the binding registry');
+  ok++;
+}
+if (!localizedCoreCopySrc.includes("missionLog: { label: 'Mission Log ({key})' }") ||
+    !pauseSrc.includes("mk(coreText('missionLog', { key: BINDINGS.missionLog.label }), () => nav(ctx, 'pushScreen', 'missionLog'))")) {
+  console.log('FAIL pauseScreen - controller-friendly pause menu must expose Mission Log');
+  fail++;
+} else if (!helpSrc.includes("['Open mission log', null, 'Start / Options → Pause → Mission Log']")) {
+  console.log('FAIL helpScreen - gamepad controls must document the concrete Mission Log route through Start/Options');
+  fail++;
+} else {
+  console.log('ok   pause/help - mission log is reachable and documented for controller players');
+  ok++;
+}
+if (!helpSrc.includes("['Touch (phone / tablet)'")
+  || !helpSrc.includes("['Dock / activate', null, 'Dock button (when prompted)'")
+  || !helpSrc.includes("['Open local map', null, 'Map button'")
+  || !helpSrc.includes("['Open mission log', null, 'Log button'")
+  || !helpSrc.includes("['Open star-map', null, 'Star button'")
+  || !helpSrc.includes("['Pause / Help route', null, 'Pause button -> Help / Controls'")) {
+  console.log('FAIL helpScreen - touch controls must document Dock/Map/Log/Star/Pause on-screen buttons');
+  fail++;
+} else {
+  console.log('ok   helpScreen - touch controls document on-screen menu buttons');
+  ok++;
+}
+if (!localmapSrc.includes("import { BINDINGS } from '../bindings.js'")
+  || !localmapSrc.includes('BINDINGS.localmap.label')
+  || !localmapSrc.includes('BINDINGS.starmap.label')
+  || !localmapSrc.includes('BINDINGS.missionLog.label')) {
+  console.log('FAIL localmapScreen - visible map key labels must read src/ui/bindings.js');
+  fail++;
+} else if (/press N or Esc|Close \(N\)|N map = this system|M map = galaxy|N Local Map|M Star Map/.test(localmapSrc)) {
+  console.log('FAIL localmapScreen - visible map key labels must not hard-code localmap/starmap keys');
+  fail++;
+} else {
+  console.log('ok   localmapScreen - visible map key labels read the binding registry');
+  ok++;
+}
+// Frontend Task D: the codex is a kit screen; its title is the kit's h1, not the legacy shell().
+if (!/el\('h1',\s*'k-display k-t-title',\s*'Codex'\)/.test(codexSrc)) {
+  console.log('FAIL codexScreen - title must be Codex');
+  fail++;
+} else {
+  console.log('ok   codexScreen - title is Codex');
+  ok++;
+}
+if (!missionLogSrc.includes("const activeMissions = active.filter((m) => m && m.status === 'active');")
+  || !/if \(!activeMissions\.length\) \{[\s\S]*this\._listEl\.innerHTML = '<div class="sf-mlog-empty">[\s\S]*if \(this\._compVisible\) this\._renderCompleted\(\);[\s\S]*return;[\s\S]*\}[\s\S]*for \(const m of activeMissions\)/.test(missionLogSrc)) {
+  console.log('FAIL missionLogScreen - completed ledger must refresh even when no active missions remain');
+  fail++;
+} else {
+  console.log('ok   missionLogScreen - completed ledger refreshes on empty active state');
+  ok++;
+}
+// Bind labels live in Help / Settings / controlPrompts. The flight windshield does not mount a key laundry.
+if (!hudSrc.includes("import { BINDINGS } from './bindings.js'")
+  || !hudSrc.includes('BINDINGS.starmap.label')
+  || !hudSrc.includes('BINDINGS.missionLog.label')
+  || !alertsSrc.includes("import { BINDINGS, promptLabel } from './bindings.js'")
+  || !alertsSrc.includes('BINDINGS.starmap.label')
+  || !controlPromptsSrc.includes("import { BINDINGS } from './bindings.js'")
+  || !controlPromptsSrc.includes('BINDINGS.localmap.label')
+  || !controlPromptsSrc.includes('BINDINGS.starmap.label')
+  || !controlPromptsSrc.includes('BINDINGS.codex.label')
+  || uiRootSrc.includes("controlPrompt('flight', 'kbm')")) {
+  console.log('FAIL flight HUD - dock/localmap/starmap/codex labels must read src/ui/bindings.js');
+  fail++;
+} else if (/'M Star Map'|'N Local Map'|'E', 'dock'|OPEN STARMAP \(M\)|N local map\s+•\s+M star map|K codex/.test(hudSrc + alertsSrc + uiRootSrc + controlPromptsSrc)) {
+  console.log('FAIL flight HUD - dock/localmap/starmap/codex labels must not hard-code visible key text');
+  fail++;
+} else {
+  console.log('ok   flight HUD - dock/localmap/starmap/missionLog/codex labels read the binding registry');
+  ok++;
+}
+const stationKbmPrompt = controlPrompt('station', 'kbm');
+if (!onboardingHudAttentionImport
+  || !onboardingSrc.includes("firstUseLine('firstStation'")
+  || !onboardingSrc.includes('_dockControlInRange')
+  || onboardingSrc.includes('el.textContent = controlPrompt(mode, modality)')
+  || !stationKbmPrompt.includes(`${BINDINGS.dock.label} dock`)
+  || !stationKbmPrompt.includes(`${BINDINGS.dock.label}/Esc undock`)) {
+  console.log('FAIL station control prompt - near-dock mode must render the binding-backed dock/undock route');
+  fail++;
+} else {
+  console.log('ok   station control prompt - near-dock mode renders the binding-backed dock/undock route');
+  ok++;
+}
+{
+  const { respawnToastText } = await import('../src/ui/hud.js');
+  const text = respawnToastText({
+    stationId: 'station_helios',
+    refundCr: 18400,
+    cargoLost: true,
+    cargoLostQty: 3,
+  });
+  if (!hudSrc.includes('respawnToastText(payload || {})')
+    || !hudSrc.includes("kind: payload && payload.cargoLost ? 'warn' : 'good'")
+    || text !== 'Recovered at Helios Station - insurance +18,400 cr - cargo lost 3u - 3s shields online') {
+    console.log('FAIL flight HUD - respawn toast must name station, insurance refund, cargo loss, and shield grace');
+    fail++;
+  } else {
+    console.log('ok   flight HUD - respawn toast explains recovery consequences');
+    ok++;
+  }
+}
+if (!helpSrc.includes("['Recover from losses'")
+  || !helpSrc.includes('Services -> Hull Insurance -> launch')
+  || !helpSrc.includes('normal death returns to a station with cargo loss and 3s shields')
+  || !helpSrc.includes('Ironman is final: Run Over shows loss cause and sortie stats')
+  || !helpSrc.includes('Saves avoid death/respawn limbo')
+  || !helpSrc.includes('Save/F5 before quitting')) {
+  console.log('FAIL helpScreen - loops tab must teach normal recovery, Ironman finality, and save timing');
+  fail++;
+} else {
+  console.log('ok   helpScreen - loops tab teaches recovery and save timing');
+  ok++;
+}
+const figureDossierKeys = ['protagonist', 'kessler', 'hale', 'slate', 'quinn', 'voss', 'elroy', 'mira', 'rook', 'vale', 'kurtz'];
+const missingFigureDossiers = figureDossierKeys.filter((key) => !new RegExp(`${key}:\\s*\\{`).test(codexSrc));
+if (missingFigureDossiers.length) {
+  console.log('FAIL codexScreen - missing figure dossiers: ' + missingFigureDossiers.join(', '));
+  fail++;
+} else {
+  console.log('ok   codexScreen - figure dossiers cover canonical cast');
+  ok++;
+}
+const runtimeTierLabels = ['Sworn Enemy', 'Hated', 'Hostile', 'Disliked', 'Neutral', 'Accepted', 'Trusted', 'Allied', 'Hero'];
+const missingRuntimeTiers = runtimeTierLabels.filter((tier) => !factionsSrc.includes(`name: '${tier}'`));
+const staleTierLabels = ['Nemesis', 'Unfriendly', 'Cordial', 'Friendly', 'Honored'].filter((tier) => factionsSrc.includes(tier));
+if (missingRuntimeTiers.length || staleTierLabels.length) {
+  console.log('FAIL factionsPanel - tier labels drifted (missing: ' + missingRuntimeTiers.join(', ') + '; stale: ' + staleTierLabels.join(', ') + ')');
+  fail++;
+} else if (!/AGGRO_THRESHOLD\s*=\s*-150/.test(factionsSrc) || !/relationSummary/.test(factionsSrc)) {
+  console.log('FAIL factionsPanel - missing aggro threshold or relation summary');
+  fail++;
+} else {
+  console.log('ok   factionsPanel - tiers match runtime labels and relations are shown');
+  ok++;
+}
+if (automationSrc.includes('ore-u placeholder') || !automationSrc.includes('DRONE_DISPLAY_ORE_VALUE')
+  || !automationSrc.includes('yield ~') || !automationSrc.includes('../../data/commodities.js')) {
+  console.log('FAIL automationScreen - drone yield display must use commodity baseline, not placeholder economics');
+  fail++;
+} else {
+  console.log('ok   automationScreen - drone yield display uses commodity baseline');
+  ok++;
+}
+if (!newGameSrc.includes('let launching = false')
+    || !localizedCoreCopySrc.includes("launching: { label: 'Launching...' }")
+    || !newGameSrc.includes("launch.textContent = launching ? coreText('launching') : coreText('launch')")
+  || !newGameSrc.includes("ctx.bus.on('game:startFailed', restoreLaunch)") || !newGameSrc.includes('if (launching) return')) {
+  console.log('FAIL newGameScreen - Launch must guard duplicate async starts and restore after failure');
+  fail++;
+} else {
+  console.log('ok   newGameScreen - Launch is guarded during async startup');
+  ok++;
+}
+if (!mainMenuSrc.includes("setScreenButtonReady(refs.bNew, ctx, 'newGame', 'New Game')")
+  || !mainMenuSrc.includes("pushWhenReady(ctx, 'newGame', 'New Game')")
+  || !mainMenuSrc.includes("setScreenButtonReady(refs.bLoad, ctx, 'saveLoad', 'Load Game')")
+  || !mainMenuSrc.includes("setScreenButtonReady(refs.bSettings, ctx, 'settings', 'Settings')")
+  || !uiRootSrc.includes("this._registeredScreens.has('newGame')")
+  || !uiRootSrc.includes('this._showMainMenuWhenReady = showMainMenuWhenReady')
+  || !uiRootSrc.includes("this.screenManager.top() === 'mainMenu'")
+  || !uiRootSrc.includes('this.screenManager.refreshTop()')) {
+  console.log('FAIL mainMenuScreen - dynamic screen buttons must wait for registered targets');
+  fail++;
+} else {
+  console.log('ok   mainMenuScreen - dynamic screen buttons wait for registered targets');
+  ok++;
+}
+if (!gameOverSrc.includes('_refreshSummary(ctx)') || !/onShow\(ctx\)\s*\{[\s\S]*this\._refreshSummary\(ctx\)/.test(gameOverSrc)
+  || !/refresh\(ctx\)\s*\{ this\._refreshSummary\(ctx\); \}/.test(gameOverSrc)) {
+  console.log('FAIL gameOverScreen - cached screen must refresh run summary on show/refresh');
+  fail++;
+} else {
+  console.log('ok   gameOverScreen - cached run summary refreshes on show');
+  ok++;
+}
+if (!gameOverSrc.includes("if (ctx.state) ctx.state.mode = 'menu';") || gameOverSrc.includes("\n      state.mode = 'menu';")) {
+  console.log('FAIL gameOverScreen - Main Menu action must use ctx.state, not an undefined global state');
+  fail++;
+} else {
+  console.log('ok   gameOverScreen - Main Menu action uses ctx.state');
+  ok++;
+}
+{
+  const { storyProgressLabel, deathCauseLabel, lastDeathSummary } = await import('../src/ui/screens/gameOver.js');
+  const direct = storyProgressLabel({
+    story: { beatIndex: 3 },
+    missions: { completedLog: [{ type: 'cargo_delivery' }, { type: 'recon_scan' }] },
+  });
+  const legacy = storyProgressLabel({
+    missions: { story: { beatIndex: 5 }, completedLog: [] },
+  });
+  if (direct !== 'Beat 3 / 7' || legacy !== 'Beat 5 / 7' ||
+    gameOverSrc.includes("beats: String((missions.completedLog || []).length)")) {
+    console.log('FAIL gameOverScreen - run summary must report story beat progress, not completed mission ledger size');
+    fail++;
+  } else {
+    console.log('ok   gameOverScreen - run summary reports story progress');
+    ok++;
+  }
+  const deathSummary = lastDeathSummary({
+    telemetry: {
+      getSessionStats() {
+        return {
+          deathLog: [
+            { cause: 'collision:asteroid', lifespanMs: 7000 },
+            { cause: 'ship:capital', killerType: 'capital', killerFaction: 'faction_vael', lifespanMs: 125000 },
+          ],
+        };
+      },
+    },
+  });
+  if (!gameOverSrc.includes("['cause', 'Loss cause']")
+    || !gameOverSrc.includes("['lifespan', 'Final sortie']")
+    || !gameOverSrc.includes('ctx.telemetry')
+    || !mainSrc.includes('ctx.telemetry = telemetry')
+    || deathCauseLabel({ cause: 'environmental' }) !== 'Environmental hazard'
+    || deathSummary.cause !== 'Destroyed by Capital (Vael)'
+    || deathSummary.lifespan !== '2m 5s') {
+    console.log('FAIL gameOverScreen - run summary must show latest death cause and final sortie duration from telemetry');
+    fail++;
+  } else {
+    console.log('ok   gameOverScreen - run summary shows accountable death telemetry');
+    ok++;
+  }
+}
+
+console.log(`\n${ok} UI screen imports ok, ${fail} fail`);
+process.exit(fail ? 1 : 0);

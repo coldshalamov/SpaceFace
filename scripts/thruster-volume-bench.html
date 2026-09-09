@@ -1,0 +1,180 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>plume volume GPU bench</title>
+<style>html,body{margin:0;background:#000;overflow:hidden}</style>
+<script type="importmap">{"imports":{"three":"/node_modules/three/build/three.module.js","three/addons/":"/node_modules/three/examples/jsm/"}}</script>
+</head>
+<body>
+<script type="module">
+// GPU cost of the raymarched plume, measured with EXT_disjoint_timer_query_webgl2.
+//
+// Two things make a naive version of this measurement useless. rAF wall time is vsync-clamped and
+// includes compositing, so it cannot separate a 0.4 ms shader from a 6 ms one — hence timer
+// queries. And an integrated GPU's clock wanders by more than 2x with thermal state, so absolute
+// milliseconds taken minutes apart are not comparable — hence a reference workload rendered in the
+// same interleaved loop. Cost is reported both in milliseconds and as a multiple of that reference,
+// and only the ratio is stable enough to gate on.
+//
+// The three cases alternate frame by frame rather than running in blocks, so any clock drift lands
+// on all of them equally instead of on whichever ran last.
+import * as THREE from 'three';
+import { VolumetricPlumeSystem } from '/src/render/thruster/systems/volumetricPlume.js';
+import { PLAYER_PLASMA_STREAM_RECIPE } from '/src/render/thruster/recipes/plasmaStreamRecipe.js';
+import { inspectPlumeNoiseVolume } from '/src/render/thruster/volume/plumeNoiseVolume.js';
+
+const params = new URLSearchParams(location.search);
+const W = Number(params.get('w') || 1920);
+const H = Number(params.get('h') || 1080);
+const ROUNDS = Number(params.get('rounds') || 200);
+const WARMUP = Number(params.get('warmup') || 60);
+const NOZZLES = Number(params.get('nozzles') || 1);
+const FORCE_STEPS = Number(params.get('steps') || 0);
+// chase = the framing players fly in. near = the chase camera drifted alongside a boosted plume,
+// so the proxy covers most of the frame. near is the cost ceiling, not the common case.
+const FRAMING = params.get('framing') || 'chase';
+
+const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
+renderer.setPixelRatio(1);
+renderer.setSize(W, H);
+renderer.autoClear = true;
+renderer.setClearColor(0x000000, 1);
+document.body.appendChild(renderer.domElement);
+const gl = renderer.getContext();
+const ext = gl.getExtension('EXT_disjoint_timer_query_webgl2');
+const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(55, W / H, 0.1, 4000);
+const vol = PLAYER_PLASMA_STREAM_RECIPE.volume;
+const jet = PLAYER_PLASMA_STREAM_RECIPE.jet;
+
+const sys = new VolumetricPlumeSystem(THREE, { maxNozzles: 4, ...vol });
+sys.attach(scene);
+
+const sockets = [];
+for (let i = 0; i < NOZZLES; i++) {
+  sockets.push({ x: 0, y: 0, z: (i - (NOZZLES - 1) / 2) * 2.2, ax: 1, ay: 0, az: 0 });
+}
+if (FRAMING === 'near') camera.position.set(-6, 3, 14);
+else camera.position.set(14, 7, 26);
+camera.lookAt(-jet.lengthWU * 0.4, 0, 0);
+sys.setCamera(camera);
+
+// Reference workload: one fullscreen additive pass doing a fixed amount of arithmetic. Its absolute
+// cost moves with the GPU's clock exactly as the plume's does, so the ratio between them is a
+// property of the shader rather than of the machine's mood.
+const refScene = new THREE.Scene();
+const refCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+const refMat = new THREE.ShaderMaterial({
+  vertexShader: 'void main(){ gl_Position = vec4(position.xy, 0.0, 1.0); }',
+  fragmentShader: `
+    precision highp float;
+    void main() {
+      // 32 rounds of dependent transcendental math: enough to be measurable, simple enough that no
+      // driver optimizes it away, and free of texture access so it tracks ALU clock.
+      float a = gl_FragCoord.x * 0.001 + gl_FragCoord.y * 0.0013;
+      for (int i = 0; i < 32; i++) a = sin(a) * 1.7 + cos(a * 1.3) * 0.4;
+      gl_FragColor = vec4(vec3(a * 0.0001), 1.0);
+    }`,
+  depthTest: false,
+  depthWrite: false,
+  blending: THREE.AdditiveBlending,
+});
+refScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), refMat));
+
+const p = {
+  ...vol,
+  drive: 1,
+  boost: 1,
+  turbulence: 1,
+  lengthWU: jet.lengthWU,
+  exitRadiusWU: jet.exitRadiusWU,
+  tailRadiusWU: jet.exitRadiusWU * vol.tailFlare,
+  flowSpeed: jet.exhaustSpeedWU * vol.flowScale,
+  shockAmp: 0.4,
+  shockPitch: jet.shock.pitchWU,
+  shockDecay: jet.shock.decayWU,
+};
+
+const buckets = { plume: [], ref: [], empty: [] };
+const pending = [];
+let round = 0;
+let coveragePct = 0;
+let steps = 0;
+
+function drain() {
+  for (let i = pending.length - 1; i >= 0; i--) {
+    const q = pending[i];
+    if (!gl.getQueryParameter(q.query, gl.QUERY_RESULT_AVAILABLE)) continue;
+    if (!gl.getParameter(ext.GPU_DISJOINT_EXT)) q.bucket.push(gl.getQueryParameter(q.query, gl.QUERY_RESULT) / 1e6);
+    gl.deleteQuery(q.query);
+    pending.splice(i, 1);
+  }
+}
+
+function timed(bucket, draw) {
+  let query = null;
+  if (ext) { query = gl.createQuery(); gl.beginQuery(ext.TIME_ELAPSED_EXT, query); }
+  draw();
+  if (ext) { gl.endQuery(ext.TIME_ELAPSED_EXT); pending.push({ query, bucket }); }
+}
+
+function tick() {
+  const info = sys.update(1 / 60, sockets, p);
+  steps = info.steps || steps;
+  if (FORCE_STEPS > 0) for (const m of sys.materials()) m.uniforms.uSteps.value = FORCE_STEPS;
+
+  const record = round >= WARMUP;
+  timed(record ? buckets.plume : [], () => renderer.render(scene, camera));
+
+  if (round === WARMUP + 4) {
+    const buf = new Uint8Array(W * H * 4);
+    gl.readPixels(0, 0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+    let lit = 0;
+    for (let i = 0; i < W * H; i++) if (buf[i * 4] + buf[i * 4 + 1] + buf[i * 4 + 2] > 6) lit++;
+    coveragePct = (lit / (W * H)) * 100;
+  }
+
+  timed(record ? buckets.ref : [], () => renderer.render(refScene, refCam));
+
+  sys.reset();
+  timed(record ? buckets.empty : [], () => renderer.render(scene, camera));
+
+  drain();
+  round++;
+  if (round < ROUNDS + WARMUP) { requestAnimationFrame(tick); return; }
+
+  setTimeout(() => {
+    drain();
+    const stat = (a) => {
+      const s = a.slice().sort((x, y) => x - y);
+      const at = (q) => s[Math.min(s.length - 1, Math.floor(s.length * q))] || 0;
+      return { n: s.length, median: at(0.5), p95: at(0.95) };
+    };
+    const plume = stat(buckets.plume);
+    const ref = stat(buckets.ref);
+    const empty = stat(buckets.empty);
+    const plumeMs = plume.median - empty.median;
+    const refMs = Math.max(1e-3, ref.median - empty.median);
+    window.__bench = {
+      supported: !!ext,
+      gpu: dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER),
+      viewport: { w: W, h: H },
+      framing: FRAMING,
+      nozzles: NOZZLES,
+      steps,
+      coveragePct,
+      plumeMs,
+      plumeP95Ms: plume.p95 - empty.median,
+      referenceMs: refMs,
+      // Plume cost expressed in fullscreen reference passes. This is the machine-independent number.
+      plumeInRefPasses: plumeMs / refMs,
+      raw: { plume, ref, empty },
+      noise: inspectPlumeNoiseVolume(),
+    };
+  }, 300);
+}
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>

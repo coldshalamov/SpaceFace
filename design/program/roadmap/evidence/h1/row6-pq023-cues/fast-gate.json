@@ -1,0 +1,14 @@
+{
+  "schema": "spaceface.validation-fast-gate.v1",
+  "generatedAt": "2026-07-29T08:43:44.378Z",
+  "routeDigest": "b7869714ca477161517a7bd51662ee2000d8d747b3cda8b4efdb16a89724561c",
+  "regressionDigest": "0ded0eb6ea7bbefed2ff0662eba86361195b7f2d64fc16433ae3e5770bb76dba",
+  "productionDigest": "b7869714ca477161517a7bd51662ee2000d8d747b3cda8b4efdb16a89724561c",
+  "candidateDigest": "317f02f82b1ac15d482018ff6569fe4e754a2d101622c45d454923b25c32d595",
+  "buildDigest": "cdd523a24578c280983f59a98f0439201a07e1136dcf24686b379de8a74671dd",
+  "scenarioDigest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+  "inputDigest": "a4eb3645471bbec170d7094b17f388da8b945544850365492100ed37c390ca1a",
+  "profileDigest": "4648d249bc847fee3eebc6392a6b05cd910508cc51b578e75f1cfe18a46cba78",
+  "manifestDigest": "e01ff5d95088968789bffa326b0b62ffbaec3ed73c79e2f604e977fe796c464d",
+  "acknowledgesFailureFingerprint": null
+}

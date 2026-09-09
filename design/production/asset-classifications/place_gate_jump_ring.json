@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "assetId": "place_gate_jump_ring",
+  "classification": "rejected",
+  "reasonCode": "critical_or_major_defect",
+  "candidateHash": null,
+  "evidencePaths": [
+    ".devshots/slice-A/gate-approach.png",
+    ".devshots/slice-A/gate-close.png"
+  ],
+  "campaignStatePath": null,
+  "openCriticalMajorCount": 1,
+  "authorityRole": "orchestrator",
+  "classifiedBy": "lead-integrator",
+  "classifiedAt": "2026-07-10T13:43:36.667Z"
+}

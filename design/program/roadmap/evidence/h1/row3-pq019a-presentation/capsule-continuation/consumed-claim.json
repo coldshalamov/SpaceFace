@@ -1,0 +1,24 @@
+{
+  "schema": "spaceface.validation-broker-claim-consumed.v1",
+  "claimId": "7584-0f021eaf85838a532440c0a8",
+  "claimPath": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\pq019a-acceptance\\broker-claims\\7584-0f021eaf85838a532440c0a8.json",
+  "consumedAt": "2026-07-31T07:09:14.734Z",
+  "pid": 22524,
+  "candidateDigest": "530315c2db88bb92502e6f602bd1e4d690a30ef137aa2e88be514da3e509d992",
+  "runtimeKind": "browser",
+  "digests": {
+    "routeDigest": "39d8ce2d3977cb01ec18d9d1e7374916ac1a4f29280392ce73b94552577779e9",
+    "regressionDigest": "4a10a1874a250d808b650f9a5e4a2eb924e291a7ca6c61b9579cff3edc1945ec",
+    "productionDigest": "39d8ce2d3977cb01ec18d9d1e7374916ac1a4f29280392ce73b94552577779e9",
+    "harnessDigest": "6d4d3c0c98cf99bc25675c04cd57b98229bf3d87416958219296f9b75c4f64b5",
+    "scenarioDigest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "inputDigest": "5e24865f8470ba09c664340ad9437c91fd9bed32827687e0facf99874d825938",
+    "profileDigest": "4648d249bc847fee3eebc6392a6b05cd910508cc51b578e75f1cfe18a46cba78",
+    "manifestDigest": "0fbd52f057c8e8c9f02be384a7af27edab8e192abb1f29597cca3ea9abdeb55a",
+    "candidateDigest": "530315c2db88bb92502e6f602bd1e4d690a30ef137aa2e88be514da3e509d992",
+    "buildDigest": "cdd523a24578c280983f59a98f0439201a07e1136dcf24686b379de8a74671dd",
+    "candidateSourceDigestMode": "all-src-js",
+    "candidateSourcePathCount": 728
+  },
+  "mode": "acceptance"
+}

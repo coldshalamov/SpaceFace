@@ -1,0 +1,596 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "spaceface://production/campaign-state.schema.json",
+  "title": "SpaceFace Orchestrated Candidate State",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "campaignId",
+    "packetId",
+    "briefHash",
+    "coverageIds",
+    "dependencies",
+    "externalPrerequisites",
+    "dependencySnapshotHash",
+    "state",
+    "controllerId",
+    "attemptCount",
+    "relaunchCount",
+    "failureSignature",
+    "heartbeatAt",
+    "continuationDeadlineAt",
+    "lease",
+    "author",
+    "reviewers",
+    "candidate",
+    "defects",
+    "gateVerdicts",
+    "acceptanceDecision",
+    "blockerAdjudication",
+    "history",
+    "nextAction"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 2 },
+    "campaignId": { "type": "string", "minLength": 1 },
+    "packetId": { "type": "string", "minLength": 1 },
+    "briefHash": { "$ref": "#/definitions/digest" },
+    "coverageIds": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["packetId", "requiredState", "observedState", "candidateHash", "acceptanceRecordHash"],
+        "properties": {
+          "packetId": { "type": "string", "minLength": 1 },
+          "requiredState": { "const": "ACCEPTED" },
+          "observedState": {
+            "oneOf": [
+              { "$ref": "#/definitions/state" },
+              { "const": "MISSING" }
+            ]
+          },
+          "candidateHash": { "$ref": "#/definitions/digestOrNull" },
+          "acceptanceRecordHash": { "$ref": "#/definitions/digestOrNull" }
+        }
+      },
+      "uniqueItems": true
+    },
+    "externalPrerequisites": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/controllerArtifact" },
+      "uniqueItems": true
+    },
+    "dependencySnapshotHash": { "$ref": "#/definitions/digest" },
+    "state": { "$ref": "#/definitions/state" },
+    "controllerId": { "type": "string", "minLength": 1 },
+    "attemptCount": { "type": "integer", "minimum": 0 },
+    "relaunchCount": { "type": "integer", "minimum": 0 },
+    "failureSignature": { "type": ["string", "null"] },
+    "heartbeatAt": {
+      "oneOf": [
+        { "type": "null" },
+        { "type": "string", "format": "date-time" }
+      ]
+    },
+    "continuationDeadlineAt": {
+      "oneOf": [
+        { "type": "null" },
+        { "type": "string", "format": "date-time" }
+      ]
+    },
+    "lease": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "status",
+        "candidateWorkspace",
+        "writablePaths",
+        "baselineHash",
+        "acquiredAt",
+        "heartbeatAt",
+        "expiresAt"
+      ],
+      "properties": {
+        "id": { "type": ["string", "null"] },
+        "kind": { "enum": ["code_mutation", "blender_mutation", "read_only"] },
+        "status": { "enum": ["planned", "pending", "active", "released", "violated"] },
+        "candidateWorkspace": { "type": ["string", "null"] },
+        "writablePaths": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "baselineHash": { "$ref": "#/definitions/digestOrNull" },
+        "acquiredAt": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "string", "format": "date-time" }
+          ]
+        },
+        "heartbeatAt": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "string", "format": "date-time" }
+          ]
+        },
+        "expiresAt": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "string", "format": "date-time" }
+          ]
+        }
+      }
+    },
+    "author": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["agent", "model", "modelFamily", "sessionId"],
+      "properties": {
+        "agent": { "type": ["string", "null"] },
+        "model": { "type": ["string", "null"] },
+        "modelFamily": { "type": ["string", "null"] },
+        "sessionId": { "type": ["string", "null"] }
+      }
+    },
+    "reviewers": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "agent",
+          "model",
+          "modelFamily",
+          "sessionId",
+          "candidateHash",
+          "verdict",
+          "verdictArtifact"
+        ],
+        "properties": {
+          "agent": { "type": "string", "minLength": 1 },
+          "model": { "type": "string", "minLength": 1 },
+          "modelFamily": { "type": "string", "minLength": 1 },
+          "sessionId": { "type": "string", "minLength": 1 },
+          "candidateHash": { "$ref": "#/definitions/digest" },
+          "verdict": { "enum": ["PASS", "REVISE", "REJECT"] },
+          "verdictArtifact": { "$ref": "#/definitions/controllerArtifact" }
+        }
+      }
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "sourceHash",
+        "candidateHash",
+        "workspaceSnapshotHash",
+        "inputManifest",
+        "deltaManifest",
+        "integrationReceipt",
+        "submissionArtifact",
+        "evidenceArtifacts"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "sourceHash": { "$ref": "#/definitions/digestOrNull" },
+        "candidateHash": { "$ref": "#/definitions/digestOrNull" },
+        "workspaceSnapshotHash": { "$ref": "#/definitions/digestOrNull" },
+        "inputManifest": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/definitions/controllerArtifact" }
+          ]
+        },
+        "deltaManifest": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/definitions/controllerArtifact" }
+          ]
+        },
+        "integrationReceipt": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/definitions/controllerArtifact" }
+          ]
+        },
+        "submissionArtifact": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/definitions/controllerArtifact" }
+          ]
+        },
+        "evidenceArtifacts": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/controllerArtifact" },
+          "uniqueItems": true
+        }
+      }
+    },
+    "defects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "severity",
+          "status",
+          "openedCandidateHash",
+          "evidenceArtifacts",
+          "resolutionEvidenceArtifacts"
+        ],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "severity": { "enum": ["critical", "major", "minor"] },
+          "status": { "enum": ["open", "resolved", "superseded"] },
+          "openedCandidateHash": { "$ref": "#/definitions/digest" },
+          "evidenceArtifacts": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/controllerArtifact" },
+            "minItems": 1
+          },
+          "resolutionEvidenceArtifacts": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/controllerArtifact" }
+          }
+        }
+      }
+    },
+    "gateVerdicts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope", "technical", "runtime", "temporal", "quality", "operational"],
+      "properties": {
+        "scope": { "$ref": "#/definitions/gate" },
+        "technical": { "$ref": "#/definitions/gate" },
+        "runtime": { "$ref": "#/definitions/gate" },
+        "temporal": { "$ref": "#/definitions/gate" },
+        "quality": { "$ref": "#/definitions/gate" },
+        "operational": { "$ref": "#/definitions/gate" }
+      }
+    },
+    "acceptanceDecision": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/definitions/acceptanceDecision" }
+      ]
+    },
+    "blockerAdjudication": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["adjudicatorId", "verdict", "attemptEvidenceArtifacts", "recordHash"],
+          "properties": {
+            "adjudicatorId": { "type": "string", "minLength": 1 },
+            "verdict": { "enum": ["confirmed", "rejected"] },
+            "attemptEvidenceArtifacts": {
+              "type": "array",
+              "items": { "$ref": "#/definitions/controllerArtifact" },
+              "minItems": 3
+            },
+            "recordHash": { "$ref": "#/definitions/digest" }
+          }
+        }
+      ]
+    },
+    "history": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "sequence",
+          "actor",
+          "actorRole",
+          "from",
+          "to",
+          "candidateHash",
+          "evidenceArtifacts",
+          "previousRecordHash",
+          "recordHash"
+        ],
+        "properties": {
+          "sequence": { "type": "integer", "minimum": 0 },
+          "actor": { "type": "string", "minLength": 1 },
+          "actorRole": { "enum": ["controller", "author", "verifier", "reviewer", "integrator"] },
+          "from": {
+            "oneOf": [
+              { "type": "null" },
+              { "$ref": "#/definitions/state" }
+            ]
+          },
+          "to": { "$ref": "#/definitions/state" },
+          "candidateHash": { "$ref": "#/definitions/digestOrNull" },
+          "evidenceArtifacts": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/controllerArtifact" }
+          },
+          "previousRecordHash": { "$ref": "#/definitions/digestOrNull" },
+          "recordHash": { "$ref": "#/definitions/digest" }
+        }
+      }
+    },
+    "nextAction": { "type": "string", "minLength": 1 }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "state": { "const": "ACCEPTED" } } },
+      "then": {
+        "properties": {
+          "lease": {
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "status": { "const": "released" },
+              "candidateWorkspace": { "type": "string", "minLength": 1 },
+              "writablePaths": { "minItems": 1 },
+              "baselineHash": { "$ref": "#/definitions/digest" },
+              "acquiredAt": { "type": "string", "format": "date-time" }
+            }
+          },
+          "author": {
+            "properties": {
+              "agent": { "type": "string", "minLength": 1 },
+              "model": { "type": "string", "minLength": 1 },
+              "modelFamily": { "type": "string", "minLength": 1 },
+              "sessionId": { "type": "string", "minLength": 1 }
+            }
+          },
+          "candidate": {
+            "properties": {
+              "sourceHash": { "$ref": "#/definitions/digest" },
+              "candidateHash": { "$ref": "#/definitions/digest" },
+              "workspaceSnapshotHash": { "$ref": "#/definitions/digest" },
+              "inputManifest": { "$ref": "#/definitions/controllerArtifact" },
+              "deltaManifest": { "$ref": "#/definitions/controllerArtifact" },
+              "integrationReceipt": { "$ref": "#/definitions/controllerArtifact" },
+              "submissionArtifact": { "$ref": "#/definitions/controllerArtifact" },
+              "evidenceArtifacts": { "minItems": 1 }
+            }
+          },
+          "reviewers": {
+            "minItems": 2,
+            "items": {
+              "properties": {
+                "verdict": { "const": "PASS" }
+              }
+            }
+          },
+          "defects": {
+            "not": {
+              "contains": {
+                "type": "object",
+                "required": ["severity", "status"],
+                "properties": {
+                  "severity": { "enum": ["critical", "major"] },
+                  "status": { "const": "open" }
+                }
+              }
+            }
+          },
+          "gateVerdicts": {
+            "properties": {
+              "scope": { "$ref": "#/definitions/satisfiedGate" },
+              "technical": { "$ref": "#/definitions/satisfiedGate" },
+              "runtime": { "$ref": "#/definitions/satisfiedGate" },
+              "temporal": { "$ref": "#/definitions/satisfiedGate" },
+              "quality": { "$ref": "#/definitions/satisfiedGate" },
+              "operational": { "$ref": "#/definitions/satisfiedGate" }
+            }
+          },
+          "acceptanceDecision": { "$ref": "#/definitions/acceptanceDecision" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "state": { "const": "BLOCKED" } } },
+      "then": {
+        "properties": {
+          "attemptCount": { "minimum": 3 },
+          "blockerAdjudication": {
+            "type": "object",
+            "properties": { "verdict": { "const": "confirmed" } }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "state": { "enum": ["LEASED", "AUTHORING"] } } },
+      "then": {
+        "properties": {
+          "heartbeatAt": { "type": "string", "format": "date-time" },
+          "lease": {
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "status": { "const": "active" },
+              "candidateWorkspace": { "type": "string", "minLength": 1 },
+              "writablePaths": { "minItems": 1 },
+              "baselineHash": { "$ref": "#/definitions/digest" },
+              "acquiredAt": { "type": "string", "format": "date-time" },
+              "heartbeatAt": { "type": "string", "format": "date-time" },
+              "expiresAt": { "type": "string", "format": "date-time" }
+            }
+          },
+          "author": {
+            "properties": {
+              "agent": { "type": "string", "minLength": 1 },
+              "model": { "type": "string", "minLength": 1 },
+              "modelFamily": { "type": "string", "minLength": 1 },
+              "sessionId": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "state": { "enum": ["UNASSESSED", "SPECIFIED"] } } },
+      "then": {
+        "properties": {
+          "heartbeatAt": { "type": "null" },
+          "lease": {
+            "properties": {
+              "status": { "enum": ["planned", "pending"] },
+              "acquiredAt": { "type": "null" },
+              "heartbeatAt": { "type": "null" },
+              "expiresAt": { "type": "null" }
+            }
+          },
+          "author": { "properties": { "sessionId": { "type": "null" } } }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "state": { "const": "CONTINUATION_DUE" } } },
+      "then": {
+        "properties": {
+          "continuationDeadlineAt": { "type": "string", "format": "date-time" }
+        }
+      }
+    }
+  ],
+  "definitions": {
+    "digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "digestOrNull": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/definitions/digest" }
+      ]
+    },
+    "controllerArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifactId",
+        "relativePath",
+        "sha256",
+        "bytes",
+        "kind",
+        "candidateHash",
+        "producerReceiptHash"
+      ],
+      "properties": {
+        "artifactId": { "type": "string", "minLength": 1 },
+        "relativePath": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/definitions/digest" },
+        "bytes": { "type": "integer", "minimum": 1 },
+        "kind": { "type": "string", "minLength": 1 },
+        "candidateHash": { "$ref": "#/definitions/digestOrNull" },
+        "producerReceiptHash": { "$ref": "#/definitions/digest" }
+      }
+    },
+    "state": {
+      "enum": [
+        "UNASSESSED",
+        "SPECIFIED",
+        "LEASED",
+        "AUTHORING",
+        "SUBMITTED",
+        "EVIDENCE_AUDIT",
+        "TECHNICAL_VALIDATION",
+        "RUNTIME_VALIDATION",
+        "OBSERVED_PLAY",
+        "OPERATIONAL_VALIDATION",
+        "BLIND_QUALITY_REVIEW",
+        "ACCEPTANCE_REVIEW",
+        "APPROVED_CANDIDATE",
+        "INTEGRATION_VALIDATION",
+        "REJECTED",
+        "CONTINUATION_DUE",
+        "BLOCKER_AUDIT",
+        "ACCEPTED",
+        "BLOCKED"
+      ]
+    },
+    "gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "candidateHash", "verifierId", "evidenceArtifacts", "waiverArtifact"],
+      "properties": {
+        "status": { "enum": ["pending", "pass", "fail", "not_applicable"] },
+        "candidateHash": { "$ref": "#/definitions/digestOrNull" },
+        "verifierId": { "type": ["string", "null"] },
+        "evidenceArtifacts": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/controllerArtifact" }
+        },
+        "waiverArtifact": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/definitions/controllerArtifact" }
+          ]
+        }
+      }
+    },
+    "satisfiedGate": {
+      "allOf": [
+        { "$ref": "#/definitions/gate" },
+        {
+          "oneOf": [
+            {
+              "properties": {
+                "status": { "const": "pass" },
+                "candidateHash": { "$ref": "#/definitions/digest" },
+                "verifierId": { "type": "string", "minLength": 1 },
+                "evidenceArtifacts": { "minItems": 1 },
+                "waiverArtifact": { "type": "null" }
+              }
+            },
+            {
+              "properties": {
+                "status": { "const": "not_applicable" },
+                "candidateHash": { "$ref": "#/definitions/digest" },
+                "verifierId": { "type": "string", "minLength": 1 },
+                "waiverArtifact": { "$ref": "#/definitions/controllerArtifact" }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "acceptanceDecision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "authorityRole",
+        "authorityId",
+        "candidateHash",
+        "reviewerVerdictArtifacts",
+        "integrationReceiptHash",
+        "acceptedAt",
+        "decisionRecordHash"
+      ],
+      "properties": {
+        "authorityRole": { "const": "orchestrator" },
+        "authorityId": { "type": "string", "minLength": 1 },
+        "candidateHash": { "$ref": "#/definitions/digest" },
+        "reviewerVerdictArtifacts": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/controllerArtifact" },
+          "minItems": 2,
+          "uniqueItems": true
+        },
+        "integrationReceiptHash": { "$ref": "#/definitions/digest" },
+        "acceptedAt": { "type": "string", "format": "date-time" },
+        "decisionRecordHash": { "$ref": "#/definitions/digest" }
+      }
+    }
+  }
+}

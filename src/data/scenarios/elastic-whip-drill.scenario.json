@@ -1,0 +1,123 @@
+{
+  "schema": "spaceface.scenarioContract.v1",
+  "id": "scenario.elastic-whip-drill",
+  "scenario": "Elastic whip drill: latch, stretch, snap a light hostile",
+  "version": 1,
+  "sourceSpec": "design/program/roadmap/active/PQ-029.md",
+  "tickRate": 60,
+  "durationSeconds": 60,
+  "seed": 2901,
+  "status": "pq02901-live",
+  "actors": [
+    {
+      "id": "player_drifter",
+      "role": "player_ship",
+      "required": true,
+      "assetRef": "ship_drifter",
+      "factionId": "faction_free",
+      "capabilities": ["flight.force_torque", "massline.attach", "massline.reel", "massline.cut", "massline.whip"]
+    },
+    {
+      "id": "drill_wasp",
+      "role": "light_hostile",
+      "required": true,
+      "assetRef": "asset.drill.light_wasp",
+      "capabilities": ["massline.attachment_target", "hostile.light", "throwable.light"]
+    }
+  ],
+  "facts": [
+    {
+      "id": "fact.whip.latch_status",
+      "description": "Whether the whip latched the light hostile.",
+      "owner": "scenario.elastic-whip-drill",
+      "initial": "unresolved"
+    },
+    {
+      "id": "fact.whip.stretch_status",
+      "description": "Whether the player burned away and stored stretch in the line.",
+      "owner": "scenario.elastic-whip-drill",
+      "initial": "unresolved"
+    },
+    {
+      "id": "fact.whip.snap_status",
+      "description": "Whether the return stroke moved the light hostile at least 40% of its cruise.",
+      "owner": "scenario.elastic-whip-drill",
+      "initial": "unresolved"
+    }
+  ],
+  "funnelEventIds": [
+    "tether:latched",
+    "tether:cut",
+    "tether:releaseRated"
+  ],
+  "proofMetrics": [
+    {
+      "id": "whip_latch_complete",
+      "target": "latch beat completes: the elastic whip catches a light hostile",
+      "evidence": "test/massline-elastic-whip-snap.test.mjs latch eligibility + head policy",
+      "required": true,
+      "beatIds": ["whip_latch"]
+    },
+    {
+      "id": "whip_snap_speed",
+      "target": "return stroke moves a mass-16 hostile >= 40% of Wasp cruise (42 wu/s)",
+      "evidence": "test/massline-elastic-whip-snap.test.mjs SG-02 flyaway prints SNAP_SPEED/RATIO",
+      "required": true,
+      "beatIds": ["whip_snap"]
+    },
+    {
+      "id": "whip_drill_under_sixty",
+      "target": "the drill runs inside 60 seconds end to end",
+      "evidence": "durationSeconds 60 + three beats, one verb line each",
+      "required": true,
+      "beatIds": ["whip_latch", "whip_stretch", "whip_snap"]
+    }
+  ],
+  "beats": [
+    {
+      "id": "whip_latch",
+      "order": 1,
+      "title": "Latch the wasp with the elastic whip",
+      "intent": "The head is a spring: catch a light hostile on the Drifter's M utility line.",
+      "requiredActors": ["player_drifter", "drill_wasp"],
+      "requiredMechanics": ["massline.attach"],
+      "funnelEventIds": ["tether:latched"],
+      "proofMetricIds": ["whip_latch_complete", "whip_drill_under_sixty"],
+      "worldFactRefs": ["fact.whip.latch_status"],
+      "next": ["whip_stretch"],
+      "branchIds": []
+    },
+    {
+      "id": "whip_stretch",
+      "order": 2,
+      "title": "Burn away and store the stretch",
+      "intent": "The burn is the wind-up: flying off the latch loads the spring. Do not cut yet.",
+      "requiredActors": ["player_drifter", "drill_wasp"],
+      "requiredMechanics": ["flight.force_torque"],
+      "funnelEventIds": [],
+      "proofMetricIds": ["whip_drill_under_sixty"],
+      "worldFactRefs": ["fact.whip.stretch_status"],
+      "next": ["whip_snap"],
+      "branchIds": []
+    },
+    {
+      "id": "whip_snap",
+      "order": 3,
+      "title": "Ride the return stroke — the wasp flies",
+      "intent": "The spring gives the stretch back: the light hull is yanked along the line at a fraction of its own cruise.",
+      "requiredActors": ["player_drifter", "drill_wasp"],
+      "requiredMechanics": ["massline.whip"],
+      "funnelEventIds": ["tether:cut", "tether:releaseRated"],
+      "proofMetricIds": ["whip_snap_speed", "whip_drill_under_sixty"],
+      "worldFactRefs": ["fact.whip.snap_status"],
+      "next": [],
+      "branchIds": []
+    }
+  ],
+  "notes": [
+    "PQ-029.01 leaf .01: elastic whip as stored energy. Three beats, one verb line each, inside 60 seconds.",
+    "Range file untouched: FRONTEND-C owns range.js. This drill lives as data and is proven headless.",
+    "Hitch cannot fit an M utility head. The Drifter is the massline hull.",
+    "The snap is the spring return stroke, never a cut impulse: cutting keeps earned velocity."
+  ]
+}

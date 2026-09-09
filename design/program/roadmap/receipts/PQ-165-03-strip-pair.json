@@ -1,0 +1,81 @@
+{
+  "schema": "spaceface.pq16503StripPair.v1",
+  "seed": 4242,
+  "events": [
+    "telegraphs",
+    "impactDirection",
+    "shieldSide",
+    "loadedLine",
+    "blockedOutput"
+  ],
+  "motionOn": {
+    "tag": "motion-on",
+    "events": [
+      {
+        "id": "telegraphs"
+      },
+      {
+        "id": "impactDirection"
+      },
+      {
+        "id": "shieldSide"
+      },
+      {
+        "id": "loadedLine"
+      },
+      {
+        "id": "blockedOutput"
+      }
+    ],
+    "motionReduce": false,
+    "reads": {
+      "telegraph": "⊘CHARGEClose or break LOS▸",
+      "impactMarkers": 1,
+      "shieldGlyph": "S",
+      "tetherText": "LOADED",
+      "blockedText": "OUTPUT BLOCKED"
+    },
+    "stills": [
+      "design/program/roadmap/receipts/PQ-165-03-motion-on-telegraph.png",
+      "design/program/roadmap/receipts/PQ-165-03-motion-on-impact.png",
+      "design/program/roadmap/receipts/PQ-165-03-motion-on-shield.png",
+      "design/program/roadmap/receipts/PQ-165-03-motion-on-line.png",
+      "design/program/roadmap/receipts/PQ-165-03-motion-on-blocked.png"
+    ]
+  },
+  "reduced": {
+    "tag": "reduce-motion",
+    "events": [
+      {
+        "id": "telegraphs"
+      },
+      {
+        "id": "impactDirection"
+      },
+      {
+        "id": "shieldSide"
+      },
+      {
+        "id": "loadedLine"
+      },
+      {
+        "id": "blockedOutput"
+      }
+    ],
+    "motionReduce": true,
+    "reads": {
+      "telegraph": "⊘CHARGEClose or break LOS▸",
+      "impactMarkers": 1,
+      "shieldGlyph": "S",
+      "tetherText": "LOADED",
+      "blockedText": "OUTPUT BLOCKED"
+    },
+    "stills": [
+      "design/program/roadmap/receipts/PQ-165-03-reduce-motion-telegraph.png",
+      "design/program/roadmap/receipts/PQ-165-03-reduce-motion-impact.png",
+      "design/program/roadmap/receipts/PQ-165-03-reduce-motion-shield.png",
+      "design/program/roadmap/receipts/PQ-165-03-reduce-motion-line.png",
+      "design/program/roadmap/receipts/PQ-165-03-reduce-motion-blocked.png"
+    ]
+  }
+}

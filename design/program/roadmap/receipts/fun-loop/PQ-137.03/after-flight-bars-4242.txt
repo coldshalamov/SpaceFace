@@ -1,0 +1,21 @@
+
+## feel.reversal_course
+  OK   B2 | rest to cruise, Hitch (starter) = 0.6667 s
+  OK   B2 | full 180 deg velocity reversal, Hitch (starter) = 1.5833 s
+  OK   B2 | turn radius at cruise, Hitch (starter) = 0.9463 screen depths
+  OK   B2 | rest to cruise, Wasp = 0.4667 s
+  OK   B2 | full 180 deg velocity reversal, Wasp = 1.1167 s
+  OK   B2 | turn radius at cruise, Wasp = 0.7788 screen depths
+
+## feel.screen_crossing
+  OK   B3 | seconds to cross the visible depth at cruise, Hitch (starter) = 1.3741 s
+  FAIL B3 | visible depth at 2x cruise, as a multiple of the at-cruise depth, Hitch (starter) = 1.0125 x at-cruise depth
+  FAIL B3 | visible depth at 3x cruise, as a multiple of the at-cruise depth, Hitch (starter) = 1.4019 x at-cruise depth
+  OK   B3 | visible depth grows monotonically from cruise to 3x cruise, Hitch (starter) = 1.0000 bool
+  OK   B3 | smallest share of frame width the starter hull ever falls to, Hitch (starter) = 8.6066 % of frame width
+  (cruise 94.9998550415039, depth 130.53623124822872, ref 95)
+
+## feel.earned_speed_kept
+  OK   B1 | speed kept 10 s after a 2x cruise exit, hands off = 1.0000 fraction
+  OK   B1 | speed kept 10 s after a 2x cruise exit, forward held = 1.0000 fraction
+  (cruise 94.9998550415039, depth -, ref -)

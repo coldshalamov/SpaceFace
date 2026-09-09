@@ -1,0 +1,351 @@
+// Guards mission-board preflight: impossible one-load cargo contracts must be visible before
+// accepting and rejected before collateral is charged or the offer leaves the board.
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { MISSION_TUNING, ONE_LOAD_CARGO_TYPES } from '../src/data/missions.js';
+import { missions } from '../src/systems/missions.js';
+import {
+  missionCargoStaging,
+  missionConsequenceSummary,
+  missionPreflight,
+  missionRiskRewardSummary,
+  missionRouteIntel,
+  missionRouteScope,
+  missionShipReadiness,
+  missionTimePacing,
+} from '../src/ui/missionPreflight.js';
+import { missionBoardReadiness } from '../src/ui/station/stationHubModel.js';
+
+const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
+const missionModelSrc = readFileSync(join(ROOT, 'src/ui/station/stationMissionModel.js'), 'utf8');
+const missionPreflightSrc = readFileSync(join(ROOT, 'src/ui/missionPreflight.js'), 'utf8');
+const missionsSrc = readFileSync(join(ROOT, 'src/systems/missions.js'), 'utf8');
+const contractsSrc = readFileSync(join(ROOT, 'src/ui/station/screens/contracts.js'), 'utf8');
+
+assert.match(missionModelSrc, /import \{ missionPreflight,[^}]*\} from '\.\.\/missionPreflight\.js'/,
+  'station mission model must use the shared mission preflight helper');
+assert.match(missionPreflightSrc, /export function missionPreflight/, 'shared mission preflight helper must be exported');
+assert.match(missionPreflightSrc, /ONE_LOAD_CARGO_TYPES/, 'shared preflight must use the canonical one-load mission set');
+assert.match(missionPreflightSrc, /export function missionRouteScope/,
+  'shared mission preflight helper must expose route-scope policy for direct tests');
+assert.match(missionPreflightSrc, /export function missionCargoStaging/,
+  'shared mission preflight helper must expose cargo-staging policy for direct tests');
+assert.match(missionPreflightSrc, /MARKET_STAGED_CARGO_MISSIONS/,
+  'mission preflight must distinguish cargo contracts that should be staged through markets');
+assert.match(missionPreflightSrc, /export function missionRouteIntel/,
+  'shared mission preflight helper must expose route-risk intel for direct tests');
+assert.match(missionPreflightSrc, /export function missionTimePacing/,
+  'shared mission preflight helper must expose timer-pacing policy for direct tests');
+assert.match(missionPreflightSrc, /export function missionShipReadiness/,
+  'shared mission preflight helper must expose ship-readiness policy for direct tests');
+assert.match(missionPreflightSrc, /sectorSignalFor/,
+  'mission preflight route intel must read the same sector signal contract as Star Map risk');
+assert.match(missionPreflightSrc, /forecastTransitFor/,
+  'mission preflight route intel must reuse the shared transit forecast contract');
+assert.match(missionModelSrc, /missionConsequenceSummary\(mission\)/,
+  'station mission model must use the shared consequence helper');
+assert.match(missionPreflightSrc, /export function missionConsequenceSummary/,
+  'shared mission consequence helper must be exported');
+assert.match(missionPreflightSrc, /export function missionRiskRewardSummary/,
+  'shared mission risk/reward helper must be exported for direct tests');
+assert.match(missionPreflightSrc, /Jump route: \$\{sectorName\(targetSectorId\)\}/,
+  'mission preflight must label off-sector destination scope before accept');
+assert.match(missionPreflightSrc, /STATION_SECTOR_BY_ID/,
+  'mission preflight must resolve station-only destinations into route-scope chips');
+assert.match(missionPreflightSrc, /TIMER_CRITICAL_S/,
+  'mission preflight must distinguish critical timers before accept');
+assert.match(missionPreflightSrc, /deadline_s/,
+  'mission preflight must support active absolute mission deadlines as well as board timers');
+assert.match(missionPreflightSrc, /Payout \$\{rewardText\} \/ R\$\{risk\}/,
+  'mission preflight must put payout and risk in one scannable chip');
+assert.match(missionPreflightSrc, /DANGEROUS_MISSION_TYPES/,
+  'mission preflight must distinguish risky/combat contracts for ship-readiness warnings');
+assert.match(missionPreflightSrc, /Hull is worn/,
+  'mission preflight must explain damaged-hull risk before recommending dangerous work');
+assert.match(missionPreflightSrc, /Need \$\{fmtHoldUnits\(cargoNeed\.volume\)\}u cargo capacity for this contract/,
+  'mission preflight must flag cargo capacity blockers');
+assert.match(missionsSrc, /_acceptPreflight\(offer\)/, 'missions.acceptMission must call _acceptPreflight before accepting');
+assert.match(missionsSrc, /ONE_LOAD_CARGO_TYPES/, 'missions must use the canonical one-load cargo mission set');
+assert.match(missionsSrc, /import \{[\s\S]*?ONE_LOAD_CARGO_TYPES[\s\S]*?\} from '\.\.\/data\/missions\.js'/,
+  'missions must import the one-load cargo mission set from mission data');
+assert.doesNotMatch(missionsSrc, /const ONE_LOAD_CARGO_TYPES\s*=\s*new Set/,
+  'missions must not maintain a second one-load cargo mission set');
+assert.match(missionsSrc, /Need \$\{fmtCargoUnits\(requiredVolume\)\}u cargo capacity/,
+  'missions accept guard must explain cargo capacity failures');
+assert.doesNotMatch(contractsSrc, /SIM_ONE_LOAD_CARGO_TYPES|missionHoldBlocker/,
+  'station contracts must not duplicate the sim one-load hold gate');
+assert.match(contractsSrc, /missionDossierReadiness/, 'station contracts must consume shared readiness');
+assert.deepEqual([...ONE_LOAD_CARGO_TYPES].sort(), ['cargo_delivery', 'salvage_retrieval', 'smuggling_run'],
+  'canonical one-load mission set must cover the sim accept families exactly');
+
+function makeOffer(overrides = {}) {
+  return {
+    id: 'offer_preflight_1',
+    type: 'cargo_delivery',
+    factionId: 'faction_mts',
+    params: { cmdtyId: 'cmdty_gas_hydrogen', qty: 2 },
+    reward_cr: 1200,
+    time_limit_s: 900,
+    collateral_cr: 500,
+    riskTier: 1,
+    destStationId: 'station_beltout',
+    destSectorId: 'sector_ceres_belt',
+    distance: 1200,
+    title: 'Preflight Hydrogen Delivery',
+    ...overrides,
+  };
+}
+
+function makeState(capVolume) {
+  return {
+    simTime: 0,
+    meta: { seed: 47 },
+    mode: 'flight',
+    playerId: 1,
+    player: {
+      credits: 1000,
+      cargo: { items: {}, usedVolume: 0, usedMass: 0, capVolume, capMass: 999 },
+      stats: {},
+    },
+    missions: {
+      boards: { station_helios: { refreshEpoch: 0, slots: [makeOffer()] } },
+      active: [],
+      completedLog: [],
+      nextId: 1,
+      config: { ...MISSION_TUNING, maxActive: 8 },
+    },
+    story: { beatIndex: 0, branch: null, flags: {}, chainProgress: 0 },
+    ui: {},
+    nav: {},
+    world: { currentSectorId: 'sector_helios_prime' },
+    entities: new Map(),
+  };
+}
+
+function stockMissionCargo(state, stock = 12) {
+  state.ui.dockedStationId = 'station_helios';
+  state.economy = {
+    markets: {
+      station_helios: {
+        cmdty_gas_hydrogen: { stock, lastBuy: 20, lastMid: 20 },
+      },
+    },
+  };
+  return state;
+}
+
+function makeBus() {
+  const events = [];
+  return {
+    events,
+    on() {},
+    emit(type, payload) { events.push({ type, payload }); },
+  };
+}
+
+function stageShip(state, { hull = 100, hullMax = 100, fuel = 100, fuelMax = 100 } = {}) {
+  state.entities.set(state.playerId, { id: state.playerId, type: 'ship', hull, hullMax });
+  state.fuel = { current: fuel, max: fuelMax };
+  return state;
+}
+
+const lowCapState = makeState(1);
+const consequence = missionConsequenceSummary(makeOffer());
+assert.equal(consequence.reward, 1200, 'consequence helper must surface mission reward credits');
+assert.equal(consequence.repReward, 4, 'consequence helper must match risk-scaled completion rep');
+assert.equal(consequence.repPenalty, -3, 'consequence helper must match failure/expiry rep penalty');
+assert.ok(consequence.chips.some((chip) =>
+  chip.label === 'Success' && /\+1,200 cr/.test(chip.text) && /\+4 rep/.test(chip.text) && /collateral returned/.test(chip.text)),
+  'success consequence must show credits, rep, and collateral refund');
+assert.ok(consequence.chips.some((chip) =>
+  chip.label === 'Fail/expire' && /-3 rep/.test(chip.text) && /collateral forfeited/.test(chip.text) && /no payout/.test(chip.text)),
+  'failure consequence must show rep penalty, collateral loss, and no payout');
+const riskReward = missionRiskRewardSummary(makeOffer());
+const riskRewardChipText = 'Payout +1,200 cr / R1 - stake 500 cr';
+assert.equal(riskReward.risk, 1, 'risk/reward summary must normalize the mission risk tier');
+assert.equal(riskReward.reward, 1200, 'risk/reward summary must surface the credit payout');
+assert.equal(riskReward.collateral, 500, 'risk/reward summary must surface the posted stake');
+assert.equal(riskReward.chip.kind, 'ok', 'low-risk payout chips should read as ready information');
+assert.equal(riskReward.chip.text, riskRewardChipText,
+  'risk/reward chip should combine payout, risk, and stake into one scanline');
+const highRisk = missionRiskRewardSummary(makeOffer({ riskTier: 4, reward_cr: 3600, collateral_cr: 0 }));
+assert.equal(highRisk.chip.kind, 'warn', 'high-risk payout chips should warn without blocking acceptance');
+assert.equal(highRisk.chip.text, 'Payout +3,600 cr / R4', 'high-risk payout chips should stay compact');
+const lowCapUiPreflight = missionPreflight(makeOffer(), lowCapState);
+assert.equal(missionBoardReadiness(lowCapUiPreflight).state, 'blocked',
+  'mission board readiness should mark cargo-capacity blockers as blocked');
+assert.equal(missionBoardReadiness(lowCapUiPreflight).label, 'BLOCKED',
+  'blocked mission cards should be scannable before reading details');
+assert.equal(lowCapUiPreflight.blocker, 'Need 5u cargo capacity for this contract',
+  'shared UI preflight must surface impossible cargo capacity before accept');
+assert.ok(lowCapUiPreflight.chips.some((chip) => chip.kind === 'ok' && chip.text === riskRewardChipText),
+  'shared UI preflight must expose payout/risk/stake before accept');
+assert.ok(lowCapUiPreflight.chips.some((chip) => chip.kind === 'info' && chip.text === 'Jump route: Ceres Belt'),
+  'shared UI preflight must show off-sector route scope before accept');
+assert.ok(lowCapUiPreflight.chips.some((chip) => chip.kind === 'ok' && chip.text === 'Route risk: Calm 34%'),
+  'shared UI preflight must expose route-risk before accept');
+assert.ok(lowCapUiPreflight.chips.some((chip) => chip.kind === 'ok' && chip.text === 'Market: balanced'),
+  'shared UI preflight must expose target-market pressure before accept');
+assert.ok(lowCapUiPreflight.chips.some((chip) => chip.kind === 'ok' && chip.text === '15m timer'),
+  'shared UI preflight must show deadline length before accept');
+assert.ok(lowCapUiPreflight.chips.some((chip) => chip.kind === 'bad' && chip.text === '5u hold required'),
+  'shared UI preflight must render a bad hold-required chip');
+const lowCapBus = makeBus();
+missions.init({ state: lowCapState, bus: lowCapBus, helpers: { hash32: () => 1 } });
+assert.equal(missions.acceptMission('offer_preflight_1'), false, 'mission should reject impossible cargo-capacity accept');
+assert.equal(lowCapState.missions.active.length, 0, 'blocked preflight must not activate the mission');
+assert.equal(lowCapState.missions.boards.station_helios.slots.length, 1, 'blocked preflight must leave the board offer posted');
+assert.equal(lowCapBus.events.some((event) => event.type === 'economy:chargeCredits'), false,
+  'blocked preflight must not charge collateral');
+assert.ok(lowCapBus.events.some((event) =>
+  event.type === 'toast' && /cargo capacity/.test(event.payload && event.payload.text || '')),
+  'blocked preflight must tell the player cargo capacity is the issue');
+
+const lowFreeState = makeState(8);
+lowFreeState.player.cargo.usedVolume = 6;
+const lowFreeUiPreflight = missionPreflight(makeOffer(), lowFreeState);
+assert.equal(missionBoardReadiness(lowFreeUiPreflight).state, 'blocked',
+  'one-load cargo shortage must match the sim accept blocker');
+assert.equal(missionBoardReadiness(lowFreeUiPreflight).label, 'BLOCKED',
+  'one-load cargo shortage must disable the station accept action');
+assert.equal(lowFreeUiPreflight.blocker, 'Need 5u cargo capacity for this contract',
+  'low free hold must be rejected before the sim can charge collateral');
+
+const stockedCargoState = stockMissionCargo(makeState(8), 12);
+const stockedCargo = missionCargoStaging(makeOffer(), stockedCargoState);
+assert.equal(stockedCargo.chip.kind, 'info', 'stocked current markets should render cargo staging as an actionable info chip');
+assert.equal(stockedCargo.chip.text, 'Buy 2u Hydrogen Gas here',
+  'mission preflight should tell the player when required cargo can be bought at the current station');
+const stockedCargoPreflight = missionPreflight(makeOffer(), stockedCargoState);
+assert.ok(stockedCargoPreflight.chips.some((chip) => chip.text === 'Buy 2u Hydrogen Gas here'),
+  'mission preflight chips should include current-station cargo sourcing');
+
+const aboardCargoState = makeState(8);
+aboardCargoState.player.cargo.items.cmdty_gas_hydrogen = 2;
+const aboardCargo = missionCargoStaging(makeOffer(), aboardCargoState);
+assert.equal(aboardCargo.chip.kind, 'ok', 'already loaded mission cargo should read as ready');
+assert.equal(aboardCargo.chip.text, '2/2u Hydrogen Gas aboard',
+  'mission preflight should show loaded cargo against the contract need');
+
+const activeCargo = missionCargoStaging(makeOffer({ objectiveTarget: 1 }), makeState(8));
+assert.equal(activeCargo.chip.text, '0/2u Hydrogen Gas aboard',
+  'cargo staging should use cargo quantity rather than boolean objective target for delivery-style contracts');
+
+const shortStockState = stockMissionCargo(makeState(8), 1);
+const shortStockPreflight = missionPreflight(makeOffer(), shortStockState);
+assert.ok(shortStockPreflight.chips.some((chip) => chip.kind === 'warn' && chip.text === 'Market has 1u Hydrogen Gas'),
+  'mission preflight should flag partial cargo availability before accept');
+assert.match(shortStockPreflight.warning || '', /only shows 1u/,
+  'partial cargo availability should explain that another source is needed');
+
+const localScope = missionRouteScope(makeOffer({
+  destStationId: 'station_helios',
+  destSectorId: 'sector_helios_prime',
+  distance: 0,
+}), makeState(8));
+assert.equal(localScope.text, 'Local sector', 'route scope should distinguish local-sector work');
+
+const stationFallbackScope = missionRouteScope(makeOffer({
+  destStationId: 'station_beltout',
+  destSectorId: null,
+}), makeState(8));
+assert.equal(stationFallbackScope.text, 'Jump route: Ceres Belt',
+  'route scope should resolve station-only destinations through the static sector graph');
+
+const highRiskIntel = missionRouteIntel(makeOffer({
+  id: 'sker_run',
+  destStationId: 'station_sker',
+  destSectorId: 'sector_sker_haven',
+  distance: 3500,
+}), makeState(8));
+assert.equal(highRiskIntel.label, 'Hostile', 'route intel should label high-danger frontier destinations plainly');
+assert.ok(highRiskIntel.chips.some((chip) => chip.kind === 'bad' && chip.text === 'Route risk: Hostile 94%'),
+  'route intel should render the modeled danger as a scannable risk chip');
+assert.match(highRiskIntel.warning || '', /refuel, repair/,
+  'route intel should translate high danger into prep guidance instead of a hidden penalty');
+const highRiskPreflight = missionPreflight(makeOffer({
+  id: 'sker_run',
+  destStationId: 'station_sker',
+  destSectorId: 'sector_sker_haven',
+  distance: 3500,
+}), makeState(8));
+assert.equal(missionBoardReadiness(highRiskPreflight).state, 'caution',
+  'high route risk should downgrade mission board readiness to a check state, not a blocker');
+assert.match(highRiskPreflight.warning || '', /Hostile route risk/,
+  'high route risk should explain exactly why the player should check prep');
+
+const deadlinePacing = missionTimePacing(makeOffer({
+  deadline_s: 420,
+  time_limit_s: null,
+  distance: 0,
+  params: { cmdtyId: 'cmdty_gas_hydrogen', qty: 2, taskTime: 20 },
+}), { ...makeState(8), simTime: 120 });
+assert.equal(deadlinePacing.chip.text, 'Tight 5m timer',
+  'absolute active deadlines should count down from state.simTime');
+
+const tightOffer = makeOffer({ time_limit_s: 240, distance: 1200, params: { cmdtyId: 'cmdty_gas_hydrogen', qty: 2, taskTime: 20 } });
+const tightPacing = missionTimePacing(tightOffer, makeState(8));
+assert.equal(tightPacing.chip.kind, 'warn', 'tight route timers should render as warning chips');
+assert.match(tightPacing.warning || '', /launch directly/, 'tight route timers should explain the player action');
+const criticalPacing = missionTimePacing(makeOffer({
+  time_limit_s: 90,
+  distance: 1200,
+  params: { cmdtyId: 'cmdty_gas_hydrogen', qty: 2, taskTime: 20 },
+}), makeState(8));
+assert.equal(criticalPacing.chip.kind, 'bad', 'critical route timers should render as bad chips');
+assert.match(criticalPacing.warning || '', /critical/, 'critical route timers should explain the risk');
+const tightLowFreeState = makeState(8);
+tightLowFreeState.player.cargo.usedVolume = 6;
+const tightLowFreePreflight = missionPreflight(tightOffer, tightLowFreeState);
+assert.equal(tightLowFreePreflight.blocker, 'Need 5u cargo capacity for this contract',
+  'one-load free-hold blocker must remain first when a tight timer also applies');
+assert.match(tightLowFreePreflight.warning || '', /launch directly/,
+  'independent timer guidance must remain a warning alongside the cargo blocker');
+
+const damagedBountyState = stageShip(makeState(8), { hull: 60, fuel: 100 });
+const damagedBountyOffer = makeOffer({
+  type: 'bounty_hunt',
+  riskTier: 2,
+  params: {},
+  collateral_cr: 0,
+  title: 'Damaged Bounty Check',
+});
+const damagedReadiness = missionShipReadiness(damagedBountyOffer, damagedBountyState);
+assert.ok(damagedReadiness.chips.some((chip) => chip.kind === 'warn' && chip.text === 'Hull 60%'),
+  'ship readiness should flag a worn hull for risky combat work');
+assert.match(damagedReadiness.warning || '', /repair before accepting combat/,
+  'ship readiness should explain the damaged-hull action before risky work');
+const damagedBountyPreflight = missionPreflight(damagedBountyOffer, damagedBountyState);
+assert.equal(missionBoardReadiness(damagedBountyPreflight).state, 'caution',
+  'risky offers with a worn hull should be CHECK instead of READY');
+assert.ok(damagedBountyPreflight.chips.some((chip) => chip.text === 'Hull 60%'),
+  'shared mission preflight should render the hull readiness chip on the mission card');
+
+const lowFuelRouteState = stageShip(makeState(8), { hull: 100, fuel: 20 });
+const lowFuelRoutePreflight = missionPreflight(makeOffer({ params: {}, collateral_cr: 0 }), lowFuelRouteState);
+assert.equal(missionBoardReadiness(lowFuelRoutePreflight).state, 'caution',
+  'off-sector routed offers with critical fuel should be CHECK instead of READY');
+assert.ok(lowFuelRoutePreflight.chips.some((chip) => chip.kind === 'bad' && chip.text === 'Critical fuel 20%'),
+  'shared mission preflight should render a critical fuel chip before accepting routed work');
+assert.match(lowFuelRoutePreflight.warning || '', /refuel before accepting/,
+  'critical fuel warnings should tell the player to refuel before accepting routed work');
+
+const readyState = makeState(8);
+assert.equal(missionBoardReadiness(missionPreflight(makeOffer(), readyState)).state, 'ready',
+  'mission board readiness should mark clean offers as ready');
+assert.equal(missionBoardReadiness(missionPreflight(makeOffer(), readyState)).label, 'READY',
+  'ready mission cards should be scannable before accept');
+const readyBus = makeBus();
+missions.init({ state: readyState, bus: readyBus, helpers: { hash32: () => 1 } });
+assert.equal(missions.acceptMission('offer_preflight_1'), true, 'mission should accept when hull capacity can carry it');
+assert.equal(readyState.missions.active.length, 1, 'accepted preflight should activate the mission');
+assert.equal(readyState.missions.boards.station_helios.slots.length, 0, 'accepted preflight should remove the board offer');
+assert.ok(readyBus.events.some((event) => event.type === 'economy:chargeCredits'),
+  'accepted collateral mission should charge collateral after passing preflight');
+assert.ok(readyBus.events.some((event) => event.type === 'mission:accepted'),
+  'accepted preflight should emit mission:accepted');
+
+console.log('Mission preflight OK - shared route scope, cargo staging, route-risk intel, timer pacing, payout/risk, ship readiness, and consequence stakes are visible before accept.');

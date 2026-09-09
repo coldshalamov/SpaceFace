@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "assetId": "family_core_landmarks",
+  "classification": "missing_evidence",
+  "reasonCode": "evidence_incomplete",
+  "candidateHash": null,
+  "evidencePaths": [
+    ".devshots/slice-A/landmark-beacon.png"
+  ],
+  "campaignStatePath": null,
+  "openCriticalMajorCount": 0,
+  "authorityRole": "orchestrator",
+  "classifiedBy": "lead-integrator",
+  "classifiedAt": "2026-07-10T13:43:36.667Z"
+}

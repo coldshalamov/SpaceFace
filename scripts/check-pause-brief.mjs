@@ -1,0 +1,189 @@
+#!/usr/bin/env node
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { BINDINGS } from '../src/ui/bindings.js';
+import { MAP_FOCUS, MAP_SCREEN_ID } from '../src/ui/mapAuthority.js';
+import { pauseExitConfirmBody, pauseMapAction, pauseStatusLines } from '../src/ui/screens/pause.js';
+
+const pauseSrc = readFileSync(new URL('../src/ui/screens/pause.js', import.meta.url), 'utf8');
+const uiInputSrc = readFileSync(new URL('../src/ui/input.js', import.meta.url), 'utf8');
+const localizedCoreCopySrc = readFileSync(new URL('../src/ui/localizedCoreCopy.js', import.meta.url), 'utf8');
+
+assert.match(localizedCoreCopySrc, /flightBrief:\s*\{\s*label:\s*'FLIGHT BRIEF'\s*\}/,
+  'localized core copy should retain the visible flight brief label');
+assert.match(pauseSrc, /briefKicker\.textContent\s*=\s*coreText\('flightBrief'\)/,
+  'pause menu should render the localized flight brief label');
+assert.match(pauseSrc, /aria-live/, 'flight brief should announce refreshed objective state politely');
+assert.match(pauseSrc, /Mission Log \(' \+ BINDINGS\.missionLog\.label \+ '\)/,
+  'pause menu should label the Mission Log action with the live binding');
+assert.match(pauseSrc, /export function pauseStatusLines/, 'pause brief policy should stay directly testable');
+assert.match(pauseSrc, /export function pauseMapAction/, 'pause map action policy should stay directly testable');
+assert.match(pauseSrc, /INTER-SYSTEM ROUTE/,
+  'pause brief should name inter-system route commitment before the player resumes');
+assert.match(pauseSrc, /no jump route is required/,
+  'pause brief should explicitly separate local routes from jump-route commitments');
+assert.match(pauseSrc, /mk\('Review ' \+ mapAction\.label/,
+  'pause menu should expose a waypoint map review action when nav is set');
+assert.match(pauseSrc, /export function pauseExitConfirmBody/,
+  'pause exit confirmation policy should stay directly testable');
+assert.match(pauseSrc, /body: pauseExitConfirmBody\(ctx && ctx\.state, 'load'\)/,
+  'Load confirmation should repeat the live run context before opening load slots');
+assert.match(pauseSrc, /body: pauseExitConfirmBody\(ctx && ctx\.state, 'menu'\)/,
+  'Main Menu confirmation should repeat the live run context before closing the session');
+assert.doesNotMatch(pauseSrc, /Loading will discard any unsaved progress in the current session\./,
+  'Pause Load confirmation must not fall back to generic unsaved-progress copy');
+assert.doesNotMatch(pauseSrc, /Any unsaved progress will be lost\. You can Save first if you want to keep it\./,
+  'Pause Main Menu confirmation must not fall back to generic unsaved-progress copy');
+
+assert.match(uiInputSrc, /function allowsMissionLogShortcut\(def\)/,
+  'UI input should keep modal Mission Log shortcut scope explicit');
+assert.match(uiInputSrc, /def\.id === 'station' \|\| def\.id === 'pause'/,
+  'Mission Log shortcut should work from station and Pause, not every modal route');
+assert.match(uiInputSrc, /allowsMissionLogShortcut\(def\) && matchesBinding\(ev, BINDINGS\.missionLog\)[\s\S]*screenManager\.pushScreen\('missionLog'\)/,
+  'Pause and station should honor the live Mission Log binding over modal UI');
+
+const trackedState = {
+  simTime: 100,
+  ui: { trackedMissionId: 'mission_helios_run' },
+  missions: {
+    active: [{
+      id: 'mission_helios_run',
+      status: 'active',
+      type: 'cargo_delivery',
+      title: 'Helios Priority Run',
+      objectiveProgress: 1,
+      objectiveTarget: 2,
+      deadline_s: 460,
+      destStationName: 'Helios Gate',
+    }],
+  },
+  meta: { lastSavedAt: '2026-06-28T12:00:00.000Z' },
+  save: { currentSlot: 'quick' },
+};
+
+let lines = pauseStatusLines(trackedState);
+assert.match(lines.objective, /^TRACKED/);
+assert.match(lines.objective, /Helios Priority Run/);
+assert.match(lines.objective, /50% complete/);
+assert.match(lines.objective, /6m left/);
+assert.match(lines.next, /Helios Gate/);
+assert.match(lines.save, /Quick/);
+assert.match(lines.save, /F5 quick-saves/);
+
+let body = pauseExitConfirmBody(trackedState, 'load');
+assert.match(body, /Opening Load lets you review slots/);
+// The brief joins its fields with a middle dot (888dbcfa polish pass); either separator is accepted.
+assert.match(body, /TRACKED [-·] Helios Priority Run/);
+assert.match(body, /Helios Gate/);
+assert.match(body, /Save status: Saved .* to Quick/);
+assert.match(body, /If you complete a load, unsaved progress is lost/);
+
+body = pauseExitConfirmBody(trackedState, 'menu');
+assert.match(body, /Returning to main menu closes the current session/);
+assert.match(body, /TRACKED [-·] Helios Priority Run/);
+assert.match(body, /Save status: Saved .* to Quick/);
+assert.match(body, /Unsaved progress will be lost/);
+
+lines = pauseStatusLines({
+  ...trackedState,
+  ui: { trackedMissionId: null },
+});
+assert.match(lines.objective, /^UNTRACKED CONTRACT/);
+assert.match(lines.next, /Mission Log \(J\).*Track Nav/);
+
+lines = pauseStatusLines({
+  simTime: 10,
+  missions: { active: [] },
+  nav: { waypoint: { label: 'Sell Food at Vesta Exchange' } },
+  meta: {},
+  save: {},
+});
+assert.match(lines.objective, /^NAV SET/);
+assert.match(lines.objective, /Sell Food at Vesta Exchange/);
+assert.match(lines.next, new RegExp(`Local Map \\(${BINDINGS.localmap.label}\\)`));
+assert.match(lines.save, /^Unsaved run/);
+
+lines = pauseStatusLines({
+  simTime: 10,
+  world: { currentSectorId: 'sector_helios' },
+  missions: { active: [] },
+  nav: { waypoint: { label: 'Survey Helios Belt', pos: { x: 100, z: -60 }, sectorId: 'sector_helios' } },
+  meta: {},
+  save: {},
+});
+assert.match(lines.objective, /^LOCAL ROUTE/);
+assert.match(lines.objective, /Survey Helios Belt/);
+assert.match(lines.next, /no jump route is required/);
+assert.match(lines.next, /fly the marker in-system/);
+
+lines = pauseStatusLines({
+  simTime: 10,
+  world: { currentSectorId: 'sector_helios' },
+  missions: { active: [] },
+  nav: { waypoint: { label: 'Sell Food at Meridian Exchange', sectorId: 'sector_meridian' } },
+  meta: {},
+  save: {},
+});
+assert.match(lines.objective, /^INTER-SYSTEM ROUTE/);
+assert.match(lines.objective, /Sell Food at Meridian Exchange/);
+assert.match(lines.next, new RegExp(`Star Map \\(${BINDINGS.starmap.label}\\).*Meridian`));
+assert.match(lines.next, /before committing a jump/);
+
+// Map review CTA: one public surface (galaxyMap) + MAP_FOCUS vocabulary.
+// Product labels follow the live rebindable map bindings; commitment/hint copy is preserved.
+assert.match(pauseSrc, /mapHandoffAction|openGalaxyMap/,
+  'pause map action should route through mapAuthority (not dual-primary legacy screens)');
+assert.doesNotMatch(pauseSrc, /screenId:\s*['"]localmap['"]/,
+  'pause must not hardcode screenId localmap (use galaxyMap + MAP_FOCUS.LOCAL)');
+assert.doesNotMatch(pauseSrc, /screenId:\s*['"]starmap['"]/,
+  'pause must not hardcode screenId starmap (use galaxyMap + MAP_FOCUS.GALAXY)');
+
+let mapAction = pauseMapAction({
+  world: { currentSectorId: 'sector_helios' },
+  nav: { waypoint: { label: 'Sell Food at Vesta Exchange', pos: { x: 100, z: -60 }, sectorId: 'sector_helios' } },
+});
+assert.equal(mapAction.screenId, MAP_SCREEN_ID);
+assert.equal(mapAction.screenId, 'galaxyMap');
+assert.equal(mapAction.focus, MAP_FOCUS.LOCAL);
+assert.equal(mapAction.label, `Local Map (${BINDINGS.localmap.label})`);
+assert.equal(mapAction.commitment, 'local');
+assert.match(mapAction.hint, /live marker/);
+assert.match(mapAction.hint, /no jump route is required/);
+
+mapAction = pauseMapAction({
+  world: { currentSectorId: 'sector_helios' },
+  nav: { waypoint: { label: 'Sell Food at Meridian Exchange', sectorId: 'sector_meridian' } },
+});
+assert.equal(mapAction.screenId, MAP_SCREEN_ID);
+assert.equal(mapAction.screenId, 'galaxyMap');
+assert.equal(mapAction.focus, MAP_FOCUS.GALAXY);
+assert.equal(mapAction.label, `Star Map (${BINDINGS.starmap.label})`);
+assert.equal(mapAction.commitment, 'inter-system');
+assert.match(mapAction.hint, /inter-system route/);
+assert.match(mapAction.hint, /Meridian/);
+assert.match(mapAction.hint, /before committing a jump/);
+
+assert.equal(pauseMapAction({ nav: {} }), null);
+
+body = pauseExitConfirmBody({
+  simTime: 10,
+  missions: { active: [] },
+  nav: { waypoint: { label: 'Sell Food at Vesta Exchange' } },
+  meta: {},
+  save: {},
+}, 'menu');
+assert.match(body, /NAV SET [-·] Sell Food at Vesta Exchange/);
+assert.match(body, /Save status: Unsaved run/);
+assert.match(body, /Use Save or F5 before quitting/);
+
+lines = pauseStatusLines({
+  simTime: 10,
+  missions: { active: [] },
+  meta: {},
+  save: { currentSlot: 'auto' },
+});
+assert.equal(lines.objective, 'NO ACTIVE CONTRACT');
+assert.match(lines.next, /dock at a station/);
+assert.match(lines.save, /Loaded Auto/);
+
+console.log('ok pause brief');

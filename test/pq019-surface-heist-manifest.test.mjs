@@ -1,0 +1,384 @@
+// PQ-019C Phase H1 — static readiness for the broker-authorized headed Browser cell.
+//
+// These tests do not launch the broker or a browser. They pin the one-use manifest, its complete
+// invalidation surface, the fixed-seed New Game route, the real station/Mission Log DOM controls,
+// and the production seams used for compressed physical outcomes. The actual product route remains
+// one broker attempt after this file is green.
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { existsSync, readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+import manifest, {
+  classifyPq019CapsuleWaitHarnessGuard,
+  classifyPq019CapsuleWaitSnapshot,
+  PQ019_CAPSULE_WAIT_HARD_WALL_MS,
+  PQ019_CAPSULE_WAIT_NO_PROGRESS_MS,
+  createPq019SurfaceHeistManifest,
+  PQ019_CAPSULE_LAUNCH_GRACE_S,
+  PQ019_SURFACE_HEIST_FIXED_SEED,
+} from '../scripts/validation-manifests/pq019-surface-heist.mjs';
+import { loadValidationManifestById } from '../scripts/lib/validationManifestRegistry.mjs';
+
+const ROOT = new URL('../', import.meta.url);
+const read = (relative) => readFileSync(new URL(relative, ROOT), 'utf8');
+const abs = (relative) => fileURLToPath(new URL(relative, ROOT));
+const probe = () => read('scripts/probe-pq019-surface-heist.mjs');
+const h1RouteContexts = (source) => source.slice(
+  source.indexOf('// H1_ROUTE_CONTEXTS_BEGIN'),
+  source.indexOf('// H1_ROUTE_CONTEXTS_END'),
+);
+
+test('the pq019-surface-heist manifest is a one-use headed Browser acceptance cell', () => {
+  assert.equal(manifest.id, 'pq019-surface-heist');
+  assert.equal(manifest.runtimeKind, 'browser');
+  assert.equal(manifest.mode, 'acceptance');
+  assert.deepEqual(manifest.commandArgs, [
+    'scripts/probe-pq019-surface-heist.mjs',
+    '--continuation-only',
+  ]);
+  assert.equal(manifest.requireBrokerClaim, true);
+  assert.equal(manifest.maxLaunchesPerCandidate, 1,
+    'the H1 one-attempt rule must be structural at the broker boundary');
+  assert.equal(manifest.fixedSeed, PQ019_SURFACE_HEIST_FIXED_SEED);
+  assert.equal(PQ019_SURFACE_HEIST_FIXED_SEED, 19019);
+  assert.match(manifest.artifactRoot.replace(/\\/g, '/'), /^\.devshots\/pq019-surface-heist$/);
+  assert.ok(manifest.timeoutMs >= 300_000, 'six sequential fixed-seed contexts need a non-toy timeout');
+  assert.equal(createPq019SurfaceHeistManifest({ timeoutMs: 1234 }).timeoutMs, 1234,
+    'manifest overrides must not be dropped');
+});
+
+test('every source path declared by the manifest exists', () => {
+  const groups = ['regressionSourcePaths', 'productionSourcePaths', 'harnessSourcePaths'];
+  const missing = [];
+  for (const group of groups) {
+    assert.ok(manifest[group].length > 0, `${group} must not be empty`);
+    for (const relative of manifest[group]) {
+      if (!existsSync(abs(relative))) missing.push(`${group}: ${relative}`);
+    }
+  }
+  assert.deepEqual(missing, [], `manifest declares missing paths: ${missing.join(', ')}`);
+});
+
+test('receipt invalidation includes the real DOM, voice, law, combat, and cleanup owners', () => {
+  for (const required of [
+    'src/ai/engagementAuthority.js',
+    'src/combat/damage.js',
+    'src/core/coreSystem.js',
+    'src/law/authorityResponse.js',
+    'src/missions/heistArbiter.js',
+    'src/missions/heistMissionRuntime.js',
+    'src/systems/heistFacilities.js',
+    'src/systems/lawSecurity.js',
+    'src/systems/npcJobsRuntime.js',
+    'src/systems/tetherGameplay.js',
+    'src/ui/alerts.js',
+    'src/ui/confirm.js',
+    'src/ui/screens/missionLog.js',
+    'src/ui/station/screens/contracts.js',
+    'src/ui/toasts.js',
+    'src/ui/voiceArbiter.js',
+  ]) {
+    assert.ok(manifest.productionSourcePaths.includes(required),
+      `${required} must invalidate a stale PQ-019C Browser receipt`);
+  }
+  assert.ok(manifest.harnessSourcePaths.includes('scripts/lib/visualProbeServer.mjs'),
+    'the probe must bind the shared fresh-server owner');
+});
+
+test('the deterministic mission, seam, facility, and sim gates run before claim issue', () => {
+  assert.deepEqual(manifest.fastGateCommands, [
+    'npm run check:pq019c:mission',
+    'npm run check:pq019b:seams',
+    'npm run check:pq019a:facility-embodiment',
+    'npm run check:sim:compare',
+  ]);
+});
+
+test('capsule readiness is decided by simulation state while wall time only guards harness liveness', () => {
+  const oldWallTimeoutFingerprint = {
+    startedAtSimT: 100,
+    simTime: 102,
+    tick: 6_120,
+    timeScale: 0.1,
+    mode: 'flight',
+    schedule: { scheduleId: 'heist:mission-1', status: 'scheduled', launchAtSimT: 104 },
+    mission: {
+      found: true,
+      status: 'active',
+      heist: {
+        scheduleId: 'heist:mission-1',
+        scheduleRequested: true,
+        launchAtSimT: 104,
+        launchTick: null,
+        capsuleEntityId: null,
+        capsuleSeen: false,
+        settled: false,
+        settledOutcome: null,
+        terminalReceipt: null,
+      },
+    },
+    capsule: null,
+  };
+
+  assert.deepEqual(classifyPq019CapsuleWaitSnapshot(oldWallTimeoutFingerprint), {
+    status: 'pending',
+    reason: 'launch_not_due',
+    simElapsedS: 2,
+    launchLagS: -2,
+  }, 'twenty wall seconds at 0.1x is not a missing capsule when only two sim seconds elapsed');
+
+  const scheduleNotYetObserved = structuredClone(oldWallTimeoutFingerprint);
+  scheduleNotYetObserved.schedule = null;
+  scheduleNotYetObserved.mission.heist.launchAtSimT = null;
+  assert.equal(
+    classifyPq019CapsuleWaitSnapshot(scheduleNotYetObserved).reason,
+    'launch_schedule_unobserved',
+    'a null launch timestamp must not be coerced into simulation time zero',
+  );
+
+  const afterLaunchGrace = {
+    ...oldWallTimeoutFingerprint,
+    simTime: 104 + PQ019_CAPSULE_LAUNCH_GRACE_S,
+    tick: 6_300,
+  };
+  assert.equal(classifyPq019CapsuleWaitSnapshot(afterLaunchGrace).status, 'launch_missed');
+
+  const terminalRace = structuredClone(oldWallTimeoutFingerprint);
+  terminalRace.mission.heist.terminalReceipt = {
+    receiptId: 'heist-terminal-1',
+    outcome: 'unresolved_absent',
+  };
+  assert.equal(classifyPq019CapsuleWaitSnapshot(terminalRace).status, 'terminal_race');
+
+  const liveCapsule = {
+    ...oldWallTimeoutFingerprint,
+    simTime: 104,
+    capsule: { id: 77, role: 'cargo_capsule', hull: 160 },
+  };
+  assert.equal(classifyPq019CapsuleWaitSnapshot(liveCapsule).status, 'ready');
+
+  const wallStart = 1_000;
+  assert.deepEqual(classifyPq019CapsuleWaitHarnessGuard({
+    startedAtWallMs: wallStart,
+    lastProgressAtWallMs: wallStart + 44_900,
+    nowWallMs: wallStart + 45_000,
+  }), {
+    status: 'continue',
+    reason: 'simulation_progress_within_guard',
+    wallElapsedMs: 45_000,
+    noProgressElapsedMs: 100,
+  }, 'the reproduced 45-second wall fingerprint must continue while simulation time advances');
+
+  assert.deepEqual(classifyPq019CapsuleWaitHarnessGuard({
+    startedAtWallMs: wallStart,
+    lastProgressAtWallMs: wallStart,
+    nowWallMs: wallStart + PQ019_CAPSULE_WAIT_NO_PROGRESS_MS,
+  }), {
+    status: 'stalled',
+    reason: 'simulation_progress_stalled',
+    wallElapsedMs: PQ019_CAPSULE_WAIT_NO_PROGRESS_MS,
+    noProgressElapsedMs: PQ019_CAPSULE_WAIT_NO_PROGRESS_MS,
+  }, 'a genuinely frozen simulation must release the Browser lease with an exact harness reason');
+
+  assert.equal(classifyPq019CapsuleWaitHarnessGuard({
+    startedAtWallMs: wallStart,
+    lastProgressAtWallMs: wallStart + PQ019_CAPSULE_WAIT_HARD_WALL_MS - 1,
+    nowWallMs: wallStart + PQ019_CAPSULE_WAIT_HARD_WALL_MS,
+  }).reason, 'hard_wall_limit_without_simulation_verdict',
+  'continued but pathologically slow simulation must still respect the bounded cell');
+});
+
+test('the tracked registry resolves pq019-surface-heist', async () => {
+  const registered = await loadValidationManifestById({
+    root: fileURLToPath(ROOT),
+    id: 'pq019-surface-heist',
+  });
+  assert.equal(registered.id, manifest.id);
+  assert.match(registered.__trackedManifest.relativePath, /pq019-surface-heist\.mjs$/);
+});
+
+test('the probe is broker-gated and applies the broker seed through New Game', () => {
+  const source = probe();
+  assert.ok(source.includes('requireBrokerClaimOrDiagnostic'));
+  assert.ok(source.includes('process.env.SF_BROKER_CLAIM'));
+  assert.ok(source.includes('process.exit(2)'), 'an unclaimed direct run must stop before Browser launch');
+  assert.ok(source.includes('process.env.SF_PROBE_SEED'));
+  assert.ok(source.includes("page.fill('#sf-ng-seed', String(FIXED_SEED))"),
+    'seed metadata is not enough: the actor must fill the shipped seed field');
+  assert.ok(source.includes('state.meta?.seed ?? null'));
+  assert.ok(source.includes("assert.equal(recordedSeed, FIXED_SEED"));
+});
+
+test('the station and Mission Log claims are driven by the real visible controls', () => {
+  const source = probe();
+  for (const required of [
+    '[data-nav="contracts"]',
+    '.sx-ct-row[data-mid=',
+    '[data-accept=',
+    "page.keyboard.press('KeyJ')",
+    '[data-act="abandon"]',
+    '.sf-confirm__cancel',
+    '.sf-confirm__ok',
+  ]) assert.ok(source.includes(required), `missing public-control route: ${required}`);
+  assert.ok(source.includes('await commit.click()'), 'offer acceptance must click the real DOM control');
+  assert.ok(!/\.emit\(['"]ui:acceptMission['"]/.test(source),
+    'the probe must not bypass the station DOM with the acceptance intent');
+  assert.ok(source.includes('mission?.sourceOfferId === id'),
+    'offer ids and active mission ids are distinct and must be joined explicitly');
+  assert.ok(source.includes('initialFocusIsCancel'),
+    'the dangerous abandon confirmation must prove its safe initial focus');
+});
+
+test('terminal routes use production ownership seams and never assign terminal state', () => {
+  const source = probe();
+  for (const required of [
+    "sf.bus.emit('tether:latched'",
+    "sf.bus.emit('physics:impact'",
+    'sf.helpers.routeCombatDamage',
+    "origin: { kind: 'acceptance_fixture'",
+    'offer.params.recoveryEnabled = recovery',
+    "waitForOutcome(page, accepted.mission.id",
+    "waitForOutcome(page, retryAccepted.mission.id",
+  ]) assert.ok(source.includes(required), `missing production route seam: ${required}`);
+  assert.ok(!/state\.player\.heat\s*=/.test(source), 'the heat owner must remain the only heat writer');
+  assert.ok(!/\.arbiter\.(?:phase|receipt)\s*=/.test(source), 'the harness must not assign arbiter state');
+  assert.ok(!/\.settledOutcome\s*=/.test(source), 'the harness must not assign terminal outcomes');
+  assert.ok(!/capsule\.(?:alive|hull)\s*=/.test(source),
+    'destruction must route through combat rather than hand-killing the payload');
+  assert.ok(!/PQ019C_HEIST_TUNING\.recoveryEnabled\s*=/.test(source),
+    'the frozen shipping policy must not be mutated for the acceptance fixture');
+});
+
+test('one headed Browser process runs the six isolated contexts sequentially', () => {
+  const source = probe();
+  const h1Contexts = h1RouteContexts(source);
+  assert.equal((source.match(/chromium\.launch\(/g) || []).length, 1,
+    'the whole row owns one Browser launch');
+  assert.ok(/chromium\.launch\(\{[\s\S]*?headless:\s*false/.test(source),
+    'H1 requires a visible headed Browser route');
+  assert.equal((h1Contexts.match(/await runScenario\(/g) || []).length, 6,
+    'DOM abandon plus five terminal routes run as six sequential contexts');
+  assert.equal((source.match(/browser\.newContext\(/g) || []).length, 1,
+    'all contexts must be created through the one sequential route helper');
+  assert.ok(source.includes("reducedMotion: options.reducedMotion ? 'reduce' : 'no-preference'"));
+  assert.ok(source.includes("assert.doesNotMatch(scenarioGpu.renderer, /SwiftShader|llvmpipe|software/i"),
+    'the functional receipt must not silently come from software rendering');
+});
+
+test('H3 keeps only the required voice observer and excludes H1-only VFX cloning from measurement', () => {
+  const source = probe();
+  assert.ok(source.includes('installObservers(page, { performanceMode: H3_PERFORMANCE })'));
+  assert.match(source,
+    /bus\.on\('voice:surface'[\s\S]*?if \(!isPerformanceMode\) \{[\s\S]*?bus\.on\('presentation:vfxCue'/,
+    'voice proof remains shared while high-rate functional tracing is outside the H3 branch');
+});
+
+test('the fresh H1 claim executes only the four missing route contexts', () => {
+  const source = probe();
+  assert.ok(source.includes("const CONTINUATION_ONLY = process.argv.includes('--continuation-only')"));
+  assert.match(source, /if \(!DIAGNOSTIC && !CONTINUATION_ONLY && !H3_PERFORMANCE\)[\s\S]*?process\.exit\(2\)/,
+    'an H1 acceptance claim must fail closed before consumption unless it is the declared continuation');
+  assert.match(source, /const abandon = CONTINUATION_ONLY \? null : await runScenario\('dom-abandon'/);
+  assert.match(source, /const lawful = CONTINUATION_ONLY \? null : await runScenario\('lawful-observe'/);
+  assert.match(source, /CONTINUATION_ONLY[\s\S]*?assertContinuationContract\(\{ fenced, confiscated, destroyed, recovery \}\)/);
+  assert.match(source, /retainedEvidenceReferences:[\s\S]*?row4-pq019-surface-heist/);
+});
+
+test('a theft-floor timeout identifies the failed owner-to-presenter boundary', () => {
+  const source = probe();
+  assert.ok(source.includes('PQ019_THEFT_PRESENTATION_STALLED'),
+    'a generic Playwright timeout cannot distinguish cue, arbiter, or DOM failure');
+  for (const required of [
+    'heistCues:',
+    'traceSurfaces:',
+    'traceClears:',
+    'queue:',
+    'floors:',
+  ]) assert.ok(source.includes(required), `the timeout snapshot is missing ${required}`);
+});
+
+test('an outcome-floor timeout reports the same owner-to-presenter boundaries', () => {
+  const source = probe();
+  assert.ok(source.includes('PQ019_OUTCOME_PRESENTATION_STALLED'),
+    'terminal timeout must distinguish a missing cue from queue preemption or missing DOM');
+});
+
+test('the continuation lets the real arbiter surface theft before freezing the frame', () => {
+  const source = probe();
+  const start = source.indexOf('async function latchAndPresentTheft(page)');
+  const end = source.indexOf('async function emitFacilityContact(page', start);
+  const latch = source.slice(start, end);
+  const wait = latch.indexOf('await page.waitForFunction');
+  const freeze = latch.indexOf('window.SF.timeEffects.set(freezeId, { scale: 0 })');
+  assert.ok(wait >= 0 && freeze > wait,
+    'the actor must observe the urgent theft truth before freezing its evidence frame');
+});
+
+test('one-voice acceptance allows preempted tutorials but no duplicate heist slot', () => {
+  const source = probe();
+  assert.ok(source.includes('pendingHeistCount'),
+    'one active floor does not imply the real arbiter has no unrelated queued tutorial');
+  assert.doesNotMatch(source, /assert\.equal\(floor\.queue\.pendingCount,\s*0/,
+    'the contract must not reject a valid tutorial re-queued by urgent theft');
+});
+
+test('the live patrol fixture outlives both reduced-stake attempts', () => {
+  const source = probe();
+  assert.match(source, /const ACCEPTANCE_PATROL_PHASE_S = 120/);
+  assert.match(source, /const ACCEPTANCE_PATROL_DURABILITY = 1_000_000/);
+  assert.ok(source.includes('patrolPhaseS: ACCEPTANCE_PATROL_PHASE_S'),
+    'the Node-side duration must be passed explicitly into the page context');
+  assert.ok(source.includes('patrolDurability: ACCEPTANCE_PATROL_DURABILITY'),
+    'the Node-side durability must be passed explicitly into the page context');
+  for (const phase of ['commissionS', 'departS', 'approachS', 'workS', 'loadS', 'unloadS', 'dwellS']) {
+    assert.ok(source.includes(`${phase}: patrolPhaseS`),
+      `${phase} must not expire the real patrol job between recovery attempts`);
+  }
+  for (const field of ['hull', 'hullMax', 'shield', 'shieldMax']) {
+    assert.ok(source.includes(`${field}: patrolDurability`),
+      `${field} must survive the real Tethys reentry/combat environment`);
+  }
+  assert.ok(source.includes('PQ019_PATROL_LEASE_MISSING'));
+  assert.ok(source.includes('patrolJobs:'),
+    'a future owner disagreement must preserve the live job ledger');
+  assert.ok(source.includes('fixturePatrol:'),
+    'a future owner disagreement must distinguish job expiry from hull removal');
+});
+
+test('the composed theft observation freezes atomically before real danger may preempt it', () => {
+  const source = probe();
+  const latchRoute = source.slice(
+    source.indexOf('async function latchAndPresentTheft'),
+    source.indexOf('async function emitFacilityContact'),
+  );
+  assert.ok(latchRoute.includes('if (composedFloorVisible) {'));
+  assert.ok(latchRoute.includes('window.SF.timeEffects.set(freezeId, { scale: 0 });'));
+  assert.ok(latchRoute.includes('freezeId: ACCEPTANCE_SETUP_ID'));
+  const observationRoute = latchRoute.slice(latchRoute.indexOf('await page.waitForFunction'));
+  assert.doesNotMatch(observationRoute, /await page\.evaluate\(\(freezeId\)/,
+    'the proof and freeze must not be separated by a browser-to-Node round trip');
+});
+
+test('bounded cue accounting distinguishes the two recovery mission runs', () => {
+  const source = probe();
+  assert.ok(source.includes('const cueRunMoments = trace.cues'));
+  assert.ok(source.includes('`${row.missionId}:${row.moment}`'));
+  assert.ok(source.includes('new Set(cueRunMoments).size, cueRunMoments.length'));
+  assert.doesNotMatch(source,
+    /new Set\(cueMoments\)\.size,\s*cueMoments\.length/,
+    'attempt 0 and attempt 1 may truthfully repeat an authored moment under distinct mission ids');
+});
+
+test('the H1 probe contains no performance sampler or timing result field', () => {
+  const source = probe();
+  for (const forbidden of [
+    /performance\.now\s*\(/,
+    /renderer\.info/,
+    /frameTimes?\s*[:=]/,
+    /hitch(?:Count|es)\s*[:=]/i,
+    /p(?:95|99)\s*[:=]/i,
+  ]) assert.doesNotMatch(source, forbidden);
+  assert.ok(source.includes('noPerformanceEvidence: true'));
+  assert.ok(source.includes('matched performance remains Phase H3'));
+});

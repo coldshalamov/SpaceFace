@@ -1,0 +1,162 @@
+{
+  "schema": "spaceface.microevent.v1",
+  "category": "construction",
+  "events": [
+    {
+      "id": "ev_frame_module_hoist",
+      "title": "Crane sets a module into the frame",
+      "category": "construction",
+      "durationS": [60, 120],
+      "participants": [{ "role": "construction_rig", "count": 1, "note": "static site actor until donor hull promoted" }],
+      "environment": ["construction frame (everyday_space_kit truss composition)", "1 module prop staged at the rack"],
+      "arrangement": "Rig over the frame; module rides the hoist line from rack to the next empty frame slot",
+      "startConditions": "Site has delivered inventory (aftermath of ev_construction_delivery) and an empty slot",
+      "visibleCue": "The crane traverses - on a hull that has held still all day, rotation IS the event",
+      "phases": [
+        { "name": "pick", "durationS": 20, "visible": "Hook drops to the rack; module rises slowly on the line", "signals": [] },
+        { "name": "traverse", "durationS": 25, "visible": "Crane swings the load over the frame; red end-lamps on; everything else on site holds clear", "signals": ["on_the_pin"] },
+        { "name": "set", "durationS": 25, "visible": "Module lowers into the slot; three weld stars stitch the corners; the frame is visibly one piece bigger", "signals": ["hull_open"] },
+        { "name": "release", "durationS": 15, "visible": "Hook returns empty; site floods sweep to the NEXT slot - the world announcing its plan", "signals": [] }
+      ],
+      "completion": "Frame grows by one persistent module; inventory ticks down",
+      "interruptions": [
+        { "trigger": "Load struck mid-traverse", "outcome": "Module drops as a heavy pickup; site pauses one window - visible setback" }
+      ],
+      "playerInterference": ["Watch the structure actually grow", "Steal the STAGED module before the pick", "Bump the hanging load (it swings - and the site remembers you)"],
+      "criminalOpportunity": "Staged modules are the site's cash sitting in the open between deliveries",
+      "aftermath": "PERSISTENT frame growth across the session - the region's clearest proof that time passes",
+      "systems": ["sectorZones.slot", "pickups.spawn", "signatureVfx", "donor.everydaySpaceProp", "donor.activityPackHull", "vfx.substrate"],
+      "fallback": "Rig actor lost: staged modules remain; the frame simply stops growing - an abandoned site is its own story",
+      "tier": "standard",
+      "blockedOn": null
+    },
+    {
+      "id": "ev_drone_assembly_swarm",
+      "title": "Work drones assemble a section",
+      "category": "construction",
+      "durationS": [90, 180],
+      "participants": [{ "role": "drone", "count": 6 }, { "role": "construction_rig", "count": 1 }],
+      "environment": ["construction frame"],
+      "arrangement": "Six drones shuttle between the rack and the frame in overlapping loops, each carrying a strut",
+      "startConditions": "Site reaches a drone-phase milestone",
+      "visibleCue": "A cloud of small movers around the frame where yesterday there was one crane",
+      "phases": [
+        { "name": "launch", "durationS": 20, "visible": "Drones deploy from the rig in sequence", "signals": [] },
+        { "name": "weave", "durationS": 120, "visible": "Continuous carry loops; weld stars ripple along the new section", "signals": ["hull_open"] },
+        { "name": "recover", "durationS": 25, "visible": "Drones dock back aboard; the section is visibly skinned", "signals": [] }
+      ],
+      "completion": "A frame section gains its skin in one sitting",
+      "interruptions": [{ "trigger": "Drone destroyed", "outcome": "Others continue; the loop visibly thins" }],
+      "playerInterference": ["Fly through the weave (they part around you)", "Shoot drones (petty, visible, remembered)"],
+      "criminalOpportunity": "Downed drones are salvageable tech pickups",
+      "aftermath": "Persistent skinned section",
+      "systems": ["future.droneSwarm", "donor.everydaySpaceProp", "signatureVfx"],
+      "fallback": "Rig lost: drones freeze in place then despawn",
+      "tier": "blocked",
+      "blockedOn": "future.droneSwarm - no small-agent flocking/carry system exists; the traffic stepper is per-ship and too heavy for six shuttling drones"
+    },
+    {
+      "id": "ev_structure_first_light",
+      "title": "New structure powers up for the first time",
+      "category": "construction",
+      "durationS": [45, 90],
+      "participants": [{ "role": "construction_rig", "count": 1, "optional": true }, { "role": "hauler", "count": 1, "optional": true }],
+      "environment": ["completed structure (frame that reached its final module)"],
+      "arrangement": "Workers stand off in a loose arc facing the dark structure - an audience shape",
+      "startConditions": "Frame completes its module count",
+      "visibleCue": "Everything near the site STOPS and faces the same way - the world holding its breath is visible at any range",
+      "phases": [
+        { "name": "stand_off", "durationS": 15, "visible": "Work lights die one by one; the site goes fully dark on purpose", "signals": [] },
+        { "name": "first_light", "durationS": 10, "visible": "The structure's own lamps come up section by section - nav strobes last, like a signature", "signals": [] },
+        { "name": "salute", "durationS": 15, "visible": "Every hull in the arc flashes its floods ONCE, together - the belt's applause", "signals": [] },
+        { "name": "disperse", "durationS": 30, "visible": "The audience breaks up to ordinary business; the structure starts its idle loop (strobes, windows)", "signals": ["clean_burn"] }
+      ],
+      "completion": "The region has a new permanent lit landmark - and the player watched it be born",
+      "interruptions": [
+        { "trigger": "Power-up fails (authored rare roll)", "outcome": "Lamps flicker and die; the arc holds a beat of visible disappointment; retry next window" }
+      ],
+      "playerInterference": ["Join the arc and flash your floods with them (the game credits proximity)", "Attack during the dark minute - the one moment a finished structure is blind"],
+      "criminalOpportunity": "The stand-off minute is the only unlit, unwatched gap the structure will ever have",
+      "aftermath": "Structure joins the sector's persistent lit set; its idle lamps run thereafter",
+      "systems": ["sectorZones.slot", "donor.everydaySpaceProp", "signatureVfx", "vfx.substrate", "comms.ambientToast"],
+      "fallback": "No audience hulls available: first_light still fires alone - quieter, still a birth",
+      "tier": "standard",
+      "blockedOn": null
+    },
+    {
+      "id": "ev_defense_platform_test",
+      "title": "Defense platform test firing",
+      "category": "construction",
+      "durationS": [45, 90],
+      "participants": [{ "role": "patrol", "count": 1 }, { "role": "station", "count": 1 }],
+      "environment": ["completed defense platform", "target drone/prop at 120 wu"],
+      "arrangement": "Range axis marked by two strobes; traffic held clear by the patrol; platform fires down the marked line",
+      "startConditions": "Platform completes; scheduled proof-of-function",
+      "visibleCue": "Two strobes appearing in an empty line, and a patrol shepherding everyone off it",
+      "phases": [
+        { "name": "range_clear", "durationS": 25, "visible": "Patrol sweeps the line; strobes mark it", "signals": ["on_the_pin"] },
+        { "name": "proof", "durationS": 20, "visible": "Three timed shots down the lane into the target; flash, spall, silence between", "signals": [] },
+        { "name": "safe", "durationS": 20, "visible": "Strobes collected; the platform's status lamps settle to armed-idle", "signals": [] }
+      ],
+      "completion": "The region now visibly has teeth; pirates weight away from the pocket",
+      "interruptions": [{ "trigger": "Anything crosses the line", "outcome": "Hold fire; patrol escorts it off; test resumes" }],
+      "playerInterference": ["Cross the range (the whole event pauses for you - power)", "Watch the teeth being proven"],
+      "criminalOpportunity": "The armed-idle lamp pattern is now knowable - and so is its blind arc",
+      "aftermath": "Sector pirate weight drops near the platform (persistent)",
+      "systems": ["future.structureWeapons", "traffic.spawnRole", "signatureVfx", "encounterDirector.pressure"],
+      "fallback": "Patrol lost: test scrubs to next window",
+      "tier": "blocked",
+      "blockedOn": "future.structureWeapons - structures cannot fire; weapons exist only on ships"
+    },
+    {
+      "id": "ev_construction_night_shift",
+      "title": "Temporary construction lights come on",
+      "category": "construction",
+      "durationS": [30, 60],
+      "participants": [{ "role": "construction_rig", "count": 1, "optional": true }],
+      "environment": ["active site", "4 temporary mast-flood props (everyday_space_kit yard masts)"],
+      "arrangement": "Four masts at the site corners light in sequence, turning the frame into the pocket's brightest object",
+      "startConditions": "Site enters a work window (economy tick)",
+      "visibleCue": "A dark corner of the pocket becoming a lit yard in four steps - shift change made architectural",
+      "phases": [
+        { "name": "masts_up", "durationS": 20, "visible": "Corner floods light one at a time, each with a warm-up flicker", "signals": [] },
+        { "name": "work_under_light", "durationS": 30, "visible": "Weld stars and crane moves under the floods (composes with ev_frame_module_hoist)", "signals": ["hull_open"] },
+        { "name": "masts_down", "durationS": 10, "visible": "Reverse sequence at window end; the site keeps only its safety strobes", "signals": [] }
+      ],
+      "completion": "The site's work window is legible from across the pocket by light alone",
+      "interruptions": [{ "trigger": "Mast destroyed", "outcome": "Three-mast shifts thereafter - a permanent visible scar of the vandalism" }],
+      "playerInterference": ["Use the lit yard as a navigation landmark", "Shoot a mast (cheap, cruel, remembered)"],
+      "criminalOpportunity": "Lights-out moments bracket the shift: the yard's valuables are darkest right after masts_down",
+      "aftermath": "None beyond mast state",
+      "systems": ["sectorZones.slot", "donor.everydaySpaceProp", "vfx.substrate", "signatureVfx"],
+      "fallback": "No rig actor: masts cycle on schedule anyway (they are site fixtures, not crew)",
+      "tier": "standard",
+      "blockedOn": null
+    },
+    {
+      "id": "ev_survey_before_build",
+      "title": "Surveyor marks out the next build volume",
+      "category": "construction",
+      "durationS": [60, 120],
+      "participants": [{ "role": "surveyor", "count": 1 }],
+      "environment": ["planned site (empty volume adjacent to a station or frame)", "4 corner marker props"],
+      "arrangement": "Surveyor flies the eight edges of a box, dropping corner markers - literally drawing the future building in space",
+      "startConditions": "Site expansion scheduled (economy milestone)",
+      "visibleCue": "A surveyor flying PERFECT right angles - nothing natural or lazy flies a wireframe box",
+      "phases": [
+        { "name": "baseline", "durationS": 25, "visible": "First edge flown slowly, pin crabbed, two corners dropped", "signals": ["reading_the_dark"] },
+        { "name": "box_out", "durationS": 45, "visible": "Remaining edges and corners; the volume becomes visible as four lit points", "signals": ["reading_the_dark"] },
+        { "name": "certify", "durationS": 15, "visible": "One diagonal pass through the box's heart, then the corners pulse in sequence - signed off", "signals": ["on_the_pin"] }
+      ],
+      "completion": "Four persistent markers outline where the next frame will rise - the future, staked",
+      "interruptions": [{ "trigger": "Marker destroyed", "outcome": "One re-drop; twice and the survey rebooks next window" }],
+      "playerInterference": ["Read the region's future from the marked volumes", "Steal markers (petty vandalism with consequences when the frame arrives anyway)"],
+      "criminalOpportunity": "A marked volume near a station announces years of future traffic - land speculation, belt style",
+      "aftermath": "Markers persist; a later session's frame event can seed inside them (long-arc chaining)",
+      "systems": ["npcJobs.phaseGraph", "pickups.spawn", "signatureVfx", "sectorZones.slot", "donor.laneFurnitureProp"],
+      "fallback": "Surveyor lost mid-box: partial markers persist - an unfinished plan, readable as one",
+      "tier": "standard",
+      "blockedOn": null
+    }
+  ]
+}

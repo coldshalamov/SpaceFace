@@ -1,0 +1,563 @@
+{
+  "schema": "spaceface.pq020-ceres-functional-route.v1",
+  "runtime": "browser-chromium-headed",
+  "disposition": "PASS",
+  "problems": [],
+  "fixedSeed": 47,
+  "recordedSeed": 47,
+  "gpu": {
+    "available": true,
+    "vendor": "Google Inc. (Intel)",
+    "renderer": "ANGLE (Intel, Intel(R) Graphics (0x00007D45) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+  },
+  "routeContract": "public map selection -> production jump/autopilot -> F5 -> cold Continue",
+  "noPerformanceEvidence": true,
+  "noPerformanceEvidenceNote": "Functional H1 receipt only: state, DOM semantics, admission booleans, coordinates, counts, and screenshots. Matched performance and renderer structure remain Phase H3.",
+  "accessibility": {
+    "keyboardSelections": [
+      "Ceres Belt",
+      "Throughline Weigh Beacon",
+      "Throughline Weigh Beacon",
+      "Ceres Belt"
+    ],
+    "pointerSelections": [
+      "Ceres Refinery",
+      "Belt Outpost",
+      "Wreck Cathedral",
+      "Wreck Cathedral",
+      "Tethys Junction"
+    ],
+    "inspectorCarriesIdentityInText": true,
+    "controllerPass": "OPEN — physical-controller selection remains a human H2 action"
+  },
+  "endpointApproaches": {
+    "fromHelios": {
+      "sourceSectorId": "sector_helios_prime",
+      "targetSectorId": "sector_ceres_belt",
+      "sectorId": "sector_ceres_belt",
+      "jumpState": "IDLE",
+      "entryPoint": {
+        "x": -9367.359559472121,
+        "z": 6708.074322227316
+      },
+      "playerPos": {
+        "x": -9367.359619140625,
+        "z": 6708.0743408203125
+      },
+      "endpointGates": [
+        {
+          "id": 178,
+          "gateTo": "sector_helios_prime",
+          "name": "Gate → Helios Prime",
+          "pos": {
+            "x": -9422,
+            "z": 6282
+          },
+          "distance": 429.5636333838345
+        },
+        {
+          "id": 179,
+          "gateTo": "sector_tethys_junction",
+          "name": "Gate → Tethys Junction",
+          "pos": {
+            "x": -8844,
+            "z": 8192
+          },
+          "distance": 1573.5122029774316
+        }
+      ],
+      "closestEndpointGateTo": "sector_helios_prime"
+    },
+    "fromTethys": {
+      "sourceSectorId": "sector_tethys_junction",
+      "targetSectorId": "sector_ceres_belt",
+      "sectorId": "sector_ceres_belt",
+      "jumpState": "IDLE",
+      "entryPoint": {
+        "x": -9034.746397159604,
+        "z": 8577.379028497908
+      },
+      "playerPos": {
+        "x": -9034.746398925781,
+        "z": 8577.379028320312
+      },
+      "endpointGates": [
+        {
+          "id": 310,
+          "gateTo": "sector_tethys_junction",
+          "name": "Gate → Tethys Junction",
+          "pos": {
+            "x": -8844,
+            "z": 8192
+          },
+          "distance": 430.0013769422855
+        },
+        {
+          "id": 309,
+          "gateTo": "sector_helios_prime",
+          "name": "Gate → Helios Prime",
+          "pos": {
+            "x": -9422,
+            "z": 6282
+          },
+          "distance": 2327.8166240487353
+        }
+      ],
+      "closestEndpointGateTo": "sector_tethys_junction"
+    }
+  },
+  "itinerary": [
+    {
+      "id": "station_ceres",
+      "label": "Ceres Refinery",
+      "arrival": {
+        "terminal": true,
+        "ok": true,
+        "reason": "arrived",
+        "sectorId": "sector_ceres_belt",
+        "currentZone": {
+          "id": "zone_ceres_refinery",
+          "name": "Ceres Refinery Approach",
+          "type": "refinery_approach",
+          "factionId": "faction_dmc",
+          "threat": 1
+        },
+        "player": {
+          "alive": true,
+          "hull": 140,
+          "pos": {
+            "x": -13364.8818359375,
+            "z": 8898.873229980469
+          },
+          "speed": 4.218897254197149
+        },
+        "autopilot": {
+          "active": false,
+          "label": "Ceres Refinery",
+          "status": "arrived",
+          "distance": 90.03792902022009,
+          "arrivalRadius": 90
+        }
+      }
+    },
+    {
+      "id": "station_beltout",
+      "label": "Belt Outpost",
+      "arrival": {
+        "terminal": true,
+        "ok": true,
+        "reason": "arrived",
+        "sectorId": "sector_ceres_belt",
+        "currentZone": {
+          "id": "zone_ceres_belt",
+          "name": "Ceres Mining Belt",
+          "type": "mining_belt",
+          "factionId": "faction_dmc",
+          "threat": 1
+        },
+        "player": {
+          "alive": true,
+          "hull": 140,
+          "pos": {
+            "x": -11427.297119140625,
+            "z": 7212.444274902344
+          },
+          "speed": 4.587036624021646
+        },
+        "autopilot": {
+          "active": false,
+          "label": "Belt Outpost",
+          "status": "arrived",
+          "distance": 90.02920598462977,
+          "arrivalRadius": 90
+        }
+      }
+    },
+    {
+      "id": "poi_ceres_throughline",
+      "label": "Throughline Weigh Beacon",
+      "arrival": {
+        "terminal": true,
+        "ok": true,
+        "reason": "arrived",
+        "sectorId": "sector_ceres_belt",
+        "currentZone": {
+          "id": "zone_ceres_throughline",
+          "name": "Throughline Weigh",
+          "type": "border_checkpoint",
+          "factionId": "faction_dmc",
+          "threat": 1
+        },
+        "player": {
+          "alive": true,
+          "hull": 140,
+          "pos": {
+            "x": -9295.596435546875,
+            "z": 7277.242858886719
+          },
+          "speed": 4.6905265177340425
+        },
+        "autopilot": {
+          "active": false,
+          "label": "Throughline Weigh Beacon",
+          "status": "arrived",
+          "distance": 48.03598968126091,
+          "arrivalRadius": 48
+        }
+      }
+    },
+    {
+      "id": "world_site_wreck_cathedral",
+      "label": "Wreck Cathedral",
+      "arrival": {
+        "terminal": true,
+        "ok": true,
+        "reason": "arrived",
+        "sectorId": "sector_ceres_belt",
+        "currentZone": null,
+        "player": {
+          "alive": true,
+          "hull": 140,
+          "pos": {
+            "x": -11941.802001953125,
+            "z": 10904.720947265625
+          },
+          "speed": 4.74301676182774
+        },
+        "autopilot": {
+          "active": false,
+          "label": "Wreck Cathedral",
+          "status": "arrived",
+          "distance": 48.070761658820444,
+          "arrivalRadius": 48
+        }
+      }
+    }
+  ],
+  "cathedral": {
+    "siteId": "world_site_wreck_cathedral",
+    "admission": {
+      "ready": true,
+      "authored": true,
+      "admittedComponents": 7,
+      "entityId": 80,
+      "presentationAdmission": "ready",
+      "authoredAssetState": "authored"
+    },
+    "framings": [
+      {
+        "terminal": true,
+        "ok": true,
+        "name": "far",
+        "distance": 30.73942667137944,
+        "projection": {
+          "x": 0.6233802625432181,
+          "y": -0.2418152642532961,
+          "z": 0.9674379647377975,
+          "inFrame": true
+        },
+        "admission": {
+          "ready": true,
+          "authored": true,
+          "authoredAssetState": "authored",
+          "admittedComponents": 7
+        },
+        "appliedCameraZoom": 112,
+        "framingControl": "public keyboard +/-"
+      },
+      {
+        "terminal": true,
+        "ok": true,
+        "name": "default",
+        "distance": 30.318342314404912,
+        "projection": {
+          "x": 0.49754211933625575,
+          "y": -0.19320194639006322,
+          "z": 0.9736455293865758,
+          "inFrame": true
+        },
+        "admission": {
+          "ready": true,
+          "authored": true,
+          "authoredAssetState": "authored",
+          "admittedComponents": 7
+        },
+        "appliedCameraZoom": 72,
+        "framingControl": "public keyboard +/-"
+      },
+      {
+        "terminal": true,
+        "ok": true,
+        "name": "close",
+        "distance": 29.86759311840638,
+        "projection": {
+          "x": 0.5557148313407254,
+          "y": -0.2157305556272718,
+          "z": 0.970216957254467,
+          "inFrame": true
+        },
+        "admission": {
+          "ready": true,
+          "authored": true,
+          "authoredAssetState": "authored",
+          "admittedComponents": 7
+        },
+        "appliedCameraZoom": 64,
+        "framingControl": "public keyboard +/-"
+      }
+    ]
+  },
+  "saveContinue": {
+    "saved": {
+      "storageKey": "sf.save.quick",
+      "sectorId": "sector_ceres_belt",
+      "seed": 47,
+      "playerPos": {
+        "x": -11960.120361328125,
+        "z": 10899.67626953125
+      },
+      "beaconEntities": 1,
+      "cathedralEntities": 15
+    },
+    "continued": {
+      "sectorId": "sector_ceres_belt",
+      "seed": 47,
+      "playerPos": {
+        "x": -11960.293487548828,
+        "z": 10899.63037109375
+      },
+      "poseDelta": 0.14853951123616796,
+      "poseRestored": true,
+      "beaconEntities": 1,
+      "cathedralEntities": 15
+    }
+  },
+  "repeatedSelections": {
+    "beacon": {
+      "name": "Throughline Weigh Beacon",
+      "method": "keyboard",
+      "mapRole": "dialog",
+      "mapAriaLabel": "Galaxy Map",
+      "searchAriaLabel": "Search map",
+      "actionLabel": "Track Target",
+      "actionFocused": true,
+      "inspectorText": "Contact record Throughline Weigh Beacon Object Class TypePOI FactionUnaffiliated HostileNO Distance4530 u Speed0 u/s"
+    },
+    "cathedral": {
+      "name": "Wreck Cathedral",
+      "method": "pointer",
+      "mapRole": "dialog",
+      "mapAriaLabel": "Galaxy Map",
+      "searchAriaLabel": "Search map",
+      "actionLabel": "Track Target",
+      "actionFocused": true,
+      "inspectorText": "Contact record Wreck Cathedral Object Class TypePOI FactionUnaffiliated HostileNO Distance28 u Speed0 u/s"
+    }
+  },
+  "transit": {
+    "ceresToTethysMap": {
+      "name": "Tethys Junction",
+      "method": "pointer",
+      "mapRole": "dialog",
+      "mapAriaLabel": "Galaxy Map",
+      "searchAriaLabel": "Search map",
+      "actionLabel": "Set Course & Jump",
+      "actionFocused": true,
+      "inspectorText": "Sector record · [3, 2] Tethys Junction Faction Authority Meridian Presence Fulfillment active Archive active Security & Jurisdiction Level MEDIUM SECURITY · ●●○ Jurisdiction Meridian Trade Syndicate ILLEGAL: Attacking civilians, patrols, or stations triggers dispatch. RESPONSE: Patrol response inside protected station rings. Navigation Cost Route 1 Jumps (Fuel: 10 Units) Transit Forecast · from here Gate4% incident Impact~11 HP Margin+244 HP Drive15% incident Impact~36 HP Margin+219 HP Current Conditions Danger 35% · rising Price pressure Balanced -1% · climbing Control Meridian · 65% · slipping Why it changed Trouble is bleeding in along the lanes from sectors neighboring Tethys Junction — danger rising.Prices near equilibrium — supply is meeting demand.Meridian holds Tethys Junction uncontested. Sector Summary Stations2 HazardsNone"
+    },
+    "tethysArrival": {
+      "sourceSectorId": "sector_ceres_belt",
+      "targetSectorId": "sector_tethys_junction",
+      "sectorId": "sector_tethys_junction",
+      "jumpState": "IDLE",
+      "entryPoint": {
+        "x": 9195.022711879494,
+        "z": 8601.745646921003
+      },
+      "playerPos": {
+        "x": 9195.022705078125,
+        "z": 8601.745635986328
+      },
+      "endpointGates": [
+        {
+          "id": 449,
+          "gateTo": "sector_helios_prime",
+          "name": "Gate → Helios Prime",
+          "pos": {
+            "x": 9559,
+            "z": 6373
+          },
+          "distance": 2258.270705904575
+        }
+      ],
+      "closestEndpointGateTo": "sector_helios_prime"
+    },
+    "tethysToCeresMap": {
+      "name": "Ceres Belt",
+      "method": "keyboard",
+      "mapRole": "dialog",
+      "mapAriaLabel": "Galaxy Map",
+      "searchAriaLabel": "Search map",
+      "actionLabel": "Set Course & Jump",
+      "actionFocused": true,
+      "inspectorText": "Sector record · [-3, 2] Ceres Belt Faction Authority Drift Presence Pitborn active Security & Jurisdiction Level MEDIUM SECURITY · ●●● Jurisdiction Drift Miners Collective ILLEGAL: Attacking civilians, patrols, or stations triggers dispatch. RESPONSE: Patrol response inside protected station rings. Navigation Cost Route 1 Jumps (Fuel: 10 Units) Transit Forecast · from here Gate5% incident Impact~11 HP Margin+244 HP Drive15% incident Impact~37 HP Margin+218 HP Current Conditions Danger 36% · rising Price pressure Balanced -1% · falling Control Drift · 85% · slipping Why it changed Trouble is bleeding in along the lanes from sectors neighboring Ceres Belt — danger rising.Prices near equilibrium — supply is meeting demand.Drift holds Ceres Belt uncontested. Sector Summary Stations2 Hazards◈"
+    }
+  },
+  "finalSnapshot": {
+    "seed": 47,
+    "mode": "flight",
+    "sectorId": "sector_ceres_belt",
+    "currentZone": null,
+    "player": {
+      "alive": true,
+      "hull": 140,
+      "pos": {
+        "x": -9034.746398925781,
+        "z": 8577.379028320312
+      },
+      "speed": 0
+    },
+    "beaconEntities": 1,
+    "cathedralEntities": 15,
+    "siteRecordPresent": true,
+    "autopilot": {
+      "active": false,
+      "label": "Wreck Cathedral",
+      "status": "route-plotted"
+    }
+  },
+  "brokerManifestId": "pq020-ceres-topology",
+  "launchContract": "one headed system-Browser process; one route; Electron runs only after Browser closes",
+  "screenshots": [
+    {
+      "path": ".devshots/pq020-ceres-topology/01-helios-to-ceres-map.png",
+      "bytes": 464054,
+      "sha256": "65ba983bf3b156903906a20326f896344cd2c9bf43459e99fab558dc2deb0d00"
+    },
+    {
+      "path": ".devshots/pq020-ceres-topology/02-ceres-helios-entry.png",
+      "bytes": 478885,
+      "sha256": "81b95b92bffa96786ff8d0113162342ba8099dd05cc1e7c981b6bafabab5d351"
+    },
+    {
+      "path": ".devshots/pq020-ceres-topology/03-refinery-map.png",
+      "bytes": 463632,
+      "sha256": "7c9f3ecb801559354696b01c665aa8c3c7524c8ea89388c43e0e75577f26c048"
+    },
+    {
+      "path": ".devshots/pq020-ceres-topology/04-refinery-flight.png",
+      "bytes": 410295,
+      "sha256": "16c96f5ebd976c0bf926de78a0190aa018007213fbb60960b54dede01266f5f6"
+    },
+    {
+      "path": ".devshots/pq020-ceres-topology/05-belt-outpost-map.png",
+      "bytes": 477974,
+      "sha256": "bf8970234545e27845b6d2dd3b465f2b9773612515b48848f2ef4f48fd83d00e"
+    },
+    {
+      "path": ".devshots/pq020-ceres-topology/06-belt-outpost-flight.png",
+      "bytes": 501917,
+      "sha256": "ccb1a2cfc6d1f71bd41b513fec2158e1ac78425518d3b3091d741e3b9e4caaa8"
+    },
+    {
+      "path": ".devshots/pq020-ceres-topology/07-beacon-map.png",
+      "bytes": 473300,
+      "sha256": "7260a0e79a11c48e775ba60dc12ac8efb9a03eb8cf287265d7ad0349a9dbdc3e"
+    },
+    {
+      "path": ".devshots/pq020-ceres-topology/08-beacon-flight.png",
+      "bytes": 386932,
+      "sha256": "879cdb29e9b35d99e15d6d6147950ab04e4c72e3895d387a5117cb8cef81ee3e"
+    },
+    {
+      "path": ".devshots/pq020-ceres-topology/09-cathedral-map.png",
+      "bytes": 475365,
+      "sha256": "d29ee7345d4cbffa4f3c0af2032ec13d3b0a2b775dca745852a28cc07d8142ea"
+    },
+    {
+      "path": ".devshots/pq020-ceres-topology/10-cathedral-far.png",
+      "bytes": 744687,
+      "sha256": "1b6417f471abd548f29a15ce18f8162ddde333b058e49dd080c7da1d326ee497"
+    },
+    {
+      "path": ".devshots/pq020-ceres-topology/11-cathedral-default.png",
+      "bytes": 747248,
+      "sha256": "5a7614b5fd6d4926894da4c111bef904107f929203108d7eaaa6f8e97d5132e1"
+    },
+    {
+      "path": ".devshots/pq020-ceres-topology/12-cathedral-close.png",
+      "bytes": 745896,
+      "sha256": "39b2ae7eea89db06855a623166b4b7384ae55b43485216950c3aa7680458f1ed"
+    },
+    {
+      "path": ".devshots/pq020-ceres-topology/13-cathedral-arrival.png",
+      "bytes": 746401,
+      "sha256": "4f6848a252ae640494c8c9d18f28351be1a4217e7f2379dc928a9619fcc9cba3"
+    },
+    {
+      "path": ".devshots/pq020-ceres-topology/14-pre-save.png",
+      "bytes": 741888,
+      "sha256": "974b8808fca21d7be0490ee3f8e3987e9afef29c6b020619f22bacfa77557d1d"
+    },
+    {
+      "path": ".devshots/pq020-ceres-topology/15-continue-menu.png",
+      "bytes": 1432177,
+      "sha256": "04035b7f9cf9c71a0e57920d090c060cefdd45c0f3c07fdca3d1f63355a3a71d"
+    },
+    {
+      "path": ".devshots/pq020-ceres-topology/16-continue-restored.png",
+      "bytes": 313257,
+      "sha256": "1a47d552861d2063179019fcaadd939135271ccd1281f7373d58297fbfffd196"
+    },
+    {
+      "path": ".devshots/pq020-ceres-topology/17-repeat-beacon-map.png",
+      "bytes": 477892,
+      "sha256": "3638b88c8f96a15688155482a1d7097ef9fc2726fa00b290e7e2b3734d6cdcea"
+    },
+    {
+      "path": ".devshots/pq020-ceres-topology/18-repeat-cathedral-map.png",
+      "bytes": 477243,
+      "sha256": "8f7f624bd3a9ae3c661ea9807ee903fbdc5840873a95d61bea01e22e4681abf6"
+    },
+    {
+      "path": ".devshots/pq020-ceres-topology/19-ceres-to-tethys-map.png",
+      "bytes": 483547,
+      "sha256": "23f59e67b3b00e8143812825c0fce4b7b14fec90491ee019cb0d529dcdcefe57"
+    },
+    {
+      "path": ".devshots/pq020-ceres-topology/20-tethys-to-ceres-map.png",
+      "bytes": 457024,
+      "sha256": "b1102896b7887f3b95c34f16b20cf91588f12c94c687c5d290ac4ebeb91e456a"
+    },
+    {
+      "path": ".devshots/pq020-ceres-topology/21-ceres-tethys-entry.png",
+      "bytes": 452097,
+      "sha256": "4995d3f0eff61b9840065642e28c1beef66eb0a0367559ccfef7702c51ab1ada"
+    }
+  ],
+  "expectedScreenshots": [
+    "01-helios-to-ceres-map.png",
+    "02-ceres-helios-entry.png",
+    "03-refinery-map.png",
+    "04-refinery-flight.png",
+    "05-belt-outpost-map.png",
+    "06-belt-outpost-flight.png",
+    "07-beacon-map.png",
+    "08-beacon-flight.png",
+    "09-cathedral-map.png",
+    "10-cathedral-far.png",
+    "11-cathedral-default.png",
+    "12-cathedral-close.png",
+    "13-cathedral-arrival.png",
+    "14-pre-save.png",
+    "15-continue-menu.png",
+    "16-continue-restored.png",
+    "17-repeat-beacon-map.png",
+    "18-repeat-cathedral-map.png",
+    "19-ceres-to-tethys-map.png",
+    "20-tethys-to-ceres-map.png",
+    "21-ceres-tethys-entry.png"
+  ],
+  "pageIssues": [],
+  "ignoredPageIssues": []
+}

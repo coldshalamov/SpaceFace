@@ -1,0 +1,51 @@
+import { defineFlavorPack } from './catalog.js';
+
+export const flavorOrder = 20;
+export const flavorId = 'ad_board';
+export const flavorKind = 'advertising';
+
+export default defineFlavorPack({
+  id: flavorId,
+  kind: flavorKind,
+  description: 'Dockside commerce notices in the bureaucratic-horror house voice.',
+  entries: [
+    { id: 'ad_01', sponsor: 'Concord Mutual', text: 'CLAIMS BEGIN AFTER IMPACT. COVERAGE BEGINS AFTER REGISTRATION.' },
+    { id: 'ad_02', sponsor: 'Meridian Exchange', text: 'YOUR CREDIT RATING ARRIVED BEFORE YOU DID.' },
+    { id: 'ad_03', sponsor: 'DMC Safety', text: 'A REPLACEMENT CREW IS NOT A REPAIR.' },
+    { id: 'ad_04', sponsor: 'Helios Customs', text: 'DECLARE FIRST. EXPLAIN LATER. APPEAL NEVER.' },
+    { id: 'ad_05', sponsor: 'MTS Freight', text: 'WE MOVE EVERYTHING EXCEPT LIABILITY.' },
+    { id: 'ad_06', sponsor: 'Concord Transit', text: 'PRIORITY LANES: ARRIVE EARLY TO WAIT SOONER.' },
+    { id: 'ad_07', sponsor: 'Meridian Recovery', text: 'YOUR COLLATERAL MISSES YOU.' },
+    { id: 'ad_08', sponsor: 'DMC Clinic', text: 'SHIFT INJURIES REQUIRE SUPERVISOR CONFIRMATION.' },
+    { id: 'ad_09', sponsor: 'Tethys Arbitration', text: 'CONFLICT RESOLUTION PRICED BY SURVIVING PARTY.' },
+    { id: 'ad_10', sponsor: 'Quiet Courier', text: 'MANIFEST BLANKS FILLED WHILE YOU WAIT. NAMES COST EXTRA.' },
+    { id: 'ad_11', sponsor: 'Concord Registry', text: 'UNLICENSED NAMES WILL BE REMOVED FROM HULLS.' },
+    { id: 'ad_12', sponsor: 'Meridian Housing', text: 'WINDOWS AVAILABLE ON PREMIUM OXYGEN PLANS.' },
+    { id: 'ad_13', sponsor: 'DMC Payroll', text: 'HAZARD PAY EXCLUDES EXPECTED HAZARDS.' },
+    { id: 'ad_14', sponsor: 'Helios Memorials', text: 'PRENEED PLAQUES LOCK TODAY\'S LETTERING RATE.' },
+    { id: 'ad_15', sponsor: 'MTS Escrow', text: 'YOUR TRUST WILL CLEAR IN THREE TO FIVE CYCLES.' },
+    { id: 'ad_16', sponsor: 'Concord Security', text: 'FULL COMPLIANCE PACKAGES INCLUDE SEARCH, SEIZURE, AND PORTRAIT.' },
+    { id: 'ad_17', sponsor: 'Meridian Salvage', text: 'FOUND PROPERTY REMAINS OWNED UNTIL WE BUY IT.' },
+    { id: 'ad_18', sponsor: 'DMC Recruitment', text: 'THE SHAFT IS DEEP. YOUR CONTRACT IS DEEPER.' },
+    { id: 'ad_19', sponsor: 'Tethys Legal', text: 'INNOCENCE AVAILABLE IN THREE SERVICE TIERS.' },
+    { id: 'ad_20', sponsor: 'Concord Pensions', text: 'SURVIVOR BENEFITS REQUIRE A SURVIVOR.' },
+    { id: 'ad_21', sponsor: 'Meridian Leasing', text: 'OWN THE FEELING. LEASE THE HULL.' },
+    { id: 'ad_22', sponsor: 'DMC Canteen', text: 'MEAL BREAKS BEGIN AFTER QUOTA.' },
+    { id: 'ad_23', sponsor: 'Helios Dockmaster', text: 'UNATTENDED SHIPS BECOME ATTENDED ASSETS.' },
+    { id: 'ad_24', sponsor: 'MTS Futures', text: "LOCK TOMORROW'S ORE PRICE BEFORE TODAY'S SHAFT COLLAPSES." },
+    { id: 'ad_25', sponsor: 'Meridian Clear-Air', text: 'BREATHE EASY. YOUR SECTOR\u2019S INDEX MOVED AGAIN.' },
+    { id: 'ad_26', sponsor: 'Concord ALA', text: 'FILTER RECALL COMPLETE. REPLACEMENTS PENDING ALLOCATION.' },
+    { id: 'ad_27', sponsor: 'DMC Moisture Audit', text: '0.7T LOGGED. INQUIRIES REFERRED TO THE COLUMN.' },
+    { id: 'ad_28', sponsor: 'Tethys Probate', text: 'NEXT OF KIN VERIFIED AGAINST SURVIVING SPOUSE.' },
+    { id: 'ad_29', sponsor: 'Helios Bay Storage', text: 'ODOR IS CONSISTENT WITH TRANSIT. BAY REMAINS OPERATIONAL.' },
+    { id: 'ad_30', sponsor: 'MTS ATMO Tokens', text: 'YOUR BREATH HAS A POSITION. IT IS PERFORMING.' },
+    // Conflict-flip denials. The live Helios board selects these only after factions has emitted
+    // an authoritative conflict:flip; they never leak into the ordinary pre-flip rotation.
+    { id: 'war_helios_01', set: 'war_helios_denial', reactsTo: 'conflict_flip', sponsor: 'Helios Continuity Office', text: 'HELIOS CONTINUITY NOTICE: {sector} REMAINS WITHIN NORMAL ADMINISTRATIVE VARIANCE.' },
+    { id: 'war_helios_02', set: 'war_helios_denial', reactsTo: 'conflict_flip', sponsor: 'Concord Civic Desk', text: '{sector} SERVICE OWNERSHIP UPDATED. NO TERRITORY WAS LOST.' },
+    { id: 'war_helios_03', set: 'war_helios_denial', reactsTo: 'conflict_flip', sponsor: 'Helios Public Information', text: 'REPORTS OF A FLAG CHANGE AT {sector} ARE OUTDATED UPON RECEIPT.' },
+    { id: 'war_helios_04', set: 'war_helios_denial', reactsTo: 'conflict_flip', sponsor: 'Concord Transit', text: 'TRANSIT THROUGH {sector} REMAINS STABLE. CASUALTY FIGURES ARE NOT A TRANSIT METRIC.' },
+    { id: 'war_helios_05', set: 'war_helios_denial', reactsTo: 'conflict_flip', sponsor: 'Helios Claims Bureau', text: '{winner} HAS ASSUMED TEMPORARY SERVICE LIABILITY FOR {sector}. OPERATIONS CONTINUE.' },
+    { id: 'war_helios_06', set: 'war_helios_denial', reactsTo: 'conflict_flip', sponsor: 'Concord Records', text: 'NO FRONT MOVED. {sector} RECORDS WERE REFILED UNDER {winner}.' },
+  ],
+});

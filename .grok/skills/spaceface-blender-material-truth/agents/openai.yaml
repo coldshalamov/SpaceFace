@@ -1,0 +1,4 @@
+interface:
+  display_name: "SpaceFace Blender Material Truth"
+  short_description: "Author SpaceFace hardware from fiction and material truth"
+  default_prompt: "Use $spaceface-blender-material-truth to author or remaster this SpaceFace asset as believable fabricated hardware."

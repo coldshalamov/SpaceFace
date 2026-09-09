@@ -1,0 +1,24 @@
+/* ============================================================================
+   SpaceFace · bundled type (self-hosted, offline-safe).
+   The two faces of the frontend direction (design/frontend/direction/DIRECTION_SHEET.md §3):
+   Bricolage Grotesque for display (names, screen titles, hero numbers) and Instrument Sans for
+   text and data numerals (tabular figures are in the vendored file). Spline Sans Mono stays for
+   Asteroid Works' numerals only (design/ASTEROID_WORKS_DESIGN_LAW.md §3.3). Saira SemiCondensed,
+   the IBM Plex trio and the static Bricolage 600 instance retired with Frontend Task D — the
+   variable Bricolage file covers 200–800. All OFL; the licence text ships in styles/fonts/.
+   ============================================================================ */
+
+@font-face { font-family:"Instrument Sans"; font-style:normal; font-weight:400 700;
+  font-display:swap; src:url("/styles/fonts/instrument-sans-var.woff2") format("woff2"); }
+@font-face { font-family:"Spline Sans Mono"; font-style:normal; font-weight:500;
+  font-display:swap; src:url("/styles/fonts/spline-sans-mono-500.woff2") format("woff2"); }
+
+/* PQ-187.02: verified three-axis Bricolage Grotesque. */
+@font-face {
+  font-family: 'Bricolage Grotesque';
+  font-style: normal;
+  font-weight: 200 800;
+  font-stretch: 75% 100%;
+  font-display: swap;
+  src: url('/styles/fonts/bricolage-grotesque-var.woff2') format('woff2');
+}

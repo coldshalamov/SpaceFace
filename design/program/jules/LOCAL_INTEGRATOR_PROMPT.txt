@@ -1,0 +1,40 @@
+Operate the SpaceFace Jules directed task bank as a dispatch-and-integration campaign.
+
+Start at CANONICAL_BUILD_MAP.md, AGENTS.md, and design/program/jules/README.md. Validate the bank:
+
+node scripts/jules-dispatch.mjs --validate
+node --test test/jules-task-bank.test.mjs
+
+The task bank is not the program queue and grants no acceptance. Your job is to spend cloud inference on bounded candidates, then protect master from weak or colliding output.
+
+DISPATCH
+1. Choose a batch with scripts/jules-dispatch.mjs. Use deterministic seeds and collision caps.
+2. Prefer Gemini 3.6 Flash for tests, narrow reproductions, lifecycle, integrity, and surgical fixes.
+3. Prefer Gemini 3.1 Pro for cross-system traces, UX/visual judgment, measured architecture work, AI tuning, missions, and creative content.
+4. Claim tasks before sending them. One task goes to one Jules run, one branch, and at most one PR.
+5. Send the rendered prompt verbatim. Do not paraphrase away its NO_CHANGE path or repository law.
+6. Never dispatch two active tasks with the same collisionKey unless you deliberately set a higher cap and can absorb the merge conflict.
+
+REVIEW EVERY RESULT
+1. Resolve the exact task record and compare the PR against its objective, work steps, acceptance criteria, inspect scope, and local merge gate.
+2. Fetch current master and review the complete diff. Do not review only the PR description.
+3. Reject any edit to CANONICAL_BUILD_MAP.md, root AGENTS.md, ARCHITECTURE.md, design/VISION.md, design/GDD_2_0.md, design/program/NOW.md, program-queue.json, design/program/jules/**, or test/*.expected.json.
+4. Reject unrelated refactors, new dependencies, broad formatting, copied framework layers, duplicate registries, speculative TODO plans, acceptance theater, and quality cuts.
+5. Confirm the changed production path is live. Default flight is V3; default AI is tactical. A green test of a legacy owner does not prove player value.
+6. For tests, prove the test can fail for the intended regression and does not assert source formatting, file counts, or implementation trivia.
+7. For bug fixes, reproduce the original red condition or inspect exact trace evidence. NO_CHANGE is preferable to an invented defect.
+8. For performance, require before/after measurement in the same scenario and settings. Reject visual, population, simulation, or presentation reductions.
+9. For UI/render/audio/content, inspect ordinary-route evidence at normal play scale. Source presence, DOM assertions, and beauty crops are not acceptance.
+10. Rebase the candidate onto current master, resolve collisions semantically, run the narrow proof, then the smallest surrounding gate.
+11. Merge only one coherent independent slice. Never merge a branch wholesale merely because Jules opened it.
+12. Record the terminal state:
+   node scripts/jules-dispatch.mjs --complete <ID> --result PR_READY --pr <URL>
+   node scripts/jules-dispatch.mjs --complete <ID> --result NO_CHANGE --note "<evidence>"
+   node scripts/jules-dispatch.mjs --complete <ID> --result BLOCKED --note "<exact blocker>"
+
+BATCH CONTROL
+Track dispatched, PR_READY, NO_CHANGE, BLOCKED, rejected_scope, rejected_wrong_owner, rejected_bad_test, rejected_regression, merged, reverted, and local review minutes by lane/model. Optimize merged independent value per review minute, not raw PR count.
+
+Stop dispatching a lane when its rejection burden exceeds its merge value. Increase only after the prior batch is reviewed and the collision state is current.
+
+Do not mutate the task bank during ordinary dispatch. Improvements to the bank itself require a separate reviewed change.

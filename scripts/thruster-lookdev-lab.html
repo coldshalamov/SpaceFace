@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>SpaceFace thruster look-dev lab</title>
+  <style>
+    html, body { margin: 0; background: #000; overflow: hidden; font-family: system-ui, sans-serif; }
+    #hud {
+      position: fixed; left: 12px; top: 12px; color: #9cf; font-size: 12px;
+      background: rgba(0,0,0,0.55); padding: 8px 10px; border-radius: 6px; z-index: 2;
+    }
+    canvas { display: block; width: 100vw; height: 100vh; }
+  </style>
+</head>
+<body>
+  <div id="hud">Thruster look-dev lab · W thrust · B boost · 1 rear · 2 rear-¾ · 3 bloom toggle</div>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "/vendor/three.module.js",
+      "three/addons/": "/vendor/addons/"
+    }
+  }
+  </script>
+  <script type="module">
+    import * as THREE from 'three';
+    import { PlasmaStreamSystem } from '/src/render/thruster/systems/plasmaStream.js';
+    import { PLAYER_PLASMA_STREAM_RECIPE } from '/src/render/thruster/recipes/plasmaStreamRecipe.js';
+    import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+    import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+    import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+    const params = new URLSearchParams(location.search);
+    const view = params.get('view') || 'rear34'; // rear | rear34 | game | low | turn
+    const thrust = params.get('thrust') !== '0';
+    const boost = params.get('boost') === '1';
+    const bloomOn = params.get('bloom') !== '0';
+    const frames = Math.max(30, Number(params.get('frames') || 90));
+    const speed = Number(params.get('speed') || 110); // WU/s (game-realistic)
+    const maneuver = params.get('maneuver') || 'straight'; // straight | turn | s
+    const driveLevel = params.has('drive') ? Number(params.get('drive')) : null;
+    const autoCapture = params.get('capture') === '1';
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: true });
+    renderer.setPixelRatio(1);
+    renderer.setSize(1440, 900, false);
+    renderer.setClearColor(0x02040a, 1);
+    document.body.appendChild(renderer.domElement);
+
+    const scene = new THREE.Scene();
+    // stars
+    {
+      const geo = new THREE.BufferGeometry();
+      const n = 1800;
+      const pos = new Float32Array(n * 3);
+      for (let i = 0; i < n; i++) {
+        pos[i * 3] = (Math.random() - 0.5) * 800;
+        pos[i * 3 + 1] = (Math.random() - 0.5) * 400;
+        pos[i * 3 + 2] = (Math.random() - 0.5) * 800;
+      }
+      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      scene.add(new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xaaccff, size: 0.9, sizeAttenuation: true })));
+    }
+
+    // simple ship placeholder (nozzle ring)
+    const ship = new THREE.Group();
+    const hull = new THREE.Mesh(
+      new THREE.BoxGeometry(8, 2.2, 3.4),
+      new THREE.MeshStandardMaterial({ color: 0x2a3038, metalness: 0.75, roughness: 0.35 }),
+    );
+    hull.position.x = 2;
+    ship.add(hull);
+    const bell = new THREE.Mesh(
+      new THREE.CylinderGeometry(1.1, 1.35, 1.2, 24, 1, true),
+      new THREE.MeshStandardMaterial({ color: 0x11161c, metalness: 0.85, roughness: 0.28, side: THREE.DoubleSide, emissive: 0x224466, emissiveIntensity: 0.35 }),
+    );
+    bell.rotation.z = Math.PI / 2;
+    bell.position.set(-2.2, 0, 0);
+    ship.add(bell);
+    scene.add(ship);
+    scene.add(new THREE.AmbientLight(0x405060, 0.55));
+    const key = new THREE.DirectionalLight(0xffffff, 1.1);
+    key.position.set(8, 12, 6);
+    scene.add(key);
+
+    const plasma = new PlasmaStreamSystem(THREE, PLAYER_PLASMA_STREAM_RECIPE);
+    plasma.attach(scene);
+
+    const camera = new THREE.PerspectiveCamera(view === 'game' ? 50 : 42, 1440 / 900, 0.1, 2000);
+    // Game chase camera: follows position only, 60° tilt, default zoom 144 WU, fov 50
+    // (mirrors src/render/camera.js createChaseCamera — this is the view players actually see).
+    const GAME_DIST = 144;
+    const GAME_TILT = 60 * Math.PI / 180;
+    function placeCamera(mode, fx = 0, fz = 0) {
+      // Frame full teardrop: ship + plume body in view, not nozzle-only closeup.
+      if (mode === 'rear') {
+        camera.position.set(fx - 28, 5, fz);
+        camera.lookAt(fx - 4, 0, fz);
+      } else if (mode === 'game') {
+        camera.position.set(fx, GAME_DIST * Math.sin(GAME_TILT), fz - GAME_DIST * Math.cos(GAME_TILT));
+        camera.lookAt(fx, 0, fz);
+        } else if (mode === 'rear34') {
+          camera.position.set(fx - 8, 8, fz + 16);
+          camera.lookAt(fx - 4, 0, fz);
+        } else if (mode === 'low') {
+          // Near-broadside: the filamentous silhouette view (reference image 2 style).
+          camera.position.set(fx - 30, 4.5, fz + 10);
+          camera.lookAt(fx - 9, 0.5, fz + 2);
+        } else if (mode === 'turn') {
+          // Above, behind the turn origin: shows the whole wake snake path.
+          camera.position.set(fx - 55, 85, fz - 10);
+          camera.lookAt(fx - 25, 0, fz + 12);
+        }
+    }
+    placeCamera(view, 0, 0);
+
+    let composer = null;
+    let bloomPass = null;
+    function setupBloom(on) {
+      // Bloom disabled in look-dev by default path: it was masking geometry scale problems.
+      // Keep optional hook but prefer raw framebuffer for thruster structure proof.
+      if (!on) { composer = null; bloomPass = null; return; }
+      try {
+        composer = new EffectComposer(renderer);
+        composer.addPass(new RenderPass(scene, camera));
+        bloomPass = new UnrealBloomPass(new THREE.Vector2(1440, 900), 0.35, 0.4, 0.85);
+        composer.addPass(bloomPass);
+      } catch (e) {
+        console.warn('bloom setup failed', e);
+        composer = null;
+      }
+    }
+    setupBloom(bloomOn);
+
+    let t = 0;
+    let frame = 0;
+    const owner = { id: 'lab' };
+    // ContinuousPlume / production axis: jet extends along -ax. Ship faces +X, exhaust -X ⇒ ax=+1.
+    const socket = { x: -2.6, y: 0, z: 0, ax: 1, ay: 0, az: 0 };
+    let shipX = 0;
+    let shipZ = 0;
+
+    function tick() {
+      const dt = 1 / 60;
+      t += dt;
+      frame++;
+      if (thrust) {
+        // Game-realistic motion: speed is WU/s; maneuvers curve the wake so the history
+        // trail reads as a snake path, not a laser-straight ruler.
+        let heading = 0;
+        if (maneuver === 'turn') heading = Math.min(t * 0.42, 2.4);
+        else if (maneuver === 's') heading = Math.sin(t * 0.5) * 0.85;
+        shipX += Math.cos(heading) * speed * dt;
+        shipZ += Math.sin(heading) * speed * dt;
+        ship.position.set(shipX, 0, shipZ);
+        ship.rotation.y = -heading;
+        socket.x = shipX - Math.cos(heading) * 2.6;
+        socket.y = 0;
+        socket.z = shipZ - Math.sin(heading) * 2.6;
+        socket.ax = Math.cos(heading);
+        socket.az = Math.sin(heading);
+      }
+      // Keep camera locked on the ship so captures are not empty after the hull flies away.
+      placeCamera(view, shipX, shipZ);
+      plasma.setCamera(camera);
+      if (thrust) {
+        const drive = driveLevel != null ? driveLevel : (boost ? 1.2 : 0.95);
+        plasma.update(dt, [socket], {
+          drive,
+          throttle: driveLevel != null ? driveLevel : 1,
+          boost: boost ? 1 : 0,
+          speed,
+        }, { reducedMotion: false, reducedFlash: false, lowQuality: false }, owner);
+      } else {
+        plasma.update(dt, [socket], { drive: 0, throttle: 0, boost: 0, speed: 0 }, null, owner);
+      }
+      if (composer) composer.render();
+      else renderer.render(scene, camera);
+
+      function analyzeFrame() {
+        // Fail-closed visual evidence: ASCII luminance map + bright bbox straight from the
+        // framebuffer. Removes all thumbnail guesswork from look-dev iteration.
+        const gl = renderer.getContext();
+        const w = gl.drawingBufferWidth, h = gl.drawingBufferHeight;
+        const buf = new Uint8Array(w * h * 4);
+        gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+        const GW = 72, GH = 40;
+        const grid = [];
+        let minX = 1e9, maxX = -1, minY = 1e9, maxY = -1, bright = 0;
+        for (let gy = 0; gy < GH; gy++) {
+          let row = '';
+          for (let gx = 0; gx < GW; gx++) {
+            let sum = 0, n = 0;
+            const x0 = Math.floor(gx * w / GW), x1 = Math.floor((gx + 1) * w / GW);
+            const y0 = Math.floor(gy * h / GH), y1 = Math.floor((gy + 1) * h / GH);
+            for (let y = y0; y < y1; y += 2) {
+              const yy = (h - 1 - y);
+              for (let x = x0; x < x1; x += 2) {
+                const idx = (yy * w + x) * 4;
+                const lum = 0.2126 * buf[idx] + 0.7152 * buf[idx + 1] + 0.0722 * buf[idx + 2];
+                sum += lum; n++;
+                if (lum > 130) {
+                  bright++;
+                  if (x < minX) minX = x; if (x > maxX) maxX = x;
+                  if (y < minY) minY = y; if (y > maxY) maxY = y;
+                }
+              }
+            }
+            const m = sum / n;
+            row += m > 190 ? '#' : m > 120 ? 'O' : m > 60 ? 'o' : m > 24 ? '+' : m > 10 ? '.' : ' ';
+          }
+          grid.push(row);
+        }
+        // Ship + nozzle screen anchors (projection) so the map can be read against them.
+        const anchor = (x, y, z) => {
+          const v = new THREE.Vector3(x, y, z).project(camera);
+          return [Math.round((v.x * 0.5 + 0.5) * w), Math.round((1 - (v.y * 0.5 + 0.5)) * h)];
+        };
+        return {
+          grid,
+          bbox: bright > 0 ? [minX, minY, maxX, maxY] : null,
+          brightPx: bright,
+          shipScreen: anchor(shipX, 0, shipZ),
+          nozzleScreen: anchor(socket.x, socket.y, socket.z),
+        };
+      }
+
+      if (autoCapture && frame === frames) {
+        const analysis = analyzeFrame();
+        const dataUrl = renderer.domElement.toDataURL('image/png');
+        // Native-resolution crop around the nozzle + wake so structure is judged from real
+        // pixels, not a downscaled full-frame thumbnail.
+        let cropDataUrl = null;
+        let cropRect = null;
+        {
+          const n = analysis.nozzleScreen;
+          const x0 = Math.max(0, Math.min(analysis.shipScreen[0], n[0]) - 80);
+          const w = renderer.domElement.width;
+          const h = renderer.domElement.height;
+          const cw = Math.min(900, w - x0);
+          const cy0 = Math.max(60, n[1] - 170);
+          const ch = Math.min(340, h - cy0);
+          const cv = document.createElement('canvas');
+          cv.width = cw; cv.height = ch;
+          const ctx = cv.getContext('2d');
+          ctx.drawImage(renderer.domElement, x0, cy0, cw, ch, 0, 0, cw, ch);
+          cropDataUrl = cv.toDataURL('image/png');
+          cropRect = [x0, cy0, cw, ch];
+        }
+        window.__thrusterCapture = {
+          dataUrl,
+          cropDataUrl,
+          cropRect,
+          view,
+          thrust,
+          boost,
+          maneuver,
+          bloom: bloomOn,
+          frame,
+          analysis,
+          inspect: plasma.inspect(),
+        };
+      } else {
+        requestAnimationFrame(tick);
+      }
+    }
+    requestAnimationFrame(tick);
+
+    window.__thrusterLab = {
+      setView: (v) => { placeCamera(v); },
+      setBloom: (on) => setupBloom(!!on),
+      capture: () => renderer.domElement.toDataURL('image/png'),
+      inspect: () => plasma.inspect(),
+    };
+  </script>
+</body>
+</html>

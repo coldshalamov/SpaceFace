@@ -1,0 +1,39 @@
+{
+  "schema": "spaceface.validation-run-result.v1",
+  "recordedAt": "2026-07-29T16:36:29.147Z",
+  "status": "pass",
+  "exitCode": 0,
+  "signal": null,
+  "timedOut": false,
+  "durationMs": 28076,
+  "pidRecord": {
+    "pid": 36716,
+    "command": "C:\\Program Files\\nodejs\\node.exe",
+    "args": [
+      "scripts/probe-pq022-corridor-asset-leaves.mjs"
+    ],
+    "startedAt": "2026-07-29T16:36:01.071Z",
+    "platform": "win32",
+    "finishedAt": "2026-07-29T16:36:29.147Z",
+    "exitCode": 0,
+    "signal": null,
+    "timedOut": false,
+    "killResult": null
+  },
+  "ownership": {
+    "probeId": "pq022-corridor-asset-leaves",
+    "runtimeKind": "browser",
+    "browserOwned": true,
+    "serverOwned": true,
+    "pid": 36716
+  },
+  "fixedSeed": 47,
+  "failureFingerprint": null,
+  "family": null,
+  "routeDigest": "710ee97b6b072ea9df7588214ddfc416ae704e1899002fc41193be1d8613e5fb",
+  "regressionDigest": "4fe1256e4776ed0fe06c235922d01dd11e846759ae7487f2a1b20fc6db88907f",
+  "candidateDigest": "22100055717522d0a493ffd048d25f326636f25fce4a7855a3e2edcae639b689",
+  "informational_contended": true,
+  "informational_contended_note": "recordedAt, startedAt, finishedAt, and durationMs are broker controls/diagnostics only. They are not performance evidence.",
+  "noPerformanceEvidence": true
+}

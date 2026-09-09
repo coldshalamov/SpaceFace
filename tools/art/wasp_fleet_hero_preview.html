@@ -1,0 +1,106 @@
+<!doctype html>
+<meta charset="utf-8">
+<style>html,body{margin:0;overflow:hidden;background:#05090e}canvas{display:block}</style>
+<script type="importmap">{"imports":{"three":"/node_modules/three/build/three.module.js","three/addons/":"/node_modules/three/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+const query = new URLSearchParams(location.search);
+const width = Number(query.get('w')) || 1280;
+const height = Number(query.get('h')) || 720;
+const azimuth = THREE.MathUtils.degToRad(Number(query.get('az') ?? -38));
+const tilt = THREE.MathUtils.degToRad(Number(query.get('tilt') ?? 60));
+const zoom = Number(query.get('zoom') ?? 72);
+const surface = query.get('surface') || 'pbr';
+const lighting = query.get('lighting') || 'studio';
+const target = new THREE.Vector3(Number(query.get('tx') || 0), Number(query.get('ty') || 0), Number(query.get('tz') || 0));
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(1);
+renderer.setSize(width, height, false);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = surface === 'pbr' ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping;
+renderer.toneMappingExposure = 1.02;
+document.body.append(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x05090e);
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environmentIntensity = lighting === 'grazing' ? 0.32 : 1.0;
+scene.add(new THREE.HemisphereLight(0xd5e5ee, 0x1b2028, lighting === 'grazing' ? 0.16 : 0.72));
+const key = new THREE.DirectionalLight(0xffe2c5, Number(query.get('keyIntensity') ?? (lighting === 'grazing' ? 3.2 : 2.45)));
+key.position.set(
+  Number(query.get('keyX') ?? (lighting === 'grazing' ? -28 : 18)),
+  Number(query.get('keyY') ?? (lighting === 'grazing' ? 4 : 26)),
+  Number(query.get('keyZ') ?? (lighting === 'grazing' ? -34 : -16)),
+);
+scene.add(key);
+const fill = new THREE.DirectionalLight(0x75b9ed, lighting === 'grazing' ? 0.12 : 0.78); fill.position.set(-18, 9, 20); scene.add(fill);
+const rim = new THREE.DirectionalLight(0xff8d52, lighting === 'grazing' ? 0.22 : 0.55); rim.position.set(-22, 12, -17); scene.add(rim);
+
+const ktx2 = new KTX2Loader().setTranscoderPath('/node_modules/three/examples/jsm/libs/basis/').detectSupport(renderer);
+const loader = new GLTFLoader().setKTX2Loader(ktx2).setMeshoptDecoder(MeshoptDecoder);
+loader.load(query.get('asset'), async (gltf) => {
+  const root = gltf.scene;
+  root.traverse((object) => {
+    if (object.isMesh && /collision/i.test(object.name || '')) object.visible = false;
+    if (object.isMesh && object.visible && surface !== 'pbr') object.material = proofMaterial(object.material, surface);
+  });
+  scene.add(root);
+  root.updateMatrixWorld(true);
+  const box = new THREE.Box3();
+  let meshes = 0, draws = 0, triangles = 0;
+  root.traverse((object) => {
+    if (!object.isMesh || !effectivelyVisible(object)) return;
+    box.union(new THREE.Box3().setFromObject(object));
+    meshes++;
+    draws += Array.isArray(object.material) ? object.material.length : 1;
+    triangles += object.geometry.index ? object.geometry.index.count / 3 : object.geometry.attributes.position.count / 3;
+  });
+  if (box.isEmpty()) throw new Error('no visible render meshes');
+  const camera = new THREE.PerspectiveCamera(50, width / height, 0.5, 3000);
+  const horizontal = zoom * Math.cos(tilt);
+  camera.position.set(target.x + Math.cos(azimuth) * horizontal, target.y + zoom * Math.sin(tilt), target.z + Math.sin(azimuth) * horizontal);
+  camera.lookAt(target);
+  camera.updateProjectionMatrix();
+  renderer.render(scene, camera);
+  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  renderer.render(scene, camera);
+  window.__SF = {
+    ready: true, asset: query.get('asset'), surface, meshes, draws, triangles: Math.round(triangles),
+    camera: { fov: 50, tiltDeg: THREE.MathUtils.radToDeg(tilt), zoom, azimuthDeg: THREE.MathUtils.radToDeg(azimuth), target: target.toArray() },
+    lighting: { mode: lighting, keyPosition: key.position.toArray(), keyIntensity: key.intensity, environmentIntensity: scene.environmentIntensity },
+    proofDisplay: surface === 'normal' ? { tangentNormalDeviationGain: 8.0, sourceTexturesUnmodified: true } : null,
+    size: box.getSize(new THREE.Vector3()).toArray(), bounds: { min: box.min.toArray(), max: box.max.toArray() },
+  };
+  window.__SFView = { root, renderer, scene, camera };
+}, undefined, (error) => { window.__SF = { ready: false, error: String(error) }; });
+
+function proofMaterial(source, mode) {
+  const material = Array.isArray(source) ? source[0] : source;
+  if (mode === 'wireframe') return new THREE.MeshBasicMaterial({ color: 0xa9d9ef, wireframe: true });
+  if (mode === 'base') return new THREE.MeshBasicMaterial({ map: material?.map || null, color: material?.color || new THREE.Color(1, 1, 1) });
+  const texture = mode === 'normal' ? material?.normalMap
+    : mode === 'roughness' ? material?.roughnessMap
+    : mode === 'metallic' ? material?.metalnessMap
+    : mode === 'ao' ? material?.aoMap
+    : mode === 'emissive' ? material?.emissiveMap : null;
+  if (!texture) return new THREE.MeshBasicMaterial({ color: 0x020202 });
+  const channel = mode === 'roughness' ? 1 : mode === 'metallic' ? 2 : mode === 'ao' ? 0 : mode === 'normal' ? -2 : -1;
+  return new THREE.ShaderMaterial({
+    uniforms: { mapProof: { value: texture }, channelProof: { value: channel } },
+    vertexShader: `varying vec2 vUv; void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+    fragmentShader: `uniform sampler2D mapProof;uniform int channelProof;varying vec2 vUv;void main(){vec4 s=texture2D(mapProof,vUv);if(channelProof==0)s=vec4(vec3(s.r),1.0);else if(channelProof==1)s=vec4(vec3(s.g),1.0);else if(channelProof==2)s=vec4(vec3(s.b),1.0);else if(channelProof==-2)s=vec4(clamp(vec3(0.5)+(s.rgb-vec3(0.5))*8.0,0.0,1.0),1.0);gl_FragColor=vec4(s.rgb,1.0);}`,
+    toneMapped: false,
+  });
+}
+
+function effectivelyVisible(object) {
+  for (let current = object; current; current = current.parent) if (!current.visible) return false;
+  return true;
+}
+</script>

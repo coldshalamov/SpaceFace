@@ -1,0 +1,646 @@
+import { normalizeCombatDoctrineId } from './combatDoctrine.js';
+import { normalizeFactionBehaviorProfile } from './factionBehavior.js';
+import {
+  RulesOfEngagement,
+  activityAllowsOffense,
+  effectiveActivityForAI,
+  normalizeRoe,
+} from './doctrine.js';
+import { bubblesFor } from '../data/stationBubbles.js';
+import {
+  HELIOS_STARTER_PROTECTION_RADIUS_WU,
+  sectorGlobalOrigin,
+} from '../data/sectorCoordinates.js';
+import { isPlayerWanted } from '../systems/heat.js';
+import { isHostileToPlayer } from '../systems/scanner.js';
+import { stableId } from './contracts.js';
+
+const TICKS_PER_SECOND = 60;
+export const MIN_AI_RESPONSE_WINDOW_S = 1;
+const FIRST_SESSION_DURATION_TICKS = 10 * 60 * TICKS_PER_SECOND;
+const MAX_FIRST_SESSION_ATTACKERS = 2;
+const LAWFUL_STATION_PROTECTION_MIN = 600;
+const LAWFUL_STATION_FACTIONS = new Set([
+  'faction_scn',
+  'faction_mts',
+  'faction_dmc',
+  'faction_free',
+]);
+const DOCTRINE_FIRE_PHASES = Object.freeze({
+  interceptor_flyby: new Set(['strike', 'commit']),
+  // Bruiser Brawler ordinary fights use this doctrine id, not interceptor_flyby. `commit` is the
+  // advertised gun window (combatDoctrine enter() sets fireWindow on the same phase). Missing this
+  // key fail-closed every live brawler shot even while the snapshot said the guns were hot.
+  brawler_commit: new Set(['commit']),
+  ranged_disengager: new Set(['fire_window']),
+  tether_control_raider: new Set(),
+  // The anchor's guns are live only while it is committed to its drag-field hold. Its authored
+  // hull carries a non-defensive autocannon and roe weapons_free; without this entry the label
+  // resolved like a passive hauler and the whole fight fell to the escorts. The 30-tick
+  // field_spool telegraph always precedes this phase.
+  field_anchor_controller: new Set(['anchor_hold']),
+  // Iron Maw / capital hulls telegraph on broadside_charge, then fire on broadside_fire.
+  capital_broadside: new Set(['broadside_fire']),
+  // The warden's hold is a real gun window (defensive burst while planted on the ward→threat
+  // line) and the breach dart is its committed lunge. Same fail-closed rule as the brawler: a
+  // missing key silences a live doctrine.
+  escort_screen: new Set(['screen_hold', 'shield_dart']),
+});
+const ROBBERY_ESCALATION_TRIGGERS = new Set(['explicit_refusal', 'ignored_demand', 'player_attack']);
+const CERES_ACTIVITY_AMBUSH_ENCOUNTER_ID = 'ceres:activity:throughline-ambush';
+const CERES_ACTIVITY_AMBUSH_ZONE_ID = 'zone_ceres_ambush';
+const CERES_ACTIVITY_AMBUSH_HAULER_SLOT = 'ceres_ambush_loaded_hauler';
+const CERES_ACTIVITY_AMBUSH_MARKER = 'ceresActivityAmbushPhase';
+const SCENARIO_47A_SCAVENGERS = new Map([
+  ['scavenger_interceptor', Object.freeze({
+    motive: 'break_claim_screen',
+    doctrineId: 'interceptor_flyby',
+  })],
+  ['scavenger_harasser', Object.freeze({
+    motive: 'screen_recovery_claim',
+    doctrineId: 'ranged_disengager',
+  })],
+  ['scavenger_thief', Object.freeze({
+    motive: 'recover_evidence_spindle',
+    doctrineId: 'tether_control_raider',
+  })],
+]);
+const SCENARIO_47A_INNER_SANCTUARY_RADIUS_WU = 1200;
+const FIRST_SESSION_OWNERSHIP = new WeakMap();
+
+/**
+ * The final fail-closed gate shared by ordinary weapon intent and SG-03 damage actions.
+ * Squad selection is advisory; this function revalidates live hostility, authored motive,
+ * response/telegraph time, doctrine phase, leash, and station jurisdiction at execution time.
+ */
+export function authorizeAIEngagement({
+  state,
+  self,
+  target,
+  tick = state && state.tick,
+  objectiveReason = null,
+  hostile = null,
+  wanted = isPlayerWanted(state),
+  recentlyDamaged = false,
+} = {}) {
+  if (!state || !self || !target || self.alive === false || target.alive === false) return denied('actor_or_target_missing');
+  if (self.id == null || target.id == null || self.id === target.id) return denied('invalid_target');
+  const ai = self.data && self.data.ai;
+  if (!ai || ai.passive) return denied('passive');
+  if ((ai.predationTargetId != null || ai.predationStatus === 'active')
+    && !isAuthorizedPredationRelation(state, self, target)) {
+    return denied('predation_relation_stale');
+  }
+  if (normalizeRoe(ai.roe) === RulesOfEngagement.HOLD_FIRE) return denied('hold_fire');
+  const factionBehavior = normalizeFactionBehaviorProfile(ai.factionPresenceDoctrine);
+  if (targetIsDisabled(state, target) && factionBehavior && factionBehavior.destroyTarget === false) {
+    return denied('target_disabled_nonlethal');
+  }
+
+  for (const key of ['motive', 'engagementTrigger', 'zoneId', 'approachTelegraph']) {
+    if (!nonEmpty(ai[key])) return denied(key);
+  }
+  if (ai.motiveSatisfied === true || ai.pirateDisengaged === true) return denied('motive_satisfied');
+  if (ai.motive === 'cargo_extortion' && !ROBBERY_ESCALATION_TRIGGERS.has(ai.engagementTrigger)) {
+    return denied('robbery_not_escalated');
+  }
+  const doctrineId = normalizeCombatDoctrineId(ai.combatDoctrineId);
+  if (!doctrineId) return denied('combat_doctrine');
+  const activity = effectiveActivityForAI(ai);
+  if (!activity) return denied('activity');
+  if (!activityAllowsOffense(activity)) return denied('activity_non_offensive');
+
+  const liveHostile = hostile == null ? isHostileForAI(state, self, target) : hostile === true;
+  if (!liveHostile) return denied('target_not_hostile');
+
+  const windowS = Number(ai.noFireResponseWindowS);
+  if (!Number.isFinite(windowS) || windowS < MIN_AI_RESPONSE_WINDOW_S) return denied('noFireResponseWindowS');
+  const nowTick = Number.isInteger(tick) ? tick : 0;
+  const armedTick = activity.startedTick + Math.ceil(windowS * TICKS_PER_SECOND);
+  if (nowTick < armedTick) return denied('response_window');
+
+  const phase = doctrinePhase(objectiveReason, doctrineId);
+  if (!phase || !DOCTRINE_FIRE_PHASES[doctrineId]?.has(phase)) return denied('doctrine_fire_window');
+
+  const protection = protectedStationAt(state, target);
+  if (protection) {
+    // Security dispatch is target-specific. It must work against a pirate even though the legacy
+    // team model puts patrols and hostiles on team 1, and it must work against the clean player who
+    // just fired on a patrol before WANTED heat crosses the global threshold.
+    const dispatchedTarget = ai.securityTargetId != null && ai.securityTargetId === target.id;
+    const lawfulEnforcement = !!ai.lawful && (
+      (dispatchedTarget && ai.engagementTrigger === 'security_response')
+      || ((wanted || recentlyDamaged)
+        && (ai.engagementTrigger === 'wanted_status' || ai.engagementTrigger === 'player_attack'))
+    );
+    const scenarioCounterplay = is47aScavengerCounterplayAuthorized(state, self, target);
+    if (!lawfulEnforcement && !scenarioCounterplay) return denied('station_protection');
+  }
+
+  if (inFirstSession(state, nowTick) && !claimFirstSessionAttackerOwnership(state, self, target)) {
+    return denied('first_session_attacker_cap');
+  }
+
+  return allowed();
+}
+
+/**
+ * Fail-closed bridge between the authored 47-A refusal contract and Helios jurisdiction.
+ *
+ * The demand is deliberately issued just outside the station's 1,200-WU inner sanctuary while
+ * the broader 1,400-WU starter jurisdiction still applies. Only the three named scenario actors may
+ * cross that outer 200-WU seam, and only after the player's explicit refusal plus the exact
+ * authored no-fire deadline. Moving back into the inner sanctuary restores ordinary protection.
+ */
+export function is47aScavengerCounterplayAuthorized(state, self, target) {
+  if (!state || !self || !target || target.id !== state.playerId || !target.pos
+    || !Number.isFinite(target.pos.x) || !Number.isFinite(target.pos.z)) return false;
+  if (state.world?.currentSectorId !== 'sector_helios_prime') return false;
+  const scenario = state.scenario;
+  const safe = scenario && scenario.safeOpening;
+  if (scenario?.active?.id !== 'scenario.47a.mass-discrepancy') return false;
+  if (!safe || safe.spindleClaimed !== true || safe.response !== 'refuse') return false;
+  if (!Number.isFinite(safe.demandIssuedAt) || !Number.isFinite(safe.noFireUntilS)
+    || safe.noFireUntilS < safe.demandIssuedAt || !Number.isFinite(state.simTime)
+    || state.simTime < safe.noFireUntilS) return false;
+  if ((state.story?.beatIndex | 0) < 1) return false;
+
+  const data = self.data;
+  const ai = data && data.ai;
+  const actorId = data && data.scenarioActorId;
+  const expected = SCENARIO_47A_SCAVENGERS.get(actorId);
+  const binding = scenario.actorBindings && scenario.actorBindings[actorId];
+  if (!expected || !binding || binding.status !== 'bound' || binding.entityId !== self.id
+    || !ai || ai.liveColdStartSafe !== true
+    || data._liveColdStartActivated !== true) return false;
+  if (ai.dormantUntilBeat !== 'scavenger_arrival'
+    || ai.engagementTrigger !== 'explicit_refusal'
+    || ai.motive !== expected.motive
+    || normalizeCombatDoctrineId(ai.combatDoctrineId) !== expected.doctrineId) return false;
+
+  const station = stationEntities(state).find((entity) => {
+    const stationId = entity.data?.stationId || entity.stationId;
+    return entity.alive !== false && stationId === 'station_helios' && entity.pos
+      && Number.isFinite(entity.pos.x) && Number.isFinite(entity.pos.z);
+  });
+  if (!station) return false;
+  const dx = target.pos.x - station.pos.x;
+  const dz = target.pos.z - station.pos.z;
+  return dx * dx + dz * dz >= SCENARIO_47A_INNER_SANCTUARY_RADIUS_WU
+    * SCENARIO_47A_INNER_SANCTUARY_RADIUS_WU;
+}
+
+/**
+ * Authored Ceres Throughline ambush: the sprung zone cohort may treat the loaded
+ * pocket hauler as a fire target. One-way (pirate → hauler) so the civilian flee
+ * reflex does not get a new hostility oracle.
+ */
+export function isAuthorizedCeresAmbushPreyRelation(state, self, other) {
+  if (!state || !self || !other || self === other) return false;
+  if (self.alive === false || other.alive === false) return false;
+  if (self.type !== 'ship' || other.type !== 'ship') return false;
+  if (other.team !== 2) return false;
+  if (other.data?.activityActorSlotId !== CERES_ACTIVITY_AMBUSH_HAULER_SLOT) return false;
+  if (self.id === state.playerId || other.id === state.playerId) return false;
+
+  const ai = self.data && self.data.ai;
+  if (!ai || ai.passive === true) return false;
+  if (ai.zoneId !== CERES_ACTIVITY_AMBUSH_ZONE_ID || ai.squadId !== CERES_ACTIVITY_AMBUSH_ZONE_ID) return false;
+  if (ai[CERES_ACTIVITY_AMBUSH_MARKER] !== 'conflict') return false;
+  if (normalizeRoe(ai.roe) === RulesOfEngagement.HOLD_FIRE) return false;
+
+  const live = state.encounterDirector && state.encounterDirector.live
+    && state.encounterDirector.live[CERES_ACTIVITY_AMBUSH_ENCOUNTER_ID];
+  if (!live || live.phase !== 'conflict' || live.data?.ceresActivityAmbush !== true) return false;
+  if (!Array.isArray(live.ids) || !live.ids.includes(self.id)) return false;
+
+  const locked = (ai.activity && ai.activity.targetId != null)
+    ? ai.activity.targetId
+    : (self.data && self.data.combat && self.data.combat.targetId);
+  return locked == null || locked === other.id;
+}
+
+/**
+ * Target-specific authority for the authored curtain-convoy crime.
+ *
+ * Team 2 remains neutral everywhere else. The relation is live only while the director owns the
+ * exact encounter, exact raider entity, and exact manifest-carrier identity. Runtime Map identity,
+ * stable role keys, drive/custody state, deadline, and leash are all re-read at the final gate so a
+ * stale tactical frame or recycled numeric id cannot widen the exception.
+ */
+export function isAuthorizedPredationRelation(state, self, target) {
+  if (!state || !self || !target || self === target || self.type !== 'ship' || target.type !== 'ship') return false;
+  if (self.alive === false || target.alive === false || self.id == null || target.id == null) return false;
+  if (target.id === state.playerId || target.team !== 2) return false;
+  if (entityById(state, self.id) !== self || entityById(state, target.id) !== target) return false;
+
+  const selfData = self.data;
+  const targetData = target.data;
+  const ai = selfData && selfData.ai;
+  const targetAi = targetData && targetData.ai;
+  if (!ai || ai.passive === true || ai.predationStatus !== 'active') return false;
+  if (selfData.predationRole !== 'raider' || targetData?.predationRole !== 'manifest_carrier') return false;
+  if (ai.encounterRole !== 'raider' || targetAi?.encounterRole !== 'hauler') return false;
+  if (ai.motive !== 'cargo_raid' || ai.engagementTrigger !== 'manifest_predation') return false;
+  if (ai.motiveSatisfied === true || ai.pirateDisengaged === true) return false;
+
+  const encounterId = selfData.predationEncounterId;
+  const identityKey = targetData.predationIdentityKey;
+  if (!nonEmpty(encounterId) || !nonEmpty(identityKey)) return false;
+  if (targetData.predationEncounterId !== encounterId
+    || ai.encounterId !== encounterId || targetAi?.encounterId !== encounterId) return false;
+  if (ai.predationTargetId !== target.id || ai.predationTargetIdentityKey !== identityKey) return false;
+
+  const live = state.encounterDirector && state.encounterDirector.live
+    && state.encounterDirector.live[encounterId];
+  if (!live || live.phase === 'done' || live.id !== encounterId || live.shapeId !== 'curtain_convoy') return false;
+  if (live.data?.predationStatus !== 'active'
+    || live.data.predationRaiderId !== self.id
+    || live.data.predationTargetId !== target.id
+    || live.data.predationTargetIdentityKey !== identityKey) return false;
+  if (live.roles?.[self.id] !== 'raider' || live.roles?.[target.id] !== 'hauler') return false;
+
+  const sectorId = state.world && state.world.currentSectorId;
+  if (!nonEmpty(sectorId) || live.sectorId !== sectorId
+    || ai.sectorId !== sectorId || targetAi?.sectorId !== sectorId) return false;
+  if (targetIsDisabled(state, target) || !manifestRemainsWithCarrier(target)) return false;
+
+  const objective = ai.predationObjective;
+  const nowTick = Number.isInteger(state.tick) ? state.tick : 0;
+  if (!objective || objective.kind !== 'interdict_manifest'
+    || objective.encounterId !== encounterId
+    || objective.targetId !== target.id
+    || objective.targetIdentityKey !== identityKey
+    || !Number.isInteger(objective.deadlineTick)
+    || nowTick > objective.deadlineTick) return false;
+  if (Number.isFinite(live.data.predationDeadlineAt)
+    && Number.isFinite(state.simTime)
+    && state.simTime > live.data.predationDeadlineAt) return false;
+
+  const leash = Number(ai.predationLeashRadius);
+  if (!Number.isFinite(leash) || leash <= 0 || !self.pos || !target.pos) return false;
+  const dx = self.pos.x - target.pos.x;
+  const dz = self.pos.z - target.pos.z;
+  return Number.isFinite(dx) && Number.isFinite(dz) && dx * dx + dz * dz <= leash * leash;
+}
+
+/** Fresh hostility oracle for tactical perception and final execution authority. */
+export function isHostileForAI(state, self, other) {
+  if (!self || !other || self.team == null || other.team == null) return false;
+  if (self.id === other.id) return false;
+
+  const selfAi = self.data && self.data.ai || {};
+  const otherAi = other.data && other.data.ai || {};
+  // An authored predation role owns this actor's complete automatic hostility set while it is
+  // standing by, telegraphing, or active. Existing retaliation/security flags must not let the
+  // same raider peel off onto the player or another neutral before the bounded objective clears.
+  if (self.data?.predationRole === 'raider'
+    && (selfAi.predationStatus === 'standby'
+      || selfAi.predationStatus === 'telegraph'
+      || selfAi.predationStatus === 'active')) {
+    return isAuthorizedPredationRelation(state, self, other);
+  }
+  // Throughline ambush prey is a civilian hauler. Team 2 is otherwise never hostile, so the
+  // sprung cohort would close to contact and never get a fire bit. This is the only sanctioned
+  // pirate→loaded-hauler hostility path, and only while the authored encounter is in conflict.
+  if (isAuthorizedCeresAmbushPreyRelation(state, self, other)) return true;
+  // A named incident target outranks the coarse team number. This is the only sanctioned
+  // same-team hostility path: lawful patrol response or direct self-defense, both explicit and
+  // inspectable. It prevents team 1 from making patrols blind to team-1 raiders.
+  if (selfAi.lawful && selfAi.securityTargetId === other.id) return true;
+  if (otherAi.lawful && otherAi.securityTargetId === self.id) return true;
+  if (selfAi.retaliationTargetId === other.id) return true;
+  if (otherAi.retaliationTargetId === self.id) return true;
+  if (hasFactionFirstFireAuthority(self, selfAi, other)) return true;
+  if (hasFactionFirstFireAuthority(other, otherAi, self)) return true;
+  if (self.team === other.team) return false;
+
+  const selfIsPlayer = !!(state && self.id === state.playerId);
+  const otherIsPlayer = !!(state && other.id === state.playerId);
+  // Team 0 is the player flight (player + wingmen). Lawful WANTED gating must cover the whole
+  // flight — wingmen share the player's team but not the playerId, so id-only checks left them
+  // exposed to team-mismatch hostility while the clean player was ignored.
+  const selfIsPlayerSide = selfIsPlayer || self.team === 0;
+  const otherIsPlayerSide = otherIsPlayer || other.team === 0;
+  if (selfIsPlayer) return isHostileToPlayer(other, self.team, state);
+  if (otherIsPlayer) return isHostileToPlayer(self, other.team, state);
+
+  if (selfAi.passive || otherAi.passive || self.team === 2 || other.team === 2) return false;
+  if (selfAi.lawful && otherIsPlayerSide) return isPlayerWanted(state);
+  if (otherAi.lawful && selfIsPlayerSide) return isPlayerWanted(state);
+  return self.team !== other.team;
+}
+
+function hasFactionFirstFireAuthority(actor, ai, target) {
+  if (!actor || !target || !ai || ai.passive) return false;
+  const profile = normalizeFactionBehaviorProfile(ai.factionPresenceDoctrine);
+  return !!profile && profile.firstFire === true
+    && profile.firstFireAgainst.includes(target.factionId);
+}
+
+function targetIsDisabled(state, target) {
+  if (!target || target.alive === false) return true;
+  if (target.disabled === true) return true;
+  const runtime = state && state.combat && state.combat.entities
+    && state.combat.entities[String(target.id)];
+  return !!(runtime && runtime.capabilities && runtime.capabilities.drive === false);
+}
+
+function manifestRemainsWithCarrier(target) {
+  const data = target && target.data;
+  const manifest = data && data.cargoManifest;
+  if (!manifest || !nonEmpty(manifest.manifestId) || !Array.isArray(manifest.lines)) return false;
+  if (!manifest.lines.some((line) => line && nonEmpty(line.commodityId) && Number(line.qty) > 0)) return false;
+  const custody = data.freightCustody;
+  if (!custody) return true;
+  return custody.status === 'carrier'
+    && custody.carrierId === target.id
+    && custody.carrierIdentityKey === data.predationIdentityKey;
+}
+
+/**
+ * Reconcile deterministic two-slot attacker ownership from the complete tactical decision batch.
+ * Slots describe commitment to a hostile target, not a transient weapon bit: ingress, cooldown,
+ * reform, and non-burst offensive actions all retain ownership until the actor or target becomes
+ * ineligible. Existing owners are never pre-empted; stable-id overflow promotes on release.
+ */
+export function refreshFirstSessionAttackerOwnership(state, decisions = []) {
+  if (!state || typeof state !== 'object') return Object.freeze([]);
+  const tick = Number.isInteger(state.tick) ? state.tick : 0;
+  if (!inFirstSession(state, tick)) {
+    FIRST_SESSION_OWNERSHIP.delete(state);
+    return Object.freeze([]);
+  }
+  const runtime = ownershipRuntime(state);
+  const batch = Array.isArray(decisions) ? decisions : [];
+  const seenActors = new Set();
+  for (const decision of batch) {
+    if (!decision || decision.entityId == null) continue;
+    seenActors.add(decision.entityId);
+    const actor = entityById(state, decision.entityId);
+    const targetId = committedTargetId(decision);
+    const target = targetId == null ? null : entityById(state, targetId);
+    if (ownershipEligible(state, actor, target)) runtime.candidateTargetByActor.set(actor.id, target.id);
+    else runtime.candidateTargetByActor.delete(decision.entityId);
+  }
+  for (const actorId of runtime.candidateTargetByActor.keys()) {
+    if (!seenActors.has(actorId)) runtime.candidateTargetByActor.delete(actorId);
+  }
+  reconcileOwnership(state, runtime);
+  return ownershipSnapshot(runtime);
+}
+
+/**
+ * Revalidate the current first-session attacker slots between tactical decision ticks.
+ *
+ * The committed decision batch only changes when tacticalAI produces a new result. Re-reading the
+ * same batch on the two intervening simulation ticks rebuilt actor/target maps and frozen public
+ * snapshots for no semantic change. This maintenance path still releases dead, disabled, or
+ * otherwise ineligible actors immediately and promotes the already-authored waiting queue, while
+ * leaving new candidate discovery to the next decision batch.
+ */
+export function maintainFirstSessionAttackerOwnership(state) {
+  if (!state || typeof state !== 'object') return 0;
+  const tick = Number.isInteger(state.tick) ? state.tick : 0;
+  if (!inFirstSession(state, tick)) {
+    FIRST_SESSION_OWNERSHIP.delete(state);
+    return 0;
+  }
+  const runtime = FIRST_SESSION_OWNERSHIP.get(state);
+  if (!runtime) return 0;
+  let changed = false;
+  for (const [actorId, targetId] of runtime.candidateTargetByActor) {
+    const actor = entityById(state, actorId);
+    const target = entityById(state, targetId);
+    if (ownershipEligible(state, actor, target)) continue;
+    runtime.candidateTargetByActor.delete(actorId);
+    changed = true;
+  }
+  // No new candidates enter between decision batches. Preserve the already-sorted owner/waiting
+  // slots unless a live eligibility change actually removed a candidate.
+  if (changed) reconcileOwnership(state, runtime);
+  return runtime.byTarget.size;
+}
+
+export function inspectFirstSessionAttackerOwnership(state, targetId = null) {
+  const runtime = state && FIRST_SESSION_OWNERSHIP.get(state);
+  if (!runtime) return targetId == null ? Object.freeze([]) : null;
+  reconcileOwnership(state, runtime);
+  if (targetId != null) return ownershipTargetSnapshot(targetId, runtime.byTarget.get(targetId));
+  return ownershipSnapshot(runtime);
+}
+
+export function resetFirstSessionAttackerOwnership(state) {
+  if (state && typeof state === 'object') FIRST_SESSION_OWNERSHIP.delete(state);
+}
+
+/** Damage-bearing actions are offensive regardless of their display/action id. */
+export function isOffensiveActionDef(def) {
+  if (!def || typeof def !== 'object') return false;
+  const tags = Array.isArray(def.tags) ? def.tags : [];
+  if (tags.some((tag) => tag === 'weapon' || tag === 'burst' || tag === 'attack' || tag === 'disable')) return true;
+  return Array.isArray(def.effects) && def.effects.some((effect) => effect && effect.type === 'damage');
+}
+
+/**
+ * Deterministic jurisdiction lookup. Helios deliberately owns a broad starter protection volume;
+ * other lawful stations use at least their patrol ring. Pirate/outlaw stations provide no shield.
+ */
+export function protectedStationAt(state, entity) {
+  if (!state || !entity || !entity.pos) return null;
+  const stations = stationEntities(state);
+  const sectorId = state.world && state.world.currentSectorId;
+  if (sectorId === 'sector_helios_prime') {
+    const origin = sectorGlobalOrigin(sectorId);
+    const dx = entity.pos.x - origin.x;
+    const dz = entity.pos.z - origin.z;
+    if (dx * dx + dz * dz <= HELIOS_STARTER_PROTECTION_RADIUS_WU * HELIOS_STARTER_PROTECTION_RADIUS_WU) {
+      const helios = stations.find((station) => {
+        const stationId = station && station.data && station.data.stationId || station && station.stationId;
+        return stationId === 'station_helios';
+      }) || null;
+      return Object.freeze({
+        stationId: 'station_helios',
+        entityId: helios && helios.id != null ? helios.id : null,
+        factionId: helios && (helios.factionId || helios.data && helios.data.factionId) || 'faction_scn',
+        radius: HELIOS_STARTER_PROTECTION_RADIUS_WU,
+      });
+    }
+  }
+  for (const station of stations) {
+    if (!station || station.alive === false || !station.pos) continue;
+    // Jump-gate proxies are type=station with a lawful faction, but they are transit
+    // infrastructure. Falling through to the numeric entity id minted a 600-WU sanctuary
+    // around every gate.
+    if (station.data && station.data.isGate) continue;
+    const stationId = station.data && station.data.stationId || station.stationId || null;
+    if (typeof stationId !== 'string' || !stationId) continue;
+    const factionId = station.factionId || station.data && station.data.factionId || null;
+    if (stationId !== 'station_helios' && !LAWFUL_STATION_FACTIONS.has(factionId)) continue;
+    const rings = bubblesFor(station);
+    const radius = stationId === 'station_helios'
+      ? Math.max(HELIOS_STARTER_PROTECTION_RADIUS_WU, rings.patrol.radius)
+      : Math.max(LAWFUL_STATION_PROTECTION_MIN, rings.patrol.radius);
+    const dx = entity.pos.x - station.pos.x;
+    const dz = entity.pos.z - station.pos.z;
+    if (dx * dx + dz * dz > radius * radius) continue;
+    return Object.freeze({
+      stationId: String(stationId),
+      entityId: station.id == null ? null : station.id,
+      factionId,
+      radius,
+    });
+  }
+  return null;
+}
+
+function doctrinePhase(reason, doctrineId) {
+  const prefix = `combat_doctrine:${doctrineId}:`;
+  const text = String(reason || '');
+  return text.startsWith(prefix) ? text.slice(prefix.length) : null;
+}
+
+function stationEntities(state) {
+  const index = state && state.entityIndex;
+  if (index && index.__spacefaceEntityIndexV1 && index.ready && Array.isArray(index.stations)) {
+    return index.stations;
+  }
+  if (Array.isArray(state.entityList)) return state.entityList.filter((entity) => entity && entity.type === 'station');
+  if (state.entities && typeof state.entities.values === 'function') {
+    return [...state.entities.values()].filter((entity) => entity && entity.type === 'station');
+  }
+  return [];
+}
+
+function inFirstSession(state, tick) {
+  if (Number.isFinite(state && state.simTime)) return state.simTime < 10 * 60;
+  return tick < FIRST_SESSION_DURATION_TICKS;
+}
+
+function ownershipRuntime(state) {
+  let runtime = FIRST_SESSION_OWNERSHIP.get(state);
+  if (!runtime) {
+    runtime = { candidateTargetByActor: new Map(), byTarget: new Map() };
+    FIRST_SESSION_OWNERSHIP.set(state, runtime);
+  }
+  return runtime;
+}
+
+function claimFirstSessionAttackerOwnership(state, actor, target) {
+  const prepared = FIRST_SESSION_OWNERSHIP.get(state);
+  if (prepared?.candidateTargetByActor.get(actor?.id) === target?.id) {
+    if (!ownershipEligible(state, actor, target)) {
+      prepared.candidateTargetByActor.delete(actor.id);
+      reconcileOwnership(state, prepared);
+      return false;
+    }
+    const targetState = prepared.byTarget.get(target.id);
+    // refreshFirstSessionAttackerOwnership/maintainFirstSessionAttackerOwnership already settled
+    // this exact batch. Do not rebuild every target map once per firing actor in the same tick.
+    return !!targetState && targetState.owners.includes(actor.id);
+  }
+  const runtime = ownershipRuntime(state);
+  if (!ownershipEligible(state, actor, target)) {
+    if (actor && actor.id != null) runtime.candidateTargetByActor.delete(actor.id);
+    reconcileOwnership(state, runtime);
+    return false;
+  }
+  runtime.candidateTargetByActor.set(actor.id, target.id);
+  reconcileOwnership(state, runtime);
+  const targetState = runtime.byTarget.get(target.id);
+  return !!targetState && targetState.owners.includes(actor.id);
+}
+
+function reconcileOwnership(state, runtime) {
+  for (const [actorId, targetId] of runtime.candidateTargetByActor) {
+    const actor = entityById(state, actorId);
+    const target = entityById(state, targetId);
+    if (!ownershipEligible(state, actor, target)) runtime.candidateTargetByActor.delete(actorId);
+  }
+
+  const candidatesByTarget = new Map();
+  for (const [actorId, targetId] of runtime.candidateTargetByActor) {
+    let ids = candidatesByTarget.get(targetId);
+    if (!ids) {
+      ids = [];
+      candidatesByTarget.set(targetId, ids);
+    }
+    ids.push(actorId);
+  }
+  for (const ids of candidatesByTarget.values()) ids.sort(compareStableIds);
+
+  for (const targetId of [...runtime.byTarget.keys()]) {
+    if (!candidatesByTarget.has(targetId)) runtime.byTarget.delete(targetId);
+  }
+  for (const [targetId, candidates] of candidatesByTarget) {
+    const previous = runtime.byTarget.get(targetId) || { owners: [], waiting: [] };
+    const candidateSet = new Set(candidates);
+    const owners = previous.owners.filter((id) => candidateSet.has(id));
+    const waiting = candidates.filter((id) => !owners.includes(id));
+    while (owners.length < MAX_FIRST_SESSION_ATTACKERS && waiting.length) owners.push(waiting.shift());
+    runtime.byTarget.set(targetId, { owners, waiting });
+  }
+}
+
+function ownershipEligible(state, actor, target) {
+  if (!actor || !target || actor.id == null || target.id == null || actor.id === target.id) return false;
+  if (actor.alive === false || target.alive === false || actor.type !== 'ship') return false;
+  const ai = actor.data && actor.data.ai;
+  if (!ai || ai.passive || ai.motiveSatisfied === true || ai.pirateDisengaged === true) return false;
+  if (!nonEmpty(ai.motive) || !nonEmpty(ai.engagementTrigger) || !nonEmpty(ai.zoneId) || !nonEmpty(ai.approachTelegraph)) return false;
+  if (!normalizeCombatDoctrineId(ai.combatDoctrineId)) return false;
+  if (!Number.isFinite(Number(ai.noFireResponseWindowS)) || Number(ai.noFireResponseWindowS) < MIN_AI_RESPONSE_WINDOW_S) return false;
+  if (normalizeRoe(ai.roe) === RulesOfEngagement.HOLD_FIRE) return false;
+  if (!activityAllowsOffense(effectiveActivityForAI(ai))) return false;
+  return isHostileForAI(state, actor, target);
+}
+
+function committedTargetId(decision) {
+  const doctrineTarget = decision && decision.combatDoctrine && decision.combatDoctrine.targetId;
+  if (doctrineTarget != null) return doctrineTarget;
+  const objective = decision && decision.directive && decision.directive.objective;
+  if (objective && objective.targetId != null) return objective.targetId;
+  const actionTarget = decision && decision.action && decision.action.targetId;
+  return actionTarget == null ? null : actionTarget;
+}
+
+function entityById(state, id) {
+  if (id == null || !state) return null;
+  if (state.entities && typeof state.entities.get === 'function') return state.entities.get(id) || null;
+  return Array.isArray(state.entityList) ? state.entityList.find((entity) => entity && entity.id === id) || null : null;
+}
+
+function ownershipSnapshot(runtime) {
+  const rows = [...runtime.byTarget.entries()]
+    .sort((a, b) => compareStableIds(a[0], b[0]))
+    .map(([targetId, value]) => ownershipTargetSnapshot(targetId, value));
+  return Object.freeze(rows);
+}
+
+function ownershipTargetSnapshot(targetId, value) {
+  if (!value) return null;
+  return Object.freeze({
+    targetId,
+    owners: Object.freeze(value.owners.slice()),
+    waiting: Object.freeze(value.waiting.slice()),
+  });
+}
+
+function compareStableIds(a, b) {
+  const an = Number(a);
+  const bn = Number(b);
+  if (Number.isFinite(an) && Number.isFinite(bn) && an !== bn) return an - bn;
+  return stableId(a).localeCompare(stableId(b));
+}
+
+function nonEmpty(value) {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function allowed() {
+  return { ok: true, reason: 'authorized' };
+}
+
+function denied(reason) {
+  return { ok: false, reason };
+}

@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Proto A · Live Dock + Zoom</title>
+<script type="importmap">
+{ "imports": {
+  "three": "/vendor/three.module.js",
+  "three/addons/": "/vendor/addons/",
+  "@dimforge/rapier3d-compat": "/vendor/rapier3d-compat/rapier.mjs"
+} }
+</script>
+<style>
+@font-face{font-family:"Saira";font-weight:700;src:url("/styles/fonts/saira-scond-700.woff2") format("woff2");font-display:swap}
+@font-face{font-family:"Saira";font-weight:600;src:url("/styles/fonts/saira-scond-600.woff2") format("woff2");font-display:swap}
+@font-face{font-family:"Plex";font-weight:400;src:url("/styles/fonts/plex-sans-400.woff2") format("woff2");font-display:swap}
+@font-face{font-family:"Plex";font-weight:500;src:url("/styles/fonts/plex-sans-500.woff2") format("woff2");font-display:swap}
+@font-face{font-family:"Mono";src:url("/styles/fonts/plex-mono-500.woff2") format("woff2");font-display:swap}
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --disp:"Saira","Segoe UI",sans-serif; --ui:"Plex","Segoe UI",sans-serif; --mono:"Mono",monospace;
+  --cyan:#5ff0e0; --amber:#ffb659; --hot:#ff6a72; --gain:#5fe08a;
+  --ink:#eaf6ff; --ink2:#9fb6c8; --ink3:#5f7686;
+}
+html,body{height:100%;background:#03060a;color:var(--ink);font-family:var(--ui);overflow:hidden;cursor:default}
+#bay{position:fixed;inset:0;
+  background:
+    radial-gradient(120% 90% at 62% 30%, rgba(95,240,224,.10), transparent 46%),
+    radial-gradient(90% 70% at 20% 85%, rgba(255,182,89,.07), transparent 55%),
+    radial-gradient(140% 120% at 50% 8%, #0a1622 0%, #050a11 45%, #020407 100%);
+}
+/* drifting stars + grain for atmosphere (not a flat panel) */
+#bay::before{content:"";position:absolute;inset:0;background-image:
+  radial-gradient(1px 1px at 20% 30%, rgba(255,255,255,.6), transparent),
+  radial-gradient(1px 1px at 70% 60%, rgba(200,230,255,.5), transparent),
+  radial-gradient(1px 1px at 40% 80%, rgba(255,255,255,.35), transparent),
+  radial-gradient(1px 1px at 85% 20%, rgba(180,220,255,.5), transparent),
+  radial-gradient(1.5px 1.5px at 55% 45%, rgba(255,255,255,.4), transparent);
+  background-size:100% 100%;opacity:.7}
+#bay::after{content:"";position:absolute;inset:0;pointer-events:none;
+  box-shadow:inset 0 0 240px 40px rgba(0,0,0,.75)}
+
+.crest{position:fixed;top:26px;left:34px;z-index:6}
+.crest h1{font-family:var(--disp);font-weight:700;font-size:26px;letter-spacing:.14em;text-transform:uppercase;
+  background:linear-gradient(180deg,#fff,#9fd6ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.crest p{font-size:12px;color:var(--ink3);letter-spacing:.22em;text-transform:uppercase;margin-top:3px}
+.readouts{position:fixed;top:30px;right:34px;z-index:6;display:flex;gap:22px;align-items:center;font-family:var(--mono)}
+.ro{display:flex;flex-direction:column;align-items:flex-end}
+.ro b{font-size:17px} .ro span{font-size:10px;color:var(--ink3);letter-spacing:.2em}
+.ro--cr b{color:var(--amber)}
+
+/* ---------- the bay stage (home hero + shipworks share it) ---------- */
+#stage{position:fixed;inset:0;display:grid;place-items:center}
+#ship-wrap{position:relative;width:min(64vw,900px);height:min(64vh,560px);transition:transform .55s cubic-bezier(.2,.85,.2,1),filter .4s}
+#ship-canvas{position:absolute;inset:0;width:100%;height:100%}
+#ship-glow{position:absolute;left:50%;bottom:8%;width:60%;height:26px;transform:translateX(-50%);
+  background:radial-gradient(ellipse,rgba(95,240,224,.32),transparent 70%);filter:blur(6px)}
+.nameplate{position:absolute;left:6%;bottom:2%;pointer-events:none}
+.nameplate h2{font-family:var(--disp);font-weight:700;font-size:30px;letter-spacing:.05em;text-transform:uppercase}
+.nameplate span{font-size:12px;color:var(--ink2);letter-spacing:.06em}
+
+/* ---------- home quick actions ---------- */
+#home-hud{position:fixed;left:34px;bottom:150px;z-index:5;display:flex;flex-direction:column;gap:10px;transition:opacity .3s,transform .4s}
+.qa{display:flex;align-items:center;gap:12px;padding:11px 16px 11px 13px;border-radius:13px;cursor:pointer;
+  border:1px solid rgba(150,190,220,.16);background:linear-gradient(100deg,rgba(14,26,38,.7),rgba(8,16,26,.4));
+  backdrop-filter:blur(2px);transition:transform .16s,border-color .16s,background .16s;min-width:230px}
+.qa:hover{transform:translateX(6px);border-color:var(--cyan);background:linear-gradient(100deg,rgba(20,40,54,.85),rgba(10,20,32,.5))}
+.qa svg{width:22px;height:22px;color:var(--cyan);flex:none}
+.qa b{font-size:14px;display:block} .qa small{font-size:11px;color:var(--ink3)}
+.qa--sell svg{color:var(--gain)}
+
+/* ---------- the magnifying DOCK ---------- */
+#dockwrap{position:fixed;left:0;right:0;bottom:0;height:150px;z-index:8;display:flex;align-items:flex-end;justify-content:center;
+  transition:transform .5s cubic-bezier(.3,.9,.3,1),opacity .4s}
+#dockwrap.receded{transform:translateY(120px);opacity:0;pointer-events:none}
+#dock{position:relative;display:flex;align-items:flex-end;gap:8px;padding:0 26px 20px;height:150px}
+#dock::before{content:"";position:absolute;left:8px;right:8px;bottom:12px;height:74px;border-radius:22px;
+  background:linear-gradient(180deg,rgba(120,200,220,.10),rgba(10,20,30,.5));
+  border:1px solid rgba(150,210,230,.16);box-shadow:0 -8px 40px rgba(95,240,224,.10),inset 0 1px 0 rgba(255,255,255,.08);
+  backdrop-filter:blur(6px)}
+.dk{position:relative;width:54px;height:54px;border-radius:16px;display:grid;place-items:center;cursor:pointer;flex:none;
+  background:linear-gradient(160deg,#122534,#0a1622);border:1px solid rgba(150,200,230,.2);
+  will-change:width,height,transform;color:var(--ink2)}
+.dk svg{width:56%;height:56%}
+.dk .refl{position:absolute;top:100%;left:0;right:0;height:100%;border-radius:16px;transform:scaleY(-1);opacity:.16;
+  background:inherit;-webkit-mask-image:linear-gradient(180deg,#000,transparent 70%);mask-image:linear-gradient(180deg,#000,transparent 70%)}
+.dk:hover{color:var(--ink)}
+.dk.is-active{color:var(--cyan);border-color:var(--cyan);box-shadow:0 0 22px rgba(95,240,224,.35),inset 0 0 14px rgba(95,240,224,.12)}
+.dk.is-active::after{content:"";position:absolute;bottom:-9px;left:50%;width:5px;height:5px;border-radius:50%;
+  transform:translateX(-50%);background:var(--cyan);box-shadow:0 0 8px var(--cyan)}
+.dk--act{border-color:rgba(255,182,89,.28)}
+.dk--act .cost{position:absolute;bottom:-16px;left:50%;transform:translateX(-50%);font-family:var(--mono);font-size:9px;white-space:nowrap;color:var(--amber)}
+.dk-rule{width:1px;align-self:stretch;margin:22px 10px;background:linear-gradient(180deg,transparent,rgba(150,200,230,.3),transparent)}
+.dk-label{position:absolute;bottom:130px;left:0;transform:translateX(-50%);font-family:var(--disp);font-weight:600;font-size:12px;
+  letter-spacing:.12em;text-transform:uppercase;padding:5px 11px;border-radius:8px;white-space:nowrap;pointer-events:none;
+  background:rgba(6,14,22,.92);border:1px solid rgba(150,200,230,.22);opacity:0;transition:opacity .12s}
+
+/* ---------- zoomed destination screens ---------- */
+.screen{position:fixed;inset:0;z-index:9;opacity:0;pointer-events:none}
+.screen.open{pointer-events:auto}
+.back{position:fixed;top:26px;left:34px;z-index:12;display:flex;align-items:center;gap:8px;padding:9px 15px 9px 11px;border-radius:11px;cursor:pointer;
+  border:1px solid rgba(150,200,230,.22);background:rgba(10,20,30,.7);color:var(--ink2);font-family:var(--disp);font-weight:600;letter-spacing:.08em;text-transform:uppercase;font-size:12px}
+.back:hover{border-color:var(--cyan);color:var(--ink)}
+.back svg{width:16px;height:16px}
+
+/* SHIPWORKS spatial */
+#sw{position:fixed;inset:0;display:grid;grid-template-columns:270px 1fr;background:
+  radial-gradient(120% 90% at 60% 40%,rgba(95,240,224,.08),transparent 50%),linear-gradient(180deg,#081420,#03070c)}
+#sw-rail{padding:84px 20px 26px;display:flex;flex-direction:column;gap:6px;border-right:1px solid rgba(150,200,230,.1)}
+.sw-seg{display:flex;gap:5px;margin-bottom:12px}
+.sw-seg button{flex:1;padding:9px;border-radius:9px;border:1px solid rgba(150,200,230,.16);background:rgba(12,24,36,.5);color:var(--ink2);
+  font-family:var(--disp);font-weight:600;font-size:12px;letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+.sw-seg button.on{background:rgba(95,240,224,.14);border-color:var(--cyan);color:var(--ink)}
+.sw-ship{display:flex;align-items:center;gap:11px;padding:11px;border-radius:12px;border:1px solid transparent;cursor:pointer}
+.sw-ship:hover{background:rgba(20,40,54,.5)}
+.sw-ship.on{background:rgba(20,40,54,.7);border-color:rgba(95,240,224,.4)}
+.sw-ship b{font-size:14px;display:block} .sw-ship small{font-size:11px;color:var(--ink3);text-transform:capitalize}
+.sw-ship .ring{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;color:var(--cyan);background:rgba(95,240,224,.1);border:1px solid rgba(95,240,224,.3)}
+#sw-stage{position:relative;overflow:hidden}
+#sw-stage.dim::before{content:"";position:absolute;inset:0;z-index:3;background:rgba(2,6,10,.72);opacity:0;animation:fade .3s forwards}
+@keyframes fade{to{opacity:1}}
+#sw-canvas{position:absolute;inset:0;width:100%;height:100%}
+#sw-name{position:absolute;left:34px;top:80px;z-index:4}
+#sw-name h2{font-family:var(--disp);font-weight:700;font-size:34px;letter-spacing:.05em;text-transform:uppercase}
+#sw-name span{color:var(--ink2);font-size:13px}
+#sw-stats{position:absolute;left:34px;bottom:30px;z-index:4;display:flex;gap:26px}
+.stat b{font-family:var(--mono);font-size:20px;display:block}
+.stat span{font-size:10px;color:var(--ink3);letter-spacing:.14em;text-transform:uppercase}
+.stat .delta{font-size:12px} .stat .delta.up{color:var(--gain)} .stat .delta.down{color:var(--hot)}
+/* hardpoint markers in space */
+.hp{position:absolute;z-index:5;transform:translate(-50%,-50%);cursor:pointer}
+.hp .dot{width:16px;height:16px;border-radius:50%;border:2px solid var(--cyan);background:rgba(6,20,26,.7);
+  box-shadow:0 0 0 6px rgba(95,240,224,.08);transition:transform .18s,box-shadow .18s}
+.hp .stem{position:absolute;left:50%;top:50%;width:1px;height:34px;transform-origin:top;background:linear-gradient(180deg,var(--cyan),transparent);opacity:.5}
+.hp .tag{position:absolute;left:22px;top:-9px;white-space:nowrap;padding:4px 9px;border-radius:8px;font-size:11px;
+  background:rgba(6,16,24,.9);border:1px solid rgba(95,240,224,.25);opacity:0;transform:translateX(-6px);transition:.16s;pointer-events:none}
+.hp .tag b{color:var(--cyan)}
+.hp.empty .dot{border-color:var(--ink3);border-style:dashed;box-shadow:none}
+.hp:hover .dot,.hp.sel .dot{transform:scale(1.5);box-shadow:0 0 0 8px rgba(95,240,224,.16),0 0 18px rgba(95,240,224,.5)}
+.hp:hover .tag{opacity:1;transform:none}
+.hp.sel{z-index:7}
+.hp.sel .dot{border-color:var(--amber);box-shadow:0 0 0 10px rgba(255,182,89,.18),0 0 22px rgba(255,182,89,.6)}
+/* the part-arc that unfolds at a slot */
+.arc{position:absolute;z-index:8;left:0;top:0;pointer-events:none}
+.pchip{position:absolute;pointer-events:auto;transform:translate(-50%,-50%) scale(.4);opacity:0;
+  width:150px;padding:9px 12px;border-radius:11px;cursor:pointer;
+  background:linear-gradient(160deg,rgba(18,34,48,.96),rgba(9,18,28,.96));border:1px solid rgba(95,240,224,.28);
+  box-shadow:0 8px 30px rgba(0,0,0,.5);transition:transform .28s cubic-bezier(.2,1.4,.4,1),opacity .2s,border-color .14s}
+.pchip.in{opacity:1}
+.pchip:hover{border-color:var(--cyan)}
+.pchip.equipped{border-color:rgba(95,224,138,.5)}
+.pchip b{font-size:12.5px;display:block} .pchip small{font-family:var(--mono);font-size:10.5px;color:var(--ink2)}
+.pchip .buy{float:right;font-family:var(--mono);font-size:10px;color:var(--amber)}
+.pchip .eq{float:right;font-size:10px;color:var(--gain);text-transform:uppercase}
+
+/* HOLD-SELL shortcut screen */
+#hold{position:fixed;inset:0;z-index:9;display:grid;place-items:center;background:radial-gradient(120% 90% at 50% 30%,rgba(95,224,138,.06),transparent 50%),#04080d}
+.holdcard{width:min(560px,92vw);border:1px solid rgba(95,224,138,.22);border-radius:18px;overflow:hidden;
+  background:linear-gradient(180deg,rgba(12,24,20,.95),rgba(6,14,12,.95));box-shadow:0 30px 80px rgba(0,0,0,.6)}
+.holdhead{padding:20px 24px;border-bottom:1px solid rgba(95,224,138,.15);display:flex;justify-content:space-between;align-items:baseline}
+.holdhead h3{font-family:var(--disp);font-weight:700;font-size:20px;letter-spacing:.08em;text-transform:uppercase}
+.holdhead em{font-family:var(--mono);font-style:normal;color:var(--ink2);font-size:13px}
+.hrow{display:grid;grid-template-columns:1fr auto auto auto;gap:14px;align-items:center;padding:13px 24px;border-bottom:1px solid rgba(120,160,150,.08)}
+.hrow b{font-size:14px} .hrow .q,.hrow .p{font-family:var(--mono);color:var(--ink2);font-size:13px}
+.hsell{border:0;border-radius:9px;padding:8px 16px;font-family:var(--disp);font-weight:700;font-size:12px;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;color:#04140c;background:linear-gradient(180deg,#7ff0aa,var(--gain))}
+.hsell:hover{filter:brightness(1.08)}
+.holdfoot{padding:16px 24px;display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:13px;color:var(--ink2)}
+.hsellall{border:1px solid var(--gain);background:transparent;color:var(--gain);border-radius:9px;padding:9px 16px;font-family:var(--disp);font-weight:600;letter-spacing:.06em;text-transform:uppercase;font-size:12px;cursor:pointer}
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(20px);z-index:20;opacity:0;transition:.25s;
+  padding:12px 22px;border-radius:12px;background:rgba(10,22,16,.95);border:1px solid rgba(95,224,138,.4);color:var(--ink);font-size:14px}
+.toast.show{opacity:1;transform:translateX(-50%)}
+</style>
+</head>
+<body>
+<div id="bay"></div>
+<div class="crest"><h1>Helios Station</h1><p>Trade Hub · Class L · Solar Concord Navy</p></div>
+<div class="readouts">
+  <div class="ro"><b style="color:var(--gain)">81%</b><span>HULL</span></div>
+  <div class="ro"><b style="color:var(--amber)">100%</b><span>FUEL</span></div>
+  <div class="ro"><b>53%</b><span>HOLD</span></div>
+  <div class="ro ro--cr"><b>5,400</b><span>CREDITS</span></div>
+</div>
+
+<div id="stage">
+  <div id="ship-wrap">
+    <canvas id="ship-canvas"></canvas>
+    <div id="ship-glow"></div>
+    <div class="nameplate"><h2>Hitch</h2><span>Starter Scout · docked</span></div>
+  </div>
+</div>
+
+<div id="home-hud"></div>
+
+<div id="dockwrap"><div id="dock"></div></div>
+<div class="dk-label" id="dklabel"></div>
+
+<!-- Shipworks zoom screen -->
+<section class="screen" id="screen-sw">
+  <div class="back" id="sw-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 6l-6 6 6 6"/></svg>Dock</div>
+  <div id="sw">
+    <div id="sw-rail"></div>
+    <div id="sw-stage">
+      <canvas id="sw-canvas"></canvas>
+      <div id="sw-name"><h2>Hitch</h2><span>Starter Scout · Tier 0 — click a hardpoint on the hull</span></div>
+      <div id="sw-stats"></div>
+    </div>
+  </div>
+</section>
+
+<!-- generic zoom screen for other destinations -->
+<section class="screen" id="screen-generic">
+  <div class="back" id="gen-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 6l-6 6 6 6"/></svg>Dock</div>
+  <div style="position:fixed;inset:0;display:grid;place-items:center;background:radial-gradient(120% 90% at 50% 30%,rgba(95,240,224,.06),transparent 50%),#04080d">
+    <div style="text-align:center"><div id="gen-title" style="font-family:var(--disp);font-weight:700;font-size:44px;letter-spacing:.1em;text-transform:uppercase"></div>
+    <div style="color:var(--ink3);letter-spacing:.24em;text-transform:uppercase;margin-top:8px;font-size:13px">Prototype scope: dock + Shipworks only</div></div>
+  </div>
+</section>
+
+<!-- hold-sell shortcut -->
+<section class="screen" id="screen-hold">
+  <div class="back" id="hold-back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 6l-6 6 6 6"/></svg>Dock</div>
+  <div id="hold"></div>
+</section>
+
+<div class="toast" id="toast"></div>
+
+<script type="module" src="./proto-a.js"></script>
+</body>
+</html>

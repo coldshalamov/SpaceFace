@@ -1,0 +1,127 @@
+{
+  "name": "notion-create-pages",
+  "description": "Create one or more Notion pages under a parent page, database, or data source.\n\n## Required parameters\n\nBoth `pages` and `parent` are REQUIRED.\n\n### `parent` -- must be one of these three formats:\n- Page parent: `{\"page_id\": \"uuid-here\"}`\n- Database parent: `{\"database_id\": \"uuid-here\"}`\n- Data source parent: `{\"data_source_id\": \"uuid-here\"}`\n\nIf creating pages in a database, call notion-fetch on the database first to get the data source schema and `collection://` URLs. Use `data_source_id` (from `collection://...` tags) rather than `database_id` when the database has multiple data sources.\n\n### `pages` -- array of page objects, each with:\n- `properties`: JSON map of property names to values. Always include a `title` property (or the database's title property name from the schema).\n- `content` (optional): Page body in Notion-flavored Markdown.\n- `icon` (optional): Emoji character like \":rocket:\".\n\n## Date properties require expanded format\n\nDo NOT pass date values as a single key. Use the expanded SQLite format:\n- `\"date:PropertyName:start\"`: \"2024-01-15\"\n- `\"date:PropertyName:end\"`: \"2024-01-20\" (optional)\n- `\"date:PropertyName:is_datetime\"`: 1 or 0 (optional)\n\n## Common mistakes\n\n- Do NOT put the title text in `content` -- it goes in `properties` only.\n- Do NOT pass `null` for `parent` -- either provide a valid parent or omit it entirely (pages become private workspace-level pages).\n- Checkbox properties: use `\"__YES__\"` / `\"__NO__\"`, not true/false.\n- Number properties: use actual numbers (42), not strings (\"42\").\n\n<example description=\"Create page under a parent page\">{\"parent\": {\"page_id\": \"abc123\"}, \"pages\": [{\"properties\": {\"title\": \"Meeting Notes\"}, \"content\": \"## Agenda\\n- Item 1\\n- Item 2\"}]}</example>\n<example description=\"Create page in a database data source\">{\"parent\": {\"data_source_id\": \"f336d0bc-b841-465b-8045-024475c079dd\"}, \"pages\": [{\"properties\": {\"Name\": \"New Task\", \"Status\": \"To Do\"}}]}</example>",
+  "inputSchema": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+      "pages": {
+        "description": "The pages to create.",
+        "maxItems": 100,
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "properties": {
+              "description": "The properties of the new page, which is a JSON map of property names to SQLite values. For pages in a database, use the SQLite schema definition shown in <database>. For pages outside of a database, the only allowed property is \"title\", which is the title of the page and is automatically shown at the top of the page as a large heading.",
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "content": {
+              "description": "The content of the new page, using Notion Markdown.",
+              "type": "string"
+            },
+            "template_id": {
+              "description": "The ID of a template to apply to this page. When specified, do not provide 'content' as the template will provide it. Properties can still be set alongside the template. Get template IDs from the <templates> section in the fetch tool results.",
+              "type": "string"
+            },
+            "icon": {
+              "description": "An emoji character (e.g. \"🚀\"), a custom emoji by name (e.g. \":rocket_ship:\"), or an external image URL. Use \"none\" to explicitly set no icon. Omit to leave unchanged.",
+              "type": "string"
+            },
+            "cover": {
+              "description": "An external image URL for the page cover. Use \"none\" to explicitly set no cover. Omit to leave unchanged.",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "parent": {
+        "description": "The parent under which the new pages will be created. This can be a page (page_id), a database page (database_id), or a data source/collection under a database (data_source_id). If omitted, the new pages will be created as private pages at the workspace level. Use data_source_id when you have a collection:// URL from the fetch tool.",
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "page_id": {
+                "type": "string",
+                "description": "The ID of the parent page (with or without dashes), for example, 195de9221179449fab8075a27c979105"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "page_id"
+                ]
+              }
+            },
+            "required": [
+              "page_id"
+            ],
+            "additionalProperties": {}
+          },
+          {
+            "type": "object",
+            "properties": {
+              "database_id": {
+                "type": "string",
+                "description": "The ID of the parent database (with or without dashes), for example, 195de9221179449fab8075a27c979105"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "database_id"
+                ]
+              }
+            },
+            "required": [
+              "database_id"
+            ],
+            "additionalProperties": {}
+          },
+          {
+            "type": "object",
+            "properties": {
+              "data_source_id": {
+                "type": "string",
+                "description": "The ID of the parent data source (collection), with or without dashes. For example, f336d0bc-b841-465b-8045-024475c079dd"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "data_source_id"
+                ]
+              }
+            },
+            "required": [
+              "data_source_id"
+            ],
+            "additionalProperties": {}
+          }
+        ]
+      },
+      "allow_async": {
+        "description": "Set to true to opt into receiving an async_task result when this create operation is accepted for background execution. If omitted or false, the tool keeps the existing synchronous result shape.",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "pages"
+    ],
+    "additionalProperties": {}
+  }
+}

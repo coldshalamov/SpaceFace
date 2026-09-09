@@ -1,0 +1,3329 @@
+// npcJobsRuntime — the thin runtime adapter that drives the PURE npcJobs kernel into the live game.
+// PQ-014 / SF-15 / W06 integration ("natural NPC miner/hauler/patrol jobs").
+//
+// WHAT THIS IS: the SINGLE WRITER of state.npcJobs. It never edits the kernel (src/systems/npcJobs.js
+// stays untouched); it only CALLS the kernel's pure functions — createJob / advance / isTruncated /
+// interrupt / resume / virtualize / materialize / describeMaterialization / serializeJob / restoreJob
+// — and owns the bag of live + virtual jobs and their link to real entities.
+//
+// WHY A SEPARATE ADAPTER: the kernel is a pure library with zero live-game coupling (no registry, no
+// bus, no entities). This adapter supplies exactly that coupling and nothing else, so the kernel's
+// 48/48 determinism proof keeps binding to an unchanged file.
+//
+// ─── The bag entry WRAPS the kernel record ──────────────────────────────────────────────────────
+//   entry = {
+//     job,              // the pure kernel record (createJob / restoreJob output) — the ONLY thing advance() sees
+//     kind,             // convenience mirror of job.kind
+//     sectorId,         // the sector this job belongs to (drives virtualize on exit / materialize on enter)
+//     worldRecordId,    // STABLE cross-exit/reentry join key — stamped by the producer at spawn and
+//                       //   preserved by world capture/rematerialize; how a job re-links to its hull
+//     entityId,         // the live entity id while materialized; null while virtualized
+//     lastAdvanceSimT,  // GLOBAL state.simTime up to which the job has been advanced (PERSISTED).
+//                       //   Elapsed offscreen time on re-entry = state.simTime - lastAdvanceSimT.
+//                       //   job.simTime is the kernel's OWN internal clock, NOT global — never use it here.
+//     threatId,         // transient: the hostile that triggered the current flee interrupt (not persisted)
+//   }
+// restoreJob() reconstructs ONLY kernel fields, so this sidecar meta must be serialized/restored HERE.
+//
+// ─── Movement (single writer) ───────────────────────────────────────────────────────────────────
+// For a materialized job we write the SAME civilian `data.intent` that traffic writes: point-and-thrust
+// toward the active waypoint, hold at stationary phases. Job hulls therefore stay OFF the tactical /
+// combat roster exactly like ordinary traffic (aiPorts skips ai.passive hulls — aiPorts.js:303). The
+// producer yields its own per-frame stepper for any entity carrying data.jobId, so there is exactly
+// ONE intent writer per job ship per tick.
+//
+// ─── Offscreen ≈ onscreen (free) ────────────────────────────────────────────────────────────────
+// A materialized job is advanced by the per-tick dt; a virtualized job is advanced by the whole elapsed
+// interval in ONE call on re-entry. Both use the same advance(), so the kernel's decomposability makes
+// them converge with no second code path (kernel proof: npc-jobs-kernel.test.mjs:516-532).
+
+import {
+  createJob,
+  advance,
+  isTruncated,
+  interrupt,
+  resume,
+  virtualize,
+  materialize,
+  describeMaterialization,
+  routePosition,
+  serializeJob,
+  restoreJob,
+  summarizeJob,
+  NPC_JOB_KIND,
+  NPC_JOB_PHASE,
+  NPC_JOB_SCHEMA,
+} from './npcJobs.js';
+import { hash32 } from '../core/rng.js';
+import { createNearestEntityQueryService } from '../core/spatialQuery.js';
+import { normalizeRoe, RulesOfEngagement } from '../ai/doctrine.js';
+import { isPlayerWanted } from './heat.js';
+import { DRIVE_FAMILIES, resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
+import {
+  CERES_ACTIVITY_POCKETS,
+  CERES_ACTIVITY_SECTOR_ID,
+} from '../data/sectorActivityPockets.js';
+import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
+import { RECORD_KIND, stableRecordId } from '../world/worldRecords.js';
+import {
+  PRIORITY_COURIER_JOB_SCHEMA,
+  PRIORITY_COURIER_SERVICE,
+  isPriorityCourierItinerary,
+} from '../data/laneContacts.js';
+
+// A hostile ship within this range interrupts a civilian job into flee; beyond it (with hysteresis)
+// the job resumes. Civilian traffic today flees the player at 500wu (traffic.js _stepFlee) — matched.
+const FLEE_RADIUS = 520;
+const RESUME_RADIUS = 760; // hysteresis so a job does not chatter flee/resume on the boundary
+const THREAT_QUERY_INTERVAL_TICKS = 4; // 15 Hz on the fixed 60 Hz simulation clock
+const EMPTY_THREAT_REQUESTS = Object.freeze([]);
+export const NPC_JOB_HEAVE_TO_DURATION_S = 5;
+export const NPC_JOB_HEAVE_TO_COOLDOWN_S = 12;
+// On re-entry a virtual job advances by the elapsed away-time, clamped to a bounded recent window.
+// Live exit→reentry within a session is always well under this; the clamp only bounds a pathological
+// gap (e.g. a job left virtual for a very long absence) so the catch-up cost stays finite. Advancing
+// an away job across a CLOSED-GAME gap (wall-clock) is intentionally NOT modeled here — see REPORT.
+const MAX_CATCHUP_S = 3600;
+// The kernel remains the route clock. The live hull follows that clock through Flight V3's
+// assisted speed command, with a short planned end-of-leg brake so a slow authored route does not
+// coast through its pocket while the kernel enters a stationary phase.
+const ROUTE_BRAKE_WINDOW_S = 0.75;
+export const NPC_MINER_SEAM_EXHAUSTED_DEPLETION = 0.12;
+const NPC_MINER_CADENCE_DEPLETION_START = 0.04;
+const NPC_MINER_FIELD_RETARGET_INTERVAL_S = 1;
+const NPC_MINER_BASE_WORK_S = 30;
+const NPC_MINER_THIN_WORK_S = 54;
+
+// A yard tug's freight manifest and its physical load are two different authored bodies. The
+// manifest is still settled by the freight/economy owner; this runtime only binds an already-live
+// payload/wreck to the tug through the ordinary combat attachment service. No body is spawned or
+// moved here, and an empty/invalid manifest cannot create a decorative tow line.
+const NPC_TOW_ATTACHMENT_DEF_ID = 'tether_standard';
+const NPC_TOW_MAX_RANGE_WU = 390;
+const NPC_TOW_SCAN_INTERVAL_S = 0.5;
+// At or above this the body is anchored scenery rather than freight (see isTowableCargoTarget).
+const NPC_TOW_PINNED_BODY_MASS = 1e6;
+const NPC_TOW_PHASES = new Set([
+  NPC_JOB_PHASE.DEPART,
+  NPC_JOB_PHASE.TRANSIT,
+  NPC_JOB_PHASE.APPROACH,
+  NPC_JOB_PHASE.UNLOAD,
+]);
+const NPC_LINE_CONTROL_MODE = 'npc_tow';
+// Salvors keep the tractor on through the haul home so the wreck is visibly wrangled, not
+// teleported into the hold. Sweepers only stretch the whip while they are on the rock.
+const NPC_SALVOR_LINE_PHASES = new Set([
+  NPC_JOB_PHASE.TRANSIT,
+  NPC_JOB_PHASE.APPROACH,
+  NPC_JOB_PHASE.WORK,
+  NPC_JOB_PHASE.LOAD,
+  NPC_JOB_PHASE.RETURN,
+]);
+const NPC_SWEEPER_LINE_PHASES = new Set([
+  NPC_JOB_PHASE.TRANSIT,
+  NPC_JOB_PHASE.APPROACH,
+  NPC_JOB_PHASE.WORK,
+]);
+const NPC_PATROL_LINE_PHASES = new Set([
+  NPC_JOB_PHASE.APPROACH,
+  NPC_JOB_PHASE.HOLD,
+]);
+
+// R6 escort formation is deliberately one exact authored relationship, not a generic targetRef
+// movement language. Stable record/job ids remain the authority across rematerialization; live
+// numeric ids are looked up through the current job entries and are never retained or serialized.
+const CERES_ESCORT_SLOT_ID = 'ceres_ambush_escort';
+const CERES_ESCORT_WARD_SLOT_ID = 'ceres_ambush_loaded_hauler';
+const CERES_ESCORT_WARD_TARGET_REF = `actor:${CERES_ESCORT_WARD_SLOT_ID}`;
+const CERES_ESCORT_AFT_WU = 80;
+const CERES_ESCORT_DEADBAND_WU = 18;
+const CERES_ESCORT_CATCHUP_WU = 120;
+const CERES_ESCORT_MAX_THROTTLE = 0.65;
+const CERES_ESCORT_TURN_ONLY_RAD = 0.4;
+const CERES_ESCORT_VELOCITY_EPSILON = 0.001;
+const CERES_ESCORT_RELATIVE_OVERSPEED_WU_S = 2;
+
+function isPriorityCourierTransitJob(job, entity) {
+  const marker = job && job.payload && job.payload.priorityCourierService;
+  const itinerary = entity && entity.data && entity.data.itinerary;
+  return job && job.kind === NPC_JOB_KIND.HAULER
+    && marker && typeof marker === 'object'
+    && marker.schema === PRIORITY_COURIER_JOB_SCHEMA
+    && marker.serviceId === PRIORITY_COURIER_SERVICE.id
+    && Number.isSafeInteger(marker.legSeq)
+    && isPriorityCourierItinerary(itinerary)
+    && itinerary.legSeq === marker.legSeq;
+}
+
+function ceresActivitySlot(slotId) {
+  for (const pocket of CERES_ACTIVITY_POCKETS) {
+    for (const slot of pocket.actorSlots) {
+      if (slot && slot.id === slotId) return slot;
+    }
+  }
+  return null;
+}
+
+function ceresActivityActorDescriptor(slotId) {
+  for (const pocket of CERES_ACTIVITY_POCKETS) {
+    for (const slot of pocket.actorSlots) {
+      if (slot && slot.id === slotId) return { pocket, slot };
+    }
+  }
+  return null;
+}
+
+// PQ-045: only these six already-materialized relationships gain a physical target. This is still
+// deliberately not a generic targetRef interpreter — the seven remaining `activity:*` marks and every
+// `actor:*` mark stay abstract authored choreography and keep their authored-route fallback.
+//
+// Two ownership families are admitted, because the Ceres cast has two spawn owners. `traffic_cast`
+// hulls are stamped by traffic's activity cast and carry its `ceresActivityCast`/`ceresActivityJobOwned`
+// pair. The refinery tender is deliberately excluded from that cast (traffic.js filters its slot id
+// out) and is instead a durable factionPresence world record, so it proves ownership through its own
+// `durable` + `factionPresence.yardTender` marker pair. Neither family borrows the other's flags:
+// stamping traffic's cast markers onto a factionPresence hull would hand it to traffic's release,
+// capture and law-responder scans as well, which is a second owner, not a target relationship.
+const CERES_TARGET_OWNERSHIP = Object.freeze({
+  TRAFFIC_CAST: 'traffic_cast',
+  FACTION_PRESENCE: 'faction_presence',
+});
+const CERES_REAL_TARGET_SPECS = Object.freeze([
+  Object.freeze({
+    actorSlotId: 'ceres_refinery_hauler',
+    worldRecordSlotId: 'ceres:activity:ceres_refinery_hauler',
+    routeId: 'ceres_refinery_freight_loop',
+    jobKind: NPC_JOB_KIND.HAULER,
+    waypointId: 'refinery_cargo_approach',
+    targetRef: 'object:ceres_refinery_cargo_pod',
+    entityType: 'fx',
+    identityField: 'activityObjectSlotId',
+    identityValue: 'ceres_refinery_cargo_pod',
+    standoffKind: 'fixed',
+    standoffWU: 24,
+    recordKind: RECORD_KIND.CONVOY,
+    ownership: CERES_TARGET_OWNERSHIP.TRAFFIC_CAST,
+  }),
+  Object.freeze({
+    actorSlotId: 'ceres_refinery_hauler',
+    worldRecordSlotId: 'ceres:activity:ceres_refinery_hauler',
+    routeId: 'ceres_refinery_freight_loop',
+    jobKind: NPC_JOB_KIND.HAULER,
+    waypointId: 'refinery_station_approach',
+    targetRef: 'dest:station_ceres',
+    entityType: 'station',
+    identityField: 'stationId',
+    identityValue: 'station_ceres',
+    standoffKind: 'dock',
+    standoffWU: 72,
+    recordKind: RECORD_KIND.CONVOY,
+    ownership: CERES_TARGET_OWNERSHIP.TRAFFIC_CAST,
+  }),
+  Object.freeze({
+    actorSlotId: 'ceres_seam_miner',
+    worldRecordSlotId: 'ceres:activity:ceres_seam_miner',
+    routeId: 'ceres_seam_extraction_loop',
+    jobKind: NPC_JOB_KIND.MINER,
+    waypointId: 'seam_miner_ore_face',
+    targetRef: 'field:slot:ceres_seam_ore_clast',
+    entityType: 'asteroid',
+    identityField: 'activityObjectSlotId',
+    identityValue: 'ceres_seam_ore_clast',
+    standoffKind: 'collision',
+    standoffWU: 30,
+    recordKind: RECORD_KIND.CONVOY,
+    ownership: CERES_TARGET_OWNERSHIP.TRAFFIC_CAST,
+  }),
+  Object.freeze({
+    actorSlotId: 'ceres_cathedral_salvor',
+    worldRecordSlotId: 'ceres:activity:ceres_cathedral_salvor',
+    routeId: 'ceres_cathedral_salvage_loop',
+    jobKind: NPC_JOB_KIND.SALVOR,
+    waypointId: 'cathedral_salvor_shard',
+    targetRef: 'object:ceres_cathedral_grave_shard',
+    entityType: 'fx',
+    identityField: 'activityObjectSlotId',
+    identityValue: 'ceres_cathedral_grave_shard',
+    standoffKind: 'fixed',
+    standoffWU: 32,
+    recordKind: RECORD_KIND.CONVOY,
+    ownership: CERES_TARGET_OWNERSHIP.TRAFFIC_CAST,
+  }),
+  Object.freeze({
+    actorSlotId: 'ceres_cathedral_salvor',
+    worldRecordSlotId: 'ceres:activity:ceres_cathedral_salvor',
+    routeId: 'ceres_cathedral_salvage_loop',
+    jobKind: NPC_JOB_KIND.SALVOR,
+    waypointId: 'cathedral_salvor_hulk',
+    targetRef: 'world-site:world_site_wreck_cathedral',
+    entityType: 'fx',
+    identityField: 'worldRecordId',
+    identityValue: 'world_site_wreck_cathedral/root',
+    standoffKind: 'fixed',
+    standoffWU: 48,
+    recordKind: RECORD_KIND.CONVOY,
+    ownership: CERES_TARGET_OWNERSHIP.TRAFFIC_CAST,
+  }),
+  // The tender's second mark. Its first mark (`station:station_ceres:service-berth`) stays authored:
+  // the berth is a named face of a station this route never needs to physically resolve, whereas the
+  // client is the whole point of the call-out.
+  //
+  // This is the one relationship whose berth is DERIVED rather than authored flat. The other fixed
+  // standoffs are hand-tuned against props whose visual radius is either meaningless (the Cathedral
+  // root is 360 WU) or deliberately nosed into (the hauler tucks inside the cargo barge). Here both
+  // bodies are real hulls of comparable size, and a tender that intersects the casualty it is welding
+  // reads as a bug rather than as service. `collision` takes max(standoffWU, actorR + targetR + 12),
+  // so the clearance tracks the live geometry and cannot silently rot if either hull is re-authored.
+  Object.freeze({
+    actorSlotId: 'ceres_refinery_tender',
+    worldRecordSlotId: 'ceres:activity:ceres_refinery_tender',
+    routeId: 'ceres_refinery_tender_service',
+    jobKind: NPC_JOB_KIND.TENDER,
+    waypointId: 'refinery_tender_client',
+    targetRef: 'object:ceres_refinery_disabled_hull',
+    entityType: 'fx',
+    identityField: 'activityObjectSlotId',
+    identityValue: 'ceres_refinery_disabled_hull',
+    standoffKind: 'collision',
+    standoffWU: 56,
+    recordKind: RECORD_KIND.NPC,
+    ownership: CERES_TARGET_OWNERSHIP.FACTION_PRESENCE,
+  }),
+]);
+
+const CERES_ESCORT_SLOT = ceresActivitySlot(CERES_ESCORT_SLOT_ID);
+const CERES_ESCORT_WARD_SLOT = ceresActivitySlot(CERES_ESCORT_WARD_SLOT_ID);
+
+function finite(value, fallback = 0) {
+  return Number.isFinite(value) ? value : fallback;
+}
+
+function clamp(value, low, high) {
+  return Math.max(low, Math.min(high, value));
+}
+
+function cleanFieldId(value) {
+  if (value == null || value === '') return null;
+  return String(value);
+}
+
+function shortestAngleDelta(a, b) {
+  const turn = Math.PI * 2;
+  let delta = (a % turn) - (b % turn);
+  if (delta > Math.PI) delta -= turn;
+  else if (delta < -Math.PI) delta += turn;
+  return delta;
+}
+
+function legalFormationJobPhase(kind, phase) {
+  if (phase === NPC_JOB_PHASE.FLEE) return true;
+  if (kind === NPC_JOB_KIND.PATROL) {
+    return phase === NPC_JOB_PHASE.COMMISSION
+      || phase === NPC_JOB_PHASE.TRANSIT
+      || phase === NPC_JOB_PHASE.APPROACH
+      || phase === NPC_JOB_PHASE.HOLD;
+  }
+  if (kind === NPC_JOB_KIND.HAULER) {
+    return phase === NPC_JOB_PHASE.COMMISSION
+      || phase === NPC_JOB_PHASE.LOAD
+      || phase === NPC_JOB_PHASE.DEPART
+      || phase === NPC_JOB_PHASE.TRANSIT
+      || phase === NPC_JOB_PHASE.APPROACH
+      || phase === NPC_JOB_PHASE.UNLOAD;
+  }
+  return false;
+}
+
+function clearRouteBrake(entity) {
+  const intent = entity && entity.data && entity.data.intent;
+  if (intent) intent.brake = false;
+}
+
+/**
+ * Is this hull a PREDATOR to a working civilian — the thing a hauler drops its cargo run to run from?
+ *
+ * The threat query that feeds this only asks for `team: 1`, and team 1 is "hostile to the player",
+ * which is not the same question. A law patrol is on team 1 precisely so it CAN engage the player
+ * once the player is wanted; it carries `doctrine: 'official'` and `roe: 'lawful_wanted_only'`, and
+ * `src/ai/doctrine.js` already encodes what that means — "a lawful-wanted-only hull does not engage
+ * an unwanted target". A hauler is never wanted. So the police were never going to touch it.
+ *
+ * Before this clause they scattered it anyway. Measured on the default route, seed 4242, at the Ceres
+ * refinery: a single SCN patrol (entity 119, `faction_scn`, `lawful_wanted_only`) parked 240 WU off
+ * the station and held the refinery's whole authored workforce in `flee` — the tender that services
+ * the disabled hull, the hauler that runs the cargo pod — for the entire observation window, while
+ * firing not one shot in fifty-four seconds. Ceres's front door read as empty space with one
+ * cowering drifter, which is the exact inverse of `design/VISION.md` Part II: "the world does boring
+ * jobs on screen … Ceres should feel like Ceres because of what it does."
+ *
+ * Law standing over a working yard should make a place read as ORDERED, not evacuate it. Note what
+ * this does NOT change: a civilian still flees real violence, because that runs on the separate
+ * traffic-facing violence stamp (`interruptJob` → `_stampViolence` → `violenceUntilSimT`), not on
+ * this proximity reflex. Only "a policeman is nearby" stops being a reason to abandon the job.
+ *
+ * KNOWN LIMIT, recorded rather than guessed: a civilian that is ITSELF wanted (a smuggler running
+ * contraband) genuinely should fear a lawful patrol, but NPC traffic carries no heat today —
+ * `isPlayerWanted` is player-only — so there is no wanted-NPC state to consult. When one exists, the
+ * lawful case becomes conditional on the fleeing hull's own standing rather than unconditional here.
+ */
+function eligibleActiveHostile(entity) {
+  const ai = entity && entity.data && entity.data.ai;
+  if (!ai) return true;
+  if (ai.passive === true) return false;
+  const roe = normalizeRoe(ai.roe);
+  return !(roe === RulesOfEngagement.HOLD_FIRE
+    || roe === RulesOfEngagement.LAWFUL_WANTED_ONLY);
+}
+
+function cleanClaimId(value) {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 && trimmed.length <= 200 ? trimmed : null;
+}
+
+function finiteManifestQuantity(manifest) {
+  if (!manifest || typeof manifest !== 'object') return 0;
+  const declared = Number(manifest.totalQty);
+  if (!(Number.isFinite(declared) && declared > 0)) return 0;
+  if (!Array.isArray(manifest.lines) || manifest.lines.length === 0) return Math.floor(declared);
+  let lineTotal = 0;
+  for (const line of manifest.lines) {
+    const qty = Number(line && line.qty);
+    if (Number.isFinite(qty) && qty > 0) lineTotal += qty;
+  }
+  return Math.max(0, Math.min(Math.floor(declared), Math.floor(lineTotal)));
+}
+
+function finiteSalvageQuantity(pool) {
+  if (!pool || typeof pool !== 'object') return 0;
+  let total = 0;
+  for (const value of Object.values(pool)) {
+    const qty = Number(value);
+    if (Number.isFinite(qty) && qty > 0) total += qty;
+  }
+  return Math.floor(total);
+}
+
+function occupationalRole(entity, entry) {
+  const data = entity && entity.data;
+  const payload = entry && entry.job && entry.job.payload;
+  if (data && typeof data.trafficRole === 'string' && data.trafficRole) return data.trafficRole;
+  if (data && typeof data.role === 'string' && data.role) return data.role;
+  if (payload && typeof payload.role === 'string' && payload.role) return payload.role;
+  if (payload && typeof payload.freightRole === 'string' && payload.freightRole) return payload.freightRole;
+  return '';
+}
+
+function isTugJob(entry, entity) {
+  return !!entry && !!entry.job && entry.job.kind === NPC_JOB_KIND.HAULER
+    && occupationalRole(entity, entry) === 'tug';
+}
+
+function isSalvorJob(entry, entity) {
+  return !!entry && !!entry.job && (
+    entry.job.kind === NPC_JOB_KIND.SALVOR || occupationalRole(entity, entry) === 'salvor'
+  );
+}
+
+function isSweeperJob(entry, entity) {
+  return !!entry && !!entry.job && entry.job.kind === NPC_JOB_KIND.MINER
+    && occupationalRole(entity, entry) === 'sweeper';
+}
+
+function isPatrolJob(entry) {
+  return !!entry && !!entry.job && entry.job.kind === NPC_JOB_KIND.PATROL;
+}
+
+function isPatrolNetTarget(candidate, patrol, playerId) {
+  if (!candidate || candidate === patrol || candidate.alive === false || candidate.type !== 'ship') {
+    return false;
+  }
+  if (playerId != null && candidate.id === playerId) return false;
+  const data = candidate.data || {};
+  const role = data.trafficRole || data.role;
+  if (role === 'pirate' || role === 'smuggler') return true;
+  return !!(data.ai && data.ai.pirate === true);
+}
+
+// Snapshot the head onto derived immediately before attachments.create. ships.js will recompute
+// derived later this tick from fittings, but the line policy is snapshotted at create time.
+function stampNpcMasslineHead(entity, headId) {
+  if (!entity || typeof headId !== 'string' || !headId) return;
+  const data = entity.data || (entity.data = {});
+  const derived = data.derived && typeof data.derived === 'object' ? data.derived : {};
+  data.derived = derived;
+  derived.masslineHeadId = headId;
+  data.npcMasslineHeadId = headId;
+}
+
+// `ownerRecordId` is the stable world-record id of the tug asking. A body reserved by the cleanup
+// profession belongs to that cutter and is not tug work — but traffic reserves the tug's OWN booked
+// lot through the same field, so a claim held by this tug is a reservation, not a refusal.
+function isTowableCargoTarget(target, ownerRecordId = null) {
+  if (!target || target.alive === false || (target.type !== 'payload' && target.type !== 'wreck')) return false;
+  const data = target.data;
+  if (!data || data.npcTowedByJobId != null) return false;
+  if (data.salvorClaimedBy != null && data.salvorClaimedBy !== ownerRecordId) return false;
+  // Authored site structure and pinned scenery are never freight. The nearest-body fallback scan
+  // below runs inside a 390 WU pocket that on Ceres holds nineteen `world_site_*` proxies at mass
+  // 1e9; binding one would draw a line to an immovable object and misreport an authored place as
+  // loose salvage. traffic.js applies the same two gates from its side.
+  if (data.worldSiteId != null || data.worldObjectId != null) return false;
+  if (Number(target.mass) >= NPC_TOW_PINNED_BODY_MASS) return false;
+  // Existing industrial payloads and salvage wrecks carry a finite salvagePool. A producer may
+  // additionally mark a finite cargo manifest as towable, but the marker alone is never enough.
+  return finiteSalvageQuantity(data.salvagePool) > 0
+    || (data.towable === true && finiteManifestQuantity(data.cargoManifest) > 0);
+}
+
+const THREAT_QUERY_DIAGNOSTIC_FIELDS = Object.freeze([
+  'queryBatches',
+  'spatialBatches',
+  'fallbackBatches',
+  'queryRequests',
+  'queryCandidates',
+  'queryResults',
+  'queryScratchGrowth',
+  'spawnSupplements',
+  'exceptionalCandidates',
+  'exceptionalEntities',
+  'shadowChecks',
+  'shadowMismatches',
+  'lastBatchRequests',
+  'lastBatchCandidates',
+  'highWaterRequests',
+]);
+
+function threatQueryDiagnosticsSnapshot(service) {
+  const source = service && typeof service.getDiagnostics === 'function'
+    ? service.getDiagnostics()
+    : null;
+  const snapshot = {
+    schema: 'spaceface.npcJobsThreatQueryDiagnostics.v1',
+    available: !!source,
+  };
+  for (const field of THREAT_QUERY_DIAGNOSTIC_FIELDS) {
+    snapshot[field] = Number.isFinite(source?.[field]) ? source[field] : 0;
+  }
+  return snapshot;
+}
+
+export const npcJobsRuntime = {
+  name: 'npcJobsRuntime',
+  // We serialize our own already-plain records; the save owner keeps its defensive clone off.
+  saveSnapshotOwned: true,
+
+  init(ctx) {
+    this.state = ctx.state;
+    this.bus = ctx.bus;
+    this.helpers = ctx.helpers;
+    this.registry = ctx.registry;
+    this._ensureState();
+    this._resetCeresEscortAuthority();
+    this._resetCeresRealTargetAuthority();
+    this._pendingMinerFieldRetargets = new Map();
+    this._heaveToLease = null;
+    this._fieldRetargetScanAccum = 0;
+    this._threatQueries = createNearestEntityQueryService(this.state, {
+      entityType: 'ship',
+      team: 1,
+      fallbackIndex: 'ships',
+      eligible: eligibleActiveHostile,
+    });
+    this._threatQueryState = this.state;
+    this._lastThreatQueryTick = null;
+    this._threatQueryDirty = true;
+
+    // Runtime bridge for intents: every kernel intent is surfaced on the bus under its own event
+    // name (npcjobs:transit / :work / :cycle / :hold / :complete / …). Cargo/economy owners MAY
+    // consume these later; today they are the observable proof that jobs run. Bound once.
+    this._sink = (intent) => {
+      if (this.bus && typeof this.bus.emit === 'function') {
+        try { this.bus.emit(intent.event, intent); } catch { /* a listener must not corrupt the record */ }
+      }
+    };
+
+    if (this.bus && typeof this.bus.on === 'function') {
+      // A hard sector exit demotes the sector's live entities to durable records; the jobs must
+      // survive as VIRTUAL records (they live in state.npcJobs, not on the entity) and keep their
+      // place. On re-entry the sector's jobs advance by the away time and re-link to the hull.
+      this.bus.on('sector:exit', (p) => this._onSectorExit(p || {}));
+      this.bus.on('sector:enter', (p) => this._onSectorEnter(p || {}));
+      // Continue rematerializes the saved sector before this system's deserialize() restores the
+      // job bag (saveSystem restore step 9 versus step 13). The earlier sector:enter therefore
+      // cannot see those freshly restored virtual jobs. Re-run the same bounded relink pass after
+      // every owner has deserialized and the live world-record hulls are already present.
+      this._onSaveLoadedRelink = () => {
+        const sectorId = this.state.world && this.state.world.currentSectorId;
+        if (sectorId) this._onSectorEnter({ sectorId });
+      };
+      this.bus.on('save:loaded', this._onSaveLoadedRelink);
+      this.bus.on('save:restoring', () => {
+        // Traffic owns the exact legacy-R5 targetRef adoption and registers after this runtime.
+        // Move only this relink listener to the tail before a real Continue, so every owner has
+        // restored/adopted canonical state before `_tryRelink` performs its pure validation. The
+        // relink itself remains synchronous with save:loaded and still precedes no mutation of its
+        // own unless the now-canonical actor/job/route predicates pass.
+        this.bus.off('save:loaded', this._onSaveLoadedRelink);
+        this.bus.on('save:loaded', this._onSaveLoadedRelink);
+      });
+      // Physics publishes the hash before several later systems may spawn. Keep those stable IDs as
+      // one-tick candidates so this owner sees the same live hulls the former entityList scan saw.
+      this.bus.on('entity:spawned', (p) => {
+        const payload = p || {};
+        this._threatQueries.recordSpawn(payload);
+        this._threatQueryDirty = true;
+        this._onCeresRealTargetSpawn(payload);
+      });
+      // A job whose hull is destroyed (never demoted) ends with the entity (ruling 5).
+      this.bus.on('entity:killed', (p) => {
+        const payload = p || {};
+        this._threatQueries.recordDestroy(payload);
+        this._threatQueryDirty = true;
+        this._onCeresRealTargetGone(payload);
+        this._onEntityGone(payload);
+      });
+      this.bus.on('entity:destroyed', (p) => {
+        const payload = p || {};
+        this._threatQueries.recordDestroy(payload);
+        this._threatQueryDirty = true;
+        this._onCeresRealTargetGone(payload);
+        this._onEntityGone(payload);
+      });
+      this.bus.on('fieldDepletion:changed', (p) => this._onFieldDepletionChanged(p || {}));
+    }
+
+    // Producer-facing API. Traffic (and any future civilian producer) calls assign() at spawn.
+    if (this.helpers) {
+      this.helpers.npcJobs = {
+        assign: (entity, spec) => this.assign(entity, spec),
+        get: (jobId) => this._byId()[jobId] || null,
+        byEntity: (entityId) => this._entryForEntity(entityId),
+        release: (jobId) => this.release(jobId),
+        summary: (jobId) => { const e = this._byId()[jobId]; return e ? summarizeJob(e.job) : null; },
+        list: () => Object.values(this._byId()),
+        count: () => Object.keys(this._byId()).length,
+        // PQ-019B control leases (see claimControl/releaseControl).
+        claimControl: (jobId, opts) => this.claimControl(jobId, opts),
+        releaseControl: (jobId, claimId) => this.releaseControl(jobId, claimId),
+        controlClaim: (jobId) => this.controlClaim(jobId),
+        activeControlClaimCount: () => this.activeControlClaimCount(),
+        heaveToEntity: (entityId, opts) => this.heaveToEntity(entityId, opts),
+        // PQ-138.02: traffic notices nearby violence, then this owner suspends/resumes the job.
+        // Traffic must not write intent for a job hull.
+        interrupt: (jobId, threat) => this.interruptJob(jobId, threat),
+        resume: (jobId) => this.resumeJob(jobId),
+        // Read-on-demand performance evidence. The returned object is a detached scalar snapshot;
+        // callers cannot mutate the retained hot-path counters or request scratch.
+        threatQueryDiagnostics: () => this.threatQueryDiagnostics(),
+      };
+    }
+  },
+
+  // ── owned state ────────────────────────────────────────────────────────────────────────────
+  _ensureState() {
+    const state = this.state;
+    if (!state.npcJobs || typeof state.npcJobs !== 'object') state.npcJobs = { byId: {}, siteCouriers: {} };
+    if (!state.npcJobs.byId || typeof state.npcJobs.byId !== 'object') state.npcJobs.byId = {};
+    if (!state.npcJobs.siteCouriers || typeof state.npcJobs.siteCouriers !== 'object'
+      || Array.isArray(state.npcJobs.siteCouriers)) {
+      state.npcJobs.siteCouriers = {};
+    }
+    return state.npcJobs;
+  },
+  _byId() { return this._ensureState().byId; },
+
+  // ── transient exact-Ceres formation authority ───────────────────────────────────────────────
+  // This fixed two-slot cache is intentionally outside GameState/save data. It retains object
+  // identities (never numeric entity ids) so the steady tick can prove O(1) that both ends of the
+  // relationship are still the exact live objects admitted by assign/relink. Any duplicate durable
+  // identity makes the slot ambiguous for the rest of that residency.
+  _resetCeresEscortAuthority() {
+    const rawSeed = this.state && this.state.meta && this.state.meta.seed;
+    const seed = (Number.isFinite(rawSeed) ? rawSeed : 1) >>> 0 || 1;
+    const makeSlot = (slot, kind) => {
+      const worldRecordId = slot
+        ? stableRecordId(seed, CERES_ACTIVITY_SECTOR_ID, RECORD_KIND.CONVOY, slot.worldRecordSlotId)
+        : null;
+      return {
+        slotId: slot && slot.id || null,
+        worldRecordSlotId: slot && slot.worldRecordSlotId || null,
+        kind,
+        worldRecordId,
+        jobId: worldRecordId ? `job:${worldRecordId}` : null,
+        entryRef: null,
+        jobRef: null,
+        entityRef: null,
+        dataRef: null,
+        ambiguous: false,
+      };
+    };
+    this._ceresEscortAuthority = {
+      seed,
+      escort: makeSlot(CERES_ESCORT_SLOT, NPC_JOB_KIND.PATROL),
+      ward: makeSlot(CERES_ESCORT_WARD_SLOT, NPC_JOB_KIND.HAULER),
+    };
+    return this._ceresEscortAuthority;
+  },
+
+  _ensureCeresEscortAuthority() {
+    const rawSeed = this.state && this.state.meta && this.state.meta.seed;
+    const seed = (Number.isFinite(rawSeed) ? rawSeed : 1) >>> 0 || 1;
+    const authority = this._ceresEscortAuthority;
+    return authority && authority.seed === seed ? authority : this._resetCeresEscortAuthority();
+  },
+
+  _ceresFormationSlotForWorldRecordId(worldRecordId) {
+    const authority = this._ensureCeresEscortAuthority();
+    if (authority.escort.worldRecordId === worldRecordId) return authority.escort;
+    if (authority.ward.worldRecordId === worldRecordId) return authority.ward;
+    return null;
+  },
+
+  // ── transient exact-Ceres real-target authority ─────────────────────────────────────────────
+  // Five fixed relationships are admitted. Each retains exact object identities only; nothing in
+  // this cache is serialized. Entity scans happen only while binding/rebinding at lifecycle seams,
+  // never in the steady `_drive` tick.
+  _resetCeresRealTargetAuthority() {
+    const rawSeed = this.state && this.state.meta && this.state.meta.seed;
+    const seed = (Number.isFinite(rawSeed) ? rawSeed : 1) >>> 0 || 1;
+    this._ceresRealTargetAuthority = {
+      seed,
+      bindings: CERES_REAL_TARGET_SPECS.map((spec) => {
+        const candidate = ceresActivityActorDescriptor(spec.actorSlotId);
+        const descriptor = candidate
+          && candidate.slot.worldRecordSlotId === spec.worldRecordSlotId
+          && candidate.slot.jobKind === spec.jobKind
+          && candidate.slot.route && candidate.slot.route.id === spec.routeId
+          ? candidate
+          : null;
+        const worldRecordId = descriptor
+          ? stableRecordId(seed, CERES_ACTIVITY_SECTOR_ID, spec.recordKind,
+              descriptor.slot.worldRecordSlotId)
+          : null;
+        return {
+          spec,
+          descriptor,
+          worldRecordId,
+          jobId: worldRecordId ? `job:${worldRecordId}` : null,
+          entryRef: null,
+          jobRef: null,
+          routeRef: null,
+          routeWaypointRefs: null,
+          canonicalRoutePositions: null,
+          canonicalSpeed: null,
+          waypointRef: null,
+          actorRef: null,
+          actorDataRef: null,
+          terminalEntryRef: null,
+          terminalJobRef: null,
+          terminalActorRef: null,
+          terminalActorDataRef: null,
+          targetRef: null,
+          targetDataRef: null,
+          targetMatches: 0,
+          ambiguous: false,
+          actorAmbiguous: false,
+          actorAmbiguousRefs: null,
+          targetAmbiguous: false,
+          targetAmbiguousRefs: null,
+        };
+      }),
+    };
+    return this._ceresRealTargetAuthority;
+  },
+
+  _ensureCeresRealTargetAuthority() {
+    const rawSeed = this.state && this.state.meta && this.state.meta.seed;
+    const seed = (Number.isFinite(rawSeed) ? rawSeed : 1) >>> 0 || 1;
+    const authority = this._ceresRealTargetAuthority;
+    return authority && authority.seed === seed
+      ? authority
+      : this._resetCeresRealTargetAuthority();
+  },
+
+  _ceresRealTargetActorBinding(worldRecordId) {
+    const authority = this._ensureCeresRealTargetAuthority();
+    for (const binding of authority.bindings) {
+      if (binding.worldRecordId === worldRecordId) return binding;
+    }
+    return null;
+  },
+
+  _ceresRealTargetJobBinding(jobId) {
+    if (!jobId) return null;
+    const authority = this._ensureCeresRealTargetAuthority();
+    for (const binding of authority.bindings) {
+      if (binding.jobId === jobId) return binding;
+    }
+    return null;
+  },
+
+  _hasUniqueCeresRealTargetActor(entity, worldRecordId) {
+    if (!this._ceresRealTargetActorBinding(worldRecordId)) return true;
+    let count = 0;
+    let match = null;
+    for (const candidate of this.state.entityList || []) {
+      if (!candidate || candidate.alive === false || !candidate.data
+        || candidate.data.worldRecordId !== worldRecordId
+        || this.state.entities?.get(candidate.id) !== candidate) continue;
+      count++;
+      if (count === 1) match = candidate;
+      if (count > 1) return false;
+    }
+    return count === 1 && match === entity && this.state.entities?.get(entity.id) === entity;
+  },
+
+  _collectCeresRealTargetActorCandidates(worldRecordId) {
+    const candidates = [];
+    for (const candidate of this.state.entityList || []) {
+      if (!candidate || candidate.alive === false || !candidate.data
+        || candidate.data.worldRecordId !== worldRecordId
+        || this.state.entities?.get(candidate.id) !== candidate) continue;
+      candidates.push(candidate);
+      // Two exact refs are sufficient: only a two-way ambiguity can become unique after one
+      // deletion. Larger malicious duplicate sets stay fail-closed until a retained contender is
+      // removed and the bounded lifecycle seam re-counts them.
+      if (candidates.length === 2) break;
+    }
+    return candidates;
+  },
+
+  _markCeresRealTargetActorAmbiguous(worldRecordId, candidates = null) {
+    const authority = this._ensureCeresRealTargetAuthority();
+    const contenderRefs = candidates || this._collectCeresRealTargetActorCandidates(worldRecordId);
+    for (const binding of authority.bindings) {
+      if (binding.worldRecordId === worldRecordId) {
+        // Ambiguity must immediately disable every movement/target cache, but it does not transfer
+        // terminal cleanup. Preserve only an identity that was admitted before the collision and
+        // still proves the exact current canonical actor without consulting route shape.
+        const retainTerminalAuthority = this._hasExactCeresRealTargetTerminalIdentity(
+          binding,
+          binding.terminalEntryRef,
+          binding.terminalActorRef,
+        );
+        this._clearCeresRealTargetBinding(binding, !retainTerminalAuthority);
+        binding.ambiguous = true;
+        binding.actorAmbiguous = true;
+        // Core's real destruction event is id/type-only and runs after Map deletion. Retain these
+        // bounded seam-time objects so even a malformed wrong-type contender can identify the one
+        // removal that may resolve ambiguity, without scanning on unrelated projectile deaths.
+        binding.actorAmbiguousRefs = contenderRefs;
+      }
+    }
+  },
+
+  _worldRecordAllowsCeresJobActor(worldRecordId, recordKind = RECORD_KIND.CONVOY) {
+    const records = this.state.world && this.state.world.records && this.state.world.records.byId;
+    const record = records && records[worldRecordId];
+    if (!record) return true;
+    return record.recordId === worldRecordId
+      && record.kind === recordKind
+      && record.sectorId === CERES_ACTIVITY_SECTOR_ID
+      && record.alive !== false
+      && record.outcome !== 'destroyed'
+      && record.outcome !== 'defeated';
+  },
+
+  _isExactCeresRealTargetActor(binding, entity, requireJobId = false) {
+    const slot = binding && binding.descriptor && binding.descriptor.slot;
+    if (!binding || !slot || !entity || entity.alive === false || entity.type !== 'ship'
+      || !entity.data || this.state.entities?.get(entity.id) !== entity) return false;
+    const data = entity.data;
+    return data.worldRecordId === binding.worldRecordId
+      && slot.id === binding.spec.actorSlotId
+      && slot.worldRecordSlotId === binding.spec.worldRecordSlotId
+      && slot.jobKind === binding.spec.jobKind
+      && slot.route && slot.route.id === binding.spec.routeId
+      && data.identityKey === binding.spec.worldRecordSlotId
+      && data.activityActorSlotId === slot.id
+      && this._hasCeresRealTargetOwnershipProof(binding, data)
+      && (!requireJobId || data.jobId === binding.jobId)
+      && this._hasExactCeresSectorAuthority(entity)
+      && this._worldRecordAllowsCeresJobActor(binding.worldRecordId, binding.spec.recordKind);
+  },
+
+  /** Each admitted relationship proves its spawn owner with that owner's own markers, never the
+   *  other's. An unknown ownership tag fails closed rather than defaulting to either family. */
+  _hasCeresRealTargetOwnershipProof(binding, data) {
+    const ownership = binding && binding.spec && binding.spec.ownership;
+    if (ownership === CERES_TARGET_OWNERSHIP.TRAFFIC_CAST) {
+      return data.ceresActivityCast === true && data.ceresActivityJobOwned === true;
+    }
+    if (ownership === CERES_TARGET_OWNERSHIP.FACTION_PRESENCE) {
+      return data.durable === true
+        && data.ceresActivityCast === undefined
+        && data.ceresActivityJobOwned === undefined
+        && !!data.factionPresence && data.factionPresence.yardTender === true;
+    }
+    return false;
+  },
+
+  _isCanonicalCeresRealTargetRoute(binding, route, speed) {
+    const descriptor = binding && binding.descriptor;
+    const slot = descriptor && descriptor.slot;
+    const pocket = descriptor && descriptor.pocket;
+    const marks = slot && slot.route && slot.route.marks;
+    if (!binding || !slot || !pocket || !slot.route
+      || slot.id !== binding.spec.actorSlotId
+      || slot.worldRecordSlotId !== binding.spec.worldRecordSlotId
+      || slot.jobKind !== binding.spec.jobKind
+      || slot.route.id !== binding.spec.routeId
+      || !Number.isFinite(slot.route.durationS) || slot.route.durationS <= 0
+      || !Array.isArray(marks) || marks.length !== 2
+      || !Array.isArray(route) || route.length !== marks.length) return false;
+    let x0 = 0;
+    let z0 = 0;
+    let x1 = 0;
+    let z1 = 0;
+    let ownsTuple = false;
+    for (let index = 0; index < marks.length; index++) {
+      const mark = marks[index];
+      const waypoint = route[index];
+      if (!mark || !waypoint || waypoint.id !== mark.id || waypoint.label !== mark.id
+        || waypoint.targetRef !== mark.targetRef || !waypoint.pos
+        || !Number.isFinite(waypoint.pos.x) || !Number.isFinite(waypoint.pos.z)) return false;
+      const expected = sectorLocalToGlobalForSector({
+        x: pocket.activityAnchor.localPos.x + mark.offset.x,
+        z: pocket.activityAnchor.localPos.z + mark.offset.z,
+      }, CERES_ACTIVITY_SECTOR_ID);
+      if (waypoint.pos.x !== expected.x || waypoint.pos.z !== expected.z) return false;
+      if (index === 0) {
+        x0 = expected.x;
+        z0 = expected.z;
+      } else {
+        x1 = expected.x;
+        z1 = expected.z;
+      }
+      if (waypoint.id === binding.spec.waypointId
+        && waypoint.targetRef === binding.spec.targetRef) ownsTuple = true;
+    }
+    const canonicalSpeed = Math.hypot(x1 - x0, z1 - z0) / slot.route.durationS;
+    return ownsTuple && Number.isFinite(canonicalSpeed) && canonicalSpeed > 0
+      && speed === canonicalSpeed;
+  },
+
+  _isCanonicalCeresRealTargetSpec(binding, spec) {
+    const slot = binding && binding.descriptor && binding.descriptor.slot;
+    return !!slot && !!spec
+      && spec.kind === binding.spec.jobKind
+      && spec.sectorId === CERES_ACTIVITY_SECTOR_ID
+      && this._isCanonicalCeresRealTargetRoute(binding, spec.route, spec.speed);
+  },
+
+  _hasExactCeresRealTargetEntryIdentity(binding, entry, entity, requireMaterialized = true) {
+    const slot = binding && binding.descriptor && binding.descriptor.slot;
+    const job = entry && entry.job;
+    return !!binding && !!slot && !!entry && !!job && !!entity
+      && job.schema === NPC_JOB_SCHEMA && job.id === binding.jobId
+      && job.kind === slot.jobKind && job.corrupt !== true
+      && (requireMaterialized ? job.materialized === true : job.materialized === false)
+      && entry.kind === slot.jobKind && entry.sectorId === CERES_ACTIVITY_SECTOR_ID
+      && entry.worldRecordId === binding.worldRecordId
+      && (requireMaterialized
+        ? (entry.entityId === entity.id && entity.data?.jobId === binding.jobId)
+        : (entry.entityId == null && entity.data?.jobId == null))
+      && this._byId()[binding.jobId] === entry
+      && this._isExactCeresRealTargetActor(binding, entity, requireMaterialized);
+  },
+
+  _hasExactCeresRealTargetRetainedActor(binding, entry, entity) {
+    return !!binding && !!entry && !!entry.job && !!entity && !!entity.data
+      && binding.entryRef === entry
+      && binding.jobRef === entry.job
+      && binding.actorRef === entity
+      && binding.actorDataRef === entity.data
+      && this._hasExactCeresRealTargetEntryIdentity(binding, entry, entity, true);
+  },
+
+  _hasExactCeresRealTargetRetainedRoute(binding, entry) {
+    const descriptor = binding && binding.descriptor;
+    const slot = descriptor && descriptor.slot;
+    const job = entry && entry.job;
+    const marks = slot && slot.route && slot.route.marks;
+    const route = job && job.route;
+    const routeWaypointRefs = binding && binding.routeWaypointRefs;
+    const canonicalRoutePositions = binding && binding.canonicalRoutePositions;
+    if (!binding || !slot || !job || !slot.route
+      || slot.id !== binding.spec.actorSlotId
+      || slot.worldRecordSlotId !== binding.spec.worldRecordSlotId
+      || slot.jobKind !== binding.spec.jobKind || slot.route.id !== binding.spec.routeId
+      || binding.routeRef !== route || !Array.isArray(route) || route.length !== 2
+      || !Array.isArray(marks) || marks.length !== 2
+      || !Array.isArray(routeWaypointRefs) || routeWaypointRefs.length !== 2
+      || !Array.isArray(canonicalRoutePositions) || canonicalRoutePositions.length !== 2
+      || !Number.isInteger(job.routeIndex) || job.routeIndex < 0 || job.routeIndex >= route.length
+      || !Number.isFinite(binding.canonicalSpeed) || binding.canonicalSpeed <= 0
+      || job.speed !== binding.canonicalSpeed) return false;
+    let ownsWaypoint = false;
+    for (let index = 0; index < 2; index++) {
+      const mark = marks[index];
+      const waypoint = route[index];
+      const canonicalPos = canonicalRoutePositions[index];
+      if (!mark || !waypoint || routeWaypointRefs[index] !== waypoint || !canonicalPos
+        || waypoint.id !== mark.id || waypoint.label !== mark.id
+        || waypoint.targetRef !== mark.targetRef || !waypoint.pos
+        || waypoint.pos.x !== canonicalPos.x || waypoint.pos.z !== canonicalPos.z) return false;
+      if (binding.waypointRef === waypoint
+        && waypoint.id === binding.spec.waypointId
+        && waypoint.targetRef === binding.spec.targetRef) ownsWaypoint = true;
+    }
+    return ownsWaypoint;
+  },
+
+  _hasCeresRealTargetMovementAuthority(binding) {
+    return !!binding && !!(binding.entryRef || binding.jobRef || binding.routeRef
+      || binding.routeWaypointRefs || binding.canonicalRoutePositions || binding.waypointRef
+      || binding.actorRef || binding.actorDataRef || binding.targetRef || binding.targetDataRef);
+  },
+
+  _hasRetainedCeresRealTargetMaterializedActor(jobId, entry, entity) {
+    if (!jobId || !entry || !entity) return false;
+    const authority = this._ensureCeresRealTargetAuthority();
+    for (const binding of authority.bindings) {
+      if (binding.jobId !== jobId) continue;
+      if (this._hasExactCeresRealTargetTerminalIdentity(binding, entry, entity)
+        || this._hasExactCeresRealTargetRetainedActor(binding, entry, entity)) return true;
+    }
+    return false;
+  },
+
+  _hasRetainedCeresRealTargetActorAmbiguity(jobId, entry, entity) {
+    if (!jobId || !entry || !entity) return false;
+    const authority = this._ensureCeresRealTargetAuthority();
+    for (const binding of authority.bindings) {
+      if (binding.jobId !== jobId || binding.actorAmbiguous !== true
+        || !Array.isArray(binding.actorAmbiguousRefs)
+        || !binding.actorAmbiguousRefs.some((candidate) => candidate === entity)) continue;
+      if (this._hasExactCeresRealTargetEntryIdentity(binding, entry, entity, true)) return true;
+    }
+    return false;
+  },
+
+  _isCanonicalCeresRealTargetEntry(binding, entry, entity, requireMaterialized = true) {
+    if (!this._hasExactCeresRealTargetEntryIdentity(binding, entry, entity, requireMaterialized)) {
+      return false;
+    }
+    return this._isCanonicalCeresRealTargetRoute(binding, entry.job.route, entry.job.speed);
+  },
+
+  _hasCanonicalCeresRealTargetRoute(binding, entry, entity) {
+    const descriptor = binding && binding.descriptor;
+    const slot = descriptor && descriptor.slot;
+    const pocket = descriptor && descriptor.pocket;
+    const job = entry && entry.job;
+    const marks = slot && slot.route && slot.route.marks;
+    const route = job && job.route;
+    if (!binding || !entry || !entity || !slot || !pocket || !job
+      || !this._isCanonicalCeresRealTargetEntry(binding, entry, entity, true)
+      || !slot.route || !Number.isFinite(slot.route.durationS) || slot.route.durationS <= 0
+      || !Array.isArray(marks) || marks.length !== 2
+      || !Array.isArray(route) || route.length !== marks.length
+      || !Number.isInteger(job.routeIndex) || job.routeIndex < 0 || job.routeIndex >= route.length
+      ) return false;
+    let waypointRef = null;
+    const routeWaypointRefs = [];
+    const canonicalRoutePositions = [];
+    for (let index = 0; index < marks.length; index++) {
+      const mark = marks[index];
+      const waypoint = route[index];
+      if (!mark || !waypoint || waypoint.id !== mark.id || waypoint.label !== mark.id
+        || waypoint.targetRef !== mark.targetRef || !waypoint.pos
+        || !Number.isFinite(waypoint.pos.x) || !Number.isFinite(waypoint.pos.z)) return false;
+      const expected = sectorLocalToGlobalForSector({
+        x: pocket.activityAnchor.localPos.x + mark.offset.x,
+        z: pocket.activityAnchor.localPos.z + mark.offset.z,
+      }, CERES_ACTIVITY_SECTOR_ID);
+      if (waypoint.pos.x !== expected.x || waypoint.pos.z !== expected.z) return false;
+      routeWaypointRefs.push(waypoint);
+      canonicalRoutePositions.push(expected);
+      if (waypoint.id === binding.spec.waypointId
+        && waypoint.targetRef === binding.spec.targetRef) waypointRef = waypoint;
+    }
+    const canonicalSpeed = Math.hypot(
+      canonicalRoutePositions[1].x - canonicalRoutePositions[0].x,
+      canonicalRoutePositions[1].z - canonicalRoutePositions[0].z,
+    ) / slot.route.durationS;
+    if (!waypointRef || !Number.isFinite(canonicalSpeed) || canonicalSpeed <= 0
+      || job.speed !== canonicalSpeed) return false;
+    binding.entryRef = entry;
+    binding.jobRef = job;
+    binding.routeRef = route;
+    binding.routeWaypointRefs = routeWaypointRefs;
+    binding.canonicalRoutePositions = canonicalRoutePositions;
+    binding.canonicalSpeed = canonicalSpeed;
+    binding.waypointRef = waypointRef;
+    binding.actorRef = entity;
+    binding.actorDataRef = entity.data;
+    return true;
+  },
+
+  _isCeresRealTargetCandidate(binding, entity) {
+    if (!binding || !entity || entity.alive === false || entity.type !== binding.spec.entityType
+      || !entity.data || !entity.pos
+      || !Number.isFinite(entity.pos.x) || !Number.isFinite(entity.pos.z)
+      || this.state.entities?.get(entity.id) !== entity
+      || entity.data[binding.spec.identityField] !== binding.spec.identityValue
+      || !this._hasExactCeresSectorAuthority(entity)) return false;
+    return true;
+  },
+
+  _refreshCeresRealTargetsForEntry(entry, entity) {
+    const authority = this._ensureCeresRealTargetAuthority();
+    let actorBinding = null;
+    for (const binding of authority.bindings) {
+      if (this._byId()[binding.jobId] === entry) {
+        actorBinding = binding;
+        break;
+      }
+    }
+    if (!actorBinding) return false;
+    const uniqueActor = this._hasUniqueCeresRealTargetActor(entity, actorBinding.worldRecordId);
+    const actorContenderRefs = !uniqueActor
+      ? this._collectCeresRealTargetActorCandidates(actorBinding.worldRecordId)
+      : null;
+    let ownsBinding = false;
+    for (const binding of authority.bindings) {
+      if (binding.jobId !== actorBinding.jobId) continue;
+      const retainTerminalAuthority = this._hasExactCeresRealTargetTerminalIdentity(
+        binding,
+        binding.terminalEntryRef,
+        binding.terminalActorRef,
+      );
+      this._clearCeresRealTargetBinding(binding, !retainTerminalAuthority);
+      if (!uniqueActor) {
+        binding.ambiguous = true;
+        binding.actorAmbiguous = true;
+        binding.actorAmbiguousRefs = actorContenderRefs;
+        continue;
+      }
+      if (this._hasExactCeresRealTargetEntryIdentity(binding, entry, entity, true)) {
+        // Terminal cleanup authority is route-free and identity-only. A malformed route must disable
+        // movement without making the exact actor keep a stale marker, while semantic reclassification
+        // of that same object/data pair must still fail closed at release.
+        binding.terminalEntryRef = entry;
+        binding.terminalJobRef = entry.job;
+        binding.terminalActorRef = entity;
+        binding.terminalActorDataRef = entity.data;
+      } else {
+        binding.terminalEntryRef = null;
+        binding.terminalJobRef = null;
+        binding.terminalActorRef = null;
+        binding.terminalActorDataRef = null;
+      }
+      if (this._hasCanonicalCeresRealTargetRoute(binding, entry, entity)) ownsBinding = true;
+    }
+    if (!ownsBinding || this.state.world?.currentSectorId !== CERES_ACTIVITY_SECTOR_ID) return false;
+    for (const candidate of this.state.entityList || []) {
+      for (const binding of authority.bindings) {
+        if (binding.entryRef !== entry || !this._isCeresRealTargetCandidate(binding, candidate)) continue;
+        binding.targetMatches++;
+        if (binding.targetMatches === 1) {
+          binding.targetRef = candidate;
+          binding.targetDataRef = candidate.data;
+        } else {
+          if (!Array.isArray(binding.targetAmbiguousRefs)) {
+            binding.targetAmbiguousRefs = binding.targetRef ? [binding.targetRef] : [];
+          }
+          binding.targetAmbiguousRefs.push(candidate);
+          binding.targetRef = null;
+          binding.targetDataRef = null;
+          binding.ambiguous = true;
+          binding.targetAmbiguous = true;
+        }
+      }
+    }
+    return true;
+  },
+
+  _clearCeresRealTargetTerminalAuthorityForJob(jobId) {
+    if (!jobId) return;
+    const authority = this._ensureCeresRealTargetAuthority();
+    for (const binding of authority.bindings) {
+      if (binding.jobId !== jobId) continue;
+      binding.terminalEntryRef = null;
+      binding.terminalJobRef = null;
+      binding.terminalActorRef = null;
+      binding.terminalActorDataRef = null;
+    }
+  },
+
+  _hasExactCeresRealTargetTerminalIdentity(binding, entry, entity) {
+    return !!binding && !!entry && !!entry.job && !!entity && !!entity.data
+      && binding.terminalEntryRef === entry
+      && binding.terminalJobRef === entry.job
+      && binding.terminalActorRef === entity
+      && binding.terminalActorDataRef === entity.data
+      && this._byId()[binding.jobId] === entry
+      && entry.job.id === binding.jobId
+      && this._hasExactCeresRealTargetEntryIdentity(binding, entry, entity, true);
+  },
+
+  _invalidateCeresRealTargetTerminalAuthorityIfReplaced(binding, entry, entity) {
+    if (!binding || !entry || this._byId()[binding.jobId] !== entry) return;
+    const authority = this._ensureCeresRealTargetAuthority();
+    let retained = false;
+    let exact = false;
+    for (const candidate of authority.bindings) {
+      if (candidate.jobId !== binding.jobId) continue;
+      if (candidate.terminalEntryRef || candidate.terminalJobRef
+        || candidate.terminalActorRef || candidate.terminalActorDataRef) retained = true;
+      if (this._hasExactCeresRealTargetTerminalIdentity(candidate, entry, entity)) exact = true;
+    }
+    if (retained && !exact) this._clearCeresRealTargetTerminalAuthorityForJob(binding.jobId);
+  },
+
+  _clearCeresRealTargetBinding(binding, clearTerminalAuthority = false) {
+    if (!binding) return;
+    binding.entryRef = null;
+    binding.jobRef = null;
+    binding.routeRef = null;
+    binding.routeWaypointRefs = null;
+    binding.canonicalRoutePositions = null;
+    binding.canonicalSpeed = null;
+    binding.waypointRef = null;
+    binding.actorRef = null;
+    binding.actorDataRef = null;
+    if (clearTerminalAuthority) {
+      binding.terminalEntryRef = null;
+      binding.terminalJobRef = null;
+      binding.terminalActorRef = null;
+      binding.terminalActorDataRef = null;
+    }
+    binding.targetRef = null;
+    binding.targetDataRef = null;
+    binding.targetMatches = 0;
+    binding.ambiguous = false;
+    binding.actorAmbiguous = false;
+    binding.actorAmbiguousRefs = null;
+    binding.targetAmbiguous = false;
+    binding.targetAmbiguousRefs = null;
+  },
+
+  _clearCeresRealTargetsForJob(jobId, clearTerminalAuthority = false) {
+    if (!jobId) return;
+    const authority = this._ensureCeresRealTargetAuthority();
+    for (const binding of authority.bindings) {
+      if (binding.jobId !== jobId) continue;
+      this._clearCeresRealTargetBinding(binding, clearTerminalAuthority);
+    }
+  },
+
+  _clearCeresRealTargetsForEntry(entry, clearTerminalAuthority = false) {
+    const authority = this._ensureCeresRealTargetAuthority();
+    const entryJobId = entry && entry.job && entry.job.id;
+    const exactCurrentEntry = !!entryJobId && this._byId()[entryJobId] === entry;
+    for (const binding of authority.bindings) {
+      if (binding.entryRef !== entry
+        && !(exactCurrentEntry && binding.jobId === entryJobId
+          && binding.worldRecordId === entry.worldRecordId)) continue;
+      this._clearCeresRealTargetBinding(binding, clearTerminalAuthority);
+    }
+  },
+
+  _hasRetainedCeresRealTargetReleaseActor(jobId, entry, entity) {
+    if (!jobId || !entry || !entry.job || !entity || !entity.data) return false;
+    const authority = this._ensureCeresRealTargetAuthority();
+    for (const binding of authority.bindings) {
+      if (binding.jobId !== jobId) continue;
+      if (this._hasExactCeresRealTargetTerminalIdentity(binding, entry, entity)) return true;
+    }
+    return false;
+  },
+
+  _onCeresRealTargetSpawn(payload) {
+    const entity = payload && payload.entity;
+    if (!entity || this.state.world?.currentSectorId !== CERES_ACTIVITY_SECTOR_ID) return;
+    const authority = this._ensureCeresRealTargetAuthority();
+    const actorWorldRecordId = entity.data && entity.data.worldRecordId;
+    const actorBinding = actorWorldRecordId
+      ? this._ceresRealTargetActorBinding(actorWorldRecordId)
+      : null;
+    if (actorBinding && entity.alive !== false && this.state.entities?.get(entity.id) === entity
+      && !this._hasUniqueCeresRealTargetActor(entity, actorWorldRecordId)) {
+      // Establish ambiguity before exact actor/type/cast predicates. A malformed duplicate is still
+      // a collision in the seed-derived durable identity and must invalidate the retained actor now,
+      // even if no producer will ever call assign for that object.
+      this._markCeresRealTargetActorAmbiguous(actorWorldRecordId);
+      return;
+    }
+    for (const binding of authority.bindings) {
+      if (!binding.entryRef || !this._isCeresRealTargetCandidate(binding, entity)) continue;
+      // A spawn can arrive after a prior target was replaced or invalidated. Re-scan this one
+      // fixed job at the lifecycle seam so an older surviving match cannot be hidden by the new
+      // payload. Steady drive still consumes only the resulting exact object references.
+      this._refreshCeresRealTargetsForEntry(binding.entryRef, binding.actorRef);
+      return;
+    }
+  },
+
+  _onCeresRealTargetGone(payload) {
+    const id = payload && (payload.id != null ? payload.id : payload.entityId);
+    const explicitEntity = payload && payload.entity;
+    const mappedEntity = id != null && this.state.entities ? this.state.entities.get(id) : null;
+    const authority = this._ensureCeresRealTargetAuthority();
+    if (id != null) {
+      // Core recycles the numeric id before flushing its destruction event. An earlier listener may
+      // therefore spawn a different object at the same id. Compare the retained object identity to
+      // the CURRENT map occupant first; never let the replacement hide the actual contender/target
+      // loss, and never let its later death masquerade as a second loss of the retained object.
+      let refreshedEntry = null;
+      let refreshedJobId = null;
+      for (const binding of authority.bindings) {
+        const removedActorContender = binding.actorAmbiguous === true
+          && Array.isArray(binding.actorAmbiguousRefs)
+          && binding.actorAmbiguousRefs.some((candidate) => (
+            candidate && candidate.id === id && mappedEntity !== candidate
+          ));
+        const removedTarget = binding.targetRef && binding.targetRef.id === id
+          && mappedEntity !== binding.targetRef;
+        const removedTargetContender = binding.targetAmbiguous === true
+          && Array.isArray(binding.targetAmbiguousRefs)
+          && binding.targetAmbiguousRefs.some((candidate) => (
+            candidate && candidate.id === id && mappedEntity !== candidate
+          ));
+        if ((!removedActorContender && !removedTarget && !removedTargetContender)
+          || binding.jobId === refreshedJobId) continue;
+        let entry = binding.entryRef;
+        let actor = binding.actorRef;
+        if (!entry || !actor) {
+          entry = this._byId()[binding.jobId];
+          actor = entry && entry.entityId != null && this.state.entities
+            ? this.state.entities.get(entry.entityId)
+            : null;
+          if (!this._hasExactCeresRealTargetEntryIdentity(binding, entry, actor, true)) continue;
+        }
+        if (!entry || !actor) continue;
+        refreshedEntry = entry;
+        refreshedJobId = binding.jobId;
+        this._refreshCeresRealTargetsForEntry(entry, actor);
+      }
+      if (refreshedEntry) return;
+    }
+    const entity = explicitEntity || mappedEntity;
+    // An id-only notification whose id currently belongs to a live replacement cannot describe that
+    // replacement. Retained-identity loss was handled above; ignore everything else fail-closed.
+    if (!explicitEntity && entity && entity.alive !== false) return;
+    if (!entity) {
+      // Core deletes the object before flushing its id/type-only destruction payload. Direct retained
+      // ids identify the common actor/target case without a scan. An ambiguity has no retained target
+      // id, so only a destruction matching the seam-retained contender identities may justify the
+      // fixed bounded re-scan. Projectile and other unrelated deaths remain O(1) over these bindings.
+      const type = payload && payload.type;
+      let refreshedEntry = null;
+      for (const binding of authority.bindings) {
+        const actorAmbiguityMayResolve = binding.actorAmbiguous === true && id != null
+          && Array.isArray(binding.actorAmbiguousRefs)
+          && binding.actorAmbiguousRefs.some((candidate) => candidate && candidate.id === id);
+        let entry = binding.entryRef;
+        let actor = binding.actorRef;
+        if ((!entry || !actor) && actorAmbiguityMayResolve) {
+          // Actor ambiguity intentionally clears retained authority. Re-acquire only the exact
+          // kernel-owned wrapper/hull pair; the subsequent refresh still proves uniqueness before
+          // restoring authority.
+          entry = this._byId()[binding.jobId];
+          actor = entry && entry.entityId != null && this.state.entities
+            ? this.state.entities.get(entry.entityId)
+            : null;
+          if (!this._hasExactCeresRealTargetEntryIdentity(binding, entry, actor, true)) continue;
+        }
+        if (!entry || !actor || entry === refreshedEntry) continue;
+        const actorIdMatch = id != null && actor.id === id;
+        const targetIdMatch = id != null && binding.targetRef && binding.targetRef.id === id;
+        const targetAmbiguityMayResolve = binding.targetAmbiguous === true
+          && id != null && type === binding.spec.entityType
+          && Array.isArray(binding.targetAmbiguousRefs)
+          && binding.targetAmbiguousRefs.some((candidate) => candidate && candidate.id === id);
+        if (!actorIdMatch && !targetIdMatch
+          && !actorAmbiguityMayResolve && !targetAmbiguityMayResolve) continue;
+        refreshedEntry = entry;
+        this._refreshCeresRealTargetsForEntry(entry, actor);
+      }
+      return;
+    }
+    const actorWorldRecordId = entity && entity.data && entity.data.worldRecordId;
+    const actorBinding = actorWorldRecordId
+      ? this._ceresRealTargetActorBinding(actorWorldRecordId)
+      : null;
+    if (actorBinding) {
+      const entry = this._byId()[actorBinding.jobId];
+      const actor = entry && entry.entityId != null && this.state.entities
+        ? this.state.entities.get(entry.entityId)
+        : null;
+      if (entry && actor) this._refreshCeresRealTargetsForEntry(entry, actor);
+    }
+    for (const binding of authority.bindings) {
+      const target = binding.targetRef;
+      const identityMatch = entity && entity.type === binding.spec.entityType && entity.data
+        && entity.data[binding.spec.identityField] === binding.spec.identityValue;
+      const retainedMatch = target
+        && ((entity && target === entity) || (!entity && target.id === id));
+      if (!identityMatch && !retainedMatch) continue;
+      const entry = binding.entryRef;
+      const actor = binding.actorRef;
+      if (retainedMatch) {
+        binding.targetRef = null;
+        binding.targetDataRef = null;
+        binding.targetMatches = 0;
+        binding.ambiguous = false;
+        binding.targetAmbiguous = false;
+        binding.targetAmbiguousRefs = null;
+      }
+      if (entry && actor) this._refreshCeresRealTargetsForEntry(entry, actor);
+      return;
+    }
+  },
+
+  _bindCeresFormationSlot(slot, entry, entity) {
+    if (!slot) return;
+    if (entry) {
+      slot.entryRef = entry;
+      slot.jobRef = entry.job || null;
+    }
+    if (entity) {
+      slot.entityRef = entity;
+      slot.dataRef = entity.data || null;
+    }
+  },
+
+  _clearCeresFormationEntry(slot, entry) {
+    if (!slot || (entry && slot.entryRef && slot.entryRef !== entry)) return;
+    slot.entryRef = null;
+    slot.jobRef = null;
+  },
+
+  _hasExactCeresSectorAuthority(entity) {
+    if (!entity || !entity.data) return false;
+    const data = entity.data;
+    let present = false;
+    if (entity.homeSectorId != null) {
+      present = true;
+      if (entity.homeSectorId !== CERES_ACTIVITY_SECTOR_ID) return false;
+    }
+    if (data.homeSectorId != null) {
+      present = true;
+      if (data.homeSectorId !== CERES_ACTIVITY_SECTOR_ID) return false;
+    }
+    if (data.sectorId != null) {
+      present = true;
+      if (data.sectorId !== CERES_ACTIVITY_SECTOR_ID) return false;
+    }
+    return present;
+  },
+
+  _isExactCeresFormationActor(entity, slot, requireJobId = false) {
+    if (!entity || !slot || entity.alive === false || entity.type !== 'ship'
+      || !entity.data || this.state.entities?.get(entity.id) !== entity) return false;
+    const data = entity.data;
+    return data.worldRecordId === slot.worldRecordId
+      && data.activityActorSlotId === slot.slotId
+      && data.ceresActivityCast === true
+      && data.ceresActivityJobOwned === true
+      && (!requireJobId || data.jobId === slot.jobId)
+      && this._hasExactCeresSectorAuthority(entity);
+  },
+
+  _entryForEntity(entityId) {
+    if (entityId == null) return null;
+    const byId = this._byId();
+    for (const id of Object.keys(byId)) {
+      if (byId[id] && byId[id].entityId === entityId) return byId[id];
+    }
+    return null;
+  },
+
+  newGame() {
+    this.state.npcJobs = { byId: {}, siteCouriers: {} };
+    this._pendingMinerFieldRetargets = new Map();
+    this._heaveToLease = null;
+    this._fieldRetargetScanAccum = 0;
+    this._resetCeresEscortAuthority();
+    this._resetCeresRealTargetAuthority();
+    this._threatQueries?.reset();
+    this._lastThreatQueryTick = null;
+    this._threatQueryDirty = true;
+  },
+
+  /**
+   * PQ-145.01: a site courier is a one-shot haul identity. Credits stay on asteroidSites via
+   * cargoCustody — this bag is how the job runtime names the flight so it cannot pay twice later.
+   */
+  noteSiteCourier(spec) {
+    if (!spec || typeof spec.worldRecordId !== 'string' || !spec.worldRecordId) return null;
+    if (!this.state.npcJobs) this.state.npcJobs = { byId: {}, siteCouriers: {} };
+    if (!this.state.npcJobs.siteCouriers || typeof this.state.npcJobs.siteCouriers !== 'object'
+      || Array.isArray(this.state.npcJobs.siteCouriers)) {
+      this.state.npcJobs.siteCouriers = {};
+    }
+    const prior = this.state.npcJobs.siteCouriers[spec.worldRecordId];
+    if (prior) return prior;
+    const rec = {
+      worldRecordId: spec.worldRecordId,
+      siteId: spec.siteId || null,
+      intentId: spec.intentId || null,
+      sectorId: spec.sectorId || null,
+      destinationId: spec.destinationId || null,
+      cargo: spec.cargo && typeof spec.cargo === 'object' ? { ...spec.cargo } : {},
+      launchT: Number(spec.launchT) || 0,
+      arriveT: Number(spec.arriveT) || 0,
+    };
+    this.state.npcJobs.siteCouriers[spec.worldRecordId] = rec;
+    return rec;
+  },
+
+  // ── producer seam: create + link a job for a freshly spawned civilian hull ───────────────────
+  /**
+   * Assign a job to `entity` from a producer spec { kind, route, payload?, ...planning }. Returns the
+   * jobId, or null if the spec/entity cannot carry a durable job. Idempotent per worldRecordId: a hull
+   * that already owns a live job keeps it (re-adoption after rematerialize routes through _onSectorEnter,
+   * not here).
+   */
+  assign(entity, spec) {
+    if (!entity || !entity.data || !spec) return null;
+    const worldRecordId = entity.data.worldRecordId;
+    if (!worldRecordId) return null; // no stable identity → cannot survive exit/reentry → not our job
+    const jobId = 'job:' + worldRecordId;
+    const byId = this._byId();
+    const formationSlot = this._ceresFormationSlotForWorldRecordId(worldRecordId);
+    const realTargetActor = this._ceresRealTargetActorBinding(worldRecordId);
+    if (realTargetActor) {
+      // Any live same-record contender makes the retained actor authority ambiguous, even when the
+      // contender is itself malformed and will fail the exact actor/spec predicates below. Validate
+      // uniqueness first so a bad duplicate cannot leave the previously bound hull authoritative.
+      if (entity.alive === false || this.state.entities?.get(entity.id) !== entity) return null;
+      if (!this._hasUniqueCeresRealTargetActor(entity, worldRecordId)) {
+        this._markCeresRealTargetActorAmbiguous(worldRecordId);
+        return null;
+      }
+      if (!this._isExactCeresRealTargetActor(realTargetActor, entity, false)
+        || !this._isCanonicalCeresRealTargetSpec(realTargetActor, spec)) return null;
+    }
+    if (formationSlot) {
+      if (!this._isExactCeresFormationActor(entity, formationSlot)
+        || spec.kind !== formationSlot.kind) {
+        formationSlot.ambiguous = true;
+        return null;
+      }
+      const existing = byId[jobId];
+      if (existing) {
+        // A virtual job will be rebound by the existing rematerialization scan. Preserve that path;
+        // a materialized same-id job, however, must still name this exact entity/data object.
+        if (existing.entityId == null) {
+          entity.data.jobId = jobId;
+          return jobId;
+        }
+        const existingEntity = this.state.entities && this.state.entities.get(existing.entityId);
+        if (existingEntity !== entity
+          || (formationSlot.entryRef && formationSlot.entryRef !== existing)
+          || (formationSlot.jobRef && formationSlot.jobRef !== existing.job)
+          || (formationSlot.entityRef && formationSlot.entityRef !== entity)
+          || (formationSlot.dataRef && formationSlot.dataRef !== entity.data)) {
+          formationSlot.ambiguous = true;
+          return null;
+        }
+        this._bindCeresFormationSlot(formationSlot, existing, entity);
+        entity.data.jobId = jobId;
+        return jobId;
+      }
+      if ((formationSlot.entityRef && formationSlot.entityRef !== entity)
+        || (formationSlot.dataRef && formationSlot.dataRef !== entity.data)) {
+        formationSlot.ambiguous = true;
+        return null;
+      }
+    } else if (byId[jobId]) {
+      const existing = byId[jobId];
+      const existingEntity = existing.entityId != null && this.state.entities
+        ? this.state.entities.get(existing.entityId)
+        : null;
+      if (realTargetActor) {
+        this._invalidateCeresRealTargetTerminalAuthorityIfReplaced(
+          realTargetActor,
+          existing,
+          entity,
+        );
+        if (existing.entityId == null) {
+          if (!this._isCanonicalCeresRealTargetEntry(realTargetActor, existing, entity, false)) return null;
+          return this._tryRelink(existing, finite(this.state.simTime, 0)) ? jobId : null;
+        }
+        if (existingEntity !== entity
+          || !this._isCanonicalCeresRealTargetEntry(realTargetActor, existing, entity, true)) return null;
+        const authority = this._ensureCeresRealTargetAuthority();
+        for (const binding of authority.bindings) {
+          if (binding.jobId !== jobId) continue;
+          // A fully cleared cache may be re-admitted by this bounded producer seam. Any retained
+          // object identity, however, is authoritative and must match exactly; scalar-equal wrapper
+          // restoration cannot launder a replacement into the cache.
+          if ((binding.entryRef && binding.entryRef !== existing)
+            || (binding.jobRef && binding.jobRef !== existing.job)
+            || (binding.actorRef && binding.actorRef !== entity)
+            || (binding.actorDataRef && binding.actorDataRef !== entity.data)
+            || (binding.routeRef && binding.routeRef !== existing.job.route)
+            || (binding.terminalEntryRef && binding.terminalEntryRef !== existing)
+            || (binding.terminalJobRef && binding.terminalJobRef !== existing.job)
+            || (binding.terminalActorRef && binding.terminalActorRef !== entity)
+            || (binding.terminalActorDataRef && binding.terminalActorDataRef !== entity.data)) return null;
+        }
+        this._refreshCeresRealTargetsForEntry(existing, entity);
+        return jobId;
+      }
+      entity.data.jobId = jobId;
+      return jobId; // unchanged ordinary idempotent assignment
+    }
+
+    let job;
+    try {
+      job = createJob({ ...spec, id: jobId }, (this.state.meta && this.state.meta.seed) || 0);
+    } catch {
+      return null; // an invalid route/kind is not fatal — the hull just keeps its ambient stepper
+    }
+    const sectorId = spec.sectorId
+      || entity.data.sectorId || entity.homeSectorId
+      || (this.state.world && this.state.world.currentSectorId) || null;
+    const entry = {
+      job,
+      kind: job.kind,
+      sectorId,
+      worldRecordId,
+      entityId: entity.id,
+      lastAdvanceSimT: finite(this.state.simTime, 0),
+      threatId: null,
+      // Transient physical tow sidecar. Numeric entity ids are intentionally not serialized; the
+      // live attachment service remains the authority and this cache is only a lifecycle join.
+      towAttachmentId: null,
+      towTargetId: null,
+      towOwnerRef: null,
+      towTargetRef: null,
+      towNextScanSimT: 0,
+    };
+    if (realTargetActor && (job.schema !== NPC_JOB_SCHEMA || job.id !== jobId
+      || job.kind !== realTargetActor.descriptor.slot.jobKind || job.corrupt === true
+      || job.materialized !== true || sectorId !== CERES_ACTIVITY_SECTOR_ID
+      || !this._isCanonicalCeresRealTargetRoute(realTargetActor, job.route, job.speed))) return null;
+    byId[jobId] = entry;
+    entity.data.jobId = jobId;
+    this._threatQueryDirty = true;
+    if (formationSlot) this._bindCeresFormationSlot(formationSlot, entry, entity);
+    this._refreshCeresRealTargetsForEntry(entry, entity);
+    return jobId;
+  },
+
+  _combatAttachments() {
+    const combat = this.registry && typeof this.registry.get === 'function'
+      ? this.registry.get('combat')
+      : null;
+    return combat && combat.kernel && combat.kernel.attachments
+      && typeof combat.kernel.attachments.create === 'function'
+      ? combat.kernel.attachments
+      : null;
+  },
+
+  _findTugTowTarget(entry, entity) {
+    const data = entity && entity.data;
+    const ownerRecordId = data && typeof data.worldRecordId === 'string' ? data.worldRecordId : null;
+    const payload = entry && entry.job && entry.job.payload;
+    const explicitId = data && data.towTargetId != null && data.towTargetId !== ''
+      ? data.towTargetId
+      : payload && payload.towTargetId != null && payload.towTargetId !== ''
+        ? payload.towTargetId
+        : null;
+    const entities = this.state && this.state.entities;
+    if (explicitId != null) {
+      const explicit = entities && typeof entities.get === 'function' ? entities.get(explicitId) : null;
+      if (!explicit || !isTowableCargoTarget(explicit, ownerRecordId)
+        || !explicit.pos || !entity.pos
+        || Math.hypot(explicit.pos.x - entity.pos.x, explicit.pos.z - entity.pos.z) > NPC_TOW_MAX_RANGE_WU) {
+        return null;
+      }
+      const targetSector = explicit.data && explicit.data.sectorId;
+      if (targetSector && entry.sectorId && targetSector !== entry.sectorId) return null;
+      return explicit;
+    }
+
+    const list = this.state && this.state.entityList;
+    if (!Array.isArray(list) || !entity || !entity.pos) return null;
+    let best = null;
+    let bestDistance = Infinity;
+    let bestId = '';
+    const maxDistanceSq = NPC_TOW_MAX_RANGE_WU * NPC_TOW_MAX_RANGE_WU;
+    for (const candidate of list) {
+      if (!candidate || candidate === entity || candidate.alive === false
+        || !candidate.pos || !entities || entities.get(candidate.id) !== candidate
+        || !isTowableCargoTarget(candidate, ownerRecordId)) continue;
+      const targetSector = candidate.data && candidate.data.sectorId;
+      if (targetSector && entry.sectorId && targetSector !== entry.sectorId) continue;
+      const dx = candidate.pos.x - entity.pos.x;
+      const dz = candidate.pos.z - entity.pos.z;
+      const distanceSq = dx * dx + dz * dz;
+      if (!Number.isFinite(distanceSq) || distanceSq > maxDistanceSq) continue;
+      const candidateId = String(candidate.id);
+      if (distanceSq < bestDistance
+        || (distanceSq === bestDistance && candidateId < bestId)) {
+        best = candidate;
+        bestDistance = distanceSq;
+        bestId = candidateId;
+      }
+    }
+    return best;
+  },
+
+  _findSalvorTractorTarget(entry, entity) {
+    const data = entity && entity.data;
+    const ownerRecordId = data && typeof data.worldRecordId === 'string' ? data.worldRecordId : null;
+    const payload = entry && entry.job && entry.job.payload;
+    const explicitId = data && data.towTargetId != null && data.towTargetId !== ''
+      ? data.towTargetId
+      : payload && payload.targetId != null && payload.targetId !== ''
+        ? payload.targetId
+        : payload && payload.towTargetId != null && payload.towTargetId !== ''
+          ? payload.towTargetId
+          : null;
+    const entities = this.state && this.state.entities;
+    if (explicitId != null) {
+      const explicit = entities && typeof entities.get === 'function' ? entities.get(explicitId) : null;
+      if (!explicit || !isTowableCargoTarget(explicit, ownerRecordId)
+        || !explicit.pos || !entity.pos
+        || Math.hypot(explicit.pos.x - entity.pos.x, explicit.pos.z - entity.pos.z) > NPC_TOW_MAX_RANGE_WU) {
+        return null;
+      }
+      const targetSector = explicit.data && explicit.data.sectorId;
+      if (targetSector && entry.sectorId && targetSector !== entry.sectorId) return null;
+      return explicit;
+    }
+    return this._findTugTowTarget(entry, entity);
+  },
+
+  _findSweeperWhipTarget(entry, entity) {
+    // Scrap sweepers yank loose debris, not the belt's authored rock. Asteroids often have no
+    // tether socket, and a line to a 1e6-mass face is scenery, not the whip verb.
+    return this._findTugTowTarget(entry, entity);
+  },
+
+  _findPatrolNetTarget(entry, entity) {
+    const list = this.state && this.state.entityList;
+    const entities = this.state && this.state.entities;
+    if (!Array.isArray(list) || !entity || !entity.pos) return null;
+    const playerId = this.state.playerId;
+    let best = null;
+    let bestDistance = Infinity;
+    let bestId = '';
+    const maxDistanceSq = NPC_TOW_MAX_RANGE_WU * NPC_TOW_MAX_RANGE_WU;
+    for (const candidate of list) {
+      if (!isPatrolNetTarget(candidate, entity, playerId)
+        || !candidate.pos
+        || !entities || entities.get(candidate.id) !== candidate) continue;
+      const targetSector = candidate.data && candidate.data.sectorId;
+      if (targetSector && entry.sectorId && targetSector !== entry.sectorId) continue;
+      const dx = candidate.pos.x - entity.pos.x;
+      const dz = candidate.pos.z - entity.pos.z;
+      const distanceSq = dx * dx + dz * dz;
+      if (!Number.isFinite(distanceSq) || distanceSq > maxDistanceSq) continue;
+      const candidateId = String(candidate.id);
+      if (distanceSq < bestDistance
+        || (distanceSq === bestDistance && candidateId < bestId)) {
+        best = candidate;
+        bestDistance = distanceSq;
+        bestId = candidateId;
+      }
+    }
+    return best;
+  },
+
+  _occupationalLinePlan(entry, entity) {
+    if (isTugJob(entry, entity)) {
+      return {
+        headId: 'frame_coupler',
+        phases: NPC_TOW_PHASES,
+        requireManifest: true,
+        clearOffPhase: false,
+        findTarget: () => this._findTugTowTarget(entry, entity),
+      };
+    }
+    if (isSalvorJob(entry, entity)) {
+      return {
+        headId: 'tractor',
+        phases: NPC_SALVOR_LINE_PHASES,
+        requireManifest: false,
+        clearOffPhase: true,
+        findTarget: () => this._findSalvorTractorTarget(entry, entity),
+      };
+    }
+    if (isSweeperJob(entry, entity)) {
+      return {
+        headId: 'elastic_whip',
+        phases: NPC_SWEEPER_LINE_PHASES,
+        requireManifest: false,
+        clearOffPhase: true,
+        findTarget: () => this._findSweeperWhipTarget(entry, entity),
+      };
+    }
+    if (isPatrolJob(entry)) {
+      return {
+        headId: 'elastic_whip',
+        phases: NPC_PATROL_LINE_PHASES,
+        requireManifest: false,
+        clearOffPhase: true,
+        findTarget: () => this._findPatrolNetTarget(entry, entity),
+      };
+    }
+    return null;
+  },
+
+  _clearTugAttachment(entry, reason = 'npc_tow_cleanup') {
+    if (!entry) return false;
+    const attachmentId = entry.towAttachmentId;
+    const attachments = this._combatAttachments();
+    const attachment = attachmentId != null && attachments && typeof attachments.get === 'function'
+      ? attachments.get(attachmentId)
+      : null;
+    if (attachment && attachment.state === 'active' && attachments
+      && typeof attachments.breakAttachment === 'function') {
+      attachments.breakAttachment(attachment, reason, null);
+    }
+    const owner = entry.towOwnerRef
+      || (entry.entityId != null && this.state.entities && this.state.entities.get(entry.entityId));
+    const target = entry.towTargetRef
+      || (entry.towTargetId != null && this.state.entities && this.state.entities.get(entry.towTargetId));
+    const jobId = entry.worldRecordId ? `job:${entry.worldRecordId}` : null;
+    if (owner && owner.data) {
+      if (owner.data.npcTowAttachmentId === attachmentId) delete owner.data.npcTowAttachmentId;
+      if (owner.data.npcTowJobId === jobId) delete owner.data.npcTowJobId;
+    }
+    if (target && target.data) {
+      if (target.data.npcTowAttachmentId === attachmentId) delete target.data.npcTowAttachmentId;
+      if (target.data.npcTowedByJobId === jobId) delete target.data.npcTowedByJobId;
+    }
+    entry.towAttachmentId = null;
+    entry.towTargetId = null;
+    entry.towOwnerRef = null;
+    entry.towTargetRef = null;
+    entry.towNextScanSimT = 0;
+    return !!attachment || attachmentId != null;
+  },
+
+  _tryAttachOccupationalLine(entry, entity, simT = finite(this.state && this.state.simTime, 0)) {
+    const plan = this._occupationalLinePlan(entry, entity);
+    if (!plan) return false;
+    if (!plan.phases.has(entry.job.phase)) {
+      if (plan.clearOffPhase && entry.towAttachmentId != null) {
+        this._clearTugAttachment(entry, `npc_${plan.headId}_phase`);
+      }
+      return false;
+    }
+    if (plan.requireManifest) {
+      const manifest = entity.data && entity.data.cargoManifest
+        || entry.job.payload && entry.job.payload.manifest;
+      if (finiteManifestQuantity(manifest) <= 0) return false;
+    }
+    const attachments = this._combatAttachments();
+    if (!attachments) return false;
+
+    if (entry.towAttachmentId != null) {
+      const existing = attachments.get(entry.towAttachmentId);
+      if (existing && existing.state === 'active' && existing.ownerId === entity.id
+        && existing.controlMode === NPC_LINE_CONTROL_MODE) {
+        // Re-stamp the owner markers rather than returning bare. They are observer-facing joins, and
+        // they do NOT survive on their own: `deserialize` deletes them by design, and a hull that
+        // rematerializes arrives with a fresh `data`. Measured 2026-09-06 on the Ceres reference
+        // pocket — a five-minute capture found the load carrying `npcTowedByJobId` for 33 samples
+        // while the tug towing it reported no attachment at all, because this path never wrote the
+        // marker back. The live attachment stays the authority; this only keeps the join honest.
+        stampNpcMasslineHead(entity, plan.headId);
+        if (entity.data) {
+          entity.data.npcTowAttachmentId = existing.id;
+          entity.data.npcTowJobId = `job:${entry.worldRecordId}`;
+        }
+        const towed = entry.towTargetRef
+          || (entry.towTargetId != null && this.state.entities
+            && this.state.entities.get(entry.towTargetId));
+        if (towed && towed.data) {
+          towed.data.npcTowAttachmentId = existing.id;
+          towed.data.npcTowedByJobId = `job:${entry.worldRecordId}`;
+        }
+        return true;
+      }
+      this._clearTugAttachment(entry, 'npc_tow_stale');
+    }
+
+    // Save/reload may restore the combat attachment before this runtime has re-linked its transient
+    // sidecar. Adopt only an active line owned by this hull and explicitly created for NPC towing.
+    if (typeof attachments.listForEntity === 'function') {
+      const restored = attachments.listForEntity(entity.id, true)
+        .find((candidate) => candidate.ownerId === entity.id
+          && candidate.controlMode === NPC_LINE_CONTROL_MODE);
+      if (restored) {
+        stampNpcMasslineHead(entity, plan.headId);
+        entry.towAttachmentId = restored.id;
+        entry.towTargetId = restored.targetId;
+        entry.towOwnerRef = entity;
+        entry.towTargetRef = this.state.entities && this.state.entities.get(restored.targetId) || null;
+        if (entity.data) {
+          entity.data.npcTowAttachmentId = restored.id;
+          entity.data.npcTowJobId = `job:${entry.worldRecordId}`;
+        }
+        if (entry.towTargetRef && entry.towTargetRef.data) {
+          entry.towTargetRef.data.npcTowAttachmentId = restored.id;
+          entry.towTargetRef.data.npcTowedByJobId = `job:${entry.worldRecordId}`;
+        }
+        return true;
+      }
+    }
+
+    const data = entity.data;
+    const explicitTarget = data && data.towTargetId != null && data.towTargetId !== '';
+    if (!explicitTarget && simT < finite(entry.towNextScanSimT, 0)) return false;
+    entry.towNextScanSimT = simT + NPC_TOW_SCAN_INTERVAL_S;
+    const target = plan.findTarget();
+    if (!target || !entity.pos || !target.pos) return false;
+    stampNpcMasslineHead(entity, plan.headId);
+    const created = attachments.create({
+      defId: NPC_TOW_ATTACHMENT_DEF_ID,
+      ownerId: entity.id,
+      targetId: target.id,
+      controlMode: NPC_LINE_CONTROL_MODE,
+      sourceWorld: { x: entity.pos.x, y: 0, z: entity.pos.z },
+      targetWorld: { x: target.pos.x, y: 0, z: target.pos.z },
+    });
+    if (!created || created.ok !== true || !created.attachment) return false;
+    const attachment = created.attachment;
+    entry.towAttachmentId = attachment.id;
+    entry.towTargetId = target.id;
+    entry.towOwnerRef = entity;
+    entry.towTargetRef = target;
+    if (data) {
+      data.npcTowAttachmentId = attachment.id;
+      data.npcTowJobId = `job:${entry.worldRecordId}`;
+    }
+    target.data = target.data || {};
+    target.data.npcTowAttachmentId = attachment.id;
+    target.data.npcTowedByJobId = `job:${entry.worldRecordId}`;
+    return true;
+  },
+
+  release(jobId) {
+    const byId = this._byId();
+    const entry = byId[jobId];
+    if (!entry) return false;
+    const realTargetJobBinding = this._ceresRealTargetJobBinding(jobId);
+    let ent = entry.entityId != null && this.state.entities ? this.state.entities.get(entry.entityId) : null;
+    if (ent && realTargetJobBinding
+      && !this._hasRetainedCeresRealTargetReleaseActor(jobId, entry, ent)) {
+      // Core may already have recycled the dead actor's numeric id. The job still ends, but cleanup
+      // belongs only to the retained exact Ceres actor object/data (or its retained ambiguity ref),
+      // never to an unrelated replacement that happens to occupy `entry.entityId` now.
+      ent = null;
+    }
+    clearRouteBrake(ent);
+    if (ent && ent.data && ent.data.jobId === jobId) {
+      delete ent.data.jobId;
+      delete ent.data.jobPhase;
+      delete ent.data.jobProgress;
+    }
+    this._clearTugAttachment(entry, 'npc_tow_job_released');
+    const formationSlot = this._ceresFormationSlotForWorldRecordId(entry.worldRecordId);
+    if (formationSlot) this._clearCeresFormationEntry(formationSlot, entry);
+    if (realTargetJobBinding) this._clearCeresRealTargetsForJob(jobId, true);
+    else this._clearCeresRealTargetsForEntry(entry, true);
+    delete byId[jobId];
+    return true;
+  },
+
+  // ── PQ-019B: control leases ───────────────────────────────────────────────────────────────────
+  //
+  // A lease lets another owner (a heist pursuit) borrow the HULL of a real, already-existing job
+  // without inventing a ship and without a second system writing its movement intent. This is what
+  // makes "pursuit uses existing job-origin patrols" implementable: the patrol is genuinely the
+  // patrol that was already flying its route, not a spawned prop wearing its name.
+  //
+  // The lease suspends this system's intent writing for that hull (see `update`) and nothing else.
+  // The kernel job keeps advancing, so releasing hands back a job whose clock never lied.
+
+  /**
+   * Claim exclusive movement control of a job's hull.
+   *
+   * Idempotent per `claimId`: re-claiming with the same key returns the same claim. A DIFFERENT key
+   * is refused while a claim is live — that refusal is the one-writer-per-hull rule, enforced rather
+   * than documented.
+   */
+  claimControl(jobId, { claimId, holder = null } = {}) {
+    const id = cleanClaimId(claimId);
+    if (!id) return { granted: false, reason: 'invalid_claim_id', claim: null };
+    const entry = this._byId()[jobId];
+    if (!entry) return { granted: false, reason: 'no_job', claim: null };
+
+    const existing = entry.control;
+    if (existing) {
+      if (existing.claimId === id) return { granted: true, claim: existing, resumed: true };
+      return { granted: false, reason: 'already_claimed', claim: existing };
+    }
+    const entity = entry.entityId != null && this.state.entities
+      ? this.state.entities.get(entry.entityId)
+      : null;
+    if (!entity || !entity.alive) {
+      // A virtualized or destroyed job has no hull to hand over. Refusing is the honest answer;
+      // granting would produce a lease over nothing that still had to be released later.
+      return { granted: false, reason: 'hull_absent', claim: null };
+    }
+
+    entry.control = {
+      claimId: id,
+      holder: cleanClaimId(holder),
+      claimedAtSimT: finite(this.state.simTime, 0),
+      // The job state AT CLAIM. `phase` is the kernel's, recorded so a release can report whether
+      // the borrowed job came back to the same work it left.
+      claimedPhase: entry.job.phase,
+      claimedEntityId: entity.id,
+    };
+    // A controller inherits the hull, not a retained route-brake command from this owner.
+    clearRouteBrake(entity);
+    // Any flee state belongs to the job's own reflex, which is suspended for the duration.
+    entry.threatId = null;
+    this._clearViolenceStamp(entry);
+    return { granted: true, claim: entry.control };
+  },
+
+  /**
+   * Return the hull. Always safe to call: an unknown job, a released lease, or a hull that no longer
+   * exists all resolve without leaving a claim behind, because a lease nobody can release is a
+   * permanently frozen patrol.
+   */
+  releaseControl(jobId, claimId) {
+    const id = cleanClaimId(claimId);
+    const entry = this._byId()[jobId];
+    if (!entry) return { released: false, reason: 'no_job', restored: false };
+    const claim = entry.control;
+    if (!claim) return { released: false, reason: 'not_claimed', restored: false };
+    if (id && claim.claimId !== id) {
+      return { released: false, reason: 'claim_mismatch', restored: false };
+    }
+
+    entry.control = null;
+    const entity = entry.entityId != null && this.state.entities
+      ? this.state.entities.get(entry.entityId)
+      : null;
+    if (!entity || !entity.alive) {
+      // Fail safe: the lease is gone either way. The hull died or was demoted under the controller.
+      return { released: true, reason: 'hull_absent', restored: false };
+    }
+
+    // Neutralize whatever the controller last wrote, so the hull cannot coast on a stale boost
+    // vector for the one tick before this system's own drive resumes.
+    this._writeIntent(entity, 0, 0, false, entity.rot || 0);
+
+    // A job that finished while leased was deliberately NOT dropped by `update` (that would have let
+    // the ambient stepper adopt a hull the controller was still writing). Complete the handback now.
+    if (entry.job.phase === NPC_JOB_PHASE.COMPLETE) {
+      this.release(jobId);
+      return { released: true, reason: 'job_complete', restored: true, resumedPhase: null };
+    }
+    return { released: true, reason: null, restored: true, resumedPhase: entry.job.phase };
+  },
+
+  /** The live claim on a job, or null. */
+  controlClaim(jobId) {
+    const entry = this._byId()[jobId];
+    return entry && entry.control ? entry.control : null;
+  },
+
+  /** How many hulls are currently leased. The packet's activeJobControlClaimsAfterTerminal reads this. */
+  activeControlClaimCount() {
+    const byId = this._byId();
+    let count = 0;
+    for (const jobId of Object.keys(byId)) if (byId[jobId] && byId[jobId].control) count++;
+    return count;
+  },
+
+  heaveToEntity(entityId, {
+    claimId = null,
+    holder = 'contactHail',
+    durationS = NPC_JOB_HEAVE_TO_DURATION_S,
+    cooldownS = NPC_JOB_HEAVE_TO_COOLDOWN_S,
+  } = {}) {
+    if (entityId == null) return { granted: false, reason: 'no_target', kind: 'job_control' };
+    const simT = finite(this.state && this.state.simTime, 0);
+    this._expireHeaveToLease(simT);
+    const active = this._heaveToLease;
+    if (active && active.untilSimT > simT && active.entityId !== entityId) {
+      return { granted: false, reason: 'another_target_active', kind: 'job_control', untilSimT: active.untilSimT };
+    }
+    if (active && active.cooldownUntilSimT > simT && active.entityId !== entityId) {
+      return { granted: false, reason: 'cooldown', kind: 'job_control', cooldownUntilSimT: active.cooldownUntilSimT };
+    }
+
+    const entry = this._entryForEntity(entityId);
+    const jobId = entry && entry.worldRecordId ? `job:${entry.worldRecordId}` : null;
+    if (!entry || !jobId) return { granted: false, reason: 'no_job', kind: 'job_control' };
+    const cleanClaim = cleanClaimId(claimId) || `contact-hail:heave-to:${String(entityId)}`;
+    const out = this.claimControl(jobId, { claimId: cleanClaim, holder });
+    if (!out || out.granted !== true) {
+      return { granted: false, reason: out && out.reason || 'claim_refused', kind: 'job_control' };
+    }
+
+    const untilSimT = simT + Math.max(0.1, finite(durationS, NPC_JOB_HEAVE_TO_DURATION_S));
+    this._heaveToLease = {
+      entityId,
+      jobId,
+      claimId: cleanClaim,
+      untilSimT,
+      cooldownUntilSimT: untilSimT + Math.max(0, finite(cooldownS, NPC_JOB_HEAVE_TO_COOLDOWN_S)),
+    };
+    return { granted: true, reason: null, kind: 'job_control', jobId, untilSimT };
+  },
+
+  _expireHeaveToLease(simT = finite(this.state && this.state.simTime, 0)) {
+    const lease = this._heaveToLease;
+    if (!lease) return false;
+    if (lease.untilSimT > simT) return false;
+    this.releaseControl(lease.jobId, lease.claimId);
+    if (lease.cooldownUntilSimT > simT) {
+      this._heaveToLease = { ...lease, untilSimT: simT };
+    } else {
+      this._heaveToLease = null;
+    }
+    return true;
+  },
+
+  /** Owner-facing scalar evidence for PERF-05; generic owner timing remains in perfRuntime. */
+  threatQueryDiagnostics() {
+    return threatQueryDiagnosticsSnapshot(this._threatQueries);
+  },
+
+  _onFieldDepletionChanged(payload) {
+    const fieldId = cleanFieldId(payload && payload.fieldId);
+    if (!fieldId) return;
+    const depletion = clamp(finite(payload && payload.depleted, 0), 0, 1);
+    this._applyMinerFieldCadence(fieldId, depletion);
+    if (depletion < NPC_MINER_SEAM_EXHAUSTED_DEPLETION) return;
+    if (!this._pendingMinerFieldRetargets) this._pendingMinerFieldRetargets = new Map();
+    this._pendingMinerFieldRetargets.set(fieldId, {
+      fieldId,
+      depletion,
+      sectorId: payload && payload.sectorId || null,
+      reason: payload && payload.reason || 'field_depleted',
+      simTime: finite(this.state && this.state.simTime, 0),
+    });
+  },
+
+  _processMinerFieldDepletionRetargets(step, simT) {
+    if (!this._pendingMinerFieldRetargets) this._pendingMinerFieldRetargets = new Map();
+    this._fieldRetargetScanAccum = finite(this._fieldRetargetScanAccum, 0) + Math.max(0, step);
+    if (this._fieldRetargetScanAccum >= NPC_MINER_FIELD_RETARGET_INTERVAL_S) {
+      this._fieldRetargetScanAccum = 0;
+      this._discoverExhaustedMinerFields();
+    }
+    if (this._pendingMinerFieldRetargets.size === 0) return 0;
+
+    let moved = 0;
+    for (const [fieldId, pending] of this._pendingMinerFieldRetargets) {
+      const result = this._retargetMinerJobsForField(fieldId, pending, simT);
+      moved += result.moved;
+      if (!result.keepPending) this._pendingMinerFieldRetargets.delete(fieldId);
+    }
+    return moved;
+  },
+
+  _discoverExhaustedMinerFields() {
+    const byId = this._byId();
+    for (const jobId of Object.keys(byId)) {
+      const entry = byId[jobId];
+      if (!entry || entry.kind !== NPC_JOB_KIND.MINER || !entry.job || entry.job.corrupt) continue;
+      const field = this._fieldWaypointForMinerJob(entry.job);
+      if (!field) continue;
+      const asteroid = this._asteroidForFieldWaypoint(field.waypoint);
+      const fieldId = cleanFieldId(asteroid && asteroid.data && asteroid.data.fieldId);
+      if (!fieldId) continue;
+      const depletion = this._fieldDepletionValue(fieldId);
+      if (depletion < NPC_MINER_SEAM_EXHAUSTED_DEPLETION) continue;
+      this._pendingMinerFieldRetargets.set(fieldId, {
+        fieldId,
+        depletion,
+        sectorId: entry.sectorId || null,
+        reason: 'field_reconcile',
+        simTime: finite(this.state && this.state.simTime, 0),
+      });
+    }
+  },
+
+  _retargetMinerJobsForField(fieldId, pending, simT) {
+    const byId = this._byId();
+    const currentSector = (this.state.world && this.state.world.currentSectorId) || null;
+    let matched = 0;
+    let unsafe = 0;
+    let moved = 0;
+    let blocked = false;
+
+    for (const jobId of Object.keys(byId).sort()) {
+      const entry = byId[jobId];
+      if (!entry || entry.kind !== NPC_JOB_KIND.MINER || !entry.job || entry.job.corrupt) continue;
+      if (entry.sectorId && currentSector && entry.sectorId !== currentSector) continue;
+      const field = this._fieldWaypointForMinerJob(entry.job);
+      if (!field) continue;
+      const oldAsteroid = this._asteroidForFieldWaypoint(field.waypoint);
+      const oldFieldId = cleanFieldId(oldAsteroid && oldAsteroid.data && oldAsteroid.data.fieldId);
+      if (oldFieldId !== fieldId) continue;
+      matched++;
+      this._applyMinerFieldCadence(fieldId, this._fieldDepletionValue(fieldId));
+      if (!this._minerFieldRetargetSafe(entry.job)) {
+        unsafe++;
+        continue;
+      }
+      const anchor = entry.job.route && entry.job.route[0] && entry.job.route[0].pos;
+      const target = this._selectFreshMinerFieldTarget({
+        oldFieldId: fieldId,
+        oldAsteroidId: oldAsteroid && oldAsteroid.id,
+        anchor,
+        jobId,
+      });
+      if (!target) {
+        blocked = true;
+        continue;
+      }
+      const waypoint = field.waypoint;
+      waypoint.id = `field:${target.id}`;
+      waypoint.label = 'Fresh Belt';
+      waypoint.pos = { x: target.pos.x, z: target.pos.z };
+      delete waypoint.targetRef;
+      entry.job.workS = NPC_MINER_BASE_WORK_S;
+      if (entry.job.phase === NPC_JOB_PHASE.TRANSIT && entry.job.routeIndex === 0) {
+        const home = entry.job.route && entry.job.route[0] && entry.job.route[0].pos;
+        if (home && target.pos) entry.job.heading = Math.atan2(target.pos.z - home.z, target.pos.x - home.x);
+      }
+      moved++;
+      if (this.bus && typeof this.bus.emit === 'function') {
+        this.bus.emit('npcjobs:minerRelocated', {
+          jobId,
+          minerId: entry.entityId == null ? null : entry.entityId,
+          fromFieldId: fieldId,
+          toFieldId: cleanFieldId(target.data && target.data.fieldId),
+          fromAsteroidId: oldAsteroid && oldAsteroid.id,
+          toAsteroidId: target.id,
+          sectorId: currentSector,
+          depletion: pending && pending.depletion != null ? pending.depletion : this._fieldDepletionValue(fieldId),
+          simTime: simT,
+          reason: pending && pending.reason || 'field_depleted',
+        });
+      }
+    }
+
+    return {
+      moved,
+      keepPending: unsafe > 0 || (matched > 0 && moved === 0 && !blocked),
+    };
+  },
+
+  _applyMinerFieldCadence(fieldId, depletion) {
+    const d = clamp(finite(depletion, 0), 0, 1);
+    const cadenceT = d <= NPC_MINER_CADENCE_DEPLETION_START
+      ? 0
+      : (d - NPC_MINER_CADENCE_DEPLETION_START)
+        / (NPC_MINER_SEAM_EXHAUSTED_DEPLETION - NPC_MINER_CADENCE_DEPLETION_START);
+    const workS = cadenceT <= 0
+      ? NPC_MINER_BASE_WORK_S
+      : Math.round((NPC_MINER_BASE_WORK_S + (NPC_MINER_THIN_WORK_S - NPC_MINER_BASE_WORK_S)
+        * Math.min(1, cadenceT)) * 1000) / 1000;
+    const byId = this._byId();
+    for (const jobId of Object.keys(byId)) {
+      const entry = byId[jobId];
+      if (!entry || entry.kind !== NPC_JOB_KIND.MINER || !entry.job || entry.job.corrupt) continue;
+      const field = this._fieldWaypointForMinerJob(entry.job);
+      if (!field) continue;
+      const asteroid = this._asteroidForFieldWaypoint(field.waypoint);
+      if (cleanFieldId(asteroid && asteroid.data && asteroid.data.fieldId) !== fieldId) continue;
+      entry.job.workS = workS;
+    }
+  },
+
+  _fieldWaypointForMinerJob(job) {
+    if (!job || job.kind !== NPC_JOB_KIND.MINER || !Array.isArray(job.route)) return null;
+    for (let index = 0; index < job.route.length; index++) {
+      const waypoint = job.route[index];
+      if (!waypoint || typeof waypoint.id !== 'string' || !waypoint.id.startsWith('field:')) continue;
+      return { index, waypoint };
+    }
+    return null;
+  },
+
+  _asteroidForFieldWaypoint(waypoint) {
+    if (!waypoint || typeof waypoint.id !== 'string' || !waypoint.id.startsWith('field:')) return null;
+    const raw = waypoint.id.slice(6);
+    const numeric = Number(raw);
+    return this.state.entities && this.state.entities.get
+      ? (this.state.entities.get(raw)
+        || (Number.isFinite(numeric) ? this.state.entities.get(numeric) : null))
+      : null;
+  },
+
+  _minerFieldRetargetSafe(job) {
+    if (!job || job.kind !== NPC_JOB_KIND.MINER || job.corrupt) return false;
+    if (job.phase === NPC_JOB_PHASE.COMMISSION) return true;
+    if (job.routeIndex !== 0) return false;
+    return job.phase === NPC_JOB_PHASE.APPROACH
+      || job.phase === NPC_JOB_PHASE.UNLOAD
+      || job.phase === NPC_JOB_PHASE.TRANSIT;
+  },
+
+  _fieldDepletionValue(fieldId) {
+    const id = cleanFieldId(fieldId);
+    const rec = id && this.state.fieldDepletion && this.state.fieldDepletion.fields
+      ? this.state.fieldDepletion.fields[id]
+      : null;
+    return clamp(finite(rec && rec.depletion, 0), 0, 1);
+  },
+
+  _selectFreshMinerFieldTarget({ oldFieldId, oldAsteroidId, anchor, jobId }) {
+    const indexed = this.state.entityIndex && this.state.entityIndex.__spacefaceEntityIndexV1
+      ? this.state.entityIndex.asteroids
+      : null;
+    const source = indexed && indexed.length ? indexed : (this.state.entityList || []);
+    const seed = (this.state.meta && this.state.meta.seed) || 1;
+    const ax = anchor && Number.isFinite(anchor.x) ? anchor.x : 0;
+    const az = anchor && Number.isFinite(anchor.z) ? anchor.z : 0;
+    const candidates = [];
+    for (const asteroid of source) {
+      if (!asteroid || asteroid.type !== 'asteroid' || asteroid.alive === false || !asteroid.pos) continue;
+      if (oldAsteroidId != null && asteroid.id === oldAsteroidId) continue;
+      const data = asteroid.data || {};
+      if (data.siteAnchored || data.respawnAt != null) continue;
+      const fieldId = cleanFieldId(data.fieldId);
+      if (!fieldId || fieldId === oldFieldId) continue;
+      const depletion = this._fieldDepletionValue(fieldId);
+      if (depletion >= NPC_MINER_SEAM_EXHAUSTED_DEPLETION) continue;
+      const dx = asteroid.pos.x - ax;
+      const dz = asteroid.pos.z - az;
+      candidates.push({
+        asteroid,
+        depletion,
+        d2: dx * dx + dz * dz,
+        fieldId,
+        tie: hash32(seed, 'miner-field-retarget', oldFieldId, jobId, fieldId, asteroid.id),
+      });
+    }
+    if (!candidates.length) return null;
+    candidates.sort((a, b) => (a.depletion - b.depletion)
+      || (a.d2 - b.d2)
+      || (a.fieldId < b.fieldId ? -1 : a.fieldId > b.fieldId ? 1 : 0)
+      || (a.tie - b.tie)
+      || String(a.asteroid.id).localeCompare(String(b.asteroid.id)));
+    const spread = Math.min(4, candidates.length);
+    const index = hash32(seed, 'miner-field-retarget-spread', oldFieldId, jobId) % spread;
+    return candidates[index].asteroid;
+  },
+
+  // ── per-tick drive ───────────────────────────────────────────────────────────────────────────
+  update(dt, state) {
+    if (state) this.state = state;
+    const threatQueries = this._threatQueries
+      || (this._threatQueries = createNearestEntityQueryService(this.state, {
+        entityType: 'ship',
+        team: 1,
+        fallbackIndex: 'ships',
+        eligible: eligibleActiveHostile,
+      }));
+    if (this._threatQueryState !== this.state) {
+      this._threatQueryState = this.state;
+      this._lastThreatQueryTick = null;
+      this._threatQueryDirty = true;
+    }
+    threatQueries.setState(this.state).begin();
+    if (this.state.mode !== 'flight') {
+      threatQueries.execute();
+      this._lastThreatQueryTick = null;
+      this._threatQueryDirty = true;
+      return; // scenery only matters in flight (mirrors traffic)
+    }
+    const byId = this._byId();
+    const ids = Object.keys(byId);
+    const step = Math.max(0, finite(dt, 0));
+    const simT = finite(this.state.simTime, 0);
+    this._expireHeaveToLease(simT);
+    if (ids.length === 0) {
+      threatQueries.execute();
+      this._lastThreatQueryTick = null;
+      this._threatQueryDirty = true;
+      return; // strict no-op when no jobs exist
+    }
+
+    const currentSector = (this.state.world && this.state.world.currentSectorId) || null;
+    this._processMinerFieldDepletionRetargets(step, simT);
+
+    // Event receipts normally dirty the sensor immediately. This bounded validity read also keeps
+    // recovery exact when a caller removes the remembered threat directly from the entity map.
+    if (this._threatQueryDirty === false) {
+      for (let index = 0; index < ids.length; index++) {
+        const entry = byId[ids[index]];
+        if (!entry || entry.job?.phase !== NPC_JOB_PHASE.FLEE || entry.threatId == null) continue;
+        const remembered = this.state.entities && this.state.entities.get(entry.threatId);
+        if (!this._isJobThreat(remembered)) {
+          this._threatQueryDirty = true;
+          break;
+        }
+      }
+    }
+
+    const tick = Number(this.state.tick);
+    const lastThreatQueryTick = this._lastThreatQueryTick;
+    const shouldQueryThreats = this._threatQueryDirty !== false
+      || !Number.isFinite(tick)
+      || !Number.isFinite(lastThreatQueryTick)
+      || tick < lastThreatQueryTick
+      || tick - lastThreatQueryTick >= THREAT_QUERY_INTERVAL_TICKS;
+    let threatRequests = EMPTY_THREAT_REQUESTS;
+    if (shouldQueryThreats) {
+      // Civilian flight remains a 60 Hz writer. Only its coarse threat sensor is sampled at 15 Hz,
+      // on the deterministic fixed-step clock; entity churn bypasses the cadence above.
+      for (let index = 0; index < ids.length; index++) {
+        const jobId = ids[index];
+        const entry = byId[jobId];
+        if (!entry || !entry.job || entry.entityId == null) continue;
+        const entity = this.state.entities && this.state.entities.get(entry.entityId);
+        if (!entity || !entity.alive || !entity.pos) continue;
+        if (entry.control || entry.job.corrupt || entry.job.phase === NPC_JOB_PHASE.COMPLETE) continue;
+        threatQueries.request(
+          jobId,
+          entity.id,
+          entity.pos.x,
+          entity.pos.z,
+          entry.job.phase === NPC_JOB_PHASE.FLEE ? RESUME_RADIUS : FLEE_RADIUS,
+        );
+      }
+      threatRequests = threatQueries.execute();
+      this._lastThreatQueryTick = Number.isFinite(tick) ? tick : null;
+      this._threatQueryDirty = false;
+    }
+    let threatRequestIndex = 0;
+
+    for (let index = 0; index < ids.length; index++) {
+      const jobId = ids[index];
+      let threatRequest = null;
+      const pendingRequest = threatRequests[threatRequestIndex];
+      if (pendingRequest && pendingRequest.requestId === jobId) {
+        threatRequest = pendingRequest;
+        threatRequestIndex++;
+      }
+
+      const entry = byId[jobId];
+      if (!entry || !entry.job) { delete byId[jobId]; continue; }
+
+      if (entry.entityId == null) {
+        // Virtualized: try to re-link if its hull has rematerialized in the current sector.
+        if (entry.sectorId === currentSector) this._tryRelink(entry, simT);
+        continue;
+      }
+
+      const entity = this.state.entities && this.state.entities.get(entry.entityId);
+      if (!entity || !entity.alive) {
+        // Hull vanished without a sector demote (destroyed / despawned) → the job ends with it.
+        this.release(jobId);
+        continue;
+      }
+
+      // PQ-019B control lease: while an external owner holds this hull, THIS system writes no
+      // movement intent for it, so there is still exactly one intent writer per hull per tick. The
+      // kernel keeps advancing regardless — suspending `advance` would stop the job's clock and
+      // break the offscreen≈onscreen convergence proof, and the job's own schedule did not pause
+      // just because a patrol got pulled onto an intercept.
+      const claimedBeforeAdvance = !!entry.control;
+
+      // Threat → flee interrupt / clear → resume (kernel-owned; we only drive the hull). The
+      // civilian flee reflex writes job phase, so it must not fight the controller either.
+      if (!claimedBeforeAdvance && threatRequest && threatRequest.sourceEntityId === entity.id) {
+        this._reconcileThreatResult(entry, this._threatResultWithWantedPlayer(threatRequest));
+      }
+
+      // Materialized advance: one tick of dt. lastAdvanceSimT tracks global time for re-entry math.
+      if (step > 0 && entry.job.phase !== NPC_JOB_PHASE.COMPLETE) advance(entry.job, step, this._sink);
+
+      // An owner intent is synchronous and may invoke Continue/New Game while advance() is still on
+      // this stack. Never timestamp, release, or drive an entry/entity captured from the old run.
+      // Exact object identity matters: restored jobs and hulls may legitimately reuse both stable and
+      // numeric ids. Re-read control after the sink as an external owner may also claim in-place.
+      const currentEntry = this._byId()[jobId];
+      const currentEntity = this.state.entities && this.state.entities.get(entry.entityId);
+      if (currentEntry !== entry
+        || currentEntity !== entity
+        || entry.entityId !== entity.id
+        || !entity.data
+        || entity.data.jobId !== jobId) return;
+      entry.lastAdvanceSimT = simT;
+      if (entity.data) {
+        entity.data.jobPhase = entry.job.phase;
+        entity.data.jobProgress = Number.isFinite(entry.job.progress) ? entry.job.progress : 0;
+      }
+      const claimed = !!entry.control;
+
+      // A tug's load is a real attachment owned by the combat/physics authority. Bind it only after
+      // the finite freight job has left loading, and never while a controller lease owns the hull.
+      // The movement writer below remains the sole intent producer; SG-02 pulls the target body.
+      if (!claimed && entry.job.phase !== NPC_JOB_PHASE.COMPLETE) {
+        this._tryAttachOccupationalLine(entry, entity, simT);
+      }
+
+      // Terminal hauler: hand the hull back to its ambient stepper (ruling 5: job ends with entity).
+      // NOT while leased: dropping the entry here would delete `data.jobId`, the ambient stepper
+      // would adopt the hull, and it would be written by two owners at once. The lease outlives the
+      // job; `releaseControl` completes the handback.
+      if (entry.job.phase === NPC_JOB_PHASE.COMPLETE && !claimed) { this.release(jobId); continue; }
+
+      if (!claimed) this._drive(entry, entity);
+    }
+  },
+
+  // ── movement: replicate traffic's civilian intent write (single writer for job hulls) ─────────
+  _writeIntent(entity, moveX, moveZ, boost, aimAngle, brake = false) {
+    const data = entity.data || (entity.data = {});
+    const intent = data.intent
+      || (data.intent = { moveX: 0, moveZ: 0, boost: false, fire: false, fireGroup: null, aimAngle: 0 });
+    intent.moveX = moveX;
+    intent.moveZ = moveZ;
+    intent.boost = boost;
+    intent.brake = brake === true;
+    intent.fire = false;       // civilian job hulls NEVER open fire (hold_fire)
+    intent.fireGroup = null;
+    intent.aimAngle = aimAngle;
+  },
+
+  _ceresRealTargetWaypoint(job) {
+    if (!job || !Array.isArray(job.route) || !Number.isInteger(job.routeIndex)) return null;
+    let index = job.routeIndex;
+    if (job.phase === NPC_JOB_PHASE.TRANSIT || job.phase === NPC_JOB_PHASE.RETURN) {
+      // Mirrors the kernel's own targetIndex(): miner, salvor and tender are all two-point shuttles
+      // that toggle between their endpoints, so the leg in progress heads for the OTHER waypoint.
+      if (job.kind === NPC_JOB_KIND.MINER || job.kind === NPC_JOB_KIND.SALVOR
+        || job.kind === NPC_JOB_KIND.TENDER) {
+        index = job.routeIndex === 0 ? 1 : 0;
+      } else if (job.kind === NPC_JOB_KIND.HAULER) {
+        index = job.routeIndex + 1;
+      } else {
+        return null;
+      }
+    }
+    return index >= 0 && index < job.route.length ? job.route[index] : null;
+  },
+
+  _currentCeresRealTargetBinding(entry, entity) {
+    if (this.state.world?.currentSectorId !== CERES_ACTIVITY_SECTOR_ID) return null;
+    const authority = this._ensureCeresRealTargetAuthority();
+    let observedJobId = null;
+    for (const binding of authority.bindings) {
+      if (this._byId()[binding.jobId] === entry
+        || binding.entryRef === entry || binding.terminalEntryRef === entry
+        || binding.actorRef === entity || binding.terminalActorRef === entity) {
+        observedJobId = binding.jobId;
+        break;
+      }
+    }
+
+    // Validate every retained object before asking whether the current phase has an applicable
+    // waypoint. Otherwise an empty/out-of-range/replaced route (or a same-key entry wrapper) can
+    // early-return while leaving authority that springs back to life when equal values are restored.
+    // The job id is the immutable binding key; mutable entry/world-record scalars cannot bypass this
+    // invalidation. Route-only loss preserves strict terminal cleanup identity, while any actor,
+    // entry, job, or data replacement consumes both movement and terminal authority.
+    if (!observedJobId) return null;
+    let retainedMovement = false;
+    for (const binding of authority.bindings) {
+      if (binding.jobId !== observedJobId) continue;
+      const hasTerminalAuthority = !!(binding.terminalEntryRef || binding.terminalJobRef
+        || binding.terminalActorRef || binding.terminalActorDataRef);
+      if (hasTerminalAuthority
+        && !this._hasExactCeresRealTargetTerminalIdentity(binding, entry, entity)) {
+        this._clearCeresRealTargetsForJob(observedJobId, true);
+        return null;
+      }
+      if (!this._hasCeresRealTargetMovementAuthority(binding)) continue;
+      retainedMovement = true;
+      if (!hasTerminalAuthority
+        || !this._hasExactCeresRealTargetRetainedActor(binding, entry, entity)) {
+        this._clearCeresRealTargetsForJob(observedJobId, true);
+        return null;
+      }
+      if (!this._hasExactCeresRealTargetRetainedRoute(binding, entry)) {
+        this._clearCeresRealTargetsForJob(observedJobId, false);
+        return null;
+      }
+    }
+    if (!retainedMovement) return null;
+
+    const job = entry && entry.job;
+    const waypoint = this._ceresRealTargetWaypoint(job);
+    if (!waypoint) return null;
+    for (const binding of authority.bindings) {
+      if (binding.jobId !== observedJobId || binding.entryRef !== entry
+        || binding.jobRef !== job || binding.actorRef !== entity
+        || binding.actorDataRef !== entity.data || binding.routeRef !== job.route
+        || job.phase === NPC_JOB_PHASE.COMPLETE || binding.waypointRef !== waypoint
+        || binding.ambiguous || waypoint.id !== binding.spec.waypointId
+        || waypoint.targetRef !== binding.spec.targetRef) continue;
+      const target = binding.targetRef;
+      if (!target || binding.targetDataRef !== target.data
+        || !this._isCeresRealTargetCandidate(binding, target)) {
+        binding.targetRef = null;
+        binding.targetDataRef = null;
+        binding.targetMatches = 0;
+        binding.ambiguous = false;
+        binding.targetAmbiguous = false;
+        binding.targetAmbiguousRefs = null;
+        continue;
+      }
+      return binding;
+    }
+    return null;
+  },
+
+  _tryDriveCeresRealTarget(entry, entity) {
+    const binding = this._currentCeresRealTargetBinding(entry, entity);
+    if (!binding || !entity.pos || !Number.isFinite(entity.pos.x)
+      || !Number.isFinite(entity.pos.z) || !Number.isFinite(entity.rot)) return false;
+    const target = binding.targetRef;
+    const dx = target.pos.x - entity.pos.x;
+    const dz = target.pos.z - entity.pos.z;
+    const distance = Math.hypot(dx, dz);
+    if (!Number.isFinite(distance)) return false;
+
+    // Collidable targets use their collision/dock envelope; non-colliding place roots use an authored
+    // work berth rather than their broad visual radius (the Cathedral root radius is 360 WU). When a
+    // restored/spawned hull begins inside its berth, the same controller drives outward instead of
+    // freezing in overlap. All five targets are static; no hidden trajectory ownership is added.
+    const actorRadius = Math.max(0, finite(entity.radius, 0));
+    const targetRadius = Math.max(0, finite(target.radius, 0));
+    let standoff = binding.spec.standoffWU;
+    if (binding.spec.standoffKind === 'collision') {
+      standoff = Math.max(standoff, actorRadius + targetRadius + 12);
+    } else if (binding.spec.standoffKind === 'dock') {
+      standoff = Math.max(
+        standoff,
+        finite(target.data && target.data.dockRadius, 0),
+        actorRadius + targetRadius + 12,
+      );
+    }
+    standoff = Math.max(1, finite(standoff, 1));
+    const gap = distance - standoff;
+    const error = Math.abs(gap);
+    let directionX;
+    let directionZ;
+    if (distance > 0.0001) {
+      const sign = gap >= 0 ? 1 : -1;
+      directionX = sign * dx / distance;
+      directionZ = sign * dz / distance;
+    } else {
+      directionX = Math.cos(entity.rot);
+      directionZ = Math.sin(entity.rot);
+    }
+    const aim = Math.atan2(directionZ, directionX);
+
+    const derivedPropulsion = entity.data && entity.data.derived && entity.data.derived.propulsion;
+    const authoredPropulsion = derivedPropulsion || entity.propulsion
+      || (entity.flightModel && entity.flightModel.propulsion);
+    const velocity = entity.vel;
+    const closingSpeed = velocity && Number.isFinite(velocity.x) && Number.isFinite(velocity.z)
+      ? Math.max(0, velocity.x * directionX + velocity.z * directionZ)
+      : 0;
+    const brakeAccel = Math.max(
+      1,
+      finite(authoredPropulsion && authoredPropulsion.reverseAccel, 0),
+      finite(authoredPropulsion && authoredPropulsion.mainAccel, 0) * 0.72,
+    );
+    const stoppingDistance = closingSpeed > 0
+      ? (closingSpeed * closingSpeed) / (2 * brakeAccel)
+      : 0;
+    if (error <= 6 + stoppingDistance) {
+      this._writeIntent(entity, 0, 0, false, aim, true);
+      return true;
+    }
+
+    const governedSpeed = Math.max(1,
+      finite(authoredPropulsion && authoredPropulsion.combatSpeed, entity.maxSpeed || 1));
+    const deadInput = Math.max(0, finite(
+      authoredPropulsion && authoredPropulsion.assist && authoredPropulsion.assist.deadInput,
+      0.025,
+    ));
+    const minimumThrottle = clamp(deadInput + 0.001, 0, CERES_ESCORT_MAX_THROTTLE);
+    if (Math.abs(shortestAngleDelta(aim, entity.rot)) > CERES_ESCORT_TURN_ONLY_RAD) {
+      this._writeIntent(entity, 0, 0, false, aim, true);
+      return true;
+    }
+    const plannedThrottle = clamp(
+      Math.max(finite(entry.job.speed, 0) / governedSpeed, minimumThrottle),
+      0,
+      CERES_ESCORT_MAX_THROTTLE,
+    );
+    const closingThrottle = clamp(error / 120, minimumThrottle, CERES_ESCORT_MAX_THROTTLE);
+    this._writeIntent(entity, 0, Math.max(plannedThrottle, closingThrottle), false, aim, false);
+    return true;
+  },
+
+  _worldRecordAllowsCeresFormation(slot) {
+    const records = this.state.world && this.state.world.records && this.state.world.records.byId;
+    const record = records && records[slot.worldRecordId];
+    if (!record) return true;
+    return record.recordId === slot.worldRecordId
+      && record.kind === RECORD_KIND.CONVOY
+      && record.sectorId === CERES_ACTIVITY_SECTOR_ID
+      && record.alive !== false
+      && record.outcome !== 'destroyed'
+      && record.outcome !== 'defeated';
+  },
+
+  _hasExactCeresFormationRoute(slot, job) {
+    const authoredSlot = slot.slotId === CERES_ESCORT_SLOT_ID
+      ? CERES_ESCORT_SLOT
+      : (slot.slotId === CERES_ESCORT_WARD_SLOT_ID ? CERES_ESCORT_WARD_SLOT : null);
+    const marks = authoredSlot && authoredSlot.route && authoredSlot.route.marks;
+    const route = job && job.route;
+    if (!Array.isArray(marks) || !Array.isArray(route) || route.length !== marks.length
+      || !Number.isInteger(job.routeIndex) || job.routeIndex < 0 || job.routeIndex >= route.length
+      || !Number.isFinite(job.speed) || job.speed <= 0) return false;
+    for (let index = 0; index < marks.length; index++) {
+      const mark = marks[index];
+      const waypoint = route[index];
+      if (!mark || !waypoint || waypoint.id !== mark.id || waypoint.label !== mark.id
+        || waypoint.targetRef !== mark.targetRef || !waypoint.pos
+        || !Number.isFinite(waypoint.pos.x) || !Number.isFinite(waypoint.pos.z)) return false;
+    }
+    return true;
+  },
+
+  _isExactCeresFormationBinding(slot) {
+    if (!slot || slot.ambiguous || !slot.entryRef || !slot.jobRef
+      || !slot.entityRef || !slot.dataRef) return false;
+    const entry = slot.entryRef;
+    const job = slot.jobRef;
+    const entity = slot.entityRef;
+    if (this._byId()[slot.jobId] !== entry
+      || entry.job !== job
+      || entry.entityId !== entity.id
+      || this.state.entities?.get(entry.entityId) !== entity
+      || entity.data !== slot.dataRef
+      || entry.kind !== slot.kind
+      || entry.sectorId !== CERES_ACTIVITY_SECTOR_ID
+      || entry.worldRecordId !== slot.worldRecordId
+      || job.schema !== NPC_JOB_SCHEMA
+      || job.id !== slot.jobId
+      || job.kind !== slot.kind
+      || job.corrupt === true
+      || job.materialized !== true
+      || job.phase === NPC_JOB_PHASE.COMPLETE
+      || !legalFormationJobPhase(slot.kind, job.phase)
+      || !this._hasExactCeresFormationRoute(slot, job)
+      || !this._isExactCeresFormationActor(entity, slot, true)
+      || !entity.pos || !Number.isFinite(entity.pos.x) || !Number.isFinite(entity.pos.z)
+      || !this._worldRecordAllowsCeresFormation(slot)) return false;
+    return true;
+  },
+
+  _tryDriveCeresEscortFormation(entry, entity) {
+    const authority = this._ensureCeresEscortAuthority();
+    const escort = authority.escort;
+    const ward = authority.ward;
+    if (!entry || entry !== escort.entryRef || entity !== escort.entityRef
+      || entry.control || !this.state.world
+      || this.state.world.currentSectorId !== CERES_ACTIVITY_SECTOR_ID
+      || !this._isExactCeresFormationBinding(escort)
+      || !this._isExactCeresFormationBinding(ward)) return false;
+
+    // The authored relationship must still be the current kernel waypoint. The stable ids above
+    // establish WHO may form up; targetRef only proves that this exact route phase still asks for it.
+    const routeIndex = entry.job.routeIndex;
+    const route = entry.job.route;
+    const authoredMarks = CERES_ESCORT_SLOT && CERES_ESCORT_SLOT.route
+      && CERES_ESCORT_SLOT.route.marks;
+    if (!Array.isArray(route) || !Array.isArray(authoredMarks)
+      || route.length !== authoredMarks.length
+      || !Number.isInteger(routeIndex) || routeIndex < 0 || routeIndex >= route.length) return false;
+    const waypoint = route[routeIndex];
+    const authoredMark = authoredMarks[routeIndex];
+    if (!waypoint || !authoredMark || waypoint.id !== authoredMark.id
+      || waypoint.targetRef !== CERES_ESCORT_WARD_TARGET_REF
+      || authoredMark.targetRef !== CERES_ESCORT_WARD_TARGET_REF) return false;
+
+    const wardEntity = ward.entityRef;
+    const velocity = wardEntity.vel;
+    let wardSpeed = 0;
+    let heading;
+    if (velocity && Number.isFinite(velocity.x) && Number.isFinite(velocity.z)) {
+      wardSpeed = Math.hypot(velocity.x, velocity.z);
+    }
+    if (wardSpeed > CERES_ESCORT_VELOCITY_EPSILON) {
+      heading = Math.atan2(velocity.z, velocity.x);
+    } else if (Number.isFinite(wardEntity.rot)) {
+      heading = wardEntity.rot;
+    } else {
+      return false;
+    }
+    if (!Number.isFinite(entity.rot)) return false;
+
+    const headingX = Math.cos(heading);
+    const headingZ = Math.sin(heading);
+    const targetX = wardEntity.pos.x - headingX * CERES_ESCORT_AFT_WU;
+    const targetZ = wardEntity.pos.z - headingZ * CERES_ESCORT_AFT_WU;
+    const dx = targetX - entity.pos.x;
+    const dz = targetZ - entity.pos.z;
+    const distance = Math.hypot(dx, dz);
+    if (!Number.isFinite(distance)) return false;
+
+    // Traffic publishes the exact Wasp's derived propulsion scalars. Read them directly here:
+    // resolvePropulsionProfile legitimately merges partial authored profiles with fresh objects,
+    // which is useful off the hot path but would violate this controller's zero-allocation tick.
+    const derivedPropulsion = entity.data && entity.data.derived && entity.data.derived.propulsion;
+    const authoredPropulsion = derivedPropulsion || entity.propulsion
+      || (entity.flightModel && entity.flightModel.propulsion);
+    const governedSpeed = Math.max(1,
+      finite(authoredPropulsion && authoredPropulsion.combatSpeed, entity.maxSpeed || 1));
+    const deadInput = Math.max(0, finite(
+      authoredPropulsion && authoredPropulsion.assist && authoredPropulsion.assist.deadInput,
+      0.025,
+    ));
+    const minimumThrottle = clamp(deadInput + 0.001, 0, CERES_ESCORT_MAX_THROTTLE);
+    const wardThrottle = wardSpeed > CERES_ESCORT_VELOCITY_EPSILON
+      ? clamp(Math.max(wardSpeed / governedSpeed, minimumThrottle), 0, CERES_ESCORT_MAX_THROTTLE)
+      : 0;
+    const escortVelocity = entity.vel;
+    const escortForwardSpeed = escortVelocity
+      && Number.isFinite(escortVelocity.x) && Number.isFinite(escortVelocity.z)
+      ? escortVelocity.x * headingX + escortVelocity.z * headingZ
+      : 0;
+    const relativeOverspeed = wardSpeed > CERES_ESCORT_VELOCITY_EPSILON
+      && escortForwardSpeed - wardSpeed > CERES_ESCORT_RELATIVE_OVERSPEED_WU_S;
+
+    if (distance <= CERES_ESCORT_DEADBAND_WU) {
+      const brake = wardSpeed <= CERES_ESCORT_VELOCITY_EPSILON || relativeOverspeed;
+      this._writeIntent(entity, 0, brake ? 0 : wardThrottle, false, heading, brake);
+      return true;
+    }
+
+    const aim = Math.atan2(dz, dx);
+    if (Math.abs(shortestAngleDelta(aim, entity.rot)) > CERES_ESCORT_TURN_ONLY_RAD) {
+      this._writeIntent(entity, 0, 0, false, aim, true);
+      return true;
+    }
+
+    const plannedThrottle = Math.max(0, finite(entry.job.speed, 0)) > 0
+      ? clamp(Math.max(entry.job.speed / governedSpeed, minimumThrottle), 0, CERES_ESCORT_MAX_THROTTLE)
+      : 0;
+    const catchupThrottle = clamp(
+      (distance - CERES_ESCORT_DEADBAND_WU) / CERES_ESCORT_CATCHUP_WU,
+      minimumThrottle,
+      CERES_ESCORT_MAX_THROTTLE,
+    );
+    this._writeIntent(entity, 0,
+      Math.max(wardThrottle, plannedThrottle, catchupThrottle), false, aim, false);
+    return true;
+  },
+
+  _drive(entry, entity) {
+    const job = entry.job;
+    if (!job || job.corrupt) { this._writeIntent(entity, 0, 0, false, entity.rot || 0); return; }
+    const phase = job.phase;
+
+    // The recovery link disables its exact hauler through the authored combat/status condition.
+    // Tender service instead uses a temporary control lease; a decorative service stamp must never
+    // become a second movement owner or stop a route after the lease has been released.
+    if (entity.data && entity.data.ceresCausalDisabled === true) {
+      this._writeIntent(entity, 0, 0, false, entity.rot || 0, true);
+      return;
+    }
+
+    if (phase === NPC_JOB_PHASE.FLEE) {
+      // Nearby gunfire can suspend a job without a team-1 spatial threat. Workers hold;
+      // a loaded hull keeps its tow and leaves without boost; everyone else bolts.
+      const isWorker = entry.kind === NPC_JOB_KIND.MINER
+        || entry.kind === NPC_JOB_KIND.SALVOR
+        || entry.kind === NPC_JOB_KIND.TENDER
+        || entry.kind === NPC_JOB_KIND.SURVEYOR;
+      const isCarrying = entry.violenceSlow === true
+        || !!(entity.data?.cargoManifest?.totalQty > 0);
+      const hold = entry.violenceHold === true || (isWorker && !isCarrying && entry.threatId == null);
+      if (hold) {
+        this._writeIntent(entity, 0, 0, false, entity.rot || 0, true);
+        return;
+      }
+      let ax = entry.violenceX;
+      let az = entry.violenceZ;
+      const threat = entry.threatId != null && this.state.entities
+        ? this.state.entities.get(entry.threatId)
+        : null;
+      if (!(Number.isFinite(ax) && Number.isFinite(az)) && threat && threat.pos) {
+        ax = threat.pos.x;
+        az = threat.pos.z;
+      }
+      if (Number.isFinite(ax) && Number.isFinite(az)) {
+        const aim = Math.atan2(entity.pos.z - az, entity.pos.x - ax);
+        this._writeIntent(entity, 0, 1, !isCarrying && entry.violenceSlow !== true, aim, false);
+      } else {
+        this._writeIntent(entity, 0, 0, false, entity.rot || 0);
+      }
+      return;
+    }
+
+    // R6 exact authored formation: all normal patrol phases follow the live ward. FLEE above and
+    // the update-loop control-lease gate remain strict higher-precedence owners.
+    if (this._tryDriveCeresEscortFormation(entry, entity)) return;
+
+    // PQ-045 bounded real-target consumer. Only five exact, already-live Ceres relationships can
+    // reach this branch; everything else retains the authored route controller below.
+    if (this._tryDriveCeresRealTarget(entry, entity)) return;
+
+    if (phase === NPC_JOB_PHASE.TRANSIT || phase === NPC_JOB_PHASE.RETURN) {
+      const planned = routePosition(job);
+      const target = this._targetWaypointPos(job);
+      if (planned && target) {
+        const dx = target.x - planned.x;
+        const dz = target.z - planned.z;
+        const remaining = Math.hypot(dx, dz);
+        const speed = Math.max(0, finite(job.speed, 0));
+        const profile = resolvePropulsionProfile(entity, this.state);
+        const aim = remaining > 0.0001
+          ? Math.atan2(dz, dx)
+          : finite(job.heading, entity.rot || 0);
+
+        if (profile && profile.family === DRIVE_FAMILIES.SAIL) {
+          // A field sail's positive throttle is environmental acceleration along the field vector,
+          // not a speed command and not necessarily aligned with this authored route. Its negative
+          // throttle is the family-authored local trim thruster. Fly a deterministic planned
+          // trapezoid with that trim: pre-align opposite the leg, accelerate no longer than
+          // job.speed / trimAccel, coast, rotate without thrust, then apply the symmetric
+          // counter-trim. This bounds peak physical speed without consulting or mutating the live
+          // pose/velocity, and leaves the kernel as the only route progress/clock owner.
+          const progress = clamp(finite(job.progress, 0), 0, 1);
+          const totalDistance = progress < 1 - 1e-9
+            ? remaining / Math.max(1e-9, 1 - progress)
+            : remaining;
+          const durationS = speed > 0 ? totalDistance / speed : 0;
+          const elapsedS = durationS * progress;
+          const remainingS = Math.max(0, durationS - elapsedS);
+          const trimAccel = Math.max(0.001, finite(profile.trimAccel, 0));
+          const yawRate = Math.max(0.001, finite(profile.maxYawRate, 0));
+          const yawAccel = Math.max(0.001, finite(profile.yawAccel, 0));
+          const turnS = Math.min(durationS * 0.25,
+            Math.PI / yawRate + yawRate / yawAccel);
+          const burnS = Math.min(speed / trimAccel,
+            Math.max(0, durationS * 0.5 - turnS));
+          const accelerating = burnS > 0
+            && elapsedS >= turnS
+            && elapsedS < turnS + burnS;
+          const braking = burnS > 0 && remainingS <= burnS;
+          const turningToBrake = !braking && remainingS <= turnS + burnS;
+          const trim = accelerating || braking ? -1 : 0;
+          const trimAim = turningToBrake || braking ? aim : aim + Math.PI;
+          this._writeIntent(entity, 0, trim, false, trimAim, false);
+          return;
+        }
+
+        const governedSpeed = Math.max(1, finite(profile && profile.combatSpeed, 1));
+        const deadInput = Math.max(0, finite(profile && profile.assist && profile.assist.deadInput, 0.025));
+        // Assisted Flight V3 treats forward throttle as a speed command. Keep the command just above
+        // its authored dead zone for unusually slow routes; otherwise job.speed maps directly to the
+        // drive's combat-speed envelope. No physical pose/velocity participates in route authority.
+        const throttle = speed > 0
+          ? clamp(Math.max(speed / governedSpeed, deadInput + 0.001), 0, 1)
+          : 0;
+        const brake = speed > 0 && remaining <= speed * ROUTE_BRAKE_WINDOW_S;
+        const prioritySprint = phase === NPC_JOB_PHASE.TRANSIT
+          && isPriorityCourierTransitJob(job, entity);
+        this._writeIntent(entity, 0, brake ? 0 : throttle, prioritySprint && !brake, aim, brake);
+        return;
+      }
+    }
+    // Stationary phases (commission / depart / approach / work / load / unload / hold): hold position.
+    this._writeIntent(entity, 0, 0, false, entity.rot || 0);
+  },
+
+  /** The world position of the waypoint the current transit/return leg is heading toward, or null. */
+  _targetWaypointPos(job) {
+    const desc = describeMaterialization(job);
+    if (!desc) return null;
+    if (desc.targetId && Array.isArray(job.route)) {
+      const wp = job.route.find((w) => w && w.id === desc.targetId);
+      if (wp && wp.pos) return { x: wp.pos.x, z: wp.pos.z };
+    }
+    return null;
+  },
+
+  // ── threat / flee ─────────────────────────────────────────────────────────────────────────────
+  _clearViolenceStamp(entry) {
+    if (!entry) return;
+    entry.violenceUntilSimT = null;
+    entry.violenceHold = false;
+    entry.violenceSlow = false;
+    entry.violenceX = null;
+    entry.violenceZ = null;
+  },
+
+  _stampViolence(entry, threat) {
+    const now = finite(this.state && this.state.simTime, 0);
+    if (threat && Number.isFinite(threat.untilSimT)) entry.violenceUntilSimT = threat.untilSimT;
+    else entry.violenceUntilSimT = now + 5;
+    if (!threat) return;
+    if (threat.hold === true) entry.violenceHold = true;
+    else if (threat.hold === false) entry.violenceHold = false;
+    if (threat.slow === true) entry.violenceSlow = true;
+    else if (threat.slow === false) entry.violenceSlow = false;
+    if (Number.isFinite(threat.x) && Number.isFinite(threat.z)) {
+      entry.violenceX = threat.x;
+      entry.violenceZ = threat.z;
+    }
+    if (threat.entityId != null) entry.threatId = threat.entityId;
+  },
+
+  /**
+   * Traffic-facing flee/hold suspend. The kernel owns phase; this owner keeps the hull's intent.
+   * Idempotent: a live flee refreshes the violence stamp without stacking phases.
+   */
+  interruptJob(jobId, threat = null) {
+    if (jobId == null) return false;
+    const entry = this._byId()[jobId];
+    if (!entry || !entry.job || entry.job.corrupt) return false;
+    if (entry.control) return false;
+    if (entry.job.phase === NPC_JOB_PHASE.COMPLETE) return false;
+    this._stampViolence(entry, threat);
+    if (entry.job.phase !== NPC_JOB_PHASE.FLEE) {
+      interrupt(entry.job, { entityId: threat && threat.entityId != null ? threat.entityId : null });
+    }
+    this._threatQueryDirty = true;
+    return true;
+  },
+
+  resumeJob(jobId) {
+    if (jobId == null) return false;
+    const entry = this._byId()[jobId];
+    if (!entry || !entry.job) return false;
+    if (entry.control) return false;
+    resume(entry.job);
+    entry.threatId = null;
+    this._clearViolenceStamp(entry);
+    this._threatQueryDirty = true;
+    return true;
+  },
+
+  _reconcileThreatResult(entry, resultId) {
+    const job = entry.job;
+    if (!job || job.corrupt || job.phase === NPC_JOB_PHASE.COMPLETE) return;
+    const nearest = resultId != null && this.state.entities
+      ? this.state.entities.get(resultId)
+      : null;
+    const liveHostile = this._isJobThreat(nearest)
+      ? nearest
+      : null;
+    const now = finite(this.state && this.state.simTime, 0);
+    const violenceActive = Number.isFinite(entry.violenceUntilSimT) && now < entry.violenceUntilSimT;
+    if (job.phase === NPC_JOB_PHASE.FLEE) {
+      if (liveHostile) {
+        entry.threatId = liveHostile.id;
+        if (!violenceActive) this._clearViolenceStamp(entry);
+        return;
+      }
+      if (violenceActive) return;
+      resume(job);
+      entry.threatId = null;
+      this._clearViolenceStamp(entry);
+      return;
+    }
+    if (liveHostile) {
+      interrupt(job, { entityId: liveHostile.id });
+      entry.threatId = liveHostile.id;
+    }
+  },
+
+  _isJobThreat(entity) {
+    if (!entity || entity.alive === false || entity.type !== 'ship') return false;
+    if (entity.team === 1) return eligibleActiveHostile(entity);
+    return entity.id === this.state?.playerId && isPlayerWanted(this.state);
+  },
+
+  _threatResultWithWantedPlayer(request) {
+    if (!request || !isPlayerWanted(this.state)) return request ? request.resultId : null;
+    const player = this.state.entities && this.state.playerId != null
+      ? this.state.entities.get(this.state.playerId)
+      : null;
+    if (!player || player.alive === false || player.type !== 'ship' || !player.pos) return request.resultId;
+    const dx = player.pos.x - request.x;
+    const dz = player.pos.z - request.z;
+    const d2 = dx * dx + dz * dz;
+    if (d2 > request.radiusSq) return request.resultId;
+    if (request.resultId == null || d2 < request.bestDistanceSq) return player.id;
+    if (d2 === request.bestDistanceSq && String(player.id) < String(request.resultId)) return player.id;
+    return request.resultId;
+  },
+
+  // ── sector transitions: virtualize on exit, re-link + advance on enter ───────────────────────
+  _onSectorExit(p) {
+    const sectorId = p && p.sectorId;
+    if (!sectorId) return;
+    const byId = this._byId();
+    for (const jobId of Object.keys(byId)) {
+      const entry = byId[jobId];
+      if (!entry || entry.sectorId !== sectorId) continue;
+      // Keep the record; drop the live link. lastAdvanceSimT already holds the last live-advance time,
+      // which is (to within a tick) the exit time — the anchor the re-entry catch-up measures from.
+      let ent = entry.entityId != null && this.state.entities ? this.state.entities.get(entry.entityId) : null;
+      const realTargetJobBinding = this._ceresRealTargetJobBinding(jobId);
+      if (ent && realTargetJobBinding
+        && !this._hasRetainedCeresRealTargetReleaseActor(jobId, entry, ent)) {
+        // Exit virtualizes the authoritative job regardless, but actor cleanup belongs only to the
+        // previously admitted exact object/data identity. A same-id clone or in-place semantic
+        // reclassification is foreign authority and must keep its marker/brake byte-for-byte.
+        ent = null;
+      }
+      clearRouteBrake(ent);
+      if (ent && ent.data && ent.data.jobId === jobId) {
+        delete ent.data.jobId;
+        delete ent.data.jobPhase;
+        delete ent.data.jobProgress;
+      }
+      this._clearTugAttachment(entry, 'npc_tow_sector_exit');
+      virtualize(entry.job);
+      entry.entityId = null;
+      entry.threatId = null;
+      this._clearViolenceStamp(entry);
+    }
+    if (sectorId === CERES_ACTIVITY_SECTOR_ID) {
+      this._resetCeresEscortAuthority();
+      this._resetCeresRealTargetAuthority();
+    }
+  },
+
+  _onSectorEnter(p) {
+    const sectorId = p && p.sectorId;
+    if (!sectorId) return;
+    // Exit, deserialize/newGame, and seed changes own hard cache resets. Enter is a bounded
+    // revalidation seam, including same-sector continuous handoffs; resetting here would erase a
+    // previously admitted terminal identity before a persistent actor ambiguity can preserve it.
+    // Re-link is done lazily in update() once the producer has rematerialized the hulls this tick;
+    // an immediate pass here also catches hulls already present (continuous handoff).
+    const simT = finite(this.state.simTime, 0);
+    const byId = this._byId();
+    for (const jobId of Object.keys(byId)) {
+      const entry = byId[jobId];
+      if (!entry || entry.sectorId !== sectorId) continue;
+      if (entry.entityId == null) {
+        this._tryRelink(entry, simT);
+        continue;
+      }
+      const entity = this.state.entities && this.state.entities.get(entry.entityId);
+      const realTargetBinding = this._ceresRealTargetJobBinding(jobId);
+      if (entity && realTargetBinding
+        && !this._hasRetainedCeresRealTargetMaterializedActor(jobId, entry, entity)) {
+        if (this._hasRetainedCeresRealTargetActorAmbiguity(jobId, entry, entity)) {
+          // A spawn seam may already have recorded this exact actor plus a malformed durable-record
+          // contender. Preserve that fail-closed ambiguity for the real removal event, but do not use
+          // enter to scan, admit terminal identity, or restore movement while uniqueness is false.
+          // A same-key entry/job wrapper replacement must still consume pre-ambiguity terminal refs;
+          // restoring the old wrappers later cannot revive authority without a legitimate seam.
+          this._invalidateCeresRealTargetTerminalAuthorityIfReplaced(
+            realTargetBinding,
+            entry,
+            entity,
+          );
+          continue;
+        }
+        // Same-sector enter may revalidate only an already-admitted materialized actor. A semantic
+        // clone at the same numeric id cannot bootstrap authority from equal values; first admission
+        // remains producer assignment, or virtual relink after a real lifecycle reset.
+        this._clearCeresRealTargetsForJob(jobId, true);
+        continue;
+      }
+      if (entity) this._refreshCeresRealTargetsForEntry(entry, entity);
+    }
+  },
+
+  /** Find the rematerialized hull for a virtual job (by worldRecordId), advance the away time, materialize. */
+  _tryRelink(entry, simT) {
+    const entity = this._findEntityByRecordId(entry.worldRecordId);
+    if (!entity) return false;
+    const formationSlot = this._ceresFormationSlotForWorldRecordId(entry.worldRecordId);
+    const realTargetActor = this._ceresRealTargetActorBinding(entry.worldRecordId);
+    if (realTargetActor) {
+      if (!this._isCanonicalCeresRealTargetEntry(realTargetActor, entry, entity, false)) return false;
+      const authority = this._ensureCeresRealTargetAuthority();
+      for (const binding of authority.bindings) {
+        if (binding.jobId !== realTargetActor.jobId) continue;
+        if ((binding.entryRef && binding.entryRef !== entry)
+          || (binding.jobRef && binding.jobRef !== entry.job)
+          || (binding.actorRef && binding.actorRef !== entity)
+          || (binding.actorDataRef && binding.actorDataRef !== entity.data)
+          || (binding.routeRef && binding.routeRef !== entry.job.route)) return false;
+      }
+    }
+    // Advance the whole offscreen interval in ONE aggregated call, resuming across the (never-hit-in-
+    // practice) transition cap so a pathological dt cannot silently drop transitions. NO sink here:
+    // offscreen catch-up is historical — replaying thousands of past-phase intents on the live bus
+    // would be both wrong (they didn't happen on-screen) and, under a pathological dt, unbounded.
+    // The job STATE advances truthfully; only the current on-screen materialization is surfaced.
+    const elapsed = Math.min(MAX_CATCHUP_S, Math.max(0, simT - finite(entry.lastAdvanceSimT, simT)));
+    if (elapsed > 0 && entry.job.phase !== NPC_JOB_PHASE.COMPLETE) {
+      let out = advance(entry.job, elapsed);
+      let guard = 0;
+      while (out.length && isTruncated(out[out.length - 1]) && guard++ < 100000) {
+        const t = out[out.length - 1];
+        out = advance(entry.job, finite(t.remainingDt, 0));
+      }
+    }
+    entry.lastAdvanceSimT = simT;
+    if (entry.job.phase === NPC_JOB_PHASE.COMPLETE) {
+      // A hauler that finished its run while away: no live job to resume; hand the hull back.
+      clearRouteBrake(entity);
+      this._clearTugAttachment(entry, 'npc_tow_offscreen_complete');
+      if (entity.data && entity.data.jobId === ('job:' + entry.worldRecordId)) delete entity.data.jobId;
+      if (formationSlot) this._clearCeresFormationEntry(formationSlot, entry);
+      delete this._byId()['job:' + entry.worldRecordId];
+      return true;
+    }
+    materialize(entry.job);
+    entry.entityId = entity.id;
+    entry.threatId = null;
+    clearRouteBrake(entity);
+    entity.data.jobId = 'job:' + entry.worldRecordId;
+    entity.data.jobPhase = entry.job.phase;
+    entity.data.jobProgress = Number.isFinite(entry.job.progress) ? entry.job.progress : 0;
+    if (formationSlot) this._bindCeresFormationSlot(formationSlot, entry, entity);
+    this._refreshCeresRealTargetsForEntry(entry, entity);
+    return true;
+  },
+
+  _findEntityByRecordId(worldRecordId) {
+    if (!worldRecordId) return null;
+    const list = this.state.entityList || [];
+    const formationSlot = this._ceresFormationSlotForWorldRecordId(worldRecordId);
+    const realTargetActor = this._ceresRealTargetActorBinding(worldRecordId);
+    if (formationSlot || realTargetActor) {
+      // This is the existing bounded rematerialization scan. Scan to the end only for the two exact
+      // formation identities and the three admitted real-target actors so duplicates cannot be hidden
+      // by first-match order. Steady drive never scans; it consumes the identities established here.
+      if (formationSlot) {
+        formationSlot.entryRef = null;
+        formationSlot.jobRef = null;
+        formationSlot.entityRef = null;
+        formationSlot.dataRef = null;
+        formationSlot.ambiguous = false;
+      }
+      let match = null;
+      let count = 0;
+      for (const entity of list) {
+        if (!entity || !entity.alive || !entity.data
+          || entity.data.worldRecordId !== worldRecordId
+          || this.state.entities?.get(entity.id) !== entity) continue;
+        count++;
+        if (count === 1) match = entity;
+      }
+      if (count !== 1) {
+        if (formationSlot) formationSlot.ambiguous = count > 1;
+        if (realTargetActor && count > 1) this._markCeresRealTargetActorAmbiguous(worldRecordId);
+        return null;
+      }
+      if (realTargetActor && !this._isExactCeresRealTargetActor(realTargetActor, match, false)) {
+        return null;
+      }
+      if (formationSlot) {
+        formationSlot.entityRef = match;
+        formationSlot.dataRef = match.data;
+      }
+      return match;
+    }
+    for (const e of list) {
+      if (e && e.alive && e.data && e.data.worldRecordId === worldRecordId) return e;
+    }
+    return null;
+  },
+
+  _onEntityGone(p) {
+    const id = p && (p.id != null ? p.id : p.entityId);
+    if (id == null) return;
+    const entry = this._entryForEntity(id);
+    if (entry) this.release('job:' + entry.worldRecordId);
+    const byId = this._byId();
+    for (const jobId of Object.keys(byId)) {
+      const candidate = byId[jobId];
+      if (!candidate || candidate.towTargetId !== id) continue;
+      this._clearTugAttachment(candidate, 'npc_tow_target_gone');
+    }
+  },
+
+  // ── save / restore ────────────────────────────────────────────────────────────────────────────
+  serialize() {
+    const byId = this._byId();
+    const out = { byId: {} };
+    for (const jobId of Object.keys(byId)) {
+      const entry = byId[jobId];
+      if (!entry || !entry.job) continue;
+      const job = serializeJob(entry.job);
+      if (!job) continue;
+      out.byId[jobId] = {
+        job,
+        kind: entry.kind || job.kind,
+        sectorId: entry.sectorId || null,
+        worldRecordId: entry.worldRecordId || null,
+        // entityId is deliberately NOT persisted: entity ids are not stable across load. The job
+        // re-links to its rematerialized hull by worldRecordId on the next sector enter.
+        //
+        // PQ-019B: `control` is deliberately NOT persisted either, for the same reason one step
+        // further on. A lease is a LIVE relationship between a controller and a hull. After a load
+        // `deserialize` virtualizes every job and nulls every entityId, so a restored lease would
+        // name a hull that does not exist yet and a controller that no longer exists at all —
+        // nobody left alive to release it. That is a permanently frozen patrol. Dropping the lease
+        // on load is the only fail-safe answer, and it is why activeJobControlClaimsAfterTerminal
+        // is trivially 0 across any reload.
+        lastAdvanceSimT: finite(entry.lastAdvanceSimT, 0),
+      };
+    }
+    const couriers = this.state.npcJobs && this.state.npcJobs.siteCouriers;
+    if (couriers && typeof couriers === 'object' && !Array.isArray(couriers) && Object.keys(couriers).length) {
+      out.siteCouriers = JSON.parse(JSON.stringify(couriers));
+    }
+    return out;
+  },
+
+  deserialize(data) {
+    // World re-entry happens before this restore step. An outgoing virtual job can therefore
+    // briefly re-link to an incoming durable hull during the earlier sector:enter. The saved bag
+    // below is authoritative; clear every live marker owned by this runtime before replacing it,
+    // then save:loaded will re-link only jobs that actually exist in the incoming envelope.
+    this._resetCeresEscortAuthority();
+    this._resetCeresRealTargetAuthority();
+    for (const entity of this.state.entityList || []) {
+      if (entity && entity.data && typeof entity.data.jobId === 'string'
+        && entity.data.jobId.startsWith('job:')) {
+        clearRouteBrake(entity);
+        delete entity.data.jobId;
+      }
+      if (entity && entity.data) {
+        // Tow ids are live numeric joins. Combat persistence restores the attachment itself (when
+        // applicable); the runtime adopts it on the next materialized tug tick, so stale markers
+        // from a retired object must never block a new finite load.
+        delete entity.data.npcTowAttachmentId;
+        delete entity.data.npcTowJobId;
+        delete entity.data.npcTowedByJobId;
+      }
+    }
+    const byId = {};
+    const src = data && data.byId && typeof data.byId === 'object' ? data.byId : {};
+    for (const jobId of Object.keys(src)) {
+      const saved = src[jobId];
+      if (!saved || !saved.job) continue;
+      const job = restoreJob(saved.job);
+      if (!job || job.corrupt) continue; // a corrupt save record is dropped, never resurrected
+      virtualize(job); // all hulls are cleared on load; every job restores VIRTUAL until re-linked
+      byId[jobId] = {
+        job,
+        kind: job.kind,
+        sectorId: saved.sectorId || null,
+        worldRecordId: saved.worldRecordId || null,
+        entityId: null,
+        lastAdvanceSimT: finite(saved.lastAdvanceSimT, 0),
+        threatId: null,
+        towAttachmentId: null,
+        towTargetId: null,
+        towOwnerRef: null,
+        towTargetRef: null,
+        towNextScanSimT: 0,
+      };
+    }
+    this.state.npcJobs = { byId, siteCouriers: {} };
+    if (data && data.siteCouriers && typeof data.siteCouriers === 'object' && !Array.isArray(data.siteCouriers)) {
+      this.state.npcJobs.siteCouriers = JSON.parse(JSON.stringify(data.siteCouriers));
+    }
+    this._threatQueries?.reset();
+    this._lastThreatQueryTick = null;
+    this._threatQueryDirty = true;
+  },
+};
+
+export default npcJobsRuntime;

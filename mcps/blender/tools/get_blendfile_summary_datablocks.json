@@ -1,0 +1,9 @@
+{
+  "name": "get_blendfile_summary_datablocks",
+  "description": "\nReturn a summary of the blend file: data-block counts, active workspace, and render engine.\n",
+  "inputSchema": {
+    "properties": {},
+    "title": "get_blendfile_summary_datablocksArguments",
+    "type": "object"
+  }
+}

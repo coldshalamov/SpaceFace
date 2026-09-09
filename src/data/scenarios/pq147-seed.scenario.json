@@ -1,0 +1,14 @@
+{
+  "schema": "spaceface.rangeDrill.v1",
+  "id": "drill.power.seed",
+  "powerId": "seed",
+  "action": "deployMassSeed",
+  "railSlot": 4,
+  "volume": "ring",
+  "title": "Lock-ring anchor",
+  "rule": "A LOCK-RING BECOMES AN ANCHOR YOU CAN HITCH",
+  "sentence": "Throw a lock-ring that becomes an anchor you can hitch, then it collapses.",
+  "instruction": "Throw the Mass Seed, wait for the lock-ring, then hitch the line. Shoot the seed if you need it gone.",
+  "seed": 14704,
+  "ticks": 120
+}

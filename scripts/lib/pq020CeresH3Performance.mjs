@@ -1,0 +1,605 @@
+import { summarizeFrameSamples } from './performanceClosureContracts.mjs';
+
+export const PQ020_H3_RECEIPT_SCHEMA = 'spaceface.pq020CeresH3Performance.v1';
+export const PQ020_H3_PROFILE_IDS = Object.freeze([
+  'ceres-entry-floor',
+  'cathedral-visible-target',
+]);
+export const PQ020_H3_REPETITIONS = 3;
+export const PQ020_H3_PIPELINE_SETTLE_TIMEOUT_MS = 30_000;
+export const PQ020_H3_MIN_RAW_INTERVALS = 120;
+export const PQ020_H3_BUDGETS = Object.freeze({
+  nominalTargetP95Ms: 16.7,
+  targetSamplingEnvelopeP95Ms: 17.5,
+  floorP95Ms: 33.3,
+  floorSamplingEnvelopeP95Ms: 33.5,
+  matchedP95ToleranceMs: 0.8,
+  matchedP99ToleranceMs: 0.8,
+  maxExternalSchedulingHitchDelta: 2,
+  maxExternalSchedulingHitchDeltaPerRun: 1,
+  maxSeparatedGpuEnvelopeMs: 17.5,
+  maxFrameMs: 50,
+  maxMapOpenMs: 2_000,
+  maxSectorEntryMs: 5_000,
+  maxBacklogSheddingFrames: 0,
+});
+
+export const PQ020_H3_PROBE_FAILURE_CLASSES = Object.freeze({
+  BROWSER_CONTEXT_CLOSED: 'BROWSER_CONTEXT_CLOSED_BEFORE_CELL_COMPLETION',
+  PROBE_FAILURE: 'PROBE_FAILURE_BEFORE_CELL_COMPLETION',
+});
+
+const SOFTWARE_RENDERER = /swiftshader|llvmpipe|software rasterizer|microsoft basic render/i;
+const BROWSER_CONTEXT_CLOSED = /target page, context or browser has been closed/i;
+
+export function classifyPq020H3ProbeFailure(error, {
+  phase = 'unknown',
+  completedPairCount = 0,
+} = {}) {
+  const problem = String(error?.message || error || 'unknown PQ-020 H3 probe failure');
+  const infrastructureInterrupted = BROWSER_CONTEXT_CLOSED.test(problem);
+  return {
+    failureClass: infrastructureInterrupted
+      ? PQ020_H3_PROBE_FAILURE_CLASSES.BROWSER_CONTEXT_CLOSED
+      : PQ020_H3_PROBE_FAILURE_CLASSES.PROBE_FAILURE,
+    infrastructureInterrupted,
+    productEvidenceValid: false,
+    retryableAfterRegression: infrastructureInterrupted,
+    phase: String(error?.routePhase || phase || 'unknown'),
+    completedPairCount: Number.isInteger(completedPairCount) && completedPairCount >= 0
+      ? completedPairCount
+      : 0,
+    problem,
+  };
+}
+
+export function validatePq020H3IncompleteReceipt(receipt = {}) {
+  const classificationFailures = [];
+  if (receipt?.schema !== PQ020_H3_RECEIPT_SCHEMA) {
+    classificationFailures.push(`schema must be ${PQ020_H3_RECEIPT_SCHEMA}`);
+  }
+  if (receipt?.disposition !== 'FAIL') classificationFailures.push('incomplete receipt disposition must be FAIL');
+  if (receipt?.productEvidenceValid !== false) {
+    classificationFailures.push('incomplete receipt must explicitly reject product evidence');
+  }
+  if (!Object.values(PQ020_H3_PROBE_FAILURE_CLASSES).includes(receipt?.failureClass)) {
+    classificationFailures.push('incomplete receipt must use a known probe failure class');
+  }
+  if (receipt?.infrastructureInterrupted === true
+      && receipt?.failureClass !== PQ020_H3_PROBE_FAILURE_CLASSES.BROWSER_CONTEXT_CLOSED) {
+    classificationFailures.push('Browser interruption must use the Browser-context-closed failure class');
+  }
+  if (typeof receipt?.phase !== 'string' || receipt.phase.length === 0) {
+    classificationFailures.push('incomplete receipt must name the interrupted phase');
+  }
+  if (!Number.isInteger(receipt?.completedPairCount) || receipt.completedPairCount < 0) {
+    classificationFailures.push('incomplete receipt must count completed matched pairs');
+  }
+  if (receipt?.cleanup?.browserClosed !== true || receipt?.cleanup?.serverClosed !== true) {
+    classificationFailures.push('incomplete receipt must prove owned Browser and server cleanup');
+  }
+
+  const conclusion = receipt?.infrastructureInterrupted === true
+    ? `owned Browser context closed during ${receipt.phase} after ${receipt.completedPairCount} complete pair(s); cell is incomplete and makes no product performance conclusion`
+    : `probe stopped during ${receipt?.phase || 'unknown'} after ${receipt?.completedPairCount ?? 0} complete pair(s); cell is incomplete and makes no product performance conclusion`;
+
+  return {
+    pass: false,
+    classificationPass: classificationFailures.length === 0,
+    evidenceStatus: 'INCOMPLETE_NO_PRODUCT_CONCLUSION',
+    failures: classificationFailures.length > 0 ? classificationFailures : [conclusion],
+    profiles: [],
+    budgets: PQ020_H3_BUDGETS,
+    absoluteBudget: null,
+  };
+}
+
+export function validatePq020H3PerformanceReceipt(receipt = {}) {
+  const failures = [];
+  if (receipt?.schema !== PQ020_H3_RECEIPT_SCHEMA) {
+    failures.push(`schema must be ${PQ020_H3_RECEIPT_SCHEMA}`);
+  }
+  if (receipt?.disposition !== 'PASS') failures.push('receipt disposition must be PASS');
+  if (!Number.isInteger(receipt?.fixedSeed)) failures.push('fixedSeed must be an integer');
+  validateViewport(receipt?.viewport, failures);
+  validateRuntime(receipt, failures);
+  validateQuality(receipt?.qualityPreserving, failures);
+  validateCleanup(receipt?.cleanup, failures);
+  validateRouteMetadata(receipt?.route, failures);
+  if (!Array.isArray(receipt?.pageIssues)) failures.push('pageIssues must be an array');
+  else if (receipt.pageIssues.length > 0) failures.push('pageIssues must be empty');
+
+  const rows = Array.isArray(receipt?.profiles) ? receipt.profiles : [];
+  const byId = new Map();
+  for (const row of rows) {
+    if (!row || typeof row.id !== 'string') {
+      failures.push('every performance profile must have an id');
+      continue;
+    }
+    if (byId.has(row.id)) failures.push(`duplicate profile ${row.id}`);
+    byId.set(row.id, row);
+  }
+  for (const id of PQ020_H3_PROFILE_IDS) {
+    if (!byId.has(id)) failures.push(`missing required profile ${id}`);
+  }
+  for (const id of byId.keys()) {
+    if (!PQ020_H3_PROFILE_IDS.includes(id)) failures.push(`unknown profile ${id}`);
+  }
+
+  const profiles = [];
+  for (const id of PQ020_H3_PROFILE_IDS) {
+    const profile = byId.get(id);
+    if (!profile) continue;
+    const repetitions = Array.isArray(profile.repetitions) ? profile.repetitions : [];
+    if (repetitions.length !== PQ020_H3_REPETITIONS) {
+      failures.push(`${id} must contain exactly ${PQ020_H3_REPETITIONS} repetitions`);
+    }
+    const validated = repetitions.map((run, index) => validateRun({
+      id,
+      run,
+      expectedIndex: index + 1,
+      expectedSeed: receipt?.fixedSeed,
+      failures,
+    }));
+    profiles.push({
+      id,
+      repetitions: validated,
+      median: medianSummary(validated.map((row) => row.summary)),
+    });
+  }
+
+  const floor = byId.get(PQ020_H3_PROFILE_IDS[0]);
+  const target = byId.get(PQ020_H3_PROFILE_IDS[1]);
+  const hitchAttribution = floor && target
+    ? validateMatchedProfiles(floor, target, failures)
+    : null;
+
+  return {
+    pass: failures.length === 0,
+    failures: [...new Set(failures)],
+    profiles,
+    budgets: PQ020_H3_BUDGETS,
+    hitchAttribution,
+    absoluteBudget: evaluateAbsoluteTargetBudget(rows),
+  };
+}
+
+function validateViewport(viewport, failures) {
+  if (viewport?.width !== 1830 || viewport?.height !== 973 || viewport?.deviceScaleFactor !== 1) {
+    failures.push('viewport must be the fixed 1830x973 target profile at deviceScaleFactor 1');
+  }
+}
+
+function validateRuntime(receipt, failures) {
+  if (receipt?.runtime !== 'browser-chromium-headed') {
+    failures.push('runtime must be browser-chromium-headed');
+  }
+  const renderer = String(receipt?.gpu?.renderer || '');
+  if (receipt?.gpu?.available !== true || !renderer || SOFTWARE_RENDERER.test(renderer)) {
+    failures.push('acceptance requires a hardware GPU renderer');
+  }
+  if (!/intel/i.test(renderer) || !/D3D11/i.test(renderer)) {
+    failures.push('target profile requires the bound Intel D3D11 renderer');
+  }
+  const broker = receipt?.broker || {};
+  if (broker.primaryAcceptance !== true || broker.diagnostic === true || !broker.claimId) {
+    failures.push('primary broker acceptance with a claim id is required');
+  }
+}
+
+function validateQuality(quality, failures) {
+  if (quality?.settingsOverridesApplied !== false || quality?.defaultQualityRetained !== true) {
+    failures.push('default quality must remain active with no settings overrides');
+  }
+  if (quality?.performanceImprovementClaimed !== false) {
+    failures.push('PQ-020 H3 profile differences must not claim an optimization improvement');
+  }
+  if (quality?.absoluteTargetClaimed !== false || quality?.absoluteBudgetWaiverGranted !== false) {
+    failures.push('PQ-020 H3 must report the absolute target separately without claiming or waiving it');
+  }
+}
+
+function validateCleanup(cleanup, failures) {
+  if (cleanup?.browserClosed !== true || cleanup?.serverClosed !== true) {
+    failures.push('owned Browser and server cleanup must both complete');
+  }
+}
+
+function validateRouteMetadata(route, failures) {
+  if (route?.pairCount !== PQ020_H3_REPETITIONS) {
+    failures.push(`route must declare exactly ${PQ020_H3_REPETITIONS} matched pairs`);
+  }
+  if (typeof route?.declaredRoute !== 'string' || route.declaredRoute.trim().length < 20) {
+    failures.push('route must describe the measured public owner path');
+  }
+  if (!Array.isArray(route?.retainedEvidenceReferences)
+      || route.retainedEvidenceReferences.length < 2) {
+    failures.push('route must retain the accepted PQ-020 H1 and H2 evidence references');
+  }
+  const pairs = Array.isArray(route?.pairs) ? route.pairs : [];
+  if (pairs.length !== PQ020_H3_REPETITIONS) {
+    failures.push(`route metadata must bind all ${PQ020_H3_REPETITIONS} matched pairs`);
+  }
+  for (let index = 0; index < pairs.length; index += 1) {
+    const expected = index + 1;
+    const row = pairs[index];
+    if (row?.repetition !== expected || row?.pairId !== `pq020-h3-pair-${expected}`) {
+      failures.push(`route metadata pair ${expected} identity differs`);
+    }
+    if (row?.publicRoute !== true) failures.push(`route metadata pair ${expected} must bind the public route`);
+  }
+}
+
+function validateRun({ id, run, expectedIndex, expectedSeed, failures }) {
+  const label = `${id}[${expectedIndex}]`;
+  if (run?.index !== expectedIndex) failures.push(`${label} repetition index is not exact`);
+  const rawSamples = Array.isArray(run?.rawSamples) ? run.rawSamples : [];
+  if (rawSamples.length < PQ020_H3_MIN_RAW_INTERVALS) {
+    failures.push(`${label} requires at least ${PQ020_H3_MIN_RAW_INTERVALS} raw frame intervals`);
+  }
+  const summary = summarizeFrameSamples(rawSamples);
+  validateSummaryBinding(label, summary, run?.attribution?.frameMs, failures);
+  validateRuntimeContinuity(label, rawSamples, failures);
+  validateAttribution(label, run?.attribution, failures);
+  validateRouteFacts(label, id, expectedIndex, expectedSeed, run?.routeFacts, failures);
+  return { index: run?.index ?? null, summary, routeFacts: run?.routeFacts ?? null };
+}
+
+function validateSummaryBinding(label, summary, observed, failures) {
+  if (!observed || typeof observed !== 'object') {
+    failures.push(`${label} attribution frame summary is missing`);
+    return;
+  }
+  for (const key of ['sampleCount', 'p50', 'p95', 'p99', 'max']) {
+    if (!sameNumber(summary[key], observed[key])) {
+      failures.push(`${label} attribution ${key} does not match recomputed raw intervals`);
+    }
+  }
+  if (summary.framesAbove32Ms !== Number(observed.hitchesOver32Ms)) {
+    failures.push(`${label} attribution hitch count does not match recomputed raw intervals`);
+  }
+}
+
+function validateRuntimeContinuity(label, samples, failures) {
+  if (samples.some((sample) => sample?.mode !== 'flight'
+    || sample?.docked !== false
+    || sample?.playerControlExposed !== true
+    || sample?.visibility !== 'visible')) {
+    failures.push(`${label} raw intervals left visible controllable flight`);
+  }
+  if (samples.some((sample) => !finiteUnitScale(sample?.timeScale))) {
+    failures.push(`${label} raw intervals require bounded time-scale evidence`);
+  }
+}
+
+function validateAttribution(label, attribution, failures) {
+  if (attribution?.pipeline?.warmup?.pass !== true || attribution?.pipeline?.warmup?.timedOut === true) {
+    failures.push(`${label} pipeline warmup/stability did not pass`);
+  }
+  if (attribution?.memory?.comparableState?.pass !== true) {
+    failures.push(`${label} route state changed during measurement`);
+  }
+  if (attribution?.gpuTimers?.available !== true
+      || attribution?.gpuTimers?.captureValid !== true
+      || attribution?.gpuTimers?.lastDisjoint === true) {
+    failures.push(`${label} GPU timer capture is unavailable, invalid, or disjoint`);
+  }
+  const isolation = attribution?.measurementIsolation;
+  if (isolation?.frameTimingGpuTimersEnabled !== false
+      || isolation?.gpuAttributionSeparated !== true
+      || !Number.isInteger(isolation?.gpuAttributionFrameCount)
+      || isolation.gpuAttributionFrameCount < 150
+      || !finitePositive(isolation?.gpuAttributionDurationMs)
+      || isolation?.settingsStable !== true
+      || isolation?.routeStable !== true
+      || attribution?.gpuTimers?.enabled !== true
+      || attribution?.gpuTimers?.drain?.drained !== true
+      || Number(attribution?.gpuTimers?.queryCounts?.completed) < 150) {
+    failures.push(`${label} must isolate frame timing from a complete stable post-window GPU attribution sample`);
+  }
+  const startSettings = attribution?.settings?.start;
+  const endSettings = attribution?.settings?.end;
+  if (!startSettings || !endSettings
+      || stableStringify(qualitySettingsSlice(startSettings))
+        !== stableStringify(qualitySettingsSlice(endSettings))) {
+    failures.push(`${label} settings changed during measurement`);
+  }
+  if (startSettings?.dynResScale !== 1 || startSettings?.timeScale !== 1) {
+    failures.push(`${label} requires default dynamic resolution and time scale at measurement start`);
+  }
+  if (!finiteUnitScale(endSettings?.timeScale)) {
+    failures.push(`${label} end time scale is missing or outside the runtime authority range`);
+  }
+  for (const key of ['calls', 'triangles', 'geometries', 'textures', 'programs']) {
+    if (!finiteNonnegative(attribution?.draw?.[key])) failures.push(`${label} draw.${key} is missing`);
+  }
+  for (const key of ['sim', 'render', 'vfx', 'ui']) {
+    if (!finiteNonnegative(attribution?.cpu?.phases?.[key]?.p95)) {
+      failures.push(`${label} cpu phase ${key}.p95 is missing`);
+    }
+  }
+  if (!attribution?.cpu?.systems || typeof attribution.cpu.systems !== 'object') {
+    failures.push(`${label} system attribution is missing`);
+  }
+}
+
+function validateRouteFacts(label, id, expectedIndex, expectedSeed, facts, failures) {
+  if (facts?.profileId !== id) failures.push(`${label} route profile identity differs`);
+  if (facts?.repetition !== expectedIndex) failures.push(`${label} route repetition identity differs`);
+  if (facts?.pairId !== `pq020-h3-pair-${expectedIndex}`) failures.push(`${label} route pair identity differs`);
+  if (facts?.recordedSeed !== expectedSeed) failures.push(`${label} fixed seed differs from the receipt`);
+  if (facts?.sectorId !== 'sector_ceres_belt') failures.push(`${label} must remain in sector_ceres_belt`);
+  if (facts?.mode !== 'flight' || facts?.docked !== false) failures.push(`${label} must retain controllable flight`);
+  if (facts?.trafficRuntime !== 'ordinary-sector-traffic') {
+    failures.push(`${label} must retain ordinary sector traffic`);
+  }
+  if (!Array.isArray(facts?.ambientTrafficIds)
+      || facts.ambientTrafficIds.length !== Number(facts?.ambientTrafficCount)) {
+    failures.push(`${label} ambient traffic ids must bind the measured count`);
+  }
+  for (const key of ['ambientTrafficCount', 'entityCount', 'colliderCount']) {
+    if (!finitePositive(facts?.[key])) failures.push(`${label} ${key} must be measured and positive`);
+  }
+  for (const key of ['queries', 'candidates']) {
+    if (!finitePositive(facts?.spatialHash?.[key])) {
+      failures.push(`${label} spatialHash.${key} must be measured and positive`);
+    }
+  }
+  if (!finiteNonnegative(facts?.mapOpenMs) || facts.mapOpenMs > PQ020_H3_BUDGETS.maxMapOpenMs) {
+    failures.push(`${label} map-open span exceeds ${PQ020_H3_BUDGETS.maxMapOpenMs} ms`);
+  }
+  if (!finiteNonnegative(facts?.sectorEntryMs)
+      || facts.sectorEntryMs > PQ020_H3_BUDGETS.maxSectorEntryMs) {
+    failures.push(`${label} sector-entry span exceeds ${PQ020_H3_BUDGETS.maxSectorEntryMs} ms`);
+  }
+
+  const cathedral = facts?.cathedral || {};
+  if (cathedral.siteId !== 'world_site_wreck_cathedral' || cathedral.entityCount !== 15) {
+    failures.push(`${label} must bind the exact 15-entity Wreck Cathedral identity`);
+  }
+  const expectedRole = id === 'cathedral-visible-target' ? 'cathedral-root' : 'ceres-entry-floor';
+  if (facts?.performanceSubject?.role !== expectedRole
+      || facts?.performanceSubject?.entityId == null
+      || facts?.performanceSubject?.admission !== 'ready'
+      || facts?.performanceSubject?.assetState !== 'authored') {
+    failures.push(`${label} requires authored ready performance subject ${expectedRole}`);
+  }
+  if (id === 'cathedral-visible-target') {
+    if (cathedral.rootAdmission !== 'ready' || cathedral.rootAssetState !== 'authored'
+        || cathedral.admittedComponentCount !== 7) {
+      failures.push(`${label} requires the authored admitted Cathedral root and seven components`);
+    }
+    if (cathedral.inFrame !== true || cathedral.cameraZoom !== 72) {
+      failures.push(`${label} Cathedral must be in frame at the public default zoom 72`);
+    }
+    if (cathedral.appliedLod !== 'lod0') {
+      failures.push(`${label} Cathedral performance target must use the recorded lod0 geometry`);
+    }
+    const colorGeometry = cathedral.geometry?.color;
+    const depthGeometry = cathedral.geometry?.depthPrepass;
+    if (colorGeometry?.drawables !== 1
+        || colorGeometry?.indexedDrawables !== 1
+        || colorGeometry?.uniqueVertices !== 70_822
+        || colorGeometry?.triangleIndices !== 259_983
+        || colorGeometry?.triangles !== 86_661) {
+      failures.push(`${label} Cathedral must retain the exact one-draw indexed, zero-area-pruned lod0 color topology`);
+    }
+    if (stableStringify(colorGeometry?.packedOrmSingleSampleMaterialRoles) !== stableStringify([
+      'copper_coil',
+      'exposed_alloy',
+      'heat_affected_alloy',
+      'hull',
+      'maintenance_mark',
+      'mechanical',
+      'signal',
+      'warning',
+    ])) {
+      failures.push(`${label} Cathedral must reuse one packed ORM sample across all eight PBR material roles`);
+    }
+    if (stableStringify(colorGeometry?.ordinaryOpenDepthMaterialRoles)
+        !== stableStringify(['exposed_alloy'])) {
+      failures.push(`${label} Cathedral must leave only exposed alloy on ordinary double-sided color/depth`);
+    }
+    if (depthGeometry?.drawables !== 1
+        || depthGeometry?.indexedDrawables !== 1
+        || depthGeometry?.uniqueVertices !== 70_822
+        || depthGeometry?.triangleIndices !== 254_337
+        || depthGeometry?.triangles !== 84_779
+        || stableStringify(depthGeometry?.roles) !== stableStringify(['closed-front'])
+        || depthGeometry?.trianglesByRole?.['closed-front'] !== 84_779
+        || depthGeometry?.minimalPositionDepthShaderDrawables !== 1
+        || cathedral.geometry?.prepassSharesColorAttributes !== true) {
+      failures.push(`${label} Cathedral must use one exact shared-position closed-depth index view`);
+    }
+    const depthTopology = cathedral.geometry?.depthTopology;
+    const topologyReport = depthTopology?.report;
+    if (depthTopology?.geometry !== 'indexed-zero-area-pruned-closed-depth-open-color'
+        || depthTopology?.activeLod !== 'lod0'
+        || topologyReport?.sourceTriangles !== 91_908
+        || topologyReport?.retainedTriangles !== 86_661
+        || topologyReport?.removedDegenerateTriangles !== 5_247
+        || topologyReport?.closedDepthTriangles !== 84_779
+        || topologyReport?.ordinaryOpenColorTriangles !== 1_882
+        || topologyReport?.closedExposedTriangles !== 36_268
+        || topologyReport?.openExposedTriangles !== 1_882
+        || topologyReport?.colorMaterialGroups !== 8) {
+      failures.push(`${label} Cathedral must prove the exact lod0 zero-area and exposed-shell topology classification`);
+    }
+  }
+}
+
+function validateMatchedProfiles(floor, target, failures) {
+  const floorRuns = Array.isArray(floor?.repetitions) ? floor.repetitions : [];
+  const targetRuns = Array.isArray(target?.repetitions) ? target.repetitions : [];
+  for (let index = 0; index < Math.min(floorRuns.length, targetRuns.length); index += 1) {
+    const left = floorRuns[index];
+    const right = targetRuns[index];
+    if (stableStringify(left?.attribution?.settings?.start)
+        !== stableStringify(right?.attribution?.settings?.start)) {
+      failures.push(`matched pair ${index + 1} uses different settings`);
+    }
+    if (!left?.routeFacts?.pairId || left.routeFacts.pairId !== right?.routeFacts?.pairId) {
+      failures.push(`matched pair ${index + 1} route identity changed at the Cathedral target`);
+    }
+    if (!Number.isInteger(left?.routeFacts?.recordedSeed)
+        || left.routeFacts.recordedSeed !== right?.routeFacts?.recordedSeed) {
+      failures.push(`matched pair ${index + 1} fixed-seed route identity changed`);
+    }
+    if (left?.routeFacts?.mapOpenMs !== right?.routeFacts?.mapOpenMs
+        || left?.routeFacts?.sectorEntryMs !== right?.routeFacts?.sectorEntryMs) {
+      failures.push(`matched pair ${index + 1} timing identity changed across profiles`);
+    }
+  }
+
+  const floorSummaries = floorRuns.map((run) => summarizeFrameSamples(run?.rawSamples || []));
+  const targetSummaries = targetRuns.map((run) => summarizeFrameSamples(run?.rawSamples || []));
+  const floorMedian = medianSummary(floorSummaries);
+  const targetMedian = medianSummary(targetSummaries);
+  if (Number.isFinite(floorMedian.p95) && Number.isFinite(targetMedian.p95)
+      && targetMedian.p95 > floorMedian.p95 + PQ020_H3_BUDGETS.matchedP95ToleranceMs) {
+    failures.push(`Cathedral target median p95 regresses by more than ${PQ020_H3_BUDGETS.matchedP95ToleranceMs} ms`);
+  }
+  if (Number.isFinite(floorMedian.p99) && Number.isFinite(targetMedian.p99)
+      && targetMedian.p99 > floorMedian.p99 + PQ020_H3_BUDGETS.matchedP99ToleranceMs) {
+    failures.push(`Cathedral target median p99 regresses by more than ${PQ020_H3_BUDGETS.matchedP99ToleranceMs} ms`);
+  }
+  if (Number.isFinite(targetMedian.p95)
+      && targetMedian.p95 > PQ020_H3_BUDGETS.floorSamplingEnvelopeP95Ms) {
+    failures.push(`Cathedral target p95 exceeds the ${PQ020_H3_BUDGETS.floorP95Ms} ms floor plus sampling envelope`);
+  }
+  const floorHitches = summarizeHitchAttribution(floorRuns);
+  const targetHitches = summarizeHitchAttribution(targetRuns);
+  if (targetHitches.productAttributed > floorHitches.productAttributed) {
+    failures.push('Cathedral target product-attributed hitch count increases from the matched Ceres entry floor');
+  }
+  if (targetHitches.externalScheduling
+      > floorHitches.externalScheduling + PQ020_H3_BUDGETS.maxExternalSchedulingHitchDelta) {
+    failures.push('Cathedral target externally attributed hitch count exceeds the declared matched noise envelope');
+  }
+  for (let index = 0; index < Math.min(floorHitches.perRun.length, targetHitches.perRun.length); index += 1) {
+    if (targetHitches.perRun[index].externalScheduling
+        > floorHitches.perRun[index].externalScheduling
+          + PQ020_H3_BUDGETS.maxExternalSchedulingHitchDeltaPerRun) {
+      failures.push(`Cathedral target externally attributed hitch count exceeds the per-run envelope in pair ${index + 1}`);
+    }
+  }
+  if (sum(targetSummaries, 'framesAbove50Ms') > sum(floorSummaries, 'framesAbove50Ms')) {
+    failures.push('Cathedral target >50 ms frame count increases from the matched Ceres entry floor');
+  }
+  if (sum(targetSummaries, 'backlogSheddingFrames') > sum(floorSummaries, 'backlogSheddingFrames')) {
+    failures.push('Cathedral target backlog shedding increases from the matched Ceres entry floor');
+  }
+  return { floor: floorHitches, target: targetHitches };
+}
+
+function summarizeHitchAttribution(runs) {
+  const perRun = runs.map((run) => {
+    const gpuEnvelopeMs = separatedGpuEnvelopeMs(run?.attribution?.gpuTimers?.passes);
+    const hitches = (Array.isArray(run?.rawSamples) ? run.rawSamples : [])
+      .filter((sample) => Number(sample?.frameMs) > 32);
+    const externalScheduling = hitches.filter((sample) => (
+      sample?.backlogCause === 'external-scheduling'
+      && finiteNonnegative(sample?.callbackMs)
+      && sample.callbackMs <= PQ020_H3_BUDGETS.targetSamplingEnvelopeP95Ms
+      && finiteNonnegative(sample?.simFrameMs)
+      && sample.simFrameMs <= PQ020_H3_BUDGETS.targetSamplingEnvelopeP95Ms
+      && finiteNonnegative(sample?.presentationMs)
+      && sample.presentationMs <= PQ020_H3_BUDGETS.targetSamplingEnvelopeP95Ms
+      && sample?.shedBacklog !== true
+      && (Number(sample?.externalCallbackGapMs) > 0 || Number(sample?.callbackDispatchLagMs) > 0)
+      && finiteNonnegative(gpuEnvelopeMs)
+      && gpuEnvelopeMs <= PQ020_H3_BUDGETS.maxSeparatedGpuEnvelopeMs
+    )).length;
+    return {
+      raw: hitches.length,
+      externalScheduling,
+      productAttributed: hitches.length - externalScheduling,
+      separatedGpuEnvelopeMs: gpuEnvelopeMs,
+    };
+  });
+  return {
+    raw: sum(perRun, 'raw'),
+    externalScheduling: sum(perRun, 'externalScheduling'),
+    productAttributed: sum(perRun, 'productAttributed'),
+    perRun,
+  };
+}
+
+function separatedGpuEnvelopeMs(passes) {
+  const maxima = ['bloomScene', 'bloomDownsample', 'bloomUpsample', 'bloomComposite']
+    .map((key) => Number(passes?.[key]?.max));
+  return maxima.every(Number.isFinite) ? maxima.reduce((total, value) => total + value, 0) : null;
+}
+
+function evaluateAbsoluteTargetBudget(rows) {
+  const profiles = [];
+  const failures = [];
+  for (const id of PQ020_H3_PROFILE_IDS) {
+    const row = rows.find((candidate) => candidate?.id === id);
+    const summaries = (row?.repetitions || []).map((run) => summarizeFrameSamples(run?.rawSamples || []));
+    const median = medianSummary(summaries);
+    const framesAbove50Ms = sum(summaries, 'framesAbove50Ms');
+    const backlogSheddingFrames = sum(summaries, 'backlogSheddingFrames');
+    const targetP95Pass = Number.isFinite(median.p95)
+      && median.p95 <= PQ020_H3_BUDGETS.targetSamplingEnvelopeP95Ms;
+    profiles.push({ id, median, targetP95Pass, framesAbove50Ms, backlogSheddingFrames });
+    if (!targetP95Pass) {
+      failures.push(`${id} median p95 misses the ${PQ020_H3_BUDGETS.nominalTargetP95Ms} ms target`
+        + ` plus bounded sampling envelope (${PQ020_H3_BUDGETS.targetSamplingEnvelopeP95Ms} ms)`);
+    }
+    if (framesAbove50Ms > 0) failures.push(`${id} contains ${framesAbove50Ms} frame(s) above 50 ms`);
+    if (backlogSheddingFrames > 0) {
+      failures.push(`${id} contains ${backlogSheddingFrames} backlog-shedding frame(s)`);
+    }
+  }
+  return { pass: failures.length === 0, failures, profiles };
+}
+
+function qualitySettingsSlice(settings) {
+  if (!settings || typeof settings !== 'object') return null;
+  return { video: settings.video || null, dynResScale: settings.dynResScale };
+}
+
+function medianSummary(summaries) {
+  const out = {};
+  for (const key of [
+    'p50', 'p95', 'p99', 'max', 'framesAbove32Ms', 'framesAbove50Ms',
+    'estimatedMissedVsyncs', 'backlogSheddingFrames',
+  ]) {
+    const values = summaries.map((summary) => summary?.[key]).filter(Number.isFinite).sort((a, b) => a - b);
+    out[key] = values.length ? values[Math.floor(values.length / 2)] : null;
+  }
+  return out;
+}
+
+function sum(rows, key) {
+  return rows.reduce((total, row) => total + Number(row?.[key] || 0), 0);
+}
+
+function sameNumber(left, right) {
+  return Number.isFinite(left) && Number.isFinite(Number(right))
+    && Math.abs(left - Number(right)) <= 1e-6;
+}
+
+function finitePositive(value) {
+  return Number.isFinite(Number(value)) && Number(value) > 0;
+}
+
+function finiteNonnegative(value) {
+  return Number.isFinite(Number(value)) && Number(value) >= 0;
+}
+
+function finiteUnitScale(value) {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1;
+}
+
+function stableStringify(value) {
+  return JSON.stringify(value, objectKeySorter);
+}
+
+function objectKeySorter(key, value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+  const sorted = {};
+  for (const name of Object.keys(value).sort()) sorted[name] = value[name];
+  return sorted;
+}

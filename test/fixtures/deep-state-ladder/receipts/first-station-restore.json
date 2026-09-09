@@ -1,0 +1,82 @@
+{
+  "schema": "spaceface.deepStateRestore.v1",
+  "fixtureId": "first-station",
+  "commit": "3cd5c5fc4e92b990e09d63d00ee5826106f9b75e",
+  "seededKey": "sf.save.quick",
+  "restoredThrough": "public-menu-continue + public-KeyE-redock (docked is a shipped transient flag)",
+  "steps": [
+    {
+      "name": "boot",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "name": "menu-visible",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "name": "continue-clicked",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "name": "restored",
+      "ok": true,
+      "note": "playable mode reached"
+    },
+    {
+      "name": "re-docked",
+      "ok": true,
+      "note": "public E hold"
+    }
+  ],
+  "restoreSnapshot": {
+    "mode": "flight",
+    "hasPlayerEntity": true,
+    "playerShipDefId": "ship_kestrel",
+    "pilotName": "Wren",
+    "careers": {
+      "hasOrigins": true,
+      "hasLadders": true
+    },
+    "activeMissionCount": 2,
+    "currentSectorId": "sector_helios_prime",
+    "docked": true,
+    "dockedStationId": "station_helios",
+    "dockTabCount": 6,
+    "undockControlPresent": true
+  },
+  "claims": [
+    {
+      "text": "saved berth remains reachable and re-docks to the same station identity",
+      "ok": true,
+      "evidence": {
+        "stationId": [
+          "station_helios",
+          "station_helios"
+        ],
+        "sectorId": [
+          "sector_helios_prime",
+          "sector_helios_prime"
+        ],
+        "note": "docked is a shipped TRANSIENT save flag; restore lands beside the berth and one public KeyE hold re-docks"
+      }
+    },
+    {
+      "text": "station services remain reachable",
+      "ok": true,
+      "evidence": {
+        "dockTabs": 6
+      }
+    },
+    {
+      "text": "undock remains available",
+      "ok": true,
+      "evidence": {
+        "undockControl": true
+      }
+    }
+  ],
+  "claimsOk": true
+}

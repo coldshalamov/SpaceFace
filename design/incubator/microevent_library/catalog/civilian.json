@@ -1,0 +1,201 @@
+{
+  "schema": "spaceface.microevent.v1",
+  "category": "civilian",
+  "events": [
+    {
+      "id": "ev_passenger_shuttle_run",
+      "title": "Passenger shuttle runs its route",
+      "category": "civilian",
+      "durationS": [60, 120],
+      "participants": [{ "role": "liner", "count": 1, "note": "short-hop dress of the express role; window row is the read" }],
+      "environment": ["two stations (or station + platform)"],
+      "arrangement": "Fixed two-stop route flown identically each window: dock, board, transit, dock",
+      "startConditions": "Schedule tick; express-role spawn with the short-hop flag",
+      "visibleCue": "The same lit-window hull at the same times on the same line - the region acquires a bus, and with it a clock",
+      "phases": [
+        { "name": "board", "durationS": 25, "visible": "Docked at the passenger face; cabin rows lit; the hauler_dock profile runs pax-flavored", "signals": [] },
+        { "name": "transit", "durationS": 40, "visible": "Level, unhurried lane transit - never overtakes, never yields more than it must", "signals": ["clean_burn"] },
+        { "name": "arrive", "durationS": 25, "visible": "The long flat buttered stacking approach that is the brand", "signals": ["stacking"] }
+      ],
+      "completion": "Docks at the far stop; reverses next window - the route IS the aftermath",
+      "interruptions": [
+        { "trigger": "Route blocked (closure/debris events)", "outcome": "Shuttle waits at the last safe point, windows lit - passengers visibly delayed, the region's problems given a face" }
+      ],
+      "playerInterference": ["Set your watch by it", "Escort it through a bad pocket unasked", "Interdict it and meet the fastest patrol response in the game"],
+      "criminalOpportunity": "A schedule is a promise, and promises can be ambushed - but the response doctrine prices it accordingly",
+      "aftermath": "Persistent schedule; other events can reference 'after the shuttle passes' as a natural clock",
+      "systems": ["traffic.spawnRole", "stationSideEvents.hauler_dock", "signatureVfx", "donor.activityPackHull"],
+      "fallback": "Hull lost: route pauses one window then a replacement runs it - the ROUTE outlives the vehicle, which is the point",
+      "tier": "next20",
+      "blockedOn": null
+    },
+    {
+      "id": "ev_observation_stop",
+      "title": "Small craft stops at the overlook",
+      "category": "civilian",
+      "durationS": [45, 90],
+      "participants": [{ "role": "courier", "count": 1, "note": "off-shift dress; any small hull" }],
+      "environment": ["scenic point: hero planet sightline, wreck cathedral, or landmark rock"],
+      "arrangement": "Small hull leaves the lane, parks at the overlook facing the VIEW (not the lane, not a rock face - the view)",
+      "startConditions": "Low-traffic window; ambient civilian roll",
+      "visibleCue": "A parked hull aimed at nothing minable, dockable or scannable - the only explanation left is that it is LOOKING",
+      "phases": [
+        { "name": "drift_in", "durationS": 15, "visible": "Casual approach, running lights dimming to parking trim", "signals": ["clean_burn"] },
+        { "name": "linger", "durationS": 50, "visible": "Station-keeping aimed at the view; tiny attitude corrections track the sight-line - the hull is watching, visibly", "signals": ["on_the_pin"] },
+        { "name": "move_on", "durationS": 15, "visible": "One slow pass ALONG the view before rejoining the lane - the last look", "signals": ["clean_burn"] }
+      ],
+      "completion": "Rejoins traffic; nothing gained but the view - which is the entire message about this universe",
+      "interruptions": [
+        { "trigger": "Anything hostile in the pocket", "outcome": "Leaves immediately - sightseers are the region's canary" }
+      ],
+      "playerInterference": ["Park alongside and share the view (the game's cheapest co-presence moment)", "Rob a sightseer and learn how little they carry"],
+      "criminalOpportunity": "Sightseers mark SAFE pockets by existing - their absence marks the opposite; both reads are free intel",
+      "aftermath": null,
+      "systems": ["traffic.spawnRole", "signatureVfx", "ai.passive"],
+      "fallback": "Overlook unresolvable: the roll fizzles silently",
+      "tier": "standard",
+      "blockedOn": null,
+      "notes": "The cheapest pure-texture event in the library: one parked hull aimed at scenery converts the region's landmarks into destinations."
+    },
+    {
+      "id": "ev_memorial_convoy",
+      "title": "Memorial convoy circles the great wreck",
+      "category": "civilian",
+      "durationS": [120, 180],
+      "participants": [{ "role": "hauler", "count": 2 }, { "role": "courier", "count": 2 }, { "role": "patrol", "count": 1, "optional": true }],
+      "environment": ["major wreck site (dead hulk / cathedral class)", "candle-fleet lamp props (billboard-buoy family's 24-light memorial exists as donor)"],
+      "arrangement": "Mixed civilian hulls form a slow single-file ring around the wreck at 60 wu, lights at half; patrol holds far off, dark, out of respect",
+      "startConditions": "Anniversary tick on the wreck site's record (seeded date), or aftermath of a large multi-wreck event",
+      "visibleCue": "Working hulls arriving in ones and twos and NOT working - trades that never share a pocket falling into one slow file",
+      "phases": [
+        { "name": "gather", "durationS": 40, "visible": "Arrivals take ring stations in silence; every trade's lamps at half-trim - the working light dimmed is the working world's black armband", "signals": ["on_the_pin"] },
+        { "name": "orbit", "durationS": 80, "visible": "One slow full circuit in single file; at the wreck's bow each hull flashes ONCE - roll call for the dead", "signals": [] },
+        { "name": "candle_drop", "durationS": 30, "visible": "Each hull releases one small lamp pickup into a trailing constellation - the candle fleet, laid fresh", "signals": [] },
+        { "name": "disperse", "durationS": 30, "visible": "File breaks up by trade, each hull returning to work - grief with a shift to finish", "signals": ["clean_burn"] }
+      ],
+      "completion": "A ring of lamp pickups glows around the wreck until they fade - the region visibly remembers",
+      "interruptions": [
+        { "trigger": "ANY weapons fire in the pocket", "outcome": "Instant dispersal; the patrol - dark until now - lights everything at once; desecration has the fastest response in the region" }
+      ],
+      "playerInterference": ["Join the file and drop a candle (proximity + jettison; the game credits it)", "Steal candles (the single most despised legible act available)", "Guard the perimeter unasked"],
+      "criminalOpportunity": "Every working hull in the region is HERE, which means everywhere else is empty - the memorial empties the map for exactly its duration",
+      "aftermath": "Candle lamps persist and fade over the session; the site's record notes attendance (campaign valence)",
+      "systems": ["sectorZones.slot", "pickups.spawn", "signatureVfx", "traffic.spawnRole", "encounterDirector.pressure", "donor.everydaySpaceProp"],
+      "fallback": "Attendance below three hulls: the few that came fly the circuit anyway - smaller grief, same shape",
+      "tier": "next20",
+      "blockedOn": null,
+      "diagramMermaid": "sequenceDiagram\n  participant W as Wreck site\n  participant F as Civilian file\n  participant P as Patrol (dark)\n  F->>W: hulls gather, lamps at half\n  F->>W: single-file orbit begins\n  Note over F,W: one flash each at the bow - roll call\n  F-->>W: candle pickups released in trail\n  P->>P: holds far off, unlit\n  F->>F: disperses by trade\n  Note over W: candle ring glows and slowly fades"
+    },
+    {
+      "id": "ev_prospectors_posture",
+      "title": "Two prospectors argue over a site in movement",
+      "category": "civilian",
+      "durationS": [60, 120],
+      "participants": [{ "role": "miner", "count": 2, "note": "prospector variants" }],
+      "environment": ["unstaked rich rock"],
+      "arrangement": "Both arrive within seconds; the argument is flown - orbits, cut-offs, feints - and settled without a shot",
+      "startConditions": "Two prospector-variant miners resolve the same unstaked target",
+      "visibleCue": "Two small hulls circling one rock in OPPOSITE directions - the geometry of disagreement",
+      "phases": [
+        { "name": "simultaneous_claim", "durationS": 15, "visible": "Both hard-stop at the rock, nose to nose across it", "signals": ["stacking"] },
+        { "name": "posture", "durationS": 40, "visible": "Counter-rotating possession orbits, each cutting inside the other's line, closer and closer - chicken at two metres per second", "signals": ["clean_burn"] },
+        { "name": "break", "durationS": 20, "visible": "One blinks: peels off in a flat, sulky departure line. The winner immediately fires its stake - punctuation", "signals": ["breaking_the_pattern"] },
+        { "name": "settle", "durationS": 20, "visible": "Winner begins the ordinary claim ritual (circle + cut); loser hunts elsewhere, visibly faster than before", "signals": ["blind_cone", "reading_the_dark"] }
+      ],
+      "completion": "One stake, one grudge, zero shots - the belt's civil justice at work",
+      "interruptions": [
+        { "trigger": "Third party (player) approaches mid-posture", "outcome": "Both freeze their orbits and PAINT you in turn - united against the outsider, instantly" }
+      ],
+      "playerInterference": ["Stake the rock yourself while they posture (the ultimate third-party move - both then posture at YOU)", "Back one side by mirroring its orbit"],
+      "criminalOpportunity": "The loser leaves knowing exactly where a rich rock is and who owns it thinly - tomorrow's claim-jump event, seeded today",
+      "aftermath": "Winner's stake persists; loser's next hunt weights toward the same field edge (the grudge has a heading); chains toward ev_claim_jump",
+      "systems": ["npcJobs.phaseGraph", "signatureVfx", "signatureVfx.reaction", "sectorZones.slot", "ai.passive"],
+      "fallback": "Either despawns mid-posture: walkover claim for the survivor",
+      "tier": "standard",
+      "blockedOn": null,
+      "notes": "The brief's movement-only argument, in full: every beat is steering and lamps; no dialogue system is touched."
+    },
+    {
+      "id": "ev_yard_break",
+      "title": "Work crews cluster at the cold locker",
+      "category": "civilian",
+      "durationS": [45, 90],
+      "participants": [{ "role": "miner", "count": 1 }, { "role": "tender", "count": 1, "optional": true }, { "role": "tug", "count": 1, "optional": true }],
+      "environment": ["cold locker prop (lane furniture class, exists)"],
+      "arrangement": "Working hulls converge on the locker mid-shift and park in a loose huddle, work lights OFF, nav trim only",
+      "startConditions": "Shared work window midpoint (economy tick) with 2+ workers in the pocket",
+      "visibleCue": "Every work light in the pocket dying within a minute of each other - lunch, legible from orbit",
+      "phases": [
+        { "name": "down_tools", "durationS": 15, "visible": "Cones, welds and floods die in near-sync across the pocket", "signals": [] },
+        { "name": "huddle", "durationS": 45, "visible": "Hulls drift to the locker and park nose-in like boots around a fire; small attitude wobbles read as conversation", "signals": ["on_the_pin"] },
+        { "name": "back_to_it", "durationS": 20, "visible": "One hull relights first and the rest follow inside twenty seconds - somebody is always the foreman", "signals": ["spine_wake", "blind_cone"] }
+      ],
+      "completion": "Every trade back at its work; the locker sits alone again until next window",
+      "interruptions": [
+        { "trigger": "Threat contact", "outcome": "Break ends instantly; workers scatter to their sites - a huddle is also a headcount of who can flee" }
+      ],
+      "playerInterference": ["Park in the huddle (nobody stops you; the wobbles continue around you)", "Raid the pocket DURING break - every worksite is momentarily unattended"],
+      "criminalOpportunity": "Break time is the pocket's scheduled blind spot, and the locker's clock is public",
+      "aftermath": null,
+      "systems": ["npcJobs.phaseGraph", "signatureVfx", "donor.laneFurnitureProp", "ai.passive"],
+      "fallback": "Locker prop absent: the huddle forms around the largest worker instead - the ritual outranks the furniture",
+      "tier": "standard",
+      "blockedOn": null
+    },
+    {
+      "id": "ev_courier_sprint_club",
+      "title": "Off-shift couriers race the lane markers",
+      "category": "civilian",
+      "durationS": [45, 90],
+      "participants": [{ "role": "courier", "count": 3 }],
+      "environment": ["two lane pins ~200 wu apart (lane furniture, exist)"],
+      "arrangement": "Three couriers line abreast at a pin, sprint to the far pin, hairpin, return - an informal drag strip on public furniture",
+      "startConditions": "Low-traffic window; 3 courier-role hulls unassigned",
+      "visibleCue": "Small hulls forming a LINE ABREAST - freight files, patrols ring, only racers line up",
+      "phases": [
+        { "name": "form_up", "durationS": 15, "visible": "Three abreast at the pin, holding station badly - twitchy with intent", "signals": ["on_the_pin"] },
+        { "name": "sprint", "durationS": 25, "visible": "Simultaneous full burn to the far pin; the formation shears as skill differs", "signals": ["clean_burn"] },
+        { "name": "hairpin", "durationS": 10, "visible": "Three different turn styles at the pin - wide, tight, and one who brakes too late every time", "signals": [] },
+        { "name": "run_home", "durationS": 25, "visible": "Return leg; the winner crosses and flashes its floods twice - bragging in the public code", "signals": ["clean_burn"] }
+      ],
+      "completion": "They disperse to ordinary courier work as if nothing happened - because officially, nothing did",
+      "interruptions": [
+        { "trigger": "Patrol enters the pocket", "outcome": "Instant innocent dispersal to random headings - the universal guilty scatter, for the pettiest possible guilt" }
+      ],
+      "playerInterference": ["Join the line (adjacency at form_up enrolls you; beat them and the flood-flash is yours)", "Bet with yourself - the wide-turner never wins"],
+      "criminalOpportunity": "Racing lines teach the fastest paths through the pocket's clutter - free routing intel from watching",
+      "aftermath": "None. That is what makes it civilian",
+      "systems": ["traffic.spawnRole", "signatureVfx", "donor.laneFurnitureProp", "ai.passive"],
+      "fallback": "A racer despawns: the remaining two race anyway - two-boat clubs are still clubs",
+      "tier": "standard",
+      "blockedOn": null
+    },
+    {
+      "id": "ev_dock_rush_hour",
+      "title": "Dock rush hour at shift change",
+      "category": "civilian",
+      "durationS": [90, 180],
+      "participants": [{ "role": "hauler", "count": 2 }, { "role": "miner", "count": 1 }, { "role": "courier", "count": 1 }, { "role": "station", "count": 1 }],
+      "environment": ["station dock face"],
+      "arrangement": "Four hulls converge on one dock window; a visible holding stack forms - two out, one circling, one waved in",
+      "startConditions": "Economy tick aligns multiple job cycles' dock phases (deliberately schedulable)",
+      "visibleCue": "The approach lane filling from empty to four contacts in a minute - the region keeps office hours and this is five o'clock",
+      "phases": [
+        { "name": "converge", "durationS": 40, "visible": "Arrivals from three bearings; the first takes the dock, others peel into a visible holding ellipse", "signals": ["stacking", "heavy_burn"] },
+        { "name": "cycle", "durationS": 90, "visible": "Dock face runs continuous hauler_dock profiles; each departure crosses an arrival - the two-way door", "signals": ["spilling_the_count", "mouth_open"] },
+        { "name": "thin_out", "durationS": 40, "visible": "Ellipse empties one hull at a time until the face idles again", "signals": ["clean_burn"] }
+      ],
+      "completion": "All docked or departed; the pocket's population visibly redistributed station-ward and back",
+      "interruptions": [
+        { "trigger": "Dock blocked (player parks in the window)", "outcome": "The ellipse GROWS - the world queues behind you, patiently and visibly" }
+      ],
+      "playerInterference": ["Dock mid-rush and take your place in the cycle", "Watch the ellipse to count the region's working hulls - a census, free", "Rob the holding pattern: parked, loaded, and predictable"],
+      "criminalOpportunity": "Rush hour concentrates every loaded hull at one point twice per window - the richest schedule the region publishes",
+      "aftermath": "Station inventory jumps; the next work window starts staggered (the cycle breathes)",
+      "systems": ["npcJobs.phaseGraph", "stationSideEvents.hauler_dock", "signatureVfx", "traffic.spawnRole"],
+      "fallback": "Station slot unresolvable: hulls disperse to secondary destinations - rush hour cancelled by the venue",
+      "tier": "next20",
+      "blockedOn": null
+    }
+  ]
+}

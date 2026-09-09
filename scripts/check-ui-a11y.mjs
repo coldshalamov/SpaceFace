@@ -1,0 +1,188 @@
+// Guards browser-facing accessibility contracts that static import checks cannot see:
+// modal/menu screens must hide the flight HUD from assistive tech, and the death banner must
+// not exist in the readable HUD tree until an actual player death event.
+import { readFile } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
+
+const checks = [
+  {
+    path: 'src/ui/screenManager.js',
+    label: 'modal HUD accessibility state',
+    needs: [
+      'function syncHudAccessibility',
+      'function hasScreen',
+      'isOpen, hasScreen',
+      "state.mode !== 'flight'",
+      "hud.setAttribute('aria-hidden', 'true')",
+      "hud.removeAttribute('aria-hidden')",
+      'hud.inert = hidden',
+      'el.hidden',
+      "el.style && el.style.display === 'none'",
+      'p.hidden',
+      "p.getAttribute && p.getAttribute('aria-hidden') === 'true'",
+      // Focus restore on modal pop: opener must be connected+visible; else top-screen fallback.
+      'function _isRestorableOpener',
+      'function _restoreFocus',
+      'function _ensureFocusIn',
+    ],
+  },
+  {
+    path: 'src/ui/hud.js',
+    label: 'death banner hidden until death event',
+    needs: [
+      'deathBanner.hidden = true',
+      "deathBanner.setAttribute('aria-hidden', 'true')",
+      "deathBanner.setAttribute('role', 'alert')",
+      '.sf-death[hidden]',
+      'deathBanner.hidden = false',
+      "deathBanner.removeAttribute('aria-hidden')",
+      'deathHideTimer = setTimeout',
+    ],
+  },
+  {
+    path: 'src/ui/confirm.js',
+    label: 'confirm dialog preserves underlying modal state',
+    needs: [
+      'hadModalOpen',
+      'if (!hadModalOpen) document.body.classList.remove',
+      '_sfConfirmToken',
+      'root.removeEventListener',
+      'const sameDialog = root._sfConfirmToken === token',
+      'const initialFocus = opts.danger ? cancelBtn : okBtn',
+      'Enter follows the focused button',
+      'document.activeElement === okBtn',
+      'document.activeElement === cancelBtn',
+      'ev.stopPropagation(); close(true)',
+      'ev.stopPropagation(); close(false)',
+    ],
+  },
+  {
+    path: 'src/ui/listControls.js',
+    label: 'sortable headers are keyboard controls',
+    needs: [
+      "document.createElement('button')",
+      "btn.type = 'button'",
+      "btn.setAttribute('aria-pressed'",
+      "btn.setAttribute('aria-label'",
+      'sortHeaderAria',
+      '.sf-sort:focus-visible',
+    ],
+  },
+  {
+    path: 'src/ui/accessibility.js',
+    label: 'accessibility schema reflects shipped settings',
+    needs: [
+      'Settings fields exposed by Settings > Access and Settings > Video',
+      "status: 'EXISTS'",
+      'min: 0.75, max: 2',
+      "help: 'Scales the HUD and menus for readability.'",
+    ],
+    forbids: [
+      'Task spec',
+      'task requirement',
+      'lead adds',
+      'must be reconciled by the lead',
+      'DO NOT add a second toggle',
+    ],
+  },
+  {
+    // WCAG 1.4.4 Resize Text: browser zoom must remain available.
+    // In-game UI scale is an enhancement, not a substitute for page zoom.
+    path: 'index.html',
+    label: 'viewport allows browser zoom',
+    needs: [
+      'name="viewport"',
+      'width=device-width',
+      'initial-scale=1',
+    ],
+    forbids: [
+      'user-scalable=no',
+      'user-scalable=0',
+      'maximum-scale=1',
+      'maximum-scale=1.0',
+    ],
+  },
+  {
+    // Status toasts (incl. onboarding hints) must be exposed to AT via a polite live region.
+    // Shell hosts the region so it exists before modules load; toasts.js writes status text only.
+    path: 'index.html',
+    label: 'status toast polite live region shell',
+    needs: [
+      'id="toasts"',
+      'id="toast-live"',
+      'aria-live="polite"',
+      'aria-atomic="true"',
+      'role="status"',
+      'class="sr-only"',
+    ],
+    forbids: [
+      // Toast shell must not be assertive — danger/assertive alerts own that channel (alerts.js).
+      'id="toast-live" class="sr-only" role="status" aria-live="assertive"',
+      'id="toasts" aria-live="assertive"',
+    ],
+  },
+  {
+    path: 'src/ui/toasts.js',
+    label: 'status toasts announce once without focus steal or assertive live',
+    needs: [
+      "getElementById('toast-live')",
+      'function announceStatus',
+      'announceStatus(text, r.count)',
+      'announceStatus(text, 1)',
+      "el.setAttribute('role', 'button')",
+      "el.setAttribute('tabindex', '0')",
+      // Decorative icon must not pollute the accessible name / double-speak.
+      "icon.setAttribute('aria-hidden', 'true')",
+      // Contract comment anchors (must stay polite; never steal focus on arrival).
+      'Do NOT put aria-live on the card',
+      'Do NOT call focus()',
+      // Dismiss/expire focus restore (not arrival steal).
+      'function restoreFocusAfterDismiss',
+      'function nearestRemainingToast',
+      'lastExternalFocus',
+    ],
+    forbids: [
+      // Toast channel never uses assertive (alerts.js owns danger interrupts).
+      "setAttribute('aria-live', 'assertive')",
+      'aria-live="assertive"',
+      "aria-live', 'assertive'",
+    ],
+  },
+];
+
+let fail = 0;
+for (const check of checks) {
+  const src = await readFile(join(ROOT, check.path), 'utf8');
+  const missing = check.needs.filter((needle) => !src.includes(needle));
+  const forbidden = (check.forbids || []).filter((needle) => src.includes(needle));
+  if (missing.length || forbidden.length) {
+    const reasons = [];
+    if (missing.length) reasons.push(`missing ${missing.join(', ')}`);
+    if (forbidden.length) reasons.push(`forbidden ${forbidden.join(', ')}`);
+    console.log(`FAIL ${check.path} - ${check.label}: ${reasons.join('; ')}`);
+    fail++;
+  } else {
+    console.log(`ok   ${check.path} - ${check.label}`);
+  }
+}
+
+// Dismiss-path tryFocus may call .focus(); push/group must never steal focus on arrival.
+{
+  const src = await readFile(join(ROOT, 'src/ui/toasts.js'), 'utf8');
+  const pushStart = src.indexOf('function push(');
+  const dismissStart = src.indexOf('function dismiss(');
+  if (pushStart < 0 || dismissStart < 0 || dismissStart <= pushStart) {
+    console.log('FAIL src/ui/toasts.js - push must not steal focus: cannot locate push/dismiss bodies');
+    fail++;
+  } else if (/\.focus\s*\(/.test(src.slice(pushStart, dismissStart))) {
+    console.log('FAIL src/ui/toasts.js - push must not steal focus: .focus( found in push/group path');
+    fail++;
+  } else {
+    console.log('ok   src/ui/toasts.js - push must not steal focus');
+  }
+}
+
+process.exit(fail ? 1 : 0);

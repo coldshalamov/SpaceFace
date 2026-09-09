@@ -1,0 +1,36 @@
+{
+  "schema": "spaceface.h1-electron-e2e-failure.v1",
+  "row": 8,
+  "phase": "main-menu",
+  "error": {
+    "name": "AssertionError",
+    "message": "Main Menu must be visible\n\nfalse !== true\n",
+    "stack": "AssertionError [ERR_ASSERTION]: Main Menu must be visible\n\nfalse !== true\n\n    at file:///C:/Users/93rob/sf-h1/scripts/check-h1-electron-e2e.mjs:123:10"
+  },
+  "progress": [
+    {
+      "name": "electron-canonical-root",
+      "at": "2026-07-29T17:22:05.659Z",
+      "rootUrl": "http://127.0.0.1:64191/"
+    },
+    {
+      "name": "intro-dismissed",
+      "at": "2026-07-29T17:22:17.010Z"
+    }
+  ],
+  "snapshot": {
+    "url": "http://127.0.0.1:64191/",
+    "mode": "menu",
+    "sectorId": null,
+    "docked": false,
+    "dockedStationId": null,
+    "visibleScreens": [
+      "mainMenu"
+    ],
+    "dockPromptVisible": false,
+    "ledgerVisible": false,
+    "activeElement": "<button class=\"sf-btn\" title=\"\">New Game</button>"
+  },
+  "informational_contended": true,
+  "noPerformanceEvidence": true
+}

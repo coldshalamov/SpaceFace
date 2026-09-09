@@ -1,0 +1,49 @@
+{
+  "schema": "spaceface.h1-row-classification.v1",
+  "row": 8,
+  "subject": "Electron menu to New Game to flight to physical dock to Ledger smoke",
+  "result": "FAIL",
+  "classification": "HARNESS",
+  "attemptsConsumed": 1,
+  "retryPerformed": false,
+  "candidateCommit": "01a398f07fd297328e9965c46404a970ee653299",
+  "fixedSeed": 47,
+  "launches": {
+    "browser": 0,
+    "electron": 1
+  },
+  "failure": {
+    "phase": "main-menu",
+    "message": "Main Menu must be visible — false !== true",
+    "source": "scripts/check-h1-electron-e2e.mjs:123",
+    "rejectedPredicate": "readSurfaceSnapshot('mainMenu').visible === true"
+  },
+  "classificationBasis": [
+    "The harness's locator-based wait for [data-screen=\"mainMenu\"] had already succeeded before the rejected predicate ran.",
+    "The failure screenshot visibly contains the complete Main Menu and its New Game control.",
+    "The failure snapshot recorded mode=menu, visibleScreens=[mainMenu], and active focus on the New Game button.",
+    "The false reading came from a second, separate querySelector visibility sample, making this a selector/stability false negative rather than a missing product surface.",
+    "The Electron canonical root stayed valid, the application exited with code 0, the listener was released, cleanup passed without force-close, and recorded page issues were warnings rather than errors.",
+    "The one-use sentinel recorded exactly one Electron launch and refuses a retry."
+  ],
+  "survivingClaims": [
+    "isolated headed Electron shell launched",
+    "canonical clean loopback root established",
+    "intro cinematic dismissed through Space",
+    "Main Menu visibly rendered with New Game focused",
+    "owned Electron process, page, listener, and isolated profile closed cleanly"
+  ],
+  "unprovenClaims": [
+    "visible New Game screen",
+    "fixed-seed Launch into authored flight",
+    "public Helios Station waypoint and autopilot approach",
+    "physical E dock",
+    "station command dock",
+    "station Ledger destination",
+    "complete menu to Ledger Electron sanity verdict"
+  ],
+  "informational_contended": true,
+  "informational_contended_note": "Phase H1 ran contended by design. Timestamps and timeout controls are diagnostics only and are not performance evidence.",
+  "noPerformanceEvidence": true,
+  "matchedPerformancePhase": "H3"
+}

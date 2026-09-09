@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "assetId": "vfx_thruster_rcs",
+  "classification": "rejected",
+  "reasonCode": "critical_or_major_defect",
+  "candidateHash": null,
+  "evidencePaths": [
+    ".devshots/slice-A/thruster_vfx_verify.json",
+    ".devshots/slice-A/thruster-pack-note.txt",
+    ".devshots/alpha/m0-live-baseline-browser/03-flight-after-input.png",
+    ".devshots/alpha/m0-live-baseline-electron/03-flight-after-input.png"
+  ],
+  "campaignStatePath": null,
+  "openCriticalMajorCount": 1,
+  "authorityRole": "orchestrator",
+  "classifiedBy": "lead-integrator",
+  "classifiedAt": "2026-07-10T13:43:36.667Z"
+}

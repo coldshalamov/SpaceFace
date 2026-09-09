@@ -1,0 +1,41 @@
+You are the taste owner for a live-route visual cleanup. Read design/program/VISUAL_WORLD_CLEANUP.md
+and follow its bar, options, and bans. Do not follow a pixel recipe. If this prompt and your first
+idea agree too quickly, reject that idea and pick a stronger option from the list — or a better one
+you can defend.
+
+This is not INFERENCE. This is not PQ-174. This is not a Hitch remaster. This is not a frontend
+screen pass. Hitch/Kestrel stays frozen as the player starter.
+
+TWO JOBS, one game:
+
+1. HULLS. On the Kessler / Helios opening the player already flies, some NPC ships look like they
+   belong to another title, and at least one has a piece hanging in empty space. Make every ship on
+   that flyby look like the same manufactured world. Role may differ. Construction language may not.
+   Floating engines, sockets, and glow blobs that are supposed to be attached are defects.
+
+2. REVERSE JETS. Holding reverse currently reads as two needles off the bow. A volumetric retro path
+   already exists and still fails on camera. Use the live VFX foundation. Make brake/reverse exhaust
+   read as force leaving a nozzle — the same family as the main drive, not a thinner copy of the
+   needles. Ask what 3× more attention would produce, then do that.
+
+BEFORE YOU TOUCH PIXELS: write one short paragraph naming the option you are taking for hulls and
+the option you are taking for jets, and which options you rejected. Then work.
+
+SUCCESS (all required, live default route, shipping chase camera, default quality):
+- A stranger shown a still of Hitch and a still of the nearest NPC says they are the same game.
+- No structural piece floats off a live hull on that opening flyby.
+- A stranger can tell, from a reverse-thrust still with HUD hidden, that the player is braking.
+- Runtime witness: no new top frame-time bucket. Do not pass by stripping Hitch.
+
+WORKFLOW:
+- Play the live route. Identify the actual hull and the actual retro owner before editing.
+- Look at unused remasters / orphan harvest before modeling a new ship.
+- Material-truth preflight for any Blender/GLB change.
+- Commit only the files of the unit you finished. Do not mark program-queue.json.
+- Independent still review. A green VFX check is not the still-frame test.
+
+BANS: photocopied Hitch skins; hiding a gap with a blob; lengthening or blooming the needles;
+soft squares/discs as designed objects; dumping Hitch quality; writing a second VFX stack;
+frontend menus; swarm quota/HP.
+
+RESULT: DONE only when the success list is true in play.

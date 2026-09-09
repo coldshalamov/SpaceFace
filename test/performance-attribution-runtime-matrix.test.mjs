@@ -1,0 +1,305 @@
+import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { test } from 'node:test';
+import { fileURLToPath } from 'node:url';
+
+import {
+  classifyPerformanceProcessActivity,
+  collectOwnedProcessTreePids,
+  inspectPerformanceContaminants,
+  performanceAttributionRuntimePlan,
+  provisionPerformanceAttributionElectronRuntime,
+  runPerformanceAttributionProbe,
+  waitForOwnedProcessTreeExit,
+} from '../scripts/lib/releaseSoakProbe.mjs';
+import browserManifest from '../scripts/validation-manifests/performance-closure-browser.mjs';
+import {
+  createValidationBroker,
+  issueBrokerClaim,
+  validateBrokerClaim,
+} from '../scripts/lib/validationBroker.mjs';
+
+const ROOT = fileURLToPath(new URL('../', import.meta.url));
+
+test('runtime plans share route policy while pinning distinct launcher and cleanup owners', () => {
+  const browser = performanceAttributionRuntimePlan('browser');
+  const electron = performanceAttributionRuntimePlan('electron');
+
+  assert.deepEqual(browser, {
+    runtimeKind: 'browser',
+    canonicalRootOwner: 'visual-probe-server',
+    launcher: 'system-browser',
+    issueTracker: 'page',
+    cleanupOwner: 'closeOwnedResources',
+  });
+  assert.deepEqual(electron, {
+    runtimeKind: 'electron',
+    canonicalRootOwner: 'isolated-electron-launcher',
+    launcher: 'playwright-electron',
+    issueTracker: 'electron-application',
+    cleanupOwner: 'closeOwnedElectronRuntime',
+  });
+  assert.throws(() => performanceAttributionRuntimePlan('synthetic'), /browser or electron/);
+});
+
+test('Electron attribution provisions and pins the declared desktop runtime before launch', () => {
+  const calls = [];
+  const receipt = provisionPerformanceAttributionElectronRuntime(ROOT, (options) => {
+    calls.push(options);
+    return {
+      ready: true,
+      packageVersion: '43.2.0',
+      declaredVersion: '43.2.0',
+      runtimeVersion: '43.2.0',
+      runtimePath: 'C:\\electron-43\\electron.exe',
+      provisioned: false,
+    };
+  });
+  assert.deepEqual(calls, [{ root: ROOT }]);
+  assert.deepEqual(receipt, {
+    packageVersion: '43.2.0',
+    runtimeVersion: '43.2.0',
+    runtimePath: 'C:\\electron-43\\electron.exe',
+    provisioned: false,
+  });
+  assert.throws(
+    () => provisionPerformanceAttributionElectronRuntime(ROOT, () => ({
+      ready: true,
+      packageVersion: '31.7.7',
+      declaredVersion: '43.2.0',
+      runtimeVersion: '31.7.7',
+    })),
+    /must match the declared Electron runtime/,
+  );
+});
+
+test('bounded activity distinguishes idle protected processes from real contamination', () => {
+  const before = [
+    { name: 'blender.exe', pid: 47, cpuSeconds: 120.125 },
+    { name: 'chrome.exe', pid: 48, cpuSeconds: 12.5 },
+  ];
+  const idle = classifyPerformanceProcessActivity({
+    before,
+    after: [
+      { name: 'blender.exe', pid: 47, cpuSeconds: 120.129 },
+      { name: 'chrome.exe', pid: 48, cpuSeconds: 12.512 },
+    ],
+    sampleMs: 2_000,
+  });
+  assert.equal(idle.available, true);
+  assert.equal(idle.active, false);
+  assert.equal(idle.processCount, 2);
+  assert.equal(idle.aggregateCpuDeltaSeconds, 0.016);
+  assert.deepEqual(idle.reasons, []);
+
+  const active = classifyPerformanceProcessActivity({
+    before,
+    after: [
+      { name: 'blender.exe', pid: 47, cpuSeconds: 120.525 },
+      { name: 'chrome.exe', pid: 48, cpuSeconds: 12.512 },
+    ],
+    sampleMs: 2_000,
+  });
+  assert.equal(active.active, true);
+  assert.match(active.reasons.join('\n'), /aggregate-cpu-delta|process-cpu-delta/);
+
+  const churn = classifyPerformanceProcessActivity({
+    before,
+    after: [...before, { name: 'electron.exe', pid: 49, cpuSeconds: 0.01 }],
+    sampleMs: 2_000,
+  });
+  assert.equal(churn.active, true);
+  assert.match(churn.reasons.join('\n'), /process-churn/);
+
+  const unavailable = classifyPerformanceProcessActivity({ before: null, after: null, sampleMs: 2_000 });
+  assert.equal(unavailable.available, false);
+  assert.equal(unavailable.active, null);
+  assert.match(unavailable.reasons.join('\n'), /snapshot-unavailable/);
+});
+
+test('preflight requires a fresh bounded quiet sample after transient churn-only activity', async () => {
+  const stableChrome = (cpuSeconds) => ({ name: 'chrome.exe', pid: 48, cpuSeconds });
+  const snapshots = [
+    [stableChrome(12.5), { name: 'msedgewebview2.exe', pid: 49, cpuSeconds: 0.34375 }],
+    [stableChrome(12.501)],
+    [stableChrome(12.501)],
+    [stableChrome(12.502)],
+  ];
+  const result = await inspectPerformanceContaminants({
+    platform: 'win32',
+    sampleMs: 100,
+    maxAttempts: 2,
+    waitFn: async () => {},
+    snapshotReader: async () => snapshots.shift(),
+  });
+  assert.equal(result.available, true);
+  assert.equal(result.active, false);
+  assert.equal(result.attemptCount, 2);
+  assert.equal(result.settledAfterTransientChurn, true);
+  assert.deepEqual(result.attempts.map((attempt) => attempt.reasons), [['process-churn'], []]);
+  assert.equal(snapshots.length, 0);
+});
+
+test('preflight remains fail-closed when process churn persists through the bounded retry', async () => {
+  const stableChrome = (cpuSeconds) => ({ name: 'chrome.exe', pid: 48, cpuSeconds });
+  const snapshots = [
+    [stableChrome(12.5), { name: 'msedgewebview2.exe', pid: 49, cpuSeconds: 0.1 }],
+    [stableChrome(12.501)],
+    [stableChrome(12.501), { name: 'msedgewebview2.exe', pid: 50, cpuSeconds: 0.1 }],
+    [stableChrome(12.502)],
+  ];
+  const result = await inspectPerformanceContaminants({
+    platform: 'win32',
+    sampleMs: 100,
+    maxAttempts: 2,
+    waitFn: async () => {},
+    snapshotReader: async () => snapshots.shift(),
+  });
+  assert.equal(result.available, true);
+  assert.equal(result.active, true);
+  assert.equal(result.attemptCount, 2);
+  assert.equal(result.settledAfterTransientChurn, false);
+  assert.deepEqual(result.attempts.map((attempt) => attempt.reasons), [['process-churn'], ['process-churn']]);
+  assert.deepEqual(result.reasons, ['process-churn']);
+  assert.equal(snapshots.length, 0);
+});
+
+test('Browser cleanup owns the complete descendant tree and waits for it before the end census', async () => {
+  const initial = [
+    { name: 'chrome.exe', pid: 100, parentPid: 7 },
+    { name: 'chrome.exe', pid: 101, parentPid: 100 },
+    { name: 'chrome.exe', pid: 102, parentPid: 101 },
+    { name: 'chrome.exe', pid: 900, parentPid: 8 },
+  ];
+  assert.deepEqual(collectOwnedProcessTreePids(initial, 100), [100, 101, 102],
+    'an unrelated Chrome tree must never be classified as owned cleanup');
+
+  const snapshots = [
+    [{ name: 'chrome.exe', pid: 102, parentPid: 101 }, { name: 'chrome.exe', pid: 900, parentPid: 8 }],
+    [{ name: 'chrome.exe', pid: 900, parentPid: 8 }],
+  ];
+  const settled = await waitForOwnedProcessTreeExit({
+    rootPid: 100,
+    initialPids: [100, 101, 102],
+    platform: 'win32',
+    timeoutMs: 250,
+    pollMs: 25,
+    waitFn: async () => {},
+    snapshotReader: async () => snapshots.shift(),
+  });
+  assert.equal(settled.pass, true);
+  assert.deepEqual(settled.observedPids, [100, 101, 102]);
+  assert.deepEqual(settled.lingeringPids, []);
+  assert.equal(settled.attempts, 2);
+  assert.equal(snapshots.length, 0);
+
+  const persistent = await waitForOwnedProcessTreeExit({
+    rootPid: 100,
+    initialPids: [100, 101],
+    platform: 'win32',
+    timeoutMs: 250,
+    pollMs: 25,
+    waitFn: async () => {},
+    snapshotReader: async () => [{ name: 'chrome.exe', pid: 101, parentPid: 100 }],
+  });
+  assert.equal(persistent.pass, false, 'a persistent owned child must keep cleanup fail-closed');
+  assert.deepEqual(persistent.lingeringPids, [101]);
+});
+
+test('the current attribution entry is broker-gated before either headed runtime launches', async () => {
+  const [command, probe] = await Promise.all([
+    readFile(new URL('../scripts/check-performance-attribution.mjs', import.meta.url), 'utf8'),
+    readFile(new URL('../scripts/lib/releaseSoakProbe.mjs', import.meta.url), 'utf8'),
+  ]);
+
+  assert.match(command, /loadValidationManifestById/);
+  assert.match(command, /runPerformanceAttributionProbe/);
+  assert.match(command, /runtimeKind/);
+  assert.match(probe, /requireBrokerClaimOrDiagnostic/);
+  assert.match(probe, /activityInspector\(root, \{ settleTransientProcessChurn: true \}\)/);
+  assert.match(probe, /primaryAcceptance/);
+  assert.match(probe, /createCanonicalUrlTracker/);
+  assert.match(probe, /createElectronCanonicalUrlTracker/);
+  assert.match(probe, /closeOwnedResources/);
+  assert.match(probe, /closeOwnedElectronRuntime/);
+  assert.doesNotMatch(probe, /document\.runtimeKind\s*=\s*['"]browser['"]/);
+  const runner = probe.indexOf('async function runPerformanceAttributionProbe');
+  const runnerGate = probe.indexOf('requireBrokerClaimOrDiagnostic', runner);
+  const runnerAllocation = probe.indexOf('allocateOutputDir', runner);
+  assert.ok(runner >= 0 && runnerGate > runner && runnerGate < runnerAllocation,
+    'the library runner itself must consume authority before allocating artifacts or launching');
+  assert.match(probe, /PERFORMANCE_REGISTERED_SCENARIO_IDS/,
+    'specialized packet scenarios must be recognized without expanding PERFORMANCE_SCENARIO_IDS defaults');
+  assert.match(probe, /finally \{[\s\S]*restoreScenario\(page, routeTag, log\)/,
+    'scenario authority restoration remains failure-atomic around every measurement window');
+  assert.match(probe.slice(runner), /runBrowserPublicRoute\(\{[\s\S]*?dockTimeoutMs,[\s\S]*?seed,/,
+    'the broker-fixed seed must reach the real New Game route rather than only the evidence metadata');
+});
+
+test('direct acceptance exits before runtime launch when no broker claim is present', () => {
+  const result = spawnSync(
+    process.execPath,
+    ['scripts/check-performance-attribution.mjs', '--runtime=browser', '--acceptance', '--full-matrix'],
+    {
+      cwd: ROOT,
+      encoding: 'utf8',
+      windowsHide: true,
+      env: { ...process.env, SF_BROKER_CLAIM: '' },
+      timeout: 10_000,
+    },
+  );
+  assert.equal(result.status, 2, result.stderr || result.stdout);
+  assert.match(result.stderr, /authority rejected: broker-claim-required/);
+  assert.doesNotMatch(result.stdout + result.stderr, /canonical root|evidence:/);
+});
+
+test('the library runner rejects direct acceptance before allocating or launching', async () => {
+  await assert.rejects(
+    runPerformanceAttributionProbe({
+      root: ROOT,
+      runtimeKind: 'browser',
+      manifest: browserManifest,
+      mode: 'acceptance',
+      brokerClaimToken: null,
+    }),
+    /PERFORMANCE_ATTRIBUTION_AUTHORITY_REJECTED: broker-claim-required/,
+  );
+});
+
+test('contaminated preflight rejects before consuming a valid claim or allocating run artifacts', async (t) => {
+  const outputRoot = await mkdtemp(path.join(os.tmpdir(), 'spaceface-perf-preflight-'));
+  t.after(() => rm(outputRoot, { recursive: true, force: true }));
+  const digests = await createValidationBroker(browserManifest, { root: ROOT, outputRoot }).computeGateDigests();
+  const issued = await issueBrokerClaim({ outputRoot, manifest: browserManifest, digests });
+
+  await assert.rejects(
+    runPerformanceAttributionProbe({
+      root: ROOT,
+      runtimeKind: 'browser',
+      manifest: browserManifest,
+      mode: 'acceptance',
+      brokerClaimToken: issued.claimPath,
+      outputRoot,
+      activityInspector: async () => ({
+        capturedAt: new Date().toISOString(),
+        active: true,
+        contaminatingProcesses: { available: true, names: ['blender.exe'], entries: [{ name: 'blender.exe', pid: 47 }] },
+      }),
+    }),
+    /PERFORMANCE_ATTRIBUTION_ENVIRONMENT_BLOCKED/,
+  );
+
+  const entries = await readdir(outputRoot);
+  assert.equal(entries.some((entry) => entry.startsWith('performance-attribution-')), false);
+
+  const stillValid = await validateBrokerClaim({
+    outputRoot,
+    manifest: browserManifest,
+    tokenOrPath: issued.claimPath,
+    root: ROOT,
+  });
+  assert.equal(stillValid.ok, true, stillValid.reason);
+});

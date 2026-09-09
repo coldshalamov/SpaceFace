@@ -1,0 +1,258 @@
+// Floating combat text — pooled DOM numbers that pop off entities when they take damage (and a few
+// other beats: ore yield, credits, "SHIELD DOWN", bounty, pickups). Pure presentation: subscribes
+// to bus events, reads entity transforms via helpers.worldToScreen, never touches sim state. Gated
+// on state.settings.showDamageNumbers. Driven each frame by hud.frame() -> update().
+import { COMMODITIES } from '../data/commodities.js';
+import { FACTION_META } from '../data/factions.js';
+import { SECTORS } from '../data/sectors.js';
+import { successfulPickupAmount } from '../core/pickupAcceptance.js';
+import { shouldHideOwnRepDelta } from '../story/endings/publicIdentity.js';
+
+const POOL = 56;
+
+// Lookup tables built once at module load
+const CMDTY_BY_ID = Object.create(null);
+for (const c of COMMODITIES) CMDTY_BY_ID[c.id] = c;
+const FACTION_BY_ID = Object.create(null);
+for (const f of FACTION_META) FACTION_BY_ID[f.id] = f;
+const STATION_BY_ID = Object.create(null);
+for (const sec of SECTORS) {
+  if (sec.stations) for (const st of sec.stations) STATION_BY_ID[st.id] = st;
+}
+const STYLE_ID = 'sf-floattext-style';
+
+export function pickupFloatingTextSpec(payload) {
+  const qty = successfulPickupAmount(payload);
+  if (qty <= 0) return null;
+  const def = CMDTY_BY_ID[payload && payload.commodityId];
+  const name = def ? def.name : ((payload && payload.commodityId) || 'Item');
+  const cat = def ? def.category : '';
+  const cls = cat === 'raw ore' || cat === 'crystal' ? 'sf-ft--ore'
+    : cat === 'exotic' ? 'sf-ft--exotic'
+    : payload && payload.kind === 'module' ? 'sf-ft--module'
+    : 'sf-ft--pickup';
+  return { qty, text: '+' + qty + ' ' + name, cls };
+}
+
+export function factionRepToastText(state, payload = {}) {
+  const fac = FACTION_BY_ID[payload.factionId];
+  const name = fac ? fac.short : (payload.factionId || 'Unknown');
+  if (shouldHideOwnRepDelta(state)) return 'STANDING UPDATE ROUTED · ' + name;
+  const delta = Math.round(Number(payload.delta) || 0);
+  return (delta > 0 ? '+' : '') + delta + ' REP · ' + name;
+}
+
+export function createFloatingText(ctx) {
+  const { state, helpers, bus } = ctx;
+  injectStyle();
+  const layer = document.createElement('div');
+  layer.id = 'sf-floattext';
+  const root = document.getElementById('hud') || document.getElementById('ui-root') || document.body;
+  root.appendChild(layer);
+
+  // pooled nodes
+  const nodes = [];
+  for (let i = 0; i < POOL; i++) {
+    const el = document.createElement('div');
+    el.className = 'sf-ft';
+    el.style.display = 'none';
+    layer.appendChild(el);
+    nodes.push({ el, alive: false, age: 0, life: 1, x: 0, y: 0, vy: 0, vx: 0, targetId: null, wx: 0, wz: 0 });
+  }
+  let head = 0;
+  let activeCount = 0;
+
+  function retire(n) {
+    if (!n || !n.alive) return;
+    n.alive = false;
+    if (activeCount > 0) activeCount--;
+    n.el.style.display = 'none';
+    n._sfHudTransform = '';
+    n._sfOpacity = '';
+  }
+
+  function spawn(text, cls, wx, wz, targetId, opts) {
+    if (!state.settings || state.settings.showDamageNumbers === false) return;
+    opts = opts || {};
+    let n = null;
+    for (let k = 0; k < POOL; k++) { const idx = (head + k) % POOL; if (!nodes[idx].alive) { n = nodes[idx]; head = (idx + 1) % POOL; break; } }
+    if (!n) { n = nodes[head]; head = (head + 1) % POOL; retire(n); }   // steal oldest-ish
+    activeCount++;
+    n.alive = true; n.age = 0; n.life = opts.life || 0.95;
+    n.targetId = targetId != null ? targetId : null;
+    n.wx = wx; n.wz = wz;
+    n.vy = -(opts.vy != null ? opts.vy : 48);      // px/s rise
+    n.vx = (Math.random() - 0.5) * 26;
+    n.el.className = 'sf-ft ' + cls;
+    n.el.textContent = text;
+    n.el.style.display = 'block';
+    n.el.style.opacity = '1';
+    n.el.style.transform = 'translate3d(0,0,0) translate(-50%,-50%)';
+    n._sfHudTransform = 'translate3d(0,0,0) translate(-50%,-50%)';
+    n._sfOpacity = '1';
+    n.x = 0; n.y = 0;
+  }
+
+  // ---- event hooks ----------------------------------------------------------------------------
+  function dmgColor(p) {
+    if (p.isPlayer) return 'sf-ft--player';
+    if (p.brokeShield || p.kind === 'shield') return 'sf-ft--shield';
+    return 'sf-ft--hull';
+  }
+  bus.on('combat:damage', (p) => {
+    if (!p || (p.amount || 0) <= 0) return;
+    const e = p.targetId != null ? state.entities.get(p.targetId) : null;
+    const wx = e ? e.pos.x : (p.pos && p.pos.x); const wz = e ? e.pos.z : (p.pos && p.pos.z);
+    if (wx == null) return;
+    const big = (p.amount >= 25) || p.killing;
+    spawn(Math.round(p.amount) + '', dmgColor(p) + (big ? ' sf-ft--big' : ''), wx, wz, p.targetId, { life: big ? 1.2 : 0.9, vy: big ? 62 : 46 });
+  });
+  bus.on('combat:damage', (p) => { if (p && p.brokeShield) { const e = state.entities.get(p.targetId); if (e) spawn('SHIELD DOWN', 'sf-ft--shielddown', e.pos.x, e.pos.z, null, { life: 1.0, vy: 30 }); } });
+  bus.on('entity:killed', (p) => { if (p && p.pos) spawn('DESTROYED', 'sf-ft--kill', p.pos.x, p.pos.z, null, { life: 1.3, vy: 26 }); });
+  // Weak-point hit (BP-02): a player shot landed in the target's exposed subsystem arc. Callout at the
+  // hit so the bonus reads as skill, not noise. targetId lets it ride the target's screen motion.
+  bus.on('combat:weakPointHit', (p) => {
+    if (!p || !p.pos) return;
+    spawn('◈ ' + (p.label || 'WEAK POINT'), 'sf-ft--weak', p.pos.x, p.pos.z, p.targetId, { life: 1.0, vy: 40 });
+  });
+  // Direct-to-cargo mining never fires pickup:collected, so this is the only on-screen yield
+  // receipt — always name the commodity (bare "+1" is opaque; cargo hold is the real ledger).
+  bus.on('mining:yield', (p) => {
+    if (!p || !p.pos || !(p.qty > 0)) return;
+    if (p.minerId != null && p.minerId !== state.playerId) return;
+    const def = CMDTY_BY_ID[p.commodityId];
+    const name = def ? def.name : (p.commodityId || 'Ore');
+    const cat = def ? def.category : '';
+    const cls = (cat === 'raw ore' || cat === 'crystal') ? 'sf-ft--ore'
+      : cat === 'exotic' ? 'sf-ft--exotic'
+      : 'sf-ft--pickup';
+    const rich = p.richCore ? ' sf-ft--big' : '';
+    spawn('+' + p.qty + ' ' + name, cls + rich, p.pos.x, p.pos.z, null, {
+      life: p.richCore ? 1.35 : 1.05,
+      vy: p.richCore ? 48 : 40,
+    });
+  });
+  bus.on('loot:drop', (p) => { if (p && p.pos && p.credits > 0) spawn('+' + p.credits + ' cr', 'sf-ft--credits', p.pos.x, p.pos.z, null, { life: 1.4, vy: 36 }); });
+  // Dash feedback is pure world VFX (violet afterburner burst in render/vfx.js) — no floating
+  // "DASH" label; word-pop combat juice reads as arcade-corny for a thruster impulse.
+
+  // ---- bounty / kill credits ----------------------------------------------------------------
+  bus.on('entity:killed', (p) => {
+    if (!p || !p.pos || !p.bountyCr || p.killerId !== state.playerId) return;
+    // Gold "+800 CR" floating text at the kill site
+    spawn('+' + p.bountyCr + ' CR', 'sf-ft--bounty', p.pos.x, p.pos.z, null, { life: 1.6, vy: 30 });
+    // Toast: "Enemy Destroyed · +800 CR"
+    const label = (p.victimClass === 'capital' || p.victimClass === 'large') ? 'Capital Destroyed' : 'Enemy Destroyed';
+    bus.emit('toast', { text: label + ' · +' + p.bountyCr + ' CR', kind: 'credits', ttl: 3.5 });
+  });
+
+  // ---- pickup collected (ore / cargo / module) ----------------------------------------------
+  bus.on('pickup:collected', (p) => {
+    if (!p || p.collectorId !== state.playerId) return;
+    const spec = pickupFloatingTextSpec(p);
+    if (!spec || !p.pos) return;
+    spawn(spec.text, spec.cls, p.pos.x, p.pos.z, null, { life: 1.2, vy: 38 });
+  });
+
+  // ---- faction rep changes ------------------------------------------------------------------
+  bus.on('faction:repChanged', (p) => {
+    if (!p || !p.delta) return;
+    const kind = p.delta > 0 ? 'good' : 'danger';
+    bus.emit('toast', { text: factionRepToastText(state, p), kind, ttl: 3.5 });
+  });
+
+  // ---- cargo full ---------------------------------------------------------------------------
+  bus.on('cargo:full', (p) => {
+    bus.emit('toast', { text: 'CARGO FULL', kind: 'warn', ttl: 3.5 });
+  });
+
+  // ---- economy events (market alerts) -------------------------------------------------------
+  bus.on('economy:eventStarted', (p) => {
+    if (!p) return;
+    const cmdty = CMDTY_BY_ID[p.commodityId];
+    const station = STATION_BY_ID[p.stationId];
+    const cmdtyName = cmdty ? cmdty.name : (p.commodityId || 'Unknown');
+    const stationName = station ? station.name : (p.stationId || 'Unknown');
+    const typeLabel = p.type ? p.type.toUpperCase() : 'EVENT';
+    const kind = (p.type === 'shortage' || p.type === 'blockade' || p.type === 'piracy') ? 'warn' : 'info';
+    bus.emit('toast', { text: 'MARKET ALERT: ' + cmdtyName + ' ' + typeLabel + ' at ' + stationName, kind, ttl: 5 });
+  });
+
+  bus.on('economy:eventEnded', (p) => {
+    bus.emit('toast', { text: 'Market event ended', kind: 'info', ttl: 3 });
+  });
+
+  // Spawn-pop: numbers overshoot from 1.3 -> 1.0 over POP_TIME seconds, then hold 1.0.
+  // A cheap ease-out (1 - (1-x)^2) gives a snappy "pop" so hits feel weighty instead of
+  // appearing flat at full size. Driven here (not via a CSS keyframe) because the per-frame
+  // transform update already owns the element's transform — folding the scale in keeps a
+  // single source of truth and never fights the position transform.
+  const POP_TIME = 0.08;
+  function popScale(age) {
+    if (age >= POP_TIME) return 1;
+    const x = age / POP_TIME;          // 0 -> 1 over the pop window
+    const e = 1 - (1 - x) * (1 - x);   // ease-out quad
+    return 1.3 - 0.3 * e;              // 1.3 -> 1.0
+  }
+
+  function update(dt) {
+    if (activeCount <= 0) return;
+    if (!helpers.worldToScreen) return;
+    for (let i = 0; i < POOL; i++) {
+      const n = nodes[i];
+      if (!n.alive) continue;
+      n.age += dt;
+      if (n.age >= n.life) { retire(n); continue; }
+      // follow the entity if it still exists, else stay at the world point
+      let wx = n.wx, wz = n.wz;
+      if (n.targetId != null) { const e = state.entities.get(n.targetId); if (e) { wx = e.pos.x; wz = e.pos.z; } }
+      const s = helpers.worldToScreen({ x: wx, y: 0, z: wz });
+      const t = n.age / n.life;
+      const rise = n.vy * n.age;            // integrated rise (px)
+      const drift = n.vx * n.age;
+      const sc = popScale(n.age);           // spawn-pop scale (overshoot -> 1.0)
+      const nextTransform = `translate3d(${s.x + drift}px,${s.y + rise}px,0) translate(-50%,-50%) scale(${sc})`;
+      if (n._sfHudTransform !== nextTransform) {
+        n._sfHudTransform = nextTransform;
+        n.el.style.transform = nextTransform;
+      }
+      const nextOpacity = String(s.onScreen ? (1 - t * t) : 0);
+      if (n._sfOpacity !== nextOpacity) {
+        n._sfOpacity = nextOpacity;
+        n.el.style.opacity = nextOpacity;
+      }
+    }
+  }
+
+  return {
+    update,
+    _activeCount() { return activeCount; },
+  };
+}
+
+function injectStyle() {
+  if (document.getElementById(STYLE_ID)) return;
+  const s = document.createElement('style');
+  s.id = STYLE_ID;
+  s.textContent = `
+  #sf-floattext { position:absolute; inset:0; pointer-events:none; z-index:40; overflow:hidden; }
+  .sf-ft { position:absolute; left:0; top:0; transform:translate3d(0,0,0) translate(-50%,-50%); font-family:var(--mono,Consolas,monospace);
+    font-weight:700; font-size:16px; letter-spacing:.02em; white-space:nowrap; will-change:transform,opacity;
+    text-shadow:0 0 6px rgba(0,0,0,.9), 0 1px 2px rgba(0,0,0,.9); }
+  .sf-ft--hull { color:#ffd24a; }
+  .sf-ft--shield { color:#7fe0ff; font-size:14px; }
+  .sf-ft--player { color:#ff5470; font-size:18px; }
+  .sf-ft--big { font-size:24px; }
+  .sf-ft--shielddown { color:#9fe8ff; font-size:12px; letter-spacing:.06em; }
+  .sf-ft--kill { color:#ff8a4a; font-size:15px; letter-spacing:.06em; text-shadow:0 0 10px rgba(255,120,40,.7),0 0 4px #000; }
+  .sf-ft--weak { color:#ffd24a; font-size:13px; font-weight:800; letter-spacing:.06em; text-shadow:0 0 9px rgba(255,200,60,.8),0 0 4px #000; }
+  .sf-ft--ore { color:#4fbf8f; }
+  .sf-ft--credits { color:#ffd84a; font-size:15px; }
+  .sf-ft--bounty { color:#ffd84a; font-size:18px; font-weight:900; letter-spacing:.06em;
+    text-shadow:0 0 12px rgba(255,216,74,.7),0 0 4px #000; }
+  .sf-ft--exotic { color:#c98cff; font-size:15px; text-shadow:0 0 8px rgba(170,90,255,.6),0 0 4px #000; }
+  .sf-ft--module { color:#4f8fdd; font-size:15px; text-shadow:0 0 8px rgba(79,143,221,.6),0 0 4px #000; }
+  .sf-ft--pickup { color:#d3e6ff; font-size:14px; }
+  `;
+  document.head.appendChild(s);
+}

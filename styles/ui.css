@@ -1,0 +1,1829 @@
+/* SpaceFace — UI theme + layout. Existing tokens preserve runtime compatibility with older screens.
+   They are not an art-direction mandate. New UI must not automatically inherit the old cyan/purple,
+   glass, rounded-card, visor, or console vocabulary; choose a deliberate surface-specific direction. */
+@import "./commsradial.css";
+
+:root {
+  /* Visual identity (2026-08 revision): quiet modern neutral. Desaturated surfaces, one
+     restrained interaction accent, colour spent only on state. No neon, no rails, no glass. */
+  --bg: #0a0c10;
+  --panel: #151a21; --panel-2: #1b212a; --panel-edge: #2c343f; --panel-edge-2: #3d4754;
+  --ink: #e7eaee; --ink-dim: #9aa4b0; --ink-mute: #6e7885;
+  --accent: #4f8fdd; --accent-2: #4fbf8f; --accent-3: #4f8fdd;
+  --warn: #d9a054; --danger: #d95f6a; --good: #4fbf8f;
+  --hull: #d95f6a; --shield: #4f8fdd; --energy: #d4b45f; --cargo: #4fbf8f;
+  /* The kit's faces (styles/fonts.css, DIRECTION_SHEET §3) are the only ones loaded, so the legacy
+     tokens resolve to them: every unmigrated surface that still reads --font / --mono renders in
+     Instrument Sans. No monospace face on any player surface except Asteroid Works (the sheet's
+     never-list); numerals stay aligned through tabular figures on the root (below). */
+  --font: "Instrument Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: "Instrument Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --ui-scale: 1;
+  /* Responsive policy (A_LIST_GAPS §4): ultrawide anchors clamp to a centered safe frame. */
+  --sf-safe-inset-x: max(0px, calc((100vw - 100vh * 16 / 9) / 2));
+  /* Shared max content stage width for full-screen instruments; backdrops stay full-bleed. */
+  --sf-stage-max: 2200px;
+
+  /* ===== Instrument grammar role tokens (design/frontend/INSTRUMENT_GRAMMAR.md §4, binding) =====
+     Colour is assigned by MEANING, not by palette, so a screen cannot be restyled into
+     incoherence. Exact-hex mapping from SCREENS_B §0.1; each equals an existing compatibility
+     token, so contrast is already proven. At rest a screen is ≥80% calm+paper on the surface;
+     you/foe/goal are SPENT on state, never worn as chrome. Every colour-coded state carries a
+     second channel (shape or word) — never encode by colour alone. */
+  --sf-you: #4fbf8f;    /* you, your agency, a gain        (14.0:1 on surface) */
+  --sf-foe: #d95f6a;    /* threat, cost, over-budget, loss (6.0:1) */
+  --sf-goal: #d9a054;   /* next unlock, objective, opportunity (9.6:1) */
+  --sf-calm: #9aa4b0;   /* structure, chrome, labels, rest (7.2:1) */
+  --sf-paper: #dfe3e8;  /* all body copy                   (~13:1) */
+  --sf-surface: #12161c; /* screen backdrop base            */
+  --sf-edge: #2c343f;   /* 1px separators, socket rings    */
+
+  /* ===== Instrument grammar type tokens (§3: four roles, no fifth) =====
+     Faces are vendored and loaded at boot (styles/fonts.css). 12px floor; tracking above .06em
+     only on MICRO; every screen has exactly one DISPLAY-sized element. */
+  --sf-display-face: "Bricolage Grotesque", "Instrument Sans", system-ui, sans-serif; /* 600/700 · 28/40/64px */
+  --sf-subhead-face: "Instrument Sans", "Segoe UI", sans-serif;         /* 600 · 15/19/22px */
+  --sf-body-face: "Instrument Sans", "Segoe UI", sans-serif;            /* 400/500 · 13/14/15px */
+  --sf-data-face: "Instrument Sans", "Segoe UI", sans-serif;            /* 500 · 13/15/20px, tabular-nums, numerals only */
+
+  /* ===== Instrument grammar motion tokens (§5: nothing exceeds 180ms) ===== */
+  --sf-t-latch: 90ms;   /* discrete state change seats with a short travel and a hard stop */
+  --sf-t-settle: 180ms; /* a value arriving; instruments overshoot, text never does */
+  --sf-ease: cubic-bezier(.2, .9, .3, 1);
+  /* No --sf-t-spool. SPOOL must be bound to real progress (§5), and nothing supplies one yet;
+     declaring the token would invite an unbound loop to claim it. Add it WITH its first honest
+     consumer, not before. */
+
+  /* ===== Instrument grammar SHAPE tokens =====
+     Introduced because sections 11/13/14 had already drifted apart on the same three decisions —
+     a 2px rail against a 3px one, `var(--r-sm,5px)` against two hardcoded 3px radii, and the same
+     color-mix literal written twice. This repo has a documented history of an append-only
+     stylesheet becoming an override pile (styles/station.css: 202 selectors redefined at
+     brace-depth 0). Three drifts in the first two consumers is where that starts. */
+  --sf-rail-w: 0px;                                                    /* left accent rails are retired; state carries a word or glyph */
+  --sf-goal-edge: color-mix(in srgb, var(--sf-goal) 40%, transparent); /* the resting edge of a verb */
+  --sf-track-micro: .06em;                                             /* MICRO tracking, one value */
+
+  /* ===== Legacy visor palette, compatibility only =====
+     Do not extend these tokens or use them as a visual direction. Values desaturated 2026-08. */
+  --visor-cyan: #4f8fdd;
+  --visor-cyan-dim: rgba(79, 143, 221, 0.28);
+  --visor-amber: #d9a054;
+  --visor-red: #d95f6a;
+
+  /* Text and glows */
+  --text-primary: #FFFFFF;
+  --text-secondary: rgba(255, 255, 255, 0.7);
+  --visor-glow-red: 0px 0px 8px rgba(217, 95, 106, 0.45);
+
+  /* Text shadow for legibility without backgrounds */
+  --text-shadow-hard: 0px 1px 3px rgba(0, 0, 0, 1), 0px 0px 2px rgba(0, 0, 0, 0.8);
+}
+* { box-sizing: border-box; }
+/* `el.hidden = true` is silently defeated by ANY author rule that sets `display` on that element,
+   because an author declaration outranks the user agent's [hidden]{display:none}. The JS then
+   believes it hid the thing and the thing is still on screen. That is how the Footprint board kept
+   drawing its ACT / INCIDENT / STANDING / CONSEQUENCE headers while `board.hidden = true` — the
+   empty state took a full viewport height and pushed the headers 40px off the bottom, where
+   nothing could scroll to them. `.aw-lens[hidden]` in asteroid-ops.css was already carrying this
+   patch locally; the class of bug is worth closing once rather than per component. */
+[hidden] { display: none !important; }
+html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--ink); font-family: var(--font); font-variant-numeric: tabular-nums; }
+#gl-canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; z-index: 0; }
+body.sf-flight-cursor,
+body.sf-flight-cursor #gl-canvas,
+body.sf-flight-cursor #ui-root,
+body.sf-flight-cursor #hud { cursor: none; }
+#ui-root { position: fixed; inset: 0; z-index: 10; pointer-events: none; font-size: calc(15px * var(--ui-scale)); contain: layout style paint; }
+#ui-root > div { position: absolute; }
+#hud { inset: 0; z-index: 10; transition: opacity .12s ease; contain: layout style paint; }
+#modal-backdrop { inset: 0; z-index: 90; display: none; background: radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--bg) 62%, transparent), color-mix(in srgb, var(--bg) 86%, transparent)); opacity: 0; visibility: hidden; pointer-events: none; }
+#modal-backdrop[hidden] { display: none !important; }
+#screens { inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; }
+#screens > * { pointer-events: auto; }
+
+/* --- Screen push/pop transitions (fade in/out + slide) --- */
+.screen {
+  transition: opacity 150ms var(--ease, ease), transform 150ms var(--ease, ease);
+  transform: translateY(0);
+}
+.screen.sf-screen--entering {
+  opacity: 0;
+  transform: translateY(6px);
+}
+.screen.sf-screen--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.screen.sf-screen--exiting {
+  opacity: 0;
+  transform: translateY(6px);
+  transition-duration: 150ms;
+  pointer-events: none;
+}
+
+/* --- Docking overlay (radial-gradient vignette fade for dock/undock transitions) --- */
+#sf-dock-overlay { position: fixed; inset: 0; z-index: 2500; pointer-events: none;
+  background: radial-gradient(ellipse at 50% 60%, transparent 0%, var(--bg) 70%);
+  opacity: 0; transition: opacity 0.4s ease-in-out; }
+#sf-dock-overlay[hidden] { display: none !important; }
+#sf-dock-overlay.active { opacity: 1; }
+/* --- Continue veil (title screen -> game; src/ui/screens/mainMenu.js _showContinueFade) ---
+   Black to game with the location name bottom-left. It mounts on #ui-root above the title and
+   below the loading shell (z-index 1900 < 2000: test/startup-loading-presentation.test.mjs). The
+   label reads in the frontend kit's text face and fine size (styles/kit.css tokens). */
+.sf-continue-fade { position:fixed; inset:0; z-index:1900; background:#000; opacity:0;
+  pointer-events:auto; transition:opacity 1s ease; display:flex; align-items:flex-end;
+  justify-content:flex-start; padding:0 0 calc(var(--k-margin, 5vw) * 0.42) var(--k-margin, 5vw); }
+.sf-continue-fade.open { opacity:1; }
+.sf-continue-fade__loc { font-family: var(--k-text, system-ui, sans-serif); font-size: var(--k-fs-fine, 12px);
+  color: var(--k-bone-62, rgb(234 230 223 / 0.62)); }
+/* --- First-run splash (spec2/03 §3; src/ui/screens/newGame.js showFirstRunSplash) ---
+   After Launch, a single full-screen line on black for 2.5 s, once per profile. A cinematic, not a
+   screen: it used to ride the New Game screen's injected style block, which Task B deleted when that
+   screen moved onto the kit. The line reads in the kit's text face and body size. */
+.sf-firstrun-splash { position:fixed; inset:0; z-index:3200; background:#000; display:flex;
+  align-items:center; justify-content:center; opacity:0; transition:opacity .5s ease;
+  pointer-events:auto; }
+.sf-firstrun-splash.open { opacity:1; }
+.sf-firstrun-splash__line { font-family: var(--k-text, system-ui, sans-serif); font-size: var(--k-fs-body, 16px);
+  color: var(--k-bone, #eae6df); text-align:center; max-width:80vw; line-height:1.7; }
+/* #toasts is absolutely placed; it is usually re-parented into #hud by toasts.js, so it cannot
+   rely on the `#ui-root > div` absolute rule — without an explicit position its left/top are
+   inert and the receipt lane renders at the top of #hud's flow. */
+#toasts { position: absolute; left: calc(50% + (var(--sf-safe-inset-x, 0px) * 0)); bottom: 155px; top: auto; right: auto; z-index: 11; display: flex; flex-direction: column; gap: 4px; align-items: center; transform: translateX(-50%); pointer-events: none; }
+#alerts { left: var(--sf-safe-inset-x, 0px); right: var(--sf-safe-inset-x, 0px); top: 13%; transform: none; z-index: 1100; display: flex; flex-direction: column; gap: 6px; align-items: center; }
+
+body.ui-modal-open #hud { opacity: 0; pointer-events: none; }
+body.ui-modal-open #modal-backdrop { display: block; opacity: 1; visibility: visible; pointer-events: auto; }
+body.ui-modal-open #sf-onboarding,
+body.ui-modal-open .sf-ob-intro { display: none; }
+
+button:disabled { opacity: .4; cursor: default; }
+.mono { font-family: var(--mono); }
+
+/* boot overlay — the intro console styling lives in styles/intro.css (boot + title
+   share one sheet). Kept here only: nothing. Hooks other code depends on:
+   #boot-overlay(.hidden), [data-loading-label/detail/progress]. */
+
+.panel {
+  background: color-mix(in srgb, var(--sf-surface) 92%, transparent);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--r-lg);
+  box-shadow: 0 8px 40px rgba(0,0,0,.65);
+}
+button, .btn {
+  font-family: inherit;
+  background: linear-gradient(180deg, var(--panel-2), var(--panel));
+  border: 1px solid var(--panel-edge);
+  border-radius: 6px;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: border-color .12s ease, color .12s ease, box-shadow .12s ease, translate .08s ease, filter .08s ease;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  font-size: 0.92em;
+}
+button:hover, .btn:hover {
+  border-color: var(--accent);
+  color: #fff;
+  box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+button:focus-visible, .btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-color: var(--accent);
+  color: #fff;
+}
+/* Press feedback uses the INDIVIDUAL `translate` property, not `transform`.
+   `transform` is a single value: a press rule written as `transform:translateY(1px)` REPLACES any
+   transform the element uses for positioning. Station hardpoints are centred on their hull anchor
+   with `transform:translate(-50%,-50%)`, so the old rule made a 34px reticle jump ~17px right and
+   ~16px down while held — it fled the cursor and read as a dead control. `translate` composes with
+   `transform` instead of overwriting it, so positioning survives the press. */
+button:active, .btn:active {
+  translate: 0 1px;
+  filter: brightness(0.95);
+}
+
+.hud-bar {
+  background: color-mix(in srgb, var(--bg) 86%, transparent);
+  border-bottom: 1px solid var(--panel-edge);
+}
+
+/* Pilot "SpaceFace" identity — the generated portrait makes the game personal and branded */
+#pilot-portrait {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 50%, transparent);
+  z-index: 20;
+  pointer-events: auto;
+  background: var(--panel-2);
+}
+#pilot-portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  image-rendering: crisp-edges;
+}
+
+/* Aiming reticle from generated asset — software cursor for mouse flight/combat */
+#aim-reticle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 48px;
+  height: 48px;
+  transform: translate3d(50vw, 50vh, 0) translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 15;
+  opacity: 0.85;
+  filter: none;
+  will-change: transform;
+}
+#aim-reticle img {
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+
+/* Receipts / telemetry feedback (clean HUD type, restrained lines, no heavy cards) */
+.toast {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: .04em;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--sf-surface) 88%, transparent);
+  border: 1px solid var(--panel-edge);
+  padding: 5px 12px;
+  border-radius: 4px;
+  box-shadow: 0 4px 14px rgba(0,0,0,.45);
+}
+.toast.good, .toast[data-kind="good"], .toast[data-kind="credits"], .toast[data-kind="success"] { color: #b9e6cd; }
+.toast.warn, .toast[data-kind="warn"] { color: #ecd7b5; }
+.toast.danger, .toast.error, .toast[data-kind="danger"], .toast[data-kind="error"] { color: #f0c9cd; }
+
+
+/* J05 removed `.icon-ref`, the only referrer to assets/ui/icons_atlas.jpg. It was a "usage hint" for
+   future sliced icons that no markup ever claimed — a dead class keeping a 271 KB labelled contact
+   sheet alive in the bundle. Icons are inline 24×24 stroke SVG; see src/ui/station/icons.js. */
+
+/* Screen titles and pro touches */
+#screens h1, #screens .title {
+  font-family: var(--sf-display-face);
+  letter-spacing: .04em;
+  color: var(--ink);
+}
+#screens .subtle { color: var(--ink-dim); font-size: 0.82em; }
+
+/* ============================================================================================
+   PHASE 5 — DESIGN SYSTEM
+   A formalized token + component layer so every screen shares one cohesive, modern identity.
+   Adds spacing/radius/type/motion/elevation scales, reusable components (cards, badges, tabs,
+   dividers, section headers), and refined buttons/inputs. Existing screens inherit these via the
+   tokens without a risky per-screen rewrite.
+   ============================================================================================ */
+:root {
+  /* spacing scale (4px base) */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px; --sp-6: 32px;
+  /* radius scale */
+  --r-sm: 4px; --r-md: 7px; --r-lg: 10px; --r-xl: 14px; --r-pill: 999px;
+  /* type scale */
+  --t-xs: 10px; --t-sm: 12px; --t-md: 14px; --t-lg: 17px; --t-xl: 22px; --t-2xl: 30px;
+  /* motion */
+  --ease: cubic-bezier(.2, .8, .2, 1);
+  --dur-fast: .1s; --dur: .18s; --dur-slow: .3s;
+  /* elevation */
+  --sh-1: 0 2px 10px rgba(0,0,0,.35);
+  --sh-2: 0 6px 24px rgba(0,0,0,.45);
+  /* surface (former "glass" tokens, now plain translucent panel values) */
+  --glass: rgba(18,22,28,.82);
+  --glass-edge: rgba(255,255,255,.09);
+  /* accent (flattened: solid colour, no gradient fills) */
+  --grad-accent: var(--accent);
+}
+
+/* ---- reusable components --------------------------------------------------------------- */
+
+/* Card: the workhorse surface for list rows, ship cards, stat blocks. */
+.sf-card {
+  background: color-mix(in srgb, var(--sf-surface) 88%, transparent);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--r-lg);
+  padding: var(--sp-3) var(--sp-4);
+  transition: border-color var(--dur) var(--ease), transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+.sf-card--hover:hover {
+  border-color: var(--glass-edge);
+  box-shadow: var(--sh-2);
+  transform: translateY(-2px);
+}
+.sf-card--hover:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.sf-card--hover:active {
+  transform: translateY(0);
+}
+.sf-card--accent { border-color: var(--panel-edge-2); }
+
+/* Badge / tag: legality, facing, tier, event pills. */
+.sf-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 1px 8px; border-radius: var(--r-pill);
+  font-size: var(--t-xs); letter-spacing: .05em; text-transform: uppercase;
+  background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+}
+.sf-badge--good { background: color-mix(in srgb, var(--good) 12%, transparent); color: var(--good); border-color: color-mix(in srgb, var(--good) 30%, transparent); }
+.sf-badge--warn { background: color-mix(in srgb, var(--sf-goal) 12%, transparent); color: var(--warn); border-color: color-mix(in srgb, var(--sf-goal) 30%, transparent); }
+.sf-badge--danger { background: color-mix(in srgb, var(--sf-foe) 12%, transparent); color: var(--danger); border-color: color-mix(in srgb, var(--sf-foe) 30%, transparent); }
+.sf-badge--muted { background: color-mix(in srgb, var(--sf-calm) 10%, transparent); color: var(--ink-dim); border-color: color-mix(in srgb, var(--sf-calm) 20%, transparent); }
+
+/* Section header: the small all-caps label above a group. */
+.sf-section-h {
+  font-family: var(--mono); font-size: var(--t-xs); letter-spacing: .06em;
+  text-transform: uppercase; color: var(--ink-mute);
+  display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-2);
+}
+.sf-section-h::after {
+  content: ''; flex: 1; height: 1px;
+  background: linear-gradient(90deg, var(--panel-edge), transparent);
+}
+
+/* Tabs: shared station-hub tab strip styling. */
+.sf-tabs { display: flex; gap: var(--sp-1); padding: var(--sp-1); border-radius: var(--r-lg);
+  background: color-mix(in srgb, var(--bg) 50%, transparent); border: 1px solid var(--panel-edge); }
+.sf-tab { padding: var(--sp-2) var(--sp-4); border-radius: var(--r-md); cursor: pointer;
+  color: var(--ink-dim); font-size: var(--t-sm); letter-spacing: .04em; pointer-events: auto;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease); border: none; background: none; text-transform: none; }
+.sf-tab:hover { color: var(--ink); background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.sf-tab.active { color: #fff; background: var(--accent); }
+
+/* Primary / ghost button variants for clear affordance hierarchy. */
+.sf-btn { font-family: inherit; cursor: pointer; pointer-events: auto; border-radius: var(--r-md);
+  padding: var(--sp-2) var(--sp-4); font-size: var(--t-sm); letter-spacing: .06em; text-transform: uppercase;
+  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease), color var(--dur) var(--ease), box-shadow var(--dur) var(--ease), transform var(--dur) var(--ease); }
+.sf-btn--primary { background: var(--accent); color: #fff; border: none; font-weight: 600; }
+.sf-btn--primary:hover { background: color-mix(in srgb, var(--accent) 86%, #fff); transform: translateY(-1px); }
+.sf-btn--ghost { background: var(--glass); color: var(--ink); border: 1px solid var(--panel-edge); }
+.sf-btn--ghost:hover { border-color: var(--accent); color: #fff; }
+.sf-btn--danger { background: color-mix(in srgb, var(--sf-foe) 15%, transparent); color: var(--danger); border: 1px solid color-mix(in srgb, var(--sf-foe) 40%, transparent); }
+.sf-btn:disabled { opacity: .4; cursor: default; transform: none; box-shadow: none; }
+
+/* Inputs */
+.sf-input { font-family: inherit; background: color-mix(in srgb, var(--bg) 60%, transparent); color: var(--ink);
+  border: 1px solid var(--panel-edge); border-radius: var(--r-md); padding: var(--sp-2) var(--sp-3);
+  font-size: var(--t-sm); pointer-events: auto; transition: border-color var(--dur) var(--ease); }
+.sf-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 18%, transparent); }
+
+/* Stat readout (label over value) — used in shipyard/market headers. */
+.sf-stat-block { display: flex; flex-direction: column; gap: 2px; }
+.sf-stat-block__k { font-size: var(--t-xs); letter-spacing: .06em; color: var(--ink-mute); text-transform: uppercase; }
+.sf-stat-block__v { font-size: var(--t-lg); color: var(--ink); font-family: var(--mono); }
+
+/* Screen title bar: consistent header for every modal screen. */
+.sf-screen-title {
+  font-family: var(--sf-display-face); font-size: var(--t-xl); letter-spacing: .04em;
+  color: var(--ink);
+  display: flex; align-items: baseline; gap: var(--sp-3);
+}
+.sf-screen-title .sf-screen-sub { font-family: var(--font); font-size: var(--t-sm);
+  letter-spacing: .04em; color: var(--ink-dim); text-shadow: none; text-transform: none; }
+
+/* Divider */
+.sf-divider { height: 1px; background: linear-gradient(90deg, transparent, var(--panel-edge), transparent);
+  border: none; margin: var(--sp-3) 0; }
+
+/* Empty state — LEGACY, superseded by .sf-state (section 13). Zero consumers; kept only so any
+   out-of-tree screen still renders. New panes use uiPrimitives.mountDataState(). */
+.sf-empty { color: var(--ink-mute); font-style: italic; font-size: var(--t-sm); padding: var(--sp-3); text-align: center; }
+
+/* Fade-in for screens/panels so they feel responsive, not pop-in. */
+@keyframes sf-fadein { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+.sf-fadein { animation: sf-fadein var(--dur-slow) var(--ease) both; }
+
+/* Scrollbars: slim, on-theme (the station lists get long). */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--panel-edge-2) color-mix(in srgb, var(--bg) 40%, transparent);
+}
+*::-webkit-scrollbar { width: 9px; height: 9px; }
+*::-webkit-scrollbar-track { background: color-mix(in srgb, var(--bg) 40%, transparent); }
+*::-webkit-scrollbar-thumb { background: var(--panel-edge-2); border-radius: var(--r-pill); }
+*::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+/* Precision range sliders: tactile aerospace thumb and glowing track across all surfaces */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 22px;
+  background: transparent;
+  cursor: pointer;
+  vertical-align: middle;
+}
+input[type="range"]:focus-visible { outline: none; }
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--panel-edge-2) 60%, transparent);
+  border: 1px solid var(--panel-edge);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, .5);
+  transition: border-color .15s var(--ease), background-color .15s var(--ease);
+}
+input[type="range"]:hover::-webkit-slider-runnable-track {
+  border-color: var(--panel-edge-2);
+  background: color-mix(in srgb, var(--panel-edge-2) 80%, transparent);
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -6px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, var(--accent-2), var(--accent));
+  border: 1px solid rgba(255, 255, 255, .8);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 50%, transparent);
+  cursor: grab;
+  transition: transform .12s var(--ease), box-shadow .12s var(--ease), filter .12s var(--ease);
+}
+input[type="range"]:hover::-webkit-slider-thumb {
+  transform: scale(1.18);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 80%, transparent);
+  filter: brightness(1.1);
+}
+input[type="range"]:active::-webkit-slider-thumb {
+  cursor: grabbing;
+  transform: scale(1.28);
+  background: #ffffff;
+  box-shadow: 0 0 18px var(--accent);
+  filter: brightness(1.2);
+}
+input[type="range"]::-moz-range-track {
+  height: 6px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--panel-edge-2) 60%, transparent);
+  border: 1px solid var(--panel-edge);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, .5);
+}
+input[type="range"]::-moz-range-progress {
+  height: 6px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--accent) 60%, transparent);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, var(--accent-2), var(--accent));
+  border: 1px solid rgba(255, 255, 255, .8);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 50%, transparent);
+  cursor: grab;
+  transition: transform .12s var(--ease), box-shadow .12s var(--ease);
+}
+input[type="range"]:hover::-moz-range-thumb {
+  transform: scale(1.18);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 80%, transparent);
+}
+input[type="range"]:active::-moz-range-thumb {
+  cursor: grabbing;
+  transform: scale(1.28);
+  background: #ffffff;
+  box-shadow: 0 0 18px var(--accent);
+}
+
+/* Keycaps & keyboard shortcut badges: physical tactile chip */
+kbd, .sf-keycap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  padding: 1px 6px;
+  font-family: var(--mono);
+  font-size: var(--t-sm, 12px);
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--panel-2) 90%, transparent);
+  border: 1px solid var(--panel-edge-2);
+  border-bottom-width: 2px;
+  border-radius: 3px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .4);
+  vertical-align: baseline;
+  letter-spacing: .02em;
+}
+
+/* Precision input fields & selects: responsive aerospace feel */
+input[type="text"], input[type="number"], select, textarea {
+  font-family: var(--mono);
+  font-size: var(--t-sm, 12px);
+  color: var(--ink);
+  background: color-mix(in srgb, var(--panel-2) 85%, transparent);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--r-sm, 4px);
+  padding: 6px 10px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, .4);
+  transition: border-color .15s var(--ease), box-shadow .15s var(--ease), background-color .15s var(--ease);
+  box-sizing: border-box;
+}
+input[type="text"]:hover, input[type="number"]:hover, select:hover, textarea:hover {
+  border-color: var(--panel-edge-2);
+  background: color-mix(in srgb, var(--panel-2) 95%, transparent);
+}
+input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, .5), 0 0 10px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+/* Screen-reader-only live-region text (still announced, never visually shown). */
+.sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+
+/* Contrast safety: caption + flat control hints over bright raw nebulae. */
+#hud .sf-caption { text-shadow:0 1px 5px rgba(0,0,0,.9), 0 0 10px rgba(0,0,0,.7) !important; }
+
+
+/* ============================================================================================
+   CURRENT CONSOLE COMPATIBILITY TOKENS (UI full-pass Slice 1 foundation)
+   ============================================================================================
+   These tokens support the existing non-diegetic HUD and several current screen primitives. They
+   document the implementation that is on disk; they are not a command-console art-direction
+   constitution for new work. New surfaces may use a different coherent visual language when normal
+   player-route evidence, accessibility, and measured performance support it.
+
+   Tokens here are ADDITIVE and semantic. They coexist with the existing --ink*/--accent* text
+   tokens (which the WCAG audit reads); screens and the flight HUD adopt them slice-by-slice without
+   breaking anything that already works.
+
+   THE LOAD-BEARING RULE — brightness encodes state (the fix for "everything screams all the time"):
+     dim    = healthy / nominal / idle   (a full health bar is calm steel, not screaming red)
+     bright = active system or problem   (energy regenerating, shield recently hit, heat climbing)
+     red    = damage taken / alarm / critical  (NEVER the default state of anything)
+   This inverts the old "full-brightness always." The eye goes to what needs attention because
+   everything else is quiet — how Elite/Star Citizen health rings read.
+
+   The current tokens use steel/cyan for structure and active systems, amber for heat, red for
+   danger, and mint for cargo/income. Those mappings describe existing semantics, not a universal
+   palette ceiling.
+   ============================================================================================ */
+:root {
+  /* Structure / hull — desaturated steel-blue. Calm "this is the ship itself."
+     (These mirror the existing well-behaved --ink-mute/--ink-dim text values, now given a semantic
+     name so vitals can reference them without overloading text tokens.) */
+  --console-steel:      #9aa4b0;   /* bright steel — the healthy / nominal state */
+  --console-steel-dim:  #6e7885;   /* dim structural — bars at full health read quiet */
+  /* Active systems — the single blue accent. Bright = the system is live / regenerating. */
+  --console-cyan:       #4f8fdd;   /* bright accent — active system / regenerating (== --accent) */
+  --console-cyan-dim:   #2c4a68;   /* dim accent — shield/energy at rest */
+  /* Heat — amber. A bar at 0% is nearly invisible; it EARNS its presence as it climbs. */
+  --console-amber:      #d9a054;   /* bright amber — heat climbing, attention warranted (== --warn) */
+  --console-amber-dim:  #4a3a1e;   /* dim amber — idle/cool (barely visible = correct) */
+  /* Danger — red. ONLY for damage taken, low health, alarms. Never a default state. */
+  --console-red:        #d95f6a;   /* bright red — critical / taking damage (== --danger) */
+  /* Cargo / income — the calm green. */
+  --console-mint:       #4fbf8f;   /* bright green — resource gained (== --accent-2) */
+
+  /* Console surfaces (panel + edge) — reusable by the command bar + screens. */
+  --console-bg:         rgba(13,16,21,.85);    /* semi-transparent (flight HUD, over the canvas) */
+  --console-bg-solid:   #151a21;               /* opaque (screens/modals, over the menu bg) */
+  --console-edge:       rgba(255,255,255,.10); /* calm neutral edge */
+}
+
+/* ---- Current console primitives (additive compatibility variants) ----------------------------
+
+   This panel uses the existing asymmetric cut treatment. It is one available component treatment,
+   not a universal replacement for other panel geometry. */
+
+/* General-purpose variant for screens/modals — MAY use shadow + transition (not flight-mounted). */
+.sf-console-panel {
+  background: var(--console-bg-solid);
+  border: 1px solid var(--console-edge);
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+  padding: var(--sp-3) var(--sp-4);
+}
+/* Flight-HUD variant — current low-cost baseline for an always-mounted surface. Any richer treatment
+   must prove idle frame-sleep and measured compositor performance; this selector is not a universal
+   opaque/no-blur art-direction rule for other screens. */
+.sf-console-panel--hud {
+  background: var(--console-bg);
+  border: 1px solid var(--console-edge);
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+}
+
+/* Current console-button variant: cut-corner, uppercase, and letter-spaced. */
+.sf-console-btn {
+  font-family: inherit; cursor: pointer; pointer-events: auto;
+  background: var(--console-bg-solid); color: var(--ink);
+  border: 1px solid var(--console-edge);
+  clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px));
+  padding: var(--sp-2) var(--sp-4);
+  font-size: var(--t-sm); letter-spacing: .05em; text-transform: uppercase;
+  transition: border-color var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+.sf-console-btn:hover { border-color: var(--console-cyan); color: #fff; }
+.sf-console-btn:disabled { opacity: .4; cursor: default; }
+.sf-console-btn--primary { background: var(--console-cyan); color: var(--sf-surface); border-color: var(--console-cyan); font-weight: 700; }
+
+/* Stat: the command-bar readout — uppercase mono label + mono value. tabular-nums keeps digits
+   from jittering as the value changes (credits counting up, cargo filling). */
+.sf-console-stat { display: flex; flex-direction: column; gap: 1px; line-height: 1.1; }
+.sf-console-stat__k {
+  font-family: var(--mono); font-size: var(--t-xs); letter-spacing: .06em;
+  text-transform: uppercase; color: var(--ink-mute);
+}
+.sf-console-stat__v {
+  font-family: var(--mono); font-size: var(--t-md); color: var(--ink);
+  font-variant-numeric: tabular-nums; text-align: right;
+}
+
+/* ===== DIALOGS, ACCESSIBILITY, TARGET & OVERVIEW STYLES (spec2/06) ===== */
+
+/* All modals & cards drop the inset cyan glow */
+.sf-card {
+  background: color-mix(in srgb, var(--sf-surface) 92%, transparent) !important;
+  border: 1px solid var(--panel-edge) !important;
+  border-radius: var(--r-lg) !important;
+  box-shadow: none !important;
+}
+
+/* a11y focus outlines */
+*:focus-visible {
+  outline: 2px solid var(--accent) !important;
+  outline-offset: 1px !important;
+}
+
+/* Destructive buttons - no red solid fills, #ff5c5c text only */
+.sf-btn--danger, .btn-danger, [data-destructive] {
+  color: #ff5c5c !important;
+  border-color: rgba(255, 92, 92, 0.4) !important;
+  background: color-mix(in srgb, var(--sf-surface) 92%, transparent) !important;
+}
+.sf-btn--danger:hover, .btn-danger:hover, [data-destructive]:hover {
+  border-color: #ff5c5c !important;
+  box-shadow: 0 0 12px rgba(255, 92, 92, 0.3) !important;
+  color: #fff !important;
+}
+
+/* Target Panel v2 Segmented Bars */
+.sf-target__bars {
+  display: flex;
+  gap: 4px;
+  margin: 6px 0;
+  /* J07: was a hard 220px inside a 212px content box - a 9px overhang at every
+     viewport, which is the stagger the dock actually showed. The column owns the width now. */
+  width: 100%;
+  justify-content: space-between;
+  contain: layout paint style;
+}
+.sf-bar--segmented {
+  width: 72px;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.14);
+  position: relative;
+  border-radius: 0;
+  overflow: hidden;
+}
+.sf-bar--segmented .sf-bar__fill {
+  position: absolute;
+  inset: 0;
+  transform-origin: left center;
+}
+.sf-bar--segmented.sf-bar--shield .sf-bar__fill {
+  background: var(--accent);
+  box-shadow: none;
+}
+.sf-bar--segmented.sf-bar--armor .sf-bar__fill {
+  background: #8fa3bd;
+  box-shadow: none;
+}
+.sf-bar--segmented.sf-bar--hull .sf-bar__fill {
+  background: #ff7c5c;
+  box-shadow: none;
+}
+.sf-target__gimmick {
+  font-size: 12px;
+  color: var(--warn);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  margin-top: 4px;
+  border: 1px solid color-mix(in srgb, var(--sf-goal) 30%, transparent);
+  background: color-mix(in srgb, var(--sf-goal) 8%, transparent);
+  padding: 2px 6px;
+  display: inline-block;
+}
+
+/* In-world target rings */
+.sf-target-arcs {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  z-index: 5;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  will-change: transform;
+}
+.sf-target-arcs.visible {
+  opacity: 0.55;
+}
+.sf-target-arcs circle {
+  fill: none;
+  stroke-linecap: round;
+}
+.sf-arc-shield {
+  stroke: var(--accent);
+  stroke-width: 1.5px;
+}
+.sf-arc-armor {
+  stroke: #8fa3bd;
+  stroke-width: 1.5px;
+}
+.sf-arc-hull {
+  stroke: #ff7c5c;
+  stroke-width: 1.5px;
+}
+
+/* Overview Strip */
+.sf-overview {
+  width: 100%;   /* J07: the right dock column owns this number (--sf-dock-w). */
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  pointer-events: auto;
+  margin: 4px 0;
+  font-family: var(--mono);
+  font-size: 12px;
+  user-select: none;
+  contain: layout paint style;
+}
+.sf-overview-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  background: color-mix(in srgb, var(--sf-surface) 65%, transparent);
+  cursor: pointer;
+  border-left: 1px solid var(--iff-color, var(--console-edge));
+}
+.sf-overview-row:hover {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-left-width: 2px;
+}
+.sf-overview-row.selected {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  border-left-width: 2px;
+}
+.sf-overview-row__left {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.sf-overview-row__name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 80px;
+  color: var(--ink);
+}
+.sf-overview-row__right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-dim);
+}
+.sf-overview-footer {
+  padding: 4px 8px;
+  background: color-mix(in srgb, var(--sf-surface) 40%, transparent);
+  color: var(--ink-mute);
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.25;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Auto-target draw-to-fly route; target diamonds and lead pips remain weapon feedback. */
+#auto-target-flight-path {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 15;
+  display: none;
+  opacity: 0;
+  transition: opacity 90ms linear;
+}
+#auto-target-flight-path .sf-flight-path__route {
+  fill: none;
+  stroke: rgba(126, 225, 255, 0.66);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 3 7;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--accent) 55%, transparent));
+}
+#auto-target-flight-path .sf-flight-path__endpoint-ring {
+  fill: color-mix(in srgb, var(--accent) 6%, transparent);
+  stroke: rgba(126, 225, 255, 0.78);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 3;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--accent) 64%, transparent));
+}
+#auto-target-flight-path .sf-flight-path__endpoint {
+  fill: #7ee1ff;
+  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--accent) 85%, transparent));
+}
+#auto-target-flight-path.is-drawing .sf-flight-path__route {
+  stroke: rgba(126, 225, 255, 0.9);
+}
+@media (prefers-reduced-motion: reduce) {
+  #auto-target-flight-path { transition: none; }
+}
+
+/* Contacts strip v2: one-word state chip, threat-tier pips, derelict manifest line. */
+.sf-overview-row { flex-wrap: wrap; }
+.sf-overview-row__state {
+  font-size: 12px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+.sf-overview-row__tier {
+  font-size: 12px;
+  letter-spacing: -0.5px;
+}
+.sf-overview-row__detail {
+  flex-basis: 100%;
+  margin-top: 2px;
+  padding-left: 20px;
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  color: var(--ink-mute);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Unscanned derelict: ghost outline + italic "??? UNSCANNED" until a scan pulse resolves it. */
+.sf-overview-row.unscanned {
+  border-left-style: dashed;
+  opacity: 0.72;
+}
+.sf-overview-row.unscanned .sf-overview-row__detail { font-style: italic; }
+/* State colours (mirrors radar/IFF language). */
+.sf-cs--hostile { color: var(--danger); }
+.sf-cs--patrol { color: var(--visor-cyan, var(--accent)); }
+.sf-cs--derelict { color: var(--ink-mute); }
+.sf-cs--trader { color: var(--good); }
+.sf-cs--miner { color: var(--visor-amber, var(--warn)); }
+.sf-cs--ally { color: var(--good); }
+.sf-cs--neutral { color: var(--ink-dim); }
+
+@media (max-width: 900px), (max-height: 650px) {
+  .sf-overview { width: 100%; gap: 2px; font-size: 12px; }
+  .sf-overview-row { padding: 3px 5px; }
+  .sf-overview-row__name { max-width: 54px; }
+  .sf-overview-row__right { gap: 3px; }
+  .sf-overview-row__detail { display: none; }
+  .sf-overview-footer { padding: 3px 5px; font-size: 12px; }
+}
+
+/* ==============================================================================================
+   UI PRIMITIVE LAYER  ·  frontend-reboot reusable building blocks (design/revamp/FRONTEND_REBOOT_AUDIT.md)
+   ----------------------------------------------------------------------------------------------
+   One additive compatibility vocabulary of reusable primitives. Matching DOM factory helpers live
+   in src/ui/uiPrimitives.js. New work may extend or replace the visual technique, including colors,
+   compositing, or dependencies, when accessibility, maintenance, and measured performance support
+   it. Kept as ONE contiguous end-of-file section so
+   concurrent writers merge cleanly. It EXTENDS the existing .sf-console-* / .sf-card / .sf-badge /
+   .sf-bar--segmented layers; it does not redefine or break them.
+
+   THE VOCABULARY (primitive → supersedes / relates to → flight-HUD-safe? → motion policy)
+   ┌────────────────────┬──────────────────────────────────┬────────────┬─────────────────────────┐
+   │ .sf-panel[--cut]   │ .sf-console-panel (cut-corner)    │ yes(--hud) │ none at rest            │
+   │ .sf-card__label/…  │ .sf-console-stat (label + value)  │ yes        │ none at rest            │
+   │ .sf-chip           │ .sf-badge (static → LIVE state)   │ yes        │ hover/focus only        │
+   │ .sf-rail           │ .st-rail / .sf-tabs (station rail)│ yes        │ hover/focus/active only │
+   │ .sf-glyph          │ emoji / unicode tab icons         │ yes        │ inherits colour only    │
+   │ .sf-data-bar       │ .sf-bar--segmented (target panel) │ yes        │ opt-in --animate (xform)│
+   │ .sf-asset-stage    │ (new — outfitting 3D preview)     │ yes        │ none at rest            │
+   │ .sf-border-trace   │ (new — state-change edge sweep)   │ screens    │ ONE-SHOT ≤250ms, state  │
+   │ .sf-spotlight      │ (new — hover/focus highlight)     │ screens    │ hover/focus opacity only│
+   └────────────────────┴──────────────────────────────────┴────────────┴─────────────────────────┘
+   .sf-chip is the canonical status primitive going forward; .sf-badge is its legacy equivalent.
+
+   MOTION CONTRACT: motion must communicate state, respect reduced-motion, and avoid idle work on
+   always-mounted flight surfaces. Durations and visual technique are chosen per interaction and
+   judged in the player route; the values below describe the current implementation, not a global
+   timing or glow ceiling. Base primitives currently sleep until an explicit interaction/state class.
+
+   ── WHEN IS .sf-border-trace ALLOWED? ─────────────────────────────────────────────────────────
+   ONLY as a one-shot acknowledgement of a discrete STATE CHANGE on a SCREEN / menu surface — e.g. a
+   panel that just received new data, a tab that became available, a module that was installed. Add
+   the `.is-tracing` class for the sweep (uiPrimitives.trace() re-triggers it); the animation ENDS at
+   opacity:0 so nothing lingers lit. NEVER put it on an always-mounted flight-HUD element, never loop
+   it, never leave `.is-tracing` on at rest. It is punctuation for a change, not decoration.
+
+   ── WHEN IS .sf-spotlight ALLOWED? ────────────────────────────────────────────────────────────
+   ONLY to raise a hover/focus target on a SCREEN / menu surface (list row, card, rail item). It is a
+   STATIC radial wash revealed by an opacity transition on :hover / :focus-within — there is NO idle
+   animation and NO cursor tracking (per-frame style writes are forbidden by the frame-sleep budget).
+   The current alpha is deliberately quiet. Re-evaluate it from screenshots and measured idle cost
+   before applying the effect to always-mounted HUD chrome.
+   ============================================================================================== */
+
+/* Primitive-scoped defaults for the current implementation; not a palette or quality ceiling. */
+:root {
+  --sf-trace-dur: 220ms;   /* current one-shot edge sweep duration */
+  --sf-cut: 10px;          /* command-console corner-cut depth */
+}
+
+/* 1 ─ sf-panel : current quiet compatibility surface ------------------------------------------ */
+.sf-panel {
+  background: var(--console-bg-solid);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--r-md);
+  padding: var(--sp-3) var(--sp-4);
+}
+/* --cut : the command-console corner tell (asymmetric clip, same grammar as .sf-console-panel).
+   NOTE: clip-path clips the border box, so the two cut diagonals render without their edge line —
+   the accepted console look, matched to .sf-console-panel. Do NOT add a double-layer border hack. */
+.sf-panel--cut {
+  border-radius: 0;
+  clip-path: polygon(0 0, calc(100% - var(--sf-cut)) 0, 100% var(--sf-cut),
+                     100% 100%, var(--sf-cut) 100%, 0 calc(100% - var(--sf-cut)));
+}
+/* --hud : flight-mounted variant — semi-transparent, still shadow/transition-free (compositor-cheap). */
+.sf-panel--hud { background: var(--console-bg); }
+/* --raised : screens MAY opt into elevation (never used on the flight HUD). */
+.sf-panel--raised { box-shadow: var(--sh-2); }
+
+/* 2 ─ sf-card body hierarchy : label / value / body ------------------------------------------
+   Additive to the existing .sf-card box (untouched). STRICT child classes only — never a loose
+   `.sf-card .label` descendant selector — so existing card innards across every screen stay safe.
+   Mirrors the .sf-console-stat metric recipe. Label stays --ink-dim (not --ink-mute) to hold 4.5:1
+   over the .88 panel ground (check-wcag-contrast). */
+.sf-card__label {
+  font-family: var(--mono); font-size: var(--t-xs); letter-spacing: .06em;
+  text-transform: uppercase; color: var(--ink-dim); line-height: 1.2;
+}
+.sf-card__value {
+  font-family: var(--mono); font-size: var(--t-lg); color: var(--ink);
+  font-variant-numeric: tabular-nums; line-height: 1.15;
+}
+.sf-card__body { font-size: var(--t-sm); color: var(--ink-dim); line-height: 1.45; }
+.sf-card__row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); }
+
+/* 3 ─ sf-chip : small LIVE status chip (state that CHANGES) ----------------------------------
+   Earns its place beside static .sf-badge via three capabilities badge lacks: a state-dot channel,
+   a leading glyph slot, and a focusable interactive variant. Token-driven tints via color-mix (the
+   same technique already shipped in styles/accessibility.css) so no raw hex enters this layer. */
+.sf-chip {
+  --sf-chip-color: var(--ink-dim);
+  display: inline-flex; align-items: center; gap: .4em;
+  padding: .15em .6em; border-radius: var(--r-pill);
+  font-family: var(--mono); font-size: var(--t-xs); letter-spacing: .06em; text-transform: uppercase;
+  color: var(--sf-chip-color);
+  background: color-mix(in srgb, var(--sf-chip-color) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--sf-chip-color) 32%, transparent);
+  white-space: nowrap;
+}
+.sf-chip__dot   { width: .5em; height: .5em; border-radius: 50%; background: currentColor; flex: none; }
+.sf-chip__glyph { display: inline-flex; width: 1em; height: 1em; flex: none; }
+.sf-chip--info   { --sf-chip-color: var(--accent);   }
+.sf-chip--good   { --sf-chip-color: var(--good);     }
+.sf-chip--warn   { --sf-chip-color: var(--warn);     }
+.sf-chip--danger { --sf-chip-color: var(--danger);   }
+.sf-chip--story  { --sf-chip-color: var(--accent-3); }
+.sf-chip--muted  { --sf-chip-color: var(--ink-mute); }
+/* interactive chip (rendered as a <button> or role="button"): hover/focus lift + obvious keyboard ring. */
+.sf-chip--btn { cursor: pointer; pointer-events: auto;
+  transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease); }
+.sf-chip--btn:hover { background: color-mix(in srgb, var(--sf-chip-color) 20%, transparent);
+  border-color: var(--sf-chip-color); }
+.sf-chip--btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* 4 ─ sf-rail : vertical (default) / horizontal nav rail ------------------------------------- */
+.sf-rail { display: flex; flex-direction: column; gap: var(--sp-1); }
+.sf-rail--h { flex-direction: row; }
+.sf-rail__item {
+  display: flex; align-items: center; gap: .6em; text-align: left;
+  background: transparent; border: 1px solid transparent; border-radius: var(--r-md);
+  color: var(--ink-dim); font-family: inherit; font-size: var(--t-sm); letter-spacing: .04em;
+  padding: var(--sp-2) var(--sp-3); cursor: pointer; pointer-events: auto;
+  transition: color var(--dur) var(--ease), background var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+.sf-rail__item:hover { color: var(--ink); background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.sf-rail__item:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; color: var(--ink); }
+.sf-rail__item[aria-current="true"], .sf-rail__item.active {
+  color: var(--ink);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 18%, transparent), transparent);
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+/* 5 ─ sf-glyph : 1em SVG icon wrapper (retires emoji / unicode tab icons) ----------------------
+   Sizes in em so it tracks font-size AND --ui-scale (#hud / #ui-root font-size). SVG strokes with
+   currentColor, so a glyph inherits its context's state colour (hover / active / IFF) for free. */
+.sf-glyph { display: inline-flex; align-items: center; justify-content: center;
+  width: 1em; height: 1em; flex: none; line-height: 1; vertical-align: -0.125em; }
+.sf-glyph > svg { width: 100%; height: 100%; display: block;
+  fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.sf-glyph--lg { width: 1.35em; height: 1.35em; }
+
+/* 6 ─ sf-data-bar : segmented value bar (hull, shield, heat, cargo, route risk…) --------------
+   The fill is a FLAT solid colour scaled by transform:scaleX(var(--sf-bar-v)) — compositor-cheap and
+   reflow-free (JS sets ONE custom property, never touches layout). Segmentation is a mask on the
+   CONTAINER, so gaps reveal whatever truly sits behind the bar and can never distort the scaled fill.
+   Base has NO transition (a heat bar updates every frame while firing and must stay quiet at rest);
+   --animate opts screens into a transform-only ease so rapidly changing threshold colors remain
+   legible and do not accidentally animate layout or unrelated properties. */
+.sf-data-bar {
+  --sf-bar-v: 0; --sf-bar-color: var(--accent); --sf-bar-seg: 9px; --sf-bar-gap: 2px;
+  position: relative; height: 6px; overflow: hidden; border-radius: 1px;
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+  -webkit-mask-image: repeating-linear-gradient(90deg, var(--ink) 0 calc(var(--sf-bar-seg) - var(--sf-bar-gap)), transparent calc(var(--sf-bar-seg) - var(--sf-bar-gap)) var(--sf-bar-seg));
+          mask-image: repeating-linear-gradient(90deg, var(--ink) 0 calc(var(--sf-bar-seg) - var(--sf-bar-gap)), transparent calc(var(--sf-bar-seg) - var(--sf-bar-gap)) var(--sf-bar-seg));
+}
+.sf-data-bar__fill {
+  position: absolute; inset: 0; transform-origin: left center;
+  transform: scaleX(var(--sf-bar-v)); background: var(--sf-bar-color);
+}
+.sf-data-bar--animate .sf-data-bar__fill { transition: transform var(--dur) var(--ease); }
+.sf-data-bar--shield { --sf-bar-color: var(--shield); }
+.sf-data-bar--hull   { --sf-bar-color: var(--hull);   }
+.sf-data-bar--energy { --sf-bar-color: var(--energy); }
+.sf-data-bar--cargo  { --sf-bar-color: var(--cargo);  }
+.sf-data-bar--heat   { --sf-bar-color: var(--warn);   }
+.sf-data-bar--risk   { --sf-bar-color: var(--warn);   }
+.sf-data-bar--danger { --sf-bar-color: var(--danger); }
+.sf-data-bar--tall   { height: 10px; }
+
+/* 7 ─ sf-asset-stage : dark 3D-preview shell + fallback silhouette (outfitting debt #5) --------
+   A dark, quiet staging box (space is dark) a UI mini-renderer canvas can mount into; until then a
+   low-contrast ship silhouette holds the frame. Add --loaded once a canvas mounts to hide the
+   fallback. No animation at rest; the faint floor lift is a static studio backdrop, not a glow. */
+.sf-asset-stage {
+  position: relative; overflow: hidden; aspect-ratio: 4 / 3;
+  background: radial-gradient(130% 100% at 50% 118%, color-mix(in srgb, var(--console-steel) 10%, var(--bg)), var(--bg) 62%);
+  border: 1px solid var(--console-edge); border-radius: var(--r-md);
+}
+.sf-asset-stage > canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.sf-asset-stage__fallback {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: var(--sp-2); color: var(--ink-mute); pointer-events: none;
+}
+.sf-asset-stage__fallback svg { width: 42%; max-width: 160px; opacity: .5; }
+.sf-asset-stage__fallback span { font-family: var(--mono); font-size: var(--t-xs); letter-spacing: .06em; text-transform: uppercase; }
+.sf-asset-stage--loaded .sf-asset-stage__fallback { display: none; }
+
+/* 8 ─ sf-border-trace : ONE-SHOT edge sweep on a state change (see WHEN-ALLOWED note above) ----- */
+.sf-border-trace { position: relative; }
+.sf-border-trace::after {
+  content: ""; position: absolute; inset: -1px; pointer-events: none; border-radius: inherit;
+  border: 1px solid var(--sf-trace-color, var(--accent)); opacity: 0;
+}
+.sf-border-trace.is-tracing::after { animation: sf-trace-sweep var(--sf-trace-dur) var(--ease) forwards; }
+.sf-border-trace--good   { --sf-trace-color: var(--good);   }
+.sf-border-trace--warn   { --sf-trace-color: var(--warn);   }
+.sf-border-trace--danger { --sf-trace-color: var(--danger); }
+/* Final keyframe is opacity:0 → nothing lingers lit, AND the reduce-motion blanket (which snaps to
+   the last frame via `forwards`) degrades to "invisible" — the correct quiet fallback for free. */
+@keyframes sf-trace-sweep {
+  0%   { opacity: 1; clip-path: inset(0 100% 0 0); }
+  70%  { opacity: 1; clip-path: inset(0 0 0 0); }
+  100% { opacity: 0; clip-path: inset(0 0 0 0); }
+}
+
+/* 9 ─ sf-spotlight : hover/focus wash, no idle animation (see WHEN-ALLOWED note above) ---------- */
+.sf-spotlight { position: relative; }
+.sf-spotlight::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+  background: radial-gradient(120% 120% at 50% 0%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 70%);
+  opacity: 0; transition: opacity 150ms var(--ease);
+}
+.sf-spotlight:hover::before,
+.sf-spotlight:focus-within::before,
+.sf-spotlight:focus-visible::before { opacity: 1; }
+
+/* 10 ─ sf-select : styled replacement for native <select> (uiPrimitives.sfSelect) ----------------
+   Native OS dropdown chrome is deleted from screens (FRONTEND_DIRECTION §4.4). Field is a real
+   <button>; the drop list is a role=listbox anchored inside the root. No idle animation: the list
+   appears/disappears on open state only, and reduce-motion gets an instant state for free. */
+.sf-select { position: relative; display: inline-flex; min-width: 0; }
+.sf-select__field {
+  display: inline-flex; align-items: center; gap: var(--sp-2, 6px);
+  font: inherit; color: var(--ink);
+  background: var(--panel-2); border: 1px solid var(--panel-edge); border-radius: var(--r-sm, 5px);
+  padding: 5px 10px; cursor: pointer; pointer-events: auto;
+  transition: border-color .1s var(--ease, ease), color .1s var(--ease, ease);
+  text-transform: none; letter-spacing: normal; box-shadow: none;
+}
+.sf-select__field:hover { border-color: var(--accent); }
+.sf-select__field:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.sf-select__field:disabled { opacity: .4; cursor: default; }
+.sf-select__field svg { width: 12px; height: 12px; flex: none; color: var(--ink-mute); }
+.sf-select--open .sf-select__field svg { transform: rotate(180deg); }
+.sf-select__value { min-width: 3ch; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sf-select__list {
+  position: absolute; left: 0; top: calc(100% + 4px); z-index: 30;
+  width: max-content; min-width: 100%; max-width: min(340px, calc(100vw - 24px));
+  max-height: 220px; overflow-y: auto; overscroll-behavior: contain;
+  background: var(--panel-2); border: 1px solid var(--panel-edge); border-radius: var(--r-sm, 5px);
+  box-shadow: 0 10px 34px rgba(0,0,0,.55);
+  padding: 4px; display: none;
+}
+.sf-select--up .sf-select__list { top: auto; bottom: calc(100% + 4px); }
+.sf-select--open .sf-select__list { display: block; }
+.sf-select__opt {
+  padding: 6px 9px; border-radius: 4px; cursor: pointer; color: var(--ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sf-select__opt:hover { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.sf-select__opt.is-active { background: color-mix(in srgb, var(--accent) 18%, transparent); }
+.sf-select__opt.is-selected { color: var(--accent); }
+.sf-select__opt[aria-disabled="true"] { opacity: .4; cursor: default; background: none; }
+@media (prefers-reduced-motion: reduce) {
+  .sf-select__field, .sf-select__field svg { transition: none; }
+}
+
+/* 11 ─ instrument skeleton : CREST / STAGE / APRON / DRAWER (grammar §6, Phase 0) ---------------
+   Every instrument uses the same three zones so muscle memory transfers between screens even
+   though the centerpieces differ completely. Proportions per screen spec (12/58/30 etc. via
+   grid-template-rows on .sf-instrument). The APRON always holds ≥1 verb; the STAGE is the
+   manipulable centerpiece. Class vocabulary follows grammar §8 (no banned substrings).
+   J10+ screens: keep backdrop layers full-bleed and clamp reading zones to --sf-stage-max. */
+.sf-instrument { display: grid; grid-template-rows: 12fr 58fr 30fr; width: 100%; height: 100%; min-height: 0; }
+.sf-instrument > .sf-crest,
+.sf-instrument > .sf-stage,
+.sf-instrument > .sf-apron {
+  width: min(100%, var(--sf-stage-max));
+  margin-inline: auto;
+}
+.sf-crest { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 14px 22px 10px; }
+.sf-crest__title { font-family: var(--sf-display-face); font-weight: 700; font-size: 40px; line-height: 1.04; color: var(--sf-paper); }
+.sf-crest__line { font-family: var(--sf-subhead-face); font-weight: 600; font-size: 22px; line-height: 1.25; color: var(--sf-calm); }
+.sf-stage { position: relative; min-height: 0; }
+.sf-apron { display: flex; flex-direction: column; gap: 8px; padding: 10px 22px 14px; min-height: 0; }
+.sf-deck { display: flex; flex-direction: column; gap: 6px; min-height: 0; }
+.sf-deck__label { font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px; letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-calm); }
+.sf-tile { display: flex; align-items: baseline; gap: 8px; padding: 6px 10px; }
+.sf-housing { display: flex; flex-direction: column; gap: 6px; }
+.sf-anchor { position: absolute; transform: translate(-50%, -50%); }
+/* absolute, NOT fixed: a drawer always lives inside a .screen, which carries a transform for its
+   enter/exit transition and is therefore the containing block for fixed descendants. Shipping
+   `fixed` here and patching it with a descendant selector in §14 is how an override pile starts. */
+.sf-drawer { position: absolute; top: 0; bottom: 0; width: min(520px, 42vw); right: 0; z-index: 40;
+  background: var(--sf-surface); border-left: 1px solid var(--sf-edge);
+  box-shadow: -18px 0 48px rgba(0,0,0,.5); transform: translateX(100%);
+  transition: transform var(--sf-t-settle) var(--sf-ease); }
+.sf-drawer.is-open { transform: translateX(0); }
+.sf-drawer__deck { display: flex; flex-direction: column; gap: 10px; padding: 16px; overflow-y: auto; height: 100%; }
+@media (prefers-reduced-motion: reduce) { .sf-drawer { transition: none; } }
+
+/* Text-expansion base (A_LIST_GAPS #1, binding from Phase 0): no fixed-width text container;
+   design against +40%; nowrap only on numerals and keycaps; sentences get a two-line budget. */
+.sf-instrument .sf-crest__line, .sf-instrument .sf-tile, .sf-instrument .sf-deck__label { min-width: 0; }
+.sf-instrument .sf-tile span[data-sf-text] { overflow-wrap: break-word; }
+
+/* 12 ─ THE SHIP screen host (src/ui/ship/shipScreen.js; SCREENS_B §1.2/§1.3) ---------------------
+   The shared shipworks stage re-parented into a pausing flight screen (F2). Full-bleed with its
+   own opaque bay backdrop so it never reads as the same room as the menu plate. Absolute inset
+   full-bleed (not flex-child sizing): #screens flex-centers its children, so a plain width:100%
+   child can still end up content-sized and clipped (vision-review blocker, frame 04). The flight
+   host hides commerce: no Fleet/Buy segment (fleet rail stays, inspect-only). */
+.sf-ship { position: absolute; inset: 0; width: 100%; height: 100%; background: linear-gradient(160deg, var(--bg) 0%, var(--sf-surface) 100%); }
+.sf-ship .sx-sw { width: min(100%, var(--sf-stage-max)); margin-inline: auto; }
+.sf-ship .sx-sw--flight .sx-seg { display: none; }
+.sf-ship .sx-sw--flight .sx-sw__railstep { display: none; }
+/* With the commerce segment hidden, the rail kept the station host's 190px left reservation —
+   the lone hull card floated beside a dead gap and rode the viewport top edge. */
+.sf-ship .sx-sw--flight .sx-sw__rail { padding: 8px 8px 10px 12px; }
+/* 12a ─ THE RANGE (F4) : playable teaching box ---------------------------------------------------
+   Own-room flat backdrop + boundary rectangle, one canvas stage, one left-edge drawer. */
+#screens:has(> .screen[data-screen="range"].sf-screen--visible),
+#screens:has(> .screen[data-screen="range"].sf-screen--entering) {
+  background-image: none;
+  background-color: var(--bg);
+}
+#screens:has(> .screen[data-screen="range"].sf-screen--visible)::before,
+#screens:has(> .screen[data-screen="range"].sf-screen--entering)::before {
+  background: none;
+}
+.sf-range {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--bg);
+  color: var(--sf-paper);
+  font-family: var(--sf-body-face);
+  pointer-events: auto;
+  /* Single source for the rail width so the ≤1280px override below retunes the PROPERTY, not the
+     drawer's `width`, and the empty-state inset below can track the same number. */
+  --sf-range-rail: min(440px, 40vw);
+}
+.sf-range__shell {
+  position: relative;
+  grid-template-rows: 12fr 64fr 24fr;
+}
+.sf-range__crest {
+  align-items: flex-start;
+  gap: 20px;
+}
+.sf-range__crest-main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.sf-range__rule {
+  margin: 0;
+}
+.sf-range__instruction {
+  margin: 0;
+  font: 500 14px/1.35 var(--sf-body-face);
+  color: var(--sf-paper);
+}
+.sf-range__crest-side {
+  margin-left: auto;
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+.sf-range__progress,
+.sf-range__cleared {
+  font: 500 20px/1.15 var(--sf-data-face);
+  font-variant-numeric: tabular-nums;
+  color: var(--sf-paper);
+}
+.sf-range__cleared {
+  font-size: 13px;
+  color: var(--sf-calm);
+}
+.sf-range__stage {
+  padding: 0 20px;
+}
+.sf-range__box {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+.sf-range__canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  background: var(--bg);
+  outline: none;
+}
+.sf-range__canvas:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--sf-you);
+}
+.sf-range__beam {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.sf-range .sf-drawer {
+  left: 0;
+  right: auto;
+  width: var(--sf-range-rail);
+  transform: translateX(-100%);
+  border-left: 0;
+  border-right: 1px solid var(--sf-edge);
+  box-shadow: 18px 0 48px rgba(0, 0, 0, .5);
+}
+.sf-range .sf-drawer.is-open { transform: translateX(0); }
+.sf-range__drawer-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--sf-edge);
+}
+.sf-range__drawer-tab,
+.sf-range__drawer-close {
+  min-height: 34px;
+  padding: 6px 10px;
+  font: 600 12px/1.2 var(--sf-subhead-face);
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.sf-range__drawer-tab.is-on {
+  border-color: var(--sf-you);
+  color: var(--sf-you);
+}
+.sf-range__drawer-close {
+  margin-left: auto;
+}
+.sf-range__drawer-body {
+  gap: 12px;
+}
+.sf-range__drawer-title {
+  font: 600 12px/1.2 var(--sf-subhead-face);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--sf-calm);
+}
+.sf-range__drawer-pane { display: none; }
+.sf-range__drawer-pane.is-on {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.sf-range__rail {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.sf-range__rail-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sf-range__rail-group-head {
+  font: 600 12px/1.2 var(--sf-subhead-face);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--sf-calm);
+}
+.sf-range__rail-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sf-range__rail-row {
+  width: 100%;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font: 500 13px/1.3 var(--sf-body-face);
+  text-transform: none;
+  letter-spacing: .01em;
+  color: var(--sf-paper);
+  border: 1px solid var(--sf-edge);
+  border-radius: var(--r-sm, 5px);
+  background: color-mix(in srgb, var(--sf-surface) 92%, black);
+  padding: 6px 8px;
+}
+.sf-range__rail-row[data-state="new"] .sf-range__rail-state { color: var(--sf-calm); }
+.sf-range__rail-row[data-state="flown"] .sf-range__rail-state { color: var(--sf-goal); }
+.sf-range__rail-row[data-state="cleared"] .sf-range__rail-state { color: var(--sf-you); }
+.sf-range__rail-row.is-active {
+  border-color: var(--sf-paper);
+}
+.sf-range__rail-rule {
+  min-width: 0;
+  text-align: left;
+}
+.sf-range__rail-state {
+  font: 500 13px/1.2 var(--sf-data-face);
+  font-variant-numeric: tabular-nums;
+}
+.sf-range__bestiary {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.sf-range__b-row {
+  display: grid;
+  grid-template-columns: 140px minmax(0, 1fr);
+  gap: 10px;
+  align-items: baseline;
+}
+.sf-range__b-row .k {
+  font: 600 12px/1.2 var(--sf-subhead-face);
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--sf-calm);
+}
+.sf-range__b-row .v {
+  font: 500 13px/1.35 var(--sf-body-face);
+  color: var(--sf-paper);
+  overflow-wrap: anywhere;
+}
+.sf-range__apron {
+  gap: 10px;
+  padding-bottom: 16px;
+}
+.sf-range__verdict-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.sf-range__verdict-mount {
+  font: 600 22px/1.2 var(--sf-subhead-face);
+  color: var(--sf-paper);
+  min-height: 28px;
+}
+.sf-range__verdict-plain {
+  display: inline-block;
+  font: 600 22px/1.2 var(--sf-subhead-face);
+  color: var(--sf-paper);
+}
+.sf-range__who {
+  margin-left: auto;
+  min-height: 32px;
+  padding: 5px 10px;
+  font: 600 12px/1.2 var(--sf-subhead-face);
+  letter-spacing: .05em;
+}
+.sf-range__because {
+  margin: 0;
+  font: 500 14px/1.35 var(--sf-body-face);
+  color: var(--sf-paper);
+}
+.sf-range__verbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.sf-range__verbs .sf-btn {
+  min-height: 36px;
+  padding: 6px 12px;
+  font-size: 12px;
+  letter-spacing: .05em;
+}
+.sf-range__empty {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 26px;
+  text-align: center;
+  background: color-mix(in srgb, var(--bg) 95%, transparent);
+}
+.sf-range__empty-title {
+  margin: 0;
+  font: 700 40px/1.04 var(--sf-display-face);
+  color: var(--sf-paper);
+}
+.sf-range__empty-copy {
+  max-width: 56ch;
+  margin: 0;
+  font: 500 14px/1.45 var(--sf-body-face);
+  color: var(--sf-paper);
+}
+/* The rail paints OVER the empty state (drawer z-index 40 vs empty z-index 30), and the rail gets
+   WIDER as the viewport narrows (440px at 1920 → 480px at 1280) while the centre point moves left,
+   so at 1280×720 the centred copy started around x≈405 — behind the rail. When the drawer is open,
+   add the rail's width to the empty state's LEFT PADDING so the centred column sits in the space
+   actually visible. Two reasons this is padding and NOT left/inset: the empty state's background is
+   a near-opaque full-screen scrim, and its box is what paints that scrim — moving left/inset moves
+   the scrim too, leaving everything left of the rail (header title, bottom strip) un-dimmed with a
+   hard vertical seam splitting one title into a bright half and a dim half. Padding shrinks only the
+   content box the flex centring uses while the background still paints the full screen. Do not
+   "simplify" this back to a plain centred box or an inset box. Layout only: no forced-colors
+   counterpart needed. */
+.sf-range:has(.sf-drawer.is-open) .sf-range__empty {
+  padding-left: calc(26px + var(--sf-range-rail));
+}
+@media (max-width: 1280px) {
+  .sf-range__crest-side { min-width: 170px; }
+  .sf-range__progress { font-size: 17px; }
+  .sf-range { --sf-range-rail: min(480px, 54vw); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sf-range__rail-row,
+  .sf-range__drawer-tab,
+  .sf-range__verbs .sf-btn {
+    transition: none;
+  }
+}
+@media (forced-colors: active) {
+  #screens:has(> .screen[data-screen="range"].sf-screen--visible),
+  #screens:has(> .screen[data-screen="range"].sf-screen--entering) {
+    background-color: Canvas;
+  }
+  .sf-range,
+  .sf-range__canvas,
+  .sf-range .sf-drawer,
+  .sf-range__rail-row,
+  .sf-range__empty {
+    background: Canvas;
+    color: CanvasText;
+    border-color: CanvasText;
+  }
+  .sf-range__who,
+  .sf-range__drawer-tab,
+  .sf-range__drawer-close,
+  .sf-range__verbs .sf-btn {
+    border-color: CanvasText;
+    color: CanvasText;
+  }
+}
+/* Keep map backdrops full-bleed while clamping the reading columns on ultrawide. */
+#screens #sf-galaxymap .gm-head,
+#screens #sf-galaxymap .gm-body-container {
+  width: min(100%, var(--sf-stage-max));
+  margin-inline: auto;
+}
+
+/* 12b ─ THE FOOTPRINT (F3) : the consequence board on the frontend kit -------------------------
+   design/frontend/direction/tasks/TASK_C_STATION_INSTRUMENTS_CHART.md §1.10. The screen root is a
+   `.k-screen` (styles/kit.css); these rules are layout only and spend nothing but kit tokens: the
+   board is hairlines on the sky, the nodes are kit words, the traced node is the signal colour.
+   Nothing here paints, borders, rounds, shadows or animates. */
+.fp-stage { display: grid; grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); row-gap: var(--k-gap); min-height: 0; }
+.fp-statehost { min-height: 0; align-self: start; }
+.fp-board { position: relative; display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; }
+.fp-head, .fp-chain { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); column-gap: var(--k-gap); }
+.fp-head { padding-bottom: calc(8px * var(--k-s)); border-bottom: 1px solid var(--k-hair); }
+.fp-col-head { display: flex; flex-direction: column; gap: calc(4px * var(--k-s)); min-width: 0; }
+.fp-edges { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.fp-edge { fill: none; stroke: var(--k-hair); stroke-width: 1; }
+.fp-edge--stub { stroke-dasharray: 4 4; }
+.fp-edge--spillover { stroke-dasharray: 6 4; }
+.fp-edge-arrow { fill: var(--k-bone-38); }
+.fp-nodes { position: relative; min-height: 0; padding-top: calc(16px * var(--k-s)); overflow: hidden auto; scrollbar-width: thin; scrollbar-color: var(--k-hair) transparent; }
+.fp-cell { display: flex; flex-direction: column; align-items: flex-start; gap: calc(12px * var(--k-s)); min-width: 0; }
+/* A node is a kit word (.k-word.k-word--body) that may wrap to its column. Strength is a colour
+   token — live 100 %, spent 38 %, the traced node the signal — never opacity. The `.k-screen`
+   scope outranks the kit's own .k-word colour, which is declared in a later sheet. */
+.k-screen .fp-node { white-space: normal; text-align: left; max-width: 100%; line-height: 1.4; }
+.k-screen .fp-node--live { color: var(--k-text-live); }
+.k-screen .fp-node--spent { color: var(--k-bone-38); }
+.k-screen .fp-node--latch, .k-screen .fp-node--latch:hover, .k-screen .fp-node--latch:focus-visible { color: var(--k-signal); }
+/* The record (the old drawer) is the stage's lower half: caps, sentences and hairline rows. */
+.fp-drawer { display: flex; flex-direction: column; gap: calc(12px * var(--k-s)); min-height: 0; overflow: hidden auto; scrollbar-width: thin; scrollbar-color: var(--k-hair) transparent; }
+@media (forced-colors: active) {
+  .fp-edge { stroke: CanvasText; }
+  .fp-edge-arrow { fill: CanvasText; }
+}
+
+/* 13 ─ sf-state : the four required data states (J3; uiPrimitives.dataState) --------------------
+   EMPTY / LOADING / ERROR / DENIED. Each names what would fill it and carries a verb — a
+   correct-but-blank pane reads as broken (grammar §12 item 9). Supersedes .sf-empty.
+
+   Colour: grammar §4 roles only; `--accent` is roleless and banned here. At rest the block is
+   calm+paper (the 80% rule) and spends exactly ONE hot colour on the rail + glyph. Meaning never
+   lives in colour alone — the state word and the glyph silhouette are the second and third
+   channels, both of which survive forced-colors.
+
+   Naming: no `panel|card|menu|modal` substring (forced-colors strips background-image/box-shadow
+   from those) and no `pulse|blink|flash` (sf-reduce-flash blanket-kills [class*=…] animation). */
+.sf-state {
+  display: flex; align-items: flex-start; gap: 14px;
+  flex-wrap: wrap;
+  padding: clamp(16px, 3.4vh, 30px) clamp(16px, 2.6vw, 30px);
+  min-width: 0; width: 100%; max-width: min(62ch, 640px); margin-inline: auto; margin-block: auto;
+  font-size: 14px;                 /* anchors the ch measure; it otherwise resolves against whatever
+                                      the host inherits (12px inside the Chart's inspector) */
+  container-type: inline-size;     /* so type sizes to the PANE, not the monitor */
+  color: var(--sf-paper);
+  border-inline-start: var(--sf-rail-w) solid var(--sf-calm);
+}
+.sf-state--error, .sf-state--denied { border-inline-start-color: var(--sf-foe); }
+.sf-state--empty { border-inline-start-style: dashed; }
+.sf-state--denied { border-inline-start-width: calc(var(--sf-rail-w) * 2); }
+.sf-state--compact { padding: 12px 14px; gap: 10px; }
+
+.sf-state__glyph { flex: none; width: 30px; height: 30px; color: var(--sf-calm); }
+.sf-state--error .sf-state__glyph, .sf-state--denied .sf-state__glyph { color: var(--sf-foe); }
+.sf-state__glyph svg { width: 100%; height: 100%; display: block; }
+
+.sf-state__body { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; flex: 1 1 22ch; }
+
+/* The state word is the non-colour channel. 12px floor, per the ship polish pass. */
+.sf-state__word {
+  font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
+  letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-calm);
+}
+.sf-state--error .sf-state__word, .sf-state--denied .sf-state__word { color: var(--sf-foe); }
+
+/* Headline is the pane's DISPLAY element while the state is up. No fixed width, +40% safe. */
+.sf-state__head {
+  margin: 0; font-family: var(--sf-display-face); font-weight: 700;
+  font-size: clamp(19px, 7cqi, 28px); line-height: 1.12; color: var(--sf-paper);
+  overflow-wrap: break-word; text-wrap: balance;
+}
+.sf-state--compact .sf-state__head { font-size: clamp(15px, 1.5vw, 19px); }
+.sf-state__fills, .sf-state__detail {
+  margin: 0; font-size: 14px; line-height: 1.45; color: var(--sf-calm); overflow-wrap: break-word;
+}
+.sf-state__detail { font-size: 13px; opacity: .85; }
+
+/* The verb carries --sf-goal: it is the way out, which is exactly "what you're heading for". */
+.sf-state__verb {
+  margin-top: 4px; display: inline-flex; align-items: center; gap: 8px;
+  font: 600 15px/1.2 var(--sf-subhead-face); letter-spacing: .01em; text-transform: none;
+  color: var(--sf-goal); background: transparent;
+  border: 1px solid color-mix(in srgb, var(--sf-goal) 70%, transparent);
+  border-radius: var(--r-sm, 5px); padding: 7px 14px; cursor: pointer; box-shadow: none;
+  transition: border-color var(--sf-t-latch) var(--sf-ease), color var(--sf-t-latch) var(--sf-ease);
+}
+.sf-state__verb:hover { border-color: var(--sf-goal); }
+.sf-state__verb:focus-visible { outline: 2px solid var(--sf-goal); outline-offset: 2px; }
+.sf-state__verb:active { transform: none; }   /* ui.css `button:active{transform}` clobbers centering */
+/* Keycap. 12px floor applies here too — this was 11px in a `font:` shorthand, which the check's
+   `font-size:` scan could not see. nowrap is allowed on a keycap (grammar §12 item 11). */
+.sf-state__key {
+  font: 600 12px/1 var(--sf-data-face); letter-spacing: .06em; white-space: nowrap;
+  padding: 3px 5px; border: 1px solid var(--sf-edge); border-radius: var(--r-sm, 5px); color: var(--sf-calm);
+}
+
+/* LOADING skeleton — echoes the REAL layout so the pane's shape reads before its content does.
+
+   IT DOES NOT SHIMMER, and that is the design, not an omission. Grammar §5: "no motion ships
+   without a named state variable behind it," and a spinner that outlives its work is a lie.
+   dataState's callers supply no progress signal, so a perpetual sweep would encode nothing — it
+   would be decoration, and it is exactly the compositor-side `infinite` keyframe that
+   check:ui-frame-sleep cannot see because it inspects rAF. The state is carried honestly by the
+   BUS_OFFLINE word, the arc glyph, `aria-busy`, and the skeleton's shape.
+
+   If a caller ever supplies real progress, the bar's WIDTH becomes the encoding and earns a
+   `--sf-t-spool` motion token. Until then the correct implementation is the subtraction. */
+.sf-state__skel { flex: 1 0 100%; display: flex; flex-direction: column; gap: 8px; margin-bottom: 6px; }
+.sf-state__bar {
+  width: 72%; height: 12px; border-radius: var(--r-sm, 5px);
+  background: color-mix(in srgb, var(--sf-calm) 14%, transparent);
+}
+.sf-state__bar:nth-child(2) { width: 92%; }
+.sf-state__bar:nth-child(3) { width: 54%; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sf-state__verb { transition: none; }
+}
+/* forced-colors: gradients/shadows are stripped, so the sweep and the tinted bars vanish. Give the
+   skeleton a real border so LOADING stays legible rather than blank (grammar §11). */
+@media (forced-colors: active) {
+  .sf-state { border-inline-start-color: CanvasText; }   /* colour only — keep the per-state style/width */
+  .sf-state__bar { border: 1px solid CanvasText; background: none; }
+  .sf-state__verb { border: 1px solid ButtonText; color: ButtonText; }
+}
+
+/* 14 ─ entity links + the entity DRAWER (J5; entityLinks.js) ------------------------------------
+   Every noun is a door: [data-entity="type:id"] anywhere under #screens opens that entity's
+   dossier in a tier-3 drawer. Progressive disclosure stops here — a drawer REPLACES its content
+   and never stacks a second surface (grammar §7).
+
+   POSITIONING, and why it is absolute rather than fixed: `.screen` carries transform:translateY(0)
+   for its enter/exit transition, and any transform other than `none` makes that element the
+   containing block for position:fixed descendants. #screens flex-centres its children, so a screen
+   root can be content-sized — a "fixed" drawer would anchor to that small box, not the viewport.
+   The layer therefore stretches its host while open (.sf-drawerhost) and the class comes off on
+   close, so no screen is left relaid-out. */
+.screen.sf-drawerhost { position: absolute; inset: 0; width: 100%; height: 100%; }
+.sf-drawerlayer { position: absolute; inset: 0; z-index: 40; pointer-events: none; }
+.sf-drawerlayer > .sf-drawer { pointer-events: auto; }   /* position now correct at source (§11) */
+
+/* An entity link reads as a link by UNDERLINE, not by colour alone — forced-colors and colour-blind
+   modes both need the second channel (grammar §4). */
+.sf-entity-link {
+  font: inherit; color: var(--sf-paper); background: none; border: 0; padding: 0;
+  text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--sf-you) 55%, transparent);
+  text-underline-offset: 3px; cursor: pointer; text-transform: none; letter-spacing: normal;
+  box-shadow: none; text-align: left; min-width: 0; overflow-wrap: break-word;
+}
+.sf-entity-link:hover { color: var(--sf-you); text-decoration-color: var(--sf-you); }
+.sf-entity-link:focus-visible { outline: 2px solid var(--sf-you); outline-offset: 2px; }
+.sf-entity-link:active { transform: none; }
+.sf-drawer__links { display: flex; flex-direction: column; min-width: 0; }
+.sf-entity-link--row {
+  padding: 7px 2px; border-bottom: 1px solid var(--sf-edge); width: 100%;
+  text-decoration-color: transparent;   /* the row IS the affordance; underline returns on hover/focus */
+}
+.sf-entity-link--row:last-child { border-bottom: 0; }
+.sf-entity-link--row:hover, .sf-entity-link--row:focus-visible { text-decoration-color: var(--sf-you); }
+
+.sf-drawer--entity { --sf-entity-accent: var(--sf-calm); }
+.sf-drawerlayer > .sf-drawer--entity { top: auto; bottom: 0; height: fit-content; max-height: 100%; }
+.sf-drawer--entity .sf-drawer__deck { gap: 16px; padding: 18px 20px 20px; }
+/* The graph is the drawer's STAGE. A CREST and an APRON with nothing between them is what read as
+   an unfinished sidebar; grouped, full-width link rows are the centerpiece (grammar §6). */
+.sf-drawer__stage { display: flex; flex-direction: column; gap: 14px; min-height: 0; }
+.sf-drawer__x {
+  position: absolute; top: 10px; right: 12px; z-index: 1;
+  width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center;
+  color: var(--sf-calm); background: none; border: 1px solid transparent; border-radius: var(--r-sm, 5px);
+  cursor: pointer; padding: 0; box-shadow: none;
+}
+.sf-drawer__x:hover { color: var(--sf-paper); border-color: var(--sf-edge); }
+.sf-drawer__x:focus-visible { outline: 2px solid var(--sf-goal); outline-offset: 1px; }
+.sf-drawer__x:active { transform: none; }
+.sf-drawer__x svg { width: 15px; height: 15px; }
+
+.sf-drawer__crest { display: flex; flex-direction: column; gap: 3px; padding-right: 38px;
+  border-inline-start: var(--sf-rail-w) solid var(--sf-calm); padding-inline-start: 12px; }
+.sf-drawer__kicker {
+  font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
+  letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-calm);
+}
+.sf-drawer__title {
+  margin: 0; font-family: var(--sf-display-face); font-weight: 700;
+  font-size: clamp(24px, 2.4vw, 34px); line-height: 1.06; color: var(--sf-paper);
+  overflow-wrap: break-word; text-wrap: balance;
+}
+
+.sf-drawer__facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 13ch), 1fr)); gap: 8px; }
+.sf-drawer__facts .sf-tile {
+  flex-direction: column; align-items: flex-start; gap: 2px;
+  border: 1px solid var(--sf-edge); border-radius: var(--r-sm, 5px); padding: 8px 10px; min-width: 0;
+}
+.sf-tile__k { font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
+  letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-calm); }
+.sf-tile__v { font-size: 15px; line-height: 1.25; color: var(--sf-paper); overflow-wrap: break-word; }
+.sf-tile--data .sf-tile__v {
+  font-family: var(--sf-data-face); font-weight: 500; font-variant-numeric: tabular-nums;
+  letter-spacing: -.01em;
+}
+.sf-tile--you .sf-tile__v { color: var(--sf-you); }
+.sf-tile--foe .sf-tile__v { color: var(--sf-foe); }
+.sf-tile--goal .sf-tile__v { color: var(--sf-goal); }
+
+.sf-drawer__prose { margin: 0; font-size: 14px; line-height: 1.5; color: var(--sf-paper); overflow-wrap: break-word; }
+.sf-drawer__prose--foe { color: var(--sf-foe); }
+
+.sf-drawer__apron { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 12px; border-top: 1px solid var(--sf-edge); }
+.sf-drawer__verb {
+  font: inherit; font-size: 14px; font-weight: 600; text-transform: none; letter-spacing: .01em;
+  color: var(--sf-goal); background: transparent;
+  border: 1px solid var(--sf-goal-edge);
+  border-radius: var(--r-sm, 5px); padding: 7px 14px; cursor: pointer; box-shadow: none;
+  transition: border-color var(--sf-t-latch) var(--sf-ease);
+}
+.sf-drawer__verb--quiet { color: var(--sf-calm); border-color: var(--sf-edge); }
+.sf-drawer__verb:hover { border-color: currentColor; }
+.sf-drawer__verb:focus-visible { outline: 2px solid var(--sf-goal); outline-offset: 2px; }
+.sf-drawer__verb:active { transform: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sf-drawer__verb { transition: none; }
+}
+@media (forced-colors: active) {
+  .sf-drawerlayer > .sf-drawer { border-inline-start: 1px solid CanvasText; }
+  .sf-entity-link { color: LinkText; text-decoration-color: LinkText; }
+  .sf-drawer__verb, .sf-drawer__facts .sf-tile { border: 1px solid CanvasText; }
+}
+
+/* Dock refusal on the HUD: compact dataState, vacuum vignette, pointer-events for the verb. */
+.sf-dock-deny {
+  position: absolute; top: 14%; left: 50%; transform: translateX(-50%);
+  z-index: 41; width: min(52ch, 90vw); pointer-events: auto;
+}
+.sf-dock-deny .sf-state {
+  margin: 0; max-width: none;
+  background: radial-gradient(70% 80% at 50% 50%, color-mix(in srgb, var(--bg) 92%, transparent), color-mix(in srgb, var(--bg) 55%, transparent) 70%, transparent);
+}
+
+/* Comms tape frequency trace (audio-state driven; parked when no transmission is live). */
+.sf-fx-comms-trace {
+  --sf-comms-amp: 0;
+  --sf-comms-density: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 128px;
+  padding: 1px 0 1px 6px;
+  border-inline-start: 1px solid color-mix(in srgb, var(--sf-calm) 42%, transparent);
+  color: var(--sf-you);
+  opacity: calc(.45 + var(--sf-comms-amp) * .55);
+}
+.sf-fx-comms-trace[hidden] { display: none !important; }
+.sf-fx-comms-trace__crest {
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: color-mix(in srgb, var(--sf-you) 88%, var(--sf-paper));
+}
+.sf-fx-comms-trace__wave {
+  min-width: 102px;
+  display: inline-flex;
+  font-family: var(--sf-data-face);
+  font-size: 12px;
+  letter-spacing: .06em;
+  line-height: 1;
+  color: var(--sf-you);
+  opacity: calc(.52 + var(--sf-comms-density) * .38);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--sf-you) 45%, transparent);
+}
+.sf-fx-comms-trace__wave .sf-fx-morph { min-width: 102px; }

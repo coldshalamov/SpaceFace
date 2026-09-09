@@ -1,0 +1,9 @@
+{
+  "name": "get_blendfile_summary_path_info",
+  "description": "\nSimple/fast access to the blend file's path, save status, age, and backups.\n",
+  "inputSchema": {
+    "properties": {},
+    "title": "get_blendfile_summary_path_infoArguments",
+    "type": "object"
+  }
+}

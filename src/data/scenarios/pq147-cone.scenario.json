@@ -1,0 +1,14 @@
+{
+  "schema": "spaceface.rangeDrill.v1",
+  "id": "drill.power.cone",
+  "powerId": "cone",
+  "action": "toggleClearingCone",
+  "railSlot": 7,
+  "volume": "cone",
+  "title": "Clearing lane",
+  "rule": "A WEDGE PLOWS A LANE AHEAD OF THE NOSE",
+  "sentence": "Hold a forward wedge that plows a lane ahead of the nose.",
+  "instruction": "Toggle the Clearing Cone and fly through the clutter. Only what sits in the wedge moves.",
+  "seed": 14707,
+  "ticks": 90
+}

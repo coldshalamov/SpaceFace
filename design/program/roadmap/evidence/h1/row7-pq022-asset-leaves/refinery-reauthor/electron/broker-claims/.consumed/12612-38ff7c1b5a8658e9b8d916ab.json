@@ -1,0 +1,33 @@
+{
+  "schema": "spaceface.validation-broker-claim-consumed.v1",
+  "claimId": "12612-38ff7c1b5a8658e9b8d916ab",
+  "claimPath": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\pq022-refinery-reauthor\\electron\\broker-claims\\12612-38ff7c1b5a8658e9b8d916ab.json",
+  "consumedAt": "2026-09-07T12:24:11.872Z",
+  "pid": 9072,
+  "candidateDigest": "63429ec3c10540966f33182a521f870a54472815dda6f4f8c914a0cf341db663",
+  "runtimeKind": "electron",
+  "digests": {
+    "routeDigest": "533551ceca40472a70909136ff59e1f688c5d935d34e401f3d58ecda73d1eda9",
+    "regressionDigest": "9a65b10448d12a757b3c2aee4a11f0cd1ec5253a0c4772e781256cf40b6346c5",
+    "productionDigest": "533551ceca40472a70909136ff59e1f688c5d935d34e401f3d58ecda73d1eda9",
+    "harnessDigest": "ab596d9854791503c3354498f70759fd5297138da01578fca98e7275fb25b3aa",
+    "scenarioDigest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "inputDigest": "ef8165803fa37f3d2c92ff72bbf74c3a9eeaafa14a85f73cba9db89f2764fc4a",
+    "profileDigest": "072927bc0e9e7479124b45825e433d4d335cb12ba61909219e77b8e7d177d9aa",
+    "manifestDigest": "dbb373345954160aa76dd352af2ab422f6736198b229e086998ea9cdac2f9c81",
+    "candidateDigest": "63429ec3c10540966f33182a521f870a54472815dda6f4f8c914a0cf341db663",
+    "buildDigest": "cdd523a24578c280983f59a98f0439201a07e1136dcf24686b379de8a74671dd",
+    "sourceCandidateDigest": null,
+    "worktreeDigest": null,
+    "worktreeHead": null,
+    "worktreeBranch": null,
+    "worktreeChangedFileCount": null,
+    "scenarioManifestDigest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "saveDigest": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+    "inputTapeDigest": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+    "cameraManifestDigest": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+    "candidateSourceDigestMode": "all-src-js",
+    "candidateSourcePathCount": 1013
+  },
+  "mode": "acceptance"
+}

@@ -1,0 +1,148 @@
+<!doctype html>
+<meta charset="utf-8">
+<style>html,body{margin:0;overflow:hidden;background:#080c12}canvas{display:block}</style>
+<script type="importmap">{"imports":{"three":"/node_modules/three/build/three.module.js","three/addons/":"/node_modules/three/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+const query = new URLSearchParams(location.search);
+const width = Number(query.get('w')) || 1280;
+const height = Number(query.get('h')) || 720;
+const mode = query.get('mode') || 'default';
+const activeLod = Math.max(0, Math.min(2, Number(query.get('lod')) || 0));
+const hullLod = Math.max(0, Math.min(2, Number(query.get('hullLod')) || 0));
+const focus = query.get('focus') || 'ship';
+const azimuth = THREE.MathUtils.degToRad(Number(query.get('az')) || -38);
+const elevation = Number.isFinite(Number(query.get('el'))) ? Number(query.get('el')) : 0.44;
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1);
+renderer.setSize(width, height, false);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+document.body.append(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x080c12);
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+scene.add(new THREE.HemisphereLight(0xd7e4ed, 0x24282d, 0.72));
+const key = new THREE.DirectionalLight(0xffdfbd, 2.25); key.position.set(18, 20, -16); scene.add(key);
+const fill = new THREE.DirectionalLight(0x79bce8, 0.72); fill.position.set(-15, 8, 18); scene.add(fill);
+const rim = new THREE.DirectionalLight(0xff9c5e, 0.42); rim.position.set(-18, 10, -14); scene.add(rim);
+
+const ktx2 = new KTX2Loader().setTranscoderPath('/node_modules/three/examples/jsm/libs/basis/').detectSupport(renderer);
+const loader = new GLTFLoader().setKTX2Loader(ktx2).setMeshoptDecoder(MeshoptDecoder);
+
+try {
+  const inputs = {
+    hull: query.get('hull'), cockpit: query.get('cockpit'),
+    engine: query.get('engine'), fin: query.get('fin'),
+  };
+  if (Object.values(inputs).some((value) => !value)) throw new Error('assembly preview requires hull, cockpit, engine and fin');
+  const loaded = Object.fromEntries(await Promise.all(Object.entries(inputs).map(async ([slot, url]) => {
+    const gltf = await loader.loadAsync(url);
+    return [slot, gltf.scene];
+  })));
+
+  const ship = new THREE.Group();
+  ship.name = 'SCRATCH_WARDEN_ASSEMBLY';
+  scene.add(ship);
+  const hull = loaded.hull;
+  selectLod(hull, hullLod);
+  const hullSize = visibleBounds(hull).getSize(new THREE.Vector3());
+  const hullScale = 1.72 / Math.max(1e-6, hullSize.x);
+  hull.scale.multiplyScalar(hullScale);
+  ship.add(hull);
+  hull.updateMatrixWorld(true);
+
+  const mountPlan = [
+    ['cockpit', 'MOUNT_COCKPIT', 0.58],
+    ['engine', 'MOUNT_ENGINE_L', 0.58],
+    ['engine', 'MOUNT_ENGINE_R', 0.58],
+    ['fin', 'MOUNT_FIN_L', 0.62],
+    ['fin', 'MOUNT_FIN_R', 0.62],
+  ];
+  const mounted = [];
+  const mountedObjects = [];
+  for (const [slot, mountName, targetLength] of mountPlan) {
+    const mount = hull.getObjectByName(mountName);
+    if (!mount) throw new Error(`candidate hull missing ${mountName}`);
+    const part = loaded[slot].clone(true);
+    selectLod(part, activeLod);
+    const partSize = visibleBounds(part).getSize(new THREE.Vector3());
+    const scale = targetLength / Math.max(1e-6, partSize.x);
+    const position = mount.getWorldPosition(new THREE.Vector3());
+    const quaternion = mount.getWorldQuaternion(new THREE.Quaternion());
+    part.position.copy(position);
+    part.quaternion.copy(quaternion);
+    part.scale.multiplyScalar(scale);
+    part.name = `WARDEN_${slot.toUpperCase()}_${mountName}`;
+    ship.add(part);
+    mounted.push({ slot, mountName, targetLength, sourceLength: partSize.x, scale });
+    mountedObjects.push({ slot, object: part });
+  }
+  ship.updateMatrixWorld(true);
+
+  const box = visibleBounds(ship);
+  const cameraBox = focus === 'aft-modules'
+    ? mountedObjects
+      .filter(({ slot }) => slot === 'engine' || slot === 'fin')
+      .reduce((result, { object }) => result.union(visibleBounds(object)), new THREE.Box3())
+    : box;
+  const center = cameraBox.getCenter(new THREE.Vector3());
+  const sphere = cameraBox.getBoundingSphere(new THREE.Sphere());
+  const camera = new THREE.PerspectiveCamera(38, width / height, 0.02, 5000);
+  const direction = new THREE.Vector3(Math.cos(azimuth), elevation, Math.sin(azimuth)).normalize();
+  const fillFraction = mode === 'close' ? 0.82 : mode === 'maximum' ? 0.38 : 0.56;
+  const distance = sphere.radius / Math.max(0.1, Math.sin(THREE.MathUtils.degToRad(camera.fov * 0.5)) * fillFraction);
+  camera.position.copy(center).addScaledVector(direction, distance);
+  camera.lookAt(center);
+  camera.near = Math.max(0.02, distance / 500);
+  camera.far = distance * 20;
+  camera.updateProjectionMatrix();
+  renderer.render(scene, camera);
+
+  let meshes = 0;
+  let draws = 0;
+  ship.traverse((object) => {
+    if (!object.isMesh || !effectivelyVisible(object)) return;
+    meshes++;
+    draws += Array.isArray(object.material) ? object.material.length : 1;
+  });
+  window.__SF = {
+    ready: true, asset: 'ship_warden', routeIdentity: 'player|ship_warden|civilian',
+    inputs, activeLod, hullLod, focus, hullScale, mounted, meshes, draws, size: box.getSize(new THREE.Vector3()).toArray(),
+  };
+} catch (error) {
+  window.__SF = { ready: false, error: String(error?.stack || error) };
+}
+
+function selectLod(root, activeLod) {
+  root.traverse((object) => {
+    const name = object.name || '';
+    const match = name.match(/^LOD(\d+)(?:_|$)/i);
+    if (match) object.visible = Number(match[1]) === activeLod;
+    if (object.isMesh && /collision/i.test(name)) object.visible = false;
+  });
+}
+
+function visibleBounds(root) {
+  root.updateMatrixWorld(true);
+  const box = new THREE.Box3();
+  root.traverse((object) => {
+    if (object.isMesh && effectivelyVisible(object)) box.union(new THREE.Box3().setFromObject(object));
+  });
+  if (box.isEmpty()) throw new Error(`no visible meshes below ${root.name}`);
+  return box;
+}
+
+function effectivelyVisible(object) {
+  for (let current = object; current; current = current.parent) if (!current.visible) return false;
+  return true;
+}
+</script>

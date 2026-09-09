@@ -1,0 +1,419 @@
+// Flyby Focus — exact high-speed threat lease for the First Flyby milestone.
+//
+// Focus owns one transient target for a deterministic three-sim-second window and requests 50%
+// slow-time through the shared time-effects authority. Persistent gun/UI selection remains owned by
+// its explicit player-targeting path; Massline reads flybyFocus.targetId directly as acquisition
+// bias. The 280 wu envelope gives a fast threat enough lead time to be read and latched. Once
+// acquired, the lease is temporal and survives the target flying beyond that start range.
+// Deterministic: only state.simTime, entity kinematics, and stable ids; no RNG or wall clock.
+//
+// Focus is a GAMEPLAY lease, not a camera event. A hostile lease no longer switches the camera
+// director into FOCUS_PAIR (see src/render/cameraDirector.js): that produced an involuntary lateral
+// pan to the pair midpoint and back, plus a zoom pump, twice per flyby, on top of bullet time.
+// The chase camera's own damped composition already frames player + attacker continuously.
+import { createTimeEffects } from '../core/timeEffects.js';
+import { isHostileToPlayer } from './scanner.js';
+
+const FOCUS_DURATION_S = 3.0;
+const FOCUS_SCALE = 0.5;
+// Two cooldowns, because they answer two different questions.
+//   COOLDOWN_S is the global anti-spam floor: however many hostiles are on the field, the game may
+//     not open a new bullet-time window more often than this.
+//   TARGET_COOLDOWN_S is per-target and is the one that fixes the knife fight. With only the global
+//     scalar, the SAME ship could re-open a 3 s window every 4 s — a circling duel spent three
+//     quarters of its life in slow motion. Measured from acquisition, so it contains the 3 s window
+//     plus ~11 s of true cooldown: roughly one to two complete doctrine attack cycles
+//     (src/ai/combatDoctrine.js ingress→strike→extend→reform), i.e. the same ship gets at most one
+//     focus per pass sequence while a genuinely NEW threat is still gated only by the 4 s floor.
+const COOLDOWN_S = 4.0;
+const TARGET_COOLDOWN_S = 14.0;
+const MIN_REL_SPEED = 96;
+const MIN_CLOSING_SPEED = 25;
+const MAX_ACQUIRE_RANGE = 280;
+// Acquisition is deliberately early and conservative; once leased, retain through the pass with
+// wide hysteresis so the player can turn and latch. Only a genuinely runaway/teleported contact
+// releases before the authored three-second window.
+const MAX_HOLD_RANGE = 720;
+const MAX_TIME_TO_CLOSEST_S = 2.5;
+const MAX_SURFACE_MISS = 96;
+const LATCH_SCALE = 2.6;
+const TIME_EFFECT_SOURCE = 'flyby-focus';
+const FOCUS_REQUEST = Object.freeze({ scale: FOCUS_SCALE });
+
+function finite(v, fb = 0) {
+  return Number.isFinite(v) ? v : fb;
+}
+
+function hasFinitePos(ent) {
+  return !!(ent && ent.pos && Number.isFinite(ent.pos.x) && Number.isFinite(ent.pos.z));
+}
+
+function freshFocus() {
+  return {
+    active: false,
+    latchScale: 1,
+    startedAt: 0,
+    until: 0,
+    cooldownUntil: 0,
+    targetId: null,
+    zoom: 0,
+  };
+}
+
+function ensureFocus(state) {
+  const player = state.player || (state.player = {});
+  if (!player.flybyFocus || typeof player.flybyFocus !== 'object') {
+    player.flybyFocus = freshFocus();
+  }
+  const focus = player.flybyFocus;
+  if (typeof focus.active !== 'boolean') focus.active = false;
+  if (!Number.isFinite(focus.latchScale)) focus.latchScale = 1;
+  if (!Number.isFinite(focus.startedAt)) focus.startedAt = 0;
+  if (!Number.isFinite(focus.until)) focus.until = 0;
+  if (!Number.isFinite(focus.cooldownUntil)) focus.cooldownUntil = 0;
+  if (!Number.isFinite(focus.zoom)) focus.zoom = 0;
+  if (focus.targetId == null) focus.targetId = null;
+  return focus;
+}
+
+function playerEntity(state) {
+  if (!state || !state.entities || state.playerId == null) return null;
+  return state.entities.get(state.playerId) || null;
+}
+
+function isHostileShip(state, ent, player) {
+  if (!ent || !ent.alive || !hasFinitePos(ent)) return false;
+  if (ent.type !== 'ship' && ent.type !== 'drone') return false;
+  if (ent.id === player.id) return false;
+  return isHostileToPlayer(ent, player.team, state);
+}
+
+// The lease is a transient Massline acquisition bias, so it should only name something the player
+// can latch. tetherGameplay now validates Focus hints before priority and falls through to other
+// physical candidates when one becomes invalid; refuse an explicit Massline opt-out here as well so
+// Focus never advertises a target that it cannot authorize.
+function masslineRefusesTarget(ent) {
+  return ent?.data?.masslineTetherable === false || ent?.flags?.masslineTetherable === false;
+}
+
+function isTrainingFocusTarget(ent, player) {
+  if (!ent || !ent.alive || !hasFinitePos(ent) || ent.id === player.id) return false;
+  if (ent.type !== 'ship' && ent.type !== 'drone') return false;
+  return ent.data?.onboardingTraining === true && ent.data?.trainingFocusEligible === true;
+}
+
+function isFocusEligibleShip(state, ent, player) {
+  if (masslineRefusesTarget(ent)) return false;
+  return isTrainingFocusTarget(ent, player) || isHostileShip(state, ent, player);
+}
+
+function targetsPlayer(ent, playerId) {
+  const combat = ent && ent.data && ent.data.combat;
+  return !!(combat && (combat.targetId === playerId || combat.lockTarget === playerId));
+}
+
+function isArmed(ent) {
+  return !!(ent && ent.data && Array.isArray(ent.data.weapons) && ent.data.weapons.length);
+}
+
+function compareStableId(a, b) {
+  if (a === b) return 0;
+  if (Number.isFinite(a) && Number.isFinite(b)) return a < b ? -1 : 1;
+  const ak = String(a);
+  const bk = String(b);
+  return ak < bk ? -1 : 1;
+}
+
+// RETIRED (Lane 4): `focusPairFitsCamera`. It re-implemented the camera director's pair-fit
+// geometry — hardcoding fov 50, aspect 16/9, tilt 60 — and refused an ACQUISITION whose pair the
+// camera could not have framed. That made a gameplay lease conditional on a render heuristic, and
+// it was wrong on any aspect ratio but 16/9. It went out together with the FOCUS_PAIR camera
+// takeover it existed to protect: the camera no longer reframes for a hostile lease, so there is no
+// pair to fit. What remains is the kinematic envelope, which is the honest definition of a flyby:
+// within 280 wu, relative speed >= 96, closing >= 25, closest approach within 2.5 s and 96 wu.
+// Its one behavioural consequence is that a steep screen-vertical pass now arms at its true range
+// instead of waiting for the tilted camera's compressed depth axis to allow it.
+
+function beatsBest(
+  direct, timeToClosestS, closestSurfaceMiss, armed, mass, relativeSpeed, distance, id,
+  bestDirect, bestTimeToClosestS, bestClosestSurfaceMiss, bestArmed, bestMass,
+  bestRelativeSpeed, bestDistance, bestId,
+) {
+  if (bestId == null) return true;
+  if (direct !== bestDirect) return direct;
+  if (timeToClosestS !== bestTimeToClosestS) return timeToClosestS < bestTimeToClosestS;
+  if (closestSurfaceMiss !== bestClosestSurfaceMiss) return closestSurfaceMiss < bestClosestSurfaceMiss;
+  if (armed !== bestArmed) return armed;
+  if (mass !== bestMass) return mass > bestMass;
+  if (relativeSpeed !== bestRelativeSpeed) return relativeSpeed > bestRelativeSpeed;
+  if (distance !== bestDistance) return distance < bestDistance;
+  return compareStableId(id, bestId) < 0;
+}
+
+/**
+ * Pure helper: choose the imminent hostile pass with stable, order-independent tie-breaks.
+ *
+ * @param {(id:*) => boolean} [isCoolingDown] optional per-target cooldown predicate. A ship that
+ *   recently held a lease is skipped as a CANDIDATE rather than aborting the whole acquisition, so
+ *   a second, genuinely new attacker on the same pass can still open a window.
+ */
+export function pickFlybyTarget(state, player, list, isCoolingDown = null) {
+  if (!player || player.alive === false || !hasFinitePos(player)) return null;
+  const cooling = typeof isCoolingDown === 'function' ? isCoolingDown : null;
+  const px = player.pos.x;
+  const pz = player.pos.z;
+  const pvx = finite(player.vel && player.vel.x);
+  const pvz = finite(player.vel && player.vel.z);
+
+  let bestId = null;
+  let bestDistance = Infinity;
+  let bestRelativeSpeed = -Infinity;
+  let bestClosingSpeed = -Infinity;
+  let bestTimeToClosestS = Infinity;
+  let bestClosestSurfaceMiss = Infinity;
+  let bestDirect = false;
+  let bestArmed = false;
+  let bestMass = -Infinity;
+  for (const ent of list || []) {
+    if (!isFocusEligibleShip(state, ent, player)) continue;
+    if (cooling && cooling(ent.id)) continue;
+    const dx = ent.pos.x - px;
+    const dz = ent.pos.z - pz;
+    const distance = Math.hypot(dx, dz);
+    if (distance > MAX_ACQUIRE_RANGE || distance < 12) continue;
+    const evx = finite(ent.vel && ent.vel.x);
+    const evz = finite(ent.vel && ent.vel.z);
+    const rvx = evx - pvx;
+    const rvz = evz - pvz;
+    const relativeSpeedSq = rvx * rvx + rvz * rvz;
+    const relativeSpeed = Math.sqrt(relativeSpeedSq);
+    if (relativeSpeed < MIN_REL_SPEED) continue;
+    const radialDot = dx * rvx + dz * rvz;
+    const closingSpeed = -radialDot / Math.max(distance, 1e-6);
+    if (closingSpeed < MIN_CLOSING_SPEED) continue;
+    const timeToClosestS = -radialDot / Math.max(relativeSpeedSq, 1e-6);
+    if (timeToClosestS < 0 || timeToClosestS > MAX_TIME_TO_CLOSEST_S) continue;
+    const closestDx = dx + rvx * timeToClosestS;
+    const closestDz = dz + rvz * timeToClosestS;
+    const closestSurfaceMiss = Math.max(0, Math.hypot(closestDx, closestDz) - Math.max(0, finite(ent.radius)));
+    if (closestSurfaceMiss > MAX_SURFACE_MISS) continue;
+    const direct = targetsPlayer(ent, player.id);
+    const armed = isArmed(ent);
+    const mass = Math.max(0, finite(ent.mass, finite(ent.data && ent.data.mass)));
+    if (!beatsBest(
+      direct, timeToClosestS, closestSurfaceMiss, armed, mass, relativeSpeed, distance, ent.id,
+      bestDirect, bestTimeToClosestS, bestClosestSurfaceMiss, bestArmed, bestMass,
+      bestRelativeSpeed, bestDistance, bestId,
+    )) continue;
+    bestId = ent.id;
+    bestDistance = distance;
+    bestRelativeSpeed = relativeSpeed;
+    bestClosingSpeed = closingSpeed;
+    bestTimeToClosestS = timeToClosestS;
+    bestClosestSurfaceMiss = closestSurfaceMiss;
+    bestDirect = direct;
+    bestArmed = armed;
+    bestMass = mass;
+  }
+  if (bestId == null) return null;
+  return {
+    id: bestId,
+    dist: bestDistance,
+    rel: bestRelativeSpeed,
+    distance: bestDistance,
+    relativeSpeed: bestRelativeSpeed,
+    closingSpeed: bestClosingSpeed,
+    timeToClosestS: bestTimeToClosestS,
+    closestSurfaceMiss: bestClosestSurfaceMiss,
+  };
+}
+
+function activeTargetInvalidReason(state, player, targetId) {
+  const target = targetId == null || !state.entities || !state.entities.get
+    ? null
+    : state.entities.get(targetId);
+  if (!target || target.alive === false || !hasFinitePos(target)) return 'target-lost';
+  if (!isFocusEligibleShip(state, target, player)) return 'not-hostile';
+  if (!hasFinitePos(player)) return 'target-lost';
+  const distance = Math.hypot(target.pos.x - player.pos.x, target.pos.z - player.pos.z);
+  if (!Number.isFinite(distance) || distance > MAX_HOLD_RANGE) return 'out-of-range';
+  return null;
+}
+
+export const flybyFocus = {
+  name: 'flybyFocus',
+
+  init(ctx) {
+    // A registry/test re-init can reuse this singleton with a different state. Finish through the
+    // old references before replacing them so the old time-effects request cannot leak, and any
+    // end notification is delivered only to the bus that observed that lease.
+    if (this.state && this.timeEffects) this._finish('reinit', true, true);
+    if (Array.isArray(this._unsubs)) {
+      for (const unsub of this._unsubs) if (typeof unsub === 'function') unsub();
+    }
+    this.state = ctx.state;
+    this.bus = ctx.bus;
+    this.timeEffects = ctx.timeEffects || createTimeEffects(this.state);
+    this._unsubs = [];
+    // Per-target cooldown expiries, keyed by stable entity id. Deliberately NOT on
+    // state.player.flybyFocus: that object is persisted, and every event that would restore or
+    // replace a save (`save:loaded`, `game:started`, death, dock) already clears the cooldown
+    // through _finish(resetCooldown). Persisting it would add a save-schema path whose only legal
+    // loaded value is "empty". Determinism is unaffected — the map is keyed by stable ids, driven
+    // by state.simTime, and rebuilt from empty on every init, which is where replays begin.
+    this._targetCooldowns = new Map();
+    this._cooldownNow = 0;
+    this._isTargetCoolingDown = (id) => this._cooldownNow < (this._targetCooldowns.get(id) || 0);
+    ensureFocus(this.state);
+    const resetOn = (event, reason) => {
+      if (!this.bus || typeof this.bus.on !== 'function') return;
+      this._unsubs.push(this.bus.on(event, () => this._finish(reason, true, true)));
+    };
+    resetOn('save:restoring', 'load');
+    resetOn('save:loaded', 'load');
+    resetOn('game:started', 'new-game');
+    resetOn('dock:docked', 'docked');
+    resetOn('player:death', 'death');
+    if (this.bus && typeof this.bus.on === 'function') {
+      this._unsubs.push(this.bus.on('flybyFocus:cancel', (payload) => {
+        const reason = payload && typeof payload.reason === 'string' && payload.reason
+          ? payload.reason
+          : 'cancelled';
+        this._finish(reason, false, true);
+      }));
+    }
+  },
+
+  destroy() {
+    this._finish('destroy', true, true);
+    if (Array.isArray(this._unsubs)) {
+      for (const unsub of this._unsubs) if (typeof unsub === 'function') unsub();
+    }
+    this._unsubs = [];
+  },
+
+  _finish(reason, resetCooldown = false, resetZoom = false) {
+    const st = this.state;
+    if (!st) return;
+    const focus = ensureFocus(st);
+    const targetId = focus.targetId;
+    const wasActive = focus.active;
+    focus.active = false;
+    focus.latchScale = 1;
+    focus.startedAt = 0;
+    focus.until = 0;
+    focus.targetId = null;
+    if (resetCooldown) {
+      focus.cooldownUntil = 0;
+      // A normal expiry (resetCooldown === false) must NOT forgive the ship that just held the
+      // lease — that is the whole point of the per-target cooldown. Only a load / new game /
+      // death / dock / re-init clears it, matching what the global scalar already did.
+      if (this._targetCooldowns) this._targetCooldowns.clear();
+    }
+    if (resetZoom) focus.zoom = 0;
+    if (this.timeEffects) this.timeEffects.clear(TIME_EFFECT_SOURCE);
+    if (wasActive && this.bus) {
+      this.bus.emit('flybyFocus:end', {
+        targetId,
+        endedAt: Number.isFinite(st.simTime) ? st.simTime : 0,
+        reason,
+      });
+    }
+  },
+
+  // Bounded memory: entries are only ever added on acquisition (at most one per COOLDOWN_S) and
+  // every entry is dropped once it expires. Map iteration is insertion-ordered, so the sweep is
+  // deterministic.
+  _expireTargetCooldowns(now) {
+    const cooldowns = this._targetCooldowns;
+    if (!cooldowns || !cooldowns.size) return;
+    for (const [id, until] of cooldowns) {
+      if (!(until > now)) cooldowns.delete(id);
+    }
+  },
+
+  update(dt, state) {
+    const st = state || this.state;
+    if (!st) return;
+    const focus = ensureFocus(st);
+    if (st.mode !== 'flight') {
+      if (focus.active) this._finish('mode-change', false, true);
+      return;
+    }
+    const now = Number.isFinite(st.simTime) ? st.simTime : 0;
+    const player = playerEntity(st);
+    if (!player || player.alive === false || !hasFinitePos(player)) {
+      if (focus.active) this._finish(player ? 'death' : 'target-lost', false, true);
+      return;
+    }
+    if (player.flags && player.flags.docked) {
+      if (focus.active) this._finish('docked', false, true);
+      return;
+    }
+
+    if (focus.active && now >= focus.until) {
+      this._finish('expired', false);
+      focus.zoom = Math.max(0, focus.zoom - dt * 2.5);
+    }
+
+    if (focus.active) {
+      const invalidReason = activeTargetInvalidReason(st, player, focus.targetId);
+      if (invalidReason) {
+        this._finish(invalidReason);
+      } else {
+        if (this.timeEffects) this.timeEffects.set(TIME_EFFECT_SOURCE, FOCUS_REQUEST);
+      }
+    }
+
+    if (focus.active) {
+      focus.latchScale = LATCH_SCALE;
+      focus.zoom = Math.min(1, focus.zoom + dt * 4);
+      return;
+    }
+
+    focus.zoom = Math.max(0, focus.zoom - dt * 2.2);
+    if (now < focus.cooldownUntil) return;
+    if (st.player && st.player.tether && st.player.tether.active) return;
+
+    const list = st.entityList || (st.entities && typeof st.entities.values === 'function'
+      ? [...st.entities.values()]
+      : []);
+    this._expireTargetCooldowns(now);
+    this._cooldownNow = now;
+    const pick = pickFlybyTarget(st, player, list, this._isTargetCoolingDown);
+    if (!pick) return;
+
+    focus.active = true;
+    focus.latchScale = LATCH_SCALE;
+    focus.startedAt = now;
+    focus.until = now + FOCUS_DURATION_S;
+    focus.cooldownUntil = now + COOLDOWN_S;
+    if (this._targetCooldowns) this._targetCooldowns.set(pick.id, now + TARGET_COOLDOWN_S);
+    focus.targetId = pick.id;
+    focus.zoom = 0.35;
+    if (this.timeEffects) this.timeEffects.set(TIME_EFFECT_SOURCE, FOCUS_REQUEST);
+    if (this.bus) {
+      this.bus.emit('flybyFocus:start', {
+        targetId: pick.id,
+        startedAt: now,
+        until: focus.until,
+        durationS: FOCUS_DURATION_S,
+        scale: FOCUS_SCALE,
+        relativeSpeed: pick.relativeSpeed,
+        closingSpeed: pick.closingSpeed,
+        timeToClosestS: pick.timeToClosestS,
+        closestSurfaceMiss: pick.closestSurfaceMiss,
+      });
+      this.bus.emit('toast', {
+        text: 'FLYBY FOCUS — latch window open',
+        kind: 'good',
+        ttl: 1.6,
+      });
+      // Juice: brief camera kiss + audio cue so the window is felt, not only text.
+      this.bus.emit('camera:shake', { amount: 0.08 });
+      this.bus.emit('audio:cue', { id: 'ui_confirm' });
+    }
+  },
+};
+
+export default flybyFocus;

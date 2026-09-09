@@ -1,0 +1,14 @@
+{
+  "schema": "spaceface.rangeDrill.v1",
+  "id": "drill.power.well",
+  "powerId": "well",
+  "action": "deployWell",
+  "railSlot": 5,
+  "volume": "ring",
+  "title": "Well golf",
+  "rule": "A RING PULLS LOOSE MASS INTO ONE PILE",
+  "sentence": "Drop a ring that pulls loose mass and shots into one pile; heavy hulls shrug it off.",
+  "instruction": "Aim past the debris, press Well, and watch the wrecks fall inward. Fly out if the ring catches you.",
+  "seed": 14705,
+  "ticks": 90
+}

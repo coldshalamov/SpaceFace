@@ -1,0 +1,141 @@
+// check-onboarding.mjs — guards the mid/late-game onboarding contract (goal P1-10).
+//
+// The first-flight tutorial (5 staged steps) covers flight + first dock/sell. The mid/late systems
+// — drill-mining, outfitting, tech tree, automation, claims/bases, crafting — were previously
+// un-onboarded, leaving a steep self-serve cliff. P1-10 adds a one-time contextual hint for each,
+// fired on the player's first interaction with that system via the player.hints mechanism.
+//
+// This check pins the contract: every un-onboarded system has a hint wired to its first-use event
+// in onboarding.js. A system added later without a hint (or a hint whose trigger event was renamed)
+// fails the gate loudly rather than silently re-creating the cliff.
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { controlPrompt, setPromptScheme } from '../src/ui/controlPrompts.js';
+
+const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
+const src = readFileSync(join(ROOT, 'src/systems/onboarding.js'), 'utf8');
+const promptSrc = readFileSync(join(ROOT, 'src/ui/controlPrompts.js'), 'utf8');
+const readme = readFileSync(join(ROOT, 'README.md'), 'utf8');
+
+// Each un-onboarded system → the event that fires on first interaction + the hint key that should
+// be shown. (The station-hub orientation hint is included too — it's the single biggest cliff.)
+const REQUIRED_HINTS = [
+  { system: 'station hub orientation', event: "bus.on('dock:docked'", hintKey: "'firstHub'" },
+  { system: 'drill-mining',            event: "bus.on('drill:start'",   hintKey: "'firstDrill'" },
+  { system: 'outfitting',              event: "bus.on('ui:fitModule'",  hintKey: "'firstOutfit'" },
+  { system: 'tech tree',               event: "bus.on('tech:researched'", hintKey: "'firstTech'" },
+  { system: 'automation',              event: "bus.on('asset:deployed'", hintKey: "'firstAutomation'" },
+  { system: 'claims/bases',            event: "bus.on('claim:claimed'", hintKey: "'firstClaim'" },
+  { system: 'crafting',                event: "bus.on('craft:queueChanged'", hintKey: "'firstCraft'" },
+];
+
+for (const { system, event, hintKey } of REQUIRED_HINTS) {
+  assert.ok(src.includes(event),
+    `onboarding.js must subscribe to ${event} (the ${system} first-use event) — otherwise the system is un-onboarded`);
+  assert.ok(src.includes(`_showHint(${hintKey}`),
+    `onboarding.js must call _showHint(${hintKey}) for ${system} — the contextual hint is missing`);
+}
+
+// The _showHint mechanism itself must exist + respect the tutorialHints setting + dedupe via hints.
+assert.match(src, /_showHint\(key, text, payload\)/, '_showHint(key, text, payload) must exist (object-attached first-use)');
+assert.match(src, /tutorialHints === false/, '_showHint must respect settings.gameplay.tutorialHints === false');
+assert.match(src, /st\.player\.hints\[key\]/, '_showHint must dedupe via state.player.hints[key] (fire-once-per-save)');
+
+// The contextual control bar runs during flight updates, so it must not inspect alert DOM every
+// frame. Dock/gate proximity is already available from the physics-owned range events.
+assert.match(src, /_dockControlInRange/, 'control bar should track dock range from dock:range events');
+assert.match(src, /_gateControlInRange/, 'control bar should track gate range from gate:range events');
+assert.doesNotMatch(src, /_controlHintsEl/, 'flight windshield must not cache a #control-hints laundry bar');
+assert.ok(!src.includes("document.querySelector('.sf-alert--dock')"),
+  'control bar must not query the dock alert DOM during flight updates');
+assert.ok(!src.includes("document.querySelector('.sf-alert--info')"),
+  'control bar must not query the gate alert DOM during flight updates');
+assert.match(src, /_retireTutorialPanel\(\)/,
+  'story transition should retire the tutorial panel so the HUD remains the single objective owner');
+assert.match(src, /_refreshStory\(\)\s*\{[\s\S]*?_retireTutorialPanel\(\)/,
+  'story refresh should keep the obsolete parallel story panel retired');
+assert.doesNotMatch(src, /_ensureStoryPanel/,
+  'onboarding should not rebuild a second persistent story/lore panel');
+
+// ── spec2/03 supersedes the intro modal: the first hour is PACED, not a modal ────────────────
+// The old fresh-game intro card (.sf-ob-intro, Begin/Skip, Pulse-Laser legend) is GONE by design
+// (spec2/03 B0: "no modal"). The 10-beat flight-drill pacing engine replaces it. These assertions pin the new
+// contract; the deeper pacing audit lives in check-first-hour.mjs.
+assert.doesNotMatch(src, /className = 'sf-ob-intro'/, 'the fresh-game intro modal must be removed (spec2/03 B0: no modal)');
+assert.doesNotMatch(src, /setAttribute\('role', 'dialog'\)/, 'no intro dialog (the modal is gone)');
+assert.doesNotMatch(src, /_closeIntro/, 'the intro teardown (_closeIntro) must be removed with the modal');
+assert.doesNotMatch(src, /beginBtn/, 'the Begin button (intro modal) must be removed');
+assert.doesNotMatch(src, /Pulse Laser S and a mining beam/, 'the intro legend copy must be removed (taught one verb at a time now)');
+assert.match(src, /const BEATS = \[/, 'the 10-beat pacing table must replace the old STEPS chain');
+assert.match(src, /_sayTutorial\(text,\s*\{\s*visual\s*=\s*true\s*\}\s*=\s*\{\}\)/,
+  'a single tutorial-voice chokepoint must exist (one-voice audit)');
+assert.match(src, /_tryAdvanceBeat/, 'the silence-gated beat-advance engine must exist');
+assert.doesNotMatch(src, /const STEPS = \[/, 'the old 5-step STEPS chain must be removed (replaced by BEATS)');
+
+// The default dock binding is E, with Enter accepted only as a secondary convenience in input.js.
+// New-player copy must use the live binding label so the first dock objective, first-station hint,
+// control bar, alert prompt, help screen, and key handler do not contradict each other.
+assert.match(src, /firstUseLine/, 'onboarding first-use copy is one verb from hudAttention, not a windshield key sheet');
+assert.match(promptSrc, /export const CONTROL_PROMPTS/, 'controlPrompts.js must export the shared prompt catalog');
+assert.match(promptSrc, /export function controlPrompt/, 'controlPrompts.js must export the prompt resolver');
+assert.match(promptSrc, /export function currentPromptModality/, 'controlPrompts.js must export the modality resolver');
+const dockBindingMentions = promptSrc.match(/BINDINGS\.dock\.label/g) || [];
+assert.ok(dockBindingMentions.length >= 4,
+  'controlPrompts.js should source dock tutorial/control copy from BINDINGS.dock.label');
+const localMapBindingMentions = promptSrc.match(/BINDINGS\.localmap\.label/g) || [];
+const starMapBindingMentions = promptSrc.match(/BINDINGS\.starmap\.label/g) || [];
+const codexBindingMentions = promptSrc.match(/BINDINGS\.codex\.label/g) || [];
+assert.ok(localMapBindingMentions.length >= 2,
+  'controlPrompts.js should source local-map tutorial/control copy from BINDINGS.localmap.label');
+assert.ok(starMapBindingMentions.length >= 3,
+  'controlPrompts.js should source star-map tutorial/control copy from BINDINGS.starmap.label');
+assert.ok(codexBindingMentions.length >= 1,
+  'controlPrompts.js should source codex control copy from BINDINGS.codex.label');
+assert.match(promptSrc, /station: `\$\{BINDINGS\.dock\.label\} dock[\s\S]*Hub: arrow keys change tabs[\s\S]*Enter\/Space act/,
+  'keyboard station control bar must teach hub tab navigation and activation');
+assert.match(promptSrc, /firstStation: `Review Departure Check before \$\{BINDINGS\.dock\.label\} or Escape undocks\.`/,
+  'keyboard first-station hint must be one terse, binding-truthful departure verb');
+assert.match(promptSrc, /station: 'A dock[\s\S]*Hub: LB\/RB tabs[\s\S]*D-pad\/left stick focus[\s\S]*A act[\s\S]*B undock'/,
+  'gamepad station control bar must teach LB/RB tab cycling, focus, activation, and undock');
+assert.match(promptSrc, /firstStation: 'Review Departure Check before B undocks\.'/,
+  'gamepad first-station hint must be one terse controller departure verb');
+assert.match(promptSrc, /station: `\$\{BINDINGS\.dock\.label\} dock[\s\S]*Hub: tap tabs\/actions[\s\S]*Tap Undock when ready/,
+  'touch station control bar must teach touch station tab/action flow');
+assert.match(promptSrc, /firstStation: 'Review Departure Check, then tap Undock\.'/,
+  'touch first-station hint must be one terse touch departure verb');
+assert.match(src, /_tutorialRailOwnsVoice\(\)/,
+  'contextual control walls must yield while B0-B5 owns tutorial speech');
+for (const staleDockCopy of [/Press Enter at the dock prompt/, /Press ENTER to dock/, /Enter to dock/]) {
+  assert.doesNotMatch(src, staleDockCopy,
+    `onboarding.js must not use stale hard-coded dock copy: ${staleDockCopy}`);
+  assert.doesNotMatch(readme, staleDockCopy,
+    `README.md must not teach stale dock copy: ${staleDockCopy}`);
+  assert.doesNotMatch(promptSrc, staleDockCopy,
+    `controlPrompts.js must not teach stale hard-coded dock copy: ${staleDockCopy}`);
+}
+assert.match(promptSrc, /BINDINGS\.dock\.label/,
+  'controlPrompts.js must source live dock guidance from the binding catalog');
+for (const staleMapCopy of [/Star Map \(M\)/, /N local map/, /M star map/, /M open Star Map/]) {
+  assert.doesNotMatch(src, staleMapCopy,
+    `onboarding.js must not use stale hard-coded map copy: ${staleMapCopy}`);
+}
+for (const staleControlCopy of [/RMB samples/, /RMB sample/, /RMB mass sample/, /RMB hold to sample/, /LMB\/SPACE/, /LMB\/Space Pulse Laser/]) {
+  assert.doesNotMatch(src, staleControlCopy,
+    `onboarding.js must not use stale hard-coded control copy: ${staleControlCopy}`);
+}
+setPromptScheme('pilot');
+assert.match(controlPrompt('mining', 'kbm'), /RMB hold to mine/,
+  'controlPrompts must advertise RMB mining for keyboard/mouse');
+assert.match(controlPrompt('flight', 'gamepad'), /LT mine/,
+  'controlPrompts must advertise LT mining for gamepad');
+assert.match(controlPrompt('station', 'gamepad'), /A dock/,
+  'controlPrompts must advertise gamepad docking');
+assert.match(controlPrompt('mining', 'touch'), /Mine button/,
+  'controlPrompts must include touch mining copy');
+assert.match(readme, /\|\s*Dock\s*\|\s*\*\*E\*\*/, 'README controls must document E as the primary dock key');
+assert.match(readme, /\|\s*Codex\s*\|\s*\*\*K\*\*/, 'README controls must document K as the Codex key');
+
+console.log(`Onboarding OK — ${REQUIRED_HINTS.length} mid/late-game system hints wired (hub, drill, outfit, tech, automation, claims, craft), with station hub control prompts guarded. First-hour pacing pinned (10-beat engine, nonlethal flight drill, no intro modal).`);

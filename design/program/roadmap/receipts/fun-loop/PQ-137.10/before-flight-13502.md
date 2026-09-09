@@ -1,0 +1,112 @@
+# Fun measure — flight — seed 13502 — 2026-09-03
+
+Every FEEL_CONTRACT §B bar, evaluated once over the whole measurement set in this receipt (Fun Convergence Loop §3.2), then the per-run fun metrics. Values are player units. The fed-by column names the run each bar number comes from; each run section below lists only the bars that run feeds.
+
+## Bars (FEEL_CONTRACT §B) — pooled over this receipt
+
+| bar | value(s) | target | met | fed by |
+|---|---|---|---|---|
+| B1 Earned speed is kept | no feeding run in this measurement | ≥ 99 % of exit speed 10 s later, hands off and forward held | — | — |
+| B2 Nimble regime | full 180° velocity reversal, ship_kestrel (worst of 1 result(s)): 4.483333 s | rest→cruise ≤ 1.5 s; 180° velocity reversal ≤ 3.0 s; turn radius at cruise ≤ 1 screen depth | no | flight/flight-reversal/s13502<br>flight/flight-accel-brake/s13502 |
+| B3 The fight stays on screen | no feeding run in this measurement | ≥ 1.2 s to cross the visible depth at cruise | — | — |
+| B4 Shove magnitude | no feeding run in this measurement | shove ΔV ≥ 30 % of light-hostile cruise per hit (starter gun ≥ 5 %) | — | — |
+| B5 Shove displacement | no feeding run in this measurement | ≥ 1 screen depth off the original line 2 s after the hit | — | — |
+| B6 Terrain is lethal | no feeding run in this measurement | dies at ≥ 75 % cruise closing; ≥ 60 % hull + helm lost at ≥ 50 %; heavy ≤ 15 % | — | — |
+| B7 The rope is a rope | no feeding run in this measurement | stretch < 10 %; release keeps ≥ 95 % of tangential speed at 5 s | — | — |
+| B8 Draw-to-fly rips | no feeding run in this measurement | mean stroke speed ≥ 70 % of cruise; slowest point ≥ 35 % | — | — |
+| B9 Impacts answer | not reachable by this bench | hitstop + trauma at ΔV ≥ 8 WU/s; audio ≥ 1 octave and ≥ 12 dB apart; release snaps | — | — |
+| B10 The world reacts | no feeding run in this measurement | patrol chooses within 10 s; salvor arrives ≤ 30 s; civilians turn within 3 s | — | — |
+| B11 Hitstun law is universal | no feeding run in this measurement | one universal curve; lights ≥ 30 % ΔV stunned ≥ 1 s; heavies at gun-scale ΔV never | — | — |
+| B12 The 60-second proof | not reachable by this bench | ≥ 9 of 11 beats in a deterministic scenario plus a headed capture at the shipping camera | — | — |
+| B13 The player is never knocked around | no feeding run in this measurement | ≤ 2 contact knocks per minute; largest ≤ 10 % of cruise; zero heading changes; no visible jitter | — | — |
+
+Notes — the full text behind the cells, never truncated:
+- **B2 Nimble regime** — verdict uses the starter hull (ship_kestrel); also measured: ship_atlas, ship_drifter, ship_wasp (context only). rest→cruise time and turn radius at cruise have no metric in the Motion Lab M1/M3 output yet (M1 exposes response windows, not a rest-to-cruise time; no scenario reports turn radius), so those clauses are unmeasured and coverage stays partial.
+- **B9 Impacts answer** — hitstop, camera trauma and audio are presentation-layer; the headless bench has no instrument for them. the bar is listed here for completeness; this bench cannot measure it.
+- **B12 The 60-second proof** — needs the PQ-141 60-second proof scenario, which does not exist yet. the bar is listed here for completeness; this bench cannot measure it.
+
+### flight flight-accel-brake seed 13502 (run 162d2836)
+
+Bars this run feeds (FEEL_CONTRACT §B — pooled verdict for the whole receipt):
+
+| bar | value(s) | target | met |
+|---|---|---|---|
+| B2 Nimble regime | full 180° velocity reversal, ship_kestrel (worst of 1 result(s)): 4.483333 s | rest→cruise ≤ 1.5 s; 180° velocity reversal ≤ 3.0 s; turn radius at cruise ≤ 1 screen depth | no |
+
+Notes — the full text behind the cells, never truncated:
+- **B2 Nimble regime** — verdict uses the starter hull (ship_kestrel); also measured: ship_atlas, ship_drifter, ship_wasp (context only). rest→cruise time and turn radius at cruise have no metric in the Motion Lab M1/M3 output yet (M1 exposes response windows, not a rest-to-cruise time; no scenario reports turn radius), so those clauses are unmeasured and coverage stays partial.
+
+Fun metrics (law §3.2):
+| metric | value | fun threshold | verdict |
+|---|---|---|---|
+| verbs per minute (distinct) | — | >= 4 per minute | not measured |
+| consequences per player action | — | >= 2 within 3 s | not measured |
+| time to first consequence | — | <= 0.3 s | not measured |
+| moments per minute | — | >= 1 per minute | not measured |
+| nothing-happened seconds | — | none | not measured |
+| knock budget on the player | — | <= 2/min and <= 10% of cruise, never a heading change | not measured |
+| deaths by cause | — | informational | not measured |
+
+Gaps: verbsPerMinute: run metrics do not report verb usage; verbsUsed: run metrics do not report verb usage; consequencesPerAction: flight trace has no action/consequence events; timeToFirstConsequenceS: flight trace has no action/consequence events; momentsPerMinute: flight trace has no action/consequence events; nothingHappenedSeconds: flight trace has no action/consequence events; deathsByCause: flight trace has no action/consequence events; knockBudget: no knock budget source for this bench
+
+### flight flight-slalom seed 13502 (run 2d0a89ee)
+
+Bars this run feeds (FEEL_CONTRACT §B — pooled verdict for the whole receipt):
+
+None — this run does not feed a FEEL_CONTRACT §B bar.
+
+Fun metrics (law §3.2):
+| metric | value | fun threshold | verdict |
+|---|---|---|---|
+| verbs per minute (distinct) | — | >= 4 per minute | not measured |
+| consequences per player action | — | >= 2 within 3 s | not measured |
+| time to first consequence | — | <= 0.3 s | not measured |
+| moments per minute | — | >= 1 per minute | not measured |
+| nothing-happened seconds | — | none | not measured |
+| knock budget on the player | — | <= 2/min and <= 10% of cruise, never a heading change | not measured |
+| deaths by cause | — | informational | not measured |
+
+Gaps: verbsPerMinute: run metrics do not report verb usage; verbsUsed: run metrics do not report verb usage; consequencesPerAction: flight trace has no action/consequence events; timeToFirstConsequenceS: flight trace has no action/consequence events; momentsPerMinute: flight trace has no action/consequence events; nothingHappenedSeconds: flight trace has no action/consequence events; deathsByCause: flight trace has no action/consequence events; knockBudget: no knock budget source for this bench
+
+### flight flight-reversal seed 13502 (run e0ae2fd2)
+
+Bars this run feeds (FEEL_CONTRACT §B — pooled verdict for the whole receipt):
+
+| bar | value(s) | target | met |
+|---|---|---|---|
+| B2 Nimble regime | full 180° velocity reversal, ship_kestrel (worst of 1 result(s)): 4.483333 s | rest→cruise ≤ 1.5 s; 180° velocity reversal ≤ 3.0 s; turn radius at cruise ≤ 1 screen depth | no |
+
+Notes — the full text behind the cells, never truncated:
+- **B2 Nimble regime** — verdict uses the starter hull (ship_kestrel); also measured: ship_atlas, ship_drifter, ship_wasp (context only). rest→cruise time and turn radius at cruise have no metric in the Motion Lab M1/M3 output yet (M1 exposes response windows, not a rest-to-cruise time; no scenario reports turn radius), so those clauses are unmeasured and coverage stays partial.
+
+Fun metrics (law §3.2):
+| metric | value | fun threshold | verdict |
+|---|---|---|---|
+| verbs per minute (distinct) | — | >= 4 per minute | not measured |
+| consequences per player action | — | >= 2 within 3 s | not measured |
+| time to first consequence | — | <= 0.3 s | not measured |
+| moments per minute | — | >= 1 per minute | not measured |
+| nothing-happened seconds | — | none | not measured |
+| knock budget on the player | — | <= 2/min and <= 10% of cruise, never a heading change | not measured |
+| deaths by cause | — | informational | not measured |
+
+Gaps: verbsPerMinute: run metrics do not report verb usage; verbsUsed: run metrics do not report verb usage; consequencesPerAction: flight trace has no action/consequence events; timeToFirstConsequenceS: flight trace has no action/consequence events; momentsPerMinute: flight trace has no action/consequence events; nothingHappenedSeconds: flight trace has no action/consequence events; deathsByCause: flight trace has no action/consequence events; knockBudget: no knock budget source for this bench
+
+### flight collision-recovery seed 13502 (run d64f68ec)
+
+Bars this run feeds (FEEL_CONTRACT §B — pooled verdict for the whole receipt):
+
+None — this run does not feed a FEEL_CONTRACT §B bar.
+
+Fun metrics (law §3.2):
+| metric | value | fun threshold | verdict |
+|---|---|---|---|
+| verbs per minute (distinct) | — | >= 4 per minute | not measured |
+| consequences per player action | — | >= 2 within 3 s | not measured |
+| time to first consequence | — | <= 0.3 s | not measured |
+| moments per minute | — | >= 1 per minute | not measured |
+| nothing-happened seconds | — | none | not measured |
+| knock budget on the player | — | <= 2/min and <= 10% of cruise, never a heading change | not measured |
+| deaths by cause | — | informational | not measured |
+
+Gaps: verbsPerMinute: run metrics do not report verb usage; verbsUsed: run metrics do not report verb usage; consequencesPerAction: flight trace has no action/consequence events; timeToFirstConsequenceS: flight trace has no action/consequence events; momentsPerMinute: flight trace has no action/consequence events; nothingHappenedSeconds: flight trace has no action/consequence events; deathsByCause: flight trace has no action/consequence events; knockBudget: no knock budget source for this bench

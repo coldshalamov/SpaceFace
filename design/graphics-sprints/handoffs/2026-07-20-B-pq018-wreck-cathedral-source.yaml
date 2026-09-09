@@ -1,0 +1,249 @@
+handoff_version: 1
+thread: B
+sprint_id: 2026-07-20-B-pq018-wreck-cathedral-source
+agent: codex-root
+completed_at: 2026-07-20T10:31:51Z
+
+packet: PQ-018
+subslice: source_asset
+state_reached: IMPLEMENTED
+lifecycle: SOURCE_GLB
+terminal: false
+review_status: needs_review
+runtime_wired: false
+route_accepted: false
+
+branch: codex/pq018-wreck-cathedral-source-20260720
+worktree: C:/Users/93rob/sf-pq018
+base_commit: aec26203573e1d78a499ddbb3ce586420acd8c4f
+result_commit: 68bb0e9f9ecd59e7364df016169a2065a5f29137
+result_commit_changed_path_count: 60
+handoff_changed_path: design/graphics-sprints/handoffs/2026-07-20-B-pq018-wreck-cathedral-source.yaml
+
+assets:
+  - id: place_landmark_wreck_cathedral
+    source_glb: assets/ships/parts/places/place_landmark_wreck_cathedral.glb
+    blend_path: assets/ships/parts/blender/place_landmark_wreck_cathedral.blend
+    art_status: full_finish
+    review_status: needs_review
+    evidence: assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/
+    lifecycle: SOURCE_GLB
+    manifest_row: needs_new_row
+    runtimeSlots: place
+    blocked: false
+    blocked_reason: ""
+    authorship: project-original deterministic Blender construction; no external donor assets
+
+hashes:
+  algorithm: SHA-256
+  blend: 1bc08169c13b76c9caf2273c50d07be51a6ce84bacd8dca8831c4f9bec48ac13
+  glb: f335935f9658bad0e721aceb5d66bb4c2f0457fe411442819b4a3455a00af704
+  turntable: 1937900331abeef1c06c265ee5ecd42bbe4dc3d0376c1560c2561bfb73237c9a
+  neutral_close_3q: 48125e6eb77cf3d309d934d8a2f66f3ed8c8f15e8a9368f75a0ad5c17ef27166
+  neutral_flythrough_cavity: 7c56440e8b8e7a1a982c74d2aa2ecabcf4d824fd0bf62a27c826c888cef81e78
+  neutral_gameplay_distance: fa520d4f22906c730085c4afdf1fd1d673d2be9aa281c4c4735fc90956970e7e
+  complete_manifest: assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/reports/sha256-manifest.json
+  complete_manifest_sha256: c6c881a38a5dfe3ccf8ec2c822b481ea06e59e7f73c662eb545ce2da6c32f169
+  complete_manifest_entries: 45
+  texture_hash_entries: 26
+
+metrics:
+  blend_bytes: 9603510
+  glb_bytes: 11155156
+  bounds_m: [633.5024, 369.8917, 282.5917]
+  triangles:
+    lod0: 91908
+    lod1: 34164
+    lod2: 8364
+  draw_groups_per_lod: 8
+  materials: 8
+  textures: 26
+  estimated_texture_memory_mib_rgba8_with_mips: 26.667
+  flythrough_clearance:
+    declared_width_m: 72
+    declared_height_m: 58
+    sampled_inset_width_m: 64
+    sampled_inset_height_m: 50
+    sample_count: 75
+    hit_count: 0
+    pass: true
+
+validation_commands:
+  - >-
+    & 'C:\Program Files\Blender Foundation\Blender 5.1\blender.exe' --background --python
+    'assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/author_wreck_cathedral.py'
+    -- --rebuild-textures
+  - >-
+    & 'C:\Program Files\Blender Foundation\Blender 5.1\blender.exe' --background
+    'assets/ships/parts/blender/place_landmark_wreck_cathedral.blend' --python
+    'assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/render_wreck_cathedral_evidence.py'
+    -- --resume
+  - >-
+    python tools/blender/spaceface_export.py --validate-only
+    assets/ships/parts/places/place_landmark_wreck_cathedral.glb --kind landmark
+    --id place_landmark_wreck_cathedral
+    --asset-id SF_LANDMARK_PLACE_LANDMARK_WRECK_CATHEDRAL --slot place
+  - >-
+    node tools/art/validate_gltf_assets.mjs
+    --input C:/Users/93rob/sf-pq018/assets/ships/parts/places/place_landmark_wreck_cathedral.glb
+    --out C:/Users/93rob/sf-pq018/assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/reports/gltf-validator
+  - >-
+    node assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/validate_gltf.cjs
+    C:/Users/93rob/AppData/Local/Temp/pq018-gltf-validator/node_modules/gltf-validator
+    assets/ships/parts/places/place_landmark_wreck_cathedral.glb
+    assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/reports/gltf-validator.json
+  - >-
+    ffprobe -v error -select_streams v:0 -count_frames
+    -show_entries stream=codec_name,width,height,r_frame_rate,nb_read_frames,pix_fmt
+    -show_entries format=duration,size -of json
+    assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/turntable/place_landmark_wreck_cathedral_turntable.mp4
+  - >-
+    python -m py_compile
+    assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/author_wreck_cathedral.py
+    assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/render_wreck_cathedral_evidence.py
+  - >-
+    node --check assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/validate_gltf.cjs
+  - >-
+    node --check assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/generate_hash_manifest.cjs
+  - >-
+    node assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/generate_hash_manifest.cjs
+  - git diff --check
+
+validation_results:
+  source_build_exit_code: 0
+  evidence_render_exit_code: 0
+  spaceface_exporter_exit_code: 0
+  gltf_validator_exit_code: 0
+  ffprobe_exit_code: 0
+  python_syntax_exit_code: 0
+  helper_syntax_exit_code: 0
+  hash_verification_exit_code: 0
+  git_diff_check_exit_code: 0
+  source_saved_clean: true
+  source_missing_external_files: 0
+  source_packed_images: 26
+  gltf_validator_version: 2.0.0-dev.3.10
+  gltf_errors: 0
+  gltf_warnings: 0
+  gltf_infos: 0
+  gltf_hints: 0
+  spaceface_exporter_ok: true
+  glb_semantic_audit_pass: true
+  missing_semantic_markers: []
+  uv_failures: []
+  lod_order_strictly_reducing: true
+  capture_count: 16
+  captures_1920x1080: true
+  turntable_h264_1280x720_30fps_60frames: true
+
+known_defects:
+  - SOURCE_GLB only; release compression, release metadata, manifest registration, and runtime LOD selection are deferred.
+  - Collision proxies and World Site component proxies are intentionally deferred to PQ-017 and PQ-018 integration.
+  - The uncompressed source GLB is 11.16 MB and the authored texture set estimates 26.667 MiB RGBA8 with mipmaps; release compression and measured residency remain unaccepted.
+  - The Marker and cold emergency emitters require later runtime binding and gameplay-distance verification on the normal route.
+  - No browser or Electron normal-route, Ceres placement, interaction, salvage, or measured performance acceptance is claimed.
+
+dependencies_remaining:
+  - PQ-017 World Site kernel
+  - PQ-018 runtime manifest and place registration
+  - Ceres placement
+  - interaction and salvage wiring
+  - browser/Electron normal-route acceptance
+  - measured performance acceptance
+
+integrator_actions:
+  - Independently review the BLEND, GLB, neutral renders, map isolates, LOD silhouettes, fly-through evidence, and turntable.
+  - Build collision and World Site component proxies under PQ-017/PQ-018 ownership; preserve the declared 72 m x 58 m fly-through envelope.
+  - After art approval, finalize and compress the release asset, add the runtime manifest/place registration, and establish the runtime LOD policy.
+  - Place the approved landmark at Ceres and wire the named bridge, propulsion, service, structural, salvage, hangar, and Marker semantics.
+  - Run asset reachability/live-load, Atlas integrity, visual stability, browser/Electron normal-route, and measured performance acceptance.
+
+thread_c_actions:
+  - Do not wire this SOURCE_GLB before the integrator reaches RELEASE_BUILT and owns the manifest/place-registration step.
+  - Consume SOCKET_Flythrough_Entry, SOCKET_Flythrough_Exit, SOCKET_TheMarker, zone markers, salvage markers, and INTERACTION_HangarCavity after registration.
+
+forbidden_for_thread_c_until: RELEASE_BUILT
+
+checks_required:
+  - check:assets:live
+  - check:asset-reachability
+  - check:atlas-integrity
+  - check:visual-stability
+  - browser/Electron normal-route acceptance
+  - measured performance acceptance
+
+screenshots_proven:
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/neutral_close_3q.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/neutral_gameplay_distance.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/neutral_flythrough_cavity.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/neutral_propulsion_zone.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/wireframe_3q.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/wireframe_flythrough.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/silhouette_lod0.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/silhouette_lod1.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/silhouette_lod2.png
+
+turntable_proven:
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/turntable/place_landmark_wreck_cathedral_turntable.mp4
+
+exact_result_commit_changed_paths:
+  - assets/ships/parts/blender/place_landmark_wreck_cathedral.blend
+  - assets/ships/parts/places/place_landmark_wreck_cathedral.glb
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/author_wreck_cathedral.py
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/neutral_close_3q.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/neutral_flythrough_cavity.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/neutral_gameplay_distance.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/neutral_propulsion_zone.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/pbr_ao_no_bloom.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/pbr_basecolor_no_bloom.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/pbr_emissive_no_bloom.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/pbr_metallic_no_bloom.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/pbr_normal_no_bloom.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/pbr_roughness_no_bloom.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/silhouette_lod0.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/silhouette_lod1.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/silhouette_lod2.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/wireframe_3q.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/wireframe_flythrough.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/captures/wireframe_side.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/generate_hash_manifest.cjs
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/render_wreck_cathedral_evidence.py
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/reports/blender-source-audit.json
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/reports/flythrough_clearance_probe.json
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/reports/geometry_material_texture_report.json
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/reports/glb-semantic-audit.json
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/reports/gltf-validator.json
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/reports/gltf-validator/place_landmark_wreck_cathedral.glb.report.json
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/reports/render_evidence_manifest.json
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/reports/sha256-manifest.json
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/reports/source_build_manifest.json
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/reports/uv_material_role_report.json
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/reports/validation-receipt.json
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Accent_ConcordBlue_Burned_basecolor.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Accent_ConcordBlue_Burned_normal.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Accent_ConcordBlue_Burned_orm.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Armor_Scorched_basecolor.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Armor_Scorched_normal.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Armor_Scorched_orm.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Conduit_Copper_basecolor.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Conduit_Copper_normal.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Conduit_Copper_orm.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Emissive_ColdEmergency_basecolor.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Emissive_ColdEmergency_emissive.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Emissive_ColdEmergency_normal.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Emissive_ColdEmergency_orm.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Emissive_MarkerAmber_basecolor.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Emissive_MarkerAmber_emissive.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Emissive_MarkerAmber_normal.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Emissive_MarkerAmber_orm.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Hull_ConcordGray_basecolor.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Hull_ConcordGray_normal.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Hull_ConcordGray_orm.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Interior_ExposedAlloy_basecolor.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Interior_ExposedAlloy_normal.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Interior_ExposedAlloy_orm.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Mechanical_Exposed_basecolor.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Mechanical_Exposed_normal.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/textures/Material_Mechanical_Exposed_orm.png
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/turntable/place_landmark_wreck_cathedral_turntable.mp4
+  - assets/ships/parts/revamp-evidence/place_landmark_wreck_cathedral/validate_gltf.cjs

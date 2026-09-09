@@ -1,0 +1,20 @@
+{
+  "schema": "spaceface.validation-fast-gate.v1",
+  "generatedAt": "2026-09-07T14:26:51.479Z",
+  "routeDigest": "6706297dae2d54d8d0e98772cb843b5ae0324ce2316542653c40ae22cc1740cf",
+  "regressionDigest": "8bd64ec83a7f22736bcaedd7b89ba81ad8d8d9a271a5a864ee841fcbbd934be3",
+  "productionDigest": "6706297dae2d54d8d0e98772cb843b5ae0324ce2316542653c40ae22cc1740cf",
+  "candidateDigest": "7da5886085a235cfcc02a1975186a8841ac84fc4da1ef0f4e5f4793b48a2d032",
+  "buildDigest": "cdd523a24578c280983f59a98f0439201a07e1136dcf24686b379de8a74671dd",
+  "scenarioDigest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+  "inputDigest": "8abf98d22289855c1b238060dc487e656e26e4a5f14efd347d018e169e5da338",
+  "profileDigest": "4648d249bc847fee3eebc6392a6b05cd910508cc51b578e75f1cfe18a46cba78",
+  "manifestDigest": "e330ff2e9d65e8bc5265f64a3623db81b09b6a7bb6474f02d4b89fba2d1e1a2f",
+  "sourceCandidateDigest": null,
+  "worktreeDigest": null,
+  "scenarioManifestDigest": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+  "saveDigest": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+  "inputTapeDigest": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+  "cameraManifestDigest": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+  "acknowledgesFailureFingerprint": "eb9658bdd835ee40df7bc45703c8b09dce4450723c60917ade55b27c5b24cf2a"
+}

@@ -1,0 +1,258 @@
+<!-- LIFETIME: VOLATILE -->
+# H2 review index — seven named decisions
+
+Phase H1 produced the **functional headed evidence** for the Gold-Corridor packets. This page is the
+agenda for the Phase H2 acceptance-review session. Each decision may be completed by the primary
+integrator when the committed evidence is sufficient; no separate human-review role is required.
+
+Organised **by decision, not by packet**. Each section states the question you must answer, points at
+the evidence that answers it, and says what your answer unblocks. Answer the question in the
+"Verdict" line; the integrator turns those lines into receipt upgrades in Phase H4.
+
+## How to read the evidence
+
+- **No performance claim appears anywhere in H1.** Frame timings, p95/p99 and hitch counts are Phase
+  H3 and were captured on a contended machine here. Where a harness printed timings anyway, the
+  committed copy carries `"informational_contended": true` — treat those numbers as *not evidence*.
+- What H1 *does* assert is functional: draw and program **counts**, GPU admission and residency
+  **booleans**, DOM assertions, and screenshots.
+- Rows that failed are listed with the same weight as rows that passed. A failure is still a
+  decision: *does this defect block acceptance?*
+
+## Status of the eight H1 rows
+
+| Row | Subject | Result | Evidence |
+|---|---|---|---|
+| 1 | headed `check:assets:live` | **PASS** | [row1-assets-live](evidence/h1/row1-assets-live/EVIDENCE.md) |
+| 2 | PQ-021 broker cell + Electron parity | **PASS** | [row2-pq021-ledger](evidence/h1/row2-pq021-ledger/EVIDENCE.md) |
+| 3 | PQ-019A presentation + counts | **PASS — facilities/counts retained; brokered capsule continuation accepted at runtime zooms 45/66/108** | [row3-pq019a-presentation](evidence/h1/row3-pq019a-presentation/EVIDENCE.md) |
+| 4 | `pq019-surface-heist` broker manifest | **PASS — retained DOM/lawful evidence plus accepted fence/confiscation/destruction/recovery continuation** | [row4-pq019-surface-heist](evidence/h1/row4-pq019-surface-heist/EVIDENCE.md) |
+| 5 | PQ-020 Ceres functional route | **PASS — fresh candidate-bound Browser/Electron pair accepted, 21/21 frames in each runtime with exact semantic parity** | [row5-pq020-ceres-route](evidence/h1/row5-pq020-ceres-route/EVIDENCE.md) |
+| 6 | PQ-023 cues in motion | **PASS — all causal cue reviews accepted; H3 remains separate** | [base cues](evidence/h1/row6-pq023-cues/EVIDENCE.md), [combat continuation](evidence/h1/row6-pq023-combat-readability/EVIDENCE.md), [final small continuation](evidence/h1/row6-pq023-small-destruction-salience/EVIDENCE.md) |
+| 7 | PQ-022 asset leaves | **PASS — one Browser launch; 11 exact identities, 13 admitted stills** | [row7-pq022-asset-leaves](evidence/h1/row7-pq022-asset-leaves/EVIDENCE.md) |
+| 8 | Electron end-to-end smoke | **PASS — accepted source-Electron menu→physical dock→Ledger chain** | [row8-electron-e2e](evidence/h1/row8-electron-e2e/EVIDENCE.md) |
+
+---
+
+## Decision 1 — Relay collar: accept, or re-author?
+
+**Question:** Looking at `place_claim_outpost_relay` sitting on a real asteroid on the ordinary
+Asteroid Ops exterior route — is the authored collar good enough to ship as the claim-beacon
+identity, or does it go back for re-authoring?
+
+Context you need: the PQ-022 receipt carries a re-authoring advisory of its own, and the codex asset
+census ranked this leaf in its top five re-author candidates. So the default is *not* "accept
+because it renders".
+
+**Evidence:** [Row 7 relay close/default/far and exact-admission receipt](evidence/h1/row7-pq022-asset-leaves/EVIDENCE.md).
+The one-use Browser cell passed at fixed seed 47 with the exact release identity admitted and no
+readable fallback. Review all three relay framings. The structural receipt's reservation remains live:
+this is an authored grey primitive assembly, not a loading failure.
+
+**Continuation:** the negative asset disposition preserves the structural/H1 proof but routes
+through `PQ-022.relay-reauthor` → revised H1 → causal re-review. Only a passing revised review can
+promote the relay receipt to `route_accepted` for PQ-024 binding.
+
+**Verdict:** PASS review / REVISE asset — solo integrator review confirms the current identity is a
+generic cylinder-and-box assembly whose HUD rings carry more meaning than its manufactured form.
+The review is complete; exact re-authoring, recapture, and causal re-review units are now in the
+queue. Receipt: [relay H2 verdict](receipts/PQ-022-relay-h2-verdict-REPORT.md).
+
+**Targeted exact-final causal re-review, candidate `780b77b3`: PASS / KEEP G1, G2, and G4.** The
+revised close/default Browser and source-Electron views replace the gray post with a visibly
+asteroid-gripping collar, formed vessels, open transfer trusses, recovery receiver, service frame,
+and dish/mast. Cool vessel metal, dark mechanics, warm load/service members, and localized cyan
+diagnostics remain separated in both hosts. LOD2 necessarily loses meso detail at `336.47 m`, but
+retains the irregular, top-heavy manufactured silhouette. Exact release
+`85b8d74e...67a8` is bound to route visual acceptance; performance and final promotion remain
+separate. Receipt: [revised relay causal review](receipts/PQ-022-relay-reauthor-review-REPORT.md).
+
+---
+
+## Decision 2 — PQ-019 facility/capsule art and heist-route status
+
+**Question, art:** At the normal game camera, do the launcher, lawful catcher, fence, and physical
+cargo capsule read as four *distinct, purposeful* facilities — or as interchangeable greebled boxes?
+Is the capsule legible as a thing you could steal?
+
+**Question, function:** Do the five named PQ-019C routes — lawful observe, heist-plus-fence,
+confiscation, destruction, and reduced-stake recovery — hold up on the live route, with one composed
+witness/WANTED/pursuit floor pill and no competing pill?
+
+**Evidence:**
+
+- [row 3 presentation and counts](evidence/h1/row3-pq019a-presentation/EVIDENCE.md) — retained
+  facility stills/counts plus the accepted brokered capsule-only continuation at applied runtime
+  zooms `45/66/108`. The capsule art question is now answerable by the evidence reviewer; no verdict
+  is implied by the functional acceptance.
+- [row 4 surface-heist evidence](evidence/h1/row4-pq019-surface-heist/EVIDENCE.md) — retained DOM
+  abandon/lawful-observe evidence plus the accepted candidate-bound continuation for the composed
+  witness/WANTED/patrol floor, fence, confiscation, production-combat destruction, and both
+  reduced-stake attempts.
+
+PQ-019C is deliberately folded into this broader PQ-019 decision; it does **not** receive a seventh
+standalone decision. Functional H1 is complete, but do not infer the independent art/fun
+verdict or matched performance from machine route acceptance.
+
+**Unblocks:** H2 visual/fun disposition. Parent PQ-019 promotion still requires the exact facility
+repair/review chain and H3 matched performance.
+
+**Verdict:** PASS review / KEEP route and capsule / REVISE facilities — all five named Browser
+outcomes hold, the physical capsule reads as a stealable payload, and the one-voice floor remains
+composed. The three registered facilities are functionally distinct but not yet visually distinct:
+the launcher inherits the relay's cylinder-and-box defect, while catcher and fence share nearly the
+same dark ring/box/rock construction. Exact catcher/fence re-authoring, target-visible facility
+recapture, and causal review are queued; already-valid route/capsule evidence is retained. Receipt:
+[PQ-019 H2 facility/route review](receipts/PQ-019-h2-facility-route-REPORT.md).
+
+---
+
+## Decision 3 — PQ-023 cues in motion
+
+**Question:** Watch the committed reel and frame sequences. Does a flak impact read as *different from*
+an autocannon impact at a glance? Do the small, ordinary and capital destruction lifecycles land? Does
+the reduced-motion/reduced-flash ordinary sequence retain the same state information, and does the
+dense scene remain readable?
+
+**Evidence:** [row 6 cue-motion evidence](evidence/h1/row6-pq023-cues/EVIDENCE.md), including the
+retained original WebM and combat frame sequences, deterministic suppression trace, and the accepted
+Cathedral continuation's motion reel, 12 Browser frames, four Electron frames, complete Browser report,
+and cross-runtime semantic receipt. Functional H1 proves normal/reduced recovery and damage, the
+`ring` / `bracket` caption sequence, terminal cleanup, and Electron parity. Suppressed cues remain
+covered by the deterministic trace: all 18 critical cues emitted and 42 flavor cues were intentionally
+suppressed with an explicit lane-budget reason.
+
+**Unblocks:** the motion/accessibility disposition. `milestone_accepted` still requires the exact
+combat-readability repair/review chain and H3 matched performance; neither is implied by H1.
+
+**Verdict:** PASS review / KEEP Cathedral accessibility, ordinary/capital destruction, reduced mode,
+and dense composition / REVISE flak differentiation and small destruction — the Cathedral states
+retain explicit text plus noncolor ring/bracket semantics in both hosts, and the larger lifecycles
+land without burying the combat scene. Flak does not: its `proximity-burst` profile has no renderer
+branch and falls through the autocannon default, matching the near-identical ordinary-camera pixels.
+The small lifecycle is bounded but too faint to read as a destruction event. Exact repair, targeted
+recapture, and causal review are queued. Receipt: [PQ-023 H2 cue review](receipts/PQ-023-h2-cue-motion-accessibility-REPORT.md).
+
+**Targeted causal re-review, candidate `b626a8b3`:** KEEP flak / REVISE only full-motion small
+destruction. The new four-frame and motion evidence makes flak's compact bright core plus irregular
+radial cloud visibly distinct from autocannon's narrow incidence fan in both hosts. Full-motion small
+destruction remains a minute speck/two-fragment event at ordinary framing and is less legible than
+the preserved reduced fallback. Dense composition, cleanup, Cathedral, ordinary/capital hierarchy,
+and cross-runtime parity remain KEEP. The next exact chain is a normal-mode small-only repair,
+targeted recapture, and causal re-review; accepted cells are retained. Receipt:
+[PQ-023 combat-readability review](receipts/PQ-023-combat-readability-review-REPORT.md).
+
+**Final small-destruction causal re-review, candidate `dfecee8f`: PASS / KEEP.** The matched
+before/after opening frames and declared motion windows show that the normal event now opens with a
+bright sustained core, a wider three-point asymmetric breakup, and an offset lobe at the ordinary
+camera. It remains the smallest hierarchy member, borrows no ordinary ring, and is no longer weaker
+than the retained reduced fallback. Browser/source-Electron projections match exactly; dense
+composition, cleanup, flak distinction, Cathedral, and larger destruction remain KEEP. Receipt:
+[PQ-023 final small-destruction review](receipts/PQ-023-small-destruction-salience-review-REPORT.md).
+
+---
+
+## Decision 4 — PQ-020 pocket distinctness and Cathedral presence
+
+**Question, part A:** Flying refinery → Belt Outpost → beacon → Cathedral, does each pocket feel like
+a *different place*, or does Ceres read as one undifferentiated field with different labels?
+
+**Question, part B:** Does the Wreck Cathedral have presence — does it land as a landmark worth
+travelling to — at close, default and far framing?
+
+**Evidence:** [accepted row 5 Browser/Electron pair](evidence/h1/row5-pq020-ceres-route/EVIDENCE.md)
+and [exact H1 receipt](receipts/PQ-020-ceres-h1-capture-REPORT.md). Candidate `04514d0b` passed all
+21 frames in both runtimes at fixed seed `47`, with exact normalized gameplay parity, zero issues,
+real Intel ANGLE/D3D11, and clean Electron teardown. Review maps/arrivals `03`–`09` and the
+Cathedral far/default/close/arrival sequence `10`–`13`; the `electron/` directory carries the paired
+source-Electron views.
+
+**Continuation:** the accepted topology and Cathedral-presence evidence remain valid. The refinery's
+existing re-author chain and a targeted three-pocket presentation recapture/review own the weak
+flight reads; H3 remains independent.
+
+**Verdict:** PASS review — **REVISE pocket flight presentation / KEEP Cathedral presence**. Maps
+prove distinct spatial/semantic pockets, but the refinery, outpost, and beacon arrival stills are
+player-ship-dominant or edge-cropped and do not independently carry place identity. Cathedral
+far/default/close/arrival framing is unmistakably monumental. Receipt:
+[PQ-020 H2 review](receipts/PQ-020-h2-pocket-cathedral-REPORT.md).
+
+The separate exact-source whole-asset review does not confuse presence with finish: it returns
+**REVISE** for the frozen Cathedral's dominant primitive slab/bar construction and clay-dark material
+allocation. Receipt: [PQ-018 Cathedral art verdict](receipts/PQ-018-cathedral-art-verdict-REPORT.md).
+
+---
+
+## Decision 5 — PQ-021 Ledger legibility
+
+**Question:** With the five Cathedral evidence pages earned on the live route and read through
+*both* ordinary hosts (station dock → Ledger destination, and flight `K` → Codex → Ledger tab): is
+each authored image legible at its bounded crop, is its provenance clear, and does the same
+information genuinely arrive in both hosts?
+
+The H1 route proves keyboard/mouse focus enters each evidence page and returns to its opener. The
+shipped controller contract is reviewed at the owner seam: standard button 3 (`Y / Triangle`) maps
+to the Codex action, the live UI consumes that action, and the shared modal navigator owns focus,
+activation, and Back. That establishes semantic input reachability without manufacturing a physical
+device claim.
+
+**Evidence:** [Browser broker cell + Electron parity](evidence/h1/row2-pq021-ledger/EVIDENCE.md)
+
+**Unblocks:** PQ-021 → `route_accepted` / `integrated`.
+
+**Verdict:** PASS / KEEP — solo integrator review inspected all five original page images plus both
+host captures. Every page is useful and distinct at the bounded crop; copy/provenance parity,
+13px-or-larger text, 150% scaling, focus return, and panel contrast are proven. Controller semantic
+reachability is accepted through the shipped mapping and input owner; no physical-device claim is
+made. Receipt: [PQ-021 H2 review](receipts/PQ-021-h2-legibility-controller-REPORT.md).
+
+---
+
+## Decision 6 — Electron sanity
+
+**Question:** Not an art judgement — a go/no-go. Does the shipped Electron shell carry a player from
+menu → New Game → flight → dock → Ledger without a defect that would embarrass a build?
+
+**Evidence:** [Row 2 Ledger Browser/Electron parity](evidence/h1/row2-pq021-ledger/EVIDENCE.md) and
+[Row 8 accepted source-Electron continuation](evidence/h1/row8-electron-e2e/EVIDENCE.md). At fixed
+seed 47, Row 8 proves isolated canonical launch, Main Menu, New Game, authored flight, public Helios
+waypoint/autopilot, the physical dock prompt, one held `E` docking input, Station command dock, and
+Ledger on real Intel ANGLE/D3D11. Cleanup passed with no hard page/request errors. The three product
+and harness failures that preceded the accepted candidate remain preserved with causal repairs and
+regressions.
+
+This decision is the named functional go/no-go, not an art judgment. It does not stand in for the
+separate physical-controller, human legibility/art, exact-package, or matched-performance gates.
+
+**Verdict:** PASS — candidate-bound source-Electron menu→dock→Ledger chain accepted
+
+---
+
+## Decision 7 — Corridor stations, lane furniture, and traffic bodies
+
+**Question:** Do the four corridor stations, jump ring/billboard/nav-buoy set, and three Helios
+traffic bodies each carry a readable, role-specific identity at the captured game camera, or does any
+group need revision before the corridor-required-assets milestone can close?
+
+**Evidence:** [Row 7 exact headed presentation](evidence/h1/row7-pq022-asset-leaves/EVIDENCE.md).
+H1 proved exact release identity, authored admission, centered subjects, and no readable fallback.
+It did not issue a visual-quality verdict. The traffic frames include the player Kestrel in the
+foreground; record `blocked` for any identity whose framing is not sufficient to judge rather than
+silently accepting it.
+
+**Continuation:** seven identities are retained; the refinery plus the billboard/buoy pair route
+through exact re-authoring, targeted H1, and causal re-review units. Matched performance remains H3.
+
+**Verdict:** PASS review — **KEEP 7 / REVISE 3 / REVERT 0**. Keep trade hub, military station,
+mining station, jump ring, and all three traffic bodies. Revise the refinery, station billboard, and
+navigation buoy. Receipt: [corridor-assets H2 disposition](receipts/PQ-022-corridor-assets-h2-disposition-REPORT.md).
+
+---
+
+## What is deliberately NOT in this session
+
+- **Matched performance** (Phase H3). Every perf row stays open regardless of what you decide here.
+  H3 needs a quiet machine, one lane at a time; H1 ran contended by design.
+- **The graphics program's outstanding G7s** (debris/hulk/dock, Kestrel V6+stencil, modular hulls,
+  Ashline V2). The batch doc offers these for the same sitting if you want them — they are not
+  blocked on H1 and are not listed above.

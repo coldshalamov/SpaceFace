@@ -1,0 +1,2744 @@
+// Tether gameplay system (GDD 2.0 §4.3, BUILD_PLAN WS-D1).
+// Consumes the locked input action contract and wires the existing SG-03/SG-02 attachment
+// service into player flight. SG-02 owns momentum exchange; this system only targets,
+// reels, cuts, and emits player-facing gameplay events.
+//
+// T04/PQ-004: latch eligibility and the visible pre-latch receipt consume the existing T03 scorer.
+// Obstruction remains caller-resolved: a physics/terrain owner may provide isMasslineObstructed;
+// selection then fails closed and publishes the same blocked reason the latch will consume.
+import {
+  classifyMasslineIntent,
+  MASSIVE_ANCHOR_MIN_MASS,
+  rankMasslineTargets,
+  stabilizeMasslineSelection,
+} from '../combat/masslineTargetScoring.js';
+import { automaticMasslineBreakAllowed } from '../combat/attachments.js';
+import { entityLocalPointToWorld } from '../combat/geometry.js';
+import { publishHitstunImpulse, signedHitSide } from '../combat/impulseKernel.js';
+import { queryNearbyEntities } from '../core/spatialQuery.js';
+import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
+import { isHostileToPlayer } from './scanner.js';
+import { combatFlag, massline2Flag } from '../data/featureFlags.js';
+import { isMassSeedTetherEligible } from './massSeed.js';
+import { specialistPlanByEnemyId } from '../ai/specialistPlans.js';
+
+const TETHER_DEF_ID = 'tether_standard';
+// PQ-137.09 — the tag a shared helm loss carries, and the loop guard. A shared tumble never
+// propagates again: one hit crosses the rope once, in the direction the rope actually runs.
+const TETHER_SHARE_SOURCE = 'tether_share';
+// A taut line transmits; a slack one does not. These are the attachment authority's own phases.
+const TETHER_TAUT_PHASES = new Set(['capture', 'loaded', 'overload']);
+// Bound on how many lines one tumble may cross in a tick (a hull can carry a massline and a
+// bridle end at once; it can never carry a fleet of them).
+const TETHER_SHARE_MAX_LINKS = 4;
+export const TWIN_BRIDLE_DEF_ID = 'attachment_twin_bridle';
+export const TWIN_BRIDLE_HEAD_ID = 'twin_bridle';
+// PQ-031.00: the second latch is the throw, not a lingering setup mode. Keep the A endpoint
+// alive for only the authored combat-range throw window; all elapsed time comes from simTime.
+export const TWIN_BRIDLE_SETUP_S = 2;
+export const ELASTIC_WHIP_HEAD_ID = 'elastic_whip';
+export const ELASTIC_WHIP_SPRING_K = 260;
+export const ELASTIC_WHIP_SPRING_ZETA = 0.28;
+export const ELASTIC_WHIP_MAX_STRETCH_RATIO = 1.44;
+export const ELASTIC_WHIP_GLOW_STRETCH_RATIO = 0.28;
+const MONOFILAMENT_HEAD_ID = 'monofilament_sweep';
+const NPC_LINE_CUT_TAUT_RATIO = 0.92;
+const NPC_BRIDLE_CUT_COOLDOWN_TICKS = 90;
+const NPC_BRIDLE_CUT_RANGE_WU = 180;
+const NPC_ACE_BRIDLE_CUT_RANGE_WU = 220;
+const NPC_HEAVY_BRIDLE_MASS = 150;
+const NPC_ACE_BRIDLE_CUT_PHASES = new Set([
+  'engine_flare', 'strike', 'commit', 'control', 'anchor_hold', 'broadside_fire', 'screen_hold', 'fire_window',
+]);
+const STRAIN_EVENT_INTERVAL_S = 0.2;
+const RELATCH_COOLDOWN_S = 0.25;   // after cut/break — prevents same-press ghost re-latches
+const TAP_CUT_DELAY_S = 0.22;       // legacy direct-action path: hold becomes reel, tap becomes cut
+const CAPTURE_SLACK_S = 0.1;
+const STRETCH_EPSILON = 0.05;
+// Overnight B1: soft latch was pixel-tight at combat speed. Base grace is generous; Flyby Focus
+// multiplies further via latchGraceScale(state). Exported for check:overnight:playable.
+export const CURSOR_LATCH_GRACE = 36;
+export const CURSOR_LATCH_GRACE_MAX = 96;
+export const AIM_RAY_GRACE = 22;
+export const AIM_RAY_GRACE_MAX = 64;
+const ACQUISITION_REFRESH_S = 0.08;
+const ACQUISITION_VALID_S = 0.28;
+const INTENT_HISTORY_S = 0.28;
+const STRONG_TURN_THRESHOLD = 0.42;
+const SLINGSHOT_STATE_S = 1.0;
+const SLINGSHOT_SPEED_MULT = 1.4;
+const DRILL_APPROACH_CLEARANCE_WU = 12;
+const DRILL_APPROACH_DISTANCE_EPSILON_WU = 3;
+const DRILL_APPROACH_SPEED_EPSILON_WU_S = 5;
+const DRILL_APPROACH_REST_LENGTH_EPSILON_WU = 0.25;
+const DRILL_APPROACH_MAX_ACCEL_WU_S2 = 90;
+const DRILL_APPROACH_POSITION_GAIN = 3.5;
+const DRILL_APPROACH_VELOCITY_GAIN = 2.6;
+const DRILL_APPROACH_MAX_SURFACE_WU = 220;
+const DRILL_APPROACH_TIMEOUT_S = 8;
+// Presentation load (massline rung 04): phase floors so the cable reads "working" the moment the
+// phase says so, even while the physical rating ratio (strain) is still low. strain*2.5 lets real
+// tension overtake the floor. tether.load is presentation-only — tether.strain stays the untouched
+// physical ratio, while tether.automaticBreakAllowed carries the attachment authority's canonical
+// answer about whether that ratio can actually culminate in automatic failure.
+const LOAD_STRAIN_GAIN = 2.5;
+const LOAD_BASE_BY_PHASE = Object.freeze({ slack: 0, capture: 0.35, loaded: 0.55, overload: 0.9 });
+// Authored payloads and loose pickups are sensor bodies: they intentionally do not collide, so the
+// collidable-only spatial hash cannot be their sole acquisition source.
+const NON_COLLIDING_ACQUISITION_TYPES = new Set(['payload', 'pickup']);
+const TRANSIENT_NON_TETHERABLE_TYPES = new Set(['projectile', 'fx']);
+const TOW_TARGET_COM_TYPES = new Set(['wreck', 'ship', 'drone', 'payload', 'pickup']);
+const LARGE_BRIDLE_ENDPOINT_TYPES = new Set(['station', 'asteroid', 'massSeed', 'fieldEmitter', 'planet']);
+const LINE_CONTROL_DENIAL_COPY = Object.freeze({
+  load_limit: 'line load too high',
+  minimum_length: 'minimum line length reached',
+  maximum_length: 'maximum line length reached',
+  reel_unavailable: 'winch unavailable',
+  attachment_missing: 'line no longer attached',
+});
+const NO_REEL_RESULT = Object.freeze({ changed: false, reason: null, attachment: null });
+
+export const tetherGameplay = {
+  id: 'tetherGameplay',
+  name: 'tetherGameplay',
+
+  init(ctx) {
+    for (const unsubscribe of this._acquisitionUnsubs || []) unsubscribe();
+    this.state = ctx.state;
+    this.bus = ctx.bus;
+    this.helpers = ctx.helpers;
+    this.registry = ctx.registry;
+    this._targetScratch = [];
+    this._nonCollidingTargetScratch = [];
+    this._active = null;
+    this._lastStrainT = -Infinity;
+    this._noRelatchUntil = -Infinity;
+    this._pendingCut = null;
+    this._ignoreReleaseCutUntilReelIdle = false;
+    this._latchGraceUntil = 0;
+    this._reelStrength = 0;
+    this._lastLineControlDenial = null;
+    this._lastLatchDenial = null;
+    this._bridleSetup = null;
+    this._bridleActive = null;
+    this._npcBridleCutTicks = new Map();
+    this._monofilamentCutIds = new Set();
+    this._hostileSweepCutIds = new Set();
+    this._monofilamentLatchId = null;
+    this._bridleAdoptionPending = true;
+    this._pendingDrillApproach = null;
+    this._drillApproach = null;
+    this._resetAcquisitionRuntime(this.state);
+    this._resetTwinBridleRuntime(this.state, null, true);
+    const resetAfterLoad = () => {
+      // Combat persistence restores attachment ids but remaps their live endpoints. Drop the
+      // outgoing run's private endpoint cache so _adoptExisting reads the canonical restored line;
+      // otherwise an id-stable attachment can keep steering/mirroring the stale target id.
+      this._active = null;
+      this._pendingCut = null;
+      this._ignoreReleaseCutUntilReelIdle = false;
+      this._lastStrainT = -Infinity;
+      this._npcBridleCutTicks.clear();
+      this._monofilamentCutIds.clear();
+      this._hostileSweepCutIds.clear();
+      this._monofilamentLatchId = null;
+      this._cancelDrillApproach('save_loaded');
+      this._resetAcquisitionRuntime(this.state);
+      this._resetTwinBridleRuntime(this.state, 'save_loaded', true);
+    };
+    const resetForNewGame = () => {
+      this._cancelDrillApproach('new_game');
+      this._npcBridleCutTicks.clear();
+      this._monofilamentCutIds.clear();
+      this._hostileSweepCutIds.clear();
+      this._monofilamentLatchId = null;
+      this._resetAcquisitionRuntime(this.state);
+      this._resetTwinBridleRuntime(this.state, 'new_game', false);
+    };
+    const endForSectorBoundary = (reason) => {
+      this._cancelDrillApproach(reason);
+      this._resetAcquisitionRuntime(this.state);
+      this._endTwinBridleForBoundary(this.state, reason);
+    };
+    this._insideTetherUpdate = false;
+    const onAuthorityBroken = (payload) => {
+      // Cuts that happen inside update() already own their emit protocol. Authority breaks that
+      // land later in the same tick (target gone, physics cut) must drop the HUD mirror immediately
+      // so a freeze after MASSLINE BROKEN cannot keep painting TETHER LOCKED.
+      if (this._insideTetherUpdate) return;
+      const state = this.state;
+      const kernel = combatKernel(this);
+      const attachments = kernel && kernel.attachments;
+      if (!attachments || !state) return;
+      this._reconcileActive(attachments, state);
+      const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+      const now = Number.isFinite(state.simTime) ? state.simTime : (state.tick || 0) / 60;
+      if (player) this._reconcileTwinBridle(attachments, state, player, now);
+    };
+    this._acquisitionUnsubs = typeof this.bus?.on === 'function'
+      ? [
+          this.bus.on('save:loaded', resetAfterLoad),
+          this.bus.on('game:new', resetForNewGame),
+          this.bus.on('game:started', resetForNewGame),
+          this.bus.on('sector:exit', () => endForSectorBoundary('sector_exit')),
+          this.bus.on('sector:enter', () => endForSectorBoundary('sector_enter')),
+          this.bus.on('tether:broken', onAuthorityBroken),
+          this.bus.on('drill:approachRequested', (payload) => this._requestDrillApproach(payload)),
+          this.bus.on('combat:tumbled', (payload) => this._shareHelmLoss(payload)),
+          this.bus.on('ai:doctrinePhase', (payload) => this._handleNPCBridleCounterplay(payload)),
+        ]
+      : [];
+    this._resetPhaseMirror();
+  },
+
+  update(dt, state) {
+    this._insideTetherUpdate = true;
+    try { this._updateTetherGameplay(dt, state); }
+    finally { this._insideTetherUpdate = false; }
+  },
+
+  _updateTetherGameplay(dt, state) {
+    this._tickSlingshotState(state, dt);
+    if (state.mode !== 'flight') {
+      this._cancelDrillApproach('flight_exit');
+      this._endTwinBridleForBoundary(state, 'flight_exit');
+      this._resetGestureState();
+      this._resetPhaseMirror();
+      this._mirror(state, null, 0);
+      this._clearAcquisitionPreview(state);
+      return;
+    }
+    const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+    if (!player || !player.alive || (player.flags && player.flags.docked)) {
+      this._cancelDrillApproach('controller_unavailable');
+      this._endTwinBridleForBoundary(state, 'controller_unavailable');
+      this._resetGestureState();
+      this._resetPhaseMirror();
+      this._mirror(state, null, 0);
+      this._clearAcquisitionPreview(state);
+      return;
+    }
+
+    const kernel = combatKernel(this);
+    const attachments = kernel && kernel.attachments;
+    if (!attachments) {
+      this._cancelDrillApproach('attachment_authority_unavailable');
+      // Readable failure: missing attachment authority must not swallow a latch press silently.
+      if (state.input?.actions?.tetherFire) {
+        this.bus.emit('tether:latchDenied', { reason: 'attachment_authority_unavailable' });
+      }
+      this._clearAcquisitionPreview(state);
+      return;
+    }
+
+    const actions = state.input?.actions;
+    const now = Number.isFinite(state.simTime) ? state.simTime : state.tick / 60;
+    this._reconcileActive(attachments, state);
+    this._adoptExisting(attachments, state);
+    this._cutNpcLinesWithMonofilament(attachments, state, player);
+    this._cutPlayerLinesWithHostileSweep(attachments, state, player);
+    this._startPendingDrillApproach(attachments, state, player);
+    this._reconcileTwinBridle(attachments, state, player, now);
+    this._adoptTwinBridle(attachments, state, player);
+    const masslineCommand = actions && actions.massline;
+    const lineLengthCommand = masslineCommand && masslineCommand.lineControl
+      ? finite(masslineCommand.lineLength, 0)
+      : finite(actions && actions.reelDelta, 0);
+    const reelHeld = lineLengthCommand < 0;
+
+    // The normalized input grammar has already resolved tap vs hold. Execute its cut in this same
+    // tether tick; the legacy pending-cut path below remains for old tapes/direct harnesses.
+    if (this._active && !this._drillApproach && masslineCommand && masslineCommand.cut) {
+      this._cutActive(attachments, state, player, now);
+      return;
+    }
+
+    // After latch, ignore tap-to-cut until the player has held to reel or a short grace expires —
+    // otherwise latch → release → press-again to winch reads as a cut on release.
+    if (this._ignoreReleaseCutUntilReelIdle) {
+      if (reelHeld) this._ignoreReleaseCutUntilReelIdle = false;
+      else if (this._latchGraceUntil > 0 && now >= this._latchGraceUntil) this._ignoreReleaseCutUntilReelIdle = false;
+    }
+
+    if (this._active && !this._drillApproach && !this._pendingCut && !this._ignoreReleaseCutUntilReelIdle && actions?.tetherCut) {
+      this._pendingCut = {
+        attachmentId: this._active.attachmentId,
+        targetId: this._active.targetId,
+        requestedAt: now,
+        firstTick: state.tick,
+      };
+    }
+
+    if (this._active && this._pendingCut) {
+      const releasedAfterPress = !reelHeld && state.tick !== this._pendingCut.firstTick;
+      const heldLongEnough = now - this._pendingCut.requestedAt >= TAP_CUT_DELAY_S;
+      if (releasedAfterPress) {
+        const targetId = this._active.targetId;
+        const cutPayload = this._cutPayload(state, player, targetId);
+        const result = attachments.cut(this._active.attachmentId, player.id, 'tether_cut');
+        // attachment_missing = the orphan sweep already broke it (target died) and reconcile
+        // emitted the event — only emit released on a cut WE performed.
+        if (result && result.ok) {
+          if (cutPayload.slingshot) this._grantSlingshotState(state, SLINGSHOT_STATE_S);
+          this.bus.emit('tether:cut', cutPayload);
+          this.bus.emit('tether:released', { targetId });
+          this.bus.emit('tether:releaseRated', rateRelease(state, targetId));
+        }
+        this._active = null;
+        this._pendingCut = null;
+        this._noRelatchUntil = now + RELATCH_COOLDOWN_S;
+        this._resetPhaseMirror();
+        this._mirror(state, null, 0);
+        return;
+      }
+      // Legacy held-action reel intent cancels pending cut once the tap window expires so release
+      // does not cut. Reeling itself is never blocked by pendingCut (see _reelActive below).
+      if (reelHeld && heldLongEnough) {
+        this._pendingCut = null;
+      }
+    }
+
+    if (this._active) {
+      this._clearAcquisitionPreview(state);
+      // Liveness belt-and-braces on the gameplay side: if the target vanished this tick and the
+      // service sweep hasn't caught it yet, force the cut ourselves rather than orbit a ghost.
+      const target = state.entities.get(this._active.targetId);
+      if (!target || target.alive === false || !target.pos
+          || !Number.isFinite(target.pos.x) || !Number.isFinite(target.pos.z)) {
+        this._cancelDrillApproach('target_lost');
+        attachments.cut(this._active.attachmentId, player.id, 'target_lost');
+        this.bus.emit('tether:broke', { targetId: this._active.targetId });
+        this.bus.emit('tether:releaseRated', rateRelease(state, this._active.targetId));
+        this._active = null;
+        this._pendingCut = null;
+        this._ignoreReleaseCutUntilReelIdle = false;
+        this._noRelatchUntil = now + RELATCH_COOLDOWN_S;
+        this._resetPhaseMirror();
+        this._mirror(state, null, 0);
+        return;
+      }
+      const requestedApproach = this._drillApproach;
+      const approachReelDelta = requestedApproach
+        ? this._drillApproachReelDelta(attachments, state, player, target)
+        : null;
+      const approach = this._drillApproach;
+      const effectiveLineLengthCommand = Number.isFinite(approachReelDelta)
+        ? approachReelDelta
+        : lineLengthCommand;
+      const lineCommandIsAxis = !Number.isFinite(approachReelDelta);
+      const reelResult = effectiveLineLengthCommand === 0
+        ? NO_REEL_RESULT
+        : this._reelActive(
+          attachments,
+          effectiveLineLengthCommand,
+          dt,
+          state,
+          player,
+          target,
+          { normalizedAxis: lineCommandIsAxis },
+        );
+      const approachSpooling = !!approach && effectiveLineLengthCommand !== 0;
+      this._updateReelStrength(approachSpooling || reelHeld, reelResult.changed, dt);
+      if (approach && approachSpooling && !reelResult.changed) {
+        this._cancelDrillApproach(reelResult.reason || 'reel_rejected');
+      }
+      if (!approach && effectiveLineLengthCommand !== 0 && !reelResult.changed && reelResult.reason) {
+        this._emitLineControlDenied(state, reelResult.reason, effectiveLineLengthCommand, reelResult.attachment);
+      } else if (effectiveLineLengthCommand === 0 || reelResult.changed) {
+        this._lastLineControlDenial = null;
+      }
+      if (approach && this._drillApproach) {
+        if (this._drillApproachSettled(attachments, player, target)) this._completeDrillApproach(state);
+        else this._queueDrillApproachAssist(attachments, player, target, dt);
+      }
+      this._emitStrain(attachments, state);
+      const att = attachments.get(this._active.attachmentId);
+      const phase = this._phaseFor(state, att, dt, this._lastStrainRatio || 0);
+      const attDef = attachmentDef(kernel, att && att.defId || this._active.type);
+      const automaticBreakAllowed = !!(att && attDef
+        && automaticMasslineBreakAllowed(attDef, player, target));
+      this._mirror(
+        state,
+        this._active.targetId,
+        this._lastStrainRatio || 0,
+        att ? att.restLength : 0,
+        phase,
+        approach ? { lineControl: true, lineLength: effectiveLineLengthCommand, orbitDirection: 0, pump: false } : masslineCommand,
+        effectiveLineLengthCommand,
+        automaticBreakAllowed,
+        att && att.tetherPolicy && att.tetherPolicy.headId,
+      );
+      return;
+    }
+
+    this._reelStrength = 0;
+    this._resetPhaseMirror();
+    this._mirror(state, null, 0);
+    const wantsLatch = !!(actions && actions.tetherFire);
+    const bridleHeadActive = player.data?.derived?.masslineHeadId === TWIN_BRIDLE_HEAD_ID
+      && massline2Flag('masslineHeadTwinBridle', state.runtime && state.runtime.features);
+    const remoteBridleActive = state.player?.remoteMassline?.active
+      && state.player.remoteMassline.kind === TWIN_BRIDLE_HEAD_ID;
+    if (bridleHeadActive || this._bridleSetup || this._bridleActive || remoteBridleActive) {
+      if (this.helpers?.masslineSnares?.clearPreview) this.helpers.masslineSnares.clearPreview();
+      this._handleTwinBridle(attachments, kernel, state, player, now, wantsLatch, masslineCommand, bridleHeadActive);
+      return;
+    }
+    const snareHeadActive = player.data?.derived?.masslineHeadId === 'transverse_snare'
+      && massline2Flag('masslineHeadTransverseSnare', state.runtime && state.runtime.features);
+    const remoteSnareActive = state.player?.remoteMassline?.active
+      && state.player.remoteMassline.kind === 'transverse_snare';
+    if (snareHeadActive || remoteSnareActive) {
+      // A Transverse Snare press is a separate world-to-world transaction. Do not let it fall
+      // through and also create the ordinary player-to-target line. The snare owner consumes the
+      // same normalized latch/cut command but never receives reel, thrust, facing, or brake input.
+      this._clearAcquisitionPreview(state);
+      const snare = this.helpers && this.helpers.masslineSnares;
+      if (snare && typeof snare.handleInput === 'function') {
+        snare.handleInput({ state, player, wantsLatch, masslineCommand });
+      } else if (wantsLatch || (masslineCommand && masslineCommand.cut)) {
+        this.bus.emit('tether:latchDenied', { reason: 'snare_authority_unavailable' });
+      }
+      return;
+    }
+    if (this.helpers?.masslineSnares?.clearPreview) this.helpers.masslineSnares.clearPreview();
+    const def = attachmentDef(kernel, TETHER_DEF_ID);
+    // Ctrl-nearest (src/systems/input.js:1074) is an explicit manual override of the scored pick:
+    // "not that one — the one I am closest to". It bypasses the receipt entirely, so it must not
+    // publish or consume one either.
+    const nearestOnly = state.input?.tetherMode === 'nearest';
+    // PHYSICAL_PLAY_GRAMMAR §7.1: the candidate is published EVERY tick, pressed or not — "you can
+    // see what the Massline will grab before you press, and it updates as you move". Steering-only
+    // presses consume the previous-frame receipt; explicit cursor-aim presses refresh current aim
+    // on the press tick.
+    //
+    // Passive drift keeps the standing receipt and Schmitt hysteresis so the HUD does not flicker.
+    // An explicit cursor-aim press is different: the player is committing NOW, so the press tick
+    // refreshes acquisition from current aim and bypasses the hold. Steering-only presses keep the
+    // previous-frame receipt contract pinned by massline-acquisition-preview.
+    const tickNow = Math.trunc(finite(state.tick));
+    const publishedReceipt = nearestOnly ? null : (state.masslineAcquisition || null);
+    const publishedTargetId = publishedReceipt && publishedReceipt.selected
+      ? publishedReceipt.selected.targetId
+      : null;
+    const standingWasRendered = !!publishedReceipt
+      && this._lastPreviewTick === tickNow - 1
+      && publishedReceipt.validUntil >= now;
+    if (!def || nearestOnly) {
+      this._clearAcquisitionPreview(state);
+    } else {
+      const pressOwnsCurrentAim = wantsLatch && acquisitionCursorActive(state);
+      if (pressOwnsCurrentAim) {
+        this._refreshAcquisitionPreview(player, def, state, now, true, true);
+      } else if (!wantsLatch || !standingWasRendered) {
+        this._refreshAcquisitionPreview(player, def, state, now, !standingWasRendered);
+      }
+      // Whatever stands now is what masslineHud renders at the end of THIS tick, refreshed or not.
+      this._lastPreviewTick = tickNow;
+    }
+    if (!wantsLatch) return;
+    // Readable failure reasons (T04): never fail latch silently. The ORDER below is load-bearing —
+    // cooldown outranks a missing def (pinned by T04 §3 in test/tether-latch-eligibility.test.mjs).
+    if (now < this._noRelatchUntil) {
+      this.bus.emit('tether:latchDenied', { reason: 'cooldown' });
+      return;
+    }
+    if (!def) {
+      // Attachment authority's established reason when the def is absent from the catalog.
+      this.bus.emit('tether:latchDenied', { reason: 'unknown_attachment_def' });
+      return;
+    }
+    this._lastLatchDenial = null;
+    const latch = nearestOnly
+      ? this._acquireCommandTarget(player, def, state)
+      : this._consumeAcquisitionReceipt(player, def, state, now);
+    const target = latch && latch.entity;
+    if (!target) {
+      const denial = this._lastLatchDenial || { reason: 'no-target' };
+      this.bus.emit('tether:latchDenied', denial);
+      return;
+    }
+
+    // The line always leaves the player's center of mass. A physical constraint attached to a
+    // nose socket applies steering torque by itself, which makes latching silently take over yaw.
+    const attachWorlds = contextualAttachmentWorlds(player, target, latch.targetWorld);
+    const result = attachments.create({
+      defId: TETHER_DEF_ID,
+      ownerId: player.id,
+      targetId: target.id,
+      ...attachWorlds,
+    });
+    if (!result || !result.ok || !result.attachment) {
+      // Passthrough of the attachment authority's existing result.reason (e.g. owner_attachment_limit).
+      this.bus.emit('tether:latchDenied', {
+        reason: (result && result.reason) || 'create_failed',
+        targetId: target.id,
+      });
+      return;
+    }
+
+    this._active = {
+      attachmentId: result.attachment.id,
+      targetId: target.id,
+      type: TETHER_DEF_ID,
+    };
+    this._resetPhaseMirror();
+    this._lastStrainT = -Infinity;
+    this._ignoreReleaseCutUntilReelIdle = true;
+    this._latchGraceUntil = now + 0.55;
+    // Truthfulness receipt: the latch reports WHICH rendered candidate it consumed, so a mismatch
+    // between what the player saw and what they got is observable rather than a bug report.
+    const selectionReceipt = nearestOnly ? null : state.masslineAcquisition;
+    const selectedEntry = selectionReceipt && selectionReceipt.selected;
+    this.bus.emit('tether:latched', {
+      targetId: target.id,
+      type: TETHER_DEF_ID,
+      selectionReceiptId: (selectionReceipt && selectionReceipt.id) || null,
+      context: (selectedEntry && selectedEntry.context)
+        || (state.player?.targetId === target.id ? 'selected' : 'nearby'),
+      // TRUTHFUL BY CONSTRUCTION. publishedTargetId was read at the TOP of this tick, before the
+      // refresh decision above, so it is the candidate the previous frame actually drew — not the
+      // receipt this tick built compared against itself, which is what made the old expression
+      // structurally incapable of ever reporting false. If a press-tick rebuild is ever
+      // reintroduced, this goes false and check-tether-gameplay.mjs / tether-latch-eligibility
+      // catch it. A cold or expired receipt has no published candidate to contradict (nothing was
+      // on screen), and reports the record it built and consumed in the same tick.
+      previewMatched: !!(selectedEntry && selectedEntry.targetId === target.id)
+        && (publishedTargetId == null || publishedTargetId === target.id),
+    });
+    this.bus.emit('camera:shake', { amount: 0.06 });
+    // The consumed receipt deliberately SURVIVES this tick. state.player.tether was mirrored
+    // inactive earlier in this same tick, so neither the cable nor a stale preview is drawn yet —
+    // the latch completes visually on the next frame, where the _active branch above clears the
+    // receipt. Keeping it here is what lets a reader (and the live truthfulness probes) compare the
+    // rendered candidate against the attachment that was actually created.
+  },
+
+  _handleTwinBridle(attachments, kernel, state, player, now, wantsLatch, masslineCommand, headFitted) {
+    if (this._bridleActive) {
+      this._clearAcquisitionPreview(state);
+      if ((masslineCommand && masslineCommand.cut) || wantsLatch) {
+        this._cutTwinBridle(attachments, state, player, now);
+      } else {
+        const attachment = attachments.get(this._bridleActive.attachmentId);
+        if (attachment && attachment.state === 'active') this._mirrorTwinBridle(state, attachment);
+      }
+      return true;
+    }
+
+    if (!headFitted) {
+      this._cancelTwinBridleSetup(state, 'head_unavailable');
+      return true;
+    }
+
+    if (this._bridleSetup && wantsLatch && state.input?.tetherMode === 'nearest') {
+      // Ctrl+Massline is the explicit keyboard cancel. Selecting A again below is the same
+      // gamepad/pointer-accessible cancel, so no modality needs a hidden third command.
+      this._cancelTwinBridleSetup(state, 'player_cancel');
+      return true;
+    }
+
+    const def = attachmentDef(kernel, TWIN_BRIDLE_DEF_ID);
+    const nearestOnly = !this._bridleSetup && state.input?.tetherMode === 'nearest';
+    const tickNow = Math.trunc(finite(state.tick));
+    const publishedReceipt = nearestOnly ? null : (state.masslineAcquisition || null);
+    const standingWasRendered = !!publishedReceipt
+      && this._lastPreviewTick === tickNow - 1
+      && publishedReceipt.validUntil >= now;
+    if (!def || nearestOnly) {
+      this._clearAcquisitionPreview(state);
+    } else {
+      if (!wantsLatch || !standingWasRendered) {
+        this._refreshAcquisitionPreview(player, def, state, now, !standingWasRendered);
+      }
+      this._lastPreviewTick = tickNow;
+    }
+    if (this._bridleSetup && this._bridleSetup.lastDenial) {
+      const previewTargetId = state.masslineAcquisition?.selected?.targetId ?? null;
+      if (previewTargetId !== this._bridleSetup.lastDenialTargetId) {
+        this._bridleSetup.lastDenial = null;
+        this._bridleSetup.lastDenialTargetId = null;
+        publishTwinBridleSetup(state, this._bridleSetup);
+      }
+    }
+    if (!wantsLatch) return true;
+    if (now < this._noRelatchUntil) {
+      this._denyTwinBridle(state, 'cooldown');
+      return true;
+    }
+    if (!def) {
+      this._denyTwinBridle(state, 'unknown_attachment_def');
+      return true;
+    }
+
+    this._lastLatchDenial = null;
+    const latch = nearestOnly
+      ? this._acquireCommandTarget(player, def, state)
+      : this._consumeAcquisitionReceipt(player, def, state, now);
+    const target = latch && latch.entity;
+    if (!target) {
+      this._denyTwinBridle(state, (this._lastLatchDenial && this._lastLatchDenial.reason) || 'no-target');
+      return true;
+    }
+
+    const receiptId = nearestOnly ? null : (state.masslineAcquisition && state.masslineAcquisition.id) || null;
+    if (!this._bridleSetup) {
+      this._bridleSetup = {
+        sourceId: target.id,
+        sourceReceiptId: receiptId,
+        selectedAt: now,
+        expiresAt: now + TWIN_BRIDLE_SETUP_S,
+        sectorId: currentSectorId(state),
+        lastDenial: null,
+        lastDenialTargetId: null,
+      };
+      publishTwinBridleSetup(state, this._bridleSetup);
+      this._clearAcquisitionPreview(state);
+      this.bus.emit('massline:bridleEndpointSelected', {
+        endpoint: 'A',
+        sourceId: target.id,
+        selectionReceiptId: receiptId,
+        expiresAt: this._bridleSetup.expiresAt,
+      });
+      return true;
+    }
+
+    const source = state.entities && state.entities.get ? state.entities.get(this._bridleSetup.sourceId) : null;
+    if (source && source.id === target.id) {
+      this._cancelTwinBridleSetup(state, 'player_cancel');
+      return true;
+    }
+    const denial = validateTwinBridlePair(this, state, player, source, target, def);
+    if (denial) {
+      this._denyTwinBridle(state, denial, { sourceId: source && source.id, targetId: target.id });
+      return true;
+    }
+    const existing = typeof attachments.listControlledBy === 'function'
+      ? attachments.listControlledBy(player.id, true).find((entry) => entry.defId === TWIN_BRIDLE_DEF_ID)
+      : null;
+    if (existing) {
+      this._denyTwinBridle(state, 'controller_attachment_limit', { attachmentId: existing.id });
+      return true;
+    }
+
+    const attachWorlds = contextualRemoteAttachmentWorlds(source, target);
+    const result = attachments.create({
+      defId: TWIN_BRIDLE_DEF_ID,
+      ownerId: source.id,
+      targetId: target.id,
+      controllerId: player.id,
+      controlMode: TWIN_BRIDLE_HEAD_ID,
+      ...attachWorlds,
+    });
+    if (!result || !result.ok || !result.attachment) {
+      this._denyTwinBridle(state, (result && result.reason) || 'create_failed', {
+        sourceId: source.id,
+        targetId: target.id,
+      });
+      return true;
+    }
+
+    result.attachment.worldSectorId = currentSectorId(state);
+    this._bridleActive = {
+      attachmentId: result.attachment.id,
+      sourceId: source.id,
+      targetId: target.id,
+    };
+    const sourceReceiptId = this._bridleSetup.sourceReceiptId;
+    this._clearTwinBridleSetup(state);
+    this._clearAcquisitionPreview(state);
+    this._mirrorTwinBridle(state, result.attachment);
+    this.bus.emit('massline:bridleLinked', {
+      attachmentId: result.attachment.id,
+      sourceId: source.id,
+      targetId: target.id,
+      sourceReceiptId,
+      targetReceiptId: receiptId,
+    });
+    this._tumbleBridledPair(state, source, target);
+    return true;
+  },
+
+  // PQ-031.00 — the bolas is a throw. Relative speed at the second latch is the clothesline ΔV;
+  // B11 decides helm-loss. This owner still never writes velocity.
+  _tumbleBridledPair(state, source, target) {
+    if (!combatFlag('weaponImpulseConsequences', state.runtime && state.runtime.features)) return;
+    if (!isBridleTumbleHull(source) || !isBridleTumbleHull(target)) return;
+    const relX = finite(source.vel && source.vel.x) - finite(target.vel && target.vel.x);
+    const relZ = finite(source.vel && source.vel.z) - finite(target.vel && target.vel.z);
+    const deltaV = Math.hypot(relX, relZ);
+    if (!(deltaV > 0)) return;
+    this._publishBridleCatchHitstun(state, source, target, deltaV, relX, relZ);
+    this._publishBridleCatchHitstun(state, target, source, deltaV, -relX, -relZ);
+  },
+
+  _publishBridleCatchHitstun(state, victim, partner, deltaV, dirX, dirZ) {
+    if (!victim || victim.id === state.playerId) return;
+    const victimMass = Math.max(
+      0.1,
+      finite(victim.physicsBody && victim.physicsBody.mass, finite(victim.mass, 1)),
+    );
+    const attackerMass = Math.max(
+      0.1,
+      finite(partner.physicsBody && partner.physicsBody.mass, finite(partner.mass, 1)),
+    );
+    publishHitstunImpulse(this.bus, {
+      source: TETHER_SHARE_SOURCE,
+      victimId: victim.id,
+      attackerId: partner.id,
+      attackerMass,
+      victimMass,
+      deltaV,
+      dirX,
+      dirZ,
+      hitSide: signedHitSide(victim, { dirX, dirZ }, null, victim.id),
+      provenance: Object.freeze({
+        schemaVersion: 1,
+        kind: 'massline',
+        source: 'twin_bridle',
+        tag: 'twin_bridle_catch',
+        partnerId: partner.id,
+      }),
+      tick: state.tick,
+    });
+  },
+
+  _reconcileTwinBridle(attachments, state, player, now) {
+    if (this._bridleSetup) {
+      const source = state.entities?.get ? state.entities.get(this._bridleSetup.sourceId) : null;
+      const sameSector = this._bridleSetup.sectorId === currentSectorId(state);
+      if (!source || source.alive === false || !sameSector) {
+        this._cancelTwinBridleSetup(state, sameSector ? 'endpoint_lost' : 'sector_changed');
+      } else if (now >= this._bridleSetup.expiresAt) {
+        this._cancelTwinBridleSetup(state, 'setup_expired');
+      }
+    }
+    if (!this._bridleActive) return;
+
+    const attachment = attachments.get(this._bridleActive.attachmentId);
+    if (!attachment || attachment.state !== 'active') {
+      const reason = attachment && attachment.breakReason || 'line_broken';
+      this._endTwinBridleMirror(state, reason);
+      this.bus.emit('massline:bridleEnded', {
+        attachmentId: this._bridleActive && this._bridleActive.attachmentId,
+        reason,
+      });
+      this._bridleActive = null;
+      return;
+    }
+
+    const source = state.entities?.get ? state.entities.get(attachment.ownerId) : null;
+    const target = state.entities?.get ? state.entities.get(attachment.targetId) : null;
+    const sameSector = attachment.worldSectorId == null
+      || attachment.worldSectorId === currentSectorId(state);
+    if (!source || source.alive === false || !target || target.alive === false || !sameSector) {
+      const reason = sameSector ? 'endpoint_lost' : 'sector_changed';
+      attachments.cut(attachment.id, player.id, reason);
+      this._endTwinBridleMirror(state, reason);
+      this.bus.emit('massline:bridleEnded', { attachmentId: attachment.id, reason });
+      this._bridleActive = null;
+      return;
+    }
+    this._mirrorTwinBridle(state, attachment);
+  },
+
+  _adoptTwinBridle(attachments, state, player) {
+    if (this._bridleActive || !this._bridleAdoptionPending) return;
+    this._bridleAdoptionPending = false;
+    if (typeof attachments.listControlledBy !== 'function') return;
+    const controlled = attachments.listControlledBy(player.id, true)
+      .filter((entry) => entry.defId === TWIN_BRIDLE_DEF_ID && entry.controlMode === TWIN_BRIDLE_HEAD_ID);
+    const attachment = controlled.shift();
+    for (const extra of controlled) attachments.cut(extra.id, player.id, 'controller_attachment_limit');
+    if (!attachment) return;
+    if (attachment.worldSectorId != null && attachment.worldSectorId !== currentSectorId(state)) {
+      attachments.cut(attachment.id, player.id, 'sector_changed');
+      return;
+    }
+    this._bridleActive = {
+      attachmentId: attachment.id,
+      sourceId: attachment.ownerId,
+      targetId: attachment.targetId,
+    };
+    this._clearTwinBridleSetup(state);
+    this._mirrorTwinBridle(state, attachment);
+  },
+
+  _cutTwinBridle(attachments, state, player, now) {
+    if (!this._bridleActive) return false;
+    const attachmentId = this._bridleActive.attachmentId;
+    const sourceId = this._bridleActive.sourceId;
+    const targetId = this._bridleActive.targetId;
+    const result = attachments.cut(attachmentId, player.id, 'tether_cut');
+    this._bridleActive = null;
+    this._noRelatchUntil = now + RELATCH_COOLDOWN_S;
+    this._endTwinBridleMirror(state, 'player_cut');
+    if (result && result.ok) {
+      this.bus.emit('massline:bridleCut', { attachmentId, sourceId, targetId });
+    }
+    return !!(result && result.ok);
+  },
+
+  _cancelTwinBridleSetup(state, reason) {
+    if (!this._bridleSetup) return false;
+    const sourceId = this._bridleSetup.sourceId;
+    this._clearTwinBridleSetup(state);
+    this._clearAcquisitionPreview(state);
+    if (reason) this.bus.emit('massline:bridleSetupEnded', { sourceId, reason });
+    return true;
+  },
+
+  _clearTwinBridleSetup(state) {
+    this._bridleSetup = null;
+    if (state && Object.prototype.hasOwnProperty.call(state, 'masslineBridle')) {
+      delete state.masslineBridle;
+    }
+  },
+
+  _denyTwinBridle(state, reason, detail = null) {
+    if (this._bridleSetup) {
+      this._bridleSetup.lastDenial = reason;
+      this._bridleSetup.lastDenialTargetId = detail && detail.targetId != null
+        ? detail.targetId
+        : state.masslineAcquisition?.selected?.targetId ?? null;
+      publishTwinBridleSetup(state, this._bridleSetup);
+    }
+    this.bus.emit('tether:latchDenied', {
+      reason: `bridle_${reason}`,
+      ...(detail || {}),
+    });
+  },
+
+  _mirrorTwinBridle(state, attachment) {
+    const mirror = ensureRemoteMasslineMirror(state);
+    const source = state.entities?.get ? state.entities.get(attachment.ownerId) : null;
+    const target = state.entities?.get ? state.entities.get(attachment.targetId) : null;
+    const def = attachmentDef(combatKernel(this), attachment.defId);
+    const telemetry = attachmentTelemetry(this.helpers, attachment, state);
+    const threshold = positive(def && def.break && def.break.maxTension, 1);
+    const tension = Math.max(0, finite(telemetry && telemetry.tension, finite(attachment.lastTension)));
+    const strain = clamp(tension / threshold, 0, 2);
+    let phase = telemetry && telemetry.phase ? normalizePhase(telemetry.phase) : 'slack';
+    const breakRequested = telemetry && telemetry.breakRequested === true;
+    if (breakRequested || attachment.nearBreakWarned || strain >= 0.75) phase = 'overload';
+    else if (phase === 'slack' && tension > 0) phase = 'loaded';
+    mirror.active = !!(source && source.alive && target && target.alive);
+    mirror.kind = TWIN_BRIDLE_HEAD_ID;
+    mirror.headId = TWIN_BRIDLE_HEAD_ID;
+    mirror.phase = phase;
+    mirror.sourceId = attachment.ownerId;
+    mirror.targetId = attachment.targetId;
+    mirror.attachmentId = attachment.id;
+    mirror.caughtId = null;
+    mirror.expiresAt = null;
+    mirror.restLength = finite(attachment.restLength);
+    mirror.strain = strain;
+    mirror.load = computeTetherLoad(phase, strain);
+    mirror.automaticBreakAllowed = automaticMasslineBreakAllowed(def, source, target);
+    mirror.lastEndReason = null;
+  },
+
+  // NPC counterplay stays on the AI's existing phase-change seam. The specialist plan owns the
+  // visible attach-window telegraph; named aces get the same physical cutter during their authored
+  // offensive phases. Only player-controlled Twin Bridles are eligible, so an NPC never cuts a
+  // foreign NPC line or writes around the attachment authority.
+  _handleNPCBridleCounterplay(payload) {
+    if (!payload || payload.entityId == null) return null;
+    const state = this.state;
+    const actor = state && state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(payload.entityId)
+      : null;
+    if (!actor || actor.alive === false) return null;
+    const data = actor.data || {};
+    const enemyId = data.enemyTypeId || data.lootTableId || data.typeId || null;
+    const plan = specialistPlanByEnemyId(enemyId || payload.doctrineId);
+    const specialistCutter = !!(plan && plan.verb === 'cut_line');
+    const aceCutter = isNamedAceEntity(actor);
+    if (!specialistCutter && !aceCutter) return null;
+    const phase = String(payload.phase || '');
+    if (specialistCutter ? phase !== 'attach_window' : !NPC_ACE_BRIDLE_CUT_PHASES.has(phase)) return null;
+    const rangeWu = specialistCutter
+      ? positive(plan.cutRangeWu, NPC_BRIDLE_CUT_RANGE_WU)
+      : NPC_ACE_BRIDLE_CUT_RANGE_WU;
+    return cutNearestPlayerTwinBridle(this, actor, {
+      rangeWu,
+      reason: aceCutter ? 'ace_cut' : 'specialist_cut',
+      tick: payload.tick,
+    });
+  },
+
+  _endTwinBridleMirror(state, reason) {
+    const mirror = state && state.player && state.player.remoteMassline;
+    if (!mirror || mirror.kind !== TWIN_BRIDLE_HEAD_ID) return;
+    mirror.active = false;
+    mirror.kind = null;
+    mirror.headId = null;
+    mirror.phase = 'idle';
+    mirror.sourceId = null;
+    mirror.targetId = null;
+    mirror.attachmentId = null;
+    mirror.caughtId = null;
+    mirror.expiresAt = null;
+    mirror.restLength = 0;
+    mirror.strain = 0;
+    mirror.load = 0;
+    mirror.lastEndReason = reason || null;
+  },
+
+  _resetTwinBridleRuntime(state, reason = null, adoptionPending = false) {
+    this._bridleSetup = null;
+    this._bridleActive = null;
+    this._bridleAdoptionPending = adoptionPending;
+    if (state && Object.prototype.hasOwnProperty.call(state, 'masslineBridle')) delete state.masslineBridle;
+    this._endTwinBridleMirror(state, reason);
+  },
+
+  _endTwinBridleForBoundary(state, reason) {
+    const mirror = state && state.player && state.player.remoteMassline;
+    const hasRuntime = !!(this._bridleSetup || this._bridleActive
+      || (mirror && mirror.kind === TWIN_BRIDLE_HEAD_ID)
+      || (state && Object.prototype.hasOwnProperty.call(state, 'masslineBridle')));
+    if (!hasRuntime) return;
+    const attachmentId = this._bridleActive && this._bridleActive.attachmentId;
+    const attachments = combatKernel(this)?.attachments;
+    if (attachmentId && attachments) attachments.cut(attachmentId, state.playerId, reason);
+    this._cancelTwinBridleSetup(state, reason);
+    this._resetTwinBridleRuntime(state, reason, false);
+    if (attachmentId) this.bus.emit('massline:bridleEnded', { attachmentId, reason });
+  },
+
+  _refreshAcquisitionPreview(player, def, state, now, force = false, pressOverride = false) {
+    const intent = rememberAcquisitionIntent(this, state, player, now);
+    if (!force && !intent.reversed && now - this._lastAcquisitionRefreshT < ACQUISITION_REFRESH_S) {
+      return state.masslineAcquisition || null;
+    }
+    this._lastAcquisitionRefreshT = now;
+    const snapshot = buildAcquisitionSnapshot(this, player, def, state, intent);
+    if (!snapshot.ranked.length) {
+      this._acquisitionMemory = null;
+      state.masslineAcquisition = emptyAcquisitionReceipt(this, state, now, snapshot.denial || 'no-target');
+      return state.masslineAcquisition;
+    }
+
+    const stable = stabilizeMasslineSelection(
+      snapshot.ranked,
+      this._acquisitionMemory,
+      now,
+      {
+        forceId: snapshot.context.forceId,
+        forceSwitch: intent.reversed || pressOverride,
+      },
+    );
+    this._acquisitionMemory = stable.memory;
+    state.masslineAcquisition = buildAcquisitionReceipt(
+      this,
+      state,
+      now,
+      snapshot,
+      stable.selected,
+      now < this._noRelatchUntil ? 'cooldown' : null,
+    );
+    return state.masslineAcquisition;
+  },
+
+  _consumeAcquisitionReceipt(player, def, state, now) {
+    const receipt = state.masslineAcquisition;
+    const selected = receipt && receipt.selected;
+    if (!selected) {
+      this._lastLatchDenial = { reason: receipt?.reason || 'no-target' };
+      return null;
+    }
+    if (!(receipt.validUntil >= now)) {
+      this._lastLatchDenial = { reason: 'preview-stale', targetId: selected.targetId };
+      invalidateAcquisitionReceipt(state, 'preview-stale');
+      return null;
+    }
+    if (selected.status !== 'ready') {
+      this._lastLatchDenial = { reason: selected.reason || selected.status, targetId: selected.targetId };
+      return null;
+    }
+
+    const target = state.entities && state.entities.get ? state.entities.get(selected.targetId) : null;
+    const denial = validateAcquisitionTarget(this, player, target, def, state);
+    if (denial) {
+      this._lastLatchDenial = { reason: denial, targetId: selected.targetId };
+      invalidateAcquisitionReceipt(state, denial);
+      return null;
+    }
+    return { entity: target, targetWorld: surfacePointToward(target, player.pos) };
+  },
+
+  // Ctrl-nearest ONLY (state.input.tetherMode === 'nearest'). The default press consumes the scored
+  // receipt via _consumeAcquisitionReceipt; this is the deliberate manual escape hatch, so it stays
+  // pure geometry with no scoring, no intent, and no hysteresis.
+  _acquireCommandTarget(player, def, state) {
+    const maxLength = positive(def && def.maxLength, positive(def && def.break && def.break.maxLength, 390));
+    const entities = state.entityList || (state.entities?.values ? Array.from(state.entities.values()) : []);
+    let nearest = null;
+    let nearestSurfaceDistance = Infinity;
+    for (const entity of entities) {
+      if (!isAttachable(entity, player.id)) continue;
+      if (validateAcquisitionTarget(this, player, entity, def, state)) continue;
+      const centerDistance = Math.hypot(entity.pos.x - player.pos.x, entity.pos.z - player.pos.z);
+      const surfaceDistance = Math.max(0, centerDistance - Math.max(0, finite(entity.radius)));
+      if (surfaceDistance < nearestSurfaceDistance
+          || (surfaceDistance === nearestSurfaceDistance && compareEntityIds(entity, nearest) < 0)) {
+        nearest = entity;
+        nearestSurfaceDistance = surfaceDistance;
+      }
+    }
+    if (!nearest) {
+      this._lastLatchDenial = {
+        reason: 'no-target',
+        maxLength,
+      };
+      return null;
+    }
+    return { entity: nearest, targetWorld: surfacePointToward(nearest, player.pos) };
+  },
+
+  _clearAcquisitionPreview(state) {
+    if (state && state.masslineAcquisition) state.masslineAcquisition = null;
+    this._acquisitionMemory = null;
+    this._lastAcquisitionRefreshT = -Infinity;
+    // Nothing stands, so nothing was rendered: the next press is a cold press and must rebuild.
+    this._lastPreviewTick = null;
+  },
+
+  _resetAcquisitionRuntime(state) {
+    if (state) state.masslineAcquisition = null;
+    this._acquisitionMemory = null;
+    this._acquisitionReceiptSeq = 0;
+    this._lastAcquisitionRefreshT = -Infinity;
+    this._lastPreviewTick = null;
+    this._recentIntent = { turn: 0, moveX: 0, moveZ: 0, at: -Infinity };
+    this._lastStrongTurn = { sign: 0, at: -Infinity };
+  },
+
+  // Compatibility/test entrypoint. The live update path consumes the continuously visible receipt;
+  // direct callers get the same contextual ranking in a one-shot receipt, never a weapon lock.
+  _acquireTarget(player, def, state) {
+    const now = Number.isFinite(state && state.simTime) ? state.simTime : finite(state && state.tick) / 60;
+    this._targetScratch = this._targetScratch || [];
+    this._nonCollidingTargetScratch = this._nonCollidingTargetScratch || [];
+    this._recentIntent = this._recentIntent || { turn: 0, moveX: 0, moveZ: 0, at: -Infinity };
+    this._lastStrongTurn = this._lastStrongTurn || { sign: 0, at: -Infinity };
+    const intent = rememberAcquisitionIntent(this, state, player, now);
+    const snapshot = buildAcquisitionSnapshot(this, player, def, state, intent);
+    if (!snapshot.ranked.length) {
+      this._lastLatchDenial = { reason: snapshot.denial || 'no-target' };
+      return null;
+    }
+    const stable = stabilizeMasslineSelection(snapshot.ranked, null, now, {
+      forceId: snapshot.context.forceId,
+      forceSwitch: true,
+    });
+    const selected = stable.selected;
+    const target = selected && snapshot.byId.get(selected.id);
+    const denial = validateAcquisitionTarget(this, player, target, def, state);
+    if (denial) {
+      this._lastLatchDenial = { reason: denial, targetId: selected && selected.id };
+      return null;
+    }
+    return { entity: target, targetWorld: surfacePointToward(target, player.pos) };
+  },
+
+  // Adopt a player-owned active tether we aren't tracking: after save-reload (this._active is
+  // system-private and does not persist) or when a scenario script created the attachment. Keeps
+  // the mirror/HUD/cable deterministic across reloads — without this, an uninterrupted run and a
+  // reloaded run disagree about state.player.tether and the replay hash diverges.
+  _adoptExisting(attachments, state) {
+    if (this._active || typeof attachments.listForEntity !== 'function') return;
+    const owned = attachments.listForEntity(state.playerId, true);
+    for (const attachment of owned) {
+      if (attachment.ownerId !== state.playerId) continue;
+      const target = state.entities && state.entities.get
+        ? state.entities.get(attachment.targetId)
+        : null;
+      if (!target || target.alive === false || !target.pos
+          || !Number.isFinite(target.pos.x) || !Number.isFinite(target.pos.z)) continue;
+      this._active = {
+        attachmentId: attachment.id,
+        targetId: attachment.targetId,
+        type: attachment.defId,
+      };
+      this._resetPhaseMirror();
+      this._lastStrainT = -Infinity;
+      return;
+    }
+  },
+
+  _reconcileActive(attachments, state) {
+    if (!this._active) return;
+    const attachment = attachments.get(this._active.attachmentId);
+    if (attachment && attachment.state === 'active') return;
+    const targetId = this._active.targetId;
+    const reason = attachment && attachment.breakReason;
+    this._cancelDrillApproach(reason || 'attachment_missing');
+    this._active = null;
+    this._pendingCut = null;
+    const now = Number.isFinite(state.simTime) ? state.simTime : state.tick / 60;
+    this._noRelatchUntil = now + RELATCH_COOLDOWN_S;
+    if (reason === 'tether_cut') {
+      this.bus.emit('tether:released', { targetId });
+      this.bus.emit('tether:releaseRated', rateRelease(state, targetId));
+    } else {
+      this.bus.emit('tether:broke', { targetId });
+      this.bus.emit('tether:releaseRated', rateRelease(state, targetId));
+    }
+    this._lastStrainT = -Infinity;
+    this._resetPhaseMirror();
+    this._mirror(state, null, 0);
+    this._clearAcquisitionPreview(state);
+  },
+
+  _requestDrillApproach(payload = {}) {
+    const asteroidId = payload && payload.asteroidId;
+    const attachmentId = payload && payload.attachmentId;
+    if (asteroidId == null || attachmentId == null) return false;
+    if (this._drillApproach
+        && this._drillApproach.asteroidId === asteroidId
+        && this._drillApproach.attachmentId === attachmentId) return false;
+    if (this._pendingDrillApproach
+        && this._pendingDrillApproach.asteroidId === asteroidId
+        && this._pendingDrillApproach.attachmentId === attachmentId) return false;
+    this._cancelDrillApproach('superseded');
+    this._pendingDrillApproach = { asteroidId, attachmentId };
+    return true;
+  },
+
+  _startPendingDrillApproach(attachments, state, player) {
+    const pending = this._pendingDrillApproach;
+    if (!pending) return false;
+    const asteroid = state.entities && state.entities.get ? state.entities.get(pending.asteroidId) : null;
+    const attachment = attachments && typeof attachments.get === 'function'
+      ? attachments.get(pending.attachmentId)
+      : null;
+    const valid = asteroid && asteroid.alive !== false && asteroid.type === 'asteroid'
+      && attachment && attachment.state === 'active'
+      && attachment.ownerId === player.id && attachment.targetId === asteroid.id
+      && this._active && this._active.attachmentId === attachment.id && this._active.targetId === asteroid.id;
+    if (!valid) {
+      this._cancelDrillApproach('invalid_authority');
+      return false;
+    }
+    const kernel = combatKernel(this);
+    const def = attachmentDef(kernel, attachment.defId);
+    const geometry = drillApproachGeometry(def, attachment, player, asteroid);
+    if (!geometry) {
+      this._cancelDrillApproach('invalid_geometry');
+      return false;
+    }
+    const surfaceDistance = Math.max(0, geometry.currentCenterDistance
+      - positive(player.radius, 0) - positive(asteroid.radius, 0));
+    if (surfaceDistance > DRILL_APPROACH_MAX_SURFACE_WU) {
+      this._cancelDrillApproach('out_of_range');
+      return false;
+    }
+    const now = Number.isFinite(state.simTime) ? state.simTime : finite(state.tick) / 60;
+    this._pendingDrillApproach = null;
+    this._pendingCut = null;
+    this._ignoreReleaseCutUntilReelIdle = true;
+    this._drillApproach = {
+      asteroidId: asteroid.id,
+      attachmentId: attachment.id,
+      startedAt: now,
+      startedTick: Math.max(0, Math.trunc(finite(state.tick))),
+    };
+    this.bus.emit('drill:approachStarted', {
+      asteroidId: asteroid.id,
+      attachmentId: attachment.id,
+      startedTick: this._drillApproach.startedTick,
+    });
+    return true;
+  },
+
+  _drillApproachReelDelta(attachments, state, player, asteroid) {
+    const approach = this._drillApproach;
+    if (!approach) return null;
+    const attachment = attachments && typeof attachments.get === 'function'
+      ? attachments.get(approach.attachmentId)
+      : null;
+    const valid = asteroid && asteroid.alive !== false && asteroid.type === 'asteroid'
+      && asteroid.id === approach.asteroidId
+      && attachment && attachment.state === 'active'
+      && attachment.ownerId === player.id && attachment.targetId === asteroid.id
+      && this._active && this._active.attachmentId === attachment.id;
+    if (!valid) {
+      this._cancelDrillApproach('invalid_authority');
+      return null;
+    }
+    const now = Number.isFinite(state.simTime) ? state.simTime : finite(state.tick) / 60;
+    if (now - approach.startedAt > DRILL_APPROACH_TIMEOUT_S) {
+      this._cancelDrillApproach('timeout');
+      return null;
+    }
+    const policy = typeof attachments.reelPolicy === 'function' ? attachments.reelPolicy(attachment.id) : null;
+    if (!(positive(policy && policy.reelRate, 0) > 0)) {
+      this._cancelDrillApproach('reel_unavailable');
+      return null;
+    }
+    const kernel = combatKernel(this);
+    const def = attachmentDef(kernel, attachment.defId);
+    const geometry = drillApproachGeometry(def, attachment, player, asteroid);
+    if (!geometry) {
+      this._cancelDrillApproach('invalid_geometry');
+      return null;
+    }
+    const before = positive(attachment.restLength, geometry.desiredRestLength);
+    return Math.abs(before - geometry.desiredRestLength) > DRILL_APPROACH_REST_LENGTH_EPSILON_WU
+      ? geometry.desiredRestLength - before
+      : 0;
+  },
+
+  _queueDrillApproachAssist(attachments, player, asteroid, dt) {
+    if (!this._drillApproach || !(dt > 0)) return false;
+    const attachment = attachments && typeof attachments.get === 'function'
+      ? attachments.get(this._drillApproach.attachmentId)
+      : null;
+    const kernel = combatKernel(this);
+    const def = attachment && attachmentDef(kernel, attachment.defId);
+    const geometry = drillApproachGeometry(def, attachment, player, asteroid);
+    if (!geometry) {
+      this._cancelDrillApproach('invalid_geometry');
+      return false;
+    }
+    const targetVx = finite(asteroid.vel && asteroid.vel.x);
+    const targetVz = finite(asteroid.vel && asteroid.vel.z);
+    let ax = (geometry.desiredPlayerCenter.x - finite(player.pos && player.pos.x)) * DRILL_APPROACH_POSITION_GAIN
+      - (finite(player.vel && player.vel.x) - targetVx) * DRILL_APPROACH_VELOCITY_GAIN;
+    let az = (geometry.desiredPlayerCenter.z - finite(player.pos && player.pos.z)) * DRILL_APPROACH_POSITION_GAIN
+      - (finite(player.vel && player.vel.z) - targetVz) * DRILL_APPROACH_VELOCITY_GAIN;
+    const accel = Math.hypot(ax, az);
+    if (accel > DRILL_APPROACH_MAX_ACCEL_WU_S2) {
+      const scale = DRILL_APPROACH_MAX_ACCEL_WU_S2 / accel;
+      ax *= scale;
+      az *= scale;
+    }
+    const mass = positive(player.physicsBody && player.physicsBody.mass, positive(player.mass, 1));
+    return queuePhysicsImpulse(player, {
+      x: ax * mass * dt,
+      y: 0,
+      z: az * mass * dt,
+    });
+  },
+
+  _drillApproachSettled(attachments, player, asteroid) {
+    const approach = this._drillApproach;
+    const attachment = approach && attachments && typeof attachments.get === 'function'
+      ? attachments.get(approach.attachmentId)
+      : null;
+    const kernel = combatKernel(this);
+    const def = attachment && attachmentDef(kernel, attachment.defId);
+    const geometry = drillApproachGeometry(def, attachment, player, asteroid);
+    if (!geometry) return false;
+    const distance = distance2d(player && player.pos, asteroid && asteroid.pos);
+    const relativeSpeed = Math.hypot(
+      finite(player && player.vel && player.vel.x) - finite(asteroid && asteroid.vel && asteroid.vel.x),
+      finite(player && player.vel && player.vel.z) - finite(asteroid && asteroid.vel && asteroid.vel.z),
+    );
+    return !!(attachment && attachment.state === 'active')
+      && Math.abs(finite(attachment.restLength, geometry.desiredRestLength) - geometry.desiredRestLength)
+        <= DRILL_APPROACH_REST_LENGTH_EPSILON_WU
+      && Math.abs(geometry.currentEndpointDistance - attachment.restLength)
+        <= DRILL_APPROACH_REST_LENGTH_EPSILON_WU
+      && Number.isFinite(distance)
+      && Math.abs(distance - geometry.desiredCenterDistance) <= DRILL_APPROACH_DISTANCE_EPSILON_WU
+      && relativeSpeed <= DRILL_APPROACH_SPEED_EPSILON_WU_S;
+  },
+
+  _completeDrillApproach(state) {
+    const approach = this._drillApproach;
+    if (!approach) return false;
+    this._drillApproach = null;
+    this._pendingDrillApproach = null;
+    this._ignoreReleaseCutUntilReelIdle = false;
+    this.bus.emit('drill:approachCompleted', {
+      asteroidId: approach.asteroidId,
+      attachmentId: approach.attachmentId,
+      startedTick: approach.startedTick,
+      completedTick: Math.max(0, Math.trunc(finite(state && state.tick))),
+    });
+    return true;
+  },
+
+  _cancelDrillApproach(reason = 'cancelled') {
+    const approach = this._drillApproach || this._pendingDrillApproach;
+    this._drillApproach = null;
+    this._pendingDrillApproach = null;
+    this._ignoreReleaseCutUntilReelIdle = false;
+    if (!approach || !this.bus || typeof this.bus.emit !== 'function') return false;
+    this.bus.emit('drill:approachCancelled', {
+      asteroidId: approach.asteroidId,
+      attachmentId: approach.attachmentId,
+      reason,
+    });
+    return true;
+  },
+
+  _reelActive(attachments, reelDelta, dt, state, player, target, options = null) {
+    if (!this._active || !Number.isFinite(reelDelta) || reelDelta === 0) return { changed: false, reason: null, attachment: null };
+    const attachment = attachments.get(this._active.attachmentId);
+    if (!attachment || attachment.state !== 'active') return { changed: false, reason: 'attachment_missing', attachment };
+    const kernel = combatKernel(this);
+    const def = attachmentDef(kernel, attachment.defId);
+    if (!def) return { changed: false, reason: 'unknown_attachment_def', attachment };
+
+    const policy = typeof attachments.reelPolicy === 'function' ? attachments.reelPolicy(attachment.id) : null;
+    const reelRate = policy && Number.isFinite(policy.reelRate) ? policy.reelRate : def.reelRate;
+    const maxStep = positive(reelRate, 0) * Math.max(0, Number(dt) || 0);
+    if (!(maxStep > 0)) return { changed: false, reason: 'reel_unavailable', attachment };
+    const requested = options && options.normalizedAxis === true
+      ? clamp(reelDelta, -1, 1) * maxStep
+      : clamp(reelDelta, -maxStep, maxStep);
+    const minLength = positive(def.minLength, 0);
+    const maxLength = positive(policy && policy.maxLength, positive(def.maxLength, Infinity));
+    const before = attachment.restLength || 0;
+
+    // An explicitly breakable extreme-load operation protects its line by denying further reel-in
+    // near the physical ceiling; paying out remains available. An ordinary standard Massline does
+    // not auto-break, so its nominal rating must never create a fictitious reel-in failure.
+    const breakPolicy = policy && policy.break;
+    const maxTension = positive(breakPolicy && breakPolicy.maxTension, Infinity);
+    const automaticBreakAllowed = automaticMasslineBreakAllowed(def, player, target);
+    if (automaticBreakAllowed
+        && requested < 0
+        && Number.isFinite(maxTension)
+        && finite(attachment.lastTension, 0) >= maxTension * 0.9) {
+      return { changed: false, reason: 'load_limit', attachment, before, after: before };
+    }
+
+    const next = clamp(before + requested, minLength, maxLength);
+    const delta = next - before;
+    if (Math.abs(delta) <= 1e-6) {
+      return {
+        changed: false,
+        reason: requested < 0 ? 'minimum_length' : 'maximum_length',
+        attachment,
+        before,
+        after: before,
+      };
+    }
+    const result = attachments.reel(attachment.id, delta, minLength);
+    if (!result || !result.ok) {
+      return { changed: false, reason: result && result.reason || 'reel_rejected', attachment, before, after: before };
+    }
+    const after = result.attachment && result.attachment.restLength;
+    return {
+      changed: Number.isFinite(after) && Math.abs(after - before) > 1e-6,
+      reason: null,
+      attachment: result.attachment || attachment,
+      before,
+      after: Number.isFinite(after) ? after : before,
+    };
+  },
+
+  _emitLineControlDenied(state, reason, lineLengthCommand, attachment) {
+    const direction = lineLengthCommand < 0 ? 'reel_in' : 'pay_out';
+    const key = `${attachment && attachment.id || 'missing'}:${direction}:${reason}`;
+    if (this._lastLineControlDenial === key) return;
+    this._lastLineControlDenial = key;
+    this.bus.emit('tether:lineControlDenied', {
+      actorId: state.playerId,
+      targetId: this._active && this._active.targetId,
+      attachmentId: attachment && attachment.id || this._active && this._active.attachmentId,
+      direction,
+      reason,
+    });
+    const verb = direction === 'reel_in' ? 'reel-in' : 'pay-out';
+    this.bus.emit('toast', {
+      text: `Massline ${verb} blocked: ${LINE_CONTROL_DENIAL_COPY[reason] || String(reason).replaceAll('_', ' ')}`,
+      kind: 'warn',
+      ttl: 2,
+    });
+  },
+
+  _updateReelStrength(reelHeld, reeled, dt) {
+    const step = Math.max(0, Number(dt) || 0);
+    const target = reelHeld ? (reeled ? 1 : 0.42) : 0;
+    const rate = target > this._reelStrength ? 9 : 5;
+    this._reelStrength += (target - this._reelStrength) * (1 - Math.exp(-rate * step));
+    if (!reelHeld && this._reelStrength < 0.01) this._reelStrength = 0;
+  },
+
+  _emitStrain(attachments, state) {
+    if (!this._active) return;
+    const now = Number.isFinite(state.simTime) ? state.simTime : state.tick / 60;
+    if (now - this._lastStrainT < STRAIN_EVENT_INTERVAL_S) return;
+    const attachment = attachments.get(this._active.attachmentId);
+    if (!attachment || attachment.state !== 'active') return;
+    const kernel = combatKernel(this);
+    const def = attachmentDef(kernel, attachment.defId);
+    const policy = typeof attachments.breakPolicy === 'function' ? attachments.breakPolicy(attachment.id) : null;
+    const threshold = positive(
+      (policy && policy.maxTension) || (def && (def.breakTension || (def.break && def.break.maxTension))),
+      0,
+    );
+    if (!(threshold > 0)) return;
+    // SCALE WARNING — read before "fixing" this ratio.
+    //
+    // strain is normalized against the attachment's break rating, and for tether_standard that
+    // rating is breakTension = 10500000 (src/data/combatDefs.js) because the Massline is
+    // deliberately near-unbreakable. The consequence is that strain is a very small number in
+    // ordinary play: measured with scripts/probe-tether-visual-drive.mjs (640-mass asteroid
+    // latched, full main thrust opposing the line for 240 ticks, line HELD) it peaked at ~1e-4,
+    // roughly four orders of magnitude below any 0..1 threshold you would naively key off it.
+    // That is CORRECT — it is an honest physical ratio against an enormous envelope, not a bug.
+    //
+    // So: do not rescale it to make a visual or a HUD bar move. Presentation consumers use
+    // tether.load / tether.phase (see computeTetherLoad below), which are built for that job.
+    // If this scale is ever changed, every threshold keyed to strain must be revisited in the same
+    // pass — at minimum src/render/vfx.js _updateTetherCable and src/ui/hud.js:423-425.
+    const ratio = Math.max(0, finite(attachment.lastTension) / threshold);
+    this._lastStrainT = now;
+    this._lastStrainRatio = ratio;
+    this.bus.emit('tether:strain', { ratio });
+  },
+
+  _phaseFor(state, attachment, dt, strain) {
+    if (!attachment || attachment.state !== 'active') return 'slack';
+    const telemetry = attachmentTelemetry(this.helpers, attachment, state);
+    if (telemetry && telemetry.phase) return normalizePhase(telemetry.phase);
+
+    const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+    const target = state.entities && state.entities.get ? state.entities.get(attachment.targetId) : null;
+    if (!player || !target || !player.pos || !target.pos) return strain >= 0.75 ? 'overload' : 'loaded';
+
+    const restLength = positive(attachment.restLength, 0);
+    const distance = Math.hypot(target.pos.x - player.pos.x, target.pos.z - player.pos.z);
+    const stretch = Math.max(0, distance - restLength);
+    const phase = this._phaseMirror || (this._phaseMirror = createPhaseMirror());
+    const step = Math.max(0, Number(dt) || 0);
+    if (!(stretch > STRETCH_EPSILON)) {
+      phase.slackS += step;
+      phase.captureT = 0;
+      phase.captureActive = false;
+      phase.wasTaut = false;
+      return 'slack';
+    }
+
+    if (!phase.wasTaut && phase.slackS >= CAPTURE_SLACK_S) {
+      phase.captureActive = true;
+      phase.captureT = 0;
+    }
+    phase.wasTaut = true;
+    phase.slackS = 0;
+    const def = attachmentDef(combatKernel(this), attachment.defId);
+    const captureS = positive(def && def.spring && def.spring.captureS, 0.35);
+    if (phase.captureActive && phase.captureT < captureS) {
+      phase.captureT += step;
+      if (phase.captureT >= captureS) phase.captureActive = false;
+      return 'capture';
+    }
+    return strain >= 0.75 ? 'overload' : 'loaded';
+  },
+
+  _resetPhaseMirror() {
+    this._phaseMirror = createPhaseMirror();
+  },
+
+  _resetGestureState() {
+    this._pendingCut = null;
+    this._ignoreReleaseCutUntilReelIdle = false;
+    this._latchGraceUntil = 0;
+    this._lastLineControlDenial = null;
+  },
+
+  // PQ-030.00 — a taut Monofilament line is a blade. Crossing an NPC tether severs that line in
+  // one pass. Hull stagger stays with masslineImpacts; this owner only cuts other attachments.
+  _cutNpcLinesWithMonofilament(attachments, state, player) {
+    if (!this._active || !player || !player.pos || !attachments) return;
+    if (!massline2Flag('masslineHeadMonofilamentSweep', state.runtime && state.runtime.features)) return;
+    const blade = attachments.get(this._active.attachmentId);
+    if (!blade || blade.state !== 'active') return;
+    const headId = blade.tetherPolicy && blade.tetherPolicy.headId
+      || player.data && player.data.derived && player.data.derived.masslineHeadId;
+    if (headId !== MONOFILAMENT_HEAD_ID) return;
+    const mass = state.entities && state.entities.get && state.entities.get(blade.targetId);
+    if (!mass || !mass.pos) return;
+    const span = Math.hypot(mass.pos.x - player.pos.x, mass.pos.z - player.pos.z);
+    const rest = Number.isFinite(blade.restLength) && blade.restLength > 0 ? blade.restLength : span;
+    const phase = state.player && state.player.tether && state.player.tether.phase;
+    const taut = phase === 'loaded' || phase === 'overload' || span >= rest * NPC_LINE_CUT_TAUT_RATIO;
+    if (!taut) return;
+
+    if (this._monofilamentLatchId !== blade.id) {
+      this._monofilamentLatchId = blade.id;
+      this._monofilamentCutIds.clear();
+    }
+
+    const byId = state.combat && state.combat.attachments && state.combat.attachments.byId;
+    if (!byId || typeof byId !== 'object') return;
+    const playerId = state.playerId;
+    for (const other of Object.values(byId)) {
+      if (!other || other.state !== 'active' || other.id === blade.id) continue;
+      if (other.ownerId === playerId || other.targetId === playerId) continue;
+      if (other.controllerId != null && String(other.controllerId) === String(playerId)) continue;
+      if (this._monofilamentCutIds.has(other.id)) continue;
+      const source = state.entities.get(other.ownerId);
+      const target = state.entities.get(other.targetId);
+      if (!source || !source.pos || !target || !target.pos) continue;
+      if (!segmentsProperlyCross(player.pos, mass.pos, source.pos, target.pos)) continue;
+      if (typeof attachments.breakAttachment !== 'function') continue;
+      this._monofilamentCutIds.add(other.id);
+      const result = attachments.breakAttachment(other, 'monofilament_sweep', player.id);
+      if (result && result.ok && this.bus && typeof this.bus.emit === 'function') {
+        this.bus.emit('massline:npcLineCut', {
+          schemaVersion: 1,
+          headId: MONOFILAMENT_HEAD_ID,
+          bladeId: blade.id,
+          attachmentId: other.id,
+          ownerId: other.ownerId,
+          targetId: other.targetId,
+        });
+      }
+    }
+  },
+
+  // PQ-030.02 — the tether-cutter specialist uses the same taut sweep against the player.
+  // Hornet cannot fit the M module; the specialist plan is the head. Slack does not cut.
+  _cutPlayerLinesWithHostileSweep(attachments, state, player) {
+    if (!player || !player.pos || !attachments) return;
+    if (!massline2Flag('masslineHeadMonofilamentSweep', state.runtime && state.runtime.features)) return;
+    const byId = state.combat && state.combat.attachments && state.combat.attachments.byId;
+    if (!byId || typeof byId !== 'object') return;
+    const playerId = state.playerId;
+    const playerTeam = player.team;
+    for (const blade of Object.values(byId)) {
+      if (!blade || blade.state !== 'active') continue;
+      const owner = state.entities && state.entities.get && state.entities.get(blade.ownerId);
+      if (!owner || owner.alive === false || owner.id === playerId) continue;
+      if (!hostileSweepCutter(owner, state, playerTeam)) continue;
+      ensureCutterSweepHead(owner);
+      const mass = state.entities.get(blade.targetId);
+      if (!mass || !mass.pos || !owner.pos) continue;
+      const span = Math.hypot(mass.pos.x - owner.pos.x, mass.pos.z - owner.pos.z);
+      const rest = Number.isFinite(blade.restLength) && blade.restLength > 0 ? blade.restLength : span;
+      if (!(span >= rest * NPC_LINE_CUT_TAUT_RATIO)) continue;
+      for (const other of Object.values(byId)) {
+        if (!other || other.state !== 'active' || other.id === blade.id) continue;
+        if (this._hostileSweepCutIds.has(other.id)) continue;
+        const playerOwned = other.ownerId === playerId
+          || other.targetId === playerId
+          || (other.controllerId != null && String(other.controllerId) === String(playerId));
+        if (!playerOwned) continue;
+        const source = state.entities.get(other.ownerId);
+        const target = state.entities.get(other.targetId);
+        if (!source || !source.pos || !target || !target.pos) continue;
+        if (!segmentsProperlyCross(owner.pos, mass.pos, source.pos, target.pos)) continue;
+        if (typeof attachments.breakAttachment !== 'function') continue;
+        this._hostileSweepCutIds.add(other.id);
+        const result = attachments.breakAttachment(other, 'monofilament_sweep', owner.id);
+        if (result && result.ok && this.bus && typeof this.bus.emit === 'function') {
+          this.bus.emit('massline:playerLineCut', {
+            schemaVersion: 1,
+            headId: MONOFILAMENT_HEAD_ID,
+            bladeId: blade.id,
+            attachmentId: other.id,
+            cutterId: owner.id,
+            ownerId: other.ownerId,
+            targetId: other.targetId,
+          });
+        }
+      }
+    }
+  },
+
+  _cutActive(attachments, state, player, now) {
+    if (!this._active) return false;
+    const targetId = this._active.targetId;
+    const cutPayload = this._cutPayload(state, player, targetId);
+    const result = attachments.cut(this._active.attachmentId, player.id, 'tether_cut');
+    if (result && result.ok) {
+      if (cutPayload.slingshot) this._grantSlingshotState(state, SLINGSHOT_STATE_S);
+      this.bus.emit('tether:cut', cutPayload);
+      this.bus.emit('tether:released', { targetId });
+      this.bus.emit('tether:releaseRated', rateRelease(state, targetId));
+    }
+    this._active = null;
+    this._pendingCut = null;
+    this._ignoreReleaseCutUntilReelIdle = false;
+    this._lastLineControlDenial = null;
+    this._noRelatchUntil = now + RELATCH_COOLDOWN_S;
+    this._resetPhaseMirror();
+    this._mirror(state, null, 0);
+    return !!(result && result.ok);
+  },
+
+  _tickSlingshotState(state, dt) {
+    const t = state && state.player && state.player.tether;
+    if (!t) return;
+    const next = Math.max(0, finite(t.slingshotT, 0) - Math.max(0, finite(dt, 0)));
+    t.slingshotT = next;
+    t.slingshot = next > 0;
+  },
+
+  _grantSlingshotState(state, seconds) {
+    const player = state.player || (state.player = {});
+    const t = player.tether || (player.tether = { active: false, targetId: null, strain: 0, load: 0, attachmentId: null, restLength: 0, phase: 'slack' });
+    t.slingshotT = Math.max(finite(t.slingshotT, 0), positive(seconds, SLINGSHOT_STATE_S));
+    t.slingshot = t.slingshotT > 0;
+  },
+
+  _cutPayload(state, player, targetId) {
+    const vx = finite(player && player.vel && player.vel.x, 0);
+    const vz = finite(player && player.vel && player.vel.z, 0);
+    const speed = Math.hypot(vx, vz);
+    const maxSpeed = positive(player && player.maxSpeed, 120);
+    return {
+      targetId,
+      velocity: { x: vx, z: vz },
+      speed,
+      slingshot: speed >= maxSpeed * SLINGSHOT_SPEED_MULT,
+    };
+  },
+
+  // Mirror the tether state onto state.player.tether for HUD/VFX consumers (single-owner rule:
+  // they read, we write). null targetId = no tether. restLength lets the cable visual compute
+  // real slack (restLength - distance) instead of guessing from strain.
+  /**
+   * PQ-137.09 — "Tethered pairs share helm loss and inertia."
+   *
+   * A rope makes two hulls one body. When one end takes a helm-losing hit, the other end feels the
+   * share the coupling actually transmits, and it feels it as an INTENT: this system publishes a
+   * hitstun impulse and the one law (tumbleStates + resolveHitstunLaw) decides what that means for
+   * the partner. It never writes the partner's velocity, never spins it by hand, and never grants
+   * a helm loss the law would refuse.
+   *
+   * THE SHARE IS THE ROPE'S OWN INERTIA. For a coupled pair an impulse J landing on the victim
+   * settles to a common velocity change of J/(m_v+m_p); the partner's part of that is
+   *   dV_p = dV_v * m_v/(m_v+m_p) = dV_v * mu/m_p,
+   * mu being the reduced mass the attachment spring already computes for its stiffness and damping
+   * (`sg02DynamicBodyOwner._applyAttachmentSpring`: `reducedMass(owner, target)`). That function is
+   * not exported, so the two-line form is written out here against the same two masses — it is the
+   * same number, not a second model. A light hull hanging off a heavy one barely moves the heavy;
+   * a heavy hull hanging off a light one nearly takes the light one with it.
+   *
+   * A SLACK LINE TRANSMITS NOTHING. The gate is the attachment authority's own phase, so the
+   * rope's answer here and its answer in the solver cannot disagree.
+   */
+  _shareHelmLoss(payload) {
+    if (!payload || payload.victimId == null) return 0;
+    // Loop guard: a shared tumble never shares again. One hit crosses each rope once.
+    if (payload.source === TETHER_SHARE_SOURCE) return 0;
+    const state = this.state;
+    if (!state || !state.entities || typeof state.entities.get !== 'function') return 0;
+    const deltaV = finite(payload.deltaV, 0);
+    if (!(deltaV > 0)) return 0;
+    const victim = state.entities.get(payload.victimId);
+    if (!victim || victim.alive === false) return 0;
+    const byId = state.combat && state.combat.attachments && state.combat.attachments.byId;
+    if (!byId || typeof byId !== 'object') return 0;
+
+    const victimMass = positive(victim.physicsBody && victim.physicsBody.mass, positive(victim.mass, 1));
+    let shared = 0;
+    for (const attachment of Object.values(byId)) {
+      if (shared >= TETHER_SHARE_MAX_LINKS) break;
+      if (!attachment || attachment.state !== 'active') continue;
+      if (attachment.ownerId == null || attachment.targetId == null) continue;
+      let partnerId = null;
+      if (attachment.ownerId === victim.id) partnerId = attachment.targetId;
+      else if (attachment.targetId === victim.id) partnerId = attachment.ownerId;
+      if (partnerId == null || partnerId === victim.id) continue;
+      const partner = state.entities.get(partnerId);
+      if (!partner || partner.alive === false || !partner.pos) continue;
+
+      const telemetry = attachmentTelemetry(this.helpers, attachment, state);
+      // Fail OPEN only when the authority has no telemetry to give (no physics handle yet); when
+      // it answers, its answer is the gate.
+      if (telemetry && !TETHER_TAUT_PHASES.has(String(telemetry.phase || 'slack'))) continue;
+
+      const partnerMass = positive(partner.physicsBody && partner.physicsBody.mass, positive(partner.mass, 1));
+      const share = victimMass / (victimMass + partnerMass);
+      const sharedDeltaV = deltaV * share;
+      if (!(sharedDeltaV > 0)) continue;
+
+      // The rope's direction, not the hit's: a coupled pair is pulled along the line between them.
+      const dx = partner.pos.x - finite(victim.pos && victim.pos.x, 0);
+      const dz = partner.pos.z - finite(victim.pos && victim.pos.z, 0);
+      const len = Math.hypot(dx, dz);
+      const dirX = len > 1e-6 ? dx / len : finite(payload.dirX, 1);
+      const dirZ = len > 1e-6 ? dz / len : finite(payload.dirZ, 0);
+
+      publishHitstunImpulse(this.bus, {
+        source: TETHER_SHARE_SOURCE,
+        victimId: partner.id,
+        attackerId: victim.id,
+        attackerMass: victimMass,
+        victimMass: partnerMass,
+        deltaV: sharedDeltaV,
+        dirX,
+        dirZ,
+        hitSide: signedHitSide(partner, { x: dirX, z: dirZ }, {
+          pos: {
+            x: finite(partner.pos.x, 0),
+            z: finite(partner.pos.z, 0) + Math.max(4, (partner.radius || 8) * 0.75),
+          },
+        }, partner.id),
+        provenance: Object.freeze({
+          schemaVersion: 1,
+          kind: 'massline',
+          source: 'share',
+          tag: 'massline_share',
+          attachmentId: attachment.id == null ? null : String(attachment.id),
+        }),
+        tick: state.tick,
+      });
+      this.bus.emit('chain:tetherShare', {
+        schemaVersion: 1,
+        attachmentId: attachment.id == null ? null : attachment.id,
+        fromId: victim.id,
+        toId: partner.id,
+        deltaV: sharedDeltaV,
+        sourceDeltaV: deltaV,
+        share,
+        // mu = m_v*m_p/(m_v+m_p): the coupled inertia the rope carries, published so a reader can
+        // check the share against the spring's own number.
+        reducedMass: (victimMass * partnerMass) / (victimMass + partnerMass),
+        phase: telemetry ? telemetry.phase : null,
+        cause: payload.source || payload.cause || null,
+        tick: state.tick | 0,
+      });
+      shared += 1;
+    }
+    return shared;
+  },
+
+  _mirror(
+    state,
+    targetId,
+    strain,
+    restLength = 0,
+    phase = 'slack',
+    command = null,
+    lineLengthCommand = 0,
+    automaticBreakAllowed = false,
+    headId = null,
+  ) {
+    const player = state.player || (state.player = {});
+    const t = player.tether || (player.tether = { active: false, targetId: null, strain: 0, load: 0, attachmentId: null, restLength: 0, phase: 'slack' });
+    t.active = targetId != null;
+    t.targetId = targetId;
+    t.strain = strain || 0;
+    t.restLength = restLength || 0;
+    t.phase = t.active ? normalizePhase(phase) : 'slack';
+    t.load = t.active ? computeTetherLoad(t.phase, t.strain) : 0;
+    t.attachmentId = this._active ? this._active.attachmentId : null;
+    t.lineControl = !!(t.active && command && command.lineControl);
+    t.lineLengthRate = t.lineControl ? finite(lineLengthCommand, 0) : 0;
+    t.orbitDirection = t.lineControl ? finite(command && command.orbitDirection, 0) : 0;
+    t.pump = !!(t.lineControl && command && command.pump);
+    t.reeling = !!(t.active && lineLengthCommand < 0);
+    t.payingOut = !!(t.active && lineLengthCommand > 0);
+    t.reelStrength = t.active ? finite(this._reelStrength, 0) : 0;
+    // This is a mirror of the attachment authority's decision, not a second policy. Consumers must
+    // fail closed: an absent/false flag means load telemetry is informational, never a break alarm.
+    t.automaticBreakAllowed = !!(t.active && automaticBreakAllowed);
+    // A deployed line snapshots its fitted head policy. Mirror that immutable attachment identity
+    // instead of reading the player's current fitting, which may change while this line is active.
+    t.headId = t.active && typeof headId === 'string' ? headId : null;
+    t.slingshotT = Math.max(0, finite(t.slingshotT, 0));
+    t.slingshot = t.slingshotT > 0;
+    const telemetry = t.active && this._active
+      ? attachmentTelemetry(this.helpers, { id: this._active.attachmentId }, state)
+      : null;
+    const storedEnergy = t.active ? finite(telemetry && telemetry.storedEnergy, 0) : 0;
+    const stretch = t.active ? finite(telemetry && telemetry.stretch, 0) : 0;
+    const strainGlow = t.active ? whipStrainGlow(stretch, t.restLength) : 0;
+    t.storedEnergy = storedEnergy;
+    t.strainGlow = strainGlow;
+    if (t.active && t.headId === ELASTIC_WHIP_HEAD_ID) {
+      t.load = Math.max(t.load, strainGlow);
+    }
+  },
+};
+
+function publishTwinBridleSetup(state, setup) {
+  if (!state || !setup) return null;
+  const view = state.masslineBridle && typeof state.masslineBridle === 'object'
+    ? state.masslineBridle
+    : (state.masslineBridle = {});
+  view.schemaVersion = 1;
+  view.phase = 'select_endpoint_b';
+  view.sourceId = setup.sourceId;
+  view.sourceReceiptId = setup.sourceReceiptId;
+  view.selectedAt = setup.selectedAt;
+  view.expiresAt = setup.expiresAt;
+  view.lastDenial = setup.lastDenial || null;
+  view.lastDenialTargetId = setup.lastDenialTargetId ?? null;
+  return view;
+}
+
+function ensureRemoteMasslineMirror(state) {
+  const player = state.player || (state.player = {});
+  if (!player.remoteMassline || typeof player.remoteMassline !== 'object') {
+    player.remoteMassline = {
+      active: false,
+      kind: null,
+      headId: null,
+      phase: 'idle',
+      sourceId: null,
+      targetId: null,
+      attachmentId: null,
+      caughtId: null,
+      expiresAt: null,
+      restLength: 0,
+      strain: 0,
+      load: 0,
+      automaticBreakAllowed: true,
+      lastEndReason: null,
+      lastDenial: null,
+    };
+  }
+  return player.remoteMassline;
+}
+
+function currentSectorId(state) {
+  return state && state.world && state.world.currentSectorId != null
+    ? state.world.currentSectorId
+    : null;
+}
+
+/** Validate only the authored A↔B rope. The controller ship is never considered an endpoint. */
+export function validateTwinBridlePair(host, state, player, source, target, def) {
+  if (!isAttachable(source, player && player.id) || !isAttachable(target, player && player.id)) {
+    return 'endpoint_lost';
+  }
+  if (source.id === target.id) return 'same_endpoint';
+  const maxLength = positive(def && def.maxLength, 480);
+  const worlds = contextualRemoteAttachmentWorlds(source, target);
+  const physicalDistance = Math.hypot(
+    worlds.targetWorld.x - worlds.sourceWorld.x,
+    worlds.targetWorld.z - worlds.sourceWorld.z,
+  );
+  if (physicalDistance > maxLength) return 'pair_out_of_range';
+  if (isLargeBridleEndpoint(source) && isLargeBridleEndpoint(target)) return 'two_heavy_endpoints';
+  // Moving heavy NPCs are terrain in the fight: the line may pull a light hull around them, but
+  // the heavy does not accept a player bridle as a control surface. Player/persistent haulers stay
+  // eligible for the authored bolas toy; this gate is NPC identity plus mass, not mass alone.
+  if (isNpcHeavyBridleEndpoint(source) || isNpcHeavyBridleEndpoint(target)) return 'heavy_endpoint_resists';
+  if (activeAttachmentPathExists(state, source.id, target.id)) return 'attachment_cycle';
+  if (masslineObstructed(host, state, source, target)) return 'blocked';
+  return null;
+}
+
+function contextualRemoteAttachmentWorlds(source, target) {
+  return {
+    sourceWorld: remoteAttachmentWorld(source, target && target.pos),
+    targetWorld: remoteAttachmentWorld(target, source && source.pos),
+  };
+}
+
+function remoteAttachmentWorld(entity, toward) {
+  if (!entity || !entity.pos) return { x: 0, y: 0, z: 0 };
+  // Moving payloads/craft attach through COM. A hull-offset world-to-world rope would apply yaw
+  // torque and become an accidental facing controller; static scenery keeps the visible surface hit.
+  if (TOW_TARGET_COM_TYPES.has(entity.type)) {
+    return { x: entity.pos.x, y: 0, z: entity.pos.z };
+  }
+  return surfacePointToward(entity, toward);
+}
+
+function isLargeBridleEndpoint(entity) {
+  if (!entity) return false;
+  if (LARGE_BRIDLE_ENDPOINT_TYPES.has(entity.type)) return true;
+  const body = entity.physicsBody;
+  if (body && typeof body === 'object' && body.dynamic === false) return true;
+  const mass = Number(body && body.mass != null ? body.mass : entity.mass);
+  return Number.isFinite(mass) && mass >= MASSIVE_ANCHOR_MIN_MASS;
+}
+
+function isNpcHeavyBridleEndpoint(entity) {
+  if (!entity || entity.type !== 'ship') return false;
+  const data = entity.data || {};
+  const ai = data.ai || {};
+  const npc = entity.team === 1
+    || data.enemyTypeId != null
+    || data.lootTableId != null
+    || ai.combatDoctrineId != null;
+  if (!npc) return false;
+  const body = entity.physicsBody;
+  const mass = Number(body && body.mass != null ? body.mass : entity.mass);
+  return Number.isFinite(mass) && mass >= NPC_HEAVY_BRIDLE_MASS;
+}
+
+function isNamedAceEntity(entity) {
+  const data = entity && entity.data || {};
+  const ai = data.ai || {};
+  return data.namedAceId != null
+    || data.aceId != null
+    || ai.namedAceId != null
+    || ai.aceId != null
+    || data.named === true
+    || data.ace === true
+    || data.isAce === true;
+}
+
+function cutNearestPlayerTwinBridle(host, actor, { rangeWu, reason, tick } = {}) {
+  const state = host && host.state;
+  const byId = state && state.combat && state.combat.attachments && state.combat.attachments.byId;
+  const kernel = combatKernel(host);
+  const attachments = kernel && kernel.attachments;
+  if (!byId || typeof byId !== 'object' || !attachments
+      || typeof attachments.breakAttachment !== 'function') return null;
+
+  const playerId = state.playerId;
+  const range = positive(rangeWu, NPC_BRIDLE_CUT_RANGE_WU);
+  const rangeSq = range * range;
+  let nearest = null;
+  let nearestDistanceSq = Infinity;
+  for (const attachment of Object.values(byId)) {
+    if (!attachment || attachment.state !== 'active' || attachment.defId !== TWIN_BRIDLE_DEF_ID) continue;
+    if (attachment.controllerId == null || String(attachment.controllerId) !== String(playerId)) continue;
+    const source = state.entities && state.entities.get ? state.entities.get(attachment.ownerId) : null;
+    const target = state.entities && state.entities.get ? state.entities.get(attachment.targetId) : null;
+    if (!source || source.alive === false || !target || target.alive === false) continue;
+    const distanceSq = distanceToSegmentSq(actor.pos, source.pos, target.pos);
+    if (distanceSq > rangeSq) continue;
+    if (distanceSq < nearestDistanceSq
+        || (distanceSq === nearestDistanceSq
+          && String(attachment.id).localeCompare(String(nearest && nearest.id)) < 0)) {
+      nearest = attachment;
+      nearestDistanceSq = distanceSq;
+    }
+  }
+  if (!nearest) return null;
+
+  const currentTick = Number.isFinite(tick) ? Math.trunc(tick)
+    : Number.isFinite(state.tick) ? Math.trunc(state.tick) : 0;
+  const key = `${String(actor.id)}:${String(nearest.id)}`;
+  const lastTick = host._npcBridleCutTicks && host._npcBridleCutTicks.get(key);
+  if (Number.isFinite(lastTick) && currentTick - lastTick < NPC_BRIDLE_CUT_COOLDOWN_TICKS) return null;
+  const result = attachments.breakAttachment(nearest, reason || 'specialist_cut', actor.id);
+  if (!result || !result.ok) return null;
+  if (!host._npcBridleCutTicks) host._npcBridleCutTicks = new Map();
+  host._npcBridleCutTicks.set(key, currentTick);
+  if (host.bus && typeof host.bus.emit === 'function') {
+    host.bus.emit('massline:npcCounterplay', {
+      schemaVersion: 1,
+      verb: 'cut_bridle',
+      role: reason === 'ace_cut' ? 'ace' : 'specialist',
+      actorId: actor.id,
+      attachmentId: nearest.id,
+      reason: reason || 'specialist_cut',
+      tick: currentTick,
+    });
+  }
+  return {
+    verb: 'cut_bridle',
+    ok: true,
+    role: reason === 'ace_cut' ? 'ace' : 'specialist',
+    attachmentId: nearest.id,
+  };
+}
+
+function distanceToSegmentSq(point, start, end) {
+  if (!point || !start || !end) return Infinity;
+  const px = Number(point.x);
+  const pz = Number(point.z);
+  const ax = Number(start.x);
+  const az = Number(start.z);
+  const bx = Number(end.x);
+  const bz = Number(end.z);
+  if (![px, pz, ax, az, bx, bz].every(Number.isFinite)) return Infinity;
+  const dx = bx - ax;
+  const dz = bz - az;
+  const lengthSq = dx * dx + dz * dz;
+  const projection = lengthSq > 1e-9
+    ? clamp(((px - ax) * dx + (pz - az) * dz) / lengthSq, 0, 1)
+    : 0;
+  const nearestX = ax + dx * projection;
+  const nearestZ = az + dz * projection;
+  return (px - nearestX) ** 2 + (pz - nearestZ) ** 2;
+}
+
+function activeAttachmentPathExists(state, sourceId, targetId) {
+  const byId = state && state.combat && state.combat.attachments && state.combat.attachments.byId;
+  if (!byId || typeof byId !== 'object') return false;
+  const adjacency = new Map();
+  const connect = (a, b) => {
+    if (!adjacency.has(a)) adjacency.set(a, []);
+    adjacency.get(a).push(b);
+  };
+  for (const attachment of Object.values(byId)) {
+    if (!attachment || attachment.state !== 'active') continue;
+    if (attachment.ownerId == null || attachment.targetId == null) continue;
+    connect(attachment.ownerId, attachment.targetId);
+    connect(attachment.targetId, attachment.ownerId);
+  }
+  const pending = [sourceId];
+  const visited = new Set([sourceId]);
+  while (pending.length) {
+    const id = pending.shift();
+    for (const next of adjacency.get(id) || []) {
+      if (next === targetId) return true;
+      if (visited.has(next)) continue;
+      visited.add(next);
+      pending.push(next);
+    }
+  }
+  return false;
+}
+
+function rememberAcquisitionIntent(host, state, player, now) {
+  const inp = state && state.input || {};
+  const turn = clamp(finite(inp.turnIntent), -1, 1);
+  const moveX = clamp(finite(inp.moveX), -1, 1);
+  const moveZ = clamp(finite(inp.moveZ), -1, 1);
+  const active = Math.abs(turn) > 0.06 || Math.abs(moveX) > 0.06 || Math.abs(moveZ) > 0.06;
+  if (active) {
+    host._recentIntent.turn = turn;
+    host._recentIntent.moveX = moveX;
+    host._recentIntent.moveZ = moveZ;
+    host._recentIntent.at = now;
+  }
+  const recent = active || now - host._recentIntent.at <= INTENT_HISTORY_S
+    ? host._recentIntent
+    : { turn: 0, moveX: 0, moveZ: 0, at: -Infinity };
+  const strongSign = Math.abs(turn) >= STRONG_TURN_THRESHOLD ? Math.sign(turn) : 0;
+  const reversed = strongSign !== 0
+    && host._lastStrongTurn.sign !== 0
+    && strongSign !== host._lastStrongTurn.sign
+    && now - host._lastStrongTurn.at <= INTENT_HISTORY_S;
+  if (strongSign !== 0) {
+    host._lastStrongTurn.sign = strongSign;
+    host._lastStrongTurn.at = now;
+  }
+  return {
+    turn: recent.turn,
+    moveX: recent.moveX,
+    moveZ: recent.moveZ,
+    dir: intentWorldDirection(player, recent),
+    reversed,
+  };
+}
+
+function intentWorldDirection(player, intent) {
+  const rot = finite(player && player.rot);
+  const fx = Math.cos(rot);
+  const fz = Math.sin(rot);
+  const rx = -fz;
+  const rz = fx;
+  const forward = Math.max(0.35, Math.max(0, finite(intent && intent.moveZ)));
+  const lateral = finite(intent && intent.moveX) + finite(intent && intent.turn) * 1.05;
+  const x = fx * forward + rx * lateral;
+  const z = fz * forward + rz * lateral;
+  const length = Math.hypot(x, z);
+  return length > 1e-6 ? { x: x / length, z: z / length } : { x: fx, z: fz };
+}
+
+function buildAcquisitionSnapshot(host, player, def, state, intent) {
+  const maxLength = positive(def && def.maxLength, positive(def && def.break && def.break.maxLength, 390));
+  const focus = state.player && state.player.flybyFocus;
+  const focusTarget = focus && focus.active && focus.targetId != null && state.entities?.get
+    ? state.entities.get(focus.targetId)
+    : null;
+  const selectedPayloadId = masslineSelectedPayloadTargetId(state);
+  const routeId = masslineRouteTargetId(state);
+  const nearby = queryNearbyEntities(
+    state,
+    player.pos,
+    maxLength + CURSOR_LATCH_GRACE_MAX,
+    host._targetScratch || (host._targetScratch = []),
+    state.entityList || [],
+  );
+  const candidates = nearby === state.entityList ? [...nearby] : [...nearby];
+  appendNonCollidingAttachableCandidates(
+    candidates,
+    state.entityList || [],
+    player,
+    maxLength,
+    host._nonCollidingTargetScratch || (host._nonCollidingTargetScratch = []),
+  );
+  appendExactCandidate(candidates, selectedPayloadId != null && state.entities?.get
+    ? state.entities.get(selectedPayloadId) : null);
+  appendExactCandidate(candidates, focusTarget);
+  appendExactCandidate(candidates, routeId != null && state.entities?.get ? state.entities.get(routeId) : null);
+
+  const physicallyEligible = [];
+  const deniedCandidates = [];
+  const denialById = new Map();
+  const byId = new Map();
+  for (const entity of candidates) {
+    if (!isAttachable(entity, player.id) || byId.has(entity.id)) continue;
+    byId.set(entity.id, entity);
+    const denial = validateAcquisitionTarget(host, player, entity, def, state);
+    denialById.set(entity.id, denial);
+    if (denial) deniedCandidates.push(entity);
+    else physicallyEligible.push(entity);
+  }
+  physicallyEligible.sort(compareEntityIds);
+  deniedCandidates.sort(compareEntityIds);
+  // Priority is allowed to choose only inside the physically valid set. Retain invalid records
+  // solely when no valid body exists so the receipt can still explain blocked/out-of-range truth.
+  const rankingCandidates = physicallyEligible.length ? physicallyEligible : deniedCandidates;
+  if (!rankingCandidates.length) return emptyAcquisitionSnapshot('no-target', intent);
+
+  const physicallyEligibleIds = new Set(physicallyEligible.map((entity) => entity.id));
+  const focusId = focusTarget
+    && physicallyEligibleIds.has(focusTarget.id)
+    && isAuthorizedFocusTarget(state, player, focusTarget)
+    ? focusTarget.id
+    : null;
+  const eligibleSelectedPayloadId = physicallyEligibleIds.has(selectedPayloadId)
+    ? selectedPayloadId
+    : null;
+  const eligibleRouteId = physicallyEligibleIds.has(routeId) ? routeId : null;
+
+  const aim = aimWorldFor(player, state, maxLength);
+  const cursorActive = physicallyEligible.length > 0 && acquisitionCursorActive(state);
+  const cursorPrecisionOf = (entity) => cursorActive ? preciseCursorScore(entity, aim) : 0;
+  const hostileOf = (entity) => isHostileToPlayer(entity, player.team, state);
+  const context = classifyMasslineIntent(player, rankingCandidates, {
+    focusId,
+    selectedId: eligibleSelectedPayloadId,
+    routeId: eligibleRouteId,
+    turnIntent: intent.turn,
+    moveZ: intent.moveZ,
+    intentDir: intent.dir,
+    cursorPrecisionOf,
+    isHostile: hostileOf,
+  });
+  const hostileContextTargetId = context.source === 'cursor-paint'
+    && context.forceId != null
+    && byId.has(context.forceId)
+    && hostileOf(byId.get(context.forceId))
+    ? context.forceId
+    : null;
+  const ranked = rankMasslineTargets(player, rankingCandidates, {
+    maxRange: maxLength,
+    context,
+    intentDir: intent.dir,
+    cursorPrecisionOf,
+    isHostile: hostileOf,
+    isObstructed: (entity) => denialById.get(entity.id) === 'blocked',
+    ownershipOf: (entity) => masslineScoringOwnership(entity, player, state),
+    reachAllowanceOf: (entity) => Math.max(0, Number(entity && entity.radius) || 0),
+  });
+  return { ranked, byId, context, intent, aim, maxLength, denial: null, hostileContextTargetId };
+}
+
+function emptyAcquisitionSnapshot(denial, intent) {
+  return {
+    ranked: [],
+    byId: new Map(),
+    context: { id: 'precision-pick', label: 'PICK', source: 'none', forceId: null },
+    intent,
+    aim: null,
+    maxLength: 390,
+    denial,
+    hostileContextTargetId: null,
+  };
+}
+
+function buildAcquisitionReceipt(host, state, now, snapshot, selectedRecord, overrideReason = null) {
+  const selected = acquisitionReceiptEntry(snapshot, selectedRecord, overrideReason);
+  const alternatives = snapshot.ranked
+    .filter((record) => !selectedRecord || record.id !== selectedRecord.id)
+    .slice(0, 3)
+    .map((record) => acquisitionReceiptEntry(snapshot, record, null));
+  return {
+    schemaVersion: 1,
+    id: `massline-acquisition:${++host._acquisitionReceiptSeq}`,
+    publishedTick: Math.max(0, Math.trunc(finite(state && state.tick))),
+    publishedAt: now,
+    validUntil: now + ACQUISITION_VALID_S,
+    selected,
+    alternatives,
+    intent: {
+      turn: snapshot.intent.turn,
+      moveX: snapshot.intent.moveX,
+      moveZ: snapshot.intent.moveZ,
+      source: snapshot.context.source,
+      hostileContext: snapshot.hostileContextTargetId != null,
+    },
+    reason: selected ? selected.reason : 'no-target',
+  };
+}
+
+function emptyAcquisitionReceipt(host, state, now, reason) {
+  return {
+    schemaVersion: 1,
+    id: `massline-acquisition:${++host._acquisitionReceiptSeq}`,
+    publishedTick: Math.max(0, Math.trunc(finite(state && state.tick))),
+    publishedAt: now,
+    validUntil: now + ACQUISITION_VALID_S,
+    selected: null,
+    alternatives: [],
+    intent: null,
+    reason,
+  };
+}
+
+function acquisitionReceiptEntry(snapshot, record, overrideReason) {
+  if (!record) return null;
+  const target = snapshot.byId.get(record.id);
+  const contextReason = record.reasons && record.reasons.context;
+  const statusReason = overrideReason || reasonForScoringRecord(record);
+  const nextReady = snapshot.ranked.find((candidate) => candidate.id !== record.id && candidate.score > 0);
+  const gap = record.score > 0 ? record.score - finite(nextReady && nextReady.score) : 0;
+  const exact = snapshot.context.forceId != null && snapshot.context.forceId === record.id;
+  return {
+    targetId: record.id,
+    targetType: target && target.type || 'unknown',
+    targetLabel: masslineTargetLabel(target),
+    context: snapshot.context.id,
+    hostileContext: snapshot.hostileContextTargetId === record.id,
+    intentLabel: snapshot.context.label,
+    confidence: clamp01((exact ? 0.62 : 0.42) + record.score * 0.32 + Math.max(0, gap) * 0.7),
+    score: record.score,
+    rating: record.rating,
+    status: statusReason ? statusForReason(statusReason) : 'ready',
+    reason: statusReason,
+    reasons: record.reasons,
+  };
+}
+
+function reasonForScoringRecord(record) {
+  if (!record || record.score > 0) return null;
+  if (record.rating === 'protected') return 'protected';
+  if (record.rating === 'blocked') return 'blocked';
+  const gate = record.reasons && record.reasons.gate;
+  // 'degenerate distance' means the body is co-located with the ship to within 1e-6, so the pure
+  // scorer cannot compute a bearing and declines to rank it. That is a numerical limit, not a
+  // gameplay one — a body you are physically overlapping is the least ambiguous grab there is, and
+  // validateAcquisitionTarget (the physical eligibility authority) accepts it. Report READY and let
+  // the latch's own revalidation be the judge, rather than inventing an 'invalid-target' denial the
+  // player cannot act on.
+  if (gate === 'degenerate distance') return null;
+  return 'out-of-range';
+}
+
+function statusForReason(reason) {
+  if (reason === 'protected') return 'protected';
+  if (reason === 'blocked') return 'blocked';
+  if (reason === 'out-of-range') return 'out-of-range';
+  if (reason === 'cooldown') return 'cooldown';
+  return 'invalid';
+}
+
+function validateAcquisitionTarget(host, player, target, def, state) {
+  if (!isAttachable(target, player && player.id)) return 'target-lost';
+  const maxLength = positive(def && def.maxLength, positive(def && def.break && def.break.maxLength, 390));
+  const distance = Math.hypot(target.pos.x - player.pos.x, target.pos.z - player.pos.z);
+  if (distance > maxLength + Math.max(0, finite(target.radius))) return 'out-of-range';
+  if (masslineObstructed(host, state, player, target)) return 'blocked';
+  return null;
+}
+
+function invalidateAcquisitionReceipt(state, reason) {
+  const receipt = state && state.masslineAcquisition;
+  if (!receipt || !receipt.selected) return;
+  state.masslineAcquisition = {
+    ...receipt,
+    selected: {
+      ...receipt.selected,
+      status: statusForReason(reason),
+      reason,
+    },
+    reason,
+  };
+}
+
+function masslineObstructed(host, state, player, target) {
+  const check = host && host.helpers && host.helpers.isMasslineObstructed;
+  if (typeof check !== 'function') return false;
+  try {
+    return check({ state, player, target }) === true;
+  } catch (_) {
+    return true;
+  }
+}
+
+// A GUN SOLUTION IS NOT A CURSOR. masslineTargetScoring.js:39-41 forbids weapon-aim coupling BY
+// CONTRACT — cursor proximity is opt-in player intent, never reticle state — and the precision-pick
+// profile puts 0.34 on the cursor axis, enough to decide the pick on its own.
+//
+// combat/autoTargetMode.tickAutoTarget OVERWRITES state.input.aimWorld with the weapon lead point
+// for the whole time auto-target is held (autoTargetMode.js:146-149), and stamps state.input.autoAim
+// as the provenance marker for exactly that write — the same marker weapons.js:167 already reads to
+// re-solve per mount, and which is cleared the moment auto-target stops driving the aim. Without
+// this gate, holding auto-target silently steered Massline acquisition onto whatever the guns had
+// locked: measured on a two-anchor scene, steering intent selected the turn-side rock under
+// 'massive-anchor-sling' with cursor 0.000, and holding auto-target on the OTHER rock flipped the
+// context to 'precision-pick' with cursor 1.000 and moved the selection onto the gun target.
+// Fail closed: while the aim point belongs to the guns, the cursor axis contributes nothing at all
+// and steering intent decides, which is the contract's own answer.
+function weaponSynthesisedAim(state) {
+  const marker = state && state.input && state.input.autoAim;
+  return !!(marker && typeof marker === 'object' && marker.targetId != null);
+}
+
+function acquisitionCursorActive(state) {
+  if (weaponSynthesisedAim(state)) return false;
+  const input = state && state.input;
+  if (!input) return false;
+  // Live input stamps this every tick for pointer, gamepad, and touch aim. An explicit false (or a
+  // malformed value) is authoritative; only legacy/direct fixtures without the property fall back
+  // to the older pointer bit.
+  if (Object.prototype.hasOwnProperty.call(input, 'aimIntentActive')) {
+    return input.aimIntentActive === true;
+  }
+  const pointer = input.pointerScreen;
+  return pointer && pointer.active === true;
+}
+
+function preciseCursorScore(entity, aim) {
+  if (!entity || !entity.pos || !aim) return 0;
+  const miss = Math.max(0,
+    Math.hypot(aim.x - entity.pos.x, aim.z - entity.pos.z) - Math.max(0, finite(entity.radius)));
+  return clamp01(1 - miss / CURSOR_LATCH_GRACE);
+}
+
+function masslineRouteTargetId(state) {
+  const waypointId = state && state.nav && state.nav.waypoint && state.nav.waypoint.targetEntityId;
+  if (waypointId != null) return waypointId;
+  const autopilotId = state && state.nav && state.nav.autopilot && state.nav.autopilot.targetEntityId;
+  return autopilotId != null ? autopilotId : null;
+}
+
+function masslineSelectedPayloadTargetId(state) {
+  const selectedId = state && state.player && state.player.targetId;
+  const selected = selectedId != null && state.entities?.get ? state.entities.get(selectedId) : null;
+  // A released World Site payload is explicitly exposed through the scanner target cycle. Honor
+  // that deliberate player selection ahead of an inactive/stale navigation receipt so Tab + Space
+  // is a complete public delivery interaction.
+  if (selected?.alive !== false
+      && selected?.data?.role === 'world_site_payload'
+      && selected.data.worldSiteTargetable === true) {
+    return selectedId;
+  }
+  return null;
+}
+
+function appendExactCandidate(candidates, entity) {
+  if (!entity || candidates.some((candidate) => candidate && candidate.id === entity.id)) return;
+  candidates.push(entity);
+}
+
+function masslineTargetLabel(target) {
+  const data = target && target.data;
+  const label = data && (data.displayName || data.name || data.label);
+  if (typeof label === 'string' && label.trim()) return label.trim();
+  const type = target && target.type || 'target';
+  return type === 'asteroid' ? 'Anchor' : type.charAt(0).toUpperCase() + type.slice(1);
+}
+
+/** Resolve physical world anchors once at latch time. The player endpoint is always COM so the
+ * rope cannot become an attitude controller. Dynamic tow payloads also use COM; large static
+ * anchors retain the selected surface point so the cable meets the visible object. */
+export function contextualAttachmentWorlds(player, target, acquiredTargetWorld) {
+  const targetWorld = target && TOW_TARGET_COM_TYPES.has(target.type)
+    ? { x: target.pos.x, y: 0, z: target.pos.z }
+    : acquiredTargetWorld;
+  return {
+    sourceWorld: { x: player.pos.x, y: 0, z: player.pos.z },
+    targetWorld,
+  };
+}
+
+function combatKernel(host) {
+  const actions = host.registry && host.registry.get && host.registry.get('actions');
+  if (actions && actions.kernel) return actions.kernel;
+  const combat = host.registry && host.registry.get && host.registry.get('combat');
+  return combat && combat.kernel ? combat.kernel : null;
+}
+
+function attachmentDef(kernel, id) {
+  return kernel && kernel.catalog && kernel.catalog.attachments && kernel.catalog.attachments.get(id) || null;
+}
+
+function attachmentTelemetry(helpers, attachment, state) {
+  const physics = helpers && helpers.combatPhysics;
+  if (!physics || typeof physics.getAttachmentTelemetry !== 'function') return null;
+  try {
+    return physics.getAttachmentTelemetry({
+      attachmentId: attachment.id,
+      physicsHandle: attachment.physicsHandle,
+      tick: state && state.tick,
+    });
+  } catch (_) {
+    return null;
+  }
+}
+
+function normalizePhase(value) {
+  if (value === 'capture' || value === 'loaded' || value === 'overload') return value;
+  return 'slack';
+}
+
+// Presentation load (rung 04): 0..1 "how worked is the line" for HUD/VFX ordinary glow.
+// load = clamp(max(strain * LOAD_STRAIN_GAIN, LOAD_BASE_BY_PHASE[phase]), 0, 1)
+// Guarantees: inactive/slack ≈ 0 (no floor, strain ~0), capture ≥ 0.35 the moment the line goes
+// taut, loaded ≥ 0.55 even at low strain, overload ≥ 0.9. Never mutates strain.
+export function whipStoredEnergy(stretch, k = ELASTIC_WHIP_SPRING_K) {
+  const s = Number.isFinite(stretch) && stretch > 0 ? stretch : 0;
+  const stiffness = Number.isFinite(k) && k > 0 ? k : ELASTIC_WHIP_SPRING_K;
+  return 0.5 * stiffness * s * s;
+}
+
+export function whipStrainGlow(stretch, restLength, readableStretchRatio = ELASTIC_WHIP_GLOW_STRETCH_RATIO) {
+  const s = Number.isFinite(stretch) && stretch > 0 ? stretch : 0;
+  const rest = Number.isFinite(restLength) && restLength > 0 ? restLength : 0;
+  const ratio = Number.isFinite(readableStretchRatio) && readableStretchRatio > 0
+    ? readableStretchRatio
+    : ELASTIC_WHIP_GLOW_STRETCH_RATIO;
+  if (!(rest > 0)) return 0;
+  return clamp(s / (rest * ratio), 0, 1);
+}
+
+export function computeTetherLoad(phase, strain) {
+  const base = LOAD_BASE_BY_PHASE[normalizePhase(phase)] || 0;
+  const s = Number.isFinite(strain) && strain > 0 ? strain : 0;
+  return clamp(Math.max(s * LOAD_STRAIN_GAIN, base), 0, 1);
+}
+
+// Release rating (Prompt 02). Reads state.player.masslineTelemetry, which masslineTelemetry.js
+// writes immediately after tetherGameplay in UPDATE_ORDER. Because telemetry runs after this
+// system, at cut time the subtree reflects the most recent observed tick — exactly what the spec
+// means by "use the current state.player.masslineTelemetry if available." If telemetry is absent
+// (no system ran, fresh state, etc.) we still emit a release rating with classification "messy"
+// and zeroed numeric fields, per spec.
+//
+// sourceId — WHY IT IS HERE, do not drop it. A release rating is a judgement of the PLAYER'S
+// technique; the tethered body is the cue's target, but the player is its source. The presentation
+// pipeline reads that: presentationOrchestrator._emitCue falls back to payload.sourceId, and
+// cueSchema.inferRelevance returns 0.88 for "the player is the source". Without it the cue has no
+// identity at all and falls through to the DISTANCE table (0.72/0.52/0.28/0.08), which lands under
+// presentationAdapters.PLAYER_LANE_RELEVANCE_FLOOR (0.8) — so the HUD toast AND the accessibility
+// caption for every clean release were silently dropped at every distance. That is the bug
+// scripts/check-massline-release-feedback.mjs caught: the "no double-toast" assertion was counting
+// ZERO. Grammar rule 2: if the player cannot see it, it does not exist.
+export function rateRelease(state, targetId) {
+  const telemetry = state && state.player && state.player.masslineTelemetry;
+  const sourceId = state && state.playerId != null ? state.playerId : null;
+  if (!telemetry) {
+    return {
+      targetId,
+      sourceId,
+      classification: 'messy',
+      releaseScore: 0,
+      radialSpeed: 0,
+      tangentialSpeed: 0,
+      angularSpeed: 0,
+      strain: 0,
+      distance: 0,
+      restLength: 0,
+      playerSpeed: 0,
+      maxStrainSinceLatch: 0,
+      maxTangentialSpeedSinceLatch: 0,
+      maxAngularSpeedSinceLatch: 0,
+    };
+  }
+
+  const strain = finite(telemetry.strain, 0);
+  const absTangential = Math.abs(finite(telemetry.tangentialSpeed, 0));
+  const absRadial = Math.abs(finite(telemetry.radialSpeed, 0));
+  const tangentQuality = absTangential / Math.max(absTangential + absRadial, 1e-6);
+  const usefulLoad = clamp01(strain / 0.65);
+  const overloadPenalty = clamp01((strain - 0.85) / 0.35);
+  const releaseScore = clamp01(tangentQuality * usefulLoad * (1 - overloadPenalty));
+
+  let classification;
+  if (releaseScore >= 0.85) classification = 'razor';
+  else if (releaseScore >= 0.65) classification = 'clean';
+  else if (releaseScore >= 0.35) classification = 'good';
+  else classification = 'messy';
+
+  return {
+    targetId,
+    sourceId,
+    classification,
+    releaseScore,
+    radialSpeed: finite(telemetry.radialSpeed, 0),
+    tangentialSpeed: finite(telemetry.tangentialSpeed, 0),
+    angularSpeed: finite(telemetry.angularSpeed, 0),
+    strain,
+    distance: finite(telemetry.distance, 0),
+    restLength: finite(telemetry.restLength, 0),
+    playerSpeed: finite(telemetry.playerSpeed, 0),
+    maxStrainSinceLatch: finite(telemetry.maxStrainSinceLatch, 0),
+    maxTangentialSpeedSinceLatch: finite(telemetry.maxTangentialSpeedSinceLatch, 0),
+    maxAngularSpeedSinceLatch: finite(telemetry.maxAngularSpeedSinceLatch, 0),
+  };
+}
+
+function clamp01(value) {
+  if (!Number.isFinite(value)) return 0;
+  return value < 0 ? 0 : value > 1 ? 1 : value;
+}
+
+function createPhaseMirror() {
+  return { slackS: CAPTURE_SLACK_S, captureT: 0, captureActive: false, wasTaut: false };
+}
+
+function aimWorldFor(player, state, range) {
+  const aim = state.input?.aimWorld;
+  if (Number.isFinite(aim?.x) && Number.isFinite(aim?.z)) return { x: aim.x, z: aim.z };
+  const angle = Number.isFinite(state.input?.aimAngle) ? state.input.aimAngle : (player.rot || 0);
+  return {
+    x: player.pos.x + Math.cos(angle) * range,
+    z: player.pos.z + Math.sin(angle) * range,
+  };
+}
+
+// Massline is a physical command, not a catalog verb. New world-object types do not need a
+// separate eligibility-list edit before a player can deliberately attach to them.
+export function isAttachable(entity, playerId) {
+  if (!entity || !entity.alive || !entity.pos || entity.id === playerId) return false;
+  if (!Number.isFinite(entity.pos.x) || !Number.isFinite(entity.pos.z)) return false;
+  if (entity.data?.masslineTetherable === false || entity.flags?.masslineTetherable === false) return false;
+  const explicitlyTetherable = entity.data?.masslineTetherable === true
+    || entity.flags?.masslineTetherable === true;
+  if (!explicitlyTetherable && TRANSIENT_NON_TETHERABLE_TYPES.has(entity.type)) return false;
+  // A Mass Seed is ineligible before frame lock (travelling/locking/collapsing): it publishes
+  // its own eligibility so a premature latch can never attach to a still-moving deployable.
+  if (entity.type === 'massSeed') return isMassSeedTetherEligible(entity);
+  return true;
+}
+
+/**
+ * Runtime ownership resolution for T03 rankMasslineTargets (T04).
+ * - own: player-owned deployables / wingman-tagged craft
+ * - station: station-class entities (gated protected)
+ * - hostile: existing isHostileToPlayer resolution
+ * - ally: friendly-team ships/drones (eligible but damped by the scorer)
+ * - neutral: everything else (asteroids, wrecks, passive traffic, …)
+ */
+function resolveMasslineOwnership(entity, player, state) {
+  if (!entity) return 'neutral';
+  if (entity.type === 'station') return 'station';
+  // PQ-011: the player's own Mass Seed is the ONE own-deployable that must stay latch-eligible —
+  // anchoring to your seed is the feature's point. It scores as neutral (no own-protection gate,
+  // no ally damping); the phase gate in isAttachable still keeps it ineligible before lock.
+  if (entity.type === 'massSeed') return 'neutral';
+
+  const playerId = player && player.id;
+  const ownerId = entity.ownerId ?? entity.data?.ownerId ?? entity.data?.owner ?? null;
+  if (playerId != null && ownerId != null && ownerId === playerId) return 'own';
+  if (entity.data?.isWingman === true) return 'own';
+  if (entity.data?.echoOfPlayer === true) return 'own';
+
+  if (isHostileToPlayer(entity, player && player.team, state)) return 'hostile';
+
+  if ((entity.type === 'ship' || entity.type === 'drone')
+      && player
+      && entity.team === player.team
+      && entity.id !== playerId) {
+    return 'ally';
+  }
+
+  return 'neutral';
+}
+
+/**
+ * Ownership as the SCORER may use it — a ranking signal only, never an eligibility gate.
+ *
+ * masslineTargetScoring gates 'own' and 'station' to rating 'protected' ("you cannot throw what you
+ * are"). That gate is a real part of the pure scorer's contract and stays intact there, but it is
+ * not the rule this game runs on: commit 4d00867e made Massline attachment purely physical ("a
+ * physical command, not a catalog verb"), and the shipped behaviour is that you CAN deliberately
+ * haul your own wingman, anchor to your own deployable, or swing off a station — anchoring to a big
+ * immovable body is core play, not an error. Feeding those two values through would silently delete
+ * that affordance the moment the scorer went live.
+ *
+ * So: eligibility stays where it belongs (isAttachable + range + obstruction, resolved by
+ * validateAcquisitionTarget), and the scorer sees only the ranking half — an ally is still damped
+ * below a comparable hostile, a hostile still gets its bonus.
+ */
+function masslineScoringOwnership(entity, player, state) {
+  const ownership = resolveMasslineOwnership(entity, player, state);
+  return ownership === 'own' || ownership === 'station' ? 'neutral' : ownership;
+}
+
+function appendNonCollidingAttachableCandidates(candidates, entities, player, maxLength, scratch) {
+  scratch.length = 0;
+  for (const entity of entities) {
+    if (!isAttachable(entity, player.id)) continue;
+    if (entity.collides !== false || !NON_COLLIDING_ACQUISITION_TYPES.has(entity.type)) continue;
+    const dx = entity.pos.x - player.pos.x;
+    const dz = entity.pos.z - player.pos.z;
+    if (Math.hypot(dx, dz) > maxLength + (entity.radius || 0)) continue;
+    scratch.push(entity);
+  }
+  scratch.sort(compareEntityIds);
+  const seen = new Set(candidates.map((entity) => entity.id));
+  for (const entity of scratch) {
+    if (seen.has(entity.id)) continue;
+    candidates.push(entity);
+    seen.add(entity.id);
+  }
+  return candidates;
+}
+
+function compareEntityIds(a, b) {
+  if (Number.isFinite(a.id) && Number.isFinite(b.id)) return a.id - b.id;
+  if (Number.isFinite(a.id)) return -1;
+  if (Number.isFinite(b.id)) return 1;
+  const aId = String(a.id);
+  const bId = String(b.id);
+  return aId < bId ? -1 : aId > bId ? 1 : 0;
+}
+
+function isAuthorizedFocusTarget(state, player, target) {
+  if (!isAttachable(target, player?.id)) return false;
+  if (target.type !== 'ship' && target.type !== 'drone') return false;
+  const training = target.data?.onboardingTraining === true
+    && target.data?.trainingFocusEligible === true;
+  return training || isHostileToPlayer(target, player?.team, state);
+}
+
+/** Presentation/play scale: Flyby Focus and future assists widen latch without changing physics. */
+export function latchGraceScale(state) {
+  const focus = state && state.player && state.player.flybyFocus;
+  if (focus && focus.active) return Math.max(1, Number(focus.latchScale) || 2.4);
+  return 1;
+}
+
+export function cursorAimScore(entity, aim, player, ux, uz, rayLength, state = null) {
+  const radius = Math.max(0, finite(entity && entity.radius));
+  const dxAim = aim.x - entity.pos.x;
+  const dzAim = aim.z - entity.pos.z;
+  const aimDistance = Math.hypot(dxAim, dzAim);
+  const surfaceMiss = Math.max(0, aimDistance - radius);
+  const scale = latchGraceScale(state);
+  const cursorGrace = Math.min(CURSOR_LATCH_GRACE_MAX * scale, (CURSOR_LATCH_GRACE + radius * 0.85) * scale);
+  if (surfaceMiss <= cursorGrace) {
+    return {
+      score: surfaceMiss * 2 + Math.max(0, Math.hypot(entity.pos.x - player.pos.x, entity.pos.z - player.pos.z) - radius) * 0.015,
+      targetWorld: surfacePointToward(entity, aim),
+    };
+  }
+
+  const dx = entity.pos.x - player.pos.x;
+  const dz = entity.pos.z - player.pos.z;
+  const along = dx * ux + dz * uz;
+  if (along < -radius || along > rayLength + radius) return { score: Infinity, targetWorld: null };
+  const perp = Math.abs(dx * uz - dz * ux);
+  const rayGrace = Math.min(AIM_RAY_GRACE_MAX * scale, (AIM_RAY_GRACE + radius * 0.7) * scale);
+  if (Math.max(0, perp - radius) > rayGrace) return { score: Infinity, targetWorld: null };
+  const closest = {
+    x: player.pos.x + ux * clamp(along, 0, rayLength),
+    z: player.pos.z + uz * clamp(along, 0, rayLength),
+  };
+  return {
+    score: 1000 + Math.max(0, perp - radius) * 12 + along * 0.04,
+    targetWorld: surfacePointToward(entity, closest),
+  };
+}
+
+function surfacePointToward(entity, worldPoint) {
+  const radius = Math.max(0, finite(entity && entity.radius));
+  if (!(radius > 0) || !worldPoint) return { x: entity.pos.x, y: 0, z: entity.pos.z };
+  const dx = finite(worldPoint.x, entity.pos.x) - entity.pos.x;
+  const dz = finite(worldPoint.z, entity.pos.z) - entity.pos.z;
+  const d = Math.hypot(dx, dz);
+  if (!(d > 1e-6)) return { x: entity.pos.x, y: 0, z: entity.pos.z };
+  const contactRadius = radius * 0.72;
+  return {
+    x: entity.pos.x + dx / d * contactRadius,
+    y: 0,
+    z: entity.pos.z + dz / d * contactRadius,
+  };
+}
+
+function distance2d(a, b) {
+  if (!a || !b) return Number.NaN;
+  return Math.hypot(finite(a.x) - finite(b.x), finite(a.z) - finite(b.z));
+}
+
+function drillApproachGeometry(def, attachment, player, asteroid) {
+  const playerCenter = finitePoint(player && player.pos);
+  const asteroidCenter = finitePoint(asteroid && asteroid.pos);
+  const sourceAnchorLocal = finitePoint(attachment && attachment.sourceAnchorLocal);
+  const targetAnchorLocal = finitePoint(attachment && attachment.targetAnchorLocal);
+  if (!playerCenter || !asteroidCenter || !sourceAnchorLocal || !targetAnchorLocal
+      || !Number.isFinite(player && player.rot) || !Number.isFinite(asteroid && asteroid.rot)) return null;
+  const dx = playerCenter.x - asteroidCenter.x;
+  const dz = playerCenter.z - asteroidCenter.z;
+  const currentCenterDistance = Math.hypot(dx, dz);
+  if (!(currentCenterDistance > 1e-6)) return null;
+  const desiredCenterDistance = positive(asteroid && asteroid.radius, 0)
+    + positive(player && player.radius, 0)
+    + DRILL_APPROACH_CLEARANCE_WU;
+  const desiredPlayerCenter = {
+    x: asteroidCenter.x + dx / currentCenterDistance * desiredCenterDistance,
+    z: asteroidCenter.z + dz / currentCenterDistance * desiredCenterDistance,
+  };
+  const sourceWorld = entityLocalPointToWorld(player, sourceAnchorLocal);
+  const targetWorld = entityLocalPointToWorld(asteroid, targetAnchorLocal);
+  if (!finitePoint(sourceWorld) || !finitePoint(targetWorld)) return null;
+  const desiredSourceWorld = {
+    x: sourceWorld.x + desiredPlayerCenter.x - playerCenter.x,
+    z: sourceWorld.z + desiredPlayerCenter.z - playerCenter.z,
+  };
+  const desiredEndpointDistance = distance2d(desiredSourceWorld, targetWorld);
+  const currentEndpointDistance = distance2d(sourceWorld, targetWorld);
+  if (!Number.isFinite(desiredEndpointDistance) || !Number.isFinite(currentEndpointDistance)) return null;
+  const minLength = positive(def && def.minLength, 0);
+  const maxLength = positive(def && def.maxLength, Infinity);
+  if (maxLength < minLength) return null;
+  return {
+    desiredCenterDistance,
+    desiredPlayerCenter,
+    desiredRestLength: clamp(desiredEndpointDistance, minLength, maxLength),
+    currentCenterDistance,
+    currentEndpointDistance,
+  };
+}
+
+function finitePoint(point) {
+  return point && Number.isFinite(point.x) && Number.isFinite(point.z)
+    ? { x: point.x, z: point.z }
+    : null;
+}
+
+function clamp(value, lo, hi) {
+  return Math.max(lo, Math.min(hi, value));
+}
+
+function segmentsProperlyCross(a, b, c, d) {
+  const o1 = orient2d(a, b, c);
+  const o2 = orient2d(a, b, d);
+  const o3 = orient2d(c, d, a);
+  const o4 = orient2d(c, d, b);
+  return o1 * o2 < 0 && o3 * o4 < 0;
+}
+
+function cutterEnemyId(entity) {
+  const data = entity && entity.data || {};
+  return data.enemyTypeId || data.lootTableId || data.typeId || null;
+}
+
+function ensureCutterSweepHead(entity) {
+  if (!entity) return;
+  const data = entity.data || (entity.data = {});
+  const derived = data.derived && typeof data.derived === 'object' ? data.derived : (data.derived = {});
+  derived.masslineHeadId = MONOFILAMENT_HEAD_ID;
+}
+
+function isBridleTumbleHull(entity) {
+  return !!(entity && entity.alive !== false && (entity.type === 'ship' || entity.type === 'drone'));
+}
+
+function hostileSweepCutter(entity, state, playerTeam) {
+  if (!entity || entity.alive === false) return false;
+  if (entity.type !== 'ship' && entity.type !== 'drone') return false;
+  if (!isHostileToPlayer(entity, playerTeam, state)) return false;
+  const plan = specialistPlanByEnemyId(cutterEnemyId(entity));
+  if (plan && plan.verb === 'cut_line') return true;
+  const headId = entity.data && entity.data.derived && entity.data.derived.masslineHeadId;
+  return headId === MONOFILAMENT_HEAD_ID;
+}
+
+function orient2d(a, b, p) {
+  return (b.x - a.x) * (p.z - a.z) - (b.z - a.z) * (p.x - a.x);
+}
+
+function positive(value, fallback) {
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+function finite(value, fallback = 0) {
+  return Number.isFinite(value) ? value : fallback;
+}

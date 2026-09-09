@@ -1,0 +1,22 @@
+{
+  "name": "jump_to_view3d_object_by_name",
+  "description": "\nMove the 3D viewport to focus on an object by *name*.\n\nIf *allow_edits* is True the object may be un-hidden and its\ncollections enabled to make it visible.\n",
+  "inputSchema": {
+    "properties": {
+      "name": {
+        "title": "Name",
+        "type": "string"
+      },
+      "allow_edits": {
+        "default": false,
+        "title": "Allow Edits",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "name"
+    ],
+    "title": "jump_to_view3d_object_by_nameArguments",
+    "type": "object"
+  }
+}

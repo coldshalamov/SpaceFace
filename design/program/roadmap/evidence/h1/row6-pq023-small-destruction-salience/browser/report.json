@@ -1,0 +1,2059 @@
+{
+  "schema": "spaceface.combatVfxAcceptance.v3",
+  "baseUrl": "http://127.0.0.1:61300",
+  "runtimeKind": "browser",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "gpu": {
+    "available": true,
+    "vendor": "Google Inc. (Intel)",
+    "renderer": "ANGLE (Intel, Intel(R) Graphics (0x00007D45) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+  },
+  "captures": [
+    {
+      "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\pq023-small-destruction-salience\\06-small-01.png",
+      "sha256": "9038dfd4a8500edd6d4cd2aadd4bf4807a5ed113a0d10e24a63202b372019239",
+      "scenario": "small explosion 18ms",
+      "camera": "normal gameplay chase camera",
+      "settings": {
+        "motionReduce": false,
+        "flashReduce": false,
+        "particleQuality": "medium"
+      },
+      "videoTimeMs": 20558,
+      "runtime": {
+        "particles": 0,
+        "sprites": 3,
+        "spriteKinds": [
+          0,
+          4,
+          4
+        ],
+        "trailStreaks": 3,
+        "combatBeams": 0,
+        "maxFlashSize1": 1.4601600000000003,
+        "maxTrailLength": 3.5100000000000002,
+        "beamVisible": false,
+        "projectileVisual": null,
+        "spatial": {
+          "pathLength": 17.1,
+          "source": {
+            "x": 0,
+            "z": 0
+          },
+          "muzzle": {
+            "x": 16.1,
+            "y": 0.25,
+            "z": 0
+          },
+          "target": {
+            "x": 47.6,
+            "z": 0
+          },
+          "contact": {
+            "x": 33.2,
+            "y": 0.25,
+            "z": 0
+          },
+          "screen": {
+            "source": {
+              "x": 720,
+              "y": 449.9999999999996,
+              "onScreen": true
+            },
+            "target": {
+              "x": 87.10359617266991,
+              "y": 449.9999999999996,
+              "onScreen": true
+            },
+            "muzzle": {
+              "x": 505.29161903861336,
+              "y": 448.33300946458513,
+              "onScreen": true
+            },
+            "contact": {
+              "x": 277.24731379391085,
+              "y": 448.33300946458513,
+              "onScreen": true
+            }
+          }
+        },
+        "sampleBeam": null,
+        "sampleTrail": {
+          "x": 15.414599648740982,
+          "z": 4.858776335807854,
+          "age": 0.018,
+          "life": 0.38,
+          "width": 0.07722000000000001,
+          "length": 3.0186000000000006
+        },
+        "sampleSprite": {
+          "x": 15.029278587009852,
+          "z": 5.213415915872875,
+          "age": 0.018,
+          "life": 0.20871384697966278,
+          "size0": 0.26676000000000005,
+          "size1": 0.8424,
+          "kind": 4
+        },
+        "settings": {
+          "motionReduce": false,
+          "flashReduce": false,
+          "particleQuality": "medium"
+        }
+      },
+      "receipt": null
+    },
+    {
+      "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\pq023-small-destruction-salience\\06-small-02.png",
+      "sha256": "cf6ad7eb4eff186b654318131494b5c3f68ac1a3f00e17552630d1d82ede4fde",
+      "scenario": "small explosion 70ms",
+      "camera": "normal gameplay chase camera",
+      "settings": {
+        "motionReduce": false,
+        "flashReduce": false,
+        "particleQuality": "medium"
+      },
+      "videoTimeMs": 26414,
+      "runtime": {
+        "particles": 3,
+        "sprites": 9,
+        "spriteKinds": [
+          0,
+          0,
+          0,
+          2,
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "trailStreaks": 4,
+        "combatBeams": 0,
+        "maxFlashSize1": 1.4601600000000003,
+        "maxTrailLength": 3.5100000000000002,
+        "beamVisible": false,
+        "projectileVisual": null,
+        "spatial": {
+          "pathLength": 17.1,
+          "source": {
+            "x": 0,
+            "z": 0
+          },
+          "muzzle": {
+            "x": 16.1,
+            "y": 0.25,
+            "z": 0
+          },
+          "target": {
+            "x": 47.6,
+            "z": 0
+          },
+          "contact": {
+            "x": 33.2,
+            "y": 0.25,
+            "z": 0
+          },
+          "screen": {
+            "source": {
+              "x": 720,
+              "y": 449.89448997784353,
+              "onScreen": true
+            },
+            "target": {
+              "x": 110.80534594046532,
+              "y": 449.7956226747636,
+              "onScreen": true
+            },
+            "muzzle": {
+              "x": 513.3416771869289,
+              "y": 448.25609374373096,
+              "onScreen": true
+            },
+            "contact": {
+              "x": 293.8629368540529,
+              "y": 448.2205318108729,
+              "onScreen": true
+            }
+          }
+        },
+        "sampleBeam": null,
+        "sampleTrail": {
+          "x": 16.174796188193977,
+          "z": 4.59983318152937,
+          "age": 0.07,
+          "life": 0.38,
+          "width": 0.07722000000000001,
+          "length": 3.0186000000000006
+        },
+        "sampleSprite": {
+          "x": 15.077340181187335,
+          "z": 5.2332674439027045,
+          "age": 0.07,
+          "life": 0.20871384697966278,
+          "size0": 0.26676000000000005,
+          "size1": 0.8424,
+          "kind": 4
+        },
+        "settings": {
+          "motionReduce": false,
+          "flashReduce": false,
+          "particleQuality": "medium"
+        }
+      },
+      "receipt": null
+    },
+    {
+      "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\pq023-small-destruction-salience\\06-small-03.png",
+      "sha256": "30d418338a69340437162ad3326b0e156608588ec5e4d3c7488f83d75923fb48",
+      "scenario": "small explosion 150ms",
+      "camera": "normal gameplay chase camera",
+      "settings": {
+        "motionReduce": false,
+        "flashReduce": false,
+        "particleQuality": "medium"
+      },
+      "videoTimeMs": 26947,
+      "runtime": {
+        "particles": 7,
+        "sprites": 8,
+        "spriteKinds": [
+          0,
+          0,
+          2,
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "trailStreaks": 8,
+        "combatBeams": 0,
+        "maxFlashSize1": 0.8424,
+        "maxTrailLength": 3.5100000000000002,
+        "beamVisible": false,
+        "projectileVisual": null,
+        "spatial": {
+          "pathLength": 17.1,
+          "source": {
+            "x": 0,
+            "z": 0
+          },
+          "muzzle": {
+            "x": 16.1,
+            "y": 0.25,
+            "z": 0
+          },
+          "target": {
+            "x": 47.6,
+            "z": 0
+          },
+          "contact": {
+            "x": 33.2,
+            "y": 0.25,
+            "z": 0
+          },
+          "screen": {
+            "source": {
+              "x": 720,
+              "y": 449.88554458231977,
+              "onScreen": true
+            },
+            "target": {
+              "x": 119.84434044840498,
+              "y": 450.1774602001797,
+              "onScreen": true
+            },
+            "muzzle": {
+              "x": 516.4454367316868,
+              "y": 448.40460868147983,
+              "onScreen": true
+            },
+            "contact": {
+              "x": 300.23070835494417,
+              "y": 448.5097103532286,
+              "onScreen": true
+            }
+          }
+        },
+        "sampleBeam": null,
+        "sampleTrail": {
+          "x": 17.34432932581397,
+          "z": 4.201459098024008,
+          "age": 0.15,
+          "life": 0.38,
+          "width": 0.07722000000000001,
+          "length": 3.0186000000000006
+        },
+        "sampleSprite": {
+          "x": 15.151281095306537,
+          "z": 5.263808256256288,
+          "age": 0.15,
+          "life": 0.20871384697966278,
+          "size0": 0.26676000000000005,
+          "size1": 0.8424,
+          "kind": 4
+        },
+        "settings": {
+          "motionReduce": false,
+          "flashReduce": false,
+          "particleQuality": "medium"
+        }
+      },
+      "receipt": null
+    },
+    {
+      "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\pq023-small-destruction-salience\\06-small-04.png",
+      "sha256": "810da7227321d007d19471048ce330cadf6a9a26524ed33e0afd4549ad21fda1",
+      "scenario": "small explosion 300ms",
+      "camera": "normal gameplay chase camera",
+      "settings": {
+        "motionReduce": false,
+        "flashReduce": false,
+        "particleQuality": "medium"
+      },
+      "videoTimeMs": 27582,
+      "runtime": {
+        "particles": 7,
+        "sprites": 11,
+        "spriteKinds": [
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          4,
+          4,
+          4
+        ],
+        "trailStreaks": 10,
+        "combatBeams": 0,
+        "maxFlashSize1": 0,
+        "maxTrailLength": 3.5100000000000002,
+        "beamVisible": false,
+        "projectileVisual": null,
+        "spatial": {
+          "pathLength": 17.1,
+          "source": {
+            "x": 0,
+            "z": 0
+          },
+          "muzzle": {
+            "x": 16.1,
+            "y": 0.25,
+            "z": 0
+          },
+          "target": {
+            "x": 47.6,
+            "z": 0
+          },
+          "contact": {
+            "x": 33.2,
+            "y": 0.25,
+            "z": 0
+          },
+          "screen": {
+            "source": {
+              "x": 720,
+              "y": 449.9425127992832,
+              "onScreen": true
+            },
+            "target": {
+              "x": 123.75837844986326,
+              "y": 449.6653414412904,
+              "onScreen": true
+            },
+            "muzzle": {
+              "x": 517.7433739351428,
+              "y": 448.277543609762,
+              "onScreen": true
+            },
+            "contact": {
+              "x": 302.9448086213292,
+              "y": 448.1777694812658,
+              "onScreen": true
+            }
+          }
+        },
+        "sampleBeam": null,
+        "sampleTrail": {
+          "x": 19.537203958851457,
+          "z": 3.4545076914514565,
+          "age": 0.3,
+          "life": 0.38,
+          "width": 0.07722000000000001,
+          "length": 3.0186000000000006
+        },
+        "sampleSprite": {
+          "x": 16.461940465030754,
+          "z": 3.137010446431411,
+          "age": 0.15,
+          "life": 0.48332927841693163,
+          "size0": 0.33696000000000004,
+          "size1": 1.140038435587585,
+          "kind": 2
+        },
+        "settings": {
+          "motionReduce": false,
+          "flashReduce": false,
+          "particleQuality": "medium"
+        }
+      },
+      "receipt": null
+    },
+    {
+      "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\pq023-small-destruction-salience\\06-small-05.png",
+      "sha256": "3a94d20258d5ad65875fe756c1e43e0cccd5544b517ad7f8a484dce62439c0eb",
+      "scenario": "small explosion 720ms",
+      "camera": "normal gameplay chase camera",
+      "settings": {
+        "motionReduce": false,
+        "flashReduce": false,
+        "particleQuality": "medium"
+      },
+      "videoTimeMs": 28046,
+      "runtime": {
+        "particles": 4,
+        "sprites": 3,
+        "spriteKinds": [
+          2,
+          2,
+          2
+        ],
+        "trailStreaks": 6,
+        "combatBeams": 0,
+        "maxFlashSize1": 0,
+        "maxTrailLength": 1.075657468755031,
+        "beamVisible": false,
+        "projectileVisual": null,
+        "spatial": {
+          "pathLength": 17.1,
+          "source": {
+            "x": 0,
+            "z": 0
+          },
+          "muzzle": {
+            "x": 16.1,
+            "y": 0.25,
+            "z": 0
+          },
+          "target": {
+            "x": 47.6,
+            "z": 0
+          },
+          "contact": {
+            "x": 33.2,
+            "y": 0.25,
+            "z": 0
+          },
+          "screen": {
+            "source": {
+              "x": 720,
+              "y": 449.99999999999966,
+              "onScreen": true
+            },
+            "target": {
+              "x": 125.18902003751867,
+              "y": 449.99999999999966,
+              "onScreen": true
+            },
+            "muzzle": {
+              "x": 518.2483196273665,
+              "y": 448.4336049660506,
+              "onScreen": true
+            },
+            "contact": {
+              "x": 303.9654789831409,
+              "y": 448.4336049660506,
+              "onScreen": true
+            }
+          }
+        },
+        "sampleBeam": null,
+        "sampleTrail": {
+          "x": 17.136912695895536,
+          "z": 6.84419392722985,
+          "age": 0.486666666666666,
+          "life": 0.86,
+          "width": 0.04,
+          "length": 0.6669
+        },
+        "sampleSprite": {
+          "x": 17.185540171522465,
+          "z": 5.3585772437543175,
+          "age": 0.486666666666666,
+          "life": 1.1321731675416231,
+          "size0": 0.44521353917548434,
+          "size1": 1.5102702170740443,
+          "kind": 2
+        },
+        "settings": {
+          "motionReduce": false,
+          "flashReduce": false,
+          "particleQuality": "medium"
+        }
+      },
+      "receipt": null
+    },
+    {
+      "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\pq023-small-destruction-salience\\pq023-reduced-small-01.png",
+      "sha256": "91104947de6238c7d96e80f46268cbb1260c5a692ec50121e763f22fff6cba8d",
+      "scenario": "small explosion reduced motion and flash 190ms",
+      "camera": "normal gameplay chase camera",
+      "settings": {
+        "motionReduce": true,
+        "flashReduce": true,
+        "particleQuality": "medium"
+      },
+      "videoTimeMs": 29109,
+      "runtime": {
+        "particles": 4,
+        "sprites": 7,
+        "spriteKinds": [
+          2,
+          2,
+          2,
+          4,
+          4,
+          4,
+          4
+        ],
+        "trailStreaks": 6,
+        "combatBeams": 0,
+        "maxFlashSize1": 0,
+        "maxTrailLength": 1.9656,
+        "beamVisible": false,
+        "projectileVisual": null,
+        "spatial": {
+          "pathLength": 17.1,
+          "source": {
+            "x": 0,
+            "z": 0
+          },
+          "muzzle": {
+            "x": 16.1,
+            "y": 0.25,
+            "z": 0
+          },
+          "target": {
+            "x": 47.6,
+            "z": 0
+          },
+          "contact": {
+            "x": 33.2,
+            "y": 0.25,
+            "z": 0
+          },
+          "screen": {
+            "source": {
+              "x": 720,
+              "y": 449.99999999999966,
+              "onScreen": true
+            },
+            "target": {
+              "x": 126.38438050280861,
+              "y": 449.99999999999966,
+              "onScreen": true
+            },
+            "muzzle": {
+              "x": 518.6549069925288,
+              "y": 448.4367617002522,
+              "onScreen": true
+            },
+            "contact": {
+              "x": 304.803907587078,
+              "y": 448.4367617002522,
+              "onScreen": true
+            }
+          }
+        },
+        "sampleBeam": null,
+        "sampleTrail": {
+          "x": 17.554869292556848,
+          "z": 4.825230427276267,
+          "age": 0.19000000000000003,
+          "life": 0.3,
+          "width": 0.06318,
+          "length": 1.9656
+        },
+        "sampleSprite": {
+          "x": 15.188251552366138,
+          "z": 5.27907866243308,
+          "age": 0.19000000000000003,
+          "life": 0.20871384697966278,
+          "size0": 0.18139680000000005,
+          "size1": 0.5728320000000001,
+          "kind": 4
+        },
+        "settings": {
+          "motionReduce": true,
+          "flashReduce": true,
+          "particleQuality": "medium"
+        }
+      },
+      "receipt": null
+    },
+    {
+      "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\pq023-small-destruction-salience\\pq023-reduced-small-02.png",
+      "sha256": "61f52d4c45d99134eaf5fbba508062f7a30098c52a11f70c38d854ff8fff9c9a",
+      "scenario": "small explosion reduced motion and flash 500ms",
+      "camera": "normal gameplay chase camera",
+      "settings": {
+        "motionReduce": true,
+        "flashReduce": true,
+        "particleQuality": "medium"
+      },
+      "videoTimeMs": 29569,
+      "runtime": {
+        "particles": 3,
+        "sprites": 8,
+        "spriteKinds": [
+          2,
+          2,
+          2,
+          2,
+          2,
+          4,
+          4,
+          4
+        ],
+        "trailStreaks": 6,
+        "combatBeams": 0,
+        "maxFlashSize1": 0,
+        "maxTrailLength": 1.075657468755031,
+        "beamVisible": false,
+        "projectileVisual": null,
+        "spatial": {
+          "pathLength": 17.1,
+          "source": {
+            "x": 0,
+            "z": 0
+          },
+          "muzzle": {
+            "x": 16.1,
+            "y": 0.25,
+            "z": 0
+          },
+          "target": {
+            "x": 47.6,
+            "z": 0
+          },
+          "contact": {
+            "x": 33.2,
+            "y": 0.25,
+            "z": 0
+          },
+          "screen": {
+            "source": {
+              "x": 720,
+              "y": 449.99999999999966,
+              "onScreen": true
+            },
+            "target": {
+              "x": 126.59666353864094,
+              "y": 449.99999999999966,
+              "onScreen": true
+            },
+            "muzzle": {
+              "x": 518.7271120122385,
+              "y": 448.4373222982313,
+              "onScreen": true
+            },
+            "contact": {
+              "x": 304.9528024103304,
+              "y": 448.4373222982313,
+              "onScreen": true
+            }
+          }
+        },
+        "sampleBeam": null,
+        "sampleTrail": {
+          "x": 16.17091106624414,
+          "z": 6.010517220399919,
+          "age": 0.26666666666666666,
+          "life": 0.86,
+          "width": 0.04,
+          "length": 0.6669
+        },
+        "sampleSprite": {
+          "x": 16.107104447817417,
+          "z": 2.3196418631789273,
+          "age": 0.35,
+          "life": 0.4787152346316725,
+          "size0": 0.33696000000000004,
+          "size1": 1.1291551982304184,
+          "kind": 2
+        },
+        "settings": {
+          "motionReduce": true,
+          "flashReduce": true,
+          "particleQuality": "medium"
+        }
+      },
+      "receipt": null
+    },
+    {
+      "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\pq023-small-destruction-salience\\pq023-dense-representative.png",
+      "sha256": "975a56a4765751736f9fe0ec0b63ba03aa661e923d7479d1fa64c40c6627920d",
+      "scenario": "dense mixed destruction with connected beam 180ms",
+      "camera": "normal gameplay chase camera",
+      "settings": {
+        "motionReduce": false,
+        "flashReduce": false,
+        "particleQuality": "medium"
+      },
+      "videoTimeMs": 30948,
+      "runtime": {
+        "particles": 50,
+        "sprites": 66,
+        "spriteKinds": [
+          0,
+          0,
+          0,
+          0,
+          1,
+          1,
+          1,
+          1,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "trailStreaks": 35,
+        "combatBeams": 1,
+        "maxFlashSize1": 1.52,
+        "maxTrailLength": 5.4,
+        "beamVisible": true,
+        "projectileVisual": null,
+        "spatial": {
+          "pathLength": 17.1,
+          "source": {
+            "x": 0,
+            "z": 0
+          },
+          "muzzle": {
+            "x": 16.1,
+            "y": 0.25,
+            "z": 0
+          },
+          "target": {
+            "x": 47.6,
+            "z": 0
+          },
+          "contact": {
+            "x": 33.2,
+            "y": 0.25,
+            "z": 0
+          },
+          "screen": {
+            "source": {
+              "x": 720,
+              "y": 454.0639824799479,
+              "onScreen": true
+            },
+            "target": {
+              "x": 132.8911550223918,
+              "y": 440.5062216755312,
+              "onScreen": true
+            },
+            "muzzle": {
+              "x": 520.3106740167856,
+              "y": 447.8753315564508,
+              "onScreen": true
+            },
+            "contact": {
+              "x": 308.8488960929523,
+              "y": 442.9946551350324,
+              "onScreen": true
+            }
+          }
+        },
+        "sampleBeam": {
+          "fromX": 16.1,
+          "fromZ": 0,
+          "toX": 33.2,
+          "toZ": 0,
+          "widthMul": 1,
+          "age": 0.007999999999999119
+        },
+        "sampleTrail": {
+          "x": 15.630504752641894,
+          "z": -4.9978866642486635,
+          "age": 0.18800000000000003,
+          "life": 0.38,
+          "width": 0.07722000000000001,
+          "length": 3.0186000000000006
+        },
+        "sampleSprite": {
+          "x": 6.805249649987071,
+          "z": 0.012402401103973396,
+          "age": 0.18800000000000003,
+          "life": 0.1989614790584892,
+          "size0": 0.464,
+          "size1": 1.76,
+          "kind": 4
+        },
+        "settings": {
+          "motionReduce": false,
+          "flashReduce": false,
+          "particleQuality": "medium"
+        }
+      },
+      "receipt": null
+    },
+    {
+      "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\pq023-small-destruction-salience\\motion-reduced-small-01.png",
+      "sha256": "e3dc260c8b1cf0ee1034d0b0e1d09ee26a5bcce83cc8024cd23eaad178e2ebea",
+      "scenario": "reduced-motion small destruction frame 1",
+      "camera": "normal gameplay chase camera",
+      "settings": {
+        "motionReduce": true,
+        "flashReduce": true,
+        "particleQuality": "medium"
+      },
+      "videoTimeMs": 32582,
+      "runtime": {
+        "particles": 4,
+        "sprites": 7,
+        "spriteKinds": [
+          2,
+          2,
+          2,
+          4,
+          4,
+          4,
+          4
+        ],
+        "trailStreaks": 6,
+        "combatBeams": 0,
+        "maxFlashSize1": 0,
+        "maxTrailLength": 1.9656,
+        "beamVisible": false,
+        "projectileVisual": null,
+        "spatial": {
+          "pathLength": 17.1,
+          "source": {
+            "x": 0,
+            "z": 0
+          },
+          "muzzle": {
+            "x": 16.1,
+            "y": 0.25,
+            "z": 0
+          },
+          "target": {
+            "x": 47.6,
+            "z": 0
+          },
+          "contact": {
+            "x": 33.2,
+            "y": 0.25,
+            "z": 0
+          },
+          "screen": {
+            "source": {
+              "x": 720,
+              "y": 449.99999999999966,
+              "onScreen": true
+            },
+            "target": {
+              "x": 126.8233586943781,
+              "y": 449.99999999999966,
+              "onScreen": true
+            },
+            "muzzle": {
+              "x": 518.8042189471473,
+              "y": 448.43792095455825,
+              "onScreen": true
+            },
+            "contact": {
+              "x": 305.1118055307636,
+              "y": 448.43792095455825,
+              "onScreen": true
+            }
+          }
+        },
+        "sampleBeam": null,
+        "sampleTrail": {
+          "x": 17.611598716383945,
+          "z": 4.821349768022188,
+          "age": 0.19450000000000006,
+          "life": 0.3,
+          "width": 0.06318,
+          "length": 1.9656
+        },
+        "sampleSprite": {
+          "x": 15.19241072878534,
+          "z": 5.280796583127966,
+          "age": 0.19450000000000006,
+          "life": 0.20871384697966278,
+          "size0": 0.18139680000000005,
+          "size1": 0.5728320000000001,
+          "kind": 4
+        },
+        "settings": {
+          "motionReduce": true,
+          "flashReduce": true,
+          "particleQuality": "medium"
+        }
+      },
+      "receipt": null
+    },
+    {
+      "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\pq023-small-destruction-salience\\motion-reduced-small-02.png",
+      "sha256": "f0c13112d737962656da7db41a0c2a025048e2e85f58c7a721af7b09efb28317",
+      "scenario": "reduced-motion small destruction frame 2",
+      "camera": "normal gameplay chase camera",
+      "settings": {
+        "motionReduce": true,
+        "flashReduce": true,
+        "particleQuality": "medium"
+      },
+      "videoTimeMs": 32999,
+      "runtime": {
+        "particles": 4,
+        "sprites": 8,
+        "spriteKinds": [
+          2,
+          2,
+          2,
+          2,
+          2,
+          4,
+          4,
+          4
+        ],
+        "trailStreaks": 6,
+        "combatBeams": 0,
+        "maxFlashSize1": 0,
+        "maxTrailLength": 1.075657468755031,
+        "beamVisible": false,
+        "projectileVisual": null,
+        "spatial": {
+          "pathLength": 17.1,
+          "source": {
+            "x": 0,
+            "z": 0
+          },
+          "muzzle": {
+            "x": 16.1,
+            "y": 0.25,
+            "z": 0
+          },
+          "target": {
+            "x": 47.6,
+            "z": 0
+          },
+          "contact": {
+            "x": 33.2,
+            "y": 0.25,
+            "z": 0
+          },
+          "screen": {
+            "source": {
+              "x": 720,
+              "y": 449.99999999999966,
+              "onScreen": true
+            },
+            "target": {
+              "x": 126.82489077631934,
+              "y": 449.99999999999966,
+              "onScreen": true
+            },
+            "muzzle": {
+              "x": 518.8047400611284,
+              "y": 448.43792500047425,
+              "onScreen": true
+            },
+            "contact": {
+              "x": 305.1128801260537,
+              "y": 448.43792500047425,
+              "onScreen": true
+            }
+          }
+        },
+        "sampleBeam": null,
+        "sampleTrail": {
+          "x": 15.658637474762331,
+          "z": 5.568415936474954,
+          "age": 0.15000000000000002,
+          "life": 0.86,
+          "width": 0.04,
+          "length": 0.6669
+        },
+        "sampleSprite": {
+          "x": 15.847354838777472,
+          "z": 2.9485093376966374,
+          "age": 0.23660000001192022,
+          "life": 0.4787152346316725,
+          "size0": 0.33696000000000004,
+          "size1": 1.1291551982304184,
+          "kind": 2
+        },
+        "settings": {
+          "motionReduce": true,
+          "flashReduce": true,
+          "particleQuality": "medium"
+        }
+      },
+      "receipt": null
+    },
+    {
+      "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\pq023-small-destruction-salience\\motion-reduced-small-03.png",
+      "sha256": "8653543148c91e66fdcfc80727b52b7678329251ec3a172b5ad18b1e4369db4c",
+      "scenario": "reduced-motion small destruction frame 3",
+      "camera": "normal gameplay chase camera",
+      "settings": {
+        "motionReduce": true,
+        "flashReduce": true,
+        "particleQuality": "medium"
+      },
+      "videoTimeMs": 33415,
+      "runtime": {
+        "particles": 3,
+        "sprites": 7,
+        "spriteKinds": [
+          2,
+          2,
+          2,
+          2,
+          2,
+          4,
+          4
+        ],
+        "trailStreaks": 5,
+        "combatBeams": 0,
+        "maxFlashSize1": 0,
+        "maxTrailLength": 1.075657468755031,
+        "beamVisible": false,
+        "projectileVisual": null,
+        "spatial": {
+          "pathLength": 17.1,
+          "source": {
+            "x": 0,
+            "z": 0
+          },
+          "muzzle": {
+            "x": 16.1,
+            "y": 0.25,
+            "z": 0
+          },
+          "target": {
+            "x": 47.6,
+            "z": 0
+          },
+          "contact": {
+            "x": 33.2,
+            "y": 0.25,
+            "z": 0
+          },
+          "screen": {
+            "source": {
+              "x": 720,
+              "y": 449.99999999999966,
+              "onScreen": true
+            },
+            "target": {
+              "x": 126.82570250773934,
+              "y": 449.99999999999966,
+              "onScreen": true
+            },
+            "muzzle": {
+              "x": 518.8050161590157,
+              "y": 448.4379271440914,
+              "onScreen": true
+            },
+            "contact": {
+              "x": 305.1134494707653,
+              "y": 448.4379271440914,
+              "onScreen": true
+            }
+          }
+        },
+        "sampleBeam": null,
+        "sampleTrail": {
+          "x": 16.46963975196733,
+          "z": 6.268325426209278,
+          "age": 0.33469999998807926,
+          "life": 0.86,
+          "width": 0.04,
+          "length": 0.6669
+        },
+        "sampleSprite": {
+          "x": 16.27042144187818,
+          "z": 1.9242428249265,
+          "age": 0.42129999999999945,
+          "life": 0.4787152346316725,
+          "size0": 0.33696000000000004,
+          "size1": 1.1291551982304184,
+          "kind": 2
+        },
+        "settings": {
+          "motionReduce": true,
+          "flashReduce": true,
+          "particleQuality": "medium"
+        }
+      },
+      "receipt": null
+    },
+    {
+      "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\pq023-small-destruction-salience\\motion-dense-destruction-01.png",
+      "sha256": "e35afc3538b880402e65246c6ba7ed5eb0c69c587321b07bd38eb293872dbf80",
+      "scenario": "dense destruction motion frame 1",
+      "camera": "normal gameplay chase camera",
+      "settings": {
+        "motionReduce": false,
+        "flashReduce": false,
+        "particleQuality": "medium"
+      },
+      "videoTimeMs": 33966,
+      "runtime": {
+        "particles": 46,
+        "sprites": 59,
+        "spriteKinds": [
+          0,
+          0,
+          0,
+          0,
+          1,
+          1,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "trailStreaks": 34,
+        "combatBeams": 0,
+        "maxFlashSize1": 1.52,
+        "maxTrailLength": 3.5100000000000002,
+        "beamVisible": false,
+        "projectileVisual": null,
+        "spatial": {
+          "pathLength": 17.1,
+          "source": {
+            "x": 0,
+            "z": 0
+          },
+          "muzzle": {
+            "x": 16.1,
+            "y": 0.25,
+            "z": 0
+          },
+          "target": {
+            "x": 47.6,
+            "z": 0
+          },
+          "contact": {
+            "x": 33.2,
+            "y": 0.25,
+            "z": 0
+          },
+          "screen": {
+            "source": {
+              "x": 720,
+              "y": 442.39435501314284,
+              "onScreen": true
+            },
+            "target": {
+              "x": 124.4790759615089,
+              "y": 453.61695283547346,
+              "onScreen": true
+            },
+            "muzzle": {
+              "x": 519.1696761520249,
+              "y": 444.59889222750155,
+              "onScreen": true
+            },
+            "contact": {
+              "x": 304.56731838306735,
+              "y": 448.6381570524758,
+              "onScreen": true
+            }
+          }
+        },
+        "sampleBeam": null,
+        "sampleTrail": {
+          "x": 15.696937242266694,
+          "z": -5.313755932298636,
+          "age": 0.20890000000000147,
+          "life": 0.38,
+          "width": 0.07722000000000001,
+          "length": 3.0186000000000006
+        },
+        "sampleSprite": {
+          "x": 9.240236709780993,
+          "z": 11.473442617511378,
+          "age": 0.05,
+          "life": 0.5068399274116382,
+          "size0": 1.1749514330551027,
+          "size1": 3.0546231834217905,
+          "kind": 4
+        },
+        "settings": {
+          "motionReduce": false,
+          "flashReduce": false,
+          "particleQuality": "medium"
+        }
+      },
+      "receipt": null
+    },
+    {
+      "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\pq023-small-destruction-salience\\motion-dense-destruction-02.png",
+      "sha256": "c5bc5591345ba09bb1e2707f0dd094b75613562ed5230f3732892c4fb71bab7d",
+      "scenario": "dense destruction motion frame 2",
+      "camera": "normal gameplay chase camera",
+      "settings": {
+        "motionReduce": false,
+        "flashReduce": false,
+        "particleQuality": "medium"
+      },
+      "videoTimeMs": 34480,
+      "runtime": {
+        "particles": 51,
+        "sprites": 67,
+        "spriteKinds": [
+          1,
+          1,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "trailStreaks": 50,
+        "combatBeams": 0,
+        "maxFlashSize1": 0,
+        "maxTrailLength": 3.5100000000000002,
+        "beamVisible": false,
+        "projectileVisual": null,
+        "spatial": {
+          "pathLength": 17.1,
+          "source": {
+            "x": 0,
+            "z": 0
+          },
+          "muzzle": {
+            "x": 16.1,
+            "y": 0.25,
+            "z": 0
+          },
+          "target": {
+            "x": 47.6,
+            "z": 0
+          },
+          "contact": {
+            "x": 33.2,
+            "y": 0.25,
+            "z": 0
+          },
+          "screen": {
+            "source": {
+              "x": 720,
+              "y": 449.747654188616,
+              "onScreen": true
+            },
+            "target": {
+              "x": 126.76506562298569,
+              "y": 450.3153698997119,
+              "onScreen": true
+            },
+            "muzzle": {
+              "x": 518.8004315460981,
+              "y": 448.3779850444655,
+              "onScreen": true
+            },
+            "contact": {
+              "x": 305.08590626986165,
+              "y": 448.58243435805235,
+              "onScreen": true
+            }
+          }
+        },
+        "sampleBeam": null,
+        "sampleTrail": {
+          "x": 24.91020778476686,
+          "z": 11.673901781437321,
+          "age": 0.16669999999999707,
+          "life": 0.86,
+          "width": 0.04,
+          "length": 0.6669
+        },
+        "sampleSprite": {
+          "x": 10.263272239344362,
+          "z": 11.0539784703612,
+          "age": 0.235500000011918,
+          "life": 0.5068399274116382,
+          "size0": 1.1749514330551027,
+          "size1": 3.0546231834217905,
+          "kind": 4
+        },
+        "settings": {
+          "motionReduce": false,
+          "flashReduce": false,
+          "particleQuality": "medium"
+        }
+      },
+      "receipt": null
+    },
+    {
+      "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\pq023-small-destruction-salience\\motion-dense-destruction-03.png",
+      "sha256": "605f9446cb29b80155ca12f7730766367e7b26aa67f386d635d2c2d45817ca6a",
+      "scenario": "dense destruction motion frame 3",
+      "camera": "normal gameplay chase camera",
+      "settings": {
+        "motionReduce": false,
+        "flashReduce": false,
+        "particleQuality": "medium"
+      },
+      "videoTimeMs": 34966,
+      "runtime": {
+        "particles": 37,
+        "sprites": 68,
+        "spriteKinds": [
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4,
+          4
+        ],
+        "trailStreaks": 42,
+        "combatBeams": 0,
+        "maxFlashSize1": 0,
+        "maxTrailLength": 2.744729463160038,
+        "beamVisible": false,
+        "projectileVisual": null,
+        "spatial": {
+          "pathLength": 17.1,
+          "source": {
+            "x": 0,
+            "z": 0
+          },
+          "muzzle": {
+            "x": 16.1,
+            "y": 0.25,
+            "z": 0
+          },
+          "target": {
+            "x": 47.6,
+            "z": 0
+          },
+          "contact": {
+            "x": 33.2,
+            "y": 0.25,
+            "z": 0
+          },
+          "screen": {
+            "source": {
+              "x": 720,
+              "y": 449.99999999999966,
+              "onScreen": true
+            },
+            "target": {
+              "x": 126.8265988636725,
+              "y": 449.99999999999966,
+              "onScreen": true
+            },
+            "muzzle": {
+              "x": 518.8053210406198,
+              "y": 448.43792951118456,
+              "onScreen": true
+            },
+            "contact": {
+              "x": 305.114078170719,
+              "y": 448.43792951118456,
+              "onScreen": true
+            }
+          }
+        },
+        "sampleBeam": null,
+        "sampleTrail": {
+          "x": 25.938354910441145,
+          "z": 11.305549684571218,
+          "age": 0.3549999999761567,
+          "life": 0.86,
+          "width": 0.04,
+          "length": 0.6669
+        },
+        "sampleSprite": {
+          "x": 11.301749814438788,
+          "z": 10.628182788995682,
+          "age": 0.42379999998807777,
+          "life": 0.5068399274116382,
+          "size0": 1.1749514330551027,
+          "size1": 3.0546231834217905,
+          "kind": 4
+        },
+        "settings": {
+          "motionReduce": false,
+          "flashReduce": false,
+          "particleQuality": "medium"
+        }
+      },
+      "receipt": null
+    }
+  ],
+  "motionSegments": [
+    {
+      "scenario": "small destruction lifecycle motion",
+      "startMs": 31027,
+      "endMs": 32062
+    },
+    {
+      "scenario": "reduced-motion and reduced-flash small destruction",
+      "startMs": 32136,
+      "endMs": 33415
+    },
+    {
+      "scenario": "dense mixed destruction lifecycle motion",
+      "startMs": 33476,
+      "endMs": 34966
+    }
+  ],
+  "contactSheets": [
+    {
+      "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\pq023-small-destruction-salience\\pq023-small-final-sheet.png",
+      "sha256": "05306f5ae44959bab36c903b8680a62b74ecfe834d8c724e276e0ecd05925849",
+      "sources": [
+        "06-small-01.png",
+        "06-small-02.png",
+        "06-small-03.png",
+        "06-small-04.png",
+        "06-small-05.png",
+        "pq023-reduced-small-01.png",
+        "pq023-reduced-small-02.png",
+        "motion-reduced-small-01.png",
+        "motion-reduced-small-02.png",
+        "motion-reduced-small-03.png"
+      ],
+      "command": "magick montage -label %t <10 sources> -tile 5x2 pq023-small-final-sheet.png"
+    },
+    {
+      "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\pq023-small-destruction-salience\\pq023-dense-guard-sheet.png",
+      "sha256": "507bcab76f514ed4c3e4043513d592d2e12f353044cb53a1df80402f15650129",
+      "sources": [
+        "pq023-dense-representative.png",
+        "motion-dense-destruction-01.png",
+        "motion-dense-destruction-02.png",
+        "motion-dense-destruction-03.png"
+      ],
+      "command": "magick montage -label %t <4 sources> -tile 4x1 pq023-dense-guard-sheet.png"
+    }
+  ],
+  "spatialContract": {
+    "provenance": "normal-route weapons._hardpointDir + weapons._muzzle + combat:fire payload",
+    "source": {
+      "label": "SOURCE · LIVE HITCH",
+      "entityId": 1,
+      "center": {
+        "x": 0,
+        "z": 0
+      },
+      "rotation": 0,
+      "forward": {
+        "x": 1,
+        "z": 0
+      },
+      "direction": 0,
+      "hardpointIdx": 0,
+      "fittedWeaponId": "wpn_pulse_laser_s",
+      "muzzle": {
+        "x": 16.1,
+        "y": 0.25,
+        "z": 0
+      },
+      "authoredFrontSocket": {
+        "x": 10.915719361362708,
+        "z": 0
+      },
+      "engineTrailSocket": {
+        "x": -12.152603567919657,
+        "z": 0
+      },
+      "muzzleToFrontSocket": 5.1842806386372935,
+      "muzzleToEngineSocket": 28.252603567919657
+    },
+    "target": {
+      "label": "TARGET · TEST HULL",
+      "center": {
+        "x": 47.6,
+        "z": 0
+      },
+      "contact": {
+        "x": 33.2,
+        "y": 0.25,
+        "z": 0
+      },
+      "radius": 14,
+      "facing": 3.141592653589793
+    },
+    "pathLength": 17.1,
+    "camera": {
+      "type": "normal gameplay chase",
+      "requestedZoom": 88
+    },
+    "screen": {
+      "source": {
+        "x": 720,
+        "y": 449.9999999999996,
+        "onScreen": true
+      },
+      "target": {
+        "x": 77.0521765022424,
+        "y": 449.9999999999996,
+        "onScreen": true
+      },
+      "muzzle": {
+        "x": 501.8713374867592,
+        "y": 448.30645448359246,
+        "onScreen": true
+      },
+      "contact": {
+        "x": 270.19431084226113,
+        "y": 448.30645448359246,
+        "onScreen": true
+      }
+    }
+  },
+  "diagnostics": {
+    "route": {
+      "mode": "flight",
+      "sectorId": "sector_helios_prime"
+    },
+    "player": {
+      "id": 1,
+      "defId": "ship_kestrel",
+      "authoredAssetState": "authored"
+    },
+    "explosionCapacity": 24,
+    "explosionActiveAfterCapture": 0,
+    "liveParticles": 0,
+    "liveSprites": 0,
+    "trailStreaks": 0,
+    "combatBeams": 0,
+    "poolCapacities": {
+      "particles": 3000,
+      "sprites": 256,
+      "trailStreaks": 96,
+      "combatBeams": 16,
+      "explosions": 24
+    },
+    "persistentDrawBudget": {
+      "particlePoints": 1,
+      "trailBatch": 1,
+      "spriteBuckets": 4,
+      "combatBeamLayers": 2,
+      "totalSurfaces": 8
+    },
+    "materialStates": [
+      {
+        "surface": "Points",
+        "material": "ShaderMaterial",
+        "blending": 2,
+        "transparent": true,
+        "depthTest": true,
+        "depthWrite": false,
+        "toneMapped": true
+      },
+      {
+        "surface": "SF_TrailStreakInstances",
+        "material": "ShaderMaterial",
+        "blending": 2,
+        "transparent": true,
+        "depthTest": true,
+        "depthWrite": false,
+        "toneMapped": true
+      },
+      {
+        "surface": "SF_VFX_glow_sprite_instances",
+        "material": "ShaderMaterial",
+        "blending": 2,
+        "transparent": true,
+        "depthTest": true,
+        "depthWrite": false,
+        "toneMapped": true
+      },
+      {
+        "surface": "SF_VFX_ring_sprite_instances",
+        "material": "ShaderMaterial",
+        "blending": 2,
+        "transparent": true,
+        "depthTest": true,
+        "depthWrite": false,
+        "toneMapped": true
+      },
+      {
+        "surface": "SF_VFX_smoke_sprite_instances",
+        "material": "ShaderMaterial",
+        "blending": 1,
+        "transparent": true,
+        "depthTest": true,
+        "depthWrite": false,
+        "toneMapped": true
+      },
+      {
+        "surface": "SF_VFX_combustion_sprite_instances",
+        "material": "ShaderMaterial",
+        "blending": 2,
+        "transparent": true,
+        "depthTest": true,
+        "depthWrite": false,
+        "toneMapped": true
+      },
+      {
+        "surface": "sf-combat-beam-core-pool",
+        "material": "sf-combat-beam-core",
+        "blending": 1,
+        "transparent": true,
+        "depthTest": true,
+        "depthWrite": false,
+        "toneMapped": false
+      },
+      {
+        "surface": "sf-combat-beam-sheath-pool",
+        "material": "sf-combat-beam-sheath",
+        "blending": 2,
+        "transparent": true,
+        "depthTest": true,
+        "depthWrite": false,
+        "toneMapped": false
+      }
+    ],
+    "textureStates": [
+      {
+        "name": null,
+        "width": 64,
+        "height": 64,
+        "colorSpace": "srgb"
+      },
+      {
+        "name": null,
+        "width": 64,
+        "height": 64,
+        "colorSpace": "srgb"
+      },
+      {
+        "name": "SF_VFX_IrregularSmoke",
+        "width": 96,
+        "height": 96,
+        "colorSpace": "srgb"
+      },
+      {
+        "name": "SF_VFX_IrregularCombustion",
+        "width": 96,
+        "height": 96,
+        "colorSpace": "srgb"
+      }
+    ]
+  },
+  "acceptanceChecks": {
+    "noPageIssues": true,
+    "routeRemainsInFlight": true,
+    "playerAssetRemainsAuthored": true,
+    "explosionPoolExists": true,
+    "explosionPoolClean": true,
+    "particlesClean": true,
+    "spritesClean": true,
+    "trailStreaksClean": true,
+    "combatBeamsClean": true,
+    "spriteCapacityPreserved": true,
+    "trailCapacityPreserved": true,
+    "combatBeamCapacityPreserved": true,
+    "spriteBucketBudgetPreserved": true,
+    "combatBeamLayerBudgetPreserved": true,
+    "spatialPathIsNontrivial": true,
+    "muzzleUsesFrontNotEngine": true,
+    "captureCountComplete": true,
+    "motionSegmentsComplete": true,
+    "contactSheetsComplete": true,
+    "pq023WorldSiteSequenceComplete": true,
+    "pq023CombatReadabilityComplete": true,
+    "pq023SmallDestructionSalienceComplete": true
+  },
+  "failedAcceptanceChecks": [],
+  "pq023H1": {
+    "continuation": "small-destruction-salience-only",
+    "retainedEvidenceNotRecaptured": [
+      "Wreck Cathedral normal/reduced recovery and damage",
+      "autocannon and flak impact differentiation",
+      "rail, plasma, beam, and missile families",
+      "ordinary and capital destruction"
+    ],
+    "semanticProjection": {
+      "schema": "spaceface.pq023-small-destruction-salience-projection.v1",
+      "cells": [
+        {
+          "key": "small",
+          "runtime": {
+            "observed": true,
+            "particles": 0,
+            "sprites": 3,
+            "spriteKinds": [
+              0,
+              4,
+              4
+            ],
+            "trailStreaks": 3,
+            "combatBeams": 0,
+            "maxFlashSize1": 1.4601600000000003,
+            "maxTrailLength": 3.5100000000000002,
+            "motionReduce": false,
+            "flashReduce": false
+          }
+        },
+        {
+          "key": "small-reduced",
+          "runtime": {
+            "observed": true,
+            "particles": 4,
+            "sprites": 7,
+            "spriteKinds": [
+              2,
+              2,
+              2,
+              4,
+              4,
+              4,
+              4
+            ],
+            "trailStreaks": 6,
+            "combatBeams": 0,
+            "maxFlashSize1": 0,
+            "maxTrailLength": 1.9656,
+            "motionReduce": true,
+            "flashReduce": true
+          }
+        },
+        {
+          "key": "dense",
+          "runtime": {
+            "observed": true,
+            "particles": 50,
+            "sprites": 66,
+            "spriteKinds": [
+              0,
+              0,
+              0,
+              0,
+              1,
+              1,
+              1,
+              1,
+              2,
+              2,
+              2,
+              2,
+              2,
+              2,
+              2,
+              2,
+              2,
+              2,
+              2,
+              2,
+              2,
+              2,
+              2,
+              2,
+              2,
+              2,
+              2,
+              2,
+              2,
+              2,
+              2,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4
+            ],
+            "trailStreaks": 35,
+            "combatBeams": 1,
+            "maxFlashSize1": 1.52,
+            "maxTrailLength": 5.4,
+            "motionReduce": false,
+            "flashReduce": false
+          }
+        }
+      ]
+    }
+  },
+  "continuationMode": "small-destruction-salience-only",
+  "informational_contended": true,
+  "informational_contended_note": "Phase H1 ran contended by design. videoTimeMs and motion-segment offsets are editorial navigation metadata only; no time-valued field is performance evidence. Matched performance remains Phase H3.",
+  "noPerformanceEvidence": true,
+  "issues": [],
+  "ok": true,
+  "video": {
+    "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\.devshots\\pq023-small-destruction-salience\\combat-vfx-normal-route.webm",
+    "sha256": "3ba5008072ef7fc075c221c3bfd7db5b9ceaa1b27981879cf4bb598738ea5e39",
+    "scenarios": [
+      "small destruction lifecycle motion",
+      "reduced-motion and reduced-flash small destruction",
+      "dense mixed destruction lifecycle motion"
+    ]
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "schema": "spaceface.validation-run-result.v1",
+  "recordedAt": "2026-07-29T05:54:05.024Z",
+  "status": "fail",
+  "exitCode": 1,
+  "signal": null,
+  "timedOut": false,
+  "durationMs": 119007,
+  "informational_contended": true,
+  "informational_contended_note": "Phase H1 ran on a contended machine by design. durationMs is broker process metadata only and is not performance evidence.",
+  "pidRecord": {
+    "pid": 15464,
+    "command": "C:\\Program Files\\nodejs\\node.exe",
+    "args": [
+      "scripts/probe-pq019-surface-heist.mjs"
+    ],
+    "startedAt": "2026-07-29T05:52:06.012Z",
+    "platform": "win32",
+    "finishedAt": "2026-07-29T05:54:05.019Z",
+    "exitCode": 1,
+    "signal": null,
+    "timedOut": false,
+    "killResult": null
+  },
+  "ownership": {
+    "probeId": "pq019-surface-heist",
+    "runtimeKind": "browser",
+    "browserOwned": true,
+    "serverOwned": true,
+    "pid": 15464
+  },
+  "fixedSeed": 19019,
+  "failureFingerprint": "77a503ec7ffe13cc3aaa2fb8e6418d85c06e1ca495df0ac9f9051232cf5bb9e6",
+  "family": "browser/acceptance-probe/pq-surface-heist-fail-in-heist-plus-fence-page-waitforfunction/none/none/timeout-ms-exceeded-exitcode",
+  "routeDigest": "892435dcae0bb21b388910bd9b00fd24b0070c8cad990af87c1f00aba5636d6c",
+  "regressionDigest": "da468be88bda804a6646a6a73aa99b5c4b0a0885dfed7397969b0329ccf9c1a8",
+  "candidateDigest": "21afdc13a66d0cb6fa3b729921203e814b98e5115139e949572a7dc7e3896474"
+}

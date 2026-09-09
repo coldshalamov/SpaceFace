@@ -1,0 +1,13 @@
+# Charge Detonate
+# Generated icon prompt — SpaceFace power bar.
+# Style anchor and negative prompt are FIXED. Do not reword them; set coherence depends on it.
+# Target: concept reference only. Ship as authored 24x24 currentColor stroke SVG.
+# See design/frontend/ICON_PIPELINE.md
+
+STYLE ANCHOR. A single monochrome line-art pictogram on a plain dark background. Drawn as clean unfilled outlines with one uniform stroke weight and rounded caps and joins, like a precision aerospace panel marking or an ISO safety symbol. No fills, no gradients, no shading, no texture, no glow, no colour, no perspective, no 3D rendering, no drop shadow, no background scene, no text, no lettering, no numerals, no border or frame. Centred, symmetrical where the subject allows, with generous empty margin. The whole shape must remain readable when shrunk to 32 pixels. Industrial and functional rather than decorative or magical.
+
+SUBJECT: a compact core with fracture lines breaking outward
+THE IDEA TO CONVEY: releasing stored energy as a burst
+COMPOSITION HINT: centred with radial cracks; denser at the centre than the well icon
+
+Negative prompt: photorealistic, 3D render, gradient, glow, neon, lens flare, drop shadow, colour, filled shapes, text, letters, numbers, watermark, signature, frame, border, busy background, multiple objects, perspective, isometric, cute, cartoon mascot, fantasy runes, magic sparkles

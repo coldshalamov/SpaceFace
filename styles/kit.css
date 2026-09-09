@@ -1,0 +1,358 @@
+/* The kit — design/frontend/direction/KIT_SPEC.md §3–§7, copied in the spec's order.
+   Authority: DIRECTION_SHEET.md, then KIT_SPEC.md. Screens add kit classes; they add no CSS here.
+   Task additions go at the end under a "Task <X> additions" comment. */
+
+/* §3 tokens and the scale */
+:root {
+  /* scale: 1 at 1920 px wide, 0.75 at 1280, 1.25 at 2560; every size below multiplies by it */
+  --k-s: 1;                                              /* fallback where trig functions are unsupported */
+  /* Task A choice (spec §3 is width-only): the ratio is also capped by height so a wide-but-short
+     frame (2560×1080) keeps the 1080-tall column geometry; 2560×1440 still scales to 1.25. */
+  --k-s: clamp(0.75, min(tan(atan2(100vw, 1920px)), tan(atan2(100vh, 1080px))), 1.25);
+
+  /* faces */
+  --k-display: "Bricolage Grotesque", "Instrument Sans", system-ui, sans-serif;
+  --k-text: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* colour — the only colours that exist */
+  --k-bone-rgb: 234 230 223;
+  --k-bone: rgb(var(--k-bone-rgb));
+  --k-bone-62: rgb(var(--k-bone-rgb) / 0.62);
+  --k-bone-38: rgb(var(--k-bone-rgb) / 0.38);
+  --k-hair: rgb(var(--k-bone-rgb) / 0.14);
+  --k-ink: #0a0b0d;
+  --k-gold: #f2b950;
+  --k-red: #ff4d3d;
+  --k-white: #ffffff;
+  --k-good: #9bd8a0;
+  --k-bad: #ff7a6b;
+
+  /* live temperature — overridden by html[data-k-temp]; a screen never sets these */
+  --k-signal: var(--k-gold);
+  --k-text-live: var(--k-bone);
+  --k-scrim: rgb(7 9 15 / 0);
+
+  /* the scale (px at 1920; 12 px floor) */
+  --k-fs-fine:  max(12px, calc(12px  * var(--k-s)));
+  --k-fs-data:  max(12px, calc(14px  * var(--k-s)));
+  --k-fs-body:  max(12px, calc(16px  * var(--k-s)));
+  --k-fs-emph:  calc(20px  * var(--k-s));
+  --k-fs-sub:   calc(28px  * var(--k-s));
+  --k-fs-menu:  calc(40px  * var(--k-s));
+  --k-fs-num:   calc(56px  * var(--k-s));
+  --k-fs-title: calc(80px  * var(--k-s));
+  --k-fs-hero:  calc(112px * var(--k-s));
+  --k-fs-name:  calc(160px * var(--k-s));
+
+  /* layout */
+  --k-margin: 5vw;                         /* 96 px at 1920 */
+  --k-hang:   calc(480px * var(--k-s));    /* the left column */
+  --k-gap:    calc(32px  * var(--k-s));
+  --k-row:    calc(40px  * var(--k-s));    /* dense-register row height */
+  --k-pad:    calc(12px  * var(--k-s));    /* cell padding */
+  --k-measure: 64ch;
+
+  /* motion */
+  --k-ease: cubic-bezier(0.2, 0, 0, 1);
+  --k-d-focus: 80ms;
+  --k-d-settle: 140ms;
+  --k-d-temp: 400ms;
+  --k-shift: calc(12px * var(--k-s));
+}
+
+/* §4 type classes */
+.k-display { font-family: var(--k-display); font-weight: 800; font-stretch: 100%;
+  font-variation-settings: "opsz" 96; letter-spacing: -0.03em; line-height: 0.9;
+  font-variant-numeric: tabular-nums; color: var(--k-text-live); margin: 0; }
+.k-text { font-family: var(--k-text); font-weight: 400; line-height: 1.4;
+  font-variant-numeric: tabular-nums; color: var(--k-text-live); }
+.k-t-fine  { font-size: var(--k-fs-fine); }
+.k-t-data  { font-size: var(--k-fs-data); }
+.k-t-body  { font-size: var(--k-fs-body); }
+.k-t-emph  { font-size: var(--k-fs-emph); }
+.k-t-sub   { font-size: var(--k-fs-sub); }
+.k-t-menu  { font-size: var(--k-fs-menu); }
+.k-t-num   { font-size: var(--k-fs-num); }
+.k-t-title { font-size: var(--k-fs-title); }
+.k-t-hero  { font-size: var(--k-fs-hero); }
+.k-t-name  { font-size: var(--k-fs-name); }
+.k-62 { color: var(--k-bone-62); }
+.k-38 { color: var(--k-bone-38); }
+.k-signal { color: var(--k-signal); }
+.k-good { color: var(--k-good); }
+.k-bad  { color: var(--k-bad); }
+.k-caps { font-size: var(--k-fs-fine); text-transform: uppercase; letter-spacing: 0.08em; color: var(--k-bone-38); }
+.k-measure { max-width: var(--k-measure); }
+
+/* §5 temperature */
+html[data-k-temp="flight"]   { --k-scrim: rgb(7 9 15 / 0); }
+html[data-k-temp="menu"]     { --k-scrim: rgb(7 9 15 / 0.25); }
+html[data-k-temp="docked"]   { --k-scrim: rgb(26 20 16 / 0.25); }
+html[data-k-temp="wanted"]   { --k-scrim: rgb(6 8 15 / 0.35); --k-signal: var(--k-red); --k-text-live: #e4e8f0; }
+html[data-k-temp="crucible"] { --k-scrim: rgb(7 9 15 / 0); --k-signal: var(--k-white); }
+html[data-k-temp="works"]    { /* Asteroid Works keeps its own law; the kit sets nothing */ }
+
+/* §6.1 the screen root and the scrim */
+.k-screen { position: fixed; inset: 0; box-sizing: border-box; padding: var(--k-margin);
+  background: transparent; isolation: isolate; color: var(--k-text-live);
+  font-family: var(--k-text); font-weight: 400; line-height: 1.4; font-variant-numeric: tabular-nums;
+  display: grid; column-gap: var(--k-gap); row-gap: calc(64px * var(--k-s));
+  grid-template-columns: var(--k-hang) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas: "title title" "hang stage" "foot foot"; }
+.k-screen::before { content: ""; position: absolute; inset: 0; z-index: -1;
+  background: var(--k-scrim); transition: background-color var(--k-d-temp) var(--k-ease); }
+.k-screen--dense::before { background: rgb(26 20 16 / 0.45); }
+.k-screen--split { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.k-screen--stage { grid-template-columns: minmax(0, 1fr); grid-template-areas: "title" "stage" "foot"; }
+.k-title { grid-area: title; min-width: 0; }
+.k-hang  { grid-area: hang;  min-width: 0; overflow: hidden auto; scrollbar-width: thin; scrollbar-color: var(--k-hair) transparent; }
+.k-stage { grid-area: stage; min-width: 0; position: relative; }
+.k-foot  { grid-area: foot; display: flex; align-items: flex-end; gap: calc(64px * var(--k-s)); min-width: 0; }
+.k-fine  { position: absolute; left: var(--k-margin); bottom: calc(var(--k-margin) * 0.42);
+  font-size: var(--k-fs-fine); color: var(--k-bone-38); }
+.k-corner { position: absolute; right: var(--k-margin); top: var(--k-margin); text-align: right; }
+.k-world { position: absolute; top: 0; left: -9vw; width: 150vw; height: 100%; z-index: -2; display: block; }
+/* The title screen's authored hangar plate: a 16:9 photograph, not a live scene, so it frames to
+   the viewport like a stage floor (no 150vw camera bleed) and covers any aspect by cropping. */
+.k-world--still { left: 0; width: 100%;
+  background: url('../assets/cinematics/menu_hangar_bg.jpg') center / cover no-repeat; }
+
+/* A kit screen replaces the legacy screen ground and the screen manager's fade (§11.1). */
+.screen.k-screen { transition: none; transform: none; }
+.screen.k-screen.sf-screen--exiting { opacity: 0; transition: opacity var(--k-d-settle) var(--k-ease); }
+body.k-screen-top #screens { background-image: none !important; background-color: transparent !important; }
+body.k-screen-top #screens::before { display: none !important; }
+/* The flight HUD's own scrim, so the frame can go cold in flight (§11.4). */
+#hud::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: var(--k-scrim); transition: background-color var(--k-d-temp) var(--k-ease); }
+
+/* §6.2 words */
+.k-words { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: calc(16px * var(--k-s)); }
+.k-words--row { flex-direction: row; gap: calc(48px * var(--k-s)); flex-wrap: wrap; align-items: baseline; }
+.k-word { all: unset; box-sizing: border-box; cursor: pointer; position: relative; display: inline-block;
+  font-family: var(--k-text); font-weight: 500; font-size: var(--k-fs-menu); line-height: 1.1;
+  color: var(--k-bone-62); padding-bottom: 0.15em; white-space: nowrap;
+  transition: color var(--k-d-focus) var(--k-ease); }
+.k-word::after { content: ""; position: absolute; left: 0; bottom: 0; height: 2px; width: 2.5em;
+  background: var(--k-signal); transform: scaleX(0); transform-origin: left;
+  transition: transform var(--k-d-focus) var(--k-ease), background-color var(--k-d-temp) var(--k-ease); }
+.k-word:hover, .k-word:focus-visible, .k-word[aria-current="true"], .k-word[aria-pressed="true"] { color: var(--k-text-live); }
+.k-word:hover::after, .k-word:focus-visible::after, .k-word[aria-current="true"]::after, .k-word[aria-pressed="true"]::after { transform: scaleX(1); }
+.k-word:disabled, .k-word[aria-disabled="true"] { color: var(--k-bone-38); cursor: default; }
+.k-word:disabled::after, .k-word[aria-disabled="true"]::after { display: none; }
+.k-word--emph { font-size: var(--k-fs-emph); }
+.k-word--body { font-size: var(--k-fs-body); }
+.k-word--fine { font-size: var(--k-fs-fine); font-weight: 400; }
+.k-word--primary { color: var(--k-signal); }
+.k-word--primary:hover, .k-word--primary:focus-visible { color: var(--k-signal); }
+.k-word--danger { color: var(--k-red); }
+.k-word--danger::after { background: var(--k-red); }
+/* Task A choice: the spec's −6 px pulled the sub line up through the word's 2 px underline, and 0 put
+   it under the focus ring (2 px line at 4 px offset = 6 px below the word). 6 px clears both; the
+   ring is fixed-size, so this is not scaled (see FRONTEND-A-REPORT.md). */
+.k-word-sub { font-size: var(--k-fs-data); color: var(--k-bone-38); margin-top: 6px; }
+
+/* §6.3 rows and the dense register */
+.k-rows { list-style: none; margin: 0; padding: 0; }
+.k-row { display: grid; grid-template-columns: var(--k-row-cols, minmax(0, 1fr) auto); align-items: center;
+  column-gap: var(--k-gap); min-height: var(--k-row); padding: 0 var(--k-pad);
+  border-top: 1px solid var(--k-hair); color: var(--k-bone-62); font-size: var(--k-fs-body); cursor: pointer;
+  transition: color var(--k-d-focus) var(--k-ease), box-shadow var(--k-d-focus) var(--k-ease); }
+.k-rows > .k-row:last-child { border-bottom: 1px solid var(--k-hair); }
+.k-row__name { color: var(--k-text-live); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.k-row__num  { font-size: var(--k-fs-emph); color: var(--k-text-live); text-align: right; white-space: nowrap; }
+.k-row__sub  { font-size: var(--k-fs-data); color: var(--k-bone-38); }
+.k-row:hover, .k-row:focus-visible, .k-row[aria-selected="true"] { color: var(--k-text-live); box-shadow: inset 2px 0 0 var(--k-signal); }
+.k-row[aria-selected="true"] .k-row__name { font-weight: 500; }
+.k-row--static { cursor: default; }
+.k-row--static:hover { box-shadow: none; color: var(--k-bone-62); }
+
+.k-table-wrap { max-height: calc(var(--k-row) * 12 + calc(24px * var(--k-s))); overflow: hidden auto;
+  scrollbar-width: thin; scrollbar-color: var(--k-hair) transparent; }
+.k-table { width: 100%; border-collapse: collapse; font-size: var(--k-fs-data); color: var(--k-bone-62); }
+.k-table th { text-align: left; font-weight: 400; padding: 0 var(--k-pad) calc(8px * var(--k-s)); }
+.k-table th.k-num, .k-table td.k-num { text-align: right; }
+.k-table th[aria-sort] { color: var(--k-text-live); cursor: pointer; }
+.k-table td { height: var(--k-row); padding: 0 var(--k-pad); border-top: 1px solid var(--k-hair); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.k-table td.k-name { color: var(--k-text-live); }
+.k-table td.k-num  { font-size: var(--k-fs-emph); color: var(--k-text-live); }
+.k-table tbody tr { cursor: pointer; transition: box-shadow var(--k-d-focus) var(--k-ease); }
+.k-table tbody tr:hover, .k-table tbody tr:focus-visible, .k-table tbody tr[aria-selected="true"] { box-shadow: inset 2px 0 0 var(--k-signal); }
+.k-table tbody tr[aria-selected="true"] td.k-name { font-weight: 500; }
+
+/* §6.4 hero blocks, titles, empty states, inputs, pins, crests, bars */
+.k-hero { display: flex; flex-direction: column; gap: calc(6px * var(--k-s)); min-width: 0; }
+.k-hero__n { font-family: var(--k-display); font-weight: 800; font-stretch: 100%; font-variation-settings: "opsz" 96;
+  letter-spacing: -0.03em; line-height: 0.9; font-variant-numeric: tabular-nums; font-size: var(--k-fs-num); color: var(--k-text-live); }
+.k-hero__w { font-size: var(--k-fs-body); color: var(--k-bone-62); }
+.k-hero--signal .k-hero__n { color: var(--k-signal); transition: color var(--k-d-temp) var(--k-ease); }
+.k-hero--title .k-hero__n { font-size: var(--k-fs-title); }
+.k-hero--hero  .k-hero__n { font-size: var(--k-fs-hero); }
+.k-sentence { font-size: var(--k-fs-body); color: var(--k-bone-62); max-width: var(--k-measure); margin: 0; }
+.k-sentence--emph { font-size: var(--k-fs-emph); color: var(--k-text-live); }
+.k-empty { font-size: var(--k-fs-sub); color: var(--k-bone-62); max-width: var(--k-measure); margin: 0; }
+.k-input { all: unset; box-sizing: border-box; font-family: var(--k-text); font-size: var(--k-fs-body); color: var(--k-text-live);
+  border-bottom: 1px solid var(--k-hair); padding: calc(4px * var(--k-s)) 0; min-width: 6ch; font-variant-numeric: tabular-nums;
+  transition: border-color var(--k-d-focus) var(--k-ease); }
+.k-input:focus { border-bottom-color: var(--k-bone); }
+.k-input--num { text-align: right; font-size: var(--k-fs-emph); }
+.k-select { all: unset; box-sizing: border-box; cursor: pointer; font-family: var(--k-text); font-size: var(--k-fs-body); color: var(--k-text-live);
+  border-bottom: 1px solid var(--k-hair); padding: calc(4px * var(--k-s)) 0; }
+.k-select:focus { border-bottom-color: var(--k-bone); }
+.k-range { -webkit-appearance: none; appearance: none; width: calc(240px * var(--k-s)); height: 2px; background: var(--k-bone-38); outline-offset: 8px; }
+.k-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 2px; height: calc(16px * var(--k-s)); background: var(--k-bone); border: 0; border-radius: 0; }
+.k-range::-moz-range-thumb { width: 2px; height: calc(16px * var(--k-s)); background: var(--k-bone); border: 0; border-radius: 0; }
+.k-pin { position: absolute; font-size: var(--k-fs-data); color: var(--k-text-live); white-space: nowrap; transform: translate(-50%, -100%); padding-bottom: calc(6px * var(--k-s)); }
+.k-pin__sub { display: block; color: var(--k-bone-38); }
+.k-pin__lead { position: absolute; left: 0; top: 0; height: 1px; background: var(--k-hair); transform-origin: 0 0; }
+.k-crest { width: calc(96px * var(--k-s)); height: auto; }
+.k-crest--hero { width: calc(240px * var(--k-s)); }
+.k-crest--row { width: calc(24px * var(--k-s)); }
+.k-bar { position: relative; height: 2px; width: calc(240px * var(--k-s)); background: var(--k-bone-38); }
+.k-bar__fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--k-text-live); transition: width var(--k-d-focus) linear, background-color var(--k-d-temp) var(--k-ease); }
+.k-bar--signal .k-bar__fill { background: var(--k-signal); }
+.k-rule { border: 0; border-top: 1px solid var(--k-hair); margin: calc(24px * var(--k-s)) 0; }
+.k-screen :focus-visible { outline: 2px solid var(--k-bone); outline-offset: 4px; border-radius: 0; }
+.k-screen ::selection { background: var(--k-signal); color: var(--k-ink); }
+.k-screen *, .k-screen *::before, .k-screen *::after { border-radius: 0; }
+
+/* §7 motion */
+.k-in { opacity: 0; transform: translate(var(--k-in-x, 0px), var(--k-in-y, 0px)); }
+.k-in.k-in--go { opacity: 1; transform: none;
+  transition: opacity var(--k-d-settle) var(--k-ease), transform var(--k-d-settle) var(--k-ease);
+  transition-delay: var(--k-in-delay, 0ms); }
+.k-in--left   { --k-in-x: calc(-1 * var(--k-shift)); }
+.k-in--right  { --k-in-x: var(--k-shift); }
+.k-in--top    { --k-in-y: calc(-1 * var(--k-shift)); }
+.k-in--bottom { --k-in-y: var(--k-shift); }
+.k-in--stamp  { --k-in-y: calc(4px * var(--k-s)); }
+.k-out { opacity: 0 !important; transition: opacity var(--k-d-settle) var(--k-ease); }
+@media (prefers-reduced-motion: reduce) { :root { --k-d-focus: 0ms; --k-d-settle: 0ms; --k-d-temp: 0ms; } }
+html.sf-reduce-motion { --k-d-focus: 0ms; --k-d-settle: 0ms; --k-d-temp: 0ms; }
+
+/* Task A additions */
+/* The legacy `#screens h1` and `#screens p` rules (styles/ui.css) outrank a class; inside a kit
+   screen the kit's face, tracking and rhythm win. Values are the spec's own (§4, §6.1). */
+#screens .k-screen .k-display { font-family: var(--k-display); letter-spacing: -0.03em; color: var(--k-text-live); }
+#screens .k-screen .k-title p { margin: calc(16px * var(--k-s)) 0 0; }
+/* The spec's markup puts k-38 on a word (Sandbox); a class pair so it wins the word's resting 62 %. */
+.k-word.k-38 { color: var(--k-bone-38); }
+/* styles/ui.css declares `*:focus-visible` with !important in the legacy accent; the kit's own
+   §6.4 ring (2 px bone, 4 px offset) must therefore also be !important. Gamepad focus likewise. */
+.k-screen :focus-visible { outline: 2px solid var(--k-bone) !important; outline-offset: 4px !important; }
+html.sf-gamepad-focus .k-screen :is(button, a, input, select, textarea, [tabindex]):focus { outline: 2px solid var(--k-bone); outline-offset: 4px; box-shadow: none; }
+/* styles/ui.css styles `input[type=…]`, `select` and the range track/thumb at element+attribute
+   specificity, which outranks a lone class. Restate the kit's own §6.4 values at element+class
+   specificity so a kit control renders as written; no new value appears here. */
+input.k-input, input.k-input:hover, input.k-input:focus { all: unset; box-sizing: border-box; font-family: var(--k-text); font-size: var(--k-fs-body); color: var(--k-text-live);
+  border-bottom: 1px solid var(--k-hair); padding: calc(4px * var(--k-s)) 0; min-width: 6ch; font-variant-numeric: tabular-nums;
+  transition: border-color var(--k-d-focus) var(--k-ease); }
+input.k-input:focus { border-bottom-color: var(--k-bone); }
+input.k-input--num { text-align: right; font-size: var(--k-fs-emph); }
+select.k-select, select.k-select:hover, select.k-select:focus { all: unset; box-sizing: border-box; cursor: pointer; font-family: var(--k-text); font-size: var(--k-fs-body); color: var(--k-text-live);
+  border-bottom: 1px solid var(--k-hair); padding: calc(4px * var(--k-s)) 0; }
+select.k-select:focus { border-bottom-color: var(--k-bone); }
+input.k-range, input.k-range:hover, input.k-range:active { -webkit-appearance: none; appearance: none; width: calc(240px * var(--k-s)); height: 2px; background: var(--k-bone-38); outline-offset: 8px; cursor: pointer; }
+input.k-range:focus-visible { outline: 2px solid var(--k-bone); }
+input.k-range::-webkit-slider-runnable-track, input.k-range:hover::-webkit-slider-runnable-track { height: 2px; background: transparent; border: 0; border-radius: 0; box-shadow: none; }
+input.k-range::-webkit-slider-thumb, input.k-range:hover::-webkit-slider-thumb, input.k-range:active::-webkit-slider-thumb { -webkit-appearance: none; appearance: none;
+  width: 2px; height: calc(16px * var(--k-s)); margin-top: calc((2px - 16px * var(--k-s)) / 2); background: var(--k-bone); border: 0; border-radius: 0; box-shadow: none; transform: none; filter: none; cursor: pointer; }
+input.k-range::-moz-range-track { height: 2px; background: transparent; border: 0; border-radius: 0; box-shadow: none; }
+input.k-range::-moz-range-progress { background: transparent; }
+input.k-range::-moz-range-thumb, input.k-range:hover::-moz-range-thumb, input.k-range:active::-moz-range-thumb { width: 2px; height: calc(16px * var(--k-s)); background: var(--k-bone); border: 0; border-radius: 0; box-shadow: none; transform: none; cursor: pointer; }
+/* The game's own high-contrast and forced-colours modes (src/ui/accessibility.js) — tokens only. */
+html.sf-high-contrast .k-screen { --k-bone-62: var(--k-bone); --k-bone-38: var(--k-bone); --k-hair: var(--k-bone); }
+@media (forced-colors: active) {
+  .k-screen { --k-text-live: CanvasText; --k-bone: CanvasText; --k-bone-62: CanvasText; --k-bone-38: GrayText;
+    --k-hair: CanvasText; --k-signal: Highlight; --k-red: LinkText; --k-good: CanvasText; --k-bad: CanvasText; }
+  .k-screen::before { background: transparent; }
+  .k-row[aria-selected="true"], .k-table tbody tr[aria-selected="true"] { outline: 2px solid Highlight; outline-offset: -2px; }
+}
+
+/* Task B additions */
+/* §1.1/§1.2: a hull bounded to the stage (new game, load) - the title's world canvas clipped to .k-stage. */
+.k-stage > .k-world--stage { left: 0; width: 100%; height: 100%; z-index: -1; }
+/* §1.1/§1.2: the stage's caption block (the hull's name and sentence; the save portrait) hangs from the stage's bottom-left. */
+.k-stage__foot { position: absolute; left: 0; bottom: 0; max-width: 100%; }
+/* §1.4: the HUD dims to 38 % under the pause instead of hiding (ui.css body.ui-modal-open #hud). */
+body.k-screen-top[data-k-screen="pause"] #hud { opacity: 0.38; }
+/* §1.5: game over is the one screen that deepens its scrim to the wanted blue. */
+.k-screen--cold::before { background: rgb(6 8 15 / 0.35); }
+/* §1.7: photo mode - everything gone but the world. !important outranks the pause 38 % above. */
+body.k-photo #hud, body.k-photo #toasts, body.k-photo #alerts { opacity: 0 !important; pointer-events: none !important; }
+/* The legacy modal backdrop (ui.css #modal-backdrop) paints a radial vignette under every screen; a kit
+   screen's scrim (.k-screen::before) is the only darkening the sheet allows, so the vignette goes with the ground. */
+body.k-screen-top #modal-backdrop { background: none; }
+/* §1.1: the live difficulty's sentence sits a small step below its row of words (the row's underline otherwise touches it). */
+.k-words--row + .k-sentence { margin-top: calc(12px * var(--k-s)); }
+/* §1.3: a stage that holds more rows than the frame (settings, credits) scrolls like the hang does. */
+.k-stage--scroll { overflow: hidden auto; scrollbar-width: thin; scrollbar-color: var(--k-hair) transparent; }
+
+/* Task C additions */
+/* Task C: a nested panel grid inside a screen, and a full-width row. */
+.k-span  { grid-column: 1 / -1; min-height: 0; }
+.k-panel { display: grid; grid-template-columns: var(--k-hang) minmax(0, 1fr); column-gap: var(--k-gap); min-height: 0; height: 100%; }
+.k-panel--split { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.k-panel > .k-hang, .k-panel > .k-stage { grid-area: auto; }
+/* Task C: the four data states and the entity drawer in kit clothes (markup owned by uiPrimitives.js / entityLinks.js). */
+.k-screen .sf-state { display: flex; flex-direction: column; gap: calc(12px * var(--k-s)); max-width: var(--k-measure); background: none; border: 0; box-shadow: none; padding: 0; }
+.k-screen .sf-state__glyph { width: calc(24px * var(--k-s)); height: calc(24px * var(--k-s)); color: var(--k-bone-62); }
+.k-screen .sf-state--error .sf-state__glyph, .k-screen .sf-state--denied .sf-state__glyph { color: var(--k-red); }
+.k-screen .sf-state__word { font-size: var(--k-fs-fine); color: var(--k-bone-38); letter-spacing: 0.08em; text-transform: uppercase; }
+.k-screen .sf-state__head { font-size: var(--k-fs-sub); color: var(--k-bone-62); }
+.k-screen .sf-state__fills, .k-screen .sf-state__detail { font-size: var(--k-fs-body); color: var(--k-bone-62); }
+.k-screen .sf-state__verb { all: unset; cursor: pointer; font: 500 var(--k-fs-emph) var(--k-text); color: var(--k-signal); }
+.k-screen .sf-state__skel, .k-screen .sf-state__bar { background: var(--k-hair); height: 2px; }
+.k-screen .sf-drawer { position: absolute; top: var(--k-margin); right: var(--k-margin); bottom: var(--k-margin); width: var(--k-hang); background: none; border: 0; box-shadow: none; border-left: 1px solid var(--k-hair); padding: 0 0 0 var(--k-gap); overflow: hidden auto; }
+.k-screen .sf-drawer__title { font-family: var(--k-display); font-weight: 800; font-variation-settings: "opsz" 96; font-size: var(--k-fs-sub); letter-spacing: -0.03em; line-height: .9; }
+.k-screen .sf-drawer__kicker, .k-screen .sf-deck__label { font-size: var(--k-fs-fine); color: var(--k-bone-38); letter-spacing: 0.08em; text-transform: uppercase; }
+.k-screen .sf-tile { display: flex; justify-content: space-between; min-height: var(--k-row); border-top: 1px solid var(--k-hair); background: none; padding: 0; }
+.k-screen .sf-tile__k { color: var(--k-bone-62); font-size: var(--k-fs-body); }
+.k-screen .sf-tile__v { color: var(--k-text-live); font-size: var(--k-fs-emph); }
+.k-screen .sf-entity-link { all: unset; cursor: pointer; color: var(--k-text-live); border-bottom: 1px solid var(--k-hair); }
+.k-screen .sf-entity-link:hover, .k-screen .sf-entity-link:focus-visible { border-bottom-color: var(--k-signal); }
+.k-screen .sf-drawer__verb { all: unset; cursor: pointer; font: 500 var(--k-fs-emph) var(--k-text); color: var(--k-signal); }
+.k-screen .sf-drawer__x { all: unset; cursor: pointer; font-size: var(--k-fs-body); color: var(--k-bone-62); }
+
+/* Task D additions */
+/* §4.2: the confirm dialog (src/ui/confirm.js) — a title, a sentence and two words on a dark ground; no plate. */
+#sf-confirm-root { position: fixed; inset: 0; z-index: 5000; display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--k-ink) 82%, transparent); opacity: 0; transition: opacity var(--k-d-settle) var(--k-ease); pointer-events: auto; }
+#sf-confirm-root:empty { display: none; pointer-events: none; }
+#sf-confirm-root.sf-confirm--in { opacity: 1; }
+.sf-confirm { width: min(calc(560px * var(--k-s)), 92vw); display: flex; flex-direction: column; gap: var(--k-gap); }
+.sf-confirm__title { margin: 0; }
+.sf-confirm__title--danger { color: var(--k-red); }
+.sf-confirm__body { margin: 0; white-space: pre-line; }
+.sf-confirm__body:empty { display: none; }
+/* §3: legacy ui.css `.sf-tab:hover` paints an accent tint under any kit tab word that keeps the `.sf-tab` hook (help, codex, settings). */
+.k-screen .sf-tab:hover, .k-screen .sf-tab:focus-visible { background: none; }
+/* §1.3: a panel column ordered before its DOM siblings (the results ledger reads first for the eye, second for a reader). */
+.k-order-first { order: -1; }
+/* §1.2: the draft's three offers across on the sky. The whole block is the button; the focused one is bright, the others 62 %. */
+.sf-cru-cards { display: flex; gap: var(--k-gap); align-items: flex-start; }
+.sf-cru-card { all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex: 1 1 0; min-width: 0; flex-direction: column; gap: calc(8px * var(--k-s)); text-align: left; transition: opacity var(--k-d-focus) var(--k-ease); }
+.sf-cru-card > * { margin: 0; }
+.sf-cru-cards:focus-within .sf-cru-card, .sf-cru-cards:hover .sf-cru-card { opacity: 0.62; }
+.sf-cru-card:focus-visible, .sf-cru-card:hover { opacity: 1; outline: none; }
+.sf-cru-card:focus-visible .sf-cru-verb, .sf-cru-card:hover .sf-cru-verb { color: var(--k-signal); }
+.sf-cru-note { margin: var(--k-gap) 0 0; }
+.sf-cru-note:empty { display: none; }
+.sf-cru-fine { margin: calc(12px * var(--k-s)) 0 0; }
+.sf-cru-fine:empty { display: none; }
+/* §1.3: the results story's bands — a caps header, then rows; a gap between bands, none inside. */
+.sf-crres__band + .sf-crres__band { margin-top: var(--k-gap); }
+.sf-crres__band-title { margin: 0 0 calc(8px * var(--k-s)); }
+/* §1.4: the lab telemetry — static rows at data size, 62 %, no plate; the hostiles figure goes red when any are live. */
+.sf-lab-tel .k-row { min-height: calc(var(--k-row) * 0.62); }
+.sf-lab-tel .k-row__name, .sf-lab-tel .k-row__num { font-size: var(--k-fs-data); color: var(--k-bone-62); }
+.sf-lab-tel .k-row__num.k-bad { color: var(--k-bad); }
+.sf-lab-runtime__hint { margin: calc(8px * var(--k-s)) 0 0; }
+/* §1.1: the door's hull sentence and the arena line sit under their row of words. */
+.sf-crd-settings .k-sentence, .sf-crd-settings .sf-crd-arena { margin: calc(8px * var(--k-s)) 0 0; }
+/* §3.4: the research side column starts under the corner's three hero numbers instead of running beneath them; the zoom badge sits in a strip under the lanes, not on their scrollbar. */
+.k-screen .tt-side { padding-top: calc(80px * var(--k-s)); }
+.k-screen .tt-scroll { height: calc(100% - 28px * var(--k-s)); }
+/* §3.2: the codex search field spans the hang and keeps a gap from the tab words beneath it. */
+/* Outranks the kit's own `input.k-input:focus { all: unset }` while the field is focused; the 2 px inset keeps the focus ring inside the hang's clip. */
+.k-screen .k-hang input.sf-codex-search, .k-screen .k-hang input.sf-codex-search:focus { display: block; width: calc(100% - 4px); margin: 2px 2px calc(16px * var(--k-s)); }

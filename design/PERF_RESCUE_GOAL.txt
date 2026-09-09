@@ -1,0 +1,62 @@
+Finish Chunks 2-5 of the Performance Rescue. Do not end a turn while any gate is
+unmet.
+
+FIRST: read design/PERF_RESCUE_LEDGER.md. Trust it over memory. Update it before
+every commit.
+
+NO-STOP RULE. These are not outcomes and must never be produced:
+- "stopped at a clean boundary" / "out of budget" / "next session" / "open chunk"
+  / "sized for a future session" / "hand off". A report is not a deliverable.
+- Estimating remaining work and concluding you cannot finish. NEVER estimate --
+  attempt. If you think you have ten tool calls left, spend them editing, not
+  summarizing. Your estimates have been wrong in the pessimistic direction.
+- Calling a chunk too large. Chunks are ordered, not rationed. When one closes,
+  begin the next in the same turn.
+Stuck is a reason to write code, not prose: make the next smallest edit that
+moves a gate, re-run that gate's check, repeat.
+
+ACT EARLY. Read at most 6 files before your first edit. Prefer running a check to
+reading the code it checks. Never read a file "for context" -- read it because
+you are about to change it.
+
+DONE IS A COMMAND. A gate closes when its check exits 0. You do not define done.
+Every gate needs measured before/after from
+`node scripts/lib/perfCausalScenarios.mjs --twice` (8 scenarios byte-identical)
+plus `npm run check:baseline` (only these may fail: ui-screen-imports,
+pq020-ceres-topology, sim, sim-v3).
+
+QUALITY CONTRACT: never reduce resolution, draw distance, population, geometry or
+LOD, material roles, shadows, post, effect capacity, lighting, texture quality, or
+gameplay. Optimize only via algorithms, allocation, batching, cadence, culling,
+residency, state ordering, persistent resources, backend ownership.
+
+CHUNK 2 remaining gates: (a) package coverage for the 60 unpackaged GLBs in
+assets/ships/release/parts, derived from real sector/spawn manifests; (b) loader
+FAILS CLOSED without a package, source route behind an explicit dev flag; (c)
+residency prewarm -- every spawnable archetype resident and shader-warmed before
+scene publish, sector change is prepare-then-swap; (d) remove the
+configureAuthoredMaterialProfiles traversal from the bind path by declaring roles
+in the runtime table.
+CHUNK 3: spaceface.presentationSnapshot.v1 dense typed-array contract + ordered
+event journal; batched instance renderer for ordinary entities, old one deleted
+after a bounded parity window; socket-attached plume, distance-sampled wake.
+Gate: >=5x less per-entity presentation work at 5x population.
+CHUNK 4: sim/render/platform separation. Prove digests over an in-process
+MessageChannel FIRST, then real Workers, then OffscreenCanvas. Gate: the default
+route uses separated owners.
+CHUNK 5: WebGL2 work-family optimization, WebGPU parity slice (decide from
+evidence), quiet-machine player-corridor certification, hard native trigger.
+
+TRAPS -- do not rediscover:
+- A counter that drops to zero is indistinguishable from a deleted call site.
+  Change a cause or add a counter on the new work; never rely on a zero.
+- A faked `window` MUST carry `performance` or rapier's wasm panics on the first
+  world.step().
+- The tree carries a concurrent agent's dirty files and intent-to-add binaries.
+  Before `git commit`, run `git commit --dry-run --short` and confirm nothing
+  foreign appears. Commit by pathspec only when every named path's working-tree
+  content is yours.
+- node_modules may be a Windows junction; recursive delete follows it.
+
+Each commit: ledger updated, own files only, and report commits, files, counter
+before/after, and checks run.

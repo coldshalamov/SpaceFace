@@ -1,0 +1,259 @@
+// Builds an isolated authoritative runtime instance bound to a profile.
+//
+// Feature config is instance-local and immutable after init (`runtime.config.features` /
+// `state.runtime.features`). Process-global flag MAPS (`COMBAT_FLAGS` / `MASSLINE2_FLAGS` /
+// `TRAVEL_FLAGS`) are still what most call sites read via combatFlag/massline2Flag/travelFlag
+// without a runtime argument. To keep multi-profile lab hosts honest, this runtime uses
+// **restore-on-step** isolation:
+//
+//   - Before init and each step/runTicks, the instance's feature config is applied to the MAPS.
+//   - After that call returns, the previous MAP snapshot is restored.
+//
+// This makes sequential multi-profile replay safe in one process. It does **not** support two
+// runtimes stepping concurrently (overlapping awaits / worker-shared maps); serialize steps.
+// Long-term, call sites should take an explicit features/runtime argument (directive preferred).
+
+import { createSimulation } from '../core/sim.js';
+import {
+  applyFeatureConfigToMaps,
+  snapshotFeatureMaps,
+  restoreFeatureMaps,
+} from '../data/featureFlags.js';
+import { resolveRuntimeManifest } from './resolveRuntimeManifest.js';
+import { freezeFeatureConfig, getRuntimeProfile } from './runtimeProfiles.js';
+import { getNodeSystemFactoryTable } from './nodeSystemFactoryTable.js';
+
+function destroySimulationSystems(systems) {
+  const seen = new Set();
+  for (const system of [...(systems || [])].reverse()) {
+    if (!system || seen.has(system) || typeof system.destroy !== 'function') continue;
+    seen.add(system);
+    try {
+      system.destroy();
+    } catch (error) {
+      // Teardown is best-effort per system. One optional cleanup hook must not strand later
+      // systems or prevent the simulation bus from being cleared.
+      console.error('[authoritative-runtime] system destroy failed', system.name || 'unnamed', error);
+    }
+  }
+}
+
+/**
+ * @param {object} options
+ * @param {string} [options.profileId]
+ * @param {number} [options.seed]
+ * @param {object} [options.state]
+ * @param {object} [options.bus]
+ * @param {object} [options.helpers]
+ * @param {object[]} [options.systems] focused explicit systems (honest evidence)
+ * @param {Map|object} [options.systemLookup] materialize full profile systems
+ * @param {{ aiSlot?: object, flightSlot?: object, aiBackend?: string, flightBackend?: string }} [options.slots]
+ * @param {boolean} [options.nodeSafeOnly]
+ * @param {boolean} [options.tacticalAI]
+ * @param {boolean} [options.seedProcessMaps] when true, bind MAPS for the duration of init/step only
+ * @param {boolean} [options.restoreProcessMapsOnDispose] retained for API compat; restore-on-step is the owner
+ */
+export function createAuthoritativeRuntime(options = {}) {
+  const profileId = options.profileId || (options.systems ? null : 'production');
+  const explicit = Array.isArray(options.systems) ? options.systems : null;
+  const isLegacy47a = profileId === 'legacy47a';
+
+  // H4: Node production-fidelity path — materialize full node-safe manifest when no
+  // explicit systems list and no caller-supplied lookup.
+  // Pass selected AI/flight slots into the resolver so selectedSlots match browser (not unbound).
+  // I5: legacy47a defaults to LEGACY AI + LEGACY flight (not tactical / flightV3).
+  let systemLookup = options.systemLookup;
+  let slots = options.slots || null;
+  if (!explicit && !systemLookup && options.nodeSafeOnly === true) {
+    // Production Node defaults: tactical AI + flight V3 (same as browser createRegistry).
+    // legacy47a Node defaults: legacy AI + legacy flight (frozen 47-A / sf-sim).
+    const tacticalAI = isLegacy47a
+      ? options.tacticalAI === true
+      : options.tacticalAI !== false;
+    const flightBackend = (slots && slots.flightBackend)
+      || (isLegacy47a ? 'legacy' : 'v3');
+    systemLookup = getNodeSystemFactoryTable({
+      aiSlot: slots && slots.aiSlot,
+      flightSlot: slots && slots.flightSlot,
+      tacticalAI,
+      flightBackend,
+    });
+    const aiSlot = (slots && slots.aiSlot) || systemLookup.get('aiSlot');
+    const flightSlot = (slots && slots.flightSlot) || systemLookup.get('flightSlot');
+    slots = {
+      aiSlot,
+      flightSlot,
+      aiBackend: (slots && slots.aiBackend)
+        || ((aiSlot && aiSlot.name === 'tacticalAI') ? 'sg06-tactical' : 'legacy'),
+      flightBackend: (slots && slots.flightBackend)
+        || flightBackend,
+    };
+  } else if (!explicit && isLegacy47a && !slots) {
+    // Even without nodeSafeOnly materialization, report frozen 47-A backend selection.
+    slots = {
+      aiBackend: options.tacticalAI === true ? 'sg06-tactical' : 'legacy',
+      flightBackend: 'legacy',
+      ...(options.slots || {}),
+    };
+  }
+
+  const resolved = resolveRuntimeManifest({
+    profileId: profileId || 'production',
+    systemLookup,
+    slots,
+    nodeSafeOnly: options.nodeSafeOnly,
+    // Align tacticalAI flag with slot selection.
+    // I5: legacy47a never defaults tactical AI on — only when caller opts in.
+    tacticalAI: options.tacticalAI === true
+      || (!isLegacy47a && options.nodeSafeOnly === true && options.tacticalAI !== false && !explicit),
+    explicitSystems: explicit || undefined,
+    exclusions: options.exclusions,
+  });
+
+  const config = Object.freeze({
+    profileId: resolved.profileId,
+    features: freezeFeatureConfig(resolved.features),
+    evidenceClass: resolved.evidenceClass,
+    exclusions: resolved.exclusions,
+  });
+
+  // Bind process MAPS for the duration of init/step when seeding is enabled.
+  // I9: ALL profiles (including legacy47a) restore-on-step by default so a prior
+  // production seed cannot leak into legacy global-flag readers. Explicit
+  // seedProcessMaps:false always wins (test isolation / multi-runtime hosts).
+  const seedMaps = options.seedProcessMaps !== false;
+  let disposed = false;
+
+  function withFeatureMaps(fn) {
+    if (!seedMaps) return fn();
+    const previous = snapshotFeatureMaps();
+    applyFeatureConfigToMaps(config.features);
+    try {
+      return fn();
+    } finally {
+      restoreFeatureMaps(previous);
+    }
+  }
+
+  function assertRuntimeActive(action) {
+    if (!disposed) return;
+    const error = new Error(`Authoritative runtime is disposed; cannot ${action}`);
+    error.code = 'AUTHORITATIVE_RUNTIME_DISPOSED';
+    throw error;
+  }
+
+  const profile = getRuntimeProfile(resolved.profileId);
+  let sim = null;
+
+  if (options.createSimulation !== false) {
+    let systemsForInit = explicit;
+    let systemsForUpdate = null;
+
+    if (!systemsForInit && resolved.authoritativeSystems) {
+      // createSimulation always prepends core — strip it from the resolved init list.
+      systemsForInit = resolved.authoritativeSystems.filter((s) => s && s.name !== 'core');
+    }
+    // Production path: step UPDATE_ORDER, not the init/registration list.
+    // Focused explicit systems keep registration order (no separate update order).
+    if (!explicit && resolved.authoritativeUpdateOrder) {
+      systemsForUpdate = resolved.authoritativeUpdateOrder.slice();
+    }
+
+    if (systemsForInit || systemsForUpdate) {
+      sim = withFeatureMaps(() => createSimulation({
+        seed: options.seed,
+        state: options.state,
+        bus: options.bus,
+        helpers: options.helpers,
+        // Init list: registration order (or explicit focused list).
+        systems: systemsForInit || systemsForUpdate,
+        // Step list: authoritative update order when materialised (production parity).
+        updateOrder: systemsForUpdate || undefined,
+        runtimeManifest: resolved,
+        runtimeConfig: config,
+      }));
+      if (sim.state) {
+        bindRuntimeToState(sim.state, config, resolved);
+      }
+    }
+  }
+
+  const runtime = Object.freeze({
+    schema: 'spaceface.authoritativeRuntime.v1',
+    config,
+    profile,
+    manifest: resolved,
+    fingerprint: Object.freeze({
+      profileHash: resolved.profileHash,
+      manifestHash: resolved.manifestHash,
+    }),
+    /**
+     * Process-global MAP isolation mode for this host.
+     * `restore-on-step` = sequential stepping only; not safe for concurrent multi-runtime steps.
+     */
+    featureMapIsolation: seedMaps ? 'restore-on-step' : 'instance-config-only',
+    // Do NOT expose raw `sim` — callers must use step/runTicks so restore-on-step isolation runs.
+    // state/bus are safe to surface; unwrapped sim.step would bypass withFeatureMaps entirely.
+    state: sim ? sim.state : options.state || null,
+    bus: sim ? sim.bus : options.bus || null,
+    /** Controlled setup ports for the lab (no unwrapped step). */
+    spawn(spec) {
+      if (!sim) throw new Error('Authoritative runtime has no simulation host');
+      assertRuntimeActive('spawn');
+      return sim.spawn(spec);
+    },
+    getSystem(name) {
+      if (!sim) return null;
+      return sim.registry.get(name);
+    },
+    getHelpers() {
+      if (!sim) return null;
+      return sim.helpers;
+    },
+    step(dt) {
+      if (!sim) throw new Error('Authoritative runtime has no simulation host');
+      assertRuntimeActive('step');
+      return withFeatureMaps(() => sim.step(dt));
+    },
+    runTicks(count, dt) {
+      if (!sim) throw new Error('Authoritative runtime has no simulation host');
+      assertRuntimeActive('run ticks');
+      return withFeatureMaps(() => sim.runTicks(count, dt));
+    },
+    dispose() {
+      if (disposed) return;
+      disposed = true;
+      // sim.dispose only clears the bus — free the Rapier world to prevent WASM leaks.
+      if (sim && sim.registry) {
+        const physicsSys = sim.registry.get('physics');
+        if (physicsSys && typeof physicsSys._disableSg02DynamicAuthority === 'function') {
+          try { physicsSys._disableSg02DynamicAuthority(); } catch (_) { /* best-effort */ }
+        }
+        destroySimulationSystems(sim.registry.systems);
+      }
+      if (sim && typeof sim.dispose === 'function') sim.dispose();
+      // MAPS are restored after every step/init; nothing permanent to undo here.
+    },
+  });
+
+  return runtime;
+}
+
+/** Attach read-only runtime binding onto game state for instance-local feature reads. */
+export function bindRuntimeToState(state, config, resolved) {
+  if (!state || typeof state !== 'object') return state;
+  const binding = Object.freeze({
+    profileId: config.profileId,
+    features: config.features,
+    evidenceClass: config.evidenceClass,
+    exclusions: config.exclusions,
+    profileHash: resolved && resolved.profileHash,
+    manifestHash: resolved && resolved.manifestHash,
+  });
+  // Non-enumerable-ish plain field; systems may read state.runtime.features.
+  state.runtime = binding;
+  if (state.settings && state.settings.gameplay) {
+    state.settings.gameplay.runtimeProfile = config.profileId;
+  }
+  return state;
+}

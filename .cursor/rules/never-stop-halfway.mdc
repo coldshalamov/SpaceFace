@@ -1,0 +1,24 @@
+---
+description: Never stop halfway through a job — the owner cannot finish leftover work
+alwaysApply: true
+---
+
+# Never stop halfway
+
+The owner does not read code. Leftover agent work stays broken forever.
+
+Finish the **named outcome** of the job you were given. Then stop. Do not start the next job.
+
+“Do this one job and stop” means finish that job completely. It is not permission to ship a
+half-finished version.
+
+These are not done:
+
+- A “source candidate,” “revise,” or “gates open” result when the brief said that picture must not ship
+- Reviews that listed defects, with those defects still visible
+- Ending a turn to wait, ask, or continue later
+- Hashes, gate names, or ledgers instead of the player-facing thing
+
+If genuinely blocked, say **not done** in one plain sentence. A quality miss is not a blocker — keep working.
+
+Full rule: `CLAUDE.md`.

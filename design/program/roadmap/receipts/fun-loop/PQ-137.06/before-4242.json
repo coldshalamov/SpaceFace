@@ -1,0 +1,106 @@
+{
+  "id": "feel.terrain_slam",
+  "seed": 4242,
+  "wallMs": 6066,
+  "metrics": {
+    "closingSpeed": 79.7997817993164,
+    "closingRatio": 0.7599979218982514,
+    "hullLost": 0,
+    "hullLostFraction": 0,
+    "lostHelm": true,
+    "isLethal": false,
+    "barMet": false,
+    "consequenceImpactDamage": 65.9456,
+    "shieldAbsorbed": 54.075391999999994,
+    "shieldBefore": 110,
+    "shieldAfter": 55.924608000000006,
+    "light50ConsequenceImpactDamage": 65.9456,
+    "light50ShieldAbsorbed": 54.075391999999994,
+    "heavy75ConsequenceImpactDamage": 95,
+    "heavy75ShieldAbsorbed": 77.89999999999998,
+    "contactDeltaV": 40,
+    "light50ContactDeltaV": 40,
+    "heavy75ContactDeltaV": 40,
+    "flownSpeed": 79.7997817993164,
+    "commandedSpeed": 79.8,
+    "light50FlownSpeed": 52.49989318847656,
+    "light50CommandedSpeed": 52.5,
+    "heavy75FlownSpeed": 64.59962463378906,
+    "heavy75CommandedSpeed": 79.8,
+    "heavy75KeptHelm": false,
+    "cruiseSpeed": 105,
+    "cruiseField": "data.derived.propulsion.combatSpeed",
+    "lightHullId": "ship_wasp",
+    "lightMass": 16,
+    "lightHullMax": 150,
+    "heavyHullId": "ship_atlas",
+    "heavyMass": 200,
+    "heavyHullMax": 720,
+    "light50ClosingRatio": 0.49999898274739585,
+    "light50HullLostFraction": 0,
+    "light50LostHelm": true,
+    "heavy75ClosingRatio": 0.7599955839269301,
+    "heavy75HullLostFraction": 0,
+    "heavy75LostHelm": true,
+    "heavy75Survived": true,
+    "contactImpulse": 640,
+    "contactReceipts": 5,
+    "light50ContactReceipts": 4,
+    "heavy75ContactReceipts": 4,
+    "ticks": 1876,
+    "dt": 0.016666666666666666,
+    "realPath": {
+      "backend": "rapier-dynamic",
+      "sg02Ready": true,
+      "sg02Bodies": 3,
+      "sg02DynamicBodies": 2,
+      "rapierContacts": 0,
+      "contactCaptureEnabled": true,
+      "featuresOutsideStep": {
+        "tumble": false,
+        "weaponImpulseConsequences": false
+      },
+      "physicsBackend": "rapier-dynamic",
+      "flightBackend": "v3",
+      "aiBackend": "sg06-tactical",
+      "profileId": "production"
+    },
+    "bars": [
+      {
+        "bar": "B6",
+        "label": "light hostile hull lost at 50 % of cruise closing",
+        "value": 0,
+        "unit": "fraction",
+        "met": false
+      },
+      {
+        "bar": "B6",
+        "label": "light hostile loses the helm at 50 % of cruise closing",
+        "value": 1,
+        "unit": "bool",
+        "met": true
+      },
+      {
+        "bar": "B6",
+        "label": "light hostile dies at 76 % of cruise closing",
+        "value": 0,
+        "unit": "bool",
+        "met": false
+      },
+      {
+        "bar": "B6",
+        "label": "heavy hull lost at the same closing speed",
+        "value": 0,
+        "unit": "fraction",
+        "met": true
+      },
+      {
+        "bar": "B6",
+        "label": "heavy keeps its helm at the same closing speed",
+        "value": 1,
+        "unit": "bool",
+        "met": false
+      }
+    ]
+  }
+}

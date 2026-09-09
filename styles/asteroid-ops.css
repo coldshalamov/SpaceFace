@@ -1,0 +1,928 @@
+/* ============================================================================
+   Asteroid Works — field equipment at dusk, not a military console.
+   Authority: design/ASTEROID_WORKS_DESIGN_LAW.md §3 (hex/type/px values are law).
+   Scoped under .ast-screen (class kept for the capture harnesses). The old gunmetal
+   --ao-* voice is deleted, not restyled: warm brown neutrals, soft-shadow depth,
+   sentence case everywhere, Instrument Sans / Spline Sans Mono / Bricolage Grotesque.
+   Visible chrome is law §6.1 (crest) + §6.2 (rig cluster) + §6.3 (the earned build palette,
+   which has no DOM at all until a Core is owned) + §6.4 (the cursor lens) and nothing else.
+   ============================================================================ */
+
+.ast-screen {
+  /* law §3.2 — chrome palette; the entire blue-gray family is banned on this screen */
+  --aw-bg: #171310;
+  --aw-surface: #221c15;
+  --aw-raised: #2d251b;
+  --aw-line: #3a3126;
+  --aw-ink: #f2e8d5;
+  --aw-ink-2: #bfae94;
+  --aw-ink-3: #8a7a66;
+  --aw-gold: #ffb648;
+  --aw-mint: #7cd9a2;
+  --aw-coral: #ff6242;
+  --aw-sky: #5cc8f2;
+  --aw-heat: #9a6f4a;
+  --aw-font: "Instrument Sans", system-ui, "Segoe UI", sans-serif;
+  --aw-mono: "Spline Sans Mono", ui-monospace, Consolas, monospace;
+  --aw-name-font: "Bricolage Grotesque", var(--aw-font);
+
+  display: flex;
+  flex-direction: column;
+  /* The screens stack shrink-wraps its children, so the board sizes itself in viewport units —
+     the mine IS the screen (law §2.2), edge to edge. */
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  box-sizing: border-box;
+  pointer-events: auto;
+  background: var(--aw-bg);
+  color: var(--aw-ink-2);
+  font-family: var(--aw-font);
+  font-size: 13px;
+  overflow: hidden;
+  text-transform: none;
+}
+.ast-screen *, .ast-screen *::before, .ast-screen *::after {
+  box-sizing: border-box;
+  /* law §3.3: zero uppercase transforms on this screen — ui.css ships global tracked-caps rules
+     that would otherwise compute through the inheritance chain */
+  text-transform: none;
+}
+
+.ast-screen button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.ast-screen button:focus-visible { outline: 2px solid var(--aw-gold); outline-offset: 2px; border-radius: 8px; }
+.ast-screen button:disabled { cursor: default; opacity: 0.45; }
+
+/* ---------------------------------------------------------------- §6.1 crest */
+.aw-crest {
+  flex: 0 0 40px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px 0 18px;
+  background: rgba(23, 19, 16, 0.92); /* --aw-bg at 92%: the darkest chrome ever gets */
+}
+.aw-crest-name {
+  font: 600 20px/1 var(--aw-name-font);
+  color: var(--aw-ink);
+  white-space: nowrap;
+  letter-spacing: 0.01em;
+}
+.aw-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font: 500 13px/1 var(--aw-font);
+  color: var(--aw-ink-2);
+  background: var(--aw-raised);
+  white-space: nowrap;
+}
+.aw-chip.ok { color: var(--aw-mint); }
+.aw-chip.bad { color: var(--aw-coral); }
+.aw-chip.warn { color: var(--aw-gold); }
+
+/* one alert slot — empty and invisible by default */
+.aw-alert {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font: 500 13px/1.2 var(--aw-font);
+  text-align: center;
+  visibility: hidden;
+  color: var(--aw-ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.aw-alert.live { visibility: visible; }
+.aw-alert.warn { color: var(--aw-gold); }
+.aw-alert.bad { color: var(--aw-coral); }
+.aw-alert.good { color: var(--aw-mint); }
+
+.aw-crest-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  white-space: nowrap;
+}
+.aw-credits {
+  font: 500 15px/1 var(--aw-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--aw-ink);
+}
+.aw-hold { display: flex; align-items: center; gap: 8px; }
+.aw-hold-track {
+  position: relative;
+  width: 96px;
+  height: 10px;
+  border-radius: 6px;
+  background: var(--aw-raised);
+  box-shadow: 0 2px 8px rgba(8, 5, 2, 0.5);
+  overflow: hidden;
+}
+.aw-hold-track .ticks {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0 calc(25% - 1px),
+    rgba(8, 5, 2, 0.35) calc(25% - 1px) 25%
+  );
+  border-radius: 6px;
+}
+.aw-hold-fill {
+  position: absolute;
+  inset: 1px auto 1px 1px;
+  width: 0%;
+  border-radius: 5px;
+  background: var(--aw-mint);
+  transition: width 160ms var(--k-ease), background 160ms var(--k-ease);
+}
+.aw-hold-fill.hot { background: var(--aw-gold); }
+.aw-hold-fill.full { background: var(--aw-coral); }
+.aw-leave {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: 8px;
+  background: var(--aw-raised);
+  box-shadow: 0 2px 8px rgba(8, 5, 2, 0.5);
+  font: 600 13px/1 var(--aw-font);
+  color: var(--aw-ink-2);
+}
+.aw-leave:hover { color: var(--aw-ink); transform: translateY(-1px); }
+.aw-leave:active { transform: translateY(0); }
+.aw-key {
+  font: 500 12px/1 var(--aw-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--aw-ink-3);
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: rgba(8, 5, 2, 0.35);
+}
+
+/* ---------------------------------------------------------------- §4 the board */
+.aw-stage {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  background: var(--bg); /* law §3.5 space behind the rock */
+  overflow: hidden;
+}
+.ast-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  outline: none;
+}
+.ast-canvas:focus-visible { box-shadow: inset 0 0 0 2px var(--aw-gold); border-radius: 4px; }
+
+/* ---------------------------------------------------------------- §6.2 rig cluster */
+.aw-rig {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: var(--aw-surface);
+  box-shadow: 0 2px 8px rgba(8, 5, 2, 0.5);
+}
+.aw-gauge { display: flex; align-items: center; gap: 10px; }
+.aw-gauge-label {
+  flex: 0 0 auto;
+  width: 52px;
+  font: 500 13px/1 var(--aw-font);
+  color: var(--aw-ink-2);
+}
+.aw-gauge-track {
+  position: relative;
+  width: 132px;
+  height: 12px;
+  border-radius: 6px;
+  background: var(--aw-raised);
+  box-shadow: 0 2px 8px rgba(8, 5, 2, 0.5);
+  overflow: hidden;
+}
+.aw-gauge-track .ticks {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0 calc(25% - 1px),
+    rgba(8, 5, 2, 0.35) calc(25% - 1px) 25%
+  );
+  border-radius: 6px;
+}
+.aw-gauge-fill {
+  position: absolute;
+  inset: 1px auto 1px 1px;
+  width: 0%;
+  border-radius: 5px;
+  transition: width 160ms var(--k-ease);
+}
+.aw-gauge-heat .aw-gauge-fill { background: var(--aw-heat); }
+.aw-gauge-heat .aw-gauge-fill.warn { background: var(--aw-gold); }
+.aw-gauge-heat .aw-gauge-fill.bad { background: var(--aw-coral); }
+.aw-gauge-charge .aw-gauge-fill { background: var(--aw-mint); }
+.aw-gauge-charge .aw-gauge-fill.bad { background: var(--aw-coral); }
+.aw-gauge-val {
+  flex: 0 0 auto;
+  min-width: 38px;
+  text-align: right;
+  font: 500 13px/1 var(--aw-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--aw-ink);
+}
+.aw-gauge-val.bad { color: var(--aw-coral); }
+
+/* ---------------------------------------------------------------- §6.3 build palette
+   "A short row of tactile lit keys, like a hardware sampler, that gets longer as the game
+   grows." Earned, not shown: this rule set has no hidden state and no placeholder state
+   because the palette is simply not in the DOM until a Core is owned (see buildPalette.js).
+   Bottom edge, right of centre; the row is exactly its keys plus 6px gaps — no card, no
+   padding, no background behind them — and it stops 16px clear of the §6.2 rig cluster. */
+.aw-palette {
+  position: absolute;
+  right: 306px; /* rig cluster = 16px margin + ~274px card; this clears it by 16px */
+  bottom: 16px;
+  z-index: 5;   /* under the §6.4 lens (6), over the board */
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.ast-screen .aw-build-key {
+  position: relative;
+  flex: 0 0 auto;
+  width: 46px;
+  height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--aw-raised);
+  box-shadow: inset 0 1px 0 rgba(255, 232, 194, 0.1), 0 2px 8px rgba(8, 5, 2, 0.55);
+  color: var(--aw-ink-2);
+  transition:
+    transform 120ms var(--k-ease),
+    background-color 120ms var(--k-ease),
+    color 120ms var(--k-ease),
+    box-shadow 120ms var(--k-ease);
+}
+/* The silhouette IS the key. 22px of filled mass in currentColor, so every state tints it free. */
+.aw-build-glyph {
+  display: block;
+  width: 22px;
+  height: 22px;
+}
+.aw-build-hotkey {
+  position: absolute;
+  top: 4px;
+  right: 5px;
+  font: 500 12px/1 var(--aw-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--aw-ink-2);
+  pointer-events: none;
+}
+
+/* ready — raised plate, ink-2 glyph; hover lifts 1px and lightens */
+.ast-screen .aw-build-key:hover {
+  transform: translateY(-1px);
+  background: #3c3124;
+  color: var(--aw-ink);
+}
+.ast-screen .aw-build-key:active {
+  transform: translateY(1px);
+}
+
+/* armed — gold ring + gold glyph. Outside build mode nothing is being aimed, so the ring
+   reads as a quiet inner hint instead of shouting a selection the player is not making. */
+.ast-screen .aw-build-key.armed {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 232, 194, 0.1),
+    inset 0 0 0 1px color-mix(in srgb, var(--sf-goal) 45%, transparent),
+    0 2px 8px rgba(8, 5, 2, 0.5);
+}
+.ast-screen .aw-palette.live .aw-build-key.armed {
+  color: var(--aw-gold);
+  background: #33291d;
+  box-shadow: 0 0 0 2px var(--aw-gold), 0 3px 10px rgba(8, 5, 2, 0.55);
+}
+
+/* unaffordable — flat --aw-surface, ink-3 glyph, no lift; the hover tip carries the coral
+   shortfall. Armed still rings it: "this is what you are aiming, and you cannot pay for it." */
+.ast-screen .aw-build-key.poor,
+.ast-screen .aw-build-key.poor:hover {
+  transform: none;
+  background: var(--aw-surface);
+  box-shadow: none;
+  color: var(--aw-ink-3);
+}
+.ast-screen .aw-palette.live .aw-build-key.poor.armed {
+  color: var(--aw-ink-3);
+  box-shadow: 0 0 0 2px var(--aw-gold);
+}
+
+/* The key's name lives here and nowhere else (law §2.5): hidden — not merely transparent —
+   so it costs the default drive view zero words, revealed on hover or keyboard focus. */
+.aw-build-tip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 10px 7px;
+  border-radius: 8px;
+  background: var(--aw-surface);
+  box-shadow: 0 2px 8px rgba(8, 5, 2, 0.5);
+  white-space: nowrap;
+  pointer-events: none;
+  visibility: hidden;
+  opacity: 0;
+}
+.ast-screen .aw-build-key:hover .aw-build-tip,
+.ast-screen .aw-build-key:focus-visible .aw-build-tip {
+  visibility: visible;
+  opacity: 1;
+}
+.aw-build-tip-name {
+  font: 500 13px/1.15 var(--aw-font);
+  color: var(--aw-ink);
+}
+.aw-build-tip-cost {
+  font: 500 12px/1.15 var(--aw-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--aw-coral);
+}
+.aw-build-tip-cost:empty { display: none; }
+
+/* law §9 — the first Core makes the interface visibly grow: one settle, once. Frontend Task D §2
+   reconciled the duration and easing to the kit's motion floor (spec §7: settles ≤ 160 ms, --k-ease). */
+@keyframes aw-palette-settle {
+  from { transform: translateY(8px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.aw-palette.settle { animation: aw-palette-settle 160ms var(--k-ease) both; }
+
+/* ---------------------------------------------------------------- §6.4 cursor lens
+   "A little field-notebook tag next to their cursor — a colour, a number, two or three
+   stamps." Max 260px, --aw-surface, r10, soft shadow, NO border. Absolutely placed inside
+   the stage (not fixed to the viewport) so a transformed screen stack cannot shift it, and
+   pointer-transparent so the card can never eat the hover that created it. */
+.aw-lens {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 6;
+  max-width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 9px 11px 10px;
+  border-radius: 10px;
+  background: var(--aw-surface);
+  box-shadow: 0 2px 8px rgba(8, 5, 2, 0.5);
+  color: var(--aw-ink-2);
+  pointer-events: none;
+  overflow: hidden;
+  contain: layout style;
+}
+.aw-lens[hidden] { display: none !important; }
+
+.aw-lens-head {
+  display: flex;
+  align-items: center;
+  gap: 4px 9px;
+  min-width: 0;
+  /* A two-word material name plus its assay can exceed 260px. Wrapping keeps the NAME whole (the
+     identity is the point) and costs one extra line, which a tile card has spare — it never has a
+     body line. `.nowrap` is applied whenever a body line is present. */
+  flex-wrap: wrap;
+}
+.aw-lens-head.nowrap { flex-wrap: nowrap; }
+.aw-lens-head.nowrap .aw-lens-num { overflow: hidden; text-overflow: ellipsis; }
+/* 22px rounded swatch sampling the actual board material (law §6.4). */
+.aw-lens-swatch {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+}
+.aw-lens-swatch[hidden] { display: none; }
+/* Claim-formation membership, wordless: mint = committed to the claim record, gold = assayed but
+   still volatile (it wants a Core). The inline box-shadow from the material sampler is the inner
+   ring; these add the outer one. */
+.aw-lens-swatch.claim-mint { outline: 2px solid var(--aw-mint); outline-offset: 2px; }
+.aw-lens-swatch.claim-gold { outline: 2px solid var(--aw-gold); outline-offset: 2px; }
+/* Machines and placement ghosts trade the swatch for a status lamp dot. */
+.aw-lens-swatch.lamp {
+  width: 12px;
+  height: 12px;
+  margin: 0 5px;
+  border-radius: 50%;
+  background: var(--aw-ink-3);
+}
+.aw-lens-swatch.lamp.mint { background: var(--aw-mint); box-shadow: 0 0 9px rgba(124, 217, 162, 0.5); }
+.aw-lens-swatch.lamp.gold { background: var(--aw-gold); box-shadow: 0 0 9px color-mix(in srgb, var(--sf-goal) 50%, transparent); }
+.aw-lens-swatch.lamp.coral { background: var(--aw-coral); box-shadow: 0 0 9px rgba(255, 98, 66, 0.5); }
+.aw-lens-swatch.lamp.idle { background: var(--aw-ink-3); }
+
+/* The name is the identity: it never shrinks. When the row is tight the NUMERALS give way — a
+   truncated "Geol…" is a broken card, a truncated rate is a missing decimal. */
+.aw-lens-name {
+  flex: 0 0 auto;
+  max-width: 100%;
+  font: 500 14px/1.25 var(--aw-font);
+  color: var(--aw-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.aw-lens-num {
+  flex: 0 1 auto;
+  min-width: 0;
+  font: 500 13px/1.25 var(--aw-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--aw-ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.aw-lens-num[hidden] { display: none; }
+/* "hp 60% as a tiny bar, not a sentence" — only present once the cell has actually been bitten. */
+.aw-lens-hp {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(8, 5, 2, 0.45);
+  overflow: hidden;
+}
+.aw-lens-hp i {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--aw-ink-2);
+}
+.aw-lens-hp i.low { background: var(--aw-gold); }
+
+/* Pill chips: 20px tall, icon glyph + word, colour by meaning (§3.2). */
+.aw-lens-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.aw-lens-chips[hidden] { display: none; }
+.aw-lens-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 20px;
+  padding: 0 9px 0 7px;
+  border-radius: 999px;
+  background: var(--aw-raised);
+  font: 500 13px/1 var(--aw-font);
+  color: var(--aw-ink-2);
+  white-space: nowrap;
+}
+.aw-lens-chip svg { flex: 0 0 auto; display: block; }
+.aw-lens-chip.gold { color: var(--aw-gold); }
+.aw-lens-chip.mint { color: var(--aw-mint); }
+.aw-lens-chip.coral { color: var(--aw-coral); }
+
+/* One body line, max — the machine's cause. Never tutorial copy. */
+.aw-lens-body {
+  font: 500 13px/1.3 var(--aw-font);
+  color: var(--aw-ink-2);
+}
+.aw-lens-body[hidden] { display: none; }
+
+/* The contact-ring schematic, inside the card, small and captionless. */
+.aw-lens-ring {
+  display: grid;
+  grid-template-columns: repeat(3, 10px);
+  grid-auto-rows: 10px;
+  gap: 2px;
+}
+.aw-lens-ring[hidden] { display: none; }
+.aw-lens-ring-cell {
+  border-radius: 2px;
+  background: var(--aw-raised);
+}
+.aw-lens-ring-cell.hollow { background: rgba(8, 5, 2, 0.5); }
+.aw-lens-ring-cell.center {
+  background: transparent;
+  box-shadow: inset 0 0 0 2px var(--aw-gold);
+}
+
+/* ---------------------------------------------------------------- extraction report
+   (post-exit modal — same warm voice; sentence case, no tracked caps) */
+.ast-summary-modal {
+  position: fixed;
+  inset: 0;
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  opacity: 0;
+  transition: opacity 160ms var(--k-ease);
+  pointer-events: auto;
+}
+.ast-summary-modal.active { opacity: 1; }
+.ast-summary-box {
+  background: var(--aw-surface, #221c15);
+  border-radius: 10px;
+  padding: 22px;
+  width: min(420px, calc(100vw - 32px));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  color: var(--aw-ink-2, #bfae94);
+  font-family: var(--aw-font, system-ui, sans-serif);
+  box-shadow: 0 2px 8px rgba(8, 5, 2, 0.5);
+  text-transform: none;
+}
+.ast-summary-box .title {
+  font: 600 20px/1.2 var(--aw-name-font, var(--aw-font, sans-serif));
+  color: var(--aw-ink, #f2e8d5);
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--aw-line, #3a3126);
+}
+.ast-summary-box .row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  padding: 4px 0;
+}
+.ast-summary-box .row .val {
+  font-family: var(--aw-mono, monospace);
+  font-variant-numeric: tabular-nums;
+  color: var(--aw-gold, #ffb648);
+}
+.ast-summary-box .sf-btn { align-self: center; min-width: 150px; }
+.ast-screen .sf-btn,
+.ast-summary-box .sf-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 4px 14px;
+  background: var(--aw-raised);
+  border: 1px solid var(--aw-line);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(8, 5, 2, 0.5);
+  font: 600 13px/1.1 var(--aw-font);
+  color: var(--aw-ink-2);
+  transition: transform 120ms var(--k-ease), background-color 120ms var(--k-ease), color 120ms var(--k-ease), border-color 120ms var(--k-ease);
+}
+.ast-screen .sf-btn:hover,
+.ast-summary-box .sf-btn:hover {
+  color: var(--aw-ink);
+  background: #3c3124;
+  border-color: var(--aw-gold);
+  transform: translateY(-1px);
+}
+.ast-screen .sf-btn:active,
+.ast-summary-box .sf-btn:active {
+  transform: translateY(1px);
+}
+
+/* ---------------------------------------------------------------- a11y + modes */
+.ast-sr-status {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ast-summary-modal, .aw-hold-fill, .aw-gauge-fill, .aw-build-key { transition: none; }
+  .aw-leave:hover, .aw-build-key:hover { transform: none; }
+  .aw-palette.settle { animation: none; }
+}
+html.sf-reduce-motion .ast-summary-modal,
+html.sf-reduce-motion .aw-hold-fill,
+html.sf-reduce-motion .aw-build-key,
+html.sf-reduce-motion .aw-gauge-fill { transition: none; }
+html.sf-reduce-motion .aw-palette.settle { animation: none; }
+html.sf-reduce-motion .aw-build-key:hover { transform: none; }
+@media (forced-colors: active) {
+  .ast-screen, .aw-crest, .aw-rig, .aw-leave, .aw-chip { border: 1px solid CanvasText; }
+  .aw-build-key, .aw-build-tip { border: 1px solid CanvasText; background: Canvas; color: CanvasText; }
+  .aw-build-key.armed { outline: 2px solid Highlight; outline-offset: 1px; }
+  .aw-build-key.poor { color: GrayText; }
+  .ast-screen, .aw-leave { background: Canvas; color: CanvasText; }
+  .aw-hold-fill, .aw-gauge-fill { background: Highlight; }
+  .aw-lens, .aw-lens-chip, .aw-lens-swatch, .aw-lens-ring-cell { border: 1px solid CanvasText; }
+  .aw-lens { background: Canvas; color: CanvasText; }
+  .aw-lens-hp i { background: Highlight; }
+}
+
+/* ---------------------------------------------------------------- §6.6 drawers
+   A bottom sheet over the board's BOTTOM EDGE only: max 280px tall, --aw-surface,
+   r10 on the top corners, soft shadow, a grabber handle, a 200ms ease. Law §6.6 —
+   "a drawer never covers the middle of the board and closes on Esc or outside click".
+
+   THE CLOSED STATE IS display:none, NOT an off-screen transform. Law §2.5 counts the
+   default drive view and scripts/check-asteroid-theater.mjs walks every visible element
+   under .ast-screen; a translated sheet still owns client rects and would spend the whole
+   15-word budget on bookkeeping. The [hidden] rule below needs !important for exactly the
+   reason .aw-lens[hidden] does: a plain class rule with `display:flex` outranks the UA
+   sheet's `[hidden] { display: none }`. */
+.aw-drawer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 7;   /* over the palette (5) and the §6.4 lens (6): an open sheet owns the bottom */
+  max-height: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 6px 18px 14px;
+  border-radius: 10px 10px 0 0;
+  background: var(--aw-surface);
+  box-shadow: 0 -4px 20px rgba(8, 5, 2, 0.55);
+  color: var(--aw-ink-2);
+  transform: translateY(102%);
+  opacity: 0;
+  transition: transform 200ms var(--k-ease), opacity 200ms var(--k-ease);
+  overflow: hidden;
+}
+.aw-drawer[hidden] { display: none !important; }
+.aw-drawer.open { transform: translateY(0); opacity: 1; }
+
+/* the grabber: the sheet says "I pull up from here" without a word */
+.aw-drawer-grab {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 4px;
+  margin: 2px auto 0;
+  border-radius: 999px;
+  background: var(--aw-line);
+}
+
+.aw-drawer-tabs {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.ast-screen .aw-drawer-tab {
+  min-height: 28px;
+  padding: 4px 14px;
+  border-radius: 999px;
+  background: var(--aw-raised);
+  color: var(--aw-ink-2);
+  font: 500 13px/1.1 var(--aw-font);
+  transition: color 120ms var(--k-ease), background 120ms var(--k-ease);
+}
+.ast-screen .aw-drawer-tab:hover { color: var(--aw-ink); }
+.ast-screen .aw-drawer-tab.on { color: var(--aw-gold); box-shadow: inset 0 0 0 1.5px var(--aw-gold); }
+
+.aw-drawer-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+}
+.aw-drawer-body > [hidden] { display: none !important; }
+
+/* the crest affordance (law §2.5: one small icon, no visible word) */
+.ast-screen .aw-drawer-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  color: var(--aw-ink-2);
+  transition: color 120ms var(--k-ease), transform 120ms var(--k-ease);
+}
+.ast-screen .aw-drawer-key:hover { color: var(--aw-ink); transform: translateY(-1px); }
+.ast-screen .aw-drawer-key[aria-expanded="true"] { color: var(--aw-gold); }
+.aw-drawer-key svg { display: block; }
+
+/* severity dot — the ledger's whole severity vocabulary, no words spent on it */
+.aw-dot {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--aw-ink-3);
+}
+.aw-dot.mint { background: var(--aw-mint); }
+.aw-dot.gold { background: var(--aw-gold); }
+.aw-dot.coral { background: var(--aw-coral); }
+.aw-dot.sky { background: var(--aw-sky); }
+.aw-dot.ink { background: var(--aw-ink-3); }
+
+/* ---- Ledger tab: newest first, mono clock, one line per event ---- */
+.aw-ledger { margin: 0; padding: 0; list-style: none; }
+.aw-ledger-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 5px 2px;
+  font: 400 13px/1.35 var(--aw-font);
+  color: var(--aw-ink-2);
+}
+.aw-ledger-row + .aw-ledger-row { box-shadow: inset 0 1px 0 rgba(58, 49, 38, 0.5); }
+.aw-ledger-row .aw-dot { align-self: center; }
+.aw-ledger-clock {
+  flex: 0 0 auto;
+  font: 500 13px/1.35 var(--aw-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--aw-ink-3);
+}
+.aw-ledger-text { color: var(--aw-ink); }
+.aw-ledger-empty {
+  padding: 8px 2px;
+  font: 400 13px/1.35 var(--aw-font);
+  color: var(--aw-ink-3);
+}
+
+/* ---- Help tab: the keys, taught once ---- */
+.aw-helpmap {
+  margin: 0;
+  display: grid;
+  grid-template-columns: max-content 1fr max-content 1fr;
+  align-items: center;
+  gap: 6px 12px;
+}
+.aw-help-keys {
+  justify-self: start;
+  padding: 3px 9px;
+  border-radius: 8px;
+  background: var(--aw-raised);
+  font: 500 13px/1.1 var(--aw-mono);
+  color: var(--aw-ink);
+  white-space: nowrap;
+}
+.aw-help-label {
+  margin: 0;
+  font: 400 13px/1.3 var(--aw-font);
+  color: var(--aw-ink-2);
+}
+
+/* ---- Site tab: production totals, courier log, the four operator verbs ---- */
+.aw-site-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 10px 18px;
+  align-items: start;
+}
+.aw-site-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(23, 19, 16, 0.55);
+}
+.aw-site-title {
+  margin: 0 0 2px;
+  font: 600 14px/1.2 var(--aw-font);
+  color: var(--aw-ink);
+}
+.aw-site-stat {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font: 400 13px/1.4 var(--aw-font);
+}
+.aw-site-stat-label { color: var(--aw-ink-2); }
+.aw-site-stat-val {
+  font: 500 13px/1.4 var(--aw-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--aw-ink);
+}
+.aw-site-rates, .aw-verb-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+.aw-rate-chip {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--aw-raised);
+  font: 500 13px/1.3 var(--aw-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--aw-mint);
+}
+.aw-site-flights { margin: 4px 0 0; padding: 0; list-style: none; }
+.aw-site-flight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+  font: 400 13px/1.3 var(--aw-font);
+  color: var(--aw-ink-2);
+}
+
+/* the four operator verbs — real keys, bound straight to the owner APIs */
+.ast-screen .aw-verb-chip,
+.ast-screen .aw-verb-btn,
+.ast-screen .aw-verb-step {
+  min-height: 28px;
+  border-radius: 8px;
+  background: var(--aw-raised);
+  color: var(--aw-ink-2);
+  font: 500 13px/1.1 var(--aw-font);
+  transition: color 120ms var(--k-ease), box-shadow 120ms var(--k-ease), transform 120ms var(--k-ease);
+}
+.ast-screen .aw-verb-chip { padding: 4px 12px; border-radius: 999px; }
+.ast-screen .aw-verb-btn { padding: 4px 14px; }
+.ast-screen .aw-verb-step { width: 28px; font-family: var(--aw-mono); }
+.ast-screen .aw-verb-chip:hover:not(:disabled),
+.ast-screen .aw-verb-btn:hover:not(:disabled),
+.ast-screen .aw-verb-step:hover:not(:disabled) { color: var(--aw-ink); transform: translateY(-1px); }
+.ast-screen .aw-verb-chip.on { color: var(--aw-mint); box-shadow: inset 0 0 0 1.5px var(--aw-mint); }
+.ast-screen .aw-verb-chip:disabled,
+.ast-screen .aw-verb-btn:disabled,
+.ast-screen .aw-verb-step:disabled { color: var(--aw-ink-3); transform: none; }
+.aw-verb-num {
+  min-width: 42px;
+  text-align: center;
+  font: 500 15px/1.1 var(--aw-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--aw-ink);
+}
+.ast-screen .aw-verb-select {
+  min-height: 28px;
+  max-width: 100%;
+  padding: 3px 8px;
+  border: none;
+  border-radius: 8px;
+  background: var(--aw-raised);
+  color: var(--aw-ink);
+  font: 500 13px/1.2 var(--aw-font);
+  text-transform: none;
+}
+.ast-screen .aw-verb-select:disabled { color: var(--aw-ink-3); }
+.ast-screen .aw-verb-select option { background: var(--aw-surface); color: var(--aw-ink); }
+.aw-site-reason {
+  margin: 4px 0 0;
+  font: 400 13px/1.3 var(--aw-font);
+  color: var(--aw-ink-3);
+}
+.aw-site-reason[hidden] { display: none !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  .aw-drawer, .aw-drawer-tab, .aw-drawer-key, .aw-verb-chip, .aw-verb-btn, .aw-verb-step { transition: none; }
+  .aw-drawer-key:hover, .aw-verb-chip:hover, .aw-verb-btn:hover, .aw-verb-step:hover { transform: none; }
+}
+html.sf-reduce-motion .aw-drawer,
+html.sf-reduce-motion .aw-drawer-tab,
+html.sf-reduce-motion .aw-drawer-key,
+html.sf-reduce-motion .aw-verb-chip,
+html.sf-reduce-motion .aw-verb-btn,
+html.sf-reduce-motion .aw-verb-step { transition: none; }
+html.sf-reduce-motion .aw-drawer-key:hover,
+html.sf-reduce-motion .aw-verb-chip:hover,
+html.sf-reduce-motion .aw-verb-btn:hover,
+html.sf-reduce-motion .aw-verb-step:hover { transform: none; }
+
+@media (forced-colors: active) {
+  .aw-drawer, .aw-drawer-tab, .aw-drawer-key, .aw-site-block,
+  .aw-verb-chip, .aw-verb-btn, .aw-verb-step, .aw-verb-select, .aw-help-keys {
+    border: 1px solid CanvasText;
+    background: Canvas;
+    color: CanvasText;
+  }
+  .aw-drawer-tab.on, .aw-verb-chip.on { outline: 2px solid Highlight; outline-offset: 1px; }
+  .aw-drawer-grab, .aw-dot { background: CanvasText; }
+  .aw-drawer-key svg { stroke: CanvasText; }
+  .aw-site-reason, .aw-ledger-empty { color: GrayText; }
+}

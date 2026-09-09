@@ -1,0 +1,76 @@
+```json
+{
+  "answers": [
+    {
+      "q": 1,
+      "question": "Can I tell what the player did from the frames alone?",
+      "answer": "yes",
+      "frameIndex": 25,
+      "note": "Player ship orientation, shove cannon beam, and muzzle flash impacting the hostile ship are clearly visible."
+    },
+    {
+      "q": 2,
+      "question": "Did the world answer within a third of a second (motion, light, or a visible receipt)?",
+      "answer": "yes",
+      "frameIndex": 25,
+      "note": "Within ~0.38s of fire held at simTime 45.63s, the shove cannon beam strikes the target hostile with a bright pink impact flash."
+    },
+    {
+      "q": 3,
+      "question": "Did something the player did not directly touch change because of it?",
+      "answer": "yes",
+      "frameIndex": 152,
+      "note": "Hostile ships collide with the large asteroid on the left, producing an explosion and debris without direct player contact."
+    },
+    {
+      "q": 4,
+      "question": "Would the vision's sentence for this verb be true here? (quote the sentence)",
+      "answer": "no",
+      "frameIndex": 26,
+      "note": "\"Light ships are ammunition.\" is false here; light ships struck by the shove cannon have their velocity clamped and never become lethal projectiles."
+    },
+    {
+      "q": 5,
+      "question": "Is the ship a controllable mass (turns inside the screen, stops when braked, keeps earned speed)?",
+      "answer": "yes",
+      "frameIndex": 51,
+      "note": "The ship turns cleanly within the screen to track hostiles, holding its position as a controllable mass without uncommanded drift."
+    },
+    {
+      "q": 6,
+      "question": "Are the light ships ammunition here, rather than only targets?",
+      "answer": "no",
+      "frameIndex": 26,
+      "note": "Light ships remain targets; shove cannon hits fail to weaponize them against other hostiles, and hostilesAlive remains at 10 throughout."
+    },
+    {
+      "q": 7,
+      "question": "Is anything on screen a glowing sphere standing in for a designed event?",
+      "answer": "no",
+      "frameIndex": 25,
+      "note": "Ships and wreckage use authored 3D models, shield impacts use shaped Fresnel bubbles, and explosions use textured meshes rather than glowing spheres."
+    },
+    {
+      "q": 8,
+      "question": "Did anyone flee, choose, or arrive because of the violence?",
+      "answer": "no",
+      "frameIndex": 159,
+      "note": "No ships flee, change course, or make choices in response to combat; all 10 hostiles continue their rigid swarm pattern through frame 159."
+    },
+    {
+      "q": 9,
+      "question": "Would a stranger tell a \"so then\" story about these twelve seconds?",
+      "answer": "yes",
+      "frameIndex": 152,
+      "note": "A spectator would recount holding off a swarm against a ringed planet, firing concussion blasts to fend off fighters while background craft detonate."
+    }
+  ],
+  "fundamental": {
+    "rule": "_clampSpeed",
+    "file": "src/core/sg02DynamicBodyOwner.js",
+    "does": "truncates NPC velocity to 1.15x maxSpeed each tick, deleting given momentum and shove impulses",
+    "breaksSentence": "Light ships are ammunition.",
+    "frameIndex": 26
+  }
+}
+```

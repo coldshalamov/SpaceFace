@@ -1,0 +1,644 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+
+import {
+  RECOVERY_SCENARIO_IDS,
+  SANDBOX_CAMERA_CANDIDATES,
+  SANDBOX_PHYSICS_LOADOUTS,
+  SCENARIO_PRESETS,
+  applySandboxSetup,
+  buildSandboxLaunchConfig,
+  installSandboxGameStartedHook,
+  requestSandboxGame,
+} from '../src/ui/sandbox/sandboxSetup.js';
+import { COMBAT_LAB_SETUP_SCHEMA } from '../src/contracts/combatLabSetupSchema.js';
+import {
+  COMBAT_LAB_ARENAS,
+  COMBAT_LAB_ENEMY_PACKAGES,
+  COMBAT_LAB_STARTER_PACKAGES,
+} from '../src/data/combatLabSetups.js';
+import { createBus } from '../src/core/eventBus.js';
+import { createGameState } from '../src/core/gameState.js';
+import { SECTOR_ZONES } from '../src/data/sectorZones.js';
+import {
+  CERES_ACTIVITY_POCKETS_BY_ID,
+  CERES_REFERENCE_ACCEPTANCE_ENTRY,
+} from '../src/data/sectorActivityPockets.js';
+import { PQ019_HEIST_SECTOR_ID } from '../src/data/heistFacilities.js';
+import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
+import { TECH_NODES } from '../src/data/tech.js';
+import { economy as economyPrototype } from '../src/systems/economy.js';
+import { makeShipEntitySpec, ships as shipsPrototype } from '../src/systems/ships.js';
+
+function recoveryPreset(id) {
+  return SCENARIO_PRESETS.find((preset) => preset.id === id);
+}
+
+function makeContext() {
+  const enteredSectors = [];
+  const relocations = [];
+  const schedules = [];
+  const materialized = [];
+  const emitted = [];
+  const spawned = [];
+  const cameraZooms = [];
+  let nextEntity = 1;
+
+  const playerEntity = {
+    id: 'player',
+    type: 'ship',
+    pos: { x: 20, z: -30 },
+  };
+  const entities = new Map([[playerEntity.id, playerEntity]]);
+  const systems = new Map([
+    ['world', {
+      enterSector(sectorId) {
+        enteredSectors.push(sectorId);
+      },
+      relocatePlayerInSector(pose, meta) {
+        relocations.push({ pose: { ...pose }, meta: { ...meta } });
+        playerEntity.pos.x = pose.x;
+        playerEntity.pos.z = pose.z;
+        return true;
+      },
+    }],
+    ['heistFacilities', {
+      materializeForSector(sectorId) {
+        materialized.push(sectorId);
+      },
+      requestLaunchSchedule(schedule) {
+        schedules.push({ ...schedule });
+        return true;
+      },
+    }],
+  ]);
+
+  const ctx = {
+    state: {
+      playerId: playerEntity.id,
+      player: {
+        credits: 0,
+        activeShipIndex: 0,
+        ownedShips: [{ defId: 'ship_kestrel', fittings: [] }],
+        moduleInventory: [],
+        researchedNodes: [],
+        researchPoints: 0,
+      },
+      entities,
+      rng: () => 0,
+      tick: 41,
+      simTime: 12,
+      render: {
+        cameraCtrl: {
+          setZoom(zoom) {
+            cameraZooms.push(zoom);
+          },
+          snapToPlayer() {},
+        },
+      },
+    },
+    registry: {
+      get(name) {
+        return systems.get(name) || null;
+      },
+    },
+    helpers: {
+      spawnEntity(spec) {
+        const entity = {
+          ...spec,
+          id: spec.id || `sandbox-test-${nextEntity++}`,
+          pos: { ...(spec.pos || { x: 0, z: 0 }) },
+          data: { ...(spec.data || {}) },
+        };
+        entities.set(entity.id, entity);
+        spawned.push(entity);
+        return entity;
+      },
+    },
+    bus: {
+      emit(type, payload) {
+        emitted.push({ type, payload });
+      },
+    },
+  };
+
+  return {
+    ctx,
+    enteredSectors,
+    relocations,
+    schedules,
+    materialized,
+    emitted,
+    spawned,
+    cameraZooms,
+  };
+}
+
+test('recovery launcher exposes the exact eight named playtest scenarios', () => {
+  assert.equal(new Set(RECOVERY_SCENARIO_IDS).size, 8);
+  assert.deepEqual(RECOVERY_SCENARIO_IDS, [
+    'massline_long_line',
+    'massline_short_line',
+    'massline_moving_anchor',
+    'physics_swarm',
+    'ceres_reference_pocket',
+    'planet_sling_course',
+    'crime_interception',
+    'visual_stress_scene',
+  ]);
+
+  for (const id of RECOVERY_SCENARIO_IDS) {
+    const matches = SCENARIO_PRESETS.filter((preset) => preset.id === id);
+    assert.equal(matches.length, 1, `${id} has one launcher card`);
+    assert.equal(matches[0].config.scenarioId, id, `${id} preserves its receipt identity`);
+    assert.ok(matches[0].config.cameraCandidate, `${id} has repeatable camera framing`);
+  }
+
+  const ceres = recoveryPreset('ceres_reference_pocket');
+  assert.equal(Object.hasOwn(ceres.config, 'seed'), true);
+  assert.equal(ceres.config.seed, CERES_REFERENCE_ACCEPTANCE_ENTRY.fixedSeed);
+  for (const preset of SCENARIO_PRESETS.filter((entry) => entry.id !== 'ceres_reference_pocket')) {
+    assert.equal(Object.hasOwn(preset.config, 'seed'), false,
+      `${preset.id} does not inherit the Ceres acceptance seed`);
+  }
+
+  assert.deepEqual(SANDBOX_CAMERA_CANDIDATES.map((candidate) => candidate.zoom), [72, 96, 120, 144]);
+  assert.deepEqual(SANDBOX_PHYSICS_LOADOUTS.map((loadout) => loadout.id), [
+    'starter',
+    'impulse',
+    'physics_toolkit',
+  ]);
+});
+
+test('fine-tune overrides clone frozen presets and clamp human inputs', () => {
+  const base = recoveryPreset('physics_swarm').config;
+  const before = base.physicsSwarm;
+  const config = buildSandboxLaunchConfig(base, {
+    cameraCandidate: 'physics_study',
+    physicsLoadout: 'impulse',
+    enemyCount: 99.8,
+    masslineEnabled: true,
+    lineLength: 5,
+    anchorMass: 2_000_000,
+  });
+
+  assert.notEqual(config, base);
+  assert.notEqual(config.physicsSwarm, before);
+  assert.equal(before.lightCount, 10, 'frozen preset stays unchanged');
+  assert.equal(config.physicsSwarm.lightCount, 18);
+  assert.equal(config.physicsSwarm.mediumCount, 2);
+  assert.equal(config.physicsSwarm.lightCount + config.physicsSwarm.mediumCount, 20);
+  assert.equal(config.cameraCandidate, 'physics_study');
+  assert.equal(config.physicsLoadout, 'impulse');
+  assert.deepEqual(config.masslineRange, { distance: 60, mass: 1_000_000 });
+});
+
+test('physics swarm enemy override is a clamped total that preserves authored mediums when possible', () => {
+  const base = recoveryPreset('physics_swarm').config;
+  const cases = [
+    { override: -1, light: 0, medium: 0, total: 0 },
+    { override: 0, light: 0, medium: 0, total: 0 },
+    { override: 1, light: 0, medium: 1, total: 1 },
+    { override: 2, light: 0, medium: 2, total: 2 },
+    { override: 3, light: 1, medium: 2, total: 3 },
+    { override: 20, light: 18, medium: 2, total: 20 },
+    { override: 99.8, light: 18, medium: 2, total: 20 },
+  ];
+
+  for (const expected of cases) {
+    const config = buildSandboxLaunchConfig(base, { enemyCount: expected.override });
+    assert.equal(config.physicsSwarm.lightCount, expected.light, `light count for ${expected.override}`);
+    assert.equal(config.physicsSwarm.mediumCount, expected.medium, `medium count for ${expected.override}`);
+    assert.equal(
+      config.physicsSwarm.lightCount + config.physicsSwarm.mediumCount,
+      expected.total,
+      `composed total for ${expected.override}`,
+    );
+  }
+});
+
+test('physics swarm preset uses production economy and ships writers to unlock and fit the Hornet toolkit', () => {
+  const state = createGameState(0x50a6);
+  const bus = createBus();
+  const economy = Object.create(economyPrototype);
+  const ships = Object.create(shipsPrototype);
+  const systems = new Map([['economy', economy], ['ships', ships]]);
+  const helpers = {
+    spawnEntity(spec) {
+      const entity = {
+        ...spec,
+        id: state.nextEntityId++,
+        alive: true,
+        pos: { ...(spec.pos || { x: 0, z: 0 }) },
+        data: { ...(spec.data || {}) },
+      };
+      state.entities.set(entity.id, entity);
+      state.entityList.push(entity);
+      return entity;
+    },
+  };
+  const registry = { get: (name) => systems.get(name) || null };
+  const ctx = { state, bus, helpers, registry };
+  const creditChanges = [];
+  const toasts = [];
+  bus.on('credits:changed', (payload) => creditChanges.push(payload));
+  bus.on('toast', (payload) => toasts.push(payload));
+
+  economy.init(ctx);
+  ships.init(ctx);
+  ships.newGame();
+  const starter = state.player.ownedShips[0];
+  const player = helpers.spawnEntity(makeShipEntitySpec(starter.defId, {
+    isPlayer: true,
+    player: state.player,
+    fittings: starter.fittings,
+    appearance: starter.appearance,
+    livingHull: starter.livingHull,
+    pos: { x: 0, z: 0 },
+  }));
+  state.playerId = player.id;
+
+  const preset = recoveryPreset('physics_swarm');
+  applySandboxSetup(ctx, preset.config);
+
+  const active = state.player.ownedShips[state.player.activeShipIndex];
+  const toolkit = SANDBOX_PHYSICS_LOADOUTS.find((loadout) => loadout.id === 'physics_toolkit');
+  assert.equal(active.defId, 'ship_hornet');
+  assert.deepEqual(toolkit.itemIds.filter((defId) => active.fittings.includes(defId)), toolkit.itemIds);
+  assert.equal(state.player.credits, preset.config.credits, 'tech charges retain the requested launch balance');
+  assert.equal(state.player.researchedNodes.length, TECH_NODES.length, 'the full production tech tree unlocks');
+  assert.ok(state.player.researchedNodes.includes('tech_graviton_drives'));
+
+  const remainingTechCost = TECH_NODES.reduce((sum, node) => sum + node.cost.credits, 0);
+  assert.ok(creditChanges.some((entry) => (
+    entry.reason === 'sandbox:tech-budget' && entry.delta === remainingTechCost
+  )), 'the canonical economy writer provisions the exact remaining tech-credit budget');
+  assert.deepEqual(
+    toasts.filter((entry) => entry && entry.kind === 'error'),
+    [],
+    'unlock-all never surfaces false prerequisite failures while walking the production tree',
+  );
+});
+
+test('sandbox hook applies the Ceres acceptance entry once and clears a later failed launch', () => {
+  const bus = createBus();
+  const state = createGameState(0xc3e5);
+  const economy = Object.create(economyPrototype);
+  const ships = Object.create(shipsPrototype);
+  const toasts = [];
+  const newGames = [];
+  const enteredSectors = [];
+  const relocations = [];
+  const cameraZooms = [];
+  const shipCalls = [];
+  const systems = new Map([
+    ['economy', economy],
+    ['ships', ships],
+    ['world', {
+      enterSector(sectorId) { enteredSectors.push(sectorId); },
+      relocatePlayerInSector(pose, meta) {
+        relocations.push({ pose: { ...pose }, meta: { ...meta } });
+        return true;
+      },
+    }],
+  ]);
+  const helpers = {
+    spawnEntity(spec) {
+      const entity = {
+        ...spec,
+        id: state.nextEntityId++,
+        alive: true,
+        pos: { ...(spec.pos || { x: 0, z: 0 }) },
+        data: { ...(spec.data || {}) },
+      };
+      state.entities.set(entity.id, entity);
+      state.entityList.push(entity);
+      return entity;
+    },
+  };
+  const ctx = {
+    state,
+    registry: { get: (name) => systems.get(name) || null },
+    helpers,
+    bus,
+  };
+  economy.init(ctx);
+  ships.init(ctx);
+  ships.newGame();
+  const starter = state.player.ownedShips[0];
+  assert.equal(starter.defId, 'ship_kestrel', 'ordinary New Game still owns the Kestrel default');
+  const player = helpers.spawnEntity(makeShipEntitySpec(starter.defId, {
+    isPlayer: true,
+    player: state.player,
+    fittings: starter.fittings,
+    appearance: starter.appearance,
+    livingHull: starter.livingHull,
+    pos: { x: 0, z: 0 },
+  }));
+  state.playerId = player.id;
+  state.render.cameraCtrl = {
+    setZoom(zoom) { cameraZooms.push(zoom); },
+    snapToPlayer() {},
+  };
+  for (const method of ['buyShip', 'setActiveShip', 'grantModule', 'unfitModule', 'fitModule']) {
+    const original = ships[method].bind(ships);
+    ships[method] = (...args) => {
+      shipCalls.push({ method, args });
+      return original(...args);
+    };
+  }
+  bus.on('toast', (payload) => toasts.push(payload));
+  bus.on('game:new', (payload) => newGames.push(payload));
+  installSandboxGameStartedHook(bus, ctx);
+
+  const entry = CERES_REFERENCE_ACCEPTANCE_ENTRY;
+  const preset = recoveryPreset('ceres_reference_pocket');
+  requestSandboxGame(bus, preset.config);
+  assert.deepEqual(newGames, [{ seed: 47 }],
+    'the Ceres card forwards its fixed seed through the public game:new route');
+  bus.emit('game:started', {});
+
+  const active = state.player.ownedShips[state.player.activeShipIndex];
+  const pocket = CERES_ACTIVITY_POCKETS_BY_ID[entry.pocketId];
+  const zone = SECTOR_ZONES[entry.sectorId].find((row) => row.id === pocket.activityAnchor.zoneId);
+  const expected = sectorLocalToGlobalForSector({
+    x: zone.center.x + entry.entryOffset.x,
+    z: zone.center.z + entry.entryOffset.z,
+  }, entry.sectorId);
+  assert.equal(active.defId, entry.shipId);
+  assert.deepEqual(entry.itemIds.filter((defId) => active.fittings.includes(defId)), entry.itemIds);
+  assert.deepEqual(enteredSectors, [entry.sectorId]);
+  assert.deepEqual(relocations, [{
+    pose: { x: expected.x, z: expected.z, heading: 0 },
+    meta: { reason: `sandbox:${pocket.activityAnchor.zoneId}` },
+  }]);
+  assert.deepEqual(cameraZooms, [entry.cameraZoomWU]);
+  assert.equal(shipCalls.some((call) => call.method === 'buyShip'), true);
+  assert.equal(shipCalls.some((call) => call.method === 'setActiveShip'), true);
+  assert.deepEqual(
+    shipCalls.filter((call) => call.method === 'grantModule').map((call) => call.args[0].defId),
+    entry.itemIds,
+    'the acceptance entry grants only its named physics toolkit',
+  );
+
+  const requestAndFail = (config, expected) => {
+    const before = newGames.length;
+    requestSandboxGame(bus, config);
+    assert.equal(newGames.length, before + 1);
+    assert.deepEqual(newGames.at(-1), expected);
+    bus.emit('game:startFailed', { error: 'seed envelope probe' });
+    return newGames.at(-1);
+  };
+  assert.deepEqual(requestAndFail({ scenarioId: 'valid-low', seed: 1 }, { seed: 1 }), { seed: 1 });
+  assert.deepEqual(
+    requestAndFail({ scenarioId: 'valid-high', seed: 0xffffffff }, { seed: 0xffffffff }),
+    { seed: 0xffffffff },
+  );
+  const invalidSeedConfigs = [
+    { scenarioId: 'omitted' },
+    { scenarioId: 'undefined', seed: undefined },
+    { scenarioId: 'null', seed: null },
+    { scenarioId: 'zero', seed: 0 },
+    { scenarioId: 'negative', seed: -1 },
+    { scenarioId: 'fraction', seed: 47.5 },
+    { scenarioId: 'nan', seed: Number.NaN },
+    { scenarioId: 'positive-infinity', seed: Number.POSITIVE_INFINITY },
+    { scenarioId: 'negative-infinity', seed: Number.NEGATIVE_INFINITY },
+    { scenarioId: 'overflow', seed: 0x1_0000_0000 },
+    { scenarioId: 'string', seed: '47' },
+    { scenarioId: 'boolean', seed: true },
+    { scenarioId: 'boxed', seed: new Number(47) },
+    Object.assign(Object.create({ seed: 47 }), { scenarioId: 'inherited' }),
+    recoveryPreset('physics_swarm').config,
+  ];
+  const invalidEnvelopes = invalidSeedConfigs.map((config) => requestAndFail(config, {}));
+  assert.equal(new Set(invalidEnvelopes).size, invalidEnvelopes.length,
+    'every launch receives a fresh game:new options object');
+
+  const toastCount = toasts.length;
+  requestSandboxGame(bus, { scenarioId: 'physics_swarm' });
+  bus.emit('game:startFailed', { error: 'synthetic launch failure' });
+  bus.emit('game:started', {});
+
+  assert.equal(toasts.length, toastCount,
+    'ordinary start cannot consume config from the failed Sandbox launch');
+});
+
+test('Ceres preset derives its anchor-local entry from the activity contract', () => {
+  const h = makeContext();
+  const preset = recoveryPreset('ceres_reference_pocket');
+  applySandboxSetup(h.ctx, preset.config);
+
+  const entry = CERES_REFERENCE_ACCEPTANCE_ENTRY;
+  const pocket = CERES_ACTIVITY_POCKETS_BY_ID[entry.pocketId];
+  const zone = SECTOR_ZONES[entry.sectorId].find((item) => item.id === pocket.activityAnchor.zoneId);
+  const expected = sectorLocalToGlobalForSector({
+    x: zone.center.x + entry.entryOffset.x,
+    z: zone.center.z + entry.entryOffset.z,
+  }, entry.sectorId);
+
+  assert.equal(preset.config.shipId, entry.shipId);
+  assert.equal(preset.config.seed, entry.fixedSeed);
+  assert.equal(buildSandboxLaunchConfig(preset.config, { seed: 99 }).seed, entry.fixedSeed,
+    'fine tuning cannot replace the acceptance seed');
+  assert.equal(preset.config.physicsLoadout, entry.loadoutId);
+  assert.equal(preset.config.unlockAllTech, true);
+  assert.equal(Object.hasOwn(preset.config, 'grantAllModules'), false);
+  assert.equal(Object.hasOwn(preset.config, 'credits'), false);
+  assert.equal(preset.config.spawnAtZoneId, pocket.activityAnchor.zoneId);
+  assert.deepEqual(preset.config.spawnAtZoneOffset, entry.entryOffset);
+  assert.deepEqual(h.enteredSectors, [entry.sectorId]);
+  assert.deepEqual(h.relocations, [{
+    pose: { x: expected.x, z: expected.z, heading: 0 },
+    meta: { reason: `sandbox:${pocket.activityAnchor.zoneId}` },
+  }]);
+  assert.deepEqual(h.cameraZooms, [entry.cameraZoomWU]);
+  assert.equal(h.emitted.at(-1).payload.text, 'Sandbox: Ceres Reference Pocket ready');
+});
+
+test('physical-play presets compose production spawns, relocation and launch scheduling', async (t) => {
+  await t.test('physics swarm creates the requested hostiles and collision anchors', () => {
+    const h = makeContext();
+    applySandboxSetup(h.ctx, {
+      scenarioId: 'physics_swarm',
+      physicsSwarm: { lightCount: 3, mediumCount: 2, anchorCount: 2 },
+      cameraCandidate: 'wide_gameplay',
+    });
+
+    assert.equal(h.spawned.filter((entity) => entity.data.sandboxCollisionAnchor).length, 2);
+    assert.equal(h.spawned.filter((entity) => entity.type === 'ship').length, 5);
+    assert.equal(h.spawned.length, 7);
+    assert.deepEqual(h.cameraZooms, [120]);
+  });
+
+  await t.test('Massline static and moving targets keep their requested physical traits', () => {
+    const staticHarness = makeContext();
+    applySandboxSetup(staticHarness.ctx, {
+      masslineRange: { distance: 220, mass: 1800, preAttach: false },
+    });
+    assert.equal(staticHarness.spawned[0].data.sandboxMasslineAnchor, true);
+    assert.equal(staticHarness.spawned[0].mass, 1800);
+    assert.equal(staticHarness.spawned[0].pos.x, 240);
+
+    const movingHarness = makeContext();
+    applySandboxSetup(movingHarness.ctx, {
+      masslineRange: { distance: 170, movingTarget: true, preAttach: false },
+    });
+    assert.equal(movingHarness.spawned[0].data.sandboxMovingTarget, true);
+    assert.deepEqual(movingHarness.spawned[0].vel, { x: 0, z: 42 });
+  });
+
+  await t.test('planet course uses Tethys and ordinary physical anchors', () => {
+    const h = makeContext();
+    applySandboxSetup(h.ctx, recoveryPreset('planet_sling_course').config);
+    assert.deepEqual(h.enteredSectors, ['sector_tethys_junction']);
+    assert.equal(h.relocations.at(-1).meta.reason, 'sandbox:planet_sling_course');
+    assert.equal(h.spawned.filter((entity) => entity.data.sandboxCollisionAnchor).length, 2);
+    assert.deepEqual(h.cameraZooms, [144]);
+  });
+
+  await t.test('crime interception stages the real facility owner on simulation time', () => {
+    const h = makeContext();
+    applySandboxSetup(h.ctx, recoveryPreset('crime_interception').config);
+    assert.deepEqual(h.enteredSectors, [PQ019_HEIST_SECTOR_ID]);
+    assert.deepEqual(h.materialized, [PQ019_HEIST_SECTOR_ID]);
+    assert.deepEqual(h.schedules, [{
+      scheduleId: 'sandbox-crime-41',
+      launchAtSimT: 20,
+    }]);
+    assert.equal(h.relocations.at(-1).meta.reason, 'sandbox:crime_interception');
+  });
+});
+
+test('existing recovery presets still build the same launch config', () => {
+  const physics = recoveryPreset('physics_swarm').config;
+  const visual = recoveryPreset('visual_stress_scene').config;
+  assert.deepEqual(buildSandboxLaunchConfig(physics), { ...physics });
+  assert.deepEqual(buildSandboxLaunchConfig(visual), { ...visual });
+  assert.deepEqual(
+    buildSandboxLaunchConfig(physics, { cameraCandidate: 'physics_study', physicsLoadout: 'impulse' }).physicsSwarm,
+    physics.physicsSwarm,
+  );
+});
+
+test('malformed combatLabSetup does not throw or corrupt the rest of the config', () => {
+  const base = recoveryPreset('physics_swarm').config;
+  let config = null;
+  assert.doesNotThrow(() => {
+    config = buildSandboxLaunchConfig(base, {
+      combatLabSetup: {
+        schema: 'spaceface.combatLabSetup.v0',
+        hullId: 'ship_does_not_exist',
+        loadout: [{ slotIndex: 0, defId: 'nope' }],
+        enemyPackageId: 'nope',
+        arenaId: 'nope',
+        seed: -4,
+        wave: 0,
+      },
+      cameraCandidate: 'physics_study',
+      enemyCount: 4,
+    });
+  });
+  assert.equal(Object.hasOwn(config, 'combatLabSetup'), false);
+  assert.equal(config.shipId, 'ship_hornet');
+  assert.equal(config.cameraCandidate, 'physics_study');
+  assert.equal(config.physicsLoadout, 'physics_toolkit');
+  assert.equal(config.physicsSwarm.lightCount, 2);
+  assert.equal(config.physicsSwarm.mediumCount, 2);
+});
+
+test('applySandboxSetup skips an unvalidated Combat Lab setup that still names a live package', () => {
+  const h = makeContext();
+  const player = h.ctx.state.entities.get('player');
+  const startPos = { x: player.pos.x, z: player.pos.z };
+  const budget = {
+    request(n) { return n; },
+    bindEntity() { return true; },
+    releaseSome() { return 0; },
+  };
+  const innerGet = h.ctx.registry.get.bind(h.ctx.registry);
+  h.ctx.registry.get = (name) => {
+    if (name === 'spawnBudget') return budget;
+    if (name === 'ships') {
+      return {
+        buyShip() { throw new Error('hull should not swap'); },
+        grantModule() { return false; },
+        fitModule() { return false; },
+      };
+    }
+    return innerGet(name);
+  };
+  const enemy = COMBAT_LAB_ENEMY_PACKAGES.find((pkg) => pkg.id === 'wasp_flight');
+  const arena = COMBAT_LAB_ARENAS[0];
+  applySandboxSetup(h.ctx, {
+    combatLabSetup: {
+      schema: 'spaceface.combatLabSetup.v0',
+      hullId: 'ship_does_not_exist',
+      loadout: [{ slotIndex: 0, defId: 'wpn_pulse_laser_s' }],
+      enemyPackageId: enemy.id,
+      arenaId: arena.id,
+      seed: 47,
+      wave: 1,
+    },
+  });
+  assert.equal(h.spawned.length, 0);
+  assert.equal(h.relocations.length, 0);
+  assert.deepEqual(player.pos, startPos);
+  assert.ok(h.emitted.some((row) => row.type === 'toast' && row.payload && row.payload.kind === 'error'));
+});
+
+test('Combat Lab enemy path admits through spawnBudget', () => {
+  const requests = [];
+  const binds = [];
+  const h = makeContext();
+  const budget = {
+    request(n, owner) {
+      requests.push({ n, owner });
+      return n;
+    },
+    bindEntity(id, owner) {
+      binds.push({ id, owner });
+      return true;
+    },
+    releaseSome() { return 0; },
+  };
+  const ships = {
+    buyShip() { return true; },
+    grantModule() { return true; },
+    fitModule() { return true; },
+  };
+  const innerGet = h.ctx.registry.get.bind(h.ctx.registry);
+  h.ctx.registry.get = (name) => {
+    if (name === 'spawnBudget') return budget;
+    if (name === 'ships') return ships;
+    return innerGet(name);
+  };
+
+  const starter = COMBAT_LAB_STARTER_PACKAGES.find((pkg) => pkg.id === 'energy_baseline');
+  const enemy = COMBAT_LAB_ENEMY_PACKAGES.find((pkg) => pkg.id === 'wasp_flight');
+  const arena = COMBAT_LAB_ARENAS[0];
+  const config = buildSandboxLaunchConfig({}, {
+    combatLabSetup: {
+      schema: COMBAT_LAB_SETUP_SCHEMA,
+      hullId: starter.hullId,
+      loadout: starter.loadout.map((entry) => ({ slotIndex: entry.slotIndex, defId: entry.defId })),
+      enemyPackageId: enemy.id,
+      arenaId: arena.id,
+      seed: 47,
+      wave: 1,
+    },
+  });
+  applySandboxSetup(h.ctx, config);
+
+  const expected = enemy.entries.reduce((sum, entry) => sum + entry.count, 0);
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0].n, expected);
+  assert.equal(requests[0].owner, `combat-lab:${enemy.id}`);
+  assert.equal(binds.length, expected);
+  assert.equal(h.spawned.length, expected);
+  assert.deepEqual(binds.map((row) => row.id), h.spawned.map((entity) => entity.id));
+  for (const bind of binds) assert.equal(bind.owner, `combat-lab:${enemy.id}`);
+  for (const entity of h.spawned) {
+    assert.equal(entity.data.ai.spawnContext, 'encounter');
+  }
+});
