@@ -557,15 +557,16 @@ def embed_root(prefix, r, parent, kind='rock', radius=0.55,
                                              (4.4, 0.25, 0.38), (5.6, 0.31, 0.47))):
             # The scaled tab overlaps the flange and lifts only slightly from its rim.
             reach = min(ln, span * 0.9)
-            t = put(box(f'{prefix}_bite_tab_{i}', (reach, 0.09, 0.05),
-                        (math.cos(ang) * span * 0.72, math.sin(ang) * span * 0.72, host_top * 0.45)),
+            t = put(cyl(f'{prefix}_bite_tab_{i}', 0.038, reach,
+                        (math.cos(ang) * span * 0.72, math.sin(ang) * span * 0.72, host_top * 0.45),
+                        rot=(0, math.pi / 2, ang), verts=7),
                     'furniture_bare_steel', parent)
-            t.rotation_euler = (0, tilt * 0.35, ang)
+            t.rotation_euler[1] += tilt * 0.35
         for i, (ang, sc) in enumerate(((0.7, 0.17), (2.4, 0.13), (5.1, 0.20))):
             s = min(sc, span * 0.42)
-            put(box(f'{prefix}_rim_slag_{i}', (s, s * 0.8, s * 0.45),
+            put(cyl(f'{prefix}_rim_slag_{i}', s * 0.42, s * 0.45,
                     (math.cos(ang) * span * 0.80, math.sin(ang) * span * 0.80,
-                     host_top + s * 0.10)),
+                     host_top + s * 0.10), verts=6),
                 'furniture_scorch', parent)
     elif kind == 'rock':
         # Driven: an irregular skirt of rock-biting tabs splayed around the shaft, plus displaced
@@ -574,40 +575,44 @@ def embed_root(prefix, r, parent, kind='rock', radius=0.55,
             'furniture_bare_steel', parent)
         for i, (ang, ln, tilt) in enumerate(((0.0, 0.34, 0.5), (1.5, 0.28, 0.42), (2.9, 0.36, 0.58),
                                              (4.4, 0.25, 0.38), (5.6, 0.31, 0.47))):
-            t = put(box(f'{prefix}_bite_tab_{i}', (ln, 0.09, 0.05),
-                        (math.cos(ang) * radius * 0.8, math.sin(ang) * radius * 0.8, 0.03)),
+            t = put(cyl(f'{prefix}_bite_tab_{i}', 0.038, ln,
+                        (math.cos(ang) * radius * 0.8, math.sin(ang) * radius * 0.8, 0.03),
+                        rot=(0, math.pi / 2, ang), verts=7),
                     'furniture_bare_steel', parent)
-            t.rotation_euler = (0, tilt, ang)
+            t.rotation_euler[1] += tilt
         for i, (ang, sc) in enumerate(((0.7, 0.17), (2.4, 0.13), (5.1, 0.20))):
-            put(box(f'{prefix}_spoil_{i}', (sc, sc * 0.8, sc * 0.45),
-                    (math.cos(ang) * radius * 1.05, math.sin(ang) * radius * 1.05, 0.04)),
+            put(cyl(f'{prefix}_spoil_{i}', sc * 0.42, sc * 0.45,
+                    (math.cos(ang) * radius * 1.05, math.sin(ang) * radius * 1.05, 0.04),
+                    verts=6),
                 'furniture_scorch', parent)
     elif kind == 'weld':
         # Welded to a face in a hurry: an uneven fillet skirt, thicker on the side the welder
-        # started, plus two tack plates that were never dressed back.
+        # started, plus two tack discs that were never dressed back.
         for i in range(8):
             a = i * math.pi / 4
             h = 0.10 + (0.07 if i < 3 else 0.0)
-            put(box(f'{prefix}_fillet_{i}', (0.20, 0.10, h),
-                    (math.cos(a) * radius * 0.9, math.sin(a) * radius * 0.9, h * 0.5)),
+            put(cyl(f'{prefix}_fillet_{i}', 0.07, h,
+                    (math.cos(a) * radius * 0.9, math.sin(a) * radius * 0.9, h * 0.5),
+                    verts=8),
                 'furniture_scorch', parent)
         for i, a in enumerate((0.9, 3.8)):
-            put(box(f'{prefix}_tack_plate_{i}', (0.30, 0.22, 0.03),
-                    (math.cos(a) * radius * 1.15, math.sin(a) * radius * 1.15, 0.02)),
+            put(cyl(f'{prefix}_tack_plate_{i}', 0.15, 0.03,
+                    (math.cos(a) * radius * 1.15, math.sin(a) * radius * 1.15, 0.02),
+                    verts=8),
                 'furniture_bare_steel', parent)
     else:  # 'ballast'
-        # A ballast frame: four feet on a spread base, one shimmed because the seat was not level.
+        # A ballast frame: four hexagonal pads on a spread base, one shimmed because the seat was not level.
         seats = []
         for i in range(4):
             a = i * math.pi / 2 + 0.4
             fx, fy = math.cos(a) * radius * 1.25, math.sin(a) * radius * 1.25
             seats.append((fx, fy))
-            put(box(f'{prefix}_foot_{i}', (0.30, 0.24, 0.09), (fx, fy, 0.045)),
+            put(cyl(f'{prefix}_foot_{i}', 0.16, 0.09, (fx, fy, 0.045), verts=6),
                 'furniture_structural_alloy', parent)
             beam(f'{prefix}_foot_brace_{i}', (fx * 0.35, fy * 0.35, 0.30), (fx, fy, 0.09), 0.035)
             put(bpy.context.active_object, 'furniture_structural_alloy', parent)
             if i == 2:
-                put(box(f'{prefix}_shim', (0.24, 0.18, 0.035), (fx, fy, 0.105)),
+                put(cyl(f'{prefix}_shim', 0.12, 0.035, (fx, fy, 0.105), verts=6),
                     'furniture_bare_steel', parent)
         if sill_to is not None:
             # Bridge raised bodies to the ballast feet with a seated structural sill.
@@ -778,10 +783,11 @@ def build_tally_post():
         ('tally_deck_rail_w', (RAIL, IN * 2 + RAIL, DECK_D), (-(IN + RAIL * 0.5), 0, DECK_Z)),
     ):
         rails.append((name, put(box(name, size, loc), 'furniture_structural_alloy', r)))
-    # Full interior runs sit inside the deck depth and share its structural alloy.
+    # Round grate bars, not square slats — cubes at this scale read as LEGO on the deck.
     for i in range(8):
-        put(box(f'tally_grate_{i}', (IN * 2 + RAIL * 0.5, 0.14, DECK_D - 0.05),
-                (0, -1.05 + i * 0.30, DECK_Z)),
+        put(cyl(f'tally_grate_{i}', 0.055, IN * 2 + RAIL * 0.4,
+                (0, -1.05 + i * 0.30, DECK_Z),
+                rot=(0, math.pi / 2, 0), verts=8),
             'furniture_structural_alloy', r)
     # Cut the damaged corner from both rails and replace it as a buckled fold inside the footprint.
     for name, obj in rails:
@@ -874,9 +880,9 @@ def build_whistle():
     # The shaft overlaps the last link; derive both z seats from the endpoint so the load path
     # survives future chain-length changes.
     bx, by, boot_z = boot_anchor
-    put(box('whistle_boot', (0.20, 0.12, 0.13), (bx, by, boot_z - 0.045)),
+    put(cyl('whistle_boot', 0.10, 0.13, (bx, by, boot_z - 0.045), verts=8),
         'furniture_painted_shell', r)
-    put(box('whistle_boot_sole', (0.30, 0.13, 0.036), (bx + 0.05, by - 0.02, boot_z - 0.097)),
+    put(cyl('whistle_boot_sole', 0.14, 0.036, (bx + 0.05, by - 0.02, boot_z - 0.097), verts=8),
         'furniture_bare_steel', r)
     # Jury mast: 0.7 m of welded rebar, three rods that do not agree with each other.
     for i, (dx_, dy_, tilt) in enumerate(((0.0, 0.0, 0.0), (0.06, 0.03, 0.16), (-0.05, 0.05, -0.11))):
@@ -1098,9 +1104,10 @@ def build_ash_pin():
         put(bpy.context.active_object, 'furniture_bare_steel', r)
     for i, (sz, a, drop) in enumerate(((0.11, 0.4, 0.008), (0.08, 1.9, 0.006), (0.09, 3.1, 0.012))):
         a0, a1 = wire[i], wire[i + 1]
-        t = put(box(f'ash_token_{i}', (sz, sz, sz * 0.35),
+        t = put(cyl(f'ash_token_{i}', sz * 0.5, sz * 0.12,
                     ((a0[0] + a1[0]) * 0.5, (a0[1] + a1[1]) * 0.5,
-                     (a0[2] + a1[2]) * 0.5 - drop)),
+                     (a0[2] + a1[2]) * 0.5 - drop),
+                    verts=8),
                 'furniture_painted_shell', r)
         t.rotation_euler = (0, 0, a)
     return r

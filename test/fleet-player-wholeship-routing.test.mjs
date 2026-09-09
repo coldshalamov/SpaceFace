@@ -10,6 +10,7 @@ import {
   shipArchetypeKeyForDefId,
   wholeShipVisualForEntity,
 } from '../src/render/partsLibrary.js';
+import { renderPackagePilotForSourceUrl } from '../src/render/renderPackageManifest.js';
 import { makeShipEntitySpec } from '../src/systems/ships.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -45,6 +46,11 @@ for (const [defId, expected] of Object.entries(EXPECTED)) {
     hull: [expected.file],
   }, `${defId} must decode only LOD0`);
   assert.match(shipArchetypeKeyForDefId(defId), new RegExp(expected.file.replace('.', '\\.')));
+
+  const releaseUrl = `assets/ships/release/parts/${expected.file}`;
+  const pilot = renderPackagePilotForSourceUrl(releaseUrl);
+  assert.ok(pilot, `${defId} must load through a render package, not the source-route fallback`);
+  assert.equal(pilot.runtimeAssetId, expected.assetId, `${defId} package runtime identity`);
 
   if (defId === 'ship_kestrel') continue;
   const source = resolve(ROOT, 'assets/ships/parts', expected.file);

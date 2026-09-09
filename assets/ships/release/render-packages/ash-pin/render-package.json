@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "70497d345c6e974627f5ac5f13acdc6d97f4beb8653e14ff813bdd7c57363bc4",
+  "contentHash": "8861d6e2e1d63167d33ea14bea72b36d64bd5f213b950843eae24ad5eb1870f1",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -23,13 +23,13 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b74edf89506fd7780141fa3ae5e3940d5c68da7eddb3da67725470f2869376d3",
+      "geometryHash": "e50891c0628ec44bb4c5b2280f0530245aea9aeda5114da3283f8d2c6b9c05e3",
       "id": "sf.render.ash-pin.mesh.ash-ballast-link-0.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.010",
+      "meshName": "Cylinder.015",
       "nodeId": "sf.render.ash-pin.mesh.ash-ballast-link-0",
       "primitiveIndex": 0,
       "vertexCount": 30
@@ -48,13 +48,13 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a35f53786e4ea60e00a5fa793c9b160854e447482bcc47927c18d21f8eac1d42",
+      "geometryHash": "0d28b9bfb4f5e5666ebe09f9c044a9d0fc94bfa8e12a6f27c7cd61ea98b5655e",
       "id": "sf.render.ash-pin.mesh.ash-ballast-link-1.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.011",
+      "meshName": "Cylinder.016",
       "nodeId": "sf.render.ash-pin.mesh.ash-ballast-link-1",
       "primitiveIndex": 0,
       "vertexCount": 30
@@ -73,13 +73,13 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "84b76ed99b6949d6d4bff0120da48f02eacd936530b2848d501c8c2b5da0ae63",
+      "geometryHash": "e627e563b763d09cfdf71ef040df35c6585df877dd153f7110be7ddc83fd236e",
       "id": "sf.render.ash-pin.mesh.ash-ballast-link-2.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "0713eb6cd2a3219d2d51057cbe6789ea9090ed0d7f2149e0193e58696e5a78eb",
+      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.012",
+      "meshName": "Cylinder.017",
       "nodeId": "sf.render.ash-pin.mesh.ash-ballast-link-2",
       "primitiveIndex": 0,
       "vertexCount": 30
@@ -102,9 +102,9 @@
       "id": "sf.render.ash-pin.mesh.ash-ballast-link-3.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.013",
+      "meshName": "Cylinder.018",
       "nodeId": "sf.render.ash-pin.mesh.ash-ballast-link-3",
       "primitiveIndex": 0,
       "vertexCount": 30
@@ -127,9 +127,9 @@
       "id": "sf.render.ash-pin.mesh.ash-ballast-link-4.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.014",
+      "meshName": "Cylinder.019",
       "nodeId": "sf.render.ash-pin.mesh.ash-ballast-link-4",
       "primitiveIndex": 0,
       "vertexCount": 30
@@ -152,7 +152,7 @@
       "id": "sf.render.ash-pin.mesh.ash-base.primitive.0",
       "indexCount": 108,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder",
       "nodeId": "sf.render.ash-pin.mesh.ash-base",
@@ -177,9 +177,9 @@
       "id": "sf.render.ash-pin.mesh.ash-cage-arm.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.010",
+      "meshName": "Cube.005",
       "nodeId": "sf.render.ash-pin.mesh.ash-cage-arm",
       "primitiveIndex": 0,
       "vertexCount": 96
@@ -202,9 +202,9 @@
       "id": "sf.render.ash-pin.mesh.ash-cage-bar-0.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.011",
+      "meshName": "Cube.006",
       "nodeId": "sf.render.ash-pin.mesh.ash-cage-bar-0",
       "primitiveIndex": 0,
       "vertexCount": 96
@@ -227,9 +227,9 @@
       "id": "sf.render.ash-pin.mesh.ash-cage-bar-1.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.012",
+      "meshName": "Cube.007",
       "nodeId": "sf.render.ash-pin.mesh.ash-cage-bar-1",
       "primitiveIndex": 0,
       "vertexCount": 96
@@ -252,9 +252,9 @@
       "id": "sf.render.ash-pin.mesh.ash-cage-bar-2.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.013",
+      "meshName": "Cube.008",
       "nodeId": "sf.render.ash-pin.mesh.ash-cage-bar-2",
       "primitiveIndex": 0,
       "vertexCount": 96
@@ -277,9 +277,9 @@
       "id": "sf.render.ash-pin.mesh.ash-cage-bar-3.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.014",
+      "meshName": "Cube.009",
       "nodeId": "sf.render.ash-pin.mesh.ash-cage-bar-3",
       "primitiveIndex": 0,
       "vertexCount": 96
@@ -302,7 +302,7 @@
       "id": "sf.render.ash-pin.mesh.ash-cage-ring-lo.primitive.0",
       "indexCount": 192,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
       "meshName": "Torus",
       "nodeId": "sf.render.ash-pin.mesh.ash-cage-ring-lo",
@@ -327,7 +327,7 @@
       "id": "sf.render.ash-pin.mesh.ash-cage-ring.primitive.0",
       "indexCount": 192,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
       "meshName": "Torus.001",
       "nodeId": "sf.render.ash-pin.mesh.ash-cage-ring",
@@ -348,13 +348,13 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1f5d0cdee1cad5a513390aec223b27a14eb96691c788ef0ca6d27afad4f3e814",
+      "geometryHash": "af54110d63e398576afea6e1daea65b18e9221240643c660dd3c637be9432f17",
       "id": "sf.render.ash-pin.mesh.ash-chain-eye-a.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "0713eb6cd2a3219d2d51057cbe6789ea9090ed0d7f2149e0193e58696e5a78eb",
+      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.008",
+      "meshName": "Cylinder.013",
       "nodeId": "sf.render.ash-pin.mesh.ash-chain-eye-a",
       "primitiveIndex": 0,
       "vertexCount": 36
@@ -377,9 +377,9 @@
       "id": "sf.render.ash-pin.mesh.ash-chain-eye-b.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "0713eb6cd2a3219d2d51057cbe6789ea9090ed0d7f2149e0193e58696e5a78eb",
+      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.009",
+      "meshName": "Cylinder.014",
       "nodeId": "sf.render.ash-pin.mesh.ash-chain-eye-b",
       "primitiveIndex": 0,
       "vertexCount": 36
@@ -387,102 +387,102 @@
     {
       "bounds": {
         "max": [
-          2.4672548986113725,
-          0.30598292165946717,
-          -0.4194921059851673
+          2.4284051741825863,
+          0.3060212996011984,
+          -0.2835140427004319
         ],
         "min": [
-          1.4472547281420844,
-          0.000017108205181671186,
-          -1.2355358589547052
+          1.4861048578824665,
+          -0.000021248586886319027,
+          -1.3715140488993143
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0820ce5a97ca967e0adca6f10470d41623ce0128d3137aa8c699e4f85746384c",
+      "geometryHash": "14412a7bf3fb8cae774bc41c06f69192b411b20c807cd666eef191c86d89e3f4",
       "id": "sf.render.ash-pin.mesh.ash-foot-0.primitive.0",
-      "indexCount": 132,
+      "indexCount": 60,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube",
+      "meshName": "Cylinder.001",
       "nodeId": "sf.render.ash-pin.mesh.ash-foot-0",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          -0.31751396056522907,
-          0.3059828963274924,
-          -1.5492329495579469
+          -0.3563639383137627,
+          0.3060212996011984,
+          -1.4132549622691357
         ],
         "min": [
-          -1.3375140803705676,
-          0.000017115802918723968,
-          -2.36527667719551
+          -1.2986641532859835,
+          -0.000021248586886319027,
+          -2.501254867140119
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c909c9d363f155516f858465a024b10d5cd71ffa9d2a930b9498de81dcbad168",
+      "geometryHash": "cd18c9bf892d82fa2449fb867b1ff223b7cb919533efcd62bbf3e920c12d4683",
       "id": "sf.render.ash-pin.mesh.ash-foot-1.primitive.0",
-      "indexCount": 132,
+      "indexCount": 60,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.001",
+      "meshName": "Cylinder.003",
       "nodeId": "sf.render.ash-pin.mesh.ash-foot-1",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          -1.4472547281420844,
-          0.30598292165946717,
-          1.2355358589547052
+          -1.4861048578824665,
+          0.3060212996011984,
+          1.3715140488993143
         ],
         "min": [
-          -2.4672548986113725,
-          0.000017108205181671186,
-          0.4194921059851673
+          -2.4284051741825863,
+          -0.000021248586886319027,
+          0.2835140427004319
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f2d41264d8955b65352bd3b92dfa83262cadf317dbcbee7a263e972e96bf554e",
+      "geometryHash": "48fab568712b3facbc926d0178068c950a0b9b3b4849288a9ef40c9b2b3deff8",
       "id": "sf.render.ash-pin.mesh.ash-foot-2.primitive.0",
-      "indexCount": 132,
+      "indexCount": 60,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.002",
+      "meshName": "Cylinder.005",
       "nodeId": "sf.render.ash-pin.mesh.ash-foot-2",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          1.3375140803705676,
-          0.3059828963274924,
-          2.36527667719551
+          1.2986641532859835,
+          0.3060212996011984,
+          2.501254867140119
         ],
         "min": [
-          0.31751396056522907,
-          0.000017115802918723968,
-          1.5492329495579469
+          0.3563639383137627,
+          -0.000021248586886319027,
+          1.4132549622691357
         ]
       },
       "drawMode": 4,
-      "geometryHash": "fd8162e7906644ffd7e26caa7e0d7398a821dbeca18b31d0c18d285881051084",
+      "geometryHash": "2ba8f6f70837441d786aa40c6b1ebae32c990b98015f00e4f3f3f9364939cf30",
       "id": "sf.render.ash-pin.mesh.ash-foot-3.primitive.0",
-      "indexCount": 132,
+      "indexCount": 60,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.004",
+      "meshName": "Cylinder.008",
       "nodeId": "sf.render.ash-pin.mesh.ash-foot-3",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 36
     },
     {
       "bounds": {
@@ -498,13 +498,13 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1b6ae28ff4d60ce65ed7c9d678dad769a0341d0dab21bd1725bb9e1bb6fe0431",
+      "geometryHash": "2876a87a92835c68c077628e7d632cdba111e824ece56999939ce2b09cf1a177",
       "id": "sf.render.ash-pin.mesh.ash-foot-brace-0.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.001",
+      "meshName": "Cylinder.002",
       "nodeId": "sf.render.ash-pin.mesh.ash-foot-brace-0",
       "primitiveIndex": 0,
       "vertexCount": 36
@@ -527,9 +527,9 @@
       "id": "sf.render.ash-pin.mesh.ash-foot-brace-1.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.002",
+      "meshName": "Cylinder.004",
       "nodeId": "sf.render.ash-pin.mesh.ash-foot-brace-1",
       "primitiveIndex": 0,
       "vertexCount": 36
@@ -552,9 +552,9 @@
       "id": "sf.render.ash-pin.mesh.ash-foot-brace-2.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.003",
+      "meshName": "Cylinder.006",
       "nodeId": "sf.render.ash-pin.mesh.ash-foot-brace-2",
       "primitiveIndex": 0,
       "vertexCount": 36
@@ -577,9 +577,9 @@
       "id": "sf.render.ash-pin.mesh.ash-foot-brace-3.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.004",
+      "meshName": "Cylinder.009",
       "nodeId": "sf.render.ash-pin.mesh.ash-foot-brace-3",
       "primitiveIndex": 0,
       "vertexCount": 36
@@ -602,9 +602,9 @@
       "id": "sf.render.ash-pin.mesh.ash-name-plate.primitive.0",
       "indexCount": 168,
       "indexed": true,
-      "materialHash": "d75684dbd82479f6e5eba655326bbd79a563433f2f04833fbfc95fda9bfe6b78",
+      "materialHash": "2c420cb20907deda2f1a1b3cc4a04ddd293fc6e0f576efbe9d6ad70115624975",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.005",
+      "meshName": "Cube",
       "nodeId": "sf.render.ash-pin.mesh.ash-name-plate",
       "primitiveIndex": 0,
       "vertexCount": 108
@@ -627,9 +627,9 @@
       "id": "sf.render.ash-pin.mesh.ash-offering-eye-a.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "0713eb6cd2a3219d2d51057cbe6789ea9090ed0d7f2149e0193e58696e5a78eb",
+      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.015",
+      "meshName": "Cylinder.020",
       "nodeId": "sf.render.ash-pin.mesh.ash-offering-eye-a",
       "primitiveIndex": 0,
       "vertexCount": 36
@@ -652,9 +652,9 @@
       "id": "sf.render.ash-pin.mesh.ash-offering-eye-b.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "0713eb6cd2a3219d2d51057cbe6789ea9090ed0d7f2149e0193e58696e5a78eb",
+      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.016",
+      "meshName": "Cylinder.021",
       "nodeId": "sf.render.ash-pin.mesh.ash-offering-eye-b",
       "primitiveIndex": 0,
       "vertexCount": 36
@@ -677,9 +677,9 @@
       "id": "sf.render.ash-pin.mesh.ash-offering-wire-0.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "0713eb6cd2a3219d2d51057cbe6789ea9090ed0d7f2149e0193e58696e5a78eb",
+      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.017",
+      "meshName": "Cylinder.022",
       "nodeId": "sf.render.ash-pin.mesh.ash-offering-wire-0",
       "primitiveIndex": 0,
       "vertexCount": 24
@@ -702,9 +702,9 @@
       "id": "sf.render.ash-pin.mesh.ash-offering-wire-1.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "0713eb6cd2a3219d2d51057cbe6789ea9090ed0d7f2149e0193e58696e5a78eb",
+      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.018",
+      "meshName": "Cylinder.023",
       "nodeId": "sf.render.ash-pin.mesh.ash-offering-wire-1",
       "primitiveIndex": 0,
       "vertexCount": 24
@@ -727,9 +727,9 @@
       "id": "sf.render.ash-pin.mesh.ash-offering-wire-2.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "0713eb6cd2a3219d2d51057cbe6789ea9090ed0d7f2149e0193e58696e5a78eb",
+      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.019",
+      "meshName": "Cylinder.024",
       "nodeId": "sf.render.ash-pin.mesh.ash-offering-wire-2",
       "primitiveIndex": 0,
       "vertexCount": 24
@@ -752,9 +752,9 @@
       "id": "sf.render.ash-pin.mesh.ash-plate-backing-bar.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.009",
+      "meshName": "Cube.004",
       "nodeId": "sf.render.ash-pin.mesh.ash-plate-backing-bar",
       "primitiveIndex": 0,
       "vertexCount": 96
@@ -777,9 +777,9 @@
       "id": "sf.render.ash-pin.mesh.ash-plate-bolt-0.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "0713eb6cd2a3219d2d51057cbe6789ea9090ed0d7f2149e0193e58696e5a78eb",
+      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.006",
+      "meshName": "Cylinder.011",
       "nodeId": "sf.render.ash-pin.mesh.ash-plate-bolt-0",
       "primitiveIndex": 0,
       "vertexCount": 36
@@ -802,9 +802,9 @@
       "id": "sf.render.ash-pin.mesh.ash-plate-bolt-1.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "0713eb6cd2a3219d2d51057cbe6789ea9090ed0d7f2149e0193e58696e5a78eb",
+      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.007",
+      "meshName": "Cylinder.012",
       "nodeId": "sf.render.ash-pin.mesh.ash-plate-bolt-1",
       "primitiveIndex": 0,
       "vertexCount": 36
@@ -827,9 +827,9 @@
       "id": "sf.render.ash-pin.mesh.ash-plate-ear-0.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.007",
+      "meshName": "Cube.002",
       "nodeId": "sf.render.ash-pin.mesh.ash-plate-ear-0",
       "primitiveIndex": 0,
       "vertexCount": 96
@@ -852,9 +852,9 @@
       "id": "sf.render.ash-pin.mesh.ash-plate-ear-1.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.008",
+      "meshName": "Cube.003",
       "nodeId": "sf.render.ash-pin.mesh.ash-plate-ear-1",
       "primitiveIndex": 0,
       "vertexCount": 96
@@ -862,27 +862,27 @@
     {
       "bounds": {
         "max": [
-          -1.5492547350562234,
-          0.4165184108024036,
-          1.13349846204585
+          -1.6038923594220194,
+          0.41651843613437833,
+          1.2355140734564287
         ],
         "min": [
-          -2.3652547903693346,
-          0.2974815869326193,
-          0.5215295788899468
+          -2.3106175713151345,
+          0.297481612264594,
+          0.4195140434752922
         ]
       },
       "drawMode": 4,
-      "geometryHash": "09cc10fada01c8c95ed1d0b9872f45767fcaa3fde390c3f259462a461995fe17",
+      "geometryHash": "2b951eb255f5e63bac02b61b8854a9936300661f19076fa62ca0bc1663b6be89",
       "id": "sf.render.ash-pin.mesh.ash-shim.primitive.0",
-      "indexCount": 132,
+      "indexCount": 60,
       "indexed": true,
-      "materialHash": "0713eb6cd2a3219d2d51057cbe6789ea9090ed0d7f2149e0193e58696e5a78eb",
+      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.003",
+      "meshName": "Cylinder.007",
       "nodeId": "sf.render.ash-pin.mesh.ash-shim",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 36
     },
     {
       "bounds": {
@@ -902,9 +902,9 @@
       "id": "sf.render.ash-pin.mesh.ash-spar-mesh.primitive.0",
       "indexCount": 84,
       "indexed": true,
-      "materialHash": "0713eb6cd2a3219d2d51057cbe6789ea9090ed0d7f2149e0193e58696e5a78eb",
+      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.005",
+      "meshName": "Cylinder.010",
       "nodeId": "sf.render.ash-pin.mesh.ash-spar-mesh",
       "primitiveIndex": 0,
       "vertexCount": 48
@@ -912,77 +912,77 @@
     {
       "bounds": {
         "max": [
-          -0.6081464908234224,
-          1.010653178429692,
-          -0.445925894966571
+          -0.33671501478279353,
+          0.9676398906326256,
+          -0.77871508696402
         ],
         "min": [
-          -1.072788256695361,
-          0.8797468551396435,
-          -0.9105676608385096
+          -0.6832851303545198,
+          0.9227603455925077,
+          -1.125285227867721
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c61f2547d5566eb34441947b0d3937ff14784a460d1a4f6919a8f8a1babfab4c",
+      "geometryHash": "cdda7963a1429a67904dffbb66749ecc740ed77c642077439b938e53c562f83d",
       "id": "sf.render.ash-pin.mesh.ash-token-0.primitive.0",
-      "indexCount": 132,
+      "indexCount": 84,
       "indexed": true,
-      "materialHash": "8a5e28d39fb2ee992c2a391875909206d07fda3063bf7289988feb8bd929b8f4",
+      "materialHash": "6ba888af1e572a80fd8d795af2e5a1c58d079a87e95aaaad1ee106a204c47979",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.015",
+      "meshName": "Cylinder.025",
       "nodeId": "sf.render.ash-pin.mesh.ash-token-0",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 48
     },
     {
       "bounds": {
         "max": [
-          0.07486101375393339,
-          0.9520023612976729,
-          1.0580641983695358
+          -0.6873032375238424,
+          0.9207200070190424,
+          -0.24530321600656535
         ],
         "min": [
-          -0.2550848540687518,
-          0.8567977072715109,
-          0.7281183178808632
+          -0.9446969237663296,
+          0.8880802642059393,
+          -0.5026968769170779
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4523097954c96aef8d7405b1da2e1c0bd99e10b3ef0c38b3d64b5a24cfa79194",
+      "geometryHash": "122861ab5e21ceecd3c3da37dd4b2fdecd8b5488a0da54ebf614a0239ea47bb2",
       "id": "sf.render.ash-pin.mesh.ash-token-1.primitive.0",
-      "indexCount": 132,
+      "indexCount": 84,
       "indexed": true,
-      "materialHash": "8a5e28d39fb2ee992c2a391875909206d07fda3063bf7289988feb8bd929b8f4",
+      "materialHash": "6ba888af1e572a80fd8d795af2e5a1c58d079a87e95aaaad1ee106a204c47979",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.016",
+      "meshName": "Cylinder.026",
       "nodeId": "sf.render.ash-pin.mesh.ash-token-1",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 48
     },
     {
       "bounds": {
         "max": [
-          1.25365845501166,
-          0.9851525940657382,
-          -0.00046701143001232764
+          -0.9351323807276657,
+          0.9499598948383294,
+          0.35686774062739346
         ],
         "min": [
-          0.9374250257695422,
-          0.8780473836182807,
-          -0.31670047486040076
+          -1.240867834325897,
+          0.9132402855014874,
+          0.0511322965286527
         ]
       },
       "drawMode": 4,
-      "geometryHash": "71d27dec2213591c6eba512f37d0549eff2d9da503d03f4b4180b54f87d87cf1",
+      "geometryHash": "c91465d1e7e18b67132f00403e3f315e1a88e6dc832855108c162555fdc6984a",
       "id": "sf.render.ash-pin.mesh.ash-token-2.primitive.0",
-      "indexCount": 132,
+      "indexCount": 84,
       "indexed": true,
-      "materialHash": "8a5e28d39fb2ee992c2a391875909206d07fda3063bf7289988feb8bd929b8f4",
+      "materialHash": "6ba888af1e572a80fd8d795af2e5a1c58d079a87e95aaaad1ee106a204c47979",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.017",
+      "meshName": "Cylinder.027",
       "nodeId": "sf.render.ash-pin.mesh.ash-token-2",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 48
     }
   ],
   "hlods": [],
@@ -990,8 +990,8 @@
   "lods": [],
   "materials": [
     {
-      "hash": "0713eb6cd2a3219d2d51057cbe6789ea9090ed0d7f2149e0193e58696e5a78eb",
-      "id": "material:0713eb6cd2a3219d2d51057c",
+      "hash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
+      "id": "material:042af3f5b04a408797d21b47",
       "name": "furniture_bare_steel",
       "pipelineKey": "opaque:double",
       "textures": [
@@ -1022,40 +1022,40 @@
       ]
     },
     {
-      "hash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
-      "id": "material:2e6f2a403abe2241bf65094a",
-      "name": "furniture_structural_alloy",
+      "hash": "2c420cb20907deda2f1a1b3cc4a04ddd293fc6e0f576efbe9d6ad70115624975",
+      "id": "material:2c420cb20907deda2f1a1b3c",
+      "name": "furniture_identity_plate",
       "pipelineKey": "opaque:double",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "furniture_structural_alloy_baseColor",
+          "name": "furniture_identity_plate_baseColor",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "furniture_structural_alloy_orm",
+          "name": "furniture_identity_plate_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "furniture_structural_alloy_normal",
+          "name": "furniture_identity_plate_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "furniture_structural_alloy_orm",
+          "name": "furniture_identity_plate_orm",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "8a5e28d39fb2ee992c2a391875909206d07fda3063bf7289988feb8bd929b8f4",
-      "id": "material:8a5e28d39fb2ee992c2a3918",
+      "hash": "6ba888af1e572a80fd8d795af2e5a1c58d079a87e95aaaad1ee106a204c47979",
+      "id": "material:6ba888af1e572a80fd8d795a",
       "name": "furniture_painted_shell",
       "pipelineKey": "opaque:double",
       "textures": [
@@ -1086,32 +1086,32 @@
       ]
     },
     {
-      "hash": "d75684dbd82479f6e5eba655326bbd79a563433f2f04833fbfc95fda9bfe6b78",
-      "id": "material:d75684dbd82479f6e5eba655",
-      "name": "furniture_identity_plate",
+      "hash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "id": "material:9d347080e13ee4faa8b858e1",
+      "name": "furniture_structural_alloy",
       "pipelineKey": "opaque:double",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "furniture_identity_plate_baseColor",
+          "name": "furniture_structural_alloy_baseColor",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "furniture_identity_plate_orm",
+          "name": "furniture_structural_alloy_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "furniture_identity_plate_normal",
+          "name": "furniture_structural_alloy_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "furniture_identity_plate_orm",
+          "name": "furniture_structural_alloy_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -3098,19 +3098,19 @@
       "sha256": "ed848116244a6c94ae4af94c7ce47af04f3bb4b30544a06ca13ba857fed3e005"
     },
     "sourceGlb": {
-      "bytes": 287824,
-      "sha256": "9a72dfff2e1cc906377a2c036e5a7c3857d2a5f0d3d64cd888cb63a475b283cc",
+      "bytes": 170196,
+      "sha256": "1be79a9ae0d3652b66db455c5e38a9c8c2135f07bf0c6378abc44dbbaa0e939f",
       "uri": "place_ash_pin.glb"
     },
     "sourceManifest": {
-      "bytes": 152211,
-      "sha256": "688f0d64b161f04b6d7e3989f6842a886d28d6dd61ef04b2835f55a13bb44b16",
+      "bytes": 159409,
+      "sha256": "744cb0ede1c62d560bfd2e23bfc1b9f5fb5065ec409718e44f95bd1f531921e0",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 334576,
-    "sha256": "3714f6d1fa6dfb7c7392f934e6143a05ffe1c81faaa60dc1be11e77b39b21d67",
+    "bytes": 215372,
+    "sha256": "f7f5d395f4fd9ad78f077724573d80e0759da4a4dd24763c97055be853000c63",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3121,19 +3121,19 @@
         0
       ],
       "max": [
-        2.4672548986113725,
+        2.4284051741825863,
         12.481095046779838,
-        2.36527667719551
+        2.501254867140119
       ],
       "min": [
-        -2.4672548986113725,
+        -2.4284051741825863,
         -0.00008192360630943085,
-        -2.36527667719551
+        -2.501254867140119
       ],
       "size": [
-        4.934509797222745,
+        4.856810348365173,
         12.481176970386148,
-        4.73055335439102
+        5.002509734280238
       ]
     },
     "hidden": [],
@@ -4360,20 +4360,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_ash_pin.glb"
   },
-  "runtimeHash": "8cd23785f404e18d05c95a7e354afbffe74bfbfa2b9f30d6527c2dfb78668a93",
+  "runtimeHash": "40bfd1aac6b9d266f10bf2bd9233a21cff64b54ece2f6b38bf666c534c8b5e98",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          2.4672548986113725,
+          2.4284051741825863,
           12.481095046779838,
-          2.36527667719551
+          2.501254867140119
         ],
         "min": [
-          -2.4672548986113725,
+          -2.4284051741825863,
           -0.00008192360630943085,
-          -2.36527667719551
+          -2.501254867140119
         ]
       },
       "id": "sf.render.ash-pin.body",

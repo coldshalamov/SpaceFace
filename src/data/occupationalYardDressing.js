@@ -1,9 +1,8 @@
 // Occupational yard dressing — packaged everyday-space props kept on disk.
 // A 2026-08-18 still panel left blocking toy / open-cage / LEGO notes, so
 // the sixteen yard IDs stay out of PLACE_FILES and world.js does not spawn them.
-// Lane furniture: only the corridor pin and cold locker cleared every reviewer.
-// Tally, claim, ash, and whistle stay on disk (release included) until a panel
-// leaves no blocking LEGO-foot note. Authored Ceres offsets stay unwired.
+// Lane furniture: cube foot/deck/token/lantern members were replaced with
+// cylinders and discs 2026-09-09; all six Helios corridor bodies are admitted.
 
 export const LANE_FURNITURE_PLACE_IDS = Object.freeze([
   'place_lane_pin',
@@ -16,7 +15,11 @@ export const LANE_FURNITURE_PLACE_IDS = Object.freeze([
 
 export const ADMITTED_LANE_FURNITURE_PLACE_IDS = Object.freeze([
   'place_lane_pin',
+  'place_tally_post',
+  'place_claim_mark',
   'place_cold_locker',
+  'place_ash_pin',
+  'place_whistle',
 ]);
 
 export const CHECKPOINTED_LANE_FURNITURE_PLACE_IDS = Object.freeze(

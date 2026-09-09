@@ -190,10 +190,12 @@ const PLACE_FILES = Object.freeze([
   'places/place_ceres_grave_shard.glb',
   'places/place_conveyor_barge.glb',
   'places/place_mining_drone.glb',
-  // Only the two lane-furniture bodies every still reviewer cleared. The other four stay released
-  // on disk and unrouted until their blocking notes are answered (assets/places/lane_furniture/VISUAL_REVIEW.md).
   'places/place_lane_pin.glb',
   'places/place_cold_locker.glb',
+  'places/place_tally_post.glb',
+  'places/place_claim_mark.glb',
+  'places/place_ash_pin.glb',
+  'places/place_whistle.glb',
   'places/place_asteroid_rock_a.glb',
   'places/place_asteroid_rock_b.glb',
   'places/place_asteroid_rock_c.glb',
@@ -1241,9 +1243,9 @@ const WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE = Object.freeze({
   salvor: 'wholeships/salvage_cutter.glb',
   surveyor: 'wholeships/survey_pin.glb',
   // PQ-136.02: packaged work-fleet hulls with no recorded still-review defect. Additive
-  // keys only — existing role values above stay the accepted live bodies, and `express`
-  // deliberately keeps NO whole-ship binding (PQ-049 owns express liner identity; binding
-  // it here would silently re-skin already-shipping Express Liner traffic).
+  // keys only — existing role values above stay the accepted live bodies.
+  // PQ-049: Helios express selects the civic liner after its release/package proof.
+  express: 'wholeships/massline_express_liner_v1.glb',
   rescue: 'wholeships/rescue_lifter.glb',
   prospector: 'wholeships/prospector_skiff.glb',
   sweeper: 'wholeships/scrap_sweeper.glb',
@@ -1261,6 +1263,7 @@ const WHOLE_SHIP_ASSET_ID_BY_TRAFFIC_ROLE = Object.freeze({
   tender: 'SF_WHOLESHIP_REPAIR_TENDER',
   salvor: 'SF_WHOLESHIP_SALVAGE_CUTTER',
   surveyor: 'SF_WHOLESHIP_SURVEY_PIN',
+  express: 'SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1',
   rescue: 'SF_WHOLESHIP_RESCUE_LIFTER',
   prospector: 'SF_WHOLESHIP_PROSPECTOR_SKIFF',
   sweeper: 'SF_WHOLESHIP_SCRAP_SWEEPER',

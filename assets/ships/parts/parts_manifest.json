@@ -1858,10 +1858,10 @@
       "category": "places",
       "priority": "P2",
       "file": "places/place_ash_pin.glb",
-      "tris": 1268,
-      "bytes": 297676,
+      "tris": 1100,
+      "bytes": 283348,
       "textureSize": 128,
-      "note": "LANE-FURNITURE-001 2026-08-06 authored from design/fiction/LANE_FURNITURE.md via tools/blender/build_lane_furniture.py; two adversarial review rounds. Surfaced 2026-09-06: 12 packed 128px maps, every material carrying baseColor, metallicRoughness and occlusion plus TEXCOORD_0; world-projected UVs tile past [0,1] by design. Held off the live place selector; G1/G2/G4 open. sha256=52be00c8b6a86615"
+      "note": "LANE-FURNITURE-001 construction repair 2026-09-09: cube foot/deck/token/lantern members replaced with cylinders/discs; round grate bars; hexagonal ballast pads. Wired after repair. Builder tools/blender/build_lane_furniture.py."
     },
     {
       "id": "place_asteroid_graffiti",
@@ -2175,13 +2175,13 @@
       "category": "places",
       "priority": "P2",
       "file": "places/place_claim_mark.glb",
-      "tris": 1380,
-      "bytes": 373004,
+      "tris": 1208,
+      "bytes": 358880,
       "textureSize": 128,
       "tintable": {
         "accent": "furniture_signal_lens"
       },
-      "note": "LANE-FURNITURE-001 2026-08-06 authored from design/fiction/LANE_FURNITURE.md via tools/blender/build_lane_furniture.py; two adversarial review rounds. Surfaced 2026-09-06: 17 packed 128px maps, every material carrying baseColor, metallicRoughness and occlusion plus TEXCOORD_0; world-projected UVs tile past [0,1] by design. Held off the live place selector; G1/G2/G4 open. sha256=c8547d27ffc02077"
+      "note": "LANE-FURNITURE-001 construction repair 2026-09-09: cube foot/deck/token/lantern members replaced with cylinders/discs; round grate bars; hexagonal ballast pads. Wired after repair. Builder tools/blender/build_lane_furniture.py."
     },
     {
       "id": "place_claim_outpost_base",
@@ -3918,13 +3918,13 @@
       "category": "places",
       "priority": "P2",
       "file": "places/place_tally_post.glb",
-      "tris": 1444,
-      "bytes": 393888,
+      "tris": 1196,
+      "bytes": 372536,
       "textureSize": 128,
       "tintable": {
         "accent": "furniture_signal_lens"
       },
-      "note": "LANE-FURNITURE-001 2026-08-06 authored from design/fiction/LANE_FURNITURE.md via tools/blender/build_lane_furniture.py; two adversarial review rounds. Surfaced 2026-09-06: 17 packed 128px maps, every material carrying baseColor, metallicRoughness and occlusion plus TEXCOORD_0; world-projected UVs tile past [0,1] by design. Held off the live place selector; G1/G2/G4 open. sha256=4f6356e98fd8e6f0"
+      "note": "LANE-FURNITURE-001 construction repair 2026-09-09: cube foot/deck/token/lantern members replaced with cylinders/discs; round grate bars; hexagonal ballast pads. Wired after repair. Builder tools/blender/build_lane_furniture.py."
     },
     {
       "id": "place_transfer_arm",
@@ -4005,13 +4005,13 @@
       "category": "places",
       "priority": "P2",
       "file": "places/place_whistle.glb",
-      "tris": 1720,
-      "bytes": 414916,
+      "tris": 1528,
+      "bytes": 395736,
       "textureSize": 128,
       "tintable": {
         "accent": "furniture_signal_lens"
       },
-      "note": "LANE-FURNITURE-001 2026-08-06 authored from design/fiction/LANE_FURNITURE.md via tools/blender/build_lane_furniture.py; two adversarial review rounds. Surfaced 2026-09-06: 17 packed 128px maps, every material carrying baseColor, metallicRoughness and occlusion plus TEXCOORD_0; world-projected UVs tile past [0,1] by design. Held off the live place selector; G1/G2/G4 open. sha256=b67f349b70eea74d"
+      "note": "LANE-FURNITURE-001 construction repair 2026-09-09: cube foot/deck/token/lantern members replaced with cylinders/discs; round grate bars; hexagonal ballast pads. Wired after repair. Builder tools/blender/build_lane_furniture.py."
     },
     {
       "id": "place_worklight_tower",
@@ -5577,6 +5577,183 @@
       "note": "M4-ASHLINE-HOSTILE-VISUAL-FAMILY-001 — Ashline Hook, live tether_control_raider Reach hostile body; explicit LOD0/1/2, 9/8/8 draws, damageable drive/gun/tether roles, sodium-red/amber semantic material language, stable sockets, no embedded plume. Project-original provenance: assets/ships/m4_ashline/PROVENANCE.json."
     },
     {
+      "id": "wholeship_atlas_production_v1",
+      "assetId": "SF_ATLAS_PRODUCTION_V1",
+      "category": "wholeships",
+      "priority": "P0",
+      "file": "wholeships/atlas_production_v1.glb",
+      "lodFamily": {
+        "lod0": "wholeships/atlas_production_v1.glb",
+        "lod1": "wholeships/atlas_production_v1_lod1.glb",
+        "lod2": "wholeships/atlas_production_v1_lod2.glb"
+      },
+      "status": "integration_candidate",
+      "wiringStatus": "live_player_atlas",
+      "tris": 59594,
+      "bytes": 3112876,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "warning": "Material_Warning",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Weapon_Front",
+        "SOCKET_Mining_Front",
+        "SOCKET_Engine_Main",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Camera_Focus",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -11.885,
+          -1.45,
+          -6.22
+        ],
+        "max": [
+          11,
+          17.75,
+          3.57
+        ],
+        "dimensionsM": [
+          22.885,
+          19.2,
+          9.79
+        ]
+      },
+      "note": "Fleet remaster production Atlas. Live player heavy hauler. Authored LOD0/1/2 on disk; LOD0 is the packaged live body. Not self-accepted."
+    },
+    {
+      "id": "wholeship_bastion_production_v1",
+      "assetId": "SF_BASTION_PRODUCTION_V1",
+      "category": "wholeships",
+      "priority": "P0",
+      "file": "wholeships/bastion_production_v1.glb",
+      "lodFamily": {
+        "lod0": "wholeships/bastion_production_v1.glb",
+        "lod1": "wholeships/bastion_production_v1_lod1.glb",
+        "lod2": "wholeships/bastion_production_v1_lod2.glb"
+      },
+      "status": "integration_candidate",
+      "wiringStatus": "live_player_bastion",
+      "tris": 37894,
+      "bytes": 1982260,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "warning": "Material_Warning",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Weapon_Front",
+        "SOCKET_Mining_Front",
+        "SOCKET_Engine_Main",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Camera_Focus",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -10.135,
+          -1.282,
+          -4.02
+        ],
+        "max": [
+          9.25,
+          13.395,
+          2.5
+        ],
+        "dimensionsM": [
+          19.385,
+          14.677,
+          6.52
+        ]
+      },
+      "note": "Fleet remaster production Bastion. Live player corvette. Authored LOD0/1/2 on disk; LOD0 is the packaged live body. Not self-accepted."
+    },
+    {
+      "id": "wholeship_colossus_production_v1",
+      "assetId": "SF_COLOSSUS_PRODUCTION_V1",
+      "category": "wholeships",
+      "priority": "P0",
+      "file": "wholeships/colossus_production_v1.glb",
+      "lodFamily": {
+        "lod0": "wholeships/colossus_production_v1.glb",
+        "lod1": "wholeships/colossus_production_v1_lod1.glb",
+        "lod2": "wholeships/colossus_production_v1_lod2.glb"
+      },
+      "status": "integration_candidate",
+      "wiringStatus": "live_player_colossus",
+      "tris": 56910,
+      "bytes": 2960060,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "warning": "Material_Warning",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Weapon_Front",
+        "SOCKET_Mining_Front",
+        "SOCKET_Engine_Main",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Camera_Focus",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -12.885,
+          -1.45,
+          -5.32
+        ],
+        "max": [
+          12,
+          17.41,
+          3.304
+        ],
+        "dimensionsM": [
+          24.885,
+          18.86,
+          8.624
+        ]
+      },
+      "note": "Fleet remaster production Colossus. Live player battlecruiser. Authored LOD0/1/2 on disk; LOD0 is the packaged live body. Not self-accepted."
+    },
+    {
       "id": "wholeship_helios_cradle",
       "category": "wholeships",
       "priority": "P1",
@@ -5725,6 +5902,65 @@
       "note": "M4-HELIOS-CIVILIAN-FLEET-BLENDER-001 — Helios Span, live Helios traffic role hauler; explicit LOD0/1/2, 8/8/8 draws, semantic 1K PBR maps, damageable drive/gun roles, stable sockets, no embedded plume. Project-original provenance: assets/ships/m4_helios_civilian/PROVENANCE.json."
     },
     {
+      "id": "wholeship_hornet_production_v1",
+      "assetId": "SF_HORNET_PRODUCTION_V1",
+      "category": "wholeships",
+      "priority": "P0",
+      "file": "wholeships/hornet_production_v1.glb",
+      "lodFamily": {
+        "lod0": "wholeships/hornet_production_v1.glb",
+        "lod1": "wholeships/hornet_production_v1_lod1.glb",
+        "lod2": "wholeships/hornet_production_v1_lod2.glb"
+      },
+      "status": "integration_candidate",
+      "wiringStatus": "live_player_hornet",
+      "tris": 56373,
+      "bytes": 23544916,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "warning": "Material_Warning",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Weapon_Front",
+        "SOCKET_Mining_Front",
+        "SOCKET_Engine_Main",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Camera_Focus",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -8.225,
+          -1.224,
+          -6.76
+        ],
+        "max": [
+          5.7,
+          1.374,
+          3.7
+        ],
+        "dimensionsM": [
+          13.925,
+          2.599,
+          10.46
+        ]
+      },
+      "note": "Fleet remaster production Hornet. Live player interceptor. Authored LOD0/1/2 on disk; LOD0 is the packaged live body. Not self-accepted."
+    },
+    {
       "id": "wholeship_inspection_cutter",
       "category": "wholeships",
       "priority": "P2",
@@ -5767,6 +6003,65 @@
         ]
       },
       "note": "PQ-045-NPC-IDENTITY-WORK-FLEET-001 — Inspection Cutter, live traffic role customs; re-authored from the npc_activity_pack donor silhouette (review 2026-08-08 boundary: re-author, never copy), explicit LOD0/1/2 (3320/578/246 tris), role-classified procedural 1K PBR maps, packed ORM with bound occlusion, stable sockets, no embedded plume. Whole-asset G1/G2/G4 remain OPEN pending independent hash-bound review. Project-original provenance: assets/ships/npc_work_fleet/PROVENANCE.json."
+    },
+    {
+      "id": "wholeship_ironback_production_v1",
+      "assetId": "SF_IRONBACK_PRODUCTION_V1",
+      "category": "wholeships",
+      "priority": "P0",
+      "file": "wholeships/ironback_production_v1.glb",
+      "lodFamily": {
+        "lod0": "wholeships/ironback_production_v1.glb",
+        "lod1": "wholeships/ironback_production_v1_lod1.glb",
+        "lod2": "wholeships/ironback_production_v1_lod2.glb"
+      },
+      "status": "integration_candidate",
+      "wiringStatus": "live_player_ironback",
+      "tris": 42530,
+      "bytes": 2228276,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "warning": "Material_Warning",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Weapon_Front",
+        "SOCKET_Mining_Front",
+        "SOCKET_Engine_Main",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Camera_Focus",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -9.385,
+          -1.35,
+          -4.72
+        ],
+        "max": [
+          8.5,
+          14.128,
+          3
+        ],
+        "dimensionsM": [
+          17.885,
+          15.478,
+          7.72
+        ]
+      },
+      "note": "Fleet remaster production Ironback. Live player mining barge. Authored LOD0/1/2 on disk; LOD0 is the packaged live body. Not self-accepted."
     },
     {
       "id": "wholeship_kestrel",
@@ -5849,21 +6144,30 @@
       "note": "Kestrel LOD2 family member. Source bytes/identity refreshed from on-disk GLB; lodFamily (partsLibrary) has no runtime consumer, so LOD0 is canonical live truth."
     },
     {
-      "id": "wholeship_mule_production_v1",
-      "assetId": "SF_MULE_PRODUCTION_V1",
+      "id": "wholeship_leviathan_production_v1",
+      "assetId": "SF_LEVIATHAN_PRODUCTION_V1",
       "category": "wholeships",
       "priority": "P0",
-      "file": "wholeships/mule_production_v1.glb",
+      "file": "wholeships/leviathan_production_v1.glb",
       "lodFamily": {
-        "lod0": "wholeships/mule_production_v1.glb",
-        "lod1": "wholeships/mule_production_v1_lod1.glb",
-        "lod2": "wholeships/mule_production_v1_lod2.glb"
+        "lod0": "wholeships/leviathan_production_v1.glb",
+        "lod1": "wholeships/leviathan_production_v1_lod1.glb",
+        "lod2": "wholeships/leviathan_production_v1_lod2.glb"
       },
       "status": "integration_candidate",
-      "wiringStatus": "live_player_mule",
-      "tris": 28890,
-      "bytes": 1597600,
+      "wiringStatus": "live_player_leviathan",
+      "tris": 56910,
+      "bytes": 2957956,
       "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "warning": "Material_Warning",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
+      },
       "hooks": [],
       "sockets": [
         "SOCKET_Weapon_Front",
@@ -5879,7 +6183,135 @@
         "SOCKET_RCS_Starboard"
       ],
       "mount": "origin",
-      "note": "Fleet remaster production Mule. Distinct T1 hauler so Mule no longer shares the Atlas silhouette. Grey-green cargo hull, stacked containers, forward bridge, twin industrial drives. Not self-accepted."
+      "bounds": {
+        "min": [
+          -14.385,
+          -1.7,
+          -5.92
+        ],
+        "max": [
+          13.5,
+          19.6,
+          3.652
+        ],
+        "dimensionsM": [
+          27.885,
+          21.3,
+          9.572
+        ]
+      },
+      "note": "Fleet remaster production Leviathan. Live player flagship. Authored LOD0/1/2 on disk; LOD0 is the packaged live body. Not self-accepted."
+    },
+    {
+      "id": "wholeship_massline_express_liner_v1",
+      "assetId": "SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1",
+      "category": "wholeships",
+      "priority": "P1",
+      "file": "wholeships/massline_express_liner_v1.glb",
+      "lodFamily": {
+        "lod0": "wholeships/massline_express_liner_v1.glb",
+        "lod1": "wholeships/massline_express_liner_v1_lod1.glb",
+        "lod2": "wholeships/massline_express_liner_v1_lod2.glb"
+      },
+      "status": "integration_candidate",
+      "wiringStatus": "live_express_candidate",
+      "tris": 54637,
+      "bytes": 12667384,
+      "textureSize": 1024,
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Weapon_Front",
+        "SOCKET_Engine_Main",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Camera_Focus",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Dock_Port",
+        "SOCKET_Service_Starboard",
+        "SOCKET_Tether_Keel"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -23.69,
+          -14.015,
+          -18.792
+        ],
+        "max": [
+          19.8,
+          5.635,
+          9.48
+        ],
+        "dimensionsM": [
+          43.49,
+          19.65,
+          28.272
+        ]
+      },
+      "note": "PQ-049 Massline Express Liner. Civic pressure-drum passenger body for the existing Helios express slot. Authored LOD0/1/2; LOD0 is the packaged live body. Not self-accepted."
+    },
+    {
+      "id": "wholeship_mule_production_v1",
+      "assetId": "SF_MULE_PRODUCTION_V1",
+      "category": "wholeships",
+      "priority": "P0",
+      "file": "wholeships/mule_production_v1.glb",
+      "lodFamily": {
+        "lod0": "wholeships/mule_production_v1.glb",
+        "lod1": "wholeships/mule_production_v1_lod1.glb",
+        "lod2": "wholeships/mule_production_v1_lod2.glb"
+      },
+      "status": "integration_candidate",
+      "wiringStatus": "live_player_mule",
+      "tris": 28890,
+      "bytes": 1597284,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "warning": "Material_Warning",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Weapon_Front",
+        "SOCKET_Mining_Front",
+        "SOCKET_Engine_Main",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Camera_Focus",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -13.975,
+          -2.41,
+          -5.24
+        ],
+        "max": [
+          6.4,
+          2.666,
+          3.27
+        ],
+        "dimensionsM": [
+          20.375,
+          5.076,
+          8.51
+        ]
+      },
+      "note": "Fleet remaster production Mule. Live player freighter. Authored LOD0/1/2 on disk; LOD0 is the packaged live body. Not self-accepted."
     },
     {
       "id": "wholeship_ore_barge",
@@ -6019,6 +6451,65 @@
         ]
       },
       "note": "PQ-045-NPC-IDENTITY-WORK-FLEET-001 — Prospector Skiff, live traffic role prospector; re-authored from the npc_activity_pack donor silhouette (review 2026-08-08 boundary: re-author, never copy), explicit LOD0/1/2 (2636/500/212 tris), role-classified procedural 1K PBR maps, packed ORM with bound occlusion, stable sockets, no embedded plume. Whole-asset G1/G2/G4 remain OPEN pending independent hash-bound review. Project-original provenance: assets/ships/npc_work_fleet/PROVENANCE.json."
+    },
+    {
+      "id": "wholeship_ranger_production_v1",
+      "assetId": "SF_RANGER_PRODUCTION_V1",
+      "category": "wholeships",
+      "priority": "P0",
+      "file": "wholeships/ranger_production_v1.glb",
+      "lodFamily": {
+        "lod0": "wholeships/ranger_production_v1.glb",
+        "lod1": "wholeships/ranger_production_v1_lod1.glb",
+        "lod2": "wholeships/ranger_production_v1_lod2.glb"
+      },
+      "status": "integration_candidate",
+      "wiringStatus": "live_player_ranger",
+      "tris": 37670,
+      "bytes": 1968608,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "warning": "Material_Warning",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Weapon_Front",
+        "SOCKET_Mining_Front",
+        "SOCKET_Engine_Main",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Camera_Focus",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -9.885,
+          -1.282,
+          -3.318
+        ],
+        "max": [
+          9,
+          13.03,
+          2.18
+        ],
+        "dimensionsM": [
+          18.885,
+          14.312,
+          5.498
+        ]
+      },
+      "note": "Fleet remaster production Ranger. Live player explorer. Authored LOD0/1/2 on disk; LOD0 is the packaged live body. Not self-accepted."
     },
     {
       "id": "wholeship_repair_tender",
@@ -6288,6 +6779,65 @@
         ]
       },
       "note": "PQ-045-NPC-IDENTITY-WORK-FLEET-001 — Volatiles Tanker, live traffic role tanker; re-authored from the npc_activity_pack donor silhouette (review 2026-08-08 boundary: re-author, never copy), explicit LOD0/1/2 (2972/820/350 tris), role-classified procedural 1K PBR maps, packed ORM with bound occlusion, stable sockets, no embedded plume. Whole-asset G1/G2/G4 remain OPEN pending independent hash-bound review. Project-original provenance: assets/ships/npc_work_fleet/PROVENANCE.json."
+    },
+    {
+      "id": "wholeship_warden_production_v1",
+      "assetId": "SF_WARDEN_PRODUCTION_V1",
+      "category": "wholeships",
+      "priority": "P0",
+      "file": "wholeships/warden_production_v1.glb",
+      "lodFamily": {
+        "lod0": "wholeships/warden_production_v1.glb",
+        "lod1": "wholeships/warden_production_v1_lod1.glb",
+        "lod2": "wholeships/warden_production_v1_lod2.glb"
+      },
+      "status": "integration_candidate",
+      "wiringStatus": "live_player_warden",
+      "tris": 47294,
+      "bytes": 2466688,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "warning": "Material_Warning",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Weapon_Front",
+        "SOCKET_Mining_Front",
+        "SOCKET_Engine_Main",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Camera_Focus",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -10.885,
+          -1.282,
+          -4.72
+        ],
+        "max": [
+          10,
+          14.49,
+          2.9
+        ],
+        "dimensionsM": [
+          20.885,
+          15.772,
+          7.62
+        ]
+      },
+      "note": "Fleet remaster production Warden. Live player gunship. Authored LOD0/1/2 on disk; LOD0 is the packaged live body. Not self-accepted."
     },
     {
       "id": "wholeship_wasp",

@@ -1,0 +1,53 @@
+{
+  "schema": "spaceface.laneFurniture.v1",
+  "assets": [
+    {
+      "id": "place_tally_post",
+      "triangles": 1196,
+      "sizeM": [
+        14.674,
+        10.2,
+        20.366
+      ],
+      "parts": 41,
+      "bytes": 373452,
+      "sha256": "946d25ba6e976aecd0e65b11225e687895cc3eab938b2b6a1cf679ac4643c5c2"
+    },
+    {
+      "id": "place_claim_mark",
+      "triangles": 1208,
+      "sizeM": [
+        2.517,
+        2.824,
+        10.037
+      ],
+      "parts": 30,
+      "bytes": 359212,
+      "sha256": "add2affe4df4089b5cc78742e13cf2e3e8fd2427812704db7aba643d01d8e430"
+    },
+    {
+      "id": "place_ash_pin",
+      "triangles": 1100,
+      "sizeM": [
+        4.857,
+        5.003,
+        12.481
+      ],
+      "parts": 39,
+      "bytes": 284180,
+      "sha256": "170b9ec5bbcbcbce9612f1ad810af8e88a291e09e0433b8f2398bf4aac4f99fa"
+    },
+    {
+      "id": "place_whistle",
+      "triangles": 1528,
+      "sizeM": [
+        5.451,
+        4.86,
+        11.596
+      ],
+      "parts": 56,
+      "bytes": 397548,
+      "sha256": "24dcefb59995b5aa9655a4c1fbc6cc091a1cfc64e285762528eb0099c19a64da"
+    }
+  ]
+}

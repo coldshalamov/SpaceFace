@@ -1,0 +1,29 @@
+{
+  "schema": "spaceface.masslineExpressLinerV1.finalize.v1",
+  "packet": "PQ-049",
+  "assetId": "SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1",
+  "status": "technical_candidate",
+  "lods": [
+    {
+      "lod": 0,
+      "path": "assets/ships/massline_express_liner_v1/release_candidates/wholeships/massline_express_liner_v1_lod0.glb",
+      "live": "wholeships/massline_express_liner_v1.glb",
+      "bytes": 12667384,
+      "sha256": "08557561963b11b874eb987b165c6c5dbaadfa7b249a79316a3a8a6761afc96e"
+    },
+    {
+      "lod": 1,
+      "path": "assets/ships/massline_express_liner_v1/release_candidates/wholeships/massline_express_liner_v1_lod1.glb",
+      "live": "wholeships/massline_express_liner_v1_lod1.glb",
+      "bytes": 11984252,
+      "sha256": "58d85ca3856ca7380923335bca8c1d84fccf204edcfc8e630db842d6ccb72f60"
+    },
+    {
+      "lod": 2,
+      "path": "assets/ships/massline_express_liner_v1/release_candidates/wholeships/massline_express_liner_v1_lod2.glb",
+      "live": "wholeships/massline_express_liner_v1_lod2.glb",
+      "bytes": 5122612,
+      "sha256": "edfc635439df07ea76bc595c5a29ab716a86e3eecc95e5e22d1476e314822970"
+    }
+  ]
+}

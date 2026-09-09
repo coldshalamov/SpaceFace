@@ -6,7 +6,7 @@
 // the old still-review note remains open for owner visual review. The two other candidates stay
 // guarded here.
 //
-// Yard props and uncleared lane furniture stay checkpointed off the place selector.
+// Yard props stay checkpointed off the place selector. Helios lane furniture is admitted.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
@@ -39,6 +39,10 @@ const ROOT = resolve(fileURLToPath(new URL('../', import.meta.url)));
 const WIRED_LANE_FURNITURE_RELEASE_SHA256 = Object.freeze({
   place_lane_pin: 'c94e53f749dfd743d8cf9dd069936d5ce0aa2ee244251c54ab0e222d7d7a3a45',
   place_cold_locker: 'fcc05abb5d27ada70146cef9aeab5af23d179253a610da8f38af842473f84d25',
+  place_tally_post: '9a2d02cd8e675473a613497ba494a35cdf5651958b68b40a8ccf2c2e31f907d5',
+  place_claim_mark: '2b1b73edf399b135229777f2a6baefc8d9c44c8a3219b9711dd35ae753ad7b08',
+  place_ash_pin: '1be79a9ae0d3652b66db455c5e38a9c8c2135f07bf0c6378abc44dbbaa0e939f',
+  place_whistle: '90ef2650216aa214bce5520d829d03a9c0d682e7057a8f982bf243b695aa100e',
 });
 
 // Still-rejected in 8257fd9e — packaged and kept on disk, but must not reach live traffic.
@@ -305,16 +309,17 @@ test('still-rejected work hulls stay on disk but never reach live traffic (8257f
   // PQ-049 owns Express Liner identity; PQ-136.02 must not re-skin already-shipping express
   // traffic as a side effect of fielding the apron shuttle.
   const express = wholeShipVisualForEntity({ data: { trafficRole: 'express' } });
-  assert.notEqual(express && express.file, 'wholeships/apron_shuttle.glb',
-    'express must not silently inherit the apron shuttle body');
+  assert.equal(express && express.file, 'wholeships/massline_express_liner_v1.glb',
+    'express selects the packaged Massline liner, not a fallback hull');
 });
 
-test('Helios lane furniture admits only the bodies every still reviewer cleared', () => {
+test('Helios lane furniture admits the repaired corridor family', () => {
   const helios = SECTOR_ANCHORS.sector_helios_prime;
   const furniture = (helios.pois || []).filter((poi) => LANE_FURNITURE_PLACE_IDS.includes(poi.landmarkGlb));
   assert.equal(furniture.length, LANE_FURNITURE_PLACE_IDS.length,
     'Helios must keep one POI per leftover lane-furniture body');
-  assert.deepEqual([...ADMITTED_LANE_FURNITURE_PLACE_IDS], ['place_lane_pin', 'place_cold_locker']);
+  assert.deepEqual([...ADMITTED_LANE_FURNITURE_PLACE_IDS], [...LANE_FURNITURE_PLACE_IDS]);
+  assert.equal(CHECKPOINTED_LANE_FURNITURE_PLACE_IDS.length, 0);
   for (const placeId of ADMITTED_LANE_FURNITURE_PLACE_IDS) {
     const file = `places/${placeId}.glb`;
     assert.equal(
@@ -335,15 +340,6 @@ test('Helios lane furniture admits only the bodies every still reviewer cleared'
       WIRED_LANE_FURNITURE_RELEASE_SHA256[placeId],
       `${placeId} must stay the exact release bytes the still panel judged`,
     );
-  }
-  for (const placeId of CHECKPOINTED_LANE_FURNITURE_PLACE_IDS) {
-    assert.equal(
-      resolvePlaceFileForEntity({ type: 'fx', data: { landmarkGlb: placeId } }),
-      null,
-      `${placeId} stays out of PLACE_FILES after a blocking LEGO-foot note`,
-    );
-    assert.ok(existsSync(resolve(ROOT, 'assets/ships/parts/places', `${placeId}.glb`)));
-    assert.ok(existsSync(resolve(ROOT, 'assets/ships/release/parts/places', `${placeId}.glb`)));
   }
   const spawned = spawnSector('sector_helios_prime');
   for (const placeId of LANE_FURNITURE_PLACE_IDS) {

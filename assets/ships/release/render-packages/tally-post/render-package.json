@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "73371ad7de9fc8de5f4e182e3c5e235c98c4eb31387410eb1c17c970709d4686",
+  "contentHash": "4c40c72ea15863e05838e35e7b46ec7675edb6c5514dc2d296c7ed1f4c4cf64f",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -27,9 +27,9 @@
       "id": "sf.render.tally-post.mesh.tally-boom-mesh.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.020",
+      "meshName": "Cube.007",
       "nodeId": "sf.render.tally-post.mesh.tally-boom-mesh",
       "primitiveIndex": 0,
       "vertexCount": 96
@@ -52,9 +52,9 @@
       "id": "sf.render.tally-post.mesh.tally-deck-crumple.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.019",
+      "meshName": "Cube.006",
       "nodeId": "sf.render.tally-post.mesh.tally-deck-crumple",
       "primitiveIndex": 0,
       "vertexCount": 96
@@ -77,9 +77,9 @@
       "id": "sf.render.tally-post.mesh.tally-deck-rail-e.primitive.0",
       "indexCount": 108,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.007",
+      "meshName": "Cube.002",
       "nodeId": "sf.render.tally-post.mesh.tally-deck-rail-e",
       "primitiveIndex": 0,
       "vertexCount": 72
@@ -102,9 +102,9 @@
       "id": "sf.render.tally-post.mesh.tally-deck-rail-n.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.005",
+      "meshName": "Cube",
       "nodeId": "sf.render.tally-post.mesh.tally-deck-rail-n",
       "primitiveIndex": 0,
       "vertexCount": 96
@@ -127,9 +127,9 @@
       "id": "sf.render.tally-post.mesh.tally-deck-rail-s.primitive.0",
       "indexCount": 108,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.006",
+      "meshName": "Cube.001",
       "nodeId": "sf.render.tally-post.mesh.tally-deck-rail-s",
       "primitiveIndex": 0,
       "vertexCount": 72
@@ -152,9 +152,9 @@
       "id": "sf.render.tally-post.mesh.tally-deck-rail-w.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.008",
+      "meshName": "Cube.003",
       "nodeId": "sf.render.tally-post.mesh.tally-deck-rail-w",
       "primitiveIndex": 0,
       "vertexCount": 96
@@ -162,102 +162,102 @@
     {
       "bounds": {
         "max": [
-          4.6202348336117325,
-          0.3059828709955177,
-          -1.329757632360952
+          4.581384906527148,
+          0.3060212996011984,
+          -1.1937795437442418
         ],
         "min": [
-          3.6002349671261413,
-          0.00001715379778855202,
-          -2.145801056014818
+          3.6390848942107255,
+          -0.000021248586886319027,
+          -2.281779448615225
         ]
       },
       "drawMode": 4,
-      "geometryHash": "88767d1eab9ad66ae6da134e4e15cbf088289a378012f7fb7ace1c0b2f1daeb6",
+      "geometryHash": "affbd01547469b0461a3d61e684b51c3c041fb9e60109f068470673087393bf7",
       "id": "sf.render.tally-post.mesh.tally-foot-0.primitive.0",
-      "indexCount": 132,
+      "indexCount": 60,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube",
+      "meshName": "Cylinder",
       "nodeId": "sf.render.tally-post.mesh.tally-foot-0",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          -1.2277793096171905,
-          0.30598292165946717,
-          -3.702212985886206
+          -1.2666294393575726,
+          0.3060212996011984,
+          -3.5662349985973947
         ],
         "min": [
-          -2.2477794800864785,
-          0.000017108205181671186,
-          -4.518256814851668
+          -2.2089297556576923,
+          -0.000021248586886319027,
+          -4.654234802140479
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1d6524bee17842060ff88f95b2eefdb670512b3220baa395de65958dc905d074",
+      "geometryHash": "fc9c31ec9e871831a6235be55056b923c26820c3c79a5f605b758345373dbad3",
       "id": "sf.render.tally-post.mesh.tally-foot-1.primitive.0",
-      "indexCount": 132,
+      "indexCount": 60,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.001",
+      "meshName": "Cylinder.002",
       "nodeId": "sf.render.tally-post.mesh.tally-foot-1",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          -3.6002349671261413,
-          0.3059828709955177,
-          2.145801056014818
+          -3.6390848942107255,
+          0.3060212996011984,
+          2.281779448615225
         ],
         "min": [
-          -4.6202348336117325,
-          0.00001715379778855202,
-          1.329757632360952
+          -4.581384906527148,
+          -0.000021248586886319027,
+          1.1937795437442418
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0c1db599490f938abecbbfcf58e6ae01cd1633b79c5754d7dcd0db067c2feae4",
+      "geometryHash": "49199a9075f88565debf5fca6277798fc4bd8e5606c78ba6a810f020b2b26546",
       "id": "sf.render.tally-post.mesh.tally-foot-2.primitive.0",
-      "indexCount": 132,
+      "indexCount": 60,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.002",
+      "meshName": "Cylinder.004",
       "nodeId": "sf.render.tally-post.mesh.tally-foot-2",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 36
     },
     {
       "bounds": {
         "max": [
-          2.2477794800864785,
-          0.30598292165946717,
-          4.518256814851668
+          2.2089297556576923,
+          0.3060212996011984,
+          4.654234802140479
         ],
         "min": [
-          1.2277793096171905,
-          0.000017108205181671186,
-          3.702212985886206
+          1.2666294393575726,
+          -0.000021248586886319027,
+          3.5662349985973947
         ]
       },
       "drawMode": 4,
-      "geometryHash": "554e7b704312fc9968a0f3895a351e512e200955a67be94b30b1afb478ae903a",
+      "geometryHash": "777d22f4a119ba1f5a8ae40047b7481ad46d426b4e95c61610f1180dbe939480",
       "id": "sf.render.tally-post.mesh.tally-foot-3.primitive.0",
-      "indexCount": 132,
+      "indexCount": 60,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.004",
+      "meshName": "Cylinder.007",
       "nodeId": "sf.render.tally-post.mesh.tally-foot-3",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 36
     },
     {
       "bounds": {
@@ -277,9 +277,9 @@
       "id": "sf.render.tally-post.mesh.tally-foot-brace-0.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder",
+      "meshName": "Cylinder.001",
       "nodeId": "sf.render.tally-post.mesh.tally-foot-brace-0",
       "primitiveIndex": 0,
       "vertexCount": 36
@@ -302,9 +302,9 @@
       "id": "sf.render.tally-post.mesh.tally-foot-brace-1.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.001",
+      "meshName": "Cylinder.003",
       "nodeId": "sf.render.tally-post.mesh.tally-foot-brace-1",
       "primitiveIndex": 0,
       "vertexCount": 36
@@ -327,9 +327,9 @@
       "id": "sf.render.tally-post.mesh.tally-foot-brace-2.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.002",
+      "meshName": "Cylinder.005",
       "nodeId": "sf.render.tally-post.mesh.tally-foot-brace-2",
       "primitiveIndex": 0,
       "vertexCount": 36
@@ -352,9 +352,9 @@
       "id": "sf.render.tally-post.mesh.tally-foot-brace-3.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.003",
+      "meshName": "Cylinder.008",
       "nodeId": "sf.render.tally-post.mesh.tally-foot-brace-3",
       "primitiveIndex": 0,
       "vertexCount": 36
@@ -362,202 +362,202 @@
     {
       "bounds": {
         "max": [
-          4.385999993324276,
-          1.2919896845814662,
-          3.807724916450411
+          4.338401010131861,
+          1.1389516255841983,
+          3.7569511275277705
         ],
         "min": [
-          -4.385999993324276,
-          0.6120103769305274,
-          3.3322749595719188
+          -4.338401010131861,
+          0.7650485879196438,
+          3.383049356461953
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6f056411de4d8a1da4cc0d763fee1e028c373c08d8b442344abce0eccefcc66a",
+      "geometryHash": "c6295150f2b46add70b56bd44b4acd63c58c76847f32437efe1360284a3efcbf",
       "id": "sf.render.tally-post.mesh.tally-grate-0.primitive.0",
-      "indexCount": 132,
+      "indexCount": 84,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.009",
+      "meshName": "Cylinder.013",
       "nodeId": "sf.render.tally-post.mesh.tally-grate-0",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 48
     },
     {
       "bounds": {
         "max": [
-          4.385999993324276,
-          1.2919896845814662,
-          2.78772504996482
+          4.338401010131861,
+          1.1389516255841983,
+          2.7369512610421793
         ],
         "min": [
-          -4.385999993324276,
-          0.6120103769305274,
-          2.3122750930863276
+          -4.338401010131861,
+          0.7650485879196438,
+          2.363049287320564
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0bab90046667dcba06235b44c2a2dd0babb0aa358439f890271e57cdf2fe75cf",
+      "geometryHash": "771c6b0abf851d2e844da0500dec3d2cd7e89b046d1d2fe9dae4b7aa331993b6",
       "id": "sf.render.tally-post.mesh.tally-grate-1.primitive.0",
-      "indexCount": 132,
+      "indexCount": 84,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.010",
+      "meshName": "Cylinder.014",
       "nodeId": "sf.render.tally-post.mesh.tally-grate-1",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 48
     },
     {
       "bounds": {
         "max": [
-          4.385999993324276,
-          1.2919896845814662,
-          1.7677249808234308
+          4.338401010131861,
+          1.1389516255841983,
+          1.7169509892449923
         ],
         "min": [
-          -4.385999993324276,
-          0.6120103769305274,
-          1.2922750239449385
+          -4.338401010131861,
+          0.7650485879196438,
+          1.3430492181791749
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1690879cdd12953e9301e36935954c85b9984799e7d23d8cdb5f72b8a97c2573",
+      "geometryHash": "c97469d0cc2aaa822dcf151d45a48d653e5bf02a27d60c8837b436cf829af4fb",
       "id": "sf.render.tally-post.mesh.tally-grate-2.primitive.0",
-      "indexCount": 132,
+      "indexCount": 84,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.011",
+      "meshName": "Cylinder.015",
       "nodeId": "sf.render.tally-post.mesh.tally-grate-2",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 48
     },
     {
       "bounds": {
         "max": [
-          4.385999993324276,
-          1.2919896845814662,
-          0.7477250636738901
+          4.338401010131861,
+          1.1389516255841983,
+          0.6969510214315022
         ],
         "min": [
-          -4.385999993324276,
-          0.6120103769305274,
-          0.27227500546749894
+          -4.338401010131861,
+          0.7650485879196438,
+          0.3230491490377858
         ]
       },
       "drawMode": 4,
-      "geometryHash": "595b27dbc14537e8108de926f6d59e6f8c8019764abe55cf4c79fdd4ae2629df",
+      "geometryHash": "fde45b1d56a82b27894a033373ac475299bdabadc316a5f0cc86dc3c733e121f",
       "id": "sf.render.tally-post.mesh.tally-grate-3.primitive.0",
-      "indexCount": 132,
+      "indexCount": 84,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.012",
+      "meshName": "Cylinder.016",
       "nodeId": "sf.render.tally-post.mesh.tally-grate-3",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 48
     },
     {
       "bounds": {
         "max": [
-          4.385999993324276,
-          1.2919896845814662,
-          -0.27227500546749894
+          4.338401010131861,
+          1.1389516255841983,
+          -0.3230491490377858
         ],
         "min": [
-          -4.385999993324276,
-          0.6120103769305274,
-          -0.7477250636738901
+          -4.338401010131861,
+          0.7650485879196438,
+          -0.6969510214315022
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a6852b6d9bffcfd47b77d879dce9c9797992059992deb37fac97404fbe5dba06",
+      "geometryHash": "09ac50c148c1d3a8d66881294f4c2ecc4b08f15c6e21621ea125b53081c4171d",
       "id": "sf.render.tally-post.mesh.tally-grate-4.primitive.0",
-      "indexCount": 132,
+      "indexCount": 84,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.013",
+      "meshName": "Cylinder.017",
       "nodeId": "sf.render.tally-post.mesh.tally-grate-4",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 48
     },
     {
       "bounds": {
         "max": [
-          4.385999993324276,
-          1.2919896845814662,
-          -1.2922750239449385
+          4.338401010131861,
+          1.1389516255841983,
+          -1.3430492181791749
         ],
         "min": [
-          -4.385999993324276,
-          0.6120103769305274,
-          -1.7677249808234308
+          -4.338401010131861,
+          0.7650485879196438,
+          -1.7169509892449923
         ]
       },
       "drawMode": 4,
-      "geometryHash": "44a14d7ddf19ef3c56e1caa7599c12d057ba6aaf2714b331d4dc8d55fe9bfca3",
+      "geometryHash": "8f2af17ac27e7dfef455ceec337c1ed9e4bee1f37b24e00483cd6fd1414a20d9",
       "id": "sf.render.tally-post.mesh.tally-grate-5.primitive.0",
-      "indexCount": 132,
+      "indexCount": 84,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.014",
+      "meshName": "Cylinder.018",
       "nodeId": "sf.render.tally-post.mesh.tally-grate-5",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 48
     },
     {
       "bounds": {
         "max": [
-          4.385999993324276,
-          1.2919896845814662,
-          -2.3122750930863276
+          4.338401010131861,
+          1.1389516255841983,
+          -2.363049287320564
         ],
         "min": [
-          -4.385999993324276,
-          0.6120103769305274,
-          -2.78772504996482
+          -4.338401010131861,
+          0.7650485879196438,
+          -2.7369512610421793
         ]
       },
       "drawMode": 4,
-      "geometryHash": "655b8de339551f1f4c38da452585c89ddf14002794b95627b59b4269b946ff08",
+      "geometryHash": "edf58dc8d5850ddbbe4b3783f68a19a4b02232b92e804fc7c221d4da5b1954a4",
       "id": "sf.render.tally-post.mesh.tally-grate-6.primitive.0",
-      "indexCount": 132,
+      "indexCount": 84,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.015",
+      "meshName": "Cylinder.019",
       "nodeId": "sf.render.tally-post.mesh.tally-grate-6",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 48
     },
     {
       "bounds": {
         "max": [
-          4.385999993324276,
-          1.2919896845814662,
-          -3.3322749595719188
+          4.338401010131861,
+          1.1389516255841983,
+          -3.383049356461953
         ],
         "min": [
-          -4.385999993324276,
-          0.6120103769305274,
-          -3.807724916450411
+          -4.338401010131861,
+          0.7650485879196438,
+          -3.7569511275277705
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2d0db8280ad5fdc449e49decb478468642168ab12e2bbaea78d2a9317b66e574",
+      "geometryHash": "0e34ca539eadec8b4ddd4d1bd845f7991a3da27fcc668fe5576e86a0cad27029",
       "id": "sf.render.tally-post.mesh.tally-grate-7.primitive.0",
-      "indexCount": 132,
+      "indexCount": 84,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.016",
+      "meshName": "Cylinder.020",
       "nodeId": "sf.render.tally-post.mesh.tally-grate-7",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 48
     },
     {
       "bounds": {
@@ -577,9 +577,9 @@
       "id": "sf.render.tally-post.mesh.tally-invoice-lamp.primitive.0",
       "indexCount": 108,
       "indexed": true,
-      "materialHash": "b75db6daea4fdcd5ab35e301f6ee7126389d977a371e6df260df7576f0fa389f",
+      "materialHash": "560d55fc8c9bb2787ce461221cc076dc8be4826249c86fb3ae9abc7512f6106a",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.012",
+      "meshName": "Cylinder.025",
       "nodeId": "sf.render.tally-post.mesh.tally-invoice-lamp",
       "primitiveIndex": 0,
       "vertexCount": 60
@@ -602,9 +602,9 @@
       "id": "sf.render.tally-post.mesh.tally-ledger-plate.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "d75684dbd82479f6e5eba655326bbd79a563433f2f04833fbfc95fda9bfe6b78",
+      "materialHash": "2c420cb20907deda2f1a1b3cc4a04ddd293fc6e0f576efbe9d6ad70115624975",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.026",
+      "meshName": "Cube.013",
       "nodeId": "sf.render.tally-post.mesh.tally-ledger-plate",
       "primitiveIndex": 0,
       "vertexCount": 96
@@ -627,9 +627,9 @@
       "id": "sf.render.tally-post.mesh.tally-mast.primitive.0",
       "indexCount": 84,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.011",
+      "meshName": "Cylinder.024",
       "nodeId": "sf.render.tally-post.mesh.tally-mast",
       "primitiveIndex": 0,
       "vertexCount": 48
@@ -652,9 +652,9 @@
       "id": "sf.render.tally-post.mesh.tally-scale-house.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "8a5e28d39fb2ee992c2a391875909206d07fda3063bf7289988feb8bd929b8f4",
+      "materialHash": "6ba888af1e572a80fd8d795af2e5a1c58d079a87e95aaaad1ee106a204c47979",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.008",
+      "meshName": "Cylinder.021",
       "nodeId": "sf.render.tally-post.mesh.tally-scale-house",
       "primitiveIndex": 0,
       "vertexCount": 36
@@ -662,27 +662,27 @@
     {
       "bounds": {
         "max": [
-          -3.7022348727123813,
-          0.4165184108024036,
-          2.043763659105963
+          -3.7568724970781773,
+          0.41651843613437833,
+          2.1457795745002386
         ],
         "min": [
-          -4.5182349280254925,
-          0.2974815869326193,
-          1.4317948266140093
+          -4.4635973036596965,
+          0.297481612264594,
+          1.3297795191871273
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ab8265e44bb8ee459fd5a5c43dd2c904a265719658680ae2af331105c6889d2c",
+      "geometryHash": "798dabaf2d7420323f56a8b4853e335807c4af70864a3ac24c4643a6bd3e1237",
       "id": "sf.render.tally-post.mesh.tally-shim.primitive.0",
-      "indexCount": 132,
+      "indexCount": 60,
       "indexed": true,
-      "materialHash": "0713eb6cd2a3219d2d51057cbe6789ea9090ed0d7f2149e0193e58696e5a78eb",
+      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.003",
+      "meshName": "Cylinder.006",
       "nodeId": "sf.render.tally-post.mesh.tally-shim",
       "primitiveIndex": 0,
-      "vertexCount": 96
+      "vertexCount": 36
     },
     {
       "bounds": {
@@ -702,9 +702,9 @@
       "id": "sf.render.tally-post.mesh.tally-sill-0.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.004",
+      "meshName": "Cylinder.009",
       "nodeId": "sf.render.tally-post.mesh.tally-sill-0",
       "primitiveIndex": 0,
       "vertexCount": 36
@@ -727,9 +727,9 @@
       "id": "sf.render.tally-post.mesh.tally-sill-1.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.005",
+      "meshName": "Cylinder.010",
       "nodeId": "sf.render.tally-post.mesh.tally-sill-1",
       "primitiveIndex": 0,
       "vertexCount": 36
@@ -752,9 +752,9 @@
       "id": "sf.render.tally-post.mesh.tally-sill-2.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.006",
+      "meshName": "Cylinder.011",
       "nodeId": "sf.render.tally-post.mesh.tally-sill-2",
       "primitiveIndex": 0,
       "vertexCount": 36
@@ -777,9 +777,9 @@
       "id": "sf.render.tally-post.mesh.tally-sill-3.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.007",
+      "meshName": "Cylinder.012",
       "nodeId": "sf.render.tally-post.mesh.tally-sill-3",
       "primitiveIndex": 0,
       "vertexCount": 36
@@ -802,9 +802,9 @@
       "id": "sf.render.tally-post.mesh.tally-tag-link-0.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "0713eb6cd2a3219d2d51057cbe6789ea9090ed0d7f2149e0193e58696e5a78eb",
+      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.013",
+      "meshName": "Cylinder.026",
       "nodeId": "sf.render.tally-post.mesh.tally-tag-link-0",
       "primitiveIndex": 0,
       "vertexCount": 36
@@ -827,9 +827,9 @@
       "id": "sf.render.tally-post.mesh.tally-tag-link-1.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "0713eb6cd2a3219d2d51057cbe6789ea9090ed0d7f2149e0193e58696e5a78eb",
+      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.014",
+      "meshName": "Cylinder.027",
       "nodeId": "sf.render.tally-post.mesh.tally-tag-link-1",
       "primitiveIndex": 0,
       "vertexCount": 36
@@ -852,9 +852,9 @@
       "id": "sf.render.tally-post.mesh.tally-tag-link-2.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "0713eb6cd2a3219d2d51057cbe6789ea9090ed0d7f2149e0193e58696e5a78eb",
+      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.015",
+      "meshName": "Cylinder.028",
       "nodeId": "sf.render.tally-post.mesh.tally-tag-link-2",
       "primitiveIndex": 0,
       "vertexCount": 36
@@ -877,9 +877,9 @@
       "id": "sf.render.tally-post.mesh.tally-thermal-hood.primitive.0",
       "indexCount": 60,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.010",
+      "meshName": "Cylinder.023",
       "nodeId": "sf.render.tally-post.mesh.tally-thermal-hood",
       "primitiveIndex": 0,
       "vertexCount": 36
@@ -902,9 +902,9 @@
       "id": "sf.render.tally-post.mesh.tally-tong-a.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.022",
+      "meshName": "Cube.009",
       "nodeId": "sf.render.tally-post.mesh.tally-tong-a",
       "primitiveIndex": 0,
       "vertexCount": 96
@@ -927,9 +927,9 @@
       "id": "sf.render.tally-post.mesh.tally-tong-b.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.023",
+      "meshName": "Cube.010",
       "nodeId": "sf.render.tally-post.mesh.tally-tong-b",
       "primitiveIndex": 0,
       "vertexCount": 96
@@ -952,9 +952,9 @@
       "id": "sf.render.tally-post.mesh.tally-yoke-hub.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
+      "materialHash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.021",
+      "meshName": "Cube.008",
       "nodeId": "sf.render.tally-post.mesh.tally-yoke-hub",
       "primitiveIndex": 0,
       "vertexCount": 96
@@ -977,9 +977,9 @@
       "id": "sf.render.tally-post.mesh.tally-yoke-pad-replacement.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "0713eb6cd2a3219d2d51057cbe6789ea9090ed0d7f2149e0193e58696e5a78eb",
+      "materialHash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.025",
+      "meshName": "Cube.012",
       "nodeId": "sf.render.tally-post.mesh.tally-yoke-pad-replacement",
       "primitiveIndex": 0,
       "vertexCount": 96
@@ -1002,9 +1002,9 @@
       "id": "sf.render.tally-post.mesh.tally-yoke-pad-worn.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "8a5e28d39fb2ee992c2a391875909206d07fda3063bf7289988feb8bd929b8f4",
+      "materialHash": "6ba888af1e572a80fd8d795af2e5a1c58d079a87e95aaaad1ee106a204c47979",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.024",
+      "meshName": "Cube.011",
       "nodeId": "sf.render.tally-post.mesh.tally-yoke-pad-worn",
       "primitiveIndex": 0,
       "vertexCount": 96
@@ -1027,9 +1027,9 @@
       "id": "sf.render.tally-post.mesh.tally-yoke-wear-cup.primitive.0",
       "indexCount": 108,
       "indexed": true,
-      "materialHash": "b9911f7e367cc37030e5e0cb943aba6f5a8f7df24f0ef1c0d521b35ed82edbbd",
+      "materialHash": "b296e8bf930483a9bc39facb847df7dd4fc135c0a51ef571174161eac59c5d18",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.009",
+      "meshName": "Cylinder.022",
       "nodeId": "sf.render.tally-post.mesh.tally-yoke-wear-cup",
       "primitiveIndex": 0,
       "vertexCount": 60
@@ -1040,8 +1040,8 @@
   "lods": [],
   "materials": [
     {
-      "hash": "0713eb6cd2a3219d2d51057cbe6789ea9090ed0d7f2149e0193e58696e5a78eb",
-      "id": "material:0713eb6cd2a3219d2d51057c",
+      "hash": "042af3f5b04a408797d21b474cf1e9e038cec525ae07719a2034ae4ceee200b7",
+      "id": "material:042af3f5b04a408797d21b47",
       "name": "furniture_bare_steel",
       "pipelineKey": "opaque:double",
       "textures": [
@@ -1072,40 +1072,66 @@
       ]
     },
     {
-      "hash": "2e6f2a403abe2241bf65094a4cf46cf999b4a38c322c511c70ee96d3ecc6cf0c",
-      "id": "material:2e6f2a403abe2241bf65094a",
-      "name": "furniture_structural_alloy",
+      "hash": "2c420cb20907deda2f1a1b3cc4a04ddd293fc6e0f576efbe9d6ad70115624975",
+      "id": "material:2c420cb20907deda2f1a1b3c",
+      "name": "furniture_identity_plate",
       "pipelineKey": "opaque:double",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "furniture_structural_alloy_baseColor",
+          "name": "furniture_identity_plate_baseColor",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "furniture_structural_alloy_orm",
+          "name": "furniture_identity_plate_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "furniture_structural_alloy_normal",
+          "name": "furniture_identity_plate_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "furniture_structural_alloy_orm",
+          "name": "furniture_identity_plate_orm",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "8a5e28d39fb2ee992c2a391875909206d07fda3063bf7289988feb8bd929b8f4",
-      "id": "material:8a5e28d39fb2ee992c2a3918",
+      "hash": "560d55fc8c9bb2787ce461221cc076dc8be4826249c86fb3ae9abc7512f6106a",
+      "id": "material:560d55fc8c9bb2787ce46122",
+      "name": "furniture_signal_lens",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "furniture_signal_lens_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "furniture_signal_lens_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "furniture_signal_lens_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "6ba888af1e572a80fd8d795af2e5a1c58d079a87e95aaaad1ee106a204c47979",
+      "id": "material:6ba888af1e572a80fd8d795a",
       "name": "furniture_painted_shell",
       "pipelineKey": "opaque:double",
       "textures": [
@@ -1136,34 +1162,40 @@
       ]
     },
     {
-      "hash": "b75db6daea4fdcd5ab35e301f6ee7126389d977a371e6df260df7576f0fa389f",
-      "id": "material:b75db6daea4fdcd5ab35e301",
-      "name": "furniture_signal_lens",
+      "hash": "9d347080e13ee4faa8b858e1086e0058008f581e110523dd0f45a1d4a652b68e",
+      "id": "material:9d347080e13ee4faa8b858e1",
+      "name": "furniture_structural_alloy",
       "pipelineKey": "opaque:double",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "furniture_signal_lens_baseColor",
+          "name": "furniture_structural_alloy_baseColor",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "furniture_signal_lens_orm",
+          "name": "furniture_structural_alloy_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "furniture_signal_lens_orm",
+          "name": "furniture_structural_alloy_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "furniture_structural_alloy_orm",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "b9911f7e367cc37030e5e0cb943aba6f5a8f7df24f0ef1c0d521b35ed82edbbd",
-      "id": "material:b9911f7e367cc37030e5e0cb",
+      "hash": "b296e8bf930483a9bc39facb847df7dd4fc135c0a51ef571174161eac59c5d18",
+      "id": "material:b296e8bf930483a9bc39facb",
       "name": "furniture_scorch",
       "pipelineKey": "opaque:double",
       "textures": [
@@ -1188,38 +1220,6 @@
         {
           "colorSpace": "linear",
           "name": "furniture_scorch_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "d75684dbd82479f6e5eba655326bbd79a563433f2f04833fbfc95fda9bfe6b78",
-      "id": "material:d75684dbd82479f6e5eba655",
-      "name": "furniture_identity_plate",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "furniture_identity_plate_baseColor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "furniture_identity_plate_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "furniture_identity_plate_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "furniture_identity_plate_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -3297,26 +3297,26 @@
       "sha256": "73b5b028688b10223ef04c4cd0030d982ce90547db5db12962a9824d42402321"
     },
     "sourceGlb": {
-      "bytes": 370180,
-      "sha256": "960ee37e000e1e68ec15e917caf37d357692beee401e7e5b2916487a7b2f1320",
+      "bytes": 209944,
+      "sha256": "9a2d02cd8e675473a613497ba494a35cdf5651958b68b40a8ccf2c2e31f907d5",
       "uri": "place_tally_post.glb"
     },
     "sourceManifest": {
-      "bytes": 152211,
-      "sha256": "688f0d64b161f04b6d7e3989f6842a886d28d6dd61ef04b2835f55a13bb44b16",
+      "bytes": 159409,
+      "sha256": "744cb0ede1c62d560bfd2e23bfc1b9f5fb5065ec409718e44f95bd1f531921e0",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 420684,
-    "sha256": "b48d8b77bb2af4b8030052689e47aae4bc4cc160b958a32a9a72a345018354db",
+    "bytes": 255292,
+    "sha256": "1d66e79c441847d94a79d37fb5fa06368c24b44ca9de82aacaf5b54d16ab5d3a",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         2.2346533426067055,
-        10.183009261252108,
+        10.182990082856074,
         0.00015867948977188462
       ],
       "max": [
@@ -3326,12 +3326,12 @@
       ],
       "min": [
         -5.1000001430511475,
-        0.000017108205181671186,
+        -0.000021248586886319027,
         -5.099649548520745
       ],
       "size": [
         14.669306971315706,
-        20.365984306093853,
+        20.36602266288592,
         10.199616456021033
       ]
     },
@@ -4621,7 +4621,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_tally_post.glb"
   },
-  "runtimeHash": "89aa32d51d8c23c5870330cae8ef138d05a4361653531d7ea3bea15fe33379f1",
+  "runtimeHash": "1d057568cb076b53a1a9fcfeb539071acf1d9c79896541e3fb69c89f45c8a978",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -4633,7 +4633,7 @@
         ],
         "min": [
           -5.1000001430511475,
-          0.000017108205181671186,
+          -0.000021248586886319027,
           -5.099649548520745
         ]
       },
