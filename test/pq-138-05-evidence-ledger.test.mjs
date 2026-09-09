@@ -1,18 +1,8 @@
 /**
  * PQ-138.05 — Evidence ledger at Ceres.
  *
- * One player-caused freight kill at the Ceres Refinery Approach. The checklist reads
- * world state / existing receipts after a few sim seconds — not a synthetic ledger.
- *
- * SCOPE (2026-09-09 review). This proves WORLD STATE, not a trace the player can see.
- * Two of the five checked fields have no live consumer:
- *   • `routeDisrupted` is written at traffic.js:8589/:8592 and read nowhere in the repo.
- *   • `state.ui.pirateRumor` / `pirateRumor:card` / `news:headline` have no production reader
- *     or listener; the pirateRumor readout exports are imported only by tests.
- *   • `station.data.structurePatch` and its `patched` receipt are read by nothing in
- *     src/ui or src/render.
- * Only the wreck and the price move reach a player-visible surface (the rendered wreck body,
- * and the market plus `freight:loss` → src/ui/marketNews.js).
+ * One player-caused freight kill at the Ceres Refinery Approach. The checklist now pins
+ * leftover PLAYER-VISIBLE paint (ticker + Orbital berth), not only world state.
  *
  * The kill is injected: `combat:damage` + `entity:killed` are emitted directly. The payload
  * matches what the live gun path emits at src/systems/combat.js:585, including the
@@ -21,10 +11,14 @@
  * `station_ceres` so `_markRouteDisrupted` has someone to mark. AFTER_S is decorative: all five
  * writes land synchronously inside the two emits, and `stepWorld` ticks only rumor heat decay.
  *
- * Do not read a green run here as "the leaf is done" — see PQ-138.05-REPORT.md (STATUS NOT DONE).
+ * leftover traffic.js still has no spawn/routing reader for routeDisrupted. This file only
+ * proves the leftover flag is painted on the berth when present.
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { aftermathForSector, aftermathWrecks } from '../src/systems/aftermathWrecks.js';
 import { traffic } from '../src/systems/traffic.js';
@@ -35,6 +29,11 @@ import {
   globalToSectorLocalForSector,
   sectorLocalToGlobalForSector,
 } from '../src/data/sectorCoordinates.js';
+import { createMarketNews, tickerEventRef } from '../src/ui/marketNews.js';
+import { buildDockArrival, writeBerthArrival } from '../src/ui/dockArrival.js';
+import { stationFrameHtml } from '../src/ui/views/stationFrames.js';
+
+const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 
 const SECTOR_ID = 'sector_ceres_belt';
 const STATION_ID = 'station_ceres';
@@ -211,7 +210,42 @@ function boot(world) {
   rumors.init({ state: world.state, bus, helpers, registry: null });
   ships.init({ state: world.state, bus, helpers, registry: null });
   econ.ensureStationMarkets(STATION_ID);
-  return { bus, helpers, econ, aftermath, rumors, ships };
+  const news = createMarketNews({ bus, state: world.state, helpers: {} });
+  return { bus, helpers, econ, aftermath, rumors, ships, news };
+}
+
+function berthPaintHost() {
+  const texts = {
+    '.sxb-event__badge': '',
+    '.sxb-event__title': '',
+    '.sxb-event__body': '',
+  };
+  const attrs = {};
+  const patch = { textContent: '', hidden: true };
+  const route = { textContent: '', hidden: true };
+  const header = {
+    querySelector(sel) {
+      if (sel === '.sxb-berth__patch') return patch;
+      if (sel === '.sxb-berth__route') return route;
+      return null;
+    },
+  };
+  const newsEl = { textContent: '', parentElement: header };
+  const cardEl = {
+    hidden: true,
+    parentElement: header,
+    querySelector(sel) {
+      if (!(sel in texts)) return null;
+      return {
+        get textContent() { return texts[sel]; },
+        set textContent(value) { texts[sel] = String(value == null ? '' : value); },
+      };
+    },
+    setAttribute(name, value) { attrs[name] = String(value); },
+    removeAttribute(name) { delete attrs[name]; },
+    getAttribute(name) { return Object.prototype.hasOwnProperty.call(attrs, name) ? attrs[name] : null; },
+  };
+  return { newsEl, cardEl, patch, route };
 }
 
 function liveRouteHaulers(state) {
@@ -338,17 +372,93 @@ test('one Ceres kill leaves wreck, thinned traffic, a moved price, a rumor, and 
     },
   ];
 
+  const ticker = harness.news.getLog().find((rec) => rec && rec.source === 'pirateRumor:headline');
+  const rumorHeadline = rumorRec && rumorRec.lastHeadline;
+  const patchText = patch && leftoverLineForTest(patch.text);
+  const view = buildDockArrival(state, { id: STATION_ID, name: 'Ceres Refinery', services: [] });
+  const frame = stationFrameHtml();
+  const host = berthPaintHost();
+  const painted = writeBerthArrival({ newsEl: host.newsEl, cardEl: host.cardEl }, view);
+  const newsSrc = readFileSync(join(ROOT, 'src/ui/marketNews.js'), 'utf8');
+  const appSrc = readFileSync(join(ROOT, 'src/ui/station/stationApp.js'), 'utf8');
+
+  rows.push(
+    {
+      trace: 'rumor paints',
+      ok: !!(
+        ticker
+        && tickerEventRef(ticker)
+        && ticker.text === rumorHeadline
+        && painted.news === rumorHeadline
+        && host.newsEl.textContent === rumorHeadline
+        && painted.eventCard
+        && painted.eventCard.body === rumorHeadline
+        && host.cardEl.querySelector('.sxb-event__body').textContent === rumorHeadline
+      ),
+      evidenceId: ticker && ticker.eventId || rumorKey,
+    },
+    {
+      trace: 'patch paints',
+      ok: !!(
+        patchText
+        && view.patch === patchText
+        && painted.patch === patchText
+        && host.patch.textContent === patchText
+        && host.patch.hidden === false
+      ),
+      evidenceId: view.patchReceiptId || (patch && (patch.receiptId || (patch.data && patch.data.receiptId))),
+    },
+    {
+      trace: 'route paints',
+      ok: !!(
+        view.route
+        && painted.route === view.route
+        && host.route.textContent === view.route
+        && host.route.hidden === false
+        && /disrupted approach/i.test(view.route)
+      ),
+      evidenceId: disrupted
+        ? `route:${STATION_ID}:${disrupted.ent.id}`
+        : (witnessRec.routeDisrupted ? `route:${STATION_ID}:${witnessRec.id}` : null),
+    },
+  );
+
   printChecklist(rows);
+  console.log(`PQ-138.05 leftover ticker: ${ticker && ticker.text}`);
+  console.log(`PQ-138.05 leftover berth news: ${painted.news}`);
+  console.log(`PQ-138.05 leftover berth card: ${painted.eventCard && painted.eventCard.title} — ${painted.eventCard && painted.eventCard.body}`);
+  console.log(`PQ-138.05 leftover berth patch: ${painted.patch}`);
+  console.log(`PQ-138.05 leftover berth route: ${painted.route}`);
 
   try {
     for (const row of rows) {
-      assert.equal(row.ok, true, `${row.trace} must be world state after the Ceres kill (evidence ${row.evidenceId || 'missing'})`);
+      assert.equal(row.ok, true, `${row.trace} must hold after the Ceres kill (evidence ${row.evidenceId || 'missing'})`);
     }
     assert.ok(liveWreck.data.provenance && liveWreck.data.provenance.markerId === marker.markerId,
       'the live wreck is the saved aftermath body, not a prop');
     assert.equal(haulersAfter.length, 1, 'the loaded hull is gone; the witness remains on the thinned route');
+    assert.match(newsSrc, /on\('pirateRumor:headline',\s*surfacePirateRumor\)/,
+      'leftover marketNews subscribes to leftover pirateRumor:headline');
+    assert.match(frame, /sxb-berth__patch/, 'the Orbital berth frame has the leftover patch line');
+    assert.match(frame, /sxb-berth__route/, 'the Orbital berth frame has the leftover route line');
+    assert.match(
+      appSrc,
+      /writeBerthArrival\(\s*\{ newsEl, cardEl: eventEl \}\s*,\s*arrival\s*,/,
+      'stationApp still hands the cached berth article to writeBerthArrival',
+    );
+    assert.equal(view.news, rumorHeadline, 'the berth news line is the leftover rumor, not only world state');
+    assert.equal(view.eventCard && view.eventCard.title, 'Pirate rumor');
+    assert.equal(host.cardEl.querySelector('.sxb-event__title').textContent, 'Pirate rumor');
+    assert.match(host.patch.textContent, /Yard crews patch Ceres Refinery/);
+    assert.equal(ticker.eventId, `pirateRumor:${SECTOR_ID}:${ZONE_ID}`);
   } finally {
+    harness.news.destroy();
     harness.aftermath.destroy();
     harness.rumors.destroy();
   }
 });
+
+function leftoverLineForTest(value) {
+  const next = String(value == null ? '' : value).replace(/\s+/g, ' ').trim();
+  return next || null;
+}

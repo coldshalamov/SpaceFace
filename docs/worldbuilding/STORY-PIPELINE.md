@@ -93,6 +93,7 @@ layer that contradicts a higher one — fix the higher layer, or file the lower 
 |---|---|
 | Prose only (docs/worldbuilding) | Links resolve; `git diff --check -- docs/worldbuilding` |
 | Playable beat sheet (`beats/*.beat.json`) | `node scripts/check-beat-standard.mjs` |
+| Leftover story ledger (PQ-178.03) | `node --test test/pq-178-03-ledger.test.mjs` — leftover receipts only; Orbital berth paints leftover `I was doing X, then Y, so I Z` |
 | narrative.js / endings / barks / flavor | Parse JS; focused story/data tests if present; do not touch expected.json |
 | story.js gates / triggers | Focused story system test + manual route note |
 | Mission data | campaign/mission checks + play-route smoke |

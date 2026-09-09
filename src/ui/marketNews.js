@@ -1,7 +1,8 @@
 // marketNews.js — surface the already-deep-but-invisible economy as a 1-line NEWS TICKER plus
 // dock "event cards". READ-ONLY over the economy: this module NEVER mutates prices, stock, or any
 // economy state. It listens to economy events and stable encounter freight-loss intents for
-// generated headlines, and to `news:publish` for already-authored literal copy, then emits
+// generated headlines, to leftover `pirateRumor:headline` for lane rumors, and to
+// `news:publish` for already-authored literal copy, then emits
 // presentation signals (voice on the "news" channel, else a "toast").
 //
 // Split of concerns:
@@ -314,12 +315,38 @@ export function createMarketNews(ctx) {
     return committed;
   }
 
+  // Leftover pirateRumor:headline (not news:headline — commitHeadline re-emits that).
+  function surfacePirateRumor(ev) {
+    if (!ev) return null;
+    const headline = String(ev.headline || ev.text || '').replace(/\s+/g, ' ').trim();
+    if (!headline) return null;
+    const sectorId = ev.sectorId || null;
+    const zoneId = ev.zoneId || null;
+    const eventId = ev.eventId || (sectorId && zoneId ? `pirateRumor:${sectorId}:${zoneId}` : null);
+    if (!eventId) return null;
+    if (model.log.some((rec) => rec && rec.eventId === eventId && rec.text === headline)) {
+      return model.log.find((rec) => rec && rec.eventId === eventId && rec.text === headline) || null;
+    }
+    return commitHeadline(headline, ev, {
+      metadata: {
+        kind: ev.kind || 'piracy',
+        eventId,
+        source: 'pirateRumor:headline',
+        sourceRef: eventId,
+        sectorId,
+        zoneId,
+        zoneName: ev.zoneName || null,
+      },
+    });
+  }
+
   // ---- economy subscriptions (READ-ONLY) ---------------------------------------------------
   const subs = [];
   function on(evt, fn) { if (bus && bus.on) { bus.on(evt, fn); subs.push([evt, fn]); } }
 
   on('news:publish', surfacePublished);
   on('freight:loss', surfaceFreightLoss);
+  on('pirateRumor:headline', surfacePirateRumor);
   on('economy:eventStarted', (p) => {
     if (!p) return;
     surface({ type: p.type, stationId: p.stationId, commodityId: p.commodityId, eventId: p.eventId });

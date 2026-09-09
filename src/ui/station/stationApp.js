@@ -2,7 +2,8 @@ import { stationFrameHtml } from '../views/stationFrames.js';
 // src/ui/station/stationApp.js — the station as a place (Frontend Task C §1.2).
 // Docking is an arrival, not a menu: the berth with the player's hull in it (the world canvas is
 // frozen while docked, so the hull rig is the picture), the station's name at hero size, one line of
-// local news plus the leftover event card when this berth is under a leftover event, the destinations
+// local news plus the leftover event card when this berth is under a leftover event, leftover
+// story ledger when leftover receipts can retell the campaign, the destinations
 // as words along the bottom edge with Undock as the one primary word, credits and the vitals with
 // their service verbs as a quiet column top-right. Every destination sits over that berth on the
 // kit grid; no plates, no fascia, no operation rail.
@@ -998,7 +999,8 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     const st = resolveStation(ctx);
     setTextIfChanged(crestName, st.name || 'Station');
     // Ticker line stays under the name. Leftover event card (badge/title/body/eventId) paints
-    // beside it when this berth has a stored leftover card or a live leftover event.
+    // beside it when this berth has a stored leftover card or a live leftover event. Leftover
+    // story ledger paints on .sxb-berth__ledger through the same leftover writer.
     let arrival = { news: null, eventCard: null };
     try { arrival = buildDockArrival(s, { id: stationId(), name: st.name, services: st.services }); } catch (_) { /* keep empty arrival */ }
     writeBerthArrival(

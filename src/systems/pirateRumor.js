@@ -240,9 +240,11 @@ export const pirateRumor = {
     rec.lastHeadlineAt = now;
     rec.lastHeadline = headline;
     rec.headlineCount = (rec.headlineCount | 0) + 1;
+    const eventId = `pirateRumor:${rec.sectorId}:${rec.zoneId}`;
     const payload = {
       headline,
       kind: 'piracy',
+      eventId,
       sectorId: rec.sectorId,
       zoneId: rec.zoneId,
       zoneName: rec.zoneName,
@@ -253,6 +255,7 @@ export const pirateRumor = {
       kind: 'piracy',
       title: 'Pirate rumor',
       body: headline,
+      eventId,
       sectorId: rec.sectorId,
       zoneId: rec.zoneId,
       zoneName: rec.zoneName,

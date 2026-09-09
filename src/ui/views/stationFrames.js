@@ -4,7 +4,8 @@
 export function stationFrameHtml() {
   // The berth: the hull mount stays owned by the station renderer.
   return `<canvas class="k-world sxb-berth__world" aria-hidden="true"></canvas>` +
-    // The title block: the station's name at hero size, the news line, leftover event card, handoff.
+    // The title block: the station's name at hero size, the news line, leftover event card,
+    // leftover story ledger, handoff.
     `<header class="k-title sxb-berth">` +
       `<span class="of-port-mark" aria-hidden="true"></span>` +
       `<h1 class="k-display k-t-hero sxb-berth__name"></h1>` +
@@ -14,6 +15,13 @@ export function stationFrameHtml() {
         `<strong class="sxb-event__title"></strong>` +
         `<p class="sxb-event__body"></p>` +
       `</article>` +
+      `<article class="sxb-event sxb-berth__ledger" hidden>` +
+        `<span class="sxb-event__badge k-caps"></span>` +
+        `<strong class="sxb-event__title"></strong>` +
+        `<p class="sxb-event__body"></p>` +
+      `</article>` +
+      `<p class="k-t-fine k-62 sxb-berth__patch" hidden></p>` +
+      `<p class="k-t-fine k-62 sxb-berth__route" hidden></p>` +
       `<div class="sxb-handoff" hidden></div>` +
     `</header>` +
     // The quiet column top-right: credits as the hero number, the vitals as rows with their verbs.
