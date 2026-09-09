@@ -1,0 +1,122 @@
+/* SpaceFace journeys: the hull, the pilot dossier, and the remembered run.
+   Loaded once by the shared kit; no screen-wide blur or extra compositing loop. */
+.k-screen .cd-hull-stage {
+  position:relative; isolation:isolate; min-height:220px; overflow:hidden;
+  border:1px solid #3e525c; background:#111c23;
+}
+/* Do not put a bounded ship below the screen scrim. Negative global world layers
+   belong to title backdrops; a turntable is foreground content. */
+.k-screen .cd-hull-stage > .k-world--stage { inset:0; width:100%; height:100%; z-index:0; cursor:grab; touch-action:pan-y; }
+.k-screen .cd-hull-stage > .k-world--stage.is-dragging { cursor:grabbing; }
+.k-screen .cd-hull-stage > .k-stage__foot {
+  z-index:1; width:100%; box-sizing:border-box; padding:22px 24px;
+  background:linear-gradient(0deg,#0b151df5 0%,#0b151dcc 78%,#0b151d00);
+  pointer-events:none;
+}
+.k-screen .cd-hull-stage > .k-stage__foot :is(button,a,input,select) { pointer-events:auto; }
+.k-screen .cd-hull-stage > .k-stage__foot > * + * { margin-top:12px; }
+.k-screen .cd-hull-stage .k-stage__foot .k-display { font-size:clamp(30px,3.4vw,56px); }
+.k-screen .cd-hull-status {
+  position:absolute; left:16px; top:16px; z-index:2; padding:9px 12px;
+  background:#111d25ed; color:var(--cd-muted); border-left:2px solid var(--cd-accent);
+  font-size:13px; max-width:calc(100% - 235px);
+}
+.k-screen .cd-hull-status[hidden] { display:none; }
+.k-screen .cd-hull-controls {
+  position:absolute; right:12px; top:12px; z-index:3; display:flex; gap:4px;
+  padding:4px; background:#0c171ded; border:1px solid #435660;
+}
+.k-screen .cd-hull-control { padding:7px; min-width:32px; min-height:34px; justify-content:center; }
+.k-screen .cd-hull-control svg { flex:0 0 auto; }
+
+/* Pilot preparation: a fitted hull on the right; a deliberate, finite launch checklist left. */
+body[data-k-screen="newGame"] .k-screen {
+  grid-template-columns:minmax(320px,.8fr) minmax(0,1.35fr);
+  grid-template-rows:auto minmax(0,1fr) auto; gap:20px 28px;
+}
+body[data-k-screen="newGame"] .sf-ng-header .k-display { font-size:clamp(38px,4vw,68px); }
+body[data-k-screen="newGame"] .sf-ng-body {
+  padding:20px; border:1px solid #3d4e55; border-top:3px solid var(--cd-accent);
+  background:#162228; scrollbar-gutter:stable;
+}
+body[data-k-screen="newGame"] .sf-ng-body > div > div:first-child > :is(label,.k-t-body) {
+  display:block; color:var(--cd-muted); margin-bottom:9px; font-size:13px;
+}
+body[data-k-screen="newGame"] .sf-ng-body :is(input.k-input,input.k-input:focus) { width:100%; min-width:0; }
+body[data-k-screen="newGame"] #sf-ng-pilot-name { font-size:22px; min-height:48px; }
+body[data-k-screen="newGame"] .sf-ng-body .k-rule { margin:18px 0; }
+body[data-k-screen="newGame"] [aria-labelledby="sf-ng-difficulty-label"] {
+  display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px;
+}
+body[data-k-screen="newGame"] [aria-labelledby="sf-ng-difficulty-label"] .k-word { width:100%; min-height:40px; font-size:14px; padding:10px; }
+body[data-k-screen="newGame"] [data-action="difficulty:ironman"][aria-pressed="true"] { border-color:var(--cd-danger); color:var(--cd-danger); box-shadow:inset 3px 0 var(--cd-danger); }
+body[data-k-screen="newGame"] #sf-ng-difficulty-desc { font-size:13px; line-height:1.6; margin-top:12px; min-height:2.8em; }
+body[data-k-screen="newGame"] .k-words:has(> #sf-ng-seed) { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; }
+body[data-k-screen="newGame"] #sf-ng-seed-desc { margin:9px 0 0; font-size:12px; line-height:1.55; }
+body[data-k-screen="newGame"] [aria-label="Loadout"] { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+body[data-k-screen="newGame"] [aria-label="Loadout"] > li { border-left:2px solid #7896a0; padding:8px 10px; background:#213139; }
+body[data-k-screen="newGame"] [aria-label="Loadout"] > li > span { color:var(--cd-text); font-size:14px; line-height:1.4; display:block; }
+body[data-k-screen="newGame"] [aria-label="Loadout"] > li > span::before { content:attr(title); display:block; color:var(--cd-muted); font-size:11px; margin-bottom:4px; }
+body[data-k-screen="newGame"] .sf-ng-route { display:block; }
+body[data-k-screen="newGame"] .sf-ng-route .k-caps { margin-bottom:10px; }
+body[data-k-screen="newGame"] .sf-ng-route__steps { counter-reset:flightstep; }
+body[data-k-screen="newGame"] .sf-ng-route__step { counter-increment:flightstep; padding:10px; grid-template-columns:22px minmax(0,1fr); gap:12px; }
+body[data-k-screen="newGame"] .sf-ng-route__step::before { content:counter(flightstep,decimal-leading-zero); color:var(--cd-accent); font-size:12px; padding-top:3px; }
+body[data-k-screen="newGame"] .sf-ng-route__step .k-row__name { font-size:14px; }
+body[data-k-screen="newGame"] .sf-ng-route__step .k-row__sub { font-size:12px; line-height:1.5; }
+body[data-k-screen="newGame"] .sf-ng-footer { justify-content:space-between; padding-top:4px; gap:16px; }
+body[data-k-screen="newGame"] .sf-ng-launch { min-width:235px; min-height:54px; justify-content:space-between; font-size:22px; }
+body[data-k-screen="newGame"] .sf-ng-launch::before { content:""; width:20px; height:20px; border:solid currentColor; border-width:0 2px 2px 0; transform:rotate(-45deg) scale(.55); margin-right:10px; }
+body[data-k-screen="newGame"] .sf-ng-footer > .k-word:first-child { font-size:16px; }
+body[data-k-screen="newGame"] .k-fine { font-size:12px; }
+
+/* Save selection: physical run records, the selected ship, and a protected action band. */
+body[data-k-screen="saveLoad"] .k-screen { grid-template-columns:minmax(330px,.85fr) minmax(0,1.4fr); gap:22px; }
+body[data-k-screen="saveLoad"] .k-hang { padding:6px 12px 6px 6px; }
+body[data-k-screen="saveLoad"] .k-hang .k-row { margin-bottom:10px; min-height:96px; padding:16px; border:1px solid #3e5059; background:#16242d; }
+body[data-k-screen="saveLoad"] .k-hang .k-row[aria-selected="true"] { border-color:var(--cd-accent); background:#26383f; }
+body[data-k-screen="saveLoad"] .k-hang .k-row__name { font-size:20px; }
+body[data-k-screen="saveLoad"] .k-hang .k-row__sub { font-size:13px; line-height:1.55; margin-top:8px; overflow-wrap:anywhere; }
+body[data-k-screen="saveLoad"] .k-hang .k-row__num { font-size:13px; color:var(--cd-accent); }
+body[data-k-screen="saveLoad"] .sf-slot-detail { font-size:18px; line-height:1.4; max-width:55ch; }
+body[data-k-screen="saveLoad"] .sf-slot-context { max-width:66ch; line-height:1.5; font-size:13px; }
+body[data-k-screen="saveLoad"] .k-stage__foot .k-hero { flex-direction:row; align-items:baseline; gap:9px; }
+body[data-k-screen="saveLoad"] .k-stage__foot .k-hero__n { font-size:clamp(32px,3.2vw,52px); }
+body[data-k-screen="saveLoad"] .k-stage__foot .k-words--row { flex-wrap:wrap; gap:8px; }
+body[data-k-screen="saveLoad"] .k-stage__foot .k-word { font-size:15px; min-height:44px; }
+body[data-k-screen="saveLoad"] .k-foot { gap:10px; }
+body[data-k-screen="saveLoad"] .k-foot .k-word { font-size:16px; }
+
+@media(max-height:760px) {
+  body:is([data-k-screen="newGame"],[data-k-screen="saveLoad"]) .k-screen { padding:24px; padding-bottom:40px; gap:15px 22px; }
+  body[data-k-screen="newGame"] .sf-ng-header .k-display { font-size:38px; }
+  body[data-k-screen="newGame"] .sf-ng-header p { font-size:16px; }
+  body[data-k-screen="newGame"] .sf-ng-body { padding:16px; }
+  body[data-k-screen="newGame"] .sf-ng-launch { min-height:46px; font-size:19px; }
+  .k-screen .cd-hull-stage > .k-stage__foot { padding:18px; }
+}
+@media(max-width:850px) {
+  body:is([data-k-screen="newGame"],[data-k-screen="saveLoad"]) .k-screen { grid-template-columns:minmax(290px,1fr) minmax(0,1fr); gap:14px; }
+  .k-screen .cd-hull-controls { right:8px; top:8px; }
+  .k-screen .cd-hull-status { top:60px; max-width:calc(100% - 52px); }
+  body[data-k-screen="saveLoad"] .k-stage__foot .k-display { font-size:30px; }
+  body[data-k-screen="saveLoad"] .sf-slot-detail { font-size:15px; }
+}
+@media(max-width:650px) {
+  body:is([data-k-screen="newGame"],[data-k-screen="saveLoad"]) .k-screen {
+    position:fixed; display:flex; flex-direction:column; overflow:auto; padding:20px; gap:18px;
+  }
+  body:is([data-k-screen="newGame"],[data-k-screen="saveLoad"]) .k-hang { flex:none; overflow:visible; }
+  body:is([data-k-screen="newGame"],[data-k-screen="saveLoad"]) .cd-hull-stage { flex:none; height:340px; }
+  body[data-k-screen="newGame"] .cd-hull-stage { order:1; }
+  body[data-k-screen="newGame"] .sf-ng-body { order:2; }
+  body[data-k-screen="newGame"] .sf-ng-footer { order:3; }
+  body:is([data-k-screen="newGame"],[data-k-screen="saveLoad"]) .k-foot { position:sticky; bottom:0; flex-shrink:0; background:#0d1419; padding:12px 0; z-index:5; }
+  body:is([data-k-screen="newGame"],[data-k-screen="saveLoad"]) .k-fine { position:static; order:4; }
+  body[data-k-screen="newGame"] .sf-ng-launch { min-width:175px; }
+}
+html.sf-reduce-motion .cd-hull-stage *,
+html.sf-reduce-motion .cd-hull-stage *::before { transition:none !important; animation:none !important; }
+@media(forced-colors:active) {
+  .k-screen .cd-hull-controls, .k-screen .cd-hull-status { background:Canvas; color:CanvasText; border:1px solid CanvasText; }
+}

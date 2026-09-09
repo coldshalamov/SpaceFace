@@ -9,11 +9,11 @@ permissions:
   contents: read
 concurrency:
   group: frontend-visual-review-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 jobs:
   player-surfaces:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -22,10 +22,13 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - name: Validate transaction presentation
-        run: node --test test/command-market-flow.test.mjs test/command-deck-presentation.test.mjs
+      - name: Validate presentation state machines
+        run: node --test test/command-*.test.mjs
       - name: Capture current player surfaces
-        run: node scripts/capture-ui-matrix.mjs --world --only=title,new-game,flight,pause,station-dock,station-market,station-shipworks --mode=default --viewport=1280 --out=scratch/frontend-review
+        run: |
+          set -o pipefail
+          mkdir -p scratch/frontend-review
+          node scripts/capture-ui-matrix.mjs --world --only=title,new-game,flight,pause,settings,save-load,station-dock,station-market,station-shipworks --mode=default --viewport=1280 --out=scratch/frontend-review 2>&1 | tee scratch/frontend-review/capture.log
       - name: Preserve screenshots and capture failures
         if: always()
         uses: actions/upload-artifact@v4
