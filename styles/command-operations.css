@@ -1,0 +1,18 @@
+/* Operational surfaces share the cut control language, not one identical panel anatomy. */
+.k-screen .cd-trade-mode { display:grid; grid-template-columns:1fr 1fr; gap:5px; margin:0 0 18px; }
+.k-screen .cd-trade-mode .k-word { width:100%; justify-content:center; min-height:36px; }
+.k-screen .cd-trade-mode .k-word[aria-pressed="true"] { color:var(--cd-text); border-color:var(--cd-cold); background:#34464d; box-shadow:inset 0 -2px var(--cd-cold); }
+.k-screen .cd-trade-commit { display:block; margin:18px 0 0; }
+.k-screen .cd-trade-commit .k-word { width:100%; min-height:52px; justify-content:center; font-variant-numeric:tabular-nums; }
+.k-screen .sx-mkt__trade .cd-hold { margin-bottom:16px; }
+.k-screen .sx-mkt__console > .cd-trade-receipt { margin-bottom:16px; }
+.k-screen .cd-trade-receipt[data-kind="pending"] { border-color:var(--cd-accent); background:#34372b; }
+.k-screen .cd-trade-receipt { overflow-wrap:anywhere; }
+.k-screen .sx-mkt__trade .sx-qty__k { letter-spacing:.04em; }
+.k-screen .sx-mkt__trade .sx-trade__note { margin:12px 0 0; color:var(--cd-danger); line-height:1.5; }
+.k-screen .cd-trade-commit .k-word:disabled::before { background:#1b252a; border-color:#38474d; }
+@media(max-height:760px) {
+  .k-screen .cd-trade-mode { margin-bottom:12px; }
+  .k-screen .sx-mkt__trade .cd-hold { margin-bottom:10px; padding-bottom:10px; }
+  .k-screen .cd-trade-commit { margin-top:10px; }
+}

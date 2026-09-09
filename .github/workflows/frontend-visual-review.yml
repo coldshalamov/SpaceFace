@@ -1,0 +1,36 @@
+# Player-route screenshots only. No source/dependency retrieval or generated commits.
+name: Frontend visual review
+on:
+  push:
+    branches: [frontend/command-deck-rebuild]
+    paths: ['src/ui/**', 'styles/**', 'assets/ui/**', 'index.html', 'scripts/capture-command-deck.mjs', '.github/workflows/frontend-visual-review.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: frontend-visual-review-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  player-surfaces:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Validate transaction presentation
+        run: node --test test/command-market-flow.test.mjs test/command-deck-presentation.test.mjs
+      - name: Capture current player surfaces
+        run: node scripts/capture-ui-matrix.mjs --world --only=title,new-game,flight,pause,station-dock,station-market,station-shipworks --mode=default --viewport=1280 --out=scratch/frontend-review
+      - name: Preserve screenshots and capture failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-visual-review-${{ github.sha }}
+          path: scratch/frontend-review/
+          if-no-files-found: warn
+          retention-days: 7

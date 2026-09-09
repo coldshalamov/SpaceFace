@@ -3,7 +3,10 @@
 // the selected row marked by a gold rule on its left edge. Right half: the selected commodity's name
 // at screen-title size and its price at hero size, one sentence of why, and Buy and Sell as two
 // words with a quantity beside them. Emits ui:buy / ui:sell {commodityId, qty}; the trade math, the
-// quotes and the route logic are untouched. Styled by styles/kit.css + styles/station.css only.
+// quotes and the route logic stay with their existing authorities. Command-deck presentation is
+// layered over the station sheet; completion feedback comes only from the economy receipt.
+import { cargoIllustration, cargoCapacityHtml } from '../../art/cargoIllustration.js';
+import { createTradeFlow } from '../../market/transactionFlow.js';
 import { COMMODITIES } from '../../../data/commodities.js';
 import { SECTORS } from '../../../data/sectors.js';
 import { isUnsellableCargo } from '../../../systems/cargo.js';
@@ -138,6 +141,7 @@ export function createMarketScreen(ctx) {
     `<section class="k-stage k-stage--scroll sx-mkt__stage" id="sx-market-instrument" role="tabpanel" aria-describedby="sx-market-driver-summary">` +
       `<div class="sx-mkt__quote"></div>` +
       `<div class="sx-mkt__console">` +
+        `<div class="cd-trade-receipt" role="status" aria-live="polite" aria-atomic="true" hidden></div>` +
         `<div class="sx-mkt__trade"></div>` +
         `<div class="sx-mkt__routes" aria-label="Trade routes"></div>` +
         `<aside class="k-t-fine k-62 sx-adboard" data-ad-board aria-label="Dockside commerce notice" hidden></aside>` +
@@ -150,7 +154,24 @@ export function createMarketScreen(ctx) {
   const consoleEl = el.querySelector('.sx-mkt__console');
   const tradeEl = el.querySelector('.sx-mkt__trade');
   const routesEl = el.querySelector('.sx-mkt__routes');
-  let tradeBusy = false;
+  const receiptEl = el.querySelector('.cd-trade-receipt');
+  let lastStationId = null;
+  const flow = createTradeFlow({ bus: ctx.bus, onChange(view) {
+    receiptEl.hidden = !view;
+    if (view) {
+      receiptEl.dataset.kind = view.kind;
+      receiptEl.innerHTML = `<svg class="cd-glyph" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="${view.kind === 'success' ? 'M4 12l5 5L20 6' : view.kind === 'pending' ? 'M4 8h15m-5-5 5 5-5 5M20 17H5m5-5-5 5 5 5' : 'M12 3 2 21h20ZM12 9v5m0 3v1'}" stroke="currentColor" stroke-width="1.7"/></svg><div><strong>${escapeHtml(view.title)}</strong><p>${escapeHtml(view.text)}</p></div>`;
+    }
+    el.setAttribute('aria-busy', String(view?.kind === 'pending'));
+    if (view?.kind === 'pending') {
+      const go = tradeEl.querySelector('[data-go]');
+      if (go) { go.disabled = true; go.textContent = 'Transferring…'; }
+    } else {
+      const restore = typeof document !== 'undefined' && tradeEl.contains(document.activeElement);
+      renderAll(ctx.state || {});
+      if (restore) tradeEl.querySelector('[data-go]')?.focus({ preventScroll: true });
+    }
+  } });
 
   let selectedId = null;
   let mode = 'buy';   // 'buy' | 'sell'
@@ -165,8 +186,7 @@ export function createMarketScreen(ctx) {
   let filterEls = null;
   let tbodyEl = null;
 
-  // The commodity your tracked contract wants loaded. Market flags it so the accept→buy→deliver loop
-  // is legible ("buy this here for your job"). Prefer an explicit trade waypoint; else fall back to
+  // The commodity your tracked contract needs: prefer a trade waypoint, otherwise read
   // the tracked mission's own cargo commodity (works even when nav points elsewhere).
   function trackedCmdty(state) {
     const wp = state && state.nav && state.nav.waypoint;
@@ -466,9 +486,11 @@ export function createMarketScreen(ctx) {
     const heroSide = mode === 'sell' ? sell : buy;
     quoteEl.innerHTML =
       (isTracked ? `<p class="k-sentence k-signal sx-mkt-tracked" data-tracked-state="${trackedGuidance.state}"><b>Tracked contract</b> — ${escapeHtml(trackedGuidance.text)}</p>` : '') +
+      `<div class="cd-cargo-mast"><div class="cd-cargo-mast__identity">` +
       `<p class="k-caps sx-mkt-cat-inline">${escapeHtml(def.category || 'goods')} · <span class="${legal === 'contraband' ? 'k-bad' : (legal === 'restricted' ? 'k-signal' : '')}">${LEGAL_LABEL[legal]}</span></p>` +
       `<h2 class="k-display k-t-title sx-mkt-title">${entitySpanHtml('commodity:' + r.id, escapeHtml(def.name))}</h2>` +
       `<div class="k-hero k-hero--hero k-hero--signal sx-mkt__hero"><div class="k-hero__n">${fmt(heroSide)}</div><div class="k-hero__w">${mode === 'sell' ? 'station pays' : 'you pay'} · per unit</div></div>` +
+      `</div><div class="cd-cargo-mast__specimen">${cargoIllustration(def)}</div></div>` +
       `<p class="k-sentence" id="sx-market-driver-summary">${escapeHtml(drivers.accessibleSummary)}</p>` +
       buildChart(hist, avg, `sxmkt-${String(r.id).replace(/[^a-zA-Z0-9_-]/g, '_')}`, def.name) +
       `<ul class="k-rows sx-mkt-stats">` +
@@ -515,7 +537,7 @@ export function createMarketScreen(ctx) {
     const total = quoteReady ? quote.total : unit * qty;
     const quoteUnit = quoteReady ? quote.unitAvg : unit;
     const creditReady = mode !== 'buy' || (quoteReady && quote.total <= cr);
-    const canAct = quoteReady && creditReady && qty >= 1 && qty <= maxQty && maxQty >= 1;
+    const canAct = !flow.pending && quoteReady && creditReady && qty >= 1 && qty <= maxQty && maxQty >= 1;
     const intelRows = selectedMarketIntel(state, r, quote);
     const receiptHtml = rowKV('Quantity', fmt(qty) + ' u') +
       rowKV('Average unit', quoteReady ? fmt(quoteUnit) + ' cr/u' : 'Unavailable') +
@@ -528,10 +550,13 @@ export function createMarketScreen(ctx) {
       : !creditReady ? 'Not enough credits for this quantity.'
       : qty > maxQty ? 'This quantity exceeds available stock or hold space.'
       : maxQty < 1 ? (mode === 'buy' ? 'Not enough credits, stock, or hold space.' : 'Nothing to sell here.') : '';
-    const goLabel = (side) => `${side === 'buy' ? 'Buy' : 'Sell'} ${fmt(qty)}`;
+    const goLabel = (side) => flow.pending ? 'Transferring…' : `${side === 'buy' ? 'Buy' : 'Sell'} ${fmt(qty)} · ${fmt(total)} CR`;
+    const holdHtml = cargoCapacityHtml(state.player?.cargo, (mode === 'sell' ? -1 : 1) * qty * (Number(def.volPerU) > 0 ? Number(def.volPerU) : 1));
     if (receiptOnly && tradeEl.querySelector('[data-market-intel]')) {
       // Keep the focused numeric input alive while each keystroke updates its actual quote.
       tradeEl.querySelector('[data-market-intel]').innerHTML = receiptHtml;
+      const hold = tradeEl.querySelector('[data-hold-projection]');
+      if (hold) hold.innerHTML = holdHtml;
       const go = tradeEl.querySelector('[data-go]');
       go.disabled = !canAct;
       go.textContent = goLabel(mode);
@@ -541,25 +566,27 @@ export function createMarketScreen(ctx) {
       return;
     }
 
-    // The two words are the mode: the live one carries data-go and commits; the other switches.
+    // Selecting a side does not execute a trade. Only the distinct transfer control commits.
     const word = (side) => {
       const live = side === mode;
-      return `<li><button type="button" class="k-word k-word--emph sx-seg__btn sx-trade__go sx-trade__go--${side}${live ? ' is-on k-word--primary' : ''}"` +
-        ` data-mode="${side}" aria-pressed="${live}"${live ? ` data-go${canAct ? '' : ' disabled'}` : ''}>${live ? goLabel(side) : (side === 'buy' ? 'Buy' : 'Sell')}</button></li>`;
+      return `<li><button type="button" class="k-word k-word--body sx-seg__btn${live ? ' is-on' : ''}"` +
+        ` data-mode="${side}" aria-pressed="${live}">${side === 'buy' ? 'Buy cargo' : 'Sell cargo'}</button></li>`;
     };
     tradeEl.innerHTML =
       `<div class="sx-trade">` +
+        `<ul class="k-words k-words--row sx-seg cd-trade-mode" role="group" aria-label="Trade direction">${word('buy')}${word('sell')}</ul>` +
+        `<div data-hold-projection>${holdHtml}</div>` +
         `<div class="sx-qty">` +
           `<label class="k-caps sx-qty__k" for="sx-market-qty">Quantity</label>` +
           `<input id="sx-market-qty" class="k-input k-input--num sx-qty__in" type="text" inputmode="numeric" value="${qty}" aria-label="Quantity"/>` +
           `<ul class="k-words k-words--row sx-qty__words">` +
-            `<li><button type="button" class="k-word k-word--body sx-qty__b" data-q="-1">fewer</button></li>` +
-            `<li><button type="button" class="k-word k-word--body sx-qty__b" data-q="1">more</button></li>` +
+            `<li><button type="button" class="k-word k-word--body sx-qty__b" data-q="-1" aria-label="Decrease quantity">−</button></li>` +
+            `<li><button type="button" class="k-word k-word--body sx-qty__b" data-q="1" aria-label="Increase quantity">+</button></li>` +
             `<li><button type="button" class="k-word k-word--body sx-qty__max" data-q="max">Max</button></li>` +
           `</ul>` +
         `</div>` +
         `<ul class="k-rows sx-trade__rows" data-market-intel>${receiptHtml}</ul>` +
-        `<ul class="k-words k-words--row sx-seg sx-trade__words" role="tablist" aria-label="Buy or sell">${word('buy')}${word('sell')}</ul>` +
+        `<div class="sx-trade__words cd-trade-commit"><button type="button" class="k-word k-word--primary cd-control sx-trade__go sx-trade__go--${mode}" data-go${canAct ? '' : ' disabled'}>${goLabel(mode)}</button></div>` +
         `<p class="k-t-fine k-38 sx-trade__note" ${note ? '' : 'hidden'}>${escapeHtml(note)}</p>` +
       `</div>`;
   }
@@ -665,16 +692,20 @@ export function createMarketScreen(ctx) {
     const go = ev.target.closest('[data-go]');
     if (go) {
       if (go.disabled) return;
-      if (tradeBusy) return;
+      if (flow.pending) return;
       const tradeQty = Math.max(0, Math.floor(Number(qty) || 0));
       if (tradeQty <= 0) return;
-      tradeBusy = true;
+      const st = ctx.state || {};
+      const commodity = CMDTY_BY_ID.get(selectedId);
+      const afterSequence = Math.max(0, ...(st.player?.tradeLedger || []).map(r => Number(r.tradeSequence) || 0));
+      if (!flow.begin({ stationId: stationId(st), commodityId: selectedId,
+        commodityName: commodity?.name, side: mode, qty: tradeQty, afterSequence })) return;
       go.disabled = true;
       if (ctx.bus) {
         ctx.bus.emit(mode === 'buy' ? 'ui:buy' : 'ui:sell', { commodityId: selectedId, qty: tradeQty });
         ctx.bus.emit('audio:cue', { id: 'ui_click' });
       }
-      setTimeout(() => { tradeBusy = false; renderAll(ctx.state || {}); }, 80);
+
       return;
     }
     const seg = ev.target.closest('[data-mode]');
@@ -700,8 +731,9 @@ export function createMarketScreen(ctx) {
 
   consoleEl.addEventListener('input', (ev) => {
     if (!ev.target.classList.contains('sx-qty__in')) return;
-    const n = parseInt(ev.target.value, 10);
-    qty = Number.isFinite(n) ? Math.max(0, n) : 0;
+    const raw = ev.target.value.trim();
+    const n = /^\d+$/.test(raw) ? Number(raw) : NaN;
+    qty = Number.isSafeInteger(n) ? Math.max(0, n) : 0;
     renderConsole(ctx.state || {}, { receiptOnly: true });
   });
 
@@ -713,6 +745,7 @@ export function createMarketScreen(ctx) {
       // Enable trading: the economy system opens/initializes this station's live market on show
       // (parity with the legacy market panel — without this, ui:buy/ui:sell are no-ops).
       const sid = stationId(st);
+      if (lastStationId !== sid) { lastStationId = sid; flow.clear(); }
       if (ctx.bus && sid) ctx.bus.emit('economy:marketOpened', { stationId: sid });
       if (open.tradeMode === 'sell' || open.tradeMode === 'buy') {
         openTradeMode(open.tradeMode, st, { cargoOnly: open.tradeMode === 'sell' });
@@ -732,6 +765,6 @@ export function createMarketScreen(ctx) {
     },
     refresh(c) { renderAll((c || ctx).state || {}); },
     onHide() {},
-    dispose() {},
+    dispose() { flow.dispose(); },
   };
 }
