@@ -3,6 +3,7 @@ import test from 'node:test';
 import { readFile } from 'node:fs/promises';
 
 import { shouldSubmitEntityMesh } from '../src/render/entityMeshVisibility.js';
+import { cookLiveSceneGpu } from '../src/render/liveSceneCook.js';
 import { waitForCurrentRenderPipelines } from '../src/render/pipelineReadiness.js';
 
 test('loading waitForCurrentRenderPipelines drains optional post-opening pipelines after the exact plan', async () => {
@@ -28,6 +29,65 @@ test('loading waitForCurrentRenderPipelines drains optional post-opening pipelin
   assert.equal(await waitForCurrentRenderPipelines(state, 1000), true);
   assert.deepEqual(timeline, ['exact:capture', 'exact:drain', 'post-opening']);
   assert.equal(typeof state.render.postOpeningPipelinesReady?.then, 'function');
+  assert.equal(typeof state.render.liveSceneCookReady?.then, 'function');
+  assert.equal(state.render.liveSceneCook.skipped, true);
+  assert.equal(state.render.liveSceneCook.reason, 'no-live-scene');
+});
+
+test('cookLiveSceneGpu compiles and uploads the live scene subjects', async () => {
+  const calls = [];
+  const scene = { name: 'live-sector' };
+  const camera = { name: 'flight-cam' };
+  const state = {
+    mode: 'loading',
+    render: {
+      renderer: {
+        compileAsync: async (subject, cam) => {
+          calls.push(['compile', subject.name, cam.name]);
+        },
+      },
+      scene,
+      camera,
+    },
+  };
+  const result = await cookLiveSceneGpu(state, {
+    prepareResidency: async (_renderer, subject) => {
+      calls.push(['buffers', subject.name]);
+      return { skipped: false, textures: 2 };
+    },
+  });
+  assert.equal(result.liveScene, true);
+  assert.equal(result.programs.method, 'compileAsync');
+  assert.deepEqual(calls, [
+    ['compile', 'live-sector', 'flight-cam'],
+    ['buffers', 'live-sector'],
+  ]);
+});
+
+test('loading cook uses the live scene programs and buffers, not a dummy catalog', async () => {
+  const cooked = [];
+  const state = {
+    mode: 'loading',
+    render: {
+      cookLiveSceneGpu: async () => {
+        cooked.push('live');
+        return { skipped: false, liveScene: true };
+      },
+    },
+  };
+  const result = await cookLiveSceneGpu(state);
+  assert.deepEqual(cooked, ['live']);
+  assert.equal(result.liveScene, true);
+  assert.equal(state.render.liveSceneCook.liveScene, true);
+});
+
+test('flight mode refuses a live-scene cook so dummy mid-flight prewarm stays dead', async () => {
+  const result = await cookLiveSceneGpu({
+    mode: 'flight',
+    render: { scene: {}, renderer: {}, camera: {} },
+  });
+  assert.equal(result.skipped, true);
+  assert.equal(result.reason, 'not-loading');
 });
 
 test('post-opening drain is optional so existing loading mocks without it still pass', async () => {

@@ -1,4 +1,5 @@
 import { shouldStartHeavyAdmission } from './admissionSliceBudget.js';
+import { cookLiveSceneGpu } from './liveSceneCook.js';
 
 function gpuContextIsLost(state) {
   const render = state && state.render;
@@ -439,6 +440,16 @@ export async function waitForCurrentRenderPipelines(state, timeoutMs = 20000) {
     render.postOpeningPipelinesReady = remaining;
     const remainingResult = await settleWithin(remaining, timeoutMs);
     if (!remainingResult.ok) return false;
+    if (gpuContextIsLost(state)) return false;
+  }
+
+  // After predicted probes, cook the actual live scene (programs + buffers) while
+  // the loading shell still owns the frame. Dummy catalog prewarm is not this step.
+  if (loadingOwnsOpeningSubmission) {
+    const liveCook = Promise.resolve().then(() => cookLiveSceneGpu(state));
+    render.liveSceneCookReady = liveCook;
+    const liveResult = await settleWithin(liveCook, timeoutMs);
+    if (!liveResult.ok) return false;
     if (gpuContextIsLost(state)) return false;
   }
 

@@ -4,6 +4,8 @@
 // the last successful paint (Massline still reading LOCKED after MASSLINE BROKEN) even though the
 // sim kept running. Cosmetic lanes must not strand the HUD or hit-stop clock.
 
+import { shouldFreezeFlightSubmit } from './presentationFreeze.js';
+
 const VFX_ERROR_LOG_CAP = 20;
 let vfxErrorLogCount = 0;
 
@@ -22,7 +24,7 @@ export function runRenderUpdatePhase({
   const record = typeof recordPhase === 'function' ? recordPhase : noopPhase;
   const clock = typeof now === 'function' ? now : defaultNow;
 
-  if (state && state.ui && state.ui.docked === true) {
+  if (shouldFreezeFlightSubmit(state)) {
     record('render', 0);
     record('vfx', 0);
     record('feel', 0);

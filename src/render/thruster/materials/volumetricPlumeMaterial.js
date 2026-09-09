@@ -31,6 +31,7 @@
 
 import * as THREE from 'three';
 import { PLUME_VOLUME_SIZE } from '../volume/plumeNoiseVolume.js';
+import { SHARED_MATERIAL_ROLE, stampSharedMaterialRole } from '../../sharedMaterialRoles.js';
 
 export const VOLUMETRIC_PLUME_MAX_STEPS = 64;
 
@@ -334,7 +335,7 @@ export function createVolumetricPlumeMaterial(THREE_NS, opts = {}) {
     blending: T.AdditiveBlending,
     toneMapped: false,
   });
-  return mat;
+  return stampSharedMaterialRole(mat, SHARED_MATERIAL_ROLE.PLUME);
 }
 
 export const __testables = { PLUME_VERT, PLUME_FRAG };

@@ -98,3 +98,29 @@ test('docked presentation skips the world pass and still paints HUD', () => {
   assert.equal(accepted, false);
   assert.deepEqual(ctx.calls, ['feel', 'ui']);
 });
+
+test('map, station, and pause menus freeze 3D submit without tearing the scene down', () => {
+  for (const screen of ['galaxyMap', 'localmap', 'station', 'pause']) {
+    const ctx = phase();
+    ctx.state.ui.screenStack = [screen];
+    const accepted = runRenderUpdatePhase({
+      ...ctx,
+      alpha: 1,
+      frameDt: 1 / 60,
+    });
+    assert.equal(accepted, false, screen);
+    assert.deepEqual(ctx.calls, ['feel', 'ui'], screen);
+  }
+});
+
+test('empty screen stack keeps submitting the resident flight scene', () => {
+  const ctx = phase();
+  ctx.state.ui.screenStack = [];
+  const accepted = runRenderUpdatePhase({
+    ...ctx,
+    alpha: 1,
+    frameDt: 1 / 60,
+  });
+  assert.equal(accepted, true);
+  assert.deepEqual(ctx.calls, ['prepare', 'vfx', 'draw', 'feel', 'ui']);
+});

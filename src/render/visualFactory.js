@@ -27,6 +27,7 @@ import {
   surfaceResponse as geologySurfaceResponse,
 } from './objectSpaceGeology.js';
 import { configurePlanarAdditiveMaterial } from './planarAdditivePolicy.js';
+import { SHARED_MATERIAL_ROLE, stampSharedMaterialRole } from './sharedMaterialRoles.js';
 import { buildPlanetSiteVisual } from './planetSiteVisual.js'; // PQ-013 colossal planet-site body
 import { freezeStaticChildMatrices } from './staticChildMatrices.js';
 import {
@@ -482,12 +483,12 @@ function hullMaterial(pal, panelCount = 14) {
     // hull should read as paint, not bare metal, so the metalness contrast with exposed hardware
     // (gunmetal/graphite at 0.78–0.88) carries the material hierarchy instead of a uniform sparkle.
     // Roughness is raised slightly so age reads; roughnessMap still provides the local history.
-    return new THREE.MeshStandardMaterial({
+    return stampSharedMaterialRole(new THREE.MeshStandardMaterial({
       map: albedo, roughnessMap: rough, normalMap: normal, color: 0xffffff,
       roughness: 0.66, metalness: 0.16,
       normalScale: new THREE.Vector2(0.7, 0.7),
       emissive: new THREE.Color(pal.emissive), emissiveIntensity: 0.04,
-    });
+    }), SHARED_MATERIAL_ROLE.HULL);
   });
 }
 
@@ -525,7 +526,7 @@ function emissiveMaterial(color, intensity = 1.6) {
 function cockpitGlassMaterial(pal) {
   const tint = pal.accent || '#39d0ff';
   const key = `glass:${tint}`;
-  return getMaterial(key, () => new THREE.MeshPhysicalMaterial({
+  return getMaterial(key, () => stampSharedMaterialRole(new THREE.MeshPhysicalMaterial({
     color: new THREE.Color('#0a1018'),
     emissive: new THREE.Color(tint), emissiveIntensity: 0.6,
     roughness: 0.12, metalness: 0.0,
@@ -533,7 +534,7 @@ function cockpitGlassMaterial(pal) {
     transmission: 0.0, // keep it cheap (no real refraction); tint + opacity gives the glass read
     clearcoat: 1.0, clearcoatRoughness: 0.15,
     side: THREE.DoubleSide,
-  }));
+  }), SHARED_MATERIAL_ROLE.CANOPY));
 }
 
 // Bright unlit material (projectiles / glow gems read through bloom).
@@ -2007,6 +2008,7 @@ function configureCommonRockPbr(material) {
   material.userData.spacefacePbrAttribute = 'sfGeologyPbr';
   material.userData.spacefaceSurfaceModel = 'macro-object-space+variant-uv+micro-texture';
   material.userData.spacefaceNoEmissiveBlanket = true;
+  stampSharedMaterialRole(material, SHARED_MATERIAL_ROLE.ROCK);
   material.customProgramCacheKey = () => COMMON_ROCK_PBR_SHADER_KEY;
   material.onBeforeCompile = (shader) => {
     // Preserve Three's current tangent-space normal implementation, but scale its XY perturbation
@@ -2234,7 +2236,9 @@ function stationMaterial(pal) {
     const seed = hashId(pal.hull) & 0xffff;
     const greeble = getTexture(`greeble:${pal.hull}`, () =>
       makeGreebleTexture({ size: 256, seed, base: pal.hull, plate: shade(pal.hull, 1.25), line: shade(pal.hull, 0.4), accent: pal.accent }));
-    return new THREE.MeshStandardMaterial({ map: greeble, roughness: 0.7, metalness: 0.5, color: 0xffffff });
+    return stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+      map: greeble, roughness: 0.7, metalness: 0.5, color: 0xffffff,
+    }), SHARED_MATERIAL_ROLE.STATION);
   });
 }
 function shade(hex, mul) {
@@ -2421,7 +2425,9 @@ function gateHullMaterial(pal, isWormhole) {
     const seed = hashId(base + accent) & 0xffff;
     const greeble = getTexture(`greeble:${base}:${accent}`, () =>
       makeGreebleTexture({ size: 256, seed, base, plate: shade(base, 1.25), line: shade(base, 0.35), accent, density: 1.1 }));
-    return new THREE.MeshStandardMaterial({ map: greeble, roughness: 0.72, metalness: 0.6, color: 0xffffff });
+    return stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+      map: greeble, roughness: 0.72, metalness: 0.6, color: 0xffffff,
+    }), SHARED_MATERIAL_ROLE.STATION);
   });
 }
 
