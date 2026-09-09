@@ -4,11 +4,16 @@
 export function stationFrameHtml() {
   // The berth: the hull mount stays owned by the station renderer.
   return `<canvas class="k-world sxb-berth__world" aria-hidden="true"></canvas>` +
-    // The title block: the station's name at hero size, the news line, the first-dock handoff.
+    // The title block: the station's name at hero size, the news line, leftover event card, handoff.
     `<header class="k-title sxb-berth">` +
       `<span class="of-port-mark" aria-hidden="true"></span>` +
       `<h1 class="k-display k-t-hero sxb-berth__name"></h1>` +
       `<p class="k-t-emph k-62 sxb-berth__news"></p>` +
+      `<article class="sxb-event" hidden>` +
+        `<span class="sxb-event__badge k-caps"></span>` +
+        `<strong class="sxb-event__title"></strong>` +
+        `<p class="sxb-event__body"></p>` +
+      `</article>` +
       `<div class="sxb-handoff" hidden></div>` +
     `</header>` +
     // The quiet column top-right: credits as the hero number, the vitals as rows with their verbs.

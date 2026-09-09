@@ -2,9 +2,10 @@ import { stationFrameHtml } from '../views/stationFrames.js';
 // src/ui/station/stationApp.js — the station as a place (Frontend Task C §1.2).
 // Docking is an arrival, not a menu: the berth with the player's hull in it (the world canvas is
 // frozen while docked, so the hull rig is the picture), the station's name at hero size, one line of
-// local news, the destinations as words along the bottom edge with Undock as the one primary word,
-// credits and the vitals with their service verbs as a quiet column top-right. Every destination
-// sits over that berth on the kit grid; no plates, no fascia, no operation rail.
+// local news plus the leftover event card when this berth is under a leftover event, the destinations
+// as words along the bottom edge with Undock as the one primary word, credits and the vitals with
+// their service verbs as a quiet column top-right. Every destination sits over that berth on the
+// kit grid; no plates, no fascia, no operation rail.
 //
 // Behaviours carried over unchanged (same exported logic, new surface):
 //   · Departure readiness  → Undock reads Ready/Check/Risk; launching while not ready opens a
@@ -16,7 +17,7 @@ import { createCommandDock } from './dock.js';
 import { autoUpdate, computePosition, flip, offset, shift, size } from '@floating-ui/dom';
 import { el, settle, stamp, reducedMotion } from '../kit/index.js';
 import { createShipPreviewMount } from '../shipPreviewMount.js';
-import { buildDockArrival } from '../dockArrival.js';
+import { buildDockArrival, writeBerthArrival } from '../dockArrival.js';
 import { shipworksDockIdForState } from './screens/shipworks.js';
 import { createFactionsScreen } from './screens/factions.js';
 import { createMarketScreen } from './screens/market.js';
@@ -255,6 +256,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   const berth = createBerth(berthCanvas, ctx);
   const crestName = app.querySelector('.sxb-berth__name');
   const newsEl = app.querySelector('.sxb-berth__news');
+  const eventEl = app.querySelector('.sxb-event');
   const titleBlock = app.querySelector('.sxb-berth');
   const vitalsEl = app.querySelector('.sxb-vitals');
   const creditsEl = app.querySelector('.sxb-purse__value');
@@ -995,10 +997,15 @@ export function createStationApp(rootEl, ctx, opts = {}) {
 
     const st = resolveStation(ctx);
     setTextIfChanged(crestName, st.name || 'Station');
-    // One line of local news in emphasis size; fallback: authority · type (the berth's meta).
-    let news = null;
-    try { news = buildDockArrival(s, { id: stationId(), name: st.name, services: st.services }).news; } catch (_) { news = null; }
-    setTextIfChanged(newsEl, news || [st.factionName, st.typeLabel].filter(Boolean).join(' · '));
+    // Ticker line stays under the name. Leftover event card (badge/title/body/eventId) paints
+    // beside it when this berth has a stored leftover card or a live leftover event.
+    let arrival = { news: null, eventCard: null };
+    try { arrival = buildDockArrival(s, { id: stationId(), name: st.name, services: st.services }); } catch (_) { /* keep empty arrival */ }
+    writeBerthArrival(
+      { newsEl, cardEl: eventEl },
+      arrival,
+      [st.factionName, st.typeLabel].filter(Boolean).join(' · '),
+    );
     renderHandoff();
   }
 

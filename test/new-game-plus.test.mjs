@@ -182,3 +182,46 @@ test('story owns a save-safe visible legacy receipt after game start', () => {
     state.story.newGamePlus,
   );
 });
+
+function startedStoryState(seed, overlay) {
+  const state = createGameState(seed);
+  state.onboarding = { active: true, finished: false };
+  const bus = createBus();
+  const story = Object.assign({}, storyProto);
+  story.init({ state, bus, helpers: { voice: { say() {} } }, registry: { get: () => null } });
+  if (overlay) bus.emit('game:started', { newGamePlus: overlay });
+  return { state, story };
+}
+
+test('the legacy receipt rides the real save carrier, and a pre-New-Run+ save still loads', () => {
+  const overlay = buildNewGamePlusOverlay(
+    completedRunData(),
+    { keepsakeId: 'unique_veil_cutter' },
+    { slot: 'legacy', savedAt: '2026-08-06T12:00:00.000Z' },
+  );
+  const source = startedStoryState(7711, overlay).state;
+
+  // The live carrier is missions.serialize(), which returns { ..., story: state.story }; on load
+  // missions.deserialize assigns that parsed story wholesale and the story owner re-normalizes what
+  // it owns. Exercise that order, not a bare JSON clone of the record.
+  const written = JSON.parse(JSON.stringify({ story: source.story }));
+  assert.equal(written.story.newGamePlus.keepsakeId, 'unique_veil_cutter', 'the save payload carries the receipt');
+  // A persisted record is untrusted text: the ending title is re-read from the authored ending and
+  // unknown fields are dropped, so this fails if the story owner ever stops normalizing on load.
+  written.story.newGamePlus.sourceEndingTitle = 'STALE TITLE';
+  written.story.newGamePlus.injected = 'not a legacy field';
+
+  const loaded = startedStoryState(4242, null);
+  loaded.state.story = written.story;
+  loaded.story.deserialize(written);
+  assert.deepEqual(loaded.state.story.newGamePlus, source.story.newGamePlus);
+
+  // A save written before New Run+ existed carries no receipt; loading it must leave a clean null,
+  // not a broken record.
+  const preLegacy = JSON.parse(JSON.stringify({ story: source.story }));
+  delete preLegacy.story.newGamePlus;
+  const older = startedStoryState(4242, null);
+  older.state.story = preLegacy.story;
+  older.story.deserialize(preLegacy);
+  assert.equal(older.state.story.newGamePlus, null, 'an absent receipt stays absent');
+});

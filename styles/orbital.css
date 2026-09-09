@@ -170,6 +170,22 @@ html[data-k-temp='crucible'] { --k-signal: var(--of-accent); }
 #screens .sxb-berth .of-port-mark { position: absolute; width: 48px; height: 48px; left: 28px; top: 29px; }
 #screens .sxb-berth__name { font-size: clamp(30px, 2.7vw, 48px); max-width: none; }
 #screens .sxb-berth__news { font-size: 13px; color: var(--of-muted); margin: 8px 0 0; max-width: 64ch; }
+#screens .sxb-event {
+  margin: 10px 0 0; max-width: 64ch; padding: 10px 14px 11px;
+  background: #222c26; border-left: 3px solid var(--of-line);
+}
+#screens .sxb-event[data-tone='danger'] { border-left-color: var(--of-danger); }
+#screens .sxb-event[data-tone='warn'] { border-left-color: var(--of-accent); }
+#screens .sxb-event[data-tone='good'] { border-left-color: var(--of-good); }
+#screens .sxb-event__badge { display: block; color: var(--of-dim); }
+#screens .sxb-event[data-tone='danger'] .sxb-event__badge { color: var(--of-danger); }
+#screens .sxb-event[data-tone='warn'] .sxb-event__badge { color: var(--of-accent); }
+#screens .sxb-event[data-tone='good'] .sxb-event__badge { color: var(--of-good); }
+#screens .sxb-event__title {
+  display: block; margin: 3px 0 4px; color: var(--of-ink);
+  font-family: var(--of-display); font-size: 16px; font-weight: 700; letter-spacing: -.02em;
+}
+#screens .sxb-event__body { margin: 0; font-size: 13px; line-height: 1.45; color: var(--of-muted); }
 #screens .sxb-berth--clear { padding-right: 520px; }
 #screens .sxb-handoff { margin-top: 12px; gap: 8px 16px; font-size: 12px; }
 #screens .sxb-handoff .k-word { min-height: 28px; padding: 3px 8px; font-size: 12px; }
@@ -468,6 +484,9 @@ html[data-k-temp='crucible'] { --k-signal: var(--of-accent); }
   #screens .sxb-berth { min-height: 124px; padding: 20px 290px 18px 65px; }
   #screens .sxb-berth__name { font-size: 29px; }
   #screens .sxb-berth__news { font-size: 12px; }
+  #screens .sxb-event { padding: 8px 12px 9px; }
+  #screens .sxb-event__title { font-size: 15px; }
+  #screens .sxb-event__body { font-size: 12px; }
   #screens .sxb-berth .of-port-mark { left: 15px; top: 16px; }
   #screens .sxb-crown { width: 255px; gap: 12px; top: 16px; right: 18px; }
   #screens .sxb-purse { flex-basis: 80px; }
@@ -500,6 +519,7 @@ html[data-k-temp='crucible'] { --k-signal: var(--of-accent); }
   #screens .sxb-berth { padding: 18px 18px 15px 66px; min-height: 86px; }
   #screens .sxb-berth__name { font-size: 24px; }
   #screens .sxb-berth__news { padding-right: 80px; max-height: 3em; overflow: auto; }
+  #screens .sxb-event { padding-right: 12px; }
   #screens .sxb-crown { position: static; grid-area: vitals; align-self: stretch; justify-self: stretch; width: auto; margin: 0; padding: 8px 16px; border-bottom: 1px solid var(--of-line); background: #1d2920; }
   #screens .sxb-vitals { display: flex; flex-wrap: wrap; gap: 6px 14px; }
   #screens .sxb-vitals .k-row { display: flex; gap: 6px; min-height: 26px; flex: 1 0 110px; }

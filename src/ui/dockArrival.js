@@ -3,6 +3,7 @@
 
 import { COMMODITIES } from '../data/commodities.js';
 import { isPlayerWanted } from '../systems/heat.js';
+import { cardsForStation } from './marketNews.js';
 
 const CONTRABAND_IDS = new Set(COMMODITIES.filter((def) => def.legality === 'contraband').map((def) => def.id));
 
@@ -33,6 +34,79 @@ function localNews(state, stationId) {
   return null;
 }
 
+function leftoverCardFields(card) {
+  if (!card || !card.badge || !card.title || !card.body) return null;
+  return {
+    badge: String(card.badge).replace(/\s+/g, ' ').trim(),
+    title: String(card.title).replace(/\s+/g, ' ').trim(),
+    body: String(card.body).replace(/\s+/g, ' ').trim(),
+    eventId: card.eventId ? String(card.eventId) : null,
+    kind: card.kind ? String(card.kind) : null,
+    tone: card.tone ? String(card.tone) : null,
+  };
+}
+
+/** Leftover dock card for this station: stored lastCard, else leftover cardsForStation. */
+export function leftoverEventCard(state, stationId) {
+  if (!stationId) return null;
+  const stored = state && state.ui && state.ui.marketNews && state.ui.marketNews.lastCard;
+  if (stored && stored.stationId === stationId) {
+    const fields = leftoverCardFields(stored);
+    if (fields) return fields;
+  }
+  const live = cardsForStation(state, stationId);
+  return leftoverCardFields(live && live[0]);
+}
+
+function setNodeText(node, value) {
+  const next = String(value == null ? '' : value);
+  if (node && node.textContent !== next) node.textContent = next;
+}
+
+/**
+ * Paint leftover card fields onto the berth article stationApp mounts.
+ * Returns the painted fields, or null when the host is hidden.
+ */
+export function paintBerthEventCard(cardEl, card) {
+  if (!cardEl) return null;
+  const painted = leftoverCardFields(card);
+  cardEl.hidden = !painted;
+  if (cardEl.removeAttribute) {
+    if (!painted || !painted.eventId) cardEl.removeAttribute('data-event-id');
+    if (!painted || !painted.kind) cardEl.removeAttribute('data-kind');
+    if (!painted || !painted.tone) cardEl.removeAttribute('data-tone');
+  }
+  if (!painted) {
+    setNodeText(cardEl.querySelector && cardEl.querySelector('.sxb-event__badge'), '');
+    setNodeText(cardEl.querySelector && cardEl.querySelector('.sxb-event__title'), '');
+    setNodeText(cardEl.querySelector && cardEl.querySelector('.sxb-event__body'), '');
+    if (cardEl.removeAttribute) cardEl.removeAttribute('aria-label');
+    return null;
+  }
+  if (painted.eventId && cardEl.setAttribute) cardEl.setAttribute('data-event-id', painted.eventId);
+  if (painted.kind && cardEl.setAttribute) cardEl.setAttribute('data-kind', painted.kind);
+  if (painted.tone && cardEl.setAttribute) cardEl.setAttribute('data-tone', painted.tone);
+  setNodeText(cardEl.querySelector && cardEl.querySelector('.sxb-event__badge'), painted.badge);
+  setNodeText(cardEl.querySelector && cardEl.querySelector('.sxb-event__title'), painted.title);
+  setNodeText(cardEl.querySelector && cardEl.querySelector('.sxb-event__body'), painted.body);
+  if (cardEl.setAttribute) {
+    cardEl.setAttribute('aria-label', `${painted.badge}. ${painted.title}. ${painted.body}`);
+  }
+  return painted;
+}
+
+/** The writer stationApp uses: ticker line stays; leftover card fields go on the berth article. */
+export function writeBerthArrival(targets, view, fallbackNews = '') {
+  const newsEl = targets && targets.newsEl;
+  const cardEl = targets && targets.cardEl;
+  const news = (view && view.news) || fallbackNews || '';
+  setNodeText(newsEl, news);
+  return {
+    news,
+    eventCard: paintBerthEventCard(cardEl, view && view.eventCard),
+  };
+}
+
 function localTraffic(state, stationId) {
   const receipts = state && state.stationLife && Array.isArray(state.stationLife.traffic)
     ? state.stationLife.traffic
@@ -53,6 +127,7 @@ export function buildDockArrival(state = {}, station = {}) {
   const news = localNews(state, stationId);
   const traffic = localTraffic(state, stationId);
   const paperwork = paperworkFor(state);
+  const eventCard = leftoverEventCard(state, stationId);
   const serviceCount = Array.isArray(station.services) ? station.services.length : 0;
   const identity = String(station.name || stationId || 'Station');
   const lines = [action.label, news, traffic, paperwork].filter(Boolean).slice(0, 4);
@@ -61,6 +136,7 @@ export function buildDockArrival(state = {}, station = {}) {
     primaryAction: action.label,
     primaryTarget: action.target,
     news,
+    eventCard,
     traffic,
     paperwork,
     serviceState: serviceCount ? `${serviceCount} berth services listed` : 'No berth services listed',

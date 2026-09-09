@@ -3,26 +3,34 @@
 //
 // Honesty note (review 2026-09-09). This file deliberately proves three separate things, because
 // the leaf's done-when ("every ticker line traces to a sim event; capture of a blockade line and
-// its card") is only partly live:
+// its card") was only partly live:
 //   1. The trace rule is real production behaviour — createMarketNews refuses an uncited line.
 //   2. The blockade kind is NOT test-only. economy.rollSpontaneousEvent picks from
 //      ['shortage','boom','blockade','piracy'] and calls the same injectEvent, so the injected
 //      event in test 1 is production-shaped. Test 2 waits for the seeded roll and proves it.
-//   3. The dock CARD (badge/title/body) reaches no renderer. `news:dockCards` has zero
-//      subscribers and state.ui.marketNews.lastCard's only live reader is dockArrival.localNews,
-//      which mines it for a plain headline string. Test 3 prints what the berth actually shows.
+//   3. The dock CARD used to be state-only: `news:dockCards` had zero subscribers and
+//      dockArrival.localNews mined lastCard for a headline string. The berth now paints leftover
+//      badge/title/body/eventId through writeBerthArrival — the same writer stationApp.renderStatus
+//      uses. Test 3 pins that painted surface, not only lastCard in state.
 import assert from 'node:assert/strict';
 import test from 'node:test';
+
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { hash32 } from '../src/core/rng.js';
 import { createSimulation } from '../src/core/sim.js';
 import { economy } from '../src/systems/economy.js';
-import { buildDockArrival } from '../src/ui/dockArrival.js';
+import { buildDockArrival, writeBerthArrival } from '../src/ui/dockArrival.js';
+import { stationFrameHtml } from '../src/ui/views/stationFrames.js';
 import {
   buildEventCard,
   createMarketNews,
   tickerEventRef,
 } from '../src/ui/marketNews.js';
+
+const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 
 const SEED = 17700;
 const STATION = 'station_helios';
@@ -45,9 +53,31 @@ function dispose(t) {
   economy._instance = null;
 }
 
-/** The berth's live news line: stationApp.js renders exactly this string on arrival. */
+/** The berth's live news line: stationApp.js still writes this string on arrival. */
 function berthLine(state) {
   return buildDockArrival(state, { id: STATION, name: STATION_NAME, services: [] }).news;
+}
+
+function berthCardHost() {
+  const texts = {
+    '.sxb-event__badge': '',
+    '.sxb-event__title': '',
+    '.sxb-event__body': '',
+  };
+  const attrs = {};
+  return {
+    hidden: true,
+    querySelector(sel) {
+      if (!(sel in texts)) return null;
+      return {
+        get textContent() { return texts[sel]; },
+        set textContent(value) { texts[sel] = String(value == null ? '' : value); },
+      };
+    },
+    setAttribute(name, value) { attrs[name] = String(value); },
+    removeAttribute(name) { delete attrs[name]; },
+    getAttribute(name) { return Object.prototype.hasOwnProperty.call(attrs, name) ? attrs[name] : null; },
+  };
 }
 
 test('every ticker line traces to a sim event; a blockade line and dock card exist', () => {
@@ -187,12 +217,10 @@ test('the blockade kind is not test-only: a spontaneous economy roll reaches the
   }
 });
 
-test('the dock card is state-only: the live berth prints the headline, not the card copy', () => {
-  // What the player actually sees at the berth is stationApp.js:1000 →
-  // buildDockArrival(state, station).news, a single string. The card's badge/title/body are built
-  // and stored on state.ui.marketNews.lastCard but no live surface renders them, and
-  // `news:dockCards` has no subscribers. This test records that surface; it does not forbid a
-  // future card renderer — when one lands, the leaf's card clause can move to DONE.
+test('a leftover dock paints leftover card fields the berth actually writes', () => {
+  // Honesty (review 2026-09-09): lastCard used to be state-only. The live berth now writes
+  // leftover badge/title/body/eventId through writeBerthArrival — the same call stationApp
+  // renderStatus makes. The ticker line stays. This does not invent war-tension or hunter cards.
   const t = boot();
   try {
     t.econ.ensureMarket(STATION);
@@ -202,16 +230,50 @@ test('the dock card is state-only: the live berth prints the headline, not the c
     t.bus.emit('dock:docked', { stationId: STATION });
 
     const card = t.news.getLastCard();
-    assert.ok(card && card.badge === 'BLOCKADE', 'the card object exists in state');
+    assert.ok(card && card.badge === 'BLOCKADE', 'the leftover card object exists in state');
     assert.equal(card.eventId, ev.id);
 
     const view = buildDockArrival(t.state, { id: STATION, name: STATION_NAME, services: [] });
-    assert.equal(typeof view.news, 'string', 'the live berth consumer yields one plain string');
-    assert.equal(view.news, card.headline, 'the berth prints the headline, not the card copy');
+    assert.equal(view.news, card.headline, 'the leftover ticker line still reaches the berth');
     assert.ok(view.lines.includes(view.news), 'the headline is one of the berth arrival lines');
+    assert.ok(view.eventCard, 'the leftover view model carries the card, not only lastCard');
+    assert.equal(view.eventCard.badge, 'BLOCKADE');
+    assert.equal(view.eventCard.title, card.title);
+    assert.equal(view.eventCard.body, card.body);
+    assert.equal(view.eventCard.eventId, ev.id);
+    assert.match(view.eventCard.body, /iron ore is frozen/i);
 
-    console.log(`PQ-177.00 berth line (live, rendered): ${view.news}`);
-    console.log(`PQ-177.00 card copy (state-only, no renderer): ${card.badge} | ${card.title} | ${card.body}`);
+    const frame = stationFrameHtml();
+    assert.match(frame, /sxb-event__badge/);
+    assert.match(frame, /sxb-event__title/);
+    assert.match(frame, /sxb-event__body/);
+    const appSrc = readFileSync(join(ROOT, 'src/ui/station/stationApp.js'), 'utf8');
+    assert.match(appSrc, /writeBerthArrival/);
+    assert.match(appSrc, /eventCard/);
+
+    const cardEl = berthCardHost();
+    const newsEl = { textContent: '' };
+    const painted = writeBerthArrival({ newsEl, cardEl }, view);
+    assert.equal(painted.news, card.headline);
+    assert.equal(newsEl.textContent, card.headline, 'ticker line is still written');
+    assert.equal(cardEl.hidden, false, 'the berth article is shown');
+    assert.equal(cardEl.querySelector('.sxb-event__badge').textContent, 'BLOCKADE');
+    assert.equal(cardEl.querySelector('.sxb-event__title').textContent, card.title);
+    assert.equal(cardEl.querySelector('.sxb-event__body').textContent, card.body);
+    assert.equal(cardEl.getAttribute('data-event-id'), ev.id);
+    assert.match(cardEl.querySelector('.sxb-event__body').textContent, /iron ore is frozen/i);
+
+    const quiet = writeBerthArrival(
+      { newsEl: { textContent: '' }, cardEl: berthCardHost() },
+      buildDockArrival({ ui: { marketNews: { log: [], lastCard: null } } }, {
+        id: STATION, name: STATION_NAME, services: [],
+      }),
+    );
+    assert.equal(quiet.eventCard, null, 'a quiet berth invents no card');
+
+    console.log(`PQ-177.00 berth line (live, rendered): ${painted.news}`);
+    console.log(`PQ-177.00 berth card (live, rendered): ${painted.eventCard.badge} | ${painted.eventCard.title} | ${painted.eventCard.body}`);
+    console.log(`PQ-177.00 berth card event: ${painted.eventCard.eventId}`);
   } finally {
     dispose(t);
   }
