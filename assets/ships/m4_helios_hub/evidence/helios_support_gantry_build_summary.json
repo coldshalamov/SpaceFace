@@ -1,0 +1,405 @@
+{
+  "id": "helios_support_gantry",
+  "assetId": "SF_PLACE_HELIOS_SUPPORT_GANTRY",
+  "partId": "place_lane_beacon",
+  "liveId": "place_lane_beacon",
+  "title": "Helios Support Gantry",
+  "role": "modular_support",
+  "kind": "prop",
+  "ok": true,
+  "elapsedSec": 52.4,
+  "sourceGlb": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/source/places/helios_support_gantry.glb",
+  "productionBlend": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/blender/helios_support_gantry_production.blend",
+  "sourceBytes": 3777536,
+  "sourceSha256": "DA7C5E3CFAD9E4BA033BF8976CFC771DA6CA6CC75E444BDAB1E9FE5740472D71",
+  "totalTriangles": 2052,
+  "hullTriangles": 1220,
+  "lod0Triangles": 1292,
+  "sockets": [
+    "SOCKET_Structure_Core"
+  ],
+  "materials": [
+    "Material_Accent",
+    "Material_Hull",
+    "Material_Mechanical",
+    "Material_Warm"
+  ],
+  "collisionCoverageMin": 0.92,
+  "lod0WithinBudget": true,
+  "renderCount": 10,
+  "renders": [
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/evidence/renders/helios_support_gantry/helios_support_gantry_forward_34.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/evidence/renders/helios_support_gantry/helios_support_gantry_readability_close.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/evidence/renders/helios_support_gantry/helios_support_gantry_readability_120px.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/evidence/renders/helios_support_gantry/helios_support_gantry_readability_under45px.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/evidence/renders/helios_support_gantry/helios_support_gantry_rear_34.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/evidence/renders/helios_support_gantry/helios_support_gantry_side_ortho.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/evidence/renders/helios_support_gantry/helios_support_gantry_gamesky_forward_34.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/evidence/renders/helios_support_gantry/helios_support_gantry_lod_continuity_lod0.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/evidence/renders/helios_support_gantry/helios_support_gantry_lod_continuity_lod1.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/evidence/renders/helios_support_gantry/helios_support_gantry_lod_continuity_lod2.png"
+  ],
+  "export": {
+    "file": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/source/places/helios_support_gantry.glb",
+    "bytes": 3777536,
+    "sha256": "DA7C5E3CFAD9E4BA033BF8976CFC771DA6CA6CC75E444BDAB1E9FE5740472D71",
+    "totalTriangles": 2052,
+    "hullTriangles": 1220,
+    "lodBreakdown": {
+      "lod0": {
+        "triangles": 1292,
+        "primitives": 5,
+        "drawEstimate": 5,
+        "nodes": [
+          {
+            "name": "COLLISION_HULL",
+            "tris": 12
+          },
+          {
+            "name": "LOD0_HOOK_EMISSIVE",
+            "tris": 12
+          },
+          {
+            "name": "LOD0_Merged_Material_Hull",
+            "tris": 764
+          },
+          {
+            "name": "LOD0_Merged_Material_Mechanical",
+            "tris": 492
+          },
+          {
+            "name": "LOD0_Merged_Material_Warm",
+            "tris": 12
+          }
+        ]
+      },
+      "lod1": {
+        "triangles": 534,
+        "primitives": 4,
+        "drawEstimate": 4,
+        "nodes": [
+          {
+            "name": "LOD1_HOOK_EMISSIVE",
+            "tris": 4
+          },
+          {
+            "name": "LOD1_Merged_Material_Hull",
+            "tris": 320
+          },
+          {
+            "name": "LOD1_Merged_Material_Mechanical",
+            "tris": 206
+          },
+          {
+            "name": "LOD1_Merged_Material_Warm",
+            "tris": 4
+          }
+        ]
+      },
+      "lod2": {
+        "triangles": 226,
+        "primitives": 4,
+        "drawEstimate": 4,
+        "nodes": [
+          {
+            "name": "LOD2_HOOK_EMISSIVE",
+            "tris": 1
+          },
+          {
+            "name": "LOD2_Merged_Material_Hull",
+            "tris": 136
+          },
+          {
+            "name": "LOD2_Merged_Material_Mechanical",
+            "tris": 88
+          },
+          {
+            "name": "LOD2_Merged_Material_Warm",
+            "tris": 1
+          }
+        ]
+      }
+    },
+    "sockets": [
+      "SOCKET_Structure_Core"
+    ],
+    "materials": [
+      "Material_Accent",
+      "Material_Hull",
+      "Material_Mechanical",
+      "Material_Warm"
+    ],
+    "primitiveCount": 13,
+    "tangentPrimitiveCount": 13,
+    "uvPrimitiveCount": 13,
+    "lod0Aabb": {
+      "min": [
+        -1.75,
+        -5.099999904632568,
+        -1.75
+      ],
+      "max": [
+        9.100000381469727,
+        9.399999618530273,
+        1.75
+      ],
+      "size": [
+        10.850000381469727,
+        14.499999523162842,
+        3.5
+      ],
+      "center": [
+        3.6750001907348633,
+        2.1499998569488525,
+        0.0
+      ]
+    },
+    "collisionAabb": {
+      "min": [
+        -4.991000175476074,
+        -6.670000076293945,
+        -1.6100000143051147
+      ],
+      "max": [
+        4.991000175476074,
+        6.670000076293945,
+        1.6100000143051147
+      ],
+      "size": [
+        9.982000350952148,
+        13.34000015258789,
+        3.2200000286102295
+      ],
+      "center": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "collisionCoverageRatio": {
+      "perAxis": [
+        0.92,
+        0.9200000407777997,
+        0.9200000081743512
+      ],
+      "min": 0.92,
+      "mean": 0.9200000163173837
+    },
+    "images": [
+      {
+        "name": "accent_normal",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "accent_orm",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "accent_basecolor",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "hull_normal",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "hull_orm",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "hull_basecolor",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "mechanical_normal",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "mechanical_orm",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "mechanical_basecolor",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "warm_normal",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "warm_orm",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "warm_basecolor",
+        "mimeType": "image/png"
+      }
+    ],
+    "spacefaceAsset": {
+      "contractVersion": 1,
+      "assetId": "SF_PLACE_HELIOS_SUPPORT_GANTRY",
+      "slot": "place",
+      "forward": "+X",
+      "up": "+Y",
+      "starboard": "+Z",
+      "unit": "metre",
+      "normalConvention": "OpenGL",
+      "ormChannels": "R=AO,G=Roughness,B=Metallic",
+      "textureCompression": "PNG-source",
+      "textureSize": 1024,
+      "chamfered": true,
+      "bevelRadiusM": 0.05,
+      "partId": "place_lane_beacon",
+      "liveId": "place_lane_beacon",
+      "category": "places",
+      "sourceRole": "place-environment",
+      "packet": "M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001",
+      "family": "helios_hub_env",
+      "role": "modular_support",
+      "title": "Helios Support Gantry",
+      "kind": "prop",
+      "triangleCount": 2052,
+      "hullTriangleCount": 1220,
+      "deliverableRole": "production_multi_lod",
+      "lods": [
+        "lod0",
+        "lod1",
+        "lod2"
+      ],
+      "wiringStatus": "candidate_pending_promote",
+      "lod0AabbSize": [
+        10.850000381469727,
+        14.499999523162842,
+        3.5
+      ],
+      "collisionBounds": {
+        "min": [
+          -4.991000175476074,
+          -6.670000076293945,
+          -1.6100000143051147
+        ],
+        "max": [
+          4.991000175476074,
+          6.670000076293945,
+          1.6100000143051147
+        ],
+        "size": [
+          9.982000350952148,
+          13.34000015258789,
+          3.2200000286102295
+        ],
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "collisionCoverageRatio": {
+        "perAxis": [
+          0.92,
+          0.9200000407777997,
+          0.9200000081743512
+        ],
+        "min": 0.92,
+        "mean": 0.9200000163173837
+      },
+      "triBudget": 3000
+    },
+    "lodBuildStats": [
+      {
+        "lod": "lod0",
+        "decimateRatio": 1.0,
+        "mergedMeshes": [
+          "LOD0_Merged_Material_Hull",
+          "LOD0_Merged_Material_Mechanical",
+          "LOD0_Merged_Material_Warm"
+        ],
+        "separateMeshes": [
+          "LOD0_HOOK_EMISSIVE"
+        ],
+        "removedCloseOnly": [],
+        "triangles": 1280,
+        "objectCount": 4
+      },
+      {
+        "lod": "lod1",
+        "decimateRatio": 0.42,
+        "mergedMeshes": [
+          "LOD1_Merged_Material_Hull",
+          "LOD1_Merged_Material_Mechanical",
+          "LOD1_Merged_Material_Warm"
+        ],
+        "separateMeshes": [
+          "LOD1_HOOK_EMISSIVE"
+        ],
+        "removedCloseOnly": [],
+        "triangles": 534,
+        "objectCount": 4
+      },
+      {
+        "lod": "lod2",
+        "decimateRatio": 0.18,
+        "mergedMeshes": [
+          "LOD2_Merged_Material_Hull",
+          "LOD2_Merged_Material_Mechanical",
+          "LOD2_Merged_Material_Warm"
+        ],
+        "separateMeshes": [
+          "LOD2_HOOK_EMISSIVE"
+        ],
+        "removedCloseOnly": [],
+        "triangles": 228,
+        "objectCount": 4
+      }
+    ],
+    "withinBudget": true,
+    "lod0WithinBudget": true
+  },
+  "lodStats": [
+    {
+      "lod": "lod0",
+      "decimateRatio": 1.0,
+      "mergedMeshes": [
+        "LOD0_Merged_Material_Hull",
+        "LOD0_Merged_Material_Mechanical",
+        "LOD0_Merged_Material_Warm"
+      ],
+      "separateMeshes": [
+        "LOD0_HOOK_EMISSIVE"
+      ],
+      "removedCloseOnly": [],
+      "triangles": 1280,
+      "objectCount": 4
+    },
+    {
+      "lod": "lod1",
+      "decimateRatio": 0.42,
+      "mergedMeshes": [
+        "LOD1_Merged_Material_Hull",
+        "LOD1_Merged_Material_Mechanical",
+        "LOD1_Merged_Material_Warm"
+      ],
+      "separateMeshes": [
+        "LOD1_HOOK_EMISSIVE"
+      ],
+      "removedCloseOnly": [],
+      "triangles": 534,
+      "objectCount": 4
+    },
+    {
+      "lod": "lod2",
+      "decimateRatio": 0.18,
+      "mergedMeshes": [
+        "LOD2_Merged_Material_Hull",
+        "LOD2_Merged_Material_Mechanical",
+        "LOD2_Merged_Material_Warm"
+      ],
+      "separateMeshes": [
+        "LOD2_HOOK_EMISSIVE"
+      ],
+      "removedCloseOnly": [],
+      "triangles": 228,
+      "objectCount": 4
+    }
+  ]
+}

@@ -1,0 +1,116 @@
+{
+  "schema": "spaceface.ashlineMaterialTruthArtifacts.v1",
+  "shipKey": "dart",
+  "source": "assets/ships/m4_ashline_v2/source/wholeships/ashline_v2_dart.glb",
+  "sourceSha256": "BA1B44D512554006272C3FA02F02F1AB7C61A09DDE505AD7826E40FB63249B01",
+  "producer": {
+    "path": "tools/blender/render_m4_ashline_material_truth.py",
+    "sha256": "014E085CB6D7058C45F8374F23213BD5BE60BEFD88A26D79F7713BD8C11B7510"
+  },
+  "artifacts": [
+    {
+      "path": "assets/ships/m4_ashline_v2/evidence/material_truth_v2/dart/neutral_front34.png",
+      "inputBindings": [
+        {
+          "shipKey": "dart",
+          "sourceSha256": "BA1B44D512554006272C3FA02F02F1AB7C61A09DDE505AD7826E40FB63249B01"
+        }
+      ],
+      "producer": {
+        "path": "tools/blender/render_m4_ashline_material_truth.py",
+        "sha256": "014E085CB6D7058C45F8374F23213BD5BE60BEFD88A26D79F7713BD8C11B7510"
+      }
+    },
+    {
+      "path": "assets/ships/m4_ashline_v2/evidence/material_truth_v2/dart/neutral_rear34.png",
+      "inputBindings": [
+        {
+          "shipKey": "dart",
+          "sourceSha256": "BA1B44D512554006272C3FA02F02F1AB7C61A09DDE505AD7826E40FB63249B01"
+        }
+      ],
+      "producer": {
+        "path": "tools/blender/render_m4_ashline_material_truth.py",
+        "sha256": "014E085CB6D7058C45F8374F23213BD5BE60BEFD88A26D79F7713BD8C11B7510"
+      }
+    },
+    {
+      "path": "assets/ships/m4_ashline_v2/evidence/material_truth_v2/dart/drive_close.png",
+      "inputBindings": [
+        {
+          "shipKey": "dart",
+          "sourceSha256": "BA1B44D512554006272C3FA02F02F1AB7C61A09DDE505AD7826E40FB63249B01"
+        }
+      ],
+      "producer": {
+        "path": "tools/blender/render_m4_ashline_material_truth.py",
+        "sha256": "014E085CB6D7058C45F8374F23213BD5BE60BEFD88A26D79F7713BD8C11B7510"
+      }
+    },
+    {
+      "path": "assets/ships/m4_ashline_v2/evidence/material_truth_v2/dart/projector_close.png",
+      "inputBindings": [
+        {
+          "shipKey": "dart",
+          "sourceSha256": "BA1B44D512554006272C3FA02F02F1AB7C61A09DDE505AD7826E40FB63249B01"
+        }
+      ],
+      "producer": {
+        "path": "tools/blender/render_m4_ashline_material_truth.py",
+        "sha256": "014E085CB6D7058C45F8374F23213BD5BE60BEFD88A26D79F7713BD8C11B7510"
+      }
+    },
+    {
+      "path": "assets/ships/m4_ashline_v2/evidence/material_truth_v2/dart/projector_grazing.png",
+      "inputBindings": [
+        {
+          "shipKey": "dart",
+          "sourceSha256": "BA1B44D512554006272C3FA02F02F1AB7C61A09DDE505AD7826E40FB63249B01"
+        }
+      ],
+      "producer": {
+        "path": "tools/blender/render_m4_ashline_material_truth.py",
+        "sha256": "014E085CB6D7058C45F8374F23213BD5BE60BEFD88A26D79F7713BD8C11B7510"
+      }
+    },
+    {
+      "path": "assets/ships/m4_ashline_v2/evidence/material_truth_v2/dart/top_ortho.png",
+      "inputBindings": [
+        {
+          "shipKey": "dart",
+          "sourceSha256": "BA1B44D512554006272C3FA02F02F1AB7C61A09DDE505AD7826E40FB63249B01"
+        }
+      ],
+      "producer": {
+        "path": "tools/blender/render_m4_ashline_material_truth.py",
+        "sha256": "014E085CB6D7058C45F8374F23213BD5BE60BEFD88A26D79F7713BD8C11B7510"
+      }
+    },
+    {
+      "path": "assets/ships/m4_ashline_v2/evidence/material_truth_v2/dart/game_120px.png",
+      "inputBindings": [
+        {
+          "shipKey": "dart",
+          "sourceSha256": "BA1B44D512554006272C3FA02F02F1AB7C61A09DDE505AD7826E40FB63249B01"
+        }
+      ],
+      "producer": {
+        "path": "tools/blender/render_m4_ashline_material_truth.py",
+        "sha256": "014E085CB6D7058C45F8374F23213BD5BE60BEFD88A26D79F7713BD8C11B7510"
+      }
+    },
+    {
+      "path": "assets/ships/m4_ashline_v2/evidence/material_truth_v2/dart/game_45px.png",
+      "inputBindings": [
+        {
+          "shipKey": "dart",
+          "sourceSha256": "BA1B44D512554006272C3FA02F02F1AB7C61A09DDE505AD7826E40FB63249B01"
+        }
+      ],
+      "producer": {
+        "path": "tools/blender/render_m4_ashline_material_truth.py",
+        "sha256": "014E085CB6D7058C45F8374F23213BD5BE60BEFD88A26D79F7713BD8C11B7510"
+      }
+    }
+  ]
+}

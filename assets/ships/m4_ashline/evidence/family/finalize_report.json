@@ -1,0 +1,109 @@
+{
+  "schema": "spaceface.m4AshlineFinalize.v1",
+  "packet": "M4-ASHLINE-HOSTILE-VISUAL-FAMILY-001",
+  "family": "ashline",
+  "isolation": {
+    "defaultPlayWired": false,
+    "partsManifestTouched": false,
+    "releasePartsTouched": false,
+    "k0HeliosUntouched": true
+  },
+  "finalized": [
+    {
+      "id": "ashline_dart",
+      "key": "dart",
+      "assetId": "SF_WHOLESHIP_ASHLINE_DART",
+      "source": "assets/ships/m4_ashline/source/wholeships/ashline_dart.glb",
+      "candidate": "assets/ships/m4_ashline/release_candidates/wholeships/ashline_dart.glb",
+      "sourceBytes": 23866252,
+      "candidateBytes": 10181192,
+      "sourceSha256": "21C8A8946D5A0578FFC7B77C8BC8D3D67CE672856E3E6C48617C73231204698B",
+      "candidateSha256": "40CDA52B8B3639FDB19F9FEB4E8AD3B3F088B54BE321051C418DEB0A130F55FF",
+      "sourceTextureCount": 24,
+      "releaseTextureCount": 24,
+      "releaseImageCount": 36,
+      "ktx2ImageCount": 36,
+      "meshoptBufferViewCount": 81,
+      "extensionsUsed": [
+        "EXT_meshopt_compression",
+        "KHR_materials_emissive_strength",
+        "KHR_mesh_quantization",
+        "KHR_texture_basisu"
+      ],
+      "materials": [
+        "Material_Mechanical",
+        "Material_Cyan",
+        "Material_Glass",
+        "Material_Hull",
+        "Material_Red_Paint",
+        "Material_Warm"
+      ],
+      "meshopt": "EXT_meshopt_compression",
+      "ktx2": "KHR_texture_basisu/KTX2"
+    },
+    {
+      "id": "ashline_lode",
+      "key": "lode",
+      "assetId": "SF_WHOLESHIP_ASHLINE_LODE",
+      "source": "assets/ships/m4_ashline/source/wholeships/ashline_lode.glb",
+      "candidate": "assets/ships/m4_ashline/release_candidates/wholeships/ashline_lode.glb",
+      "sourceBytes": 24173480,
+      "candidateBytes": 10273312,
+      "sourceSha256": "7C158C1C333C6C4F19A9DA42ED748BA8D654A399BA6F783AD384B9154A0BFCD2",
+      "candidateSha256": "73FC9972272233F2049179CEDC8887594549D380C9B18B18E41E8B798F56FD23",
+      "sourceTextureCount": 24,
+      "releaseTextureCount": 24,
+      "releaseImageCount": 36,
+      "ktx2ImageCount": 36,
+      "meshoptBufferViewCount": 77,
+      "extensionsUsed": [
+        "EXT_meshopt_compression",
+        "KHR_materials_emissive_strength",
+        "KHR_mesh_quantization",
+        "KHR_texture_basisu"
+      ],
+      "materials": [
+        "Material_Mechanical",
+        "Material_Cyan",
+        "Material_Glass",
+        "Material_Hull",
+        "Material_Red_Paint",
+        "Material_Warm"
+      ],
+      "meshopt": "EXT_meshopt_compression",
+      "ktx2": "KHR_texture_basisu/KTX2"
+    },
+    {
+      "id": "ashline_rig",
+      "key": "rig",
+      "assetId": "SF_WHOLESHIP_ASHLINE_RIG",
+      "source": "assets/ships/m4_ashline/source/wholeships/ashline_rig.glb",
+      "candidate": "assets/ships/m4_ashline/release_candidates/wholeships/ashline_rig.glb",
+      "sourceBytes": 23695408,
+      "candidateBytes": 10131344,
+      "sourceSha256": "1352352911313168C55FF0A05A76B62E55105DC873A005DE9FE7C88F9B946160",
+      "candidateSha256": "43465F8FCDDA62BD55AE0D8D0552A817265C8B3F96ED008796A13A7C48FE1D49",
+      "sourceTextureCount": 24,
+      "releaseTextureCount": 24,
+      "releaseImageCount": 36,
+      "ktx2ImageCount": 36,
+      "meshoptBufferViewCount": 77,
+      "extensionsUsed": [
+        "EXT_meshopt_compression",
+        "KHR_materials_emissive_strength",
+        "KHR_mesh_quantization",
+        "KHR_texture_basisu"
+      ],
+      "materials": [
+        "Material_Mechanical",
+        "Material_Cyan",
+        "Material_Warm",
+        "Material_Glass",
+        "Material_Hull",
+        "Material_Red_Paint"
+      ],
+      "meshopt": "EXT_meshopt_compression",
+      "ktx2": "KHR_texture_basisu/KTX2"
+    }
+  ]
+}

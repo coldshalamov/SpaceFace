@@ -1,0 +1,37 @@
+{
+  "schema": "spaceface.sourceAdaptationReceipt.v1",
+  "packet": "M4-ASHLINE-SOURCE-FAMILY-V2-001",
+  "createdAt": "2026-07-12T22:18:10Z",
+  "sourceFamily": "Quaternius Ultimate Spaceships Pack",
+  "sourcePage": "https://quaternius.com/packs/ultimatespaceships.html",
+  "license": "CC0-1.0",
+  "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "ships": {
+    "dart": {
+      "donor": "assets/ships/m4_ashline_v2/source/reference/quaternius_ultimate_spaceships/source/Insurgent/glTF/Insurgent.gltf",
+      "sha256": "A6E75F658D4133BF8E96172A410B1DAA8C3A8179F9C77B033F9D9CDAA04CB419",
+      "hints": [
+        "insurgent"
+      ]
+    },
+    "lode": {
+      "donor": "assets/ships/m4_ashline_v2/source/reference/quaternius_ultimate_spaceships/source/Pancake/glTF/Pancake.gltf",
+      "sha256": "0C17119ECFD0727236A7EC7886CEC7B29EB08B5BAEA1B9BB4D8BF989F56DA7C5",
+      "hints": [
+        "pancake"
+      ]
+    },
+    "rig": {
+      "donor": "assets/ships/m4_ashline_v2/source/reference/quaternius_ultimate_spaceships/source/Striker/glTF/Striker.gltf",
+      "sha256": "2F6C4B1D16F11D5CE02833C5841FF17E19700418C83E52501ED29E3C2BC79359",
+      "hints": [
+        "striker"
+      ]
+    }
+  },
+  "isolation": {
+    "root": "assets/ships/m4_ashline_v2",
+    "runtimePromotion": false,
+    "touchesExistingAshline": false
+  }
+}

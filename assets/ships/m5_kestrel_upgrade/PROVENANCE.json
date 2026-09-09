@@ -1,0 +1,23 @@
+{
+  "schema": "spaceface.asset-provenance.v1",
+  "assetId": "SF_WHOLESHIP_KESTREL_M5_CANDIDATE",
+  "packet": "M5-KESTREL-VISUAL-UPGRADE-001",
+  "source": {
+    "description": "User-supplied project-original SpaceFace SF-K0 Borrowed Time revamp",
+    "archive": "C:/Users/93rob/Downloads/SpaceFace_SF-K0_Borrowed-Time_Revamp.zip",
+    "runtimeArchive": "C:/Users/93rob/Downloads/SpaceFace_SF-K0_Borrowed-Time_Runtime.zip",
+    "sourceBlend": "source/SF_K0_Borrowed_Time_Revamp.blend",
+    "sourceBlendSha256": "C48BCD2CD7AA9B8DAF4AC253221ED259DB781A1BF0602EDB7286D916191D6502",
+    "originalBuildDateUtc": "2026-07-10"
+  },
+  "thirdPartyAssetsIncluded": false,
+  "downloadedAssetsIncluded": false,
+  "generator": "scripts/build_kestrel_upgrade.py",
+  "blenderVersion": "5.1.2",
+  "coordinateContract": {
+    "authoring": "+X forward, +Y starboard, +Z up",
+    "gltf": "+X forward, +Y up, +Z starboard",
+    "unit": "metre"
+  },
+  "promotionState": "isolated-candidate-not-runtime-wired"
+}

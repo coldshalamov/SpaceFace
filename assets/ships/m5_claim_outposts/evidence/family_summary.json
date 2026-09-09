@@ -1,0 +1,148 @@
+{
+  "schema": "spaceface.claimOutpostFamily.v1",
+  "packet": "M5-CLAIM-OUTPOST-VISUAL-GROWTH-001",
+  "family": "player_claim_growth_family",
+  "elapsedSeconds": 14.39,
+  "assets": [
+    {
+      "id": "place_claim_outpost_base",
+      "bytes": 6834040,
+      "lod": {
+        "lod0": {
+          "triangles": 15384,
+          "drawGroups": 5
+        },
+        "lod1": {
+          "triangles": 5832,
+          "drawGroups": 5
+        },
+        "lod2": {
+          "triangles": 1724,
+          "drawGroups": 5
+        }
+      },
+      "aabb": {
+        "min": [
+          -47.0226,
+          -17.6696,
+          -47.0226
+        ],
+        "max": [
+          55.5,
+          12.5,
+          47.0226
+        ],
+        "size": [
+          102.5226,
+          30.1696,
+          94.0452
+        ]
+      }
+    },
+    {
+      "id": "place_claim_outpost_refinery",
+      "bytes": 10527372,
+      "lod": {
+        "lod0": {
+          "triangles": 56760,
+          "drawGroups": 5
+        },
+        "lod1": {
+          "triangles": 17856,
+          "drawGroups": 5
+        },
+        "lod2": {
+          "triangles": 4404,
+          "drawGroups": 5
+        }
+      },
+      "aabb": {
+        "min": [
+          -50.8652,
+          -17.6696,
+          -50.8652
+        ],
+        "max": [
+          55.5,
+          30.93,
+          47.0226
+        ],
+        "size": [
+          106.3652,
+          48.5996,
+          97.8878
+        ]
+      }
+    },
+    {
+      "id": "place_claim_outpost_relay",
+      "bytes": 12639076,
+      "lod": {
+        "lod0": {
+          "triangles": 59052,
+          "drawGroups": 5
+        },
+        "lod1": {
+          "triangles": 21532,
+          "drawGroups": 5
+        },
+        "lod2": {
+          "triangles": 5264,
+          "drawGroups": 5
+        }
+      },
+      "aabb": {
+        "min": [
+          -48.8364,
+          -17.6696,
+          -47.9295
+        ],
+        "max": [
+          55.5,
+          37.65,
+          47.9295
+        ],
+        "size": [
+          104.3364,
+          55.3196,
+          95.859
+        ]
+      }
+    },
+    {
+      "id": "place_claim_outpost_bastion",
+      "bytes": 8151656,
+      "lod": {
+        "lod0": {
+          "triangles": 33212,
+          "drawGroups": 5
+        },
+        "lod1": {
+          "triangles": 12956,
+          "drawGroups": 5
+        },
+        "lod2": {
+          "triangles": 3648,
+          "drawGroups": 5
+        }
+      },
+      "aabb": {
+        "min": [
+          -47.0226,
+          -17.6696,
+          -47.0226
+        ],
+        "max": [
+          55.5,
+          39.55,
+          47.0226
+        ],
+        "size": [
+          102.5226,
+          57.2196,
+          94.0452
+        ]
+      }
+    }
+  ]
+}

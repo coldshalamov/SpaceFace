@@ -1,0 +1,211 @@
+{
+  "schema": "spaceface.m4AshlineSourceFamilyMetrics.v1",
+  "packet": "M4-ASHLINE-SOURCE-FAMILY-V2-001",
+  "familyId": "ashline_v2",
+  "builtAt": "2026-07-29T20:11:18Z",
+  "elapsedSec": 13.69,
+  "ships": [
+    {
+      "key": "dart",
+      "id": "ashline_v2_dart",
+      "role": "flyby_interceptor",
+      "totalTriangles": 29543,
+      "hullTriangles": 25587,
+      "lodTriangles": {
+        "lod0": 18040,
+        "lod1": 8538,
+        "lod2": 2965
+      },
+      "lod0AabbSize": [
+        17.472002029418945,
+        2.9443142414093018,
+        6.501453399658203
+      ],
+      "collisionBounds": {
+        "min": [
+          -3.144960403442383,
+          -1.2366119623184204,
+          -2.7306103706359863
+        ],
+        "max": [
+          3.144960403442383,
+          1.2366119623184204,
+          2.7306103706359863
+        ],
+        "size": [
+          6.289920806884766,
+          2.473223924636841,
+          5.461220741271973
+        ]
+      },
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "materials": [
+        "Material_Cyan",
+        "Material_HeatMetal",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Red_Paint",
+        "Material_Refractory"
+      ],
+      "sha256": "BA1B44D512554006272C3FA02F02F1AB7C61A09DDE505AD7826E40FB63249B01",
+      "sourceGlb": "assets/ships/m4_ashline_v2/source/wholeships/ashline_v2_dart.glb",
+      "blend": "assets/ships/m4_ashline_v2/blender/ashline_v2_dart_production.blend",
+      "sourceBytes": 10167052,
+      "evidenceEpoch": {
+        "status": "post-finalize-current",
+        "epochDigest": "D40B2BE67B0DC2470E5AE96D3499E89B3F834F7EC52C1AEB314C0BE14B71A44E"
+      }
+    },
+    {
+      "key": "lode",
+      "id": "ashline_v2_lode",
+      "role": "heavy_brawler",
+      "totalTriangles": 18436,
+      "hullTriangles": 6392,
+      "lodTriangles": {
+        "lod0": 13472,
+        "lod1": 4256,
+        "lod2": 708
+      },
+      "lod0AabbSize": [
+        24,
+        7.246389865875244,
+        21.82400131225586
+      ],
+      "collisionBounds": {
+        "min": [
+          -4.320000171661377,
+          -3.0434837341308594,
+          -9.166080474853516
+        ],
+        "max": [
+          4.320000171661377,
+          3.0434837341308594,
+          9.166080474853516
+        ],
+        "size": [
+          8.640000343322754,
+          6.086967468261719,
+          18.33216094970703
+        ]
+      },
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "materials": [
+        "Material_Cyan",
+        "Material_HeatMetal",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Red_Paint",
+        "Material_Refractory",
+        "Material_RepairPrimer"
+      ],
+      "sha256": "73C253149605349857EADAA8450D4061819B156318FECA5A693540A4363B8036",
+      "sourceGlb": "assets/ships/m4_ashline_v2/source/wholeships/ashline_v2_lode.glb",
+      "blend": "assets/ships/m4_ashline_v2/blender/ashline_v2_lode_production.blend",
+      "sourceBytes": 12265996,
+      "evidenceEpoch": {
+        "status": "post-finalize-current",
+        "epochDigest": "D40B2BE67B0DC2470E5AE96D3499E89B3F834F7EC52C1AEB314C0BE14B71A44E"
+      }
+    },
+    {
+      "key": "rig",
+      "id": "ashline_v2_rig",
+      "role": "tether_control_raider",
+      "totalTriangles": 30065,
+      "hullTriangles": 12741,
+      "lodTriangles": {
+        "lod0": 19154,
+        "lod1": 9488,
+        "lod2": 1387
+      },
+      "lod0AabbSize": [
+        18.5,
+        6.601560115814209,
+        11.493575096130371
+      ],
+      "collisionBounds": {
+        "basis": "root-local-aabb",
+        "min": [
+          -9.496666431427002,
+          -3.036717653274536,
+          -5.287044525146484
+        ],
+        "max": [
+          9.496666431427002,
+          3.036717653274536,
+          5.287044525146484
+        ],
+        "helpers": [
+          "COLLISION_HULL_00",
+          "COLLISION_HULL_01",
+          "COLLISION_HULL_02"
+        ],
+        "size": [
+          18.993332862854004,
+          6.073435306549072,
+          10.574089050292969
+        ]
+      },
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "materials": [
+        "Material_Cyan",
+        "Material_HeatMetal",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Red_Paint",
+        "Material_Refractory"
+      ],
+      "sha256": "E46AAFCB5A5BEB40B24918248A03704FFAEF10D342324C3D0E02893898B7B892",
+      "sourceGlb": "assets/ships/m4_ashline_v2/source/wholeships/ashline_v2_rig.glb",
+      "blend": "assets/ships/m4_ashline_v2/blender/ashline_v2_rig_production.blend",
+      "sourceBytes": 3610796,
+      "evidenceEpoch": {
+        "status": "post-finalize-current",
+        "epochDigest": "D40B2BE67B0DC2470E5AE96D3499E89B3F834F7EC52C1AEB314C0BE14B71A44E"
+      }
+    }
+  ],
+  "isolation": {
+    "root": "assets/ships/m4_ashline_v2",
+    "touchesDefaultManifests": false,
+    "overwritesK0OrHelios": false,
+    "wiredDefaultPlay": false
+  },
+  "sourceAdaptationReceipt": "assets/ships/m4_ashline_v2/SOURCE_ADAPTATION.json",
+  "evidenceEpoch": {
+    "epochDigest": "D40B2BE67B0DC2470E5AE96D3499E89B3F834F7EC52C1AEB314C0BE14B71A44E",
+    "historicalRendersEligible": false,
+    "requiresCurrentVersionedRenders": false
+  }
+}

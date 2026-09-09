@@ -1,0 +1,151 @@
+{
+  "schema": "spaceface.exactSourceEvidence.v1",
+  "assetId": "SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1",
+  "shipId": "massline_express_liner_v1",
+  "cycle": 35,
+  "lod": 0,
+  "source": "assets/ships/massline_express_liner_v1/source/wholeships/massline_express_liner_v1_lod0.glb",
+  "sourceSha256": "8D0668D2131B7C27ED2612B052F162C2B573F97FA2E7E7709D2FBD054A5F978C",
+  "renderer": "assets/ships/massline_express_liner_v1/scripts/build_massline_express_liner_v1.py+tools/blender/spaceface_chase_camera.py",
+  "cameraContract": {
+    "module": "tools/blender/spaceface_chase_camera.py",
+    "fov_v_deg": 50.0,
+    "tilt_deg": 60.0,
+    "play_chase": {
+      "distance": 144.0,
+      "heading_deg": 0.0
+    },
+    "play_chase_abeam": {
+      "distance": 144.0,
+      "heading_deg": 90.0
+    },
+    "play_chase_close": {
+      "distance": 58.0,
+      "heading_deg": 0.0
+    },
+    "clay_play_chase": {
+      "distance": 144.0,
+      "heading_deg": 0.0,
+      "material": "neutral_clay"
+    },
+    "grazing_close": {
+      "kind": "diagnostic",
+      "lens_mm": 32
+    },
+    "drive_rear": {
+      "kind": "diagnostic",
+      "lens_mm": 55
+    },
+    "diagnostics": [
+      "id_or_material_id.png",
+      "orm_isolation.png",
+      "normal_isolation.png"
+    ],
+    "authoredBandAndTransitions": {
+      "transition_near_lod0.png": {
+        "distance": 200.0,
+        "heading_deg": 0.0,
+        "purpose": "LOD0 side of LOD0/LOD1 transition"
+      }
+    }
+  },
+  "boundsSizeM": [
+    40.27,
+    20.754,
+    11.105
+  ],
+  "lengthToBeam": 1.9403,
+  "occupancy": {
+    "play_chase": {
+      "minX": 0.4147,
+      "maxX": 0.58658,
+      "minY": 0.42764,
+      "maxY": 0.57704,
+      "widthFrac": 0.17188,
+      "heightFrac": 0.1494,
+      "widthPx1600": 275.0,
+      "cropped": false,
+      "band": [
+        0.08,
+        0.22
+      ],
+      "inBand": true
+    },
+    "play_chase_abeam": {
+      "minX": 0.45462,
+      "maxX": 0.54538,
+      "minY": 0.35715,
+      "maxY": 0.62722,
+      "widthFrac": 0.09076,
+      "heightFrac": 0.27007,
+      "widthPx1600": 145.2,
+      "cropped": false,
+      "band": [
+        0.08,
+        0.22
+      ],
+      "inBand": true
+    },
+    "play_chase_close": {
+      "minX": 0.28453,
+      "maxX": 0.72378,
+      "minY": 0.31172,
+      "maxY": 0.68841,
+      "widthFrac": 0.43925,
+      "heightFrac": 0.37668,
+      "widthPx1600": 702.8,
+      "cropped": false,
+      "band": [
+        0.19862068965517243,
+        0.5462068965517242
+      ],
+      "inBand": true
+    }
+  },
+  "occupancyFailures": [],
+  "authoredBandEvidence": {
+    "transition_near_lod0.png": {
+      "minX": 0.43878,
+      "maxX": 0.56188,
+      "minY": 0.44834,
+      "maxY": 0.55563,
+      "widthFrac": 0.1231,
+      "heightFrac": 0.10728,
+      "widthPx1600": 197.0,
+      "cropped": false,
+      "distance": 200.0,
+      "headingDeg": 0.0,
+      "purpose": "LOD0 side of LOD0/LOD1 transition",
+      "authoredBandPx1600": null,
+      "inAuthoredBand": null
+    }
+  },
+  "views": [
+    "play_chase.png",
+    "play_chase_abeam.png",
+    "play_chase_close.png",
+    "clay_play_chase.png",
+    "grazing_close.png",
+    "drive_rear.png",
+    "orm_isolation.png",
+    "normal_isolation.png",
+    "id_or_material_id.png",
+    "transition_near_lod0.png"
+  ],
+  "stillSha256": {
+    "clay_play_chase.png": "B54F9652D686D8C4A850E5114E6FC179EE2E7D51D51D9087C7D881A2B7BF473D",
+    "drive_rear.png": "6ACD1D1F3869B07305C5D18D2767F1A1F590102B74A817D3BB8E2D3BB5F8FAF6",
+    "grazing_close.png": "8186F03257E7DF8A35CCB60396FC81FE3E2B0DC66D6AD6D090DC5203EA281519",
+    "id_or_material_id.png": "E102ECC0A83919D75AA0DD5BE200DD824723A3C328E99CE0BA0752EDB85FB97F",
+    "normal_isolation.png": "1B094F5B6627CB7488259EAD98D314AF36256079C44858B7AC438C5D75DCE2CD",
+    "orm_isolation.png": "DD87D7F0E75AE352903A5ED0AB27CAC84E39C4A2DA507F9B22B17B57B5B7E775",
+    "play_chase.png": "6BE4D02A9B7E43B6DA36C9D8861157A34468C327601ABCB31F3F190749DEB13B",
+    "play_chase_abeam.png": "B38851EE2EF47BCD1C38638D16D8F84B7AF8A6F2066CBED0918C7962BCE05207",
+    "play_chase_close.png": "99A2182C1426F06DF26A0FFCEC3B99D0B705A633F753BD2BAB0F7074A274CDBF",
+    "transition_near_lod0.png": "F7F4C1773B63BA41DD21C1B0714C9D677EC91DF6E41C249EB3C40740D2FF762F"
+  },
+  "producer": "build_massline_express_liner_v1.py",
+  "producerSha256": "DF7A77498EF0FD6BDF26AD1C7F90780D778151EAB2A64A3E5EBBD2EEE8FC9158",
+  "verdict": "keep",
+  "gateState": "evidence_ready"
+}

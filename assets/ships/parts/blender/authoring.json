@@ -1,0 +1,336 @@
+{
+  "schemaVersion": 1,
+  "vertical_slice": [
+    "place_station_trade_hub",
+    "place_station_refinery",
+    "place_station_military",
+    "place_station_blackmarket",
+    "place_gate_jump_ring",
+    "place_station_fab",
+    "place_station_mining",
+    "place_station_research"
+  ],
+  "min_tris_blender_mcp": 1500,
+  "procedural_tri_band_max": 1000,
+  "entries": {
+    "engine_plasma_ring": {
+      "method": "blender_generic",
+      "blend_path": "assets/ships/parts/blender/engine_plasma_ring_authored.blend",
+      "exporter_path": "tools/art/blender/export_sprint_part.py",
+      "current_authoring_route": "docs/visual-assets/README.md",
+      "material_truth_skill_path": ".grok/skills/spaceface-blender-material-truth/SKILL.md",
+      "material_truth_preflight_required": true,
+      "texture_role_owner": "finalizer-v1",
+      "min_tris": 1500
+    },
+    "greeble_rcs": {
+      "method": "blender_generic",
+      "blend_path": "assets/ships/parts/blender/greeble_rcs_authored.blend",
+      "exporter_path": "tools/art/blender/export_sprint_part.py",
+      "current_authoring_route": "docs/visual-assets/README.md",
+      "material_truth_skill_path": ".grok/skills/spaceface-blender-material-truth/SKILL.md",
+      "material_truth_preflight_required": true,
+      "texture_role_owner": "finalizer-v1",
+      "semantic_note": "Editable four-nozzle RCS maneuvering cluster; the mesh/hardware source is separate from the pooled runtime impulse VFX.",
+      "min_tris": 1040
+    },
+    "hull_starter": {
+      "method": "blender_mcp",
+      "blend_path": "assets/ships/parts/blender/hull_starter_authored.blend",
+      "legacy_exporter_path": "tools/art/blender/revamp_full_finish.py",
+      "authoring_status": "legacy-source-requires-new-material-truth-authoring-packet",
+      "current_authoring_route": "docs/visual-assets/README.md",
+      "texture_role_owner": "modular-hull-texture-finalizer-v2",
+      "texture_finalizer_path": "tools/art/repair_modular_hull_texture_roles.mjs",
+      "texture_finalizer_status": "canonical-glb-repair-only"
+    },
+    "hull_fighter": {
+      "method": "blender_mcp",
+      "blend_path": "assets/ships/parts/blender/hull_fighter_authored.blend",
+      "legacy_exporter_path": "tools/art/blender/revamp_full_finish.py",
+      "authoring_status": "legacy-source-requires-new-material-truth-authoring-packet",
+      "current_authoring_route": "docs/visual-assets/README.md",
+      "texture_role_owner": "modular-hull-texture-finalizer-v2",
+      "texture_finalizer_path": "tools/art/repair_modular_hull_texture_roles.mjs",
+      "texture_finalizer_status": "canonical-glb-repair-only"
+    },
+    "hull_miner": {
+      "method": "blender_mcp",
+      "blend_path": "assets/ships/parts/blender/hull_miner_authored.blend",
+      "legacy_exporter_path": "tools/art/blender/revamp_full_finish.py",
+      "authoring_status": "legacy-source-requires-new-material-truth-authoring-packet",
+      "current_authoring_route": "docs/visual-assets/README.md",
+      "texture_role_owner": "modular-hull-texture-finalizer-v2",
+      "texture_finalizer_path": "tools/art/repair_modular_hull_texture_roles.mjs",
+      "texture_finalizer_status": "canonical-glb-repair-only"
+    },
+    "hull_freighter": {
+      "method": "blender_mcp",
+      "blend_path": "assets/ships/parts/blender/hull_freighter_authored.blend",
+      "legacy_exporter_path": "tools/art/blender/revamp_full_finish.py",
+      "authoring_status": "legacy-source-requires-new-material-truth-authoring-packet",
+      "current_authoring_route": "docs/visual-assets/README.md",
+      "texture_role_owner": "modular-hull-texture-finalizer-v2",
+      "texture_finalizer_path": "tools/art/repair_modular_hull_texture_roles.mjs",
+      "texture_finalizer_status": "canonical-glb-repair-only"
+    },
+    "hull_interceptor": {
+      "method": "blender_mcp",
+      "blend_path": "assets/ships/parts/blender/hull_interceptor_authored.blend",
+      "legacy_exporter_path": "tools/art/blender/revamp_full_finish.py",
+      "authoring_status": "legacy-source-requires-new-material-truth-authoring-packet",
+      "current_authoring_route": "docs/visual-assets/README.md",
+      "texture_role_owner": "modular-hull-texture-finalizer-v2",
+      "texture_finalizer_path": "tools/art/repair_modular_hull_texture_roles.mjs",
+      "texture_finalizer_status": "canonical-glb-repair-only"
+    },
+    "hull_corvette": {
+      "method": "blender_mcp",
+      "blend_path": "assets/ships/parts/blender/hull_corvette_authored.blend",
+      "legacy_exporter_path": "tools/art/blender/revamp_full_finish.py",
+      "authoring_status": "legacy-source-requires-new-material-truth-authoring-packet",
+      "current_authoring_route": "docs/visual-assets/README.md",
+      "texture_role_owner": "modular-hull-texture-finalizer-v2",
+      "texture_finalizer_path": "tools/art/repair_modular_hull_texture_roles.mjs",
+      "texture_finalizer_status": "canonical-glb-repair-only"
+    },
+    "hull_frigate": {
+      "method": "blender_mcp",
+      "blend_path": "assets/ships/parts/blender/hull_frigate_authored.blend",
+      "legacy_exporter_path": "tools/art/blender/revamp_full_finish.py",
+      "authoring_status": "legacy-source-requires-new-material-truth-authoring-packet",
+      "current_authoring_route": "docs/visual-assets/README.md",
+      "texture_role_owner": "modular-hull-texture-finalizer-v2",
+      "texture_finalizer_path": "tools/art/repair_modular_hull_texture_roles.mjs",
+      "texture_finalizer_status": "canonical-glb-repair-only"
+    },
+    "hull_capital": {
+      "method": "blender_mcp",
+      "blend_path": "assets/ships/parts/blender/hull_capital_authored.blend",
+      "legacy_exporter_path": "tools/art/blender/revamp_full_finish.py",
+      "authoring_status": "legacy-source-requires-new-material-truth-authoring-packet",
+      "current_authoring_route": "docs/visual-assets/README.md",
+      "texture_role_owner": "modular-hull-texture-finalizer-v2",
+      "texture_finalizer_path": "tools/art/repair_modular_hull_texture_roles.mjs",
+      "texture_finalizer_status": "canonical-glb-repair-only"
+    },
+    "hull_multirole": {
+      "method": "blender_mcp",
+      "blend_path": "assets/ships/parts/blender/hull_multirole_authored.blend",
+      "legacy_exporter_path": "tools/art/blender/revamp_full_finish.py",
+      "authoring_status": "legacy-source-requires-new-material-truth-authoring-packet",
+      "current_authoring_route": "docs/visual-assets/README.md",
+      "texture_role_owner": "modular-hull-texture-finalizer-v2",
+      "texture_finalizer_path": "tools/art/repair_modular_hull_texture_roles.mjs",
+      "texture_finalizer_status": "canonical-glb-repair-only"
+    },
+    "hull_gunship": {
+      "method": "blender_mcp",
+      "blend_path": "assets/ships/parts/blender/hull_gunship_authored.blend",
+      "legacy_exporter_path": "tools/art/blender/revamp_full_finish.py",
+      "authoring_status": "legacy-source-requires-new-material-truth-authoring-packet",
+      "current_authoring_route": "docs/visual-assets/README.md",
+      "texture_role_owner": "modular-hull-texture-finalizer-v2",
+      "texture_finalizer_path": "tools/art/repair_modular_hull_texture_roles.mjs",
+      "texture_finalizer_status": "canonical-glb-repair-only"
+    },
+    "place_station_trade_hub": {
+      "method": "blender_mcp",
+      "concept_id": "concept_helios_overview",
+      "concept_path": "assets/concept/sectors/sector_helios_prime/concept_helios_overview.jpg",
+      "blend_path": "assets/ships/parts/blender/place_station_trade_hub_authored.blend",
+      "semantic_note": "concept_station_trade_hub.jpg is portal-like (swapped); Helios overview is commercial-hub authority",
+      "min_tris": 1500
+    },
+    "place_station_refinery": {
+      "method": "blender_mcp",
+      "concept_id": "concept_station_refinery",
+      "concept_path": "assets/concept/archetypes/concept_station_refinery.jpg",
+      "blend_path": "assets/ships/parts/blender/place_station_refinery_authored.blend",
+      "min_tris": 1500,
+      "pipeline": "tools/blender/build_station_visual_family.py",
+      "family": "helios_industrial_station_family",
+      "packet": "M4-STATION-VISUAL-FAMILY-001"
+    },
+    "place_station_military": {
+      "method": "blender_mcp",
+      "concept_id": "concept_station_military",
+      "concept_path": "assets/concept/archetypes/concept_station_military.jpg",
+      "blend_path": "assets/ships/parts/blender/place_station_military_authored.blend",
+      "min_tris": 1500,
+      "pipeline": "tools/blender/build_station_visual_family.py",
+      "family": "helios_industrial_station_family",
+      "packet": "M4-STATION-VISUAL-FAMILY-001"
+    },
+    "place_station_blackmarket": {
+      "method": "blender_mcp",
+      "concept_id": "concept_station_blackmarket",
+      "concept_path": "assets/concept/archetypes/concept_station_blackmarket.jpg",
+      "blend_path": "assets/ships/parts/blender/place_station_blackmarket_authored.blend",
+      "min_tris": 1500,
+      "pipeline": "tools/blender/build_station_visual_family.py",
+      "family": "helios_industrial_station_family",
+      "packet": "M4-STATION-VISUAL-FAMILY-001"
+    },
+    "place_gate_jump_ring": {
+      "method": "blender_mcp",
+      "concept_id": "concept_station_trade_hub",
+      "concept_path": "assets/concept/archetypes/concept_station_trade_hub.jpg",
+      "blend_path": "assets/ships/parts/blender/place_gate_jump_ring_authored.blend",
+      "semantic_note": "concept_gate_jump_ring.jpg is station tower (swapped); portal-ring visual is concept_station_trade_hub.jpg + ring landmark specs",
+      "min_tris": 1500,
+      "pipeline": "tools/blender/build_station_visual_family.py",
+      "family": "helios_industrial_station_family",
+      "packet": "M4-STATION-VISUAL-FAMILY-001"
+    },
+    "place_station_mining": {
+      "method": "blender_mcp",
+      "concept_id": "concept_station_mining",
+      "concept_path": "assets/concept/archetypes/concept_station_mining.jpg",
+      "blend_path": "assets/ships/parts/blender/place_station_mining_authored.blend",
+      "min_tris": 1500,
+      "pipeline": "tools/blender/build_station_visual_family.py",
+      "family": "helios_industrial_station_family",
+      "packet": "M4-STATION-VISUAL-FAMILY-001"
+    },
+    "place_station_fab": {
+      "method": "blender_mcp",
+      "concept_id": "concept_station_fab",
+      "concept_path": "assets/concept/archetypes/concept_station_fab.jpg",
+      "blend_path": "assets/ships/parts/blender/place_station_fab_authored.blend",
+      "min_tris": 1500,
+      "pipeline": "tools/blender/build_station_visual_family.py",
+      "family": "helios_industrial_station_family",
+      "packet": "M4-STATION-VISUAL-FAMILY-001"
+    },
+    "place_station_research": {
+      "method": "blender_mcp",
+      "concept_id": "concept_station_research",
+      "concept_path": "assets/concept/archetypes/concept_station_research.jpg",
+      "blend_path": "assets/ships/parts/blender/place_station_research_authored.blend",
+      "min_tris": 1500,
+      "pipeline": "tools/blender/build_station_visual_family.py",
+      "family": "helios_industrial_station_family",
+      "packet": "M4-STATION-VISUAL-FAMILY-001"
+    },
+    "place_dock_interior": {
+      "method": "blender_generic",
+      "blend_path": "assets/ships/parts/blender/place_dock_interior_authored.blend",
+      "exporter_path": "tools/blender/remaster_opening_dock_interior_v2.py",
+      "texture_role_owner": "blender-source-v1",
+      "texture_pipeline": "tools/art/build_dock_interior_maps.py",
+      "family": "opening_route_neutral_shipworks_v1",
+      "semantic_note": "Reviewed deterministic H-04 neutral Shipworks service bay with an open-front 28 m preview aperture, a rear-parked structural portal and crane, adaptive ship-envelope alignment, authored LOD0/1/2, and complete base-color/normal/ORM roles.",
+      "min_tris": 21248
+    },
+    "place_dock_interior_military": {
+      "method": "procedural_fallback",
+      "concept_path": "assets/concept/archetypes/concept_station_military.jpg",
+      "blend_path": null,
+      "min_tris": 500
+    },
+    "place_dock_interior_grit": {
+      "method": "procedural_fallback",
+      "concept_path": "assets/concept/archetypes/concept_station_blackmarket.jpg",
+      "blend_path": null,
+      "min_tris": 500
+    },
+    "place_station_billboard": {
+      "method": "blender_mcp",
+      "blend_path": "assets/ships/parts/blender/place_station_billboard_authored.blend",
+      "semantic_note": "Lane/station billboard prop; Blender-authored via author_place_archetype pipeline; low-tri dress prop",
+      "min_tris": 500
+    },
+    "place_debris_chunk": {
+      "method": "blender_generic",
+      "blend_path": "assets/ships/parts/blender/place_debris_chunk_authored.blend",
+      "exporter_path": "tools/blender/remaster_opening_debris_chunk_v1.py",
+      "texture_role_owner": "blender-source-v1",
+      "texture_pipeline": "tools/art/build_opening_infrastructure_maps.py",
+      "family": "opening_route_manufactured_wreckage_v1",
+      "semantic_note": "Reviewed deterministic Meridian pressure-module fragment with a rooted causal rupture, authored LOD0/1/2, and complete base-color/normal/ORM roles.",
+      "min_tris": 12396
+    },
+    "place_dead_hulk": {
+      "method": "blender_generic",
+      "blend_path": "assets/ships/parts/blender/place_dead_hulk_authored.blend",
+      "exporter_path": "tools/blender/remaster_opening_dead_hulk_v1.py",
+      "texture_role_owner": "blender-source-v1",
+      "texture_pipeline": "tools/art/build_opening_infrastructure_maps.py",
+      "family": "opening_route_dead_hulk_v1",
+      "semantic_note": "Reviewed deterministic commercial carrier/drill-tender hulk with a rooted causal rupture, authored LOD0/1/2, structure sockets, and complete base-color/normal/ORM roles.",
+      "min_tris": 18324
+    },
+    "place_conveyor_barge": {
+      "method": "blender_mcp",
+      "blend_path": "assets/ships/parts/blender/place_conveyor_barge_authored.blend",
+      "semantic_note": "Belt ore conveyor barge prop; Blender-authored via author_place_archetype pipeline",
+      "min_tris": 500
+    },
+    "wholeship_kestrel": {
+      "method": "blender_generic",
+      "production_whole_ship": true,
+      "blend_path": "assets/ships/kestrel_borrowed_time_v4/blender/kestrel_hitch_polish_v7_production.blend",
+      "exporter_path": "assets/ships/kestrel_borrowed_time_v4/scripts/build_hitch_polish_v7.py",
+      "texture_role_owner": "blender-source-v1",
+      "provenance_path": "assets/ships/kestrel_borrowed_time_v4/PROVENANCE.json",
+      "semantic_note": "Hitch V7 polish live player whole-ship; same boat as V4/V5 with manufactured drive/sensor/shoulders/radiators, DIE LAUGHING spray stencil, nine sockets, collision proxy, no embedded plume",
+      "min_tris": 1500
+    },
+    "place_asteroid_rock_a": {
+      "method": "blender_generic",
+      "blend_path": "assets/ships/m4_helios_hub/blender/helios_rock_a_production.blend",
+      "exporter_path": "tools/blender/remaster_m4_surface_roles.py",
+      "texture_role_owner": "blender-source-v1",
+      "pipeline": "tools/blender/build_m4_helios_hub_v3.py",
+      "texture_pipeline": "assets/ships/m4_helios_hub/scripts/surface_remaster_v2.py",
+      "promotion_pipeline": "scripts/promote-m4-surface-remaster.mjs",
+      "family": "helios_hub_env",
+      "packet": "M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001",
+      "semantic_note": "Accepted three-LOD Helios resource rock; exact current source and release hashes are closed by the graphics asset receipt validator.",
+      "min_tris": 1977
+    },
+    "place_asteroid_seamed": {
+      "method": "blender_generic",
+      "blend_path": "assets/ships/parts/blender/place_asteroid_seamed_authored.blend",
+      "exporter_path": "tools/blender/remaster_geology_landmark_family_v1.py",
+      "texture_role_owner": "blender-source-v1",
+      "min_tris": 8340,
+      "pipeline": "tools/blender/remaster_geology_landmark_family_v1.py",
+      "texture_pipeline": "tools/art/build_geology_landmark_maps_v1.py",
+      "family": "geology_landmark_family_v3",
+      "packet": "GEOLOGY-LANDMARK-FAMILY-01"
+    },
+    "place_asteroid_graffiti": {
+      "method": "blender_generic",
+      "blend_path": "assets/ships/parts/blender/place_asteroid_graffiti_authored.blend",
+      "exporter_path": "tools/blender/remaster_geology_landmark_family_v1.py",
+      "texture_role_owner": "blender-source-v1",
+      "min_tris": 9876,
+      "pipeline": "tools/blender/remaster_geology_landmark_family_v1.py",
+      "texture_pipeline": "tools/art/build_geology_landmark_maps_v1.py",
+      "family": "geology_landmark_family_v3",
+      "packet": "GEOLOGY-LANDMARK-FAMILY-01"
+    },
+    "place_ceres_bait_wreck": {
+      "method": "blender_generic",
+      "blend_path": "assets/ships/parts/blender/place_ceres_bait_wreck_authored.blend",
+      "exporter_path": "tools/blender/author_ceres_wreck_dressing.py",
+      "texture_role_owner": "finalizer-v1",
+      "texture_pipeline": "tools/art/build_wreck_aftermath_maps.py",
+      "family": "pq045_ceres_wreck_dressing_v1",
+      "semantic_note": "Ceres Throughline bait wreck composed from four ledger-selected authored-down wreck_aftermath assets with real PBR roles and LOD0/1/2.",
+      "min_tris": 1200
+    },
+    "place_ceres_grave_shard": {
+      "method": "blender_generic",
+      "blend_path": "assets/ships/parts/blender/place_ceres_grave_shard_authored.blend",
+      "exporter_path": "tools/blender/author_ceres_wreck_dressing.py",
+      "texture_role_owner": "finalizer-v1",
+      "texture_pipeline": "tools/art/build_wreck_aftermath_maps.py",
+      "family": "pq045_ceres_wreck_dressing_v1",
+      "semantic_note": "Ceres Cathedral grave shard composed from three ledger-selected authored-down wreck_aftermath assets with instanced grating, real PBR roles and LOD0/1/2.",
+      "min_tris": 400
+    }
+  }
+}

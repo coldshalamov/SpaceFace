@@ -1,0 +1,273 @@
+{
+  "schema": "spaceface.claimOutpostRelayMaterialTruthBuild.v1",
+  "assetId": "place_claim_outpost_relay",
+  "candidateId": "material_truth_v2",
+  "builtAt": "2026-08-04T07:55:17Z",
+  "builder": "tools/blender/build_claim_outpost_relay_material_truth_v2.py",
+  "canonicalBlend": "assets/ships/m5_claim_outposts/blender/place_claim_outpost_relay.blend",
+  "canonicalBlendSha256": "E922CBEB95762B749B00F303E3A0399D3AB4771858F112EF3F89325C869D300A",
+  "candidateBlend": "assets/ships/m5_claim_outposts/blender/place_claim_outpost_relay_material_truth_v2.blend",
+  "candidateBlendSha256": "7B069F78A8FF289B32705FB0614E156E24E37FF4A0D432CC57CBC6D8040D810F",
+  "sourceCandidate": "assets/ships/m5_claim_outposts/source_candidates/material_truth_v2/places/place_claim_outpost_relay.glb",
+  "sourceCandidateSha256": "A8789308E39F733BC6565198B2AFEE0BA5FD106AFFC54A22DD7D30E40AC10A7A",
+  "releaseCandidate": "assets/ships/m5_claim_outposts/release_candidates/material_truth_v2/places/place_claim_outpost_relay.glb",
+  "releaseCandidateSha256": "A8789308E39F733BC6565198B2AFEE0BA5FD106AFFC54A22DD7D30E40AC10A7A",
+  "bytes": {
+    "source": 13416020,
+    "release": 13416020
+  },
+  "bounds": {
+    "min": [
+      -48.8364,
+      -17.6696,
+      -47.9295
+    ],
+    "max": [
+      55.5,
+      37.65,
+      47.9295
+    ],
+    "size": [
+      104.3364,
+      55.3196,
+      95.859
+    ]
+  },
+  "lod": {
+    "lod0": {
+      "triangles": 62992,
+      "drawGroups": 5,
+      "materials": [
+        "Material_Accent",
+        "Material_Glass",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Warm"
+      ]
+    },
+    "lod1": {
+      "triangles": 27592,
+      "drawGroups": 5,
+      "materials": [
+        "Material_Accent",
+        "Material_Glass",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Warm"
+      ]
+    },
+    "lod2": {
+      "triangles": 8384,
+      "drawGroups": 5,
+      "materials": [
+        "Material_Accent",
+        "Material_Glass",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Warm"
+      ]
+    }
+  },
+  "export": {
+    "objectCount": 24,
+    "meshNodeCount": 16,
+    "lodMeshNodes": {
+      "lod0": 5,
+      "lod1": 5,
+      "lod2": 5
+    },
+    "collisionMeshNodes": 1,
+    "drawGroupsTriangulated": 15,
+    "nonTriangleDrawGroupFaces": 0
+  },
+  "weldedEdgeTopology": {
+    "positionPrecision": 0.000001,
+    "allDrawGroupsClosed": true,
+    "drawGroups": {
+      "LOD0_Station_Material_Hull": {
+        "vertices": 11052,
+        "weldedVertices": 11052,
+        "edges": 33030,
+        "badEdges": 0,
+        "edgeUseHistogram": {
+          "2": 33030
+        }
+      },
+      "LOD0_Station_Material_Mechanical": {
+        "vertices": 10464,
+        "weldedVertices": 10464,
+        "edges": 30792,
+        "badEdges": 0,
+        "edgeUseHistogram": {
+          "2": 30792
+        }
+      },
+      "LOD0_Station_Material_Warm": {
+        "vertices": 8992,
+        "weldedVertices": 8992,
+        "edges": 26436,
+        "badEdges": 0,
+        "edgeUseHistogram": {
+          "2": 26436
+        }
+      },
+      "LOD0_Station_Material_Glass": {
+        "vertices": 768,
+        "weldedVertices": 768,
+        "edges": 2256,
+        "badEdges": 0,
+        "edgeUseHistogram": {
+          "2": 2256
+        }
+      },
+      "LOD0_Station_Material_Accent": {
+        "vertices": 672,
+        "weldedVertices": 672,
+        "edges": 1974,
+        "badEdges": 0,
+        "edgeUseHistogram": {
+          "2": 1974
+        }
+      },
+      "LOD1_Station_Material_Hull": {
+        "vertices": 4152,
+        "weldedVertices": 4152,
+        "edges": 12330,
+        "badEdges": 0,
+        "edgeUseHistogram": {
+          "2": 12330
+        }
+      },
+      "LOD1_Station_Material_Mechanical": {
+        "vertices": 4404,
+        "weldedVertices": 4404,
+        "edges": 12768,
+        "badEdges": 0,
+        "edgeUseHistogram": {
+          "2": 12768
+        }
+      },
+      "LOD1_Station_Material_Warm": {
+        "vertices": 4992,
+        "weldedVertices": 4992,
+        "edges": 14508,
+        "badEdges": 0,
+        "edgeUseHistogram": {
+          "2": 14508
+        }
+      },
+      "LOD1_Station_Material_Glass": {
+        "vertices": 224,
+        "weldedVertices": 224,
+        "edges": 648,
+        "badEdges": 0,
+        "edgeUseHistogram": {
+          "2": 648
+        }
+      },
+      "LOD1_Station_Material_Accent": {
+        "vertices": 392,
+        "weldedVertices": 392,
+        "edges": 1134,
+        "badEdges": 0,
+        "edgeUseHistogram": {
+          "2": 1134
+        }
+      },
+      "LOD2_Station_Material_Hull": {
+        "vertices": 1404,
+        "weldedVertices": 1404,
+        "edges": 4086,
+        "badEdges": 0,
+        "edgeUseHistogram": {
+          "2": 4086
+        }
+      },
+      "LOD2_Station_Material_Mechanical": {
+        "vertices": 1716,
+        "weldedVertices": 1716,
+        "edges": 4746,
+        "badEdges": 0,
+        "edgeUseHistogram": {
+          "2": 4746
+        }
+      },
+      "LOD2_Station_Material_Warm": {
+        "vertices": 1104,
+        "weldedVertices": 1104,
+        "edges": 3084,
+        "badEdges": 0,
+        "edgeUseHistogram": {
+          "2": 3084
+        }
+      },
+      "LOD2_Station_Material_Glass": {
+        "vertices": 72,
+        "weldedVertices": 72,
+        "edges": 198,
+        "badEdges": 0,
+        "edgeUseHistogram": {
+          "2": 198
+        }
+      },
+      "LOD2_Station_Material_Accent": {
+        "vertices": 168,
+        "weldedVertices": 168,
+        "edges": 462,
+        "badEdges": 0,
+        "edgeUseHistogram": {
+          "2": 462
+        }
+      }
+    }
+  },
+  "materials": [
+    "Material_Hull",
+    "Material_Mechanical",
+    "Material_Accent",
+    "Material_Glass",
+    "Material_Warm"
+  ],
+  "frozenContract": {
+    "root": "SF_PLACE_CLAIM_OUTPOST_RELAY_ROOT",
+    "collision": "COLLISION_HULL",
+    "sockets": [
+      "SOCKET_Structure_Core",
+      "SOCKET_Dock_Approach",
+      "SOCKET_Emissive",
+      "SOCKET_Module_Depot",
+      "SOCKET_Module_Refinery",
+      "SOCKET_Module_Defense",
+      "SOCKET_Module_Teleporter"
+    ],
+    "verifiedUnchanged": true
+  },
+  "canonicalAssetsModified": true,
+  "validation": {
+    "binding": "assets/ships/m5_claim_outposts/evidence/place_claim_outpost_relay_material_truth_v2/validation/validation_binding.json",
+    "bindingSha256": "7197ecb2a8a2f478e662bcc38ff3d79bb2daa3e173dfef7f9882f9d99553d0ce",
+    "candidateSha256": "a8789308e39f733bc6565198b2afee0ba5fd106affc54a22dd7d30e40ac10a7a",
+    "candidateBytes": 13416020,
+    "foundryReportSha256": "32e6d7ec958a770f3cf21a9a4bb9687fcdc4494aff23b7294b7c5925fc5161b3",
+    "khronosReportSha256": "d8b661bd2395564a6907008073a1b9ff5fb807a2fa89042cd89cccf9c2bb1b5c"
+  },
+  "promotion": {
+    "stage": "canonical_source_and_release_published",
+    "acceptedCandidateSha256": "a8789308e39f733bc6565198b2afee0ba5fd106affc54a22dd7d30e40ac10a7a",
+    "liveSource": "assets/ships/parts/places/place_claim_outpost_relay.glb",
+    "liveSourceSha256": "57f6e1a42d0f1b259aada019e1960d1cbb4f81cbe0aaabfe66ed0248a8e206c9",
+    "liveSourceBytes": 13424076,
+    "packetSource": "assets/ships/m5_claim_outposts/source/places/place_claim_outpost_relay.glb",
+    "liveRelease": "assets/ships/release/parts/places/place_claim_outpost_relay.glb",
+    "liveReleaseSha256": "85b8d74e7719203766937289b2ed5756294c4a9d48612c0432c6f036644167a8",
+    "liveReleaseBytes": 3338672,
+    "releaseManifest": "assets/ships/release/release_manifest.json",
+    "releaseManifestSha256": "63c3a16762efcd3c745c6cd6d7ff66bb1600b586aadbfea5d843a83814e6cf95",
+    "releaseTextures": 15,
+    "releaseKtx2Textures": 15,
+    "releaseMeshoptBufferViews": 65,
+    "visualReview": "assets/ships/m5_claim_outposts/evidence/place_claim_outpost_relay_material_truth_v2/visual_review.json",
+    "visualReviewSha256": "48eb3102543a31cab6293ac0bce2ce87b8147662b980482887a679e39eeb39e2",
+    "releaseBuilder": "scripts/build-place-release-assets.mjs --ids place_claim_outpost_relay"
+  }
+}

@@ -1,0 +1,658 @@
+{
+  "assetId": "quaternius-ultimate-spaceships-pack",
+  "title": "Ultimate Spaceships Pack",
+  "creator": "Quaternius",
+  "releaseDate": "2021-05",
+  "advertisedModelCount": 10,
+  "mirroredNamedShipFolderCount": 11,
+  "acquiredAtUtc": "2026-07-12T21:49:13.3373883Z",
+  "officialPageUrl": "https://quaternius.com/packs/ultimatespaceships.html",
+  "officialDistributionUrl": "https://drive.google.com/drive/folders/1NpfT3wqe2k3Jwue2xryi7tzxP4bWzETu?usp=sharing",
+  "license": {
+    "id": "CC0-1.0",
+    "canonicalUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "legalCodeUrl": "https://creativecommons.org/publicdomain/zero/1.0/legalcode.txt",
+    "upstreamNotice": "source/License.txt",
+    "legalCodeSnapshot": {
+      "path": "LICENSE_CC0-1.0-LEGALCODE.txt",
+      "bytes": 7048,
+      "sha256": "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499"
+    }
+  },
+  "distribution": {
+    "upstreamForm": "Public Google Drive folder tree; no creator-supplied archive is published.",
+    "inventoryNote": "The official page advertises 10 models; the linked Drive currently contains 11 named ship folders, including Bob. The mirror preserves the linked distribution without deleting that extra folder.",
+    "preservation": "The source/ directory is an exact recursive mirror. Per-file SHA-256 values preserve the upstream snapshot without creating a misleading or GitHub-hostile duplicate archive.",
+    "fileCount": 122,
+    "totalBytes": 289031389
+  },
+  "recommendedRoleBases": {
+    "dart": {
+      "blend": "source/Insurgent/Blend/Insurgent.blend",
+      "gltf": "source/Insurgent/glTF/Insurgent.gltf",
+      "rationale": "Highest source topology in the pack and a compact spearhead silhouette."
+    },
+    "maul": {
+      "blend": "source/Pancake/Blend/Pancake.blend",
+      "gltf": "source/Pancake/glTF/Pancake.gltf",
+      "rationale": "Broad armored disc and center mass read cleanly as a brawler."
+    },
+    "hook": {
+      "blend": "source/Striker/Blend/Striker.blend",
+      "gltf": "source/Striker/glTF/Striker.gltf",
+      "rationale": "Dense topology with an unmistakable open-prong capture silhouette."
+    }
+  },
+  "files": [
+    {
+      "path": "source/Bob/Blend/Bob.blend",
+      "bytes": 3340612,
+      "sha256": "585306dbc663b20b180b24bfe0117c4340cdaae20b395227bdb2e8011c79a322"
+    },
+    {
+      "path": "source/Bob/Blend/Bob.blend1",
+      "bytes": 575892,
+      "sha256": "5fbf91ef55f9b7b42b4423f529cc8e5521bbf8504a0604a08638386c20cdee6a"
+    },
+    {
+      "path": "source/Bob/FBX/Bob.fbx",
+      "bytes": 40860,
+      "sha256": "52f442dd221cccd2ac927c80b96615cce2f14c0cd155eaf890411c4d78413ada"
+    },
+    {
+      "path": "source/Bob/OBJ/Bob.mtl",
+      "bytes": 232,
+      "sha256": "c9dfc22f912cb52e0892cd9b7d84d2d8b071d644dd052feda49bbf88e02fe420"
+    },
+    {
+      "path": "source/Bob/OBJ/Bob.obj",
+      "bytes": 70821,
+      "sha256": "381dfe713287a295b487e98400824ea938a0abb2e5a747212deae8e381389d07"
+    },
+    {
+      "path": "source/Bob/Textures/Bob_Blue.png",
+      "bytes": 2963343,
+      "sha256": "b570a1b436d13efcdff31dd14c970f1857bcf1ecf58491e48faf43c63fd4f4c2"
+    },
+    {
+      "path": "source/Bob/Textures/Bob_Green.png",
+      "bytes": 2802170,
+      "sha256": "4b0435586cd1cc7ac8cde7de26e989055864be0532230c1e334b6c1d7d951e43"
+    },
+    {
+      "path": "source/Bob/Textures/Bob_Orange.png",
+      "bytes": 2740499,
+      "sha256": "d65341b1c91903d53e3897b2b3387420eb3a9e56a67ffb731f73597527ca3c6e"
+    },
+    {
+      "path": "source/Bob/Textures/Bob_Purple.png",
+      "bytes": 2960431,
+      "sha256": "3c2c7d02aea377e30f528440f4c508100e7cc0c045ad7670f7dc71c6a5ac3bdf"
+    },
+    {
+      "path": "source/Bob/Textures/Bob_Red.png",
+      "bytes": 2636022,
+      "sha256": "98f1eec52ebca19fd30463e6d2c902199a2f5da9dd457d80eb003932ee639eec"
+    },
+    {
+      "path": "source/Bob/glTF/Bob.gltf",
+      "bytes": 3718805,
+      "sha256": "73f187cd1a11e487a1b20405bfa59d3d9f98ef4960ee64e3f062a7373aa095ad"
+    },
+    {
+      "path": "source/Challenger/Blend/Challenger.blend",
+      "bytes": 4167600,
+      "sha256": "d1ddfaff4457d3c7951896d761ccca2326922ad9e27dcf0d0afa1a6a37aa9311"
+    },
+    {
+      "path": "source/Challenger/Blend/Challenger.blend1",
+      "bytes": 4249400,
+      "sha256": "d102bbf54e4d28ce68f62973bba26fa409d4d1d6c24469ac4a0d0e5611a6d18f"
+    },
+    {
+      "path": "source/Challenger/FBX/Challenger.fbx",
+      "bytes": 60860,
+      "sha256": "4826fad0547aa6c9c1e8cef78d586b75821293231ab472030dce40f0ba2281a7"
+    },
+    {
+      "path": "source/Challenger/OBJ/Challenger.mtl",
+      "bytes": 239,
+      "sha256": "ac148f435a3d93680c6f127a445481e6effab2748d405a2d32276ea74acd57ca"
+    },
+    {
+      "path": "source/Challenger/OBJ/Challenger.obj",
+      "bytes": 121322,
+      "sha256": "b2ebff8cc25cac95cb9443a5f71c7a05f37b832878ceb4cb47b6e0aa80aa52b9"
+    },
+    {
+      "path": "source/Challenger/Textures/Challenger_Blue.png",
+      "bytes": 3771852,
+      "sha256": "774c507448a51864525d43600bbec28ab2e38673a4ca34a32b7425738b3c4906"
+    },
+    {
+      "path": "source/Challenger/Textures/Challenger_Green.png",
+      "bytes": 3609657,
+      "sha256": "53f804f81e2a6c7deac80ca481cb82d42ae793e4039a3966c11c24dbd8407bc4"
+    },
+    {
+      "path": "source/Challenger/Textures/Challenger_Orange.png",
+      "bytes": 3496229,
+      "sha256": "159d27e8d0644d5b5807fccb50206715fd45d66d95c8631dc222e1fe9cfd224b"
+    },
+    {
+      "path": "source/Challenger/Textures/Challenger_Purple.png",
+      "bytes": 3757223,
+      "sha256": "10d9d4c426feaf71ce9122598e4453de3ada8c7059b8f0a1a8fbc8d45e472ef8"
+    },
+    {
+      "path": "source/Challenger/Textures/Challenger_Red.png",
+      "bytes": 3291963,
+      "sha256": "ee0b4a065346e2ea18779e5875544078d7bf90f18fdc5d1bb6f6d89437c729fc"
+    },
+    {
+      "path": "source/Challenger/glTF/Challenger.gltf",
+      "bytes": 4769293,
+      "sha256": "c600b39fd587c323557c682e7aae2e976b62fff2984929163b7ee12a0e4323fd"
+    },
+    {
+      "path": "source/Dispatcher/Blend/Dispatcher.blend",
+      "bytes": 2916088,
+      "sha256": "2f07246a6d290310faade5dd6e0dc354eebf866e9aee0f20960879e94546b20e"
+    },
+    {
+      "path": "source/Dispatcher/Blend/Dispatcher.blend1",
+      "bytes": 2911968,
+      "sha256": "97bd2416e13422b57abf53eb0d0ef67c3dd000a92049d56e1edbb911201365a8"
+    },
+    {
+      "path": "source/Dispatcher/FBX/Dispatcher.fbx",
+      "bytes": 33196,
+      "sha256": "0ff0bd01f8a5d06b6394366e0e9e45eb14c75032fe8700dc107a3d7d13f7c2d5"
+    },
+    {
+      "path": "source/Dispatcher/OBJ/Dispatcher.mtl",
+      "bytes": 239,
+      "sha256": "2a324cd9287925a1ac3e04e150e6737e054d6f3e81b32da47b1c924e825ec718"
+    },
+    {
+      "path": "source/Dispatcher/OBJ/Dispatcher.obj",
+      "bytes": 51243,
+      "sha256": "86d4ea43b670a95a6cae4c1d7face9d4128fbfeb16f57e51ea9eab2bb00010b1"
+    },
+    {
+      "path": "source/Dispatcher/Textures/Dispatcher_Blue.png",
+      "bytes": 2536357,
+      "sha256": "52710365d069b317650dd80e6c1f0022d8e4ccc8b1f7dbf3fb0efcec78cb1efa"
+    },
+    {
+      "path": "source/Dispatcher/Textures/Dispatcher_Green.png",
+      "bytes": 2394321,
+      "sha256": "1037072b58a636113b70c8b981c75373b7b29dcc2db7847c882950e3eb013194"
+    },
+    {
+      "path": "source/Dispatcher/Textures/Dispatcher_Orange.png",
+      "bytes": 2329866,
+      "sha256": "0a0f80acff5d07ae8cc34d1fe1f45bcf44ffd40e1fba9916cf00397cb62f03a0"
+    },
+    {
+      "path": "source/Dispatcher/Textures/Dispatcher_Purple.png",
+      "bytes": 2511471,
+      "sha256": "6be26e684bfca740c7928e871529f1294b9e0b4efa162851ecb27837b8f45f01"
+    },
+    {
+      "path": "source/Dispatcher/Textures/Dispatcher_Red.png",
+      "bytes": 2230020,
+      "sha256": "95535f134b015ce8f20e9bc87b10db3819b4b671f2a42743ea56daa2856915aa"
+    },
+    {
+      "path": "source/Dispatcher/glTF/Dispatcher.gltf",
+      "bytes": 3165384,
+      "sha256": "e76c42a694ac602152ee0c8a897f6c79a894da716d22410838892df0d04e8d5c"
+    },
+    {
+      "path": "source/Executioner/Blend/Executioner.blend",
+      "bytes": 3886808,
+      "sha256": "372e312c08c8c2bc75656438ee0fbb9d8a354262c4b61625c1cb6323ccba9065"
+    },
+    {
+      "path": "source/Executioner/Blend/Executioner.blend1",
+      "bytes": 3135152,
+      "sha256": "f24fe0cd5f2b985eb8f54eb89df649a2c77b7601d3c80d8c865b7ffc3e181797"
+    },
+    {
+      "path": "source/Executioner/FBX/Executioner.fbx",
+      "bytes": 104940,
+      "sha256": "b92ba95948020c4e3a55ddad6b4417660a64b66ab9b7d35c936181ed8c5177a4"
+    },
+    {
+      "path": "source/Executioner/OBJ/Executioner.mtl",
+      "bytes": 240,
+      "sha256": "123f17d44e27feda7adad142e682d4fa566df2d7e965162ce07e32c518b72661"
+    },
+    {
+      "path": "source/Executioner/OBJ/Executioner.obj",
+      "bytes": 223346,
+      "sha256": "74ff008ff89f50b83c873d9c0e10fd3ff8e7b64091c3abb7208abb25b1f573a6"
+    },
+    {
+      "path": "source/Executioner/Textures/Executioner_Blue.png",
+      "bytes": 3308502,
+      "sha256": "abd0011470e8fd9c8e64ca085b244c4b38f117611b60230ec4b9d0fc34d79b4c"
+    },
+    {
+      "path": "source/Executioner/Textures/Executioner_Green.png",
+      "bytes": 3163038,
+      "sha256": "86ce35dc40ea76fb818146835a1fbd6ff777088060dcad288a786fc62793c3c3"
+    },
+    {
+      "path": "source/Executioner/Textures/Executioner_Orange.png",
+      "bytes": 3085644,
+      "sha256": "ab50ca81a14e88ea366c591d7f5d769cd0e41bcb0d4df1df5b931de4b3758cc5"
+    },
+    {
+      "path": "source/Executioner/Textures/Executioner_Purple.png",
+      "bytes": 3271043,
+      "sha256": "09ecc79158f66593b46e52885f05d00ffe96a9b44ccd1bb7311a13db92e69fdb"
+    },
+    {
+      "path": "source/Executioner/Textures/Executioner_Red.png",
+      "bytes": 2961089,
+      "sha256": "2b10363d811f45e1ad89e3e808d031ddbded91deb3107b142f84ec604dcd9879"
+    },
+    {
+      "path": "source/Executioner/glTF/Executioner.gltf",
+      "bytes": 4307283,
+      "sha256": "95dd08b854b0588480e91515949c5fd3e329ec856882e2b58b71e4cdc41348f9"
+    },
+    {
+      "path": "source/Imperial/Blend/Imperial.blend",
+      "bytes": 4028196,
+      "sha256": "47cfa5032e3eb6dd679c65a8157ec783ae94a0c45bbd45f7e3a90d6f6ae68fcc"
+    },
+    {
+      "path": "source/Imperial/FBX/Imperial.fbx",
+      "bytes": 84332,
+      "sha256": "5c741ac1d3296598553792ee22f687d59e43e7c2fbf46e5ad9c3fb20d5e8d614"
+    },
+    {
+      "path": "source/Imperial/OBJ/Imperial.mtl",
+      "bytes": 237,
+      "sha256": "b675c2cb703adf899803a2a5f105296c331e3a3e1427dd1ce69ff503b0d0c41e"
+    },
+    {
+      "path": "source/Imperial/OBJ/Imperial.obj",
+      "bytes": 174452,
+      "sha256": "711dc83eca1c3d9a490f829dede9ac9029af7e34ccdcd457c848b37f7bdf81f4"
+    },
+    {
+      "path": "source/Imperial/Textures/Imperial_Blue.png",
+      "bytes": 3526261,
+      "sha256": "0038383aff25a56437e7c8c39cd1f32d9e915723992a12772a7a5c86b4903a19"
+    },
+    {
+      "path": "source/Imperial/Textures/Imperial_Green.png",
+      "bytes": 3260287,
+      "sha256": "e2e1e204c3eaa8a99d31e3f16f3b701a36356dd71e554f6928ebbaae23aaf9f6"
+    },
+    {
+      "path": "source/Imperial/Textures/Imperial_Orange.png",
+      "bytes": 3284228,
+      "sha256": "3d3b3fb5120ec211308ac0602d21eb8433bc6b8ac88109d5c90a757cdc6df234"
+    },
+    {
+      "path": "source/Imperial/Textures/Imperial_Purple.png",
+      "bytes": 3501784,
+      "sha256": "6341492bde925bf9bb12c8cdd7ae47018a4ac523f62c2bf8e70b5ef22f662724"
+    },
+    {
+      "path": "source/Imperial/Textures/Imperial_Red.png",
+      "bytes": 3023116,
+      "sha256": "eb9d56bdbf8d66a2241ea7dfcf3c6c032e82844c99427466b05461e03bc876be"
+    },
+    {
+      "path": "source/Imperial/glTF/Imperial.gltf",
+      "bytes": 4559862,
+      "sha256": "389012d28270b859adb48ce12d1307af536f395ed734aafcb30f59ec8a9bb2e3"
+    },
+    {
+      "path": "source/Insurgent/Blend/Insurgent.blend",
+      "bytes": 3419528,
+      "sha256": "d192622eb71e25cf039031500e944988677fe8b2c365d91905980708ad1d6eb9"
+    },
+    {
+      "path": "source/Insurgent/Blend/Insurgent.blend1",
+      "bytes": 3415408,
+      "sha256": "8f658f4b095c84f03587ae8b69e4852499f9c9a119274184742898f6bbdd8a14"
+    },
+    {
+      "path": "source/Insurgent/FBX/Insurgent.fbx",
+      "bytes": 230588,
+      "sha256": "23454a2a079ed3729490d62e39063f37467853bdb494c46062da27bdf6060468"
+    },
+    {
+      "path": "source/Insurgent/OBJ/Insurgent.mtl",
+      "bytes": 238,
+      "sha256": "20604afe260458de3f0e621992ac332cbb068f72ff295c0907bb25c0b5c4ae66"
+    },
+    {
+      "path": "source/Insurgent/OBJ/Insurgent.obj",
+      "bytes": 518826,
+      "sha256": "4ed4e28d570958f844e756393f12298585592f5ec48487e0df283eae006bac28"
+    },
+    {
+      "path": "source/Insurgent/Textures/Insurgent_Blue.png",
+      "bytes": 2318252,
+      "sha256": "b2ee5dc67529ef613a24273eb53eba79f3e20437becacc1852d1c3c9c3c7fd9c"
+    },
+    {
+      "path": "source/Insurgent/Textures/Insurgent_Green.png",
+      "bytes": 2283742,
+      "sha256": "37e4b451743bfbd0d9a13c083fcb5489cc5d78ba5f2ce02001f497ad4db78985"
+    },
+    {
+      "path": "source/Insurgent/Textures/Insurgent_Orange.png",
+      "bytes": 2164364,
+      "sha256": "747cc0798c673cfeb8294cf70786f5028b655a8b7beeb67d107d48ed4a2716ed"
+    },
+    {
+      "path": "source/Insurgent/Textures/Insurgent_Purple.png",
+      "bytes": 2342032,
+      "sha256": "3e583128a8d6b1d6e3227b4d89d970fd5350d69c3f59bc71bea73267d0264420"
+    },
+    {
+      "path": "source/Insurgent/Textures/Insurgent_Red.png",
+      "bytes": 2198173,
+      "sha256": "2ddf152ec5f168ae2db053be7f4381a3e1645cf7d4755e4489c9b6673b32827d"
+    },
+    {
+      "path": "source/Insurgent/glTF/Insurgent.gltf",
+      "bytes": 3281521,
+      "sha256": "a6e75f658d4133bf8e96172a410b1daa8c3a8179f9c77b033f9d9cdaa04cb419"
+    },
+    {
+      "path": "source/License.txt",
+      "bytes": 364,
+      "sha256": "83d8959f9fc56353ed571fbe2dc52e4bcd64508e2399501cd45ac2ce3df0bf8c"
+    },
+    {
+      "path": "source/Omen/Blend/Omen.blend",
+      "bytes": 3888208,
+      "sha256": "0b6423cdd50e934e7d3eff169510398e4e687f9efa79deaa2ee4b88cb2c9985d"
+    },
+    {
+      "path": "source/Omen/Blend/Omen.blend1",
+      "bytes": 3888240,
+      "sha256": "8f3841769587aec285d2754c18d262ecabbf6d64ffeb6031d8901856e99c1169"
+    },
+    {
+      "path": "source/Omen/FBX/Omen.fbx",
+      "bytes": 53164,
+      "sha256": "74ae6b5bcff388d5bd8f043e2eb0510fee8a058d4dbbd44eee7aa9da196b9325"
+    },
+    {
+      "path": "source/Omen/OBJ/Omen.mtl",
+      "bytes": 233,
+      "sha256": "63f41114a390d162716fe3d23ba6deae6a4e52c5535f6b3e1dc54f82e793a515"
+    },
+    {
+      "path": "source/Omen/OBJ/Omen.obj",
+      "bytes": 99762,
+      "sha256": "5bd41892526834e9d67c77246495be10352dc25fce3b5679fda43bab80b029ce"
+    },
+    {
+      "path": "source/Omen/Textures/Omen_Blue.png",
+      "bytes": 3543674,
+      "sha256": "3e9c904bd18b231fb63684ef2636c10c8c397ea8178fb27a473e70c61210601d"
+    },
+    {
+      "path": "source/Omen/Textures/Omen_Green.png",
+      "bytes": 3401326,
+      "sha256": "cf0c0a7d658e5172ce322039e7470c674f24fc3b2938e91c9cc892865cb2db9a"
+    },
+    {
+      "path": "source/Omen/Textures/Omen_Orange.png",
+      "bytes": 3249126,
+      "sha256": "4925ba424ad828b1928926e057ca07232b7bfb7af8eb3542fa5e3d77d1d14648"
+    },
+    {
+      "path": "source/Omen/Textures/Omen_Purple.png",
+      "bytes": 3527941,
+      "sha256": "402b65f0e3cb6d530b30d1dcce3793e1b1c068ca00aa16703efcbf3b79461487"
+    },
+    {
+      "path": "source/Omen/Textures/Omen_Red.png",
+      "bytes": 3048813,
+      "sha256": "9c4bd98b4ff4608782a8862970cb400bea2053a06e1255ba42adce9827a8021f"
+    },
+    {
+      "path": "source/Omen/glTF/Omen.gltf",
+      "bytes": 4422595,
+      "sha256": "dd77f3f08d17227083b714d80cbc0d0470a6b44480003cca9051a53183571160"
+    },
+    {
+      "path": "source/Pancake/Blend/Pancake.blend",
+      "bytes": 4117940,
+      "sha256": "47b5faab38cdd8ea897a3837431d2826fbbea20e028bf51bb07888c23846b6a6"
+    },
+    {
+      "path": "source/Pancake/Blend/Pancake.blend1",
+      "bytes": 4117972,
+      "sha256": "c4f4697da09482e05dc36de51e01c4592de47eaf381720b1f5cb8f6a1fe7c241"
+    },
+    {
+      "path": "source/Pancake/FBX/Pancake.fbx",
+      "bytes": 99964,
+      "sha256": "b177f55861d17b532c8c39088ab0ec7a8203e0965328bc6962f1cb859d1b857b"
+    },
+    {
+      "path": "source/Pancake/OBJ/Pancake.mtl",
+      "bytes": 236,
+      "sha256": "2fa043534e03cedbcbf5b42dd97ff0394bd6e35ca2bbc852c1f03027a494a241"
+    },
+    {
+      "path": "source/Pancake/OBJ/Pancake.obj",
+      "bytes": 213186,
+      "sha256": "9f39fb5eb780b531f8259a949e29110ecbee71aae9fa093482e06f89f30b0e45"
+    },
+    {
+      "path": "source/Pancake/Textures/Pancake_Blue.png",
+      "bytes": 3632873,
+      "sha256": "c401ce586860cadfaa5a1a8df454c502364f0523ad38a5de69fc6b42f66135df"
+    },
+    {
+      "path": "source/Pancake/Textures/Pancake_Green.png",
+      "bytes": 3634244,
+      "sha256": "1993dc2f3f556a423183227baaeb0f7aae32b7acff5c3198419d14b9a0cfcf3c"
+    },
+    {
+      "path": "source/Pancake/Textures/Pancake_Orange.png",
+      "bytes": 3372112,
+      "sha256": "a34022dc922c43d8d4b25dcd31419a60fcedbac78a80e2ff782351087581ad9f"
+    },
+    {
+      "path": "source/Pancake/Textures/Pancake_Purple.png",
+      "bytes": 3604978,
+      "sha256": "26333c02c9b0e3114b9204ce697f0f26a16376da6e68d2030e658d2d85b90480"
+    },
+    {
+      "path": "source/Pancake/Textures/Pancake_Red.png",
+      "bytes": 3707193,
+      "sha256": "b4043e7e44feb8afb09da670089f8d2d80f0944344ae2155344d85e1125ba436"
+    },
+    {
+      "path": "source/Pancake/glTF/Pancake.gltf",
+      "bytes": 4670454,
+      "sha256": "0c17119ecfd0727236a7ec7886cec7b29eb08b5baea1b9bb4d8bf989f56da7c5"
+    },
+    {
+      "path": "source/Preview.jpg",
+      "bytes": 474607,
+      "sha256": "10c422905c82b5318f54d36496a5a22064ca61f67bebeed1e75ce64b6d0f18ea"
+    },
+    {
+      "path": "source/Spitfire/Blend/Spitfire.blend",
+      "bytes": 4195360,
+      "sha256": "4ee476e06586754fbb9057f00072fef26cf7c3a1040bc3ec3e57b3d856302d4b"
+    },
+    {
+      "path": "source/Spitfire/Blend/Spitfire.blend1",
+      "bytes": 4195360,
+      "sha256": "5d80347a6e6ef0705a19c0e509878593a21084b161f7a40a3d4af9c50566b81e"
+    },
+    {
+      "path": "source/Spitfire/FBX/Spitfire.fbx",
+      "bytes": 109004,
+      "sha256": "8eb075e450244605520ad34e1e978ecac86852c4b7f347bbe1642178206f5922"
+    },
+    {
+      "path": "source/Spitfire/OBJ/Spitfire.mtl",
+      "bytes": 237,
+      "sha256": "9a669d9b17272e8472d981362d4b69599f0f6da27f0f20193bd327670b074beb"
+    },
+    {
+      "path": "source/Spitfire/OBJ/Spitfire.obj",
+      "bytes": 235830,
+      "sha256": "89996b7c4cbdd647300a80993cd8ba9d56e02309675557f702cbdeb2d5043d3a"
+    },
+    {
+      "path": "source/Spitfire/Textures/Spitfire_Blue.png",
+      "bytes": 3655587,
+      "sha256": "59965e110e6ebe0a3f62120a42099b5d6107a9d1ad124afa1189b9bc1954f08d"
+    },
+    {
+      "path": "source/Spitfire/Textures/Spitfire_Green.png",
+      "bytes": 3529280,
+      "sha256": "a61ab4dc9a37dc267e8ca83a66737da11e82a8e495589173cd9d930419785b38"
+    },
+    {
+      "path": "source/Spitfire/Textures/Spitfire_Orange.png",
+      "bytes": 3382493,
+      "sha256": "8ace665482dba8dab915c25db3acd2045e8c29987cc2bc9b8b041feeff71aeb6"
+    },
+    {
+      "path": "source/Spitfire/Textures/Spitfire_Purple.png",
+      "bytes": 3644427,
+      "sha256": "9448c305b470bc05e1cc9075c0c8467bcc721760c2c93b73ff9137a5d2d00fa6"
+    },
+    {
+      "path": "source/Spitfire/Textures/Spitfire_Red.png",
+      "bytes": 3074190,
+      "sha256": "2f87a343f4e24d7b674eef89b01b4f0b3c46e7450109895f23cfd38ee5a2c7d7"
+    },
+    {
+      "path": "source/Spitfire/glTF/Spitfire.gltf",
+      "bytes": 4716363,
+      "sha256": "65df89a9a163ca1ce2d2ef253668b1b4e670f6903052fd566f54162ac5a92920"
+    },
+    {
+      "path": "source/Striker/Blend/Striker.blend",
+      "bytes": 2789540,
+      "sha256": "cc43254e4bb45657173b2f25ef2e99413217561b85b274e6616ddf10f1b16941"
+    },
+    {
+      "path": "source/Striker/Blend/Striker.blend1",
+      "bytes": 2785420,
+      "sha256": "cdf750a68add7fe6396631f7a6a16a30b4391186632516ba3909d2a95b48f85b"
+    },
+    {
+      "path": "source/Striker/FBX/Striker.fbx",
+      "bytes": 170412,
+      "sha256": "fe5453414b22265f36f59597bf46448977e16600349ccefc9bf61c605801ddfd"
+    },
+    {
+      "path": "source/Striker/OBJ/Striker.mtl",
+      "bytes": 236,
+      "sha256": "813dd98ed7cca2ea167804352df0ba13324c4b3990bf0a20f0f6154f1d02b41c"
+    },
+    {
+      "path": "source/Striker/OBJ/Striker.obj",
+      "bytes": 345849,
+      "sha256": "0f3ba504f07d57a5a3dae64357ee82ba60361e121f46eb6beb1635cea74baf1f"
+    },
+    {
+      "path": "source/Striker/Textures/Striker_Blue.png",
+      "bytes": 1986107,
+      "sha256": "38b2477b43a1253a15a3bdf4eec3473d334f9c281049b6cb7daeea265a955435"
+    },
+    {
+      "path": "source/Striker/Textures/Striker_Green.png",
+      "bytes": 1853910,
+      "sha256": "dce34ff1048c3a2837e77088dd12f382a47e17f55525747ba4e8eece11db4f38"
+    },
+    {
+      "path": "source/Striker/Textures/Striker_Orange.png",
+      "bytes": 1841630,
+      "sha256": "bb5070f7db34206d4e17fb2b3003c77d60681437ad752beb924e731a40cc9391"
+    },
+    {
+      "path": "source/Striker/Textures/Striker_Purple.png",
+      "bytes": 1999262,
+      "sha256": "3506f0eeab7f56bfa35b4696549735bad4f1d119615ffec37649f82b3b23513c"
+    },
+    {
+      "path": "source/Striker/Textures/Striker_Red.png",
+      "bytes": 1800723,
+      "sha256": "43dfa2597eb1bae1db209686be0ef6cf12e307aa50a5c55d2e04341b3c356255"
+    },
+    {
+      "path": "source/Striker/glTF/Striker.gltf",
+      "bytes": 2704340,
+      "sha256": "2f6c4b1d16f11d5ce02833c5841ff17e19700418c83e52501ed29e3c2bc79359"
+    },
+    {
+      "path": "source/Zenith/Blend/Zenith.blend",
+      "bytes": 4061888,
+      "sha256": "039f1aefc21f833a093c02b7d1378836984868d4b988033bf76c97672a51b63f"
+    },
+    {
+      "path": "source/Zenith/Blend/Zenith.blend1",
+      "bytes": 4061888,
+      "sha256": "c44f55ac9a6fade7d26261d5afdaedeb8512b310190ebad3fd67fa793ded238e"
+    },
+    {
+      "path": "source/Zenith/FBX/Zenith.fbx",
+      "bytes": 70172,
+      "sha256": "2e55f536254632502c0ec14a0b543c4004c52cbb1e56d8fef391f6d115f5156a"
+    },
+    {
+      "path": "source/Zenith/OBJ/Zenith.mtl",
+      "bytes": 235,
+      "sha256": "7d8890e0bde257ff43927b68ec4901cc86dcb913a634ef15a588150bac10d744"
+    },
+    {
+      "path": "source/Zenith/OBJ/Zenith.obj",
+      "bytes": 155223,
+      "sha256": "7ae305f04e661d0b417717b995aab84faa16be96da97a212cedbb8781e7f3eb3"
+    },
+    {
+      "path": "source/Zenith/Textures/Zenith_Blue.png",
+      "bytes": 3603013,
+      "sha256": "7d6d2bd79849ee4489d25043d212d05049442385e5928badacc8c755b77b28c6"
+    },
+    {
+      "path": "source/Zenith/Textures/Zenith_Green.png",
+      "bytes": 3390270,
+      "sha256": "ad805254bad55f021f3fdf1ea7478f2d10ea8470d3df967c276ad274280885b0"
+    },
+    {
+      "path": "source/Zenith/Textures/Zenith_Orange.png",
+      "bytes": 3360176,
+      "sha256": "849b8fae59d57487ca05a1652a8aa92f874a223f80004de373d1b604b3cf67f9"
+    },
+    {
+      "path": "source/Zenith/Textures/Zenith_Purple.png",
+      "bytes": 3534573,
+      "sha256": "440d3d9aad9c121597c261996e1a3cf7ecc81e26981f4d335a92dc7abb4946cc"
+    },
+    {
+      "path": "source/Zenith/Textures/Zenith_Red.png",
+      "bytes": 3111098,
+      "sha256": "cb74137aaee950547bbc03ed722b16305cd95cef726eed179d8aa40389f156ea"
+    },
+    {
+      "path": "source/Zenith/glTF/Zenith.gltf",
+      "bytes": 4610098,
+      "sha256": "bba4e0f5774da3d459ad69855045909fea9b173849ed50993134073241ed613b"
+    }
+  ]
+}

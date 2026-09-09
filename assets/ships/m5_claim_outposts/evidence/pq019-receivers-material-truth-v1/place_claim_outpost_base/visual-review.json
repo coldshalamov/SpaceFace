@@ -1,0 +1,287 @@
+{
+  "schema": "spaceface.claimOutpostReceiverFacilityMaterialTruthVisualReview.v1",
+  "dispatchUnit": "PQ-019.receiver-facility-reauthor",
+  "assetId": "place_claim_outpost_base",
+  "candidateId": "receiver_facility_material_truth_v1",
+  "scope": "whole_asset",
+  "exactFinalVisualBinding": true,
+  "reviewedCandidateEvidenceSufficient": true,
+  "implementationDisposition": "integration_candidate",
+  "openP0P1Defects": [],
+  "verdict": {
+    "G1": "KEEP",
+    "G2": "KEEP",
+    "G4": "KEEP"
+  },
+  "notes": {
+    "reviewer": "fable-w2-pq019",
+    "date": "2026-08-10",
+    "summary": "Lawful catcher reads as open capture fork with rooted jaws/load path and partial impound; institutional cool shell separated from mechanical rails without emission.",
+    "residuals": [
+      "Surfaces remain modular panel-assembly grammar rather than fully continuous hard-surface shell plating.",
+      "Generated maps are deterministic substrate response, not hand-authored wear photography.",
+      "Phase B promotion and Phase C release/runtime/H1 route recapture remain separate."
+    ]
+  },
+  "buildReport": {
+    "path": "assets/ships/m5_claim_outposts/evidence/pq019-receivers-material-truth-v1/build-report.json",
+    "bytes": 54578,
+    "sha256": "ba2ef8da7ffb692bb6f9e9bdcdd301e5e32c1cb33b0921309fbe04f48d9c607f"
+  },
+  "renderReport": {
+    "path": "assets/ships/m5_claim_outposts/evidence/pq019-receivers-material-truth-v1/render-report.json",
+    "bytes": 88581,
+    "sha256": "eb93b24449dc9a8b4d5d4a8e98cb667f076e21e0b6d29ee4479c4259b91f3336"
+  },
+  "validationBinding": {
+    "path": "assets/ships/m5_claim_outposts/evidence/pq019-receivers-material-truth-v1/place_claim_outpost_base/validation/validation-binding.json",
+    "bytes": 1372,
+    "sha256": "d89cb91e7b4f2c47c1a5efd88ea92dace93de03bbb164c30752815aa0ba5ba28"
+  },
+  "renderProvenance": {
+    "path": "tools/blender/render_claim_outpost_receiver_facility_material_truth_v1.py",
+    "bytes": 22528,
+    "sha256": "90676eb7430f066827bf864121970c8094dbf19877ab472fe2b6cfa9410bcb6f"
+  },
+  "builderProvenance": {
+    "path": "tools/blender/build_claim_outpost_receiver_facility_material_truth_v1.py",
+    "bytes": 64728,
+    "sha256": "1c2a65654464eb664f143c06056039509f4cb39754c4bd38e76dae405e6f6b74"
+  },
+  "reviewedCandidate": {
+    "blend": {
+      "path": "assets/ships/m5_claim_outposts/blender/place_claim_outpost_base_receiver_facility_material_truth_v1.blend",
+      "bytes": 1540039,
+      "sha256": "96c6fee0e053e4693a81e2f71ba5a23d8595099deee449d03615e7b851f6ac72"
+    },
+    "source": {
+      "path": "assets/ships/m5_claim_outposts/source_candidates/receiver_facility_material_truth_v1/places/place_claim_outpost_base.glb",
+      "bytes": 6485232,
+      "sha256": "9f60b09ce57a6eaafdd29f9b2e7a71e91ee54367520d490d30fd90f95ce86f5c"
+    },
+    "releaseCandidate": {
+      "path": "assets/ships/m5_claim_outposts/release_candidates/receiver_facility_material_truth_v1/places/place_claim_outpost_base.glb",
+      "bytes": 6485232,
+      "sha256": "9f60b09ce57a6eaafdd29f9b2e7a71e91ee54367520d490d30fd90f95ce86f5c"
+    }
+  },
+  "technicalCandidate": {
+    "blend": {
+      "path": "assets/ships/m5_claim_outposts/blender/place_claim_outpost_base_receiver_facility_material_truth_v1.blend",
+      "bytes": 1540039,
+      "sha256": "96c6fee0e053e4693a81e2f71ba5a23d8595099deee449d03615e7b851f6ac72"
+    },
+    "source": {
+      "path": "assets/ships/m5_claim_outposts/source_candidates/receiver_facility_material_truth_v1/places/place_claim_outpost_base.glb",
+      "bytes": 6485232,
+      "sha256": "9f60b09ce57a6eaafdd29f9b2e7a71e91ee54367520d490d30fd90f95ce86f5c"
+    },
+    "releaseCandidate": {
+      "path": "assets/ships/m5_claim_outposts/release_candidates/receiver_facility_material_truth_v1/places/place_claim_outpost_base.glb",
+      "bytes": 6485232,
+      "sha256": "9f60b09ce57a6eaafdd29f9b2e7a71e91ee54367520d490d30fd90f95ce86f5c"
+    }
+  },
+  "evidence": [
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/pq019-receivers-material-truth-v1/place_claim_outpost_base/baseline/surface_front_three_quarter.png",
+      "bytes": 1978804,
+      "sha256": "54c33f166f3d28da15e2f3af6810c7d3908dee8e58383c1cce79bc7eea55b4a3"
+    },
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/pq019-receivers-material-truth-v1/place_claim_outpost_base/baseline/surface_rear_three_quarter.png",
+      "bytes": 1980432,
+      "sha256": "e6c1bbfcfd184fc9937004e0ef42c92497c1f0179d6ec2e33a5d14e8d2157722"
+    },
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/pq019-receivers-material-truth-v1/place_claim_outpost_base/baseline/surface_service_side.png",
+      "bytes": 1870286,
+      "sha256": "804b35cec11f95181f102dd6113ac99e36dfa89369c620be68395b1940a69c98"
+    },
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/pq019-receivers-material-truth-v1/place_claim_outpost_base/baseline/surface_top_load_path.png",
+      "bytes": 1959142,
+      "sha256": "7d27e46a02cbbc6c13cc7f9bb58a5a2659980117429984bef53d1585139957ac"
+    },
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/pq019-receivers-material-truth-v1/place_claim_outpost_base/baseline/surface_role_close.png",
+      "bytes": 2058733,
+      "sha256": "5aeeae749d8ac3e44db358a772a0c0d75355d50c46d5d9f239c1f51a46731c25"
+    },
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/pq019-receivers-material-truth-v1/place_claim_outpost_base/baseline/surface_dock_axis.png",
+      "bytes": 1903537,
+      "sha256": "1bf0af78be85bd01a1eac702e79ae746bcc3f9dddd5a911cb1742c7f88d182b8"
+    },
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/pq019-receivers-material-truth-v1/place_claim_outpost_base/baseline/clay_front_three_quarter.png",
+      "bytes": 1953436,
+      "sha256": "472594de02d0f1316573ffeecfce2cebb329c5672cf1021522e5b380a7e1dbd0"
+    },
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/pq019-receivers-material-truth-v1/place_claim_outpost_base/baseline/clay_rear_three_quarter.png",
+      "bytes": 1971658,
+      "sha256": "54659f2efed2f2bba0e30b2d1b7bf6595c2880838c47174ebb35a539aeb4d53d"
+    },
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/pq019-receivers-material-truth-v1/place_claim_outpost_base/baseline/clay_service_side.png",
+      "bytes": 1899215,
+      "sha256": "64214e47aabbbee7ea59cc6d539c9cd47c3a92aace942439f4d19166c70cc757"
+    },
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/pq019-receivers-material-truth-v1/place_claim_outpost_base/baseline/clay_top_load_path.png",
+      "bytes": 2016433,
+      "sha256": "90aff4809c0b6ea1621b55e0f0b2768542f5584df0dfbe2dc51b775af7246212"
+    },
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/pq019-receivers-material-truth-v1/place_claim_outpost_base/baseline/clay_role_close.png",
+      "bytes": 1985579,
+      "sha256": "d2d7cbe6fa49e9b8757dac662961924b0203021a9f0f49443e9bf233795af2a7"
+    },
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/pq019-receivers-material-truth-v1/place_claim_outpost_base/baseline/clay_dock_axis.png",
+      "bytes": 1909645,
+      "sha256": "0a02eb6c819b0b249d3d4b415cbfe263f4fabd03338e021c968358b14fc60e5c"
+    },
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/pq019-receivers-material-truth-v1/place_claim_outpost_base/baseline/hard_grazing.png",
+      "bytes": 1706267,
+      "sha256": "323a8acd485e26cf76b91380e6b9ebd72607fc19ba41e0d9145036b4208fef9f"
+    },
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/pq019-receivers-material-truth-v1/place_claim_outpost_base/baseline/material_id.png",
+      "bytes": 1975156,
+      "sha256": "96aa30e489e7a2d62a50021e2535ba723b1507b4d622283a88b179a40eff2f0b"
+    },
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/pq019-receivers-material-truth-v1/place_claim_outpost_base/baseline/emissive_off.png",
+      "bytes": 2056778,
+      "sha256": "2d36a4f936ecea5d7e10e2bd957f281177dab6a37623eb94a5606ef9b47d54f8"
+    },
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/pq019-receivers-material-truth-v1/place_claim_outpost_base/baseline/lod1_front_three_quarter.png",
+      "bytes": 1971853,
+      "sha256": "6c7010211e6ff3e675fa7f5004597305b8e5c45d64ab00f404421c8d30c44258"
+    },
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/pq019-receivers-material-truth-v1/place_claim_outpost_base/baseline/lod2_front_three_quarter.png",
+      "bytes": 1952405,
+      "sha256": "7b6cc987ffbb1bca02f08af1f4cfce6a62858c9f1e0caf478b4f8b47edfaa8a3"
+    },
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/pq019-receivers-material-truth-v1/place_claim_outpost_base/baseline/runtime_close.png",
+      "bytes": 1820555,
+      "sha256": "21474ad40ee0e43de435e82b28ecdfd6657964ad3e239cb07d46d92dfb74322e"
+    },
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/pq019-receivers-material-truth-v1/place_claim_outpost_base/baseline/runtime_default.png",
+      "bytes": 1803299,
+      "sha256": "08c1e464edaba0753cba3c0f55a749706643913e17bbecf8b0fa2bc7341b6d18"
+    },
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/pq019-receivers-material-truth-v1/place_claim_outpost_base/baseline/runtime_far.png",
+      "bytes": 1787368,
+      "sha256": "5219f7ab0c0fa8dd5faeacdfb513d4c023b4fc38e67ca1dd6800e7f3ebdaee46"
+    },
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/pq019-receivers-material-truth-v1/place_claim_outpost_base/candidate/surface_front_three_quarter.png",
+      "bytes": 2016329,
+      "sha256": "c02c5f9b92c1bda2bbb3c840e9225dbc7fbc17faef7e345c6f1d2b1a9d84723a"
+    },
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/pq019-receivers-material-truth-v1/place_claim_outpost_base/candidate/surface_rear_three_quarter.png",
+      "bytes": 2017804,
+      "sha256": "83a72daa096048d532a5490fce8d2bd08e74a214ead8b5a3d24feb548fdd8f06"
+    },
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/pq019-receivers-material-truth-v1/place_claim_outpost_base/candidate/surface_service_side.png",
+      "bytes": 1903077,
+      "sha256": "ee9dd31e02d77ab545ed9f9906c0a95b0e807b5ffd675f193ebca7acb623b039"
+    },
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/pq019-receivers-material-truth-v1/place_claim_outpost_base/candidate/surface_top_load_path.png",
+      "bytes": 1958585,
+      "sha256": "3f53992464500e30f5b8a2e502bb3434a8e7c9366420010b65c5f50943dd6b3c"
+    },
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/pq019-receivers-material-truth-v1/place_claim_outpost_base/candidate/surface_role_close.png",
+      "bytes": 2116233,
+      "sha256": "9b36b4cd8bfeba676c7e9ee5ff43df1e8fb1b689fca4c3491828305e47788e51"
+    },
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/pq019-receivers-material-truth-v1/place_claim_outpost_base/candidate/surface_dock_axis.png",
+      "bytes": 1912496,
+      "sha256": "ff5bc5c0ab6a1f835d784f3379214036a00c6bcd1fb0e29e057b9330cc7776cc"
+    },
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/pq019-receivers-material-truth-v1/place_claim_outpost_base/candidate/clay_front_three_quarter.png",
+      "bytes": 2036377,
+      "sha256": "32307e09baff951d2693efb3aef347103c1439e9bf8ffd11f3d063cf2e7bd8ea"
+    },
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/pq019-receivers-material-truth-v1/place_claim_outpost_base/candidate/clay_rear_three_quarter.png",
+      "bytes": 2026119,
+      "sha256": "43b079f69e6cd10237fe49bf3edeca35086222fd3f4c884e655f9f454d5f97ed"
+    },
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/pq019-receivers-material-truth-v1/place_claim_outpost_base/candidate/clay_service_side.png",
+      "bytes": 1932952,
+      "sha256": "5e5d1e6f6352f1676bfc2e25872a2af95c296dcd03a0ca9b6ce416bd1b96a29b"
+    },
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/pq019-receivers-material-truth-v1/place_claim_outpost_base/candidate/clay_top_load_path.png",
+      "bytes": 2004922,
+      "sha256": "ce514e42f41ea38c31e30f833e643b1e8f331c60217da9cf1e3cf152f0d08b9e"
+    },
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/pq019-receivers-material-truth-v1/place_claim_outpost_base/candidate/clay_role_close.png",
+      "bytes": 2091336,
+      "sha256": "7fd9f61f105c704f60f1ff7f0194444e36381d09f7fc8adf3bdb169dc13a3baa"
+    },
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/pq019-receivers-material-truth-v1/place_claim_outpost_base/candidate/clay_dock_axis.png",
+      "bytes": 1952319,
+      "sha256": "ac6b6192010ab103678f1d0497f19ddf843f8036234091a10560766bc4cb70db"
+    },
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/pq019-receivers-material-truth-v1/place_claim_outpost_base/candidate/hard_grazing.png",
+      "bytes": 1761356,
+      "sha256": "19c5703ef2ef5a3f38d29e1d7bc7e77b846325ad405e663470e9f0bd85e0e5be"
+    },
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/pq019-receivers-material-truth-v1/place_claim_outpost_base/candidate/material_id.png",
+      "bytes": 2066262,
+      "sha256": "e2e7c9d97f27038d02b1f71e0dcf6ad8c2dfcea8730a38bbd7fb945631218961"
+    },
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/pq019-receivers-material-truth-v1/place_claim_outpost_base/candidate/emissive_off.png",
+      "bytes": 2116233,
+      "sha256": "cb615272142b282a6c59f7daae5996a21757b23e756ff6373e81da68874b99bc"
+    },
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/pq019-receivers-material-truth-v1/place_claim_outpost_base/candidate/lod1_front_three_quarter.png",
+      "bytes": 2016722,
+      "sha256": "ee236972388d0741812e00f37a8c0ca3fc9c4bf5cc27fa17e0c354fb367975c2"
+    },
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/pq019-receivers-material-truth-v1/place_claim_outpost_base/candidate/lod2_front_three_quarter.png",
+      "bytes": 1992012,
+      "sha256": "4e7ce76dcb438948da16d71e186a0520bb72239b6dcdf901bdc81d93f2760565"
+    },
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/pq019-receivers-material-truth-v1/place_claim_outpost_base/candidate/runtime_close.png",
+      "bytes": 1832993,
+      "sha256": "0bf2f9f8ed04fed585639111deca7309ab36c633b7b10bf516ef8e9a0bddc19d"
+    },
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/pq019-receivers-material-truth-v1/place_claim_outpost_base/candidate/runtime_default.png",
+      "bytes": 1810069,
+      "sha256": "7e87317336053428a2fff887920b57077202724a8b1727c8099cdfd88687a790"
+    },
+    {
+      "path": "assets/ships/m5_claim_outposts/evidence/pq019-receivers-material-truth-v1/place_claim_outpost_base/candidate/runtime_far.png",
+      "bytes": 1787368,
+      "sha256": "ef838b924c1c6646207874350891a277570cde332dcc7ea3c1fc3b0a95769dc2"
+    }
+  ]
+}

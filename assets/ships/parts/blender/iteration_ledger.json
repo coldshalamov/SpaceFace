@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "promotions": {
+    "place_station_trade_hub": {
+      "concept_sha256": "14d1ac9dc976ab2875af668c96c1bdfccb43ec39cd0f1be690c928a59515b892",
+      "glb_sha256": "1d62a98de199db09dc9851a31213f4018ce10e8a877467353cb2e5a1fc5571ce",
+      "blend_mtime": 1783731044591.5571,
+      "silhouette_iou": 0.402704,
+      "align": {
+        "dx": 6,
+        "dy": -6,
+        "flip": false
+      },
+      "promoted_at": "2026-07-11T00:59:13.009Z",
+      "min_iou_gate": 0.12,
+      "note": "asset-transaction-repair hooks+reexport",
+      "updated": "2026-07-11T03:18:18.522Z"
+    },
+    "place_station_refinery": {
+      "concept_sha256": "53f31286e35a7f0e76c120169938713d560be1c1c807798ea017e7647d2b9d56",
+      "glb_sha256": "718fbd41a40801c47f8bc584d46627083180c0009d679912e674fd28a10f7197",
+      "blend_mtime": 1783203245277.861,
+      "silhouette_iou": 0.7372,
+      "align": {
+        "dx": 6,
+        "dy": 0,
+        "flip": false
+      },
+      "promoted_at": "2026-07-05T01:01:17.669Z",
+      "min_iou_gate": 0.12
+    },
+    "place_station_military": {
+      "concept_sha256": "ec2ba083b9d0ed78be1e4d9079e7069e581ebed26858c46ffb9161e401ac0593",
+      "glb_sha256": "f1bab8b2670f1ec92147b7db51f0bb27a95b11c75b08defa10dedbbfe61cefbe",
+      "blend_mtime": 1783203351507.166,
+      "silhouette_iou": 0.3916,
+      "align": {
+        "dx": -3,
+        "dy": 3,
+        "flip": true
+      },
+      "promoted_at": "2026-07-05T01:01:17.899Z",
+      "min_iou_gate": 0.12
+    },
+    "place_station_blackmarket": {
+      "concept_sha256": "5eb6acb0493f548d8b9e538cd0a329bbd74893476be8bd55bf8628229dd3d703",
+      "glb_sha256": "d6732e15a6b290d066232b10d94efeb9d0b51a6986abe642f5c396875b8f8ca6",
+      "blend_mtime": 1783208094717.8206,
+      "silhouette_iou": 0.4688,
+      "align": {
+        "dx": -5,
+        "dy": -3,
+        "flip": true
+      },
+      "promoted_at": "2026-07-05T01:01:18.175Z",
+      "min_iou_gate": 0.12
+    },
+    "place_gate_jump_ring": {
+      "concept_sha256": "1203fc66395b42cf6e24629d587ef6d6cb35464bc8406c2d83b8e2301561b9e3",
+      "glb_sha256": "e2d5103fc309da17598988a154091d0070274744ae70bd6adf7bd30727dcfcc1",
+      "blend_mtime": 1783731486023.2925,
+      "silhouette_iou": 0.32556,
+      "align": {
+        "dx": 6,
+        "dy": -6,
+        "flip": true
+      },
+      "promoted_at": "2026-07-11T01:24:00.000Z",
+      "min_iou_gate": 0.12,
+      "note": "asset-transaction-repair hooks+reexport",
+      "updated": "2026-07-11T03:18:18.734Z"
+    }
+  }
+}

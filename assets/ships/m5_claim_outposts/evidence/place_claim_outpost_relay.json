@@ -1,0 +1,143 @@
+{
+  "schema": "spaceface.claimOutpostBuild.v1",
+  "packet": "M5-CLAIM-OUTPOST-VISUAL-GROWTH-001",
+  "family": "player_claim_growth_family",
+  "assetId": "place_claim_outpost_relay",
+  "claimSpecId": "spec_relay",
+  "title": "Trade Relay Claim — material-truth V2",
+  "source": "assets/ships/m5_claim_outposts/source/places/place_claim_outpost_relay.glb",
+  "blend": "assets/ships/m5_claim_outposts/blender/place_claim_outpost_relay_material_truth_v2.blend",
+  "bytes": 13424076,
+  "lod": {
+    "lod0": {
+      "triangles": 62992,
+      "drawGroups": 5,
+      "materials": [
+        "Material_Accent",
+        "Material_Glass",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Warm"
+      ]
+    },
+    "lod1": {
+      "triangles": 27592,
+      "drawGroups": 5,
+      "materials": [
+        "Material_Accent",
+        "Material_Glass",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Warm"
+      ]
+    },
+    "lod2": {
+      "triangles": 8384,
+      "drawGroups": 5,
+      "materials": [
+        "Material_Accent",
+        "Material_Glass",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Warm"
+      ]
+    }
+  },
+  "aabb": {
+    "min": [
+      -48.8364,
+      -17.6696,
+      -47.9295
+    ],
+    "max": [
+      55.5,
+      37.65,
+      47.9295
+    ],
+    "size": [
+      104.3364,
+      55.3196,
+      95.859
+    ]
+  },
+  "materials": [
+    "Material_Accent",
+    "Material_Glass",
+    "Material_Hull",
+    "Material_Mechanical",
+    "Material_Warm"
+  ],
+  "metadata": {
+    "contractVersion": 1,
+    "assetId": "SF_PLACE_CLAIM_OUTPOST_RELAY",
+    "partId": "place_claim_outpost_relay",
+    "liveId": "place_claim_outpost_relay",
+    "slot": "place",
+    "forward": "+X",
+    "up": "+Y",
+    "starboard": "+Z",
+    "unit": "metre",
+    "normalConvention": "OpenGL",
+    "ormChannels": "R=AO,G=Roughness,B=Metallic",
+    "textureCompression": "PNG-source",
+    "textureSize": 1024,
+    "chamfered": true,
+    "bevelRadiusM": 0.05,
+    "family": "player_claim_growth_family",
+    "packet": "M5-CLAIM-OUTPOST-VISUAL-GROWTH-001",
+    "role": "spec_relay",
+    "title": "Trade Relay Claim",
+    "kind": "claim_outpost",
+    "deliverableRole": "production_multi_lod",
+    "lods": [
+      "lod0",
+      "lod1",
+      "lod2"
+    ],
+    "triangleCount": 62992,
+    "lodTriangles": {
+      "lod0": 62992,
+      "lod1": 27592,
+      "lod2": 8384
+    },
+    "drawGroupsPerLod": {
+      "lod0": 5,
+      "lod1": 5,
+      "lod2": 5
+    },
+    "lod0AabbSize": [
+      104.3364,
+      55.3196,
+      95.859
+    ],
+    "wiringStatus": "production_source",
+    "builder": "tools/blender/build_claim_outpost_relay_material_truth_v2.py",
+    "category": "places",
+    "priority": "P0",
+    "acceptedCandidateId": "material_truth_v2",
+    "acceptedCandidateSha256": "a8789308e39f733bc6565198b2afee0ba5fd106affc54a22dd7d30e40ac10a7a",
+    "sourceBlend": "assets/ships/m5_claim_outposts/blender/place_claim_outpost_relay_material_truth_v2.blend",
+    "sourceBlendSha256": "7B069F78A8FF289B32705FB0614E156E24E37FF4A0D432CC57CBC6D8040D810F",
+    "promoter": "tools/art/promote_claim_outpost_relay_material_truth_v2.mjs",
+    "visualReview": "assets/ships/m5_claim_outposts/evidence/place_claim_outpost_relay_material_truth_v2/visual_review.json",
+    "visualReviewSha256": "48eb3102543a31cab6293ac0bce2ce87b8147662b980482887a679e39eeb39e2",
+    "visualVerdict": {
+      "G1": "KEEP",
+      "G2": "KEEP",
+      "G4": "KEEP",
+      "scope": "lineage_bound_authoring_review",
+      "reviewedSourceSha256": "242748956EC90AD328E6CABAA52823FEFF213C3C6FA17A9E1FD4920F022A76E3",
+      "exactFinalVisualBinding": false,
+      "nextGate": "PQ-022.relay-reauthor-h1 then PQ-022.relay-reauthor-review"
+    }
+  },
+  "builtAt": "2026-08-04T07:55:17Z",
+  "sha256": "57f6e1a42d0f1b259aada019e1960d1cbb4f81cbe0aaabfe66ed0248a8e206c9",
+  "canonical": "assets/ships/parts/places/place_claim_outpost_relay.glb",
+  "acceptedCandidate": {
+    "path": "assets/ships/m5_claim_outposts/source_candidates/material_truth_v2/places/place_claim_outpost_relay.glb",
+    "sha256": "a8789308e39f733bc6565198b2afee0ba5fd106affc54a22dd7d30e40ac10a7a",
+    "visualReview": "assets/ships/m5_claim_outposts/evidence/place_claim_outpost_relay_material_truth_v2/visual_review.json",
+    "visualReviewSha256": "48eb3102543a31cab6293ac0bce2ce87b8147662b980482887a679e39eeb39e2"
+  }
+}

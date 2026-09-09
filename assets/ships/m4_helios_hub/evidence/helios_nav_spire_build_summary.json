@@ -1,0 +1,421 @@
+{
+  "id": "helios_nav_spire",
+  "assetId": "SF_PLACE_HELIOS_NAV_SPIRE",
+  "partId": "place_nav_buoy",
+  "liveId": "place_nav_buoy",
+  "title": "Helios Nav Spire",
+  "role": "nav_landmark",
+  "kind": "prop",
+  "ok": true,
+  "elapsedSec": 105.08,
+  "sourceGlb": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/source/places/helios_nav_spire.glb",
+  "productionBlend": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/blender/helios_nav_spire_production.blend",
+  "sourceBytes": 3777968,
+  "sourceSha256": "74639DCDB07714E5918E07893DBA076A2C25FBAF65E866883A3931EB5767372A",
+  "totalTriangles": 2038,
+  "hullTriangles": 926,
+  "lod0Triangles": 1296,
+  "sockets": [
+    "SOCKET_Structure_Core"
+  ],
+  "materials": [
+    "Material_Accent",
+    "Material_Hull",
+    "Material_Mechanical",
+    "Material_Warm"
+  ],
+  "collisionCoverageMin": 0.9200000024932662,
+  "lod0WithinBudget": true,
+  "renderCount": 10,
+  "renders": [
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/evidence/renders/helios_nav_spire/helios_nav_spire_forward_34.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/evidence/renders/helios_nav_spire/helios_nav_spire_readability_close.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/evidence/renders/helios_nav_spire/helios_nav_spire_readability_120px.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/evidence/renders/helios_nav_spire/helios_nav_spire_readability_under45px.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/evidence/renders/helios_nav_spire/helios_nav_spire_rear_34.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/evidence/renders/helios_nav_spire/helios_nav_spire_side_ortho.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/evidence/renders/helios_nav_spire/helios_nav_spire_gamesky_forward_34.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/evidence/renders/helios_nav_spire/helios_nav_spire_lod_continuity_lod0.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/evidence/renders/helios_nav_spire/helios_nav_spire_lod_continuity_lod1.png",
+    "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/evidence/renders/helios_nav_spire/helios_nav_spire_lod_continuity_lod2.png"
+  ],
+  "export": {
+    "file": "C:/Users/93rob/Documents/GitHub/SpaceFace/assets/ships/m4_helios_hub/source/places/helios_nav_spire.glb",
+    "bytes": 3777968,
+    "sha256": "74639DCDB07714E5918E07893DBA076A2C25FBAF65E866883A3931EB5767372A",
+    "totalTriangles": 2038,
+    "hullTriangles": 926,
+    "lodBreakdown": {
+      "lod0": {
+        "triangles": 1296,
+        "primitives": 5,
+        "drawEstimate": 5,
+        "nodes": [
+          {
+            "name": "COLLISION_HULL",
+            "tris": 12
+          },
+          {
+            "name": "LOD0_HOOK_EMISSIVE",
+            "tris": 68
+          },
+          {
+            "name": "LOD0_Merged_Material_Hull",
+            "tris": 580
+          },
+          {
+            "name": "LOD0_Merged_Material_Mechanical",
+            "tris": 216
+          },
+          {
+            "name": "LOD0_Merged_Material_Warm",
+            "tris": 420
+          }
+        ]
+      },
+      "lod1": {
+        "triangles": 520,
+        "primitives": 4,
+        "drawEstimate": 4,
+        "nodes": [
+          {
+            "name": "LOD1_HOOK_EMISSIVE",
+            "tris": 28
+          },
+          {
+            "name": "LOD1_Merged_Material_Hull",
+            "tris": 242
+          },
+          {
+            "name": "LOD1_Merged_Material_Mechanical",
+            "tris": 90
+          },
+          {
+            "name": "LOD1_Merged_Material_Warm",
+            "tris": 160
+          }
+        ]
+      },
+      "lod2": {
+        "triangles": 222,
+        "primitives": 4,
+        "drawEstimate": 4,
+        "nodes": [
+          {
+            "name": "LOD2_HOOK_EMISSIVE",
+            "tris": 12
+          },
+          {
+            "name": "LOD2_Merged_Material_Hull",
+            "tris": 104
+          },
+          {
+            "name": "LOD2_Merged_Material_Mechanical",
+            "tris": 38
+          },
+          {
+            "name": "LOD2_Merged_Material_Warm",
+            "tris": 68
+          }
+        ]
+      }
+    },
+    "sockets": [
+      "SOCKET_Structure_Core"
+    ],
+    "materials": [
+      "Material_Accent",
+      "Material_Hull",
+      "Material_Mechanical",
+      "Material_Warm"
+    ],
+    "primitiveCount": 13,
+    "tangentPrimitiveCount": 13,
+    "uvPrimitiveCount": 13,
+    "lod0Aabb": {
+      "min": [
+        -1.399999976158142,
+        -5.0,
+        -1.399999976158142
+      ],
+      "max": [
+        1.5749999284744263,
+        10.300000190734863,
+        1.399999976158142
+      ],
+      "size": [
+        2.9749999046325684,
+        15.300000190734863,
+        2.799999952316284
+      ],
+      "center": [
+        0.08749997615814209,
+        2.6500000953674316,
+        0.0
+      ]
+    },
+    "collisionAabb": {
+      "min": [
+        -1.368499994277954,
+        -7.038000106811523,
+        -1.2879999876022339
+      ],
+      "max": [
+        1.368499994277954,
+        7.038000106811523,
+        1.2879999876022339
+      ],
+      "size": [
+        2.736999988555908,
+        14.076000213623047,
+        2.5759999752044678
+      ],
+      "center": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "collisionCoverageRatio": {
+      "perAxis": [
+        0.9200000256450245,
+        0.9200000024932662,
+        0.9200000068119595
+      ],
+      "min": 0.9200000024932662,
+      "mean": 0.9200000116500834
+    },
+    "images": [
+      {
+        "name": "accent_normal",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "accent_orm",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "accent_basecolor",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "hull_normal",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "hull_orm",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "hull_basecolor",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "mechanical_normal",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "mechanical_orm",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "mechanical_basecolor",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "warm_normal",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "warm_orm",
+        "mimeType": "image/png"
+      },
+      {
+        "name": "warm_basecolor",
+        "mimeType": "image/png"
+      }
+    ],
+    "spacefaceAsset": {
+      "contractVersion": 1,
+      "assetId": "SF_PLACE_HELIOS_NAV_SPIRE",
+      "slot": "place",
+      "forward": "+X",
+      "up": "+Y",
+      "starboard": "+Z",
+      "unit": "metre",
+      "normalConvention": "OpenGL",
+      "ormChannels": "R=AO,G=Roughness,B=Metallic",
+      "textureCompression": "PNG-source",
+      "textureSize": 1024,
+      "chamfered": true,
+      "bevelRadiusM": 0.05,
+      "partId": "place_nav_buoy",
+      "liveId": "place_nav_buoy",
+      "category": "places",
+      "sourceRole": "place-environment",
+      "packet": "M4-HELIOS-HUB-ENV-VISUAL-FAMILY-001",
+      "family": "helios_hub_env",
+      "role": "nav_landmark",
+      "title": "Helios Nav Spire",
+      "kind": "prop",
+      "triangleCount": 2038,
+      "hullTriangleCount": 926,
+      "deliverableRole": "production_multi_lod",
+      "lods": [
+        "lod0",
+        "lod1",
+        "lod2"
+      ],
+      "wiringStatus": "candidate_pending_promote",
+      "lod0AabbSize": [
+        2.9749999046325684,
+        15.300000190734863,
+        2.799999952316284
+      ],
+      "collisionBounds": {
+        "min": [
+          -1.368499994277954,
+          -7.038000106811523,
+          -1.2879999876022339
+        ],
+        "max": [
+          1.368499994277954,
+          7.038000106811523,
+          1.2879999876022339
+        ],
+        "size": [
+          2.736999988555908,
+          14.076000213623047,
+          2.5759999752044678
+        ],
+        "center": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "collisionCoverageRatio": {
+        "perAxis": [
+          0.9200000256450245,
+          0.9200000024932662,
+          0.9200000068119595
+        ],
+        "min": 0.9200000024932662,
+        "mean": 0.9200000116500834
+      },
+      "triBudget": 3000
+    },
+    "lodBuildStats": [
+      {
+        "lod": "lod0",
+        "decimateRatio": 1.0,
+        "mergedMeshes": [
+          "LOD0_Merged_Material_Hull",
+          "LOD0_Merged_Material_Warm",
+          "LOD0_Merged_Material_Mechanical"
+        ],
+        "separateMeshes": [
+          "LOD0_HOOK_EMISSIVE"
+        ],
+        "removedCloseOnly": [],
+        "triangles": 1284,
+        "objectCount": 4
+      },
+      {
+        "lod": "lod1",
+        "decimateRatio": 0.42,
+        "mergedMeshes": [
+          "LOD1_Merged_Material_Hull",
+          "LOD1_Merged_Material_Warm",
+          "LOD1_Merged_Material_Mechanical"
+        ],
+        "separateMeshes": [
+          "LOD1_HOOK_EMISSIVE"
+        ],
+        "removedCloseOnly": [
+          "Chevron_0",
+          "Chevron_1",
+          "Chevron_2"
+        ],
+        "triangles": 520,
+        "objectCount": 4
+      },
+      {
+        "lod": "lod2",
+        "decimateRatio": 0.18,
+        "mergedMeshes": [
+          "LOD2_Merged_Material_Hull",
+          "LOD2_Merged_Material_Warm",
+          "LOD2_Merged_Material_Mechanical"
+        ],
+        "separateMeshes": [
+          "LOD2_HOOK_EMISSIVE"
+        ],
+        "removedCloseOnly": [
+          "Chevron_0",
+          "Chevron_1",
+          "Chevron_2"
+        ],
+        "triangles": 222,
+        "objectCount": 4
+      }
+    ],
+    "withinBudget": true,
+    "lod0WithinBudget": true
+  },
+  "lodStats": [
+    {
+      "lod": "lod0",
+      "decimateRatio": 1.0,
+      "mergedMeshes": [
+        "LOD0_Merged_Material_Hull",
+        "LOD0_Merged_Material_Warm",
+        "LOD0_Merged_Material_Mechanical"
+      ],
+      "separateMeshes": [
+        "LOD0_HOOK_EMISSIVE"
+      ],
+      "removedCloseOnly": [],
+      "triangles": 1284,
+      "objectCount": 4
+    },
+    {
+      "lod": "lod1",
+      "decimateRatio": 0.42,
+      "mergedMeshes": [
+        "LOD1_Merged_Material_Hull",
+        "LOD1_Merged_Material_Warm",
+        "LOD1_Merged_Material_Mechanical"
+      ],
+      "separateMeshes": [
+        "LOD1_HOOK_EMISSIVE"
+      ],
+      "removedCloseOnly": [
+        "Chevron_0",
+        "Chevron_1",
+        "Chevron_2"
+      ],
+      "triangles": 520,
+      "objectCount": 4
+    },
+    {
+      "lod": "lod2",
+      "decimateRatio": 0.18,
+      "mergedMeshes": [
+        "LOD2_Merged_Material_Hull",
+        "LOD2_Merged_Material_Warm",
+        "LOD2_Merged_Material_Mechanical"
+      ],
+      "separateMeshes": [
+        "LOD2_HOOK_EMISSIVE"
+      ],
+      "removedCloseOnly": [
+        "Chevron_0",
+        "Chevron_1",
+        "Chevron_2"
+      ],
+      "triangles": 222,
+      "objectCount": 4
+    }
+  ]
+}

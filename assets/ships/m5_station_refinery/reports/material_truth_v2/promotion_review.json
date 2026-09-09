@@ -1,0 +1,65 @@
+{
+  "schema": "spaceface.pq022RefineryPromotionReview.v1",
+  "packet": "PQ-022",
+  "dispatchUnit": "PQ-022.refinery-reauthor",
+  "candidateId": "pq022-refinery-material-truth-v2",
+  "assetId": "place_station_refinery",
+  "decision": "KEEP",
+  "candidate": {
+    "path": "assets/ships/m5_station_refinery/source_candidates/material_truth_v2/places/place_station_refinery.glb",
+    "sha256": "49d6a50f24fdbb01a29d64f944a6171dd281f1b1800e0d4e045411b69b4538ed",
+    "bytes": 23088208
+  },
+  "renderManifest": {
+    "path": "assets/ships/m5_station_refinery/reports/material_truth_v2/render_manifest.json",
+    "sha256": "5eb1422a75150e7a7675940c76911ed29877fc89151388b09885df59c3d24051",
+    "bytes": 3411
+  },
+  "reviewer": {
+    "kind": "solo_integrator",
+    "id": "codex-primary",
+    "evidenceBound": true
+  },
+  "views": [
+    {
+      "path": "assets/ships/m5_station_refinery/reports/material_truth_v2/renders/process_three_quarter.png",
+      "sha256": "81e8a5a354bb6ba4bce4b3cdad2166e91ac01cc4b985a3500387cf487b89623e",
+      "bytes": 1554603,
+      "decision": "KEEP"
+    },
+    {
+      "path": "assets/ships/m5_station_refinery/reports/material_truth_v2/renders/feed_three_quarter.png",
+      "sha256": "315214d462efdccde8ec89f5cd9904579d13f6e4ea00b41337098c986a88aaf6",
+      "bytes": 1522391,
+      "decision": "KEEP"
+    },
+    {
+      "path": "assets/ships/m5_station_refinery/reports/material_truth_v2/renders/side_process.png",
+      "sha256": "16856c4c18072b222f47fb5595d49234620390d3b5a8e2edbe0b0fdb751cb192",
+      "bytes": 1471990,
+      "decision": "KEEP"
+    },
+    {
+      "path": "assets/ships/m5_station_refinery/reports/material_truth_v2/renders/top_flow.png",
+      "sha256": "5e9e2d99ebdbb050cfb39140178dc3d4ddf5993e4499e59106a4d1e8f86527bd",
+      "bytes": 1439788,
+      "decision": "KEEP"
+    },
+    {
+      "path": "assets/ships/m5_station_refinery/reports/material_truth_v2/renders/process_three_quarter_emissive_off.png",
+      "sha256": "60860d4507ce45cba0a8997459ff7ce75c819fc21a1f519fd7333b7a4cc4334a",
+      "bytes": 1553418,
+      "decision": "KEEP"
+    }
+  ],
+  "gates": {
+    "G1": "KEEP",
+    "G2": "KEEP",
+    "G4": "KEEP",
+    "emissive": "KEEP"
+  },
+  "claims": {
+    "routeEvidence": false,
+    "performanceEvidence": false
+  }
+}

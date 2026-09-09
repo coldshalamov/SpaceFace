@@ -1,0 +1,297 @@
+{
+  "spacefaceCandidate": {
+    "path": "assets/ships/m5_station_refinery/source_candidates/material_truth_v2/places/place_station_refinery.glb",
+    "sha256": "49d6a50f24fdbb01a29d64f944a6171dd281f1b1800e0d4e045411b69b4538ed",
+    "bytes": 23088208
+  },
+  "bbox": {
+    "dims": [
+      103.1,
+      55.5,
+      86.8325
+    ],
+    "max": [
+      59,
+      30.5,
+      28.7325
+    ],
+    "min": [
+      -44.1,
+      -25,
+      -58.1
+    ]
+  },
+  "drawGroups": {
+    "meshes": [
+      {
+        "name": "COLLISION_HULL_Mesh",
+        "primitives": 1
+      },
+      {
+        "name": "LOD0_Station_Material_Accent_Mesh",
+        "primitives": 1
+      },
+      {
+        "name": "LOD0_Station_Material_Glass_Mesh",
+        "primitives": 1
+      },
+      {
+        "name": "LOD0_Station_Material_Hull_Mesh",
+        "primitives": 1
+      },
+      {
+        "name": "LOD0_Station_Material_Mechanical_Mesh",
+        "primitives": 1
+      },
+      {
+        "name": "LOD0_Station_Material_Warm_Mesh",
+        "primitives": 1
+      },
+      {
+        "name": "LOD1_Station_Material_Accent_Mesh",
+        "primitives": 1
+      },
+      {
+        "name": "LOD1_Station_Material_Glass_Mesh",
+        "primitives": 1
+      },
+      {
+        "name": "LOD1_Station_Material_Hull_Mesh",
+        "primitives": 1
+      },
+      {
+        "name": "LOD1_Station_Material_Mechanical_Mesh",
+        "primitives": 1
+      },
+      {
+        "name": "LOD1_Station_Material_Warm_Mesh",
+        "primitives": 1
+      },
+      {
+        "name": "LOD2_Station_Material_Accent_Mesh",
+        "primitives": 1
+      },
+      {
+        "name": "LOD2_Station_Material_Glass_Mesh",
+        "primitives": 1
+      },
+      {
+        "name": "LOD2_Station_Material_Hull_Mesh",
+        "primitives": 1
+      },
+      {
+        "name": "LOD2_Station_Material_Mechanical_Mesh",
+        "primitives": 1
+      },
+      {
+        "name": "LOD2_Station_Material_Warm_Mesh",
+        "primitives": 1
+      }
+    ],
+    "primitiveCount": 16
+  },
+  "extensionsUsed": [
+    "KHR_materials_clearcoat",
+    "KHR_materials_ior",
+    "KHR_materials_transmission"
+  ],
+  "file": "place_station_refinery.glb",
+  "geometry": {
+    "primitives": 16,
+    "tangentPrimitives": 16,
+    "tangentsPresent": true,
+    "uvSets": [
+      0
+    ]
+  },
+  "materials": {
+    "count": 5,
+    "usage": {
+      "Material_Accent": 3,
+      "Material_Glass": 3,
+      "Material_Hull": 3,
+      "Material_Mechanical": 4,
+      "Material_Warm": 3
+    }
+  },
+  "nodeNames": [
+    "COLLISION_HULL",
+    "LOD0_Station_Material_Accent",
+    "LOD0_Station_Material_Glass",
+    "LOD0_Station_Material_Hull",
+    "LOD0_Station_Material_Mechanical",
+    "LOD0_Station_Material_Warm",
+    "LOD1_Station_Material_Accent",
+    "LOD1_Station_Material_Glass",
+    "LOD1_Station_Material_Hull",
+    "LOD1_Station_Material_Mechanical",
+    "LOD1_Station_Material_Warm",
+    "LOD2_Station_Material_Accent",
+    "LOD2_Station_Material_Glass",
+    "LOD2_Station_Material_Hull",
+    "LOD2_Station_Material_Mechanical",
+    "LOD2_Station_Material_Warm",
+    "SF_PLACE_STATION_REFINERY_ROOT",
+    "SOCKET_Dock_Approach",
+    "SOCKET_Emissive",
+    "SOCKET_Structure_Core"
+  ],
+  "textures": [
+    {
+      "colorSpaceRole": "sRGB",
+      "mimeType": "image/png",
+      "name": "refinery_chalk_ceramic_basecolor",
+      "resolution": "512x512",
+      "slots": [
+        "baseColorTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "refinery_chalk_ceramic_normal",
+      "resolution": "512x512",
+      "slots": [
+        "normalTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "refinery_chalk_ceramic_orm",
+      "resolution": "512x512",
+      "slots": [
+        "occlusionTexture",
+        "metallicRoughnessTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "sRGB",
+      "mimeType": "image/png",
+      "name": "refinery_control_glass_basecolor",
+      "resolution": "512x512",
+      "slots": [
+        "baseColorTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "refinery_control_glass_normal",
+      "resolution": "512x512",
+      "slots": [
+        "normalTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "refinery_control_glass_orm",
+      "resolution": "512x512",
+      "slots": [
+        "occlusionTexture",
+        "metallicRoughnessTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "sRGB",
+      "mimeType": "image/png",
+      "name": "refinery_process_alloy_basecolor",
+      "resolution": "512x512",
+      "slots": [
+        "baseColorTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "refinery_process_alloy_normal",
+      "resolution": "512x512",
+      "slots": [
+        "normalTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "refinery_process_alloy_orm",
+      "resolution": "512x512",
+      "slots": [
+        "occlusionTexture",
+        "metallicRoughnessTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "sRGB",
+      "mimeType": "image/png",
+      "name": "refinery_structural_coat_basecolor",
+      "resolution": "512x512",
+      "slots": [
+        "baseColorTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "refinery_structural_coat_normal",
+      "resolution": "512x512",
+      "slots": [
+        "normalTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "refinery_structural_coat_orm",
+      "resolution": "512x512",
+      "slots": [
+        "occlusionTexture",
+        "metallicRoughnessTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "sRGB",
+      "mimeType": "image/png",
+      "name": "refinery_thermal_oxide_basecolor",
+      "resolution": "512x512",
+      "slots": [
+        "baseColorTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "refinery_thermal_oxide_normal",
+      "resolution": "512x512",
+      "slots": [
+        "normalTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "refinery_thermal_oxide_orm",
+      "resolution": "512x512",
+      "slots": [
+        "occlusionTexture",
+        "metallicRoughnessTexture"
+      ]
+    }
+  ],
+  "transforms": {
+    "nodeCount": 20,
+    "nonAppliedCount": 2,
+    "nonAppliedNodes": [
+      "SOCKET_Dock_Approach",
+      "SOCKET_Emissive"
+    ]
+  },
+  "tris": 171136,
+  "verdict": {
+    "budget": null,
+    "class": "scenery",
+    "failures": [],
+    "pass": true,
+    "warnings": []
+  }
+}

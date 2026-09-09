@@ -1,0 +1,89 @@
+{
+  "schema": "spaceface.masslineExpressLiner.cycle.v1",
+  "assetId": "SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1",
+  "shipId": "massline_express_liner_v1",
+  "cycle": 28,
+  "blend": "blender/massline_express_liner_v1.blend",
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 33364,
+      "hullTriangles": 14836,
+      "draws": 9,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/massline_express_liner_v1_lod0.glb",
+      "bytes": 7442280,
+      "sha256": "9B58037FE56CAF805D646B9B8C8BCEDAC6FFD8EFED3387C633ACE56BDD7D061E"
+    },
+    {
+      "lod": 1,
+      "triangles": 25332,
+      "hullTriangles": 14836,
+      "draws": 9,
+      "materials": [
+        "Material_Accent.001",
+        "Material_Armor.001",
+        "Material_Canopy.001",
+        "Material_Ceramic.001",
+        "Material_Hull.001",
+        "Material_Mechanical.001",
+        "Material_Radiator.001",
+        "Material_Thruster.001",
+        "Material_Warning.001"
+      ],
+      "path": "source/wholeships/massline_express_liner_v1_lod1.glb",
+      "bytes": 6330640,
+      "sha256": "338D6273594694299AE24ED939DC9DD791439521F04CD7BDA0F523D892426D9B"
+    },
+    {
+      "lod": 2,
+      "triangles": 5863,
+      "hullTriangles": 2455,
+      "draws": 7,
+      "materials": [
+        "Material_Accent.002",
+        "Material_Armor.002",
+        "Material_Ceramic.002",
+        "Material_Hull.002",
+        "Material_Mechanical.002",
+        "Material_Radiator.002",
+        "Material_Thruster.002"
+      ],
+      "path": "source/wholeships/massline_express_liner_v1_lod2.glb",
+      "bytes": 2994880,
+      "sha256": "F6D243F646C574594F986D6C7AB205995E4C39E23F6D34EF18188D290C02088B"
+    }
+  ],
+  "stills": "evidence/massline_express_liner_v1/cycles/cycle_28",
+  "cameras": {
+    "play_chase": {
+      "distance": 144.0,
+      "heading": 0,
+      "fov": 50,
+      "tilt": 60
+    },
+    "play_chase_abeam": {
+      "distance": 144.0,
+      "heading": 90,
+      "fov": 50,
+      "tilt": 60
+    },
+    "play_chase_close": {
+      "distance": 58.0,
+      "heading": 0,
+      "fov": 50,
+      "tilt": 60
+    }
+  },
+  "notes": "Source candidate only. Not wired to traffic, manifests, or partsLibrary."
+}

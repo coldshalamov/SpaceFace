@@ -1,0 +1,434 @@
+{
+  "schema": "spaceface.openingConveyorBargeRemaster.v1",
+  "status": "candidate-not-promoted",
+  "source": {
+    "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\blender\\place_conveyor_barge_authored.blend",
+    "sha256": "110013BE63B564FEF4969BE858BCF5235EB83CF49211670A784D035523BECA1C"
+  },
+  "surfaceManifest": {
+    "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\opening_route_props\\textures\\opening_infra_v1\\surface-map-build.json",
+    "sha256": "C7A121C63DC9C0D83F90FF9B81A92F9BBEDBCF2F9C2724F98E04C194729465A4"
+  },
+  "outputs": {
+    "blend": {
+      "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\opening_route_props\\blender\\source\\conveyor_barge_v1\\place_conveyor_barge.blend",
+      "sha256": "DB336C8540A36A18D3DFE0129206EAB58035EF53D43C1FE28D8CF29F6654A6EC"
+    },
+    "glb": {
+      "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\opening_route_props\\source_candidates\\conveyor_barge_v1\\places\\place_conveyor_barge.glb",
+      "sha256": "73EA777E194EB0C32B13D25C7151ADEA28E5E3C27886A8009B4D82DE77750BFA"
+    }
+  },
+  "preservedContract": {
+    "sourceBounds": {
+      "min": [
+        -2.5,
+        -9.0,
+        -2.0
+      ],
+      "max": [
+        70.175,
+        9.0,
+        8.0
+      ],
+      "size": [
+        72.675,
+        18.0,
+        10.0
+      ]
+    },
+    "candidateBounds": {
+      "min": [
+        -2.5699996948242188,
+        -9.050707817077637,
+        -2.0
+      ],
+      "max": [
+        70.2750015258789,
+        9.050707817077637,
+        8.02500057220459
+      ],
+      "size": [
+        72.84500122070312,
+        18.101415634155273,
+        10.02500057220459
+      ]
+    },
+    "relativeSizeDrift": [
+      0.0023391980832903727,
+      0.005634201897515191,
+      0.0025000572204589844
+    ],
+    "minimumCornerDriftM": [
+      0.06999969482421875,
+      0.05070781707763672,
+      0.0
+    ],
+    "markers": {
+      "place_conveyor_barge": {
+        "location": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "parent": null
+      },
+      "SOCKET_Trail_Main": {
+        "location": [
+          -2.5,
+          -0.0,
+          2.200000047683716
+        ],
+        "parent": "place_conveyor_barge"
+      },
+      "HOOK_DRIVE_PLUME": {
+        "location": [
+          -2.5,
+          -0.0,
+          2.200000047683716
+        ],
+        "parent": "place_conveyor_barge"
+      },
+      "HOOK_Emissive": {
+        "location": [
+          26.0,
+          0.0,
+          6.199999809265137
+        ],
+        "parent": "place_conveyor_barge"
+      },
+      "Barge_Bridge": {
+        "location": [
+          44.0,
+          0.0,
+          5.5
+        ],
+        "parent": "place_conveyor_barge"
+      },
+      "Barge_Container_12.0": {
+        "location": [
+          12.0,
+          0.0,
+          5.0
+        ],
+        "parent": "place_conveyor_barge"
+      },
+      "Barge_Container_22.0": {
+        "location": [
+          22.0,
+          0.0,
+          5.0
+        ],
+        "parent": "place_conveyor_barge"
+      },
+      "Barge_Container_32.0": {
+        "location": [
+          32.0,
+          0.0,
+          5.0
+        ],
+        "parent": "place_conveyor_barge"
+      },
+      "Barge_Status_-7.5": {
+        "location": [
+          44.0,
+          7.5,
+          0.0
+        ],
+        "parent": "HOOK_Emissive"
+      },
+      "Barge_Status_7.5": {
+        "location": [
+          44.0,
+          -7.5,
+          0.0
+        ],
+        "parent": "HOOK_Emissive"
+      }
+    },
+    "meshHierarchy": {
+      "LOD0_Barge_Material_Accent": "HOOK_Emissive",
+      "LOD0_Barge_Material_Container": "place_conveyor_barge",
+      "LOD0_Barge_Material_Deck": "place_conveyor_barge",
+      "LOD0_Barge_Material_Drive": "HOOK_DRIVE_PLUME",
+      "LOD0_Barge_Material_Glass": "HOOK_Emissive",
+      "LOD0_Barge_Material_Hull": "place_conveyor_barge",
+      "LOD0_Barge_Material_Radiator": "place_conveyor_barge",
+      "LOD0_Barge_Material_Safety": "place_conveyor_barge",
+      "LOD0_Barge_Material_Structure": "place_conveyor_barge",
+      "LOD1_Barge_Material_Accent": "HOOK_Emissive",
+      "LOD1_Barge_Material_Container": "place_conveyor_barge",
+      "LOD1_Barge_Material_Deck": "place_conveyor_barge",
+      "LOD1_Barge_Material_Drive": "HOOK_DRIVE_PLUME",
+      "LOD1_Barge_Material_Glass": "HOOK_Emissive",
+      "LOD1_Barge_Material_Hull": "place_conveyor_barge",
+      "LOD1_Barge_Material_Radiator": "place_conveyor_barge",
+      "LOD1_Barge_Material_Safety": "place_conveyor_barge",
+      "LOD1_Barge_Material_Structure": "place_conveyor_barge",
+      "LOD2_Barge_Material_Accent": "HOOK_Emissive",
+      "LOD2_Barge_Material_Container": "place_conveyor_barge",
+      "LOD2_Barge_Material_Deck": "place_conveyor_barge",
+      "LOD2_Barge_Material_Drive": "HOOK_DRIVE_PLUME",
+      "LOD2_Barge_Material_Glass": "HOOK_Emissive",
+      "LOD2_Barge_Material_Hull": "place_conveyor_barge",
+      "LOD2_Barge_Material_Radiator": "place_conveyor_barge",
+      "LOD2_Barge_Material_Safety": "place_conveyor_barge",
+      "LOD2_Barge_Material_Structure": "place_conveyor_barge"
+    }
+  },
+  "materials": [
+    {
+      "name": "Material_Hull",
+      "textureRole": "barge_painted_hull"
+    },
+    {
+      "name": "Material_Structure",
+      "textureRole": "barge_structural_alloy"
+    },
+    {
+      "name": "Material_Deck",
+      "textureRole": "barge_deck_grip"
+    },
+    {
+      "name": "Material_Drive",
+      "textureRole": "barge_machine_casing"
+    },
+    {
+      "name": "Material_Glass",
+      "textureRole": "barge_bridge_glass"
+    },
+    {
+      "name": "Material_Radiator",
+      "textureRole": "barge_radiator"
+    },
+    {
+      "name": "Material_Safety",
+      "textureRole": "barge_safety_marking"
+    },
+    {
+      "name": "Material_Container",
+      "textureRole": "barge_container_shell"
+    },
+    {
+      "name": "Material_Accent",
+      "textureRole": "barge_nav_optic"
+    }
+  ],
+  "lod": {
+    "lod0": {
+      "triangles": 15760,
+      "drawGroups": 9,
+      "objects": [
+        "LOD0_Barge_Material_Accent",
+        "LOD0_Barge_Material_Container",
+        "LOD0_Barge_Material_Deck",
+        "LOD0_Barge_Material_Drive",
+        "LOD0_Barge_Material_Glass",
+        "LOD0_Barge_Material_Hull",
+        "LOD0_Barge_Material_Radiator",
+        "LOD0_Barge_Material_Safety",
+        "LOD0_Barge_Material_Structure"
+      ]
+    },
+    "lod1": {
+      "triangles": 11640,
+      "drawGroups": 9,
+      "objects": [
+        "LOD1_Barge_Material_Accent",
+        "LOD1_Barge_Material_Container",
+        "LOD1_Barge_Material_Deck",
+        "LOD1_Barge_Material_Drive",
+        "LOD1_Barge_Material_Glass",
+        "LOD1_Barge_Material_Hull",
+        "LOD1_Barge_Material_Radiator",
+        "LOD1_Barge_Material_Safety",
+        "LOD1_Barge_Material_Structure"
+      ]
+    },
+    "lod2": {
+      "triangles": 4416,
+      "drawGroups": 9,
+      "objects": [
+        "LOD2_Barge_Material_Accent",
+        "LOD2_Barge_Material_Container",
+        "LOD2_Barge_Material_Deck",
+        "LOD2_Barge_Material_Drive",
+        "LOD2_Barge_Material_Glass",
+        "LOD2_Barge_Material_Hull",
+        "LOD2_Barge_Material_Radiator",
+        "LOD2_Barge_Material_Safety",
+        "LOD2_Barge_Material_Structure"
+      ]
+    }
+  },
+  "modifierOrUvFailures": [],
+  "tangents": [
+    {
+      "object": "LOD0_Barge_Material_Accent",
+      "valid": true,
+      "error": null,
+      "loops": 312
+    },
+    {
+      "object": "LOD0_Barge_Material_Container",
+      "valid": true,
+      "error": null,
+      "loops": 3996
+    },
+    {
+      "object": "LOD0_Barge_Material_Deck",
+      "valid": true,
+      "error": null,
+      "loops": 1620
+    },
+    {
+      "object": "LOD0_Barge_Material_Drive",
+      "valid": true,
+      "error": null,
+      "loops": 2208
+    },
+    {
+      "object": "LOD0_Barge_Material_Glass",
+      "valid": true,
+      "error": null,
+      "loops": 888
+    },
+    {
+      "object": "LOD0_Barge_Material_Hull",
+      "valid": true,
+      "error": null,
+      "loops": 3564
+    },
+    {
+      "object": "LOD0_Barge_Material_Radiator",
+      "valid": true,
+      "error": null,
+      "loops": 2592
+    },
+    {
+      "object": "LOD0_Barge_Material_Safety",
+      "valid": true,
+      "error": null,
+      "loops": 4752
+    },
+    {
+      "object": "LOD0_Barge_Material_Structure",
+      "valid": true,
+      "error": null,
+      "loops": 27348
+    },
+    {
+      "object": "LOD1_Barge_Material_Accent",
+      "valid": true,
+      "error": null,
+      "loops": 168
+    },
+    {
+      "object": "LOD1_Barge_Material_Container",
+      "valid": true,
+      "error": null,
+      "loops": 2268
+    },
+    {
+      "object": "LOD1_Barge_Material_Deck",
+      "valid": true,
+      "error": null,
+      "loops": 1620
+    },
+    {
+      "object": "LOD1_Barge_Material_Drive",
+      "valid": true,
+      "error": null,
+      "loops": 1944
+    },
+    {
+      "object": "LOD1_Barge_Material_Glass",
+      "valid": true,
+      "error": null,
+      "loops": 984
+    },
+    {
+      "object": "LOD1_Barge_Material_Hull",
+      "valid": true,
+      "error": null,
+      "loops": 3564
+    },
+    {
+      "object": "LOD1_Barge_Material_Radiator",
+      "valid": true,
+      "error": null,
+      "loops": 2268
+    },
+    {
+      "object": "LOD1_Barge_Material_Safety",
+      "valid": true,
+      "error": null,
+      "loops": 2808
+    },
+    {
+      "object": "LOD1_Barge_Material_Structure",
+      "valid": true,
+      "error": null,
+      "loops": 19296
+    },
+    {
+      "object": "LOD2_Barge_Material_Accent",
+      "valid": true,
+      "error": null,
+      "loops": 168
+    },
+    {
+      "object": "LOD2_Barge_Material_Container",
+      "valid": true,
+      "error": null,
+      "loops": 396
+    },
+    {
+      "object": "LOD2_Barge_Material_Deck",
+      "valid": true,
+      "error": null,
+      "loops": 660
+    },
+    {
+      "object": "LOD2_Barge_Material_Drive",
+      "valid": true,
+      "error": null,
+      "loops": 792
+    },
+    {
+      "object": "LOD2_Barge_Material_Glass",
+      "valid": true,
+      "error": null,
+      "loops": 408
+    },
+    {
+      "object": "LOD2_Barge_Material_Hull",
+      "valid": true,
+      "error": null,
+      "loops": 1452
+    },
+    {
+      "object": "LOD2_Barge_Material_Radiator",
+      "valid": true,
+      "error": null,
+      "loops": 924
+    },
+    {
+      "object": "LOD2_Barge_Material_Safety",
+      "valid": true,
+      "error": null,
+      "loops": 1392
+    },
+    {
+      "object": "LOD2_Barge_Material_Structure",
+      "valid": true,
+      "error": null,
+      "loops": 7056
+    }
+  ],
+  "knownDefects": [
+    "Candidate has not been promoted or inspected on the live player route.",
+    "Drive plume VFX origin and emissive status behavior must be validated on the normal route after promotion.",
+    "KTX2 binding, release optimization, collision and LOD thresholds remain controller-owned integration work."
+  ]
+}

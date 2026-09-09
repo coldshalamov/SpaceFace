@@ -1,0 +1,681 @@
+{
+  "schema": "spaceface.pq022RefineryBuildReport.v1",
+  "packet": "PQ-022",
+  "dispatchUnit": "PQ-022.refinery-reauthor",
+  "assetId": "place_station_refinery",
+  "spacefaceAssetId": "SF_PLACE_STATION_REFINERY",
+  "candidateId": "pq022-refinery-material-truth-v2",
+  "unit": "metre",
+  "builtAt": "2026-08-04T14:16:04Z",
+  "elapsedSeconds": 62.1,
+  "builder": "tools/blender/build_station_refinery_material_truth_v2.py",
+  "buildAttempts": 8,
+  "namedDefectBuildAttempts": 1,
+  "revisionPass": "whole_asset_material_coherence_final",
+  "predecessorCandidateSha256": "d49f11279a7f59658919fb2d821f45309f3542e6f1ec647ebaa3161943d4803c",
+  "correctiveBuildUsed": true,
+  "preRenderCorrections": [
+    "Reduced only LOD1 bevel and torus tessellation after a 39,736-triangle ceiling failure.",
+    "Replaced only LOD2 with a dedicated silhouette proxy after a 7,320-triangle ceiling failure.",
+    "Separated one exact LOD2 coplanar shell seam after an eight-edge topology failure.",
+    "Replaced Windows CopyFile2 mirroring with a deterministic byte write after WinError 1224 on the mapped existing mirror.",
+    "Exported through an owned staging GLB and updated final paths in place after Blender retained the prior source path handle.",
+    "Resumed export/render only from the hash-stamped saved Blend after the 300-second MCP transport timeout cancelled the initial call between save and export; geometry/materials were not rebuilt.",
+    "The first tail export failed closed at 24,120,340 bytes before candidate publication; per-pixel texture entropy was replaced by smooth continuous substrate fields without changing geometry, interfaces, LOD, base values, lighting, or the byte ceiling.",
+    "The successful packaging tail completed candidate export and five exact-source renders before its report epilogue encountered a stale Blender Object reference; this report was completed from the already-frozen artifact identities without another export or render."
+  ],
+  "actualDefectCorrected": "The named-form correction closed G1, G2, and emissive dependence, but its cell-divided procedural noise survived UV projection as a conspicuous quilt across unrelated coated, hot, and service surfaces. This final material-coherence correction changes no geometry: it replaces block noise with substrate-specific continuous responses and recovers dark coated edge separation under neutral grazing light.",
+  "correctiveChanges": [
+    "Removed all cell-divided X/Y texture noise and replaced it with broad continuous coated-plate variation plus one-direction manufactured seams.",
+    "Separated fine directional alloy abrasion, subtle axial thermal response, matte ceramic micrograin, and optically flat glass into distinct scale-correct recipes.",
+    "Raised the coated-structure base value and strengthened neutral fill, rim, and under-light response while preserving a black-space background and unchanged emission strength.",
+    "Replaced entropy-heavy per-pixel grain with smooth incommensurate continuous fields so the same role separation remains losslessly packageable below the frozen source byte ceiling."
+  ],
+  "processFlow": [
+    "RAW FEED (-X)",
+    "CRUSH / TRANSFER",
+    "THREE-STACK SEPARATION",
+    "THERMAL / HEAT RECOVERY",
+    "SLURRY / CHALK STORAGE",
+    "+X DOCK / CONTROL"
+  ],
+  "state": "candidate_only",
+  "claims": {
+    "candidateOnly": true,
+    "promoted": false,
+    "routeEvidence": false,
+    "performanceEvidence": false
+  },
+  "baseline": {
+    "source": {
+      "path": "assets/ships/parts/places/place_station_refinery.glb",
+      "sha256": "93fce6a0401a3375cad4269cc59dbf1ad5ba3eafb822a4a6f6d464410d9093a9",
+      "bytes": 23431088
+    },
+    "release": {
+      "path": "assets/ships/release/parts/places/place_station_refinery.glb",
+      "sha256": "52653b6b9fd0859c076bbd5912feb827a099c1f3220bfea99c4881281a5d5f57",
+      "bytes": 9885532
+    },
+    "blender": {
+      "path": "assets/ships/parts/blender/place_station_refinery_authored.blend",
+      "sha256": "6dc22f8d950bf848970f660a318070f278abae7636ce73d485b2e86cf11a00fe",
+      "bytes": 6402227
+    }
+  },
+  "candidate": {
+    "path": "assets/ships/m5_station_refinery/source_candidates/material_truth_v2/places/place_station_refinery.glb",
+    "sha256": "49d6a50f24fdbb01a29d64f944a6171dd281f1b1800e0d4e045411b69b4538ed",
+    "bytes": 23088208
+  },
+  "releaseMirror": {
+    "path": "assets/ships/m5_station_refinery/release_candidates/material_truth_v2/places/place_station_refinery.glb",
+    "sha256": "49d6a50f24fdbb01a29d64f944a6171dd281f1b1800e0d4e045411b69b4538ed",
+    "bytes": 23088208
+  },
+  "blender": {
+    "path": "assets/ships/m5_station_refinery/blender/source/material_truth_v2/place_station_refinery.blend",
+    "sha256": "5af14fcf50cb738f17414dd8c4d76576facbd1ac11a7b582cd98d949dab1bf6c",
+    "bytes": 4836089
+  },
+  "generator": {
+    "path": "tools/blender/build_station_refinery_material_truth_v2.py",
+    "sha256": "10ead70b343f38e1ee544397cf4485b159a3e4afced1185d1ed80f605d44e4ab",
+    "bytes": 115474
+  },
+  "producer": {
+    "sourceGenerator": {
+      "path": "tools/blender/build_station_refinery_material_truth_v2.py",
+      "sha256": "10ead70b343f38e1ee544397cf4485b159a3e4afced1185d1ed80f605d44e4ab",
+      "bytes": 115474
+    },
+    "processChain": [
+      "blender-5.1-python",
+      "glb-source-candidate",
+      "foundry-validation",
+      "khronos-validation",
+      "hash-binding"
+    ]
+  },
+  "axes": {
+    "authoring": "Blender X process / Y starboard / Z up",
+    "runtime": "glTF X process / Y up / Z starboard",
+    "conversion": "(blenderX, blenderY, blenderZ) -> (gltfX, gltfY, gltfZ) = (X, Z, -Y)",
+    "verifiedSockets": {
+      "SOCKET_Structure_Core": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "SOCKET_Dock_Approach": [
+        42.47999954223633,
+        0.0,
+        0.0
+      ],
+      "SOCKET_Emissive": [
+        0.0,
+        0.0,
+        -31.954999923706055
+      ]
+    }
+  },
+  "bounds": {
+    "blender": {
+      "min": [
+        -39.0,
+        -5.75,
+        -25.0
+      ],
+      "max": [
+        59.0,
+        58.1,
+        30.5
+      ],
+      "size": [
+        98.0,
+        63.85,
+        55.5
+      ]
+    },
+    "gltf": {
+      "min": [
+        -39,
+        -25,
+        -58.1
+      ],
+      "max": [
+        59,
+        30.5,
+        5.75
+      ],
+      "size": [
+        98,
+        55.5,
+        63.85
+      ]
+    },
+    "maximumRuntimeDimension": 98,
+    "ceiling": 144
+  },
+  "lod": {
+    "lod0": {
+      "triangles": 138840,
+      "drawGroups": 5,
+      "materials": [
+        "Material_Accent",
+        "Material_Glass",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Warm"
+      ]
+    },
+    "lod1": {
+      "triangles": 31684,
+      "drawGroups": 5,
+      "materials": [
+        "Material_Accent",
+        "Material_Glass",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Warm"
+      ]
+    },
+    "lod2": {
+      "triangles": 568,
+      "drawGroups": 5,
+      "materials": [
+        "Material_Accent",
+        "Material_Glass",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Warm"
+      ]
+    }
+  },
+  "topology": {
+    "LOD0_Station_Material_Accent": {
+      "vertices": 4160,
+      "weldedVertices": 4160,
+      "triangles": 8180,
+      "degenerateTriangles": 0,
+      "nonManifoldEdges": 0
+    },
+    "LOD0_Station_Material_Glass": {
+      "vertices": 738,
+      "weldedVertices": 738,
+      "triangles": 1448,
+      "degenerateTriangles": 0,
+      "nonManifoldEdges": 0
+    },
+    "LOD0_Station_Material_Hull": {
+      "vertices": 13216,
+      "weldedVertices": 13216,
+      "triangles": 25896,
+      "degenerateTriangles": 0,
+      "nonManifoldEdges": 0
+    },
+    "LOD0_Station_Material_Mechanical": {
+      "vertices": 30994,
+      "weldedVertices": 30992,
+      "triangles": 61144,
+      "degenerateTriangles": 0,
+      "nonManifoldEdges": 0
+    },
+    "LOD0_Station_Material_Warm": {
+      "vertices": 21332,
+      "weldedVertices": 21332,
+      "triangles": 42172,
+      "degenerateTriangles": 0,
+      "nonManifoldEdges": 0
+    },
+    "LOD1_Station_Material_Accent": {
+      "vertices": 1296,
+      "weldedVertices": 1296,
+      "triangles": 2456,
+      "degenerateTriangles": 0,
+      "nonManifoldEdges": 0
+    },
+    "LOD1_Station_Material_Glass": {
+      "vertices": 162,
+      "weldedVertices": 162,
+      "triangles": 300,
+      "degenerateTriangles": 0,
+      "nonManifoldEdges": 0
+    },
+    "LOD1_Station_Material_Hull": {
+      "vertices": 3232,
+      "weldedVertices": 3232,
+      "triangles": 5968,
+      "degenerateTriangles": 0,
+      "nonManifoldEdges": 0
+    },
+    "LOD1_Station_Material_Mechanical": {
+      "vertices": 7128,
+      "weldedVertices": 7128,
+      "triangles": 13564,
+      "degenerateTriangles": 0,
+      "nonManifoldEdges": 0
+    },
+    "LOD1_Station_Material_Warm": {
+      "vertices": 4882,
+      "weldedVertices": 4882,
+      "triangles": 9396,
+      "degenerateTriangles": 0,
+      "nonManifoldEdges": 0
+    },
+    "LOD2_Station_Material_Accent": {
+      "vertices": 32,
+      "weldedVertices": 32,
+      "triangles": 48,
+      "degenerateTriangles": 0,
+      "nonManifoldEdges": 0
+    },
+    "LOD2_Station_Material_Glass": {
+      "vertices": 8,
+      "weldedVertices": 8,
+      "triangles": 12,
+      "degenerateTriangles": 0,
+      "nonManifoldEdges": 0
+    },
+    "LOD2_Station_Material_Hull": {
+      "vertices": 136,
+      "weldedVertices": 136,
+      "triangles": 240,
+      "degenerateTriangles": 0,
+      "nonManifoldEdges": 0
+    },
+    "LOD2_Station_Material_Mechanical": {
+      "vertices": 112,
+      "weldedVertices": 112,
+      "triangles": 196,
+      "degenerateTriangles": 0,
+      "nonManifoldEdges": 0
+    },
+    "LOD2_Station_Material_Warm": {
+      "vertices": 44,
+      "weldedVertices": 44,
+      "triangles": 72,
+      "degenerateTriangles": 0,
+      "nonManifoldEdges": 0
+    }
+  },
+  "materials": [
+    "Material_Accent",
+    "Material_Glass",
+    "Material_Hull",
+    "Material_Mechanical",
+    "Material_Warm"
+  ],
+  "textures": [
+    {
+      "material": "Material_Hull",
+      "role": "structural_coat",
+      "map": "basecolor",
+      "path": "assets/ships/m5_station_refinery/reports/material_truth_v2/textures/refinery_structural_coat_basecolor.png",
+      "resolution": [
+        512,
+        512
+      ],
+      "sha256": "bbb0e416ecb23bd60819da70b383f40df9337931977c8881f13f1d53124378c8",
+      "bytes": 12096
+    },
+    {
+      "material": "Material_Hull",
+      "role": "structural_coat",
+      "map": "orm",
+      "path": "assets/ships/m5_station_refinery/reports/material_truth_v2/textures/refinery_structural_coat_orm.png",
+      "resolution": [
+        512,
+        512
+      ],
+      "sha256": "802564896f16b1472af35df5d6a049f133e98ff3ec19ae7c80cf75d73be4d990",
+      "bytes": 8630
+    },
+    {
+      "material": "Material_Hull",
+      "role": "structural_coat",
+      "map": "normal",
+      "path": "assets/ships/m5_station_refinery/reports/material_truth_v2/textures/refinery_structural_coat_normal.png",
+      "resolution": [
+        512,
+        512
+      ],
+      "sha256": "b2a485b30dc40901b142b237d44fde0994bbbed6fe0843887faca4b3bbb3ad7b",
+      "bytes": 4910
+    },
+    {
+      "material": "Material_Mechanical",
+      "role": "process_alloy",
+      "map": "basecolor",
+      "path": "assets/ships/m5_station_refinery/reports/material_truth_v2/textures/refinery_process_alloy_basecolor.png",
+      "resolution": [
+        512,
+        512
+      ],
+      "sha256": "f0f5138e63bfc0c6a0be0f4eaa591d388b3ef1114b7dd7330ca2f1f10b938bed",
+      "bytes": 17636
+    },
+    {
+      "material": "Material_Mechanical",
+      "role": "process_alloy",
+      "map": "orm",
+      "path": "assets/ships/m5_station_refinery/reports/material_truth_v2/textures/refinery_process_alloy_orm.png",
+      "resolution": [
+        512,
+        512
+      ],
+      "sha256": "49ed7f52c4b8383f18dcd0153adf8591c0e5f563fc81e3ecf34acf784ca8438a",
+      "bytes": 7108
+    },
+    {
+      "material": "Material_Mechanical",
+      "role": "process_alloy",
+      "map": "normal",
+      "path": "assets/ships/m5_station_refinery/reports/material_truth_v2/textures/refinery_process_alloy_normal.png",
+      "resolution": [
+        512,
+        512
+      ],
+      "sha256": "011d860a11fea7108c2c4249b7e6cd48a4ce58160f6b766396ab7a1a25e64259",
+      "bytes": 7771
+    },
+    {
+      "material": "Material_Warm",
+      "role": "thermal_oxide",
+      "map": "basecolor",
+      "path": "assets/ships/m5_station_refinery/reports/material_truth_v2/textures/refinery_thermal_oxide_basecolor.png",
+      "resolution": [
+        512,
+        512
+      ],
+      "sha256": "3f93346050d04f90f32ab491234998158e54fa3b34e83f70e3012601f717dee0",
+      "bytes": 7716
+    },
+    {
+      "material": "Material_Warm",
+      "role": "thermal_oxide",
+      "map": "orm",
+      "path": "assets/ships/m5_station_refinery/reports/material_truth_v2/textures/refinery_thermal_oxide_orm.png",
+      "resolution": [
+        512,
+        512
+      ],
+      "sha256": "978561510d21b2cf954a05e4fa321dc03e730a02f977cf4db5d1d5b0c2852528",
+      "bytes": 5116
+    },
+    {
+      "material": "Material_Warm",
+      "role": "thermal_oxide",
+      "map": "normal",
+      "path": "assets/ships/m5_station_refinery/reports/material_truth_v2/textures/refinery_thermal_oxide_normal.png",
+      "resolution": [
+        512,
+        512
+      ],
+      "sha256": "7d73b92ae547cb015aaaba89de424f2de8fc99f8c77266a38058f88d83bf1f6e",
+      "bytes": 2146
+    },
+    {
+      "material": "Material_Accent",
+      "role": "chalk_ceramic",
+      "map": "basecolor",
+      "path": "assets/ships/m5_station_refinery/reports/material_truth_v2/textures/refinery_chalk_ceramic_basecolor.png",
+      "resolution": [
+        512,
+        512
+      ],
+      "sha256": "aebb13a85ed048c185dc0df3eaacb1bbd6bf957f7407834b80e2dbbd9b3d604b",
+      "bytes": 155584
+    },
+    {
+      "material": "Material_Accent",
+      "role": "chalk_ceramic",
+      "map": "orm",
+      "path": "assets/ships/m5_station_refinery/reports/material_truth_v2/textures/refinery_chalk_ceramic_orm.png",
+      "resolution": [
+        512,
+        512
+      ],
+      "sha256": "9620649e3a535506443e961a33e11d1a7869f021573ebb3bc400e304c34419d3",
+      "bytes": 68498
+    },
+    {
+      "material": "Material_Accent",
+      "role": "chalk_ceramic",
+      "map": "normal",
+      "path": "assets/ships/m5_station_refinery/reports/material_truth_v2/textures/refinery_chalk_ceramic_normal.png",
+      "resolution": [
+        512,
+        512
+      ],
+      "sha256": "79e9fc650cc43335f3a2f5177e29bcc278744343825b7fbfe344c7b25244761a",
+      "bytes": 47505
+    },
+    {
+      "material": "Material_Glass",
+      "role": "control_glass",
+      "map": "basecolor",
+      "path": "assets/ships/m5_station_refinery/reports/material_truth_v2/textures/refinery_control_glass_basecolor.png",
+      "resolution": [
+        512,
+        512
+      ],
+      "sha256": "03a7e9d39e42f88bdf17013b682fbb4752227297b6b15e1f6ce7380939051f1d",
+      "bytes": 1820
+    },
+    {
+      "material": "Material_Glass",
+      "role": "control_glass",
+      "map": "orm",
+      "path": "assets/ships/m5_station_refinery/reports/material_truth_v2/textures/refinery_control_glass_orm.png",
+      "resolution": [
+        512,
+        512
+      ],
+      "sha256": "54d521b7ef72a03804ff89f0b890b919aa53fa2bb10349a9e2570c2a8364893f",
+      "bytes": 1820
+    },
+    {
+      "material": "Material_Glass",
+      "role": "control_glass",
+      "map": "normal",
+      "path": "assets/ships/m5_station_refinery/reports/material_truth_v2/textures/refinery_control_glass_normal.png",
+      "resolution": [
+        512,
+        512
+      ],
+      "sha256": "e4dcab9e08b8fc8690c7aafa805bc39655a1130028027d05a7cb3b08d8b8f475",
+      "bytes": 1817
+    }
+  ],
+  "frozenContract": {
+    "rootNode": "SF_PLACE_STATION_REFINERY_ROOT",
+    "sockets": {
+      "SOCKET_Structure_Core": {
+        "translation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "SOCKET_Dock_Approach": {
+        "translation": [
+          42.47999954223633,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "SOCKET_Emissive": {
+        "translation": [
+          0.0,
+          0.0,
+          -31.954999923706055
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    "materials": [
+      "Material_Accent",
+      "Material_Glass",
+      "Material_Hull",
+      "Material_Mechanical",
+      "Material_Warm"
+    ],
+    "envelope": {
+      "min": [
+        -39.0,
+        -25.0,
+        -58.1
+      ],
+      "max": [
+        59.0,
+        30.5,
+        5.75
+      ],
+      "size": [
+        98.0,
+        55.5,
+        63.85
+      ]
+    },
+    "collision": {
+      "node": "COLLISION_HULL",
+      "triangles": 44,
+      "geometrySha256": "f6ec9016ce93cc03179c1d8a09ba80aa7c253f798d91cfe8d3d87b6aed26bb7d"
+    },
+    "lodTriangles": {
+      "LOD0": 138840,
+      "LOD1": 31684,
+      "LOD2": 568
+    },
+    "visibleGroups": 15,
+    "visibleGeometrySha256": "a3032dcd7476954e594f5a42cf56369159b3fe4fb14ecd0ab6adb7bf51df93e0",
+    "textureRoleBindings": 15,
+    "embeddedPngImages": 15
+  },
+  "export": {
+    "nodeCount": 20,
+    "meshCount": 16,
+    "materialCount": 5,
+    "imageCount": 15,
+    "textureCount": 15,
+    "visibleGroupCount": 15,
+    "visibleGeometrySha256": "a3032dcd7476954e594f5a42cf56369159b3fe4fb14ecd0ab6adb7bf51df93e0",
+    "textureRoleBindings": 15,
+    "lodTriangles": {
+      "lod0": 138840,
+      "lod1": 31684,
+      "lod2": 568
+    },
+    "collisionTriangles": 44,
+    "gltfEnvelope": {
+      "min": [
+        -39,
+        -25,
+        -58.1
+      ],
+      "max": [
+        59,
+        30.5,
+        5.75
+      ],
+      "size": [
+        98,
+        55.5,
+        63.85
+      ]
+    },
+    "diagnostics": [],
+    "sourceByteCeiling": 23431088,
+    "sourceWithinCeiling": true,
+    "releaseMirrorByteIdentical": true
+  },
+  "renders": {
+    "manifest": "assets/ships/m5_station_refinery/reports/material_truth_v2/render_manifest.json",
+    "manifestSha256": "5eb1422a75150e7a7675940c76911ed29877fc89151388b09885df59c3d24051",
+    "exactSourceReimport": true,
+    "images": [
+      {
+        "path": "assets/ships/m5_station_refinery/reports/material_truth_v2/renders/process_three_quarter.png",
+        "sha256": "81e8a5a354bb6ba4bce4b3cdad2166e91ac01cc4b985a3500387cf487b89623e",
+        "bytes": 1554603
+      },
+      {
+        "path": "assets/ships/m5_station_refinery/reports/material_truth_v2/renders/feed_three_quarter.png",
+        "sha256": "315214d462efdccde8ec89f5cd9904579d13f6e4ea00b41337098c986a88aaf6",
+        "bytes": 1522391
+      },
+      {
+        "path": "assets/ships/m5_station_refinery/reports/material_truth_v2/renders/side_process.png",
+        "sha256": "16856c4c18072b222f47fb5595d49234620390d3b5a8e2edbe0b0fdb751cb192",
+        "bytes": 1471990
+      },
+      {
+        "path": "assets/ships/m5_station_refinery/reports/material_truth_v2/renders/top_flow.png",
+        "sha256": "5e9e2d99ebdbb050cfb39140178dc3d4ddf5993e4499e59106a4d1e8f86527bd",
+        "bytes": 1439788
+      },
+      {
+        "path": "assets/ships/m5_station_refinery/reports/material_truth_v2/renders/process_three_quarter_emissive_off.png",
+        "sha256": "60860d4507ce45cba0a8997459ff7ce75c819fc21a1f519fd7333b7a4cc4334a",
+        "bytes": 1553418
+      }
+    ]
+  },
+  "canonicalAssetsModified": false,
+  "materialCoherenceBuildAttempts": 1,
+  "packagingCausalCorrections": 1,
+  "tailResume": {
+    "reason": "Tail-only completion after transport cancellation and packaging-causal source correction",
+    "geometryRebuilt": false,
+    "interfacesChanged": false,
+    "lodChanged": false,
+    "baseValuesChangedByPackagingCorrection": false,
+    "lightingChangedByPackagingCorrection": false,
+    "materialSourceCorrection": "per-pixel hash entropy replaced with smooth incommensurate continuous fields",
+    "priorTextureBytes": 1382293,
+    "finalTextureBytes": 350173,
+    "textureBytesRecovered": 1032120,
+    "rejectedStagingBytes": 24120340,
+    "candidateByteCeiling": 23431088,
+    "candidateBytes": 23088208,
+    "candidateByteHeadroom": 342880,
+    "packagingTailWallSecondsObserved": 62.1,
+    "blendSavedAtUtc": "2026-08-04T14:12:09.7895830Z",
+    "candidateWrittenAtUtc": "2026-08-04T14:12:18.0284542Z",
+    "renderCompletedAtUtc": "2026-08-04T14:13:04.1565952Z",
+    "reportEpilogueElapsedSeconds": 1.515
+  }
+}

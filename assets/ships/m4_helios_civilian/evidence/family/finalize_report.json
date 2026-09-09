@@ -1,0 +1,104 @@
+{
+  "schema": "spaceface.m4HeliosCivilianFinalize.v1",
+  "packet": "M4-HELIOS-CIVILIAN-FLEET-BLENDER-001",
+  "family": "helios_civilian",
+  "finalized": [
+    {
+      "id": "helios_lark",
+      "key": "lark",
+      "assetId": "SF_WHOLESHIP_HELIOS_LARK",
+      "source": "assets/ships/m4_helios_civilian/source/wholeships/helios_lark.glb",
+      "candidate": "assets/ships/m4_helios_civilian/release_candidates/wholeships/helios_lark.glb",
+      "sourceBytes": 25286680,
+      "candidateBytes": 14140632,
+      "sourceSha256": "9090E7C21980D0D87D1DA422BDB940A7731CEB3B39F4648ADC0968DF931B708F",
+      "candidateSha256": "EA6B131C7E822FF727A27B15C8D707C9E8A0177198A7A9AAE52EDD050B2426DC",
+      "sourceTextureCount": 20,
+      "releaseTextureCount": 20,
+      "releaseImageCount": 15,
+      "ktx2ImageCount": 15,
+      "meshoptBufferViewCount": 101,
+      "extensionsUsed": [
+        "EXT_meshopt_compression",
+        "KHR_mesh_quantization",
+        "KHR_texture_basisu"
+      ],
+      "materials": [
+        "Material_Mechanical",
+        "Material_Cyan",
+        "Material_Glass",
+        "Material_Hull",
+        "Material_Warm"
+      ],
+      "meshopt": "EXT_meshopt_compression",
+      "ktx2": "KHR_texture_basisu/KTX2"
+    },
+    {
+      "id": "helios_cradle",
+      "key": "cradle",
+      "assetId": "SF_WHOLESHIP_HELIOS_CRADLE",
+      "source": "assets/ships/m4_helios_civilian/source/wholeships/helios_cradle.glb",
+      "candidate": "assets/ships/m4_helios_civilian/release_candidates/wholeships/helios_cradle.glb",
+      "sourceBytes": 25245508,
+      "candidateBytes": 14175284,
+      "sourceSha256": "1F10DE2D7F2AE083FDAC768C735F1E444616CCC59BB19088CC8418F63E88DD72",
+      "candidateSha256": "C3595C33C4BEA0253020D5B905A8F4F107308D915ED1B15726E955A81B01CEBD",
+      "sourceTextureCount": 20,
+      "releaseTextureCount": 20,
+      "releaseImageCount": 15,
+      "ktx2ImageCount": 15,
+      "meshoptBufferViewCount": 113,
+      "extensionsUsed": [
+        "EXT_meshopt_compression",
+        "KHR_mesh_quantization",
+        "KHR_texture_basisu"
+      ],
+      "materials": [
+        "Material_Mechanical",
+        "Material_Cyan",
+        "Material_Glass",
+        "Material_Hull",
+        "Material_Warm"
+      ],
+      "meshopt": "EXT_meshopt_compression",
+      "ktx2": "KHR_texture_basisu/KTX2"
+    },
+    {
+      "id": "helios_span",
+      "key": "span",
+      "assetId": "SF_WHOLESHIP_HELIOS_SPAN",
+      "source": "assets/ships/m4_helios_civilian/source/wholeships/helios_span.glb",
+      "candidate": "assets/ships/m4_helios_civilian/release_candidates/wholeships/helios_span.glb",
+      "sourceBytes": 26048088,
+      "candidateBytes": 14227364,
+      "sourceSha256": "C4CEAA020861CDD1BC9F7E20172BBC6F00531290AA3753E4757DC6B89B47F2AB",
+      "candidateSha256": "6F439A7A76309ED4028EF6B59D8C305258AB2A08D16F88DA30A58484DBE6BD20",
+      "sourceTextureCount": 20,
+      "releaseTextureCount": 20,
+      "releaseImageCount": 15,
+      "ktx2ImageCount": 15,
+      "meshoptBufferViewCount": 101,
+      "extensionsUsed": [
+        "EXT_meshopt_compression",
+        "KHR_mesh_quantization",
+        "KHR_texture_basisu"
+      ],
+      "materials": [
+        "Material_Mechanical",
+        "Material_Cyan",
+        "Material_Glass",
+        "Material_Hull",
+        "Material_Warm"
+      ],
+      "meshopt": "EXT_meshopt_compression",
+      "ktx2": "KHR_texture_basisu/KTX2"
+    }
+  ],
+  "promotion": {
+    "canonicalSource": true,
+    "releasePublished": true,
+    "runtimeWired": true,
+    "releaseBuildPending": false,
+    "runtimeWiringPending": false
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "schema": "spaceface.export.v1",
+  "spacefaceCandidate": {
+    "path": "assets/ships/m5_station_refinery/source_candidates/material_truth_v2/places/place_station_refinery.glb",
+    "sha256": "49d6a50f24fdbb01a29d64f944a6171dd281f1b1800e0d4e045411b69b4538ed",
+    "bytes": 23088208
+  },
+  "blenderVersion": "5.1.2",
+  "ok": true,
+  "errors": [],
+  "diagnostics": [
+    "place_station_refinery: hard-edge chamfer assertion absent at LOD0_Station_Material_Accent",
+    "place_station_refinery: hard-edge chamfer assertion absent at LOD0_Station_Material_Glass",
+    "place_station_refinery: hard-edge chamfer assertion absent at LOD0_Station_Material_Hull",
+    "place_station_refinery: hard-edge chamfer assertion absent at LOD0_Station_Material_Mechanical",
+    "place_station_refinery: hard-edge chamfer assertion absent at LOD0_Station_Material_Warm"
+  ],
+  "note": "The one frozen-candidate GLB refresh passed. Imported hard-edge annotations remain non-failing diagnostics; the generator applied visible bevel geometry and recorded closed topology before export."
+}

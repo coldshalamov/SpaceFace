@@ -1,0 +1,436 @@
+{
+  "schema": "spaceface.m4AshlineShipMetrics.v1",
+  "packet": "M4-ASHLINE-QUALITY-PARITY-002",
+  "shipKey": "dart",
+  "spec": {
+    "id": "ashline_dart",
+    "assetId": "SF_WHOLESHIP_ASHLINE_DART",
+    "partId": "wholeship_ashline_dart",
+    "role": "flyby_interceptor",
+    "title": "Ashline Dart"
+  },
+  "sourceGlb": "assets/ships/m4_ashline/source/wholeships/ashline_dart.glb",
+  "releaseCandidateGlb": "assets/ships/m4_ashline/release_candidates/wholeships/ashline_dart.glb",
+  "blend": "assets/ships/m4_ashline/blender/ashline_dart_production.blend",
+  "sha256_source": "D6C1AEF862193505802D318B3576ED66AF33D5F37B9E1685C760AADB7F22943C",
+  "report": {
+    "file": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\m4_ashline\\source\\wholeships\\ashline_dart.glb",
+    "bytes": 1243896,
+    "totalTriangles": 20486,
+    "hullTriangles": 9188,
+    "lodBreakdown": {
+      "lod0": {
+        "triangles": 15452,
+        "primitives": 9,
+        "drawEstimate": 9,
+        "nodes": [
+          {
+            "name": "LOD0_Gun_Assembly",
+            "tris": 164
+          },
+          {
+            "name": "LOD0_HOOK_DRIVE_CORE",
+            "tris": 424
+          },
+          {
+            "name": "LOD0_HOOK_DRIVE_FAN",
+            "tris": 152
+          },
+          {
+            "name": "LOD0_Merged_Material_Cyan",
+            "tris": 604
+          },
+          {
+            "name": "LOD0_Merged_Material_Glass",
+            "tris": 188
+          },
+          {
+            "name": "LOD0_Merged_Material_Hull",
+            "tris": 6312
+          },
+          {
+            "name": "LOD0_Merged_Material_Mechanical",
+            "tris": 5560
+          },
+          {
+            "name": "LOD0_Merged_Material_Red_Paint",
+            "tris": 376
+          },
+          {
+            "name": "LOD0_Merged_Material_Warm",
+            "tris": 1672
+          }
+        ]
+      },
+      "lod1": {
+        "triangles": 4796,
+        "primitives": 9,
+        "drawEstimate": 9,
+        "nodes": [
+          {
+            "name": "LOD1_Gun_Assembly",
+            "tris": 68
+          },
+          {
+            "name": "LOD1_HOOK_DRIVE_CORE",
+            "tris": 178
+          },
+          {
+            "name": "LOD1_HOOK_DRIVE_FAN",
+            "tris": 62
+          },
+          {
+            "name": "LOD1_Merged_Material_Cyan",
+            "tris": 248
+          },
+          {
+            "name": "LOD1_Merged_Material_Glass",
+            "tris": 78
+          },
+          {
+            "name": "LOD1_Merged_Material_Hull",
+            "tris": 2650
+          },
+          {
+            "name": "LOD1_Merged_Material_Mechanical",
+            "tris": 1200
+          },
+          {
+            "name": "LOD1_Merged_Material_Red_Paint",
+            "tris": 156
+          },
+          {
+            "name": "LOD1_Merged_Material_Warm",
+            "tris": 156
+          }
+        ]
+      },
+      "lod2": {
+        "triangles": 226,
+        "primitives": 1,
+        "drawEstimate": 1,
+        "nodes": [
+          {
+            "name": "LOD2_Merged_Material_Hull",
+            "tris": 226
+          }
+        ]
+      }
+    },
+    "sockets": [
+      "SOCKET_Camera_Focus",
+      "SOCKET_Cargo_Ventral",
+      "SOCKET_Engine_Main",
+      "SOCKET_Mining_Front",
+      "SOCKET_RCS_Port",
+      "SOCKET_RCS_Starboard",
+      "SOCKET_Trail_Main",
+      "SOCKET_Utility_Dorsal",
+      "SOCKET_Weapon_Front"
+    ],
+    "materials": [
+      "Material_Mechanical",
+      "Material_Cyan",
+      "Material_Glass",
+      "Material_Hull",
+      "Material_Red_Paint",
+      "Material_Warm"
+    ],
+    "primitiveCount": 20,
+    "tangentPrimitiveCount": 20,
+    "uvPrimitiveCount": 20,
+    "spacefaceAsset": {
+      "contractVersion": 1,
+      "assetId": "SF_WHOLESHIP_ASHLINE_DART",
+      "slot": "hull",
+      "forward": "+X",
+      "up": "+Y",
+      "starboard": "+Z",
+      "unit": "metre",
+      "normalConvention": "OpenGL",
+      "ormChannels": "R=AO,G=Roughness,B=Metallic",
+      "textureCompression": "PNG-source",
+      "chamfered": true,
+      "bevelRadiusM": 0.025,
+      "partId": "wholeship_ashline_dart",
+      "category": "wholeships",
+      "sourceRole": "whole-ship hull",
+      "packet": "M4-ASHLINE-QUALITY-PARITY-002",
+      "family": "ashline",
+      "role": "flyby_interceptor",
+      "triangleCount": 20486,
+      "hullTriangleCount": 9188,
+      "deliverableRole": "candidate_multi_lod",
+      "lods": [
+        "lod0",
+        "lod1",
+        "lod2"
+      ],
+      "wiringStatus": "candidate_not_default_play",
+      "blenderBasis": "Z-up",
+      "exportBasis": "Y-up glTF",
+      "lod0AabbSize": [
+        15.775000095367432,
+        2.297586143016815,
+        6.049999713897705
+      ],
+      "collisionBounds": {
+        "min": [
+          -7.256499767303467,
+          -1.0568896532058716,
+          -2.7829999923706055
+        ],
+        "max": [
+          7.256499767303467,
+          1.0568896532058716,
+          2.7829999923706055
+        ],
+        "size": [
+          14.512999534606934,
+          2.113779306411743,
+          5.565999984741211
+        ]
+      }
+    },
+    "lodBuildStats": [
+      {
+        "lod": "lod0",
+        "decimate_ratio": 1.0,
+        "mesh_count": 9,
+        "triangles": 15452,
+        "meshes": [
+          {
+            "name": "LOD0_Merged_Material_Hull",
+            "tris": 6312,
+            "materials": [
+              "Material_Hull"
+            ]
+          },
+          {
+            "name": "LOD0_Merged_Material_Mechanical",
+            "tris": 5560,
+            "materials": [
+              "Material_Mechanical"
+            ]
+          },
+          {
+            "name": "LOD0_Merged_Material_Glass",
+            "tris": 188,
+            "materials": [
+              "Material_Glass"
+            ]
+          },
+          {
+            "name": "LOD0_Merged_Material_Cyan",
+            "tris": 604,
+            "materials": [
+              "Material_Cyan"
+            ]
+          },
+          {
+            "name": "LOD0_Merged_Material_Warm",
+            "tris": 1672,
+            "materials": [
+              "Material_Warm"
+            ]
+          },
+          {
+            "name": "LOD0_Merged_Material_Red_Paint",
+            "tris": 376,
+            "materials": [
+              "Material_Red_Paint"
+            ]
+          },
+          {
+            "name": "LOD0_HOOK_DRIVE_FAN",
+            "tris": 152,
+            "materials": [
+              "Material_Mechanical"
+            ]
+          },
+          {
+            "name": "LOD0_HOOK_DRIVE_CORE",
+            "tris": 424,
+            "materials": [
+              "Material_Cyan"
+            ]
+          },
+          {
+            "name": "LOD0_Gun_Assembly",
+            "tris": 164,
+            "materials": [
+              "Material_Mechanical"
+            ]
+          }
+        ],
+        "removed_close_only": [],
+        "draw_estimate": 9
+      },
+      {
+        "lod": "lod1",
+        "decimate_ratio": 0.42,
+        "mesh_count": 9,
+        "triangles": 4796,
+        "meshes": [
+          {
+            "name": "LOD1_Merged_Material_Hull",
+            "tris": 2650,
+            "materials": [
+              "Material_Hull"
+            ]
+          },
+          {
+            "name": "LOD1_Merged_Material_Mechanical",
+            "tris": 1200,
+            "materials": [
+              "Material_Mechanical"
+            ]
+          },
+          {
+            "name": "LOD1_Merged_Material_Glass",
+            "tris": 78,
+            "materials": [
+              "Material_Glass"
+            ]
+          },
+          {
+            "name": "LOD1_Merged_Material_Cyan",
+            "tris": 248,
+            "materials": [
+              "Material_Cyan"
+            ]
+          },
+          {
+            "name": "LOD1_Merged_Material_Red_Paint",
+            "tris": 156,
+            "materials": [
+              "Material_Red_Paint"
+            ]
+          },
+          {
+            "name": "LOD1_Merged_Material_Warm",
+            "tris": 156,
+            "materials": [
+              "Material_Warm"
+            ]
+          },
+          {
+            "name": "LOD1_HOOK_DRIVE_FAN",
+            "tris": 62,
+            "materials": [
+              "Material_Mechanical"
+            ]
+          },
+          {
+            "name": "LOD1_HOOK_DRIVE_CORE",
+            "tris": 178,
+            "materials": [
+              "Material_Cyan"
+            ]
+          },
+          {
+            "name": "LOD1_Gun_Assembly",
+            "tris": 68,
+            "materials": [
+              "Material_Mechanical"
+            ]
+          }
+        ],
+        "removed_close_only": [
+          "Hazard_Chevron_00",
+          "Hazard_Chevron_01",
+          "Panel_Line_00",
+          "Panel_Line_01",
+          "Panel_Line_02",
+          "Panel_Line_03",
+          "Antenna_Loop",
+          "Vent_Greeble_0",
+          "Vent_Greeble_1",
+          "Vent_Greeble_2",
+          "Parity_Fastener_P_0",
+          "Parity_Fastener_P_1",
+          "Parity_Fastener_P_2",
+          "Parity_Fastener_P_3",
+          "Parity_Fastener_P_4",
+          "Parity_Fastener_S_0",
+          "Parity_Fastener_S_1",
+          "Parity_Fastener_S_2",
+          "Parity_Fastener_S_3",
+          "Parity_Fastener_S_4",
+          "Parity_Nozzle_Tooth_P_0",
+          "Parity_Nozzle_Tooth_P_1",
+          "Parity_Nozzle_Tooth_P_2",
+          "Parity_Nozzle_Tooth_P_3",
+          "Parity_Nozzle_Tooth_P_4",
+          "Parity_Nozzle_Tooth_P_5",
+          "Parity_Nozzle_Tooth_S_0",
+          "Parity_Nozzle_Tooth_S_1",
+          "Parity_Nozzle_Tooth_S_2",
+          "Parity_Nozzle_Tooth_S_3",
+          "Parity_Nozzle_Tooth_S_4",
+          "Parity_Nozzle_Tooth_S_5",
+          "Parity_Dorsal_Vent_0",
+          "Parity_Dorsal_Vent_1",
+          "Parity_Dorsal_Vent_2",
+          "Parity_Dorsal_Vent_3",
+          "Parity_Dorsal_Vent_4",
+          "Parity_Dorsal_Vent_5"
+        ],
+        "draw_estimate": 9
+      },
+      {
+        "lod": "lod2",
+        "decimate_ratio": 0.18,
+        "mesh_count": 1,
+        "triangles": 226,
+        "meshes": [
+          {
+            "name": "LOD2_Merged_Material_Hull",
+            "tris": 226,
+            "materials": [
+              "Material_Hull"
+            ]
+          }
+        ],
+        "removed_close_only": [],
+        "draw_estimate": 1
+      }
+    ],
+    "lod0AabbSize": [
+      15.775000095367432,
+      2.297586143016815,
+      6.049999713897705
+    ],
+    "collisionBounds": {
+      "min": [
+        -7.256499767303467,
+        -1.0568896532058716,
+        -2.7829999923706055
+      ],
+      "max": [
+        7.256499767303467,
+        1.0568896532058716,
+        2.7829999923706055
+      ],
+      "size": [
+        14.512999534606934,
+        2.113779306411743,
+        5.565999984741211
+      ]
+    },
+    "sha256": "D6C1AEF862193505802D318B3576ED66AF33D5F37B9E1685C760AADB7F22943C"
+  },
+  "renders": [
+    "assets/ships/m4_ashline/evidence/dart/renders/forward_34.png",
+    "assets/ships/m4_ashline/evidence/dart/renders/rear_34.png",
+    "assets/ships/m4_ashline/evidence/dart/renders/top_ortho.png",
+    "assets/ships/m4_ashline/evidence/dart/renders/side_ortho.png",
+    "assets/ships/m4_ashline/evidence/dart/renders/readability_close.png",
+    "assets/ships/m4_ashline/evidence/dart/renders/readability_under45px.png",
+    "assets/ships/m4_ashline/evidence/dart/renders/readability_120px.png",
+    "assets/ships/m4_ashline/evidence/dart/renders/silhouette_gray_45px.png",
+    "assets/ships/m4_ashline/evidence/dart/renders/silhouette_gray_120px.png",
+    "assets/ships/m4_ashline/evidence/dart/renders/gamesky_forward_34.png"
+  ],
+  "builtAt": "2026-07-12T20:39:06Z"
+}

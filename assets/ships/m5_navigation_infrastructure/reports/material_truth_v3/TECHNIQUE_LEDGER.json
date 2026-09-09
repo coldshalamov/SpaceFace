@@ -1,0 +1,196 @@
+{
+  "schema": "spaceface.advancedModelTechniqueLedger.v1",
+  "assetId": "SF_PLACE_HELIOS_SUPPORT_DOCK_ARM",
+  "shipId": "place_station_billboard",
+  "candidateHash": "9245e7275b36ebed9e7e853a14f1e0315d85d23c14323b6d947ea4cb3a1f2ff6",
+  "cycle": "material_truth_v3",
+  "exportGlb": "assets/ships/parts/places/place_station_billboard.glb",
+  "releaseGlb": "assets/ships/release/parts/places/place_station_billboard.glb",
+  "class": "place_station_module",
+  "contract": "docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md",
+  "clayStillReadsAsPrimitives": false,
+  "clayStillEvidence": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v3/renders/03-neutral-clay.png",
+  "independentReview": "blocked",
+  "independentReviewDisposition": "KEEP candidate-side G1/G2 and ordinary-picture G4 review; mandatory technique evidence, supported-view coverage, and final acceptance remain open",
+  "independentReviewer": "controller, 2026-09-06",
+  "candidateSideDisposition": {
+    "scope": "whole_asset_candidate_side_review",
+    "g1": "KEEP",
+    "g2": "KEEP",
+    "g4": "KEEP for the ordinary shipping-camera picture only",
+    "evidence": [
+      "assets/ships/m5_navigation_infrastructure/reports/material_truth_v3/renders/review_report.json",
+      "assets/ships/m5_navigation_infrastructure/reports/material_truth_v3/runtime/browser/01-core-station-billboard-ordinary.png"
+    ],
+    "notes": "The controller independently viewed all five source-side views: the front silhouette and canted two-sided frame are clear, rear bracing is readable, clay shows purposeful panel relief and framing, grazing separates worn rim response from dark face, and emission-off preserves real panel/frame construction. No clay or plastic fallback is present."
+  },
+  "productionState": "candidate_only",
+  "gateScope": "whole_asset_diagnostic",
+  "g1": "evidence_ready",
+  "g2": "evidence_ready",
+  "g4": "evidence_ready",
+  "forbidden": {
+    "factoryLoftPlusBoxes": null,
+    "sharedSheetTint": null,
+    "shadeSmoothWholeObject": null,
+    "internalVoidCalledBay": null,
+    "imagenUsedAsBake": false
+  },
+  "evidenceBoundary": "The controller KEEP verdict covers candidate-side G1/G2 across five retained CPU source-side views and G4 for the ordinary shipping-camera picture. It does not promote the candidate or close the mandatory technique rows, supported-view coverage, Browser/Electron acceptance, performance, or separate channel-isolation evidence.",
+  "rows": [
+    {
+      "id": "MTX-01",
+      "state": "blocked",
+      "still": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v3/renders/04-hard-grazing.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": false,
+      "bevelWidthM": 0.05,
+      "shadeAngleDeg": null,
+      "notes": "The hard-grazing export view shows deliberate frame/service bevel highlights and flat broad plates, but the source has no weighted or custom normal pass, so the row remains blocked."
+    },
+    {
+      "id": "MTX-03",
+      "state": "not_applicable",
+      "still": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v3/renders/03-neutral-clay.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "This direct-to-game framed station assembly has open bay gaps and no sealed skin or cut hatch that requires a skin-breaking boolean bake."
+    },
+    {
+      "id": "MTX-16",
+      "state": "not_applicable",
+      "still": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v3/renders/05-emission-off.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "No high-to-low bake target is used; the shared exporter supplies cube-projected UV0 for the five direct-to-game material groups."
+    },
+    {
+      "id": "MTX-20",
+      "state": "not_applicable",
+      "still": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v3/renders/03-neutral-clay.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "This direct-to-game manufactured mid-poly has no separate high or bevelled-high source for a bake chain."
+    },
+    {
+      "id": "MTX-21",
+      "state": "not_applicable",
+      "still": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v3/renders/03-neutral-clay.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "This station module is a direct-to-game mid-poly export; no separate high-to-low cage is part of the authored process."
+    },
+    {
+      "id": "MTX-22",
+      "state": "not_applicable",
+      "still": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v3/renders/05-emission-off.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "No tangent normal bake is performed for this direct-to-game mid-poly; OpenGL normal metadata and procedural normal families are recorded separately."
+    },
+    {
+      "id": "MTX-23",
+      "state": "not_applicable",
+      "still": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v3/renders/05-emission-off.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "No mesh-derived AO bake is part of this direct-to-game mid-poly; the exported ORM families are procedural and recorded as such."
+    },
+    {
+      "id": "MTX-24",
+      "state": "not_applicable",
+      "still": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v3/renders/05-emission-off.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "No mesh-derived curvature bake is part of this direct-to-game mid-poly; the exported ORM families are procedural and recorded as such."
+    },
+    {
+      "id": "MTX-25",
+      "state": "not_applicable",
+      "still": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v3/renders/05-emission-off.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "No baked cavity map is authored for this direct-to-game mid-poly; bay and service recesses are physical geometry with procedural material families."
+    },
+    {
+      "id": "MTX-30",
+      "state": "implemented",
+      "still": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v3/renders/03-neutral-clay.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "The exported candidate contains 15 mesh draw groups across three LODs and no camera-facing card or soft-particle surrogate; the clay view shows the authored geometry."
+    },
+    {
+      "id": "MTX-31",
+      "state": "implemented",
+      "still": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v3/renders/05-emission-off.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "The preflight classifies five visible zones by substrate and process, and the emission-off view preserves distinct frame, glass, alloy, backplate, and marking reads."
+    },
+    {
+      "id": "MTX-32",
+      "state": "implemented",
+      "still": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v3/renders/05-emission-off.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "The build receipt binds separate basecolor families for all five roles, and the emission-off view shows their authored separation without a shared tinted sheet."
+    },
+    {
+      "id": "MTX-33",
+      "state": "blocked",
+      "still": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v3/renders/05-emission-off.png",
+      "clayConfirm": "fail",
+      "forbiddenFakeAbsent": false,
+      "notes": "The exported candidate carries authored ORM textures for its five roles, but no ORM-isolation still was retained to close the channel proof."
+    },
+    {
+      "id": "MTX-39",
+      "state": "blocked",
+      "still": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v3/renders/04-hard-grazing.png",
+      "clayConfirm": "fail",
+      "forbiddenFakeAbsent": false,
+      "notes": "The exported candidate has service recesses and finite marking zones, but no retained close or grazing still closes cavity-dirt proof."
+    },
+    {
+      "id": "MTX-46",
+      "state": "blocked",
+      "still": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v3/renders/03-neutral-clay.png",
+      "clayConfirm": "fail",
+      "forbiddenFakeAbsent": false,
+      "notes": "The controller KEEP diagnostic found no previous solid-panel glare in the live route, and the clay view is retained for review, but parent judgment is required for the forbidden-read row."
+    },
+    {
+      "id": "MTX-50",
+      "state": "implemented",
+      "still": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v3/renders/02-rear-service.png",
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "The build and package receipts record applied modifiers, LODs, axes, socket, collision helper, and OpenGL metadata; the end-on review view shows the exported load path."
+    },
+    {
+      "id": "MTX-52",
+      "state": "not_applicable",
+      "still": null,
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "This is a manufactured station information module, not a rock or wreck mass."
+    },
+    {
+      "id": "MTX-53",
+      "state": "not_applicable",
+      "still": null,
+      "clayConfirm": "pass",
+      "forbiddenFakeAbsent": true,
+      "notes": "This manufactured station module has no sculpted or photogrammetry rock detail requirement."
+    },
+    {
+      "id": "MTX-54",
+      "state": "blocked",
+      "still": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v3/renders/03-neutral-clay.png",
+      "clayConfirm": "fail",
+      "forbiddenFakeAbsent": false,
+      "notes": "The V3 candidate is bound to the preserved V2 hashes, but no durable side-by-side predecessor still was retained to close replacement comparison."
+    }
+  ]
+}

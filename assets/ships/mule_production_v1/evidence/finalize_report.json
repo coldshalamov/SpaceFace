@@ -1,0 +1,121 @@
+{
+  "schema": "spaceface.muleProductionV1.finalize.v1",
+  "packet": "SF-MULE-PRODUCTION-V1-001",
+  "assetId": "SF_MULE_PRODUCTION_V1",
+  "status": "technical_candidate",
+  "promoted": false,
+  "lods": [
+    {
+      "lod": 0,
+      "path": "assets/ships/mule_production_v1/release_candidates/wholeships/mule_production_v1_lod0.glb",
+      "sourcePath": "assets/ships/mule_production_v1/source/wholeships/mule_production_v1_lod0.glb",
+      "bytes": 1307824,
+      "sha256": "946F3CE0A71B4CB53517D6403457B79046A81C7882D02AF2312AC04B74BB6505",
+      "hullTriangles": 1216,
+      "materials": [
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "missingSockets": [],
+      "missingMaterials": [],
+      "embeddedPlume": false,
+      "under100MiB": true
+    },
+    {
+      "lod": 1,
+      "path": "assets/ships/mule_production_v1/release_candidates/wholeships/mule_production_v1_lod1.glb",
+      "sourcePath": "assets/ships/mule_production_v1/source/wholeships/mule_production_v1_lod1.glb",
+      "bytes": 508348,
+      "sha256": "3E3BDFF55306091C502628C4445E7CE12CE140076C31533159ECF09CE5A29BEE",
+      "hullTriangles": 1216,
+      "materials": [
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "missingSockets": [],
+      "missingMaterials": [],
+      "embeddedPlume": false,
+      "under100MiB": true
+    },
+    {
+      "lod": 2,
+      "path": "assets/ships/mule_production_v1/release_candidates/wholeships/mule_production_v1_lod2.glb",
+      "sourcePath": "assets/ships/mule_production_v1/source/wholeships/mule_production_v1_lod2.glb",
+      "bytes": 332360,
+      "sha256": "349CE949F4450321D330D53CF5CC9747E257E2F03E9164EDB68739E7E5FFECA1",
+      "hullTriangles": 1216,
+      "materials": [
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "missingSockets": [],
+      "missingMaterials": [],
+      "embeddedPlume": false,
+      "under100MiB": true
+    }
+  ],
+  "checks": {
+    "allUnder100MiB": true,
+    "allSocketsPresent": true,
+    "semanticMaterialsPresent": true,
+    "authoredHullBody": true,
+    "noEmbeddedPlume": true
+  },
+  "ok": true
+}

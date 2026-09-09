@@ -1,0 +1,263 @@
+{
+  "schema": "spaceface.m4SurfaceMapBuild.v1",
+  "size": 1024,
+  "roles": [
+    "hull",
+    "armor",
+    "armor_dark",
+    "structure_light",
+    "mechanical",
+    "radiator",
+    "docking",
+    "service",
+    "marking",
+    "window",
+    "rock",
+    "warm"
+  ],
+  "artifacts": [
+    {
+      "role": "hull",
+      "channel": "basecolor",
+      "path": "hull_basecolor.png",
+      "sha256": "1F81168E0713B0C5D556CDFA56FFABCD268932DF8BE2985948AEB9FCFBCB63EF"
+    },
+    {
+      "role": "hull",
+      "channel": "normal",
+      "path": "hull_normal.png",
+      "sha256": "B011728E6F4F5187BEC97652A1D3D248E9066C950342EA14C24A9342F55541AC"
+    },
+    {
+      "role": "hull",
+      "channel": "orm",
+      "path": "hull_orm.png",
+      "sha256": "F3C8138958CA5077705999D2E4C72E9B0713C5C6E7262DF446A49AF023B10A9A"
+    },
+    {
+      "role": "armor",
+      "channel": "basecolor",
+      "path": "armor_basecolor.png",
+      "sha256": "2DB7F9F728B96DDDB20EBC2024B5C1157D1735507A0C76CEF76B22E20766E967"
+    },
+    {
+      "role": "armor",
+      "channel": "normal",
+      "path": "armor_normal.png",
+      "sha256": "C63EFA1C947A669C1DD0B93A12A079AD148FC89D065F48B321803E245A1D6BBF"
+    },
+    {
+      "role": "armor",
+      "channel": "orm",
+      "path": "armor_orm.png",
+      "sha256": "12F8E394E1D9F54E4AF2EF9F42B919D3C42CC935632F974A9FB53C1AEADA0EDB"
+    },
+    {
+      "role": "armor_dark",
+      "channel": "basecolor",
+      "path": "armor_dark_basecolor.png",
+      "sha256": "59E79FEE699A5D413D3E07C8528E9F1E4CC903E05448EF5D69F84B5B8A5E558D"
+    },
+    {
+      "role": "armor_dark",
+      "channel": "normal",
+      "path": "armor_dark_normal.png",
+      "sha256": "599D21E7A8381BFBD617530553F8547D4C124CE39121A51FEBD728B1D0E5AF5F"
+    },
+    {
+      "role": "armor_dark",
+      "channel": "orm",
+      "path": "armor_dark_orm.png",
+      "sha256": "E0C5D33E35D5864179CA1E941631D8B8F16DBCF36BC4ECC8C88C7F6D18415718"
+    },
+    {
+      "role": "structure_light",
+      "channel": "basecolor",
+      "path": "structure_light_basecolor.png",
+      "sha256": "9F9CDD5AC11500D53509DE896809143A5D2F9769CD11D44F8187EABCAF81A063"
+    },
+    {
+      "role": "structure_light",
+      "channel": "normal",
+      "path": "structure_light_normal.png",
+      "sha256": "B5C5CCE55C8A18F5F03C832C77B00D6FFD114BC7CF58D8DFFB5A520597A83AD9"
+    },
+    {
+      "role": "structure_light",
+      "channel": "orm",
+      "path": "structure_light_orm.png",
+      "sha256": "D09C88C7FD7E6F17F96398C89D64FDEFA8698EFFF9968FC125EC6FEEC5D62CC6"
+    },
+    {
+      "role": "mechanical",
+      "channel": "basecolor",
+      "path": "mechanical_basecolor.png",
+      "sha256": "5B39FC52FFA5159566DEE6C6AC0A2737342BF2FAA4C4CF0A980DDE75B4942B58"
+    },
+    {
+      "role": "mechanical",
+      "channel": "normal",
+      "path": "mechanical_normal.png",
+      "sha256": "719C0A42EDE3BD8856FB785309157FA38669AA2314AEF981B53571E1CF942DA5"
+    },
+    {
+      "role": "mechanical",
+      "channel": "orm",
+      "path": "mechanical_orm.png",
+      "sha256": "722DBE936E0F4FA92BD593CD66FE6FE04BC5DD76ADC191B1211DF404EDB71F1E"
+    },
+    {
+      "role": "radiator",
+      "channel": "basecolor",
+      "path": "radiator_basecolor.png",
+      "sha256": "52F4B6900A1CA1BDA5CA1DF9FD315583B58DB100FE62E4536FD6211B4025EAAD"
+    },
+    {
+      "role": "radiator",
+      "channel": "normal",
+      "path": "radiator_normal.png",
+      "sha256": "6B5469F4FB9A837CF43D270BE96146758DAEB1029864F9826ADFA45DC51A85C8"
+    },
+    {
+      "role": "radiator",
+      "channel": "orm",
+      "path": "radiator_orm.png",
+      "sha256": "4B70F339D10FD32B10AABBB394FDB3D20ECD23A23F21A2493262C7D6B37F4FDC"
+    },
+    {
+      "role": "docking",
+      "channel": "basecolor",
+      "path": "docking_basecolor.png",
+      "sha256": "F514AAF7D0A4D42B2DF74EF27F6CBB3540BD61212059C1D284779A40E66460CA"
+    },
+    {
+      "role": "docking",
+      "channel": "normal",
+      "path": "docking_normal.png",
+      "sha256": "894194C5EF57F2BFB0C4B7D61E28C8DFCAA384F4EED1FD1197B3EF468EB23424"
+    },
+    {
+      "role": "docking",
+      "channel": "orm",
+      "path": "docking_orm.png",
+      "sha256": "0FECF32A90750A45962A6FB609698CA076EF8B6FDF5514696BEB70A2EE7D7822"
+    },
+    {
+      "role": "service",
+      "channel": "basecolor",
+      "path": "service_basecolor.png",
+      "sha256": "99B72449B0A3E9674F6C22B65AF20EE847B313424031388EAA4037D6114E59D6"
+    },
+    {
+      "role": "service",
+      "channel": "normal",
+      "path": "service_normal.png",
+      "sha256": "E808E0E448F05A5F67E5FE80A8891B0F4E3A784562BFD3C73E46D6FC04CD17BB"
+    },
+    {
+      "role": "service",
+      "channel": "orm",
+      "path": "service_orm.png",
+      "sha256": "089254AA25D5885273B3CBED54B61D138798170D7AF8E8DBF191FCFE4954075D"
+    },
+    {
+      "role": "marking",
+      "channel": "basecolor",
+      "path": "marking_basecolor.png",
+      "sha256": "5790A9F88C6FA5B252A9633569B9D4D5F79C6F4F550602CFCC6D92F394C04C9F"
+    },
+    {
+      "role": "marking",
+      "channel": "normal",
+      "path": "marking_normal.png",
+      "sha256": "8FC95ACCC9EF485D9E602D2C4FFAA1FF262A18E21A0060C8DF804BB42BEFFF2F"
+    },
+    {
+      "role": "marking",
+      "channel": "orm",
+      "path": "marking_orm.png",
+      "sha256": "68F6C8182F782131ADBFDDC5E0BABE230225F097526AAC22943EDC89FF245B86"
+    },
+    {
+      "role": "window",
+      "channel": "basecolor",
+      "path": "window_basecolor.png",
+      "sha256": "83C8201D6CFF8C47E14DC7BFD0444AA916661E1532ABDA9CEF9A0DAC41647329"
+    },
+    {
+      "role": "window",
+      "channel": "normal",
+      "path": "window_normal.png",
+      "sha256": "81909B1EAD2663BF51725342148635ADCF0960F6752E33C188F98C9E18BECA5E"
+    },
+    {
+      "role": "window",
+      "channel": "orm",
+      "path": "window_orm.png",
+      "sha256": "AA827978757758A213A78CF455C73285216CD3C07E454986B077648F21890A3F"
+    },
+    {
+      "role": "rock",
+      "channel": "basecolor",
+      "path": "rock_basecolor.png",
+      "sha256": "19573A0169963EDE92D0CF8DBEDA53EE4E1EB421C02221D696923300AC475296"
+    },
+    {
+      "role": "rock",
+      "channel": "normal",
+      "path": "rock_normal.png",
+      "sha256": "BF46CE7DD59AA487D345CD0A9AB7DE8A4DBC43774965A77354D230D318434A13"
+    },
+    {
+      "role": "rock",
+      "channel": "orm",
+      "path": "rock_orm.png",
+      "sha256": "685E283A07D75DBFE1FFF7C5F75EE111316CF2546B5E17FFCC05EC6FE8704A11"
+    },
+    {
+      "role": "warm",
+      "channel": "basecolor",
+      "path": "warm_basecolor.png",
+      "sha256": "FB8CB2F52DA2D1E5C287D8220A1A5011724D9B0D0DECF39E8A4801157363F325"
+    },
+    {
+      "role": "warm",
+      "channel": "normal",
+      "path": "warm_normal.png",
+      "sha256": "50D471FD5463D2A8E1F5BFB05BA4B464D62B7B7599E863FB7A09ACF69E0ADA0F"
+    },
+    {
+      "role": "warm",
+      "channel": "orm",
+      "path": "warm_orm.png",
+      "sha256": "E80E9D9390825CAA8C55AC3CC2798DAB351D8EF6A4DFD5D9248FB05B53BDD0AE"
+    }
+  ],
+  "sourceProvenance": [
+    {
+      "role": "basecolor",
+      "path": "assets/third_party/helios_v8/ambientcg/Rock023/Rock023_1K-JPG_Color.jpg",
+      "sha256": "4406A3A28FA0EDD2734CF08C0720EF84D5EDD1A4CF035F4C9E56DE6C905151FF"
+    },
+    {
+      "role": "normal",
+      "path": "assets/third_party/helios_v8/ambientcg/Rock023/Rock023_1K-JPG_NormalGL.jpg",
+      "sha256": "6FC74F6C642A7B67A90C00F80FBD3F92040018155101C192C5050D606BB4D65E"
+    },
+    {
+      "role": "ao",
+      "path": "assets/third_party/helios_v8/ambientcg/Rock023/Rock023_1K-JPG_AmbientOcclusion.jpg",
+      "sha256": "7C005AF86029FFC9CDC91EA2ECF0D79D476B89769E72AB64F4B5361487720471"
+    },
+    {
+      "role": "roughness",
+      "path": "assets/third_party/helios_v8/ambientcg/Rock023/Rock023_1K-JPG_Roughness.jpg",
+      "sha256": "0F8C31020E2FE794DED7E31AB753475C824C03A461F132376FFA604E85EA3DB5"
+    },
+    {
+      "role": "license",
+      "path": "assets/third_party/helios_v8/ambientcg/Rock023/LICENSE_CC0.txt",
+      "sha256": "9464DB0DBC32C3B1358353E9AC4229D44A3DEEC91D6C018810698D40913B9DEC"
+    }
+  ]
+}

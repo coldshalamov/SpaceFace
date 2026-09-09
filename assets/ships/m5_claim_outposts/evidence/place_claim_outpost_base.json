@@ -1,0 +1,99 @@
+{
+  "schema": "spaceface.claimOutpostBuild.v1",
+  "packet": "M5-CLAIM-OUTPOST-VISUAL-GROWTH-001",
+  "family": "player_claim_growth_family",
+  "assetId": "place_claim_outpost_base",
+  "claimSpecId": null,
+  "title": "Claim Anchor",
+  "source": "assets/ships/m5_claim_outposts/source/places/place_claim_outpost_base.glb",
+  "blend": "assets/ships/m5_claim_outposts/blender/place_claim_outpost_base.blend",
+  "bytes": 6835992,
+  "lod": {
+    "lod0": {
+      "triangles": 15384,
+      "drawGroups": 5
+    },
+    "lod1": {
+      "triangles": 5832,
+      "drawGroups": 5
+    },
+    "lod2": {
+      "triangles": 1724,
+      "drawGroups": 5
+    }
+  },
+  "aabb": {
+    "min": [
+      -47.0226,
+      -17.6696,
+      -47.0226
+    ],
+    "max": [
+      55.5,
+      12.5,
+      47.0226
+    ],
+    "size": [
+      102.5226,
+      30.1696,
+      94.0452
+    ]
+  },
+  "materials": [
+    "Material_Accent",
+    "Material_Glass",
+    "Material_Hull",
+    "Material_Mechanical",
+    "Material_Warm"
+  ],
+  "metadata": {
+    "contractVersion": 1,
+    "assetId": "SF_PLACE_CLAIM_OUTPOST_BASE",
+    "partId": "place_claim_outpost_base",
+    "liveId": "place_claim_outpost_base",
+    "slot": "place",
+    "forward": "+X",
+    "up": "+Y",
+    "starboard": "+Z",
+    "unit": "metre",
+    "normalConvention": "OpenGL",
+    "ormChannels": "R=AO,G=Roughness,B=Metallic",
+    "textureCompression": "PNG-source",
+    "textureSize": 1024,
+    "chamfered": true,
+    "bevelRadiusM": 0.05,
+    "family": "player_claim_growth_family",
+    "packet": "M5-CLAIM-OUTPOST-VISUAL-GROWTH-001",
+    "role": "claim_base",
+    "title": "Claim Anchor",
+    "kind": "claim_outpost",
+    "deliverableRole": "production_multi_lod",
+    "lods": [
+      "lod0",
+      "lod1",
+      "lod2"
+    ],
+    "triangleCount": 15384,
+    "lodTriangles": {
+      "lod0": 15384,
+      "lod1": 5832,
+      "lod2": 1724
+    },
+    "drawGroupsPerLod": {
+      "lod0": 5,
+      "lod1": 5,
+      "lod2": 5
+    },
+    "lod0AabbSize": [
+      102.5226,
+      30.1696,
+      94.0452
+    ],
+    "wiringStatus": "production_source",
+    "sourceGenerator": "tools/blender/build_claim_outpost_family.py",
+    "sourceBlenderVersion": "5.1"
+  },
+  "builtAt": "2026-07-12T08:57:08Z",
+  "sha256": "f3a2ac6441c9eddf75a7b6def338d7203394aaa178bac0de2385f7765e8f6f30",
+  "canonical": "assets/ships/parts/places/place_claim_outpost_base.glb"
+}
