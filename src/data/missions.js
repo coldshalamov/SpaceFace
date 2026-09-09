@@ -1525,12 +1525,15 @@ export const OFFER_MIX = {
 export const STORY_BEATS = [
   { beat: 0, id: 'cold_start',     objective: 'Contract 47-A: sample the 12.4t mass discrepancy, dock Helios. Payment withheld. Status pending.',
     reward: { credits: 400, rep: { faction: 'home', amount: 5 }, unlock: 'mod_mining_laser_s' }, introduces: 'mining', next: 1 },
-  { beat: 1, id: 'honest_work',    objective: 'Accept a low-risk haul or trade contract, confirm it is TRACKED in Mission Log, then carry the required cargo to the marked station for profit.',
-    reward: { credits: 600, unlock: 'trade_tutorial' }, introduces: 'trade', next: 2 },
-  { beat: 2, id: 'first_blood',    objective: 'Arm the Hitch, track a low-risk bounty, and destroy the marked hostile.',
-    reward: { credits: 800, unlock: 'wpn_pulse_laser_s' }, introduces: 'combat', next: 3 },
-  { beat: 3, id: 'bigger_boat',    objective: 'Follow the Elroy outcome to the marked shipyard; buy a tier-two hull.',
-    reward: { credits: 1000, milestone: 'cargo+20u' }, introduces: 'shipyard', next: 4 },
+  { beat: 1, id: 'honest_work',    objective: 'Knock the variance tower — wrecking-ball contract. Swing mass through it, or cut it down.',
+    headlineVerb: 'knock', setPiece: 'wrecking-ball contract', physicalType: 'demolition', authoredSetPieceId: 'wrecking_ball',
+    reward: { credits: 600, unlock: 'trade_tutorial' }, introduces: 'wrecking_ball', next: 2 },
+  { beat: 2, id: 'first_blood',    objective: 'Pull the life pods out under fire. Tow one home, or open a corridor and reel.',
+    headlineVerb: 'pull', setPiece: 'pod rescue under fire', physicalType: 'rescue_under_fire', authoredSetPieceId: 'pod_rescue',
+    reward: { credits: 800, unlock: 'wpn_pulse_laser_s' }, introduces: 'pod_rescue', next: 3 },
+  { beat: 3, id: 'bigger_boat',    objective: 'Tow the slag core the long way. Keep it on the line into the yard, or sling it in.',
+    headlineVerb: 'tow', setPiece: 'long tow', physicalType: 'tow_recovery', authoredSetPieceId: 'long_tow',
+    reward: { credits: 1000, milestone: 'cargo+20u' }, introduces: 'long_tow', next: 4 },
   { beat: 4, id: 'pick_a_side',    objective: 'Complete the faction intro selected by the Elroy outcome.',
     reward: { credits: 1200, rep: { chosen: 15, opposing: -10 } }, introduces: 'factions', next: 5 },
   { beat: 5, id: 'proving_ground', objective: 'Complete your faction chain: MTS trade runs, SCN patrol clears, or Free Captain smuggling jobs.',
@@ -1540,3 +1543,19 @@ export const STORY_BEATS = [
   { beat: 7, id: 'deep_reach',     objective: 'Use the Empire Seed in a physical Ashfall operation, then review final dispositions.',
     reward: { credits: 5000, unlock: 'newgame_plus' }, introduces: 'endgame', next: null },
 ];
+
+/** PQ-032.00 — beats 1–3 are the three PQ-152 physical set pieces, one linear spine. */
+export const PQ032_BEAT_SET_PIECES = Object.freeze(
+  STORY_BEATS.filter((beat) => beat.beat >= 1 && beat.beat <= 3).map((beat) => Object.freeze({
+    beat: beat.beat,
+    id: beat.id,
+    headlineVerb: beat.headlineVerb,
+    setPiece: beat.setPiece,
+    physicalType: beat.physicalType,
+    authoredSetPieceId: beat.authoredSetPieceId,
+  })),
+);
+
+export function listPq032SpineSetPieces() {
+  return PQ032_BEAT_SET_PIECES.slice();
+}

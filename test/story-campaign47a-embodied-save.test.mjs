@@ -89,9 +89,9 @@ function toB3(h) {
   toB1(h);
   completeMission(h, acceptStoryOffer(h, 'station_helios', 'campaign47a:b1:honest_work'));
   assert.equal(h.state.story.beatIndex, 2);
-  const elroy = acceptStoryOffer(h, 'station_tethys', 'campaign47a:b2:elroy');
-  assert.equal(elroy.storyTarget.id, 'npc_elroy');
-  completeMission(h, elroy);
+  const rescue = acceptStoryOffer(h, 'station_tethys', 'campaign47a:b2:elroy');
+  assert.equal(rescue.type, 'rescue_under_fire');
+  completeMission(h, rescue);
   assert.equal(h.state.story.beatIndex, 3);
 }
 
@@ -111,7 +111,7 @@ function postIntro(h, branch = 'traders') {
 
 function toB7(h) {
   toB3(h);
-  h.bus.emit('ship:purchased', { defId: 'ship_kestrel_mk2', tier: 2 });
+  completeMission(h, acceptStoryOffer(h, 'station_tethys', 'campaign47a:b3:bigger_boat'));
   assert.equal(h.state.story.beatIndex, 4);
   postIntro(h, 'traders');
   assert.equal(h.state.story.beatIndex, 5);
@@ -164,13 +164,14 @@ test('B1 authored contract survives Continue with authority metadata', () => {
   assert.equal(next.state.story.campaign47a.schemaVersion, CAMPAIGN_SCHEMA_VERSION);
 });
 
-test('B2 Elroy identity and story contract survive Continue', () => {
+test('B2 pod-rescue contract survives Continue', () => {
   const h = harness();
   toB1(h);
   completeMission(h, acceptStoryOffer(h, 'station_helios', 'campaign47a:b1:honest_work'));
   acceptStoryOffer(h, 'station_tethys', 'campaign47a:b2:elroy');
   const before = contractSnapshot(h.state);
-  assert.equal(before.storyTarget.id, 'npc_elroy');
+  assert.equal(before.type, 'rescue_under_fire');
+  assert.equal(before.storyTag, 'campaign47a:b2:elroy');
   const next = roundTrip(h);
   assert.deepEqual(contractSnapshot(next.state), { ...before, targetEntityIds: [] });
   assert.equal(next.state.story.beatIndex, 2);

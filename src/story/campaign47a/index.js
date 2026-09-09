@@ -125,6 +125,7 @@ export {
   listEmbodiedMissions,
   validateEmbodiedMissions,
 } from './embodiedMissions.js';
+export { PQ032_BEAT_SET_PIECES, listPq032SpineSetPieces } from '../../data/missions.js';
 
 export {
   BEAT_COMMS,

@@ -3,7 +3,6 @@ import test from 'node:test';
 
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
-import { removeCargo } from '../src/systems/cargo.js';
 import {
   CONTRACT_47A_B1_TAG,
   missions as missionsProto,
@@ -17,11 +16,11 @@ function harness() {
   state.player.cargo = { items: {}, usedVolume: 0, usedMass: 0, capVolume: 40, capMass: 200 };
   state.settings.gameplay.tutorialHints = false;
   state.onboarding = { active: false, finished: true };
+  let nextId = 10;
   const entities = [
     { id: 1, type: 'ship', alive: true, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 } },
     { id: 2, type: 'asteroid', alive: true, pos: { x: 160, z: -40 }, data: { typeId: 'ast_common_rock' } },
     { id: 3, type: 'station', alive: true, pos: { x: -400, z: 80 }, data: { stationId: 'station_helios', name: 'Helios Station' } },
-    { id: 4, type: 'station', alive: true, pos: { x: 2200, z: -500 }, data: { stationId: 'station_tethys', name: 'Tethys Relay' } },
   ];
   for (const entity of entities) {
     state.entities.set(entity.id, entity);
@@ -29,11 +28,15 @@ function harness() {
   }
   const bus = createBus();
   const credits = [];
-  const toasts = [];
   bus.on('economy:grantCredits', (payload) => credits.push(payload));
-  bus.on('toast', (payload) => toasts.push(payload));
   const helpers = {
     voice: { say: () => true },
+    spawnEntity: (spec) => {
+      const entity = { ...spec, id: nextId++, alive: true, pos: { ...spec.pos }, vel: spec.vel || { x: 0, z: 0 } };
+      state.entities.set(entity.id, entity);
+      state.entityList.push(entity);
+      return entity;
+    },
     mulberry32: (seed) => {
       let a = seed >>> 0;
       return () => {
@@ -48,14 +51,14 @@ function harness() {
   const missions = Object.assign({}, missionsProto);
   missions.init({ state, bus, helpers, registry: { get: () => null } });
   missions.newGame();
-  return { state, bus, missions, credits, toasts, asteroid: entities[1] };
+  return { state, bus, missions, credits, asteroid: entities[1] };
 }
 
 function activeB1(h) {
   return h.state.missions.active.find((mission) => mission.storyTag === CONTRACT_47A_B1_TAG);
 }
 
-test('47-A settlement dispatches a physical Tycho investigation with cargo recovery', () => {
+test('47-A settlement dispatches the wrecking-ball contract, not a cargo haul', () => {
   const h = harness();
   h.bus.emit('mining:yield', {
     commodityId: 'cmdty_ore_iron', qty: 1, minerId: 1, pos: { ...h.asteroid.pos },
@@ -66,25 +69,19 @@ test('47-A settlement dispatches a physical Tycho investigation with cargo recov
 
   h.bus.emit('dock:undocked', {});
   const mission = activeB1(h);
-  assert.ok(mission, 'undock dispatches the authored Kessler follow-up');
-  assert.equal(mission.title, '47-A FOLLOW-UP — TYCHO VARIANCE');
+  assert.ok(mission, 'undock dispatches the wrecking-ball contract');
+  assert.equal(mission.type, 'demolition');
+  assert.equal(mission.title, 'Knock the variance tower');
   assert.equal(h.state.ui.trackedMissionId, mission.id);
-  assert.equal(h.state.player.cargo.items.cmdty_alloys, 4);
-  assert.equal(h.state.nav.waypoint.stationId, 'station_tethys');
-  assert.match(h.state.nav.waypoint.reason, /Deliver sealed alloys to Tycho; compare the manifest/);
+  assert.equal(h.state.player.cargo.items.cmdty_alloys, undefined);
 
-  assert.equal(removeCargo(h.state, 'cmdty_alloys', 4), 4);
-  h.bus.emit('dock:docked', { stationId: 'station_tethys' });
-  assert.ok(activeB1(h), 'missing cargo cannot complete or erase the investigation');
-  assert.equal(mission.params.cargoRecoveryNeeded, true);
-  assert.equal(h.state.nav.waypoint.stationId, 'station_helios');
-  assert.match(h.state.nav.waypoint.reason, /Return to Helios for replacement cargo/);
-
-  h.bus.emit('dock:docked', { stationId: 'station_helios' });
-  assert.equal(h.state.player.cargo.items.cmdty_alloys, 4);
-  assert.equal(mission.params.cargoRecoveryNeeded, false);
-  assert.equal(h.state.nav.waypoint.stationId, 'station_tethys');
-  h.bus.emit('dock:docked', { stationId: 'station_tethys' });
+  h.state.world.currentSectorId = mission.destSectorId;
+  h.missions._ensureMissionTargets(mission);
+  const towerId = mission.targetEntityIds[0];
+  assert.ok(towerId, 'the tower is a physical target');
+  h.bus.emit('tether:whipImpact', {
+    victimId: towerId, targetId: h.state.playerId, rating: 'solid', relSpeed: 80,
+  });
   assert.equal(h.state.story.beatIndex, 2);
   assert.equal(activeB1(h), undefined);
   assert.equal(h.credits.filter((row) => row.amount === 600).length, 1);
@@ -92,6 +89,4 @@ test('47-A settlement dispatches a physical Tycho investigation with cargo recov
   const receipt = h.state.missions.receipts.find((row) => row.missionId === mission.id);
   assert.equal(receipt.outcome, 'completed');
   assert.equal(receipt.rewardCr, 600);
-  h.bus.emit('dock:docked', { stationId: 'station_tethys' });
-  assert.equal(h.credits.filter((row) => row.amount === 600).length, 1);
 });

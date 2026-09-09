@@ -3,6 +3,7 @@
 // encounterDirector owns encounters, and aftermathWrecks owns battle residue.
 
 import { hash32 } from '../../core/rng.js';
+import { PQ032_BEAT_SET_PIECES } from '../../data/missions.js';
 import {
   BRANCH_CHAIN,
   BRANCH_FACTION,
@@ -93,51 +94,74 @@ export const EMBODIED_MISSIONS = Object.freeze([
   }),
   B({
     beat: 1, id: 'honest_work', contactId: 'contact_kessler', contactName: 'Kessler',
-    location: B({ sectorId: 'sector_helios_prime', stationId: 'station_helios', destSectorId: 'sector_tethys_junction', destStationId: 'station_tethys' }),
+    headlineVerb: 'knock', setPiece: 'wrecking-ball contract',
+    location: B({ sectorId: 'sector_helios_prime', stationId: 'station_helios', destSectorId: 'sector_helios_prime', destStationId: 'station_helios' }),
     physicalContact: B({ mode: 'mission', steps: B([
-      B({ id: 'deliver', signal: 'mission:completed', accept: B(['mission:completed']) }),
+      B({ id: 'knock', signal: 'mission:completed', accept: B(['mission:completed']) }),
     ]) }),
     missionBoardContract: B({
-      type: 'cargo_delivery', storyTag: 'campaign47a:b1:honest_work',
-      title: '47-A FOLLOW-UP — TYCHO VARIANCE', factionId: 'faction_mts',
-      stationId: 'station_helios', destStationId: 'station_tethys', destSectorId: 'sector_tethys_junction',
-      reward_cr: 600, collateral_cr: 0, riskTier: 0, time_limit_s: 0,
-      preloadedCargo: true,
-      params: B({ cmdtyId: 'cmdty_alloys', qty: 4, manifestName: 'INDUSTRIAL COMPONENTS', filedAs: 'SURPLUS REDISTRIBUTION — STANDARD', fValue: 1, taskTime: 20 }),
+      type: 'demolition', storyTag: 'campaign47a:b1:honest_work',
+      title: 'Knock the variance tower', brief: 'Swing mass through the tower, or cut it down.',
+      factionId: 'faction_mts',
+      stationId: 'station_helios', destStationId: 'station_helios', destSectorId: 'sector_helios_prime',
+      reward_cr: 600, collateral_cr: 0, riskTier: 1, minRep: -149, time_limit_s: 0,
+      params: B({
+        physicalVerb: 'knock_down',
+        completionMethods: B(['wrecking_ball', 'cut_down']),
+        authoredSetPieceId: 'wrecking_ball',
+        targetStrength: 1.2, fValue: 1.2, taskTime: 50,
+      }),
     }),
-    recovery: 'Honest work remains posted. Re-accept the Tycho run.',
-    careerIds: B(['hauler']),
+    recovery: 'The tower still stands. Knock it down.',
+    careerIds: B(['hunter', 'hauler']),
   }),
   B({
     beat: 2, id: 'first_blood', contactId: 'contact_rook', contactName: 'Rook',
+    headlineVerb: 'pull', setPiece: 'pod rescue under fire',
     location: B({ sectorId: 'sector_tethys_junction', stationId: 'station_tethys', destSectorId: 'sector_charon_expanse', destStationId: 'station_expanse', zoneId: 'zone_charon_ambush' }),
-    physicalContact: B({ mode: 'ordered_and', steps: B([
-      B({ id: 'identify', signal: 'scan:completed', accept: B(['scan:completed', 'entity:killed']) }),
-      B({ id: 'resolve', signal: 'tether:reel', accept: B(['tether:reel', 'entity:killed']), requiresPrior: B(['identify']) }),
+    physicalContact: B({ mode: 'mission', steps: B([
+      B({ id: 'pull', signal: 'mission:completed', accept: B(['mission:completed']) }),
     ]) }),
     missionBoardContract: B({
-      type: 'bounty_hunt', storyTag: 'campaign47a:b2:elroy',
-      title: '47-A INVESTIGATION — SECTOR INTERFERENCE', factionId: 'faction_scn',
+      type: 'rescue_under_fire', storyTag: 'campaign47a:b2:elroy',
+      title: 'Pull the pods under fire', brief: 'Tow a pod home, or open a corridor and reel from stand-off.',
+      factionId: 'faction_scn',
       stationId: 'station_tethys', destStationId: 'station_expanse', destSectorId: 'sector_charon_expanse',
-      reward_cr: 800, collateral_cr: 0, riskTier: 1, time_limit_s: 0,
-      params: B({ clearCount: 1, targetStrength: 1.4, fValue: 1.4, taskTime: 60 }),
-      storyTarget: B({
-        id: 'npc_elroy', name: 'Elroy', label: 'UNKNOWN', archetype: 'reaver_pirate',
-        factionId: 'faction_free', zoneId: 'zone_charon_ambush',
-        registry: 'CIVILIAN VESSEL — REGISTERED',
-        role: 'Pit Engineering, Maintenance Division',
+      reward_cr: 800, collateral_cr: 0, riskTier: 2, minRep: -149, time_limit_s: 0,
+      params: B({
+        physicalVerb: 'pull',
+        completionMethods: B(['stage_tow', 'corridor_pull']),
+        authoredSetPieceId: 'pod_rescue',
+        podCount: 2, escortCount: 2, escortsDown: 0, podsLost: 0,
+        targetStrength: 1.3, fValue: 1.3, taskTime: 70,
       }),
     }),
-    recovery: 'Contact lost. Re-arm the same investigation; the board still pays.',
+    recovery: 'Pods still drift. Pull them out.',
     careerIds: B(['hunter']),
     aftermath: B({ owner: 'aftermathWrecks', source: 'entity:killed', sectorId: 'sector_charon_expanse', zoneId: 'zone_charon_ambush' }),
   }),
   B({
     beat: 3, id: 'bigger_boat', contactId: 'contact_slate', contactName: 'Slate',
-    location: B({ sectorId: 'sector_tethys_junction', stationId: 'station_tethys' }),
+    headlineVerb: 'tow', setPiece: 'long tow',
+    location: B({ sectorId: 'sector_tethys_junction', stationId: 'station_tethys', destSectorId: 'sector_ceres_belt', destStationId: 'station_ceres' }),
     consequenceRoutes: BIGGER_BOAT_ROUTES,
-    physicalContact: B({ mode: 'any', steps: B([B({ id: 'ship', signal: 'ship:purchased', accept: B(['ship:purchased']) })]) }),
-    missionBoardContract: null, recovery: 'Shipyard remains open. Earn the hull; no soft-lock.',
+    physicalContact: B({ mode: 'mission', steps: B([
+      B({ id: 'tow', signal: 'mission:completed', accept: B(['mission:completed']) }),
+    ]) }),
+    missionBoardContract: B({
+      type: 'tow_recovery', storyTag: 'campaign47a:b3:bigger_boat',
+      title: 'Tow the slag core', brief: 'Keep the core on the line into the yard, or sling it in.',
+      factionId: 'faction_dmc',
+      stationId: 'station_tethys', destStationId: 'station_ceres', destSectorId: 'sector_ceres_belt',
+      reward_cr: 1000, collateral_cr: 0, riskTier: 1, minRep: -149, time_limit_s: 0,
+      params: B({
+        physicalVerb: 'tow',
+        completionMethods: B(['tow_in', 'sling_in']),
+        authoredSetPieceId: 'long_tow',
+        massU: 36, cargoValue: 792, fValue: 1.1, taskTime: 40,
+      }),
+    }),
+    recovery: 'The core still waits. Tow it in.',
     careerIds: B(['hauler', 'hunter', 'prospector']),
   }),
   B({
@@ -246,7 +270,6 @@ export function getEmbodiedLocation(beatIndex, branch = null, elroyOutcome = nul
   const def = embodiedMissionAt(beatIndex);
   if (!def) return null;
   const location = { beat: def.beat, ...def.location };
-  if (def.beat === 3) Object.assign(location, getBiggerBoatRoute(elroyOutcome));
   if (def.beat === 4) Object.assign(location, getPickSideStake(elroyOutcome));
   if (def.beat === 5 && branch) {
     const branchLocation = {
@@ -278,7 +301,7 @@ export function buildMissionBoardContract(beatIndex, options = {}) {
     id: stableOfferId(seed, def.beat, epoch, 0, null),
     params: { ...base.params },
     storyTarget: base.storyTarget ? { ...base.storyTarget } : null,
-    distance: Number(options.distance) || (def.beat === 2 ? 3000 : 1600),
+    distance: Number(options.distance) || (def.beat === 3 ? 3200 : def.beat === 2 ? 3000 : 800),
     expiresAtEpoch: epoch + 1,
     campaign47aBeat: def.beat,
     storyContractId: base.storyTag,
@@ -437,6 +460,8 @@ export function describeEmbodiedMission(beatIndex, options = {}) {
   if (!def) return null;
   return {
     beat: def.beat, id: def.id, contactId: def.contactId, contactName: def.contactName,
+    headlineVerb: def.headlineVerb || null,
+    setPiece: def.setPiece || null,
     location: getEmbodiedLocation(beatIndex, options.branch, options.elroyOutcome),
     physicalContact: getPhysicalContact(beatIndex),
     boardContract: buildMissionBoardContract(beatIndex, options),
@@ -458,10 +483,26 @@ export function validateEmbodiedMissions() {
       if (!isCanonicalContactSignal(step.signal)) errors.push(`B${def.beat}: unverified signal ${step.signal}`);
     }
   }
-  const b2 = embodiedMissionAt(2);
-  if (!b2.missionBoardContract.storyTarget || b2.missionBoardContract.storyTarget.id !== 'npc_elroy') errors.push('B2: Elroy target missing');
+  for (const row of PQ032_BEAT_SET_PIECES) {
+    const def = embodiedMissionAt(row.beat);
+    const contract = def && def.missionBoardContract;
+    if (!def || def.id !== row.id) errors.push(`B${row.beat}: PQ-032 beat id mismatch`);
+    if (!contract || contract.type !== row.physicalType) {
+      errors.push(`B${row.beat}: expected PQ-152 type ${row.physicalType}`);
+    }
+    if (!contract || !contract.title || !String(contract.title).toLowerCase().startsWith(row.headlineVerb)) {
+      errors.push(`B${row.beat}: headline verb ${row.headlineVerb} missing`);
+    }
+    if (!contract || !contract.params || contract.params.authoredSetPieceId !== row.authoredSetPieceId) {
+      errors.push(`B${row.beat}: authored set piece ${row.authoredSetPieceId} missing`);
+    }
+    if (!contract || !Array.isArray(contract.params && contract.params.completionMethods)
+      || contract.params.completionMethods.length !== 2) {
+      errors.push(`B${row.beat}: two physical solutions required`);
+    }
+  }
   const b3 = embodiedMissionAt(3);
-  if (!b3.consequenceRoutes || !b3.consequenceRoutes.custody || !b3.consequenceRoutes.force) errors.push('B3: consequence routes missing');
+  if (!b3.consequenceRoutes || !b3.consequenceRoutes.custody || !b3.consequenceRoutes.force) errors.push('B3: leftover consequence routes missing');
   const b4 = embodiedMissionAt(4);
   if (!b4.consequenceStakes || !b4.consequenceStakes.custody || !b4.consequenceStakes.force) errors.push('B4: consequence stakes missing');
   const b6 = embodiedMissionAt(6);

@@ -163,42 +163,49 @@ function acceptEmbodiedOffer(h, stationId, expectedTag) {
   return mission;
 }
 
+function completeSpineSetPiece(h, mission) {
+  assert.ok(mission && mission.status === 'active', 'set piece must be active');
+  h.state.world.currentSectorId = mission.destSectorId;
+  h.bus.emit('sector:enter', { sectorId: mission.destSectorId });
+  h.missions.spawnTargetsForSector(mission.destSectorId);
+  h.missions._ensureMissionTargets(mission);
+  if (mission.type === 'demolition') {
+    const towerId = mission.targetEntityIds[0];
+    assert.ok(towerId, 'wrecking-ball contract needs a tower');
+    h.bus.emit('tether:whipImpact', {
+      victimId: towerId, targetId: h.state.playerId, rating: 'solid', relSpeed: 80,
+    });
+    return;
+  }
+  if (mission.type === 'rescue_under_fire' || mission.type === 'tow_recovery') {
+    const role = mission.type === 'rescue_under_fire' ? 'life_pod' : 'slag_core';
+    const target = mission.targetEntityIds
+      .map((id) => h.state.entities.get(id))
+      .find((entity) => entity && entity.data && entity.data.physicalRole === role);
+    assert.ok(target, `${mission.type} needs ${role}`);
+    h.bus.emit('tether:latched', { targetId: target.id });
+    h.bus.emit('dock:docked', { stationId: mission.destStationId });
+    return;
+  }
+  completePhysicalMission(h, mission);
+}
+
 function advanceEmbodiedB1B2(h, outcome = 'force') {
-  const { state, bus, missions } = h;
+  const { state, bus } = h;
   assert.equal(state.story.beatIndex, 1);
   // Unrelated trade cannot advance the campaign.
   bus.emit('economy:tradeCompleted', { side: 'sell', stationId: 'station_helios', commodityId: 'cmdty_ore_iron', qty: 1 });
   assert.equal(state.story.beatIndex, 1);
-  acceptEmbodiedOffer(h, 'station_helios', 'campaign47a:b1:honest_work');
-  bus.emit('dock:docked', { stationId: 'station_tethys' });
+  completeSpineSetPiece(h, acceptEmbodiedOffer(h, 'station_helios', 'campaign47a:b1:honest_work'));
   assert.equal(state.story.beatIndex, 2);
 
   // Unrelated kills cannot advance First Blood.
   bus.emit('entity:killed', { id: 9999, killerId: state.playerId, factionId: 'faction_free' });
   assert.equal(state.story.beatIndex, 2);
-  const bounty = acceptEmbodiedOffer(h, 'station_tethys', 'campaign47a:b2:elroy');
-  assert.equal(bounty.storyTarget && bounty.storyTarget.id, 'npc_elroy');
-  state.world.currentSectorId = bounty.destSectorId;
-  missions.spawnTargetsForSector(bounty.destSectorId);
-  const targetId = bounty.targetEntityIds[0];
-  const target = state.entities.get(targetId);
-  assert.ok(target && target.data.storyTargetId === 'npc_elroy', 'Elroy must be a physical mission target');
-  state.player.targetId = targetId;
-  const player = state.entities.get(state.playerId);
-  player.pos.x = target.pos.x + 100;
-  player.pos.z = target.pos.z;
-  bus.emit('scan:completed', { targetId });
-  assert.equal(bounty.params.investigationStage, 'identified');
-  if (outcome === 'custody') {
-    bus.emit('tether:reel', { actorId: state.playerId, targetId, before: 72, after: 60 });
-  } else {
-    bus.emit('entity:killed', {
-      id: targetId, killerId: state.playerId, factionId: target.factionId,
-      type: target.type, pos: { x: target.pos.x, z: target.pos.z }, sectorId: bounty.destSectorId,
-    });
-  }
+  completeSpineSetPiece(h, acceptEmbodiedOffer(h, 'station_tethys', 'campaign47a:b2:elroy'));
   assert.equal(state.story.beatIndex, 3);
-  assert.equal(state.story.flags.elroy_outcome, outcome);
+  // Later leftover stakes still read elroy_outcome. The set piece itself adds no choice menu.
+  state.story.flags.elroy_outcome = outcome;
 }
 
 const PHYSICAL_ROUTE = Object.freeze({
@@ -231,12 +238,13 @@ function completePhysicalMission(h, mission) {
 }
 
 function completeB3(h, outcome) {
-  const route = PHYSICAL_ROUTE[outcome];
-  h.bus.emit('dock:docked', { stationId: route.b3StationId });
+  void outcome;
   h.bus.emit('ship:purchased', {
-    defId: route.shipId, hullId: route.shipId, stationId: route.b3StationId, price: 9000,
+    defId: 'ship_drifter', hullId: 'ship_drifter', stationId: 'station_tethys', price: 9000,
   });
-  assert.equal(h.state.story.beatIndex, 4, 'B3 requires the outcome-specific yard and tier-two hull');
+  assert.equal(h.state.story.beatIndex, 3, 'a hull buy cannot settle the long tow');
+  completeSpineSetPiece(h, acceptEmbodiedOffer(h, 'station_tethys', 'campaign47a:b3:bigger_boat'));
+  assert.equal(h.state.story.beatIndex, 4, 'B3 is the long tow');
 }
 
 function acceptCurrentStoryOffer(h, stationId, tagPrefix) {
@@ -341,7 +349,6 @@ check('one canonical story reward grant per beat advance (B0–B6 credits)', () 
   // B1/B2 pay through their authored mission exactly once; the other beats retain story grants.
   const expected = [
     'story:cold_start',
-    'story:bigger_boat',
     'story:pick_a_side',
     'story:proving_ground',
     'story:empire_seed',
@@ -352,6 +359,7 @@ check('one canonical story reward grant per beat advance (B0–B6 credits)', () 
   }
   assert.equal(storyReasons.includes('story:honest_work'), false, 'B1 must not double-pay its mission reward');
   assert.equal(storyReasons.includes('story:first_blood'), false, 'B2 must not double-pay its mission reward');
+  assert.equal(storyReasons.includes('story:bigger_boat'), false, 'B3 must not double-pay its mission reward');
   // No duplicate story:beatAdvanced for same fromIndex
   const froms = h.beatAdvances.map((b) => b.fromIndex);
   const uniqueFroms = new Set(froms.filter((f, i) => !(f === 7 && h.beatAdvances[i].toIndex === 7)));

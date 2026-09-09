@@ -3,25 +3,22 @@ import test from 'node:test';
 
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
-import { missions as missionsProto } from '../src/systems/missions.js';
+import { hash32, mulberry32 } from '../src/core/rng.js';
+import { CONTRACT_47A_B3_TAG, missions as missionsProto } from '../src/systems/missions.js';
 
-const ROUTE_BY_OUTCOME = Object.freeze({
-  custody: Object.freeze({ stationId: 'station_helios', sectorId: 'sector_helios_prime' }),
-  force: Object.freeze({ stationId: 'station_tethys', sectorId: 'sector_tethys_junction' }),
-});
-
-function harness(outcome) {
-  const state = createGameState(outcome === 'custody' ? 473 : 474);
+function harness() {
+  const state = createGameState(473);
   state.mode = 'flight';
   state.simTime = 40;
   state.playerId = 1;
   state.settings.gameplay.tutorialHints = false;
   state.onboarding = { active: false, finished: true };
-  state.world.currentSectorId = 'sector_charon_expanse';
+  state.world.currentSectorId = 'sector_tethys_junction';
+  let nextId = 10;
   const entities = [
     { id: 1, type: 'ship', alive: true, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 } },
-    { id: 2, type: 'station', alive: true, pos: { x: -900, z: 800 }, data: { stationId: 'station_helios', name: 'Helios Station' } },
-    { id: 3, type: 'station', alive: true, pos: { x: 1100, z: 400 }, data: { stationId: 'station_tethys', name: 'Tethys Trade Hub' } },
+    { id: 2, type: 'station', alive: true, pos: { x: 1100, z: 400 }, data: { stationId: 'station_tethys', name: 'Tethys Trade Hub' } },
+    { id: 3, type: 'station', alive: true, pos: { x: 80, z: 40 }, data: { stationId: 'station_ceres', name: 'Ceres Yard', dockRadius: 80 } },
   ];
   for (const entity of entities) {
     state.entities.set(entity.id, entity);
@@ -31,47 +28,60 @@ function harness(outcome) {
   const credits = [];
   bus.on('economy:grantCredits', (payload) => credits.push(payload));
   const missions = Object.assign({}, missionsProto);
-  missions.init({ state, bus, helpers: { voice: { say: () => true } }, registry: { get: () => null } });
+  missions.init({
+    state,
+    bus,
+    helpers: {
+      hash32,
+      mulberry32,
+      voice: { say: () => true },
+      spawnEntity: (spec) => {
+        const entity = { ...spec, id: nextId++, alive: true, pos: { ...spec.pos }, vel: spec.vel || { x: 0, z: 0 } };
+        state.entities.set(entity.id, entity);
+        state.entityList.push(entity);
+        return entity;
+      },
+    },
+    registry: { get: () => null },
+  });
   missions.newGame();
   state.missions.active = [];
   state.ui.trackedMissionId = null;
   state.nav.waypoint = null;
   state.story.beatIndex = 3;
-  state.story.flags.elroy_outcome = outcome;
   missions._syncCampaignSidecarAfterAdvance();
+  missions._refreshEmbodiedStoryBoards();
   missions._refreshNavigation({ forceStory: true, silent: true });
   return { state, bus, missions, credits };
 }
 
-function exerciseOutcome(outcome) {
-  const h = harness(outcome);
-  const route = ROUTE_BY_OUTCOME[outcome];
-  const wrongStationId = outcome === 'custody' ? 'station_tethys' : 'station_helios';
+test('47-A B3 is the long tow, not a shipyard choice', () => {
+  const h = harness();
   assert.equal(h.state.nav.waypoint.storyBeat, 3);
-  assert.equal(h.state.nav.waypoint.stationId, route.stationId);
-  assert.equal(h.state.nav.waypoint.sectorId, route.sectorId);
-  assert.match(h.state.nav.waypoint.reason, /tier-two hull/i);
+  assert.match(h.state.nav.waypoint.reason, /tow the slag core/i);
 
-  h.bus.emit('dock:docked', { stationId: wrongStationId });
-  h.bus.emit('ship:purchased', { defId: 'ship_mule', price: 4200 });
-  assert.equal(h.state.story.beatIndex, 3, 'a tier-one hull cannot settle Bigger Boat');
+  h.bus.emit('dock:docked', { stationId: 'station_tethys' });
+  h.bus.emit('ship:purchased', { defId: 'ship_drifter', price: 9000, stationId: 'station_tethys' });
+  assert.equal(h.state.story.beatIndex, 3, 'a hull buy cannot settle Bigger Boat');
 
-  h.bus.emit('ship:purchased', { defId: 'ship_drifter', price: 9000 });
-  assert.equal(h.state.story.beatIndex, 3, 'the wrong shipyard cannot settle the consequence');
-  assert.equal(h.state.story.flags.bigger_boat_pending_hull, 'ship_drifter');
+  h.bus.emit('dock:undocked', {});
+  const mission = h.state.missions.active.find((row) => row.storyTag === CONTRACT_47A_B3_TAG);
+  assert.ok(mission, 'departing Tethys dispatches the long tow');
+  assert.equal(mission.type, 'tow_recovery');
+  assert.equal(mission.title, 'Tow the slag core');
 
-  h.bus.emit('dock:docked', { stationId: route.stationId });
+  h.state.world.currentSectorId = mission.destSectorId;
+  h.bus.emit('sector:enter', { sectorId: mission.destSectorId });
+  const core = mission.targetEntityIds
+    .map((id) => h.state.entities.get(id))
+    .find((entity) => entity && entity.data && entity.data.physicalRole === 'slag_core');
+  assert.ok(core, 'the slag core is a physical target');
+  h.bus.emit('tether:latched', { targetId: core.id });
+  h.bus.emit('dock:docked', { stationId: mission.destStationId });
+
   assert.equal(h.state.story.beatIndex, 4);
-  assert.equal(h.state.story.flags.bigger_boat_route, outcome === 'custody' ? 'evidence_warrant' : 'combat_refit');
-  assert.equal(h.state.story.flags.bigger_boat_pending_hull, undefined, 'route docking consumes the recovery marker');
   assert.equal(h.credits.filter((row) => row.amount === 1000).length, 1);
-
   h.bus.emit('ship:purchased', { defId: 'ship_hornet', price: 12000 });
   assert.equal(h.state.story.beatIndex, 4);
   assert.equal(h.credits.filter((row) => row.amount === 1000).length, 1, 'B3 reward is exact-once');
-}
-
-test('47-A B3 makes custody and force physical, distinct shipyard consequences', () => {
-  exerciseOutcome('custody');
-  exerciseOutcome('force');
 });

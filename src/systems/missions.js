@@ -358,6 +358,7 @@ export const CONTRACT_47A_B0_TAG = 'campaign47a:b0:recovery';
 export const CONTRACT_47A_SAMPLE_ID = 'cmdty_47a_assay_sample';
 export const CONTRACT_47A_B1_TAG = 'campaign47a:b1:honest_work';
 export const CONTRACT_47A_B2_TAG = 'campaign47a:b2:elroy';
+export const CONTRACT_47A_B3_TAG = 'campaign47a:b3:bigger_boat';
 
 // SPEC2/03 B5. These are ordinary mission offers with one extra provenance tag so the
 // first-hour rail can guarantee a legible three-loop choice without inventing a second contract
@@ -642,12 +643,12 @@ function missionNavReason(m, station, sector) {
       ? 'Deliver the 47-A sample to Helios Station'
       : 'Recover the 47-A sample from the marked rock';
   }
-  if (m.storyTag === CONTRACT_47A_B1_TAG) {
+  if (m.storyTag === CONTRACT_47A_B1_TAG && m.type === 'cargo_delivery') {
     return p.cargoRecoveryNeeded
       ? 'Return to Helios for replacement cargo'
       : 'Deliver sealed alloys to Tycho; compare the manifest';
   }
-  if (m.storyTag === CONTRACT_47A_B2_TAG) {
+  if (m.storyTag === CONTRACT_47A_B2_TAG && m.type === 'bounty_hunt') {
     return p.investigationStage === 'identified'
       ? 'Choose: fire to close the tag, or reel Elroy inside sixty'
       : 'Scan the marked vessel before acting';
@@ -764,6 +765,7 @@ export const missions = {
       this._lastDockedStation = null;
       this._activateContract47aB1OnDeparture();
       this._activateContract47aB2OnDeparture();
+      this._activateContract47aB3OnDeparture();
     });
 
     // ── Objective tracking listeners ─────────────────────────────────────────────────────────
@@ -2450,8 +2452,13 @@ export const missions = {
         ? { upfrontCostCr: setPieceUpfrontCost(offer, this.state) } : {}),
       sourceOfferId: offer.id || null,
       cause: offer.cause ? JSON.parse(JSON.stringify(offer.cause)) : null,
-      chainNextSeed: (offer.source !== SET_PIECE_MISSION_SOURCE && def && def.chainable)
-        ? this._chainSeed(offer) : null,
+      chainNextSeed: (
+        offer.campaign47aBeat != null
+        || (typeof offer.storyTag === 'string' && offer.storyTag.startsWith('campaign47a:'))
+      )
+        ? null
+        : (offer.source !== SET_PIECE_MISSION_SOURCE && def && def.chainable)
+          ? this._chainSeed(offer) : null,
     };
   },
 
@@ -2682,7 +2689,7 @@ export const missions = {
       };
     }
 
-    if (m.storyTag === CONTRACT_47A_B2_TAG) {
+    if (m.storyTag === CONTRACT_47A_B2_TAG && m.type === 'bounty_hunt') {
       const target = this._firstLiveMissionTarget(m);
       const identified = m.params && m.params.investigationStage === 'identified';
       if (target) {
@@ -2961,15 +2968,17 @@ export const missions = {
       return base;
     }
     if (beat.beat === 3) {
-      const route = getBiggerBoatRoute(state.story && state.story.flags && state.story.flags.elroy_outcome);
-      const info = STATION_INFO.get(route.stationId);
-      const station = currentSectorId === route.sectorId ? this._liveStation(route.stationId) : null;
+      const loc = getEmbodiedLocation(3);
+      const destId = loc && (loc.destStationId || loc.stationId);
+      const info = STATION_INFO.get(destId);
+      const destSectorId = loc && loc.destSectorId || (info && info.sectorId) || currentSectorId;
+      const station = currentSectorId === destSectorId ? this._liveStation(destId) : null;
       return {
         ...base,
-        label: route.label,
-        reason: route.instruction,
-        stationId: route.stationId,
-        sectorId: route.sectorId,
+        label: beat.objective || 'Tow the slag core',
+        reason: beat.objective || 'Tow the slag core the long way into the yard.',
+        stationId: destId || null,
+        sectorId: destSectorId,
         sectorName: info && SECTOR_BY_ID.get(info.sectorId)?.name || null,
         pos: station && station.pos ? { x: station.pos.x, z: station.pos.z } : null,
       };
@@ -3593,7 +3602,9 @@ export const missions = {
 
   _identifyContract47aB2(p) {
     const m = (this.state.missions.active || []).find((mission) => (
-      mission && mission.status === 'active' && mission.storyTag === CONTRACT_47A_B2_TAG
+      mission && mission.status === 'active'
+      && mission.storyTag === CONTRACT_47A_B2_TAG
+      && mission.type === 'bounty_hunt'
     ));
     if (!m || m.params && m.params.investigationStage === 'identified') return false;
     if (this.state.world.currentSectorId !== m.destSectorId) return false;
@@ -3625,7 +3636,7 @@ export const missions = {
     if (!Number.isFinite(after) || after > CONTRACT_47A_B2_CUSTODY_REEL_WU) return false;
     for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
       const m = this.state.missions.active[i];
-      if (!m || m.status !== 'active' || m.storyTag !== CONTRACT_47A_B2_TAG) continue;
+      if (!m || m.status !== 'active' || m.storyTag !== CONTRACT_47A_B2_TAG || m.type !== 'bounty_hunt') continue;
       if (!m.targetEntityIds.includes(p.targetId)) continue;
       if (!m.params || m.params.investigationStage !== 'identified') return false;
       this._resolveContract47aB2(m, i, 'custody', p.targetId);
@@ -3635,7 +3646,7 @@ export const missions = {
   },
 
   _resolveContract47aB2(m, index, outcome, entityId) {
-    if (!m || m.status !== 'active' || m.storyTag !== CONTRACT_47A_B2_TAG) return false;
+    if (!m || m.status !== 'active' || m.storyTag !== CONTRACT_47A_B2_TAG || m.type !== 'bounty_hunt') return false;
     m.params = m.params || {};
     if (m.params.investigationOutcome) return false;
     if (m.params.investigationStage !== 'identified') {
@@ -3713,40 +3724,12 @@ export const missions = {
       this._storyTrigger('ship_purchased', p || {});
       return false;
     }
-    story.flags = story.flags || {};
-    const legacy = !!story.flags.elroy_outcome_legacy || !story.flags.elroy_outcome;
-    const route = getBiggerBoatRoute(story.flags.elroy_outcome);
-    const stationId = p && p.stationId || this._lastDockedStation;
-    const ship = SHIP_BY_ID.get(p && p.defId);
-    if (!legacy && stationId !== route.stationId) {
-      if (ship && ship.tier >= 2) story.flags.bigger_boat_pending_hull = ship.id;
-      this._refreshNavigation({ forceStory: true, silent: true });
-      this._sayStoryLine('Wrong yard. Follow the marked 47-A shipyard.', 5);
-      return false;
-    }
-    if (!legacy && (!ship || ship.tier < 2)) {
-      this._refreshNavigation({ forceStory: true, silent: true });
-      this._sayStoryLine('Bigger Boat requires a tier-two hull.', 5);
-      return false;
-    }
-    story.flags.bigger_boat_route = route.id;
-    this._storyTrigger('ship_purchased', { ...p, stationId, elroyOutcome: route.outcome, routeId: route.id });
-    return story.beatIndex !== 3;
+    // PQ-032.00: Bigger Boat is the long tow. A hull buy cannot settle it.
+    return false;
   },
 
-  _onContract47aB3Docked(stationId) {
-    const story = this.state && this.state.story;
-    if (!story || story.beatIndex !== 3 || !story.flags) return false;
-    const defId = story.flags.bigger_boat_pending_hull;
-    const ship = SHIP_BY_ID.get(defId);
-    const route = getBiggerBoatRoute(story.flags.elroy_outcome);
-    if (!ship || ship.tier < 2 || stationId !== route.stationId) return false;
-    delete story.flags.bigger_boat_pending_hull;
-    story.flags.bigger_boat_route = route.id;
-    this._storyTrigger('ship_purchased', {
-      defId, stationId, elroyOutcome: route.outcome, routeId: route.id, recoveredAtRoute: true,
-    });
-    return story.beatIndex !== 3;
+  _onContract47aB3Docked(_stationId) {
+    return false;
   },
 
   _onContract47aB6AssetDeployed(p) {
@@ -5954,8 +5937,8 @@ export const missions = {
 
     const want = BEAT_TRIGGER[beat.beat];
     if (!want) return;
-    // B1/B2 are embodied board contracts and advance in _advanceEmbodiedStoryMission.
-    if (beat.beat === 1 || beat.beat === 2) return;
+    // B1–B3 are embodied PQ-152 set pieces and advance in _advanceEmbodiedStoryMission.
+    if (beat.beat === 1 || beat.beat === 2 || beat.beat === 3) return;
     // Discrete first-X triggers (B3/B6). B4/B5/B7 handled elsewhere.
     if (want === kind && stepResult && stepResult.ok
         && isBeatStepsComplete(this.state, beat.beat)) {
@@ -5963,20 +5946,19 @@ export const missions = {
     }
   },
 
-  /** Complete B1/B2 only through the authored 47-A contracts. Sidecar observes first; missions
-   * remains the sole cursor and reward authority. */
+  /** Complete B1–B3 only through the authored 47-A set-piece contracts. Sidecar observes first;
+   * missions remains the sole cursor and reward authority. */
   _advanceEmbodiedStoryMission(m) {
     const story = this.state && this.state.story;
     const beat = story && STORY_BEATS[story.beatIndex];
     if (!beat || !m || !m.storyTag) return false;
-    const expected = beat.beat === 1 ? 'campaign47a:b1:honest_work'
-      : beat.beat === 2 ? 'campaign47a:b2:elroy' : null;
+    const expected = beat.beat === 1 ? CONTRACT_47A_B1_TAG
+      : beat.beat === 2 ? CONTRACT_47A_B2_TAG
+        : beat.beat === 3 ? CONTRACT_47A_B3_TAG : null;
     if (!expected || m.storyTag !== expected) return false;
     this._ensureCampaignSidecar();
-    // Continue/adapter compatibility: older B2 instances may settle through the missions owner
-    // without the new live scanner receipt. Their pre-existing meaning was a force resolution, so
-    // stamp that deterministic outcome and satisfy the ordered identity step from the wreck record.
-    if (beat.beat === 2 && !(m.params && m.params.investigationOutcome)) {
+    // Leftover Continue bounty B2: stamp the old force meaning so later leftover stakes stay valid.
+    if (beat.beat === 2 && m.type === 'bounty_hunt' && !(m.params && m.params.investigationOutcome)) {
       m.params = m.params || {};
       m.params.investigationStage = 'identified';
       m.params.identifiedBy = 'legacy_wreck_registry';
@@ -5984,18 +5966,12 @@ export const missions = {
       story.flags = story.flags || {};
       story.flags.elroy_outcome = 'force';
       story.flags.elroy_outcome_legacy = true;
-      recordBeatStep(this.state, 'entity:killed', {
-        missionId: m.id,
-        storyTag: m.storyTag,
-        storyTargetId: m.storyTarget && m.storyTarget.id || null,
-      }, this.state.simTime || 0);
     }
-    const signal = beat.beat === 1 ? 'mission:completed'
-      : m.params && m.params.investigationOutcome === 'custody' ? 'tether:reel' : 'entity:killed';
-    const observed = recordBeatStep(this.state, signal, {
+    const observed = recordBeatStep(this.state, 'mission:completed', {
       missionId: m.id,
       storyTag: m.storyTag,
       storyTargetId: m.storyTarget && m.storyTarget.id || null,
+      physicalVerb: m.params && m.params.physicalVerb || beat.headlineVerb || null,
     }, this.state.simTime || 0);
     if (!observed || !observed.ok || !isBeatStepsComplete(this.state, beat.beat)) return false;
     this._advanceStory(beat, { skipCredits: true });
@@ -6137,8 +6113,8 @@ export const missions = {
       const facRep = story.branch ? this._repOf(BRANCH_FACTION[story.branch]) : this._maxRep();
       if (netWorth >= 100000 && facRep >= 50) this._advanceStory(beat);
     }
-    // B3 (buy T2 hull) and B6 (deploy asset) advance on their discrete triggers (ship_purchased /
-    // asset_deployed) via _storyTrigger; the precredits is only a soft hint (handled at advance).
+    // B3 (long tow) advances through _advanceEmbodiedStoryMission. B6 (deploy asset) still uses
+    // the discrete asset_deployed trigger. The precredits is only a soft hint (handled at advance).
   },
 
   _advanceStory(beat, options = {}) {
@@ -6354,6 +6330,20 @@ export const missions = {
     }
     const board = this.ensureBoard('station_tethys');
     const offer = board && board.slots && board.slots.find((row) => row && row.storyTag === CONTRACT_47A_B2_TAG);
+    if (!offer) return false;
+    return this.acceptMission(offer.id);
+  },
+
+  _activateContract47aB3OnDeparture() {
+    const story = this.state && this.state.story;
+    if (!story || story.beatIndex !== 3) return false;
+    const active = (this.state.missions.active || []).find((m) => m && m.status === 'active' && m.storyTag === CONTRACT_47A_B3_TAG);
+    if (active) {
+      this.trackMission(active.id, { silent: true });
+      return true;
+    }
+    const board = this.ensureBoard('station_tethys');
+    const offer = board && board.slots && board.slots.find((row) => row && row.storyTag === CONTRACT_47A_B3_TAG);
     if (!offer) return false;
     return this.acceptMission(offer.id);
   },
@@ -6795,9 +6785,9 @@ const BRANCH_CHAIN_COUNT = { traders: 3, patrol: 2, free: 2 };
 // Direction hints shown when a beat becomes current (Captain's Log north star).
 const BEAT_HINT = {
   0: 'Cold Start: mine ore from an asteroid field, then dock to sell or deliver it.',
-  1: 'Honest Work: accept Kessler\'s sealed alloy run from the Helios board.',
-  2: 'First Blood: close Rook\'s UNKNOWN tag in the Charon ambush zone.',
-  3: 'Bigger Boat: earn credits and buy a bigger hull at a shipyard.',
+  1: 'Honest Work: knock the variance tower. Swing mass, or cut it.',
+  2: 'First Blood: pull the pods out under fire.',
+  3: 'Bigger Boat: tow the slag core the long way into the yard.',
   4: 'Pick a Side: accept an intro contract from a faction to choose your path.',
   5: 'Proving Ground: complete your faction\'s mission chain.',
   6: 'Empire Seed: deploy your first passive asset (drone, trader, or outpost).',
