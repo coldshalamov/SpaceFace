@@ -20,6 +20,7 @@ import { rescueRangeRungId, buildRangeOpenedFunnelEvent } from '../../onboarding
 import { missingThreeRangeRungId } from '../../onboarding/missingThree.js';
 import { canvasFont } from '../canvasFonts.js';
 import { el, words, rows, hero, settle, cue } from '../kit/index.js';
+import { drawTeachingOverlay, planTeachingOverlay, TEACHING_OVERLAY_SURFACES } from '../teachingOverlay.js';
 
 // THE RANGE (F4). The sheet's line (design/frontend/direction/DIRECTION_SHEET.md, the instruments):
 // the drill box on the sky; the teaching voice as one sentence at emphasis size; the rung's name at
@@ -1042,6 +1043,22 @@ function updateDroneMotion(sim, stepS) {
 function cloneTrail(points) {
   if (!Array.isArray(points)) return [];
   return points.map((point) => ({ x: finite(point.x, 0), z: finite(point.z, 0) }));
+}
+
+export function paintRangeTeachingOverlay(ctx2d, sim, width, height, options = {}) {
+  const plan = planTeachingOverlay({
+    surface: TEACHING_OVERLAY_SURFACES.RANGE,
+    sim,
+  });
+  const bounds = sim && sim.bounds;
+  drawTeachingOverlay(ctx2d, plan, {
+    forced: options.forced === true,
+    reduced: options.reduced === true,
+    project: bounds
+      ? (x, z) => mapPoint(bounds, width, height, x, z)
+      : null,
+  });
+  return plan;
 }
 
 function shipName(shipId) {
@@ -2738,6 +2755,8 @@ export const rangeScreen = {
       ctx2d.fillText(sim.hostile.shortName || 'WASP', point.x, point.y + radius + 6);
       ctx2d.restore();
     }
+
+    paintRangeTeachingOverlay(ctx2d, sim, width, height, { forced, reduced });
 
     this._lastDroneScreen = drawDrone(ctx2d, sim.drone, sim.bounds, width, height, forced, roles);
     drawWeakArc(ctx2d, sim.drone, sim.weakPoint, sim.bounds, width, height, forced, roles);
