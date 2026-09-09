@@ -183,7 +183,29 @@ function completeSpineSetPiece(h, mission) {
       .map((id) => h.state.entities.get(id))
       .find((entity) => entity && entity.data && entity.data.physicalRole === role);
     assert.ok(target, `${mission.type} needs ${role}`);
+    let berth = [...h.state.entities.values()].find((entity) => (
+      entity && entity.type === 'station' && entity.data && entity.data.stationId === mission.destStationId
+    ));
+    if (!berth) {
+      berth = h.helpers && h.helpers.spawnEntity
+        ? h.helpers.spawnEntity({
+          type: 'station', pos: { x: 80, z: 40 }, radius: 40,
+          data: { stationId: mission.destStationId, dockRadius: 80 },
+        })
+        : null;
+    }
+    if (!berth) {
+      const id = h.state.entities.size ? Math.max(...h.state.entities.keys()) + 1 : 80;
+      berth = {
+        id, type: 'station', alive: true, pos: { x: 80, z: 40 }, radius: 40,
+        data: { stationId: mission.destStationId, dockRadius: 80 },
+      };
+      h.state.entities.set(id, berth);
+      h.state.entityList = h.state.entityList || [];
+      h.state.entityList.push(berth);
+    }
     h.bus.emit('tether:latched', { targetId: target.id });
+    target.pos = { x: berth.pos.x, z: berth.pos.z };
     h.bus.emit('dock:docked', { stationId: mission.destStationId });
     return;
   }

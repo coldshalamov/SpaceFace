@@ -76,7 +76,19 @@ test('47-A B3 is the long tow, not a shipyard choice', () => {
     .map((id) => h.state.entities.get(id))
     .find((entity) => entity && entity.data && entity.data.physicalRole === 'slag_core');
   assert.ok(core, 'the slag core is a physical target');
+  let berth = [...h.state.entities.values()].find((e) => (
+    e && e.type === 'station' && e.data && e.data.stationId === mission.destStationId
+  ));
+  if (!berth) {
+    berth = {
+      id: 81, type: 'station', alive: true, pos: { x: 80, z: 40 }, radius: 40,
+      data: { stationId: mission.destStationId, dockRadius: 80 },
+    };
+    h.state.entities.set(berth.id, berth);
+    h.state.entityList.push(berth);
+  }
   h.bus.emit('tether:latched', { targetId: core.id });
+  core.pos = { x: berth.pos.x, z: berth.pos.z };
   h.bus.emit('dock:docked', { stationId: mission.destStationId });
 
   assert.equal(h.state.story.beatIndex, 4);

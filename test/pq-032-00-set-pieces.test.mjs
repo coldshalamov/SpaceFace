@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import { Masks } from '../src/core/entity.js';
 import { createSimulation } from '../src/core/sim.js';
 import {
   AUTHORED_SET_PIECE_HEADLINE,
@@ -15,6 +16,7 @@ import {
   validateEmbodiedDialogue,
   validateEmbodiedMissions,
 } from '../src/story/campaign47a/index.js';
+import { masslineImpacts } from '../src/systems/masslineImpacts.js';
 import { missions } from '../src/systems/missions.js';
 
 const SEED = 3200;
@@ -26,7 +28,9 @@ function printSpine() {
 }
 
 function boot() {
-  const sim = createSimulation({ seed: SEED, systems: [missions], updateOrder: [] });
+  const sim = createSimulation({
+    seed: SEED, systems: [missions, masslineImpacts], updateOrder: [],
+  });
   const { state } = sim;
   state.mode = 'flight';
   state.player.credits = 250000;
@@ -76,6 +80,17 @@ function wuBetween(a, b) {
   return Math.round(Math.hypot(a.pos.x - b.pos.x, a.pos.z - b.pos.z));
 }
 
+function storyLatchDockLimitWu(station, cargo) {
+  const hullR = Number(station && station.radius);
+  const dockR = Number(station && station.data && station.data.dockRadius);
+  const berthR = Math.max(
+    Number.isFinite(hullR) && hullR > 0 ? hullR : 0,
+    Number.isFinite(dockR) && dockR > 0 ? dockR : 0,
+  );
+  const cargoR = Number(cargo && cargo.radius);
+  return berthR + (Number.isFinite(cargoR) && cargoR > 0 ? cargoR : 0) + 24;
+}
+
 // Every event below is one the SHIPPING systems emit, with the field names those emitters write.
 // The mission listeners are in src/systems/missions.js (`_onPhysicalThrow`, `_onPhysicalTetherLatched`,
 // `_tryPhysicalDockComplete`); the emitters are named per branch.
@@ -88,32 +103,40 @@ function completeSetPiece(h, mission) {
   if (mission.type === 'demolition') {
     const tower = targetsByRole(h.state, mission, 'demolition_tower')[0];
     assert.ok(tower, 'wrecking-ball contract needs a tower');
-    // NOT `tether:whipImpact`. masslineImpacts is that event's only emitter and it skips any victim
-    // whose type is outside COLLIDABLE_TYPES = {asteroid, ship, station, drone}
-    // (src/systems/masslineImpacts.js:48,256). The dead tower is spawned `type: 'wreck'`
-    // (src/systems/missions.js:3906), so swinging a mass THROUGH the tower emits nothing.
-    //
-    // Nothing can touch this tower at all. A `wreck` spawned without an explicit collisionMask gets
-    // DEFAULT_MASK.wreck === 0 (src/core/entity.js:16-25,167), and `canCollide` is a mask AND
-    // (src/core/physics.js:1055-1057) — so the projectile sweep skips it (projectile's mask is
-    // SHIP|ASTEROID|STATION, no WRECK bit) and a thrown rock passes straight through it. Both
-    // `wrecking_ball`'s `whip` hook and the whole `cut_down` method are unreachable on the default
-    // route.
-    //
-    // The one producible completion is the throw ITSELF: 'wreck' is in masslineThrow's
-    // AIMABLE_TYPES (src/systems/masslineThrow.js:28), so the player latches a rock, arms, and
-    // releases toward the tower; src/systems/masslineThrow.js:463 emits `massline:throw`
-    // { payloadId, aimTargetId, ... } and `_onPhysicalThrow` settles it at RELEASE. No code
-    // requires the mass to connect — and per the masks above, it cannot.
+    assert.ok((tower.collisionMask & Masks.ASTEROID) && (tower.collisionMask & Masks.PROJECTILE),
+      'mission tower must be solid to thrown mass and shots');
+    // Do NOT inject `tether:whipImpact`. Drive leftover latch / aim / release, then a leftover
+    // masslineImpacts tick with the rock overlapping the tower. That emitter is the only live
+    // contact. A throw that only names aimTargetId must not settle the beat.
+    const impactsSys = h.sim.registry.get('masslineImpacts');
+    assert.ok(impactsSys, 'leftover masslineImpacts must be on the harness');
     const rock = h.sim.spawn({
       type: 'asteroid', team: 2, radius: 6, mass: 40, hull: 60, hullMax: 60,
       pos: { x: tower.pos.x - 60, z: tower.pos.z },
+      vel: { x: 0, z: 0 },
     });
+    h.state.player.tether = {
+      active: true, targetId: rock.id, strain: 0, load: 0,
+      attachmentId: null, restLength: 0, phase: 'loaded',
+    };
     h.sim.bus.emit('tether:latched', { targetId: rock.id, type: 'tether_standard' });
+    impactsSys.update(1 / 60, h.state);
+    const beatBeforeThrow = h.state.story.beatIndex;
     h.sim.bus.emit('massline:throw', {
       releaseId: `massline:throw:${h.state.tick}:${rock.id}`,
       payloadId: rock.id, aimTargetId: tower.id, aimSynthetic: false, mode: 'aimed',
     });
+    assert.equal(h.state.story.beatIndex, beatBeforeThrow,
+      'throw release must not settle wrecking_ball');
+    rock.pos.x = tower.pos.x;
+    rock.pos.z = tower.pos.z;
+    rock.vel.x = 80;
+    rock.vel.z = 0;
+    h.state.player.tether.active = false;
+    h.state.player.tether.targetId = null;
+    impactsSys.update(1 / 60, h.state);
+    const whipSettled = h.state.story.beatIndex > beatBeforeThrow;
+    console.log(`PQ-032.00 whip contact settled B1: ${whipSettled ? 'yes' : 'no'}`);
     return;
   }
   if (mission.type === 'rescue_under_fire' || mission.type === 'tow_recovery') {
@@ -123,12 +146,22 @@ function completeSetPiece(h, mission) {
     const berth = ensureBerth(h, mission);
     // src/systems/tetherGameplay.js:501 emits `tether:latched` { targetId, type, ... }.
     h.sim.bus.emit('tether:latched', { targetId: cargo.id, type: 'tether_standard' });
-    // Diagnostic, deliberately NOT an assertion. `_tryPhysicalDockComplete` settles `stage_tow` /
-    // `tow_in` on `_playerLatchedTo` alone — it never asks where the pod or core ended up, unlike
-    // the `sling_in` branch beside it, which does check `_entityNearDestBerth`. The number below is
-    // how far the thing being "pulled" or "towed" still is from the berth when the beat pays out.
-    console.log(`PQ-032.00 ${mission.type} ${role} sits ${wuBetween(cargo, berth)} WU from the berth at turn-in`);
+    const dist = wuBetween(cargo, berth);
+    const gate = storyLatchDockLimitWu(berth, cargo);
+    const beatBeforeDock = h.state.story.beatIndex;
+    console.log(`PQ-032.00 ${mission.type} story latch-dock gate ${gate} WU`);
+    console.log(`PQ-032.00 ${mission.type} ${role} sits ${dist} WU from the berth at turn-in`);
     h.sim.bus.emit('dock:docked', { stationId: mission.destStationId });
+    const paidFar = h.state.story.beatIndex > beatBeforeDock;
+    console.log(`PQ-032.00 ${mission.type} paid with cargo ${dist} WU away: ${paidFar ? 'yes' : 'no'}`);
+    assert.equal(paidFar, false, `${role} at ${dist} WU must not settle ${mission.type}`);
+    cargo.pos.x = berth.pos.x;
+    cargo.pos.z = berth.pos.z;
+    const near = wuBetween(cargo, berth);
+    h.sim.bus.emit('dock:docked', { stationId: mission.destStationId });
+    const paidNear = h.state.story.beatIndex > beatBeforeDock;
+    console.log(`PQ-032.00 ${mission.type} paid with cargo ${near} WU away: ${paidNear ? 'yes' : 'no'}`);
+    assert.equal(paidNear, true, `${role} at the dest dock must settle ${mission.type}`);
     return;
   }
   assert.fail(`unexpected type ${mission.type}`);

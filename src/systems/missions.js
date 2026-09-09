@@ -101,6 +101,7 @@ import { SECTOR_ANCHORS } from '../data/sectorAnchors.js';
 import { zonesForSector } from '../data/sectorZones.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { hash32 } from '../core/rng.js';
+import { Masks } from '../core/entity.js';
 import { maxFittedModuleMod } from '../core/fittedModules.js';
 import { effectiveDangerTierFor } from './sectorSim.js';   // V2 §33 — live (drifted) hazard for mission risk
 import { COMMODITIES } from '../data/commodities.js';
@@ -285,6 +286,13 @@ function capitalSubsystemWorldPos(entity, subsystemId) {
   };
 }
 const PHYSICAL_BERTH_WU = 700;
+// Story B2/B3 latch-dock only. Leftover authored / sling_in keep PHYSICAL_BERTH_WU.
+// Live limit is dest station hull or dock radius + cargo radius + this slack.
+const STORY_LATCH_DOCK_SLACK_WU = 24;
+// Mission wrecks stay type `wreck` (DEFAULT_MASK.wreck === 0) but must be solid to ships,
+// thrown mass, shots, and drones. Bidirectional canCollide in leftover physics means this
+// mask is enough — do not change the global wreck default.
+const MISSION_WRECK_COLLISION_MASK = Masks.SHIP | Masks.ASTEROID | Masks.PROJECTILE | Masks.DRONE;
 // A tick condition may only re-warn this often. The warning is the grace window made visible, not a
 // nag: crossing the speed ceiling repeatedly in a dogfight must not bury the rest of the alert lane.
 const CONDITION_WARN_COOLDOWN_S = 8;
@@ -3913,6 +3921,7 @@ export const missions = {
         hull: 160,
         hullMax: 160,
         collides: true,
+        collisionMask: MISSION_WRECK_COLLISION_MASK,
         data: {
           missionTag: m.id,
           physicalRole: PHYSICAL_ROLE.TOWER,
@@ -3938,6 +3947,7 @@ export const missions = {
           hull: 36,
           hullMax: 36,
           collides: true,
+          collisionMask: MISSION_WRECK_COLLISION_MASK,
           data: {
             missionTag: m.id,
             physicalRole: PHYSICAL_ROLE.POD,
@@ -4034,6 +4044,7 @@ export const missions = {
         spec.data.missionTag = m.id;
         spec.data.physicalRole = actor.role;
         spec.data.scanLabel = actor.scanLabel || actor.role;
+        if (spec.type === 'wreck') spec.collisionMask = MISSION_WRECK_COLLISION_MASK;
         if (actor.tetherable) spec.data.tetherable = true;
         const ent = helpers.spawnEntity(spec);
         if (!ent) continue;
@@ -4120,6 +4131,7 @@ export const missions = {
         spec.data.missionTag = m.id;
         spec.data.physicalRole = actor.role;
         spec.data.scanLabel = actor.scanLabel || actor.role;
+        if (spec.type === 'wreck') spec.collisionMask = MISSION_WRECK_COLLISION_MASK;
         spec.data.capitalSubsystemRoles = { ...(encounter.subsystemRoles || CAPITAL_BOSS.subsystemRoles) };
         spec.data.capitalImmunity = false;
         if (actor.tetherable) spec.data.tetherable = true;
@@ -4183,6 +4195,48 @@ export const missions = {
     if (!berth) return this.state.world && this.state.world.currentSectorId === m.destSectorId;
     return Math.hypot((entity.pos.x || 0) - (berth.x || 0), (entity.pos.z || 0) - (berth.z || 0))
       <= PHYSICAL_BERTH_WU;
+  },
+
+  _storyDestStation(m) {
+    const live = this._liveStation(m && m.destStationId);
+    if (live && live.pos) return live;
+    const destId = m && m.destStationId;
+    if (!destId) return null;
+    const list = this.state.entityList;
+    if (Array.isArray(list) && list.length) {
+      for (const e of list) {
+        if (e && e.alive !== false && e.type === 'station' && e.pos
+          && e.data && e.data.stationId === destId) return e;
+      }
+    }
+    const entities = this.state.entities;
+    if (entities && typeof entities.values === 'function') {
+      for (const e of entities.values()) {
+        if (e && e.alive !== false && e.type === 'station' && e.pos
+          && e.data && e.data.stationId === destId) return e;
+      }
+    }
+    return null;
+  },
+
+  _entityAtStoryDestDock(entity, m) {
+    if (!entity || !entity.pos) return false;
+    const station = this._storyDestStation(m);
+    if (!station || !station.pos) return false;
+    const hullR = Number(station.radius);
+    const dockR = Number(station.data && station.data.dockRadius);
+    const berthR = Math.max(
+      Number.isFinite(hullR) && hullR > 0 ? hullR : 0,
+      Number.isFinite(dockR) && dockR > 0 ? dockR : 0,
+    );
+    if (!(berthR > 0)) return false;
+    const cargoR = Number.isFinite(entity.radius) && entity.radius > 0 ? entity.radius : 0;
+    const limit = berthR + cargoR + STORY_LATCH_DOCK_SLACK_WU;
+    const dist = Math.hypot(
+      (entity.pos.x || 0) - (station.pos.x || 0),
+      (entity.pos.z || 0) - (station.pos.z || 0),
+    );
+    return dist <= limit;
   },
 
   _completePhysical(m, index, method) {
@@ -4334,7 +4388,13 @@ export const missions = {
     }
     if (m.type === 'tow_recovery') {
       const core = this._playerLatchedTo(m, PHYSICAL_ROLE.SLAG_CORE);
-      if (core) return this._completePhysical(m, index, 'tow_in');
+      const storyDock = m.storyTag === CONTRACT_47A_B3_TAG;
+      if (core) {
+        if (storyDock ? this._entityAtStoryDestDock(core, m) : this._entityNearDestBerth(core, m)) {
+          return this._completePhysical(m, index, 'tow_in');
+        }
+        if (storyDock) return false;
+      }
       const loose = this._physicalTargetOf(m, PHYSICAL_ROLE.SLAG_CORE);
       if (loose && this._entityNearDestBerth(loose, m)) {
         return this._completePhysical(m, index, 'sling_in');
@@ -4343,7 +4403,10 @@ export const missions = {
     }
     if (m.type === 'rescue_under_fire') {
       const pod = this._playerLatchedTo(m, PHYSICAL_ROLE.POD);
-      if (pod) return this._completePhysical(m, index, 'stage_tow');
+      const storyDock = m.storyTag === CONTRACT_47A_B2_TAG;
+      if (pod && (storyDock ? this._entityAtStoryDestDock(pod, m) : this._entityNearDestBerth(pod, m))) {
+        return this._completePhysical(m, index, 'stage_tow');
+      }
       return false;
     }
     return false;
@@ -4424,13 +4487,6 @@ export const missions = {
           this._completePhysical(m, i, 'sling_in');
         }
         continue;
-      }
-      if (m.type === 'demolition') {
-        const towerId = this._physicalTargetOf(m, PHYSICAL_ROLE.TOWER);
-        if (!towerId) continue;
-        if (p.aimTargetId === towerId.id || p.payloadId === towerId.id) {
-          this._completePhysical(m, i, 'wrecking_ball');
-        }
       }
     }
   },

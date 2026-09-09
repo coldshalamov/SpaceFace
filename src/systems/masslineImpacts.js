@@ -45,7 +45,7 @@ const SWEEP_VICTIM_TRAVEL_PAD = 32;  // wu — 1,920 wu/s at the production 60 H
 const SWEEP_LOG_CAP = 12;
 
 // Solid bodies a whipped mass can meaningfully hit — same set as masslineThreats' collidables.
-const COLLIDABLE_TYPES = new Set(['asteroid', 'ship', 'station', 'drone']);
+const COLLIDABLE_TYPES = new Set(['asteroid', 'ship', 'station', 'drone', 'wreck']);
 const SWEEP_DAMAGEABLE_TYPES = new Set(['ship', 'drone']);
 
 const FALLBACK = Object.freeze({

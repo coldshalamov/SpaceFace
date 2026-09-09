@@ -77,7 +77,12 @@ test('47-A B2 is a linear pod rescue under fire, not an Elroy choice menu', () =
     h.state.entities.set(station.id, station);
     h.state.entityList.push(station);
   }
+  const berth = [...h.state.entities.values()].find((e) => (
+    e && e.type === 'station' && e.data && e.data.stationId === mission.destStationId
+  ));
+  assert.ok(berth && berth.pos, 'B2 dest berth must exist for the leftover latch-dock');
   h.bus.emit('tether:latched', { targetId: pod.id });
+  pod.pos = { x: berth.pos.x, z: berth.pos.z };
   h.bus.emit('dock:docked', { stationId: mission.destStationId });
 
   assert.equal(h.state.story.beatIndex, 3);
