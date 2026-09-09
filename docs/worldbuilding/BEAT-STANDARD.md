@@ -35,7 +35,7 @@ Required keys:
 | `register.speakers` | One-line rule + leftover example per speaking faction |
 | `setPiece.place` | Where the bodies are |
 | `setPiece.actors` | Leftover actor ids, not invented cast |
-| `setPiece.headlineVerb` | One physical verb (hitch, cut, sling, tow, fire, steer) |
+| `setPiece.headlineVerb` | One physical verb (hitch, cut, sling, tow, fire, steer, knock, pull, whip) |
 | `setPiece.twist` | The clause that changes the arena |
 | `setPiece.solutions` | **Two** leftover physical solutions the player can already perform |
 | `setPiece.provingFrame` | The frame that proves the verb landed |
@@ -61,4 +61,22 @@ civilian pod, hitch, two leftover physical solutions. Do **not** collapse it int
 Minimum leftover actors: player, spindle, wreck, interceptor, harasser, thief,
 official tug, civilian pod. Kessler and the handoff beacon are leftover too — keep them.
 
-This leaf does not recut campaign beats 1–3.
+This leaf (.00) does not recut campaign beats 1–3.
+
+## Leftover beats 1–3 (PQ-178.01)
+
+Re-express leftover `honest_work` / `first_blood` / `bigger_boat` the same way.
+Cite leftover actors, leftover verbs (knock/whip, pull/pod, tow/core), leftover places.
+Do **not** collapse them into B0 mine-and-dock. Do **not** invent a second campaign owner.
+
+Leftover sheet ids (seeded on `TEMPLATE.beat.json`):
+
+| Beat | Sheet | Headline | Two leftover solutions |
+|---|---|---|---|
+| 1 `honest_work` | `beats/47a-honest-work.beat.json` | knock | `wrecking_ball` (whip contact) / `cut_down` |
+| 2 `first_blood` | `beats/47a-first-blood.beat.json` | pull | `stage_tow` (dest-dock) / `corridor_pull` (reel) |
+| 3 `bigger_boat` | `beats/47a-bigger-boat.beat.json` | tow | `tow_in` (dest-dock) / `sling_in` (700 WU leftover) |
+
+Chapter sheets B1–B3 are prose. They are not the playable leftover. Live settle remains
+`PQ-032.00` (whip contact + dest-dock pay). This leaf writes sheets. It does not recut
+the live settle. Headed capture is peeled — there is no leftover tape for beats 1–3.

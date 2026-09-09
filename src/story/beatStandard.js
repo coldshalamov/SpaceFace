@@ -6,6 +6,9 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { basename, dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { BEAT_COMMS } from './campaign47a/embodiedDialogue.js';
+import { EMBODIED_MISSIONS } from './campaign47a/embodiedMissions.js';
+
 const HERE = dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = join(HERE, '..', '..');
 export const BEAT_SHEET_DIR = join(REPO_ROOT, 'docs', 'worldbuilding', 'beats');
@@ -34,7 +37,69 @@ export const REQUIRED_47A_ACTORS = Object.freeze([
 
 export const PHYSICAL_VERBS = Object.freeze([
   'hitch', 'attach', 'reel', 'cut', 'sling', 'tow', 'fire', 'steer', 'fly',
+  // Leftover campaign beats 1–3 (PQ-178.01). Not invented verbs.
+  'knock', 'pull', 'whip',
 ]);
+
+export const LEFTOVER_SPINE_BEAT_IDS = Object.freeze([
+  'honest_work', 'first_blood', 'bigger_boat',
+]);
+
+export const LEFTOVER_SPINE_SHEET_IDS = Object.freeze({
+  honest_work: 'beat.47a.honest_work',
+  first_blood: 'beat.47a.first_blood',
+  bigger_boat: 'beat.47a.bigger_boat',
+});
+
+export const LEFTOVER_SPINE_HEADLINES = Object.freeze({
+  honest_work: 'knock',
+  first_blood: 'pull',
+  bigger_boat: 'tow',
+});
+
+export const LEFTOVER_SPINE_ACTORS = Object.freeze({
+  honest_work: Object.freeze(['player_kestrel', 'demolition_tower', 'contact_kessler']),
+  first_blood: Object.freeze(['player_kestrel', 'life_pod', 'rescue_escort', 'contact_rook']),
+  bigger_boat: Object.freeze(['player_kestrel', 'slag_core', 'contact_slate']),
+});
+
+export const LEFTOVER_SPINE_CHAPTERS = Object.freeze({
+  honest_work: 'docs/worldbuilding/sheets/chapters/B1.md',
+  first_blood: 'docs/worldbuilding/sheets/chapters/B2.md',
+  bigger_boat: 'docs/worldbuilding/sheets/chapters/B3.md',
+});
+
+export const LEFTOVER_SPINE_SIDECAR_REL = 'src/story/campaign47a/embodiedMissions.js';
+export const LEFTOVER_SPINE_COMMS_REL = 'src/story/campaign47a/embodiedDialogue.js';
+export const LEFTOVER_SPINE_LIVE_SETTLE_REL = 'design/program/roadmap/receipts/PQ-032.00-REPORT.md';
+// Leftover PQ-032.00 headless proof. No leftover input tape for beats 1–3.
+export const LEFTOVER_SPINE_SEED = 3200;
+
+export function leftoverSpineDef(beatId) {
+  return EMBODIED_MISSIONS.find((row) => row && row.id === beatId && row.beat >= 1 && row.beat <= 3) || null;
+}
+
+export function leftoverSpineMethods(beatId) {
+  const def = leftoverSpineDef(beatId);
+  const methods = def && def.missionBoardContract && def.missionBoardContract.params
+    && def.missionBoardContract.params.completionMethods;
+  return Array.isArray(methods) ? methods.slice() : [];
+}
+
+export function leftoverSpinePlaces(beatId) {
+  const loc = leftoverSpineDef(beatId) && leftoverSpineDef(beatId).location || {};
+  return [loc.destSectorId, loc.destStationId, loc.sectorId, loc.stationId, loc.zoneId]
+    .filter((token) => typeof token === 'string' && token.length > 0);
+}
+
+export function leftoverSpineBeatId(sheet) {
+  const fromSource = sheet && sheet.leftoverSource && sheet.leftoverSource.beatId;
+  if (LEFTOVER_SPINE_BEAT_IDS.includes(fromSource)) return fromSource;
+  for (const [beatId, sheetId] of Object.entries(LEFTOVER_SPINE_SHEET_IDS)) {
+    if (sheet && sheet.id === sheetId) return beatId;
+  }
+  return null;
+}
 
 const NON_PHYSICAL_VERBS = Object.freeze([
   'choose', 'decide', 'talk', 'speak', 'watch', 'read', 'menu', 'dialogue',
@@ -336,6 +401,132 @@ function validate47aWithoutLoss(sheet, scenario) {
   return issues;
 }
 
+function validateLeftoverSpine(sheet) {
+  const issues = [];
+  const beatId = leftoverSpineBeatId(sheet);
+  if (!beatId) {
+    issues.push(issue('leftover_source', 'leftover spine sheet must cite leftover beatId honest_work / first_blood / bigger_boat', 'leftoverSource.beatId'));
+    return issues;
+  }
+
+  const def = leftoverSpineDef(beatId);
+  const source = sheet.leftoverSource || {};
+  if (source.sidecar !== LEFTOVER_SPINE_SIDECAR_REL) {
+    issues.push(issue('leftover_source', `leftover spine must cite ${LEFTOVER_SPINE_SIDECAR_REL}`, 'leftoverSource.sidecar'));
+  }
+  if (source.notTheOpener !== LEFTOVER_SPINE_CHAPTERS[beatId]) {
+    issues.push(issue(
+      'leftover_source',
+      `leftover ${beatId} must name ${LEFTOVER_SPINE_CHAPTERS[beatId]} as chapter prose, not the playable leftover`,
+      'leftoverSource.notTheOpener',
+    ));
+  }
+  if (source.liveSettle !== LEFTOVER_SPINE_LIVE_SETTLE_REL) {
+    issues.push(issue(
+      'leftover_source',
+      `leftover spine live settle is ${LEFTOVER_SPINE_LIVE_SETTLE_REL}, not this leaf`,
+      'leftoverSource.liveSettle',
+    ));
+  }
+
+  const expectedId = LEFTOVER_SPINE_SHEET_IDS[beatId];
+  if (sheet.id !== expectedId) {
+    issues.push(issue('leftover_source', `leftover ${beatId} sheet id must be ${expectedId}`, 'id'));
+  }
+
+  const headline = String(sheet.setPiece && sheet.setPiece.headlineVerb || '').toLowerCase();
+  if (headline !== LEFTOVER_SPINE_HEADLINES[beatId]) {
+    issues.push(issue(
+      'without_loss',
+      `leftover ${beatId} headline must be leftover ${LEFTOVER_SPINE_HEADLINES[beatId]}`,
+      'setPiece.headlineVerb',
+    ));
+  }
+
+  const named = new Set(actorIds(sheet));
+  for (const id of LEFTOVER_SPINE_ACTORS[beatId] || []) {
+    if (!named.has(id)) {
+      issues.push(issue('without_loss', `leftover ${beatId} omitted leftover actor ${id}`, 'setPiece.actors'));
+    }
+  }
+
+  const placeBlob = `${sheet.setPiece && sheet.setPiece.place || ''} ${JSON.stringify(source)}`;
+  const leftoverPlaces = leftoverSpinePlaces(beatId);
+  if (leftoverPlaces.length && !leftoverPlaces.some((token) => placeBlob.includes(token))) {
+    issues.push(issue(
+      'place',
+      `leftover ${beatId} must cite leftover place ${leftoverPlaces.join(' / ')}`,
+      'setPiece.place',
+    ));
+  }
+
+  const blob = JSON.stringify(sheet);
+  if (B0_COLLAPSE.test(blob) || headline === 'mine' || headline === 'dock' || headline === 'sample') {
+    issues.push(issue('b0_collapse', `leftover ${beatId} collapsed to B0 mine-and-dock`, 'setPiece'));
+  }
+
+  const leftoverMech = new Set(leftoverSpineMethods(beatId));
+  const solutions = (sheet.setPiece && sheet.setPiece.solutions) || [];
+  const namedMech = new Set();
+  for (const [i, row] of solutions.entries()) {
+    const mech = row && row.leftoverMechanic;
+    if (!mech || !leftoverMech.has(mech)) {
+      issues.push(issue(
+        'invented_solution',
+        `solution leftoverMechanic is not leftover ${beatId}: ${mech || '(missing)'}`,
+        `setPiece.solutions[${i}]`,
+      ));
+    } else {
+      namedMech.add(mech);
+    }
+  }
+  for (const mech of leftoverMech) {
+    if (!namedMech.has(mech)) {
+      issues.push(issue(
+        'without_loss',
+        `leftover ${beatId} must keep leftover physical solution ${mech}`,
+        'setPiece.solutions',
+      ));
+    }
+  }
+
+  const leftoverLines = new Map(
+    BEAT_COMMS
+      .filter((row) => def && row.beatIndex === def.beat && row.choiceId == null)
+      .map((row) => [row.id, String(row.text || '')]),
+  );
+  const primary = BEAT_COMMS.find((row) => def && row.beatIndex === def.beat && row.variant === 'primary' && row.choiceId == null);
+  const sheetBarks = Array.isArray(sheet.barks) ? sheet.barks : [];
+  if (primary && !sheetBarks.some((row) => row && row.id === primary.id)) {
+    issues.push(issue('barks', `leftover ${beatId} must cite leftover primary comms ${primary.id}`, 'barks'));
+  }
+  for (const [i, row] of sheetBarks.entries()) {
+    if (!row || !nonEmptyString(row.id)) continue;
+    const leftover = leftoverLines.get(row.id);
+    if (leftover === undefined) continue;
+    if (String(row.line || '').trim() !== leftover.trim()) {
+      issues.push(issue(
+        'rewritten_bark',
+        `bark ${row.id} drifted from leftover comms; cite it, do not rewrite it`,
+        `barks[${i}].line`,
+      ));
+    }
+  }
+
+  if (Number(sheet.seedCapture && sheet.seedCapture.seed) !== LEFTOVER_SPINE_SEED) {
+    issues.push(issue(
+      'seed',
+      `leftover spine seed must be leftover PQ-032.00 seed ${LEFTOVER_SPINE_SEED}`,
+      'seedCapture.seed',
+    ));
+  }
+  if (String(sheet.seedCapture && sheet.seedCapture.headedCapture || '') !== 'peeled') {
+    issues.push(issue('capture', 'leftover spine headed capture is peeled — no leftover tape', 'seedCapture.headedCapture'));
+  }
+
+  return issues;
+}
+
 export function validateBeatSheet(sheet, options = {}) {
   const issues = detectForbiddenForm(sheet);
   if (issues.some((row) => row.code === 'prose_only' && !sheet)) return issues;
@@ -362,6 +553,9 @@ export function validateBeatSheet(sheet, options = {}) {
   if (sheet.id === OPENER_47A_ID || options.require47a) {
     const scenario = options.scenario || load47aScenario();
     issues.push(...validate47aWithoutLoss(sheet, scenario));
+  }
+  if (leftoverSpineBeatId(sheet) || options.requireLeftoverSpine) {
+    issues.push(...validateLeftoverSpine(sheet));
   }
   return issues;
 }

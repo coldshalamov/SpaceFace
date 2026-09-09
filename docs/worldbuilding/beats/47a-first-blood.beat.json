@@ -1,0 +1,142 @@
+{
+  "schema": "spaceface.beatStandard.v1",
+  "kind": "leftover_spine",
+  "id": "beat.47a.first_blood",
+  "title": "First Blood: Pull the pods under fire",
+  "leftoverSource": {
+    "beat": 2,
+    "beatId": "first_blood",
+    "storyTag": "campaign47a:b2:elroy",
+    "sidecar": "src/story/campaign47a/embodiedMissions.js",
+    "commsCite": "src/story/campaign47a/embodiedDialogue.js",
+    "notTheOpener": "docs/worldbuilding/sheets/chapters/B2.md",
+    "liveSettle": "design/program/roadmap/receipts/PQ-032.00-REPORT.md",
+    "liveMissionType": "rescue_under_fire",
+    "authoredSetPieceId": "pod_rescue",
+    "barksCite": "src/data/barks.js",
+    "narrativeCite": "src/data/narrative.js"
+  },
+  "canon": {
+    "whoWantsWhat": [
+      {
+        "actorId": "player_kestrel",
+        "wants": "Pull leftover life pods out under fire. Tow one to leftover dest dock, or open a corridor and reel.",
+        "because": "Leftover beat 2 is pod rescue under fire. Not B0 mine-and-dock. Not chapter-sheet Elroy bounty."
+      },
+      {
+        "actorId": "life_pod",
+        "wants": "A leftover hitch, then leftover dest-dock. The pod is not cargo.",
+        "because": "Leftover physicalRole life_pod. Scan label LIFE POD. Leftover count 2. Story latch-dock is dest station + cargo + 24 WU."
+      },
+      {
+        "actorId": "rescue_escort",
+        "wants": "Keep the corridor closed. Hold the leftover line.",
+        "because": "Leftover physicalRole rescue_escort. Scan label RESCUE ESCORT. Leftover count 2, leftover wasp_swarmer. Corridor_pull waits until they are down."
+      },
+      {
+        "actorId": "contact_rook",
+        "wants": "Pods pulled before they go cold.",
+        "because": "Leftover B2 contact. Rescue broker. Leftover board tag stays campaign47a:b2:elroy — Elroy is leftover paperwork, not a field actor."
+      },
+      {
+        "actorId": "station_expanse",
+        "wants": "The leftover dest dock. A latch in the field is not arrival.",
+        "because": "Leftover dest station_expanse / sector_charon_expanse. Leftover start station_tethys. Leftover zone_charon_ambush."
+      }
+    ]
+  },
+  "register": {
+    "speakers": [
+      {
+        "id": "contact_rook",
+        "factionId": null,
+        "rule": "Rescue broker: name the pods and the fire. No bounty speech. No menu.",
+        "example": "Pods in the field. Pull them under fire.",
+        "cite": "src/story/campaign47a/embodiedDialogue.js#comms.47a.b2.primary"
+      },
+      {
+        "id": "faction_scn",
+        "factionId": "faction_scn",
+        "rule": "Concord: leftover board issuer. Procedural, cites the record, no slang.",
+        "example": "Concord Patrol on station. Keep your transponder lit and pass.",
+        "cite": "src/data/barks.js#faction_scn"
+      },
+      {
+        "id": "player_kestrel",
+        "factionId": "faction_free",
+        "rule": "Frontier: plainspoken. Player hull, not a talking tree.",
+        "example": "Frontier watch. Waystation’s open if you need it. Fly easy.",
+        "cite": "src/data/barks.js#faction_free"
+      }
+    ]
+  },
+  "setPiece": {
+    "place": "zone_charon_ambush in sector_charon_expanse. Leftover dest dock station_expanse. Leftover start station_tethys. Pods under fire, not a mining claim.",
+    "actors": [
+      { "id": "player_kestrel", "role": "player_ship", "leftover": true },
+      { "id": "life_pod", "role": "life_pod", "leftover": true, "scanLabel": "LIFE POD", "count": 2 },
+      { "id": "rescue_escort", "role": "rescue_escort", "leftover": true, "scanLabel": "RESCUE ESCORT", "count": 2 },
+      { "id": "contact_rook", "role": "remote_contact", "leftover": true },
+      { "id": "station_expanse", "role": "dest_station", "leftover": true }
+    ],
+    "headlineVerb": "pull",
+    "twist": "Escorts want the leftover line more than the hulls. Latch a leftover pod in the field and fly home does not pay. Leftover story latch-dock is dest station + cargo + 24 WU. Or drop the escorts and reel.",
+    "solutions": [
+      {
+        "id": "stage_tow",
+        "verb": "tow",
+        "leftoverMechanic": "stage_tow",
+        "how": "Latch leftover life_pod and bring it to leftover dest dock station_expanse. Leftover story settle is _entityAtStoryDestDock, not 700 WU PHYSICAL_BERTH_WU. PQ-032.00 leftover."
+      },
+      {
+        "id": "corridor_pull",
+        "verb": "reel",
+        "leftoverMechanic": "corridor_pull",
+        "how": "Open a leftover corridor: leftover rescue_escorts down, then leftover reel on leftover life_pod from stand-off. Leftover completionMethod corridor_pull."
+      }
+    ],
+    "provingFrame": "Seed 3200 leftover headless test/pq-032-00-set-pieces.test.mjs: leftover pod at dest dock pays. Leftover pod 189 WU from the berth does not. Headed GPU strip is peeled this leaf. Live settle is PQ-032.00, not this sheet."
+  },
+  "barks": [
+    {
+      "id": "comms.47a.b2.primary",
+      "speaker": "ROOK",
+      "line": "Pods in the field. Pull them under fire.",
+      "consequence": "Player steers to leftover life_pods. Escorts hold the corridor. No menu.",
+      "cite": "src/story/campaign47a/embodiedDialogue.js#comms.47a.b2.primary"
+    },
+    {
+      "id": "comms.47a.b2.recovery",
+      "speaker": "ROOK",
+      "line": "Pods still drift. Pull them out.",
+      "consequence": "Leftover recovery. The pull is still the verb.",
+      "cite": "src/story/campaign47a/embodiedDialogue.js#comms.47a.b2.recovery"
+    }
+  ],
+  "voiceNotes": {
+    "synthesis": "Directed leftover radio. One voice at a time. Cite leftover comms and leftover barks.js registers. Do not rewrite the corpus.",
+    "direction": "Rook: leftover rescue broker, pods and fire only. Concord board: leftover Ref-and-record hail. Elroy is leftover board tag, not a bark. Frontier lines stay in barks.js for the player hull."
+  },
+  "seedCapture": {
+    "seed": 3200,
+    "scenarioId": "campaign47a:b2:elroy",
+    "durationSeconds": 70,
+    "inputTape": "",
+    "captureContract": "Headless leftover: same seed as test/pq-032-00-set-pieces.test.mjs (3200). No leftover input tape for beats 1–3. Headed shipping-camera strip is peeled this leaf. Live settle remains PQ-032.00.",
+    "headedCapture": "peeled"
+  },
+  "forbidden": {
+    "dialogueTree": false,
+    "choiceMenu": false,
+    "cutsceneTakesStick": false
+  },
+  "honesty": {
+    "notB0MineAndDock": true,
+    "liveSettleIsPq03200": true,
+    "doesNotRecutLiveSettle": true,
+    "leftoverBoardTagIsElroy": "campaign47a:b2:elroy",
+    "elroyIsNotAFieldActor": true,
+    "leftoverStoryLatchDockNot700Wu": true,
+    "chapterSheetIsProse": "docs/worldbuilding/sheets/chapters/B2.md"
+  }
+}

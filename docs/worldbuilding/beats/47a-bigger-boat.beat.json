@@ -1,0 +1,135 @@
+{
+  "schema": "spaceface.beatStandard.v1",
+  "kind": "leftover_spine",
+  "id": "beat.47a.bigger_boat",
+  "title": "Bigger Boat: Tow the slag core",
+  "leftoverSource": {
+    "beat": 3,
+    "beatId": "bigger_boat",
+    "storyTag": "campaign47a:b3:bigger_boat",
+    "sidecar": "src/story/campaign47a/embodiedMissions.js",
+    "commsCite": "src/story/campaign47a/embodiedDialogue.js",
+    "notTheOpener": "docs/worldbuilding/sheets/chapters/B3.md",
+    "liveSettle": "design/program/roadmap/receipts/PQ-032.00-REPORT.md",
+    "liveMissionType": "tow_recovery",
+    "authoredSetPieceId": "long_tow",
+    "barksCite": "src/data/barks.js",
+    "narrativeCite": "src/data/narrative.js"
+  },
+  "canon": {
+    "whoWantsWhat": [
+      {
+        "actorId": "player_kestrel",
+        "wants": "Tow leftover slag core the long way. Keep it on the leftover line into the leftover yard, or leftover sling it in.",
+        "because": "Leftover beat 3 is the long tow. Not B0 mine-and-dock. Not chapter-sheet hull purchase."
+      },
+      {
+        "actorId": "slag_core",
+        "wants": "Stay on leftover line into leftover Ceres yard. Slack in the field is not arrival.",
+        "because": "Leftover physicalRole slag_core. Scan label SLAG CORE. Leftover story tow_in is dest-dock. Leftover sling_in still uses 700 WU."
+      },
+      {
+        "actorId": "contact_slate",
+        "wants": "The leftover core in the leftover yard.",
+        "because": "Leftover B3 contact. Shipyard welder. The weld is leftover graffiti, not a menu."
+      },
+      {
+        "actorId": "station_ceres",
+        "wants": "The leftover dest yard. A latch a field away is not the tow.",
+        "because": "Leftover dest station_ceres / sector_ceres_belt. Leftover start station_tethys."
+      }
+    ]
+  },
+  "register": {
+    "speakers": [
+      {
+        "id": "contact_slate",
+        "factionId": null,
+        "rule": "Welder voice: name the core and the two leftover ways. No yard sales pitch.",
+        "example": "Tow the slag core. Line or sling.",
+        "cite": "src/story/campaign47a/embodiedDialogue.js#comms.47a.b3.primary"
+      },
+      {
+        "id": "faction_dmc",
+        "factionId": "faction_dmc",
+        "rule": "Drift: leftover board issuer. Blue-collar, tired, shift-worker fatalism.",
+        "example": "Drift rig, hauling. Mind the debris, friend.",
+        "cite": "src/data/barks.js#faction_dmc"
+      },
+      {
+        "id": "player_kestrel",
+        "factionId": "faction_free",
+        "rule": "Frontier: plainspoken. Player hull, not a talking tree.",
+        "example": "Frontier watch. Waystation’s open if you need it. Fly easy.",
+        "cite": "src/data/barks.js#faction_free"
+      }
+    ]
+  },
+  "setPiece": {
+    "place": "Long tow into leftover dest station_ceres in sector_ceres_belt. Leftover start station_tethys. Slag core, not a mining claim.",
+    "actors": [
+      { "id": "player_kestrel", "role": "player_ship", "leftover": true },
+      { "id": "slag_core", "role": "slag_core", "leftover": true, "scanLabel": "SLAG CORE" },
+      { "id": "contact_slate", "role": "remote_contact", "leftover": true },
+      { "id": "station_ceres", "role": "dest_station", "leftover": true }
+    ],
+    "headlineVerb": "tow",
+    "twist": "Latch leftover slag_core once and leave it a field away does not pay. Leftover story tow_in is dest-dock (station + cargo + 24 WU). Leftover sling_in still uses leftover PHYSICAL_BERTH_WU 700.",
+    "solutions": [
+      {
+        "id": "tow_in",
+        "verb": "tow",
+        "leftoverMechanic": "tow_in",
+        "how": "Keep leftover slag_core on the leftover line into leftover dest dock station_ceres. Leftover story settle is _entityAtStoryDestDock. A short leftover latch does not fall through to leftover sling_in. PQ-032.00 leftover."
+      },
+      {
+        "id": "sling_in",
+        "verb": "sling",
+        "leftoverMechanic": "sling_in",
+        "how": "Leftover throw or leftover clean release of leftover slag_core into leftover 700 WU berth. Leftover authored / sling_in still use PHYSICAL_BERTH_WU. Not dest-dock."
+      }
+    ],
+    "provingFrame": "Seed 3200 leftover headless test/pq-032-00-set-pieces.test.mjs: leftover core at dest dock pays. Leftover core 201 WU from the berth does not. Leftover sling_in still 700 WU. Headed GPU strip is peeled this leaf. Live settle is PQ-032.00, not this sheet."
+  },
+  "barks": [
+    {
+      "id": "comms.47a.b3.primary",
+      "speaker": "SLATE",
+      "line": "Tow the slag core. Line or sling.",
+      "consequence": "Player hitches leftover slag_core. The long tow starts. No menu.",
+      "cite": "src/story/campaign47a/embodiedDialogue.js#comms.47a.b3.primary"
+    },
+    {
+      "id": "comms.47a.b3.recovery",
+      "speaker": "SLATE",
+      "line": "Core still waits. Tow it in.",
+      "consequence": "Leftover recovery. The tow is still the verb.",
+      "cite": "src/story/campaign47a/embodiedDialogue.js#comms.47a.b3.recovery"
+    }
+  ],
+  "voiceNotes": {
+    "synthesis": "Directed leftover radio. One voice at a time. Cite leftover comms and leftover barks.js registers. Do not rewrite the corpus.",
+    "direction": "Slate: leftover welder, core and two leftover ways only. Drift board: leftover tired hail. Chapter-sheet hull name VARIANCE ADJUSTMENT is leftover graffiti, not this verb. Frontier lines stay in barks.js for the player hull."
+  },
+  "seedCapture": {
+    "seed": 3200,
+    "scenarioId": "campaign47a:b3:bigger_boat",
+    "durationSeconds": 40,
+    "inputTape": "",
+    "captureContract": "Headless leftover: same seed as test/pq-032-00-set-pieces.test.mjs (3200). No leftover input tape for beats 1–3. Headed shipping-camera strip is peeled this leaf. Live settle remains PQ-032.00.",
+    "headedCapture": "peeled"
+  },
+  "forbidden": {
+    "dialogueTree": false,
+    "choiceMenu": false,
+    "cutsceneTakesStick": false
+  },
+  "honesty": {
+    "notB0MineAndDock": true,
+    "liveSettleIsPq03200": true,
+    "doesNotRecutLiveSettle": true,
+    "leftoverStoryTowInIsDestDock": true,
+    "leftoverSlingInStill700Wu": true,
+    "chapterSheetIsProse": "docs/worldbuilding/sheets/chapters/B3.md"
+  }
+}

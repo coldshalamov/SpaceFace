@@ -1,0 +1,134 @@
+{
+  "schema": "spaceface.beatStandard.v1",
+  "kind": "leftover_spine",
+  "id": "beat.47a.honest_work",
+  "title": "Honest Work: Knock the variance tower",
+  "leftoverSource": {
+    "beat": 1,
+    "beatId": "honest_work",
+    "storyTag": "campaign47a:b1:honest_work",
+    "sidecar": "src/story/campaign47a/embodiedMissions.js",
+    "commsCite": "src/story/campaign47a/embodiedDialogue.js",
+    "notTheOpener": "docs/worldbuilding/sheets/chapters/B1.md",
+    "liveSettle": "design/program/roadmap/receipts/PQ-032.00-REPORT.md",
+    "liveMissionType": "demolition",
+    "authoredSetPieceId": "wrecking_ball",
+    "barksCite": "src/data/barks.js",
+    "narrativeCite": "src/data/narrative.js"
+  },
+  "canon": {
+    "whoWantsWhat": [
+      {
+        "actorId": "player_kestrel",
+        "wants": "Knock the leftover variance tower. Swing mass through it, or cut it down.",
+        "because": "Leftover beat 1 is the wrecking-ball contract. Not B0 mine-and-dock. Not chapter-sheet cargo recategorize."
+      },
+      {
+        "actorId": "demolition_tower",
+        "wants": "Stay standing until leftover mass or leftover shot takes it.",
+        "because": "Leftover physicalRole demolition_tower. Scan label DEAD TOWER. Solid leftover wreck, not a mining rock."
+      },
+      {
+        "actorId": "contact_kessler",
+        "wants": "The tower knocked. The variance file closed by a physical knock.",
+        "because": "Leftover B1 contact. Clerk voice. Payment is leftover 600 after the knock lands."
+      },
+      {
+        "actorId": "station_helios",
+        "wants": "Remain the leftover dest. The tower is Helios-adjacent, not a Forge board place.",
+        "because": "Leftover campaign dest is station_helios / sector_helios_prime. Authored wrecking_ball catalog place is leftover Forge — this beat is the story leftover."
+      }
+    ]
+  },
+  "register": {
+    "speakers": [
+      {
+        "id": "contact_kessler",
+        "factionId": null,
+        "rule": "Clerk voice: name the knock, name the two leftover ways, never explain the file.",
+        "example": "Knock the dead tower. Swing mass or cut it.",
+        "cite": "src/story/campaign47a/embodiedDialogue.js#comms.47a.b1.primary"
+      },
+      {
+        "id": "faction_mts",
+        "factionId": "faction_mts",
+        "rule": "Meridian: leftover board issuer. Smooth, mercantile. The knock is a fee closed.",
+        "example": "Meridian escort. Rates are fair, mostly. Fly safe.",
+        "cite": "src/data/barks.js#faction_mts"
+      },
+      {
+        "id": "player_kestrel",
+        "factionId": "faction_free",
+        "rule": "Frontier: plainspoken. Player hull, not a talking tree.",
+        "example": "Frontier watch. Waystation’s open if you need it. Fly easy.",
+        "cite": "src/data/barks.js#faction_free"
+      }
+    ]
+  },
+  "setPiece": {
+    "place": "Helios-adjacent variance tower in sector_helios_prime. Leftover dest station_helios. Dead tower, not a mining claim.",
+    "actors": [
+      { "id": "player_kestrel", "role": "player_ship", "leftover": true },
+      { "id": "demolition_tower", "role": "demolition_tower", "leftover": true, "scanLabel": "DEAD TOWER" },
+      { "id": "contact_kessler", "role": "remote_contact", "leftover": true },
+      { "id": "station_helios", "role": "dest_station", "leftover": true }
+    ],
+    "headlineVerb": "knock",
+    "twist": "The leftover tower is solid wreck. Naming it on a throw release does not knock it. The swing has to contact. Guns are the leftover slow cut.",
+    "solutions": [
+      {
+        "id": "wrecking_ball",
+        "verb": "whip",
+        "leftoverMechanic": "wrecking_ball",
+        "how": "Latch leftover mass and whip it through leftover demolition_tower. Leftover settle is whip contact (tether:whipImpact). Throw release does not pay. PQ-032.00 leftover."
+      },
+      {
+        "id": "cut_down",
+        "verb": "fire",
+        "leftoverMechanic": "cut_down",
+        "how": "Kill leftover demolition_tower with leftover guns. Leftover completionMethod cut_down. Same leftover tower, second leftover verb."
+      }
+    ],
+    "provingFrame": "Seed 3200 leftover headless test/pq-032-00-set-pieces.test.mjs: leftover whip contact settles B1. Throw release does not. Headed GPU strip is peeled this leaf. Live settle is PQ-032.00, not this sheet."
+  },
+  "barks": [
+    {
+      "id": "comms.47a.b1.primary",
+      "speaker": "KESSLER",
+      "line": "Knock the dead tower. Swing mass or cut it.",
+      "consequence": "Player steers to leftover demolition_tower. No menu.",
+      "cite": "src/story/campaign47a/embodiedDialogue.js#comms.47a.b1.primary"
+    },
+    {
+      "id": "comms.47a.b1.recovery",
+      "speaker": "KESSLER",
+      "line": "Tower still stands. Knock it down.",
+      "consequence": "Leftover recovery. The tower is still the verb.",
+      "cite": "src/story/campaign47a/embodiedDialogue.js#comms.47a.b1.recovery"
+    }
+  ],
+  "voiceNotes": {
+    "synthesis": "Directed leftover radio. One voice at a time. Cite leftover comms and leftover barks.js registers. Do not rewrite the corpus.",
+    "direction": "Kessler: dry clerk, knock and two leftover ways only. Meridian board: leftover mercantile hail. Frontier lines stay in barks.js for the player hull."
+  },
+  "seedCapture": {
+    "seed": 3200,
+    "scenarioId": "campaign47a:b1:honest_work",
+    "durationSeconds": 50,
+    "inputTape": "",
+    "captureContract": "Headless leftover: same seed as test/pq-032-00-set-pieces.test.mjs (3200). No leftover input tape for beats 1–3. Headed shipping-camera strip is peeled this leaf. Live settle remains PQ-032.00.",
+    "headedCapture": "peeled"
+  },
+  "forbidden": {
+    "dialogueTree": false,
+    "choiceMenu": false,
+    "cutsceneTakesStick": false
+  },
+  "honesty": {
+    "notB0MineAndDock": true,
+    "liveSettleIsPq03200": true,
+    "doesNotRecutLiveSettle": true,
+    "leftoverWhipContactNotThrowRelease": true,
+    "chapterSheetIsProse": "docs/worldbuilding/sheets/chapters/B1.md"
+  }
+}
