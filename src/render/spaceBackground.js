@@ -8,7 +8,7 @@
 //   L2  anomaly-only glow wisps                                         (baked tile, additive)
 //   L3  live star points, continuous per-star parallax + twinkle       (one THREE.Points)
 //   L4  hero stars (compact optical halos), per-instance parallax       (one InstancedMesh)
-//   L5  planet impostors (GLSL-baked sphere sprites, LRU-cached)       (sprites)
+//   L5  painted planet atlas and ringed landmark                     (sprites)
 //   L5b wormhole — the one live-animated shader, small quad only
 //   L6  comet streak (rare, subtle)
 //
@@ -18,7 +18,7 @@
 //    wrapped mod 1 before upload → no float drift at far coordinates, no accumulation state.
 //  * Hero objects (planets/wormholes) are hashed on a grid in PARALLAX-SCALED background space
 //    (bg = world * par), so placement is stable and heroes keep appearing forever as you fly.
-//  * Everything is generated at load — zero static asset files, zero runtime deps.
+//  * Painted stills share two images; cached bakes only recover failed authored-image loads.
 //  * Repeat periods per layer are staggered (~golden ratio) so the combined pattern never aligns;
 //    each layer's visual repeat distance is >= ~25 screens of flight.
 import * as THREE from 'three';
@@ -44,6 +44,7 @@ import {
   SECTOR_VISUAL_TRANSITION_SECONDS,
 } from './sectorVisualTransition.js';
 import { stampOpeningSubmissionPackage } from './openingSubmissionPlan.js';
+import { PaintedPlanets } from './paintedPlanets.js';
 
 // ----------------------------------------------------------------------------
 // Seeded PRNG (mulberry32) + string hash — ~15 lines, no deps.
@@ -1134,6 +1135,8 @@ export class SpaceBackground {
 
     // planet texture LRU (render targets, disposed when evicted)
     this.planetCache = new Map();
+    this.paintedPlanets = typeof document !== 'undefined' && typeof document.createElementNS === 'function'
+      ? new PaintedPlanets() : null;
     // Shared sprite materials, one per baked texture — never disposed during flight. Disposing a
     // sprite material releases the shared sprite GL program once its last user dies; the next
     // impostor spawn then re-links it inside renderBufferDirect (a 50-300 ms draw-time stall).
@@ -1162,7 +1165,7 @@ export class SpaceBackground {
     this.bakePlane = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), this._planetBakeMaterial);
     this.bakePlane.position.z = -1;
     this.bakeScene.add(this.bakePlane);
-    this._warmPlanetBakePipeline();
+    if (!this.paintedPlanets) this._warmPlanetBakePipeline();
 
     this._measureGeometry();
     this.flareAtlas = this._bakeFlareAtlas();
@@ -2065,14 +2068,20 @@ export class SpaceBackground {
     this._lastPlanetGX = pgx; this._lastPlanetGZ = pgz;
     this._lastWormGX = wgx; this._lastWormGZ = wgz;
 
-    // clear + respawn (rare: bg-space grid crossings are ~20x slower than travel)
-    for (const p of this.planets) {
+    const windowR = this.quadSize * 0.5;
+    // Membership changes may introduce candidates; they must never replace a still-visible
+    // landmark (including when only the unrelated wormhole grid changes). Retire offscreen.
+    for (let i = this.planets.length - 1; i >= 0; i--) {
+      const p = this.planets[i];
+      const margin = p.sprite.scale.x;
+      if (!force && Math.abs(p.spec.bx - this.camX * PLANET_PAR) < windowR + margin
+          && Math.abs(p.spec.bz - this.camZ * PLANET_PAR) < windowR + margin) continue;
       this.group.remove(p.sprite);
-      // Material stays alive in _spriteMatCache: disposing it here released the shared sprite
-      // program (usedTimes -> 0) and the next impostor spawn re-linked it at draw time.
+      this.planets.splice(i, 1);
     }
-    this.planets = [];
-    if (this.wormhole) {
+    if (this.wormhole && (force
+        || Math.abs(this.wormhole.spec.bx - this.camX * WORM_PAR) > windowR * 1.2
+        || Math.abs(this.wormhole.spec.bz - this.camZ * WORM_PAR) > windowR * 1.2)) {
       this.group.remove(this.wormhole.mesh);
       this.wormhole.mesh.geometry.dispose();
       this.wormhole.material.dispose();
@@ -2080,7 +2089,6 @@ export class SpaceBackground {
     }
 
     const list = [];
-    const windowR = this.quadSize * 0.5; // generous cull radius in render units
 
     // A sector may declare one signature celestial anchor. It is fixed in parallax-space when the
     // sector is entered (not camera-locked), so it provides memorable geography and then recedes
@@ -2120,22 +2128,24 @@ export class SpaceBackground {
     }
     this.heroPlacement = list;
 
-    // Spawn what's near the window, capped at MAX_VISIBLE_PLANETS + 1 wormhole.
-    //
-    // This was hardcoded to 1 planet while heroPlacement routinely holds ~17 candidates, so the far
-    // field could only ever contain a single celestial body no matter what the sector authored.
-    // Independent review asked for "two distant occluding bodies behind the ship path" as its
-    // background fix — the content was already generated and a constant was hiding it. The signature
-    // anchor is first in `list`, so it still wins the first slot and authored composition is
-    // preserved; the second slot goes to the nearest procedural hero.
-    //
-    // Cost is one extra baked impostor (LRU-cached, `maxPlanetCache`) and one extra sprite draw.
-    let planetsSpawned = 0;
+    // The signature anchor has first claim at boot; fill remaining slots by proximity rather
+    // than grid iteration order. Existing residents win until they have left the window.
+    list.sort((a, b) => {
+      if (a === this._signatureHeroAnchor) return -1;
+      if (b === this._signatureHeroAnchor) return 1;
+      const ap = a.kind === 'planet' ? PLANET_PAR : WORM_PAR;
+      const bp = b.kind === 'planet' ? PLANET_PAR : WORM_PAR;
+      return Math.hypot(a.bx - this.camX * ap, a.bz - this.camZ * ap)
+        - Math.hypot(b.bx - this.camX * bp, b.bz - this.camZ * bp);
+    });
+    let planetsSpawned = this.planets.length;
     for (const spec of list) {
       const par = spec.kind === 'planet' ? PLANET_PAR : WORM_PAR;
       const ox = spec.bx - this.camX * par;
       const oz = spec.bz - this.camZ * par;
       if (Math.abs(ox) > windowR || Math.abs(oz) > windowR) continue;
+      if (spec.kind === 'planet' && this.planets.some(p => p.spec.bx === spec.bx
+          && p.spec.bz === spec.bz && p.spec.seed === spec.seed)) continue;
       if (spec.kind === 'planet' && planetsSpawned < MAX_VISIBLE_PLANETS) {
         this._spawnPlanet(spec);
         planetsSpawned++;
@@ -2173,12 +2183,14 @@ export class SpaceBackground {
     // texture: planet radius = 0.42 of the quad half-extent → quad = diameter / 0.42.
     // `frac` already expresses the authored gameplay-screen size. A second signature multiplier made
     // the Helios planet cover most of the live frame even though the standalone camera looked safe.
-    const diameter = spec.frac * this.H * Math.max(1.15, this.heroSizeK);
-    const quad = diameter / 0.42;
+    const diameter = spec.frac * this.H * Math.max(1.15, this.heroSizeK) * 0.58;
+    const quad = diameter / (tex.userData?.paintedPlanetDiameter || 0.42);
     sprite.scale.set(quad, quad, 1);
     sprite.renderOrder = -60;
     sprite.frustumCulled = false;
     sprite.position.y = HERO_DEPTH;
+    sprite.position.x = spec.bx - this.camX * PLANET_PAR;
+    sprite.position.z = spec.bz - this.camZ * PLANET_PAR;
     sprite.userData = spec;
     this.group.add(sprite);
     this.planets.push({ sprite, mat, spec });
@@ -2419,6 +2431,8 @@ export class SpaceBackground {
   }
 
   _getPlanetTexture(spec) {
+    const painted = this.paintedPlanets?.get(spec);
+    if (painted) return painted;
     const key = `${spec.type}_${spec.seed}_${spec.ring ? 1 : 0}`;
     if (this.planetCache.has(key)) return this.planetCache.get(key).texture;
     const rt = this._bakePlanetTarget(spec);
@@ -2468,6 +2482,8 @@ export class SpaceBackground {
       tierName: this.tierName,
     });
     this.wormhole = { mesh, material: mesh.material, spec };
+    mesh.position.x = spec.bx - this.camX * WORM_PAR;
+    mesh.position.z = spec.bz - this.camZ * WORM_PAR;
     this.group.add(mesh);
   }
 
@@ -2688,6 +2704,13 @@ export class SpaceBackground {
 
     // hero parallax: render offset = bgCoord - camPos*par (stable by construction)
     for (const p of this.planets) {
+      if (this.paintedPlanets?.failed && p.mat.map?.userData?.paintedPlanet) {
+        // Failed authored loads are reported by the library; preserve a visible landmark.
+        const bodyFraction = p.mat.map.userData.paintedPlanetDiameter;
+        p.mat = this._getPlanetSpriteMaterial(this._getPlanetTexture(p.spec));
+        p.sprite.material = p.mat;
+        p.sprite.scale.multiplyScalar(bodyFraction / 0.42);
+      }
       p.sprite.position.x = p.spec.bx - cx * PLANET_PAR;
       p.sprite.position.z = p.spec.bz - cz * PLANET_PAR;
       // Fully integrated landmark (not a washed overlay).
@@ -2855,10 +2878,8 @@ export class SpaceBackground {
     this._streamPrimed = false;
     this._streamCamX = this.camX;
     this._streamCamZ = this.camZ;
-    for (let i = 0; i < this.layers.length; i++) {
-      this.layers[i].streamU = 0;
-      this.layers[i].streamV = 0;
-    }
+    // Keep accumulated UV phase: re-priming rejects the arrival delta without snapping the
+    // existing image back to its unstreamed position at an ordinary sector boundary.
     if (id === this._sectorId) return;
     const initialSector = this._sectorId == null;
     this._sectorId = id;
@@ -3003,20 +3024,15 @@ export class SpaceBackground {
   }
 
   onResize() {
-    this.H = measureScreenHeightWorld(this.camera);
-    this.bgY = -this.H * 2.2;
-    this.group.position.y = this.bgY;
-    this.regionNoiseScale = 1 / (this.H * 55);
-    this._measureGeometry();
-    this._buildLayers();
-    this._rebuildStarsAndFlares();
-    this._spawnStructureCard();
-    this._createComet();
-    this._refreshHeroes(true);
+    // Placement metrics belong to the sky's lifetime, not the current window/zoom. The
+    // fullscreen carrier already uses the live projection; rebuilding here moved every star
+    // and planet on resolution changes. Only projected pixel size needs refreshing.
+    this.perspScale = this._computePerspScale();
     this._publishOpeningSubmissionPackage();
   }
 
   dispose() {
+    this.paintedPlanets?.dispose();
     this._disposeStructureMacro();
     this._disposeBakeTargets();
     if (this.flareAtlas) this.flareAtlas.dispose();

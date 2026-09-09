@@ -5,6 +5,8 @@ import * as THREE from 'three';
 
 installCanvasStub();
 const parallaxLayers = await import('../src/render/parallaxLayers.js');
+const MID_COUNT = parallaxLayers.PARALLAX_BANDS.mid.count;
+const MID_CLOCK_SPLIT = Math.max(1, Math.floor(MID_COUNT * 0.5));
 
 test('mid debris keeps all authored instances and moves only its two scalar clocks per frame', () => {
   const scene = new THREE.Scene();
@@ -17,12 +19,13 @@ test('mid debris keeps all authored instances and moves only its two scalar cloc
     const spinParams = mesh.geometry.getAttribute('aParallaxSpinParams');
     const gpuSpin = mesh.material.userData.spacefaceParallaxMidDebrisGpuSpin;
 
-    assert.equal(mesh.count, 1400, 'default quality retains all 1,400 authored instances');
-    assert.equal(mesh.instanceMatrix.count, 1400, 'allocation retains the 1,400-instance capacity');
-    assert.equal(mesh.instanceMatrix.array.byteLength, 89_600, 'matrix allocation remains 89,600 bytes');
+    assert.equal(mesh.count, MID_COUNT, 'default quality retains all authored instances');
+    assert.equal(mesh.instanceMatrix.count, MID_COUNT, 'allocation retains the authored capacity');
+    assert.equal(mesh.instanceMatrix.array.byteLength, MID_COUNT * 16 * Float32Array.BYTES_PER_ELEMENT,
+      'matrix allocation matches the sparse authored population');
     assert.equal(mesh.instanceMatrix.usage, THREE.StaticDrawUsage, 'instance matrices are immutable after admission');
-    assert.equal(spinAxis.count, 1400, 'every instance retains its authored spin axis');
-    assert.equal(spinParams.count, 1400, 'every instance retains phase, speed, and quality-clock selection');
+    assert.equal(spinAxis.count, MID_COUNT, 'every instance retains its authored spin axis');
+    assert.equal(spinParams.count, MID_COUNT, 'every instance retains phase, speed, and clock selection');
     assert.equal(spinAxis.usage, THREE.StaticDrawUsage);
     assert.equal(spinParams.usage, THREE.StaticDrawUsage);
     assert.ok(gpuSpin, 'material exposes the stable GPU animation contract');
@@ -41,17 +44,22 @@ test('mid debris keeps all authored instances and moves only its two scalar cloc
 
     state.settings.video.particleQuality = 'low';
     parallaxLayers.update(1 / 60);
-    assert.equal(mesh.count, 700, 'low quality retains the established half-density contract');
+    assert.equal(mesh.count, MID_COUNT, 'low quality preserves the same sparse field membership');
     assert.equal(gpuSpin.uniforms.primaryTime.value, 2 / 60);
-    assert.equal(gpuSpin.uniforms.tailTime.value, 1 / 60,
-      'hidden upper-half debris pauses exactly as the prior active-prefix CPU loop did');
+    assert.equal(gpuSpin.uniforms.tailTime.value, 2 / 60,
+      'all resident debris continues smoothly across quality changes');
 
     state.settings.video.particleQuality = 'medium';
     parallaxLayers.update(1 / 60);
-    assert.equal(mesh.count, 1400);
+    assert.equal(mesh.count, MID_COUNT);
     assert.equal(gpuSpin.uniforms.primaryTime.value, 3 / 60);
-    assert.equal(gpuSpin.uniforms.tailTime.value, 2 / 60,
-      'restored upper-half debris resumes without accumulating hidden time');
+    assert.equal(gpuSpin.uniforms.tailTime.value, 3 / 60,
+      'both clocks remain continuous when quality is restored');
+    state.settings.video.motionReduce = true;
+    parallaxLayers.update(1 / 60);
+    assert.equal(mesh.count, MID_COUNT, 'reduced motion preserves field membership');
+    assert.equal(gpuSpin.uniforms.primaryTime.value, 3 / 60, 'reduced motion freezes primary rotation');
+    assert.equal(gpuSpin.uniforms.tailTime.value, 3 / 60, 'reduced motion freezes tail rotation');
     assert.equal(mesh.instanceMatrix.version, matrixVersion, 'quality toggles do not rewrite the static matrix allocation');
     assert.deepEqual(mesh.instanceMatrix.array, matrixBytes, 'quality toggles preserve all static authored transforms');
   } finally {
@@ -75,7 +83,7 @@ test('GPU spin attributes and authored centers stay on the spawn recipe', () => 
     state.settings.video.particleQuality = 'medium';
     parallaxLayers.update(1 / 60);
 
-    for (const index of [0, 699, 700, 1399]) {
+    for (const index of [0, MID_CLOCK_SPLIT - 1, MID_CLOCK_SPLIT, MID_COUNT - 1]) {
       const expectedRecord = expectedDebrisRecord(index);
       const axis = new THREE.Vector3().fromBufferAttribute(spinAxis, index);
       const phase = spinParams.getX(index);
@@ -87,7 +95,7 @@ test('GPU spin attributes and authored centers stay on the spawn recipe', () => 
       close(axis.z, expectedRecord.axis.z, 1e-7, `axis z ${index}`);
       close(phase, expectedRecord.phase, 1e-6, `phase ${index}`);
       close(speed, expectedRecord.speed, 1e-7, `speed ${index}`);
-      assert.equal(tail, index < 700 ? 0 : 1, `clock selector ${index}`);
+      assert.equal(tail, index < MID_CLOCK_SPLIT ? 0 : 1, `clock selector ${index}`);
 
       const staticMatrix = new THREE.Matrix4();
       mesh.getMatrixAt(index, staticMatrix);
@@ -95,9 +103,9 @@ test('GPU spin attributes and authored centers stay on the spawn recipe', () => 
       const staticRotation = new THREE.Quaternion();
       const staticScale = new THREE.Vector3();
       staticMatrix.decompose(staticPosition, staticRotation, staticScale);
-      close(staticPosition.x, expectedRecord.x, 2e-5, `position x ${index}`);
-      close(staticPosition.y, expectedRecord.y, 2e-5, `position y ${index}`);
-      close(staticPosition.z, expectedRecord.z, 2e-5, `position z ${index}`);
+      assert.equal(staticPosition.x, Math.fround(expectedRecord.x), `position x ${index}`);
+      assert.equal(staticPosition.y, Math.fround(expectedRecord.y), `position y ${index}`);
+      assert.equal(staticPosition.z, Math.fround(expectedRecord.z), `position z ${index}`);
       close(staticScale.x, expectedRecord.radiusX, 2e-6, `scale ${index}`);
     }
   } finally {
