@@ -126,7 +126,7 @@ WHAT I FOUND     one sentence, plain words (the fundamental, if this was feel wo
 WHAT I CHANGED   one sentence, no file names
 WHAT YOU WILL FEEL   two sentences: what is different when you play; what still is not
 THE NUMBERS      bar | before | after | target   (only the bars this unit moved)
-THE FRAMES       the before/after strip, when player-felt
+THE FEEL         one sentence on whether it plays better; committed capture strips are never required
 NEXT             the next unit --next will return
 ```
 
@@ -153,7 +153,7 @@ NEXT             the next unit --next will return
 **Required proofs — the integrator rejects on any "no":**
 
 - Is the feature reachable on the default route? Does the surface pass the grammar matrix?
-- Is the report in the owner's words, with the numbers and the frames?
+- Is the report in the owner's words, with the numbers that moved and what it plays like now?
 - Does the receipt name the intended improvement AND the tradeoff it deliberately spent (a larger
   impact may cost a little fill rate; a crisper brake may change a handling curve)? A unit is judged
   on that bargain, not on every metric moving at once.

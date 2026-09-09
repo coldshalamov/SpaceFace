@@ -20,8 +20,8 @@ For lab implementation work, read
 4. Prove repeatability and save/load continuation when the feature owns those claims.
 5. Run adjacent ownership/save/integration checks named by the packet.
 6. Only after lower layers pass, use the relevant broker manifest for Browser/Electron acceptance.
-7. Treat visual feel, accessibility, and performance as separate player-route claims; a headless
-   green result does not prove them.
+7. When a unit itself claims visual feel, accessibility, or performance, those are player-route
+   claims a headless green cannot prove — escalate exactly those claims, and nothing else.
 
 Never rerun an unchanged expensive failure. Preserve its fingerprint, classify it, reduce it to a
 seconds-scale regression, change the owning source or evidence, and only then request another
@@ -36,7 +36,7 @@ Run upward. A higher layer never substitutes for a lower layer.
 | L0 | syntax, schema, imports, data shape, changed-doc links | `node --check`, validators, `git diff --check` |
 | L1 | seconds-scale owner behavior | focused `node --test`, pure checks, one lab scenario |
 | L2 | determinism, continuation, ownership, adjacent integration | `sf lab repeat`, `sf lab compare`, focused aggregates |
-| L3 | ordinary Browser/Electron route and visible/accessibility behavior | validation-broker manifest and current artifacts |
+| L3 | route claims a unit actually asserts: Browser/Electron behavior, visible/accessibility behavior, feel | validation-broker manifest and current artifacts |
 | L4 | matched performance, soak, held-out, and release claims | packet-declared performance/release cells |
 
 Do not run the repository-wide `npm run check` while a focused owner failure is still red. Do not

@@ -21,7 +21,6 @@ One paragraph describing the player-visible result and the ordinary route that p
 - [ ] Required leases/mutexes free.
 - [ ] Existing behavior characterized by a seconds-scale test.
 - [ ] `npm run check:baseline` run at the candidate base before the first edit; any entry red is noted (so a red at exit is attributable). Repair inherited reds when bounded; record them when not.
-- [ ] Baseline route/performance evidence captured when relevant.
 
 ## Live seams
 
@@ -72,9 +71,8 @@ A still can prove appearance. It cannot by itself prove oscillation, control lat
 
 ### Phase 3 — presentation and route
 
-- [ ] normal-route visuals/controls/accessibility;
-- [ ] Browser/Electron evidence;
-- [ ] matched performance;
+- [ ] normal-route visuals/controls/accessibility — played and looked at on screen;
+- [ ] Browser/Electron evidence and matched performance only when the outcome itself claims them;
 - [ ] replay the same scenario/seed/input policy after mutation and compare against Phase 0.
 
 ## Write set

@@ -286,7 +286,7 @@ A route receipt identifies:
 - the ordinary entry path and controls used;
 - seed/save/ship/settings/runtime/profile;
 - required beats and observed owner receipts;
-- screenshots/video at normal camera and any detail view needed for diagnosis;
+- captures only when the claim itself is visual or temporal — and transient, never committed as evidence;
 - accessibility variants relevant to the feature;
 - exact Browser/Electron parity claim;
 - performance sample identity;
