@@ -3,7 +3,14 @@ import test from 'node:test';
 
 import { PRESENTATION_TIER, SIM_TIER } from '../src/world/activityClassification.js';
 import { ensureActivityClassified } from '../src/world/activityRuntime.js';
+import { insertFarActor } from '../src/world/farActorTable.js';
+import {
+  collectMeshPresentationEntities,
+  isPresentationLedgerRow,
+  resolveWorldPresentationEntity,
+} from '../src/world/presentationSources.js';
 import { isEntityRenderRelevant } from '../src/render/renderer.js';
+import { residencyPrefetchRadius } from '../src/render/tabletopPolicy.js';
 
 function makeState(entities) {
   const map = new Map();
@@ -61,4 +68,38 @@ test('a stamped runway package stays meshed even when far from the live radius f
   };
   const state = makeState([player, incoming]);
   assert.equal(isEntityRenderRelevant(incoming, state), true);
+});
+
+test('a shelved far hull still draws from the ledger before it rematerializes', () => {
+  const prefetch = residencyPrefetchRadius();
+  const player = {
+    id: 1, type: 'ship', alive: true, isPlayer: true, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 },
+    maxSpeed: 160, radius: 8, data: {},
+  };
+  const state = makeState([player]);
+  const rec = insertFarActor(state, {
+    id: 88,
+    type: 'ship',
+    pos: { x: prefetch - 30, z: 0 },
+    vel: { x: -80, z: 0 },
+    rot: 0,
+    radius: 8,
+    mass: 20,
+    hull: 40,
+    hullMax: 40,
+    team: 1,
+    data: { trafficRole: 'hauler' },
+    flags: {},
+  });
+  assert.equal(rec.farResident, true);
+  assert.equal(state.entities.has(88), false);
+  assert.equal(resolveWorldPresentationEntity(state, 88), rec);
+  assert.equal(isPresentationLedgerRow(rec), true);
+  const meshList = collectMeshPresentationEntities(state);
+  assert.ok(meshList.some((row) => row.id === 88));
+  state.render = {
+    activityFrame: { complete: true, renderGlassIds: [1], renderRunwayIds: [] },
+  };
+  assert.equal(isEntityRenderRelevant(rec, state), true,
+    'activity frame cannot hide a nearby ledger hull or the rim blinks empty');
 });

@@ -10,6 +10,7 @@ import {
   residencyEvictRadius,
   residencyPrefetchRadius,
 } from '../src/render/tabletopPolicy.js';
+import { insertFarActor } from '../src/world/farActorTable.js';
 
 function entity(id, {
   type = 'asteroid',
@@ -248,4 +249,62 @@ test('stable 400-entity poll halves collection visits and removes all redundant 
   assert.equal(currentCollectionVisits, 800);
   assert.equal(currentCollectionVisits / priorCollectionVisits, 0.5);
   assert.equal(context._meshBuildQueue.length, 0);
+});
+
+test('ordinary poll admits a nearby far-actor hull before it hits the glass', () => {
+  const prefetch = residencyPrefetchRadius();
+  const player = entity(1, { type: 'ship', sectorId: 'sector_current' });
+  player.isPlayer = true;
+  const entities = [player];
+  const byId = new Map([[1, player]]);
+  const state = {
+    mode: 'flight',
+    playerId: 1,
+    player: { targetId: null },
+    entities: byId,
+    entityList: entities,
+    world: { currentSectorId: 'sector_current' },
+  };
+  const rec = insertFarActor(state, {
+    id: 64,
+    type: 'ship',
+    pos: { x: prefetch - 25, z: 0 },
+    vel: { x: -40, z: 0 },
+    rot: 0,
+    radius: 8,
+    mass: 20,
+    hull: 40,
+    hullMax: 40,
+    team: 1,
+    data: { trafficRole: 'hauler' },
+    flags: {},
+  });
+  const context = {
+    state,
+    renderer: {},
+    scene: { remove() {} },
+    _meshes: new Map([[1, mesh('player')]]),
+    _asteroidInstancePool: null,
+    _authoredSectorPrewarmPendingId: null,
+    _meshBuildQueue: [],
+    _meshBuildQueueHead: 0,
+    _meshBuildQueuedIds: new Set(),
+    _meshResidencyShipCandidates: [],
+    _meshResidencyOtherCandidates: [],
+    _meshResidencySweep: {
+      meshVisits: 0,
+      entityVisits: 0,
+      queuedShips: 0,
+      queuedOther: 0,
+      evicted: 0,
+      built: 0,
+    },
+    _unbindPresentationMesh() {},
+    _drainMeshBuildQueue: () => 0,
+    _publishAssetResidencyDiagnostics() {},
+  };
+
+  const result = render.reconcileMeshResidency.call(context);
+  assert.deepEqual(context._meshBuildQueue, [rec.id]);
+  assert.equal(result.queuedShips, 1);
 });

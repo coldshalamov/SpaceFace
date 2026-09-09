@@ -3278,7 +3278,9 @@ export function shouldAutoTriggerAuthoredUpgrade(entity, scene, liveState = auth
   if (entity.isPlayer === true || isCriticalStartingHub(entity)) return true;
   if (liveState.mode !== 'flight') return false;
   if (liveState.player && liveState.player.targetId === entity.id) return true;
-  return entityIsOnscreen(entity, liveState);
+  // Spatial prefetch (requestAuthoredUpgrade) owns flight decode. First-render
+  // on-glass auto-compose is the empty-slot hitch.
+  return false;
 }
 
 /**

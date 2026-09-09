@@ -8,8 +8,11 @@ import {
   authoredPrefetchRadius,
   glassCornerWu,
   isCriticalStartingHub,
+  tableLookAtDelta,
   tableTravelSpeed,
 } from './tabletopPolicy.js';
+
+const _authoredLookDelta = { x: 0, z: 0 };
 
 export const AUTHORED_ASSET_PREFETCH_RADIUS = authoredPrefetchRadius();
 export const AUTHORED_ASSET_IMMEDIATE_RADIUS = authoredImmediateRadius();
@@ -45,8 +48,9 @@ export function willEntityEnterAuthoredUpgradeRunway(entity, state, {
   const immediate = authoredImmediateRadius(travel);
   const lookahead = authoredLookaheadSeconds();
 
-  const dx = Number(entity.pos.x) - Number(player.pos.x);
-  const dz = Number(entity.pos.z) - Number(player.pos.z);
+  const look = tableLookAtDelta(state, player.pos, entity.pos, _authoredLookDelta);
+  const dx = Number(look.x);
+  const dz = Number(look.z);
   const distance = Math.hypot(dx, dz);
   if (!Number.isFinite(distance)) return false;
   const visual = Math.max(0, Number(entity.radius) || 0);

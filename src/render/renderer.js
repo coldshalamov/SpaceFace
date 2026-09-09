@@ -34,6 +34,7 @@ import {
   endAuthoredInstanceMeshDisposeRegistrationProbe,
   getAuthoredInstancePoolDiagnostics,
   isInitialAuthoredCompositionEntity,
+  preloadAuthoredAssetsForEntity,
   preloadAuthoredPartLibrary,
   prepareFirstQueuedAuthoredBoundaryForOpening,
   prepareAuthoredInstancePoolsForContextLoss,
@@ -76,6 +77,8 @@ import { createPresentationPublisher } from './presentationPublisher.js';
 import { createPresentationQueries } from './presentationQueries.js';
 import {
   collectMeshPresentationEntities,
+  isPresentationLedgerRow,
+  requestDecodeRunwayPromote,
   resolveWorldPresentationEntity,
 } from '../world/presentationSources.js';
 import {
@@ -215,10 +218,14 @@ import {
 } from './authoredAdmissionPolicy.js';
 import {
   censusTableBands,
+  classifyTableBand,
+  glassHalfExtents,
   residencyEvictRadius,
   residencyPrefetchRadius,
   shouldKeepPersistentLandmarkResident,
   submitCullHalfExtents,
+  TABLE_BAND,
+  tableLookAtDelta,
   tableShadowCasterRadius,
   tableTravelSpeed,
 } from './tabletopPolicy.js';
@@ -227,6 +234,7 @@ import { getActivityFrame } from '../core/worldActivityManager.js';
 
 // M2 floating-origin scratch for mesh pose projection (no per-entity allocation).
 const _meshLocalXZ = { x: 0, z: 0 };
+const _residencyLookDelta = { x: 0, z: 0 };
 const _cullLocalXZ = { x: 0, z: 0 };
 const _shadowLocalXZ = { x: 0, z: 0 };
 const _w2sLocalXZ = { x: 0, z: 0 };
@@ -521,11 +529,10 @@ function entityWithinPlayerRadius(entity, state, radius) {
   if (!entity || !entity.pos || !Number.isFinite(entity.pos.x) || !Number.isFinite(entity.pos.z)) return false;
   const player = playerEntityForRenderState(state);
   if (!player || !player.pos || !Number.isFinite(player.pos.x) || !Number.isFinite(player.pos.z)) return false;
-  const dx = entity.pos.x - player.pos.x;
-  const dz = entity.pos.z - player.pos.z;
+  const delta = tableLookAtDelta(state, player.pos, entity.pos, _residencyLookDelta);
   const visual = entityVisualCullRadius(entity);
   const reach = Math.max(0, Number(radius) || 0) + visual;
-  return dx * dx + dz * dz <= reach * reach;
+  return delta.x * delta.x + delta.z * delta.z <= reach * reach;
 }
 
 function liveTableCamera(state) {
@@ -580,10 +587,14 @@ export function isEntityRenderRelevant(entity, state, radius = null) {
       : Array.isArray(collection) && collection.includes(entity.id);
     if (has(activityFrame.renderGlassIds)) return true;
     if (has(activityFrame.renderRunwayIds)) return true;
-    // The activity owner has explicitly classified this entity outside the
-    // presentation runway. Do not recreate an Object3D for a metadata-only or
-    // unloaded record merely because it shares a sector with the player.
-    return false;
+    // Ledger rows are not combat-list members, so the activity frame never
+    // names them. Distance policy still owns their mesh so the rim cannot pop.
+    if (!isPresentationLedgerRow(entity)) {
+      // The activity owner has explicitly classified this entity outside the
+      // presentation runway. Do not recreate an Object3D for a metadata-only or
+      // unloaded record merely because it shares a sector with the player.
+      return false;
+    }
   }
   if (tier === PRESENTATION_TIER.R2_METADATA || tier === PRESENTATION_TIER.R3_UNLOADED) {
     return false;
@@ -663,6 +674,47 @@ function canRequestAuthoredUpgrade(entity, state, pendingSectorId = null) {
   if (!isEntityAuthoredUpgradeRelevant(entity, state)) return false;
   if (!pendingSectorId) return true;
   return String(entitySectorId(entity) || '') !== String(pendingSectorId);
+}
+
+function entityIsOnReadableGlass(entity, state) {
+  if (!entity || !state) return false;
+  if (entityIsExplicitRenderFocus(entity, state)) return true;
+  const player = playerEntityForRenderState(state);
+  if (!player || !player.pos || !entity.pos) return false;
+  const cam = liveTableCamera(state);
+  const glass = glassHalfExtents(cam.zoom, cam.fov, cam.aspect, cam.tilt);
+  const delta = tableLookAtDelta(state, player.pos, entity.pos, _residencyLookDelta);
+  return classifyTableBand({
+    dx: delta.x,
+    dz: delta.z,
+    glassHalfX: glass.halfX,
+    glassHalfZ: glass.halfZ,
+    runwayWu: 0,
+    radius: entityVisualCullRadius(entity),
+  }) === TABLE_BAND.GLASS;
+}
+
+function kickDecodeRunwayAssets(owner, entities) {
+  const state = owner && owner.state;
+  const renderer = owner && owner.renderer;
+  if (!state || state.mode !== 'flight' || !renderer || !renderer.domElement) return 0;
+  const pending = owner._decodeRunwayPrefetchIds || (owner._decodeRunwayPrefetchIds = new Set());
+  const list = Array.isArray(entities) ? entities : [];
+  let started = 0;
+  for (let i = 0; i < list.length && started < 2; i++) {
+    const entity = list[i];
+    if (!entity || entity.alive === false) continue;
+    if (entity.type !== 'ship' && entity.type !== 'station') continue;
+    if (owner._meshes && owner._meshes.has(entity.id)) continue;
+    if (pending.has(entity.id)) continue;
+    if (!isEntityAuthoredUpgradeRelevant(entity, state)) continue;
+    pending.add(entity.id);
+    started += 1;
+    Promise.resolve(preloadAuthoredAssetsForEntity(renderer, entity, {})).catch(() => {}).finally(() => {
+      pending.delete(entity.id);
+    });
+  }
+  return started;
 }
 
 function clearEntityMeshReference(entity, mesh) {
@@ -3074,6 +3126,7 @@ export const render = {
     const scheduleTimeout = (callback, delay) => lifecycle.setTimeout(callback, delay);
     this.state = ctx.state;
     this.bus = ctx.bus;
+    this._simHelpers = ctx.helpers || null;
     this._frameMembrane = createRenderFrameMembrane().reset(ctx.state);
     const state = ctx.state, bus = ctx.bus;
 
@@ -4705,6 +4758,13 @@ export const render = {
     onBus('entity:spawned', () => { this._meshReconcileDirty = true; });
     onBus('world:residency', () => { this._meshReconcileDirty = true; });
     onBus('entity:destroyed', ({ id }) => {
+      const still = resolveWorldPresentationEntity(this.state, id);
+      if (still && still.alive !== false && isPresentationLedgerRow(still)) {
+        const kept = this._meshes.get(id);
+        if (kept) this._bindPresentationMesh(still, kept);
+        this._meshReconcileDirty = true;
+        return;
+      }
       this._sectorBoundaryPreparations?.abortEntity(id, 'entity-destroyed-during-sector-prewarm');
       releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
       const m = this._meshes.get(id);
@@ -5860,6 +5920,7 @@ export const render = {
   // undone by the old sector:enter clear). Cheap: only builds/destroys on a delta.
   reconcileMeshes() {
     const state = this.state;
+    requestDecodeRunwayPromote(state, this._simHelpers);
     const buildBudget = this._initialMeshReconcileComplete ? RUNTIME_MESH_BUILD_BUDGET : Infinity;
     // Remove dead ownership and evict distant reduced-sector views. Simulation residency remains
     // untouched; only the render-owned Object3D boundary and its authored residency are released.
@@ -5876,6 +5937,7 @@ export const render = {
     // continue to exist in state and are admitted automatically as the player approaches.
     const presentationList = this._presentationMeshScratch || (this._presentationMeshScratch = []);
     collectMeshPresentationEntities(state, presentationList);
+    kickDecodeRunwayAssets(this, presentationList);
     enqueueMissingMeshBuilds(
       presentationList,
       this._meshes,
@@ -5911,6 +5973,7 @@ export const render = {
   // collect candidates into retained arrays to preserve ship-first build order without allocation.
   reconcileMeshResidency() {
     const state = this.state;
+    requestDecodeRunwayPromote(state, this._simHelpers);
     const shipCandidates = this._meshResidencyShipCandidates;
     const otherCandidates = this._meshResidencyOtherCandidates;
     const stats = this._meshResidencySweep;
@@ -5945,6 +6008,7 @@ export const render = {
 
     const presentationList = this._presentationMeshScratch || (this._presentationMeshScratch = []);
     collectMeshPresentationEntities(state, presentationList);
+    kickDecodeRunwayAssets(this, presentationList);
     for (let index = 0; index < presentationList.length; index++) {
       const entity = presentationList[index];
       stats.entityVisits++;
@@ -6032,7 +6096,8 @@ export const render = {
       this.scene.add(m);
       this._bindPresentationMesh(e, m);
       registerAsteroidBaseLeaf(this._asteroidInstancePool, e, m);
-      if (this.state.render && typeof this.state.render.compileObjectPipelines === 'function') {
+      const linkOnGlass = this.state.mode === 'flight' && entityIsOnReadableGlass(e, this.state);
+      if (!linkOnGlass && this.state.render && typeof this.state.render.compileObjectPipelines === 'function') {
         void this.state.render.compileObjectPipelines(m);
       }
       if (canRequestAuthoredUpgrade(e, this.state, this._authoredSectorPrewarmPendingId)) {
@@ -6624,7 +6689,8 @@ export const render = {
     options.consolidateOpaqueBatches = this._opaqueBatchEnabled === true;
     const camState = this.state && this.state.camera || {};
     const camObj = this.cam && this.cam.obj;
-    options.liveZoom = Number.isFinite(camState.liveZoom) ? camState.liveZoom : NaN;
+    const authoredSyncOptions = options;
+    authoredSyncOptions.liveZoom = Number.isFinite(camState.liveZoom) ? camState.liveZoom : NaN;
     options.zoom = Number.isFinite(camState.zoom) ? camState.zoom : NaN;
     options.tilt = Number.isFinite(camState.tilt) ? camState.tilt : 60;
     options.fov = camObj && Number.isFinite(camObj.fov) ? camObj.fov
