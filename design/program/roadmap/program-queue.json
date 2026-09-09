@@ -6900,7 +6900,7 @@
       "checks": [
         "npm run check:vfx-techniques"
       ],
-      "receiptRefs": [],
+      "receiptRefs": ["design/program/roadmap/receipts/PQ-190.01-REPORT.md"],
       "brief": "The VFX standard becomes a per-effect-class table (jet, history, impact, shield, gas, debris/cargo, Massline, background) with preferred construction, what must survive at play scale, and what to reject; every rejection criterion kept; prohibitions revised only where .00 demonstrated a better result. DONE WHEN: one row per class; every effect family assigned; check:vfx-techniques green; the derived material/effect/LOD/composition rules written once.",
       "kind": "implementation"
     },

@@ -1488,6 +1488,50 @@ nothing — plus `hops`/`chain`, `hasBounced`, and `family` for field and reacti
 emitted payloads were fed to `classifyCausalVfxFamily` and route to `chain`, `field` and `reaction`.
 Both 47-A goldens hold: this adds information to an event and does not move the simulation.
 
+### 13.1 Effect quality improvements — owner-directed, 2026-09-09
+
+The purpose of `PQ-190.01` is a better visual language for physical play, not preservation of the
+current implementation. Its eight classes are construction routes, not eight effects to stamp onto
+everything. The [technique standard](./docs/visual-assets/VFX_TECHNIQUE_STANDARD.md) owns the recipes
+once. This is the execution plan for improving them; it does not reopen the accepted `.00` slice.
+
+**Order: causal clarity → material character → richer atmosphere.** Select one bounded row through
+its existing packet owner, preserve current dirty work, and carry that row's outcome into the exact
+queue leaf before mutation. Already implemented work is reviewed/adopted, never rebuilt in parallel.
+No new post pipeline, palette law, HUD redesign or fleet remaster is implied.
+
+| Work / existing packet owner | Why it would be more fun and beautiful | Concrete implementation and owned seam | Done condition / deliberate spend |
+|---|---|---|---|
+| **One stream, a long bright flight snake** — `PQ-190` / live visual-world cleanup | The owner wants long, bright snake-like history as a distinctive signature, but says the individually attractive jet and history feel disconnected. Unify that handoff first; fast nimble turns should draw one satisfying stream. Length, brightness and crossing the sky are intentional. | Inspect current `src/render/thruster/recipes/plasmaStreamRecipe.js`, `src/render/thruster/ribbon/plasmaRibbons.js`, `src/render/thruster/ribbon/contrailTrail.js`, `src/render/thruster/ribbon/driveEnvelope.js` and `src/render/thruster/systems/plasmaStream.js`. Define a shared visual handoff from jet to history: matching cross-section/width, continuous colour-temperature and radiance progression, compatible flow speed and fold/strand structure, with a short complementary overlap rather than two additive full-strength heads. Keep separate objects and true world-space history samples: blend appearance, never fabricate a path or drag old samples with the nozzle. Then improve tight bends and self-crossing readability. | Seed 190001, coast/burn/boost/brake, S-turn and figure-eight: no gap, width step, brightness spike or contradictory flow at the seam; the generous bright trace matches the flown curve and old bends remain after rotation. At rest the jet may flow but no false full-length history appears. Keep actionable bodies legible through local structure/depth, not global trail dimming or shortening. Spend shared appearance parameters and bounded interpolation/art work, never weaker force, a dimmer/shorter signature or lower quality. |
+| **A hit points to the body it moves** — `PQ-023` with the existing `PQ-134` causal family owner | The .00 combat critique could identify engagement but not who fired or was struck. Better contact provenance makes ricochets, shoves and chain reactions satisfying to learn instead of anonymous fireworks. | Keep `src/render/vfx.js` event provenance and `src/render/combat/arcadeStructuralFx.js` admission. Author a brief contact-facing compression shape, material spall and a separating aftermath around the actual struck surface; let the body's real displacement finish the event. Use existing `src/render/vfxProfiles.js` and weapon presenters to distinguish launch, travel and contact within the heavy-impact class. No invented force direction from an unsigned axis, no duplicate all-purpose ring. | Seed 4242 `shove_light`, then a fixed-seed bank/chain case at combat density: a reviewer follows source → contact → displaced body from chronological shipping-camera stills without diagnostic labels. Repeat with reduced motion/flash and retain that information. Spend contrast and a short event-priority window, not more screen shake or particles hiding the motion. |
+| **Shield, field and work signal have different silhouettes** — `PQ-023`, guided by `PQ-190` | All route through “shield response” today, but a protective contact, a volume that changes motion and a machine's work lamp promise different player actions. One glowing-bubble recipe would erase those decisions. | Keep the eight matrix classes but use three explicit subrecipes: surface contact follows the hull and decays; field extent follows its actual influence geometry and exhibits affected trajectories; a work signal belongs to an aperture/tool. Use `src/render/weapons/shieldContacts.js`, shield materials, `src/render/momentumSinkVfx.js` and the existing field/job controllers. Adapt each live owner rather than building a universal aura renderer. | In a fixed-seed frame containing a shielded body, a field and a working machine, the reviewer distinguishes protection, influence and work without relying on hue alone; endpoints/target bodies remain visible. Shield-00/03/07 supplies the approved panel-recovery reference, not approval for every field. Spend authored local structure and separate envelopes; keep the protected body legible throughout. |
+| **Aftermath tells you what was struck** — `PQ-023`, then regional work under `PQ-153` | Metal, ice and dusty rock should leave different useful-looking traces. Cooling fragments and dispersing matter make violence feel physical and leave space for the next action. | First inspect the pending migration in `src/render/combat/instancedSpritePool.js` and any live `src/render/vfx/quarksSystem.js` consumer; adopt working pieces. Use the existing material/provenance hooks for opaque tumbling spall, colder brittle chips and lobed dusty dispersal. Prototype authored/simulated texture detail on shaped surfaces or volumes where it improves the result. Keep material identity through LOD and reuse current sector structure profiles instead of recolouring the entire sky. | Show metal/ice/rock impacts side by side at the shipping scale on a fixed seed: each material is distinguishable by breakup/motion/form, contact stays visible, smoke does not expose a rotating square or blanket adjacent targets. .00 has no accepted smoke study: this row must earn its own visual pass. Spend varied art and bounded residency, paid for through pooling/batching; no blanket quality reduction. |
+
+For each row, take the smallest before/after witness that can reveal its cost; no new top frame-time
+bucket. Record the intended improvement and what it spent. A method name, green inventory scan or
+procedural sophistication is not the visual outcome. Fresh `.01` observations may refine the row's
+first candidate; the .00 images provide references and limitations, not a claim that old defects are
+still live.
+
+**Concrete field starting point:** `field_skim` exists in `src/data/fields.js` but the inspected live
+VFX field branches have no dedicated skim geometry. Start the shield/field differentiation row here:
+surface the existing influence as a directional sheet matching its actual support, with entry/exit
+edges and affected motion readable; do not reuse a spherical well fallback. The live `well`, `seed`,
+`anchor_snare` and `field_cone` remain separate recipes. This is a presentation gap, not authority to
+change field forces, ranges or counterplay.
+
+**Concrete jet/history starting point:** the live owner constructs `ContrailTrail` with empty
+options, while the plume reads its own ribbon recipe. The older recipe's `snake` layer is hidden;
+tuning it will not repair the visible history. Start in `PlasmaStream` with one small appearance
+handoff for the plume exit and the youngest history segment: radius/width, radiance progression and
+structural motif. Read the actual history tangent through `headAftDirection()` when choosing the
+local join orientation. Never rotate old world samples to the current exhaust axis. If needed, apply
+a head-local factor that is stored at birth and ages out of the short handoff; changing a global
+history uniform with today's throttle would repaint yesterday's path. Compare before/after at the
+seam, including sideways drift: match visual continuity, not two arbitrary numeric radiance values.
+A jet without two history samples at rest is legitimate; do not fabricate history merely to make
+the effects appear together. Preserve the current trail duration and bright tail as explicit controls.
+
 ## 13A. Flight and movement convergence (`PQ-135`) — ADMITTED 2026-08-24
 
 **Source:** [`design/vision/CRUCIBLE_SURVIVAL_MASTER_PLAN.md`](./design/vision/CRUCIBLE_SURVIVAL_MASTER_PLAN.md)
