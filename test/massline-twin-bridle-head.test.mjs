@@ -1,6 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import {
+  CombatDoctrineId,
+  CombatDoctrineRuntime,
+  DOCTRINE_TELEGRAPH_TICKS,
+} from '../src/ai/combatDoctrine.js';
+import { ContactKind, ObjectiveKind } from '../src/ai/contracts.js';
+import { specialistPlanByEnemyId } from '../src/ai/specialistPlans.js';
 import { createAttachmentService, effectiveTetherPolicy } from '../src/combat/attachments.js';
 import { resolveHitstunLaw } from '../src/combat/impulseKernel.js';
 import { createStatusService } from '../src/combat/statuses.js';
@@ -8,6 +15,7 @@ import { readTumbleStatus } from '../src/combat/tumbleStatus.js';
 import { createCombatCatalog, ensureCombatState } from '../src/combat/runtime.js';
 import { resolveGovernedCombatSpeed } from '../src/core/flight/propulsionCatalog.js';
 import { ATTACHMENT_DEFS, DEFAULT_COMBAT_PROFILE_BY_TYPE } from '../src/data/combatDefs.js';
+import { ENEMY_TYPES } from '../src/data/enemies.js';
 import { COMBAT_FLAGS } from '../src/data/featureFlags.js';
 import { MODULES } from '../src/data/modules.js';
 import { SHIPS } from '../src/data/ships.js';
@@ -224,19 +232,67 @@ test('pair admission rejects loops and two heavy anchors while allowing one fixe
   assert.equal(validateTwinBridlePair(h.system, h.state, h.player, h.source, h.target, BRIDLE_DEF), 'attachment_cycle');
 });
 
+// PQ-031.02 done-when: one cut and one ignore, both stepped through the route rather than asserted
+// on constructed numbers. Every input here comes from what the live spawn writes:
+//   * masses and radii from ENEMY_TYPES (src/systems/combat.js:133 copies def.mass onto the entity;
+//     src/core/physicsAuthority.js:126 derives physicsBody.mass from it),
+//   * NPC identity from data.lootTableId + data.ai.combatDoctrineId (combat.js:165,185) — the live
+//     spawn never writes data.enemyTypeId,
+//   * the cut phase from the live CombatDoctrineRuntime, relayed on the same 'ai:doctrinePhase'
+//     event tacticalAI.js:353 publishes, instead of a hand-typed phase string.
 test('a specialist cuts a player bridle and a heavy NPC ignores the throw', () => {
+  const ANCHOR = ENEMY_TYPES.find((row) => row.id === 'field_anchor_controller');
+  const RAIDER = ENEMY_TYPES.find((row) => row.id === 'tether_control_raider');
+  // The heavy floor (150) is only reachable by these two hulls; every other hostile tops out at 96,
+  // so an invented mid-weight would prove the gate at a mass no spawn can produce.
+  assert.deepEqual(
+    ENEMY_TYPES.filter((row) => Number(row.mass) >= 150).map((row) => row.id),
+    ['dreadnought_boss', 'field_anchor_controller'],
+  );
+
+  // --- one ignore: the heavy refuses the second latch on the stepped route -------------------
   const ignore = harness();
   const heavyNpc = entity(12, 'ship', 200, 0, {
     team: 1,
-    mass: 180,
-    physicsBody: { dynamic: true, mass: 180 },
-    data: { enemyTypeId: 'field_anchor_controller' },
+    mass: ANCHOR.mass,
+    radius: ANCHOR.collisionRadius,
+    physicsBody: { dynamic: true, mass: ANCHOR.mass },
+    data: {
+      name: ANCHOR.name,
+      lootTableId: ANCHOR.id,
+      ai: { combatDoctrineId: ANCHOR.combatDoctrineId },
+    },
   });
   assert.equal(
     validateTwinBridlePair(ignore.system, ignore.state, ignore.player, ignore.source, heavyNpc, BRIDLE_DEF),
     'heavy_endpoint_resists',
     'moving terrain does not take a bridle as a control surface',
   );
+
+  ignore.state.entities.set(heavyNpc.id, heavyNpc);
+  ignore.state.entityList.push(heavyNpc);
+  step(ignore, { aim: ignore.source.pos });
+  step(ignore, { aim: ignore.source.pos, latch: true });
+  assert.equal(ignore.state.masslineBridle.sourceId, ignore.source.id);
+  step(ignore, { aim: heavyNpc.pos, dt: 0.1 });
+  assert.equal(ignore.state.masslineAcquisition.selected.targetId, heavyNpc.id,
+    'the heavy is a selectable endpoint, so the deny below is the law and not a selection miss');
+  step(ignore, { aim: heavyNpc.pos, latch: true });
+  assert.equal(Object.keys(ignore.state.combat.attachments.byId).length, 0,
+    'a second press on a heavy never becomes a rope');
+  assert.equal(ignore.state.masslineBridle.lastDenial, 'heavy_endpoint_resists');
+  assert.ok(ignore.events.some((entry) => entry.type === 'tether:latchDenied'
+    && entry.payload.reason === 'bridle_heavy_endpoint_resists'),
+  'the throw is refused by the heavy law, and the player keeps endpoint A');
+
+  // --- one cut: the specialist verb, carried by doctrine and not by hardware -----------------
+  const plan = specialistPlanByEnemyId(RAIDER.id);
+  assert.equal(plan.verb, 'cut_line');
+  assert.equal(RAIDER.combatDoctrineId, plan.doctrineId);
+  // Narrow on purpose: this pins the absence of a cutter *module*, not any module whose name
+  // happens to contain "cut". If one ever lands, the receipt's "verb, not hardware" line is stale.
+  assert.equal(MODULES.some((mod) => /line_cutter|cut_line/i.test(mod.id)), false,
+    'the cutter is a doctrine verb on the specialist plan; no fitted line-cutter module exists');
 
   const h = harness({ twoLights: true });
   step(h, { aim: h.source.pos });
@@ -248,14 +304,39 @@ test('a specialist cuts a player bridle and a heavy NPC ignores the throw', () =
 
   const cutter = entity(9, 'ship', 120, 20, {
     team: 1,
-    data: { lootTableId: 'tether_control_raider', enemyTypeId: 'tether_control_raider' },
+    mass: RAIDER.mass,
+    radius: RAIDER.collisionRadius,
+    data: {
+      name: RAIDER.name,
+      lootTableId: RAIDER.id,
+      ai: { combatDoctrineId: RAIDER.combatDoctrineId },
+    },
   });
   h.state.entities.set(cutter.id, cutter);
   h.state.entityList.push(cutter);
+
+  // Drive the live doctrine machine: flank -> spool_cue -> attach_window on its own clock.
+  const doctrine = new CombatDoctrineRuntime({ seed: 905 });
+  let phase = null;
+  for (const [tick, distance] of [[0, 320], [8, 120], [8 + DOCTRINE_TELEGRAPH_TICKS, 112]]) {
+    phase = doctrine.update({
+      tick,
+      entityId: cutter.id,
+      doctrineId: CombatDoctrineId.TETHER_CONTROL_RAIDER,
+      perception: raiderPerception(cutter.id, distance),
+      directive: raiderDirective(),
+    });
+  }
+  assert.equal(phase.phase, 'attach_window', 'the raider reaches its own attach window unaided');
+  assert.equal(phase.phaseChanged, true, 'tacticalAI only publishes the phase on the change tick');
+
   h.bus.emit('ai:doctrinePhase', {
     entityId: cutter.id,
-    phase: 'attach_window',
-    doctrineId: 'tether_control_raider',
+    targetId: phase.targetId,
+    doctrineId: phase.doctrineId,
+    flightProfile: phase.flightProfile,
+    phase: phase.phase,
+    fireWindow: phase.fireWindow,
     tick: h.state.tick,
   });
   assert.equal(active.state, 'broken');
@@ -376,6 +457,55 @@ function step(h, { aim = null, latch = false, cut = false, dt = DT } = {}) {
   };
   h.state.input.tetherMode = null;
   h.system.update(dt, h.state);
+}
+
+// The perception/directive shape aiPorts hands the doctrine runtime in production. Only the target
+// distance varies; the raider's phase clock does the rest.
+function raiderPerception(selfId, distanceWu) {
+  return {
+    self: {
+      id: selfId,
+      team: 1,
+      pos: { x: 0, z: 0 },
+      vel: { x: 0, z: 0 },
+      rot: 0,
+      activity: {
+        kind: 'attack_run',
+        reason: 'authorized_hostile_spawn',
+        anchor: { x: 0, z: 0 },
+        leashRadius: 2800,
+        preferredRange: 260,
+        startedTick: 0,
+      },
+      roe: 'weapons_free',
+    },
+    contacts: [{
+      id: 'player',
+      kind: ContactKind.SHIP,
+      alive: true,
+      valid: true,
+      visible: true,
+      hostile: true,
+      confidence: 1,
+      threat: 0.8,
+      pos: { x: distanceWu, z: 0 },
+      vel: { x: 0, z: 0 },
+      tethered: false,
+      operationalMassBand: 'heavy',
+      mobilityBand: 'medium',
+      cargoBand: 'rich',
+      tetherabilityBand: 'poor',
+      tags: [],
+    }],
+    events: [],
+  };
+}
+
+function raiderDirective() {
+  return Object.freeze({
+    objective: Object.freeze({ kind: ObjectiveKind.FOCUS, targetId: 'player', reason: 'fixture' }),
+    formation: Object.freeze({ breakFormation: false }),
+  });
 }
 
 function fakePhysics() {
