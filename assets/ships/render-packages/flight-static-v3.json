@@ -1,0 +1,6 @@
+{
+  "schema": "spaceface.flightRenderPackagePilots.v1",
+  "packages": [
+    "helios-trade-hub"
+  ]
+}

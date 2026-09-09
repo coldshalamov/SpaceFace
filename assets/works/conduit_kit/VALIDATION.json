@@ -1,0 +1,3794 @@
+{
+  "ok": true,
+  "errors": [],
+  "pieces": [
+    {
+      "id": "place_works_conduit_power_straight",
+      "family": "power",
+      "kind": "straight",
+      "errors": [],
+      "path": "assets/ships/parts/works/place_works_conduit_power_straight.glb",
+      "bytes": 400688,
+      "sha256": "E78AC72DC0DCC2138AA0E3329DAFF8172867A08E2834CF6DEC5FF535A85DECF8",
+      "contract": {
+        "assetId": "place_works_conduit_power_straight",
+        "family": "power",
+        "kind": "straight",
+        "packet": "PQ-131.06",
+        "lods": [
+          "lod0",
+          "lod1",
+          "lod2"
+        ]
+      },
+      "nodes": [
+        "LOD0_Merged_Material_Atlas",
+        "LOD1_Merged_Material_Atlas",
+        "LOD2_Merged_Material_Atlas",
+        "LOD0_powered",
+        "LOD1_powered",
+        "LOD2_powered",
+        "powered",
+        "power_straight",
+        "place_works_conduit_power_straight"
+      ],
+      "triangles": {
+        "LOD0_Merged_Material_Atlas": 776,
+        "LOD1_Merged_Material_Atlas": 332,
+        "LOD2_Merged_Material_Atlas": 32,
+        "LOD0_powered": 12,
+        "LOD1_powered": 12,
+        "LOD2_powered": 12
+      },
+      "lodTriangles": {
+        "0": 788,
+        "1": 344,
+        "2": 44
+      },
+      "ports": [
+        {
+          "axis": "-X",
+          "ok": true,
+          "originBlender": [
+            -1.100000023841858,
+            0.0,
+            0.0
+          ],
+          "originGltf": [
+            -1.100000023841858,
+            0.0,
+            -0.0
+          ],
+          "normalBlender": [
+            -1.0,
+            0.0,
+            0.0
+          ],
+          "width": 0.51,
+          "height": 0.2,
+          "zMin": 0.0,
+          "zMax": 0.2,
+          "zRef": 0.08
+        },
+        {
+          "axis": "+X",
+          "ok": true,
+          "originBlender": [
+            1.100000023841858,
+            0.0,
+            0.0
+          ],
+          "originGltf": [
+            1.100000023841858,
+            0.0,
+            -0.0
+          ],
+          "normalBlender": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "width": 0.51,
+          "height": 0.2,
+          "zMin": 0.0,
+          "zMax": 0.2,
+          "zRef": 0.08
+        }
+      ],
+      "portsByLod": {
+        "lod0": [
+          {
+            "axis": "-X",
+            "ok": true,
+            "originBlender": [
+              -1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              -1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              -1.0,
+              0.0,
+              0.0
+            ],
+            "width": 0.51,
+            "height": 0.2,
+            "zMin": 0.0,
+            "zMax": 0.2,
+            "zRef": 0.08
+          },
+          {
+            "axis": "+X",
+            "ok": true,
+            "originBlender": [
+              1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "width": 0.51,
+            "height": 0.2,
+            "zMin": 0.0,
+            "zMax": 0.2,
+            "zRef": 0.08
+          }
+        ],
+        "lod1": [
+          {
+            "axis": "-X",
+            "ok": true,
+            "originBlender": [
+              -1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              -1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              -1.0,
+              0.0,
+              0.0
+            ],
+            "width": 0.51,
+            "height": 0.2,
+            "zMin": 0.0,
+            "zMax": 0.2,
+            "zRef": 0.08
+          },
+          {
+            "axis": "+X",
+            "ok": true,
+            "originBlender": [
+              1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "width": 0.51,
+            "height": 0.2,
+            "zMin": 0.0,
+            "zMax": 0.2,
+            "zRef": 0.08
+          }
+        ],
+        "lod2": [
+          {
+            "axis": "-X",
+            "ok": true,
+            "originBlender": [
+              -1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              -1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              -1.0,
+              0.0,
+              0.0
+            ],
+            "width": 0.48,
+            "height": 0.2,
+            "zMin": 0.0,
+            "zMax": 0.2,
+            "zRef": 0.08
+          },
+          {
+            "axis": "+X",
+            "ok": true,
+            "originBlender": [
+              1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "width": 0.48,
+            "height": 0.2,
+            "zMin": 0.0,
+            "zMax": 0.2,
+            "zRef": 0.08
+          }
+        ]
+      },
+      "images": 3
+    },
+    {
+      "id": "place_works_conduit_power_corner",
+      "family": "power",
+      "kind": "corner",
+      "errors": [],
+      "path": "assets/ships/parts/works/place_works_conduit_power_corner.glb",
+      "bytes": 418528,
+      "sha256": "8298F91C64A82D7E56C5CECA4300AAD372EDB277F0FB20DD5AABD270B7C3ADD0",
+      "contract": {
+        "assetId": "place_works_conduit_power_corner",
+        "family": "power",
+        "kind": "corner",
+        "packet": "PQ-131.06",
+        "lods": [
+          "lod0",
+          "lod1",
+          "lod2"
+        ]
+      },
+      "nodes": [
+        "LOD0_Merged_Material_Atlas",
+        "LOD1_Merged_Material_Atlas",
+        "LOD2_Merged_Material_Atlas",
+        "LOD0_powered",
+        "LOD1_powered",
+        "LOD2_powered",
+        "powered",
+        "power_corner",
+        "place_works_conduit_power_corner"
+      ],
+      "triangles": {
+        "LOD0_Merged_Material_Atlas": 900,
+        "LOD1_Merged_Material_Atlas": 460,
+        "LOD2_Merged_Material_Atlas": 112,
+        "LOD0_powered": 12,
+        "LOD1_powered": 12,
+        "LOD2_powered": 12
+      },
+      "lodTriangles": {
+        "0": 912,
+        "1": 472,
+        "2": 124
+      },
+      "ports": [
+        {
+          "axis": "+X",
+          "ok": true,
+          "originBlender": [
+            1.100000023841858,
+            0.0,
+            0.0
+          ],
+          "originGltf": [
+            1.100000023841858,
+            0.0,
+            -0.0
+          ],
+          "normalBlender": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "width": 0.51,
+          "height": 0.2,
+          "zMin": 0.0,
+          "zMax": 0.2,
+          "zRef": 0.08
+        },
+        {
+          "axis": "+Y",
+          "ok": true,
+          "originBlender": [
+            0.0,
+            1.100000023841858,
+            0.0
+          ],
+          "originGltf": [
+            0.0,
+            0.0,
+            -1.100000023841858
+          ],
+          "normalBlender": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "width": 0.51,
+          "height": 0.2,
+          "zMin": 0.0,
+          "zMax": 0.2,
+          "zRef": 0.08
+        }
+      ],
+      "portsByLod": {
+        "lod0": [
+          {
+            "axis": "+X",
+            "ok": true,
+            "originBlender": [
+              1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "width": 0.51,
+            "height": 0.2,
+            "zMin": 0.0,
+            "zMax": 0.2,
+            "zRef": 0.08
+          },
+          {
+            "axis": "+Y",
+            "ok": true,
+            "originBlender": [
+              0.0,
+              1.100000023841858,
+              0.0
+            ],
+            "originGltf": [
+              0.0,
+              0.0,
+              -1.100000023841858
+            ],
+            "normalBlender": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "width": 0.51,
+            "height": 0.2,
+            "zMin": 0.0,
+            "zMax": 0.2,
+            "zRef": 0.08
+          }
+        ],
+        "lod1": [
+          {
+            "axis": "+X",
+            "ok": true,
+            "originBlender": [
+              1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "width": 0.51,
+            "height": 0.2,
+            "zMin": 0.0,
+            "zMax": 0.2,
+            "zRef": 0.08
+          },
+          {
+            "axis": "+Y",
+            "ok": true,
+            "originBlender": [
+              0.0,
+              1.100000023841858,
+              0.0
+            ],
+            "originGltf": [
+              0.0,
+              0.0,
+              -1.100000023841858
+            ],
+            "normalBlender": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "width": 0.51,
+            "height": 0.2,
+            "zMin": 0.0,
+            "zMax": 0.2,
+            "zRef": 0.08
+          }
+        ],
+        "lod2": [
+          {
+            "axis": "+X",
+            "ok": true,
+            "originBlender": [
+              1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "width": 0.48,
+            "height": 0.2,
+            "zMin": 0.0,
+            "zMax": 0.2,
+            "zRef": 0.08
+          },
+          {
+            "axis": "+Y",
+            "ok": true,
+            "originBlender": [
+              0.0,
+              1.100000023841858,
+              0.0
+            ],
+            "originGltf": [
+              0.0,
+              0.0,
+              -1.100000023841858
+            ],
+            "normalBlender": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "width": 0.48,
+            "height": 0.2,
+            "zMin": 0.0,
+            "zMax": 0.2,
+            "zRef": 0.08
+          }
+        ]
+      },
+      "images": 3
+    },
+    {
+      "id": "place_works_conduit_power_t",
+      "family": "power",
+      "kind": "t",
+      "errors": [],
+      "path": "assets/ships/parts/works/place_works_conduit_power_t.glb",
+      "bytes": 425216,
+      "sha256": "3EC18E211F8D7D01E63CEEECF759D0E967D0DD8E7339554645A81F6933ED7161",
+      "contract": {
+        "assetId": "place_works_conduit_power_t",
+        "family": "power",
+        "kind": "t",
+        "packet": "PQ-131.06",
+        "lods": [
+          "lod0",
+          "lod1",
+          "lod2"
+        ]
+      },
+      "nodes": [
+        "LOD0_Merged_Material_Atlas",
+        "LOD1_Merged_Material_Atlas",
+        "LOD2_Merged_Material_Atlas",
+        "LOD0_powered",
+        "LOD1_powered",
+        "LOD2_powered",
+        "powered",
+        "power_t",
+        "place_works_conduit_power_t"
+      ],
+      "triangles": {
+        "LOD0_Merged_Material_Atlas": 860,
+        "LOD1_Merged_Material_Atlas": 480,
+        "LOD2_Merged_Material_Atlas": 120,
+        "LOD0_powered": 12,
+        "LOD1_powered": 12,
+        "LOD2_powered": 12
+      },
+      "lodTriangles": {
+        "0": 872,
+        "1": 492,
+        "2": 132
+      },
+      "ports": [
+        {
+          "axis": "-X",
+          "ok": true,
+          "originBlender": [
+            -1.100000023841858,
+            0.0,
+            0.0
+          ],
+          "originGltf": [
+            -1.100000023841858,
+            0.0,
+            -0.0
+          ],
+          "normalBlender": [
+            -1.0,
+            0.0,
+            0.0
+          ],
+          "width": 0.51,
+          "height": 0.2,
+          "zMin": 0.0,
+          "zMax": 0.2,
+          "zRef": 0.08
+        },
+        {
+          "axis": "+X",
+          "ok": true,
+          "originBlender": [
+            1.100000023841858,
+            0.0,
+            0.0
+          ],
+          "originGltf": [
+            1.100000023841858,
+            0.0,
+            -0.0
+          ],
+          "normalBlender": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "width": 0.51,
+          "height": 0.2,
+          "zMin": 0.0,
+          "zMax": 0.2,
+          "zRef": 0.08
+        },
+        {
+          "axis": "+Y",
+          "ok": true,
+          "originBlender": [
+            0.0,
+            1.100000023841858,
+            0.0
+          ],
+          "originGltf": [
+            0.0,
+            0.0,
+            -1.100000023841858
+          ],
+          "normalBlender": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "width": 0.51,
+          "height": 0.2,
+          "zMin": 0.0,
+          "zMax": 0.2,
+          "zRef": 0.08
+        }
+      ],
+      "portsByLod": {
+        "lod0": [
+          {
+            "axis": "-X",
+            "ok": true,
+            "originBlender": [
+              -1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              -1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              -1.0,
+              0.0,
+              0.0
+            ],
+            "width": 0.51,
+            "height": 0.2,
+            "zMin": 0.0,
+            "zMax": 0.2,
+            "zRef": 0.08
+          },
+          {
+            "axis": "+X",
+            "ok": true,
+            "originBlender": [
+              1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "width": 0.51,
+            "height": 0.2,
+            "zMin": 0.0,
+            "zMax": 0.2,
+            "zRef": 0.08
+          },
+          {
+            "axis": "+Y",
+            "ok": true,
+            "originBlender": [
+              0.0,
+              1.100000023841858,
+              0.0
+            ],
+            "originGltf": [
+              0.0,
+              0.0,
+              -1.100000023841858
+            ],
+            "normalBlender": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "width": 0.51,
+            "height": 0.2,
+            "zMin": 0.0,
+            "zMax": 0.2,
+            "zRef": 0.08
+          }
+        ],
+        "lod1": [
+          {
+            "axis": "-X",
+            "ok": true,
+            "originBlender": [
+              -1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              -1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              -1.0,
+              0.0,
+              0.0
+            ],
+            "width": 0.51,
+            "height": 0.2,
+            "zMin": 0.0,
+            "zMax": 0.2,
+            "zRef": 0.08
+          },
+          {
+            "axis": "+X",
+            "ok": true,
+            "originBlender": [
+              1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "width": 0.51,
+            "height": 0.2,
+            "zMin": 0.0,
+            "zMax": 0.2,
+            "zRef": 0.08
+          },
+          {
+            "axis": "+Y",
+            "ok": true,
+            "originBlender": [
+              0.0,
+              1.100000023841858,
+              0.0
+            ],
+            "originGltf": [
+              0.0,
+              0.0,
+              -1.100000023841858
+            ],
+            "normalBlender": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "width": 0.51,
+            "height": 0.2,
+            "zMin": 0.0,
+            "zMax": 0.2,
+            "zRef": 0.08
+          }
+        ],
+        "lod2": [
+          {
+            "axis": "-X",
+            "ok": true,
+            "originBlender": [
+              -1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              -1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              -1.0,
+              0.0,
+              0.0
+            ],
+            "width": 0.48,
+            "height": 0.2,
+            "zMin": 0.0,
+            "zMax": 0.2,
+            "zRef": 0.08
+          },
+          {
+            "axis": "+X",
+            "ok": true,
+            "originBlender": [
+              1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "width": 0.48,
+            "height": 0.2,
+            "zMin": 0.0,
+            "zMax": 0.2,
+            "zRef": 0.08
+          },
+          {
+            "axis": "+Y",
+            "ok": true,
+            "originBlender": [
+              0.0,
+              1.100000023841858,
+              0.0
+            ],
+            "originGltf": [
+              0.0,
+              0.0,
+              -1.100000023841858
+            ],
+            "normalBlender": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "width": 0.48,
+            "height": 0.2,
+            "zMin": 0.0,
+            "zMax": 0.2,
+            "zRef": 0.08
+          }
+        ]
+      },
+      "images": 3
+    },
+    {
+      "id": "place_works_conduit_power_cross",
+      "family": "power",
+      "kind": "cross",
+      "errors": [],
+      "path": "assets/ships/parts/works/place_works_conduit_power_cross.glb",
+      "bytes": 479976,
+      "sha256": "81036FF398B2D50756E5E0865DC86C022F95567A2843E1964778086A502DC148",
+      "contract": {
+        "assetId": "place_works_conduit_power_cross",
+        "family": "power",
+        "kind": "cross",
+        "packet": "PQ-131.06",
+        "lods": [
+          "lod0",
+          "lod1",
+          "lod2"
+        ]
+      },
+      "nodes": [
+        "LOD0_Merged_Material_Atlas",
+        "LOD1_Merged_Material_Atlas",
+        "LOD2_Merged_Material_Atlas",
+        "LOD0_powered",
+        "LOD1_powered",
+        "LOD2_powered",
+        "powered",
+        "power_cross",
+        "place_works_conduit_power_cross"
+      ],
+      "triangles": {
+        "LOD0_Merged_Material_Atlas": 1264,
+        "LOD1_Merged_Material_Atlas": 728,
+        "LOD2_Merged_Material_Atlas": 152,
+        "LOD0_powered": 12,
+        "LOD1_powered": 12,
+        "LOD2_powered": 12
+      },
+      "lodTriangles": {
+        "0": 1276,
+        "1": 740,
+        "2": 164
+      },
+      "ports": [
+        {
+          "axis": "-X",
+          "ok": true,
+          "originBlender": [
+            -1.100000023841858,
+            0.0,
+            0.0
+          ],
+          "originGltf": [
+            -1.100000023841858,
+            0.0,
+            -0.0
+          ],
+          "normalBlender": [
+            -1.0,
+            0.0,
+            0.0
+          ],
+          "width": 0.51,
+          "height": 0.2,
+          "zMin": 0.0,
+          "zMax": 0.2,
+          "zRef": 0.08
+        },
+        {
+          "axis": "+X",
+          "ok": true,
+          "originBlender": [
+            1.100000023841858,
+            0.0,
+            0.0
+          ],
+          "originGltf": [
+            1.100000023841858,
+            0.0,
+            -0.0
+          ],
+          "normalBlender": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "width": 0.51,
+          "height": 0.2,
+          "zMin": 0.0,
+          "zMax": 0.2,
+          "zRef": 0.08
+        },
+        {
+          "axis": "-Y",
+          "ok": true,
+          "originBlender": [
+            0.0,
+            -1.100000023841858,
+            0.0
+          ],
+          "originGltf": [
+            0.0,
+            0.0,
+            1.100000023841858
+          ],
+          "normalBlender": [
+            0.0,
+            -1.0,
+            0.0
+          ],
+          "width": 0.51,
+          "height": 0.2,
+          "zMin": 0.0,
+          "zMax": 0.2,
+          "zRef": 0.08
+        },
+        {
+          "axis": "+Y",
+          "ok": true,
+          "originBlender": [
+            0.0,
+            1.100000023841858,
+            0.0
+          ],
+          "originGltf": [
+            0.0,
+            0.0,
+            -1.100000023841858
+          ],
+          "normalBlender": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "width": 0.51,
+          "height": 0.2,
+          "zMin": 0.0,
+          "zMax": 0.2,
+          "zRef": 0.08
+        }
+      ],
+      "portsByLod": {
+        "lod0": [
+          {
+            "axis": "-X",
+            "ok": true,
+            "originBlender": [
+              -1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              -1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              -1.0,
+              0.0,
+              0.0
+            ],
+            "width": 0.51,
+            "height": 0.2,
+            "zMin": 0.0,
+            "zMax": 0.2,
+            "zRef": 0.08
+          },
+          {
+            "axis": "+X",
+            "ok": true,
+            "originBlender": [
+              1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "width": 0.51,
+            "height": 0.2,
+            "zMin": 0.0,
+            "zMax": 0.2,
+            "zRef": 0.08
+          },
+          {
+            "axis": "-Y",
+            "ok": true,
+            "originBlender": [
+              0.0,
+              -1.100000023841858,
+              0.0
+            ],
+            "originGltf": [
+              0.0,
+              0.0,
+              1.100000023841858
+            ],
+            "normalBlender": [
+              0.0,
+              -1.0,
+              0.0
+            ],
+            "width": 0.51,
+            "height": 0.2,
+            "zMin": 0.0,
+            "zMax": 0.2,
+            "zRef": 0.08
+          },
+          {
+            "axis": "+Y",
+            "ok": true,
+            "originBlender": [
+              0.0,
+              1.100000023841858,
+              0.0
+            ],
+            "originGltf": [
+              0.0,
+              0.0,
+              -1.100000023841858
+            ],
+            "normalBlender": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "width": 0.51,
+            "height": 0.2,
+            "zMin": 0.0,
+            "zMax": 0.2,
+            "zRef": 0.08
+          }
+        ],
+        "lod1": [
+          {
+            "axis": "-X",
+            "ok": true,
+            "originBlender": [
+              -1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              -1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              -1.0,
+              0.0,
+              0.0
+            ],
+            "width": 0.51,
+            "height": 0.2,
+            "zMin": 0.0,
+            "zMax": 0.2,
+            "zRef": 0.08
+          },
+          {
+            "axis": "+X",
+            "ok": true,
+            "originBlender": [
+              1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "width": 0.51,
+            "height": 0.2,
+            "zMin": 0.0,
+            "zMax": 0.2,
+            "zRef": 0.08
+          },
+          {
+            "axis": "-Y",
+            "ok": true,
+            "originBlender": [
+              0.0,
+              -1.100000023841858,
+              0.0
+            ],
+            "originGltf": [
+              0.0,
+              0.0,
+              1.100000023841858
+            ],
+            "normalBlender": [
+              0.0,
+              -1.0,
+              0.0
+            ],
+            "width": 0.51,
+            "height": 0.2,
+            "zMin": 0.0,
+            "zMax": 0.2,
+            "zRef": 0.08
+          },
+          {
+            "axis": "+Y",
+            "ok": true,
+            "originBlender": [
+              0.0,
+              1.100000023841858,
+              0.0
+            ],
+            "originGltf": [
+              0.0,
+              0.0,
+              -1.100000023841858
+            ],
+            "normalBlender": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "width": 0.51,
+            "height": 0.2,
+            "zMin": 0.0,
+            "zMax": 0.2,
+            "zRef": 0.08
+          }
+        ],
+        "lod2": [
+          {
+            "axis": "-X",
+            "ok": true,
+            "originBlender": [
+              -1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              -1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              -1.0,
+              0.0,
+              0.0
+            ],
+            "width": 0.48,
+            "height": 0.2,
+            "zMin": 0.0,
+            "zMax": 0.2,
+            "zRef": 0.08
+          },
+          {
+            "axis": "+X",
+            "ok": true,
+            "originBlender": [
+              1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "width": 0.48,
+            "height": 0.2,
+            "zMin": 0.0,
+            "zMax": 0.2,
+            "zRef": 0.08
+          },
+          {
+            "axis": "-Y",
+            "ok": true,
+            "originBlender": [
+              0.0,
+              -1.100000023841858,
+              0.0
+            ],
+            "originGltf": [
+              0.0,
+              0.0,
+              1.100000023841858
+            ],
+            "normalBlender": [
+              0.0,
+              -1.0,
+              0.0
+            ],
+            "width": 0.48,
+            "height": 0.2,
+            "zMin": 0.0,
+            "zMax": 0.2,
+            "zRef": 0.08
+          },
+          {
+            "axis": "+Y",
+            "ok": true,
+            "originBlender": [
+              0.0,
+              1.100000023841858,
+              0.0
+            ],
+            "originGltf": [
+              0.0,
+              0.0,
+              -1.100000023841858
+            ],
+            "normalBlender": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "width": 0.48,
+            "height": 0.2,
+            "zMin": 0.0,
+            "zMax": 0.2,
+            "zRef": 0.08
+          }
+        ]
+      },
+      "images": 3
+    },
+    {
+      "id": "place_works_conduit_power_end",
+      "family": "power",
+      "kind": "end",
+      "errors": [],
+      "path": "assets/ships/parts/works/place_works_conduit_power_end.glb",
+      "bytes": 431000,
+      "sha256": "E17731BC06E22CEC5BB05728CE18A30BC80D72F68FBE71608D39BAB2091B7935",
+      "contract": {
+        "assetId": "place_works_conduit_power_end",
+        "family": "power",
+        "kind": "end",
+        "packet": "PQ-131.06",
+        "lods": [
+          "lod0",
+          "lod1",
+          "lod2"
+        ]
+      },
+      "nodes": [
+        "LOD0_Merged_Material_Atlas",
+        "LOD1_Merged_Material_Atlas",
+        "LOD2_Merged_Material_Atlas",
+        "LOD0_powered",
+        "LOD1_powered",
+        "LOD2_powered",
+        "powered",
+        "power_end",
+        "place_works_conduit_power_end"
+      ],
+      "triangles": {
+        "LOD0_Merged_Material_Atlas": 940,
+        "LOD1_Merged_Material_Atlas": 452,
+        "LOD2_Merged_Material_Atlas": 104,
+        "LOD0_powered": 12,
+        "LOD1_powered": 12,
+        "LOD2_powered": 12
+      },
+      "lodTriangles": {
+        "0": 952,
+        "1": 464,
+        "2": 116
+      },
+      "ports": [
+        {
+          "axis": "+X",
+          "ok": true,
+          "originBlender": [
+            1.100000023841858,
+            0.0,
+            0.0
+          ],
+          "originGltf": [
+            1.100000023841858,
+            0.0,
+            -0.0
+          ],
+          "normalBlender": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "width": 0.51,
+          "height": 0.2,
+          "zMin": 0.0,
+          "zMax": 0.2,
+          "zRef": 0.08
+        }
+      ],
+      "portsByLod": {
+        "lod0": [
+          {
+            "axis": "+X",
+            "ok": true,
+            "originBlender": [
+              1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "width": 0.51,
+            "height": 0.2,
+            "zMin": 0.0,
+            "zMax": 0.2,
+            "zRef": 0.08
+          }
+        ],
+        "lod1": [
+          {
+            "axis": "+X",
+            "ok": true,
+            "originBlender": [
+              1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "width": 0.51,
+            "height": 0.2,
+            "zMin": 0.0,
+            "zMax": 0.2,
+            "zRef": 0.08
+          }
+        ],
+        "lod2": [
+          {
+            "axis": "+X",
+            "ok": true,
+            "originBlender": [
+              1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "width": 0.51,
+            "height": 0.2,
+            "zMin": 0.0,
+            "zMax": 0.2,
+            "zRef": 0.08
+          }
+        ]
+      },
+      "images": 3
+    },
+    {
+      "id": "place_works_conduit_power_junction",
+      "family": "power",
+      "kind": "junction",
+      "errors": [],
+      "path": "assets/ships/parts/works/place_works_conduit_power_junction.glb",
+      "bytes": 534408,
+      "sha256": "5246B8BEC54F3A7146CCC80D1F7236DCE0AC24EF08F722ECB7EB2EAF6BB83E55",
+      "contract": {
+        "assetId": "place_works_conduit_power_junction",
+        "family": "power",
+        "kind": "junction",
+        "packet": "PQ-131.06",
+        "lods": [
+          "lod0",
+          "lod1",
+          "lod2"
+        ]
+      },
+      "nodes": [
+        "LOD0_Merged_Material_Atlas",
+        "LOD1_Merged_Material_Atlas",
+        "LOD2_Merged_Material_Atlas",
+        "LOD0_powered",
+        "LOD1_powered",
+        "LOD2_powered",
+        "powered",
+        "LOD0_service_lid",
+        "LOD1_service_lid",
+        "service_lid",
+        "power_junction",
+        "place_works_conduit_power_junction"
+      ],
+      "triangles": {
+        "LOD0_Merged_Material_Atlas": 1596,
+        "LOD1_Merged_Material_Atlas": 700,
+        "LOD2_Merged_Material_Atlas": 88,
+        "LOD0_powered": 12,
+        "LOD1_powered": 12,
+        "LOD2_powered": 12,
+        "LOD0_service_lid": 12,
+        "LOD1_service_lid": 12
+      },
+      "lodTriangles": {
+        "0": 1620,
+        "1": 724,
+        "2": 100
+      },
+      "ports": [
+        {
+          "axis": "-X",
+          "ok": true,
+          "originBlender": [
+            -1.100000023841858,
+            0.0,
+            0.0
+          ],
+          "originGltf": [
+            -1.100000023841858,
+            0.0,
+            -0.0
+          ],
+          "normalBlender": [
+            -1.0,
+            0.0,
+            0.0
+          ],
+          "width": 0.51,
+          "height": 0.2,
+          "zMin": 0.0,
+          "zMax": 0.2,
+          "zRef": 0.08
+        },
+        {
+          "axis": "+X",
+          "ok": true,
+          "originBlender": [
+            1.100000023841858,
+            0.0,
+            0.0
+          ],
+          "originGltf": [
+            1.100000023841858,
+            0.0,
+            -0.0
+          ],
+          "normalBlender": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "width": 0.51,
+          "height": 0.2,
+          "zMin": 0.0,
+          "zMax": 0.2,
+          "zRef": 0.08
+        },
+        {
+          "axis": "-Y",
+          "ok": true,
+          "originBlender": [
+            0.0,
+            -1.100000023841858,
+            0.0
+          ],
+          "originGltf": [
+            0.0,
+            0.0,
+            1.100000023841858
+          ],
+          "normalBlender": [
+            0.0,
+            -1.0,
+            0.0
+          ],
+          "width": 0.51,
+          "height": 0.2,
+          "zMin": 0.0,
+          "zMax": 0.2,
+          "zRef": 0.08
+        },
+        {
+          "axis": "+Y",
+          "ok": true,
+          "originBlender": [
+            0.0,
+            1.100000023841858,
+            0.0
+          ],
+          "originGltf": [
+            0.0,
+            0.0,
+            -1.100000023841858
+          ],
+          "normalBlender": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "width": 0.51,
+          "height": 0.2,
+          "zMin": 0.0,
+          "zMax": 0.2,
+          "zRef": 0.08
+        }
+      ],
+      "portsByLod": {
+        "lod0": [
+          {
+            "axis": "-X",
+            "ok": true,
+            "originBlender": [
+              -1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              -1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              -1.0,
+              0.0,
+              0.0
+            ],
+            "width": 0.51,
+            "height": 0.2,
+            "zMin": 0.0,
+            "zMax": 0.2,
+            "zRef": 0.08
+          },
+          {
+            "axis": "+X",
+            "ok": true,
+            "originBlender": [
+              1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "width": 0.51,
+            "height": 0.2,
+            "zMin": 0.0,
+            "zMax": 0.2,
+            "zRef": 0.08
+          },
+          {
+            "axis": "-Y",
+            "ok": true,
+            "originBlender": [
+              0.0,
+              -1.100000023841858,
+              0.0
+            ],
+            "originGltf": [
+              0.0,
+              0.0,
+              1.100000023841858
+            ],
+            "normalBlender": [
+              0.0,
+              -1.0,
+              0.0
+            ],
+            "width": 0.51,
+            "height": 0.2,
+            "zMin": 0.0,
+            "zMax": 0.2,
+            "zRef": 0.08
+          },
+          {
+            "axis": "+Y",
+            "ok": true,
+            "originBlender": [
+              0.0,
+              1.100000023841858,
+              0.0
+            ],
+            "originGltf": [
+              0.0,
+              0.0,
+              -1.100000023841858
+            ],
+            "normalBlender": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "width": 0.51,
+            "height": 0.2,
+            "zMin": 0.0,
+            "zMax": 0.2,
+            "zRef": 0.08
+          }
+        ],
+        "lod1": [
+          {
+            "axis": "-X",
+            "ok": true,
+            "originBlender": [
+              -1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              -1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              -1.0,
+              0.0,
+              0.0
+            ],
+            "width": 0.48,
+            "height": 0.2,
+            "zMin": 0.0,
+            "zMax": 0.2,
+            "zRef": 0.08
+          },
+          {
+            "axis": "+X",
+            "ok": true,
+            "originBlender": [
+              1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "width": 0.48,
+            "height": 0.2,
+            "zMin": 0.0,
+            "zMax": 0.2,
+            "zRef": 0.08
+          },
+          {
+            "axis": "-Y",
+            "ok": true,
+            "originBlender": [
+              0.0,
+              -1.100000023841858,
+              0.0
+            ],
+            "originGltf": [
+              0.0,
+              0.0,
+              1.100000023841858
+            ],
+            "normalBlender": [
+              0.0,
+              -1.0,
+              0.0
+            ],
+            "width": 0.48,
+            "height": 0.2,
+            "zMin": 0.0,
+            "zMax": 0.2,
+            "zRef": 0.08
+          },
+          {
+            "axis": "+Y",
+            "ok": true,
+            "originBlender": [
+              0.0,
+              1.100000023841858,
+              0.0
+            ],
+            "originGltf": [
+              0.0,
+              0.0,
+              -1.100000023841858
+            ],
+            "normalBlender": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "width": 0.48,
+            "height": 0.2,
+            "zMin": 0.0,
+            "zMax": 0.2,
+            "zRef": 0.08
+          }
+        ],
+        "lod2": [
+          {
+            "axis": "-X",
+            "ok": true,
+            "originBlender": [
+              -1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              -1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              -1.0,
+              0.0,
+              0.0
+            ],
+            "width": 0.48,
+            "height": 0.2,
+            "zMin": 0.0,
+            "zMax": 0.2,
+            "zRef": 0.08
+          },
+          {
+            "axis": "+X",
+            "ok": true,
+            "originBlender": [
+              1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "width": 0.48,
+            "height": 0.2,
+            "zMin": 0.0,
+            "zMax": 0.2,
+            "zRef": 0.08
+          },
+          {
+            "axis": "-Y",
+            "ok": true,
+            "originBlender": [
+              0.0,
+              -1.100000023841858,
+              0.0
+            ],
+            "originGltf": [
+              0.0,
+              0.0,
+              1.100000023841858
+            ],
+            "normalBlender": [
+              0.0,
+              -1.0,
+              0.0
+            ],
+            "width": 0.48,
+            "height": 0.2,
+            "zMin": 0.0,
+            "zMax": 0.2,
+            "zRef": 0.08
+          },
+          {
+            "axis": "+Y",
+            "ok": true,
+            "originBlender": [
+              0.0,
+              1.100000023841858,
+              0.0
+            ],
+            "originGltf": [
+              0.0,
+              0.0,
+              -1.100000023841858
+            ],
+            "normalBlender": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "width": 0.48,
+            "height": 0.2,
+            "zMin": 0.0,
+            "zMax": 0.2,
+            "zRef": 0.08
+          }
+        ]
+      },
+      "images": 3
+    },
+    {
+      "id": "place_works_conduit_lane_straight",
+      "family": "lane",
+      "kind": "straight",
+      "errors": [],
+      "path": "assets/ships/parts/works/place_works_conduit_lane_straight.glb",
+      "bytes": 340092,
+      "sha256": "7972AFC181B1644EF2E1B34264564D19D528A7D2ED9F84E413FBE1B5912112A6",
+      "contract": {
+        "assetId": "place_works_conduit_lane_straight",
+        "family": "lane",
+        "kind": "straight",
+        "packet": "PQ-131.06",
+        "lods": [
+          "lod0",
+          "lod1",
+          "lod2"
+        ]
+      },
+      "nodes": [
+        "LOD0_flow_mesh",
+        "LOD1_flow_mesh",
+        "LOD2_flow_mesh",
+        "flow_mesh",
+        "LOD0_Merged_Material_Atlas",
+        "LOD1_Merged_Material_Atlas",
+        "LOD2_Merged_Material_Atlas",
+        "lane_straight",
+        "place_works_conduit_lane_straight"
+      ],
+      "triangles": {
+        "LOD0_flow_mesh": 172,
+        "LOD1_flow_mesh": 40,
+        "LOD2_flow_mesh": 24,
+        "LOD0_Merged_Material_Atlas": 532,
+        "LOD1_Merged_Material_Atlas": 300,
+        "LOD2_Merged_Material_Atlas": 32
+      },
+      "lodTriangles": {
+        "0": 704,
+        "1": 340,
+        "2": 56
+      },
+      "ports": [
+        {
+          "axis": "-X",
+          "ok": true,
+          "originBlender": [
+            -1.100000023841858,
+            0.0,
+            0.0
+          ],
+          "originGltf": [
+            -1.100000023841858,
+            0.0,
+            -0.0
+          ],
+          "normalBlender": [
+            -1.0,
+            0.0,
+            0.0
+          ],
+          "width": 1.1,
+          "height": 0.26,
+          "zMin": 0.0,
+          "zMax": 0.26,
+          "zRef": 0.098
+        },
+        {
+          "axis": "+X",
+          "ok": true,
+          "originBlender": [
+            1.100000023841858,
+            0.0,
+            0.0
+          ],
+          "originGltf": [
+            1.100000023841858,
+            0.0,
+            -0.0
+          ],
+          "normalBlender": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "width": 1.1,
+          "height": 0.26,
+          "zMin": 0.0,
+          "zMax": 0.26,
+          "zRef": 0.098
+        }
+      ],
+      "portsByLod": {
+        "lod0": [
+          {
+            "axis": "-X",
+            "ok": true,
+            "originBlender": [
+              -1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              -1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              -1.0,
+              0.0,
+              0.0
+            ],
+            "width": 1.1,
+            "height": 0.26,
+            "zMin": 0.0,
+            "zMax": 0.26,
+            "zRef": 0.098
+          },
+          {
+            "axis": "+X",
+            "ok": true,
+            "originBlender": [
+              1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "width": 1.1,
+            "height": 0.26,
+            "zMin": 0.0,
+            "zMax": 0.26,
+            "zRef": 0.098
+          }
+        ],
+        "lod1": [
+          {
+            "axis": "-X",
+            "ok": true,
+            "originBlender": [
+              -1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              -1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              -1.0,
+              0.0,
+              0.0
+            ],
+            "width": 1.1,
+            "height": 0.26,
+            "zMin": 0.0,
+            "zMax": 0.26,
+            "zRef": 0.098
+          },
+          {
+            "axis": "+X",
+            "ok": true,
+            "originBlender": [
+              1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "width": 1.1,
+            "height": 0.26,
+            "zMin": 0.0,
+            "zMax": 0.26,
+            "zRef": 0.098
+          }
+        ],
+        "lod2": [
+          {
+            "axis": "-X",
+            "ok": true,
+            "originBlender": [
+              -1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              -1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              -1.0,
+              0.0,
+              0.0
+            ],
+            "width": 1.1,
+            "height": 0.26,
+            "zMin": 0.0,
+            "zMax": 0.26,
+            "zRef": 0.098
+          },
+          {
+            "axis": "+X",
+            "ok": true,
+            "originBlender": [
+              1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "width": 1.1,
+            "height": 0.26,
+            "zMin": 0.0,
+            "zMax": 0.26,
+            "zRef": 0.098
+          }
+        ]
+      },
+      "images": 3
+    },
+    {
+      "id": "place_works_conduit_lane_corner",
+      "family": "lane",
+      "kind": "corner",
+      "errors": [],
+      "path": "assets/ships/parts/works/place_works_conduit_lane_corner.glb",
+      "bytes": 365772,
+      "sha256": "094DC5C81E5526CF9EA38ED24D126635A2B2DB74623D39D0FD0E886385772500",
+      "contract": {
+        "assetId": "place_works_conduit_lane_corner",
+        "family": "lane",
+        "kind": "corner",
+        "packet": "PQ-131.06",
+        "lods": [
+          "lod0",
+          "lod1",
+          "lod2"
+        ]
+      },
+      "nodes": [
+        "LOD0_flow_mesh",
+        "LOD1_flow_mesh",
+        "LOD2_flow_mesh",
+        "flow_mesh",
+        "LOD0_Merged_Material_Atlas",
+        "LOD1_Merged_Material_Atlas",
+        "LOD2_Merged_Material_Atlas",
+        "lane_corner",
+        "place_works_conduit_lane_corner"
+      ],
+      "triangles": {
+        "LOD0_flow_mesh": 224,
+        "LOD1_flow_mesh": 80,
+        "LOD2_flow_mesh": 64,
+        "LOD0_Merged_Material_Atlas": 688,
+        "LOD1_Merged_Material_Atlas": 352,
+        "LOD2_Merged_Material_Atlas": 128
+      },
+      "lodTriangles": {
+        "0": 912,
+        "1": 432,
+        "2": 192
+      },
+      "ports": [
+        {
+          "axis": "+X",
+          "ok": true,
+          "originBlender": [
+            1.100000023841858,
+            0.0,
+            0.0
+          ],
+          "originGltf": [
+            1.100000023841858,
+            0.0,
+            -0.0
+          ],
+          "normalBlender": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "width": 1.1,
+          "height": 0.26,
+          "zMin": 0.0,
+          "zMax": 0.26,
+          "zRef": 0.098
+        },
+        {
+          "axis": "+Y",
+          "ok": true,
+          "originBlender": [
+            0.0,
+            1.100000023841858,
+            0.0
+          ],
+          "originGltf": [
+            0.0,
+            0.0,
+            -1.100000023841858
+          ],
+          "normalBlender": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "width": 1.1,
+          "height": 0.26,
+          "zMin": 0.0,
+          "zMax": 0.26,
+          "zRef": 0.098
+        }
+      ],
+      "portsByLod": {
+        "lod0": [
+          {
+            "axis": "+X",
+            "ok": true,
+            "originBlender": [
+              1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "width": 1.1,
+            "height": 0.26,
+            "zMin": 0.0,
+            "zMax": 0.26,
+            "zRef": 0.098
+          },
+          {
+            "axis": "+Y",
+            "ok": true,
+            "originBlender": [
+              0.0,
+              1.100000023841858,
+              0.0
+            ],
+            "originGltf": [
+              0.0,
+              0.0,
+              -1.100000023841858
+            ],
+            "normalBlender": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "width": 1.1,
+            "height": 0.26,
+            "zMin": 0.0,
+            "zMax": 0.26,
+            "zRef": 0.098
+          }
+        ],
+        "lod1": [
+          {
+            "axis": "+X",
+            "ok": true,
+            "originBlender": [
+              1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "width": 1.1,
+            "height": 0.26,
+            "zMin": 0.0,
+            "zMax": 0.26,
+            "zRef": 0.098
+          },
+          {
+            "axis": "+Y",
+            "ok": true,
+            "originBlender": [
+              0.0,
+              1.100000023841858,
+              0.0
+            ],
+            "originGltf": [
+              0.0,
+              0.0,
+              -1.100000023841858
+            ],
+            "normalBlender": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "width": 1.1,
+            "height": 0.26,
+            "zMin": 0.0,
+            "zMax": 0.26,
+            "zRef": 0.098
+          }
+        ],
+        "lod2": [
+          {
+            "axis": "+X",
+            "ok": true,
+            "originBlender": [
+              1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "width": 1.1,
+            "height": 0.26,
+            "zMin": 0.0,
+            "zMax": 0.26,
+            "zRef": 0.098
+          },
+          {
+            "axis": "+Y",
+            "ok": true,
+            "originBlender": [
+              0.0,
+              1.100000023841858,
+              0.0
+            ],
+            "originGltf": [
+              0.0,
+              0.0,
+              -1.100000023841858
+            ],
+            "normalBlender": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "width": 1.1,
+            "height": 0.26,
+            "zMin": 0.0,
+            "zMax": 0.26,
+            "zRef": 0.098
+          }
+        ]
+      },
+      "images": 3
+    },
+    {
+      "id": "place_works_conduit_lane_t",
+      "family": "lane",
+      "kind": "t",
+      "errors": [],
+      "path": "assets/ships/parts/works/place_works_conduit_lane_t.glb",
+      "bytes": 413776,
+      "sha256": "7D4D49373ABFFDBAA04F26EBE54FC25C14B5F58A48DA775A230A0A8A2F02A5B3",
+      "contract": {
+        "assetId": "place_works_conduit_lane_t",
+        "family": "lane",
+        "kind": "t",
+        "packet": "PQ-131.06",
+        "lods": [
+          "lod0",
+          "lod1",
+          "lod2"
+        ]
+      },
+      "nodes": [
+        "LOD0_flow_mesh",
+        "LOD1_flow_mesh",
+        "LOD2_flow_mesh",
+        "flow_mesh",
+        "LOD0_Merged_Material_Atlas",
+        "LOD1_Merged_Material_Atlas",
+        "LOD2_Merged_Material_Atlas",
+        "lane_t",
+        "place_works_conduit_lane_t"
+      ],
+      "triangles": {
+        "LOD0_flow_mesh": 220,
+        "LOD1_flow_mesh": 56,
+        "LOD2_flow_mesh": 40,
+        "LOD0_Merged_Material_Atlas": 978,
+        "LOD1_Merged_Material_Atlas": 558,
+        "LOD2_Merged_Material_Atlas": 140
+      },
+      "lodTriangles": {
+        "0": 1198,
+        "1": 614,
+        "2": 180
+      },
+      "ports": [
+        {
+          "axis": "-X",
+          "ok": true,
+          "originBlender": [
+            -1.100000023841858,
+            0.0,
+            0.0
+          ],
+          "originGltf": [
+            -1.100000023841858,
+            0.0,
+            -0.0
+          ],
+          "normalBlender": [
+            -1.0,
+            0.0,
+            0.0
+          ],
+          "width": 1.1,
+          "height": 0.26,
+          "zMin": 0.0,
+          "zMax": 0.26,
+          "zRef": 0.098
+        },
+        {
+          "axis": "+X",
+          "ok": true,
+          "originBlender": [
+            1.100000023841858,
+            0.0,
+            0.0
+          ],
+          "originGltf": [
+            1.100000023841858,
+            0.0,
+            -0.0
+          ],
+          "normalBlender": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "width": 1.1,
+          "height": 0.26,
+          "zMin": 0.0,
+          "zMax": 0.26,
+          "zRef": 0.098
+        },
+        {
+          "axis": "+Y",
+          "ok": true,
+          "originBlender": [
+            0.0,
+            1.100000023841858,
+            0.0
+          ],
+          "originGltf": [
+            0.0,
+            0.0,
+            -1.100000023841858
+          ],
+          "normalBlender": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "width": 1.1,
+          "height": 0.26,
+          "zMin": 0.0,
+          "zMax": 0.26,
+          "zRef": 0.098
+        }
+      ],
+      "portsByLod": {
+        "lod0": [
+          {
+            "axis": "-X",
+            "ok": true,
+            "originBlender": [
+              -1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              -1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              -1.0,
+              0.0,
+              0.0
+            ],
+            "width": 1.1,
+            "height": 0.26,
+            "zMin": 0.0,
+            "zMax": 0.26,
+            "zRef": 0.098
+          },
+          {
+            "axis": "+X",
+            "ok": true,
+            "originBlender": [
+              1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "width": 1.1,
+            "height": 0.26,
+            "zMin": 0.0,
+            "zMax": 0.26,
+            "zRef": 0.098
+          },
+          {
+            "axis": "+Y",
+            "ok": true,
+            "originBlender": [
+              0.0,
+              1.100000023841858,
+              0.0
+            ],
+            "originGltf": [
+              0.0,
+              0.0,
+              -1.100000023841858
+            ],
+            "normalBlender": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "width": 1.1,
+            "height": 0.26,
+            "zMin": 0.0,
+            "zMax": 0.26,
+            "zRef": 0.098
+          }
+        ],
+        "lod1": [
+          {
+            "axis": "-X",
+            "ok": true,
+            "originBlender": [
+              -1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              -1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              -1.0,
+              0.0,
+              0.0
+            ],
+            "width": 1.1,
+            "height": 0.26,
+            "zMin": 0.0,
+            "zMax": 0.26,
+            "zRef": 0.098
+          },
+          {
+            "axis": "+X",
+            "ok": true,
+            "originBlender": [
+              1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "width": 1.1,
+            "height": 0.26,
+            "zMin": 0.0,
+            "zMax": 0.26,
+            "zRef": 0.098
+          },
+          {
+            "axis": "+Y",
+            "ok": true,
+            "originBlender": [
+              0.0,
+              1.100000023841858,
+              0.0
+            ],
+            "originGltf": [
+              0.0,
+              0.0,
+              -1.100000023841858
+            ],
+            "normalBlender": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "width": 1.1,
+            "height": 0.26,
+            "zMin": 0.0,
+            "zMax": 0.26,
+            "zRef": 0.098
+          }
+        ],
+        "lod2": [
+          {
+            "axis": "-X",
+            "ok": true,
+            "originBlender": [
+              -1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              -1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              -1.0,
+              0.0,
+              0.0
+            ],
+            "width": 1.1,
+            "height": 0.26,
+            "zMin": 0.0,
+            "zMax": 0.26,
+            "zRef": 0.098
+          },
+          {
+            "axis": "+X",
+            "ok": true,
+            "originBlender": [
+              1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "width": 1.1,
+            "height": 0.26,
+            "zMin": 0.0,
+            "zMax": 0.26,
+            "zRef": 0.098
+          },
+          {
+            "axis": "+Y",
+            "ok": true,
+            "originBlender": [
+              0.0,
+              1.100000023841858,
+              0.0
+            ],
+            "originGltf": [
+              0.0,
+              0.0,
+              -1.100000023841858
+            ],
+            "normalBlender": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "width": 1.1,
+            "height": 0.26,
+            "zMin": 0.0,
+            "zMax": 0.26,
+            "zRef": 0.098
+          }
+        ]
+      },
+      "images": 3
+    },
+    {
+      "id": "place_works_conduit_lane_cross",
+      "family": "lane",
+      "kind": "cross",
+      "errors": [],
+      "path": "assets/ships/parts/works/place_works_conduit_lane_cross.glb",
+      "bytes": 456748,
+      "sha256": "04AA9EC83604D9E96556ED5A33FA6EAB81B5F2F4D527732AB857438D4F980C4A",
+      "contract": {
+        "assetId": "place_works_conduit_lane_cross",
+        "family": "lane",
+        "kind": "cross",
+        "packet": "PQ-131.06",
+        "lods": [
+          "lod0",
+          "lod1",
+          "lod2"
+        ]
+      },
+      "nodes": [
+        "LOD0_flow_mesh",
+        "LOD1_flow_mesh",
+        "LOD2_flow_mesh",
+        "flow_mesh",
+        "LOD0_Merged_Material_Atlas",
+        "LOD1_Merged_Material_Atlas",
+        "LOD2_Merged_Material_Atlas",
+        "lane_cross",
+        "place_works_conduit_lane_cross"
+      ],
+      "triangles": {
+        "LOD0_flow_mesh": 96,
+        "LOD1_flow_mesh": 64,
+        "LOD2_flow_mesh": 64,
+        "LOD0_Merged_Material_Atlas": 1404,
+        "LOD1_Merged_Material_Atlas": 764,
+        "LOD2_Merged_Material_Atlas": 188
+      },
+      "lodTriangles": {
+        "0": 1500,
+        "1": 828,
+        "2": 252
+      },
+      "ports": [
+        {
+          "axis": "-X",
+          "ok": true,
+          "originBlender": [
+            -1.100000023841858,
+            0.0,
+            0.0
+          ],
+          "originGltf": [
+            -1.100000023841858,
+            0.0,
+            -0.0
+          ],
+          "normalBlender": [
+            -1.0,
+            0.0,
+            0.0
+          ],
+          "width": 1.1,
+          "height": 0.26,
+          "zMin": 0.0,
+          "zMax": 0.26,
+          "zRef": 0.098
+        },
+        {
+          "axis": "+X",
+          "ok": true,
+          "originBlender": [
+            1.100000023841858,
+            0.0,
+            0.0
+          ],
+          "originGltf": [
+            1.100000023841858,
+            0.0,
+            -0.0
+          ],
+          "normalBlender": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "width": 1.1,
+          "height": 0.26,
+          "zMin": 0.0,
+          "zMax": 0.26,
+          "zRef": 0.098
+        },
+        {
+          "axis": "-Y",
+          "ok": true,
+          "originBlender": [
+            0.0,
+            -1.100000023841858,
+            0.0
+          ],
+          "originGltf": [
+            0.0,
+            0.0,
+            1.100000023841858
+          ],
+          "normalBlender": [
+            0.0,
+            -1.0,
+            0.0
+          ],
+          "width": 1.1,
+          "height": 0.26,
+          "zMin": 0.0,
+          "zMax": 0.26,
+          "zRef": 0.098
+        },
+        {
+          "axis": "+Y",
+          "ok": true,
+          "originBlender": [
+            0.0,
+            1.100000023841858,
+            0.0
+          ],
+          "originGltf": [
+            0.0,
+            0.0,
+            -1.100000023841858
+          ],
+          "normalBlender": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "width": 1.1,
+          "height": 0.26,
+          "zMin": 0.0,
+          "zMax": 0.26,
+          "zRef": 0.098
+        }
+      ],
+      "portsByLod": {
+        "lod0": [
+          {
+            "axis": "-X",
+            "ok": true,
+            "originBlender": [
+              -1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              -1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              -1.0,
+              0.0,
+              0.0
+            ],
+            "width": 1.1,
+            "height": 0.26,
+            "zMin": 0.0,
+            "zMax": 0.26,
+            "zRef": 0.098
+          },
+          {
+            "axis": "+X",
+            "ok": true,
+            "originBlender": [
+              1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "width": 1.1,
+            "height": 0.26,
+            "zMin": 0.0,
+            "zMax": 0.26,
+            "zRef": 0.098
+          },
+          {
+            "axis": "-Y",
+            "ok": true,
+            "originBlender": [
+              0.0,
+              -1.100000023841858,
+              0.0
+            ],
+            "originGltf": [
+              0.0,
+              0.0,
+              1.100000023841858
+            ],
+            "normalBlender": [
+              0.0,
+              -1.0,
+              0.0
+            ],
+            "width": 1.1,
+            "height": 0.26,
+            "zMin": 0.0,
+            "zMax": 0.26,
+            "zRef": 0.098
+          },
+          {
+            "axis": "+Y",
+            "ok": true,
+            "originBlender": [
+              0.0,
+              1.100000023841858,
+              0.0
+            ],
+            "originGltf": [
+              0.0,
+              0.0,
+              -1.100000023841858
+            ],
+            "normalBlender": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "width": 1.1,
+            "height": 0.26,
+            "zMin": 0.0,
+            "zMax": 0.26,
+            "zRef": 0.098
+          }
+        ],
+        "lod1": [
+          {
+            "axis": "-X",
+            "ok": true,
+            "originBlender": [
+              -1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              -1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              -1.0,
+              0.0,
+              0.0
+            ],
+            "width": 1.1,
+            "height": 0.26,
+            "zMin": 0.0,
+            "zMax": 0.26,
+            "zRef": 0.098
+          },
+          {
+            "axis": "+X",
+            "ok": true,
+            "originBlender": [
+              1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "width": 1.1,
+            "height": 0.26,
+            "zMin": 0.0,
+            "zMax": 0.26,
+            "zRef": 0.098
+          },
+          {
+            "axis": "-Y",
+            "ok": true,
+            "originBlender": [
+              0.0,
+              -1.100000023841858,
+              0.0
+            ],
+            "originGltf": [
+              0.0,
+              0.0,
+              1.100000023841858
+            ],
+            "normalBlender": [
+              0.0,
+              -1.0,
+              0.0
+            ],
+            "width": 1.1,
+            "height": 0.26,
+            "zMin": 0.0,
+            "zMax": 0.26,
+            "zRef": 0.098
+          },
+          {
+            "axis": "+Y",
+            "ok": true,
+            "originBlender": [
+              0.0,
+              1.100000023841858,
+              0.0
+            ],
+            "originGltf": [
+              0.0,
+              0.0,
+              -1.100000023841858
+            ],
+            "normalBlender": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "width": 1.1,
+            "height": 0.26,
+            "zMin": 0.0,
+            "zMax": 0.26,
+            "zRef": 0.098
+          }
+        ],
+        "lod2": [
+          {
+            "axis": "-X",
+            "ok": true,
+            "originBlender": [
+              -1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              -1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              -1.0,
+              0.0,
+              0.0
+            ],
+            "width": 1.1,
+            "height": 0.26,
+            "zMin": 0.0,
+            "zMax": 0.26,
+            "zRef": 0.098
+          },
+          {
+            "axis": "+X",
+            "ok": true,
+            "originBlender": [
+              1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "width": 1.1,
+            "height": 0.26,
+            "zMin": 0.0,
+            "zMax": 0.26,
+            "zRef": 0.098
+          },
+          {
+            "axis": "-Y",
+            "ok": true,
+            "originBlender": [
+              0.0,
+              -1.100000023841858,
+              0.0
+            ],
+            "originGltf": [
+              0.0,
+              0.0,
+              1.100000023841858
+            ],
+            "normalBlender": [
+              0.0,
+              -1.0,
+              0.0
+            ],
+            "width": 1.1,
+            "height": 0.26,
+            "zMin": 0.0,
+            "zMax": 0.26,
+            "zRef": 0.098
+          },
+          {
+            "axis": "+Y",
+            "ok": true,
+            "originBlender": [
+              0.0,
+              1.100000023841858,
+              0.0
+            ],
+            "originGltf": [
+              0.0,
+              0.0,
+              -1.100000023841858
+            ],
+            "normalBlender": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "width": 1.1,
+            "height": 0.26,
+            "zMin": 0.0,
+            "zMax": 0.26,
+            "zRef": 0.098
+          }
+        ]
+      },
+      "images": 3
+    },
+    {
+      "id": "place_works_conduit_lane_end",
+      "family": "lane",
+      "kind": "end",
+      "errors": [],
+      "path": "assets/ships/parts/works/place_works_conduit_lane_end.glb",
+      "bytes": 361492,
+      "sha256": "639B00E5F1277237049166300DB2FA2D26E68A11C9AC18C716141370B63E0982",
+      "contract": {
+        "assetId": "place_works_conduit_lane_end",
+        "family": "lane",
+        "kind": "end",
+        "packet": "PQ-131.06",
+        "lods": [
+          "lod0",
+          "lod1",
+          "lod2"
+        ]
+      },
+      "nodes": [
+        "LOD0_flow_mesh",
+        "LOD1_flow_mesh",
+        "LOD2_flow_mesh",
+        "flow_mesh",
+        "LOD0_Merged_Material_Atlas",
+        "LOD1_Merged_Material_Atlas",
+        "LOD2_Merged_Material_Atlas",
+        "lane_end",
+        "place_works_conduit_lane_end"
+      ],
+      "triangles": {
+        "LOD0_flow_mesh": 112,
+        "LOD1_flow_mesh": 40,
+        "LOD2_flow_mesh": 24,
+        "LOD0_Merged_Material_Atlas": 756,
+        "LOD1_Merged_Material_Atlas": 372,
+        "LOD2_Merged_Material_Atlas": 68
+      },
+      "lodTriangles": {
+        "0": 868,
+        "1": 412,
+        "2": 92
+      },
+      "ports": [
+        {
+          "axis": "+X",
+          "ok": true,
+          "originBlender": [
+            1.100000023841858,
+            0.0,
+            0.0
+          ],
+          "originGltf": [
+            1.100000023841858,
+            0.0,
+            -0.0
+          ],
+          "normalBlender": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "width": 1.1,
+          "height": 0.26,
+          "zMin": 0.0,
+          "zMax": 0.26,
+          "zRef": 0.098
+        }
+      ],
+      "portsByLod": {
+        "lod0": [
+          {
+            "axis": "+X",
+            "ok": true,
+            "originBlender": [
+              1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "width": 1.1,
+            "height": 0.26,
+            "zMin": 0.0,
+            "zMax": 0.26,
+            "zRef": 0.098
+          }
+        ],
+        "lod1": [
+          {
+            "axis": "+X",
+            "ok": true,
+            "originBlender": [
+              1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "width": 1.1,
+            "height": 0.26,
+            "zMin": 0.0,
+            "zMax": 0.26,
+            "zRef": 0.098
+          }
+        ],
+        "lod2": [
+          {
+            "axis": "+X",
+            "ok": true,
+            "originBlender": [
+              1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "width": 1.1,
+            "height": 0.26,
+            "zMin": 0.0,
+            "zMax": 0.26,
+            "zRef": 0.098
+          }
+        ]
+      },
+      "images": 3
+    },
+    {
+      "id": "place_works_conduit_lane_junction",
+      "family": "lane",
+      "kind": "junction",
+      "errors": [],
+      "path": "assets/ships/parts/works/place_works_conduit_lane_junction.glb",
+      "bytes": 446416,
+      "sha256": "F15A0F8837338A2396F029F1EFDD68CC50811D98552441D1C32BE07195C8D98B",
+      "contract": {
+        "assetId": "place_works_conduit_lane_junction",
+        "family": "lane",
+        "kind": "junction",
+        "packet": "PQ-131.06",
+        "lods": [
+          "lod0",
+          "lod1",
+          "lod2"
+        ]
+      },
+      "nodes": [
+        "LOD0_flow_mesh",
+        "LOD1_flow_mesh",
+        "LOD2_flow_mesh",
+        "flow_mesh",
+        "LOD0_Merged_Material_Atlas",
+        "LOD1_Merged_Material_Atlas",
+        "LOD2_Merged_Material_Atlas",
+        "LOD0_service_lid",
+        "LOD1_service_lid",
+        "LOD2_service_lid",
+        "service_lid",
+        "lane_junction",
+        "place_works_conduit_lane_junction"
+      ],
+      "triangles": {
+        "LOD0_flow_mesh": 160,
+        "LOD1_flow_mesh": 64,
+        "LOD2_flow_mesh": 64,
+        "LOD0_Merged_Material_Atlas": 964,
+        "LOD1_Merged_Material_Atlas": 636,
+        "LOD2_Merged_Material_Atlas": 200,
+        "LOD0_service_lid": 12,
+        "LOD1_service_lid": 12,
+        "LOD2_service_lid": 12
+      },
+      "lodTriangles": {
+        "0": 1136,
+        "1": 712,
+        "2": 276
+      },
+      "ports": [
+        {
+          "axis": "-X",
+          "ok": true,
+          "originBlender": [
+            -1.100000023841858,
+            0.0,
+            0.0
+          ],
+          "originGltf": [
+            -1.100000023841858,
+            0.0,
+            -0.0
+          ],
+          "normalBlender": [
+            -1.0,
+            0.0,
+            0.0
+          ],
+          "width": 1.1,
+          "height": 0.26,
+          "zMin": 0.0,
+          "zMax": 0.26,
+          "zRef": 0.098
+        },
+        {
+          "axis": "+X",
+          "ok": true,
+          "originBlender": [
+            1.100000023841858,
+            0.0,
+            0.0
+          ],
+          "originGltf": [
+            1.100000023841858,
+            0.0,
+            -0.0
+          ],
+          "normalBlender": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "width": 1.1,
+          "height": 0.26,
+          "zMin": 0.0,
+          "zMax": 0.26,
+          "zRef": 0.098
+        },
+        {
+          "axis": "-Y",
+          "ok": true,
+          "originBlender": [
+            0.0,
+            -1.100000023841858,
+            0.0
+          ],
+          "originGltf": [
+            0.0,
+            0.0,
+            1.100000023841858
+          ],
+          "normalBlender": [
+            0.0,
+            -1.0,
+            0.0
+          ],
+          "width": 1.1,
+          "height": 0.26,
+          "zMin": 0.0,
+          "zMax": 0.26,
+          "zRef": 0.098
+        },
+        {
+          "axis": "+Y",
+          "ok": true,
+          "originBlender": [
+            0.0,
+            1.100000023841858,
+            0.0
+          ],
+          "originGltf": [
+            0.0,
+            0.0,
+            -1.100000023841858
+          ],
+          "normalBlender": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "width": 1.1,
+          "height": 0.26,
+          "zMin": 0.0,
+          "zMax": 0.26,
+          "zRef": 0.098
+        }
+      ],
+      "portsByLod": {
+        "lod0": [
+          {
+            "axis": "-X",
+            "ok": true,
+            "originBlender": [
+              -1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              -1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              -1.0,
+              0.0,
+              0.0
+            ],
+            "width": 1.1,
+            "height": 0.26,
+            "zMin": 0.0,
+            "zMax": 0.26,
+            "zRef": 0.098
+          },
+          {
+            "axis": "+X",
+            "ok": true,
+            "originBlender": [
+              1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "width": 1.1,
+            "height": 0.26,
+            "zMin": 0.0,
+            "zMax": 0.26,
+            "zRef": 0.098
+          },
+          {
+            "axis": "-Y",
+            "ok": true,
+            "originBlender": [
+              0.0,
+              -1.100000023841858,
+              0.0
+            ],
+            "originGltf": [
+              0.0,
+              0.0,
+              1.100000023841858
+            ],
+            "normalBlender": [
+              0.0,
+              -1.0,
+              0.0
+            ],
+            "width": 1.1,
+            "height": 0.26,
+            "zMin": 0.0,
+            "zMax": 0.26,
+            "zRef": 0.098
+          },
+          {
+            "axis": "+Y",
+            "ok": true,
+            "originBlender": [
+              0.0,
+              1.100000023841858,
+              0.0
+            ],
+            "originGltf": [
+              0.0,
+              0.0,
+              -1.100000023841858
+            ],
+            "normalBlender": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "width": 1.1,
+            "height": 0.26,
+            "zMin": 0.0,
+            "zMax": 0.26,
+            "zRef": 0.098
+          }
+        ],
+        "lod1": [
+          {
+            "axis": "-X",
+            "ok": true,
+            "originBlender": [
+              -1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              -1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              -1.0,
+              0.0,
+              0.0
+            ],
+            "width": 1.1,
+            "height": 0.26,
+            "zMin": 0.0,
+            "zMax": 0.26,
+            "zRef": 0.098
+          },
+          {
+            "axis": "+X",
+            "ok": true,
+            "originBlender": [
+              1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "width": 1.1,
+            "height": 0.26,
+            "zMin": 0.0,
+            "zMax": 0.26,
+            "zRef": 0.098
+          },
+          {
+            "axis": "-Y",
+            "ok": true,
+            "originBlender": [
+              0.0,
+              -1.100000023841858,
+              0.0
+            ],
+            "originGltf": [
+              0.0,
+              0.0,
+              1.100000023841858
+            ],
+            "normalBlender": [
+              0.0,
+              -1.0,
+              0.0
+            ],
+            "width": 1.1,
+            "height": 0.26,
+            "zMin": 0.0,
+            "zMax": 0.26,
+            "zRef": 0.098
+          },
+          {
+            "axis": "+Y",
+            "ok": true,
+            "originBlender": [
+              0.0,
+              1.100000023841858,
+              0.0
+            ],
+            "originGltf": [
+              0.0,
+              0.0,
+              -1.100000023841858
+            ],
+            "normalBlender": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "width": 1.1,
+            "height": 0.26,
+            "zMin": 0.0,
+            "zMax": 0.26,
+            "zRef": 0.098
+          }
+        ],
+        "lod2": [
+          {
+            "axis": "-X",
+            "ok": true,
+            "originBlender": [
+              -1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              -1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              -1.0,
+              0.0,
+              0.0
+            ],
+            "width": 1.1,
+            "height": 0.26,
+            "zMin": 0.0,
+            "zMax": 0.26,
+            "zRef": 0.098
+          },
+          {
+            "axis": "+X",
+            "ok": true,
+            "originBlender": [
+              1.100000023841858,
+              0.0,
+              0.0
+            ],
+            "originGltf": [
+              1.100000023841858,
+              0.0,
+              -0.0
+            ],
+            "normalBlender": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "width": 1.1,
+            "height": 0.26,
+            "zMin": 0.0,
+            "zMax": 0.26,
+            "zRef": 0.098
+          },
+          {
+            "axis": "-Y",
+            "ok": true,
+            "originBlender": [
+              0.0,
+              -1.100000023841858,
+              0.0
+            ],
+            "originGltf": [
+              0.0,
+              0.0,
+              1.100000023841858
+            ],
+            "normalBlender": [
+              0.0,
+              -1.0,
+              0.0
+            ],
+            "width": 1.1,
+            "height": 0.26,
+            "zMin": 0.0,
+            "zMax": 0.26,
+            "zRef": 0.098
+          },
+          {
+            "axis": "+Y",
+            "ok": true,
+            "originBlender": [
+              0.0,
+              1.100000023841858,
+              0.0
+            ],
+            "originGltf": [
+              0.0,
+              0.0,
+              -1.100000023841858
+            ],
+            "normalBlender": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "width": 1.1,
+            "height": 0.26,
+            "zMin": 0.0,
+            "zMax": 0.26,
+            "zRef": 0.098
+          }
+        ]
+      },
+      "images": 3
+    }
+  ],
+  "atlases": [
+    {
+      "path": "assets/works/conduit_kit/source/textures/power_atlas_basecolor.png",
+      "w": 1024,
+      "h": 1024,
+      "sha256": "52842A77DE6C951EC05B106BC6D879FAF80A5D7A91B66F94B6B6C792C4923BE2"
+    },
+    {
+      "path": "assets/works/conduit_kit/source/textures/power_atlas_normal.png",
+      "w": 1024,
+      "h": 1024,
+      "sha256": "2BC1171AF344E8233F01B8622DB963ADB73787725D7D6A7BEDA7A28E6D12DD15"
+    },
+    {
+      "path": "assets/works/conduit_kit/source/textures/power_atlas_orm.png",
+      "w": 1024,
+      "h": 1024,
+      "sha256": "5F9390728E969D2E7C2A8993A454B7F57AF8C57ED097E22E59A6DCB70434A21D"
+    },
+    {
+      "path": "assets/works/conduit_kit/source/textures/lane_atlas_basecolor.png",
+      "w": 1024,
+      "h": 1024,
+      "sha256": "D0CEBA7D88ECABABC259B42436BC135FCFD393CF222D02EDD96F388DE215E634"
+    },
+    {
+      "path": "assets/works/conduit_kit/source/textures/lane_atlas_normal.png",
+      "w": 1024,
+      "h": 1024,
+      "sha256": "265269F4FE6F545B4A8AEBF5194F50CCB32F686DCF5A08EA0A1622E1647F23A4"
+    },
+    {
+      "path": "assets/works/conduit_kit/source/textures/lane_atlas_orm.png",
+      "w": 1024,
+      "h": 1024,
+      "sha256": "DD264C2AD5B6E46CC426575B2F591B9676F02C6081A181EE68F2AC3E9BDFC892"
+    }
+  ],
+  "master": {
+    "path": "assets/works/conduit_kit/source/works_conduit_kit.glb",
+    "bytes": 2404604,
+    "sha256": "1CC1A0C72684BB4E660406B3392921473C55D677CF88AAC4CDC00ED050931A53"
+  },
+  "errorCount": 0
+}

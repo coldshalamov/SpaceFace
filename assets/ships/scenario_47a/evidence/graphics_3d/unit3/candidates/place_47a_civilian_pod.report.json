@@ -1,0 +1,15 @@
+{
+  "ok": true,
+  "asset": "pod",
+  "revision": "candidate_v4",
+  "root": "Civilian_Pod_47A",
+  "output": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\scenario_47a\\evidence\\graphics_3d\\unit3\\candidates\\place_47a_civilian_pod.glb",
+  "bytes": 179912,
+  "triangles": 1720,
+  "objects": [
+    "CivilianPod_Aft_Scorch_Band",
+    "CivilianPod_Distress_Band",
+    "CivilianPod_Port_Port",
+    "CivilianPod_Shell"
+  ]
+}

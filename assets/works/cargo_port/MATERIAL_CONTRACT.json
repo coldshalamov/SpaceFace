@@ -1,0 +1,22 @@
+{
+  "assetId": "place_works_cargo_port",
+  "cycle": 4,
+  "atlas": "source/textures/cargo_port_atlas_{basecolor,normal,orm}.png",
+  "size": 1024,
+  "roles": [
+    "port",
+    "cradle",
+    "crate",
+    "pod",
+    "thruster"
+  ],
+  "orm": "R=AO,G=Roughness,B=Metallic",
+  "normal": "OpenGL",
+  "launchAxis": "+Z blender / +Y glTF",
+  "forbidden": [
+    "rover_yellow",
+    "glow_outline",
+    "billboard_exhaust",
+    "generic_grid"
+  ]
+}

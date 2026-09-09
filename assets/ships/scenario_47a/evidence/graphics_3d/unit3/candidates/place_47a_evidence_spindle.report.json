@@ -1,0 +1,15 @@
+{
+  "ok": true,
+  "asset": "spindle",
+  "revision": "candidate_v4",
+  "root": "Evidence_Spindle_47A",
+  "output": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\scenario_47a\\evidence\\graphics_3d\\unit3\\candidates\\place_47a_evidence_spindle.glb",
+  "bytes": 314220,
+  "triangles": 2872,
+  "objects": [
+    "Spindle_Clamp_5",
+    "Spindle_Seal_Tag_Port",
+    "Spindle_Shell",
+    "Spindle_WellFloor"
+  ]
+}

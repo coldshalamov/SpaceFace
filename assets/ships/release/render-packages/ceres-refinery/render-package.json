@@ -1,0 +1,2254 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.ceres-refinery.anchor.socket-dock-approach",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        42.47999954223633,
+        0,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Dock_Approach",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentNodeId": "sf.render.ceres-refinery.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        42.47999954223633,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.anchor.socket-emissive",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        -31.954999923706055,
+        1
+      ],
+      "nodeName": "SOCKET_Emissive",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentNodeId": "sf.render.ceres-refinery.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        -31.954999923706055,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.anchor.socket-structure-core",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Structure_Core",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentNodeId": "sf.render.ceres-refinery.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.ceres-refinery",
+  "collisions": [
+    {
+      "id": "sf.render.ceres-refinery.collision",
+      "nodeId": "sf.render.ceres-refinery.mesh.collision-hull",
+      "reference": "COLLISION_HULL"
+    }
+  ],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "a2e62c7daa27633432f536b5143769050a1faf33f521028008b172056e9fd92c",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          44.099998474121094,
+          24.976585388183594,
+          28.73424530029297
+        ],
+        "min": [
+          -44.099998474121094,
+          -24.976585388183594,
+          -28.73424530029297
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0f8dc7ef08b758561c2e3ba576511da0dbd44fcb3a7062e127a3b5cce8396cc5",
+      "id": "sf.render.ceres-refinery.mesh.collision-hull.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "a4e57b8fd5970dba7433bc60cb123253f810c67a95c914c6dcf948660657976b",
+      "materialPipelineKey": "non-render",
+      "meshName": "COLLISION_HULL_Mesh",
+      "nodeId": "sf.render.ceres-refinery.mesh.collision-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          52.999183654785156,
+          12.271461486816406,
+          4.659999847412109
+        ],
+        "min": [
+          14.773317337036133,
+          -12.803699493408203,
+          -40.184329986572266
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7347bb341d49b9968aea9e3e769414b0cd82fd1a31b76b3c9260af9d1f0e46a4",
+      "id": "sf.render.ceres-refinery.mesh.lod0-station-material-accent.primitive.0",
+      "indexCount": 24540,
+      "indexed": true,
+      "materialHash": "411f496a72ade89496dabb767da5d956a4adb0e18e32ac3cbbdb826c6ec79b4d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Station_Material_Accent_Mesh",
+      "nodeId": "sf.render.ceres-refinery.mesh.lod0-station-material-accent",
+      "primitiveIndex": 0,
+      "vertexCount": 16926
+    },
+    {
+      "bounds": {
+        "max": [
+          56.75,
+          10.250689506530762,
+          5.100069046020508
+        ],
+        "min": [
+          -32.79999923706055,
+          -4.900689125061035,
+          -23.50006866455078
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "221abad47a638510a5ae13fcf62e668c605a0b8ad3a7202a2d0b159611497de5",
+      "id": "sf.render.ceres-refinery.mesh.lod0-station-material-glass.primitive.0",
+      "indexCount": 4344,
+      "indexed": true,
+      "materialHash": "38fb64f11f09f67b1a0448bb7d8daca6fc588e0d9cedb0454cedac4922cba125",
+      "materialPipelineKey": "blend",
+      "meshName": "LOD0_Station_Material_Glass_Mesh",
+      "nodeId": "sf.render.ceres-refinery.mesh.lod0-station-material-glass",
+      "primitiveIndex": 0,
+      "vertexCount": 3626
+    },
+    {
+      "bounds": {
+        "max": [
+          59,
+          30.4989070892334,
+          5.751940727233887
+        ],
+        "min": [
+          -39,
+          -18.723907470703125,
+          -58.1019401550293
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0c51b04e063f1d408e14f2d08c5101eb1ac14b4982fc3e81428a359309d1e211",
+      "id": "sf.render.ceres-refinery.mesh.lod0-station-material-hull.primitive.0",
+      "indexCount": 77688,
+      "indexed": true,
+      "materialHash": "55ed9d21851ee78e265c1debcde4aa579d78777fcbbba5465fed75b2ce3b9244",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Station_Material_Hull_Mesh",
+      "nodeId": "sf.render.ceres-refinery.mesh.lod0-station-material-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 59770
+    },
+    {
+      "bounds": {
+        "max": [
+          56.75,
+          26.5880069732666,
+          5.367321491241455
+        ],
+        "min": [
+          -38.459999084472656,
+          -24.99920654296875,
+          -57.44739532470703
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b3e1796eca2d9117e35d255f930a9d4c626463683e18cf9b1a0e0239c88797b8",
+      "id": "sf.render.ceres-refinery.mesh.lod0-station-material-mechanical.primitive.0",
+      "indexCount": 183432,
+      "indexed": true,
+      "materialHash": "a4e57b8fd5970dba7433bc60cb123253f810c67a95c914c6dcf948660657976b",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Station_Material_Mechanical_Mesh",
+      "nodeId": "sf.render.ceres-refinery.mesh.lod0-station-material-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 126106
+    },
+    {
+      "bounds": {
+        "max": [
+          49.51955032348633,
+          29.99833869934082,
+          4.493262767791748
+        ],
+        "min": [
+          -38.295440673828125,
+          -23.971155166625977,
+          -55.91890335083008
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c413a04f9b320ca37ebacab27a06d7ad78113524b9d696f715c2ca4b73056c28",
+      "id": "sf.render.ceres-refinery.mesh.lod0-station-material-warm.primitive.0",
+      "indexCount": 126516,
+      "indexed": true,
+      "materialHash": "064a6a0c4247de7da27178fa587d2f6a2d1ebd6047786326882a420f7a5a4096",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Station_Material_Warm_Mesh",
+      "nodeId": "sf.render.ceres-refinery.mesh.lod0-station-material-warm",
+      "primitiveIndex": 0,
+      "vertexCount": 82918
+    },
+    {
+      "bounds": {
+        "max": [
+          50.00071334838867,
+          12.270009994506836,
+          4.659999847412109
+        ],
+        "min": [
+          14.7717866897583,
+          -12.794857025146484,
+          -40.146358489990234
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7b453e75eb75a440d732d1d8ce89e0e57bf64d70a0bf625a8791e50460a797bb",
+      "id": "sf.render.ceres-refinery.mesh.lod1-station-material-accent.primitive.0",
+      "indexCount": 7368,
+      "indexed": true,
+      "materialHash": "411f496a72ade89496dabb767da5d956a4adb0e18e32ac3cbbdb826c6ec79b4d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Station_Material_Accent_Mesh",
+      "nodeId": "sf.render.ceres-refinery.mesh.lod1-station-material-accent",
+      "primitiveIndex": 0,
+      "vertexCount": 4776
+    },
+    {
+      "bounds": {
+        "max": [
+          56.713294982910156,
+          10.247584342956543,
+          5.099671363830566
+        ],
+        "min": [
+          -32.79999923706055,
+          -4.897583961486816,
+          -23.499671936035156
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7f1da64bf00a1ef4bea6360781d2b5d21501ef06a7f6ac0bb83f10676e1fff45",
+      "id": "sf.render.ceres-refinery.mesh.lod1-station-material-glass.primitive.0",
+      "indexCount": 900,
+      "indexed": true,
+      "materialHash": "38fb64f11f09f67b1a0448bb7d8daca6fc588e0d9cedb0454cedac4922cba125",
+      "materialPipelineKey": "blend",
+      "meshName": "LOD1_Station_Material_Glass_Mesh",
+      "nodeId": "sf.render.ceres-refinery.mesh.lod1-station-material-glass",
+      "primitiveIndex": 0,
+      "vertexCount": 744
+    },
+    {
+      "bounds": {
+        "max": [
+          56.5,
+          23.20058822631836,
+          5.493842124938965
+        ],
+        "min": [
+          -38.5,
+          -18.725587844848633,
+          -55.29201126098633
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "36e31e0e6510f8685682bd01189405a81d169d04a693e5e8dac9c0de8acfd201",
+      "id": "sf.render.ceres-refinery.mesh.lod1-station-material-hull.primitive.0",
+      "indexCount": 17904,
+      "indexed": true,
+      "materialHash": "55ed9d21851ee78e265c1debcde4aa579d78777fcbbba5465fed75b2ce3b9244",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Station_Material_Hull_Mesh",
+      "nodeId": "sf.render.ceres-refinery.mesh.lod1-station-material-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 12994
+    },
+    {
+      "bounds": {
+        "max": [
+          56.75,
+          26.58740234375,
+          5.379758834838867
+        ],
+        "min": [
+          -38.380001068115234,
+          -17.950984954833984,
+          -57.45185470581055
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "eaeadd9de61eb264f579ca46600306ac3e259407cd46eb7fc43f4d577ec093c0",
+      "id": "sf.render.ceres-refinery.mesh.lod1-station-material-mechanical.primitive.0",
+      "indexCount": 40692,
+      "indexed": true,
+      "materialHash": "a4e57b8fd5970dba7433bc60cb123253f810c67a95c914c6dcf948660657976b",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Station_Material_Mechanical_Mesh",
+      "nodeId": "sf.render.ceres-refinery.mesh.lod1-station-material-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 26810
+    },
+    {
+      "bounds": {
+        "max": [
+          49.50822830200195,
+          30.00249481201172,
+          4.445797443389893
+        ],
+        "min": [
+          -38.2457160949707,
+          -15.530895233154297,
+          -42.95156478881836
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "938a8a905573b9ca0bec6639cc0a367e5a4124f35f25a2badcdd383b117e5e09",
+      "id": "sf.render.ceres-refinery.mesh.lod1-station-material-warm.primitive.0",
+      "indexCount": 28188,
+      "indexed": true,
+      "materialHash": "064a6a0c4247de7da27178fa587d2f6a2d1ebd6047786326882a420f7a5a4096",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Station_Material_Warm_Mesh",
+      "nodeId": "sf.render.ceres-refinery.mesh.lod1-station-material-warm",
+      "primitiveIndex": 0,
+      "vertexCount": 17816
+    },
+    {
+      "bounds": {
+        "max": [
+          42.700340270996094,
+          -0.6995852589607239,
+          -22.799999237060547
+        ],
+        "min": [
+          35.299659729003906,
+          -12.800414085388184,
+          -39.70000076293945
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c14e0c30662293d065ed418229848298f908baf365a6f3f5ada8e4072c6cf327",
+      "id": "sf.render.ceres-refinery.mesh.lod2-station-material-accent.primitive.0",
+      "indexCount": 144,
+      "indexed": true,
+      "materialHash": "411f496a72ade89496dabb767da5d956a4adb0e18e32ac3cbbdb826c6ec79b4d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Station_Material_Accent_Mesh",
+      "nodeId": "sf.render.ceres-refinery.mesh.lod2-station-material-accent",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          55.20000076293945,
+          6.699936389923096,
+          -4.95016622543335
+        ],
+        "min": [
+          48.39999771118164,
+          4.900063991546631,
+          -5.249833583831787
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "63a6ac2cee7db12eb92f11aa3a14e22ea658ff6f87c1320460213be04f492d40",
+      "id": "sf.render.ceres-refinery.mesh.lod2-station-material-glass.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "38fb64f11f09f67b1a0448bb7d8daca6fc588e0d9cedb0454cedac4922cba125",
+      "materialPipelineKey": "blend",
+      "meshName": "LOD2_Station_Material_Glass_Mesh",
+      "nodeId": "sf.render.ceres-refinery.mesh.lod2-station-material-glass",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          56.5,
+          27.49712371826172,
+          5.299539566040039
+        ],
+        "min": [
+          -38.20000076293945,
+          -18.597124099731445,
+          -55.99953842163086
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "30ef2a8674ff0263890979d822b8eb97f93f40ea45afd7c5963da96e551236ee",
+      "id": "sf.render.ceres-refinery.mesh.lod2-station-material-hull.primitive.0",
+      "indexCount": 720,
+      "indexed": true,
+      "materialHash": "55ed9d21851ee78e265c1debcde4aa579d78777fcbbba5465fed75b2ce3b9244",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Station_Material_Hull_Mesh",
+      "nodeId": "sf.render.ceres-refinery.mesh.lod2-station-material-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 456
+    },
+    {
+      "bounds": {
+        "max": [
+          43.79999923706055,
+          22.500619888305664,
+          -1.0993828773498535
+        ],
+        "min": [
+          -23,
+          -12.600621223449707,
+          -57.200618743896484
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3eebf1bf98fcf0c06e42c64afa1cb2dbcf0354a1bcc0a20afa07ead31807b4f7",
+      "id": "sf.render.ceres-refinery.mesh.lod2-station-material-mechanical.primitive.0",
+      "indexCount": 588,
+      "indexed": true,
+      "materialHash": "a4e57b8fd5970dba7433bc60cb123253f810c67a95c914c6dcf948660657976b",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Station_Material_Mechanical_Mesh",
+      "nodeId": "sf.render.ceres-refinery.mesh.lod2-station-material-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 336
+    },
+    {
+      "bounds": {
+        "max": [
+          34.70000076293945,
+          6.199904441833496,
+          -0.3486824035644531
+        ],
+        "min": [
+          -22.399999618530273,
+          -10.049903869628906,
+          -38.50131607055664
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c58e483ec0b91bf8aff9b1893db5a45d774ac3ac29e8773474ab62e7931e2ab6",
+      "id": "sf.render.ceres-refinery.mesh.lod2-station-material-warm.primitive.0",
+      "indexCount": 216,
+      "indexed": true,
+      "materialHash": "064a6a0c4247de7da27178fa587d2f6a2d1ebd6047786326882a420f7a5a4096",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Station_Material_Warm_Mesh",
+      "nodeId": "sf.render.ceres-refinery.mesh.lod2-station-material-warm",
+      "primitiveIndex": 0,
+      "vertexCount": 132
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "064a6a0c4247de7da27178fa587d2f6a2d1ebd6047786326882a420f7a5a4096",
+      "id": "material:064a6a0c4247de7da27178fa",
+      "name": "Material_Warm",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "refinery_thermal_oxide_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "refinery_thermal_oxide_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "refinery_thermal_oxide_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "refinery_thermal_oxide_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "38fb64f11f09f67b1a0448bb7d8daca6fc588e0d9cedb0454cedac4922cba125",
+      "id": "material:38fb64f11f09f67b1a0448bb",
+      "name": "Material_Glass",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "refinery_control_glass_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "refinery_control_glass_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "refinery_control_glass_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "refinery_control_glass_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "411f496a72ade89496dabb767da5d956a4adb0e18e32ac3cbbdb826c6ec79b4d",
+      "id": "material:411f496a72ade89496dabb76",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "refinery_chalk_ceramic_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "refinery_chalk_ceramic_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "refinery_chalk_ceramic_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "refinery_chalk_ceramic_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "55ed9d21851ee78e265c1debcde4aa579d78777fcbbba5465fed75b2ce3b9244",
+      "id": "material:55ed9d21851ee78e265c1deb",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "refinery_structural_coat_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "refinery_structural_coat_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "refinery_structural_coat_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "refinery_structural_coat_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "a4e57b8fd5970dba7433bc60cb123253f810c67a95c914c6dcf948660657976b",
+      "id": "material:a4e57b8fd5970dba7433bc60",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "refinery_process_alloy_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "refinery_process_alloy_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "refinery_process_alloy_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "refinery_process_alloy_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.ceres-refinery.mesh.collision-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_HULL",
+      "nodeName": "COLLISION_HULL",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.ceres-refinery.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.mesh.lod0-station-material-accent",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Station_Material_Accent",
+      "nodeName": "LOD0_Station_Material_Accent",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.ceres-refinery.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.mesh.lod0-station-material-glass",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD0_Station_Material_Glass",
+      "nodeName": "LOD0_Station_Material_Glass",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.ceres-refinery.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.mesh.lod0-station-material-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Station_Material_Hull",
+      "nodeName": "LOD0_Station_Material_Hull",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.ceres-refinery.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.mesh.lod0-station-material-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Station_Material_Mechanical",
+      "nodeName": "LOD0_Station_Material_Mechanical",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.ceres-refinery.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.mesh.lod0-station-material-warm",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Station_Material_Warm",
+      "nodeName": "LOD0_Station_Material_Warm",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.ceres-refinery.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.mesh.lod1-station-material-accent",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Station_Material_Accent",
+      "nodeName": "LOD1_Station_Material_Accent",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.ceres-refinery.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.mesh.lod1-station-material-glass",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD1_Station_Material_Glass",
+      "nodeName": "LOD1_Station_Material_Glass",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.ceres-refinery.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.mesh.lod1-station-material-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Station_Material_Hull",
+      "nodeName": "LOD1_Station_Material_Hull",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.ceres-refinery.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.mesh.lod1-station-material-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Station_Material_Mechanical",
+      "nodeName": "LOD1_Station_Material_Mechanical",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.ceres-refinery.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.mesh.lod1-station-material-warm",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Station_Material_Warm",
+      "nodeName": "LOD1_Station_Material_Warm",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.ceres-refinery.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.mesh.lod2-station-material-accent",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Station_Material_Accent",
+      "nodeName": "LOD2_Station_Material_Accent",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.ceres-refinery.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.mesh.lod2-station-material-glass",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD2_Station_Material_Glass",
+      "nodeName": "LOD2_Station_Material_Glass",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.ceres-refinery.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.mesh.lod2-station-material-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Station_Material_Hull",
+      "nodeName": "LOD2_Station_Material_Hull",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.ceres-refinery.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.mesh.lod2-station-material-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Station_Material_Mechanical",
+      "nodeName": "LOD2_Station_Material_Mechanical",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.ceres-refinery.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.mesh.lod2-station-material-warm",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Station_Material_Warm",
+      "nodeName": "LOD2_Station_Material_Warm",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.ceres-refinery.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-refinery.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "SF_PLACE_STATION_REFINERY_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-refinery.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "ffec512fb04ef81d52ff061fc1b4dc69ea6db5c129891d4d37e963348cfeb3d3"
+    },
+    "sourceGlb": {
+      "bytes": 5725268,
+      "sha256": "3b673f761f8e47c32ffa0563b933ad099380d2df75629dca927481cec4c8b7c0",
+      "uri": "place_station_refinery.glb"
+    },
+    "sourceManifest": {
+      "bytes": 76590,
+      "sha256": "8ba4982f6c2f892e5db93e36155681813d7ca0c75780b2103007ecf1900a111a",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 8843880,
+    "sha256": "9a54acfb35325ece8ab7b6ab2f3fdbc7bc1e93e932f26c87e4989af96b47df68",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        7.450000762939453,
+        2.749850273132324,
+        -14.683847427368164
+      ],
+      "max": [
+        59,
+        30.4989070892334,
+        28.73424530029297
+      ],
+      "min": [
+        -44.099998474121094,
+        -24.99920654296875,
+        -58.1019401550293
+      ],
+      "size": [
+        103.0999984741211,
+        55.49811363220215,
+        86.83618545532227
+      ]
+    },
+    "hidden": [
+      2
+    ],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          42.47999954223633,
+          0,
+          0,
+          1
+        ],
+        "name": "SOCKET_Dock_Approach",
+        "planIndex": 18,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Dock_Approach",
+          "spaceface.socketRole": "dock_approach",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Dock_Approach",
+            "recordIds": [
+              "sf.render.ceres-refinery.anchor.socket-dock-approach"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          -31.954999923706055,
+          1
+        ],
+        "name": "SOCKET_Emissive",
+        "planIndex": 19,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Emissive",
+          "spaceface.socketRole": "emissive",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Emissive",
+            "recordIds": [
+              "sf.render.ceres-refinery.anchor.socket-emissive"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "SOCKET_Structure_Core",
+        "planIndex": 20,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Structure_Core",
+          "spaceface.socketRole": "structure_core",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Structure_Core",
+            "recordIds": [
+              "sf.render.ceres-refinery.anchor.socket-structure-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "accent": 3,
+      "glass": 3,
+      "hull": 6,
+      "mechanical": 4
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 2,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 21,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Station_Material_Accent",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Station_Material_Glass",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Station_Material_Hull",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Station_Material_Mechanical",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Station_Material_Warm",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Station_Material_Accent",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Station_Material_Glass",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Station_Material_Hull",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Station_Material_Mechanical",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Station_Material_Warm",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Station_Material_Accent",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Station_Material_Glass",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Station_Material_Hull",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Station_Material_Mechanical",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Station_Material_Warm",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_station_refinery.glb"
+  },
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          59,
+          30.4989070892334,
+          28.73424530029297
+        ],
+        "min": [
+          -44.099998474121094,
+          -24.99920654296875,
+          -58.1019401550293
+        ]
+      },
+      "id": "sf.render.ceres-refinery.body",
+      "nodeIds": [
+        "sf.render.ceres-refinery.mesh.collision-hull",
+        "sf.render.ceres-refinery.mesh.lod0-station-material-accent",
+        "sf.render.ceres-refinery.mesh.lod0-station-material-glass",
+        "sf.render.ceres-refinery.mesh.lod0-station-material-hull",
+        "sf.render.ceres-refinery.mesh.lod0-station-material-mechanical",
+        "sf.render.ceres-refinery.mesh.lod0-station-material-warm",
+        "sf.render.ceres-refinery.mesh.lod1-station-material-accent",
+        "sf.render.ceres-refinery.mesh.lod1-station-material-glass",
+        "sf.render.ceres-refinery.mesh.lod1-station-material-hull",
+        "sf.render.ceres-refinery.mesh.lod1-station-material-mechanical",
+        "sf.render.ceres-refinery.mesh.lod1-station-material-warm",
+        "sf.render.ceres-refinery.mesh.lod2-station-material-accent",
+        "sf.render.ceres-refinery.mesh.lod2-station-material-glass",
+        "sf.render.ceres-refinery.mesh.lod2-station-material-hull",
+        "sf.render.ceres-refinery.mesh.lod2-station-material-mechanical",
+        "sf.render.ceres-refinery.mesh.lod2-station-material-warm",
+        "sf.render.ceres-refinery.root"
+      ]
+    }
+  ]
+}

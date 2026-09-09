@@ -1,0 +1,65 @@
+{
+  "schemaVersion": "1.0",
+  "assetId": "place_works_derrick",
+  "packet": "PQ-131.05",
+  "cycle": 4,
+  "cycle04TechnicalScope": "Preserve all Cycle 03 form and surfacing; repair only exported functional pivots, pivot-local children, and collision transform/bounds.",
+  "applicability": "required_for_all_changed_camera_visible_3d",
+  "componentReferenceDecision": "not_needed",
+  "workingScene": "tools/blender/build_works_derrick.py",
+  "supportedCameras": ["works_top", "works_edge", "works_site"],
+  "allSupportedViewZonesClassified": true,
+  "fictionDevelopmentAgreement": {
+    "components": [
+      {
+        "component": "A-frame I-beam pair",
+        "functionOriginAndServiceContext": "Two open A-leg pairs carry the crown and sheave over the entry shaft. Helix/MTS surface head-frame, ART EXTRAPOLATION.",
+        "substrateManufactureAndFinish": "Rolled wide-flange mild steel, splice plates at the A-bar, dark alkyd over zinc phosphate.",
+        "interfacesLoadAccessAndHeatPaths": "Load: shoe -> leg -> A-bar/splice -> crown beam -> sheave. One platform-side portal. No A-plane rungs.",
+        "expectedOpticalResponse": "Dark dielectric paint, metallic worn web/flange edges, orange edge wear not tape.",
+        "forbiddenReads": ["X-grid", "ladder-truss fill", "radio mast", "box stick"]
+      },
+      {
+        "component": "winch drum and crown sheave",
+        "functionOriginAndServiceContext": "Drum on -X skid pays the umbilical; sheave on the crown turns it down the shaft.",
+        "substrateManufactureAndFinish": "Machined steel drum, flanges, spindle; grooved sheave in cheek plates; heat/oil on gearbox.",
+        "interfacesLoadAccessAndHeatPaths": "Pillow blocks on skid; cable leaves a visible tangent, rises, wraps the sheave, drops through the collar.",
+        "expectedOpticalResponse": "Metallic oil-stained winch, greasy dark cable, interface steel on sheave flanges.",
+        "forbiddenReads": ["drum over the well", "laser line", "pumpjack"]
+      },
+      {
+        "component": "shaft collar and well",
+        "functionOriginAndServiceContext": "Short curb around the empty entry shaft. The tower stands over this hole.",
+        "substrateManufactureAndFinish": "Painted steel annulus with wall thickness. Hole is empty.",
+        "interfacesLoadAccessAndHeatPaths": "Collar sits on the cut face; cable drop occupies the centre without filling it.",
+        "expectedOpticalResponse": "Dark dusty curb, real cavity, no halo.",
+        "forbiddenReads": ["filled disc", "painted hole", "drum covering the well"]
+      },
+      {
+        "component": "hooded work lamps",
+        "functionOriginAndServiceContext": "Paired fixtures on the crown looking into the shaft.",
+        "substrateManufactureAndFinish": "Hollow cast dark-steel hood, socket, physically recessed warm glass lens.",
+        "interfacesLoadAccessAndHeatPaths": "Arm from crown beam; open hood mouth tilted toward the well so its thick dark rim survives works_top before the smaller lens.",
+        "expectedOpticalResponse": "Two dark hood/socket masses with smaller restrained lenses; fixture remains legible with emission off.",
+        "forbiddenReads": ["pinprick", "glowing sphere", "emissive bar"]
+      },
+      {
+        "component": "four planted shoe interfaces",
+        "functionOriginAndServiceContext": "Four folded pads transfer the A-frame load into the asteroid crust.",
+        "substrateManufactureAndFinish": "Dark alkyd folded steel shoe with a smaller exposed metallic anchor plate and interface bolts.",
+        "interfacesLoadAccessAndHeatPaths": "Each leg terminates through gussets into its own plate; the exposed plate stays inside the physical shoe footprint.",
+        "expectedOpticalResponse": "Four separate corner masses at works_site, materially separated from the dark frame without glow, stripe, outline, or padding.",
+        "forbiddenReads": ["dark square frame", "silhouette padding", "yellow-black stripe", "outline"]
+      }
+    ]
+  },
+  "visibleZoneRegister": [
+    {"zone": "A-frame legs and shoes", "disposition": "billed", "supportedViews": ["works_top", "works_edge", "works_site"], "dominatesSupportedView": true, "materialBillOrRetainedReviewEvidence": "assets/works/derrick/MATERIAL_CONTRACT.json"},
+    {"zone": "open A negative space", "disposition": "billed", "supportedViews": ["works_top", "works_edge"], "dominatesSupportedView": true, "materialBillOrRetainedReviewEvidence": "assets/works/derrick/MATERIAL_AND_SHAPE_AUDIT.md"},
+    {"zone": "shaft collar and well", "disposition": "billed", "supportedViews": ["works_top", "works_site"], "dominatesSupportedView": true, "materialBillOrRetainedReviewEvidence": "assets/works/derrick/MATERIAL_CONTRACT.json"},
+    {"zone": "winch drum, tangent, sheave, drop", "disposition": "billed", "supportedViews": ["works_top", "works_edge"], "dominatesSupportedView": true, "materialBillOrRetainedReviewEvidence": "assets/works/derrick/MATERIAL_CONTRACT.json"},
+    {"zone": "offset grated platform and ladder", "disposition": "billed", "supportedViews": ["works_top", "works_edge"], "dominatesSupportedView": false, "materialBillOrRetainedReviewEvidence": "assets/works/derrick/MATERIAL_CONTRACT.json"},
+    {"zone": "hooded lamps", "disposition": "billed", "supportedViews": ["works_top", "works_edge"], "dominatesSupportedView": false, "materialBillOrRetainedReviewEvidence": "assets/works/derrick/MATERIAL_CONTRACT.json"},
+    {"zone": "LOD1/2 site silhouette", "disposition": "billed", "supportedViews": ["works_site"], "dominatesSupportedView": true, "materialBillOrRetainedReviewEvidence": "assets/works/derrick/MATERIAL_AND_SHAPE_AUDIT.md"}
+  ]
+}

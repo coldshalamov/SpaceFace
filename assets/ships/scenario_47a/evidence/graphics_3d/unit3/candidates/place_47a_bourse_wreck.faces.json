@@ -1,0 +1,43 @@
+{
+  "glb": "assets\\ships\\scenario_47a\\evidence\\graphics_3d\\unit3\\candidates\\place_47a_bourse_wreck.glb",
+  "fovV": 50.0,
+  "distances": [
+    144.0,
+    58.0
+  ],
+  "headings": [
+    0,
+    45,
+    90,
+    135,
+    180,
+    225,
+    270,
+    315
+  ],
+  "grid": [
+    80,
+    45
+  ],
+  "deleted": false,
+  "objects": [
+    {
+      "object": "Bourse_Carrier_Hull",
+      "faces": 174,
+      "visible": 68,
+      "hidden": 106,
+      "hiddenFrac": 0.6092
+    },
+    {
+      "object": "Bourse_Rib_0",
+      "faces": 72,
+      "visible": 47,
+      "hidden": 25,
+      "hiddenFrac": 0.3472
+    }
+  ],
+  "hiddenFaces": 131,
+  "faces": 246,
+  "hiddenFrac": 0.5325,
+  "note": "dry-run; pass --delete only after inspecting hiddenFrac"
+}

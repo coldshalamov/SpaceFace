@@ -1,0 +1,61 @@
+{
+  "ok": true,
+  "glb": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\scenario_47a\\evidence\\graphics_3d\\unit3\\candidates\\place_47a_kessler_beacon.glb",
+  "out": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\scenario_47a\\evidence\\graphics_3d\\unit3\\candidates\\beacon_chase_v2",
+  "focus": [
+    0.0,
+    0.0,
+    11.52
+  ],
+  "boundsMin": [
+    -18.152,
+    -18.432,
+    -4.48
+  ],
+  "boundsMax": [
+    18.152,
+    18.432,
+    27.52
+  ],
+  "size": [
+    36.304,
+    36.864,
+    32.0
+  ],
+  "lightScale": 3.4133,
+  "cameras": {
+    "play_chase": 144.0,
+    "play_chase_close": 58.0
+  },
+  "meshes": [
+    {
+      "name": "HandoffBeacon_Covert_Ring",
+      "triangles": 232,
+      "materials": [
+        "HandoffBeacon_Quiet_Violet",
+        "HandoffBeacon_Dark_Mast"
+      ]
+    },
+    {
+      "name": "HandoffBeacon_KeyFloor",
+      "triangles": 12,
+      "materials": [
+        "HandoffBeacon_KeyWell"
+      ]
+    },
+    {
+      "name": "HandoffBeacon_Spine",
+      "triangles": 184,
+      "materials": [
+        "HandoffBeacon_Dark_Mast"
+      ]
+    }
+  ],
+  "triangles": 428,
+  "stills": {
+    "play_chase.png": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\scenario_47a\\evidence\\graphics_3d\\unit3\\candidates\\beacon_chase_v2\\play_chase.png",
+    "play_chase_abeam.png": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\scenario_47a\\evidence\\graphics_3d\\unit3\\candidates\\beacon_chase_v2\\play_chase_abeam.png",
+    "play_chase_close.png": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\scenario_47a\\evidence\\graphics_3d\\unit3\\candidates\\beacon_chase_v2\\play_chase_close.png"
+  },
+  "clay": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\scenario_47a\\evidence\\graphics_3d\\unit3\\candidates\\beacon_chase_v2\\clay_play_chase.png"
+}

@@ -1,0 +1,21 @@
+{
+  "schema": "spaceface.shipMaterialContract.v1",
+  "assetId": "SF_WASP_PRODUCTION_V1",
+  "normalConvention": "OpenGL",
+  "ormChannels": "R=AO,G=Roughness,B=Metallic",
+  "roles": {
+    "Material_Hull": "primary armored spaceframe",
+    "Material_Armor": "dark silhouette-breaking dorsal and nacelle armor",
+    "Material_Mechanical": "intakes, vents, rails, guns, frames, and nozzle hardware",
+    "Material_Accent": "cyan faction and navigation identification",
+    "Material_Warning": "restrained orange safety markings",
+    "Material_Canopy": "compact near-black coated cockpit glass",
+    "Material_Thruster": "bounded twin drive apertures; authored emission strength 1.404 and runtime tone-mapped ceiling 0.62; never a plume mesh"
+  },
+  "runtimeRules": {
+    "embeddedPlume": false,
+    "canopyDominatesSilhouette": false,
+    "staticMerge": "one mesh per material per LOD",
+    "materialReuse": "seven shared semantic materials across LOD0/1/2"
+  }
+}

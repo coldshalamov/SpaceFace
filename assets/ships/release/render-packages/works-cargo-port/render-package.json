@@ -1,0 +1,2507 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.works-cargo-port",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "9e36624e136aada09fbbc2f12607bfc039933e20c784acfaf70bf8b73673fbb6",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          1.0800000429153442,
+          0.46095967292785645,
+          0.879970133304596
+        ],
+        "min": [
+          -1.004889965057373,
+          0.00004033621371490881,
+          -0.6999701261520386
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f9472a538031945542993318432ece77861e15b43abb64109e166d020606c45f",
+      "id": "sf.render.works-cargo-port.mesh.lod0-cargo-port.primitive.0",
+      "indexCount": 17472,
+      "indexed": true,
+      "materialHash": "63bcd597d5523fcbfd6a2c34234e668775ce6e8d15d70ec43cbdbf497e566482",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_cargo_port",
+      "nodeId": "sf.render.works-cargo-port.mesh.lod0-cargo-port",
+      "primitiveIndex": 0,
+      "vertexCount": 14556
+    },
+    {
+      "bounds": {
+        "max": [
+          0.6171400249004364,
+          0.6870145797729492,
+          0.5028648972511292
+        ],
+        "min": [
+          -0.7282600104808807,
+          0.09998545050621033,
+          -0.4228648841381073
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d854e743cbd657c89372ec6f1a10acbcdcaaaa013cb6c8205395796ede22ffab",
+      "id": "sf.render.works-cargo-port.mesh.lod0-cradle.primitive.0",
+      "indexCount": 2460,
+      "indexed": true,
+      "materialHash": "63bcd597d5523fcbfd6a2c34234e668775ce6e8d15d70ec43cbdbf497e566482",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_cradle",
+      "nodeId": "sf.render.works-cargo-port.mesh.lod0-cradle",
+      "primitiveIndex": 0,
+      "vertexCount": 1893
+    },
+    {
+      "bounds": {
+        "max": [
+          1.13359996676445,
+          0.2980033904314041,
+          0.8076220750808716
+        ],
+        "min": [
+          0.42639997601509094,
+          0.09199661714956164,
+          0.5923779010772705
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "65929c9859637989d2cd6671932d125636a6e1209d3d3a89ad01940403b0cc26",
+      "id": "sf.render.works-cargo-port.mesh.lod0-crate-0.primitive.0",
+      "indexCount": 4212,
+      "indexed": true,
+      "materialHash": "63bcd597d5523fcbfd6a2c34234e668775ce6e8d15d70ec43cbdbf497e566482",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_crate_0",
+      "nodeId": "sf.render.works-cargo-port.mesh.lod0-crate-0",
+      "primitiveIndex": 0,
+      "vertexCount": 3432
+    },
+    {
+      "bounds": {
+        "max": [
+          0.9477725476026535,
+          0.4859999716281891,
+          0.527772530913353
+        ],
+        "min": [
+          0.6522274762392044,
+          0.09199999272823334,
+          0.23222745954990387
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f124a5d2e79a0bc846945c46cfba5995c96c9464caa2b2e012b54328f0e335c4",
+      "id": "sf.render.works-cargo-port.mesh.lod0-crate-1.primitive.0",
+      "indexCount": 2916,
+      "indexed": true,
+      "materialHash": "63bcd597d5523fcbfd6a2c34234e668775ce6e8d15d70ec43cbdbf497e566482",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_crate_1",
+      "nodeId": "sf.render.works-cargo-port.mesh.lod0-crate-1",
+      "primitiveIndex": 0,
+      "vertexCount": 2376
+    },
+    {
+      "bounds": {
+        "max": [
+          1.0535853207111359,
+          0.2660106420516968,
+          0.3863999918103218
+        ],
+        "min": [
+          0.9032147154211998,
+          0.09398936992511153,
+          -0.30639999359846115
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "dfefd40f728ce970ae9194c2af57272ed7ac65cf62c1790788cf90733af6c531",
+      "id": "sf.render.works-cargo-port.mesh.lod0-crate-2.primitive.0",
+      "indexCount": 2916,
+      "indexed": true,
+      "materialHash": "63bcd597d5523fcbfd6a2c34234e668775ce6e8d15d70ec43cbdbf497e566482",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_crate_2",
+      "nodeId": "sf.render.works-cargo-port.mesh.lod0-crate-2",
+      "primitiveIndex": 0,
+      "vertexCount": 2376
+    },
+    {
+      "bounds": {
+        "max": [
+          0.8340000212192535,
+          0.3343915343284607,
+          -0.3460000157356262
+        ],
+        "min": [
+          0.48600003123283386,
+          0.09400845924392343,
+          -0.6940000206232071
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b74017e6f0bf346f8e402c6d82b1ee60248aa3050f82950ca9a534022b098494",
+      "id": "sf.render.works-cargo-port.mesh.lod0-crate-3.primitive.0",
+      "indexCount": 3240,
+      "indexed": true,
+      "materialHash": "63bcd597d5523fcbfd6a2c34234e668775ce6e8d15d70ec43cbdbf497e566482",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_crate_3",
+      "nodeId": "sf.render.works-cargo-port.mesh.lod0-crate-3",
+      "primitiveIndex": 0,
+      "vertexCount": 2640
+    },
+    {
+      "bounds": {
+        "max": [
+          1.0659999698400497,
+          0.25600504875183105,
+          -0.4087980389595032
+        ],
+        "min": [
+          0.7899999767541885,
+          0.09399496717378497,
+          -0.6664019674062729
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1b4a5a15d712511f91cd9b446d9f28db9b829e6f4c15e2fd1819ffe09a18d7ce",
+      "id": "sf.render.works-cargo-port.mesh.lod0-crate-4.primitive.0",
+      "indexCount": 2268,
+      "indexed": true,
+      "materialHash": "63bcd597d5523fcbfd6a2c34234e668775ce6e8d15d70ec43cbdbf497e566482",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_crate_4",
+      "nodeId": "sf.render.works-cargo-port.mesh.lod0-crate-4",
+      "primitiveIndex": 0,
+      "vertexCount": 1676
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.06294000148773193,
+          0.3599965162575245,
+          0.16251033544540405
+        ],
+        "min": [
+          -0.3770599961280823,
+          0.16000349819660187,
+          -0.08251035213470459
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7f1d67d652526ce0267222caf80a165bf207d2dc1f09d230213a3e12395b38da",
+      "id": "sf.render.works-cargo-port.mesh.lod0-pod-thruster.primitive.0",
+      "indexCount": 1074,
+      "indexed": true,
+      "materialHash": "63bcd597d5523fcbfd6a2c34234e668775ce6e8d15d70ec43cbdbf497e566482",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_pod_thruster",
+      "nodeId": "sf.render.works-cargo-port.mesh.lod0-pod-thruster",
+      "primitiveIndex": 0,
+      "vertexCount": 851
+    },
+    {
+      "bounds": {
+        "max": [
+          0.010968774557113647,
+          1.0019999742507935,
+          0.2520064041018486
+        ],
+        "min": [
+          -0.45096877217292786,
+          0.18000000715255737,
+          -0.14016639441251755
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bd7cbc7465b2cd479ffaaf166ab6d3e1f6c1d3cd5ac5a82c2897f699593a87b6",
+      "id": "sf.render.works-cargo-port.mesh.lod0-pod.primitive.0",
+      "indexCount": 2616,
+      "indexed": true,
+      "materialHash": "63bcd597d5523fcbfd6a2c34234e668775ce6e8d15d70ec43cbdbf497e566482",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_pod",
+      "nodeId": "sf.render.works-cargo-port.mesh.lod0-pod",
+      "primitiveIndex": 0,
+      "vertexCount": 2004
+    },
+    {
+      "bounds": {
+        "max": [
+          1.0800000429153442,
+          0.4499290883541107,
+          0.8799598813056946
+        ],
+        "min": [
+          -1.007889986038208,
+          0.00007089866994647309,
+          -0.6999598741531372
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ac787b9f6b45fca4244f35e2345831ef716b0d2c828991999beea6973ab876c3",
+      "id": "sf.render.works-cargo-port.mesh.lod1-cargo-port.primitive.0",
+      "indexCount": 1764,
+      "indexed": true,
+      "materialHash": "63bcd597d5523fcbfd6a2c34234e668775ce6e8d15d70ec43cbdbf497e566482",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_cargo_port",
+      "nodeId": "sf.render.works-cargo-port.mesh.lod1-cargo-port",
+      "primitiveIndex": 0,
+      "vertexCount": 1176
+    },
+    {
+      "bounds": {
+        "max": [
+          0.6199999749660492,
+          0.6600157469511032,
+          0.49975067377090454
+        ],
+        "min": [
+          -0.7300000190734863,
+          0.09998428821563721,
+          -0.4197506904602051
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "714a15cd81ae1331f7a106f1ab73b819ebacd74ccdda40834513e309b70d520c",
+      "id": "sf.render.works-cargo-port.mesh.lod1-cradle.primitive.0",
+      "indexCount": 252,
+      "indexed": true,
+      "materialHash": "63bcd597d5523fcbfd6a2c34234e668775ce6e8d15d70ec43cbdbf497e566482",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_cradle",
+      "nodeId": "sf.render.works-cargo-port.mesh.lod1-cradle",
+      "primitiveIndex": 0,
+      "vertexCount": 116
+    },
+    {
+      "bounds": {
+        "max": [
+          1.13359996676445,
+          0.2980033904314041,
+          0.8076220750808716
+        ],
+        "min": [
+          0.42639997601509094,
+          0.09199661714956164,
+          0.5923779010772705
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "281130a653b7d27685f0f0d341d8ab4596c9003f3be0bc38595a2662f747b23b",
+      "id": "sf.render.works-cargo-port.mesh.lod1-crate-0.primitive.0",
+      "indexCount": 2772,
+      "indexed": true,
+      "materialHash": "63bcd597d5523fcbfd6a2c34234e668775ce6e8d15d70ec43cbdbf497e566482",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_crate_0",
+      "nodeId": "sf.render.works-cargo-port.mesh.lod1-crate-0",
+      "primitiveIndex": 0,
+      "vertexCount": 2232
+    },
+    {
+      "bounds": {
+        "max": [
+          0.9486142545938492,
+          0.4859999716281891,
+          0.5286142379045486
+        ],
+        "min": [
+          0.6513857692480087,
+          0.09199999272823334,
+          0.2313857525587082
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9b8626a14a5d561b892abe8b4556a3ed4d334bca58b10759cea1c3ba92899cf0",
+      "id": "sf.render.works-cargo-port.mesh.lod1-crate-1.primitive.0",
+      "indexCount": 612,
+      "indexed": true,
+      "materialHash": "63bcd597d5523fcbfd6a2c34234e668775ce6e8d15d70ec43cbdbf497e566482",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_crate_1",
+      "nodeId": "sf.render.works-cargo-port.mesh.lod1-crate-1",
+      "primitiveIndex": 0,
+      "vertexCount": 456
+    },
+    {
+      "bounds": {
+        "max": [
+          1.0535853207111359,
+          0.2660106420516968,
+          0.3863999918103218
+        ],
+        "min": [
+          0.9032147154211998,
+          0.09398936992511153,
+          -0.30639999359846115
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ef2989e401166de4c67272f85edb136ed9a9a2de89da8061476b067b0c2c6c41",
+      "id": "sf.render.works-cargo-port.mesh.lod1-crate-2.primitive.0",
+      "indexCount": 900,
+      "indexed": true,
+      "materialHash": "63bcd597d5523fcbfd6a2c34234e668775ce6e8d15d70ec43cbdbf497e566482",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_crate_2",
+      "nodeId": "sf.render.works-cargo-port.mesh.lod1-crate-2",
+      "primitiveIndex": 0,
+      "vertexCount": 696
+    },
+    {
+      "bounds": {
+        "max": [
+          0.8340000212192535,
+          0.3343915343284607,
+          -0.3460000157356262
+        ],
+        "min": [
+          0.48600003123283386,
+          0.09400845924392343,
+          -0.6940000206232071
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6a49159b40d14d614a7caa98804dabd98c05a2878bedcb767572f9c0dfcc5319",
+      "id": "sf.render.works-cargo-port.mesh.lod1-crate-3.primitive.0",
+      "indexCount": 1800,
+      "indexed": true,
+      "materialHash": "63bcd597d5523fcbfd6a2c34234e668775ce6e8d15d70ec43cbdbf497e566482",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_crate_3",
+      "nodeId": "sf.render.works-cargo-port.mesh.lod1-crate-3",
+      "primitiveIndex": 0,
+      "vertexCount": 1440
+    },
+    {
+      "bounds": {
+        "max": [
+          1.0659999698400497,
+          0.25600504875183105,
+          -0.4087980389595032
+        ],
+        "min": [
+          0.7899999767541885,
+          0.09399496717378497,
+          -0.6664019674062729
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0c2473b878f013b6a4bd34fa2f4b89eaebf4fdf7671041f3c23f2eb52d1e12bf",
+      "id": "sf.render.works-cargo-port.mesh.lod1-crate-4.primitive.0",
+      "indexCount": 828,
+      "indexed": true,
+      "materialHash": "63bcd597d5523fcbfd6a2c34234e668775ce6e8d15d70ec43cbdbf497e566482",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_crate_4",
+      "nodeId": "sf.render.works-cargo-port.mesh.lod1-crate-4",
+      "primitiveIndex": 0,
+      "vertexCount": 648
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.06294000148773193,
+          0.3599965162575245,
+          0.16251033544540405
+        ],
+        "min": [
+          -0.3770599961280823,
+          0.16000349819660187,
+          -0.08251035213470459
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bb0fa3659fa79d33b58eb968d754e315300d129a33683c914e59b571968f7aa5",
+      "id": "sf.render.works-cargo-port.mesh.lod1-pod-thruster.primitive.0",
+      "indexCount": 294,
+      "indexed": true,
+      "materialHash": "63bcd597d5523fcbfd6a2c34234e668775ce6e8d15d70ec43cbdbf497e566482",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_pod_thruster",
+      "nodeId": "sf.render.works-cargo-port.mesh.lod1-pod-thruster",
+      "primitiveIndex": 0,
+      "vertexCount": 183
+    },
+    {
+      "bounds": {
+        "max": [
+          0.010968774557113647,
+          1.0019999742507935,
+          0.2520064041018486
+        ],
+        "min": [
+          -0.45096877217292786,
+          0.18000000715255737,
+          -0.14016639441251755
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c7d6351ad2d7d45a6ab76b3b0438da5c75b5f58181d52691649498929c08bdfd",
+      "id": "sf.render.works-cargo-port.mesh.lod1-pod.primitive.0",
+      "indexCount": 510,
+      "indexed": true,
+      "materialHash": "63bcd597d5523fcbfd6a2c34234e668775ce6e8d15d70ec43cbdbf497e566482",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_pod",
+      "nodeId": "sf.render.works-cargo-port.mesh.lod1-pod",
+      "primitiveIndex": 0,
+      "vertexCount": 310
+    }
+  ],
+  "hlods": [],
+  "kind": "part",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "63bcd597d5523fcbfd6a2c34234e668775ce6e8d15d70ec43cbdbf497e566482",
+      "id": "material:63bcd597d5523fcbfd6a2c34",
+      "name": "Material_Atlas",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "cargo_port_atlas_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "srgb",
+          "name": "cargo_port_atlas_basecolor",
+          "slot": "emissive",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "cargo_port_atlas_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "cargo_port_atlas_normal",
+          "slot": "normal",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.works-cargo-port.mesh.lod0-cargo-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_cargo_port",
+      "nodeName": "LOD0_cargo_port",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.works-cargo-port.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-cargo-port.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-cargo-port.mesh.lod0-cradle",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_cradle",
+      "nodeName": "LOD0_cradle",
+      "nodePath": [
+        0,
+        0,
+        0
+      ],
+      "parentId": "sf.render.works-cargo-port.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-cargo-port.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.2800000011920929,
+        0.41999998688697815,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-cargo-port.mesh.lod0-crate-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_crate_0",
+      "nodeName": "LOD0_crate_0",
+      "nodePath": [
+        0,
+        1,
+        0
+      ],
+      "parentId": "sf.render.works-cargo-port.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-cargo-port.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.7799999713897705,
+        0.09000000357627869,
+        0.699999988079071,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-cargo-port.mesh.lod0-crate-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_crate_1",
+      "nodeName": "LOD0_crate_1",
+      "nodePath": [
+        0,
+        2,
+        0
+      ],
+      "parentId": "sf.render.works-cargo-port.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-cargo-port.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.800000011920929,
+        0.09000000357627869,
+        0.3799999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-cargo-port.mesh.lod0-crate-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_crate_2",
+      "nodeName": "LOD0_crate_2",
+      "nodePath": [
+        0,
+        3,
+        0
+      ],
+      "parentId": "sf.render.works-cargo-port.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-cargo-port.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.9800000190734863,
+        0.09000000357627869,
+        0.03999999910593033,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-cargo-port.mesh.lod0-crate-3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_crate_3",
+      "nodeName": "LOD0_crate_3",
+      "nodePath": [
+        0,
+        4,
+        0
+      ],
+      "parentId": "sf.render.works-cargo-port.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-cargo-port.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.6600000262260437,
+        0.09000000357627869,
+        -0.5199999809265137,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-cargo-port.mesh.lod0-crate-4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_crate_4",
+      "nodeName": "LOD0_crate_4",
+      "nodePath": [
+        0,
+        5,
+        0
+      ],
+      "parentId": "sf.render.works-cargo-port.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-cargo-port.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.9399999976158142,
+        0.09000000357627869,
+        -0.5199999809265137,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-cargo-port.mesh.lod0-pod",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_pod",
+      "nodeName": "LOD0_pod",
+      "nodePath": [
+        0,
+        8,
+        0
+      ],
+      "parentId": "sf.render.works-cargo-port.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-cargo-port.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.2199999988079071,
+        0.18000000715255737,
+        0.03999999910593033,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-cargo-port.mesh.lod0-pod-thruster",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_pod_thruster",
+      "nodeName": "LOD0_pod_thruster",
+      "nodePath": [
+        0,
+        8,
+        2,
+        0
+      ],
+      "parentId": "sf.render.works-cargo-port.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-cargo-port.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.4399999976158142,
+        0.3500000238418579,
+        0.07999999821186066,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-cargo-port.mesh.lod1-cargo-port",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_cargo_port",
+      "nodeName": "LOD1_cargo_port",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.works-cargo-port.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-cargo-port.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-cargo-port.mesh.lod1-cradle",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_cradle",
+      "nodeName": "LOD1_cradle",
+      "nodePath": [
+        0,
+        0,
+        1
+      ],
+      "parentId": "sf.render.works-cargo-port.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-cargo-port.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.2800000011920929,
+        0.41999998688697815,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-cargo-port.mesh.lod1-crate-0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_crate_0",
+      "nodeName": "LOD1_crate_0",
+      "nodePath": [
+        0,
+        1,
+        1
+      ],
+      "parentId": "sf.render.works-cargo-port.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-cargo-port.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.7799999713897705,
+        0.09000000357627869,
+        0.699999988079071,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-cargo-port.mesh.lod1-crate-1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_crate_1",
+      "nodeName": "LOD1_crate_1",
+      "nodePath": [
+        0,
+        2,
+        1
+      ],
+      "parentId": "sf.render.works-cargo-port.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-cargo-port.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.800000011920929,
+        0.09000000357627869,
+        0.3799999952316284,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-cargo-port.mesh.lod1-crate-2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_crate_2",
+      "nodeName": "LOD1_crate_2",
+      "nodePath": [
+        0,
+        3,
+        1
+      ],
+      "parentId": "sf.render.works-cargo-port.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-cargo-port.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.9800000190734863,
+        0.09000000357627869,
+        0.03999999910593033,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-cargo-port.mesh.lod1-crate-3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_crate_3",
+      "nodeName": "LOD1_crate_3",
+      "nodePath": [
+        0,
+        4,
+        1
+      ],
+      "parentId": "sf.render.works-cargo-port.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-cargo-port.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.6600000262260437,
+        0.09000000357627869,
+        -0.5199999809265137,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-cargo-port.mesh.lod1-crate-4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_crate_4",
+      "nodeName": "LOD1_crate_4",
+      "nodePath": [
+        0,
+        5,
+        1
+      ],
+      "parentId": "sf.render.works-cargo-port.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-cargo-port.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.9399999976158142,
+        0.09000000357627869,
+        -0.5199999809265137,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-cargo-port.mesh.lod1-pod",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_pod",
+      "nodeName": "LOD1_pod",
+      "nodePath": [
+        0,
+        8,
+        1
+      ],
+      "parentId": "sf.render.works-cargo-port.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-cargo-port.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.2199999988079071,
+        0.18000000715255737,
+        0.03999999910593033,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-cargo-port.mesh.lod1-pod-thruster",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_pod_thruster",
+      "nodeName": "LOD1_pod_thruster",
+      "nodePath": [
+        0,
+        8,
+        2,
+        1
+      ],
+      "parentId": "sf.render.works-cargo-port.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-cargo-port.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.4399999976158142,
+        0.3500000238418579,
+        0.07999999821186066,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.works-cargo-port.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "SF_WORKS_CARGO_PORT_V1",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.works-cargo-port.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "97d61aa765b9c560cad8786c4652503243fae9c4dddfce5b1aa22a1fe2e4bf41"
+    },
+    "sourceGlb": {
+      "bytes": 850076,
+      "sha256": "4e1be6a90ccdede4eb87840dda798ca71005baf9b258001e226204175f2d56b6",
+      "uri": "place_works_cargo_port.glb"
+    },
+    "sourceManifest": {
+      "bytes": 87346,
+      "sha256": "77b7878ae8e18fa44d27caba1bf33c34552645c55d8e9623e6d46864959cd6ca",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 1264524,
+    "sha256": "26f2f1decf5a8b40d1b506739b434713fc6607cc8b8034828937b31167385a12",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0.06285499036312103,
+        0.5010201552322542,
+        0.09000000357627869
+      ],
+      "max": [
+        1.13359996676445,
+        1.0019999742507935,
+        0.879970133304596
+      ],
+      "min": [
+        -1.007889986038208,
+        0.00004033621371490881,
+        -0.6999701261520386
+      ],
+      "size": [
+        2.141489952802658,
+        1.0019596380370785,
+        1.5799402594566345
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "SF_WORKS_CARGO_PORT_V1",
+        "planIndex": 1,
+        "tags": {
+          "socket": true,
+          "socketRole": "works_hook"
+        },
+        "userData": {
+          "name": "SF_WORKS_CARGO_PORT_V1",
+          "socket": true,
+          "spaceface": {
+            "role": "works_hook",
+            "socket": true
+          },
+          "spaceface.socket": true,
+          "spacefaceAsset": {
+            "assetId": "place_works_cargo_port",
+            "blenderBasis": "Z-up works scale",
+            "category": "works",
+            "contractVersion": 1,
+            "cycle": 4,
+            "deliverableRole": "production_multi_lod",
+            "exportBasis": "Y-up glTF",
+            "family": "asteroid_works",
+            "forward": "+Y",
+            "hooks": [
+              "crate_0",
+              "crate_1",
+              "crate_2",
+              "crate_3",
+              "crate_4",
+              "cradle",
+              "pod_root",
+              "pod_thruster"
+            ],
+            "launchAxis": "+Z",
+            "lods": [
+              "lod0",
+              "lod1",
+              "lod2"
+            ],
+            "normalConvention": "OpenGL",
+            "ormChannels": "R=AO,G=Roughness,B=Metallic",
+            "packet": "PQ-131.09",
+            "partId": "place_works_cargo_port",
+            "productionState": "design_candidate",
+            "role": "skip-loading cargo port, crate buffer, courier capsule",
+            "root": "SF_WORKS_CARGO_PORT_V1",
+            "slot": "place",
+            "sockets": [
+              "crate_0",
+              "crate_1",
+              "crate_2",
+              "crate_3",
+              "crate_4",
+              "cradle",
+              "pod_root",
+              "pod_thruster"
+            ],
+            "textureCompression": "KTX2/BasisU+mips",
+            "textureProfiles": "ETC1S-color+ORM/UASTC-normal",
+            "textureSize": 1024,
+            "unit": "metre",
+            "up": "+Z",
+            "wiringStatus": "promoted_live_place"
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SF_WORKS_CARGO_PORT_V1",
+            "recordIds": [
+              "sf.render.works-cargo-port.root"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          },
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.2800000011920929,
+          0.41999998688697815,
+          0,
+          1
+        ],
+        "name": "cradle",
+        "planIndex": 2,
+        "tags": {
+          "socket": true,
+          "socketRole": "works_hook"
+        },
+        "userData": {
+          "name": "cradle",
+          "socket": true,
+          "spaceface": {
+            "role": "works_hook",
+            "socket": true
+          },
+          "spaceface.socket": true,
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.7799999713897705,
+          0.09000000357627869,
+          0.699999988079071,
+          1
+        ],
+        "name": "crate_0",
+        "planIndex": 5,
+        "tags": {
+          "socket": true,
+          "socketRole": "works_hook"
+        },
+        "userData": {
+          "name": "crate_0",
+          "socket": true,
+          "spaceface": {
+            "role": "works_hook",
+            "socket": true
+          },
+          "spaceface.socket": true,
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.800000011920929,
+          0.09000000357627869,
+          0.3799999952316284,
+          1
+        ],
+        "name": "crate_1",
+        "planIndex": 8,
+        "tags": {
+          "socket": true,
+          "socketRole": "works_hook"
+        },
+        "userData": {
+          "name": "crate_1",
+          "socket": true,
+          "spaceface": {
+            "role": "works_hook",
+            "socket": true
+          },
+          "spaceface.socket": true,
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.9800000190734863,
+          0.09000000357627869,
+          0.03999999910593033,
+          1
+        ],
+        "name": "crate_2",
+        "planIndex": 11,
+        "tags": {
+          "socket": true,
+          "socketRole": "works_hook"
+        },
+        "userData": {
+          "name": "crate_2",
+          "socket": true,
+          "spaceface": {
+            "role": "works_hook",
+            "socket": true
+          },
+          "spaceface.socket": true,
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.6600000262260437,
+          0.09000000357627869,
+          -0.5199999809265137,
+          1
+        ],
+        "name": "crate_3",
+        "planIndex": 14,
+        "tags": {
+          "socket": true,
+          "socketRole": "works_hook"
+        },
+        "userData": {
+          "name": "crate_3",
+          "socket": true,
+          "spaceface": {
+            "role": "works_hook",
+            "socket": true
+          },
+          "spaceface.socket": true,
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.9399999976158142,
+          0.09000000357627869,
+          -0.5199999809265137,
+          1
+        ],
+        "name": "crate_4",
+        "planIndex": 17,
+        "tags": {
+          "socket": true,
+          "socketRole": "works_hook"
+        },
+        "userData": {
+          "name": "crate_4",
+          "socket": true,
+          "spaceface": {
+            "role": "works_hook",
+            "socket": true
+          },
+          "spaceface.socket": true,
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.2199999988079071,
+          0.18000000715255737,
+          0.03999999910593033,
+          1
+        ],
+        "name": "pod_root",
+        "planIndex": 22,
+        "tags": {
+          "socket": true,
+          "socketRole": "works_hook"
+        },
+        "userData": {
+          "name": "pod_root",
+          "socket": true,
+          "spaceface": {
+            "role": "works_hook",
+            "socket": true
+          },
+          "spaceface.socket": true,
+          "spacefaceSocket": true
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.4399999976158142,
+          0.3500000238418579,
+          0.07999999821186066,
+          1
+        ],
+        "name": "pod_thruster",
+        "planIndex": 25,
+        "tags": {
+          "socket": true,
+          "socketRole": "works_hook"
+        },
+        "userData": {
+          "name": "pod_thruster",
+          "socket": true,
+          "spaceface": {
+            "role": "works_hook",
+            "socket": true
+          },
+          "spaceface.socket": true,
+          "spacefaceSocket": true
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "hull": 18
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 24,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 26,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 27,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 28,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.2800000011920929,
+          0.41999998688697815,
+          0,
+          1
+        ],
+        "name": "LOD0_cradle",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.2800000011920929,
+          0.41999998688697815,
+          0,
+          1
+        ],
+        "name": "LOD1_cradle",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.7799999713897705,
+          0.09000000357627869,
+          0.699999988079071,
+          1
+        ],
+        "name": "LOD0_crate_0",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.7799999713897705,
+          0.09000000357627869,
+          0.699999988079071,
+          1
+        ],
+        "name": "LOD1_crate_0",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.800000011920929,
+          0.09000000357627869,
+          0.3799999952316284,
+          1
+        ],
+        "name": "LOD0_crate_1",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.800000011920929,
+          0.09000000357627869,
+          0.3799999952316284,
+          1
+        ],
+        "name": "LOD1_crate_1",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.9800000190734863,
+          0.09000000357627869,
+          0.03999999910593033,
+          1
+        ],
+        "name": "LOD0_crate_2",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.9800000190734863,
+          0.09000000357627869,
+          0.03999999910593033,
+          1
+        ],
+        "name": "LOD1_crate_2",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.6600000262260437,
+          0.09000000357627869,
+          -0.5199999809265137,
+          1
+        ],
+        "name": "LOD0_crate_3",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.6600000262260437,
+          0.09000000357627869,
+          -0.5199999809265137,
+          1
+        ],
+        "name": "LOD1_crate_3",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.9399999976158142,
+          0.09000000357627869,
+          -0.5199999809265137,
+          1
+        ],
+        "name": "LOD0_crate_4",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.9399999976158142,
+          0.09000000357627869,
+          -0.5199999809265137,
+          1
+        ],
+        "name": "LOD1_crate_4",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_cargo_port",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_cargo_port",
+        "planIndex": 21,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.2199999988079071,
+          0.18000000715255737,
+          0.03999999910593033,
+          1
+        ],
+        "name": "LOD0_pod",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.2199999988079071,
+          0.18000000715255737,
+          0.03999999910593033,
+          1
+        ],
+        "name": "LOD1_pod",
+        "planIndex": 24,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.4399999976158142,
+          0.3500000238418579,
+          0.07999999821186066,
+          1
+        ],
+        "name": "LOD0_pod_thruster",
+        "planIndex": 26,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.4399999976158142,
+          0.3500000238418579,
+          0.07999999821186066,
+          1
+        ],
+        "name": "LOD1_pod_thruster",
+        "planIndex": 27,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/works/place_works_cargo_port.glb"
+  },
+  "runtimeHash": "974a9a549a72277880b6e64a5fa33d782145d3d2d01553fc19e321dbcaea5054",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          1.13359996676445,
+          1.0019999742507935,
+          0.879970133304596
+        ],
+        "min": [
+          -1.007889986038208,
+          0.00004033621371490881,
+          -0.6999701261520386
+        ]
+      },
+      "id": "sf.render.works-cargo-port.body",
+      "nodeIds": [
+        "sf.render.works-cargo-port.mesh.lod0-cargo-port",
+        "sf.render.works-cargo-port.mesh.lod0-cradle",
+        "sf.render.works-cargo-port.mesh.lod0-crate-0",
+        "sf.render.works-cargo-port.mesh.lod0-crate-1",
+        "sf.render.works-cargo-port.mesh.lod0-crate-2",
+        "sf.render.works-cargo-port.mesh.lod0-crate-3",
+        "sf.render.works-cargo-port.mesh.lod0-crate-4",
+        "sf.render.works-cargo-port.mesh.lod0-pod",
+        "sf.render.works-cargo-port.mesh.lod0-pod-thruster",
+        "sf.render.works-cargo-port.mesh.lod1-cargo-port",
+        "sf.render.works-cargo-port.mesh.lod1-cradle",
+        "sf.render.works-cargo-port.mesh.lod1-crate-0",
+        "sf.render.works-cargo-port.mesh.lod1-crate-1",
+        "sf.render.works-cargo-port.mesh.lod1-crate-2",
+        "sf.render.works-cargo-port.mesh.lod1-crate-3",
+        "sf.render.works-cargo-port.mesh.lod1-crate-4",
+        "sf.render.works-cargo-port.mesh.lod1-pod",
+        "sf.render.works-cargo-port.mesh.lod1-pod-thruster",
+        "sf.render.works-cargo-port.root"
+      ]
+    }
+  ]
+}
