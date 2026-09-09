@@ -73,6 +73,7 @@ import {
   tableVfxDrawWuFromState,
 } from './tabletopPolicy.js';
 import { applyFlashAccessibility, resolveVfxAccessibilityProfile } from './vfxAccessibility.js';
+import { addShieldContact } from './weapons/shieldContacts.js';
 import {
   createStationSideEventVfxFrameScratch,
   resolveStationSideEventVfxProfile,
@@ -857,6 +858,47 @@ export function scaleDeathExplosionRadius(radius, tier) {
   const base = finiteDeathNumber(radius);
   const raw = Number.isFinite(base) && base > 0 ? base : DEATH_DEFAULT_RADIUS;
   return Math.max(DEATH_RADIUS_FLOOR, raw * scale);
+}
+
+// Mining beam shader structure. The flat additive quad becomes an energy conduit with a real
+// cross-section (hot centerline running out to soft edges, M2), packets of work travelling
+// along the beam (E3), and a bright work-face where the beam meets rock. uSfFlow carries the
+// verb's fiction: extraction pulls matter target -> ship (-1), cut/repair/transfer push energy
+// ship -> target (+1), so the player can read which way value is moving.
+function _applyMiningBeamStructure(material, shared, role) {
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.uSfBeamTime = shared.time;
+    shader.uniforms.uSfBeamFlow = shared.flow;
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec2 vSfBeam;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSfBeam = uv;');
+    if (role === 'core') {
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', '#include <common>\nvarying vec2 vSfBeam;\nuniform float uSfBeamTime;\nuniform float uSfBeamFlow;')
+        .replace('#include <color_fragment>', `#include <color_fragment>
+{
+  float sfAcross = abs(vSfBeam.y * 2.0 - 1.0);
+  float sfFilament = pow(1.0 - sfAcross, 1.7);
+  float sfU = uSfBeamFlow > 0.0 ? vSfBeam.x : 1.0 - vSfBeam.x;
+  float sfPackets = 0.5 + 0.5 * sin(sfU * 19.0 - uSfBeamTime * 30.0);
+  float sfWorkFace = smoothstep(0.82, 1.0, vSfBeam.x);
+  float sfMuzzle = smoothstep(0.1, 0.0, vSfBeam.x);
+  diffuseColor.rgb *= sfFilament * (0.7 + 0.55 * sfPackets) + 0.5 * sfWorkFace + 0.25 * sfMuzzle;
+}`);
+    } else {
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', '#include <common>\nvarying vec2 vSfBeam;\nuniform float uSfBeamTime;\nuniform float uSfBeamFlow;')
+        .replace('#include <color_fragment>', `#include <color_fragment>
+{
+  float sfAcross = abs(vSfBeam.y * 2.0 - 1.0);
+  float sfSheath = pow(1.0 - sfAcross, 2.9);
+  float sfU = uSfBeamFlow > 0.0 ? vSfBeam.x : 1.0 - vSfBeam.x;
+  float sfWave = 0.5 + 0.5 * sin(sfU * 7.0 - uSfBeamTime * 11.0);
+  diffuseColor.rgb *= sfSheath * (0.45 + 0.55 * sfWave);
+}`);
+    }
+  };
+  material.customProgramCacheKey = () => `sf-mining-beam-${role}`;
 }
 
 export const vfx = {
@@ -3584,10 +3626,17 @@ export const vfx = {
       const col = this._shieldColor(fid);
       const r = (tgt && tgt.radius) || 8;
       const cx = tgt ? tgt.pos.x : pos.x, cz = tgt ? tgt.pos.z : pos.z;
+      if (tgt) {
+        addShieldContact(tgt.id, nx, 0.12, nz, p.brokeShield ? 1.4 : 1.0);
+      }
 
       if (p.brokeShield) {
         // Shield break: five fixed tangent tears crawl around the shell. No screen-facing annulus.
         this._flashLight({ x: cx, z: cz }, '#39d0ff', 7.2, 9, 240);
+        if (this._weaponPresenter && this._weaponPresenter.quarks) {
+          const local = this._toLocalXZ(cx, cz, this._spawnLocalXZ);
+          this._weaponPresenter.quarks.spawnShieldBreak(local.x, 0.35, local.z, 24);
+        }
         this._c0.set(col); this._c1.set('#102040');
         const bn = Math.max(8, Math.round(14 * (this._burst || 1)));
         for (let k = 0; k < bn; k++) {
@@ -3637,6 +3686,10 @@ export const vfx = {
         Math.max(3, Math.round(5 * (this._burst || 1))), 0.48, 0.78,
         '#ffb36a', '#3a1710', 1.2);
       this._flashLight({ x: pos.x, z: pos.z }, '#ff7040', 2.2, 11, 90);
+      if (this._weaponPresenter && this._weaponPresenter.quarks && tgt && tgt.hp != null && tgt.maxHp != null && tgt.hp / tgt.maxHp < 0.35) {
+        const local = this._toLocalXZ(pos.x, pos.z, this._spawnLocalXZ);
+        this._weaponPresenter.quarks.spawnDamageVenting(local.x, 0.35, local.z, nx, 0.2, nz, 6);
+      }
     }
     // player hits get a camera kick — STRONGER, proportional to damage
     if (p.isPlayer && (p.amount || 0) > 0) this.bus.emit('camera:shake', { amount: Math.min(0.5, 0.08 + (p.amount || 0) * 0.015) });
@@ -3753,28 +3806,41 @@ export const vfx = {
     const target = this._ent(p.targetId);
     const radius = Math.max(4, target && target.radius || 8);
     if (id === 'mining.fracture.anticipation') {
-      this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.5, radius * 0.45, radius * 1.12, 0.62, 0, '#ffb35c', 0, 0);
-      this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.78, radius * 0.3, radius * 0.86, 0.38, 0, '#d7e6ff', 0, 0);
+      // The rock straining before it lets go: a hot stress line across the face, then a colder
+      // hairline crack racing the same seam. Two narrow sheets, not two rings.
+      const seam = Math.random() * Math.PI * 2;
+      this._spawnSprite(SPR_COMBUSTION, pos.x, 0, pos.z, 0.5, radius * 0.45, radius * 1.12, 0.62, 0, '#ffb35c', 0, 0, 0.3, seam);
+      this._spawnSprite(SPR_COMBUSTION, pos.x, 0, pos.z, 0.78, radius * 0.3, radius * 0.86, 0.38, 0, '#d7e6ff', 0, 0, 0.22, seam + 0.35);
       return;
     }
     if (id === 'mining.fracture.released') {
-      this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.42, radius * 0.7, radius * 2.6, 0.72, 0, '#ffb35c', 0, 0);
+      // The break itself: a violent hot slab shearing off the face, then the cold dust cloud it
+      // throws up. The slab is directional; the dust is not.
+      const shear = Math.random() * Math.PI * 2;
+      this._spawnSprite(SPR_COMBUSTION, pos.x, 0, pos.z, 0.42, radius * 0.7, radius * 2.6, 0.72, 0, '#ffb35c', 0, 0, 0.38, shear);
       this._spawnSprite(SPR_PUFF, pos.x, 0, pos.z, 0.85, radius * 0.65, radius * 2.1, 0.34, 0, '#d7e6ff', 0, 0);
       return;
     }
     if (id === 'mining.rich_core.exposed') {
-      this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.7, radius * 0.3, radius * 1.5, 0.82, 0, '#8d66ff', 0, 0);
-      this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 1.0, radius * 0.18, radius * 1.05, 0.58, 0, '#d7e6ff', 0, 0);
+      // The vein showing through: a bright seam of ore light, then a colder halo bleeding out of
+      // it. The seam is a narrow sheet along the fracture, not a ring.
+      const seam = Math.random() * Math.PI * 2;
+      this._spawnSprite(SPR_COMBUSTION, pos.x, 0, pos.z, 0.7, radius * 0.3, radius * 1.5, 0.82, 0, '#8d66ff', 0, 0, 0.28, seam);
+      this._spawnSprite(SPR_COMBUSTION, pos.x, 0, pos.z, 1.0, radius * 0.18, radius * 1.05, 0.58, 0, '#d7e6ff', 0, 0, 0.2, seam + 0.5);
       this._flashLight({ x: pos.x, z: pos.z }, '#8d66ff', 2.8, 8, 150);
       return;
     }
     if (id === 'mining.rich_core.charge') {
-      this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.75, radius * 0.78, radius * 0.34, 0.62, 0, '#d7e6ff', 0, 0);
+      // The core sucking light in before it blows: a cold sheet collapsing into the seam.
+      const seam = Math.random() * Math.PI * 2;
+      this._spawnSprite(SPR_COMBUSTION, pos.x, 0, pos.z, 0.75, radius * 0.78, radius * 0.34, 0.62, 0, '#d7e6ff', 0, 0, 0.3, seam);
       return;
     }
     if (id === 'mining.rich_core.completed') {
-      this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.58, radius * 0.25, radius * 2.2, 0.9, 0, '#8d66ff', 0, 0);
-      this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.82, radius * 0.18, radius * 1.55, 0.7, 0, '#d7e6ff', 0, 0);
+      // The payout: two hot slabs of ore light shearing out of the core, then the shard burst.
+      const seam = Math.random() * Math.PI * 2;
+      this._spawnSprite(SPR_COMBUSTION, pos.x, 0, pos.z, 0.58, radius * 0.25, radius * 2.2, 0.9, 0, '#8d66ff', 0, 0, 0.32, seam);
+      this._spawnSprite(SPR_COMBUSTION, pos.x, 0, pos.z, 0.82, radius * 0.18, radius * 1.55, 0.7, 0, '#d7e6ff', 0, 0, 0.24, seam + 0.6);
       this._c0.set('#d7e6ff'); this._c1.set('#8d66ff');
       const count = Math.max(6, Math.min(12, Math.round(8 * (this._burst || 1))));
       for (let k = 0; k < count; k++) {
@@ -3787,11 +3853,15 @@ export const vfx = {
       return;
     }
     if (id === 'mining.rich_core.fizzle') {
-      this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.55, radius * 1.1, radius * 0.2, 0.54, 0, '#ff5c5c', 0, 0);
+      // The core dying: a red sheet collapsing into nothing, not a ring shrinking.
+      const seam = Math.random() * Math.PI * 2;
+      this._spawnSprite(SPR_COMBUSTION, pos.x, 0, pos.z, 0.55, radius * 1.1, radius * 0.2, 0.54, 0, '#ff5c5c', 0, 0, 0.35, seam);
       return;
     }
     if (id === 'mining.chunk.tether_required') {
-      this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.82, radius * 0.9, radius * 1.35, 0.58, 0, '#ffb35c', 0, 0);
+      // The chunk hanging there, too big to pull free: a hot sheet straining against the rock.
+      const seam = Math.random() * Math.PI * 2;
+      this._spawnSprite(SPR_COMBUSTION, pos.x, 0, pos.z, 0.82, radius * 0.9, radius * 1.35, 0.58, 0, '#ffb35c', 0, 0, 0.4, seam);
     }
   },
 
@@ -3813,51 +3883,61 @@ export const vfx = {
     const palette = this._travelPalette(p.tags);
     const critical = id === 'travel.interdiction.triggered' || id === 'travel.jump.failed';
     if (reduced && !critical) {
-      this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.48, 4, 11, 0.24, 0, palette.primary, dx * 2, dz * 2);
+      this._spawnSprite(SPR_COMBUSTION, pos.x, 0, pos.z, 0.48, 4, 11, 0.24, 0, palette.primary, dx * 2, dz * 2, 0.5, Math.atan2(dz, dx));
       return;
     }
 
     if (id === 'travel.gate.approach') {
+      // Gate approach is a lane of guide chevrons, not a stack of rings: the gate's machinery is
+      // already there, so the cue points the way down the throat instead of radiating.
       for (let i = 0; i < 3; i++) {
         const offset = 10 + i * 9;
-        this._spawnSprite(SPR_RING, pos.x - dx * offset, 0, pos.z - dz * offset,
-          0.58 + i * 0.12, 4 + i, 9 + i * 2, 0.5 - i * 0.1, 0, i === 0 ? '#39d0ff' : '#d7e6ff', dx * 5, dz * 5);
+        this._spawnSprite(SPR_COMBUSTION, pos.x - dx * offset, 0, pos.z - dz * offset,
+          0.58 + i * 0.12, 4 + i, 9 + i * 2, 0.5 - i * 0.1, 0, i === 0 ? '#39d0ff' : '#d7e6ff',
+          dx * 5, dz * 5, 0.42, Math.atan2(dz, dx));
       }
       return;
     }
     if (id === 'travel.corridor.continuity') {
+      // Corridor continuity is the current flowing along the lane: three elongated streaks
+      // drifting down-heading, so the player reads "keep going this way", not "something pulsed".
       for (let i = -1; i <= 1; i++) {
         const along = i * 10;
-        this._spawnSprite(SPR_RING, pos.x + dx * along, 0, pos.z + dz * along,
-          0.55 + (i + 1) * 0.08, 3.5, 7.5, 0.2 + (i + 1) * 0.08, 0, palette.primary, dx * 5, dz * 5);
+        this._spawnSprite(SPR_COMBUSTION, pos.x + dx * along, 0, pos.z + dz * along,
+          0.55 + (i + 1) * 0.08, 3.5, 7.5, 0.2 + (i + 1) * 0.08, 0, palette.primary,
+          dx * 5, dz * 5, 0.3, Math.atan2(dz, dx));
       }
       return;
     }
     if (id === 'travel.jump.aligning') {
-      this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.72, 16, 6, 0.55, 0, '#39d0ff', 0, 0);
-      this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.92, 24, 9, 0.3, 0, '#d7e6ff', 0, 0);
+      // Alignment is a collapse, not an expansion: the world squeezes into the jump point, so the
+      // sheets converge inward and tighten their aspect as the drive locks on.
+      this._spawnSprite(SPR_COMBUSTION, pos.x, 0, pos.z, 0.72, 16, 6, 0.55, 0, '#39d0ff', 0, 0, 0.5, Math.atan2(dz, dx));
+      this._spawnSprite(SPR_COMBUSTION, pos.x, 0, pos.z, 0.92, 24, 9, 0.3, 0, '#d7e6ff', 0, 0, 0.38, Math.atan2(dz, dx) + Math.PI / 2);
       return;
     }
     if (id === 'travel.jump.commit_window') {
-      this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.48, 13, 5, 0.68, 0, '#ffb35c', dx * 4, dz * 4);
+      // The commit window is a hot blade ahead of the bow — the one moment the player can still
+      // abort, so it reads as a narrow door, not another ring.
+      this._spawnSprite(SPR_COMBUSTION, pos.x, 0, pos.z, 0.48, 13, 5, 0.68, 0, '#ffb35c', dx * 4, dz * 4, 0.36, Math.atan2(dz, dx));
       return;
     }
     if (id === 'travel.jump.committed') {
       this._spawnTravelVectorWake(pos, dx, dz, 24, '#d7e6ff', '#39d0ff', 78, 1.15);
-      this._spawnSprite(SPR_RING, pos.x + dx * 5, 0, pos.z + dz * 5, 1.18, 4, 24, 0.58, 0, '#39d0ff', dx * 18, dz * 18);
+      this._spawnSprite(SPR_COMBUSTION, pos.x + dx * 5, 0, pos.z + dz * 5, 1.18, 4, 24, 0.58, 0, '#39d0ff', dx * 18, dz * 18, 0.3, Math.atan2(dz, dx));
       return;
     }
     if (id === 'travel.transition.continuity') {
-      this._spawnSprite(SPR_RING, pos.x - dx * 8, 0, pos.z - dz * 8, 1.18, 14, 3, 0.38, 0, '#d7e6ff', dx * 22, dz * 22);
+      this._spawnSprite(SPR_COMBUSTION, pos.x - dx * 8, 0, pos.z - dz * 8, 1.18, 14, 3, 0.38, 0, '#d7e6ff', dx * 22, dz * 22, 0.34, Math.atan2(dz, dx));
       return;
     }
     if (id === 'travel.arrival.oriented') {
       this._spawnTravelVectorWake(pos, dx, dz, reduced ? 5 : 12, palette.secondary, palette.primary, 38, 0.62);
-      this._spawnSprite(SPR_RING, pos.x + dx * 8, 0, pos.z + dz * 8, 0.68, 4, 16, 0.52, 0, palette.primary, dx * 6, dz * 6);
+      this._spawnSprite(SPR_COMBUSTION, pos.x + dx * 8, 0, pos.z + dz * 8, 0.68, 4, 16, 0.52, 0, palette.primary, dx * 6, dz * 6, 0.4, Math.atan2(dz, dx));
       return;
     }
     if (id === 'travel.arrival.sector_identity') {
-      this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.9, 7, 24, 0.38, 0, palette.primary, 0, 0);
+      this._spawnSprite(SPR_COMBUSTION, pos.x, 0, pos.z, 0.9, 7, 24, 0.38, 0, palette.primary, 0, 0, 0.55, Math.atan2(dz, dx));
       return;
     }
     if (id === 'travel.discovery.mapped') {
@@ -3866,18 +3946,21 @@ export const vfx = {
       return;
     }
     if (id === 'travel.interdiction.triggered') {
-      this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.6, 26, 8, reduced ? 0.44 : 0.72, 0, '#ff5c5c', 0, 0);
-      this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.82, 34, 12, reduced ? 0.26 : 0.42, 0, '#ffb35c', 0, 0);
+      // Interdiction is a wall, not a wave: the danger slams shut across the heading, so the
+      // compression sheets collapse inward instead of blooming outward.
+      this._spawnSprite(SPR_COMBUSTION, pos.x, 0, pos.z, 0.6, 26, 8, reduced ? 0.44 : 0.72, 0, '#ff5c5c', 0, 0, 0.5, Math.atan2(dz, dx) + Math.PI / 2);
+      this._spawnSprite(SPR_COMBUSTION, pos.x, 0, pos.z, 0.82, 34, 12, reduced ? 0.26 : 0.42, 0, '#ffb35c', 0, 0, 0.42, Math.atan2(dz, dx) + Math.PI / 2);
       this._spawnTravelVectorWake(pos, -dx, -dz, reduced ? 4 : 10, '#ffb35c', '#ff5c5c', 34, 0.54);
       return;
     }
     if (id === 'travel.jump.failed') {
-      this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.58, 14, 4, reduced ? 0.4 : 0.62, 0, '#ff5c5c', 0, 0);
-      this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.8, 20, 7, reduced ? 0.2 : 0.3, 0, '#ffb35c', 0, 0);
+      // A failed jump is the drive tearing, not a shockwave: two ragged sheets flare and die.
+      this._spawnSprite(SPR_COMBUSTION, pos.x, 0, pos.z, 0.58, 14, 4, reduced ? 0.4 : 0.62, 0, '#ff5c5c', 0, 0, 0.55, Math.atan2(dz, dx));
+      this._spawnSprite(SPR_COMBUSTION, pos.x, 0, pos.z, 0.8, 20, 7, reduced ? 0.2 : 0.3, 0, '#ffb35c', 0, 0, 0.45, Math.atan2(dz, dx) + Math.PI / 2);
       return;
     }
     if (id === 'travel.recovery.resumed') {
-      this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.72, 4, 17, 0.44, 0, '#39d0ff', dx * 3, dz * 3);
+      this._spawnSprite(SPR_COMBUSTION, pos.x, 0, pos.z, 0.72, 4, 17, 0.44, 0, '#39d0ff', dx * 3, dz * 3, 0.4, Math.atan2(dz, dx));
       return;
     }
     if (id === 'travel.aftermath.contested') {
@@ -3885,7 +3968,7 @@ export const vfx = {
       return;
     }
     if (id === 'travel.aftermath.clear') {
-      this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.82, 5, 20, 0.32, 0, palette.secondary, 0, 0);
+      this._spawnSprite(SPR_COMBUSTION, pos.x, 0, pos.z, 0.82, 5, 20, 0.32, 0, palette.secondary, 0, 0, 0.6, Math.atan2(dz, dx));
     }
   },
 
@@ -4235,6 +4318,10 @@ export const vfx = {
         '#786a5b', nx * side * 1.2, nz * side * 1.2, 2.2, base,
       );
     }
+    if (this._weaponPresenter && this._weaponPresenter.quarks) {
+      const local = this._toLocalXZ(p.pos.x, p.pos.z, this._spawnLocalXZ);
+      this._weaponPresenter.quarks.spawnCollisionSpall(local.x, 0.2, local.z, nx, 0.4, nz, reduced ? 6 : 12);
+    }
     return true;
   },
 
@@ -4366,6 +4453,13 @@ export const vfx = {
     req.dv = 0;
     req.terrain = 0;
     this._admitAndSpawnArcadeStructural('entity:killed', p || {});
+    if (this._weaponPresenter && this._weaponPresenter.quarks) {
+      const local = this._toLocalXZ(pos.x, pos.z, this._spawnLocalXZ);
+      this._weaponPresenter.quarks.spawnExplosion(
+        local.x, 0.4, local.z,
+        Math.min(48, Math.max(12, Math.round(radius * 2.5))),
+      );
+    }
     return !!entry;
   },
 
@@ -6675,7 +6769,11 @@ export const vfx = {
     glow.visible = false;
     this._scene.add(glow);
 
-    this._miningBeam = { mesh, glow, active: false, t: 0, color: '#60d0ff' };
+    const shaderShared = { time: { value: 0 }, flow: { value: 1 } };
+    _applyMiningBeamStructure(mat, shaderShared, 'core');
+    _applyMiningBeamStructure(mat2, shaderShared, 'sheath');
+
+    this._miningBeam = { mesh, glow, active: false, t: 0, color: '#60d0ff', shaderShared };
   },
 
   _onMiningStart(p) {
@@ -6716,6 +6814,11 @@ export const vfx = {
     const beam = this._miningBeam;
     if (!beam || !beam.active) return;
     beam.t += dt;
+    if (beam.shaderShared) {
+      beam.shaderShared.time.value = beam.t;
+      // extract draws refined matter into the hold; every other verb delivers energy to the rock.
+      beam.shaderShared.flow.value = (beam.verb === 'extract') ? -1 : 1;
+    }
 
     const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(this.state.playerId);
     if (!player || !player.alive) { this._onMiningStop(); return; }
@@ -8237,6 +8340,14 @@ export const vfx = {
     req.dv = dv;
     req.terrain = terrain ? 1 : 0;
     this._admitAndSpawnArcadeStructural('combat:collisionConsequence', p);
+    if (this._weaponPresenter && this._weaponPresenter.quarks) {
+      const local = this._toLocalXZ(pos.x, pos.z, this._spawnLocalXZ);
+      this._weaponPresenter.quarks.spawnCollisionSpall(
+        local.x, 0.2, local.z,
+        axisX, 0.4, axisZ,
+        reduced ? 8 : 16,
+      );
+    }
     return true;
   },
 
@@ -8689,9 +8800,19 @@ export const vfx = {
     if (!this._scene) return;
     const e = this._ent(p && p.entityId);
     if (!e || !e.pos) return;
+    // A ship breaking and running: a hot panic flash at the hull, then a ragged scatter of
+    // thruster sparks biased away from the player — the shape of flight, not a radial burst.
+    const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(this.state.playerId);
+    let fleeA = null;
+    if (player) {
+      const dx = e.pos.x - player.pos.x, dz = e.pos.z - player.pos.z;
+      if (dx * dx + dz * dz > 1) fleeA = Math.atan2(dz, dx);
+    }
     this._c0.set('#a6f0ff'); this._c1.set('#39d0ff');
     for (let k = 0; k < 8; k++) {
-      const a = Math.random() * Math.PI * 2;
+      const a = fleeA != null
+        ? fleeA + (Math.random() - 0.5) * 1.8
+        : Math.random() * Math.PI * 2;
       const v = 10 + Math.random() * 20;
       this._spawnParticle(e.pos.x, e.pos.z, Math.cos(a) * v, Math.sin(a) * v,
         0.3 + Math.random() * 0.2, 1.0, 0.0, this._c0, this._c1, 2.5, 0, 0);
@@ -8702,10 +8823,14 @@ export const vfx = {
   _onAiFormationBroken(p) {
     this._emitJuiceCue('ai.formation_broken', p, 1);
     if (!this._scene) return;
-    // No specific entity id; flash at the player's position as a tactical cue.
+    // No specific entity id; flash at the player's position as a tactical cue. A formation
+    // breaking is a lattice shattering: two ragged orange sheets tearing across the player's
+    // heading, not a clean ring.
     const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(this.state.playerId);
     if (!player || !player.pos) return;
-    this._spawnSprite(SPR_RING, player.pos.x, 0, player.pos.z, 0.60, 8.0, 24.0, 0.5, 0.0, '#ff8840', 0, 0);
+    const heading = Number.isFinite(player.rot) ? player.rot : 0;
+    this._spawnSprite(SPR_COMBUSTION, player.pos.x, 0, player.pos.z, 0.60, 8.0, 24.0, 0.5, 0.0, '#ff8840', 0, 0, 0.42, heading);
+    this._spawnSprite(SPR_COMBUSTION, player.pos.x, 0, player.pos.z, 0.78, 6.0, 18.0, 0.32, 0.0, '#ffb35c', 0, 0, 0.3, heading + Math.PI / 2);
   },
 
   _onMiningTick(p) {
@@ -8757,6 +8882,12 @@ export const vfx = {
       (Math.random() - 0.5) * 9, (Math.random() - 0.5) * 9);
     // Strong ore-tinted dynamic light at contact — brighter, wider
     this._flashLight({ x: pos.x, z: pos.z }, col, 4.6, 3.8, 155);
+    if (this._weaponPresenter && this._weaponPresenter.quarks) {
+      const local = this._toLocalXZ(pos.x, pos.z, this._spawnLocalXZ);
+      const nx = backA != null ? Math.cos(backA + Math.PI) : 0;
+      const nz = backA != null ? Math.sin(backA + Math.PI) : 1;
+      this._weaponPresenter.quarks.spawnMiningEjecta(local.x, 0.3, local.z, nx, 0.4, nz, 8);
+    }
   },
 
   _onMiningYield(p) {
@@ -8788,6 +8919,10 @@ export const vfx = {
     this._spawnSprite(SPR_RING, pos.x, 0, pos.z, 0.45, 2.4, 14.0, 0.55, 0.0, col, 0, 0);
     this._spawnSprite(SPR_PUFF, pos.x, 0, pos.z, 0.6, 3.0, 7.0, 0.45, 0.0, col, 0, 0);
     this._flashLight({ x: pos.x, z: pos.z }, col, 6.0, 4.5, 200);
+    if (this._weaponPresenter && this._weaponPresenter.quarks) {
+      const local = this._toLocalXZ(pos.x, pos.z, this._spawnLocalXZ);
+      this._weaponPresenter.quarks.spawnMiningEjecta(local.x, 0.3, local.z, 0, 1, 0, 16);
+    }
   },
 
   /**
@@ -9772,6 +9907,7 @@ export const vfx = {
       context.depthWidth = 0;
       context.depthHeight = 0;
       this._weaponPresenter.update(dt, context);
+      this._updateDamageVenting(dt);
     }
     const trailScroll = (this._t * 0.35) % 1;
     if (this._particleMat) {
@@ -9981,7 +10117,7 @@ export const vfx = {
     const tableWu = this._tableVfxDrawWu || tableVfxDrawWuFromState(state);
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
-      if (!e || !e.alive || e.type !== 'pickup' || !e.pos) continue;
+      if (!e || !e.alive || (e.type !== 'pickup' && e.type !== 'payload') || !e.pos) continue;
       const pdx = e.pos.x - player.pos.x, pdz = e.pos.z - player.pos.z;
       const focus = lootMagnetFocusDelta(state, player.pos, e.pos, _lootMagnetFocusScratch);
       if (!shouldDrawLootMagnetTrail(pdx, pdz, focus.x, focus.z, tableWu)) continue;
@@ -10001,7 +10137,7 @@ export const vfx = {
     let drawn = 0;
     for (let i = 0; i < list.length && drawn < LOOT_MAGNET_MAX_TRAILED; i++) {
       const e = list[i];
-      if (!e || !e.alive || e.type !== 'pickup' || !e.pos) continue;
+      if (!e || !e.alive || (e.type !== 'pickup' && e.type !== 'payload') || !e.pos) continue;
       const pdx = e.pos.x - player.pos.x, pdz = e.pos.z - player.pos.z;
       const focus = lootMagnetFocusDelta(state, player.pos, e.pos, _lootMagnetFocusScratch);
       if (!shouldDrawLootMagnetTrail(pdx, pdz, focus.x, focus.z, tableWu)) continue;
@@ -10011,7 +10147,9 @@ export const vfx = {
       drawn++;
 
       const data = e.data || {};
-      const col = (data.kind === 'credits' || data.kind === 'credit_chip') ? '#ffcc44' : oreColor(data.commodityId);
+      const col = e.type === 'payload'
+        ? '#4fbf8f'
+        : ((data.kind === 'credits' || data.kind === 'credit_chip') ? '#ffcc44' : oreColor(data.commodityId));
       // Closing hard reads hotter and longer: the trail is a speed gauge you never have to read.
       const rush = Math.min(1, speed / 260);
       const roll = Math.atan2(vz, vx);
@@ -10041,6 +10179,52 @@ export const vfx = {
     }
     this._lootMagnetLive = drawn;
     return drawn > 0 ? 1 : 0;
+  },
+
+  _updateDamageVenting(dt) {
+    if (!this._weaponPresenter || !this._weaponPresenter.quarks) return;
+    this._damageVentingTimer = (this._damageVentingTimer || 0) + dt;
+    if (this._damageVentingTimer < 0.14) return;
+    this._damageVentingTimer = 0;
+
+    const state = this.state;
+    if (!state) return;
+    const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(state.playerId);
+    if (player && player.alive && player.pos && player.hp != null && player.maxHp != null) {
+      if (player.hp / player.maxHp <= 0.35) {
+        const local = this._toLocalXZ(player.pos.x, player.pos.z, this._spawnLocalXZ);
+        const rot = player.rot || 0;
+        const rearX = -Math.cos(rot);
+        const rearZ = -Math.sin(rot);
+        this._weaponPresenter.quarks.spawnDamageVenting(
+          local.x + rearX * ((player.radius || 6) * 0.5),
+          0.3,
+          local.z + rearZ * ((player.radius || 6) * 0.5),
+          rearX, 0.2, rearZ,
+          3,
+        );
+      }
+    }
+
+    const targetId = state.player && state.player.targetId;
+    if (targetId != null) {
+      const target = this._ent(targetId);
+      if (target && target.alive && target.pos && target.hp != null && target.maxHp != null) {
+        if (target.hp / target.maxHp <= 0.35) {
+          const local = this._toLocalXZ(target.pos.x, target.pos.z, this._spawnLocalXZ);
+          const rot = target.rot || 0;
+          const rearX = -Math.cos(rot);
+          const rearZ = -Math.sin(rot);
+          this._weaponPresenter.quarks.spawnDamageVenting(
+            local.x + rearX * ((target.radius || 6) * 0.5),
+            0.3,
+            local.z + rearZ * ((target.radius || 6) * 0.5),
+            rearX, 0.2, rearZ,
+            2,
+          );
+        }
+      }
+    }
   },
 
   // -------------------------------------------------------------------------
@@ -11126,6 +11310,17 @@ export const vfx = {
     }
 
     if (!view.length) { volume.reset(); return; }
+
+    if (this._weaponPresenter && this._weaponPresenter.quarks && peak > 0.05) {
+      for (let i = 0; i < view.length; i++) {
+        const sock = view[i];
+        this._weaponPresenter.quarks.spawnRetroVenting(
+          sock.x, sock.y || 0, sock.z,
+          -sock.ax, -sock.ay, -sock.az,
+          peak,
+        );
+      }
+    }
 
     const cam = this.state.render && this.state.render.camera;
     if (cam) volume.setCamera(cam);

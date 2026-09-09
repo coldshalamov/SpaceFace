@@ -13,15 +13,12 @@ import {
 import {
   COLLISION_LOOKAHEAD_S,
   DEFAULT_GRACE_S,
-  NEAR_ENTER_PAD_WU,
-  NEAR_EXIT_PAD_WU,
   PHYSICS_SAFETY_PAD_WU,
   PRESENTATION_TIER,
   SIM_TIER,
   classifyActivity,
   physicsReachWu,
 } from './activityClassification.js';
-import { hasActiveSpatialHash, queryNearbyEntities } from '../core/spatialQuery.js';
 import { shouldOwnerThink } from '../core/activityScheduler.js';
 import { ballisticDrift, consumeScheduledWorldWake } from './worldCatchup.js';
 import {
@@ -195,10 +192,6 @@ function ensureRuntime(state) {
       currentEntityIds: new Set(),
       frame: null,
       seenEntityIds: new Set(),
-      classifyVisits: 0,
-      classifyMode: 'full',
-      radiusScratch: [],
-      classifyEmptyFallback: [],
     };
     RUNTIMES.set(state, runtime);
   }
@@ -425,12 +418,9 @@ function rebuildPinFacts(state, player, facts, simTime) {
   // meta record (`state.player`) — that record couples a reader to credits/heat/cargo data it
   // was denied. Player-intent pins therefore arrive only through entity-carried state the pass
   // already owns: the combat-owned target id and weapons-owned missile lock on the player craft.
-  const miningLock = (player && player.data && player.data.miningTargetId != null)
-    ? player.data.miningTargetId
-    : (state && state.player && state.player.miningTargetId != null
-      ? state.player.miningTargetId
-      : null);
-  if (miningLock != null) facts.miningId = miningLock;
+  // UI selection and the mining lock have no sanctioned source here yet; until UI and mining
+  // publish those pins outside the meta record, `facts.miningId` stays null (the
+  // PLAYER_MINING_TARGET pin plumbing remains ready for that publication).
   const playerCombat = player && player.data && player.data.combat;
   if (playerCombat && playerCombat.targetId != null) facts.targetId = playerCombat.targetId;
   else if (playerCombat && playerCombat.lockTarget != null) facts.targetId = playerCombat.lockTarget;
@@ -556,55 +546,6 @@ function pushActivityIds(runtime, entity, stamp) {
   else if (stamp.presentationTier === PRESENTATION_TIER.R1_RUNWAY) runtime.runwayIds.push(id);
 }
 
-function selectClassifyEntities(state, runtime, list, origin, reach) {
-  if (!runtime.ready || runtime.seenEntityIds.size === 0) {
-    return { mode: 'full', entities: list };
-  }
-  if (!(state && state.runtime && state.runtime.profileId === 'production')) {
-    return { mode: 'full', entities: list };
-  }
-  const unstamped = [];
-  for (let i = 0; i < list.length; i++) {
-    const entity = list[i];
-    if (entity && entity.alive !== false && !runtime.seenEntityIds.has(entity.id)) {
-      unstamped.push(entity);
-    }
-  }
-  if (unstamped.length > 48) return { mode: 'full', entities: list };
-
-  const out = [];
-  const seen = new Set();
-  const add = (entity) => {
-    if (!entity || entity.alive === false || seen.has(entity.id)) return;
-    seen.add(entity.id);
-    out.push(entity);
-  };
-  for (let i = 0; i < unstamped.length; i++) add(unstamped[i]);
-  for (let i = 0; i < runtime.exactIds.length; i++) {
-    add(state.entities && state.entities.get(runtime.exactIds[i]));
-  }
-  for (let i = 0; i < runtime.nearIds.length; i++) {
-    add(state.entities && state.entities.get(runtime.nearIds[i]));
-  }
-  const scratch = runtime.radiusScratch;
-  scratch.length = 0;
-  const radius = Math.max(0, reach) + NEAR_EXIT_PAD_WU;
-  queryNearbyEntities(state, origin, radius, scratch, runtime.classifyEmptyFallback);
-  for (let i = 0; i < scratch.length; i++) add(scratch[i]);
-  if (!hasActiveSpatialHash(state && state.spatialHash) && origin) {
-    const enter = reach + NEAR_ENTER_PAD_WU;
-    const enter2 = enter * enter;
-    for (let i = 0; i < list.length; i++) {
-      const entity = list[i];
-      if (!entity || entity.alive === false || !entity.pos) continue;
-      const dx = finite(entity.pos.x) - origin.x;
-      const dz = finite(entity.pos.z) - origin.z;
-      if (dx * dx + dz * dz <= enter2) add(entity);
-    }
-  }
-  return { mode: 'incremental', entities: out };
-}
-
 function classifyWorld(state, runtime) {
   const list = state.entityList || [];
   const player = state.playerId != null && state.entities && typeof state.entities.get === 'function'
@@ -630,10 +571,6 @@ function classifyWorld(state, runtime) {
   runtime.runwayHalfX = submit.halfX;
   runtime.runwayHalfZ = submit.halfZ;
   runtime.prefetchRadiusWu = prefetchR;
-
-  const selection = selectClassifyEntities(state, runtime, list, origin, reach);
-  runtime.classifyMode = selection.mode;
-  runtime.classifyVisits = 0;
 
   const statics = runtime.physicsStatics;
   const dynamics = runtime.physicsDynamics;
@@ -674,11 +611,9 @@ function classifyWorld(state, runtime) {
   ctx.physicsReachWu = reach;
   ctx.currentTargetId = facts.targetId;
 
-  const visit = selection.entities;
-  for (let i = 0; i < visit.length; i++) {
-    const entity = visit[i];
+  for (let i = 0; i < list.length; i++) {
+    const entity = list[i];
     if (!entity || entity.alive === false) continue;
-    runtime.classifyVisits++;
     const px = finite(entity.pos && entity.pos.x);
     const pz = finite(entity.pos && entity.pos.z);
     const dx = px - origin.x;
@@ -733,12 +668,6 @@ function classifyWorld(state, runtime) {
       || (data.aceMemory && data.aceMemory.aceId)
       || (ai && ai.namedAceId)
     );
-    const predationActor = !!(
-      data.predationRole
-      || data.freightCustodyPersistence
-      || data.freightCustody
-      || (ai && (ai.predationRole || ai.predationStatus))
-    );
     ctx.missionCritical = !!(data.jobId || data.missionId || data.missionTag || data.missionPinned
       || data.activityActorSlotId
       || (typeof data.activityObjectSlotId === 'string' && /[a-z]/i.test(data.activityObjectSlotId))
@@ -747,8 +676,7 @@ function classifyWorld(state, runtime) {
       // K1 authored active presence is a named, durable combat actor even when its global sector
       // coordinates place it beyond the current player's ordinary activity bubble. Preserve it in
       // the exact owner view; generic far passive traffic remains wake-gated below.
-      || authoredActiveCombat
-      || predationActor);
+      || authoredActiveCombat);
     ctx.imminentCollision = imminentCollisionFor(state, player, entity);
     ctx.aggregateOnly = entity.type === 'ship'
       && !onGlass
@@ -803,17 +731,8 @@ function classifyWorld(state, runtime) {
     }
   }
 
-  if (runtime.classifyMode === 'incremental') {
-    const liveN = (state.entityList || []).length;
-    counts.s3 = Math.max(0, liveN - counts.s0 - counts.s1 - counts.s2 - counts.s4);
-  }
-
   for (const id of runtime.signaturesById.keys()) {
-    const stillLive = runtime.classifyMode === 'incremental'
-      ? !!(state.entities && typeof state.entities.get === 'function'
-        && state.entities.get(id) && state.entities.get(id).alive !== false)
-      : runtime.currentEntityIds.has(id);
-    if (stillLive) continue;
+    if (runtime.currentEntityIds.has(id)) continue;
     runtime.signaturesById.delete(id);
     runtime.reasonsById.delete(id);
     runtime.pinBuffersById.delete(id);

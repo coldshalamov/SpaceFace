@@ -33,6 +33,7 @@ function beamKey(payload) {
 function createBeamBatch(THREE, capacity, name) {
   const positions = new Float32Array(capacity * 4 * 3);
   const colors = new Float32Array(capacity * 4 * 3);
+  const uvs = new Float32Array(capacity * 4 * 2);
   const indices = new Uint16Array(capacity * 6);
   for (let slot = 0; slot < capacity; slot++) {
     const vertex = slot * 4;
@@ -43,6 +44,13 @@ function createBeamBatch(THREE, capacity, name) {
     indices[index + 3] = vertex;
     indices[index + 4] = vertex + 2;
     indices[index + 5] = vertex + 3;
+    // Static per-quat axial/cross coordinates: u runs muzzle(0) -> contact(1), v runs across.
+    // Written once; _writeSlotQuad only ever moves positions, so this never costs a frame.
+    const uv = slot * 8;
+    uvs[uv] = 0; uvs[uv + 1] = 0;
+    uvs[uv + 2] = 0; uvs[uv + 3] = 1;
+    uvs[uv + 4] = 1; uvs[uv + 5] = 1;
+    uvs[uv + 6] = 1; uvs[uv + 7] = 0;
   }
   const geometry = new THREE.BufferGeometry();
   geometry.name = name;
@@ -53,7 +61,49 @@ function createBeamBatch(THREE, capacity, name) {
   color.setUsage(THREE.DynamicDrawUsage);
   geometry.setAttribute('position', position);
   geometry.setAttribute('color', color);
+  geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
   return { geometry, positions, colors, position, color };
+}
+
+// A sustained beam is an energy conduit, not a colored rectangle. The injected structure gives
+// the quad a cross-section (bright centerline running out to soft edges, M2), packets of energy
+// travelling muzzle -> contact (E3), and hot endpoints where the beam meets muzzle and matter.
+// The donor stays MeshBasicMaterial so the dynamic-buffer owner contract and blend roles are
+// untouched; uSfPulse lets the accessibility path quiet the travelling term without removing
+// the filament.
+function applyBeamShaderStructure(material, shared, role) {
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.uSfTime = shared.time;
+    shader.uniforms.uSfPulse = shared.pulse;
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec2 vSfBeam;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSfBeam = uv;');
+    if (role === 'core') {
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', '#include <common>\nvarying vec2 vSfBeam;\nuniform float uSfTime;\nuniform float uSfPulse;')
+        .replace('#include <color_fragment>', `#include <color_fragment>
+{
+  float sfAcross = abs(vSfBeam.y * 2.0 - 1.0);
+  float sfCore = pow(1.0 - sfAcross, 1.35);
+  float sfTravel = 0.5 + 0.5 * sin(vSfBeam.x * 21.0 - uSfTime * 34.0);
+  float sfEnds = smoothstep(0.12, 0.0, vSfBeam.x) + smoothstep(0.88, 1.0, vSfBeam.x);
+  diffuseColor.rgb *= sfCore * (0.8 + 0.3 * sfTravel * uSfPulse) + 0.35 * sfEnds;
+}`);
+    } else {
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', '#include <common>\nvarying vec2 vSfBeam;\nuniform float uSfTime;\nuniform float uSfPulse;')
+        .replace('#include <color_fragment>', `#include <color_fragment>
+{
+  float sfAcross = abs(vSfBeam.y * 2.0 - 1.0);
+  float sfSheath = pow(1.0 - sfAcross, 2.6);
+  float sfTravel = 0.5 + 0.5 * sin(vSfBeam.x * 13.0 - uSfTime * 22.0);
+  float sfEnds = smoothstep(0.2, 0.0, vSfBeam.x) + smoothstep(0.8, 1.0, vSfBeam.x);
+  diffuseColor.rgb *= sfSheath * (0.3 + 0.85 * sfTravel * uSfPulse) + 0.25 * sfEnds * sfSheath;
+}`);
+    }
+  };
+  // The two roles inject different sources; make the program cache key reflect that.
+  material.customProgramCacheKey = () => `sf-beam-structure-${role}`;
 }
 
 /**
@@ -92,6 +142,8 @@ export class PersistentCombatBeamPool {
     this._localA = { x: 0, z: 0 };
     this._localB = { x: 0, z: 0 };
     this._color = new THREE.Color();
+    // Shared uniform objects: one time base and one accessibility pulse scale for both layers.
+    this._beamShaderShared = { time: { value: 0 }, pulse: { value: 1 } };
 
     // Each layer is one dynamic quad batch. This retains a bounded two-draw pool while avoiding the
     // zero-pixel failure mode seen with a live InstancedMesh whose instance transforms were valid
@@ -115,6 +167,7 @@ export class PersistentCombatBeamPool {
       vertexColors: true,
       side: THREE.DoubleSide,
     });
+    applyBeamShaderStructure(this.coreMaterial, this._beamShaderShared, 'core');
     this.haloMaterial = new THREE.MeshBasicMaterial({
       name: 'sf-combat-beam-sheath',
       color: 0xffffff,
@@ -127,6 +180,7 @@ export class PersistentCombatBeamPool {
       vertexColors: true,
       side: THREE.DoubleSide,
     });
+    applyBeamShaderStructure(this.haloMaterial, this._beamShaderShared, 'sheath');
     this.core = new THREE.Mesh(this._coreBatch.geometry, this.coreMaterial);
     this.halo = new THREE.Mesh(this._haloBatch.geometry, this.haloMaterial);
     this.core.name = 'sf-combat-beam-core-pool';
@@ -225,6 +279,8 @@ export class PersistentCombatBeamPool {
     const reducedFlash = !!(accessibility && (
       accessibility.reducedFlash || accessibility.flashOpacityScale < 1
     ));
+    this._beamShaderShared.time.value = now;
+    this._beamShaderShared.pulse.value = reducedFlash ? 0.3 : 1;
     let matricesChanged = false;
     for (let entryIndex = 0; entryIndex < this._entries.length; entryIndex++) {
       const entry = this._entries[entryIndex];
