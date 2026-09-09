@@ -43,9 +43,11 @@ export function syncWorldSiteMaterialization({ state, helpers, manifest, record 
       keeper = null;
     }
     if (keeper && wanted && wanted.type === 'wreck'
+      && keeper.farResident !== true
       && staticProxyNeedsReplacement(keeper, wanted, componentAdmitted)) {
       // Static Rapier bodies are never teleported. A stage/socket transform change retires the old
       // materialization and lets the physics owner create a fresh body at its authoritative pose.
+      // Far-ledger rows are not live bodies — leave them shelved until promote.
       removeEntity(helpers, keeper);
       removed += 1;
       keeper = null;
@@ -140,11 +142,19 @@ export function liveWorldSiteEntities(state, siteId) {
 
 function existingByWorldRecord(state, siteId) {
   const out = new Map();
-  for (const entity of state.entities.values()) {
-    const data = entity && entity.data || {};
-    if (entity.alive === false || data.worldSiteId !== siteId || !data.worldRecordId) continue;
-    if (!out.has(data.worldRecordId)) out.set(data.worldRecordId, []);
-    out.get(data.worldRecordId).push(entity);
+  const add = (entity) => {
+    if (!entity || entity.alive === false) return;
+    const data = entity.data || {};
+    const worldRecordId = data.worldRecordId || entity.worldRecordId;
+    const worldSiteId = data.worldSiteId || entity.worldSiteId;
+    if (worldSiteId !== siteId || !worldRecordId) return;
+    if (!out.has(worldRecordId)) out.set(worldRecordId, []);
+    out.get(worldRecordId).push(entity);
+  };
+  for (const entity of state.entities.values()) add(entity);
+  const far = state.world && state.world.farActors;
+  if (far && Array.isArray(far.rows)) {
+    for (let i = 0; i < far.rows.length; i++) add(far.rows[i]);
   }
   return out;
 }

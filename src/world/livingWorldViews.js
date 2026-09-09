@@ -151,3 +151,25 @@ export function findLivingWorldActor(state, predicate) {
   });
   return found;
 }
+
+/** Compact far-table walk. Does not yield combat-list entities. */
+export function forEachFarActor(state, fn) {
+  if (typeof fn !== 'function') return 'none';
+  const table = state && state.world && state.world.farActors;
+  if (!table || !Array.isArray(table.rows)) return 'none';
+  for (let i = 0; i < table.rows.length; i++) {
+    const rec = table.rows[i];
+    if (!rec || rec.alive === false) continue;
+    fn(rec);
+  }
+  return 'far';
+}
+
+export function findFarActor(state, predicate) {
+  let found = null;
+  forEachFarActor(state, (rec) => {
+    if (found || typeof predicate !== 'function' || !predicate(rec)) return;
+    found = rec;
+  });
+  return found;
+}

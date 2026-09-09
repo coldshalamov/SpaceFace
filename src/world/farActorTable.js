@@ -2,8 +2,10 @@
 // rematerialize when the player approaches. They are not GameState combat entities
 // while shelved.
 
+import { authoredPrefetchRadius, tableTravelSpeed } from '../render/tabletopPolicy.js';
 import { SIM_TIER, NEAR_ENTER_PAD_WU, NEAR_EXIT_PAD_WU } from './activityClassification.js';
 import { ensureActivityClassified, physicsReachWuFromState } from './activityRuntime.js';
+import { advanceWorldRecord, normalizeIntent } from './worldCatchup.js';
 
 export const FAR_ACTOR_SCHEMA = 'spaceface.farActors.v1';
 export const FAR_ACTOR_CELL = 400;
@@ -106,8 +108,6 @@ export function shouldVirtualizeFarActor(entity, state) {
   const data = entity.data || {};
   if (flags.persistent || flags.missionPinned || data.missionPinned || data.missionId) return false;
   if (data.isBoss || data.namedAceId || data.uniqueWreckId || data.uniqueWreck) return false;
-  if (data.persistenceOwner || data.worldSiteId || data.worldObjectId || data.worldSiteComponentId) return false;
-  if (data.kind === 'world_site_component' || data.role === 'world_site_component' || data.worldSiteProxy) return false;
   if (data.activityActorSlotId || data.wingman || data.role === 'wingman') return false;
   if (flags.tethered || data.tethered) return false;
   if (state.player && state.player.tether && state.player.tether.targetId === entity.id) return false;
@@ -119,9 +119,45 @@ export function shouldVirtualizeFarActor(entity, state) {
     || activity.simTier === SIM_TIER.S4_AGGREGATE;
 }
 
+function pickHullDefId(data) {
+  if (!data || typeof data !== 'object') return null;
+  return data.hullDefId || data.shipDefId || data.defId || data.typeId || null;
+}
+
+function leanIdentityData(entity) {
+  const d = entity && entity.data && typeof entity.data === 'object' ? entity.data : {};
+  const out = {};
+  const hullDefId = pickHullDefId(d);
+  if (hullDefId) {
+    out.hullDefId = hullDefId;
+    if (d.shipDefId) out.shipDefId = d.shipDefId;
+    if (d.defId) out.defId = d.defId;
+  }
+  if (d.jobId != null) out.jobId = d.jobId;
+  if (d.trafficRole != null) out.trafficRole = d.trafficRole;
+  if (d.wreckClass != null) out.wreckClass = d.wreckClass;
+  if (d.homeSectorId != null) out.homeSectorId = d.homeSectorId;
+  if (d.sectorId != null) out.sectorId = d.sectorId;
+  if (d.worldSiteId != null) out.worldSiteId = d.worldSiteId;
+  if (d.worldRecordId != null) out.worldRecordId = d.worldRecordId;
+  if (d.worldSiteComponentId != null) out.worldSiteComponentId = d.worldSiteComponentId;
+  if (d.worldObjectId != null) out.worldObjectId = d.worldObjectId;
+  if (d.kind != null) out.kind = d.kind;
+  if (d.role != null) out.role = d.role;
+  if (d.persistenceOwner != null) out.persistenceOwner = d.persistenceOwner;
+  if (d.nextEventAtT != null) out.nextEventAtT = d.nextEventAtT;
+  return out;
+}
+
 function snapshotActor(entity, simTime) {
-  const data = entity.data && typeof entity.data === 'object' ? { ...entity.data } : {};
-  const flags = entity.flags && typeof entity.flags === 'object' ? { ...entity.flags } : {};
+  const data = entity.data || {};
+  const activity = entity.activity || {};
+  const lastExactT = Number.isFinite(activity.lastExactT) ? activity.lastExactT : simTime;
+  const nextEventAtT = Number.isFinite(activity.nextEventAtT)
+    ? activity.nextEventAtT
+    : (Number.isFinite(data.nextEventAtT) ? data.nextEventAtT : -1);
+  const intent = normalizeIntent(data.intent || entity.intent);
+  const route = data.route && typeof data.route === 'object' ? data.route : (data.itinerary || null);
   return {
     id: entity.id,
     type: entity.type,
@@ -140,13 +176,41 @@ function snapshotActor(entity, simTime) {
     team: entity.team,
     factionId: entity.factionId || data.factionId || null,
     homeSectorId: entity.homeSectorId || data.homeSectorId || data.sectorId || null,
+    hullDefId: pickHullDefId(data),
+    intent,
+    route,
+    lastExactT,
+    nextEventAtT,
     collides: entity.collides !== false && entity.type !== 'wreck' ? true : !!entity.collides,
-    data,
-    flags,
+    data: leanIdentityData(entity),
     jobId: data.jobId || null,
     trafficRole: data.trafficRole || null,
     virtualizedAt: simTime,
   };
+}
+
+export function catchUpFarRecord(rec, simTime) {
+  if (!rec || typeof rec !== 'object') return rec;
+  const toT = Number.isFinite(simTime) ? simTime : 0;
+  const fromT = Number.isFinite(rec.lastExactT) ? rec.lastExactT : toT;
+  if (!(toT > fromT)) {
+    rec.lastExactT = toT;
+    return rec;
+  }
+  const advanced = advanceWorldRecord(rec, fromT, toT);
+  if (!advanced) {
+    rec.lastExactT = toT;
+    return rec;
+  }
+  rec.pos = advanced.pos ? { x: finite(advanced.pos.x), z: finite(advanced.pos.z) } : rec.pos;
+  rec.vel = advanced.vel ? { x: finite(advanced.vel.x), z: finite(advanced.vel.z) } : rec.vel;
+  rec.rot = finite(advanced.rot, rec.rot);
+  rec.angVel = finite(advanced.angVel, rec.angVel);
+  if (Number.isFinite(advanced.hull)) rec.hull = advanced.hull;
+  if (Number.isFinite(advanced.shield)) rec.shield = advanced.shield;
+  rec.lastExactT = toT;
+  rec.lastObservedT = toT;
+  return rec;
 }
 
 export function insertFarActor(state, entity, simTime = 0) {
@@ -228,9 +292,19 @@ export function promoteFarActor(state, id, helpers) {
   if (!rec || rec.alive === false) return live;
   const spawn = helpers && typeof helpers.spawnEntity === 'function' ? helpers.spawnEntity : null;
   if (!spawn) return null;
+  const simTime = Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0) / 60;
+  catchUpFarRecord(rec, simTime);
   const reserved = Number.isSafeInteger(rec.id) && rec.id > 0 && !(state.entities && state.entities.has(rec.id))
     ? rec.id
     : 0;
+  const data = rec.data && typeof rec.data === 'object' ? { ...rec.data } : {};
+  if (rec.hullDefId && data.hullDefId == null) data.hullDefId = rec.hullDefId;
+  if (rec.intent) data.intent = rec.intent;
+  if (rec.route) data.route = rec.route;
+  if (rec.jobId != null) data.jobId = rec.jobId;
+  if (rec.trafficRole != null) data.trafficRole = rec.trafficRole;
+  if (Number.isFinite(rec.nextEventAtT)) data.nextEventAtT = rec.nextEventAtT;
+  if (rec.homeSectorId) data.homeSectorId = rec.homeSectorId;
   const spec = {
     id: reserved || undefined,
     type: rec.type,
@@ -247,8 +321,7 @@ export function promoteFarActor(state, id, helpers) {
     team: rec.team,
     factionId: rec.factionId,
     collides: rec.collides,
-    flags: rec.flags,
-    data: rec.data,
+    data,
   };
   const ent = spawn(spec);
   if (!ent) return null;
@@ -256,16 +329,20 @@ export function promoteFarActor(state, id, helpers) {
     ent.homeSectorId = rec.homeSectorId;
     if (ent.data) ent.data.homeSectorId = rec.homeSectorId;
   }
+  if (ent.activity) ent.activity.lastExactT = simTime;
   removeFarRecord(ensureFarActorTable(state), rec);
   return ent;
 }
 
 function tableRadii(state, player) {
   const reach = physicsReachWuFromState(state, player);
-  return {
-    enter: reach + NEAR_ENTER_PAD_WU,
-    exit: reach + NEAR_EXIT_PAD_WU,
-  };
+  const decodeR = authoredPrefetchRadius(tableTravelSpeed(state));
+  const enter = Math.max(reach + NEAR_ENTER_PAD_WU, decodeR);
+  const exit = Math.max(
+    reach + NEAR_EXIT_PAD_WU,
+    decodeR + (NEAR_EXIT_PAD_WU - NEAR_ENTER_PAD_WU),
+  );
+  return { enter, exit };
 }
 
 function dist2(a, b) {

@@ -3,6 +3,7 @@
 
 import { allocateEntityId, makeEntity } from '../core/entity.js';
 import { initializePresentationAdmission } from '../core/presentationAdmission.js';
+import { advanceResourceBody } from './worldCatchup.js';
 
 export const ASTEROID_FIELD_SCHEMA = 'spaceface.asteroidField.v1';
 export const ASTEROID_FIELD_CELL = 220;
@@ -85,6 +86,7 @@ function allocatePresentationId(state, occupied, reserved = 0) {
 export function insertAsteroidFieldRock(state, spec = {}) {
   const field = ensureAsteroidField(state);
   const id = allocatePresentationId(state, field.byId, spec.id);
+  const simTime = Number.isFinite(state && state.simTime) ? state.simTime : 0;
   const rec = {
     id,
     type: 'asteroid',
@@ -92,13 +94,14 @@ export function insertAsteroidFieldRock(state, spec = {}) {
     fieldResident: true,
     liveEntityId: null,
     pos: { x: finite(spec.pos && spec.pos.x), z: finite(spec.pos && spec.pos.z) },
-    vel: { x: 0, z: 0 },
+    vel: { x: finite(spec.vel && spec.vel.x), z: finite(spec.vel && spec.vel.z) },
     rot: finite(spec.rot),
     angVel: finite(spec.angVel),
     radius: Math.max(0.5, finite(spec.radius, 8)),
     mass: finite(spec.mass, 400),
     hull: finite(spec.hull, spec.data && spec.data.oreHP),
     hullMax: finite(spec.hullMax, spec.data && spec.data.oreHPMax),
+    lastExactT: Number.isFinite(spec.lastExactT) ? spec.lastExactT : simTime,
     collides: true,
     homeSectorId: spec.homeSectorId || (spec.data && spec.data.homeSectorId) || null,
     data: spec.data && typeof spec.data === 'object' ? spec.data : {},
@@ -170,6 +173,33 @@ export function dropAsteroidFieldSector(state, sectorId) {
   return dropped;
 }
 
+function catchUpFieldRock(rec, simTime) {
+  if (!rec) return rec;
+  const toT = Number.isFinite(simTime) ? simTime : 0;
+  const fromT = Number.isFinite(rec.lastExactT) ? rec.lastExactT : toT;
+  if (!(toT > fromT)) {
+    rec.lastExactT = toT;
+    return rec;
+  }
+  const advanced = advanceResourceBody({
+    pos: rec.pos,
+    vel: rec.vel,
+    rot: rec.rot,
+    angVel: rec.angVel,
+    oreHp: rec.hull,
+    oreHpMax: rec.hullMax,
+    lastObservedT: fromT,
+  }, fromT, toT);
+  if (advanced) {
+    rec.pos = advanced.pos ? { x: finite(advanced.pos.x), z: finite(advanced.pos.z) } : rec.pos;
+    rec.vel = advanced.vel ? { x: finite(advanced.vel.x), z: finite(advanced.vel.z) } : rec.vel;
+    rec.rot = finite(advanced.rot, rec.rot);
+    rec.angVel = finite(advanced.angVel, rec.angVel);
+  }
+  rec.lastExactT = toT;
+  return rec;
+}
+
 export function promoteAsteroidFieldRock(state, id, helpers, reason = 'promote') {
   if (!state || id == null) return null;
   const live = state.entities && typeof state.entities.get === 'function'
@@ -186,6 +216,8 @@ export function promoteAsteroidFieldRock(state, id, helpers, reason = 'promote')
     ? helpers.spawnEntity
     : null;
   if (!spawn) return null;
+  const simTime = Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0) / 60;
+  catchUpFieldRock(rec, simTime);
   const data = rec.data && typeof rec.data === 'object' ? { ...rec.data } : {};
   delete data.fieldResident;
   const ent = spawn({
@@ -207,6 +239,7 @@ export function promoteAsteroidFieldRock(state, id, helpers, reason = 'promote')
     ent.homeSectorId = rec.homeSectorId;
     if (ent.data) ent.data.homeSectorId = rec.homeSectorId;
   }
+  if (ent.activity) ent.activity.lastExactT = simTime;
   rec.liveEntityId = ent.id;
   rec.promoteReason = String(reason || 'promote');
   removeFieldRecord(ensureAsteroidField(state), rec);

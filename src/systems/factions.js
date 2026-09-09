@@ -11,6 +11,7 @@ import { isRunSealed } from '../core/runSeal.js';
 import { FACTION_META } from '../data/factions.js';
 import { NEW_GAME } from '../data/newGameDefaults.js';
 import { CONTESTED_SECTOR_BY_PAIR, contestedSectorForPair } from '../data/conflictZones.js';
+import { forEachLivingWorldActor } from '../world/livingWorldViews.js';
 
 // ── Tiers (§0.9 / spec): 9 named bands across -1000..+1000, evaluated high→low. ──────────────
 const TIERS = [
@@ -483,7 +484,7 @@ export const factions = {
       for (const e of index.ships || []) accumulateFactionPowerEntity(e, power, haulerByFac, stationByFac);
       for (const e of index.stations || []) accumulateFactionPowerEntity(e, power, haulerByFac, stationByFac);
     } else {
-      for (const e of state.entityList || []) accumulateFactionPowerEntity(e, power, haulerByFac, stationByFac);
+      forEachLivingWorldActor(state, (e) => accumulateFactionPowerEntity(e, power, haulerByFac, stationByFac));
     }
     for (const id of FACTION_IDS) {
       power[id] += Math.min(12, (haulerByFac[id] || 0) * 2);  // haulers: trade power, capped

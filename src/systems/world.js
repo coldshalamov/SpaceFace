@@ -1831,11 +1831,24 @@ export const world = {
           ? { dressingExclusionRadius: Number(poi.dressingExclusionRadius) }
           : {}),
       };
-      const ent = this.helpers.spawnEntity({
-        type: 'fx', factionId: poi.factionId || null, pos,
-        radius: visualRadius, mass: 0, collides: false, ttl: Infinity,
-        data: poiData,
-      });
+      const activityObjectSlotId = typeof poi.activityObjectSlotId === 'string'
+        && /[a-z]/i.test(poi.activityObjectSlotId)
+        ? poi.activityObjectSlotId
+        : null;
+      if (activityObjectSlotId) poiData.activityObjectSlotId = activityObjectSlotId;
+      const keepLive = !!activityObjectSlotId || poi.collides === true;
+      const ent = keepLive
+        ? this.helpers.spawnEntity({
+          type: 'fx', factionId: poi.factionId || null, pos,
+          radius: visualRadius, mass: 0, collides: !!poi.collides, ttl: Infinity,
+          data: poiData,
+        })
+        : insertDressingRow(this.state, {
+          pos,
+          radius: visualRadius,
+          homeSectorId: sector.id,
+          data: poiData,
+        });
       this._stampHomeSector(ent, sector.id);
       active.pois.push({
         id: ent.id, poiId: poi.id, type: poi.type, pos: { x: pos.x, z: pos.z },

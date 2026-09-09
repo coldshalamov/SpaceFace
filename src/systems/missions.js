@@ -125,6 +125,8 @@ import {
   missionIdentityOf,
   stableRecordId,
 } from '../world/worldRecords.js';
+import { forEachLivingWorldActor } from '../world/livingWorldViews.js';
+import { getDressingRow } from '../world/dressingTable.js';
 // Cargo single-writer helper (same pattern economy.js uses) — delivery missions consume the
 // required cargo through this so usedVolume/usedMass caches stay correct (§0.6).
 import { addCargo, removeCargo } from './cargo.js';
@@ -443,12 +445,16 @@ export function findLiveStationEntity(state, stationId) {
     const indexed = byStationId && byStationId.get(stationId);
     if (indexed && indexed.alive !== false && indexed.type === 'station') return indexed;
   }
-  for (const e of state.entityList || []) {
-    if (e && e.alive !== false && e.type === 'station' && e.data && e.data.stationId === stationId) {
-      return e;
-    }
-  }
-  return null;
+  return findLivingWorldActorStation(state, stationId);
+}
+
+function findLivingWorldActorStation(state, stationId) {
+  let found = null;
+  forEachLivingWorldActor(state, (e) => {
+    if (found || !e || e.type !== 'station' || !e.data || e.data.stationId !== stationId) return;
+    found = e;
+  });
+  return found;
 }
 
 /**
@@ -2872,20 +2878,21 @@ export const missions = {
     const indexed = byStationId && byStationId.get(stationId);
     if (indexed && indexed.alive !== false && indexed.type === 'station') return indexed;
     if (hasActiveMissionEntityIndex(this.state)) return null;
-    for (const e of this.state.entityList || []) {
-      if (e && e.alive !== false && e.type === 'station' && e.data && e.data.stationId === stationId) return e;
-    }
-    return null;
+    return findLivingWorldActorStation(this.state, stationId);
   },
 
   _livePoiEntity(sectorId, poiId) {
     const active = this.state.world && this.state.world.activeSector;
     if (!active || active.id !== sectorId || !Array.isArray(active.pois)) return null;
     const row = active.pois.find((poi) => poi && poi.poiId === poiId && poi.id != null);
-    if (!row || !this.state.entities || typeof this.state.entities.get !== 'function') return null;
-    const entity = this.state.entities.get(row.id);
-    if (!entity || entity.alive === false || !entity.data || entity.data.poiId !== poiId) return null;
-    return entity;
+    if (!row || row.id == null) return null;
+    const live = this.state.entities && typeof this.state.entities.get === 'function'
+      ? this.state.entities.get(row.id)
+      : null;
+    if (live && live.alive !== false && live.data && live.data.poiId === poiId) return live;
+    const dressing = getDressingRow(this.state, row.id);
+    if (dressing && dressing.alive !== false && dressing.data && dressing.data.poiId === poiId) return dressing;
+    return null;
   },
 
   _nearestAsteroid() {
@@ -4202,21 +4209,7 @@ export const missions = {
     if (live && live.pos) return live;
     const destId = m && m.destStationId;
     if (!destId) return null;
-    const list = this.state.entityList;
-    if (Array.isArray(list) && list.length) {
-      for (const e of list) {
-        if (e && e.alive !== false && e.type === 'station' && e.pos
-          && e.data && e.data.stationId === destId) return e;
-      }
-    }
-    const entities = this.state.entities;
-    if (entities && typeof entities.values === 'function') {
-      for (const e of entities.values()) {
-        if (e && e.alive !== false && e.type === 'station' && e.pos
-          && e.data && e.data.stationId === destId) return e;
-      }
-    }
-    return null;
+    return findLivingWorldActorStation(this.state, destId);
   },
 
   _entityAtStoryDestDock(entity, m) {
@@ -5373,7 +5366,8 @@ export const missions = {
     if (!m || !m.id) return 0;
     const existing = new Set(m.targetEntityIds || []);
     const follow = m.params && m.params.poiSignalFollowup;
-    const list = this.state.entityList || [];
+    const list = [];
+    forEachLivingWorldActor(this.state, (e) => { list.push(e); });
     if (follow) {
       const exact = list.filter((e) => e && e.alive && !e.isPlayer && e.data
         && e.data.worldRecordId === follow.targetRecordId);
@@ -5860,9 +5854,9 @@ export const missions = {
     }
     const targetIds = new Set(m.targetEntityIds || []);
     if (follow) {
-      for (const e of this.state.entityList || []) {
+      forEachLivingWorldActor(this.state, (e) => {
         if (e && e.data && e.data.worldRecordId === follow.targetRecordId) targetIds.add(e.id);
-      }
+      });
     }
     for (const id of targetIds) {
       const e = this.state.entities.get(id);

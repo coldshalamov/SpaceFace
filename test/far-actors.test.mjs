@@ -8,6 +8,8 @@ import { SIM_TIER } from '../src/world/activityClassification.js';
 import {
   farActorCensus,
   getFarActor,
+  insertFarActor,
+  promoteFarActor,
   shouldVirtualizeFarActor,
   tickFarActors,
 } from '../src/world/farActorTable.js';
@@ -120,7 +122,7 @@ test('pinned and nearby wrecks stay; dormant far wrecks shelve', () => {
   assert.ok(census.liveShips >= 2);
 });
 
-test('world-site wrecks stay live even when far', () => {
+test('unnamed quiet world-site wrecks shelf; unique wrecks stay', () => {
   const { state, helpers, bus } = boot();
   const siteWreck = helpers.spawnEntity({
     type: 'wreck',
@@ -137,7 +139,53 @@ test('world-site wrecks stay live even when far', () => {
     },
   });
   siteWreck.activity = { simTier: SIM_TIER.S3_DORMANT, pinnedExact: false };
-  assert.equal(shouldVirtualizeFarActor(siteWreck, state), false);
+  const unique = helpers.spawnEntity({
+    type: 'wreck',
+    pos: { x: 19000, z: 0 },
+    radius: 12,
+    mass: 1e6,
+    collides: true,
+    data: { uniqueWreckId: 'wreck_isc_vigilant', name: 'ISC Vigilant', homeSectorId: 'sector_ceres_belt' },
+  });
+  unique.activity = { simTier: SIM_TIER.S3_DORMANT, pinnedExact: false };
+
+  assert.equal(shouldVirtualizeFarActor(siteWreck, state), true);
+  assert.equal(shouldVirtualizeFarActor(unique, state), false);
   tickFarActors(state, helpers, bus);
-  assert.ok(state.entities.get(siteWreck.id));
+  assert.equal(state.entities.has(siteWreck.id), false);
+  assert.ok(getFarActor(state, siteWreck.id));
+  assert.ok(state.entities.get(unique.id));
+});
+
+test('far snapshot stays lean and promote runs catch-up first', () => {
+  const { state, helpers } = boot();
+  const ship = spawnShip(helpers, {
+    pos: { x: 40, z: 0 },
+    data: {
+      trafficRole: 'hauler',
+      homeSectorId: 'sector_ceres_belt',
+      shipDefId: 'hull_workhorse',
+      salvagePool: { cmdty_scrap_metal: 9 },
+      aftermath: { markerId: 'fat', evidence: { long: true } },
+    },
+  });
+  ship.vel = { x: 12, z: 0 };
+  ship.activity = { simTier: SIM_TIER.S3_DORMANT, pinnedExact: false, lastExactT: 0 };
+  state.simTime = 0;
+  const rec = insertFarActor(state, ship, 0);
+  assert.equal(rec.data.salvagePool, undefined);
+  assert.equal(rec.data.aftermath, undefined);
+  assert.equal(rec.trafficRole, 'hauler');
+  assert.equal(rec.hullDefId, 'hull_workhorse');
+  assert.ok(!('flags' in rec) || rec.flags == null);
+
+  rec.lastExactT = 0;
+  rec.vel = { x: 12, z: 0 };
+  rec.pos = { x: 40, z: 0 };
+  state.simTime = 5;
+  helpers.removeEntity(ship.id, { immediate: true });
+  const live = promoteFarActor(state, rec.id, helpers);
+  assert.ok(live);
+  assert.ok(Math.abs(live.pos.x - 100) < 0.01, `expected catch-up pose ~100, got ${live.pos.x}`);
+  assert.equal(getFarActor(state, rec.id), null);
 });

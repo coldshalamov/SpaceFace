@@ -125,6 +125,24 @@ test('quiet Ceres combat list drops the dormant belt and dressing', () => {
   void origin;
 });
 
+test('promote a field rock applies catch-up before it is live', () => {
+  const { state, helpers } = bootWorld(11);
+  const rec = insertAsteroidFieldRock(state, {
+    pos: { x: 10, z: 0 },
+    vel: { x: 4, z: 0 },
+    radius: 8,
+    mass: 400,
+    lastExactT: 0,
+    data: { typeId: 'ast_common_rock', oreHP: 40, oreHPMax: 40 },
+  });
+  rec.lastExactT = 0;
+  rec.vel = { x: 4, z: 0 };
+  state.simTime = 3;
+  const live = promoteAsteroidFieldRock(state, rec.id, helpers, 'mine');
+  assert.ok(live);
+  assert.ok(Math.abs(live.pos.x - 22) < 0.01, `expected catch-up pose ~22, got ${live.pos.x}`);
+});
+
 test('ram overlap promotes a field rock onto the combat list', () => {
   const { state, world, helpers, player } = bootWorld(9);
   const rec = insertAsteroidFieldRock(state, {
