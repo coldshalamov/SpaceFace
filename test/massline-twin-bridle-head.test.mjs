@@ -10,9 +10,10 @@ import { resolveGovernedCombatSpeed } from '../src/core/flight/propulsionCatalog
 import { ATTACHMENT_DEFS, DEFAULT_COMBAT_PROFILE_BY_TYPE } from '../src/data/combatDefs.js';
 import { COMBAT_FLAGS } from '../src/data/featureFlags.js';
 import { MODULES } from '../src/data/modules.js';
+import { SHIPS } from '../src/data/ships.js';
 import { TECH_NODES } from '../src/data/tech.js';
 import { LEGACY47A_FEATURES, PRODUCTION_FEATURES } from '../src/runtime/runtimeProfiles.js';
-import { fittingsFromDefaultModules, getDerivedStats } from '../src/systems/ships.js';
+import { buildSlotList, fittingsFromDefaultModules, fits, getDerivedStats } from '../src/systems/ships.js';
 import {
   tetherGameplay,
   TWIN_BRIDLE_DEF_ID,
@@ -29,6 +30,7 @@ const DT = 1 / 60;
 const STANDARD = ATTACHMENT_DEFS.find((def) => def.id === 'tether_standard');
 const BRIDLE_DEF = ATTACHMENT_DEFS.find((def) => def.id === TWIN_BRIDLE_DEF_ID);
 const BRIDLE_MODULE = MODULES.find((def) => def.id === 'mod_twin_bridle_m');
+const HITCH = SHIPS.find((def) => def.id === 'ship_kestrel');
 
 test('Twin Bridle is a normal default-route fitting with a dedicated non-winch rope', () => {
   const fittings = fittingsFromDefaultModules('ship_drifter', [BRIDLE_MODULE.id]);
@@ -50,6 +52,16 @@ test('Twin Bridle is a normal default-route fitting with a dedicated non-winch r
     'a defensive ordinary latch cannot turn the player ship into a bridle endpoint');
   assert.equal(legacy.headId, undefined);
   assert.match(statSnippet(BRIDLE_MODULE), /two-endpoint world tether/i);
+});
+
+test('Hitch cannot fit the Twin Bridle M head', () => {
+  assert.equal(HITCH.name, 'Hitch');
+  const utility = buildSlotList(HITCH).find((slot) => slot.type === 'utility');
+  assert.equal(utility.size, 'S');
+  assert.equal(fits(utility, BRIDLE_MODULE), false, 'an S utility cannot take the M bridle');
+  const fittings = fittingsFromDefaultModules(HITCH.id, [BRIDLE_MODULE.id]);
+  assert.ok(!fittings.includes(BRIDLE_MODULE.id), 'the starter loadout must not receive the bridle');
+  assert.equal(getDerivedStats(HITCH.id, fittings, null).masslineHeadId, null);
 });
 
 test('two public Massline presses create exactly one A-to-B rope and never write movement controls', () => {
