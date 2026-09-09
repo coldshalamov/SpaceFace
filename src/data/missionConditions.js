@@ -1,4 +1,8 @@
+import { hash32, mulberry32 } from '../core/rng.js';
+
 // src/data/missionConditions.js — PHYSICS-AWARE MISSION CONDITIONS (data catalog).
+// PQ-152.03 twist clauses ride here too: they attach on their own seed stream and mutate
+// the contract mid-run (PQ-138.04) instead of voiding it.
 //
 // WHY THIS FILE EXISTS (design/PHYSICAL_PLAY_GRAMMAR.md §9.9):
 //   A mission could express success in exactly two ways: `counter >= N` incremented by one of six bus
@@ -409,9 +413,181 @@ export const MISSION_CONDITIONS = Object.freeze({
       return !!payload && (payload.reason === 'depleted' || payload.reason === 'fired');
     },
   }),
+
+  // ── 14–18. TWIST CLAUSES (PQ-152.03) ────────────────────────────────────────────────────────
+  // Mid-run terms. They fire during the job and mutate the contract (PQ-138.04) instead of
+  // voiding it. `fits` stays false so the existing physics-term attach pool — and its goldens —
+  // cannot see them. missions._withConditions stamps them on a separate `twist` seed stream.
+
+  escort_turns: Object.freeze({
+    id: 'escort_turns',
+    twist: true,
+    kind: 'forbid',
+    event: null,
+    holdS: 1.0,
+    count: 1,
+    onBreach: 'fail',
+    rewardMult: 1.20,
+    label: 'The escort turns',
+    prose: 'This convoy may show its real colours mid-run. If they turn, the job becomes a hunt — it does not die in a red box.',
+    brief: 'If the escort turns, hunt them.',
+    warnText: 'ESCORT TURNING — THEY ARE NOT YOURS',
+    breachText: 'The escort turned. Hunt contract is live.',
+    appliesTo: ['escort'],
+    minRisk: 2,
+    fits() { return false; },
+    tickSample(ctx) {
+      const mission = ctx && ctx.mission;
+      const id = mission && mission._escorteeId;
+      const entity = id != null && ctx.state && ctx.state.entities
+        ? ctx.state.entities.get(id) : null;
+      if (!entity || entity.alive === false) return false;
+      if (entity.data && entity.data.escortTurned) return true;
+      const playerTeam = ctx.player && ctx.player.team;
+      return playerTeam != null && entity.team != null && entity.team !== playerTeam;
+    },
+  }),
+
+  cargo_volatile: Object.freeze({
+    id: 'cargo_volatile',
+    twist: true,
+    kind: 'forbid',
+    event: 'cargo:volatileSlam',
+    count: 1,
+    onBreach: 'fail',
+    rewardMult: 1.20,
+    label: 'Cargo is volatile',
+    prose: 'This lot can cook mid-run. If it slams, the job becomes a recovery — not a voided manifest.',
+    brief: 'If the cargo cooks, recover it.',
+    breachText: 'The cargo cooked. Recovery contract is live.',
+    appliesTo: ['cargo_delivery', 'smuggling_run', 'bulk_trade'],
+    minRisk: 1,
+    fits() { return false; },
+    match(payload) {
+      return !!payload && (payload.podId != null || payload.appliedImpulse > 0 || !!payload.class);
+    },
+  }),
+
+  buyer_is_the_law: Object.freeze({
+    id: 'buyer_is_the_law',
+    twist: true,
+    kind: 'forbid',
+    event: null,
+    holdS: QUIET_APPROACH_HOLD_S,
+    count: 1,
+    onBreach: 'fail',
+    rewardMult: 1.25,
+    label: 'The buyer is the law',
+    prose: 'The drop may be a sting. Come in close and the contract reroutes — you still have a buyer, just not this one.',
+    brief: 'If the buyer is the law, reroute.',
+    warnText: 'STING BERTH — THIS BUYER IS THE LAW',
+    breachText: 'The buyer is the law. New drop is live.',
+    appliesTo: ['cargo_delivery', 'smuggling_run', 'bulk_trade'],
+    minRisk: 1,
+    fits() { return false; },
+    tickSample(ctx) {
+      return berthDistance(ctx) <= QUIET_APPROACH_RANGE_WU;
+    },
+  }),
+
+  wreck_wakes: Object.freeze({
+    id: 'wreck_wakes',
+    twist: true,
+    kind: 'forbid',
+    event: 'physics:impact',
+    count: 1,
+    onBreach: 'fail',
+    rewardMult: 1.20,
+    label: 'The wreck wakes',
+    prose: 'This hull may still have a crew. Wake it and the salvage becomes a hunt — the wreck stays the reason to be here.',
+    brief: 'If the wreck wakes, hunt it.',
+    breachText: 'The wreck woke. Hunt contract is live.',
+    appliesTo: ['salvage_retrieval'],
+    minRisk: 1,
+    fits() { return false; },
+    match(payload, ctx) {
+      if (!payload || !payload.playerInvolved) return false;
+      const ids = new Set((ctx && ctx.mission && ctx.mission.targetEntityIds) || []);
+      if (ctx && ctx.mission && ctx.mission._escorteeId != null) ids.add(ctx.mission._escorteeId);
+      if (!ids.size) {
+        return payload.aId != null || payload.bId != null;
+      }
+      return ids.has(payload.aId) || ids.has(payload.bId);
+    },
+  }),
+
+  pods_are_bait: Object.freeze({
+    id: 'pods_are_bait',
+    twist: true,
+    kind: 'forbid',
+    event: null,
+    holdS: QUIET_APPROACH_HOLD_S,
+    count: 1,
+    onBreach: 'fail',
+    rewardMult: 1.20,
+    label: 'The pods are bait',
+    prose: 'The distress may be an ambush. Close on the pods and the rescue becomes a field-clear — the pods stay in the picture.',
+    brief: 'If the pods are bait, clear the field.',
+    warnText: 'BAIT PODS — THIS IS AN AMBUSH',
+    breachText: 'The pods were bait. Clear-field contract is live.',
+    appliesTo: ['rescue_under_fire', 'escort'],
+    minRisk: 2,
+    fits() { return false; },
+    tickSample(ctx) {
+      if (berthDistance(ctx) <= QUIET_APPROACH_RANGE_WU) return true;
+      const mission = ctx && ctx.mission;
+      const player = ctx && ctx.player;
+      const entities = ctx && ctx.state && ctx.state.entities;
+      if (!mission || !player || !player.pos || !entities) return false;
+      for (const id of mission.targetEntityIds || []) {
+        const entity = entities.get(id);
+        if (!entity || !entity.pos) continue;
+        const role = entity.data && entity.data.physicalRole;
+        if (role && role !== 'rescue_pod' && role !== 'life_pod') continue;
+        const range = Math.hypot(
+          (player.pos.x || 0) - (entity.pos.x || 0),
+          (player.pos.z || 0) - (entity.pos.z || 0),
+        );
+        if (range <= QUIET_APPROACH_RANGE_WU) return true;
+      }
+      return false;
+    },
+  }),
 });
 
 export const MISSION_CONDITION_IDS = Object.freeze(Object.keys(MISSION_CONDITIONS));
+
+export const TWIST_CLAUSE_IDS = Object.freeze([
+  'escort_turns',
+  'cargo_volatile',
+  'buyer_is_the_law',
+  'wreck_wakes',
+  'pods_are_bait',
+]);
+
+const TWIST_CLAUSE_ID_SET = new Set(TWIST_CLAUSE_IDS);
+
+export const TWIST_MUTATIONS = Object.freeze({
+  escort_turns: Object.freeze({ type: 'bounty_hunt', tag: 'turned', keepTargets: true }),
+  cargo_volatile: Object.freeze({ type: 'salvage_retrieval', tag: 'cooked' }),
+  buyer_is_the_law: Object.freeze({ type: 'cargo_delivery', tag: 'sting' }),
+  wreck_wakes: Object.freeze({ type: 'bounty_hunt', tag: 'wakes', keepTargets: true }),
+  pods_are_bait: Object.freeze({ type: 'patrol_clear', tag: 'bait', keepTargets: true }),
+});
+
+const TWIST_SKIP_SOURCES = Object.freeze(new Set([
+  'authoredSetPiece',
+  'capitalBoss',
+  'missionMutation',
+  'onboardingChoice',
+]));
+
+const TWIST_ATTACH_PROB = Object.freeze([0.18, 0.48, 0.62, 0.74, 0.84]);
+
+export function isTwistCondition(idOrDef) {
+  const id = typeof idOrDef === 'string' ? idOrDef : idOrDef && idOrDef.id;
+  return TWIST_CLAUSE_ID_SET.has(id);
+}
 
 /** Lookup a condition by id (frozen record or undefined). */
 export function missionConditionById(id) {
@@ -446,6 +622,49 @@ export function serializableMissionCondition(id) {
     label: c.label,
     prose: c.prose,
     rewardMult: c.rewardMult,
+    ...(c.twist ? { twist: true } : {}),
+  };
+}
+
+/**
+ * Stamp at most one mid-run twist onto a rolled board offer. Own seed stream
+ * (`hash32(seed, offer.id, 'twist')`) so the physics-term pool cannot move a golden.
+ * Story, authored, capital, and mutation successors are left alone.
+ */
+export function attachTwistClauses(offer, seed) {
+  if (!offer || !offer.id || !offer.type) return offer;
+  if (offer.storyTag || offer.campaign47aBeat != null || offer.storyBranch) return offer;
+  if (offer.source && TWIST_SKIP_SOURCES.has(offer.source)) return offer;
+  // Helios is the 47-A teaching board. A sting or cooked-lot twist on the first haul
+  // would mutate the opening contract. Other route stations carry the live set.
+  if (offer.stationId === 'station_helios') return offer;
+  const existing = Array.isArray(offer.clauses) ? offer.clauses : [];
+  if (existing.some((row) => row && (
+    row.twist === true
+    || TWIST_CLAUSE_ID_SET.has(row.conditionId)
+    || TWIST_CLAUSE_ID_SET.has(row.id)
+  ))) {
+    return offer;
+  }
+  const riskTier = Math.max(0, Math.min(4, Math.round(Number(offer.riskTier) || 0)));
+  const rng = mulberry32(hash32(seed, offer.id, 'twist') >>> 0);
+  if (rng() > TWIST_ATTACH_PROB[riskTier]) return offer;
+  const pool = TWIST_CLAUSE_IDS
+    .map((id) => MISSION_CONDITIONS[id])
+    .filter((condition) => (
+      condition
+      && Array.isArray(condition.appliesTo)
+      && condition.appliesTo.includes(offer.type)
+      && riskTier >= (condition.minRisk || 0)
+    ));
+  if (!pool.length) return offer;
+  const pick = pool[Math.floor(rng() * pool.length)];
+  const row = serializableMissionCondition(pick.id);
+  if (!row) return offer;
+  return {
+    ...offer,
+    clauses: [...existing, row],
+    params: { ...(offer.params || {}), twistClauseId: pick.id },
   };
 }
 

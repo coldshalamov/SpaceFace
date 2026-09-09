@@ -1,6 +1,8 @@
 // src/data/missions.js – mission system canonical data.
 // Exports: MISSION_TYPES (16), SET_PIECE_MISSIONS (5), AUTHORED_SET_PIECES (10),
 // STORY_BEATS (8), OFFER_MIX, MISSION_TUNING. Capital boss is its own type, not an 11th authored row.
+// PQ-152.03 twist clauses live in missionConditions.js and stamp onto these types; they do not
+// add an 11th authored row or a second capital type.
 // Pure data, no imports.
 
 export const MISSION_TUNING = {
@@ -1059,6 +1061,16 @@ export const PHYSICAL_MISSION_TYPES = Object.freeze([
   'demolition',
   'rescue_under_fire',
 ]);
+
+// PQ-152.03 — mid-run twist clauses. Catalog ids live in missionConditions.js.
+// This map is the board-facing type each clause is allowed to stamp onto.
+export const TWIST_CLAUSE_LIVE_TYPES = Object.freeze({
+  escort_turns: Object.freeze(['escort']),
+  cargo_volatile: Object.freeze(['cargo_delivery', 'smuggling_run', 'bulk_trade']),
+  buyer_is_the_law: Object.freeze(['cargo_delivery', 'smuggling_run', 'bulk_trade']),
+  wreck_wakes: Object.freeze(['salvage_retrieval']),
+  pods_are_bait: Object.freeze(['rescue_under_fire', 'escort']),
+});
 
 export const AUTHORED_SET_PIECE_TYPE = 'authored_set_piece';
 export const AUTHORED_SET_PIECE_SOURCE = 'authoredSetPiece';

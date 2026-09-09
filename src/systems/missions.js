@@ -69,6 +69,10 @@ import {
   serializableMissionCondition,
   tallyMissionCondition,
   conditionRemaining,
+  attachTwistClauses,
+  isTwistCondition,
+  TWIST_MUTATIONS,
+  QUIET_APPROACH_RANGE_WU,
 } from '../data/missionConditions.js';
 import { AUTHORED_SET_PIECE_ENCOUNTERS } from '../data/encounters/set-piece-authored.js';
 import { CAPITAL_BOSS_ENCOUNTER } from '../data/encounters/capital-boss.js';
@@ -313,6 +317,23 @@ const MISSION_MUTATIONS = Object.freeze({
   'clause_broken:cargo_intact': Object.freeze({ type: 'cargo_delivery', tag: 'restitution' }),
   // The rescue came second → recover what the wreck left.
   'clause_broken:rescue_priority': Object.freeze({ type: 'salvage_retrieval', tag: 'recovery' }),
+  // PQ-152.03 — mid-run twist clauses. Same successor seam; both reason prefixes so a tick
+  // term and an event term cannot drift apart.
+  ...Object.fromEntries(Object.entries(TWIST_MUTATIONS).flatMap(([id, descriptor]) => ([
+    [`clause_broken:${id}`, descriptor],
+    [`condition_broken:${id}`, descriptor],
+  ]))),
+});
+const ESCORT_TURN_DELAY_S = 12;
+const MUTATION_TOAST = Object.freeze({
+  salvage: (title) => `Convoy lost — the wreck is still out there. Salvage contract live: ${title}.`,
+  restitution: (title) => `Contract broken — the manifest is now a debt. Restitution job live: ${title}.`,
+  recovery: (title) => `The rescue was lost — the wreck can still be recovered. Contract live: ${title}.`,
+  turned: (title) => `The escort turned. Hunt contract live: ${title}.`,
+  cooked: (title) => `The cargo cooked. Recovery live: ${title}.`,
+  sting: (title) => `The buyer is the law. New drop live: ${title}.`,
+  wakes: (title) => `The wreck woke. Hunt contract live: ${title}.`,
+  bait: (title) => `The pods were bait. Clear the field: ${title}.`,
 });
 
 function missionMutationFor(reason) {
@@ -474,6 +495,7 @@ const round = Math.round;
 
 function cargoFootprint(offer) {
   const p = offer && offer.params || {};
+  if (p.mutationReroute) return 0;
   if (!p.cmdtyId || !(p.qty > 0)) return 0;
   const commodity = CMDTY_BY_ID.get(p.cmdtyId);
   const volPerU = commodity && commodity.volPerU > 0 ? commodity.volPerU : 1;
@@ -857,7 +879,10 @@ export const missions = {
       // the reverse iteration above already tolerates.
       if (m.heist) { this._driveHeist(m, i); continue; }
       // Escort: steer the friendly escortee toward the destination each tick.
-      if (m.type === 'escort' && m._escorteeId != null) this._steerEscortee(m, state, dt);
+      if (m.type === 'escort' && m._escorteeId != null) {
+        this._steerEscortee(m, state, dt);
+        this._maybeTurnEscort(m, state);
+      }
       if (m.type === 'bounty_hunt' || m.type === 'patrol_clear') {
         this._armAcceptedCombatTargets(m, state);
       }
@@ -1002,8 +1027,9 @@ export const missions = {
     const line = def.breachText || `Contract term broken: ${def.label}.`;
     if (def.onBreach === 'fail') {
       const index = this.state.missions.active.indexOf(m);
-      this.bus.emit('toast', { text: line, kind: 'error', ttl: 4 });
-      this._failMission(m, index, `condition_broken:${def.id}`);
+      const twist = isTwistCondition(def);
+      if (!twist) this.bus.emit('toast', { text: line, kind: 'error', ttl: 4 });
+      this._failMission(m, index, twist ? `clause_broken:${def.id}` : `condition_broken:${def.id}`);
       return;
     }
     this._sayConditionLine(line);
@@ -1780,21 +1806,25 @@ export const missions = {
       ? this.helpers.hash32(this.state.meta.seed, 'conditions', epoch)
       : (((this.state.meta.seed || 0) ^ 0x5bf03635) >>> 0);
     const withTerms = attachConditions(offer, seed, { isFragile: isFragileCommodity });
-    if (withTerms === offer) return offer;
-    const terms = (withTerms.clauses || []).filter(isMissionConditionRow)
+    const twistSeed = (this.helpers && this.helpers.hash32)
+      ? this.helpers.hash32(this.state.meta.seed, 'twists', epoch)
+      : (((this.state.meta.seed || 0) ^ 0x71c3a91b) >>> 0);
+    const stamped = attachTwistClauses(withTerms, twistSeed);
+    if (stamped === offer) return offer;
+    const terms = (stamped.clauses || []).filter(isMissionConditionRow)
       .map((row) => missionConditionById(row.conditionId))
       .filter(Boolean);
-    if (!terms.length) return withTerms;
+    if (!terms.length) return stamped;
     const suffix = terms.map((c) => c.brief).filter(Boolean).join(' ');
     if (suffix) {
-      const base = String(withTerms.brief || '').trim();
+      const base = String(stamped.brief || '').trim();
       const line = base ? `${base} ${suffix}` : suffix;
       // The chart inspector prints this as leg prose; the shipped generator clamps its half to 90,
       // so the combined line stays inside two short lines rather than reflowing the panel.
-      withTerms.brief = line.length <= CONDITION_BRIEF_MAX ? line
+      stamped.brief = line.length <= CONDITION_BRIEF_MAX ? line
         : `${line.slice(0, CONDITION_BRIEF_MAX - 3).trimEnd()}...`;
     }
-    return withTerms;
+    return stamped;
   },
 
   _rollBulkHaulOffer(info, rng, epoch, idx) {
@@ -4965,11 +4995,17 @@ export const missions = {
     // --reload-at golden (same precedent as `clauses`/`heist` in _instanceFromOffer).
     successor.mutatedFromMissionId = m.id;
     successor.mutationTag = descriptor.tag;
-    const toastText = {
-      salvage: `Convoy lost — the wreck is still out there. Salvage contract live: ${successor.title}.`,
-      restitution: `Contract broken — the manifest is now a debt. Restitution job live: ${successor.title}.`,
-      recovery: `The rescue was lost — the wreck can still be recovered. Contract live: ${successor.title}.`,
-    }[descriptor.tag] || `Contract broken — a follow-up is live: ${successor.title}.`;
+    if (descriptor.keepTargets) {
+      const kept = Array.isArray(m.targetEntityIds) ? m.targetEntityIds.slice() : [];
+      successor.targetEntityIds = kept;
+      successor.needsTargets = kept.length === 0;
+      if (m._escorteeId != null) successor._escorteeId = m._escorteeId;
+      m.targetEntityIds = [];
+    }
+    const toastFor = MUTATION_TOAST[descriptor.tag];
+    const toastText = toastFor
+      ? toastFor(successor.title)
+      : `Contract broken — a follow-up is live: ${successor.title}.`;
     return { missionId: successor.id, offerId: posted.offerId, tag: descriptor.tag, toastText };
   },
 
@@ -5004,7 +5040,7 @@ export const missions = {
       // mutation elsewhere can never be mistaken for this one.
       storyTag: `mutation:${m.id}`,
     };
-    if (descriptor.tag === 'salvage' || descriptor.tag === 'recovery') {
+    if (descriptor.tag === 'salvage' || descriptor.tag === 'recovery' || descriptor.tag === 'cooked') {
       // The wreck the convoy left is the content. Commodity/qty derive from the failing id; the
       // pointer to the lost hull and its sector read straight off the mission — nothing invented.
       const cmdtyId = MUTATION_SALVAGE_CMDTYS[
@@ -5018,15 +5054,78 @@ export const missions = {
           || (state.world && state.world.currentSectorId) || null,
         title: descriptor.tag === 'salvage'
           ? `Salvage the convoy wreck — bring it home to ${homeName}`
-          : `Recover what the wreck left — ${homeName}`,
+          : descriptor.tag === 'cooked'
+            ? `The cargo cooked — recover what remains for ${homeName}`
+            : `Recover what the wreck left — ${homeName}`,
         brief: descriptor.tag === 'salvage'
           ? `The convoy is gone. Its wreck is still on the drift; ${homeName} pays for what comes back.`
-          : `The rescue came second. What is left of the hull still answers questions at ${homeName}.`,
+          : descriptor.tag === 'cooked'
+            ? `The lot vented. What is left still pays at ${homeName}.`
+            : `The rescue came second. What is left of the hull still answers questions at ${homeName}.`,
         params: {
           cmdtyId,
           qty,
           lostEntityId: m._escorteeId != null ? m._escorteeId : null,
           brokenClause: clauseId,
+          mutationReroute: true,
+        },
+      };
+    }
+    if (descriptor.tag === 'turned' || descriptor.tag === 'wakes') {
+      const lostId = m._escorteeId != null
+        ? m._escorteeId
+        : (m.targetEntityIds && m.targetEntityIds[0] != null ? m.targetEntityIds[0] : null);
+      return {
+        ...base,
+        destStationId: homeStationId,
+        destSectorId: m.destSectorId || (state.world && state.world.currentSectorId) || null,
+        title: descriptor.tag === 'turned'
+          ? `Hunt the turned escort — ${homeName}`
+          : `The wreck woke — put it down for ${homeName}`,
+        brief: descriptor.tag === 'turned'
+          ? `The convoy showed its real colours. ${homeName} still wants them off the lane.`
+          : `The hull sat up. ${homeName} pays for a dead wreck, not a live one.`,
+        params: {
+          targetStrength: Math.max(1, Number(m.params && m.params.targetStrength) || 1),
+          fValue: 1,
+          lostEntityId: lostId,
+          brokenClause: clauseId,
+        },
+      };
+    }
+    if (descriptor.tag === 'bait') {
+      return {
+        ...base,
+        destStationId: homeStationId,
+        destSectorId: m.destSectorId || (state.world && state.world.currentSectorId) || null,
+        title: `The pods were bait — clear the field for ${homeName}`,
+        brief: `The distress was an ambush. ${homeName} wants the field empty.`,
+        params: {
+          clearCount: Math.max(2, Math.round(Number(m.params && m.params.clearCount) || 2)),
+          targetStrength: Math.max(1, Number(m.params && m.params.targetStrength) || 1),
+          fValue: 1,
+          brokenClause: clauseId,
+        },
+      };
+    }
+    if (descriptor.tag === 'sting') {
+      const lostCmdtyId = m.params && m.params.cmdtyId || null;
+      const lostQty = Math.max(1, Math.round(Number(m.params && m.params.qty) || 1));
+      return {
+        ...base,
+        destStationId: homeStationId,
+        destSectorId: (m.stationId && STATION_INFO.get(m.stationId) && m.destSectorId)
+          ? (STATION_INFO.get(homeStationId) && STATION_INFO.get(homeStationId).sectorId) || m.destSectorId
+          : m.destSectorId || null,
+        title: lostCmdtyId
+          ? `The buyer is the law — run the lot back to ${homeName}`
+          : `The buyer is the law — report to ${homeName}`,
+        brief: `The drop was a sting. ${homeName} will still take the book if you make it back.`,
+        params: {
+          ...(lostCmdtyId ? { cmdtyId: lostCmdtyId, qty: lostQty } : {}),
+          brokenClause: clauseId,
+          replacesMissionId: m.id,
+          mutationReroute: true,
         },
       };
     }
@@ -5655,6 +5754,38 @@ export const missions = {
       intent.moveX = 0;
       intent.boost = dist > 700 && off < 0.6;
     }
+  },
+
+  /**
+   * PQ-152.03 — the escort turns mid-run. Only when the contract carries escort_turns.
+   * Near the drop or after a held delay they flip hostile; the tick term then mutates
+   * the job into a hunt instead of voiding it.
+   */
+  _maybeTurnEscort(m, state) {
+    if (!m || m.type !== 'escort' || m._escorteeId == null) return;
+    if (!this._missionConditions(m).some((condition) => condition && condition.id === 'escort_turns')) {
+      return;
+    }
+    const entity = state.entities && state.entities.get(m._escorteeId);
+    if (!entity || entity.alive === false) return;
+    if (entity.data && entity.data.escortTurned) return;
+    const now = Number(state.simTime) || 0;
+    const acceptedAt = Number(m.acceptedAt_s) || 0;
+    const destPos = this._missionBerthPos(m);
+    const nearDest = !!(destPos && entity.pos && Math.hypot(
+      (entity.pos.x || 0) - (destPos.x || 0),
+      (entity.pos.z || 0) - (destPos.z || 0),
+    ) <= QUIET_APPROACH_RANGE_WU);
+    if (!nearDest && (now - acceptedAt) < ESCORT_TURN_DELAY_S) return;
+    entity.team = 1;
+    entity.data = entity.data || {};
+    entity.data.escortTurned = true;
+    entity.data.escortee = false;
+    const intent = entity.data.intent || (entity.data.intent = {
+      moveX: 0, moveZ: 0, boost: false, fire: false, fireGroup: null, aimAngle: 0,
+    });
+    intent.fire = true;
+    this.bus.emit('mission:updated', { missionId: m.id, twist: 'escort_turns' });
   },
 
   /** Mark mission target entities dead when the mission settles (avoid orphans). */
