@@ -6,9 +6,11 @@
 //   visualFactory — distinct 3D credit-chip object
 //
 // Materials come from hull class / identity / cargo only. Kill style is ignored here
-// on purpose: AC-08 will multiply credits/RP later, never materials.
+// on purpose: credits stay equal across gun and physics kills. PQ-155.03 pays stunts
+// as salvage-rights chits on a separate helper — never as extra credit chips.
 
 export const CREDIT_CHIP_KIND = 'credit_chip';
+export const SALVAGE_RIGHTS_KIND = 'salvage_rights';
 
 /** Fraction of victim world velocity inherited by each erupted pickup. */
 export const KILL_BURST_VEL_INHERIT = 0.4;
@@ -208,10 +210,48 @@ export function killRewardRecipeFor(victim) {
   return KILL_REWARD_RECIPES[tier] || FALLBACK_RECIPE;
 }
 
+export function isSalvageRightsItem(item) {
+  if (!item || typeof item !== 'object') return false;
+  return item.kind === SALVAGE_RIGHTS_KIND;
+}
+
 export function isCreditChipItem(item) {
   if (!item || typeof item !== 'object') return false;
+  if (isSalvageRightsItem(item)) return false;
   if (item.kind === CREDIT_CHIP_KIND || item.kind === 'credits') return true;
   return item.commodityId == null && Number(item.credits) > 0;
+}
+
+export function salvageRightsItemsOf(items) {
+  if (!Array.isArray(items)) return [];
+  const out = [];
+  for (let i = 0; i < items.length; i++) {
+    if (isSalvageRightsItem(items[i])) out.push(items[i]);
+  }
+  return out;
+}
+
+export function creditChipTotal(items) {
+  const chips = creditChipItemsOf(items);
+  let total = 0;
+  for (let i = 0; i < chips.length; i++) {
+    const n = Math.floor(Number(chips[i].credits != null ? chips[i].credits : chips[i].amount) || 0);
+    if (n > 0) total += n;
+  }
+  return total;
+}
+
+export function makeSalvageRightsItem(rights, grantKey) {
+  const qty = Math.max(0, Math.floor(Number(rights) || 0));
+  if (qty <= 0) return null;
+  const key = typeof grantKey === 'string' && grantKey ? grantKey : 'anon';
+  return {
+    kind: SALVAGE_RIGHTS_KIND,
+    salvageRights: qty,
+    amount: qty,
+    credits: 0,
+    grantReason: `stunt:salvage_rights:${key}`,
+  };
 }
 
 export function isCreditChipPickup(data) {

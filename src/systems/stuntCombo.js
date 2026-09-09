@@ -20,8 +20,28 @@
 //
 // All math is deterministic: finite-number coercion, min/max clamps, integer rounding once
 // per trick at record time.
+//
+// PQ-155.03 — stunts pay reputation and salvage rights, never raw credits. Combo score
+// stays a Crucible board figure. Trick pay is a separate ledger on the same combo state.
 
 import { TRICK_DEFINITIONS } from '../combat/stuntTaxonomy.js';
+
+/** Pitborn yards buy wrecks and issue the paper. Style standing lands here. */
+export const STUNT_PAY_FACTION_ID = 'faction_pitborn';
+
+export const STUNT_REP_BY_RARITY = Object.freeze({
+  common: 3,
+  uncommon: 6,
+  rare: 9,
+  legendary: 15,
+});
+
+export const STUNT_SALVAGE_RIGHTS_BY_RARITY = Object.freeze({
+  common: 1,
+  uncommon: 1,
+  rare: 2,
+  legendary: 3,
+});
 
 export const STUNT_COMBO_SCHEMA_VERSION = 1;
 
@@ -80,6 +100,40 @@ export function isPulseWeapon(weaponId) {
 /** Flat score for one plain (trickless) kill. Pulse pays less; nothing else multiplies. */
 export function killPoints(weaponId) {
   return isPulseWeapon(weaponId) ? PULSE_KILL_SCORE : GUN_KILL_SCORE;
+}
+
+/**
+ * Reputation and salvage-rights pay for one named trick. Credits are always 0 —
+ * a stunt is never a credit faucet (PQ-155.03).
+ */
+export function trickPay(trick) {
+  if (!trick || typeof trick !== 'object') {
+    return { reputation: 0, salvageRights: 0, credits: 0, factionId: STUNT_PAY_FACTION_ID };
+  }
+  const rarity = trick.rarity;
+  const reputation = STUNT_REP_BY_RARITY[rarity] != null
+    ? STUNT_REP_BY_RARITY[rarity]
+    : STUNT_REP_BY_RARITY.common;
+  const salvageRights = STUNT_SALVAGE_RIGHTS_BY_RARITY[rarity] != null
+    ? STUNT_SALVAGE_RIGHTS_BY_RARITY[rarity]
+    : STUNT_SALVAGE_RIGHTS_BY_RARITY.common;
+  return {
+    reputation,
+    salvageRights,
+    credits: 0,
+    factionId: STUNT_PAY_FACTION_ID,
+  };
+}
+
+/** Run pay snapshot. Credits are forced to 0 even if a caller stamped the field. */
+export function comboPay(comboState) {
+  const combo = ensureCombo(comboState);
+  return {
+    reputation: Math.max(0, Math.floor(finite(combo.reputation, 0))),
+    salvageRights: Math.max(0, Math.floor(finite(combo.salvageRights, 0))),
+    credits: 0,
+    factionId: STUNT_PAY_FACTION_ID,
+  };
 }
 
 /**
@@ -152,6 +206,9 @@ export function createComboState() {
     trickKills: 0,
     gunKills: 0,
     pulseKills: 0,
+    reputation: 0,
+    salvageRights: 0,
+    credits: 0,
     lastTricks: [],
   };
 }
@@ -167,6 +224,9 @@ function ensureCombo(combo) {
   if (typeof combo.trickKills !== 'number') combo.trickKills = 0;
   if (typeof combo.gunKills !== 'number') combo.gunKills = 0;
   if (typeof combo.pulseKills !== 'number') combo.pulseKills = 0;
+  if (typeof combo.reputation !== 'number') combo.reputation = 0;
+  if (typeof combo.salvageRights !== 'number') combo.salvageRights = 0;
+  combo.credits = 0;
   if (!Array.isArray(combo.lastTricks)) combo.lastTricks = [];
   combo.schemaVersion = STUNT_COMBO_SCHEMA_VERSION;
   return combo;
@@ -192,8 +252,12 @@ export function recordTrick(comboState, trick) {
   }
   const position = combo.activeCount + 1;
   const points = trickPoints(trick, position);
+  const pay = trickPay(trick);
   combo.activeCount = position;
   combo.activePoints += points;
+  combo.reputation += pay.reputation;
+  combo.salvageRights += pay.salvageRights;
+  combo.credits = 0;
   combo.lastTrickTick = tick;
   if (combo.activeCount > combo.bestChain) combo.bestChain = combo.activeCount;
   if (combo.activePoints > combo.bestChainPoints) combo.bestChainPoints = combo.activePoints;
@@ -291,6 +355,9 @@ export function comboSummary(comboState) {
     gunKills: combo.gunKills,
     pulseKills: combo.pulseKills,
     totalKills,
+    reputation: combo.reputation,
+    salvageRights: combo.salvageRights,
+    credits: 0,
     lastTricks: combo.lastTricks.map((entry) => ({ ...entry })),
   };
 }

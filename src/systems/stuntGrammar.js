@@ -6,16 +6,20 @@
 // and ship ledger projection.
 //
 // Single-writer contract:
-//   - Owns only state.stunts (transient recent trick buffer)
+//   - Owns only state.stunts (transient recent trick buffer + session pay ledger)
 //   - Never mutates entity physics, health, or controller state
+//   - Stunt pay emits faction:repDelta (factions is the sole standing writer) and
+//     stunt:salvageRights. Never economy:grantCredits.
 
 import { createStuntDetector } from '../combat/stuntTaxonomy.js';
+import { makeSalvageRightsItem } from '../data/killRewards.js';
 import {
   bankIfQuiet,
   createComboState,
   recordKill,
   recordTrick,
   recordTrickKill,
+  trickPay,
 } from './stuntCombo.js';
 
 export const STUNT_SYSTEM_SCHEMA_VERSION = 1;
@@ -40,7 +44,44 @@ function ensureState(state) {
   if (!state.stunts.combo || typeof state.stunts.combo !== 'object') {
     state.stunts.combo = createComboState();
   }
+  if (!state.stunts.pay || typeof state.stunts.pay !== 'object') {
+    state.stunts.pay = { reputation: 0, salvageRights: 0, credits: 0 };
+  }
+  state.stunts.pay.credits = 0;
   return state.stunts;
+}
+
+function applySessionPay(stuntsState, pay) {
+  if (!stuntsState || !pay) return;
+  if (!stuntsState.pay || typeof stuntsState.pay !== 'object') {
+    stuntsState.pay = { reputation: 0, salvageRights: 0, credits: 0 };
+  }
+  stuntsState.pay.reputation += pay.reputation;
+  stuntsState.pay.salvageRights += pay.salvageRights;
+  stuntsState.pay.credits = 0;
+}
+
+function emitStuntPay(bus, trick, pay) {
+  if (!bus || typeof bus.emit !== 'function' || !pay) return;
+  if (pay.reputation > 0 && pay.factionId) {
+    bus.emit('faction:repDelta', {
+      factionId: pay.factionId,
+      delta: pay.reputation,
+      reason: 'stunt_trick',
+    });
+  }
+  if (pay.salvageRights > 0) {
+    bus.emit('stunt:salvageRights', {
+      trickId: trick && trick.trickId,
+      name: trick && trick.name,
+      rarity: trick && trick.rarity,
+      salvageRights: pay.salvageRights,
+      credits: 0,
+      factionId: pay.factionId,
+      item: makeSalvageRightsItem(pay.salvageRights, trick && trick.trickId),
+      tick: trick && trick.tick,
+    });
+  }
 }
 
 export const stuntGrammar = {
@@ -126,6 +167,7 @@ export const stuntGrammar = {
     if (tricks.length > 0) {
       const stuntsState = ensureState(state);
       for (const trick of tricks) {
+        const pay = trickPay(trick);
         if (stuntsState) {
           stuntsState.recentTricks.push(trick);
           if (stuntsState.recentTricks.length > MAX_RECENT_TRICKS) {
@@ -139,9 +181,11 @@ export const stuntGrammar = {
           // Combo meter: the single writer for combo/score feeds on the same receipt.
           // Scoring never alters the trick itself and never touches moment:holyShit.
           if (stuntsState.combo) recordTrick(stuntsState.combo, trick);
+          applySessionPay(stuntsState, pay);
         }
         if (this.bus && typeof this.bus.emit === 'function') {
           this.bus.emit('stunt:trickDetected', trick);
+          emitStuntPay(this.bus, trick, pay);
         }
       }
       // A kill that arrives WITH a trick is a trick kill, not a gun kill.
