@@ -1,0 +1,126 @@
+{
+  "cycle": 5,
+  "disposition": "accepted",
+  "rootNode": "SF_WORKS_REFINERY_V1",
+  "hooks": [
+    "furnace_slit",
+    "stack_vent",
+    "lamp"
+  ],
+  "partsGlb": "assets/ships/parts/works/place_works_refinery.glb",
+  "partsSha256": "A5043353A4F53E71409EE31BF05F0A1F9255FF24CDA5BD9A95D0E715004345C5",
+  "partsBytes": 9160644,
+  "siteLodMaterialProfile": "three_mass_process_train_v1",
+  "sourceGlb": "assets/works/refinery/source/refinery.glb",
+  "sourceSha256": "55B35C4E28D23972E7E130BCE35BD3D8A5AEEC261EE022B992F5D1C490692795",
+  "releaseGlb": "assets/ships/release/parts/works/place_works_refinery.glb",
+  "releaseSha256": "C48D5641E5AF64C342DBE4F7903CA3A2852161D092DD2F18C91720D916D3D8EF",
+  "releaseBytes": 3307996,
+  "renderPackage": {
+    "metadata": "assets/ships/release/render-packages/works-refinery/render-package.json",
+    "metadataSha256": "D13342914EF3A28C6F72F3BECEB23CF1F64585D34F21E5F82A33D017E4D25A25",
+    "renderGlb": "assets/ships/release/render-packages/works-refinery/render.glb",
+    "renderGlbSha256": "86A95B94B0CA297E4CEC0ABABB11D497924095DBA4DF6D4AC942136CC873E77E",
+    "contentHash": "6c45c7dbf428b7f67aa53210a4e3c94a75d27a2594dc40a7da5e298553e0e0fd",
+    "runtimeHash": "23bd55f5194823937d5e067c55d28663b8a5a25e41482843b8dff6545bcc0b90"
+  },
+  "lods": {
+    "lod0": {
+      "path": "assets/works/refinery/source/refinery_lod0.glb",
+      "sha256": "F5D1E2E37351159919F8A9614E1A0384DF06776C5F6A5714FD71E97BD91285A7",
+      "triangles": 7442
+    },
+    "lod1": {
+      "path": "assets/works/refinery/source/refinery_lod1.glb",
+      "sha256": "F87B0C95768002B7D62D06CBB1E64DB026E2679C7DB016B0F1FC1D2B22D66EF6",
+      "triangles": 1840
+    },
+    "lod2": {
+      "path": "assets/works/refinery/source/refinery_lod2.glb",
+      "sha256": "46DABCE9EDFC6504A135F2BD5ABD5F86F2FE849FA8074FAA96A50254C7770B1F",
+      "triangles": 560
+    }
+  },
+  "textures": {
+    "lod0": {
+      "basecolor": "assets/works/refinery/source/textures/refinery_lod0_basecolor.png",
+      "orm": "assets/works/refinery/source/textures/refinery_lod0_orm.png",
+      "normal": "assets/works/refinery/source/textures/refinery_lod0_normal.png",
+      "ao": "assets/works/refinery/source/textures/refinery_lod0_ao.png",
+      "curvature": "assets/works/refinery/source/textures/refinery_lod0_curvature.png",
+      "id": "assets/works/refinery/source/textures/refinery_lod0_id.png"
+    },
+    "lod1": {
+      "basecolor": "assets/works/refinery/source/textures/refinery_lod1_basecolor.png",
+      "orm": "assets/works/refinery/source/textures/refinery_lod1_orm.png",
+      "normal": "assets/works/refinery/source/textures/refinery_lod1_normal.png",
+      "ao": "assets/works/refinery/source/textures/refinery_lod1_ao.png",
+      "curvature": "assets/works/refinery/source/textures/refinery_lod1_curvature.png",
+      "id": "assets/works/refinery/source/textures/refinery_lod1_id.png"
+    },
+    "lod2": {
+      "basecolor": "assets/works/refinery/source/textures/refinery_lod2_basecolor.png",
+      "orm": "assets/works/refinery/source/textures/refinery_lod2_orm.png",
+      "normal": "assets/works/refinery/source/textures/refinery_lod2_normal.png",
+      "ao": "assets/works/refinery/source/textures/refinery_lod2_ao.png",
+      "curvature": "assets/works/refinery/source/textures/refinery_lod2_curvature.png",
+      "id": "assets/works/refinery/source/textures/refinery_lod2_id.png"
+    }
+  },
+  "blend": "assets/works/refinery/source/works_refinery.blend",
+  "blendSha256": "CE90413DEBE3D36A18E40091146011FF6DAF321AC0E40CE881CF37D3B79EB9CD",
+  "builder": "tools/blender/build_works_refinery.py",
+  "builderSha256": "CD4D8475A77BEADFE3FED3545EB43ECB1131DF995FC4090026F6BBAFE6786406",
+  "lod0Maps": {
+    "basecolor": "1597E7002955ED41A8957A8E6362699F6FC1FD96A2BD4951C5BAA008EB2E9452",
+    "normal": "160FBD102019CA1AE49156C83C0C6A3191C9A869E17F163672A2B1CC7490162D",
+    "orm": "554141CDAEE28EB4B25E214C00E087739BBB91E61880C91260F72C536F364052"
+  },
+  "hookGltfTranslations": {
+    "furnace_slit": [
+      -0.2199999988079071,
+      0.2919999957084656,
+      -0.03999999910593033
+    ],
+    "stack_vent": [
+      0.18000000715255737,
+      1.1200000047683716,
+      -0.800000011920929
+    ],
+    "lamp": [
+      0.3100000023841858,
+      0.7400000095367432,
+      -0.6499999761581421
+    ]
+  },
+  "collisionGltf": {
+    "translation": [
+      0.0,
+      0.6000000238418579,
+      0.0
+    ],
+    "scale": [
+      1.0499999523162842,
+      0.6000000238418579,
+      1.0499999523162842
+    ]
+  },
+  "independentReview": {
+    "verdict": "KEEP",
+    "reviewers": [
+      "Luna max /root/pq131_extractor_art_research",
+      "Terra xhigh /root/pq131_extractor_runtime_research",
+      "Clinepass Kimi K3 max ses_fa2be25b7ffeC47NdlrMt23p3h"
+    ],
+    "scope": "whole_asset_source_plus_exact_selected_release_at_work_and_site_registers",
+    "sourceSha256": "55B35C4E28D23972E7E130BCE35BD3D8A5AEEC261EE022B992F5D1C490692795",
+    "selectedSha256": "A5043353A4F53E71409EE31BF05F0A1F9255FF24CDA5BD9A95D0E715004345C5",
+    "releaseSha256": "C48D5641E5AF64C342DBE4F7903CA3A2852161D092DD2F18C91720D916D3D8EF"
+  },
+  "routeAcceptance": {
+    "verdict": "KEEP",
+    "reviewer": "/root",
+    "scope": "exact_release_browser_capture_plus_shared-route Electron playable",
+    "evidence": "assets/works/refinery/evidence/cycle_005_master/EPOCH.json"
+  }
+}
