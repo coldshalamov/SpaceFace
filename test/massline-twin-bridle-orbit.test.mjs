@@ -33,8 +33,14 @@ test('Twin Bridle pair orbits and impacts terrain in at least 4 of 5 seeds', asy
   }
   const hitCount = hits.filter((row) => row.hit).length;
   const spun = hits.filter((row) => row.spinDeg >= 90).length;
+  const loadBound = REST * BRIDLE.spring.maxStretchRatio;
+  const bounded = hits.filter((row) => row.distSwing <= loadBound).length;
+  assert.ok(Number.isFinite(BRIDLE.break.maxTension) && BRIDLE.break.maxTension > 0,
+    'the leftover bridle must break by a finite load rating');
   assert.ok(spun >= 4, `the pair must read as one spinning system in ≥4 seeds, got ${spun}`);
   assert.ok(hitCount >= 4, `bridled lights must lawn-dart terrain in ≥4 of 5 seeds, got ${hitCount}`);
+  assert.ok(bounded >= 4,
+    `line length swing must stay inside leftover stretch ${loadBound.toFixed(1)}, got ${bounded}`);
 });
 
 async function runSeed(seed) {
