@@ -7,7 +7,8 @@
 // This file is the Electron-only shell: app lifecycle, single-instance lock, GPU switches,
 // window creation, fixed-port-for-saves, packaged→bundle root selection.
 // `npm run check:launch-policy` enforces that both launchers share that module.
-const { app, BrowserWindow, ipcMain, powerMonitor } = require('electron');
+const electron = require('electron');
+const { app, BrowserWindow, ipcMain, powerMonitor } = electron;
 const path = require('path');
 const { createGameServer } = require('../scripts/lib/gameServer.cjs');
 const {
@@ -75,6 +76,10 @@ ipcMain.on(SHELL_QUIT_CHANNEL, () => {
 if (launchConfig.isolatedEvidence) {
   app.setPath('userData', launchConfig.userDataDir);
 }
+
+// PQ-033.01 leftover crash dumps: Crashpad writes under userData/crashes. No electron-updater
+// and no upload store — local files only, leftover app version in the report extras.
+startLeftoverCrashReporter(electron);
 
 // GPU hints (shell-only — must not change gameplay/renderer features).
 app.commandLine.appendSwitch('ignore-gpu-blocklist');
@@ -307,6 +312,62 @@ function receiptText(value) {
   return String(value || '').slice(0, 500);
 }
 
+function leftoverCrashDumpDir(userDataPath) {
+  return path.join(String(userDataPath || ''), 'crashes');
+}
+
+function leftoverCrashExtra(identity) {
+  const extra = {};
+  if (identity && typeof identity.version === 'string' && identity.version.trim()) {
+    extra.version = identity.version.trim().slice(0, 127);
+  }
+  if (identity && typeof identity.build === 'string' && identity.build.trim()) {
+    extra.build = identity.build.trim().slice(0, 127);
+  }
+  return extra;
+}
+
+function leftoverCrashIdentity(appApi = app) {
+  let version = '';
+  try {
+    if (appApi && typeof appApi.getVersion === 'function') {
+      version = String(appApi.getVersion() || '');
+    }
+  } catch (_) {}
+  return leftoverCrashExtra({ version });
+}
+
+function startLeftoverCrashReporter(electronApi = electron) {
+  const crashReporter = electronApi && electronApi.crashReporter;
+  const appApi = (electronApi && electronApi.app) || app;
+  if (!crashReporter || typeof crashReporter.start !== 'function') {
+    return { started: false, reason: 'crashReporter-missing' };
+  }
+
+  let userDataPath = '';
+  try {
+    if (appApi && typeof appApi.getPath === 'function') {
+      userDataPath = String(appApi.getPath('userData') || '');
+    }
+  } catch (_) {}
+
+  const dumpDir = leftoverCrashDumpDir(userDataPath);
+  try {
+    if (dumpDir && appApi && typeof appApi.setPath === 'function') {
+      appApi.setPath('crashDumps', dumpDir);
+    }
+  } catch (_) {}
+
+  const extra = leftoverCrashIdentity(appApi);
+  crashReporter.start({
+    productName: 'SpaceFace',
+    uploadToServer: false,
+    extra,
+    globalExtra: extra,
+  });
+  return { started: true, dumpDir, extra };
+}
+
 function collectRuntimeIdentity() {
   const versions = process.versions || {};
   return {
@@ -521,3 +582,8 @@ if (!app.requestSingleInstanceLock()) {
     }
   });
 }
+
+module.exports.leftoverCrashDumpDir = leftoverCrashDumpDir;
+module.exports.leftoverCrashExtra = leftoverCrashExtra;
+module.exports.leftoverCrashIdentity = leftoverCrashIdentity;
+module.exports.startLeftoverCrashReporter = startLeftoverCrashReporter;

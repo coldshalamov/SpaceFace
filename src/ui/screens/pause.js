@@ -16,6 +16,7 @@ import { MAP_FOCUS, mapHandoffAction, openGalaxyMap } from '../mapAuthority.js';
 import { coreText } from '../localizedCoreCopy.js';
 import { requestQuit } from '../quitGame.js';
 import { IS_DEV } from '../../core/devMode.js';
+import { leftoverVersionLabel, paintLeftoverVersion } from './mainMenu.js';
 import { el, words, settle, cue } from '../kit/index.js';
 
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
@@ -443,12 +444,19 @@ export const pauseScreen = {
     stage.appendChild(list);
     rootEl.appendChild(stage);
 
+    const version = el('p', 'k-fine');
+    version.dataset.role = 'version';
+    const versionText = el('span', '', leftoverVersionLabel(null));
+    version.appendChild(versionText);
+    rootEl.appendChild(version);
+
     // .k-fine — the resume key. check-ui-screen-imports allows the literal on this screen.
     rootEl.appendChild(el('p', 'k-fine', 'Esc resumes'));
 
     const bResume = list.querySelector(`[data-action="${resumeAction}"]`);
-    els = { bResume, title, stage, briefObjective, briefNext, briefSave };
+    els = { bResume, title, stage, briefObjective, briefNext, briefSave, versionText };
     renderFlightBrief(ctx);
+    this._loadVersion();
   },
 
   _resume(ctx) {
@@ -483,7 +491,14 @@ export const pauseScreen = {
     // The world behind the pause is the live flight picture, not a mount of its own: the frame is
     // ready as soon as the words are (KIT_SPEC §11.7 capture contract).
     if (els && els.title && els.title.parentElement) els.title.parentElement.dataset.kReady = '1';
+    this._loadVersion();
     cue('open');
+  },
+
+  _loadVersion() {
+    if (!els) return;
+    const target = els.versionText;
+    void paintLeftoverVersion(target, () => els && els.versionText === target);
   },
 
   onHide(ctx) {

@@ -182,6 +182,41 @@ function objectiveSummaryText(meta) {
   return meta.objectiveSummary || meta.navObjectiveSummary || meta.missionSummary || meta.storySummary || '';
 }
 
+/** Leftover version payload is package.json `{ version }`. Title and pause share this string. */
+export function leftoverVersionToken(payload) {
+  if (!payload || typeof payload.version !== 'string') return '';
+  return payload.version.trim();
+}
+
+export function leftoverVersionLabel(payload) {
+  const version = leftoverVersionToken(payload);
+  return version ? ('SpaceFace v' + version) : 'SpaceFace';
+}
+
+export function applyLeftoverVersionText(target, payload) {
+  if (!target) return '';
+  const version = leftoverVersionToken(payload);
+  if (!version) return target.textContent || '';
+  const label = leftoverVersionLabel(payload);
+  target.textContent = label;
+  return label;
+}
+
+export function loadLeftoverVersionPayload() {
+  if (typeof fetch !== 'function') return Promise.resolve(null);
+  return fetch('/package.json')
+    .then((response) => (response && response.ok ? response.json() : null))
+    .catch(() => null);
+}
+
+export function paintLeftoverVersion(target, stillCurrent) {
+  if (!target) return Promise.resolve('');
+  return loadLeftoverVersionPayload().then((payload) => {
+    if (typeof stillCurrent === 'function' && !stillCurrent(target)) return '';
+    return applyLeftoverVersionText(target, payload);
+  });
+}
+
 let refs = null;
 
 export const mainMenuScreen = {
@@ -387,17 +422,11 @@ export const mainMenuScreen = {
     for (const li of refs.list.children) li.classList.add('k-in', 'k-in--stamp');
   },
 
-  // Version in fine print. The server serves the repo root, so package.json is reachable in the
-  // browser and in Electron; anything else leaves the name alone.
+  // Version in fine print. The leftover payload is package.json; pause paints the same string.
   _loadVersion() {
-    if (!refs || typeof fetch !== 'function') return;
+    if (!refs) return;
     const target = refs.versionText;
-    fetch('/package.json')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((p) => {
-        if (p && typeof p.version === 'string' && refs && refs.versionText === target) target.textContent = 'SpaceFace v' + p.version;
-      })
-      .catch(() => {});
+    void paintLeftoverVersion(target, () => refs && refs.versionText === target);
   },
 
   // CONTINUE: the black veil with the location name bottom-left (spec2/03 §3). It mounts on
