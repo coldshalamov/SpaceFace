@@ -7,5 +7,9 @@ export function installExperienceStyles(doc = globalThis.document) {
   link.rel = 'stylesheet';
   link.href = new URL('../../../styles/command-journey.css', import.meta.url).href;
   doc.head.appendChild(link);
+  const facilities = doc.createElement('link');
+  facilities.rel = 'stylesheet';
+  facilities.href = new URL('../../../styles/command-facilities.css', import.meta.url).href;
+  doc.head.appendChild(facilities);
 }
 installExperienceStyles();

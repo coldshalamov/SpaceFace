@@ -6,6 +6,7 @@
 // market" word), the line's state as one sentence, and Fabricate as a word. Reuses the crafting
 // system: ctx.crafting.build(bpId, stationId). `.sx-ind`, `.sx-ind-row[data-bp]`,
 // `.sx-ind-row__name`, `.sx-ind-row__process`, `[data-source-cmdty]`, `[data-build]` are hooks.
+import { fabricationArtworkHtml, fabricationProgress } from '../../art/operationArtwork.js';
 import { BLUEPRINTS } from '../../../data/blueprints.js';
 import { COMMODITIES } from '../../../data/commodities.js';
 import { MODULES } from '../../../data/modules.js';
@@ -80,10 +81,14 @@ export function createIndustryScreen(ctx) {
   const stageEl = el.querySelector('.sx-ind__stage');
   let selectedId = BLUEPRINTS[0] && BLUEPRINTS[0].id;
   let picked = false; // land on a recipe buildable at THIS station on first open
+  let lastListHtml = '';
+  let lastStageHtml = '';
+  let buildError = '';
+  let disposed = false;
 
   function renderList(state) {
     const stn = stationType(ctx);
-    listEl.innerHTML =
+    const html =
       `<div class="sx-ind-spindle" role="tablist" aria-label="Fabrication process and blueprints">` +
         CAT_ORDER.map((category) => {
           const blueprints = BLUEPRINTS.filter((bp) => bp.category === category);
@@ -106,6 +111,7 @@ export function createIndustryScreen(ctx) {
           `</section>`;
         }).join('') +
       `</div>`;
+    if (html !== lastListHtml) { listEl.innerHTML = html; lastListHtml = html; }
   }
 
   function renderStage(state) {
@@ -117,7 +123,8 @@ export function createIndustryScreen(ctx) {
     const sid = state && state.ui && state.ui.dockedStationId;
     const queue = state && state.crafting && state.crafting.queues && sid && state.crafting.queues[sid];
     const queueBp = queue && BLUEPRINTS.find((item) => item.id === queue.bpId);
-    const progress = queue && queue.total > 0 ? Math.max(0, Math.min(1, (Number(queue.elapsed) || 0) / queue.total)) : 0;
+    const telemetry = fabricationProgress(queue);
+    const progress = telemetry ? telemetry.percent / 100 : 0;
 
     const inputs = Object.keys(bp.inputs || {}).map((id) => {
       const need = bp.inputs[id]; const have = Math.floor(it[id] || 0);
@@ -146,11 +153,12 @@ export function createIndustryScreen(ctx) {
       : `${escapeHtml(r.label)}. One build slot, idle.`;
     const canBuild = r.state === 'ready' && !queue;
 
-    stageEl.innerHTML =
-      `<div class="sx-fab">` +
+    const html =
+      `<div class="sx-fab" data-line-state="${queue ? 'running' : r.state}">` +
         `<p class="k-caps sx-fab-head__cat">${CAT_LABEL[bp.category] || bp.category} · Tier ${bp.tier}</p>` +
         `<h2 class="k-display k-t-title sx-fab-head__name">${escapeHtml(niceName(bp.outputs.id, bp.outputs.kind))}</h2>` +
         (bp.desc ? `<p class="k-sentence sx-fab-head__desc">${escapeHtml(bp.desc)}</p>` : '') +
+        `<div class="cd-fabricator-plinth">${fabricationArtworkHtml(bp.category)}</div>` +
         `<div class="sx-fab-heroes">` +
           `<div class="k-hero k-hero--hero sx-fab-out"><span class="k-hero__n">${bp.outputs.qty || 1}</span><span class="k-hero__w">${escapeHtml(bp.outputs.kind)} per run</span></div>` +
           `<div class="k-hero sx-fab-time"><span class="k-hero__n">${bp.timeS ? bp.timeS : '0'}</span><span class="k-hero__w">seconds</span></div>` +
@@ -158,20 +166,35 @@ export function createIndustryScreen(ctx) {
         `<p class="k-caps sx-fab-col-k">Needs</p>` +
         (inputs ? `<ul class="k-rows sx-fab-inputs">${inputs}</ul>` : `<p class="k-sentence sx-muted">No inputs.</p>`) +
         (notes.length ? `<ul class="k-words k-words--row sx-fab-notes">${notes.map((n) => `<li class="k-t-fine ${n.ok ? 'k-62' : 'k-bad'} sx-fab-note">${escapeHtml(n.text)}</li>`).join('')}</ul>` : '') +
-        `<p class="k-sentence ${statusClass} sx-fab-status">${status}</p>` +
+        `<div class="cd-fabrication-line">` +
+          `<p class="k-sentence ${statusClass} sx-fab-status">${status}</p>` +
+          (telemetry ? `<div class="cd-fabrication-progress" role="progressbar" aria-label="Current fabrication job" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${telemetry.percent}"><span style="transform:scaleX(${progress})"></span></div>` : '') +
+        `</div>` +
+        (buildError ? `<p class="cd-operation-error" role="alert">${escapeHtml(buildError)}</p>` : '') +
         `<ul class="k-words k-words--row sx-fab-foot"><li>` +
           `<button type="button" class="k-word k-word--emph k-word--primary sx-fab-build" data-build="${escapeHtml(bp.id)}"${canBuild ? '' : ' disabled aria-disabled="true"'}>` +
             `${queue ? 'Line occupied' : (r.state === 'ready' ? 'Fabricate' : escapeHtml(shortBlockLabel(bp, r)))}` +
           `</button>` +
         `</li></ul>` +
       `</div>`;
+    if (html !== lastStageHtml) {
+      const focused = stageEl.contains(document.activeElement) ? document.activeElement : null;
+      const key = focused?.hasAttribute('data-build') ? '[data-build]' : focused?.getAttribute('data-source-cmdty');
+      stageEl.innerHTML = html; lastStageHtml = html;
+      if (key) {
+        const target = key === '[data-build]' ? stageEl.querySelector(key)
+          : stageEl.querySelector(`[data-source-cmdty="${CSS.escape(key)}"]`);
+        if (target && !target.disabled) target.focus({ preventScroll: true });
+      }
+    }
   }
 
-  function renderAll(state) { renderList(state); renderStage(state); }
+  function renderAll(state) { if (!disposed) { renderList(state); renderStage(state); } }
 
   function select(id, focus) {
     if (!id) return;
     selectedId = id;
+    buildError = '';
     const state = ctx.state || {};
     renderAll(state);
     if (focus) {
@@ -214,8 +237,9 @@ export function createIndustryScreen(ctx) {
     const bpId = b.getAttribute('data-build');
     const sid = ctx.state && ctx.state.ui && ctx.state.ui.dockedStationId;
     const crafting = ctx.crafting || (ctx.registry && ctx.registry.get && ctx.registry.get('crafting'));
-    attemptIndustryBuild({ crafting, bpId, stationId: sid });
-    setTimeout(() => renderAll(ctx.state || {}), 80);
+    const accepted = attemptIndustryBuild({ crafting, bpId, stationId: sid });
+    buildError = accepted ? '' : 'Build not accepted. Check materials and facility availability.';
+    renderAll(ctx.state || {});
   });
   const onCraftChanged = () => renderAll(ctx.state || {});
   if (ctx.bus && ctx.bus.on) { ctx.bus.on('craft:complete', onCraftChanged); ctx.bus.on('craft:queueChanged', onCraftChanged); }
@@ -234,6 +258,7 @@ export function createIndustryScreen(ctx) {
     },
     refresh(c) { renderAll((c || ctx).state || {}); },
     dispose() {
+      disposed = true;
       if (ctx.bus && ctx.bus.off) {
         ctx.bus.off('craft:complete', onCraftChanged);
         ctx.bus.off('craft:queueChanged', onCraftChanged);

@@ -11,6 +11,7 @@
 // `.sx-ct`, `.sx-ct__board`, `.sx-ct__dossier`, `.sx-ct__active`, `.sx-ct-row[data-mid]`,
 // `.sx-job[data-active-mid]`, `.sx-job__track[data-track]`, `.sx-ct-commit[data-accept]`,
 // `.sx-dossier__summary` and `.sx-tag[data-why]` are inert hooks the checks and probes query.
+import { contractSealHtml } from '../../art/operationArtwork.js';
 import { COMMODITIES } from '../../../data/commodities.js';
 import { FACTION_META } from '../../../data/factions.js';
 import { MISSION_TYPES } from '../../../data/missions.js';
@@ -182,7 +183,7 @@ export function firstHourBoardOfferPresentation(state, offer) {
   const ob = state && state.onboarding;
   if (!ob || !ob.active || ob.finished || !offer) return null;
   const id = String(mid(offer));
-  const choiceIds = Array.isArray(ob.choiceOfferIds) ? ob.choiceOfferIds.map(String) : [];
+  const choiceIds = Array.isArray(ob.choiceOfferIds) ? ob.choiceOfferIds : [];
   const choiceIndex = choiceIds.indexOf(id);
   if (offer.source === ONBOARDING_CHOICE_SOURCE && choiceIndex >= 0) {
     const authored = offer.onboardingChoice || {};
@@ -361,11 +362,17 @@ export function missionDossierHtml(m, state, options = {}) {
     : `Cannot accept ${title}. ${readiness.detail}.`;
 
   return (
-    `<div class="sx-dossier${focusAccept ? ' is-attention' : ''}">` +
-      `<p class="k-caps">${escapeHtml(typeLabel(m.type))}</p>` +
-      `<h2 class="k-display k-t-title sx-dossier__title">${entitySpanHtml('contract:' + String(mid(m)), escapeHtml(title))}</h2>` +
-      `<p class="k-sentence k-sentence--emph sx-dossier__client">${clientEntityHtml(m)} · ${escapeHtml(typeLabel(m.type))}</p>` +
-      `<div class="k-hero k-hero--hero k-hero--signal sx-dossier__reward"><span class="k-hero__n">${reward(m).toLocaleString('en-US')}</span><span class="k-hero__w">cr on delivery</span></div>` +
+    `<div class="sx-dossier${focusAccept ? ' is-attention' : ''}" data-readiness="${ready ? 'ready' : 'blocked'}">` +
+      `<header class="cd-contract-mast">` +
+        `<div class="cd-contract-identity">` +
+          `<p class="k-caps">${escapeHtml(typeLabel(m.type))}</p>` +
+          `<h2 class="k-display k-t-title sx-dossier__title">${entitySpanHtml('contract:' + String(mid(m)), escapeHtml(title))}</h2>` +
+          `<p class="k-sentence sx-dossier__client">${clientEntityHtml(m)}</p>` +
+        `</div>` +
+        `<div class="cd-contract-settlement">${contractSealHtml(m.type)}` +
+          `<div class="k-hero k-hero--hero k-hero--signal sx-dossier__reward"><span class="k-hero__n">${reward(m).toLocaleString('en-US')}</span><span class="k-hero__w">cr on completion</span></div>` +
+        `</div>` +
+      `</header>` +
       (authoredSummary ? `<p class="k-sentence sx-dossier__summary">${escapeHtml(authoredSummary)}</p>` : '') +
       `<p class="k-sentence sx-dossier__route" aria-label="Mission operation route">${originEntityHtml(state, origin)} → ${destEntityHtml(m)} · ${escapeHtml(routeText)}</p>` +
       `<p class="k-sentence sx-dossier__risk">${riskSentence(m, consequences, facShort)}</p>` +
