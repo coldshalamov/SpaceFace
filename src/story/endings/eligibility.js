@@ -1,6 +1,7 @@
 // Pure ending eligibility against live campaign facts.
 // Returns player-visible unmet conditions. Never mutates state.
 
+import { MODULES } from '../../data/modules.js';
 import {
   BRANCH_FACTION,
   CAPITAL_SHIP_DEF_IDS,
@@ -15,6 +16,159 @@ import {
 } from './endingDefs.js';
 
 const CAPITAL_SET = new Set(CAPITAL_SHIP_DEF_IDS);
+const MODULE_BY_ID = new Map(MODULES.map((def) => [def.id, def]));
+
+/** Ace-memory bag keys that are not named-ace records. Read-only; aceMemory owns writes. */
+const ACE_MEMORY_META = new Set([
+  'schemaVersion', 'news', 'activeReturns', 'cultureIntros', 'planetChallenges', 'playerStyle', 'aces',
+]);
+
+const TOW_CLASS_RANK = Object.freeze({ none: 0, light: 1, medium: 2, heavy: 3 });
+/** Heavy-verb tow floor (industrial spool / frame coupler / spine long tow). */
+export const TOW_CLASS_MIN = 'medium';
+/** PQ-032.00 first_blood — pods in the field. */
+const SPINE_FIELD_BEAT = 2;
+/** PQ-032.00 bigger_boat — the long tow. */
+const SPINE_TOW_BEAT = 3;
+
+function towClassRank(name) {
+  return TOW_CLASS_RANK[name] || 0;
+}
+
+function higherTowClass(a, b) {
+  return towClassRank(a) >= towClassRank(b) ? (a || 'none') : (b || 'none');
+}
+
+function pushFittingId(slot, out) {
+  if (!slot) return;
+  if (typeof slot === 'string') {
+    out.push(slot);
+    return;
+  }
+  if (typeof slot === 'object') {
+    const id = slot.defId || slot.id;
+    if (id) out.push(id);
+  }
+}
+
+function collectFittingIds(state) {
+  const out = [];
+  const owned = state && state.player && Array.isArray(state.player.ownedShips)
+    ? state.player.ownedShips
+    : [];
+  for (const ship of owned) {
+    if (!ship || !Array.isArray(ship.fittings)) continue;
+    for (const slot of ship.fittings) pushFittingId(slot, out);
+  }
+  const entities = state && state.entities;
+  const playerId = state && state.playerId;
+  const live = entities && typeof entities.get === 'function' && playerId != null
+    ? entities.get(playerId)
+    : null;
+  const liveFits = live && live.data && live.data.fittings;
+  if (Array.isArray(liveFits)) {
+    for (const slot of liveFits) pushFittingId(slot, out);
+  }
+  return out;
+}
+
+function towClassFromFittings(state) {
+  let spool = 1;
+  let hasHead = false;
+  let hasCoupler = false;
+  for (const id of collectFittingIds(state)) {
+    const def = MODULE_BY_ID.get(id);
+    if (!def) continue;
+    const mods = def.mods || {};
+    if (Number.isFinite(mods.tetherSpoolMult) && mods.tetherSpoolMult > spool) {
+      spool = mods.tetherSpoolMult;
+    }
+    if (mods.masslineHeadId) {
+      hasHead = true;
+      if (mods.masslineHeadId === 'frame_coupler') hasCoupler = true;
+    }
+  }
+  if (spool >= 6) return 'heavy';
+  if (spool >= 3 || hasCoupler) return 'medium';
+  if (spool > 1 || hasHead) return 'light';
+  return 'none';
+}
+
+function completedNamedKind(state, kinds) {
+  const log = state && state.missions && Array.isArray(state.missions.completedLog)
+    ? state.missions.completedLog
+    : [];
+  for (const row of log) {
+    if (!row) continue;
+    const type = String(row.type || '');
+    const id = String(row.id || row.storyTag || '');
+    if (kinds.includes(type) || kinds.some((kind) => id.includes(kind))) return true;
+  }
+  return false;
+}
+
+function readTowClass(state, beatIndex) {
+  let cls = higherTowClass(
+    towClassFromFittings(state),
+    beatIndex >= SPINE_TOW_BEAT ? 'medium' : 'none',
+  );
+  if (completedNamedKind(state, ['tow_recovery', 'bigger_boat'])) {
+    cls = higherTowClass(cls, 'medium');
+  }
+  return cls;
+}
+
+function countDepletedFields(state) {
+  const discovery = state && state.world && state.world.discovery;
+  if (!discovery || typeof discovery !== 'object') return 0;
+  let n = 0;
+  for (const rec of Object.values(discovery)) {
+    const bag = rec && rec.fieldsDepleted;
+    if (!bag || typeof bag !== 'object') continue;
+    for (const value of Object.values(bag)) {
+      if (Number(value) > 0) n += 1;
+    }
+  }
+  return n;
+}
+
+function countDeployedPlayerFields(state) {
+  const bag = state && state.fields && state.fields.deployed;
+  if (!bag || typeof bag !== 'object') return 0;
+  const playerId = state.playerId;
+  let n = 0;
+  for (const rec of Object.values(bag)) {
+    if (!rec) continue;
+    if (playerId != null && rec.sourceId != null && rec.sourceId !== playerId) continue;
+    n += 1;
+  }
+  return n;
+}
+
+function readFieldCount(state, beatIndex) {
+  let n = countDepletedFields(state) + countDeployedPlayerFields(state);
+  if (beatIndex >= SPINE_FIELD_BEAT) n = Math.max(n, 1);
+  if (completedNamedKind(state, ['rescue_under_fire', 'first_blood'])) n = Math.max(n, 1);
+  return n;
+}
+
+function pushDefeatedAce(id, rec, out) {
+  if (!id || ACE_MEMORY_META.has(id) || !rec || typeof rec !== 'object') return;
+  if (rec.defeated === true) out.add(String(rec.id || id));
+}
+
+function readDefeatedAceIds(state) {
+  const memory = state && state.aceMemory;
+  const out = new Set();
+  if (!memory || typeof memory !== 'object') return [];
+  if (memory.aces && typeof memory.aces === 'object') {
+    for (const [id, rec] of Object.entries(memory.aces)) pushDefeatedAce(id, rec, out);
+  }
+  for (const [id, rec] of Object.entries(memory)) {
+    pushDefeatedAce(id, rec, out);
+  }
+  return [...out].sort();
+}
 
 /**
  * Snapshot of facts used for eligibility (deterministic pure read).
@@ -73,9 +227,16 @@ export function snapshotEndingFacts(state) {
 
   const sectorId = (s.world && s.world.currentSectorId) || null;
   const flags = story.flags || {};
+  const beatIndex = Number(story.beatIndex) || 0;
+  const towClass = readTowClass(s, beatIndex);
+  const fieldCount = readFieldCount(s, beatIndex);
+  const aceIdsBeaten = readDefeatedAceIds(s);
+  const acesBeaten = aceIdsBeaten.length;
+  const combatStake = acesBeaten >= 1;
+  const empireStake = capitalOwned || hasClaim || hasOutpost;
 
   return Object.freeze({
-    beatIndex: Number(story.beatIndex) || 0,
+    beatIndex,
     endgameFlag: !!(flags.endgame),
     endgameOffered: !!story.endgameOffered,
     endgameChoice: story.endgameChoice ?? null,
@@ -96,7 +257,15 @@ export function snapshotEndingFacts(state) {
     ownedDefIds: Object.freeze(ownedDefIds.slice()),
     hasClaim,
     hasOutpost,
-    empireStake: capitalOwned || hasClaim || hasOutpost,
+    empireStake,
+    combatStake,
+    worldStake: empireStake || combatStake,
+    towClass,
+    towClassOk: towClassRank(towClass) >= TOW_CLASS_RANK[TOW_CLASS_MIN],
+    fieldCount,
+    hasField: fieldCount >= 1,
+    acesBeaten,
+    aceIdsBeaten: Object.freeze(aceIdsBeaten.slice()),
     origins: Object.freeze(origins.slice()),
     declined: Object.freeze(declined.slice()),
     cargoIds: Object.freeze(cargoIds.slice()),
@@ -138,7 +307,8 @@ function readAcceptedOrigins(state) {
 }
 
 /**
- * Shared B7 disposition gate (net worth, branch rep, empire stake, spine ready).
+ * Shared B7 disposition gate (net worth, branch rep, heavy-verb tier, world stake).
+ * World stake is leftover empire (capital / claim / outpost) or a combat stake (one ace beaten).
  * @param {ReturnType<typeof snapshotEndingFacts>} facts
  */
 export function evaluateSharedGate(facts) {
@@ -165,10 +335,24 @@ export function evaluateSharedGate(facts) {
       have: facts.branchRep,
     });
   }
-  if (!facts.empireStake) {
+  if (towClassRank(facts.towClass) < TOW_CLASS_RANK[TOW_CLASS_MIN]) {
+    unmet.push({
+      code: 'tow_class',
+      text: `Tow class ≥ ${TOW_CLASS_MIN} (now ${facts.towClass || 'none'}).`,
+      need: TOW_CLASS_MIN,
+      have: facts.towClass || 'none',
+    });
+  }
+  if (!facts.hasField) {
+    unmet.push({
+      code: 'field',
+      text: 'Work one field.',
+    });
+  }
+  if (!facts.empireStake && !facts.combatStake) {
     unmet.push({
       code: 'empire_stake',
-      text: 'Own a capital hull, claim, or outpost.',
+      text: 'Own a capital hull, claim, or outpost — or beat a named ace.',
     });
   }
   if (facts.endgameResolved) {
@@ -183,7 +367,10 @@ export function evaluateSharedGate(facts) {
     need: {
       netWorthCr: ENDGAME_NET_WORTH_CR,
       repMin: ENDGAME_REP_MIN,
-      empireStake: true,
+      empireStake: !facts.combatStake,
+      combatStake: !facts.empireStake,
+      towClass: TOW_CLASS_MIN,
+      field: 1,
     },
   };
 }

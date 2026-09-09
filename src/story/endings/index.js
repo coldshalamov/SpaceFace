@@ -18,6 +18,7 @@ export {
 } from './endingDefs.js';
 
 export {
+  TOW_CLASS_MIN,
   evaluateEndingEligibility,
   evaluateSharedGate,
   listBoardEligibleEndingIds,
