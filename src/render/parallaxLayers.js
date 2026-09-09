@@ -4,6 +4,7 @@ import {
   resolveDebrisFinish,
 } from './deepFieldPresentation.js';
 import { getReadyRockSurfaceTextures } from './rockSurfaceLibrary.js';
+import { CAMERA_ZOOM_MAX, PHYSICS_EARNED_SPEED_ZOOM_MAX, CONTEXT_ZOOM_MAX, BOOST_CAMERA_ZOOM_TARGET } from './camera.js';
 import { stampOpeningSubmissionPackage } from './openingSubmissionPlan.js';
 import { installSpaceBackgroundFrameCoordinateBridge } from './spaceBackgroundFrameCoordinates.js';
 
@@ -15,19 +16,20 @@ const PALETTE_LERP_SECONDS = 1.5;
 const FALLBACK_DUST = '#35406a';
 const ROCK_BASE = 0xb4aea3;
 
-// Opaque geology chips, not glow cards. One instanced draw per band. Counts are sized so the
-// chase camera sees a readable belt of matter between the sky and the play plane — the previous
-// additive tetrahedra / point sprites could only fake density by lighting up.
+// Quiet orbital remnants, all well below the playable plane. Stars and celestial landmarks own
+// the composition; these sparse, small opaque chips only give a secondary depth cue. Keep the
+// authored mesh surface, but stop paying for a permanent foreground-looking asteroid belt.
 //
 // The wrap tile is frozen for the life of the field. Growing it at runtime (the old 1.2× zoom
 // steps) scaled every chip and changed the wrap period, so the whole belt vanished and came back
 // in a new arrangement the instant speed-zoom crossed a step — both arrow-key cruise and idle
 // sit on opposite sides of that line. Size the cell for CAMERA_ZOOM_MAX up front instead.
-export const PARALLAX_WRAP_ZOOM_CAP = 330;
+export const PARALLAX_WRAP_ZOOM_CAP = CAMERA_ZOOM_MAX * PHYSICS_EARNED_SPEED_ZOOM_MAX
+  * (1 + CONTEXT_ZOOM_MAX) * BOOST_CAMERA_ZOOM_TARGET;
 export const PARALLAX_WRAP_FOV_DEG = 50;
 export const PARALLAX_WRAP_TILT_DEG = 60;
-export const PARALLAX_WRAP_ASPECT = 16 / 9;
-const PARALLAX_TILE_MARGIN = 1.12;
+export const PARALLAX_WRAP_ASPECT = 4;
+const PARALLAX_TILE_MARGIN = 1.12 / 0.78; // keep the shader's edge-shrink zone offscreen
 
 export function requiredParallaxWrapTile({
   y = 0,
@@ -38,16 +40,17 @@ export function requiredParallaxWrapTile({
   margin = PARALLAX_TILE_MARGIN,
 } = {}) {
   const z = Number.isFinite(zoom) && zoom > 0 ? zoom : PARALLAX_WRAP_ZOOM_CAP;
-  const planeDist = z + Math.abs(Number(y) || 0);
-  const planeScale = planeDist / z;
   const fovDeg = Number.isFinite(fov) ? fov : PARALLAX_WRAP_FOV_DEG;
   const tiltDeg = Number.isFinite(tilt) ? tilt : PARALLAX_WRAP_TILT_DEG;
   const asp = Number.isFinite(aspect) && aspect > 0 ? aspect : PARALLAX_WRAP_ASPECT;
   const halfFovRad = Math.max(4, fovDeg * 0.5) * Math.PI / 180;
-  const lookTan = Math.tan(Math.max(6, tiltDeg - fovDeg * 0.5) * Math.PI / 180);
+  const tiltRad = tiltDeg * Math.PI / 180;
   const sideTan = Math.tan(halfFovRad);
-  const halfSide = sideTan * z * asp * planeScale;
-  const lookReach = planeDist / lookTan;
+  const height = z * Math.sin(tiltRad) + Math.abs(Number(y) || 0);
+  const denominator = Math.max(0.05, Math.sin(tiltRad) - sideTan * Math.cos(tiltRad));
+  const halfSide = sideTan * asp * height / denominator;
+  const lookReach = Math.abs(-z * Math.cos(tiltRad)
+    + height * (Math.cos(tiltRad) + sideTan * Math.sin(tiltRad)) / denominator);
   return Math.max(halfSide, lookReach) * (Number.isFinite(margin) && margin > 0 ? margin : PARALLAX_TILE_MARGIN) * 2;
 }
 
@@ -56,9 +59,9 @@ function freezeWrapTile(authored, y) {
   return Math.max(authored, Math.ceil(need / 40) * 40);
 }
 
-const FAR = { count: 80, factor: 0.22, tile: freezeWrapTile(3000, -96), y: -96, yJitter: 36, radius0: 7, radius1: 28 };
-const MID = { count: 1400, factor: 0.55, tile: freezeWrapTile(560, -28), y: -28, yJitter: 18, radius0: 0.28, radius1: 3.4 };
-const NEAR = { count: 96, factor: 1.18, tile: freezeWrapTile(460, 4), y: 4, yJitter: 9, radius0: 0.07, radius1: 0.42 };
+const FAR = { count: 24, factor: 0.12, tile: freezeWrapTile(2400, -160), y: -160, yJitter: 24, radius0: 0.8, radius1: 4 };
+const MID = { count: 128, factor: 0.24, tile: freezeWrapTile(2000, -100), y: -100, yJitter: 16, radius0: 0.25, radius1: 1.2 };
+const NEAR = { count: 24, factor: 0.40, tile: freezeWrapTile(2000, -60), y: -60, yJitter: 10, radius0: 0.05, radius1: 0.2 };
 export const PARALLAX_BANDS = { far: FAR, mid: MID, near: NEAR };
 
 const MID_LOW_COUNT = Math.max(1, Math.floor(MID.count * 0.5));
@@ -201,7 +204,7 @@ class ParallaxLayers {
       layer: 'farDust',
       renderOrder: -9,
       seed: 0x17a2c9,
-      colorMul: 0.28,
+      colorMul: 0.16,
       spin: false,
     });
     this._farGroup = band.group;
@@ -215,7 +218,7 @@ class ParallaxLayers {
       layer: 'midDebris',
       renderOrder: -6,
       seed: 0x47a2e1,
-      colorMul: 0.78,
+      colorMul: 0.24,
       spin: true,
     });
     this._midGroup = band.group;
@@ -229,7 +232,7 @@ class ParallaxLayers {
       layer: 'nearSpeedMotes',
       renderOrder: 2,
       seed: 0xe147ac,
-      colorMul: 1.05,
+      colorMul: 0.30,
       spin: true,
     });
     this._nearGroup = band.group;
@@ -338,11 +341,11 @@ class ParallaxLayers {
     this._qualityLow = low;
     this._motionReduce = motionReduce;
 
-    const farCount = low ? Math.max(1, Math.floor(FAR.count * 0.5)) : FAR.count;
-    const midCount = low ? MID_LOW_COUNT : MID.count;
-    let nearCount = low ? Math.floor(NEAR.count * 0.5) : NEAR.count;
-    if (motionReduce) nearCount = Math.floor(nearCount * 0.5);
-    if (NEAR.count > 0) nearCount = Math.max(1, nearCount);
+    // This small static population fits every tier. Quality/reduced-motion changes must not
+    // blink half the scenery out of existence; reduced motion changes animation, not membership.
+    const farCount = FAR.count;
+    const midCount = MID.count;
+    const nearCount = NEAR.count;
 
     if (this._farMesh) {
       this._farMesh.count = farCount;
@@ -442,7 +445,7 @@ class ParallaxLayers {
 
   _updateDebris(dt) {
     const uniforms = this._debrisSpinUniforms;
-    if (!uniforms || dt <= 0) return;
+    if (!uniforms || dt <= 0 || this._motionReduce) return;
     const midCount = this._debrisMesh ? this._debrisMesh.count : 0;
     if (midCount > 0 || (this._nearMesh && this._nearMesh.count > 0)) uniforms.primaryTime.value += dt;
     if (midCount > MID_LOW_COUNT) uniforms.tailTime.value += dt;

@@ -23,6 +23,7 @@ export const RELEASE_COPY_MAPPINGS = Object.freeze([
   Object.freeze({ source: 'styles', destination: 'styles' }),
   Object.freeze({ source: 'assets/cinematics', destination: 'assets/cinematics' }),
   Object.freeze({ source: 'assets/ui', destination: 'assets/ui' }),
+  Object.freeze({ source: 'assets/background', destination: 'assets/background' }),
   // Normal play is release-authored by contract. Blender sources, evidence, candidates, and
   // previous exports do not belong in the retail package and are not runtime fallbacks. Source
   // GLBs that the shipping manifest always routes through a proven render package are omitted from

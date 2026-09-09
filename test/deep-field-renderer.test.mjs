@@ -90,7 +90,8 @@ test('movement, rebase, and regional finish changes upload no instance matrices 
       assert.equal(r.mesh.instanceMatrix.version, r.matrixVersion);
       assert.equal(r.mesh.geometry.getAttribute('aDeepFieldVariant').version, r.shapeVersion);
     }
-    assert.deepEqual(stack.groups.map(g => g.children[0].count), [80, 1400, 96]);
+    assert.deepEqual(stack.groups.map(g => g.children[0].count),
+      ['far', 'mid', 'near'].map(name => parallax.PARALLAX_BANDS[name].count));
   } finally { parallax.dispose(); }
   assert.equal(scene.children.length, 0);
 });

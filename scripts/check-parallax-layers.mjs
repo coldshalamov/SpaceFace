@@ -8,9 +8,10 @@ import * as THREE from 'three';
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const MODULE_PATH = fileURLToPath(new URL('../src/render/parallaxLayers.js', import.meta.url));
 const BACKGROUND_FRAME_TEST = fileURLToPath(new URL('../test/space-background-frame-coordinates.test.mjs', import.meta.url));
+const BACKGROUND_CONTINUITY_TEST = fileURLToPath(new URL('../test/background-continuity.test.mjs', import.meta.url));
 
 execFileSync(process.execPath, ['--check', MODULE_PATH], { cwd: ROOT, stdio: 'pipe' });
-execFileSync(process.execPath, ['--test', BACKGROUND_FRAME_TEST], { cwd: ROOT, stdio: 'inherit' });
+execFileSync(process.execPath, ['--test', BACKGROUND_FRAME_TEST, BACKGROUND_CONTINUITY_TEST], { cwd: ROOT, stdio: 'inherit' });
 
 const parallaxLayers = await import(pathToFileURL(MODULE_PATH).href);
 assert.equal(typeof parallaxLayers.init, 'function', 'parallaxLayers.init export missing');
@@ -18,9 +19,9 @@ assert.equal(typeof parallaxLayers.update, 'function', 'parallaxLayers.update ex
 assert.equal(typeof parallaxLayers.dispose, 'function', 'parallaxLayers.dispose export missing');
 assert.equal(typeof parallaxLayers.wrapParallaxCoordinate, 'function', 'wrap helper export missing');
 
-checkStack({ particleQuality: 'medium', motionReduce: false }, { far: 80, mid: 1400, near: 96 });
-checkStack({ particleQuality: 'low', motionReduce: false }, { far: 40, mid: 700, near: 48 });
-checkStack({ particleQuality: 'low', motionReduce: true }, { far: 40, mid: 700, near: 24 });
+checkStack({ particleQuality: 'medium', motionReduce: false }, { far: 24, mid: 128, near: 24 });
+checkStack({ particleQuality: 'low', motionReduce: false }, { far: 24, mid: 128, near: 24 });
+checkStack({ particleQuality: 'low', motionReduce: true }, { far: 24, mid: 128, near: 24 });
 checkWrapCellFrozenAcrossZoom();
 
 console.log('Parallax layers OK: frozen wrap cell, global-focus per-instance wrap, rebase continuity, static matrices, GPU spin');
@@ -117,12 +118,13 @@ function checkStack(video, expected) {
   assert.equal(mid.children[0].count, expected.mid, `${video.particleQuality}: mid mesh count`);
   assert.equal(mid.children[0].instanceMatrix.usage, THREE.StaticDrawUsage,
     `${video.particleQuality}: mid matrices should be static`);
-  assert.equal(mid.children[0].instanceMatrix.array.byteLength, 89_600,
-    `${video.particleQuality}: authored mid allocation should remain 1,400 matrices`);
+  const midCapacity = parallaxLayers.PARALLAX_BANDS.mid.count;
+  assert.equal(mid.children[0].instanceMatrix.array.byteLength, midCapacity * 16 * Float32Array.BYTES_PER_ELEMENT,
+    `${video.particleQuality}: allocation should match the sparse authored population`);
   const spinAxis = mid.children[0].geometry.getAttribute('aParallaxSpinAxis');
   const spinParams = mid.children[0].geometry.getAttribute('aParallaxSpinParams');
-  assert.equal(spinAxis?.count, 1400, `${video.particleQuality}: spin axes should cover authored capacity`);
-  assert.equal(spinParams?.count, 1400, `${video.particleQuality}: spin parameters should cover authored capacity`);
+  assert.equal(spinAxis?.count, midCapacity, `${video.particleQuality}: spin axes should cover authored capacity`);
+  assert.equal(spinParams?.count, midCapacity, `${video.particleQuality}: spin parameters should cover authored capacity`);
 
   const matrixVersion = mid.children[0].instanceMatrix.version;
   const matrixBytes = mid.children[0].instanceMatrix.array.slice();
@@ -169,10 +171,11 @@ function checkStack(video, expected) {
     `${video.particleQuality}: steady animation must not request a matrix upload`);
   assert.deepEqual(mid.children[0].instanceMatrix.array, matrixBytes,
     `${video.particleQuality}: steady animation must not rewrite matrix bytes`);
-  assert.equal(spinUniforms.primaryTime.value, 2 / 60,
-    `${video.particleQuality}: visible primary debris clock should advance`);
-  assert.equal(spinUniforms.tailTime.value, expected.mid === 1400 ? 2 / 60 : 0,
-    `${video.particleQuality}: hidden upper-half debris clock should pause`);
+  const expectedTime = video.motionReduce ? 0 : 2 / 60;
+  assert.equal(spinUniforms.primaryTime.value, expectedTime,
+    `${video.particleQuality}: primary rotation respects reduced motion`);
+  assert.equal(spinUniforms.tailTime.value, expectedTime,
+    `${video.particleQuality}: tail rotation respects reduced motion and retains quality continuity`);
 
   assert.throws(
     () => mid.children[0].material.onBeforeCompile({ uniforms: {}, vertexShader: 'void main() {}' }, {}),
