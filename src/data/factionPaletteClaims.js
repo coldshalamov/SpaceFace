@@ -69,6 +69,9 @@ import {
   OCCUPATIONAL_SILHOUETTE_RULES,
   getOccupationalSilhouetteRule,
   getRoleFactionLivery,
+  FORCE_CHANNEL_IDS,
+  FORCE_BRIGHTNESS_ORDER,
+  FORCE_PALETTE,
 } from './palettes.js';
 
 export const OCCUPATIONAL_PALETTE_CLAIMS = Object.freeze([
@@ -146,7 +149,27 @@ export const OCCUPATIONAL_PALETTE_CLAIMS = Object.freeze([
   }),
 ]);
 
+export const FORCE_PALETTE_CLAIMS = Object.freeze(
+  FORCE_CHANNEL_IDS.map((id) => Object.freeze({
+    id: `force.${id}`,
+    channel: id,
+    hex: FORCE_PALETTE[id].hex,
+    hueName: FORCE_PALETTE[id].hueName,
+    verb: FORCE_PALETTE[id].verb,
+    brightnessRank: FORCE_BRIGHTNESS_ORDER.indexOf(id),
+    pattern: `force-${id}`,
+  })),
+);
+
+export function getForcePaletteClaim(channel) {
+  const key = typeof channel === 'string' ? channel.toLowerCase().trim() : '';
+  return FORCE_PALETTE_CLAIMS.find((claim) => claim.channel === key) || null;
+}
+
 export {
+  FORCE_CHANNEL_IDS,
+  FORCE_BRIGHTNESS_ORDER,
+  FORCE_PALETTE,
   OCCUPATIONAL_ROLE_IDS,
   OCCUPATIONAL_SILHOUETTE_TOKENS,
   OCCUPATIONAL_SILHOUETTE_RULES,

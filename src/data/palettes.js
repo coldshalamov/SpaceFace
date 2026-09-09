@@ -376,6 +376,299 @@ export const SHIP_RECIPES = {
   },
 };
 
+// PQ-161.02 — force palette. Five channels that must stay distinct for every colour-vision type.
+// Identity is the hue + authored brightness order, not a HUD label. World VFX still lives in dirty
+// renderer files; this is the data contract those owners should consume.
+export const FORCE_PALETTE_SEED = 16120;
+export const FORCE_CHANNEL_IDS = Object.freeze(['rope', 'wells', 'repulsors', 'impulses', 'shields']);
+export const FORCE_BRIGHTNESS_ORDER = Object.freeze(['wells', 'rope', 'shields', 'repulsors', 'impulses']);
+export const FORCE_CVD_MODES = Object.freeze(['deuteranopia', 'protanopia', 'tritanopia']);
+export const FORCE_CONTRAST_FLOORS = Object.freeze({
+  minDeltaE: 20,
+  minVoidContrast: 3,
+  minHueNoneDeg: 25,
+  voidHex: '#05070D',
+});
+
+export const FORCE_PALETTE = Object.freeze({
+  rope: Object.freeze({
+    id: 'rope', hex: '#ED4EA3', hueName: 'magenta-line', verb: 'hitch',
+  }),
+  wells: Object.freeze({
+    id: 'wells', hex: '#036F59', hueName: 'teal-sink', verb: 'pull',
+  }),
+  repulsors: Object.freeze({
+    id: 'repulsors', hex: '#FFB98B', hueName: 'peach-push', verb: 'shove',
+  }),
+  impulses: Object.freeze({
+    id: 'impulses', hex: '#FFE956', hueName: 'gold-flash', verb: 'punch',
+  }),
+  shields: Object.freeze({
+    id: 'shields', hex: '#83AEFA', hueName: 'sky-barrier', verb: 'hold',
+  }),
+});
+
+// Live VFX stand-ins measured 2026-09-08 (tether cyan, field cyan, amber plow, hot flash, shield blue).
+// Rope and wells share a hex — that is the gap this leaf closes.
+export const FORCE_PALETTE_LIVE_STANDINS = Object.freeze({
+  rope: '#39D0FF',
+  wells: '#39D0FF',
+  repulsors: '#FFB35C',
+  impulses: '#FF5C5C',
+  shields: '#4F8FDD',
+});
+
+// Machado, Oliveira & Fernandes 2009 — 100% dichromacy, applied in linear sRGB.
+const FORCE_CVD_MATRICES = Object.freeze({
+  none: Object.freeze([
+    Object.freeze([1, 0, 0]),
+    Object.freeze([0, 1, 0]),
+    Object.freeze([0, 0, 1]),
+  ]),
+  protanopia: Object.freeze([
+    Object.freeze([0.152286, 1.052583, -0.204868]),
+    Object.freeze([0.114503, 0.786281, 0.099216]),
+    Object.freeze([-0.003882, -0.048116, 1.051998]),
+  ]),
+  deuteranopia: Object.freeze([
+    Object.freeze([0.367322, 0.860646, -0.227968]),
+    Object.freeze([0.280085, 0.672501, 0.047413]),
+    Object.freeze([-0.01182, 0.04294, 0.968881]),
+  ]),
+  tritanopia: Object.freeze([
+    Object.freeze([1.255528, -0.076749, -0.178779]),
+    Object.freeze([-0.078411, 0.930809, 0.147602]),
+    Object.freeze([0.004733, 0.691367, 0.3039]),
+  ]),
+});
+
+function clamp01(value) {
+  return Math.min(1, Math.max(0, value));
+}
+
+function forceHexToSrgb(hex) {
+  const raw = String(hex || '').replace('#', '');
+  if (!/^[0-9a-fA-F]{6}$/.test(raw)) return null;
+  return [0, 2, 4].map((i) => parseInt(raw.slice(i, i + 2), 16) / 255);
+}
+
+function srgbToLinearChannel(channel) {
+  return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+}
+
+function linearToSrgbChannel(channel) {
+  const x = clamp01(channel);
+  return x <= 0.0031308 ? 12.92 * x : 1.055 * x ** (1 / 2.4) - 0.055;
+}
+
+function mul3(matrix, vector) {
+  return [
+    matrix[0][0] * vector[0] + matrix[0][1] * vector[1] + matrix[0][2] * vector[2],
+    matrix[1][0] * vector[0] + matrix[1][1] * vector[1] + matrix[1][2] * vector[2],
+    matrix[2][0] * vector[0] + matrix[2][1] * vector[1] + matrix[2][2] * vector[2],
+  ];
+}
+
+function simulateLinear(hex, mode) {
+  const srgb = forceHexToSrgb(hex);
+  if (!srgb) return null;
+  const matrix = FORCE_CVD_MATRICES[mode] || FORCE_CVD_MATRICES.none;
+  return mul3(matrix, srgb.map(srgbToLinearChannel)).map(clamp01);
+}
+
+function relativeLuminanceFromLinear(linear) {
+  return linear[0] * 0.2126 + linear[1] * 0.7152 + linear[2] * 0.0722;
+}
+
+function contrastFromLuminance(a, b) {
+  const hi = Math.max(a, b);
+  const lo = Math.min(a, b);
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+function linearToXyz(linear) {
+  const [r, g, b] = linear;
+  return [
+    r * 0.4124564 + g * 0.3575761 + b * 0.1804375,
+    r * 0.2126729 + g * 0.7151522 + b * 0.072175,
+    r * 0.0193339 + g * 0.119192 + b * 0.9503041,
+  ];
+}
+
+function xyzToLab([x, y, z]) {
+  const ref = [0.95047, 1, 1.08883];
+  const f = (t) => (t > 216 / 24389 ? Math.cbrt(t) : ((24389 / 27) * t + 16) / 116);
+  const fx = f(x / ref[0]);
+  const fy = f(y / ref[1]);
+  const fz = f(z / ref[2]);
+  return [116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)];
+}
+
+function deltaE76(a, b) {
+  return Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+}
+
+function circularHueDistance(a, b) {
+  const raw = Math.abs(Number(a) - Number(b)) % 360;
+  return Math.min(raw, 360 - raw);
+}
+
+function linearToHsl(linear) {
+  const [r, g, b] = linear.map(linearToSrgbChannel);
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const lightness = (max + min) / 2;
+  const delta = max - min;
+  let hue = 0;
+  if (delta > 0) {
+    if (max === r) hue = ((g - b) / delta) % 6;
+    else if (max === g) hue = ((b - r) / delta) + 2;
+    else hue = ((r - g) / delta) + 4;
+    hue = (hue * 60 + 360) % 360;
+  }
+  const saturation = delta === 0 ? 0 : delta / (1 - Math.abs(2 * lightness - 1));
+  return { hue, saturation, lightness };
+}
+
+export function forcePaletteHexes(palette = FORCE_PALETTE) {
+  const out = {};
+  for (const id of FORCE_CHANNEL_IDS) {
+    const row = palette[id];
+    out[id] = typeof row === 'string' ? row : row && row.hex;
+  }
+  return out;
+}
+
+export function getForcePaletteHex(channel) {
+  const row = FORCE_PALETTE[channel];
+  return row ? row.hex : null;
+}
+
+function evaluateForcePaletteMode(hexes, mode, voidHex) {
+  const luminance = {};
+  const lab = {};
+  const hsl = {};
+  for (const id of FORCE_CHANNEL_IDS) {
+    const linear = simulateLinear(hexes[id], mode);
+    if (!linear) {
+      return { ok: false, error: `${id} is not a six-digit hex` };
+    }
+    luminance[id] = relativeLuminanceFromLinear(linear);
+    lab[id] = xyzToLab(linearToXyz(linear));
+    hsl[id] = linearToHsl(linear);
+  }
+  const brightnessOrder = [...FORCE_CHANNEL_IDS].sort((a, b) => {
+    const delta = luminance[a] - luminance[b];
+    return delta !== 0 ? delta : a.localeCompare(b);
+  });
+  const voidLinear = simulateLinear(voidHex, mode);
+  const voidLum = relativeLuminanceFromLinear(voidLinear);
+  const pairs = [];
+  let minDeltaE = Infinity;
+  let minHueDeg = Infinity;
+  let minPairContrast = Infinity;
+  let minVoidContrast = Infinity;
+  for (let i = 0; i < FORCE_CHANNEL_IDS.length; i++) {
+    const a = FORCE_CHANNEL_IDS[i];
+    const voidContrast = contrastFromLuminance(luminance[a], voidLum);
+    minVoidContrast = Math.min(minVoidContrast, voidContrast);
+    for (let j = i + 1; j < FORCE_CHANNEL_IDS.length; j++) {
+      const b = FORCE_CHANNEL_IDS[j];
+      const de = deltaE76(lab[a], lab[b]);
+      const hueDeg = circularHueDistance(hsl[a].hue, hsl[b].hue);
+      const pairContrast = contrastFromLuminance(luminance[a], luminance[b]);
+      pairs.push(Object.freeze({
+        a, b,
+        deltaE: de,
+        hueDeg,
+        contrast: pairContrast,
+      }));
+      minDeltaE = Math.min(minDeltaE, de);
+      minHueDeg = Math.min(minHueDeg, hueDeg);
+      minPairContrast = Math.min(minPairContrast, pairContrast);
+    }
+  }
+  return {
+    mode,
+    luminance: Object.freeze(luminance),
+    brightnessOrder: Object.freeze(brightnessOrder),
+    brightnessPreserved: brightnessOrder.join('|') === FORCE_BRIGHTNESS_ORDER.join('|'),
+    minDeltaE,
+    minHueDeg,
+    minPairContrast,
+    minVoidContrast,
+    pairs: Object.freeze(pairs),
+  };
+}
+
+export function evaluateForcePaletteContrast({
+  seed = FORCE_PALETTE_SEED,
+  palette = FORCE_PALETTE,
+  voidHex = FORCE_CONTRAST_FLOORS.voidHex,
+} = {}) {
+  const hexes = forcePaletteHexes(palette);
+  const errors = [];
+  if (seed !== FORCE_PALETTE_SEED) {
+    errors.push(`seed ${seed} is not the force-palette scenario seed ${FORCE_PALETTE_SEED}`);
+  }
+  const unique = new Set(FORCE_CHANNEL_IDS.map((id) => String(hexes[id] || '').toUpperCase()));
+  if (unique.size !== FORCE_CHANNEL_IDS.length) {
+    errors.push('force channels must disagree on hex');
+  }
+  const trichromat = evaluateForcePaletteMode(hexes, 'none', voidHex);
+  if (trichromat.error) errors.push(trichromat.error);
+  if (trichromat.minHueDeg < FORCE_CONTRAST_FLOORS.minHueNoneDeg) {
+    errors.push(`trichromat hue floor ${trichromat.minHueDeg.toFixed(1)}° < ${FORCE_CONTRAST_FLOORS.minHueNoneDeg}°`);
+  }
+  const simulations = {};
+  for (const mode of FORCE_CVD_MODES) {
+    const row = evaluateForcePaletteMode(hexes, mode, voidHex);
+    simulations[mode] = row;
+    if (row.error) errors.push(`${mode}: ${row.error}`);
+    if (row.minDeltaE < FORCE_CONTRAST_FLOORS.minDeltaE) {
+      errors.push(`${mode} min ΔE ${row.minDeltaE.toFixed(2)} < ${FORCE_CONTRAST_FLOORS.minDeltaE}`);
+    }
+    if (row.minVoidContrast < FORCE_CONTRAST_FLOORS.minVoidContrast) {
+      errors.push(`${mode} void contrast ${row.minVoidContrast.toFixed(2)} < ${FORCE_CONTRAST_FLOORS.minVoidContrast}`);
+    }
+    if (!row.brightnessPreserved) {
+      errors.push(`${mode} brightness order ${row.brightnessOrder.join('<')} ≠ ${FORCE_BRIGHTNESS_ORDER.join('<')}`);
+    }
+  }
+  return {
+    ok: errors.length === 0,
+    seed,
+    hues: Object.freeze(hexes),
+    brightnessOrder: FORCE_BRIGHTNESS_ORDER,
+    trichromat,
+    simulations,
+    errors,
+  };
+}
+
+export function formatForcePaletteReport(result) {
+  const lines = [
+    `PQ-161.02 seed ${result.seed} ${result.ok ? 'GREEN' : 'RED'}`,
+    `hues  rope=${result.hues.rope}  wells=${result.hues.wells}  repulsors=${result.hues.repulsors}  impulses=${result.hues.impulses}  shields=${result.hues.shields}`,
+    `brightness  ${result.brightnessOrder.join(' < ')}`,
+  ];
+  if (result.trichromat && !result.trichromat.error) {
+    lines.push(`none  minΔE ${result.trichromat.minDeltaE.toFixed(2)}  minHue ${result.trichromat.minHueDeg.toFixed(1)}°  void ${result.trichromat.minVoidContrast.toFixed(2)}`);
+  }
+  for (const mode of FORCE_CVD_MODES) {
+    const row = result.simulations[mode];
+    if (!row || row.error) {
+      lines.push(`${mode}  ERROR`);
+      continue;
+    }
+    lines.push(
+      `${mode}  minΔE ${row.minDeltaE.toFixed(2)}  minHue ${row.minHueDeg.toFixed(1)}°  void ${row.minVoidContrast.toFixed(2)}  pair ${row.minPairContrast.toFixed(2)}  ${row.brightnessOrder.join(' < ')}  ${row.brightnessPreserved ? 'ORDER' : 'FLIP'}`,
+    );
+  }
+  for (const error of result.errors) lines.push(`error  ${error}`);
+  return lines.join('\n');
+}
+
 export {
   OCCUPATIONAL_ROLE_IDS,
   OCCUPATIONAL_SILHOUETTE_TOKENS,
