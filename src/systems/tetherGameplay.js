@@ -15,6 +15,7 @@ import {
 import { automaticMasslineBreakAllowed } from '../combat/attachments.js';
 import { entityLocalPointToWorld } from '../combat/geometry.js';
 import { publishHitstunImpulse, signedHitSide } from '../combat/impulseKernel.js';
+import { createMasslineRuntime } from '../core/constraints/masslineController.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { isHostileToPlayer } from './scanner.js';
@@ -42,6 +43,8 @@ export const ELASTIC_WHIP_SPRING_ZETA = 0.28;
 export const ELASTIC_WHIP_MAX_STRETCH_RATIO = 1.44;
 export const ELASTIC_WHIP_GLOW_STRETCH_RATIO = 0.28;
 const MONOFILAMENT_HEAD_ID = 'monofilament_sweep';
+// One taut cut spends the winch's own integrity. Slack never reaches this spend.
+export const MONOFILAMENT_CUT_INTEGRITY_COST = 0.2;
 const NPC_LINE_CUT_TAUT_RATIO = 0.92;
 const NPC_BRIDLE_CUT_COOLDOWN_TICKS = 90;
 const NPC_BRIDLE_CUT_RANGE_WU = 180;
@@ -1482,21 +1485,25 @@ export const tetherGameplay = {
       if (typeof attachments.breakAttachment !== 'function') continue;
       this._monofilamentCutIds.add(other.id);
       const result = attachments.breakAttachment(other, 'monofilament_sweep', player.id);
-      if (result && result.ok && this.bus && typeof this.bus.emit === 'function') {
-        this.bus.emit('massline:npcLineCut', {
-          schemaVersion: 1,
-          headId: MONOFILAMENT_HEAD_ID,
-          bladeId: blade.id,
-          attachmentId: other.id,
-          ownerId: other.ownerId,
-          targetId: other.targetId,
-        });
+      if (result && result.ok) {
+        const integrity = spendMonofilamentIntegrity(blade, MONOFILAMENT_CUT_INTEGRITY_COST);
+        if (this.bus && typeof this.bus.emit === 'function') {
+          this.bus.emit('massline:npcLineCut', {
+            schemaVersion: 1,
+            headId: MONOFILAMENT_HEAD_ID,
+            bladeId: blade.id,
+            attachmentId: other.id,
+            ownerId: other.ownerId,
+            targetId: other.targetId,
+            integrity,
+          });
+        }
       }
     }
   },
 
   // PQ-030.02 — the tether-cutter specialist uses the same taut sweep against the player.
-  // Hornet cannot fit the M module; the specialist plan is the head. Slack does not cut.
+  // Hitch cannot fit the M module; the specialist plan is the head. Slack does not cut.
   _cutPlayerLinesWithHostileSweep(attachments, state, player) {
     if (!player || !player.pos || !attachments) return;
     if (!massline2Flag('masslineHeadMonofilamentSweep', state.runtime && state.runtime.features)) return;
@@ -1529,16 +1536,20 @@ export const tetherGameplay = {
         if (typeof attachments.breakAttachment !== 'function') continue;
         this._hostileSweepCutIds.add(other.id);
         const result = attachments.breakAttachment(other, 'monofilament_sweep', owner.id);
-        if (result && result.ok && this.bus && typeof this.bus.emit === 'function') {
-          this.bus.emit('massline:playerLineCut', {
-            schemaVersion: 1,
-            headId: MONOFILAMENT_HEAD_ID,
-            bladeId: blade.id,
-            attachmentId: other.id,
-            cutterId: owner.id,
-            ownerId: other.ownerId,
-            targetId: other.targetId,
-          });
+        if (result && result.ok) {
+          const integrity = spendMonofilamentIntegrity(blade, MONOFILAMENT_CUT_INTEGRITY_COST);
+          if (this.bus && typeof this.bus.emit === 'function') {
+            this.bus.emit('massline:playerLineCut', {
+              schemaVersion: 1,
+              headId: MONOFILAMENT_HEAD_ID,
+              bladeId: blade.id,
+              attachmentId: other.id,
+              cutterId: owner.id,
+              ownerId: other.ownerId,
+              targetId: other.targetId,
+              integrity,
+            });
+          }
         }
       }
     }
@@ -2703,6 +2714,28 @@ function segmentsProperlyCross(a, b, c, d) {
   const o3 = orient2d(c, d, a);
   const o4 = orient2d(c, d, b);
   return o1 * o2 < 0 && o3 * o4 < 0;
+}
+
+function spendMonofilamentIntegrity(blade, amount) {
+  if (!blade || !(amount > 0)) {
+    return blade && blade.masslineRuntime && Number.isFinite(blade.masslineRuntime.integrity)
+      ? blade.masslineRuntime.integrity
+      : 1;
+  }
+  if (!blade.masslineRuntime || typeof blade.masslineRuntime !== 'object') {
+    const runtime = createMasslineRuntime();
+    const seed = Number.isFinite(blade.restLength) && blade.restLength > 0
+      ? blade.restLength
+      : runtime.restLength;
+    runtime.restLength = seed;
+    runtime.targetLength = seed;
+    blade.masslineRuntime = runtime;
+  }
+  const current = Number.isFinite(blade.masslineRuntime.integrity)
+    ? blade.masslineRuntime.integrity
+    : 1;
+  blade.masslineRuntime.integrity = Math.max(0, current - amount);
+  return blade.masslineRuntime.integrity;
 }
 
 function cutterEnemyId(entity) {

@@ -11,7 +11,7 @@ import { LEGACY47A_FEATURES, PRODUCTION_FEATURES } from '../src/runtime/runtimeP
 import { masslineImpactDamage } from '../src/systems/masslineImpactDamage.js';
 import { masslineImpacts } from '../src/systems/masslineImpacts.js';
 import { presentationOrchestrator } from '../src/systems/presentationOrchestrator.js';
-import { fittingsFromDefaultModules, getDerivedStats } from '../src/systems/ships.js';
+import { buildSlotList, fittingsFromDefaultModules, fits, getDerivedStats } from '../src/systems/ships.js';
 import { statSnippet } from '../src/ui/station/outfittingGuidance.js';
 
 const DT = 1 / 60;
@@ -19,6 +19,7 @@ const STANDARD = ATTACHMENT_DEFS.find((def) => def.id === 'tether_standard');
 const SWEEP = MODULES.find((def) => def.id === 'mod_monofilament_sweep_m');
 const ELASTIC = MODULES.find((def) => def.id === 'mod_elastic_whip_m');
 const DRIFTER = SHIPS.find((def) => def.id === 'ship_drifter');
+const HITCH = SHIPS.find((def) => def.id === 'ship_kestrel');
 
 test('Monofilament Sweep is reachable, exclusive, flagged, and leaves ordinary rope physics intact', () => {
   const fittings = fittingsFromDefaultModules(DRIFTER.id, [SWEEP.id]);
@@ -44,6 +45,16 @@ test('Monofilament Sweep is reachable, exclusive, flagged, and leaves ordinary r
   assert.equal(getDerivedStats(DRIFTER.id, forward, null).masslineHeadId, 'monofilament_sweep');
   assert.equal(getDerivedStats(DRIFTER.id, reversed, null).masslineHeadId, 'monofilament_sweep',
     'defensive arbitration must not inherit fitting-slot order');
+});
+
+test('Hitch cannot fit the Monofilament Sweep M head', () => {
+  assert.equal(HITCH.name, 'Hitch');
+  const utility = buildSlotList(HITCH).find((slot) => slot.type === 'utility');
+  assert.equal(utility.size, 'S');
+  assert.equal(fits(utility, SWEEP), false, 'an S utility cannot take the M sweep');
+  const fittings = fittingsFromDefaultModules(HITCH.id, [SWEEP.id]);
+  assert.ok(!fittings.includes(SWEEP.id), 'the starter loadout must not receive the sweep');
+  assert.equal(getDerivedStats(HITCH.id, fittings, null).masslineHeadId, null);
 });
 
 test('a loaded Monofilament line cuts each crossed hostile once per latch without steering bodies', () => {

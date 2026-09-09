@@ -1,20 +1,25 @@
 // PQ-030.00 / PQ-030.02 — Monofilament sweep cuts crossing tethers.
-// Range stays untouched; no headed capture.
+// Seed 30000. One taut pass cuts; slack does not. Range stays untouched; no headed capture.
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { specialistPlanById } from '../src/ai/specialistPlans.js';
-import { createBus } from '../src/core/eventBus.js';
 import { createAttachmentService } from '../src/combat/attachments.js';
 import { createCombatCatalog, ensureCombatState } from '../src/combat/runtime.js';
+import { createBus } from '../src/core/eventBus.js';
+import { mulberry32 } from '../src/core/rng.js';
 import { ENEMY_TYPES } from '../src/data/enemies.js';
+import { trigger as raiderAmbush } from '../src/data/encounters/334-tether-control-raider-ambush.js';
 import { MODULES } from '../src/data/modules.js';
 import { TECH_NODES } from '../src/data/tech.js';
-import { trigger as raiderAmbush } from '../src/data/encounters/334-tether-control-raider-ambush.js';
 import { PRODUCTION_FEATURES } from '../src/runtime/runtimeProfiles.js';
-import { tetherGameplay } from '../src/systems/tetherGameplay.js';
+import {
+  MONOFILAMENT_CUT_INTEGRITY_COST,
+  tetherGameplay,
+} from '../src/systems/tetherGameplay.js';
 
+const SEED = 30000;
 const DT = 1 / 60;
 
 function stubCombatPhysics() {
@@ -78,6 +83,8 @@ test('a taut Monofilament swing cuts a crossing NPC tow in one pass', () => {
     mode: 'flight',
     simTime: 1,
     tick: 60,
+    seed: SEED,
+    rng: mulberry32(SEED),
     playerId: player.id,
     player: {
       tether: {
@@ -144,14 +151,22 @@ test('a taut Monofilament swing cuts a crossing NPC tow in one pass', () => {
 
   assert.equal(state.combat.attachments.byId[npcLine.attachment.id].state, 'broken',
     'the crossing NPC tow must be severed in the same taut pass');
+  assert.equal(state.combat.attachments.byId[npcLine.attachment.id].breakReason, 'monofilament_sweep');
   assert.equal(state.combat.attachments.byId[blade.attachment.id].state, 'active',
     'the player blade stays up');
   assert.equal(cuts.length, 1);
   assert.equal(cuts[0].attachmentId, npcLine.attachment.id);
   assert.equal(cuts[0].headId, 'monofilament_sweep');
+  assert.equal(cuts[0].integrity, 1 - MONOFILAMENT_CUT_INTEGRITY_COST);
+  assert.equal(
+    state.combat.attachments.byId[blade.attachment.id].masslineRuntime.integrity,
+    1 - MONOFILAMENT_CUT_INTEGRITY_COST,
+    'the taut pass spends line integrity',
+  );
 
   system.update(DT, state);
   assert.equal(cuts.length, 1, 'a severed line is not cut again');
+  console.log(`SEED=${SEED} TAUT_CUT=1 INTEGRITY=${cuts[0].integrity} COST=${MONOFILAMENT_CUT_INTEGRITY_COST}`);
 });
 
 test('a slack Monofilament line does not cut a crossing NPC tow', () => {
@@ -170,6 +185,8 @@ test('a slack Monofilament line does not cut a crossing NPC tow', () => {
     mode: 'flight',
     simTime: 1,
     tick: 60,
+    seed: SEED,
+    rng: mulberry32(SEED),
     playerId: player.id,
     player: {
       tether: {
@@ -190,6 +207,8 @@ test('a slack Monofilament line does not cut a crossing NPC tow', () => {
   };
   ensureCombatState(state);
   const bus = createBus();
+  const cuts = [];
+  bus.on('massline:npcLineCut', (payload) => cuts.push(payload));
   const catalog = createCombatCatalog();
   const helpers = { combatPhysics: stubCombatPhysics() };
   const attachments = createAttachmentService({ state, catalog, helpers, bus });
@@ -226,6 +245,10 @@ test('a slack Monofilament line does not cut a crossing NPC tow', () => {
 
   system.update(DT, state);
   assert.equal(state.combat.attachments.byId[npcLine.attachment.id].state, 'active');
+  assert.equal(cuts.length, 0, 'slack does not cut');
+  assert.equal(state.combat.attachments.byId[blade.attachment.id].masslineRuntime, undefined,
+    'slack does not spend line integrity');
+  console.log(`SEED=${SEED} SLACK_CUT=0`);
 });
 
 test('the tether-cutter reads as a corsair blade that spools a Massline before Fire Control unlocks', () => {
@@ -333,6 +356,7 @@ test('a taut tether-cutter sweep severs the player line in one pass', () => {
   assert.equal(cuts.length, 1);
   assert.equal(cuts[0].cutterId, raider.id);
   assert.equal(cuts[0].headId, 'monofilament_sweep');
+  assert.equal(cuts[0].integrity, 1 - MONOFILAMENT_CUT_INTEGRITY_COST);
   assert.equal(raider.data.derived.masslineHeadId, 'monofilament_sweep');
 
   system.update(DT, state);
