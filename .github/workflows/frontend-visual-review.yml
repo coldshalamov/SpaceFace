@@ -28,7 +28,7 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p scratch/frontend-review
-          node scripts/capture-ui-matrix.mjs --world --only=title,new-game,flight,pause,settings,save-load,station-dock,station-market,station-shipworks --mode=default --viewport=1280 --out=scratch/frontend-review 2>&1 | tee scratch/frontend-review/capture.log
+          node scripts/capture-command-deck.mjs 2>&1 | tee scratch/frontend-review/capture.log
       - name: Preserve screenshots and capture failures
         if: always()
         uses: actions/upload-artifact@v4
