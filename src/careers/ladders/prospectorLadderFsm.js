@@ -6,6 +6,7 @@
 // Live payload contracts only — see prospectorLadderDefs.js header for emitters.
 
 import { isPlayerWanted } from '../../systems/heat.js';
+import { forEachFieldRock } from '../../world/livingWorldViews.js';
 import {
   gradeAtLeast,
   pickBestDepositAppraisal,
@@ -200,24 +201,16 @@ function noteSkillProof(state, key, delta = 1) {
   ladders.__meta.skillProof[k] = (Number(ladders.__meta.skillProof[k]) || 0) + (Number(delta) || 0);
 }
 
-function entityListOf(state) {
-  if (!state) return [];
-  if (Array.isArray(state.entityList)) return state.entityList;
-  if (state.entities && typeof state.entities.values === 'function') {
-    return [...state.entities.values()];
-  }
-  return [];
-}
-
 /**
  * Live scanner stamps scanOreGlyph / scanHighlightUntil on nearby asteroids
  * before emitting scan:completed (scanner.js:_pulse). Prefer that authority.
  */
 function liveScannedAsteroids(state) {
-  return entityListOf(state).filter((e) => e
-    && e.type === 'asteroid'
-    && e.data
-    && (e.data.scanOreGlyph || e.data.scanHighlightUntil));
+  const out = [];
+  forEachFieldRock(state, (e) => {
+    if (e.data && (e.data.scanOreGlyph || e.data.scanHighlightUntil)) out.push(e);
+  });
+  return out;
 }
 
 function claimBodyById(state, claimId) {

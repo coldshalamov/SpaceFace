@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   isCatchupPresentationSkip,
   shouldSkipSystemOnCatchup,
+  shouldSkipSystemThisStep,
 } from '../src/core/catchupPolicy.js';
 import {
   createSimulationRunner,
@@ -11,8 +12,8 @@ import {
 } from '../src/core/simulationRunner.js';
 
 test('HUD and voice skip only on extra catch-up steps', () => {
-  const first = { simCatchupIndex: 0 };
-  const extra = { simCatchupIndex: 1 };
+  const first = { simCatchupIndex: 0, tick: 0 };
+  const extra = { simCatchupIndex: 1, tick: 0 };
   assert.equal(isCatchupPresentationSkip(first), false);
   assert.equal(isCatchupPresentationSkip(extra), true);
   assert.equal(shouldSkipSystemOnCatchup('physics', extra), false);
@@ -21,6 +22,11 @@ test('HUD and voice skip only on extra catch-up steps', () => {
   assert.equal(shouldSkipSystemOnCatchup('masslineHud', extra), true);
   assert.equal(shouldSkipSystemOnCatchup('voiceArbiter', extra), true);
   assert.equal(shouldSkipSystemOnCatchup('massSeedHud', extra), true);
+  assert.equal(shouldSkipSystemOnCatchup('barkDirector', extra), true);
+  assert.equal(shouldSkipSystemOnCatchup('lawSecurity', extra), true);
+  assert.equal(shouldSkipSystemOnCatchup('npcJobsRuntime', extra), true);
+  assert.equal(shouldSkipSystemThisStep('barkDirector', extra), true);
+  assert.equal(shouldSkipSystemThisStep('physics', extra), false);
 });
 
 test('SimulationRunner numbers extra catch-up steps and still advances exact ticks', () => {

@@ -65,6 +65,7 @@ import {
 } from '../data/sectorActivityPockets.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { RECORD_KIND, stableRecordId } from '../world/worldRecords.js';
+import { findLivingWorldActor, forEachJobInteractable, forEachLivingWorldActor } from '../world/livingWorldViews.js';
 import {
   PRIORITY_COURIER_JOB_SCHEMA,
   PRIORITY_COURIER_SERVICE,
@@ -826,29 +827,28 @@ export const npcJobsRuntime = {
     if (!this._ceresRealTargetActorBinding(worldRecordId)) return true;
     let count = 0;
     let match = null;
-    for (const candidate of this.state.entityList || []) {
-      if (!candidate || candidate.alive === false || !candidate.data
+    forEachLivingWorldActor(this.state, (candidate) => {
+      if (count > 1 || !candidate.data
         || candidate.data.worldRecordId !== worldRecordId
-        || this.state.entities?.get(candidate.id) !== candidate) continue;
+        || this.state.entities?.get(candidate.id) !== candidate) return;
       count++;
       if (count === 1) match = candidate;
-      if (count > 1) return false;
-    }
+    });
     return count === 1 && match === entity && this.state.entities?.get(entity.id) === entity;
   },
 
   _collectCeresRealTargetActorCandidates(worldRecordId) {
     const candidates = [];
-    for (const candidate of this.state.entityList || []) {
-      if (!candidate || candidate.alive === false || !candidate.data
+    forEachLivingWorldActor(this.state, (candidate) => {
+      if (!candidate.data
         || candidate.data.worldRecordId !== worldRecordId
-        || this.state.entities?.get(candidate.id) !== candidate) continue;
+        || this.state.entities?.get(candidate.id) !== candidate) return;
       candidates.push(candidate);
       // Two exact refs are sufficient: only a two-way ambiguity can become unique after one
       // deletion. Larger malicious duplicate sets stay fail-closed until a retained contender is
       // removed and the bounded lifecycle seam re-counts them.
-      if (candidates.length === 2) break;
-    }
+    });
+    if (candidates.length > 2) candidates.length = 2;
     return candidates;
   },
 
@@ -1177,7 +1177,7 @@ export const npcJobsRuntime = {
       if (this._hasCanonicalCeresRealTargetRoute(binding, entry, entity)) ownsBinding = true;
     }
     if (!ownsBinding || this.state.world?.currentSectorId !== CERES_ACTIVITY_SECTOR_ID) return false;
-    for (const candidate of this.state.entityList || []) {
+    forEachLivingWorldActor(this.state, (candidate) => {
       for (const binding of authority.bindings) {
         if (binding.entryRef !== entry || !this._isCeresRealTargetCandidate(binding, candidate)) continue;
         binding.targetMatches++;
@@ -1195,7 +1195,7 @@ export const npcJobsRuntime = {
           binding.targetAmbiguous = true;
         }
       }
-    }
+    });
     return true;
   },
 
@@ -1702,22 +1702,21 @@ export const npcJobsRuntime = {
       return explicit;
     }
 
-    const list = this.state && this.state.entityList;
-    if (!Array.isArray(list) || !entity || !entity.pos) return null;
+    if (!entity || !entity.pos) return null;
     let best = null;
     let bestDistance = Infinity;
     let bestId = '';
     const maxDistanceSq = NPC_TOW_MAX_RANGE_WU * NPC_TOW_MAX_RANGE_WU;
-    for (const candidate of list) {
-      if (!candidate || candidate === entity || candidate.alive === false
+    forEachJobInteractable(this.state, (candidate) => {
+      if (candidate === entity
         || !candidate.pos || !entities || entities.get(candidate.id) !== candidate
-        || !isTowableCargoTarget(candidate, ownerRecordId)) continue;
+        || !isTowableCargoTarget(candidate, ownerRecordId)) return;
       const targetSector = candidate.data && candidate.data.sectorId;
-      if (targetSector && entry.sectorId && targetSector !== entry.sectorId) continue;
+      if (targetSector && entry.sectorId && targetSector !== entry.sectorId) return;
       const dx = candidate.pos.x - entity.pos.x;
       const dz = candidate.pos.z - entity.pos.z;
       const distanceSq = dx * dx + dz * dz;
-      if (!Number.isFinite(distanceSq) || distanceSq > maxDistanceSq) continue;
+      if (!Number.isFinite(distanceSq) || distanceSq > maxDistanceSq) return;
       const candidateId = String(candidate.id);
       if (distanceSq < bestDistance
         || (distanceSq === bestDistance && candidateId < bestId)) {
@@ -1725,30 +1724,29 @@ export const npcJobsRuntime = {
         bestDistance = distanceSq;
         bestId = candidateId;
       }
-    }
+    });
     return best;
   },
 
   _findNearestOccupationalTarget(entry, entity, accept) {
     const data = entity && entity.data;
     const ownerRecordId = data && typeof data.worldRecordId === 'string' ? data.worldRecordId : null;
-    const list = this.state && this.state.entityList;
     const entities = this.state && this.state.entities;
-    if (!Array.isArray(list) || !entity || !entity.pos || typeof accept !== 'function') return null;
+    if (!entity || !entity.pos || typeof accept !== 'function') return null;
     let best = null;
     let bestDistance = Infinity;
     let bestId = '';
     const maxDistanceSq = NPC_TOW_MAX_RANGE_WU * NPC_TOW_MAX_RANGE_WU;
-    for (const candidate of list) {
-      if (!candidate || candidate === entity || candidate.alive === false
+    forEachJobInteractable(this.state, (candidate) => {
+      if (candidate === entity
         || !candidate.pos || !entities || entities.get(candidate.id) !== candidate
-        || !accept(candidate, ownerRecordId)) continue;
+        || !accept(candidate, ownerRecordId)) return;
       const targetSector = candidate.data && candidate.data.sectorId;
-      if (targetSector && entry && entry.sectorId && targetSector !== entry.sectorId) continue;
+      if (targetSector && entry && entry.sectorId && targetSector !== entry.sectorId) return;
       const dx = candidate.pos.x - entity.pos.x;
       const dz = candidate.pos.z - entity.pos.z;
       const distanceSq = dx * dx + dz * dz;
-      if (!Number.isFinite(distanceSq) || distanceSq > maxDistanceSq) continue;
+      if (!Number.isFinite(distanceSq) || distanceSq > maxDistanceSq) return;
       const candidateId = String(candidate.id);
       if (distanceSq < bestDistance
         || (distanceSq === bestDistance && candidateId < bestId)) {
@@ -1756,7 +1754,7 @@ export const npcJobsRuntime = {
         bestDistance = distanceSq;
         bestId = candidateId;
       }
-    }
+    });
     return best;
   },
 
@@ -1777,16 +1775,16 @@ export const npcJobsRuntime = {
     if (this._countCeresScavengerJobs() >= NPC_CERES_SCAVENGER_ADOPT_LIMIT) return 0;
     const seed = (this.state.meta && this.state.meta.seed) || 1;
     let adopted = this._countCeresScavengerJobs();
-    for (const entity of this.state.entityList || []) {
-      if (adopted >= NPC_CERES_SCAVENGER_ADOPT_LIMIT) break;
-      if (!entity || entity.alive === false || entity.type !== 'ship' || !entity.pos) continue;
+    forEachLivingWorldActor(this.state, (entity) => {
+      if (adopted >= NPC_CERES_SCAVENGER_ADOPT_LIMIT) return;
+      if (entity.type !== 'ship' || !entity.pos) return;
       const data = entity.data || (entity.data = {});
-      if (data.ceresActivityCast === true || data.activityActorSlotId) continue;
-      if ((data.trafficRole || data.role) !== 'scavenger') continue;
-      if (data.jobId) continue;
+      if (data.ceresActivityCast === true || data.activityActorSlotId) return;
+      if ((data.trafficRole || data.role) !== 'scavenger') return;
+      if (data.jobId) return;
       const probe = { job: { payload: {} }, sectorId: CERES_ACTIVITY_SECTOR_ID };
       const target = this._findNearestOccupationalTarget(probe, entity, isTowableCargoTarget);
-      if (!target || !target.pos) continue;
+      if (!target || !target.pos) return;
       if (!data.worldRecordId) {
         data.worldRecordId = stableRecordId(
           seed,
@@ -1820,11 +1818,11 @@ export const npcJobsRuntime = {
           extracted: false,
         },
       });
-      if (!jobId) continue;
+      if (!jobId) return;
       data.jobKind = 'salvor';
       data.towTargetId = target.id;
       adopted += 1;
-    }
+    });
     return adopted;
   },
 
@@ -1859,24 +1857,23 @@ export const npcJobsRuntime = {
   },
 
   _findPatrolNetTarget(entry, entity) {
-    const list = this.state && this.state.entityList;
     const entities = this.state && this.state.entities;
-    if (!Array.isArray(list) || !entity || !entity.pos) return null;
+    if (!entity || !entity.pos) return null;
     const playerId = this.state.playerId;
     let best = null;
     let bestDistance = Infinity;
     let bestId = '';
     const maxDistanceSq = NPC_TOW_MAX_RANGE_WU * NPC_TOW_MAX_RANGE_WU;
-    for (const candidate of list) {
+    forEachLivingWorldActor(this.state, (candidate) => {
       if (!isPatrolNetTarget(candidate, entity, playerId)
         || !candidate.pos
-        || !entities || entities.get(candidate.id) !== candidate) continue;
+        || !entities || entities.get(candidate.id) !== candidate) return;
       const targetSector = candidate.data && candidate.data.sectorId;
-      if (targetSector && entry.sectorId && targetSector !== entry.sectorId) continue;
+      if (targetSector && entry.sectorId && targetSector !== entry.sectorId) return;
       const dx = candidate.pos.x - entity.pos.x;
       const dz = candidate.pos.z - entity.pos.z;
       const distanceSq = dx * dx + dz * dz;
-      if (!Number.isFinite(distanceSq) || distanceSq > maxDistanceSq) continue;
+      if (!Number.isFinite(distanceSq) || distanceSq > maxDistanceSq) return;
       const candidateId = String(candidate.id);
       if (distanceSq < bestDistance
         || (distanceSq === bestDistance && candidateId < bestId)) {
@@ -1884,7 +1881,7 @@ export const npcJobsRuntime = {
         bestDistance = distanceSq;
         bestId = candidateId;
       }
-    }
+    });
     return best;
   },
 
@@ -3344,7 +3341,6 @@ export const npcJobsRuntime = {
 
   _findEntityByRecordId(worldRecordId) {
     if (!worldRecordId) return null;
-    const list = this.state.entityList || [];
     const formationSlot = this._ceresFormationSlotForWorldRecordId(worldRecordId);
     const realTargetActor = this._ceresRealTargetActorBinding(worldRecordId);
     if (formationSlot || realTargetActor) {
@@ -3360,13 +3356,13 @@ export const npcJobsRuntime = {
       }
       let match = null;
       let count = 0;
-      for (const entity of list) {
-        if (!entity || !entity.alive || !entity.data
+      forEachLivingWorldActor(this.state, (entity) => {
+        if (!entity.data
           || entity.data.worldRecordId !== worldRecordId
-          || this.state.entities?.get(entity.id) !== entity) continue;
+          || this.state.entities?.get(entity.id) !== entity) return;
         count++;
         if (count === 1) match = entity;
-      }
+      });
       if (count !== 1) {
         if (formationSlot) formationSlot.ambiguous = count > 1;
         if (realTargetActor && count > 1) this._markCeresRealTargetActorAmbiguous(worldRecordId);
@@ -3381,10 +3377,7 @@ export const npcJobsRuntime = {
       }
       return match;
     }
-    for (const e of list) {
-      if (e && e.alive && e.data && e.data.worldRecordId === worldRecordId) return e;
-    }
-    return null;
+    return findLivingWorldActor(this.state, (e) => !!(e.data && e.data.worldRecordId === worldRecordId));
   },
 
   _onEntityGone(p) {
@@ -3441,13 +3434,13 @@ export const npcJobsRuntime = {
     // then save:loaded will re-link only jobs that actually exist in the incoming envelope.
     this._resetCeresEscortAuthority();
     this._resetCeresRealTargetAuthority();
-    for (const entity of this.state.entityList || []) {
-      if (entity && entity.data && typeof entity.data.jobId === 'string'
+    forEachLivingWorldActor(this.state, (entity) => {
+      if (entity.data && typeof entity.data.jobId === 'string'
         && entity.data.jobId.startsWith('job:')) {
         clearRouteBrake(entity);
         delete entity.data.jobId;
       }
-      if (entity && entity.data) {
+      if (entity.data) {
         // Tow ids are live numeric joins. Combat persistence restores the attachment itself (when
         // applicable); the runtime adopts it on the next materialized tug tick, so stale markers
         // from a retired object must never block a new finite load.
@@ -3455,7 +3448,7 @@ export const npcJobsRuntime = {
         delete entity.data.npcTowJobId;
         delete entity.data.npcTowedByJobId;
       }
-    }
+    });
     const byId = {};
     const src = data && data.byId && typeof data.byId === 'object' ? data.byId : {};
     for (const jobId of Object.keys(src)) {

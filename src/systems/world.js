@@ -114,6 +114,7 @@ import {
   stableRecordId,
   upsertRecord,
 } from '../world/worldRecords.js';
+import { forEachLivingWorldActor } from '../world/livingWorldViews.js';
 import {
   applyResourceBodyToEntity,
   captureResourceBodyRecord,
@@ -951,20 +952,25 @@ export const world = {
     const list = state.entityList || [];
     const despawnIds = opts.despawnIds instanceof Set ? opts.despawnIds : null;
     const despawnIndexes = despawnIds && despawnIds.size ? [] : null;
-    for (let i = 0; i < list.length; i++) {
-      const e = list[i];
-      if (!e) continue;
+    if (despawnIndexes) {
+      for (let i = 0; i < list.length; i++) {
+        const e = list[i];
+        if (!e) continue;
+        const home = e.homeSectorId || (e.data && e.data.homeSectorId);
+        if (despawnIds.has(e.id)
+            && !this._isProtectedFromResidency(e)
+            && (!home || home === sectorId)) {
+          despawnIndexes.push(i);
+        }
+      }
+    }
+    forEachLivingWorldActor(state, (e) => {
       const home = e.homeSectorId || (e.data && e.data.homeSectorId);
       const dataSector = e.data && e.data.sectorId;
       // Require explicit sector ownership — never attach homeless traffic to the wrong bag.
       const ownedHere = home === sectorId || dataSector === sectorId;
-      if (despawnIndexes && despawnIds.has(e.id)
-          && !this._isProtectedFromResidency(e)
-          && (!home || home === sectorId)) {
-        despawnIndexes.push(i);
-      }
-      if (!ownedHere) continue;
-      if (!entityIsDurableCandidate(e, state.playerId)) continue;
+      if (!ownedHere) return;
+      if (!entityIsDurableCandidate(e, state.playerId)) return;
       // Protected mission-pinned still get a durable record for Continue rematerialize,
       // even though live despawn skips them.
       const captured = captureEntityRecord(e, {
@@ -982,10 +988,10 @@ export const world = {
           ? bag.byId[e.data.worldRecordId].extra
           : null,
       });
-      if (!captured) continue;
+      if (!captured) return;
       upsertRecord(bag, captured);
       if (e.data) e.data.worldRecordId = captured.recordId;
-    }
+    });
     // Match _despawnEntityIds' reverse walk and swap-pop ordering without a second population scan.
     if (despawnIndexes) {
       for (let i = despawnIndexes.length - 1; i >= 0; i--) {

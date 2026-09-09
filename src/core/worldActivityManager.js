@@ -57,5 +57,7 @@ export function getActivityFrame(state) {
   frame.changedIds = runtime.changedIds;
   frame.wakeEventsById = runtime.wakeEventsById;
   frame.wakeTokensById = runtime.wakeTokensById;
+  frame.classifyVisits = runtime.classifyVisits;
+  frame.classifyMode = runtime.classifyMode;
   return frame;
 }

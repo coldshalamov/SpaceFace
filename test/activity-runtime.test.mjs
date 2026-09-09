@@ -97,6 +97,28 @@ test('far rocks and haulers leave the Rapier set without being deleted', () => {
   assert.equal(Object.keys(player).includes('activity'), false, 'activity stamp is runtime-only');
 });
 
+test('later ticks do not reclassify the full live list', () => {
+  const player = ship(1, 0, { isPlayer: true, team: 0 });
+  const nearRock = rock(2, 20);
+  const farRocks = [];
+  for (let i = 0; i < 40; i++) farRocks.push(rock(100 + i, 4000 + i * 10));
+  const state = makeState([player, nearRock, ...farRocks], {
+    runtime: { profileId: 'production' },
+  });
+  const first = ensureActivityClassified(state);
+  assert.equal(first.classifyMode, 'full');
+  assert.equal(first.classifyVisits, state.entityList.length);
+  assert.equal(farRocks[0].activity.simTier, SIM_TIER.S3_DORMANT);
+  state.tick = (state.tick | 0) + 1;
+  state.simTime = (state.simTime || 0) + 1 / 60;
+  const second = ensureActivityClassified(state);
+  assert.equal(second.classifyMode, 'incremental');
+  assert.ok(second.classifyVisits < state.entityList.length / 2,
+    `expected a neighborhood classify, got ${second.classifyVisits} of ${state.entityList.length}`);
+  assert.equal(farRocks[0].activity.simTier, SIM_TIER.S3_DORMANT);
+  assert.equal(entityNeedsPhysics(farRocks[0]), false);
+});
+
 test('off-glass pursuer stays exact and in physics', () => {
   const player = ship(1, 0, { isPlayer: true, team: 0 });
   const pirate = ship(2, 2500, {

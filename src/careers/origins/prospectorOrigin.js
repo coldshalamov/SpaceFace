@@ -44,6 +44,7 @@ import {
   touchProspectorOrigin,
 } from './prospectorOriginState.js';
 import { COMMODITIES } from '../../data/commodities.js';
+import { forEachFieldRock } from '../../world/livingWorldViews.js';
 
 const ORE_COMMODITY_IDS = new Set(
   COMMODITIES.filter((commodity) => commodity && commodity.category === 'raw ore')
@@ -389,13 +390,11 @@ export function handleScanCompleted(state, payload = {}, bus = null) {
   // Normal play stamps scanned asteroids before emitting scan:completed. Prefer that live
   // authority; payload.entities remains a supporting harness seam only.
   let appraisal = null;
-  if (state.entityList || (state.entities && state.entities.values)) {
-    const list = state.entityList
-      || (state.entities ? [...state.entities.values()] : []);
-    const scanned = list.filter((e) => e && e.type === 'asteroid' && e.data
-      && (e.data.scanOreGlyph || e.data.scanHighlightUntil));
-    if (scanned.length) appraisal = pickBestDepositAppraisal(scanned);
-  }
+  const scanned = [];
+  forEachFieldRock(state, (e) => {
+    if (e.data && (e.data.scanOreGlyph || e.data.scanHighlightUntil)) scanned.push(e);
+  });
+  if (scanned.length) appraisal = pickBestDepositAppraisal(scanned);
   if (!appraisal && Array.isArray(payload.entities) && payload.entities.length) {
     appraisal = pickBestDepositAppraisal(payload.entities);
   }

@@ -16,6 +16,7 @@ import { isHostileToPlayer } from './scanner.js';
 import { shouldOwnerThink } from '../core/activityScheduler.js';
 import { tableSimAuthorityWuFromState } from '../render/tabletopPolicy.js';
 import { ensureActivityClassified } from '../world/activityRuntime.js';
+import { forEachLivingWorldActor } from '../world/livingWorldViews.js';
 import { activeHullIdentity } from '../data/hullIdentity.js';
 import { livingHullNotoriety } from '../core/livingHull.js';
 
@@ -199,12 +200,12 @@ export const barkDirector = {
       sleepPeriodTicks: 8,
       activePeriodTicks: 1,
     };
-    for (const entity of state.entityList || []) {
-      if (!shouldOwnerThink(state.tick, entity, thinkOpts)) continue;
+    forEachLivingWorldActor(state, (entity) => {
+      if (!shouldOwnerThink(state.tick, entity, thinkOpts)) return;
       const situation = classifyBarkSituation(entity, state);
-      if (!situation) continue;
+      if (!situation) return;
       this._speak(entity, situation, 'state');
-    }
+    });
   },
 
   _speakFromEvent(payload, situation, reason) {

@@ -13,6 +13,7 @@
 import { createBus } from './eventBus.js';
 import { createGameState } from './gameState.js';
 import { core as coreDefinition } from './coreSystem.js';
+import { shouldSkipSystemThisStep } from './catchupPolicy.js';
 
 export const SIM_DT = 1 / 60;
 
@@ -172,6 +173,7 @@ export function createSimulation(options = {}) {
         }
         for (const system of updates) {
           if (!system.update) continue;
+          if (shouldSkipSystemThisStep(system.name, state)) continue;
           if (countSystems) tier1.countSystemInvocation(system.name);
           system.update(dt, state);
         }

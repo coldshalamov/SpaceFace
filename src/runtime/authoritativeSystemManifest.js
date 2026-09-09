@@ -138,6 +138,46 @@ export function getSystemCapability(id) {
   return SYSTEM_CAPABILITIES[id] || Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'gameplay' });
 }
 
+/** Combat-island clocks. Table stays 60 Hz; calendar is 1–2 Hz; glass never catch-up. */
+export const SYSTEM_CLOCK = Object.freeze({
+  TABLE: 'table',
+  NEAR: 'near',
+  CALENDAR: 'calendar',
+  GLASS: 'glass',
+});
+
+/** 2 Hz on the 60 Hz step. Tick 0 always runs so short lab boots still initialize calendar state. */
+export const CALENDAR_CLOCK_PERIOD_TICKS = 30;
+
+export const CALENDAR_CLOCK_IDS = Object.freeze([
+  'buildIdentity', 'aceMemory', 'factionPresence', 'barkDirector', 'beacons', 'travelLanes',
+  'automation', 'asteroidSites', 'asteroidFormations', 'crafting', 'economy', 'intervention',
+  'heistFacilities', 'regionalEcology', 'encounterDirector', 'routeFollower', 'livingPoiBehaviors',
+  'pirateRumor', 'ambushSignatures', 'bountyHunt', 'stationSideEventDirector', 'gateControlDirector',
+  'salvage', 'lossInvestigation', 'salvageActions', 'survivorPod', 'recoveryEncounter',
+  'factions', 'sectorSim', 'missions', 'careerOrigins', 'careerLadders', 'liveCareerLadderBranches',
+  'story', 'scenarioRuntime', 'drill', 'claims', 'bandRadio', 'onboarding', 'save',
+]);
+
+export const NEAR_CLOCK_IDS = Object.freeze([
+  'flybyFocus', 'scanner', 'scanReveal', 'lawSecurity', 'pirateDisguise', 'pirateParley',
+  'pirateDisengage', 'aiSlot', 'aiPorts', 'aiEncounter', 'traffic', 'titles', 'planetRuntime',
+  'npcJobsRuntime',
+]);
+
+const CLOCK_BY_ID = new Map();
+for (const id of CALENDAR_CLOCK_IDS) CLOCK_BY_ID.set(id, SYSTEM_CLOCK.CALENDAR);
+for (const id of NEAR_CLOCK_IDS) CLOCK_BY_ID.set(id, SYSTEM_CLOCK.NEAR);
+
+export function getSystemClock(id) {
+  const mapped = CLOCK_BY_ID.get(id);
+  if (mapped) return mapped;
+  const cap = SYSTEM_CAPABILITIES[id];
+  const kind = cap && cap.capability;
+  if (kind === 'hud' || kind === 'voice' || kind === 'presentation') return SYSTEM_CLOCK.GLASS;
+  return SYSTEM_CLOCK.TABLE;
+}
+
 /**
  * Authoritative init IDs for a named system set.
  * @param {'production'|'legacy47a'} systemSet

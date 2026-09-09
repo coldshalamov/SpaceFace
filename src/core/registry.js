@@ -165,7 +165,7 @@ import { resolveRuntimeManifest } from '../runtime/resolveRuntimeManifest.js';
 import { DEFAULT_RUNTIME_PROFILE_ID } from '../runtime/runtimeProfiles.js';
 import { applyFeatureConfigToMaps } from '../data/featureFlags.js';
 import { bindRuntimeToState } from '../runtime/createAuthoritativeRuntime.js';
-import { shouldSkipSystemOnCatchup } from './catchupPolicy.js';
+import { shouldSkipSystemThisStep } from './catchupPolicy.js';
 
 /**
  * Teardown dependencies are expressed as [dependent, owner] pairs. Dependents release their
@@ -756,7 +756,7 @@ export function createRegistry(ctx) {
           }
           for (const s of POST_INPUT_UPDATE_ORDER) {
             if (!s.update) continue;
-            if (shouldSkipSystemOnCatchup(s.name, state)) continue;
+            if (shouldSkipSystemThisStep(s.name, state)) continue;
             if (countSystems) tier1.countSystemInvocation(s.name);
             s.update(dt, state);
           }
@@ -783,7 +783,7 @@ export function createRegistry(ctx) {
       }
       for (const s of POST_INPUT_UPDATE_ORDER) {
         if (!s.update) continue;
-        if (shouldSkipSystemOnCatchup(s.name, state)) continue;
+        if (shouldSkipSystemThisStep(s.name, state)) continue;
         if (countSystems) tier1.countSystemInvocation(s.name);
         t = perfNow();
         try { s.update(dt, state); }
