@@ -3,7 +3,7 @@
 // docs/worldbuilding/beats/*.beat.json against leftover scenario facts.
 
 import { readdirSync, readFileSync } from 'node:fs';
-import { dirname, join, relative } from 'node:path';
+import { basename, dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -14,6 +14,9 @@ export const OPENER_47A_ID = 'beat.47a.opener';
 export const SCENARIO_47A_REL = 'src/data/scenarios/47a.scenario.json';
 export const B0_CHAPTER_REL = 'docs/worldbuilding/sheets/chapters/B0.md';
 export const TEMPLATE_ID = 'beat.template';
+// Only this file may be a template sheet. Any other file that claims template
+// kind is a beat trying to skip every content check.
+export const TEMPLATE_FILENAME = 'TEMPLATE.beat.json';
 
 export const REQUIRED_47A_ACTORS = Object.freeze([
   'player_kestrel',
@@ -24,6 +27,9 @@ export const REQUIRED_47A_ACTORS = Object.freeze([
   'scavenger_thief',
   'official_recovery_tug',
   'civilian_pod',
+  // BEAT-STANDARD.md: "Kessler and the handoff beacon are leftover too — keep them."
+  'contact_kessler',
+  'kessler_handoff_beacon',
 ]);
 
 export const PHYSICAL_VERBS = Object.freeze([
@@ -288,6 +294,45 @@ function validate47aWithoutLoss(sheet, scenario) {
     issues.push(issue('duration', '47-A sheet must keep leftover durationSeconds', 'seedCapture.durationSeconds'));
   }
 
+  // A bark is CITED, never rewritten. Any bark whose id resolves in the leftover
+  // scenario must still read exactly as the game speaks it. Barks cited from
+  // elsewhere (scenarioRuntime comms) are skipped, not assumed.
+  const leftoverLines = new Map(
+    (scenario.dialogue || []).map((row) => [row.id, String((row && (row.text ?? row.line)) || '')]),
+  );
+  const sheetBarks = Array.isArray(sheet.barks) ? sheet.barks : [];
+  for (const [i, row] of sheetBarks.entries()) {
+    if (!row || !nonEmptyString(row.id)) continue;
+    const leftover = leftoverLines.get(row.id);
+    if (leftover === undefined) continue;
+    if (String(row.line || '').trim() !== leftover.trim()) {
+      issues.push(issue(
+        'rewritten_bark',
+        `bark ${row.id} drifted from the leftover scenario line; cite it, do not rewrite it`,
+        `barks[${i}].line`,
+      ));
+    }
+  }
+
+  // The seed is the leftover tape's seed, not a number the sheet chose.
+  const tapeRel = sheet.seedCapture && sheet.seedCapture.inputTape;
+  if (nonEmptyString(tapeRel)) {
+    let tape = null;
+    try {
+      tape = readJsonFile(join(REPO_ROOT, tapeRel));
+    } catch (error) {
+      issues.push(issue('seed', `seedCapture.inputTape is not readable: ${tapeRel}`, 'seedCapture.inputTape'));
+    }
+    if (tape && Number.isFinite(tape.seed)
+      && Number(tape.seed) !== Number(sheet.seedCapture && sheet.seedCapture.seed)) {
+      issues.push(issue(
+        'seed',
+        `seedCapture.seed must be the leftover tape seed from ${tapeRel} (${tape.seed})`,
+        'seedCapture.seed',
+      ));
+    }
+  }
+
   return issues;
 }
 
@@ -296,13 +341,21 @@ export function validateBeatSheet(sheet, options = {}) {
   if (issues.some((row) => row.code === 'prose_only' && !sheet)) return issues;
   if (!sheet || typeof sheet !== 'object' || Array.isArray(sheet)) return issues;
 
-  const isTemplate = sheet.kind === 'template' || sheet.id === TEMPLATE_ID;
+  const claimsTemplate = sheet.kind === 'template' || sheet.id === TEMPLATE_ID;
   issues.push(...validateShape(sheet));
-  if (isTemplate) {
+  if (claimsTemplate) {
     if (sheet.id !== TEMPLATE_ID) {
       issues.push(issue('template', 'template sheet id must be beat.template', 'id'));
     }
-    return issues;
+    // The blank template is exempt from content checks so it stays fillable.
+    // That exemption is granted by filename, never by a field the sheet sets:
+    // otherwise a real beat claims template kind and skips the whole standard.
+    if (options.allowTemplate === true) return issues;
+    issues.push(issue(
+      'template',
+      `only ${TEMPLATE_FILENAME} may be a template sheet; a beat cannot claim template kind`,
+      'kind',
+    ));
   }
 
   issues.push(...validateLiveContent(sheet));
@@ -325,11 +378,12 @@ export function validateBeatFile(absPath, options = {}) {
       issues: [issue('parse', `not machine-checkable JSON: ${error.message}`)],
     };
   }
+  const allowTemplate = options.allowTemplate ?? (basename(absPath) === TEMPLATE_FILENAME);
   return {
     path: absPath,
     rel: relative(REPO_ROOT, absPath).replaceAll('\\', '/'),
     sheet,
-    issues: validateBeatSheet(sheet, options),
+    issues: validateBeatSheet(sheet, { ...options, allowTemplate }),
   };
 }
 

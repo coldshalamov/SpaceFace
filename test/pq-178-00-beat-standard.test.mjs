@@ -1,7 +1,7 @@
 // PQ-178.00 — beat standard. Headless. No soak. No headed capture.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -190,6 +190,68 @@ test('validator fails prose-only, choice menu, cutscene, single solution, and no
   const proseCli = runCheck(['--file', proseFile]);
   assert.notEqual(proseCli.status, 0);
   assert.match(`${proseCli.stderr}\n${proseCli.stdout}`, /prose_only/);
+});
+
+test('a beat cannot claim template kind to skip the standard', () => {
+  // The template exemption is granted by filename. A hollow sheet that labels
+  // itself a template must still be measured against every content check.
+  const hollow = {
+    schema: BEAT_SCHEMA,
+    kind: 'template',
+    id: 'beat.template',
+    title: 'B1 wrecking-ball contract',
+    canon: { whoWantsWhat: [] },
+    register: { speakers: [] },
+    setPiece: {
+      place: '', actors: [], headlineVerb: '', twist: '', solutions: [], provingFrame: '',
+    },
+    barks: [],
+    voiceNotes: {},
+    seedCapture: {},
+    forbidden: {},
+  };
+
+  const bypassIssues = validateBeatSheet(hollow);
+  assert.ok(bypassIssues.some((row) => row.code === 'template'), JSON.stringify(bypassIssues));
+  assert.ok(bypassIssues.some((row) => row.code === 'no_physical_verb'), 'content checks still run');
+  assert.ok(bypassIssues.some((row) => row.code === 'single_solution'), 'content checks still run');
+
+  // The real template file keeps its exemption.
+  assert.deepEqual(validateBeatSheet(loadBeatSheet(TEMPLATE_PATH), { allowTemplate: true }), []);
+
+  const bypassFile = writeTempSheet('b1-wrecking-ball.beat.json', hollow);
+  const cli = runCheck(['--file', bypassFile]);
+  assert.notEqual(cli.status, 0, 'a mislabelled template must fail the gate');
+  assert.match(`${cli.stderr}\n${cli.stdout}`, /template/);
+});
+
+test('47-A barks are cited, not rewritten, and the seed is the leftover tape seed', () => {
+  const scenario = load47aScenario();
+  const opener = loadBeatSheet(OPENER_PATH);
+  const leftoverLines = new Map((scenario.dialogue || []).map((row) => [row.id, String(row.text || '')]));
+
+  // Every bark the sheet resolves to the scenario must read exactly as the game speaks it.
+  let compared = 0;
+  for (const bark of opener.barks) {
+    const leftover = leftoverLines.get(bark.id);
+    if (leftover === undefined) continue;
+    compared += 1;
+    assert.equal(bark.line.trim(), leftover.trim(), `bark ${bark.id} must not be rewritten`);
+  }
+  assert.ok(compared >= 5, `expected the leftover dialogue lines to be cited, compared ${compared}`);
+
+  const drifted = structuredClone(opener);
+  drifted.barks[0].line = 'Kestrel, go mine some Veldspar and dock.';
+  const driftIssues = validateBeatSheet(drifted, { scenario });
+  assert.ok(driftIssues.some((row) => row.code === 'rewritten_bark'), JSON.stringify(driftIssues));
+
+  const tape = JSON.parse(readFileSync(join(ROOT, opener.seedCapture.inputTape), 'utf8'));
+  assert.equal(opener.seedCapture.seed, tape.seed, 'sheet seed is the leftover tape seed');
+
+  const wrongSeed = structuredClone(opener);
+  wrongSeed.seedCapture.seed = tape.seed + 1;
+  const seedIssues = validateBeatSheet(wrongSeed, { scenario });
+  assert.ok(seedIssues.some((row) => row.code === 'seed'), JSON.stringify(seedIssues));
 });
 
 test.after(() => {
