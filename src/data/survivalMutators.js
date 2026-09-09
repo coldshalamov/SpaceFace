@@ -35,6 +35,45 @@ export const CRUCIBLE_WEEKLY_ROTATION = Object.freeze([
 export const CRUCIBLE_REEF_LAYOUT_ID = 'crucible_reef';
 export const CRUCIBLE_SLALOM_WELL_COUNT = 3;
 
+/**
+ * Named best builds for the four weekly games. Scored at compile time from the
+ * compiled challenge — not from live hours. Hitch cannot carry M concussion.
+ */
+export const CRUCIBLE_WEEKLY_STRATEGIES = freezeDeep([
+  {
+    id: 'well_tag',
+    label: 'Tag the wells',
+    hullId: 'ship_kestrel',
+    fittings: ['wpn_gravity_marker_s'],
+    verb: 'Tag',
+    blurb: 'Mark a hull so the three wells eat it. Hitch threads; sitting still is a trap.',
+  },
+  {
+    id: 'heavy_throw',
+    label: 'Throw the heavies',
+    hullId: 'ship_hornet',
+    fittings: ['wpn_concussion_cannon_m'],
+    verb: 'Throw',
+    blurb: 'A concussion slug puts a heavy into the wall. Hitch cannot carry this gun.',
+  },
+  {
+    id: 'cold_whip',
+    label: 'Whip the room',
+    hullId: 'ship_drifter',
+    fittings: ['mod_elastic_whip_m'],
+    verb: 'Whip',
+    blurb: 'Guns stay in the rack. The rope is the kit.',
+  },
+  {
+    id: 'reef_bank',
+    label: 'Bank the reef',
+    hullId: 'ship_kestrel',
+    fittings: ['wpn_autocannon_s', 'mod_bank_shot'],
+    verb: 'Bank',
+    blurb: 'Shots bounce off rock. The reef is a firing angle.',
+  },
+]);
+
 export const SURVIVAL_PHYSICS_VERBS = Object.freeze(['Throw', 'Tag', 'Bind', 'Mine', 'Unsteer']);
 
 export const SURVIVAL_MUTATOR_CATALOG = freezeDeep([
@@ -107,7 +146,7 @@ export const SURVIVAL_MUTATOR_CATALOG = freezeDeep([
   {
     id: 'gravity_slalom',
     label: 'Gravity slalom',
-    blurb: 'Three wells bend the room. Thread them; sitting still is a trap.',
+    blurb: 'Three wells. Tag a hull and thread it through. Sitting still is a trap.',
     skipDraft: false,
     skipReroll: false,
     hullLocked: false,
@@ -119,7 +158,7 @@ export const SURVIVAL_MUTATOR_CATALOG = freezeDeep([
   {
     id: 'heavies_only',
     label: 'Heavies only',
-    blurb: 'No wasp fodder. Every hull in the plan is a heavy.',
+    blurb: 'No wasps. Throw the heavies into the wall — Hitch cannot carry the concussion slug.',
     skipDraft: false,
     skipReroll: false,
     hullLocked: false,
@@ -130,7 +169,7 @@ export const SURVIVAL_MUTATOR_CATALOG = freezeDeep([
   {
     id: 'weapons_cold',
     label: 'Weapons cold',
-    blurb: 'Guns stay cold. Physics verbs are the kit.',
+    blurb: 'Guns stay in the rack. The whip is the kit.',
     skipDraft: true,
     skipReroll: true,
     hullLocked: false,
@@ -141,7 +180,7 @@ export const SURVIVAL_MUTATOR_CATALOG = freezeDeep([
   {
     id: 'reef',
     label: 'Reef',
-    blurb: 'The room is a reef, not Helios Core\'s empty floor.',
+    blurb: 'The room is rock. Bank every shot off the reef.',
     skipDraft: false,
     skipReroll: false,
     hullLocked: false,
