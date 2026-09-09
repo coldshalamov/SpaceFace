@@ -55,11 +55,25 @@
 //     (sector enter/exit, new game, save load — fields.js:135-141). A field that outlives its run
 //     is a defect, not a leftover.
 //
-// Event-driven for Helios: no work on a tick where no wave was planned. Cinder machinery is a
+// Event-driven for Helios: no work on a tick where no wave was planned. Authored toys (shutters,
+// plates, crushers, currents, relays) are extra furniture, not a third field slot: the live room
+// registers them on install and applies crusher/current force in update. Cinder machinery is a
 // cheap no-op unless that law is live.
 
 import { mulberry32 } from '../core/rng.js';
 import { validateRunState } from '../core/runState.js';
+import {
+  ARENA_TOY_DT,
+  ARENA_TOY_HAZARDS,
+  ARENA_TOY_LIGHT_MASS,
+  ARENA_TOY_LIGHT_RADIUS,
+  ARENA_TOY_MAX,
+  bankShotOffPlate,
+  currentCarry,
+  listArenaToys,
+  shutterCutsLine,
+  stepCrusher,
+} from '../data/arenaModuleLibrary.js';
 import { SURVIVAL_ARENA_PHASES as CANONICAL_ARENA_PHASES } from '../data/survivalWaves.js';
 import { gateBearing } from './waveMaterialization.js';
 import { CINDER_ARENA_ID, planCinderInstall, stepCinderMachinery } from './cinderSluiceArena.js';
@@ -168,7 +182,35 @@ function finalizeInstall(out) {
   }
   for (let i = 0; i < out.fields.length; i++) out.fields[i].id = ARENA_FIELD_SLOT_IDS[i];
   if (out.mines.length > ARENA_MINE_MAX) out.mines.length = ARENA_MINE_MAX;
+  // Toys are extra furniture, not a third field slot. Never strip them here.
   return out;
+}
+
+function acceptedToys(install) {
+  const toys = listArenaToys(install);
+  const out = [];
+  for (let i = 0; i < toys.length && out.length < ARENA_TOY_MAX; i++) {
+    const toy = toys[i];
+    if (!toy || typeof toy !== 'object') continue;
+    if (toy.hazardType === 'radiation') continue;
+    if (!ARENA_TOY_HAZARDS.includes(toy.hazardType)) continue;
+    out.push(toy);
+  }
+  return out;
+}
+
+function coneFieldBacksCurrent(fields, toy) {
+  if (!Array.isArray(fields) || !toy) return false;
+  const center = toy.center || toy.pos;
+  if (!center) return false;
+  for (let i = 0; i < fields.length; i++) {
+    const field = fields[i];
+    if (!field || field.kind !== 'cone') continue;
+    const fc = field.center;
+    if (!fc) continue;
+    if (Math.hypot(fc.x - center.x, fc.z - center.z) <= 8) return true;
+  }
+  return false;
 }
 
 function isLawArena(arenaId) {
@@ -447,12 +489,53 @@ function bodySnapshot(entity) {
 
 function writeVel(entity, vx, vz) {
   if (!entity) return;
-  if (entity.vel && typeof entity.vel === 'object') {
+  if (!entity.vel || typeof entity.vel !== 'object') entity.vel = { x: vx, z: vz };
+  else {
     entity.vel.x = vx;
     entity.vel.z = vz;
   }
   entity.vx = vx;
   entity.vz = vz;
+}
+
+function toyBodyOf(entity) {
+  const snap = bodySnapshot(entity);
+  return {
+    pos: entity && entity.pos,
+    vel: { x: snap.vx, z: snap.vz },
+    vx: snap.vx,
+    vz: snap.vz,
+    mass: Number.isFinite(entity && entity.mass) ? entity.mass : ARENA_TOY_LIGHT_MASS,
+    radius: Number.isFinite(entity && entity.radius) ? entity.radius : ARENA_TOY_LIGHT_RADIUS,
+  };
+}
+
+function liveProjectiles(state) {
+  const list = [];
+  const indexed = state && state.entityIndex && Array.isArray(state.entityIndex.projectiles)
+    ? state.entityIndex.projectiles
+    : null;
+  const source = indexed || (state && Array.isArray(state.entityList) ? state.entityList : null);
+  if (source) {
+    for (let i = 0; i < source.length; i++) {
+      const entity = source[i];
+      if (!entity || entity.alive === false || entity.type !== 'projectile' || !entity.pos) continue;
+      list.push(entity);
+    }
+  } else if (state && state.entities && typeof state.entities.values === 'function') {
+    for (const entity of state.entities.values()) {
+      if (!entity || entity.alive === false || entity.type !== 'projectile' || !entity.pos) continue;
+      list.push(entity);
+    }
+  }
+  list.sort((a, b) => {
+    const as = String(a.id);
+    const bs = String(b.id);
+    if (as < bs) return -1;
+    if (as > bs) return 1;
+    return 0;
+  });
+  return list;
 }
 
 export const survivalArena = {
@@ -492,6 +575,7 @@ export const survivalArena = {
   },
 
   diagnostics() {
+    const toys = this._toys || [];
     return Object.freeze({
       wave: this._wave,
       phase: this._phase,
@@ -500,36 +584,37 @@ export const survivalArena = {
       fieldIds: (this._fieldIds || []).slice(),
       mineIds: (this._mineIds || []).slice(),
       coverEncounterId: this._encounterId,
+      toyIds: toys.map((toy) => toy.id),
+      toyCount: toys.length,
+      toys: toys.map((toy) => ({
+        id: toy.id,
+        kind: toy.kind,
+        verb: toy.verb,
+        hazardType: toy.hazardType,
+      })),
     });
   },
 
-  // Law ticks. Helios and Lagrange are event-driven. A missing law id, or no live Survival run,
-  // is an immediate no-op — this must not be a global thermal or conductivity term.
+  // Law ticks plus authored toys. Helios with no toys stays a no-op. Toys are not a third
+  // field slot — crushers and unmatched currents apply force here; shutters cut shots;
+  // plates bank shots. A missing law id, or no live Survival run, is an immediate no-op.
   update(_dt, state) {
-    if (
-      this._lawId !== CINDER_ARENA_ID
-      && this._lawId !== CRYO_ARENA_ID
-      && this._lawId !== STORM_ARENA_ID
-    ) return;
     const st = state || this.state;
     if (!liveSurvivalRun(st)) return;
-    if (this._lawId === CINDER_ARENA_ID) {
-      if (!this._cycleMachinery) return;
+    if (this._lawId === CINDER_ARENA_ID && this._cycleMachinery) {
       const system = this._fieldsSystem();
-      if (!system || typeof system.updateExternal !== 'function') return;
-      const elapsed = simTimeOf(st) - (this._installedAt || 0);
-      const cycle = stepCinderMachinery(elapsed);
-      const strength = cycle.strength === 0 ? 0 : this._authoredStrength;
-      system.updateExternal(ARENA_FIELD_SLOT_IDS[0], { strength });
-      return;
-    }
-    if (this._lawId === CRYO_ARENA_ID) {
+      if (system && typeof system.updateExternal === 'function') {
+        const elapsed = simTimeOf(st) - (this._installedAt || 0);
+        const cycle = stepCinderMachinery(elapsed);
+        const strength = cycle.strength === 0 ? 0 : this._authoredStrength;
+        system.updateExternal(ARENA_FIELD_SLOT_IDS[0], { strength });
+      }
+    } else if (this._lawId === CRYO_ARENA_ID) {
       this._tickCryo(st);
-      return;
-    }
-    if (this._lawId === STORM_ARENA_ID) {
+    } else if (this._lawId === STORM_ARENA_ID) {
       this._tickStorm(st);
     }
+    this._tickToys(_dt, st);
   },
 
   // ---- install --------------------------------------------------------------
@@ -572,9 +657,11 @@ export const survivalArena = {
       const cone = install.fields.find((f) => f.kind === 'cone') || install.fields[0];
       this._authoredStrength = cone && Number.isFinite(cone.strength) ? cone.strength : 0;
     }
+    this._installedFields = Array.isArray(install.fields) ? install.fields.slice() : [];
     this._installFields(install.fields);
     this._installMines(install.mines);
     this._installCover(install.cover, wave);
+    this._installToys(install);
     this._emit('survivalArena:installed', {
       wave,
       arenaId: run.arenaId,
@@ -583,6 +670,8 @@ export const survivalArena = {
       fields: this._fieldIds.length,
       mines: install.mines.length,
       cover: install.cover,
+      toys: this._toys.length,
+      toyIds: this._toys.map((toy) => toy.id),
     });
   },
 
@@ -623,6 +712,10 @@ export const survivalArena = {
     if (!payload || payload.ownerId !== ARENA_MINE_OWNER) return;
     if (payload.mineId == null) return;
     if (!this._mineIds.includes(payload.mineId)) this._mineIds.push(payload.mineId);
+  },
+
+  _installToys(install) {
+    this._toys = acceptedToys(install);
   },
 
   _installCover(wanted, wave) {
@@ -743,6 +836,66 @@ export const survivalArena = {
     }
   },
 
+  _tickToys(dt, state) {
+    const toys = this._toys;
+    if (!toys || toys.length === 0) return;
+    const step = Number.isFinite(dt) && dt > 0 ? dt : ARENA_TOY_DT;
+    const elapsed = simTimeOf(state) - (this._installedAt || 0);
+    const fields = this._installedFields || [];
+    const bodies = liveArenaBodies(state);
+    const projectiles = liveProjectiles(state);
+
+    for (let i = 0; i < toys.length; i++) {
+      const toy = toys[i];
+      if (!toy) continue;
+      if (toy.kind === 'crusher') {
+        for (let b = 0; b < bodies.length; b++) {
+          const entity = bodies[b];
+          const next = stepCrusher(toy, toyBodyOf(entity), elapsed, step);
+          writeVel(entity, next.vel.x, next.vel.z);
+        }
+      } else if (toy.kind === 'current' && !coneFieldBacksCurrent(fields, toy)) {
+        for (let b = 0; b < bodies.length; b++) {
+          const entity = bodies[b];
+          const body = toyBodyOf(entity);
+          const acc = currentCarry(toy, body);
+          writeVel(entity, body.vx + acc.ax * step, body.vz + acc.az * step);
+        }
+      } else if (toy.kind === 'shutter') {
+        for (let p = 0; p < projectiles.length; p++) {
+          const shot = projectiles[p];
+          if (shot.alive === false) continue;
+          const vel = toyBodyOf(shot).vel;
+          const speed = Math.hypot(vel.x, vel.z);
+          if (!(speed > 0)) continue;
+          const look = Math.max(speed * step, 40);
+          const inv = 1 / speed;
+          const to = {
+            x: shot.pos.x + vel.x * inv * look,
+            z: shot.pos.z + vel.z * inv * look,
+          };
+          if (shutterCutsLine(toy, shot.pos, to)) shot.alive = false;
+        }
+      } else if (toy.kind === 'plate') {
+        const platePos = toy.pos || toy.center;
+        const reach = Math.max(8, Number.isFinite(toy.halfWidth) ? toy.halfWidth : 24) + 48;
+        for (let p = 0; p < projectiles.length; p++) {
+          const shot = projectiles[p];
+          if (shot.alive === false || !platePos) continue;
+          const dx = shot.pos.x - platePos.x;
+          const dz = shot.pos.z - platePos.z;
+          if (Math.hypot(dx, dz) > reach) continue;
+          const banked = bankShotOffPlate(toy, {
+            id: shot.id,
+            pos: shot.pos,
+            vel: toyBodyOf(shot).vel,
+          });
+          if (banked && banked.ok) writeVel(shot, banked.vel.x, banked.vel.z);
+        }
+      }
+    }
+  },
+
   _tickStorm(state) {
     const at = this._stormAt;
     if (!at) return;
@@ -775,6 +928,8 @@ export const survivalArena = {
     this._cryoRoom = null;
     this._stormAt = null;
     this._cryoShocked = new Set();
+    this._toys = [];
+    this._installedFields = [];
   },
 
   _emit(event, payload) {
