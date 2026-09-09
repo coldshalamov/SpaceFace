@@ -5,6 +5,8 @@ import test from 'node:test';
 
 import { createSimulation, SIM_DT } from '../src/core/sim.js';
 import { createBus } from '../src/core/eventBus.js';
+import { queuePhysicsImpulse } from '../src/core/physicsAuthority.js';
+import { physics } from '../src/core/physics.js';
 import { fields, fieldBodyProfile } from '../src/systems/fields.js';
 import {
   createFieldKernel,
@@ -43,25 +45,66 @@ function withFlag(on, fn) {
   return result;
 }
 
-function boot(seed = SEED) {
+function boot(seed = SEED, opts = {}) {
   const sim = createSimulation({
     seed,
     bus: createBus(),
-    systems: [fields],
+    systems: opts.withPhysics ? [fields, physics] : [fields],
   });
   const { state } = sim;
   state.mode = 'flight';
   state.input.actions = {};
+  const mass = Number.isFinite(opts.mass) ? opts.mass : 28;
+  const pos = opts.pos || { x: 0, z: 0 };
+  const vel = opts.vel || { x: 0, z: 0 };
   const player = sim.spawn({
-    type: 'ship', team: 0, pos: { x: 0, z: 0 }, radius: 12, collides: true,
-    vel: { x: 0, z: 0 }, rot: 0, angVel: 0,
+    type: 'ship', team: 0, pos: { x: pos.x, z: pos.z }, radius: 12, collides: true,
+    vel: { x: vel.x, z: vel.z }, rot: 0, angVel: 0,
     hull: 200, hullMax: 200,
     flightModel: { inertia: 88 }, flags: {},
-    physicsBody: { schemaVersion: 1, radius: 12, mass: 28, inertiaY: 88, dynamic: true, ccd: true, material: 'ship', revision: 0 },
-    data: { combatProfileId: 'combat_profile_standard_ship' },
+    physicsBody: { schemaVersion: 1, radius: 12, mass, inertiaY: 88, dynamic: true, ccd: true, material: 'ship', revision: 0 },
+    data: { combatProfileId: 'combat_profile_standard_ship', hitchMass: opts.hitchMass || 0 },
   });
   state.playerId = player.id;
-  return { sim, state, player, fieldsSys: sim.registry.get('fields') };
+  return { sim, state, player, fieldsSys: sim.registry.get('fields'), physicsSys: sim.registry.get('physics') };
+}
+
+async function bootPhysics(seed = SEED, opts = {}) {
+  const t = boot(seed, { ...opts, withPhysics: true });
+  t.state.settings.gameplay.physicsBackend = 'rapier-dynamic';
+  assert.equal(await t.physicsSys.prepareBackend(t.state), true, 'rapier-dynamic should initialize headless');
+  t.cleanup = () => {
+    if (typeof t.physicsSys._disableSg02DynamicAuthority === 'function') {
+      t.physicsSys._disableSg02DynamicAuthority();
+    }
+  };
+  return t;
+}
+
+function queueEscapeAccel(entity, ax, az) {
+  const mass = Number.isFinite(entity && entity.physicsBody && entity.physicsBody.mass)
+    ? entity.physicsBody.mass
+    : 1;
+  queuePhysicsImpulse(entity, { x: ax * mass * DT, y: 0, z: az * mass * DT });
+}
+
+function liveInside(t, fieldId) {
+  const field = t.fieldsSys._kernel.get(fieldId);
+  return !!(field && fieldContainsPoint(field, t.player.pos.x, t.player.pos.z));
+}
+
+function stepUntilFree(t, fieldId, opts = {}) {
+  const maxTimeS = Number.isFinite(opts.maxTimeS) ? opts.maxTimeS : 6;
+  const extra = opts.extraAccel || null;
+  const maxTicks = Math.max(1, Math.ceil(maxTimeS / DT));
+  for (let i = 1; i <= maxTicks; i++) {
+    if (extra) queueEscapeAccel(t.player, extra.x, extra.z);
+    t.sim.step();
+    if (!liveInside(t, fieldId)) {
+      return { free: true, timeS: i * DT, ticks: i };
+    }
+  }
+  return { free: false, timeS: maxTicks * DT, ticks: maxTicks };
 }
 
 function printEscape(id, verb, timeS) {
@@ -307,4 +350,135 @@ test('kernel plant register preserves lockStrength for seed', () => {
   assert.equal(rec.lockStrength, FIELD_DEFS.seed.lockStrength);
   assert.equal(rec.strength, 0);
   assert.equal(rec.kind, FIELD_KINDS.WELL);
+});
+
+test('WELL live body Boost out through a planted ring', async () => {
+  await withFlag(true, async () => {
+    const trapped = await bootPhysics(SEED + 10, { pos: { x: 50, z: 0 } });
+    const plantedTrap = trapped.fieldsSys.plantField(trapped.state, {
+      defKey: 'well',
+      center: { x: 0, z: 0 },
+      tag: 'npc',
+    });
+    assert.ok(plantedTrap && liveInside(trapped, plantedTrap.fieldId), 'start trapped in the live well');
+    const held = stepUntilFree(trapped, plantedTrap.fieldId, { maxTimeS: 4 });
+    assert.equal(held.free, false, 'without boost the live well keeps the Hitch');
+    trapped.cleanup();
+
+    const t = await bootPhysics(SEED + 11, { pos: { x: 50, z: 0 } });
+    const planted = t.fieldsSys.plantField(t.state, {
+      defKey: 'well',
+      center: { x: 0, z: 0 },
+      tag: 'npc',
+    });
+    t.player.flags.boosting = true;
+    assert.equal(fieldBodyProfile(t.player, t.state).boosting, true);
+    const freed = stepUntilFree(t, planted.fieldId, {
+      extraAccel: { x: BOOST, z: 0 },
+      maxTimeS: 6,
+    });
+    assert.equal(freed.free, true, 'Boost out must leave the live ring');
+    printEscape('well', FIELD_ESCAPES.well.verb, freed.timeS);
+    t.cleanup();
+  });
+});
+
+test('CONE live body Sidestep through a planted wedge', async () => {
+  await withFlag(true, async () => {
+    const trapped = await bootPhysics(SEED + 12, { pos: { x: 50, z: 22 } });
+    const plantedTrap = trapped.fieldsSys.plantField(trapped.state, {
+      defKey: 'cone',
+      center: { x: 0, z: 0 },
+      dir: { x: 1, z: 0 },
+      tag: 'npc',
+    });
+    assert.ok(liveInside(trapped, plantedTrap.fieldId), 'start overlapped in the live wedge');
+    const held = stepUntilFree(trapped, plantedTrap.fieldId, { maxTimeS: 2 });
+    assert.equal(held.free, false, 'without a sidestep the live sluice keeps you in the lane');
+    trapped.cleanup();
+
+    const t = await bootPhysics(SEED + 13, { pos: { x: 50, z: 22 } });
+    const planted = t.fieldsSys.plantField(t.state, {
+      defKey: 'cone',
+      center: { x: 0, z: 0 },
+      dir: { x: 1, z: 0 },
+      tag: 'npc',
+    });
+    const freed = stepUntilFree(t, planted.fieldId, {
+      extraAccel: { x: 0, z: 90 },
+      maxTimeS: 4,
+    });
+    assert.equal(freed.free, true, 'Sidestep must leave the live wedge');
+    printEscape('cone', FIELD_ESCAPES.cone.verb, freed.timeS);
+    t.cleanup();
+  });
+});
+
+test('SKIM live body Out-mass through a planted sheet', async () => {
+  await withFlag(true, async () => {
+    const light = await bootPhysics(SEED + 14, {
+      pos: { x: 90, z: 28 },
+      vel: { x: 0, z: 12 },
+      mass: 16,
+    });
+    const plantedLight = light.fieldsSys.plantField(light.state, {
+      defKey: 'skim',
+      center: { x: 0, z: 0 },
+      dir: { x: 1, z: 0 },
+      tag: 'npc',
+    });
+    assert.ok(liveInside(light, plantedLight.fieldId), 'start overlapped on the live scoop');
+    const held = stepUntilFree(light, plantedLight.fieldId, { maxTimeS: 3 });
+    assert.equal(held.free, false, 'a light hull stays glued to the live sheet');
+    light.cleanup();
+
+    const heavy = await bootPhysics(SEED + 15, {
+      pos: { x: 90, z: 28 },
+      vel: { x: 0, z: 12 },
+      mass: 16,
+      hitchMass: 200,
+    });
+    const plantedHeavy = heavy.fieldsSys.plantField(heavy.state, {
+      defKey: 'skim',
+      center: { x: 0, z: 0 },
+      dir: { x: 1, z: 0 },
+      tag: 'npc',
+    });
+    assert.equal(fieldBodyProfile(heavy.player, heavy.state).mass, 216);
+    const freed = stepUntilFree(heavy, plantedHeavy.fieldId, { maxTimeS: 4 });
+    assert.equal(freed.free, true, 'Out-mass must shrug the live scoop and leave');
+    printEscape('skim', FIELD_ESCAPES.skim.verb, freed.timeS);
+    heavy.cleanup();
+  });
+});
+
+test('SEED live body leaves the lock-ring after Cut the hitch', async () => {
+  await withFlag(true, async () => {
+    const t = await bootPhysics(SEED + 16, { pos: { x: 16, z: 0 } });
+    const planted = t.fieldsSys.plantField(t.state, {
+      defKey: 'seed',
+      center: { x: 0, z: 0 },
+      tag: 'npc',
+    });
+    t.fieldsSys.latchFieldHitch(t.state, t.player.id, planted.fieldId);
+    t.sim.step();
+    assert.ok(liveInside(t, planted.fieldId), 'start locked in the live ring');
+    assert.equal(String(fieldBodyProfile(t.player, t.state).hitchedTo), String(planted.emitterId));
+    t.player.flags.boosting = true;
+    const stillHeld = stepUntilFree(t, planted.fieldId, {
+      extraAccel: { x: BOOST, z: 0 },
+      maxTimeS: 3,
+    });
+    assert.equal(stillHeld.free, false, 'boost cannot beat the live hitch lock');
+    const cutAt = t.state.simTime;
+    assert.equal(t.fieldsSys.cutFieldHitch(t.state, t.player.id), true);
+    assert.equal(fieldBodyProfile(t.player, t.state).hitchedTo, null);
+    const freed = stepUntilFree(t, planted.fieldId, {
+      extraAccel: { x: BOOST, z: 0 },
+      maxTimeS: 4,
+    });
+    assert.equal(freed.free, true, 'Cut the hitch lets the live Hitch leave the lock-ring');
+    printEscape('seed', FIELD_ESCAPES.seed.verb, (t.state.simTime - cutAt));
+    t.cleanup();
+  });
 });
